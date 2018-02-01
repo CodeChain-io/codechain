@@ -6,3 +6,5 @@ rust:
 matrix:
   allow_failures:
     - rust: nightly
+notifications:
+  slack: kodebox:SEmjeEH17azsBLK6rQjhNfP9
