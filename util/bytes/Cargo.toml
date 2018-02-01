@@ -1,8 +1,8 @@
 [package]
-name = "ethcore-bytes"
+name = "codechain-bytes"
 version = "0.1.0"
-authors = ["Parity Technologies <admin@parity.io>"]
-description = "byte utilities for Parity"
+authors = ["Parity Technologies <admin@parity.io>", "Kodebox, Inc <dev@kodebox.io>"]
+description = "byte utilities for CodeChain"
 license = "GPL-3.0"
 
 [dependencies]
