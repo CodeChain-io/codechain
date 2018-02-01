@@ -4,5 +4,6 @@ version = "0.1.0"
 authors = ["Kwang Yul Seo <kseo@kodebox.io>"]
 
 [dependencies]
+keccak-hash = { path = "util/hash" }
 log = "0.4.1"
 env_logger = "0.5.3"
