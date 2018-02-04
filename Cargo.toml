@@ -1,7 +1,7 @@
 [package]
 name = "codechain"
 version = "0.1.0"
-authors = ["Kwang Yul Seo <kseo@kodebox.io>"]
+authors = ["Kodebox <dev@kodebox.io>"]
 
 [dependencies]
 keccak-hash = { path = "util/hash" }
