@@ -1,0 +1,23 @@
+[package]
+name = "codechain-types"
+version = "0.2.0"
+authors = ["Parity Technologies <admin@parity.io>"]
+license = "MIT"
+homepage = "https://github.com/paritytech/primitives"
+description = "CodeChain types"
+
+[build-dependencies]
+rustc_version = "0.2"
+
+[dependencies]
+uint = { path = "../uint", version = "0.1" }
+fixed-hash = { path = "../fixed-hash", version = "0.1.1" }
+crunchy = "0.1.5"
+codechain-types-serialize = { version = "0.2", path = "../serialize", optional = true }
+serde = { version = "1.0", optional = true }
+
+[features]
+default = ["std", "heapsizeof", "serialize"]
+std = ["uint/std", "fixed-hash/std"]
+heapsizeof = ["uint/heapsizeof", "fixed-hash/heapsizeof"]
+serialize = ["std", "codechain-types-serialize", "serde"]

@@ -1,5 +1,5 @@
 [package]
-name = "ethereum-types-serialize"
+name = "codechain-types-serialize"
 version = "0.2.0"
 authors = ["Parity Technologies <admin@parity.io>"]
 license = "MIT"
