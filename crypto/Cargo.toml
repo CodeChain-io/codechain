@@ -1,0 +1,12 @@
+[package]
+name = "codechain-crypto"
+version = "0.1.0"
+authors = ["Kodebox <dev@kodebox.io>"]
+
+[dependencies]
+rust-crypto = "0.2.36"
+siphasher = "0.1.1"
+codechain-types = { path = "../primitives/codechain-types" }
+
+[dev-dependencies]
+codechain-bytes = { path = "../util/bytes" }

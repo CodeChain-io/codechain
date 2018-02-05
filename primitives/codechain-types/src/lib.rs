@@ -15,7 +15,7 @@ extern crate codechain_types_serialize;
 #[cfg(feature = "serialize")]
 extern crate serde;
 
-mod hash;
+pub mod hash;
 mod uint;
 
 pub use uint::{U128, U256, U512};
