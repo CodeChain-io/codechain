@@ -31,7 +31,7 @@ pub fn set() {
 static ABOUT_PANIC: &str = "
 This is a bug. Please report it at:
 
-    https://github.com/paritytech/parity/issues/new
+    https://github.com/kodebox-io/codechain/issues/new
 ";
 
 fn panic_hook(info: &PanicInfo) {

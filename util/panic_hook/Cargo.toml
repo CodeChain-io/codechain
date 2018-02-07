@@ -4,7 +4,7 @@ homepage = "http://parity.io"
 license = "GPL-3.0"
 name = "panic_hook"
 version = "0.1.0"
-authors = ["Parity Technologies <admin@parity.io>"]
+authors = ["Parity Technologies <admin@parity.io>", "Kodebox <dev@kodebox.io>"]
 
 [dependencies]
 backtrace = "0.3.2"
