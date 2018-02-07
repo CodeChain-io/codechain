@@ -1,0 +1,14 @@
+[package]
+name = "keys"
+version = "0.1.0"
+authors = ["debris <marek.kotewicz@gmail.com>", "Kodebox <dev@kodebox.io>"]
+
+[dependencies]
+rand = "0.3.14"
+rustc-serialize = "0.3"
+lazy_static = "0.2"
+base58 = "0.1"
+eth-secp256k1 = { git = "https://github.com/ethcore/rust-secp256k1" }
+codechain-crypto = { path = "../crypto" }
+codechain-bytes = { path = "../util/bytes" }
+codechain-types = { path = "../primitives/codechain-types" }
