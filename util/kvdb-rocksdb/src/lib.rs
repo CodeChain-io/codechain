@@ -24,7 +24,7 @@ extern crate parking_lot;
 extern crate regex;
 extern crate rocksdb;
 
-extern crate ethereum_types;
+extern crate codechain_types;
 extern crate kvdb;
 extern crate rlp;
 
@@ -735,7 +735,7 @@ mod tests {
 
 	use std::str::FromStr;
 	use self::tempdir::TempDir;
-	use ethereum_types::H256;
+	use codechain_types::H256;
 	use super::*;
 
 	fn test_db(config: &DatabaseConfig) {

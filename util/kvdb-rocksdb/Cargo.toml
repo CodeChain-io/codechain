@@ -5,7 +5,7 @@ authors = ["Parity Technologies <admin@parity.io>"]
 
 [dependencies]
 elastic-array = "0.9"
-ethereum-types = "0.1"
+codechain-types = { path = "../../primitives/codechain-types" }
 kvdb = { path = "../kvdb" }
 log = "0.3"
 num_cpus = "1.0"
