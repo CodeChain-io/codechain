@@ -5,6 +5,7 @@ license = "AGPL-3.0"
 authors = ["Kodebox <dev@kodebox.io>"]
 
 [dependencies]
+app_dirs = "^1.1.1"
 keccak-hash = { path = "util/hash" }
 log = "0.4.1"
 env_logger = "0.5.3"
