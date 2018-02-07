@@ -12,6 +12,9 @@ pub const APP_INFO: AppInfo = AppInfo {
 };
 
 fn main() {
+	// Always print backtrace on panic.
+	::std::env::set_var("RUST_BACKTRACE", "1");
+
 	env_logger::init();
 
 	debug!("this is a debug {}", "message");
