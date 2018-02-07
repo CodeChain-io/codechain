@@ -11,6 +11,7 @@ keccak-hash = { path = "util/hash" }
 log = "0.4.1"
 logs = { path = "logs" }
 env_logger = "0.5.3"
+panic_hook = { path = "util/panic_hook" }
 
 [[bin]]
 path = "codechain/main.rs"

@@ -7,6 +7,7 @@ extern crate log;
 extern crate app_dirs;
 extern crate env_logger;
 extern crate logs;
+extern crate panic_hook;
 
 mod config;
 
@@ -20,6 +21,8 @@ pub const APP_INFO: AppInfo = AppInfo {
 pub const LOG_INFO: &'static str = "sync=info";
 
 fn main() {
+	panic_hook::set();
+
 	// Always print backtrace on panic.
 	::std::env::set_var("RUST_BACKTRACE", "1");
 
