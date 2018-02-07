@@ -1,8 +1,13 @@
-extern crate app_dirs;
-extern crate env_logger;
+#[macro_use]
+extern crate clap;
 
 #[macro_use]
 extern crate log;
+
+extern crate app_dirs;
+extern crate env_logger;
+
+mod config;
 
 use app_dirs::AppInfo;
 
@@ -17,6 +22,15 @@ fn main() {
 
 	env_logger::init();
 
-	debug!("this is a debug {}", "message");
-	error!("this is printed by default");
+	if let Err(err) = run() {
+		println!("{}", err);
+	}
+}
+
+fn run() -> Result<(), String> {
+	let yaml = load_yaml!("codechain.yml");
+	let matches = clap::App::from_yaml(yaml).get_matches();
+	let cfg = try!(config::parse(&matches));
+	info!("Listening on {}", cfg.port);
+	Ok(())
 }

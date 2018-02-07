@@ -1,0 +1,14 @@
+name: codechain
+version: "0.1.0"
+author: Kodebox <dev@kodebox.io>
+about: CodeChian Core client
+args:
+    - port:
+        long: port
+        value_name: PORT
+        help: Listen for connections on PORT.
+        takes_value: true
+    - quiet:
+        short: q
+        long: quiet
+        help: Do not show any synchronization information in the console.
