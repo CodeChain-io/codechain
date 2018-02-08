@@ -1,10 +1,10 @@
 [package]
 name = "hashdb"
 version = "0.1.1"
-authors = ["Parity Technologies <admin@parity.io>"]
+authors = ["Parity Technologies <admin@parity.io>", "Kodebox <dev@kodebox.io>"]
 description = "trait for hash-keyed databases."
 license = "GPL-3.0"
 
 [dependencies]
+codechain-types = { path="../../primitives/codechain-types" }
 elastic-array = "0.9"
-ethereum-types = "0.1"
