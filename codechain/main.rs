@@ -10,6 +10,7 @@ extern crate logs;
 extern crate panic_hook;
 
 mod config;
+mod commands;
 
 use app_dirs::AppInfo;
 
@@ -47,5 +48,7 @@ fn run() -> Result<(), String> {
 	}
 
 	info!("Listening on {}", cfg.port);
-	Ok(())
+	match matches.subcommand() {
+		_ => commands::start(cfg)
+	}
 }
