@@ -6,7 +6,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate ethereum_types as bigint;
+extern crate codechain_types as bigint;
 extern crate rlp;
 
 use std::{fmt, cmp};
