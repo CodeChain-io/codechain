@@ -1,0 +1,15 @@
+[package]
+description = "Ethcore IO library"
+homepage = "http://parity.io"
+license = "GPL-3.0"
+name = "ethcore-io"
+version = "1.9.0"
+authors = ["Parity Technologies <admin@parity.io>"]
+
+[dependencies]
+mio = "0.6.8"
+crossbeam = "0.3"
+parking_lot = "0.5"
+log = "0.3"
+slab = "0.2"
+
