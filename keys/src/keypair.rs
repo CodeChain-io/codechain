@@ -20,7 +20,7 @@ impl fmt::Debug for KeyPair {
 
 impl fmt::Display for KeyPair {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		try!(writeln!(f, "private: {}", self.private));
+		writeln!(f, "private: {}", self.private)?;
 		writeln!(f, "public: {}", self.public)
 	}
 }
