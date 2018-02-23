@@ -1,12 +1,14 @@
 extern crate codechain_types;
 extern crate crypto as rcrypto;
 extern crate siphasher;
+extern crate tiny_keccak;
 
 pub use rcrypto::digest::Digest;
 use std::hash::Hasher;
 use rcrypto::sha1::Sha1;
 use rcrypto::sha2::Sha256;
 use rcrypto::ripemd160::Ripemd160;
+use tiny_keccak::Keccak;
 use siphasher::sip::SipHasher24;
 use codechain_types::hash::{H160, H256, H32};
 
@@ -156,6 +158,20 @@ pub fn dhash256(input: &[u8]) -> H256 {
 	hasher.input(input);
 	hasher.result(&mut *result);
 	result
+}
+
+pub trait Keccak256<T> {
+	fn keccak256(&self) -> T where T: Sized;
+}
+
+impl<T> Keccak256<[u8; 32]> for T where T: AsRef<[u8]> {
+	fn keccak256(&self) -> [u8; 32] {
+		let mut keccak = Keccak::new_keccak256();
+		let mut result = [0u8; 32];
+		keccak.update(self.as_ref());
+		keccak.finalize(&mut result);
+		result
+	}
 }
 
 /// SipHash-2-4
