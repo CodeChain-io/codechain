@@ -8,9 +8,11 @@ extern crate app_dirs;
 extern crate env_logger;
 extern crate logs;
 extern crate panic_hook;
+extern crate rpc as codechain_rpc;
 
 mod config;
 mod commands;
+mod rpc;
 
 use app_dirs::AppInfo;
 
