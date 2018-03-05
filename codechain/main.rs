@@ -1,8 +1,10 @@
 #[macro_use]
 extern crate clap;
+extern crate futures;
 
 #[macro_use]
 extern crate log;
+extern crate tokio_core;
 
 extern crate app_dirs;
 extern crate env_logger;
@@ -12,6 +14,7 @@ extern crate rpc as codechain_rpc;
 
 mod config;
 mod commands;
+mod event_loop;
 mod rpc;
 
 use app_dirs::AppInfo;
