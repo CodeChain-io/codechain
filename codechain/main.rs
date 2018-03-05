@@ -16,6 +16,7 @@ mod config;
 mod commands;
 mod event_loop;
 mod rpc;
+mod rpc_apis;
 
 use app_dirs::AppInfo;
 

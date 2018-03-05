@@ -10,7 +10,7 @@ pub mod rpc_server;
 
 pub use rustc_serialize::hex;
 
-pub use jsonrpc_core::{MetaIoHandler, Compatibility, Error};
+pub use jsonrpc_core::{MetaIoHandler, Compatibility, Error, Value, Params};
 pub use jsonrpc_http_server::tokio_core::reactor::{Remote};
 
 pub use jsonrpc_http_server::Server;
