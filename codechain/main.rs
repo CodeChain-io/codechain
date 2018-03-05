@@ -8,6 +8,7 @@ extern crate tokio_core;
 
 extern crate app_dirs;
 extern crate codechain_logger;
+extern crate codechain_network;
 extern crate env_logger;
 extern crate panic_hook;
 extern crate rpc as codechain_rpc;
