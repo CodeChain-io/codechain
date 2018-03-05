@@ -6,7 +6,6 @@ authors = ["Kodebox <dev@kodebox.io>"]
 [dependencies]
 rust-crypto = "0.2.36"
 siphasher = "0.1.1"
-tiny-keccak = "1.3"
 codechain-types = { path = "../primitives/codechain-types" }
 
 [dev-dependencies]
