@@ -1,4 +1,5 @@
-use codechain_rpc::{Server, start_http, MetaIoHandler };
+use codechain_rpc::{Server, start_http, MetaIoHandler, Compatibility };
+use rpc_apis::{self};
 use std::io;
 use std::net::SocketAddr;
 
@@ -38,7 +39,7 @@ pub fn setup_http_rpc_server(
 	cors_domains: Option<Vec<String>>,
 	allowed_hosts: Option<Vec<String>>,
 ) -> Result<Server, String> {
-	let server: MetaIoHandler<()> = MetaIoHandler::default();
+	let server = setup_rpc_server();
 	let start_result = start_http(url, cors_domains, allowed_hosts, server);
 	match start_result {
 		Err(ref err) if err.kind() == io::ErrorKind::AddrInUse => {
@@ -48,3 +49,8 @@ pub fn setup_http_rpc_server(
 		Ok(server) => Ok(server),
 	}
 }
+
+fn setup_rpc_server() -> MetaIoHandler<()> {
+	rpc_apis::setup_rpc(MetaIoHandler::with_compatibility(Compatibility::Both))
+}
+
