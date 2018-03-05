@@ -13,6 +13,7 @@ keccak-hash = { path = "util/hash" }
 log = "0.4.1"
 env_logger = "0.5.3"
 panic_hook = { path = "util/panic_hook" }
+codechain-network = { path = "network" }
 rpc = { path = "rpc" }
 tokio-core = "0.1.6"
 
