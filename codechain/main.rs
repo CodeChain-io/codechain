@@ -7,8 +7,8 @@ extern crate log;
 extern crate tokio_core;
 
 extern crate app_dirs;
+extern crate codechain_logger;
 extern crate env_logger;
-extern crate logs;
 extern crate panic_hook;
 extern crate rpc as codechain_rpc;
 
@@ -19,6 +19,8 @@ mod rpc;
 mod rpc_apis;
 
 use app_dirs::AppInfo;
+use codechain_logger::setup_log;
+use codechain_logger::Config as LogConfig;
 
 pub const APP_INFO: AppInfo = AppInfo {
 	name: "codechain",
@@ -43,15 +45,8 @@ fn run() -> Result<(), String> {
 	let matches = clap::App::from_yaml(yaml).get_matches();
 	let cfg = try!(config::parse(&matches));
 
-	if !cfg.quiet {
-		if cfg!(windows) {
-			logs::init(LOG_INFO, logs::DateLogFormatter);
-		} else {
-			logs::init(LOG_INFO, logs::DateAndColorLogFormatter);
-		}
-	} else {
-		env_logger::init();
-	}
+	let log_config = LogConfig::default();
+	let _logger = setup_log(&log_config).expect("Logger is initialized only once; qed");
 
 	info!("Listening on {}", cfg.port);
 	match matches.subcommand() {
