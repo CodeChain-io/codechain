@@ -7,12 +7,14 @@ authors = ["Kodebox <dev@kodebox.io>"]
 [dependencies]
 app_dirs = "^1.1.1"
 clap = { version = "2", features = ["yaml"] }
+futures = "0.1"
 keccak-hash = { path = "util/hash" }
 log = "0.4.1"
 logs = { path = "logs" }
 env_logger = "0.5.3"
 panic_hook = { path = "util/panic_hook" }
 rpc = { path = "rpc" }
+tokio-core = "0.1.6"
 
 [[bin]]
 path = "codechain/main.rs"
