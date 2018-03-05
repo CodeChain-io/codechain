@@ -1,6 +1,6 @@
 name: codechain
 version: "0.1.0"
-author: Kodebox <dev@kodebox.io>
+author: CodeChain Team <codechain@kodebox.io>
 about: CodeChian Core client
 args:
     - port:

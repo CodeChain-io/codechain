@@ -1,7 +1,7 @@
 [package]
 name = "codechain-crypto"
 version = "0.1.0"
-authors = ["Kodebox <dev@kodebox.io>"]
+authors = ["CodeChain Team <codechain@kodebox.io>"]
 
 [dependencies]
 rust-crypto = "0.2.36"

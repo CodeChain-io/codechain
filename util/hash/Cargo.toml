@@ -4,7 +4,7 @@ homepage = "http://parity.io"
 license = "GPL-3.0"
 name = "keccak-hash"
 version = "0.1.0"
-authors = ["Parity Technologies <admin@parity.io>", "Kodebox <dev@kodebox.io>"]
+authors = ["Parity Technologies <admin@parity.io>", "CodeChain Team <codechain@kodebox.io>"]
 build = "build.rs"
 
 [dependencies]
