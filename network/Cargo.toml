@@ -6,3 +6,4 @@ authors = ["Kodebox <codechain@kodebox.io>"]
 [dependencies]
 codechain-types = { path = "../primitives/codechain-types" }
 keccak-hash = { path = "../util/hash" }
+rand = "0.4"

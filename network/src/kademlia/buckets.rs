@@ -10,10 +10,10 @@ pub struct Buckets {
 }
 
 impl Buckets {
-    pub fn new(port: u16, bucket_size: u8) -> Self {
+    pub fn new(bucket_size: u8) -> Self {
         let capacity = 8;
         Buckets {
-            localhost: Contact::localhost(port),
+            localhost: Contact::random(),
             buckets: HashMap::with_capacity(capacity),
             bucket_size,
         }
