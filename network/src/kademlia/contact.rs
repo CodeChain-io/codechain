@@ -38,6 +38,7 @@ impl Contact {
 		}
 	}
 
+	#[cfg(test)]
 	fn from_hash(id: NodeId) -> Self {
 		Contact {
 			id,
