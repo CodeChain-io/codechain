@@ -1,9 +1,9 @@
 extern crate keccak_hash;
 
-use codechain_types::H256;
+use codechain_types::Public;
 use std::net::{ Ipv4Addr, Ipv6Addr, IpAddr, SocketAddr };
 
-pub type NodeId = H256;
+pub type NodeId = Public;
 
 pub struct Contact {
 	id: NodeId,
@@ -59,7 +59,9 @@ impl Contact {
 
 	pub fn log2_distance(&self, target: &Self) -> usize {
 		let distance = self.id ^ target.id;
-		let mut distance_as_bytes : [u8; 32] = [0; 32];
+		const BYTES_SIZE: usize = super::B / 8;
+		debug_assert_eq!(super::B % 8, 0);
+		let mut distance_as_bytes : [u8; BYTES_SIZE] = [0; BYTES_SIZE];
 		distance.copy_to(&mut distance_as_bytes);
 
 		let mut same_prefix_length: usize = 0;
@@ -73,15 +75,16 @@ impl Contact {
 			}
 		}
 
-        return 256 - same_prefix_length;
+		return super::B - same_prefix_length;
 	}
 }
 
 #[cfg(test)]
 mod tests {
 	use super::Contact;
+	use std::mem::size_of;
 
-	use codechain_types::H256;
+	use codechain_types::Public;
 	use std::net::{ IpAddr, Ipv4Addr, Ipv6Addr };
     use std::str::FromStr;
 
@@ -103,17 +106,50 @@ mod tests {
 
 	#[test]
 	fn test_log2_distance_is_1_if_lsb_is_different() {
-		let c1 = Contact::from_hash(H256::from_str("0000000000000000000000000000000000000000000000000000000000000000").unwrap());
-		let c2 = Contact::from_hash(H256::from_str("0000000000000000000000000000000000000000000000000000000000000001").unwrap());
+		let c1 = Contact::from_hash(Public::from_str("0000000000000000\
+			0000000000000000\
+			0000000000000000\
+			0000000000000000\
+			0000000000000000\
+			0000000000000000\
+			0000000000000000\
+			0000000000000000").unwrap());
+		let c2 = Contact::from_hash(Public::from_str("0000000000000000\
+			0000000000000000\
+			0000000000000000\
+			0000000000000000\
+			0000000000000000\
+			0000000000000000\
+			0000000000000000\
+			0000000000000001").unwrap());
 
 		assert_eq!(1, c1.log2_distance(&c2));
 	}
 
 	#[test]
-	fn test_log2_distance_is_256_if_msb_is_different() {
-		let c1 = Contact::from_hash(H256::from_str("0000000000000000000000000000000000000000000000000000000000000000").unwrap());
-		let c2 = Contact::from_hash(H256::from_str("8000000000000000000000000000000000000000000000000000000000000000").unwrap());
+	fn test_log2_distance_is_node_id_size_if_msb_is_different() {
+		let c1 = Contact::from_hash(Public::from_str("0000000000000000\
+			0000000000000000\
+			0000000000000000\
+			0000000000000000\
+			0000000000000000\
+			0000000000000000\
+			0000000000000000\
+			0000000000000000").unwrap());
+		let c2 = Contact::from_hash(Public::from_str("8000000000000000\
+			0000000000000000\
+			0000000000000000\
+			0000000000000000\
+			0000000000000000\
+			0000000000000000\
+			0000000000000000\
+			0000000000000000").unwrap());
 
-		assert_eq!(256, c1.log2_distance(&c2));
+		assert_eq!(super::super::B, c1.log2_distance(&c2));
+	}
+
+	#[test]
+	fn test_size_of_address_is_b() {
+		assert_eq!(super::super::B, size_of::<super::NodeId>() * 8);
 	}
 }
