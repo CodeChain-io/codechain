@@ -24,33 +24,33 @@ use codechain_logger::setup_log;
 use codechain_logger::Config as LogConfig;
 
 pub const APP_INFO: AppInfo = AppInfo {
-	name: "codechain",
-	author: "Kodebox",
+    name: "codechain",
+    author: "Kodebox",
 };
 
 pub const LOG_INFO: &'static str = "sync=info";
 
 fn main() {
-	panic_hook::set();
+    panic_hook::set();
 
-	// Always print backtrace on panic.
-	::std::env::set_var("RUST_BACKTRACE", "1");
+    // Always print backtrace on panic.
+    ::std::env::set_var("RUST_BACKTRACE", "1");
 
-	if let Err(err) = run() {
-		println!("{}", err);
-	}
+    if let Err(err) = run() {
+        println!("{}", err);
+    }
 }
 
 fn run() -> Result<(), String> {
-	let yaml = load_yaml!("codechain.yml");
-	let matches = clap::App::from_yaml(yaml).get_matches();
-	let cfg = try!(config::parse(&matches));
+    let yaml = load_yaml!("codechain.yml");
+    let matches = clap::App::from_yaml(yaml).get_matches();
+    let cfg = try!(config::parse(&matches));
 
-	let log_config = LogConfig::default();
-	let _logger = setup_log(&log_config).expect("Logger is initialized only once; qed");
+    let log_config = LogConfig::default();
+    let _logger = setup_log(&log_config).expect("Logger is initialized only once; qed");
 
-	info!("Listening on {}", cfg.port);
-	match matches.subcommand() {
-		_ => commands::start(cfg)
-	}
+    info!("Listening on {}", cfg.port);
+    match matches.subcommand() {
+        _ => commands::start(cfg)
+    }
 }

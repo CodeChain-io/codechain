@@ -35,20 +35,20 @@ impl Buckets {
 }
 
 struct Bucket {
-	contacts: LinkedList<Contact>,
-	bucket_size: u8,
+    contacts: LinkedList<Contact>,
+    bucket_size: u8,
 }
 
 impl Bucket {
-	pub fn new(bucket_size: u8) -> Self {
-		Bucket {
-			contacts: LinkedList::new(),
-			bucket_size,
-		}
-	}
+    pub fn new(bucket_size: u8) -> Self {
+        Bucket {
+            contacts: LinkedList::new(),
+            bucket_size,
+        }
+    }
 
-	pub fn add_contact(&mut self, contact: Contact) {
-		// FIXME: Check bucket_size
-		self.contacts.push_back(contact);
-	}
+    pub fn add_contact(&mut self, contact: Contact) {
+        // FIXME: Check bucket_size
+        self.contacts.push_back(contact);
+    }
 }

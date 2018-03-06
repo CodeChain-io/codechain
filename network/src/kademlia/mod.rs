@@ -10,10 +10,10 @@ const T_REFRESH: u32 = 60_000;
 
 
 pub struct Kademlia {
-	alpha: u8,
-	k: u8,
-	t_refresh: u32,
-	buckets: Buckets,
+    alpha: u8,
+    k: u8,
+    t_refresh: u32,
+    buckets: Buckets,
 }
 
 impl Kademlia {
@@ -34,21 +34,21 @@ impl Kademlia {
 mod tests {
     use super::Kademlia;
 
-	#[test]
-	fn test_default_alpha() {
-		let kademlia = Kademlia::new();
-		assert_eq!(3, kademlia.alpha);
-	}
+    #[test]
+    fn test_default_alpha() {
+        let kademlia = Kademlia::new();
+        assert_eq!(3, kademlia.alpha);
+    }
 
-	#[test]
-	fn test_default_k() {
-		let kademlia = Kademlia::new();
-		assert_eq!(16, kademlia.k);
-	}
+    #[test]
+    fn test_default_k() {
+        let kademlia = Kademlia::new();
+        assert_eq!(16, kademlia.k);
+    }
 
-	#[test]
-	fn test_default_t_refresh() {
-		let kademlia = Kademlia::new();
-		assert_eq!(60_000, kademlia.t_refresh);
-	}
+    #[test]
+    fn test_default_t_refresh() {
+        let kademlia = Kademlia::new();
+        assert_eq!(60_000, kademlia.t_refresh);
+    }
 }
