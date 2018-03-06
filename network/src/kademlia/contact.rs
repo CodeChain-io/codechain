@@ -3,10 +3,12 @@ extern crate rand;
 
 
 use codechain_types::Public;
-use std::net::{ IpAddr, SocketAddr };
+use std::cmp::Ordering;
+use std::net::SocketAddr;
 
 pub type NodeId = Public;
 
+#[derive(Debug, Eq)]
 pub struct Contact {
     id: NodeId,
     addr: Option<SocketAddr>,
@@ -58,17 +60,61 @@ impl Contact {
     }
 }
 
+impl Ord for Contact {
+    fn cmp(&self, other: &Contact) -> Ordering {
+        if self.id < other.id {
+            return Ordering::Less
+        }
+        if self.id > other.id {
+            return Ordering::Greater
+        }
+
+        debug_assert_eq!(self.id, other.id);
+
+        match (self.addr, other.addr) {
+            (None, None) => Ordering::Equal,
+            (None, Some(_)) => Ordering::Less,
+            (Some(_), None) => Ordering::Greater,
+            (Some(SocketAddr::V4(_)), Some(SocketAddr::V6(_))) => Ordering::Less,
+            (Some(SocketAddr::V6(_)), Some(SocketAddr::V4(_))) => Ordering::Greater,
+            (Some(lhs), Some(rhs)) => {
+                match lhs.ip().cmp(&rhs.ip()) {
+                    Ordering::Equal => lhs.port().cmp(&rhs.port()),
+                    order => order,
+                }
+            },
+        }
+    }
+}
+
+impl PartialEq for Contact {
+    fn eq(&self, other: &Contact ) -> bool {
+        self.cmp(other) == Ordering::Equal
+    }
+}
+
+impl PartialOrd for Contact {
+    fn partial_cmp(&self, other: &Contact) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+
 #[cfg(test)]
 mod tests {
-    use super::Contact;
-    use std::mem::size_of;
-
     use codechain_types::Public;
-    use std::net::{ IpAddr, Ipv4Addr, Ipv6Addr };
+    use std::cmp::Ordering;
+    use std::mem::size_of;
+    use std::net::{ IpAddr, Ipv4Addr, SocketAddr };
     use std::str::FromStr;
+    use super::Contact;
 
     fn new_contact(node_id: &str) -> Contact {
         Contact::new(Public::from_str(node_id).unwrap(), None)
+    }
+
+    fn new_contact_with_addr(node_id: &str, ip: IpAddr, port: u16) -> Contact {
+        Contact::new(Public::from_str(node_id).unwrap(), Some(SocketAddr::new(ip, port)))
     }
 
     #[test]
@@ -118,5 +164,197 @@ mod tests {
     #[test]
     fn test_size_of_address_is_b() {
         assert_eq!(super::super::B, size_of::<super::NodeId>() * 8);
+    }
+
+    #[test]
+    fn test_contacts_are_not_equal_if_they_have_different_id() {
+        const ID1: &str = "8000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000";
+        const ID2: &str = "8700000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000";
+
+        let c1 = new_contact(ID1);
+        let c2 = new_contact(ID2);
+        assert_ne!(c1, c2);
+    }
+
+    #[test]
+    fn test_contacts_are_equal_if_they_have_same_id_and_addresses_are_none() {
+        const ID1: &str = "8000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000";
+        const ID2: &str = "8000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000";
+
+        let c1 = new_contact(ID1);
+        let c2 = new_contact(ID2);
+        assert_eq!(c1, c2);
+    }
+
+    #[test]
+    fn test_contacts_are_equal_if_they_have_same_id_and_address() {
+        const ID1: &str = "8000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000";
+        const ID2: &str = "8000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000";
+
+        let c1 = new_contact_with_addr(ID1, IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 3485);
+        let c2 = new_contact_with_addr(ID2, IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 3485);
+        assert_eq!(c1, c2);
+    }
+
+    #[test]
+    fn test_contacts_are_not_equal_if_their_addresses_are_different() {
+        const ID1: &str = "8000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000";
+        const ID2: &str = "8000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000";
+
+        let c1 = new_contact_with_addr(ID1, IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 3485);
+        let c2 = new_contact_with_addr(ID2, IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 3486);
+        assert_ne!(c1, c2);
+    }
+
+    #[test]
+    fn test_contact_greater_than_if_id_is_greater() {
+        const ID1: &str = "8000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000";
+        const ID2: &str = "7000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000";
+
+        let c1 = new_contact_with_addr(ID1, IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 3485);
+        let c2 = new_contact_with_addr(ID2, IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 3486);
+        assert!(c1 > c2);
+    }
+
+    #[test]
+    fn test_contact_less_than_if_id_is_less() {
+        const ID1: &str = "7000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000";
+        const ID2: &str = "8000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000";
+
+        let c1 = new_contact_with_addr(ID1, IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 3485);
+        let c2 = new_contact_with_addr(ID2, IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 3486);
+        assert!(c1 < c2);
+    }
+
+    #[test]
+    fn test_contacts_is_less_than_if_port_is_less() {
+        const ID1: &str = "8000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000";
+        const ID2: &str = "8000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000";
+
+        let c1 = new_contact_with_addr(ID1, IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 3485);
+        let c2 = new_contact_with_addr(ID2, IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 3486);
+        assert_eq!(Some(Ordering::Less), c1.partial_cmp(&c2));
+    }
+
+    #[test]
+    fn test_contacts_is_greater_than_if_port_is_greater() {
+        const ID1: &str = "8000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000";
+        const ID2: &str = "8000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000";
+
+        let c1 = new_contact_with_addr(ID1, IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 3485);
+        let c2 = new_contact_with_addr(ID2, IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 3484);
+        assert_eq!(Some(Ordering::Greater), c1.partial_cmp(&c2));
     }
 }
