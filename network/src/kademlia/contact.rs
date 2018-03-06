@@ -1,4 +1,4 @@
-extern crate keccak_hash;
+extern crate codechain_crypto as crypto;
 extern crate rand;
 
 
@@ -13,7 +13,7 @@ pub struct Contact {
 }
 
 fn hash<T: AsRef<[u8]>>(block: T) -> Public {
-    keccak_hash::keccak(block) // FIXME: Use blake2
+    crypto::blake512(block.as_ref())
 }
 
 impl Contact {
