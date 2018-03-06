@@ -19,12 +19,11 @@ pub struct Kademlia {
 impl Kademlia {
     pub fn new() -> Self {
         const DEFAULT_BUCKET_SIZE: u8 = 8;
-        const DEFAULT_PORT: u16 = 3485;
         Kademlia {
             alpha: ALPHA,
             k: K,
             t_refresh: T_REFRESH,
-            buckets: Buckets::new(DEFAULT_PORT, DEFAULT_BUCKET_SIZE),
+            buckets: Buckets::new(DEFAULT_BUCKET_SIZE),
         }
     }
 

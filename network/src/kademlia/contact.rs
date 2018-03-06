@@ -1,7 +1,9 @@
 extern crate keccak_hash;
+extern crate rand;
+
 
 use codechain_types::Public;
-use std::net::{ Ipv4Addr, Ipv6Addr, IpAddr, SocketAddr };
+use std::net::{ IpAddr, SocketAddr };
 
 pub type NodeId = Public;
 
@@ -10,28 +12,24 @@ pub struct Contact {
 	addr: Option<SocketAddr>,
 }
 
+fn hash<T: AsRef<[u8]>>(block: T) -> Public {
+	keccak_hash::keccak(block) // FIXME: Use blake2
+}
+
 impl Contact {
-	pub fn localhost(port: u16) -> Self {
-        let localhost = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
-        Contact {
-            id: Contact::hash(localhost, port),
-            addr: Some(SocketAddr::new(localhost, port)),
-        }
-    }
+	pub fn random() -> Self {
+		const RAND_BLOCK_SIZE: usize = 16;
+		let mut rand_block: [u8; RAND_BLOCK_SIZE] = [0; RAND_BLOCK_SIZE];
+		for iter in rand_block.iter_mut() {
+			*iter = rand::random::<u8>();
+		}
+		Contact {
+			id: hash(rand_block),
+			addr: None,
+		}
+	}
 
 	pub fn new(ip: IpAddr, port: u16) -> Self {
-        let ip = match ip {
-            IpAddr::V4(ip) => IpAddr::V4(ip),
-            IpAddr::V6(ip) => {
-                let localhost_v6 = Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1);
-                if ip == localhost_v6 {
-                    let localhost_v4 = Ipv4Addr::new(127, 0, 0, 1);
-                    IpAddr::V4(localhost_v4)
-                } else {
-                    IpAddr::V6(ip)
-                }
-            }
-        };
 		Contact {
 			id: Contact::hash(ip, port),
 			addr: Some(SocketAddr::new(ip, port)),
@@ -54,7 +52,7 @@ impl Contact {
 		}
 		block[16] = ((port >>8) & 0xff) as u8;
 		block[17] = (port & 0xff) as u8;
-		keccak_hash::keccak(block) // FIXME: Use blake2
+		hash(block)
 	}
 
 	pub fn log2_distance(&self, target: &Self) -> usize {
@@ -92,14 +90,6 @@ mod tests {
 	fn test_log2_distance_is_0_if_two_host_are_the_same() {
 		let c1 = Contact::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8000);
 		let c2 = Contact::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8000);
-
-		assert_eq!(0, c1.log2_distance(&c2));
-	}
-
-	#[test]
-	fn test_log2_distance_of_localhost_v4_and_v6_is_0() {
-		let c1 = Contact::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8000);
-		let c2 = Contact::new(IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1)), 8000);
 
 		assert_eq!(0, c1.log2_distance(&c2));
 	}
