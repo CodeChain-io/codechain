@@ -19,7 +19,7 @@ extern crate tiny_keccak;
 
 use std::io;
 use tiny_keccak::Keccak;
-pub use codechain_types::H256;
+pub use codechain_types::{ H256, H512 };
 
 /// Get the KECCAK (i.e. Keccak) hash of the empty bytes string.
 pub const KECCAK_EMPTY: H256 = H256( [0xc5, 0xd2, 0x46, 0x01, 0x86, 0xf7, 0x23, 0x3c, 0x92, 0x7e, 0x7d, 0xb2, 0xdc, 0xc7, 0x03, 0xc0, 0xe5, 0x00, 0xb6, 0x53, 0xca, 0x82, 0x27, 0x3b, 0x7b, 0xfa, 0xd8, 0x04, 0x5d, 0x85, 0xa4, 0x70] );
@@ -37,18 +37,18 @@ extern {
 	pub fn keccak_512(out: *mut u8, outlen: usize, input: *const u8, inputlen: usize) -> i32;
 }
 
-pub fn keccak<T: AsRef<[u8]>>(s: T) -> H256 {
-	let mut result = [0u8; 32];
+pub fn keccak<T: AsRef<[u8]>>(s: T) -> H512 {
+	let mut result = [0u8; 64];
 	write_keccak(s, &mut result);
-	H256(result)
+	H512(result)
 }
 
 pub fn write_keccak<T: AsRef<[u8]>>(s: T, dest: &mut [u8]) {
 	let input = s.as_ref();
 	unsafe {
-		// we can safely ignore keccak_256 output, cause we know that both input
+		// we can safely ignore keccak_512 output, cause we know that both input
 		// and dest are properly allocated
-		keccak_256(dest.as_mut_ptr(), dest.len(), input.as_ptr(), input.len());
+		keccak_512(dest.as_mut_ptr(), dest.len(), input.as_ptr(), input.len());
 	}
 }
 

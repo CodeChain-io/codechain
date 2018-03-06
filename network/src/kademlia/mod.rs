@@ -4,7 +4,7 @@ mod contact;
 use self::buckets::Buckets;
 
 const ALPHA: u8 = 3;
-const B: usize = 32 * 8;
+const B: usize = 64 * 8;
 const K: u8 = 16;
 const T_REFRESH: u32 = 60_000;
 
@@ -33,10 +33,7 @@ impl Kademlia {
 
 #[cfg(test)]
 mod tests {
-    use std::mem::size_of;
-    use super::B;
     use super::Kademlia;
-    use super::contact;
 
 	#[test]
 	fn test_default_alpha() {
@@ -55,9 +52,4 @@ mod tests {
 		let kademlia = Kademlia::new();
 		assert_eq!(60_000, kademlia.t_refresh);
 	}
-
-    #[test]
-    fn test_size_of_address_is_b() {
-        assert_eq!(B, size_of::<contact::NodeId>() * 8);
-    }
 }
