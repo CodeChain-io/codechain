@@ -16,7 +16,7 @@
 
 use std::cmp;
 use std::cell::RefCell;
-use codechain_crypto::{blake256};
+use codechain_crypto::{blake256, BLAKE_NULL_RLP};
 use codechain_types::{H256, U256, Address};
 use super::Bytes;
 use time::get_time;
@@ -58,7 +58,30 @@ pub struct Header {
     bare_hash: RefCell<Option<H256>>,
 }
 
+impl Default for Header {
+    fn default() -> Self {
+        Header {
+            parent_hash: H256::default(),
+            timestamp: 0,
+            number: 0,
+            author: Address::default(),
+
+            transactions_root: BLAKE_NULL_RLP,
+            state_root: BLAKE_NULL_RLP,
+
+            seal: vec![],
+            hash: RefCell::new(None),
+            bare_hash: RefCell::new(None),
+        }
+    }
+}
+
 impl Header {
+    /// Create a new, default-valued, header.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     /// Get the parent_hash field of the header.
     pub fn parent_hash(&self) -> &H256 { &self.parent_hash }
     /// Get the timestamp field of the header.
