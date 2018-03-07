@@ -20,7 +20,7 @@ mod private;
 mod public;
 mod signature;
 
-pub use address::{Address, Type};
+pub use address::Address;
 pub use codechain_types::hash;
 pub use display::DisplayLayout;
 pub use error::Error;
