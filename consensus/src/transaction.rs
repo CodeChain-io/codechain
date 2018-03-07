@@ -14,7 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use codechain_types::{U256};
+use codechain_crypto::blake256;
+use codechain_types::{H256, U256};
 use super::Bytes;
 use rlp::{UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
 
@@ -48,5 +49,21 @@ impl Decodable for Transaction {
                 nonce: d.val_at(0)?,
                 data: d.val_at(1)?,
         })
+    }
+}
+
+impl Transaction {
+    /// Append object with a without signature into RLP stream
+    pub fn rlp_append_unsigned_transaction(&self, s: &mut RlpStream) {
+        s.begin_list(2);
+        s.append(&self.nonce);
+        s.append(&self.data);
+    }
+
+    /// The message hash of the transaction.
+    pub fn hash(&self) -> H256 {
+        let mut stream = RlpStream::new();
+        self.rlp_append_unsigned_transaction(&mut stream);
+        blake256(stream.as_raw())
     }
 }
