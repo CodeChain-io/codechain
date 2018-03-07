@@ -80,7 +80,7 @@ impl KeyPair {
 		Address {
 			kind: Type::P2PKH,
 			network: self.private.network,
-			hash: self.public.address_hash(),
+			hash: self.public.account_id(),
 		}
 	}
 }

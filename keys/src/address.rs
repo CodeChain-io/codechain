@@ -11,7 +11,7 @@ use std::ops::Deref;
 use base58::{ToBase58, FromBase58};
 use crypto::checksum;
 use network::Network;
-use {DisplayLayout, Error, AddressHash};
+use {DisplayLayout, Error, AccountId};
 
 /// There are two address formats currently in use.
 /// https://bitcoin.org/en/developer-reference#address-conversion
@@ -35,7 +35,7 @@ pub struct Address {
 	/// The network of the address.
 	pub network: Network,
 	/// Public key hash.
-	pub hash: AddressHash,
+	pub hash: AccountId,
 }
 
 pub struct AddressDisplayLayout([u8; 25]);
@@ -85,7 +85,7 @@ impl DisplayLayout for Address {
 			_ => return Err(Error::InvalidAddress),
 		};
 
-		let mut hash = AddressHash::default();
+		let mut hash = AccountId::default();
 		hash.copy_from_slice(&data[1..21]);
 
 		let address = Address {

@@ -2,9 +2,9 @@ use std::{fmt, ops};
 use secp256k1::key;
 use secp256k1::{Message as SecpMessage, RecoveryId, RecoverableSignature, Error as SecpError, Signature as SecpSignature};
 use hex::ToHex;
-use crypto::dhash160;
+use crypto::{blake256, ripemd160};
 use hash::{H264, H520};
-use {AddressHash, Error, CompactSignature, Signature, Message, SECP256K1};
+use {AccountId, Error, CompactSignature, Signature, Message, SECP256K1};
 
 /// Secret public key
 pub enum Public {
@@ -31,8 +31,8 @@ impl Public {
 		}
 	}
 
-	pub fn address_hash(&self) -> AddressHash {
-		dhash160(self)
+	pub fn account_id(&self) -> AccountId {
+		ripemd160(blake256(self.as_ref()))
 	}
 
 	pub fn verify(&self, message: &Message, signature: &Signature) -> Result<bool, Error> {

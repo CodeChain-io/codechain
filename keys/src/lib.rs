@@ -32,8 +32,8 @@ pub use public::Public;
 pub use rustc_serialize::hex;
 pub use signature::{CompactSignature, Signature};
 
-/// 20 bytes long hash derived from public `ripemd160(sha256(public))`
-pub type AddressHash = H160;
+/// 20 bytes long hash derived from public `ripemd160(blake256(public))`
+pub type AccountId = H160;
 /// 32 bytes long secret key
 pub type Secret = H256;
 /// 32 bytes long signable message
