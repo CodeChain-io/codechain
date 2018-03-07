@@ -5,10 +5,12 @@ extern crate rand;
 use codechain_types::Public;
 use std::cmp::Ordering;
 use std::net::SocketAddr;
+#[cfg(test)]
+use std::str::FromStr;
 
 pub type NodeId = Public;
 
-#[derive(Debug, Eq)]
+#[derive(Clone, Debug, Eq)]
 pub struct Contact {
     id: NodeId,
     addr: Option<SocketAddr>,
@@ -38,6 +40,14 @@ impl Contact {
         }
     }
 
+    #[cfg(test)]
+    pub fn from_hash(hash: &str) -> Self {
+        Contact {
+            id: NodeId::from_str(hash).unwrap(),
+            addr: None,
+        }
+    }
+
     pub fn log2_distance(&self, target: &Self) -> usize {
         let distance = self.id ^ target.id;
         const BYTES_SIZE: usize = super::B / 8;
@@ -57,6 +67,10 @@ impl Contact {
         }
 
         return super::B - same_prefix_length;
+    }
+
+    pub fn id(&self) -> NodeId {
+        self.id
     }
 }
 
