@@ -8,3 +8,4 @@ matrix:
     - rust: nightly
 notifications:
   slack: kodebox:SEmjeEH17azsBLK6rQjhNfP9
+cache: cargo
