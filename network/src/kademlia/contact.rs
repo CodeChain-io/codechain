@@ -29,30 +29,11 @@ impl Contact {
         }
     }
 
-    pub fn new(ip: IpAddr, port: u16) -> Self {
-        Contact {
-            id: Contact::hash(ip, port),
-            addr: Some(SocketAddr::new(ip, port)),
-        }
-    }
-
-    #[cfg(test)]
-    fn from_hash(id: NodeId) -> Self {
+    pub fn new(id: NodeId, addr: Option<SocketAddr>) -> Self {
         Contact {
             id,
-            addr: None,
+            addr,
         }
-    }
-
-    fn hash(ip: IpAddr, port: u16) -> NodeId {
-        let mut block: [u8; 18] = [0; 18];
-        match ip {
-            IpAddr::V4(ip) => block[..16].clone_from_slice(&ip.to_ipv6_mapped().octets()),
-            IpAddr::V6(ip) => block[..16].clone_from_slice(&ip.octets()),
-        }
-        block[16] = ((port >>8) & 0xff) as u8;
-        block[17] = (port & 0xff) as u8;
-        hash(block)
     }
 
     pub fn log2_distance(&self, target: &Self) -> usize {
@@ -86,54 +67,50 @@ mod tests {
     use std::net::{ IpAddr, Ipv4Addr, Ipv6Addr };
     use std::str::FromStr;
 
-    #[test]
-    fn test_log2_distance_is_0_if_two_host_are_the_same() {
-        let c1 = Contact::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8000);
-        let c2 = Contact::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8000);
-
-        assert_eq!(0, c1.log2_distance(&c2));
+    fn new_contact(node_id: &str) -> Contact {
+        Contact::new(Public::from_str(node_id).unwrap(), None)
     }
 
     #[test]
     fn test_log2_distance_is_1_if_lsb_is_different() {
-        let c1 = Contact::from_hash(Public::from_str("0000000000000000\
+        let c1 = new_contact("0000000000000000\
                         0000000000000000\
                         0000000000000000\
                         0000000000000000\
                         0000000000000000\
                         0000000000000000\
                         0000000000000000\
-                        0000000000000000").unwrap());
-        let c2 = Contact::from_hash(Public::from_str("0000000000000000\
+                        0000000000000000");
+        let c2 = new_contact("0000000000000000\
                         0000000000000000\
                         0000000000000000\
                         0000000000000000\
                         0000000000000000\
                         0000000000000000\
                         0000000000000000\
-                        0000000000000001").unwrap());
+                        0000000000000001");
 
         assert_eq!(1, c1.log2_distance(&c2));
     }
 
     #[test]
     fn test_log2_distance_is_node_id_size_if_msb_is_different() {
-        let c1 = Contact::from_hash(Public::from_str("0000000000000000\
+        let c1 = new_contact("0000000000000000\
                         0000000000000000\
                         0000000000000000\
                         0000000000000000\
                         0000000000000000\
                         0000000000000000\
                         0000000000000000\
-                        0000000000000000").unwrap());
-        let c2 = Contact::from_hash(Public::from_str("8000000000000000\
+                        0000000000000000");
+        let c2 = new_contact("8000000000000000\
                         0000000000000000\
                         0000000000000000\
                         0000000000000000\
                         0000000000000000\
                         0000000000000000\
                         0000000000000000\
-                        0000000000000000").unwrap());
+                        0000000000000000");
 
         assert_eq!(super::super::B, c1.log2_distance(&c2));
     }
