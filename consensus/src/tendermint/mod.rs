@@ -14,11 +14,36 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-extern crate codechain_types;
-extern crate heapsize;
+mod message;
 
-mod block;
-mod header;
-mod tendermint;
-mod transaction;
-mod validator_set;
+use codechain_types::{H256};
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+pub enum Step {
+    Propose,
+    Prevote,
+    Precommit,
+    Commit
+}
+
+impl Step {
+    pub fn is_pre(self) -> bool {
+        match self {
+            Step::Prevote | Step::Precommit => true,
+            _ => false,
+        }
+    }
+
+    fn number(&self) -> u8 {
+        match *self {
+            Step::Propose => 0,
+            Step::Prevote => 1,
+            Step::Precommit => 2,
+            Step::Commit => 3,
+        }
+    }
+}
+
+pub type Height = usize;
+pub type View = usize;
+pub type BlockHash = H256;
