@@ -15,7 +15,8 @@ extern crate codechain_bytes as bytes;
 
 /// RIPEMD160
 #[inline]
-pub fn ripemd160(input: &[u8]) -> H160 {
+pub fn ripemd160<T: AsRef<[u8]>>(s: T) -> H160 {
+	let input = s.as_ref();
 	let mut result = H160::default();
 	let mut hasher = Ripemd160::new();
 	hasher.input(input);
@@ -25,7 +26,8 @@ pub fn ripemd160(input: &[u8]) -> H160 {
 
 /// SHA-1
 #[inline]
-pub fn sha1(input: &[u8]) -> H160 {
+pub fn sha1<T: AsRef<[u8]>>(s: T) -> H160 {
+	let input = s.as_ref();
 	let mut result = H160::default();
 	let mut hasher = Sha1::new();
 	hasher.input(input);
@@ -34,7 +36,8 @@ pub fn sha1(input: &[u8]) -> H160 {
 }
 
 /// BLAKE256
-pub fn blake256(input: &[u8]) -> H256 {
+pub fn blake256<T: AsRef<[u8]>>(s: T) -> H256 {
+	let input = s.as_ref();
 	let mut result = H256::default();
 	let mut hasher = Blake2b::new(32);
 	hasher.input(input);
@@ -43,7 +46,8 @@ pub fn blake256(input: &[u8]) -> H256 {
 }
 
 /// BLAKE512
-pub fn blake512(input: &[u8]) -> H512 {
+pub fn blake512<T: AsRef<[u8]>>(s: T) -> H512 {
+	let input = s.as_ref();
 	let mut result = H512::default();
 	let mut hasher = Blake2b::new(64);
 	hasher.input(input);
@@ -53,7 +57,8 @@ pub fn blake512(input: &[u8]) -> H512 {
 
 /// SipHash-2-4
 #[inline]
-pub fn siphash24(key0: u64, key1: u64, input: &[u8]) -> u64 {
+pub fn siphash24<T: AsRef<[u8]>>(key0: u64, key1: u64, s: T) -> u64 {
+	let input = s.as_ref();
 	let mut hasher = SipHasher24::new_with_keys(key0, key1);
 	hasher.write(input);
 	hasher.finish()
