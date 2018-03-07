@@ -17,7 +17,7 @@
 use std::cmp;
 use std::cell::RefCell;
 use codechain_crypto::{blake256};
-use codechain_types::{H256, Address};
+use codechain_types::{H256, U256, Address};
 use super::Bytes;
 use time::get_time;
 use rlp::*;
@@ -121,7 +121,7 @@ impl Header {
 
     /// Place this header into an RLP stream `s`, optionally `with_seal`.
     pub fn stream_rlp(&self, s: &mut RlpStream, with_seal: Seal) {
-        s.begin_list(13 + match with_seal { Seal::With => self.seal.len(), _ => 0 });
+        s.begin_list(6 + match with_seal { Seal::With => self.seal.len(), _ => 0 });
         s.append(&self.parent_hash);
         s.append(&self.author);
         s.append(&self.state_root);
@@ -152,3 +152,30 @@ impl Header {
     pub fn rlp_blake(&self, with_seal: Seal) -> H256 { blake256(&self.rlp(with_seal)) }
 }
 
+impl Decodable for Header {
+    fn decode(r: &UntrustedRlp) -> Result<Self, DecoderError> {
+        let mut blockheader = Header {
+            parent_hash: r.val_at(0)?,
+            author: r.val_at(1)?,
+            state_root: r.val_at(2)?,
+            transactions_root: r.val_at(3)?,
+            number: r.val_at(4)?,
+            timestamp: cmp::min(r.val_at::<U256>(5)?, u64::max_value().into()).as_u64(),
+            seal: vec![],
+            hash: RefCell::new(Some(blake256(r.as_raw()))),
+            bare_hash: RefCell::new(None),
+        };
+
+        for i in 6..r.item_count()? {
+            blockheader.seal.push(r.at(i)?.as_raw().to_vec())
+        }
+
+        Ok(blockheader)
+    }
+}
+
+impl Encodable for Header {
+    fn rlp_append(&self, s: &mut RlpStream) {
+        self.stream_rlp(s, Seal::With);
+    }
+}
