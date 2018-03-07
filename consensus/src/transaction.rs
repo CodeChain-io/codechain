@@ -1,6 +1,5 @@
 use codechain_types::{U256};
-
-type Bytes = Vec<u8>;
+use super::Bytes;
 
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct Transaction {

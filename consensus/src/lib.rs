@@ -15,10 +15,16 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 extern crate codechain_types;
+extern crate codechain_crypto;
 extern crate heapsize;
+extern crate time;
+extern crate rlp;
 
 mod block;
 mod header;
 mod tendermint;
 mod transaction;
 mod validator_set;
+
+type Bytes = Vec<u8>;
+
