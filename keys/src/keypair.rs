@@ -4,7 +4,7 @@ use std::fmt;
 use secp256k1::key;
 use hash::{H264, H520};
 use network::Network;
-use {Public, Error, SECP256K1, Address, Type, Private, Secret};
+use {Public, Error, SECP256K1, Address, Private, Secret};
 
 pub struct KeyPair {
 	private: Private,
@@ -78,7 +78,6 @@ impl KeyPair {
 
 	pub fn address(&self) -> Address {
 		Address {
-			kind: Type::P2PKH,
 			network: self.private.network,
 			hash: self.public.account_id(),
 		}

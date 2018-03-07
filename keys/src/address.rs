@@ -13,25 +13,9 @@ use crypto::checksum;
 use network::Network;
 use {DisplayLayout, Error, AccountId};
 
-/// There are two address formats currently in use.
-/// https://bitcoin.org/en/developer-reference#address-conversion
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub enum Type {
-	/// Pay to PubKey Hash
-	/// Common P2PKH which begin with the number 1, eg: 1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2.
-	/// https://bitcoin.org/en/glossary/p2pkh-address
-	P2PKH,
-	/// Pay to Script Hash
-	/// Newer P2SH type starting with the number 3, eg: 3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy.
-	/// https://bitcoin.org/en/glossary/p2sh-address
-	P2SH,
-}
-
 /// `AddressHash` with network identifier and format type
 #[derive(Debug, PartialEq, Clone)]
 pub struct Address {
-	/// The type of the address.
-	pub kind: Type,
 	/// The network of the address.
 	pub network: Network,
 	/// Public key hash.
@@ -54,11 +38,9 @@ impl DisplayLayout for Address {
 	fn layout(&self) -> Self::Target {
 		let mut result = [0u8; 25];
 
-		result[0] = match (self.network, self.kind) {
-			(Network::Mainnet, Type::P2PKH) => 0,
-			(Network::Mainnet, Type::P2SH) => 5,
-			(Network::Testnet, Type::P2PKH) => 111,
-			(Network::Testnet, Type::P2SH) => 196,
+		result[0] = match self.network {
+			Network::Mainnet => 0,
+			Network::Testnet => 111,
 		};
 
 		result[1..21].copy_from_slice(&*self.hash);
@@ -77,11 +59,9 @@ impl DisplayLayout for Address {
 			return Err(Error::InvalidChecksum);
 		}
 
-		let (network, kind) = match data[0] {
-			0 => (Network::Mainnet, Type::P2PKH),
-			5 => (Network::Mainnet, Type::P2SH),
-			111 => (Network::Testnet, Type::P2PKH),
-			196 => (Network::Testnet, Type::P2SH),
+		let network = match data[0] {
+			0 => Network::Mainnet,
+			111 => Network::Testnet,
 			_ => return Err(Error::InvalidAddress),
 		};
 
@@ -89,7 +69,6 @@ impl DisplayLayout for Address {
 		hash.copy_from_slice(&data[1..21]);
 
 		let address = Address {
-			kind: kind,
 			network: network,
 			hash: hash,
 		};
@@ -122,12 +101,11 @@ impl From<&'static str> for Address {
 #[cfg(test)]
 mod tests {
 	use network::Network;
-	use super::{Address, Type};
+	use super::Address;
 
 	#[test]
 	fn test_address_to_string() {
 		let address = Address {
-			kind: Type::P2PKH,
 			network: Network::Mainnet,
 			hash: "3f4aa1fedf1f54eeb03b759deadb36676b184911".into(),
 		};
@@ -138,7 +116,6 @@ mod tests {
 	#[test]
 	fn test_address_from_str() {
 		let address = Address {
-			kind: Type::P2PKH,
 			network: Network::Mainnet,
 			hash: "3f4aa1fedf1f54eeb03b759deadb36676b184911".into(),
 		};
