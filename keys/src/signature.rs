@@ -19,9 +19,10 @@ use std::cmp::PartialEq;
 use std::fmt;
 use std::str::FromStr;
 use std::hash::{Hash, Hasher};
-use secp256k1::Error as SecpError;
+use secp256k1::{Message as SecpMessage, RecoverableSignature, RecoveryId, Error as SecpError};
 use rustc_hex::{ToHex, FromHex};
 use codechain_types::{H520, H256};
+use {Error, Message, Public, SECP256K1};
 
 /// Signature encoded as RSV components
 #[repr(C)]
@@ -65,6 +66,17 @@ impl Signature {
 			H256::from_slice(self.s()) < "fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141".into() &&
 			H256::from_slice(self.s()) >= 1.into()
 	}
+
+    pub fn recover(&self, message: &Message) -> Result<Public, Error> {
+        let context = &SECP256K1;
+        let rsig = RecoverableSignature::from_compact(context, &self[0..64], RecoveryId::from_i32(self[64] as i32)?)?;
+        let pubkey = context.recover(&SecpMessage::from_slice(&message[..])?, &rsig)?;
+        let serialized = pubkey.serialize_vec(context, false);
+
+        let mut public = H520::default();
+        public.copy_from_slice(&serialized[0..65]);
+        Ok(Public::Normal(public))
+    }
 }
 
 // manual implementation large arrays don't have trait impls by default.
