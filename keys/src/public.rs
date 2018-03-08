@@ -19,7 +19,7 @@ use secp256k1::key::PublicKey;
 use secp256k1::{Message as SecpMessage, RecoveryId, RecoverableSignature, Error as SecpError};
 use hex::ToHex;
 use crypto::{blake256, ripemd160};
-use hash::{H264, H520};
+use codechain_types::{H264, H520};
 use {AccountId, Error, Signature, Message, SECP256K1};
 
 /// Secret public key

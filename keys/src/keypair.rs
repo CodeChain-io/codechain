@@ -16,7 +16,7 @@
 
 use std::fmt;
 use secp256k1::key;
-use hash::{H264, H520};
+use codechain_types::{H264, H520};
 use network::Network;
 use {Public, Error, SECP256K1, Address, Private, Secret};
 

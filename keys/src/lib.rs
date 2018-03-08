@@ -41,13 +41,14 @@ pub use codechain_types::hash;
 pub use display::DisplayLayout;
 pub use error::Error;
 pub use generator::{Generator, Random};
-use hash::{H160, H256};
 pub use keypair::KeyPair;
 pub use network::Network;
 pub use private::Private;
 pub use public::Public;
 pub use rustc_serialize::hex;
 pub use signature::Signature;
+
+use codechain_types::{H160, H256};
 
 /// 20 bytes long hash derived from public `ripemd160(blake256(public))`
 pub type AccountId = H160;

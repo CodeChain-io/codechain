@@ -130,7 +130,7 @@ impl From<&'static str> for Private {
 
 #[cfg(test)]
 mod tests {
-	use hash::H256;
+	use codechain_types::H256;
 	use network::Network;
 	use super::Private;
 

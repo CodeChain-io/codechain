@@ -19,7 +19,7 @@ use std::str::FromStr;
 use network::Network;
 use {Error, AccountId};
 use bech32::Bech32;
-use hash::H160;
+use codechain_types::H160;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Address {
