@@ -18,11 +18,10 @@
 
 use std::fmt;
 use std::str::FromStr;
-use secp256k1::key;
+use secp256k1::key::SecretKey;
 use secp256k1::Message as SecpMessage;
 use hex::ToHex;
 use base58::{ToBase58, FromBase58};
-use hash::H520;
 use network::Network;
 use {Secret, DisplayLayout, Error, Message, Signature, SECP256K1};
 
@@ -35,6 +34,21 @@ pub struct Private {
 	pub secret: Secret,
 	/// True if this private key represents a compressed address.
 	pub compressed: bool,
+}
+
+impl Private {
+	pub fn sign(&self, message: &Message) -> Result<Signature, Error> {
+		let context = &SECP256K1;
+		let sec = SecretKey::from_slice(context, &self.secret)?;
+		let s = context.sign_recoverable(&SecpMessage::from_slice(&message[..])?, &sec)?;
+		let (rec_id, data) = s.serialize_compact(context);
+		let mut data_arr = [0; 65];
+
+		// no need to check if s is low, it always is
+		data_arr[0..64].copy_from_slice(&data[0..64]);
+		data_arr[64] = rec_id.to_i32() as u8;
+		Ok(Signature(data_arr))
+	}
 }
 
 impl DisplayLayout for Private {

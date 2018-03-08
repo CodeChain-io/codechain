@@ -15,8 +15,8 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::{fmt, ops};
-use secp256k1::key;
-use secp256k1::{Message as SecpMessage, RecoveryId, RecoverableSignature, Error as SecpError, Signature as SecpSignature};
+use secp256k1::key::PublicKey;
+use secp256k1::{Message as SecpMessage, RecoveryId, RecoverableSignature, Error as SecpError};
 use hex::ToHex;
 use crypto::{blake256, ripemd160};
 use hash::{H264, H520};
@@ -44,6 +44,19 @@ impl Public {
 				Ok(Public::Normal(public))
 			},
 			_ => Err(Error::InvalidPublic)
+		}
+	}
+
+	pub fn verify(&self, signature: &Signature, message: &Message) -> Result<bool, Error> {
+		let context = &SECP256K1;
+		let rsig = RecoverableSignature::from_compact(context, &signature[0..64], RecoveryId::from_i32(signature[64] as i32)?)?;
+		let sig = rsig.to_standard(context);
+
+		let publ = PublicKey::from_slice(context, self)?;
+		match context.verify(&SecpMessage::from_slice(&message[..])?, &sig, &publ) {
+			Ok(_) => Ok(true),
+			Err(SecpError::IncorrectSignature) => Ok(false),
+			Err(x) => Err(Error::from(x))
 		}
 	}
 

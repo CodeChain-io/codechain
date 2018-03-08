@@ -25,7 +25,7 @@ use codechain_types::{H520, H256};
 
 /// Signature encoded as RSV components
 #[repr(C)]
-pub struct Signature([u8; 65]);
+pub struct Signature(pub [u8; 65]);
 
 impl Signature {
 	/// Get a slice into the 'r' portion of the data.
