@@ -4,7 +4,7 @@ extern crate rand;
 
 use codechain_types::Public;
 use std::cmp::Ordering;
-use std::net::SocketAddr;
+use std::net::{ IpAddr, SocketAddr };
 #[cfg(test)]
 use std::str::FromStr;
 
@@ -38,6 +38,11 @@ impl Contact {
             id,
             addr,
         }
+    }
+
+    #[cfg(test)]
+    pub fn from_hash_with_addr(node_id: &str, ip: IpAddr, port: u16) -> Contact {
+        Contact::new(NodeId::from_str(node_id).unwrap(), Some(SocketAddr::new(ip, port)))
     }
 
     #[cfg(test)]
@@ -119,21 +124,13 @@ mod tests {
     use codechain_types::Public;
     use std::cmp::Ordering;
     use std::mem::size_of;
-    use std::net::{ IpAddr, Ipv4Addr, SocketAddr };
+    use std::net::{ IpAddr, Ipv4Addr };
     use std::str::FromStr;
     use super::Contact;
 
-    fn new_contact(node_id: &str) -> Contact {
-        Contact::new(Public::from_str(node_id).unwrap(), None)
-    }
-
-    fn new_contact_with_addr(node_id: &str, ip: IpAddr, port: u16) -> Contact {
-        Contact::new(Public::from_str(node_id).unwrap(), Some(SocketAddr::new(ip, port)))
-    }
-
     #[test]
     fn test_log2_distance_is_1_if_lsb_is_different() {
-        let c1 = new_contact("0000000000000000\
+        let c1 = Contact::from_hash("0000000000000000\
                         0000000000000000\
                         0000000000000000\
                         0000000000000000\
@@ -141,7 +138,7 @@ mod tests {
                         0000000000000000\
                         0000000000000000\
                         0000000000000000");
-        let c2 = new_contact("0000000000000000\
+        let c2 = Contact::from_hash("0000000000000000\
                         0000000000000000\
                         0000000000000000\
                         0000000000000000\
@@ -155,7 +152,7 @@ mod tests {
 
     #[test]
     fn test_log2_distance_is_node_id_size_if_msb_is_different() {
-        let c1 = new_contact("0000000000000000\
+        let c1 = Contact::from_hash("0000000000000000\
                         0000000000000000\
                         0000000000000000\
                         0000000000000000\
@@ -163,7 +160,7 @@ mod tests {
                         0000000000000000\
                         0000000000000000\
                         0000000000000000");
-        let c2 = new_contact("8000000000000000\
+        let c2 = Contact::from_hash("8000000000000000\
                         0000000000000000\
                         0000000000000000\
                         0000000000000000\
@@ -199,8 +196,8 @@ mod tests {
             0000000000000000\
             0000000000000000";
 
-        let c1 = new_contact(ID1);
-        let c2 = new_contact(ID2);
+        let c1 = Contact::from_hash(ID1);
+        let c2 = Contact::from_hash(ID2);
         assert_ne!(c1, c2);
     }
 
@@ -223,8 +220,8 @@ mod tests {
             0000000000000000\
             0000000000000000";
 
-        let c1 = new_contact(ID1);
-        let c2 = new_contact(ID2);
+        let c1 = Contact::from_hash(ID1);
+        let c2 = Contact::from_hash(ID2);
         assert_eq!(c1, c2);
     }
 
@@ -247,8 +244,8 @@ mod tests {
             0000000000000000\
             0000000000000000";
 
-        let c1 = new_contact_with_addr(ID1, IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 3485);
-        let c2 = new_contact_with_addr(ID2, IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 3485);
+        let c1 = Contact::from_hash_with_addr(ID1, IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 3485);
+        let c2 = Contact::from_hash_with_addr(ID2, IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 3485);
         assert_eq!(c1, c2);
     }
 
@@ -271,8 +268,8 @@ mod tests {
             0000000000000000\
             0000000000000000";
 
-        let c1 = new_contact_with_addr(ID1, IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 3485);
-        let c2 = new_contact_with_addr(ID2, IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 3486);
+        let c1 = Contact::from_hash_with_addr(ID1, IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 3485);
+        let c2 = Contact::from_hash_with_addr(ID2, IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 3486);
         assert_ne!(c1, c2);
     }
 
@@ -295,8 +292,8 @@ mod tests {
             0000000000000000\
             0000000000000000";
 
-        let c1 = new_contact_with_addr(ID1, IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 3485);
-        let c2 = new_contact_with_addr(ID2, IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 3486);
+        let c1 = Contact::from_hash_with_addr(ID1, IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 3485);
+        let c2 = Contact::from_hash_with_addr(ID2, IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 3486);
         assert!(c1 > c2);
     }
 
@@ -319,8 +316,8 @@ mod tests {
             0000000000000000\
             0000000000000000";
 
-        let c1 = new_contact_with_addr(ID1, IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 3485);
-        let c2 = new_contact_with_addr(ID2, IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 3486);
+        let c1 = Contact::from_hash_with_addr(ID1, IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 3485);
+        let c2 = Contact::from_hash_with_addr(ID2, IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 3486);
         assert!(c1 < c2);
     }
 
@@ -343,8 +340,8 @@ mod tests {
             0000000000000000\
             0000000000000000";
 
-        let c1 = new_contact_with_addr(ID1, IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 3485);
-        let c2 = new_contact_with_addr(ID2, IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 3486);
+        let c1 = Contact::from_hash_with_addr(ID1, IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 3485);
+        let c2 = Contact::from_hash_with_addr(ID2, IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 3486);
         assert_eq!(Some(Ordering::Less), c1.partial_cmp(&c2));
     }
 
@@ -367,8 +364,8 @@ mod tests {
             0000000000000000\
             0000000000000000";
 
-        let c1 = new_contact_with_addr(ID1, IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 3485);
-        let c2 = new_contact_with_addr(ID2, IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 3484);
+        let c1 = Contact::from_hash_with_addr(ID1, IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 3485);
+        let c2 = Contact::from_hash_with_addr(ID2, IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 3484);
         assert_eq!(Some(Ordering::Greater), c1.partial_cmp(&c2));
     }
 }
