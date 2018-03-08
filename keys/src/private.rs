@@ -6,7 +6,6 @@ use secp256k1::key;
 use secp256k1::Message as SecpMessage;
 use hex::ToHex;
 use base58::{ToBase58, FromBase58};
-use crypto::checksum;
 use hash::H520;
 use network::Network;
 use {Secret, DisplayLayout, Error, Message, Signature, CompactSignature, SECP256K1};
@@ -65,25 +64,18 @@ impl DisplayLayout for Private {
 		if self.compressed {
 			result.push(1);
 		}
-		let cs = checksum(&result);
-		result.extend_from_slice(&*cs);
 		result
 	}
 
 	fn from_layout(data: &[u8]) -> Result<Self, Error> where Self: Sized {
 		let compressed = match data.len() {
-			37 => false,
-			38 => true,
+			33 => false,
+			34 => true,
 			_ => return Err(Error::InvalidPrivate),
 		};
 
-		if compressed && data[data.len() - 5] != 1 {
+		if compressed && data[data.len() - 1] != 1 {
 			return Err(Error::InvalidPrivate);
-		}
-
-		let cs = checksum(&data[0..data.len() - 4]);
-		if &data[data.len() - 4..] != &*cs {
-			return Err(Error::InvalidChecksum);
 		}
 
 		let network = match data[0] {
@@ -142,23 +134,27 @@ mod tests {
 
 	#[test]
 	fn test_private_to_string() {
+		let mut secret = H256::from("063377054c25f98bc538ac8dd2cf9064dd5d253a725ece0628a34e2f84803bd5");
+		secret.reverse();
 		let private = Private {
 			network: Network::Mainnet,
-			secret: H256::from_reversed_str("063377054c25f98bc538ac8dd2cf9064dd5d253a725ece0628a34e2f84803bd5"),
+			secret: secret,
 			compressed: false,
 		};
 
-		assert_eq!("5KSCKP8NUyBZPCCQusxRwgmz9sfvJQEgbGukmmHepWw5Bzp95mu".to_owned(), private.to_string());
+		assert_eq!("fGjuuRDK2425kL9J4KPf3S74zv617zwhZQQ8mgQGEnBhP".to_owned(), private.to_string());
 	}
 
 	#[test]
 	fn test_private_from_str() {
+		let mut secret = H256::from("063377054c25f98bc538ac8dd2cf9064dd5d253a725ece0628a34e2f84803bd5");
+		secret.reverse();
 		let private = Private {
 			network: Network::Mainnet,
-			secret: H256::from_reversed_str("063377054c25f98bc538ac8dd2cf9064dd5d253a725ece0628a34e2f84803bd5"),
+			secret: secret,
 			compressed: false,
 		};
 
-		assert_eq!(private, "5KSCKP8NUyBZPCCQusxRwgmz9sfvJQEgbGukmmHepWw5Bzp95mu".into());
+		assert_eq!(private, "fGjuuRDK2425kL9J4KPf3S74zv617zwhZQQ8mgQGEnBhP".into());
 	}
 }
