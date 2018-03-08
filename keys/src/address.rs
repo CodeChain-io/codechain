@@ -26,7 +26,7 @@ pub struct Address {
 	/// The network of the address.
 	pub network: Network,
 	/// Public key hash.
-	pub hash: AccountId,
+	pub account_id: AccountId,
 }
 
 trait IntoBase32 {
@@ -58,7 +58,7 @@ impl fmt::Display for Address {
 		};
 		let encode_result = Bech32 {
 			hrp: hrp.to_string(),
-			data: self.hash.into_base32(),
+			data: self.account_id.into_base32(),
 		}.to_string();
 		write!(f, "{}", encode_result.unwrap())
 	}
@@ -86,7 +86,7 @@ impl FromStr for Address {
 				}
 				Ok(Address {
 					network: network,
-					hash: H160(arr),
+					account_id: H160(arr),
 				})
 			}
 			None => Err(Error::Bech32UnknownHRP)
@@ -109,7 +109,7 @@ mod tests {
 	fn test_address_to_string() {
 		let address = Address {
 			network: Network::Mainnet,
-			hash: "3f4aa1fedf1f54eeb03b759deadb36676b184911".into(),
+			account_id: "3f4aa1fedf1f54eeb03b759deadb36676b184911".into(),
 		};
 
 		assert_eq!("cc18a92rlklra2wavpmwkw74kekva43sjg3u9ct0x".to_owned(), address.to_string());
@@ -119,7 +119,7 @@ mod tests {
 	fn test_address_from_str() {
 		let address = Address {
 			network: Network::Mainnet,
-			hash: "3f4aa1fedf1f54eeb03b759deadb36676b184911".into(),
+			account_id: "3f4aa1fedf1f54eeb03b759deadb36676b184911".into(),
 		};
 
 		assert_eq!(address, "cc18a92rlklra2wavpmwkw74kekva43sjg3u9ct0x".into());

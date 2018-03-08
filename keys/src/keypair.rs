@@ -93,7 +93,7 @@ impl KeyPair {
 	pub fn address(&self) -> Address {
 		Address {
 			network: self.private.network,
-			hash: self.public.account_id(),
+			account_id: self.public.account_id(),
 		}
 	}
 }
