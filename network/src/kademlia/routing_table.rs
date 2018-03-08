@@ -51,18 +51,14 @@ impl RoutingTable {
 
     pub fn get_closest_contacts(&self, target: &Contact) -> Vec<Contact> {
         let contacts = self.get_contacts_in_distance_order(target);
-        let mut result = vec![];
-        for contact in contacts.iter() {
-            debug_assert_ne!(contact.contact, self.localhost);
-            if &contact.contact == target {
-                continue;
-            }
-            result.push(contact.contact.clone());
-            if (self.bucket_size as usize) == result.len() {
-                return result;
-            }
-        }
-        result
+        contacts.into_iter()
+            .take(self.bucket_size as usize)
+            .map(|item| {
+                debug_assert_ne!(target, &item.contact);
+                debug_assert_ne!(self.localhost, item.contact);
+                item.contact
+            })
+            .collect()
     }
 
     fn get_contacts_in_distance_order(&self, target: &Contact) -> BTreeSet<ContactWithDistance> {
