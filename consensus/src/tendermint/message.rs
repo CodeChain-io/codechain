@@ -15,8 +15,11 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::cmp;
-use codechain_types::{H520};
+use bytes::Bytes;
+use codechain_types::{H256, H520};
+use rlp::{UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
 use super::{Height, View, BlockHash, Step};
+use super::super::vote_collector::Message;
 
 /// Complete step of the consensus process.
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
@@ -80,6 +83,49 @@ impl ConsensusMessage {
             vote_step: VoteStep::new(height, view, step),
         }
     }
+}
+
+impl Message for ConsensusMessage {
+    type Round = VoteStep;
+
+    fn signature(&self) -> H520 { self.signature }
+
+    fn block_hash(&self) -> Option<H256> { self.block_hash }
+
+    fn round(&self) -> &VoteStep { &self.vote_step }
+
+    fn is_broadcastable(&self) -> bool { self.vote_step.step.is_pre() }
+}
+
+/// (signature, (height, view, step, block_hash))
+impl Decodable for ConsensusMessage {
+    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+        let m = rlp.at(1)?;
+        let block_message: H256 = m.val_at(3)?;
+        Ok(ConsensusMessage {
+            vote_step: VoteStep::new(m.val_at(0)?, m.val_at(1)?, m.val_at(2)?),
+            block_hash: match block_message.is_zero() {
+                true => None,
+                false => Some(block_message),
+            },
+            signature: rlp.val_at(0)?,
+        })
+    }
+}
+
+impl Encodable for ConsensusMessage {
+    fn rlp_append(&self, s: &mut RlpStream) {
+        let info = message_info_rlp(&self.vote_step, self.block_hash);
+        s.begin_list(2)
+            .append(&self.signature)
+            .append_raw(&info, 1);
+    }
+}
+
+pub fn message_info_rlp(vote_step: &VoteStep, block_hash: Option<BlockHash>) -> Bytes {
+    let mut s = RlpStream::new_list(4);
+    s.append(&vote_step.height).append(&vote_step.view).append(&vote_step.step).append(&block_hash.unwrap_or_else(H256::zero));
+    s.out()
 }
 
 #[cfg(test)]

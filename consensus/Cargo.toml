@@ -4,8 +4,11 @@ version = "0.1.0"
 authors = ["CodeChain Team <codechain@kodebox.io>"]
 
 [dependencies]
+codechain-bytes = { path = "../util/bytes" }
 codechain-types = { path = "../primitives/codechain-types" }
 codechain-crypto = { path = "../crypto" }
 heapsize = "0.4"
+log = "0.3"
+parking_lot = "0.5"
 time = "0.1"
 rlp = { path = "../util/rlp" }
