@@ -67,10 +67,21 @@ impl RoutingTable {
 
     fn get_contacts_in_distance_order(&self, target: &Contact) -> BTreeSet<ContactWithDistance> {
         let mut result = BTreeSet::new();
+        let mut max_distance = 0;
         for (_, bucket) in self.buckets.iter() {
             for contact in bucket.contacts.iter() {
-                // FIXME: Limit the size of the result.
-                result.insert(ContactWithDistance::new(contact, target));
+                if target == contact {
+                    continue;
+                }
+                let item = ContactWithDistance::new(contact, target);
+                if max_distance < item.distance {
+                    if (self.bucket_size as usize) <= result.len() {
+                        // FIXME: Remove the last item to guarantee the maximum size of return value.
+                        continue;
+                    }
+                    max_distance = item.distance;
+                }
+                result.insert(item);
             }
         }
         result
