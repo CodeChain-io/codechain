@@ -24,6 +24,7 @@ mod block;
 mod header;
 mod tendermint;
 mod transaction;
+mod transition;
 mod validator_set;
 
 type Bytes = Vec<u8>;
