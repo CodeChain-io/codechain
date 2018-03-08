@@ -202,3 +202,16 @@ impl Encodable for Header {
         self.stream_rlp(s, Seal::With);
     }
 }
+
+impl ::machine::Header for Header {
+    fn bare_hash(&self) -> H256 { Header::bare_hash(self) }
+
+    fn hash(&self) -> H256 { Header::hash(self) }
+
+    fn seal(&self) -> &[Vec<u8>] { Header::seal(self) }
+
+    fn author(&self) -> &Address { Header::author(self) }
+
+    fn number(&self) -> BlockNumber { Header::number(self) }
+}
+

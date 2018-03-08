@@ -13,28 +13,17 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
+// A state machine.
 
-extern crate codechain_bytes as bytes;
-extern crate codechain_crypto;
-extern crate codechain_types;
-extern crate heapsize;
-extern crate parking_lot;
-extern crate time;
-extern crate rlp;
+use super::error::Error;
+use super::header::Header;
 
-#[macro_use]
-extern crate log;
+pub struct CodeChainMachine {
+}
 
-mod block;
-mod codechain_machine;
-mod engine;
-mod header;
-mod machine;
-mod tendermint;
-mod transaction;
-mod transition;
-mod validator_set;
-mod vote_collector;
+impl ::machine::Machine for CodeChainMachine {
+    type Header = Header;
 
-type Bytes = Vec<u8>;
+    type Error = Error;
+}
 

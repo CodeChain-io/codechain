@@ -14,27 +14,14 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-extern crate codechain_bytes as bytes;
-extern crate codechain_crypto;
-extern crate codechain_types;
-extern crate heapsize;
-extern crate parking_lot;
-extern crate time;
-extern crate rlp;
+use super::machine::Machine;
 
-#[macro_use]
-extern crate log;
+/// A consensus mechanism for the chain.
+pub trait Engine<M: Machine>: Sync + Send {
+    /// The name of this engine.
+    fn name(&self) -> &str;
 
-mod block;
-mod codechain_machine;
-mod engine;
-mod header;
-mod machine;
-mod tendermint;
-mod transaction;
-mod transition;
-mod validator_set;
-mod vote_collector;
-
-type Bytes = Vec<u8>;
+    /// Get access to the underlying state machine.
+    fn machine(&self) -> &M;
+}
 
