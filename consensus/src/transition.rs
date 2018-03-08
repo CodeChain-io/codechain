@@ -14,7 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use io::{IoContext, IoHandler, TimerToken};
+use std::sync::Weak;
 use time::Duration;
+use super::engine::Engine;
+use super::machine::Machine;
 
 /// Timeouts lookup
 pub trait Timeouts<S: Sync + Send + Clone>: Send + Sync {
@@ -24,3 +28,55 @@ pub trait Timeouts<S: Sync + Send + Clone>: Send + Sync {
     /// Get a timeout based on step.
     fn timeout(&self, step: &S) -> Duration;
 }
+
+/// Timeout transition handling.
+pub struct TransitionHandler<S: Sync + Send + Clone, M: Machine>  {
+    engine: Weak<Engine<M>>,
+    timeouts: Box<Timeouts<S>>,
+}
+
+impl<S, M: Machine> TransitionHandler<S, M> where S: Sync + Send + Clone {
+    /// New step caller by timeouts.
+    pub fn new(engine: Weak<Engine<M>>, timeouts: Box<Timeouts<S>>) -> Self {
+        TransitionHandler {
+            engine,
+            timeouts,
+        }
+    }
+}
+
+/// Timer token representing the consensus step timeouts.
+pub const ENGINE_TIMEOUT_TOKEN: TimerToken = 23;
+
+fn set_timeout<S: Sync + Send + Clone>(io: &IoContext<S>, timeout: Duration) {
+    io.register_timer_once(ENGINE_TIMEOUT_TOKEN, timeout.num_milliseconds() as u64)
+        .unwrap_or_else(|e| warn!(target: "engine", "Failed to set consensus step timeout: {}.", e))
+}
+
+impl<S, M> IoHandler<S> for TransitionHandler<S, M>
+    where S: Sync + Send + Clone + 'static, M: Machine
+{
+    fn initialize(&self, io: &IoContext<S>) {
+        let initial = self.timeouts.initial();
+        trace!(target: "engine", "Setting the initial timeout to {}.", initial);
+        set_timeout(io, initial);
+    }
+
+    /// Call step after timeout.
+    fn timeout(&self, _io: &IoContext<S>, timer: TimerToken) {
+        if timer == ENGINE_TIMEOUT_TOKEN {
+            if let Some(engine) = self.engine.upgrade() {
+                engine.step();
+            }
+        }
+    }
+
+    /// Set a new timer on message.
+    fn message(&self, io: &IoContext<S>, next: &S) {
+        if let Err(io_err) = io.clear_timer(ENGINE_TIMEOUT_TOKEN) {
+            warn!(target: "engine", "Could not remove consensus timer {}.", io_err)
+        }
+        set_timeout(io, self.timeouts.timeout(next));
+    }
+}
+

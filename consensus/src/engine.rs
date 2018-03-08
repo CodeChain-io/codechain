@@ -23,5 +23,8 @@ pub trait Engine<M: Machine>: Sync + Send {
 
     /// Get access to the underlying state machine.
     fn machine(&self) -> &M;
+
+    /// Trigger next step of the consensus engine.
+    fn step(&self) {}
 }
 
