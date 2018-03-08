@@ -317,4 +317,19 @@ mod tests {
         let closest_contacts = routing_table.get_closest_contacts(&new_contact);
         assert!(!closest_contacts.contains(&new_contact));
     }
+
+    #[test]
+    fn test_closest_contacts_must_not_contain_removed() {
+        use std::u8;
+        debug_assert!(IDS.len() <= (u8::MAX as usize));
+        let bucket_size = IDS.len() as u8;
+        let mut routing_table = init_routing_table(bucket_size, 0);
+
+        const KILLED_INDEX: usize = 4;
+        routing_table.remove_contact(&get_contact(KILLED_INDEX));
+
+        const TARGET_INDEX: usize = 5;
+        let closest_contacts = routing_table.get_closest_contacts(&get_contact(TARGET_INDEX));
+        assert!(!closest_contacts.contains(&get_contact(KILLED_INDEX)));
+    }
 }
