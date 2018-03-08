@@ -18,6 +18,7 @@ mod message;
 mod params;
 
 use codechain_types::{H256};
+use rlp::{UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub enum Step {
@@ -42,6 +43,23 @@ impl Step {
             Step::Precommit => 2,
             Step::Commit => 3,
         }
+    }
+}
+
+impl Decodable for Step {
+    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+        match rlp.as_val()? {
+            0u8 => Ok(Step::Propose),
+            1 => Ok(Step::Prevote),
+            2 => Ok(Step::Precommit),
+            _ => Err(DecoderError::Custom("Invalid step.")),
+        }
+    }
+}
+
+impl Encodable for Step {
+    fn rlp_append(&self, s: &mut RlpStream) {
+        s.append_internal(&self.number());
     }
 }
 
