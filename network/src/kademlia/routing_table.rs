@@ -17,14 +17,14 @@ impl RoutingTable {
         }
     }
 
-    pub fn add_contact(&mut self, contact: Contact) {
+    pub fn add_contact(&mut self, contact: Contact) -> Option<&Contact> {
         let index = self.localhost.log2_distance(&contact);
         // FIXME: Decide the maximum distance to contact.
         if index == 0 {
-            return;
+            return None;
         }
         let bucket = self.add_bucket(index);
-        bucket.add_contact(contact);
+        bucket.add_contact(contact)
     }
 
     pub fn remove_contact(&mut self, contact: &Contact) {
@@ -65,10 +65,18 @@ impl RoutingTable {
         let mut result = BTreeSet::new();
         let mut max_distance = 0;
         for (_, bucket) in self.buckets.iter() {
-            for contact in bucket.contacts.iter() {
+            for i in 0..self.bucket_size {
+                let contact = bucket.contacts.get(i as usize);
+                if contact.is_none() {
+                    break;
+                }
+
+                let contact = contact.unwrap();
+
                 if target == contact {
                     continue;
                 }
+
                 let item = ContactWithDistance::new(contact, target);
                 if max_distance < item.distance {
                     if (self.bucket_size as usize) <= result.len() {
@@ -81,6 +89,20 @@ impl RoutingTable {
             }
         }
         result
+    }
+
+    #[cfg(test)]
+    fn contains(&self, contact: &Contact) -> bool {
+        let index = self.localhost.log2_distance(&contact);
+        if index == 0 {
+            return false;
+        }
+
+        let bucket = self.buckets.get(&index);
+        match bucket.map(|bucket| bucket.contains(contact)) {
+            None => false,
+            Some(has) => has,
+        }
     }
 }
 
@@ -98,9 +120,14 @@ impl Bucket {
         }
     }
 
-    pub fn add_contact(&mut self, contact: Contact) {
-        // FIXME: Check bucket_size
-        self.contacts.push_back(contact);
+    pub fn add_contact(&mut self, contact: Contact) -> Option<&Contact> {
+        self.remove_contact(&contact);
+        if self.contacts.iter_mut()
+                .find(|old_contact| old_contact.id() == contact.id())
+                .is_none() {
+            self.contacts.push_back(contact);
+        }
+        self.head_if_full()
     }
 
     pub fn remove_contact(&mut self, contact: &Contact) -> bool {
@@ -113,8 +140,21 @@ impl Bucket {
         false
     }
 
+    fn head_if_full(&self) -> Option<&Contact> {
+        if self.contacts.len() > self.bucket_size as usize {
+            self.contacts.front()
+        } else {
+            None
+        }
+    }
+
     pub fn is_empty(&self) -> bool {
         self.contacts.is_empty()
+    }
+
+    #[cfg(test)]
+    fn contains(&self, contact: &Contact) -> bool {
+        self.contacts.contains(contact)
     }
 }
 
@@ -138,6 +178,7 @@ impl ContactWithDistance {
 
 #[cfg(test)]
 mod tests {
+    use std::net::{ IpAddr, Ipv4Addr };
     use std::str::FromStr;
     use super::RoutingTable;
     use super::ContactWithDistance;
@@ -196,6 +237,10 @@ mod tests {
 
     fn get_contact(distance_from_zero: usize) -> Contact {
         Contact::from_hash(IDS[distance_from_zero])
+    }
+
+    fn get_contact_with_address(distance_from_zero: usize, ip: IpAddr, port: u16) -> Contact {
+        Contact::from_hash_with_addr(IDS[distance_from_zero], ip, port)
     }
 
     fn init_routing_table(bucket_size: u8, localhost_index: usize) -> RoutingTable {
@@ -262,5 +307,18 @@ mod tests {
         let number_of_contacts_except_localhost = IDS.len() - 1;
         let number_of_contacts_except_localhost_and_target = number_of_contacts_except_localhost - 1;
         assert_eq!(number_of_contacts_except_localhost_and_target, closest_contacts.len());
+    }
+
+    #[test]
+    fn test_add_contact_fails_when_there_is_duplicated_id_with_diffrent_address() {
+        use std::u8;
+        debug_assert!(IDS.len() <= (u8::MAX as usize));
+        let bucket_size = IDS.len() as u8;
+        let mut routing_table = init_routing_table(bucket_size, 0);
+
+        let new_contact = get_contact_with_address(4,IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 3485);
+        routing_table.add_contact(new_contact.clone());
+        let closest_contacts = routing_table.get_closest_contacts(&new_contact);
+        assert!(!closest_contacts.contains(&new_contact));
     }
 }
