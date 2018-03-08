@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use super::Bytes;
-use super::transaction::Transaction;
+use super::transaction::UnverifiedTransaction;
 use super::header::{Header, Seal};
 use rlp::{UntrustedRlp, RlpStream, Decodable, DecoderError};
 
@@ -25,7 +25,7 @@ pub struct Block {
     /// The header of this block
     pub header: Header,
     /// The transactions in this block.
-    pub transactions: Vec<Transaction>,
+    pub transactions: Vec<UnverifiedTransaction>,
 }
 
 impl Block {
