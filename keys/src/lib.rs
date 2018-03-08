@@ -7,6 +7,7 @@ extern crate codechain_types;
 #[macro_use]
 extern crate lazy_static;
 extern crate rand;
+extern crate rustc_hex;
 extern crate rustc_serialize;
 extern crate secp256k1;
 extern crate bech32;
@@ -31,7 +32,7 @@ pub use network::Network;
 pub use private::Private;
 pub use public::Public;
 pub use rustc_serialize::hex;
-pub use signature::{CompactSignature, Signature};
+pub use signature::Signature;
 
 /// 20 bytes long hash derived from public `ripemd160(blake256(public))`
 pub type AccountId = H160;
