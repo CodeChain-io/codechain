@@ -103,7 +103,7 @@ impl From<&'static str> for Address {
 #[cfg(test)]
 mod tests {
 	use network::Network;
-	use super::Address;
+	use {Address, Message, Generator, Random};
 
 	#[test]
 	fn test_address_to_string() {
@@ -123,5 +123,16 @@ mod tests {
 		};
 
 		assert_eq!(address, "cc18a92rlklra2wavpmwkw74kekva43sjg3u9ct0x".into());
+	}
+
+	#[test]
+	fn sign_and_verify() {
+		let random = Random::new(Network::Mainnet);
+		let keypair = random.generate().unwrap();
+		let message = Message::default();
+		let private= keypair.private();
+		let public = keypair.public();
+		let signature = private.sign(&message).unwrap();
+		assert!(public.verify(&signature, &message).unwrap());
 	}
 }

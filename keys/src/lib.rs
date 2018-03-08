@@ -40,6 +40,7 @@ pub use address::Address;
 pub use codechain_types::hash;
 pub use display::DisplayLayout;
 pub use error::Error;
+pub use generator::{Generator, Random};
 use hash::{H160, H256};
 pub use keypair::KeyPair;
 pub use network::Network;
