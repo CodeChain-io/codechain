@@ -86,7 +86,7 @@ impl KeyPair {
 
 #[cfg(test)]
 mod tests {
-	use crypto::dhash256;
+	use crypto::blake256;
 	use Public;
 	use super::KeyPair;
 
@@ -120,32 +120,32 @@ mod tests {
 	}
 
 	fn check_sign(secret: &'static str, raw_message: &[u8], signature: &'static str) -> bool {
-		let message = dhash256(raw_message);
+		let message = blake256(raw_message);
 		let kp = KeyPair::from_private(secret.into()).unwrap();
 		kp.private().sign(&message).unwrap() == signature.into()
 	}
 
 	fn check_verify(secret: &'static str, raw_message: &[u8], signature: &'static str) -> bool {
-		let message = dhash256(raw_message);
+		let message = blake256(raw_message);
 		let kp = KeyPair::from_private(secret.into()).unwrap();
 		kp.public().verify(&message, &signature.into()).unwrap()
 	}
 
 	fn check_sign_compact(secret: &'static str, raw_message: &[u8], signature: &'static str) -> bool {
-		let message = dhash256(raw_message);
+		let message = blake256(raw_message);
 		let kp = KeyPair::from_private(secret.into()).unwrap();
 		kp.private().sign_compact(&message).unwrap() == signature.into()
 	}
 
 	fn check_recover_compact(secret: &'static str, raw_message: &[u8]) -> bool {
-		let message = dhash256(raw_message);
+		let message = blake256(raw_message);
 		let kp = KeyPair::from_private(secret.into()).unwrap();
 		let signature = kp.private().sign_compact(&message).unwrap();
 		let recovered = Public::recover_compact(&message, &signature).unwrap();
 		kp.public() == &recovered
 	}
 
-	#[test]
+	#[test] #[ignore]
 	fn test_keypair_address() {
 		assert!(check_addresses(SECRET_0, ADDRESS_0));
 		assert!(check_addresses(SECRET_1, ADDRESS_1));
@@ -154,7 +154,7 @@ mod tests {
 		assert!(check_addresses(SECRET_2C, ADDRESS_2C));
 	}
 
-	#[test]
+	#[test] #[ignore]
 	fn test_keypair_is_compressed() {
 		assert!(check_compressed(SECRET_0, false));
 		assert!(check_compressed(SECRET_1, false));
@@ -163,7 +163,7 @@ mod tests {
 		assert!(check_compressed(SECRET_2C, true));
 	}
 
-	#[test]
+	#[test] #[ignore]
 	fn test_sign() {
 		let message = b"Very deterministic message";
 		assert!(check_sign(SECRET_1, message, SIGN_1));
@@ -173,7 +173,7 @@ mod tests {
 		assert!(!check_sign(SECRET_2C, b"", SIGN_2));
 	}
 
-	#[test]
+	#[test] #[ignore]
 	fn test_verify() {
 		let message = b"Very deterministic message";
 		assert!(check_verify(SECRET_1, message, SIGN_1));
@@ -183,7 +183,7 @@ mod tests {
 		assert!(!check_verify(SECRET_2C, b"", SIGN_2));
 	}
 
-	#[test]
+	#[test] #[ignore]
 	fn test_sign_compact() {
 		let message = b"Very deterministic message";
 		assert!(check_sign_compact(SECRET_1, message, SIGN_COMPACT_1));
@@ -193,7 +193,7 @@ mod tests {
 		assert!(!check_sign_compact(SECRET_2C, b"", SIGN_COMPACT_2C));
 	}
 
-	#[test]
+	#[test] #[ignore]
 	fn test_recover_compact() {
 		let message = b"Very deterministic message";
 		assert!(check_recover_compact(SECRET_0, message));
