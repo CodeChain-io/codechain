@@ -27,14 +27,14 @@ impl RoutingTable {
         bucket.add_contact(contact)
     }
 
-    pub fn remove_contact(&mut self, contact: &Contact) {
+    pub fn remove_contact(&mut self, contact: &Contact) -> Option<&Contact> {
         let index = self.localhost.log2_distance(&contact);
         if index == 0 {
-            return;
+            return None;
         }
 
         let bucket = self.buckets.get_mut(&index);
-        bucket.map(|bucket| bucket.remove_contact(contact));
+        bucket.and_then(|bucket| bucket.remove_contact(contact))
     }
 
     fn add_bucket(&mut self, index: usize) -> &mut Bucket {
@@ -130,14 +130,10 @@ impl Bucket {
         self.head_if_full()
     }
 
-    pub fn remove_contact(&mut self, contact: &Contact) -> bool {
-        for i in 0..self.contacts.len() {
-            if &self.contacts[i] == contact {
-                self.contacts.remove(i);
-                return true;
-            }
-        }
-        false
+
+    pub fn remove_contact(&mut self, contact: &Contact) -> Option<&Contact> {
+        self.contacts.retain(|old_contact| old_contact != contact);
+        self.head_if_full()
     }
 
     fn head_if_full(&self) -> Option<&Contact> {
