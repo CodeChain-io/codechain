@@ -1,10 +1,10 @@
 [package]
-description = "Ethcore IO library"
+description = "CodeChain IO library"
 homepage = "http://parity.io"
 license = "GPL-3.0"
-name = "ethcore-io"
+name = "codechain-io"
 version = "1.9.0"
-authors = ["Parity Technologies <admin@parity.io>"]
+authors = ["Parity Technologies <admin@parity.io>", "CodeChain Team <codechain@kodebox.io>"]
 
 [dependencies]
 mio = "0.6.8"
