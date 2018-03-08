@@ -3,16 +3,16 @@ use std::collections::HashMap;
 use std::collections::LinkedList;
 use std::collections::linked_list::Iter;
 
-pub struct Buckets {
+pub struct RoutingTable {
     localhost: Contact,
     buckets: HashMap<usize, Bucket>,
     bucket_size: u8,
 }
 
-impl Buckets {
+impl RoutingTable {
     pub fn new(bucket_size: u8) -> Self {
         let capacity = 8;
-        Buckets {
+        RoutingTable {
             localhost: Contact::random(),
             buckets: HashMap::with_capacity(capacity),
             bucket_size,

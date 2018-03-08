@@ -1,7 +1,7 @@
-mod buckets;
+mod routing_table;
 mod contact;
 
-use self::buckets::Buckets;
+use self::routing_table::RoutingTable;
 
 const ALPHA: u8 = 3;
 const B: usize = 64 * 8;
@@ -13,7 +13,7 @@ pub struct Kademlia {
     alpha: u8,
     k: u8,
     t_refresh: u32,
-    buckets: Buckets,
+    buckets: RoutingTable,
 }
 
 impl Kademlia {
@@ -23,7 +23,7 @@ impl Kademlia {
             alpha: ALPHA,
             k: K,
             t_refresh: T_REFRESH,
-            buckets: Buckets::new(DEFAULT_BUCKET_SIZE),
+            buckets: RoutingTable::new(DEFAULT_BUCKET_SIZE),
         }
     }
 
