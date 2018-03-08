@@ -27,7 +27,7 @@ impl RoutingTable {
         bucket.add_contact(contact);
     }
 
-    pub fn remove_contact(&mut self, contact: Contact) {
+    pub fn remove_contact(&mut self, contact: &Contact) {
         let index = self.localhost.log2_distance(&contact);
         if index == 0 {
             return;
@@ -103,9 +103,9 @@ impl Bucket {
         self.contacts.push_back(contact);
     }
 
-    pub fn remove_contact(&mut self, contact: Contact) -> bool {
+    pub fn remove_contact(&mut self, contact: &Contact) -> bool {
         for i in 0..self.contacts.len() {
-            if self.contacts[i] == contact {
+            if &self.contacts[i] == contact {
                 self.contacts.remove(i);
                 return true;
             }
