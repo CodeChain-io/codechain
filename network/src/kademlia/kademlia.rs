@@ -29,15 +29,22 @@ pub struct Kademlia {
 }
 
 impl Kademlia {
-    pub fn new(localhost: Contact) -> Self {
-        const DEFAULT_BUCKET_SIZE: u8 = 8;
+    pub fn new(localhost: Contact, alpha: Option<u8>, k: Option<u8>, t_refresh: Option<u32>) -> Self {
+        let alpha = alpha.unwrap_or(ALPHA);
+        let k = k.unwrap_or(K);
+        let t_refresh = t_refresh.unwrap_or(T_REFRESH);
         Kademlia {
-            alpha: ALPHA,
-            k: K,
-            t_refresh: T_REFRESH,
-            table: RoutingTable::new(localhost, DEFAULT_BUCKET_SIZE),
+            alpha,
+            k,
+            t_refresh,
+            table: RoutingTable::new(localhost, k),
         }
     }
+
+    pub fn default(localhost: Contact) -> Self {
+        Self::new(localhost, None, None, None)
+    }
+
 
     // FIXME: Implement message handler.
 }
@@ -58,19 +65,19 @@ mod tests {
             0000000000000000";
     #[test]
     fn test_default_alpha() {
-        let kademlia = Kademlia::new(Contact::from_hash(ID));
+        let kademlia = Kademlia::default(Contact::from_hash(ID));
         assert_eq!(3, kademlia.alpha);
     }
 
     #[test]
     fn test_default_k() {
-        let kademlia = Kademlia::new(Contact::from_hash(ID));
+        let kademlia = Kademlia::default(Contact::from_hash(ID));
         assert_eq!(16, kademlia.k);
     }
 
     #[test]
     fn test_default_t_refresh() {
-        let kademlia = Kademlia::new(Contact::from_hash(ID));
+        let kademlia = Kademlia::default(Contact::from_hash(ID));
         assert_eq!(60_000, kademlia.t_refresh);
     }
 }
