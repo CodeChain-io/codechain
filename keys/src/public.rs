@@ -23,6 +23,7 @@ use codechain_types::{H264, H520};
 use {AccountId, Error, Signature, Message, SECP256K1};
 
 /// Secret public key
+#[derive(Clone)]
 pub enum Public {
 	/// Normal version of public key
 	Normal(H520),
