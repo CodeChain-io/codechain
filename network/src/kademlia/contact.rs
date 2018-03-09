@@ -104,7 +104,6 @@ mod tests {
     use codechain_types::Public;
     use std::cmp::Ordering;
     use std::mem::size_of;
-    use std::net::{ IpAddr, Ipv4Addr };
     use std::str::FromStr;
     use super::Contact;
 
