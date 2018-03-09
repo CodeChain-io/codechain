@@ -20,7 +20,7 @@ use secp256k1::{Message as SecpMessage, RecoveryId, RecoverableSignature, Error 
 use hex::ToHex;
 use crypto::{blake256, ripemd160};
 use codechain_types::{H264, H520};
-use {AccountId, Error, Signature, Message, SECP256K1};
+use {AccountId, Address, Error, Network, Signature, Message, SECP256K1};
 
 /// Secret public key
 #[derive(Clone)]
@@ -63,6 +63,13 @@ impl Public {
 
 	pub fn account_id(&self) -> AccountId {
 		ripemd160(blake256(self.as_ref()))
+	}
+
+	pub fn address(&self, network: Network) -> Address {
+		Address {
+			network,
+			account_id: self.account_id()
+		}
 	}
 }
 
