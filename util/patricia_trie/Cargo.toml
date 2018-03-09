@@ -1,0 +1,22 @@
+[package]
+name = "patricia-trie"
+version = "0.1.0"
+authors = ["Parity Technologies <admin@parity.io>"]
+description = "Merkle-Patricia Trie (Ethereum Style)"
+license = "GPL-3.0"
+
+[dependencies]
+elastic-array = "0.9"
+log = "0.3"
+rand = "0.4"
+codechain-bytes = { version = "0.1.0", path = "../bytes" }
+codechain-crypto = { path = "../../crypto" }
+codechain-types = { path = "../../primitives/codechain-types" }
+hashdb = { version = "0.1.1", path = "../hashdb" }
+rlp = { version = "0.2.1", path = "../rlp" }
+triehash = { version = "0.1.0", path = "../triehash" }
+memorydb = { version = "0.1.0", path = "../memorydb" }
+codechain-logger = { version = "1.9.0", path = "../../logger" }
+
+[dev-dependencies]
+trie-standardmap = { path = "../trie-standardmap" }
