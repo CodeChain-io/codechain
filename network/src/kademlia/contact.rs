@@ -1,19 +1,34 @@
+// Copyright 2018 Kodebox, Inc.
+// This file is part of CodeChain.
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as
+// published by the Free Software Foundation, either version 3 of the
+// License, or (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 extern crate codechain_crypto as crypto;
 extern crate rand;
 
 
 use codechain_types::Public;
-use std::cmp::Ordering;
-use std::net::{ IpAddr, SocketAddr };
 #[cfg(test)]
 use std::str::FromStr;
+use super::super::Address;
 
 pub type NodeId = Public;
 
-#[derive(Clone, Debug, Eq)]
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct Contact {
     id: NodeId,
-    addr: Option<SocketAddr>,
+    addr: Option<Address>,
 }
 
 fn hash<T: AsRef<[u8]>>(block: T) -> Public {
@@ -33,7 +48,7 @@ impl Contact {
         }
     }
 
-    pub fn new(id: NodeId, addr: Option<SocketAddr>) -> Self {
+    pub fn new(id: NodeId, addr: Option<Address>) -> Self {
         Contact {
             id,
             addr,
@@ -41,8 +56,8 @@ impl Contact {
     }
 
     #[cfg(test)]
-    pub fn from_hash_with_addr(node_id: &str, ip: IpAddr, port: u16) -> Contact {
-        Contact::new(NodeId::from_str(node_id).unwrap(), Some(SocketAddr::new(ip, port)))
+    pub fn from_hash_with_addr(node_id: &str, a: u8, b: u8, c: u8, d: u8, port: u16) -> Contact {
+        Contact::new(NodeId::from_str(node_id).unwrap(), Some(Address::v4(a, b, c, d, port)))
     }
 
     #[cfg(test)]
@@ -76,45 +91,6 @@ impl Contact {
 
     pub fn id(&self) -> NodeId {
         self.id
-    }
-}
-
-impl Ord for Contact {
-    fn cmp(&self, other: &Contact) -> Ordering {
-        if self.id < other.id {
-            return Ordering::Less
-        }
-        if self.id > other.id {
-            return Ordering::Greater
-        }
-
-        debug_assert_eq!(self.id, other.id);
-
-        match (self.addr, other.addr) {
-            (None, None) => Ordering::Equal,
-            (None, Some(_)) => Ordering::Less,
-            (Some(_), None) => Ordering::Greater,
-            (Some(SocketAddr::V4(_)), Some(SocketAddr::V6(_))) => Ordering::Less,
-            (Some(SocketAddr::V6(_)), Some(SocketAddr::V4(_))) => Ordering::Greater,
-            (Some(lhs), Some(rhs)) => {
-                match lhs.ip().cmp(&rhs.ip()) {
-                    Ordering::Equal => lhs.port().cmp(&rhs.port()),
-                    order => order,
-                }
-            },
-        }
-    }
-}
-
-impl PartialEq for Contact {
-    fn eq(&self, other: &Contact ) -> bool {
-        self.cmp(other) == Ordering::Equal
-    }
-}
-
-impl PartialOrd for Contact {
-    fn partial_cmp(&self, other: &Contact) -> Option<Ordering> {
-        Some(self.cmp(other))
     }
 }
 
@@ -244,8 +220,8 @@ mod tests {
             0000000000000000\
             0000000000000000";
 
-        let c1 = Contact::from_hash_with_addr(ID1, IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 3485);
-        let c2 = Contact::from_hash_with_addr(ID2, IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 3485);
+        let c1 = Contact::from_hash_with_addr(ID1, 127, 0, 0, 1, 3485);
+        let c2 = Contact::from_hash_with_addr(ID2, 127, 0, 0, 1, 3485);
         assert_eq!(c1, c2);
     }
 
@@ -268,8 +244,8 @@ mod tests {
             0000000000000000\
             0000000000000000";
 
-        let c1 = Contact::from_hash_with_addr(ID1, IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 3485);
-        let c2 = Contact::from_hash_with_addr(ID2, IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 3486);
+        let c1 = Contact::from_hash_with_addr(ID1, 127, 0, 0, 1, 3485);
+        let c2 = Contact::from_hash_with_addr(ID2, 127, 0, 0, 1, 3486);
         assert_ne!(c1, c2);
     }
 
@@ -292,8 +268,8 @@ mod tests {
             0000000000000000\
             0000000000000000";
 
-        let c1 = Contact::from_hash_with_addr(ID1, IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 3485);
-        let c2 = Contact::from_hash_with_addr(ID2, IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 3486);
+        let c1 = Contact::from_hash_with_addr(ID1, 127, 0, 0, 1, 3485);
+        let c2 = Contact::from_hash_with_addr(ID2, 127, 0, 0, 1, 3486);
         assert!(c1 > c2);
     }
 
@@ -316,8 +292,8 @@ mod tests {
             0000000000000000\
             0000000000000000";
 
-        let c1 = Contact::from_hash_with_addr(ID1, IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 3485);
-        let c2 = Contact::from_hash_with_addr(ID2, IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 3486);
+        let c1 = Contact::from_hash_with_addr(ID1, 127, 0, 0, 1, 3485);
+        let c2 = Contact::from_hash_with_addr(ID2, 127, 0, 0, 1, 3486);
         assert!(c1 < c2);
     }
 
@@ -340,8 +316,8 @@ mod tests {
             0000000000000000\
             0000000000000000";
 
-        let c1 = Contact::from_hash_with_addr(ID1, IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 3485);
-        let c2 = Contact::from_hash_with_addr(ID2, IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 3486);
+        let c1 = Contact::from_hash_with_addr(ID1, 127, 0, 0, 1, 3485);
+        let c2 = Contact::from_hash_with_addr(ID2, 127, 0, 0, 1, 3486);
         assert_eq!(Some(Ordering::Less), c1.partial_cmp(&c2));
     }
 
@@ -364,8 +340,8 @@ mod tests {
             0000000000000000\
             0000000000000000";
 
-        let c1 = Contact::from_hash_with_addr(ID1, IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 3485);
-        let c2 = Contact::from_hash_with_addr(ID2, IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 3484);
+        let c1 = Contact::from_hash_with_addr(ID1, 127, 0, 0, 1, 3485);
+        let c2 = Contact::from_hash_with_addr(ID2, 127, 0, 0, 1, 3484);
         assert_eq!(Some(Ordering::Greater), c1.partial_cmp(&c2));
     }
 }

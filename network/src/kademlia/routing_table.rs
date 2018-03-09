@@ -235,8 +235,8 @@ mod tests {
         Contact::from_hash(IDS[distance_from_zero])
     }
 
-    fn get_contact_with_address(distance_from_zero: usize, ip: IpAddr, port: u16) -> Contact {
-        Contact::from_hash_with_addr(IDS[distance_from_zero], ip, port)
+    fn get_contact_with_address(distance_from_zero: usize, a: u8, b: u8, c: u8, d: u8, port: u16) -> Contact {
+        Contact::from_hash_with_addr(IDS[distance_from_zero], a, b, c, d, port)
     }
 
     fn init_routing_table(bucket_size: u8, localhost_index: usize) -> RoutingTable {
@@ -312,7 +312,7 @@ mod tests {
         let bucket_size = IDS.len() as u8;
         let mut routing_table = init_routing_table(bucket_size, 0);
 
-        let new_contact = get_contact_with_address(4,IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 3485);
+        let new_contact = get_contact_with_address(4, 127, 0, 0, 1, 3485);
         routing_table.add_contact(new_contact.clone());
         let closest_contacts = routing_table.get_closest_contacts(&new_contact);
         assert!(!closest_contacts.contains(&new_contact));
