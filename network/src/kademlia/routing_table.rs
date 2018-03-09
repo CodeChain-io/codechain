@@ -272,7 +272,7 @@ mod tests {
     #[test]
     fn test_size_of_closest_contacts_is_not_larger_than_bucket_size() {
         const BUCKET_SIZE: u8 = 5;
-        let mut routing_table = init_routing_table(BUCKET_SIZE, 0);
+        let routing_table = init_routing_table(BUCKET_SIZE, 0);
 
         let closest_contacts = routing_table.get_closest_contacts(&get_contact(4));
         assert!(closest_contacts.len() <= (BUCKET_SIZE as usize));
@@ -281,7 +281,7 @@ mod tests {
     #[test]
     fn test_closest_contacts_1() {
         const BUCKET_SIZE: u8 = 5;
-        let mut routing_table = init_routing_table(BUCKET_SIZE, 0);
+        let routing_table = init_routing_table(BUCKET_SIZE, 0);
 
         let closest_contacts = routing_table.get_closest_contacts(&get_contact(4));
         assert_eq!(BUCKET_SIZE as usize, closest_contacts.len());
@@ -295,7 +295,7 @@ mod tests {
     #[test]
     fn test_closest_contacts_2() {
         const BUCKET_SIZE: u8 = 5;
-        let mut routing_table = init_routing_table(BUCKET_SIZE, 0);
+        let routing_table = init_routing_table(BUCKET_SIZE, 0);
 
         let closest_contacts = routing_table.get_closest_contacts(&get_contact(3));
         assert_eq!(BUCKET_SIZE as usize, closest_contacts.len());
@@ -311,7 +311,7 @@ mod tests {
         use std::u8;
         debug_assert!(IDS.len() <= (u8::MAX as usize));
         let bucket_size = IDS.len() as u8;
-        let mut routing_table = init_routing_table(bucket_size, 0);
+        let routing_table = init_routing_table(bucket_size, 0);
 
         const TARGET_INDEX: usize = 3;
         let closest_contacts = routing_table.get_closest_contacts(&get_contact(TARGET_INDEX));
@@ -366,7 +366,7 @@ mod tests {
         use std::u8;
         debug_assert!(IDS.len() <= (u8::MAX as usize));
         let bucket_size = IDS.len() as u8;
-        let mut routing_table = init_routing_table(bucket_size, 0);
+        let routing_table = init_routing_table(bucket_size, 0);
 
         let new_contact = get_contact(4);
         assert!(!routing_table.conflicts(&new_contact));
