@@ -17,12 +17,14 @@
 
 use super::error::Error;
 use super::header::Header;
+use super::block::ExecutedBlock;
 
 pub struct CodeChainMachine {
 }
 
 impl ::machine::Machine for CodeChainMachine {
     type Header = Header;
+    type LiveBlock = ExecutedBlock;
 
     type Error = Error;
 }

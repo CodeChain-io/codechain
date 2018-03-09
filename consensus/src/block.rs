@@ -17,6 +17,7 @@
 use super::Bytes;
 use super::transaction::UnverifiedTransaction;
 use super::header::{Header, Seal};
+use super::machine::LiveBlock;
 use rlp::{UntrustedRlp, RlpStream, Decodable, DecoderError};
 
 /// A block, encoded as it is on the block chain.
@@ -50,5 +51,20 @@ impl Decodable for Block {
             header: rlp.val_at(0)?,
             transactions: rlp.list_at(1)?,
         })
+    }
+}
+
+/// An internal type for a block's common elements.
+#[derive(Clone)]
+pub struct ExecutedBlock {
+    header: Header,
+    // FIXME: Add members
+}
+
+impl LiveBlock for ExecutedBlock {
+    type Header = Header;
+
+    fn header(&self) -> &Header {
+        &self.header
     }
 }

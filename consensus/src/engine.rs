@@ -14,7 +14,19 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use bytes::Bytes;
 use super::machine::Machine;
+
+/// Seal type.
+#[derive(Debug, PartialEq, Eq)]
+pub enum Seal {
+    /// Proposal seal; should be broadcasted, but not inserted into blockchain.
+    Proposal(Vec<Bytes>),
+    /// Regular block seal; should be part of the blockchain.
+    Regular(Vec<Bytes>),
+    /// Engine does generate seal for this block right now.
+    None,
+}
 
 /// A consensus mechanism for the chain.
 pub trait ConsensusEngine<M: Machine>: Sync + Send {
@@ -23,6 +35,34 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
 
     /// Get access to the underlying state machine.
     fn machine(&self) -> &M;
+
+    /// None means that it requires external input (e.g. PoW) to seal a block.
+    /// Some(true) means the engine is currently prime for seal generation (i.e. node is the current validator).
+    /// Some(false) means that the node might seal internally but is not qualified now.
+    fn seals_internally(&self) -> Option<bool> { None }
+
+    /// Attempt to seal the block internally.
+    ///
+    /// If `Some` is returned, then you get a valid seal.
+    ///
+    /// This operation is synchronous and may (quite reasonably) not be available, in which None will
+    /// be returned.
+    ///
+    /// It is fine to require access to state or a full client for this function, since
+    /// light clients do not generate seals.
+    fn generate_seal(&self, _block: &M::LiveBlock, _parent: &M::Header) -> Seal { Seal::None }
+
+    /// Verify a locally-generated seal of a header.
+    ///
+    /// If this engine seals internally,
+    /// no checks have to be done here, since all internally generated seals
+    /// should be valid.
+    ///
+    /// Externally-generated seals (e.g. PoW) will need to be checked for validity.
+    ///
+    /// It is fine to require access to state or a full client for this function, since
+    /// light clients do not generate seals.
+    fn verify_local_seal(&self, header: &M::Header) -> Result<(), M::Error>;
 
     /// Trigger next step of the consensus engine.
     fn step(&self) {}

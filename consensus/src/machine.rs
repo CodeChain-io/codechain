@@ -46,10 +46,21 @@ pub trait LiveBlock: 'static {
     fn header(&self) -> &Self::Header;
 }
 
+/// Trait for blocks which have a transaction type.
+pub trait Transactions: LiveBlock {
+    /// The transaction type.
+    type Transaction;
+
+    /// Get a reference to the transactions in this block.
+    fn transactions(&self) -> &[Self::Transaction];
+}
+
 /// Generalization of types surrounding blockchain-suitable state machines.
-pub trait Machine {
+pub trait Machine: Send + Sync {
     /// The block header type.
     type Header: Header;
+    /// The live block type.
+    type LiveBlock: LiveBlock<Header=Self::Header>;
 
     /// Errors which can occur when querying or interacting with the machine.
     type Error;
