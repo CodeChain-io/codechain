@@ -67,8 +67,8 @@ impl Contact {
         }
     }
 
-    pub fn log2_distance(&self, target: &Self) -> usize {
-        let distance = self.id ^ target.id;
+    pub fn log2_distance(&self, target: &NodeId) -> usize {
+        let distance = &self.id ^ target;
         const BYTES_SIZE: usize = super::B / 8;
         debug_assert_eq!(super::B % 8, 0);
         let mut distance_as_bytes : [u8; BYTES_SIZE] = [0; BYTES_SIZE];
@@ -124,7 +124,7 @@ mod tests {
                         0000000000000000\
                         0000000000000001");
 
-        assert_eq!(1, c1.log2_distance(&c2));
+        assert_eq!(1, c1.log2_distance(&c2.id));
     }
 
     #[test]
@@ -146,7 +146,7 @@ mod tests {
                         0000000000000000\
                         0000000000000000");
 
-        assert_eq!(super::super::B, c1.log2_distance(&c2));
+        assert_eq!(super::super::B, c1.log2_distance(&c2.id));
     }
 
     #[test]

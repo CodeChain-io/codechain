@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::collections::VecDeque;
+use super::NodeId;
 use super::contact::Contact;
 use super::routing_table::RoutingTable;
 
@@ -31,7 +32,7 @@ pub struct Kademlia {
 }
 
 impl Kademlia {
-    pub fn new(localhost: Contact, alpha: Option<u8>, k: Option<u8>, t_refresh: Option<u32>) -> Self {
+    pub fn new(localhost: NodeId, alpha: Option<u8>, k: Option<u8>, t_refresh: Option<u32>) -> Self {
         let alpha = alpha.unwrap_or(ALPHA);
         let k = k.unwrap_or(K);
         let t_refresh = t_refresh.unwrap_or(T_REFRESH);
@@ -44,7 +45,7 @@ impl Kademlia {
         }
     }
 
-    pub fn default(localhost: Contact) -> Self {
+    pub fn default(localhost: NodeId) -> Self {
         Self::new(localhost, None, None, None)
     }
 
@@ -110,25 +111,29 @@ mod tests {
 
     #[test]
     fn test_default_alpha() {
-        let kademlia = Kademlia::default(Contact::from_hash(ID));
+        let id = Contact::from_hash(ID).id();
+        let kademlia = Kademlia::default(id);
         assert_eq!(3, kademlia.alpha);
     }
 
     #[test]
     fn test_default_k() {
-        let kademlia = Kademlia::default(Contact::from_hash(ID));
+        let id = Contact::from_hash(ID).id();
+        let kademlia = Kademlia::default(id);
         assert_eq!(16, kademlia.k);
     }
 
     #[test]
     fn test_default_t_refresh() {
-        let kademlia = Kademlia::default(Contact::from_hash(ID));
+        let id = Contact::from_hash(ID).id();
+        let kademlia = Kademlia::default(id);
         assert_eq!(60_000, kademlia.t_refresh);
     }
 
     #[test]
     fn test_add_contact_to_be_verfied_does_not_add_duplicates() {
-        let mut kademlia = Kademlia::default(Contact::from_hash(ID));
+        let id = Contact::from_hash(ID).id();
+        let mut kademlia = Kademlia::default(id);
 
         let new_contact = Contact::from_hash(ID1);
 
@@ -143,7 +148,8 @@ mod tests {
 
     #[test]
     fn test_pop_contact_to_be_verfied() {
-        let mut kademlia = Kademlia::default(Contact::from_hash(ID));
+        let id = Contact::from_hash(ID).id();
+        let mut kademlia = Kademlia::default(id);
 
         let new_contact = Contact::from_hash(ID1);
 
@@ -159,7 +165,8 @@ mod tests {
 
     #[test]
     fn test_pop_contact_to_be_verfied_returns_none_when_empty() {
-        let mut kademlia = Kademlia::default(Contact::from_hash(ID));
+        let id = Contact::from_hash(ID).id();
+        let mut kademlia = Kademlia::default(id);
 
         let new_contact = Contact::from_hash(ID1);
 
@@ -177,7 +184,8 @@ mod tests {
 
     #[test]
     fn test_pop_contact_to_be_verfied_skips_the_contact_which_is_not_in_routing_table() {
-        let mut kademlia = Kademlia::default(Contact::from_hash(ID));
+        let id = Contact::from_hash(ID).id();
+        let mut kademlia = Kademlia::default(id);
 
         let new_contact = Contact::from_hash(ID1);
 
@@ -192,7 +200,8 @@ mod tests {
 
     #[test]
     fn test_add_contact_adds_to_be_verified_when_bucket_is_full() {
-        let mut kademlia = Kademlia::new(Contact::from_hash(ID), None, Some(1), None);
+        let id = Contact::from_hash(ID).id();
+        let mut kademlia = Kademlia::new(id, None, Some(1), None);
 
         let contact4 = Contact::from_hash(ID4);
         let contact5 = Contact::from_hash(ID5);

@@ -1,14 +1,15 @@
 use kademlia::contact::Contact;
 use std::collections::{ BTreeSet, HashMap, VecDeque };
+use super::NodeId;
 
 pub struct RoutingTable {
-    localhost: Contact,
+    localhost: NodeId,
     buckets: HashMap<usize, Bucket>,
     bucket_size: u8,
 }
 
 impl RoutingTable {
-    pub fn new(localhost: Contact, bucket_size: u8) -> Self {
+    pub fn new(localhost: NodeId, bucket_size: u8) -> Self {
         const CAPACITY: usize = 8;
         RoutingTable {
             localhost,
@@ -18,7 +19,7 @@ impl RoutingTable {
     }
 
     pub fn add_contact(&mut self, contact: Contact) -> Option<&Contact> {
-        let index = self.localhost.log2_distance(&contact);
+        let index = contact.log2_distance(&self.localhost);
         // FIXME: Decide the maximum distance to contact.
         if index == 0 {
             return None;
@@ -28,7 +29,7 @@ impl RoutingTable {
     }
 
     pub fn remove_contact(&mut self, contact: &Contact) -> Option<&Contact> {
-        let index = self.localhost.log2_distance(&contact);
+        let index = contact.log2_distance(&self.localhost);
         if index == 0 {
             return None;
         }
@@ -49,19 +50,23 @@ impl RoutingTable {
             });
     }
 
-    pub fn get_closest_contacts(&self, target: &Contact) -> Vec<Contact> {
+    pub fn get_closest_contacts(&self, target: &NodeId) -> Vec<Contact> {
+        if target == &self.localhost {
+            return vec![];
+        }
+
         let contacts = self.get_contacts_in_distance_order(target);
         contacts.into_iter()
             .take(self.bucket_size as usize)
             .map(|item| {
-                debug_assert_ne!(target, &item.contact);
-                debug_assert_ne!(self.localhost, item.contact);
+                debug_assert_ne!(target, &item.contact.id());
+                debug_assert_ne!(self.localhost, item.contact.id());
                 item.contact
             })
             .collect()
     }
 
-    fn get_contacts_in_distance_order(&self, target: &Contact) -> BTreeSet<ContactWithDistance> {
+    fn get_contacts_in_distance_order(&self, target: &NodeId) -> BTreeSet<ContactWithDistance> {
         let mut result = BTreeSet::new();
         let mut max_distance = 0;
         for (_, bucket) in self.buckets.iter() {
@@ -73,7 +78,7 @@ impl RoutingTable {
 
                 let contact = contact.unwrap();
 
-                if target == contact {
+                if target == &contact.id() {
                     continue;
                 }
 
@@ -92,7 +97,7 @@ impl RoutingTable {
     }
 
     pub fn contains(&self, contact: &Contact) -> bool {
-        let index = self.localhost.log2_distance(&contact);
+        let index = contact.log2_distance(&self.localhost);
         if index == 0 {
             return false;
         }
@@ -105,7 +110,7 @@ impl RoutingTable {
     }
 
     pub fn conflicts(&self, contact: &Contact) -> bool {
-        let index = self.localhost.log2_distance(&contact);
+        let index = contact.log2_distance(&self.localhost);
         if index == 0 {
             return true;
         }
@@ -177,7 +182,7 @@ struct ContactWithDistance {
 }
 
 impl ContactWithDistance {
-    pub fn new(contact: &Contact, target: &Contact) -> Self {
+    pub fn new(contact: &Contact, target: &NodeId) -> Self {
         ContactWithDistance {
             distance: contact.log2_distance(&target),
             contact: contact.clone(),
@@ -251,7 +256,7 @@ mod tests {
     }
 
     fn init_routing_table(bucket_size: u8, localhost_index: usize) -> RoutingTable {
-        let localhost = get_contact(localhost_index);
+        let localhost = get_contact(localhost_index).id();
         let mut routing_table = RoutingTable::new(localhost, bucket_size);
 
         for i in 0..IDS.len() {
@@ -268,7 +273,7 @@ mod tests {
         const BUCKET_SIZE: u8 = 5;
         let routing_table = init_routing_table(BUCKET_SIZE, 0);
 
-        let closest_contacts = routing_table.get_closest_contacts(&get_contact(4));
+        let closest_contacts = routing_table.get_closest_contacts(&get_contact(4).id());
         assert!(closest_contacts.len() <= (BUCKET_SIZE as usize));
     }
 
@@ -277,7 +282,7 @@ mod tests {
         const BUCKET_SIZE: u8 = 5;
         let routing_table = init_routing_table(BUCKET_SIZE, 0);
 
-        let closest_contacts = routing_table.get_closest_contacts(&get_contact(4));
+        let closest_contacts = routing_table.get_closest_contacts(&get_contact(4).id());
         assert_eq!(BUCKET_SIZE as usize, closest_contacts.len());
         assert_eq!(get_contact(5), closest_contacts[0]);
         assert_eq!(get_contact(6), closest_contacts[1]);
@@ -291,7 +296,7 @@ mod tests {
         const BUCKET_SIZE: u8 = 5;
         let routing_table = init_routing_table(BUCKET_SIZE, 0);
 
-        let closest_contacts = routing_table.get_closest_contacts(&get_contact(3));
+        let closest_contacts = routing_table.get_closest_contacts(&get_contact(3).id());
         assert_eq!(BUCKET_SIZE as usize, closest_contacts.len());
         assert_eq!(get_contact(2), closest_contacts[0]);
         assert_eq!(get_contact(1), closest_contacts[1]);
@@ -308,7 +313,7 @@ mod tests {
         let routing_table = init_routing_table(bucket_size, 0);
 
         const TARGET_INDEX: usize = 3;
-        let closest_contacts = routing_table.get_closest_contacts(&get_contact(TARGET_INDEX));
+        let closest_contacts = routing_table.get_closest_contacts(&get_contact(TARGET_INDEX).id());
         assert!(!closest_contacts.contains(&get_contact(TARGET_INDEX)));
         assert!(2 <= IDS.len());
         let number_of_contacts_except_localhost = IDS.len() - 1;
@@ -325,7 +330,7 @@ mod tests {
 
         let new_contact = get_contact_with_address(4, 127, 0, 0, 1, 3485);
         routing_table.add_contact(new_contact.clone());
-        let closest_contacts = routing_table.get_closest_contacts(&new_contact);
+        let closest_contacts = routing_table.get_closest_contacts(&new_contact.id());
         assert!(!closest_contacts.contains(&new_contact));
     }
 
@@ -340,7 +345,7 @@ mod tests {
         routing_table.remove_contact(&get_contact(KILLED_INDEX));
 
         const TARGET_INDEX: usize = 5;
-        let closest_contacts = routing_table.get_closest_contacts(&get_contact(TARGET_INDEX));
+        let closest_contacts = routing_table.get_closest_contacts(&get_contact(TARGET_INDEX).id());
         assert!(!closest_contacts.contains(&get_contact(KILLED_INDEX)));
     }
 
