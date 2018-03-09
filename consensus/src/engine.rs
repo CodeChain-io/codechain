@@ -17,7 +17,7 @@
 use super::machine::Machine;
 
 /// A consensus mechanism for the chain.
-pub trait Engine<M: Machine>: Sync + Send {
+pub trait ConsensusEngine<M: Machine>: Sync + Send {
     /// The name of this engine.
     fn name(&self) -> &str;
 
