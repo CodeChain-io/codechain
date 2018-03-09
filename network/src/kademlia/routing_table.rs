@@ -191,12 +191,8 @@ impl ContactWithDistance {
 
 #[cfg(test)]
 mod tests {
-    use std::net::{ IpAddr, Ipv4Addr };
-    use std::str::FromStr;
     use super::RoutingTable;
-    use super::ContactWithDistance;
     use super::super::contact::Contact;
-    use super::super::contact::NodeId;
 
     const IDS: [&str; 16] = [
         "0000000000000000000000000000000000000000000000000000000000000000\
