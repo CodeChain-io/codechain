@@ -85,6 +85,8 @@ impl PartialEq for Public {
 	}
 }
 
+impl Eq for Public {}
+
 impl fmt::Debug for Public {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 		match *self {

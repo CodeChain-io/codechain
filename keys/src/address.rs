@@ -21,7 +21,7 @@ use {Error, AccountId};
 use bech32::Bech32;
 use codechain_types::H160;
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Address {
 	/// The network of the address.
 	pub network: Network,
