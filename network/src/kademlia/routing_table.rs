@@ -104,6 +104,19 @@ impl RoutingTable {
             Some(has) => has,
         }
     }
+
+    pub fn conflicts(&self, contact: &Contact) -> bool {
+        let index = self.localhost.log2_distance(&contact);
+        if index == 0 {
+            return true;
+        }
+        let bucket = self.buckets.get(&index);
+        if let Some(bucket) = bucket {
+            bucket.conflicts(contact)
+        } else {
+            false
+        }
+    }
 }
 
 
@@ -122,9 +135,7 @@ impl Bucket {
 
     pub fn add_contact(&mut self, contact: Contact) -> Option<&Contact> {
         self.remove_contact(&contact);
-        if self.contacts.iter_mut()
-                .find(|old_contact| old_contact.id() == contact.id())
-                .is_none() {
+        if !self.conflicts(&contact) {
             self.contacts.push_back(contact);
         }
         self.head_if_full()
@@ -151,6 +162,12 @@ impl Bucket {
     #[cfg(test)]
     fn contains(&self, contact: &Contact) -> bool {
         self.contacts.contains(contact)
+    }
+
+    pub fn conflicts(&self, contact: &Contact) -> bool {
+        self.contacts.iter()
+            .find(|old_contact| old_contact.id() == contact.id() && old_contact.addr() != contact.addr())
+            .is_some()
     }
 }
 
@@ -331,5 +348,27 @@ mod tests {
         const TARGET_INDEX: usize = 5;
         let closest_contacts = routing_table.get_closest_contacts(&get_contact(TARGET_INDEX));
         assert!(!closest_contacts.contains(&get_contact(KILLED_INDEX)));
+    }
+
+    #[test]
+    fn test_conflicts_if_different_address_with_same_id() {
+        use std::u8;
+        debug_assert!(IDS.len() <= (u8::MAX as usize));
+        let bucket_size = IDS.len() as u8;
+        let routing_table = init_routing_table(bucket_size, 0);
+
+        let new_contact = get_contact_with_address(4, 127, 0, 0, 1, 3485);
+        assert!(routing_table.conflicts(&new_contact));
+    }
+
+    #[test]
+    fn test_same_id_and_address_does_not_conflict() {
+        use std::u8;
+        debug_assert!(IDS.len() <= (u8::MAX as usize));
+        let bucket_size = IDS.len() as u8;
+        let mut routing_table = init_routing_table(bucket_size, 0);
+
+        let new_contact = get_contact(4);
+        assert!(!routing_table.conflicts(&new_contact));
     }
 }

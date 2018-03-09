@@ -92,6 +92,10 @@ impl Contact {
     pub fn id(&self) -> NodeId {
         self.id
     }
+
+    pub fn addr(&self) -> &Option<Address> {
+        &self.addr
+    }
 }
 
 
