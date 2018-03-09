@@ -18,12 +18,11 @@ extern crate codechain_crypto as crypto;
 extern crate rand;
 
 
-use codechain_types::Public;
 #[cfg(test)]
 use std::str::FromStr;
+use super::NodeId;
 use super::super::Address;
 
-pub type NodeId = Public;
 
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct Contact {
@@ -31,7 +30,7 @@ pub struct Contact {
     addr: Option<Address>,
 }
 
-fn hash<T: AsRef<[u8]>>(block: T) -> Public {
+fn hash<T: AsRef<[u8]>>(block: T) -> NodeId {
     crypto::blake512(block.as_ref())
 }
 
@@ -101,7 +100,6 @@ impl Contact {
 
 #[cfg(test)]
 mod tests {
-    use codechain_types::Public;
     use std::cmp::Ordering;
     use std::mem::size_of;
     use std::str::FromStr;
