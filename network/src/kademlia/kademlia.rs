@@ -48,6 +48,15 @@ impl Kademlia {
         Self::new(localhost, None, None, None)
     }
 
+    fn add_contact(&mut self, contact: Contact) -> bool {
+        if let Some(head) = self.table.add_contact(contact)
+                .map(|head| head.clone()) {
+            self.add_contact_to_be_verified(head)
+        } else {
+            false
+        }
+    }
+
     fn add_contact_to_be_verified(&mut self, contact: Contact) -> bool {
         if self.to_be_verified.contains(&contact) {
             false
@@ -92,6 +101,12 @@ mod tests {
             0000000000000000\
             0000000000000000\
             0000000000000001";
+
+    const ID4: &str = "0000000000000000000000000000000000000000000000000000000000000000\
+            0000000000000000000000000000000000000000000000000000000000000004";
+
+    const ID5: &str = "0000000000000000000000000000000000000000000000000000000000000000\
+            0000000000000000000000000000000000000000000000000000000000000005";
 
     #[test]
     fn test_default_alpha() {
@@ -173,5 +188,21 @@ mod tests {
 
         assert!(kademlia.pop_contact_to_be_verified().is_none());
         assert_eq!(0, kademlia.to_be_verified.len());
+    }
+
+    #[test]
+    fn test_add_contact_adds_to_be_verified_when_bucket_is_full() {
+        let mut kademlia = Kademlia::new(Contact::from_hash(ID), None, Some(1), None);
+
+        let contact4 = Contact::from_hash(ID4);
+        let contact5 = Contact::from_hash(ID5);
+
+        assert_eq!(0, kademlia.to_be_verified.len());
+
+        kademlia.add_contact(contact4);
+        assert_eq!(0, kademlia.to_be_verified.len());
+
+        kademlia.add_contact(contact5);
+        assert_eq!(1, kademlia.to_be_verified.len());
     }
 }
