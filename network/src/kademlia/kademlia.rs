@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::collections::VecDeque;
 use super::contact::Contact;
 use super::routing_table::RoutingTable;
 
@@ -26,6 +27,7 @@ pub struct Kademlia {
     k: u8,
     t_refresh: u32,
     table: RoutingTable,
+    to_be_verified: VecDeque<Contact>,
 }
 
 impl Kademlia {
@@ -38,6 +40,7 @@ impl Kademlia {
             k,
             t_refresh,
             table: RoutingTable::new(localhost, k),
+            to_be_verified: VecDeque::new(),
         }
     }
 
@@ -45,6 +48,23 @@ impl Kademlia {
         Self::new(localhost, None, None, None)
     }
 
+    fn add_contact_to_be_verified(&mut self, contact: Contact) -> bool {
+        if self.to_be_verified.contains(&contact) {
+            false
+        } else {
+            self.to_be_verified.push_back(contact);
+            true
+        }
+    }
+
+    fn pop_contact_to_be_verified(&mut self) -> Option<Contact> {
+        while let Some(contact) = self.to_be_verified.pop_front() {
+            if self.table.contains(&contact) {
+                return Some(contact);
+            }
+        }
+        None
+    }
 
     // FIXME: Implement message handler.
 }
@@ -63,6 +83,16 @@ mod tests {
             0000000000000000\
             0000000000000000\
             0000000000000000";
+
+    const ID1: &str = "0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000000\
+            0000000000000001";
+
     #[test]
     fn test_default_alpha() {
         let kademlia = Kademlia::default(Contact::from_hash(ID));
@@ -79,5 +109,69 @@ mod tests {
     fn test_default_t_refresh() {
         let kademlia = Kademlia::default(Contact::from_hash(ID));
         assert_eq!(60_000, kademlia.t_refresh);
+    }
+
+    #[test]
+    fn test_add_contact_to_be_verfied_does_not_add_duplicates() {
+        let mut kademlia = Kademlia::default(Contact::from_hash(ID));
+
+        let new_contact = Contact::from_hash(ID1);
+
+        assert_eq!(0, kademlia.to_be_verified.len());
+
+        assert!(kademlia.add_contact_to_be_verified(new_contact.clone()));
+        assert_eq!(1, kademlia.to_be_verified.len());
+
+        assert!(!kademlia.add_contact_to_be_verified(new_contact.clone()));
+        assert_eq!(1, kademlia.to_be_verified.len());
+    }
+
+    #[test]
+    fn test_pop_contact_to_be_verfied() {
+        let mut kademlia = Kademlia::default(Contact::from_hash(ID));
+
+        let new_contact = Contact::from_hash(ID1);
+
+        assert_eq!(0, kademlia.to_be_verified.len());
+
+        kademlia.table.add_contact(new_contact.clone());
+        assert!(kademlia.add_contact_to_be_verified(new_contact.clone()));
+        assert_eq!(1, kademlia.to_be_verified.len());
+
+        assert_eq!(Some(new_contact), kademlia.pop_contact_to_be_verified());
+        assert_eq!(0, kademlia.to_be_verified.len());
+    }
+
+    #[test]
+    fn test_pop_contact_to_be_verfied_returns_none_when_empty() {
+        let mut kademlia = Kademlia::default(Contact::from_hash(ID));
+
+        let new_contact = Contact::from_hash(ID1);
+
+        assert_eq!(0, kademlia.to_be_verified.len());
+
+        kademlia.table.add_contact(new_contact.clone());
+        assert!(kademlia.add_contact_to_be_verified(new_contact.clone()));
+        assert_eq!(1, kademlia.to_be_verified.len());
+
+        assert_eq!(Some(new_contact), kademlia.pop_contact_to_be_verified());
+        assert_eq!(0, kademlia.to_be_verified.len());
+
+        assert_eq!(None, kademlia.pop_contact_to_be_verified());
+    }
+
+    #[test]
+    fn test_pop_contact_to_be_verfied_skips_the_contact_which_is_not_in_routing_table() {
+        let mut kademlia = Kademlia::default(Contact::from_hash(ID));
+
+        let new_contact = Contact::from_hash(ID1);
+
+        assert_eq!(0, kademlia.to_be_verified.len());
+
+        assert!(kademlia.add_contact_to_be_verified(new_contact.clone()));
+        assert_eq!(1, kademlia.to_be_verified.len());
+
+        assert!(kademlia.pop_contact_to_be_verified().is_none());
+        assert_eq!(0, kademlia.to_be_verified.len());
     }
 }

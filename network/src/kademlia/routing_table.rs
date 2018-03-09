@@ -91,8 +91,7 @@ impl RoutingTable {
         result
     }
 
-    #[cfg(test)]
-    fn contains(&self, contact: &Contact) -> bool {
+    pub fn contains(&self, contact: &Contact) -> bool {
         let index = self.localhost.log2_distance(&contact);
         if index == 0 {
             return false;
@@ -159,7 +158,6 @@ impl Bucket {
         self.contacts.is_empty()
     }
 
-    #[cfg(test)]
     fn contains(&self, contact: &Contact) -> bool {
         self.contacts.contains(contact)
     }
