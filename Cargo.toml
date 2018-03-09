@@ -19,3 +19,13 @@ tokio-core = "0.1.6"
 [[bin]]
 path = "codechain/main.rs"
 name = "codechain"
+
+[workspace]
+members = [
+	"consensus",
+	"crypto",
+	"keys",
+	"logger",
+	"network",
+	"rpc"
+]
