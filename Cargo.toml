@@ -8,12 +8,12 @@ authors = ["CodeChain Team <codechain@kodebox.io>"]
 app_dirs = "^1.1.1"
 clap = { version = "2", features = ["yaml"] }
 codechain-logger = { path = "logger" }
+codechain-rpc = { path = "rpc" }
 futures = "0.1"
 log = "0.4.1"
 env_logger = "0.5.3"
 panic_hook = { path = "util/panic_hook" }
 codechain-network = { path = "network" }
-rpc = { path = "rpc" }
 tokio-core = "0.1.6"
 
 [[bin]]
