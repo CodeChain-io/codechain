@@ -22,6 +22,10 @@ pub enum Network {
 	Testnet,
 }
 
+impl Default for Network {
+	fn default() -> Network { Network::Mainnet }
+}
+
 impl Decodable for Network {
 	fn decode(d: &UntrustedRlp) -> Result<Self, DecoderError> {
 		let network: u8 = d.as_val()?;
