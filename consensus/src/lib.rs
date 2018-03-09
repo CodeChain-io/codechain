@@ -17,9 +17,9 @@
 extern crate codechain_bytes as bytes;
 extern crate codechain_crypto;
 extern crate codechain_io as io;
+extern crate codechain_keys as keys;
 extern crate codechain_types;
 extern crate heapsize;
-extern crate keys;
 extern crate parking_lot;
 extern crate time;
 extern crate rlp;

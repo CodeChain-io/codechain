@@ -5,12 +5,12 @@ authors = ["CodeChain Team <codechain@kodebox.io>"]
 
 [dependencies]
 codechain-bytes = { path = "../util/bytes" }
-codechain-io = { path = "../util/io" }
-codechain-types = { path = "../primitives/codechain-types" }
 codechain-crypto = { path = "../crypto" }
+codechain-io = { path = "../util/io" }
+codechain-keys = { path="../keys" }
+codechain-types = { path = "../primitives/codechain-types" }
 heapsize = "0.4"
 log = "0.3"
-keys = { path="../keys" }
 parking_lot = "0.5"
 time = "0.1"
 rlp = { path = "../util/rlp" }
