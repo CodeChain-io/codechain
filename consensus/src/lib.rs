@@ -33,6 +33,7 @@ mod engine;
 mod error;
 mod header;
 mod machine;
+mod solo;
 mod tendermint;
 mod transaction;
 mod transition;
