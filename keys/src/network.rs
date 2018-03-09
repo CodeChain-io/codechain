@@ -18,28 +18,28 @@ use rlp::{UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Network {
-	Mainnet,
-	Testnet,
+    Mainnet,
+    Testnet,
 }
 
 impl Default for Network {
-	fn default() -> Network { Network::Mainnet }
+    fn default() -> Network { Network::Mainnet }
 }
 
 impl Decodable for Network {
-	fn decode(d: &UntrustedRlp) -> Result<Self, DecoderError> {
-		let network: u8 = d.as_val()?;
-		match network {
-			0 => Ok(Network::Mainnet),
-			1 => Ok(Network::Testnet),
-			_ => Err(DecoderError::Custom("Unknown network"))
-		}
-	}
+    fn decode(d: &UntrustedRlp) -> Result<Self, DecoderError> {
+        let network: u8 = d.as_val()?;
+        match network {
+            0 => Ok(Network::Mainnet),
+            1 => Ok(Network::Testnet),
+            _ => Err(DecoderError::Custom("Unknown network"))
+        }
+    }
 }
 
 impl Encodable for Network {
-	fn rlp_append(&self, s: &mut RlpStream) {
-		s.append(&(*self as u8));
-	}
+    fn rlp_append(&self, s: &mut RlpStream) {
+        s.append(&(*self as u8));
+    }
 }
 

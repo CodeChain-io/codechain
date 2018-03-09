@@ -25,86 +25,86 @@ use {AccountId, Address, Error, Network, Signature, Message, SECP256K1};
 /// Secret public key
 #[derive(Clone)]
 pub enum Public {
-	/// Normal version of public key
-	Normal(H520),
-	/// Compressed version of public key
-	Compressed(H264),
+    /// Normal version of public key
+    Normal(H520),
+    /// Compressed version of public key
+    Compressed(H264),
 }
 
 impl Public {
-	pub fn from_slice(data: &[u8]) -> Result<Self, Error> {
-		match data.len() {
-			33 => {
-				let mut public = H264::default();
-				public.copy_from_slice(data);
-				Ok(Public::Compressed(public))
-			},
-			65 => {
-				let mut public = H520::default();
-				public.copy_from_slice(data);
-				Ok(Public::Normal(public))
-			},
-			_ => Err(Error::InvalidPublic)
-		}
-	}
+    pub fn from_slice(data: &[u8]) -> Result<Self, Error> {
+        match data.len() {
+            33 => {
+                let mut public = H264::default();
+                public.copy_from_slice(data);
+                Ok(Public::Compressed(public))
+            },
+            65 => {
+                let mut public = H520::default();
+                public.copy_from_slice(data);
+                Ok(Public::Normal(public))
+            },
+            _ => Err(Error::InvalidPublic)
+        }
+    }
 
-	pub fn verify(&self, signature: &Signature, message: &Message) -> Result<bool, Error> {
-		let context = &SECP256K1;
-		let rsig = RecoverableSignature::from_compact(context, &signature[0..64], RecoveryId::from_i32(signature[64] as i32)?)?;
-		let sig = rsig.to_standard(context);
+    pub fn verify(&self, signature: &Signature, message: &Message) -> Result<bool, Error> {
+        let context = &SECP256K1;
+        let rsig = RecoverableSignature::from_compact(context, &signature[0..64], RecoveryId::from_i32(signature[64] as i32)?)?;
+        let sig = rsig.to_standard(context);
 
-		let publ = PublicKey::from_slice(context, self)?;
-		match context.verify(&SecpMessage::from_slice(&message[..])?, &sig, &publ) {
-			Ok(_) => Ok(true),
-			Err(SecpError::IncorrectSignature) => Ok(false),
-			Err(x) => Err(Error::from(x))
-		}
-	}
+        let publ = PublicKey::from_slice(context, self)?;
+        match context.verify(&SecpMessage::from_slice(&message[..])?, &sig, &publ) {
+            Ok(_) => Ok(true),
+            Err(SecpError::IncorrectSignature) => Ok(false),
+            Err(x) => Err(Error::from(x))
+        }
+    }
 
-	pub fn account_id(&self) -> AccountId {
-		ripemd160(blake256(self.as_ref()))
-	}
+    pub fn account_id(&self) -> AccountId {
+        ripemd160(blake256(self.as_ref()))
+    }
 
-	pub fn address(&self, network: Network) -> Address {
-		Address {
-			network,
-			account_id: self.account_id()
-		}
-	}
+    pub fn address(&self, network: Network) -> Address {
+        Address {
+            network,
+            account_id: self.account_id()
+        }
+    }
 }
 
 impl ops::Deref for Public {
-	type Target = [u8];
+    type Target = [u8];
 
-	fn deref(&self) -> &Self::Target {
-		match *self {
-			Public::Normal(ref hash) => &**hash,
-			Public::Compressed(ref hash) => &**hash,
-		}
-	}
+    fn deref(&self) -> &Self::Target {
+        match *self {
+            Public::Normal(ref hash) => &**hash,
+            Public::Compressed(ref hash) => &**hash,
+        }
+    }
 }
 
 impl PartialEq for Public {
-	fn eq(&self, other: &Self) -> bool {
-		let s_slice: &[u8] = self;
-		let o_slice: &[u8] = other;
-		s_slice == o_slice
-	}
+    fn eq(&self, other: &Self) -> bool {
+        let s_slice: &[u8] = self;
+        let o_slice: &[u8] = other;
+        s_slice == o_slice
+    }
 }
 
 impl Eq for Public {}
 
 impl fmt::Debug for Public {
-	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		match *self {
-			Public::Normal(ref hash) => writeln!(f, "normal: {}", hash.to_hex()),
-			Public::Compressed(ref hash) => writeln!(f, "compressed: {}", hash.to_hex()),
-		}
-	}
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            Public::Normal(ref hash) => writeln!(f, "normal: {}", hash.to_hex()),
+            Public::Compressed(ref hash) => writeln!(f, "compressed: {}", hash.to_hex()),
+        }
+    }
 }
 
 impl fmt::Display for Public {
-	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		self.to_hex().fmt(f)
-	}
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.to_hex().fmt(f)
+    }
 }
