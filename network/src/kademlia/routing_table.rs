@@ -1,4 +1,5 @@
 use kademlia::contact::Contact;
+use std::cmp;
 use std::collections::{ BTreeSet, HashMap, VecDeque };
 use super::NodeId;
 
@@ -16,6 +17,10 @@ impl RoutingTable {
             buckets: HashMap::with_capacity(CAPACITY),
             bucket_size,
         }
+    }
+
+    pub fn localhost(&self) -> NodeId {
+        self.localhost
     }
 
     pub fn add_contact(&mut self, contact: Contact) -> Option<&Contact> {
@@ -50,14 +55,14 @@ impl RoutingTable {
             });
     }
 
-    pub fn get_closest_contacts(&self, target: &NodeId) -> Vec<Contact> {
+    pub fn get_closest_contacts(&self, target: &NodeId, result_limit: u8) -> Vec<Contact> {
         if target == &self.localhost {
             return vec![];
         }
 
         let contacts = self.get_contacts_in_distance_order(target);
         contacts.into_iter()
-            .take(self.bucket_size as usize)
+            .take(cmp::min(result_limit, self.bucket_size) as usize)
             .map(|item| {
                 debug_assert_ne!(target, &item.contact.id());
                 debug_assert_ne!(self.localhost, item.contact.id());
@@ -273,7 +278,7 @@ mod tests {
         const BUCKET_SIZE: u8 = 5;
         let routing_table = init_routing_table(BUCKET_SIZE, 0);
 
-        let closest_contacts = routing_table.get_closest_contacts(&get_contact(4).id());
+        let closest_contacts = routing_table.get_closest_contacts(&get_contact(4).id(), BUCKET_SIZE);
         assert!(closest_contacts.len() <= (BUCKET_SIZE as usize));
     }
 
@@ -282,7 +287,7 @@ mod tests {
         const BUCKET_SIZE: u8 = 5;
         let routing_table = init_routing_table(BUCKET_SIZE, 0);
 
-        let closest_contacts = routing_table.get_closest_contacts(&get_contact(4).id());
+        let closest_contacts = routing_table.get_closest_contacts(&get_contact(4).id(), BUCKET_SIZE);
         assert_eq!(BUCKET_SIZE as usize, closest_contacts.len());
         assert_eq!(get_contact(5), closest_contacts[0]);
         assert_eq!(get_contact(6), closest_contacts[1]);
@@ -296,7 +301,7 @@ mod tests {
         const BUCKET_SIZE: u8 = 5;
         let routing_table = init_routing_table(BUCKET_SIZE, 0);
 
-        let closest_contacts = routing_table.get_closest_contacts(&get_contact(3).id());
+        let closest_contacts = routing_table.get_closest_contacts(&get_contact(3).id(), BUCKET_SIZE);
         assert_eq!(BUCKET_SIZE as usize, closest_contacts.len());
         assert_eq!(get_contact(2), closest_contacts[0]);
         assert_eq!(get_contact(1), closest_contacts[1]);
@@ -313,7 +318,7 @@ mod tests {
         let routing_table = init_routing_table(bucket_size, 0);
 
         const TARGET_INDEX: usize = 3;
-        let closest_contacts = routing_table.get_closest_contacts(&get_contact(TARGET_INDEX).id());
+        let closest_contacts = routing_table.get_closest_contacts(&get_contact(TARGET_INDEX).id(), bucket_size);
         assert!(!closest_contacts.contains(&get_contact(TARGET_INDEX)));
         assert!(2 <= IDS.len());
         let number_of_contacts_except_localhost = IDS.len() - 1;
@@ -330,7 +335,7 @@ mod tests {
 
         let new_contact = get_contact_with_address(4, 127, 0, 0, 1, 3485);
         routing_table.add_contact(new_contact.clone());
-        let closest_contacts = routing_table.get_closest_contacts(&new_contact.id());
+        let closest_contacts = routing_table.get_closest_contacts(&new_contact.id(), bucket_size);
         assert!(!closest_contacts.contains(&new_contact));
     }
 
@@ -345,8 +350,34 @@ mod tests {
         routing_table.remove_contact(&get_contact(KILLED_INDEX));
 
         const TARGET_INDEX: usize = 5;
-        let closest_contacts = routing_table.get_closest_contacts(&get_contact(TARGET_INDEX).id());
+        let closest_contacts = routing_table.get_closest_contacts(&get_contact(TARGET_INDEX).id(), bucket_size);
         assert!(!closest_contacts.contains(&get_contact(KILLED_INDEX)));
+    }
+
+    #[test]
+    fn test_closest_contacts_takes_the_limit() {
+        use std::u8;
+        debug_assert!(IDS.len() <= (u8::MAX as usize));
+        let bucket_size = IDS.len() as u8;
+        let routing_table = init_routing_table(bucket_size, 0);
+
+        const TARGET_INDEX: usize = 5;
+
+        const RESULT_LIMIT3: u8 = 3;
+        let closest_contacts = routing_table.get_closest_contacts(&get_contact(TARGET_INDEX).id(), RESULT_LIMIT3);
+        assert_eq!(RESULT_LIMIT3 as usize, closest_contacts.len());
+
+        const RESULT_LIMIT2: u8 = 2;
+        let closest_contacts = routing_table.get_closest_contacts(&get_contact(TARGET_INDEX).id(), RESULT_LIMIT2);
+        assert_eq!(RESULT_LIMIT2 as usize, closest_contacts.len());
+
+        const RESULT_LIMIT7: u8 = 7;
+        let closest_contacts = routing_table.get_closest_contacts(&get_contact(TARGET_INDEX).id(), RESULT_LIMIT7);
+        assert_eq!(RESULT_LIMIT7 as usize, closest_contacts.len());
+
+        const RESULT_LIMIT5: u8 = 5;
+        let closest_contacts = routing_table.get_closest_contacts(&get_contact(TARGET_INDEX).id(), RESULT_LIMIT5);
+        assert_eq!(RESULT_LIMIT5 as usize, closest_contacts.len());
     }
 
     #[test]
