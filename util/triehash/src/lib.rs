@@ -19,13 +19,13 @@
 //! This module should be used to generate trie root hash.
 
 extern crate codechain_types;
-extern crate keccak_hash as hash;
+extern crate codechain_crypto;
 extern crate rlp;
 
 use std::collections::BTreeMap;
 use std::cmp;
 use codechain_types::H256;
-use hash::keccak;
+use codechain_crypto::blake256;
 use rlp::RlpStream;
 
 fn shared_prefix_len<T: Eq>(first: &[T], second: &[T]) -> usize {
@@ -41,7 +41,7 @@ fn shared_prefix_len<T: Eq>(first: &[T], second: &[T]) -> usize {
 ///
 /// fn main() {
 /// 	let v = vec![From::from("doe"), From::from("reindeer")];
-/// 	let root = "e766d5d51b89dc39d981b41bda63248d7abce4f0225eefd023792a540bcffee3";
+/// 	let root = "ac57bd4773cb143f3d553d4bd887170a6f18a6e6bd39957b97c35f47db0fe90a";
 /// 	assert_eq!(ordered_trie_root(v), root.parse().unwrap());
 /// }
 /// ```
@@ -76,7 +76,7 @@ pub fn ordered_trie_root<I>(input: I) -> H256
 /// 		(From::from("dogglesworth"), From::from("cat")),
 /// 	];
 ///
-/// 	let root = "8aad789dff2f538bca5d8ea56e8abe10f4c7ba3a5dea95fea4cd6e7c3a1168d3";
+/// 	let root = "6ca394ff9b13d6690a51dea30b1b5c43108e52944d30b9095227c49bae03ff8b";
 /// 	assert_eq!(trie_root(v), root.parse().unwrap());
 /// }
 /// ```
@@ -108,7 +108,7 @@ pub fn trie_root<I>(input: I) -> H256
 /// 		(From::from("dogglesworth"), From::from("cat")),
 /// 	];
 ///
-/// 	let root = "d4cd937e4a4368d7931a9cf51686b7e10abb3dce38a39000fd7902a092b64585";
+/// 	let root = "9816e53f2e3960e056094915e839c355474f82329af2ef731dce76edc3dbfff5";
 /// 	assert_eq!(sec_trie_root(v), root.parse().unwrap());
 /// }
 /// ```
@@ -116,7 +116,7 @@ pub fn sec_trie_root(input: Vec<(Vec<u8>, Vec<u8>)>) -> H256 {
 	let gen_input = input
 		// first put elements into btree to sort them and to remove duplicates
 		.into_iter()
-		.map(|(k, v)| (keccak(k), v))
+		.map(|(k, v)| (blake256(k), v))
 		.collect::<BTreeMap<_, _>>()
 		// then move them to a vector
 		.into_iter()
@@ -129,7 +129,7 @@ pub fn sec_trie_root(input: Vec<(Vec<u8>, Vec<u8>)>) -> H256 {
 fn gen_trie_root(input: Vec<(Vec<u8>, Vec<u8>)>) -> H256 {
 	let mut stream = RlpStream::new();
 	hash256rlp(&input, 0, &mut stream);
-	keccak(stream.out())
+	blake256(stream.out())
 }
 
 /// Hex-prefix Notation. First nibble has flags: oddness = 2^0 & termination = 2^1.
@@ -272,7 +272,7 @@ fn hash256aux(input: &[(Vec<u8>, Vec<u8>)], pre_len: usize, stream: &mut RlpStre
 	let out = s.out();
 	match out.len() {
 		0...31 => stream.append_raw(&out, 1),
-		_ => stream.append(&keccak(out))
+		_ => stream.append(&blake256(out))
 	};
 }
 
@@ -331,7 +331,7 @@ mod tests {
 	fn simple_test() {
 		assert_eq!(trie_root(vec![
 			(b"A".to_vec(), b"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".to_vec())
-		]), "d23786fb4a010da3ce639d66d5e904a11dbc02746d1ce25029e53290cabf28ab".parse().unwrap());
+		]), "e9d7f23f40cd82fe35f5a7a6778c3503f775f3623ba7a71fb335f0eee29dac8a".parse().unwrap());
 	}
 
 	#[test]
