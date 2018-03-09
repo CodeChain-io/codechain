@@ -19,7 +19,11 @@ mod kademlia;
 mod routing_table;
 
 
-pub use self::kademlia::Kademlia;
+use codechain_types::Public;
+use self::kademlia::Kademlia;
+
+
+pub type NodeId = Public;
 
 
 const ALPHA: u8 = 3;
