@@ -14,3 +14,4 @@ eth-secp256k1 = { git = "https://github.com/ethcore/rust-secp256k1" }
 codechain-crypto = { path = "../crypto" }
 codechain-bytes = { path = "../util/bytes" }
 codechain-types = { path = "../primitives/codechain-types" }
+rlp = { path = "../util/rlp" }
