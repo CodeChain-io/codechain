@@ -16,9 +16,18 @@
 
 use std::ops::Deref;
 use codechain_crypto::blake256;
-use codechain_types::{H256, U256};
+use codechain_types::{H160, H256, U256};
+use keys::{self, Private, Signature, Public, Address, Network};
 use super::Bytes;
 use rlp::{self, UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
+
+/// Fake address for unsigned transactions.
+fn unsigned_sender(network: Network) -> Address {
+    Address {
+        network,
+        account_id: H160([0xff; 20]),
+    }
+}
 
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct Transaction {
@@ -26,16 +35,19 @@ pub struct Transaction {
     pub nonce: U256,
     /// Transaction data.
     pub data: Bytes,
+    /// Mainnet or Testnet
+    network: Network,
 }
 
 impl Decodable for Transaction {
     fn decode(d: &UntrustedRlp) -> Result<Self, DecoderError> {
-        if d.item_count()? != 2 {
+        if d.item_count()? != 3 {
             return Err(DecoderError::RlpIncorrectListLen);
         }
         Ok(Transaction {
                 nonce: d.val_at(0)?,
                 data: d.val_at(1)?,
+                network: d.val_at(2)?,
         })
     }
 }
@@ -43,9 +55,10 @@ impl Decodable for Transaction {
 impl Transaction {
     /// Append object with a without signature into RLP stream
     pub fn rlp_append_unsigned_transaction(&self, s: &mut RlpStream) {
-        s.begin_list(2);
+        s.begin_list(3);
         s.append(&self.nonce);
         s.append(&self.data);
+        s.append(&self.network);
     }
 
     /// The message hash of the transaction.
@@ -53,6 +66,25 @@ impl Transaction {
         let mut stream = RlpStream::new();
         self.rlp_append_unsigned_transaction(&mut stream);
         blake256(stream.as_raw())
+    }
+
+    /// Signs the transaction as coming from `sender`.
+    pub fn sign(self, private: &Private) -> SignedTransaction {
+        let sig = private.sign(&self.hash())
+            .expect("data is valid and context has signing capabilities; qed");
+        SignedTransaction::new(self.with_signature(sig))
+            .expect("secret is valid so it's recoverable")
+    }
+
+    /// Signs the transaction with signature.
+    pub fn with_signature(self, sig: Signature) -> UnverifiedTransaction {
+        UnverifiedTransaction {
+            unsigned: self,
+            r: sig.r().into(),
+            s: sig.s().into(),
+            v: sig.v() as u64 + 27,
+            hash: 0.into(),
+        }.compute_hash()
     }
 }
 
@@ -82,7 +114,7 @@ impl Deref for UnverifiedTransaction {
 
 impl rlp::Decodable for UnverifiedTransaction {
     fn decode(d: &UntrustedRlp) -> Result<Self, DecoderError> {
-        if d.item_count()? != 5 {
+        if d.item_count()? != 6 {
             return Err(DecoderError::RlpIncorrectListLen);
         }
         let hash = blake256(d.as_raw());
@@ -90,10 +122,11 @@ impl rlp::Decodable for UnverifiedTransaction {
             unsigned: Transaction {
                 nonce: d.val_at(0)?,
                 data: d.val_at(1)?,
+                network: d.val_at(2)?,
             },
-            v: d.val_at(2)?,
-            r: d.val_at(3)?,
-            s: d.val_at(4)?,
+            v: d.val_at(3)?,
+            r: d.val_at(4)?,
+            s: d.val_at(5)?,
             hash,
         })
     }
@@ -134,5 +167,85 @@ impl UnverifiedTransaction {
     /// Get the hash of this header (blake256 of the RLP).
     pub fn hash(&self) -> H256 {
         self.hash
+    }
+
+    /// 0 if `v` would have been 27 under "Electrum" notation, 1 if 28 or 4 if invalid.
+    pub fn standard_v(&self) -> u8 { match self.v { v if v == 27 || v == 28 => ((v - 1) % 2) as u8, _ => 4 } }
+
+    /// Construct a signature object from the sig.
+    pub fn signature(&self) -> Signature {
+        Signature::from_rsv(&self.r.into(), &self.s.into(), self.standard_v())
+    }
+
+    /// Recovers the public key of the sender.
+    pub fn recover_public(&self) -> Result<Public, keys::Error> {
+        Ok(self.signature().recover(&self.unsigned.hash())?)
+    }
+}
+
+/// A `UnverifiedTransaction` with successfully recovered `sender`.
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct SignedTransaction {
+    transaction: UnverifiedTransaction,
+    sender: Address,
+    public: Option<Public>,
+}
+
+impl rlp::Encodable for SignedTransaction {
+    fn rlp_append(&self, s: &mut RlpStream) { self.transaction.rlp_append_sealed_transaction(s) }
+}
+
+impl Deref for SignedTransaction {
+    type Target = UnverifiedTransaction;
+    fn deref(&self) -> &Self::Target {
+        &self.transaction
+    }
+}
+
+impl From<SignedTransaction> for UnverifiedTransaction {
+    fn from(tx: SignedTransaction) -> Self {
+        tx.transaction
+    }
+}
+
+impl SignedTransaction {
+    /// Try to verify transaction and recover sender.
+    pub fn new(transaction: UnverifiedTransaction) -> Result<Self, keys::Error> {
+        let network = transaction.network;
+        if transaction.is_unsigned() {
+            Ok(SignedTransaction {
+                transaction,
+                sender: unsigned_sender(network),
+                public: None,
+            })
+        } else {
+            let public = transaction.recover_public()?;
+            let sender = public.address(network);
+            Ok(SignedTransaction {
+                transaction,
+                sender,
+                public: Some(public),
+            })
+        }
+    }
+
+    /// Returns transaction sender.
+    pub fn sender(&self) -> Address {
+        self.sender.clone()
+    }
+
+    /// Returns a public key of the sender.
+    pub fn public_key(&self) -> Option<Public> {
+        self.public.clone()
+    }
+
+    /// Checks is signature is empty.
+    pub fn is_unsigned(&self) -> bool {
+        self.transaction.is_unsigned()
+    }
+
+    /// Deconstructs this transaction back into `UnverifiedTransaction`
+    pub fn deconstruct(self) -> (UnverifiedTransaction, Address, Option<Public>) {
+        (self.transaction, self.sender, self.public)
     }
 }
