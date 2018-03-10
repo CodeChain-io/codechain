@@ -126,6 +126,10 @@ impl RoutingTable {
             false
         }
     }
+
+    pub fn get_contacts(&self, distance: usize) -> VecDeque<Contact> {
+        self.buckets.get(&distance).map(|bucket| bucket.contacts.clone()).unwrap_or(VecDeque::new())
+    }
 }
 
 
@@ -202,7 +206,7 @@ mod tests {
     use super::RoutingTable;
     use super::super::contact::Contact;
 
-    const IDS: [&str; 16] = [
+    const IDS: [&str; 18] = [
         "0000000000000000000000000000000000000000000000000000000000000000\
         0000000000000000000000000000000000000000000000000000000000000000",
 
@@ -250,6 +254,12 @@ mod tests {
 
         "0000000000000000000000000000000000000000000000000000000000000000\
         000000000000000000000000000000000000000000000000000000000000000f",
+
+        "0000000000000000000000000000000000000000000000000000000000000000\
+        0000000000000000000000000000000000000000000000000000000000000010",
+
+        "0000000000000000000000000000000000000000000000000000000000000000\
+        0000000000000000000000000000000000000000000000000000000000000011",
     ];
 
     fn get_contact(distance_from_zero: usize) -> Contact {
@@ -400,5 +410,17 @@ mod tests {
 
         let new_contact = get_contact(4);
         assert!(!routing_table.conflicts(&new_contact));
+    }
+
+    #[test]
+    fn test_get_contacts() {
+        const BUCKET_SIZE: u8 = 5;
+        let routing_table = init_routing_table(BUCKET_SIZE, 0);
+
+        assert_eq!(1, routing_table.get_contacts(1).len());
+        assert_eq!(2, routing_table.get_contacts(2).len());
+        assert_eq!(4, routing_table.get_contacts(3).len());
+        assert_eq!(8, routing_table.get_contacts(4).len());
+        assert_eq!(2, routing_table.get_contacts(5).len());
     }
 }
