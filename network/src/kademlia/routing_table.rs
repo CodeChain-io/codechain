@@ -47,14 +47,6 @@ impl RoutingTable {
         self.buckets.entry(index).or_insert(Bucket::new(self.bucket_size))
     }
 
-    fn remove_bucket(&mut self, index: usize) {
-        self.buckets.get(&index)
-            .map(|bucket| bucket.is_empty())
-            .map(|is_empty| if is_empty {
-                self.buckets.remove(&index);
-            });
-    }
-
     pub fn get_closest_contacts(&self, target: &NodeId, result_limit: u8) -> Vec<Contact> {
         if target == &self.localhost {
             return vec![];
@@ -127,8 +119,19 @@ impl RoutingTable {
         }
     }
 
-    pub fn get_contacts(&self, distance: usize) -> VecDeque<Contact> {
-        self.buckets.get(&distance).map(|bucket| bucket.contacts.clone()).unwrap_or(VecDeque::new())
+    pub fn cleanup(&mut self) {
+        self.buckets.retain(|_, bucket| !bucket.is_empty());
+    }
+
+    pub fn distances(&self) -> Vec<usize> {
+        if self.buckets.len() == 0 {
+            return vec![]
+        }
+        self.buckets.keys().map(|distance| distance.clone()).collect()
+    }
+
+    pub fn get_contacts_with_distance(&self, distance: usize) -> Vec<Contact> {
+        self.buckets.get(&distance).map(|bucket| Vec::from(bucket.contacts.clone())).unwrap_or(vec![])
     }
 }
 
@@ -413,14 +416,14 @@ mod tests {
     }
 
     #[test]
-    fn test_get_contacts() {
+    fn test_get_contacts_with_distance() {
         const BUCKET_SIZE: u8 = 5;
         let routing_table = init_routing_table(BUCKET_SIZE, 0);
 
-        assert_eq!(1, routing_table.get_contacts(1).len());
-        assert_eq!(2, routing_table.get_contacts(2).len());
-        assert_eq!(4, routing_table.get_contacts(3).len());
-        assert_eq!(8, routing_table.get_contacts(4).len());
-        assert_eq!(2, routing_table.get_contacts(5).len());
+        assert_eq!(1, routing_table.get_contacts_with_distance(1).len());
+        assert_eq!(2, routing_table.get_contacts_with_distance(2).len());
+        assert_eq!(4, routing_table.get_contacts_with_distance(3).len());
+        assert_eq!(8, routing_table.get_contacts_with_distance(4).len());
+        assert_eq!(2, routing_table.get_contacts_with_distance(5).len());
     }
 }
