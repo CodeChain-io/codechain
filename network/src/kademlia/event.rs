@@ -14,21 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod command;
-mod contact;
-mod event;
-mod kademlia;
-mod message;
-mod routing_table;
+use super::command::Command;
+use super::message::Message;
+use super::super::Address;
 
-
-use codechain_types::Public;
-pub use self::kademlia::Kademlia;
-
-
-pub type NodeId = Public;
-
-const ALPHA: u8 = 3;
-const B: usize = 64 * 8;
-const K: u8 = 16;
-const T_REFRESH: u32 = 60_000;
+pub enum Event {
+    Message { message: Message, sender: Address },
+    Command { command: Command },
+}
