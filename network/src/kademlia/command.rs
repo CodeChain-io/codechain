@@ -19,5 +19,6 @@ use super::super::address::Address;
 
 pub enum Command {
     Verify,
+    Refresh,
     Send { message: Message, target: Address },
 }

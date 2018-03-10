@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+extern crate rand;
+
 use std::collections::VecDeque;
 use std::vec::Vec;
 use super::ALPHA;
@@ -156,9 +158,24 @@ impl Kademlia {
         None
     }
 
+    fn handle_refresh_command(&mut self) -> Option<Command> {
+        self.table.cleanup();
+        let distances = self.table.distances();
+        let index = rand::random::<usize>() % distances.len();
+
+        if let Some(distance) = distances.get(index) {
+            for contact in self.table.get_contacts_with_distance(*distance) {
+                self.add_contact_to_be_verified(contact);
+            }
+        }
+
+        Some(Command::Verify)
+    }
+
     fn handle_command(&mut self, command: &Command) -> Option<Command> {
         match command {
             &Command::Verify => self.handle_verify_command(),
+            &Command::Refresh => self.handle_refresh_command(),
             &Command::Send { ref message, ref target } => self.handle_send_command(&message, &target),
         }
     }
