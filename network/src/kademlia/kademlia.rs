@@ -22,6 +22,7 @@ use super::NodeId;
 use super::T_REFRESH;
 use super::command::Command;
 use super::contact::Contact;
+use super::event::Event;
 use super::message::Id as MessageId;
 use super::message::Message;
 use super::node_id::log2_distance_between_nodes;
@@ -34,6 +35,7 @@ pub struct Kademlia {
     t_refresh: u32,
     table: RoutingTable,
     to_be_verified: VecDeque<Contact>,
+    events: VecDeque<Event>,
 }
 
 impl Kademlia {
@@ -47,6 +49,7 @@ impl Kademlia {
             t_refresh,
             table: RoutingTable::new(localhost, k),
             to_be_verified: VecDeque::new(),
+            events: VecDeque::new(),
         }
     }
 
@@ -157,6 +160,13 @@ impl Kademlia {
         match command {
             &Command::Verify => self.handle_verify_command(),
             &Command::Send { ref message, ref target } => self.handle_send_command(&message, &target),
+        }
+    }
+
+    pub fn handle_event(&mut self, event: &Event) -> Option<Command> {
+        match event {
+            &Event::Message { ref message, ref sender } => self.handle_message(message, sender),
+            &Event::Command { ref command } => self.handle_command(command),
         }
     }
 }
