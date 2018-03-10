@@ -136,6 +136,29 @@ impl Kademlia {
             &Message::Nodes{ref contacts, sender, ..} => self.handle_nodes_message(sender, contacts),
         }
     }
+
+
+    fn handle_verify_command(&mut self) -> Option<Command> {
+        if let Some(contact) = self.pop_contact_to_be_verified() {
+            let message = Message::Ping { id: 0, sender: contact.id() };
+            contact.addr().clone()
+                .map(|target| Command::Send { message, target })
+        } else {
+            None
+        }
+    }
+
+    fn handle_send_command(&mut self, _message: &Message, _target: &Address) -> Option<Command> {
+        // FIXME: implement it
+        None
+    }
+
+    fn handle_command(&mut self, command: &Command) -> Option<Command> {
+        match command {
+            &Command::Verify => self.handle_verify_command(),
+            &Command::Send { ref message, ref target } => self.handle_send_command(&message, &target),
+        }
+    }
 }
 
 
