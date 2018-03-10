@@ -15,13 +15,18 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::collections::VecDeque;
-use super::NodeId;
-use super::contact::Contact;
-use super::routing_table::RoutingTable;
-
+use std::vec::Vec;
 use super::ALPHA;
 use super::K;
+use super::NodeId;
 use super::T_REFRESH;
+use super::command::Command;
+use super::contact::Contact;
+use super::message::Id as MessageId;
+use super::message::Message;
+use super::node_id::log2_distance_between_nodes;
+use super::routing_table::RoutingTable;
+use super::super::Address;
 
 pub struct Kademlia {
     alpha: u8,
@@ -47,6 +52,10 @@ impl Kademlia {
 
     pub fn default(localhost: NodeId) -> Self {
         Self::new(localhost, None, None, None)
+    }
+
+    fn localhost(&self) -> NodeId {
+        self.table.localhost()
     }
 
     fn add_contact(&mut self, contact: Contact) -> bool {
@@ -76,7 +85,57 @@ impl Kademlia {
         None
     }
 
-    // FIXME: Implement message handler.
+
+    fn handle_ping_message(&self, id: MessageId, _sender: NodeId, sender_address: &Address) -> Option<Command> {
+        let message = Message::Pong{ id, sender: self.localhost() };
+        let target = sender_address.clone();
+        Some(Command::Send { message, target })
+    }
+
+    fn handle_pong_message(&self, _id: MessageId) -> Option<Command> {
+        None
+    }
+
+    fn handle_find_node_message(&self, id: MessageId, _sender: NodeId, target: NodeId, bucket_size: u8, sender_address: &Address) -> Option<Command> {
+        let contacts = self.table.get_closest_contacts(&target, bucket_size);
+        let message = Message::Nodes {
+            id,
+            sender: self.localhost(),
+            contacts,
+        };
+        let target = sender_address.clone();
+        Some(Command::Send { message, target })
+    }
+
+    fn handle_nodes_message(&mut self, sender: NodeId, contacts: &Vec<Contact>) -> Option<Command> {
+        let localhost = self.localhost();
+        let distance_to_target = log2_distance_between_nodes(&localhost, &sender);
+        contacts.into_iter()
+            .take(self.k as usize)
+            .filter(|contact| contact.log2_distance(&localhost) <= distance_to_target)
+            .map(|contact| self.add_contact(contact.clone()))
+            .find(|added| *added)
+            .and(Some(Command::Verify))
+    }
+
+    fn handle_message(&mut self, message: &Message, sender_address: &Address) -> Option<Command> {
+        // FIXME : Check validity of response first.
+
+        let sender_contact = Contact::new(message.sender().clone(), Some(sender_address.clone()));
+        if self.table.conflicts(&sender_contact) {
+            // Duplicated id with different address
+            return None
+        }
+
+        self.add_contact(sender_contact);
+
+        match message {
+            &Message::Ping{id, sender} => self.handle_ping_message(id, sender, sender_address),
+            &Message::Pong{id, ..} => self.handle_pong_message(id),
+            &Message::FindNode{id, sender, target, bucket_size} => self.handle_find_node_message(id, sender, target, bucket_size, sender_address),
+            &Message::Nodes{ref contacts, sender, ..} => self.handle_nodes_message(sender, contacts),
+        }
+    }
 }
 
 
