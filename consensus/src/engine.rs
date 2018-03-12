@@ -66,5 +66,18 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
 
     /// Trigger next step of the consensus engine.
     fn step(&self) {}
+
+    /// Block transformation functions, before the transactions.
+    fn on_new_block(
+        &self,
+        _block: &mut M::LiveBlock,
+    ) -> Result<(), M::Error> {
+        Ok(())
+    }
+
+    /// Block transformation functions, after the transactions.
+    fn on_close_block(&self, _block: &mut M::LiveBlock) -> Result<(), M::Error> {
+        Ok(())
+    }
 }
 
