@@ -14,10 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::fmt;
 
 use bytes::Bytes;
 use codechain_types::H256;
-use keys::Signature;
+use keys::{Address, Signature};
 
 use super::epoch::{EpochVerifier, NoOp};
 use super::error::Error;
@@ -151,4 +152,23 @@ pub enum ConstructedVerifier<'a, M: Machine> {
     Unconfirmed(Box<EpochVerifier<M>>, &'a [u8], H256),
     /// Error constructing verifier.
     Err(Error),
+}
+
+/// Voting errors.
+#[derive(Debug)]
+pub enum EngineError {
+    /// Signature or author field does not belong to an authority.
+    NotAuthorized(Address),
+}
+
+
+impl fmt::Display for EngineError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use self::EngineError::*;
+        let msg = match *self {
+            NotAuthorized(ref address) => format!("Signer {} is not authorized.", address),
+        };
+
+        f.write_fmt(format_args!("Engine error ({})", msg))
+    }
 }
