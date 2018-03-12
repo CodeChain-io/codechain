@@ -46,6 +46,7 @@ impl fmt::Display for TransactionError {
 fn unsigned_sender(network: Network) -> Address {
     Address {
         network,
+        version: 0u8,
         account_id: H160([0xff; 20]),
     }
 }

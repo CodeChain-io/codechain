@@ -26,6 +26,8 @@ use codechain_types::H160;
 pub struct Address {
     /// The network of the address.
     pub network: Network,
+    /// The version of the address.
+    pub version: u8,
     /// Public key hash.
     pub account_id: AccountId,
 }
@@ -34,6 +36,7 @@ impl Address {
     pub fn default(network: Network) -> Self {
         Address {
             network,
+            version: 0,
             account_id: Default::default(),
         }
     }
@@ -78,10 +81,13 @@ impl fmt::Display for Address {
         let hrp = match self.network {
             Network::Mainnet => "cc",
             Network::Testnet => "tc",
-        };
+        }.to_string();
+        let mut data = Vec::new();
+        data.push(self.version);
+        data.extend(&self.account_id.to_vec());
         let encode_result = Bech32 {
-            hrp: hrp.to_string(),
-            data: rearrange_bits(&self.account_id.to_vec(), 8, 5),
+            hrp,
+            data: rearrange_bits(&data, 8, 5),
         }.to_string();
         write!(f, "{}", encode_result.unwrap())
     }
@@ -99,13 +105,14 @@ impl FromStr for Address {
         };
         match network {
             Some(network) => {
+                let data = rearrange_bits(&decoded.data, 5, 8);
                 Ok(Address {
                     network,
+                    version: data[0],
                     account_id: {
-                        let vec = rearrange_bits(&decoded.data, 5, 8);
                         let mut arr = [0u8; 20];
                         for i in 0..20 {
-                            arr[i] = vec[i];
+                            arr[i] = data[1 + i];
                         }
                         H160(arr)
                     },
@@ -131,20 +138,22 @@ mod tests {
     fn test_address_to_string() {
         let address = Address {
             network: Network::Mainnet,
+            version: 0,
             account_id: "3f4aa1fedf1f54eeb03b759deadb36676b184911".into(),
         };
 
-        assert_eq!("cc18a92rlklra2wavpmwkw74kekva43sjg3u9ct0x".to_owned(), address.to_string());
+        assert_eq!("cc1qyl54g07mu04fm4s8d6em6kmxenkkxzfzycxqpyt".to_owned(), address.to_string());
     }
 
     #[test]
     fn test_address_from_str() {
         let address = Address {
             network: Network::Mainnet,
+            version: 0,
             account_id: "3f4aa1fedf1f54eeb03b759deadb36676b184911".into(),
         };
 
-        assert_eq!(address, "cc18a92rlklra2wavpmwkw74kekva43sjg3u9ct0x".into());
+        assert_eq!(address, "cc1qyl54g07mu04fm4s8d6em6kmxenkkxzfzycxqpyt".into());
     }
 
     #[test]

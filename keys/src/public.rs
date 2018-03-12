@@ -68,6 +68,7 @@ impl Public {
     pub fn address(&self, network: Network) -> Address {
         Address {
             network,
+            version: 0,
             account_id: self.account_id()
         }
     }
