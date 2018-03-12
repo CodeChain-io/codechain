@@ -63,8 +63,8 @@ impl Kademlia {
         self.table.localhost()
     }
 
-    fn add_contact(&mut self, contact: Contact) -> bool {
-        if let Some(head) = self.table.add_contact(contact)
+    fn touch_contact(&mut self, contact: Contact) -> bool {
+        if let Some(head) = self.table.touch_contact(contact)
                 .map(|head| head.clone()) {
             self.add_contact_to_be_verified(head)
         } else {
@@ -118,7 +118,7 @@ impl Kademlia {
         contacts.into_iter()
             .take(self.k as usize)
             .filter(|contact| contact.log2_distance(&localhost) <= distance_to_target)
-            .map(|contact| self.add_contact(contact.clone()))
+            .map(|contact| self.touch_contact(contact.clone()))
             .find(|added| *added)
             .and(Some(Command::Verify))
     }
@@ -132,7 +132,7 @@ impl Kademlia {
             return None
         }
 
-        self.add_contact(sender_contact);
+        self.touch_contact(sender_contact);
 
         match message {
             &Message::Ping{id, sender} => self.handle_ping_message(id, sender, sender_address),
@@ -264,7 +264,7 @@ mod tests {
 
         assert_eq!(0, kademlia.to_be_verified.len());
 
-        kademlia.table.add_contact(new_contact.clone());
+        kademlia.table.touch_contact(new_contact.clone());
         assert!(kademlia.add_contact_to_be_verified(new_contact.clone()));
         assert_eq!(1, kademlia.to_be_verified.len());
 
@@ -281,7 +281,7 @@ mod tests {
 
         assert_eq!(0, kademlia.to_be_verified.len());
 
-        kademlia.table.add_contact(new_contact.clone());
+        kademlia.table.touch_contact(new_contact.clone());
         assert!(kademlia.add_contact_to_be_verified(new_contact.clone()));
         assert_eq!(1, kademlia.to_be_verified.len());
 
@@ -317,10 +317,10 @@ mod tests {
 
         assert_eq!(0, kademlia.to_be_verified.len());
 
-        kademlia.add_contact(contact4);
+        kademlia.touch_contact(contact4);
         assert_eq!(0, kademlia.to_be_verified.len());
 
-        kademlia.add_contact(contact5);
+        kademlia.touch_contact(contact5);
         assert_eq!(1, kademlia.to_be_verified.len());
     }
 }
