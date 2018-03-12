@@ -196,6 +196,12 @@ pub struct SealedBlock {
 pub trait IsBlock {
     /// Get the `ExecutedBlock` associated with this object.
     fn block(&self) -> &ExecutedBlock;
+
+    /// Get the header associated with this object's block.
+    fn header(&self) -> &Header { &self.block().header }
+
+    /// Get all information on transactions in this block.
+    fn transactions(&self) -> &[SignedTransaction] { &self.block().transactions }
 }
 
 impl<'x> IsBlock for OpenBlock<'x> {
