@@ -64,6 +64,12 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
     /// light clients do not generate seals.
     fn verify_local_seal(&self, header: &M::Header) -> Result<(), M::Error>;
 
+    /// Phase 1 quick block verification. Only does checks that are cheap. Returns either a null `Ok` or a general error detailing the problem with import.
+    fn verify_block_basic(&self, _header: &M::Header) -> Result<(), M::Error> { Ok(()) }
+
+    /// Phase 2 verification. Perform costly checks such as transaction signatures. Returns either a null `Ok` or a general error detailing the problem with import.
+    fn verify_block_unordered(&self, _header: &M::Header) -> Result<(), M::Error> { Ok(()) }
+    
     /// Trigger next step of the consensus engine.
     fn step(&self) {}
 
