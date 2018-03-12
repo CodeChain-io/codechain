@@ -14,18 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#[macro_use]
-extern crate log;
-extern crate mio;
-extern crate parking_lot;
-extern crate rlp;
+mod message;
 
-extern crate codechain_crypto as ccrypto;
-extern crate codechain_io as cio;
-extern crate codechain_types as ctypes;
-
-mod handshake;
-pub mod address;
-pub mod kademlia;
-
-use address::Address;
+use self::message::Message as HandshakeMessage;
