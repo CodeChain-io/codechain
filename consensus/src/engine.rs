@@ -14,8 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+
 use bytes::Bytes;
 use codechain_types::H256;
+use keys::Signature;
 
 use super::epoch::{EpochVerifier, NoOp};
 use super::error::Error;
@@ -119,6 +121,9 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
     fn on_close_block(&self, _block: &mut M::LiveBlock) -> Result<(), M::Error> {
         Ok(())
     }
+
+    /// Sign using the EngineSigner, to be used for consensus tx signing.
+    fn sign(&self, _hash: H256) -> Result<Signature, Error> { unimplemented!() }
 }
 
 /// Results of a query of whether an epoch change occurred at the given block.
