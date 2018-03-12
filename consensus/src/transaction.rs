@@ -14,12 +14,32 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::fmt;
 use std::ops::Deref;
+
 use codechain_crypto::blake256;
 use codechain_types::{H160, H256, U256};
 use keys::{self, Private, Signature, Public, Address, Network};
 use super::Bytes;
 use rlp::{self, UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
+
+#[derive(Debug, PartialEq, Clone)]
+/// Errors concerning transaction processing.
+pub enum TransactionError {
+    /// Transaction is already imported to the queue
+    AlreadyImported,
+}
+
+impl fmt::Display for TransactionError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use self::TransactionError::*;
+        let msg: String = match *self {
+            AlreadyImported => "Already imported".into(),
+        };
+
+        f.write_fmt(format_args!("Transaction error ({})", msg))
+    }
+}
 
 /// Fake address for unsigned transactions.
 fn unsigned_sender(network: Network) -> Address {

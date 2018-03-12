@@ -14,13 +14,33 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::fmt;
+
 use io::IoError;
+use super::transaction::TransactionError;
 
 #[derive(Debug)]
 /// General error type which should be capable of representing all errors in codechain
 pub enum Error {
+    /// Error concerning transaction processing.
+    Transaction(TransactionError),
     /// Io crate error.
     Io(IoError),
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            Error::Io(ref err) => err.fmt(f),
+            Error::Transaction(ref err) => err.fmt(f),
+        }
+    }
+}
+
+impl From<TransactionError> for Error {
+    fn from(err: TransactionError) -> Error {
+        Error::Transaction(err)
+    }
 }
 
 impl From<IoError> for Error {
@@ -28,3 +48,4 @@ impl From<IoError> for Error {
         Error::Io(err)
     }
 }
+
