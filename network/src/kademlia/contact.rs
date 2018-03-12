@@ -21,6 +21,7 @@ extern crate rand;
 #[cfg(test)]
 use std::str::FromStr;
 use super::NodeId;
+use super::node_id::log2_distance_between_nodes;
 use super::super::Address;
 
 
@@ -68,24 +69,7 @@ impl Contact {
     }
 
     pub fn log2_distance(&self, target: &NodeId) -> usize {
-        let distance = &self.id ^ target;
-        const BYTES_SIZE: usize = super::B / 8;
-        debug_assert_eq!(super::B % 8, 0);
-        let mut distance_as_bytes : [u8; BYTES_SIZE] = [0; BYTES_SIZE];
-        distance.copy_to(&mut distance_as_bytes);
-
-        let mut same_prefix_length: usize = 0;
-        const MASKS: [u8; 8] = [0b1000_0000, 0b0100_0000, 0b0010_0000, 0b0001_0000, 0b0000_1000, 0b0000_0100, 0b0000_0010, 0b0000_0001];
-        'outer: for byte in distance_as_bytes.iter() {
-            for mask in MASKS.iter() {
-                if byte & mask != 0 {
-                    break 'outer;
-                }
-                same_prefix_length += 1
-            }
-        }
-
-        return super::B - same_prefix_length;
+        log2_distance_between_nodes(&self.id, target)
     }
 
     pub fn id(&self) -> NodeId {
