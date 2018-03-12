@@ -12,5 +12,6 @@ codechain-types = { path = "../primitives/codechain-types" }
 heapsize = "0.4"
 log = "0.3"
 parking_lot = "0.5"
-time = "0.1"
 rlp = { path = "../util/rlp" }
+time = "0.1"
+triehash = { path = "../util/triehash" }

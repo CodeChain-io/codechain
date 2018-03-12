@@ -20,9 +20,10 @@ extern crate codechain_io as io;
 extern crate codechain_keys as keys;
 extern crate codechain_types;
 extern crate heapsize;
+extern crate rlp;
 extern crate parking_lot;
 extern crate time;
-extern crate rlp;
+extern crate triehash;
 
 #[macro_use]
 extern crate log;
