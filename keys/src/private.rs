@@ -26,7 +26,7 @@ use network::Network;
 use {Secret, DisplayLayout, Error, Message, Signature, SECP256K1};
 
 /// Secret with additional network identifier and format type
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone)]
 pub struct Private {
     /// The network on which this key should be used.
     pub network: Network,
