@@ -19,6 +19,7 @@ use std::fmt;
 use bytes::Bytes;
 use codechain_types::H256;
 use keys::{Address, Signature};
+use rlp::{Encodable, Decodable, DecoderError, RlpStream, UntrustedRlp};
 
 use super::epoch::{EpochVerifier, NoOp};
 use super::error::Error;
@@ -100,6 +101,22 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
         EpochChange::No
     }
 
+    /// Whether a block is the end of an epoch.
+    ///
+    /// This either means that an immediate transition occurs or a block signalling transition
+    /// has reached finality. The `Headers` given are not guaranteed to return any blocks
+    /// from any epoch other than the current.
+    ///
+    /// Return optional transition proof.
+    fn is_epoch_end(
+        &self,
+        _chain_head: &M::Header,
+        _chain: &Headers<M::Header>,
+        _transition_store: &PendingTransitionStore,
+    ) -> Option<Vec<u8>> {
+        None
+    }
+
     /// Create an epoch verifier from validation proof and a flag indicating
     /// whether finality is required.
     fn epoch_verifier<'a>(&self, _header: &M::Header, _proof: &'a [u8]) -> ConstructedVerifier<'a, M> {
@@ -152,6 +169,33 @@ pub enum ConstructedVerifier<'a, M: Machine> {
     Unconfirmed(Box<EpochVerifier<M>>, &'a [u8], H256),
     /// Error constructing verifier.
     Err(Error),
+}
+
+/// Type alias for a function we can get headers by hash through.
+pub type Headers<'a, H> = Fn(H256) -> Option<H> + 'a;
+
+/// Type alias for a function we can query pending transitions by block hash through.
+pub type PendingTransitionStore<'a> = Fn(H256) -> Option<PendingTransition> + 'a;
+
+/// An epoch transition pending a finality proof.
+/// Not all transitions need one.
+pub struct PendingTransition {
+    /// "transition/epoch" proof from the engine.
+    pub proof: Vec<u8>,
+}
+
+impl Encodable for PendingTransition {
+    fn rlp_append(&self, s: &mut RlpStream) {
+        s.append(&self.proof);
+    }
+}
+
+impl Decodable for PendingTransition {
+    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+        Ok(PendingTransition {
+            proof: rlp.as_val()?,
+        })
+    }
 }
 
 /// Voting errors.
