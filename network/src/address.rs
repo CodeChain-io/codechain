@@ -24,7 +24,7 @@ pub struct Address {
 }
 
 impl Address {
-    fn from_socket(addr: SocketAddr) -> Self {
+    pub fn from_socket(addr: SocketAddr) -> Self {
         Address {
             addr,
         }
@@ -48,6 +48,10 @@ impl Address {
 
     pub fn port(&self) -> u16 {
         self.addr.port()
+    }
+
+    pub fn socket(&self) -> &SocketAddr {
+        &self.addr
     }
 }
 
