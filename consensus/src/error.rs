@@ -22,9 +22,31 @@ use keys::{Error as KeyError};
 use super::engine::EngineError;
 use super::transaction::TransactionError;
 
+#[derive(Debug, PartialEq, Clone, Copy, Eq)]
+/// Errors concerning block processing.
+pub enum BlockError {
+    /// Some low-level aspect of the seal is incorrect.
+    InvalidSeal,
+}
+
+impl fmt::Display for BlockError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use self::BlockError::*;
+
+        let msg: String = match *self {
+            InvalidSeal => "Block has invalid seal.".into(),
+        };
+
+        f.write_fmt(format_args!("Block error ({})", msg))
+    }
+}
+
+
 #[derive(Debug)]
 /// General error type which should be capable of representing all errors in codechain
 pub enum Error {
+    /// Error concerning block processing.
+    Block(BlockError),
     /// Error concerning transaction processing.
     Transaction(TransactionError),
     /// Io crate error.
@@ -39,6 +61,7 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             Error::Io(ref err) => err.fmt(f),
+            Error::Block(ref err) => err.fmt(f),
             Error::Transaction(ref err) => err.fmt(f),
             Error::Engine(ref err) => err.fmt(f),
             Error::Key(ref err) => err.fmt(f),
@@ -55,6 +78,12 @@ impl From<TransactionError> for Error {
 impl From<IoError> for Error {
     fn from(err: IoError) -> Error {
         Error::Io(err)
+    }
+}
+
+impl From<BlockError> for Error {
+    fn from(err: BlockError) -> Error {
+        Error::Block(err)
     }
 }
 
