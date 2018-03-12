@@ -38,6 +38,7 @@ mod header;
 mod machine;
 mod signer;
 mod solo;
+mod solo_authority;
 mod tendermint;
 mod transaction;
 mod transition;

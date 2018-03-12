@@ -1,0 +1,224 @@
+// Copyright 2018 Kodebox, Inc.
+// This file is part of CodeChain.
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as
+// published by the Free Software Foundation, either version 3 of the
+// License, or (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+use codechain_types::{H256, H520};
+use keys::{Signature, Network};
+
+use super::block::{ExecutedBlock, IsBlock};
+use super::codechain_machine::CodeChainMachine;
+use super::engine::{ConsensusEngine, EngineError, Seal, ConstructedVerifier};
+use super::error::{BlockError, Error};
+use super::header::Header;
+use super::signer::EngineSigner;
+use super::validator_set::ValidatorSet;
+use super::validator_set::validator_list::ValidatorList;
+
+pub struct SoloAuthority {
+    machine: CodeChainMachine,
+    network: Network,
+    signer: EngineSigner,
+    validators: Box<ValidatorSet>,
+}
+
+impl SoloAuthority {
+    /// Create a new instance of SoloAuthority engine
+    pub fn new(machine: CodeChainMachine, network: Network, signer: EngineSigner, validators: Box<ValidatorSet>) -> Self {
+        SoloAuthority {
+            machine,
+            network,
+            signer,
+            validators,
+        }
+    }
+}
+
+struct EpochVerifier {
+    network: Network,
+    list: ValidatorList,
+}
+
+impl super::epoch::EpochVerifier<CodeChainMachine> for EpochVerifier {
+    fn verify_light(&self, header: &Header) -> Result<(), Error> {
+        verify_external(header, self.network, &self.list)
+    }
+}
+
+fn verify_external(header: &Header, network: Network, validators: &ValidatorSet) -> Result<(), Error> {
+    use rlp::UntrustedRlp;
+
+    // Check if the signature belongs to a validator, can depend on parent state.
+    let sig = Signature(UntrustedRlp::new(&header.seal()[0]).as_val::<H520>()?.into());
+    let public = sig.recover(&header.bare_hash())?;
+    let signer = public.address(network);
+
+    if *header.author() != signer {
+        return Err(EngineError::NotAuthorized(header.author().clone()).into())
+    }
+
+    match validators.contains(header.parent_hash(), &signer) {
+        false => Err(BlockError::InvalidSeal.into()),
+        true => Ok(())
+    }
+}
+
+impl ConsensusEngine<CodeChainMachine> for SoloAuthority {
+    fn name(&self) -> &str { "SoloAuthority" }
+
+    fn machine(&self) -> &CodeChainMachine { &self.machine }
+
+    // One field - the signature
+    fn seal_fields(&self, _header: &Header) -> usize { 1 }
+
+    fn seals_internally(&self) -> Option<bool> { Some(true) }
+
+    /// Attempt to seal the block internally.
+    fn generate_seal(&self, block: &ExecutedBlock, _parent: &Header) -> Seal {
+        let header = block.header();
+        let author = header.author();
+        if self.validators.contains(header.parent_hash(), author) {
+            // account should be permanently unlocked, otherwise sealing will fail
+            if let Ok(signature) = self.sign(header.bare_hash()) {
+                return Seal::Regular(vec![::rlp::encode(&(&H520::from(signature) as &[u8])).into_vec()]);
+            } else {
+                trace!(target: "soloauthority", "generate_seal: FAIL: accounts secret key unavailable");
+            }
+        }
+        Seal::None
+    }
+
+    fn verify_local_seal(&self, _header: &Header) -> Result<(), Error> {
+        Ok(())
+    }
+
+    fn verify_block_external(&self, header: &Header) -> Result<(), Error> {
+        verify_external(header, self.network, &*self.validators)
+    }
+
+    fn genesis_epoch_data(&self, header: &Header) -> Result<Vec<u8>, String> {
+        self.validators.genesis_epoch_data(header)
+    }
+
+    #[cfg(not(test))]
+    fn signals_epoch_end(&self, _header: &Header)
+        -> super::engine::EpochChange
+    {
+        // don't bother signalling even though a contract might try.
+        super::engine::EpochChange::No
+    }
+
+    #[cfg(test)]
+    fn signals_epoch_end(&self, header: &Header)
+        -> super::engine::EpochChange
+    {
+        // in test mode, always signal even though they don't be finalized.
+        let first = header.number() == 0;
+        self.validators.signals_epoch_end(first, header)
+    }
+
+    fn is_epoch_end(
+        &self,
+        chain_head: &Header,
+        _chain: &super::engine::Headers<Header>,
+        _transition_store: &super::engine::PendingTransitionStore,
+    ) -> Option<Vec<u8>> {
+        let first = chain_head.number() == 0;
+
+        // finality never occurs so only apply immediate transitions.
+        self.validators.is_epoch_end(first, chain_head)
+    }
+
+    fn epoch_verifier<'a>(&self, header: &Header, proof: &'a [u8]) -> ConstructedVerifier<'a, CodeChainMachine> {
+        let first = header.number() == 0;
+
+        match self.validators.epoch_set(first, &self.machine, header.number(), proof) {
+            Ok((list, finalize)) => {
+                let verifier = Box::new(EpochVerifier { network: self.network, list });
+
+                // our epoch verifier will ensure no unverified verifier is ever verified.
+                match finalize {
+                    Some(finalize) => ConstructedVerifier::Unconfirmed(verifier, proof, finalize),
+                    None => ConstructedVerifier::Trusted(verifier),
+                }
+            }
+            Err(e) => ConstructedVerifier::Err(e),
+        }
+    }
+
+    fn sign(&self, hash: H256) -> Result<Signature, Error> {
+        self.signer.sign(hash).map_err(Into::into)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use codechain_types::H520;
+    use keys::{Address, Network, Random, Generator};
+
+    use super::SoloAuthority;
+    use super::super::block::{OpenBlock, IsBlock};
+    use super::super::codechain_machine::CodeChainMachine;
+    use super::super::engine::{ConsensusEngine, Seal};
+    use super::super::header::Header;
+    use super::super::signer::EngineSigner;
+    use super::super::validator_set::validator_list::ValidatorList;
+
+    fn new_test_authority() -> SoloAuthority {
+        let machine = CodeChainMachine::new();
+        let random = Random::new(Network::Testnet);
+        let key_pair = random.generate().unwrap();
+        let address = key_pair.public().address(Network::Testnet);
+        let signer = EngineSigner::new(address.clone(), key_pair.private().clone());
+        let validators = Box::new(ValidatorList::new(vec![address.clone()]));
+        SoloAuthority::new(machine, Network::Testnet, signer, validators)
+    }
+
+    fn genesis_header() -> Header {
+        Header::new(Network::Testnet)
+    }
+
+    #[test]
+    fn has_valid_metadata() {
+        let engine = new_test_authority();
+        assert!(!engine.name().is_empty());
+    }
+
+    #[test]
+    fn can_do_signature_verification_fail() {
+        let engine = new_test_authority();
+        let mut header: Header = Header::new(Network::Testnet);
+        header.set_seal(vec![::rlp::encode(&H520::default()).into_vec()]);
+
+        let verify_result = engine.verify_block_external(&header);
+        assert!(verify_result.is_err());
+    }
+
+    #[test]
+    fn can_generate_seal() {
+        let engine = new_test_authority();
+        let genesis_header = genesis_header();
+        let b = OpenBlock::new(&engine, Network::Testnet, &genesis_header, Address::dummy(Network::Testnet), false).unwrap();
+        let b = b.close_and_lock();
+        if let Seal::Regular(seal) = engine.generate_seal(b.block(), &genesis_header) {
+            assert!(b.try_seal(&engine, seal).is_ok());
+        }
+    }
+
+    #[test]
+    fn seals_internally() {
+        let engine = new_test_authority();
+        assert!(engine.seals_internally().unwrap());
+    }
+}

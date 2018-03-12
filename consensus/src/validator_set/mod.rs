@@ -23,7 +23,7 @@ use super::engine::EpochChange;
 use super::error::Error;
 use super::header::{BlockNumber, Header};
 
-mod validator_list;
+pub mod validator_list;
 
 /// A validator set.
 pub trait ValidatorSet: Send + Sync {
