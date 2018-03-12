@@ -1,12 +1,12 @@
 use codechain_types::{H256, Address};
 
-use self::validator_set::ValidatorList;
+use self::validator_list::ValidatorList;
 use super::codechain_machine::CodeChainMachine;
 use super::engine::EpochChange;
 use super::error::Error;
 use super::header::{BlockNumber, Header};
 
-mod validator_set;
+mod validator_list;
 
 /// A validator set.
 pub trait ValidatorSet: Send + Sync {
