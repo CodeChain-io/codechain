@@ -17,9 +17,11 @@
 use std::fmt::Debug;
 use std::collections::{BTreeMap, HashSet, HashMap};
 use std::hash::Hash;
-use codechain_types::{H256, H520, Address};
-use parking_lot:: RwLock;
+
 use bytes::Bytes;
+use codechain_types::{H256, H520};
+use keys::Address;
+use parking_lot:: RwLock;
 use rlp::{Encodable, RlpStream};
 
 pub trait Message: Clone + PartialEq + Eq + Hash + Encodable + Debug {
@@ -67,10 +69,10 @@ impl <M: Message> StepCollector<M> {
     fn insert(&mut self, message: M, address: Address) -> Option<DoubleVote<M>> {
         // Do nothing when message was seen.
         if self.messages.insert(message.clone()) {
-            if let Some(previous) = self.voted.insert(address, message.clone()) {
+            if let Some(previous) = self.voted.insert(address.clone(), message.clone()) {
                 // Bad validator sent a different message.
                 return Some(DoubleVote {
-                    author: address,
+                    author: address.clone(),
                     vote_one: previous,
                     vote_two: message
                 });

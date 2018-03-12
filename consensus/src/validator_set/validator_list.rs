@@ -16,7 +16,8 @@
 
 use heapsize::HeapSizeOf;
 
-use codechain_types::{Address, H256};
+use codechain_types::H256;
+use keys::Address;
 
 use super::ValidatorSet;
 use super::super::codechain_machine::CodeChainMachine;
@@ -101,14 +102,15 @@ impl ValidatorSet for ValidatorList {
 #[cfg(test)]
 mod tests {
     use std::str::FromStr;
-    use codechain_types::Address;
+    use keys::Address;
+
     use super::super::ValidatorSet;
     use super::ValidatorList;
 
     #[test]
     fn validator_set() {
-        let a1 = Address::from_str("cd1722f3947def4cf144679da39c4c32bdc35681").unwrap();
-        let a2 = Address::from_str("0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6").unwrap();
+        let a1 = Address::from_str("cc1qyl54g07mu04fm4s8d6em6kmxenkkxzfzycxqpyt").unwrap();
+        let a2 = Address::from_str("cc1qp4cdvnnlu60ecvadwqyal668at50tdyagakvm75").unwrap();
         let set = ValidatorList::new(vec![a1.clone(), a2.clone()]);
         assert!(set.contains(&Default::default(), &a1));
         assert_eq!(set.get(&Default::default(), 0), a1);

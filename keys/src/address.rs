@@ -15,12 +15,18 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::cmp;
+use std::hash::{Hash, Hasher};
 use std::fmt;
+use std::mem;
 use std::str::FromStr;
-use network::Network;
-use {Error, AccountId};
+
 use bech32::Bech32;
 use codechain_types::H160;
+use heapsize::HeapSizeOf;
+use rlp::{UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
+
+use network::Network;
+use {Error, AccountId};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Address {
@@ -33,12 +39,50 @@ pub struct Address {
 }
 
 impl Address {
-    pub fn default(network: Network) -> Self {
+    pub fn dummy(network: Network) -> Self {
         Address {
             network,
             version: 0,
             account_id: Default::default(),
         }
+    }
+}
+
+impl Hash for Address {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.network.hash(state);
+        self.version.hash(state);
+        self.account_id.hash(state);
+    }
+}
+
+impl Encodable for Address {
+    fn rlp_append(&self, s: &mut RlpStream) {
+        s.begin_list(3);
+        s.append(&self.network);
+        s.append(&self.version);
+        s.append(&self.account_id);
+    }
+}
+
+impl Decodable for Address {
+    fn decode(d: &UntrustedRlp) -> Result<Self, DecoderError> {
+        if d.item_count()? != 3 {
+            return Err(DecoderError::RlpIncorrectListLen);
+        }
+        Ok(Address {
+            network: d.val_at(0)?,
+            version: d.val_at(1)?,
+            account_id: d.val_at(2)?,
+        })
+    }
+}
+
+impl HeapSizeOf for Address {
+    fn heap_size_of_children(&self) -> usize {
+        mem::size_of::<Network>()
+            + self.version.heap_size_of_children()
+            + self.account_id.heap_size_of_children()
     }
 }
 

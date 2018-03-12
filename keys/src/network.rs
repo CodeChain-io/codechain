@@ -16,7 +16,7 @@
 
 use rlp::{UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub enum Network {
     Mainnet,
     Testnet,

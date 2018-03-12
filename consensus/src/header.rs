@@ -18,8 +18,9 @@ use std::cmp;
 use std::cell::RefCell;
 use time::get_time;
 
-use codechain_types::{H256, U256, Address};
+use codechain_types::{H256, U256};
 use crypto::{blake256, BLAKE_NULL_RLP};
+use keys::{Address, Network};
 use rlp::*;
 
 use super::Bytes;
@@ -60,13 +61,14 @@ pub struct Header {
     bare_hash: RefCell<Option<H256>>,
 }
 
-impl Default for Header {
-    fn default() -> Self {
+impl Header {
+    /// Create a new, default-valued, header.
+    pub fn new(network: Network) -> Self {
         Header {
             parent_hash: H256::default(),
             timestamp: 0,
             number: 0,
-            author: Address::default(),
+            author: Address::dummy(network),
 
             transactions_root: BLAKE_NULL_RLP,
             state_root: BLAKE_NULL_RLP,
@@ -75,13 +77,6 @@ impl Default for Header {
             hash: RefCell::new(None),
             bare_hash: RefCell::new(None),
         }
-    }
-}
-
-impl Header {
-    /// Create a new, default-valued, header.
-    pub fn new() -> Self {
-        Self::default()
     }
 
     /// Get the parent_hash field of the header.

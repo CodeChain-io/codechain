@@ -16,8 +16,9 @@
 
 use std::collections::HashSet;
 
-use codechain_types::{Address, H256};
+use codechain_types::H256;
 use crypto::BLAKE_NULL_RLP;
+use keys::{Address, Network};
 use rlp::{UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
 use triehash::ordered_trie_root;
 
@@ -72,9 +73,9 @@ pub struct ExecutedBlock {
 }
 
 impl ExecutedBlock {
-    fn new() -> ExecutedBlock {
+    fn new(network: Network) -> ExecutedBlock {
         ExecutedBlock {
-            header: Default::default(),
+            header: Header::new(network),
             transactions: Default::default(),
             transactions_set: Default::default(),
         }
@@ -107,13 +108,14 @@ impl<'x> OpenBlock<'x> {
     /// Create a new `OpenBlock` ready for transaction pushing.
     pub fn new(
         engine: &'x ConsensusEngine<CodeChainMachine>,
+        network: Network,
         parent: &Header,
         author: Address,
         is_epoch_begin: bool,
     ) -> Result<Self, Error> {
         let number = parent.number() + 1;
         let mut r = OpenBlock {
-            block: ExecutedBlock::new(),
+            block: ExecutedBlock::new(network),
             engine,
         };
 

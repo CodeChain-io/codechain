@@ -25,6 +25,7 @@ extern crate rustc_hex;
 extern crate rustc_serialize;
 extern crate secp256k1;
 extern crate bech32;
+extern crate heapsize;
 extern crate rlp;
 
 pub mod generator;
