@@ -17,6 +17,8 @@
 use std::fmt;
 
 use io::IoError;
+use keys::{Error as KeyError};
+
 use super::transaction::TransactionError;
 
 #[derive(Debug)]
@@ -26,6 +28,8 @@ pub enum Error {
     Transaction(TransactionError),
     /// Io crate error.
     Io(IoError),
+    /// Key error.
+    Key(KeyError),
 }
 
 impl fmt::Display for Error {
@@ -33,6 +37,7 @@ impl fmt::Display for Error {
         match *self {
             Error::Io(ref err) => err.fmt(f),
             Error::Transaction(ref err) => err.fmt(f),
+            Error::Key(ref err) => err.fmt(f),
         }
     }
 }
@@ -46,6 +51,12 @@ impl From<TransactionError> for Error {
 impl From<IoError> for Error {
     fn from(err: IoError) -> Error {
         Error::Io(err)
+    }
+}
+
+impl From<KeyError> for Error {
+    fn from(err: KeyError) -> Error {
+        Error::Key(err)
     }
 }
 
