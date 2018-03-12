@@ -51,3 +51,29 @@ impl<M: Machine> ConsensusEngine<M> for Solo<M>
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use codechain_types::Address;
+    use codechain_machine::CodeChainMachine;
+
+    use super::super::block::{OpenBlock, IsBlock};
+    use super::super::header::Header;
+    use super::super::engine::{Seal, ConsensusEngine};
+    use super::Solo;
+
+    fn genesis_header() -> Header {
+        Header::default()
+    }
+
+    #[test]
+    fn solo_can_seal() {
+        let machine = CodeChainMachine::new();
+        let engine = Solo::new(machine);
+        let genesis_header = genesis_header();
+        let b = OpenBlock::new(&engine, &genesis_header, Address::default()).unwrap();
+        let b = b.close_and_lock();
+        if let Seal::Regular(seal) = engine.generate_seal(b.block(), &genesis_header) {
+            assert!(b.try_seal(&engine, seal).is_ok());
+        }
+    }
+}
