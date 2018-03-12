@@ -14,9 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::sync::Arc;
-
 use bytes::Bytes;
+use codechain_types::H256;
+
+use super::epoch::{EpochVerifier, NoOp};
+use super::error::Error;
 use super::machine::Machine;
 
 /// Seal type.
@@ -82,6 +84,25 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
     /// Should only be called when `register_client` has been called previously.
     fn verify_block_external(&self, _header: &M::Header) -> Result<(), M::Error> { Ok(()) }
 
+    /// Genesis epoch data.
+    fn genesis_epoch_data<'a>(&self, _header: &M::Header) -> Result<Vec<u8>, String> { Ok(Vec::new()) }
+
+    /// Whether an epoch change is signalled at the given header but will require finality.
+    /// If a change can be enacted immediately then return `No` from this function but
+    /// `Yes` from `is_epoch_end`.
+    ///
+    /// Return `Yes` or `No` when the answer is definitively known.
+    fn signals_epoch_end<'a>(&self, _header: &M::Header)
+        -> EpochChange {
+        EpochChange::No
+    }
+
+    /// Create an epoch verifier from validation proof and a flag indicating
+    /// whether finality is required.
+    fn epoch_verifier<'a>(&self, _header: &M::Header, _proof: &'a [u8]) -> ConstructedVerifier<'a, M> {
+        ConstructedVerifier::Trusted(Box::new(NoOp))
+    }
+
     /// Trigger next step of the consensus engine.
     fn step(&self) {}
 
@@ -89,6 +110,7 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
     fn on_new_block(
         &self,
         _block: &mut M::LiveBlock,
+        _epoch_begin: bool,
     ) -> Result<(), M::Error> {
         Ok(())
     }
@@ -115,3 +137,13 @@ pub enum Proof {
     Known(Vec<u8>)
 }
 
+/// Generated epoch verifier.
+pub enum ConstructedVerifier<'a, M: Machine> {
+    /// Fully trusted verifier.
+    Trusted(Box<EpochVerifier<M>>),
+    /// Verifier unconfirmed. Check whether given finality proof finalizes given hash
+/// under previous epoch.
+    Unconfirmed(Box<EpochVerifier<M>>, &'a [u8], H256),
+    /// Error constructing verifier.
+    Err(Error),
+}

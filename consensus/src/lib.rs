@@ -31,6 +31,7 @@ extern crate log;
 mod block;
 mod codechain_machine;
 mod engine;
+mod epoch;
 mod error;
 mod header;
 mod machine;

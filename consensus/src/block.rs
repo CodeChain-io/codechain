@@ -109,6 +109,7 @@ impl<'x> OpenBlock<'x> {
         engine: &'x ConsensusEngine<CodeChainMachine>,
         parent: &Header,
         author: Address,
+        is_epoch_begin: bool,
     ) -> Result<Self, Error> {
         let number = parent.number() + 1;
         let mut r = OpenBlock {
@@ -122,7 +123,7 @@ impl<'x> OpenBlock<'x> {
         r.block.header.set_timestamp_now(parent.timestamp());
         r.block.header.note_dirty();
 
-        engine.on_new_block(&mut r.block)?;
+        engine.on_new_block(&mut r.block, is_epoch_begin)?;
 
         Ok(r)
     }

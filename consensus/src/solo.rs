@@ -70,7 +70,7 @@ mod tests {
         let machine = CodeChainMachine::new();
         let engine = Solo::new(machine);
         let genesis_header = genesis_header();
-        let b = OpenBlock::new(&engine, &genesis_header, Address::default()).unwrap();
+        let b = OpenBlock::new(&engine, &genesis_header, Address::default(), false).unwrap();
         let b = b.close_and_lock();
         if let Seal::Regular(seal) = engine.generate_seal(b.block(), &genesis_header) {
             assert!(b.try_seal(&engine, seal).is_ok());
