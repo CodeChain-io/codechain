@@ -34,6 +34,7 @@ mod engine;
 mod error;
 mod header;
 mod machine;
+mod signer;
 mod solo;
 mod tendermint;
 mod transaction;
