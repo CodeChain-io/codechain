@@ -22,6 +22,13 @@ use super::block::ExecutedBlock;
 pub struct CodeChainMachine {
 }
 
+impl CodeChainMachine {
+    pub fn new() -> Self {
+        CodeChainMachine {
+        }
+    }
+}
+
 impl ::machine::Machine for CodeChainMachine {
     type Header = Header;
     type LiveBlock = ExecutedBlock;
