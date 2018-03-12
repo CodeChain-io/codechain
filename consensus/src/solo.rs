@@ -53,7 +53,7 @@ impl<M: Machine> ConsensusEngine<M> for Solo<M>
 
 #[cfg(test)]
 mod tests {
-    use codechain_types::Address;
+    use codechain_types::{Address, H520};
     use codechain_machine::CodeChainMachine;
 
     use super::super::block::{OpenBlock, IsBlock};
@@ -75,5 +75,18 @@ mod tests {
         if let Seal::Regular(seal) = engine.generate_seal(b.block(), &genesis_header) {
             assert!(b.try_seal(&engine, seal).is_ok());
         }
+    }
+
+    #[test]
+    fn solo_cant_verify() {
+        let machine = CodeChainMachine::new();
+        let engine = Solo::new(machine);
+        let mut header: Header = Header::default();
+
+        assert!(engine.verify_block_basic(&header).is_ok());
+
+        header.set_seal(vec![::rlp::encode(&H520::default()).into_vec()]);
+
+        assert!(engine.verify_block_unordered(&header).is_ok());
     }
 }
