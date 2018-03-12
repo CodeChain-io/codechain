@@ -131,6 +131,7 @@ impl From<&'static str> for Address {
 
 #[cfg(test)]
 mod tests {
+    use super::rearrange_bits;
     use network::Network;
     use {Address, Message, Generator, Random};
 
@@ -154,6 +155,34 @@ mod tests {
         };
 
         assert_eq!(address, "cc1qyl54g07mu04fm4s8d6em6kmxenkkxzfzycxqpyt".into());
+    }
+
+    #[test]
+    fn test_rearrange_bits_from_8_into_5() {
+        let vec = vec![0b11101110, 0b11101110, 0b11101110, 0b11101110, 0b11101110];
+        let rearranged = rearrange_bits(&vec, 8, 5);
+        assert_eq!(rearranged, vec![0b11101, 0b11011, 0b10111, 0b01110, 0b11101, 0b11011, 0b10111, 0b01110]);
+    }
+
+    #[test]
+    fn test_rearrange_bits_from_5_into_8() {
+        let vec = vec![0b11101, 0b11011, 0b10111, 0b01110, 0b11101, 0b11011, 0b10111, 0b01110];
+        let rearranged = rearrange_bits(&vec, 5, 8);
+        assert_eq!(rearranged, vec![0b11101110, 0b11101110, 0b11101110, 0b11101110, 0b11101110]);
+    }
+
+    #[test]
+    fn test_rearrange_bits_from_8_into_5_padded() {
+        let vec = vec![0b11101110, 0b11101110, 0b11101110];
+        let rearranged = rearrange_bits(&vec, 8, 5);
+        assert_eq!(rearranged, vec![0b11101, 0b11011, 0b10111, 0b01110, 0b11100]);
+    }
+
+    #[test]
+    fn test_rearrange_bits_from_5_into_8_padded() {
+        let vec = vec![0b11101, 0b11011, 0b10111, 0b01110, 0b11101];
+        let rearranged = rearrange_bits(&vec, 5, 8);
+        assert_eq!(rearranged, vec![0b11101110, 0b11101110, 0b11101110, 0b10000000]);
     }
 
     #[test]
