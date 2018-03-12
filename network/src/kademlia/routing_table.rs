@@ -23,14 +23,14 @@ impl RoutingTable {
         self.localhost
     }
 
-    pub fn add_contact(&mut self, contact: Contact) -> Option<&Contact> {
+    pub fn touch_contact(&mut self, contact: Contact) -> Option<&Contact> {
         let index = contact.log2_distance(&self.localhost);
         // FIXME: Decide the maximum distance to contact.
         if index == 0 {
             return None;
         }
         let bucket = self.add_bucket(index);
-        bucket.add_contact(contact)
+        bucket.touch_contact(contact)
     }
 
     pub fn remove_contact(&mut self, contact: &Contact) -> Option<&Contact> {
@@ -149,7 +149,7 @@ impl Bucket {
         }
     }
 
-    pub fn add_contact(&mut self, contact: Contact) -> Option<&Contact> {
+    pub fn touch_contact(&mut self, contact: Contact) -> Option<&Contact> {
         self.remove_contact(&contact);
         if !self.conflicts(&contact) {
             self.contacts.push_back(contact);
@@ -281,7 +281,7 @@ mod tests {
             if i == localhost_index {
                 continue;
             }
-            routing_table.add_contact(get_contact(i));
+            routing_table.touch_contact(get_contact(i));
         }
         routing_table
     }
@@ -347,7 +347,7 @@ mod tests {
         let mut routing_table = init_routing_table(bucket_size, 0);
 
         let new_contact = get_contact_with_address(4, 127, 0, 0, 1, 3485);
-        routing_table.add_contact(new_contact.clone());
+        routing_table.touch_contact(new_contact.clone());
         let closest_contacts = routing_table.get_closest_contacts(&new_contact.id(), bucket_size);
         assert!(!closest_contacts.contains(&new_contact));
     }
