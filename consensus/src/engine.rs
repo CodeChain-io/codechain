@@ -73,6 +73,13 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
     /// Phase 2 verification. Perform costly checks such as transaction signatures. Returns either a null `Ok` or a general error detailing the problem with import.
     fn verify_block_unordered(&self, _header: &M::Header) -> Result<(), M::Error> { Ok(()) }
 
+    /// Phase 3 verification. Check block information against parent. Returns either a null `Ok` or a general error detailing the problem with import.
+    fn verify_block_family(&self, _header: &M::Header, _parent: &M::Header) -> Result<(), M::Error> { Ok(()) }
+
+    /// Phase 4 verification. Verify block header against potentially external data.
+    /// Should only be called when `register_client` has been called previously.
+    fn verify_block_external(&self, _header: &M::Header) -> Result<(), M::Error> { Ok(()) }
+
     /// Trigger next step of the consensus engine.
     fn step(&self) {}
 
