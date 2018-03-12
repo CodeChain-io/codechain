@@ -1,7 +1,12 @@
 use heapsize::HeapSizeOf;
 
 use codechain_types::{Address, H256};
+
 use super::ValidatorSet;
+use super::super::codechain_machine::CodeChainMachine;
+use super::super::engine::EpochChange;
+use super::super::error::Error;
+use super::super::header::{BlockNumber, Header};
 
 /// Validator set containing a known set of addresses.
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
@@ -59,6 +64,21 @@ impl ValidatorSet for ValidatorList {
 
     fn count(&self, _bh: &H256) -> usize {
         self.validators.len()
+    }
+
+    fn is_epoch_end(&self, first: bool, _chain_head: &Header) -> Option<Vec<u8>> {
+        match first {
+            true => Some(Vec::new()), // allow transition to fixed list, and instantly
+            false => None,
+        }
+    }
+
+    fn signals_epoch_end(&self, _: bool, _: &Header) -> EpochChange {
+        EpochChange::No
+    }
+
+    fn epoch_set(&self, _first: bool, _: &CodeChainMachine, _: BlockNumber, _: &[u8]) -> Result<(ValidatorList, Option<H256>), Error> {
+        Ok((self.clone(), None))
     }
 }
 

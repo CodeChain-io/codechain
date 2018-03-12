@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::sync::Arc;
+
 use bytes::Bytes;
 use super::machine::Machine;
 
@@ -95,5 +97,21 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
     fn on_close_block(&self, _block: &mut M::LiveBlock) -> Result<(), M::Error> {
         Ok(())
     }
+}
+
+/// Results of a query of whether an epoch change occurred at the given block.
+pub enum EpochChange {
+    /// Cannot determine until more data is passed.
+    Unsure,
+    /// No epoch change.
+    No,
+    /// The epoch will change, with proof.
+    Yes(Proof),
+}
+
+/// Proof generated on epoch change.
+pub enum Proof {
+    /// Known proof (extracted from signal)
+    Known(Vec<u8>)
 }
 

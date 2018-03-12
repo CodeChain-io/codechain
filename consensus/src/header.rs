@@ -24,7 +24,7 @@ use rlp::*;
 
 use super::Bytes;
 
-type BlockNumber = u64;
+pub type BlockNumber = u64;
 
 /// Semantic boolean for when a seal/signature is included.
 pub enum Seal {
