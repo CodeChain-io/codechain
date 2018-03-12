@@ -204,6 +204,10 @@ pub trait IsBlock {
     fn transactions(&self) -> &[SignedTransaction] { &self.block().transactions }
 }
 
+impl IsBlock for ExecutedBlock {
+    fn block(&self) -> &ExecutedBlock { self }
+}
+
 impl<'x> IsBlock for OpenBlock<'x> {
     fn block(&self) -> &ExecutedBlock { &self.block }
 }
