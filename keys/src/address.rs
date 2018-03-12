@@ -29,6 +29,15 @@ pub struct Address {
     pub account_id: AccountId,
 }
 
+impl Address {
+    pub fn default(network: Network) -> Self {
+        Address {
+            network,
+            account_id: Default::default(),
+        }
+    }
+}
+
 fn rearrange_bits_into_group_of_5(data: &[u8; 20]) -> Vec<u8> {
     let mut vec = Vec::new();
     for x in 0..4 {
