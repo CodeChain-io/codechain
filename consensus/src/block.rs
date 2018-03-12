@@ -16,8 +16,8 @@
 
 use std::collections::HashSet;
 
-use codechain_crypto::BLAKE_NULL_RLP;
 use codechain_types::{Address, H256};
+use crypto::BLAKE_NULL_RLP;
 use rlp::{UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
 use triehash::ordered_trie_root;
 

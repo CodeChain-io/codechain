@@ -16,11 +16,13 @@
 
 use std::cmp;
 use std::cell::RefCell;
-use codechain_crypto::{blake256, BLAKE_NULL_RLP};
-use codechain_types::{H256, U256, Address};
-use super::Bytes;
 use time::get_time;
+
+use codechain_types::{H256, U256, Address};
+use crypto::{blake256, BLAKE_NULL_RLP};
 use rlp::*;
+
+use super::Bytes;
 
 type BlockNumber = u64;
 

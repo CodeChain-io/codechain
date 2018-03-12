@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 extern crate codechain_bytes as bytes;
-extern crate codechain_crypto;
+extern crate codechain_crypto as crypto;
 extern crate codechain_io as io;
 extern crate codechain_keys as keys;
 extern crate codechain_types;

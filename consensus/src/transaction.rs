@@ -17,11 +17,12 @@
 use std::fmt;
 use std::ops::Deref;
 
-use codechain_crypto::blake256;
 use codechain_types::{H160, H256, U256};
+use crypto::blake256;
 use keys::{self, Private, Signature, Public, Address, Network};
-use super::Bytes;
 use rlp::{self, UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
+
+use super::Bytes;
 
 #[derive(Debug, PartialEq, Clone)]
 /// Errors concerning transaction processing.
