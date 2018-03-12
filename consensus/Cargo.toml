@@ -15,3 +15,4 @@ parking_lot = "0.5"
 rlp = { path = "../util/rlp" }
 time = "0.1"
 triehash = { path = "../util/triehash" }
+util-error = { path = "../util/error" }

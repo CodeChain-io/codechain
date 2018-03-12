@@ -18,6 +18,7 @@ use std::fmt;
 
 use io::IoError;
 use keys::{Error as KeyError};
+use util_error::UtilError;
 
 use super::engine::EngineError;
 use super::transaction::TransactionError;
@@ -45,6 +46,8 @@ impl fmt::Display for BlockError {
 #[derive(Debug)]
 /// General error type which should be capable of representing all errors in codechain
 pub enum Error {
+    /// Error concerning a utility.
+    Util(UtilError),
     /// Error concerning block processing.
     Block(BlockError),
     /// Error concerning transaction processing.
@@ -60,6 +63,7 @@ pub enum Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
+            Error::Util(ref err) => err.fmt(f),
             Error::Io(ref err) => err.fmt(f),
             Error::Block(ref err) => err.fmt(f),
             Error::Transaction(ref err) => err.fmt(f),
@@ -99,3 +103,14 @@ impl From<KeyError> for Error {
     }
 }
 
+impl From<::rlp::DecoderError> for Error {
+    fn from(err: ::rlp::DecoderError) -> Error {
+        Error::Util(UtilError::from(err))
+    }
+}
+
+impl From<UtilError> for Error {
+    fn from(err: UtilError) -> Error {
+        Error::Util(err)
+    }
+}

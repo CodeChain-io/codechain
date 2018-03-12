@@ -24,6 +24,7 @@ extern crate rlp;
 extern crate parking_lot;
 extern crate time;
 extern crate triehash;
+extern crate util_error;
 
 #[macro_use]
 extern crate log;
