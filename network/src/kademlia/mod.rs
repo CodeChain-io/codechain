@@ -19,14 +19,13 @@ mod contact;
 mod event;
 mod kademlia;
 mod message;
+mod node_id;
 mod routing_table;
 
 
-use codechain_types::Public;
 pub use self::kademlia::Kademlia;
+pub use self::node_id::NodeId;
 
-
-pub type NodeId = Public;
 
 const ALPHA: u8 = 3;
 const B: usize = 64 * 8;
