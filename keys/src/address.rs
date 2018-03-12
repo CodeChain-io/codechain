@@ -143,7 +143,7 @@ mod tests {
             account_id: "3f4aa1fedf1f54eeb03b759deadb36676b184911".into(),
         };
 
-        assert_eq!("cc1qyl54g07mu04fm4s8d6em6kmxenkkxzfzycxqpyt".to_owned(), address.to_string());
+        assert_eq!("cc1qql54g07mu04fm4s8d6em6kmxenkkxzfzya9wyew".to_owned(), address.to_string());
     }
 
     #[test]
@@ -154,7 +154,7 @@ mod tests {
             account_id: "3f4aa1fedf1f54eeb03b759deadb36676b184911".into(),
         };
 
-        assert_eq!(address, "cc1qyl54g07mu04fm4s8d6em6kmxenkkxzfzycxqpyt".into());
+        assert_eq!(address, "cc1qql54g07mu04fm4s8d6em6kmxenkkxzfzya9wyew".into());
     }
 
     #[test]
