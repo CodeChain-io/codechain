@@ -28,4 +28,5 @@ mod handshake;
 pub mod address;
 pub mod kademlia;
 
-use address::Address;
+pub use address::Address;
+pub use handshake::HandshakeService;
