@@ -14,13 +14,27 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod handler;
-mod handshake;
-mod message;
-mod service;
 
+use std::sync::Arc;
 
-use self::handler::HandshakeHandler;
-use self::handshake::Handshake;
-use self::message::Message as HandshakeMessage;
-pub use self::service::Service as HandshakeService;
+use cio::{ IoError, IoService };
+
+use super::handler::{ HandlerMessage, HandshakeHandler };
+use super::handshake::Handshake;
+use super::super::Address;
+
+pub struct Service {
+    io_service: IoService<HandlerMessage>,
+    handshake: Option<Handshake>,
+}
+
+impl Service {
+    pub fn start(address: Address) -> Result<Self, IoError> {
+        let io_service = IoService::start()?;
+        io_service.register_handler(Arc::new(HandshakeHandler::new(address)))?;
+        Ok(Self {
+            io_service,
+            handshake: None,
+        })
+    }
+}
