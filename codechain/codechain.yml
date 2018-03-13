@@ -12,3 +12,12 @@ args:
         short: q
         long: quiet
         help: Do not show any synchronization information in the console.
+    - jsonrpc-port:
+        long: jsonrpc-port
+        value_name: PORT
+        help: Listen for rpc connections on PORT.
+        takes_value: true
+    - no-jsonrpc:
+        long: no-jsonrpc
+        help: Do not run jsonrpc.
+        takes_value: false

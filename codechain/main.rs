@@ -49,7 +49,6 @@ fn run() -> Result<(), String> {
     let log_config = LogConfig::default();
     let _logger = setup_log(&log_config).expect("Logger is initialized only once; qed");
 
-    info!("Listening on {}", cfg.port);
     match matches.subcommand() {
         _ => commands::start(cfg)
     }
