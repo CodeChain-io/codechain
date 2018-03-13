@@ -25,9 +25,9 @@ mod vote_collector;
 
 use std::fmt;
 
-use bytes::Bytes;
-use codechain_types::{Address, H256};
-use keys::Signature;
+use cbytes::Bytes;
+use ckeys::Signature;
+use ctypes::{Address, H256};
 use rlp::{Encodable, Decodable, DecoderError, RlpStream, UntrustedRlp};
 
 use self::epoch::{EpochVerifier, NoOp};

@@ -16,8 +16,8 @@
 
 use std::fmt;
 
-use io::IoError;
-use keys::{Error as KeyError};
+use cio::IoError;
+use ckeys::{Error as KeyError};
 use util_error::UtilError;
 
 use super::consensus::EngineError;

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use codechain_types::{Address, H256};
+use ctypes::{Address, H256};
 
 use self::validator_list::ValidatorList;
 use super::EpochChange;

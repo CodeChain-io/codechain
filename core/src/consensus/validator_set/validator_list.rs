@@ -16,7 +16,7 @@
 
 use heapsize::HeapSizeOf;
 
-use codechain_types::{Address, H256};
+use ctypes::{Address, H256};
 
 use super::ValidatorSet;
 use super::super::EpochChange;
@@ -101,7 +101,7 @@ impl ValidatorSet for ValidatorList {
 #[cfg(test)]
 mod tests {
     use std::str::FromStr;
-    use codechain_types::Address;
+    use ctypes::Address;
 
     use super::super::ValidatorSet;
     use super::ValidatorList;

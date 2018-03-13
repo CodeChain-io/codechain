@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use codechain_types::{H256, H520};
-use keys::{Signature, Network, public_to_address};
+use ckeys::{Signature, Network, public_to_address};
+use ctypes::{H256, H520};
 
 use super::{ConsensusEngine, EngineError, Seal, ConstructedVerifier};
 use super::signer::EngineSigner;
@@ -163,8 +163,8 @@ impl ConsensusEngine<CodeChainMachine> for SoloAuthority {
 
 #[cfg(test)]
 mod tests {
-    use codechain_types::H520;
-    use keys::{Network, Random, Generator};
+    use ckeys::{Network, Random, Generator};
+    use ctypes::H520;
 
     use super::SoloAuthority;
     use super::super::{ConsensusEngine, Seal};

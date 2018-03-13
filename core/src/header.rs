@@ -18,9 +18,9 @@ use std::cmp;
 use std::cell::RefCell;
 use time::get_time;
 
-use bytes::Bytes;
-use codechain_types::{Address, H256, U256};
-use crypto::{blake256, BLAKE_NULL_RLP};
+use cbytes::Bytes;
+use ccrypto::{blake256, BLAKE_NULL_RLP};
+use ctypes::{Address, H256, U256};
 use rlp::*;
 
 pub type BlockNumber = u64;

@@ -17,10 +17,10 @@
 use std::fmt;
 use std::ops::Deref;
 
-use bytes::Bytes;
-use codechain_types::{Address, H160, H256, U256};
-use crypto::blake256;
-use keys::{self, Private, Signature, Public, Network, public_to_address};
+use cbytes::Bytes;
+use ccrypto::blake256;
+use ckeys::{self, Private, Signature, Public, Network, public_to_address};
+use ctypes::{Address, H160, H256, U256};
 use rlp::{self, UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
 
 #[derive(Debug, PartialEq, Clone)]
@@ -194,7 +194,7 @@ impl UnverifiedTransaction {
     }
 
     /// Recovers the public key of the sender.
-    pub fn recover_public(&self) -> Result<Public, keys::Error> {
+    pub fn recover_public(&self) -> Result<Public, ckeys::Error> {
         Ok(self.signature().recover(&self.unsigned.hash())?)
     }
 }
@@ -226,7 +226,7 @@ impl From<SignedTransaction> for UnverifiedTransaction {
 
 impl SignedTransaction {
     /// Try to verify transaction and recover sender.
-    pub fn new(transaction: UnverifiedTransaction) -> Result<Self, keys::Error> {
+    pub fn new(transaction: UnverifiedTransaction) -> Result<Self, ckeys::Error> {
         if transaction.is_unsigned() {
             Ok(SignedTransaction {
                 transaction,

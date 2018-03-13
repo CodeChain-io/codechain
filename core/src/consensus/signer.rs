@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use codechain_types::{Address, H256};
-use keys::{Private, Signature, Error as KeyError};
+use ckeys::{Private, Signature, Error as KeyError};
+use ctypes::{Address, H256};
 
 /// Everything that an Engine needs to sign messages.
 pub struct EngineSigner {

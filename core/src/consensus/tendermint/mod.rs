@@ -17,7 +17,7 @@
 mod message;
 mod params;
 
-use codechain_types::{H256};
+use ctypes::{H256};
 use rlp::{UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]

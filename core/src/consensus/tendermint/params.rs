@@ -14,8 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use ctypes::U256;
 use time::Duration;
-use codechain_types::U256;
+
 use super::super::validator_set::{ValidatorSet};
 use super::super::transition::Timeouts;
 use super::Step;

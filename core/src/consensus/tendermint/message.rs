@@ -15,9 +15,11 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::cmp;
-use bytes::Bytes;
-use codechain_types::{H256, H520};
+
+use cbytes::Bytes;
+use ctypes::{H256, H520};
 use rlp::{UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
+
 use super::{Height, View, BlockHash, Step};
 use super::super::vote_collector::Message;
 

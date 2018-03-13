@@ -53,12 +53,12 @@ impl<M: Machine> ConsensusEngine<M> for Solo<M>
 
 #[cfg(test)]
 mod tests {
-    use codechain_types::H520;
-    use codechain_machine::CodeChainMachine;
+    use ctypes::H520;
 
     use super::Solo;
     use super::super::{Seal, ConsensusEngine};
     use super::super::super::block::{OpenBlock, IsBlock};
+    use super::super::super::codechain_machine::CodeChainMachine;
     use super::super::super::header::Header;
 
     fn genesis_header() -> Header {
