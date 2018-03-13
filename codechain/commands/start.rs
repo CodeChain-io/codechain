@@ -1,14 +1,19 @@
-use config;
-use super::super::rpc;
-use super::super::event_loop::{event_loop, forever};
+use rpc::HttpConfiguration as RpcHttpConfig;
 
-pub fn start(cfg: config::Config) -> Result<(), String> {
+use super::super::rpc;
+use super::super::event_loop;
+use super::super::event_loop::event_loop;
+
+pub fn forever() -> Result<(), String> {
     let mut el = event_loop();
 
-    if cfg.rpc_config.enabled {
-        info!("RPC Listening on {}", cfg.rpc_config.port);
-        let _rpc_server = rpc::new_http(cfg.rpc_config);
-    }
-    el.run(forever()).unwrap();
+    info!("Run forever");
+    el.run(event_loop::forever()).unwrap();
+    Ok(())
+}
+
+pub fn rpc_start(cfg: RpcHttpConfig) -> Result<(), String> {
+    info!("RPC Listening on {}", cfg.port);
+    let _rpc_server = rpc::new_http(cfg);
     Ok(())
 }

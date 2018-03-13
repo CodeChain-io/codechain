@@ -44,12 +44,12 @@ fn main() {
 fn run() -> Result<(), String> {
     let yaml = load_yaml!("codechain.yml");
     let matches = clap::App::from_yaml(yaml).get_matches();
-    let cfg = try!(config::parse(&matches));
 
     let log_config = LogConfig::default();
     let _logger = setup_log(&log_config).expect("Logger is initialized only once; qed");
 
-    match matches.subcommand() {
-        _ => commands::start(cfg)
+    if let Some(rpc_config) = try!(config::parse_rpc_config(&matches)) {
+        commands::rpc_start(rpc_config)?;
     }
+    commands::forever()
 }
