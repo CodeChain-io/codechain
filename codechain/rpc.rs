@@ -5,7 +5,6 @@ use std::net::SocketAddr;
 
 #[derive(Debug, PartialEq)]
 pub struct HttpConfiguration {
-    pub enabled: bool,
     pub interface: String,
     pub port: u16,
     pub cors: Option<Vec<String>>,
@@ -15,7 +14,6 @@ pub struct HttpConfiguration {
 impl HttpConfiguration {
     pub fn with_port(port: u16) -> Self {
         HttpConfiguration {
-            enabled: true,
             interface: "127.0.0.1".into(),
             port,
             cors: None,
@@ -25,10 +23,6 @@ impl HttpConfiguration {
 }
 
 pub fn new_http(conf: HttpConfiguration) -> Result<Option<Server>, String> {
-    if !conf.enabled {
-        return Ok(None);
-    }
-
     let url = format!("{}:{}", conf.interface, conf.port);
     let addr = try!(url.parse().map_err(|_| format!("Invalid JSONRPC listen host/port given: {}", url)));
     Ok(Some(try!(setup_http_rpc_server(&addr, conf.cors, conf.hosts))))
