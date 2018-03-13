@@ -36,30 +36,38 @@ pub enum Error {
     Bech32InvalidData(u8),
     Bech32MixedCase,
     Bech32UnknownHRP,
+    Custom(String),
 }
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let msg = match *self {
-            Error::InvalidPublic => "Invalid Public",
-            Error::InvalidSecret => "Invalid Secret",
-            Error::InvalidMessage => "Invalid Message",
-            Error::InvalidSignature => "Invalid Signature",
-            Error::InvalidNetwork => "Invalid Network",
-            Error::InvalidChecksum => "Invalid Checksum",
-            Error::InvalidPrivate => "Invalid Private",
-            Error::InvalidAddress => "Invalid Address",
-            Error::FailedKeyGeneration => "Key generation failed",
-            Error::Bech32MissingSeparator => "Missing human-readable separator",
-            Error::Bech32InvalidChecksum => "Invalid checksum",
-            Error::Bech32InvalidLength => "Invalid Length",
-            Error::Bech32InvalidChar(_) => "Invalid character",
-            Error::Bech32InvalidData(_) => "Invalid data point",
-            Error::Bech32MixedCase => "Mixed-case strings not allowed",
-            Error::Bech32UnknownHRP => "Unknown human-readable part",
+            Error::InvalidPublic => "Invalid Public".into(),
+            Error::InvalidSecret => "Invalid Secret".into(),
+            Error::InvalidMessage => "Invalid Message".into(),
+            Error::InvalidSignature => "Invalid Signature".into(),
+            Error::InvalidNetwork => "Invalid Network".into(),
+            Error::InvalidChecksum => "Invalid Checksum".into(),
+            Error::InvalidPrivate => "Invalid Private".into(),
+            Error::InvalidAddress => "Invalid Address".into(),
+            Error::FailedKeyGeneration => "Key generation failed".into(),
+            Error::Bech32MissingSeparator => "Missing human-readable separator".into(),
+            Error::Bech32InvalidChecksum => "Invalid checksum".into(),
+            Error::Bech32InvalidLength => "Invalid Length".into(),
+            Error::Bech32InvalidChar(_) => "Invalid character".into(),
+            Error::Bech32InvalidData(_) => "Invalid data point".into(),
+            Error::Bech32MixedCase => "Mixed-case strings not allowed".into(),
+            Error::Bech32UnknownHRP => "Unknown human-readable part".into(),
+            Error::Custom(ref s) => s.clone(),
         };
 
         msg.fmt(f)
+    }
+}
+
+impl Into<String> for Error {
+    fn into(self) -> String {
+        format!("{}", self)
     }
 }
 

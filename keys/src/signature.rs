@@ -73,9 +73,9 @@ impl Signature {
         let pubkey = context.recover(&SecpMessage::from_slice(&message[..])?, &rsig)?;
         let serialized = pubkey.serialize_vec(context, false);
 
-        let mut public = H520::default();
-        public.copy_from_slice(&serialized[0..65]);
-        Ok(Public::Normal(public))
+        let mut public = Public::default();
+        public.copy_from_slice(&serialized[1..65]);
+        Ok(public)
     }
 }
 

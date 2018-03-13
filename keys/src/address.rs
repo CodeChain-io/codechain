@@ -15,75 +15,22 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::cmp;
-use std::hash::{Hash, Hasher};
 use std::fmt;
-use std::mem;
 use std::str::FromStr;
 
 use bech32::Bech32;
 use codechain_types::H160;
-use heapsize::HeapSizeOf;
-use rlp::{UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
 
-use network::Network;
-use {Error, AccountId};
+use {Address, Error, Network};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub struct Address {
+pub struct FullAddress {
     /// The network of the address.
     pub network: Network,
     /// The version of the address.
     pub version: u8,
     /// Public key hash.
-    pub account_id: AccountId,
-}
-
-impl Address {
-    pub fn dummy(network: Network) -> Self {
-        Address {
-            network,
-            version: 0,
-            account_id: Default::default(),
-        }
-    }
-}
-
-impl Hash for Address {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.network.hash(state);
-        self.version.hash(state);
-        self.account_id.hash(state);
-    }
-}
-
-impl Encodable for Address {
-    fn rlp_append(&self, s: &mut RlpStream) {
-        s.begin_list(3);
-        s.append(&self.network);
-        s.append(&self.version);
-        s.append(&self.account_id);
-    }
-}
-
-impl Decodable for Address {
-    fn decode(d: &UntrustedRlp) -> Result<Self, DecoderError> {
-        if d.item_count()? != 3 {
-            return Err(DecoderError::RlpIncorrectListLen);
-        }
-        Ok(Address {
-            network: d.val_at(0)?,
-            version: d.val_at(1)?,
-            account_id: d.val_at(2)?,
-        })
-    }
-}
-
-impl HeapSizeOf for Address {
-    fn heap_size_of_children(&self) -> usize {
-        mem::size_of::<Network>()
-            + self.version.heap_size_of_children()
-            + self.account_id.heap_size_of_children()
-    }
+    pub address: Address,
 }
 
 fn rearrange_bits(data: &Vec<u8>, from: usize, into: usize) -> Vec<u8> {
@@ -120,7 +67,7 @@ fn rearrange_bits(data: &Vec<u8>, from: usize, into: usize) -> Vec<u8> {
     vec
 }
 
-impl fmt::Display for Address {
+impl fmt::Display for FullAddress {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let hrp = match self.network {
             Network::Mainnet => "cc",
@@ -128,7 +75,7 @@ impl fmt::Display for Address {
         }.to_string();
         let mut data = Vec::new();
         data.push(self.version);
-        data.extend(&self.account_id.to_vec());
+        data.extend(&self.address.to_vec());
         let encode_result = Bech32 {
             hrp,
             data: rearrange_bits(&data, 8, 5),
@@ -137,7 +84,7 @@ impl fmt::Display for Address {
     }
 }
 
-impl FromStr for Address {
+impl FromStr for FullAddress {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Error> where Self: Sized {
@@ -150,10 +97,10 @@ impl FromStr for Address {
         match network {
             Some(network) => {
                 let data = rearrange_bits(&decoded.data, 5, 8);
-                Ok(Address {
+                Ok(FullAddress {
                     network,
                     version: data[0],
-                    account_id: {
+                    address: {
                         let mut arr = [0u8; 20];
                         for i in 0..20 {
                             arr[i] = data[1 + i];
@@ -167,7 +114,7 @@ impl FromStr for Address {
     }
 }
 
-impl From<&'static str> for Address {
+impl From<&'static str> for FullAddress {
     fn from(s: &'static str) -> Self {
         s.parse().unwrap()
     }
@@ -175,16 +122,15 @@ impl From<&'static str> for Address {
 
 #[cfg(test)]
 mod tests {
-    use super::rearrange_bits;
-    use network::Network;
-    use {Address, Message, Generator, Random};
+    use super::{rearrange_bits, FullAddress};
+    use {Network};
 
     #[test]
-    fn test_address_to_string() {
-        let address = Address {
+    fn test_full_address_to_string() {
+        let address = FullAddress {
             network: Network::Mainnet,
             version: 0,
-            account_id: "3f4aa1fedf1f54eeb03b759deadb36676b184911".into(),
+            address: "3f4aa1fedf1f54eeb03b759deadb36676b184911".into(),
         };
 
         assert_eq!("cc1qql54g07mu04fm4s8d6em6kmxenkkxzfzya9wyew".to_owned(), address.to_string());
@@ -192,10 +138,10 @@ mod tests {
 
     #[test]
     fn test_address_from_str() {
-        let address = Address {
+        let address = FullAddress {
             network: Network::Mainnet,
             version: 0,
-            account_id: "3f4aa1fedf1f54eeb03b759deadb36676b184911".into(),
+            address: "3f4aa1fedf1f54eeb03b759deadb36676b184911".into(),
         };
 
         assert_eq!(address, "cc1qql54g07mu04fm4s8d6em6kmxenkkxzfzya9wyew".into());
@@ -228,15 +174,5 @@ mod tests {
         let rearranged = rearrange_bits(&vec, 5, 8);
         assert_eq!(rearranged, vec![0b11101110, 0b11101110, 0b11101110, 0b10000000]);
     }
-
-    #[test]
-    fn sign_and_verify() {
-        let random = Random::new(Network::Mainnet);
-        let keypair = random.generate().unwrap();
-        let message = Message::default();
-        let private= keypair.private();
-        let public = keypair.public();
-        let signature = private.sign(&message).unwrap();
-        assert!(public.verify(&signature, &message).unwrap());
-    }
 }
+

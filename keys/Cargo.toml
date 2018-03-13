@@ -8,7 +8,6 @@ rand = "0.3.14"
 rustc-hex = "1.0"
 rustc-serialize = "0.3"
 lazy_static = "0.2"
-base58 = "0.1"
 bech32 = "0.2.2"
 codechain-crypto = { path = "../crypto" }
 codechain-bytes = { path = "../util/bytes" }

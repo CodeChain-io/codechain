@@ -17,8 +17,8 @@
 use std::fmt;
 
 use bytes::Bytes;
-use codechain_types::H256;
-use keys::{Address, Signature};
+use codechain_types::{Address, H256};
+use keys::Signature;
 use rlp::{Encodable, Decodable, DecoderError, RlpStream, UntrustedRlp};
 
 use super::epoch::{EpochVerifier, NoOp};

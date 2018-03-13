@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use codechain_types::{H256, H520};
-use keys::{Signature, Network};
+use keys::{Signature, Network, public_to_address};
 
 use super::block::{ExecutedBlock, IsBlock};
 use super::codechain_machine::CodeChainMachine;
@@ -61,8 +61,7 @@ fn verify_external(header: &Header, network: Network, validators: &ValidatorSet)
 
     // Check if the signature belongs to a validator, can depend on parent state.
     let sig = Signature(UntrustedRlp::new(&header.seal()[0]).as_val::<H520>()?.into());
-    let public = sig.recover(&header.bare_hash())?;
-    let signer = public.address(network);
+    let signer = public_to_address(&sig.recover(&header.bare_hash())?);
 
     if *header.author() != signer {
         return Err(EngineError::NotAuthorized(header.author().clone()).into())
@@ -165,7 +164,7 @@ impl ConsensusEngine<CodeChainMachine> for SoloAuthority {
 #[cfg(test)]
 mod tests {
     use codechain_types::H520;
-    use keys::{Address, Network, Random, Generator};
+    use keys::{Network, Random, Generator};
 
     use super::SoloAuthority;
     use super::super::block::{OpenBlock, IsBlock};
@@ -177,16 +176,16 @@ mod tests {
 
     fn new_test_authority() -> SoloAuthority {
         let machine = CodeChainMachine::new();
-        let random = Random::new(Network::Testnet);
+        let mut random = Random {};
         let key_pair = random.generate().unwrap();
-        let address = key_pair.public().address(Network::Testnet);
+        let address = key_pair.address();
         let signer = EngineSigner::new(address.clone(), key_pair.private().clone());
         let validators = Box::new(ValidatorList::new(vec![address.clone()]));
         SoloAuthority::new(machine, Network::Testnet, signer, validators)
     }
 
     fn genesis_header() -> Header {
-        Header::new(Network::Testnet)
+        Header::default()
     }
 
     #[test]
@@ -198,7 +197,7 @@ mod tests {
     #[test]
     fn can_do_signature_verification_fail() {
         let engine = new_test_authority();
-        let mut header: Header = Header::new(Network::Testnet);
+        let mut header: Header = Header::default();
         header.set_seal(vec![::rlp::encode(&H520::default()).into_vec()]);
 
         let verify_result = engine.verify_block_external(&header);
@@ -209,7 +208,7 @@ mod tests {
     fn can_generate_seal() {
         let engine = new_test_authority();
         let genesis_header = genesis_header();
-        let b = OpenBlock::new(&engine, Network::Testnet, &genesis_header, Address::dummy(Network::Testnet), false).unwrap();
+        let b = OpenBlock::new(&engine, &genesis_header, Default::default(), false).unwrap();
         let b = b.close_and_lock();
         if let Seal::Regular(seal) = engine.generate_seal(b.block(), &genesis_header) {
             assert!(b.try_seal(&engine, seal).is_ok());

@@ -14,13 +14,31 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::ops::Deref;
-use Error;
+use rand::os::OsRng;
+use super::{Generator, KeyPair, SECP256K1};
 
-pub trait DisplayLayout {
-    type Target: Deref<Target = [u8]>;
+pub struct Random;
 
-    fn layout(&self) -> Self::Target;
+impl Generator for Random {
+    type Error = ::std::io::Error;
 
-    fn from_layout(data: &[u8]) -> Result<Self, Error> where Self: Sized;
+    fn generate(&mut self) -> Result<KeyPair, Self::Error> {
+        let mut rng = OsRng::new()?;
+        match rng.generate() {
+            Ok(pair) => Ok(pair),
+            Err(void) => match void {}, // LLVM unreachable
+        }
+    }
 }
+
+impl Generator for OsRng {
+    type Error = ::Void;
+
+    fn generate(&mut self) -> Result<KeyPair, Self::Error> {
+        let (sec, publ) = SECP256K1.generate_keypair(self)
+            .expect("context always created with full capabilities; qed");
+
+        Ok(KeyPair::from_keypair(sec, publ))
+    }
+}
+

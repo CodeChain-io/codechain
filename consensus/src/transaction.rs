@@ -17,9 +17,9 @@
 use std::fmt;
 use std::ops::Deref;
 
-use codechain_types::{H160, H256, U256};
+use codechain_types::{Address, H160, H256, U256};
 use crypto::blake256;
-use keys::{self, Private, Signature, Public, Address, Network};
+use keys::{self, Private, Signature, Public, Network, public_to_address};
 use rlp::{self, UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
 
 use super::Bytes;
@@ -42,14 +42,9 @@ impl fmt::Display for TransactionError {
     }
 }
 
-/// Fake address for unsigned transactions.
-fn unsigned_sender(network: Network) -> Address {
-    Address {
-        network,
-        version: 0u8,
-        account_id: H160([0xff; 20]),
-    }
-}
+
+/// Fake address for unsigned transactions as defined by EIP-86.
+pub const UNSIGNED_SENDER: Address = H160([0xff; 20]);
 
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct Transaction {
@@ -233,16 +228,15 @@ impl From<SignedTransaction> for UnverifiedTransaction {
 impl SignedTransaction {
     /// Try to verify transaction and recover sender.
     pub fn new(transaction: UnverifiedTransaction) -> Result<Self, keys::Error> {
-        let network = transaction.network;
         if transaction.is_unsigned() {
             Ok(SignedTransaction {
                 transaction,
-                sender: unsigned_sender(network),
+                sender: UNSIGNED_SENDER,
                 public: None,
             })
         } else {
             let public = transaction.recover_public()?;
-            let sender = public.address(network);
+            let sender = public_to_address(&public);
             Ok(SignedTransaction {
                 transaction,
                 sender,

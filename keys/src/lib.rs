@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-extern crate base58;
 extern crate codechain_bytes;
 extern crate codechain_crypto as crypto;
 extern crate codechain_types;
@@ -28,37 +27,42 @@ extern crate bech32;
 extern crate heapsize;
 extern crate rlp;
 
-pub mod generator;
+mod random;
 mod address;
-mod display;
 mod keypair;
 mod error;
 mod network;
 mod private;
-mod public;
 mod signature;
 
-pub use address::Address;
-pub use codechain_types::hash;
-pub use display::DisplayLayout;
 pub use error::Error;
-pub use generator::{Generator, Random};
-pub use keypair::KeyPair;
+pub use keypair::{KeyPair, public_to_address};
 pub use network::Network;
 pub use private::Private;
-pub use public::Public;
+pub use random::Random;
 pub use rustc_serialize::hex;
 pub use signature::Signature;
 
-use codechain_types::{H160, H256};
+use codechain_types::H256;
 
-/// 20 bytes long hash derived from public `ripemd160(blake256(public))`
-pub type AccountId = H160;
-/// 32 bytes long secret key
-pub type Secret = H256;
 /// 32 bytes long signable message
 pub type Message = H256;
+
+pub use codechain_types::{Address, Public};
 
 lazy_static! {
 	pub static ref SECP256K1: secp256k1::Secp256k1 = secp256k1::Secp256k1::new();
 }
+
+/// Uninstantiatable error type for infallible generators.
+#[derive(Debug)]
+pub enum Void {}
+
+/// Generates new keypair.
+pub trait Generator {
+    type Error;
+
+    /// Should be called to generate new keypair.
+    fn generate(&mut self) -> Result<KeyPair, Self::Error>;
+}
+

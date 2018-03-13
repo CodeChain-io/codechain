@@ -14,8 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use codechain_types::H256;
-use keys::Address;
+use codechain_types::{Address, H256};
 
 /// A header. This contains important metadata about the block, as well as a
 /// "seal" that indicates validity to a consensus engine.
