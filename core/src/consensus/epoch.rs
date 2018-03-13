@@ -16,7 +16,7 @@
 
 use codechain_types::H256;
 
-use super::machine::Machine;
+use super::super::machine::Machine;
 
 /// Verifier for all blocks within an epoch with self-contained state.
 pub trait EpochVerifier<M: Machine>: Send + Sync {

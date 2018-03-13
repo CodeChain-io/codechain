@@ -22,7 +22,7 @@ name = "codechain"
 
 [workspace]
 members = [
-	"consensus",
+	"core",
 	"crypto",
 	"keys",
 	"logger",

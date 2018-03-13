@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use engine::{ConsensusEngine, Seal};
-use machine::{Machine, Transactions};
+use super::{ConsensusEngine, Seal};
+use super::super::machine::{Machine, Transactions};
 
 /// A consensus engine which does not provide any consensus mechanism.
 pub struct Solo<M> {
@@ -56,10 +56,10 @@ mod tests {
     use codechain_types::H520;
     use codechain_machine::CodeChainMachine;
 
-    use super::super::block::{OpenBlock, IsBlock};
-    use super::super::header::Header;
-    use super::super::engine::{Seal, ConsensusEngine};
     use super::Solo;
+    use super::super::{Seal, ConsensusEngine};
+    use super::super::super::block::{OpenBlock, IsBlock};
+    use super::super::super::header::Header;
 
     fn genesis_header() -> Header {
         Header::default()

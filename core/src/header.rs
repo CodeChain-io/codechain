@@ -18,11 +18,10 @@ use std::cmp;
 use std::cell::RefCell;
 use time::get_time;
 
+use bytes::Bytes;
 use codechain_types::{Address, H256, U256};
 use crypto::{blake256, BLAKE_NULL_RLP};
 use rlp::*;
-
-use super::Bytes;
 
 pub type BlockNumber = u64;
 

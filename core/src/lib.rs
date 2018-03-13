@@ -31,19 +31,9 @@ extern crate log;
 
 mod block;
 mod codechain_machine;
-mod engine;
-mod epoch;
+mod consensus;
 mod error;
 mod header;
 mod machine;
-mod signer;
-mod solo;
-mod solo_authority;
-mod tendermint;
 mod transaction;
-mod transition;
-mod validator_set;
-mod vote_collector;
-
-type Bytes = Vec<u8>;
 

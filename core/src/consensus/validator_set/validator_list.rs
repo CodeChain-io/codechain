@@ -19,10 +19,10 @@ use heapsize::HeapSizeOf;
 use codechain_types::{Address, H256};
 
 use super::ValidatorSet;
-use super::super::codechain_machine::CodeChainMachine;
-use super::super::engine::EpochChange;
-use super::super::error::Error;
-use super::super::header::{BlockNumber, Header};
+use super::super::EpochChange;
+use super::super::super::error::Error;
+use super::super::super::codechain_machine::CodeChainMachine;
+use super::super::super::header::{BlockNumber, Header};
 
 /// Validator set containing a known set of addresses.
 #[derive(Clone, Debug, PartialEq, Eq, Default)]

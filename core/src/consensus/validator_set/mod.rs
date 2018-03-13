@@ -17,10 +17,10 @@
 use codechain_types::{Address, H256};
 
 use self::validator_list::ValidatorList;
-use super::codechain_machine::CodeChainMachine;
-use super::engine::EpochChange;
-use super::error::Error;
-use super::header::{BlockNumber, Header};
+use super::EpochChange;
+use super::super::codechain_machine::CodeChainMachine;
+use super::super::error::Error;
+use super::super::header::{BlockNumber, Header};
 
 pub mod validator_list;
 

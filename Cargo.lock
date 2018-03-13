@@ -291,7 +291,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "consensus"
+name = "core"
 version = "0.1.0"
 dependencies = [
  "codechain-bytes 0.1.0",

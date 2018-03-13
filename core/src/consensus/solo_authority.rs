@@ -17,14 +17,14 @@
 use codechain_types::{H256, H520};
 use keys::{Signature, Network, public_to_address};
 
-use super::block::{ExecutedBlock, IsBlock};
-use super::codechain_machine::CodeChainMachine;
-use super::engine::{ConsensusEngine, EngineError, Seal, ConstructedVerifier};
-use super::error::{BlockError, Error};
-use super::header::Header;
+use super::{ConsensusEngine, EngineError, Seal, ConstructedVerifier};
 use super::signer::EngineSigner;
 use super::validator_set::ValidatorSet;
 use super::validator_set::validator_list::ValidatorList;
+use super::super::block::{ExecutedBlock, IsBlock};
+use super::super::codechain_machine::CodeChainMachine;
+use super::super::error::{BlockError, Error};
+use super::super::header::Header;
 
 pub struct SoloAuthority {
     machine: CodeChainMachine,
@@ -112,15 +112,15 @@ impl ConsensusEngine<CodeChainMachine> for SoloAuthority {
 
     #[cfg(not(test))]
     fn signals_epoch_end(&self, _header: &Header)
-        -> super::engine::EpochChange
+        -> super::EpochChange
     {
         // don't bother signalling even though a contract might try.
-        super::engine::EpochChange::No
+        super::EpochChange::No
     }
 
     #[cfg(test)]
     fn signals_epoch_end(&self, header: &Header)
-        -> super::engine::EpochChange
+        -> super::EpochChange
     {
         // in test mode, always signal even though they don't be finalized.
         let first = header.number() == 0;
@@ -130,8 +130,8 @@ impl ConsensusEngine<CodeChainMachine> for SoloAuthority {
     fn is_epoch_end(
         &self,
         chain_head: &Header,
-        _chain: &super::engine::Headers<Header>,
-        _transition_store: &super::engine::PendingTransitionStore,
+        _chain: &super::Headers<Header>,
+        _transition_store: &super::PendingTransitionStore,
     ) -> Option<Vec<u8>> {
         let first = chain_head.number() == 0;
 
@@ -167,12 +167,12 @@ mod tests {
     use keys::{Network, Random, Generator};
 
     use super::SoloAuthority;
-    use super::super::block::{OpenBlock, IsBlock};
-    use super::super::codechain_machine::CodeChainMachine;
-    use super::super::engine::{ConsensusEngine, Seal};
-    use super::super::header::Header;
+    use super::super::{ConsensusEngine, Seal};
     use super::super::signer::EngineSigner;
     use super::super::validator_set::validator_list::ValidatorList;
+    use super::super::super::block::{OpenBlock, IsBlock};
+    use super::super::super::codechain_machine::CodeChainMachine;
+    use super::super::super::header::Header;
 
     fn new_test_authority() -> SoloAuthority {
         let machine = CodeChainMachine::new();

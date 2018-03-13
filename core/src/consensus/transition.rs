@@ -17,8 +17,9 @@
 use io::{IoContext, IoHandler, TimerToken};
 use std::sync::Weak;
 use time::Duration;
-use super::engine::ConsensusEngine;
-use super::machine::Machine;
+
+use super::ConsensusEngine;
+use super::super::machine::Machine;
 
 /// Timeouts lookup
 pub trait Timeouts<S: Sync + Send + Clone>: Send + Sync {

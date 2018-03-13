@@ -20,7 +20,7 @@ use io::IoError;
 use keys::{Error as KeyError};
 use util_error::UtilError;
 
-use super::engine::EngineError;
+use super::consensus::EngineError;
 use super::transaction::TransactionError;
 
 #[derive(Debug, PartialEq, Clone, Copy, Eq)]

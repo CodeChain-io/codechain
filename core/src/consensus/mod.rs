@@ -14,6 +14,15 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+mod epoch;
+mod signer;
+mod solo;
+mod solo_authority;
+mod tendermint;
+mod transition;
+mod validator_set;
+mod vote_collector;
+
 use std::fmt;
 
 use bytes::Bytes;
@@ -21,7 +30,7 @@ use codechain_types::{Address, H256};
 use keys::Signature;
 use rlp::{Encodable, Decodable, DecoderError, RlpStream, UntrustedRlp};
 
-use super::epoch::{EpochVerifier, NoOp};
+use self::epoch::{EpochVerifier, NoOp};
 use super::error::Error;
 use super::machine::Machine;
 
@@ -97,7 +106,7 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
     ///
     /// Return `Yes` or `No` when the answer is definitively known.
     fn signals_epoch_end<'a>(&self, _header: &M::Header)
-        -> EpochChange {
+                             -> EpochChange {
         EpochChange::No
     }
 
@@ -216,3 +225,4 @@ impl fmt::Display for EngineError {
         f.write_fmt(format_args!("Engine error ({})", msg))
     }
 }
+

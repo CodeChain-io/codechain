@@ -16,14 +16,14 @@
 
 use std::collections::HashSet;
 
+use bytes::Bytes;
 use codechain_types::{Address, H256};
 use crypto::BLAKE_NULL_RLP;
 use rlp::{UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
 use triehash::ordered_trie_root;
 
-use super::Bytes;
 use super::codechain_machine::CodeChainMachine;
-use super::engine::ConsensusEngine;
+use super::consensus::ConsensusEngine;
 use super::error::Error;
 use super::header::{Header, Seal};
 use super::machine::{LiveBlock, Transactions};
