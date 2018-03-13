@@ -24,6 +24,7 @@ mod validator_set;
 mod vote_collector;
 
 use std::fmt;
+use std::sync::Weak;
 
 use cbytes::Bytes;
 use ckeys::Signature;
@@ -148,6 +149,9 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
     fn on_close_block(&self, _block: &mut M::LiveBlock) -> Result<(), M::Error> {
         Ok(())
     }
+
+    /// Add Client which can be used for sealing, potentially querying the state and sending messages.
+    fn register_client(&self, _client: Weak<M::EngineClient>) {}
 
     /// Sign using the EngineSigner, to be used for consensus tx signing.
     fn sign(&self, _hash: H256) -> Result<Signature, Error> { unimplemented!() }

@@ -61,6 +61,8 @@ pub trait Machine: Send + Sync {
     type Header: Header;
     /// The live block type.
     type LiveBlock: LiveBlock<Header=Self::Header>;
+    /// A handle to a blockchain client for this machine.
+    type EngineClient: ?Sized;
 
     /// Errors which can occur when querying or interacting with the machine.
     type Error;

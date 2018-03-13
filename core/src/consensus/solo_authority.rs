@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::sync::Weak;
+
 use ckeys::{Signature, Network, public_to_address};
 use ctypes::{H256, H520};
 
@@ -22,6 +24,7 @@ use super::signer::EngineSigner;
 use super::validator_set::ValidatorSet;
 use super::validator_set::validator_list::ValidatorList;
 use super::super::block::{ExecutedBlock, IsBlock};
+use super::super::client::EngineClient;
 use super::super::codechain_machine::CodeChainMachine;
 use super::super::error::{BlockError, Error};
 use super::super::header::Header;
@@ -154,6 +157,10 @@ impl ConsensusEngine<CodeChainMachine> for SoloAuthority {
             }
             Err(e) => ConstructedVerifier::Err(e),
         }
+    }
+
+    fn register_client(&self, client: Weak<EngineClient>) {
+        self.validators.register_client(client);
     }
 
     fn sign(&self, hash: H256) -> Result<Signature, Error> {

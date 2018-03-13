@@ -30,6 +30,7 @@ extern crate util_error;
 extern crate log;
 
 mod block;
+mod client;
 mod codechain_machine;
 mod consensus;
 mod error;

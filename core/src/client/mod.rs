@@ -13,27 +13,12 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-// A state machine.
 
-use super::error::Error;
-use super::header::Header;
-use super::block::ExecutedBlock;
+use cbytes::Bytes;
 
-pub struct CodeChainMachine {
-}
-
-impl CodeChainMachine {
-    pub fn new() -> Self {
-        CodeChainMachine {
-        }
-    }
-}
-
-impl ::machine::Machine for CodeChainMachine {
-    type Header = Header;
-    type LiveBlock = ExecutedBlock;
-    type EngineClient = super::client::EngineClient;
-
-    type Error = Error;
+/// Client facilities used by internally sealing Engines.
+pub trait EngineClient: Sync + Send {
+    /// Broadcast a consensus message to the network.
+    fn broadcast_consensus_message(&self, message: Bytes);
 }
 

@@ -14,11 +14,14 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::sync::Weak;
+
 use ctypes::{Address, H256};
 
 use self::validator_list::ValidatorList;
 use super::EpochChange;
 use super::super::codechain_machine::CodeChainMachine;
+use super::super::client::EngineClient;
 use super::super::error::Error;
 use super::super::header::{BlockNumber, Header};
 
@@ -77,5 +80,8 @@ pub trait ValidatorSet: Send + Sync {
     /// hash should be proven.
     fn epoch_set(&self, first: bool, machine: &CodeChainMachine, number: BlockNumber, proof: &[u8])
         -> Result<(ValidatorList, Option<H256>), Error>;
+
+    /// Allows blockchain state access.
+    fn register_client(&self, _client: Weak<EngineClient>) {}
 }
 
