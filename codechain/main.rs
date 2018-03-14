@@ -48,8 +48,7 @@ fn run() -> Result<(), String> {
     let log_config = LogConfig::default();
     let _logger = setup_log(&log_config).expect("Logger is initialized only once; qed");
 
-    if let Some(rpc_config) = try!(config::parse_rpc_config(&matches)) {
-        commands::rpc_start(rpc_config)?;
-    }
+    let _rpc_server = config::parse_rpc_config(&matches)?.map(commands::rpc_start);
+
     commands::forever()
 }
