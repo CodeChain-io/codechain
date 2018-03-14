@@ -14,13 +14,15 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-
-use rlp::{UntrustedRlp, Encodable, Decodable, DecoderError};
 use std::error;
 use std::fmt;
 use std::io;
 use std::net::UdpSocket;
 use std::result::Result;
+
+use rlp::{UntrustedRlp, Encodable, Decodable, DecoderError};
+use rand;
+use rand::distributions::{ Range, Sample };
 
 use super::HandshakeMessage;
 use super::super::Address;
@@ -78,6 +80,8 @@ impl From<DecoderError> for HandshakeError {
 
 const MAX_HANDSHAKE_PACKET_SIZE: usize = 1024;
 
+pub type Nonce = u32;
+
 impl Handshake {
     pub fn bind(address: &Address) -> Result<Self, HandshakeError> {
         let socket = address.socket();
@@ -114,6 +118,10 @@ impl Handshake {
         Ok(())
     }
 
+    pub fn send_ping_to(&self, target: &Address, nonce: u32) -> Result<(), HandshakeError> {
+        self.send_to(&HandshakeMessage::Ping(nonce), target)
+    }
+
     pub fn on_packet(&self, message: &HandshakeMessage, from: &Address) {
         match message {
             &HandshakeMessage::Ping(nonce) => {
@@ -126,5 +134,14 @@ impl Handshake {
             &HandshakeMessage::Pong(_) => {
             },
         }
+    }
+
+    pub fn nonce() -> Nonce {
+        const MIN_NONCE: u32 = 1000;
+        const MAX_NONCE: u32 = 100000;
+
+        let mut range = Range::new(MIN_NONCE, MAX_NONCE);
+        let mut rng = rand::thread_rng();
+        range.sample(&mut rng)
     }
 }

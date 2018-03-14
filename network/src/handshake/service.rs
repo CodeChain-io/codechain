@@ -32,6 +32,9 @@ impl Service {
     pub fn start(address: Address, bootstrap_addresses: Vec<Address>) -> Result<Self, IoError> {
         let io_service = IoService::start()?;
         io_service.register_handler(Arc::new(HandshakeHandler::new(address)))?;
+        for address in bootstrap_addresses {
+            io_service.send_message(HandlerMessage::ConnectTo(address));
+        }
         Ok(Self {
             io_service,
             handshake: None,

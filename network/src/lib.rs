@@ -18,6 +18,7 @@
 extern crate log;
 extern crate mio;
 extern crate parking_lot;
+extern crate rand;
 extern crate rlp;
 
 extern crate codechain_crypto as ccrypto;
