@@ -136,6 +136,9 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
     /// Trigger next step of the consensus engine.
     fn step(&self) {}
 
+    /// Stops any services that the may hold the Engine and makes it safe to drop.
+    fn stop(&self) {}
+
     /// Block transformation functions, before the transactions.
     fn on_new_block(
         &self,
