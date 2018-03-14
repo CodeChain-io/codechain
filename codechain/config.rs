@@ -17,14 +17,18 @@ pub fn parse(matches: &clap::ArgMatches) -> Result<Config, String> {
     })
 }
 
-pub fn parse_network_config(matches: &clap::ArgMatches) -> Result<NetworkConfig, String> {
+pub fn parse_network_config(matches: &clap::ArgMatches) -> Result<Option<NetworkConfig>, String> {
+    if matches.is_present("no-network") {
+        return Ok(None)
+    }
+
     let port = match matches.value_of("port") {
         Some(port) => port.parse().map_err(|_| "Invalid port".to_owned())?,
         None => 3485,
     };
-    Ok(NetworkConfig {
+    Ok(Some(NetworkConfig {
         port,
-    })
+    }))
 }
 
 pub fn parse_rpc_config(matches: &clap::ArgMatches) -> Result<Option<RpcHttpConfig>, String> {

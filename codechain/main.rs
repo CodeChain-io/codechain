@@ -45,15 +45,14 @@ fn run() -> Result<(), String> {
     let yaml = load_yaml!("codechain.yml");
     let matches = clap::App::from_yaml(yaml).get_matches();
 
+    let _config = config::parse(&matches)?;
+
     let log_config = LogConfig::default();
     let _logger = setup_log(&log_config).expect("Logger is initialized only once; qed");
 
     let _rpc_server = config::parse_rpc_config(&matches)?.map(commands::rpc_start);
 
-    let _handshake_server = {
-        let network_config = config::parse_network_config(&matches)?;
-        commands::handshake_start(network_config)
-    };
+    let _handshake_server = config::parse_network_config(&matches)?.map(commands::handshake_start);
 
     commands::forever()
 }
