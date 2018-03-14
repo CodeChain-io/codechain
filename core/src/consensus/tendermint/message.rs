@@ -17,11 +17,15 @@
 use std::cmp;
 
 use cbytes::Bytes;
-use ctypes::{H256, H520};
+use ccrypto::blake256;
+use ckeys::{public_to_address, Signature};
+use ctypes::{Address, H256, H520};
 use rlp::{UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
 
 use super::{Height, View, BlockHash, Step};
 use super::super::vote_collector::Message;
+use super::super::super::error::Error;
+use super::super::super::header::Header;
 
 /// Complete step of the consensus process.
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
@@ -85,6 +89,33 @@ impl ConsensusMessage {
             vote_step: VoteStep::new(height, view, step),
         }
     }
+
+    pub fn new_proposal(header: &Header) -> Result<Self, ::rlp::DecoderError> {
+        Ok(ConsensusMessage {
+            signature: proposal_signature(header)?,
+            vote_step: VoteStep::new(header.number() as Height, consensus_view(header)?, Step::Propose),
+            block_hash: Some(header.bare_hash()),
+        })
+    }
+
+    pub fn verify(&self) -> Result<Address, Error> {
+        let full_rlp = ::rlp::encode(self);
+        let block_info = ::rlp::Rlp::new(&full_rlp).at(1);
+        let sig: Signature = self.signature.into();
+        let public_key = sig.recover(&blake256(block_info.as_raw()))?;
+        Ok(public_to_address(&public_key))
+    }
+}
+
+/// Header consensus view.
+pub fn consensus_view(header: &Header) -> Result<View, ::rlp::DecoderError> {
+    let view_rlp = header.seal().get(0).expect("seal passed basic verification; seal has 3 fields; qed");
+    UntrustedRlp::new(view_rlp.as_slice()).as_val()
+}
+
+/// Proposal signature.
+pub fn proposal_signature(header: &Header) -> Result<H520, ::rlp::DecoderError> {
+    UntrustedRlp::new(header.seal().get(1).expect("seal passed basic verification; seal has 3 fields; qed").as_slice()).as_val()
 }
 
 impl Message for ConsensusMessage {
