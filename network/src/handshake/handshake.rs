@@ -95,7 +95,7 @@ impl Handshake {
                 let rlp = UntrustedRlp::new(&buf);
                 let message = Decodable::decode(&rlp)?;
                 info!("Handshake {:?} received from {:?}", message, addr);
-                Ok(Some((message, Address::from_socket(addr))))
+                Ok(Some((message, Address::from(addr))))
             },
             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => Ok(None),
             Err(e) => Err(HandshakeError::from(e)),
