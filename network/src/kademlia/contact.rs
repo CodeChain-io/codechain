@@ -15,11 +15,13 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 extern crate codechain_crypto as crypto;
-extern crate rand;
 
 
 #[cfg(test)]
 use std::str::FromStr;
+
+use rand;
+
 use super::NodeId;
 use super::node_id::log2_distance_between_nodes;
 use super::super::Address;
