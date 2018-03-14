@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::cmp::Ordering;
+use std::convert::From;
 use std::net::{ IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr };
 
 
@@ -24,14 +25,8 @@ pub struct Address {
 }
 
 impl Address {
-    pub fn from_socket(addr: SocketAddr) -> Self {
-        Address {
-            addr,
-        }
-    }
-
     pub fn new(ip: IpAddr, port: u16) -> Self {
-        Address::from_socket(SocketAddr::new(ip, port))
+        Address::from(SocketAddr::new(ip, port))
     }
 
     pub fn v4(a: u8, b: u8, c: u8, d: u8, port: u16) -> Self {
@@ -52,6 +47,14 @@ impl Address {
 
     pub fn socket(&self) -> &SocketAddr {
         &self.addr
+    }
+}
+
+impl From<SocketAddr> for Address {
+    fn from(addr: SocketAddr) -> Self {
+        Self {
+            addr,
+        }
     }
 }
 
