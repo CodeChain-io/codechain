@@ -1,3 +1,4 @@
+use codechain_rpc::Server as RpcServer;
 use rpc::HttpConfiguration as RpcHttpConfig;
 
 use super::super::rpc;
@@ -12,8 +13,7 @@ pub fn forever() -> Result<(), String> {
     Ok(())
 }
 
-pub fn rpc_start(cfg: RpcHttpConfig) -> Result<(), String> {
+pub fn rpc_start(cfg: RpcHttpConfig) -> RpcServer {
     info!("RPC Listening on {}", cfg.port);
-    let _rpc_server = rpc::new_http(cfg);
-    Ok(())
+    rpc::new_http(cfg).unwrap().unwrap()
 }
