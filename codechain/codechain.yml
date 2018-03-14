@@ -8,6 +8,12 @@ args:
         value_name: PORT
         help: Listen for connections on PORT.
         takes_value: true
+    - bootstrap-addresses:
+        long: bootstrap-addresses
+        value_name: BOOTSTRAP_ADDRESSES
+        help: Bootstrap addresses to connect.
+        takes_value: true
+        multiple: true
     - no-network:
         long: no-network
         help: Do not open network socket.

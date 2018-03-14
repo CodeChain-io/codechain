@@ -16,7 +16,8 @@
 
 use std::cmp::Ordering;
 use std::convert::From;
-use std::net::{ IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr };
+use std::net::{ AddrParseError, IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr };
+use std::str::FromStr;
 
 
 #[derive(Clone, Debug, Eq)]
@@ -55,6 +56,13 @@ impl From<SocketAddr> for Address {
         Self {
             addr,
         }
+    }
+}
+
+impl FromStr for Address {
+    type Err = AddrParseError;
+    fn from_str(addr: &str) -> Result<Self, Self::Err> {
+        Ok(Self::from(SocketAddr::from_str(addr)?))
     }
 }
 
