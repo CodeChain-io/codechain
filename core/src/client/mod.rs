@@ -16,8 +16,16 @@
 
 use cbytes::Bytes;
 
+use super::blockchain_info::BlockChainInfo;
+
+/// Provides `chain_info` method
+pub trait ChainInfo {
+    /// Get blockchain information.
+    fn chain_info(&self) -> BlockChainInfo;
+}
+
 /// Client facilities used by internally sealing Engines.
-pub trait EngineClient: Sync + Send {
+pub trait EngineClient: Sync + Send  + ChainInfo {
     /// Broadcast a consensus message to the network.
     fn broadcast_consensus_message(&self, message: Bytes);
 }

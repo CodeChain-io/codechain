@@ -14,28 +14,17 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-extern crate codechain_bytes as cbytes;
-extern crate codechain_crypto as ccrypto;
-extern crate codechain_io as cio;
-extern crate codechain_keys as ckeys;
-extern crate codechain_types as ctypes;
-extern crate heapsize;
-extern crate rlp;
-extern crate parking_lot;
-extern crate time;
-extern crate triehash;
-extern crate util_error;
+use ctypes::H256;
 
-#[macro_use]
-extern crate log;
+use super::header::BlockNumber;
 
-mod block;
-mod blockchain_info;
-mod client;
-mod codechain_machine;
-mod consensus;
-mod error;
-mod header;
-mod machine;
-mod transaction;
-
+/// Information about the blockchain gathered together.
+#[derive(Clone, Debug)]
+pub struct BlockChainInfo {
+    /// Best blockchain block hash.
+    pub best_block_hash: H256,
+    /// Best blockchain block number.
+    pub best_block_number: BlockNumber,
+    /// Best blockchain block timestamp.
+    pub best_block_timestamp: u64,
+}
