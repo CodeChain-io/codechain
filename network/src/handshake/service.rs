@@ -29,7 +29,7 @@ pub struct Service {
 }
 
 impl Service {
-    pub fn start(address: Address) -> Result<Self, IoError> {
+    pub fn start(address: Address, bootstrap_addresses: Vec<Address>) -> Result<Self, IoError> {
         let io_service = IoService::start()?;
         io_service.register_handler(Arc::new(HandshakeHandler::new(address)))?;
         Ok(Self {

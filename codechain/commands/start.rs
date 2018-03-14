@@ -24,5 +24,5 @@ pub fn rpc_start(cfg: RpcHttpConfig) -> RpcServer {
 pub fn handshake_start(cfg: config::NetworkConfig) -> HandshakeService {
     info!("Handshake Listening on {}", cfg.port);
     let address = Address::v4(127, 0, 0, 1, cfg.port);
-    HandshakeService::start(address).unwrap()
+    HandshakeService::start(address, cfg.bootstrap_addresses).unwrap()
 }
