@@ -186,7 +186,8 @@ mod tests {
         let mut random = Random {};
         let key_pair = random.generate().unwrap();
         let address = key_pair.address();
-        let signer = EngineSigner::new(address.clone(), key_pair.private().clone());
+        let mut signer = EngineSigner::default();
+        signer.set(address.clone(), key_pair.private().clone());
         let validators = Box::new(ValidatorList::new(vec![address.clone()]));
         SoloAuthority::new(machine, Network::Testnet, signer, validators)
     }

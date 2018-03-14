@@ -19,31 +19,49 @@ use ctypes::{Address, H256};
 
 /// Everything that an Engine needs to sign messages.
 pub struct EngineSigner {
-    address: Address,
-    private: Private,
+    address: Option<Address>,
+    private: Option<Private>,
+}
+
+impl Default for EngineSigner {
+    fn default() -> Self {
+        EngineSigner {
+            address: Default::default(),
+            private: Default::default(),
+        }
+    }
 }
 
 impl EngineSigner {
-    pub fn new(address: Address, private: Private) -> Self {
-        EngineSigner {
-            address,
-            private,
-        }
+    /// Set up the signer to sign with given address and password.
+    pub fn set(&mut self, address: Address, private: Private) {
+        self.address = Some(address);
+        self.private = Some(private);
+        debug!(target: "poa", "Setting Engine signer to {}", address);
     }
 
     /// Sign a consensus message hash.
     pub fn sign(&self, hash: H256) -> Result<Signature, KeyError> {
-        self.private.sign(&hash)
+        if let Some(ref p) = self.private {
+            p.sign(&hash)
+        } else {
+            Err(KeyError::InvalidPrivate)
+        }
     }
 
     /// Signing address.
-    pub fn address(&self) -> Address {
+    pub fn address(&self) -> Option<Address> {
         self.address.clone()
     }
 
     /// Check if the given address is the signing address.
     pub fn is_address(&self, address: &Address) -> bool {
-        self.address == *address
+        self.address.map_or(false, |a| a == *address)
+    }
+
+    /// Check if the signing address was set.
+    pub fn is_some(&self) -> bool {
+        self.address.is_some()
     }
 }
 
