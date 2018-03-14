@@ -8,6 +8,9 @@ args:
         value_name: PORT
         help: Listen for connections on PORT.
         takes_value: true
+    - no-network:
+        long: no-network
+        help: Do not open network socket.
     - quiet:
         short: q
         long: quiet
