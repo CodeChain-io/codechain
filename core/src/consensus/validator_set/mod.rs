@@ -16,6 +16,7 @@
 
 use std::sync::Weak;
 
+use cbytes::Bytes;
 use ctypes::{Address, H256};
 
 use self::validator_list::ValidatorList;
@@ -81,6 +82,10 @@ pub trait ValidatorSet: Send + Sync {
     fn epoch_set(&self, first: bool, machine: &CodeChainMachine, number: BlockNumber, proof: &[u8])
         -> Result<(ValidatorList, Option<H256>), Error>;
 
+    /// Notifies about malicious behaviour.
+    fn report_malicious(&self, _validator: &Address, _set_block: BlockNumber, _block: BlockNumber, _proof: Bytes) {}
+    /// Notifies about benign misbehaviour.
+    fn report_benign(&self, _validator: &Address, _set_block: BlockNumber, _block: BlockNumber) {}
     /// Allows blockchain state access.
     fn register_client(&self, _client: Weak<EngineClient>) {}
 }
