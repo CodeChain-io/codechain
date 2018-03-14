@@ -20,9 +20,9 @@ extern crate mio;
 extern crate parking_lot;
 extern crate rlp;
 
-extern crate codechain_crypto;
+extern crate codechain_crypto as ccrypto;
 extern crate codechain_io as cio;
-extern crate codechain_types;
+extern crate codechain_types as ctypes;
 
 pub mod address;
 pub mod kademlia;
