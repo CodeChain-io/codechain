@@ -8,7 +8,7 @@ extern crate tokio_core;
 
 extern crate app_dirs;
 extern crate codechain_logger;
-extern crate codechain_network;
+extern crate codechain_network as cnetwork;
 extern crate codechain_rpc;
 extern crate env_logger;
 extern crate panic_hook;
@@ -49,6 +49,11 @@ fn run() -> Result<(), String> {
     let _logger = setup_log(&log_config).expect("Logger is initialized only once; qed");
 
     let _rpc_server = config::parse_rpc_config(&matches)?.map(commands::rpc_start);
+
+    let _handshake_server = {
+        let network_config = config::parse_network_config(&matches)?;
+        commands::handshake_start(network_config)
+    };
 
     commands::forever()
 }
