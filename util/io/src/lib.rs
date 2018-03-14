@@ -19,8 +19,8 @@
 //! Example usage for creating a network service and adding an IO handler:
 //!
 //! ```rust
-//! extern crate ethcore_io;
-//! use ethcore_io::*;
+//! extern crate codechain_io as cio;
+//! use cio::*;
 //! use std::sync::Arc;
 //!
 //! struct MyHandler;
