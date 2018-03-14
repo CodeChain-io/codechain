@@ -16,8 +16,9 @@
 
 use std::sync::Weak;
 
-use ckeys::{Signature, Network, public_to_address};
-use ctypes::{H256, H520};
+use ckeys::{Signature, Private, Network, public_to_address};
+use ctypes::{Address, H256, H520};
+use parking_lot::RwLock;
 
 use super::{ConsensusEngine, EngineError, Seal, ConstructedVerifier};
 use super::signer::EngineSigner;
@@ -32,17 +33,17 @@ use super::super::header::Header;
 pub struct SoloAuthority {
     machine: CodeChainMachine,
     network: Network,
-    signer: EngineSigner,
+    signer: RwLock<EngineSigner>,
     validators: Box<ValidatorSet>,
 }
 
 impl SoloAuthority {
     /// Create a new instance of SoloAuthority engine
-    pub fn new(machine: CodeChainMachine, network: Network, signer: EngineSigner, validators: Box<ValidatorSet>) -> Self {
+    pub fn new(machine: CodeChainMachine, network: Network, validators: Box<ValidatorSet>) -> Self {
         SoloAuthority {
             machine,
             network,
-            signer,
+            signer: Default::default(),
             validators,
         }
     }
@@ -84,7 +85,9 @@ impl ConsensusEngine<CodeChainMachine> for SoloAuthority {
     // One field - the signature
     fn seal_fields(&self, _header: &Header) -> usize { 1 }
 
-    fn seals_internally(&self) -> Option<bool> { Some(true) }
+    fn seals_internally(&self) -> Option<bool> {
+        Some(self.signer.read().is_some())
+    }
 
     /// Attempt to seal the block internally.
     fn generate_seal(&self, block: &ExecutedBlock, _parent: &Header) -> Seal {
@@ -163,8 +166,13 @@ impl ConsensusEngine<CodeChainMachine> for SoloAuthority {
         self.validators.register_client(client);
     }
 
+    /// Register an account which signs consensus messages.
+    fn set_signer(&self, address: Address, private: Private) {
+        self.signer.write().set(address, private);
+    }
+
     fn sign(&self, hash: H256) -> Result<Signature, Error> {
-        self.signer.sign(hash).map_err(Into::into)
+        self.signer.read().sign(hash).map_err(Into::into)
     }
 }
 
@@ -189,7 +197,7 @@ mod tests {
         let mut signer = EngineSigner::default();
         signer.set(address.clone(), key_pair.private().clone());
         let validators = Box::new(ValidatorList::new(vec![address.clone()]));
-        SoloAuthority::new(machine, Network::Testnet, signer, validators)
+        SoloAuthority::new(machine, Network::Testnet, validators)
     }
 
     fn genesis_header() -> Header {
@@ -226,6 +234,6 @@ mod tests {
     #[test]
     fn seals_internally() {
         let engine = new_test_authority();
-        assert!(engine.seals_internally().unwrap());
+        assert!(!engine.seals_internally().unwrap());
     }
 }

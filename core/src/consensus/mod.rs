@@ -27,7 +27,7 @@ use std::fmt;
 use std::sync::Weak;
 
 use cbytes::Bytes;
-use ckeys::Signature;
+use ckeys::{Private, Signature};
 use ctypes::{Address, H256};
 use rlp::{Encodable, Decodable, DecoderError, RlpStream, UntrustedRlp};
 
@@ -159,6 +159,9 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
     /// Find out if the block is a proposal block and should not be inserted into the DB.
     /// Takes a header of a fully verified block.
     fn is_proposal(&self, _verified_header: &M::Header) -> bool { false }
+
+    /// Register an account which signs consensus messages.
+    fn set_signer(&self, _address: Address, _private: Private) {}
 
     /// Sign using the EngineSigner, to be used for consensus tx signing.
     fn sign(&self, _hash: H256) -> Result<Signature, Error> { unimplemented!() }
