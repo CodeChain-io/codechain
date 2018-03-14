@@ -30,6 +30,7 @@ use cbytes::Bytes;
 use ckeys::{Private, Signature};
 use ctypes::{Address, H256};
 use rlp::{Encodable, Decodable, DecoderError, RlpStream, UntrustedRlp};
+use unexpected::{Mismatch, OutOfBounds};
 
 use self::epoch::{EpochVerifier, NoOp};
 use super::error::Error;
@@ -156,6 +157,10 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
     /// Add Client which can be used for sealing, potentially querying the state and sending messages.
     fn register_client(&self, _client: Weak<M::EngineClient>) {}
 
+    /// Handle any potential consensus messages;
+    /// updating consensus state and potentially issuing a new one.
+    fn handle_message(&self, _message: &[u8]) -> Result<(), EngineError> { Err(EngineError::UnexpectedMessage) }
+
     /// Find out if the block is a proposal block and should not be inserted into the DB.
     /// Takes a header of a fully verified block.
     fn is_proposal(&self, _verified_header: &M::Header) -> bool { false }
@@ -226,14 +231,28 @@ impl Decodable for PendingTransition {
 pub enum EngineError {
     /// Signature or author field does not belong to an authority.
     NotAuthorized(Address),
+    /// The same author issued different votes at the same step.
+    DoubleVote(Address),
+    /// The received block is from an incorrect proposer.
+    NotProposer(Mismatch<Address>),
+    /// Message was not expected.
+    UnexpectedMessage,
+    /// Seal field has an unexpected size.
+    BadSealFieldSize(OutOfBounds<usize>),
+    /// Malformed consensus message.
+    MalformedMessage(String),
 }
-
 
 impl fmt::Display for EngineError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use self::EngineError::*;
         let msg = match *self {
             NotAuthorized(ref address) => format!("Signer {} is not authorized.", address),
+            DoubleVote(ref address) => format!("Author {} issued too many blocks.", address),
+            NotProposer(ref mis) => format!("Author is not a current proposer: {}", mis),
+            UnexpectedMessage => "This Engine should not be fed messages.".into(),
+            BadSealFieldSize(ref oob) => format!("Seal field has an unexpected length: {}", oob),
+            MalformedMessage(ref msg) => format!("Received malformed consensus message: {}", msg),
         };
 
         f.write_fmt(format_args!("Engine error ({})", msg))

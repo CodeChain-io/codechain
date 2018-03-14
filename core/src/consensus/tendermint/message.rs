@@ -161,6 +161,16 @@ pub fn message_info_rlp(vote_step: &VoteStep, block_hash: Option<BlockHash>) -> 
     s.out()
 }
 
+pub fn message_full_rlp(signature: &H520, vote_info: &Bytes) -> Bytes {
+    let mut s = RlpStream::new_list(2);
+    s.append(signature).append_raw(vote_info, 1);
+    s.out()
+}
+
+pub fn message_hash(vote_step: VoteStep, block_hash: H256) -> H256 {
+    blake256(message_info_rlp(&vote_step, Some(block_hash)))
+}
+
 #[cfg(test)]
 mod tests {
     use super::super::Step;

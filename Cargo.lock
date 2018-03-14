@@ -305,6 +305,7 @@ dependencies = [
  "rlp 0.2.1",
  "time 0.1.39 (registry+https://github.com/rust-lang/crates.io-index)",
  "triehash 0.1.0",
+ "unexpected 0.1.0",
  "util-error 0.1.0",
 ]
 
@@ -1176,6 +1177,10 @@ dependencies = [
  "rustc-hex 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_version 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
+
+[[package]]
+name = "unexpected"
+version = "0.1.0"
 
 [[package]]
 name = "unicase"

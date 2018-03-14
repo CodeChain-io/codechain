@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use cbytes::Bytes;
+use ctypes::H256;
 
 use super::blockchain_info::BlockChainInfo;
 
@@ -28,5 +29,11 @@ pub trait ChainInfo {
 pub trait EngineClient: Sync + Send  + ChainInfo {
     /// Broadcast a consensus message to the network.
     fn broadcast_consensus_message(&self, message: Bytes);
+
+    /// Make a new block and seal it.
+    fn update_sealing(&self);
+
+    /// Submit a seal for a block in the mining queue.
+    fn submit_seal(&self, block_hash: H256, seal: Vec<Bytes>);
 }
 

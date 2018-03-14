@@ -19,6 +19,7 @@ use std::fmt;
 use cio::IoError;
 use ckeys::{Error as KeyError};
 use util_error::UtilError;
+use unexpected::Mismatch;
 
 use super::consensus::EngineError;
 use super::transaction::TransactionError;
@@ -26,6 +27,8 @@ use super::transaction::TransactionError;
 #[derive(Debug, PartialEq, Clone, Copy, Eq)]
 /// Errors concerning block processing.
 pub enum BlockError {
+    /// Seal is incorrect format.
+    InvalidSealArity(Mismatch<usize>),
     /// Some low-level aspect of the seal is incorrect.
     InvalidSeal,
 }
@@ -35,6 +38,7 @@ impl fmt::Display for BlockError {
         use self::BlockError::*;
 
         let msg: String = match *self {
+            InvalidSealArity(ref mis) => format!("Block seal in incorrect format: {}", mis),
             InvalidSeal => "Block has invalid seal.".into(),
         };
 
