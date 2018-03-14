@@ -156,6 +156,10 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
     /// Add Client which can be used for sealing, potentially querying the state and sending messages.
     fn register_client(&self, _client: Weak<M::EngineClient>) {}
 
+    /// Find out if the block is a proposal block and should not be inserted into the DB.
+    /// Takes a header of a fully verified block.
+    fn is_proposal(&self, _verified_header: &M::Header) -> bool { false }
+
     /// Sign using the EngineSigner, to be used for consensus tx signing.
     fn sign(&self, _hash: H256) -> Result<Signature, Error> { unimplemented!() }
 }
