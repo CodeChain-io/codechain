@@ -38,7 +38,7 @@ pub struct Handshake {
 enum HandshakeError {
     IoError(io::Error),
     RlpError(DecoderError),
-    SendError(usize),
+    SendError(HandshakeMessage, usize),
 }
 
 impl fmt::Display for HandshakeError {
@@ -46,7 +46,7 @@ impl fmt::Display for HandshakeError {
         match self {
             &HandshakeError::IoError(ref err) => write!(f, "IoError {}", err),
             &HandshakeError::RlpError(ref err) => write!(f, "RlpError {}", err),
-            &HandshakeError::SendError(unsent) => write!(f, "SendError {} bytes are not sent", unsent),
+            &HandshakeError::SendError(ref msg, unsent) => write!(f, "SendError {} bytesa of {:?} are not sent", unsent, msg),
         }
     }
 }
@@ -56,7 +56,7 @@ impl error::Error for HandshakeError {
         match self {
             &HandshakeError::IoError(ref err) => err.description(),
             &HandshakeError::RlpError(ref err) => err.description(),
-            &HandshakeError::SendError(_) => "Unsent data",
+            &HandshakeError::SendError(_, _) => "Unsent data",
         }
     }
 
@@ -64,7 +64,7 @@ impl error::Error for HandshakeError {
         match self {
             &HandshakeError::IoError(ref err) => Some(err),
             &HandshakeError::RlpError(ref err) => Some(err),
-            &HandshakeError::SendError(_) => None,
+            &HandshakeError::SendError(_, _) => None,
         }
     }
 }
@@ -115,7 +115,7 @@ impl Handshake {
         debug_assert!(length_to_send <= MAX_HANDSHAKE_PACKET_SIZE);
         let sent_size = self.socket.send_to(&bytes, target.socket().clone())?;
         if sent_size != length_to_send {
-            return Err(HandshakeError::SendError(length_to_send - sent_size))
+            return Err(HandshakeError::SendError(message.clone(), length_to_send - sent_size))
         }
         info!("Handshake {:?} sent to {:?}", message, target);
         Ok(())
