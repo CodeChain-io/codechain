@@ -14,32 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod chain_notify;
-mod client;
-
-pub use self::chain_notify::ChainNotify;
-pub use self::client::Client;
-
-use cbytes::Bytes;
-use ctypes::H256;
-
-use super::blockchain_info::BlockChainInfo;
-
-/// Provides `chain_info` method
-pub trait ChainInfo {
-    /// Get blockchain information.
-    fn chain_info(&self) -> BlockChainInfo;
-}
-
-/// Client facilities used by internally sealing Engines.
-pub trait EngineClient: Sync + Send  + ChainInfo {
-    /// Broadcast a consensus message to the network.
-    fn broadcast_consensus_message(&self, message: Bytes);
-
-    /// Make a new block and seal it.
-    fn update_sealing(&self);
-
-    /// Submit a seal for a block in the mining queue.
-    fn submit_seal(&self, block_hash: H256, seal: Vec<Bytes>);
+/// Represents what has to be handled by actor listening to chain events
+pub trait ChainNotify : Send + Sync {
+    /// fires when chain broadcasts a message
+    fn broadcast(&self, _data: Vec<u8>) {}
 }
 
