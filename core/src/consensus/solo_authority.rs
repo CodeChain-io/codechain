@@ -32,17 +32,15 @@ use super::super::header::Header;
 
 pub struct SoloAuthority {
     machine: CodeChainMachine,
-    network: Network,
     signer: RwLock<EngineSigner>,
     validators: Box<ValidatorSet>,
 }
 
 impl SoloAuthority {
     /// Create a new instance of SoloAuthority engine
-    pub fn new(machine: CodeChainMachine, network: Network, validators: Box<ValidatorSet>) -> Self {
+    pub fn new(machine: CodeChainMachine, validators: Box<ValidatorSet>) -> Self {
         SoloAuthority {
             machine,
-            network,
             signer: Default::default(),
             validators,
         }
@@ -50,17 +48,16 @@ impl SoloAuthority {
 }
 
 struct EpochVerifier {
-    network: Network,
     list: ValidatorList,
 }
 
 impl super::epoch::EpochVerifier<CodeChainMachine> for EpochVerifier {
     fn verify_light(&self, header: &Header) -> Result<(), Error> {
-        verify_external(header, self.network, &self.list)
+        verify_external(header, &self.list)
     }
 }
 
-fn verify_external(header: &Header, network: Network, validators: &ValidatorSet) -> Result<(), Error> {
+fn verify_external(header: &Header, validators: &ValidatorSet) -> Result<(), Error> {
     use rlp::UntrustedRlp;
 
     // Check if the signature belongs to a validator, can depend on parent state.
@@ -109,7 +106,7 @@ impl ConsensusEngine<CodeChainMachine> for SoloAuthority {
     }
 
     fn verify_block_external(&self, header: &Header) -> Result<(), Error> {
-        verify_external(header, self.network, &*self.validators)
+        verify_external(header, &*self.validators)
     }
 
     fn genesis_epoch_data(&self, header: &Header) -> Result<Vec<u8>, String> {
@@ -150,7 +147,7 @@ impl ConsensusEngine<CodeChainMachine> for SoloAuthority {
 
         match self.validators.epoch_set(first, &self.machine, header.number(), proof) {
             Ok((list, finalize)) => {
-                let verifier = Box::new(EpochVerifier { network: self.network, list });
+                let verifier = Box::new(EpochVerifier { list });
 
                 // our epoch verifier will ensure no unverified verifier is ever verified.
                 match finalize {
@@ -197,7 +194,7 @@ mod tests {
         let mut signer = EngineSigner::default();
         signer.set(address.clone(), key_pair.private().clone());
         let validators = Box::new(ValidatorList::new(vec![address.clone()]));
-        SoloAuthority::new(machine, Network::Testnet, validators)
+        SoloAuthority::new(machine, validators)
     }
 
     fn genesis_header() -> Header {
