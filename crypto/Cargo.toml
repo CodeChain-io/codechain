@@ -7,3 +7,6 @@ authors = ["CodeChain Team <codechain@kodebox.io>"]
 rust-crypto = "0.2.36"
 siphasher = "0.1.1"
 codechain-types = { path = "../primitives/codechain-types" }
+
+[dev-dependencies]
+rand = "0.4"
