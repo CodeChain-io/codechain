@@ -2,6 +2,8 @@ extern crate codechain_types as ctypes;
 extern crate crypto as rcrypto;
 extern crate siphasher;
 
+pub mod aes;
+
 use std::hash::Hasher;
 
 use ctypes::hash::{H160, H256, H512};
