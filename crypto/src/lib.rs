@@ -1,17 +1,16 @@
-extern crate codechain_types;
+extern crate codechain_types as ctypes;
 extern crate crypto as rcrypto;
 extern crate siphasher;
 
-pub use rcrypto::digest::Digest;
 use std::hash::Hasher;
+
+use ctypes::hash::{H160, H256, H512};
 use rcrypto::blake2b::Blake2b;
 use rcrypto::sha1::Sha1;
 use rcrypto::ripemd160::Ripemd160;
 use siphasher::sip::SipHasher24;
-use codechain_types::hash::{H160, H256, H512};
 
-#[cfg(test)]
-extern crate codechain_bytes as bytes;
+pub use rcrypto::digest::Digest;
 
 /// Get the 256-bits BLAKE2b hash of the empty bytes string.
 pub const BLAKE_EMPTY: H256 = H256([0x0e, 0x57, 0x51, 0xc0, 0x26, 0xe5, 0x43, 0xb2, 0xe8, 0xab, 0x2e, 0xb0, 0x60, 0x99, 0xda, 0xa1, 0xd1, 0xe5, 0xdf, 0x47, 0x77, 0x8f, 0x77, 0x87, 0xfa, 0xab, 0x45, 0xcd, 0xf1, 0x2f, 0xe3, 0xa8]);
