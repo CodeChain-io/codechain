@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use codechain_rpc::{MetaIoHandler, Params, Value};
+use crpc::{MetaIoHandler, Params, Value};
 
 pub fn setup_rpc(mut handler: MetaIoHandler<()>) -> MetaIoHandler<()> {
     handler.add_method("ping", |_params: Params| {

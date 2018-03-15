@@ -24,9 +24,9 @@ extern crate tokio_core;
 
 extern crate app_dirs;
 extern crate codechain_core as ccore;
-extern crate codechain_logger;
+extern crate codechain_logger as clogger;
 extern crate codechain_network as cnetwork;
-extern crate codechain_rpc;
+extern crate codechain_rpc as crpc;
 extern crate env_logger;
 extern crate panic_hook;
 
@@ -37,8 +37,7 @@ mod rpc;
 mod rpc_apis;
 
 use app_dirs::AppInfo;
-use codechain_logger::setup_log;
-use codechain_logger::Config as LogConfig;
+use clogger::{setup_log, Config as LogConfig};
 
 pub const APP_INFO: AppInfo = AppInfo {
     name: "codechain",

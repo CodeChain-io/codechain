@@ -15,9 +15,8 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ccore::ClientService;
-use cnetwork::Address;
-use cnetwork::HandshakeService;
-use codechain_rpc::Server as RpcServer;
+use cnetwork::{Address, HandshakeService};
+use crpc::Server as RpcServer;
 use rpc::HttpConfiguration as RpcHttpConfig;
 
 use super::super::config;
