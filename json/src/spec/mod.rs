@@ -15,11 +15,13 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 mod engine;
+mod genesis;
 mod seal;
 mod solo_authority;
 mod tendermint;
 
 pub use self::engine::Engine;
+pub use self::genesis::Genesis;
 pub use self::seal::{Seal, TendermintSeal};
 pub use self::solo_authority::{SoloAuthority, SoloAuthorityParams};
 pub use self::tendermint::{Tendermint, TendermintParams};
