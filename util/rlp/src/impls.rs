@@ -313,6 +313,9 @@ impl Encodable for String {
 impl Decodable for String {
 	fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
 		rlp.decoder().decode_value(|bytes| {
+			if bytes.contains(&b'\0') {
+				return Err(DecoderError::RlpNullTerminatedString);
+			}
 			match str::from_utf8(bytes) {
 				Ok(s) => Ok(s.to_owned()),
 				// consider better error type here

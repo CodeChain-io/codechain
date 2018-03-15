@@ -32,6 +32,8 @@ pub enum DecoderError {
 	RlpInconsistentLengthAndData,
 	/// Declared length is invalid and results in overflow
 	RlpInvalidLength,
+	/// A string MUST NOT be null terminated.
+	RlpNullTerminatedString,
 	/// Custom rlp decoding error.
 	Custom(&'static str),
 }

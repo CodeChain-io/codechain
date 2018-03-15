@@ -446,6 +446,15 @@ fn test_the_exact_long_string()
 }
 
 #[test]
+fn test_null_terminated_string()
+{
+	let data: Vec<u8> = vec![0x84, b'd', b'o', b'g', b'\0'];
+	let rlp = UntrustedRlp::new(&data);
+	let as_val: Result<String, DecoderError> = rlp.as_val();
+	assert_eq!(Err(DecoderError::RlpNullTerminatedString), as_val);
+}
+
+#[test]
 fn test_rlp_2bytes_data_length_check()
 {
 	let mut data: Vec<u8> = vec![0xb9, 2, 255]; // 512+255
