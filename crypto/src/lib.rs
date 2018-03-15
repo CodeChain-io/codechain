@@ -1,16 +1,12 @@
 extern crate codechain_types as ctypes;
 extern crate crypto as rcrypto;
-extern crate siphasher;
 
 pub mod aes;
-
-use std::hash::Hasher;
 
 use ctypes::hash::{H160, H256, H512};
 use rcrypto::blake2b::Blake2b;
 use rcrypto::sha1::Sha1;
 use rcrypto::ripemd160::Ripemd160;
-use siphasher::sip::SipHasher24;
 
 pub use rcrypto::digest::Digest;
 
@@ -65,19 +61,10 @@ pub fn blake512<T: AsRef<[u8]>>(s: T) -> H512 {
     result
 }
 
-/// SipHash-2-4
-#[inline]
-pub fn siphash24<T: AsRef<[u8]>>(key0: u64, key1: u64, s: T) -> u64 {
-    let input = s.as_ref();
-    let mut hasher = SipHasher24::new_with_keys(key0, key1);
-    hasher.write(input);
-    hasher.finish()
-}
-
 #[cfg(test)]
 mod tests {
     use super::{BLAKE_EMPTY, BLAKE_NULL_RLP, BLAKE_EMPTY_LIST_RLP};
-    use super::{blake256, blake512, ripemd160, sha1, siphash24};
+    use super::{blake256, blake512, ripemd160, sha1};
 
     #[test]
     fn test_ripemd160() {
@@ -125,13 +112,6 @@ mod tests {
     fn test_blake_empty_list_rlp() {
         let expected = BLAKE_EMPTY_LIST_RLP;
         let result = blake256([0xc0]);
-        assert_eq!(result, expected);
-    }
-
-    #[test]
-    fn test_siphash24() {
-        let expected = 0x74f839c593dc67fd_u64;
-        let result = siphash24(0x0706050403020100_u64, 0x0F0E0D0C0B0A0908_u64, &[0; 1]);
         assert_eq!(result, expected);
     }
 }
