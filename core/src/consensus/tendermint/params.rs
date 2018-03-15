@@ -27,8 +27,6 @@ pub struct TendermintParams {
     pub validators: Box<ValidatorSet>,
     /// Timeout durations for different steps.
     pub timeouts: TendermintTimeouts,
-    /// Reward per block in base units.
-    pub block_reward: U256,
 }
 
 /// Base timeout of each step in ms.
