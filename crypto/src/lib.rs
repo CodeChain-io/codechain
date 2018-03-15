@@ -26,112 +26,112 @@ pub const BLAKE_EMPTY_LIST_RLP: H256 = H256([0xda, 0x22, 0x3b, 0x09, 0x96, 0x7c,
 /// RIPEMD160
 #[inline]
 pub fn ripemd160<T: AsRef<[u8]>>(s: T) -> H160 {
-	let input = s.as_ref();
-	let mut result = H160::default();
-	let mut hasher = Ripemd160::new();
-	hasher.input(input);
-	hasher.result(&mut *result);
-	result
+    let input = s.as_ref();
+    let mut result = H160::default();
+    let mut hasher = Ripemd160::new();
+    hasher.input(input);
+    hasher.result(&mut *result);
+    result
 }
 
 /// SHA-1
 #[inline]
 pub fn sha1<T: AsRef<[u8]>>(s: T) -> H160 {
-	let input = s.as_ref();
-	let mut result = H160::default();
-	let mut hasher = Sha1::new();
-	hasher.input(input);
-	hasher.result(&mut *result);
-	result
+    let input = s.as_ref();
+    let mut result = H160::default();
+    let mut hasher = Sha1::new();
+    hasher.input(input);
+    hasher.result(&mut *result);
+    result
 }
 
 /// BLAKE256
 pub fn blake256<T: AsRef<[u8]>>(s: T) -> H256 {
-	let input = s.as_ref();
-	let mut result = H256::default();
-	let mut hasher = Blake2b::new(32);
-	hasher.input(input);
-	hasher.result(&mut *result);
-	result
+    let input = s.as_ref();
+    let mut result = H256::default();
+    let mut hasher = Blake2b::new(32);
+    hasher.input(input);
+    hasher.result(&mut *result);
+    result
 }
 
 /// BLAKE512
 pub fn blake512<T: AsRef<[u8]>>(s: T) -> H512 {
-	let input = s.as_ref();
-	let mut result = H512::default();
-	let mut hasher = Blake2b::new(64);
-	hasher.input(input);
-	hasher.result(&mut *result);
-	result
+    let input = s.as_ref();
+    let mut result = H512::default();
+    let mut hasher = Blake2b::new(64);
+    hasher.input(input);
+    hasher.result(&mut *result);
+    result
 }
 
 /// SipHash-2-4
 #[inline]
 pub fn siphash24<T: AsRef<[u8]>>(key0: u64, key1: u64, s: T) -> u64 {
-	let input = s.as_ref();
-	let mut hasher = SipHasher24::new_with_keys(key0, key1);
-	hasher.write(input);
-	hasher.finish()
+    let input = s.as_ref();
+    let mut hasher = SipHasher24::new_with_keys(key0, key1);
+    hasher.write(input);
+    hasher.finish()
 }
 
 #[cfg(test)]
 mod tests {
-	use super::{BLAKE_EMPTY, BLAKE_NULL_RLP, BLAKE_EMPTY_LIST_RLP};
-	use super::{blake256, blake512, ripemd160, sha1, siphash24};
+    use super::{BLAKE_EMPTY, BLAKE_NULL_RLP, BLAKE_EMPTY_LIST_RLP};
+    use super::{blake256, blake512, ripemd160, sha1, siphash24};
 
-	#[test]
-	fn test_ripemd160() {
-		let expected = "108f07b8382412612c048d07d13f814118445acd".into();
-		let result = ripemd160(b"hello");
-		assert_eq!(result, expected);
-	}
+    #[test]
+    fn test_ripemd160() {
+        let expected = "108f07b8382412612c048d07d13f814118445acd".into();
+        let result = ripemd160(b"hello");
+        assert_eq!(result, expected);
+    }
 
-	#[test]
-	fn test_sha1() {
-		let expected = "aaf4c61ddcc5e8a2dabede0f3b482cd9aea9434d".into();
-		let result = sha1(b"hello");
-		assert_eq!(result, expected);
-	}
+    #[test]
+    fn test_sha1() {
+        let expected = "aaf4c61ddcc5e8a2dabede0f3b482cd9aea9434d".into();
+        let result = sha1(b"hello");
+        assert_eq!(result, expected);
+    }
 
-	#[test]
-	fn test_blake256() {
-		let expected = "324dcf027dd4a30a932c441f365a25e86b173defa4b8e58948253471b81b72cf".into();
-		let result = blake256(b"hello");
-		assert_eq!(result, expected);
-	}
+    #[test]
+    fn test_blake256() {
+        let expected = "324dcf027dd4a30a932c441f365a25e86b173defa4b8e58948253471b81b72cf".into();
+        let result = blake256(b"hello");
+        assert_eq!(result, expected);
+    }
 
-	#[test]
-	fn test_blake512() {
-		let expected = "e4cfa39a3d37be31c59609e807970799caa68a19bfaa15135f165085e01d41a65ba1e1b146aeb6bd0092b49eac214c103ccfa3a365954bbbe52f74a2b3620c94".into();
-		let result = blake512(b"hello");
-		assert_eq!(result, expected);
-	}
+    #[test]
+    fn test_blake512() {
+        let expected = "e4cfa39a3d37be31c59609e807970799caa68a19bfaa15135f165085e01d41a65ba1e1b146aeb6bd0092b49eac214c103ccfa3a365954bbbe52f74a2b3620c94".into();
+        let result = blake512(b"hello");
+        assert_eq!(result, expected);
+    }
 
-	#[test]
-	fn test_blake_empty() {
-		let expected = BLAKE_EMPTY;
-		let result = blake256([0u8; 0]);
-		assert_eq!(result, expected);
-	}
+    #[test]
+    fn test_blake_empty() {
+        let expected = BLAKE_EMPTY;
+        let result = blake256([0u8; 0]);
+        assert_eq!(result, expected);
+    }
 
-	#[test]
-	fn test_blake_null_rlp() {
-		let expected = BLAKE_NULL_RLP;
-		let result = blake256([0x80]);
-		assert_eq!(result, expected);
-	}
+    #[test]
+    fn test_blake_null_rlp() {
+        let expected = BLAKE_NULL_RLP;
+        let result = blake256([0x80]);
+        assert_eq!(result, expected);
+    }
 
-	#[test]
-	fn test_blake_empty_list_rlp() {
-		let expected = BLAKE_EMPTY_LIST_RLP;
-		let result = blake256([0xc0]);
-		assert_eq!(result, expected);
-	}
+    #[test]
+    fn test_blake_empty_list_rlp() {
+        let expected = BLAKE_EMPTY_LIST_RLP;
+        let result = blake256([0xc0]);
+        assert_eq!(result, expected);
+    }
 
-	#[test]
-	fn test_siphash24() {
-		let expected = 0x74f839c593dc67fd_u64;
-		let result = siphash24(0x0706050403020100_u64, 0x0F0E0D0C0B0A0908_u64, &[0; 1]);
-		assert_eq!(result, expected);
-	}
+    #[test]
+    fn test_siphash24() {
+        let expected = 0x74f839c593dc67fd_u64;
+        let result = siphash24(0x0706050403020100_u64, 0x0F0E0D0C0B0A0908_u64, &[0; 1]);
+        assert_eq!(result, expected);
+    }
 }
