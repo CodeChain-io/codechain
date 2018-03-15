@@ -14,13 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod handler;
 mod handshake;
 mod message;
 mod service;
 
 
-use self::handler::HandshakeHandler;
-use self::handshake::Handshake;
 use self::message::Message as HandshakeMessage;
 pub use self::service::Service as HandshakeService;

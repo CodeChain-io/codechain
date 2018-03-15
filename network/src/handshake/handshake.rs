@@ -14,15 +14,18 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::collections::VecDeque;
 use std::error;
 use std::fmt;
 use std::io;
 use std::net::UdpSocket;
 use std::result::Result;
 
-use rlp::{UntrustedRlp, Encodable, Decodable, DecoderError};
-use rand;
+use cio::{ IoContext, IoHandler, TimerToken, StreamToken };
+use parking_lot::Mutex;
 use rand::distributions::{ Range, Sample };
+use rand;
+use rlp::{ UntrustedRlp, Encodable, Decodable, DecoderError };
 
 use super::HandshakeMessage;
 use super::super::Address;
@@ -32,7 +35,7 @@ pub struct Handshake {
 }
 
 #[derive(Debug)]
-pub enum HandshakeError {
+enum HandshakeError {
     IoError(io::Error),
     RlpError(DecoderError),
     SendError(usize),
@@ -83,7 +86,7 @@ const MAX_HANDSHAKE_PACKET_SIZE: usize = 1024;
 pub type Nonce = u32;
 
 impl Handshake {
-    pub fn bind(address: &Address) -> Result<Self, HandshakeError> {
+    fn bind(address: &Address) -> Result<Self, HandshakeError> {
         let socket = address.socket();
         let socket = UdpSocket::bind(socket)?;
         let _ = socket.set_nonblocking(true)?;
@@ -92,7 +95,7 @@ impl Handshake {
         })
     }
 
-    pub fn receive(&self) -> Result<Option<(HandshakeMessage, Address)>, HandshakeError> {
+    fn receive(&self) -> Result<Option<(HandshakeMessage, Address)>, HandshakeError> {
         let mut buf: [u8; MAX_HANDSHAKE_PACKET_SIZE] = [0; MAX_HANDSHAKE_PACKET_SIZE];
         match self.socket.recv_from(&mut buf) {
             Ok((_size, addr)) => {
@@ -106,7 +109,7 @@ impl Handshake {
         }
     }
 
-    pub fn send_to(&self, message: &HandshakeMessage, target: &Address) -> Result<(), HandshakeError> {
+    fn send_to(&self, message: &HandshakeMessage, target: &Address) -> Result<(), HandshakeError> {
         let bytes = message.rlp_bytes();
         let length_to_send = bytes.len();
         debug_assert!(length_to_send <= MAX_HANDSHAKE_PACKET_SIZE);
@@ -118,11 +121,11 @@ impl Handshake {
         Ok(())
     }
 
-    pub fn send_ping_to(&self, target: &Address, nonce: u32) -> Result<(), HandshakeError> {
+    fn send_ping_to(&self, target: &Address, nonce: Nonce) -> Result<(), HandshakeError> {
         self.send_to(&HandshakeMessage::Ping(nonce), target)
     }
 
-    pub fn on_packet(&self, message: &HandshakeMessage, from: &Address) {
+    fn on_packet(&self, message: &HandshakeMessage, from: &Address) {
         match message {
             &HandshakeMessage::Ping(nonce) => {
                 let pong = HandshakeMessage::Pong(nonce + 1);
@@ -136,12 +139,109 @@ impl Handshake {
         }
     }
 
-    pub fn nonce() -> Nonce {
+    fn nonce() -> Nonce {
         const MIN_NONCE: u32 = 1000;
         const MAX_NONCE: u32 = 100000;
 
         let mut range = Range::new(MIN_NONCE, MAX_NONCE);
         let mut rng = rand::thread_rng();
         range.sample(&mut rng)
+    }
+}
+
+pub struct Handler {
+    address: Address,
+    handshake: Mutex<Option<Handshake>>,
+    connect_queue: Mutex<VecDeque<Address>>,
+}
+
+impl Handler {
+    pub fn new(address: Address) -> Self {
+        Self {
+            address,
+            handshake: Mutex::new(None),
+            connect_queue: Mutex::new(VecDeque::new()),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialOrd, PartialEq)]
+pub enum HandlerMessage {
+    Bind,
+    ConnectTo(Address),
+}
+
+const RECV_TOKEN: usize = 0;
+const RECV_MS: u64 = 1000;
+
+impl IoHandler<HandlerMessage> for Handler {
+    fn initialize(&self, io: &IoContext<HandlerMessage>) {
+        io.message(HandlerMessage::Bind).expect("Cannot run UDP io service");
+    }
+
+    fn timeout(&self, _io: &IoContext<HandlerMessage>, token: TimerToken) {
+        match token {
+            RECV_TOKEN => {
+                loop {
+                    if let Some(handshake) = self.handshake.lock().as_ref() {
+                        match handshake.receive() {
+                            Ok(None) => {
+                                break;
+                            },
+                            Ok(Some((msg, address))) => {
+                                handshake.on_packet(&msg, &address);
+                            },
+                            Err(err) => {
+                                info!("handshake receive error {}", err);
+                            },
+                        };
+                    };
+                };
+            },
+            _ => {
+                info!("Unknown timer token {}", token);
+            },
+        };
+    }
+
+    fn message(&self, io: &IoContext<HandlerMessage>, message: &HandlerMessage) {
+        match message {
+            &HandlerMessage::Bind => {
+                info!("Handshake service bind to {:?}", &self.address);
+                let handshake = Handshake::bind(&self.address).expect("Cannot bind UDP port");
+                *self.handshake.lock() = Some(handshake);
+                let _ = io.register_timer(RECV_TOKEN, RECV_MS);
+
+                let ref mut queue = self.connect_queue.lock();
+
+                if let Some(handshake) = self.handshake.lock().as_ref() {
+                    for address in queue.iter() {
+                        connect_to(&handshake, &address);
+                    }
+                }
+            },
+            &HandlerMessage::ConnectTo(ref address) => {
+                if let Some(handshake) = self.handshake.lock().as_ref() {
+                    connect_to(&handshake, &address);
+                } else {
+                    let ref mut queue = self.connect_queue.lock();
+                    queue.push_back(address.clone());
+                }
+            },
+        };
+    }
+
+    fn stream_hup(&self, _io: &IoContext<HandlerMessage>, _stream: StreamToken) {
+        info!("handshake server closed");
+        *self.handshake.lock() = None;
+    }
+}
+
+fn connect_to(handshake: &Handshake, address: &Address) {
+    let nonce = Handshake::nonce();
+    if let Err(err) = handshake.send_ping_to(&address, nonce) {
+        info!("Cannot ping to {:?} since {}", &address, err);
+    } else {
+        info!("Ping to {:?}", &address);
     }
 }
