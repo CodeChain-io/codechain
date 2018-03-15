@@ -25,6 +25,7 @@ name = "codechain"
 members = [
 	"core",
 	"crypto",
+	"json",
 	"keys",
 	"logger",
 	"network",
