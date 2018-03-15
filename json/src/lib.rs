@@ -20,5 +20,7 @@ extern crate serde;
 extern crate serde_json;
 #[macro_use] extern crate serde_derive;
 
+mod bytes;
+mod hash;
 mod spec;
 mod uint;
