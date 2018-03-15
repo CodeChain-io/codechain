@@ -30,6 +30,12 @@ use super::super::codechain_machine::CodeChainMachine;
 use super::super::error::{BlockError, Error};
 use super::super::header::Header;
 
+#[derive(Debug, PartialEq)]
+pub struct SoloAuthorityParams {
+    /// Valid signatories.
+    pub validators: Vec<Address>,
+}
+
 pub struct SoloAuthority {
     machine: CodeChainMachine,
     signer: RwLock<EngineSigner>,
@@ -38,11 +44,11 @@ pub struct SoloAuthority {
 
 impl SoloAuthority {
     /// Create a new instance of SoloAuthority engine
-    pub fn new(machine: CodeChainMachine, validators: Box<ValidatorSet>) -> Self {
+    pub fn new(params: SoloAuthorityParams, machine: CodeChainMachine) -> Self {
         SoloAuthority {
             machine,
             signer: Default::default(),
-            validators,
+            validators: Box::new(ValidatorList::new(params.validators))
         }
     }
 }
@@ -178,7 +184,7 @@ mod tests {
     use ckeys::{Network, Random, Generator};
     use ctypes::H520;
 
-    use super::SoloAuthority;
+    use super::{SoloAuthority, SoloAuthorityParams};
     use super::super::{ConsensusEngine, Seal};
     use super::super::signer::EngineSigner;
     use super::super::validator_set::validator_list::ValidatorList;
@@ -193,8 +199,8 @@ mod tests {
         let address = key_pair.address();
         let mut signer = EngineSigner::default();
         signer.set(address.clone(), key_pair.private().clone());
-        let validators = Box::new(ValidatorList::new(vec![address.clone()]));
-        SoloAuthority::new(machine, validators)
+        let validators = vec![address.clone()];
+        SoloAuthority::new(SoloAuthorityParams { validators }, machine)
     }
 
     fn genesis_header() -> Header {
