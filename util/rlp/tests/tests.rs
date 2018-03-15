@@ -101,6 +101,15 @@ fn run_encode_tests_list<T>(tests: Vec<VETestPair<T>>)
 }
 
 #[test]
+fn encode_bool() {
+	let tests = vec![
+		ETestPair(false, vec![0x00]),
+		ETestPair(true, vec![0x01]),
+	];
+	run_encode_tests(tests);
+}
+
+#[test]
 fn encode_u16() {
 	let tests = vec![
 		ETestPair(0u16, vec![0x80u8]),
@@ -247,6 +256,15 @@ fn run_decode_tests_list<T>(tests: Vec<VDTestPair<T>>) where T: Decodable + fmt:
 		let res: Vec<T> = rlp::decode_list(&t.1);
 		assert_eq!(res, t.0);
 	}
+}
+
+#[test]
+fn decode_untrusted_bool() {
+	let tests = vec![
+		DTestPair(false, vec![0x00]),
+		DTestPair(true, vec![0x01]),
+	];
+	run_decode_tests(tests);
 }
 
 /// Vec<u8> (Bytes) is treated as a single value
