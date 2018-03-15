@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ctypes::Address;
+use super::super::hash::Address;
 
 /// Authority params deserialization.
 #[derive(Debug, PartialEq, Deserialize)]
@@ -35,6 +35,7 @@ mod tests {
     use serde_json;
 
     use super::SoloAuthority;
+    use super::super::super::hash::Address;
 
     #[test]
     fn basic_authority_deserialization() {
@@ -47,7 +48,7 @@ mod tests {
 
         let deserialized: SoloAuthority = serde_json::from_str(s).unwrap();
 
-        let vs = vec![H160::from("0xc6d9d2cd449a754c494264e1809c50e34d64562b")];
+        let vs = vec![Address(H160::from("0xc6d9d2cd449a754c494264e1809c50e34d64562b"))];
         assert_eq!(deserialized.params.validators, vs);
     }
 }

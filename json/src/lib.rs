@@ -20,7 +20,7 @@ extern crate serde;
 extern crate serde_json;
 #[macro_use] extern crate serde_derive;
 
-mod bytes;
-mod hash;
-mod spec;
-mod uint;
+pub mod bytes;
+pub mod hash;
+pub mod spec;
+pub mod uint;
