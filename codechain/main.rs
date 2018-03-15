@@ -7,6 +7,7 @@ extern crate log;
 extern crate tokio_core;
 
 extern crate app_dirs;
+extern crate codechain_core as ccore;
 extern crate codechain_logger;
 extern crate codechain_network as cnetwork;
 extern crate codechain_rpc;
@@ -54,5 +55,8 @@ fn run() -> Result<(), String> {
 
     let _handshake_server = config::parse_network_config(&matches)?.map(commands::handshake_start);
 
+    let _client = commands::client_start();
+
     commands::forever()
 }
+

@@ -43,7 +43,7 @@ use super::super::codechain_machine::CodeChainMachine;
 use super::super::error::{Error, BlockError};
 use super::super::header::{BlockNumber, Header};
 use self::message::*;
-use self::params::TendermintParams;
+pub use self::params::TendermintParams;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub enum Step {

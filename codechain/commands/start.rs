@@ -1,3 +1,4 @@
+use ccore::ClientService;
 use cnetwork::Address;
 use cnetwork::HandshakeService;
 use codechain_rpc::Server as RpcServer;
@@ -26,3 +27,9 @@ pub fn handshake_start(cfg: config::NetworkConfig) -> HandshakeService {
     let address = Address::v4(127, 0, 0, 1, cfg.port);
     HandshakeService::start(address, cfg.bootstrap_addresses).unwrap()
 }
+
+pub fn client_start() -> ClientService {
+    info!("Starting client");
+    ClientService::start().unwrap()
+}
+

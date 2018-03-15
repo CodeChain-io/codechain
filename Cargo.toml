@@ -7,6 +7,7 @@ authors = ["CodeChain Team <codechain@kodebox.io>"]
 [dependencies]
 app_dirs = "^1.1.1"
 clap = { version = "2", features = ["yaml"] }
+codechain-core = { path = "core" }
 codechain-logger = { path = "logger" }
 codechain-rpc = { path = "rpc" }
 futures = "0.1"

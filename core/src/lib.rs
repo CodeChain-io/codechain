@@ -38,5 +38,9 @@ mod consensus;
 mod error;
 mod header;
 mod machine;
+mod service;
 mod transaction;
 
+pub use client::Client;
+pub use error::Error;
+pub use service::ClientService;
