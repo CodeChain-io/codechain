@@ -1,0 +1,21 @@
+{
+	"name": "SoloAuthority",
+	"engine": {
+		"soloAuthority": {
+			"params": {
+				"durationLimit": "0x0d",
+				"validators": [
+					"0x9cce34f7ab185c7aba1b7c8140d620b4bda941d6"
+				]
+			}
+		}
+	},
+	"genesis": {
+		"seal": {
+			"generic": "0xc180"
+		},
+		"author": "0x0000000000000000000000000000000000000000",
+		"timestamp": "0x00",
+		"parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+	}
+}

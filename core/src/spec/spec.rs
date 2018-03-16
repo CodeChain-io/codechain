@@ -103,8 +103,20 @@ impl Spec {
 
     /// Create a new Spec with Solo consensus which does internal sealing (not requiring
     /// work).
-    pub fn new_solo() -> Spec {
+    pub fn new_solo() -> Self {
         load_bundled!("solo")
+    }
+
+    /// Create a new Spec with SoloAuthority consensus which does internal sealing (not requiring
+    /// work).
+    pub fn new_solo_authority() -> Self {
+        load_bundled!("solo_authority")
+    }
+
+    /// Create a new Spec with Tendermint consensus which does internal sealing (not requiring
+    /// work).
+    pub fn new_test_tendermint() -> Self {
+        load_bundled!("tendermint")
     }
 }
 
