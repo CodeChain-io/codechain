@@ -16,7 +16,7 @@
 
 use std::collections::HashMap;
 
-use super::session::Session;
+use super::session::{ SharedSecret, Session };
 use super::super::Address;
 
 pub struct Table {
@@ -30,8 +30,12 @@ impl Table {
         }
     }
 
-    pub fn get(&self, k: &Address) -> Option<&Session> {
-        self.table.get(&k)
+    pub fn get(&self, k: &Address) -> Option<Session> {
+        self.table.get(&k).map(|s| s.clone()).or_else(|| { // FIXME
+            let mut s = Session::new(SharedSecret::zero());
+            s.set_ready(10000);
+            Some(s)
+        })
     }
 
     pub fn get_mut(&mut self, k: &Address) -> Option<&mut Session> {
