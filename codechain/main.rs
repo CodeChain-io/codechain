@@ -46,8 +46,6 @@ pub const APP_INFO: AppInfo = AppInfo {
     author: "Kodebox",
 };
 
-pub const LOG_INFO: &'static str = "sync=info";
-
 fn main() {
     panic_hook::set();
 
