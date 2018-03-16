@@ -16,6 +16,7 @@
 
 use std::cmp::Ordering;
 use std::convert::From;
+use std::fmt;
 use std::net::{ AddrParseError, IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr };
 use std::str::FromStr;
 
@@ -90,6 +91,12 @@ impl PartialEq for Address {
 impl PartialOrd for Address {
     fn partial_cmp(&self, other: &Address) -> Option<Ordering> {
         Some(self.cmp(other))
+    }
+}
+
+impl fmt::Display for Address {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(f, "Address({})", self)
     }
 }
 
