@@ -96,7 +96,7 @@ impl PartialOrd for Address {
 
 impl fmt::Display for Address {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(f, "Address({})", self)
+        write!(f, "Address({})", self.addr)
     }
 }
 
