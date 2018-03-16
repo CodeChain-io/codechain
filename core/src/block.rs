@@ -22,8 +22,7 @@ use ctypes::{Address, H256};
 use rlp::{UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
 use triehash::ordered_trie_root;
 
-use super::codechain_machine::CodeChainMachine;
-use super::consensus::ConsensusEngine;
+use super::consensus::CodeChainEngine;
 use super::error::Error;
 use super::header::{Header, Seal};
 use super::machine::{LiveBlock, Transactions};
@@ -100,13 +99,13 @@ impl LiveBlock for ExecutedBlock {
 /// Block that is ready for transactions to be added.
 pub struct OpenBlock<'x> {
     block: ExecutedBlock,
-    engine: &'x ConsensusEngine<CodeChainMachine>,
+    engine: &'x CodeChainEngine,
 }
 
 impl<'x> OpenBlock<'x> {
     /// Create a new `OpenBlock` ready for transaction pushing.
     pub fn new(
-        engine: &'x ConsensusEngine<CodeChainMachine>,
+        engine: &'x CodeChainEngine,
         parent: &Header,
         author: Address,
         is_epoch_begin: bool,
@@ -170,7 +169,7 @@ impl LockedBlock {
     /// Returns the `ClosedBlock` back again if the seal is no good.
     pub fn try_seal(
         self,
-        engine: &ConsensusEngine<CodeChainMachine>,
+        engine: &CodeChainEngine,
         seal: Vec<Bytes>,
     ) -> Result<SealedBlock, (Error, LockedBlock)> {
         let mut s = self;

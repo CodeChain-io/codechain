@@ -39,6 +39,7 @@ use rlp::{Encodable, Decodable, DecoderError, RlpStream, UntrustedRlp};
 use unexpected::{Mismatch, OutOfBounds};
 
 use self::epoch::{EpochVerifier, NoOp};
+use super::codechain_machine::CodeChainMachine;
 use super::error::Error;
 use super::machine::Machine;
 
@@ -264,4 +265,7 @@ impl fmt::Display for EngineError {
         f.write_fmt(format_args!("Engine error ({})", msg))
     }
 }
+
+/// Common type alias for an engine coupled with an CodeChain-like state machine.
+pub type CodeChainEngine = ConsensusEngine<CodeChainMachine>;
 

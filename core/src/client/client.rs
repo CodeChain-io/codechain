@@ -22,13 +22,13 @@ use ctypes::H256;
 use parking_lot::{Mutex, RwLock};
 
 use super::{EngineClient, BlockChainInfo, ChainInfo, ChainNotify};
-use super::super::consensus::{ConsensusEngine, Solo};
 use super::super::codechain_machine::CodeChainMachine;
+use super::super::consensus::{CodeChainEngine, Solo};
 use super::super::error::Error;
 use super::super::service::ClientIoMessage;
 
 pub struct Client {
-    engine: Arc<ConsensusEngine<CodeChainMachine>>,
+    engine: Arc<CodeChainEngine>,
     io_channel: Mutex<IoChannel<ClientIoMessage>>,
 
     /// List of actors to be notified on certain chain events
@@ -53,7 +53,7 @@ impl Client {
     }
 
     /// Returns engine reference.
-    pub fn engine(&self) -> &ConsensusEngine<CodeChainMachine> {
+    pub fn engine(&self) -> &CodeChainEngine {
         &*self.engine
     }
 

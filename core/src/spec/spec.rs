@@ -23,7 +23,7 @@ use ctypes::{H256, U256, Address};
 
 use super::Genesis;
 use super::seal::Generic as GenericSeal;
-use super::super::consensus::{ConsensusEngine, Solo, SoloAuthority, Tendermint};
+use super::super::consensus::{CodeChainEngine, Solo, SoloAuthority, Tendermint};
 use super::super::codechain_machine::CodeChainMachine;
 use super::super::error::Error;
 
@@ -33,7 +33,7 @@ pub struct Spec {
     /// User friendly spec name
     pub name: String,
     /// What engine are we using for this?
-    pub engine: Arc<ConsensusEngine<CodeChainMachine>>,
+    pub engine: Arc<CodeChainEngine>,
     /// Name of the subdir inside the main data dir to use for chain data and settings.
     pub data_dir: String,
 
@@ -69,7 +69,7 @@ impl Spec {
     /// TODO avoid this hard-coded nastiness - use dynamic-linked plugin framework instead.
     fn engine(
         engine_spec: cjson::spec::Engine,
-    ) -> Arc<ConsensusEngine<CodeChainMachine>> {
+    ) -> Arc<CodeChainEngine> {
         let machine = Self::machine(&engine_spec);
 
         match engine_spec {
