@@ -18,10 +18,10 @@ use std::collections::VecDeque;
 use std::error;
 use std::fmt;
 use std::io;
-use std::net::UdpSocket;
 use std::result::Result;
 
 use cio::{ IoContext, IoHandler, TimerToken, StreamToken };
+use mio::net::UdpSocket;
 use parking_lot::Mutex;
 use rand::distributions::{ Range, Sample };
 use rand;
@@ -103,7 +103,6 @@ impl Handshake {
     fn bind(address: &Address) -> Result<Self, HandshakeError> {
         let socket = address.socket();
         let socket = UdpSocket::bind(socket)?;
-        let _ = socket.set_nonblocking(true)?;
         Ok(Self {
             socket,
             table: SessionTable::new(),
@@ -139,7 +138,7 @@ impl Handshake {
 
         let length_to_send = encrypted_bytes.len();
 
-        let sent_size = self.socket.send_to(&encrypted_bytes, target.socket().clone())?;
+        let sent_size = self.socket.send_to(&encrypted_bytes, target.socket())?;
         if sent_size != length_to_send {
             return Err(HandshakeError::SendError(message.clone(), length_to_send - sent_size))
         }
