@@ -16,7 +16,7 @@
 
 use rlp::{UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
 
-use super::handshake::Nonce;
+use super::super::session::Nonce;
 
 #[derive(Clone, Debug, PartialOrd, PartialEq)]
 pub enum Message {
