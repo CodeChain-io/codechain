@@ -20,12 +20,14 @@ use std::sync::Arc;
 use cbytes::Bytes;
 use cjson;
 use ctypes::{H256, U256, Address};
+use rlp::Rlp;
 
 use super::Genesis;
 use super::seal::Generic as GenericSeal;
 use super::super::consensus::{CodeChainEngine, Solo, SoloAuthority, Tendermint};
 use super::super::codechain_machine::CodeChainMachine;
 use super::super::error::Error;
+use super::super::header::Header;
 
 /// Parameters for a block chain; includes both those intrinsic to the design of the
 /// chain and those to be interpreted by the active chain engine.
@@ -117,6 +119,23 @@ impl Spec {
     /// work).
     pub fn new_test_tendermint() -> Self {
         load_bundled!("tendermint")
+    }
+
+    /// Get the header of the genesis block.
+    pub fn genesis_header(&self) -> Header {
+        let mut header: Header = Default::default();
+        header.set_parent_hash(self.parent_hash.clone());
+        header.set_timestamp(self.timestamp);
+        header.set_number(0);
+        header.set_author(self.author.clone());
+        header.set_transactions_root(self.transactions_root.clone());
+        // FIXME: Set the state root.
+        header.set_seal({
+            let r = Rlp::new(&self.seal_rlp);
+            r.iter().map(|f| f.as_raw().to_vec()).collect()
+        });
+        trace!(target: "spec", "Header hash is {}", header.hash());
+        header
     }
 }
 
