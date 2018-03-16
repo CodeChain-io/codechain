@@ -27,6 +27,7 @@ extern crate codechain_core as ccore;
 extern crate codechain_logger as clogger;
 extern crate codechain_network as cnetwork;
 extern crate codechain_rpc as crpc;
+extern crate fdlimit;
 extern crate env_logger;
 extern crate panic_hook;
 
@@ -38,6 +39,7 @@ mod rpc_apis;
 
 use app_dirs::AppInfo;
 use clogger::{setup_log, Config as LogConfig};
+use fdlimit::raise_fd_limit;
 
 pub const APP_INFO: AppInfo = AppInfo {
     name: "codechain",
@@ -60,6 +62,9 @@ fn main() {
 fn run() -> Result<(), String> {
     let yaml = load_yaml!("codechain.yml");
     let matches = clap::App::from_yaml(yaml).get_matches();
+
+    // increase max number of open files
+    raise_fd_limit();
 
     let config = config::parse(&matches)?;
     let spec = config.chain_type.spec()?;

@@ -10,6 +10,7 @@ clap = { version = "2", features = ["yaml"] }
 codechain-core = { path = "core" }
 codechain-logger = { path = "logger" }
 codechain-rpc = { path = "rpc" }
+fdlimit = "0.1"
 futures = "0.1"
 log = "0.4.1"
 env_logger = "0.5.3"
