@@ -57,6 +57,14 @@ fn fmt_err<F: ::std::fmt::Display>(f: F) -> String {
     format!("Spec json is invalid: {}", f)
 }
 
+macro_rules! load_bundled {
+    ($e:expr) => {
+        Spec::load(
+            include_bytes!(concat!("../../res/", $e, ".json")) as &[u8]
+        ).expect(concat!("Chain spec ", $e, " is invalid."))
+    };
+}
+
 impl Spec {
     // create an instance of an CodeChain state machine, minus consensus logic.
     fn machine(
@@ -91,6 +99,12 @@ impl Spec {
                 load_from(x).map_err(fmt_err)
             },
         )
+    }
+
+    /// Create a new Spec with Solo consensus which does internal sealing (not requiring
+    /// work).
+    pub fn new_solo() -> Spec {
+        load_bundled!("solo")
     }
 }
 

@@ -21,6 +21,7 @@ use cio::{IoHandler, IoService, IoContext};
 
 use super::client::Client;
 use super::error::Error;
+use super::spec::Spec;
 
 /// Client service setup.
 pub struct ClientService {
@@ -29,16 +30,16 @@ pub struct ClientService {
 }
 
 impl ClientService {
-    pub fn start() -> Result<ClientService, Error> {
+    pub fn start(spec: &Spec) -> Result<ClientService, Error> {
         let io_service = IoService::<ClientIoMessage>::start()?;
-        let client = Client::new(io_service.channel())?;
+        let client = Client::new(&spec, io_service.channel())?;
 
         let client_io = Arc::new(ClientIoHandler {
             client: client.clone(),
         });
         io_service.register_handler(client_io)?;
 
-        client.engine().register_client(Arc::downgrade(&client) as _);
+        spec.engine.register_client(Arc::downgrade(&client) as _);
 
         Ok(ClientService {
             io_service: Arc::new(io_service),

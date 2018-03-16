@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ccore::ClientService;
+use ccore::{ClientService, Spec};
 use cnetwork::{Address, HandshakeService};
 use crpc::Server as RpcServer;
 use rpc::HttpConfiguration as RpcHttpConfig;
@@ -45,6 +45,7 @@ pub fn handshake_start(cfg: config::NetworkConfig) -> HandshakeService {
 
 pub fn client_start() -> ClientService {
     info!("Starting client");
-    ClientService::start().unwrap()
+    let spec = Spec::new_solo();
+    ClientService::start(&spec).unwrap()
 }
 

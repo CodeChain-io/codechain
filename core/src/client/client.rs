@@ -26,6 +26,7 @@ use super::super::codechain_machine::CodeChainMachine;
 use super::super::consensus::{CodeChainEngine, Solo};
 use super::super::error::Error;
 use super::super::service::ClientIoMessage;
+use super::super::spec::Spec;
 
 pub struct Client {
     engine: Arc<CodeChainEngine>,
@@ -37,14 +38,13 @@ pub struct Client {
 
 impl Client {
     pub fn new(
+        spec: &Spec,
         message_channel: IoChannel<ClientIoMessage>,
     ) -> Result<Arc<Client>, Error> {
-        // FIXME: Make it possible to choose the consensus engine.
-        let machine = CodeChainMachine::new();
-        let engine = Solo::new(machine);
+        let engine = spec.engine.clone();
 
         let client = Arc::new(Client {
-            engine: Arc::new(engine),
+            engine,
             io_channel: Mutex::new(message_channel),
             notify: RwLock::new(Vec::new()),
         });

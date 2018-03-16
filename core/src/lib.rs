@@ -46,3 +46,4 @@ mod transaction;
 pub use client::Client;
 pub use error::Error;
 pub use service::ClientService;
+pub use spec::Spec;
