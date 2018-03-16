@@ -15,9 +15,10 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ctypes::U256;
+use cjson;
 use time::Duration;
 
-use super::super::validator_set::{ValidatorSet};
+use super::super::validator_set::{ValidatorSet, new_validator_set};
 use super::super::transition::Timeouts;
 use super::Step;
 
@@ -27,6 +28,26 @@ pub struct TendermintParams {
     pub validators: Box<ValidatorSet>,
     /// Timeout durations for different steps.
     pub timeouts: TendermintTimeouts,
+}
+
+impl From<cjson::spec::TendermintParams> for TendermintParams {
+    fn from(p: cjson::spec::TendermintParams) -> Self {
+        let dt = TendermintTimeouts::default();
+        TendermintParams {
+            validators: new_validator_set(p.validators.into_iter().map(Into::into).collect()),
+            timeouts: TendermintTimeouts {
+                propose: p.timeout_propose.map_or(dt.propose, to_duration),
+                prevote: p.timeout_prevote.map_or(dt.prevote, to_duration),
+                precommit: p.timeout_precommit.map_or(dt.precommit, to_duration),
+                commit: p.timeout_commit.map_or(dt.commit, to_duration),
+            },
+        }
+    }
+}
+
+fn to_duration(ms: cjson::uint::Uint) -> Duration {
+    let ms: usize = ms.into();
+    Duration::milliseconds(ms as i64)
 }
 
 /// Base timeout of each step in ms.

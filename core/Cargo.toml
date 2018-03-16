@@ -7,6 +7,7 @@ authors = ["CodeChain Team <codechain@kodebox.io>"]
 codechain-bytes = { path = "../util/bytes" }
 codechain-crypto = { path = "../crypto" }
 codechain-io = { path = "../util/io" }
+codechain-json = { path = "../json" }
 codechain-keys = { path="../keys" }
 codechain-types = { path = "../primitives/codechain-types" }
 heapsize = "0.4"

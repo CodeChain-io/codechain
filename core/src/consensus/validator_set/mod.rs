@@ -28,6 +28,11 @@ use super::super::header::{BlockNumber, Header};
 
 pub mod validator_list;
 
+/// Creates a validator set from validator addresses.
+pub fn new_validator_set(validators: Vec<Address>) -> Box<ValidatorSet> {
+    Box::new(ValidatorList::new(validators))
+}
+
 /// A validator set.
 pub trait ValidatorSet: Send + Sync {
     /// Checks if a given address is a validator,

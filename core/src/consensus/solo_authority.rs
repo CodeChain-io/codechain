@@ -18,6 +18,7 @@ use std::sync::Weak;
 
 use ckeys::{Signature, Private, Network, public_to_address};
 use ctypes::{Address, H256, H520};
+use cjson;
 use parking_lot::RwLock;
 
 use super::{ConsensusEngine, EngineError, Seal, ConstructedVerifier};
@@ -34,6 +35,14 @@ use super::super::header::Header;
 pub struct SoloAuthorityParams {
     /// Valid signatories.
     pub validators: Vec<Address>,
+}
+
+impl From<cjson::spec::SoloAuthorityParams> for SoloAuthorityParams {
+    fn from(p: cjson::spec::SoloAuthorityParams) -> Self {
+        SoloAuthorityParams {
+            validators: p.validators.into_iter().map(Into::into).collect(),
+        }
+    }
 }
 
 pub struct SoloAuthority {
