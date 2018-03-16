@@ -43,9 +43,8 @@ pub fn handshake_start(cfg: config::NetworkConfig) -> HandshakeService {
     HandshakeService::start(address, cfg.bootstrap_addresses).unwrap()
 }
 
-pub fn client_start() -> ClientService {
+pub fn client_start(spec: &Spec) -> ClientService {
     info!("Starting client");
-    let spec = Spec::new_solo();
     ClientService::start(&spec).unwrap()
 }
 

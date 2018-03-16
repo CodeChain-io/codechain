@@ -21,6 +21,11 @@ args:
         short: q
         long: quiet
         help: Do not show any synchronization information in the console.
+    - chain:
+        short: c
+        long: chain
+        help: Chain type; solo, solo_authority, tendermint or a path to chain spec file.
+        takes_value: true
     - jsonrpc-port:
         long: jsonrpc-port
         value_name: PORT

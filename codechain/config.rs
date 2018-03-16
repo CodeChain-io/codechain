@@ -14,14 +14,70 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::{fmt, fs};
 use std::str::FromStr;
 
+use ccore::Spec;
 use clap;
 use cnetwork::Address;
 use rpc::HttpConfiguration as RpcHttpConfig;
 
+#[derive(Debug, PartialEq)]
+pub enum ChainType {
+    Solo,
+    SoloAuthority,
+    Tendermint,
+    Custom(String),
+}
+
+impl Default for ChainType {
+    fn default() -> Self {
+        ChainType::Tendermint
+    }
+}
+
+impl FromStr for ChainType {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let spec = match s {
+            "solo" => ChainType::Solo,
+            "solo_authority" => ChainType::SoloAuthority,
+            "tendermint" => ChainType::Tendermint,
+            other => ChainType::Custom(other.into()),
+        };
+        Ok(spec)
+    }
+}
+
+impl fmt::Display for ChainType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str(match *self {
+            ChainType::Solo => "solo",
+            ChainType::SoloAuthority => "solo_authority",
+            ChainType::Tendermint => "tendermint",
+            ChainType::Custom(ref custom) => custom,
+        })
+    }
+}
+
+impl ChainType {
+    pub fn spec<'a>(&self) -> Result<Spec, String> {
+        match *self {
+            ChainType::Solo => Ok(Spec::new_solo()),
+            ChainType::SoloAuthority => Ok(Spec::new_solo_authority()),
+            ChainType::Tendermint => Ok(Spec::new_test_tendermint()),
+            ChainType::Custom(ref filename) => {
+                let file = fs::File::open(filename).map_err(|e| format!("Could not load specification file at {}: {}", filename, e))?;
+                Spec::load(file)
+            }
+        }
+    }
+}
+
 pub struct Config {
     pub quiet: bool,
+    pub chain_type: ChainType,
 }
 
 pub struct NetworkConfig {
@@ -32,8 +88,14 @@ pub struct NetworkConfig {
 pub fn parse(matches: &clap::ArgMatches) -> Result<Config, String> {
     let quiet = matches.is_present("quiet");
 
+    let chain_type = match matches.value_of("chain") {
+        Some(chain) => chain.parse().unwrap(),
+        None => Default::default(),
+    };
+
     Ok(Config {
         quiet,
+        chain_type,
     })
 }
 

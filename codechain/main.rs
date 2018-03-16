@@ -61,7 +61,8 @@ fn run() -> Result<(), String> {
     let yaml = load_yaml!("codechain.yml");
     let matches = clap::App::from_yaml(yaml).get_matches();
 
-    let _config = config::parse(&matches)?;
+    let config = config::parse(&matches)?;
+    let spec = config.chain_type.spec()?;
 
     let log_config = LogConfig::default();
     let _logger = setup_log(&log_config).expect("Logger is initialized only once; qed");
@@ -70,7 +71,7 @@ fn run() -> Result<(), String> {
 
     let _handshake_server = config::parse_network_config(&matches)?.map(commands::handshake_start);
 
-    let _client = commands::client_start();
+    let _client = commands::client_start(&spec);
 
     commands::forever()
 }
