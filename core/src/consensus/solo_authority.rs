@@ -200,31 +200,17 @@ mod tests {
     use super::super::super::block::{OpenBlock, IsBlock};
     use super::super::super::codechain_machine::CodeChainMachine;
     use super::super::super::header::Header;
-
-    fn new_test_authority() -> SoloAuthority {
-        let machine = CodeChainMachine::new();
-        let mut random = Random {};
-        let key_pair = random.generate().unwrap();
-        let address = key_pair.address();
-        let mut signer = EngineSigner::default();
-        signer.set(address.clone(), key_pair.private().clone());
-        let validators = vec![address.clone()];
-        SoloAuthority::new(SoloAuthorityParams { validators }, machine)
-    }
-
-    fn genesis_header() -> Header {
-        Header::default()
-    }
+    use super::super::super::spec::Spec;
 
     #[test]
     fn has_valid_metadata() {
-        let engine = new_test_authority();
+        let engine = Spec::new_solo_authority().engine;
         assert!(!engine.name().is_empty());
     }
 
     #[test]
     fn can_do_signature_verification_fail() {
-        let engine = new_test_authority();
+        let engine = Spec::new_solo_authority().engine;
         let mut header: Header = Header::default();
         header.set_seal(vec![::rlp::encode(&H520::default()).into_vec()]);
 
@@ -234,18 +220,19 @@ mod tests {
 
     #[test]
     fn can_generate_seal() {
-        let engine = new_test_authority();
-        let genesis_header = genesis_header();
-        let b = OpenBlock::new(&engine, &genesis_header, Default::default(), false).unwrap();
+        let spec = Spec::new_solo_authority();
+        let engine = &*spec.engine;
+        let genesis_header = spec.genesis_header();
+        let b = OpenBlock::new(engine, &genesis_header, Default::default(), false).unwrap();
         let b = b.close_and_lock();
         if let Seal::Regular(seal) = engine.generate_seal(b.block(), &genesis_header) {
-            assert!(b.try_seal(&engine, seal).is_ok());
+            assert!(b.try_seal(engine, seal).is_ok());
         }
     }
 
     #[test]
     fn seals_internally() {
-        let engine = new_test_authority();
+        let engine = Spec::new_solo_authority().engine;
         assert!(!engine.seals_internally().unwrap());
     }
 }

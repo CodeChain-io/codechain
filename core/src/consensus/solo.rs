@@ -60,27 +60,23 @@ mod tests {
     use super::super::super::block::{OpenBlock, IsBlock};
     use super::super::super::codechain_machine::CodeChainMachine;
     use super::super::super::header::Header;
-
-    fn genesis_header() -> Header {
-        Header::default()
-    }
+    use super::super::super::spec::Spec;
 
     #[test]
     fn solo_can_seal() {
-        let machine = CodeChainMachine::new();
-        let engine = Solo::new(machine);
-        let genesis_header = genesis_header();
-        let b = OpenBlock::new(&engine, &genesis_header, Default::default(), false).unwrap();
+        let spec = Spec::new_solo();
+        let engine = &*spec.engine;
+        let genesis_header = spec.genesis_header();
+        let b = OpenBlock::new(engine, &genesis_header, Default::default(), false).unwrap();
         let b = b.close_and_lock();
         if let Seal::Regular(seal) = engine.generate_seal(b.block(), &genesis_header) {
-            assert!(b.try_seal(&engine, seal).is_ok());
+            assert!(b.try_seal(engine, seal).is_ok());
         }
     }
 
     #[test]
     fn solo_cant_verify() {
-        let machine = CodeChainMachine::new();
-        let engine = Solo::new(machine);
+        let engine = Spec::new_solo().engine;
         let mut header: Header = Header::default();
 
         assert!(engine.verify_block_basic(&header).is_ok());
