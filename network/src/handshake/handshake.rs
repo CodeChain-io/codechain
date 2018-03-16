@@ -28,10 +28,13 @@ use rand;
 use rlp::{ UntrustedRlp, Encodable, Decodable, DecoderError };
 
 use super::HandshakeMessage;
+use super::super::session::{Nonce, Session, SessionError, SessionTable, SharedSecret};
 use super::super::Address;
+
 
 pub struct Handshake {
     socket: UdpSocket,
+    table: SessionTable,
 }
 
 #[derive(Debug)]
@@ -39,6 +42,8 @@ enum HandshakeError {
     IoError(io::Error),
     RlpError(DecoderError),
     SendError(HandshakeMessage, usize),
+    SessionError(SessionError),
+    NoSession,
 }
 
 impl fmt::Display for HandshakeError {
@@ -47,6 +52,8 @@ impl fmt::Display for HandshakeError {
             &HandshakeError::IoError(ref err) => write!(f, "IoError {}", err),
             &HandshakeError::RlpError(ref err) => write!(f, "RlpError {}", err),
             &HandshakeError::SendError(ref msg, unsent) => write!(f, "SendError {} bytesa of {:?} are not sent", unsent, msg),
+            &HandshakeError::SessionError(ref err) => write!(f, "SessionErrorError {}", err),
+            &HandshakeError::NoSession => write!(f, "NoSession"),
         }
     }
 }
@@ -57,6 +64,8 @@ impl error::Error for HandshakeError {
             &HandshakeError::IoError(ref err) => err.description(),
             &HandshakeError::RlpError(ref err) => err.description(),
             &HandshakeError::SendError(_, _) => "Unsent data",
+            &HandshakeError::SessionError(ref err) => err.description(),
+            &HandshakeError::NoSession => "No session",
         }
     }
 
@@ -65,6 +74,8 @@ impl error::Error for HandshakeError {
             &HandshakeError::IoError(ref err) => Some(err),
             &HandshakeError::RlpError(ref err) => Some(err),
             &HandshakeError::SendError(_, _) => None,
+            &HandshakeError::SessionError(ref err) => Some(err),
+            &HandshakeError::NoSession => None,
         }
     }
 }
@@ -81,9 +92,12 @@ impl From<DecoderError> for HandshakeError {
     }
 }
 
+impl From<SessionError> for HandshakeError {
+    fn from(err: SessionError) -> HandshakeError {
+        HandshakeError::SessionError(err)
+    }
+}
 const MAX_HANDSHAKE_PACKET_SIZE: usize = 1024;
-
-pub type Nonce = u32;
 
 impl Handshake {
     fn bind(address: &Address) -> Result<Self, HandshakeError> {
@@ -92,28 +106,40 @@ impl Handshake {
         let _ = socket.set_nonblocking(true)?;
         Ok(Self {
             socket,
+            table: SessionTable::new(),
         })
     }
 
     fn receive(&self) -> Result<Option<(HandshakeMessage, Address)>, HandshakeError> {
         let mut buf: [u8; MAX_HANDSHAKE_PACKET_SIZE] = [0; MAX_HANDSHAKE_PACKET_SIZE];
         match self.socket.recv_from(&mut buf) {
-            Ok((_size, addr)) => {
-                let rlp = UntrustedRlp::new(&buf);
+            Ok((received_size, address)) => {
+                let address = Address::from(address);
+                let session = self.table.get(&address).ok_or(HandshakeError::NoSession)?;
+
+                let encrypted_bytes = &buf[0..received_size];
+
+                let unencrypted_bytes = session.decrypt(&encrypted_bytes)?;
+
+                let rlp = UntrustedRlp::new(&unencrypted_bytes);
                 let message = Decodable::decode(&rlp)?;
-                info!("Handshake {:?} received from {:?}", message, addr);
-                Ok(Some((message, Address::from(addr))))
+                info!("Handshake {:?} received from {:?}", message, address);
+                Ok(Some((message, Address::from(address))))
             },
             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => Ok(None),
             Err(e) => Err(HandshakeError::from(e)),
         }
     }
 
-    fn send_to(&self, message: &HandshakeMessage, target: &Address) -> Result<(), HandshakeError> {
-        let bytes = message.rlp_bytes();
-        let length_to_send = bytes.len();
-        debug_assert!(length_to_send <= MAX_HANDSHAKE_PACKET_SIZE);
-        let sent_size = self.socket.send_to(&bytes, target.socket().clone())?;
+    fn send_to(&self, message: &HandshakeMessage, target: &Address, key: &SharedSecret) -> Result<(), HandshakeError> {
+        let session = self.table.get(&target).ok_or(HandshakeError::NoSession)?;
+
+        let unencrypted_bytes = message.rlp_bytes();
+        let encrypted_bytes = session.encrypt(&unencrypted_bytes)?;
+
+        let length_to_send = encrypted_bytes.len();
+
+        let sent_size = self.socket.send_to(&encrypted_bytes, target.socket().clone())?;
         if sent_size != length_to_send {
             return Err(HandshakeError::SendError(message.clone(), length_to_send - sent_size))
         }
@@ -121,33 +147,61 @@ impl Handshake {
         Ok(())
     }
 
-    fn send_ping_to(&self, target: &Address, nonce: Nonce) -> Result<(), HandshakeError> {
-        self.send_to(&HandshakeMessage::ConnectionRequest(nonce), target)
+    fn send_ping_to(&mut self, target: &Address, nonce: Nonce) -> Result<(), HandshakeError> {
+        let secret = if let Some(session) = self.table.get_mut(&target) {
+            session.set_ready(nonce);
+            Ok(session.secret().clone())
+        } else {
+            Err(HandshakeError::NoSession)
+        };
+        self.send_to(&HandshakeMessage::ConnectionRequest(nonce), target, &secret?)
     }
 
-    fn on_packet(&self, message: &HandshakeMessage, from: &Address) {
+    fn on_packet(&mut self, message: &HandshakeMessage, from: &Address) {
         match message {
             &HandshakeMessage::ConnectionRequest(nonce) => {
-                let pong = HandshakeMessage::ConnectionAllowed(nonce + 1);
-                if let Ok(_) = self.send_to(&pong, &from) {
+                let (nonce, secret) = {
+                    if let Some(session) = self.table.get(from) {
+                        if session.is_ready() {
+                            info!("A nonce already exists");
+                        }
+                        (nonce, session.secret().clone()) // FIXME: must return nonce + 1
+                    } else {
+                        info!("There is no shared secret");
+                        return;
+                    }
+                };
+
+                let pong = HandshakeMessage::ConnectionAllowed(nonce);
+                if let Ok(_) = self.send_to(&pong, &from, &secret) {
                 } else {
                     info!("Cannot send {:?} to {:?}", pong, from);
                 }
             },
-            &HandshakeMessage::ConnectionAllowed(_) => {
+            &HandshakeMessage::ConnectionAllowed(nonce) => {
+                if let Some(ref session) = self.table.get(from) {
+                    if !session.is_ready() {
+                        info!("A nonce doesn't exists");
+                        return;
+                    } else if session.is_expected_nonce(&nonce) {
+                        // FIXME: Create TCP connection
+                    } else {
+                        info!("Nonce({}) is not expected", nonce);
+                        return;
+                    }
+                } else {
+                    info!("There is no shared secret");
+                    return;
+                }
             },
-            &HandshakeMessage::ConnectionDenied(_) => {
+            &HandshakeMessage::ConnectionDenied(ref reason) => {
+                info!("Connection to {:?} refused(reason: {}", from, reason);
             },
         }
     }
 
     fn nonce() -> Nonce {
-        const MIN_NONCE: u32 = 1000;
-        const MAX_NONCE: u32 = 100000;
-
-        let mut range = Range::new(MIN_NONCE, MAX_NONCE);
-        let mut rng = rand::thread_rng();
-        range.sample(&mut rng)
+        10000 // FIXME
     }
 }
 
@@ -185,12 +239,13 @@ impl IoHandler<HandlerMessage> for Handler {
         match token {
             RECV_TOKEN => {
                 loop {
-                    if let Some(handshake) = self.handshake.lock().as_ref() {
+                    if let Some(mut handshake) = self.handshake.lock().as_mut() {
                         match handshake.receive() {
                             Ok(None) => {
                                 break;
                             },
                             Ok(Some((msg, address))) => {
+                                info!("{:?} from {:?}", msg, address);
                                 handshake.on_packet(&msg, &address);
                             },
                             Err(err) => {
@@ -216,15 +271,16 @@ impl IoHandler<HandlerMessage> for Handler {
 
                 let ref mut queue = self.connect_queue.lock();
 
-                if let Some(handshake) = self.handshake.lock().as_ref() {
+                if let Some(mut handshake) = self.handshake.lock().as_mut() {
                     for address in queue.iter() {
-                        connect_to(&handshake, &address);
+                        handshake.table.insert(address.clone(), Session::new(SharedSecret::zero())); // FIXME: Remove it
+                        connect_to(&mut handshake, &address);
                     }
                 }
             },
             &HandlerMessage::ConnectTo(ref address) => {
-                if let Some(handshake) = self.handshake.lock().as_ref() {
-                    connect_to(&handshake, &address);
+                if let Some(mut handshake) = self.handshake.lock().as_mut() {
+                    connect_to(&mut handshake, &address);
                 } else {
                     let ref mut queue = self.connect_queue.lock();
                     queue.push_back(address.clone());
@@ -239,7 +295,7 @@ impl IoHandler<HandlerMessage> for Handler {
     }
 }
 
-fn connect_to(handshake: &Handshake, address: &Address) {
+fn connect_to(handshake: &mut Handshake, address: &Address) {
     let nonce = Handshake::nonce();
     if let Err(err) = handshake.send_ping_to(&address, nonce) {
         info!("Cannot ping to {:?} since {}", &address, err);
