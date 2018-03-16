@@ -26,20 +26,27 @@ extern crate app_dirs;
 extern crate codechain_core as ccore;
 extern crate codechain_logger as clogger;
 extern crate codechain_network as cnetwork;
+extern crate codechain_reactor as creactor;
 extern crate codechain_rpc as crpc;
+extern crate ctrlc;
 extern crate fdlimit;
 extern crate env_logger;
 extern crate panic_hook;
+extern crate parking_lot;
 
 mod config;
 mod commands;
-mod event_loop;
 mod rpc;
 mod rpc_apis;
 
+use std::sync::Arc;
+
 use app_dirs::AppInfo;
 use clogger::{setup_log, Config as LogConfig};
+use creactor::EventLoop;
+use ctrlc::CtrlC;
 use fdlimit::raise_fd_limit;
+use parking_lot::{Condvar, Mutex};
 
 pub const APP_INFO: AppInfo = AppInfo {
     name: "codechain",
@@ -64,6 +71,8 @@ fn run() -> Result<(), String> {
     // increase max number of open files
     raise_fd_limit();
 
+    let _event_loop = EventLoop::spawn();
+
     let config = config::parse(&matches)?;
     let spec = config.chain_type.spec()?;
 
@@ -76,6 +85,20 @@ fn run() -> Result<(), String> {
 
     let _client = commands::client_start(&spec);
 
-    commands::forever()
+    wait_for_exit();
+
+    Ok(())
+}
+
+fn wait_for_exit() {
+    let exit = Arc::new((Mutex::new(()), Condvar::new()));
+
+    // Handle possible exits
+    let e = exit.clone();
+    CtrlC::set_handler(move || { e.1.notify_all(); });
+
+    // Wait for signal
+    let mut l = exit.0.lock();
+    let _ = exit.1.wait(&mut l);
 }
 

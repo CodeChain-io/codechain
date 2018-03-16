@@ -9,13 +9,16 @@ app_dirs = "^1.1.1"
 clap = { version = "2", features = ["yaml"] }
 codechain-core = { path = "core" }
 codechain-logger = { path = "logger" }
+codechain-network = { path = "network" }
+codechain-reactor = { path = "util/reactor" }
 codechain-rpc = { path = "rpc" }
+ctrlc = { git = "https://github.com/paritytech/rust-ctrlc.git" }
 fdlimit = "0.1"
 futures = "0.1"
 log = "0.4.1"
 env_logger = "0.5.3"
 panic_hook = { path = "util/panic_hook" }
-codechain-network = { path = "network" }
+parking_lot = "0.5"
 tokio-core = "0.1.6"
 
 [[bin]]
