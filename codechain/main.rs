@@ -85,6 +85,9 @@ fn run() -> Result<(), String> {
 
     let _client = commands::client_start(&spec);
 
+    // drop the spec to free up genesis state.
+    drop(spec);
+
     wait_for_exit();
 
     Ok(())
