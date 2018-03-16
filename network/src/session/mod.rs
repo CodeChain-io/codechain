@@ -15,5 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 mod session;
+mod table;
 
 pub use self::session::{ Error as SessionError, Nonce, Session, SharedSecret };
+pub use self::table::Table as SessionTable;
