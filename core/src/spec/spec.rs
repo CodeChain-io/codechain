@@ -46,7 +46,7 @@ pub struct Spec {
     pub author: Address,
     /// The genesis block's timestamp field.
     pub timestamp: u64,
-    /// Transactions root of the genesis block. Should be KECCAK_NULL_RLP.
+    /// Transactions root of the genesis block. Should be BLAKE_NULL_RLP.
     pub transactions_root: H256,
     /// Each seal field, expressed as RLP, concatenated.
     pub seal_rlp: Bytes,
