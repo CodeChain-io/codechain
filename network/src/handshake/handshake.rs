@@ -122,19 +122,21 @@ impl Handshake {
     }
 
     fn send_ping_to(&self, target: &Address, nonce: Nonce) -> Result<(), HandshakeError> {
-        self.send_to(&HandshakeMessage::Ping(nonce), target)
+        self.send_to(&HandshakeMessage::ConnectionRequest(nonce), target)
     }
 
     fn on_packet(&self, message: &HandshakeMessage, from: &Address) {
         match message {
-            &HandshakeMessage::Ping(nonce) => {
-                let pong = HandshakeMessage::Pong(nonce + 1);
+            &HandshakeMessage::ConnectionRequest(nonce) => {
+                let pong = HandshakeMessage::ConnectionAllowed(nonce + 1);
                 if let Ok(_) = self.send_to(&pong, &from) {
                 } else {
                     info!("Cannot send {:?} to {:?}", pong, from);
                 }
             },
-            &HandshakeMessage::Pong(_) => {
+            &HandshakeMessage::ConnectionAllowed(_) => {
+            },
+            &HandshakeMessage::ConnectionDenied(_) => {
             },
         }
     }
