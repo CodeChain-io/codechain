@@ -21,7 +21,7 @@ use std::net::{ AddrParseError, IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr };
 use std::str::FromStr;
 
 
-#[derive(Clone, Debug, Eq)]
+#[derive(Clone, Debug, Eq, Hash)]
 pub struct Address {
     addr: SocketAddr,
 }
