@@ -20,7 +20,9 @@ use std::fmt;
 use std::io;
 use std::result::Result;
 
-use cio::{ IoContext, IoHandler, TimerToken, StreamToken };
+use cio::{ IoContext, IoHandler, IoManager, TimerToken, StreamToken };
+use mio::{ PollOpt, Ready, Token };
+use mio::deprecated::EventLoop;
 use mio::net::UdpSocket;
 use parking_lot::Mutex;
 use rand::distributions::{ Range, Sample };
@@ -233,37 +235,10 @@ pub enum HandlerMessage {
 }
 
 const RECV_TOKEN: usize = 0;
-const RECV_MS: u64 = 1000;
 
 impl IoHandler<HandlerMessage> for Handler {
     fn initialize(&self, io: &IoContext<HandlerMessage>) {
         io.message(HandlerMessage::Bind).expect("Cannot run UDP io service");
-    }
-
-    fn timeout(&self, _io: &IoContext<HandlerMessage>, token: TimerToken) {
-        match token {
-            RECV_TOKEN => {
-                loop {
-                    if let Some(mut handshake) = self.internal.lock().handshake.as_mut() {
-                        match handshake.receive() {
-                            Ok(None) => {
-                                break;
-                            },
-                            Ok(Some((msg, address))) => {
-                                info!("{:?} from {:?}", msg, address);
-                                handshake.on_packet(&msg, &address);
-                            },
-                            Err(err) => {
-                                info!("handshake receive error {}", err);
-                            },
-                        };
-                    };
-                };
-            },
-            _ => {
-                info!("Unknown timer token {}", token);
-            },
-        };
     }
 
     fn message(&self, io: &IoContext<HandlerMessage>, message: &HandlerMessage) {
@@ -274,8 +249,9 @@ impl IoHandler<HandlerMessage> for Handler {
                 debug_assert!(internal.handshake.is_none());
 
                 let mut handshake = Handshake::bind(&self.address).expect("Cannot bind UDP port");
-
-                let _ = io.register_timer(RECV_TOKEN, RECV_MS);
+                if let Err(err) = io.register_stream(RECV_TOKEN) {
+                    info!("Cannot register udp stream {:?}", err);
+                }
 
                 {
                     let ref mut queue = internal.connect_queue;
@@ -304,6 +280,53 @@ impl IoHandler<HandlerMessage> for Handler {
         info!("handshake server closed");
         let ref mut internal = self.internal.lock();
         internal.handshake = None;
+    }
+
+    fn stream_readable(&self, _io: &IoContext<HandlerMessage>, stream: StreamToken) {
+        match stream {
+            RECV_TOKEN => {
+                loop {
+                    if let Some(mut handshake) = self.internal.lock().handshake.as_mut() {
+                        match handshake.receive() {
+                            Ok(None) => {
+                                break;
+                            },
+                            Ok(Some((msg, address))) => {
+                                info!("{:?} from {:?}", msg, address);
+                                handshake.on_packet(&msg, &address);
+                            },
+                            Err(err) => {
+                                info!("handshake receive error {}", err);
+                            },
+                        };
+                    };
+                };
+            },
+            _ => {
+                info!("Unknown stream token {}", stream);
+            },
+        };
+    }
+
+    fn register_stream(&self, stream: StreamToken, _reg: Token, event_loop: &mut EventLoop<IoManager<HandlerMessage>>) {
+        match stream {
+            RECV_TOKEN => {
+                let mut internal = self.internal.lock();
+                if let Some(mut handshake) = internal.handshake.as_mut() {
+                    if let Err(err) = event_loop.register(&handshake.socket, Token(RECV_TOKEN), Ready::all(), PollOpt::edge()) {
+                        info!("Cannot register udp socket {:?}", err);
+                    }
+                } else {
+                    panic!("Error in creating UDP socket");
+                }
+            },
+            _ => {
+                info!("Unexpected stream registration {}", stream);
+            }
+        }
+    }
+
+    fn deregister_stream(&self, stream: StreamToken, _event_loop: &mut EventLoop<IoManager<HandlerMessage>>) {
     }
 }
 
