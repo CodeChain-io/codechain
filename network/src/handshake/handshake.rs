@@ -204,18 +204,24 @@ impl Handshake {
     }
 }
 
+struct Internal {
+    handshake: Option<Handshake>,
+    connect_queue: VecDeque<Address>,
+}
+
 pub struct Handler {
     address: Address,
-    handshake: Mutex<Option<Handshake>>,
-    connect_queue: Mutex<VecDeque<Address>>,
+    internal: Mutex<Internal>,
 }
 
 impl Handler {
     pub fn new(address: Address) -> Self {
         Self {
             address,
-            handshake: Mutex::new(None),
-            connect_queue: Mutex::new(VecDeque::new()),
+            internal: Mutex::new(Internal {
+                handshake: None,
+                connect_queue: VecDeque::new(),
+            })
         }
     }
 }
@@ -238,7 +244,7 @@ impl IoHandler<HandlerMessage> for Handler {
         match token {
             RECV_TOKEN => {
                 loop {
-                    if let Some(mut handshake) = self.handshake.lock().as_mut() {
+                    if let Some(mut handshake) = self.internal.lock().handshake.as_mut() {
                         match handshake.receive() {
                             Ok(None) => {
                                 break;
@@ -264,33 +270,40 @@ impl IoHandler<HandlerMessage> for Handler {
         match message {
             &HandlerMessage::Bind => {
                 info!("Handshake service bind to {:?}", &self.address);
-                let handshake = Handshake::bind(&self.address).expect("Cannot bind UDP port");
-                *self.handshake.lock() = Some(handshake);
+                let ref mut internal = self.internal.lock();
+                debug_assert!(internal.handshake.is_none());
+
+                let mut handshake = Handshake::bind(&self.address).expect("Cannot bind UDP port");
+
                 let _ = io.register_timer(RECV_TOKEN, RECV_MS);
 
-                let ref mut queue = self.connect_queue.lock();
-
-                if let Some(mut handshake) = self.handshake.lock().as_mut() {
+                {
+                    let ref mut queue = internal.connect_queue;
                     for address in queue.iter() {
                         handshake.table.insert(address.clone(), Session::new(SharedSecret::zero())); // FIXME: Remove it
                         connect_to(&mut handshake, &address);
                     }
+                    queue.clear();
                 }
+
+                internal.handshake = Some(handshake);
             },
             &HandlerMessage::ConnectTo(ref address) => {
-                if let Some(mut handshake) = self.handshake.lock().as_mut() {
+                let ref mut internal = self.internal.lock();
+                if let Some(mut handshake) = internal.handshake.as_mut() {
                     connect_to(&mut handshake, &address);
-                } else {
-                    let ref mut queue = self.connect_queue.lock();
-                    queue.push_back(address.clone());
+                    return;
                 }
+                let ref mut queue = internal.connect_queue;
+                queue.push_back(address.clone());
             },
         };
     }
 
     fn stream_hup(&self, _io: &IoContext<HandlerMessage>, _stream: StreamToken) {
         info!("handshake server closed");
-        *self.handshake.lock() = None;
+        let ref mut internal = self.internal.lock();
+        internal.handshake = None;
     }
 }
 
