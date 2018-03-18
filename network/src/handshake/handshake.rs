@@ -25,8 +25,6 @@ use mio::{ PollOpt, Ready, Token };
 use mio::deprecated::EventLoop;
 use mio::net::UdpSocket;
 use parking_lot::Mutex;
-use rand::distributions::{ Range, Sample };
-use rand;
 use rlp::{ UntrustedRlp, Encodable, Decodable, DecoderError };
 
 use super::HandshakeMessage;
@@ -132,7 +130,7 @@ impl Handshake {
         }
     }
 
-    fn send_to(&self, message: &HandshakeMessage, target: &Address, key: &SharedSecret) -> Result<(), HandshakeError> {
+    fn send_to(&self, message: &HandshakeMessage, target: &Address, _key: &SharedSecret) -> Result<(), HandshakeError> {
         let session = self.table.get(&target).ok_or(HandshakeError::NoSession)?;
 
         let unencrypted_bytes = message.rlp_bytes();
