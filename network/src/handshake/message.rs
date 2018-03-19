@@ -29,12 +29,12 @@ pub enum Message {
     ConnectionDenied(Version, String),
 }
 
-const REQUEST_LEN: u8 = 7;
-const REQUEST: &str = "request";
-const ALLOWED_LEN: u8 = 7;
-const ALLOWED: &str = "allowed";
-const DENIED_LEN: u8 = 6;
-const DENIED: &str = "denied";
+const REQUEST_LEN: u8 = 18;
+const REQUEST: &str = "connection-request";
+const ALLOWED_LEN: u8 = 18;
+const ALLOWED: &str = "connection-allowed";
+const DENIED_LEN: u8 = 17;
+const DENIED: &str = "connection-denied";
 
 impl Message {
     pub fn connection_request(body: Vec<u8>) -> Self {
