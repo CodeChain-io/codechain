@@ -14,9 +14,30 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ctypes::H256;
+use ctypes::{H256, U256};
 
 use heapsize::HeapSizeOf;
+
+use super::super::header::BlockNumber;
+
+/// Familial details concerning a block
+#[derive(Debug, Clone, RlpEncodable, RlpDecodable)]
+pub struct BlockDetails {
+    /// Block number
+    pub number: BlockNumber,
+    /// Total score of the block and all its parents
+    pub total_score: U256,
+    /// Parent block hash
+    pub parent: H256,
+    /// List of children block hashes
+    pub children: Vec<H256>,
+}
+
+impl HeapSizeOf for BlockDetails {
+    fn heap_size_of_children(&self) -> usize {
+        self.children.heap_size_of_children()
+    }
+}
 
 /// Represents address of certain transaction within block
 #[derive(Debug, PartialEq, Clone, RlpEncodable, RlpDecodable)]
