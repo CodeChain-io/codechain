@@ -23,6 +23,8 @@ use ckeys::{self, Private, Signature, Public, Network, public_to_address};
 use ctypes::{Address, H160, H256, U256};
 use rlp::{self, UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
 
+use super::header::BlockNumber;
+
 #[derive(Debug, PartialEq, Clone)]
 /// Errors concerning transaction processing.
 pub enum TransactionError {
@@ -262,5 +264,45 @@ impl SignedTransaction {
     /// Deconstructs this transaction back into `UnverifiedTransaction`
     pub fn deconstruct(self) -> (UnverifiedTransaction, Address, Option<Public>) {
         (self.transaction, self.sender, self.public)
+    }
+}
+
+/// Signed Transaction that is a part of canon blockchain.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LocalizedTransaction {
+    /// Signed part.
+    pub signed: UnverifiedTransaction,
+    /// Block number.
+    pub block_number: BlockNumber,
+    /// Block hash.
+    pub block_hash: H256,
+    /// Transaction index within block.
+    pub transaction_index: usize,
+    /// Cached sender
+    pub cached_sender: Option<Address>,
+}
+
+impl LocalizedTransaction {
+    /// Returns transaction sender.
+    /// Panics if `LocalizedTransaction` is constructed using invalid `UnverifiedTransaction`.
+    pub fn sender(&mut self) -> Address {
+        if let Some(sender) = self.cached_sender {
+            return sender;
+        }
+        if self.is_unsigned() {
+            return UNSIGNED_SENDER.clone();
+        }
+        let sender = public_to_address(&self.recover_public()
+            .expect("LocalizedTransaction is always constructed from transaction from blockchain; Blockchain only stores verified transactions; qed"));
+        self.cached_sender = Some(sender);
+        sender
+    }
+}
+
+impl Deref for LocalizedTransaction {
+    type Target = UnverifiedTransaction;
+
+    fn deref(&self) -> &Self::Target {
+        &self.signed
     }
 }
