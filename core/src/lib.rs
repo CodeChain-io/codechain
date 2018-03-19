@@ -21,6 +21,9 @@ extern crate codechain_json as cjson;
 extern crate codechain_keys as ckeys;
 extern crate codechain_types as ctypes;
 extern crate heapsize;
+extern crate kvdb;
+extern crate kvdb_rocksdb;
+extern crate kvdb_memorydb;
 extern crate rlp;
 #[macro_use]
 extern crate rlp_derive;

@@ -12,6 +12,9 @@ codechain-keys = { path="../keys" }
 codechain-types = { path = "../primitives/codechain-types" }
 heapsize = "0.4"
 log = "0.3"
+kvdb = { path = "../util/kvdb" }
+kvdb-rocksdb = { path = "../util/kvdb-rocksdb" }
+kvdb-memorydb = { path = "../util/kvdb-memorydb" }
 parking_lot = "0.5"
 rlp = { path = "../util/rlp" }
 rlp_derive = { path = "../util/rlp_derive" }

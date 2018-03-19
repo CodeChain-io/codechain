@@ -18,6 +18,7 @@ use std::hash::Hash;
 use std::collections::HashMap;
 use std::ops::Deref;
 
+use kvdb::{DBTransaction, KeyValueDB};
 use parking_lot::RwLock;
 use rlp;
 
@@ -184,4 +185,36 @@ pub trait Readable {
     }
 }
 
+impl Writable for DBTransaction {
+    fn write<T, R>(&mut self, col: Option<u32>, key: &Key<T, Target = R>, value: &T) where T: rlp::Encodable, R: Deref<Target = [u8]> {
+        self.put(col, &key.key(), &rlp::encode(value));
+    }
 
+    fn delete<T, R>(&mut self, col: Option<u32>, key: &Key<T, Target = R>) where T: rlp::Encodable, R: Deref<Target = [u8]> {
+        self.delete(col, &key.key());
+    }
+}
+
+impl<KVDB: KeyValueDB + ?Sized> Readable for KVDB {
+    fn read<T, R>(&self, col: Option<u32>, key: &Key<T, Target = R>) -> Option<T> where T: rlp::Decodable, R: Deref<Target = [u8]> {
+        let result = self.get(col, &key.key());
+
+        match result {
+            Ok(option) => option.map(|v| rlp::decode(&v)),
+            Err(err) => {
+                panic!("db get failed, key: {:?}, err: {:?}", &key.key() as &[u8], err);
+            }
+        }
+    }
+
+    fn exists<T, R>(&self, col: Option<u32>, key: &Key<T, Target = R>) -> bool where R: Deref<Target = [u8]> {
+        let result = self.get(col, &key.key());
+
+        match result {
+            Ok(v) => v.is_some(),
+            Err(err) => {
+                panic!("db get failed, key: {:?}, err: {:?}", &key.key() as &[u8], err);
+            }
+        }
+    }
+}
