@@ -24,6 +24,7 @@ use parking_lot::RwLock;
 
 use super::best_block::BestBlock;
 use super::extras::{BlockDetails, TransactionAddress};
+use super::super::db::{self, Readable, Writable};
 use super::super::header::{BlockNumber, Header};
 use super::super::blockchain_info::BlockChainInfo;
 
@@ -94,18 +95,19 @@ pub trait BlockProvider {
 
 impl BlockProvider for BlockChain {
     fn is_known(&self, hash: &H256) -> bool {
-        unimplemented!();
-        true
+        self.db.exists_with_cache(db::COL_EXTRA, &self.block_details, hash)
     }
 
     /// Get the hash of given block's number.
     fn block_hash(&self, index: BlockNumber) -> Option<H256> {
-        unimplemented!();
+        let result = self.db.read_with_cache(db::COL_EXTRA, &self.block_hashes, &index)?;
+        Some(result)
     }
 
     /// Get the address of transaction with given hash.
     fn transaction_address(&self, hash: &H256) -> Option<TransactionAddress> {
-        unimplemented!();
+        let result = self.db.read_with_cache(db::COL_EXTRA, &self.transaction_addresses, hash)?;
+        Some(result)
     }
 }
 
