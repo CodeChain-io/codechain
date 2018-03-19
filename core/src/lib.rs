@@ -25,6 +25,7 @@ extern crate kvdb;
 extern crate kvdb_rocksdb;
 extern crate kvdb_memorydb;
 extern crate rlp;
+extern crate rlp_compress;
 #[macro_use]
 extern crate rlp_derive;
 extern crate parking_lot;

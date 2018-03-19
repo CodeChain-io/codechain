@@ -17,6 +17,7 @@ kvdb-rocksdb = { path = "../util/kvdb-rocksdb" }
 kvdb-memorydb = { path = "../util/kvdb-memorydb" }
 parking_lot = "0.5"
 rlp = { path = "../util/rlp" }
+rlp_compress = { path = "../util/rlp_compress" }
 rlp_derive = { path = "../util/rlp_derive" }
 time = "0.1"
 triehash = { path = "../util/triehash" }
