@@ -21,6 +21,7 @@ use ctypes::H256;
 use parking_lot::RwLock;
 
 use super::best_block::BestBlock;
+use super::super::header::{BlockNumber, Header};
 
 /// Structure providing fast access to blockchain data.
 ///
@@ -42,6 +43,21 @@ impl BlockChain {
             block_headers: RwLock::new(HashMap::new()),
             block_bodies: RwLock::new(HashMap::new()),
         }
+    }
+}
+
+/// Interface for querying blocks by hash and by number.
+pub trait BlockProvider {
+    /// Returns true if the given block is known
+    /// (though not necessarily a part of the canon chain).
+    fn is_known(&self, hash: &H256) -> bool;
+
+    /// Get the hash of given block's number.
+    fn block_hash(&self, index: BlockNumber) -> Option<H256>;
+
+    /// Returns reference to genesis hash.
+    fn genesis_hash(&self) -> H256 {
+        self.block_hash(0).expect("Genesis hash should always exist")
     }
 }
 
