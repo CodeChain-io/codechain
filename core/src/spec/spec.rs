@@ -20,7 +20,7 @@ use std::sync::Arc;
 use cbytes::Bytes;
 use cjson;
 use ctypes::{H256, U256, Address};
-use rlp::Rlp;
+use rlp::{Rlp, RlpStream};
 
 use super::Genesis;
 use super::seal::Generic as GenericSeal;
@@ -136,6 +136,16 @@ impl Spec {
         });
         trace!(target: "spec", "Header hash is {}", header.hash());
         header
+    }
+
+    /// Compose the genesis block for this chain.
+    pub fn genesis_block(&self) -> Bytes {
+        let empty_list = RlpStream::new_list(0).out();
+        let header = self.genesis_header();
+        let mut ret = RlpStream::new_list(2);
+        ret.append(&header);
+        ret.append_raw(&empty_list, 1);
+        ret.out()
     }
 }
 

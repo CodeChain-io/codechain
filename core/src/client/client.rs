@@ -21,6 +21,7 @@ use cio::IoChannel;
 use ctypes::H256;
 use parking_lot::{Mutex, RwLock};
 
+use super::super::blockchain::BlockChain;
 use super::{EngineClient, BlockChainInfo, ChainInfo, ChainNotify};
 use super::super::codechain_machine::CodeChainMachine;
 use super::super::consensus::{CodeChainEngine, Solo};
@@ -32,6 +33,8 @@ pub struct Client {
     engine: Arc<CodeChainEngine>,
     io_channel: Mutex<IoChannel<ClientIoMessage>>,
 
+    chain: RwLock<Arc<BlockChain>>,
+
     /// List of actors to be notified on certain chain events
     notify: RwLock<Vec<Weak<ChainNotify>>>,
 }
@@ -42,10 +45,13 @@ impl Client {
         message_channel: IoChannel<ClientIoMessage>,
     ) -> Result<Arc<Client>, Error> {
         let engine = spec.engine.clone();
+        let gb = spec.genesis_block();
+        let chain = Arc::new(BlockChain::new(&gb));
 
         let client = Arc::new(Client {
             engine,
             io_channel: Mutex::new(message_channel),
+            chain: RwLock::new(chain),
             notify: RwLock::new(Vec::new()),
         });
 
