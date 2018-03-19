@@ -181,6 +181,25 @@ pub fn sign_ecdsa(private: &Private, message: &Message) -> Result<ECDSASignature
     Ok(ECDSASignature(data_arr))
 }
 
+pub fn verify_ecdsa(public: &Public, signature: &ECDSASignature, message: &Message) -> Result<bool, Error> {
+    let context = &SECP256K1;
+    let rsig = RecoverableSignature::from_compact(context, &signature[0..64], RecoveryId::from_i32(signature[64] as i32)?)?;
+    let sig = rsig.to_standard(context);
+
+    let pdata: [u8; 65] = {
+        let mut temp = [4u8; 65];
+        temp[1..65].copy_from_slice(&**public);
+        temp
+    };
+
+    let publ = key::PublicKey::from_slice(context, &pdata)?;
+    match context.verify(&SecpMessage::from_slice(&message[..])?, &sig, &publ) {
+        Ok(_) => Ok(true),
+        Err(SecpError::IncorrectSignature) => Ok(false),
+        Err(x) => Err(Error::from(x))
+    }
+}
+
 pub fn recover_ecdsa(signature: &ECDSASignature, message: &Message) -> Result<Public, Error> {
     let context = &SECP256K1;
     let rsig = RecoverableSignature::from_compact(context, &signature[0..64], RecoveryId::from_i32(signature[64] as i32)?)?;
