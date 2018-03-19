@@ -14,37 +14,25 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-extern crate codechain_bytes as cbytes;
-extern crate codechain_crypto as ccrypto;
-extern crate codechain_io as cio;
-extern crate codechain_json as cjson;
-extern crate codechain_keys as ckeys;
-extern crate codechain_types as ctypes;
-extern crate heapsize;
-extern crate rlp;
-extern crate parking_lot;
-extern crate time;
-extern crate triehash;
-extern crate unexpected;
-extern crate util_error;
+use cbytes::Bytes;
+use ctypes::{H256, U256};
 
-#[macro_use]
-extern crate log;
+use super::super::header::BlockNumber;
 
-mod block;
-mod blockchain;
-mod blockchain_info;
-mod client;
-mod codechain_machine;
-mod consensus;
-mod error;
-mod header;
-mod machine;
-mod service;
-mod spec;
-mod transaction;
+/// Contains information on a best block that is specific to the consensus engine.
+///
+/// Sometimes referred as 'latest block'.
+#[derive(Default)]
+pub struct BestBlock {
+    /// Best block hash.
+    pub hash: H256,
+    /// Best block number.
+    pub number: BlockNumber,
+    /// Best block timestamp.
+    pub timestamp: u64,
+    /// Best block total difficulty.
+    pub total_difficulty: U256,
+    /// Best block uncompressed bytes
+    pub block: Bytes,
+}
 
-pub use client::Client;
-pub use error::Error;
-pub use service::ClientService;
-pub use spec::Spec;
