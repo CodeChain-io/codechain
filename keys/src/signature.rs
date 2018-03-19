@@ -26,7 +26,7 @@ use {Error, Message, Public, Private, SECP256K1};
 
 /// Signature encoded as RSV components
 #[repr(C)]
-pub struct ECDSASignature(pub [u8; 65]);
+pub struct ECDSASignature([u8; 65]);
 
 impl ECDSASignature {
     /// Get a slice into the 'r' portion of the data.

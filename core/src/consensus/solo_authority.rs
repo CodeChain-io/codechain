@@ -76,8 +76,8 @@ fn verify_external(header: &Header, validators: &ValidatorSet) -> Result<(), Err
     use rlp::UntrustedRlp;
 
     // Check if the signature belongs to a validator, can depend on parent state.
-    let sig = ECDSASignature(UntrustedRlp::new(&header.seal()[0]).as_val::<H520>()?.into());
-    let signer = public_to_address(&recover_ecdsa(&sig, &header.bare_hash())?);
+    let sig = UntrustedRlp::new(&header.seal()[0]).as_val::<H520>()?;
+    let signer = public_to_address(&recover_ecdsa(&sig.into(), &header.bare_hash())?);
 
     if *header.author() != signer {
         return Err(EngineError::NotAuthorized(header.author().clone()).into())
