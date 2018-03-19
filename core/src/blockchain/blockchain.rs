@@ -15,9 +15,11 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use cbytes::Bytes;
 use ctypes::H256;
+use kvdb::{DBTransaction, KeyValueDB};
 use parking_lot::RwLock;
 
 use super::best_block::BestBlock;
@@ -35,15 +37,18 @@ pub struct BlockChain {
     // block cache
     block_headers: RwLock<HashMap<H256, Bytes>>,
     block_bodies: RwLock<HashMap<H256, Bytes>>,
+
+    db: Arc<KeyValueDB>,
 }
 
 impl BlockChain {
     /// Create new instance of blockchain from given Genesis.
-    pub fn new(genesis: &[u8]) -> BlockChain {
+    pub fn new(genesis: &[u8], db: Arc<KeyValueDB>) -> BlockChain {
         Self {
             best_block: RwLock::new(BestBlock::default()),
             block_headers: RwLock::new(HashMap::new()),
             block_bodies: RwLock::new(HashMap::new()),
+            db: db.clone(),
         }
     }
 

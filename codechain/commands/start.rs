@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::path::Path;
+
 use ccore::{ClientService, Spec};
 use cnetwork::{Address, HandshakeService};
 use crpc::Server as RpcServer;
@@ -35,6 +37,8 @@ pub fn handshake_start(cfg: config::NetworkConfig) -> HandshakeService {
 
 pub fn client_start(spec: &Spec) -> ClientService {
     info!("Starting client");
-    ClientService::start(&spec).unwrap()
+    // FIXME: Don't hardcode client_path.
+    let client_path = Path::new("./db");
+    ClientService::start(&spec, &client_path).unwrap()
 }
 

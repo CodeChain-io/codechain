@@ -22,6 +22,18 @@ use kvdb::{DBTransaction, KeyValueDB};
 use parking_lot::RwLock;
 use rlp;
 
+// database columns
+/// Column for State
+pub const COL_STATE: Option<u32> = Some(0);
+/// Column for Block headers
+pub const COL_HEADERS: Option<u32> = Some(1);
+/// Column for Block bodies
+pub const COL_BODIES: Option<u32> = Some(2);
+/// Column for Extras
+pub const COL_EXTRA: Option<u32> = Some(3);
+/// Number of columns in DB
+pub const NUM_COLUMNS: Option<u32> = Some(4);
+
 /// Modes for updating caches.
 #[derive(Clone, Copy)]
 pub enum CacheUpdatePolicy {

@@ -19,6 +19,7 @@ use std::sync::{Arc, Weak};
 use cbytes::Bytes;
 use cio::IoChannel;
 use ctypes::H256;
+use kvdb::KeyValueDB;
 use parking_lot::{Mutex, RwLock};
 
 use super::super::blockchain::BlockChain;
@@ -42,11 +43,12 @@ pub struct Client {
 impl Client {
     pub fn new(
         spec: &Spec,
+        db: Arc<KeyValueDB>,
         message_channel: IoChannel<ClientIoMessage>,
     ) -> Result<Arc<Client>, Error> {
         let engine = spec.engine.clone();
         let gb = spec.genesis_block();
-        let chain = Arc::new(BlockChain::new(&gb));
+        let chain = Arc::new(BlockChain::new(&gb, db.clone()));
 
         let client = Arc::new(Client {
             engine,

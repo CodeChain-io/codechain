@@ -14,10 +14,12 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::path::Path;
 use std::sync::Arc;
 
 use cbytes::Bytes;
 use cio::{IoHandler, IoService, IoContext};
+use kvdb_rocksdb::{Database, DatabaseConfig};
 
 use super::client::Client;
 use super::error::Error;
@@ -27,12 +29,23 @@ use super::spec::Spec;
 pub struct ClientService {
     io_service: Arc<IoService<ClientIoMessage>>,
     client: Arc<Client>,
+    database: Arc<Database>,
 }
 
 impl ClientService {
-    pub fn start(spec: &Spec) -> Result<ClientService, Error> {
+    pub fn start(
+        spec: &Spec,
+        client_path: &Path,
+    ) -> Result<ClientService, Error> {
         let io_service = IoService::<ClientIoMessage>::start()?;
-        let client = Client::new(&spec, io_service.channel())?;
+
+        let mut db_config = DatabaseConfig::with_columns(super::db::NUM_COLUMNS);
+        let db = Arc::new(Database::open(
+            &db_config,
+            &client_path.to_str().expect("DB path could not be converted to string.")
+        ).map_err(::client::Error::Database)?);
+
+        let client = Client::new(&spec, db.clone(), io_service.channel())?;
 
         let client_io = Arc::new(ClientIoHandler {
             client: client.clone(),
@@ -44,6 +57,7 @@ impl ClientService {
         Ok(ClientService {
             io_service: Arc::new(io_service),
             client,
+            database: db,
         })
     }
 }
