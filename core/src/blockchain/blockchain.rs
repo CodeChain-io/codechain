@@ -22,6 +22,7 @@ use parking_lot::RwLock;
 
 use super::best_block::BestBlock;
 use super::super::header::{BlockNumber, Header};
+use super::super::blockchain_info::BlockChainInfo;
 
 /// Structure providing fast access to blockchain data.
 ///
@@ -44,6 +45,19 @@ impl BlockChain {
             block_bodies: RwLock::new(HashMap::new()),
         }
     }
+
+    /// Returns general blockchain information
+    pub fn chain_info(&self) -> BlockChainInfo {
+        // ensure data consistently by locking everything first
+        let best_block = self.best_block.read();
+        BlockChainInfo {
+            total_score: best_block.total_score.clone(),
+            genesis_hash: self.genesis_hash(),
+            best_block_hash: best_block.hash,
+            best_block_number: best_block.number,
+            best_block_timestamp: best_block.timestamp,
+        }
+    }
 }
 
 /// Interface for querying blocks by hash and by number.
@@ -61,3 +75,14 @@ pub trait BlockProvider {
     }
 }
 
+impl BlockProvider for BlockChain {
+    fn is_known(&self, hash: &H256) -> bool {
+        unimplemented!();
+        true
+    }
+
+    /// Get the hash of given block's number.
+    fn block_hash(&self, index: BlockNumber) -> Option<H256> {
+        unimplemented!();
+    }
+}
