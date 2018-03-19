@@ -23,7 +23,7 @@ use kvdb::{DBTransaction, KeyValueDB};
 use parking_lot::RwLock;
 
 use super::best_block::BestBlock;
-use super::extras::TransactionAddress;
+use super::extras::{BlockDetails, TransactionAddress};
 use super::super::header::{BlockNumber, Header};
 use super::super::blockchain_info::BlockChainInfo;
 
@@ -38,6 +38,11 @@ pub struct BlockChain {
     block_headers: RwLock<HashMap<H256, Bytes>>,
     block_bodies: RwLock<HashMap<H256, Bytes>>,
 
+    // extra caches
+    block_details: RwLock<HashMap<H256, BlockDetails>>,
+    block_hashes: RwLock<HashMap<BlockNumber, H256>>,
+    transaction_addresses: RwLock<HashMap<H256, TransactionAddress>>,
+
     db: Arc<KeyValueDB>,
 }
 
@@ -48,6 +53,9 @@ impl BlockChain {
             best_block: RwLock::new(BestBlock::default()),
             block_headers: RwLock::new(HashMap::new()),
             block_bodies: RwLock::new(HashMap::new()),
+            block_details: RwLock::new(HashMap::new()),
+            block_hashes: RwLock::new(HashMap::new()),
+            transaction_addresses: RwLock::new(HashMap::new()),
             db: db.clone(),
         }
     }
