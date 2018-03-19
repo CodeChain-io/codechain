@@ -20,7 +20,7 @@ use std::fmt;
 use std::io;
 use std::result::Result;
 
-use cio::{IoContext, IoHandler, IoManager, TimerToken, StreamToken};
+use cio::{IoContext, IoHandler, IoManager, StreamToken};
 use mio::{PollOpt, Ready, Token};
 use mio::deprecated::EventLoop;
 use mio::net::UdpSocket;
@@ -324,7 +324,7 @@ impl IoHandler<HandlerMessage> for Handler {
         }
     }
 
-    fn deregister_stream(&self, stream: StreamToken, _event_loop: &mut EventLoop<IoManager<HandlerMessage>>) {
+    fn deregister_stream(&self, _stream: StreamToken, _event_loop: &mut EventLoop<IoManager<HandlerMessage>>) {
     }
 }
 

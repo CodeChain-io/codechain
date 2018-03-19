@@ -58,7 +58,7 @@ impl error::Error for Error {
 
     fn cause(&self) -> Option<&error::Error> {
         match self {
-            &Error::CryptoError(ref err) => None,
+            &Error::CryptoError(_) => None,
             &Error::NotReady => None,
         }
     }
