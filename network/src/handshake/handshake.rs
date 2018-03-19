@@ -116,12 +116,10 @@ impl Handshake {
                 let address = Address::from(address);
                 let session = self.table.get(&address).ok_or(HandshakeError::NoSession)?;
 
-                let encrypted_bytes = &buf[0..received_size];
-
-                let unencrypted_bytes = session.decrypt(&encrypted_bytes)?;
-
-                let rlp = UntrustedRlp::new(&unencrypted_bytes);
+                let raw_bytes = &buf[0..received_size];
+                let rlp = UntrustedRlp::new(&raw_bytes);
                 let message = Decodable::decode(&rlp)?;
+
                 info!("Handshake {:?} received from {:?}", message, address);
                 Ok(Some((message, Address::from(address))))
             },
@@ -134,11 +132,10 @@ impl Handshake {
         let session = self.table.get(&target).ok_or(HandshakeError::NoSession)?;
 
         let unencrypted_bytes = message.rlp_bytes();
-        let encrypted_bytes = session.encrypt(&unencrypted_bytes)?;
 
-        let length_to_send = encrypted_bytes.len();
+        let length_to_send = unencrypted_bytes.len();
 
-        let sent_size = self.socket.send_to(&encrypted_bytes, target.socket())?;
+        let sent_size = self.socket.send_to(&unencrypted_bytes, target.socket())?;
         if sent_size != length_to_send {
             return Err(HandshakeError::SendError(message.clone(), length_to_send - sent_size))
         }
@@ -147,44 +144,70 @@ impl Handshake {
     }
 
     fn send_ping_to(&mut self, target: &Address, nonce: Nonce) -> Result<(), HandshakeError> {
-        if let Some(session) = self.table.get_mut(&target) {
+        let nonce = if let Some(session) = self.table.get_mut(&target) {
             session.set_ready(nonce);
+
+            encode_and_encrypt_nonce(&session, nonce)?
         } else {
             return Err(HandshakeError::NoSession)
-        }
-        self.send_to(&HandshakeMessage::ConnectionRequest(nonce), target)
+        };
+        self.send_to(&HandshakeMessage::connection_request(nonce), target)
     }
 
     fn on_packet(&mut self, message: &HandshakeMessage, from: &Address) {
         match message {
-            &HandshakeMessage::ConnectionRequest(nonce) => {
-                let nonce = {
+            &HandshakeMessage::ConnectionRequest(_, ref nonce) => {
+                let encrypted_bytes = {
                     if let Some(session) = self.table.get(from) {
                         if session.is_ready() {
                             info!("A nonce already exists");
                         }
-                        nonce // FIXME: must return nonce + 1
+                        let nonce = match decrypt_and_decode_nonce(&session, &nonce) {
+                            Ok(nonce) => nonce,
+                            Err(err) => {
+                                info!("Cannot decode nonce {:?}", err);
+                                return;
+                            }
+                        };
+
+                        // FIXME: let nonce = f(nonce)
+                        match encode_and_encrypt_nonce(&session, nonce) {
+                            Ok(data) => data,
+                            Err(err) => {
+                                info!("Cannot encrypt {:?}", err);
+                                return
+                            }
+                        }
                     } else {
                         info!("There is no shared secret");
                         return;
                     }
                 };
 
-                let pong = HandshakeMessage::ConnectionAllowed(nonce);
+                let pong = HandshakeMessage::connection_allowed(encrypted_bytes);
                 if let Ok(_) = self.send_to(&pong, &from) {
                 } else {
                     info!("Cannot send {:?} to {:?}", pong, from);
                 }
             },
-            &HandshakeMessage::ConnectionAllowed(nonce) => {
+            &HandshakeMessage::ConnectionAllowed(_, ref nonce) => {
                 if let Some(ref session) = self.table.get(from) {
                     if !session.is_ready() {
                         info!("A nonce doesn't exists");
                         return;
-                    } else if session.is_expected_nonce(&nonce) {
+                    }
+                    let nonce = match decrypt_and_decode_nonce(&session, &nonce) {
+                        Ok(nonce) => nonce,
+                        Err(err) => {
+                            info!("Cannot decode nonce {:?}", err);
+                            return;
+                        }
+                    };
+
+                    if session.is_expected_nonce(&nonce) {
                         // FIXME: Create TCP connection
                     } else {
-                        info!("Nonce({}) is not expected", nonce);
+                        info!("Nonce({:?}) is not expected", nonce);
                         return;
                     }
                 } else {
@@ -192,7 +215,7 @@ impl Handshake {
                     return;
                 }
             },
-            &HandshakeMessage::ConnectionDenied(ref reason) => {
+            &HandshakeMessage::ConnectionDenied(_, ref reason) => {
                 info!("Connection to {:?} refused(reason: {}", from, reason);
             },
         }
@@ -201,6 +224,17 @@ impl Handshake {
     fn nonce() -> Nonce {
         10000 // FIXME
     }
+}
+
+fn encode_and_encrypt_nonce(session: &Session, nonce: Nonce) -> Result<Vec<u8>, HandshakeError> {
+    let unencrypted_bytes = nonce.rlp_bytes();
+    Ok(session.encrypt(&unencrypted_bytes)?)
+}
+
+fn decrypt_and_decode_nonce(session: &Session, encrypted_bytes: &Vec<u8>) -> Result<Nonce, HandshakeError> {
+    let unencrypted_bytes = session.decrypt(&encrypted_bytes)?;
+    let rlp = UntrustedRlp::new(&unencrypted_bytes);
+    Ok(Decodable::decode(&rlp)?)
 }
 
 struct Internal {
