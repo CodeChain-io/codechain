@@ -14,38 +14,13 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-extern crate codechain_bytes as cbytes;
-extern crate codechain_crypto as ccrypto;
-extern crate codechain_io as cio;
-extern crate codechain_json as cjson;
-extern crate codechain_keys as ckeys;
-extern crate codechain_types as ctypes;
-extern crate heapsize;
-extern crate rlp;
-extern crate parking_lot;
-extern crate time;
-extern crate triehash;
-extern crate unexpected;
-extern crate util_error;
-
-#[macro_use]
-extern crate log;
-
 mod block;
-mod blockchain;
-mod blockchain_info;
-mod client;
-mod codechain_machine;
-mod consensus;
-mod error;
+mod body;
 mod header;
-mod machine;
-mod service;
-mod spec;
 mod transaction;
-mod views;
 
-pub use client::Client;
-pub use error::Error;
-pub use service::ClientService;
-pub use spec::Spec;
+pub use self::block::BlockView;
+pub use self::body::BodyView;
+pub use self::header::HeaderView;
+pub use self::transaction::TransactionView;
+
