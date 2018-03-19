@@ -16,7 +16,7 @@
 
 use std::collections::HashMap;
 
-use super::session::{ SharedSecret, Session };
+use super::session::{SharedSecret, Session};
 use super::super::Address;
 
 pub struct Table {

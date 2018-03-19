@@ -17,7 +17,7 @@
 
 use std::sync::Arc;
 
-use cio::{ IoError, IoService };
+use cio::{IoError, IoService};
 
 use super::handshake::{HandlerMessage, Handler, Handshake };
 use super::super::Address;
