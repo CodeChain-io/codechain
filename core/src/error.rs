@@ -21,6 +21,7 @@ use ckeys::{Error as KeyError};
 use util_error::UtilError;
 use unexpected::Mismatch;
 
+use super::client::Error as ClientError;
 use super::consensus::EngineError;
 use super::transaction::TransactionError;
 
@@ -50,6 +51,8 @@ impl fmt::Display for BlockError {
 #[derive(Debug)]
 /// General error type which should be capable of representing all errors in codechain
 pub enum Error {
+    /// Client configuration error.
+    Client(ClientError),
     /// Error concerning a utility.
     Util(UtilError),
     /// Error concerning block processing.
@@ -67,6 +70,7 @@ pub enum Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
+            Error::Client(ref err) => err.fmt(f),
             Error::Util(ref err) => err.fmt(f),
             Error::Io(ref err) => err.fmt(f),
             Error::Block(ref err) => err.fmt(f),
@@ -74,6 +78,12 @@ impl fmt::Display for Error {
             Error::Engine(ref err) => err.fmt(f),
             Error::Key(ref err) => err.fmt(f),
         }
+    }
+}
+
+impl From<ClientError> for Error {
+    fn from(err: ClientError) -> Error {
+        Error::Client(err)
     }
 }
 

@@ -16,9 +16,11 @@
 
 mod chain_notify;
 mod client;
+mod error;
 
 pub use self::chain_notify::ChainNotify;
 pub use self::client::Client;
+pub use self::error::Error;
 
 use cbytes::Bytes;
 use ctypes::H256;
