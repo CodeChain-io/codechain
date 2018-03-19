@@ -14,8 +14,19 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod best_block;
-mod blockchain;
-mod extras;
+use ctypes::H256;
 
-pub use self::blockchain::BlockChain;
+use heapsize::HeapSizeOf;
+
+/// Represents address of certain transaction within block
+#[derive(Debug, PartialEq, Clone, RlpEncodable, RlpDecodable)]
+pub struct TransactionAddress {
+    /// Block hash
+    pub block_hash: H256,
+    /// Transaction index within the block
+    pub index: usize
+}
+
+impl HeapSizeOf for TransactionAddress {
+    fn heap_size_of_children(&self) -> usize { 0 }
+}

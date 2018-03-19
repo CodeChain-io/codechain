@@ -22,6 +22,8 @@ extern crate codechain_keys as ckeys;
 extern crate codechain_types as ctypes;
 extern crate heapsize;
 extern crate rlp;
+#[macro_use]
+extern crate rlp_derive;
 extern crate parking_lot;
 extern crate time;
 extern crate triehash;

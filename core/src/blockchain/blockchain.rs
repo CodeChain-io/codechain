@@ -21,6 +21,7 @@ use ctypes::H256;
 use parking_lot::RwLock;
 
 use super::best_block::BestBlock;
+use super::extras::TransactionAddress;
 use super::super::header::{BlockNumber, Header};
 use super::super::blockchain_info::BlockChainInfo;
 
@@ -69,6 +70,9 @@ pub trait BlockProvider {
     /// Get the hash of given block's number.
     fn block_hash(&self, index: BlockNumber) -> Option<H256>;
 
+    /// Get the address of transaction with given hash.
+    fn transaction_address(&self, hash: &H256) -> Option<TransactionAddress>;
+
     /// Returns reference to genesis hash.
     fn genesis_hash(&self) -> H256 {
         self.block_hash(0).expect("Genesis hash should always exist")
@@ -85,4 +89,10 @@ impl BlockProvider for BlockChain {
     fn block_hash(&self, index: BlockNumber) -> Option<H256> {
         unimplemented!();
     }
+
+    /// Get the address of transaction with given hash.
+    fn transaction_address(&self, hash: &H256) -> Option<TransactionAddress> {
+        unimplemented!();
+    }
 }
+

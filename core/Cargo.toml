@@ -14,6 +14,7 @@ heapsize = "0.4"
 log = "0.3"
 parking_lot = "0.5"
 rlp = { path = "../util/rlp" }
+rlp_derive = { path = "../util/rlp_derive" }
 time = "0.1"
 triehash = { path = "../util/triehash" }
 unexpected = { path = "../util/unexpected" }
