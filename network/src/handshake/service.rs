@@ -32,7 +32,9 @@ impl Service {
         let io_service = IoService::start()?;
         io_service.register_handler(Arc::new(Handler::new(address)))?;
         for address in bootstrap_addresses {
-            io_service.send_message(HandlerMessage::ConnectTo(address));
+            if let Err(err) = io_service.send_message(HandlerMessage::ConnectTo(address)) {
+                info!("Cannot ConnectTo : {:?}", err);
+            }
         }
         Ok(Self {
             io_service,
