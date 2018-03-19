@@ -41,7 +41,7 @@ pub use network::Network;
 pub use private::Private;
 pub use random::Random;
 pub use rustc_serialize::hex;
-pub use signature::Signature;
+pub use signature::{ECDSASignature, sign_ecdsa, recover_ecdsa};
 
 use codechain_types::H256;
 

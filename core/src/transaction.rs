@@ -19,7 +19,7 @@ use std::ops::Deref;
 
 use cbytes::Bytes;
 use ccrypto::blake256;
-use ckeys::{self, Private, Signature, Public, Network, public_to_address};
+use ckeys::{self, ECDSASignature, Private, Public, Network, public_to_address, sign_ecdsa, recover_ecdsa};
 use ctypes::{Address, H160, H256, U256};
 use rlp::{self, UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
 
@@ -88,14 +88,14 @@ impl Transaction {
 
     /// Signs the transaction as coming from `sender`.
     pub fn sign(self, private: &Private) -> SignedTransaction {
-        let sig = private.sign(&self.hash())
+        let sig = sign_ecdsa(&private, &self.hash())
             .expect("data is valid and context has signing capabilities; qed");
         SignedTransaction::new(self.with_signature(sig))
             .expect("secret is valid so it's recoverable")
     }
 
     /// Signs the transaction with signature.
-    pub fn with_signature(self, sig: Signature) -> UnverifiedTransaction {
+    pub fn with_signature(self, sig: ECDSASignature) -> UnverifiedTransaction {
         UnverifiedTransaction {
             unsigned: self,
             r: sig.r().into(),
@@ -191,13 +191,13 @@ impl UnverifiedTransaction {
     pub fn standard_v(&self) -> u8 { match self.v { v if v == 27 || v == 28 => ((v - 1) % 2) as u8, _ => 4 } }
 
     /// Construct a signature object from the sig.
-    pub fn signature(&self) -> Signature {
-        Signature::from_rsv(&self.r.into(), &self.s.into(), self.standard_v())
+    pub fn signature(&self) -> ECDSASignature {
+        ECDSASignature::from_rsv(&self.r.into(), &self.s.into(), self.standard_v())
     }
 
     /// Recovers the public key of the sender.
     pub fn recover_public(&self) -> Result<Public, ckeys::Error> {
-        Ok(self.signature().recover(&self.unsigned.hash())?)
+        Ok(recover_ecdsa(&self.signature(), &self.unsigned.hash())?)
     }
 }
 

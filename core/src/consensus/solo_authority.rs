@@ -16,7 +16,7 @@
 
 use std::sync::Weak;
 
-use ckeys::{Signature, Private, Network, public_to_address};
+use ckeys::{ECDSASignature, Private, Network, public_to_address, recover_ecdsa};
 use ctypes::{Address, H256, H520};
 use cjson;
 use parking_lot::RwLock;
@@ -76,8 +76,8 @@ fn verify_external(header: &Header, validators: &ValidatorSet) -> Result<(), Err
     use rlp::UntrustedRlp;
 
     // Check if the signature belongs to a validator, can depend on parent state.
-    let sig = Signature(UntrustedRlp::new(&header.seal()[0]).as_val::<H520>()?.into());
-    let signer = public_to_address(&sig.recover(&header.bare_hash())?);
+    let sig = ECDSASignature(UntrustedRlp::new(&header.seal()[0]).as_val::<H520>()?.into());
+    let signer = public_to_address(&recover_ecdsa(&sig, &header.bare_hash())?);
 
     if *header.author() != signer {
         return Err(EngineError::NotAuthorized(header.author().clone()).into())
@@ -183,7 +183,7 @@ impl ConsensusEngine<CodeChainMachine> for SoloAuthority {
         self.signer.write().set(address, private);
     }
 
-    fn sign(&self, hash: H256) -> Result<Signature, Error> {
+    fn sign(&self, hash: H256) -> Result<ECDSASignature, Error> {
         self.signer.read().sign(hash).map_err(Into::into)
     }
 }

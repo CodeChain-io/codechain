@@ -23,7 +23,7 @@ use hex::ToHex;
 use secp256k1::key;
 use secp256k1::Message as SecpMessage;
 
-use {Error, Message, Signature, SECP256K1};
+use {Error, Message, ECDSASignature, SECP256K1};
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Private(H256);
@@ -35,19 +35,6 @@ impl Private {
         let mut h = H256::default();
         h.copy_from_slice(&key[0..32]);
         Private(h)
-    }
-
-    pub fn sign(&self, message: &Message) -> Result<Signature, Error> {
-        let context = &SECP256K1;
-        let sec = key::SecretKey::from_slice(context, &self.0)?;
-        let s = context.sign_recoverable(&SecpMessage::from_slice(&message[..])?, &sec)?;
-        let (rec_id, data) = s.serialize_compact(context);
-        let mut data_arr = [0; 65];
-
-        // no need to check if s is low, it always is
-        data_arr[0..64].copy_from_slice(&data[0..64]);
-        data_arr[64] = rec_id.to_i32() as u8;
-        Ok(Signature(data_arr))
     }
 }
 

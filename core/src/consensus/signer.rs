@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ckeys::{Private, Signature, Error as KeyError};
+use ckeys::{Private, ECDSASignature, Error as KeyError, sign_ecdsa};
 use ctypes::{Address, H256};
 
 /// Everything that an Engine needs to sign messages.
@@ -41,9 +41,9 @@ impl EngineSigner {
     }
 
     /// Sign a consensus message hash.
-    pub fn sign(&self, hash: H256) -> Result<Signature, KeyError> {
+    pub fn sign(&self, hash: H256) -> Result<ECDSASignature, KeyError> {
         if let Some(ref p) = self.private {
-            p.sign(&hash)
+            sign_ecdsa(&p, &hash)
         } else {
             Err(KeyError::InvalidPrivate)
         }

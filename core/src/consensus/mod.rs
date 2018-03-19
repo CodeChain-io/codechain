@@ -33,7 +33,7 @@ use std::fmt;
 use std::sync::Weak;
 
 use cbytes::Bytes;
-use ckeys::{Private, Signature};
+use ckeys::{Private, ECDSASignature};
 use ctypes::{Address, H256};
 use rlp::{Encodable, Decodable, DecoderError, RlpStream, UntrustedRlp};
 use unexpected::{Mismatch, OutOfBounds};
@@ -180,7 +180,7 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
     fn set_signer(&self, _address: Address, _private: Private) {}
 
     /// Sign using the EngineSigner, to be used for consensus tx signing.
-    fn sign(&self, _hash: H256) -> Result<Signature, Error> { unimplemented!() }
+    fn sign(&self, _hash: H256) -> Result<ECDSASignature, Error> { unimplemented!() }
 }
 
 /// Results of a query of whether an epoch change occurred at the given block.

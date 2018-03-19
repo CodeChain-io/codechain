@@ -18,7 +18,7 @@ use std::cmp;
 
 use cbytes::Bytes;
 use ccrypto::blake256;
-use ckeys::{public_to_address, Signature};
+use ckeys::{public_to_address, recover_ecdsa};
 use ctypes::{Address, H256, H520};
 use rlp::{UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
 
@@ -101,8 +101,7 @@ impl ConsensusMessage {
     pub fn verify(&self) -> Result<Address, Error> {
         let full_rlp = ::rlp::encode(self);
         let block_info = ::rlp::Rlp::new(&full_rlp).at(1);
-        let sig: Signature = self.signature.into();
-        let public_key = sig.recover(&blake256(block_info.as_raw()))?;
+        let public_key = recover_ecdsa(&self.signature.into(), &blake256(block_info.as_raw()))?;
         Ok(public_to_address(&public_key))
     }
 }

@@ -22,10 +22,10 @@ use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
 use std::sync::{Arc, Weak};
 
 use cbytes::Bytes;
-use ckeys::{Message, Private, Signature};
+use ckeys::{Message, Private, ECDSASignature};
 use cio::IoService;
 use ccrypto::blake256;
-use ckeys::public_to_address;
+use ckeys::{public_to_address, recover_ecdsa};
 use ctypes::{Address, H256, H520, U128, U256};
 use parking_lot::RwLock;
 use rlp::{UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
@@ -493,8 +493,7 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
                 let address = match self.votes.get(&precommit) {
                     Some(a) => a,
                     None => {
-                        let sig: Signature = precommit.signature.into();
-                        public_to_address(&sig.recover(&precommit_hash)?)
+                        public_to_address(&recover_ecdsa(&precommit.signature.into(), &precommit_hash)?)
                     },
                 };
                 if !self.validators.contains(header.parent_hash(), &address) {
@@ -530,8 +529,9 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
         let message: ConsensusMessage = rlp.as_val().map_err(fmt_err)?;
         if !self.votes.is_old_or_known(&message) {
             let msg_hash = blake256(rlp.at(1).map_err(fmt_err)?.as_raw());
-            let sig :Signature = message.signature.into();
-            let sender = public_to_address(&sig.recover(&msg_hash).map_err(fmt_err)?);
+            let sender = public_to_address(
+                &recover_ecdsa(&message.signature.into(), &msg_hash).map_err(fmt_err)?
+            );
 
             if !self.is_authority(&sender) {
                 return Err(EngineError::NotAuthorized(sender));
@@ -633,8 +633,8 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
             Ok((list, finalize)) => {
                 let verifier = Box::new(EpochVerifier {
                     subchain_validators: list,
-                    recover: |signature: &Signature, message: &Message| {
-                        Ok(public_to_address(&signature.recover(&message)?))
+                    recover: |signature: &ECDSASignature, message: &Message| {
+                        Ok(public_to_address(&recover_ecdsa(&signature, &message)?))
                     },
                 });
 
@@ -663,7 +663,7 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
         self.to_step(Step::Propose);
     }
 
-    fn sign(&self, hash: H256) -> Result<Signature, Error> {
+    fn sign(&self, hash: H256) -> Result<ECDSASignature, Error> {
         self.signer.read().sign(hash).map_err(Into::into)
     }
 
@@ -673,14 +673,14 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
 }
 
 struct EpochVerifier<F>
-    where F: Fn(&Signature, &Message) -> Result<Address, Error> + Send + Sync
+    where F: Fn(&ECDSASignature, &Message) -> Result<Address, Error> + Send + Sync
 {
     subchain_validators: ValidatorList,
     recover: F
 }
 
 impl <F> super::EpochVerifier<CodeChainMachine> for EpochVerifier<F>
-    where F: Fn(&Signature, &Message) -> Result<Address, Error> + Send + Sync
+    where F: Fn(&ECDSASignature, &Message) -> Result<Address, Error> + Send + Sync
 {
     fn verify_light(&self, header: &Header) -> Result<(), Error> {
         let message = header.bare_hash();
