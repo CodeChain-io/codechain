@@ -39,6 +39,7 @@ pub fn client_start(spec: &Spec) -> ClientService {
     info!("Starting client");
     // FIXME: Don't hardcode client_path.
     let client_path = Path::new("./db");
-    ClientService::start(&spec, &client_path).unwrap()
+    let client_config = Default::default();
+    ClientService::start(client_config, &spec, &client_path).unwrap()
 }
 

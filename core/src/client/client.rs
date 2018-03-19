@@ -22,8 +22,8 @@ use ctypes::H256;
 use kvdb::KeyValueDB;
 use parking_lot::{Mutex, RwLock};
 
+use super::{EngineClient, BlockChainInfo, ChainInfo, ChainNotify, ClientConfig};
 use super::super::blockchain::BlockChain;
-use super::{EngineClient, BlockChainInfo, ChainInfo, ChainNotify};
 use super::super::codechain_machine::CodeChainMachine;
 use super::super::consensus::{CodeChainEngine, Solo};
 use super::super::error::Error;
@@ -42,6 +42,7 @@ pub struct Client {
 
 impl Client {
     pub fn new(
+        _config: ClientConfig,
         spec: &Spec,
         db: Arc<KeyValueDB>,
         message_channel: IoChannel<ClientIoMessage>,

@@ -16,10 +16,13 @@
 
 mod chain_notify;
 mod client;
+mod config;
 mod error;
 
 pub use self::chain_notify::ChainNotify;
+
 pub use self::client::Client;
+pub use self::config::ClientConfig;
 pub use self::error::Error;
 
 use cbytes::Bytes;

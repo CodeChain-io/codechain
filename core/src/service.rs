@@ -21,7 +21,7 @@ use cbytes::Bytes;
 use cio::{IoHandler, IoService, IoContext};
 use kvdb_rocksdb::{Database, DatabaseConfig};
 
-use super::client::Client;
+use super::client::{Client, ClientConfig};
 use super::error::Error;
 use super::spec::Spec;
 
@@ -34,18 +34,24 @@ pub struct ClientService {
 
 impl ClientService {
     pub fn start(
+        config: ClientConfig,
         spec: &Spec,
         client_path: &Path,
     ) -> Result<ClientService, Error> {
         let io_service = IoService::<ClientIoMessage>::start()?;
 
         let mut db_config = DatabaseConfig::with_columns(super::db::NUM_COLUMNS);
+
+        db_config.memory_budget = config.db_cache_size;
+        db_config.compaction = config.db_compaction.compaction_profile(client_path);
+        db_config.wal = config.db_wal;
+
         let db = Arc::new(Database::open(
             &db_config,
             &client_path.to_str().expect("DB path could not be converted to string.")
         ).map_err(::client::Error::Database)?);
 
-        let client = Client::new(&spec, db.clone(), io_service.channel())?;
+        let client = Client::new(config, &spec, db.clone(), io_service.channel())?;
 
         let client_io = Arc::new(ClientIoHandler {
             client: client.clone(),
