@@ -82,7 +82,9 @@ impl Client {
 
 impl ChainInfo for Client {
     fn chain_info(&self) -> BlockChainInfo {
-        unimplemented!()
+        let mut chain_info = self.chain.read().chain_info();
+        // FIXME:: Take block_queue into consideration.
+        chain_info
     }
 }
 
