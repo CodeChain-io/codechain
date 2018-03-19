@@ -20,7 +20,7 @@ use crypto::{blake256, ripemd160};
 use rustc_hex::ToHex;
 use secp256k1::key;
 
-use {Public, Error, SECP256K1, Address, Private};
+use super::{Public, Error, SECP256K1, Address, Private};
 
 pub fn public_to_address(public: &Public) -> Address {
     let hash = ripemd160(blake256(public));

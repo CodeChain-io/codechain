@@ -40,7 +40,7 @@ use codechain_types::{H520, H512, H256};
 use secp256k1::{key, schnorr, Message as SecpMessage, RecoverableSignature, RecoveryId, Error as SecpError};
 use rustc_hex::{ToHex, FromHex};
 
-use {Error, Message, Public, Private, SECP256K1};
+use super::{Error, Message, Public, Private, SECP256K1};
 
 /// Signature encoded as RSV components
 #[repr(C)]

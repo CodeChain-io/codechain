@@ -21,9 +21,8 @@ use std::str::FromStr;
 use codechain_types::H256;
 use hex::ToHex;
 use secp256k1::key;
-use secp256k1::Message as SecpMessage;
 
-use {Error, Message, ECDSASignature, SECP256K1};
+use super::Error;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Private(H256);

@@ -21,7 +21,7 @@ use std::str::FromStr;
 use bech32::Bech32;
 use codechain_types::H160;
 
-use {Address, Error, Network};
+use super::{Address, Error, Network};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct FullAddress {
