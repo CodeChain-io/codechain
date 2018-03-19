@@ -39,6 +39,7 @@ mod blockchain_info;
 mod client;
 mod codechain_machine;
 mod consensus;
+mod db;
 mod encoded;
 mod error;
 mod header;
