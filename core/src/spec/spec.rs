@@ -46,6 +46,8 @@ pub struct Spec {
     pub parent_hash: H256,
     /// The genesis block's author field.
     pub author: Address,
+    /// The genesis block's score field.
+    pub score: U256,
     /// The genesis block's timestamp field.
     pub timestamp: u64,
     /// Transactions root of the genesis block. Should be BLAKE_NULL_RLP.
@@ -130,6 +132,7 @@ impl Spec {
         header.set_author(self.author.clone());
         header.set_transactions_root(self.transactions_root.clone());
         // FIXME: Set the state root.
+        header.set_score(self.score.clone());
         header.set_seal({
             let r = Rlp::new(&self.seal_rlp);
             r.iter().map(|f| f.as_raw().to_vec()).collect()
@@ -162,6 +165,7 @@ fn load_from(s: cjson::spec::Spec) -> Result<Spec, Error> {
         parent_hash: g.parent_hash,
         transactions_root: g.transactions_root,
         author: g.author,
+        score: g.score,
         timestamp: g.timestamp,
         seal_rlp,
     };

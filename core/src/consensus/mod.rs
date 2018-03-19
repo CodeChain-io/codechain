@@ -141,6 +141,10 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
         ConstructedVerifier::Trusted(Box::new(NoOp))
     }
 
+    /// Populate a header's fields based on its parent's header.
+    /// Usually implements the chain scoring rule based on weight.
+    fn populate_from_parent(&self, _header: &mut M::Header, _parent: &M::Header) { }
+
     /// Trigger next step of the consensus engine.
     fn step(&self) {}
 

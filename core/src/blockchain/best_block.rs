@@ -30,8 +30,8 @@ pub struct BestBlock {
     pub number: BlockNumber,
     /// Best block timestamp.
     pub timestamp: u64,
-    /// Best block total difficulty.
-    pub total_difficulty: U256,
+    /// Best block total score.
+    pub total_score: U256,
     /// Best block uncompressed bytes
     pub block: Bytes,
 }

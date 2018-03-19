@@ -24,6 +24,8 @@ use super::Seal;
 pub struct Genesis {
     /// Seal.
     pub seal: Seal,
+    /// Difficulty.
+    pub score: Uint,
     /// Block author, defaults to 0.
     pub author: Option<Address>,
     /// Block timestamp, defaults to 0.
@@ -55,6 +57,7 @@ mod tests {
     #[test]
     fn genesis_deserialization() {
         let s = r#"{
+			"score": "0x400000000",
                         "seal": {
                             "tendermint": {
 				"round": "0x0",
@@ -78,6 +81,7 @@ mod tests {
                     H520(Eth520::from("0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")),
                 ]
             }),
+            score: Uint(U256::from(0x400000000u64)),
             author: Some(Address(H160::from("0x1000000000000000000000000000000000000001"))),
             timestamp: Some(Uint(U256::from(0x07))),
             parent_hash: Some(H256(Eth256::from("0x9000000000000000000000000000000000000000000000000000000000000000"))),

@@ -23,6 +23,8 @@ use spec::seal::Seal;
 pub struct Genesis {
     /// Seal.
     pub seal: Seal,
+    /// Score.
+    pub score: U256,
     /// Author.
     pub author: Address,
     /// Timestamp.
@@ -39,6 +41,7 @@ impl From<cjson::spec::Genesis> for Genesis {
     fn from(g: cjson::spec::Genesis) -> Self {
         Genesis {
             seal: From::from(g.seal),
+            score: g.score.into(),
             author: g.author.map_or_else(Address::zero, Into::into),
             timestamp: g.timestamp.map_or(0, Into::into),
             parent_hash: g.parent_hash.map_or_else(H256::zero, Into::into),

@@ -14,13 +14,15 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ctypes::H256;
+use ctypes::{H256, U256};
 
 use super::header::BlockNumber;
 
 /// Information about the blockchain gathered together.
 #[derive(Clone, Debug)]
 pub struct BlockChainInfo {
+    /// Blockchain score.
+    pub total_score: U256,
     /// Best blockchain block hash.
     pub best_block_hash: H256,
     /// Best blockchain block number.

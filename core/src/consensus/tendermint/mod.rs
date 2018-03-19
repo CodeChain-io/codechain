@@ -26,7 +26,7 @@ use ckeys::{Message, Private, Signature};
 use cio::IoService;
 use ccrypto::blake256;
 use ckeys::public_to_address;
-use ctypes::{Address, H256, H520};
+use ctypes::{Address, H256, H520, U128, U256};
 use parking_lot::RwLock;
 use rlp::{UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
 use unexpected::{Mismatch, OutOfBounds};
@@ -645,6 +645,15 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
             }
             Err(e) => ConstructedVerifier::Err(e),
         }
+    }
+
+    fn populate_from_parent(&self, header: &mut Header, parent: &Header) {
+        // Chain scoring: total weight is sqrt(U256::max_value())*height - view
+        let new_score = U256::from(U128::max_value())
+            + consensus_view(parent).expect("Header has been verified; qed").into()
+            - self.view.load(AtomicOrdering::SeqCst).into();
+
+        header.set_score(new_score);
     }
 
     fn set_signer(&self, address: Address, private: Private) {
