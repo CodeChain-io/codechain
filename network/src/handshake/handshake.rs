@@ -130,7 +130,7 @@ impl Handshake {
         }
     }
 
-    fn send_to(&self, message: &HandshakeMessage, target: &Address, _key: &SharedSecret) -> Result<(), HandshakeError> {
+    fn send_to(&self, message: &HandshakeMessage, target: &Address) -> Result<(), HandshakeError> {
         let session = self.table.get(&target).ok_or(HandshakeError::NoSession)?;
 
         let unencrypted_bytes = message.rlp_bytes();
@@ -147,24 +147,23 @@ impl Handshake {
     }
 
     fn send_ping_to(&mut self, target: &Address, nonce: Nonce) -> Result<(), HandshakeError> {
-        let secret = if let Some(session) = self.table.get_mut(&target) {
+        if let Some(session) = self.table.get_mut(&target) {
             session.set_ready(nonce);
-            Ok(session.secret().clone())
         } else {
-            Err(HandshakeError::NoSession)
-        };
-        self.send_to(&HandshakeMessage::ConnectionRequest(nonce), target, &secret?)
+            return Err(HandshakeError::NoSession)
+        }
+        self.send_to(&HandshakeMessage::ConnectionRequest(nonce), target)
     }
 
     fn on_packet(&mut self, message: &HandshakeMessage, from: &Address) {
         match message {
             &HandshakeMessage::ConnectionRequest(nonce) => {
-                let (nonce, secret) = {
+                let nonce = {
                     if let Some(session) = self.table.get(from) {
                         if session.is_ready() {
                             info!("A nonce already exists");
                         }
-                        (nonce, session.secret().clone()) // FIXME: must return nonce + 1
+                        nonce // FIXME: must return nonce + 1
                     } else {
                         info!("There is no shared secret");
                         return;
@@ -172,7 +171,7 @@ impl Handshake {
                 };
 
                 let pong = HandshakeMessage::ConnectionAllowed(nonce);
-                if let Ok(_) = self.send_to(&pong, &from, &secret) {
+                if let Ok(_) = self.send_to(&pong, &from) {
                 } else {
                     info!("Cannot send {:?} to {:?}", pong, from);
                 }
