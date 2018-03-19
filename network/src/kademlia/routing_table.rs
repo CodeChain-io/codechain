@@ -1,6 +1,6 @@
 use kademlia::contact::Contact;
 use std::cmp;
-use std::collections::{ BTreeSet, HashMap, VecDeque };
+use std::collections::{BTreeSet, HashMap, VecDeque};
 use super::NodeId;
 
 pub struct RoutingTable {

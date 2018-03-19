@@ -17,5 +17,5 @@
 mod session;
 mod table;
 
-pub use self::session::{ Error as SessionError, Nonce, Session, SharedSecret };
+pub use self::session::{Error as SessionError, Nonce, Session, SharedSecret};
 pub use self::table::Table as SessionTable;

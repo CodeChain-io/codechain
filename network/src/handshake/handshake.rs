@@ -20,12 +20,12 @@ use std::fmt;
 use std::io;
 use std::result::Result;
 
-use cio::{ IoContext, IoHandler, IoManager, TimerToken, StreamToken };
-use mio::{ PollOpt, Ready, Token };
+use cio::{IoContext, IoHandler, IoManager, TimerToken, StreamToken};
+use mio::{PollOpt, Ready, Token};
 use mio::deprecated::EventLoop;
 use mio::net::UdpSocket;
 use parking_lot::Mutex;
-use rlp::{ UntrustedRlp, Encodable, Decodable, DecoderError };
+use rlp::{UntrustedRlp, Encodable, Decodable, DecoderError};
 
 use super::HandshakeMessage;
 use super::super::session::{Nonce, Session, SessionError, SessionTable, SharedSecret};

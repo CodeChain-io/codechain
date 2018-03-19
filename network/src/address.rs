@@ -17,7 +17,7 @@
 use std::cmp::Ordering;
 use std::convert::From;
 use std::fmt;
-use std::net::{ AddrParseError, IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr };
+use std::net::{AddrParseError, IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 use std::str::FromStr;
 
 
