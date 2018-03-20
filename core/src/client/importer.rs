@@ -20,10 +20,14 @@ use super::{Client, ClientConfig};
 use super::super::consensus::CodeChainEngine;
 use super::super::error::Error;
 use super::super::verification::{self, Verifier};
+use super::super::verification::queue::BlockQueue;
 
 pub struct Importer {
     /// Used to verify blocks
     pub verifier: Box<Verifier<Client>>,
+
+    /// Queue containing pending blocks
+    pub block_queue: BlockQueue,
 
     /// CodeChain engine to be used during import
     pub engine: Arc<CodeChainEngine>,
@@ -34,8 +38,11 @@ impl Importer {
         config: &ClientConfig,
         engine: Arc<CodeChainEngine>,
     ) -> Result<Importer, Error> {
+        let block_queue = BlockQueue::new(engine.clone());
+
         Ok(Importer {
             verifier: verification::new(config.verifier_type.clone()),
+            block_queue,
             engine,
         })
     }

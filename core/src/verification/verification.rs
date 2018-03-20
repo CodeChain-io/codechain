@@ -14,9 +14,31 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use cbytes::Bytes;
+use heapsize::HeapSizeOf;
+
 use super::super::blockchain::BlockProvider;
 use super::super::client::BlockInfo;
+use super::super::header::Header;
 use super::super::transaction::SignedTransaction;
+
+/// Preprocessed block data gathered in `verify_block_unordered` call
+pub struct PreverifiedBlock {
+    /// Populated block header
+    pub header: Header,
+    /// Populated block transactions
+    pub transactions: Vec<SignedTransaction>,
+    /// Block bytes
+    pub bytes: Bytes,
+}
+
+impl HeapSizeOf for PreverifiedBlock {
+    fn heap_size_of_children(&self) -> usize {
+        self.header.heap_size_of_children()
+            + self.transactions.heap_size_of_children()
+            + self.bytes.heap_size_of_children()
+    }
+}
 
 /// Parameters for full verification of block family
 pub struct FullFamilyParams<'a, C: BlockInfo + 'a> {

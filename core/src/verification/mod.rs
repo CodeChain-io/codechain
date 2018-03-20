@@ -15,8 +15,13 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 mod noop_verifier;
+pub mod queue;
 mod verification;
 mod verifier;
+
+pub use self::noop_verifier::NoopVerifier;
+pub use self::verification::*;
+pub use self::verifier::Verifier;
 
 use super::client::BlockInfo;
 
@@ -47,7 +52,4 @@ pub fn new<C: BlockInfo>(v: VerifierType) -> Box<Verifier<C>> {
     }
 }
 
-pub use self::noop_verifier::NoopVerifier;
-pub use self::verification::*;
-pub use self::verifier::Verifier;
 

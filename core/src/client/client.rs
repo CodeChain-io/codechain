@@ -22,13 +22,13 @@ use ctypes::{Address, H256};
 use kvdb::KeyValueDB;
 use parking_lot::{Mutex, RwLock};
 
-use super::{EngineClient, BlockChainInfo, BlockInfo, ChainInfo, ChainNotify, ClientConfig};
+use super::{EngineClient, BlockChainInfo, BlockInfo, ChainInfo, ChainNotify, ClientConfig, ImportBlock};
 use super::importer::Importer;
 use super::super::blockchain::{BlockChain, BlockProvider};
 use super::super::codechain_machine::CodeChainMachine;
 use super::super::consensus::{CodeChainEngine, Solo};
 use super::super::encoded;
-use super::super::error::Error;
+use super::super::error::{Error, BlockImportError, ImportError};
 use super::super::service::ClientIoMessage;
 use super::super::spec::Spec;
 use super::super::types::BlockId;
@@ -146,3 +146,19 @@ impl BlockInfo for Client {
         })
     }
 }
+
+impl ImportBlock for Client {
+    fn import_block(&self, bytes: Bytes) -> Result<H256, BlockImportError> {
+        use super::super::verification::queue::kind::BlockLike;
+        use super::super::verification::queue::kind::blocks::Unverified;
+
+        let unverified = Unverified::new(bytes);
+        {
+            if self.chain.read().is_known(&unverified.hash()) {
+                return Err(BlockImportError::Import(ImportError::AlreadyInChain));
+            }
+        }
+        Ok(self.importer.block_queue.import(unverified)?)
+    }
+}
+
