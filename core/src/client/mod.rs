@@ -29,6 +29,7 @@ use cbytes::Bytes;
 use ctypes::H256;
 
 use super::blockchain_info::BlockChainInfo;
+use super::error::BlockImportError;
 
 /// Provides `chain_info` method
 pub trait ChainInfo {
@@ -48,3 +49,8 @@ pub trait EngineClient: Sync + Send  + ChainInfo {
     fn submit_seal(&self, block_hash: H256, seal: Vec<Bytes>);
 }
 
+/// Provides methods to import block into blockchain
+pub trait ImportBlock {
+    /// Import a block into the blockchain.
+    fn import_block(&self, bytes: Bytes) -> Result<H256, BlockImportError>;
+}
