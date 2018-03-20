@@ -14,8 +14,28 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod best_block;
-mod blockchain;
-mod extras;
+mod noop_verifier;
+mod verification;
+mod verifier;
 
-pub use self::blockchain::{BlockChain, BlockProvider};
+/// Verifier type.
+#[derive(Debug, PartialEq, Clone)]
+pub enum VerifierType {
+    /// Verifies block normally.
+    Canon,
+    /// Verifies block normally, but skips seal verification.
+    CanonNoSeal,
+    /// Does not verify block at all.
+    /// Used in tests.
+    Noop,
+}
+
+impl Default for VerifierType {
+    fn default() -> Self {
+        VerifierType::Canon
+    }
+}
+
+pub use self::noop_verifier::NoopVerifier;
+pub use self::verification::*;
+pub use self::verifier::Verifier;

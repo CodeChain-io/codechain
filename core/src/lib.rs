@@ -52,6 +52,7 @@ mod service;
 mod spec;
 mod transaction;
 mod types;
+mod verification;
 mod views;
 
 pub use client::Client;

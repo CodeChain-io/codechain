@@ -14,8 +14,22 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod best_block;
-mod blockchain;
-mod extras;
+use super::super::blockchain::BlockProvider;
+use super::super::client::BlockInfo;
+use super::super::transaction::SignedTransaction;
 
-pub use self::blockchain::{BlockChain, BlockProvider};
+/// Parameters for full verification of block family
+pub struct FullFamilyParams<'a, C: BlockInfo + 'a> {
+    /// Serialized block bytes
+    pub block_bytes: &'a [u8],
+
+    /// Signed transactions
+    pub transactions: &'a [SignedTransaction],
+
+    /// Block provider to use during verification
+    pub block_provider: &'a BlockProvider,
+
+    /// Engine client to use during verification
+    pub client: &'a C,
+}
+
