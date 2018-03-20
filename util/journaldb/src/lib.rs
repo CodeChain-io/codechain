@@ -20,8 +20,8 @@ extern crate heapsize;
 #[macro_use]
 extern crate log;
 
-extern crate ethereum_types;
-extern crate ethcore_bytes as bytes;
+extern crate codechain_bytes as bytes;
+extern crate codechain_types;
 extern crate hashdb;
 extern crate kvdb;
 extern crate memorydb;
@@ -31,9 +31,9 @@ extern crate rlp;
 extern crate util_error as error;
 
 #[cfg(test)]
-extern crate ethcore_logger;
+extern crate codechain_crypto as crypto;
 #[cfg(test)]
-extern crate keccak_hash as keccak;
+extern crate codechain_logger;
 #[cfg(test)]
 extern crate kvdb_memorydb;
 
