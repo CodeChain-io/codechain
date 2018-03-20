@@ -16,17 +16,11 @@
 
 //! `JournalDB` interface and implementation.
 
-extern crate heapsize;
-#[macro_use]
-extern crate log;
-
 extern crate codechain_bytes as bytes;
 extern crate codechain_types;
 extern crate hashdb;
 extern crate kvdb;
 extern crate memorydb;
-extern crate parking_lot;
-extern crate plain_hasher;
 extern crate rlp;
 extern crate util_error as error;
 
