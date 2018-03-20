@@ -18,6 +18,7 @@ mod chain_notify;
 mod client;
 mod config;
 mod error;
+mod importer;
 
 pub use self::chain_notify::ChainNotify;
 
@@ -49,9 +50,6 @@ pub trait BlockInfo {
 
     /// Get raw block data by block header hash.
     fn block(&self, id: BlockId) -> Option<encoded::Block>;
-
-    /// Get address code hash at given block's state.
-    fn code_hash(&self, address: &Address, id: BlockId) -> Option<H256>;
 }
 
 /// Provides various information on a transaction by it's ID

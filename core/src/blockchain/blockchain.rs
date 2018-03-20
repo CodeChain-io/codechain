@@ -18,7 +18,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use cbytes::Bytes;
-use ctypes::H256;
+use ctypes::{H256, U256};
 use kvdb::{DBTransaction, KeyValueDB};
 use parking_lot::RwLock;
 use rlp::{Rlp, RlpStream};
@@ -32,6 +32,7 @@ use super::super::encoded;
 use super::super::header::Header;
 use super::super::transaction::{LocalizedTransaction};
 use super::super::types::BlockNumber;
+use super::super::views::BlockView;
 
 /// Structure providing fast access to blockchain data.
 ///
@@ -85,6 +86,33 @@ impl BlockChain {
         let block_rlp = Rlp::new(block);
         body.append_raw(block_rlp.at(1).as_raw(), 1);
         body.out()
+    }
+
+    /// Get best block hash.
+    pub fn best_block_hash(&self) -> H256 {
+        self.best_block.read().hash
+    }
+
+    /// Get best block number.
+    pub fn best_block_number(&self) -> BlockNumber {
+        self.best_block.read().number
+    }
+
+    /// Get best block timestamp.
+    pub fn best_block_timestamp(&self) -> u64 {
+        self.best_block.read().timestamp
+    }
+
+    /// Get best block total score.
+    pub fn best_block_total_score(&self) -> U256 {
+        self.best_block.read().total_score
+    }
+
+    /// Get best block header
+    pub fn best_block_header(&self) -> encoded::Header {
+        let block = self.best_block.read();
+        let raw = BlockView::new(&block.block).header_view().rlp().as_raw().to_vec();
+        encoded::Header::new(raw)
     }
 }
 

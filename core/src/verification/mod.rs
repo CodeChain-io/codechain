@@ -18,6 +18,8 @@ mod noop_verifier;
 mod verification;
 mod verifier;
 
+use super::client::BlockInfo;
+
 /// Verifier type.
 #[derive(Debug, PartialEq, Clone)]
 pub enum VerifierType {
@@ -31,11 +33,21 @@ pub enum VerifierType {
 }
 
 impl Default for VerifierType {
+    // FIXME: Change the default verifier to Canon once it is implemented.
     fn default() -> Self {
-        VerifierType::Canon
+        VerifierType::Noop
+    }
+}
+
+/// Create a new verifier based on type.
+pub fn new<C: BlockInfo>(v: VerifierType) -> Box<Verifier<C>> {
+    match v {
+        VerifierType::Canon | VerifierType::CanonNoSeal => unimplemented!(),
+        VerifierType::Noop => Box::new(NoopVerifier),
     }
 }
 
 pub use self::noop_verifier::NoopVerifier;
 pub use self::verification::*;
 pub use self::verifier::Verifier;
+

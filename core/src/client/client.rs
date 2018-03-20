@@ -18,17 +18,20 @@ use std::sync::{Arc, Weak};
 
 use cbytes::Bytes;
 use cio::IoChannel;
-use ctypes::H256;
+use ctypes::{Address, H256};
 use kvdb::KeyValueDB;
 use parking_lot::{Mutex, RwLock};
 
-use super::{EngineClient, BlockChainInfo, ChainInfo, ChainNotify, ClientConfig};
-use super::super::blockchain::BlockChain;
+use super::{EngineClient, BlockChainInfo, BlockInfo, ChainInfo, ChainNotify, ClientConfig};
+use super::importer::Importer;
+use super::super::blockchain::{BlockChain, BlockProvider};
 use super::super::codechain_machine::CodeChainMachine;
 use super::super::consensus::{CodeChainEngine, Solo};
+use super::super::encoded;
 use super::super::error::Error;
 use super::super::service::ClientIoMessage;
 use super::super::spec::Spec;
+use super::super::types::BlockId;
 
 pub struct Client {
     engine: Arc<CodeChainEngine>,
@@ -38,11 +41,13 @@ pub struct Client {
 
     /// List of actors to be notified on certain chain events
     notify: RwLock<Vec<Weak<ChainNotify>>>,
+
+    importer: Importer,
 }
 
 impl Client {
     pub fn new(
-        _config: ClientConfig,
+        config: ClientConfig,
         spec: &Spec,
         db: Arc<KeyValueDB>,
         message_channel: IoChannel<ClientIoMessage>,
@@ -51,11 +56,14 @@ impl Client {
         let gb = spec.genesis_block();
         let chain = Arc::new(BlockChain::new(&gb, db.clone()));
 
+        let importer = Importer::new(&config, engine.clone())?;
+
         let client = Arc::new(Client {
             engine,
             io_channel: Mutex::new(message_channel),
             chain: RwLock::new(chain),
             notify: RwLock::new(Vec::new()),
+            importer,
         });
 
         Ok(client)
@@ -76,6 +84,15 @@ impl Client {
             if let Some(n) = np.upgrade() {
                 f(&*n);
             }
+        }
+    }
+
+    fn block_hash(chain: &BlockChain, id: BlockId) -> Option<H256> {
+        match id {
+            BlockId::Hash(hash) => Some(hash),
+            BlockId::Number(number) => chain.block_hash(number),
+            BlockId::Earliest => chain.block_hash(0),
+            BlockId::Latest => Some(chain.best_block_hash()),
         }
     }
 }
@@ -105,3 +122,22 @@ impl EngineClient for Client {
     }
 }
 
+impl BlockInfo for Client {
+    fn block_header(&self, id: BlockId) -> Option<::encoded::Header> {
+        let chain = self.chain.read();
+
+        Self::block_hash(&chain, id).and_then(|hash| chain.block_header_data(&hash))
+    }
+
+    fn best_block_header(&self) -> encoded::Header {
+        self.chain.read().best_block_header()
+    }
+
+    fn block(&self, id: BlockId) -> Option<encoded::Block> {
+        let chain = self.chain.read();
+
+        Self::block_hash(&chain, id).and_then(|hash| {
+            chain.block(&hash)
+        })
+    }
+}
