@@ -14,8 +14,31 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod ids;
+use ctypes::H256;
 
-pub use self::ids::{BlockId, TransactionId};
+use super::BlockNumber;
 
-pub type BlockNumber = u64;
+/// Uniquely identifies block.
+#[derive(Debug, PartialEq, Copy, Clone, Hash, Eq)]
+pub enum BlockId {
+    /// Block's blake256.
+    /// Querying by hash is always faster.
+    Hash(H256),
+    /// Block number within canon blockchain.
+    Number(BlockNumber),
+    /// Earliest block (genesis).
+    Earliest,
+    /// Latest mined block.
+    Latest,
+}
+
+/// Uniquely identifies transaction.
+#[derive(Debug, PartialEq, Clone, Hash, Eq)]
+pub enum TransactionId {
+    /// Transaction's blake256.
+    Hash(H256),
+    /// Block id and transaction index within this block.
+    /// Querying by block position is always faster.
+    Location(BlockId, usize)
+}
+
