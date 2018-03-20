@@ -26,15 +26,38 @@ pub use self::config::ClientConfig;
 pub use self::error::Error;
 
 use cbytes::Bytes;
-use ctypes::H256;
+use ctypes::{Address, H256};
 
 use super::blockchain_info::BlockChainInfo;
+use super::encoded;
 use super::error::BlockImportError;
+use super::types::{BlockId, TransactionId};
 
 /// Provides `chain_info` method
 pub trait ChainInfo {
     /// Get blockchain information.
     fn chain_info(&self) -> BlockChainInfo;
+}
+
+/// Provides various information on a block by it's ID
+pub trait BlockInfo {
+    /// Get raw block header data by block id.
+    fn block_header(&self, id: BlockId) -> Option<encoded::Header>;
+
+    /// Get the best block header.
+    fn best_block_header(&self) -> encoded::Header;
+
+    /// Get raw block data by block header hash.
+    fn block(&self, id: BlockId) -> Option<encoded::Block>;
+
+    /// Get address code hash at given block's state.
+    fn code_hash(&self, address: &Address, id: BlockId) -> Option<H256>;
+}
+
+/// Provides various information on a transaction by it's ID
+pub trait TransactionInfo {
+    /// Get the hash of block that contains the transaction, if any.
+    fn transaction_block(&self, id: TransactionId) -> Option<H256>;
 }
 
 /// Client facilities used by internally sealing Engines.
