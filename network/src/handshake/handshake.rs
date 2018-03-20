@@ -151,12 +151,12 @@ impl Handshake {
         } else {
             return Err(HandshakeError::NoSession)
         };
-        self.send_to(&HandshakeMessage::connection_request(nonce), target)
+        self.send_to(&HandshakeMessage::connection_request(0, nonce), target) // FIXME: seq
     }
 
     fn on_packet(&mut self, message: &HandshakeMessage, from: &Address) {
         match message {
-            &HandshakeMessage::ConnectionRequest(_, ref nonce) => {
+            &HandshakeMessage::ConnectionRequest(_, _, ref nonce) => {
                 let encrypted_bytes = {
                     if let Some(session) = self.table.get(from) {
                         if session.is_ready() {
@@ -184,13 +184,13 @@ impl Handshake {
                     }
                 };
 
-                let pong = HandshakeMessage::connection_allowed(encrypted_bytes);
+                let pong = HandshakeMessage::connection_allowed(0, encrypted_bytes); // FIXME: seq
                 if let Ok(_) = self.send_to(&pong, &from) {
                 } else {
                     info!("Cannot send {:?} to {:?}", pong, from);
                 }
             },
-            &HandshakeMessage::ConnectionAllowed(_, ref nonce) => {
+            &HandshakeMessage::ConnectionAllowed(_, _, ref nonce) => {
                 if let Some(ref session) = self.table.get(from) {
                     if !session.is_ready() {
                         info!("A nonce doesn't exists");
@@ -215,7 +215,7 @@ impl Handshake {
                     return;
                 }
             },
-            &HandshakeMessage::ConnectionDenied(_, ref reason) => {
+            &HandshakeMessage::ConnectionDenied(_, _, ref reason) => {
                 info!("Connection to {:?} refused(reason: {}", from, reason);
             },
         }
