@@ -87,6 +87,11 @@ impl Client {
         }
     }
 
+    /// This is triggered by a message coming from a block queue when the block is ready for insertion
+    pub fn import_verified_blocks(&self) -> usize {
+        self.importer.import_verified_blocks(self)
+    }
+
     fn block_hash(chain: &BlockChain, id: BlockId) -> Option<H256> {
         match id {
             BlockId::Hash(hash) => Some(hash),

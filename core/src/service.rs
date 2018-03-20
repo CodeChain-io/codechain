@@ -71,6 +71,8 @@ impl ClientService {
 /// Message type for external and internal events
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum ClientIoMessage {
+    /// A block is ready
+    BlockVerified,
     /// New consensus message received.
     NewConsensusMessage(Bytes)
 }
@@ -83,6 +85,7 @@ struct ClientIoHandler {
 impl IoHandler<ClientIoMessage> for ClientIoHandler {
     fn message(&self, _io: &IoContext<ClientIoMessage>, net_message: &ClientIoMessage) {
         match *net_message {
+            ClientIoMessage::BlockVerified => { self.client.import_verified_blocks(); }
             ClientIoMessage::NewConsensusMessage(ref message) => if let Err(e) = self.client.engine().handle_message(message) {
                 trace!(target: "poa", "Invalid message received: {}", e);
             },
