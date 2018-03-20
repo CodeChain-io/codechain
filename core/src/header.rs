@@ -21,6 +21,7 @@ use time::get_time;
 use cbytes::Bytes;
 use ccrypto::{blake256, BLAKE_NULL_RLP};
 use ctypes::{Address, H256, U256};
+use heapsize::HeapSizeOf;
 use rlp::*;
 
 use super::types::BlockNumber;
@@ -180,6 +181,12 @@ impl Header {
 
     /// Get the Blake hash of this header, optionally `with_seal`.
     pub fn rlp_blake(&self, with_seal: Seal) -> H256 { blake256(&self.rlp(with_seal)) }
+}
+
+impl HeapSizeOf for Header {
+    fn heap_size_of_children(&self) -> usize {
+        self.seal.heap_size_of_children()
+    }
 }
 
 impl Decodable for Header {

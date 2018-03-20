@@ -21,6 +21,7 @@ use cbytes::Bytes;
 use ccrypto::blake256;
 use ckeys::{self, ECDSASignature, Private, Public, Network, public_to_address, sign_ecdsa, recover_ecdsa};
 use ctypes::{Address, H160, H256, U256};
+use heapsize::HeapSizeOf;
 use rlp::{self, UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
 
 use super::types::BlockNumber;
@@ -55,6 +56,12 @@ pub struct Transaction {
     pub data: Bytes,
     /// Mainnet or Testnet
     network: Network,
+}
+
+impl HeapSizeOf for Transaction {
+    fn heap_size_of_children(&self) -> usize {
+        self.data.heap_size_of_children()
+    }
 }
 
 impl Decodable for Transaction {
@@ -207,6 +214,12 @@ pub struct SignedTransaction {
     transaction: UnverifiedTransaction,
     sender: Address,
     public: Option<Public>,
+}
+
+impl HeapSizeOf for SignedTransaction {
+    fn heap_size_of_children(&self) -> usize {
+        self.transaction.unsigned.heap_size_of_children()
+    }
 }
 
 impl rlp::Encodable for SignedTransaction {
