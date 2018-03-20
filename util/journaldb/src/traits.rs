@@ -19,7 +19,7 @@
 use std::sync::Arc;
 use hashdb::*;
 use kvdb::{self, DBTransaction};
-use ethereum_types::H256;
+use codechain_types::H256;
 use error::UtilError;
 use bytes::Bytes;
 

@@ -6,8 +6,8 @@ description = "A `HashDB` which can manage a short-term journal potentially cont
 license = "GPL3"
 
 [dependencies]
-ethcore-bytes = { path = "../bytes" }
-ethereum-types = "0.2"
+codechain-bytes = { path = "../bytes" }
+codechain-types = { path = "../../primitives/codechain-types" }
 hashdb = { path = "../hashdb" }
 heapsize = "0.4"
 kvdb = { path = "../kvdb" }
@@ -19,6 +19,6 @@ rlp = { path = "../rlp" }
 util-error = { path = "../error" }
 
 [dev-dependencies]
-ethcore-logger = { path = "../../logger" }
-keccak-hash = { path = "../hash" }
+codechain-crypto = { path = "../../crypto" }
+codechain-logger = { path = "../../logger" }
 kvdb-memorydb = { path = "../kvdb-memorydb" }

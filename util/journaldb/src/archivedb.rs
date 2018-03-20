@@ -25,7 +25,7 @@ use super::memorydb::*;
 use super::{DB_PREFIX_LEN, LATEST_ERA_KEY};
 use traits::JournalDB;
 use kvdb::{KeyValueDB, DBTransaction};
-use ethereum_types::H256;
+use codechain_types::H256;
 use error::{BaseDataError, UtilError};
 use bytes::Bytes;
 
