@@ -61,6 +61,15 @@ pub fn blake256<T: AsRef<[u8]>>(s: T) -> H256 {
     result
 }
 
+pub fn blake256_with_key<T: AsRef<[u8]>>(s: T, key: &[u8]) -> H256 {
+    let input = s.as_ref();
+    let mut result = H256::default();
+    let mut hasher = Blake2b::new_keyed(32, &key);
+    hasher.input(input);
+    hasher.result(&mut *result);
+    result
+}
+
 /// BLAKE512
 pub fn blake512<T: AsRef<[u8]>>(s: T) -> H512 {
     let input = s.as_ref();
@@ -73,8 +82,10 @@ pub fn blake512<T: AsRef<[u8]>>(s: T) -> H512 {
 
 #[cfg(test)]
 mod tests {
+    use std::panic::catch_unwind;
+
     use super::{BLAKE_EMPTY, BLAKE_NULL_RLP, BLAKE_EMPTY_LIST_RLP};
-    use super::{blake256, blake512, ripemd160, sha1};
+    use super::{blake256, blake256_with_key, blake512, ripemd160, sha1};
 
     #[test]
     fn test_ripemd160() {
@@ -123,6 +134,20 @@ mod tests {
         let expected = BLAKE_EMPTY_LIST_RLP;
         let result = blake256([0xc0]);
         assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_maximum_length_of_blake_key_is_512() {
+        let _ = blake256_with_key([0u8; 0], &[0; 64]);
+        let must_fail = catch_unwind(|| blake256_with_key([0u8; 0], &[0; 65]));
+        assert!(must_fail.is_err());
+    }
+
+    #[test]
+    fn test_blake256_output_changes_when_key_changes() {
+        let r1 = blake256_with_key([0u8; 0], &[0; 64]);
+        let r2 = blake256_with_key([0u8; 0], &[1; 64]);
+        assert_ne!(r1, r2);
     }
 }
 

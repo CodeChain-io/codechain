@@ -20,5 +20,5 @@ extern crate crypto as rcrypto;
 pub mod aes;
 mod hash;
 
-pub use self::hash::{BLAKE_EMPTY, BLAKE_EMPTY_LIST_RLP, BLAKE_NULL_RLP, blake256, blake512, sha1, ripemd160};
+pub use self::hash::{BLAKE_EMPTY, BLAKE_EMPTY_LIST_RLP, BLAKE_NULL_RLP, blake256, blake256_with_key, blake512, sha1, ripemd160};
 
