@@ -21,7 +21,7 @@ use ctypes::{H256, H264, U256};
 use heapsize::HeapSizeOf;
 
 use super::super::db::Key;
-use super::super::header::BlockNumber;
+use super::super::types::BlockNumber;
 
 /// Represents index of extra data in database
 #[derive(Copy, Debug, Hash, Eq, PartialEq, Clone)]

@@ -41,7 +41,8 @@ use super::super::block::*;
 use super::super::client::EngineClient;
 use super::super::codechain_machine::CodeChainMachine;
 use super::super::error::{Error, BlockError};
-use super::super::header::{BlockNumber, Header};
+use super::super::header::Header;
+use super::super::types::BlockNumber;
 use self::message::*;
 pub use self::params::TendermintParams;
 

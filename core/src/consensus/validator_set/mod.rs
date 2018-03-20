@@ -24,7 +24,8 @@ use super::EpochChange;
 use super::super::codechain_machine::CodeChainMachine;
 use super::super::client::EngineClient;
 use super::super::error::Error;
-use super::super::header::{BlockNumber, Header};
+use super::super::header::Header;
+use super::super::types::BlockNumber;
 
 pub mod validator_list;
 

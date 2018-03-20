@@ -20,8 +20,9 @@ use cbytes::Bytes;
 use ctypes::H256;
 use rlp::Rlp;
 
-use super::super::header::{Header, BlockNumber};
+use super::super::header::Header;
 use super::super::transaction::{LocalizedTransaction, UnverifiedTransaction};
+use super::super::types::BlockNumber;
 use super::{TransactionView, HeaderView};
 
 /// View onto block rlp.

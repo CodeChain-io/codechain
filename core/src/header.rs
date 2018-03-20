@@ -23,7 +23,7 @@ use ccrypto::{blake256, BLAKE_NULL_RLP};
 use ctypes::{Address, H256, U256};
 use rlp::*;
 
-pub type BlockNumber = u64;
+use super::types::BlockNumber;
 
 /// Semantic boolean for when a seal/signature is included.
 pub enum Seal {

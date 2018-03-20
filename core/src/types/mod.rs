@@ -14,25 +14,4 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use cbytes::Bytes;
-use ctypes::{H256, U256};
-
-use super::super::types::BlockNumber;
-
-/// Contains information on a best block that is specific to the consensus engine.
-///
-/// Sometimes referred as 'latest block'.
-#[derive(Default)]
-pub struct BestBlock {
-    /// Best block hash.
-    pub hash: H256,
-    /// Best block number.
-    pub number: BlockNumber,
-    /// Best block timestamp.
-    pub timestamp: u64,
-    /// Best block total score.
-    pub total_score: U256,
-    /// Best block uncompressed bytes
-    pub block: Bytes,
-}
-
+pub type BlockNumber = u64;

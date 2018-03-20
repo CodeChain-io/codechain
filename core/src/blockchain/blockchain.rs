@@ -29,8 +29,9 @@ use super::extras::{BlockDetails, TransactionAddress};
 use super::super::blockchain_info::BlockChainInfo;
 use super::super::db::{self, Readable, Writable};
 use super::super::encoded;
-use super::super::header::{BlockNumber, Header};
+use super::super::header::Header;
 use super::super::transaction::{LocalizedTransaction};
+use super::super::types::BlockNumber;
 
 /// Structure providing fast access to blockchain data.
 ///

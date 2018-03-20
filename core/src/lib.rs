@@ -51,6 +51,7 @@ mod machine;
 mod service;
 mod spec;
 mod transaction;
+mod types;
 mod views;
 
 pub use client::Client;

@@ -16,7 +16,7 @@
 
 use ctypes::{H256, U256};
 
-use super::header::BlockNumber;
+use super::types::BlockNumber;
 
 /// Information about the blockchain gathered together.
 #[derive(Clone, Debug)]

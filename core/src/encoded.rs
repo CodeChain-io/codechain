@@ -29,8 +29,9 @@ use heapsize::HeapSizeOf;
 use rlp::Rlp;
 
 use super::block::Block as FullBlock;
-use super::header::{BlockNumber, Header as FullHeader};
+use super::header::Header as FullHeader;
 use super::transaction::UnverifiedTransaction;
+use super::types::BlockNumber;
 use super::views;
 
 /// Owning header view.

@@ -24,8 +24,8 @@ use unexpected::{Mismatch, OutOfBounds};
 
 use super::client::Error as ClientError;
 use super::consensus::EngineError;
-use super::header::BlockNumber;
 use super::transaction::TransactionError;
+use super::types::BlockNumber;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 /// Import to the block queue result

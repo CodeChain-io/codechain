@@ -23,7 +23,7 @@ use ckeys::{self, ECDSASignature, Private, Public, Network, public_to_address, s
 use ctypes::{Address, H160, H256, U256};
 use rlp::{self, UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
 
-use super::header::BlockNumber;
+use super::types::BlockNumber;
 
 #[derive(Debug, PartialEq, Clone)]
 /// Errors concerning transaction processing.
