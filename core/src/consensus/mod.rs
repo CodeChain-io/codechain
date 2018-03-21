@@ -41,7 +41,9 @@ use unexpected::{Mismatch, OutOfBounds};
 use self::epoch::{EpochVerifier, NoOp};
 use super::codechain_machine::CodeChainMachine;
 use super::error::Error;
+use super::header::Header;
 use super::machine::Machine;
+use super::transaction::{UnverifiedTransaction, SignedTransaction};
 
 /// Seal type.
 #[derive(Debug, PartialEq, Eq)]
@@ -271,5 +273,17 @@ impl fmt::Display for EngineError {
 }
 
 /// Common type alias for an engine coupled with an CodeChain-like state machine.
-pub type CodeChainEngine = ConsensusEngine<CodeChainMachine>;
+pub trait CodeChainEngine: ConsensusEngine<CodeChainMachine> {
+    /// Additional verification for transactions in blocks.
+    fn verify_transaction_basic(&self, t: &UnverifiedTransaction, header: &Header) -> Result<(), Error> {
+        self.machine().verify_transaction_basic(t, header)
+    }
 
+    /// Verify a particular transaction is valid.
+    fn verify_transaction_unordered(&self, t: UnverifiedTransaction, header: &Header) -> Result<SignedTransaction, Error> {
+        self.machine().verify_transaction_unordered(t, header)
+    }
+}
+
+// convenience wrappers for existing functions.
+impl<T> CodeChainEngine for T where T: ConsensusEngine<CodeChainMachine> { }

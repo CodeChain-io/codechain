@@ -1,0 +1,45 @@
+// Copyright 2018 Kodebox, Inc.
+// This file is part of CodeChain.
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as
+// published by the Free Software Foundation, either version 3 of the
+// License, or (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+use super::Verifier;
+use super::verification;
+use super::super::client::BlockInfo;
+use super::super::consensus::CodeChainEngine;
+use super::super::error::Error;
+use super::super::header::Header;
+
+/// A canonial verifier -- this does full verification.
+pub struct CanonVerifier;
+
+impl<C: BlockInfo> Verifier<C> for CanonVerifier {
+    fn verify_block_family(
+        &self,
+        header: &Header,
+        parent: &Header,
+        engine: &CodeChainEngine,
+        do_full: Option<verification::FullFamilyParams<C>>,
+    ) -> Result<(), Error> {
+        verification::verify_block_family(header, parent, engine, do_full)
+    }
+
+    fn verify_block_final(&self, expected: &Header, got: &Header) -> Result<(), Error> {
+        verification::verify_block_final(expected, got)
+    }
+
+    fn verify_block_external(&self, header: &Header, engine: &CodeChainEngine) -> Result<(), Error> {
+        engine.verify_block_external(header)
+    }
+}

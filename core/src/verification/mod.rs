@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+mod canon_verifier;
 mod noop_verifier;
 pub mod queue;
 mod verification;

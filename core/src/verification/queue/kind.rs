@@ -56,6 +56,9 @@ pub trait Kind: 'static + Sized + Send + Sync {
 
     /// Attempt to create the `Unverified` item from the input.
     fn create(input: Self::Input, engine: &CodeChainEngine) -> Result<Self::Unverified, Error>;
+
+    /// Attempt to verify the `Unverified` item using the given engine.
+    fn verify(unverified: Self::Unverified, engine: &CodeChainEngine, check_seal: bool) -> Result<Self::Verified, Error>;
 }
 
 /// The blocks verification module.
@@ -68,7 +71,7 @@ pub mod blocks {
     use super::super::super::super::consensus::CodeChainEngine;
     use super::super::super::super::error::Error;
     use super::super::super::super::header::Header;
-    use super::super::super::verification::{PreverifiedBlock};
+    use super::super::super::verification::{PreverifiedBlock, verify_block_basic, verify_block_unordered};
 
     /// A mode for verifying blocks.
     pub struct Blocks;
@@ -79,8 +82,24 @@ pub mod blocks {
         type Verified = PreverifiedBlock;
 
         fn create(input: Self::Input, engine: &CodeChainEngine) -> Result<Self::Unverified, Error> {
-            // FIXME: perform verification.
-            Ok(input)
+            match verify_block_basic(&input.header, &input.bytes, engine) {
+                Ok(()) => Ok(input),
+                Err(e) => {
+                    warn!(target: "client", "Stage 1 block verification failed for {}: {:?}", input.hash(), e);
+                    Err(e)
+                }
+            }
+        }
+
+        fn verify(un: Self::Unverified, engine: &CodeChainEngine, check_seal: bool) -> Result<Self::Verified, Error> {
+            let hash = un.hash();
+            match verify_block_unordered(un.header, un.bytes, engine, check_seal) {
+                Ok(verified) => Ok(verified),
+                Err(e) => {
+                    warn!(target: "client", "Stage 2 block verification failed for {}: {:?}", hash, e);
+                    Err(e)
+                }
+            }
         }
     }
 

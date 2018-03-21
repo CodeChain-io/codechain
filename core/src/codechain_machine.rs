@@ -15,9 +15,11 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 // A state machine.
 
+use super::block::ExecutedBlock;
+use super::client::BlockInfo;
 use super::error::Error;
 use super::header::Header;
-use super::block::ExecutedBlock;
+use super::transaction::{UnverifiedTransaction, SignedTransaction};
 
 pub struct CodeChainMachine {
 }
@@ -26,6 +28,24 @@ impl CodeChainMachine {
     pub fn new() -> Self {
         CodeChainMachine {
         }
+    }
+
+    /// Does basic verification of the transaction.
+    pub fn verify_transaction_basic(&self, t: &UnverifiedTransaction, header: &Header) -> Result<(), Error> {
+        t.verify_basic(false)?;
+
+        Ok(())
+    }
+
+    /// Verify a particular transaction is valid, regardless of order.
+    pub fn verify_transaction_unordered(&self, t: UnverifiedTransaction, _header: &Header) -> Result<SignedTransaction, Error> {
+        Ok(SignedTransaction::new(t)?)
+    }
+
+    /// Does verification of the transaction against the parent state.
+    pub fn verify_transaction<C: BlockInfo>(&self, t: &SignedTransaction, header: &Header, client: &C) -> Result<(), Error> {
+        // FIXME: Filter transactions.
+        Ok(())
     }
 }
 

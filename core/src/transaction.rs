@@ -24,6 +24,7 @@ use ctypes::{Address, H160, H256, U256};
 use heapsize::HeapSizeOf;
 use rlp::{self, UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
 
+use super::error::Error;
 use super::types::BlockNumber;
 
 #[derive(Debug, PartialEq, Clone)]
@@ -205,6 +206,23 @@ impl UnverifiedTransaction {
     /// Recovers the public key of the sender.
     pub fn recover_public(&self) -> Result<Public, ckeys::Error> {
         Ok(recover_ecdsa(&self.signature(), &self.unsigned.hash())?)
+    }
+
+    /// Checks whether the signature has a low 's' value.
+    pub fn check_low_s(&self) -> Result<(), ckeys::Error> {
+        if !self.signature().is_low_s() {
+            Err(ckeys::Error::InvalidSignature.into())
+        } else {
+            Ok(())
+        }
+    }
+
+    /// Verify basic signature params. Does not attempt sender recovery.
+    pub fn verify_basic(&self, allow_empty_signature: bool) -> Result<(), Error> {
+        if !(allow_empty_signature && self.is_unsigned()) {
+            self.check_low_s()?;
+        }
+        Ok(())
     }
 }
 
