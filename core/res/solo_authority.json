@@ -10,6 +10,9 @@
 			}
 		}
 	},
+	"params": {
+		"networkID": "0x11"
+	},
 	"genesis": {
 		"seal": {
 			"generic": "0xc180"

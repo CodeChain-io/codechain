@@ -3,6 +3,9 @@
 	"engine": {
 		"solo": null
 	},
+	"params": {
+		"networkID": "0x11"
+	},
 	"genesis": {
 		"seal": {
 			"generic": "0x0"

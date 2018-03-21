@@ -19,15 +19,23 @@ use super::block::ExecutedBlock;
 use super::client::BlockInfo;
 use super::error::Error;
 use super::header::Header;
+use super::spec::CommonParams;
 use super::transaction::{UnverifiedTransaction, SignedTransaction};
 
 pub struct CodeChainMachine {
+    params: CommonParams,
 }
 
 impl CodeChainMachine {
-    pub fn new() -> Self {
+    pub fn new(params: CommonParams) -> Self {
         CodeChainMachine {
+            params
         }
+    }
+
+    /// Get the general parameters of the chain.
+    pub fn params(&self) -> &CommonParams {
+        &self.params
     }
 
     /// Does basic verification of the transaction.

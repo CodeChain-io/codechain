@@ -14,9 +14,33 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod genesis;
-mod seal;
-mod spec;
+use super::super::bytes::Bytes;
+use super::super::hash::{H256, Address};
+use super::super::uint::{self, Uint};
 
-pub use self::genesis::Genesis;
-pub use self::spec::{Spec, CommonParams};
+/// Spec params.
+#[derive(Debug, PartialEq, Deserialize)]
+pub struct Params {
+    /// Network id.
+    #[serde(rename="networkID")]
+    pub network_id: Uint,
+}
+
+#[cfg(test)]
+mod tests {
+    use ctypes::U256;
+    use serde_json;
+
+    use super::Params;
+    use super::super::super::uint::Uint;
+
+    #[test]
+    fn params_deserialization() {
+        let s = r#"{
+			"networkID" : "0x1"
+		}"#;
+
+        let deserialized: Params = serde_json::from_str(s).unwrap();
+        assert_eq!(deserialized.network_id, Uint(U256::from(0x1)));
+    }
+}

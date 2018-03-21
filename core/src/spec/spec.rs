@@ -29,6 +29,20 @@ use super::super::codechain_machine::CodeChainMachine;
 use super::super::error::Error;
 use super::super::header::Header;
 
+#[derive(Debug, PartialEq, Default)]
+pub struct CommonParams {
+    /// Network id.
+    pub network_id: u64,
+}
+
+impl From<cjson::spec::Params> for CommonParams {
+    fn from(p: cjson::spec::Params) -> Self {
+        Self {
+            network_id: p.network_id.into(),
+        }
+    }
+}
+
 /// Parameters for a block chain; includes both those intrinsic to the design of the
 /// chain and those to be interpreted by the active chain engine.
 pub struct Spec {
@@ -73,16 +87,18 @@ impl Spec {
     // create an instance of an CodeChain state machine, minus consensus logic.
     fn machine(
         _engine_spec: &cjson::spec::Engine,
+        params: CommonParams,
     ) -> CodeChainMachine {
-        CodeChainMachine::new()
+        CodeChainMachine::new(params)
     }
 
     /// Convert engine spec into a arc'd Engine of the right underlying type.
     /// TODO avoid this hard-coded nastiness - use dynamic-linked plugin framework instead.
     fn engine(
         engine_spec: cjson::spec::Engine,
+        params: CommonParams,
     ) -> Arc<CodeChainEngine> {
-        let machine = Self::machine(&engine_spec);
+        let machine = Self::machine(&engine_spec, params);
 
         match engine_spec {
             cjson::spec::Engine::Solo => Arc::new(Solo::new(machine)),
@@ -156,10 +172,11 @@ impl Spec {
 fn load_from(s: cjson::spec::Spec) -> Result<Spec, Error> {
     let g = Genesis::from(s.genesis);
     let GenericSeal(seal_rlp) = g.seal.into();
+    let params = CommonParams::from(s.params);
 
     let s = Spec {
         name: s.name.clone().into(),
-        engine: Spec::engine(s.engine),
+        engine: Spec::engine(s.engine, params),
         data_dir: s.data_dir.unwrap_or(s.name).into(),
         nodes: s.nodes.unwrap_or_else(Vec::new),
         parent_hash: g.parent_hash,

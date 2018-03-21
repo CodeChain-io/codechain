@@ -14,6 +14,9 @@
 			}
 		}
 	},
+	"params": {
+		"networkID": "0x11"
+	},
 	"genesis": {
 		"seal": {
 			"tendermint": {

@@ -17,7 +17,7 @@
 use std::io::Read;
 use serde_json;
 use serde_json::Error;
-use super::{Genesis, Engine};
+use super::{Genesis, Engine, Params};
 
 /// Spec deserialization.
 #[derive(Debug, PartialEq, Deserialize)]
@@ -29,6 +29,8 @@ pub struct Spec {
     pub data_dir: Option<String>,
     /// Engine.
     pub engine: Engine,
+    /// Spec params.
+    pub params: Params,
     /// Genesis header.
     pub genesis: Genesis,
     /// Boot nodes.
@@ -65,6 +67,9 @@ mod tests {
 				"timeoutCommit": 10000
 			}
 		}
+	},
+	"params": {
+		"networkID" : "0x2"
 	},
 	"genesis": {
 		"seal": {

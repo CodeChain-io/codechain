@@ -16,6 +16,7 @@
 
 mod engine;
 mod genesis;
+mod params;
 mod seal;
 mod solo_authority;
 mod spec;
@@ -23,6 +24,7 @@ mod tendermint;
 
 pub use self::engine::Engine;
 pub use self::genesis::Genesis;
+pub use self::params::Params;
 pub use self::seal::{Seal, TendermintSeal};
 pub use self::solo_authority::{SoloAuthority, SoloAuthorityParams};
 pub use self::spec::Spec;
