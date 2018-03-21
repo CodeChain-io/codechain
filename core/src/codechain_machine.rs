@@ -40,7 +40,7 @@ impl CodeChainMachine {
 
     /// Does basic verification of the transaction.
     pub fn verify_transaction_basic(&self, t: &UnverifiedTransaction, header: &Header) -> Result<(), Error> {
-        t.verify_basic(false)?;
+        t.verify_basic(self.params().network_id, false)?;
 
         Ok(())
     }

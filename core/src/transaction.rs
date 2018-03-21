@@ -19,12 +19,11 @@ use std::ops::Deref;
 
 use cbytes::Bytes;
 use ccrypto::blake256;
-use ckeys::{self, ECDSASignature, Private, Public, Network, public_to_address, sign_ecdsa, recover_ecdsa};
+use ckeys::{self, ECDSASignature, Private, Public, public_to_address, sign_ecdsa, recover_ecdsa};
 use ctypes::{Address, H160, H256, U256};
 use heapsize::HeapSizeOf;
 use rlp::{self, UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
 
-use super::error::Error;
 use super::types::BlockNumber;
 
 #[derive(Debug, PartialEq, Clone)]
@@ -32,6 +31,10 @@ use super::types::BlockNumber;
 pub enum TransactionError {
     /// Transaction is already imported to the queue
     AlreadyImported,
+    /// Invalid chain ID given.
+    InvalidNetworkId,
+    /// Signature error
+    InvalidSignature(String),
 }
 
 impl fmt::Display for TransactionError {
@@ -39,12 +42,19 @@ impl fmt::Display for TransactionError {
         use self::TransactionError::*;
         let msg: String = match *self {
             AlreadyImported => "Already imported".into(),
+            InvalidNetworkId => "Transaction of this network ID is not allowed on this chain.".into(),
+            InvalidSignature(ref err) => format!("Transaction has invalid signature: {}.", err),
         };
 
         f.write_fmt(format_args!("Transaction error ({})", msg))
     }
 }
 
+impl From<ckeys::Error> for TransactionError {
+    fn from(err: ckeys::Error) -> Self {
+        TransactionError::InvalidSignature(format!("{}", err))
+    }
+}
 
 /// Fake address for unsigned transactions as defined by EIP-86.
 pub const UNSIGNED_SENDER: Address = H160([0xff; 20]);
@@ -56,7 +66,7 @@ pub struct Transaction {
     /// Transaction data.
     pub data: Bytes,
     /// Mainnet or Testnet
-    network: Network,
+    pub network_id: u64,
 }
 
 impl HeapSizeOf for Transaction {
@@ -73,7 +83,7 @@ impl Decodable for Transaction {
         Ok(Transaction {
                 nonce: d.val_at(0)?,
                 data: d.val_at(1)?,
-                network: d.val_at(2)?,
+                network_id: d.val_at(2)?,
         })
     }
 }
@@ -84,7 +94,7 @@ impl Transaction {
         s.begin_list(3);
         s.append(&self.nonce);
         s.append(&self.data);
-        s.append(&self.network);
+        s.append(&self.network_id);
     }
 
     /// The message hash of the transaction.
@@ -148,7 +158,7 @@ impl rlp::Decodable for UnverifiedTransaction {
             unsigned: Transaction {
                 nonce: d.val_at(0)?,
                 data: d.val_at(1)?,
-                network: d.val_at(2)?,
+                network_id: d.val_at(2)?,
             },
             v: d.val_at(3)?,
             r: d.val_at(4)?,
@@ -218,9 +228,12 @@ impl UnverifiedTransaction {
     }
 
     /// Verify basic signature params. Does not attempt sender recovery.
-    pub fn verify_basic(&self, allow_empty_signature: bool) -> Result<(), Error> {
+    pub fn verify_basic(&self, network_id: u64, allow_empty_signature: bool) -> Result<(), TransactionError> {
         if !(allow_empty_signature && self.is_unsigned()) {
             self.check_low_s()?;
+        }
+        if self.network_id != network_id {
+            return Err(TransactionError::InvalidNetworkId);
         }
         Ok(())
     }
@@ -337,3 +350,4 @@ impl Deref for LocalizedTransaction {
         &self.signed
     }
 }
+
