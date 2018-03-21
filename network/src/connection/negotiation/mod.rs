@@ -14,8 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod handshake;
-mod negotiation;
+mod message;
 
-use self::handshake::Message as HandshakeMessage;
-use self::negotiation::Message as NegotiationMessage;
+pub use self::message::Message;
