@@ -26,7 +26,7 @@ use std::sync::Arc;
 
 use state::Account;
 use parking_lot::Mutex;
-use ethereum_types::{Address, H256};
+use ctypes::{Address, H256};
 use memorydb::MemoryDB;
 use hashdb::{AsHashDB, HashDB, DBValue};
 

@@ -21,28 +21,18 @@ use std::sync::Arc;
 use std::collections::{HashMap, BTreeMap};
 use ccrypto::blake256;
 use ctypes::{H256, U256, Address};
-use bytes::Bytes;
-use pod_account::*;
+use cbytes::Bytes;
 use rlp::*;
-use basic_account::BasicAccount;
 
 use std::cell::Cell;
 
 /// Single account in the system.
+#[derive(RlpEncodable, RlpDecodable)]
 pub struct Account {
 	// Balance of the account.
 	balance: U256,
 	// Nonce of the account.
 	nonce: U256,
-}
-
-impl From<BasicAccount> for Account {
-	fn from(basic: BasicAccount) -> Self {
-		Account {
-			balance: basic.balance,
-			nonce: basic.nonce,
-		}
-	}
 }
 
 impl Account {
@@ -52,14 +42,6 @@ impl Account {
 		Account {
 			balance: balance,
 			nonce: nonce,
-		}
-	}
-
-	/// General constructor.
-	pub fn from_pod(pod: PodAccount) -> Account {
-		Account {
-			balance: pod.balance,
-			nonce: pod.nonce,
 		}
 	}
 
@@ -73,8 +55,7 @@ impl Account {
 
 	/// Create a new account from RLP.
 	pub fn from_rlp(rlp: &[u8]) -> Account {
-		let basic: BasicAccount = ::rlp::decode(rlp);
-		basic.into()
+		::rlp::decode(rlp)
 	}
 
 	/// return the balance associated with this account.
@@ -150,7 +131,7 @@ mod tests {
 	use rlp_compress::{compress, decompress, snapshot_swapper};
 	use ethereum_types::{H256, Address};
 	use memorydb::MemoryDB;
-	use bytes::Bytes;
+	use cbytes::Bytes;
 	use super::*;
 	use account_db::*;
 

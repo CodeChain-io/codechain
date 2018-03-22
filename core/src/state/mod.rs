@@ -26,11 +26,9 @@ use std::fmt;
 use std::sync::Arc;
 
 use error::Error;
-use pod_account::*;
-use types::state_diff::StateDiff;
 use transaction::SignedTransaction;
 
-use ethereum_types::{H256, U256, Address};
+use ctypes::{H256, U256, Address};
 use hashdb::{HashDB, AsHashDB};
 use kvdb::DBValue;
 

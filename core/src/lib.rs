@@ -20,11 +20,14 @@ extern crate codechain_io as cio;
 extern crate codechain_json as cjson;
 extern crate codechain_keys as ckeys;
 extern crate codechain_types as ctypes;
+extern crate hashdb;
 extern crate heapsize;
 extern crate kvdb;
 extern crate kvdb_rocksdb;
 extern crate kvdb_memorydb;
+extern crate memorydb;
 extern crate num_cpus;
+extern crate patricia_trie as trie;
 extern crate rlp;
 extern crate rlp_compress;
 #[macro_use]
