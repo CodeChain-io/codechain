@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use cbytes::Bytes;
 use ccrypto::BLAKE_NULL_RLP;
 use cjson;
 use ctypes::{H256, U256, Address};
@@ -35,6 +36,8 @@ pub struct Genesis {
     pub transactions_root: H256,
     /// State root.
     pub state_root: Option<H256>,
+    /// The genesis block's extra data field.
+    pub extra_data: Bytes,
 }
 
 impl From<cjson::spec::Genesis> for Genesis {
@@ -47,6 +50,7 @@ impl From<cjson::spec::Genesis> for Genesis {
             parent_hash: g.parent_hash.map_or_else(H256::zero, Into::into),
             transactions_root: g.transactions_root.map_or_else(|| BLAKE_NULL_RLP.clone(), Into::into),
             state_root: g.state_root.map(Into::into),
+            extra_data: g.extra_data.map_or_else(Vec::new, Into::into),
         }
     }
 }

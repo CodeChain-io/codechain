@@ -66,6 +66,8 @@ pub struct Spec {
     pub timestamp: u64,
     /// Transactions root of the genesis block. Should be BLAKE_NULL_RLP.
     pub transactions_root: H256,
+    /// The genesis block's extra data field.
+    pub extra_data: Bytes,
     /// Each seal field, expressed as RLP, concatenated.
     pub seal_rlp: Bytes,
 }
@@ -147,6 +149,7 @@ impl Spec {
         header.set_number(0);
         header.set_author(self.author.clone());
         header.set_transactions_root(self.transactions_root.clone());
+        header.set_extra_data(self.extra_data.clone());
         // FIXME: Set the state root.
         header.set_score(self.score.clone());
         header.set_seal({
@@ -184,6 +187,7 @@ fn load_from(s: cjson::spec::Spec) -> Result<Spec, Error> {
         author: g.author,
         score: g.score,
         timestamp: g.timestamp,
+        extra_data: g.extra_data,
         seal_rlp,
     };
 

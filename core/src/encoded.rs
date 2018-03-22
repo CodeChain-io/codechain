@@ -89,6 +89,9 @@ impl Header {
     /// Time this block was produced.
     pub fn timestamp(&self) -> u64 { self.view().timestamp() }
 
+    /// Block extra data.
+    pub fn extra_data(&self) -> Vec<u8> { self.view().extra_data() }
+
     /// Engine-specific seal fields.
     pub fn seal(&self) -> Vec<Vec<u8>> { self.view().seal() }
 }
@@ -204,6 +207,9 @@ impl Block {
 
     /// Time this block was produced.
     pub fn timestamp(&self) -> u64 { self.header_view().timestamp() }
+
+    /// Block extra data.
+    pub fn extra_data(&self) -> Vec<u8> { self.header_view().extra_data() }
 
     /// Engine-specific seal fields.
     pub fn seal(&self) -> Vec<Vec<u8>> { self.header_view().seal() }

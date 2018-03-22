@@ -67,7 +67,7 @@ mod tests {
         let spec = Spec::new_solo();
         let engine = &*spec.engine;
         let genesis_header = spec.genesis_header();
-        let b = OpenBlock::new(engine, &genesis_header, Default::default(), false).unwrap();
+        let b = OpenBlock::new(engine, &genesis_header, Default::default(), vec![], false).unwrap();
         let b = b.close_and_lock();
         if let Seal::Regular(seal) = engine.generate_seal(b.block(), &genesis_header) {
             assert!(b.try_seal(engine, seal).is_ok());

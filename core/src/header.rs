@@ -46,6 +46,9 @@ pub struct Header {
     /// Block author.
     author: Address,
 
+    /// Block extra data.
+    extra_data: Bytes,
+
     /// Transactions root.
     transactions_root: H256,
     /// State root.
@@ -70,6 +73,7 @@ impl Default for Header {
             timestamp: 0,
             number: 0,
             author: Default::default(),
+            extra_data: vec![],
 
             transactions_root: BLAKE_NULL_RLP,
             state_root: BLAKE_NULL_RLP,
@@ -92,6 +96,11 @@ impl Header {
     /// Get the author field of the header.
     pub fn author(&self) -> &Address { &self.author }
 
+    /// Get the extra data field of the header.
+    pub fn extra_data(&self) -> &Bytes { &self.extra_data }
+    /// Get a mutable reference to extra_data
+    pub fn extra_data_mut(&mut self) -> &mut Bytes { self.note_dirty(); &mut self.extra_data }
+
     /// Get the state root field of the header.
     pub fn state_root(&self) -> &H256 { &self.state_root }
     /// Get the transactions root field of the header.
@@ -112,6 +121,8 @@ impl Header {
     pub fn set_number(&mut self, a: BlockNumber) { self.number = a; self.note_dirty(); }
     /// Set the author field of the header.
     pub fn set_author(&mut self, a: Address) { if a != self.author { self.author = a; self.note_dirty(); } }
+    /// Set the extra data field of the header.
+    pub fn set_extra_data(&mut self, a: Bytes) { if a != self.extra_data { self.extra_data = a; self.note_dirty(); } }
 
     /// Set the state root field of the header.
     pub fn set_state_root(&mut self, a: H256) { self.state_root = a; self.note_dirty(); }
@@ -151,7 +162,7 @@ impl Header {
 
     /// Place this header into an RLP stream `s`, optionally `with_seal`.
     pub fn stream_rlp(&self, s: &mut RlpStream, with_seal: Seal) {
-        s.begin_list(7 + match with_seal { Seal::With => self.seal.len(), _ => 0 });
+        s.begin_list(8 + match with_seal { Seal::With => self.seal.len(), _ => 0 });
         s.append(&self.parent_hash);
         s.append(&self.author);
         s.append(&self.state_root);
@@ -159,6 +170,7 @@ impl Header {
         s.append(&self.score);
         s.append(&self.number);
         s.append(&self.timestamp);
+        s.append(&self.extra_data);
         if let Seal::With = with_seal {
             for b in &self.seal {
                 s.append_raw(b, 1);
@@ -185,7 +197,7 @@ impl Header {
 
 impl HeapSizeOf for Header {
     fn heap_size_of_children(&self) -> usize {
-        self.seal.heap_size_of_children()
+        self.extra_data.heap_size_of_children() + self.seal.heap_size_of_children()
     }
 }
 
@@ -199,12 +211,13 @@ impl Decodable for Header {
             score: r.val_at(4)?,
             number: r.val_at(5)?,
             timestamp: cmp::min(r.val_at::<U256>(6)?, u64::max_value().into()).as_u64(),
+            extra_data: r.val_at(7)?,
             seal: vec![],
             hash: RefCell::new(Some(blake256(r.as_raw()))),
             bare_hash: RefCell::new(None),
         };
 
-        for i in 7..r.item_count()? {
+        for i in 8..r.item_count()? {
             blockheader.seal.push(r.at(i)?.as_raw().to_vec())
         }
 

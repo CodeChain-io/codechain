@@ -70,10 +70,13 @@ impl<'a> HeaderView<'a> {
     /// Returns timestamp.
     pub fn timestamp(&self) -> u64 { self.rlp.val_at(6) }
 
+    /// Returns block extra data.
+    pub fn extra_data(&self) -> Bytes { self.rlp.val_at(7) }
+
     /// Returns a vector of post-RLP-encoded seal fields.
     pub fn seal(&self) -> Vec<Bytes> {
         let mut seal = vec![];
-        for i in 7..self.rlp.item_count() {
+        for i in 8..self.rlp.item_count() {
             seal.push(self.rlp.at(i).as_raw().to_vec());
         }
         seal

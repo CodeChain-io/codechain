@@ -108,6 +108,7 @@ impl<'x> OpenBlock<'x> {
         engine: &'x CodeChainEngine,
         parent: &Header,
         author: Address,
+        extra_data: Bytes,
         is_epoch_begin: bool,
     ) -> Result<Self, Error> {
         let number = parent.number() + 1;
@@ -120,6 +121,7 @@ impl<'x> OpenBlock<'x> {
         r.block.header.set_number(number);
         r.block.header.set_author(author);
         r.block.header.set_timestamp_now(parent.timestamp());
+        r.block.header.set_extra_data(extra_data);
         r.block.header.note_dirty();
 
         engine.on_new_block(&mut r.block, is_epoch_begin)?;

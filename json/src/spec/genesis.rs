@@ -39,6 +39,9 @@ pub struct Genesis {
     /// State root.
     #[serde(rename="stateRoot")]
     pub state_root: Option<H256>,
+    /// Extra data.
+    #[serde(rename="extraData")]
+    pub extra_data: Option<Bytes>,
 }
 
 #[cfg(test)]
@@ -70,6 +73,7 @@ mod tests {
 			"author": "0x1000000000000000000000000000000000000001",
 			"timestamp": "0x07",
 			"parentHash": "0x9000000000000000000000000000000000000000000000000000000000000000",
+			"extraData": "0x11bbe8db4e347b4e8c937c1c8370e4b5ed33adb3db69cbdb7a38e1e50b1b82fa",
 			"stateRoot": "0xd7f8974fb5ac78d9ac099b9ad5018bedc2ce0a72dad1827a1709da30580f0544"
 		}"#;
         let deserialized: Genesis = serde_json::from_str(s).unwrap();
@@ -87,6 +91,7 @@ mod tests {
             parent_hash: Some(H256(Eth256::from("0x9000000000000000000000000000000000000000000000000000000000000000"))),
             transactions_root: None,
             state_root: Some(H256(Eth256::from("0xd7f8974fb5ac78d9ac099b9ad5018bedc2ce0a72dad1827a1709da30580f0544"))),
+            extra_data: Some(Bytes::from_str("0x11bbe8db4e347b4e8c937c1c8370e4b5ed33adb3db69cbdb7a38e1e50b1b82fa").unwrap()),
         });
     }
 }
