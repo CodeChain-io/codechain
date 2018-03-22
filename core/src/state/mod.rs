@@ -29,7 +29,6 @@ use error::Error;
 use pod_account::*;
 use types::state_diff::StateDiff;
 use transaction::SignedTransaction;
-use state_db::StateDB;
 
 use ethereum_types::{H256, U256, Address};
 use hashdb::{HashDB, AsHashDB};
@@ -86,22 +85,10 @@ impl AccountEntry {
 		self.account.as_ref().map_or(false, |a| a.is_null())
 	}
 
-	/// Clone dirty data into new `AccountEntry`. This includes
-	/// basic account data and modified storage keys.
-	/// Returns None if clean.
-	fn clone_if_dirty(&self) -> Option<AccountEntry> {
-		match self.is_dirty() {
-			true => Some(self.clone_dirty()),
-			false => None,
-		}
-	}
-
-	/// Clone dirty data into new `AccountEntry`. This includes
-	/// basic account data and modified storage keys.
-	fn clone_dirty(&self) -> AccountEntry {
+	fn clone(&self) -> AccountEntry {
 		AccountEntry {
 			old_balance: self.old_balance,
-			account: self.account.as_ref().map(Account::clone_dirty),
+			account: self.account.as_ref().map(Account::clone_basic),
 			state: self.state,
 		}
 	}
@@ -350,7 +337,7 @@ impl<B: Backend> State<B> {
 	fn note_cache(&self, address: &Address) {
 		if let Some(ref mut checkpoint) = self.checkpoints.borrow_mut().last_mut() {
 			checkpoint.entry(*address)
-				.or_insert_with(|| self.cache.borrow().get(address).map(AccountEntry::clone_dirty));
+				.or_insert_with(|| self.cache.borrow().get(address).map(AccountEntry::clone));
 		}
 	}
 
@@ -589,31 +576,6 @@ impl<B: Backend> State<B> {
 impl<B: Backend> fmt::Debug for State<B> {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 		write!(f, "{:?}", self.cache.borrow())
-	}
-}
-
-// TODO: cloning for `State` shouldn't be possible in general; Remove this and use
-// checkpoints where possible.
-impl Clone for State<StateDB> {
-	fn clone(&self) -> State<StateDB> {
-		let cache = {
-			let mut cache: HashMap<Address, AccountEntry> = HashMap::new();
-			for (key, val) in self.cache.borrow().iter() {
-				if let Some(entry) = val.clone_if_dirty() {
-					cache.insert(key.clone(), entry);
-				}
-			}
-			cache
-		};
-
-		State {
-			db: self.db.boxed_clone(),
-			root: self.root.clone(),
-			cache: RefCell::new(cache),
-			checkpoints: RefCell::new(Vec::new()),
-			account_start_nonce: self.account_start_nonce.clone(),
-			trie_factory: self.trie_factory.clone(),
-		}
 	}
 }
 
