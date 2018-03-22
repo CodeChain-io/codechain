@@ -17,6 +17,7 @@
 use ctypes::hash::{H128, H256};
 use rlp::{UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
 
+use super::super::session::Session;
 pub use super::application::Message as ApplicationMessage;
 pub use super::handshake::Message as HandshakeMessage;
 pub use super::negotiation::Message as NegotiationMessage;
@@ -65,6 +66,52 @@ impl Decodable for Message {
             UNENCRYPTED_ID => Ok(Message::Application(ApplicationMessage::decode(rlp)?)),
             _ => Err(DecoderError::Custom("unexpected protocol id")),
         }
+    }
+}
+
+pub struct SignedMessage {
+    pub message: Vec<u8>,
+    signature: H256,
+}
+
+impl SignedMessage {
+    pub fn new(message: Message, session: &Session) -> Option<Self> {
+        let message = message.rlp_bytes().into_vec();
+        session.sign(&message)
+            .map(|signature| {
+                Self {
+                    message,
+                    signature,
+                }
+            })
+    }
+
+    pub fn is_valid(&self, session: &Session) -> bool {
+        session.sign(&self.message)
+            .map(|signature| signature == self.signature)
+            .unwrap_or(false)
+    }
+}
+
+impl Encodable for SignedMessage {
+    fn rlp_append(&self, s: &mut RlpStream) {
+        s.begin_list(2)
+            .append(&self.message)
+            .append(&self.signature);
+    }
+}
+
+impl Decodable for SignedMessage {
+    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+        if rlp.item_count()? != 2 {
+            return Err(DecoderError::Custom("invalid message"))
+        }
+        let message: Vec<u8> = rlp.val_at(0)?;
+        let signature: H256 = rlp.val_at(1)?;
+        Ok(Self {
+            message,
+            signature,
+        })
     }
 }
 
