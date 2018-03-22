@@ -59,21 +59,6 @@ pub mod backend;
 pub use self::account::Account;
 pub use self::backend::Backend;
 
-/// Used to return information about an `State::apply` operation.
-pub struct ApplyOutcome<T, V> {
-	/// The receipt for the applied transaction.
-	pub receipt: Receipt,
-	/// The output of the applied transaction.
-	pub output: Bytes,
-	/// The trace for the applied transaction, empty if tracing was not produced.
-	pub trace: Vec<T>,
-	/// The VM trace for the applied transaction, None if tracing was not produced.
-	pub vm_trace: Option<V>
-}
-
-/// Result type for the execution ("application") of a transaction.
-pub type ApplyResult<T, V> = Result<ApplyOutcome<T, V>, Error>;
-
 /// Return type of proof validity check.
 #[derive(Debug, Clone)]
 pub enum ProvedExecution {
@@ -651,76 +636,12 @@ impl<B: Backend> State<B> {
 		Ok(())
 	}
 
-	/// Execute a given transaction, producing a receipt and an optional trace.
+	/// Execute a given transaction, charging transaction fee.
 	/// This will change the state accordingly.
-	pub fn apply(&mut self, env_info: &EnvInfo, machine: &Machine, t: &SignedTransaction, tracing: bool) -> ApplyResult<FlatTrace, VMTrace> {
-		if tracing {
-			let options = TransactOptions::with_tracing();
-			self.apply_with_tracing(env_info, machine, t, options.tracer, options.vm_tracer)
-		} else {
-			let options = TransactOptions::with_no_tracing();
-			self.apply_with_tracing(env_info, machine, t, options.tracer, options.vm_tracer)
-		}
-	}
-
-	/// Execute a given transaction with given tracer and VM tracer producing a receipt and an optional trace.
-	/// This will change the state accordingly.
-	pub fn apply_with_tracing<V, T>(
-		&mut self,
-		env_info: &EnvInfo,
-		machine: &Machine,
-		t: &SignedTransaction,
-		tracer: T,
-		vm_tracer: V,
-	) -> ApplyResult<T::Output, V::Output> where
-		T: trace::Tracer,
-		V: trace::VMTracer,
-	{
-		let options = TransactOptions::new(tracer, vm_tracer);
-		let e = self.execute(env_info, machine, t, options, false)?;
-		let params = machine.params();
-
-		let eip658 = env_info.number >= params.eip658_transition;
-		let no_intermediate_commits =
-			eip658 ||
-			(env_info.number >= params.eip98_transition && env_info.number >= params.validate_receipts_transition);
-
-		let outcome = if no_intermediate_commits {
-			if eip658 {
-				TransactionOutcome::StatusCode(if e.exception.is_some() { 0 } else { 1 })
-			} else {
-				TransactionOutcome::Unknown
-			}
-		} else {
-			self.commit()?;
-			TransactionOutcome::StateRoot(self.root().clone())
-		};
-
-		let output = e.output;
-		let receipt = Receipt::new(outcome, e.cumulative_gas_used, e.logs);
-		trace!(target: "state", "Transaction receipt: {:?}", receipt);
-
-		Ok(ApplyOutcome {
-			receipt,
-			output,
-			trace: e.trace,
-			vm_trace: e.vm_trace,
-		})
-	}
-
-	// Execute a given transaction without committing changes.
-	//
-	// `virt` signals that we are executing outside of a block set and restrictions like
-	// gas limits and gas costs should be lifted.
-	fn execute<T, V>(&mut self, env_info: &EnvInfo, machine: &Machine, t: &SignedTransaction, options: TransactOptions<T, V>, virt: bool)
-		-> Result<Executed<T::Output, V::Output>, ExecutionError> where T: trace::Tracer, V: trace::VMTracer,
-	{
-		let mut e = Executive::new(self, env_info, machine);
-
-		match virt {
-			true => e.transact_virtual(t, options),
-			false => e.transact(t, options),
-		}
+	pub fn apply(&mut self, env_info: &EnvInfo, machine: &Machine, t: &SignedTransaction, tracing: bool) -> Result<(), Error> {
+            // FIXME: Apply transaction using add_balance/sub_balance here.
+            self.commit()?;
+            Ok(())
 	}
 
 	fn touch(&mut self, a: &Address) -> trie::Result<()> {
