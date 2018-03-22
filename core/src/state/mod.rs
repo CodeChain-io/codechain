@@ -189,40 +189,6 @@ impl AccountEntry {
 	}
 }
 
-/// Check the given proof of execution.
-/// `Err(ExecutionError::Internal)` indicates failure, everything else indicates
-/// a successful proof (as the transaction itself may be poorly chosen).
-pub fn check_proof(
-	proof: &[DBValue],
-	root: H256,
-	transaction: &SignedTransaction,
-	machine: &Machine,
-	env_info: &EnvInfo,
-) -> ProvedExecution {
-	let backend = self::backend::ProofCheck::new(proof);
-	let mut factories = Factories::default();
-	factories.accountdb = ::account_db::Factory::Plain;
-
-	let res = State::from_existing(
-		backend,
-		root,
-		machine.account_start_nonce(env_info.number),
-		factories
-	);
-
-	let mut state = match res {
-		Ok(state) => state,
-		Err(_) => return ProvedExecution::BadProof,
-	};
-
-	let options = TransactOptions::with_no_tracing().save_output_from_contract();
-	match state.execute(env_info, machine, transaction, options, true) {
-		Ok(executed) => ProvedExecution::Complete(executed),
-		Err(ExecutionError::Internal(_)) => ProvedExecution::BadProof,
-		Err(e) => ProvedExecution::Failed(e),
-	}
-}
-
 /// Prove a transaction on the given state.
 /// Returns `None` when the transacion could not be proved,
 /// and a proof otherwise.
