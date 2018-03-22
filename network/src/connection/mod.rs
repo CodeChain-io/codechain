@@ -22,4 +22,5 @@ mod negotiation;
 use self::message::ApplicationMessage;
 use self::message::HandshakeMessage;
 use self::message::Message;
+use self::message::SignedMessage;
 use self::message::NegotiationMessage;
