@@ -19,3 +19,4 @@ mod blockchain;
 mod extras;
 
 pub use self::blockchain::{BlockChain, BlockProvider};
+pub use self::extras::{TransactionAddress, BlockDetails};

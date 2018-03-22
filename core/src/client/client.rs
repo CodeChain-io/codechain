@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::sync::{Arc, Weak};
+use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
 
 use cbytes::Bytes;
 use cio::IoChannel;
@@ -22,16 +23,21 @@ use ctypes::{Address, H256};
 use kvdb::KeyValueDB;
 use parking_lot::{Mutex, RwLock};
 
-use super::{EngineClient, BlockChainInfo, BlockInfo, ChainInfo, ChainNotify, ClientConfig, ImportBlock};
+use super::{EngineClient, BlockChainInfo, BlockInfo, TransactionInfo,
+            ChainInfo, ChainNotify, ClientConfig, ImportBlock,
+            BlockChainClient, BlockChain as BlockChainTrait
+};
 use super::importer::Importer;
-use super::super::blockchain::{BlockChain, BlockProvider};
+use super::super::blockchain::{BlockChain, BlockProvider, TransactionAddress};
 use super::super::codechain_machine::CodeChainMachine;
 use super::super::consensus::{CodeChainEngine, Solo};
 use super::super::encoded;
 use super::super::error::{Error, BlockImportError, ImportError};
 use super::super::service::ClientIoMessage;
 use super::super::spec::Spec;
-use super::super::types::BlockId;
+use super::super::types::{BlockId, TransactionId};
+
+const MAX_TX_QUEUE_SIZE: usize = 4096;
 
 pub struct Client {
     engine: Arc<CodeChainEngine>,
@@ -41,6 +47,9 @@ pub struct Client {
 
     /// List of actors to be notified on certain chain events
     notify: RwLock<Vec<Weak<ChainNotify>>>,
+
+    /// Count of pending transactions in the queue
+    queue_transactions: AtomicUsize,
 
     importer: Importer,
 }
@@ -63,6 +72,7 @@ impl Client {
             io_channel: Mutex::new(message_channel),
             chain: RwLock::new(chain),
             notify: RwLock::new(Vec::new()),
+            queue_transactions: AtomicUsize::new(0),
             importer,
         });
 
@@ -99,6 +109,22 @@ impl Client {
             BlockId::Earliest => chain.block_hash(0),
             BlockId::Latest => Some(chain.best_block_hash()),
         }
+    }
+
+    fn transaction_address(&self, id: TransactionId) -> Option<TransactionAddress> {
+        match id {
+            TransactionId::Hash(ref hash) => self.chain.read().transaction_address(hash),
+            TransactionId::Location(id, index) => Self::block_hash(&self.chain.read(), id).map(|hash| TransactionAddress {
+                block_hash: hash,
+                index,
+            })
+        }
+    }
+
+    /// Import transactions from the IO queue
+    pub fn import_queued_transactions(&self, transactions: &[Bytes], peer_id: usize) -> usize {
+        self.queue_transactions.fetch_sub(transactions.len(), AtomicOrdering::SeqCst);
+        unimplemented!();
     }
 }
 
@@ -147,6 +173,12 @@ impl BlockInfo for Client {
     }
 }
 
+impl TransactionInfo for Client {
+    fn transaction_block(&self, id: TransactionId) -> Option<H256> {
+        self.transaction_address(id).map(|addr| addr.block_hash)
+    }
+}
+
 impl ImportBlock for Client {
     fn import_block(&self, bytes: Bytes) -> Result<H256, BlockImportError> {
         use super::super::verification::queue::kind::BlockLike;
@@ -162,3 +194,24 @@ impl ImportBlock for Client {
     }
 }
 
+impl BlockChainTrait for Client {}
+
+impl BlockChainClient for Client {
+    fn queue_transactions(&self, transactions: Vec<Bytes>, peer_id: usize) {
+        let queue_size = self.queue_transactions.load(AtomicOrdering::Relaxed);
+        trace!(target: "external_tx", "Queue size: {}", queue_size);
+        if queue_size > MAX_TX_QUEUE_SIZE {
+            debug!("Ignoring {} transactions: queue is full", transactions.len());
+        } else {
+            let len = transactions.len();
+            match self.io_channel.lock().send(ClientIoMessage::NewTransactions(transactions, peer_id)) {
+                Ok(_) => {
+                    self.queue_transactions.fetch_add(len, AtomicOrdering::SeqCst);
+                }
+                Err(e) => {
+                    debug!("Ignoring {} transactions: error queueing: {}", len, e);
+                }
+            }
+        }
+    }
+}

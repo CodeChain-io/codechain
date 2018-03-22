@@ -75,3 +75,13 @@ pub trait ImportBlock {
     /// Import a block into the blockchain.
     fn import_block(&self, bytes: Bytes) -> Result<H256, BlockImportError>;
 }
+
+/// Provides various blockchain information, like block header, chain state etc.
+pub trait BlockChain: ChainInfo + BlockInfo + TransactionInfo {}
+
+/// Blockchain database client. Owns and manages a blockchain and a block queue.
+pub trait BlockChainClient : Sync + Send + BlockChain + ImportBlock {
+    /// Queue transactions for importing.
+    fn queue_transactions(&self, transactions: Vec<Bytes>, peer_id: usize);
+}
+
