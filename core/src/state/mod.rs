@@ -26,7 +26,6 @@ use std::fmt;
 use std::sync::Arc;
 
 use error::Error;
-use factory::Factories;
 use pod_account::*;
 use pod_state::{self, PodState};
 use types::state_diff::StateDiff;
@@ -38,7 +37,7 @@ use hashdb::{HashDB, AsHashDB};
 use kvdb::DBValue;
 
 use trie;
-use trie::{Trie, TrieError, TrieDB};
+use trie::{Trie, TrieFactory, TrieError};
 
 mod account;
 
@@ -201,7 +200,7 @@ pub struct State<B: Backend> {
 	// The original account is preserved in
 	checkpoints: RefCell<Vec<HashMap<Address, Option<AccountEntry>>>>,
 	account_start_nonce: U256,
-	factories: Factories,
+	trie_factory: TrieFactory,
 }
 
 /// Mode of dealing with null accounts.
@@ -235,11 +234,11 @@ const SEC_TRIE_DB_UNWRAP_STR: &'static str = "A state can only be created with v
 impl<B: Backend> State<B> {
 	/// Creates new state with empty state root
 	/// Used for tests.
-	pub fn new(mut db: B, account_start_nonce: U256, factories: Factories) -> State<B> {
+	pub fn new(mut db: B, account_start_nonce: U256, trie_factory: TrieFactory) -> State<B> {
 		let mut root = H256::new();
 		{
 			// init trie and reset root too null
-			let _ = factories.trie.create(db.as_hashdb_mut(), &mut root);
+			let _ = trie_factory.create(db.as_hashdb_mut(), &mut root);
 		}
 
 		State {
@@ -248,12 +247,12 @@ impl<B: Backend> State<B> {
 			cache: RefCell::new(HashMap::new()),
 			checkpoints: RefCell::new(Vec::new()),
 			account_start_nonce: account_start_nonce,
-			factories: factories,
+			trie_factory: trie_factory,
 		}
 	}
 
 	/// Creates new state with existing state root
-	pub fn from_existing(db: B, root: H256, account_start_nonce: U256, factories: Factories) -> Result<State<B>, TrieError> {
+	pub fn from_existing(db: B, root: H256, account_start_nonce: U256, trie_factory: TrieFactory) -> Result<State<B>, TrieError> {
 		if !db.as_hashdb().contains(&root) {
 			return Err(TrieError::InvalidStateRoot(root));
 		}
@@ -264,7 +263,7 @@ impl<B: Backend> State<B> {
 			cache: RefCell::new(HashMap::new()),
 			checkpoints: RefCell::new(Vec::new()),
 			account_start_nonce: account_start_nonce,
-			factories: factories
+			trie_factory: trie_factory
 		};
 
 		Ok(state)
@@ -279,7 +278,7 @@ impl<B: Backend> State<B> {
 			cache: self.cache,
 			checkpoints: self.checkpoints,
 			account_start_nonce: self.account_start_nonce,
-			factories: self.factories,
+			trie_factory: self.trie_factory,
 		}
 	}
 
@@ -458,7 +457,7 @@ impl<B: Backend> State<B> {
 	pub fn commit(&mut self) -> Result<(), Error> {
 		let mut accounts = self.cache.borrow_mut();
 		{
-			let mut trie = self.factories.trie.from_existing(self.db.as_hashdb_mut(), &mut self.root)?;
+			let mut trie = self.trie_factory.from_existing(self.db.as_hashdb_mut(), &mut self.root)?;
 			for (address, ref mut a) in accounts.iter_mut().filter(|&(_, ref a)| a.is_dirty()) {
 				a.state = AccountState::Committed;
 				match a.account {
@@ -578,7 +577,7 @@ impl<B: Backend> State<B> {
 				if check_null && self.db.is_known_null(a) { return Ok(f(None)); }
 
 				// not found in the global cache, get from the DB and insert into local
-				let db = self.factories.trie.readonly(self.db.as_hashdb(), &self.root)?;
+				let db = self.trie_factory.readonly(self.db.as_hashdb(), &self.root)?;
 				let mut maybe_acc = db.get_with(a, Account::from_rlp)?;
 				let r = f(maybe_acc.as_ref());
 				self.insert_cache(a, AccountEntry::new_clean(maybe_acc));
@@ -603,7 +602,7 @@ impl<B: Backend> State<B> {
 				Some(acc) => self.insert_cache(a, AccountEntry::new_clean_cached(acc)),
 				None => {
 					let maybe_acc = if !self.db.is_known_null(a) {
-						let db = self.factories.trie.readonly(self.db.as_hashdb(), &self.root)?;
+						let db = self.trie_factory.readonly(self.db.as_hashdb(), &self.root)?;
 						AccountEntry::new_clean(db.get_with(a, Account::from_rlp)?)
 					} else {
 						AccountEntry::new_clean(None)
@@ -661,7 +660,7 @@ impl Clone for State<StateDB> {
 			cache: RefCell::new(cache),
 			checkpoints: RefCell::new(Vec::new()),
 			account_start_nonce: self.account_start_nonce.clone(),
-			factories: self.factories.clone(),
+			trie_factory: self.trie_factory.clone(),
 		}
 	}
 }
