@@ -24,33 +24,21 @@ use std::collections::hash_map::Entry;
 use std::collections::{HashMap, BTreeMap, HashSet};
 use std::fmt;
 use std::sync::Arc;
-use hash::{KECCAK_NULL_RLP, KECCAK_EMPTY};
 
-use receipt::{Receipt, TransactionOutcome};
-use machine::EthereumMachine as Machine;
-use vm::EnvInfo;
 use error::Error;
-use executive::{Executive, TransactOptions};
 use factory::Factories;
-use trace::{self, FlatTrace, VMTrace};
 use pod_account::*;
 use pod_state::{self, PodState};
-use types::basic_account::BasicAccount;
-use executed::{Executed, ExecutionError};
 use types::state_diff::StateDiff;
 use transaction::SignedTransaction;
 use state_db::StateDB;
-use factory::VmFactory;
 
 use ethereum_types::{H256, U256, Address};
 use hashdb::{HashDB, AsHashDB};
 use kvdb::DBValue;
-use bytes::Bytes;
 
 use trie;
 use trie::{Trie, TrieError, TrieDB};
-use trie::recorder::Recorder;
-
 
 mod account;
 
@@ -58,17 +46,6 @@ pub mod backend;
 
 pub use self::account::Account;
 pub use self::backend::Backend;
-
-/// Return type of proof validity check.
-#[derive(Debug, Clone)]
-pub enum ProvedExecution {
-	/// Proof wasn't enough to complete execution.
-	BadProof,
-	/// The transaction failed, but not due to a bad proof.
-	Failed(ExecutionError),
-	/// The transaction successfully completd with the given proof.
-	Complete(Executed),
-}
 
 #[derive(Eq, PartialEq, Clone, Copy, Debug)]
 /// Account modification state. Used to check if the account was
@@ -172,44 +149,6 @@ impl AccountEntry {
 	}
 }
 
-/// Prove a transaction on the given state.
-/// Returns `None` when the transacion could not be proved,
-/// and a proof otherwise.
-pub fn prove_transaction<H: AsHashDB + Send + Sync>(
-	db: H,
-	root: H256,
-	transaction: &SignedTransaction,
-	machine: &Machine,
-	env_info: &EnvInfo,
-	factories: Factories,
-	virt: bool,
-) -> Option<(Bytes, Vec<DBValue>)> {
-	use self::backend::Proving;
-
-	let backend = Proving::new(db);
-	let res = State::from_existing(
-		backend,
-		root,
-		machine.account_start_nonce(env_info.number),
-		factories,
-	);
-
-	let mut state = match res {
-		Ok(state) => state,
-		Err(_) => return None,
-	};
-
-	let options = TransactOptions::with_no_tracing().dont_check_nonce().save_output_from_contract();
-	match state.execute(env_info, machine, transaction, options, virt) {
-		Err(ExecutionError::Internal(_)) => None,
-		Err(e) => {
-			trace!(target: "state", "Proved call failed: {}", e);
-			Some((Vec::new(), state.drop().1.extract_proof()))
-		}
-		Ok(res) => Some((res.output, state.drop().1.extract_proof())),
-	}
-}
-
 /// Representation of the entire state of all accounts in the system.
 ///
 /// `State` can work together with `StateDB` to share account cache.
@@ -265,13 +204,6 @@ pub struct State<B: Backend> {
 	factories: Factories,
 }
 
-#[derive(Copy, Clone)]
-enum RequireCache {
-	None,
-	CodeSize,
-	Code,
-}
-
 /// Mode of dealing with null accounts.
 #[derive(PartialEq)]
 pub enum CleanupMode<'a> {
@@ -290,19 +222,11 @@ pub trait StateInfo {
 
 	/// Get the balance of account `a`.
 	fn balance(&self, a: &Address) -> trie::Result<U256>;
-
-	/// Mutate storage of account `address` so that it is `value` for `key`.
-	fn storage_at(&self, address: &Address, key: &H256) -> trie::Result<H256>;
-
-	/// Get accounts' code.
-	fn code(&self, a: &Address) -> trie::Result<Option<Arc<Bytes>>>;
 }
 
 impl<B: Backend> StateInfo for State<B> {
 	fn nonce(&self, a: &Address) -> trie::Result<U256> { State::nonce(self, a) }
 	fn balance(&self, a: &Address) -> trie::Result<U256> { State::balance(self, a) }
-	fn storage_at(&self, address: &Address, key: &H256) -> trie::Result<H256> { State::storage_at(self, address, key) }
-	fn code(&self, address: &Address) -> trie::Result<Option<Arc<Bytes>>> { State::code(self, address) }
 }
 
 const SEC_TRIE_DB_UNWRAP_STR: &'static str = "A state can only be created with valid root. Creating a SecTrieDB with a valid root will not fail. \
@@ -344,11 +268,6 @@ impl<B: Backend> State<B> {
 		};
 
 		Ok(state)
-	}
-
-	/// Get a VM factory that can execute on this state.
-	pub fn vm_factory(&self) -> VmFactory {
-		self.factories.vm.clone()
 	}
 
 	/// Swap the current backend for another.
@@ -448,12 +367,6 @@ impl<B: Backend> State<B> {
 		&self.root
 	}
 
-	/// Create a new contract at address `contract`. If there is already an account at the address
-	/// it will have its code reset, ready for `init_code()`.
-	pub fn new_contract(&mut self, contract: &Address, balance: U256, nonce_offset: U256) {
-		self.insert_cache(contract, AccountEntry::new_dirty(Some(Account::new_contract(balance, self.account_start_nonce + nonce_offset))));
-	}
-
 	/// Remove an existing account.
 	pub fn kill_account(&mut self, account: &Address) {
 		self.insert_cache(account, AccountEntry::new_dirty(None));
@@ -463,115 +376,30 @@ impl<B: Backend> State<B> {
 	pub fn exists(&self, a: &Address) -> trie::Result<bool> {
 		// Bloom filter does not contain empty accounts, so it is important here to
 		// check if account exists in the database directly before EIP-161 is in effect.
-		self.ensure_cached(a, RequireCache::None, false, |a| a.is_some())
+		self.ensure_cached(a, false, |a| a.is_some())
 	}
 
 	/// Determine whether an account exists and if not empty.
 	pub fn exists_and_not_null(&self, a: &Address) -> trie::Result<bool> {
-		self.ensure_cached(a, RequireCache::None, false, |a| a.map_or(false, |a| !a.is_null()))
+		self.ensure_cached(a, false, |a| a.map_or(false, |a| !a.is_null()))
 	}
 
 	/// Determine whether an account exists and has code or non-zero nonce.
-	pub fn exists_and_has_code_or_nonce(&self, a: &Address) -> trie::Result<bool> {
-		self.ensure_cached(a, RequireCache::CodeSize, false,
-			|a| a.map_or(false, |a| a.code_hash() != KECCAK_EMPTY || *a.nonce() != self.account_start_nonce))
+	pub fn exists_and_has_nonce(&self, a: &Address) -> trie::Result<bool> {
+		self.ensure_cached(a, false,
+			|a| a.map_or(false, |a| *a.nonce() != self.account_start_nonce))
 	}
 
 	/// Get the balance of account `a`.
 	pub fn balance(&self, a: &Address) -> trie::Result<U256> {
-		self.ensure_cached(a, RequireCache::None, true,
+		self.ensure_cached(a, true,
 			|a| a.as_ref().map_or(U256::zero(), |account| *account.balance()))
 	}
 
 	/// Get the nonce of account `a`.
 	pub fn nonce(&self, a: &Address) -> trie::Result<U256> {
-		self.ensure_cached(a, RequireCache::None, true,
+		self.ensure_cached(a, true,
 			|a| a.as_ref().map_or(self.account_start_nonce, |account| *account.nonce()))
-	}
-
-	/// Get the storage root of account `a`.
-	pub fn storage_root(&self, a: &Address) -> trie::Result<Option<H256>> {
-		self.ensure_cached(a, RequireCache::None, true,
-			|a| a.as_ref().and_then(|account| account.storage_root().cloned()))
-	}
-
-	/// Mutate storage of account `address` so that it is `value` for `key`.
-	pub fn storage_at(&self, address: &Address, key: &H256) -> trie::Result<H256> {
-		// Storage key search and update works like this:
-		// 1. If there's an entry for the account in the local cache check for the key and return it if found.
-		// 2. If there's an entry for the account in the global cache check for the key or load it into that account.
-		// 3. If account is missing in the global cache load it into the local cache and cache the key there.
-
-		// check local cache first without updating
-		{
-			let local_cache = self.cache.borrow_mut();
-			let mut local_account = None;
-			if let Some(maybe_acc) = local_cache.get(address) {
-				match maybe_acc.account {
-					Some(ref account) => {
-						if let Some(value) = account.cached_storage_at(key) {
-							return Ok(value);
-						} else {
-							local_account = Some(maybe_acc);
-						}
-					},
-					_ => return Ok(H256::new()),
-				}
-			}
-			// check the global cache and and cache storage key there if found,
-			let trie_res = self.db.get_cached(address, |acc| match acc {
-				None => Ok(H256::new()),
-				Some(a) => {
-					let account_db = self.factories.accountdb.readonly(self.db.as_hashdb(), a.address_hash(address));
-					a.storage_at(account_db.as_hashdb(), key)
-				}
-			});
-
-			if let Some(res) = trie_res {
-				return res;
-			}
-
-			// otherwise cache the account localy and cache storage key there.
-			if let Some(ref mut acc) = local_account {
-				if let Some(ref account) = acc.account {
-					let account_db = self.factories.accountdb.readonly(self.db.as_hashdb(), account.address_hash(address));
-					return account.storage_at(account_db.as_hashdb(), key)
-				} else {
-					return Ok(H256::new())
-				}
-			}
-		}
-
-		// check if the account could exist before any requests to trie
-		if self.db.is_known_null(address) { return Ok(H256::zero()) }
-
-		// account is not found in the global cache, get from the DB and insert into local
-		let db = self.factories.trie.readonly(self.db.as_hashdb(), &self.root).expect(SEC_TRIE_DB_UNWRAP_STR);
-		let maybe_acc = db.get_with(address, Account::from_rlp)?;
-		let r = maybe_acc.as_ref().map_or(Ok(H256::new()), |a| {
-			let account_db = self.factories.accountdb.readonly(self.db.as_hashdb(), a.address_hash(address));
-			a.storage_at(account_db.as_hashdb(), key)
-		});
-		self.insert_cache(address, AccountEntry::new_clean(maybe_acc));
-		r
-	}
-
-	/// Get accounts' code.
-	pub fn code(&self, a: &Address) -> trie::Result<Option<Arc<Bytes>>> {
-		self.ensure_cached(a, RequireCache::Code, true,
-			|a| a.as_ref().map_or(None, |a| a.code().clone()))
-	}
-
-	/// Get an account's code hash.
-	pub fn code_hash(&self, a: &Address) -> trie::Result<H256> {
-		self.ensure_cached(a, RequireCache::None, true,
-			|a| a.as_ref().map_or(KECCAK_EMPTY, |a| a.code_hash()))
-	}
-
-	/// Get accounts' code size.
-	pub fn code_size(&self, a: &Address) -> trie::Result<Option<usize>> {
-		self.ensure_cached(a, RequireCache::CodeSize, true,
-			|a| a.as_ref().and_then(|a| a.code_size()))
 	}
 
 	/// Add `incr` to the balance of account `a`.
@@ -579,7 +407,7 @@ impl<B: Backend> State<B> {
 		trace!(target: "state", "add_balance({}, {}): {}", a, incr, self.balance(a)?);
 		let is_value_transfer = !incr.is_zero();
 		if is_value_transfer || (cleanup_mode == CleanupMode::ForceCreate && !self.exists(a)?) {
-			self.require(a, false)?.add_balance(incr);
+			self.require(a)?.add_balance(incr);
 		} else if let CleanupMode::TrackTouched(set) = cleanup_mode {
 			if self.exists(a)? {
 				set.insert(*a);
@@ -593,7 +421,7 @@ impl<B: Backend> State<B> {
 	pub fn sub_balance(&mut self, a: &Address, decr: &U256, cleanup_mode: &mut CleanupMode) -> trie::Result<()> {
 		trace!(target: "state", "sub_balance({}, {}): {}", a, decr, self.balance(a)?);
 		if !decr.is_zero() || !self.exists(a)? {
-			self.require(a, false)?.sub_balance(decr);
+			self.require(a)?.sub_balance(decr);
 		}
 		if let CleanupMode::TrackTouched(ref mut set) = *cleanup_mode {
 			set.insert(*a);
@@ -610,63 +438,25 @@ impl<B: Backend> State<B> {
 
 	/// Increment the nonce of account `a` by 1.
 	pub fn inc_nonce(&mut self, a: &Address) -> trie::Result<()> {
-		self.require(a, false).map(|mut x| x.inc_nonce())
-	}
-
-	/// Mutate storage of account `a` so that it is `value` for `key`.
-	pub fn set_storage(&mut self, a: &Address, key: H256, value: H256) -> trie::Result<()> {
-		trace!(target: "state", "set_storage({}:{:x} to {:x})", a, key, value);
-		if self.storage_at(a, &key)? != value {
-			self.require(a, false)?.set_storage(key, value)
-		}
-
-		Ok(())
-	}
-
-	/// Initialise the code of account `a` so that it is `code`.
-	/// NOTE: Account should have been created with `new_contract`.
-	pub fn init_code(&mut self, a: &Address, code: Bytes) -> trie::Result<()> {
-		self.require_or_from(a, true, || Account::new_contract(0.into(), self.account_start_nonce), |_|{})?.init_code(code);
-		Ok(())
-	}
-
-	/// Reset the code of account `a` so that it is `code`.
-	pub fn reset_code(&mut self, a: &Address, code: Bytes) -> trie::Result<()> {
-		self.require_or_from(a, true, || Account::new_contract(0.into(), self.account_start_nonce), |_|{})?.reset_code(code);
-		Ok(())
+		self.require(a).map(|mut x| x.inc_nonce())
 	}
 
 	/// Execute a given transaction, charging transaction fee.
 	/// This will change the state accordingly.
-	pub fn apply(&mut self, env_info: &EnvInfo, machine: &Machine, t: &SignedTransaction, tracing: bool) -> Result<(), Error> {
+	pub fn apply(&mut self, t: &SignedTransaction) -> Result<(), Error> {
             // FIXME: Apply transaction using add_balance/sub_balance here.
             self.commit()?;
             Ok(())
 	}
 
 	fn touch(&mut self, a: &Address) -> trie::Result<()> {
-		self.require(a, false)?;
+		self.require(a)?;
 		Ok(())
 	}
 
 	/// Commits our cached account changes into the trie.
 	pub fn commit(&mut self) -> Result<(), Error> {
-		// first, commit the sub trees.
 		let mut accounts = self.cache.borrow_mut();
-		for (address, ref mut a) in accounts.iter_mut().filter(|&(_, ref a)| a.is_dirty()) {
-			if let Some(ref mut account) = a.account {
-				let addr_hash = account.address_hash(address);
-				{
-					let mut account_db = self.factories.accountdb.create(self.db.as_hashdb_mut(), addr_hash);
-					account.commit_storage(&self.factories.trie, account_db.as_hashdb_mut())?;
-					account.commit_code(account_db.as_hashdb_mut());
-				}
-				if !account.is_empty() {
-					self.db.note_non_null_account(address);
-				}
-			}
-		}
-
 		{
 			let mut trie = self.factories.trie.from_existing(self.db.as_hashdb_mut(), &mut self.root)?;
 			for (address, ref mut a) in accounts.iter_mut().filter(|&(_, ref a)| a.is_dirty()) {
@@ -742,7 +532,7 @@ impl<B: Backend> State<B> {
 
 	fn query_pod(&mut self, query: &PodState) -> trie::Result<()> {
 		for (address, pod_account) in query.get() {
-			if !self.ensure_cached(address, RequireCache::Code, true, |a| a.is_some())? {
+			if !self.ensure_cached(address, true, |a| a.is_some())? {
 				continue
 			}
 
@@ -765,56 +555,20 @@ impl<B: Backend> State<B> {
 		Ok(pod_state::diff_pod(&state_pre.to_pod(), &pod_state_post))
 	}
 
-	// load required account data from the databases.
-	fn update_account_cache(require: RequireCache, account: &mut Account, state_db: &B, db: &HashDB) {
-		if let RequireCache::None = require {
-			return;
-		}
-
-		if account.is_cached() {
-			return;
-		}
-
-		// if there's already code in the global cache, always cache it localy
-		let hash = account.code_hash();
-		match state_db.get_cached_code(&hash) {
-			Some(code) => account.cache_given_code(code),
-			None => match require {
-				RequireCache::None => {},
-				RequireCache::Code => {
-					if let Some(code) = account.cache_code(db) {
-						// propagate code loaded from the database to
-						// the global code cache.
-						state_db.cache_code(hash, code)
-					}
-				},
-				RequireCache::CodeSize => {
-					account.cache_code_size(db);
-				}
-			}
-		}
-	}
-
 	/// Check caches for required data
 	/// First searches for account in the local, then the shared cache.
 	/// Populates local cache if nothing found.
-	fn ensure_cached<F, U>(&self, a: &Address, require: RequireCache, check_null: bool, f: F) -> trie::Result<U>
+	fn ensure_cached<F, U>(&self, a: &Address, check_null: bool, f: F) -> trie::Result<U>
 		where F: Fn(Option<&Account>) -> U {
 		// check local cache first
 		if let Some(ref mut maybe_acc) = self.cache.borrow_mut().get_mut(a) {
 			if let Some(ref mut account) = maybe_acc.account {
-				let accountdb = self.factories.accountdb.readonly(self.db.as_hashdb(), account.address_hash(a));
-				Self::update_account_cache(require, account, &self.db, accountdb.as_hashdb());
 				return Ok(f(Some(account)));
 			}
 			return Ok(f(None));
 		}
 		// check global cache
 		let result = self.db.get_cached(a, |mut acc| {
-			if let Some(ref mut account) = acc {
-				let accountdb = self.factories.accountdb.readonly(self.db.as_hashdb(), account.address_hash(a));
-				Self::update_account_cache(require, account, &self.db, accountdb.as_hashdb());
-			}
 			f(acc.map(|a| &*a))
 		});
 		match result {
@@ -826,10 +580,6 @@ impl<B: Backend> State<B> {
 				// not found in the global cache, get from the DB and insert into local
 				let db = self.factories.trie.readonly(self.db.as_hashdb(), &self.root)?;
 				let mut maybe_acc = db.get_with(a, Account::from_rlp)?;
-				if let Some(ref mut account) = maybe_acc.as_mut() {
-					let accountdb = self.factories.accountdb.readonly(self.db.as_hashdb(), account.address_hash(a));
-					Self::update_account_cache(require, account, &self.db, accountdb.as_hashdb());
-				}
 				let r = f(maybe_acc.as_ref());
 				self.insert_cache(a, AccountEntry::new_clean(maybe_acc));
 				Ok(r)
@@ -837,14 +587,14 @@ impl<B: Backend> State<B> {
 		}
 	}
 
-	/// Pull account `a` in our cache from the trie DB. `require_code` requires that the code be cached, too.
-	fn require<'a>(&'a self, a: &Address, require_code: bool) -> trie::Result<RefMut<'a, Account>> {
-		self.require_or_from(a, require_code, || Account::new_basic(0u8.into(), self.account_start_nonce), |_|{})
+	/// Pull account `a` in our cache from the trie DB.
+	fn require<'a>(&'a self, a: &Address) -> trie::Result<RefMut<'a, Account>> {
+		self.require_or_from(a, || Account::new_basic(0u8.into(), self.account_start_nonce), |_|{})
 	}
 
-	/// Pull account `a` in our cache from the trie DB. `require_code` requires that the code be cached, too.
+	/// Pull account `a` in our cache from the trie DB.
 	/// If it doesn't exist, make account equal the evaluation of `default`.
-	fn require_or_from<'a, F, G>(&'a self, a: &Address, require_code: bool, default: F, not_default: G) -> trie::Result<RefMut<'a, Account>>
+	fn require_or_from<'a, F, G>(&'a self, a: &Address, default: F, not_default: G) -> trie::Result<RefMut<'a, Account>>
 		where F: FnOnce() -> Account, G: FnOnce(&mut Account),
 	{
 		let contains_key = self.cache.borrow().contains_key(a);
@@ -877,59 +627,11 @@ impl<B: Backend> State<B> {
 			entry.state = AccountState::Dirty;
 			match entry.account {
 				Some(ref mut account) => {
-					if require_code {
-						let addr_hash = account.address_hash(a);
-						let accountdb = self.factories.accountdb.readonly(self.db.as_hashdb(), addr_hash);
-						Self::update_account_cache(RequireCache::Code, account, &self.db, accountdb.as_hashdb());
-					}
 					account
 				},
 				_ => panic!("Required account must always exist; qed"),
 			}
 		}))
-	}
-}
-
-// State proof implementations; useful for light client protocols.
-impl<B: Backend> State<B> {
-	/// Prove an account's existence or nonexistence in the state trie.
-	/// Returns a merkle proof of the account's trie node omitted or an encountered trie error.
-	/// If the account doesn't exist in the trie, prove that and return defaults.
-	/// Requires a secure trie to be used for accurate results.
-	/// `account_key` == keccak(address)
-	pub fn prove_account(&self, account_key: H256) -> trie::Result<(Vec<Bytes>, BasicAccount)> {
-		let mut recorder = Recorder::new();
-		let trie = TrieDB::new(self.db.as_hashdb(), &self.root)?;
-		let maybe_account: Option<BasicAccount> = {
-			let query = (&mut recorder, ::rlp::decode);
-			trie.get_with(&account_key, query)?
-		};
-		let account = maybe_account.unwrap_or_else(|| BasicAccount {
-			balance: 0.into(),
-			nonce: self.account_start_nonce,
-			code_hash: KECCAK_EMPTY,
-			storage_root: KECCAK_NULL_RLP,
-		});
-
-		Ok((recorder.drain().into_iter().map(|r| r.data).collect(), account))
-	}
-
-	/// Prove an account's storage key's existence or nonexistence in the state.
-	/// Returns a merkle proof of the account's storage trie.
-	/// Requires a secure trie to be used for correctness.
-	/// `account_key` == keccak(address)
-	/// `storage_key` == keccak(key)
-	pub fn prove_storage(&self, account_key: H256, storage_key: H256) -> trie::Result<(Vec<Bytes>, H256)> {
-		// TODO: probably could look into cache somehow but it's keyed by
-		// address, not keccak(address).
-		let trie = TrieDB::new(self.db.as_hashdb(), &self.root)?;
-		let acc = match trie.get_with(&account_key, Account::from_rlp)? {
-			Some(acc) => acc,
-			None => return Ok((Vec::new(), H256::new())),
-		};
-
-		let account_db = self.factories.accountdb.readonly(self.db.as_hashdb(), account_key);
-		acc.prove_storage(account_db.as_hashdb(), storage_key)
 	}
 }
 
