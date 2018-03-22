@@ -14,27 +14,26 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-extern crate crypto as rcrypto;
-#[macro_use]
-extern crate log;
-extern crate mio;
-extern crate parking_lot;
-extern crate rand;
-extern crate rlp;
+use std::sync::Arc;
 
-extern crate codechain_crypto as ccrypto;
-extern crate codechain_io as cio;
-extern crate codechain_types as ctypes;
+use super::ClientApi;
+use super::Error;
+use super::NodeId;
 
-mod client;
-mod connection;
-mod extension;
-mod handshake;
-pub mod session;
-pub mod address;
-pub mod kademlia;
+pub trait Extension {
+    fn name(&self) -> String;
+    fn need_encryption(&self) -> bool;
 
-pub use self::address::Address;
-pub use self::client::{ClientApi, Error, NodeId};
-pub use self::extension::Extension;
-pub use self::handshake::HandshakeService;
+    fn on_initialize(&self, api: Arc<ClientApi>);
+
+    fn on_node_added(&self, id: &NodeId);
+    fn on_node_removed(&self, id: &NodeId);
+
+    fn on_connected(&self, id: &NodeId);
+    fn on_connection_allowed(&self, id: &NodeId);
+    fn on_connection_denied(&self, id: &NodeId, error: Error);
+
+    fn on_message(&self, id: &NodeId, message: &Vec<u8>);
+
+    fn on_close(&self);
+}
