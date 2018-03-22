@@ -27,7 +27,6 @@ use std::sync::Arc;
 
 use error::Error;
 use pod_account::*;
-use pod_state::{self, PodState};
 use types::state_diff::StateDiff;
 use transaction::SignedTransaction;
 use state_db::StateDB;
@@ -505,53 +504,6 @@ impl<B: Backend> State<B> {
 			self.kill_account(&address);
 		}
 		Ok(())
-	}
-
-	/// Populate the state from `accounts`.
-	/// Used for tests.
-	pub fn populate_from(&mut self, accounts: PodState) {
-		assert!(self.checkpoints.borrow().is_empty());
-		for (add, acc) in accounts.drain().into_iter() {
-			self.cache.borrow_mut().insert(add, AccountEntry::new_dirty(Some(Account::from_pod(acc))));
-		}
-	}
-
-	/// Populate a PodAccount map from this state.
-	pub fn to_pod(&self) -> PodState {
-		assert!(self.checkpoints.borrow().is_empty());
-		// TODO: handle database rather than just the cache.
-		// will need fat db.
-		PodState::from(self.cache.borrow().iter().fold(BTreeMap::new(), |mut m, (add, opt)| {
-			if let Some(ref acc) = opt.account {
-				m.insert(add.clone(), PodAccount::from_account(acc));
-			}
-			m
-		}))
-	}
-
-	fn query_pod(&mut self, query: &PodState) -> trie::Result<()> {
-		for (address, pod_account) in query.get() {
-			if !self.ensure_cached(address, true, |a| a.is_some())? {
-				continue
-			}
-
-			// needs to be split into two parts for the refcell code here
-			// to work.
-			for key in pod_account.storage.keys() {
-				self.storage_at(address, key)?;
-			}
-		}
-
-		Ok(())
-	}
-
-	/// Returns a `StateDiff` describing the difference from `orig` to `self`.
-	/// Consumes self.
-	pub fn diff_from<X: Backend>(&self, orig: State<X>) -> trie::Result<StateDiff> {
-		let pod_state_post = self.to_pod();
-		let mut state_pre = orig;
-		state_pre.query_pod(&pod_state_post)?;
-		Ok(pod_state::diff_pod(&state_pre.to_pod(), &pod_state_post))
 	}
 
 	/// Check caches for required data
