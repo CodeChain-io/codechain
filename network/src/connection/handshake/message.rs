@@ -16,17 +16,17 @@
 
 use rlp::{UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
 
-type Version = u32;
-type ProtocolId = u32;
+use super::super::message::ProtocolId;
+use super::super::message::Version;
+
+use super::super::message::ACK_ID;
+use super::super::message::SYNC_ID;
 
 #[derive(Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum Message {
     Sync(Version),
     Ack(Version),
 }
-
-const SYNC_ID: ProtocolId = 0x00;
-const ACK_ID: ProtocolId = 0x01;
 
 impl Message {
     pub fn sync() -> Self {
