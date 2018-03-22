@@ -83,5 +83,8 @@ pub trait BlockChain: ChainInfo + BlockInfo + TransactionInfo {}
 pub trait BlockChainClient : Sync + Send + BlockChain + ImportBlock {
     /// Queue transactions for importing.
     fn queue_transactions(&self, transactions: Vec<Bytes>, peer_id: usize);
+
+    /// Queue conensus engine message.
+    fn queue_consensus_message(&self, message: Bytes);
 }
 

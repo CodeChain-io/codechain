@@ -214,4 +214,11 @@ impl BlockChainClient for Client {
             }
         }
     }
+
+    fn queue_consensus_message(&self, message: Bytes) {
+        let channel = self.io_channel.lock().clone();
+        if let Err(e) = channel.send(ClientIoMessage::NewConsensusMessage(message)) {
+            debug!("Ignoring the message, error queueing: {}", e);
+        }
+    }
 }
