@@ -21,7 +21,7 @@ use std::sync::Arc;
 use std::collections::{HashMap, BTreeMap};
 use ccrypto::blake256;
 use ctypes::{H256, U256, Address};
-use cbytes::Bytes;
+use cbytes::{Bytes, ToPretty};
 use rlp::*;
 
 use std::cell::Cell;
@@ -129,11 +129,10 @@ impl fmt::Debug for Account {
 #[cfg(test)]
 mod tests {
 	use rlp_compress::{compress, decompress, snapshot_swapper};
-	use ethereum_types::{H256, Address};
+	use ctypes::{H256, Address};
 	use memorydb::MemoryDB;
 	use cbytes::Bytes;
 	use super::*;
-	use account_db::*;
 
 	#[test]
 	fn account_compress() {
