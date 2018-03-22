@@ -16,13 +16,13 @@
 
 use rlp::{UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
 
-type Version = u64;
-type ProtocolId = u32;
-type Seq = u64;
+use super::super::message::ProtocolId;
+use super::super::message::Seq;
+use super::super::message::Version;
 
-const REQUEST_ID: ProtocolId = 0x02;
-const ALLOWED_ID: ProtocolId = 0x03;
-const DENIED_ID: ProtocolId = 0x04;
+use super::super::message::ALLOWED_ID;
+use super::super::message::DENIED_ID;
+use super::super::message::REQUEST_ID;
 
 #[derive(Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct Message {

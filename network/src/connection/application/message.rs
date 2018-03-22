@@ -15,18 +15,15 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ccrypto::aes;
-use ctypes::hash::{H128, H256};
 use rcrypto::symmetriccipher::SymmetricCipherError;
 use rlp::{UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
 
-type Version = u64;
-type ProtocolId = u32;
-type SharedSecret = H256;
-type Nonce = H128;
-type SessionKey = (SharedSecret, Nonce);
+use super::super::message::ProtocolId;
+use super::super::message::SessionKey;
+use super::super::message::Version;
 
-const ENCRYPTED_ID: ProtocolId = 0x05;
-const UNENCRYPTED_ID: ProtocolId = 0x06;
+use super::super::message::ENCRYPTED_ID;
+use super::super::message::UNENCRYPTED_ID;
 
 #[derive(Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct Message {
@@ -139,8 +136,8 @@ impl Decodable for Message {
 #[cfg(test)]
 mod tests {
     use super::Message;
-    use super::Nonce;
-    use super::SharedSecret;
+    use super::super::super::message::Nonce;
+    use super::super::super::message::SharedSecret;
 
     #[test]
     fn encrypted_id_is_5() {

@@ -16,8 +16,10 @@
 
 mod application;
 mod handshake;
+mod message;
 mod negotiation;
 
-use self::application::Message as ApplicationMessage;
-use self::handshake::Message as HandshakeMessage;
-use self::negotiation::Message as NegotiationMessage;
+use self::message::ApplicationMessage;
+use self::message::HandshakeMessage;
+use self::message::Message;
+use self::message::NegotiationMessage;
