@@ -53,13 +53,11 @@ use trie::recorder::Recorder;
 
 
 mod account;
-mod substate;
 
 pub mod backend;
 
 pub use self::account::Account;
 pub use self::backend::Backend;
-pub use self::substate::Substate;
 
 /// Used to return information about an `State::apply` operation.
 pub struct ApplyOutcome<T, V> {
