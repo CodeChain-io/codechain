@@ -187,17 +187,6 @@ pub struct State<B: Backend> {
     trie_factory: TrieFactory,
 }
 
-/// Mode of dealing with null accounts.
-#[derive(PartialEq)]
-pub enum CleanupMode<'a> {
-    /// Create accounts which would be null.
-    ForceCreate,
-    /// Don't delete null accounts upon touching, but also don't create them.
-    NoEmpty,
-    /// Mark all touched accounts.
-    TrackTouched(&'a mut HashSet<Address>),
-}
-
 /// Provides subset of `State` methods to query state information
 pub trait StateInfo {
     /// Get the nonce of account `a`.
@@ -370,36 +359,28 @@ impl<B: Backend> State<B> {
     }
 
     /// Add `incr` to the balance of account `a`.
-    pub fn add_balance(&mut self, a: &Address, incr: &U256, cleanup_mode: CleanupMode) -> trie::Result<()> {
+    pub fn add_balance(&mut self, a: &Address, incr: &U256) -> trie::Result<()> {
         trace!(target: "state", "add_balance({}, {}): {}", a, incr, self.balance(a)?);
         let is_value_transfer = !incr.is_zero();
-        if is_value_transfer || (cleanup_mode == CleanupMode::ForceCreate && !self.exists(a)?) {
+        if is_value_transfer {
             self.require(a)?.add_balance(incr);
-        } else if let CleanupMode::TrackTouched(set) = cleanup_mode {
-            if self.exists(a)? {
-                set.insert(*a);
-                self.touch(a)?;
-            }
         }
         Ok(())
     }
 
     /// Subtract `decr` from the balance of account `a`.
-    pub fn sub_balance(&mut self, a: &Address, decr: &U256, cleanup_mode: &mut CleanupMode) -> trie::Result<()> {
+    pub fn sub_balance(&mut self, a: &Address, decr: &U256) -> trie::Result<()> {
         trace!(target: "state", "sub_balance({}, {}): {}", a, decr, self.balance(a)?);
         if !decr.is_zero() || !self.exists(a)? {
             self.require(a)?.sub_balance(decr);
-        }
-        if let CleanupMode::TrackTouched(ref mut set) = *cleanup_mode {
-            set.insert(*a);
         }
         Ok(())
     }
 
     /// Subtracts `by` from the balance of `from` and adds it to that of `to`.
-    pub fn transfer_balance(&mut self, from: &Address, to: &Address, by: &U256, mut cleanup_mode: CleanupMode) -> trie::Result<()> {
-        self.sub_balance(from, by, &mut cleanup_mode)?;
-        self.add_balance(to, by, cleanup_mode)?;
+    pub fn transfer_balance(&mut self, from: &Address, to: &Address, by: &U256) -> trie::Result<()> {
+        self.sub_balance(from, by)?;
+        self.add_balance(to, by)?;
         Ok(())
     }
 
