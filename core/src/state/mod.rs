@@ -253,19 +253,6 @@ impl<B: Backend> State<B> {
         Ok(state)
     }
 
-    /// Swap the current backend for another.
-    // TODO: [rob] find a less hacky way to avoid duplication of `Client::state_at`.
-    pub fn replace_backend<T: Backend>(self, backend: T) -> State<T> {
-        State {
-            db: backend,
-            root: self.root,
-            cache: self.cache,
-            checkpoints: self.checkpoints,
-            account_start_nonce: self.account_start_nonce,
-            trie_factory: self.trie_factory,
-        }
-    }
-
     /// Create a recoverable checkpoint of this state.
     pub fn checkpoint(&mut self) {
         self.checkpoints.get_mut().push(HashMap::new());
@@ -470,25 +457,6 @@ impl<B: Backend> State<B> {
     /// Clear state cache
     pub fn clear(&mut self) {
         self.cache.borrow_mut().clear();
-    }
-
-    /// Remove any touched empty or dust accounts.
-    pub fn kill_garbage(&mut self, touched: &HashSet<Address>, remove_empty_touched: bool, min_balance: &Option<U256>, kill_contracts: bool) -> trie::Result<()> {
-        let to_kill: HashSet<_> = {
-            self.cache.borrow().iter().filter_map(|(address, ref entry)|
-            if touched.contains(address) && // Check all touched accounts
-                ((remove_empty_touched && entry.exists_and_is_null()) // Remove all empty touched accounts.
-                || min_balance.map_or(false, |ref balance| entry.account.as_ref().map_or(false, |account|
-                    kill_contracts // Remove all basic and optionally contract accounts where balance has been decreased.
-                    && account.balance() < balance && entry.old_balance.as_ref().map_or(false, |b| account.balance() < b)))) {
-
-                Some(address.clone())
-            } else { None }).collect()
-        };
-        for address in to_kill {
-            self.kill_account(&address);
-        }
-        Ok(())
     }
 
     /// Check caches for required data
