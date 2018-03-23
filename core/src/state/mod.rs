@@ -212,9 +212,6 @@ impl<B: Backend> StateInfo for State<B> {
     fn balance(&self, a: &Address) -> trie::Result<U256> { State::balance(self, a) }
 }
 
-const SEC_TRIE_DB_UNWRAP_STR: &'static str = "A state can only be created with valid root. Creating a SecTrieDB with a valid root will not fail. \
-             Therefore creating a SecTrieDB with this state's root will not fail.";
-
 impl<B: Backend> State<B> {
     /// Creates new state with empty state root
     /// Used for tests.
