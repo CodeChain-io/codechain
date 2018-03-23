@@ -86,7 +86,7 @@ impl AccountEntry {
 	fn clone(&self) -> AccountEntry {
 		AccountEntry {
 			old_balance: self.old_balance,
-			account: self.account.as_ref().map(Account::clone_basic),
+			account: self.account.as_ref().map(Account::clone),
 			state: self.state,
 		}
 	}
@@ -479,7 +479,7 @@ impl<B: Backend> State<B> {
 			if touched.contains(address) && // Check all touched accounts
 				((remove_empty_touched && entry.exists_and_is_null()) // Remove all empty touched accounts.
 				|| min_balance.map_or(false, |ref balance| entry.account.as_ref().map_or(false, |account|
-					(account.is_basic() || kill_contracts) // Remove all basic and optionally contract accounts where balance has been decreased.
+					kill_contracts // Remove all basic and optionally contract accounts where balance has been decreased.
 					&& account.balance() < balance && entry.old_balance.as_ref().map_or(false, |b| account.balance() < b)))) {
 
 				Some(address.clone())
@@ -525,7 +525,7 @@ impl<B: Backend> State<B> {
 
 	/// Pull account `a` in our cache from the trie DB.
 	fn require<'a>(&'a self, a: &Address) -> trie::Result<RefMut<'a, Account>> {
-		self.require_or_from(a, || Account::new_basic(0u8.into(), self.account_start_nonce), |_|{})
+		self.require_or_from(a, || Account::new(0u8.into(), self.account_start_nonce), |_|{})
 	}
 
 	/// Pull account `a` in our cache from the trie DB.
