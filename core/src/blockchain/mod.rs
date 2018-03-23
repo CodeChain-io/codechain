@@ -16,6 +16,7 @@
 
 mod best_block;
 mod blockchain;
+mod block_info;
 mod extras;
 
 pub use self::blockchain::{BlockChain, BlockProvider};
