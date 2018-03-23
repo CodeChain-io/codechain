@@ -63,7 +63,7 @@ pub struct BlockChain {
 impl BlockChain {
     /// Create new instance of blockchain from given Genesis.
     pub fn new(genesis: &[u8], db: Arc<KeyValueDB>) -> BlockChain {
-        Self {
+        let mut bc = BlockChain {
             best_block: RwLock::new(BestBlock::default()),
             block_headers: RwLock::new(HashMap::new()),
             block_bodies: RwLock::new(HashMap::new()),
@@ -75,7 +75,58 @@ impl BlockChain {
             pending_block_hashes: RwLock::new(HashMap::new()),
             pending_block_details: RwLock::new(HashMap::new()),
             pending_transaction_addresses: RwLock::new(HashMap::new()),
+        };
+
+        // load best block
+        let best_block_hash = match bc.db.get(db::COL_EXTRA, b"best").unwrap() {
+            Some(best) => {
+                H256::from_slice(&best)
+            }
+            None => {
+                // best block does not exist
+                // we need to insert genesis into the cache
+                let block = BlockView::new(genesis);
+                let header = block.header_view();
+                let hash = block.hash();
+
+                let details = BlockDetails {
+                    number: header.number(),
+                    total_score: header.score(),
+                    parent: header.parent_hash(),
+                    children: vec![],
+                };
+
+                let mut batch = DBTransaction::new();
+                batch.put(db::COL_HEADERS, &hash, block.header_rlp().as_raw());
+                batch.put(db::COL_BODIES, &hash, &Self::block_to_body(genesis));
+
+                batch.write(db::COL_EXTRA, &hash, &details);
+                batch.write(db::COL_EXTRA, &header.number(), &hash);
+
+                batch.put(db::COL_EXTRA, b"best", &hash);
+                bc.db.write(batch).expect("Low level database error. Some issue with disk?");
+                hash
+            }
+        };
+        {
+            // Fetch best block details
+            let best_block_number = bc.block_number(&best_block_hash).unwrap();
+            let best_block_total_score = bc.block_details(&best_block_hash).unwrap().total_score;
+            let best_block_rlp = bc.block(&best_block_hash).unwrap().into_inner();
+            let best_block_timestamp = BlockView::new(&best_block_rlp).header().timestamp();
+
+            // and write them
+            let mut best_block = bc.best_block.write();
+            *best_block = BestBlock {
+                number: best_block_number,
+                total_score: best_block_total_score,
+                hash: best_block_hash,
+                timestamp: best_block_timestamp,
+                block: best_block_rlp,
+            };
         }
+
+        bc
     }
 
     /// Returns true if the given parent block has given child
