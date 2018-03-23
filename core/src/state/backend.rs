@@ -30,38 +30,30 @@ use hashdb::{AsHashDB, HashDB, DBValue};
 
 /// State backend. See module docs for more details.
 pub trait Backend: Send {
-	/// Treat the backend as a read-only hashdb.
-	fn as_hashdb(&self) -> &HashDB;
+    /// Treat the backend as a read-only hashdb.
+    fn as_hashdb(&self) -> &HashDB;
 
-	/// Treat the backend as a writeable hashdb.
-	fn as_hashdb_mut(&mut self) -> &mut HashDB;
+    /// Treat the backend as a writeable hashdb.
+    fn as_hashdb_mut(&mut self) -> &mut HashDB;
 
-	/// Add an account entry to the cache.
-	fn add_to_account_cache(&mut self, addr: Address, data: Option<Account>, modified: bool);
+    /// Add an account entry to the cache.
+    fn add_to_account_cache(&mut self, addr: Address, data: Option<Account>, modified: bool);
 
-	/// Add a global code cache entry. This doesn't need to worry about canonicality because
-	/// it simply maps hashes to raw code and will always be correct in the absence of
-	/// hash collisions.
-	fn cache_code(&self, hash: H256, code: Arc<Vec<u8>>);
+    /// Get basic copy of the cached account. Not required to include storage.
+    /// Returns 'None' if cache is disabled or if the account is not cached.
+    fn get_cached_account(&self, addr: &Address) -> Option<Option<Account>>;
 
-	/// Get basic copy of the cached account. Not required to include storage.
-	/// Returns 'None' if cache is disabled or if the account is not cached.
-	fn get_cached_account(&self, addr: &Address) -> Option<Option<Account>>;
+    /// Get value from a cached account.
+    /// `None` is passed to the closure if the account entry cached
+    /// is known not to exist.
+    /// `None` is returned if the entry is not cached.
+    fn get_cached<F, U>(&self, a: &Address, f: F) -> Option<U>
+        where F: FnOnce(Option<&mut Account>) -> U;
 
-	/// Get value from a cached account.
-	/// `None` is passed to the closure if the account entry cached
-	/// is known not to exist.
-	/// `None` is returned if the entry is not cached.
-	fn get_cached<F, U>(&self, a: &Address, f: F) -> Option<U>
-		where F: FnOnce(Option<&mut Account>) -> U;
+    /// Note that an account with the given address is non-null.
+    fn note_non_null_account(&self, address: &Address);
 
-	/// Get cached code based on hash.
-	fn get_cached_code(&self, hash: &H256) -> Option<Arc<Vec<u8>>>;
-
-	/// Note that an account with the given address is non-null.
-	fn note_non_null_account(&self, address: &Address);
-
-	/// Check whether an account is known to be empty. Returns true if known to be
-	/// empty, false otherwise.
-	fn is_known_null(&self, address: &Address) -> bool;
+    /// Check whether an account is known to be empty. Returns true if known to be
+    /// empty, false otherwise.
+    fn is_known_null(&self, address: &Address) -> bool;
 }
