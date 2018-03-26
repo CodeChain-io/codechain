@@ -24,6 +24,7 @@ extern crate heapsize;
 extern crate kvdb;
 extern crate kvdb_rocksdb;
 extern crate kvdb_memorydb;
+extern crate num_cpus;
 extern crate rlp;
 extern crate rlp_compress;
 #[macro_use]

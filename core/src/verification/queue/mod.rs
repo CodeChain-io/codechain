@@ -18,17 +18,22 @@ pub mod kind;
 
 use std::cmp;
 use std::collections::{VecDeque, HashSet, HashMap};
-use std::sync::Arc;
+use std::sync::{Condvar as SCondvar, Mutex as SMutex, Arc};
 use std::sync::atomic::{AtomicBool, Ordering as AtomicOrdering};
+use std::thread::{self, JoinHandle};
 
 use cio::IoChannel;
 use ctypes::{H256, U256};
+use num_cpus;
 use parking_lot::{Mutex, RwLock};
 
 use super::super::consensus::CodeChainEngine;
 use super::super::error::{Error, BlockError, ImportError};
 use super::super::service::ClientIoMessage;
 use self::kind::{BlockLike, Kind};
+
+// maximum possible number of verification threads.
+const MAX_VERIFIERS: usize = 8;
 
 /// Type alias for block queue convenience.
 pub type BlockQueue = VerificationQueue<kind::Blocks>;
@@ -37,8 +42,12 @@ pub struct VerificationQueue<K: Kind> {
     engine: Arc<CodeChainEngine>,
     verification: Arc<Verification<K>>,
     processing: RwLock<HashMap<H256, U256>>, // hash to score
+    deleting: Arc<AtomicBool>,
     ready_signal: Arc<QueueSignal>,
     total_score: RwLock<U256>,
+    empty: Arc<SCondvar>,
+    more_to_verify: Arc<SCondvar>,
+    verifier_handles: Vec<JoinHandle<()>>,
 }
 
 struct QueueSignal {
@@ -82,25 +91,160 @@ impl QueueSignal {
 }
 
 impl<K: Kind> VerificationQueue<K> {
-    pub fn new(engine: Arc<CodeChainEngine>, message_channel: IoChannel<ClientIoMessage>) -> Self {
+    pub fn new(engine: Arc<CodeChainEngine>, message_channel: IoChannel<ClientIoMessage>, check_seal: bool) -> Self {
         let verification = Arc::new(Verification {
             unverified: Mutex::new(VecDeque::new()),
+            verifying: Mutex::new(VecDeque::new()),
             verified: Mutex::new(VecDeque::new()),
             bad: Mutex::new(HashSet::new()),
+            check_seal,
+            empty_mutex: SMutex::new(()),
+            more_to_verify_mutex: SMutex::new(()),
         });
-        let engine = engine.clone();
         let deleting = Arc::new(AtomicBool::new(false));
         let ready_signal = Arc::new(QueueSignal {
             deleting: deleting.clone(),
             signalled: AtomicBool::new(false),
             message_channel: Mutex::new(message_channel),
         });
+        let empty = Arc::new(SCondvar::new());
+        let more_to_verify = Arc::new(SCondvar::new());
+
+        let num_verifiers = cmp::min(num_cpus::get(), MAX_VERIFIERS);
+        let mut verifier_handles = Vec::with_capacity(num_verifiers);
+
+        for i in 0..num_verifiers {
+            let engine = engine.clone();
+            let verification = verification.clone();
+            let more_to_verify = more_to_verify.clone();
+            let ready_signal = ready_signal.clone();
+            let empty = empty.clone();
+
+            let handle = thread::Builder::new()
+                .name(format!("Verifier #{}", i))
+                .spawn(move || {
+                    VerificationQueue::verify(
+                        verification,
+                        engine,
+                        ready_signal,
+                        empty,
+                        more_to_verify,
+                        i,
+                    )
+                })
+                .expect("Failed to create verifier thread.");
+            verifier_handles.push(handle);
+        }
+
         Self {
             engine,
             verification,
             processing: RwLock::new(HashMap::new()),
+            deleting,
             ready_signal,
             total_score: RwLock::new(0.into()),
+            empty,
+            more_to_verify,
+            verifier_handles
+        }
+    }
+
+    fn verify(
+        verification: Arc<Verification<K>>,
+        engine: Arc<CodeChainEngine>,
+        ready_signal: Arc<QueueSignal>,
+        empty: Arc<SCondvar>,
+        more_to_verify: Arc<SCondvar>,
+        id: usize,
+    ) {
+        loop {
+            // wait for work if empty.
+            {
+                let mut more_to_verify_mutex = verification.more_to_verify_mutex.lock().unwrap();
+
+                if verification.unverified.lock().is_empty() && verification.verifying.lock().is_empty() {
+                    empty.notify_all();
+                }
+
+                while verification.unverified.lock().is_empty() {
+                    more_to_verify_mutex = more_to_verify.wait(more_to_verify_mutex).unwrap();
+                }
+            }
+
+            // do work.
+            let item = {
+                // acquire these locks before getting the item to verify.
+                let mut unverified = verification.unverified.lock();
+                let mut verifying = verification.verifying.lock();
+
+                let item = match unverified.pop_front() {
+                    Some(item) => item,
+                    None => continue,
+                };
+
+                verifying.push_back(Verifying { hash: item.hash(), output: None });
+                item
+            };
+
+            let hash = item.hash();
+            let is_ready = match K::verify(item, &*engine, verification.check_seal) {
+                Ok(verified) => {
+                    let mut verifying = verification.verifying.lock();
+                    let mut idx = None;
+                    for (i, e) in verifying.iter_mut().enumerate() {
+                        if e.hash == hash {
+                            idx = Some(i);
+
+                            e.output = Some(verified);
+                            break;
+                        }
+                    }
+
+                    if idx == Some(0) {
+                        // we're next!
+                        let mut verified = verification.verified.lock();
+                        let mut bad = verification.bad.lock();
+                        VerificationQueue::drain_verifying(&mut verifying, &mut verified, &mut bad);
+                        true
+                    } else {
+                        false
+                    }
+                },
+                Err(_) => {
+                    let mut verifying = verification.verifying.lock();
+                    let mut verified = verification.verified.lock();
+                    let mut bad = verification.bad.lock();
+
+                    bad.insert(hash.clone());
+                    verifying.retain(|e| e.hash != hash);
+
+                    if verifying.front().map_or(false, |x| x.output.is_some()) {
+                        VerificationQueue::drain_verifying(&mut verifying, &mut verified, &mut bad);
+                        true
+                    } else {
+                        false
+                    }
+                }
+            };
+            if is_ready {
+                // Import the block immediately
+                ready_signal.set_sync();
+            }
+        }
+    }
+
+    fn drain_verifying(
+        verifying: &mut VecDeque<Verifying<K>>,
+        verified: &mut VecDeque<K::Verified>,
+        bad: &mut HashSet<H256>,
+    ) {
+        while let Some(output) = verifying.front_mut().and_then(|x| x.output.take()) {
+            assert!(verifying.pop_front().is_some());
+            if bad.contains(&output.parent_hash()) {
+                bad.insert(output.hash());
+            } else {
+                verified.push_back(output);
+            }
         }
     }
 
@@ -131,6 +275,7 @@ impl<K: Kind> VerificationQueue<K> {
                 }
 
                 self.verification.unverified.lock().push_back(item);
+                self.more_to_verify.notify_all();
                 Ok(h)
             },
             Err(err) => {
@@ -218,6 +363,17 @@ impl<K: Kind> VerificationQueue<K> {
 
 struct Verification<K: Kind> {
     unverified: Mutex<VecDeque<K::Unverified>>,
+    verifying: Mutex<VecDeque<Verifying<K>>>,
     verified: Mutex<VecDeque<K::Verified>>,
     bad: Mutex<HashSet<H256>>,
+    check_seal: bool,
+    empty_mutex: SMutex<()>,
+    more_to_verify_mutex: SMutex<()>,
 }
+
+/// An item which is in the process of being verified.
+pub struct Verifying<K: Kind> {
+    hash: H256,
+    output: Option<K::Verified>,
+}
+

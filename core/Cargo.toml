@@ -12,6 +12,7 @@ codechain-keys = { path="../keys" }
 codechain-types = { path = "../primitives/codechain-types" }
 heapsize = "0.4"
 log = "0.3"
+num_cpus = "1.2"
 kvdb = { path = "../util/kvdb" }
 kvdb-rocksdb = { path = "../util/kvdb-rocksdb" }
 kvdb-memorydb = { path = "../util/kvdb-memorydb" }

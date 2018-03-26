@@ -38,6 +38,16 @@ pub enum VerifierType {
     Noop,
 }
 
+impl VerifierType {
+    /// Check if seal verification is enabled for this verifier type.
+    pub fn verifying_seal(&self) -> bool {
+        match *self {
+            VerifierType::Canon => true,
+            VerifierType::Noop | VerifierType::CanonNoSeal => false,
+        }
+    }
+}
+
 impl Default for VerifierType {
     // FIXME: Change the default verifier to Canon once it is implemented.
     fn default() -> Self {
