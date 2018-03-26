@@ -377,3 +377,57 @@ pub struct Verifying<K: Kind> {
     output: Option<K::Verified>,
 }
 
+#[cfg(test)]
+mod tests {
+    use cio::IoChannel;
+    use tests::helpers::*;
+
+    use super::BlockQueue;
+    use super::kind::blocks::Unverified;
+    use super::super::super::error::{Error, ImportError};
+    use super::super::super::spec::Spec;
+
+    // create a test block queue.
+    // auto_scaling enables verifier adjustment.
+    fn get_test_queue() -> BlockQueue {
+        let spec = get_test_spec();
+        let engine = spec.engine;
+
+        BlockQueue::new(engine, IoChannel::disconnected(), true)
+    }
+
+    #[test]
+    fn can_be_created() {
+        // TODO better test
+        let spec = Spec::new_solo();
+        let engine = spec.engine;
+        let _ = BlockQueue::new(engine, IoChannel::disconnected(), true);
+    }
+
+    #[test]
+    fn can_import_blocks() {
+        let queue = get_test_queue();
+        if let Err(e) = queue.import(Unverified::new(get_good_dummy_block())) {
+            panic!("error importing block that is valid by definition({:?})", e);
+        }
+    }
+
+    #[test]
+    fn returns_error_for_duplicates() {
+        let queue = get_test_queue();
+        if let Err(e) = queue.import(Unverified::new(get_good_dummy_block())) {
+            panic!("error importing block that is valid by definition({:?})", e);
+        }
+
+        let duplicate_import = queue.import(Unverified::new(get_good_dummy_block()));
+        match duplicate_import {
+            Err(e) => {
+                match e {
+                    Error::Import(ImportError::AlreadyQueued) => {},
+                    _ => { panic!("must return AlreadyQueued error"); }
+                }
+            }
+            Ok(_) => { panic!("must produce error"); }
+        }
+    }
+}

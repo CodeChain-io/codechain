@@ -20,6 +20,10 @@ use header::Header;
 use rlp::{self, RlpStream};
 use spec::Spec;
 
+pub fn get_test_spec() -> Spec {
+    Spec::new_solo()
+}
+
 pub fn create_test_block(header: &Header) -> Bytes {
     let mut rlp = RlpStream::new_list(2);
     rlp.append(header);
