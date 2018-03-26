@@ -17,7 +17,7 @@
 use std::path::Path;
 
 use ccore::{ClientService, Spec};
-use cnetwork::{Address, HandshakeService};
+use cnetwork::{Address, NetworkService};
 use crpc::Server as RpcServer;
 use rpc::HttpConfiguration as RpcHttpConfig;
 
@@ -29,10 +29,10 @@ pub fn rpc_start(cfg: RpcHttpConfig) -> RpcServer {
     rpc::new_http(cfg).unwrap().unwrap()
 }
 
-pub fn handshake_start(cfg: config::NetworkConfig) -> HandshakeService {
+pub fn network_start(cfg: config::NetworkConfig) -> NetworkService {
     info!("Handshake Listening on {}", cfg.port);
     let address = Address::v4(127, 0, 0, 1, cfg.port);
-    HandshakeService::start(address, cfg.bootstrap_addresses).unwrap()
+    NetworkService::start(address, cfg.bootstrap_addresses).unwrap()
 }
 
 pub fn client_start(cfg: &config::Config, spec: &Spec) -> ClientService {
