@@ -18,15 +18,17 @@
 
 use std::collections::{VecDeque, HashSet};
 use std::sync::Arc;
+
+use ctypes::{H256, Address};
 use lru_cache::LruCache;
 use journaldb::JournalDB;
 use kvdb::{KeyValueDB, DBTransaction};
-use ethereum_types::{H256, Address};
 use hashdb::HashDB;
 use state::{self, Account};
-use header::BlockNumber;
 use parking_lot::Mutex;
 use util_error::UtilError;
+
+use super::types::BlockNumber;
 
 const STATE_CACHE_BLOCKS: usize = 12;
 
@@ -353,7 +355,7 @@ impl state::Backend for StateDB {
         if !Self::is_allowed(addr, &self.parent_hash, &cache.modifications) {
             return None;
         }
-        cache.accounts.get_mut(addr).map(|a| a.as_ref().map(|a| a.clone_basic()))
+        cache.accounts.get_mut(addr).map(|a| a.as_ref().map(|a| a.clone()))
     }
 
     fn get_cached<F, U>(&self, a: &Address, f: F) -> Option<U>
