@@ -24,7 +24,6 @@ use super::handshake;
 
 pub struct Service {
     handshake_service: IoService<handshake::HandlerMessage>,
-    handshake: Option<handshake::Handshake>,
 }
 
 impl Service {
@@ -38,7 +37,6 @@ impl Service {
         }
         Ok(Self {
             handshake_service,
-            handshake: None,
         })
     }
 }
