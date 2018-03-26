@@ -87,6 +87,11 @@ impl Default for Header {
 }
 
 impl Header {
+    /// Create a new, default-valued, header.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     /// Get the parent_hash field of the header.
     pub fn parent_hash(&self) -> &H256 { &self.parent_hash }
     /// Get the timestamp field of the header.
