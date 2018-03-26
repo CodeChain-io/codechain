@@ -238,7 +238,7 @@ fn decrypt_and_decode_nonce(session: &Session, encrypted_bytes: &Vec<u8>) -> Res
 }
 
 struct Internal {
-    handshake: Option<Handshake>,
+    handshake: Handshake,
     connect_queue: VecDeque<Address>,
 }
 
@@ -249,10 +249,11 @@ pub struct Handler {
 
 impl Handler {
     pub fn new(address: Address) -> Self {
+        let mut handshake = Handshake::bind(&address).expect("Cannot bind UDP port");
         Self {
             address,
             internal: Mutex::new(Internal {
-                handshake: None,
+                handshake,
                 connect_queue: VecDeque::new(),
             })
         }
@@ -261,7 +262,6 @@ impl Handler {
 
 #[derive(Clone, Debug, PartialOrd, PartialEq)]
 pub enum HandlerMessage {
-    Bind,
     ConnectTo(Address),
 }
 
@@ -269,67 +269,48 @@ const RECV_TOKEN: usize = 0;
 
 impl IoHandler<HandlerMessage> for Handler {
     fn initialize(&self, io: &IoContext<HandlerMessage>) {
-        io.message(HandlerMessage::Bind).expect("Cannot run UDP io service");
+        if let Err(err) = io.register_stream(RECV_TOKEN) {
+            info!("Cannot register udp stream {:?}", err);
+        }
     }
 
     fn message(&self, io: &IoContext<HandlerMessage>, message: &HandlerMessage) {
         match message {
-            &HandlerMessage::Bind => {
-                info!("Handshake service bind to {:?}", &self.address);
-                let ref mut internal = self.internal.lock();
-                debug_assert!(internal.handshake.is_none());
-
-                let mut handshake = Handshake::bind(&self.address).expect("Cannot bind UDP port");
-                if let Err(err) = io.register_stream(RECV_TOKEN) {
-                    info!("Cannot register udp stream {:?}", err);
-                }
-
+            &HandlerMessage::ConnectTo(ref address) => {
+                let mut internal = self.internal.lock();
                 {
                     let ref mut queue = internal.connect_queue;
-                    for address in queue.iter() {
-                        handshake.table.insert(address.clone(), Session::new(SharedSecret::zero())); // FIXME: Remove it
-                        connect_to(&mut handshake, &address);
-                    }
-                    queue.clear();
+                    queue.push_back(address.clone());
                 }
-
-                internal.handshake = Some(handshake);
-            },
-            &HandlerMessage::ConnectTo(ref address) => {
-                let ref mut internal = self.internal.lock();
-                if let Some(mut handshake) = internal.handshake.as_mut() {
-                    connect_to(&mut handshake, &address);
-                    return;
+                {
+                    let ref mut handshake = internal.handshake;
+                    handshake.table.insert(address.clone(), Session::new(SharedSecret::zero())); // FIXME: Remove it
                 }
-                let ref mut queue = internal.connect_queue;
-                queue.push_back(address.clone());
             },
         };
     }
 
     fn stream_hup(&self, _io: &IoContext<HandlerMessage>, _stream: StreamToken) {
         info!("handshake server closed");
-        let ref mut internal = self.internal.lock();
-        internal.handshake = None;
     }
 
     fn stream_readable(&self, _io: &IoContext<HandlerMessage>, stream: StreamToken) {
         match stream {
             RECV_TOKEN => {
                 loop {
-                    if let Some(mut handshake) = self.internal.lock().handshake.as_mut() {
-                        match handshake.receive() {
-                            Ok(None) => {
-                                break;
-                            },
-                            Ok(Some((msg, address))) => {
-                                info!("{:?} from {:?}", msg, address);
-                                handshake.on_packet(&msg, &address);
-                            },
-                            Err(err) => {
-                                info!("handshake receive error {}", err);
-                            },
-                        };
+                    let mut internal = self.internal.lock();
+                    let ref mut handshake = internal.handshake;
+                    match handshake.receive() {
+                        Ok(None) => {
+                            break;
+                        },
+                        Ok(Some((msg, address))) => {
+                            info!("{:?} from {:?}", msg, address);
+                            handshake.on_packet(&msg, &address);
+                        },
+                        Err(err) => {
+                            info!("handshake receive error {}", err);
+                        },
                     };
                 };
             },
@@ -339,16 +320,25 @@ impl IoHandler<HandlerMessage> for Handler {
         };
     }
 
+    fn stream_writable(&self, _io: &IoContext<HandlerMessage>, stream: StreamToken) {
+        loop {
+            let mut internal = self.internal.lock();
+            if let Some(ref address) = internal.connect_queue.pop_front().as_ref() {
+                let ref mut handshake = internal.handshake;
+                connect_to(handshake, &address);
+            } else {
+                break
+            }
+        }
+    }
+
     fn register_stream(&self, stream: StreamToken, _reg: Token, event_loop: &mut EventLoop<IoManager<HandlerMessage>>) {
         match stream {
             RECV_TOKEN => {
                 let mut internal = self.internal.lock();
-                if let Some(mut handshake) = internal.handshake.as_mut() {
-                    if let Err(err) = event_loop.register(&handshake.socket, Token(RECV_TOKEN), Ready::all(), PollOpt::edge()) {
-                        info!("Cannot register udp socket {:?}", err);
-                    }
-                } else {
-                    panic!("Error in creating UDP socket");
+                let ref mut handshake = internal.handshake;
+                if let Err(err) = event_loop.register(&handshake.socket, Token(RECV_TOKEN), Ready::all(), PollOpt::edge()) {
+                    info!("Cannot register udp socket {:?}", err);
                 }
             },
             _ => {
