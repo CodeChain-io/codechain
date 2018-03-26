@@ -18,12 +18,15 @@ pub mod kind;
 
 use std::collections::{VecDeque, HashSet, HashMap};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering as AtomicOrdering};
 
+use cio::IoChannel;
 use ctypes::{H256, U256};
 use parking_lot::{Mutex, RwLock};
 
 use super::super::consensus::CodeChainEngine;
 use super::super::error::{Error, BlockError, ImportError};
+use super::super::service::ClientIoMessage;
 use self::kind::{BlockLike, Kind};
 
 /// Type alias for block queue convenience.
@@ -33,21 +36,69 @@ pub struct VerificationQueue<K: Kind> {
     engine: Arc<CodeChainEngine>,
     verification: Arc<Verification<K>>,
     processing: RwLock<HashMap<H256, U256>>, // hash to score
+    ready_signal: Arc<QueueSignal>,
     total_score: RwLock<U256>,
 }
 
+struct QueueSignal {
+    deleting: Arc<AtomicBool>,
+    signalled: AtomicBool,
+    message_channel: Mutex<IoChannel<ClientIoMessage>>,
+}
+
+impl QueueSignal {
+    fn set_sync(&self) {
+        // Do not signal when we are about to close
+        if self.deleting.load(AtomicOrdering::Relaxed) {
+            return;
+        }
+
+        if self.signalled.compare_and_swap(false, true, AtomicOrdering::Relaxed) == false {
+            let channel = self.message_channel.lock().clone();
+            if let Err(e) = channel.send_sync(ClientIoMessage::BlockVerified) {
+                debug!("Error sending BlockVerified message: {:?}", e);
+            }
+        }
+    }
+
+    fn set_async(&self) {
+        // Do not signal when we are about to close
+        if self.deleting.load(AtomicOrdering::Relaxed) {
+            return;
+        }
+
+        if self.signalled.compare_and_swap(false, true, AtomicOrdering::Relaxed) == false {
+            let channel = self.message_channel.lock().clone();
+            if let Err(e) = channel.send(ClientIoMessage::BlockVerified) {
+                debug!("Error sending BlockVerified message: {:?}", e);
+            }
+        }
+    }
+
+    fn reset(&self) {
+        self.signalled.store(false, AtomicOrdering::Relaxed);
+    }
+}
+
 impl<K: Kind> VerificationQueue<K> {
-    pub fn new(engine: Arc<CodeChainEngine>) -> Self {
+    pub fn new(engine: Arc<CodeChainEngine>, message_channel: IoChannel<ClientIoMessage>) -> Self {
         let verification = Arc::new(Verification {
             unverified: Mutex::new(VecDeque::new()),
             verified: Mutex::new(VecDeque::new()),
             bad: Mutex::new(HashSet::new()),
         });
         let engine = engine.clone();
+        let deleting = Arc::new(AtomicBool::new(false));
+        let ready_signal = Arc::new(QueueSignal {
+            deleting: deleting.clone(),
+            signalled: AtomicBool::new(false),
+            message_channel: Mutex::new(message_channel),
+        });
         Self {
             engine,
             verification,
             processing: RwLock::new(HashMap::new()),
+            ready_signal,
             total_score: RwLock::new(0.into()),
         }
     }

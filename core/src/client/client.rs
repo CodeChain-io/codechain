@@ -65,7 +65,7 @@ impl Client {
         let gb = spec.genesis_block();
         let chain = Arc::new(BlockChain::new(&gb, db.clone()));
 
-        let importer = Importer::new(&config, engine.clone())?;
+        let importer = Importer::new(&config, engine.clone(), message_channel.clone())?;
 
         let client = Arc::new(Client {
             engine,

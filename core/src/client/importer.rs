@@ -16,9 +16,12 @@
 
 use std::sync::Arc;
 
+use cio::IoChannel;
+
 use super::{Client, ClientConfig};
 use super::super::consensus::CodeChainEngine;
 use super::super::error::Error;
+use super::super::service::ClientIoMessage;
 use super::super::verification::{self, Verifier};
 use super::super::verification::queue::BlockQueue;
 
@@ -37,8 +40,9 @@ impl Importer {
     pub fn new(
         config: &ClientConfig,
         engine: Arc<CodeChainEngine>,
+        message_channel: IoChannel<ClientIoMessage>,
     ) -> Result<Importer, Error> {
-        let block_queue = BlockQueue::new(engine.clone());
+        let block_queue = BlockQueue::new(engine.clone(), message_channel.clone());
 
         Ok(Importer {
             verifier: verification::new(config.verifier_type.clone()),
