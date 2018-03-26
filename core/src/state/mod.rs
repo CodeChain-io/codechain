@@ -37,6 +37,9 @@ use trie::{Trie, TrieFactory, TrieError};
 
 mod account;
 
+#[cfg(test)]
+use state_db::StateDB;
+
 pub mod backend;
 
 pub use self::account::Account;
@@ -510,17 +513,60 @@ impl<B: Backend> fmt::Debug for State<B> {
     }
 }
 
+// TODO: cloning for `State` shouldn't be possible in general; Remove this and use
+// checkpoints where possible.
+#[cfg(test)]
+impl Clone for State<StateDB> {
+    fn clone(&self) -> State<StateDB> {
+        let cache = {
+            let mut cache: HashMap<Address, AccountEntry> = HashMap::new();
+            for (key, val) in self.cache.borrow().iter() {
+                if val.is_dirty() {
+                    cache.insert(key.clone(), AccountEntry::new_dirty(val.account.clone()));
+                }
+            }
+            cache
+        };
+
+        State {
+            db: self.db.boxed_clone(),
+            root: self.root.clone(),
+            cache: RefCell::new(cache),
+            checkpoints: RefCell::new(Vec::new()),
+            account_start_nonce: self.account_start_nonce.clone(),
+            trie_factory: self.trie_factory.clone(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::sync::Arc;
     use std::str::FromStr;
-    use rustc_hex::FromHex;
+
     use ccrypto::blake256;
-    use super::*;
-    use ctypes::{H256, U256, Address, Secret};
-    use tests::helpers::{get_temp_state, get_temp_state_db};
-    use spec::*;
     use clogger::init_log;
+    use ctypes::{H256, U256, Address, Secret};
+    use state_db::StateDB;
+
+    use spec::*;
+
+    use super::*;
+
+    fn get_temp_state() -> State<StateDB> {
+        let journal_db = get_temp_state_db();
+        State::new(journal_db, U256::from(0), Default::default())
+    }
+
+    fn new_db() -> Arc<::kvdb::KeyValueDB> {
+        Arc::new(::kvdb_memorydb::create(::db::NUM_COLUMNS.unwrap_or(0)))
+    }
+
+    fn get_temp_state_db() -> StateDB {
+        let db = new_db();
+        let journal_db = ::journaldb::new(db, ::journaldb::Algorithm::Archive, ::db::COL_STATE);
+        StateDB::new(journal_db, 5 * 1024 * 1024)
+    }
 
     fn secret() -> Secret {
         blake256("").into()
@@ -550,7 +596,7 @@ mod tests {
         let (root, db) = {
             let mut state = get_temp_state();
             state.inc_nonce(&a).unwrap();
-            state.add_balance(&a, &U256::from(69u64), CleanupMode::NoEmpty).unwrap();
+            state.add_balance(&a, &U256::from(69u64)).unwrap();
             state.commit().unwrap();
             assert_eq!(state.balance(&a).unwrap(), U256::from(69u64));
             state.drop()
@@ -583,7 +629,7 @@ mod tests {
         let db = get_temp_state_db();
         let (root, db) = {
             let mut state = State::new(db, U256::from(0), Default::default());
-            state.add_balance(&a, &U256::default(), CleanupMode::NoEmpty).unwrap(); // create an empty account
+            state.add_balance(&a, &U256::default()).unwrap(); // create an empty account
             state.commit().unwrap();
             state.drop()
         };
@@ -598,7 +644,7 @@ mod tests {
         let db = get_temp_state_db();
         let (root, db) = {
             let mut state = State::new(db, U256::from(0), Default::default());
-            state.add_balance(&a, &U256::default(), CleanupMode::ForceCreate).unwrap(); // create an empty account
+            state.add_balance(&a, &U256::default()).unwrap(); // create an empty account
             state.commit().unwrap();
             state.drop()
         };
@@ -640,15 +686,15 @@ mod tests {
         let mut state = get_temp_state();
         let a = Address::zero();
         let b = 1u64.into();
-        state.add_balance(&a, &U256::from(69u64), CleanupMode::NoEmpty).unwrap();
+        state.add_balance(&a, &U256::from(69u64)).unwrap();
         assert_eq!(state.balance(&a).unwrap(), U256::from(69u64));
         state.commit().unwrap();
         assert_eq!(state.balance(&a).unwrap(), U256::from(69u64));
-        state.sub_balance(&a, &U256::from(42u64), &mut CleanupMode::NoEmpty).unwrap();
+        state.sub_balance(&a, &U256::from(42u64)).unwrap();
         assert_eq!(state.balance(&a).unwrap(), U256::from(27u64));
         state.commit().unwrap();
         assert_eq!(state.balance(&a).unwrap(), U256::from(27u64));
-        state.transfer_balance(&a, &b, &U256::from(18u64), CleanupMode::NoEmpty).unwrap();
+        state.transfer_balance(&a, &b, &U256::from(18u64)).unwrap();
         assert_eq!(state.balance(&a).unwrap(), U256::from(9u64));
         assert_eq!(state.balance(&b).unwrap(), U256::from(18u64));
         state.commit().unwrap();
@@ -687,7 +733,7 @@ mod tests {
     fn ensure_cached() {
         let mut state = get_temp_state();
         let a = Address::zero();
-        state.require(&a, false).unwrap();
+        state.require(&a).unwrap();
         state.commit().unwrap();
         assert_eq!(*state.root(), "0ce23f3c809de377b008a4a3ee94a0834aac8bec1f86e28ffe4fdb5a15b0c785".into());
     }
@@ -697,12 +743,12 @@ mod tests {
         let mut state = get_temp_state();
         let a = Address::zero();
         state.checkpoint();
-        state.add_balance(&a, &U256::from(69u64), CleanupMode::NoEmpty).unwrap();
+        state.add_balance(&a, &U256::from(69u64)).unwrap();
         assert_eq!(state.balance(&a).unwrap(), U256::from(69u64));
         state.discard_checkpoint();
         assert_eq!(state.balance(&a).unwrap(), U256::from(69u64));
         state.checkpoint();
-        state.add_balance(&a, &U256::from(1u64), CleanupMode::NoEmpty).unwrap();
+        state.add_balance(&a, &U256::from(1u64)).unwrap();
         assert_eq!(state.balance(&a).unwrap(), U256::from(70u64));
         state.revert_to_checkpoint();
         assert_eq!(state.balance(&a).unwrap(), U256::from(69u64));
@@ -714,7 +760,7 @@ mod tests {
         let a = Address::zero();
         state.checkpoint();
         state.checkpoint();
-        state.add_balance(&a, &U256::from(69u64), CleanupMode::NoEmpty).unwrap();
+        state.add_balance(&a, &U256::from(69u64)).unwrap();
         assert_eq!(state.balance(&a).unwrap(), U256::from(69u64));
         state.discard_checkpoint();
         assert_eq!(state.balance(&a).unwrap(), U256::from(69u64));
@@ -727,40 +773,5 @@ mod tests {
         let mut state = get_temp_state();
         state.commit().unwrap();
         assert_eq!(*state.root(), "56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421".into());
-    }
-
-    #[test]
-    fn should_kill_garbage() {
-        let a = 10.into();
-        let b = 20.into();
-        let c = 30.into();
-        let d = 40.into();
-        let x = 0.into();
-        let db = get_temp_state_db();
-        let (root, db) = {
-            let mut state = State::new(db, U256::from(0), Default::default());
-            state.add_balance(&a, &U256::default(), CleanupMode::ForceCreate).unwrap(); // create an empty account
-            state.add_balance(&b, &100.into(), CleanupMode::ForceCreate).unwrap(); // create a dust account
-            state.add_balance(&c, &101.into(), CleanupMode::ForceCreate).unwrap(); // create a normal account
-            state.add_balance(&d, &99.into(), CleanupMode::ForceCreate).unwrap(); // create another dust account
-            state.commit().unwrap();
-            state.drop()
-        };
-
-        let mut state = State::from_existing(db, root, U256::from(0u8), Default::default()).unwrap();
-        let mut touched = HashSet::new();
-        state.add_balance(&a, &U256::default(), CleanupMode::TrackTouched(&mut touched)).unwrap(); // touch an account
-        state.transfer_balance(&b, &x, &1.into(), CleanupMode::TrackTouched(&mut touched)).unwrap(); // touch an account decreasing its balance
-        state.transfer_balance(&c, &x, &1.into(), CleanupMode::TrackTouched(&mut touched)).unwrap(); // touch an account decreasing its balance
-        state.kill_garbage(&touched, true, &None, false).unwrap();
-        assert!(!state.exists(&a).unwrap());
-        assert!(state.exists(&b).unwrap());
-        state.kill_garbage(&touched, true, &Some(100.into()), false).unwrap();
-        assert!(!state.exists(&b).unwrap());
-        assert!(state.exists(&c).unwrap());
-        assert!(state.exists(&d).unwrap());
-        state.kill_garbage(&touched, true, &Some(100.into()), true).unwrap();
-        assert!(state.exists(&c).unwrap());
-        assert!(state.exists(&d).unwrap());
     }
 }

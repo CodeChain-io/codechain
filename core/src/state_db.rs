@@ -377,11 +377,23 @@ unsafe impl Sync for SyncAccount {}
 
 #[cfg(test)]
 mod tests {
-    use ethereum_types::{H256, U256, Address};
+    use std::sync::Arc;
+    use ctypes::{H256, U256, Address};
     use kvdb::DBTransaction;
-    use tests::helpers::{get_temp_state_db};
-    use state::{Account, Backend};
-    use ethcore_logger::init_log;
+    use clogger::init_log;
+
+    use super::state::{State, Backend, Account};
+    use super::{StateDB};
+
+    fn new_db() -> Arc<::kvdb::KeyValueDB> {
+        Arc::new(::kvdb_memorydb::create(::db::NUM_COLUMNS.unwrap_or(0)))
+    }
+
+    fn get_temp_state_db() -> StateDB {
+        let db = new_db();
+        let journal_db = ::journaldb::new(db, ::journaldb::Algorithm::Archive, ::db::COL_STATE);
+        StateDB::new(journal_db, 5 * 1024 * 1024)
+    }
 
     #[test]
     fn state_db_smoke() {
@@ -402,7 +414,7 @@ mod tests {
         // blocks  [ 3a(c) 2a(c) 2b 1b 1a(c) 0 ]
         // balance [ 5     5     4  3  2     2 ]
         let mut s = state_db.boxed_clone_canon(&root_parent);
-        s.add_to_account_cache(address, Some(Account::new_basic(2.into(), 0.into())), false);
+        s.add_to_account_cache(address, Some(Account::new(2.into(), 0.into())), false);
         s.journal_under(&mut batch, 0, &h0).unwrap();
         s.sync_cache(&[], &[], true);
 
@@ -411,17 +423,17 @@ mod tests {
         s.sync_cache(&[], &[], true);
 
         let mut s = state_db.boxed_clone_canon(&h0);
-        s.add_to_account_cache(address, Some(Account::new_basic(3.into(), 0.into())), true);
+        s.add_to_account_cache(address, Some(Account::new(3.into(), 0.into())), true);
         s.journal_under(&mut batch, 1, &h1b).unwrap();
         s.sync_cache(&[], &[], false);
 
         let mut s = state_db.boxed_clone_canon(&h1b);
-        s.add_to_account_cache(address, Some(Account::new_basic(4.into(), 0.into())), true);
+        s.add_to_account_cache(address, Some(Account::new(4.into(), 0.into())), true);
         s.journal_under(&mut batch, 2, &h2b).unwrap();
         s.sync_cache(&[], &[], false);
 
         let mut s = state_db.boxed_clone_canon(&h1a);
-        s.add_to_account_cache(address, Some(Account::new_basic(5.into(), 0.into())), true);
+        s.add_to_account_cache(address, Some(Account::new(5.into(), 0.into())), true);
         s.journal_under(&mut batch, 2, &h2a).unwrap();
         s.sync_cache(&[], &[], true);
 
