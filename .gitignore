@@ -7,3 +7,4 @@
 **/*.rs.bk
 **/*.iml
 .idea/
+db/
