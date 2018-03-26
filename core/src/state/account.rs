@@ -46,6 +46,11 @@ impl Account {
         ::rlp::decode(rlp)
     }
 
+    /// Export to RLP.
+    pub fn rlp(&self) -> Bytes {
+        ::rlp::encode(self).into_vec()
+    }
+
     /// return the balance associated with this account.
     pub fn balance(&self) -> &U256 { &self.balance }
 
@@ -75,14 +80,6 @@ impl Account {
         self.balance = self.balance - *x;
     }
 
-    /// Export to RLP.
-    pub fn rlp(&self) -> Bytes {
-        let mut stream = RlpStream::new_list(2);
-        stream.append(&self.nonce);
-        stream.append(&self.balance);
-        stream.out()
-    }
-
     /// Replace self with the data from other account.
     /// Basic account data and all modifications are overwritten
     /// with new values.
@@ -110,15 +107,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn account_compress() {
-        let raw = Account::new(2.into(), 4.into()).rlp();
-        let compact_vec = compress(&raw, snapshot_swapper());
-        assert!(raw.len() > compact_vec.len());
-        let again_raw = decompress(&compact_vec, snapshot_swapper());
-        assert_eq!(raw, again_raw.into_vec());
-    }
-
-    #[test]
     fn rlpio() {
         let a = Account::new(69u8.into(), 0u8.into());
         let b = Account::from_rlp(&a.rlp());
@@ -127,19 +115,13 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn new_account() {
         let a = Account::new(69u8.into(), 0u8.into());
-        assert_eq!(a.rlp().to_hex(), "f8448045a056e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421a0c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470");
+        assert_eq!(a.rlp().to_hex(), "c24580");
         assert_eq!(*a.balance(), 69u8.into());
         assert_eq!(*a.nonce(), 0u8.into());
     }
 
-    #[test]
-    #[ignore]
-    fn create_account() {
-        let a = Account::new(69u8.into(), 0u8.into());
-        assert_eq!(a.rlp().to_hex(), "f8448045a056e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421a0c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470");
-    }
+    // FIXME: Add tests for add_balance/sub_balance/inc_nonce
 
 }
