@@ -19,7 +19,6 @@
 use std::collections::{VecDeque, HashSet};
 use std::sync::Arc;
 use lru_cache::LruCache;
-use memory_cache::MemoryLruCache;
 use journaldb::JournalDB;
 use kvdb::{KeyValueDB, DBTransaction};
 use ethereum_types::{H256, Address};
@@ -107,8 +106,6 @@ pub struct StateDB {
     db: Box<JournalDB>,
     /// Shared canonical state cache.
     account_cache: Arc<Mutex<AccountCache>>,
-    /// DB Code cache. Maps code hashes to shared bytes.
-    code_cache: Arc<Mutex<MemoryLruCache<H256, Arc<Vec<u8>>>>>,
     /// Local dirty cache.
     local_cache: Vec<CacheQueueItem>,
     /// Shared account bloom. Does not handle chain reorganizations.
@@ -132,7 +129,6 @@ impl StateDB {
     pub fn new(db: Box<JournalDB>, cache_size: usize) -> StateDB {
         let bloom = Self::load_bloom(&**db.backing());
         let acc_cache_size = cache_size * ACCOUNT_CACHE_RATIO / 100;
-        let code_cache_size = cache_size - acc_cache_size;
         let cache_items = acc_cache_size / ::std::mem::size_of::<Option<Account>>();
 
         StateDB {
@@ -141,7 +137,6 @@ impl StateDB {
                 accounts: LruCache::new(cache_items),
                 modifications: VecDeque::new(),
             })),
-            code_cache: Arc::new(Mutex::new(MemoryLruCache::new(code_cache_size))),
             local_cache: Vec::new(),
             account_bloom: Arc::new(Mutex::new(bloom)),
             cache_size: cache_size,
@@ -324,7 +319,6 @@ impl StateDB {
         StateDB {
             db: self.db.boxed_clone(),
             account_cache: self.account_cache.clone(),
-            code_cache: self.code_cache.clone(),
             local_cache: Vec::new(),
             account_bloom: self.account_bloom.clone(),
             cache_size: self.cache_size,
@@ -339,7 +333,6 @@ impl StateDB {
         StateDB {
             db: self.db.boxed_clone(),
             account_cache: self.account_cache.clone(),
-            code_cache: self.code_cache.clone(),
             local_cache: Vec::new(),
             account_bloom: self.account_bloom.clone(),
             cache_size: self.cache_size,
@@ -359,8 +352,7 @@ impl StateDB {
         // TODO: account for LRU-cache overhead; this is a close approximation.
         self.db.mem_used() + {
             let accounts = self.account_cache.lock().accounts.len();
-            let code_size = self.code_cache.lock().current_size();
-            code_size + accounts * ::std::mem::size_of::<Option<Account>>()
+            accounts * ::std::mem::size_of::<Option<Account>>()
         }
     }
 
@@ -426,24 +418,12 @@ impl state::Backend for StateDB {
         })
     }
 
-    fn cache_code(&self, hash: H256, code: Arc<Vec<u8>>) {
-        let mut cache = self.code_cache.lock();
-
-        cache.insert(hash, code);
-    }
-
     fn get_cached_account(&self, addr: &Address) -> Option<Option<Account>> {
         let mut cache = self.account_cache.lock();
         if !Self::is_allowed(addr, &self.parent_hash, &cache.modifications) {
             return None;
         }
         cache.accounts.get_mut(addr).map(|a| a.as_ref().map(|a| a.clone_basic()))
-    }
-
-    fn get_cached_code(&self, hash: &H256) -> Option<Arc<Vec<u8>>> {
-        let mut cache = self.code_cache.lock();
-
-        cache.get_mut(hash).map(|code| code.clone())
     }
 
     fn get_cached<F, U>(&self, a: &Address, f: F) -> Option<U>
