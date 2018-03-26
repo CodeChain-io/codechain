@@ -83,7 +83,7 @@ fn run() -> Result<(), String> {
 
     let _handshake_server = config::parse_network_config(&matches)?.map(commands::handshake_start);
 
-    let _client = commands::client_start(&spec);
+    let _client = commands::client_start(&config, &spec);
 
     // drop the spec to free up genesis state.
     drop(spec);

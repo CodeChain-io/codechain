@@ -35,10 +35,9 @@ pub fn handshake_start(cfg: config::NetworkConfig) -> HandshakeService {
     HandshakeService::start(address, cfg.bootstrap_addresses).unwrap()
 }
 
-pub fn client_start(spec: &Spec) -> ClientService {
+pub fn client_start(cfg: &config::Config, spec: &Spec) -> ClientService {
     info!("Starting client");
-    // FIXME: Don't hardcode client_path.
-    let client_path = Path::new("./db");
+    let client_path = Path::new(&cfg.db_path);
     let client_config = Default::default();
     ClientService::start(client_config, &spec, &client_path).unwrap()
 }

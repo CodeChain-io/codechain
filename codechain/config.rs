@@ -22,6 +22,8 @@ use clap;
 use cnetwork::Address;
 use rpc::HttpConfiguration as RpcHttpConfig;
 
+const DEFAULT_DB_PATH: &'static str = "./db";
+
 #[derive(Debug, PartialEq)]
 pub enum ChainType {
     Solo,
@@ -77,6 +79,7 @@ impl ChainType {
 
 pub struct Config {
     pub quiet: bool,
+    pub db_path: String,
     pub chain_type: ChainType,
 }
 
@@ -88,6 +91,11 @@ pub struct NetworkConfig {
 pub fn parse(matches: &clap::ArgMatches) -> Result<Config, String> {
     let quiet = matches.is_present("quiet");
 
+    let db_path = match matches.value_of("db-path") {
+        Some(db_path) => db_path,
+        None => DEFAULT_DB_PATH,
+    };
+
     let chain_type = match matches.value_of("chain") {
         Some(chain) => chain.parse().unwrap(),
         None => Default::default(),
@@ -95,6 +103,7 @@ pub fn parse(matches: &clap::ArgMatches) -> Result<Config, String> {
 
     Ok(Config {
         quiet,
+        db_path: db_path.into(),
         chain_type,
     })
 }

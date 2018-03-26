@@ -26,6 +26,10 @@ args:
         long: chain
         help: Chain type; solo, solo_authority, tendermint or a path to chain spec file.
         takes_value: true
+    - db-path:
+        long: db-path
+        help: Specify the database directory path.
+        takes_value: true
     - jsonrpc-port:
         long: jsonrpc-port
         value_name: PORT
