@@ -21,7 +21,7 @@ use rlp::{self, RlpStream};
 use spec::Spec;
 
 pub fn create_test_block(header: &Header) -> Bytes {
-    let mut rlp = RlpStream::new_list(3);
+    let mut rlp = RlpStream::new_list(2);
     rlp.append(header);
     rlp.append_raw(&rlp::EMPTY_LIST_RLP, 1);
     rlp.out()
