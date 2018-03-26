@@ -16,12 +16,13 @@
 
 //! Single account in the system.
 
+use std::collections::{HashMap, BTreeMap};
 use std::fmt;
 use std::sync::Arc;
-use std::collections::{HashMap, BTreeMap};
+
+use cbytes::{Bytes, ToPretty};
 use ccrypto::blake256;
 use ctypes::{H256, U256, Address};
-use cbytes::{Bytes, ToPretty};
 use rlp::*;
 
 /// Single account in the system.

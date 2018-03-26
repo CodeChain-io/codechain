@@ -24,9 +24,10 @@
 use std::collections::{HashSet, HashMap};
 use std::sync::Arc;
 
-use state::Account;
 use ctypes::{Address, H256};
 use hashdb::{AsHashDB, HashDB, DBValue};
+
+use super::Account;
 
 /// State backend. See module docs for more details.
 pub trait Backend: Send {

@@ -20,14 +20,14 @@ use std::collections::{VecDeque, HashSet};
 use std::sync::Arc;
 
 use ctypes::{H256, Address};
-use lru_cache::LruCache;
+use hashdb::HashDB;
 use journaldb::JournalDB;
 use kvdb::{KeyValueDB, DBTransaction};
-use hashdb::HashDB;
-use state::{self, Account};
+use lru_cache::LruCache;
 use parking_lot::Mutex;
 use util_error::UtilError;
 
+use super::state::{self, Account};
 use super::types::BlockNumber;
 
 const STATE_CACHE_BLOCKS: usize = 12;

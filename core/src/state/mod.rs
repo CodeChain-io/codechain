@@ -27,20 +27,17 @@ use std::sync::Arc;
 
 use error::Error;
 use transaction::SignedTransaction;
-
 use ctypes::{H256, U256, Address};
 use hashdb::{HashDB, AsHashDB};
 use kvdb::DBValue;
-
 use trie;
 use trie::{Trie, TrieFactory, TrieError};
 
 mod account;
+pub mod backend;
 
 #[cfg(test)]
-use state_db::StateDB;
-
-pub mod backend;
+use super::state_db::StateDB;
 
 pub use self::account::Account;
 pub use self::backend::Backend;
