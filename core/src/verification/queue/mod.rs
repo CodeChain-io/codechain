@@ -159,6 +159,57 @@ impl<K: Kind> VerificationQueue<K> {
         result
     }
 
+    /// Mark given item as processed.
+    /// Returns true if the queue becomes empty.
+    pub fn mark_as_good(&self, hashes: &[H256]) -> bool {
+        if hashes.is_empty() {
+            return self.processing.read().is_empty();
+        }
+        let mut processing = self.processing.write();
+        for hash in hashes {
+            if let Some(score) = processing.remove(hash) {
+                let mut td = self.total_score.write();
+                *td = *td - score;
+            }
+        }
+        processing.is_empty()
+    }
+
+    /// Mark given item and all its children as bad. pauses verification
+    /// until complete.
+    pub fn mark_as_bad(&self, hashes: &[H256]) {
+        if hashes.is_empty() {
+            return;
+        }
+        let mut verified_lock = self.verification.verified.lock();
+        let verified = &mut *verified_lock;
+        let mut bad = self.verification.bad.lock();
+        let mut processing = self.processing.write();
+        bad.reserve(hashes.len());
+        for hash in hashes {
+            bad.insert(hash.clone());
+            if let Some(score) = processing.remove(hash) {
+                let mut td = self.total_score.write();
+                *td = *td - score;
+            }
+        }
+
+        let mut new_verified = VecDeque::new();
+        for output in verified.drain(..) {
+            if bad.contains(&output.parent_hash()) {
+                bad.insert(output.hash());
+                if let Some(score) = processing.remove(&output.hash()) {
+                    let mut td = self.total_score.write();
+                    *td = *td - score;
+                }
+            } else {
+                new_verified.push_back(output);
+            }
+        }
+
+        *verified = new_verified;
+    }
+
     /// Get the total score of all the blocks in the queue.
     pub fn total_score(&self) -> U256 {
         self.total_score.read().clone()
