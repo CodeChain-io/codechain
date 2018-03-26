@@ -16,6 +16,7 @@
 
 pub mod kind;
 
+use std::cmp;
 use std::collections::{VecDeque, HashSet, HashMap};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering as AtomicOrdering};
@@ -143,6 +144,19 @@ impl<K: Kind> VerificationQueue<K> {
                 Err(err)
             }
         }
+    }
+
+    /// Removes up to `max` verified items from the queue
+    pub fn drain(&self, max: usize) -> Vec<K::Verified> {
+        let mut verified = self.verification.verified.lock();
+        let count = cmp::min(max, verified.len());
+        let result = verified.drain(..count).collect::<Vec<_>>();
+
+        self.ready_signal.reset();
+        if !verified.is_empty() {
+            self.ready_signal.set_async();
+        }
+        result
     }
 
     /// Get the total score of all the blocks in the queue.
