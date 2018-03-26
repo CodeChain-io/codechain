@@ -131,7 +131,7 @@ impl Client {
 impl ChainInfo for Client {
     fn chain_info(&self) -> BlockChainInfo {
         let mut chain_info = self.chain.read().chain_info();
-        // FIXME:: Take block_queue into consideration.
+        chain_info.pending_total_score = chain_info.total_score + self.importer.block_queue.total_score();
         chain_info
     }
 }

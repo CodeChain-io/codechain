@@ -23,6 +23,8 @@ use super::types::BlockNumber;
 pub struct BlockChainInfo {
     /// Blockchain score.
     pub total_score: U256,
+    /// Block queue score.
+    pub pending_total_score: U256,
     /// Genesis block hash.
     pub genesis_hash: H256,
     /// Best blockchain block hash.

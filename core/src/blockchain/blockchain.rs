@@ -472,6 +472,7 @@ impl BlockChain {
         let best_block = self.best_block.read();
         BlockChainInfo {
             total_score: best_block.total_score.clone(),
+            pending_total_score: best_block.total_score.clone(),
             genesis_hash: self.genesis_hash(),
             best_block_hash: best_block.hash,
             best_block_number: best_block.number,

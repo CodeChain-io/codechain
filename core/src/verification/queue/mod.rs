@@ -16,11 +16,11 @@
 
 pub mod kind;
 
-use std::collections::{VecDeque, HashSet};
+use std::collections::{VecDeque, HashSet, HashMap};
 use std::sync::Arc;
 
-use ctypes::H256;
-use parking_lot::Mutex;
+use ctypes::{H256, U256};
+use parking_lot::{Mutex, RwLock};
 
 use super::super::consensus::CodeChainEngine;
 use super::super::error::{Error, BlockError, ImportError};
@@ -32,6 +32,8 @@ pub type BlockQueue = VerificationQueue<kind::Blocks>;
 pub struct VerificationQueue<K: Kind> {
     engine: Arc<CodeChainEngine>,
     verification: Arc<Verification<K>>,
+    processing: RwLock<HashMap<H256, U256>>, // hash to score
+    total_score: RwLock<U256>,
 }
 
 impl<K: Kind> VerificationQueue<K> {
@@ -45,6 +47,8 @@ impl<K: Kind> VerificationQueue<K> {
         Self {
             engine,
             verification,
+            processing: RwLock::new(HashMap::new()),
+            total_score: RwLock::new(0.into()),
         }
     }
 
@@ -52,6 +56,10 @@ impl<K: Kind> VerificationQueue<K> {
     pub fn import(&self, input: K::Input) -> Result<H256, Error> {
         let h = input.hash();
         {
+            if self.processing.read().contains_key(&h) {
+                return Err(ImportError::AlreadyQueued.into());
+            }
+
             let mut bad = self.verification.bad.lock();
             if bad.contains(&h) {
                 return Err(ImportError::KnownBad.into());
@@ -64,6 +72,12 @@ impl<K: Kind> VerificationQueue<K> {
         }
         match K::create(input, &*self.engine) {
             Ok(item) => {
+                self.processing.write().insert(h.clone(), item.score());
+                {
+                    let mut ts = self.total_score.write();
+                    *ts = *ts + item.score();
+                }
+
                 self.verification.unverified.lock().push_back(item);
                 Ok(h)
             },
@@ -78,6 +92,11 @@ impl<K: Kind> VerificationQueue<K> {
                 Err(err)
             }
         }
+    }
+
+    /// Get the total score of all the blocks in the queue.
+    pub fn total_score(&self) -> U256 {
+        self.total_score.read().clone()
     }
 }
 
