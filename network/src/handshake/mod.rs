@@ -16,8 +16,7 @@
 
 mod handshake;
 mod message;
-mod service;
 
 
 use self::message::Message as HandshakeMessage;
-pub use self::service::Service as HandshakeService;
+pub use self::handshake::{HandlerMessage, Handler, Handshake };

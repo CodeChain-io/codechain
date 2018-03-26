@@ -19,25 +19,25 @@ use std::sync::Arc;
 
 use cio::{IoError, IoService};
 
-use super::handshake::{HandlerMessage, Handler, Handshake };
-use super::super::Address;
+use super::Address;
+use super::handshake;
 
 pub struct Service {
-    io_service: IoService<HandlerMessage>,
-    handshake: Option<Handshake>,
+    handshake_service: IoService<handshake::HandlerMessage>,
+    handshake: Option<handshake::Handshake>,
 }
 
 impl Service {
     pub fn start(address: Address, bootstrap_addresses: Vec<Address>) -> Result<Self, IoError> {
-        let io_service = IoService::start()?;
-        io_service.register_handler(Arc::new(Handler::new(address)))?;
+        let handshake_service = IoService::start()?;
+        handshake_service.register_handler(Arc::new(handshake::Handler::new(address)))?;
         for address in bootstrap_addresses {
-            if let Err(err) = io_service.send_message(HandlerMessage::ConnectTo(address)) {
+            if let Err(err) = handshake_service.send_message(handshake::HandlerMessage::ConnectTo(address)) {
                 info!("Cannot ConnectTo : {:?}", err);
             }
         }
         Ok(Self {
-            io_service,
+            handshake_service,
             handshake: None,
         })
     }

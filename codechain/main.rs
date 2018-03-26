@@ -81,7 +81,7 @@ fn run() -> Result<(), String> {
 
     let _rpc_server = config::parse_rpc_config(&matches)?.map(commands::rpc_start);
 
-    let _handshake_server = config::parse_network_config(&matches)?.map(commands::handshake_start);
+    let _network_server = config::parse_network_config(&matches)?.map(commands::network_start);
 
     let _client = commands::client_start(&config, &spec);
 
