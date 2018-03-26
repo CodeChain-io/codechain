@@ -31,19 +31,20 @@ pub type BlockQueue = VerificationQueue<kind::Blocks>;
 
 pub struct VerificationQueue<K: Kind> {
     engine: Arc<CodeChainEngine>,
-    unverified: Mutex<VecDeque<K::Unverified>>,
-    verified: Mutex<VecDeque<K::Verified>>,
-    bad: Mutex<HashSet<H256>>,
+    verification: Arc<Verification<K>>,
 }
 
 impl<K: Kind> VerificationQueue<K> {
     pub fn new(engine: Arc<CodeChainEngine>) -> Self {
-        let engine = engine.clone();
-        Self {
-            engine,
+        let verification = Arc::new(Verification {
             unverified: Mutex::new(VecDeque::new()),
             verified: Mutex::new(VecDeque::new()),
             bad: Mutex::new(HashSet::new()),
+        });
+        let engine = engine.clone();
+        Self {
+            engine,
+            verification,
         }
     }
 
@@ -51,7 +52,7 @@ impl<K: Kind> VerificationQueue<K> {
     pub fn import(&self, input: K::Input) -> Result<H256, Error> {
         let h = input.hash();
         {
-            let mut bad = self.bad.lock();
+            let mut bad = self.verification.bad.lock();
             if bad.contains(&h) {
                 return Err(ImportError::KnownBad.into());
             }
@@ -63,7 +64,7 @@ impl<K: Kind> VerificationQueue<K> {
         }
         match K::create(input, &*self.engine) {
             Ok(item) => {
-                self.unverified.lock().push_back(item);
+                self.verification.unverified.lock().push_back(item);
                 Ok(h)
             },
             Err(err) => {
@@ -71,7 +72,7 @@ impl<K: Kind> VerificationQueue<K> {
                     // Don't mark future blocks as bad.
                     Error::Block(BlockError::TemporarilyInvalid(_)) => {},
                     _ => {
-                        self.bad.lock().insert(h.clone());
+                        self.verification.bad.lock().insert(h.clone());
                     }
                 }
                 Err(err)
@@ -80,3 +81,8 @@ impl<K: Kind> VerificationQueue<K> {
     }
 }
 
+struct Verification<K: Kind> {
+    unverified: Mutex<VecDeque<K::Unverified>>,
+    verified: Mutex<VecDeque<K::Verified>>,
+    bad: Mutex<HashSet<H256>>,
+}
