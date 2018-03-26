@@ -27,7 +27,7 @@ pub type SharedSecret = Secret;
 pub type Nonce = u32;
 type IV = H128;
 
-#[derive(Clone)]
+#[derive(Clone, Debug, Hash, Eq, PartialOrd, PartialEq)]
 pub struct Session {
     secret: SharedSecret,
     nonce: Option<Nonce>,
