@@ -631,21 +631,6 @@ mod tests {
     }
 
     #[test]
-    fn empty_account_exists_when_creation_forced() {
-        let a = Address::zero();
-        let db = get_temp_state_db();
-        let (root, db) = {
-            let mut state = State::new(db, U256::from(0), Default::default());
-            state.add_balance(&a, &U256::default()).unwrap(); // create an empty account
-            state.commit().unwrap();
-            state.drop()
-        };
-        let state = State::from_existing(db, root, U256::from(0u8), Default::default()).unwrap();
-        assert!(state.exists(&a).unwrap());
-        assert!(!state.exists_and_not_null(&a).unwrap());
-    }
-
-    #[test]
     fn remove_from_database() {
         let a = Address::zero();
         let (root, db) = {
@@ -727,7 +712,7 @@ mod tests {
         let a = Address::zero();
         state.require(&a).unwrap();
         state.commit().unwrap();
-        assert_eq!(*state.root(), "0ce23f3c809de377b008a4a3ee94a0834aac8bec1f86e28ffe4fdb5a15b0c785".into());
+        assert_eq!(*state.root(), "5a88ee61ece3d32e047c02407cfbe010a83f8560dc2359d92628e27e703b5fac".into());
     }
 
     #[test]
@@ -764,6 +749,6 @@ mod tests {
     fn create_empty() {
         let mut state = get_temp_state();
         state.commit().unwrap();
-        assert_eq!(*state.root(), "56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421".into());
+        assert_eq!(*state.root(), "45b0cfc220ceec5b7c1c62c4d4193d38e4eba48e8815729ce75f9c0ab0e4c1c0".into());
     }
 }
