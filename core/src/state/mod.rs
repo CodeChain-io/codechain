@@ -66,8 +66,6 @@ enum AccountState {
 struct AccountEntry {
     /// Account entry. `None` if account known to be non-existant.
     account: Option<Account>,
-    /// Unmodified account balance.
-    old_balance: Option<U256>,
     /// Entry state.
     state: AccountState,
 }
@@ -85,7 +83,6 @@ impl AccountEntry {
 
     fn clone(&self) -> AccountEntry {
         AccountEntry {
-            old_balance: self.old_balance,
             account: self.account.as_ref().map(Account::clone),
             state: self.state,
         }
@@ -94,7 +91,6 @@ impl AccountEntry {
     // Create a new account entry and mark it as dirty.
     fn new_dirty(account: Option<Account>) -> AccountEntry {
         AccountEntry {
-            old_balance: account.as_ref().map(|a| a.balance().clone()),
             account: account,
             state: AccountState::Dirty,
         }
@@ -103,7 +99,6 @@ impl AccountEntry {
     // Create a new account entry and mark it as clean.
     fn new_clean(account: Option<Account>) -> AccountEntry {
         AccountEntry {
-            old_balance: account.as_ref().map(|a| a.balance().clone()),
             account: account,
             state: AccountState::CleanFresh,
         }
@@ -112,7 +107,6 @@ impl AccountEntry {
     // Create a new account entry and mark it as clean and cached.
     fn new_clean_cached(account: Option<Account>) -> AccountEntry {
         AccountEntry {
-            old_balance: account.as_ref().map(|a| a.balance().clone()),
             account: account,
             state: AccountState::CleanCached,
         }
