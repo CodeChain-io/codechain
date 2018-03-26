@@ -391,11 +391,6 @@ impl<B: Backend> State<B> {
             Ok(())
     }
 
-    fn touch(&mut self, a: &Address) -> trie::Result<()> {
-        self.require(a)?;
-        Ok(())
-    }
-
     /// Commits our cached account changes into the trie.
     pub fn commit(&mut self) -> Result<(), Error> {
         let mut accounts = self.cache.borrow_mut();
