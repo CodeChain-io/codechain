@@ -326,29 +326,29 @@ impl<B: Backend> State<B> {
     pub fn exists(&self, a: &Address) -> trie::Result<bool> {
         // Bloom filter does not contain empty accounts, so it is important here to
         // check if account exists in the database directly before EIP-161 is in effect.
-        self.ensure_cached(a, false, |a| a.is_some())
+        self.ensure_cached(a, |a| a.is_some())
     }
 
     /// Determine whether an account exists and if not empty.
     pub fn exists_and_not_null(&self, a: &Address) -> trie::Result<bool> {
-        self.ensure_cached(a, false, |a| a.map_or(false, |a| !a.is_null()))
+        self.ensure_cached(a, |a| a.map_or(false, |a| !a.is_null()))
     }
 
     /// Determine whether an account exists and has code or non-zero nonce.
     pub fn exists_and_has_nonce(&self, a: &Address) -> trie::Result<bool> {
-        self.ensure_cached(a, false,
+        self.ensure_cached(a,
             |a| a.map_or(false, |a| *a.nonce() != self.account_start_nonce))
     }
 
     /// Get the balance of account `a`.
     pub fn balance(&self, a: &Address) -> trie::Result<U256> {
-        self.ensure_cached(a, true,
+        self.ensure_cached(a,
             |a| a.as_ref().map_or(U256::zero(), |account| *account.balance()))
     }
 
     /// Get the nonce of account `a`.
     pub fn nonce(&self, a: &Address) -> trie::Result<U256> {
-        self.ensure_cached(a, true,
+        self.ensure_cached(a,
             |a| a.as_ref().map_or(self.account_start_nonce, |account| *account.nonce()))
     }
 
@@ -434,7 +434,7 @@ impl<B: Backend> State<B> {
     /// Check caches for required data
     /// First searches for account in the local, then the shared cache.
     /// Populates local cache if nothing found.
-    fn ensure_cached<F, U>(&self, a: &Address, check_null: bool, f: F) -> trie::Result<U>
+    fn ensure_cached<F, U>(&self, a: &Address, f: F) -> trie::Result<U>
         where F: Fn(Option<&Account>) -> U {
         // check local cache first
         if let Some(ref mut maybe_acc) = self.cache.borrow_mut().get_mut(a) {
@@ -450,9 +450,6 @@ impl<B: Backend> State<B> {
         match result {
             Some(r) => Ok(r),
             None => {
-                // first check if it is not in database for sure
-                if check_null && self.db.is_known_null(a) { return Ok(f(None)); }
-
                 // not found in the global cache, get from the DB and insert into local
                 let db = self.trie_factory.readonly(self.db.as_hashdb(), &self.root)?;
                 let mut maybe_acc = db.get_with(a, Account::from_rlp)?;
@@ -478,12 +475,8 @@ impl<B: Backend> State<B> {
             match self.db.get_cached_account(a) {
                 Some(acc) => self.insert_cache(a, AccountEntry::new_clean_cached(acc)),
                 None => {
-                    let maybe_acc = if !self.db.is_known_null(a) {
-                        let db = self.trie_factory.readonly(self.db.as_hashdb(), &self.root)?;
-                        AccountEntry::new_clean(db.get_with(a, Account::from_rlp)?)
-                    } else {
-                        AccountEntry::new_clean(None)
-                    };
+                    let db = self.trie_factory.readonly(self.db.as_hashdb(), &self.root)?;
+                    let maybe_acc = AccountEntry::new_clean(db.get_with(a, Account::from_rlp)?);
                     self.insert_cache(a, maybe_acc);
                 }
             }

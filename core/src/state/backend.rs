@@ -49,11 +49,4 @@ pub trait Backend: Send {
     /// `None` is returned if the entry is not cached.
     fn get_cached<F, U>(&self, a: &Address, f: F) -> Option<U>
         where F: FnOnce(Option<&mut Account>) -> U;
-
-    /// Note that an account with the given address is non-null.
-    fn note_non_null_account(&self, address: &Address);
-
-    /// Check whether an account is known to be empty. Returns true if known to be
-    /// empty, false otherwise.
-    fn is_known_null(&self, address: &Address) -> bool;
 }
