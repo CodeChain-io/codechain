@@ -21,6 +21,7 @@ use ckeys::{Error as KeyError};
 use ctypes::{Address, H256, U256};
 use util_error::UtilError;
 use unexpected::{Mismatch, OutOfBounds};
+use trie::TrieError;
 
 use super::client::Error as ClientError;
 use super::consensus::EngineError;
@@ -152,6 +153,8 @@ pub enum Error {
     Engine(EngineError),
     /// Key error.
     Key(KeyError),
+    /// TrieDB-related error.
+    Trie(TrieError),
 }
 
 impl fmt::Display for Error {
@@ -165,6 +168,7 @@ impl fmt::Display for Error {
             Error::Import(ref err) => err.fmt(f),
             Error::Engine(ref err) => err.fmt(f),
             Error::Key(ref err) => err.fmt(f),
+            Error::Trie(ref err) => err.fmt(f),
         }
     }
 }
@@ -230,5 +234,17 @@ impl From<BlockImportError> for Error {
             BlockImportError::Import(e) => Error::Import(e),
             BlockImportError::Other(s) => Error::Util(UtilError::from(s)),
         }
+    }
+}
+
+impl From<TrieError> for Error {
+    fn from(err: TrieError) -> Self {
+        Error::Trie(err)
+    }
+}
+
+impl<E> From<Box<E>> for Error where Error: From<E> {
+    fn from(err: Box<E>) -> Self {
+        Error::from(*err)
     }
 }
