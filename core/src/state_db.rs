@@ -93,7 +93,6 @@ pub struct StateDB {
     account_cache: Arc<Mutex<AccountCache>>,
     /// Local dirty cache.
     local_cache: Vec<CacheQueueItem>,
-    cache_size: usize,
     /// Hash of the block on top of which this instance was created or
     /// `None` if cache is disabled
     parent_hash: Option<H256>,
@@ -120,7 +119,6 @@ impl StateDB {
                 modifications: VecDeque::new(),
             })),
             local_cache: Vec::new(),
-            cache_size: cache_size,
             parent_hash: None,
             commit_hash: None,
             commit_number: None,
@@ -254,7 +252,6 @@ impl StateDB {
             db: self.db.boxed_clone(),
             account_cache: self.account_cache.clone(),
             local_cache: Vec::new(),
-            cache_size: self.cache_size,
             parent_hash: None,
             commit_hash: None,
             commit_number: None,
@@ -267,7 +264,6 @@ impl StateDB {
             db: self.db.boxed_clone(),
             account_cache: self.account_cache.clone(),
             local_cache: Vec::new(),
-            cache_size: self.cache_size,
             parent_hash: Some(parent.clone()),
             commit_hash: None,
             commit_number: None,
@@ -291,11 +287,6 @@ impl StateDB {
     /// Returns underlying `JournalDB`.
     pub fn journal_db(&self) -> &JournalDB {
         &*self.db
-    }
-
-    /// Query how much memory is set aside for the accounts cache (in bytes).
-    pub fn cache_size(&self) -> usize {
-        self.cache_size
     }
 
     /// Check if the account can be returned from cache by matching current block parent hash against canonical
