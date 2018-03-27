@@ -123,6 +123,48 @@ mod tests {
         assert_eq!(*a.nonce(), 0u8.into());
     }
 
-    // FIXME: Add tests for add_balance/sub_balance/inc_nonce
+    #[test]
+    fn balance() {
+        let mut a = Account::new(69u8.into(), 0u8.into());
+        a.add_balance(&1u8.into());
+        assert_eq!(*a.balance(), 70u8.into());
+        a.sub_balance(&2u8.into());
+        assert_eq!(*a.balance(), 68u8.into());
+    }
+
+    #[test]
+    #[should_panic]
+    fn negative_balance() {
+        let mut a = Account::new(69u8.into(), 0u8.into());
+        a.sub_balance(&70u8.into());
+    }
+
+    #[test]
+    fn nonce() {
+        let mut a = Account::new(69u8.into(), 0u8.into());
+        a.inc_nonce();
+        assert_eq!(*a.nonce(), 1u8.into());
+        a.inc_nonce();
+        assert_eq!(*a.nonce(), 2u8.into());
+    }
+
+    #[test]
+    fn overwrite() {
+        let mut a = Account::new(69u8.into(), 0u8.into());
+        let mut b = Account::new(79u8.into(), 1u8.into());
+        a.overwrite_with(b);
+        assert_eq!(*a.balance(), 79u8.into());
+        assert_eq!(*a.nonce(), 1u8.into());
+    }
+
+    #[test]
+    fn is_null() {
+        let mut a = Account::new(69u8.into(), 0u8.into());
+        assert!(!a.is_null());
+        a.sub_balance(&69u8.into());
+        assert!(a.is_null());
+        a.inc_nonce();
+        assert!(!a.is_null());
+    }
 
 }
