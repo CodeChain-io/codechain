@@ -10,13 +10,19 @@ codechain-io = { path = "../util/io" }
 codechain-json = { path = "../json" }
 codechain-keys = { path="../keys" }
 codechain-types = { path = "../primitives/codechain-types" }
+codechain-logger = { path = "../logger" }
+hashdb = { path = "../util/hashdb" }
 heapsize = "0.4"
+journaldb = { path = "../util/journaldb" }
 log = "0.3"
+lru-cache = "0.1"
 num_cpus = "1.2"
 kvdb = { path = "../util/kvdb" }
 kvdb-rocksdb = { path = "../util/kvdb-rocksdb" }
 kvdb-memorydb = { path = "../util/kvdb-memorydb" }
+memorydb = { path = "../util/memorydb" }
 parking_lot = "0.5"
+patricia-trie = { path = "../util/patricia_trie" }
 rlp = { path = "../util/rlp" }
 rlp_compress = { path = "../util/rlp_compress" }
 rlp_derive = { path = "../util/rlp_derive" }
