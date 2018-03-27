@@ -736,13 +736,33 @@ mod tests {
         let mut state = get_temp_state();
         let a = Address::zero();
         state.checkpoint();
+        state.add_balance(&a, &U256::from(69u64)).unwrap();
         state.checkpoint();
         state.add_balance(&a, &U256::from(69u64)).unwrap();
-        assert_eq!(state.balance(&a).unwrap(), U256::from(69u64));
-        state.discard_checkpoint();
+        assert_eq!(state.balance(&a).unwrap(), U256::from(69u64 + 69u64));
+        state.revert_to_checkpoint();
         assert_eq!(state.balance(&a).unwrap(), U256::from(69u64));
         state.revert_to_checkpoint();
         assert_eq!(state.balance(&a).unwrap(), U256::from(0));
+    }
+
+    #[test]
+    fn checkpoint_discard() {
+        let mut state = get_temp_state();
+        let a = Address::zero();
+        state.checkpoint();
+        state.add_balance(&a, &U256::from(69u64)).unwrap();
+        state.checkpoint();
+        state.add_balance(&a, &U256::from(69u64)).unwrap();
+        state.inc_nonce(&a);
+        assert_eq!(state.balance(&a).unwrap(), U256::from(69u64 + 69u64));
+        assert_eq!(state.nonce(&a).unwrap(), U256::from(1u64));
+        state.discard_checkpoint();
+        assert_eq!(state.balance(&a).unwrap(), U256::from(69u64 + 69u64));
+        assert_eq!(state.nonce(&a).unwrap(), U256::from(1u64));
+        state.revert_to_checkpoint();
+        assert_eq!(state.balance(&a).unwrap(), U256::from(0u64));
+        assert_eq!(state.nonce(&a).unwrap(), U256::from(0u64));
     }
 
     #[test]

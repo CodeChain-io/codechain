@@ -396,6 +396,34 @@ mod tests {
     }
 
     #[test]
+    fn account_cache() {
+        let mut state_db = get_temp_state_db();
+        let root_parent = H256::random();
+        let address = Address::random();
+        let h0 = H256::random();
+        let mut batch = DBTransaction::new();
+
+        let mut s = state_db.boxed_clone_canon(&root_parent);
+        s.add_to_account_cache(address, Some(Account::new(2.into(), 0.into())), false);
+        assert!(s.get_cached_account(&address).is_none());
+        assert!(s.commit_hash.is_none());
+        assert!(s.commit_number.is_none());
+        assert!(batch.ops.len() == 0);
+
+        s.journal_under(&mut batch, 0, &h0).unwrap();
+        assert!(s.get_cached_account(&address).is_none());
+        assert_eq!(s.commit_hash.unwrap(), h0);
+        assert_eq!(s.commit_number.unwrap(), 0u64);
+        assert!(batch.ops.len() > 0);
+
+        s.sync_cache(&[], &[], true);
+        assert!(s.get_cached_account(&address).is_none());
+
+        let mut s = state_db.boxed_clone_canon(&h0);
+        assert!(s.get_cached_account(&address).is_some());
+    }
+
+    #[test]
     fn state_db_smoke() {
         init_log();
 
