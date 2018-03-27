@@ -57,6 +57,8 @@ mod header;
 mod machine;
 mod service;
 mod spec;
+mod state;
+mod state_db;
 mod transaction;
 mod types;
 mod verification;
