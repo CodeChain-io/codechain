@@ -41,6 +41,8 @@ const MAX_TX_QUEUE_SIZE: usize = 4096;
 
 pub struct Client {
     engine: Arc<CodeChainEngine>,
+    config: ClientConfig,
+
     io_channel: Mutex<IoChannel<ClientIoMessage>>,
 
     chain: RwLock<Arc<BlockChain>>,
@@ -69,6 +71,7 @@ impl Client {
 
         let client = Arc::new(Client {
             engine,
+            config,
             io_channel: Mutex::new(message_channel),
             chain: RwLock::new(chain),
             notify: RwLock::new(Vec::new()),
