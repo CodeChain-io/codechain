@@ -20,12 +20,13 @@ use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
 use cbytes::Bytes;
 use cio::IoChannel;
 use ctypes::{Address, H256};
-use kvdb::KeyValueDB;
+use journaldb;
+use kvdb::{DBTransaction, KeyValueDB};
 use parking_lot::{Mutex, RwLock};
 
 use super::{EngineClient, BlockChainInfo, BlockInfo, TransactionInfo,
             ChainInfo, ChainNotify, ClientConfig, ImportBlock,
-            BlockChainClient, BlockChain as BlockChainTrait
+            BlockChainClient, BlockChain as BlockChainTrait, Error as ClientError
 };
 use super::importer::Importer;
 use super::super::blockchain::{BlockChain, BlockProvider, TransactionAddress};
@@ -35,6 +36,7 @@ use super::super::encoded;
 use super::super::error::{Error, BlockImportError, ImportError};
 use super::super::service::ClientIoMessage;
 use super::super::spec::Spec;
+use super::super::state_db::StateDB;
 use super::super::types::{BlockId, TransactionId};
 
 const MAX_TX_QUEUE_SIZE: usize = 4096;
@@ -49,6 +51,8 @@ pub struct Client {
 
     /// Client uses this to store blocks, traces, etc.
     db: RwLock<Arc<KeyValueDB>>,
+
+    state_db: RwLock<StateDB>,
 
     /// List of actors to be notified on certain chain events
     notify: RwLock<Vec<Weak<ChainNotify>>>,
@@ -66,9 +70,19 @@ impl Client {
         db: Arc<KeyValueDB>,
         message_channel: IoChannel<ClientIoMessage>,
     ) -> Result<Arc<Client>, Error> {
-        let engine = spec.engine.clone();
+        let journal_db = journaldb::new(db.clone(), journaldb::Algorithm::Archive, ::db::COL_STATE);
+        let mut state_db = StateDB::new(journal_db, config.state_cache_size);
+        if state_db.journal_db().is_empty() {
+            // FIXME: Sets the correct state root.
+            let mut batch = DBTransaction::new();
+            state_db.journal_under(&mut batch, 0, &spec.genesis_header().hash())?;
+            db.write(batch).map_err(ClientError::Database)?;
+        }
+
         let gb = spec.genesis_block();
         let chain = Arc::new(BlockChain::new(&gb, db.clone()));
+
+        let engine = spec.engine.clone();
 
         let importer = Importer::new(&config, engine.clone(), message_channel.clone())?;
 
@@ -78,11 +92,14 @@ impl Client {
             io_channel: Mutex::new(message_channel),
             chain: RwLock::new(chain),
             db: RwLock::new(db),
+            state_db: RwLock::new(state_db),
             notify: RwLock::new(Vec::new()),
             queue_transactions: AtomicUsize::new(0),
             importer,
         });
 
+        // ensure buffered changes are flushed.
+        client.db.read().flush().map_err(ClientError::Database)?;
         Ok(client)
     }
 

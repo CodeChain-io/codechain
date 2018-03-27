@@ -71,6 +71,8 @@ pub struct ClientConfig {
     pub db_compaction: DatabaseCompactionProfile,
     /// Should db have WAL enabled?
     pub db_wal: bool,
+    /// State db cache-size.
+    pub state_cache_size: usize,
     /// Type of block verifier used by client.
     pub verifier_type: VerifierType,
 }
