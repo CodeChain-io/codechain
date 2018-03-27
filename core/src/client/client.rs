@@ -47,6 +47,9 @@ pub struct Client {
 
     chain: RwLock<Arc<BlockChain>>,
 
+    /// Client uses this to store blocks, traces, etc.
+    db: RwLock<Arc<KeyValueDB>>,
+
     /// List of actors to be notified on certain chain events
     notify: RwLock<Vec<Weak<ChainNotify>>>,
 
@@ -74,6 +77,7 @@ impl Client {
             config,
             io_channel: Mutex::new(message_channel),
             chain: RwLock::new(chain),
+            db: RwLock::new(db),
             notify: RwLock::new(Vec::new()),
             queue_transactions: AtomicUsize::new(0),
             importer,
