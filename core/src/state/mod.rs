@@ -33,6 +33,8 @@ use kvdb::DBValue;
 use trie;
 use trie::{Trie, TrieFactory, TrieError};
 
+use super::transaction::TransactionError;
+
 mod account;
 pub mod backend;
 
@@ -386,9 +388,28 @@ impl<B: Backend> State<B> {
     /// Execute a given transaction, charging transaction fee.
     /// This will change the state accordingly.
     pub fn apply(&mut self, t: &SignedTransaction) -> Result<(), Error> {
-            // FIXME: Apply transaction using add_balance/sub_balance here.
-            self.commit()?;
-            Ok(())
+        let sender = t.sender();
+        let fee = t.as_unsigned().fee;
+        let nonce = self.nonce(&sender)?;
+        let balance = self.balance(&sender)?;
+
+        if t.nonce != nonce {
+            return Err(From::from(TransactionError::InvalidNonce { expected: nonce, got: t.nonce }));
+        }
+
+        if fee > balance {
+            return Err(From::from(TransactionError::NotEnoughCash { required: From::from(fee), got: From::from(balance) }));
+        }
+
+        self.inc_nonce(&sender);
+        self.sub_balance(&sender, &fee);
+
+        // FIXME: apply transaction data(inputs/outputs).
+        // checkpoint should be used when transaction fails
+
+        self.commit()?;
+        // FIXME: return receipt
+        Ok(())
     }
 
     /// Commits our cached account changes into the trie.
@@ -544,10 +565,78 @@ mod tests {
     use spec::*;
 
     use super::*;
+    use super::Error::*;
+    use super::super::transaction::Transaction;
     use super::super::tests::helpers::{get_temp_state, get_temp_state_db};
 
     fn secret() -> Secret {
         blake256("").into()
+    }
+
+    #[test]
+    fn should_apply_ok() {
+        // account_start_nonce is 0
+        let mut state = get_temp_state();
+
+        let t = Transaction {
+            nonce: 0.into(),
+            fee: 5.into(),
+            data: vec![],
+            network_id: 0,
+        }.sign(&secret().into());
+        let sender = t.sender();
+        state.add_balance(&sender, &20.into());
+
+        let res = state.apply(&t);
+        assert!(res.is_ok());
+        assert_eq!(state.balance(&sender).unwrap(), 15.into());
+        assert_eq!(state.nonce(&sender).unwrap(), 1.into());
+    }
+
+    #[test]
+    fn should_apply_error_for_invalid_nonce() {
+        // account_start_nonce is 0
+        let mut state = get_temp_state();
+
+        let t = Transaction {
+            nonce: 2.into(),
+            fee: 5.into(),
+            data: vec![],
+            network_id: 0,
+        }.sign(&secret().into());
+        let sender = t.sender();
+        state.add_balance(&sender, &20.into());
+
+        let res = state.apply(&t);
+        if let Error::Transaction(e) = res.unwrap_err() {
+            assert_eq!(e, TransactionError::InvalidNonce { expected: 0.into(), got: 2.into() });
+        } else {
+            unreachable!();
+        }
+        assert_eq!(state.balance(&sender).unwrap(), 20.into());
+        assert_eq!(state.nonce(&sender).unwrap(), 0.into());
+    }
+
+    #[test]
+    fn should_apply_error_for_not_enough_cash() {
+        let mut state = get_temp_state();
+        let t = Transaction {
+            nonce: 0.into(),
+            fee: 5.into(),
+            data: vec![],
+            network_id: 0,
+        }.sign(&secret().into());
+        let sender = t.sender();
+        state.add_balance(&sender, &4.into());
+
+        let res = state.apply(&t);
+        if let Error::Transaction(e) = res.unwrap_err() {
+            assert_eq!(e, TransactionError::NotEnoughCash { required: 5.into(), got: 4.into() });
+        } else {
+            unreachable!();
+        }
+        assert_eq!(state.balance(&sender).unwrap(), 4.into());
+        assert_eq!(state.nonce(&sender).unwrap(), 0.into());
     }
 
     #[test]
