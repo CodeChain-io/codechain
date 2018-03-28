@@ -245,10 +245,10 @@ impl IoHandler<HandlerMessage> for Handler {
                 info!("TCP connection starts for {:?}", self.address);
             },
             FIRST_TOKEN...LAST_TOKEN => {
-                let mut listener = self.manager.lock();
-                listener.register_stream(stream, event_loop);
-                if !listener.is_inbound(stream) {
-                    if let Some(connection) = listener.connections.get_mut(stream) {
+                let mut manager = self.manager.lock();
+                manager.register_stream(stream, event_loop);
+                if !manager.is_inbound(stream) {
+                    if let Some(connection) = manager.connections.get_mut(stream) {
                         connection.enqueue_sync();
                     }
                 }
