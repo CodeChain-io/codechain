@@ -79,13 +79,21 @@ fn run() -> Result<(), String> {
     let log_config = LogConfig::default();
     let _logger = setup_log(&log_config).expect("Logger is initialized only once; qed");
 
-    if let Some(rpc_config) = config::parse_rpc_config(&matches)? {
-        let _rpc_server = commands::rpc_start(rpc_config)?;
-    }
+    let _rpc_server = {
+        if let Some(rpc_config) = config::parse_rpc_config(&matches)? {
+            Some(commands::rpc_start(rpc_config)?)
+        } else {
+            None
+        }
+    };
 
-    if let Some(network_config) = config::parse_network_config(&matches)? {
-        let _network_service = commands::network_start(network_config)?;
-    }
+    let _network_service = {
+        if let Some(network_config) = config::parse_network_config(&matches)? {
+            Some(commands::network_start(network_config)?)
+        } else {
+            None
+        }
+    };
 
     let _client = commands::client_start(&config, &spec)?;
 
