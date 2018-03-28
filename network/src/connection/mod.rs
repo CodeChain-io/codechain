@@ -17,7 +17,7 @@
 mod application;
 mod connection;
 mod handshake;
-mod listener;
+mod manager;
 mod message;
 mod negotiation;
 mod limited_table;
@@ -27,4 +27,4 @@ use self::message::HandshakeMessage;
 use self::message::Message;
 use self::message::SignedMessage;
 use self::message::NegotiationMessage;
-pub use self::listener::{HandlerMessage, Handler};
+pub use self::manager::{HandlerMessage, Handler};

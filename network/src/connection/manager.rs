@@ -29,7 +29,7 @@ use super::super::Address;
 use super::super::session::{Session, SessionTable};
 use super::limited_table::{Key as ConnectionToken, LimitedTable};
 
-pub struct Listener {
+pub struct Manager {
     listener: TcpListener,
     connections: LimitedTable<Connection>,
     address_to_session: SessionTable,
@@ -48,9 +48,9 @@ pub enum HandlerMessage {
     RequestConnection(Address),
 }
 
-impl Listener {
+impl Manager {
     pub fn listen(address: &Address) -> io::Result<Self> {
-        Ok(Listener {
+        Ok(Manager {
             listener: TcpListener::bind(address.socket())?,
             connections: LimitedTable::new(FIRST_TOKEN, MAX_SESSIONS),
             address_to_session: SessionTable::new(),
@@ -109,7 +109,7 @@ impl Listener {
     }
 
     pub fn register_session(&mut self, address: Address, session: Session) {
-        assert!(session.is_ready());
+        debug_assert!(session.is_ready());
         if self.address_to_session.contains_key(&address) {
             info!("Session registration is requested to the address which already has one");
             return
@@ -135,15 +135,15 @@ impl Listener {
 
 pub struct Handler {
     address: Address,
-    listener: Mutex<Listener>,
+    manager: Mutex<Manager>,
 }
 
 impl Handler {
     pub fn new(address: Address) -> Self {
-        let listener = Mutex::new(Listener::listen(&address).expect("Cannot listen TCP port"));
+        let manager = Mutex::new(Manager::listen(&address).expect("Cannot listen TCP port"));
         Self {
             address,
-            listener,
+            manager,
         }
     }
 }
@@ -158,15 +158,15 @@ impl IoHandler<HandlerMessage> for Handler {
     fn message(&self, io: &IoContext<HandlerMessage>, message: &HandlerMessage) {
         match *message {
             HandlerMessage::RegisterSession(ref address, ref session) => {
-                assert!(session.is_ready());
-                let mut listener = self.listener.lock();
+                debug_assert!(session.is_ready());
+                let mut manager = self.manager.lock();
                 info!("Register session {:?}", session);
-                listener.register_session(address.clone(), session.clone());
+                manager.register_session(address.clone(), session.clone());
             },
             HandlerMessage::RequestConnection(ref address) => {
-                let mut listener = self.listener.lock();
+                let mut manager = self.manager.lock();
                 info!("Connecting to {:?}", address);
-                if let Some(token) = listener.connect(&address) {
+                if let Some(token) = manager.connect(&address) {
                     if let Err(err) = io.register_stream(token) {
                         info!("Cannot register stream for token {:?} : {:?}", token, err);
                     }
@@ -181,8 +181,8 @@ impl IoHandler<HandlerMessage> for Handler {
         match stream {
             ACCEPT_TOKEN => {
                 loop {
-                    let mut listener = self.listener.lock();
-                    if let Some(token) = listener.accept(io) {
+                    let mut manager = self.manager.lock();
+                    if let Some(token) = manager.accept(io) {
                         if let Err(err) = io.register_stream(token) {
                             info!("Cannot register stream for accepted connection({:?}) : {:?}", token, err);
                         }
@@ -193,8 +193,8 @@ impl IoHandler<HandlerMessage> for Handler {
             },
             FIRST_TOKEN...LAST_TOKEN => {
                 loop {
-                    let mut listener = self.listener.lock();
-                    if let Some(mut connection) = listener.connections.get_mut(stream) {
+                    let mut manager = self.manager.lock();
+                    if let Some(mut connection) = manager.connections.get_mut(stream) {
                         if !connection.receive() {
                             break
                         }
@@ -212,8 +212,8 @@ impl IoHandler<HandlerMessage> for Handler {
             ACCEPT_TOKEN => {},
             FIRST_TOKEN...LAST_TOKEN => {
                 loop {
-                    let mut listener = self.listener.lock();
-                    if let Some(mut connection) = listener.connections.get_mut(stream) {
+                    let mut manager = self.manager.lock();
+                    if let Some(mut connection) = manager.connections.get_mut(stream) {
                         match connection.send() {
                             Ok(true) => {},
                             Ok(false) => break,
@@ -234,14 +234,14 @@ impl IoHandler<HandlerMessage> for Handler {
     fn register_stream(&self, stream: StreamToken, reg: Token, event_loop: &mut EventLoop<IoManager<HandlerMessage>>) {
         match stream {
             ACCEPT_TOKEN => {
-                let listener = self.listener.lock();
-                if let Err(err) = event_loop.register(&listener.listener, Token(ACCEPT_TOKEN), Ready::readable() | Ready::writable(), PollOpt::edge()) {
-                    info!("Cannot register tcp listener {:?}", err);
+                let manager = self.manager.lock();
+                if let Err(err) = event_loop.register(&manager.listener, Token(ACCEPT_TOKEN), Ready::readable() | Ready::writable(), PollOpt::edge()) {
+                    info!("Cannot register tcp manager {:?}", err);
                 }
                 info!("TCP connection starts for {:?}", self.address);
             },
             FIRST_TOKEN...LAST_TOKEN => {
-                let mut listener = self.listener.lock();
+                let mut listener = self.manager.lock();
                 listener.register_stream(stream, event_loop);
                 if !listener.is_inbound(stream) {
                     if let Some(connection) = listener.connections.get_mut(stream) {
