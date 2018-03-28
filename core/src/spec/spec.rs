@@ -18,6 +18,7 @@ use std::io::Read;
 use std::sync::Arc;
 
 use cbytes::Bytes;
+use ccrypto::BLAKE_NULL_RLP;
 use cjson;
 use ctypes::{H256, U256, Address};
 use rlp::{Rlp, RlpStream};
@@ -153,7 +154,7 @@ impl Spec {
         header.set_author(self.author.clone());
         header.set_transactions_root(self.transactions_root.clone());
         header.set_extra_data(self.extra_data.clone());
-        // FIXME: Set the state root.
+        header.set_state_root(BLAKE_NULL_RLP);
         header.set_score(self.score.clone());
         header.set_seal({
             let r = Rlp::new(&self.seal_rlp);
