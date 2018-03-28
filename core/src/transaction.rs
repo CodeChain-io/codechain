@@ -63,6 +63,8 @@ pub const UNSIGNED_SENDER: Address = H160([0xff; 20]);
 pub struct Transaction {
     /// Nonce.
     pub nonce: U256,
+    /// Amount of CCC to be paid as a cost for distributing this transaction to the network.
+    pub fee: U256,
     /// Transaction data.
     pub data: Bytes,
     /// Mainnet or Testnet
@@ -77,13 +79,14 @@ impl HeapSizeOf for Transaction {
 
 impl Decodable for Transaction {
     fn decode(d: &UntrustedRlp) -> Result<Self, DecoderError> {
-        if d.item_count()? != 3 {
+        if d.item_count()? != 4 {
             return Err(DecoderError::RlpIncorrectListLen);
         }
         Ok(Transaction {
                 nonce: d.val_at(0)?,
-                data: d.val_at(1)?,
-                network_id: d.val_at(2)?,
+                fee: d.val_at(1)?,
+                data: d.val_at(2)?,
+                network_id: d.val_at(3)?,
         })
     }
 }
@@ -91,8 +94,9 @@ impl Decodable for Transaction {
 impl Transaction {
     /// Append object with a without signature into RLP stream
     pub fn rlp_append_unsigned_transaction(&self, s: &mut RlpStream) {
-        s.begin_list(3);
+        s.begin_list(4);
         s.append(&self.nonce);
+        s.append(&self.fee);
         s.append(&self.data);
         s.append(&self.network_id);
     }
@@ -150,19 +154,20 @@ impl Deref for UnverifiedTransaction {
 
 impl rlp::Decodable for UnverifiedTransaction {
     fn decode(d: &UntrustedRlp) -> Result<Self, DecoderError> {
-        if d.item_count()? != 6 {
+        if d.item_count()? != 7 {
             return Err(DecoderError::RlpIncorrectListLen);
         }
         let hash = blake256(d.as_raw());
         Ok(UnverifiedTransaction {
             unsigned: Transaction {
                 nonce: d.val_at(0)?,
-                data: d.val_at(1)?,
-                network_id: d.val_at(2)?,
+                fee: d.val_at(1)?,
+                data: d.val_at(2)?,
+                network_id: d.val_at(3)?,
             },
-            v: d.val_at(3)?,
-            r: d.val_at(4)?,
-            s: d.val_at(5)?,
+            v: d.val_at(4)?,
+            r: d.val_at(5)?,
+            s: d.val_at(6)?,
             hash,
         })
     }
@@ -187,8 +192,9 @@ impl UnverifiedTransaction {
 
     /// Append object with a signature into RLP stream
     fn rlp_append_sealed_transaction(&self, s: &mut RlpStream) {
-        s.begin_list(5);
+        s.begin_list(6);
         s.append(&self.nonce);
+        s.append(&self.fee);
         s.append(&self.data);
         s.append(&self.v);
         s.append(&self.r);

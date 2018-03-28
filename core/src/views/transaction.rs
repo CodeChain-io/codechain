@@ -53,17 +53,20 @@ impl<'a> TransactionView<'a> {
     /// Get the nonce field of the transaction.
     pub fn nonce(&self) -> U256 { self.rlp.val_at(0) }
 
+    /// Get the fee field of the transaction.
+    pub fn fee(&self) -> U256 { self.rlp.val_at(1) }
+
     /// Get the data field of the transaction.
-    pub fn data(&self) -> Bytes { self.rlp.val_at(1) }
+    pub fn data(&self) -> Bytes { self.rlp.val_at(2) }
 
     /// Get the v field of the transaction.
-    pub fn v(&self) -> u8 { let r: u16 = self.rlp.val_at(2); r as u8 }
+    pub fn v(&self) -> u8 { let r: u16 = self.rlp.val_at(3); r as u8 }
 
     /// Get the r field of the transaction.
-    pub fn r(&self) -> U256 { self.rlp.val_at(3) }
+    pub fn r(&self) -> U256 { self.rlp.val_at(4) }
 
     /// Get the s field of the transaction.
-    pub fn s(&self) -> U256 { self.rlp.val_at(4) }
+    pub fn s(&self) -> U256 { self.rlp.val_at(5) }
 }
 
 
