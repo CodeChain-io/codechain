@@ -11,7 +11,8 @@
 		}
 	},
 	"params": {
-		"networkID": "0x11"
+		"networkID": "0x11",
+		"minTransactionCost": "10"
 	},
 	"genesis": {
 		"seal": {
