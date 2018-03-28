@@ -58,7 +58,7 @@ impl Api for ClientApi {
     }
 }
 
-struct Client {
+pub struct Client {
     extensions: RwLock<HashMap<String, Weak<Extension>>>,
 }
 
@@ -79,10 +79,10 @@ impl Client {
         api
     }
 
-    fn new() -> Self {
-        Self {
+    pub fn new() -> Arc<Self> {
+        Arc::new(Self {
             extensions: RwLock::new(HashMap::new()),
-        }
+        })
     }
 
     fn on_message(&self, name: &String, id: &NodeId, data: &Vec<u8>) {

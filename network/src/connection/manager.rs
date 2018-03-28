@@ -17,6 +17,7 @@
 use std::collections::HashSet;
 use std::convert::From;
 use std::io;
+use std::sync::Arc;
 
 use cio::{IoContext, IoHandler, IoManager, StreamToken};
 use mio::deprecated::EventLoop;
@@ -26,6 +27,7 @@ use parking_lot::Mutex;
 
 use super::connection::Connection;
 use super::super::Address;
+use super::super::client::Client;
 use super::super::session::{Session, SessionTable};
 use super::limited_table::{Key as ConnectionToken, LimitedTable};
 
@@ -136,14 +138,16 @@ impl Manager {
 pub struct Handler {
     address: Address,
     manager: Mutex<Manager>,
+    client: Arc<Client>,
 }
 
 impl Handler {
-    pub fn new(address: Address) -> Self {
+    pub fn new(address: Address, client: Arc<Client>) -> Self {
         let manager = Mutex::new(Manager::listen(&address).expect("Cannot listen TCP port"));
         Self {
             address,
             manager,
+            client,
         }
     }
 }

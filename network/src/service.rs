@@ -19,20 +19,24 @@ use std::sync::Arc;
 
 use cio::{IoError, IoService};
 
-use super::Address;
+use super::{Address, Api, Extension};
+use super::client::Client;
 use super::connection;
 use super::handshake;
 
 pub struct Service {
     handshake_service: IoService<handshake::HandlerMessage>,
     extension_service: IoService<connection::HandlerMessage>,
+    client: Arc<Client>,
 }
 
 impl Service {
     pub fn start(address: Address, bootstrap_addresses: Vec<Address>) -> Result<Self, IoError> {
         let extension_service = IoService::start()?;
         let extension_channel =  extension_service.channel();
-        let _ =  extension_service.register_handler(Arc::new(connection::Handler::new(address.clone())))?;
+
+        let client = Client::new();
+        extension_service.register_handler(Arc::new(connection::Handler::new(address.clone(), Arc::clone(&client))))?;
 
         let handshake_service = IoService::start()?;
         handshake_service.register_handler(Arc::new(handshake::Handler::new(address, extension_channel)))?;
@@ -45,6 +49,11 @@ impl Service {
         Ok(Self {
             handshake_service,
             extension_service,
+            client,
         })
+    }
+
+    pub fn register_extension(&self, extension: Arc<Extension>) -> Arc<Api> {
+        Client::register_extension(Arc::clone(&self.client), extension)
     }
 }
