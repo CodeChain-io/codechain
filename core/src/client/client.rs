@@ -18,11 +18,13 @@ use std::sync::{Arc, Weak};
 use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
 
 use cbytes::Bytes;
+use ccrypto::BLAKE_NULL_RLP;
 use cio::IoChannel;
 use ctypes::{Address, H256};
 use journaldb;
 use kvdb::{DBTransaction, KeyValueDB};
 use parking_lot::{Mutex, RwLock};
+use trie::TrieFactory;
 
 use super::{EngineClient, BlockChainInfo, BlockInfo, TransactionInfo,
             ChainInfo, ChainNotify, ClientConfig, ImportBlock,
@@ -72,8 +74,13 @@ impl Client {
     ) -> Result<Arc<Client>, Error> {
         let journal_db = journaldb::new(db.clone(), journaldb::Algorithm::Archive, ::db::COL_STATE);
         let mut state_db = StateDB::new(journal_db, config.state_cache_size);
-        if state_db.journal_db().is_empty() {
-            // FIXME: Sets the correct state root.
+        if state_db.journal_db().is_empty() && !state_db.as_hashdb().contains(&BLAKE_NULL_RLP) {
+            {
+                let mut root = BLAKE_NULL_RLP;
+                let trie_factory = TrieFactory::new(Default::default());
+                trie_factory.create(state_db.as_hashdb_mut(), &mut root);
+                // trie committed
+            }
             let mut batch = DBTransaction::new();
             state_db.journal_under(&mut batch, 0, &spec.genesis_header().hash())?;
             db.write(batch).map_err(ClientError::Database)?;
