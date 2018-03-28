@@ -368,16 +368,7 @@ mod tests {
 
     use super::state::{State, Backend, Account};
     use super::{StateDB};
-
-    fn new_db() -> Arc<::kvdb::KeyValueDB> {
-        Arc::new(::kvdb_memorydb::create(::db::NUM_COLUMNS.unwrap_or(0)))
-    }
-
-    fn get_temp_state_db() -> StateDB {
-        let db = new_db();
-        let journal_db = ::journaldb::new(db, ::journaldb::Algorithm::Archive, ::db::COL_STATE);
-        StateDB::new(journal_db, 5 * 1024 * 1024)
-    }
+    use super::super::tests::helpers::get_temp_state_db;
 
     #[test]
     fn account_cache() {

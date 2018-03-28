@@ -20,6 +20,7 @@ use cbytes::Bytes;
 use ccrypto::BLAKE_NULL_RLP;
 use ctypes::{Address, H256};
 use rlp::{UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
+use trie::TrieFactory;
 use triehash::ordered_trie_root;
 
 use super::consensus::CodeChainEngine;
@@ -27,6 +28,8 @@ use super::error::Error;
 use super::header::{Header, Seal};
 use super::machine::{LiveBlock, Transactions};
 use super::transaction::{UnverifiedTransaction, SignedTransaction, TransactionError};
+use super::state::State;
+use super::state_db::StateDB;
 
 /// A block, encoded as it is on the block chain.
 #[derive(Debug, Clone, PartialEq)]
@@ -63,17 +66,18 @@ impl Decodable for Block {
 }
 
 /// An internal type for a block's common elements.
-#[derive(Clone)]
 pub struct ExecutedBlock {
     header: Header,
+    state: State<StateDB>,
     transactions: Vec<SignedTransaction>,
     transactions_set: HashSet<H256>,
 }
 
 impl ExecutedBlock {
-    fn new() -> ExecutedBlock {
+    fn new(state: State<StateDB>) -> ExecutedBlock {
         ExecutedBlock {
             header: Default::default(),
+            state,
             transactions: Default::default(),
             transactions_set: Default::default(),
         }
@@ -106,14 +110,17 @@ impl<'x> OpenBlock<'x> {
     /// Create a new `OpenBlock` ready for transaction pushing.
     pub fn new(
         engine: &'x CodeChainEngine,
+        trie_factory: TrieFactory,
+        db: StateDB,
         parent: &Header,
         author: Address,
         extra_data: Bytes,
         is_epoch_begin: bool,
     ) -> Result<Self, Error> {
         let number = parent.number() + 1;
+        let state = State::from_existing(db, *parent.state_root(), 1.into(), trie_factory)?;
         let mut r = OpenBlock {
-            block: ExecutedBlock::new(),
+            block: ExecutedBlock::new(state),
             engine,
         };
 
@@ -159,11 +166,9 @@ impl<'x> OpenBlock<'x> {
 }
 
 /// Just like `ClosedBlock` except that we can't reopen it and it's faster.
-#[derive(Clone)]
 pub struct LockedBlock {
     block: ExecutedBlock,
 }
-
 
 impl LockedBlock {
     /// Provide a valid seal in order to turn this into a `SealedBlock`.
@@ -215,5 +220,23 @@ impl<'x> IsBlock for OpenBlock<'x> {
 
 impl<'x> IsBlock for LockedBlock {
     fn block(&self) -> &ExecutedBlock { &self.block }
+}
+
+/// Trait for a object that has a state database.
+pub trait Drain {
+    /// Drop this object and return the underlying database.
+    fn drain(self) -> StateDB;
+}
+
+impl Drain for LockedBlock {
+    fn drain(self) -> StateDB {
+        self.block.state.drop().1
+    }
+}
+
+impl Drain for SealedBlock {
+    fn drain(self) -> StateDB {
+        self.block.state.drop().1
+    }
 }
 
