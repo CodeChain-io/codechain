@@ -20,7 +20,7 @@ use std::fmt;
 use std::io;
 use std::result::Result;
 
-use cio::{IoContext, IoHandler, IoManager, StreamToken};
+use cio::{IoChannel, IoContext, IoHandler, IoManager, StreamToken};
 use mio::{PollOpt, Ready, Token};
 use mio::deprecated::EventLoop;
 use mio::net::UdpSocket;
@@ -245,17 +245,19 @@ struct Internal {
 pub struct Handler {
     address: Address,
     internal: Mutex<Internal>,
+    extension: IoChannel<connection::HandlerMessage>,
 }
 
 impl Handler {
-    pub fn new(address: Address) -> Self {
+    pub fn new(address: Address, extension: IoChannel<connection::HandlerMessage>) -> Self {
         let mut handshake = Handshake::bind(&address).expect("Cannot bind UDP port");
         Self {
             address,
             internal: Mutex::new(Internal {
                 handshake,
                 connect_queue: VecDeque::new(),
-            })
+            }),
+            extension,
         }
     }
 }
