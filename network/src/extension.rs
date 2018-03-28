@@ -14,17 +14,35 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::result;
 use std::sync::Arc;
 
-use super::ClientApi;
-use super::Error;
-use super::NodeId;
+use cio::{StreamToken};
 
-pub trait Extension {
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, )]
+pub struct NodeId(StreamToken);
+
+pub enum Error {
+    ExtensionDropped,
+    DuplicatedTimerSeq,
+}
+
+pub type Result<T> = result::Result<T, Error>;
+
+pub trait Api {
+    fn send(&self, id: &NodeId, message: &Vec<u8>);
+    fn connect(&self, id: &NodeId);
+
+    fn set_timer(&self, timer_id: usize, ms: u64);
+    fn set_timer_once(&self, timer_id: usize, ms: u64);
+    fn clear_timer(&self, timer_id: usize, ms: u64);
+}
+
+pub trait Extension: Send + Sync {
     fn name(&self) -> String;
     fn need_encryption(&self) -> bool;
 
-    fn on_initialize(&self, api: Arc<ClientApi>);
+    fn on_initialize(&self, api: Arc<Api>);
 
     fn on_node_added(&self, id: &NodeId);
     fn on_node_removed(&self, id: &NodeId);
@@ -36,4 +54,9 @@ pub trait Extension {
     fn on_message(&self, id: &NodeId, message: &Vec<u8>);
 
     fn on_close(&self);
+
+    fn on_timer_set_allowed(&self, timer_id: usize);
+    fn on_timer_set_denied(&self, timer_id: usize, error: Error);
+
+    fn on_timeout(&self, seq: usize);
 }
