@@ -28,7 +28,7 @@ extern crate codechain_io as cio;
 extern crate codechain_types as ctypes;
 
 mod client;
-mod connection;
+pub mod connection;
 mod extension;
 mod handshake;
 mod service;
