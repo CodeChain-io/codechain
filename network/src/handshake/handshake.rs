@@ -30,6 +30,7 @@ use rlp::{UntrustedRlp, Encodable, Decodable, DecoderError};
 use super::HandshakeMessage;
 use super::super::session::{Nonce, Session, SessionError, SessionTable, SharedSecret};
 use super::super::Address;
+use super::super::connection;
 
 
 pub struct Handshake {
@@ -154,7 +155,7 @@ impl Handshake {
         self.send_to(&HandshakeMessage::connection_request(0, nonce), target) // FIXME: seq
     }
 
-    fn on_packet(&mut self, message: &HandshakeMessage, from: &Address) {
+    fn on_packet(&mut self, message: &HandshakeMessage, from: &Address, extension: &IoChannel<connection::HandlerMessage>) {
         match message {
             &HandshakeMessage::ConnectionRequest(_, _, ref nonce) => {
                 let encrypted_bytes = {
@@ -171,6 +172,11 @@ impl Handshake {
                         };
 
                         // FIXME: let nonce = f(nonce)
+
+                        if let Err(err) = extension.send(connection::HandlerMessage::RegisterSession(from.clone(), session.clone())) {
+                            info!("Cannot use connection channel {:?}", err);
+                            return;
+                        }
                         match encode_and_encrypt_nonce(&session, nonce) {
                             Ok(data) => data,
                             Err(err) => {
@@ -205,7 +211,15 @@ impl Handshake {
                     };
 
                     if session.is_expected_nonce(&nonce) {
-                        // FIXME: Create TCP connection
+                        if let Err(err) = extension.send_sync(connection::HandlerMessage::RegisterSession(from.clone(), session.clone())) {
+                            info!("Cannot use connection channel {:?}", err);
+                            return;
+                        }
+
+                        if let Err(err) = extension.send(connection::HandlerMessage::RequestConnection(from.clone())) {
+                            info!("Cannot request connection {:?}", err);
+                            return;
+                        }
                     } else {
                         info!("Nonce({:?}) is not expected", nonce);
                         return;
@@ -308,7 +322,7 @@ impl IoHandler<HandlerMessage> for Handler {
                         },
                         Ok(Some((msg, address))) => {
                             info!("{:?} from {:?}", msg, address);
-                            handshake.on_packet(&msg, &address);
+                            handshake.on_packet(&msg, &address, &self.extension);
                         },
                         Err(err) => {
                             info!("handshake receive error {}", err);
