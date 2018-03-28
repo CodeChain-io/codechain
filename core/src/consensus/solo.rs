@@ -61,13 +61,15 @@ mod tests {
     use super::super::super::codechain_machine::CodeChainMachine;
     use super::super::super::header::Header;
     use super::super::super::spec::Spec;
+    use super::super::super::tests::helpers::get_temp_state_db;
 
     #[test]
     fn solo_can_seal() {
         let spec = Spec::new_solo();
         let engine = &*spec.engine;
         let genesis_header = spec.genesis_header();
-        let b = OpenBlock::new(engine, &genesis_header, Default::default(), vec![], false).unwrap();
+        let db = get_temp_state_db();
+        let b = OpenBlock::new(engine, Default::default(), db, &genesis_header, Default::default(), vec![], false).unwrap();
         let b = b.close_and_lock();
         if let Seal::Regular(seal) = engine.generate_seal(b.block(), &genesis_header) {
             assert!(b.try_seal(engine, seal).is_ok());
