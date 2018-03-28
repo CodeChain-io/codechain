@@ -37,6 +37,5 @@ pub mod address;
 pub mod kademlia;
 
 pub use self::address::Address;
-pub use self::client::{ClientApi, Error, NodeId};
-pub use self::extension::Extension;
+pub use self::extension::{Api, Error, Extension, NodeId, Result};
 pub use self::service::Service as NetworkService;
