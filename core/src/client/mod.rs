@@ -29,9 +29,11 @@ pub use self::error::Error;
 use cbytes::Bytes;
 use ctypes::{Address, H256};
 
+use super::block::SealedBlock;
 use super::blockchain_info::BlockChainInfo;
 use super::encoded;
 use super::error::BlockImportError;
+use super::miner::TransactionImportResult;
 use super::types::{BlockId, TransactionId};
 
 /// Provides `chain_info` method
@@ -87,4 +89,22 @@ pub trait BlockChainClient : Sync + Send + BlockChain + ImportBlock {
     /// Queue conensus engine message.
     fn queue_consensus_message(&self, message: Bytes);
 }
+
+/// Provides `import_sealed_block` method
+pub trait ImportSealedBlock {
+    /// Import sealed block. Skips all verifications.
+    fn import_sealed_block(&self, block: SealedBlock) -> TransactionImportResult;
+}
+
+/// Provides `broadcast_proposal_block` method
+pub trait BroadcastProposalBlock {
+    /// Broadcast a block proposal.
+    fn broadcast_proposal_block(&self, block: SealedBlock);
+}
+
+/// Provides methods to import sealed block and broadcast a block proposal
+pub trait SealedBlockImporter: ImportSealedBlock + BroadcastProposalBlock {}
+
+/// Extended client interface used for mining
+pub trait MiningBlockChainClient: BlockChainClient + SealedBlockImporter {}
 

@@ -55,6 +55,7 @@ mod encoded;
 mod error;
 mod header;
 mod machine;
+mod miner;
 mod service;
 mod spec;
 mod state;
