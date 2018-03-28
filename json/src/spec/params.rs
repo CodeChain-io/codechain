@@ -24,6 +24,9 @@ pub struct Params {
     /// Network id.
     #[serde(rename="networkID")]
     pub network_id: Uint,
+    /// Minimum transaction cost.
+    #[serde(rename="minTransactionCost")]
+    pub min_transaction_cost: Uint,
 }
 
 #[cfg(test)]
@@ -38,9 +41,11 @@ mod tests {
     fn params_deserialization() {
         let s = r#"{
 			"networkID" : "0x1"
+			"minTransactionCost" : "10"
 		}"#;
 
         let deserialized: Params = serde_json::from_str(s).unwrap();
         assert_eq!(deserialized.network_id, Uint(U256::from(0x1)));
+        assert_eq!(deserialized.min_transaction_cost, Uint(U256::from(10)));
     }
 }

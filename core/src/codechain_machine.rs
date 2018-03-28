@@ -20,7 +20,7 @@ use super::client::BlockInfo;
 use super::error::Error;
 use super::header::Header;
 use super::spec::CommonParams;
-use super::transaction::{UnverifiedTransaction, SignedTransaction};
+use super::transaction::{UnverifiedTransaction, SignedTransaction, TransactionError};
 
 pub struct CodeChainMachine {
     params: CommonParams,
@@ -40,6 +40,12 @@ impl CodeChainMachine {
 
     /// Does basic verification of the transaction.
     pub fn verify_transaction_basic(&self, t: &UnverifiedTransaction, header: &Header) -> Result<(), Error> {
+        if t.fee < self.params.min_transaction_cost {
+            return Err(TransactionError::InsufficientFee {
+                minimal: self.params.min_transaction_cost,
+                got: t.fee
+            }.into())
+        }
         t.verify_basic(self.params().network_id, false)?;
 
         Ok(())

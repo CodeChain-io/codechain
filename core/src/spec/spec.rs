@@ -33,12 +33,15 @@ use super::super::header::Header;
 pub struct CommonParams {
     /// Network id.
     pub network_id: u64,
+    /// Minimum transaction cost.
+    pub min_transaction_cost: U256,
 }
 
 impl From<cjson::spec::Params> for CommonParams {
     fn from(p: cjson::spec::Params) -> Self {
         Self {
             network_id: p.network_id.into(),
+            min_transaction_cost: p.min_transaction_cost.into(),
         }
     }
 }

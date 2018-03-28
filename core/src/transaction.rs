@@ -33,6 +33,13 @@ pub enum TransactionError {
     AlreadyImported,
     /// Invalid chain ID given.
     InvalidNetworkId,
+    /// Transaction's fee is below currently set minimal fee requirement.
+    InsufficientFee {
+        /// Minimal expected fee
+        minimal: U256,
+        /// Transaction fee
+        got: U256,
+    },
     /// Signature error
     InvalidSignature(String),
 }
@@ -43,6 +50,8 @@ impl fmt::Display for TransactionError {
         let msg: String = match *self {
             AlreadyImported => "Already imported".into(),
             InvalidNetworkId => "Transaction of this network ID is not allowed on this chain.".into(),
+            InsufficientFee { minimal, got } =>
+                format!("Insufficient fee. Min={}, Given={}", minimal, got),
             InvalidSignature(ref err) => format!("Transaction has invalid signature: {}.", err),
         };
 
