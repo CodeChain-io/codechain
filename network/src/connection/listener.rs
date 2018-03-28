@@ -214,6 +214,16 @@ impl IoHandler<HandlerMessage> for Handler {
                 loop {
                     let mut listener = self.listener.lock();
                     if let Some(mut connection) = listener.connections.get_mut(stream) {
+                        match connection.send() {
+                            Ok(true) => {},
+                            Ok(false) => break,
+                            Err(err) => {
+                                info!("Error in sending a message to {:?} : {:?}", connection.stream().peer_addr(), err);
+                            }
+                        }
+                    } else {
+                        info!("{} is not a valid token", stream);
+                        break
                     }
                 }
             },
@@ -233,6 +243,11 @@ impl IoHandler<HandlerMessage> for Handler {
             FIRST_TOKEN...LAST_TOKEN => {
                 let mut listener = self.listener.lock();
                 listener.register_stream(stream, event_loop);
+                if !listener.is_inbound(stream) {
+                    if let Some(connection) = listener.connections.get_mut(stream) {
+                        connection.enqueue_sync();
+                    }
+                }
             }
             _ => {
                 unreachable!();
