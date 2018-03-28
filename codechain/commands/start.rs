@@ -24,21 +24,32 @@ use rpc::HttpConfiguration as RpcHttpConfig;
 use super::super::config;
 use super::super::rpc;
 
-pub fn rpc_start(cfg: RpcHttpConfig) -> RpcServer {
+pub fn rpc_start(cfg: RpcHttpConfig) -> Result<RpcServer, String> {
     info!("RPC Listening on {}", cfg.port);
-    rpc::new_http(cfg).unwrap().unwrap()
+    rpc::new_http(cfg)
 }
 
-pub fn network_start(cfg: config::NetworkConfig) -> NetworkService {
+pub fn network_start(cfg: config::NetworkConfig) -> Result<NetworkService, String> {
     info!("Handshake Listening on {}", cfg.port);
     let address = Address::v4(127, 0, 0, 1, cfg.port);
-    NetworkService::start(address, cfg.bootstrap_addresses).unwrap()
+    let service = NetworkService::start(
+        address,
+        cfg.bootstrap_addresses
+    ).map_err(|e| format!("Network service error: {:?}", e))?;
+
+    Ok(service)
 }
 
-pub fn client_start(cfg: &config::Config, spec: &Spec) -> ClientService {
+pub fn client_start(cfg: &config::Config, spec: &Spec) -> Result<ClientService, String> {
     info!("Starting client");
     let client_path = Path::new(&cfg.db_path);
     let client_config = Default::default();
-    ClientService::start(client_config, &spec, &client_path).unwrap()
+    let service = ClientService::start(
+        client_config,
+        &spec,
+        &client_path
+    ).map_err(|e| format!("Client service error: {:?}", e))?;
+
+    Ok(service)
 }
 
