@@ -20,7 +20,7 @@ use std::ops::Deref;
 use cbytes::Bytes;
 use ccrypto::blake256;
 use ckeys::{self, ECDSASignature, Private, Public, public_to_address, sign_ecdsa, recover_ecdsa};
-use ctypes::{Address, H160, H256, U256};
+use ctypes::{Address, H160, H256, U256, U512};
 use heapsize::HeapSizeOf;
 use rlp::{self, UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
 
@@ -40,6 +40,20 @@ pub enum TransactionError {
         /// Transaction fee
         got: U256,
     },
+    /// Returned when transaction nonce does not match state nonce.
+    InvalidNonce {
+        /// Nonce expected.
+        expected: U256,
+        /// Nonce found.
+        got: U256
+    },
+    /// Returned when cost of transaction exceeds current sender balance.
+    NotEnoughCash {
+        /// Minimum required balance.
+        required: U512,
+        /// Actual balance.
+        got: U512
+    },
     /// Signature error
     InvalidSignature(String),
 }
@@ -52,6 +66,11 @@ impl fmt::Display for TransactionError {
             InvalidNetworkId => "Transaction of this network ID is not allowed on this chain.".into(),
             InsufficientFee { minimal, got } =>
                 format!("Insufficient fee. Min={}, Given={}", minimal, got),
+            InvalidNonce { ref expected, ref got } =>
+                format!("Invalid transaction nonce: expected {}, found {}", expected, got),
+            NotEnoughCash { ref required, ref got } =>
+                format!("Cost of transaction exceeds sender balance. {} is required \
+					but the sender only has {}", required, got),
             InvalidSignature(ref err) => format!("Transaction has invalid signature: {}.", err),
         };
 
