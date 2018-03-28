@@ -14,11 +14,16 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::sync::Arc;
+
 use cbytes::Bytes;
 use ctypes::{H256, U256};
 use header::Header;
+use kvdb::KeyValueDB;
 use rlp::{self, RlpStream};
 use spec::Spec;
+use state::State;
+use state_db::StateDB;
 
 pub fn get_test_spec() -> Spec {
     Spec::new_solo()
@@ -45,4 +50,19 @@ pub fn get_good_dummy_block_hash() -> (H256, Bytes) {
     block_header.set_parent_hash(test_spec.genesis_header().hash());
 
     (block_header.hash(), create_test_block(&block_header))
+}
+
+fn new_db() -> Arc<::kvdb::KeyValueDB> {
+    Arc::new(::kvdb_memorydb::create(::db::NUM_COLUMNS.unwrap_or(0)))
+}
+
+pub fn get_temp_state_db() -> StateDB {
+    let db = new_db();
+    let journal_db = ::journaldb::new(db, ::journaldb::Algorithm::Archive, ::db::COL_STATE);
+    StateDB::new(journal_db, 5 * 1024 * 1024)
+}
+
+pub fn get_temp_state() -> State<StateDB> {
+    let journal_db = get_temp_state_db();
+    State::new(journal_db, U256::from(0), Default::default())
 }
