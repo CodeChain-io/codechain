@@ -19,9 +19,9 @@ use std::sync::Arc;
 
 use cio::{StreamToken};
 
-#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, )]
-pub struct NodeId(StreamToken);
+pub type NodeId = StreamToken;
 
+#[derive(Clone, Copy, Debug)]
 pub enum Error {
     ExtensionDropped,
     DuplicatedTimerSeq,
