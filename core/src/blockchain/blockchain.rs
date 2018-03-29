@@ -63,7 +63,7 @@ pub struct BlockChain {
 impl BlockChain {
     /// Create new instance of blockchain from given Genesis.
     pub fn new(genesis: &[u8], db: Arc<KeyValueDB>) -> BlockChain {
-        let mut bc = BlockChain {
+        let bc = BlockChain {
             best_block: RwLock::new(BestBlock::default()),
             block_headers: RwLock::new(HashMap::new()),
             block_bodies: RwLock::new(HashMap::new()),

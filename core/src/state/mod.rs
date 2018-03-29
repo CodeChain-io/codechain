@@ -486,7 +486,7 @@ impl<B: Backend> State<B> {
             return Ok(f(None));
         }
         // check global cache
-        let result = self.db.get_cached(a, |mut acc| {
+        let result = self.db.get_cached(a, |acc| {
             f(acc.map(|a| &*a))
         });
         match result {
