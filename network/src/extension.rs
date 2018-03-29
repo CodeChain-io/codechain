@@ -29,7 +29,7 @@ pub enum Error {
 
 pub type Result<T> = result::Result<T, Error>;
 
-pub trait Api {
+pub trait Api: Send + Sync {
     fn send(&self, id: &NodeId, message: &Vec<u8>);
     fn connect(&self, id: &NodeId);
 
