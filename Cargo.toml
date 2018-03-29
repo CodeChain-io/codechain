@@ -12,6 +12,7 @@ codechain-logger = { path = "logger" }
 codechain-network = { path = "network" }
 codechain-reactor = { path = "util/reactor" }
 codechain-rpc = { path = "rpc" }
+codechain-sync = { path = "sync" }
 ctrlc = { git = "https://github.com/paritytech/rust-ctrlc.git" }
 fdlimit = "0.1"
 futures = "0.1"
@@ -33,5 +34,6 @@ members = [
 	"keys",
 	"logger",
 	"network",
-	"rpc"
+	"rpc",
+	"sync"
 ]

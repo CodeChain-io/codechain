@@ -1,0 +1,15 @@
+[package]
+name = "codechain-sync"
+version = "0.1.0"
+authors = ["CodeChain Team <codechain@kodebox.io>"]
+
+[lib]
+
+[dependencies]
+codechain-core = { path = "../core" }
+codechain-network = { path = "../network" }
+codechain-types = { path = "../primitives/codechain-types" }
+log = "0.4.1"
+parking_lot = "0.5"
+
+[dev-dependencies]

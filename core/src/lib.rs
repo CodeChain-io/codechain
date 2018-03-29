@@ -70,7 +70,7 @@ mod views;
 #[cfg(test)]
 mod tests;
 
-pub use client::Client;
+pub use client::{BlockChainClient, Client};
 pub use error::Error;
 pub use service::ClientService;
 pub use spec::Spec;

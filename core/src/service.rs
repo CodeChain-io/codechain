@@ -66,6 +66,8 @@ impl ClientService {
             database: db,
         })
     }
+
+    pub fn client(&self) -> Arc<Client> { Arc::clone(&self.client) }
 }
 
 /// Message type for external and internal events
