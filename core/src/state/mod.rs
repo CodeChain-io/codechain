@@ -424,8 +424,8 @@ impl<B: Backend> State<B> {
             return Ok(Some(TransactionError::NotEnoughCash { required: fee, got: balance }));
         }
 
-        self.inc_nonce(&sender);
-        self.sub_balance(&sender, &fee.into());
+        self.inc_nonce(&sender)?;
+        self.sub_balance(&sender, &fee.into())?;
         balance = balance - fee;
 
         match t.action {
@@ -434,7 +434,7 @@ impl<B: Backend> State<B> {
                 if balance < value.into() {
                     return Ok(Some(TransactionError::NotEnoughCash { required: fee + value.into(), got: fee + balance }));
                 }
-                self.transfer_balance(&sender, &address, &value);
+                self.transfer_balance(&sender, &address, &value)?;
                 // NOTE: Uncomment the below line if balance is used after
                 // balance = balance - value.into()
                 Ok(None)
