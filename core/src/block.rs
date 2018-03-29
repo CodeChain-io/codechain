@@ -173,12 +173,16 @@ impl<'x> OpenBlock<'x> {
             warn!("Encountered error on closing the block: {}", e);
         }
 
+        if let Err(e) = s.block.state.commit() {
+            warn!("Encountered error on state commit: {}", e);
+        }
         if s.block.header.transactions_root().is_zero() || s.block.header.transactions_root() == &BLAKE_NULL_RLP {
             s.block.header.set_transactions_root(ordered_trie_root(s.block.transactions.iter().map(|e| e.rlp_bytes())));
         }
         if s.block.header.invoices_root().is_zero() || s.block.header.invoices_root() == &BLAKE_NULL_RLP {
             s.block.header.set_invoices_root(ordered_trie_root(s.block.invoices.iter().map(|r| r.rlp_bytes())));
         }
+        s.block.header.set_state_root(s.block.state.root().clone());
 
         LockedBlock {
             block: s.block,
