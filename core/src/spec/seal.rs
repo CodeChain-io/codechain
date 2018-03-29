@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ctypes::{H64, H256, H520};
+use ctypes::H520;
 use cjson;
 use rlp::RlpStream;
 

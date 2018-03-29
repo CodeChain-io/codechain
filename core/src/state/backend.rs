@@ -21,11 +21,8 @@
 //! should become general over time to the point where not even a
 //! merkle trie is strictly necessary.
 
-use std::collections::{HashSet, HashMap};
-use std::sync::Arc;
-
-use ctypes::{Address, H256};
-use hashdb::{AsHashDB, HashDB, DBValue};
+use ctypes::Address;
+use hashdb::HashDB;
 
 use super::Account;
 

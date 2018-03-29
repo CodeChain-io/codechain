@@ -14,9 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use super::super::bytes::Bytes;
-use super::super::hash::{H256, Address};
-use super::super::uint::{self, Uint};
+use super::super::uint::Uint;
 
 /// Spec params.
 #[derive(Debug, PartialEq, Deserialize)]

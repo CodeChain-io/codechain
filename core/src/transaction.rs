@@ -22,7 +22,7 @@ use ccrypto::blake256;
 use ckeys::{self, ECDSASignature, Private, Public, public_to_address, sign_ecdsa, recover_ecdsa};
 use ctypes::{Address, H160, H256, U256, U512};
 use heapsize::HeapSizeOf;
-use rlp::{self, UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
+use rlp::{self, UntrustedRlp, RlpStream, Encodable, DecoderError};
 
 use super::types::BlockNumber;
 

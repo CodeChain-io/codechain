@@ -19,7 +19,7 @@ use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
 
 use cbytes::Bytes;
 use cio::IoChannel;
-use ctypes::{Address, H256};
+use ctypes::H256;
 use journaldb;
 use kvdb::{DBTransaction, KeyValueDB};
 use parking_lot::{Mutex, RwLock};
@@ -30,8 +30,7 @@ use super::{EngineClient, BlockChainInfo, BlockInfo, TransactionInfo,
 };
 use super::importer::Importer;
 use super::super::blockchain::{BlockChain, BlockProvider, TransactionAddress};
-use super::super::codechain_machine::CodeChainMachine;
-use super::super::consensus::{CodeChainEngine, Solo};
+use super::super::consensus::CodeChainEngine;
 use super::super::encoded;
 use super::super::error::{Error, BlockImportError, ImportError};
 use super::super::service::ClientIoMessage;

@@ -16,14 +16,10 @@
 
 //! Single account in the system.
 
-use std::collections::{HashMap, BTreeMap};
 use std::fmt;
-use std::sync::Arc;
 
-use cbytes::{Bytes, ToPretty};
-use ccrypto::blake256;
-use ctypes::{H256, U256, Address, Public};
-use rlp::*;
+use cbytes::Bytes;
+use ctypes::{U256, Public};
 
 /// Single account in the system.
 #[derive(Clone, RlpEncodable, RlpDecodable)]

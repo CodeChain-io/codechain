@@ -22,7 +22,7 @@ use std::sync::Arc;
 use ctypes::{H256, Address};
 use hashdb::HashDB;
 use journaldb::JournalDB;
-use kvdb::{KeyValueDB, DBTransaction};
+use kvdb::DBTransaction;
 use lru_cache::LruCache;
 use parking_lot::Mutex;
 use util_error::UtilError;

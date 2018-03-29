@@ -21,17 +21,13 @@
 
 use std::cell::{RefCell, RefMut};
 use std::collections::hash_map::Entry;
-use std::collections::{HashMap, BTreeMap, HashSet};
+use std::collections::HashMap;
 use std::fmt;
-use std::sync::Arc;
 
 use error::Error;
 use transaction::{SignedTransaction, Action};
 use ctypes::{H256, U256, U512, Address};
-use hashdb::{HashDB, AsHashDB};
-use kvdb::DBValue;
-use trie;
-use trie::{Trie, TrieFactory, TrieError};
+use trie::{self, Trie, TrieFactory, TrieError};
 
 use super::invoice::{Invoice, TransactionOutcome};
 use super::transaction::TransactionError;

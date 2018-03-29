@@ -27,7 +27,7 @@ pub use self::config::ClientConfig;
 pub use self::error::Error;
 
 use cbytes::Bytes;
-use ctypes::{Address, H256};
+use ctypes::H256;
 
 use super::block::SealedBlock;
 use super::blockchain_info::BlockChainInfo;

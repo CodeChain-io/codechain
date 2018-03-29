@@ -14,16 +14,13 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-
 use ccrypto::blake256;
-use cbytes::Bytes;
 use ctypes::H256;
 use rlp::Rlp;
 
-use super::super::header::Header;
 use super::super::transaction::{LocalizedTransaction, UnverifiedTransaction};
 use super::super::types::BlockNumber;
-use super::{TransactionView, HeaderView};
+use super::TransactionView;
 
 /// View onto block rlp.
 pub struct BodyView<'a> {
