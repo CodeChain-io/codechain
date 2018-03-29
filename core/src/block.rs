@@ -82,6 +82,11 @@ impl ExecutedBlock {
             transactions_set: Default::default(),
         }
     }
+
+    /// Get mutable access to a state.
+    pub fn state_mut(&mut self) -> &mut State<StateDB> {
+        &mut self.state
+    }
 }
 
 impl Transactions for ExecutedBlock {
