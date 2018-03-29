@@ -851,7 +851,7 @@ mod tests {
         let a = Address::zero();
         state.require(&a).unwrap();
         state.commit().unwrap();
-        assert_eq!(*state.root(), "5a88ee61ece3d32e047c02407cfbe010a83f8560dc2359d92628e27e703b5fac".into());
+        assert_eq!(*state.root(), "4b5fdb97048c16016fb85e635a11073e375d07b692d7372ec166885e0aa6624a".into());
     }
 
     #[test]
