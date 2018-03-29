@@ -27,7 +27,7 @@ use std::sync::Arc;
 
 use error::Error;
 use transaction::{SignedTransaction, Action};
-use ctypes::{H256, U256, Address};
+use ctypes::{H256, U256, U512, Address};
 use hashdb::{HashDB, AsHashDB};
 use kvdb::DBValue;
 use trie;
@@ -389,24 +389,33 @@ impl<B: Backend> State<B> {
     /// This will change the state accordingly.
     pub fn apply(&mut self, t: &SignedTransaction) -> Result<(), Error> {
         let sender = t.sender();
-        let fee = t.as_unsigned().fee;
+        let fee = U512::from(t.as_unsigned().fee);
         let nonce = self.nonce(&sender)?;
-        let balance = self.balance(&sender)?;
+        let mut balance = U512::from(self.balance(&sender)?);
 
         if t.nonce != nonce {
             return Err(From::from(TransactionError::InvalidNonce { expected: nonce, got: t.nonce }));
         }
 
         if fee > balance {
-            return Err(From::from(TransactionError::NotEnoughCash { required: From::from(fee), got: From::from(balance) }));
+            return Err(From::from(TransactionError::NotEnoughCash { required: fee, got: balance }));
         }
 
         self.inc_nonce(&sender);
-        self.sub_balance(&sender, &fee);
+        self.sub_balance(&sender, &fee.into());
+        balance = balance - fee;
 
-        // FIXME: apply transaction data(inputs/outputs).
-        // checkpoint should be used when transaction fails
-
+        match t.action {
+            Action::Noop => {},
+            Action::Payment { address, value } => {
+                if balance < U512::from(value) {
+                    return Err(From::from(TransactionError::NotEnoughCash { required: fee + U512::from(value), got: fee + balance }));
+                }
+                self.transfer_balance(&sender, &address, &value);
+                // NOTE: Uncomment the below line if balance is used after
+                // balance = balance - U512::from(value)
+            },
+        }
         self.commit()?;
         // FIXME: return receipt
         Ok(())
@@ -640,6 +649,56 @@ mod tests {
         }
         assert_eq!(state.balance(&sender).unwrap(), 4.into());
         assert_eq!(state.nonce(&sender).unwrap(), 0.into());
+    }
+
+    #[test]
+    fn should_apply_payment() {
+        // account_start_nonce is 0
+        let mut state = get_temp_state();
+        let receiver = 1u64.into();
+
+        let t = Transaction {
+            nonce: 0.into(),
+            fee: 5.into(),
+            action: Action::Payment { address: receiver, value: 10.into() },
+            data: vec![],
+            network_id: 0,
+        }.sign(&secret().into());
+        let sender = t.sender();
+        state.add_balance(&sender, &20.into());
+
+        let res = state.apply(&t);
+        assert!(res.is_ok());
+        assert_eq!(state.balance(&receiver).unwrap(), 10.into());
+        assert_eq!(state.balance(&sender).unwrap(), 5.into());
+        assert_eq!(state.nonce(&sender).unwrap(), 1.into());
+    }
+
+    #[test]
+    fn should_apply_error_for_action_failure() {
+        // account_start_nonce is 0
+        let mut state = get_temp_state();
+        let receiver = 1u64.into();
+
+        let t = Transaction {
+            nonce: 0.into(),
+            fee: 5.into(),
+            action: Action::Payment { address: receiver, value: 30.into() },
+            data: vec![],
+            network_id: 0,
+        }.sign(&secret().into());
+        let sender = t.sender();
+        state.add_balance(&sender, &20.into());
+
+        let res = state.apply(&t);
+        if let Error::Transaction(e) = res.unwrap_err() {
+            assert_eq!(e, TransactionError::NotEnoughCash { required: 35.into(), got: 20.into() });
+        } else {
+            unreachable!();
+        }
+        assert_eq!(state.balance(&receiver).unwrap(), 0.into());
+        assert_eq!(state.balance(&sender).unwrap(), 15.into());
+        assert_eq!(state.nonce(&sender).unwrap(), 1.into());
     }
 
     #[test]
