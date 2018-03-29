@@ -138,6 +138,16 @@ impl Manager {
         });
     }
 
+    pub fn update_stream(&self, token: ConnectionToken, event_loop: &mut EventLoop<IoManager<HandlerMessage>>) {
+        self.connections.get(token).map(|connection| {
+            if let Err(err) = event_loop.reregister(connection.stream(), Token(token), Ready::readable() | Ready::writable(), PollOpt::edge()) {
+                info!("Cannot register TCP stream {:?}", err);
+            } else {
+                info!("Register TCP stream on {}", token)
+            }
+        });
+    }
+
     pub fn is_inbound(&self, token: ConnectionToken) -> bool {
         self.inbound_tokens.contains(&token)
     }
@@ -190,6 +200,7 @@ impl IoHandler<HandlerMessage> for Handler {
                 let mut manager = self.manager.lock();
                 if let Some(mut connection) = manager.connections.get_mut(node_id) {
                     connection.enqueue_extension_message(extension_name.clone(), *need_encryption, data.clone());
+                    let _ = io.update_registration(node_id);
                     info!("Send extension message to node({})", node_id);
                 } else {
                     info!("{} is not a valid node id", node_id);
@@ -223,6 +234,7 @@ impl IoHandler<HandlerMessage> for Handler {
                         info!("readable event for unregistered stream({:?})", stream);
                     }
                 }
+                let _ = io.update_registration(stream);
             }
             _ => unimplemented!(),
         }
@@ -270,6 +282,18 @@ impl IoHandler<HandlerMessage> for Handler {
                     }
                 }
             }
+            _ => {
+                unreachable!();
+            },
+        }
+    }
+
+    fn update_stream(&self, stream: StreamToken, _reg: Token, event_loop: &mut EventLoop<IoManager<HandlerMessage>>) {
+        match stream {
+            FIRST_TOKEN...LAST_TOKEN => {
+                let mut manager = self.manager.lock();
+                manager.update_stream(stream, event_loop);
+            },
             _ => {
                 unreachable!();
             },
