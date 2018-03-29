@@ -17,13 +17,15 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Weak};
 
+use cio::IoChannel;
 use parking_lot::RwLock;
 
 use super::{Api, Error as ExtensionError, Extension, NodeId};
+use super::connection::HandlerMessage as ConnectionMessage;
 
 struct ClientApi {
-    client: Weak<Client>,
     extension: Weak<Extension>,
+    channel: IoChannel<ConnectionMessage>,
 }
 
 impl Api for ClientApi {
@@ -107,17 +109,17 @@ macro_rules! define_method {
 }
 
 impl Client {
-    pub fn register_extension(client: Arc<Client>, extension: Arc<Extension>) -> Arc<Api> {
+    pub fn register_extension(&self, extension: Arc<Extension>, channel: IoChannel<ConnectionMessage>) -> Arc<Api> {
         let name = extension.name();
-        let mut extensions = client.extensions.write();
+        let mut extensions = self.extensions.write();
         if let Some(_) = extensions.insert(name, Arc::downgrade(&extension)) {
             let name = extension.name();
             panic!("Duplicated application name : {}", name);
         }
 
         let api = Arc::new(ClientApi {
-            client: Arc::downgrade(&client),
             extension: Arc::downgrade(&extension),
+            channel,
         }) as Arc<Api>;
         extension.on_initialize(Arc::clone(&api));
         api
@@ -283,12 +285,14 @@ mod tests {
 
     #[test]
     fn broadcast_node_added() {
+        let service = IoService::start().unwrap();
+
         let client = Client::new();
 
         let e1 = Arc::new(TestExtension::new("e1".to_string()));
-        let _ = Client::register_extension(Arc::clone(&client), Arc::clone(&e1) as Arc<Extension>);
+        let _ = client.register_extension(Arc::clone(&e1) as Arc<Extension>, service.channel());
         let e2 = Arc::new(TestExtension::new("e2".to_string()));
-        let _ = Client::register_extension(Arc::clone(&client), Arc::clone(&e2) as Arc<Extension>);
+        let _ = client.register_extension(Arc::clone(&e2) as Arc<Extension>, service.channel());
 
         client.on_node_added(&1);
 
@@ -305,12 +309,14 @@ mod tests {
 
     #[test]
     fn message_only_to_target() {
+        let service = IoService::start().unwrap();
+
         let client = Client::new();
 
         let e1 = Arc::new(TestExtension::new("e1".to_string()));
-        let _ = Client::register_extension(Arc::clone(&client), Arc::clone(&e1) as Arc<Extension>);
+        let _ = client.register_extension(Arc::clone(&e1) as Arc<Extension>, service.channel());
         let e2 = Arc::new(TestExtension::new("e2".to_string()));
-        let _ = Client::register_extension(Arc::clone(&client), Arc::clone(&e2) as Arc<Extension>);
+        let _ = client.register_extension(Arc::clone(&e2) as Arc<Extension>, service.channel());
 
         client.on_message(&"e1".to_string(), &1, &vec![]);
         {
