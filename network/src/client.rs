@@ -31,8 +31,14 @@ struct ClientApi {
 impl Api for ClientApi {
     fn send(&self, id: &NodeId, message: &Vec<u8>) {
         if let Some(extension) = self.extension.upgrade() {
-            let _need_encryption = extension.need_encryption();
-            info!("send {:?} to {:?}", message, id);
+            let need_encryption = extension.need_encryption();
+            let extension_name = extension.name();
+            let node_id = *id;
+            if let Err(err) = self.channel.send(ConnectionMessage::SendExtensionMessage { node_id, extension_name, need_encryption, data: message.clone() }) {
+                info!("Cannot send extension message to {:?} : {:?}", id, err);
+            } else {
+                info!("Request send extension message to {:?}", id);
+            }
         } else {
             info!("The extension already dropped");
         }

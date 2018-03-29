@@ -123,7 +123,7 @@ impl Session {
             .map(|iv| blake256_with_key(data, &iv))
     }
 
-    fn initialization_vector(&self) -> Option<H128> {
+    pub fn initialization_vector(&self) -> Option<H128> {
         self.nonce.map(|nonce| {
             // FIXME: This implementation is so naive.
             let mut iv: IV = IV::zero();

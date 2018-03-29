@@ -28,6 +28,7 @@ use parking_lot::Mutex;
 use super::connection::Connection;
 use super::super::Address;
 use super::super::client::Client;
+use super::super::extension::NodeId;
 use super::super::session::{Session, SessionTable};
 use super::limited_table::{Key as ConnectionToken, LimitedTable};
 
@@ -48,6 +49,13 @@ pub enum HandlerMessage {
     RegisterSession(Address, Session),
 
     RequestConnection(Address),
+
+    SendExtensionMessage {
+        node_id: NodeId,
+        extension_name: String,
+        need_encryption: bool,
+        data: Vec<u8 >,
+    },
 }
 
 impl Manager {
@@ -176,6 +184,15 @@ impl IoHandler<HandlerMessage> for Handler {
                     }
                 } else {
                     info!("There are no available tokens");
+                }
+            },
+            HandlerMessage::SendExtensionMessage { node_id, ref extension_name, ref need_encryption, ref data } => {
+                let mut manager = self.manager.lock();
+                if let Some(mut connection) = manager.connections.get_mut(node_id) {
+                    connection.enqueue_extension_message(extension_name.clone(), *need_encryption, data.clone());
+                    info!("Send extension message to node({})", node_id);
+                } else {
+                    info!("{} is not a valid node id", node_id);
                 }
             },
         };
