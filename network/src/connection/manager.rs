@@ -128,9 +128,9 @@ impl Manager {
         self.address_to_session.insert(address, session);
     }
 
-    pub fn register_stream(&self, token: ConnectionToken, event_loop: &mut EventLoop<IoManager<HandlerMessage>>) {
+    pub fn register_stream(&self, token: ConnectionToken, reg: Token, event_loop: &mut EventLoop<IoManager<HandlerMessage>>) {
         self.connections.get(token).map(|connection| {
-            if let Err(err) = event_loop.register(connection.stream(), Token(token), Ready::readable() | Ready::writable(), PollOpt::edge()) {
+            if let Err(err) = event_loop.register(connection.stream(), reg, Ready::readable() | Ready::writable(), PollOpt::edge()) {
                 info!("Cannot register TCP stream {:?}", err);
             } else {
                 info!("Register TCP stream on {}", token)
@@ -138,9 +138,9 @@ impl Manager {
         });
     }
 
-    pub fn update_stream(&self, token: ConnectionToken, event_loop: &mut EventLoop<IoManager<HandlerMessage>>) {
+    pub fn update_stream(&self, token: ConnectionToken, reg: Token, event_loop: &mut EventLoop<IoManager<HandlerMessage>>) {
         self.connections.get(token).map(|connection| {
-            if let Err(err) = event_loop.reregister(connection.stream(), Token(token), Ready::readable() | Ready::writable(), PollOpt::edge()) {
+            if let Err(err) = event_loop.reregister(connection.stream(), reg, Ready::readable() | Ready::writable(), PollOpt::edge()) {
                 info!("Cannot register TCP stream {:?}", err);
             } else {
                 info!("Register TCP stream on {}", token)
@@ -268,14 +268,14 @@ impl IoHandler<HandlerMessage> for Handler {
         match stream {
             ACCEPT_TOKEN => {
                 let manager = self.manager.lock();
-                if let Err(err) = event_loop.register(&manager.listener, Token(ACCEPT_TOKEN), Ready::readable() | Ready::writable(), PollOpt::edge()) {
+                if let Err(err) = event_loop.register(&manager.listener, reg, Ready::readable() | Ready::writable(), PollOpt::edge()) {
                     info!("Cannot register tcp manager {:?}", err);
                 }
                 info!("TCP connection starts for {:?}", self.address);
             },
             FIRST_TOKEN...LAST_TOKEN => {
                 let mut manager = self.manager.lock();
-                manager.register_stream(stream, event_loop);
+                manager.register_stream(stream, reg, event_loop);
                 if !manager.is_inbound(stream) {
                     if let Some(connection) = manager.connections.get_mut(stream) {
                         connection.enqueue_sync();
@@ -288,11 +288,11 @@ impl IoHandler<HandlerMessage> for Handler {
         }
     }
 
-    fn update_stream(&self, stream: StreamToken, _reg: Token, event_loop: &mut EventLoop<IoManager<HandlerMessage>>) {
+    fn update_stream(&self, stream: StreamToken, reg: Token, event_loop: &mut EventLoop<IoManager<HandlerMessage>>) {
         match stream {
             FIRST_TOKEN...LAST_TOKEN => {
                 let mut manager = self.manager.lock();
-                manager.update_stream(stream, event_loop);
+                manager.update_stream(stream, reg, event_loop);
             },
             _ => {
                 unreachable!();
