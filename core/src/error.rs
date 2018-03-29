@@ -92,6 +92,8 @@ pub enum BlockError {
     MismatchedH256SealElement(Mismatch<H256>),
     /// Some low-level aspect of the seal is incorrect.
     InvalidSeal,
+    /// Invoices trie root header field is invalid.
+    InvalidInvoicesRoot(Mismatch<H256>),
     /// Timestamp header field is invalid.
     InvalidTimestamp(OutOfBounds<u64>),
     /// Timestamp header field is too far in future.
@@ -121,6 +123,7 @@ impl fmt::Display for BlockError {
             InvalidScore(ref mis) => format!("Invalid block score: {}", mis),
             MismatchedH256SealElement(ref mis) => format!("Seal element out of bounds: {}", mis),
             InvalidSeal => "Block has invalid seal.".into(),
+            InvalidInvoicesRoot(ref mis) => format!("Invalid invoices trie root in header: {}", mis),
             InvalidTimestamp(ref oob) => format!("Invalid timestamp in header: {}", oob),
             TemporarilyInvalid(ref oob) => format!("Future timestamp in header: {}", oob),
             InvalidParentHash(ref mis) => format!("Invalid parent hash: {}", mis),
