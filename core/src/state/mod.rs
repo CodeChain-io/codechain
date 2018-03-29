@@ -588,11 +588,8 @@ mod tests {
         let mut state = get_temp_state();
 
         let t = Transaction {
-            nonce: 0.into(),
             fee: 5.into(),
-            action: Action::Noop,
-            data: vec![],
-            network_id: 0,
+            ..Transaction::default()
         }.sign(&secret().into());
         let sender = t.sender();
         state.add_balance(&sender, &20.into());
@@ -611,9 +608,7 @@ mod tests {
         let t = Transaction {
             nonce: 2.into(),
             fee: 5.into(),
-            action: Action::Noop,
-            data: vec![],
-            network_id: 0,
+            .. Transaction::default()
         }.sign(&secret().into());
         let sender = t.sender();
         state.add_balance(&sender, &20.into());
@@ -632,11 +627,8 @@ mod tests {
     fn should_apply_error_for_not_enough_cash() {
         let mut state = get_temp_state();
         let t = Transaction {
-            nonce: 0.into(),
             fee: 5.into(),
-            action: Action::Noop,
-            data: vec![],
-            network_id: 0,
+            .. Transaction::default()
         }.sign(&secret().into());
         let sender = t.sender();
         state.add_balance(&sender, &4.into());
@@ -658,11 +650,9 @@ mod tests {
         let receiver = 1u64.into();
 
         let t = Transaction {
-            nonce: 0.into(),
             fee: 5.into(),
             action: Action::Payment { address: receiver, value: 10.into() },
-            data: vec![],
-            network_id: 0,
+            .. Transaction::default()
         }.sign(&secret().into());
         let sender = t.sender();
         state.add_balance(&sender, &20.into());
@@ -681,11 +671,9 @@ mod tests {
         let receiver = 1u64.into();
 
         let t = Transaction {
-            nonce: 0.into(),
             fee: 5.into(),
             action: Action::Payment { address: receiver, value: 30.into() },
-            data: vec![],
-            network_id: 0,
+            .. Transaction::default()
         }.sign(&secret().into());
         let sender = t.sender();
         state.add_balance(&sender, &20.into());
