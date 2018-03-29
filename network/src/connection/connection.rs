@@ -104,11 +104,13 @@ impl Connection {
     pub fn enqueue_sync(&mut self) {
         const VERSION: u32 = 0;
         self.enqueue(Message::Handshake(HandshakeMessage::Sync(VERSION)));
+        self.state = State::Requested;
     }
 
     pub fn enqueue_ack(&mut self) {
         const VERSION: u32 = 0;
         self.enqueue(Message::Handshake(HandshakeMessage::Ack(VERSION)));
+        self.state = State::Established;
     }
 
     pub fn enqueue_extension_message(&mut self, extension_name: String, need_encryption: bool, message: Vec<u8>) {
@@ -146,6 +148,7 @@ impl Connection {
             match message {
                 None => Ok(false),
                 Some(Message::Application(msg)) => {
+                    let _ = self.expect_state(State::Established)?;
                     unimplemented!();
                 },
                 Some(Message::Handshake(msg)) => {
@@ -153,7 +156,6 @@ impl Connection {
                     match msg {
                         HandshakeMessage::Sync(_version) => {
                             let _ = self.expect_state(State::New)?;
-                            self.state = State::Requested;
                             self.enqueue_ack();
                         },
                         HandshakeMessage::Ack(_) => {
@@ -164,6 +166,7 @@ impl Connection {
                     Ok(true)
                 },
                 Some(Message::Negotiation(msg)) => {
+                    let _ = self.expect_state(State::Established)?;
                     unimplemented!();
                 },
             }
