@@ -152,21 +152,6 @@ impl HeapSizeOf for Transaction {
     }
 }
 
-impl Decodable for Transaction {
-    fn decode(d: &UntrustedRlp) -> Result<Self, DecoderError> {
-        if d.item_count()? != 5 {
-            return Err(DecoderError::RlpIncorrectListLen);
-        }
-        Ok(Transaction {
-                nonce: d.val_at(0)?,
-                fee: d.val_at(1)?,
-                action: d.val_at(2)?,
-                data: d.val_at(3)?,
-                network_id: d.val_at(4)?,
-        })
-    }
-}
-
 impl Transaction {
     /// Append object with a without signature into RLP stream
     pub fn rlp_append_unsigned_transaction(&self, s: &mut RlpStream) {
