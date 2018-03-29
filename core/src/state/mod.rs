@@ -33,6 +33,7 @@ use kvdb::DBValue;
 use trie;
 use trie::{Trie, TrieFactory, TrieError};
 
+use super::invoice::{Invoice, TransactionOutcome};
 use super::transaction::TransactionError;
 
 mod account;
@@ -43,6 +44,14 @@ use super::state_db::StateDB;
 
 pub use self::account::Account;
 pub use self::backend::Backend;
+
+/// Used to return information about an `State::apply` operation.
+pub struct ApplyOutcome {
+    /// The invoice for the applied transaction.
+    pub invoice: Invoice,
+    /// The output of the applied transaction.
+    pub error: Option<TransactionError>,
+}
 
 #[derive(Eq, PartialEq, Clone, Copy, Debug)]
 /// Account modification state. Used to check if the account was
@@ -387,18 +396,32 @@ impl<B: Backend> State<B> {
 
     /// Execute a given transaction, charging transaction fee.
     /// This will change the state accordingly.
-    pub fn apply(&mut self, t: &SignedTransaction) -> Result<(), Error> {
+    pub fn apply(&mut self, t: &SignedTransaction) -> Result<ApplyOutcome, Error> {
+        let error = self.execute(t)?;
+        self.commit()?;
+
+        let invoice = match error {
+            Some(_) => Invoice::new(TransactionOutcome::Failed),
+            None => Invoice::new(TransactionOutcome::Success),
+        };
+        Ok(ApplyOutcome {
+            invoice,
+            error
+        })
+    }
+
+    fn execute(&mut self, t: &SignedTransaction) -> Result<Option<TransactionError>, Error> {
         let sender = t.sender();
         let fee = U512::from(t.as_unsigned().fee);
         let nonce = self.nonce(&sender)?;
         let mut balance = U512::from(self.balance(&sender)?);
 
         if t.nonce != nonce {
-            return Err(From::from(TransactionError::InvalidNonce { expected: nonce, got: t.nonce }));
+            return Ok(Some(TransactionError::InvalidNonce { expected: nonce, got: t.nonce }));
         }
 
         if fee > balance {
-            return Err(From::from(TransactionError::NotEnoughCash { required: fee, got: balance }));
+            return Ok(Some(TransactionError::NotEnoughCash { required: fee, got: balance }));
         }
 
         self.inc_nonce(&sender);
@@ -406,19 +429,17 @@ impl<B: Backend> State<B> {
         balance = balance - fee;
 
         match t.action {
-            Action::Noop => {},
+            Action::Noop => { Ok(None) },
             Action::Payment { address, value } => {
-                if balance < U512::from(value) {
-                    return Err(From::from(TransactionError::NotEnoughCash { required: fee + U512::from(value), got: fee + balance }));
+                if balance < value.into() {
+                    return Ok(Some(TransactionError::NotEnoughCash { required: fee + value.into(), got: fee + balance }));
                 }
                 self.transfer_balance(&sender, &address, &value);
                 // NOTE: Uncomment the below line if balance is used after
-                // balance = balance - U512::from(value)
+                // balance = balance - value.into()
+                Ok(None)
             },
         }
-        self.commit()?;
-        // FIXME: return receipt
-        Ok(())
     }
 
     /// Commits our cached account changes into the trie.
@@ -594,8 +615,9 @@ mod tests {
         let sender = t.sender();
         state.add_balance(&sender, &20.into());
 
-        let res = state.apply(&t);
-        assert!(res.is_ok());
+        let res = state.apply(&t).unwrap();
+        assert_eq!(res.invoice.outcome, TransactionOutcome::Success);
+        assert!(res.error.is_none());
         assert_eq!(state.balance(&sender).unwrap(), 15.into());
         assert_eq!(state.nonce(&sender).unwrap(), 1.into());
     }
@@ -613,12 +635,9 @@ mod tests {
         let sender = t.sender();
         state.add_balance(&sender, &20.into());
 
-        let res = state.apply(&t);
-        if let Error::Transaction(e) = res.unwrap_err() {
-            assert_eq!(e, TransactionError::InvalidNonce { expected: 0.into(), got: 2.into() });
-        } else {
-            unreachable!();
-        }
+        let res = state.apply(&t).unwrap();
+        assert_eq!(res.invoice.outcome, TransactionOutcome::Failed);
+        assert_eq!(res.error.unwrap(), TransactionError::InvalidNonce { expected: 0.into(), got: 2.into() });
         assert_eq!(state.balance(&sender).unwrap(), 20.into());
         assert_eq!(state.nonce(&sender).unwrap(), 0.into());
     }
@@ -633,12 +652,9 @@ mod tests {
         let sender = t.sender();
         state.add_balance(&sender, &4.into());
 
-        let res = state.apply(&t);
-        if let Error::Transaction(e) = res.unwrap_err() {
-            assert_eq!(e, TransactionError::NotEnoughCash { required: 5.into(), got: 4.into() });
-        } else {
-            unreachable!();
-        }
+        let res = state.apply(&t).unwrap();
+        assert_eq!(res.invoice.outcome, TransactionOutcome::Failed);
+        assert_eq!(res.error.unwrap(), TransactionError::NotEnoughCash { required: 5.into(), got: 4.into() });
         assert_eq!(state.balance(&sender).unwrap(), 4.into());
         assert_eq!(state.nonce(&sender).unwrap(), 0.into());
     }
@@ -657,8 +673,9 @@ mod tests {
         let sender = t.sender();
         state.add_balance(&sender, &20.into());
 
-        let res = state.apply(&t);
-        assert!(res.is_ok());
+        let res = state.apply(&t).unwrap();
+        assert_eq!(res.invoice.outcome, TransactionOutcome::Success);
+        assert!(res.error.is_none());
         assert_eq!(state.balance(&receiver).unwrap(), 10.into());
         assert_eq!(state.balance(&sender).unwrap(), 5.into());
         assert_eq!(state.nonce(&sender).unwrap(), 1.into());
@@ -678,12 +695,9 @@ mod tests {
         let sender = t.sender();
         state.add_balance(&sender, &20.into());
 
-        let res = state.apply(&t);
-        if let Error::Transaction(e) = res.unwrap_err() {
-            assert_eq!(e, TransactionError::NotEnoughCash { required: 35.into(), got: 20.into() });
-        } else {
-            unreachable!();
-        }
+        let res = state.apply(&t).unwrap();
+        assert_eq!(res.invoice.outcome, TransactionOutcome::Failed);
+        assert_eq!(res.error.unwrap(), TransactionError::NotEnoughCash { required: 35.into(), got: 20.into() });
         assert_eq!(state.balance(&receiver).unwrap(), 0.into());
         assert_eq!(state.balance(&sender).unwrap(), 15.into());
         assert_eq!(state.nonce(&sender).unwrap(), 1.into());
