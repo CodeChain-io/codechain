@@ -152,6 +152,14 @@ impl<'x> OpenBlock<'x> {
         Ok(())
     }
 
+    /// Push transactions onto the block.
+    pub fn push_transactions(&mut self, transactions: &[SignedTransaction]) -> Result<(), Error> {
+        for t in transactions {
+            self.push_transaction(t.clone(), None)?;
+        }
+        Ok(())
+    }
+
     /// Turn this into a `LockedBlock`.
     pub fn close_and_lock(self) -> LockedBlock {
         let mut s = self;
