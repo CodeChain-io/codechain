@@ -150,10 +150,11 @@ impl<'x> OpenBlock<'x> {
             return Err(TransactionError::AlreadyImported.into());
         }
 
-        self.block.state.apply(&t);
+        let outcome = self.block.state.apply(&t)?;
 
         self.block.transactions_set.insert(h.unwrap_or_else(||t.hash()));
         self.block.transactions.push(t.into());
+        self.block.invoices.push(outcome.invoice);
         Ok(())
     }
 
