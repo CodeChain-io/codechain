@@ -69,7 +69,8 @@ mod tests {
 		}
 	},
 	"params": {
-		"networkID" : "0x2"
+		"networkID" : "0x2",
+		"minTransactionCost" : "10"
 	},
 	"genesis": {
 		"seal": {

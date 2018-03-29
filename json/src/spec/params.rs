@@ -40,7 +40,7 @@ mod tests {
     #[test]
     fn params_deserialization() {
         let s = r#"{
-			"networkID" : "0x1"
+			"networkID" : "0x1",
 			"minTransactionCost" : "10"
 		}"#;
 
