@@ -54,6 +54,7 @@ mod db;
 mod encoded;
 mod error;
 mod header;
+mod invoice;
 mod machine;
 mod miner;
 mod service;
