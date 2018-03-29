@@ -53,7 +53,7 @@ impl Api for ClientApi {
         unimplemented!();
     }
 
-    fn clear_timer(&self, _seq: usize, _ms: u64) {
+    fn clear_timer(&self, _timer_id: usize, _ms: u64) {
         unimplemented!();
     }
 }

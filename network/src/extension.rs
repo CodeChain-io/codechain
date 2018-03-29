@@ -58,5 +58,5 @@ pub trait Extension: Send + Sync {
     fn on_timer_set_allowed(&self, timer_id: usize);
     fn on_timer_set_denied(&self, timer_id: usize, error: Error);
 
-    fn on_timeout(&self, seq: usize);
+    fn on_timeout(&self, timer_id: usize);
 }
