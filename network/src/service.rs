@@ -54,6 +54,7 @@ impl Service {
     }
 
     pub fn register_extension(&self, extension: Arc<Extension>) -> Arc<Api> {
-        Client::register_extension(Arc::clone(&self.client), extension)
+        let channel = self.extension_service.channel();
+        self.client.register_extension(extension, channel)
     }
 }
