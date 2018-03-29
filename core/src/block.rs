@@ -223,6 +223,9 @@ pub trait IsBlock {
 
     /// Get all information on transactions in this block.
     fn transactions(&self) -> &[SignedTransaction] { &self.block().transactions }
+
+    /// Get the final state associated with this object's block.
+    fn state(&self) -> &State<StateDB> { &self.block().state }
 }
 
 impl IsBlock for ExecutedBlock {
