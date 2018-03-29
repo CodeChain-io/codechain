@@ -28,6 +28,7 @@ extern crate codechain_logger as clogger;
 extern crate codechain_network as cnetwork;
 extern crate codechain_reactor as creactor;
 extern crate codechain_rpc as crpc;
+extern crate codechain_sync as csync;
 extern crate ctrlc;
 extern crate fdlimit;
 extern crate env_logger;
@@ -44,6 +45,7 @@ use std::sync::Arc;
 use app_dirs::AppInfo;
 use clogger::{setup_log, Config as LogConfig};
 use creactor::EventLoop;
+use csync::BlockSyncExtension;
 use ctrlc::CtrlC;
 use fdlimit::raise_fd_limit;
 use parking_lot::{Condvar, Mutex};
@@ -87,15 +89,17 @@ fn run() -> Result<(), String> {
         }
     };
 
+    let client = commands::client_start(&config, &spec)?;
+
     let _network_service = {
         if let Some(network_config) = config::parse_network_config(&matches)? {
-            Some(commands::network_start(network_config)?)
+            let service = commands::network_start(network_config)?;
+            service.register_extension(BlockSyncExtension::new(client.client()));
+            Some(service)
         } else {
             None
         }
     };
-
-    let _client = commands::client_start(&config, &spec)?;
 
     // drop the spec to free up genesis state.
     drop(spec);
