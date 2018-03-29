@@ -183,5 +183,9 @@ pub fn verify_block_final(expected: &Header, got: &Header) -> Result<(), Error> 
     if expected.state_root() != got.state_root() {
         return Err(From::from(BlockError::InvalidStateRoot(Mismatch { expected: expected.state_root().clone(), found: got.state_root().clone() })))
     }
+    if expected.invoices_root() != got.invoices_root() {
+        return Err(From::from(BlockError::InvalidInvoicesRoot(Mismatch { expected: expected.invoices_root().clone(), found: got.invoices_root().clone() })))
+    }
     Ok(())
 }
+

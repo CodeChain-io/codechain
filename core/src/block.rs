@@ -26,6 +26,7 @@ use triehash::ordered_trie_root;
 use super::consensus::CodeChainEngine;
 use super::error::Error;
 use super::header::{Header, Seal};
+use super::invoice::Invoice;
 use super::machine::{LiveBlock, Transactions};
 use super::transaction::{UnverifiedTransaction, SignedTransaction, TransactionError};
 use super::state::State;
@@ -70,6 +71,7 @@ pub struct ExecutedBlock {
     header: Header,
     state: State<StateDB>,
     transactions: Vec<SignedTransaction>,
+    invoices: Vec<Invoice>,
     transactions_set: HashSet<H256>,
 }
 
@@ -79,6 +81,7 @@ impl ExecutedBlock {
             header: Default::default(),
             state,
             transactions: Default::default(),
+            invoices: Default::default(),
             transactions_set: Default::default(),
         }
     }
@@ -173,6 +176,9 @@ impl<'x> OpenBlock<'x> {
         if s.block.header.transactions_root().is_zero() || s.block.header.transactions_root() == &BLAKE_NULL_RLP {
             s.block.header.set_transactions_root(ordered_trie_root(s.block.transactions.iter().map(|e| e.rlp_bytes())));
         }
+        if s.block.header.invoices_root().is_zero() || s.block.header.invoices_root() == &BLAKE_NULL_RLP {
+            s.block.header.set_invoices_root(ordered_trie_root(s.block.invoices.iter().map(|r| r.rlp_bytes())));
+        }
 
         LockedBlock {
             block: s.block,
@@ -223,6 +229,9 @@ pub trait IsBlock {
 
     /// Get all information on transactions in this block.
     fn transactions(&self) -> &[SignedTransaction] { &self.block().transactions }
+
+    /// Get all information on receipts in this block.
+    fn invoices(&self) -> &[Invoice] { &self.block().invoices }
 
     /// Get the final state associated with this object's block.
     fn state(&self) -> &State<StateDB> { &self.block().state }
