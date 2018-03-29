@@ -348,12 +348,12 @@ impl IoHandler<HandlerMessage> for Handler {
         }
     }
 
-    fn register_stream(&self, stream: StreamToken, _reg: Token, event_loop: &mut EventLoop<IoManager<HandlerMessage>>) {
+    fn register_stream(&self, stream: StreamToken, reg: Token, event_loop: &mut EventLoop<IoManager<HandlerMessage>>) {
         match stream {
             RECV_TOKEN => {
                 let mut internal = self.internal.lock();
                 let ref mut handshake = internal.handshake;
-                if let Err(err) = event_loop.register(&handshake.socket, Token(RECV_TOKEN), Ready::readable() | Ready::writable(), PollOpt::edge()) {
+                if let Err(err) = event_loop.register(&handshake.socket, reg, Ready::readable() | Ready::writable(), PollOpt::edge()) {
                     info!("Cannot register udp socket {:?}", err);
                 }
             },
