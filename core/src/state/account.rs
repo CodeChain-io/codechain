@@ -22,7 +22,7 @@ use std::sync::Arc;
 
 use cbytes::{Bytes, ToPretty};
 use ccrypto::blake256;
-use ctypes::{H256, U256, Address};
+use ctypes::{H256, U256, Address, Public};
 use rlp::*;
 
 /// Single account in the system.
@@ -32,6 +32,8 @@ pub struct Account {
     balance: U256,
     // Nonce of the account.
     nonce: U256,
+    // Regular key of the account.
+    regular_key: Option<Public>,
 }
 
 impl Account {
@@ -39,6 +41,7 @@ impl Account {
         Account {
             balance: balance,
             nonce: nonce,
+            regular_key: None,
         }
     }
 
@@ -57,6 +60,9 @@ impl Account {
 
     /// return the nonce associated with this account.
     pub fn nonce(&self) -> &U256 { &self.nonce }
+
+    /// return the regular key associated with this account.
+    pub fn regular_key(&self) -> Option<Public> { self.regular_key }
 
     /// Check if account has zero nonce, balance.
     pub fn is_null(&self) -> bool {
@@ -81,12 +87,24 @@ impl Account {
         self.balance = self.balance - *x;
     }
 
+    /// Set the regular key of the account.
+    /// Overwrite if the key already exists.
+    pub fn set_regular_key(&mut self, key: &Public) {
+        self.regular_key = Some(*key);
+    }
+
+    /// Remove the regular key of the account.
+    pub fn remove_regular_key(&mut self) {
+        self.regular_key = None;
+    }
+
     /// Replace self with the data from other account.
     /// Basic account data and all modifications are overwritten
     /// with new values.
     pub fn overwrite_with(&mut self, other: Account) {
         self.balance = other.balance;
         self.nonce = other.nonce;
+        self.regular_key = other.regular_key;
     }
 }
 
@@ -113,14 +131,22 @@ mod tests {
         let b = Account::from_rlp(&a.rlp());
         assert_eq!(a.balance(), b.balance());
         assert_eq!(a.nonce(), b.nonce());
+
+        let mut a = Account::new(69u8.into(), 0u8.into());
+        a.set_regular_key(&Public::default());
+        let b = Account::from_rlp(&a.rlp());
+        assert_eq!(a.balance(), b.balance());
+        assert_eq!(a.nonce(), b.nonce());
+        assert_eq!(a.regular_key(), b.regular_key());
     }
 
     #[test]
     fn new_account() {
         let a = Account::new(69u8.into(), 0u8.into());
-        assert_eq!(a.rlp().to_hex(), "c24580");
+        assert_eq!(a.rlp().to_hex(), "c34580c0");
         assert_eq!(*a.balance(), 69u8.into());
         assert_eq!(*a.nonce(), 0u8.into());
+        assert_eq!(a.regular_key(), None);
     }
 
     #[test]
@@ -152,9 +178,11 @@ mod tests {
     fn overwrite() {
         let mut a = Account::new(69u8.into(), 0u8.into());
         let mut b = Account::new(79u8.into(), 1u8.into());
+        b.set_regular_key(&Public::default());
         a.overwrite_with(b);
         assert_eq!(*a.balance(), 79u8.into());
         assert_eq!(*a.nonce(), 1u8.into());
+        assert_eq!(a.regular_key(), Some(Public::default()));
     }
 
     #[test]
