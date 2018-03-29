@@ -28,6 +28,8 @@ pub struct TendermintParams {
     pub validators: Box<ValidatorSet>,
     /// Timeout durations for different steps.
     pub timeouts: TendermintTimeouts,
+    /// Reward per block in base units.
+    pub block_reward: U256,
 }
 
 impl From<cjson::spec::TendermintParams> for TendermintParams {
@@ -41,6 +43,7 @@ impl From<cjson::spec::TendermintParams> for TendermintParams {
                 precommit: p.timeout_precommit.map_or(dt.precommit, to_duration),
                 commit: p.timeout_commit.map_or(dt.commit, to_duration),
             },
+            block_reward: p.block_reward.map_or(U256::default(), Into::into),
         }
     }
 }
