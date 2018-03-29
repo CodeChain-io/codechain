@@ -123,7 +123,7 @@ impl<'x> OpenBlock<'x> {
         is_epoch_begin: bool,
     ) -> Result<Self, Error> {
         let number = parent.number() + 1;
-        let state = State::from_existing(db, *parent.state_root(), 0.into(), trie_factory)?;
+        let state = State::from_existing(db, *parent.state_root(), engine.machine().account_start_nonce(), trie_factory)?;
         let mut r = OpenBlock {
             block: ExecutedBlock::new(state),
             engine,

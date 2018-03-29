@@ -69,6 +69,7 @@ mod tests {
 		}
 	},
 	"params": {
+		"accountStartNonce": "0x01",
 		"networkID" : "0x2",
 		"minTransactionCost" : "10"
 	},

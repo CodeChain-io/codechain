@@ -21,6 +21,9 @@ use super::super::uint::{self, Uint};
 /// Spec params.
 #[derive(Debug, PartialEq, Deserialize)]
 pub struct Params {
+    /// Account start nonce, defaults to 0.
+    #[serde(rename="accountStartNonce")]
+    pub account_start_nonce: Option<Uint>,
     /// Network id.
     #[serde(rename="networkID")]
     pub network_id: Uint,
@@ -40,11 +43,13 @@ mod tests {
     #[test]
     fn params_deserialization() {
         let s = r#"{
+			"accountStartNonce": "0x01",
 			"networkID" : "0x1",
 			"minTransactionCost" : "10"
 		}"#;
 
         let deserialized: Params = serde_json::from_str(s).unwrap();
+        assert_eq!(deserialized.account_start_nonce, Some(Uint(U256::from(0x01))));
         assert_eq!(deserialized.network_id, Uint(U256::from(0x1)));
         assert_eq!(deserialized.min_transaction_cost, Uint(U256::from(10)));
     }

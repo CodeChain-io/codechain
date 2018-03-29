@@ -11,6 +11,7 @@
 		}
 	},
 	"params": {
+		"accountStartNonce": "0x0",
 		"networkID": "0x11",
 		"minTransactionCost": "10"
 	},

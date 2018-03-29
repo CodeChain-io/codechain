@@ -15,6 +15,8 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 // A state machine.
 
+use ctypes::U256;
+
 use super::block::ExecutedBlock;
 use super::client::BlockInfo;
 use super::error::Error;
@@ -60,6 +62,11 @@ impl CodeChainMachine {
     pub fn verify_transaction<C: BlockInfo>(&self, t: &SignedTransaction, header: &Header, client: &C) -> Result<(), Error> {
         // FIXME: Filter transactions.
         Ok(())
+    }
+
+    /// The nonce with which accounts begin at given block.
+    pub fn account_start_nonce(&self) -> U256 {
+        self.params.account_start_nonce
     }
 }
 
