@@ -40,6 +40,7 @@ use super::vote_collector::VoteCollector;
 use super::super::block::*;
 use super::super::client::EngineClient;
 use super::super::codechain_machine::CodeChainMachine;
+use super::super::machine::Machine;
 use super::super::error::{Error, BlockError};
 use super::super::header::Header;
 use super::super::types::BlockNumber;
@@ -519,6 +520,13 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
         let first = header.number() == 0;
 
         self.validators.on_epoch_begin(first, &header)
+    }
+
+    fn on_close_block(&self, block: &mut ExecutedBlock) -> Result<(), Error> {
+        let author = *block.header().author();
+        // FIXME: add block_reward to consensus params
+        let block_reward = 0.into();
+        self.machine.add_balance(block, &author, &block_reward)
     }
 
     fn handle_message(&self, rlp: &[u8]) -> Result<(), EngineError> {

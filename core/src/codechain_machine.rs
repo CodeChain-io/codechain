@@ -15,9 +15,10 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 // A state machine.
 
+use ckeys::Address;
 use ctypes::U256;
 
-use super::block::ExecutedBlock;
+use super::block::{ExecutedBlock, IsBlock};
 use super::client::BlockInfo;
 use super::error::Error;
 use super::header::Header;
@@ -76,5 +77,13 @@ impl ::machine::Machine for CodeChainMachine {
     type EngineClient = super::client::EngineClient;
 
     type Error = Error;
+
+    fn balance(&self, live: &ExecutedBlock, address: &Address) -> Result<U256, Self::Error> {
+        live.state().balance(address).map_err(Into::into)
+    }
+
+    fn add_balance(&self, live: &mut ExecutedBlock, address: &Address, amount: &U256) -> Result<(), Self::Error> {
+        live.state_mut().add_balance(address, amount).map_err(Into::into)
+    }
 }
 

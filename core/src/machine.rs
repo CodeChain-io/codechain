@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ctypes::{Address, H256};
+use ctypes::{Address, H256, U256};
 
 /// A header. This contains important metadata about the block, as well as a
 /// "seal" that indicates validity to a consensus engine.
@@ -66,5 +66,12 @@ pub trait Machine: Send + Sync {
 
     /// Errors which can occur when querying or interacting with the machine.
     type Error;
+
+    /// Get the balance, in base units, associated with an account.
+    /// Extracts data from the live block.
+    fn balance(&self, live: &Self::LiveBlock, address: &Address) -> Result<U256, Self::Error>;
+
+    /// Increment the balance of an account in the state of the live block.
+    fn add_balance(&self, live: &mut Self::LiveBlock, address: &Address, amount: &U256) -> Result<(), Self::Error>;
 }
 
