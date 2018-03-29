@@ -26,7 +26,7 @@ use std::fmt;
 use std::sync::Arc;
 
 use error::Error;
-use transaction::SignedTransaction;
+use transaction::{SignedTransaction, Action};
 use ctypes::{H256, U256, Address};
 use hashdb::{HashDB, AsHashDB};
 use kvdb::DBValue;
@@ -581,6 +581,7 @@ mod tests {
         let t = Transaction {
             nonce: 0.into(),
             fee: 5.into(),
+            action: Action::Noop,
             data: vec![],
             network_id: 0,
         }.sign(&secret().into());
@@ -601,6 +602,7 @@ mod tests {
         let t = Transaction {
             nonce: 2.into(),
             fee: 5.into(),
+            action: Action::Noop,
             data: vec![],
             network_id: 0,
         }.sign(&secret().into());
@@ -623,6 +625,7 @@ mod tests {
         let t = Transaction {
             nonce: 0.into(),
             fee: 5.into(),
+            action: Action::Noop,
             data: vec![],
             network_id: 0,
         }.sign(&secret().into());

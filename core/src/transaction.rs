@@ -93,10 +93,57 @@ pub struct Transaction {
     pub nonce: U256,
     /// Amount of CCC to be paid as a cost for distributing this transaction to the network.
     pub fee: U256,
+    /// Action, can be either payment or asset transfer
+    pub action: Action,
     /// Transaction data.
     pub data: Bytes,
     /// Mainnet or Testnet
     pub network_id: u64,
+}
+
+/// Transaction action type.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Action {
+    Noop,
+    Payment {
+        /// The receiver's address.
+        address: Address,
+        /// Transferred value.
+        value: U256,
+    },
+}
+
+impl Default for Action {
+    fn default() -> Action { Action::Noop }
+}
+
+impl rlp::Decodable for Action {
+    fn decode(d: &UntrustedRlp) -> Result<Self, DecoderError> {
+        if d.is_empty() {
+            Ok(Action::Noop)
+        } else {
+            if d.item_count()? != 2 {
+                return Err(DecoderError::RlpIncorrectListLen);
+            }
+            Ok(Action::Payment {
+                address: d.val_at(0)?,
+                value: d.val_at(1)?,
+            })
+        }
+    }
+}
+
+impl rlp::Encodable for Action {
+    fn rlp_append(&self, s: &mut RlpStream) {
+        match *self {
+            Action::Noop => s.append_internal(&""),
+            Action::Payment { ref address, ref value } => {
+                s.begin_list(2);
+                s.append(address);
+                s.append(value)
+            }
+        };
+    }
 }
 
 impl HeapSizeOf for Transaction {
@@ -107,14 +154,15 @@ impl HeapSizeOf for Transaction {
 
 impl Decodable for Transaction {
     fn decode(d: &UntrustedRlp) -> Result<Self, DecoderError> {
-        if d.item_count()? != 4 {
+        if d.item_count()? != 5 {
             return Err(DecoderError::RlpIncorrectListLen);
         }
         Ok(Transaction {
                 nonce: d.val_at(0)?,
                 fee: d.val_at(1)?,
-                data: d.val_at(2)?,
-                network_id: d.val_at(3)?,
+                action: d.val_at(2)?,
+                data: d.val_at(3)?,
+                network_id: d.val_at(4)?,
         })
     }
 }
@@ -122,9 +170,10 @@ impl Decodable for Transaction {
 impl Transaction {
     /// Append object with a without signature into RLP stream
     pub fn rlp_append_unsigned_transaction(&self, s: &mut RlpStream) {
-        s.begin_list(4);
+        s.begin_list(5);
         s.append(&self.nonce);
         s.append(&self.fee);
+        s.append(&self.action);
         s.append(&self.data);
         s.append(&self.network_id);
     }
@@ -182,7 +231,7 @@ impl Deref for UnverifiedTransaction {
 
 impl rlp::Decodable for UnverifiedTransaction {
     fn decode(d: &UntrustedRlp) -> Result<Self, DecoderError> {
-        if d.item_count()? != 7 {
+        if d.item_count()? != 8 {
             return Err(DecoderError::RlpIncorrectListLen);
         }
         let hash = blake256(d.as_raw());
@@ -190,12 +239,13 @@ impl rlp::Decodable for UnverifiedTransaction {
             unsigned: Transaction {
                 nonce: d.val_at(0)?,
                 fee: d.val_at(1)?,
-                data: d.val_at(2)?,
-                network_id: d.val_at(3)?,
+                action: d.val_at(2)?,
+                data: d.val_at(3)?,
+                network_id: d.val_at(4)?,
             },
-            v: d.val_at(4)?,
-            r: d.val_at(5)?,
-            s: d.val_at(6)?,
+            v: d.val_at(5)?,
+            r: d.val_at(6)?,
+            s: d.val_at(7)?,
             hash,
         })
     }
