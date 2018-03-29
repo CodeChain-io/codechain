@@ -22,7 +22,7 @@ use mio::deprecated::TryRead;
 use mio::net::TcpStream;
 use rlp::{Encodable, DecoderError, UntrustedRlp};
 
-use super::{HandshakeMessage, Message};
+use super::{ApplicationMessage, HandshakeMessage, Message};
 use super::SignedMessage;
 use super::super::session::Session;
 
@@ -109,6 +109,29 @@ impl Connection {
     pub fn enqueue_ack(&mut self) {
         const VERSION: u32 = 0;
         self.enqueue(Message::Handshake(HandshakeMessage::Ack(VERSION)));
+    }
+
+    pub fn enqueue_extension_message(&mut self, extension_name: String, need_encryption: bool, message: Vec<u8>) {
+        if !self.session.is_ready() {
+            info!("Cannot send extension message since session is not ready");
+            return
+        }
+
+        const VERSION: u32 = 0;
+        let message = if need_encryption {
+            let session_key = (self.session.secret().clone(), self.session.initialization_vector().unwrap());
+            match ApplicationMessage::encrypted_from_unencrypted_data(extension_name, VERSION, message, &session_key) {
+                Ok(message) => message,
+                Err(err) => {
+                    info!("Cannot encrypt message : {:?}", err);
+                    return
+                },
+            }
+        } else {
+            ApplicationMessage::unencrypted(extension_name, VERSION, message)
+
+        };
+        self.enqueue(Message::Application(message));
     }
 
     pub fn receive(&mut self) -> bool {
