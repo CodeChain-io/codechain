@@ -120,6 +120,8 @@ pub struct Tendermint {
     last_proposed: RwLock<H256>,
     /// Set used to determine the current validators.
     validators: Box<ValidatorSet>,
+    /// Reward per block, in base units.
+    block_reward: U256,
     /// codechain machine descriptor
     machine: CodeChainMachine,
 }
@@ -142,6 +144,7 @@ impl Tendermint {
                 proposal_parent: Default::default(),
                 last_proposed: Default::default(),
                 validators: our_params.validators,
+                block_reward: our_params.block_reward,
                 machine,
             });
 
@@ -524,9 +527,7 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
 
     fn on_close_block(&self, block: &mut ExecutedBlock) -> Result<(), Error> {
         let author = *block.header().author();
-        // FIXME: add block_reward to consensus params
-        let block_reward = 0.into();
-        self.machine.add_balance(block, &author, &block_reward)
+        self.machine.add_balance(block, &author, &self.block_reward)
     }
 
     fn handle_message(&self, rlp: &[u8]) -> Result<(), EngineError> {
