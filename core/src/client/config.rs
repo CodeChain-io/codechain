@@ -63,7 +63,7 @@ impl FromStr for DatabaseCompactionProfile {
 }
 
 /// Client configuration. Includes configs for all sub-systems.
-#[derive(Debug, PartialEq, Default)]
+#[derive(Debug, PartialEq)]
 pub struct ClientConfig {
     /// RocksDB column cache-size if not default
     pub db_cache_size: Option<usize>,
@@ -77,4 +77,17 @@ pub struct ClientConfig {
     pub verifier_type: VerifierType,
 }
 
+impl Default for ClientConfig {
+    fn default() -> Self {
+        let mb = 1024 * 1024;
+        const DEFAULT_STATE_CACHE_SIZE: u32 = 25;
+        Self {
+            db_cache_size: Default::default(),
+            db_compaction: Default::default(),
+            db_wal: true,
+            state_cache_size: DEFAULT_STATE_CACHE_SIZE as usize * mb,
+            verifier_type: Default::default(),
+        }
+    }
+}
 
