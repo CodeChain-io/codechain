@@ -155,7 +155,7 @@ impl<K: Kind> VerificationQueue<K> {
         ready_signal: Arc<QueueSignal>,
         empty: Arc<SCondvar>,
         more_to_verify: Arc<SCondvar>,
-        id: usize,
+        _id: usize,
     ) {
         loop {
             // wait for work if empty.

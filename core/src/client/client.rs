@@ -144,7 +144,7 @@ impl Client {
     }
 
     /// Import transactions from the IO queue
-    pub fn import_queued_transactions(&self, transactions: &[Bytes], peer_id: usize) -> usize {
+    pub fn import_queued_transactions(&self, transactions: &[Bytes], _peer_id: usize) -> usize {
         self.queue_transactions.fetch_sub(transactions.len(), AtomicOrdering::SeqCst);
         unimplemented!();
     }
@@ -170,7 +170,7 @@ impl EngineClient for Client {
     }
 
     /// Submit a seal for a block in the mining queue.
-    fn submit_seal(&self, block_hash: H256, seal: Vec<Bytes>) {
+    fn submit_seal(&self, _block_hash: H256, _seal: Vec<Bytes>) {
         unimplemented!()
     }
 }

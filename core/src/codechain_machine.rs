@@ -42,7 +42,7 @@ impl CodeChainMachine {
     }
 
     /// Does basic verification of the transaction.
-    pub fn verify_transaction_basic(&self, t: &UnverifiedTransaction, header: &Header) -> Result<(), Error> {
+    pub fn verify_transaction_basic(&self, t: &UnverifiedTransaction, _header: &Header) -> Result<(), Error> {
         if t.fee < self.params.min_transaction_cost {
             return Err(TransactionError::InsufficientFee {
                 minimal: self.params.min_transaction_cost,
@@ -60,7 +60,7 @@ impl CodeChainMachine {
     }
 
     /// Does verification of the transaction against the parent state.
-    pub fn verify_transaction<C: BlockInfo>(&self, t: &SignedTransaction, header: &Header, client: &C) -> Result<(), Error> {
+    pub fn verify_transaction<C: BlockInfo>(&self, _t: &SignedTransaction, header: &Header, _client: &C) -> Result<(), Error> {
         // FIXME: Filter transactions.
         Ok(())
     }

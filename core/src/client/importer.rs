@@ -52,7 +52,7 @@ impl Importer {
     }
 
     /// This is triggered by a message coming from a block queue when the block is ready for insertion
-    pub fn import_verified_blocks(&self, client: &Client) -> usize {
+    pub fn import_verified_blocks(&self, _client: &Client) -> usize {
         unimplemented!();
     }
 }
