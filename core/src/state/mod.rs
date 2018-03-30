@@ -30,13 +30,11 @@ use ctypes::{H256, U256, U512, Address, Public};
 use trie::{self, Trie, TrieFactory, TrieError};
 
 use super::invoice::{Invoice, TransactionOutcome};
+use super::state_db::StateDB;
 use super::transaction::TransactionError;
 
 mod account;
 pub mod backend;
-
-#[cfg(test)]
-use super::state_db::StateDB;
 
 pub use self::account::Account;
 pub use self::backend::Backend;
@@ -574,7 +572,6 @@ impl<B: Backend> fmt::Debug for State<B> {
 
 // TODO: cloning for `State` shouldn't be possible in general; Remove this and use
 // checkpoints where possible.
-#[cfg(test)]
 impl Clone for State<StateDB> {
     fn clone(&self) -> State<StateDB> {
         let cache = {

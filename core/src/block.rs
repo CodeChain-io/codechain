@@ -67,6 +67,7 @@ impl Decodable for Block {
 }
 
 /// An internal type for a block's common elements.
+#[derive(Clone)]
 pub struct ExecutedBlock {
     header: Header,
     state: State<StateDB>,
@@ -166,6 +167,29 @@ impl<'x> OpenBlock<'x> {
         Ok(())
     }
 
+    /// Turn this into a `ClosedBlock`.
+    pub fn close(self) -> ClosedBlock {
+        let mut s = self;
+
+        let unclosed_state = s.block.state.clone();
+
+        if let Err(e) = s.engine.on_close_block(&mut s.block) {
+            warn!("Encountered error on closing the block: {}", e);
+        }
+
+        if let Err(e) = s.block.state.commit() {
+            warn!("Encountered error on state commit: {}", e);
+        }
+        s.block.header.set_transactions_root(ordered_trie_root(s.block.transactions.iter().map(|e| e.rlp_bytes())));
+        s.block.header.set_state_root(s.block.state.root().clone());
+        s.block.header.set_invoices_root(ordered_trie_root(s.block.invoices.iter().map(|r| r.rlp_bytes())));
+
+        ClosedBlock {
+            block: s.block,
+            unclosed_state,
+        }
+    }
+
     /// Turn this into a `LockedBlock`.
     pub fn close_and_lock(self) -> LockedBlock {
         let mut s = self;
@@ -187,6 +211,38 @@ impl<'x> OpenBlock<'x> {
 
         LockedBlock {
             block: s.block,
+        }
+    }
+}
+
+/// Just like `OpenBlock`, except that we've applied `Engine::on_close_block`, finished up the non-seal header fields.
+///
+/// There is no function available to push a transaction.
+#[derive(Clone)]
+pub struct ClosedBlock {
+    block: ExecutedBlock,
+    unclosed_state: State<StateDB>,
+}
+
+impl ClosedBlock {
+    /// Get the hash of the header without seal arguments.
+    pub fn hash(&self) -> H256 { self.header().rlp_blake(Seal::Without) }
+
+    /// Turn this into a `LockedBlock`, unable to be reopened again.
+    pub fn lock(self) -> LockedBlock {
+        LockedBlock {
+            block: self.block,
+        }
+    }
+
+    /// Given an engine reference, reopen the `ClosedBlock` into an `OpenBlock`.
+    pub fn reopen(self, engine: &CodeChainEngine) -> OpenBlock {
+        // revert rewards (i.e. set state back at last transaction's state).
+        let mut block = self.block;
+        block.state = self.unclosed_state;
+        OpenBlock {
+            block,
+            engine,
         }
     }
 }
@@ -247,6 +303,10 @@ impl IsBlock for ExecutedBlock {
 }
 
 impl<'x> IsBlock for OpenBlock<'x> {
+    fn block(&self) -> &ExecutedBlock { &self.block }
+}
+
+impl<'x> IsBlock for ClosedBlock {
     fn block(&self) -> &ExecutedBlock { &self.block }
 }
 
