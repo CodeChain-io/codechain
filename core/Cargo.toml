@@ -26,6 +26,7 @@ patricia-trie = { path = "../util/patricia_trie" }
 rlp = { path = "../util/rlp" }
 rlp_compress = { path = "../util/rlp_compress" }
 rlp_derive = { path = "../util/rlp_derive" }
+rustc-hex = "1.0"
 time = "0.1"
 triehash = { path = "../util/triehash" }
 unexpected = { path = "../util/unexpected" }

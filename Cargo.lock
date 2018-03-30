@@ -237,6 +237,7 @@ dependencies = [
  "rlp 0.2.1",
  "rlp_compress 0.1.0",
  "rlp_derive 0.1.0",
+ "rustc-hex 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "time 0.1.39 (registry+https://github.com/rust-lang/crates.io-index)",
  "triehash 0.1.0",
  "unexpected 0.1.0",
