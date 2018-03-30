@@ -27,13 +27,14 @@ pub use self::config::ClientConfig;
 pub use self::error::Error;
 
 use cbytes::Bytes;
-use ctypes::H256;
+use ctypes::{Address, H256, U256};
 
 use super::block::SealedBlock;
 use super::blockchain_info::BlockChainInfo;
 use super::encoded;
 use super::error::BlockImportError;
 use super::miner::TransactionImportResult;
+use super::state::StateInfo;
 use super::transaction::PendingTransaction;
 use super::types::{BlockId, TransactionId, VerificationQueueInfo as BlockQueueInfo};
 
@@ -72,6 +73,66 @@ pub trait EngineClient: Sync + Send  + ChainInfo {
     /// Submit a seal for a block in the mining queue.
     fn submit_seal(&self, block_hash: H256, seal: Vec<Bytes>);
 }
+
+/// Provides `nonce` and `latest_nonce` methods
+pub trait Nonce {
+    /// Attempt to get address nonce at given block.
+    /// May not fail on BlockId::Latest.
+    fn nonce(&self, address: &Address, id: BlockId) -> Option<U256>;
+
+    /// Get address nonce at the latest block's state.
+    fn latest_nonce(&self, address: &Address) -> U256 {
+        self.nonce(address, BlockId::Latest)
+            .expect("nonce will return Some when given BlockId::Latest. nonce was given BlockId::Latest. \
+			Therefore nonce has returned Some; qed")
+    }
+}
+
+/// State information to be used during client query
+pub enum StateOrBlock {
+    /// State to be used, may be pending
+    State(Box<StateInfo>),
+
+    /// Id of an existing block from a chain to get state from
+    Block(BlockId)
+}
+
+impl<S: StateInfo + 'static> From<S> for StateOrBlock {
+    fn from(info: S) -> StateOrBlock {
+        StateOrBlock::State(Box::new(info) as Box<_>)
+    }
+}
+
+impl From<Box<StateInfo>> for StateOrBlock {
+    fn from(info: Box<StateInfo>) -> StateOrBlock {
+        StateOrBlock::State(info)
+    }
+}
+
+impl From<BlockId> for StateOrBlock {
+    fn from(id: BlockId) -> StateOrBlock {
+        StateOrBlock::Block(id)
+    }
+}
+
+/// Provides `balance` and `latest_balance` methods
+pub trait Balance {
+    /// Get address balance at the given block's state.
+    ///
+    /// May not return None if given BlockId::Latest.
+    /// Returns None if and only if the block's root hash has been pruned from the DB.
+    fn balance(&self, address: &Address, state: StateOrBlock) -> Option<U256>;
+
+    /// Get address balance at the latest block's state.
+    fn latest_balance(&self, address: &Address) -> U256 {
+        self.balance(address, BlockId::Latest.into())
+            .expect("balance will return Some if given BlockId::Latest. balance was given BlockId::Latest \
+			Therefore balance has returned Some; qed")
+    }
+}
+
+/// Provides methods to access account info
+pub trait AccountData: Nonce + Balance {}
 
 /// Provides methods to import block into blockchain
 pub trait ImportBlock {
