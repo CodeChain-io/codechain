@@ -20,7 +20,7 @@ use std::result;
 
 use mio::deprecated::TryRead;
 use mio::net::TcpStream;
-use rcrypto::symmetriccipher::SymmetricCipherError;
+use ccrypto::aes::SymmetricCipherError;
 use rlp::{Encodable, DecoderError, UntrustedRlp};
 
 use super::{ApplicationMessage, HandshakeMessage, Message, NegotiationBody, NegotiationMessage};

@@ -19,7 +19,7 @@ use rcrypto::aes::{ cbc_decryptor, cbc_encryptor };
 use rcrypto::aes::KeySize::KeySize256;
 use rcrypto::blockmodes::PkcsPadding;
 use rcrypto::buffer::{ BufferResult, ReadBuffer, RefReadBuffer, RefWriteBuffer, WriteBuffer };
-use rcrypto::symmetriccipher::SymmetricCipherError;
+pub use rcrypto::symmetriccipher::SymmetricCipherError;
 
 fn is_underflow(result: BufferResult) -> bool {
     match result {

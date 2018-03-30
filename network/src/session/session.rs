@@ -17,11 +17,10 @@
 use std::error;
 use std::fmt;
 
-use ccrypto::aes;
+use ccrypto::aes::{SymmetricCipherError, self};
 use ccrypto::blake256_with_key;
 use ctypes::Secret;
 use ctypes::hash::{H128, H256};
-use rcrypto::symmetriccipher::SymmetricCipherError;
 
 pub type SharedSecret = Secret;
 pub type Nonce = u32;

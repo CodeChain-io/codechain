@@ -14,8 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ccrypto::aes;
-use rcrypto::symmetriccipher::SymmetricCipherError;
+use ccrypto::aes::{SymmetricCipherError, self};
 use rlp::{UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
 
 use super::super::message::ProtocolId;

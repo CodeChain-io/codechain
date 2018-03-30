@@ -12,6 +12,5 @@ mio = "0.6.8"
 parking_lot = "0.5"
 rand = "0.4"
 rlp = { path = "../util/rlp" }
-rust-crypto = "0.2.36"
 slab = "0.4"
 table = { path = "../util/table" }
