@@ -27,7 +27,7 @@ use super::SignedMessage;
 use super::super::session::Session;
 
 #[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq)]
-enum State {
+pub enum State {
     New, // create socket
     Requested, // send sync
     Established, // send ack or receive ack
