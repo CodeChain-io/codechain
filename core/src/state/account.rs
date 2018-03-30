@@ -115,11 +115,7 @@ impl fmt::Debug for Account {
 
 #[cfg(test)]
 mod tests {
-    use rlp_compress::{compress, decompress, snapshot_swapper};
     use rustc_hex::ToHex;
-    use ctypes::{H256, Address};
-    use memorydb::MemoryDB;
-    use cbytes::Bytes;
     use super::*;
 
     #[test]

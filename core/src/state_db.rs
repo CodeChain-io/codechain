@@ -361,18 +361,16 @@ impl state::Backend for StateDB {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
     use ctypes::{H256, U256, Address};
     use kvdb::DBTransaction;
     use clogger::init_log;
 
-    use super::state::{State, Backend, Account};
-    use super::{StateDB};
+    use super::state::{Backend, Account};
     use super::super::tests::helpers::get_temp_state_db;
 
     #[test]
     fn account_cache() {
-        let mut state_db = get_temp_state_db();
+        let state_db = get_temp_state_db();
         let root_parent = H256::random();
         let address = Address::random();
         let h0 = H256::random();
@@ -394,7 +392,7 @@ mod tests {
         s.sync_cache(&[], &[], true);
         assert!(s.get_cached_account(&address).is_none());
 
-        let mut s = state_db.boxed_clone_canon(&h0);
+        let s = state_db.boxed_clone_canon(&h0);
         assert!(s.get_cached_account(&address).is_some());
     }
 

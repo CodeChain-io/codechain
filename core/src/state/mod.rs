@@ -580,18 +580,11 @@ impl Clone for State<StateDB> {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-    use std::str::FromStr;
-
     use ccrypto::blake256;
     use clogger::init_log;
-    use ctypes::{H256, U256, Address, Secret};
-    use state_db::StateDB;
-
-    use spec::*;
+    use ctypes::{U256, Address, Secret};
 
     use super::*;
-    use super::Error::*;
     use super::super::transaction::Transaction;
     use super::super::tests::helpers::{get_temp_state, get_temp_state_db};
 
@@ -609,7 +602,7 @@ mod tests {
             .. Transaction::default()
         }.sign(&secret().into());
         let sender = t.sender();
-        state.add_balance(&sender, &20.into());
+        state.add_balance(&sender, &20.into()).unwrap();
 
         let res = state.apply(&t).unwrap();
         assert_eq!(res.invoice.outcome, TransactionOutcome::Success);
@@ -629,7 +622,7 @@ mod tests {
             .. Transaction::default()
         }.sign(&secret().into());
         let sender = t.sender();
-        state.add_balance(&sender, &20.into());
+        state.add_balance(&sender, &20.into()).unwrap();
 
         let res = state.apply(&t).unwrap();
         assert_eq!(res.invoice.outcome, TransactionOutcome::Failed);
@@ -646,7 +639,7 @@ mod tests {
             .. Transaction::default()
         }.sign(&secret().into());
         let sender = t.sender();
-        state.add_balance(&sender, &4.into());
+        state.add_balance(&sender, &4.into()).unwrap();
 
         let res = state.apply(&t).unwrap();
         assert_eq!(res.invoice.outcome, TransactionOutcome::Failed);
@@ -667,7 +660,7 @@ mod tests {
             .. Transaction::default()
         }.sign(&secret().into());
         let sender = t.sender();
-        state.add_balance(&sender, &20.into());
+        state.add_balance(&sender, &20.into()).unwrap();
 
         let res = state.apply(&t).unwrap();
         assert_eq!(res.invoice.outcome, TransactionOutcome::Success);
@@ -689,7 +682,7 @@ mod tests {
             .. Transaction::default()
         }.sign(&secret().into());
         let sender = t.sender();
-        state.add_balance(&sender, &20.into());
+        state.add_balance(&sender, &20.into()).unwrap();
 
         let res = state.apply(&t).unwrap();
         assert_eq!(res.invoice.outcome, TransactionOutcome::Failed);
@@ -889,7 +882,7 @@ mod tests {
         state.add_balance(&a, &U256::from(69u64)).unwrap();
         state.checkpoint();
         state.add_balance(&a, &U256::from(69u64)).unwrap();
-        state.inc_nonce(&a);
+        state.inc_nonce(&a).unwrap();
         assert_eq!(state.balance(&a).unwrap(), U256::from(69u64 + 69u64));
         assert_eq!(state.nonce(&a).unwrap(), U256::from(1u64));
         state.discard_checkpoint();
