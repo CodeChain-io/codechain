@@ -41,9 +41,9 @@ pub struct Manager {
 }
 
 const ACCEPT_TOKEN: usize = 0;
-const FIRST_TOKEN: usize = 100;
-const MAX_SESSIONS: usize = 32;
-const LAST_TOKEN: usize = FIRST_TOKEN + MAX_SESSIONS;
+const FIRST_CONNECTION_TOKEN: usize = ACCEPT_TOKEN + 1;
+const MAX_CONNECTIONS: usize = 32;
+const LAST_CONNECTION_TOKEN: usize = FIRST_CONNECTION_TOKEN + MAX_CONNECTIONS;
 
 #[derive(Clone, Debug, PartialOrd, PartialEq)]
 pub enum HandlerMessage {
@@ -68,7 +68,7 @@ impl Manager {
     pub fn listen(address: &Address) -> io::Result<Self> {
         Ok(Manager {
             listener: TcpListener::bind(address.socket())?,
-            connections: LimitedTable::new(FIRST_TOKEN, MAX_SESSIONS),
+            connections: LimitedTable::new(FIRST_CONNECTION_TOKEN, MAX_CONNECTIONS),
             address_to_session: SessionTable::new(),
             inbound_tokens: HashSet::new(),
         })
@@ -238,7 +238,7 @@ impl IoHandler<HandlerMessage> for Handler {
                     }
                 }
             },
-            FIRST_TOKEN...LAST_TOKEN => {
+            FIRST_CONNECTION_TOKEN...LAST_CONNECTION_TOKEN => {
                 loop {
                     let mut manager = self.manager.lock();
                     if let Some(mut connection) = manager.connections.get_mut(stream) {
@@ -258,7 +258,7 @@ impl IoHandler<HandlerMessage> for Handler {
     fn stream_writable(&self, _io: &IoContext<HandlerMessage>, stream: StreamToken) {
         match stream {
             ACCEPT_TOKEN => {},
-            FIRST_TOKEN...LAST_TOKEN => {
+            FIRST_CONNECTION_TOKEN...LAST_CONNECTION_TOKEN => {
                 loop {
                     let mut manager = self.manager.lock();
                     if let Some(mut connection) = manager.connections.get_mut(stream) {
@@ -288,7 +288,7 @@ impl IoHandler<HandlerMessage> for Handler {
                 }
                 info!("TCP connection starts for {:?}", self.address);
             },
-            FIRST_TOKEN...LAST_TOKEN => {
+            FIRST_CONNECTION_TOKEN...LAST_CONNECTION_TOKEN => {
                 let mut manager = self.manager.lock();
                 manager.register_stream(stream, reg, event_loop);
                 self.client.on_node_added(&stream);
@@ -306,7 +306,7 @@ impl IoHandler<HandlerMessage> for Handler {
 
     fn update_stream(&self, stream: StreamToken, reg: Token, event_loop: &mut EventLoop<IoManager<HandlerMessage>>) {
         match stream {
-            FIRST_TOKEN...LAST_TOKEN => {
+            FIRST_CONNECTION_TOKEN...LAST_CONNECTION_TOKEN => {
                 let mut manager = self.manager.lock();
                 manager.update_stream(stream, reg, event_loop);
             },
