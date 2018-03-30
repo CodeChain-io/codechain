@@ -20,7 +20,7 @@ use rlp::{UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
 use super::super::session::Session;
 pub use super::application::Message as ApplicationMessage;
 pub use super::handshake::Message as HandshakeMessage;
-pub use super::negotiation::Message as NegotiationMessage;
+pub use super::negotiation::{Body as NegotiationBody, Message as NegotiationMessage};
 
 pub type Version = u32;
 pub type ProtocolId = u32;

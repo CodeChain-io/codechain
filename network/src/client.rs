@@ -46,8 +46,14 @@ impl Api for ClientApi {
 
     fn connect(&self, id: &NodeId) {
         if let Some(extension) = self.extension.upgrade() {
-            let _need_encryption = extension.need_encryption();
-            info!("connect_async to {:?}", id);
+            let extension_name = extension.name();
+            let version = 0;
+            let node_id = *id;
+            if let Err(err) = self.channel.send(ConnectionMessage::RequestNegotiation { node_id, extension_name, version }) {
+                info!("Cannot request negotiation to {:?} : {:?}", id, err);
+            } else {
+                info!("Request negotiation to {:?}", id);
+            }
         } else {
             info!("The extension already dropped");
         }

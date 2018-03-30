@@ -16,4 +16,4 @@
 
 mod message;
 
-pub use self::message::Message;
+pub use self::message::{Body, Message};

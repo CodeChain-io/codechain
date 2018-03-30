@@ -26,6 +26,7 @@ use mio::{PollOpt, Ready, Token};
 use parking_lot::Mutex;
 
 use super::connection::{Connection, ExtensionCallback as ExtensionChannel};
+use super::message::Version;
 use super::super::Address;
 use super::super::client::Client;
 use super::super::extension::NodeId;
@@ -50,6 +51,11 @@ pub enum HandlerMessage {
 
     RequestConnection(Address),
 
+    RequestNegotiation {
+        node_id: NodeId,
+        extension_name: String,
+        version: Version,
+    },
     SendExtensionMessage {
         node_id: NodeId,
         extension_name: String,
@@ -194,6 +200,15 @@ impl IoHandler<HandlerMessage> for Handler {
                     }
                 } else {
                     info!("There are no available tokens");
+                }
+            },
+            HandlerMessage::RequestNegotiation { node_id, ref extension_name, version } => {
+                let mut manager = self.manager.lock();
+                if let Some(mut connection) = manager.connections.get_mut(node_id) {
+                    connection.enqueue_negotiation_request(extension_name.clone(), version);
+                    let _ = io.update_registration(node_id);
+                } else {
+                    info!("{} is not a valid node id", node_id);
                 }
             },
             HandlerMessage::SendExtensionMessage { node_id, ref extension_name, ref need_encryption, ref data } => {
