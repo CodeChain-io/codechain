@@ -280,10 +280,6 @@ impl BlockChain {
         let pending_txs = mem::replace(&mut *pending_write_txs, HashMap::new());
         let (retracted_txs, enacted_txs) = pending_txs.into_iter().partition::<HashMap<_, _>, _>(|&(_, ref value)| value.is_none());
 
-        let pending_hashes_keys: Vec<_> = pending_write_hashes.keys().cloned().collect();
-        let enacted_txs_keys: Vec<_> = enacted_txs.keys().cloned().collect();
-        let pending_block_hashes: Vec<_> = pending_block_details.keys().cloned().collect();
-
         write_hashes.extend(mem::replace(&mut *pending_write_hashes, HashMap::new()));
         write_txs.extend(enacted_txs.into_iter().map(|(k, v)| (k, v.expect("Transactions were partitioned; qed"))));
         write_block_details.extend(mem::replace(&mut *pending_block_details, HashMap::new()));
