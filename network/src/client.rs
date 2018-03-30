@@ -59,16 +59,54 @@ impl Api for ClientApi {
         }
     }
 
-    fn set_timer(&self, _timer_id: usize, _ms: u64) {
-        unimplemented!();
+    fn set_timer(&self, timer_id: usize, ms: u64) {
+        if let Some(extension) = self.extension.upgrade() {
+            let extension_name = extension.name();
+            if let Err(err) = self.channel.send(ConnectionMessage::SetTimer{
+                extension_name,
+                timer_id,
+                ms,
+            }) {
+                info!("Cannot set timer {}:{} : {:?}", extension.name(), timer_id, err);
+            } else {
+                info!("{} sets timer({}) every {} ms", extension.name(), timer_id, ms);
+            }
+        } else {
+            info!("The extension already dropped");
+        }
     }
 
-    fn set_timer_once(&self, _timer_id: usize, _ms: u64) {
-        unimplemented!();
+    fn set_timer_once(&self, timer_id: usize, ms: u64) {
+        if let Some(extension) = self.extension.upgrade() {
+            let extension_name = extension.name();
+            if let Err(err) = self.channel.send(ConnectionMessage::SetTimerOnce{
+                extension_name,
+                timer_id,
+                ms,
+            }) {
+                info!("Cannot set timer {}:{} : {:?}", extension.name(), timer_id, err);
+            } else {
+                info!("{} sets timer({}) after {} ms", extension.name(), timer_id, ms);
+            }
+        } else {
+            info!("The extension already dropped");
+        }
     }
 
-    fn clear_timer(&self, _timer_id: usize) {
-        unimplemented!();
+    fn clear_timer(&self, timer_id: usize) {
+        if let Some(extension) = self.extension.upgrade() {
+            let extension_name = extension.name();
+            if let Err(err) = self.channel.send(ConnectionMessage::ClearTimer{
+                extension_name,
+                timer_id,
+            }) {
+                info!("Cannot clear timer {}:{} : {:?}", extension.name(), timer_id, err);
+            } else {
+                info!("{} clears timer({})", extension.name(), timer_id);
+            }
+        } else {
+            info!("The extension already dropped");
+        }
     }
 }
 

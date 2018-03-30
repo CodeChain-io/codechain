@@ -25,6 +25,7 @@ pub type NodeId = StreamToken;
 pub enum Error {
     ExtensionDropped,
     DuplicatedTimerId,
+    NoMoreTimerToken,
 }
 
 pub type Result<T> = result::Result<T, Error>;
