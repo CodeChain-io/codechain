@@ -29,7 +29,7 @@ pub use self::error::Error;
 use cbytes::Bytes;
 use ctypes::{Address, H256, U256};
 
-use super::block::SealedBlock;
+use super::block::{OpenBlock, ClosedBlock, SealedBlock};
 use super::blockchain_info::BlockChainInfo;
 use super::encoded;
 use super::error::BlockImportError;
@@ -169,6 +169,25 @@ pub trait BroadcastProposalBlock {
     /// Broadcast a block proposal.
     fn broadcast_proposal_block(&self, block: SealedBlock);
 }
+
+/// Provides `reopen_block` method
+pub trait ReopenBlock {
+    /// Reopens an OpenBlock and updates uncles.
+    fn reopen_block(&self, block: ClosedBlock) -> OpenBlock;
+}
+
+/// Provides `prepare_open_block` method
+pub trait PrepareOpenBlock {
+    /// Returns OpenBlock prepared for closing.
+    fn prepare_open_block(&self,
+                          author: Address,
+                          gas_range_target: (U256, U256),
+                          extra_data: Bytes
+    ) -> OpenBlock;
+}
+
+/// Provides methods used for sealing new state
+pub trait BlockProducer: PrepareOpenBlock + ReopenBlock {}
 
 /// Provides methods to import sealed block and broadcast a block proposal
 pub trait SealedBlockImporter: ImportSealedBlock + BroadcastProposalBlock {}
