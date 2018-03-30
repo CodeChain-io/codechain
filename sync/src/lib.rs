@@ -22,8 +22,10 @@ extern crate codechain_types as ctypes;
 
 #[macro_use]
 extern crate log;
+extern crate rlp;
 
 mod extension;
 mod manager;
+mod message;
 
 pub use self::extension::BlockSyncExtension;

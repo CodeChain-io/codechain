@@ -14,19 +14,29 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::collections::HashMap;
 use std::sync::Arc;
-use parking_lot::Mutex;
+use parking_lot::{RwLock, Mutex};
 
 use ccore::BlockChainClient;
-use cnetwork::{Api, Error, Extension, NodeId};
+use cnetwork::{Api, Extension, NodeId};
+use ctypes::{H256, U256};
+use rlp::Encodable;
 
 use manager::DownloadManager;
+use message::Message;
 
 const EXTENSION_NAME: &'static str = "block-propagation";
 const SYNC_TIMER_ID: usize = 0;
 const SYNC_TIMER_INTERVAL: u64 = 1000;
 
+struct Peer {
+    total_score: U256,
+    best_hash: H256,
+}
+
 pub struct BlockSyncExtension {
+    peers: RwLock<HashMap<NodeId, Peer>>,
     client: Arc<BlockChainClient>,
     manager: Mutex<DownloadManager>,
     api: Mutex<Option<Arc<Api>>>,
@@ -35,6 +45,7 @@ pub struct BlockSyncExtension {
 impl BlockSyncExtension {
     pub fn new(client: Arc<BlockChainClient>) -> Arc<Self> {
         Arc::new(Self {
+            peers: RwLock::new(HashMap::new()),
             client,
             manager: Mutex::new(DownloadManager::new()),
             api: Mutex::new(None),
@@ -47,6 +58,7 @@ impl Extension for BlockSyncExtension {
     fn need_encryption(&self) -> bool { false }
 
     fn on_initialize(&self, api: Arc<Api>) {
+        self.peers.write().clear();
         api.set_timer(SYNC_TIMER_ID, SYNC_TIMER_INTERVAL);
         *self.api.lock() = Some(api);
     }
@@ -54,18 +66,43 @@ impl Extension for BlockSyncExtension {
     fn on_node_added(&self, id: &NodeId) {
         self.api.lock().as_ref().map(|api| api.connect(id));
     }
-    fn on_node_removed(&self, _id: &NodeId) { unimplemented!() }
+    fn on_node_removed(&self, id: &NodeId) { self.peers.write().remove(id); }
 
-    fn on_connected(&self, _id: &NodeId) { unimplemented!() }
+    fn on_connected(&self, id: &NodeId) {
+        let chain_info = self.client.chain_info();
+        let status_message = Message::Status {
+            total_score: chain_info.total_score,
+            best_hash: chain_info.best_block_hash,
+            genesis_hash: chain_info.genesis_hash,
+        };
+        self.api.lock().as_ref().map(|api| {
+            api.send(id, &status_message.rlp_bytes().to_vec());
+        });
+    }
     fn on_connection_allowed(&self, id: &NodeId) { self.on_connected(id); }
 
-    fn on_message(&self, _id: &NodeId, _message: &Vec<u8>) { unimplemented!() }
+    fn on_message(&self, id: &NodeId, data: &Vec<u8>) {
+        match ::rlp::decode(data) {
+            Message::Status { total_score, best_hash, genesis_hash } => {
+                if genesis_hash == self.client.chain_info().genesis_hash {
+                    self.on_peer_status(id, total_score, best_hash);
+                } else {
+                    info!("BlockSyncExtension: genesis hash mismatch with peer {}", id);
+                }
+            },
+        }
+    }
 
     fn on_close(&self) { *self.api.lock() = None }
 
     fn on_timeout(&self, timer_id: usize) {
         debug_assert_eq!(timer_id, SYNC_TIMER_ID);
+        unimplemented!();
     }
 }
 
-
+impl BlockSyncExtension {
+    fn on_peer_status(&self, id: &NodeId, total_score: U256, best_hash: H256) {
+        self.peers.write().insert(*id, Peer { total_score, best_hash });
+    }
+}
