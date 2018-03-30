@@ -35,7 +35,7 @@ pub trait Api: Send + Sync {
 
     fn set_timer(&self, timer_id: usize, ms: u64);
     fn set_timer_once(&self, timer_id: usize, ms: u64);
-    fn clear_timer(&self, timer_id: usize, ms: u64);
+    fn clear_timer(&self, timer_id: usize);
 }
 
 pub trait Extension: Send + Sync {

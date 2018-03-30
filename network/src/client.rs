@@ -67,7 +67,7 @@ impl Api for ClientApi {
         unimplemented!();
     }
 
-    fn clear_timer(&self, _timer_id: usize, _ms: u64) {
+    fn clear_timer(&self, _timer_id: usize) {
         unimplemented!();
     }
 }
@@ -196,7 +196,7 @@ mod tests {
             unimplemented!()
         }
 
-        fn clear_timer(&self, timer_id: usize, ms: u64) {
+        fn clear_timer(&self, timer_id: usize) {
             unimplemented!()
         }
     }
