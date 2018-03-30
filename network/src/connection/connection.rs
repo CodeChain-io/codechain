@@ -15,6 +15,8 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::collections::{HashMap, VecDeque};
+use std::error;
+use std::fmt;
 use std::io::{Write, self};
 use std::result;
 
@@ -57,6 +59,36 @@ pub enum Error {
     },
     UnreadySession,
     SymmetricCipherError(SymmetricCipherError)
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            &Error::IoError(ref err) => err.fmt(f),
+            &Error::DecoderError(ref err) => err.fmt(f),
+            &Error::InvalidSign => write!(f, "InvalidSign"),
+            &Error::InvalidState {ref expected, ref actual} => write!(f, "InvalidState expected: {:?}, actual: {:?}", expected, actual),
+            &Error::UnreadySession => write!(f, "UnreadySession"),
+            &Error::SymmetricCipherError(ref err) => write!(f, "{:?}", err),
+        }
+    }
+}
+
+impl error::Error for Error {
+    fn description(&self) -> &str {
+        "Connection Error"
+    }
+
+    fn cause(&self) -> Option<&error::Error> {
+        match self {
+            &Error::IoError(ref err) => Some(err),
+            &Error::DecoderError(ref err) => Some(err),
+            &Error::InvalidSign => None,
+            &Error::InvalidState {..} => None,
+            &Error::UnreadySession => None,
+            &Error::SymmetricCipherError(_) => None,
+        }
+    }
 }
 
 impl From<io::Error> for Error {
