@@ -47,6 +47,7 @@ struct AccountCache {
 }
 
 /// Buffered account cache item.
+#[derive(Clone)]
 struct CacheQueueItem {
     /// Account address.
     address: Address,
@@ -356,6 +357,19 @@ impl state::Backend for StateDB {
             return None;
         }
         cache.accounts.get_mut(a).map(|c| f(c.as_mut()))
+    }
+}
+
+impl Clone for StateDB {
+    fn clone(&self) -> StateDB {
+        StateDB {
+            db: self.db.boxed_clone(),
+            account_cache: self.account_cache.clone(),
+            local_cache: self.local_cache.to_vec(),
+            parent_hash: self.parent_hash.clone(),
+            commit_hash: self.commit_hash.clone(),
+            commit_number: self.commit_number.clone(),
+        }
     }
 }
 
