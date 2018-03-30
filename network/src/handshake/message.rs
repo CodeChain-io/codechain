@@ -16,8 +16,6 @@
 
 use rlp::{UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
 
-use super::super::session::Nonce;
-
 type Version = u32;
 type Raw = Vec<u8>;
 type Seq = u64;
@@ -116,9 +114,9 @@ mod tests {
     use rlp::{ Decodable, Encodable, UntrustedRlp };
 
     use super::Message;
-    use super::Nonce;
     use super::Seq;
     use super::Version;
+    use super::super::super::session::Nonce;
 
     const SINGLE: u8 = 0x80;
     const LIST: u8 = 0xc0;
