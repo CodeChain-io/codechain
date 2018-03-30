@@ -276,6 +276,7 @@ impl IoHandler<HandlerMessage> for Handler {
             FIRST_TOKEN...LAST_TOKEN => {
                 let mut manager = self.manager.lock();
                 manager.register_stream(stream, reg, event_loop);
+                self.client.on_node_added(&stream);
                 if !manager.is_inbound(stream) {
                     if let Some(connection) = manager.connections.get_mut(stream) {
                         connection.enqueue_sync();
