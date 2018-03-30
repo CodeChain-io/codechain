@@ -24,7 +24,7 @@ pub type NodeId = StreamToken;
 #[derive(Clone, Copy, Debug)]
 pub enum Error {
     ExtensionDropped,
-    DuplicatedTimerSeq,
+    DuplicatedTimerId,
 }
 
 pub type Result<T> = result::Result<T, Error>;
