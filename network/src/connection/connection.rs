@@ -20,6 +20,7 @@ use std::result;
 
 use mio::deprecated::TryRead;
 use mio::net::TcpStream;
+use rcrypto::symmetriccipher::SymmetricCipherError;
 use rlp::{Encodable, DecoderError, UntrustedRlp};
 
 use super::{ApplicationMessage, HandshakeMessage, Message, NegotiationBody, NegotiationMessage};
@@ -55,6 +56,7 @@ pub enum Error {
         actual: State,
     },
     UnreadySession,
+    SymmetricCipherError(SymmetricCipherError)
 }
 
 impl From<io::Error> for Error {
@@ -66,6 +68,12 @@ impl From<io::Error> for Error {
 impl From<DecoderError> for Error {
     fn from(err: DecoderError) -> Self {
         Error::DecoderError(err)
+    }
+}
+
+impl From<SymmetricCipherError> for Error {
+    fn from(err: SymmetricCipherError) -> Self {
+        Error::SymmetricCipherError(err)
     }
 }
 
@@ -169,7 +177,13 @@ impl Connection {
                 None => Ok(false),
                 Some(Message::Application(msg)) => {
                     let _ = self.expect_state(State::Established)?;
-                    unimplemented!();
+
+                    debug_assert!(self.session.is_ready());
+                    let session_key = (self.session.secret().clone(), self.session.initialization_vector().unwrap());
+
+                    // FIXME: check version of application
+                    callback.on_message(&msg.application_name(), &msg.unencrypted_data(&session_key)?);
+                    Ok(true)
                 },
                 Some(Message::Handshake(msg)) => {
                     info!("handshake message received {:?}", msg);
