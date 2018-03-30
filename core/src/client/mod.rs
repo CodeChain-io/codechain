@@ -34,7 +34,7 @@ use super::blockchain_info::BlockChainInfo;
 use super::encoded;
 use super::error::BlockImportError;
 use super::miner::TransactionImportResult;
-use super::types::{BlockId, TransactionId};
+use super::types::{BlockId, TransactionId, VerificationQueueInfo as BlockQueueInfo};
 
 /// Provides `chain_info` method
 pub trait ChainInfo {
@@ -83,6 +83,9 @@ pub trait BlockChain: ChainInfo + BlockInfo + TransactionInfo {}
 
 /// Blockchain database client. Owns and manages a blockchain and a block queue.
 pub trait BlockChainClient : Sync + Send + BlockChain + ImportBlock {
+    /// Get block queue information.
+    fn queue_info(&self) -> BlockQueueInfo;
+
     /// Queue transactions for importing.
     fn queue_transactions(&self, transactions: Vec<Bytes>, peer_id: usize);
 

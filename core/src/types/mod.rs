@@ -15,7 +15,9 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 mod ids;
+mod verification_queue_info;
 
 pub use self::ids::{BlockId, TransactionId};
+pub use self::verification_queue_info::VerificationQueueInfo;
 
 pub type BlockNumber = u64;
