@@ -264,7 +264,7 @@ pub struct Handler {
 
 impl Handler {
     pub fn new(address: Address, extension: IoChannel<connection::HandlerMessage>) -> Self {
-        let mut handshake = Handshake::bind(&address).expect("Cannot bind UDP port");
+        let handshake = Handshake::bind(&address).expect("Cannot bind UDP port");
         Self {
             address,
             internal: Mutex::new(Internal {
