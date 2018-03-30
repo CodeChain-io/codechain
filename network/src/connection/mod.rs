@@ -20,7 +20,6 @@ mod handshake;
 mod manager;
 mod message;
 mod negotiation;
-mod limited_table;
 
 use self::message::ApplicationMessage;
 use self::message::HandshakeMessage;

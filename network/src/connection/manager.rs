@@ -30,8 +30,8 @@ use super::message::Version;
 use super::super::Address;
 use super::super::client::Client;
 use super::super::extension::NodeId;
+use super::super::limited_table::{Key as ConnectionToken, LimitedTable};
 use super::super::session::{Session, SessionTable};
-use super::limited_table::{Key as ConnectionToken, LimitedTable};
 
 pub struct Manager {
     listener: TcpListener,

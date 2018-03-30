@@ -31,6 +31,7 @@ mod client;
 pub mod connection;
 mod extension;
 mod handshake;
+mod limited_table;
 mod service;
 pub mod session;
 pub mod address;
