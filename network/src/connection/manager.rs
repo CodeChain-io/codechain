@@ -19,7 +19,7 @@ use std::convert::From;
 use std::io;
 use std::sync::Arc;
 
-use cio::{IoContext, IoHandler, IoManager, StreamToken};
+use cio::{IoContext, IoHandler, IoManager, StreamToken, TimerToken};
 use mio::deprecated::EventLoop;
 use mio::net::{TcpListener, TcpStream};
 use mio::{PollOpt, Ready, Token};
@@ -29,9 +29,10 @@ use super::connection::{Connection, ExtensionCallback as ExtensionChannel};
 use super::message::Version;
 use super::super::Address;
 use super::super::client::Client;
-use super::super::extension::NodeId;
+use super::super::extension::{Error as ExtensionError, NodeId};
 use super::super::limited_table::{Key as ConnectionToken, LimitedTable};
 use super::super::session::{Session, SessionTable};
+use super::super::timer_info::{Error as TimerInfoError, TimerInfo};
 
 pub struct Manager {
     listener: TcpListener,
@@ -44,6 +45,11 @@ const ACCEPT_TOKEN: usize = 0;
 const FIRST_CONNECTION_TOKEN: usize = ACCEPT_TOKEN + 1;
 const MAX_CONNECTIONS: usize = 32;
 const LAST_CONNECTION_TOKEN: usize = FIRST_CONNECTION_TOKEN + MAX_CONNECTIONS;
+
+const FIRST_TIMER_TOKEN: usize = LAST_CONNECTION_TOKEN;
+const MAX_TIMERS: usize = 100;
+
+type TimerId = usize;
 
 #[derive(Clone, Debug, PartialOrd, PartialEq)]
 pub enum HandlerMessage {
@@ -61,6 +67,21 @@ pub enum HandlerMessage {
         extension_name: String,
         need_encryption: bool,
         data: Vec<u8 >,
+    },
+
+    SetTimer {
+        extension_name: String,
+        timer_id: TimerId,
+        ms: u64,
+    },
+    SetTimerOnce {
+        extension_name: String,
+        timer_id: TimerId,
+        ms: u64,
+    },
+    ClearTimer {
+        extension_name: String,
+        timer_id: TimerId,
     },
 }
 
@@ -163,6 +184,7 @@ pub struct Handler {
     address: Address,
     manager: Mutex<Manager>,
     client: Arc<Client>,
+    timer: Mutex<TimerInfo>,
 }
 
 impl Handler {
@@ -172,6 +194,7 @@ impl Handler {
             address,
             manager,
             client,
+            timer: Mutex::new(TimerInfo::new(FIRST_TIMER_TOKEN, MAX_TIMERS)),
         }
     }
 }
@@ -180,6 +203,18 @@ impl IoHandler<HandlerMessage> for Handler {
     fn initialize(&self, io: &IoContext<HandlerMessage>) {
         if let Err(err) = io.register_stream(ACCEPT_TOKEN) {
             info!("Cannot register tcp stream {:?}", err);
+        }
+    }
+
+    fn timeout(&self, _io: &IoContext<HandlerMessage>, token: TimerToken) {
+        let mut timer = self.timer.lock();
+        if let Some(info) = timer.get_info(token) {
+            self.client.on_timeout(&info.name, info.timer_id);
+            if info.once {
+                timer.remove_by_token(token);
+            }
+        } else {
+            info!("{} is not an expected timer id", token)
         }
     }
 
@@ -219,6 +254,51 @@ impl IoHandler<HandlerMessage> for Handler {
                     info!("Send extension message to node({})", node_id);
                 } else {
                     info!("{} is not a valid node id", node_id);
+                }
+            },
+
+            HandlerMessage::SetTimer { ref extension_name, timer_id, ms } => {
+                let mut timer = self.timer.lock();
+                match timer.insert(extension_name.clone(), timer_id, false) {
+                    Ok(token) => {
+                        if let Err(err) = io.register_timer(token, ms) {
+                            info!("Cannot set timer : {:?}", err);
+                        }
+                        self.client.on_timer_set_allowed(extension_name, timer_id);
+                    },
+                    Err(TimerInfoError::DuplicatedTimerId) => {
+                        self.client.on_timer_set_denied(extension_name, timer_id, ExtensionError::DuplicatedTimerId);
+                    },
+                    Err(TimerInfoError::NoSpace) => {
+                        self.client.on_timer_set_denied(extension_name, timer_id, ExtensionError::NoMoreTimerToken);
+                    },
+                }
+            },
+            HandlerMessage::SetTimerOnce { ref extension_name, timer_id, ms } => {
+                let mut timer = self.timer.lock();
+                match timer.insert(extension_name.clone(), timer_id, true) {
+                    Ok(token) => {
+                        if let Err(err) = io.register_timer_once(token, ms) {
+                            info!("Cannot set timer : {:?}", err);
+                        }
+                        self.client.on_timer_set_allowed(extension_name, timer_id);
+                    },
+                    Err(TimerInfoError::DuplicatedTimerId) => {
+                        self.client.on_timer_set_denied(extension_name, timer_id, ExtensionError::DuplicatedTimerId);
+                    },
+                    Err(TimerInfoError::NoSpace) => {
+                        self.client.on_timer_set_denied(extension_name, timer_id, ExtensionError::NoMoreTimerToken);
+                    },
+                }
+            },
+            HandlerMessage::ClearTimer { ref extension_name, timer_id } => {
+                let mut timer = self.timer.lock();
+                if let Some(token) = timer.remove_by_info(extension_name.clone(), timer_id) {
+                    if let Err(err) = io.clear_timer(token) {
+                        info!("Cannot clear timer : {:?}", err);
+                    }
+                } else {
+                    info!("{} is not an expected timer id", timer_id)
                 }
             },
         };
