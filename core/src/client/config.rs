@@ -19,7 +19,7 @@ use std::str::FromStr;
 
 use kvdb_rocksdb::CompactionProfile;
 
-use super::super::verification::VerifierType;
+use super::super::verification::{VerifierType, QueueConfig};
 
 /// Client state db compaction profile
 #[derive(Debug, PartialEq, Clone)]
@@ -65,6 +65,8 @@ impl FromStr for DatabaseCompactionProfile {
 /// Client configuration. Includes configs for all sub-systems.
 #[derive(Debug, PartialEq)]
 pub struct ClientConfig {
+    /// Block queue configuration.
+    pub queue: QueueConfig,
     /// RocksDB column cache-size if not default
     pub db_cache_size: Option<usize>,
     /// State db compaction profile
@@ -82,6 +84,7 @@ impl Default for ClientConfig {
         let mb = 1024 * 1024;
         const DEFAULT_STATE_CACHE_SIZE: u32 = 25;
         Self {
+            queue: Default::default(),
             db_cache_size: Default::default(),
             db_compaction: Default::default(),
             db_wal: true,

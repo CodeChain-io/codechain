@@ -23,6 +23,7 @@ mod verifier;
 pub use self::noop_verifier::NoopVerifier;
 pub use self::verification::*;
 pub use self::verifier::Verifier;
+pub use self::queue::{BlockQueue, Config as QueueConfig};
 
 use super::client::BlockInfo;
 

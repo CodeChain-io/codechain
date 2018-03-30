@@ -42,7 +42,7 @@ impl Importer {
         engine: Arc<CodeChainEngine>,
         message_channel: IoChannel<ClientIoMessage>,
     ) -> Result<Importer, Error> {
-        let block_queue = BlockQueue::new(engine.clone(), message_channel.clone(), config.verifier_type.verifying_seal());
+        let block_queue = BlockQueue::new(config.queue.clone(), engine.clone(), message_channel.clone(), config.verifier_type.verifying_seal());
 
         Ok(Importer {
             verifier: verification::new(config.verifier_type.clone()),

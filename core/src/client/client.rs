@@ -36,7 +36,7 @@ use super::super::error::{Error, BlockImportError, ImportError};
 use super::super::service::ClientIoMessage;
 use super::super::spec::Spec;
 use super::super::state_db::StateDB;
-use super::super::types::{BlockId, TransactionId};
+use super::super::types::{BlockId, TransactionId, VerificationQueueInfo as BlockQueueInfo};
 
 const MAX_TX_QUEUE_SIZE: usize = 4096;
 
@@ -219,6 +219,10 @@ impl ImportBlock for Client {
 impl BlockChainTrait for Client {}
 
 impl BlockChainClient for Client {
+    fn queue_info(&self) -> BlockQueueInfo {
+        self.importer.block_queue.queue_info()
+    }
+
     fn queue_transactions(&self, transactions: Vec<Bytes>, peer_id: usize) {
         let queue_size = self.queue_transactions.load(AtomicOrdering::Relaxed);
         trace!(target: "external_tx", "Queue size: {}", queue_size);
