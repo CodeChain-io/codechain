@@ -34,6 +34,7 @@ use super::blockchain_info::BlockChainInfo;
 use super::encoded;
 use super::error::BlockImportError;
 use super::miner::TransactionImportResult;
+use super::transaction::PendingTransaction;
 use super::types::{BlockId, TransactionId, VerificationQueueInfo as BlockQueueInfo};
 
 /// Provides `chain_info` method
@@ -91,6 +92,9 @@ pub trait BlockChainClient : Sync + Send + BlockChain + ImportBlock {
 
     /// Queue conensus engine message.
     fn queue_consensus_message(&self, message: Bytes);
+
+    /// List all transactions that are allowed into the next block.
+    fn ready_transactions(&self) -> Vec<PendingTransaction>;
 }
 
 /// Provides `import_sealed_block` method

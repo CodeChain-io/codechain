@@ -36,6 +36,7 @@ use super::super::error::{Error, BlockImportError, ImportError};
 use super::super::service::ClientIoMessage;
 use super::super::spec::Spec;
 use super::super::state_db::StateDB;
+use super::super::transaction::PendingTransaction;
 use super::super::types::{BlockId, TransactionId, VerificationQueueInfo as BlockQueueInfo};
 
 const MAX_TX_QUEUE_SIZE: usize = 4096;
@@ -247,4 +248,9 @@ impl BlockChainClient for Client {
             debug!("Ignoring the message, error queueing: {}", e);
         }
     }
+
+    fn ready_transactions(&self) -> Vec<PendingTransaction> {
+        unimplemented!();
+    }
 }
+
