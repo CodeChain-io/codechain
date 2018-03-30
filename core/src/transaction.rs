@@ -111,6 +111,9 @@ pub enum Action {
         /// Transferred value.
         value: U256,
     },
+    SetRegularKey {
+        key: Public,
+    },
 }
 
 impl Default for Action {
@@ -121,6 +124,8 @@ impl rlp::Decodable for Action {
     fn decode(d: &UntrustedRlp) -> Result<Self, DecoderError> {
         if d.is_empty() {
             Ok(Action::Noop)
+        } else if d.is_data() {
+            Ok(Action::SetRegularKey { key: d.as_val()? })
         } else {
             if d.item_count()? != 2 {
                 return Err(DecoderError::RlpIncorrectListLen);
@@ -141,6 +146,9 @@ impl rlp::Encodable for Action {
                 s.begin_list(2);
                 s.append(address);
                 s.append(value)
+            },
+            Action::SetRegularKey { ref key } => {
+                s.append_internal(key)
             }
         };
     }

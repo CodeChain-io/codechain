@@ -26,7 +26,7 @@ use std::fmt;
 
 use error::Error;
 use transaction::{SignedTransaction, Action};
-use ctypes::{H256, U256, U512, Address};
+use ctypes::{H256, U256, U512, Address, Public};
 use trie::{self, Trie, TrieFactory, TrieError};
 
 use super::invoice::{Invoice, TransactionOutcome};
@@ -195,11 +195,15 @@ pub trait StateInfo {
 
     /// Get the balance of account `a`.
     fn balance(&self, a: &Address) -> trie::Result<U256>;
+
+    /// Get the regular key of account `a`.
+    fn regular_key(&self, a: &Address) -> trie::Result<Option<Public>>;
 }
 
 impl<B: Backend> StateInfo for State<B> {
     fn nonce(&self, a: &Address) -> trie::Result<U256> { State::nonce(self, a) }
     fn balance(&self, a: &Address) -> trie::Result<U256> { State::balance(self, a) }
+    fn regular_key(&self, a: &Address) -> trie::Result<Option<Public>> { State::regular_key(self, a) }
 }
 
 impl<B: Backend> State<B> {
@@ -359,6 +363,12 @@ impl<B: Backend> State<B> {
             |a| a.as_ref().map_or(self.account_start_nonce, |account| *account.nonce()))
     }
 
+    /// Get the regular key of account `a`.
+    pub fn regular_key(&self, a: &Address) -> trie::Result<Option<Public>> {
+        self.ensure_cached(a,
+            |a| a.as_ref().map_or(None, |account| account.regular_key()))
+    }
+
     /// Add `incr` to the balance of account `a`.
     pub fn add_balance(&mut self, a: &Address, incr: &U256) -> trie::Result<()> {
         trace!(target: "state", "add_balance({}, {}): {}", a, incr, self.balance(a)?);
@@ -388,6 +398,12 @@ impl<B: Backend> State<B> {
     /// Increment the nonce of account `a` by 1.
     pub fn inc_nonce(&mut self, a: &Address) -> trie::Result<()> {
         self.require(a).map(|mut x| x.inc_nonce())
+    }
+
+    /// Set the regular key of account `a`
+    pub fn set_regular_key(&mut self, a: &Address, key: &Public) -> trie::Result<()> {
+        self.require(a)?.set_regular_key(key);
+        Ok(())
     }
 
     /// Execute a given transaction, charging transaction fee.
@@ -435,6 +451,10 @@ impl<B: Backend> State<B> {
                 // balance = balance - value.into()
                 Ok(None)
             },
+            Action::SetRegularKey { key } => {
+                self.set_regular_key(&sender, &key)?;
+                Ok(None)
+            }
         }
     }
 
@@ -668,6 +688,26 @@ mod tests {
         assert_eq!(state.balance(&receiver).unwrap(), 10.into());
         assert_eq!(state.balance(&sender).unwrap(), 5.into());
         assert_eq!(state.nonce(&sender).unwrap(), 1.into());
+    }
+
+    #[test]
+    fn should_apply_set_regular_key() {
+        // account_start_nonce is 0
+        let mut state = get_temp_state();
+        let key = 1u64.into();
+
+        let t = Transaction {
+            fee: 5.into(),
+            action: Action::SetRegularKey { key },
+            .. Transaction::default()
+        }.sign(&secret().into());
+        let sender = t.sender();
+        state.add_balance(&sender, &5.into()).unwrap();
+
+        assert_eq!(state.regular_key(&sender).unwrap(), None);
+        let res = state.apply(&t).unwrap();
+        assert_eq!(res.invoice.outcome, TransactionOutcome::Success);
+        assert_eq!(state.regular_key(&sender).unwrap(), Some(key));
     }
 
     #[test]
