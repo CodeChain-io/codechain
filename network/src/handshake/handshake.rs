@@ -353,7 +353,7 @@ impl IoHandler<HandlerMessage> for Handler {
             RECV_TOKEN => {
                 let mut internal = self.internal.lock();
                 let ref mut handshake = internal.handshake;
-                if let Err(err) = event_loop.register(&handshake.socket, Token(RECV_TOKEN), Ready::all(), PollOpt::edge()) {
+                if let Err(err) = event_loop.register(&handshake.socket, Token(RECV_TOKEN), Ready::readable() | Ready::writable(), PollOpt::edge()) {
                     info!("Cannot register udp socket {:?}", err);
                 }
             },
