@@ -32,7 +32,7 @@ pub struct Message {
 }
 
 #[derive(Debug, Eq, Ord, PartialEq, PartialOrd)]
-enum Body {
+pub enum Body {
     Request {
         application_name: String,
         application_version: Version,
@@ -93,6 +93,10 @@ impl Message {
             Body::Allowed => COMMON,
             Body::Denied(ref versions) => COMMON as usize + versions.len(),
         }
+    }
+
+    pub fn body(&self) -> &Body {
+        &self.body
     }
 }
 

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::io::{Write, self};
 use std::result;
 
@@ -22,8 +22,9 @@ use mio::deprecated::TryRead;
 use mio::net::TcpStream;
 use rlp::{Encodable, DecoderError, UntrustedRlp};
 
-use super::{ApplicationMessage, HandshakeMessage, Message};
+use super::{ApplicationMessage, HandshakeMessage, Message, NegotiationBody, NegotiationMessage};
 use super::SignedMessage;
+use super::message::{Seq, Version};
 use super::super::client::Client;
 use super::super::extension::{Error as ExtensionError, NodeId};
 use super::super::session::Session;
@@ -40,6 +41,8 @@ pub struct Connection {
     session: Session,
     state: State,
     send_queue: VecDeque<Message>,
+    next_negotiation_seq: Seq,
+    requested_negotiation: HashMap<Seq, String>
 }
 
 #[derive(Debug)]
@@ -79,6 +82,8 @@ impl Connection {
             session,
             state: State::New,
             send_queue: VecDeque::new(),
+            next_negotiation_seq: 0,
+            requested_negotiation: HashMap::new(),
         })
     }
 
@@ -113,6 +118,19 @@ impl Connection {
         const VERSION: u32 = 0;
         self.enqueue(Message::Handshake(HandshakeMessage::Ack(VERSION)));
         self.state = State::Established;
+    }
+
+    pub fn enqueue_negotiation_request(&mut self, name: String, version: Version) {
+        let seq = self.next_negotiation_seq;
+        self.next_negotiation_seq += 1;
+        if let Some(_) = self.requested_negotiation.insert(seq, name.clone()) {
+            unreachable!();
+        }
+        self.enqueue(Message::Negotiation(NegotiationMessage::request(seq, name, version)));
+    }
+
+    pub fn enqueue_negotiation_allowed(&mut self, seq: Seq) {
+        self.enqueue(Message::Negotiation(NegotiationMessage::allowed(seq)));
     }
 
     pub fn enqueue_extension_message(&mut self, extension_name: String, need_encryption: bool, message: Vec<u8>) {
@@ -169,7 +187,26 @@ impl Connection {
                 },
                 Some(Message::Negotiation(msg)) => {
                     let _ = self.expect_state(State::Established)?;
-                    unimplemented!();
+                    match msg.body() {
+                        &NegotiationBody::Request {ref application_name, ..} => {
+                            let seq = msg.seq();
+                            // FIXME: version negotiation
+                            callback.on_connected(&application_name);
+                            self.enqueue_negotiation_allowed(seq);
+                        },
+                        &NegotiationBody::Allowed => {
+                            let seq = msg.seq();
+                            if let Some(name) = self.requested_negotiation.remove(&seq) {
+                                callback.on_connection_allowed(&name);
+                            } else {
+                                info!("Negotiation::Allowed message received from non requested seq");
+                            }
+                        },
+                        &NegotiationBody::Denied(_) => {
+                            // FIXME: Call on_connection_denied
+                        },
+                    };
+                    Ok(true)
                 },
             }
         })
