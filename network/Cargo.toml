@@ -14,3 +14,4 @@ rand = "0.4"
 rlp = { path = "../util/rlp" }
 rust-crypto = "0.2.36"
 slab = "0.4"
+table = { path = "../util/table" }

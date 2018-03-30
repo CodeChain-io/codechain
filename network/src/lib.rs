@@ -26,6 +26,7 @@ extern crate slab;
 extern crate codechain_crypto as ccrypto;
 extern crate codechain_io as cio;
 extern crate codechain_types as ctypes;
+extern crate table as ctable;
 
 mod client;
 pub mod connection;
@@ -33,6 +34,7 @@ mod extension;
 mod handshake;
 mod limited_table;
 mod service;
+mod timer_info;
 pub mod session;
 pub mod address;
 pub mod kademlia;
