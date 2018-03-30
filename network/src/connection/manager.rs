@@ -25,7 +25,7 @@ use mio::net::{TcpListener, TcpStream};
 use mio::{PollOpt, Ready, Token};
 use parking_lot::Mutex;
 
-use super::connection::Connection;
+use super::connection::{Connection, ExtensionCallback as ExtensionChannel};
 use super::super::Address;
 use super::super::client::Client;
 use super::super::extension::NodeId;
@@ -227,7 +227,7 @@ impl IoHandler<HandlerMessage> for Handler {
                 loop {
                     let mut manager = self.manager.lock();
                     if let Some(mut connection) = manager.connections.get_mut(stream) {
-                        if !connection.receive() {
+                        if !connection.receive(&ExtensionChannel::new(&self.client, stream)) {
                             break
                         }
                     } else {

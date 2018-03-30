@@ -24,6 +24,8 @@ use rlp::{Encodable, DecoderError, UntrustedRlp};
 
 use super::{ApplicationMessage, HandshakeMessage, Message};
 use super::SignedMessage;
+use super::super::client::Client;
+use super::super::extension::{Error as ExtensionError, NodeId};
 use super::super::session::Session;
 
 #[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq)]
@@ -136,14 +138,14 @@ impl Connection {
         self.enqueue(Message::Application(message));
     }
 
-    pub fn receive(&mut self) -> bool {
-        self.receive_internal().unwrap_or_else(|err| {
+    pub fn receive(&mut self, callback: &ExtensionCallback) -> bool {
+        self.receive_internal(&callback).unwrap_or_else(|err| {
             info!("Cannot receive message {:?}", err);
             false
         })
     }
 
-    fn receive_internal(&mut self) -> Result<bool> {
+    fn receive_internal(&mut self, callback: &ExtensionCallback) -> Result<bool> {
         self.receive_message().and_then(|message| {
             match message {
                 None => Ok(false),
@@ -210,5 +212,35 @@ impl Connection {
         } else {
             Ok(())
         }
+    }
+}
+
+pub struct ExtensionCallback<'a> {
+    client: &'a Client,
+    id: NodeId,
+}
+
+impl<'a> ExtensionCallback<'a> {
+    pub fn new(client: &'a Client, id: NodeId) -> Self {
+        Self {
+            client,
+            id,
+        }
+    }
+
+    fn on_connected(&self, name: &String) {
+        self.client.on_connected(&name, &self.id);
+    }
+
+    fn on_connection_allowed(&self, name: &String) {
+        self.client.on_connection_allowed(&name, &self.id);
+    }
+
+    fn on_connection_denied(&self, name: &String, error: ExtensionError) {
+        self.client.on_connection_denied(&name, &self.id, error);
+    }
+
+    fn on_message(&self, name: &String, data: &Vec<u8>) {
+        self.client.on_message(&name, &self.id, &data);
     }
 }
