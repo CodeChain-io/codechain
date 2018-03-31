@@ -55,7 +55,7 @@ type TimerId = usize;
 pub enum HandlerMessage {
     RegisterSession(Address, Session),
 
-    RequestConnection(Address),
+    RequestConnection(Address, Session),
 
     RequestNegotiation {
         node_id: NodeId,
@@ -226,8 +226,13 @@ impl IoHandler<HandlerMessage> for Handler {
                 info!("Register session {:?}", session);
                 manager.register_session(address.clone(), session.clone());
             },
-            HandlerMessage::RequestConnection(ref address) => {
+            HandlerMessage::RequestConnection(ref address, ref session) => {
+                debug_assert!(session.is_ready());
                 let mut manager = self.manager.lock();
+
+                info!("Register session {:?}", session);
+                manager.register_session(address.clone(), session.clone());
+
                 info!("Connecting to {:?}", address);
                 if let Some(token) = manager.connect(&address) {
                     if let Err(err) = io.register_stream(token) {

@@ -211,12 +211,7 @@ impl Handshake {
                     };
 
                     if session.is_expected_nonce(&nonce) {
-                        if let Err(err) = extension.send_sync(connection::HandlerMessage::RegisterSession(from.clone(), session.clone())) {
-                            info!("Cannot use connection channel {:?}", err);
-                            return;
-                        }
-
-                        if let Err(err) = extension.send(connection::HandlerMessage::RequestConnection(from.clone())) {
+                        if let Err(err) = extension.send(connection::HandlerMessage::RequestConnection(from.clone(), session.clone())) {
                             info!("Cannot request connection {:?}", err);
                             return;
                         }
