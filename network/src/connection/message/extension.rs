@@ -27,8 +27,8 @@ use super::UNENCRYPTED_ID;
 #[derive(Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct Message {
     version: Version,
-    application_name: String,
-    application_version: Version,
+    extension_name: String,
+    extension_version: Version,
     data: Data,
 }
 
@@ -39,30 +39,30 @@ enum Data {
 }
 
 impl Message {
-    pub fn encrypted(application_name: String, application_version: Version, data: Vec<u8>) -> Self {
+    pub fn encrypted(extension_name: String, extension_version: Version, data: Vec<u8>) -> Self {
          Self {
-            version: 0,
-            application_name,
-            application_version,
-            data: Data::Encrypted(data),
+             version: 0,
+             extension_name,
+             extension_version,
+             data: Data::Encrypted(data),
         }
     }
 
-    pub fn encrypted_from_unencrypted_data(application_name: String, application_version: Version, unencrypted_data: Vec<u8>, session_key: &SessionKey) -> Result<Self, SymmetricCipherError> {
+    pub fn encrypted_from_unencrypted_data(extension_name: String, extension_version: Version, unencrypted_data: Vec<u8>, session_key: &SessionKey) -> Result<Self, SymmetricCipherError> {
         let data = Data::Encrypted(aes::encrypt(unencrypted_data.as_slice(), &session_key.0, &session_key.1)?);
         Ok(Self {
             version: 0,
-            application_name,
-            application_version,
+            extension_name,
+            extension_version,
             data,
         })
     }
-    pub fn unencrypted(application_name: String, application_version: Version, data: Vec<u8>) -> Self {
+    pub fn unencrypted(extension_name: String, extension_version: Version, data: Vec<u8>) -> Self {
          Self {
-            version: 0,
-            application_name,
-            application_version,
-            data: Data::Unencrypted(data),
+             version: 0,
+             extension_name,
+             extension_version,
+             data: Data::Unencrypted(data),
         }
     }
 
@@ -91,12 +91,12 @@ impl Message {
         }
     }
 
-    pub fn application_name(&self) -> &String {
-        &self.application_name
+    pub fn extension_name(&self) -> &String {
+        &self.extension_name
     }
 
-    pub fn application_version(&self) -> Version {
-        self.application_version
+    pub fn extension_version(&self) -> Version {
+        self.extension_version
     }
 }
 
@@ -105,8 +105,8 @@ impl Encodable for Message {
         s.begin_list(5)
             .append(&self.version())
             .append(&self.protocol_id())
-            .append(self.application_name())
-            .append(&self.application_version())
+            .append(self.extension_name())
+            .append(&self.extension_version())
             .append(self.data());
     }
 }
@@ -115,8 +115,8 @@ impl Decodable for Message {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
         let version: Version = rlp.val_at(0)?;
         let protocol_id: ProtocolId = rlp.val_at(1)?;
-        let application_name: String = rlp.val_at(2)?;
-        let application_version: Version = rlp.val_at(3)?;
+        let extension_name: String = rlp.val_at(2)?;
+        let extension_version: Version = rlp.val_at(3)?;
         let data: Vec<u8> = rlp.val_at(4)?;
         let data = match protocol_id {
             ENCRYPTED_ID => Data::Encrypted(data),
@@ -125,8 +125,8 @@ impl Decodable for Message {
         };
         Ok(Self {
             version,
-            application_name,
-            application_version,
+            extension_name,
+            extension_version,
             data,
         })
     }
@@ -150,13 +150,13 @@ mod tests {
 
     #[test]
     fn encrypted_with_unencrypted_data_function_internally_encrypts() {
-        let application_name = "encrypt".to_string();
-        let application_version = 3;
+        let extension_name = "encrypt".to_string();
+        let extension_version = 3;
         let unencrypted_data: Vec<u8> = "this data must be encrypted".as_bytes().to_vec();
         let shared_secret = SharedSecret::random();
         let nonce = Nonce::random();
 
-        let encrypted = Message::encrypted_from_unencrypted_data(application_name, application_version, unencrypted_data.clone(), &(shared_secret, nonce)).unwrap();
+        let encrypted = Message::encrypted_from_unencrypted_data(extension_name, extension_version, unencrypted_data.clone(), &(shared_secret, nonce)).unwrap();
         assert_ne!(&unencrypted_data, encrypted.data());
         assert_eq!(unencrypted_data, encrypted.unencrypted_data(&(shared_secret, nonce)).unwrap());
     }

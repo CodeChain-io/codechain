@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod application;
+mod extension;
 mod handshake;
 mod message;
 mod negotiation;
@@ -22,7 +22,7 @@ mod signed_message;
 
 use ctypes::hash::{H128, H256};
 
-pub use self::application::Message as ApplicationMessage;
+pub use self::extension::Message as ApplicationMessage;
 pub use self::handshake::Message as HandshakeMessage;
 pub use self::message::Message;
 pub use self::negotiation::{Body as NegotiationBody, Message as NegotiationMessage};

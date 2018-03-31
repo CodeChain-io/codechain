@@ -214,7 +214,7 @@ impl Connection {
                     let session_key = (self.session.secret().clone(), self.session.initialization_vector().unwrap());
 
                     // FIXME: check version of application
-                    callback.on_message(&msg.application_name(), &msg.unencrypted_data(&session_key)?);
+                    callback.on_message(&msg.extension_name(), &msg.unencrypted_data(&session_key)?);
                     Ok(true)
                 },
                 Some(Message::Handshake(msg)) => {
