@@ -16,7 +16,7 @@
 
 use std::sync::Weak;
 
-use cio::{IoContext, IoHandler, TimerToken};
+use cio::{IoContext, IoHandler, IoHandlerResult, TimerToken};
 use time::Duration;
 
 use super::ConsensusEngine;
@@ -58,27 +58,30 @@ fn set_timeout<S: Sync + Send + Clone>(io: &IoContext<S>, timeout: Duration) {
 impl<S, M> IoHandler<S> for TransitionHandler<S, M>
     where S: Sync + Send + Clone + 'static, M: Machine
 {
-    fn initialize(&self, io: &IoContext<S>) {
+    fn initialize(&self, io: &IoContext<S>) -> IoHandlerResult<()> {
         let initial = self.timeouts.initial();
         trace!(target: "engine", "Setting the initial timeout to {}.", initial);
         set_timeout(io, initial);
+        Ok(())
     }
 
     /// Call step after timeout.
-    fn timeout(&self, _io: &IoContext<S>, timer: TimerToken) {
+    fn timeout(&self, _io: &IoContext<S>, timer: TimerToken) -> IoHandlerResult<()> {
         if timer == ENGINE_TIMEOUT_TOKEN {
             if let Some(engine) = self.engine.upgrade() {
                 engine.step();
             }
         }
+        Ok(())
     }
 
     /// Set a new timer on message.
-    fn message(&self, io: &IoContext<S>, next: &S) {
+    fn message(&self, io: &IoContext<S>, next: &S) -> IoHandlerResult<()> {
         if let Err(io_err) = io.clear_timer(ENGINE_TIMEOUT_TOKEN) {
             warn!(target: "engine", "Could not remove consensus timer {}.", io_err)
         }
         set_timeout(io, self.timeouts.timeout(next));
+        Ok(())
     }
 }
 

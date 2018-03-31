@@ -19,7 +19,7 @@ use std::convert::From;
 use std::io;
 use std::sync::Arc;
 
-use cio::{IoContext, IoHandler, IoManager, StreamToken, TimerToken};
+use cio::{IoContext, IoHandler, IoManager, IoHandlerResult, StreamToken, TimerToken};
 use mio::deprecated::EventLoop;
 use mio::net::{TcpListener, TcpStream};
 use mio::{PollOpt, Ready, Token};
@@ -200,13 +200,12 @@ impl Handler {
 }
 
 impl IoHandler<HandlerMessage> for Handler {
-    fn initialize(&self, io: &IoContext<HandlerMessage>) {
-        if let Err(err) = io.register_stream(ACCEPT_TOKEN) {
-            info!("Cannot register tcp stream {:?}", err);
-        }
+    fn initialize(&self, io: &IoContext<HandlerMessage>) -> IoHandlerResult<()> {
+        io.register_stream(ACCEPT_TOKEN)?;
+        Ok(())
     }
 
-    fn timeout(&self, _io: &IoContext<HandlerMessage>, token: TimerToken) {
+    fn timeout(&self, _io: &IoContext<HandlerMessage>, token: TimerToken) -> IoHandlerResult<()> {
         let mut timer = self.timer.lock();
         if let Some(info) = timer.get_info(token) {
             self.client.on_timeout(&info.name, info.timer_id);
@@ -216,9 +215,10 @@ impl IoHandler<HandlerMessage> for Handler {
         } else {
             info!("{} is not an expected timer id", token)
         }
+        Ok(())
     }
 
-    fn message(&self, io: &IoContext<HandlerMessage>, message: &HandlerMessage) {
+    fn message(&self, io: &IoContext<HandlerMessage>, message: &HandlerMessage) -> IoHandlerResult<()> {
         match *message {
             HandlerMessage::RegisterSession(ref address, ref session) => {
                 debug_assert!(session.is_ready());
@@ -307,9 +307,10 @@ impl IoHandler<HandlerMessage> for Handler {
                 }
             },
         };
+        Ok(())
     }
 
-    fn stream_readable(&self, io: &IoContext<HandlerMessage>, stream: StreamToken) {
+    fn stream_readable(&self, io: &IoContext<HandlerMessage>, stream: StreamToken) -> IoHandlerResult<()> {
         match stream {
             ACCEPT_TOKEN => {
                 loop {
@@ -338,9 +339,10 @@ impl IoHandler<HandlerMessage> for Handler {
             }
             _ => unimplemented!(),
         }
+        Ok(())
     }
 
-    fn stream_writable(&self, _io: &IoContext<HandlerMessage>, stream: StreamToken) {
+    fn stream_writable(&self, _io: &IoContext<HandlerMessage>, stream: StreamToken) -> IoHandlerResult<()> {
         match stream {
             ACCEPT_TOKEN => {},
             FIRST_CONNECTION_TOKEN...LAST_CONNECTION_TOKEN => {
@@ -362,9 +364,10 @@ impl IoHandler<HandlerMessage> for Handler {
             },
             _ => unimplemented!(),
         }
+        Ok(())
     }
 
-    fn register_stream(&self, stream: StreamToken, reg: Token, event_loop: &mut EventLoop<IoManager<HandlerMessage>>) {
+    fn register_stream(&self, stream: StreamToken, reg: Token, event_loop: &mut EventLoop<IoManager<HandlerMessage>>) -> IoHandlerResult<()> {
         match stream {
             ACCEPT_TOKEN => {
                 let manager = self.manager.lock();
@@ -387,9 +390,10 @@ impl IoHandler<HandlerMessage> for Handler {
                 unreachable!();
             },
         }
+        Ok(())
     }
 
-    fn update_stream(&self, stream: StreamToken, reg: Token, event_loop: &mut EventLoop<IoManager<HandlerMessage>>) {
+    fn update_stream(&self, stream: StreamToken, reg: Token, event_loop: &mut EventLoop<IoManager<HandlerMessage>>) -> IoHandlerResult<()> {
         match stream {
             FIRST_CONNECTION_TOKEN...LAST_CONNECTION_TOKEN => {
                 let mut manager = self.manager.lock();
@@ -399,5 +403,6 @@ impl IoHandler<HandlerMessage> for Handler {
                 unreachable!();
             },
         }
+        Ok(())
     }
 }

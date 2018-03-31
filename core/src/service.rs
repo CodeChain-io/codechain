@@ -18,7 +18,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use cbytes::Bytes;
-use cio::{IoHandler, IoService, IoContext};
+use cio::{IoHandler, IoService, IoContext, IoHandlerResult};
 use kvdb_rocksdb::{Database, DatabaseConfig};
 
 use super::client::{Client, ClientConfig};
@@ -87,7 +87,7 @@ struct ClientIoHandler {
 }
 
 impl IoHandler<ClientIoMessage> for ClientIoHandler {
-    fn message(&self, _io: &IoContext<ClientIoMessage>, net_message: &ClientIoMessage) {
+    fn message(&self, _io: &IoContext<ClientIoMessage>, net_message: &ClientIoMessage) -> IoHandlerResult<()> {
         match *net_message {
             ClientIoMessage::BlockVerified => { self.client.import_verified_blocks(); }
             ClientIoMessage::NewTransactions(ref transactions, peer_id) => {
@@ -97,6 +97,7 @@ impl IoHandler<ClientIoMessage> for ClientIoHandler {
                 trace!(target: "poa", "Invalid message received: {}", e);
             },
         }
+        Ok(())
     }
 }
 
