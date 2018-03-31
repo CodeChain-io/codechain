@@ -14,13 +14,19 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ctypes::hash::{H128, H256};
-use rlp::{UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
+mod application;
+mod handshake;
+mod message;
+mod negotiation;
+mod signed_message;
 
-use super::super::session::Session;
-pub use super::application::Message as ApplicationMessage;
-pub use super::handshake::Message as HandshakeMessage;
-pub use super::negotiation::{Body as NegotiationBody, Message as NegotiationMessage};
+use ctypes::hash::{H128, H256};
+
+pub use self::application::Message as ApplicationMessage;
+pub use self::handshake::Message as HandshakeMessage;
+pub use self::message::Message;
+pub use self::negotiation::{Body as NegotiationBody, Message as NegotiationMessage};
+pub use self::signed_message::SignedMessage;
 
 pub type Version = u32;
 pub type ProtocolId = u32;
@@ -28,6 +34,7 @@ pub type Seq = u64;
 pub type SharedSecret = H256;
 pub type Nonce = H128;
 pub type SessionKey = (SharedSecret, Nonce);
+pub type Signature = H256;
 
 pub const SYNC_ID: ProtocolId = 0x00;
 pub const ACK_ID: ProtocolId = 0x01;
@@ -36,84 +43,6 @@ pub const ALLOWED_ID: ProtocolId = 0x03;
 pub const DENIED_ID: ProtocolId = 0x04;
 pub const ENCRYPTED_ID: ProtocolId = 0x05;
 pub const UNENCRYPTED_ID: ProtocolId = 0x06;
-
-pub enum Message {
-    Application(ApplicationMessage),
-    Handshake(HandshakeMessage),
-    Negotiation(NegotiationMessage),
-}
-
-impl Encodable for Message {
-    fn rlp_append(&self, s: &mut RlpStream) {
-        match self {
-            &Message::Application(ref message) => message.rlp_append(s),
-            &Message::Handshake(ref message) => message.rlp_append(s),
-            &Message::Negotiation(ref message) => message.rlp_append(s),
-        }
-    }
-}
-
-impl Decodable for Message {
-    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
-        let protocol_id = rlp.val_at(1)?;
-        match protocol_id {
-            SYNC_ID => Ok(Message::Handshake(HandshakeMessage::decode(rlp)?)),
-            ACK_ID => Ok(Message::Handshake(HandshakeMessage::decode(rlp)?)),
-            REQUEST_ID => Ok(Message::Negotiation(NegotiationMessage::decode(rlp)?)),
-            ALLOWED_ID => Ok(Message::Negotiation(NegotiationMessage::decode(rlp)?)),
-            DENIED_ID => Ok(Message::Negotiation(NegotiationMessage::decode(rlp)?)),
-            ENCRYPTED_ID => Ok(Message::Application(ApplicationMessage::decode(rlp)?)),
-            UNENCRYPTED_ID => Ok(Message::Application(ApplicationMessage::decode(rlp)?)),
-            _ => Err(DecoderError::Custom("unexpected protocol id")),
-        }
-    }
-}
-
-pub struct SignedMessage {
-    pub message: Vec<u8>,
-    signature: H256,
-}
-
-impl SignedMessage {
-    pub fn new(message: Message, session: &Session) -> Option<Self> {
-        let message = message.rlp_bytes().into_vec();
-        session.sign(&message)
-            .map(|signature| {
-                Self {
-                    message,
-                    signature,
-                }
-            })
-    }
-
-    pub fn is_valid(&self, session: &Session) -> bool {
-        session.sign(&self.message)
-            .map(|signature| signature == self.signature)
-            .unwrap_or(false)
-    }
-}
-
-impl Encodable for SignedMessage {
-    fn rlp_append(&self, s: &mut RlpStream) {
-        s.begin_list(2)
-            .append(&self.message)
-            .append(&self.signature);
-    }
-}
-
-impl Decodable for SignedMessage {
-    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
-        if rlp.item_count()? != 2 {
-            return Err(DecoderError::Custom("invalid message"))
-        }
-        let message: Vec<u8> = rlp.val_at(0)?;
-        let signature: H256 = rlp.val_at(1)?;
-        Ok(Self {
-            message,
-            signature,
-        })
-    }
-}
 
 #[cfg(test)]
 mod tests {

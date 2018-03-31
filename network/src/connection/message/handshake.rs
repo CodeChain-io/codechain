@@ -16,11 +16,11 @@
 
 use rlp::{UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
 
-use super::super::message::ProtocolId;
-use super::super::message::Version;
+use super::ProtocolId;
+use super::Version;
 
-use super::super::message::ACK_ID;
-use super::super::message::SYNC_ID;
+use super::ACK_ID;
+use super::SYNC_ID;
 
 #[derive(Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum Message {

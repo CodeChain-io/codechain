@@ -14,12 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod application;
 mod connection;
-mod handshake;
 mod manager;
 mod message;
-mod negotiation;
 
 use self::message::ApplicationMessage;
 use self::message::HandshakeMessage;

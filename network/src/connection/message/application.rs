@@ -17,12 +17,12 @@
 use ccrypto::aes::{SymmetricCipherError, self};
 use rlp::{UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
 
-use super::super::message::ProtocolId;
-use super::super::message::SessionKey;
-use super::super::message::Version;
+use super::ProtocolId;
+use super::SessionKey;
+use super::Version;
 
-use super::super::message::ENCRYPTED_ID;
-use super::super::message::UNENCRYPTED_ID;
+use super::ENCRYPTED_ID;
+use super::UNENCRYPTED_ID;
 
 #[derive(Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct Message {
