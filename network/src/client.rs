@@ -111,7 +111,7 @@ impl Api for ClientApi {
 }
 
 pub struct Client {
-    extensions: RwLock<HashMap<String, Weak<Extension>>>,
+    extensions: RwLock<HashMap<String, Arc<Extension>>>,
 }
 
 macro_rules! define_broadcast_method {
@@ -119,11 +119,7 @@ macro_rules! define_broadcast_method {
         pub fn $method_name (&self) {
             let extensions = self.extensions.read();
             for (ref name, ref extension) in extensions.iter() {
-                if let Some(ref extension) = extension.upgrade() {
-                    extension.$method_name();
-                } else {
-                    info!("Extension {} already dropped before {}", name, stringify!($method_name));
-                }
+                extension.$method_name();
             }
         }
     };
@@ -131,11 +127,7 @@ macro_rules! define_broadcast_method {
         pub fn $method_name (&self, $($var: $t), *) {
             let extensions = self.extensions.read();
             for (ref name, ref extension) in extensions.iter() {
-                if let Some(ref extension) = extension.upgrade() {
-                    extension.$method_name($($var),*);
-                } else {
-                    info!("Extension {} already dropped before {}", name, stringify!($method_name));
-                }
+                extension.$method_name($($var),*);
             }
         }
     };
@@ -146,11 +138,7 @@ macro_rules! define_method {
         pub fn $method_name (&self, name: &String, $($var: $t), *) {
             let extensions = self.extensions.read();
             if let Some(ref extension) = extensions.get(name) {
-                if let Some(ref extension) = extension.upgrade() {
-                    extension.$method_name($($var),*);
-                } else {
-                    info!("Extension {} already dropped before {}", name, stringify!($method_name));
-                }
+                extension.$method_name($($var),*);
             } else {
                 info!("{} doesn't exist.", name);
             }
@@ -162,7 +150,7 @@ impl Client {
     pub fn register_extension(&self, extension: Arc<Extension>, channel: IoChannel<ConnectionMessage>) -> Arc<Api> {
         let name = extension.name();
         let mut extensions = self.extensions.write();
-        if let Some(_) = extensions.insert(name, Arc::downgrade(&extension)) {
+        if let Some(_) = extensions.insert(name, Arc::clone(&extension)) {
             let name = extension.name();
             panic!("Duplicated application name : {}", name);
         }
