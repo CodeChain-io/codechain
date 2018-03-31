@@ -115,7 +115,9 @@ impl Handshake {
         match self.socket.recv_from(&mut buf) {
             Ok((received_size, address)) => {
                 let address = Address::from(address);
-                let session = self.table.get(&address).ok_or(HandshakeError::NoSession)?;
+                if self.table.get(&address).is_none() {
+                    return Err(HandshakeError::NoSession)
+                }
 
                 let raw_bytes = &buf[0..received_size];
                 let rlp = UntrustedRlp::new(&raw_bytes);
@@ -130,7 +132,9 @@ impl Handshake {
     }
 
     fn send_to(&self, message: &HandshakeMessage, target: &Address) -> Result<(), HandshakeError> {
-        let session = self.table.get(&target).ok_or(HandshakeError::NoSession)?;
+        if self.table.get(&target).is_none() {
+            return Err(HandshakeError::NoSession)
+        }
 
         let unencrypted_bytes = message.rlp_bytes();
 

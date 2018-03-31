@@ -118,7 +118,7 @@ macro_rules! define_broadcast_method {
     ($method_name: ident) => {
         pub fn $method_name (&self) {
             let extensions = self.extensions.read();
-            for (ref name, ref extension) in extensions.iter() {
+            for (_, ref extension) in extensions.iter() {
                 extension.$method_name();
             }
         }
@@ -126,7 +126,7 @@ macro_rules! define_broadcast_method {
     ($method_name: ident; $($var: ident, $t: ty);*) => {
         pub fn $method_name (&self, $($var: $t), *) {
             let extensions = self.extensions.read();
-            for (ref name, ref extension) in extensions.iter() {
+            for (_, ref extension) in extensions.iter() {
                 extension.$method_name($($var),*);
             }
         }

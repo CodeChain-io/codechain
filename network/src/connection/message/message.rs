@@ -18,7 +18,7 @@ use rlp::{UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
 
 use super::ApplicationMessage;
 use super::HandshakeMessage;
-use super::{NegotiationBody, NegotiationMessage};
+use super::NegotiationMessage;
 
 pub enum Message {
     Application(ApplicationMessage),
