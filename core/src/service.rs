@@ -96,7 +96,6 @@ impl IoHandler<ClientIoMessage> for ClientIoHandler {
             ClientIoMessage::NewConsensusMessage(ref message) => if let Err(e) = self.client.engine().handle_message(message) {
                 trace!(target: "poa", "Invalid message received: {}", e);
             },
-            _ => {} // ignore other messages
         }
     }
 }
