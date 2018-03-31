@@ -268,7 +268,9 @@ impl<Message> Handler for IoManager<Message> where Message: Send + Clone + Sync 
 			},
 			IoMessage::AddHandler { handler } => {
 				let handler_id = self.handlers.write().insert(handler.clone()).unwrap_or_else(|_| panic!("Too many handlers registered"));
-				handler.initialize(&IoContext::new(IoChannel::new(event_loop.channel(), Arc::downgrade(&self.handlers)), handler_id));
+				if let Err(err) = handler.initialize(&IoContext::new(IoChannel::new(event_loop.channel(), Arc::downgrade(&self.handlers)), handler_id)) {
+                    warn!("Error in initialize {:?}", err);
+				}
 			},
 			IoMessage::RemoveHandler { handler_id } => {
 				// TODO: flush event loop
@@ -294,12 +296,16 @@ impl<Message> Handler for IoManager<Message> where Message: Send + Clone + Sync 
 			},
 			IoMessage::RegisterStream { handler_id, token } => {
 				if let Some(handler) = self.handlers.read().get(handler_id) {
-					handler.register_stream(token, Token(token + handler_id * TOKENS_PER_HANDLER), event_loop);
+					if let Err(err) = handler.register_stream(token, Token(token + handler_id * TOKENS_PER_HANDLER), event_loop) {
+						warn!("Error in register_stream {:?}", err);
+					}
 				}
 			},
 			IoMessage::DeregisterStream { handler_id, token } => {
 				if let Some(handler) = self.handlers.read().get(handler_id) {
-					handler.deregister_stream(token, event_loop);
+					if let Err(err) = handler.deregister_stream(token, event_loop) {
+						warn!("Error in deregister_stream {:?}", err);
+					}
 					// unregister a timer associated with the token (if any)
 					let timer_id = token + handler_id * TOKENS_PER_HANDLER;
 					if let Some(timer) = self.timers.write().remove(&timer_id) {
@@ -309,7 +315,9 @@ impl<Message> Handler for IoManager<Message> where Message: Send + Clone + Sync 
 			},
 			IoMessage::UpdateStreamRegistration { handler_id, token } => {
 				if let Some(handler) = self.handlers.read().get(handler_id) {
-					handler.update_stream(token, Token(token + handler_id * TOKENS_PER_HANDLER), event_loop);
+					if let Err(err) = handler.update_stream(token, Token(token + handler_id * TOKENS_PER_HANDLER), event_loop) {
+						warn!("Error in update_stream {:?}", err);
+					}
 				}
 			},
 			IoMessage::UserMessage(data) => {
@@ -367,14 +375,18 @@ impl<Message> IoChannel<Message> where Message: Send + Clone + Sync + 'static {
 					for id in 0 .. MAX_HANDLERS {
 						if let Some(h) = handlers.read().get(id) {
 							let handler = h.clone();
-							handler.message(&IoContext::new(self.clone(), id), &message);
+							if let Err(err) = handler.message(&IoContext::new(self.clone(), id), &message) {
+								warn!("Error in message {:?}", err);
+							}
 						}
 					}
 				}
 			},
 			Handlers::Single(ref handler) => {
 				if let Some(handler) = handler.upgrade() {
-					handler.message(&IoContext::new(self.clone(), 0), &message);
+					if let Err(err) = handler.message(&IoContext::new(self.clone(), 0), &message) {
+						warn!("Error in message {:?}", err);
+					}
 				}
 			}
 		}

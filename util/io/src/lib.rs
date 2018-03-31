@@ -111,28 +111,39 @@ impl<Message> From<NotifyError<service::IoMessage<Message>>> for IoError where M
 	}
 }
 
+#[derive(Debug)]
+pub struct IoHandlerError(String);
+
+impl<E: ToString> From<E> for IoHandlerError {
+	fn from(err: E) -> Self {
+        IoHandlerError(err.to_string())
+	}
+}
+
+pub type IoHandlerResult<T> = Result<T, IoHandlerError>;
+
 /// Generic IO handler.
 /// All the handler function are called from within IO event loop.
 /// `Message` type is used as notification data
 pub trait IoHandler<Message>: Send + Sync where Message: Send + Sync + Clone + 'static {
 	/// Initialize the handler
-	fn initialize(&self, _io: &IoContext<Message>) {}
+	fn initialize(&self, _io: &IoContext<Message>) -> IoHandlerResult<()> { Ok(()) }
 	/// Timer function called after a timeout created with `HandlerIo::timeout`.
-	fn timeout(&self, _io: &IoContext<Message>, _timer: TimerToken) {}
+	fn timeout(&self, _io: &IoContext<Message>, _timer: TimerToken) -> IoHandlerResult<()> { Ok(()) }
 	/// Called when a broadcasted message is received. The message can only be sent from a different IO handler.
-	fn message(&self, _io: &IoContext<Message>, _message: &Message) {}
+	fn message(&self, _io: &IoContext<Message>, _message: &Message) -> IoHandlerResult<()> { Ok(()) }
 	/// Called when an IO stream gets closed
-	fn stream_hup(&self, _io: &IoContext<Message>, _stream: StreamToken) {}
+	fn stream_hup(&self, _io: &IoContext<Message>, _stream: StreamToken) -> IoHandlerResult<()> { Ok(()) }
 	/// Called when an IO stream can be read from
-	fn stream_readable(&self, _io: &IoContext<Message>, _stream: StreamToken) {}
+	fn stream_readable(&self, _io: &IoContext<Message>, _stream: StreamToken) -> IoHandlerResult<()> { Ok(()) }
 	/// Called when an IO stream can be written to
-	fn stream_writable(&self, _io: &IoContext<Message>, _stream: StreamToken) {}
+	fn stream_writable(&self, _io: &IoContext<Message>, _stream: StreamToken) -> IoHandlerResult<()> { Ok(()) }
 	/// Register a new stream with the event loop
-	fn register_stream(&self, _stream: StreamToken, _reg: Token, _event_loop: &mut EventLoop<IoManager<Message>>) {}
+	fn register_stream(&self, _stream: StreamToken, _reg: Token, _event_loop: &mut EventLoop<IoManager<Message>>) -> IoHandlerResult<()> { Ok(()) }
 	/// Re-register a stream with the event loop
-	fn update_stream(&self, _stream: StreamToken, _reg: Token, _event_loop: &mut EventLoop<IoManager<Message>>) {}
+	fn update_stream(&self, _stream: StreamToken, _reg: Token, _event_loop: &mut EventLoop<IoManager<Message>>) -> IoHandlerResult<()> { Ok(()) }
 	/// Deregister a stream. Called whenstream is removed from event loop
-	fn deregister_stream(&self, _stream: StreamToken, _event_loop: &mut EventLoop<IoManager<Message>>) {}
+	fn deregister_stream(&self, _stream: StreamToken, _event_loop: &mut EventLoop<IoManager<Message>>) -> IoHandlerResult<()> { Ok(()) }
 }
 
 pub use service::TimerToken;

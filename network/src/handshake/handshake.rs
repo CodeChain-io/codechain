@@ -20,7 +20,7 @@ use std::fmt;
 use std::io;
 use std::result::Result;
 
-use cio::{IoChannel, IoContext, IoHandler, IoManager, StreamToken};
+use cio::{IoChannel, IoContext, IoHandler, IoManager, IoHandlerResult, StreamToken};
 use mio::{PollOpt, Ready, Token};
 use mio::deprecated::EventLoop;
 use mio::net::UdpSocket;
@@ -283,13 +283,12 @@ pub enum HandlerMessage {
 const RECV_TOKEN: usize = 0;
 
 impl IoHandler<HandlerMessage> for Handler {
-    fn initialize(&self, io: &IoContext<HandlerMessage>) {
-        if let Err(err) = io.register_stream(RECV_TOKEN) {
-            info!("Cannot register udp stream {:?}", err);
-        }
+    fn initialize(&self, io: &IoContext<HandlerMessage>) -> IoHandlerResult<()> {
+        io.register_stream(RECV_TOKEN)?;
+        Ok(())
     }
 
-    fn message(&self, io: &IoContext<HandlerMessage>, message: &HandlerMessage) {
+    fn message(&self, io: &IoContext<HandlerMessage>, message: &HandlerMessage) -> IoHandlerResult<()> {
         match message {
             &HandlerMessage::ConnectTo(ref address) => {
                 let mut internal = self.internal.lock();
@@ -303,13 +302,15 @@ impl IoHandler<HandlerMessage> for Handler {
                 }
             },
         };
+        Ok(())
     }
 
-    fn stream_hup(&self, _io: &IoContext<HandlerMessage>, _stream: StreamToken) {
+    fn stream_hup(&self, _io: &IoContext<HandlerMessage>, _stream: StreamToken) -> IoHandlerResult<()> {
         info!("handshake server closed");
+        Ok(())
     }
 
-    fn stream_readable(&self, _io: &IoContext<HandlerMessage>, stream: StreamToken) {
+    fn stream_readable(&self, _io: &IoContext<HandlerMessage>, stream: StreamToken) -> IoHandlerResult<()> {
         match stream {
             RECV_TOKEN => {
                 loop {
@@ -333,9 +334,10 @@ impl IoHandler<HandlerMessage> for Handler {
                 info!("Unknown stream token {}", stream);
             },
         };
+        Ok(())
     }
 
-    fn stream_writable(&self, _io: &IoContext<HandlerMessage>, stream: StreamToken) {
+    fn stream_writable(&self, _io: &IoContext<HandlerMessage>, stream: StreamToken) -> IoHandlerResult<()> {
         loop {
             let mut internal = self.internal.lock();
             if let Some(ref address) = internal.connect_queue.pop_front().as_ref() {
@@ -345,9 +347,10 @@ impl IoHandler<HandlerMessage> for Handler {
                 break
             }
         }
+        Ok(())
     }
 
-    fn register_stream(&self, stream: StreamToken, reg: Token, event_loop: &mut EventLoop<IoManager<HandlerMessage>>) {
+    fn register_stream(&self, stream: StreamToken, reg: Token, event_loop: &mut EventLoop<IoManager<HandlerMessage>>) -> IoHandlerResult<()> {
         match stream {
             RECV_TOKEN => {
                 let mut internal = self.internal.lock();
@@ -360,9 +363,7 @@ impl IoHandler<HandlerMessage> for Handler {
                 info!("Unexpected stream registration {}", stream);
             }
         }
-    }
-
-    fn deregister_stream(&self, _stream: StreamToken, _event_loop: &mut EventLoop<IoManager<HandlerMessage>>) {
+        Ok(())
     }
 }
 

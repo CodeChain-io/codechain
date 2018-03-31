@@ -108,19 +108,29 @@ impl Worker {
 	fn do_work<Message>(work: Work<Message>, channel: IoChannel<Message>) where Message: Send + Sync + Clone + 'static {
 		match work.work_type {
 			WorkType::Readable => {
-				work.handler.stream_readable(&IoContext::new(channel, work.handler_id), work.token);
+				if let Err(err) = work.handler.stream_readable(&IoContext::new(channel, work.handler_id), work.token) {
+					warn!("Error in stream_readable {:?}", err);
+				}
 			},
 			WorkType::Writable => {
-				work.handler.stream_writable(&IoContext::new(channel, work.handler_id), work.token);
+				if let Err(err) = work.handler.stream_writable(&IoContext::new(channel, work.handler_id), work.token) {
+					warn!("Error in stream_writable {:?}", err);
+				}
 			}
 			WorkType::Hup => {
-				work.handler.stream_hup(&IoContext::new(channel, work.handler_id), work.token);
+				if let Err(err) = work.handler.stream_hup(&IoContext::new(channel, work.handler_id), work.token) {
+					warn!("Error in stream_hup {:?}", err);
+				}
 			}
 			WorkType::Timeout => {
-				work.handler.timeout(&IoContext::new(channel, work.handler_id), work.token);
+				if let Err(err) = work.handler.timeout(&IoContext::new(channel, work.handler_id), work.token) {
+					warn!("Error in timeout {:?}", err);
+				}
 			}
 			WorkType::Message(message) => {
-				work.handler.message(&IoContext::new(channel, work.handler_id), &message);
+				if let Err(err) = work.handler.message(&IoContext::new(channel, work.handler_id), &message) {
+					warn!("Error in message {:?}", err);
+				}
 			}
 		}
 	}
