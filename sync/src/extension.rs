@@ -58,14 +58,10 @@ impl Extension for BlockSyncExtension {
 
     fn on_connected(&self, _id: &NodeId) { unimplemented!() }
     fn on_connection_allowed(&self, id: &NodeId) { self.on_connected(id); }
-    fn on_connection_denied(&self, _id: &NodeId, _error: Error) {}
 
     fn on_message(&self, _id: &NodeId, _message: &Vec<u8>) { unimplemented!() }
 
     fn on_close(&self) { *self.api.lock() = None }
-
-    fn on_timer_set_allowed(&self, _timer_id: usize) {}
-    fn on_timer_set_denied(&self, _timer_id: usize, _error: Error) { debug_assert!(false) }
 
     fn on_timeout(&self, timer_id: usize) {
         debug_assert_eq!(timer_id, SYNC_TIMER_ID);
