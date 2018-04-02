@@ -14,32 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#[macro_use]
-extern crate log;
-extern crate mio;
-extern crate parking_lot;
-extern crate rand;
-extern crate rlp;
-extern crate slab;
+use super::Address;
 
-extern crate codechain_crypto as ccrypto;
-extern crate codechain_io as cio;
-extern crate codechain_types as ctypes;
-extern crate table as ctable;
+pub trait Api: Send + Sync {
+    fn get(&self, max: usize) -> Vec<Address>;
 
-mod client;
-pub mod connection;
-mod discovery;
-mod extension;
-mod handshake;
-mod limited_table;
-mod service;
-mod timer_info;
-pub mod session;
-pub mod address;
-pub mod kademlia;
-
-pub use self::address::Address;
-pub use self::discovery::{Api as DiscoveryApi};
-pub use self::extension::{Api, Error, Extension, NodeId, Result};
-pub use self::service::Service as NetworkService;
+    fn add(&self, address: Address);
+    fn remove(&self, address: &Address);
+}
