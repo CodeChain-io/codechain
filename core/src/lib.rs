@@ -72,6 +72,7 @@ mod tests;
 
 pub use client::{BlockChainClient, Client};
 pub use error::Error;
+pub use header::Header;
 pub use service::ClientService;
 pub use spec::Spec;
 pub use types::BlockId;
