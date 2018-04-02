@@ -14,12 +14,15 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use ccore::Header;
 use ctypes::{H256, U256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 const MESSAGE_ID_STATUS: u8 = 0x00;
 const MESSAGE_ID_REQUEST_HASHES: u8 = 0x01;
 const MESSAGE_ID_HASHES: u8 = 0x02;
+const MESSAGE_ID_REQUEST_HEADERS: u8 = 0x03;
+const MESSAGE_ID_HEADERS: u8 = 0x04;
 
 #[derive(Debug, PartialEq)]
 pub enum Message {
@@ -34,6 +37,11 @@ pub enum Message {
         skip: u64,
     },
     Hashes(Vec<H256>),
+    RequestHeaders {
+        start_hash: H256,
+        max_count: u64,
+    },
+    Headers(Vec<Header>),
 }
 
 impl Encodable for Message {
@@ -44,6 +52,8 @@ impl Encodable for Message {
             &Message::Status {..} => &MESSAGE_ID_STATUS,
             &Message::RequestHashes {..} => &MESSAGE_ID_REQUEST_HASHES,
             &Message::Hashes {..} => &MESSAGE_ID_HASHES,
+            &Message::RequestHeaders {..} => &MESSAGE_ID_REQUEST_HEADERS,
+            &Message::Headers {..} => &MESSAGE_ID_HEADERS,
         });
         // add body as rlp
         match self {
@@ -62,6 +72,15 @@ impl Encodable for Message {
             &Message::Hashes(ref hashes) => {
                 s.begin_list(hashes.len());
                 hashes.into_iter().for_each(|hash| { s.append(hash); });
+            },
+            &Message::RequestHeaders { start_hash, max_count } => {
+                s.begin_list(2);
+                s.append(&start_hash);
+                s.append(&max_count);
+            },
+            &Message::Headers(ref headers) => {
+                s.begin_list(headers.len());
+                headers.into_iter().for_each(|header| { s.append(header); });
             },
         };
     }
@@ -96,6 +115,20 @@ impl Decodable for Message {
                 }
                 Message::Hashes(hashes)
             },
+            MESSAGE_ID_REQUEST_HEADERS => {
+                if message.item_count()? != 2 { return Err(DecoderError::RlpIncorrectListLen); }
+                Message::RequestHeaders {
+                    start_hash: message.val_at(0)?,
+                    max_count: message.val_at(1)?,
+                }
+            },
+            MESSAGE_ID_HEADERS => {
+                let mut headers = Vec::new();
+                for item in message.into_iter() {
+                    headers.push(item.as_val()?);
+                }
+                Message::Headers(headers)
+            },
             _ => return Err(DecoderError::Custom("Unknown message id detected")),
         })
     }
@@ -103,6 +136,7 @@ impl Decodable for Message {
 
 #[cfg(test)]
 mod tests {
+    use ccore::Header;
     use ctypes::{H256, U256};
     use rlp::Encodable;
 
@@ -131,6 +165,24 @@ mod tests {
     #[test]
     fn test_hashes_message_rlp() {
         let message = Message::Hashes(vec![H256::default()]);
+        assert_eq!(message, ::rlp::decode(message.rlp_bytes().as_ref()));
+    }
+
+    #[test]
+    fn test_request_headers_message_rlp() {
+        let message = Message::RequestHeaders {
+            start_hash: H256::default(),
+            max_count: 100,
+        };
+        assert_eq!(message, ::rlp::decode(message.rlp_bytes().as_ref()));
+    }
+
+    #[test]
+    fn test_headers_message_rlp() {
+        let mut headers = vec![Header::default()];
+        headers.into_iter().for_each(|header| { header.hash(); });
+
+        let message = Message::Headers(headers);
         assert_eq!(message, ::rlp::decode(message.rlp_bytes().as_ref()));
     }
 }

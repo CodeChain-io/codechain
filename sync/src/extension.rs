@@ -102,10 +102,16 @@ impl Extension for BlockSyncExtension {
             },
             Message::RequestHashes { start_hash, max_count, skip } => {
                 self.return_hashes(id, start_hash, max_count, skip);
-            }
+            },
             Message::Hashes(_hashes) => {
                 unimplemented!()
-            }
+            },
+            Message::RequestHeaders { start_hash, max_count } => {
+                self.return_headers(id, start_hash, max_count);
+            },
+            Message::Headers(_headers) => {
+                unimplemented!()
+            },
         }
     }
 
@@ -134,5 +140,19 @@ impl BlockSyncExtension {
             }
         }
         self.send(id, Message::Hashes(hashes));
+    }
+
+    fn return_headers(&self, id: &NodeId, start_hash: H256, max_count: u64) {
+        let mut headers = Vec::new();
+        let mut block_id = BlockId::Hash(start_hash);
+        for _ in 0..max_count {
+            if let Some(header) = self.client.block_header(block_id) {
+                headers.push(header.decode());
+                block_id = BlockId::Number(header.number() + 1);
+            } else {
+                break;
+            }
+        }
+        self.send(id, Message::Headers(headers));
     }
 }
