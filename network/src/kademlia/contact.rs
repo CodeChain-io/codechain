@@ -30,15 +30,20 @@ use super::super::Address;
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct Contact {
     id: NodeId,
-    addr: Option<Address>,
+    addr: Address,
 }
 
 fn hash<T: AsRef<[u8]>>(block: T) -> NodeId {
     crypto::blake512(block.as_ref())
 }
 
+#[cfg(test)]
+fn zero() -> Address {
+    Address::v4(0, 0, 0, 0, 0)
+}
+
 impl Contact {
-    pub fn random() -> Self {
+    pub fn random(addr: Address) -> Self {
         const RAND_BLOCK_SIZE: usize = 16;
         let mut rand_block: [u8; RAND_BLOCK_SIZE] = [0; RAND_BLOCK_SIZE];
         for iter in rand_block.iter_mut() {
@@ -46,11 +51,11 @@ impl Contact {
         }
         Contact {
             id: hash(rand_block),
-            addr: None,
+            addr,
         }
     }
 
-    pub fn new(id: NodeId, addr: Option<Address>) -> Self {
+    pub fn new(id: NodeId, addr: Address) -> Self {
         Contact {
             id,
             addr,
@@ -59,14 +64,14 @@ impl Contact {
 
     #[cfg(test)]
     pub fn from_hash_with_addr(node_id: &str, a: u8, b: u8, c: u8, d: u8, port: u16) -> Contact {
-        Contact::new(NodeId::from_str(node_id).unwrap(), Some(Address::v4(a, b, c, d, port)))
+        Contact::new(NodeId::from_str(node_id).unwrap(), Address::v4(a, b, c, d, port))
     }
 
     #[cfg(test)]
     pub fn from_hash(hash: &str) -> Self {
         Contact {
             id: NodeId::from_str(hash).unwrap(),
-            addr: None,
+            addr: zero(),
         }
     }
 
@@ -78,7 +83,7 @@ impl Contact {
         self.id
     }
 
-    pub fn addr(&self) -> &Option<Address> {
+    pub fn addr(&self) -> &Address {
         &self.addr
     }
 }

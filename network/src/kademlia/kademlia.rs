@@ -126,7 +126,7 @@ impl Kademlia {
     fn handle_message(&mut self, message: &Message, sender_address: &Address) -> Option<Command> {
         // FIXME : Check validity of response first.
 
-        let sender_contact = Contact::new(message.sender().clone(), Some(sender_address.clone()));
+        let sender_contact = Contact::new(message.sender().clone(), sender_address.clone());
         if self.table.conflicts(&sender_contact) {
             // Duplicated id with different address
             return None
@@ -144,13 +144,14 @@ impl Kademlia {
 
 
     fn handle_verify_command(&mut self) -> Option<Command> {
-        if let Some(contact) = self.pop_contact_to_be_verified() {
+        self.pop_contact_to_be_verified().map(|contact| {
             let message = Message::Ping { id: 0, sender: contact.id() };
-            contact.addr().clone()
-                .map(|target| Command::Send { message, target })
-        } else {
-            None
-        }
+            let target = contact.addr().clone();
+            Command::Send {
+                message,
+                target
+            }
+        })
     }
 
     fn handle_send_command(&mut self, _message: &Message, _target: &Address) -> Option<Command> {
