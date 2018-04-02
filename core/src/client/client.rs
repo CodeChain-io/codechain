@@ -252,5 +252,16 @@ impl BlockChainClient for Client {
     fn ready_transactions(&self) -> Vec<PendingTransaction> {
         unimplemented!();
     }
+
+    fn block_body(&self, id: BlockId) -> Option<encoded::Body> {
+        let chain = self.chain.read();
+
+        Self::block_hash(&chain, id).and_then(|hash| chain.block_body(&hash))
+    }
+
+    fn block_hash(&self, id: BlockId) -> Option<H256> {
+        let chain = self.chain.read();
+        Self::block_hash(&chain, id)
+    }
 }
 

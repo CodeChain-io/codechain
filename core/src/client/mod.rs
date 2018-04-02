@@ -156,6 +156,13 @@ pub trait BlockChainClient : Sync + Send + BlockChain + ImportBlock {
 
     /// List all transactions that are allowed into the next block.
     fn ready_transactions(&self) -> Vec<PendingTransaction>;
+
+    /// Get raw block body data by block id.
+    /// Block body is an RLP list of one item: transactions.
+    fn block_body(&self, id: BlockId) -> Option<encoded::Body>;
+
+    /// Get block hash.
+    fn block_hash(&self, id: BlockId) -> Option<H256>;
 }
 
 /// Provides `import_sealed_block` method
