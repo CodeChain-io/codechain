@@ -130,13 +130,14 @@ impl BlockSyncExtension {
 
     fn return_hashes(&self, id: &NodeId, start_hash: H256, max_count: u64, skip: u64) {
         let mut hashes = Vec::new();
-        let mut block_id = BlockId::Hash(start_hash);
-        for _ in 0..max_count {
-            if let Some(header) = self.client.block_header(block_id) {
-                hashes.push(header.hash());
-                block_id = BlockId::Number(header.number() + skip);
-            } else {
-                break;
+        if let Some(header) = self.client.block_header(BlockId::Hash(start_hash)) {
+            let start_number = header.number();
+            for i in 0..max_count {
+                if let Some(hash) = self.client.block_hash(BlockId::Number(start_number + i * skip)) {
+                    hashes.push(hash);
+                } else {
+                    break;
+                }
             }
         }
         self.send(id, Message::Hashes(hashes));
