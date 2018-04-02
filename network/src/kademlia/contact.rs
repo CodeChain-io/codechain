@@ -14,16 +14,12 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-extern crate codechain_crypto as crypto;
-
-
 #[cfg(test)]
 use std::str::FromStr;
 
-use rand;
 
 use super::NodeId;
-use super::node_id::log2_distance_between_nodes;
+use super::node_id::{log2_distance_between_nodes, self};
 use super::super::Address;
 
 
@@ -33,10 +29,6 @@ pub struct Contact {
     addr: Address,
 }
 
-fn hash<T: AsRef<[u8]>>(block: T) -> NodeId {
-    crypto::blake512(block.as_ref())
-}
-
 #[cfg(test)]
 fn zero() -> Address {
     Address::v4(0, 0, 0, 0, 0)
@@ -44,13 +36,9 @@ fn zero() -> Address {
 
 impl Contact {
     pub fn random(addr: Address) -> Self {
-        const RAND_BLOCK_SIZE: usize = 16;
-        let mut rand_block: [u8; RAND_BLOCK_SIZE] = [0; RAND_BLOCK_SIZE];
-        for iter in rand_block.iter_mut() {
-            *iter = rand::random::<u8>();
-        }
+        let id = node_id::random();
         Contact {
-            id: hash(rand_block),
+            id,
             addr,
         }
     }

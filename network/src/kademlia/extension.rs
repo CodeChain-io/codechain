@@ -16,7 +16,7 @@
 
 use parking_lot::RwLock;
 
-use super::{ALPHA, K, NodeId, T_REFRESH};
+use super::{ALPHA, Config, K, NodeId, T_REFRESH};
 use super::kademlia::Kademlia;
 use super::super::Address;
 use super::super::discovery::{Api as DiscoveryApi};
@@ -27,11 +27,8 @@ pub struct Extension {
 }
 
 impl Extension {
-    pub fn new(localhost: NodeId, alpha: Option<u8>, k: Option<u8>, t_refresh: Option<u32>) -> Self {
-        let alpha = alpha.unwrap_or(ALPHA);
-        let k = k.unwrap_or(K);
-        let t_refresh = t_refresh.unwrap_or(T_REFRESH);
-        let kademlia = RwLock::new(Kademlia::new(localhost, alpha, k, t_refresh));
+    pub fn new(config: Config) -> Self {
+        let kademlia = RwLock::new(Kademlia::new(config.node_id, config.alpha, config.k, config.t_refresh));
         Self {
             kademlia,
         }

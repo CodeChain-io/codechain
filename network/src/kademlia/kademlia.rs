@@ -25,7 +25,7 @@ use super::contact::Contact;
 use super::event::Event;
 use super::message::Id as MessageId;
 use super::message::Message;
-use super::node_id::log2_distance_between_nodes;
+use super::node_id::{log2_distance_between_nodes, self};
 use super::routing_table::RoutingTable;
 use super::super::Address;
 
@@ -39,7 +39,8 @@ pub struct Kademlia {
 }
 
 impl Kademlia {
-    pub fn new(local_id: NodeId, alpha: u8, k: u8, t_refresh: u32) -> Self {
+    pub fn new(local_id: Option<NodeId>, alpha: u8, k: u8, t_refresh: u32) -> Self {
+        let local_id = local_id.unwrap_or(node_id::random());
         Kademlia {
             alpha,
             k,
@@ -211,8 +212,9 @@ mod tests {
 
     use super::super::{ALPHA, K, T_REFRESH};
 
-    pub fn default_kademlia(localhost: NodeId) -> Kademlia {
-        Kademlia::new(localhost, ALPHA, K, T_REFRESH)
+    pub fn default_kademlia(local_id: NodeId) -> Kademlia {
+        let local_id = Some(local_id);
+        Kademlia::new(local_id, ALPHA, K, T_REFRESH)
     }
 
 
@@ -331,7 +333,7 @@ mod tests {
 
     #[test]
     fn test_add_contact_adds_to_be_verified_when_bucket_is_full() {
-        let id = Contact::from_hash(ID).id();
+        let id = Some(Contact::from_hash(ID).id());
         let mut kademlia = Kademlia::new(id, ALPHA, 1, T_REFRESH);
 
         let contact4 = Contact::from_hash(ID4);

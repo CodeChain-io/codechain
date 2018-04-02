@@ -20,6 +20,7 @@ use std::str::FromStr;
 use ccore::Spec;
 use clap;
 use cnetwork::Address;
+use cnetwork::kademlia::Config as KademliaConfig;
 use rpc::HttpConfiguration as RpcHttpConfig;
 
 const DEFAULT_DB_PATH: &'static str = "./db";
@@ -133,6 +134,28 @@ pub fn parse_network_config(matches: &clap::ArgMatches) -> Result<Option<Network
         port,
         bootstrap_addresses,
     }))
+}
+
+pub fn parse_kademlia_config(matches: &clap::ArgMatches) -> Result<KademliaConfig, String> {
+    let local_id = match matches.value_of("kademlia-local-id") {
+        Some(local_id) => Some(local_id.parse().map_err(|_| "Invalid kademlia-local-id")?),
+        None => None,
+    };
+
+    let alpha = match matches.value_of("kademlia-alpha") {
+        Some(alpha) => Some(alpha.parse().map_err(|_| "Invalid kademlia-alpha")?),
+        None => None,
+    };
+    let k = match matches.value_of("kademlia-k") {
+        Some(k) => Some(k.parse().map_err(|_| "Invalid kademlia-k")?),
+        None => None,
+    };
+    let refresh = match matches.value_of("kademlia-refresh") {
+        Some(refresh) => Some(refresh.parse().map_err(|_| "Invalid kademlia-refresh")?),
+        None => None,
+    };
+
+    Ok(KademliaConfig::new(local_id, alpha,k, refresh))
 }
 
 pub fn parse_rpc_config(matches: &clap::ArgMatches) -> Result<Option<RpcHttpConfig>, String> {
