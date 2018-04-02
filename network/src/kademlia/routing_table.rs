@@ -4,27 +4,27 @@ use std::collections::{BTreeSet, HashMap, VecDeque};
 use super::NodeId;
 
 pub struct RoutingTable {
-    localhost: NodeId,
+    local_id: NodeId,
     buckets: HashMap<usize, Bucket>,
     bucket_size: u8,
 }
 
 impl RoutingTable {
-    pub fn new(localhost: NodeId, bucket_size: u8) -> Self {
+    pub fn new(local_id: NodeId, bucket_size: u8) -> Self {
         const CAPACITY: usize = 8;
         RoutingTable {
-            localhost,
+            local_id,
             buckets: HashMap::with_capacity(CAPACITY),
             bucket_size,
         }
     }
 
-    pub fn localhost(&self) -> NodeId {
-        self.localhost
+    pub fn local_id(&self) -> NodeId {
+        self.local_id
     }
 
     pub fn touch_contact(&mut self, contact: Contact) -> Option<&Contact> {
-        let index = contact.log2_distance(&self.localhost);
+        let index = contact.log2_distance(&self.local_id);
         // FIXME: Decide the maximum distance to contact.
         if index == 0 {
             return None;
@@ -34,7 +34,7 @@ impl RoutingTable {
     }
 
     pub fn remove_contact(&mut self, contact: &Contact) -> Option<&Contact> {
-        let index = contact.log2_distance(&self.localhost);
+        let index = contact.log2_distance(&self.local_id);
         if index == 0 {
             return None;
         }
@@ -48,7 +48,7 @@ impl RoutingTable {
     }
 
     pub fn get_closest_contacts(&self, target: &NodeId, result_limit: u8) -> Vec<Contact> {
-        if target == &self.localhost {
+        if target == &self.local_id {
             return vec![];
         }
 
@@ -57,7 +57,7 @@ impl RoutingTable {
             .take(cmp::min(result_limit, self.bucket_size) as usize)
             .map(|item| {
                 debug_assert_ne!(target, &item.contact.id());
-                debug_assert_ne!(self.localhost, item.contact.id());
+                debug_assert_ne!(self.local_id, item.contact.id());
                 item.contact
             })
             .collect()
@@ -94,7 +94,7 @@ impl RoutingTable {
     }
 
     pub fn contains(&self, contact: &Contact) -> bool {
-        let index = contact.log2_distance(&self.localhost);
+        let index = contact.log2_distance(&self.local_id);
         if index == 0 {
             return false;
         }
@@ -107,7 +107,7 @@ impl RoutingTable {
     }
 
     pub fn conflicts(&self, contact: &Contact) -> bool {
-        let index = contact.log2_distance(&self.localhost);
+        let index = contact.log2_distance(&self.local_id);
         if index == 0 {
             return true;
         }
@@ -273,12 +273,12 @@ mod tests {
         Contact::from_hash_with_addr(IDS[distance_from_zero], a, b, c, d, port)
     }
 
-    fn init_routing_table(bucket_size: u8, localhost_index: usize) -> RoutingTable {
-        let localhost = get_contact(localhost_index).id();
-        let mut routing_table = RoutingTable::new(localhost, bucket_size);
+    fn init_routing_table(bucket_size: u8, local_index: usize) -> RoutingTable {
+        let local_id = get_contact(local_index).id();
+        let mut routing_table = RoutingTable::new(local_id, bucket_size);
 
         for i in 0..IDS.len() {
-            if i == localhost_index {
+            if i == local_index {
                 continue;
             }
             routing_table.touch_contact(get_contact(i));
@@ -334,9 +334,9 @@ mod tests {
         let closest_contacts = routing_table.get_closest_contacts(&get_contact(TARGET_INDEX).id(), bucket_size);
         assert!(!closest_contacts.contains(&get_contact(TARGET_INDEX)));
         assert!(2 <= IDS.len());
-        let number_of_contacts_except_localhost = IDS.len() - 1;
-        let number_of_contacts_except_localhost_and_target = number_of_contacts_except_localhost - 1;
-        assert_eq!(number_of_contacts_except_localhost_and_target, closest_contacts.len());
+        let number_of_contacts_except_local = IDS.len() - 1;
+        let number_of_contacts_except_local_and_target = number_of_contacts_except_local - 1;
+        assert_eq!(number_of_contacts_except_local_and_target, closest_contacts.len());
     }
 
     #[test]

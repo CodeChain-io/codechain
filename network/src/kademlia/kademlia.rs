@@ -41,7 +41,7 @@ pub struct Kademlia {
 }
 
 impl Kademlia {
-    pub fn new(localhost: NodeId, alpha: Option<u8>, k: Option<u8>, t_refresh: Option<u32>) -> Self {
+    pub fn new(local_id: NodeId, alpha: Option<u8>, k: Option<u8>, t_refresh: Option<u32>) -> Self {
         let alpha = alpha.unwrap_or(ALPHA);
         let k = k.unwrap_or(K);
         let t_refresh = t_refresh.unwrap_or(T_REFRESH);
@@ -49,18 +49,18 @@ impl Kademlia {
             alpha,
             k,
             t_refresh,
-            table: RoutingTable::new(localhost, k),
+            table: RoutingTable::new(local_id, k),
             to_be_verified: VecDeque::new(),
             events: VecDeque::new(),
         }
     }
 
-    pub fn default(localhost: NodeId) -> Self {
-        Self::new(localhost, None, None, None)
+    pub fn default(local_id: NodeId) -> Self {
+        Self::new(local_id, None, None, None)
     }
 
-    fn localhost(&self) -> NodeId {
-        self.table.localhost()
+    fn local_id(&self) -> NodeId {
+        self.table.local_id()
     }
 
     fn touch_contact(&mut self, contact: Contact) -> bool {
@@ -92,7 +92,7 @@ impl Kademlia {
 
 
     fn handle_ping_message(&self, id: MessageId, _sender: NodeId, sender_address: &Address) -> Option<Command> {
-        let message = Message::Pong{ id, sender: self.localhost() };
+        let message = Message::Pong{ id, sender: self.local_id() };
         let target = sender_address.clone();
         Some(Command::Send { message, target })
     }
@@ -105,7 +105,7 @@ impl Kademlia {
         let contacts = self.table.get_closest_contacts(&target, bucket_size);
         let message = Message::Nodes {
             id,
-            sender: self.localhost(),
+            sender: self.local_id(),
             contacts,
         };
         let target = sender_address.clone();
@@ -113,11 +113,11 @@ impl Kademlia {
     }
 
     fn handle_nodes_message(&mut self, sender: NodeId, contacts: &Vec<Contact>) -> Option<Command> {
-        let localhost = self.localhost();
-        let distance_to_target = log2_distance_between_nodes(&localhost, &sender);
+        let local_id = self.local_id();
+        let distance_to_target = log2_distance_between_nodes(&local_id, &sender);
         contacts.into_iter()
             .take(self.k as usize)
-            .filter(|contact| contact.log2_distance(&localhost) <= distance_to_target)
+            .filter(|contact| contact.log2_distance(&local_id) <= distance_to_target)
             .map(|contact| self.touch_contact(contact.clone()))
             .find(|added| *added)
             .and(Some(Command::Verify))
