@@ -17,13 +17,14 @@
 mod command;
 mod contact;
 mod event;
+mod extension;
 mod kademlia;
 mod message;
 mod node_id;
 mod routing_table;
 
 
-pub use self::kademlia::Kademlia;
+pub use self::extension::Extension;
 pub use self::node_id::NodeId;
 
 
