@@ -75,4 +75,5 @@ pub use error::Error;
 pub use header::Header;
 pub use service::ClientService;
 pub use spec::Spec;
-pub use types::BlockId;
+pub use transaction::UnverifiedTransaction;
+pub use types::{BlockId, BlockNumber};
