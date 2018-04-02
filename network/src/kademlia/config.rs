@@ -14,23 +14,30 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod command;
-mod config;
-mod contact;
-mod event;
-mod extension;
-mod kademlia;
-mod message;
-mod node_id;
-mod routing_table;
+use super::NodeId;
 
+pub struct Config {
+    pub node_id: Option<NodeId>,
+    pub alpha: u8,
+    pub k: u8,
+    pub t_refresh: u32,
+}
 
-pub use self::config::Config;
-pub use self::extension::Extension;
-pub use self::node_id::NodeId;
+use super::ALPHA;
+use super::K;
+use super::T_REFRESH;
 
+impl Config {
+    pub fn new(node_id: Option<NodeId>, alpha: Option<u8>, k: Option<u8>, t_refresh: Option<u32>) -> Self {
+        let alpha = alpha.unwrap_or(ALPHA);
+        let k = k.unwrap_or(K);
+        let t_refresh = t_refresh.unwrap_or(T_REFRESH);
 
-const ALPHA: u8 = 3;
-const B: usize = 64 * 8;
-const K: u8 = 16;
-const T_REFRESH: u32 = 60_000;
+        Self {
+            node_id,
+            alpha,
+            k,
+            t_refresh,
+        }
+    }
+}
