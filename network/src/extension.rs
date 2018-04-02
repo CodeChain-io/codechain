@@ -45,19 +45,21 @@ pub trait Extension: Send + Sync {
 
     fn on_initialize(&self, api: Arc<Api>);
 
-    fn on_node_added(&self, id: &NodeId);
-    fn on_node_removed(&self, id: &NodeId);
+    fn on_node_added(&self, _id: &NodeId) {}
+    fn on_node_removed(&self, _id: &NodeId) {}
 
-    fn on_connected(&self, id: &NodeId);
-    fn on_connection_allowed(&self, id: &NodeId);
-    fn on_connection_denied(&self, id: &NodeId, error: Error);
+    fn on_connected(&self, _id: &NodeId) {}
+    fn on_connection_allowed(&self, _id: &NodeId) {}
+    fn on_connection_denied(&self, _id: &NodeId, _error: Error) {}
 
-    fn on_message(&self, id: &NodeId, message: &Vec<u8>);
+    fn on_message(&self, _id: &NodeId, _message: &Vec<u8>) {}
 
-    fn on_close(&self);
+    fn on_close(&self) {}
 
-    fn on_timer_set_allowed(&self, timer_id: usize);
-    fn on_timer_set_denied(&self, timer_id: usize, error: Error);
+    fn on_timer_set_allowed(&self, _timer_id: usize) {}
+    fn on_timer_set_denied(&self, _timer_id: usize, error: Error) {
+        unreachable!("Timer set denied {:?}", error);
+    }
 
-    fn on_timeout(&self, timer_id: usize);
+    fn on_timeout(&self, _timer_id: usize) {}
 }
