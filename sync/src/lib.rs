@@ -23,6 +23,7 @@ extern crate codechain_types as ctypes;
 #[macro_use]
 extern crate log;
 extern crate rlp;
+extern crate triehash;
 
 mod extension;
 mod manager;

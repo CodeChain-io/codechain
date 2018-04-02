@@ -357,6 +357,7 @@ dependencies = [
  "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "parking_lot 0.5.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "rlp 0.2.1",
+ "triehash 0.1.0",
 ]
 
 [[package]]

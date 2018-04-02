@@ -12,5 +12,6 @@ codechain-types = { path = "../primitives/codechain-types" }
 log = "0.4.1"
 parking_lot = "0.5"
 rlp = { path = "../util/rlp" }
+triehash = { path = "../util/triehash" }
 
 [dev-dependencies]

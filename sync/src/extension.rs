@@ -44,10 +44,11 @@ pub struct BlockSyncExtension {
 
 impl BlockSyncExtension {
     pub fn new(client: Arc<BlockChainClient>) -> Arc<Self> {
+        let best_header = client.best_block_header();
         Arc::new(Self {
             peers: RwLock::new(HashMap::new()),
             client,
-            manager: Mutex::new(DownloadManager::new()),
+            manager: Mutex::new(DownloadManager::new(best_header.hash(), best_header.number())),
             api: Mutex::new(None),
         })
     }
@@ -103,14 +104,14 @@ impl Extension for BlockSyncExtension {
             Message::RequestHashes { start_hash, max_count, skip } => {
                 self.return_hashes(id, start_hash, max_count, skip);
             },
-            Message::Hashes(_hashes) => {
-                unimplemented!()
+            Message::Hashes(hashes) => {
+                self.manager.lock().import_hashes(hashes);
             },
             Message::RequestHeaders { start_hash, max_count } => {
                 self.return_headers(id, start_hash, max_count);
             },
-            Message::Headers(_headers) => {
-                unimplemented!()
+            Message::Headers(headers) => {
+                self.manager.lock().import_headers(headers);
             },
         }
     }
