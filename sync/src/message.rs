@@ -180,7 +180,7 @@ mod tests {
     #[test]
     fn test_headers_message_rlp() {
         let mut headers = vec![Header::default()];
-        headers.into_iter().for_each(|header| { header.hash(); });
+        headers.iter().for_each(|header| { header.hash(); });
 
         let message = Message::Headers(headers);
         assert_eq!(message, ::rlp::decode(message.rlp_bytes().as_ref()));
