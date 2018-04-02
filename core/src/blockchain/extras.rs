@@ -22,6 +22,7 @@ use heapsize::HeapSizeOf;
 
 use super::super::db::Key;
 use super::super::types::BlockNumber;
+use super::super::invoice::Invoice;
 
 /// Represents index of extra data in database
 #[derive(Copy, Debug, Hash, Eq, PartialEq, Clone)]
@@ -32,6 +33,8 @@ pub enum ExtrasIndex {
     BlockHash = 1,
     /// Transaction address index
     TransactionAddress = 2,
+    /// Block invoices index
+    BlockInvoices = 4,
 }
 
 fn with_index(hash: &H256, i: ExtrasIndex) -> H264 {
@@ -50,6 +53,7 @@ impl Deref for BlockNumberKey {
         &self.0
     }
 }
+
 
 impl Key<H256> for BlockNumber {
     type Target = BlockNumberKey;
@@ -78,6 +82,14 @@ impl Key<TransactionAddress> for H256 {
 
     fn key(&self) -> H264 {
         with_index(self, ExtrasIndex::TransactionAddress)
+    }
+}
+
+impl Key<BlockInvoices> for H256 {
+    type Target = H264;
+
+    fn key(&self) -> H264 {
+        with_index(self, ExtrasIndex::BlockInvoices)
     }
 }
 
@@ -112,3 +124,17 @@ pub struct TransactionAddress {
 impl HeapSizeOf for TransactionAddress {
     fn heap_size_of_children(&self) -> usize { 0 }
 }
+
+#[derive(Clone, RlpEncodableWrapper, RlpDecodableWrapper)]
+pub struct BlockInvoices {
+    pub invoices: Vec<Invoice>,
+}
+
+impl BlockInvoices {
+    pub fn new(invoices: Vec<Invoice>) -> Self {
+        Self {
+            invoices,
+        }
+    }
+}
+

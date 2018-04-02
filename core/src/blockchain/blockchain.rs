@@ -26,12 +26,13 @@ use rlp::{Rlp, RlpStream};
 use rlp_compress::{compress, decompress, blocks_swapper};
 
 use super::best_block::BestBlock;
-use super::extras::{BlockDetails, TransactionAddress};
+use super::extras::{BlockDetails, TransactionAddress, BlockInvoices};
 use super::block_info::{BlockInfo, BlockLocation, BranchBecomingCanonChainData};
 use super::super::blockchain_info::BlockChainInfo;
 use super::super::db::{self, Readable, Writable, CacheUpdatePolicy};
 use super::super::encoded;
 use super::super::header::Header;
+use super::super::invoice::Invoice;
 use super::super::transaction::{LocalizedTransaction};
 use super::super::types::BlockNumber;
 use super::super::views::{BlockView, HeaderView};
@@ -51,6 +52,7 @@ pub struct BlockChain {
     block_details: RwLock<HashMap<H256, BlockDetails>>,
     block_hashes: RwLock<HashMap<BlockNumber, H256>>,
     transaction_addresses: RwLock<HashMap<H256, TransactionAddress>>,
+    block_invoices: RwLock<HashMap<H256, BlockInvoices>>,
 
     db: Arc<KeyValueDB>,
 
@@ -70,6 +72,7 @@ impl BlockChain {
             block_details: RwLock::new(HashMap::new()),
             block_hashes: RwLock::new(HashMap::new()),
             transaction_addresses: RwLock::new(HashMap::new()),
+            block_invoices: RwLock::new(HashMap::new()),
             db: db.clone(),
             pending_best_block: RwLock::new(None),
             pending_block_hashes: RwLock::new(HashMap::new()),
@@ -228,7 +231,7 @@ impl BlockChain {
     /// Inserts the block into backing cache database.
     /// Expects the block to be valid and already verified.
     /// If the block is already known, does nothing.
-    pub fn insert_block(&self, batch: &mut DBTransaction, bytes: &[u8]) -> ImportRoute {
+    pub fn insert_block(&self, batch: &mut DBTransaction, bytes: &[u8], invoices: Vec<Invoice>) -> ImportRoute {
         // create views onto rlp
         let block = BlockView::new(bytes);
         let header = block.header_view();
@@ -252,6 +255,7 @@ impl BlockChain {
         self.prepare_update(batch, ExtrasUpdate {
             block_hashes: self.prepare_block_hashes_update(bytes, &info),
             block_details: self.prepare_block_details_update(bytes, &info),
+            block_invoices: self.prepare_block_invoices_update(invoices, &info),
             transactions_addresses: self.prepare_transaction_addresses_update(bytes, &info),
             info: info.clone(),
             timestamp: header.timestamp(),
@@ -367,6 +371,13 @@ impl BlockChain {
         block_details.insert(parent_hash, parent_details);
         block_details.insert(info.hash, details);
         block_details
+    }
+
+    /// This function returns modified block invoices.
+    fn prepare_block_invoices_update(&self, invoices: Vec<Invoice>, info: &BlockInfo) -> HashMap<H256, BlockInvoices> {
+        let mut block_invoices = HashMap::new();
+        block_invoices.insert(info.hash, BlockInvoices::new(invoices));
+        block_invoices
     }
 
     /// This function returns modified transaction addresses.
@@ -530,6 +541,9 @@ pub trait BlockProvider {
     /// Get the address of transaction with given hash.
     fn transaction_address(&self, hash: &H256) -> Option<TransactionAddress>;
 
+    /// Get invoices of block with given hash.
+    fn block_invoices(&self, hash: &H256) -> Option<BlockInvoices>;
+
     /// Get the partial-header of a block.
     fn block_header(&self, hash: &H256) -> Option<Header> {
         self.block_header_data(hash).map(|header| header.decode())
@@ -667,6 +681,12 @@ impl BlockProvider for BlockChain {
         let result = self.db.read_with_cache(db::COL_EXTRA, &self.transaction_addresses, hash)?;
         Some(result)
     }
+
+    /// Get invoices of block with given hash.
+    fn block_invoices(&self, hash: &H256) -> Option<BlockInvoices> {
+        let result = self.db.read_with_cache(db::COL_EXTRA, &self.block_invoices, hash)?;
+        Some(result)
+    }
 }
 
 /// Import route for newly inserted block.
@@ -727,6 +747,8 @@ pub struct ExtrasUpdate<'a> {
     pub block_hashes: HashMap<BlockNumber, H256>,
     /// Modified block details.
     pub block_details: HashMap<H256, BlockDetails>,
+    /// Modified block invoices.
+    pub block_invoices: HashMap<H256, BlockInvoices>,
     /// Modified transaction addresses (None signifies removed transactions).
     pub transactions_addresses: HashMap<H256, Option<TransactionAddress>>,
 }
