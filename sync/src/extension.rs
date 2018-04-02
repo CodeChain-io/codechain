@@ -18,7 +18,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use parking_lot::{RwLock, Mutex};
 
-use ccore::BlockChainClient;
+use ccore::{BlockChainClient, BlockId};
 use cnetwork::{Api, Extension, NodeId};
 use ctypes::{H256, U256};
 use rlp::Encodable;
@@ -51,6 +51,12 @@ impl BlockSyncExtension {
             api: Mutex::new(None),
         })
     }
+
+    fn send(&self, id: &NodeId, message: Message) {
+        self.api.lock().as_ref().map(|api| {
+            api.send(id, &message.rlp_bytes().to_vec());
+        });
+    }
 }
 
 impl Extension for BlockSyncExtension {
@@ -70,19 +76,23 @@ impl Extension for BlockSyncExtension {
 
     fn on_connected(&self, id: &NodeId) {
         let chain_info = self.client.chain_info();
-        let status_message = Message::Status {
+        self.send(id, Message::Status {
             total_score: chain_info.total_score,
             best_hash: chain_info.best_block_hash,
             genesis_hash: chain_info.genesis_hash,
-        };
-        self.api.lock().as_ref().map(|api| {
-            api.send(id, &status_message.rlp_bytes().to_vec());
         });
     }
     fn on_connection_allowed(&self, id: &NodeId) { self.on_connected(id); }
 
     fn on_message(&self, id: &NodeId, data: &Vec<u8>) {
-        match ::rlp::decode(data) {
+        let message = ::rlp::decode(data);
+        if let Message::Status {..} = message {} else {
+            if !self.peers.read().contains_key(id) {
+                info!("BlockSyncExtension: message from unexpected peer {}", id);
+                return;
+            }
+        }
+        match message {
             Message::Status { total_score, best_hash, genesis_hash } => {
                 if genesis_hash == self.client.chain_info().genesis_hash {
                     self.on_peer_status(id, total_score, best_hash);
@@ -90,6 +100,12 @@ impl Extension for BlockSyncExtension {
                     info!("BlockSyncExtension: genesis hash mismatch with peer {}", id);
                 }
             },
+            Message::RequestHashes { start_hash, max_count, skip } => {
+                self.return_hashes(id, start_hash, max_count, skip);
+            }
+            Message::Hashes(_hashes) => {
+                unimplemented!()
+            }
         }
     }
 
@@ -104,5 +120,19 @@ impl Extension for BlockSyncExtension {
 impl BlockSyncExtension {
     fn on_peer_status(&self, id: &NodeId, total_score: U256, best_hash: H256) {
         self.peers.write().insert(*id, Peer { total_score, best_hash });
+    }
+
+    fn return_hashes(&self, id: &NodeId, start_hash: H256, max_count: u64, skip: u64) {
+        let mut hashes = Vec::new();
+        let mut block_id = BlockId::Hash(start_hash);
+        for _ in 0..max_count {
+            if let Some(header) = self.client.block_header(block_id) {
+                hashes.push(header.hash());
+                block_id = BlockId::Number(header.number() + skip);
+            } else {
+                break;
+            }
+        }
+        self.send(id, Message::Hashes(hashes));
     }
 }

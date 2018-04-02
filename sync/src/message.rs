@@ -17,7 +17,9 @@
 use ctypes::{H256, U256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
-const STATUS_MESSAGE_ID: u8 = 0x00;
+const MESSAGE_ID_STATUS: u8 = 0x00;
+const MESSAGE_ID_REQUEST_HASHES: u8 = 0x01;
+const MESSAGE_ID_HASHES: u8 = 0x02;
 
 #[derive(Debug, PartialEq)]
 pub enum Message {
@@ -26,6 +28,12 @@ pub enum Message {
         best_hash: H256,
         genesis_hash: H256,
     },
+    RequestHashes {
+        start_hash: H256,
+        max_count: u64,
+        skip: u64,
+    },
+    Hashes(Vec<H256>),
 }
 
 impl Encodable for Message {
@@ -33,7 +41,9 @@ impl Encodable for Message {
         s.begin_list(2);
         // add message id
         s.append(match self {
-            &Message::Status {..} => &STATUS_MESSAGE_ID,
+            &Message::Status {..} => &MESSAGE_ID_STATUS,
+            &Message::RequestHashes {..} => &MESSAGE_ID_REQUEST_HASHES,
+            &Message::Hashes {..} => &MESSAGE_ID_HASHES,
         });
         // add body as rlp
         match self {
@@ -42,6 +52,16 @@ impl Encodable for Message {
                 s.append(&total_score);
                 s.append(&best_hash);
                 s.append(&genesis_hash);
+            },
+            &Message::RequestHashes { start_hash, max_count, skip } => {
+                s.begin_list(3);
+                s.append(&start_hash);
+                s.append(&max_count);
+                s.append(&skip);
+            },
+            &Message::Hashes(ref hashes) => {
+                s.begin_list(hashes.len());
+                hashes.into_iter().for_each(|hash| { s.append(hash); });
             },
         };
     }
@@ -53,13 +73,28 @@ impl Decodable for Message {
         let id = rlp.val_at(0)?;
         let message = rlp.at(1)?;
         Ok(match id {
-            STATUS_MESSAGE_ID => {
+            MESSAGE_ID_STATUS => {
                 if message.item_count()? != 3 { return Err(DecoderError::RlpIncorrectListLen); }
                 Message::Status {
                     total_score: message.val_at(0)?,
                     best_hash: message.val_at(1)?,
                     genesis_hash: message.val_at(2)?,
                 }
+            },
+            MESSAGE_ID_REQUEST_HASHES => {
+                if message.item_count()? != 3 { return Err(DecoderError::RlpIncorrectListLen); }
+                Message::RequestHashes {
+                    start_hash: message.val_at(0)?,
+                    max_count: message.val_at(1)?,
+                    skip: message.val_at(2)?,
+                }
+            },
+            MESSAGE_ID_HASHES => {
+                let mut hashes = Vec::new();
+                for item in message.into_iter() {
+                    hashes.push(item.as_val()?);
+                }
+                Message::Hashes(hashes)
             },
             _ => return Err(DecoderError::Custom("Unknown message id detected")),
         })
@@ -80,6 +115,22 @@ mod tests {
             best_hash: H256::default(),
             genesis_hash: H256::default(),
         };
+        assert_eq!(message, ::rlp::decode(message.rlp_bytes().as_ref()));
+    }
+
+    #[test]
+    fn test_request_hashes_message_rlp() {
+        let message = Message::RequestHashes {
+            start_hash: H256::default(),
+            max_count: 100,
+            skip: 100,
+        };
+        assert_eq!(message, ::rlp::decode(message.rlp_bytes().as_ref()));
+    }
+
+    #[test]
+    fn test_hashes_message_rlp() {
+        let message = Message::Hashes(vec![H256::default()]);
         assert_eq!(message, ::rlp::decode(message.rlp_bytes().as_ref()));
     }
 }
