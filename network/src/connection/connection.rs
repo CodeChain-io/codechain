@@ -28,6 +28,7 @@ use rlp::{Encodable, DecoderError, UntrustedRlp};
 use super::{ApplicationMessage, HandshakeMessage, Message, NegotiationBody, NegotiationMessage};
 use super::SignedMessage;
 use super::message::{Seq, Version};
+use super::super::Address;
 use super::super::client::Client;
 use super::super::extension::{Error as ExtensionError, NodeId};
 use super::super::session::Session;
@@ -295,6 +296,10 @@ impl Connection {
         } else {
             Ok(())
         }
+    }
+
+    pub fn peer_addr(&self) -> Result<Address> {
+        Ok(Address::from(self.stream.peer_addr()?))
     }
 }
 
