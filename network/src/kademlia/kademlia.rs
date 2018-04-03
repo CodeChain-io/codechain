@@ -32,10 +32,9 @@ use super::super::Address;
 pub struct Kademlia {
     alpha: u8,
     k: u8,
-    t_refresh: u32,
+    pub t_refresh: u32,
     table: RoutingTable,
     to_be_verified: VecDeque<Contact>,
-    events: VecDeque<Event>,
 }
 
 impl Kademlia {
@@ -47,7 +46,6 @@ impl Kademlia {
             t_refresh,
             table: RoutingTable::new(local_id, k),
             to_be_verified: VecDeque::new(),
-            events: VecDeque::new(),
         }
     }
 
@@ -115,7 +113,7 @@ impl Kademlia {
             .and(Some(Command::Verify))
     }
 
-    fn handle_message(&mut self, message: &Message, sender_address: &Address) -> Option<Command> {
+    pub fn handle_message(&mut self, message: &Message, sender_address: &Address) -> Option<Command> {
         // FIXME : Check validity of response first.
 
         let sender_contact = Contact::new(message.sender().clone(), sender_address.clone());
@@ -135,7 +133,7 @@ impl Kademlia {
     }
 
 
-    fn handle_verify_command(&mut self) -> Option<Command> {
+    pub fn handle_verify_command(&mut self) -> Option<Command> {
         self.pop_contact_to_be_verified().map(|contact| {
             let message = Message::Ping { id: 0, sender: contact.id() };
             let target = contact.addr().clone();
@@ -151,7 +149,7 @@ impl Kademlia {
         None
     }
 
-    fn handle_refresh_command(&mut self) -> Option<Command> {
+    pub fn handle_refresh_command(&mut self) -> Option<Command> {
         self.table.cleanup();
         let distances = self.table.distances();
         let index = rand::random::<usize>() % distances.len();
@@ -165,21 +163,6 @@ impl Kademlia {
         Some(Command::Verify)
     }
 
-    fn handle_command(&mut self, command: &Command) -> Option<Command> {
-        match command {
-            &Command::Verify => self.handle_verify_command(),
-            &Command::Refresh => self.handle_refresh_command(),
-            &Command::Send { ref message, ref target } => self.handle_send_command(&message, &target),
-        }
-    }
-
-    pub fn handle_event(&mut self, event: &Event) -> Option<Command> {
-        match event {
-            &Event::Message { ref message, ref sender } => self.handle_message(message, sender),
-            &Event::Command { ref command } => self.handle_command(command),
-        }
-    }
-
     pub fn get_closest_addresses(&self, max: usize) -> Vec<Address> {
         debug_assert!(max <= ::std::u8::MAX as usize);
         let contacts = self.table.get_closest_contacts(&self.local_id(), max as u8);
@@ -188,13 +171,10 @@ impl Kademlia {
             .collect()
     }
 
-    pub fn add(&mut self, target: Address) {
+    pub fn ping_event(&mut self, target: Address) -> Event {
         let message = Message::Ping { id: 0, sender: self.local_id() };
-        let command = Command::Send {
-            message,
-            target
-        };
-        self.events.push_back(Event::Command { command });
+        let command = Command::Send { message, target };
+        Event::Command { command }
     }
 
     pub fn remove(&mut self, address: &Address) {
