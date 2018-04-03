@@ -31,7 +31,7 @@ use parking_lot::{Mutex, RwLock};
 use super::super::consensus::CodeChainEngine;
 use super::super::error::{Error, BlockError, ImportError};
 use super::super::service::ClientIoMessage;
-use super::super::types::{VerificationQueueInfo as QueueInfo};
+use super::super::types::{VerificationQueueInfo as QueueInfo, BlockStatus as Status};
 use self::kind::{BlockLike, Kind};
 
 const MIN_MEM_LIMIT: usize = 16384;
@@ -293,6 +293,17 @@ impl<K: Kind> VerificationQueue<K> {
 
         sizes.verifying.fetch_sub(removed_size, AtomicOrdering::SeqCst);
         sizes.verified.fetch_add(inserted_size, AtomicOrdering::SeqCst);
+    }
+
+    /// Check if the item is currently in the queue
+    pub fn status(&self, hash: &H256) -> Status {
+        if self.processing.read().contains_key(hash) {
+            return Status::Queued;
+        }
+        if self.verification.bad.lock().contains(hash) {
+            return Status::Bad;
+        }
+        Status::Unknown
     }
 
     /// Add a block to the queue.

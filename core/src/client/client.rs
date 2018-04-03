@@ -37,7 +37,7 @@ use super::super::service::ClientIoMessage;
 use super::super::spec::Spec;
 use super::super::state_db::StateDB;
 use super::super::transaction::PendingTransaction;
-use super::super::types::{BlockId, BlockNumber, TransactionId, VerificationQueueInfo as BlockQueueInfo};
+use super::super::types::{BlockId, BlockNumber, BlockStatus, TransactionId, VerificationQueueInfo as BlockQueueInfo};
 
 const MAX_TX_QUEUE_SIZE: usize = 4096;
 
@@ -270,6 +270,15 @@ impl BlockChainClient for Client {
         let chain = self.chain.read();
 
         Self::block_hash(&chain, id).and_then(|hash| chain.block_body(&hash))
+    }
+
+    fn block_status(&self, id: BlockId) -> BlockStatus {
+        let chain = self.chain.read();
+        match Self::block_hash(&chain, id) {
+            Some(ref hash) if chain.is_known(hash) => BlockStatus::InChain,
+            Some(hash) => self.importer.block_queue.status(&hash).into(),
+            None => BlockStatus::Unknown
+        }
     }
 
     fn block_total_score(&self, id: BlockId) -> Option<U256> {

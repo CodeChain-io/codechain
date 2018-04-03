@@ -36,7 +36,7 @@ use super::error::BlockImportError;
 use super::miner::TransactionImportResult;
 use super::state::StateInfo;
 use super::transaction::PendingTransaction;
-use super::types::{BlockId, BlockNumber, TransactionId, VerificationQueueInfo as BlockQueueInfo};
+use super::types::{BlockId, BlockNumber, BlockStatus, TransactionId, VerificationQueueInfo as BlockQueueInfo};
 
 /// Provides `chain_info` method
 pub trait ChainInfo {
@@ -163,6 +163,9 @@ pub trait BlockChainClient : Sync + Send + BlockChain + ImportBlock {
     /// Get raw block body data by block id.
     /// Block body is an RLP list of one item: transactions.
     fn block_body(&self, id: BlockId) -> Option<encoded::Body>;
+
+    /// Get block status by block header hash.
+    fn block_status(&self, id: BlockId) -> BlockStatus;
 
     /// Get block total score.
     fn block_total_score(&self, id: BlockId) -> Option<U256>;

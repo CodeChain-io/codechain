@@ -14,12 +14,18 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod block_status;
-mod ids;
-mod verification_queue_info;
+/// General block status
+#[derive(Debug, Eq, PartialEq)]
+pub enum BlockStatus {
+    /// Part of the blockchain.
+    InChain,
+    /// Queued for import.
+    Queued,
+    /// Known as bad.
+    Bad,
+    /// Pending block.
+    Pending,
+    /// Unknown.
+    Unknown,
+}
 
-pub use self::block_status::BlockStatus;
-pub use self::ids::{BlockId, TransactionId};
-pub use self::verification_queue_info::VerificationQueueInfo;
-
-pub type BlockNumber = u64;
