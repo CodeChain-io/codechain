@@ -44,6 +44,7 @@ use std::sync::Arc;
 
 use app_dirs::AppInfo;
 use clogger::{setup_log, Config as LogConfig};
+use cnetwork::kademlia::Extension as KademliaExtension;
 use creactor::EventLoop;
 use csync::BlockSyncExtension;
 use ctrlc::CtrlC;
@@ -93,7 +94,13 @@ fn run() -> Result<(), String> {
 
     let _network_service = {
         if let Some(network_config) = config::parse_network_config(&matches)? {
-            let service = commands::network_start(network_config)?;
+            let kademlia = {
+                let kademlia_config = config::parse_kademlia_config(&matches)?;
+                Arc::new(KademliaExtension::new(kademlia_config))
+            };
+
+            let service = commands::network_start(network_config, kademlia.clone())?;
+            service.register_extension(kademlia);
             if config.enable_block_sync {
                 service.register_extension(BlockSyncExtension::new(client.client()));
             }

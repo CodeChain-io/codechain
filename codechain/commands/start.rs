@@ -15,9 +15,10 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::path::Path;
+use std::sync::Arc;
 
 use ccore::{ClientService, Spec};
-use cnetwork::{Address, NetworkService};
+use cnetwork::{Address, DiscoveryApi, NetworkService};
 use crpc::Server as RpcServer;
 use rpc::HttpConfiguration as RpcHttpConfig;
 
@@ -29,12 +30,13 @@ pub fn rpc_start(cfg: RpcHttpConfig) -> Result<RpcServer, String> {
     rpc::new_http(cfg)
 }
 
-pub fn network_start(cfg: config::NetworkConfig) -> Result<NetworkService, String> {
+pub fn network_start(cfg: config::NetworkConfig, discovery: Arc<DiscoveryApi>) -> Result<NetworkService, String> {
     info!("Handshake Listening on {}", cfg.port);
     let address = Address::v4(127, 0, 0, 1, cfg.port);
     let service = NetworkService::start(
         address,
-        cfg.bootstrap_addresses
+        cfg.bootstrap_addresses,
+        discovery
     ).map_err(|e| format!("Network service error: {:?}", e))?;
 
     Ok(service)
