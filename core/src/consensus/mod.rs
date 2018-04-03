@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 pub mod epoch;
+mod null_engine;
 mod signer;
 mod solo;
 mod solo_authority;

@@ -16,6 +16,7 @@
 
 mod engine;
 mod genesis;
+mod null_engine;
 mod params;
 mod seal;
 mod solo_authority;
@@ -24,9 +25,9 @@ mod tendermint;
 
 pub use self::engine::Engine;
 pub use self::genesis::Genesis;
+pub use self::null_engine::{NullEngine, NullEngineParams};
 pub use self::params::Params;
 pub use self::seal::{Seal, TendermintSeal};
 pub use self::solo_authority::{SoloAuthority, SoloAuthorityParams};
 pub use self::spec::Spec;
 pub use self::tendermint::{Tendermint, TendermintParams};
-
