@@ -113,6 +113,12 @@ impl Extension for BlockSyncExtension {
             Message::Headers(headers) => {
                 self.manager.lock().import_headers(headers);
             },
+            Message::RequestBodies(hashes) => {
+                self.return_bodies(id, hashes);
+            },
+            Message::Bodies(bodies) => {
+                self.manager.lock().import_bodies(bodies);
+            },
         }
     }
 
@@ -156,5 +162,15 @@ impl BlockSyncExtension {
             }
         }
         self.send(id, Message::Headers(headers));
+    }
+
+    fn return_bodies(&self, id: &NodeId, hashes: Vec<H256>) {
+        let mut bodies = Vec::new();
+        for hash in hashes {
+            if let Some(body) = self.client.block_body(BlockId::Hash(hash)) {
+                bodies.push(body.transactions());
+            }
+        }
+        self.send(id, Message::Bodies(bodies));
     }
 }

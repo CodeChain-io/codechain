@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ccore::Header;
+use ccore::{Header, UnverifiedTransaction};
 use ctypes::{H256, U256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
@@ -23,6 +23,8 @@ const MESSAGE_ID_REQUEST_HASHES: u8 = 0x01;
 const MESSAGE_ID_HASHES: u8 = 0x02;
 const MESSAGE_ID_REQUEST_HEADERS: u8 = 0x03;
 const MESSAGE_ID_HEADERS: u8 = 0x04;
+const MESSAGE_ID_REQUEST_BODIES: u8 = 0x05;
+const MESSAGE_ID_BODIES: u8 = 0x06;
 
 #[derive(Debug, PartialEq)]
 pub enum Message {
@@ -42,6 +44,8 @@ pub enum Message {
         max_count: u64,
     },
     Headers(Vec<Header>),
+    RequestBodies(Vec<H256>),
+    Bodies(Vec<Vec<UnverifiedTransaction>>),
 }
 
 impl Encodable for Message {
@@ -54,6 +58,8 @@ impl Encodable for Message {
             &Message::Hashes {..} => &MESSAGE_ID_HASHES,
             &Message::RequestHeaders {..} => &MESSAGE_ID_REQUEST_HEADERS,
             &Message::Headers {..} => &MESSAGE_ID_HEADERS,
+            &Message::RequestBodies {..} => &MESSAGE_ID_REQUEST_BODIES,
+            &Message::Bodies {..} => &MESSAGE_ID_BODIES,
         });
         // add body as rlp
         match self {
@@ -81,6 +87,14 @@ impl Encodable for Message {
             &Message::Headers(ref headers) => {
                 s.begin_list(headers.len());
                 headers.into_iter().for_each(|header| { s.append(header); });
+            },
+            &Message::RequestBodies(ref hashes) => {
+                s.begin_list(hashes.len());
+                hashes.into_iter().for_each(|hash| { s.append(hash); });
+            },
+            &Message::Bodies(ref bodies) => {
+                s.begin_list(bodies.len());
+                bodies.into_iter().for_each(|body| { s.append_list(body); });
             },
         };
     }
@@ -129,6 +143,20 @@ impl Decodable for Message {
                 }
                 Message::Headers(headers)
             },
+            MESSAGE_ID_REQUEST_BODIES => {
+                let mut hashes = Vec::new();
+                for item in message.into_iter() {
+                    hashes.push(item.as_val()?);
+                }
+                Message::RequestBodies(hashes)
+            },
+            MESSAGE_ID_BODIES => {
+                let mut bodies = Vec::new();
+                for item in message.into_iter() {
+                    bodies.push(item.as_list()?);
+                }
+                Message::Bodies(bodies)
+            },
             _ => return Err(DecoderError::Custom("Unknown message id detected")),
         })
     }
@@ -136,7 +164,7 @@ impl Decodable for Message {
 
 #[cfg(test)]
 mod tests {
-    use ccore::Header;
+    use ccore::{Header, UnverifiedTransaction};
     use ctypes::{H256, U256};
     use rlp::Encodable;
 
@@ -183,6 +211,18 @@ mod tests {
         headers.iter().for_each(|header| { header.hash(); });
 
         let message = Message::Headers(headers);
+        assert_eq!(message, ::rlp::decode(message.rlp_bytes().as_ref()));
+    }
+
+    #[test]
+    fn test_request_bodies_message_rlp() {
+        let message = Message::RequestBodies(vec![H256::default()]);
+        assert_eq!(message, ::rlp::decode(message.rlp_bytes().as_ref()));
+    }
+
+    #[test]
+    fn test_bodies_message_rlp() {
+        let message = Message::Bodies(vec![vec![]]);
         assert_eq!(message, ::rlp::decode(message.rlp_bytes().as_ref()));
     }
 }
