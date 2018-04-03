@@ -21,7 +21,7 @@ use parking_lot::{RwLock, Mutex};
 use ccore::{BlockChainClient, BlockId};
 use cnetwork::{Api, Extension, NodeId};
 use ctypes::{H256, U256};
-use rlp::Encodable;
+use rlp::{Encodable, UntrustedRlp};
 
 use manager::DownloadManager;
 use message::Message;
@@ -86,39 +86,43 @@ impl Extension for BlockSyncExtension {
     fn on_connection_allowed(&self, id: &NodeId) { self.on_connected(id); }
 
     fn on_message(&self, id: &NodeId, data: &Vec<u8>) {
-        let message = ::rlp::decode(data);
-        if let Message::Status {..} = message {} else {
-            if !self.peers.read().contains_key(id) {
-                info!("BlockSyncExtension: message from unexpected peer {}", id);
-                return;
-            }
-        }
-        match message {
-            Message::Status { total_score, best_hash, genesis_hash } => {
-                if genesis_hash == self.client.chain_info().genesis_hash {
-                    self.on_peer_status(id, total_score, best_hash);
-                } else {
-                    info!("BlockSyncExtension: genesis hash mismatch with peer {}", id);
+        if let Ok(message) = UntrustedRlp::new(data).as_val() {
+            if let Message::Status {..} = message {
+            } else {
+                if !self.peers.read().contains_key(id) {
+                    info!("BlockSyncExtension: message from unexpected peer {}", id);
+                    return;
                 }
-            },
-            Message::RequestHashes { start_hash, max_count, skip } => {
-                self.return_hashes(id, start_hash, max_count, skip);
-            },
-            Message::Hashes(hashes) => {
-                self.manager.lock().import_hashes(hashes);
-            },
-            Message::RequestHeaders { start_hash, max_count } => {
-                self.return_headers(id, start_hash, max_count);
-            },
-            Message::Headers(headers) => {
-                self.manager.lock().import_headers(headers);
-            },
-            Message::RequestBodies(hashes) => {
-                self.return_bodies(id, hashes);
-            },
-            Message::Bodies(bodies) => {
-                self.manager.lock().import_bodies(bodies);
-            },
+            }
+            match message {
+                Message::Status { total_score, best_hash, genesis_hash } => {
+                    if genesis_hash == self.client.chain_info().genesis_hash {
+                        self.on_peer_status(id, total_score, best_hash);
+                    } else {
+                        info!("BlockSyncExtension: genesis hash mismatch with peer {}", id);
+                    }
+                },
+                Message::RequestHashes { start_hash, max_count, skip } => {
+                    self.return_hashes(id, start_hash, max_count, skip);
+                },
+                Message::Hashes(hashes) => {
+                    self.manager.lock().import_hashes(hashes);
+                },
+                Message::RequestHeaders { start_hash, max_count } => {
+                    self.return_headers(id, start_hash, max_count);
+                },
+                Message::Headers(headers) => {
+                    self.manager.lock().import_headers(headers);
+                },
+                Message::RequestBodies(hashes) => {
+                    self.return_bodies(id, hashes);
+                },
+                Message::Bodies(bodies) => {
+                    self.manager.lock().import_bodies(bodies);
+                },
+            }
+        } else {
+            info!("BlockSyncExtension: invalid message from peer {}", id);
         }
     }
 
