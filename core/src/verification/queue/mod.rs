@@ -489,7 +489,7 @@ mod tests {
     use cio::IoChannel;
     use tests::helpers::*;
 
-    use super::BlockQueue;
+    use super::{BlockQueue, Config};
     use super::kind::blocks::Unverified;
     use super::super::super::error::{Error, ImportError};
     use super::super::super::spec::Spec;
@@ -500,7 +500,8 @@ mod tests {
         let spec = get_test_spec();
         let engine = spec.engine;
 
-        BlockQueue::new(engine, IoChannel::disconnected(), true)
+        let config = Config::default();
+        BlockQueue::new(config, engine, IoChannel::disconnected(), true)
     }
 
     #[test]
@@ -508,7 +509,9 @@ mod tests {
         // TODO better test
         let spec = Spec::new_solo();
         let engine = spec.engine;
-        let _ = BlockQueue::new(engine, IoChannel::disconnected(), true);
+
+        let config = Config::default();
+        let _ = BlockQueue::new(config, engine, IoChannel::disconnected(), true);
     }
 
     #[test]
