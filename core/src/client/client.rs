@@ -31,7 +31,7 @@ use super::{EngineClient, BlockChainInfo, BlockInfo, TransactionInfo,
             ChainInfo, ChainNotify, ClientConfig, ImportBlock,
             BlockChainClient, BlockChain as BlockChainTrait, Error as ClientError
 };
-use super::super::block::{IsBlock, LockedBlock, Drain};
+use super::super::block::{IsBlock, LockedBlock, Drain, enact};
 use super::super::blockchain::{BlockChain, BlockProvider, TransactionAddress, ImportRoute};
 use super::super::consensus::CodeChainEngine;
 use super::super::encoded;
@@ -451,8 +451,68 @@ impl Importer {
         unimplemented!();
     }
 
-    fn check_and_close_block(&self, _block: &PreverifiedBlock, _client: &Client) -> Result<LockedBlock, ()> {
-        unimplemented!();
+    fn check_and_close_block(&self, block: &PreverifiedBlock, client: &Client) -> Result<LockedBlock, ()> {
+        let engine = &*self.engine;
+        let header = &block.header;
+
+        let chain = client.chain.read();
+
+        // Check if parent is in chain
+        let parent = match chain.block_header(header.parent_hash()) {
+            Some(h) => h,
+            None => {
+                warn!(target: "client", "Block import failed for #{} ({}): Parent not found ({}) ", header.number(), header.hash(), header.parent_hash());
+                return Err(());
+            }
+        };
+
+        // Verify Block Family
+        let verify_family_result = self.verifier.verify_block_family(
+            header,
+            &parent,
+            engine,
+            Some(verification::FullFamilyParams {
+                block_bytes: &block.bytes,
+                transactions: &block.transactions,
+                block_provider: &**chain,
+                client
+            }),
+        );
+
+        if let Err(e) = verify_family_result {
+            warn!(target: "client", "Stage 3 block verification failed for #{} ({})\nError: {:?}", header.number(), header.hash(), e);
+            return Err(());
+        };
+
+        let verify_external_result = self.verifier.verify_block_external(header, engine);
+        if let Err(e) = verify_external_result {
+            warn!(target: "client", "Stage 4 block verification failed for #{} ({})\nError: {:?}", header.number(), header.hash(), e);
+            return Err(());
+        };
+
+        // Enact Verified Block
+        let db = client.state_db.read().boxed_clone_canon(header.parent_hash());
+
+        let is_epoch_begin = chain.epoch_transition(parent.number(), *header.parent_hash()).is_some();
+        let enact_result = enact(&block.header,
+                                          &block.transactions,
+                                          engine,
+                                          db,
+                                          &parent,
+                                          client.trie_factory.clone(),
+                                          is_epoch_begin,
+        );
+        let locked_block = enact_result.map_err(|e| {
+            warn!(target: "client", "Block import failed for #{} ({})\nError: {:?}", header.number(), header.hash(), e);
+        })?;
+
+        // Final Verification
+        if let Err(e) = self.verifier.verify_block_final(header, locked_block.block().header()) {
+            warn!(target: "client", "Stage 5 block verification failed for #{} ({})\nError: {:?}", header.number(), header.hash(), e);
+            return Err(());
+        }
+
+        Ok(locked_block)
     }
 }
 
