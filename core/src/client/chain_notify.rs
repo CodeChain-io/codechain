@@ -36,5 +36,13 @@ pub trait ChainNotify : Send + Sync {
 
     /// fires when chain broadcasts a message
     fn broadcast(&self, _data: Vec<u8>) {}
+
+    /// fires when new transactions are received from a peer
+    fn transactions_received(&self,
+                             _hashes: Vec<H256>,
+                             _peer_id: usize,
+    ) {
+        // does nothing by default
+    }
 }
 
