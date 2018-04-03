@@ -20,6 +20,7 @@ use std::fmt;
 use std::net::{AddrParseError, IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 use std::str::FromStr;
 
+use rlp::{UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
 
 #[derive(Clone, Debug, Eq, Hash)]
 pub struct Address {
@@ -97,6 +98,56 @@ impl PartialOrd for Address {
 impl fmt::Display for Address {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "Address({})", self.addr)
+    }
+}
+
+impl Encodable for Address {
+    fn rlp_append(&self, s: &mut RlpStream) {
+        match self.ip() {
+            IpAddr::V4(ref addr) => {
+                let octets = addr.octets();
+                assert_eq!(4, octets.len());
+                s.begin_list(octets.len() + 1);
+                for octet in octets.iter() {
+                    s.append(octet);
+                }
+                s.append(&self.port());
+            },
+            IpAddr::V6(ref addr) => {
+                let octets = addr.octets();
+                assert_eq!(16, octets.len());
+                s.begin_list(octets.len() + 1);
+                for octet in octets.iter() {
+                    s.append(octet);
+                }
+                s.append(&self.port());
+            },
+        }
+    }
+}
+
+impl Decodable for Address {
+    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+        match rlp.item_count()? {
+            5 => {
+                let ip0 = rlp.val_at(0)?;
+                let ip1 = rlp.val_at(1)?;
+                let ip2 = rlp.val_at(2)?;
+                let ip3 = rlp.val_at(3)?;
+                let port = rlp.val_at(4)?;
+                Ok(Address::v4(ip0, ip1, ip2, ip3, port))
+            },
+            17 => {
+                let mut octets: [u8; 16] = [0; 16];
+                for i in 0..16 {
+                    octets[i] = rlp.val_at(i)?;
+                }
+                let port = rlp.val_at(16)?;
+                let ip = IpAddr::V6(Ipv6Addr::from(octets));
+                Ok(Address::new(ip, port))
+            },
+            _ => Err(DecoderError::RlpIncorrectListLen),
+        }
     }
 }
 
