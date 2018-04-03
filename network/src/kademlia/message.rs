@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use rlp::{UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
+
 use super::NodeId;
 use super::contact::Contact;
 
@@ -42,6 +44,98 @@ impl Message {
             &Message::Pong{ ref sender, ..} => sender,
             &Message::FindNode{ ref sender, ..} => sender,
             &Message::Nodes{ ref sender, ..} => sender,
+        }
+    }
+}
+
+const PING_ID: u8 = 0x0;
+const PONG_ID: u8 = 0x1;
+const FIND_NODE_ID: u8 = 0x2;
+const NODES_ID: u8 = 0x3;
+
+impl Encodable for Message {
+    fn rlp_append(&self, s: &mut RlpStream) {
+        match self {
+            &Message::Ping { id, ref sender } => {
+                s.begin_list(3)
+                    .append(&PING_ID)
+                    .append(&id)
+                    .append(sender);
+            },
+            &Message::Pong { id, ref sender } => {
+                s.begin_list(3)
+                    .append(&PONG_ID)
+                    .append(&id)
+                    .append(sender);
+            },
+            &Message::FindNode { id, ref sender, ref target, bucket_size } => {
+                s.begin_list(5)
+                    .append(&FIND_NODE_ID)
+                    .append(&id)
+                    .append(sender)
+                    .append(target)
+                    .append(&bucket_size);
+            },
+            &Message::Nodes { id, ref sender, ref contacts } => {
+                s.begin_list(3 + contacts.len() * 2)
+                    .append(&NODES_ID)
+                    .append(&id)
+                    .append(sender);
+                for ref contact in contacts.iter() {
+                    s.append(&contact.id());
+                    s.append(contact.addr());
+                }
+            },
+        }
+    }
+}
+
+impl Decodable for Message {
+    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+        let protocol = rlp.val_at::<u8>(0)?;
+        let id = rlp.val_at(1)?;
+        let sender = rlp.val_at(2)?;
+        match protocol {
+            PING_ID => {
+                if rlp.item_count()? != 3 {
+                    return Err(DecoderError::RlpIncorrectListLen)
+                }
+                Ok(Message::Ping{id, sender})
+            },
+            PONG_ID => {
+                if rlp.item_count()? != 3 {
+                    return Err(DecoderError::RlpIncorrectListLen)
+                }
+                Ok(Message::Pong{id, sender})
+            },
+            FIND_NODE_ID => {
+                if rlp.item_count()? != 5 {
+                    return Err(DecoderError::RlpIncorrectListLen)
+                }
+                let target = rlp.val_at(3)?;
+                let bucket_size = rlp.val_at(4)?;
+                Ok(Message::FindNode {id, sender, target, bucket_size})
+            },
+            NODES_ID => {
+                if (rlp.item_count()? - 3) % 2 != 0 {
+                    return Err(DecoderError::RlpIncorrectListLen)
+                }
+                let contacts = {
+                    let mut contacts: Vec<Contact> = vec![];
+                    let mut i = 3;
+                    let len = rlp.item_count()?;
+                    while i < len {
+                        let id = rlp.val_at(i)?;
+                        let addr = rlp.val_at(i + 1)?;
+                        let contact = Contact::new(id, addr);
+                        contacts.push(contact);
+                        i += 2;
+                    }
+                    contacts
+                };
+                Ok(Message::Nodes{id, sender, contacts})
+            },
+            _ => Err(DecoderError::Custom("Invalid protocol id")),
         }
     }
 }
