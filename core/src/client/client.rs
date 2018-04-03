@@ -25,6 +25,7 @@ use ctypes::{H256, U256};
 use journaldb;
 use kvdb::{DBTransaction, KeyValueDB};
 use parking_lot::{Mutex, RwLock};
+use trie::{TrieFactory, TrieSpec};
 
 use super::{EngineClient, BlockChainInfo, BlockInfo, TransactionInfo,
             ChainInfo, ChainNotify, ClientConfig, ImportBlock,
@@ -64,6 +65,7 @@ pub struct Client {
 
     /// Count of pending transactions in the queue
     queue_transactions: AtomicUsize,
+    trie_factory: TrieFactory,
 
     importer: Importer,
 }
@@ -75,6 +77,13 @@ impl Client {
         db: Arc<KeyValueDB>,
         message_channel: IoChannel<ClientIoMessage>,
     ) -> Result<Arc<Client>, Error> {
+        let trie_spec = match config.fat_db {
+            true => TrieSpec::Fat,
+            false => TrieSpec::Secure,
+        };
+
+        let trie_factory = TrieFactory::new(trie_spec);
+
         let journal_db = journaldb::new(db.clone(), journaldb::Algorithm::Archive, ::db::COL_STATE);
         let mut state_db = StateDB::new(journal_db, config.state_cache_size);
         if state_db.journal_db().is_empty() {
@@ -99,6 +108,7 @@ impl Client {
             state_db: RwLock::new(state_db),
             notify: RwLock::new(Vec::new()),
             queue_transactions: AtomicUsize::new(0),
+            trie_factory,
             importer,
         });
 
