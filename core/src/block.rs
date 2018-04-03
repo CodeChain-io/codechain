@@ -167,6 +167,15 @@ impl<'x> OpenBlock<'x> {
         Ok(())
     }
 
+    /// Populate self from a header.
+    fn populate_from(&mut self, header: &Header) {
+        self.block.header.set_score(*header.score());
+        self.block.header.set_timestamp(header.timestamp());
+        self.block.header.set_author(*header.author());
+        self.block.header.set_transactions_root(*header.transactions_root());
+        self.block.header.set_extra_data(header.extra_data().clone());
+    }
+
     /// Turn this into a `ClosedBlock`.
     pub fn close(self) -> ClosedBlock {
         let mut s = self;
@@ -332,3 +341,28 @@ impl Drain for SealedBlock {
     }
 }
 
+/// Enact the block given by block header, transactions and uncles
+pub fn enact(
+    header: &Header,
+    transactions: &[SignedTransaction],
+    engine: &CodeChainEngine,
+    db: StateDB,
+    parent: &Header,
+    trie_factory: TrieFactory,
+    is_epoch_begin: bool,
+) -> Result<LockedBlock, Error> {
+    let mut b = OpenBlock::new(
+        engine,
+        trie_factory,
+        db,
+        parent,
+        Address::new(),
+        vec![],
+        is_epoch_begin,
+    )?;
+
+    b.populate_from(header);
+    b.push_transactions(transactions)?;
+
+    Ok(b.close_and_lock())
+}
