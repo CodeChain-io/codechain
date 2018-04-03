@@ -19,17 +19,18 @@ use std::error;
 use std::fmt;
 use std::io;
 use std::result::Result;
+use std::sync::Arc;
 
 use cio::{IoChannel, IoContext, IoHandler, IoManager, IoHandlerResult, StreamToken};
 use mio::{PollOpt, Ready, Token};
 use mio::deprecated::EventLoop;
 use mio::net::UdpSocket;
-use parking_lot::Mutex;
+use parking_lot::{Mutex, RwLock};
 use rlp::{UntrustedRlp, Encodable, Decodable, DecoderError};
 
 use super::HandshakeMessage;
 use super::super::session::{Nonce, Session, SessionError, SessionTable, SharedSecret};
-use super::super::Address;
+use super::super::{Address, DiscoveryApi};
 use super::super::connection;
 
 
@@ -231,11 +232,13 @@ pub struct Handler {
     address: Address,
     internal: Mutex<Internal>,
     extension: IoChannel<connection::HandlerMessage>,
+    discovery: RwLock<Arc<DiscoveryApi>>,
 }
 
 impl Handler {
-    pub fn new(address: Address, extension: IoChannel<connection::HandlerMessage>) -> Self {
+    pub fn new(address: Address, extension: IoChannel<connection::HandlerMessage>, discovery: Arc<DiscoveryApi>) -> Self {
         let handshake = Handshake::bind(&address).expect("Cannot bind UDP port");
+        let discovery = RwLock::new(discovery);
         Self {
             address,
             internal: Mutex::new(Internal {
@@ -243,6 +246,7 @@ impl Handler {
                 connect_queue: VecDeque::new(),
             }),
             extension,
+            discovery,
         }
     }
 }
