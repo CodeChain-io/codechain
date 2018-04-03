@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ctypes::H256;
+use rlp::{Encodable, Decodable, RlpStream, UntrustedRlp, DecoderError};
 
 use super::super::machine::Machine;
 
@@ -44,3 +45,32 @@ impl<M: Machine> EpochVerifier<M> for NoOp {
     fn verify_light(&self, _header: &M::Header) -> Result<(), M::Error> { Ok(()) }
 }
 
+/// A full epoch transition.
+#[derive(Debug, Clone)]
+pub struct Transition {
+    /// Block hash at which the transition occurred.
+    pub block_hash: H256,
+    /// Block number at which the transition occurred.
+    pub block_number: u64,
+    /// "transition/epoch" proof from the engine combined with a finality proof.
+    pub proof: Vec<u8>,
+}
+
+impl Encodable for Transition {
+    fn rlp_append(&self, s: &mut RlpStream) {
+        s.begin_list(3)
+            .append(&self.block_hash)
+            .append(&self.block_number)
+            .append(&self.proof);
+    }
+}
+
+impl Decodable for Transition {
+    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+        Ok(Transition {
+            block_hash: rlp.val_at(0)?,
+            block_number: rlp.val_at(1)?,
+            proof: rlp.val_at(2)?,
+        })
+    }
+}

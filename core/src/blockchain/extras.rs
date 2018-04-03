@@ -14,12 +14,14 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::ops::Deref;
+use std::io::Write;
+use std::ops::{self, Deref};
 
 use ctypes::{H256, H264, U256};
-
 use heapsize::HeapSizeOf;
+use kvdb::PREFIX_LEN as DB_PREFIX_LEN;
 
+use super::super::consensus::epoch::{Transition as EpochTransition};
 use super::super::db::Key;
 use super::super::types::BlockNumber;
 use super::super::invoice::Invoice;
@@ -34,7 +36,9 @@ pub enum ExtrasIndex {
     /// Transaction address index
     TransactionAddress = 2,
     /// Block invoices index
-    BlockInvoices = 4,
+    BlockInvoices = 3,
+    /// Epoch transition data index.
+    EpochTransitions = 4,
 }
 
 fn with_index(hash: &H256, i: ExtrasIndex) -> H264 {
@@ -93,6 +97,37 @@ impl Key<BlockInvoices> for H256 {
     }
 }
 
+/// length of epoch keys.
+pub const EPOCH_KEY_LEN: usize = DB_PREFIX_LEN + 16;
+
+/// epoch key prefix.
+/// used to iterate over all epoch transitions in order from genesis.
+pub const EPOCH_KEY_PREFIX: &'static [u8; DB_PREFIX_LEN] = &[
+    ExtrasIndex::EpochTransitions as u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+];
+
+pub struct EpochTransitionsKey([u8; EPOCH_KEY_LEN]);
+
+impl ops::Deref for EpochTransitionsKey {
+    type Target = [u8];
+
+    fn deref(&self) -> &[u8] { &self.0[..] }
+}
+
+impl Key<EpochTransitions> for u64 {
+    type Target = EpochTransitionsKey;
+
+    fn key(&self) -> Self::Target {
+        let mut arr = [0u8; EPOCH_KEY_LEN];
+        arr[..DB_PREFIX_LEN].copy_from_slice(&EPOCH_KEY_PREFIX[..]);
+
+        write!(&mut arr[DB_PREFIX_LEN..], "{:016x}", self)
+            .expect("format arg is valid; no more than 16 chars will be written; qed");
+
+        EpochTransitionsKey(arr)
+    }
+}
+
 /// Familial details concerning a block
 #[derive(Debug, Clone, RlpEncodable, RlpDecodable)]
 pub struct BlockDetails {
@@ -136,5 +171,12 @@ impl BlockInvoices {
             invoices,
         }
     }
+}
+
+/// Candidate transitions to an epoch with specific number.
+#[derive(Clone, RlpEncodable, RlpDecodable)]
+pub struct EpochTransitions {
+    pub number: u64,
+    pub candidates: Vec<EpochTransition>,
 }
 
