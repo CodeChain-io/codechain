@@ -14,14 +14,21 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::collections::{HashSet, VecDeque};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
-use parking_lot::RwLock;
-use rlp::{Decodable, DecoderError, UntrustedRlp};
+use cio::TimerToken;
+use parking_lot::{Mutex, RwLock};
+use rlp::{Decodable, DecoderError, Encodable, UntrustedRlp};
 
 use super::{ALPHA, Config, K, T_REFRESH};
+use super::command::Command;
+use super::event::Event;
 use super::kademlia::Kademlia;
+use super::message::Message;
 use super::super::Address;
+use super::super::{Api, Extension as NetworkExtension};
 use super::super::connection::AddressConverter;
 use super::super::discovery::Api as DiscoveryApi;
 use super::super::extension::NodeId as ExtensionNodeId;
@@ -29,7 +36,11 @@ use super::super::extension::NodeId as ExtensionNodeId;
 
 pub struct Extension {
     kademlia: RwLock<Kademlia>,
+    events: Mutex<VecDeque<Event>>,
+    event_fired: AtomicBool,
+    api: Mutex<Option<Arc<Api>>>,
     converter: RwLock<Arc<AddressConverter>>,
+    active_nodes: RwLock<HashSet<ExtensionNodeId>>,
 }
 
 struct DummyConverter;
@@ -49,12 +60,107 @@ impl AddressConverter for DummyConverter {
     }
 }
 
+const CONSUME_EVENT_TOKEN: TimerToken = 0;
+const REFRESH_TOKEN: TimerToken = 1;
+
 impl Extension {
     pub fn new(config: Config) -> Self {
         let kademlia = RwLock::new(Kademlia::new(config.node_id, config.alpha, config.k, config.t_refresh));
         Self {
             kademlia,
+            events: Mutex::new(VecDeque::new()),
+            event_fired: AtomicBool::new(false),
+            api: Mutex::new(None),
             converter: RwLock::new(DummyConverter::new()),
+            active_nodes: RwLock::new(HashSet::new()),
+        }
+    }
+
+    fn on_receive(&self, id: &ExtensionNodeId, message: &Vec<u8>) -> ::std::result::Result<(), DecoderError> {
+        if let Some(sender) = self.get_address(&id) {
+            let rlp = UntrustedRlp::new(&message.as_slice());
+            let message: Message = Decodable::decode(&rlp)?;
+            let event = Event::Message{ message, sender };
+            self.push_event(event)
+        }
+        Ok(())
+    }
+
+    fn push_event(&self, event: Event) {
+        let already_fired = {
+            let mut events = self.events.lock();
+            events.push_back(event);
+            self.event_fired.swap(true, Ordering::SeqCst)
+        };
+        if !already_fired {
+            let api = self.api.lock();
+            if let &Some(ref api) = &*api {
+                api.set_timer_once(CONSUME_EVENT_TOKEN, 0);
+            }
+        }
+    }
+
+    fn get_address(&self, id: &ExtensionNodeId) -> Option<Address> {
+        let converter = self.converter.read();
+        converter.node_id_to_address(id)
+    }
+
+    fn get_node_id(&self, address: &Address) -> Option<ExtensionNodeId> {
+        let converter = self.converter.read();
+        converter.address_to_node_id(&address)
+    }
+
+    fn consume_events(&self) {
+        loop {
+            let event = {
+                let mut events = self.events.lock();
+                let event = events.pop_front();
+                if event.is_none() {
+                    let _ = self.event_fired.swap(false, Ordering::SeqCst);
+                    break
+                }
+                event.expect("Already check none")
+            };
+
+            let command = {
+                match event {
+                    Event::Message { ref message, ref sender } => {
+                        let mut kademlia = self.kademlia.write();
+                        kademlia.handle_message(message, sender)
+                    },
+                    Event::Command { ref command } => self.handle_command(command),
+                }
+            };
+
+            if let Some(command) = command {
+                self.push_event(Event::Command {command});
+            }
+        }
+    }
+
+    fn handle_command(&self, command: &Command) -> Option<Command> {
+        match command {
+            &Command::Verify => {
+                let mut kademlia = self.kademlia.write();
+                kademlia.handle_verify_command()
+            },
+            &Command::Refresh => {
+                let mut kademlia = self.kademlia.write();
+                kademlia.handle_refresh_command()
+            },
+            &Command::Send { ref message, ref target } => {
+                self.handle_send_command(&message, &target);
+                None
+            },
+        }
+    }
+
+    fn handle_send_command(&self, message: &Message, target: &Address) {
+        let api = self.api.lock();
+        if let &Some(ref api) = &*api {
+            if let Some(id) = self.get_node_id(&target) {
+                api.send(&id, &message.rlp_bytes().to_vec())
+            }
         }
     }
 }
@@ -68,8 +174,11 @@ impl DiscoveryApi for Extension {
     }
 
     fn add(&self, address: Address) {
-        let mut kademlia = self.kademlia.write();
-        kademlia.add(address);
+        let event = {
+            let mut kademlia = self.kademlia.write();
+            kademlia.ping_event(address)
+        };
+        self.push_event(event);
     }
 
     fn remove(&self, address: &Address) {
@@ -82,3 +191,59 @@ impl DiscoveryApi for Extension {
     }
 }
 
+impl NetworkExtension for Extension {
+    fn name(&self) -> String {
+        "kademlia".to_string()
+    }
+
+    fn need_encryption(&self) -> bool {
+        false
+    }
+
+    fn on_initialize(&self, api: Arc<Api>) {
+        let api_clone = Arc::clone(&api);
+        *self.api.lock() = Some(api);
+        let t_refresh = {
+            let kademlia = self.kademlia.read();
+            kademlia.t_refresh as u64
+        };
+        api_clone.set_timer(REFRESH_TOKEN, t_refresh);
+    }
+
+    fn on_node_added(&self, id: &ExtensionNodeId) {
+        if let Some(address) = self.get_address(&id) {
+            self.add(address);
+            let mut active_nodes = self.active_nodes.write();
+            active_nodes.insert(*id);
+        }
+    }
+
+    fn on_node_removed(&self, id: &ExtensionNodeId) {
+        if let Some(address) = self.get_address(&id) {
+            self.remove(&address);
+
+            let mut active_nodes = self.active_nodes.write();
+            active_nodes.remove(&id);
+        }
+    }
+
+    fn on_message(&self, id: &ExtensionNodeId, message: &Vec<u8>) {
+        if let Err(err) = self.on_receive(id, message) {
+            warn!("Invalid message from {} : {:?}", id, err);
+        }
+    }
+
+    fn on_timeout(&self, token: TimerToken) {
+        match token {
+            CONSUME_EVENT_TOKEN => {
+                self.consume_events();
+            },
+            REFRESH_TOKEN => {
+                let command = Command::Refresh;
+                let event = Event::Command { command };
+                self.push_event(event);
+            }
+            _ => unreachable!(),
+        }
+    }
+}
