@@ -75,23 +75,14 @@ impl Encodable for Message {
                 s.append(&max_count);
                 s.append(&skip);
             },
-            &Message::Hashes(ref hashes) => {
-                s.begin_list(hashes.len());
-                hashes.into_iter().for_each(|hash| { s.append(hash); });
-            },
+            &Message::Hashes(ref hashes) => { s.append_list(hashes); },
             &Message::RequestHeaders { start_hash, max_count } => {
                 s.begin_list(2);
                 s.append(&start_hash);
                 s.append(&max_count);
             },
-            &Message::Headers(ref headers) => {
-                s.begin_list(headers.len());
-                headers.into_iter().for_each(|header| { s.append(header); });
-            },
-            &Message::RequestBodies(ref hashes) => {
-                s.begin_list(hashes.len());
-                hashes.into_iter().for_each(|hash| { s.append(hash); });
-            },
+            &Message::Headers(ref headers) => { s.append_list(headers); },
+            &Message::RequestBodies(ref hashes) => { s.append_list(hashes); },
             &Message::Bodies(ref bodies) => {
                 s.begin_list(bodies.len());
                 bodies.into_iter().for_each(|body| { s.append_list(body); });
@@ -122,13 +113,7 @@ impl Decodable for Message {
                     skip: message.val_at(2)?,
                 }
             },
-            MESSAGE_ID_HASHES => {
-                let mut hashes = Vec::new();
-                for item in message.into_iter() {
-                    hashes.push(item.as_val()?);
-                }
-                Message::Hashes(hashes)
-            },
+            MESSAGE_ID_HASHES => Message::Hashes(message.as_list()?),
             MESSAGE_ID_REQUEST_HEADERS => {
                 if message.item_count()? != 2 { return Err(DecoderError::RlpIncorrectListLen); }
                 Message::RequestHeaders {
@@ -136,20 +121,8 @@ impl Decodable for Message {
                     max_count: message.val_at(1)?,
                 }
             },
-            MESSAGE_ID_HEADERS => {
-                let mut headers = Vec::new();
-                for item in message.into_iter() {
-                    headers.push(item.as_val()?);
-                }
-                Message::Headers(headers)
-            },
-            MESSAGE_ID_REQUEST_BODIES => {
-                let mut hashes = Vec::new();
-                for item in message.into_iter() {
-                    hashes.push(item.as_val()?);
-                }
-                Message::RequestBodies(hashes)
-            },
+            MESSAGE_ID_HEADERS => Message::Headers(message.as_list()?),
+            MESSAGE_ID_REQUEST_BODIES => Message::RequestBodies(message.as_list()?),
             MESSAGE_ID_BODIES => {
                 let mut bodies = Vec::new();
                 for item in message.into_iter() {
