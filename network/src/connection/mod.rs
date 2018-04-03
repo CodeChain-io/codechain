@@ -24,4 +24,4 @@ use self::message::Message;
 use self::message::SignedMessage;
 use self::message::NegotiationMessage;
 use self::message::NegotiationBody;
-pub use self::manager::{HandlerMessage, Handler};
+pub use self::manager::{AddressConverter, HandlerMessage, Handler};

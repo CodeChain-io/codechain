@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::convert::From;
 use std::io;
 use std::sync::Arc;
@@ -37,6 +37,7 @@ use super::super::timer_info::{Error as TimerInfoError, TimerInfo};
 pub struct Manager {
     listener: TcpListener,
     connections: LimitedTable<Connection>,
+    address_to_node_id: HashMap<Address, NodeId>,
     address_to_session: SessionTable,
     inbound_tokens: HashSet<ConnectionToken>,
 }
@@ -110,6 +111,7 @@ impl Manager {
         Ok(Manager {
             listener: TcpListener::bind(address.socket())?,
             connections: LimitedTable::new(FIRST_CONNECTION_TOKEN, MAX_CONNECTIONS),
+            address_to_node_id: HashMap::new(),
             address_to_session: SessionTable::new(),
             inbound_tokens: HashSet::new(),
         })
@@ -119,6 +121,7 @@ impl Manager {
         let session = self.address_to_session.get(&address).ok_or(Error::NoAvailableSession)?;
         let connection = Connection::new(stream, session.clone())?;
         if let Some(token) = self.connections.insert(connection) {
+            self.address_to_node_id.insert(address.clone(), token);
             if is_inbound {
                 let _ = self.inbound_tokens.insert(token);
             }
@@ -369,5 +372,25 @@ impl IoHandler<HandlerMessage> for Handler {
                 unreachable!();
             },
         }
+    }
+}
+
+
+pub trait AddressConverter: Send + Sync {
+    fn node_id_to_address(&self, node_id: &NodeId) -> Option<Address>;
+    fn address_to_node_id(&self, address: &Address) -> Option<NodeId>;
+}
+
+impl AddressConverter for Handler {
+    fn node_id_to_address(&self, node_id: &NodeId) -> Option<Address> {
+        let manager = self.manager.lock();
+        manager.connections
+            .get(*node_id)
+            .map(|connection| connection.peer_addr().expect("Peer must exist").clone())
+    }
+
+    fn address_to_node_id(&self, address: &Address) -> Option<NodeId> {
+        let manager = self.manager.lock();
+        manager.address_to_node_id.get(&address).map(|id| id.clone())
     }
 }
