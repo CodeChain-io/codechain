@@ -94,7 +94,9 @@ fn run() -> Result<(), String> {
     let _network_service = {
         if let Some(network_config) = config::parse_network_config(&matches)? {
             let service = commands::network_start(network_config)?;
-            service.register_extension(BlockSyncExtension::new(client.client()));
+            if config.enable_block_sync {
+                service.register_extension(BlockSyncExtension::new(client.client()));
+            }
             Some(service)
         } else {
             None
