@@ -81,6 +81,7 @@ pub struct Config {
     pub quiet: bool,
     pub db_path: String,
     pub chain_type: ChainType,
+    pub enable_block_sync: bool,
 }
 
 pub struct NetworkConfig {
@@ -101,10 +102,13 @@ pub fn parse(matches: &clap::ArgMatches) -> Result<Config, String> {
         None => Default::default(),
     };
 
+    let enable_block_sync = !matches.is_present("no-sync");
+
     Ok(Config {
         quiet,
         db_path: db_path.into(),
         chain_type,
+        enable_block_sync,
     })
 }
 
