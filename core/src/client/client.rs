@@ -37,7 +37,7 @@ use super::super::service::ClientIoMessage;
 use super::super::spec::Spec;
 use super::super::state_db::StateDB;
 use super::super::transaction::PendingTransaction;
-use super::super::types::{BlockId, TransactionId, VerificationQueueInfo as BlockQueueInfo};
+use super::super::types::{BlockId, BlockNumber, TransactionId, VerificationQueueInfo as BlockQueueInfo};
 
 const MAX_TX_QUEUE_SIZE: usize = 4096;
 
@@ -149,6 +149,15 @@ impl Client {
         self.queue_transactions.fetch_sub(transactions.len(), AtomicOrdering::SeqCst);
         unimplemented!();
     }
+
+    fn block_number_ref(&self, id: &BlockId) -> Option<BlockNumber> {
+        match *id {
+            BlockId::Number(number) => Some(number),
+            BlockId::Hash(ref hash) => self.chain.read().block_number(hash),
+            BlockId::Earliest => Some(0),
+            BlockId::Latest => Some(self.chain.read().best_block_number()),
+        }
+    }
 }
 
 impl ChainInfo for Client {
@@ -251,6 +260,10 @@ impl BlockChainClient for Client {
 
     fn ready_transactions(&self) -> Vec<PendingTransaction> {
         unimplemented!();
+    }
+
+    fn block_number(&self, id: BlockId) -> Option<BlockNumber> {
+        self.block_number_ref(&id)
     }
 
     fn block_body(&self, id: BlockId) -> Option<encoded::Body> {
