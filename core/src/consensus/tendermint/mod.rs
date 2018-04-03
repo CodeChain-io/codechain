@@ -680,6 +680,27 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
     fn stop(&self) {
         self.step_service.stop()
     }
+
+    fn is_proposal(&self, header: &Header) -> bool {
+        let signatures_len = header.seal()[2].len();
+        // Signatures have to be an empty list rlp.
+        if signatures_len != 1 {
+            // New Commit received, skip to next height.
+            trace!(target: "engine", "Received a commit: {:?}.", header.number());
+            self.to_next_height(header.number() as usize);
+            self.to_step(Step::Commit);
+            return false;
+        }
+        let proposal = ConsensusMessage::new_proposal(header).expect("block went through full verification; this Engine verifies new_proposal creation; qed");
+        let proposer = proposal.verify().expect("block went through full verification; this Engine tries verify; qed");
+        debug!(target: "engine", "Received a new proposal {:?} from {}.", proposal.vote_step, proposer);
+        if self.is_view(&proposal) {
+            *self.proposal.write() = proposal.block_hash.clone();
+            *self.proposal_parent.write() = header.parent_hash().clone();
+        }
+        self.votes.vote(proposal, proposer);
+        true
+    }
 }
 
 struct EpochVerifier<F>
