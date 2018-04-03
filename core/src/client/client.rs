@@ -37,6 +37,7 @@ use super::super::consensus::CodeChainEngine;
 use super::super::encoded;
 use super::super::error::{Error, BlockImportError, ImportError};
 use super::super::header::Header;
+use super::super::invoice::Invoice;
 use super::super::service::ClientIoMessage;
 use super::super::spec::Spec;
 use super::super::state_db::StateDB;
@@ -44,6 +45,7 @@ use super::super::transaction::PendingTransaction;
 use super::super::types::{BlockId, BlockNumber, BlockStatus, TransactionId, VerificationQueueInfo as BlockQueueInfo};
 use super::super::verification::{self, Verifier, PreverifiedBlock};
 use super::super::verification::queue::BlockQueue;
+use super::super::views::BlockView;
 
 const MAX_TX_QUEUE_SIZE: usize = 4096;
 
@@ -447,7 +449,66 @@ impl Importer {
     // it is for reconstructing the state transition.
     //
     // The header passed is from the original block data and is sealed.
-    fn commit_block<B>(&self, _block: B, _header: &Header, _block_data: &[u8], _client: &Client) -> ImportRoute where B: IsBlock + Drain {
+    fn commit_block<B>(&self, block: B, header: &Header, block_data: &[u8], client: &Client) -> ImportRoute where B: IsBlock + Drain {
+        let hash = &header.hash();
+        let number = header.number();
+        let chain = client.chain.read();
+
+        // Commit results
+        let invoices = block.invoices().to_owned();
+
+        assert_eq!(header.hash(), BlockView::new(block_data).header_view().hash());
+
+        let mut batch = DBTransaction::new();
+
+        // CHECK! I *think* this is fine, even if the state_root is equal to another
+        // already-imported block of the same number.
+        // TODO: Prove it with a test.
+        let mut state = block.drain();
+
+        // check epoch end signal, potentially generating a proof on the current
+        // state.
+        self.check_epoch_end_signal(
+            &header,
+            block_data,
+            &invoices,
+            &state,
+            &chain,
+            &mut batch,
+            client
+        );
+
+        state.journal_under(&mut batch, number, hash).expect("DB commit failed");
+        let route = chain.insert_block(&mut batch, block_data, invoices.clone());
+
+        let is_canon = route.enacted.last().map_or(false, |h| h == hash);
+        state.sync_cache(&route.enacted, &route.retracted, is_canon);
+        // Final commit to the DB
+        client.db.read().write_buffered(batch);
+        chain.commit();
+
+        self.check_epoch_end(&header, &chain, client);
+
+        route
+    }
+
+    // check for ending of epoch and write transition if it occurs.
+    fn check_epoch_end<'a>(&self, _header: &'a Header, _chain: &BlockChain, _client: &Client) {
+        unimplemented!();
+    }
+
+    // check for epoch end signal and write pending transition if it occurs.
+    // state for the given block must be available.
+    fn check_epoch_end_signal(
+        &self,
+        _header: &Header,
+        _block_bytes: &[u8],
+        _invoices: &[Invoice],
+        _state_db: &StateDB,
+        _chain: &BlockChain,
+        _batch: &mut DBTransaction,
+        _client: &Client,
+    ) {
         unimplemented!();
     }
 
