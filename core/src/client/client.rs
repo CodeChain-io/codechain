@@ -19,7 +19,7 @@ use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
 
 use cbytes::Bytes;
 use cio::IoChannel;
-use ctypes::H256;
+use ctypes::{H256, U256};
 use journaldb;
 use kvdb::{DBTransaction, KeyValueDB};
 use parking_lot::{Mutex, RwLock};
@@ -270,6 +270,12 @@ impl BlockChainClient for Client {
         let chain = self.chain.read();
 
         Self::block_hash(&chain, id).and_then(|hash| chain.block_body(&hash))
+    }
+
+    fn block_total_score(&self, id: BlockId) -> Option<U256> {
+        let chain = self.chain.read();
+
+        Self::block_hash(&chain, id).and_then(|hash| chain.block_details(&hash)).map(|d| d.total_score)
     }
 
     fn block_hash(&self, id: BlockId) -> Option<H256> {

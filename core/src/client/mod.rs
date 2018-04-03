@@ -164,6 +164,9 @@ pub trait BlockChainClient : Sync + Send + BlockChain + ImportBlock {
     /// Block body is an RLP list of one item: transactions.
     fn block_body(&self, id: BlockId) -> Option<encoded::Body>;
 
+    /// Get block total score.
+    fn block_total_score(&self, id: BlockId) -> Option<U256>;
+
     /// Get block hash.
     fn block_hash(&self, id: BlockId) -> Option<H256>;
 }
