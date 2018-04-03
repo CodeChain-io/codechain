@@ -36,7 +36,9 @@ impl Service {
         let extension_channel =  extension_service.channel();
 
         let client = Client::new();
-        extension_service.register_handler(Arc::new(connection::Handler::new(address.clone(), Arc::clone(&client))))?;
+        let connection_handler = Arc::new(connection::Handler::new(address.clone(), Arc::clone(&client)));
+        discovery.set_address_converter(connection_handler.clone());
+        extension_service.register_handler(connection_handler)?;
 
         let handshake_service = IoService::start()?;
         let handshake_handler = Arc::new(handshake::Handler::new(address, extension_channel, discovery));

@@ -14,11 +14,16 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::sync::Arc;
+
 use super::Address;
+use super::connection::AddressConverter;
 
 pub trait Api: Send + Sync {
     fn get(&self, max: usize) -> Vec<Address>;
 
     fn add(&self, address: Address);
     fn remove(&self, address: &Address);
+
+    fn set_address_converter(&self, converter: Arc<AddressConverter>);
 }

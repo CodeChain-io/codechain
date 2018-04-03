@@ -14,16 +14,39 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use parking_lot::RwLock;
+use std::sync::Arc;
 
-use super::{ALPHA, Config, K, NodeId, T_REFRESH};
+use parking_lot::RwLock;
+use rlp::{Decodable, DecoderError, UntrustedRlp};
+
+use super::{ALPHA, Config, K, T_REFRESH};
 use super::kademlia::Kademlia;
 use super::super::Address;
-use super::super::discovery::{Api as DiscoveryApi};
+use super::super::connection::AddressConverter;
+use super::super::discovery::Api as DiscoveryApi;
+use super::super::extension::NodeId as ExtensionNodeId;
 
 
 pub struct Extension {
     kademlia: RwLock<Kademlia>,
+    converter: RwLock<Arc<AddressConverter>>,
+}
+
+struct DummyConverter;
+impl DummyConverter {
+    fn new() -> Arc<Self> {
+        Arc::new(Self {})
+    }
+}
+
+impl AddressConverter for DummyConverter {
+    fn node_id_to_address(&self, _node_id: &ExtensionNodeId) -> Option<Address> {
+        None
+    }
+
+    fn address_to_node_id(&self, address: &Address) -> Option<usize> {
+        None
+    }
 }
 
 impl Extension {
@@ -31,6 +54,7 @@ impl Extension {
         let kademlia = RwLock::new(Kademlia::new(config.node_id, config.alpha, config.k, config.t_refresh));
         Self {
             kademlia,
+            converter: RwLock::new(DummyConverter::new()),
         }
     }
 }
@@ -51,6 +75,10 @@ impl DiscoveryApi for Extension {
     fn remove(&self, address: &Address) {
         let mut kademlia = self.kademlia.write();
         kademlia.remove(&address);
+    }
+
+    fn set_address_converter(&self, converter: Arc<AddressConverter>) {
+        *self.converter.write() = converter;
     }
 }
 
