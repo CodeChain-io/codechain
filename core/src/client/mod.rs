@@ -18,7 +18,6 @@ mod chain_notify;
 mod client;
 mod config;
 mod error;
-mod importer;
 
 pub use self::chain_notify::ChainNotify;
 

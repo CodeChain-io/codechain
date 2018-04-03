@@ -14,8 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::collections::{HashSet, HashMap};
 use std::sync::{Arc, Weak};
 use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
+use std::time::Instant;
 
 use cbytes::Bytes;
 use cio::IoChannel;
@@ -28,16 +30,19 @@ use super::{EngineClient, BlockChainInfo, BlockInfo, TransactionInfo,
             ChainInfo, ChainNotify, ClientConfig, ImportBlock,
             BlockChainClient, BlockChain as BlockChainTrait, Error as ClientError
 };
-use super::importer::Importer;
-use super::super::blockchain::{BlockChain, BlockProvider, TransactionAddress};
+use super::super::block::{IsBlock, LockedBlock, Drain};
+use super::super::blockchain::{BlockChain, BlockProvider, TransactionAddress, ImportRoute};
 use super::super::consensus::CodeChainEngine;
 use super::super::encoded;
 use super::super::error::{Error, BlockImportError, ImportError};
+use super::super::header::Header;
 use super::super::service::ClientIoMessage;
 use super::super::spec::Spec;
 use super::super::state_db::StateDB;
 use super::super::transaction::PendingTransaction;
 use super::super::types::{BlockId, BlockNumber, BlockStatus, TransactionId, VerificationQueueInfo as BlockQueueInfo};
+use super::super::verification::{self, Verifier, PreverifiedBlock};
+use super::super::verification::queue::BlockQueue;
 
 const MAX_TX_QUEUE_SIZE: usize = 4096;
 
@@ -290,6 +295,154 @@ impl BlockChainClient for Client {
     fn block_hash(&self, id: BlockId) -> Option<H256> {
         let chain = self.chain.read();
         Self::block_hash(&chain, id)
+    }
+}
+
+pub struct Importer {
+    /// Lock used during block import
+    pub import_lock: Mutex<()>, // FIXME Maybe wrap the whole `Importer` instead?
+
+    /// Used to verify blocks
+    pub verifier: Box<Verifier<Client>>,
+
+    /// Queue containing pending blocks
+    pub block_queue: BlockQueue,
+
+    /// CodeChain engine to be used during import
+    pub engine: Arc<CodeChainEngine>,
+}
+
+impl Importer {
+    pub fn new(
+        config: &ClientConfig,
+        engine: Arc<CodeChainEngine>,
+        message_channel: IoChannel<ClientIoMessage>,
+    ) -> Result<Importer, Error> {
+        let block_queue = BlockQueue::new(config.queue.clone(), engine.clone(), message_channel.clone(), config.verifier_type.verifying_seal());
+
+        Ok(Importer {
+            import_lock: Mutex::new(()),
+            verifier: verification::new(config.verifier_type.clone()),
+            block_queue,
+            engine,
+        })
+    }
+
+    /// This is triggered by a message coming from a block queue when the block is ready for insertion
+    pub fn import_verified_blocks(&self, client: &Client) -> usize {
+        let max_blocks_to_import = 4;
+        let (imported_blocks, import_results, invalid_blocks, imported, proposed_blocks, duration, is_empty) = {
+            let mut imported_blocks = Vec::with_capacity(max_blocks_to_import);
+            let mut invalid_blocks = HashSet::new();
+            let mut proposed_blocks = Vec::with_capacity(max_blocks_to_import);
+            let mut import_results = Vec::with_capacity(max_blocks_to_import);
+
+            let _import_lock = self.import_lock.lock();
+            let blocks = self.block_queue.drain(max_blocks_to_import);
+            if blocks.is_empty() {
+                return 0;
+            }
+            let start = Instant::now();
+
+            for block in blocks {
+                let header = &block.header;
+                let is_invalid = invalid_blocks.contains(header.parent_hash());
+                if is_invalid {
+                    invalid_blocks.insert(header.hash());
+                    continue;
+                }
+                if let Ok(closed_block) = self.check_and_close_block(&block, client) {
+                    if self.engine.is_proposal(&block.header) {
+                        self.block_queue.mark_as_good(&[header.hash()]);
+                        proposed_blocks.push(block.bytes);
+                    } else {
+                        imported_blocks.push(header.hash());
+
+                        let route = self.commit_block(closed_block, &header, &block.bytes, client);
+                        import_results.push(route);
+                    }
+                } else {
+                    invalid_blocks.insert(header.hash());
+                }
+            }
+
+            let imported = imported_blocks.len();
+            let invalid_blocks = invalid_blocks.into_iter().collect::<Vec<H256>>();
+
+            if !invalid_blocks.is_empty() {
+                self.block_queue.mark_as_bad(&invalid_blocks);
+            }
+            let is_empty = self.block_queue.mark_as_good(&imported_blocks);
+            let duration_ns = {
+                let elapsed = start.elapsed();
+                elapsed.as_secs() * 1_000_000_000 + elapsed.subsec_nanos() as u64
+            };
+            (imported_blocks, import_results, invalid_blocks, imported, proposed_blocks, duration_ns, is_empty)
+        };
+
+        {
+            if !imported_blocks.is_empty() && is_empty {
+                let (enacted, retracted) = self.calculate_enacted_retracted(&import_results);
+
+                if is_empty {
+                    // FIXME: Notify miner.
+                    // self.miner.chain_new_blocks(client, &imported_blocks, &invalid_blocks, &enacted, &retracted);
+                }
+
+                client.notify(|notify| {
+                    notify.new_blocks(
+                        imported_blocks.clone(),
+                        invalid_blocks.clone(),
+                        enacted.clone(),
+                        retracted.clone(),
+                        Vec::new(),
+                        proposed_blocks.clone(),
+                        duration,
+                    );
+                });
+            }
+        }
+
+        client.db.read().flush().expect("DB flush failed.");
+        imported
+    }
+
+    fn calculate_enacted_retracted(&self, import_results: &[ImportRoute]) -> (Vec<H256>, Vec<H256>) {
+        fn map_to_vec(map: Vec<(H256, bool)>) -> Vec<H256> {
+            map.into_iter().map(|(k, _v)| k).collect()
+        }
+
+        // In ImportRoute we get all the blocks that have been enacted and retracted by single insert.
+        // Because we are doing multiple inserts some of the blocks that were enacted in import `k`
+        // could be retracted in import `k+1`. This is why to understand if after all inserts
+        // the block is enacted or retracted we iterate over all routes and at the end final state
+        // will be in the hashmap
+        let map = import_results.iter().fold(HashMap::new(), |mut map, route| {
+            for hash in &route.enacted {
+                map.insert(hash.clone(), true);
+            }
+            for hash in &route.retracted {
+                map.insert(hash.clone(), false);
+            }
+            map
+        });
+
+        // Split to enacted retracted (using hashmap value)
+        let (enacted, retracted) = map.into_iter().partition(|&(_k, v)| v);
+        // And convert tuples to keys
+        (map_to_vec(enacted), map_to_vec(retracted))
+    }
+
+    // NOTE: the header of the block passed here is not necessarily sealed, as
+    // it is for reconstructing the state transition.
+    //
+    // The header passed is from the original block data and is sealed.
+    fn commit_block<B>(&self, _block: B, _header: &Header, _block_data: &[u8], _client: &Client) -> ImportRoute where B: IsBlock + Drain {
+        unimplemented!();
+    }
+
+    fn check_and_close_block(&self, _block: &PreverifiedBlock, _client: &Client) -> Result<LockedBlock, ()> {
+        unimplemented!();
     }
 }
 
