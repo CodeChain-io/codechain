@@ -31,11 +31,13 @@ mod random;
 mod address;
 mod keypair;
 mod error;
+mod exchange;
 mod network;
 mod private;
 mod signature;
 
 pub use error::Error;
+pub use exchange::exchange;
 pub use keypair::{KeyPair, public_to_address};
 pub use network::Network;
 pub use private::Private;
@@ -48,7 +50,7 @@ use codechain_types::H256;
 /// 32 bytes long signable message
 pub type Message = H256;
 
-pub use codechain_types::{Address, Public};
+pub use codechain_types::{Address, Public, Secret};
 
 lazy_static! {
 	pub static ref SECP256K1: secp256k1::Secp256k1 = secp256k1::Secp256k1::new();
