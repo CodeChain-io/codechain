@@ -27,12 +27,9 @@ pub enum Message {
     ConnectionDenied(Version, Seq, String),
 }
 
-const REQUEST_LEN: u8 = 18;
-const REQUEST: &str = "connection-request";
-const ALLOWED_LEN: u8 = 18;
-const ALLOWED: &str = "connection-allowed";
-const DENIED_LEN: u8 = 17;
-const DENIED: &str = "connection-denied";
+const CONNECTION_REQUEST: u8 = 0x1;
+const CONNECTION_ALLOWED: u8 = 0x2;
+const CONNECTION_DENIED: u8 = 0x3;
 
 impl Message {
     pub fn connection_request(seq: Seq, body: Vec<u8>) -> Self {
@@ -47,11 +44,11 @@ impl Message {
         Message::ConnectionDenied(0, seq,reason)
     }
 
-    pub fn name(&self) -> &'static str {
+    pub fn protocol_id(&self) -> u8 {
         match self {
-            &Message::ConnectionRequest(_, _, _) => REQUEST,
-            &Message::ConnectionAllowed(_, _, _) => ALLOWED,
-            &Message::ConnectionDenied(_, _, _) => DENIED,
+            &Message::ConnectionRequest(_, _, _) => CONNECTION_REQUEST,
+            &Message::ConnectionAllowed(_, _, _) => CONNECTION_ALLOWED,
+            &Message::ConnectionDenied(_, _, _) => CONNECTION_DENIED,
         }
     }
 }
@@ -63,21 +60,21 @@ impl Encodable for Message {
                 s.begin_list(4)
                     .append(&version)
                     .append(&seq)
-                    .append(&self.name())
+                    .append(&self.protocol_id())
                     .append(body);
             },
             &Message::ConnectionAllowed(version, seq, ref body) => {
                 s.begin_list(4)
                     .append(&version)
                     .append(&seq)
-                    .append(&self.name())
+                    .append(&self.protocol_id())
                     .append(body);
             },
             &Message::ConnectionDenied(version, seq, ref reason) => {
                 s.begin_list(4)
                     .append(&version)
                     .append(&seq)
-                    .append(&self.name())
+                    .append(&self.protocol_id())
                     .append(reason);
             },
         }
@@ -88,23 +85,23 @@ impl Decodable for Message {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
         let version: Version = rlp.val_at(0)?;
         let seq: Seq = rlp.val_at(1)?;
-        let name: String = rlp.val_at(2)?;
+        let protocol_id: u8 = rlp.val_at(2)?;
         debug_assert_eq!(0, version);
-        match name.as_ref() {
-            REQUEST => {
+        match protocol_id {
+            CONNECTION_REQUEST => {
                 let body: Raw = rlp.val_at(3)?;
                 Ok(Message::connection_request(seq, body))
             },
-            ALLOWED => {
+            CONNECTION_ALLOWED => {
                 let body: Raw = rlp.val_at(3)?;
                 Ok(Message::connection_allowed(seq, body))
             },
-            DENIED => {
+            CONNECTION_DENIED => {
                 let reason: String = rlp.val_at(3)?;
                 Ok(Message::connection_denied(seq, reason))
             },
             _ =>
-                Err(DecoderError::Custom("Invalid message name")),
+                Err(DecoderError::Custom("Invalid protocol id")),
         }
     }
 }
@@ -120,12 +117,9 @@ mod tests {
 
     const SINGLE: u8 = 0x80;
     const LIST: u8 = 0xc0;
-    use super::REQUEST_LEN;
-    use super::REQUEST;
-    use super::ALLOWED_LEN;
-    use super::ALLOWED;
-    use super::DENIED_LEN;
-    use super::DENIED;
+    use super::CONNECTION_REQUEST;
+    use super::CONNECTION_ALLOWED;
+    use super::CONNECTION_DENIED;
 
     const VERSION: Version = 0;
 
@@ -140,7 +134,7 @@ mod tests {
         let bytes = req.rlp_bytes();
         assert_eq!(1
                    + 1 /* version */ + 1 /* seq */
-                   + 1 + REQUEST_LEN as usize /* name */
+                   + 1 /* protocol id */
                    + nonce.len() /* rlp(nonce) */, bytes.len());
 
         // length prefix
@@ -152,13 +146,11 @@ mod tests {
         // seq
         assert_eq!(SINGLE as Seq + SEQ, bytes[2] as Seq);
 
-        // name
-        assert_eq!(SINGLE + REQUEST_LEN, bytes[3]);
-        const START_OF_TYPE: usize = 4;
-        const START_OF_NONCE: usize = START_OF_TYPE + REQUEST_LEN as usize;
-        assert_eq!(REQUEST.as_bytes(), &bytes[START_OF_TYPE..START_OF_NONCE]);
+        // protocol id
+        assert_eq!(CONNECTION_REQUEST, bytes[3]);
 
         // nonce
+        const START_OF_NONCE: usize = 4;
         assert_eq!(nonce.into_vec().as_slice(), &bytes[START_OF_NONCE..]);
     }
 
@@ -172,9 +164,9 @@ mod tests {
         let allowed = Message::connection_allowed(SEQ, nonce.clone().into_vec());
 
         let bytes = allowed.rlp_bytes();
-        assert_eq!(1 /* version */ + 1 /* seq */
-                       + 1 + ALLOWED_LEN as usize /* name */
-                       + 1 + nonce.len() /* rlp(nonce) */, bytes.len());
+        assert_eq!(1 + 1 /* version */ + 1 /* seq */
+                       + 1 /* protocol id */
+                       + nonce.len() /* rlp(nonce) */, bytes.len());
 
         // length prefix
         assert_eq!(LIST as usize + bytes.len() - 1, bytes[0] as usize);
@@ -185,13 +177,11 @@ mod tests {
         // seq
         assert_eq!(SEQ, bytes[2] as Seq);
 
-        // name
-        assert_eq!(SINGLE + ALLOWED_LEN, bytes[3]);
-        const START_OF_TYPE: usize = 4;
-        const START_OF_NONCE: usize = START_OF_TYPE + ALLOWED_LEN as usize;
+        // protocol id
+        assert_eq!(CONNECTION_ALLOWED, bytes[3]);
 
-        assert_eq!(ALLOWED.as_bytes(), &bytes[START_OF_TYPE..START_OF_NONCE]);
-
+        // nonce
+        const START_OF_NONCE: usize = 4;
         assert_eq!(nonce.into_vec().as_slice(), &bytes[START_OF_NONCE..]);
     }
 
@@ -207,7 +197,7 @@ mod tests {
         let bytes = denied.rlp_bytes();
         assert_eq!(1
                        + 1 /* version */ + 1 /* seq */
-                       + 1 + DENIED_LEN as usize /* name */
+                       + 1 /* protocol id */
                        + 1 + reason_len /* reason */, bytes.len());
 
         // length prefix
@@ -219,13 +209,11 @@ mod tests {
         // seq
         assert_eq!(SEQ, bytes[2] as Seq);
 
-        // name
-        assert_eq!(SINGLE + DENIED_LEN, bytes[3]);
-        const START_OF_TYPE: usize = 4;
-        const START_OF_REASON: usize = START_OF_TYPE + DENIED_LEN as usize;
+        // protocol id
+        assert_eq!(CONNECTION_DENIED, bytes[3]);
+        const START_OF_REASON: usize = 4;
 
-        assert_eq!(DENIED.as_bytes(), &bytes[START_OF_TYPE..START_OF_REASON]);
-
+        // reason
         assert_eq!(SINGLE + reason_len as u8, bytes[START_OF_REASON]);
         assert_eq!(REASON.as_bytes(), &bytes[(START_OF_REASON + 1)..(START_OF_REASON + 1 + reason_len)]);
     }
@@ -238,21 +226,19 @@ mod tests {
 
         let mut bytes: Vec<u8> = vec![
             LIST + 1 /* version */ + 1 /* seq */
-                + 1 + REQUEST_LEN /* name */
+                + 1 /* protocol id */
                 + nonce.len() as u8 /* rlp(nonce) */];
 
         bytes.push(SINGLE + VERSION as u8);
 
         bytes.push(SEQ as u8);
 
-        bytes.push(SINGLE + REQUEST_LEN);
-        bytes.extend_from_slice(REQUEST.as_bytes());
+        bytes.push(CONNECTION_REQUEST);
 
         bytes.extend_from_slice(nonce.as_slice());
 
         assert_eq!(1 + 1 /* version */ + 1 /* seq */
-                + 1 + REQUEST_LEN as usize /* name */
-                + nonce.len() /* rlp(nonce) */, bytes.len());
+                + 1 /* protocol id */ + nonce.len() /* rlp(nonce) */, bytes.len());
 
         let rlp = UntrustedRlp::new(&bytes);
 
@@ -270,21 +256,20 @@ mod tests {
 
         let mut bytes: Vec<u8> = vec![
             LIST + 1 /* version */ + 1 /* seq */
-                + 1 + ALLOWED_LEN /* name */
+                + 1 /* protocol id */
                 + nonce.len() as u8 /* rlp(nonce) */];
 
         bytes.push(SINGLE + VERSION as u8);
 
         bytes.push(SEQ as u8);
 
-        bytes.push(SINGLE + ALLOWED_LEN);
-        bytes.extend_from_slice(ALLOWED.as_bytes());
+        bytes.push(CONNECTION_ALLOWED);
 
         bytes.extend_from_slice(nonce.as_slice());
 
         assert_eq!(1 + 1 /* version */ + 1 /* seq */
-                + 1 + ALLOWED_LEN as usize /* name */
-                + nonce.len() /* rlp(nonce) */, bytes.len());
+                       + 1 /* protocol id */
+                       + nonce.len() /* rlp(nonce) */, bytes.len());
 
         let rlp = UntrustedRlp::new(&bytes);
         match Decodable::decode(&rlp) {
@@ -302,20 +287,19 @@ mod tests {
 
         let mut bytes: Vec<u8> = vec![
             LIST + 1 /* version */ + 1 /* seq */
-                + 1 + DENIED_LEN as u8 /* name */
+                + 1 /* protocol id */
                 + 1 + reason_len as u8 /* reason */];
 
         bytes.push(SINGLE + VERSION as u8);
 
         bytes.push(SEQ as u8);
 
-        bytes.push(SINGLE + DENIED_LEN);
-        bytes.extend_from_slice(DENIED.as_bytes());
+        bytes.push(CONNECTION_DENIED);
 
         bytes.extend_from_slice(REASON.rlp_bytes().into_vec().as_slice());
 
         assert_eq!(1 + 1 /* version */ + 1 /* seq */
-                + 1 + DENIED_LEN as usize /* name */
+                + 1 /* protocol id */
                 + 1 + reason_len, bytes.len());
 
         let rlp = UntrustedRlp::new(&bytes);
@@ -336,7 +320,7 @@ mod tests {
         let bytes = req.rlp_bytes();
         assert_eq!(1
                    + 1 /* version */ + 1 /* seq */
-                   + 1 + REQUEST_LEN as usize /* name */
+                   + 1 /* protocol id */
                    + 1 + nonce.len() /* rlp(nonce) */, bytes.len());
 
         // length prefix
@@ -348,13 +332,11 @@ mod tests {
         // seq
         assert_eq!(SINGLE as Seq + SEQ, bytes[2] as Seq);
 
-        // name
-        assert_eq!(SINGLE + REQUEST_LEN, bytes[3]);
-        const START_OF_TYPE: usize = 4;
-        const START_OF_NONCE: usize = START_OF_TYPE + REQUEST_LEN as usize;
-        assert_eq!(REQUEST.as_bytes(), &bytes[START_OF_TYPE..START_OF_NONCE]);
+        // protocol id
+        assert_eq!(CONNECTION_REQUEST, bytes[3]);
 
         // nonce
+        const START_OF_NONCE: usize = 4;
         assert_eq!(SINGLE + nonce.len() as u8, bytes[START_OF_NONCE]);
         assert_eq!(nonce.into_vec().as_slice(), &bytes[(START_OF_NONCE + 1)..]);
     }
@@ -370,7 +352,7 @@ mod tests {
         let bytes = allowed.rlp_bytes();
         assert_eq!(1
                    +1 /* version */ + 1 /* seq */
-                   + 1 + ALLOWED_LEN as usize /* name */
+                   + 1 /* protocol id */
                    + 1 + nonce.len() /* rlp(nonce) */, bytes.len());
 
         // length prefix
@@ -383,12 +365,10 @@ mod tests {
         assert_eq!(SEQ, bytes[2] as Seq);
 
         // name
-        assert_eq!(SINGLE + ALLOWED_LEN, bytes[3]);
-        const START_OF_TYPE: usize = 4;
-        const START_OF_NONCE: usize = START_OF_TYPE + ALLOWED_LEN as usize;
+        assert_eq!(CONNECTION_ALLOWED, bytes[3]);
 
-        assert_eq!(ALLOWED.as_bytes(), &bytes[START_OF_TYPE..START_OF_NONCE]);
-
+        // nonce
+        const START_OF_NONCE: usize = 4;
         assert_eq!(SINGLE + nonce.len() as u8, bytes[START_OF_NONCE]);
         assert_eq!(nonce.into_vec().as_slice(), &bytes[(1 + START_OF_NONCE)..]);
     }
@@ -402,21 +382,20 @@ mod tests {
         const SEQ: Seq = 0x39;
         let mut bytes: Vec<u8> = vec![
             LIST + 1 /* version */ + 1 /* seq */
-                + 1 + REQUEST_LEN /* name */
+                + 1 /* protocol id */
                 + 1 + nonce.len() as u8 /* rlp(nonce) */];
 
         bytes.push(SINGLE + VERSION as u8);
 
         bytes.push(SEQ as u8);
 
-        bytes.push(SINGLE + REQUEST_LEN);
-        bytes.extend_from_slice(REQUEST.as_bytes());
+        bytes.push(CONNECTION_REQUEST);
 
         bytes.push(SINGLE + nonce.len() as u8);
         bytes.extend_from_slice(nonce.as_slice());
 
         assert_eq!(1 + 1 /* version */ + 1 /* seq */
-                + 1 + REQUEST_LEN as usize /* name */
+                + 1 /* protocol id */
                 + 1 + nonce.len() /* rlp(nonce) */, bytes.len());
 
         let rlp = UntrustedRlp::new(&bytes);
@@ -435,21 +414,20 @@ mod tests {
 
         let mut bytes: Vec<u8> = vec![
             LIST + 1 /* version */ + 1 /* seq */
-                + 1 + REQUEST_LEN /* name */
+                + 1 /* protocol id */
                 + 1 + nonce.len() as u8 /* rlp(nonce) */];
 
         bytes.push(SINGLE + VERSION as u8);
 
         bytes.push(SEQ as u8);
 
-        bytes.push(SINGLE + ALLOWED_LEN);
-        bytes.extend_from_slice(ALLOWED.as_bytes());
+        bytes.push(CONNECTION_ALLOWED);
 
         bytes.push(SINGLE + nonce.len() as u8);
         bytes.extend_from_slice(nonce.as_slice());
 
         assert_eq!(1 + 1 /* version */ + 1 /* seq */
-                + 1 + ALLOWED_LEN as usize /* name */
+                + 1 /* protocol id */
                 + 1 + nonce.len() /* rlp(nonce) */, bytes.len());
 
         let rlp = UntrustedRlp::new(&bytes);
