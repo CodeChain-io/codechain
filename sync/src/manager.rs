@@ -42,11 +42,32 @@ impl DownloadManager {
         }
     }
 
+    /// Import block headers to Download Manager
+    /// Headers should be sorted by block number, and connected from start to end
     pub fn import_headers(&mut self, headers: Vec<Header>) {
-        if headers.len() != 0 && !headers.iter().any(|header| self.headers.contains_key(&header.hash())) {
+        // Empty header list is valid case
+        if headers.len() == 0 {
+            return;
+        }
+
+        // Validity check
+        let first_parent_hash = headers.first().unwrap().parent_hash().clone();
+        if !self.headers.contains_key(&first_parent_hash) && first_parent_hash != self.best_hash {
             info!("DownloadManager: Unexpected headers");
             return;
         }
+
+        // Continuity check
+        for i in 0..(headers.len() - 1) {
+            let parent = headers.get(i).unwrap();
+            let child = headers.get(i + 1).unwrap();
+            if child.number() != parent.number() + 1 || *child.parent_hash() != parent.hash() {
+                info!("DownloadManager: Headers not continuous");
+                return;
+            }
+        }
+
+        // Import headers
         for header in headers {
             if header.number() <= self.best_number + MAX_BUFFER_LENGTH {
                 self.headers.insert(header.hash(), header);
@@ -87,17 +108,17 @@ mod tests {
 
     #[test]
     fn should_import_known_blocks() {
-        let best_hash = H256::default();
         let best_number = 0;
-        let mut manager = DownloadManager::new(best_hash, best_number);
-        let mut blocks = Vec::new();
-        for i in 1..10 {
+        let mut manager = DownloadManager::new(H256::default(), best_number);
+        let mut blocks: Vec<(Header, _)> = Vec::new();
+        for i in 0..10 {
             let mut header = Header::default();
             let body: Vec<UnverifiedTransaction> = Vec::new();
             let tx_root = ordered_trie_root(body.iter().map(|tx| tx.rlp_bytes()));
             header.set_number(best_number + i);
             header.set_score(U256::from(i * 2));
             header.set_transactions_root(tx_root);
+            header.set_parent_hash(blocks.last().map_or(manager.best_hash, |&(ref h, _)| h.hash()));
             blocks.push((header, body));
         }
         manager.import_headers(blocks.iter().map(|&(ref header, _)| header.clone()).collect());
@@ -105,7 +126,6 @@ mod tests {
 
         for (header, body) in blocks {
             let hash = header.hash();
-            assert!(manager.hashes.contains(&hash));
             assert!(manager.headers.contains_key(&hash));
             assert_eq!(*manager.headers.get(&hash).unwrap(), header);
             assert!(manager.bodies.contains_key(&hash));
@@ -118,14 +138,15 @@ mod tests {
         let best_hash = H256::default();
         let best_number = 0;
         let mut manager = DownloadManager::new(best_hash, best_number);
-        let mut headers = Vec::new();
-        for i in 1..10 {
+        let mut headers: Vec<Header> = Vec::new();
+        for i in 0..10 {
             let mut header = Header::default();
             header.set_number(best_number + i);
             header.set_score(U256::from(i * 2));
+            header.set_parent_hash(headers.last().map_or(manager.best_hash, |h| h.hash()));
             headers.push(header);
         }
-        manager.import_headers(headers.clone());
+        manager.import_headers(Vec::from(&headers[1..]));
 
         for header in headers {
             assert!(!manager.headers.contains_key(&header.hash()));
@@ -142,9 +163,9 @@ mod tests {
             let mut header = Header::default();
             header.set_number(best_number + i + super::MAX_BUFFER_LENGTH);
             header.set_score(U256::from(i * 2));
+            header.set_parent_hash(headers.last().map_or(manager.best_hash, |h| h.hash()));
             headers.push(header);
         }
-        manager.import_hashes(vec![headers.first().unwrap().hash()]);
         manager.import_headers(headers.clone());
 
         for header in headers {
