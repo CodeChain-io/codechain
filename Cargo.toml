@@ -13,6 +13,7 @@ codechain-network = { path = "network" }
 codechain-reactor = { path = "util/reactor" }
 codechain-rpc = { path = "rpc" }
 codechain-sync = { path = "sync" }
+codechain-types = { path = "primitives/codechain-types" }
 ctrlc = { git = "https://github.com/paritytech/rust-ctrlc.git" }
 fdlimit = "0.1"
 futures = "0.1"
