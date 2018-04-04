@@ -42,3 +42,6 @@ args:
         long: no-jsonrpc
         help: Do not run jsonrpc.
         takes_value: false
+    - secret-key:
+        long: secret-key
+        help: Secret key used by node

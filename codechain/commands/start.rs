@@ -32,11 +32,13 @@ pub fn rpc_start(cfg: RpcHttpConfig) -> Result<RpcServer, String> {
 
 pub fn network_start(cfg: NetworkConfig, discovery: Arc<DiscoveryApi>) -> Result<NetworkService, String> {
     info!("Handshake Listening on {}", cfg.port);
+    let secret_key = cfg.secret_key;
     let address = Address::v4(127, 0, 0, 1, cfg.port);
     let service = NetworkService::start(
         address,
         cfg.bootstrap_addresses,
-        discovery
+        secret_key,
+        discovery,
     ).map_err(|e| format!("Network service error: {:?}", e))?;
 
     Ok(service)

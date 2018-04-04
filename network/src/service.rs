@@ -18,6 +18,7 @@
 use std::sync::Arc;
 
 use cio::{IoError, IoService};
+use ctypes::Secret;
 
 use super::{Address, Api, DiscoveryApi, Extension};
 use super::client::Client;
@@ -31,7 +32,7 @@ pub struct Service {
 }
 
 impl Service {
-    pub fn start(address: Address, bootstrap_addresses: Vec<Address>, discovery: Arc<DiscoveryApi>) -> Result<Self, IoError> {
+    pub fn start(address: Address, bootstrap_addresses: Vec<Address>, secret_key: Secret, discovery: Arc<DiscoveryApi>) -> Result<Self, IoError> {
         let extension_service = IoService::start()?;
         let extension_channel =  extension_service.channel();
 
@@ -41,7 +42,7 @@ impl Service {
         extension_service.register_handler(connection_handler)?;
 
         let handshake_service = IoService::start()?;
-        let handshake_handler = Arc::new(handshake::Handler::new(address, extension_channel, discovery));
+        let handshake_handler = Arc::new(handshake::Handler::new(address, secret_key, extension_channel, discovery));
         handshake_service.register_handler(handshake_handler)?;
 
         for address in bootstrap_addresses {
