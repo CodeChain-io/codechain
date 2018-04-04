@@ -761,3 +761,31 @@ fn destructure_proofs(combined: &[u8]) -> Result<(BlockNumber, &[u8], &[u8]), Er
         rlp.at(2)?.data()?,
     ))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::super::super::error::{Error, BlockError};
+    use super::super::super::header::Header;
+    use super::super::super::spec::Spec;
+
+    #[test]
+    fn has_valid_metadata() {
+        let engine = Spec::new_test_tendermint().engine;
+        assert!(!engine.name().is_empty());
+    }
+
+    #[test]
+    fn verification_fails_on_short_seal() {
+        let engine = Spec::new_test_tendermint().engine;
+        let header = Header::default();
+
+        let verify_result = engine.verify_block_basic(&header);
+
+        match verify_result {
+            Err(Error::Block(BlockError::InvalidSealArity(_))) => {},
+            Err(_) => { panic!("should be block seal-arity mismatch error (got {:?})", verify_result); },
+            _ => { panic!("Should be error, got Ok"); },
+        }
+    }
+}
+
