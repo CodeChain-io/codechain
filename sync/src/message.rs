@@ -18,13 +18,11 @@ use ccore::{Header, UnverifiedTransaction};
 use ctypes::{H256, U256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
-const MESSAGE_ID_STATUS: u8 = 0x00;
-const MESSAGE_ID_REQUEST_HASHES: u8 = 0x01;
-const MESSAGE_ID_HASHES: u8 = 0x02;
-const MESSAGE_ID_REQUEST_HEADERS: u8 = 0x03;
-const MESSAGE_ID_HEADERS: u8 = 0x04;
-const MESSAGE_ID_REQUEST_BODIES: u8 = 0x05;
-const MESSAGE_ID_BODIES: u8 = 0x06;
+const MESSAGE_ID_STATUS: u8 = 0x01;
+const MESSAGE_ID_REQUEST_HEADERS: u8 = 0x02;
+const MESSAGE_ID_HEADERS: u8 = 0x03;
+const MESSAGE_ID_REQUEST_BODIES: u8 = 0x04;
+const MESSAGE_ID_BODIES: u8 = 0x05;
 
 #[derive(Debug, PartialEq)]
 pub enum Message {
@@ -33,12 +31,6 @@ pub enum Message {
         best_hash: H256,
         genesis_hash: H256,
     },
-    RequestHashes {
-        start_hash: H256,
-        max_count: u64,
-        skip: u64,
-    },
-    Hashes(Vec<H256>),
     RequestHeaders {
         start_hash: H256,
         max_count: u64,
@@ -54,8 +46,6 @@ impl Encodable for Message {
         // add message id
         s.append(match self {
             &Message::Status {..} => &MESSAGE_ID_STATUS,
-            &Message::RequestHashes {..} => &MESSAGE_ID_REQUEST_HASHES,
-            &Message::Hashes {..} => &MESSAGE_ID_HASHES,
             &Message::RequestHeaders {..} => &MESSAGE_ID_REQUEST_HEADERS,
             &Message::Headers {..} => &MESSAGE_ID_HEADERS,
             &Message::RequestBodies {..} => &MESSAGE_ID_REQUEST_BODIES,
@@ -69,13 +59,6 @@ impl Encodable for Message {
                 s.append(&best_hash);
                 s.append(&genesis_hash);
             },
-            &Message::RequestHashes { start_hash, max_count, skip } => {
-                s.begin_list(3);
-                s.append(&start_hash);
-                s.append(&max_count);
-                s.append(&skip);
-            },
-            &Message::Hashes(ref hashes) => { s.append_list(hashes); },
             &Message::RequestHeaders { start_hash, max_count } => {
                 s.begin_list(2);
                 s.append(&start_hash);
@@ -105,15 +88,6 @@ impl Decodable for Message {
                     genesis_hash: message.val_at(2)?,
                 }
             },
-            MESSAGE_ID_REQUEST_HASHES => {
-                if message.item_count()? != 3 { return Err(DecoderError::RlpIncorrectListLen); }
-                Message::RequestHashes {
-                    start_hash: message.val_at(0)?,
-                    max_count: message.val_at(1)?,
-                    skip: message.val_at(2)?,
-                }
-            },
-            MESSAGE_ID_HASHES => Message::Hashes(message.as_list()?),
             MESSAGE_ID_REQUEST_HEADERS => {
                 if message.item_count()? != 2 { return Err(DecoderError::RlpIncorrectListLen); }
                 Message::RequestHeaders {
@@ -137,7 +111,7 @@ impl Decodable for Message {
 
 #[cfg(test)]
 mod tests {
-    use ccore::{Header, UnverifiedTransaction};
+    use ccore::Header;
     use ctypes::{H256, U256};
     use rlp::Encodable;
 
@@ -154,22 +128,6 @@ mod tests {
     }
 
     #[test]
-    fn test_request_hashes_message_rlp() {
-        let message = Message::RequestHashes {
-            start_hash: H256::default(),
-            max_count: 100,
-            skip: 100,
-        };
-        assert_eq!(message, ::rlp::decode(message.rlp_bytes().as_ref()));
-    }
-
-    #[test]
-    fn test_hashes_message_rlp() {
-        let message = Message::Hashes(vec![H256::default()]);
-        assert_eq!(message, ::rlp::decode(message.rlp_bytes().as_ref()));
-    }
-
-    #[test]
     fn test_request_headers_message_rlp() {
         let message = Message::RequestHeaders {
             start_hash: H256::default(),
@@ -180,7 +138,7 @@ mod tests {
 
     #[test]
     fn test_headers_message_rlp() {
-        let mut headers = vec![Header::default()];
+        let headers = vec![Header::default()];
         headers.iter().for_each(|header| { header.hash(); });
 
         let message = Message::Headers(headers);

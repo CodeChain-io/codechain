@@ -102,12 +102,6 @@ impl Extension for BlockSyncExtension {
                         info!("BlockSyncExtension: genesis hash mismatch with peer {}", id);
                     }
                 },
-                Message::RequestHashes { start_hash, max_count, skip } => {
-                    self.return_hashes(id, start_hash, max_count, skip);
-                },
-                Message::Hashes(hashes) => {
-                    self.manager.lock().import_hashes(hashes);
-                },
                 Message::RequestHeaders { start_hash, max_count } => {
                     self.return_headers(id, start_hash, max_count);
                 },
@@ -137,21 +131,6 @@ impl Extension for BlockSyncExtension {
 impl BlockSyncExtension {
     fn on_peer_status(&self, id: &NodeId, total_score: U256, best_hash: H256) {
         self.peers.write().insert(*id, Peer { total_score, best_hash });
-    }
-
-    fn return_hashes(&self, id: &NodeId, start_hash: H256, max_count: u64, skip: u64) {
-        let mut hashes = Vec::new();
-        if let Some(header) = self.client.block_header(BlockId::Hash(start_hash)) {
-            let start_number = header.number();
-            for i in 0..max_count {
-                if let Some(hash) = self.client.block_hash(BlockId::Number(start_number + i * skip)) {
-                    hashes.push(hash);
-                } else {
-                    break;
-                }
-            }
-        }
-        self.send(id, Message::Hashes(hashes));
     }
 
     fn return_headers(&self, id: &NodeId, start_hash: H256, max_count: u64) {
