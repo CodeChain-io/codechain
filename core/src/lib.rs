@@ -70,6 +70,7 @@ mod views;
 #[cfg(test)]
 mod tests;
 
+pub use block::Block;
 pub use client::{BlockChainClient, Client};
 pub use error::Error;
 pub use header::Header;
