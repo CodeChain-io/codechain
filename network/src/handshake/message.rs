@@ -21,10 +21,17 @@ type Raw = Vec<u8>;
 type Seq = u64;
 
 #[derive(Clone, Debug, PartialOrd, PartialEq)]
-pub enum Message {
-    ConnectionRequest(Version, Seq, Raw),
-    ConnectionAllowed(Version, Seq, Raw),
-    ConnectionDenied(Version, Seq, String),
+pub struct Message {
+    version: Version,
+    seq: Seq,
+    body: Body,
+}
+
+#[derive(Clone, Debug, PartialOrd, PartialEq)]
+pub enum Body {
+    ConnectionRequest(Raw),
+    ConnectionAllowed(Raw),
+    ConnectionDenied(String),
 }
 
 const CONNECTION_REQUEST: u8 = 0x1;
@@ -33,49 +40,67 @@ const CONNECTION_DENIED: u8 = 0x3;
 
 impl Message {
     pub fn connection_request(seq: Seq, body: Vec<u8>) -> Self {
-        Message::ConnectionRequest(0, seq,body)
+        Self {
+            version: 0,
+            seq,
+            body: Body::ConnectionRequest(body),
+        }
     }
 
     pub fn connection_allowed(seq: Seq, body: Vec<u8>) -> Self {
-        Message::ConnectionAllowed(0, seq, body)
+        Self {
+            version: 0,
+            seq,
+            body: Body::ConnectionAllowed(body),
+        }
     }
 
     pub fn connection_denied(seq: Seq, reason: String) -> Self {
-        Message::ConnectionDenied(0, seq,reason)
+        Self {
+            version: 0,
+            seq,
+            body: Body::ConnectionDenied(reason),
+        }
     }
 
     pub fn protocol_id(&self) -> u8 {
-        match self {
-            &Message::ConnectionRequest(_, _, _) => CONNECTION_REQUEST,
-            &Message::ConnectionAllowed(_, _, _) => CONNECTION_ALLOWED,
-            &Message::ConnectionDenied(_, _, _) => CONNECTION_DENIED,
+        match self.body {
+            Body::ConnectionRequest(_) => CONNECTION_REQUEST,
+            Body::ConnectionAllowed(_) => CONNECTION_ALLOWED,
+            Body::ConnectionDenied(_) => CONNECTION_DENIED,
         }
+    }
+
+    pub fn body(&self) -> &Body {
+        &self.body
+    }
+
+    pub fn seq(&self) -> Seq {
+        self.seq
+    }
+
+    pub fn version(&self) -> Version {
+        self.version
     }
 }
 
 impl Encodable for Message {
     fn rlp_append(&self, s: &mut RlpStream) {
-        match self {
-            &Message::ConnectionRequest(version, seq, ref body) => {
-                s.begin_list(4)
-                    .append(&version)
-                    .append(&seq)
-                    .append(&self.protocol_id())
-                    .append(body);
+        let version = self.version;
+        let seq = self.seq;
+        s.begin_list(4)
+            .append(&version)
+            .append(&seq)
+            .append(&self.protocol_id());
+        match self.body {
+            Body::ConnectionRequest(ref body) => {
+                s.append(body);
             },
-            &Message::ConnectionAllowed(version, seq, ref body) => {
-                s.begin_list(4)
-                    .append(&version)
-                    .append(&seq)
-                    .append(&self.protocol_id())
-                    .append(body);
+            Body::ConnectionAllowed(ref body) => {
+                s.append(body);
             },
-            &Message::ConnectionDenied(version, seq, ref reason) => {
-                s.begin_list(4)
-                    .append(&version)
-                    .append(&seq)
-                    .append(&self.protocol_id())
-                    .append(reason);
+            Body::ConnectionDenied(ref reason) => {
+                s.append(reason);
             },
         }
     }

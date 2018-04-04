@@ -28,7 +28,7 @@ use mio::net::UdpSocket;
 use parking_lot::{Mutex, RwLock};
 use rlp::{UntrustedRlp, Encodable, Decodable, DecoderError};
 
-use super::HandshakeMessage;
+use super::{HandshakeMessage, HandshakeMessageBody};
 use super::super::session::{Nonce, Session, SessionError, SessionTable, SharedSecret};
 use super::super::{Address, DiscoveryApi};
 use super::super::connection;
@@ -167,8 +167,8 @@ impl Handshake {
     }
 
     fn on_packet(&mut self, message: &HandshakeMessage, from: &Address, extension: &IoChannel<connection::HandlerMessage>) -> IoHandlerResult<()> {
-        match message {
-            &HandshakeMessage::ConnectionRequest(_, _, ref nonce) => {
+        match message.body() {
+            &HandshakeMessageBody::ConnectionRequest(ref nonce) => {
                 let encrypted_bytes = {
                     let session = self.table.get(from).ok_or(HandshakeError::NoSession)?;
                     if session.is_ready() {
@@ -187,7 +187,7 @@ impl Handshake {
                 self.send_to(&pong, &from)?;
                 Ok(())
             },
-            &HandshakeMessage::ConnectionAllowed(_, _, ref nonce) => {
+            &HandshakeMessageBody::ConnectionAllowed(ref nonce) => {
                 let session = self.table.get(from).ok_or(HandshakeError::NoSession)?;
                 if !session.is_ready() {
                     return Err(From::from(SessionError::NotReady))
@@ -200,7 +200,7 @@ impl Handshake {
                 extension.send(connection::HandlerMessage::RequestConnection(from.clone(), session.clone()))?;
                 Ok(())
             },
-            &HandshakeMessage::ConnectionDenied(_, _, ref reason) => {
+            &HandshakeMessageBody::ConnectionDenied(ref reason) => {
                 info!("Connection to {:?} refused(reason: {}", from, reason);
                 Ok(())
             },
