@@ -88,34 +88,44 @@ impl Extension for BlockSyncExtension {
     fn on_connection_allowed(&self, id: &NodeId) { self.on_connected(id); }
 
     fn on_message(&self, id: &NodeId, data: &Vec<u8>) {
-        if let Ok(message) = UntrustedRlp::new(data).as_val() {
-            if let Message::Status {..} = message {
+        if let Ok(received_message) = UntrustedRlp::new(data).as_val() {
+            if let Message::Status {..} = received_message {
             } else {
                 if !self.peers.read().contains_key(id) {
                     info!("BlockSyncExtension: message from unexpected peer {}", id);
                     return;
                 }
             }
-            match message {
+
+            // TODO: don't make request if peer has less score
+            let next_message = match received_message {
                 Message::Status { total_score, best_hash, genesis_hash } => {
                     if genesis_hash == self.client.chain_info().genesis_hash {
                         self.on_peer_status(id, total_score, best_hash);
                     } else {
                         info!("BlockSyncExtension: genesis hash mismatch with peer {}", id);
                     }
+                    self.manager.lock().create_request()
                 },
                 Message::RequestHeaders { start_hash, max_count } => {
-                    self.return_headers(id, start_hash, max_count);
+                    Some(self.create_headers_message(start_hash, max_count))
                 },
                 Message::Headers(headers) => {
+                    // TODO: check if response matches requested data
                     self.manager.lock().import_headers(headers);
+                    self.manager.lock().create_request()
                 },
                 Message::RequestBodies(hashes) => {
-                    self.return_bodies(id, hashes);
+                    Some(self.create_bodies_message(hashes))
                 },
                 Message::Bodies(bodies) => {
+                    // TODO: check if response matches requested data
                     self.manager.lock().import_bodies(bodies);
+                    self.manager.lock().create_request()
                 },
+            };
+            if let Some(message) = next_message {
+                self.send(id, message);
             }
         } else {
             info!("BlockSyncExtension: invalid message from peer {}", id);
@@ -135,7 +145,7 @@ impl BlockSyncExtension {
         self.peers.write().insert(*id, Peer { total_score, best_hash });
     }
 
-    fn return_headers(&self, id: &NodeId, start_hash: H256, max_count: u64) {
+    fn create_headers_message(&self, start_hash: H256, max_count: u64) -> Message {
         let mut headers = Vec::new();
         let mut block_id = BlockId::Hash(start_hash);
         for _ in 0..max_count {
@@ -146,16 +156,16 @@ impl BlockSyncExtension {
                 break;
             }
         }
-        self.send(id, Message::Headers(headers));
+        Message::Headers(headers)
     }
 
-    fn return_bodies(&self, id: &NodeId, hashes: Vec<H256>) {
+    fn create_bodies_message(&self, hashes: Vec<H256>) -> Message {
         let mut bodies = Vec::new();
         for hash in hashes {
             if let Some(body) = self.client.block_body(BlockId::Hash(hash)) {
                 bodies.push(body.transactions());
             }
         }
-        self.send(id, Message::Bodies(bodies));
+        Message::Bodies(bodies)
     }
 }
