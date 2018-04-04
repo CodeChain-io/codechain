@@ -34,6 +34,7 @@ use super::{EngineClient, BlockChainInfo, BlockInfo, TransactionInfo,
 use super::super::block::{IsBlock, LockedBlock, Drain, enact};
 use super::super::blockchain::{BlockChain, BlockProvider, TransactionAddress, ImportRoute};
 use super::super::consensus::CodeChainEngine;
+use super::super::consensus::epoch::{Transition as EpochTransition};
 use super::super::encoded;
 use super::super::error::{Error, BlockImportError, ImportError};
 use super::super::header::Header;
@@ -466,16 +467,11 @@ impl Importer {
         // TODO: Prove it with a test.
         let mut state = block.drain();
 
-        // check epoch end signal, potentially generating a proof on the current
-        // state.
+        // check epoch end signal
         self.check_epoch_end_signal(
             &header,
-            block_data,
-            &invoices,
-            &state,
             &chain,
             &mut batch,
-            client
         );
 
         state.journal_under(&mut batch, number, hash).expect("DB commit failed");
@@ -493,23 +489,58 @@ impl Importer {
     }
 
     // check for ending of epoch and write transition if it occurs.
-    fn check_epoch_end<'a>(&self, _header: &'a Header, _chain: &BlockChain, _client: &Client) {
-        unimplemented!();
+    fn check_epoch_end<'a>(&self, header: &'a Header, chain: &BlockChain, client: &Client) {
+        let is_epoch_end = self.engine.is_epoch_end(
+            header,
+            &(|hash| chain.block_header(&hash)),
+            &(|hash| chain.get_pending_transition(hash)), // TODO: limit to current epoch.
+        );
+
+        if let Some(proof) = is_epoch_end {
+            debug!(target: "client", "Epoch transition at block {}", header.hash());
+
+            let mut batch = DBTransaction::new();
+            chain.insert_epoch_transition(&mut batch, header.number(), EpochTransition {
+                block_hash: header.hash(),
+                block_number: header.number(),
+                proof,
+            });
+
+            // always write the batch directly since epoch transition proofs are
+            // fetched from a DB iterator and DB iterators are only available on
+            // flushed data.
+            client.db.read().write(batch).expect("DB flush failed");
+        }
     }
 
     // check for epoch end signal and write pending transition if it occurs.
     // state for the given block must be available.
     fn check_epoch_end_signal(
         &self,
-        _header: &Header,
-        _block_bytes: &[u8],
-        _invoices: &[Invoice],
-        _state_db: &StateDB,
-        _chain: &BlockChain,
-        _batch: &mut DBTransaction,
-        _client: &Client,
+        header: &Header,
+        chain: &BlockChain,
+        batch: &mut DBTransaction,
     ) {
-        unimplemented!();
+        use super::super::consensus::EpochChange;
+        let hash = header.hash();
+
+        match self.engine.signals_epoch_end(header) {
+            EpochChange::Yes(proof) => {
+                use super::super::consensus::epoch::PendingTransition;
+                use super::super::consensus::Proof;
+
+                let Proof::Known(proof)  = proof;
+                debug!(target: "client", "Block {} signals epoch end.", hash);
+
+                let pending = PendingTransition { proof };
+                chain.insert_pending_transition(batch, hash, pending);
+            },
+            EpochChange::No => {},
+            EpochChange::Unsure => {
+                warn!(target: "client", "Detected invalid engine implementation.");
+                warn!(target: "client", "Engine claims to require more block data, but everything provided.");
+            }
+        }
     }
 
     fn check_and_close_block(&self, block: &PreverifiedBlock, client: &Client) -> Result<LockedBlock, ()> {

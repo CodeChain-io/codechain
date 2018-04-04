@@ -36,10 +36,9 @@ use std::sync::Weak;
 use cbytes::Bytes;
 use ckeys::{Private, ECDSASignature};
 use ctypes::{Address, H256};
-use rlp::{Encodable, Decodable, DecoderError, RlpStream, UntrustedRlp};
 use unexpected::{Mismatch, OutOfBounds};
 
-use self::epoch::{EpochVerifier, NoOp};
+use self::epoch::{EpochVerifier, NoOp, PendingTransition};
 use super::codechain_machine::CodeChainMachine;
 use super::error::Error;
 use super::header::Header;
@@ -218,27 +217,6 @@ pub type Headers<'a, H> = Fn(H256) -> Option<H> + 'a;
 
 /// Type alias for a function we can query pending transitions by block hash through.
 pub type PendingTransitionStore<'a> = Fn(H256) -> Option<PendingTransition> + 'a;
-
-/// An epoch transition pending a finality proof.
-/// Not all transitions need one.
-pub struct PendingTransition {
-    /// "transition/epoch" proof from the engine.
-    pub proof: Vec<u8>,
-}
-
-impl Encodable for PendingTransition {
-    fn rlp_append(&self, s: &mut RlpStream) {
-        s.append(&self.proof);
-    }
-}
-
-impl Decodable for PendingTransition {
-    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
-        Ok(PendingTransition {
-            proof: rlp.as_val()?,
-        })
-    }
-}
 
 /// Voting errors.
 #[derive(Debug)]
