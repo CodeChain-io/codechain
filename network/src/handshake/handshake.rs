@@ -204,6 +204,18 @@ impl Handshake {
                 info!("Connection to {:?} refused(reason: {}", from, reason);
                 Ok(())
             },
+            &HandshakeMessageBody::EcdhRequest(ref _key) => {
+                unimplemented!();
+                Ok(())
+            }
+            &HandshakeMessageBody::EcdhAllowed(ref _key) => {
+                unimplemented!();
+                Ok(())
+            }
+            &HandshakeMessageBody::EcdhDenied(ref reason) => {
+                info!("Connection to {:?} refused(reason: {}", from, reason);
+                Ok(())
+            }
         }
     }
 

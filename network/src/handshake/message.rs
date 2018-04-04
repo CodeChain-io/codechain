@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use ctypes::Public;
 use rlp::{UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
 
 type Version = u32;
@@ -32,11 +33,18 @@ pub enum Body {
     ConnectionRequest(Raw),
     ConnectionAllowed(Raw),
     ConnectionDenied(String),
+    EcdhRequest(Public),
+    EcdhAllowed(Public),
+    EcdhDenied(String),
 }
 
 const CONNECTION_REQUEST: u8 = 0x1;
 const CONNECTION_ALLOWED: u8 = 0x2;
 const CONNECTION_DENIED: u8 = 0x3;
+
+const ECDH_REQUEST: u8 = 0x04;
+const ECDH_ALLOWED: u8 = 0x05;
+const ECDH_DENIED: u8 = 0x06;
 
 impl Message {
     pub fn connection_request(seq: Seq, body: Vec<u8>) -> Self {
@@ -63,11 +71,38 @@ impl Message {
         }
     }
 
+    pub fn ecdh_request(seq: Seq, key: Public) -> Self {
+        Self {
+            version: 0,
+            seq,
+            body: Body::EcdhRequest(key),
+        }
+    }
+
+    pub fn ecdh_allowed(seq: Seq, key: Public) -> Self {
+        Self {
+            version: 0,
+            seq,
+            body: Body::EcdhAllowed(key),
+        }
+    }
+
+    pub fn ecdh_denied(seq: Seq, reason: String) -> Self {
+        Self {
+            version: 0,
+            seq,
+            body: Body::EcdhDenied(reason),
+        }
+    }
+
     pub fn protocol_id(&self) -> u8 {
         match self.body {
             Body::ConnectionRequest(_) => CONNECTION_REQUEST,
             Body::ConnectionAllowed(_) => CONNECTION_ALLOWED,
             Body::ConnectionDenied(_) => CONNECTION_DENIED,
+            Body::EcdhRequest(_) => ECDH_REQUEST,
+            Body::EcdhAllowed(_) => ECDH_ALLOWED,
+            Body::EcdhDenied(_) => ECDH_DENIED,
         }
     }
 
@@ -102,6 +137,15 @@ impl Encodable for Message {
             Body::ConnectionDenied(ref reason) => {
                 s.append(reason);
             },
+            Body::EcdhRequest(ref key) => {
+                s.append(key);
+            },
+            Body::EcdhAllowed(ref key) => {
+                s.append(key);
+            },
+            Body::EcdhDenied(ref reason) => {
+                s.append(reason);
+            },
         }
     }
 }
@@ -124,6 +168,18 @@ impl Decodable for Message {
             CONNECTION_DENIED => {
                 let reason: String = rlp.val_at(3)?;
                 Ok(Message::connection_denied(seq, reason))
+            },
+            ECDH_REQUEST => {
+                let key: Public = rlp.val_at(3)?;
+                Ok(Message::ecdh_request(seq, key))
+            },
+            ECDH_ALLOWED => {
+                let key: Public = rlp.val_at(3)?;
+                Ok(Message::ecdh_allowed(seq, key))
+            },
+            ECDH_DENIED => {
+                let reason: String = rlp.val_at(3)?;
+                Ok(Message::ecdh_denied(seq, reason))
             },
             _ =>
                 Err(DecoderError::Custom("Invalid protocol id")),
