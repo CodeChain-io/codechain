@@ -44,11 +44,13 @@ pub struct BlockSyncExtension {
 
 impl BlockSyncExtension {
     pub fn new(client: Arc<BlockChainClient>) -> Arc<Self> {
-        let best_header = client.best_block_header();
+        let best_block = client.block(BlockId::Latest)
+            .expect("BlockSyncExtension: Best block should exist")
+            .decode();
         Arc::new(Self {
             peers: RwLock::new(HashMap::new()),
             client,
-            manager: Mutex::new(DownloadManager::new(best_header.hash(), best_header.number())),
+            manager: Mutex::new(DownloadManager::new(best_block)),
             api: Mutex::new(None),
         })
     }
