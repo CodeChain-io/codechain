@@ -22,6 +22,7 @@ use std::result::Result;
 use std::sync::Arc;
 
 use cio::{IoChannel, IoContext, IoHandler, IoManager, IoHandlerResult, StreamToken};
+use ctypes::Secret;
 use mio::{PollOpt, Ready, Token};
 use mio::deprecated::EventLoop;
 use mio::net::UdpSocket;
@@ -245,10 +246,11 @@ pub struct Handler {
     internal: Mutex<Internal>,
     extension: IoChannel<connection::HandlerMessage>,
     discovery: RwLock<Arc<DiscoveryApi>>,
+    secret_key: Secret,
 }
 
 impl Handler {
-    pub fn new(address: Address, extension: IoChannel<connection::HandlerMessage>, discovery: Arc<DiscoveryApi>) -> Self {
+    pub fn new(address: Address, secret_key: Secret, extension: IoChannel<connection::HandlerMessage>, discovery: Arc<DiscoveryApi>) -> Self {
         let handshake = Handshake::bind(&address).expect("Cannot bind UDP port");
         let discovery = RwLock::new(discovery);
         Self {
@@ -259,6 +261,7 @@ impl Handler {
             }),
             extension,
             discovery,
+            secret_key,
         }
     }
 }

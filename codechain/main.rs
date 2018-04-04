@@ -29,6 +29,7 @@ extern crate codechain_network as cnetwork;
 extern crate codechain_reactor as creactor;
 extern crate codechain_rpc as crpc;
 extern crate codechain_sync as csync;
+extern crate codechain_types as ctypes;
 extern crate ctrlc;
 extern crate fdlimit;
 extern crate env_logger;

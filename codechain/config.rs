@@ -21,6 +21,7 @@ use ccore::Spec;
 use clap;
 use cnetwork::{Address, NetworkConfig};
 use cnetwork::kademlia::Config as KademliaConfig;
+use ctypes::Secret;
 use rpc::HttpConfiguration as RpcHttpConfig;
 
 const DEFAULT_DB_PATH: &'static str = "./db";
@@ -125,9 +126,16 @@ pub fn parse_network_config(matches: &clap::ArgMatches) -> Result<Option<Network
         Some(port) => port.parse().map_err(|_| "Invalid port".to_owned())?,
         None => 3485,
     };
+
+    let secret_key = matches.value_of("secret-key")
+        .map(|secret| Secret::from_str(secret))
+        .unwrap_or_else(|| Ok(Secret::random()))
+        .map_err(|_| "Invalid secret key")?;
+
     Ok(Some(NetworkConfig {
         port,
         bootstrap_addresses,
+        secret_key,
     }))
 }
 
