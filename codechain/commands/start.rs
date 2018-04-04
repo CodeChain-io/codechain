@@ -18,7 +18,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use ccore::{ClientService, Spec};
-use cnetwork::{Address, DiscoveryApi, NetworkService};
+use cnetwork::{Address, DiscoveryApi, NetworkConfig, NetworkService};
 use crpc::Server as RpcServer;
 use rpc::HttpConfiguration as RpcHttpConfig;
 
@@ -30,7 +30,7 @@ pub fn rpc_start(cfg: RpcHttpConfig) -> Result<RpcServer, String> {
     rpc::new_http(cfg)
 }
 
-pub fn network_start(cfg: config::NetworkConfig, discovery: Arc<DiscoveryApi>) -> Result<NetworkService, String> {
+pub fn network_start(cfg: NetworkConfig, discovery: Arc<DiscoveryApi>) -> Result<NetworkService, String> {
     info!("Handshake Listening on {}", cfg.port);
     let address = Address::v4(127, 0, 0, 1, cfg.port);
     let service = NetworkService::start(

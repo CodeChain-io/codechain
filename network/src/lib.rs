@@ -29,6 +29,7 @@ extern crate codechain_types as ctypes;
 extern crate table as ctable;
 
 mod client;
+mod config;
 mod discovery;
 mod extension;
 mod handshake;
@@ -42,6 +43,7 @@ pub mod kademlia;
 pub mod session;
 
 pub use self::address::Address;
+pub use self::config::Config as NetworkConfig;
 pub use self::discovery::{Api as DiscoveryApi};
 pub use self::extension::{Api, Error, Extension, NodeId, Result};
 pub use self::service::Service as NetworkService;

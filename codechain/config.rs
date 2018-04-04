@@ -19,7 +19,7 @@ use std::str::FromStr;
 
 use ccore::Spec;
 use clap;
-use cnetwork::Address;
+use cnetwork::{Address, NetworkConfig};
 use cnetwork::kademlia::Config as KademliaConfig;
 use rpc::HttpConfiguration as RpcHttpConfig;
 
@@ -83,11 +83,6 @@ pub struct Config {
     pub db_path: String,
     pub chain_type: ChainType,
     pub enable_block_sync: bool,
-}
-
-pub struct NetworkConfig {
-    pub port: u16,
-    pub bootstrap_addresses: Vec<Address>,
 }
 
 pub fn parse(matches: &clap::ArgMatches) -> Result<Config, String> {
