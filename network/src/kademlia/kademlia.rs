@@ -152,7 +152,11 @@ impl Kademlia {
     pub fn handle_refresh_command(&mut self) -> Option<Command> {
         self.table.cleanup();
         let distances = self.table.distances();
-        let index = rand::random::<usize>() % distances.len();
+        let len = distances.len();
+        if len == 0 {
+            return None
+        }
+        let index = rand::random::<usize>() % len;
 
         if let Some(distance) = distances.get(index) {
             for contact in self.table.get_contacts_with_distance(*distance) {
@@ -326,5 +330,11 @@ mod tests {
 
         kademlia.touch_contact(contact5);
         assert_eq!(1, kademlia.to_be_verified.len());
+    }
+
+    #[test]
+    fn handle_refresh_command_must_not_crash() {
+        let mut kademlia = Kademlia::new(None, 3, 8, 60_000);
+        kademlia.handle_refresh_command();
     }
 }
