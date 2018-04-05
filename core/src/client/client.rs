@@ -21,15 +21,15 @@ use std::time::Instant;
 
 use cbytes::Bytes;
 use cio::IoChannel;
-use ctypes::{H256, U256};
+use ctypes::{Address, H256, U256};
 use journaldb;
 use kvdb::{DBTransaction, KeyValueDB};
 use parking_lot::{Mutex, RwLock};
 use trie::{TrieFactory, TrieSpec};
 
 use super::{EngineClient, BlockChainInfo, BlockInfo, TransactionInfo,
-            ChainInfo, ChainNotify, ClientConfig, ImportBlock,
-            BlockChainClient, BlockChain as BlockChainTrait, Error as ClientError
+            ChainInfo, ChainNotify, ClientConfig, ImportBlock, Nonce, Balance,
+            BlockChainClient, BlockChain as BlockChainTrait, Error as ClientError, StateOrBlock
 };
 use super::super::block::{IsBlock, LockedBlock, Drain, enact};
 use super::super::blockchain::{BlockChain, BlockProvider, TransactionAddress, ImportRoute};
@@ -41,6 +41,7 @@ use super::super::header::Header;
 use super::super::invoice::Invoice;
 use super::super::service::ClientIoMessage;
 use super::super::spec::Spec;
+use super::super::state::State;
 use super::super::state_db::StateDB;
 use super::super::transaction::PendingTransaction;
 use super::super::types::{BlockId, BlockNumber, BlockStatus, TransactionId, VerificationQueueInfo as BlockQueueInfo};
@@ -175,6 +176,38 @@ impl Client {
             BlockId::Earliest => Some(0),
             BlockId::Latest => Some(self.chain.read().best_block_number()),
         }
+    }
+
+    /// Get a copy of the best block's state.
+    pub fn latest_state(&self) -> State<StateDB> {
+        let header = self.best_block_header();
+        State::from_existing(
+            self.state_db.read().boxed_clone_canon(&header.hash()),
+            header.state_root(),
+            self.engine.machine().account_start_nonce(),
+            self.trie_factory.clone()
+        )
+            .expect("State root of best block header always valid.")
+    }
+
+    /// Attempt to get a copy of a specific block's final state.
+    ///
+    /// This will not fail if given BlockId::Latest.
+    /// Otherwise, this can fail (but may not) if the DB prunes state or the block
+    /// is unknown.
+    pub fn state_at(&self, id: BlockId) -> Option<State<StateDB>> {
+        // fast path for latest state.
+        match id.clone() {
+            BlockId::Latest => return Some(self.latest_state()),
+            _ => {},
+        }
+
+        self.block_header(id).and_then(|header| {
+            let db = self.state_db.read().boxed_clone();
+
+            let root = header.state_root();
+            State::from_existing(db, root, self.engine.machine().account_start_nonce(), self.trie_factory.clone()).ok()
+        })
     }
 }
 
@@ -605,6 +638,21 @@ impl Importer {
         }
 
         Ok(locked_block)
+    }
+}
+
+impl Nonce for Client {
+    fn nonce(&self, address: &Address, id: BlockId) -> Option<U256> {
+        self.state_at(id).and_then(|s| s.nonce(address).ok())
+    }
+}
+
+impl Balance for Client {
+    fn balance(&self, address: &Address, state: StateOrBlock) -> Option<U256> {
+        match state {
+            StateOrBlock::State(s) => s.balance(address).ok(),
+            StateOrBlock::Block(id) => self.state_at(id).and_then(|s| s.balance(address).ok())
+        }
     }
 }
 
