@@ -89,39 +89,32 @@ impl Extension for BlockSyncExtension {
 
     fn on_message(&self, id: &NodeId, data: &Vec<u8>) {
         if let Ok(received_message) = UntrustedRlp::new(data).as_val() {
-            if let Message::Status {..} = received_message {
-            } else {
-                if !self.peers.read().contains_key(id) {
-                    info!("BlockSyncExtension: message from unexpected peer {}", id);
-                    return;
-                }
+            if !self.is_valid_message(id, &received_message) {
+                return;
             }
+            self.apply_message(id, &received_message);
 
-            // TODO: don't make request if peer has less score
             let next_message = match received_message {
-                Message::Status { total_score, best_hash, genesis_hash } => {
-                    if genesis_hash == self.client.chain_info().genesis_hash {
-                        self.on_peer_status(id, total_score, best_hash);
-                    } else {
-                        info!("BlockSyncExtension: genesis hash mismatch with peer {}", id);
-                    }
-                    self.manager.lock().create_request()
-                },
                 Message::RequestHeaders { start_hash, max_count } => {
                     Some(self.create_headers_message(start_hash, max_count))
-                },
-                Message::Headers(headers) => {
-                    // TODO: check if response matches requested data
-                    self.manager.lock().import_headers(headers);
-                    self.manager.lock().create_request()
                 },
                 Message::RequestBodies(hashes) => {
                     Some(self.create_bodies_message(hashes))
                 },
-                Message::Bodies(bodies) => {
-                    // TODO: check if response matches requested data
-                    self.manager.lock().import_bodies(bodies);
-                    self.manager.lock().create_request()
+                _ => {
+                    let total_score = self.client
+                        .block_total_score(BlockId::Hash(self.manager.lock().best_hash()))
+                        .expect("Best block of download manager should exist in chain");
+                    // FIXME: Check if this statement holds mutex lock of `peers`
+                    let peer_total_score = self.peers.read()
+                        .get(id)
+                        .expect("Peer should exist for valid message")
+                        .total_score;
+                    if peer_total_score > total_score {
+                        self.manager.lock().create_request()
+                    } else {
+                        None
+                    }
                 },
             };
             if let Some(message) = next_message {
@@ -141,8 +134,37 @@ impl Extension for BlockSyncExtension {
 }
 
 impl BlockSyncExtension {
-    fn on_peer_status(&self, id: &NodeId, total_score: U256, best_hash: H256) {
-        self.peers.write().insert(*id, Peer { total_score, best_hash });
+    fn is_valid_message(&self, id: &NodeId, message: &Message) -> bool {
+        match message {
+            &Message::Status { genesis_hash, .. } => {
+                if genesis_hash != self.client.chain_info().genesis_hash {
+                    info!("BlockSyncExtension: genesis hash mismatch with peer {}", id);
+                    false
+                } else {
+                    true
+                }
+            },
+            _ => {
+                if !self.peers.read().contains_key(id) {
+                    info!("BlockSyncExtension: message from unexpected peer {}", id);
+                    return false;
+                }
+                // FIXME: check if response matches requested data
+                true
+            }
+        }
+    }
+
+    fn apply_message(&self, id: &NodeId, message: &Message) {
+        match message {
+            &Message::Status { total_score, best_hash, .. } => {
+                self.peers.write().insert(*id, Peer { total_score, best_hash });
+            },
+            &Message::Headers(ref headers) => self.manager.lock().import_headers(headers),
+            &Message::Bodies(ref bodies) => self.manager.lock().import_bodies(bodies),
+            _ => {},
+        };
+        // FIXME: Import fully downloaded blocks to client
     }
 
     fn create_headers_message(&self, start_hash: H256, max_count: u64) -> Message {
