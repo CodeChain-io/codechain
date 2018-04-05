@@ -28,8 +28,8 @@ pub use self::message::Message;
 pub use self::negotiation::{Body as NegotiationBody, Message as NegotiationMessage};
 pub use self::signed_message::SignedMessage;
 
-pub type Version = u32;
-pub type ProtocolId = u32;
+pub type Version = u64;
+pub type ProtocolId = u64;
 pub type Seq = u64;
 pub type SharedSecret = H256;
 pub type Nonce = H128;

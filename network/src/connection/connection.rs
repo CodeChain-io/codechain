@@ -150,13 +150,13 @@ impl Connection {
     }
 
     pub fn enqueue_sync(&mut self) {
-        const VERSION: u32 = 0;
+        const VERSION: u64 = 0;
         self.enqueue(Message::Handshake(HandshakeMessage::Sync(VERSION)));
         self.state = State::Requested;
     }
 
     pub fn enqueue_ack(&mut self) {
-        const VERSION: u32 = 0;
+        const VERSION: u64 = 0;
         self.enqueue(Message::Handshake(HandshakeMessage::Ack(VERSION)));
         self.state = State::Established;
     }
@@ -180,7 +180,7 @@ impl Connection {
             return
         }
 
-        const VERSION: u32 = 0;
+        const VERSION: u64 = 0;
         let message = if need_encryption {
             let session_key = (self.session.secret().clone(), self.session.initialization_vector().unwrap());
             match ApplicationMessage::encrypted_from_unencrypted_data(extension_name, VERSION, message, &session_key) {

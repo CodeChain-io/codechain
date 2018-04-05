@@ -19,7 +19,7 @@ use rlp::{UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
 use super::NodeId;
 use super::contact::Contact;
 
-pub type Id = u32;
+pub type Id = u64;
 
 pub enum Message {
     Ping { id: Id, sender: NodeId },
@@ -48,10 +48,12 @@ impl Message {
     }
 }
 
-const PING_ID: u8 = 0x0;
-const PONG_ID: u8 = 0x1;
-const FIND_NODE_ID: u8 = 0x2;
-const NODES_ID: u8 = 0x3;
+type ProtocolId = u64;
+
+const PING_ID: ProtocolId = 0x0;
+const PONG_ID: ProtocolId = 0x1;
+const FIND_NODE_ID: ProtocolId = 0x2;
+const NODES_ID: ProtocolId = 0x3;
 
 impl Encodable for Message {
     fn rlp_append(&self, s: &mut RlpStream) {
@@ -92,7 +94,7 @@ impl Encodable for Message {
 
 impl Decodable for Message {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
-        let protocol = rlp.val_at::<u8>(0)?;
+        let protocol = rlp.val_at::<ProtocolId>(0)?;
         let id = rlp.val_at(1)?;
         let sender = rlp.val_at(2)?;
         match protocol {
