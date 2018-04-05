@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use rand::{thread_rng, Rng};
 use std::collections::HashMap;
 use std::sync::Arc;
 use parking_lot::{RwLock, Mutex};
@@ -139,7 +140,21 @@ impl Extension for BlockSyncExtension {
 
     fn on_timeout(&self, timer_id: usize) {
         debug_assert_eq!(timer_id, SYNC_TIMER_ID);
-        unimplemented!();
+        let mut peer_ids: Vec<_> = self.peers.read()
+            .iter()
+            .filter(|&(_, peer)| peer.last_request.is_none())
+            .map(|(id, _)| id)
+            .cloned()
+            .collect();
+        // Shuffle peers to avoid requesting messages in deterministic order
+        thread_rng().shuffle(peer_ids.as_mut_slice());
+        for id in peer_ids {
+            let next_message = self.manager.lock().create_request();
+            self.record_last_request(&id, &next_message);
+            if let Some(message) = next_message {
+                self.send_message(&id, message);
+            }
+        }
     }
 }
 

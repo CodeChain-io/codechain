@@ -22,6 +22,7 @@ extern crate codechain_types as ctypes;
 
 #[macro_use]
 extern crate log;
+extern crate rand;
 extern crate rlp;
 extern crate triehash;
 
