@@ -40,6 +40,15 @@ pub enum Message {
     Bodies(Vec<Vec<UnverifiedTransaction>>),
 }
 
+impl Message {
+    pub fn is_status(&self) -> bool {
+        match self {
+            &Message::Status {..} => true,
+            _ => false,
+        }
+    }
+}
+
 impl Encodable for Message {
     fn rlp_append(&self, s: &mut RlpStream) {
         s.begin_list(2);
