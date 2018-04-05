@@ -518,4 +518,16 @@ mod tests {
             Err(err) => assert!(false, "{:?}", err),
         }
     }
+
+    #[test]
+    fn encode_and_decode_connection_request() {
+        let nonce: Nonce = 0xCAFE;
+        let nonce = nonce.rlp_bytes().into_vec();
+        let msg = Message::connection_request(0, nonce);
+        let encoded = msg.rlp_bytes();
+        let rlp = UntrustedRlp::new(&encoded);
+        let decoded = Decodable::decode(&rlp).unwrap();
+
+        assert_eq!(msg, decoded);
+    }
 }

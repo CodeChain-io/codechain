@@ -109,4 +109,20 @@ mod tests {
 
         assert_eq!(message.as_bytes(), &decrypted_data[..]);
     }
+
+    #[test]
+    fn test_short_input() {
+        let input = vec![130, 39, 16];
+
+        let mut key = H256([0; 32]);
+        let mut iv = H128([0; 16]);
+
+        let mut rng = OsRng::new().unwrap();
+        rng.fill_bytes(&mut key);
+        rng.fill_bytes(&mut iv);
+
+        let encrypted = encrypt(&input, &key, &iv).unwrap();
+        let decrypted = decrypt(&encrypted, &key, &iv).unwrap();
+        assert_eq!(input, decrypted);
+    }
 }
