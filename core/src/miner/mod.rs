@@ -38,6 +38,12 @@ pub trait MinerService : Send + Sync {
     /// Set the author that we will seal blocks as.
     fn set_author(&self, author: Address);
 
+    /// Get current transactions limit in queue.
+    fn transactions_limit(&self) -> usize;
+
+    /// Set maximal number of transactions kept in the queue (both current and future).
+    fn set_transactions_limit(&self, limit: usize);
+
     /// Imports transactions to transaction queue.
     fn import_external_transactions<C: MiningBlockChainClient>(&self, client: &C, transactions: Vec<UnverifiedTransaction>) ->
     Vec<Result<TransactionImportResult, Error>>;
