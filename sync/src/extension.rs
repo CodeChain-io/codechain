@@ -30,9 +30,15 @@ const EXTENSION_NAME: &'static str = "block-propagation";
 const SYNC_TIMER_ID: usize = 0;
 const SYNC_TIMER_INTERVAL: u64 = 1000;
 
+enum RequestInfo {
+    Header(H256),
+    Bodies(Vec<H256>),
+}
+
 struct Peer {
     total_score: U256,
     best_hash: H256,
+    last_request: Option<RequestInfo>,
 }
 
 pub struct BlockSyncExtension {
@@ -54,12 +60,6 @@ impl BlockSyncExtension {
             api: Mutex::new(None),
         })
     }
-
-    fn send(&self, id: &NodeId, message: Message) {
-        self.api.lock().as_ref().map(|api| {
-            api.send(id, &message.rlp_bytes().to_vec());
-        });
-    }
 }
 
 impl Extension for BlockSyncExtension {
@@ -79,7 +79,7 @@ impl Extension for BlockSyncExtension {
 
     fn on_connected(&self, id: &NodeId) {
         let chain_info = self.client.chain_info();
-        self.send(id, Message::Status {
+        self.send_message(id, Message::Status {
             total_score: chain_info.total_score,
             best_hash: chain_info.best_block_hash,
             genesis_hash: chain_info.genesis_hash,
@@ -94,6 +94,12 @@ impl Extension for BlockSyncExtension {
             }
             self.apply_message(id, &received_message);
 
+            // Do nothing and return if status message is received
+            if received_message.is_status() {
+                return;
+            }
+
+            // Create next message for peer
             let next_message = match received_message {
                 Message::RequestHeaders { start_hash, max_count } => {
                     Some(self.create_headers_message(start_hash, max_count))
@@ -105,11 +111,12 @@ impl Extension for BlockSyncExtension {
                     let total_score = self.client
                         .block_total_score(BlockId::Hash(self.manager.lock().best_hash()))
                         .expect("Best block of download manager should exist in chain");
-                    // FIXME: Check if this statement holds mutex lock of `peers`
+                    // FIXME: Check if this statement really needs `clone`
                     let peer_total_score = self.peers.read()
                         .get(id)
                         .expect("Peer should exist for valid message")
-                        .total_score;
+                        .total_score
+                        .clone();
                     if peer_total_score > total_score {
                         self.manager.lock().create_request()
                     } else {
@@ -117,8 +124,11 @@ impl Extension for BlockSyncExtension {
                     }
                 },
             };
+
+            self.record_last_request(id, &next_message);
+
             if let Some(message) = next_message {
-                self.send(id, message);
+                self.send_message(id, message);
             }
         } else {
             info!("BlockSyncExtension: invalid message from peer {}", id);
@@ -139,32 +149,73 @@ impl BlockSyncExtension {
             &Message::Status { genesis_hash, .. } => {
                 if genesis_hash != self.client.chain_info().genesis_hash {
                     info!("BlockSyncExtension: genesis hash mismatch with peer {}", id);
-                    false
+                    return false;
                 } else {
-                    true
+                    return true;
                 }
             },
-            _ => {
-                if !self.peers.read().contains_key(id) {
-                    info!("BlockSyncExtension: message from unexpected peer {}", id);
-                    return false;
-                }
-                // FIXME: check if response matches requested data
-                true
+            _ => {},
+        }
+
+        if let Some(last_request) = self.peers.read().get(id).map(|peer| &peer.last_request) {
+            match (message, last_request) {
+                (&Message::RequestBodies(ref hashes), _) => hashes.len() != 0,
+                (&Message::Headers(ref headers), &Some(RequestInfo::Header(start_hash))) => {
+                    if headers.len() == 0 {
+                        true
+                    } else {
+                        headers.first().expect("Response is not empty").hash() == start_hash
+                    }
+                },
+                (&Message::Bodies(..), &Some(RequestInfo::Bodies(..))) => true,
+                _ => false,
             }
+        } else {
+            false
         }
     }
 
     fn apply_message(&self, id: &NodeId, message: &Message) {
         match message {
             &Message::Status { total_score, best_hash, .. } => {
-                self.peers.write().insert(*id, Peer { total_score, best_hash });
+                let mut peers = self.peers.write();
+                if peers.contains_key(id) {
+                    let peer = peers.get_mut(id).expect("Peer list should contain peer for `id`");
+                    peer.total_score = total_score;
+                    peer.best_hash = best_hash;
+                } else {
+                    peers.insert(*id, Peer { total_score, best_hash, last_request: None });
+                }
             },
             &Message::Headers(ref headers) => self.manager.lock().import_headers(headers),
             &Message::Bodies(ref bodies) => self.manager.lock().import_bodies(bodies),
             _ => {},
         };
         // FIXME: Import fully downloaded blocks to client
+    }
+
+    fn record_last_request(&self, id: &NodeId, message: &Option<Message>) {
+        let mut peers = self.peers.write();
+        if let Some(peer) = peers.get_mut(id) {
+            match message {
+                &Some(Message::RequestHeaders { start_hash, .. }) => {
+                    peer.last_request = Some(RequestInfo::Header(start_hash));
+                },
+                &Some(Message::RequestBodies(ref hashes)) => {
+                    peer.last_request = Some(RequestInfo::Bodies(hashes.clone()));
+                },
+                &None => {
+                    peer.last_request = None;
+                },
+                _ => {},
+            };
+        }
+    }
+
+    fn send_message(&self, id: &NodeId, message: Message) {
+        self.api.lock().as_ref().map(|api| {
+            api.send(id, &message.rlp_bytes().to_vec());
+        });
     }
 
     fn create_headers_message(&self, start_hash: H256, max_count: u64) -> Message {
