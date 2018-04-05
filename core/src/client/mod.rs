@@ -208,5 +208,5 @@ pub trait BlockProducer: PrepareOpenBlock + ReopenBlock {}
 pub trait SealedBlockImporter: ImportSealedBlock + BroadcastProposalBlock {}
 
 /// Extended client interface used for mining
-pub trait MiningBlockChainClient: BlockChainClient + SealedBlockImporter {}
+pub trait MiningBlockChainClient: BlockChainClient + BlockProducer + SealedBlockImporter {}
 
