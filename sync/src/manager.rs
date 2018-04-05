@@ -40,6 +40,10 @@ pub struct DownloadManager {
 }
 
 impl DownloadManager {
+    pub fn best_hash(&self) -> H256 { self.best_hash }
+}
+
+impl DownloadManager {
     pub fn new(best_block: Block) -> Self {
         let mut headers = HashMap::new();
         headers.insert(best_block.header.hash(), best_block.header.clone());
@@ -59,7 +63,7 @@ impl DownloadManager {
 
     /// Import block headers to Download Manager
     /// Headers should be sorted by block number, and connected from start to end
-    pub fn import_headers(&mut self, headers: Vec<Header>) {
+    pub fn import_headers(&mut self, headers: &[Header]) {
         // Empty header list is valid case
         if headers.len() == 0 {
             return;
@@ -88,13 +92,13 @@ impl DownloadManager {
         // Import headers
         for header in headers {
             if header.number() <= self.best_number + MAX_BUFFER_LENGTH {
-                self.headers.insert(header.hash(), header);
+                self.headers.insert(header.hash(), header.clone());
             }
         }
         self.downloading_header = None;
     }
 
-    pub fn import_bodies(&mut self, bodies: Vec<Vec<UnverifiedTransaction>>) {
+    pub fn import_bodies(&mut self, bodies: &[Vec<UnverifiedTransaction>]) {
         let mut valid_bodies = HashMap::new();
         // Validity check
         for body in bodies {
@@ -195,11 +199,13 @@ mod tests {
             blocks.push(block);
         }
         manager.downloading_header = Some(manager.best_hash);
-        manager.import_headers(blocks.iter().map(|block| block.header.clone()).collect());
+        let headers: Vec<_> = blocks.iter().map(|block| block.header.clone()).collect();
+        manager.import_headers(headers.as_slice());
         for (hash, _) in &manager.headers {
             manager.downloading_bodies.insert(*hash);
         }
-        manager.import_bodies(blocks.iter().map(|block| block.transactions.clone()).collect());
+        let bodies: Vec<_> = blocks.iter().map(|block| block.transactions.clone()).collect();
+        manager.import_bodies(bodies.as_slice());
 
         for block in blocks {
             let hash = block.header.hash();
@@ -222,7 +228,7 @@ mod tests {
             header.set_parent_hash(headers.last().map_or(manager.best_hash, |h| h.hash()));
             headers.push(header);
         }
-        manager.import_headers(Vec::from(&headers[1..]));
+        manager.import_headers(&headers[1..]);
 
         for header in headers {
             assert!(!manager.headers.contains_key(&header.hash()));
@@ -241,7 +247,7 @@ mod tests {
             header.set_parent_hash(headers.last().map_or(manager.best_hash, |h| h.hash()));
             headers.push(header);
         }
-        manager.import_headers(headers.clone());
+        manager.import_headers(headers.as_slice());
 
         for header in headers {
             assert!(!manager.headers.contains_key(&header.hash()));
@@ -256,7 +262,7 @@ mod tests {
         for _ in 1..10 {
             bodies.push(Vec::new());
         }
-        manager.import_bodies(bodies.clone());
+        manager.import_bodies(bodies.as_slice());
 
         assert_eq!(manager.bodies.len(), 1);
     }
