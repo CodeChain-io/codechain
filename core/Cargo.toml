@@ -22,12 +22,14 @@ kvdb = { path = "../util/kvdb" }
 kvdb-rocksdb = { path = "../util/kvdb-rocksdb" }
 kvdb-memorydb = { path = "../util/kvdb-memorydb" }
 memorydb = { path = "../util/memorydb" }
+multimap = { path = "../util/multimap" }
 parking_lot = "0.5"
 patricia-trie = { path = "../util/patricia_trie" }
 rlp = { path = "../util/rlp" }
 rlp_compress = { path = "../util/rlp_compress" }
 rlp_derive = { path = "../util/rlp_derive" }
 rustc-hex = "1.0"
+table = { path = "../util/table" }
 time = "0.1"
 triehash = { path = "../util/triehash" }
 unexpected = { path = "../util/unexpected" }
