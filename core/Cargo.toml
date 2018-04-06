@@ -14,6 +14,7 @@ codechain-logger = { path = "../logger" }
 hashdb = { path = "../util/hashdb" }
 heapsize = "0.4"
 journaldb = { path = "../util/journaldb" }
+linked-hash-map = "0.5"
 log = "0.3"
 lru-cache = "0.1"
 num_cpus = "1.2"

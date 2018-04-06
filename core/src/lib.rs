@@ -27,6 +27,7 @@ extern crate journaldb;
 extern crate kvdb;
 extern crate kvdb_rocksdb;
 extern crate kvdb_memorydb;
+extern crate linked_hash_map;
 extern crate lru_cache;
 extern crate memorydb;
 extern crate num_cpus;
