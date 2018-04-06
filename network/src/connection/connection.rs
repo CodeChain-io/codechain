@@ -31,7 +31,7 @@ use super::message::{Seq, Version};
 use super::super::SocketAddr;
 use super::super::client::Client;
 use super::super::extension::{Error as ExtensionError, NodeId};
-use super::super::session::Session;
+use super::super::session::{Nonce, Session};
 
 #[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq)]
 pub enum State {
@@ -149,9 +149,9 @@ impl Connection {
         self.send_queue.push_back(message);
     }
 
-    pub fn enqueue_sync(&mut self) {
+    pub fn enqueue_sync(&mut self, nonce: Nonce) {
         const VERSION: u64 = 0;
-        self.enqueue(Message::Handshake(HandshakeMessage::Sync(VERSION)));
+        self.enqueue(Message::Handshake(HandshakeMessage::Sync(VERSION, nonce)));
         self.state = State::Requested;
     }
 
@@ -221,7 +221,7 @@ impl Connection {
                 Some(Message::Handshake(msg)) => {
                     info!("handshake message received {:?}", msg);
                     match msg {
-                        HandshakeMessage::Sync(_version) => {
+                        HandshakeMessage::Sync(_version, _nonce) => {
                             let _ = self.expect_state(State::New)?;
                             self.enqueue_ack();
                         },
@@ -300,6 +300,10 @@ impl Connection {
 
     pub fn peer_addr(&self) -> Result<SocketAddr> {
         Ok(SocketAddr::from(self.stream.peer_addr()?))
+    }
+
+    pub fn session(&self) -> &Session {
+        &self.session
     }
 }
 

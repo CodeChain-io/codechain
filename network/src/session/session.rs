@@ -95,6 +95,10 @@ impl Session {
         &self.secret
     }
 
+    pub fn nonce(&self) -> &Option<Nonce> {
+        &self.nonce
+    }
+
     pub fn encrypt(&self, data: &[u8]) -> Result<Vec<u8>, Error> {
         if !self.is_ready() {
             return Err(Error::NotReady)

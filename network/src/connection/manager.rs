@@ -351,7 +351,8 @@ impl IoHandler<HandlerMessage> for Handler {
                 self.client.on_node_added(&stream);
                 if !manager.is_inbound(stream) {
                     let mut connection = manager.connections.get_mut(stream).expect("Connection registered");
-                    connection.enqueue_sync();
+                    let nonce = connection.session().nonce().expect("Outbound connection must have nonce");
+                    connection.enqueue_sync(nonce);
                 }
                 Ok(())
             }

@@ -22,15 +22,17 @@ use super::Version;
 use super::ACK_ID;
 use super::SYNC_ID;
 
+use super::super::super::session::Nonce;
+
 #[derive(Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum Message {
-    Sync(Version),
+    Sync(Version, Nonce),
     Ack(Version),
 }
 
 impl Message {
-    pub fn sync() -> Self {
-        Message::Sync(0)
+    pub fn sync(nonce: Nonce) -> Self {
+        Message::Sync(0, nonce)
     }
 
     pub fn ack() -> Self {
@@ -39,14 +41,14 @@ impl Message {
 
     fn version(&self) -> Version {
         match self {
-            &Message::Sync(version) => version,
+            &Message::Sync(version, _) => version,
             &Message::Ack(version) => version,
         }
     }
 
     fn protocol_id(&self) -> ProtocolId {
         match self {
-            &Message::Sync(_) => SYNC_ID,
+            &Message::Sync(_, _) => SYNC_ID,
             &Message::Ack(_) => ACK_ID,
         }
     }
@@ -55,22 +57,40 @@ impl Message {
 
 impl Encodable for Message {
     fn rlp_append(&self, s: &mut RlpStream) {
-        s.begin_list(2)
-            .append(&self.version())
-            .append(&self.protocol_id());
+        match self {
+            &Message::Sync(version, nonce) => {
+                s.begin_list(3)
+                    .append(&version)
+                    .append(&self.protocol_id())
+                    .append(&nonce);
+            },
+            &Message::Ack(version) => {
+                s.begin_list(2)
+                    .append(&version)
+                    .append(&self.protocol_id());
+            },
+        }
     }
 }
 
 impl Decodable for Message {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
-        if rlp.item_count()? != 2 {
-            return Err(DecoderError::RlpIncorrectListLen)
-        }
         let version: Version = rlp.val_at(0)?;
         let protocol_id: ProtocolId = rlp.val_at(1)?;
         match protocol_id {
-            SYNC_ID => Ok(Message::Sync(version)),
-            ACK_ID => Ok(Message::Ack(version)),
+            SYNC_ID => {
+                if rlp.item_count()? != 3 {
+                    return Err(DecoderError::RlpIncorrectListLen)
+                }
+                let nonce = rlp.val_at(2)?;
+                Ok(Message::Sync(version, nonce))
+            },
+            ACK_ID => {
+                if rlp.item_count()? != 2 {
+                    return Err(DecoderError::RlpIncorrectListLen)
+                }
+                Ok(Message::Ack(version))
+            },
             _ => Err(DecoderError::Custom("invalid protocol id")),
         }
     }
