@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ccore::{Header, UnverifiedTransaction};
+use ccore::{BlockNumber, Header, UnverifiedTransaction};
 use ctypes::{H256, U256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
@@ -32,7 +32,7 @@ pub enum Message {
         genesis_hash: H256,
     },
     RequestHeaders {
-        start_hash: H256,
+        start_number: BlockNumber,
         max_count: u64,
     },
     Headers(Vec<Header>),
@@ -85,11 +85,11 @@ impl Encodable for Message {
                 s.append(&genesis_hash);
             }
             &Message::RequestHeaders {
-                start_hash,
+                start_number,
                 max_count,
             } => {
                 s.begin_list(2);
-                s.append(&start_hash);
+                s.append(&start_number);
                 s.append(&max_count);
             }
             &Message::Headers(ref headers) => {
@@ -131,7 +131,7 @@ impl Decodable for Message {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
                 Message::RequestHeaders {
-                    start_hash: message.val_at(0)?,
+                    start_number: message.val_at(0)?,
                     max_count: message.val_at(1)?,
                 }
             }
@@ -170,7 +170,7 @@ mod tests {
     #[test]
     fn test_request_headers_message_rlp() {
         let message = Message::RequestHeaders {
-            start_hash: H256::default(),
+            start_number: 100,
             max_count: 100,
         };
         assert_eq!(message, ::rlp::decode(message.rlp_bytes().as_ref()));

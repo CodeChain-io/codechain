@@ -158,7 +158,10 @@ impl DownloadManager {
                 } else {
                     self.downloading_header = Some(target);
                     return Some(Message::RequestHeaders {
-                        start_hash: target,
+                        start_number: self.headers
+                            .get(&target)
+                            .expect("Header download target should be known")
+                            .number(),
                         max_count: MAX_HEADER_REQUEST_LENGTH as u64,
                     })
                 }

@@ -20,7 +20,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use cbytes::Bytes;
-use ccore::{BlockChainClient, BlockId, ChainNotify};
+use ccore::{BlockChainClient, BlockId, BlockNumber, ChainNotify};
 use cnetwork::{Api, Extension, NodeId};
 use ctypes::{H256, U256};
 use rlp::{Encodable, UntrustedRlp};
@@ -33,7 +33,7 @@ const SYNC_TIMER_ID: usize = 0;
 const SYNC_TIMER_INTERVAL: u64 = 1000;
 
 enum RequestInfo {
-    Header(H256),
+    Header(BlockNumber),
     Bodies(Vec<H256>),
 }
 
@@ -113,9 +113,9 @@ impl Extension for BlockSyncExtension {
             // Create next message for peer
             let next_message = match received_message {
                 Message::RequestHeaders {
-                    start_hash,
+                    start_number,
                     max_count,
-                } => Some(self.create_headers_message(start_hash, max_count)),
+                } => Some(self.create_headers_message(start_number, max_count)),
                 Message::RequestBodies(hashes) => Some(self.create_bodies_message(hashes)),
                 _ => {
                     let total_score = self.client
@@ -214,11 +214,11 @@ impl BlockSyncExtension {
         if let Some(last_request) = self.peers.read().get(id).map(|peer| &peer.last_request) {
             match (message, last_request) {
                 (&Message::RequestBodies(ref hashes), _) => hashes.len() != 0,
-                (&Message::Headers(ref headers), &Some(RequestInfo::Header(start_hash))) => {
+                (&Message::Headers(ref headers), &Some(RequestInfo::Header(start_number))) => {
                     if headers.len() == 0 {
                         true
                     } else {
-                        headers.first().expect("Response is not empty").hash() == start_hash
+                        headers.first().expect("Response is not empty").number() == start_number
                     }
                 }
                 (&Message::Bodies(..), &Some(RequestInfo::Bodies(..))) => true,
@@ -264,10 +264,10 @@ impl BlockSyncExtension {
         if let Some(peer) = peers.get_mut(id) {
             match message {
                 &Some(Message::RequestHeaders {
-                    start_hash,
+                    start_number,
                     ..
                 }) => {
-                    peer.last_request = Some(RequestInfo::Header(start_hash));
+                    peer.last_request = Some(RequestInfo::Header(start_number));
                 }
                 &Some(Message::RequestBodies(ref hashes)) => {
                     peer.last_request = Some(RequestInfo::Bodies(hashes.clone()));
@@ -286,17 +286,12 @@ impl BlockSyncExtension {
         });
     }
 
-    fn create_headers_message(&self, start_hash: H256, max_count: u64) -> Message {
-        let mut headers = Vec::new();
-        let mut block_id = BlockId::Hash(start_hash);
-        for _ in 0..max_count {
-            if let Some(header) = self.client.block_header(block_id) {
-                headers.push(header.decode());
-                block_id = BlockId::Number(header.number() + 1);
-            } else {
-                break
-            }
-        }
+    fn create_headers_message(&self, start_number: BlockNumber, max_count: u64) -> Message {
+        let headers = (0..max_count)
+            .map(|number| self.client.block_header(BlockId::Number(start_number + number)))
+            .take_while(|header| header.is_some())
+            .map(|header| header.expect("take_while guarantees existance of item").decode())
+            .collect();
         Message::Headers(headers)
     }
 
