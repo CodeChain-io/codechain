@@ -29,16 +29,17 @@ extern crate codechain_types as ctypes;
 extern crate table as ctable;
 
 mod client;
-pub mod connection;
 mod discovery;
 mod extension;
 mod handshake;
 mod limited_table;
 mod service;
 mod timer_info;
-pub mod session;
+
 pub mod address;
+pub mod connection;
 pub mod kademlia;
+pub mod session;
 
 pub use self::address::Address;
 pub use self::discovery::{Api as DiscoveryApi};
