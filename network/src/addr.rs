@@ -22,7 +22,7 @@ use std::str::FromStr;
 
 use rlp::{UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
 
-#[derive(Clone, Debug, Eq, Hash)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct SocketAddr {
     addr: net::SocketAddr,
 }
@@ -91,12 +91,6 @@ impl Ord for SocketAddr {
     }
 }
 
-impl PartialEq for SocketAddr {
-    fn eq(&self, other: &SocketAddr) -> bool {
-        self.cmp(other) == Ordering::Equal
-    }
-}
-
 impl PartialOrd for SocketAddr {
     fn partial_cmp(&self, other: &SocketAddr) -> Option<Ordering> {
         Some(self.cmp(other))
@@ -105,7 +99,7 @@ impl PartialOrd for SocketAddr {
 
 impl fmt::Display for SocketAddr {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(f, "Address({})", self.addr)
+        self.addr.fmt(f)
     }
 }
 
