@@ -111,8 +111,8 @@ impl From<SessionError> for HandshakeError {
 const MAX_HANDSHAKE_PACKET_SIZE: usize = 1024;
 
 impl Handshake {
-    fn bind(address: &SocketAddr) -> Result<Self, HandshakeError> {
-        let socket = UdpSocket::bind(address.into())?;
+    fn bind(socket_address: &SocketAddr) -> Result<Self, HandshakeError> {
+        let socket = UdpSocket::bind(socket_address.into())?;
         Ok(Self {
             socket,
             table: SessionTable::new(),
@@ -122,9 +122,9 @@ impl Handshake {
     fn receive(&self) -> Result<Option<(HandshakeMessage, SocketAddr)>, HandshakeError> {
         let mut buf: [u8; MAX_HANDSHAKE_PACKET_SIZE] = [0; MAX_HANDSHAKE_PACKET_SIZE];
         match self.socket.recv_from(&mut buf) {
-            Ok((received_size, address)) => {
-                let address = SocketAddr::from(address);
-                if self.table.get(&address).is_none() {
+            Ok((received_size, socket_address)) => {
+                let socket_address = SocketAddr::from(socket_address);
+                if self.table.get(&socket_address).is_none() {
                     return Err(HandshakeError::NoSession)
                 }
 
@@ -132,8 +132,8 @@ impl Handshake {
                 let rlp = UntrustedRlp::new(&raw_bytes);
                 let message = Decodable::decode(&rlp)?;
 
-                info!("Handshake {:?} received from {:?}", message, address);
-                Ok(Some((message, SocketAddr::from(address))))
+                info!("Handshake {:?} received from {:?}", message, socket_address);
+                Ok(Some((message, SocketAddr::from(socket_address))))
             },
             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => Ok(None),
             Err(e) => Err(HandshakeError::from(e)),
@@ -241,7 +241,7 @@ struct Internal {
 }
 
 pub struct Handler {
-    address: SocketAddr,
+    socket_address: SocketAddr,
     internal: Mutex<Internal>,
     extension: IoChannel<connection::HandlerMessage>,
     discovery: RwLock<Arc<DiscoveryApi>>,
@@ -249,11 +249,11 @@ pub struct Handler {
 }
 
 impl Handler {
-    pub fn new(address: SocketAddr, secret_key: Secret, extension: IoChannel<connection::HandlerMessage>, discovery: Arc<DiscoveryApi>) -> Self {
-        let handshake = Handshake::bind(&address).expect("Cannot bind UDP port");
+    pub fn new(socket_address: SocketAddr, secret_key: Secret, extension: IoChannel<connection::HandlerMessage>, discovery: Arc<DiscoveryApi>) -> Self {
+        let handshake = Handshake::bind(&socket_address).expect("Cannot bind UDP port");
         let discovery = RwLock::new(discovery);
         Self {
-            address,
+            socket_address,
             internal: Mutex::new(Internal {
                 handshake,
                 connect_queue: VecDeque::new(),
@@ -280,15 +280,15 @@ impl IoHandler<HandlerMessage> for Handler {
 
     fn message(&self, io: &IoContext<HandlerMessage>, message: &HandlerMessage) -> IoHandlerResult<()> {
         match message {
-            &HandlerMessage::ConnectTo(ref address) => {
+            &HandlerMessage::ConnectTo(ref socket_address) => {
                 let mut internal = self.internal.lock();
                 {
                     let ref mut queue = internal.connect_queue;
-                    queue.push_back(address.clone());
+                    queue.push_back(socket_address.clone());
                 }
                 {
                     let ref mut handshake = internal.handshake;
-                    handshake.table.insert(address.clone(), Session::new(SharedSecret::zero())); // FIXME: Remove it
+                    handshake.table.insert(socket_address.clone(), Session::new(SharedSecret::zero())); // FIXME: Remove it
                 }
             },
         };
@@ -310,9 +310,9 @@ impl IoHandler<HandlerMessage> for Handler {
                         Ok(None) => {
                             break;
                         },
-                        Ok(Some((msg, address))) => {
-                            info!("{:?} from {:?}", msg, address);
-                            let _ = handshake.on_packet(&msg, &address, &self.extension);
+                        Ok(Some((msg, socket_address))) => {
+                            info!("{:?} from {:?}", msg, socket_address);
+                            let _ = handshake.on_packet(&msg, &socket_address, &self.extension);
                         },
                         Err(err) => {
                             info!("handshake receive error {}", err);
@@ -330,9 +330,9 @@ impl IoHandler<HandlerMessage> for Handler {
     fn stream_writable(&self, _io: &IoContext<HandlerMessage>, stream: StreamToken) -> IoHandlerResult<()> {
         loop {
             let mut internal = self.internal.lock();
-            if let Some(ref address) = internal.connect_queue.pop_front().as_ref() {
+            if let Some(ref socket_address) = internal.connect_queue.pop_front().as_ref() {
                 let ref mut handshake = internal.handshake;
-                connect_to(handshake, &address);
+                connect_to(handshake, &socket_address);
             } else {
                 break
             }
@@ -355,8 +355,8 @@ impl IoHandler<HandlerMessage> for Handler {
     }
 }
 
-fn connect_to(handshake: &mut Handshake, address: &SocketAddr) -> IoHandlerResult<()> {
+fn connect_to(handshake: &mut Handshake, socket_address: &SocketAddr) -> IoHandlerResult<()> {
     let nonce = Handshake::nonce();
-    handshake.send_ping_to(&address, nonce)?;
+    handshake.send_ping_to(&socket_address, nonce)?;
     Ok(())
 }
