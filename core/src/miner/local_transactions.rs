@@ -16,7 +16,7 @@
 
 use ctypes::{H256, U256};
 use linked_hash_map::LinkedHashMap;
-use super::super::transaction::{self, SignedTransaction, PendingTransaction, TransactionError};
+use super::super::transaction::{SignedTransaction, TransactionError};
 
 /// Status of local transaction.
 /// Can indicate that the transaction is currently part of the queue (`Pending/Future`)
@@ -38,7 +38,7 @@ pub enum Status {
     /// Transaction is invalid.
     Invalid(SignedTransaction),
     /// Transaction was canceled.
-    Canceled(PendingTransaction),
+    Canceled(SignedTransaction),
 }
 
 impl Status {
@@ -105,7 +105,7 @@ impl LocalTransactionsList {
     }
 
     /// Mark transaction as canceled.
-    pub fn mark_canceled(&mut self, tx: PendingTransaction) {
+    pub fn mark_canceled(&mut self, tx: SignedTransaction) {
         warn!(target: "own_tx", "Transaction canceled (hash {:?})", tx.hash());
         self.transactions.insert(tx.hash(), Status::Canceled(tx));
         self.clear_old();

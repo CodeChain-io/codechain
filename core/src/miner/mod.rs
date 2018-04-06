@@ -22,7 +22,7 @@ use ctypes::Address;
 use super::client::MiningBlockChainClient;
 use super::error::Error;
 use super::state::StateInfo;
-use super::transaction::{PendingTransaction, UnverifiedTransaction};
+use super::transaction::{SignedTransaction, UnverifiedTransaction};
 use super::types::BlockNumber;
 
 /// Miner client API
@@ -50,17 +50,18 @@ pub trait MinerService : Send + Sync {
     Vec<Result<TransactionImportResult, Error>>;
 
     /// Imports own (node owner) transaction to queue.
-    fn import_own_transaction<C: MiningBlockChainClient>(&self, chain: &C, transaction: PendingTransaction) ->
+    fn import_own_transaction<C: MiningBlockChainClient>(&self, chain: &C, transaction: SignedTransaction) ->
     Result<TransactionImportResult, Error>;
 
     /// Get a list of all pending transactions in the queue.
-    fn pending_transactions(&self) -> Vec<PendingTransaction>;
+    fn pending_transactions(&self) -> Vec<SignedTransaction>;
+
 
     /// Get a list of all transactions that can go into the given block.
-    fn ready_transactions(&self, best_block: BlockNumber, best_block_timestamp: u64) -> Vec<PendingTransaction>;
+    fn ready_transactions(&self, best_block: BlockNumber, best_block_timestamp: u64) -> Vec<SignedTransaction>;
 
     /// Get a list of all future transactions.
-    fn future_transactions(&self) -> Vec<PendingTransaction>;
+    fn future_transactions(&self) -> Vec<SignedTransaction>;
 }
 
 /// Mining status

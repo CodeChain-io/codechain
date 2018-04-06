@@ -428,45 +428,4 @@ impl Deref for LocalizedTransaction {
     }
 }
 
-/// Transaction activation condition.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Condition {
-    /// Valid at this block number or later.
-    Number(BlockNumber),
-    /// Valid at this unix time or later.
-    Timestamp(u64),
-}
 
-/// Queued transaction with additional information.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PendingTransaction {
-    /// Signed transaction data.
-    pub transaction: SignedTransaction,
-    /// To be activated at this condition. `None` for immediately.
-    pub condition: Option<Condition>,
-}
-
-impl PendingTransaction {
-    /// Create a new pending transaction from signed transaction.
-    pub fn new(signed: SignedTransaction, condition: Option<Condition>) -> Self {
-        PendingTransaction {
-            transaction: signed,
-            condition,
-        }
-    }
-}
-
-impl Deref for PendingTransaction {
-    type Target = SignedTransaction;
-
-    fn deref(&self) -> &SignedTransaction { &self.transaction }
-}
-
-impl From<SignedTransaction> for PendingTransaction {
-    fn from(t: SignedTransaction) -> Self {
-        PendingTransaction {
-            transaction: t,
-            condition: None,
-        }
-    }
-}

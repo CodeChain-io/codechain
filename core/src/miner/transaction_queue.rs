@@ -19,7 +19,7 @@ use std::cmp::Ordering;
 use ctypes::{Address, H256, U256};
 use heapsize::HeapSizeOf;
 
-use super::super::transaction::{self, SignedTransaction, Action};
+use super::super::transaction::{SignedTransaction, Action};
 use super::super::types::BlockNumber;
 
 /// Transaction origin
@@ -138,8 +138,6 @@ struct VerifiedTransaction {
     transaction: SignedTransaction,
     /// Transaction origin.
     origin: TransactionOrigin,
-    /// Delay until specified condition is met.
-    condition: Option<transaction::Condition>,
     /// Insertion time
     insertion_time: QueuingInstant,
     /// ID assigned upon insertion, should be unique.
@@ -153,14 +151,12 @@ impl VerifiedTransaction {
     fn new(
         transaction: SignedTransaction,
         origin: TransactionOrigin,
-        condition: Option<transaction::Condition>,
         insertion_time: QueuingInstant,
         insertion_id: u64,
     ) -> Self {
         VerifiedTransaction {
             transaction,
             origin,
-            condition,
             insertion_time,
             insertion_id,
         }

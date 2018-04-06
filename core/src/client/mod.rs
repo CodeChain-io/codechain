@@ -34,7 +34,7 @@ use super::encoded;
 use super::error::BlockImportError;
 use super::miner::TransactionImportResult;
 use super::state::StateInfo;
-use super::transaction::PendingTransaction;
+use super::transaction::SignedTransaction;
 use super::types::{BlockId, BlockNumber, BlockStatus, TransactionId, VerificationQueueInfo as BlockQueueInfo};
 
 /// Provides `chain_info` method
@@ -154,7 +154,7 @@ pub trait BlockChainClient : Sync + Send + BlockChain + ImportBlock {
     fn queue_consensus_message(&self, message: Bytes);
 
     /// List all transactions that are allowed into the next block.
-    fn ready_transactions(&self) -> Vec<PendingTransaction>;
+    fn ready_transactions(&self) -> Vec<SignedTransaction>;
 
     /// Look up the block number for the given block ID.
     fn block_number(&self, id: BlockId) -> Option<BlockNumber>;

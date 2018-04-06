@@ -43,7 +43,7 @@ use super::super::service::ClientIoMessage;
 use super::super::spec::Spec;
 use super::super::state::State;
 use super::super::state_db::StateDB;
-use super::super::transaction::PendingTransaction;
+use super::super::transaction::SignedTransaction;
 use super::super::types::{BlockId, BlockNumber, BlockStatus, TransactionId, VerificationQueueInfo as BlockQueueInfo};
 use super::super::verification::{self, Verifier, PreverifiedBlock};
 use super::super::verification::queue::BlockQueue;
@@ -309,7 +309,7 @@ impl BlockChainClient for Client {
         }
     }
 
-    fn ready_transactions(&self) -> Vec<PendingTransaction> {
+    fn ready_transactions(&self) -> Vec<SignedTransaction> {
         unimplemented!();
     }
 
