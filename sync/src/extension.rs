@@ -19,7 +19,8 @@ use rand::{thread_rng, Rng};
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use ccore::{BlockChainClient, BlockId};
+use cbytes::Bytes;
+use ccore::{BlockChainClient, BlockId, ChainNotify};
 use cnetwork::{Api, Extension, NodeId};
 use ctypes::{H256, U256};
 use rlp::{Encodable, UntrustedRlp};
@@ -162,6 +163,33 @@ impl Extension for BlockSyncExtension {
             if let Some(message) = next_message {
                 self.send_message(&id, message);
             }
+        }
+    }
+}
+
+impl ChainNotify for BlockSyncExtension {
+    fn new_blocks(
+        &self,
+        _imported: Vec<H256>,
+        _invalid: Vec<H256>,
+        _enacted: Vec<H256>,
+        _retracted: Vec<H256>,
+        _sealed: Vec<H256>,
+        _proposed: Vec<Bytes>,
+        _duration: u64,
+    ) {
+        // FIXME: Send status message only when block is imported
+        let chain_info = self.client.chain_info();
+        let peer_ids: Vec<_> = self.peers.read().keys().cloned().collect();
+        for id in peer_ids {
+            self.send_message(
+                &id,
+                Message::Status {
+                    total_score: chain_info.total_score,
+                    best_hash: chain_info.best_block_hash,
+                    genesis_hash: chain_info.genesis_hash,
+                },
+            );
         }
     }
 }
