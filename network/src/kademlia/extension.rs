@@ -55,7 +55,7 @@ impl AddressConverter for DummyConverter {
         None
     }
 
-    fn address_to_node_id(&self, address: &SocketAddr) -> Option<usize> {
+    fn address_to_node_id(&self, _address: &SocketAddr) -> Option<usize> {
         None
     }
 }
