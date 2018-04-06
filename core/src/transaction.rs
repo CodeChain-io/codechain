@@ -31,14 +31,28 @@ use super::types::BlockNumber;
 pub enum TransactionError {
     /// Transaction is already imported to the queue
     AlreadyImported,
+    /// Transaction is not valid anymore (state already has higher nonce)
+    Old,
+    /// Transaction has too low fee
+    /// (there is already a transaction with the same sender-nonce but higher gas price)
+    TooCheapToReplace,
     /// Invalid chain ID given.
     InvalidNetworkId,
+    /// Transaction was not imported to the queue because limit has been reached.
+    LimitReached,
     /// Transaction's fee is below currently set minimal fee requirement.
     InsufficientFee {
         /// Minimal expected fee
         minimal: U256,
         /// Transaction fee
         got: U256,
+    },
+    /// Sender doesn't have enough funds to pay for this transaction
+    InsufficientBalance {
+        /// Senders balance
+        balance: U256,
+        /// Transaction cost
+        cost: U256,
     },
     /// Returned when transaction nonce does not match state nonce.
     InvalidNonce {
@@ -63,11 +77,18 @@ impl fmt::Display for TransactionError {
         use self::TransactionError::*;
         let msg: String = match *self {
             AlreadyImported => "Already imported".into(),
+            Old => "No longer valid".into(),
+            TooCheapToReplace => "Gas price too low to replace".into(),
             InvalidNetworkId => "Transaction of this network ID is not allowed on this chain.".into(),
+            LimitReached => "Transaction limit reached".into(),
             InsufficientFee {
                 minimal,
                 got,
             } => format!("Insufficient fee. Min={}, Given={}", minimal, got),
+            InsufficientBalance {
+                balance,
+                cost,
+            } => format!("Insufficient balance for transaction. Balance={}, Cost={}", balance, cost),
             InvalidNonce {
                 ref expected,
                 ref got,
