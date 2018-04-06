@@ -71,10 +71,17 @@ impl From<SymmetricCipherError> for Error {
 }
 
 impl Session {
-    pub fn new(secret: SharedSecret) -> Self {
+    pub fn new_without_nonce(secret: SharedSecret) -> Self {
         Session {
             secret,
             nonce: None,
+        }
+    }
+
+    pub fn new(secret: SharedSecret, nonce: Nonce) -> Self {
+        Session {
+            secret,
+            nonce: Some(nonce),
         }
     }
 
@@ -146,7 +153,7 @@ mod tests {
     #[test]
     fn new_session_is_not_ready() {
         let secret = SharedSecret::random();
-        let session = Session::new(secret);
+        let session = Session::new_without_nonce(secret);
 
         assert!(!session.is_ready());
     }
@@ -154,7 +161,7 @@ mod tests {
     #[test]
     fn ready_with_nonce() {
         let secret = SharedSecret::random();
-        let mut session = Session::new(secret);
+        let mut session = Session::new_without_nonce(secret);
 
         assert!(!session.is_ready());
 
@@ -169,7 +176,7 @@ mod tests {
     #[test]
     fn is_expected_nonce_must_return_false_on_new_session() {
         let secret = SharedSecret::random();
-        let session = Session::new(secret);
+        let session = Session::new_without_nonce(secret);
 
         assert!(!session.is_ready());
         assert!(!session.is_expected_nonce(&10000));
@@ -180,7 +187,7 @@ mod tests {
         let secret = SharedSecret::random();
         const NONCE: Nonce = 1000;
 
-        let mut session = Session::new(secret);
+        let mut session = Session::new_without_nonce(secret);
         session.set_ready(NONCE);
 
         let data = Vec::from("some short data".as_bytes());
@@ -197,10 +204,10 @@ mod tests {
         let secret = SharedSecret::random();
         const NONCE: Nonce = 1000;
 
-        let mut session1 = Session::new(secret);
+        let mut session1 = Session::new_without_nonce(secret);
         session1.set_ready(NONCE);
 
-        let mut session2 = Session::new(secret);
+        let mut session2 = Session::new_without_nonce(secret);
         session2.set_ready(NONCE);
 
         let data = Vec::from("some short data".as_bytes());
@@ -218,10 +225,10 @@ mod tests {
         const NONCE1: Nonce = 1000;
         const NONCE2: Nonce = 1001;
 
-        let mut session1 = Session::new(secret);
+        let mut session1 = Session::new_without_nonce(secret);
         session1.set_ready(NONCE1);
 
-        let mut session2 = Session::new(secret);
+        let mut session2 = Session::new_without_nonce(secret);
         session2.set_ready(NONCE2);
 
         let data = Vec::from("some short data".as_bytes());
@@ -238,10 +245,10 @@ mod tests {
         debug_assert_ne!(secret1, secret2);
         const NONCE: Nonce = 1000;
 
-        let mut session1 = Session::new(secret1);
+        let mut session1 = Session::new_without_nonce(secret1);
         session1.set_ready(NONCE);
 
-        let mut session2 = Session::new(secret2);
+        let mut session2 = Session::new_without_nonce(secret2);
         session2.set_ready(NONCE);
 
         let data = Vec::from("some short data".as_bytes());

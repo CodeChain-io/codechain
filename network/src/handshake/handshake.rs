@@ -288,7 +288,7 @@ impl IoHandler<HandlerMessage> for Handler {
                 }
                 {
                     let ref mut handshake = internal.handshake;
-                    handshake.table.insert(socket_address.clone(), Session::new(SharedSecret::zero())); // FIXME: Remove it
+                    handshake.table.insert(socket_address.clone(), Session::new_without_nonce(SharedSecret::zero())); // FIXME: Remove it
                 }
             },
         };

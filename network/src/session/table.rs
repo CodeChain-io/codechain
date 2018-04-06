@@ -32,7 +32,7 @@ impl Table {
 
     pub fn get(&self, k: &SocketAddr) -> Option<Session> {
         self.table.get(&k).map(|s| s.clone()).or_else(|| { // FIXME
-            let mut s = Session::new(SharedSecret::zero());
+            let mut s = Session::new_without_nonce(SharedSecret::zero());
             s.set_ready(10000);
             Some(s)
         })
