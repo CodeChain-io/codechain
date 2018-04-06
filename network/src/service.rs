@@ -20,7 +20,7 @@ use std::sync::Arc;
 use cio::{IoError, IoService};
 use ctypes::Secret;
 
-use super::{Address, Api, DiscoveryApi, Extension};
+use super::{Api, DiscoveryApi, Extension, SocketAddr};
 use super::client::Client;
 use super::connection;
 use super::handshake;
@@ -32,7 +32,7 @@ pub struct Service {
 }
 
 impl Service {
-    pub fn start(address: Address, bootstrap_addresses: Vec<Address>, secret_key: Secret, discovery: Arc<DiscoveryApi>) -> Result<Self, IoError> {
+    pub fn start(address: SocketAddr, bootstrap_addresses: Vec<SocketAddr>, secret_key: Secret, discovery: Arc<DiscoveryApi>) -> Result<Self, IoError> {
         let extension_service = IoService::start()?;
         let extension_channel =  extension_service.channel();
 

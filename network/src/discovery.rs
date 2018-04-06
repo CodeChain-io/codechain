@@ -16,14 +16,14 @@
 
 use std::sync::Arc;
 
-use super::Address;
+use super::SocketAddr;
 use super::connection::AddressConverter;
 
 pub trait Api: Send + Sync {
-    fn get(&self, max: usize) -> Vec<Address>;
+    fn get(&self, max: usize) -> Vec<SocketAddr>;
 
-    fn add(&self, address: Address);
-    fn remove(&self, address: &Address);
+    fn add(&self, address: SocketAddr);
+    fn remove(&self, address: &SocketAddr);
 
     fn set_address_converter(&self, converter: Arc<AddressConverter>);
 }

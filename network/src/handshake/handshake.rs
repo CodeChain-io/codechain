@@ -31,7 +31,7 @@ use rlp::{UntrustedRlp, Encodable, Decodable, DecoderError};
 
 use super::{HandshakeMessage, HandshakeMessageBody};
 use super::super::session::{Nonce, Session, SessionError, SessionTable, SharedSecret};
-use super::super::{Address, DiscoveryApi};
+use super::super::{DiscoveryApi, SocketAddr};
 use super::super::connection;
 
 
@@ -111,20 +111,19 @@ impl From<SessionError> for HandshakeError {
 const MAX_HANDSHAKE_PACKET_SIZE: usize = 1024;
 
 impl Handshake {
-    fn bind(address: &Address) -> Result<Self, HandshakeError> {
-        let socket = address.socket();
-        let socket = UdpSocket::bind(socket)?;
+    fn bind(address: &SocketAddr) -> Result<Self, HandshakeError> {
+        let socket = UdpSocket::bind(address.into())?;
         Ok(Self {
             socket,
             table: SessionTable::new(),
         })
     }
 
-    fn receive(&self) -> Result<Option<(HandshakeMessage, Address)>, HandshakeError> {
+    fn receive(&self) -> Result<Option<(HandshakeMessage, SocketAddr)>, HandshakeError> {
         let mut buf: [u8; MAX_HANDSHAKE_PACKET_SIZE] = [0; MAX_HANDSHAKE_PACKET_SIZE];
         match self.socket.recv_from(&mut buf) {
             Ok((received_size, address)) => {
-                let address = Address::from(address);
+                let address = SocketAddr::from(address);
                 if self.table.get(&address).is_none() {
                     return Err(HandshakeError::NoSession)
                 }
@@ -134,14 +133,14 @@ impl Handshake {
                 let message = Decodable::decode(&rlp)?;
 
                 info!("Handshake {:?} received from {:?}", message, address);
-                Ok(Some((message, Address::from(address))))
+                Ok(Some((message, SocketAddr::from(address))))
             },
             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => Ok(None),
             Err(e) => Err(HandshakeError::from(e)),
         }
     }
 
-    fn send_to(&self, message: &HandshakeMessage, target: &Address) -> Result<(), HandshakeError> {
+    fn send_to(&self, message: &HandshakeMessage, target: &SocketAddr) -> Result<(), HandshakeError> {
         if self.table.get(&target).is_none() {
             return Err(HandshakeError::NoSession)
         }
@@ -150,7 +149,7 @@ impl Handshake {
 
         let length_to_send = unencrypted_bytes.len();
 
-        let sent_size = self.socket.send_to(&unencrypted_bytes, target.socket())?;
+        let sent_size = self.socket.send_to(&unencrypted_bytes, target.into())?;
         if sent_size != length_to_send {
             return Err(HandshakeError::SendError(message.clone(), length_to_send - sent_size))
         }
@@ -158,7 +157,7 @@ impl Handshake {
         Ok(())
     }
 
-    fn send_ping_to(&mut self, target: &Address, nonce: Nonce) -> Result<(), HandshakeError> {
+    fn send_ping_to(&mut self, target: &SocketAddr, nonce: Nonce) -> Result<(), HandshakeError> {
         let nonce = {
             let mut session = self.table.get_mut(&target).ok_or(HandshakeError::NoSession)?;
             session.set_ready(nonce);
@@ -167,7 +166,7 @@ impl Handshake {
         self.send_to(&HandshakeMessage::connection_request(0, nonce), target) // FIXME: seq
     }
 
-    fn on_packet(&mut self, message: &HandshakeMessage, from: &Address, extension: &IoChannel<connection::HandlerMessage>) -> IoHandlerResult<()> {
+    fn on_packet(&mut self, message: &HandshakeMessage, from: &SocketAddr, extension: &IoChannel<connection::HandlerMessage>) -> IoHandlerResult<()> {
         match message.body() {
             &HandshakeMessageBody::ConnectionRequest(ref nonce) => {
                 let encrypted_bytes = {
@@ -238,11 +237,11 @@ fn decrypt_and_decode_nonce(session: &Session, encrypted_bytes: &Vec<u8>) -> Res
 
 struct Internal {
     handshake: Handshake,
-    connect_queue: VecDeque<Address>,
+    connect_queue: VecDeque<SocketAddr>,
 }
 
 pub struct Handler {
-    address: Address,
+    address: SocketAddr,
     internal: Mutex<Internal>,
     extension: IoChannel<connection::HandlerMessage>,
     discovery: RwLock<Arc<DiscoveryApi>>,
@@ -250,7 +249,7 @@ pub struct Handler {
 }
 
 impl Handler {
-    pub fn new(address: Address, secret_key: Secret, extension: IoChannel<connection::HandlerMessage>, discovery: Arc<DiscoveryApi>) -> Self {
+    pub fn new(address: SocketAddr, secret_key: Secret, extension: IoChannel<connection::HandlerMessage>, discovery: Arc<DiscoveryApi>) -> Self {
         let handshake = Handshake::bind(&address).expect("Cannot bind UDP port");
         let discovery = RwLock::new(discovery);
         Self {
@@ -268,7 +267,7 @@ impl Handler {
 
 #[derive(Clone, Debug, PartialOrd, PartialEq)]
 pub enum HandlerMessage {
-    ConnectTo(Address),
+    ConnectTo(SocketAddr),
 }
 
 const RECV_TOKEN: usize = 0;
@@ -356,7 +355,7 @@ impl IoHandler<HandlerMessage> for Handler {
     }
 }
 
-fn connect_to(handshake: &mut Handshake, address: &Address) -> IoHandlerResult<()> {
+fn connect_to(handshake: &mut Handshake, address: &SocketAddr) -> IoHandlerResult<()> {
     let nonce = Handshake::nonce();
     handshake.send_ping_to(&address, nonce)?;
     Ok(())

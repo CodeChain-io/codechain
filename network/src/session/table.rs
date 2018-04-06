@@ -17,10 +17,10 @@
 use std::collections::HashMap;
 
 use super::session::{SharedSecret, Session};
-use super::super::Address;
+use super::super::SocketAddr;
 
 pub struct Table {
-    table: HashMap<Address, Session>,
+    table: HashMap<SocketAddr, Session>,
 }
 
 impl Table {
@@ -30,7 +30,7 @@ impl Table {
         }
     }
 
-    pub fn get(&self, k: &Address) -> Option<Session> {
+    pub fn get(&self, k: &SocketAddr) -> Option<Session> {
         self.table.get(&k).map(|s| s.clone()).or_else(|| { // FIXME
             let mut s = Session::new(SharedSecret::zero());
             s.set_ready(10000);
@@ -38,19 +38,19 @@ impl Table {
         })
     }
 
-    pub fn get_mut(&mut self, k: &Address) -> Option<&mut Session> {
+    pub fn get_mut(&mut self, k: &SocketAddr) -> Option<&mut Session> {
         self.table.get_mut(&k)
     }
 
-    pub fn contains_key(&self, k: &Address) -> bool {
+    pub fn contains_key(&self, k: &SocketAddr) -> bool {
         self.table.contains_key(&k)
     }
 
-    pub fn insert(&mut self, k: Address, v: Session) -> Option<Session> {
+    pub fn insert(&mut self, k: SocketAddr, v: Session) -> Option<Session> {
         self.table.insert(k, v)
     }
 
-    pub fn remove(&mut self, k: &Address) -> Option<Session> {
+    pub fn remove(&mut self, k: &SocketAddr) -> Option<Session> {
         self.table.remove(k)
     }
 }

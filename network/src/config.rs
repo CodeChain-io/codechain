@@ -16,10 +16,10 @@
 
 use ctypes::Secret;
 
-use super::Address;
+use super::SocketAddr;
 
 pub struct Config {
     pub port: u16,
-    pub bootstrap_addresses: Vec<Address>,
+    pub bootstrap_addresses: Vec<SocketAddr>,
     pub secret_key: Secret,
 }

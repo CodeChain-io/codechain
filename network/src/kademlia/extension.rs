@@ -27,7 +27,7 @@ use super::command::Command;
 use super::event::Event;
 use super::kademlia::Kademlia;
 use super::message::Message;
-use super::super::Address;
+use super::super::SocketAddr;
 use super::super::{Api, Extension as NetworkExtension};
 use super::super::connection::AddressConverter;
 use super::super::discovery::Api as DiscoveryApi;
@@ -51,11 +51,11 @@ impl DummyConverter {
 }
 
 impl AddressConverter for DummyConverter {
-    fn node_id_to_address(&self, _node_id: &ExtensionNodeId) -> Option<Address> {
+    fn node_id_to_address(&self, _node_id: &ExtensionNodeId) -> Option<SocketAddr> {
         None
     }
 
-    fn address_to_node_id(&self, address: &Address) -> Option<usize> {
+    fn address_to_node_id(&self, address: &SocketAddr) -> Option<usize> {
         None
     }
 }
@@ -100,12 +100,12 @@ impl Extension {
         }
     }
 
-    fn get_address(&self, id: &ExtensionNodeId) -> Option<Address> {
+    fn get_address(&self, id: &ExtensionNodeId) -> Option<SocketAddr> {
         let converter = self.converter.read();
         converter.node_id_to_address(id)
     }
 
-    fn get_node_id(&self, address: &Address) -> Option<ExtensionNodeId> {
+    fn get_node_id(&self, address: &SocketAddr) -> Option<ExtensionNodeId> {
         let converter = self.converter.read();
         converter.address_to_node_id(&address)
     }
@@ -155,7 +155,7 @@ impl Extension {
         }
     }
 
-    fn handle_send_command(&self, message: &Message, target: &Address) {
+    fn handle_send_command(&self, message: &Message, target: &SocketAddr) {
         let api = self.api.lock();
         if let &Some(ref api) = &*api {
             if let Some(id) = self.get_node_id(&target) {
@@ -166,14 +166,14 @@ impl Extension {
 }
 
 impl DiscoveryApi for Extension {
-    fn get(&self, max: usize) -> Vec<Address> {
+    fn get(&self, max: usize) -> Vec<SocketAddr> {
         debug_assert!(max <= ::std::u8::MAX as usize);
 
         let kademlia = self.kademlia.read();
         kademlia.get_closest_addresses(max)
     }
 
-    fn add(&self, address: Address) {
+    fn add(&self, address: SocketAddr) {
         let event = {
             let mut kademlia = self.kademlia.write();
             kademlia.ping_event(address)
@@ -181,7 +181,7 @@ impl DiscoveryApi for Extension {
         self.push_event(event);
     }
 
-    fn remove(&self, address: &Address) {
+    fn remove(&self, address: &SocketAddr) {
         let mut kademlia = self.kademlia.write();
         kademlia.remove(&address);
     }

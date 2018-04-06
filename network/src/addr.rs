@@ -15,29 +15,29 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::cmp::Ordering;
-use std::convert::From;
+use std::convert::{From, Into};
 use std::fmt;
-use std::net::{AddrParseError, IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
+use std::net::{AddrParseError, IpAddr, Ipv4Addr, Ipv6Addr, self};
 use std::str::FromStr;
 
 use rlp::{UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
 
 #[derive(Clone, Debug, Eq, Hash)]
-pub struct Address {
-    addr: SocketAddr,
+pub struct SocketAddr {
+    addr: net::SocketAddr,
 }
 
-impl Address {
+impl SocketAddr {
     pub fn new(ip: IpAddr, port: u16) -> Self {
-        Address::from(SocketAddr::new(ip, port))
+        SocketAddr::from(net::SocketAddr::new(ip, port))
     }
 
     pub fn v4(a: u8, b: u8, c: u8, d: u8, port: u16) -> Self {
-        Address::new(IpAddr::V4(Ipv4Addr::new(a, b, c, d)), port)
+        SocketAddr::new(IpAddr::V4(Ipv4Addr::new(a, b, c, d)), port)
     }
 
     pub fn v6(a: u16, b: u16, c: u16, d: u16, e: u16, f: u16, g: u16, h: u16, port: u16) -> Self {
-        Address::new(IpAddr::V6(Ipv6Addr::new(a, b, c, d, e, f, g, h)), port)
+        SocketAddr::new(IpAddr::V6(Ipv6Addr::new(a, b, c, d, e, f, g, h)), port)
     }
 
     pub fn ip(&self) -> IpAddr {
@@ -47,32 +47,40 @@ impl Address {
     pub fn port(&self) -> u16 {
         self.addr.port()
     }
-
-    pub fn socket(&self) -> &SocketAddr {
-        &self.addr
-    }
 }
 
-impl From<SocketAddr> for Address {
-    fn from(addr: SocketAddr) -> Self {
+impl From<net::SocketAddr> for SocketAddr {
+    fn from(addr: net::SocketAddr) -> Self {
         Self {
             addr,
         }
     }
 }
 
-impl FromStr for Address {
-    type Err = AddrParseError;
-    fn from_str(addr: &str) -> Result<Self, Self::Err> {
-        Ok(Self::from(SocketAddr::from_str(addr)?))
+impl Into<net::SocketAddr> for SocketAddr {
+    fn into(self) -> net::SocketAddr {
+        self.addr
     }
 }
 
-impl Ord for Address {
-    fn cmp(&self, other: &Address) -> Ordering {
+impl<'a> Into<&'a net::SocketAddr> for &'a SocketAddr {
+    fn into(self) -> &'a net::SocketAddr {
+        &self.addr
+    }
+}
+
+impl FromStr for SocketAddr {
+    type Err = AddrParseError;
+    fn from_str(addr: &str) -> Result<Self, Self::Err> {
+        Ok(Self::from(net::SocketAddr::from_str(addr)?))
+    }
+}
+
+impl Ord for SocketAddr {
+    fn cmp(&self, other: &SocketAddr) -> Ordering {
         match (self.addr, other.addr) {
-            (SocketAddr::V4(_), SocketAddr::V6(_)) => Ordering::Less,
-            (SocketAddr::V6(_), SocketAddr::V4(_)) => Ordering::Greater,
+            (net::SocketAddr::V4(_), net::SocketAddr::V6(_)) => Ordering::Less,
+            (net::SocketAddr::V6(_), net::SocketAddr::V4(_)) => Ordering::Greater,
             (lhs, rhs) => {
                 match lhs.ip().cmp(&rhs.ip()) {
                     Ordering::Equal => lhs.port().cmp(&rhs.port()),
@@ -83,25 +91,25 @@ impl Ord for Address {
     }
 }
 
-impl PartialEq for Address {
-    fn eq(&self, other: &Address ) -> bool {
+impl PartialEq for SocketAddr {
+    fn eq(&self, other: &SocketAddr) -> bool {
         self.cmp(other) == Ordering::Equal
     }
 }
 
-impl PartialOrd for Address {
-    fn partial_cmp(&self, other: &Address) -> Option<Ordering> {
+impl PartialOrd for SocketAddr {
+    fn partial_cmp(&self, other: &SocketAddr) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl fmt::Display for Address {
+impl fmt::Display for SocketAddr {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "Address({})", self.addr)
     }
 }
 
-impl Encodable for Address {
+impl Encodable for SocketAddr {
     fn rlp_append(&self, s: &mut RlpStream) {
         match self.ip() {
             IpAddr::V4(ref addr) => {
@@ -126,7 +134,7 @@ impl Encodable for Address {
     }
 }
 
-impl Decodable for Address {
+impl Decodable for SocketAddr {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
         match rlp.item_count()? {
             5 => {
@@ -135,7 +143,7 @@ impl Decodable for Address {
                 let ip2 = rlp.val_at(2)?;
                 let ip3 = rlp.val_at(3)?;
                 let port = rlp.val_at(4)?;
-                Ok(Address::v4(ip0, ip1, ip2, ip3, port))
+                Ok(SocketAddr::v4(ip0, ip1, ip2, ip3, port))
             },
             17 => {
                 let mut octets: [u8; 16] = [0; 16];
@@ -144,7 +152,7 @@ impl Decodable for Address {
                 }
                 let port = rlp.val_at(16)?;
                 let ip = IpAddr::V6(Ipv6Addr::from(octets));
-                Ok(Address::new(ip, port))
+                Ok(SocketAddr::new(ip, port))
             },
             _ => Err(DecoderError::RlpIncorrectListLen),
         }
@@ -154,40 +162,40 @@ impl Decodable for Address {
 #[cfg(test)]
 mod tests {
     use std::cmp::Ordering;
-    use super::Address;
+    use super::SocketAddr;
 
     #[test]
     fn test_addresss_are_equal_if_they_have_same_id_and_port() {
-        let a1 = Address::v4(127, 0, 0, 1, 3485);
-        let a2 = Address::v4(127, 0, 0, 1, 3485);
+        let a1 = SocketAddr::v4(127, 0, 0, 1, 3485);
+        let a2 = SocketAddr::v4(127, 0, 0, 1, 3485);
         assert_eq!(a1, a2);
     }
 
     #[test]
     fn test_addresss_are_not_equal_if_their_ip_is_different() {
-        let a1 = Address::v4(127, 0, 0, 1, 3485);
-        let a2 = Address::v4(192, 168, 0, 1, 3485);
+        let a1 = SocketAddr::v4(127, 0, 0, 1, 3485);
+        let a2 = SocketAddr::v4(192, 168, 0, 1, 3485);
         assert_ne!(a1, a2);
     }
 
     #[test]
     fn test_addresss_are_not_equal_if_their_port_is_different() {
-        let a1 = Address::v4(127, 0, 0, 1, 3485);
-        let a2 = Address::v4(127, 0, 0, 1, 3486);
+        let a1 = SocketAddr::v4(127, 0, 0, 1, 3485);
+        let a2 = SocketAddr::v4(127, 0, 0, 1, 3486);
         assert_ne!(a1, a2);
     }
 
     #[test]
     fn test_address_is_less_than_if_port_is_less() {
-        let a1 = Address::v4(127, 0, 0, 1, 3485);
-        let a2 = Address::v4(127, 0, 0, 1, 3486);
+        let a1 = SocketAddr::v4(127, 0, 0, 1, 3485);
+        let a2 = SocketAddr::v4(127, 0, 0, 1, 3486);
         assert_eq!(Ordering::Less, a1.cmp(&a2));
     }
 
     #[test]
     fn test_address_is_greater_than_if_port_is_greater() {
-        let a1 = Address::v4(127, 0, 0, 1, 3485);
-        let a2 = Address::v4(127, 0, 0, 1, 3484);
+        let a1 = SocketAddr::v4(127, 0, 0, 1, 3485);
+        let a2 = SocketAddr::v4(127, 0, 0, 1, 3484);
         assert_eq!(Ordering::Greater, a1.cmp(&a2));
     }
 }

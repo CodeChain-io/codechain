@@ -20,22 +20,22 @@ use std::str::FromStr;
 
 use super::NodeId;
 use super::node_id::{log2_distance_between_nodes, self};
-use super::super::Address;
+use super::super::SocketAddr;
 
 
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct Contact {
     id: NodeId,
-    addr: Address,
+    addr: SocketAddr,
 }
 
 #[cfg(test)]
-fn zero() -> Address {
-    Address::v4(0, 0, 0, 0, 0)
+fn zero() -> SocketAddr {
+    SocketAddr::v4(0, 0, 0, 0, 0)
 }
 
 impl Contact {
-    pub fn random(addr: Address) -> Self {
+    pub fn random(addr: SocketAddr) -> Self {
         let id = node_id::random();
         Contact {
             id,
@@ -43,7 +43,7 @@ impl Contact {
         }
     }
 
-    pub fn new(id: NodeId, addr: Address) -> Self {
+    pub fn new(id: NodeId, addr: SocketAddr) -> Self {
         Contact {
             id,
             addr,
@@ -52,7 +52,7 @@ impl Contact {
 
     #[cfg(test)]
     pub fn from_hash_with_addr(node_id: &str, a: u8, b: u8, c: u8, d: u8, port: u16) -> Contact {
-        Contact::new(NodeId::from_str(node_id).unwrap(), Address::v4(a, b, c, d, port))
+        Contact::new(NodeId::from_str(node_id).unwrap(), SocketAddr::v4(a, b, c, d, port))
     }
 
     #[cfg(test)]
@@ -71,7 +71,7 @@ impl Contact {
         self.id
     }
 
-    pub fn addr(&self) -> &Address {
+    pub fn addr(&self) -> &SocketAddr {
         &self.addr
     }
 }

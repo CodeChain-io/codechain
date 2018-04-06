@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::collections::{HashMap, HashSet};
-use std::convert::From;
+use std::convert::{From, Into};
 use std::io;
 use std::sync::Arc;
 
@@ -27,7 +27,7 @@ use parking_lot::Mutex;
 
 use super::connection::{Connection, ExtensionCallback as ExtensionChannel};
 use super::message::Version;
-use super::super::Address;
+use super::super::SocketAddr;
 use super::super::client::Client;
 use super::super::extension::{Error as ExtensionError, NodeId};
 use super::super::limited_table::{Key as ConnectionToken, LimitedTable};
@@ -37,7 +37,7 @@ use super::super::timer_info::{Error as TimerInfoError, TimerInfo};
 pub struct Manager {
     listener: TcpListener,
     connections: LimitedTable<Connection>,
-    address_to_node_id: HashMap<Address, NodeId>,
+    address_to_node_id: HashMap<SocketAddr, NodeId>,
     address_to_session: SessionTable,
     inbound_tokens: HashSet<ConnectionToken>,
 }
@@ -54,9 +54,9 @@ type TimerId = usize;
 
 #[derive(Clone, Debug, PartialOrd, PartialEq)]
 pub enum HandlerMessage {
-    RegisterSession(Address, Session),
+    RegisterSession(SocketAddr, Session),
 
-    RequestConnection(Address, Session),
+    RequestConnection(SocketAddr, Session),
 
     RequestNegotiation {
         node_id: NodeId,
@@ -107,9 +107,9 @@ impl ::std::fmt::Display for Error {
 
 
 impl Manager {
-    pub fn listen(address: &Address) -> io::Result<Self> {
+    pub fn listen(address: &SocketAddr) -> io::Result<Self> {
         Ok(Manager {
-            listener: TcpListener::bind(address.socket())?,
+            listener: TcpListener::bind(address.into())?,
             connections: LimitedTable::new(FIRST_CONNECTION_TOKEN, MAX_CONNECTIONS),
             address_to_node_id: HashMap::new(),
             address_to_session: SessionTable::new(),
@@ -117,7 +117,7 @@ impl Manager {
         })
     }
 
-    fn register_token(&mut self, stream: TcpStream, address: &Address, is_inbound: bool) -> IoHandlerResult<Option<ConnectionToken>> {
+    fn register_token(&mut self, stream: TcpStream, address: &SocketAddr, is_inbound: bool) -> IoHandlerResult<Option<ConnectionToken>> {
         let session = self.address_to_session.get(&address).ok_or(Error::NoAvailableSession)?;
         let connection = Connection::new(stream, session.clone())?;
         if let Some(token) = self.connections.insert(connection) {
@@ -134,15 +134,15 @@ impl Manager {
     pub fn accept(&mut self, _io: &IoContext<HandlerMessage>) -> IoHandlerResult<Option<ConnectionToken>> {
         match self.listener.accept() {
             Ok((stream, address)) => {
-                self.register_token(stream, &Address::from(address), true)
+                self.register_token(stream, &SocketAddr::from(address), true)
             },
             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => Ok(None),
             Err(e) => Err(From::from(e)),
         }
     }
 
-    pub fn connect(&mut self, address: &Address) -> IoHandlerResult<Option<ConnectionToken>> {
-        match TcpStream::connect(address.socket()) {
+    pub fn connect(&mut self, address: &SocketAddr) -> IoHandlerResult<Option<ConnectionToken>> {
+        match TcpStream::connect(address.into()) {
             Ok(stream) => {
                 self.register_token(stream, &address, false)
             },
@@ -151,7 +151,7 @@ impl Manager {
         }
     }
 
-    pub fn register_session(&mut self, address: Address, session: Session) ->IoHandlerResult<()> {
+    pub fn register_session(&mut self, address: SocketAddr, session: Session) ->IoHandlerResult<()> {
         debug_assert!(session.is_ready());
         if self.address_to_session.contains_key(&address) {
             info!("Session registration is requested to the address which already has one");
@@ -180,14 +180,14 @@ impl Manager {
 }
 
 pub struct Handler {
-    address: Address,
+    address: SocketAddr,
     manager: Mutex<Manager>,
     client: Arc<Client>,
     timer: Mutex<TimerInfo>,
 }
 
 impl Handler {
-    pub fn new(address: Address, client: Arc<Client>) -> Self {
+    pub fn new(address: SocketAddr, client: Arc<Client>) -> Self {
         let manager = Mutex::new(Manager::listen(&address).expect("Cannot listen TCP port"));
         Self {
             address,
@@ -377,19 +377,19 @@ impl IoHandler<HandlerMessage> for Handler {
 
 
 pub trait AddressConverter: Send + Sync {
-    fn node_id_to_address(&self, node_id: &NodeId) -> Option<Address>;
-    fn address_to_node_id(&self, address: &Address) -> Option<NodeId>;
+    fn node_id_to_address(&self, node_id: &NodeId) -> Option<SocketAddr>;
+    fn address_to_node_id(&self, address: &SocketAddr) -> Option<NodeId>;
 }
 
 impl AddressConverter for Handler {
-    fn node_id_to_address(&self, node_id: &NodeId) -> Option<Address> {
+    fn node_id_to_address(&self, node_id: &NodeId) -> Option<SocketAddr> {
         let manager = self.manager.lock();
         manager.connections
             .get(*node_id)
             .map(|connection| connection.peer_addr().expect("Peer must exist").clone())
     }
 
-    fn address_to_node_id(&self, address: &Address) -> Option<NodeId> {
+    fn address_to_node_id(&self, address: &SocketAddr) -> Option<NodeId> {
         let manager = self.manager.lock();
         manager.address_to_node_id.get(&address).map(|id| id.clone())
     }

@@ -2,7 +2,7 @@ use kademlia::contact::Contact;
 use std::cmp;
 use std::collections::{BTreeSet, HashMap, VecDeque};
 use super::NodeId;
-use super::super::Address;
+use super::super::SocketAddr;
 
 pub struct RoutingTable {
     local_id: NodeId,
@@ -135,7 +135,7 @@ impl RoutingTable {
         self.buckets.get(&distance).map(|bucket| Vec::from(bucket.contacts.clone())).unwrap_or(vec![])
     }
 
-    pub fn remove_address(&mut self, address: &Address) {
+    pub fn remove_address(&mut self, address: &SocketAddr) {
         for bucket in self.buckets.values_mut() {
             bucket.remove_address(&address);
         }
@@ -192,7 +192,7 @@ impl Bucket {
             .is_some()
     }
 
-    fn remove_address(&mut self, address: &Address) {
+    fn remove_address(&mut self, address: &SocketAddr) {
         self.contacts.retain(|contact| contact.addr() != address);
     }
 }

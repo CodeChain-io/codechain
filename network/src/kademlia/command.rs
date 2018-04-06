@@ -15,10 +15,10 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use super::message::Message;
-use super::super::address::Address;
+use super::super::SocketAddr;
 
 pub enum Command {
     Verify,
     Refresh,
-    Send { message: Message, target: Address },
+    Send { message: Message, target: SocketAddr },
 }

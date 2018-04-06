@@ -19,7 +19,7 @@ use std::str::FromStr;
 
 use ccore::Spec;
 use clap;
-use cnetwork::{Address, NetworkConfig};
+use cnetwork::{NetworkConfig, SocketAddr};
 use cnetwork::kademlia::Config as KademliaConfig;
 use ctypes::Secret;
 use rpc::HttpConfiguration as RpcHttpConfig;
@@ -116,7 +116,7 @@ pub fn parse_network_config(matches: &clap::ArgMatches) -> Result<Option<Network
 
     let bootstrap_addresses = {
         if let Some(addresses) = matches.values_of("bootstrap-addresses") {
-            addresses.map(|s| Address::from_str(s).unwrap()).collect::<Vec<_>>()
+            addresses.map(|s| SocketAddr::from_str(s).unwrap()).collect::<Vec<_>>()
         } else {
             vec![]
         }

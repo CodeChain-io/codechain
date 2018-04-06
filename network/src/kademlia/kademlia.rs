@@ -27,7 +27,7 @@ use super::message::Id as MessageId;
 use super::message::Message;
 use super::node_id::{log2_distance_between_nodes, self};
 use super::routing_table::RoutingTable;
-use super::super::Address;
+use super::super::SocketAddr;
 
 pub struct Kademlia {
     alpha: u8,
@@ -81,7 +81,7 @@ impl Kademlia {
     }
 
 
-    fn handle_ping_message(&self, id: MessageId, _sender: NodeId, sender_address: &Address) -> Option<Command> {
+    fn handle_ping_message(&self, id: MessageId, _sender: NodeId, sender_address: &SocketAddr) -> Option<Command> {
         let message = Message::Pong{ id, sender: self.local_id() };
         let target = sender_address.clone();
         Some(Command::Send { message, target })
@@ -91,7 +91,7 @@ impl Kademlia {
         None
     }
 
-    fn handle_find_node_message(&self, id: MessageId, _sender: NodeId, target: NodeId, bucket_size: u8, sender_address: &Address) -> Option<Command> {
+    fn handle_find_node_message(&self, id: MessageId, _sender: NodeId, target: NodeId, bucket_size: u8, sender_address: &SocketAddr) -> Option<Command> {
         let contacts = self.table.get_closest_contacts(&target, bucket_size);
         let message = Message::Nodes {
             id,
@@ -113,7 +113,7 @@ impl Kademlia {
             .and(Some(Command::Verify))
     }
 
-    pub fn handle_message(&mut self, message: &Message, sender_address: &Address) -> Option<Command> {
+    pub fn handle_message(&mut self, message: &Message, sender_address: &SocketAddr) -> Option<Command> {
         // FIXME : Check validity of response first.
 
         let sender_contact = Contact::new(message.sender().clone(), sender_address.clone());
@@ -144,7 +144,7 @@ impl Kademlia {
         })
     }
 
-    fn handle_send_command(&mut self, _message: &Message, _target: &Address) -> Option<Command> {
+    fn handle_send_command(&mut self, _message: &Message, _target: &SocketAddr) -> Option<Command> {
         // FIXME: implement it
         None
     }
@@ -167,7 +167,7 @@ impl Kademlia {
         Some(Command::Verify)
     }
 
-    pub fn get_closest_addresses(&self, max: usize) -> Vec<Address> {
+    pub fn get_closest_addresses(&self, max: usize) -> Vec<SocketAddr> {
         debug_assert!(max <= ::std::u8::MAX as usize);
         let contacts = self.table.get_closest_contacts(&self.local_id(), max as u8);
         contacts.into_iter()
@@ -175,13 +175,13 @@ impl Kademlia {
             .collect()
     }
 
-    pub fn ping_event(&mut self, target: Address) -> Event {
+    pub fn ping_event(&mut self, target: SocketAddr) -> Event {
         let message = Message::Ping { id: 0, sender: self.local_id() };
         let command = Command::Send { message, target };
         Event::Command { command }
     }
 
-    pub fn remove(&mut self, address: &Address) {
+    pub fn remove(&mut self, address: &SocketAddr) {
         let _ = self.table.remove_address(&address);
         let _ = self.to_be_verified.retain(|contact| contact.addr() != address);
     }

@@ -16,9 +16,9 @@
 
 use super::command::Command;
 use super::message::Message;
-use super::super::Address;
+use super::super::SocketAddr;
 
 pub enum Event {
-    Message { message: Message, sender: Address },
+    Message { message: Message, sender: SocketAddr },
     Command { command: Command },
 }
