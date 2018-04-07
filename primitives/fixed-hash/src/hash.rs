@@ -153,13 +153,19 @@ macro_rules! construct_hash {
 
 		impl PartialEq for $from {
 			fn eq(&self, other: &Self) -> bool {
-				unsafe { $crate::libc::memcmp(self.0.as_ptr() as *const $crate::libc::c_void, other.0.as_ptr() as *const $crate::libc::c_void, $size) == 0 }
+				unsafe {
+					$crate::libc::memcmp(self.0.as_ptr() as *const $crate::libc::c_void,
+					other.0.as_ptr() as *const $crate::libc::c_void, $size) == 0
+				}
 			}
 		}
 
 		impl Ord for $from {
 			fn cmp(&self, other: &Self) -> ::core::cmp::Ordering {
-				let r = unsafe { $crate::libc::memcmp(self.0.as_ptr() as *const $crate::libc::c_void, other.0.as_ptr() as *const $crate::libc::c_void, $size) };
+				let r = unsafe {
+					$crate::libc::memcmp(self.0.as_ptr() as *const $crate::libc::c_void
+										 , other.0.as_ptr() as *const $crate::libc::c_void, $size)
+				};
 				if r < 0 { return ::core::cmp::Ordering::Less }
 				if r > 0 { return ::core::cmp::Ordering::Greater }
 				return ::core::cmp::Ordering::Equal;

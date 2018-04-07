@@ -343,7 +343,8 @@ macro_rules! impl_serde {
 		#[cfg(feature="serialize")]
 		impl<'de> Deserialize<'de> for $name {
 			fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> where D: Deserializer<'de> {
-				codechain_types_serialize::deserialize_check_len(deserializer, codechain_types_serialize::ExpectedLen::Between(0, $len * 8))
+				codechain_types_serialize::deserialize_check_len(
+					deserializer, codechain_types_serialize::ExpectedLen::Between(0, $len * 8))
 					.map(|x| (&*x).into())
 			}
 		}

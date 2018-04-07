@@ -36,7 +36,8 @@ impl hash::Hasher for PlainHasher {
 
             unroll! {
                 for _i in 0..8 {
-                    *prefix_ptr ^= (*bytes_ptr ^ *bytes_ptr.offset(8)) ^ (*bytes_ptr.offset(16) ^ *bytes_ptr.offset(24));
+                    *prefix_ptr ^= (*bytes_ptr ^ *bytes_ptr.offset(8))
+                        ^ (*bytes_ptr.offset(16) ^ *bytes_ptr.offset(24));
 
                     bytes_ptr = bytes_ptr.offset(1);
                     prefix_ptr = prefix_ptr.offset(1);
