@@ -100,14 +100,15 @@ impl Decodable for Message {
 mod tests {
     use rlp::{ Decodable, Encodable, UntrustedRlp };
 
-    use super::Message;
+    use super::{Message, Nonce};
 
     const SINGLE: u8 = 0x80;
     const LIST: u8 = 0xc0;
 
     #[test]
     fn protocol_id_of_sync_is_0() {
-        assert_eq!(0x00, Message::sync().protocol_id());
+        const NONCE: Nonce = 1000;
+        assert_eq!(0x00, Message::sync(NONCE).protocol_id());
     }
 
     #[test]
@@ -117,12 +118,13 @@ mod tests {
 
     #[test]
     fn encode_sync() {
-        let sync = Message::sync();
+        const NONCE: Nonce = 1000;
+        let sync = Message::sync(NONCE);
         let result = sync.rlp_bytes();
 
-        assert_eq!(3, result.len());
+        assert_eq!(6, result.len());
 
-        assert_eq!(LIST + 2, result[0]);
+        assert_eq!(LIST + 5, result[0]);
 
         assert_eq!(SINGLE + sync.version() as u8, result[1]);
 
@@ -145,17 +147,20 @@ mod tests {
 
     #[test]
     fn decode_sync() {
-        let mut bytes = vec![LIST + 1 /* version */ + 1 /* protocol id */];
+        let mut bytes = vec![LIST + 1 /* version */ + 1 /* protocol id */ + 1 /* nonce */];
 
         bytes.push(SINGLE + 0); // version
         bytes.push(SINGLE + 0x00); // protocol id
 
-        assert_eq!(3, bytes.len());
+        const NONCE: Nonce = 3;
+        bytes.push(NONCE as u8); // nonce
+
+        assert_eq!(4, bytes.len());
 
         let rlp = UntrustedRlp::new(&bytes);
 
         match Decodable::decode(&rlp) {
-            Ok(message) => assert_eq!(Message::sync(), message),
+            Ok(message) => assert_eq!(Message::sync(NONCE), message),
             Err(err) => assert!(false, "{:?}", err),
         }
     }
