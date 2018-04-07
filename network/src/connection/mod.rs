@@ -17,6 +17,7 @@
 mod connection;
 mod manager;
 mod message;
+mod unprocessed_connection;
 
 use self::message::ApplicationMessage;
 use self::message::HandshakeMessage;

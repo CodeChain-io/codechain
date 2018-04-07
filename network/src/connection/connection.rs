@@ -31,7 +31,7 @@ use super::message::{Seq, Version};
 use super::super::SocketAddr;
 use super::super::client::Client;
 use super::super::extension::{Error as ExtensionError, NodeId};
-use super::super::session::{Nonce, Session};
+use super::super::session::{Nonce, Session, SharedSecret};
 
 #[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq)]
 pub enum State {
@@ -110,22 +110,18 @@ impl From<SymmetricCipherError> for Error {
     }
 }
 
-type Result<T> = result::Result<T, Error>;
+pub type Result<T> = result::Result<T, Error>;
 
 impl Connection {
-    pub fn new(stream: TcpStream, session: Session) -> Result<Self> {
-        if !session.is_ready() {
-            info!("Try to connect with unready session");
-            return Err(Error::UnreadySession)
-        }
-        Ok(Self {
+    pub fn new(stream: TcpStream, secret: SharedSecret, nonce: Nonce) -> Self {
+        Self {
             stream,
-            session,
+            session: Session::new(secret, nonce),
             state: State::New,
             send_queue: VecDeque::new(),
             next_negotiation_seq: 0,
             requested_negotiation: HashMap::new(),
-        })
+        }
     }
 
     pub fn send(&mut self) -> Result<bool> {
@@ -205,8 +201,8 @@ impl Connection {
     }
 
     fn receive_internal(&mut self, callback: &ExtensionCallback) -> Result<bool> {
-        self.receive_message().and_then(|message| {
-            match message {
+        self.receive_message().and_then(|messages| {
+            match messages {
                 None => Ok(false),
                 Some(Message::Application(msg)) => {
                     let _ = self.expect_state(State::Established)?;
@@ -222,8 +218,7 @@ impl Connection {
                     info!("handshake message received {:?}", msg);
                     match msg {
                         HandshakeMessage::Sync(_version, _nonce) => {
-                            let _ = self.expect_state(State::New)?;
-                            self.enqueue_ack();
+                            unreachable!(); // This message must be handled in UnprocessedConnection
                         },
                         HandshakeMessage::Ack(_) => {
                             let _ = self.expect_state(State::Requested)?;
@@ -259,7 +254,7 @@ impl Connection {
         })
     }
 
-    fn receive_message(&mut self) -> Result<Option<Message>> {
+    fn receive_message(&mut self) -> Result<Option<(Message)>> {
         let mut result: Vec<u8> = Vec::new();
         let mut bytes: [u8; 1024] = [0; 1024];
 
@@ -276,11 +271,14 @@ impl Connection {
         }
         let rlp = UntrustedRlp::new(&result);
         let signed_message = rlp.as_val::<SignedMessage>()?;
+        let message = {
+            let rlp = UntrustedRlp::new(&signed_message.message);
+            rlp.as_val::<Message>()?
+        };
         if !signed_message.is_valid(&self.session) {
             return Err(Error::InvalidSign)
         }
-        let rlp = UntrustedRlp::new(&signed_message.message);
-        Ok(Some(rlp.as_val::<Message>()?))
+        Ok(Some(message))
     }
 
     pub fn stream(&self) -> &TcpStream {
