@@ -4,6 +4,7 @@ rust:
   - beta
   - nightly
 script:
+  - cargo fmt
   - cargo build --verbose --all
 matrix:
   allow_failures:
