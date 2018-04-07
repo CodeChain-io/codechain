@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use rlp::{Encodable, Decodable, DecoderError, RlpStream, UntrustedRlp};
+use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 /// Information describing execution of a transaction.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -33,9 +33,7 @@ pub enum TransactionOutcome {
 impl Invoice {
     /// Create a new invocie.
     pub fn new(outcome: TransactionOutcome) -> Self {
-        Self {
-            outcome
-        }
+        Self { outcome }
     }
 }
 
@@ -58,5 +56,3 @@ impl Decodable for Invoice {
         Ok(Self { outcome })
     }
 }
-
-

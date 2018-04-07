@@ -58,7 +58,11 @@ pub trait Kind: 'static + Sized + Send + Sync {
     fn create(input: Self::Input, engine: &CodeChainEngine) -> Result<Self::Unverified, Error>;
 
     /// Attempt to verify the `Unverified` item using the given engine.
-    fn verify(unverified: Self::Unverified, engine: &CodeChainEngine, check_seal: bool) -> Result<Self::Verified, Error>;
+    fn verify(
+        unverified: Self::Unverified,
+        engine: &CodeChainEngine,
+        check_seal: bool,
+    ) -> Result<Self::Verified, Error>;
 }
 
 /// The blocks verification module.
@@ -67,11 +71,11 @@ pub mod blocks {
     use ctypes::{H256, U256};
     use heapsize::HeapSizeOf;
 
-    use super::{Kind, BlockLike};
+    use super::{BlockLike, Kind};
     use super::super::super::super::consensus::CodeChainEngine;
     use super::super::super::super::error::Error;
     use super::super::super::super::header::Header;
-    use super::super::super::verification::{PreverifiedBlock, verify_block_basic, verify_block_unordered};
+    use super::super::super::verification::{verify_block_basic, verify_block_unordered, PreverifiedBlock};
 
     /// A mode for verifying blocks.
     pub struct Blocks;
@@ -115,10 +119,7 @@ pub mod blocks {
             use views::BlockView;
 
             let header = BlockView::new(&bytes).header();
-            Unverified {
-                header,
-                bytes,
-            }
+            Unverified { header, bytes }
         }
     }
 

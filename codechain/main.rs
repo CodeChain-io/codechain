@@ -31,8 +31,8 @@ extern crate codechain_rpc as crpc;
 extern crate codechain_sync as csync;
 extern crate codechain_types as ctypes;
 extern crate ctrlc;
-extern crate fdlimit;
 extern crate env_logger;
+extern crate fdlimit;
 extern crate panic_hook;
 extern crate parking_lot;
 
@@ -124,10 +124,11 @@ fn wait_for_exit() {
 
     // Handle possible exits
     let e = exit.clone();
-    CtrlC::set_handler(move || { e.1.notify_all(); });
+    CtrlC::set_handler(move || {
+        e.1.notify_all();
+    });
 
     // Wait for signal
     let mut l = exit.0.lock();
     let _ = exit.1.wait(&mut l);
 }
-

@@ -48,8 +48,9 @@ mod tests {
 
         let deserialized: SoloAuthority = serde_json::from_str(s).unwrap();
 
-        let vs = vec![Address(H160::from("0xc6d9d2cd449a754c494264e1809c50e34d64562b"))];
+        let vs = vec![
+            Address(H160::from("0xc6d9d2cd449a754c494264e1809c50e34d64562b")),
+        ];
         assert_eq!(deserialized.params.validators, vs);
     }
 }
-

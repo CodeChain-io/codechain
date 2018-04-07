@@ -22,4 +22,3 @@ pub fn setup_rpc(mut handler: MetaIoHandler<()>) -> MetaIoHandler<()> {
     });
     handler
 }
-

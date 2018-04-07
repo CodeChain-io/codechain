@@ -22,7 +22,8 @@ use super::super::header::Header;
 
 /// Should be used to verify blocks.
 pub trait Verifier<C>: Send + Sync
-    where C: BlockInfo
+where
+    C: BlockInfo,
 {
     /// Verify a block relative to its parent and uncles.
     fn verify_block_family(
@@ -30,7 +31,7 @@ pub trait Verifier<C>: Send + Sync
         header: &Header,
         parent: &Header,
         engine: &CodeChainEngine,
-        do_full: Option<verification::FullFamilyParams<C>>
+        do_full: Option<verification::FullFamilyParams<C>>,
     ) -> Result<(), Error>;
 
     /// Do a final verification check for an enacted header vs its expected counterpart.

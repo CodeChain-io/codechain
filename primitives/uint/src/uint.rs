@@ -32,10 +32,10 @@
 /// Conversion from decimal string error
 #[derive(Debug, PartialEq)]
 pub enum FromDecStrErr {
-	/// Char not from range 0-9
-	InvalidCharacter,
-	/// Value does not fit into type
-	InvalidLength,
+    /// Char not from range 0-9
+    InvalidCharacter,
+    /// Value does not fit into type
+    InvalidLength,
 }
 
 #[macro_export]
@@ -50,7 +50,7 @@ macro_rules! impl_map_from {
 	}
 }
 
-#[cfg(not(all(asm_available, target_arch="x86_64")))]
+#[cfg(not(all(asm_available, target_arch = "x86_64")))]
 #[macro_export]
 #[doc(hidden)]
 macro_rules! uint_overflowing_add {
@@ -73,7 +73,7 @@ macro_rules! uint_overflowing_add_reg {
 	})
 }
 
-#[cfg(all(asm_available, target_arch="x86_64"))]
+#[cfg(all(asm_available, target_arch = "x86_64"))]
 #[macro_export]
 #[doc(hidden)]
 macro_rules! uint_overflowing_add {
@@ -151,7 +151,7 @@ macro_rules! uint_overflowing_add {
 	)
 }
 
-#[cfg(not(all(asm_available, target_arch="x86_64")))]
+#[cfg(not(all(asm_available, target_arch = "x86_64")))]
 #[macro_export]
 #[doc(hidden)]
 macro_rules! uint_overflowing_sub {
@@ -219,7 +219,7 @@ macro_rules! uint_overflowing_sub_reg {
 	})
 }
 
-#[cfg(all(asm_available, target_arch="x86_64"))]
+#[cfg(all(asm_available, target_arch = "x86_64"))]
 #[macro_export]
 #[doc(hidden)]
 macro_rules! uint_overflowing_sub {
@@ -295,7 +295,7 @@ macro_rules! uint_overflowing_sub {
 	})
 }
 
-#[cfg(all(asm_available, target_arch="x86_64"))]
+#[cfg(all(asm_available, target_arch = "x86_64"))]
 #[macro_export]
 macro_rules! uint_overflowing_mul {
 	(U256, $n_words: expr, $self_expr: expr, $other: expr) => ({
@@ -416,7 +416,7 @@ macro_rules! uint_overflowing_mul {
 	)
 }
 
-#[cfg(not(all(asm_available, target_arch="x86_64")))]
+#[cfg(not(all(asm_available, target_arch = "x86_64")))]
 #[macro_export]
 #[doc(hidden)]
 macro_rules! uint_overflowing_mul {
@@ -527,20 +527,20 @@ macro_rules! panic_on_overflow {
 #[inline(always)]
 #[doc(hidden)]
 pub fn mul_u32(a: (u64, u64), b: u64, carry: u64) -> (u64, u64) {
-	let upper = b * a.0;
-	let lower = b * a.1;
+    let upper = b * a.0;
+    let lower = b * a.1;
 
-	let (res1, overflow1) = lower.overflowing_add(upper << 32);
-	let (res2, overflow2) = res1.overflowing_add(carry);
+    let (res1, overflow1) = lower.overflowing_add(upper << 32);
+    let (res2, overflow2) = res1.overflowing_add(carry);
 
-	let carry = (upper >> 32) + overflow1 as u64 + overflow2 as u64;
-	(res2, carry)
+    let carry = (upper >> 32) + overflow1 as u64 + overflow2 as u64;
+    (res2, carry)
 }
 
 #[inline(always)]
 #[doc(hidden)]
 pub fn split(a: u64) -> (u64, u64) {
-	(a >> 32, a & 0xFFFFFFFF)
+    (a >> 32, a & 0xFFFFFFFF)
 }
 
 #[macro_export]
@@ -1169,7 +1169,7 @@ macro_rules! construct_uint {
 	);
 }
 
-#[cfg(feature="std")]
+#[cfg(feature = "std")]
 #[macro_export]
 #[doc(hidden)]
 macro_rules! impl_std_for_uint_internals {
@@ -1191,7 +1191,7 @@ macro_rules! impl_std_for_uint_internals {
 	}
 }
 
-#[cfg(feature="std")]
+#[cfg(feature = "std")]
 #[macro_export]
 #[doc(hidden)]
 macro_rules! impl_std_for_uint {
@@ -1263,21 +1263,21 @@ macro_rules! impl_std_for_uint {
 	}
 }
 
-#[cfg(not(feature="std"))]
+#[cfg(not(feature = "std"))]
 #[macro_export]
 #[doc(hidden)]
 macro_rules! impl_std_for_uint_internals {
 	($name: ident, $n_words: tt) => {}
 }
 
-#[cfg(not(feature="std"))]
+#[cfg(not(feature = "std"))]
 #[macro_export]
 #[doc(hidden)]
 macro_rules! impl_std_for_uint {
 	($name: ident, $n_words: tt) => {}
 }
 
-#[cfg(feature="heapsizeof")]
+#[cfg(feature = "heapsizeof")]
 #[macro_export]
 #[doc(hidden)]
 macro_rules! impl_heapsize_for_uint {
@@ -1290,7 +1290,7 @@ macro_rules! impl_heapsize_for_uint {
 	}
 }
 
-#[cfg(not(feature="heapsizeof"))]
+#[cfg(not(feature = "heapsizeof"))]
 #[macro_export]
 #[doc(hidden)]
 macro_rules! impl_heapsize_for_uint {

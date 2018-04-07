@@ -20,7 +20,7 @@ use crypto::{blake256, ripemd160};
 use rustc_hex::ToHex;
 use secp256k1::key;
 
-use super::{Public, Error, SECP256K1, Address, Private};
+use super::{Address, Error, Private, Public, SECP256K1};
 
 pub fn public_to_address(public: &Public) -> Address {
     let hash = ripemd160(blake256(public));
@@ -55,10 +55,7 @@ impl KeyPair {
         let mut public = Public::default();
         public.copy_from_slice(&serialized[1..65]);
 
-        let keypair = KeyPair {
-            private,
-            public,
-        };
+        let keypair = KeyPair { private, public };
 
         Ok(keypair)
     }
@@ -70,10 +67,7 @@ impl KeyPair {
         let mut public = Public::default();
         public.copy_from_slice(&serialized[1..65]);
 
-        KeyPair {
-            private,
-            public,
-        }
+        KeyPair { private, public }
     }
 
     pub fn private(&self) -> &Private {
@@ -88,4 +82,3 @@ impl KeyPair {
         public_to_address(&self.public)
     }
 }
-

@@ -17,7 +17,7 @@
 use std::io::Read;
 use serde_json;
 use serde_json::Error;
-use super::{Genesis, Engine, Params};
+use super::{Engine, Genesis, Params};
 
 /// Spec deserialization.
 #[derive(Debug, PartialEq, Deserialize)]
@@ -25,7 +25,7 @@ pub struct Spec {
     /// Spec name.
     pub name: String,
     /// Special fork name.
-    #[serde(rename="dataDir")]
+    #[serde(rename = "dataDir")]
     pub data_dir: Option<String>,
     /// Engine.
     pub engine: Engine,
@@ -39,7 +39,10 @@ pub struct Spec {
 
 impl Spec {
     /// Loads test from json.
-    pub fn load<R>(reader: R) -> Result<Self, Error> where R: Read {
+    pub fn load<R>(reader: R) -> Result<Self, Error>
+    where
+        R: Read,
+    {
         serde_json::from_reader(reader)
     }
 }

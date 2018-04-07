@@ -19,7 +19,7 @@
 use std::fmt;
 
 use cbytes::Bytes;
-use ctypes::{U256, Public};
+use ctypes::{Public, U256};
 
 /// Single account in the system.
 #[derive(Clone, RlpEncodable, RlpDecodable)]
@@ -52,18 +52,23 @@ impl Account {
     }
 
     /// return the balance associated with this account.
-    pub fn balance(&self) -> &U256 { &self.balance }
+    pub fn balance(&self) -> &U256 {
+        &self.balance
+    }
 
     /// return the nonce associated with this account.
-    pub fn nonce(&self) -> &U256 { &self.nonce }
+    pub fn nonce(&self) -> &U256 {
+        &self.nonce
+    }
 
     /// return the regular key associated with this account.
-    pub fn regular_key(&self) -> Option<Public> { self.regular_key }
+    pub fn regular_key(&self) -> Option<Public> {
+        self.regular_key
+    }
 
     /// Check if account has zero nonce, balance.
     pub fn is_null(&self) -> bool {
-        self.balance.is_zero() &&
-        self.nonce.is_zero()
+        self.balance.is_zero() && self.nonce.is_zero()
     }
 
     /// Increment the nonce of the account by one.

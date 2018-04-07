@@ -46,5 +46,6 @@ pub trait Backend: Send {
     /// is known not to exist.
     /// `None` is returned if the entry is not cached.
     fn get_cached<F, U>(&self, a: &Address, f: F) -> Option<U>
-        where F: FnOnce(Option<&mut Account>) -> U;
+    where
+        F: FnOnce(Option<&mut Account>) -> U;
 }

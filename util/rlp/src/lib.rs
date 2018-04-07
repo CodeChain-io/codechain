@@ -59,8 +59,8 @@ use std::borrow::Borrow;
 use elastic_array::ElasticArray1024;
 
 pub use error::DecoderError;
-pub use traits::{Decodable, Encodable, Compressible};
-pub use untrusted_rlp::{UntrustedRlp, UntrustedRlpIterator, PayloadInfo, Prototype};
+pub use traits::{Compressible, Decodable, Encodable};
+pub use untrusted_rlp::{PayloadInfo, Prototype, UntrustedRlp, UntrustedRlpIterator};
 pub use rlpin::{Rlp, RlpIterator};
 pub use stream::RlpStream;
 pub use compression::RlpType;
@@ -81,14 +81,20 @@ pub const EMPTY_LIST_RLP: [u8; 1] = [0xC0; 1];
 /// 	assert_eq!(animal, "cat".to_owned());
 /// }
 /// ```
-pub fn decode<T>(bytes: &[u8]) -> T where T: Decodable {
-	let rlp = Rlp::new(bytes);
-	rlp.as_val()
+pub fn decode<T>(bytes: &[u8]) -> T
+where
+    T: Decodable,
+{
+    let rlp = Rlp::new(bytes);
+    rlp.as_val()
 }
 
-pub fn decode_list<T>(bytes: &[u8]) -> Vec<T> where T: Decodable {
-	let rlp = Rlp::new(bytes);
-	rlp.as_list()
+pub fn decode_list<T>(bytes: &[u8]) -> Vec<T>
+where
+    T: Decodable,
+{
+    let rlp = Rlp::new(bytes);
+    rlp.as_list()
 }
 
 /// Shortcut function to encode structure into rlp.
@@ -102,14 +108,21 @@ pub fn decode_list<T>(bytes: &[u8]) -> Vec<T> where T: Decodable {
 /// 	assert_eq!(out, vec![0x83, b'c', b'a', b't']);
 /// }
 /// ```
-pub fn encode<E>(object: &E) -> ElasticArray1024<u8> where E: Encodable {
-	let mut stream = RlpStream::new();
-	stream.append(object);
-	stream.drain()
+pub fn encode<E>(object: &E) -> ElasticArray1024<u8>
+where
+    E: Encodable,
+{
+    let mut stream = RlpStream::new();
+    stream.append(object);
+    stream.drain()
 }
 
-pub fn encode_list<E, K>(object: &[K]) -> ElasticArray1024<u8> where E: Encodable, K: Borrow<E> {
-	let mut stream = RlpStream::new();
-	stream.append_list(object);
-	stream.drain()
+pub fn encode_list<E, K>(object: &[K]) -> ElasticArray1024<u8>
+where
+    E: Encodable,
+    K: Borrow<E>,
+{
+    let mut stream = RlpStream::new();
+    stream.append_list(object);
+    stream.drain()
 }

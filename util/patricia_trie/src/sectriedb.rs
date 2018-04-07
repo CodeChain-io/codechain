@@ -18,67 +18,76 @@ use codechain_types::H256;
 use codechain_crypto::blake256;
 use hashdb::HashDB;
 use super::triedb::TrieDB;
-use super::{Trie, TrieItem, TrieIterator, Query};
+use super::{Query, Trie, TrieItem, TrieIterator};
 
 /// A `Trie` implementation which hashes keys and uses a generic `HashDB` backing database.
 ///
 /// Use it as a `Trie` trait object. You can use `raw()` to get the backing `TrieDB` object.
 pub struct SecTrieDB<'db> {
-	raw: TrieDB<'db>
+    raw: TrieDB<'db>,
 }
 
 impl<'db> SecTrieDB<'db> {
-	/// Create a new trie with the backing database `db` and empty `root`
-	///
-	/// Initialise to the state entailed by the genesis block.
-	/// This guarantees the trie is built correctly.
-	/// Returns an error if root does not exist.
-	pub fn new(db: &'db HashDB, root: &'db H256) -> super::Result<Self> {
-		Ok(SecTrieDB { raw: TrieDB::new(db, root)? })
-	}
+    /// Create a new trie with the backing database `db` and empty `root`
+    ///
+    /// Initialise to the state entailed by the genesis block.
+    /// This guarantees the trie is built correctly.
+    /// Returns an error if root does not exist.
+    pub fn new(db: &'db HashDB, root: &'db H256) -> super::Result<Self> {
+        Ok(SecTrieDB {
+            raw: TrieDB::new(db, root)?,
+        })
+    }
 
-	/// Get a reference to the underlying raw `TrieDB` struct.
-	pub fn raw(&self) -> &TrieDB {
-		&self.raw
-	}
+    /// Get a reference to the underlying raw `TrieDB` struct.
+    pub fn raw(&self) -> &TrieDB {
+        &self.raw
+    }
 
-	/// Get a mutable reference to the underlying raw `TrieDB` struct.
-	pub fn raw_mut(&mut self) -> &mut TrieDB<'db> {
-		&mut self.raw
-	}
+    /// Get a mutable reference to the underlying raw `TrieDB` struct.
+    pub fn raw_mut(&mut self) -> &mut TrieDB<'db> {
+        &mut self.raw
+    }
 }
 
 impl<'db> Trie for SecTrieDB<'db> {
-	fn iter<'a>(&'a self) -> super::Result<Box<TrieIterator<Item = TrieItem> + 'a>> {
-		TrieDB::iter(&self.raw)
-	}
+    fn iter<'a>(&'a self) -> super::Result<Box<TrieIterator<Item = TrieItem> + 'a>> {
+        TrieDB::iter(&self.raw)
+    }
 
-	fn root(&self) -> &H256 { self.raw.root() }
+    fn root(&self) -> &H256 {
+        self.raw.root()
+    }
 
-	fn contains(&self, key: &[u8]) -> super::Result<bool> {
-		self.raw.contains(&blake256(key))
-	}
+    fn contains(&self, key: &[u8]) -> super::Result<bool> {
+        self.raw.contains(&blake256(key))
+    }
 
-	fn get_with<'a, 'key, Q: Query>(&'a self, key: &'key [u8], query: Q) -> super::Result<Option<Q::Item>>
-		where 'a: 'key
-	{
-		self.raw.get_with(&blake256(key), query)
-	}
+    fn get_with<'a, 'key, Q: Query>(&'a self, key: &'key [u8], query: Q) -> super::Result<Option<Q::Item>>
+    where
+        'a: 'key,
+    {
+        self.raw.get_with(&blake256(key), query)
+    }
 }
 
 #[test]
 fn trie_to_sectrie() {
-	use memorydb::MemoryDB;
-	use hashdb::DBValue;
-	use super::triedbmut::TrieDBMut;
-	use super::TrieMut;
+    use memorydb::MemoryDB;
+    use hashdb::DBValue;
+    use super::triedbmut::TrieDBMut;
+    use super::TrieMut;
 
-	let mut memdb = MemoryDB::new();
-	let mut root = H256::default();
-	{
-		let mut t = TrieDBMut::new(&mut memdb, &mut root);
-		t.insert(&blake256(&[0x01u8, 0x23]), &[0x01u8, 0x23]).unwrap();
-	}
-	let t = SecTrieDB::new(&memdb, &root).unwrap();
-	assert_eq!(t.get(&[0x01u8, 0x23]).unwrap().unwrap(), DBValue::from_slice(&[0x01u8, 0x23]));
+    let mut memdb = MemoryDB::new();
+    let mut root = H256::default();
+    {
+        let mut t = TrieDBMut::new(&mut memdb, &mut root);
+        t.insert(&blake256(&[0x01u8, 0x23]), &[0x01u8, 0x23])
+            .unwrap();
+    }
+    let t = SecTrieDB::new(&memdb, &root).unwrap();
+    assert_eq!(
+        t.get(&[0x01u8, 0x23]).unwrap().unwrap(),
+        DBValue::from_slice(&[0x01u8, 0x23])
+    );
 }

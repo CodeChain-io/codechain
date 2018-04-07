@@ -18,7 +18,7 @@ use ctypes::U256;
 use cjson;
 use time::Duration;
 
-use super::super::validator_set::{ValidatorSet, new_validator_set};
+use super::super::validator_set::{new_validator_set, ValidatorSet};
 use super::super::transition::Timeouts;
 use super::Step;
 

@@ -40,7 +40,9 @@ pub struct DownloadManager {
 }
 
 impl DownloadManager {
-    pub fn best_hash(&self) -> H256 { self.best_hash }
+    pub fn best_hash(&self) -> H256 {
+        self.best_hash
+    }
 }
 
 impl DownloadManager {
@@ -70,7 +72,10 @@ impl DownloadManager {
         }
 
         // Validity check
-        let first_header_hash = headers.first().expect("Argument `headers` has more than one element").hash();
+        let first_header_hash = headers
+            .first()
+            .expect("Argument `headers` has more than one element")
+            .hash();
         match self.downloading_header {
             Some(downloading) if downloading == first_header_hash => {}
             _ => {
@@ -103,8 +108,13 @@ impl DownloadManager {
         // Validity check
         for body in bodies {
             let tx_root = ordered_trie_root(body.iter().map(|tx| tx.rlp_bytes()));
-            let is_valid = self.downloading_bodies.iter()
-                .map(|hash| self.headers.get(hash).expect("DownloadManager: downloading body's header should be known"))
+            let is_valid = self.downloading_bodies
+                .iter()
+                .map(|hash| {
+                    self.headers
+                        .get(hash)
+                        .expect("DownloadManager: downloading body's header should be known")
+                })
                 .any(|header| *header.transactions_root() == tx_root);
             if is_valid {
                 valid_bodies.insert(tx_root, body);
@@ -115,7 +125,10 @@ impl DownloadManager {
         }
 
         for (tx_root, body) in valid_bodies {
-            for header in self.headers.values().filter(|header| *header.transactions_root() == tx_root) {
+            for header in self.headers
+                .values()
+                .filter(|header| *header.transactions_root() == tx_root)
+            {
                 self.bodies.insert(header.hash(), body.clone());
                 self.downloading_bodies.remove(&header.hash());
             }
@@ -195,7 +208,9 @@ mod tests {
         let mut blocks: Vec<Block> = vec![best_block];
         for i in 1..10 {
             let mut block = create_dummy_block(manager.best_number + i, U256::from(i * 2), Vec::new());
-            block.header.set_parent_hash(blocks.last().unwrap().header.hash());
+            block
+                .header
+                .set_parent_hash(blocks.last().unwrap().header.hash());
             blocks.push(block);
         }
         manager.downloading_header = Some(manager.best_hash);
@@ -204,7 +219,10 @@ mod tests {
         for (hash, _) in &manager.headers {
             manager.downloading_bodies.insert(*hash);
         }
-        let bodies: Vec<_> = blocks.iter().map(|block| block.transactions.clone()).collect();
+        let bodies: Vec<_> = blocks
+            .iter()
+            .map(|block| block.transactions.clone())
+            .collect();
         manager.import_bodies(bodies.as_slice());
 
         for block in blocks {

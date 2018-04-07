@@ -33,9 +33,7 @@ pub struct ValidatorList {
 
 impl ValidatorList {
     pub fn new(validators: Vec<Address>) -> Self {
-        ValidatorList {
-            validators
-        }
+        ValidatorList { validators }
     }
 
     /// Convert into inner representation.
@@ -47,14 +45,14 @@ impl ValidatorList {
 impl ::std::ops::Deref for ValidatorList {
     type Target = [Address];
 
-    fn deref(&self) -> &[Address] { &self.validators }
+    fn deref(&self) -> &[Address] {
+        &self.validators
+    }
 }
 
 impl From<Vec<Address>> for ValidatorList {
     fn from(validators: Vec<Address>) -> Self {
-        ValidatorList {
-            validators,
-        }
+        ValidatorList { validators }
     }
 }
 
@@ -94,7 +92,13 @@ impl ValidatorSet for ValidatorList {
         EpochChange::No
     }
 
-    fn epoch_set(&self, _first: bool, _: &CodeChainMachine, _: BlockNumber, _: &[u8]) -> Result<(ValidatorList, Option<H256>), Error> {
+    fn epoch_set(
+        &self,
+        _first: bool,
+        _: &CodeChainMachine,
+        _: BlockNumber,
+        _: &[u8],
+    ) -> Result<(ValidatorList, Option<H256>), Error> {
         Ok((self.clone(), None))
     }
 }

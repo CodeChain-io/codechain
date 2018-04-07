@@ -34,12 +34,8 @@ pub fn network_start(cfg: NetworkConfig, discovery: Arc<DiscoveryApi>) -> Result
     info!("Handshake Listening on {}", cfg.port);
     let secret_key = cfg.secret_key;
     let address = SocketAddr::v4(127, 0, 0, 1, cfg.port);
-    let service = NetworkService::start(
-        address,
-        cfg.bootstrap_addresses,
-        secret_key,
-        discovery,
-    ).map_err(|e| format!("Network service error: {:?}", e))?;
+    let service = NetworkService::start(address, cfg.bootstrap_addresses, secret_key, discovery)
+        .map_err(|e| format!("Network service error: {:?}", e))?;
 
     Ok(service)
 }
@@ -48,12 +44,8 @@ pub fn client_start(cfg: &config::Config, spec: &Spec) -> Result<ClientService, 
     info!("Starting client");
     let client_path = Path::new(&cfg.db_path);
     let client_config = Default::default();
-    let service = ClientService::start(
-        client_config,
-        &spec,
-        &client_path
-    ).map_err(|e| format!("Client service error: {:?}", e))?;
+    let service =
+        ClientService::start(client_config, &spec, &client_path).map_err(|e| format!("Client service error: {:?}", e))?;
 
     Ok(service)
 }
-

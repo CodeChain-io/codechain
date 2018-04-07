@@ -20,4 +20,4 @@ mod block_info;
 mod extras;
 
 pub use self::blockchain::{BlockChain, BlockProvider, ImportRoute};
-pub use self::extras::{TransactionAddress, BlockDetails};
+pub use self::extras::{BlockDetails, TransactionAddress};

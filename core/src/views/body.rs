@@ -24,22 +24,20 @@ use super::TransactionView;
 
 /// View onto block rlp.
 pub struct BodyView<'a> {
-    rlp: Rlp<'a>
+    rlp: Rlp<'a>,
 }
 
 impl<'a> BodyView<'a> {
     /// Creates new view onto block from raw bytes.
     pub fn new(bytes: &'a [u8]) -> BodyView<'a> {
         BodyView {
-            rlp: Rlp::new(bytes)
+            rlp: Rlp::new(bytes),
         }
     }
 
     /// Creates new view onto block from rlp.
     pub fn new_from_rlp(rlp: Rlp<'a>) -> BodyView<'a> {
-        BodyView {
-            rlp
-        }
+        BodyView { rlp }
     }
 
     /// Return reference to underlaying rlp.
@@ -63,7 +61,8 @@ impl<'a> BodyView<'a> {
                 block_number,
                 transaction_index: i,
                 cached_sender: None,
-            }).collect()
+            })
+            .collect()
     }
 
     /// Return number of transactions in given block, without deserializing them.
@@ -73,12 +72,20 @@ impl<'a> BodyView<'a> {
 
     /// Return List of transactions in given block.
     pub fn transaction_views(&self) -> Vec<TransactionView<'a>> {
-        self.rlp.at(0).iter().map(TransactionView::new_from_rlp).collect()
+        self.rlp
+            .at(0)
+            .iter()
+            .map(TransactionView::new_from_rlp)
+            .collect()
     }
 
     /// Return transaction hashes.
     pub fn transaction_hashes(&self) -> Vec<H256> {
-        self.rlp.at(0).iter().map(|rlp| blake256(rlp.as_raw())).collect()
+        self.rlp
+            .at(0)
+            .iter()
+            .map(|rlp| blake256(rlp.as_raw()))
+            .collect()
     }
 
     /// Returns transaction at given index without deserializing unnecessary data.
@@ -87,7 +94,12 @@ impl<'a> BodyView<'a> {
     }
 
     /// Returns localized transaction at given index.
-    pub fn localized_transaction_at(&self, block_hash: &H256, block_number: BlockNumber, index: usize) -> Option<LocalizedTransaction> {
+    pub fn localized_transaction_at(
+        &self,
+        block_hash: &H256,
+        block_number: BlockNumber,
+        index: usize,
+    ) -> Option<LocalizedTransaction> {
         self.transaction_at(index).map(|t| LocalizedTransaction {
             signed: t,
             block_hash: block_hash.clone(),
@@ -97,5 +109,3 @@ impl<'a> BodyView<'a> {
         })
     }
 }
-
-

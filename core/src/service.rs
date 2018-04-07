@@ -18,7 +18,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use cbytes::Bytes;
-use cio::{IoHandler, IoService, IoContext, IoHandlerResult};
+use cio::{IoContext, IoHandler, IoHandlerResult, IoService};
 use kvdb_rocksdb::{Database, DatabaseConfig};
 
 use super::client::{Client, ClientConfig};
@@ -33,11 +33,7 @@ pub struct ClientService {
 }
 
 impl ClientService {
-    pub fn start(
-        config: ClientConfig,
-        spec: &Spec,
-        client_path: &Path,
-    ) -> Result<ClientService, Error> {
+    pub fn start(config: ClientConfig, spec: &Spec, client_path: &Path) -> Result<ClientService, Error> {
         let io_service = IoService::<ClientIoMessage>::start()?;
 
         let mut db_config = DatabaseConfig::with_columns(super::db::NUM_COLUMNS);
@@ -48,7 +44,9 @@ impl ClientService {
 
         let db = Arc::new(Database::open(
             &db_config,
-            &client_path.to_str().expect("DB path could not be converted to string.")
+            &client_path
+                .to_str()
+                .expect("DB path could not be converted to string."),
         ).map_err(::client::Error::Database)?);
 
         let client = Client::new(config, &spec, db.clone(), io_service.channel())?;
@@ -67,7 +65,9 @@ impl ClientService {
         })
     }
 
-    pub fn client(&self) -> Arc<Client> { Arc::clone(&self.client) }
+    pub fn client(&self) -> Arc<Client> {
+        Arc::clone(&self.client)
+    }
 }
 
 /// Message type for external and internal events
@@ -78,7 +78,7 @@ pub enum ClientIoMessage {
     /// New transaction RLPs are ready to be imported
     NewTransactions(Vec<Bytes>, usize),
     /// New consensus message received.
-    NewConsensusMessage(Bytes)
+    NewConsensusMessage(Bytes),
 }
 
 /// IO interface for the Client handler
@@ -89,15 +89,19 @@ struct ClientIoHandler {
 impl IoHandler<ClientIoMessage> for ClientIoHandler {
     fn message(&self, _io: &IoContext<ClientIoMessage>, net_message: &ClientIoMessage) -> IoHandlerResult<()> {
         match *net_message {
-            ClientIoMessage::BlockVerified => { self.client.import_verified_blocks(); }
-            ClientIoMessage::NewTransactions(ref transactions, peer_id) => {
-                self.client.import_queued_transactions(transactions, peer_id);
+            ClientIoMessage::BlockVerified => {
+                self.client.import_verified_blocks();
             }
-            ClientIoMessage::NewConsensusMessage(ref message) => if let Err(e) = self.client.engine().handle_message(message) {
-                trace!(target: "poa", "Invalid message received: {}", e);
-            },
+            ClientIoMessage::NewTransactions(ref transactions, peer_id) => {
+                self.client
+                    .import_queued_transactions(transactions, peer_id);
+            }
+            ClientIoMessage::NewConsensusMessage(ref message) => {
+                if let Err(e) = self.client.engine().handle_message(message) {
+                    trace!(target: "poa", "Invalid message received: {}", e);
+                }
+            }
         }
         Ok(())
     }
 }
-

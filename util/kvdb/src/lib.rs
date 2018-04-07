@@ -16,10 +16,10 @@
 
 //! Key-Value store abstraction with `RocksDB` backend.
 
+extern crate codechain_bytes as bytes;
+extern crate elastic_array;
 #[macro_use]
 extern crate error_chain;
-extern crate elastic_array;
-extern crate codechain_bytes as bytes;
 
 use std::io;
 use elastic_array::{ElasticArray128, ElasticArray32};
@@ -32,97 +32,97 @@ pub const PREFIX_LEN: usize = 12;
 pub type DBValue = ElasticArray128<u8>;
 
 error_chain! {
-	types {
-		Error, ErrorKind, ResultExt, Result;
-	}
+    types {
+        Error, ErrorKind, ResultExt, Result;
+    }
 
-	foreign_links {
-		Io(io::Error);
-	}
+    foreign_links {
+        Io(io::Error);
+    }
 }
 
 /// Write transaction. Batches a sequence of put/delete operations for efficiency.
 #[derive(Default, Clone, PartialEq)]
 pub struct DBTransaction {
-	/// Database operations.
-	pub ops: Vec<DBOp>,
+    /// Database operations.
+    pub ops: Vec<DBOp>,
 }
 
 /// Database operation.
 #[derive(Clone, PartialEq)]
 pub enum DBOp {
-	Insert {
-		col: Option<u32>,
-		key: ElasticArray32<u8>,
-		value: DBValue,
-	},
-	InsertCompressed {
-		col: Option<u32>,
-		key: ElasticArray32<u8>,
-		value: DBValue,
-	},
-	Delete {
-		col: Option<u32>,
-		key: ElasticArray32<u8>,
-	}
+    Insert {
+        col: Option<u32>,
+        key: ElasticArray32<u8>,
+        value: DBValue,
+    },
+    InsertCompressed {
+        col: Option<u32>,
+        key: ElasticArray32<u8>,
+        value: DBValue,
+    },
+    Delete {
+        col: Option<u32>,
+        key: ElasticArray32<u8>,
+    },
 }
 
 impl DBTransaction {
-	/// Create new transaction.
-	pub fn new() -> DBTransaction {
-		DBTransaction::with_capacity(256)
-	}
+    /// Create new transaction.
+    pub fn new() -> DBTransaction {
+        DBTransaction::with_capacity(256)
+    }
 
-	/// Create new transaction with capacity.
-	pub fn with_capacity(cap: usize) -> DBTransaction {
-		DBTransaction {
-			ops: Vec::with_capacity(cap)
-		}
-	}
+    /// Create new transaction with capacity.
+    pub fn with_capacity(cap: usize) -> DBTransaction {
+        DBTransaction {
+            ops: Vec::with_capacity(cap),
+        }
+    }
 
-	/// Insert a key-value pair in the transaction. Any existing value will be overwritten upon write.
-	pub fn put(&mut self, col: Option<u32>, key: &[u8], value: &[u8]) {
-		let mut ekey = ElasticArray32::new();
-		ekey.append_slice(key);
-		self.ops.push(DBOp::Insert {
-			col: col,
-			key: ekey,
-			value: DBValue::from_slice(value),
-		});
-	}
+    /// Insert a key-value pair in the transaction. Any existing value will be overwritten upon write.
+    pub fn put(&mut self, col: Option<u32>, key: &[u8], value: &[u8]) {
+        let mut ekey = ElasticArray32::new();
+        ekey.append_slice(key);
+        self.ops.push(DBOp::Insert {
+            col: col,
+            key: ekey,
+            value: DBValue::from_slice(value),
+        });
+    }
 
-	/// Insert a key-value pair in the transaction. Any existing value will be overwritten upon write.
-	pub fn put_vec(&mut self, col: Option<u32>, key: &[u8], value: Bytes) {
-		let mut ekey = ElasticArray32::new();
-		ekey.append_slice(key);
-		self.ops.push(DBOp::Insert {
-			col: col,
-			key: ekey,
-			value: DBValue::from_vec(value),
-		});
-	}
+    /// Insert a key-value pair in the transaction. Any existing value will be overwritten upon write.
+    pub fn put_vec(&mut self, col: Option<u32>, key: &[u8], value: Bytes) {
+        let mut ekey = ElasticArray32::new();
+        ekey.append_slice(key);
+        self.ops.push(DBOp::Insert {
+            col: col,
+            key: ekey,
+            value: DBValue::from_vec(value),
+        });
+    }
 
-	/// Insert a key-value pair in the transaction. Any existing value will be overwritten upon write.
-	/// Value will be RLP-compressed on flush
-	pub fn put_compressed(&mut self, col: Option<u32>, key: &[u8], value: Bytes) {
-		let mut ekey = ElasticArray32::new();
-		ekey.append_slice(key);
-		self.ops.push(DBOp::InsertCompressed {
-			col: col,
-			key: ekey,
-			value: DBValue::from_vec(value),
-		});
-	}
+    /// Insert a key-value pair in the transaction. Any existing value will be overwritten upon write.
+    /// Value will be RLP-compressed on flush
+    pub fn put_compressed(&mut self, col: Option<u32>, key: &[u8], value: Bytes) {
+        let mut ekey = ElasticArray32::new();
+        ekey.append_slice(key);
+        self.ops.push(DBOp::InsertCompressed {
+            col: col,
+            key: ekey,
+            value: DBValue::from_vec(value),
+        });
+    }
 
-	/// Delete value by key.
-	pub fn delete(&mut self, col: Option<u32>, key: &[u8]) {
-		let mut ekey = ElasticArray32::new();
-		ekey.append_slice(key);
-		self.ops.push(DBOp::Delete {
-			col: col,
-			key: ekey,
-		});
-	}
+    /// Delete value by key.
+    pub fn delete(&mut self, col: Option<u32>, key: &[u8]) {
+        let mut ekey = ElasticArray32::new();
+        ekey.append_slice(key);
+        self.ops.push(DBOp::Delete {
+            col: col,
+            key: ekey,
+        });
+    }
 }
 
 /// Generic key-value database.
@@ -144,34 +144,39 @@ impl DBTransaction {
 /// The API laid out here, along with the `Sync` bound implies interior synchronization for
 /// implementation.
 pub trait KeyValueDB: Sync + Send {
-	/// Helper to create a new transaction.
-	fn transaction(&self) -> DBTransaction { DBTransaction::new() }
+    /// Helper to create a new transaction.
+    fn transaction(&self) -> DBTransaction {
+        DBTransaction::new()
+    }
 
-	/// Get a value by key.
-	fn get(&self, col: Option<u32>, key: &[u8]) -> Result<Option<DBValue>>;
+    /// Get a value by key.
+    fn get(&self, col: Option<u32>, key: &[u8]) -> Result<Option<DBValue>>;
 
-	/// Get a value by partial key. Only works for flushed data.
-	fn get_by_prefix(&self, col: Option<u32>, prefix: &[u8]) -> Option<Box<[u8]>>;
+    /// Get a value by partial key. Only works for flushed data.
+    fn get_by_prefix(&self, col: Option<u32>, prefix: &[u8]) -> Option<Box<[u8]>>;
 
-	/// Write a transaction of changes to the buffer.
-	fn write_buffered(&self, transaction: DBTransaction);
+    /// Write a transaction of changes to the buffer.
+    fn write_buffered(&self, transaction: DBTransaction);
 
-	/// Write a transaction of changes to the backing store.
-	fn write(&self, transaction: DBTransaction) -> Result<()> {
-		self.write_buffered(transaction);
-		self.flush()
-	}
+    /// Write a transaction of changes to the backing store.
+    fn write(&self, transaction: DBTransaction) -> Result<()> {
+        self.write_buffered(transaction);
+        self.flush()
+    }
 
-	/// Flush all buffered data.
-	fn flush(&self) -> Result<()>;
+    /// Flush all buffered data.
+    fn flush(&self) -> Result<()>;
 
-	/// Iterate over flushed data for a given column.
-	fn iter<'a>(&'a self, col: Option<u32>) -> Box<Iterator<Item=(Box<[u8]>, Box<[u8]>)> + 'a>;
+    /// Iterate over flushed data for a given column.
+    fn iter<'a>(&'a self, col: Option<u32>) -> Box<Iterator<Item = (Box<[u8]>, Box<[u8]>)> + 'a>;
 
-	/// Iterate over flushed data for a given column, starting from a given prefix.
-	fn iter_from_prefix<'a>(&'a self, col: Option<u32>, prefix: &'a [u8])
-		-> Box<Iterator<Item=(Box<[u8]>, Box<[u8]>)> + 'a>;
+    /// Iterate over flushed data for a given column, starting from a given prefix.
+    fn iter_from_prefix<'a>(
+        &'a self,
+        col: Option<u32>,
+        prefix: &'a [u8],
+    ) -> Box<Iterator<Item = (Box<[u8]>, Box<[u8]>)> + 'a>;
 
-	/// Attempt to replace this database with a new one located at the given path.
-	fn restore(&self, new_db: &str) -> Result<()>;
+    /// Attempt to replace this database with a new one located at the given path.
+    fn restore(&self, new_db: &str) -> Result<()>;
 }

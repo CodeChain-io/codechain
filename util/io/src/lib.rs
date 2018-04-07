@@ -57,17 +57,17 @@
 //TODO: use Poll from mio
 #![allow(deprecated)]
 
-extern crate mio;
+extern crate crossbeam;
 #[macro_use]
 extern crate log as rlog;
-extern crate slab;
-extern crate crossbeam;
+extern crate mio;
 extern crate parking_lot;
+extern crate slab;
 
 mod service;
 mod worker;
 
-use std::{fmt, error};
+use std::{error, fmt};
 use mio::deprecated::{EventLoop, NotifyError};
 use mio::Token;
 
@@ -76,48 +76,54 @@ pub use worker::LOCAL_STACK_SIZE;
 #[derive(Debug)]
 /// IO Error
 pub enum IoError {
-	/// Low level error from mio crate
-	Mio(::std::io::Error),
-	/// Error concerning the Rust standard library's IO subsystem.
-	StdIo(::std::io::Error),
+    /// Low level error from mio crate
+    Mio(::std::io::Error),
+    /// Error concerning the Rust standard library's IO subsystem.
+    StdIo(::std::io::Error),
 }
 
 impl fmt::Display for IoError {
-	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		// just defer to the std implementation for now.
-		// we can refine the formatting when more variants are added.
-		match *self {
-			IoError::Mio(ref std_err) => std_err.fmt(f),
-			IoError::StdIo(ref std_err) => std_err.fmt(f),
-		}
-	}
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // just defer to the std implementation for now.
+        // we can refine the formatting when more variants are added.
+        match *self {
+            IoError::Mio(ref std_err) => std_err.fmt(f),
+            IoError::StdIo(ref std_err) => std_err.fmt(f),
+        }
+    }
 }
 
 impl error::Error for IoError {
-	fn description(&self) -> &str {
-		"IO error"
-	}
+    fn description(&self) -> &str {
+        "IO error"
+    }
 }
 
 impl From<::std::io::Error> for IoError {
-	fn from(err: ::std::io::Error) -> IoError {
-		IoError::StdIo(err)
-	}
+    fn from(err: ::std::io::Error) -> IoError {
+        IoError::StdIo(err)
+    }
 }
 
-impl<Message> From<NotifyError<service::IoMessage<Message>>> for IoError where Message: Send + Clone {
-	fn from(_err: NotifyError<service::IoMessage<Message>>) -> IoError {
-		IoError::Mio(::std::io::Error::new(::std::io::ErrorKind::ConnectionAborted, "Network IO notification error"))
-	}
+impl<Message> From<NotifyError<service::IoMessage<Message>>> for IoError
+where
+    Message: Send + Clone,
+{
+    fn from(_err: NotifyError<service::IoMessage<Message>>) -> IoError {
+        IoError::Mio(::std::io::Error::new(
+            ::std::io::ErrorKind::ConnectionAborted,
+            "Network IO notification error",
+        ))
+    }
 }
 
 #[derive(Debug)]
 pub struct IoHandlerError(String);
 
 impl<E: ToString> From<E> for IoHandlerError {
-	fn from(err: E) -> Self {
+    fn from(err: E) -> Self {
         IoHandlerError(err.to_string())
-	}
+    }
 }
 
 pub type IoHandlerResult<T> = Result<T, IoHandlerError>;
@@ -125,25 +131,60 @@ pub type IoHandlerResult<T> = Result<T, IoHandlerError>;
 /// Generic IO handler.
 /// All the handler function are called from within IO event loop.
 /// `Message` type is used as notification data
-pub trait IoHandler<Message>: Send + Sync where Message: Send + Sync + Clone + 'static {
-	/// Initialize the handler
-	fn initialize(&self, _io: &IoContext<Message>) -> IoHandlerResult<()> { Ok(()) }
-	/// Timer function called after a timeout created with `HandlerIo::timeout`.
-	fn timeout(&self, _io: &IoContext<Message>, _timer: TimerToken) -> IoHandlerResult<()> { Ok(()) }
-	/// Called when a broadcasted message is received. The message can only be sent from a different IO handler.
-	fn message(&self, _io: &IoContext<Message>, _message: &Message) -> IoHandlerResult<()> { Ok(()) }
-	/// Called when an IO stream gets closed
-	fn stream_hup(&self, _io: &IoContext<Message>, _stream: StreamToken) -> IoHandlerResult<()> { Ok(()) }
-	/// Called when an IO stream can be read from
-	fn stream_readable(&self, _io: &IoContext<Message>, _stream: StreamToken) -> IoHandlerResult<()> { Ok(()) }
-	/// Called when an IO stream can be written to
-	fn stream_writable(&self, _io: &IoContext<Message>, _stream: StreamToken) -> IoHandlerResult<()> { Ok(()) }
-	/// Register a new stream with the event loop
-	fn register_stream(&self, _stream: StreamToken, _reg: Token, _event_loop: &mut EventLoop<IoManager<Message>>) -> IoHandlerResult<()> { Ok(()) }
-	/// Re-register a stream with the event loop
-	fn update_stream(&self, _stream: StreamToken, _reg: Token, _event_loop: &mut EventLoop<IoManager<Message>>) -> IoHandlerResult<()> { Ok(()) }
-	/// Deregister a stream. Called whenstream is removed from event loop
-	fn deregister_stream(&self, _stream: StreamToken, _event_loop: &mut EventLoop<IoManager<Message>>) -> IoHandlerResult<()> { Ok(()) }
+pub trait IoHandler<Message>: Send + Sync
+where
+    Message: Send + Sync + Clone + 'static,
+{
+    /// Initialize the handler
+    fn initialize(&self, _io: &IoContext<Message>) -> IoHandlerResult<()> {
+        Ok(())
+    }
+    /// Timer function called after a timeout created with `HandlerIo::timeout`.
+    fn timeout(&self, _io: &IoContext<Message>, _timer: TimerToken) -> IoHandlerResult<()> {
+        Ok(())
+    }
+    /// Called when a broadcasted message is received. The message can only be sent from a different IO handler.
+    fn message(&self, _io: &IoContext<Message>, _message: &Message) -> IoHandlerResult<()> {
+        Ok(())
+    }
+    /// Called when an IO stream gets closed
+    fn stream_hup(&self, _io: &IoContext<Message>, _stream: StreamToken) -> IoHandlerResult<()> {
+        Ok(())
+    }
+    /// Called when an IO stream can be read from
+    fn stream_readable(&self, _io: &IoContext<Message>, _stream: StreamToken) -> IoHandlerResult<()> {
+        Ok(())
+    }
+    /// Called when an IO stream can be written to
+    fn stream_writable(&self, _io: &IoContext<Message>, _stream: StreamToken) -> IoHandlerResult<()> {
+        Ok(())
+    }
+    /// Register a new stream with the event loop
+    fn register_stream(
+        &self,
+        _stream: StreamToken,
+        _reg: Token,
+        _event_loop: &mut EventLoop<IoManager<Message>>,
+    ) -> IoHandlerResult<()> {
+        Ok(())
+    }
+    /// Re-register a stream with the event loop
+    fn update_stream(
+        &self,
+        _stream: StreamToken,
+        _reg: Token,
+        _event_loop: &mut EventLoop<IoManager<Message>>,
+    ) -> IoHandlerResult<()> {
+        Ok(())
+    }
+    /// Deregister a stream. Called whenstream is removed from event loop
+    fn deregister_stream(
+        &self,
+        _stream: StreamToken,
+        _event_loop: &mut EventLoop<IoManager<Message>>,
+    ) -> IoHandlerResult<()> {
+        Ok(())
+    }
 }
 
 pub use service::TimerToken;
@@ -157,33 +198,33 @@ pub use service::TOKENS_PER_HANDLER;
 #[cfg(test)]
 mod tests {
 
-	use std::sync::Arc;
-	use super::*;
+    use std::sync::Arc;
+    use super::*;
 
-	struct MyHandler;
+    struct MyHandler;
 
-	#[derive(Clone)]
-	struct MyMessage {
-		data: u32
-	}
+    #[derive(Clone)]
+    struct MyMessage {
+        data: u32,
+    }
 
-	impl IoHandler<MyMessage> for MyHandler {
-		fn initialize(&self, io: &IoContext<MyMessage>) {
-			io.register_timer(0, 1000).unwrap();
-		}
+    impl IoHandler<MyMessage> for MyHandler {
+        fn initialize(&self, io: &IoContext<MyMessage>) {
+            io.register_timer(0, 1000).unwrap();
+        }
 
-		fn timeout(&self, _io: &IoContext<MyMessage>, timer: TimerToken) {
-			println!("Timeout {}", timer);
-		}
+        fn timeout(&self, _io: &IoContext<MyMessage>, timer: TimerToken) {
+            println!("Timeout {}", timer);
+        }
 
-		fn message(&self, _io: &IoContext<MyMessage>, message: &MyMessage) {
-			println!("Message {}", message.data);
-		}
-	}
+        fn message(&self, _io: &IoContext<MyMessage>, message: &MyMessage) {
+            println!("Message {}", message.data);
+        }
+    }
 
-	#[test]
-	fn test_service_register_handler () {
-		let service = IoService::<MyMessage>::start().expect("Error creating network service");
-		service.register_handler(Arc::new(MyHandler)).unwrap();
-	}
+    #[test]
+    fn test_service_register_handler() {
+        let service = IoService::<MyMessage>::start().expect("Error creating network service");
+        service.register_handler(Arc::new(MyHandler)).unwrap();
+    }
 }

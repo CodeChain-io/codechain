@@ -52,12 +52,19 @@ impl TimerInfo {
 
     pub fn insert(&mut self, name: String, timer_id: TimerId, once: bool) -> Result<TimerToken> {
         if self.reversed.get(&name, &timer_id).is_some() {
-            return Err(Error::DuplicatedTimerId)
+            return Err(Error::DuplicatedTimerId);
         }
-        self.tokens.insert(TimerItem { name: name.clone(), timer_id, once }).map(|token| {
-            self.reversed.insert(name.clone(), timer_id, token);
-            token
-        }).ok_or(Error::NoSpace)
+        self.tokens
+            .insert(TimerItem {
+                name: name.clone(),
+                timer_id,
+                once,
+            })
+            .map(|token| {
+                self.reversed.insert(name.clone(), timer_id, token);
+                token
+            })
+            .ok_or(Error::NoSpace)
     }
 
     pub fn get_info(&self, token: TimerToken) -> Option<TimerItem> {
@@ -94,7 +101,10 @@ mod tests {
     fn timer_id_cannot_be_duplicated_if_name_is_same() {
         let mut timer = TimerInfo::new(0, 4);
         assert_eq!(Ok(0), timer.insert("a".to_string(), 1, false));
-        assert_eq!(Err(Error::DuplicatedTimerId), timer.insert("a".to_string(), 1, true));
+        assert_eq!(
+            Err(Error::DuplicatedTimerId),
+            timer.insert("a".to_string(), 1, true)
+        );
     }
 
     #[test]

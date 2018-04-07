@@ -17,13 +17,13 @@
 use std::collections::{HashMap, VecDeque};
 use std::error;
 use std::fmt;
-use std::io::{Write, self};
+use std::io::{self, Write};
 use std::result;
 
 use mio::deprecated::TryRead;
 use mio::net::TcpStream;
 use ccrypto::aes::SymmetricCipherError;
-use rlp::{Encodable, DecoderError, UntrustedRlp};
+use rlp::{DecoderError, Encodable, UntrustedRlp};
 
 use super::{ApplicationMessage, HandshakeMessage, Message, NegotiationBody, NegotiationMessage};
 use super::SignedMessage;
@@ -35,8 +35,8 @@ use super::super::session::Session;
 
 #[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq)]
 pub enum State {
-    New, // create socket
-    Requested, // send sync
+    New,         // create socket
+    Requested,   // send sync
     Established, // send ack or receive ack
 }
 
@@ -46,7 +46,7 @@ pub struct Connection {
     state: State,
     send_queue: VecDeque<Message>,
     next_negotiation_seq: Seq,
-    requested_negotiation: HashMap<Seq, String>
+    requested_negotiation: HashMap<Seq, String>,
 }
 
 #[derive(Debug)]
@@ -54,12 +54,9 @@ pub enum Error {
     IoError(io::Error),
     DecoderError(DecoderError),
     InvalidSign,
-    InvalidState {
-        expected: State,
-        actual: State,
-    },
+    InvalidState { expected: State, actual: State },
     UnreadySession,
-    SymmetricCipherError(SymmetricCipherError)
+    SymmetricCipherError(SymmetricCipherError),
 }
 
 impl fmt::Display for Error {
@@ -68,7 +65,14 @@ impl fmt::Display for Error {
             &Error::IoError(ref err) => err.fmt(f),
             &Error::DecoderError(ref err) => err.fmt(f),
             &Error::InvalidSign => write!(f, "InvalidSign"),
-            &Error::InvalidState {ref expected, ref actual} => write!(f, "InvalidState expected: {:?}, actual: {:?}", expected, actual),
+            &Error::InvalidState {
+                ref expected,
+                ref actual,
+            } => write!(
+                f,
+                "InvalidState expected: {:?}, actual: {:?}",
+                expected, actual
+            ),
             &Error::UnreadySession => write!(f, "UnreadySession"),
             &Error::SymmetricCipherError(ref err) => write!(f, "{:?}", err),
         }
@@ -85,7 +89,7 @@ impl error::Error for Error {
             &Error::IoError(ref err) => Some(err),
             &Error::DecoderError(ref err) => Some(err),
             &Error::InvalidSign => None,
-            &Error::InvalidState {..} => None,
+            &Error::InvalidState { .. } => None,
             &Error::UnreadySession => None,
             &Error::SymmetricCipherError(_) => None,
         }
@@ -116,7 +120,7 @@ impl Connection {
     pub fn new(stream: TcpStream, session: Session) -> Result<Self> {
         if !session.is_ready() {
             info!("Try to connect with unready session");
-            return Err(Error::UnreadySession)
+            return Err(Error::UnreadySession);
         }
         Ok(Self {
             stream,
@@ -167,7 +171,11 @@ impl Connection {
         if let Some(_) = self.requested_negotiation.insert(seq, name.clone()) {
             unreachable!();
         }
-        self.enqueue(Message::Negotiation(NegotiationMessage::request(seq, name, version)));
+        self.enqueue(Message::Negotiation(NegotiationMessage::request(
+            seq,
+            name,
+            version,
+        )));
     }
 
     pub fn enqueue_negotiation_allowed(&mut self, seq: Seq) {
@@ -177,22 +185,24 @@ impl Connection {
     pub fn enqueue_extension_message(&mut self, extension_name: String, need_encryption: bool, message: Vec<u8>) {
         if !self.session.is_ready() {
             info!("Cannot send extension message since session is not ready");
-            return
+            return;
         }
 
         const VERSION: u64 = 0;
         let message = if need_encryption {
-            let session_key = (self.session.secret().clone(), self.session.initialization_vector().unwrap());
+            let session_key = (
+                self.session.secret().clone(),
+                self.session.initialization_vector().unwrap(),
+            );
             match ApplicationMessage::encrypted_from_unencrypted_data(extension_name, VERSION, message, &session_key) {
                 Ok(message) => message,
                 Err(err) => {
                     info!("Cannot encrypt message : {:?}", err);
-                    return
-                },
+                    return;
+                }
             }
         } else {
             ApplicationMessage::unencrypted(extension_name, VERSION, message)
-
         };
         self.enqueue(Message::Application(message));
     }
@@ -212,35 +222,41 @@ impl Connection {
                     let _ = self.expect_state(State::Established)?;
 
                     debug_assert!(self.session.is_ready());
-                    let session_key = (self.session.secret().clone(), self.session.initialization_vector().unwrap());
+                    let session_key = (
+                        self.session.secret().clone(),
+                        self.session.initialization_vector().unwrap(),
+                    );
 
                     // FIXME: check version of application
                     callback.on_message(&msg.extension_name(), &msg.unencrypted_data(&session_key)?);
                     Ok(true)
-                },
+                }
                 Some(Message::Handshake(msg)) => {
                     info!("handshake message received {:?}", msg);
                     match msg {
                         HandshakeMessage::Sync(_version) => {
                             let _ = self.expect_state(State::New)?;
                             self.enqueue_ack();
-                        },
+                        }
                         HandshakeMessage::Ack(_) => {
                             let _ = self.expect_state(State::Requested)?;
                             self.state = State::Established;
-                        },
+                        }
                     }
                     Ok(true)
-                },
+                }
                 Some(Message::Negotiation(msg)) => {
                     let _ = self.expect_state(State::Established)?;
                     match msg.body() {
-                        &NegotiationBody::Request {ref application_name, ..} => {
+                        &NegotiationBody::Request {
+                            ref application_name,
+                            ..
+                        } => {
                             let seq = msg.seq();
                             // FIXME: version negotiation
                             callback.on_connected(&application_name);
                             self.enqueue_negotiation_allowed(seq);
-                        },
+                        }
                         &NegotiationBody::Allowed => {
                             let seq = msg.seq();
                             if let Some(name) = self.requested_negotiation.remove(&seq) {
@@ -248,13 +264,13 @@ impl Connection {
                             } else {
                                 info!("Negotiation::Allowed message received from non requested seq");
                             }
-                        },
+                        }
                         &NegotiationBody::Denied(_) => {
                             // FIXME: Call on_connection_denied
-                        },
+                        }
                     };
                     Ok(true)
-                },
+                }
             }
         })
     }
@@ -267,17 +283,17 @@ impl Connection {
             if let Some(read_size) = self.stream.try_read(&mut bytes)? {
                 result.extend_from_slice(&bytes[..read_size]);
             } else {
-                break
+                break;
             }
         }
 
         if result.len() == 0 {
-            return Ok(None)
+            return Ok(None);
         }
         let rlp = UntrustedRlp::new(&result);
         let signed_message = rlp.as_val::<SignedMessage>()?;
         if !signed_message.is_valid(&self.session) {
-            return Err(Error::InvalidSign)
+            return Err(Error::InvalidSign);
         }
         let rlp = UntrustedRlp::new(&signed_message.message);
         Ok(Some(rlp.as_val::<Message>()?))
@@ -310,10 +326,7 @@ pub struct ExtensionCallback<'a> {
 
 impl<'a> ExtensionCallback<'a> {
     pub fn new(client: &'a Client, id: NodeId) -> Self {
-        Self {
-            client,
-            id,
-        }
+        Self { client, id }
     }
 
     fn on_connected(&self, name: &String) {

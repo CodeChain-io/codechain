@@ -31,19 +31,19 @@ pub struct Genesis {
     /// Block timestamp, defaults to 0.
     pub timestamp: Option<Uint>,
     /// Parent hash, defaults to 0.
-    #[serde(rename="parentHash")]
+    #[serde(rename = "parentHash")]
     pub parent_hash: Option<H256>,
     /// Transactions root.
-    #[serde(rename="transactionsRoot")]
+    #[serde(rename = "transactionsRoot")]
     pub transactions_root: Option<H256>,
     /// Invoices root.
-    #[serde(rename="invoicesRoot")]
+    #[serde(rename = "invoicesRoot")]
     pub invoices_root: Option<H256>,
     /// State root.
-    #[serde(rename="stateRoot")]
+    #[serde(rename = "stateRoot")]
     pub state_root: Option<H256>,
     /// Extra data.
-    #[serde(rename="extraData")]
+    #[serde(rename = "extraData")]
     pub extra_data: Option<Bytes>,
 }
 
@@ -52,12 +52,12 @@ mod tests {
     use std::str::FromStr;
 
     use serde_json;
-    use ctypes::{U256, H160, H64 as Eth64, H256 as Eth256, H520 as Eth520};
+    use ctypes::{H160, H256 as Eth256, H520 as Eth520, H64 as Eth64, U256};
 
     use super::Genesis;
     use super::super::{Seal, TendermintSeal};
     use super::super::super::bytes::Bytes;
-    use super::super::super::hash::{H64, H256, H520, Address};
+    use super::super::super::hash::{Address, H256, H520, H64};
     use super::super::super::uint::Uint;
 
     #[test]

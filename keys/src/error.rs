@@ -74,7 +74,7 @@ impl Into<String> for Error {
 impl From<SecpError> for Error {
     fn from(e: SecpError) -> Self {
         match e {
-            SecpError::InvalidPublicKey	=> Error::InvalidPublic,
+            SecpError::InvalidPublicKey => Error::InvalidPublic,
             SecpError::InvalidSecretKey => Error::InvalidSecret,
             SecpError::InvalidMessage => Error::InvalidMessage,
             _ => Error::InvalidSignature,

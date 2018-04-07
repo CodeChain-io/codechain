@@ -72,7 +72,8 @@ impl ChainType {
             ChainType::SoloAuthority => Ok(Spec::new_solo_authority()),
             ChainType::Tendermint => Ok(Spec::new_test_tendermint()),
             ChainType::Custom(ref filename) => {
-                let file = fs::File::open(filename).map_err(|e| format!("Could not load specification file at {}: {}", filename, e))?;
+                let file = fs::File::open(filename)
+                    .map_err(|e| format!("Could not load specification file at {}: {}", filename, e))?;
                 Spec::load(file)
             }
         }
@@ -111,12 +112,14 @@ pub fn parse(matches: &clap::ArgMatches) -> Result<Config, String> {
 
 pub fn parse_network_config(matches: &clap::ArgMatches) -> Result<Option<NetworkConfig>, String> {
     if matches.is_present("no-network") {
-        return Ok(None)
+        return Ok(None);
     }
 
     let bootstrap_addresses = {
         if let Some(addresses) = matches.values_of("bootstrap-addresses") {
-            addresses.map(|s| SocketAddr::from_str(s).unwrap()).collect::<Vec<_>>()
+            addresses
+                .map(|s| SocketAddr::from_str(s).unwrap())
+                .collect::<Vec<_>>()
         } else {
             vec![]
         }
@@ -127,7 +130,8 @@ pub fn parse_network_config(matches: &clap::ArgMatches) -> Result<Option<Network
         None => 3485,
     };
 
-    let secret_key = matches.value_of("secret-key")
+    let secret_key = matches
+        .value_of("secret-key")
         .map(|secret| Secret::from_str(secret))
         .unwrap_or_else(|| Ok(Secret::random()))
         .map_err(|_| "Invalid secret key")?;
@@ -158,27 +162,35 @@ pub fn parse_kademlia_config(matches: &clap::ArgMatches) -> Result<KademliaConfi
         None => None,
     };
 
-    Ok(KademliaConfig::new(local_id, alpha,k, refresh))
+    Ok(KademliaConfig::new(local_id, alpha, k, refresh))
 }
 
 pub fn parse_rpc_config(matches: &clap::ArgMatches) -> Result<Option<RpcHttpConfig>, String> {
     if matches.is_present("no-jsonrpc") {
-        return Ok(None)
+        return Ok(None);
     }
 
     let mut config = RpcHttpConfig::with_port(8080);
 
     if let Some(port) = matches.value_of("jsonrpc-port") {
-        config.port = port.parse().map_err(|_| "Invalid JSON RPC port".to_owned())?;
+        config.port = port.parse()
+            .map_err(|_| "Invalid JSON RPC port".to_owned())?;
     }
     if let Some(interface) = matches.value_of("jsonrpc-interface") {
         config.interface = interface.to_owned();
     }
     if let Some(cors) = matches.value_of("jsonrpc-cors") {
-        config.cors = Some(vec![cors.parse().map_err(|_| "Invalid JSON RPC CORS".to_owned())?]);
+        config.cors = Some(vec![
+            cors.parse()
+                .map_err(|_| "Invalid JSON RPC CORS".to_owned())?,
+        ]);
     }
     if let Some(hosts) = matches.value_of("jsonrpc-hosts") {
-        config.hosts = Some(vec![hosts.parse().map_err(|_| "Invalid JSON RPC hosts".to_owned())?]);
+        config.hosts = Some(vec![
+            hosts
+                .parse()
+                .map_err(|_| "Invalid JSON RPC hosts".to_owned())?,
+        ]);
     }
 
     Ok(Some(config))

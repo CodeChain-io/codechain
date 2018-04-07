@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use rlp::{UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
+use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::message::Message;
 use super::super::super::session::Session;
@@ -28,17 +28,14 @@ pub struct SignedMessage {
 impl SignedMessage {
     pub fn new(message: Message, session: &Session) -> Option<Self> {
         let message = message.rlp_bytes().into_vec();
-        session.sign(&message)
-            .map(|signature| {
-                Self {
-                    message,
-                    signature,
-                }
-            })
+        session
+            .sign(&message)
+            .map(|signature| Self { message, signature })
     }
 
     pub fn is_valid(&self, session: &Session) -> bool {
-        session.sign(&self.message)
+        session
+            .sign(&self.message)
             .map(|signature| signature == self.signature)
             .unwrap_or(false)
     }
@@ -55,14 +52,10 @@ impl Encodable for SignedMessage {
 impl Decodable for SignedMessage {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
         if rlp.item_count()? != 2 {
-            return Err(DecoderError::Custom("invalid message"))
+            return Err(DecoderError::Custom("invalid message"));
         }
         let message: Vec<u8> = rlp.val_at(0)?;
         let signature: Signature = rlp.val_at(1)?;
-        Ok(Self {
-            message,
-            signature,
-        })
+        Ok(Self { message, signature })
     }
 }
-

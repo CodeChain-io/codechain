@@ -39,11 +39,20 @@ pub fn log2_distance_between_nodes(lhs: &NodeId, rhs: &NodeId) -> usize {
     let distance = lhs ^ rhs;
     const BYTES_SIZE: usize = B / 8;
     debug_assert_eq!(B % 8, 0);
-    let mut distance_as_bytes : [u8; BYTES_SIZE] = [0; BYTES_SIZE];
+    let mut distance_as_bytes: [u8; BYTES_SIZE] = [0; BYTES_SIZE];
     distance.copy_to(&mut distance_as_bytes);
 
     let mut same_prefix_length: usize = 0;
-    const MASKS: [u8; 8] = [0b1000_0000, 0b0100_0000, 0b0010_0000, 0b0001_0000, 0b0000_1000, 0b0000_0100, 0b0000_0010, 0b0000_0001];
+    const MASKS: [u8; 8] = [
+        0b1000_0000,
+        0b0100_0000,
+        0b0010_0000,
+        0b0001_0000,
+        0b0000_1000,
+        0b0000_0100,
+        0b0000_0010,
+        0b0000_0001,
+    ];
     'outer: for byte in distance_as_bytes.iter() {
         for mask in MASKS.iter() {
             if byte & mask != 0 {

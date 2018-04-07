@@ -29,7 +29,7 @@ impl<C: BlockInfo> Verifier<C> for NoopVerifier {
         _: &Header,
         _t: &Header,
         _: &CodeChainEngine,
-        _: Option<verification::FullFamilyParams<C>>
+        _: Option<verification::FullFamilyParams<C>>,
     ) -> Result<(), Error> {
         Ok(())
     }
@@ -42,4 +42,3 @@ impl<C: BlockInfo> Verifier<C> for NoopVerifier {
         Ok(())
     }
 }
-

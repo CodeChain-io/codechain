@@ -19,10 +19,10 @@ use std::ops::Deref;
 
 use cbytes::Bytes;
 use ccrypto::blake256;
-use ckeys::{self, ECDSASignature, Private, Public, public_to_address, sign_ecdsa, recover_ecdsa};
+use ckeys::{self, public_to_address, recover_ecdsa, sign_ecdsa, ECDSASignature, Private, Public};
 use ctypes::{Address, H160, H256, U256, U512};
 use heapsize::HeapSizeOf;
-use rlp::{self, UntrustedRlp, RlpStream, Encodable, DecoderError};
+use rlp::{self, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::types::BlockNumber;
 
@@ -45,14 +45,14 @@ pub enum TransactionError {
         /// Nonce expected.
         expected: U256,
         /// Nonce found.
-        got: U256
+        got: U256,
     },
     /// Returned when cost of transaction exceeds current sender balance.
     NotEnoughCash {
         /// Minimum required balance.
         required: U512,
         /// Actual balance.
-        got: U512
+        got: U512,
     },
     /// Signature error
     InvalidSignature(String),
@@ -64,13 +64,22 @@ impl fmt::Display for TransactionError {
         let msg: String = match *self {
             AlreadyImported => "Already imported".into(),
             InvalidNetworkId => "Transaction of this network ID is not allowed on this chain.".into(),
-            InsufficientFee { minimal, got } =>
-                format!("Insufficient fee. Min={}, Given={}", minimal, got),
-            InvalidNonce { ref expected, ref got } =>
-                format!("Invalid transaction nonce: expected {}, found {}", expected, got),
-            NotEnoughCash { ref required, ref got } =>
-                format!("Cost of transaction exceeds sender balance. {} is required \
-					but the sender only has {}", required, got),
+            InsufficientFee { minimal, got } => format!("Insufficient fee. Min={}, Given={}", minimal, got),
+            InvalidNonce {
+                ref expected,
+                ref got,
+            } => format!(
+                "Invalid transaction nonce: expected {}, found {}",
+                expected, got
+            ),
+            NotEnoughCash {
+                ref required,
+                ref got,
+            } => format!(
+                "Cost of transaction exceeds sender balance. {} is required \
+                 but the sender only has {}",
+                required, got
+            ),
             InvalidSignature(ref err) => format!("Transaction has invalid signature: {}.", err),
         };
 
@@ -117,7 +126,9 @@ pub enum Action {
 }
 
 impl Default for Action {
-    fn default() -> Action { Action::Noop }
+    fn default() -> Action {
+        Action::Noop
+    }
 }
 
 impl rlp::Decodable for Action {
@@ -142,14 +153,15 @@ impl rlp::Encodable for Action {
     fn rlp_append(&self, s: &mut RlpStream) {
         match *self {
             Action::Noop => s.append_internal(&""),
-            Action::Payment { ref address, ref value } => {
+            Action::Payment {
+                ref address,
+                ref value,
+            } => {
                 s.begin_list(2);
                 s.append(address);
                 s.append(value)
-            },
-            Action::SetRegularKey { ref key } => {
-                s.append_internal(key)
             }
+            Action::SetRegularKey { ref key } => s.append_internal(key),
         };
     }
 }
@@ -180,10 +192,8 @@ impl Transaction {
 
     /// Signs the transaction as coming from `sender`.
     pub fn sign(self, private: &Private) -> SignedTransaction {
-        let sig = sign_ecdsa(&private, &self.hash())
-            .expect("data is valid and context has signing capabilities; qed");
-        SignedTransaction::new(self.with_signature(sig))
-            .expect("secret is valid so it's recoverable")
+        let sig = sign_ecdsa(&private, &self.hash()).expect("data is valid and context has signing capabilities; qed");
+        SignedTransaction::new(self.with_signature(sig)).expect("secret is valid so it's recoverable")
     }
 
     /// Signs the transaction with signature.
@@ -245,7 +255,9 @@ impl rlp::Decodable for UnverifiedTransaction {
 }
 
 impl rlp::Encodable for UnverifiedTransaction {
-    fn rlp_append(&self, s: &mut RlpStream) { self.rlp_append_sealed_transaction(s) }
+    fn rlp_append(&self, s: &mut RlpStream) {
+        self.rlp_append_sealed_transaction(s)
+    }
 }
 
 impl UnverifiedTransaction {
@@ -283,7 +295,12 @@ impl UnverifiedTransaction {
     }
 
     /// 0 if `v` would have been 27 under "Electrum" notation, 1 if 28 or 4 if invalid.
-    pub fn standard_v(&self) -> u8 { match self.v { v if v == 27 || v == 28 => ((v - 1) % 2) as u8, _ => 4 } }
+    pub fn standard_v(&self) -> u8 {
+        match self.v {
+            v if v == 27 || v == 28 => ((v - 1) % 2) as u8,
+            _ => 4,
+        }
+    }
 
     /// Construct a signature object from the sig.
     pub fn signature(&self) -> ECDSASignature {
@@ -331,7 +348,9 @@ impl HeapSizeOf for SignedTransaction {
 }
 
 impl rlp::Encodable for SignedTransaction {
-    fn rlp_append(&self, s: &mut RlpStream) { self.transaction.rlp_append_sealed_transaction(s) }
+    fn rlp_append(&self, s: &mut RlpStream) {
+        self.transaction.rlp_append_sealed_transaction(s)
+    }
 }
 
 impl Deref for SignedTransaction {
@@ -427,5 +446,3 @@ impl Deref for LocalizedTransaction {
         &self.signed
     }
 }
-
-

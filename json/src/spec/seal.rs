@@ -33,19 +33,19 @@ pub struct TendermintSeal {
 #[derive(Debug, PartialEq, Deserialize)]
 pub enum Seal {
     /// Tendermint seal.
-    #[serde(rename="tendermint")]
+    #[serde(rename = "tendermint")]
     Tendermint(TendermintSeal),
     /// Generic seal.
-    #[serde(rename="generic")]
+    #[serde(rename = "generic")]
     Generic(Bytes),
 }
 
 #[cfg(test)]
 mod tests {
-    use ctypes::{U256, H520 as Eth520};
+    use ctypes::{H520 as Eth520, U256};
     use serde_json;
 
-    use super::{TendermintSeal, Seal};
+    use super::{Seal, TendermintSeal};
     use super::super::super::bytes::Bytes;
     use super::super::super::hash::H520;
     use super::super::super::uint::Uint;
@@ -68,9 +68,13 @@ mod tests {
         assert_eq!(deserialized.len(), 2);
 
         // [0]
-        assert_eq!(deserialized[0], Seal::Generic(Bytes::new(vec![
-            0xe0, 0x11, 0xbb, 0xe8, 0xdb, 0x4e, 0x34, 0x7b, 0x4e, 0x8c, 0x93, 0x7c, 0x1c, 0x83, 0x70, 0xe4,
-            0xb5, 0xed, 0x33, 0xad, 0xb3, 0xdb, 0x69, 0xcb, 0xdb, 0x7a, 0x38, 0xe1, 0xe5, 0x0b, 0x1b, 0x82, 0xfa])));
+        assert_eq!(
+            deserialized[0],
+            Seal::Generic(Bytes::new(vec![
+                0xe0, 0x11, 0xbb, 0xe8, 0xdb, 0x4e, 0x34, 0x7b, 0x4e, 0x8c, 0x93, 0x7c, 0x1c, 0x83, 0x70, 0xe4, 0xb5,
+                0xed, 0x33, 0xad, 0xb3, 0xdb, 0x69, 0xcb, 0xdb, 0x7a, 0x38, 0xe1, 0xe5, 0x0b, 0x1b, 0x82, 0xfa,
+            ]))
+        );
 
         // [1]
         assert_eq!(deserialized[1], Seal::Tendermint(TendermintSeal {

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use rlp::{UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
+use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::NodeId;
 use super::contact::Contact;
@@ -22,28 +22,43 @@ use super::contact::Contact;
 pub type Id = u64;
 
 pub enum Message {
-    Ping { id: Id, sender: NodeId },
-    Pong { id: Id, sender: NodeId },
-    FindNode { id: Id, sender: NodeId, target: NodeId, bucket_size: u8 },
-    Nodes { id: Id, sender: NodeId, contacts: Vec<Contact> },
+    Ping {
+        id: Id,
+        sender: NodeId,
+    },
+    Pong {
+        id: Id,
+        sender: NodeId,
+    },
+    FindNode {
+        id: Id,
+        sender: NodeId,
+        target: NodeId,
+        bucket_size: u8,
+    },
+    Nodes {
+        id: Id,
+        sender: NodeId,
+        contacts: Vec<Contact>,
+    },
 }
 
 impl Message {
     pub fn id(&self) -> Id {
         match self {
-            &Message::Ping{ id, ..} => id,
-            &Message::Pong{ id, ..} => id,
-            &Message::FindNode{ id, ..} => id,
-            &Message::Nodes{ id, ..} => id,
+            &Message::Ping { id, .. } => id,
+            &Message::Pong { id, .. } => id,
+            &Message::FindNode { id, .. } => id,
+            &Message::Nodes { id, .. } => id,
         }
     }
 
     pub fn sender(&self) -> &NodeId {
         match self {
-            &Message::Ping{ ref sender, ..} => sender,
-            &Message::Pong{ ref sender, ..} => sender,
-            &Message::FindNode{ ref sender, ..} => sender,
-            &Message::Nodes{ ref sender, ..} => sender,
+            &Message::Ping { ref sender, .. } => sender,
+            &Message::Pong { ref sender, .. } => sender,
+            &Message::FindNode { ref sender, .. } => sender,
+            &Message::Nodes { ref sender, .. } => sender,
         }
     }
 }
@@ -59,26 +74,29 @@ impl Encodable for Message {
     fn rlp_append(&self, s: &mut RlpStream) {
         match self {
             &Message::Ping { id, ref sender } => {
-                s.begin_list(3)
-                    .append(&PING_ID)
-                    .append(&id)
-                    .append(sender);
-            },
+                s.begin_list(3).append(&PING_ID).append(&id).append(sender);
+            }
             &Message::Pong { id, ref sender } => {
-                s.begin_list(3)
-                    .append(&PONG_ID)
-                    .append(&id)
-                    .append(sender);
-            },
-            &Message::FindNode { id, ref sender, ref target, bucket_size } => {
+                s.begin_list(3).append(&PONG_ID).append(&id).append(sender);
+            }
+            &Message::FindNode {
+                id,
+                ref sender,
+                ref target,
+                bucket_size,
+            } => {
                 s.begin_list(5)
                     .append(&FIND_NODE_ID)
                     .append(&id)
                     .append(sender)
                     .append(target)
                     .append(&bucket_size);
-            },
-            &Message::Nodes { id, ref sender, ref contacts } => {
+            }
+            &Message::Nodes {
+                id,
+                ref sender,
+                ref contacts,
+            } => {
                 s.begin_list(3 + contacts.len() * 2)
                     .append(&NODES_ID)
                     .append(&id)
@@ -87,7 +105,7 @@ impl Encodable for Message {
                     s.append(&contact.id());
                     s.append(contact.addr());
                 }
-            },
+            }
         }
     }
 }
@@ -100,27 +118,32 @@ impl Decodable for Message {
         match protocol {
             PING_ID => {
                 if rlp.item_count()? != 3 {
-                    return Err(DecoderError::RlpIncorrectListLen)
+                    return Err(DecoderError::RlpIncorrectListLen);
                 }
-                Ok(Message::Ping{id, sender})
-            },
+                Ok(Message::Ping { id, sender })
+            }
             PONG_ID => {
                 if rlp.item_count()? != 3 {
-                    return Err(DecoderError::RlpIncorrectListLen)
+                    return Err(DecoderError::RlpIncorrectListLen);
                 }
-                Ok(Message::Pong{id, sender})
-            },
+                Ok(Message::Pong { id, sender })
+            }
             FIND_NODE_ID => {
                 if rlp.item_count()? != 5 {
-                    return Err(DecoderError::RlpIncorrectListLen)
+                    return Err(DecoderError::RlpIncorrectListLen);
                 }
                 let target = rlp.val_at(3)?;
                 let bucket_size = rlp.val_at(4)?;
-                Ok(Message::FindNode {id, sender, target, bucket_size})
-            },
+                Ok(Message::FindNode {
+                    id,
+                    sender,
+                    target,
+                    bucket_size,
+                })
+            }
             NODES_ID => {
                 if (rlp.item_count()? - 3) % 2 != 0 {
-                    return Err(DecoderError::RlpIncorrectListLen)
+                    return Err(DecoderError::RlpIncorrectListLen);
                 }
                 let contacts = {
                     let mut contacts: Vec<Contact> = vec![];
@@ -135,8 +158,12 @@ impl Decodable for Message {
                     }
                     contacts
                 };
-                Ok(Message::Nodes{id, sender, contacts})
-            },
+                Ok(Message::Nodes {
+                    id,
+                    sender,
+                    contacts,
+                })
+            }
             _ => Err(DecoderError::Custom("Invalid protocol id")),
         }
     }

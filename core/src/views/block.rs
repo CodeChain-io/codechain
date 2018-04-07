@@ -18,28 +18,26 @@ use ccrypto::blake256;
 use ctypes::H256;
 use rlp::Rlp;
 
-use super::{TransactionView, HeaderView};
+use super::{HeaderView, TransactionView};
 use super::super::header::Header;
-use super::super::transaction::{UnverifiedTransaction, LocalizedTransaction};
+use super::super::transaction::{LocalizedTransaction, UnverifiedTransaction};
 
 /// View onto block rlp.
 pub struct BlockView<'a> {
-    rlp: Rlp<'a>
+    rlp: Rlp<'a>,
 }
 
 impl<'a> BlockView<'a> {
     /// Creates new view onto block from raw bytes.
     pub fn new(bytes: &'a [u8]) -> BlockView<'a> {
         Self {
-            rlp: Rlp::new(bytes)
+            rlp: Rlp::new(bytes),
         }
     }
 
     /// Creates new view onto block from rlp.
     pub fn new_from_rlp(rlp: Rlp<'a>) -> BlockView<'a> {
-        Self {
-            rlp
-        }
+        Self { rlp }
     }
 
     /// Block header hash.
@@ -86,7 +84,8 @@ impl<'a> BlockView<'a> {
                 block_number,
                 transaction_index: i,
                 cached_sender: None,
-            }).collect()
+            })
+            .collect()
     }
 
     /// Return number of transactions in given block, without deserializing them.
@@ -96,12 +95,20 @@ impl<'a> BlockView<'a> {
 
     /// Return List of transactions in given block.
     pub fn transaction_views(&self) -> Vec<TransactionView<'a>> {
-        self.rlp.at(1).iter().map(TransactionView::new_from_rlp).collect()
+        self.rlp
+            .at(1)
+            .iter()
+            .map(TransactionView::new_from_rlp)
+            .collect()
     }
 
     /// Return transaction hashes.
     pub fn transaction_hashes(&self) -> Vec<H256> {
-        self.rlp.at(1).iter().map(|rlp| blake256(rlp.as_raw())).collect()
+        self.rlp
+            .at(1)
+            .iter()
+            .map(|rlp| blake256(rlp.as_raw()))
+            .collect()
     }
 
     /// Returns transaction at given index without deserializing unnecessary data.
@@ -123,4 +130,3 @@ impl<'a> BlockView<'a> {
         })
     }
 }
-

@@ -9,19 +9,19 @@
 #[doc(hidden)]
 pub extern crate libc;
 
-#[cfg(feature="heapsizeof")]
+#[cfg(feature = "heapsizeof")]
 #[doc(hidden)]
 pub extern crate heapsize;
 
-#[cfg(feature="std")]
+#[cfg(feature = "std")]
 #[doc(hidden)]
 pub extern crate core;
 
-#[cfg(feature="std")]
+#[cfg(feature = "std")]
 #[doc(hidden)]
 pub extern crate rustc_hex;
 
-#[cfg(feature="std")]
+#[cfg(feature = "std")]
 #[doc(hidden)]
 pub extern crate rand;
 

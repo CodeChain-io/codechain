@@ -24,11 +24,9 @@ mod message;
 mod node_id;
 mod routing_table;
 
-
 pub use self::config::Config;
 pub use self::extension::Extension;
 pub use self::node_id::NodeId;
-
 
 const ALPHA: u8 = 3;
 const B: usize = 64 * 8;

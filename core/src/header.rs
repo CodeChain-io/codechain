@@ -96,55 +96,115 @@ impl Header {
     }
 
     /// Get the parent_hash field of the header.
-    pub fn parent_hash(&self) -> &H256 { &self.parent_hash }
+    pub fn parent_hash(&self) -> &H256 {
+        &self.parent_hash
+    }
     /// Get the timestamp field of the header.
-    pub fn timestamp(&self) -> u64 { self.timestamp }
+    pub fn timestamp(&self) -> u64 {
+        self.timestamp
+    }
     /// Get the number field of the header.
-    pub fn number(&self) -> BlockNumber { self.number }
+    pub fn number(&self) -> BlockNumber {
+        self.number
+    }
     /// Get the author field of the header.
-    pub fn author(&self) -> &Address { &self.author }
+    pub fn author(&self) -> &Address {
+        &self.author
+    }
 
     /// Get the extra data field of the header.
-    pub fn extra_data(&self) -> &Bytes { &self.extra_data }
+    pub fn extra_data(&self) -> &Bytes {
+        &self.extra_data
+    }
     /// Get a mutable reference to extra_data
-    pub fn extra_data_mut(&mut self) -> &mut Bytes { self.note_dirty(); &mut self.extra_data }
+    pub fn extra_data_mut(&mut self) -> &mut Bytes {
+        self.note_dirty();
+        &mut self.extra_data
+    }
 
     /// Get the state root field of the header.
-    pub fn state_root(&self) -> &H256 { &self.state_root }
+    pub fn state_root(&self) -> &H256 {
+        &self.state_root
+    }
     /// Get the invoices root field of the header.
-    pub fn invoices_root(&self) -> &H256 { &self.invoices_root }
+    pub fn invoices_root(&self) -> &H256 {
+        &self.invoices_root
+    }
     /// Get the transactions root field of the header.
-    pub fn transactions_root(&self) -> &H256 { &self.transactions_root }
+    pub fn transactions_root(&self) -> &H256 {
+        &self.transactions_root
+    }
 
     /// Get the score field of the header.
-    pub fn score(&self) -> &U256 { &self.score }
+    pub fn score(&self) -> &U256 {
+        &self.score
+    }
     /// Get the seal field of the header.
-    pub fn seal(&self) -> &[Bytes] { &self.seal }
+    pub fn seal(&self) -> &[Bytes] {
+        &self.seal
+    }
 
     /// Set the number field of the header.
-    pub fn set_parent_hash(&mut self, a: H256) { self.parent_hash = a; self.note_dirty(); }
+    pub fn set_parent_hash(&mut self, a: H256) {
+        self.parent_hash = a;
+        self.note_dirty();
+    }
     /// Set the timestamp field of the header.
-    pub fn set_timestamp(&mut self, a: u64) { self.timestamp = a; self.note_dirty(); }
+    pub fn set_timestamp(&mut self, a: u64) {
+        self.timestamp = a;
+        self.note_dirty();
+    }
     /// Set the timestamp field of the header to the current time.
-    pub fn set_timestamp_now(&mut self, but_later_than: u64) { self.timestamp = cmp::max(get_time().sec as u64, but_later_than + 1); self.note_dirty(); }
+    pub fn set_timestamp_now(&mut self, but_later_than: u64) {
+        self.timestamp = cmp::max(get_time().sec as u64, but_later_than + 1);
+        self.note_dirty();
+    }
     /// Set the number field of the header.
-    pub fn set_number(&mut self, a: BlockNumber) { self.number = a; self.note_dirty(); }
+    pub fn set_number(&mut self, a: BlockNumber) {
+        self.number = a;
+        self.note_dirty();
+    }
     /// Set the author field of the header.
-    pub fn set_author(&mut self, a: Address) { if a != self.author { self.author = a; self.note_dirty(); } }
+    pub fn set_author(&mut self, a: Address) {
+        if a != self.author {
+            self.author = a;
+            self.note_dirty();
+        }
+    }
     /// Set the extra data field of the header.
-    pub fn set_extra_data(&mut self, a: Bytes) { if a != self.extra_data { self.extra_data = a; self.note_dirty(); } }
+    pub fn set_extra_data(&mut self, a: Bytes) {
+        if a != self.extra_data {
+            self.extra_data = a;
+            self.note_dirty();
+        }
+    }
 
     /// Set the state root field of the header.
-    pub fn set_state_root(&mut self, a: H256) { self.state_root = a; self.note_dirty(); }
+    pub fn set_state_root(&mut self, a: H256) {
+        self.state_root = a;
+        self.note_dirty();
+    }
     /// Set the transactions root field of the header.
-    pub fn set_transactions_root(&mut self, a: H256) { self.transactions_root = a; self.note_dirty() }
+    pub fn set_transactions_root(&mut self, a: H256) {
+        self.transactions_root = a;
+        self.note_dirty()
+    }
     /// Set the invoices root field of the header.
-    pub fn set_invoices_root(&mut self, a: H256) { self.invoices_root = a; self.note_dirty() }
+    pub fn set_invoices_root(&mut self, a: H256) {
+        self.invoices_root = a;
+        self.note_dirty()
+    }
 
     /// Set the score field of the header.
-    pub fn set_score(&mut self, a: U256) { self.score = a; self.note_dirty(); }
+    pub fn set_score(&mut self, a: U256) {
+        self.score = a;
+        self.note_dirty();
+    }
     /// Set the seal field of the header.
-    pub fn set_seal(&mut self, a: Vec<Bytes>) { self.seal = a; self.note_dirty(); }
+    pub fn set_seal(&mut self, a: Vec<Bytes>) {
+        self.seal = a;
+        self.note_dirty();
+    }
 
     /// Get the hash of this header (blake of the RLP).
     pub fn hash(&self) -> H256 {
@@ -174,7 +234,12 @@ impl Header {
 
     /// Place this header into an RLP stream `s`, optionally `with_seal`.
     pub fn stream_rlp(&self, s: &mut RlpStream, with_seal: Seal) {
-        s.begin_list(9 + match with_seal { Seal::With => self.seal.len(), _ => 0 });
+        s.begin_list(
+            9 + match with_seal {
+                Seal::With => self.seal.len(),
+                _ => 0,
+            },
+        );
         s.append(&self.parent_hash);
         s.append(&self.author);
         s.append(&self.state_root);
@@ -205,7 +270,9 @@ impl Header {
     }
 
     /// Get the Blake hash of this header, optionally `with_seal`.
-    pub fn rlp_blake(&self, with_seal: Seal) -> H256 { blake256(&self.rlp(with_seal)) }
+    pub fn rlp_blake(&self, with_seal: Seal) -> H256 {
+        blake256(&self.rlp(with_seal))
+    }
 }
 
 impl HeapSizeOf for Header {
@@ -246,14 +313,23 @@ impl Encodable for Header {
 }
 
 impl ::machine::Header for Header {
-    fn bare_hash(&self) -> H256 { Header::bare_hash(self) }
+    fn bare_hash(&self) -> H256 {
+        Header::bare_hash(self)
+    }
 
-    fn hash(&self) -> H256 { Header::hash(self) }
+    fn hash(&self) -> H256 {
+        Header::hash(self)
+    }
 
-    fn seal(&self) -> &[Vec<u8>] { Header::seal(self) }
+    fn seal(&self) -> &[Vec<u8>] {
+        Header::seal(self)
+    }
 
-    fn author(&self) -> &Address { Header::author(self) }
+    fn author(&self) -> &Address {
+        Header::author(self)
+    }
 
-    fn number(&self) -> BlockNumber { Header::number(self) }
+    fn number(&self) -> BlockNumber {
+        Header::number(self)
+    }
 }
-

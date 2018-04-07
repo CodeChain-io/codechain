@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ctypes::H256;
-use rlp::{Encodable, Decodable, RlpStream, UntrustedRlp, DecoderError};
+use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::super::machine::Machine;
 
@@ -42,7 +42,9 @@ pub trait EpochVerifier<M: Machine>: Send + Sync {
 pub struct NoOp;
 
 impl<M: Machine> EpochVerifier<M> for NoOp {
-    fn verify_light(&self, _header: &M::Header) -> Result<(), M::Error> { Ok(()) }
+    fn verify_light(&self, _header: &M::Header) -> Result<(), M::Error> {
+        Ok(())
+    }
 }
 
 /// A full epoch transition.
@@ -95,4 +97,3 @@ impl Decodable for PendingTransition {
         })
     }
 }
-

@@ -35,4 +35,3 @@ pub struct BestBlock {
     /// Best block uncompressed bytes
     pub block: Bytes,
 }
-

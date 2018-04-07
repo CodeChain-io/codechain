@@ -39,6 +39,5 @@ pub enum TransactionId {
     Hash(H256),
     /// Block id and transaction index within this block.
     /// Querying by block position is always faster.
-    Location(BlockId, usize)
+    Location(BlockId, usize),
 }
-
