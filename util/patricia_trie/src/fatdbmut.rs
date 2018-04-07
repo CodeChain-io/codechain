@@ -16,7 +16,7 @@
 
 use codechain_types::H256;
 use codechain_crypto::blake256;
-use hashdb::{HashDB, DBValue};
+use hashdb::{DBValue, HashDB};
 use super::{TrieDBMut, TrieMut};
 
 /// A mutable `Trie` implementation which hashes keys and uses a generic `HashDB` backing database.
@@ -24,95 +24,103 @@ use super::{TrieDBMut, TrieMut};
 ///
 /// Use it as a `Trie` or `TrieMut` trait object.
 pub struct FatDBMut<'db> {
-	raw: TrieDBMut<'db>,
+    raw: TrieDBMut<'db>,
 }
 
 impl<'db> FatDBMut<'db> {
-	/// Create a new trie with the backing database `db` and empty `root`
-	/// Initialise to the state entailed by the genesis block.
-	/// This guarantees the trie is built correctly.
-	pub fn new(db: &'db mut HashDB, root: &'db mut H256) -> Self {
-		FatDBMut { raw: TrieDBMut::new(db, root) }
-	}
+    /// Create a new trie with the backing database `db` and empty `root`
+    /// Initialise to the state entailed by the genesis block.
+    /// This guarantees the trie is built correctly.
+    pub fn new(db: &'db mut HashDB, root: &'db mut H256) -> Self {
+        FatDBMut {
+            raw: TrieDBMut::new(db, root),
+        }
+    }
 
-	/// Create a new trie with the backing database `db` and `root`.
-	///
-	/// Returns an error if root does not exist.
-	pub fn from_existing(db: &'db mut HashDB, root: &'db mut H256) -> super::Result<Self> {
-		Ok(FatDBMut { raw: TrieDBMut::from_existing(db, root)? })
-	}
+    /// Create a new trie with the backing database `db` and `root`.
+    ///
+    /// Returns an error if root does not exist.
+    pub fn from_existing(db: &'db mut HashDB, root: &'db mut H256) -> super::Result<Self> {
+        Ok(FatDBMut {
+            raw: TrieDBMut::from_existing(db, root)?,
+        })
+    }
 
-	/// Get the backing database.
-	pub fn db(&self) -> &HashDB {
-		self.raw.db()
-	}
+    /// Get the backing database.
+    pub fn db(&self) -> &HashDB {
+        self.raw.db()
+    }
 
-	/// Get the backing database.
-	pub fn db_mut(&mut self) -> &mut HashDB {
-		self.raw.db_mut()
-	}
+    /// Get the backing database.
+    pub fn db_mut(&mut self) -> &mut HashDB {
+        self.raw.db_mut()
+    }
 
-	fn to_aux_key(key: &[u8]) -> H256 {
-		blake256(key)
-	}
+    fn to_aux_key(key: &[u8]) -> H256 {
+        blake256(key)
+    }
 }
 
 impl<'db> TrieMut for FatDBMut<'db> {
-	fn root(&mut self) -> &H256 {
-		self.raw.root()
-	}
+    fn root(&mut self) -> &H256 {
+        self.raw.root()
+    }
 
-	fn is_empty(&self) -> bool {
-		self.raw.is_empty()
-	}
+    fn is_empty(&self) -> bool {
+        self.raw.is_empty()
+    }
 
-	fn contains(&self, key: &[u8]) -> super::Result<bool> {
-		self.raw.contains(&blake256(key))
-	}
+    fn contains(&self, key: &[u8]) -> super::Result<bool> {
+        self.raw.contains(&blake256(key))
+    }
 
-	fn get<'a, 'key>(&'a self, key: &'key [u8]) -> super::Result<Option<DBValue>>
-		where 'a: 'key
-	{
-		self.raw.get(&blake256(key))
-	}
+    fn get<'a, 'key>(&'a self, key: &'key [u8]) -> super::Result<Option<DBValue>>
+    where
+        'a: 'key,
+    {
+        self.raw.get(&blake256(key))
+    }
 
-	fn insert(&mut self, key: &[u8], value: &[u8]) -> super::Result<Option<DBValue>> {
-		let hash = blake256(key);
-		let out = self.raw.insert(&hash, value)?;
-		let db = self.raw.db_mut();
+    fn insert(&mut self, key: &[u8], value: &[u8]) -> super::Result<Option<DBValue>> {
+        let hash = blake256(key);
+        let out = self.raw.insert(&hash, value)?;
+        let db = self.raw.db_mut();
 
-		// don't insert if it doesn't exist.
-		if out.is_none() {
-			db.emplace(Self::to_aux_key(&hash), DBValue::from_slice(key));
-		}
-		Ok(out)
-	}
+        // don't insert if it doesn't exist.
+        if out.is_none() {
+            db.emplace(Self::to_aux_key(&hash), DBValue::from_slice(key));
+        }
+        Ok(out)
+    }
 
-	fn remove(&mut self, key: &[u8]) -> super::Result<Option<DBValue>> {
-		let hash = blake256(key);
-		let out = self.raw.remove(&hash)?;
+    fn remove(&mut self, key: &[u8]) -> super::Result<Option<DBValue>> {
+        let hash = blake256(key);
+        let out = self.raw.remove(&hash)?;
 
-		// don't remove if it already exists.
-		if out.is_some() {
-			self.raw.db_mut().remove(&Self::to_aux_key(&hash));
-		}
+        // don't remove if it already exists.
+        if out.is_some() {
+            self.raw.db_mut().remove(&Self::to_aux_key(&hash));
+        }
 
-		Ok(out)
-	}
+        Ok(out)
+    }
 }
 
 #[test]
 fn fatdb_to_trie() {
-	use memorydb::MemoryDB;
-	use super::TrieDB;
-	use super::Trie;
+    use memorydb::MemoryDB;
+    use super::TrieDB;
+    use super::Trie;
 
-	let mut memdb = MemoryDB::new();
-	let mut root = H256::default();
-	{
-		let mut t = FatDBMut::new(&mut memdb, &mut root);
-		t.insert(&[0x01u8, 0x23], &[0x01u8, 0x23]).unwrap();
-	}
-	let t = TrieDB::new(&memdb, &root).unwrap();
-	assert_eq!(t.get(&blake256(&[0x01u8, 0x23])).unwrap().unwrap(), DBValue::from_slice(&[0x01u8, 0x23]));
+    let mut memdb = MemoryDB::new();
+    let mut root = H256::default();
+    {
+        let mut t = FatDBMut::new(&mut memdb, &mut root);
+        t.insert(&[0x01u8, 0x23], &[0x01u8, 0x23]).unwrap();
+    }
+    let t = TrieDB::new(&memdb, &root).unwrap();
+    assert_eq!(
+        t.get(&blake256(&[0x01u8, 0x23])).unwrap().unwrap(),
+        DBValue::from_slice(&[0x01u8, 0x23])
+    );
 }

@@ -19,7 +19,7 @@ use std::str::FromStr;
 
 use kvdb_rocksdb::CompactionProfile;
 
-use super::super::verification::{VerifierType, QueueConfig};
+use super::super::verification::{QueueConfig, VerifierType};
 
 /// Client state db compaction profile
 #[derive(Debug, PartialEq, Clone)]
@@ -96,4 +96,3 @@ impl Default for ClientConfig {
         }
     }
 }
-

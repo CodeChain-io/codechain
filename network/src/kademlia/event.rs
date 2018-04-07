@@ -19,6 +19,11 @@ use super::message::Message;
 use super::super::SocketAddr;
 
 pub enum Event {
-    Message { message: Message, sender: SocketAddr },
-    Command { command: Command },
+    Message {
+        message: Message,
+        sender: SocketAddr,
+    },
+    Command {
+        command: Command,
+    },
 }

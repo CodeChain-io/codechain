@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ccrypto::aes::{SymmetricCipherError, self};
-use rlp::{UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
+use ccrypto::aes::{self, SymmetricCipherError};
+use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::ProtocolId;
 use super::SessionKey;
@@ -40,16 +40,25 @@ enum Data {
 
 impl Message {
     pub fn encrypted(extension_name: String, extension_version: Version, data: Vec<u8>) -> Self {
-         Self {
-             version: 0,
-             extension_name,
-             extension_version,
-             data: Data::Encrypted(data),
+        Self {
+            version: 0,
+            extension_name,
+            extension_version,
+            data: Data::Encrypted(data),
         }
     }
 
-    pub fn encrypted_from_unencrypted_data(extension_name: String, extension_version: Version, unencrypted_data: Vec<u8>, session_key: &SessionKey) -> Result<Self, SymmetricCipherError> {
-        let data = Data::Encrypted(aes::encrypt(unencrypted_data.as_slice(), &session_key.0, &session_key.1)?);
+    pub fn encrypted_from_unencrypted_data(
+        extension_name: String,
+        extension_version: Version,
+        unencrypted_data: Vec<u8>,
+        session_key: &SessionKey,
+    ) -> Result<Self, SymmetricCipherError> {
+        let data = Data::Encrypted(aes::encrypt(
+            unencrypted_data.as_slice(),
+            &session_key.0,
+            &session_key.1,
+        )?);
         Ok(Self {
             version: 0,
             extension_name,
@@ -58,11 +67,11 @@ impl Message {
         })
     }
     pub fn unencrypted(extension_name: String, extension_version: Version, data: Vec<u8>) -> Self {
-         Self {
-             version: 0,
-             extension_name,
-             extension_version,
-             data: Data::Unencrypted(data),
+        Self {
+            version: 0,
+            extension_name,
+            extension_version,
+            data: Data::Unencrypted(data),
         }
     }
 
@@ -156,8 +165,16 @@ mod tests {
         let shared_secret = SharedSecret::random();
         let nonce = Nonce::random();
 
-        let encrypted = Message::encrypted_from_unencrypted_data(extension_name, extension_version, unencrypted_data.clone(), &(shared_secret, nonce)).unwrap();
+        let encrypted = Message::encrypted_from_unencrypted_data(
+            extension_name,
+            extension_version,
+            unencrypted_data.clone(),
+            &(shared_secret, nonce),
+        ).unwrap();
         assert_ne!(&unencrypted_data, encrypted.data());
-        assert_eq!(unencrypted_data, encrypted.unencrypted_data(&(shared_secret, nonce)).unwrap());
+        assert_eq!(
+            unencrypted_data,
+            encrypted.unencrypted_data(&(shared_secret, nonce)).unwrap()
+        );
     }
 }

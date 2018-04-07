@@ -53,18 +53,18 @@ impl<Item> LimitedTable<Item> {
 
     pub fn insert(&mut self, item: Item) -> Option<Key> {
         if self.is_full() {
-            return None
+            return None;
         }
         Some(self.begin + self.slab.insert(item))
     }
 
     pub fn remove(&mut self, key: Key) -> Option<Item> {
         if key < self.begin {
-            return None
+            return None;
         }
         let key = key - self.begin;
         if !self.slab.contains(key) {
-            return None
+            return None;
         }
         Some(self.slab.remove(key))
     }

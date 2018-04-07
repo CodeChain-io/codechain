@@ -86,14 +86,16 @@ impl LocalTransactionsList {
     /// Mark given transaction as rejected from the queue.
     pub fn mark_rejected(&mut self, tx: SignedTransaction, err: TransactionError) {
         debug!(target: "own_tx", "Transaction rejected (hash {:?}): {:?}", tx.hash(), err);
-        self.transactions.insert(tx.hash(), Status::Rejected(tx, err));
+        self.transactions
+            .insert(tx.hash(), Status::Rejected(tx, err));
         self.clear_old();
     }
 
     /// Mark the transaction as replaced by transaction with given hash.
     pub fn mark_replaced(&mut self, tx: SignedTransaction, gas_price: U256, hash: H256) {
         debug!(target: "own_tx", "Transaction replaced (hash {:?}) by {:?} (new gas price: {:?})", tx.hash(), hash, gas_price);
-        self.transactions.insert(tx.hash(), Status::Replaced(tx, gas_price, hash));
+        self.transactions
+            .insert(tx.hash(), Status::Replaced(tx, gas_price, hash));
         self.clear_old();
     }
 
@@ -161,7 +163,7 @@ impl LocalTransactionsList {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ckeys::{Random, Generator};
+    use ckeys::{Generator, Random};
     use ctypes::U256;
 
     #[test]
@@ -176,7 +178,10 @@ mod tests {
         // then
         assert!(list.contains(&10.into()), "Should contain the transaction.");
         assert!(list.contains(&20.into()), "Should contain the transaction.");
-        let statuses = list.all_transactions().values().cloned().collect::<Vec<Status>>();
+        let statuses = list.all_transactions()
+            .values()
+            .cloned()
+            .collect::<Vec<Status>>();
         assert_eq!(statuses, vec![Status::Pending, Status::Future]);
     }
 
@@ -215,4 +220,3 @@ mod tests {
         }.sign(keypair.private())
     }
 }
-

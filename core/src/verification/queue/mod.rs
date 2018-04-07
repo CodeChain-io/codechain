@@ -17,8 +17,8 @@
 pub mod kind;
 
 use std::cmp;
-use std::collections::{VecDeque, HashSet, HashMap};
-use std::sync::{Condvar as SCondvar, Mutex as SMutex, Arc};
+use std::collections::{HashMap, HashSet, VecDeque};
+use std::sync::{Arc, Condvar as SCondvar, Mutex as SMutex};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering as AtomicOrdering};
 use std::thread::{self, JoinHandle};
 
@@ -29,9 +29,9 @@ use num_cpus;
 use parking_lot::{Mutex, RwLock};
 
 use super::super::consensus::CodeChainEngine;
-use super::super::error::{Error, BlockError, ImportError};
+use super::super::error::{BlockError, Error, ImportError};
 use super::super::service::ClientIoMessage;
-use super::super::types::{VerificationQueueInfo as QueueInfo, BlockStatus as Status};
+use super::super::types::{BlockStatus as Status, VerificationQueueInfo as QueueInfo};
 use self::kind::{BlockLike, Kind};
 
 const MIN_MEM_LIMIT: usize = 16384;
@@ -90,7 +90,9 @@ impl QueueSignal {
             return;
         }
 
-        if self.signalled.compare_and_swap(false, true, AtomicOrdering::Relaxed) == false {
+        if self.signalled
+            .compare_and_swap(false, true, AtomicOrdering::Relaxed) == false
+        {
             let channel = self.message_channel.lock().clone();
             if let Err(e) = channel.send_sync(ClientIoMessage::BlockVerified) {
                 debug!("Error sending BlockVerified message: {:?}", e);
@@ -104,7 +106,9 @@ impl QueueSignal {
             return;
         }
 
-        if self.signalled.compare_and_swap(false, true, AtomicOrdering::Relaxed) == false {
+        if self.signalled
+            .compare_and_swap(false, true, AtomicOrdering::Relaxed) == false
+        {
             let channel = self.message_channel.lock().clone();
             if let Err(e) = channel.send(ClientIoMessage::BlockVerified) {
                 debug!("Error sending BlockVerified message: {:?}", e);
@@ -118,7 +122,12 @@ impl QueueSignal {
 }
 
 impl<K: Kind> VerificationQueue<K> {
-    pub fn new(config: Config, engine: Arc<CodeChainEngine>, message_channel: IoChannel<ClientIoMessage>, check_seal: bool) -> Self {
+    pub fn new(
+        config: Config,
+        engine: Arc<CodeChainEngine>,
+        message_channel: IoChannel<ClientIoMessage>,
+        check_seal: bool,
+    ) -> Self {
         let verification = Arc::new(Verification {
             unverified: Mutex::new(VecDeque::new()),
             verifying: Mutex::new(VecDeque::new()),
@@ -154,16 +163,7 @@ impl<K: Kind> VerificationQueue<K> {
 
             let handle = thread::Builder::new()
                 .name(format!("Verifier #{}", i))
-                .spawn(move || {
-                    VerificationQueue::verify(
-                        verification,
-                        engine,
-                        ready_signal,
-                        empty,
-                        more_to_verify,
-                        i,
-                    )
-                })
+                .spawn(move || VerificationQueue::verify(verification, engine, ready_signal, empty, more_to_verify, i))
                 .expect("Failed to create verifier thread.");
             verifier_handles.push(handle);
         }
@@ -216,8 +216,14 @@ impl<K: Kind> VerificationQueue<K> {
                     None => continue,
                 };
 
-                verification.sizes.unverified.fetch_sub(item.heap_size_of_children(), AtomicOrdering::SeqCst);
-                verifying.push_back(Verifying { hash: item.hash(), output: None });
+                verification
+                    .sizes
+                    .unverified
+                    .fetch_sub(item.heap_size_of_children(), AtomicOrdering::SeqCst);
+                verifying.push_back(Verifying {
+                    hash: item.hash(),
+                    output: None,
+                });
                 item
             };
 
@@ -230,7 +236,10 @@ impl<K: Kind> VerificationQueue<K> {
                         if e.hash == hash {
                             idx = Some(i);
 
-                            verification.sizes.verifying.fetch_add(verified.heap_size_of_children(), AtomicOrdering::SeqCst);
+                            verification
+                                .sizes
+                                .verifying
+                                .fetch_add(verified.heap_size_of_children(), AtomicOrdering::SeqCst);
                             e.output = Some(verified);
                             break;
                         }
@@ -240,12 +249,17 @@ impl<K: Kind> VerificationQueue<K> {
                         // we're next!
                         let mut verified = verification.verified.lock();
                         let mut bad = verification.bad.lock();
-                        VerificationQueue::drain_verifying(&mut verifying, &mut verified, &mut bad, &verification.sizes);
+                        VerificationQueue::drain_verifying(
+                            &mut verifying,
+                            &mut verified,
+                            &mut bad,
+                            &verification.sizes,
+                        );
                         true
                     } else {
                         false
                     }
-                },
+                }
                 Err(_) => {
                     let mut verifying = verification.verifying.lock();
                     let mut verified = verification.verified.lock();
@@ -255,7 +269,12 @@ impl<K: Kind> VerificationQueue<K> {
                     verifying.retain(|e| e.hash != hash);
 
                     if verifying.front().map_or(false, |x| x.output.is_some()) {
-                        VerificationQueue::drain_verifying(&mut verifying, &mut verified, &mut bad, &verification.sizes);
+                        VerificationQueue::drain_verifying(
+                            &mut verifying,
+                            &mut verified,
+                            &mut bad,
+                            &verification.sizes,
+                        );
                         true
                     } else {
                         false
@@ -291,8 +310,12 @@ impl<K: Kind> VerificationQueue<K> {
             }
         }
 
-        sizes.verifying.fetch_sub(removed_size, AtomicOrdering::SeqCst);
-        sizes.verified.fetch_add(inserted_size, AtomicOrdering::SeqCst);
+        sizes
+            .verifying
+            .fetch_sub(removed_size, AtomicOrdering::SeqCst);
+        sizes
+            .verified
+            .fetch_add(inserted_size, AtomicOrdering::SeqCst);
     }
 
     /// Check if the item is currently in the queue
@@ -326,7 +349,10 @@ impl<K: Kind> VerificationQueue<K> {
         }
         match K::create(input, &*self.engine) {
             Ok(item) => {
-                self.verification.sizes.unverified.fetch_add(item.heap_size_of_children(), AtomicOrdering::SeqCst);
+                self.verification
+                    .sizes
+                    .unverified
+                    .fetch_add(item.heap_size_of_children(), AtomicOrdering::SeqCst);
 
                 self.processing.write().insert(h.clone(), item.score());
                 {
@@ -337,11 +363,11 @@ impl<K: Kind> VerificationQueue<K> {
                 self.verification.unverified.lock().push_back(item);
                 self.more_to_verify.notify_all();
                 Ok(h)
-            },
+            }
             Err(err) => {
                 match err {
                     // Don't mark future blocks as bad.
-                    Error::Block(BlockError::TemporarilyInvalid(_)) => {},
+                    Error::Block(BlockError::TemporarilyInvalid(_)) => {}
                     _ => {
                         self.verification.bad.lock().insert(h.clone());
                     }
@@ -357,8 +383,14 @@ impl<K: Kind> VerificationQueue<K> {
         let count = cmp::min(max, verified.len());
         let result = verified.drain(..count).collect::<Vec<_>>();
 
-        let drained_size = result.iter().map(HeapSizeOf::heap_size_of_children).fold(0, |a, c| a + c);
-        self.verification.sizes.verified.fetch_sub(drained_size, AtomicOrdering::SeqCst);
+        let drained_size = result
+            .iter()
+            .map(HeapSizeOf::heap_size_of_children)
+            .fold(0, |a, c| a + c);
+        self.verification
+            .sizes
+            .verified
+            .fetch_sub(drained_size, AtomicOrdering::SeqCst);
 
         self.ready_signal.reset();
         if !verified.is_empty() {
@@ -417,7 +449,10 @@ impl<K: Kind> VerificationQueue<K> {
             }
         }
 
-        self.verification.sizes.verified.fetch_sub(removed_size, AtomicOrdering::SeqCst);
+        self.verification
+            .sizes
+            .verified
+            .fetch_sub(removed_size, AtomicOrdering::SeqCst);
         *verified = new_verified;
     }
 
@@ -427,18 +462,27 @@ impl<K: Kind> VerificationQueue<K> {
 
         let (unverified_len, unverified_bytes) = {
             let len = self.verification.unverified.lock().len();
-            let size = self.verification.sizes.unverified.load(AtomicOrdering::Acquire);
+            let size = self.verification
+                .sizes
+                .unverified
+                .load(AtomicOrdering::Acquire);
 
             (len, size + len * size_of::<K::Unverified>())
         };
         let (verifying_len, verifying_bytes) = {
             let len = self.verification.verifying.lock().len();
-            let size = self.verification.sizes.verifying.load(AtomicOrdering::Acquire);
+            let size = self.verification
+                .sizes
+                .verifying
+                .load(AtomicOrdering::Acquire);
             (len, size + len * size_of::<Verifying<K>>())
         };
         let (verified_len, verified_bytes) = {
             let len = self.verification.verified.lock().len();
-            let size = self.verification.sizes.verified.load(AtomicOrdering::Acquire);
+            let size = self.verification
+                .sizes
+                .verified
+                .load(AtomicOrdering::Acquire);
             (len, size + len * size_of::<K::Verified>())
         };
 
@@ -448,9 +492,7 @@ impl<K: Kind> VerificationQueue<K> {
             verified_queue_size: verified_len,
             max_queue_size: self.max_queue_size,
             max_mem_use: self.max_mem_use,
-            mem_used: unverified_bytes
-                + verifying_bytes
-                + verified_bytes
+            mem_used: unverified_bytes + verifying_bytes + verified_bytes,
         }
     }
 
@@ -531,13 +573,15 @@ mod tests {
 
         let duplicate_import = queue.import(Unverified::new(get_good_dummy_block()));
         match duplicate_import {
-            Err(e) => {
-                match e {
-                    Error::Import(ImportError::AlreadyQueued) => {},
-                    _ => { panic!("must return AlreadyQueued error"); }
+            Err(e) => match e {
+                Error::Import(ImportError::AlreadyQueued) => {}
+                _ => {
+                    panic!("must return AlreadyQueued error");
                 }
+            },
+            Ok(_) => {
+                panic!("must produce error");
             }
-            Ok(_) => { panic!("must produce error"); }
         }
     }
 }

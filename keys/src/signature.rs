@@ -36,11 +36,11 @@ use std::fmt;
 use std::str::FromStr;
 use std::hash::{Hash, Hasher};
 
-use codechain_types::{H520, H512, H256};
-use secp256k1::{key, schnorr, Message as SecpMessage, RecoverableSignature, RecoveryId, Error as SecpError};
-use rustc_hex::{ToHex, FromHex};
+use codechain_types::{H256, H512, H520};
+use secp256k1::{key, schnorr, Error as SecpError, Message as SecpMessage, RecoverableSignature, RecoveryId};
+use rustc_hex::{FromHex, ToHex};
 
-use super::{Error, Message, Public, Private, SECP256K1};
+use super::{Error, Message, Private, Public, SECP256K1};
 
 /// Signature encoded as RSV components
 #[repr(C)]
@@ -78,11 +78,11 @@ impl ECDSASignature {
 
     /// Check if each component of the signature is in range.
     pub fn is_valid(&self) -> bool {
-        self.v() <= 1 &&
-            H256::from_slice(self.r()) < "fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141".into() &&
-            H256::from_slice(self.r()) >= 1.into() &&
-            H256::from_slice(self.s()) < "fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141".into() &&
-            H256::from_slice(self.s()) >= 1.into()
+        self.v() <= 1
+            && H256::from_slice(self.r()) < "fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141".into()
+            && H256::from_slice(self.r()) >= 1.into()
+            && H256::from_slice(self.s()) < "fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141".into()
+            && H256::from_slice(self.s()) >= 1.into()
     }
 }
 
@@ -95,7 +95,7 @@ impl PartialEq for ECDSASignature {
 }
 
 // manual implementation required in Rust 1.13+, see `std::cmp::AssertParamIsEq`.
-impl Eq for ECDSASignature { }
+impl Eq for ECDSASignature {}
 
 // also manual for the same reason, but the pretty printing might be useful.
 impl fmt::Debug for ECDSASignature {
@@ -123,8 +123,8 @@ impl FromStr for ECDSASignature {
                 let mut data = [0; 65];
                 data.copy_from_slice(&hex[0..65]);
                 Ok(ECDSASignature(data))
-            },
-            _ => Err(SecpError::InvalidSignature)
+            }
+            _ => Err(SecpError::InvalidSignature),
         }
     }
 }
@@ -185,7 +185,6 @@ impl DerefMut for ECDSASignature {
     }
 }
 
-
 pub fn sign_ecdsa(private: &Private, message: &Message) -> Result<ECDSASignature, Error> {
     let context = &SECP256K1;
     let sec = key::SecretKey::from_slice(context, &private)?;
@@ -201,7 +200,11 @@ pub fn sign_ecdsa(private: &Private, message: &Message) -> Result<ECDSASignature
 
 pub fn verify_ecdsa(public: &Public, signature: &ECDSASignature, message: &Message) -> Result<bool, Error> {
     let context = &SECP256K1;
-    let rsig = RecoverableSignature::from_compact(context, &signature[0..64], RecoveryId::from_i32(signature[64] as i32)?)?;
+    let rsig = RecoverableSignature::from_compact(
+        context,
+        &signature[0..64],
+        RecoveryId::from_i32(signature[64] as i32)?,
+    )?;
     let sig = rsig.to_standard(context);
 
     let pdata: [u8; 65] = {
@@ -214,13 +217,17 @@ pub fn verify_ecdsa(public: &Public, signature: &ECDSASignature, message: &Messa
     match context.verify(&SecpMessage::from_slice(&message[..])?, &sig, &publ) {
         Ok(_) => Ok(true),
         Err(SecpError::IncorrectSignature) => Ok(false),
-        Err(x) => Err(Error::from(x))
+        Err(x) => Err(Error::from(x)),
     }
 }
 
 pub fn recover_ecdsa(signature: &ECDSASignature, message: &Message) -> Result<Public, Error> {
     let context = &SECP256K1;
-    let rsig = RecoverableSignature::from_compact(context, &signature[0..64], RecoveryId::from_i32(signature[64] as i32)?)?;
+    let rsig = RecoverableSignature::from_compact(
+        context,
+        &signature[0..64],
+        RecoveryId::from_i32(signature[64] as i32)?,
+    )?;
     let pubkey = context.recover(&SecpMessage::from_slice(&message[..])?, &rsig)?;
     let serialized = pubkey.serialize_vec(context, false);
 
@@ -228,7 +235,6 @@ pub fn recover_ecdsa(signature: &ECDSASignature, message: &Message) -> Result<Pu
     public.copy_from_slice(&serialized[1..65]);
     Ok(public)
 }
-
 
 pub struct SchnorrSignature([u8; 64]);
 
@@ -241,7 +247,7 @@ impl PartialEq for SchnorrSignature {
 }
 
 // manual implementation required in Rust 1.13+, see `std::cmp::AssertParamIsEq`.
-impl Eq for SchnorrSignature { }
+impl Eq for SchnorrSignature {}
 
 // also manual for the same reason, but the pretty printing might be useful.
 impl fmt::Debug for SchnorrSignature {
@@ -268,8 +274,8 @@ impl FromStr for SchnorrSignature {
                 let mut data = [0; 64];
                 data.copy_from_slice(&hex[0..64]);
                 Ok(SchnorrSignature(data))
-            },
-            _ => Err(SecpError::InvalidSignature)
+            }
+            _ => Err(SecpError::InvalidSignature),
         }
     }
 }
@@ -353,7 +359,7 @@ pub fn verify_schnorr(public: &Public, signature: &SchnorrSignature, message: &M
     match context.verify_schnorr(&SecpMessage::from_slice(&message[..])?, &sig, &publ) {
         Ok(_) => Ok(true),
         Err(SecpError::IncorrectSignature) => Ok(false),
-        Err(x) => Err(Error::from(x))
+        Err(x) => Err(Error::from(x)),
     }
 }
 
@@ -368,4 +374,3 @@ pub fn recover_schnorr(signature: &SchnorrSignature, message: &Message) -> Resul
     public.copy_from_slice(&serialized[1..65]);
     Ok(public)
 }
-

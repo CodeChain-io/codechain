@@ -34,7 +34,7 @@ use std::fmt;
 use std::sync::Weak;
 
 use cbytes::Bytes;
-use ckeys::{Private, ECDSASignature};
+use ckeys::{ECDSASignature, Private};
 use ctypes::{Address, H256};
 use unexpected::{Mismatch, OutOfBounds};
 
@@ -43,7 +43,7 @@ use super::codechain_machine::CodeChainMachine;
 use super::error::Error;
 use super::header::Header;
 use super::machine::Machine;
-use super::transaction::{UnverifiedTransaction, SignedTransaction};
+use super::transaction::{SignedTransaction, UnverifiedTransaction};
 
 /// Seal type.
 #[derive(Debug, PartialEq, Eq)]
@@ -65,12 +65,16 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
     fn machine(&self) -> &M;
 
     /// The number of additional header fields required for this engine.
-    fn seal_fields(&self, _header: &M::Header) -> usize { 0 }
+    fn seal_fields(&self, _header: &M::Header) -> usize {
+        0
+    }
 
     /// None means that it requires external input (e.g. PoW) to seal a block.
     /// Some(true) means the engine is currently prime for seal generation (i.e. node is the current validator).
     /// Some(false) means that the node might seal internally but is not qualified now.
-    fn seals_internally(&self) -> Option<bool> { None }
+    fn seals_internally(&self) -> Option<bool> {
+        None
+    }
 
     /// Attempt to seal the block internally.
     ///
@@ -81,7 +85,9 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
     ///
     /// It is fine to require access to state or a full client for this function, since
     /// light clients do not generate seals.
-    fn generate_seal(&self, _block: &M::LiveBlock, _parent: &M::Header) -> Seal { Seal::None }
+    fn generate_seal(&self, _block: &M::LiveBlock, _parent: &M::Header) -> Seal {
+        Seal::None
+    }
 
     /// Verify a locally-generated seal of a header.
     ///
@@ -96,28 +102,37 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
     fn verify_local_seal(&self, header: &M::Header) -> Result<(), M::Error>;
 
     /// Phase 1 quick block verification. Only does checks that are cheap. Returns either a null `Ok` or a general error detailing the problem with import.
-    fn verify_block_basic(&self, _header: &M::Header) -> Result<(), M::Error> { Ok(()) }
+    fn verify_block_basic(&self, _header: &M::Header) -> Result<(), M::Error> {
+        Ok(())
+    }
 
     /// Phase 2 verification. Perform costly checks such as transaction signatures. Returns either a null `Ok` or a general error detailing the problem with import.
-    fn verify_block_unordered(&self, _header: &M::Header) -> Result<(), M::Error> { Ok(()) }
+    fn verify_block_unordered(&self, _header: &M::Header) -> Result<(), M::Error> {
+        Ok(())
+    }
 
     /// Phase 3 verification. Check block information against parent. Returns either a null `Ok` or a general error detailing the problem with import.
-    fn verify_block_family(&self, _header: &M::Header, _parent: &M::Header) -> Result<(), M::Error> { Ok(()) }
+    fn verify_block_family(&self, _header: &M::Header, _parent: &M::Header) -> Result<(), M::Error> {
+        Ok(())
+    }
 
     /// Phase 4 verification. Verify block header against potentially external data.
     /// Should only be called when `register_client` has been called previously.
-    fn verify_block_external(&self, _header: &M::Header) -> Result<(), M::Error> { Ok(()) }
+    fn verify_block_external(&self, _header: &M::Header) -> Result<(), M::Error> {
+        Ok(())
+    }
 
     /// Genesis epoch data.
-    fn genesis_epoch_data<'a>(&self, _header: &M::Header) -> Result<Vec<u8>, String> { Ok(Vec::new()) }
+    fn genesis_epoch_data<'a>(&self, _header: &M::Header) -> Result<Vec<u8>, String> {
+        Ok(Vec::new())
+    }
 
     /// Whether an epoch change is signalled at the given header but will require finality.
     /// If a change can be enacted immediately then return `No` from this function but
     /// `Yes` from `is_epoch_end`.
     ///
     /// Return `Yes` or `No` when the answer is definitively known.
-    fn signals_epoch_end<'a>(&self, _header: &M::Header)
-                             -> EpochChange {
+    fn signals_epoch_end<'a>(&self, _header: &M::Header) -> EpochChange {
         EpochChange::No
     }
 
@@ -145,7 +160,7 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
 
     /// Populate a header's fields based on its parent's header.
     /// Usually implements the chain scoring rule based on weight.
-    fn populate_from_parent(&self, _header: &mut M::Header, _parent: &M::Header) { }
+    fn populate_from_parent(&self, _header: &mut M::Header, _parent: &M::Header) {}
 
     /// Trigger next step of the consensus engine.
     fn step(&self) {}
@@ -154,11 +169,7 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
     fn stop(&self) {}
 
     /// Block transformation functions, before the transactions.
-    fn on_new_block(
-        &self,
-        _block: &mut M::LiveBlock,
-        _epoch_begin: bool,
-    ) -> Result<(), M::Error> {
+    fn on_new_block(&self, _block: &mut M::LiveBlock, _epoch_begin: bool) -> Result<(), M::Error> {
         Ok(())
     }
 
@@ -172,17 +183,23 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
 
     /// Handle any potential consensus messages;
     /// updating consensus state and potentially issuing a new one.
-    fn handle_message(&self, _message: &[u8]) -> Result<(), EngineError> { Err(EngineError::UnexpectedMessage) }
+    fn handle_message(&self, _message: &[u8]) -> Result<(), EngineError> {
+        Err(EngineError::UnexpectedMessage)
+    }
 
     /// Find out if the block is a proposal block and should not be inserted into the DB.
     /// Takes a header of a fully verified block.
-    fn is_proposal(&self, _verified_header: &M::Header) -> bool { false }
+    fn is_proposal(&self, _verified_header: &M::Header) -> bool {
+        false
+    }
 
     /// Register an account which signs consensus messages.
     fn set_signer(&self, _address: Address, _private: Private) {}
 
     /// Sign using the EngineSigner, to be used for consensus tx signing.
-    fn sign(&self, _hash: H256) -> Result<ECDSASignature, Error> { unimplemented!() }
+    fn sign(&self, _hash: H256) -> Result<ECDSASignature, Error> {
+        unimplemented!()
+    }
 }
 
 /// Results of a query of whether an epoch change occurred at the given block.
@@ -198,7 +215,7 @@ pub enum EpochChange {
 /// Proof generated on epoch change.
 pub enum Proof {
     /// Known proof (extracted from signal)
-    Known(Vec<u8>)
+    Known(Vec<u8>),
 }
 
 /// Generated epoch verifier.
@@ -206,7 +223,7 @@ pub enum ConstructedVerifier<'a, M: Machine> {
     /// Fully trusted verifier.
     Trusted(Box<EpochVerifier<M>>),
     /// Verifier unconfirmed. Check whether given finality proof finalizes given hash
-/// under previous epoch.
+    /// under previous epoch.
     Unconfirmed(Box<EpochVerifier<M>>, &'a [u8], H256),
     /// Error constructing verifier.
     Err(Error),
@@ -259,10 +276,18 @@ pub trait CodeChainEngine: ConsensusEngine<CodeChainMachine> {
     }
 
     /// Verify a particular transaction is valid.
-    fn verify_transaction_unordered(&self, t: UnverifiedTransaction, header: &Header) -> Result<SignedTransaction, Error> {
+    fn verify_transaction_unordered(
+        &self,
+        t: UnverifiedTransaction,
+        header: &Header,
+    ) -> Result<SignedTransaction, Error> {
         self.machine().verify_transaction_unordered(t, header)
     }
 }
 
 // convenience wrappers for existing functions.
-impl<T> CodeChainEngine for T where T: ConsensusEngine<CodeChainMachine> { }
+impl<T> CodeChainEngine for T
+where
+    T: ConsensusEngine<CodeChainMachine>,
+{
+}

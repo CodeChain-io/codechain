@@ -25,9 +25,9 @@ use std::collections::HashMap;
 use std::fmt;
 
 use error::Error;
-use transaction::{SignedTransaction, Action};
-use ctypes::{H256, U256, U512, Address, Public};
-use trie::{self, Trie, TrieFactory, TrieError};
+use transaction::{Action, SignedTransaction};
+use ctypes::{Address, H256, Public, U256, U512};
+use trie::{self, Trie, TrieError, TrieFactory};
 
 use super::invoice::{Invoice, TransactionOutcome};
 use super::state_db::StateDB;
@@ -125,7 +125,7 @@ impl AccountEntry {
                 if let Some(ref mut ours) = self.account {
                     ours.overwrite_with(acc);
                 }
-            },
+            }
             None => self.account = None,
         }
     }
@@ -199,9 +199,15 @@ pub trait StateInfo {
 }
 
 impl<B: Backend> StateInfo for State<B> {
-    fn nonce(&self, a: &Address) -> trie::Result<U256> { State::nonce(self, a) }
-    fn balance(&self, a: &Address) -> trie::Result<U256> { State::balance(self, a) }
-    fn regular_key(&self, a: &Address) -> trie::Result<Option<Public>> { State::regular_key(self, a) }
+    fn nonce(&self, a: &Address) -> trie::Result<U256> {
+        State::nonce(self, a)
+    }
+    fn balance(&self, a: &Address) -> trie::Result<U256> {
+        State::balance(self, a)
+    }
+    fn regular_key(&self, a: &Address) -> trie::Result<Option<Public>> {
+        State::regular_key(self, a)
+    }
 }
 
 impl<B: Backend> State<B> {
@@ -225,7 +231,12 @@ impl<B: Backend> State<B> {
     }
 
     /// Creates new state with existing state root
-    pub fn from_existing(db: B, root: H256, account_start_nonce: U256, trie_factory: TrieFactory) -> Result<State<B>, TrieError> {
+    pub fn from_existing(
+        db: B,
+        root: H256,
+        account_start_nonce: U256,
+        trie_factory: TrieFactory,
+    ) -> Result<State<B>, TrieError> {
         if !db.as_hashdb().contains(&root) {
             return Err(TrieError::InvalidStateRoot(root));
         }
@@ -236,7 +247,7 @@ impl<B: Backend> State<B> {
             cache: RefCell::new(HashMap::new()),
             checkpoints: RefCell::new(Vec::new()),
             account_start_nonce: account_start_nonce,
-            trie_factory: trie_factory
+            trie_factory: trie_factory,
         };
 
         Ok(state)
@@ -275,12 +286,12 @@ impl<B: Backend> State<B> {
                                 // Merge checkpointed changes back into the main account
                                 // storage preserving the cache.
                                 e.get_mut().overwrite_with(v);
-                            },
+                            }
                             Entry::Vacant(e) => {
                                 e.insert(v);
                             }
                         }
-                    },
+                    }
                     None => {
                         if let Entry::Occupied(e) = self.cache.get_mut().entry(k) {
                             if e.get().is_dirty() {
@@ -310,7 +321,8 @@ impl<B: Backend> State<B> {
 
     fn note_cache(&self, address: &Address) {
         if let Some(ref mut checkpoint) = self.checkpoints.borrow_mut().last_mut() {
-            checkpoint.entry(*address)
+            checkpoint
+                .entry(*address)
                 .or_insert_with(|| self.cache.borrow().get(address).map(AccountEntry::clone));
         }
     }
@@ -340,31 +352,41 @@ impl<B: Backend> State<B> {
 
     /// Determine whether an account exists and if not empty.
     pub fn exists_and_not_null(&self, a: &Address) -> trie::Result<bool> {
-        self.ensure_cached(a, |a| a.map_or(false, |a| !a.is_null()))
+        self.ensure_cached(a, |a| {
+            a.map_or(false, |a| !a.is_null())
+        })
     }
 
     /// Determine whether an account exists and has code or non-zero nonce.
     pub fn exists_and_has_nonce(&self, a: &Address) -> trie::Result<bool> {
-        self.ensure_cached(a,
-            |a| a.map_or(false, |a| *a.nonce() != self.account_start_nonce))
+        self.ensure_cached(a, |a| {
+            a.map_or(false, |a| {
+                *a.nonce() != self.account_start_nonce
+            })
+        })
     }
 
     /// Get the balance of account `a`.
     pub fn balance(&self, a: &Address) -> trie::Result<U256> {
-        self.ensure_cached(a,
-            |a| a.as_ref().map_or(U256::zero(), |account| *account.balance()))
+        self.ensure_cached(a, |a| {
+            a.as_ref()
+                .map_or(U256::zero(), |account| *account.balance())
+        })
     }
 
     /// Get the nonce of account `a`.
     pub fn nonce(&self, a: &Address) -> trie::Result<U256> {
-        self.ensure_cached(a,
-            |a| a.as_ref().map_or(self.account_start_nonce, |account| *account.nonce()))
+        self.ensure_cached(a, |a| {
+            a.as_ref()
+                .map_or(self.account_start_nonce, |account| *account.nonce())
+        })
     }
 
     /// Get the regular key of account `a`.
     pub fn regular_key(&self, a: &Address) -> trie::Result<Option<Public>> {
-        self.ensure_cached(a,
-            |a| a.as_ref().map_or(None, |account| account.regular_key()))
+        self.ensure_cached(a, |a| {
+            a.as_ref().map_or(None, |account| account.regular_key())
+        })
     }
 
     /// Add `incr` to the balance of account `a`.
@@ -414,10 +436,7 @@ impl<B: Backend> State<B> {
             Some(_) => Invoice::new(TransactionOutcome::Failed),
             None => Invoice::new(TransactionOutcome::Success),
         };
-        Ok(ApplyOutcome {
-            invoice,
-            error
-        })
+        Ok(ApplyOutcome { invoice, error })
     }
 
     fn execute(&mut self, t: &SignedTransaction) -> Result<Option<TransactionError>, Error> {
@@ -427,11 +446,17 @@ impl<B: Backend> State<B> {
         let mut balance = U512::from(self.balance(&sender)?);
 
         if t.nonce != nonce {
-            return Ok(Some(TransactionError::InvalidNonce { expected: nonce, got: t.nonce }));
+            return Ok(Some(TransactionError::InvalidNonce {
+                expected: nonce,
+                got: t.nonce,
+            }));
         }
 
         if fee > balance {
-            return Ok(Some(TransactionError::NotEnoughCash { required: fee, got: balance }));
+            return Ok(Some(TransactionError::NotEnoughCash {
+                required: fee,
+                got: balance,
+            }));
         }
 
         self.inc_nonce(&sender)?;
@@ -439,16 +464,19 @@ impl<B: Backend> State<B> {
         balance = balance - fee;
 
         match t.action {
-            Action::Noop => { Ok(None) },
+            Action::Noop => Ok(None),
             Action::Payment { address, value } => {
                 if balance < value.into() {
-                    return Ok(Some(TransactionError::NotEnoughCash { required: fee + value.into(), got: fee + balance }));
+                    return Ok(Some(TransactionError::NotEnoughCash {
+                        required: fee + value.into(),
+                        got: fee + balance,
+                    }));
                 }
                 self.transfer_balance(&sender, &address, &value)?;
                 // NOTE: Uncomment the below line if balance is used after
                 // balance = balance - value.into()
                 Ok(None)
-            },
+            }
             Action::SetRegularKey { key } => {
                 self.set_regular_key(&sender, &key)?;
                 Ok(None)
@@ -460,16 +488,17 @@ impl<B: Backend> State<B> {
     pub fn commit(&mut self) -> Result<(), Error> {
         let mut accounts = self.cache.borrow_mut();
         {
-            let mut trie = self.trie_factory.from_existing(self.db.as_hashdb_mut(), &mut self.root)?;
+            let mut trie = self.trie_factory
+                .from_existing(self.db.as_hashdb_mut(), &mut self.root)?;
             for (address, ref mut a) in accounts.iter_mut().filter(|&(_, ref a)| a.is_dirty()) {
                 a.state = AccountState::Committed;
                 match a.account {
                     Some(ref mut account) => {
                         trie.insert(address, &account.rlp())?;
-                    },
+                    }
                     None => {
                         trie.remove(address)?;
-                    },
+                    }
                 };
             }
         }
@@ -481,8 +510,12 @@ impl<B: Backend> State<B> {
     fn propagate_to_global_cache(&mut self) {
         let mut addresses = self.cache.borrow_mut();
         trace!("Committing cache {:?} entries", addresses.len());
-        for (address, a) in addresses.drain().filter(|&(_, ref a)| a.state == AccountState::Committed || a.state == AccountState::CleanFresh) {
-            self.db.add_to_account_cache(address, a.account, a.state == AccountState::Committed);
+        for (address, a) in addresses
+            .drain()
+            .filter(|&(_, ref a)| a.state == AccountState::Committed || a.state == AccountState::CleanFresh)
+        {
+            self.db
+                .add_to_account_cache(address, a.account, a.state == AccountState::Committed);
         }
     }
 
@@ -495,7 +528,9 @@ impl<B: Backend> State<B> {
     /// First searches for account in the local, then the shared cache.
     /// Populates local cache if nothing found.
     fn ensure_cached<F, U>(&self, a: &Address, f: F) -> trie::Result<U>
-        where F: Fn(Option<&Account>) -> U {
+    where
+        F: Fn(Option<&Account>) -> U,
+    {
         // check local cache first
         if let Some(ref mut maybe_acc) = self.cache.borrow_mut().get_mut(a) {
             if let Some(ref mut account) = maybe_acc.account {
@@ -504,9 +539,7 @@ impl<B: Backend> State<B> {
             return Ok(f(None));
         }
         // check global cache
-        let result = self.db.get_cached(a, |acc| {
-            f(acc.map(|a| &*a))
-        });
+        let result = self.db.get_cached(a, |acc| f(acc.map(|a| &*a)));
         match result {
             Some(r) => Ok(r),
             None => {
@@ -522,13 +555,19 @@ impl<B: Backend> State<B> {
 
     /// Pull account `a` in our cache from the trie DB.
     fn require<'a>(&'a self, a: &Address) -> trie::Result<RefMut<'a, Account>> {
-        self.require_or_from(a, || Account::new(0u8.into(), self.account_start_nonce), |_|{})
+        self.require_or_from(
+            a,
+            || Account::new(0u8.into(), self.account_start_nonce),
+            |_| {},
+        )
     }
 
     /// Pull account `a` in our cache from the trie DB.
     /// If it doesn't exist, make account equal the evaluation of `default`.
     fn require_or_from<'a, F, G>(&'a self, a: &Address, default: F, not_default: G) -> trie::Result<RefMut<'a, Account>>
-        where F: FnOnce() -> Account, G: FnOnce(&mut Account),
+    where
+        F: FnOnce() -> Account,
+        G: FnOnce(&mut Account),
     {
         let contains_key = self.cache.borrow().contains_key(a);
         if !contains_key {
@@ -545,7 +584,8 @@ impl<B: Backend> State<B> {
 
         // at this point the entry is guaranteed to be in the cache.
         Ok(RefMut::map(self.cache.borrow_mut(), |c| {
-            let entry = c.get_mut(a).expect("entry known to exist in the cache; qed");
+            let entry = c.get_mut(a)
+                .expect("entry known to exist in the cache; qed");
 
             match &mut entry.account {
                 &mut Some(ref mut acc) => not_default(acc),
@@ -555,9 +595,7 @@ impl<B: Backend> State<B> {
             // set the dirty flag after changing account data.
             entry.state = AccountState::Dirty;
             match entry.account {
-                Some(ref mut account) => {
-                    account
-                },
+                Some(ref mut account) => account,
                 _ => panic!("Required account must always exist; qed"),
             }
         }))
@@ -599,7 +637,7 @@ impl Clone for State<StateDB> {
 mod tests {
     use ccrypto::blake256;
     use clogger::init_log;
-    use ctypes::{U256, Address, Secret};
+    use ctypes::{Address, Secret, U256};
 
     use super::*;
     use super::super::transaction::Transaction;
@@ -616,7 +654,7 @@ mod tests {
 
         let t = Transaction {
             fee: 5.into(),
-            .. Transaction::default()
+            ..Transaction::default()
         }.sign(&secret().into());
         let sender = t.sender();
         state.add_balance(&sender, &20.into()).unwrap();
@@ -636,14 +674,20 @@ mod tests {
         let t = Transaction {
             nonce: 2.into(),
             fee: 5.into(),
-            .. Transaction::default()
+            ..Transaction::default()
         }.sign(&secret().into());
         let sender = t.sender();
         state.add_balance(&sender, &20.into()).unwrap();
 
         let res = state.apply(&t).unwrap();
         assert_eq!(res.invoice.outcome, TransactionOutcome::Failed);
-        assert_eq!(res.error.unwrap(), TransactionError::InvalidNonce { expected: 0.into(), got: 2.into() });
+        assert_eq!(
+            res.error.unwrap(),
+            TransactionError::InvalidNonce {
+                expected: 0.into(),
+                got: 2.into(),
+            }
+        );
         assert_eq!(state.balance(&sender).unwrap(), 20.into());
         assert_eq!(state.nonce(&sender).unwrap(), 0.into());
     }
@@ -653,14 +697,20 @@ mod tests {
         let mut state = get_temp_state();
         let t = Transaction {
             fee: 5.into(),
-            .. Transaction::default()
+            ..Transaction::default()
         }.sign(&secret().into());
         let sender = t.sender();
         state.add_balance(&sender, &4.into()).unwrap();
 
         let res = state.apply(&t).unwrap();
         assert_eq!(res.invoice.outcome, TransactionOutcome::Failed);
-        assert_eq!(res.error.unwrap(), TransactionError::NotEnoughCash { required: 5.into(), got: 4.into() });
+        assert_eq!(
+            res.error.unwrap(),
+            TransactionError::NotEnoughCash {
+                required: 5.into(),
+                got: 4.into(),
+            }
+        );
         assert_eq!(state.balance(&sender).unwrap(), 4.into());
         assert_eq!(state.nonce(&sender).unwrap(), 0.into());
     }
@@ -673,8 +723,11 @@ mod tests {
 
         let t = Transaction {
             fee: 5.into(),
-            action: Action::Payment { address: receiver, value: 10.into() },
-            .. Transaction::default()
+            action: Action::Payment {
+                address: receiver,
+                value: 10.into(),
+            },
+            ..Transaction::default()
         }.sign(&secret().into());
         let sender = t.sender();
         state.add_balance(&sender, &20.into()).unwrap();
@@ -696,7 +749,7 @@ mod tests {
         let t = Transaction {
             fee: 5.into(),
             action: Action::SetRegularKey { key },
-            .. Transaction::default()
+            ..Transaction::default()
         }.sign(&secret().into());
         let sender = t.sender();
         state.add_balance(&sender, &5.into()).unwrap();
@@ -715,15 +768,24 @@ mod tests {
 
         let t = Transaction {
             fee: 5.into(),
-            action: Action::Payment { address: receiver, value: 30.into() },
-            .. Transaction::default()
+            action: Action::Payment {
+                address: receiver,
+                value: 30.into(),
+            },
+            ..Transaction::default()
         }.sign(&secret().into());
         let sender = t.sender();
         state.add_balance(&sender, &20.into()).unwrap();
 
         let res = state.apply(&t).unwrap();
         assert_eq!(res.invoice.outcome, TransactionOutcome::Failed);
-        assert_eq!(res.error.unwrap(), TransactionError::NotEnoughCash { required: 35.into(), got: 20.into() });
+        assert_eq!(
+            res.error.unwrap(),
+            TransactionError::NotEnoughCash {
+                required: 35.into(),
+                got: 20.into(),
+            }
+        );
         assert_eq!(state.balance(&receiver).unwrap(), 0.into());
         assert_eq!(state.balance(&sender).unwrap(), 15.into());
         assert_eq!(state.nonce(&sender).unwrap(), 1.into());
@@ -877,7 +939,10 @@ mod tests {
         let a = Address::zero();
         state.require(&a).unwrap();
         state.commit().unwrap();
-        assert_eq!(*state.root(), "4b5fdb97048c16016fb85e635a11073e375d07b692d7372ec166885e0aa6624a".into());
+        assert_eq!(
+            *state.root(),
+            "4b5fdb97048c16016fb85e635a11073e375d07b692d7372ec166885e0aa6624a".into()
+        );
     }
 
     #[test]
@@ -934,6 +999,9 @@ mod tests {
     fn create_empty() {
         let mut state = get_temp_state();
         state.commit().unwrap();
-        assert_eq!(*state.root(), "45b0cfc220ceec5b7c1c62c4d4193d38e4eba48e8815729ce75f9c0ab0e4c1c0".into());
+        assert_eq!(
+            *state.root(),
+            "45b0cfc220ceec5b7c1c62c4d4193d38e4eba48e8815729ce75f9c0ab0e4c1c0".into()
+        );
     }
 }

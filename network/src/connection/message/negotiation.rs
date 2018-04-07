@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use rlp::{UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
+use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::ProtocolId;
 use super::Seq;
@@ -100,7 +100,6 @@ impl Message {
     }
 }
 
-
 impl Encodable for Message {
     fn rlp_append(&self, s: &mut RlpStream) {
         s.begin_list(self.item_count())
@@ -109,15 +108,16 @@ impl Encodable for Message {
             .append(&self.seq());
 
         match self.body {
-            Body::Request { ref application_name, application_version, .. } => {
-                s.append(application_name)
-                    .append(&application_version);
-            },
-            Body::Allowed => {},
-            Body::Denied(ref versions) => {
-                for version in versions.iter() {
-                    s.append(version);
-                }
+            Body::Request {
+                ref application_name,
+                application_version,
+                ..
+            } => {
+                s.append(application_name).append(&application_version);
+            }
+            Body::Allowed => {}
+            Body::Denied(ref versions) => for version in versions.iter() {
+                s.append(version);
             },
         }
     }
@@ -137,17 +137,15 @@ impl Decodable for Message {
                     seq,
                     body: Body::Request {
                         application_name,
-                        application_version
-                    }
+                        application_version,
+                    },
                 })
-            },
-            ALLOWED_ID => {
-                Ok(Message {
-                    version,
-                    seq,
-                    body: Body::Allowed,
-                })
-            },
+            }
+            ALLOWED_ID => Ok(Message {
+                version,
+                seq,
+                body: Body::Allowed,
+            }),
             DENIED_ID => {
                 let item_count = rlp.item_count()?;
                 let mut versions: Vec<Version> = Vec::with_capacity(item_count - COMMON);
@@ -160,7 +158,7 @@ impl Decodable for Message {
                     seq,
                     body: Body::Denied(versions),
                 })
-            },
+            }
             _ => Err(DecoderError::Custom("invalid protocol id")),
         }
     }
@@ -168,7 +166,7 @@ impl Decodable for Message {
 
 #[cfg(test)]
 mod tests {
-    use rlp::{ Decodable, Encodable, UntrustedRlp };
+    use rlp::{Decodable, Encodable, UntrustedRlp};
 
     use super::Message;
     use super::ProtocolId;
@@ -180,7 +178,10 @@ mod tests {
 
     #[test]
     fn protocol_id_of_request_is_2() {
-        assert_eq!(0x02, Message::request(Default::default(), Default::default(), Default::default()).protocol_id());
+        assert_eq!(
+            0x02,
+            Message::request(Default::default(), Default::default(), Default::default()).protocol_id()
+        );
     }
 
     #[test]
@@ -190,7 +191,10 @@ mod tests {
 
     #[test]
     fn protocol_id_of_denied_is_4() {
-        assert_eq!(0x04, Message::denied(Default::default(), Default::default()).protocol_id());
+        assert_eq!(
+            0x04,
+            Message::denied(Default::default(), Default::default()).protocol_id()
+        );
     }
 
     #[test]
@@ -224,10 +228,16 @@ mod tests {
 
         // application name
         assert_eq!(SINGLE + application_name.len() as u8, result[6]);
-        assert_eq!(application_name.as_bytes(), &result[7..(7 + application_name.len())]);
+        assert_eq!(
+            application_name.as_bytes(),
+            &result[7..(7 + application_name.len())]
+        );
 
         // application version
-        assert_eq!(APPLICATION_VERSION as u8, result[7 + application_name.len()]);
+        assert_eq!(
+            APPLICATION_VERSION as u8,
+            result[7 + application_name.len()]
+        );
     }
 
     #[test]
@@ -354,7 +364,7 @@ mod tests {
             Ok(actual) => {
                 let expected = Message::request(SEQ, application_name.clone(), APPLICATION_VERSION);
                 assert_eq!(expected, actual)
-            },
+            }
             Err(err) => assert!(false, "{:?}", err),
         }
     }
@@ -388,7 +398,7 @@ mod tests {
             Ok(actual) => {
                 let expected = Message::allowed(SEQ);
                 assert_eq!(expected, actual)
-            },
+            }
             Err(err) => assert!(false, "{:?}", err),
         }
     }
@@ -424,7 +434,7 @@ mod tests {
             Ok(actual) => {
                 let expected = Message::denied(SEQ, Vec::new());
                 assert_eq!(expected, actual)
-            },
+            }
             Err(err) => assert!(false, "{:?}", err),
         }
     }
@@ -467,7 +477,7 @@ mod tests {
             Ok(actual) => {
                 let expected = Message::denied(SEQ, versions);
                 assert_eq!(expected, actual)
-            },
+            }
             Err(err) => assert!(false, "{:?}", err),
         }
     }

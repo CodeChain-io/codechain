@@ -44,10 +44,7 @@ pub struct NullEngine<M> {
 impl<M> NullEngine<M> {
     /// Returns new instance of NullEngine with default VM Factory
     pub fn new(params: NullEngineParams, machine: M) -> Self {
-        NullEngine {
-            params,
-            machine,
-        }
+        NullEngine { params, machine }
     }
 }
 
@@ -62,12 +59,16 @@ impl<M: Machine> ConsensusEngine<M> for NullEngine<M> {
         "NullEngine"
     }
 
-    fn machine(&self) -> &M { &self.machine }
+    fn machine(&self) -> &M {
+        &self.machine
+    }
 
     fn on_close_block(&self, block: &mut M::LiveBlock) -> Result<(), M::Error> {
         let author = *LiveBlock::header(&*block).author();
         let reward = self.params.block_reward;
-        if reward == U256::zero() { return Ok(()) }
+        if reward == U256::zero() {
+            return Ok(());
+        }
 
         self.machine.add_balance(block, &author, &reward)
     }

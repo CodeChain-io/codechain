@@ -20,5 +20,8 @@ use super::super::SocketAddr;
 pub enum Command {
     Verify,
     Refresh,
-    Send { message: Message, target: SocketAddr },
+    Send {
+        message: Message,
+        target: SocketAddr,
+    },
 }

@@ -60,7 +60,7 @@ pub trait Machine: Send + Sync {
     /// The block header type.
     type Header: Header;
     /// The live block type.
-    type LiveBlock: LiveBlock<Header=Self::Header>;
+    type LiveBlock: LiveBlock<Header = Self::Header>;
     /// A handle to a blockchain client for this machine.
     type EngineClient: ?Sized;
 
@@ -74,4 +74,3 @@ pub trait Machine: Send + Sync {
     /// Increment the balance of an account in the state of the live block.
     fn add_balance(&self, live: &mut Self::LiveBlock, address: &Address, amount: &U256) -> Result<(), Self::Error>;
 }
-

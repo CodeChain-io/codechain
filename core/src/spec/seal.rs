@@ -55,7 +55,7 @@ impl From<cjson::spec::Seal> for Seal {
             cjson::spec::Seal::Tendermint(tender) => Seal::Tendermint(Tendermint {
                 round: tender.round.into(),
                 proposal: tender.proposal.into(),
-                precommits: tender.precommits.into_iter().map(Into::into).collect()
+                precommits: tender.precommits.into_iter().map(Into::into).collect(),
             }),
             cjson::spec::Seal::Generic(g) => Seal::Generic(Generic(g.into())),
         }

@@ -28,7 +28,7 @@ pub struct BlockInfo {
     /// Total block score.
     pub total_score: U256,
     /// Block location in blockchain.
-    pub location: BlockLocation
+    pub location: BlockLocation,
 }
 
 /// Describes location of newly inserted block.
@@ -53,4 +53,3 @@ pub struct BranchBecomingCanonChainData {
     /// Hashes of the blocks which were invalidated.
     pub retracted: Vec<H256>,
 }
-

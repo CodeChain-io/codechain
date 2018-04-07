@@ -17,7 +17,7 @@
 use std::fmt;
 
 use cio::IoError;
-use ckeys::{Error as KeyError};
+use ckeys::Error as KeyError;
 use ctypes::{Address, H256, U256};
 use util_error::UtilError;
 use unexpected::{Mismatch, OutOfBounds};
@@ -246,7 +246,10 @@ impl From<TrieError> for Error {
     }
 }
 
-impl<E> From<Box<E>> for Error where Error: From<E> {
+impl<E> From<Box<E>> for Error
+where
+    Error: From<E>,
+{
     fn from(err: Box<E>) -> Self {
         Error::from(*err)
     }

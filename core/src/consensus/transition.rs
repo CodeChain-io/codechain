@@ -32,18 +32,18 @@ pub trait Timeouts<S: Sync + Send + Clone>: Send + Sync {
 }
 
 /// Timeout transition handling.
-pub struct TransitionHandler<S: Sync + Send + Clone, M: Machine>  {
+pub struct TransitionHandler<S: Sync + Send + Clone, M: Machine> {
     engine: Weak<ConsensusEngine<M>>,
     timeouts: Box<Timeouts<S>>,
 }
 
-impl<S, M: Machine> TransitionHandler<S, M> where S: Sync + Send + Clone {
+impl<S, M: Machine> TransitionHandler<S, M>
+where
+    S: Sync + Send + Clone,
+{
     /// New step caller by timeouts.
     pub fn new(engine: Weak<ConsensusEngine<M>>, timeouts: Box<Timeouts<S>>) -> Self {
-        TransitionHandler {
-            engine,
-            timeouts,
-        }
+        TransitionHandler { engine, timeouts }
     }
 }
 
@@ -56,7 +56,9 @@ fn set_timeout<S: Sync + Send + Clone>(io: &IoContext<S>, timeout: Duration) {
 }
 
 impl<S, M> IoHandler<S> for TransitionHandler<S, M>
-    where S: Sync + Send + Clone + 'static, M: Machine
+where
+    S: Sync + Send + Clone + 'static,
+    M: Machine,
 {
     fn initialize(&self, io: &IoContext<S>) -> IoHandlerResult<()> {
         let initial = self.timeouts.initial();
@@ -84,4 +86,3 @@ impl<S, M> IoHandler<S> for TransitionHandler<S, M>
         Ok(())
     }
 }
-

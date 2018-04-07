@@ -15,12 +15,12 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::fmt::Debug;
-use std::collections::{BTreeMap, HashSet, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::hash::Hash;
 
 use cbytes::Bytes;
 use ctypes::{Address, H256, H520};
-use parking_lot:: RwLock;
+use parking_lot::RwLock;
 use rlp::{Encodable, RlpStream};
 
 pub trait Message: Clone + PartialEq + Eq + Hash + Encodable + Debug {
@@ -63,7 +63,7 @@ impl<M: Message> Encodable for DoubleVote<M> {
     }
 }
 
-impl <M: Message> StepCollector<M> {
+impl<M: Message> StepCollector<M> {
     /// Returns Some(&Address) when validator is double voting.
     fn insert(&mut self, message: M, address: Address) -> Option<DoubleVote<M>> {
         // Do nothing when message was seen.
@@ -73,11 +73,10 @@ impl <M: Message> StepCollector<M> {
                 return Some(DoubleVote {
                     author: address.clone(),
                     vote_one: previous,
-                    vote_two: message
+                    vote_two: message,
                 });
             } else {
-                self
-                    .block_votes
+                self.block_votes
                     .entry(message.block_hash())
                     .or_insert_with(HashMap::new)
                     .insert(message.signature(), address);
@@ -97,20 +96,21 @@ impl <M: Message> StepCollector<M> {
     }
 }
 
-impl <M: Message + Default> Default for VoteCollector<M> {
+impl<M: Message + Default> Default for VoteCollector<M> {
     fn default() -> Self {
         let mut collector = BTreeMap::new();
         // Insert dummy entry to fulfill invariant: "only messages newer than the oldest are inserted".
         collector.insert(Default::default(), Default::default());
-        VoteCollector { votes: RwLock::new(collector) }
+        VoteCollector {
+            votes: RwLock::new(collector),
+        }
     }
 }
 
-impl <M: Message + Default + Encodable + Debug> VoteCollector<M> {
+impl<M: Message + Default + Encodable + Debug> VoteCollector<M> {
     /// Insert vote if it is newer than the oldest one.
     pub fn vote(&self, message: M, voter: Address) -> Option<DoubleVote<M>> {
-        self
-            .votes
+        self.votes
             .write()
             .entry(message.round().clone())
             .or_insert_with(Default::default)
@@ -119,19 +119,21 @@ impl <M: Message + Default + Encodable + Debug> VoteCollector<M> {
 
     /// Checks if the message should be ignored.
     pub fn is_old_or_known(&self, message: &M) -> bool {
-        self
-            .votes
-            .read()
-            .get(&message.round())
-            .map_or(false, |c| {
-                let is_known = c.messages.contains(message);
-                if is_known { trace!(target: "engine", "Known message: {:?}.", message); }
-                is_known
-            })
-            || {
+        self.votes.read().get(&message.round()).map_or(false, |c| {
+            let is_known = c.messages.contains(message);
+            if is_known {
+                trace!(target: "engine", "Known message: {:?}.", message);
+            }
+            is_known
+        }) || {
             let guard = self.votes.read();
-            let is_old = guard.keys().next().map_or(true, |oldest| message.round() <= oldest);
-            if is_old { trace!(target: "engine", "Old message {:?}.", message); }
+            let is_old = guard
+                .keys()
+                .next()
+                .map_or(true, |oldest| message.round() <= oldest);
+            if is_old {
+                trace!(target: "engine", "Old message {:?}.", message);
+            }
             is_old
         }
     }
@@ -155,8 +157,7 @@ impl <M: Message + Default + Encodable + Debug> VoteCollector<M> {
 
     /// Count votes which agree with the given message.
     pub fn count_aligned_votes(&self, message: &M) -> usize {
-        self
-            .votes
+        self.votes
             .read()
             .get(&message.round())
             .map_or(0, |m| m.count_block(&message.block_hash()))
@@ -164,7 +165,10 @@ impl <M: Message + Default + Encodable + Debug> VoteCollector<M> {
 
     /// Count all votes collected for a given round.
     pub fn count_round_votes(&self, vote_round: &M::Round) -> usize {
-        self.votes.read().get(vote_round).map_or(0, StepCollector::count)
+        self.votes
+            .read()
+            .get(vote_round)
+            .map_or(0, StepCollector::count)
     }
 
     /// Get all messages older than the round.
@@ -173,13 +177,25 @@ impl <M: Message + Default + Encodable + Debug> VoteCollector<M> {
         guard
             .iter()
             .take_while(|&(r, _)| r <= round)
-            .map(|(_, c)| c.messages.iter().filter(|m| m.is_broadcastable()).map(|m| ::rlp::encode(m).to_vec()).collect::<Vec<_>>())
-            .fold(Vec::new(), |mut acc, mut messages| { acc.append(&mut messages); acc })
+            .map(|(_, c)| {
+                c.messages
+                    .iter()
+                    .filter(|m| m.is_broadcastable())
+                    .map(|m| ::rlp::encode(m).to_vec())
+                    .collect::<Vec<_>>()
+            })
+            .fold(Vec::new(), |mut acc, mut messages| {
+                acc.append(&mut messages);
+                acc
+            })
     }
 
     /// Retrieve address from which the message was sent from cache.
     pub fn get(&self, message: &M) -> Option<Address> {
         let guard = self.votes.read();
-        guard.get(&message.round()).and_then(|c| c.block_votes.get(&message.block_hash())).and_then(|origins| origins.get(&message.signature()).cloned())
+        guard
+            .get(&message.round())
+            .and_then(|c| c.block_votes.get(&message.block_hash()))
+            .and_then(|origins| origins.get(&message.signature()).cloned())
     }
 }

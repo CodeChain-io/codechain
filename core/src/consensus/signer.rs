@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ckeys::{Private, ECDSASignature, Error as KeyError, sign_ecdsa};
+use ckeys::{sign_ecdsa, ECDSASignature, Error as KeyError, Private};
 use ctypes::{Address, H256};
 
 /// Everything that an Engine needs to sign messages.
@@ -64,5 +64,3 @@ impl EngineSigner {
         self.address.is_some()
     }
 }
-
-

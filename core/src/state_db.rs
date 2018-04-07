@@ -16,10 +16,10 @@
 
 //! State database abstraction. For more info, see the doc for `StateDB`
 
-use std::collections::{VecDeque, HashSet};
+use std::collections::{HashSet, VecDeque};
 use std::sync::Arc;
 
-use ctypes::{H256, Address};
+use ctypes::{Address, H256};
 use hashdb::HashDB;
 use journaldb::JournalDB;
 use kvdb::DBTransaction;
@@ -103,7 +103,6 @@ pub struct StateDB {
 }
 
 impl StateDB {
-
     /// Create a new instance wrapping `JournalDB` and the maximum allowed size
     /// of the LRU cache in bytes. Actual used memory may (read: will) be higher due to bookkeeping.
     // TODO: make the cache size actually accurate by moving the account storage cache
@@ -135,7 +134,12 @@ impl StateDB {
 
     /// Mark a given candidate from an ancient era as canonical, enacting its removals from the
     /// backing database and reverting any non-canonical historical commit's insertions.
-    pub fn mark_canonical(&mut self, batch: &mut DBTransaction, end_era: u64, canon_id: &H256) -> Result<u32, UtilError> {
+    pub fn mark_canonical(
+        &mut self,
+        batch: &mut DBTransaction,
+        end_era: u64,
+        canon_id: &H256,
+    ) -> Result<u32, UtilError> {
         self.db.mark_canonical(batch, end_era, canon_id)
     }
 
@@ -146,14 +150,23 @@ impl StateDB {
     /// should be called after the block has been committed and the
     /// blockchain route has ben calculated.
     pub fn sync_cache(&mut self, enacted: &[H256], retracted: &[H256], is_best: bool) {
-        trace!("sync_cache id = (#{:?}, {:?}), parent={:?}, best={}", self.commit_number, self.commit_hash, self.parent_hash, is_best);
+        trace!(
+            "sync_cache id = (#{:?}, {:?}), parent={:?}, best={}",
+            self.commit_number,
+            self.commit_hash,
+            self.parent_hash,
+            is_best
+        );
         let mut cache = self.account_cache.lock();
         let cache = &mut *cache;
 
         // Purge changes from re-enacted and retracted blocks.
         // Filter out commiting block if any.
         let mut clear = false;
-        for block in enacted.iter().filter(|h| self.commit_hash.as_ref().map_or(true, |p| *h != p)) {
+        for block in enacted
+            .iter()
+            .filter(|h| self.commit_hash.as_ref().map_or(true, |p| *h != p))
+        {
             clear = clear || {
                 if let Some(ref mut m) = cache.modifications.iter_mut().find(|m| &m.hash == block) {
                     trace!("Reverting enacted block {:?}", block);
@@ -194,7 +207,9 @@ impl StateDB {
         // Propagate cache only if committing on top of the latest canonical state
         // blocks are ordered by number and only one block with a given number is marked as canonical
         // (contributed to canonical state cache)
-        if let (Some(ref number), Some(ref hash), Some(ref parent)) = (self.commit_number, self.commit_hash, self.parent_hash) {
+        if let (Some(ref number), Some(ref hash), Some(ref parent)) =
+            (self.commit_number, self.commit_hash, self.parent_hash)
+        {
             if cache.modifications.len() == STATE_CACHE_BLOCKS {
                 cache.modifications.pop_back();
             }
@@ -207,7 +222,7 @@ impl StateDB {
                 if is_best {
                     let acc = account.account;
                     if let Some(&mut Some(ref mut existing)) = cache.accounts.get_mut(&account.address) {
-                        if let Some(new) =  acc {
+                        if let Some(new) = acc {
                             if account.modified {
                                 existing.overwrite_with(new);
                             }
@@ -226,7 +241,12 @@ impl StateDB {
                 is_canon: is_best,
                 parent: parent.clone(),
             };
-            let insert_at = cache.modifications.iter().enumerate().find(|&(_, m)| m.number < *number).map(|(i, _)| i);
+            let insert_at = cache
+                .modifications
+                .iter()
+                .enumerate()
+                .find(|&(_, m)| m.number < *number)
+                .map(|(i, _)| i);
             trace!("inserting modifications at {:?}", insert_at);
             if let Some(insert_at) = insert_at {
                 cache.modifications.insert(insert_at, block_changes);
@@ -315,11 +335,17 @@ impl StateDB {
                 parent = &m.parent;
             }
             if m.accounts.contains(addr) {
-                trace!("Cache lookup skipped for {:?}: modified in a later block", addr);
+                trace!(
+                    "Cache lookup skipped for {:?}: modified in a later block",
+                    addr
+                );
                 return false;
             }
         }
-        trace!("Cache lookup skipped for {:?}: parent hash is unknown", addr);
+        trace!(
+            "Cache lookup skipped for {:?}: parent hash is unknown",
+            addr
+        );
         false
     }
 }
@@ -346,11 +372,16 @@ impl state::Backend for StateDB {
         if !Self::is_allowed(addr, &self.parent_hash, &cache.modifications) {
             return None;
         }
-        cache.accounts.get_mut(addr).map(|a| a.as_ref().map(|a| a.clone()))
+        cache
+            .accounts
+            .get_mut(addr)
+            .map(|a| a.as_ref().map(|a| a.clone()))
     }
 
     fn get_cached<F, U>(&self, a: &Address, f: F) -> Option<U>
-        where F: FnOnce(Option<&mut Account>) -> U {
+    where
+        F: FnOnce(Option<&mut Account>) -> U,
+    {
         let mut cache = self.account_cache.lock();
         if !Self::is_allowed(a, &self.parent_hash, &cache.modifications) {
             return None;
@@ -361,11 +392,11 @@ impl state::Backend for StateDB {
 
 #[cfg(test)]
 mod tests {
-    use ctypes::{H256, U256, Address};
+    use ctypes::{Address, H256, U256};
     use kvdb::DBTransaction;
     use clogger::init_log;
 
-    use super::state::{Backend, Account};
+    use super::state::{Account, Backend};
     use super::super::tests::helpers::get_temp_state_db;
 
     #[test]
@@ -443,7 +474,10 @@ mod tests {
         s.sync_cache(&[], &[], true);
 
         let s = state_db.boxed_clone_canon(&h3a);
-        assert_eq!(s.get_cached_account(&address).unwrap().unwrap().balance(), &U256::from(5));
+        assert_eq!(
+            s.get_cached_account(&address).unwrap().unwrap().balance(),
+            &U256::from(5)
+        );
 
         let s = state_db.boxed_clone_canon(&h1a);
         assert!(s.get_cached_account(&address).is_none());
@@ -458,7 +492,11 @@ mod tests {
         // blocks  [ 3b(c) 3a 2a 2b(c) 1b 1a 0 ]
         let mut s = state_db.boxed_clone_canon(&h2b);
         s.journal_under(&mut batch, 3, &h3b).unwrap();
-        s.sync_cache(&[h1b.clone(), h2b.clone(), h3b.clone()], &[h1a.clone(), h2a.clone(), h3a.clone()], true);
+        s.sync_cache(
+            &[h1b.clone(), h2b.clone(), h3b.clone()],
+            &[h1a.clone(), h2a.clone(), h3a.clone()],
+            true,
+        );
         let s = state_db.boxed_clone_canon(&h3a);
         assert!(s.get_cached_account(&address).is_none());
     }

@@ -18,7 +18,7 @@ use cbytes::Bytes;
 use ctypes::H256;
 
 /// Represents what has to be handled by actor listening to chain events
-pub trait ChainNotify : Send + Sync {
+pub trait ChainNotify: Send + Sync {
     /// fires when chain has new blocks.
     fn new_blocks(
         &self,
@@ -38,11 +38,7 @@ pub trait ChainNotify : Send + Sync {
     fn broadcast(&self, _data: Vec<u8>) {}
 
     /// fires when new transactions are received from a peer
-    fn transactions_received(&self,
-                             _hashes: Vec<H256>,
-                             _peer_id: usize,
-    ) {
+    fn transactions_received(&self, _hashes: Vec<H256>, _peer_id: usize) {
         // does nothing by default
     }
 }
-

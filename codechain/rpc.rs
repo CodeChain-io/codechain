@@ -17,8 +17,8 @@
 use std::io;
 use std::net::SocketAddr;
 
-use crpc::{Server, start_http, MetaIoHandler, Compatibility};
-use rpc_apis::{self};
+use crpc::{start_http, Compatibility, MetaIoHandler, Server};
+use rpc_apis;
 
 #[derive(Debug, PartialEq)]
 pub struct HttpConfiguration {
@@ -41,7 +41,10 @@ impl HttpConfiguration {
 
 pub fn new_http(cfg: HttpConfiguration) -> Result<Server, String> {
     let url = format!("{}:{}", cfg.interface, cfg.port);
-    let addr = try!(url.parse().map_err(|_| format!("Invalid JSONRPC listen host/port given: {}", url)));
+    let addr = try!(
+        url.parse()
+            .map_err(|_| format!("Invalid JSONRPC listen host/port given: {}", url))
+    );
     let server = setup_http_rpc_server(&addr, cfg.cors, cfg.hosts)?;
     Ok(server)
 }
@@ -50,7 +53,7 @@ pub fn setup_http_rpc_server(
     url: &SocketAddr,
     cors_domains: Option<Vec<String>>,
     allowed_hosts: Option<Vec<String>>,
-    ) -> Result<Server, String> {
+) -> Result<Server, String> {
     let server = setup_rpc_server();
     let start_result = start_http(url, cors_domains, allowed_hosts, server);
     match start_result {
@@ -65,4 +68,3 @@ pub fn setup_http_rpc_server(
 fn setup_rpc_server() -> MetaIoHandler<()> {
     rpc_apis::setup_rpc(MetaIoHandler::with_compatibility(Compatibility::Both))
 }
-

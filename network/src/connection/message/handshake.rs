@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use rlp::{UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
+use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::ProtocolId;
 use super::Version;
@@ -52,7 +52,6 @@ impl Message {
     }
 }
 
-
 impl Encodable for Message {
     fn rlp_append(&self, s: &mut RlpStream) {
         s.begin_list(2)
@@ -64,7 +63,7 @@ impl Encodable for Message {
 impl Decodable for Message {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
         if rlp.item_count()? != 2 {
-            return Err(DecoderError::RlpIncorrectListLen)
+            return Err(DecoderError::RlpIncorrectListLen);
         }
         let version: Version = rlp.val_at(0)?;
         let protocol_id: ProtocolId = rlp.val_at(1)?;
@@ -78,7 +77,7 @@ impl Decodable for Message {
 
 #[cfg(test)]
 mod tests {
-    use rlp::{ Decodable, Encodable, UntrustedRlp };
+    use rlp::{Decodable, Encodable, UntrustedRlp};
 
     use super::Message;
 
@@ -157,4 +156,3 @@ mod tests {
         }
     }
 }
-

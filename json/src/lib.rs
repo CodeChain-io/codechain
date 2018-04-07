@@ -17,8 +17,9 @@
 extern crate codechain_types as ctypes;
 extern crate rustc_hex;
 extern crate serde;
+#[macro_use]
+extern crate serde_derive;
 extern crate serde_json;
-#[macro_use] extern crate serde_derive;
 
 pub mod bytes;
 pub mod hash;

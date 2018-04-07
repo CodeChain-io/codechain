@@ -20,7 +20,7 @@ use std::sync::Arc;
 use cbytes::Bytes;
 use ccrypto::BLAKE_NULL_RLP;
 use cjson;
-use ctypes::{H256, U256, Address};
+use ctypes::{Address, H256, U256};
 use rlp::{Rlp, RlpStream};
 
 use super::Genesis;
@@ -96,24 +96,20 @@ macro_rules! load_bundled {
 
 impl Spec {
     // create an instance of an CodeChain state machine, minus consensus logic.
-    fn machine(
-        _engine_spec: &cjson::spec::Engine,
-        params: CommonParams,
-    ) -> CodeChainMachine {
+    fn machine(_engine_spec: &cjson::spec::Engine, params: CommonParams) -> CodeChainMachine {
         CodeChainMachine::new(params)
     }
 
     /// Convert engine spec into a arc'd Engine of the right underlying type.
     /// TODO avoid this hard-coded nastiness - use dynamic-linked plugin framework instead.
-    fn engine(
-        engine_spec: cjson::spec::Engine,
-        params: CommonParams,
-    ) -> Arc<CodeChainEngine> {
+    fn engine(engine_spec: cjson::spec::Engine, params: CommonParams) -> Arc<CodeChainEngine> {
         let machine = Self::machine(&engine_spec, params);
 
         match engine_spec {
             cjson::spec::Engine::Solo => Arc::new(Solo::new(machine)),
-            cjson::spec::Engine::SoloAuthority(solo_authority) => Arc::new(SoloAuthority::new(solo_authority.params.into(), machine)),
+            cjson::spec::Engine::SoloAuthority(solo_authority) => {
+                Arc::new(SoloAuthority::new(solo_authority.params.into(), machine))
+            }
             cjson::spec::Engine::Tendermint(tendermint) => Tendermint::new(tendermint.params.into(), machine)
                 .expect("Failed to start the Tendermint consensus engine."),
         }
@@ -122,14 +118,12 @@ impl Spec {
     /// Loads spec from json file. Provide factories for executing contracts and ensuring
     /// storage goes to the right place.
     pub fn load<'a, R>(reader: R) -> Result<Self, String>
-        where
-            R: Read,
+    where
+        R: Read,
     {
-        cjson::spec::Spec::load(reader).map_err(fmt_err).and_then(
-            |x| {
-                load_from(x).map_err(fmt_err)
-            },
-        )
+        cjson::spec::Spec::load(reader)
+            .map_err(fmt_err)
+            .and_then(|x| load_from(x).map_err(fmt_err))
     }
 
     /// Create a new Spec with Solo consensus which does internal sealing (not requiring
@@ -204,4 +198,3 @@ fn load_from(s: cjson::spec::Spec) -> Result<Spec, Error> {
 
     Ok(s)
 }
-

@@ -34,7 +34,12 @@ impl Api for ClientApi {
             let need_encryption = extension.need_encryption();
             let extension_name = extension.name();
             let node_id = *id;
-            if let Err(err) = self.channel.send(ConnectionMessage::SendExtensionMessage { node_id, extension_name, need_encryption, data: message.clone() }) {
+            if let Err(err) = self.channel.send(ConnectionMessage::SendExtensionMessage {
+                node_id,
+                extension_name,
+                need_encryption,
+                data: message.clone(),
+            }) {
                 info!("Cannot send extension message to {:?} : {:?}", id, err);
             } else {
                 info!("Request send extension message to {:?}", id);
@@ -49,7 +54,11 @@ impl Api for ClientApi {
             let extension_name = extension.name();
             let version = 0;
             let node_id = *id;
-            if let Err(err) = self.channel.send(ConnectionMessage::RequestNegotiation { node_id, extension_name, version }) {
+            if let Err(err) = self.channel.send(ConnectionMessage::RequestNegotiation {
+                node_id,
+                extension_name,
+                version,
+            }) {
                 info!("Cannot request negotiation to {:?} : {:?}", id, err);
             } else {
                 info!("Request negotiation to {:?}", id);
@@ -62,14 +71,24 @@ impl Api for ClientApi {
     fn set_timer(&self, timer_id: usize, ms: u64) {
         if let Some(extension) = self.extension.upgrade() {
             let extension_name = extension.name();
-            if let Err(err) = self.channel.send(ConnectionMessage::SetTimer{
+            if let Err(err) = self.channel.send(ConnectionMessage::SetTimer {
                 extension_name,
                 timer_id,
                 ms,
             }) {
-                info!("Cannot set timer {}:{} : {:?}", extension.name(), timer_id, err);
+                info!(
+                    "Cannot set timer {}:{} : {:?}",
+                    extension.name(),
+                    timer_id,
+                    err
+                );
             } else {
-                info!("{} sets timer({}) every {} ms", extension.name(), timer_id, ms);
+                info!(
+                    "{} sets timer({}) every {} ms",
+                    extension.name(),
+                    timer_id,
+                    ms
+                );
             }
         } else {
             info!("The extension already dropped");
@@ -79,14 +98,24 @@ impl Api for ClientApi {
     fn set_timer_once(&self, timer_id: usize, ms: u64) {
         if let Some(extension) = self.extension.upgrade() {
             let extension_name = extension.name();
-            if let Err(err) = self.channel.send(ConnectionMessage::SetTimerOnce{
+            if let Err(err) = self.channel.send(ConnectionMessage::SetTimerOnce {
                 extension_name,
                 timer_id,
                 ms,
             }) {
-                info!("Cannot set timer {}:{} : {:?}", extension.name(), timer_id, err);
+                info!(
+                    "Cannot set timer {}:{} : {:?}",
+                    extension.name(),
+                    timer_id,
+                    err
+                );
             } else {
-                info!("{} sets timer({}) after {} ms", extension.name(), timer_id, ms);
+                info!(
+                    "{} sets timer({}) after {} ms",
+                    extension.name(),
+                    timer_id,
+                    ms
+                );
             }
         } else {
             info!("The extension already dropped");
@@ -96,11 +125,16 @@ impl Api for ClientApi {
     fn clear_timer(&self, timer_id: usize) {
         if let Some(extension) = self.extension.upgrade() {
             let extension_name = extension.name();
-            if let Err(err) = self.channel.send(ConnectionMessage::ClearTimer{
+            if let Err(err) = self.channel.send(ConnectionMessage::ClearTimer {
                 extension_name,
                 timer_id,
             }) {
-                info!("Cannot clear timer {}:{} : {:?}", extension.name(), timer_id, err);
+                info!(
+                    "Cannot clear timer {}:{} : {:?}",
+                    extension.name(),
+                    timer_id,
+                    err
+                );
             } else {
                 info!("{} clears timer({})", extension.name(), timer_id);
             }
@@ -202,8 +236,7 @@ mod tests {
 
     use super::{Api, Client, Extension, ExtensionError, NodeId};
 
-    struct TestApi {
-    }
+    struct TestApi {}
 
     impl Api for TestApi {
         fn send(&self, id: &usize, message: &Vec<u8>) {
@@ -336,12 +369,18 @@ mod tests {
 
         {
             let callbacks = e1.callbacks.lock();
-            assert_eq!(callbacks.deref(), &vec![Callback::Initialize, Callback::NodeAdded]);
+            assert_eq!(
+                callbacks.deref(),
+                &vec![Callback::Initialize, Callback::NodeAdded]
+            );
         }
 
         {
             let callbacks = e2.callbacks.lock();
-            assert_eq!(callbacks.deref(), &vec![Callback::Initialize, Callback::NodeAdded]);
+            assert_eq!(
+                callbacks.deref(),
+                &vec![Callback::Initialize, Callback::NodeAdded]
+            );
         }
     }
 
@@ -359,7 +398,10 @@ mod tests {
         client.on_message(&"e1".to_string(), &1, &vec![]);
         {
             let callbacks = e1.callbacks.lock();
-            assert_eq!(callbacks.deref(), &vec![Callback::Initialize, Callback::Message]);
+            assert_eq!(
+                callbacks.deref(),
+                &vec![Callback::Initialize, Callback::Message]
+            );
             let callbacks = e2.callbacks.lock();
             assert_eq!(callbacks.deref(), &vec![Callback::Initialize]);
         }
@@ -367,18 +409,35 @@ mod tests {
         client.on_message(&"e2".to_string(), &1, &vec![]);
         {
             let callbacks = e1.callbacks.lock();
-            assert_eq!(callbacks.deref(), &vec![Callback::Initialize, Callback::Message]);
+            assert_eq!(
+                callbacks.deref(),
+                &vec![Callback::Initialize, Callback::Message]
+            );
             let callbacks = e2.callbacks.lock();
-            assert_eq!(callbacks.deref(), &vec![Callback::Initialize, Callback::Message]);
+            assert_eq!(
+                callbacks.deref(),
+                &vec![Callback::Initialize, Callback::Message]
+            );
         }
 
         client.on_message(&"e2".to_string(), &5, &vec![]);
         client.on_message(&"e2".to_string(), &1, &vec![]);
         {
             let callbacks = e1.callbacks.lock();
-            assert_eq!(callbacks.deref(), &vec![Callback::Initialize, Callback::Message]);
+            assert_eq!(
+                callbacks.deref(),
+                &vec![Callback::Initialize, Callback::Message]
+            );
             let callbacks = e2.callbacks.lock();
-            assert_eq!(callbacks.deref(), &vec![Callback::Initialize, Callback::Message, Callback::Message, Callback::Message]);
+            assert_eq!(
+                callbacks.deref(),
+                &vec![
+                    Callback::Initialize,
+                    Callback::Message,
+                    Callback::Message,
+                    Callback::Message,
+                ]
+            );
         }
     }
 }

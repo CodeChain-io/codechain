@@ -19,7 +19,7 @@
 use std::ops;
 
 use super::Secp256k1;
-use key::{SecretKey, PublicKey};
+use key::{PublicKey, SecretKey};
 use ffi;
 
 /// A tag used for recovering the public key from a compact signature
@@ -64,7 +64,6 @@ impl From<ffi::SharedSecret> for SharedSecret {
         SharedSecret(ss)
     }
 }
-
 
 impl ops::Index<usize> for SharedSecret {
     type Output = u8;
@@ -125,7 +124,7 @@ mod tests {
 #[cfg(all(test, feature = "unstable"))]
 mod benches {
     use rand::thread_rng;
-    use test::{Bencher, black_box};
+    use test::{black_box, Bencher};
 
     use super::SharedSecret;
     use super::super::Secp256k1;
@@ -136,10 +135,9 @@ mod benches {
         let (sk, pk) = s.generate_keypair(&mut thread_rng()).unwrap();
 
         let s = Secp256k1::new();
-        bh.iter( || {
+        bh.iter(|| {
             let res = SharedSecret::new(&s, &pk, &sk);
             black_box(res);
         });
     }
 }
-

@@ -23,19 +23,19 @@ pub struct TendermintParams {
     /// Valid validators.
     pub validators: Vec<Address>,
     /// Propose step timeout in milliseconds.
-    #[serde(rename="timeoutPropose")]
+    #[serde(rename = "timeoutPropose")]
     pub timeout_propose: Option<Uint>,
     /// Prevote step timeout in milliseconds.
-    #[serde(rename="timeoutPrevote")]
+    #[serde(rename = "timeoutPrevote")]
     pub timeout_prevote: Option<Uint>,
     /// Precommit step timeout in milliseconds.
-    #[serde(rename="timeoutPrecommit")]
+    #[serde(rename = "timeoutPrecommit")]
     pub timeout_precommit: Option<Uint>,
     /// Commit step timeout in milliseconds.
-    #[serde(rename="timeoutCommit")]
+    #[serde(rename = "timeoutCommit")]
     pub timeout_commit: Option<Uint>,
     /// Reward per block.
-    #[serde(rename="blockReward")]
+    #[serde(rename = "blockReward")]
     pub block_reward: Option<Uint>,
 }
 
@@ -62,7 +62,9 @@ mod tests {
 		}"#;
 
         let deserialized: Tendermint = serde_json::from_str(s).unwrap();
-        let vs = vec![Address(H160::from("0xc6d9d2cd449a754c494264e1809c50e34d64562b"))];
+        let vs = vec![
+            Address(H160::from("0xc6d9d2cd449a754c494264e1809c50e34d64562b")),
+        ];
         assert_eq!(deserialized.params.validators, vs);
     }
 }

@@ -45,7 +45,11 @@ impl ToHex for Private {
 
 impl fmt::Debug for Private {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(fmt, "Secret: 0x{:x}{:x}..{:x}{:x}", self.0[0], self.0[1], self.0[30], self.0[31])
+        write!(
+            fmt,
+            "Secret: 0x{:x}{:x}..{:x}{:x}",
+            self.0[0], self.0[1], self.0[30], self.0[31]
+        )
     }
 }
 
@@ -58,13 +62,19 @@ impl From<H256> for Private {
 impl FromStr for Private {
     type Err = Error;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(H256::from_str(s).map_err(|e| Error::Custom(format!("{:?}", e)))?.into())
+        Ok(H256::from_str(s)
+            .map_err(|e| Error::Custom(format!("{:?}", e)))?
+            .into())
     }
 }
 
 impl From<&'static str> for Private {
     fn from(s: &'static str) -> Self {
-        s.parse().expect(&format!("invalid string literal for {}: '{}'", stringify!(Self), s))
+        s.parse().expect(&format!(
+            "invalid string literal for {}: '{}'",
+            stringify!(Self),
+            s
+        ))
     }
 }
 
@@ -81,4 +91,3 @@ impl Deref for Private {
         &self.0
     }
 }
-

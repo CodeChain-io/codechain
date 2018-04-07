@@ -28,7 +28,7 @@ pub use self::error::Error;
 use cbytes::Bytes;
 use ctypes::{Address, H256, U256};
 
-use super::block::{OpenBlock, ClosedBlock, SealedBlock};
+use super::block::{ClosedBlock, OpenBlock, SealedBlock};
 use super::blockchain_info::BlockChainInfo;
 use super::encoded;
 use super::error::BlockImportError;
@@ -62,7 +62,7 @@ pub trait TransactionInfo {
 }
 
 /// Client facilities used by internally sealing Engines.
-pub trait EngineClient: Sync + Send  + ChainInfo {
+pub trait EngineClient: Sync + Send + ChainInfo {
     /// Broadcast a consensus message to the network.
     fn broadcast_consensus_message(&self, message: Bytes);
 
@@ -81,9 +81,10 @@ pub trait Nonce {
 
     /// Get address nonce at the latest block's state.
     fn latest_nonce(&self, address: &Address) -> U256 {
-        self.nonce(address, BlockId::Latest)
-            .expect("nonce will return Some when given BlockId::Latest. nonce was given BlockId::Latest. \
-			Therefore nonce has returned Some; qed")
+        self.nonce(address, BlockId::Latest).expect(
+            "nonce will return Some when given BlockId::Latest. nonce was given BlockId::Latest. \
+             Therefore nonce has returned Some; qed",
+        )
     }
 }
 
@@ -93,7 +94,7 @@ pub enum StateOrBlock {
     State(Box<StateInfo>),
 
     /// Id of an existing block from a chain to get state from
-    Block(BlockId)
+    Block(BlockId),
 }
 
 impl<S: StateInfo + 'static> From<S> for StateOrBlock {
@@ -124,9 +125,10 @@ pub trait Balance {
 
     /// Get address balance at the latest block's state.
     fn latest_balance(&self, address: &Address) -> U256 {
-        self.balance(address, BlockId::Latest.into())
-            .expect("balance will return Some if given BlockId::Latest. balance was given BlockId::Latest \
-			Therefore balance has returned Some; qed")
+        self.balance(address, BlockId::Latest.into()).expect(
+            "balance will return Some if given BlockId::Latest. balance was given BlockId::Latest \
+             Therefore balance has returned Some; qed",
+        )
     }
 }
 
@@ -143,7 +145,7 @@ pub trait ImportBlock {
 pub trait BlockChain: ChainInfo + BlockInfo + TransactionInfo {}
 
 /// Blockchain database client. Owns and manages a blockchain and a block queue.
-pub trait BlockChainClient : Sync + Send + BlockChain + ImportBlock {
+pub trait BlockChainClient: Sync + Send + BlockChain + ImportBlock {
     /// Get block queue information.
     fn queue_info(&self) -> BlockQueueInfo;
 
@@ -194,11 +196,7 @@ pub trait ReopenBlock {
 /// Provides `prepare_open_block` method
 pub trait PrepareOpenBlock {
     /// Returns OpenBlock prepared for closing.
-    fn prepare_open_block(&self,
-                          author: Address,
-                          gas_range_target: (U256, U256),
-                          extra_data: Bytes
-    ) -> OpenBlock;
+    fn prepare_open_block(&self, author: Address, gas_range_target: (U256, U256), extra_data: Bytes) -> OpenBlock;
 }
 
 /// Provides methods used for sealing new state
@@ -208,5 +206,6 @@ pub trait BlockProducer: PrepareOpenBlock + ReopenBlock {}
 pub trait SealedBlockImporter: ImportSealedBlock + BroadcastProposalBlock {}
 
 /// Extended client interface used for mining
-pub trait MiningBlockChainClient: BlockChainClient + BlockProducer + SealedBlockImporter {}
-
+pub trait MiningBlockChainClient
+    : BlockChainClient + BlockProducer + SealedBlockImporter {
+}

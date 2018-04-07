@@ -8,11 +8,11 @@
 
 /// Return `s` without the `0x` at the beginning of it, if any.
 pub fn clean_0x(s: &str) -> &str {
-	if s.starts_with("0x") {
-		&s[2..]
-	} else {
-		s
-	}
+    if s.starts_with("0x") {
+        &s[2..]
+    } else {
+        s
+    }
 }
 
 #[macro_export]
@@ -153,13 +153,19 @@ macro_rules! construct_hash {
 
 		impl PartialEq for $from {
 			fn eq(&self, other: &Self) -> bool {
-				unsafe { $crate::libc::memcmp(self.0.as_ptr() as *const $crate::libc::c_void, other.0.as_ptr() as *const $crate::libc::c_void, $size) == 0 }
+				unsafe {
+					$crate::libc::memcmp(self.0.as_ptr() as *const $crate::libc::c_void,
+					other.0.as_ptr() as *const $crate::libc::c_void, $size) == 0
+				}
 			}
 		}
 
 		impl Ord for $from {
 			fn cmp(&self, other: &Self) -> ::core::cmp::Ordering {
-				let r = unsafe { $crate::libc::memcmp(self.0.as_ptr() as *const $crate::libc::c_void, other.0.as_ptr() as *const $crate::libc::c_void, $size) };
+				let r = unsafe {
+					$crate::libc::memcmp(self.0.as_ptr() as *const $crate::libc::c_void
+										 , other.0.as_ptr() as *const $crate::libc::c_void, $size)
+				};
 				if r < 0 { return ::core::cmp::Ordering::Less }
 				if r > 0 { return ::core::cmp::Ordering::Greater }
 				return ::core::cmp::Ordering::Equal;
@@ -310,7 +316,7 @@ macro_rules! construct_hash {
 	}
 }
 
-#[cfg(feature="heapsizeof")]
+#[cfg(feature = "heapsizeof")]
 #[macro_export]
 #[doc(hidden)]
 macro_rules! impl_heapsize_for_hash {
@@ -323,14 +329,14 @@ macro_rules! impl_heapsize_for_hash {
 	}
 }
 
-#[cfg(not(feature="heapsizeof"))]
+#[cfg(not(feature = "heapsizeof"))]
 #[macro_export]
 #[doc(hidden)]
 macro_rules! impl_heapsize_for_hash {
 	($name: ident) => {}
 }
 
-#[cfg(feature="std")]
+#[cfg(feature = "std")]
 #[macro_export]
 #[doc(hidden)]
 macro_rules! impl_std_for_hash {
@@ -379,16 +385,14 @@ macro_rules! impl_std_for_hash {
 	}
 }
 
-
-#[cfg(not(feature="std"))]
+#[cfg(not(feature = "std"))]
 #[macro_export]
 #[doc(hidden)]
 macro_rules! impl_std_for_hash {
 	($from: ident, $size: tt) => {}
 }
 
-
-#[cfg(feature="std")]
+#[cfg(feature = "std")]
 #[macro_export]
 #[doc(hidden)]
 macro_rules! impl_std_for_hash_internals {
@@ -408,7 +412,7 @@ macro_rules! impl_std_for_hash_internals {
 	}
 }
 
-#[cfg(not(feature="std"))]
+#[cfg(not(feature = "std"))]
 #[macro_export]
 #[doc(hidden)]
 macro_rules! impl_std_for_hash_internals {

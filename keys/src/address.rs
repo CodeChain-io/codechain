@@ -40,7 +40,7 @@ fn rearrange_bits(data: &Vec<u8>, from: usize, into: usize) -> Vec<u8> {
     let mut group_required_bits = into;
 
     for val in data.iter() {
-        let mut ungrouped_bits= from;
+        let mut ungrouped_bits = from;
 
         while ungrouped_bits > 0 {
             let min = cmp::min(group_required_bits, ungrouped_bits);
@@ -87,7 +87,10 @@ impl fmt::Display for FullAddress {
 impl FromStr for FullAddress {
     type Err = Error;
 
-    fn from_str(s: &str) -> Result<Self, Error> where Self: Sized {
+    fn from_str(s: &str) -> Result<Self, Error>
+    where
+        Self: Sized,
+    {
         let decoded = Bech32::from_string(s.to_string())?;
         let network = match decoded.hrp.as_str().as_ref() {
             "cc" => Some(Network::Mainnet),
@@ -109,7 +112,7 @@ impl FromStr for FullAddress {
                     },
                 })
             }
-            None => Err(Error::Bech32UnknownHRP)
+            None => Err(Error::Bech32UnknownHRP),
         }
     }
 }
@@ -123,7 +126,7 @@ impl From<&'static str> for FullAddress {
 #[cfg(test)]
 mod tests {
     use super::{rearrange_bits, FullAddress};
-    use {Network};
+    use Network;
 
     #[test]
     fn test_full_address_to_string() {
@@ -133,7 +136,10 @@ mod tests {
             address: "3f4aa1fedf1f54eeb03b759deadb36676b184911".into(),
         };
 
-        assert_eq!("cc1qql54g07mu04fm4s8d6em6kmxenkkxzfzya9wyew".to_owned(), address.to_string());
+        assert_eq!(
+            "cc1qql54g07mu04fm4s8d6em6kmxenkkxzfzya9wyew".to_owned(),
+            address.to_string()
+        );
     }
 
     #[test]
@@ -144,35 +150,53 @@ mod tests {
             address: "3f4aa1fedf1f54eeb03b759deadb36676b184911".into(),
         };
 
-        assert_eq!(address, "cc1qql54g07mu04fm4s8d6em6kmxenkkxzfzya9wyew".into());
+        assert_eq!(
+            address,
+            "cc1qql54g07mu04fm4s8d6em6kmxenkkxzfzya9wyew".into()
+        );
     }
 
     #[test]
     fn test_rearrange_bits_from_8_into_5() {
         let vec = vec![0b11101110, 0b11101110, 0b11101110, 0b11101110, 0b11101110];
         let rearranged = rearrange_bits(&vec, 8, 5);
-        assert_eq!(rearranged, vec![0b11101, 0b11011, 0b10111, 0b01110, 0b11101, 0b11011, 0b10111, 0b01110]);
+        assert_eq!(
+            rearranged,
+            vec![
+                0b11101, 0b11011, 0b10111, 0b01110, 0b11101, 0b11011, 0b10111, 0b01110
+            ]
+        );
     }
 
     #[test]
     fn test_rearrange_bits_from_5_into_8() {
-        let vec = vec![0b11101, 0b11011, 0b10111, 0b01110, 0b11101, 0b11011, 0b10111, 0b01110];
+        let vec = vec![
+            0b11101, 0b11011, 0b10111, 0b01110, 0b11101, 0b11011, 0b10111, 0b01110
+        ];
         let rearranged = rearrange_bits(&vec, 5, 8);
-        assert_eq!(rearranged, vec![0b11101110, 0b11101110, 0b11101110, 0b11101110, 0b11101110]);
+        assert_eq!(
+            rearranged,
+            vec![0b11101110, 0b11101110, 0b11101110, 0b11101110, 0b11101110]
+        );
     }
 
     #[test]
     fn test_rearrange_bits_from_8_into_5_padded() {
         let vec = vec![0b11101110, 0b11101110, 0b11101110];
         let rearranged = rearrange_bits(&vec, 8, 5);
-        assert_eq!(rearranged, vec![0b11101, 0b11011, 0b10111, 0b01110, 0b11100]);
+        assert_eq!(
+            rearranged,
+            vec![0b11101, 0b11011, 0b10111, 0b01110, 0b11100]
+        );
     }
 
     #[test]
     fn test_rearrange_bits_from_5_into_8_padded() {
         let vec = vec![0b11101, 0b11011, 0b10111, 0b01110, 0b11101];
         let rearranged = rearrange_bits(&vec, 5, 8);
-        assert_eq!(rearranged, vec![0b11101110, 0b11101110, 0b11101110, 0b10000000]);
+        assert_eq!(
+            rearranged,
+            vec![0b11101110, 0b11101110, 0b11101110, 0b10000000]
+        );
     }
 }
-

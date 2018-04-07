@@ -63,5 +63,3 @@ pub fn new<C: BlockInfo>(v: VerifierType) -> Box<Verifier<C>> {
         VerifierType::Noop => Box::new(NoopVerifier),
     }
 }
-
-

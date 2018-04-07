@@ -19,7 +19,7 @@ use std::collections::HashSet;
 use cbytes::Bytes;
 use ccrypto::BLAKE_NULL_RLP;
 use ctypes::{Address, H256};
-use rlp::{UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
+use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 use trie::TrieFactory;
 use triehash::ordered_trie_root;
 
@@ -28,7 +28,7 @@ use super::error::Error;
 use super::header::{Header, Seal};
 use super::invoice::Invoice;
 use super::machine::{LiveBlock, Transactions};
-use super::transaction::{UnverifiedTransaction, SignedTransaction, TransactionError};
+use super::transaction::{SignedTransaction, TransactionError, UnverifiedTransaction};
 use super::state::State;
 use super::state_db::StateDB;
 
@@ -127,7 +127,12 @@ impl<'x> OpenBlock<'x> {
         is_epoch_begin: bool,
     ) -> Result<Self, Error> {
         let number = parent.number() + 1;
-        let state = State::from_existing(db, *parent.state_root(), engine.machine().account_start_nonce(), trie_factory)?;
+        let state = State::from_existing(
+            db,
+            *parent.state_root(),
+            engine.machine().account_start_nonce(),
+            trie_factory,
+        )?;
         let mut r = OpenBlock {
             block: ExecutedBlock::new(state),
             engine,
@@ -153,7 +158,9 @@ impl<'x> OpenBlock<'x> {
 
         let outcome = self.block.state.apply(&t)?;
 
-        self.block.transactions_set.insert(h.unwrap_or_else(||t.hash()));
+        self.block
+            .transactions_set
+            .insert(h.unwrap_or_else(|| t.hash()));
         self.block.transactions.push(t.into());
         self.block.invoices.push(outcome.invoice);
         Ok(())
@@ -172,8 +179,12 @@ impl<'x> OpenBlock<'x> {
         self.block.header.set_score(*header.score());
         self.block.header.set_timestamp(header.timestamp());
         self.block.header.set_author(*header.author());
-        self.block.header.set_transactions_root(*header.transactions_root());
-        self.block.header.set_extra_data(header.extra_data().clone());
+        self.block
+            .header
+            .set_transactions_root(*header.transactions_root());
+        self.block
+            .header
+            .set_extra_data(header.extra_data().clone());
     }
 
     /// Turn this into a `ClosedBlock`.
@@ -189,9 +200,13 @@ impl<'x> OpenBlock<'x> {
         if let Err(e) = s.block.state.commit() {
             warn!("Encountered error on state commit: {}", e);
         }
-        s.block.header.set_transactions_root(ordered_trie_root(s.block.transactions.iter().map(|e| e.rlp_bytes())));
+        s.block.header.set_transactions_root(ordered_trie_root(
+            s.block.transactions.iter().map(|e| e.rlp_bytes()),
+        ));
         s.block.header.set_state_root(s.block.state.root().clone());
-        s.block.header.set_invoices_root(ordered_trie_root(s.block.invoices.iter().map(|r| r.rlp_bytes())));
+        s.block.header.set_invoices_root(ordered_trie_root(
+            s.block.invoices.iter().map(|r| r.rlp_bytes()),
+        ));
 
         ClosedBlock {
             block: s.block,
@@ -211,16 +226,18 @@ impl<'x> OpenBlock<'x> {
             warn!("Encountered error on state commit: {}", e);
         }
         if s.block.header.transactions_root().is_zero() || s.block.header.transactions_root() == &BLAKE_NULL_RLP {
-            s.block.header.set_transactions_root(ordered_trie_root(s.block.transactions.iter().map(|e| e.rlp_bytes())));
+            s.block.header.set_transactions_root(ordered_trie_root(
+                s.block.transactions.iter().map(|e| e.rlp_bytes()),
+            ));
         }
         if s.block.header.invoices_root().is_zero() || s.block.header.invoices_root() == &BLAKE_NULL_RLP {
-            s.block.header.set_invoices_root(ordered_trie_root(s.block.invoices.iter().map(|r| r.rlp_bytes())));
+            s.block.header.set_invoices_root(ordered_trie_root(
+                s.block.invoices.iter().map(|r| r.rlp_bytes()),
+            ));
         }
         s.block.header.set_state_root(s.block.state.root().clone());
 
-        LockedBlock {
-            block: s.block,
-        }
+        LockedBlock { block: s.block }
     }
 }
 
@@ -235,13 +252,13 @@ pub struct ClosedBlock {
 
 impl ClosedBlock {
     /// Get the hash of the header without seal arguments.
-    pub fn hash(&self) -> H256 { self.header().rlp_blake(Seal::Without) }
+    pub fn hash(&self) -> H256 {
+        self.header().rlp_blake(Seal::Without)
+    }
 
     /// Turn this into a `LockedBlock`, unable to be reopened again.
     pub fn lock(self) -> LockedBlock {
-        LockedBlock {
-            block: self.block,
-        }
+        LockedBlock { block: self.block }
     }
 
     /// Given an engine reference, reopen the `ClosedBlock` into an `OpenBlock`.
@@ -249,10 +266,7 @@ impl ClosedBlock {
         // revert rewards (i.e. set state back at last transaction's state).
         let mut block = self.block;
         block.state = self.unclosed_state;
-        OpenBlock {
-            block,
-            engine,
-        }
+        OpenBlock { block, engine }
     }
 }
 
@@ -265,11 +279,7 @@ impl LockedBlock {
     /// Provide a valid seal in order to turn this into a `SealedBlock`.
     /// This does check the validity of `seal` with the engine.
     /// Returns the `ClosedBlock` back again if the seal is no good.
-    pub fn try_seal(
-        self,
-        engine: &CodeChainEngine,
-        seal: Vec<Bytes>,
-    ) -> Result<SealedBlock, (Error, LockedBlock)> {
+    pub fn try_seal(self, engine: &CodeChainEngine, seal: Vec<Bytes>) -> Result<SealedBlock, (Error, LockedBlock)> {
         let mut s = self;
         s.block.header.set_seal(seal);
 
@@ -279,7 +289,6 @@ impl LockedBlock {
             _ => Ok(SealedBlock { block: s.block }),
         }
     }
-
 }
 
 /// A block that has a valid seal.
@@ -295,32 +304,48 @@ pub trait IsBlock {
     fn block(&self) -> &ExecutedBlock;
 
     /// Get the header associated with this object's block.
-    fn header(&self) -> &Header { &self.block().header }
+    fn header(&self) -> &Header {
+        &self.block().header
+    }
 
     /// Get all information on transactions in this block.
-    fn transactions(&self) -> &[SignedTransaction] { &self.block().transactions }
+    fn transactions(&self) -> &[SignedTransaction] {
+        &self.block().transactions
+    }
 
     /// Get all information on receipts in this block.
-    fn invoices(&self) -> &[Invoice] { &self.block().invoices }
+    fn invoices(&self) -> &[Invoice] {
+        &self.block().invoices
+    }
 
     /// Get the final state associated with this object's block.
-    fn state(&self) -> &State<StateDB> { &self.block().state }
+    fn state(&self) -> &State<StateDB> {
+        &self.block().state
+    }
 }
 
 impl IsBlock for ExecutedBlock {
-    fn block(&self) -> &ExecutedBlock { self }
+    fn block(&self) -> &ExecutedBlock {
+        self
+    }
 }
 
 impl<'x> IsBlock for OpenBlock<'x> {
-    fn block(&self) -> &ExecutedBlock { &self.block }
+    fn block(&self) -> &ExecutedBlock {
+        &self.block
+    }
 }
 
 impl<'x> IsBlock for ClosedBlock {
-    fn block(&self) -> &ExecutedBlock { &self.block }
+    fn block(&self) -> &ExecutedBlock {
+        &self.block
+    }
 }
 
 impl<'x> IsBlock for LockedBlock {
-    fn block(&self) -> &ExecutedBlock { &self.block }
+    fn block(&self) -> &ExecutedBlock {
+        &self.block
+    }
 }
 
 /// Trait for a object that has a state database.

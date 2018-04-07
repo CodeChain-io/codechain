@@ -16,7 +16,7 @@
 
 use std::collections::HashMap;
 
-use super::session::{SharedSecret, Session};
+use super::session::{Session, SharedSecret};
 use super::super::SocketAddr;
 
 pub struct Table {
@@ -31,7 +31,8 @@ impl Table {
     }
 
     pub fn get(&self, k: &SocketAddr) -> Option<Session> {
-        self.table.get(&k).map(|s| s.clone()).or_else(|| { // FIXME
+        self.table.get(&k).map(|s| s.clone()).or_else(|| {
+            // FIXME
             let mut s = Session::new(SharedSecret::zero());
             s.set_ready(10000);
             Some(s)

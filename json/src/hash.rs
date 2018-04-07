@@ -19,7 +19,7 @@
 use std::str::FromStr;
 use std::fmt;
 
-use ctypes::{H64 as Hash64, H160 as Hash160, H256 as Hash256, H520 as Hash520};
+use ctypes::{H160 as Hash160, H256 as Hash256, H520 as Hash520, H64 as Hash64};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde::de::{Error, Visitor};
 use rustc_hex::ToHex;
@@ -106,10 +106,15 @@ mod test {
     fn hash_deserialization() {
         let s = r#"["", "5a39ed1020c04d4d84539975b893a4e7c53eab6c2965db8bc3468093a31bc5ae"]"#;
         let deserialized: Vec<H256> = serde_json::from_str(s).unwrap();
-        assert_eq!(deserialized, vec![
-            H256(ctypes::H256::from(0)),
-            H256(ctypes::H256::from_str("5a39ed1020c04d4d84539975b893a4e7c53eab6c2965db8bc3468093a31bc5ae").unwrap())
-        ]);
+        assert_eq!(
+            deserialized,
+            vec![
+                H256(ctypes::H256::from(0)),
+                H256(
+                    ctypes::H256::from_str("5a39ed1020c04d4d84539975b893a4e7c53eab6c2965db8bc3468093a31bc5ae").unwrap(),
+                ),
+            ]
+        );
     }
 
     #[test]

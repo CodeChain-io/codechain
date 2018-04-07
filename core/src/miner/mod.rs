@@ -26,7 +26,7 @@ use super::transaction::{SignedTransaction, UnverifiedTransaction};
 use super::types::BlockNumber;
 
 /// Miner client API
-pub trait MinerService : Send + Sync {
+pub trait MinerService: Send + Sync {
     /// Type representing chain state
     type State: StateInfo + 'static;
 
@@ -46,16 +46,21 @@ pub trait MinerService : Send + Sync {
     fn set_transactions_limit(&self, limit: usize);
 
     /// Imports transactions to transaction queue.
-    fn import_external_transactions<C: MiningBlockChainClient>(&self, client: &C, transactions: Vec<UnverifiedTransaction>) ->
-    Vec<Result<TransactionImportResult, Error>>;
+    fn import_external_transactions<C: MiningBlockChainClient>(
+        &self,
+        client: &C,
+        transactions: Vec<UnverifiedTransaction>,
+    ) -> Vec<Result<TransactionImportResult, Error>>;
 
     /// Imports own (node owner) transaction to queue.
-    fn import_own_transaction<C: MiningBlockChainClient>(&self, chain: &C, transaction: SignedTransaction) ->
-    Result<TransactionImportResult, Error>;
+    fn import_own_transaction<C: MiningBlockChainClient>(
+        &self,
+        chain: &C,
+        transaction: SignedTransaction,
+    ) -> Result<TransactionImportResult, Error>;
 
     /// Get a list of all pending transactions in the queue.
     fn pending_transactions(&self) -> Vec<SignedTransaction>;
-
 
     /// Get a list of all transactions that can go into the given block.
     fn ready_transactions(&self, best_block: BlockNumber, best_block_timestamp: u64) -> Vec<SignedTransaction>;
@@ -81,5 +86,5 @@ pub enum TransactionImportResult {
     /// Transaction was imported to current queue.
     Current,
     /// Transaction was imported to future queue.
-    Future
+    Future,
 }

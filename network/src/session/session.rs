@@ -17,7 +17,7 @@
 use std::error;
 use std::fmt;
 
-use ccrypto::aes::{SymmetricCipherError, self};
+use ccrypto::aes::{self, SymmetricCipherError};
 use ccrypto::blake256_with_key;
 use ctypes::Secret;
 use ctypes::hash::{H128, H256};
@@ -97,7 +97,7 @@ impl Session {
 
     pub fn encrypt(&self, data: &[u8]) -> Result<Vec<u8>, Error> {
         if !self.is_ready() {
-            return Err(Error::NotReady)
+            return Err(Error::NotReady);
         }
         if let Some(iv) = self.initialization_vector() {
             Ok(aes::encrypt(&data, &self.secret, &iv)?)
@@ -108,7 +108,7 @@ impl Session {
 
     pub fn decrypt(&self, data: &[u8]) -> Result<Vec<u8>, Error> {
         if !self.is_ready() {
-            return Err(Error::NotReady)
+            return Err(Error::NotReady);
         }
         if let Some(iv) = self.initialization_vector() {
             Ok(aes::decrypt(&data, &self.secret, &iv)?)
