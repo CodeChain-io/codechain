@@ -3,6 +3,9 @@ rust:
   - stable
   - beta
   - nightly
+install:
+  - rustup toolchain install nightly
+  - rustup component add rustfmt-preview --toolchain nightly
 script:
   - cargo +nightly fmt
   - cargo build --verbose --all
