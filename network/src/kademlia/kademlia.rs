@@ -81,16 +81,6 @@ impl Kademlia {
     }
 
 
-    fn handle_ping_message(&self, id: MessageId, _sender: NodeId, sender_address: &SocketAddr) -> Option<Command> {
-        let message = Message::Pong{ id, sender: self.local_id() };
-        let target = sender_address.clone();
-        Some(Command::Send { message, target })
-    }
-
-    fn handle_pong_message(&self, _id: MessageId) -> Option<Command> {
-        None
-    }
-
     fn handle_find_node_message(&self, id: MessageId, _sender: NodeId, target: NodeId, bucket_size: u8, sender_address: &SocketAddr) -> Option<Command> {
         let contacts = self.table.get_closest_contacts(&target, bucket_size);
         let message = Message::Nodes {
@@ -125,17 +115,28 @@ impl Kademlia {
         self.touch_contact(sender_contact);
 
         match message {
-            &Message::Ping{id, sender} => self.handle_ping_message(id, sender, sender_address),
-            &Message::Pong{id, ..} => self.handle_pong_message(id),
             &Message::FindNode{id, sender, target, bucket_size} => self.handle_find_node_message(id, sender, target, bucket_size, sender_address),
             &Message::Nodes{ref contacts, sender, ..} => self.handle_nodes_message(sender, contacts),
+        }
+    }
+
+    pub fn find_node_command(&mut self, target: SocketAddr) -> Command {
+        let message = Message::FindNode {
+            id: 0, // FIXME
+            sender: self.local_id(),
+            target: self.local_id(),
+            bucket_size: self.k,
+        };
+        Command::Send {
+            message,
+            target,
         }
     }
 
 
     pub fn handle_verify_command(&mut self) -> Option<Command> {
         self.pop_contact_to_be_verified().map(|contact| {
-            let message = Message::Ping { id: 0, sender: contact.id() };
+            let message = Message::FindNode { id: 0, sender: self.local_id(), target: self.local_id(), bucket_size: self.k };
             let target = contact.addr().clone();
             Command::Send {
                 message,
@@ -173,12 +174,6 @@ impl Kademlia {
         contacts.into_iter()
             .map(|contact| contact.addr().clone())
             .collect()
-    }
-
-    pub fn ping_event(&mut self, target: SocketAddr) -> Event {
-        let message = Message::Ping { id: 0, sender: self.local_id() };
-        let command = Command::Send { message, target };
-        Event::Command { command }
     }
 
     pub fn remove(&mut self, address: &SocketAddr) {

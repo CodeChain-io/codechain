@@ -22,8 +22,6 @@ use super::contact::Contact;
 pub type Id = u64;
 
 pub enum Message {
-    Ping { id: Id, sender: NodeId },
-    Pong { id: Id, sender: NodeId },
     FindNode { id: Id, sender: NodeId, target: NodeId, bucket_size: u8 },
     Nodes { id: Id, sender: NodeId, contacts: Vec<Contact> },
 }
@@ -31,8 +29,6 @@ pub enum Message {
 impl Message {
     pub fn id(&self) -> Id {
         match self {
-            &Message::Ping{ id, ..} => id,
-            &Message::Pong{ id, ..} => id,
             &Message::FindNode{ id, ..} => id,
             &Message::Nodes{ id, ..} => id,
         }
@@ -40,8 +36,6 @@ impl Message {
 
     pub fn sender(&self) -> &NodeId {
         match self {
-            &Message::Ping{ ref sender, ..} => sender,
-            &Message::Pong{ ref sender, ..} => sender,
             &Message::FindNode{ ref sender, ..} => sender,
             &Message::Nodes{ ref sender, ..} => sender,
         }
@@ -50,26 +44,12 @@ impl Message {
 
 type ProtocolId = u64;
 
-const PING_ID: ProtocolId = 0x0;
-const PONG_ID: ProtocolId = 0x1;
 const FIND_NODE_ID: ProtocolId = 0x2;
 const NODES_ID: ProtocolId = 0x3;
 
 impl Encodable for Message {
     fn rlp_append(&self, s: &mut RlpStream) {
         match self {
-            &Message::Ping { id, ref sender } => {
-                s.begin_list(3)
-                    .append(&PING_ID)
-                    .append(&id)
-                    .append(sender);
-            },
-            &Message::Pong { id, ref sender } => {
-                s.begin_list(3)
-                    .append(&PONG_ID)
-                    .append(&id)
-                    .append(sender);
-            },
             &Message::FindNode { id, ref sender, ref target, bucket_size } => {
                 s.begin_list(5)
                     .append(&FIND_NODE_ID)
@@ -98,18 +78,6 @@ impl Decodable for Message {
         let id = rlp.val_at(1)?;
         let sender = rlp.val_at(2)?;
         match protocol {
-            PING_ID => {
-                if rlp.item_count()? != 3 {
-                    return Err(DecoderError::RlpIncorrectListLen)
-                }
-                Ok(Message::Ping{id, sender})
-            },
-            PONG_ID => {
-                if rlp.item_count()? != 3 {
-                    return Err(DecoderError::RlpIncorrectListLen)
-                }
-                Ok(Message::Pong{id, sender})
-            },
             FIND_NODE_ID => {
                 if rlp.item_count()? != 5 {
                     return Err(DecoderError::RlpIncorrectListLen)

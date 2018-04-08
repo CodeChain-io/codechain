@@ -176,7 +176,8 @@ impl DiscoveryApi for Extension {
     fn add(&self, address: SocketAddr) {
         let event = {
             let mut kademlia = self.kademlia.write();
-            kademlia.ping_event(address)
+            let command = kademlia.find_node_command(address);
+            Event::Command {command}
         };
         self.push_event(event);
     }
