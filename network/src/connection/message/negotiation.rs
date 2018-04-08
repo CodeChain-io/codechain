@@ -171,7 +171,6 @@ mod tests {
     use rlp::{ Decodable, Encodable, UntrustedRlp };
 
     use super::Message;
-    use super::ProtocolId;
     use super::Seq;
     use super::Version;
 

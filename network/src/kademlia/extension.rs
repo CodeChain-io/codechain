@@ -22,7 +22,7 @@ use cio::TimerToken;
 use parking_lot::{Mutex, RwLock};
 use rlp::{Decodable, DecoderError, Encodable, UntrustedRlp};
 
-use super::{ALPHA, Config, K, T_REFRESH};
+use super::Config;
 use super::command::Command;
 use super::event::Event;
 use super::kademlia::Kademlia;

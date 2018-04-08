@@ -206,23 +206,23 @@ mod tests {
     }
 
     impl Api for TestApi {
-        fn send(&self, id: &usize, message: &Vec<u8>) {
+        fn send(&self, _id: &usize, _message: &Vec<u8>) {
             unimplemented!()
         }
 
-        fn connect(&self, id: &usize) {
+        fn connect(&self, _id: &usize) {
             unimplemented!()
         }
 
-        fn set_timer(&self, timer_id: usize, ms: u64) {
+        fn set_timer(&self, _timer_id: usize, _ms: u64) {
             unimplemented!()
         }
 
-        fn set_timer_once(&self, timer_id: usize, ms: u64) {
+        fn set_timer_once(&self, _timer_id: usize, _ms: u64) {
             unimplemented!()
         }
 
-        fn clear_timer(&self, timer_id: usize) {
+        fn clear_timer(&self, _timer_id: usize) {
             unimplemented!()
         }
     }

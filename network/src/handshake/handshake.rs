@@ -90,14 +90,14 @@ impl error::Error for HandshakeError {
             &HandshakeError::SessionAlreadyExists => "Session already exists",
             &HandshakeError::ECDHIsNotRequested => "Ecdh is not requested",
             &HandshakeError::ECDHAlreadyRequested => "Ecdh is already requested",
-            &HandshakeError::KeysError(ref err) => "KeysError",
+            &HandshakeError::KeysError(_) => "KeysError",
         }
     }
 
     fn cause(&self) -> Option<&error::Error> {
         match self {
             &HandshakeError::IoError(ref err) => Some(err),
-            &HandshakeError::CIoError(ref err) => None,
+            &HandshakeError::CIoError(_) => None,
             &HandshakeError::RlpError(ref err) => Some(err),
             &HandshakeError::SendError(_, _) => None,
             &HandshakeError::SessionError(ref err) => Some(err),
@@ -338,7 +338,7 @@ impl IoHandler<HandlerMessage> for Handler {
         Ok(())
     }
 
-    fn message(&self, io: &IoContext<HandlerMessage>, message: &HandlerMessage) -> IoHandlerResult<()> {
+    fn message(&self, _io: &IoContext<HandlerMessage>, message: &HandlerMessage) -> IoHandlerResult<()> {
         match message {
             &HandlerMessage::ConnectTo(ref socket_address) => {
                 let mut internal = self.internal.lock();
@@ -381,7 +381,7 @@ impl IoHandler<HandlerMessage> for Handler {
         Ok(())
     }
 
-    fn stream_writable(&self, _io: &IoContext<HandlerMessage>, stream: StreamToken) -> IoHandlerResult<()> {
+    fn stream_writable(&self, _io: &IoContext<HandlerMessage>, _stream: StreamToken) -> IoHandlerResult<()> {
         loop {
             let mut internal = self.internal.lock();
             if let Some(ref socket_address) = internal.connect_queue.pop_front().as_ref() {

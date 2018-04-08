@@ -143,7 +143,7 @@ mod tests {
         let begin: Key = 11;
         let limit: usize = 20;
         let mut table: LimitedTable<TestItem> = LimitedTable::new(begin, limit);
-        for i in begin..(begin + limit) {
+        for _ in begin..(begin + limit) {
             let t = table.insert(TestItem);
             assert!(table.get(t.unwrap()).is_some());
         }
