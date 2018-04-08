@@ -90,7 +90,6 @@ impl Session {
     }
 
     pub fn set_ready(&mut self, nonce: Nonce) {
-        debug_assert!(!self.is_ready());
         self.nonce = Some(nonce);
     }
 

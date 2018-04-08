@@ -223,6 +223,7 @@ impl Connection {
                         HandshakeMessage::Ack(_) => {
                             let _ = self.expect_state(State::Requested)?;
                             self.state = State::Established;
+                            callback.on_node_added();
                         },
                     }
                     Ok(true)
@@ -332,5 +333,9 @@ impl<'a> ExtensionCallback<'a> {
 
     fn on_message(&self, name: &String, data: &Vec<u8>) {
         self.client.on_message(&name, &self.id, &data);
+    }
+
+    fn on_node_added(&self) {
+        self.client.on_node_added(&self.id);
     }
 }

@@ -14,14 +14,16 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::error;
 use std::fmt;
 use std::io;
 use std::result::Result;
 use std::sync::Arc;
+use std::sync::atomic::AtomicUsize;
 
-use cio::{IoChannel, IoContext, IoHandler, IoManager, IoHandlerResult, StreamToken};
+use cio::{IoChannel, IoContext, IoError as CIoError, IoHandler, IoManager, IoHandlerResult, StreamToken};
+use ckeys::{Error as KeysError, Generator, Private, Random, exchange};
 use ctypes::Secret;
 use mio::{PollOpt, Ready, Token};
 use mio::deprecated::EventLoop;
@@ -30,7 +32,7 @@ use parking_lot::{Mutex, RwLock};
 use rlp::{UntrustedRlp, Encodable, Decodable, DecoderError};
 
 use super::{HandshakeMessage, HandshakeMessageBody};
-use super::super::session::{Nonce, Session, SessionError, SessionTable, SharedSecret};
+use super::super::session::{Nonce, Session, SessionError, SessionTable};
 use super::super::{DiscoveryApi, SocketAddr};
 use super::super::connection;
 
@@ -38,29 +40,39 @@ use super::super::connection;
 pub struct Handshake {
     socket: UdpSocket,
     table: SessionTable,
+    requested: HashMap<SocketAddr, Private>,
+    seq_counter: AtomicUsize,
 }
 
 #[derive(Debug)]
 enum HandshakeError {
     IoError(io::Error),
+    CIoError(CIoError),
     RlpError(DecoderError),
     SendError(HandshakeMessage, usize),
     SessionError(SessionError),
     NoSession,
     UnexpectedNonce(Nonce),
     SessionAlreadyExists,
+    ECDHIsNotRequested,
+    ECDHAlreadyRequested,
+    KeysError(KeysError),
 }
 
 impl fmt::Display for HandshakeError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             &HandshakeError::IoError(ref err) => write!(f, "IoError {}", err),
+            &HandshakeError::CIoError(ref err) => err.fmt(f),
             &HandshakeError::RlpError(ref err) => write!(f, "RlpError {}", err),
             &HandshakeError::SendError(ref msg, unsent) => write!(f, "SendError {} bytes of {:?} are not sent", unsent, msg),
             &HandshakeError::SessionError(ref err) => write!(f, "SessionError {}", err),
             &HandshakeError::NoSession => write!(f, "NoSession"),
             &HandshakeError::UnexpectedNonce(ref nonce) => write!(f, "{:?} is an unexpected nonce", nonce),
             &HandshakeError::SessionAlreadyExists => write!(f, "Session already exists"),
+            &HandshakeError::ECDHIsNotRequested => write!(f, "Ecdh is not requested"),
+            &HandshakeError::ECDHAlreadyRequested => write!(f, "Ecdh is already requested"),
+            &HandshakeError::KeysError(ref err) => err.fmt(f),
         }
     }
 }
@@ -69,24 +81,32 @@ impl error::Error for HandshakeError {
     fn description(&self) -> &str {
         match self {
             &HandshakeError::IoError(ref err) => err.description(),
+            &HandshakeError::CIoError(ref err) => err.description(),
             &HandshakeError::RlpError(ref err) => err.description(),
             &HandshakeError::SendError(_, _) => "Unsent data",
             &HandshakeError::SessionError(ref err) => err.description(),
             &HandshakeError::NoSession => "No session",
             &HandshakeError::UnexpectedNonce(_) => "Unexpected nonce",
             &HandshakeError::SessionAlreadyExists => "Session already exists",
+            &HandshakeError::ECDHIsNotRequested => "Ecdh is not requested",
+            &HandshakeError::ECDHAlreadyRequested => "Ecdh is already requested",
+            &HandshakeError::KeysError(ref err) => "KeysError",
         }
     }
 
     fn cause(&self) -> Option<&error::Error> {
         match self {
             &HandshakeError::IoError(ref err) => Some(err),
+            &HandshakeError::CIoError(ref err) => None,
             &HandshakeError::RlpError(ref err) => Some(err),
             &HandshakeError::SendError(_, _) => None,
             &HandshakeError::SessionError(ref err) => Some(err),
             &HandshakeError::NoSession => None,
             &HandshakeError::UnexpectedNonce(_) => None,
             &HandshakeError::SessionAlreadyExists => None,
+            &HandshakeError::ECDHIsNotRequested => None,
+            &HandshakeError::ECDHAlreadyRequested => None,
+            &HandshakeError::KeysError(_) => None,
         }
     }
 }
@@ -97,6 +117,11 @@ impl From<io::Error> for HandshakeError {
     }
 }
 
+impl From<CIoError> for HandshakeError {
+    fn from(err: CIoError) -> HandshakeError {
+        HandshakeError::CIoError(err)
+    }
+}
 impl From<DecoderError> for HandshakeError {
     fn from(err: DecoderError) -> HandshakeError {
         HandshakeError::RlpError(err)
@@ -108,6 +133,13 @@ impl From<SessionError> for HandshakeError {
         HandshakeError::SessionError(err)
     }
 }
+
+impl From<KeysError> for HandshakeError {
+    fn from(err: KeysError) -> HandshakeError {
+        HandshakeError::KeysError(err)
+    }
+}
+
 const MAX_HANDSHAKE_PACKET_SIZE: usize = 1024;
 
 impl Handshake {
@@ -116,6 +148,8 @@ impl Handshake {
         Ok(Self {
             socket,
             table: SessionTable::new(),
+            requested: HashMap::new(),
+            seq_counter: AtomicUsize::new(0),
         })
     }
 
@@ -124,10 +158,6 @@ impl Handshake {
         match self.socket.recv_from(&mut buf) {
             Ok((received_size, socket_address)) => {
                 let socket_address = SocketAddr::from(socket_address);
-                if self.table.get(&socket_address).is_none() {
-                    return Err(HandshakeError::NoSession)
-                }
-
                 let raw_bytes = &buf[0..received_size];
                 let rlp = UntrustedRlp::new(&raw_bytes);
                 let message = Decodable::decode(&rlp)?;
@@ -141,10 +171,6 @@ impl Handshake {
     }
 
     fn send_to(&self, message: &HandshakeMessage, target: &SocketAddr) -> Result<(), HandshakeError> {
-        if self.table.get(&target).is_none() {
-            return Err(HandshakeError::NoSession)
-        }
-
         let unencrypted_bytes = message.rlp_bytes();
 
         let length_to_send = unencrypted_bytes.len();
@@ -157,29 +183,29 @@ impl Handshake {
         Ok(())
     }
 
-    fn send_ping_to(&mut self, target: &SocketAddr, nonce: Nonce) -> Result<(), HandshakeError> {
-        let nonce = {
-            let mut session = self.table.get_mut(&target).ok_or(HandshakeError::NoSession)?;
-            session.set_ready(nonce);
-            encode_and_encrypt_nonce(&session, nonce)?
-        };
-        self.send_to(&HandshakeMessage::connection_request(0, nonce), target) // FIXME: seq
+    fn send_ping_to(&mut self, target: &SocketAddr) -> Result<(), HandshakeError> {
+        let ephemeral = Random.generate()?;
+        self.requested.insert(target.clone(), ephemeral.private().clone());
+
+        self.send_to(&HandshakeMessage::ecdh_request(0, *ephemeral.public()), target)?; // FIXME: seq
+        Ok(())
     }
 
-    fn on_packet(&mut self, message: &HandshakeMessage, from: &SocketAddr, extension: &IoChannel<connection::HandlerMessage>) -> IoHandlerResult<()> {
+    fn on_packet(&mut self, message: &HandshakeMessage, from: &SocketAddr, extension: &IoChannel<connection::HandlerMessage>) -> Result<(), HandshakeError> {
         match message.body() {
             &HandshakeMessageBody::ConnectionRequest(ref nonce) => {
                 let encrypted_bytes = {
-                    let session = self.table.get(from).ok_or(HandshakeError::NoSession)?;
+                    let session = self.table.get_mut(from).ok_or(HandshakeError::NoSession)?;
                     if session.is_ready() {
                         info!("A nonce already exists");
                     }
+                    session.set_ready(0);
                     let nonce = decrypt_and_decode_nonce(&session, &nonce)?;
+                    session.set_ready(nonce);
 
                     // FIXME: let nonce = f(nonce)
 
                     extension.send(connection::HandlerMessage::RegisterSession(from.clone(), session.clone()))?;
-
                     encode_and_encrypt_nonce(&session, nonce)?
                 };
 
@@ -197,6 +223,7 @@ impl Handshake {
                 if !session.is_expected_nonce(&nonce) {
                     return Err(From::from(HandshakeError::UnexpectedNonce(nonce)))
                 }
+
                 extension.send(connection::HandlerMessage::RequestConnection(from.clone(), session.clone()))?;
                 Ok(())
             },
@@ -204,17 +231,50 @@ impl Handshake {
                 info!("Connection to {:?} refused(reason: {}", from, reason);
                 Ok(())
             },
-            &HandshakeMessageBody::EcdhRequest(ref _key) => {
-                unimplemented!();
-                Ok(())
-            }
-            &HandshakeMessageBody::EcdhAllowed(ref _key) => {
-                unimplemented!();
-                Ok(())
-            }
+            &HandshakeMessageBody::EcdhRequest(ref key) => {
+                let ephemeral = Random.generate()?;
+                let secret = exchange(key, &ephemeral.private())?;
+                if self.table.insert(from.clone(), Session::new_without_nonce(secret)).is_some() {
+                    self.send_to(&HandshakeMessage::ecdh_denied(message.seq(), "ECDH Already requested".to_string()), from)?;
+                    Err(HandshakeError::ECDHAlreadyRequested)
+                } else {
+                    self.send_to(&HandshakeMessage::ecdh_allowed(message.seq(), *ephemeral.public()), from)?;
+                    Ok(())
+                }
+            },
+            &HandshakeMessageBody::EcdhAllowed(ref key) => {
+                if let Some(local_private) = self.requested.remove(from) {
+                    let secret = exchange(key, &local_private)?;
+                    let session = {
+                        let mut session = Session::new_without_nonce(secret);
+                        session.set_ready(0);
+                        session
+                    };
+                    if self.table.insert(from.clone(), session.clone()).is_some() {
+                        return Err(HandshakeError::ECDHAlreadyRequested)
+                    }
+
+                    let encrypted_nonce = {
+                        let session = self.table.get_mut(from).expect("Session inserted");
+                        let nonce = Handshake::nonce();
+                        let encrypted_nonce = encode_and_encrypt_nonce(&session, nonce)?;
+                        session.set_ready(nonce);
+                        encrypted_nonce
+                    };
+
+                    self.send_to(&HandshakeMessage::connection_request(0, encrypted_nonce), from)?;
+                    Ok(())
+                } else {
+                    Err(HandshakeError::ECDHIsNotRequested)
+                }
+            },
             &HandshakeMessageBody::EcdhDenied(ref reason) => {
                 info!("Connection to {:?} refused(reason: {}", from, reason);
-                Ok(())
+                if self.requested.remove(from).is_none() {
+                    Err(HandshakeError::ECDHIsNotRequested)
+                } else {
+                    Ok(())
+                }
             }
         }
     }
@@ -282,14 +342,8 @@ impl IoHandler<HandlerMessage> for Handler {
         match message {
             &HandlerMessage::ConnectTo(ref socket_address) => {
                 let mut internal = self.internal.lock();
-                {
-                    let ref mut queue = internal.connect_queue;
-                    queue.push_back(socket_address.clone());
-                }
-                {
-                    let ref mut handshake = internal.handshake;
-                    handshake.table.insert(socket_address.clone(), Session::new_without_nonce(SharedSecret::zero())); // FIXME: Remove it
-                }
+                let ref mut queue = internal.connect_queue;
+                queue.push_back(socket_address.clone());
             },
         };
         Ok(())
@@ -312,7 +366,7 @@ impl IoHandler<HandlerMessage> for Handler {
                         },
                         Ok(Some((msg, socket_address))) => {
                             info!("{:?} from {:?}", msg, socket_address);
-                            let _ = handshake.on_packet(&msg, &socket_address, &self.extension);
+                            handshake.on_packet(&msg, &socket_address, &self.extension)?;
                         },
                         Err(err) => {
                             info!("handshake receive error {}", err);
@@ -332,7 +386,7 @@ impl IoHandler<HandlerMessage> for Handler {
             let mut internal = self.internal.lock();
             if let Some(ref socket_address) = internal.connect_queue.pop_front().as_ref() {
                 let ref mut handshake = internal.handshake;
-                connect_to(handshake, &socket_address);
+                connect_to(handshake, &socket_address)?;
             } else {
                 break
             }
@@ -356,7 +410,6 @@ impl IoHandler<HandlerMessage> for Handler {
 }
 
 fn connect_to(handshake: &mut Handshake, socket_address: &SocketAddr) -> IoHandlerResult<()> {
-    let nonce = Handshake::nonce();
-    handshake.send_ping_to(&socket_address, nonce)?;
+    handshake.send_ping_to(&socket_address)?;
     Ok(())
 }

@@ -26,6 +26,15 @@ pub enum Message {
     Negotiation(NegotiationMessage),
 }
 
+impl Message {
+    pub fn is_sync(&self) -> bool {
+        match self {
+            &Message::Handshake(HandshakeMessage::Sync(_, _)) => true,
+            _ => false,
+        }
+    }
+}
+
 use super::SYNC_ID;
 use super::ACK_ID;
 use super::REQUEST_ID;
