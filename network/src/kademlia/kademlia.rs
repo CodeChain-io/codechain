@@ -145,11 +145,6 @@ impl Kademlia {
         })
     }
 
-    fn handle_send_command(&mut self, _message: &Message, _target: &SocketAddr) -> Option<Command> {
-        // FIXME: implement it
-        None
-    }
-
     pub fn handle_refresh_command(&mut self) -> Option<Command> {
         self.table.cleanup();
         let distances = self.table.distances();
