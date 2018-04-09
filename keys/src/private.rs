@@ -81,4 +81,3 @@ impl Deref for Private {
         &self.0
     }
 }
-

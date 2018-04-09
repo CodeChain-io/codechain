@@ -16,8 +16,8 @@
 
 use std::collections::HashMap;
 
-use super::session::Session;
 use super::super::SocketAddr;
+use super::session::Session;
 
 pub struct Table {
     table: HashMap<SocketAddr, Session>,

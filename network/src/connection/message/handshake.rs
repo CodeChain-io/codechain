@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use rlp::{UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
+use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::ProtocolId;
 use super::Version;
@@ -48,7 +48,7 @@ impl Message {
 
     fn protocol_id(&self) -> ProtocolId {
         match self {
-            &Message::Sync(_, _) => SYNC_ID,
+            &Message::Sync(..) => SYNC_ID,
             &Message::Ack(_) => ACK_ID,
         }
     }
@@ -59,16 +59,11 @@ impl Encodable for Message {
     fn rlp_append(&self, s: &mut RlpStream) {
         match self {
             &Message::Sync(version, nonce) => {
-                s.begin_list(3)
-                    .append(&version)
-                    .append(&self.protocol_id())
-                    .append(&nonce);
-            },
+                s.begin_list(3).append(&version).append(&self.protocol_id()).append(&nonce);
+            }
             &Message::Ack(version) => {
-                s.begin_list(2)
-                    .append(&version)
-                    .append(&self.protocol_id());
-            },
+                s.begin_list(2).append(&version).append(&self.protocol_id());
+            }
         }
     }
 }
@@ -84,13 +79,13 @@ impl Decodable for Message {
                 }
                 let nonce = rlp.val_at(2)?;
                 Ok(Message::Sync(version, nonce))
-            },
+            }
             ACK_ID => {
                 if rlp.item_count()? != 2 {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
                 Ok(Message::Ack(version))
-            },
+            }
             _ => Err(DecoderError::Custom("invalid protocol id")),
         }
     }
@@ -98,7 +93,7 @@ impl Decodable for Message {
 
 #[cfg(test)]
 mod tests {
-    use rlp::{ Decodable, Encodable, UntrustedRlp };
+    use rlp::{Decodable, Encodable, UntrustedRlp};
 
     use super::{Message, Nonce};
 
@@ -182,4 +177,3 @@ mod tests {
         }
     }
 }
-

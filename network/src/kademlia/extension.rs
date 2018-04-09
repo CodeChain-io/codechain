@@ -22,16 +22,16 @@ use cio::TimerToken;
 use parking_lot::{Mutex, RwLock};
 use rlp::{Decodable, DecoderError, Encodable, UntrustedRlp};
 
+use super::super::SocketAddr;
+use super::super::connection::AddressConverter;
+use super::super::discovery::Api as DiscoveryApi;
+use super::super::extension::NodeId as ExtensionNodeId;
+use super::super::{Api, Extension as NetworkExtension};
 use super::Config;
 use super::command::Command;
 use super::event::Event;
 use super::kademlia::Kademlia;
 use super::message::Message;
-use super::super::SocketAddr;
-use super::super::{Api, Extension as NetworkExtension};
-use super::super::connection::AddressConverter;
-use super::super::discovery::Api as DiscoveryApi;
-use super::super::extension::NodeId as ExtensionNodeId;
 
 
 pub struct Extension {
@@ -80,7 +80,10 @@ impl Extension {
         if let Some(sender) = self.get_address(&id) {
             let rlp = UntrustedRlp::new(&message.as_slice());
             let message: Message = Decodable::decode(&rlp)?;
-            let event = Event::Message{ message, sender };
+            let event = Event::Message {
+                message,
+                sender,
+            };
             self.push_event(event)
         }
         Ok(())
@@ -124,16 +127,23 @@ impl Extension {
 
             let command = {
                 match event {
-                    Event::Message { ref message, ref sender } => {
+                    Event::Message {
+                        ref message,
+                        ref sender,
+                    } => {
                         let mut kademlia = self.kademlia.write();
                         kademlia.handle_message(message, sender)
-                    },
-                    Event::Command { ref command } => self.handle_command(command),
+                    }
+                    Event::Command {
+                        ref command,
+                    } => self.handle_command(command),
                 }
             };
 
             if let Some(command) = command {
-                self.push_event(Event::Command {command});
+                self.push_event(Event::Command {
+                    command,
+                });
             }
         }
     }
@@ -143,15 +153,18 @@ impl Extension {
             &Command::Verify => {
                 let mut kademlia = self.kademlia.write();
                 kademlia.handle_verify_command()
-            },
+            }
             &Command::Refresh => {
                 let mut kademlia = self.kademlia.write();
                 kademlia.handle_refresh_command()
-            },
-            &Command::Send { ref message, ref target } => {
+            }
+            &Command::Send {
+                ref message,
+                ref target,
+            } => {
                 self.handle_send_command(&message, &target);
                 None
-            },
+            }
         }
     }
 
@@ -177,7 +190,9 @@ impl DiscoveryApi for Extension {
         let event = {
             let mut kademlia = self.kademlia.write();
             let command = kademlia.find_node_command(address);
-            Event::Command {command}
+            Event::Command {
+                command,
+            }
         };
         self.push_event(event);
     }
@@ -238,10 +253,12 @@ impl NetworkExtension for Extension {
         match token {
             CONSUME_EVENT_TOKEN => {
                 self.consume_events();
-            },
+            }
             REFRESH_TOKEN => {
                 let command = Command::Refresh;
-                let event = Event::Command { command };
+                let event = Event::Command {
+                    command,
+                };
                 self.push_event(event);
             }
             _ => unreachable!(),

@@ -19,7 +19,7 @@ use std::collections::HashSet;
 use cbytes::Bytes;
 use ccrypto::BLAKE_NULL_RLP;
 use ctypes::{Address, H256};
-use rlp::{UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
+use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 use trie::TrieFactory;
 use triehash::ordered_trie_root;
 
@@ -28,9 +28,9 @@ use super::error::Error;
 use super::header::{Header, Seal};
 use super::invoice::Invoice;
 use super::machine::{LiveBlock, Transactions};
-use super::transaction::{UnverifiedTransaction, SignedTransaction, TransactionError};
 use super::state::State;
 use super::state_db::StateDB;
+use super::transaction::{SignedTransaction, TransactionError, UnverifiedTransaction};
 
 /// A block, encoded as it is on the block chain.
 #[derive(Debug, Clone, PartialEq)]
@@ -54,10 +54,10 @@ impl Block {
 impl Decodable for Block {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
         if rlp.as_raw().len() != rlp.payload_info()?.total() {
-            return Err(DecoderError::RlpIsTooBig);
+            return Err(DecoderError::RlpIsTooBig)
         }
         if rlp.item_count()? != 2 {
-            return Err(DecoderError::RlpIncorrectListLen);
+            return Err(DecoderError::RlpIncorrectListLen)
         }
         Ok(Block {
             header: rlp.val_at(0)?,
@@ -127,7 +127,8 @@ impl<'x> OpenBlock<'x> {
         is_epoch_begin: bool,
     ) -> Result<Self, Error> {
         let number = parent.number() + 1;
-        let state = State::from_existing(db, *parent.state_root(), engine.machine().account_start_nonce(), trie_factory)?;
+        let state =
+            State::from_existing(db, *parent.state_root(), engine.machine().account_start_nonce(), trie_factory)?;
         let mut r = OpenBlock {
             block: ExecutedBlock::new(state),
             engine,
@@ -148,12 +149,12 @@ impl<'x> OpenBlock<'x> {
     /// Push a transaction into the block.
     pub fn push_transaction(&mut self, t: SignedTransaction, h: Option<H256>) -> Result<(), Error> {
         if self.block.transactions_set.contains(&t.hash()) {
-            return Err(TransactionError::AlreadyImported.into());
+            return Err(TransactionError::AlreadyImported.into())
         }
 
         let outcome = self.block.state.apply(&t)?;
 
-        self.block.transactions_set.insert(h.unwrap_or_else(||t.hash()));
+        self.block.transactions_set.insert(h.unwrap_or_else(|| t.hash()));
         self.block.transactions.push(t.into());
         self.block.invoices.push(outcome.invoice);
         Ok(())
@@ -235,7 +236,9 @@ pub struct ClosedBlock {
 
 impl ClosedBlock {
     /// Get the hash of the header without seal arguments.
-    pub fn hash(&self) -> H256 { self.header().rlp_blake(Seal::Without) }
+    pub fn hash(&self) -> H256 {
+        self.header().rlp_blake(Seal::Without)
+    }
 
     /// Turn this into a `LockedBlock`, unable to be reopened again.
     pub fn lock(self) -> LockedBlock {
@@ -265,21 +268,18 @@ impl LockedBlock {
     /// Provide a valid seal in order to turn this into a `SealedBlock`.
     /// This does check the validity of `seal` with the engine.
     /// Returns the `ClosedBlock` back again if the seal is no good.
-    pub fn try_seal(
-        self,
-        engine: &CodeChainEngine,
-        seal: Vec<Bytes>,
-    ) -> Result<SealedBlock, (Error, LockedBlock)> {
+    pub fn try_seal(self, engine: &CodeChainEngine, seal: Vec<Bytes>) -> Result<SealedBlock, (Error, LockedBlock)> {
         let mut s = self;
         s.block.header.set_seal(seal);
 
         // TODO: passing state context to avoid engines owning it?
         match engine.verify_local_seal(&s.block.header) {
             Err(e) => Err((e, s)),
-            _ => Ok(SealedBlock { block: s.block }),
+            _ => Ok(SealedBlock {
+                block: s.block,
+            }),
         }
     }
-
 }
 
 /// A block that has a valid seal.
@@ -295,32 +295,48 @@ pub trait IsBlock {
     fn block(&self) -> &ExecutedBlock;
 
     /// Get the header associated with this object's block.
-    fn header(&self) -> &Header { &self.block().header }
+    fn header(&self) -> &Header {
+        &self.block().header
+    }
 
     /// Get all information on transactions in this block.
-    fn transactions(&self) -> &[SignedTransaction] { &self.block().transactions }
+    fn transactions(&self) -> &[SignedTransaction] {
+        &self.block().transactions
+    }
 
     /// Get all information on receipts in this block.
-    fn invoices(&self) -> &[Invoice] { &self.block().invoices }
+    fn invoices(&self) -> &[Invoice] {
+        &self.block().invoices
+    }
 
     /// Get the final state associated with this object's block.
-    fn state(&self) -> &State<StateDB> { &self.block().state }
+    fn state(&self) -> &State<StateDB> {
+        &self.block().state
+    }
 }
 
 impl IsBlock for ExecutedBlock {
-    fn block(&self) -> &ExecutedBlock { self }
+    fn block(&self) -> &ExecutedBlock {
+        self
+    }
 }
 
 impl<'x> IsBlock for OpenBlock<'x> {
-    fn block(&self) -> &ExecutedBlock { &self.block }
+    fn block(&self) -> &ExecutedBlock {
+        &self.block
+    }
 }
 
 impl<'x> IsBlock for ClosedBlock {
-    fn block(&self) -> &ExecutedBlock { &self.block }
+    fn block(&self) -> &ExecutedBlock {
+        &self.block
+    }
 }
 
 impl<'x> IsBlock for LockedBlock {
-    fn block(&self) -> &ExecutedBlock { &self.block }
+    fn block(&self) -> &ExecutedBlock {
+        &self.block
+    }
 }
 
 /// Trait for a object that has a state database.
@@ -351,15 +367,7 @@ pub fn enact(
     trie_factory: TrieFactory,
     is_epoch_begin: bool,
 ) -> Result<LockedBlock, Error> {
-    let mut b = OpenBlock::new(
-        engine,
-        trie_factory,
-        db,
-        parent,
-        Address::new(),
-        vec![],
-        is_epoch_begin,
-    )?;
+    let mut b = OpenBlock::new(engine, trie_factory, db, parent, Address::new(), vec![], is_epoch_begin)?;
 
     b.populate_from(header);
     b.push_transactions(transactions)?;

@@ -33,15 +33,19 @@ pub struct VerificationQueueInfo {
 
 impl VerificationQueueInfo {
     /// The total size of the queues.
-    pub fn total_queue_size(&self) -> usize { self.unverified_queue_size + self.verified_queue_size + self.verifying_queue_size }
+    pub fn total_queue_size(&self) -> usize {
+        self.unverified_queue_size + self.verified_queue_size + self.verifying_queue_size
+    }
 
     /// The size of the unverified and verifying queues.
-    pub fn incomplete_queue_size(&self) -> usize { self.unverified_queue_size + self.verifying_queue_size }
+    pub fn incomplete_queue_size(&self) -> usize {
+        self.unverified_queue_size + self.verifying_queue_size
+    }
 
     /// Indicates that queue is full
     pub fn is_full(&self) -> bool {
-        self.unverified_queue_size + self.verified_queue_size + self.verifying_queue_size > self.max_queue_size ||
-            self.mem_used > self.max_mem_use
+        self.unverified_queue_size + self.verified_queue_size + self.verifying_queue_size > self.max_queue_size
+            || self.mem_used > self.max_mem_use
     }
 
     /// Indicates that queue is empty
@@ -49,4 +53,3 @@ impl VerificationQueueInfo {
         self.unverified_queue_size + self.verified_queue_size + self.verifying_queue_size == 0
     }
 }
-

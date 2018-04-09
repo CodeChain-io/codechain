@@ -20,13 +20,13 @@ use super::super::uint::Uint;
 #[derive(Debug, PartialEq, Deserialize)]
 pub struct Params {
     /// Account start nonce, defaults to 0.
-    #[serde(rename="accountStartNonce")]
+    #[serde(rename = "accountStartNonce")]
     pub account_start_nonce: Option<Uint>,
     /// Network id.
-    #[serde(rename="networkID")]
+    #[serde(rename = "networkID")]
     pub network_id: Uint,
     /// Minimum transaction cost.
-    #[serde(rename="minTransactionCost")]
+    #[serde(rename = "minTransactionCost")]
     pub min_transaction_cost: Uint,
 }
 
@@ -35,8 +35,8 @@ mod tests {
     use ctypes::U256;
     use serde_json;
 
-    use super::Params;
     use super::super::super::uint::Uint;
+    use super::Params;
 
     #[test]
     fn params_deserialization() {

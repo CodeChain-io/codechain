@@ -20,10 +20,10 @@ use std::sync::Arc;
 use cio::{IoError, IoService};
 use ctypes::Secret;
 
-use super::{Api, DiscoveryApi, Extension, SocketAddr};
 use super::client::Client;
 use super::connection;
 use super::handshake;
+use super::{Api, DiscoveryApi, Extension, SocketAddr};
 
 pub struct Service {
     handshake_service: IoService<handshake::HandlerMessage>,
@@ -32,9 +32,14 @@ pub struct Service {
 }
 
 impl Service {
-    pub fn start(address: SocketAddr, bootstrap_addresses: Vec<SocketAddr>, secret_key: Secret, discovery: Arc<DiscoveryApi>) -> Result<Self, IoError> {
+    pub fn start(
+        address: SocketAddr,
+        bootstrap_addresses: Vec<SocketAddr>,
+        secret_key: Secret,
+        discovery: Arc<DiscoveryApi>,
+    ) -> Result<Self, IoError> {
         let extension_service = IoService::start()?;
-        let extension_channel =  extension_service.channel();
+        let extension_channel = extension_service.channel();
 
         let client = Client::new();
         let connection_handler = Arc::new(connection::Handler::new(address.clone(), Arc::clone(&client)));

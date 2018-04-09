@@ -14,9 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::fmt;
-use secp256k1::Error as SecpError;
 use bech32::Error as Bech32Error;
+use secp256k1::Error as SecpError;
+use std::fmt;
 
 #[derive(Debug, PartialEq)]
 pub enum Error {
@@ -74,7 +74,7 @@ impl Into<String> for Error {
 impl From<SecpError> for Error {
     fn from(e: SecpError) -> Self {
         match e {
-            SecpError::InvalidPublicKey	=> Error::InvalidPublic,
+            SecpError::InvalidPublicKey => Error::InvalidPublic,
             SecpError::InvalidSecretKey => Error::InvalidSecret,
             SecpError::InvalidMessage => Error::InvalidMessage,
             _ => Error::InvalidSignature,

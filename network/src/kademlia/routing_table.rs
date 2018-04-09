@@ -1,8 +1,8 @@
+use super::super::SocketAddr;
+use super::NodeId;
 use kademlia::contact::Contact;
 use std::cmp;
 use std::collections::{BTreeSet, HashMap, VecDeque};
-use super::NodeId;
-use super::super::SocketAddr;
 
 pub struct RoutingTable {
     local_id: NodeId,
@@ -28,7 +28,7 @@ impl RoutingTable {
         let index = contact.log2_distance(&self.local_id);
         // FIXME: Decide the maximum distance to contact.
         if index == 0 {
-            return None;
+            return None
         }
         let bucket = self.add_bucket(index);
         bucket.touch_contact(contact)
@@ -37,7 +37,7 @@ impl RoutingTable {
     pub fn remove_contact(&mut self, contact: &Contact) -> Option<&Contact> {
         let index = contact.log2_distance(&self.local_id);
         if index == 0 {
-            return None;
+            return None
         }
 
         let bucket = self.buckets.get_mut(&index);
@@ -50,11 +50,12 @@ impl RoutingTable {
 
     pub fn get_closest_contacts(&self, target: &NodeId, result_limit: u8) -> Vec<Contact> {
         if target == &self.local_id {
-            return vec![];
+            return vec![]
         }
 
         let contacts = self.get_contacts_in_distance_order(target);
-        contacts.into_iter()
+        contacts
+            .into_iter()
             .take(cmp::min(result_limit, self.bucket_size) as usize)
             .map(|item| {
                 debug_assert_ne!(target, &item.contact.id());
@@ -71,20 +72,20 @@ impl RoutingTable {
             for i in 0..self.bucket_size {
                 let contact = bucket.contacts.get(i as usize);
                 if contact.is_none() {
-                    break;
+                    break
                 }
 
                 let contact = contact.unwrap();
 
                 if target == &contact.id() {
-                    continue;
+                    continue
                 }
 
                 let item = ContactWithDistance::new(contact, target);
                 if max_distance < item.distance {
                     if (self.bucket_size as usize) <= result.len() {
                         // FIXME: Remove the last item to guarantee the maximum size of return value.
-                        continue;
+                        continue
                     }
                     max_distance = item.distance;
                 }
@@ -97,7 +98,7 @@ impl RoutingTable {
     pub fn contains(&self, contact: &Contact) -> bool {
         let index = contact.log2_distance(&self.local_id);
         if index == 0 {
-            return false;
+            return false
         }
 
         let bucket = self.buckets.get(&index);
@@ -110,7 +111,7 @@ impl RoutingTable {
     pub fn conflicts(&self, contact: &Contact) -> bool {
         let index = contact.log2_distance(&self.local_id);
         if index == 0 {
-            return true;
+            return true
         }
         let bucket = self.buckets.get(&index);
         if let Some(bucket) = bucket {
@@ -187,7 +188,8 @@ impl Bucket {
     }
 
     pub fn conflicts(&self, contact: &Contact) -> bool {
-        self.contacts.iter()
+        self.contacts
+            .iter()
             .find(|old_contact| old_contact.id() == contact.id() && old_contact.addr() != contact.addr())
             .is_some()
     }
@@ -214,66 +216,48 @@ impl ContactWithDistance {
 }
 
 
-
 #[cfg(test)]
 mod tests {
-    use super::RoutingTable;
     use super::super::contact::Contact;
+    use super::RoutingTable;
 
     const IDS: [&str; 18] = [
         "0000000000000000000000000000000000000000000000000000000000000000\
-        0000000000000000000000000000000000000000000000000000000000000000",
-
+         0000000000000000000000000000000000000000000000000000000000000000",
         "0000000000000000000000000000000000000000000000000000000000000000\
-        0000000000000000000000000000000000000000000000000000000000000001",
-
+         0000000000000000000000000000000000000000000000000000000000000001",
         "0000000000000000000000000000000000000000000000000000000000000000\
-        0000000000000000000000000000000000000000000000000000000000000002",
-
+         0000000000000000000000000000000000000000000000000000000000000002",
         "0000000000000000000000000000000000000000000000000000000000000000\
-        0000000000000000000000000000000000000000000000000000000000000003",
-
+         0000000000000000000000000000000000000000000000000000000000000003",
         "0000000000000000000000000000000000000000000000000000000000000000\
-        0000000000000000000000000000000000000000000000000000000000000004",
-
+         0000000000000000000000000000000000000000000000000000000000000004",
         "0000000000000000000000000000000000000000000000000000000000000000\
-        0000000000000000000000000000000000000000000000000000000000000005",
-
+         0000000000000000000000000000000000000000000000000000000000000005",
         "0000000000000000000000000000000000000000000000000000000000000000\
-        0000000000000000000000000000000000000000000000000000000000000006",
-
+         0000000000000000000000000000000000000000000000000000000000000006",
         "0000000000000000000000000000000000000000000000000000000000000000\
-        0000000000000000000000000000000000000000000000000000000000000007",
-
+         0000000000000000000000000000000000000000000000000000000000000007",
         "0000000000000000000000000000000000000000000000000000000000000000\
-        0000000000000000000000000000000000000000000000000000000000000008",
-
+         0000000000000000000000000000000000000000000000000000000000000008",
         "0000000000000000000000000000000000000000000000000000000000000000\
-        0000000000000000000000000000000000000000000000000000000000000009",
-
+         0000000000000000000000000000000000000000000000000000000000000009",
         "0000000000000000000000000000000000000000000000000000000000000000\
-        000000000000000000000000000000000000000000000000000000000000000a",
-
+         000000000000000000000000000000000000000000000000000000000000000a",
         "0000000000000000000000000000000000000000000000000000000000000000\
-        000000000000000000000000000000000000000000000000000000000000000b",
-
+         000000000000000000000000000000000000000000000000000000000000000b",
         "0000000000000000000000000000000000000000000000000000000000000000\
-        000000000000000000000000000000000000000000000000000000000000000c",
-
+         000000000000000000000000000000000000000000000000000000000000000c",
         "0000000000000000000000000000000000000000000000000000000000000000\
-        000000000000000000000000000000000000000000000000000000000000000d",
-
+         000000000000000000000000000000000000000000000000000000000000000d",
         "0000000000000000000000000000000000000000000000000000000000000000\
-        000000000000000000000000000000000000000000000000000000000000000e",
-
+         000000000000000000000000000000000000000000000000000000000000000e",
         "0000000000000000000000000000000000000000000000000000000000000000\
-        000000000000000000000000000000000000000000000000000000000000000f",
-
+         000000000000000000000000000000000000000000000000000000000000000f",
         "0000000000000000000000000000000000000000000000000000000000000000\
-        0000000000000000000000000000000000000000000000000000000000000010",
-
+         0000000000000000000000000000000000000000000000000000000000000010",
         "0000000000000000000000000000000000000000000000000000000000000000\
-        0000000000000000000000000000000000000000000000000000000000000011",
+         0000000000000000000000000000000000000000000000000000000000000011",
     ];
 
     fn get_contact(distance_from_zero: usize) -> Contact {
@@ -290,7 +274,7 @@ mod tests {
 
         for i in 0..IDS.len() {
             if i == local_index {
-                continue;
+                continue
             }
             routing_table.touch_contact(get_contact(i));
         }

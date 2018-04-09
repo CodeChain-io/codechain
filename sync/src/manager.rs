@@ -40,7 +40,9 @@ pub struct DownloadManager {
 }
 
 impl DownloadManager {
-    pub fn best_hash(&self) -> H256 { self.best_hash }
+    pub fn best_hash(&self) -> H256 {
+        self.best_hash
+    }
 }
 
 impl DownloadManager {
@@ -66,7 +68,7 @@ impl DownloadManager {
     pub fn import_headers(&mut self, headers: &[Header]) {
         // Empty header list is valid case
         if headers.len() == 0 {
-            return;
+            return
         }
 
         // Validity check
@@ -75,7 +77,7 @@ impl DownloadManager {
             Some(downloading) if downloading == first_header_hash => {}
             _ => {
                 info!("DownloadManager: Unexpected headers");
-                return;
+                return
             }
         }
 
@@ -85,7 +87,7 @@ impl DownloadManager {
             let child = &neighbors[1];
             if child.number() != parent.number() + 1 || *child.parent_hash() != parent.hash() {
                 info!("DownloadManager: Headers are not continuous");
-                return;
+                return
             }
         }
 
@@ -103,14 +105,15 @@ impl DownloadManager {
         // Validity check
         for body in bodies {
             let tx_root = ordered_trie_root(body.iter().map(|tx| tx.rlp_bytes()));
-            let is_valid = self.downloading_bodies.iter()
+            let is_valid = self.downloading_bodies
+                .iter()
                 .map(|hash| self.headers.get(hash).expect("DownloadManager: downloading body's header should be known"))
                 .any(|header| *header.transactions_root() == tx_root);
             if is_valid {
                 valid_bodies.insert(tx_root, body);
             } else {
                 info!("DownloadManager: Unexpected body detected");
-                return;
+                return
             }
         }
 
@@ -134,7 +137,7 @@ impl DownloadManager {
         let mut parent_hash = self.best_hash;
         while let Some(child_hash) = child_map.get(&parent_hash) {
             if hashes.len() >= MAX_BODY_REQUEST_LENGTH {
-                break;
+                break
             }
             if !self.bodies.contains_key(child_hash) && !self.downloading_bodies.contains(child_hash) {
                 hashes.push(*child_hash);
@@ -143,7 +146,7 @@ impl DownloadManager {
         }
         if hashes.len() > 0 {
             self.downloading_bodies.extend(&hashes);
-            return Some(Message::RequestBodies(hashes));
+            return Some(Message::RequestBodies(hashes))
         }
 
         // Search for needed headers
@@ -157,7 +160,7 @@ impl DownloadManager {
                     return Some(Message::RequestHeaders {
                         start_hash: target,
                         max_count: MAX_HEADER_REQUEST_LENGTH as u64,
-                    });
+                    })
                 }
             }
         }

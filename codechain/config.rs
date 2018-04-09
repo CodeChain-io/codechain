@@ -14,13 +14,13 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::{fmt, fs};
 use std::str::FromStr;
+use std::{fmt, fs};
 
 use ccore::Spec;
 use clap;
-use cnetwork::{NetworkConfig, SocketAddr};
 use cnetwork::kademlia::Config as KademliaConfig;
+use cnetwork::{NetworkConfig, SocketAddr};
 use ctypes::Secret;
 use rpc::HttpConfiguration as RpcHttpConfig;
 
@@ -72,7 +72,8 @@ impl ChainType {
             ChainType::SoloAuthority => Ok(Spec::new_solo_authority()),
             ChainType::Tendermint => Ok(Spec::new_test_tendermint()),
             ChainType::Custom(ref filename) => {
-                let file = fs::File::open(filename).map_err(|e| format!("Could not load specification file at {}: {}", filename, e))?;
+                let file = fs::File::open(filename)
+                    .map_err(|e| format!("Could not load specification file at {}: {}", filename, e))?;
                 Spec::load(file)
             }
         }
@@ -127,7 +128,8 @@ pub fn parse_network_config(matches: &clap::ArgMatches) -> Result<Option<Network
         None => 3485,
     };
 
-    let secret_key = matches.value_of("secret-key")
+    let secret_key = matches
+        .value_of("secret-key")
         .map(|secret| Secret::from_str(secret))
         .unwrap_or_else(|| Ok(Secret::random()))
         .map_err(|_| "Invalid secret key")?;
@@ -158,7 +160,7 @@ pub fn parse_kademlia_config(matches: &clap::ArgMatches) -> Result<KademliaConfi
         None => None,
     };
 
-    Ok(KademliaConfig::new(local_id, alpha,k, refresh))
+    Ok(KademliaConfig::new(local_id, alpha, k, refresh))
 }
 
 pub fn parse_rpc_config(matches: &clap::ArgMatches) -> Result<Option<RpcHttpConfig>, String> {

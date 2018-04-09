@@ -14,11 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use super::{verification, Verifier};
 use super::super::client::BlockInfo;
 use super::super::consensus::CodeChainEngine;
 use super::super::error::Error;
 use super::super::header::Header;
+use super::{verification, Verifier};
 
 /// A no-op verifier -- this will verify everything it's given immediately.
 pub struct NoopVerifier;
@@ -29,7 +29,7 @@ impl<C: BlockInfo> Verifier<C> for NoopVerifier {
         _: &Header,
         _t: &Header,
         _: &CodeChainEngine,
-        _: Option<verification::FullFamilyParams<C>>
+        _: Option<verification::FullFamilyParams<C>>,
     ) -> Result<(), Error> {
         Ok(())
     }
@@ -42,4 +42,3 @@ impl<C: BlockInfo> Verifier<C> for NoopVerifier {
         Ok(())
     }
 }
-

@@ -17,9 +17,9 @@
 pub mod kind;
 
 use std::cmp;
-use std::collections::{VecDeque, HashSet, HashMap};
-use std::sync::{Condvar as SCondvar, Mutex as SMutex, Arc};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering as AtomicOrdering};
+use std::sync::{Arc, Condvar as SCondvar, Mutex as SMutex};
 use std::thread::{self, JoinHandle};
 
 use cio::IoChannel;
@@ -28,11 +28,11 @@ use heapsize::HeapSizeOf;
 use num_cpus;
 use parking_lot::{Mutex, RwLock};
 
-use super::super::consensus::CodeChainEngine;
-use super::super::error::{Error, BlockError, ImportError};
-use super::super::service::ClientIoMessage;
-use super::super::types::{VerificationQueueInfo as QueueInfo, BlockStatus as Status};
 use self::kind::{BlockLike, Kind};
+use super::super::consensus::CodeChainEngine;
+use super::super::error::{BlockError, Error, ImportError};
+use super::super::service::ClientIoMessage;
+use super::super::types::{BlockStatus as Status, VerificationQueueInfo as QueueInfo};
 
 const MIN_MEM_LIMIT: usize = 16384;
 const MIN_QUEUE_LIMIT: usize = 512;
@@ -87,7 +87,7 @@ impl QueueSignal {
     fn set_sync(&self) {
         // Do not signal when we are about to close
         if self.deleting.load(AtomicOrdering::Relaxed) {
-            return;
+            return
         }
 
         if self.signalled.compare_and_swap(false, true, AtomicOrdering::Relaxed) == false {
@@ -101,7 +101,7 @@ impl QueueSignal {
     fn set_async(&self) {
         // Do not signal when we are about to close
         if self.deleting.load(AtomicOrdering::Relaxed) {
-            return;
+            return
         }
 
         if self.signalled.compare_and_swap(false, true, AtomicOrdering::Relaxed) == false {
@@ -118,7 +118,12 @@ impl QueueSignal {
 }
 
 impl<K: Kind> VerificationQueue<K> {
-    pub fn new(config: Config, engine: Arc<CodeChainEngine>, message_channel: IoChannel<ClientIoMessage>, check_seal: bool) -> Self {
+    pub fn new(
+        config: Config,
+        engine: Arc<CodeChainEngine>,
+        message_channel: IoChannel<ClientIoMessage>,
+        check_seal: bool,
+    ) -> Self {
         let verification = Arc::new(Verification {
             unverified: Mutex::new(VecDeque::new()),
             verifying: Mutex::new(VecDeque::new()),
@@ -154,16 +159,7 @@ impl<K: Kind> VerificationQueue<K> {
 
             let handle = thread::Builder::new()
                 .name(format!("Verifier #{}", i))
-                .spawn(move || {
-                    VerificationQueue::verify(
-                        verification,
-                        engine,
-                        ready_signal,
-                        empty,
-                        more_to_verify,
-                        i,
-                    )
-                })
+                .spawn(move || VerificationQueue::verify(verification, engine, ready_signal, empty, more_to_verify, i))
                 .expect("Failed to create verifier thread.");
             verifier_handles.push(handle);
         }
@@ -217,7 +213,10 @@ impl<K: Kind> VerificationQueue<K> {
                 };
 
                 verification.sizes.unverified.fetch_sub(item.heap_size_of_children(), AtomicOrdering::SeqCst);
-                verifying.push_back(Verifying { hash: item.hash(), output: None });
+                verifying.push_back(Verifying {
+                    hash: item.hash(),
+                    output: None,
+                });
                 item
             };
 
@@ -230,9 +229,12 @@ impl<K: Kind> VerificationQueue<K> {
                         if e.hash == hash {
                             idx = Some(i);
 
-                            verification.sizes.verifying.fetch_add(verified.heap_size_of_children(), AtomicOrdering::SeqCst);
+                            verification
+                                .sizes
+                                .verifying
+                                .fetch_add(verified.heap_size_of_children(), AtomicOrdering::SeqCst);
                             e.output = Some(verified);
-                            break;
+                            break
                         }
                     }
 
@@ -240,12 +242,17 @@ impl<K: Kind> VerificationQueue<K> {
                         // we're next!
                         let mut verified = verification.verified.lock();
                         let mut bad = verification.bad.lock();
-                        VerificationQueue::drain_verifying(&mut verifying, &mut verified, &mut bad, &verification.sizes);
+                        VerificationQueue::drain_verifying(
+                            &mut verifying,
+                            &mut verified,
+                            &mut bad,
+                            &verification.sizes,
+                        );
                         true
                     } else {
                         false
                     }
-                },
+                }
                 Err(_) => {
                     let mut verifying = verification.verifying.lock();
                     let mut verified = verification.verified.lock();
@@ -255,7 +262,12 @@ impl<K: Kind> VerificationQueue<K> {
                     verifying.retain(|e| e.hash != hash);
 
                     if verifying.front().map_or(false, |x| x.output.is_some()) {
-                        VerificationQueue::drain_verifying(&mut verifying, &mut verified, &mut bad, &verification.sizes);
+                        VerificationQueue::drain_verifying(
+                            &mut verifying,
+                            &mut verified,
+                            &mut bad,
+                            &verification.sizes,
+                        );
                         true
                     } else {
                         false
@@ -298,10 +310,10 @@ impl<K: Kind> VerificationQueue<K> {
     /// Check if the item is currently in the queue
     pub fn status(&self, hash: &H256) -> Status {
         if self.processing.read().contains_key(hash) {
-            return Status::Queued;
+            return Status::Queued
         }
         if self.verification.bad.lock().contains(hash) {
-            return Status::Bad;
+            return Status::Bad
         }
         Status::Unknown
     }
@@ -311,17 +323,17 @@ impl<K: Kind> VerificationQueue<K> {
         let h = input.hash();
         {
             if self.processing.read().contains_key(&h) {
-                return Err(ImportError::AlreadyQueued.into());
+                return Err(ImportError::AlreadyQueued.into())
             }
 
             let mut bad = self.verification.bad.lock();
             if bad.contains(&h) {
-                return Err(ImportError::KnownBad.into());
+                return Err(ImportError::KnownBad.into())
             }
 
             if bad.contains(&input.parent_hash()) {
                 bad.insert(h.clone());
-                return Err(ImportError::KnownBad.into());
+                return Err(ImportError::KnownBad.into())
             }
         }
         match K::create(input, &*self.engine) {
@@ -337,11 +349,11 @@ impl<K: Kind> VerificationQueue<K> {
                 self.verification.unverified.lock().push_back(item);
                 self.more_to_verify.notify_all();
                 Ok(h)
-            },
+            }
             Err(err) => {
                 match err {
                     // Don't mark future blocks as bad.
-                    Error::Block(BlockError::TemporarilyInvalid(_)) => {},
+                    Error::Block(BlockError::TemporarilyInvalid(_)) => {}
                     _ => {
                         self.verification.bad.lock().insert(h.clone());
                     }
@@ -371,7 +383,7 @@ impl<K: Kind> VerificationQueue<K> {
     /// Returns true if the queue becomes empty.
     pub fn mark_as_good(&self, hashes: &[H256]) -> bool {
         if hashes.is_empty() {
-            return self.processing.read().is_empty();
+            return self.processing.read().is_empty()
         }
         let mut processing = self.processing.write();
         for hash in hashes {
@@ -387,7 +399,7 @@ impl<K: Kind> VerificationQueue<K> {
     /// until complete.
     pub fn mark_as_bad(&self, hashes: &[H256]) {
         if hashes.is_empty() {
-            return;
+            return
         }
         let mut verified_lock = self.verification.verified.lock();
         let verified = &mut *verified_lock;
@@ -448,9 +460,7 @@ impl<K: Kind> VerificationQueue<K> {
             verified_queue_size: verified_len,
             max_queue_size: self.max_queue_size,
             max_mem_use: self.max_mem_use,
-            mem_used: unverified_bytes
-                + verifying_bytes
-                + verified_bytes
+            mem_used: unverified_bytes + verifying_bytes + verified_bytes,
         }
     }
 
@@ -489,10 +499,10 @@ mod tests {
     use cio::IoChannel;
     use tests::helpers::*;
 
-    use super::{BlockQueue, Config};
-    use super::kind::blocks::Unverified;
     use super::super::super::error::{Error, ImportError};
     use super::super::super::spec::Spec;
+    use super::kind::blocks::Unverified;
+    use super::{BlockQueue, Config};
 
     // create a test block queue.
     // auto_scaling enables verifier adjustment.
@@ -531,13 +541,15 @@ mod tests {
 
         let duplicate_import = queue.import(Unverified::new(get_good_dummy_block()));
         match duplicate_import {
-            Err(e) => {
-                match e {
-                    Error::Import(ImportError::AlreadyQueued) => {},
-                    _ => { panic!("must return AlreadyQueued error"); }
+            Err(e) => match e {
+                Error::Import(ImportError::AlreadyQueued) => {}
+                _ => {
+                    panic!("must return AlreadyQueued error");
                 }
+            },
+            Ok(_) => {
+                panic!("must produce error");
             }
-            Ok(_) => { panic!("must produce error"); }
         }
     }
 }

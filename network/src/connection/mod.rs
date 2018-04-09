@@ -19,10 +19,10 @@ mod manager;
 mod message;
 mod unprocessed_connection;
 
+pub use self::manager::{AddressConverter, Handler, HandlerMessage};
 use self::message::ApplicationMessage;
 use self::message::HandshakeMessage;
 use self::message::Message;
-use self::message::SignedMessage;
-use self::message::NegotiationMessage;
 use self::message::NegotiationBody;
-pub use self::manager::{AddressConverter, HandlerMessage, Handler};
+use self::message::NegotiationMessage;
+use self::message::SignedMessage;

@@ -36,8 +36,8 @@ pub fn exchange(public: &Public, private: &Private) -> result::Result<Secret, Er
 
 #[cfg(test)]
 mod tests {
-    use super::exchange;
     use super::super::{Generator, KeyPair, Random};
+    use super::exchange;
 
     #[test]
     fn test_exchange_makes_same_private_key() {

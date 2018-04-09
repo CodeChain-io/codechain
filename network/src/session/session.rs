@@ -17,7 +17,7 @@
 use std::error;
 use std::fmt;
 
-use ccrypto::aes::{SymmetricCipherError, self};
+use ccrypto::aes::{self, SymmetricCipherError};
 use ccrypto::blake256_with_key;
 use ctypes::Secret;
 use ctypes::hash::{H128, H256};
@@ -128,8 +128,7 @@ impl Session {
     }
 
     pub fn sign(&self, data: &[u8]) -> Option<H256> {
-        self.initialization_vector()
-            .map(|iv| blake256_with_key(data, &iv))
+        self.initialization_vector().map(|iv| blake256_with_key(data, &iv))
     }
 
     pub fn initialization_vector(&self) -> Option<H128> {

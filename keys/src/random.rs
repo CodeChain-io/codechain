@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use rand::os::OsRng;
 use super::{Generator, KeyPair, SECP256K1};
+use rand::os::OsRng;
 
 pub struct Random;
 
@@ -35,10 +35,8 @@ impl Generator for OsRng {
     type Error = ::Void;
 
     fn generate(&mut self) -> Result<KeyPair, Self::Error> {
-        let (sec, publ) = SECP256K1.generate_keypair(self)
-            .expect("context always created with full capabilities; qed");
+        let (sec, publ) = SECP256K1.generate_keypair(self).expect("context always created with full capabilities; qed");
 
         Ok(KeyPair::from_keypair(sec, publ))
     }
 }
-

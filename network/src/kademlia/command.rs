@@ -14,11 +14,14 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use super::message::Message;
 use super::super::SocketAddr;
+use super::message::Message;
 
 pub enum Command {
     Verify,
     Refresh,
-    Send { message: Message, target: SocketAddr },
+    Send {
+        message: Message,
+        target: SocketAddr,
+    },
 }

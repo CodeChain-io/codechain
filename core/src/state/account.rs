@@ -19,7 +19,7 @@
 use std::fmt;
 
 use cbytes::Bytes;
-use ctypes::{U256, Public};
+use ctypes::{Public, U256};
 
 /// Single account in the system.
 #[derive(Clone, RlpEncodable, RlpDecodable)]
@@ -35,8 +35,8 @@ pub struct Account {
 impl Account {
     pub fn new(balance: U256, nonce: U256) -> Account {
         Account {
-            balance: balance,
-            nonce: nonce,
+            balance,
+            nonce,
             regular_key: None,
         }
     }
@@ -52,18 +52,23 @@ impl Account {
     }
 
     /// return the balance associated with this account.
-    pub fn balance(&self) -> &U256 { &self.balance }
+    pub fn balance(&self) -> &U256 {
+        &self.balance
+    }
 
     /// return the nonce associated with this account.
-    pub fn nonce(&self) -> &U256 { &self.nonce }
+    pub fn nonce(&self) -> &U256 {
+        &self.nonce
+    }
 
     /// return the regular key associated with this account.
-    pub fn regular_key(&self) -> Option<Public> { self.regular_key }
+    pub fn regular_key(&self) -> Option<Public> {
+        self.regular_key
+    }
 
     /// Check if account has zero nonce, balance.
     pub fn is_null(&self) -> bool {
-        self.balance.is_zero() &&
-        self.nonce.is_zero()
+        self.balance.is_zero() && self.nonce.is_zero()
     }
 
     /// Increment the nonce of the account by one.
@@ -106,17 +111,14 @@ impl Account {
 
 impl fmt::Debug for Account {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("Account")
-            .field("balance", &self.balance)
-            .field("nonce", &self.nonce)
-            .finish()
+        f.debug_struct("Account").field("balance", &self.balance).field("nonce", &self.nonce).finish()
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use rustc_hex::ToHex;
     use super::*;
+    use rustc_hex::ToHex;
 
     #[test]
     fn rlpio() {

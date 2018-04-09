@@ -23,7 +23,7 @@ use super::client::BlockInfo;
 use super::error::Error;
 use super::header::Header;
 use super::spec::CommonParams;
-use super::transaction::{UnverifiedTransaction, SignedTransaction, TransactionError};
+use super::transaction::{SignedTransaction, TransactionError, UnverifiedTransaction};
 
 pub struct CodeChainMachine {
     params: CommonParams,
@@ -32,7 +32,7 @@ pub struct CodeChainMachine {
 impl CodeChainMachine {
     pub fn new(params: CommonParams) -> Self {
         CodeChainMachine {
-            params
+            params,
         }
     }
 
@@ -46,7 +46,7 @@ impl CodeChainMachine {
         if t.fee < self.params.min_transaction_cost {
             return Err(TransactionError::InsufficientFee {
                 minimal: self.params.min_transaction_cost,
-                got: t.fee
+                got: t.fee,
             }.into())
         }
         t.verify_basic(self.params().network_id, false)?;
@@ -55,12 +55,21 @@ impl CodeChainMachine {
     }
 
     /// Verify a particular transaction is valid, regardless of order.
-    pub fn verify_transaction_unordered(&self, t: UnverifiedTransaction, _header: &Header) -> Result<SignedTransaction, Error> {
+    pub fn verify_transaction_unordered(
+        &self,
+        t: UnverifiedTransaction,
+        _header: &Header,
+    ) -> Result<SignedTransaction, Error> {
         Ok(SignedTransaction::new(t)?)
     }
 
     /// Does verification of the transaction against the parent state.
-    pub fn verify_transaction<C: BlockInfo>(&self, _t: &SignedTransaction, header: &Header, _client: &C) -> Result<(), Error> {
+    pub fn verify_transaction<C: BlockInfo>(
+        &self,
+        _t: &SignedTransaction,
+        header: &Header,
+        _client: &C,
+    ) -> Result<(), Error> {
         // FIXME: Filter transactions.
         Ok(())
     }
@@ -86,4 +95,3 @@ impl ::machine::Machine for CodeChainMachine {
         live.state_mut().add_balance(address, amount).map_err(Into::into)
     }
 }
-

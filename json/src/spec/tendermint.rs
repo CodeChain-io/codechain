@@ -23,19 +23,19 @@ pub struct TendermintParams {
     /// Valid validators.
     pub validators: Vec<Address>,
     /// Propose step timeout in milliseconds.
-    #[serde(rename="timeoutPropose")]
+    #[serde(rename = "timeoutPropose")]
     pub timeout_propose: Option<Uint>,
     /// Prevote step timeout in milliseconds.
-    #[serde(rename="timeoutPrevote")]
+    #[serde(rename = "timeoutPrevote")]
     pub timeout_prevote: Option<Uint>,
     /// Precommit step timeout in milliseconds.
-    #[serde(rename="timeoutPrecommit")]
+    #[serde(rename = "timeoutPrecommit")]
     pub timeout_precommit: Option<Uint>,
     /// Commit step timeout in milliseconds.
-    #[serde(rename="timeoutCommit")]
+    #[serde(rename = "timeoutCommit")]
     pub timeout_commit: Option<Uint>,
     /// Reward per block.
-    #[serde(rename="blockReward")]
+    #[serde(rename = "blockReward")]
     pub block_reward: Option<Uint>,
 }
 
@@ -47,11 +47,11 @@ pub struct Tendermint {
 
 #[cfg(test)]
 mod tests {
-    use serde_json;
     use ctypes::H160;
+    use serde_json;
 
-    use super::Tendermint;
     use super::super::super::hash::Address;
+    use super::Tendermint;
 
     #[test]
     fn tendermint_deserialization() {

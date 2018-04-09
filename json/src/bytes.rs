@@ -16,12 +16,12 @@
 
 //! Lenient bytes json deserialization for test json files.
 
-use std::fmt;
-use std::str::FromStr;
-use std::ops::Deref;
 use rustc_hex::FromHex;
-use serde::{Deserialize, Deserializer};
 use serde::de::{Error, Visitor};
+use serde::{Deserialize, Deserializer};
+use std::fmt;
+use std::ops::Deref;
+use std::str::FromStr;
 
 /// Lenient bytes json deserialization for test json files.
 #[derive(Default, Debug, PartialEq, Eq, Clone, PartialOrd, Ord)]
@@ -58,7 +58,7 @@ impl FromStr for Bytes {
             _ if value.starts_with("0x") && value.len() % 2 == 1 => {
                 let v = "0".to_owned() + &value[2..];
                 FromHex::from_hex(v.as_str()).unwrap_or(vec![])
-            },
+            }
             _ if value.starts_with("0x") => FromHex::from_hex(&value[2..]).unwrap_or(vec![]),
             _ => FromHex::from_hex(value).unwrap_or(vec![]),
         };
@@ -69,7 +69,8 @@ impl FromStr for Bytes {
 
 impl<'a> Deserialize<'a> for Bytes {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-        where D: Deserializer<'a> {
+    where
+        D: Deserializer<'a>, {
         deserializer.deserialize_any(BytesVisitor)
     }
 }
@@ -83,31 +84,32 @@ impl<'a> Visitor<'a> for BytesVisitor {
         write!(formatter, "a hex encoded string of bytes")
     }
 
-    fn visit_str<E>(self, value: &str) -> Result<Self::Value, E> where E: Error {
+    fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+    where
+        E: Error, {
         Bytes::from_str(value).map_err(Error::custom)
     }
 
-    fn visit_string<E>(self, value: String) -> Result<Self::Value, E> where E: Error {
+    fn visit_string<E>(self, value: String) -> Result<Self::Value, E>
+    where
+        E: Error, {
         self.visit_str(value.as_ref())
     }
 }
 
 #[cfg(test)]
 mod test {
-    use serde_json;
     use bytes::Bytes;
+    use serde_json;
 
     #[test]
     fn bytes_deserialization() {
         let s = r#"["", "0x", "0x12", "1234", "0x001"]"#;
         let deserialized: Vec<Bytes> = serde_json::from_str(s).unwrap();
-        assert_eq!(deserialized, vec![
-            Bytes(vec![]),
-            Bytes(vec![]),
-            Bytes(vec![0x12]),
-            Bytes(vec![0x12, 0x34]),
-            Bytes(vec![0, 1])
-        ]);
+        assert_eq!(
+            deserialized,
+            vec![Bytes(vec![]), Bytes(vec![]), Bytes(vec![0x12]), Bytes(vec![0x12, 0x34]), Bytes(vec![0, 1])]
+        );
     }
 
     #[test]

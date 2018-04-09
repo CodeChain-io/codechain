@@ -19,18 +19,18 @@ use super::{SoloAuthority, Tendermint};
 /// Engine deserialization.
 #[derive(Debug, PartialEq, Deserialize)]
 pub enum Engine {
-    #[serde(rename="solo")]
+    #[serde(rename = "solo")]
     Solo,
-    #[serde(rename="soloAuthority")]
+    #[serde(rename = "soloAuthority")]
     SoloAuthority(SoloAuthority),
-    #[serde(rename="tendermint")]
-    Tendermint(Tendermint)
+    #[serde(rename = "tendermint")]
+    Tendermint(Tendermint),
 }
 
 #[cfg(test)]
 mod tests {
-    use serde_json;
     use super::Engine;
+    use serde_json;
 
     #[test]
     fn engine_deserialization() {
@@ -40,7 +40,7 @@ mod tests {
 
         let deserialized: Engine = serde_json::from_str(s).unwrap();
         match deserialized {
-            Engine::Solo => {},	// solo is unit tested in its own file.
+            Engine::Solo => {} // solo is unit tested in its own file.
             _ => panic!(),
         };
 
@@ -54,7 +54,7 @@ mod tests {
 		}"#;
         let deserialized: Engine = serde_json::from_str(s).unwrap();
         match deserialized {
-            Engine::SoloAuthority(_) => {}, // solo authority is unit tested in its own file.
+            Engine::SoloAuthority(_) => {} // solo authority is unit tested in its own file.
             _ => panic!(),
         };
 
@@ -67,7 +67,7 @@ mod tests {
 		}"#;
         let deserialized: Engine = serde_json::from_str(s).unwrap();
         match deserialized {
-            Engine::Tendermint(_) => {}, // Tendermint is unit tested in its own file.
+            Engine::Tendermint(_) => {} // Tendermint is unit tested in its own file.
             _ => panic!(),
         };
     }

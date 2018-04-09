@@ -14,9 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::fmt::{Display, Formatter, Error as FmtError};
-use util_error::UtilError;
 use kvdb;
+use std::fmt::{Display, Error as FmtError, Formatter};
+use util_error::UtilError;
 
 /// Client configuration errors.
 #[derive(Debug)]
@@ -33,7 +33,10 @@ impl From<UtilError> for Error {
     }
 }
 
-impl<E> From<Box<E>> for Error where Error: From<E> {
+impl<E> From<Box<E>> for Error
+where
+    Error: From<E>,
+{
     fn from(err: Box<E>) -> Self {
         Error::from(*err)
     }

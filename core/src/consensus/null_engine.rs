@@ -17,8 +17,8 @@
 use cjson;
 use ctypes::U256;
 
-use super::ConsensusEngine;
 use super::super::machine::{Header, LiveBlock, Machine};
+use super::ConsensusEngine;
 
 /// Params for a null engine.
 #[derive(Clone, Default)]
@@ -62,12 +62,16 @@ impl<M: Machine> ConsensusEngine<M> for NullEngine<M> {
         "NullEngine"
     }
 
-    fn machine(&self) -> &M { &self.machine }
+    fn machine(&self) -> &M {
+        &self.machine
+    }
 
     fn on_close_block(&self, block: &mut M::LiveBlock) -> Result<(), M::Error> {
         let author = *LiveBlock::header(&*block).author();
         let reward = self.params.block_reward;
-        if reward == U256::zero() { return Ok(()) }
+        if reward == U256::zero() {
+            return Ok(())
+        }
 
         self.machine.add_balance(block, &author, &reward)
     }

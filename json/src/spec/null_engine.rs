@@ -20,7 +20,7 @@ use super::super::uint::Uint;
 #[derive(Debug, PartialEq, Deserialize)]
 pub struct NullEngineParams {
     /// Block reward.
-    #[serde(rename="blockReward")]
+    #[serde(rename = "blockReward")]
     pub block_reward: Option<Uint>,
 }
 
@@ -35,8 +35,8 @@ mod tests {
     use ctypes::U256;
     use serde_json;
 
-    use super::*;
     use super::super::super::uint::Uint;
+    use super::*;
 
     #[test]
     fn null_engine_deserialization() {
@@ -50,4 +50,3 @@ mod tests {
         assert_eq!(deserialized.params.block_reward, Some(Uint(U256::from(0x0d))));
     }
 }
-
