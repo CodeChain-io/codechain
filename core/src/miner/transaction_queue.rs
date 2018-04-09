@@ -94,7 +94,7 @@ struct TransactionOrder {
 }
 
 impl TransactionOrder {
-    fn for_transaction(tx: &VerifiedTransaction, base_nonce: U256) -> Self {
+    fn for_transaction(tx: &QueuedTransaction, base_nonce: U256) -> Self {
         Self {
             nonce_height: tx.nonce() - base_nonce,
             fee: tx.transaction.fee,
@@ -145,9 +145,9 @@ impl Ord for TransactionOrder {
     }
 }
 
-/// Verified transaction
+/// Queued transaction
 #[derive(Debug)]
-struct VerifiedTransaction {
+struct QueuedTransaction {
     /// Transaction.
     transaction: SignedTransaction,
     /// Transaction origin.
@@ -158,14 +158,14 @@ struct VerifiedTransaction {
     insertion_id: u64,
 }
 
-impl VerifiedTransaction {
+impl QueuedTransaction {
     fn new(
         transaction: SignedTransaction,
         origin: TransactionOrigin,
         insertion_time: QueuingInstant,
         insertion_id: u64,
     ) -> Self {
-        VerifiedTransaction {
+        QueuedTransaction {
             transaction,
             origin,
             insertion_time,
@@ -239,7 +239,7 @@ impl TransactionSet {
     /// Returns addresses and lowest nonces of transactions removed because of limit.
     fn enforce_limit(
         &mut self,
-        by_hash: &mut HashMap<H256, VerifiedTransaction>,
+        by_hash: &mut HashMap<H256, QueuedTransaction>,
         local: &mut LocalTransactionsList,
     ) -> Option<HashMap<Address, U256>> {
         let mut count = 0;
@@ -339,7 +339,7 @@ pub struct TransactionQueue {
     /// Priority queue for transactions that has been received but are not yet valid to go to block
     future: TransactionSet,
     /// All transactions managed by queue indexed by hash
-    by_hash: HashMap<H256, VerifiedTransaction>,
+    by_hash: HashMap<H256, QueuedTransaction>,
     /// Last nonce of transaction in current (to quickly check next expected transaction)
     last_nonces: HashMap<Address, U256>,
     /// List of local transactions and their statuses.
@@ -579,7 +579,7 @@ impl TransactionQueue {
         // No invalid transactions beyond this point.
         let id = self.next_transaction_id;
         self.next_transaction_id += 1;
-        let vtx = VerifiedTransaction::new(tx, origin, time, id);
+        let vtx = QueuedTransaction::new(tx, origin, time, id);
         let r = self.import_transaction(vtx, client_account.nonce);
         assert_eq!(self.future.by_priority.len() + self.current.by_priority.len(), self.by_hash.len());
         r
@@ -597,7 +597,7 @@ impl TransactionQueue {
     /// Returns `true` when transaction was imported successfully
     fn import_transaction(
         &mut self,
-        tx: VerifiedTransaction,
+        tx: QueuedTransaction,
         state_nonce: U256,
     ) -> Result<ImportResult, TransactionError> {
         if self.by_hash.get(&tx.hash()).is_some() {
@@ -847,10 +847,10 @@ impl TransactionQueue {
     /// Returns `true` if transaction actually got to the queue (`false` if there was already a transaction with higher
     /// fee)
     fn replace_transaction(
-        tx: VerifiedTransaction,
+        tx: QueuedTransaction,
         base_nonce: U256,
         set: &mut TransactionSet,
-        by_hash: &mut HashMap<H256, VerifiedTransaction>,
+        by_hash: &mut HashMap<H256, QueuedTransaction>,
         local: &mut LocalTransactionsList,
     ) -> bool {
         let order = TransactionOrder::for_transaction(&tx, base_nonce);
@@ -876,7 +876,7 @@ impl TransactionQueue {
         old: TransactionOrder,
         order: TransactionOrder,
         set: &mut TransactionSet,
-        by_hash: &mut HashMap<H256, VerifiedTransaction>,
+        by_hash: &mut HashMap<H256, QueuedTransaction>,
         local: &mut LocalTransactionsList,
     ) -> bool {
         // There was already transaction in queue. Let's check which one should stay
