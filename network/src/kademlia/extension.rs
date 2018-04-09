@@ -134,16 +134,12 @@ impl Extension {
                         let mut kademlia = self.kademlia.write();
                         kademlia.handle_message(message, sender)
                     }
-                    Event::Command {
-                        ref command,
-                    } => self.handle_command(command),
+                    Event::Command(ref command) => self.handle_command(command),
                 }
             };
 
             if let Some(command) = command {
-                self.push_event(Event::Command {
-                    command,
-                });
+                self.push_event(Event::Command(command));
             }
         }
     }
@@ -190,9 +186,7 @@ impl DiscoveryApi for Extension {
         let event = {
             let mut kademlia = self.kademlia.write();
             let command = kademlia.find_node_command(address);
-            Event::Command {
-                command,
-            }
+            Event::Command(command)
         };
         self.push_event(event);
     }
@@ -256,9 +250,7 @@ impl NetworkExtension for Extension {
             }
             REFRESH_TOKEN => {
                 let command = Command::Refresh;
-                let event = Event::Command {
-                    command,
-                };
+                let event = Event::Command(command);
                 self.push_event(event);
             }
             _ => unreachable!(),

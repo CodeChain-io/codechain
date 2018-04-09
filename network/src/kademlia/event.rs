@@ -23,7 +23,5 @@ pub enum Event {
         message: Message,
         sender: SocketAddr,
     },
-    Command {
-        command: Command,
-    },
+    Command(Command),
 }
