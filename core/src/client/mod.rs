@@ -196,7 +196,7 @@ pub trait ReopenBlock {
 /// Provides `prepare_open_block` method
 pub trait PrepareOpenBlock {
     /// Returns OpenBlock prepared for closing.
-    fn prepare_open_block(&self, author: Address, gas_range_target: (U256, U256), extra_data: Bytes) -> OpenBlock;
+    fn prepare_open_block(&self, author: Address, extra_data: Bytes) -> OpenBlock;
 }
 
 /// Provides methods used for sealing new state

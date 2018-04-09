@@ -27,7 +27,7 @@ use kvdb::{DBTransaction, KeyValueDB};
 use parking_lot::{Mutex, RwLock};
 use trie::{TrieFactory, TrieSpec};
 
-use super::super::block::{enact, Drain, IsBlock, LockedBlock};
+use super::super::block::{enact, ClosedBlock, Drain, IsBlock, LockedBlock, OpenBlock};
 use super::super::blockchain::{BlockChain, BlockProvider, ImportRoute, TransactionAddress};
 use super::super::consensus::CodeChainEngine;
 use super::super::consensus::epoch::Transition as EpochTransition;
@@ -46,8 +46,9 @@ use super::super::verification::queue::BlockQueue;
 use super::super::verification::{self, PreverifiedBlock, Verifier};
 use super::super::views::BlockView;
 use super::{
-    AccountData, Balance, BlockChain as BlockChainTrait, BlockChainClient, BlockChainInfo, BlockInfo, ChainInfo,
-    ChainNotify, ClientConfig, EngineClient, Error as ClientError, ImportBlock, Nonce, StateOrBlock, TransactionInfo,
+    AccountData, Balance, BlockChain as BlockChainTrait, BlockChainClient, BlockChainInfo, BlockInfo, BlockProducer,
+    ChainInfo, ChainNotify, ClientConfig, EngineClient, Error as ClientError, ImportBlock, Nonce, PrepareOpenBlock,
+    ReopenBlock, StateOrBlock, TransactionInfo,
 };
 
 const MAX_TX_QUEUE_SIZE: usize = 4096;
@@ -663,3 +664,32 @@ impl Balance for Client {
         }
     }
 }
+
+impl ReopenBlock for Client {
+    fn reopen_block(&self, block: ClosedBlock) -> OpenBlock {
+        let engine = &*self.engine;
+        block.reopen(engine)
+    }
+}
+
+impl PrepareOpenBlock for Client {
+    fn prepare_open_block(&self, author: Address, extra_data: Bytes) -> OpenBlock {
+        let engine = &*self.engine;
+        let chain = self.chain.read();
+        let h = chain.best_block_hash();
+        let best_header = &chain.block_header(&h).expect("h is best block hash: so its header must exist: qed");
+
+        let is_epoch_begin = chain.epoch_transition(best_header.number(), h).is_some();
+        OpenBlock::new(
+            engine,
+            self.trie_factory.clone(),
+            self.state_db.read().boxed_clone_canon(&h),
+            best_header,
+            author,
+            extra_data,
+            is_epoch_begin,
+        ).expect("OpenBlock::new only fails if parent state root invalid; state root of best block's header is never invalid; qed")
+    }
+}
+
+impl BlockProducer for Client {}
