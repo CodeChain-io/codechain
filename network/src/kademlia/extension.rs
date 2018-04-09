@@ -27,7 +27,7 @@ use super::super::connection::AddressConverter;
 use super::super::discovery::Api as DiscoveryApi;
 use super::super::extension::NodeId as ExtensionNodeId;
 use super::super::{Api, Extension as NetworkExtension};
-use super::Config;
+use super::config::Config;
 use super::command::Command;
 use super::event::Event;
 use super::kademlia::Kademlia;

@@ -45,7 +45,7 @@ use std::sync::Arc;
 
 use app_dirs::AppInfo;
 use clogger::{setup_log, Config as LogConfig};
-use cnetwork::kademlia::Extension as KademliaExtension;
+use cnetwork::kademlia::KademliaExtension;
 use creactor::EventLoop;
 use csync::BlockSyncExtension;
 use ctrlc::CtrlC;
