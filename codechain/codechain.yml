@@ -45,3 +45,19 @@ args:
     - secret-key:
         long: secret-key
         help: Secret key used by node
+    - kademlia-local-id:
+        long: kademlia-local-id
+        help: Local Id used by Kademlia
+        takes_value: true
+    - kademlia-alpha:
+        long: kademlia-alpha
+        help: Degree of parallelism in Kademlia
+        takes_value: true
+    - kademlia-k:
+        long: kademlia-k
+        help: Bucket size of Kademlia
+        takes_value: true
+    - kademlia-refresh:
+        long: kademlia-refresh
+        help: Refresh timeout of Kademlia (ms)
+        takes_value: true
