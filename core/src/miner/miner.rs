@@ -25,9 +25,9 @@ use super::super::client::{AccountData, BlockChain, MiningBlockChainClient};
 use super::super::consensus::CodeChainEngine;
 use super::super::error::Error;
 use super::super::state::State;
-use super::super::transaction::{SignedTransaction, UnverifiedTransaction, TransactionError};
+use super::super::transaction::{SignedTransaction, TransactionError, UnverifiedTransaction};
 use super::super::types::TransactionId;
-use super::transaction_queue::{AccountDetails, TransactionQueue, TransactionOrigin, TransactionDetailsProvider as TransactionQueueDetailsProvider};
+use super::transaction_queue::{AccountDetails, TransactionDetailsProvider as TransactionQueueDetailsProvider, TransactionOrigin, TransactionQueue};
 use super::{MinerService, MinerStatus, TransactionImportResult};
 
 pub struct Miner {
@@ -49,34 +49,36 @@ impl Miner {
         let insertion_time = client.chain_info().best_block_number;
         let mut inserted = Vec::with_capacity(transactions.len());
 
-        let results = transactions.into_iter()
+        let results = transactions
+            .into_iter()
             .map(|tx| {
                 let hash = tx.hash();
                 if client.transaction_block(TransactionId::Hash(hash)).is_some() {
                     debug!(target: "miner", "Rejected tx {:?}: already in the blockchain", hash);
-                    return Err(Error::Transaction(TransactionError::AlreadyImported));
+                    return Err(Error::Transaction(TransactionError::AlreadyImported))
                 }
-                match self.engine.verify_transaction_basic(&tx, &best_block_header)
+                match self.engine
+                    .verify_transaction_basic(&tx, &best_block_header)
                     .and_then(|_| self.engine.verify_transaction_unordered(tx, &best_block_header))
-                    {
-                        Err(e) => {
-                            debug!(target: "miner", "Rejected tx {:?} with invalid signature: {:?}", hash, e);
-                            Err(e)
-                        },
-                        Ok(transaction) => {
-                            // This check goes here because verify_transaction takes SignedTransaction parameter
-                            self.engine.machine().verify_transaction(&transaction, &best_block_header, client)?;
-
-                            // FIXME: Determine the origin from transaction.sender().
-                            let origin = default_origin;
-                            let details_provider = TransactionDetailsProvider::new(client);
-                            let hash = transaction.hash();
-                            let result = transaction_queue.add(transaction, origin, insertion_time, &details_provider)?;
-
-                            inserted.push(hash);
-                            Ok(result)
-                        },
+                {
+                    Err(e) => {
+                        debug!(target: "miner", "Rejected tx {:?} with invalid signature: {:?}", hash, e);
+                        Err(e)
                     }
+                    Ok(transaction) => {
+                        // This check goes here because verify_transaction takes SignedTransaction parameter
+                        self.engine.machine().verify_transaction(&transaction, &best_block_header, client)?;
+
+                        // FIXME: Determine the origin from transaction.sender().
+                        let origin = default_origin;
+                        let details_provider = TransactionDetailsProvider::new(client);
+                        let hash = transaction.hash();
+                        let result = transaction_queue.add(transaction, origin, insertion_time, &details_provider)?;
+
+                        inserted.push(hash);
+                        Ok(result)
+                    }
+                }
             })
             .collect();
 
@@ -142,9 +144,7 @@ impl MinerService for Miner {
     ) -> Vec<Result<TransactionImportResult, Error>> {
         trace!(target: "external_tx", "Importing external transactions");
         let mut transaction_queue = self.transaction_queue.write();
-        self.add_transactions_to_queue(
-            client, transactions, TransactionOrigin::External, &mut transaction_queue
-        )
+        self.add_transactions_to_queue(client, transactions, TransactionOrigin::External, &mut transaction_queue)
     }
 
     fn import_own_transaction<C: MiningBlockChainClient>(
@@ -158,17 +158,21 @@ impl MinerService for Miner {
         let mut transaction_queue = self.transaction_queue.write();
         // We need to re-validate transactions
         let import = self.add_transactions_to_queue(
-            chain, vec![transaction.into()], TransactionOrigin::Local,  &mut transaction_queue
-        ).pop().expect("one result returned per added transaction; one added => one result; qed");
+            chain,
+            vec![transaction.into()],
+            TransactionOrigin::Local,
+            &mut transaction_queue,
+        ).pop()
+            .expect("one result returned per added transaction; one added => one result; qed");
 
         match import {
             Ok(_) => {
                 trace!(target: "own_tx", "Status: {:?}", transaction_queue.status());
-            },
+            }
             Err(ref e) => {
                 trace!(target: "own_tx", "Status: {:?}", transaction_queue.status());
                 warn!(target: "own_tx", "Error importing transaction: {:?}", e);
-            },
+            }
         }
         import
     }
@@ -196,7 +200,8 @@ impl<'a, C> TransactionDetailsProvider<'a, C> {
 }
 
 impl<'a, C> TransactionQueueDetailsProvider for TransactionDetailsProvider<'a, C>
-    where C: AccountData
+where
+    C: AccountData,
 {
     fn fetch_account(&self, address: &Address) -> AccountDetails {
         AccountDetails {
@@ -205,4 +210,3 @@ impl<'a, C> TransactionQueueDetailsProvider for TransactionDetailsProvider<'a, C
         }
     }
 }
-

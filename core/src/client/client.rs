@@ -45,8 +45,8 @@ use super::super::verification::queue::BlockQueue;
 use super::super::verification::{self, PreverifiedBlock, Verifier};
 use super::super::views::BlockView;
 use super::{
-    AccountData, Balance, BlockChain as BlockChainTrait, BlockChainClient, BlockChainInfo, BlockInfo, ChainInfo, ChainNotify,
-    ClientConfig, EngineClient, Error as ClientError, ImportBlock, Nonce, StateOrBlock, TransactionInfo,
+    AccountData, Balance, BlockChain as BlockChainTrait, BlockChainClient, BlockChainInfo, BlockInfo, ChainInfo,
+    ChainNotify, ClientConfig, EngineClient, Error as ClientError, ImportBlock, Nonce, StateOrBlock, TransactionInfo,
 };
 
 const MAX_TX_QUEUE_SIZE: usize = 4096;

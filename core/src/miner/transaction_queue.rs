@@ -26,8 +26,8 @@ use table::Table;
 
 use super::super::transaction::{Action, SignedTransaction, TransactionError};
 use super::super::types::BlockNumber;
-use super::local_transactions::{LocalTransactionsList, Status as LocalTransactionStatus};
 use super::TransactionImportResult;
+use super::local_transactions::{LocalTransactionsList, Status as LocalTransactionStatus};
 
 /// Transaction with the same (sender, nonce) can be replaced only if
 /// `new_fee > old_fee + old_fee >> SHIFT`
@@ -522,9 +522,14 @@ impl TransactionQueue {
 
     /// Return all future transactions.
     pub fn future_transactions(&self) -> Vec<SignedTransaction> {
-        self.future.by_priority
+        self.future
+            .by_priority
             .iter()
-            .map(|t| self.by_hash.get(&t.hash).expect("All transactions in `current` and `future` are always included in `by_hash`"))
+            .map(|t| {
+                self.by_hash
+                    .get(&t.hash)
+                    .expect("All transactions in `current` and `future` are always included in `by_hash`")
+            })
             .map(|t| t.transaction.clone())
             .collect()
     }
