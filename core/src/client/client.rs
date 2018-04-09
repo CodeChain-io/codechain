@@ -35,6 +35,7 @@ use super::super::encoded;
 use super::super::error::{BlockImportError, Error, ImportError};
 use super::super::header::Header;
 use super::super::invoice::Invoice;
+use super::super::miner::{Miner, MinerService};
 use super::super::service::ClientIoMessage;
 use super::super::spec::Spec;
 use super::super::state::State;
@@ -79,6 +80,7 @@ impl Client {
         config: ClientConfig,
         spec: &Spec,
         db: Arc<KeyValueDB>,
+        miner: Arc<Miner>,
         message_channel: IoChannel<ClientIoMessage>,
     ) -> Result<Arc<Client>, Error> {
         let trie_spec = match config.fat_db {
@@ -101,7 +103,7 @@ impl Client {
 
         let engine = spec.engine.clone();
 
-        let importer = Importer::new(&config, engine.clone(), message_channel.clone())?;
+        let importer = Importer::new(&config, engine.clone(), message_channel.clone(), miner)?;
 
         let client = Arc::new(Client {
             engine,
@@ -311,7 +313,7 @@ impl BlockChainClient for Client {
     }
 
     fn ready_transactions(&self) -> Vec<SignedTransaction> {
-        unimplemented!();
+        self.importer.miner.ready_transactions()
     }
 
     fn block_number(&self, id: BlockId) -> Option<BlockNumber> {
@@ -355,6 +357,9 @@ pub struct Importer {
     /// Queue containing pending blocks
     pub block_queue: BlockQueue,
 
+    /// Handles block sealing
+    pub miner: Arc<Miner>,
+
     /// CodeChain engine to be used during import
     pub engine: Arc<CodeChainEngine>,
 }
@@ -364,6 +369,7 @@ impl Importer {
         config: &ClientConfig,
         engine: Arc<CodeChainEngine>,
         message_channel: IoChannel<ClientIoMessage>,
+        miner: Arc<Miner>,
     ) -> Result<Importer, Error> {
         let block_queue = BlockQueue::new(
             config.queue.clone(),
@@ -376,6 +382,7 @@ impl Importer {
             import_lock: Mutex::new(()),
             verifier: verification::new(config.verifier_type.clone()),
             block_queue,
+            miner,
             engine,
         })
     }

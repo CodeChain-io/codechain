@@ -57,15 +57,15 @@ pub struct Miner {
 }
 
 impl Miner {
-    fn new(options: MinerOptions, spec: &Spec) -> Self {
+    pub fn new(options: MinerOptions, spec: &Spec) -> Arc<Self> {
         let mem_limit = options.tx_queue_memory_limit.unwrap_or_else(usize::max_value);
         let txq = TransactionQueue::with_limits(options.tx_queue_size, mem_limit);
-        Self {
+        Arc::new(Self {
             transaction_queue: Arc::new(RwLock::new(txq)),
             author: RwLock::new(Address::default()),
             extra_data: RwLock::new(Vec::new()),
             engine: spec.engine.clone(),
-        }
+        })
     }
 
     fn add_transactions_to_queue<C: AccountData + BlockChain>(

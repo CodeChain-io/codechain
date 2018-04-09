@@ -22,6 +22,7 @@ use cbytes::Bytes;
 use ckeys::Private;
 use ctypes::{Address, U256};
 
+pub use self::miner::{Miner, MinerOptions};
 use super::client::MiningBlockChainClient;
 use super::error::Error;
 use super::state::StateInfo;

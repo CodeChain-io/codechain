@@ -23,6 +23,7 @@ use kvdb_rocksdb::{Database, DatabaseConfig};
 
 use super::client::{Client, ClientConfig};
 use super::error::Error;
+use super::miner::Miner;
 use super::spec::Spec;
 
 /// Client service setup.
@@ -33,7 +34,12 @@ pub struct ClientService {
 }
 
 impl ClientService {
-    pub fn start(config: ClientConfig, spec: &Spec, client_path: &Path) -> Result<ClientService, Error> {
+    pub fn start(
+        config: ClientConfig,
+        spec: &Spec,
+        client_path: &Path,
+        miner: Arc<Miner>,
+    ) -> Result<ClientService, Error> {
         let io_service = IoService::<ClientIoMessage>::start()?;
 
         let mut db_config = DatabaseConfig::with_columns(super::db::NUM_COLUMNS);
@@ -47,7 +53,7 @@ impl ClientService {
             &client_path.to_str().expect("DB path could not be converted to string."),
         ).map_err(::client::Error::Database)?);
 
-        let client = Client::new(config, &spec, db.clone(), io_service.channel())?;
+        let client = Client::new(config, &spec, db.clone(), miner, io_service.channel())?;
 
         let client_io = Arc::new(ClientIoHandler {
             client: client.clone(),
