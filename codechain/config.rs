@@ -19,7 +19,7 @@ use std::{fmt, fs};
 
 use ccore::Spec;
 use clap;
-use cnetwork::kademlia::Config as KademliaConfig;
+use cnetwork::kademlia::KademliaConfig;
 use cnetwork::{NetworkConfig, SocketAddr};
 use ctypes::Secret;
 use rpc::HttpConfiguration as RpcHttpConfig;

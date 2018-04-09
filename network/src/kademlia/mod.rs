@@ -25,8 +25,8 @@ mod node_id;
 mod routing_table;
 
 
-pub use self::config::Config;
-pub use self::extension::Extension;
+pub use self::config::Config as KademliaConfig;
+pub use self::extension::Extension as KademliaExtension;
 pub use self::node_id::NodeId;
 
 
