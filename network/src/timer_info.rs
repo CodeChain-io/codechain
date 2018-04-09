@@ -54,10 +54,17 @@ impl TimerInfo {
         if self.reversed.get(&name, &timer_id).is_some() {
             return Err(Error::DuplicatedTimerId)
         }
-        self.tokens.insert(TimerItem { name: name.clone(), timer_id, once }).map(|token| {
-            self.reversed.insert(name.clone(), timer_id, token);
-            token
-        }).ok_or(Error::NoSpace)
+        self.tokens
+            .insert(TimerItem {
+                name: name.clone(),
+                timer_id,
+                once,
+            })
+            .map(|token| {
+                self.reversed.insert(name.clone(), timer_id, token);
+                token
+            })
+            .ok_or(Error::NoSpace)
     }
 
     pub fn get_info(&self, token: TimerToken) -> Option<TimerItem> {
@@ -65,7 +72,12 @@ impl TimerInfo {
     }
 
     pub fn remove_by_token(&mut self, token: TimerToken) {
-        if let Some(TimerItem { name, timer_id, .. }) = self.tokens.remove(token) {
+        if let Some(TimerItem {
+            name,
+            timer_id,
+            ..
+        }) = self.tokens.remove(token)
+        {
             self.reversed.remove(&name, &timer_id);
         }
     }

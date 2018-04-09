@@ -43,7 +43,9 @@ pub enum Message {
 impl Message {
     pub fn is_status(&self) -> bool {
         match self {
-            &Message::Status {..} => true,
+            &Message::Status {
+                ..
+            } => true,
             _ => false,
         }
     }
@@ -54,56 +56,85 @@ impl Encodable for Message {
         s.begin_list(2);
         // add message id
         s.append(match self {
-            &Message::Status {..} => &MESSAGE_ID_STATUS,
-            &Message::RequestHeaders {..} => &MESSAGE_ID_REQUEST_HEADERS,
-            &Message::Headers {..} => &MESSAGE_ID_HEADERS,
-            &Message::RequestBodies {..} => &MESSAGE_ID_REQUEST_BODIES,
-            &Message::Bodies {..} => &MESSAGE_ID_BODIES,
+            &Message::Status {
+                ..
+            } => &MESSAGE_ID_STATUS,
+            &Message::RequestHeaders {
+                ..
+            } => &MESSAGE_ID_REQUEST_HEADERS,
+            &Message::Headers {
+                ..
+            } => &MESSAGE_ID_HEADERS,
+            &Message::RequestBodies {
+                ..
+            } => &MESSAGE_ID_REQUEST_BODIES,
+            &Message::Bodies {
+                ..
+            } => &MESSAGE_ID_BODIES,
         });
         // add body as rlp
         match self {
-            &Message::Status { total_score, best_hash, genesis_hash } => {
+            &Message::Status {
+                total_score,
+                best_hash,
+                genesis_hash,
+            } => {
                 s.begin_list(3);
                 s.append(&total_score);
                 s.append(&best_hash);
                 s.append(&genesis_hash);
-            },
-            &Message::RequestHeaders { start_hash, max_count } => {
+            }
+            &Message::RequestHeaders {
+                start_hash,
+                max_count,
+            } => {
                 s.begin_list(2);
                 s.append(&start_hash);
                 s.append(&max_count);
-            },
-            &Message::Headers(ref headers) => { s.append_list(headers); },
-            &Message::RequestBodies(ref hashes) => { s.append_list(hashes); },
+            }
+            &Message::Headers(ref headers) => {
+                s.append_list(headers);
+            }
+            &Message::RequestBodies(ref hashes) => {
+                s.append_list(hashes);
+            }
             &Message::Bodies(ref bodies) => {
                 s.begin_list(bodies.len());
-                bodies.into_iter().for_each(|body| { s.append_list(body); });
-            },
+                bodies.into_iter().for_each(|body| {
+                    s.append_list(body);
+                });
+            }
         };
     }
 }
 
 impl Decodable for Message {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
-        if rlp.item_count()? != 2 { return Err(DecoderError::RlpIncorrectListLen); }
+        if rlp.item_count()? != 2 {
+            return Err(DecoderError::RlpIncorrectListLen)
+        }
         let id = rlp.val_at(0)?;
         let message = rlp.at(1)?;
         Ok(match id {
             MESSAGE_ID_STATUS => {
-                if message.item_count()? != 3 { return Err(DecoderError::RlpIncorrectListLen); }
+                if message.item_count()? != 3 {
+                    return Err(DecoderError::RlpIncorrectListLen)
+                }
                 Message::Status {
                     total_score: message.val_at(0)?,
                     best_hash: message.val_at(1)?,
                     genesis_hash: message.val_at(2)?,
                 }
-            },
+            }
             MESSAGE_ID_REQUEST_HEADERS => {
-                if message.item_count()? != 2 { return Err(DecoderError::RlpIncorrectListLen); }
+                if message.item_count()? != 2 {
+                    return Err(DecoderError::RlpIncorrectListLen)
+                }
                 Message::RequestHeaders {
                     start_hash: message.val_at(0)?,
                     max_count: message.val_at(1)?,
                 }
-            },
+            }
             MESSAGE_ID_HEADERS => Message::Headers(message.as_list()?),
             MESSAGE_ID_REQUEST_BODIES => Message::RequestBodies(message.as_list()?),
             MESSAGE_ID_BODIES => {
@@ -112,7 +143,7 @@ impl Decodable for Message {
                     bodies.push(item.as_list()?);
                 }
                 Message::Bodies(bodies)
-            },
+            }
             _ => return Err(DecoderError::Custom("Unknown message id detected")),
         })
     }
@@ -148,7 +179,9 @@ mod tests {
     #[test]
     fn test_headers_message_rlp() {
         let headers = vec![Header::default()];
-        headers.iter().for_each(|header| { header.hash(); });
+        headers.iter().for_each(|header| {
+            header.hash();
+        });
 
         let message = Message::Headers(headers);
         assert_eq!(message, ::rlp::decode(message.rlp_bytes().as_ref()));

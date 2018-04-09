@@ -14,23 +14,23 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use super::verification;
 use super::super::client::BlockInfo;
 use super::super::consensus::CodeChainEngine;
 use super::super::error::Error;
 use super::super::header::Header;
+use super::verification;
 
 /// Should be used to verify blocks.
 pub trait Verifier<C>: Send + Sync
-    where C: BlockInfo
-{
+where
+    C: BlockInfo, {
     /// Verify a block relative to its parent and uncles.
     fn verify_block_family(
         &self,
         header: &Header,
         parent: &Header,
         engine: &CodeChainEngine,
-        do_full: Option<verification::FullFamilyParams<C>>
+        do_full: Option<verification::FullFamilyParams<C>>,
     ) -> Result<(), Error>;
 
     /// Do a final verification check for an enacted header vs its expected counterpart.

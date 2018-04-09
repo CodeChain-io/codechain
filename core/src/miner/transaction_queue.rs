@@ -23,9 +23,9 @@ use heapsize::HeapSizeOf;
 use multimap::MultiMap;
 use table::Table;
 
-use super::local_transactions::LocalTransactionsList;
-use super::super::transaction::{SignedTransaction, Action};
+use super::super::transaction::{Action, SignedTransaction};
 use super::super::types::BlockNumber;
+use super::local_transactions::LocalTransactionsList;
 
 /// Transaction origin
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -47,7 +47,7 @@ impl PartialOrd for TransactionOrigin {
 impl Ord for TransactionOrigin {
     fn cmp(&self, other: &TransactionOrigin) -> Ordering {
         if *other == *self {
-            return Ordering::Equal;
+            return Ordering::Equal
         }
 
         match (*self, *other) {
@@ -118,17 +118,17 @@ impl Ord for TransactionOrder {
     fn cmp(&self, b: &TransactionOrder) -> Ordering {
         // Local transactions should always have priority
         if self.origin != b.origin {
-            return self.origin.cmp(&b.origin);
+            return self.origin.cmp(&b.origin)
         }
 
         // Check nonce_height
         if self.nonce_height != b.nonce_height {
-            return self.nonce_height.cmp(&b.nonce_height);
+            return self.nonce_height.cmp(&b.nonce_height)
         }
 
         // Then compare fee
         if self.fee != b.fee {
-            return b.fee.cmp(&self.fee);
+            return b.fee.cmp(&self.fee)
         }
 
         // Lastly compare insertion_id
@@ -181,7 +181,10 @@ impl VerifiedTransaction {
 
     fn cost(&self) -> U256 {
         let value = match (*self.transaction).action {
-            Action::Payment { value, .. } => value,
+            Action::Payment {
+                value,
+                ..
+            } => value,
             _ => U256::from(0),
         };
         value + self.transaction.fee
@@ -200,15 +203,20 @@ struct TransactionSet {
 impl TransactionSet {
     fn insert(&mut self, sender: Address, nonce: U256, order: TransactionOrder) -> Option<TransactionOrder> {
         if !self.by_priority.insert(order.clone()) {
-            return Some(order.clone());
+            return Some(order.clone())
         }
         let order_hash = order.hash.clone();
         let order_fee = order.fee.clone();
         let by_address_replaced = self.by_address.insert(sender, nonce, order);
         if let Some(ref old_order) = by_address_replaced {
-            assert!(self.by_priority.remove(old_order), "hash is in `by_address`; all transactions in `by_address` must be in `by_priority`; qed");
-            assert!(self.by_fee.remove(&old_order.fee, &old_order.hash),
-                    "hash is in `by_address`; all transactions' fee in `by_address` must be in `by_fee`; qed");
+            assert!(
+                self.by_priority.remove(old_order),
+                "hash is in `by_address`; all transactions in `by_address` must be in `by_priority`; qed"
+            );
+            assert!(
+                self.by_fee.remove(&old_order.fee, &old_order.hash),
+                "hash is in `by_address`; all transactions' fee in `by_address` must be in `by_fee`; qed"
+            );
         }
         self.by_fee.insert(order_fee, order_hash);
         assert_eq!(self.by_priority.len(), self.by_address.len());
@@ -220,10 +228,14 @@ impl TransactionSet {
     ///
     /// It drops transactions from this set but also removes associated `VerifiedTransaction`.
     /// Returns addresses and lowest nonces of transactions removed because of limit.
-    fn enforce_limit(&mut self, by_hash: &mut HashMap<H256, VerifiedTransaction>, local: &mut LocalTransactionsList) -> Option<HashMap<Address, U256>> {
+    fn enforce_limit(
+        &mut self,
+        by_hash: &mut HashMap<H256, VerifiedTransaction>,
+        local: &mut LocalTransactionsList,
+    ) -> Option<HashMap<Address, U256>> {
         let mut count = 0;
         let mut mem_usage = 0;
-        let to_drop : Vec<(Address, U256)> = {
+        let to_drop: Vec<(Address, U256)> = {
             self.by_priority
                 .iter()
                 .filter(|order| {
@@ -231,45 +243,53 @@ impl TransactionSet {
                     count += 1;
                     mem_usage += order.mem_usage;
 
-                    let is_own_or_retracted = order.origin.is_local() || order.origin == TransactionOrigin::RetractedBlock;
+                    let is_own_or_retracted =
+                        order.origin.is_local() || order.origin == TransactionOrigin::RetractedBlock;
                     // Own and retracted transactions are allowed to go above all limits.
                     !is_own_or_retracted && (mem_usage > self.memory_limit || count > self.limit)
                 })
-                .map(|order| by_hash.get(&order.hash)
-                    .expect("All transactions in `self.by_priority` and `self.by_address` are kept in sync with `by_hash`."))
+                .map(|order| {
+                    by_hash.get(&order.hash).expect(
+                        "All transactions in `self.by_priority` and `self.by_address` are kept in sync with `by_hash`.",
+                    )
+                })
                 .map(|tx| (tx.sender(), tx.nonce()))
                 .collect()
         };
 
-        Some(to_drop.into_iter()
-            .fold(HashMap::new(), |mut removed, (sender, nonce)| {
-                let order = self.drop(&sender, &nonce)
-                    .expect("Transaction has just been found in `by_priority`; so it is in `by_address` also.");
-                trace!(target: "txqueue", "Dropped out of limit transaction: {:?}", order.hash);
+        Some(to_drop.into_iter().fold(HashMap::new(), |mut removed, (sender, nonce)| {
+            let order = self.drop(&sender, &nonce)
+                .expect("Transaction has just been found in `by_priority`; so it is in `by_address` also.");
+            trace!(target: "txqueue", "Dropped out of limit transaction: {:?}", order.hash);
 
-                let order = by_hash.remove(&order.hash)
-                    .expect("hash is in `by_priorty`; all hashes in `by_priority` must be in `by_hash`; qed");
+            let order = by_hash
+                .remove(&order.hash)
+                .expect("hash is in `by_priorty`; all hashes in `by_priority` must be in `by_hash`; qed");
 
-                if order.origin.is_local() {
-                    local.mark_dropped(order.transaction);
-                }
+            if order.origin.is_local() {
+                local.mark_dropped(order.transaction);
+            }
 
-                let min = removed.get(&sender).map_or(nonce, |val| cmp::min(*val, nonce));
-                removed.insert(sender, min);
-                removed
-            }))
+            let min = removed.get(&sender).map_or(nonce, |val| cmp::min(*val, nonce));
+            removed.insert(sender, min);
+            removed
+        }))
     }
 
     /// Drop transaction from this set (remove from `by_priority` and `by_address`)
     fn drop(&mut self, sender: &Address, nonce: &U256) -> Option<TransactionOrder> {
         if let Some(tx_order) = self.by_address.remove(sender, nonce) {
-            assert!(self.by_fee.remove(&tx_order.fee, &tx_order.hash),
-                    "hash is in `by_address`; all transactions' fee in `by_address` must be in `by_fee`; qed");
-            assert!(self.by_priority.remove(&tx_order),
-                    "hash is in `by_address`; all transactions in `by_address` must be in `by_priority`; qed");
+            assert!(
+                self.by_fee.remove(&tx_order.fee, &tx_order.hash),
+                "hash is in `by_address`; all transactions' fee in `by_address` must be in `by_fee`; qed"
+            );
+            assert!(
+                self.by_priority.remove(&tx_order),
+                "hash is in `by_address`; all transactions in `by_address` must be in `by_priority`; qed"
+            );
             assert_eq!(self.by_priority.len(), self.by_address.len());
             assert_eq!(self.by_fee.values().map(|v| v.len()).fold(0, |a, b| a + b), self.by_address.len());
-            return Some(tx_order);
+            return Some(tx_order)
         }
         assert_eq!(self.by_priority.len(), self.by_address.len());
         assert_eq!(self.by_fee.values().map(|v| v.len()).fold(0, |a, b| a + b), self.by_address.len());
@@ -300,8 +320,8 @@ impl TransactionSet {
 
 #[cfg(test)]
 pub mod test {
-    use std::cmp::Ordering;
     use super::TransactionOrigin;
+    use std::cmp::Ordering;
 
     #[test]
     fn test_ordering() {
@@ -314,4 +334,3 @@ pub mod test {
         assert_eq!(TransactionOrigin::External.cmp(&TransactionOrigin::RetractedBlock), Ordering::Greater);
     }
 }
-

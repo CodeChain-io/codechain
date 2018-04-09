@@ -28,4 +28,3 @@ pub enum BlockStatus {
     /// Unknown.
     Unknown,
 }
-

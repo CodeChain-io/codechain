@@ -46,24 +46,24 @@ extern crate rustc_hex;
 #[macro_use]
 extern crate lazy_static;
 
-mod traits;
-mod error;
-mod rlpin;
-mod untrusted_rlp;
-mod stream;
-mod compression;
 mod common;
+mod compression;
+mod error;
 mod impls;
+mod rlpin;
+mod stream;
+mod traits;
+mod untrusted_rlp;
 
-use std::borrow::Borrow;
 use elastic_array::ElasticArray1024;
+use std::borrow::Borrow;
 
+pub use compression::RlpType;
 pub use error::DecoderError;
-pub use traits::{Decodable, Encodable, Compressible};
-pub use untrusted_rlp::{UntrustedRlp, UntrustedRlpIterator, PayloadInfo, Prototype};
 pub use rlpin::{Rlp, RlpIterator};
 pub use stream::RlpStream;
-pub use compression::RlpType;
+pub use traits::{Compressible, Decodable, Encodable};
+pub use untrusted_rlp::{PayloadInfo, Prototype, UntrustedRlp, UntrustedRlpIterator};
 
 /// The RLP encoded empty data (used to mean "null value").
 pub const NULL_RLP: [u8; 1] = [0x80; 1];
@@ -81,14 +81,18 @@ pub const EMPTY_LIST_RLP: [u8; 1] = [0xC0; 1];
 /// 	assert_eq!(animal, "cat".to_owned());
 /// }
 /// ```
-pub fn decode<T>(bytes: &[u8]) -> T where T: Decodable {
-	let rlp = Rlp::new(bytes);
-	rlp.as_val()
+pub fn decode<T>(bytes: &[u8]) -> T
+where
+    T: Decodable, {
+    let rlp = Rlp::new(bytes);
+    rlp.as_val()
 }
 
-pub fn decode_list<T>(bytes: &[u8]) -> Vec<T> where T: Decodable {
-	let rlp = Rlp::new(bytes);
-	rlp.as_list()
+pub fn decode_list<T>(bytes: &[u8]) -> Vec<T>
+where
+    T: Decodable, {
+    let rlp = Rlp::new(bytes);
+    rlp.as_list()
 }
 
 /// Shortcut function to encode structure into rlp.
@@ -102,14 +106,19 @@ pub fn decode_list<T>(bytes: &[u8]) -> Vec<T> where T: Decodable {
 /// 	assert_eq!(out, vec![0x83, b'c', b'a', b't']);
 /// }
 /// ```
-pub fn encode<E>(object: &E) -> ElasticArray1024<u8> where E: Encodable {
-	let mut stream = RlpStream::new();
-	stream.append(object);
-	stream.drain()
+pub fn encode<E>(object: &E) -> ElasticArray1024<u8>
+where
+    E: Encodable, {
+    let mut stream = RlpStream::new();
+    stream.append(object);
+    stream.drain()
 }
 
-pub fn encode_list<E, K>(object: &[K]) -> ElasticArray1024<u8> where E: Encodable, K: Borrow<E> {
-	let mut stream = RlpStream::new();
-	stream.append_list(object);
-	stream.drain()
+pub fn encode_list<E, K>(object: &[K]) -> ElasticArray1024<u8>
+where
+    E: Encodable,
+    K: Borrow<E>, {
+    let mut stream = RlpStream::new();
+    stream.append_list(object);
+    stream.drain()
 }

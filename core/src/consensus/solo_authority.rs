@@ -16,20 +16,20 @@
 
 use std::sync::Weak;
 
-use ckeys::{ECDSASignature, Private, public_to_address, recover_ecdsa};
-use ctypes::{Address, H256, H520};
 use cjson;
+use ckeys::{public_to_address, recover_ecdsa, ECDSASignature, Private};
+use ctypes::{Address, H256, H520};
 use parking_lot::RwLock;
 
-use super::{ConsensusEngine, EngineError, Seal, ConstructedVerifier};
-use super::signer::EngineSigner;
-use super::validator_set::ValidatorSet;
-use super::validator_set::validator_list::ValidatorList;
 use super::super::block::{ExecutedBlock, IsBlock};
 use super::super::client::EngineClient;
 use super::super::codechain_machine::CodeChainMachine;
 use super::super::error::{BlockError, Error};
 use super::super::header::Header;
+use super::signer::EngineSigner;
+use super::validator_set::ValidatorSet;
+use super::validator_set::validator_list::ValidatorList;
+use super::{ConsensusEngine, ConstructedVerifier, EngineError, Seal};
 
 #[derive(Debug, PartialEq)]
 pub struct SoloAuthorityParams {
@@ -57,7 +57,7 @@ impl SoloAuthority {
         SoloAuthority {
             machine,
             signer: Default::default(),
-            validators: Box::new(ValidatorList::new(params.validators))
+            validators: Box::new(ValidatorList::new(params.validators)),
         }
     }
 }
@@ -85,17 +85,23 @@ fn verify_external(header: &Header, validators: &ValidatorSet) -> Result<(), Err
 
     match validators.contains(header.parent_hash(), &signer) {
         false => Err(BlockError::InvalidSeal.into()),
-        true => Ok(())
+        true => Ok(()),
     }
 }
 
 impl ConsensusEngine<CodeChainMachine> for SoloAuthority {
-    fn name(&self) -> &str { "SoloAuthority" }
+    fn name(&self) -> &str {
+        "SoloAuthority"
+    }
 
-    fn machine(&self) -> &CodeChainMachine { &self.machine }
+    fn machine(&self) -> &CodeChainMachine {
+        &self.machine
+    }
 
     // One field - the signature
-    fn seal_fields(&self, _header: &Header) -> usize { 1 }
+    fn seal_fields(&self, _header: &Header) -> usize {
+        1
+    }
 
     fn seals_internally(&self) -> Option<bool> {
         Some(self.signer.read().is_some())
@@ -108,7 +114,7 @@ impl ConsensusEngine<CodeChainMachine> for SoloAuthority {
         if self.validators.contains(header.parent_hash(), author) {
             // account should be permanently unlocked, otherwise sealing will fail
             if let Ok(signature) = self.sign(header.bare_hash()) {
-                return Seal::Regular(vec![::rlp::encode(&(&H520::from(signature) as &[u8])).into_vec()]);
+                return Seal::Regular(vec![::rlp::encode(&(&H520::from(signature) as &[u8])).into_vec()])
             } else {
                 trace!(target: "soloauthority", "generate_seal: FAIL: accounts secret key unavailable");
             }
@@ -129,17 +135,13 @@ impl ConsensusEngine<CodeChainMachine> for SoloAuthority {
     }
 
     #[cfg(not(test))]
-    fn signals_epoch_end(&self, _header: &Header)
-        -> super::EpochChange
-    {
+    fn signals_epoch_end(&self, _header: &Header) -> super::EpochChange {
         // don't bother signalling even though a contract might try.
         super::EpochChange::No
     }
 
     #[cfg(test)]
-    fn signals_epoch_end(&self, header: &Header)
-        -> super::EpochChange
-    {
+    fn signals_epoch_end(&self, header: &Header) -> super::EpochChange {
         // in test mode, always signal even though they don't be finalized.
         let first = header.number() == 0;
         self.validators.signals_epoch_end(first, header)
@@ -162,7 +164,9 @@ impl ConsensusEngine<CodeChainMachine> for SoloAuthority {
 
         match self.validators.epoch_set(first, &self.machine, header.number(), proof) {
             Ok((list, finalize)) => {
-                let verifier = Box::new(EpochVerifier { list });
+                let verifier = Box::new(EpochVerifier {
+                    list,
+                });
 
                 // our epoch verifier will ensure no unverified verifier is ever verified.
                 match finalize {
@@ -190,18 +194,18 @@ impl ConsensusEngine<CodeChainMachine> for SoloAuthority {
 
 #[cfg(test)]
 mod tests {
-    use ckeys::{Network, Random, Generator};
+    use ckeys::{Generator, Network, Random};
     use ctypes::H520;
 
-    use super::{SoloAuthority, SoloAuthorityParams};
-    use super::super::{ConsensusEngine, Seal};
-    use super::super::signer::EngineSigner;
-    use super::super::validator_set::validator_list::ValidatorList;
-    use super::super::super::block::{OpenBlock, IsBlock};
+    use super::super::super::block::{IsBlock, OpenBlock};
     use super::super::super::codechain_machine::CodeChainMachine;
     use super::super::super::header::Header;
     use super::super::super::spec::Spec;
     use super::super::super::tests::helpers::get_temp_state_db;
+    use super::super::signer::EngineSigner;
+    use super::super::validator_set::validator_list::ValidatorList;
+    use super::super::{ConsensusEngine, Seal};
+    use super::{SoloAuthority, SoloAuthorityParams};
 
     #[test]
     fn has_valid_metadata() {
@@ -225,7 +229,8 @@ mod tests {
         let engine = &*spec.engine;
         let genesis_header = spec.genesis_header();
         let db = get_temp_state_db();
-        let b = OpenBlock::new(engine, Default::default(), db,&genesis_header, Default::default(), vec![],  false).unwrap();
+        let b =
+            OpenBlock::new(engine, Default::default(), db, &genesis_header, Default::default(), vec![], false).unwrap();
         let b = b.close_and_lock();
         if let Seal::Regular(seal) = engine.generate_seal(b.block(), &genesis_header) {
             assert!(b.try_seal(engine, seal).is_ok());

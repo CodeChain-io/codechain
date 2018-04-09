@@ -17,7 +17,7 @@
 use std::result;
 use std::sync::Arc;
 
-use cio::{StreamToken};
+use cio::StreamToken;
 
 pub type NodeId = StreamToken;
 

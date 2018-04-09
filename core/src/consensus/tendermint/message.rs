@@ -20,12 +20,12 @@ use cbytes::Bytes;
 use ccrypto::blake256;
 use ckeys::{public_to_address, recover_ecdsa};
 use ctypes::{Address, H256, H520};
-use rlp::{UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
+use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
-use super::{Height, View, BlockHash, Step};
-use super::super::vote_collector::Message;
 use super::super::super::error::Error;
 use super::super::super::header::Header;
+use super::super::vote_collector::Message;
+use super::{BlockHash, Height, Step, View};
 
 /// Complete step of the consensus process.
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
@@ -37,7 +37,11 @@ pub struct VoteStep {
 
 impl VoteStep {
     pub fn new(height: Height, view: View, step: Step) -> Self {
-        VoteStep { height: height, view: view, step: step }
+        VoteStep {
+            height,
+            view,
+            step,
+        }
     }
 
     pub fn is_height(&self, height: Height) -> bool {
@@ -114,19 +118,28 @@ pub fn consensus_view(header: &Header) -> Result<View, ::rlp::DecoderError> {
 
 /// Proposal signature.
 pub fn proposal_signature(header: &Header) -> Result<H520, ::rlp::DecoderError> {
-    UntrustedRlp::new(header.seal().get(1).expect("seal passed basic verification; seal has 3 fields; qed").as_slice()).as_val()
+    UntrustedRlp::new(header.seal().get(1).expect("seal passed basic verification; seal has 3 fields; qed").as_slice())
+        .as_val()
 }
 
 impl Message for ConsensusMessage {
     type Round = VoteStep;
 
-    fn signature(&self) -> H520 { self.signature }
+    fn signature(&self) -> H520 {
+        self.signature
+    }
 
-    fn block_hash(&self) -> Option<H256> { self.block_hash }
+    fn block_hash(&self) -> Option<H256> {
+        self.block_hash
+    }
 
-    fn round(&self) -> &VoteStep { &self.vote_step }
+    fn round(&self) -> &VoteStep {
+        &self.vote_step
+    }
 
-    fn is_broadcastable(&self) -> bool { self.vote_step.step.is_pre() }
+    fn is_broadcastable(&self) -> bool {
+        self.vote_step.step.is_pre()
+    }
 }
 
 /// (signature, (height, view, step, block_hash))
@@ -148,15 +161,16 @@ impl Decodable for ConsensusMessage {
 impl Encodable for ConsensusMessage {
     fn rlp_append(&self, s: &mut RlpStream) {
         let info = message_info_rlp(&self.vote_step, self.block_hash);
-        s.begin_list(2)
-            .append(&self.signature)
-            .append_raw(&info, 1);
+        s.begin_list(2).append(&self.signature).append_raw(&info, 1);
     }
 }
 
 pub fn message_info_rlp(vote_step: &VoteStep, block_hash: Option<BlockHash>) -> Bytes {
     let mut s = RlpStream::new_list(4);
-    s.append(&vote_step.height).append(&vote_step.view).append(&vote_step.step).append(&block_hash.unwrap_or_else(H256::zero));
+    s.append(&vote_step.height)
+        .append(&vote_step.view)
+        .append(&vote_step.step)
+        .append(&block_hash.unwrap_or_else(H256::zero));
     s.out()
 }
 

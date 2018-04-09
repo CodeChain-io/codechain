@@ -14,12 +14,12 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use super::Verifier;
-use super::verification;
 use super::super::client::BlockInfo;
 use super::super::consensus::CodeChainEngine;
 use super::super::error::Error;
 use super::super::header::Header;
+use super::Verifier;
+use super::verification;
 
 /// A canonial verifier -- this does full verification.
 pub struct CanonVerifier;

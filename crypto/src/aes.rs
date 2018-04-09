@@ -14,11 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ctypes::hash::{ H128, H256 };
-use rcrypto::aes::{ cbc_decryptor, cbc_encryptor };
+use ctypes::hash::{H128, H256};
 use rcrypto::aes::KeySize::KeySize256;
+use rcrypto::aes::{cbc_decryptor, cbc_encryptor};
 use rcrypto::blockmodes::PkcsPadding;
-use rcrypto::buffer::{ BufferResult, ReadBuffer, RefReadBuffer, RefWriteBuffer, WriteBuffer };
+use rcrypto::buffer::{BufferResult, ReadBuffer, RefReadBuffer, RefWriteBuffer, WriteBuffer};
 pub use rcrypto::symmetriccipher::SymmetricCipherError;
 
 fn is_underflow(result: BufferResult) -> bool {
@@ -69,27 +69,27 @@ pub fn decrypt(encrypted_data: &[u8], key: &H256, iv: &H128) -> Result<Vec<u8>, 
 mod tests {
     extern crate rand;
 
-    use ctypes::hash::{ H128, H256 };
+    use ctypes::hash::{H128, H256};
 
-    use self::rand::{ Rng, OsRng };
-    use super::{ decrypt, encrypt };
+    use self::rand::{OsRng, Rng};
+    use super::{decrypt, encrypt};
 
     #[test]
     fn test_aes256_with_random_key_and_iv() {
         let message = "0123456789abcdefghijklmnopqrstubewxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\
-            0123456789abcdefghijklmnopqrstubewxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\
-            0123456789abcdefghijklmnopqrstubewxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\
-            0123456789abcdefghijklmnopqrstubewxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\
-            0123456789abcdefghijklmnopqrstubewxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\
-            0123456789abcdefghijklmnopqrstubewxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\
-            0123456789abcdefghijklmnopqrstubewxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\
-            0123456789abcdefghijklmnopqrstubewxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\
-            0123456789abcdefghijklmnopqrstubewxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\
-            0123456789abcdefghijklmnopqrstubewxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\
-            0123456789abcdefghijklmnopqrstubewxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\
-            0123456789abcdefghijklmnopqrstubewxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\
-            0123456789abcdefghijklmnopqrstubewxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\
-            0123456789abcdefghijklmnopqrstubewxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+                       0123456789abcdefghijklmnopqrstubewxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\
+                       0123456789abcdefghijklmnopqrstubewxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\
+                       0123456789abcdefghijklmnopqrstubewxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\
+                       0123456789abcdefghijklmnopqrstubewxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\
+                       0123456789abcdefghijklmnopqrstubewxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\
+                       0123456789abcdefghijklmnopqrstubewxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\
+                       0123456789abcdefghijklmnopqrstubewxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\
+                       0123456789abcdefghijklmnopqrstubewxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\
+                       0123456789abcdefghijklmnopqrstubewxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\
+                       0123456789abcdefghijklmnopqrstubewxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\
+                       0123456789abcdefghijklmnopqrstubewxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\
+                       0123456789abcdefghijklmnopqrstubewxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\
+                       0123456789abcdefghijklmnopqrstubewxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
         let mut key = H256([0; 32]);
         let mut iv = H128([0; 16]);

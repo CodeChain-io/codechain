@@ -20,12 +20,12 @@ use cbytes::Bytes;
 use ctypes::{Address, H256};
 
 use self::validator_list::ValidatorList;
-use super::EpochChange;
-use super::super::codechain_machine::CodeChainMachine;
 use super::super::client::EngineClient;
+use super::super::codechain_machine::CodeChainMachine;
 use super::super::error::Error;
 use super::super::header::Header;
 use super::super::types::BlockNumber;
+use super::EpochChange;
 
 pub mod validator_list;
 
@@ -56,7 +56,9 @@ pub trait ValidatorSet: Send + Sync {
     }
 
     /// Extract genesis epoch data from the genesis state and header.
-    fn genesis_epoch_data(&self, _header: &Header) -> Result<Vec<u8>, String> { Ok(Vec::new()) }
+    fn genesis_epoch_data(&self, _header: &Header) -> Result<Vec<u8>, String> {
+        Ok(Vec::new())
+    }
 
     /// Whether this block is the last one in its epoch.
     ///
@@ -71,11 +73,7 @@ pub trait ValidatorSet: Send + Sync {
     ///
     /// Engine should set `first` only if the header is genesis. Multiplexing validator
     /// sets can set `first` to internal changes.
-    fn signals_epoch_end(
-        &self,
-        first: bool,
-        header: &Header,
-    ) -> EpochChange;
+    fn signals_epoch_end(&self, first: bool, header: &Header) -> EpochChange;
 
     /// Recover the validator set from the given proof, the block number, and
     /// whether this header is first in its set.
@@ -85,8 +83,13 @@ pub trait ValidatorSet: Send + Sync {
     ///
     /// Returns the set, along with a flag indicating whether finality of a specific
     /// hash should be proven.
-    fn epoch_set(&self, first: bool, machine: &CodeChainMachine, number: BlockNumber, proof: &[u8])
-        -> Result<(ValidatorList, Option<H256>), Error>;
+    fn epoch_set(
+        &self,
+        first: bool,
+        machine: &CodeChainMachine,
+        number: BlockNumber,
+        proof: &[u8],
+    ) -> Result<(ValidatorList, Option<H256>), Error>;
 
     /// Notifies about malicious behaviour.
     fn report_malicious(&self, _validator: &Address, _set_block: BlockNumber, _block: BlockNumber, _proof: Bytes) {}
@@ -95,4 +98,3 @@ pub trait ValidatorSet: Send + Sync {
     /// Allows blockchain state access.
     fn register_client(&self, _client: Weak<EngineClient>) {}
 }
-

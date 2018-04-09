@@ -14,9 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use super::super::transaction::{SignedTransaction, TransactionError};
 use ctypes::{H256, U256};
 use linked_hash_map::LinkedHashMap;
-use super::super::transaction::{SignedTransaction, TransactionError};
 
 /// Status of local transaction.
 /// Can indicate that the transaction is currently part of the queue (`Pending/Future`)
@@ -136,13 +136,10 @@ impl LocalTransactionsList {
     }
 
     fn clear_old(&mut self) {
-        let number_of_old = self.transactions
-            .values()
-            .filter(|status| !status.is_current())
-            .count();
+        let number_of_old = self.transactions.values().filter(|status| !status.is_current()).count();
 
         if self.max_old >= number_of_old {
-            return;
+            return
         }
 
         let to_remove = self.transactions
@@ -161,7 +158,7 @@ impl LocalTransactionsList {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ckeys::{Random, Generator};
+    use ckeys::{Generator, Random};
     use ctypes::U256;
 
     #[test]
@@ -215,4 +212,3 @@ mod tests {
         }.sign(keypair.private())
     }
 }
-

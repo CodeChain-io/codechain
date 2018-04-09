@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use rlp::{UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
+use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::ApplicationMessage;
 use super::HandshakeMessage;
@@ -29,18 +29,18 @@ pub enum Message {
 impl Message {
     pub fn is_sync(&self) -> bool {
         match self {
-            &Message::Handshake(HandshakeMessage::Sync(_, _)) => true,
+            &Message::Handshake(HandshakeMessage::Sync(..)) => true,
             _ => false,
         }
     }
 }
 
-use super::SYNC_ID;
 use super::ACK_ID;
-use super::REQUEST_ID;
 use super::ALLOWED_ID;
 use super::DENIED_ID;
 use super::ENCRYPTED_ID;
+use super::REQUEST_ID;
+use super::SYNC_ID;
 use super::UNENCRYPTED_ID;
 
 impl Encodable for Message {
@@ -68,4 +68,3 @@ impl Decodable for Message {
         }
     }
 }
-

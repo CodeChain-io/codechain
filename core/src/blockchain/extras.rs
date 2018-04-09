@@ -21,10 +21,10 @@ use ctypes::{H256, H264, U256};
 use heapsize::HeapSizeOf;
 use kvdb::PREFIX_LEN as DB_PREFIX_LEN;
 
-use super::super::consensus::epoch::{Transition as EpochTransition, PendingTransition as PendingEpochTransition};
+use super::super::consensus::epoch::{PendingTransition as PendingEpochTransition, Transition as EpochTransition};
 use super::super::db::Key;
-use super::super::types::BlockNumber;
 use super::super::invoice::Invoice;
+use super::super::types::BlockNumber;
 
 /// Represents index of extra data in database
 #[derive(Copy, Debug, Hash, Eq, PartialEq, Clone)]
@@ -104,16 +104,17 @@ pub const EPOCH_KEY_LEN: usize = DB_PREFIX_LEN + 16;
 
 /// epoch key prefix.
 /// used to iterate over all epoch transitions in order from genesis.
-pub const EPOCH_KEY_PREFIX: &'static [u8; DB_PREFIX_LEN] = &[
-    ExtrasIndex::EpochTransitions as u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-];
+pub const EPOCH_KEY_PREFIX: &'static [u8; DB_PREFIX_LEN] =
+    &[ExtrasIndex::EpochTransitions as u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 
 pub struct EpochTransitionsKey([u8; EPOCH_KEY_LEN]);
 
 impl ops::Deref for EpochTransitionsKey {
     type Target = [u8];
 
-    fn deref(&self) -> &[u8] { &self.0[..] }
+    fn deref(&self) -> &[u8] {
+        &self.0[..]
+    }
 }
 
 impl Key<EpochTransitions> for u64 {
@@ -163,11 +164,13 @@ pub struct TransactionAddress {
     /// Block hash
     pub block_hash: H256,
     /// Transaction index within the block
-    pub index: usize
+    pub index: usize,
 }
 
 impl HeapSizeOf for TransactionAddress {
-    fn heap_size_of_children(&self) -> usize { 0 }
+    fn heap_size_of_children(&self) -> usize {
+        0
+    }
 }
 
 #[derive(Clone, RlpEncodableWrapper, RlpDecodableWrapper)]
@@ -189,4 +192,3 @@ pub struct EpochTransitions {
     pub number: u64,
     pub candidates: Vec<EpochTransition>,
 }
-

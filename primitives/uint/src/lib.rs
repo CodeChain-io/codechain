@@ -13,11 +13,11 @@
 #[doc(hidden)]
 pub extern crate byteorder;
 
-#[cfg(feature="heapsizeof")]
+#[cfg(feature = "heapsizeof")]
 #[doc(hidden)]
 pub extern crate heapsize;
 
-#[cfg(feature="std")]
+#[cfg(feature = "std")]
 #[doc(hidden)]
 pub extern crate core;
 

@@ -17,26 +17,26 @@
 use std::collections::{HashMap, VecDeque};
 use std::error;
 use std::fmt;
-use std::io::{Write, self};
+use std::io::{self, Write};
 use std::result;
 
+use ccrypto::aes::SymmetricCipherError;
 use mio::deprecated::TryRead;
 use mio::net::TcpStream;
-use ccrypto::aes::SymmetricCipherError;
-use rlp::{Encodable, DecoderError, UntrustedRlp};
+use rlp::{DecoderError, Encodable, UntrustedRlp};
 
-use super::{ApplicationMessage, HandshakeMessage, Message, NegotiationBody, NegotiationMessage};
-use super::SignedMessage;
-use super::message::{Seq, Version};
 use super::super::SocketAddr;
 use super::super::client::Client;
 use super::super::extension::{Error as ExtensionError, NodeId};
 use super::super::session::{Nonce, Session, SharedSecret};
+use super::SignedMessage;
+use super::message::{Seq, Version};
+use super::{ApplicationMessage, HandshakeMessage, Message, NegotiationBody, NegotiationMessage};
 
 #[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq)]
 pub enum State {
-    New, // create socket
-    Requested, // send sync
+    New,         // create socket
+    Requested,   // send sync
     Established, // send ack or receive ack
 }
 
@@ -46,7 +46,7 @@ pub struct Connection {
     state: State,
     send_queue: VecDeque<Message>,
     next_negotiation_seq: Seq,
-    requested_negotiation: HashMap<Seq, String>
+    requested_negotiation: HashMap<Seq, String>,
 }
 
 #[derive(Debug)]
@@ -59,7 +59,7 @@ pub enum Error {
         actual: State,
     },
     UnreadySession,
-    SymmetricCipherError(SymmetricCipherError)
+    SymmetricCipherError(SymmetricCipherError),
 }
 
 impl fmt::Display for Error {
@@ -68,7 +68,10 @@ impl fmt::Display for Error {
             &Error::IoError(ref err) => err.fmt(f),
             &Error::DecoderError(ref err) => err.fmt(f),
             &Error::InvalidSign => write!(f, "InvalidSign"),
-            &Error::InvalidState {ref expected, ref actual} => write!(f, "InvalidState expected: {:?}, actual: {:?}", expected, actual),
+            &Error::InvalidState {
+                ref expected,
+                ref actual,
+            } => write!(f, "InvalidState expected: {:?}, actual: {:?}", expected, actual),
             &Error::UnreadySession => write!(f, "UnreadySession"),
             &Error::SymmetricCipherError(ref err) => write!(f, "{:?}", err),
         }
@@ -85,7 +88,9 @@ impl error::Error for Error {
             &Error::IoError(ref err) => Some(err),
             &Error::DecoderError(ref err) => Some(err),
             &Error::InvalidSign => None,
-            &Error::InvalidState {..} => None,
+            &Error::InvalidState {
+                ..
+            } => None,
             &Error::UnreadySession => None,
             &Error::SymmetricCipherError(_) => None,
         }
@@ -184,11 +189,10 @@ impl Connection {
                 Err(err) => {
                     info!("Cannot encrypt message : {:?}", err);
                     return
-                },
+                }
             }
         } else {
             ApplicationMessage::unencrypted(extension_name, VERSION, message)
-
         };
         self.enqueue(Message::Application(message));
     }
@@ -213,30 +217,33 @@ impl Connection {
                     // FIXME: check version of application
                     callback.on_message(&msg.extension_name(), &msg.unencrypted_data(&session_key)?);
                     Ok(true)
-                },
+                }
                 Some(Message::Handshake(msg)) => {
                     info!("handshake message received {:?}", msg);
                     match msg {
                         HandshakeMessage::Sync(_version, _nonce) => {
                             unreachable!(); // This message must be handled in UnprocessedConnection
-                        },
+                        }
                         HandshakeMessage::Ack(_) => {
                             let _ = self.expect_state(State::Requested)?;
                             self.state = State::Established;
                             callback.on_node_added();
-                        },
+                        }
                     }
                     Ok(true)
-                },
+                }
                 Some(Message::Negotiation(msg)) => {
                     let _ = self.expect_state(State::Established)?;
                     match msg.body() {
-                        &NegotiationBody::Request {ref application_name, ..} => {
+                        &NegotiationBody::Request {
+                            ref application_name,
+                            ..
+                        } => {
                             let seq = msg.seq();
                             // FIXME: version negotiation
                             callback.on_connected(&application_name);
                             self.enqueue_negotiation_allowed(seq);
-                        },
+                        }
                         &NegotiationBody::Allowed => {
                             let seq = msg.seq();
                             if let Some(name) = self.requested_negotiation.remove(&seq) {
@@ -244,13 +251,13 @@ impl Connection {
                             } else {
                                 info!("Negotiation::Allowed message received from non requested seq");
                             }
-                        },
+                        }
                         &NegotiationBody::Denied(_) => {
                             // FIXME: Call on_connection_denied
-                        },
+                        }
                     };
                     Ok(true)
-                },
+                }
             }
         })
     }

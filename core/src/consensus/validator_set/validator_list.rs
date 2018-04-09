@@ -18,12 +18,12 @@ use heapsize::HeapSizeOf;
 
 use ctypes::{Address, H256};
 
-use super::ValidatorSet;
-use super::super::EpochChange;
-use super::super::super::error::Error;
 use super::super::super::codechain_machine::CodeChainMachine;
+use super::super::super::error::Error;
 use super::super::super::header::Header;
 use super::super::super::types::BlockNumber;
+use super::super::EpochChange;
+use super::ValidatorSet;
 
 /// Validator set containing a known set of addresses.
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
@@ -34,7 +34,7 @@ pub struct ValidatorList {
 impl ValidatorList {
     pub fn new(validators: Vec<Address>) -> Self {
         ValidatorList {
-            validators
+            validators,
         }
     }
 
@@ -47,7 +47,9 @@ impl ValidatorList {
 impl ::std::ops::Deref for ValidatorList {
     type Target = [Address];
 
-    fn deref(&self) -> &[Address] { &self.validators }
+    fn deref(&self) -> &[Address] {
+        &self.validators
+    }
 }
 
 impl From<Vec<Address>> for ValidatorList {
@@ -94,15 +96,21 @@ impl ValidatorSet for ValidatorList {
         EpochChange::No
     }
 
-    fn epoch_set(&self, _first: bool, _: &CodeChainMachine, _: BlockNumber, _: &[u8]) -> Result<(ValidatorList, Option<H256>), Error> {
+    fn epoch_set(
+        &self,
+        _first: bool,
+        _: &CodeChainMachine,
+        _: BlockNumber,
+        _: &[u8],
+    ) -> Result<(ValidatorList, Option<H256>), Error> {
         Ok((self.clone(), None))
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
     use ctypes::Address;
+    use std::str::FromStr;
 
     use super::super::ValidatorSet;
     use super::ValidatorList;

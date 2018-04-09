@@ -46,12 +46,12 @@ pub const UNENCRYPTED_ID: ProtocolId = 0x06;
 
 #[cfg(test)]
 mod tests {
-    use super::SYNC_ID;
     use super::ACK_ID;
-    use super::REQUEST_ID;
     use super::ALLOWED_ID;
     use super::DENIED_ID;
     use super::ENCRYPTED_ID;
+    use super::REQUEST_ID;
+    use super::SYNC_ID;
     use super::UNENCRYPTED_ID;
 
     #[test]

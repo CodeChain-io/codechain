@@ -14,15 +14,15 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::{VecDeque, HashMap};
+use std::collections::{HashMap, VecDeque};
 
 use mio::deprecated::TryRead;
 use mio::net::TcpStream;
 use rlp::UntrustedRlp;
 
+use super::super::session::{Nonce, Session};
 use super::connection::{Connection, Error as ConnectionError, Result as ConnectionResult};
 use super::message::{HandshakeMessage, Message, SignedMessage};
-use super::super::session::{Nonce, Session};
 
 pub struct UnprocessedConnection {
     stream: TcpStream,
@@ -50,7 +50,7 @@ impl UnprocessedConnection {
                     }
                     self.session = Some(session.clone());
                     Ok(Some(nonce))
-                },
+                }
                 _ => Err(ConnectionError::UnreadySession),
             }
         } else {

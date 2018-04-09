@@ -22,19 +22,19 @@ use std::result::Result;
 use std::sync::Arc;
 use std::sync::atomic::AtomicUsize;
 
-use cio::{IoChannel, IoContext, IoError as CIoError, IoHandler, IoManager, IoHandlerResult, StreamToken};
-use ckeys::{Error as KeysError, Generator, Private, Random, exchange};
+use cio::{IoChannel, IoContext, IoError as CIoError, IoHandler, IoHandlerResult, IoManager, StreamToken};
+use ckeys::{exchange, Error as KeysError, Generator, Private, Random};
 use ctypes::Secret;
-use mio::{PollOpt, Ready, Token};
 use mio::deprecated::EventLoop;
 use mio::net::UdpSocket;
+use mio::{PollOpt, Ready, Token};
 use parking_lot::{Mutex, RwLock};
-use rlp::{UntrustedRlp, Encodable, Decodable, DecoderError};
+use rlp::{Decodable, DecoderError, Encodable, UntrustedRlp};
 
-use super::{HandshakeMessage, HandshakeMessageBody};
+use super::super::connection;
 use super::super::session::{Nonce, Session, SessionError, SessionTable};
 use super::super::{DiscoveryApi, SocketAddr};
-use super::super::connection;
+use super::{HandshakeMessage, HandshakeMessageBody};
 
 
 pub struct Handshake {
@@ -65,7 +65,9 @@ impl fmt::Display for HandshakeError {
             &HandshakeError::IoError(ref err) => write!(f, "IoError {}", err),
             &HandshakeError::CIoError(ref err) => err.fmt(f),
             &HandshakeError::RlpError(ref err) => write!(f, "RlpError {}", err),
-            &HandshakeError::SendError(ref msg, unsent) => write!(f, "SendError {} bytes of {:?} are not sent", unsent, msg),
+            &HandshakeError::SendError(ref msg, unsent) => {
+                write!(f, "SendError {} bytes of {:?} are not sent", unsent, msg)
+            }
             &HandshakeError::SessionError(ref err) => write!(f, "SessionError {}", err),
             &HandshakeError::NoSession => write!(f, "NoSession"),
             &HandshakeError::UnexpectedNonce(ref nonce) => write!(f, "{:?} is an unexpected nonce", nonce),
@@ -83,7 +85,7 @@ impl error::Error for HandshakeError {
             &HandshakeError::IoError(ref err) => err.description(),
             &HandshakeError::CIoError(ref err) => err.description(),
             &HandshakeError::RlpError(ref err) => err.description(),
-            &HandshakeError::SendError(_, _) => "Unsent data",
+            &HandshakeError::SendError(..) => "Unsent data",
             &HandshakeError::SessionError(ref err) => err.description(),
             &HandshakeError::NoSession => "No session",
             &HandshakeError::UnexpectedNonce(_) => "Unexpected nonce",
@@ -99,7 +101,7 @@ impl error::Error for HandshakeError {
             &HandshakeError::IoError(ref err) => Some(err),
             &HandshakeError::CIoError(_) => None,
             &HandshakeError::RlpError(ref err) => Some(err),
-            &HandshakeError::SendError(_, _) => None,
+            &HandshakeError::SendError(..) => None,
             &HandshakeError::SessionError(ref err) => Some(err),
             &HandshakeError::NoSession => None,
             &HandshakeError::UnexpectedNonce(_) => None,
@@ -164,7 +166,7 @@ impl Handshake {
 
                 info!("Handshake {:?} received from {:?}", message, socket_address);
                 Ok(Some((message, SocketAddr::from(socket_address))))
-            },
+            }
             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => Ok(None),
             Err(e) => Err(HandshakeError::from(e)),
         }
@@ -191,7 +193,12 @@ impl Handshake {
         Ok(())
     }
 
-    fn on_packet(&mut self, message: &HandshakeMessage, from: &SocketAddr, extension: &IoChannel<connection::HandlerMessage>) -> Result<(), HandshakeError> {
+    fn on_packet(
+        &mut self,
+        message: &HandshakeMessage,
+        from: &SocketAddr,
+        extension: &IoChannel<connection::HandlerMessage>,
+    ) -> Result<(), HandshakeError> {
         match message.body() {
             &HandshakeMessageBody::ConnectionRequest(ref nonce) => {
                 let encrypted_bytes = {
@@ -212,7 +219,7 @@ impl Handshake {
                 let pong = HandshakeMessage::connection_allowed(0, encrypted_bytes); // FIXME: seq
                 self.send_to(&pong, &from)?;
                 Ok(())
-            },
+            }
             &HandshakeMessageBody::ConnectionAllowed(ref nonce) => {
                 let session = self.table.get(from).ok_or(HandshakeError::NoSession)?;
                 if !session.is_ready() {
@@ -226,22 +233,25 @@ impl Handshake {
 
                 extension.send(connection::HandlerMessage::RequestConnection(from.clone(), session.clone()))?;
                 Ok(())
-            },
+            }
             &HandshakeMessageBody::ConnectionDenied(ref reason) => {
                 info!("Connection to {:?} refused(reason: {}", from, reason);
                 Ok(())
-            },
+            }
             &HandshakeMessageBody::EcdhRequest(ref key) => {
                 let ephemeral = Random.generate()?;
                 let secret = exchange(key, &ephemeral.private())?;
                 if self.table.insert(from.clone(), Session::new_without_nonce(secret)).is_some() {
-                    self.send_to(&HandshakeMessage::ecdh_denied(message.seq(), "ECDH Already requested".to_string()), from)?;
+                    self.send_to(
+                        &HandshakeMessage::ecdh_denied(message.seq(), "ECDH Already requested".to_string()),
+                        from,
+                    )?;
                     Err(HandshakeError::ECDHAlreadyRequested)
                 } else {
                     self.send_to(&HandshakeMessage::ecdh_allowed(message.seq(), *ephemeral.public()), from)?;
                     Ok(())
                 }
-            },
+            }
             &HandshakeMessageBody::EcdhAllowed(ref key) => {
                 if let Some(local_private) = self.requested.remove(from) {
                     let secret = exchange(key, &local_private)?;
@@ -267,7 +277,7 @@ impl Handshake {
                 } else {
                     Err(HandshakeError::ECDHIsNotRequested)
                 }
-            },
+            }
             &HandshakeMessageBody::EcdhDenied(ref reason) => {
                 info!("Connection to {:?} refused(reason: {}", from, reason);
                 if self.requested.remove(from).is_none() {
@@ -309,7 +319,12 @@ pub struct Handler {
 }
 
 impl Handler {
-    pub fn new(socket_address: SocketAddr, secret_key: Secret, extension: IoChannel<connection::HandlerMessage>, discovery: Arc<DiscoveryApi>) -> Self {
+    pub fn new(
+        socket_address: SocketAddr,
+        secret_key: Secret,
+        extension: IoChannel<connection::HandlerMessage>,
+        discovery: Arc<DiscoveryApi>,
+    ) -> Self {
         let handshake = Handshake::bind(&socket_address).expect("Cannot bind UDP port");
         let discovery = RwLock::new(discovery);
         Self {
@@ -344,7 +359,7 @@ impl IoHandler<HandlerMessage> for Handler {
                 let mut internal = self.internal.lock();
                 let ref mut queue = internal.connect_queue;
                 queue.push_back(socket_address.clone());
-            },
+            }
         };
         Ok(())
     }
@@ -356,27 +371,23 @@ impl IoHandler<HandlerMessage> for Handler {
 
     fn stream_readable(&self, _io: &IoContext<HandlerMessage>, stream: StreamToken) -> IoHandlerResult<()> {
         match stream {
-            RECV_TOKEN => {
-                loop {
-                    let mut internal = self.internal.lock();
-                    let ref mut handshake = internal.handshake;
-                    match handshake.receive() {
-                        Ok(None) => {
-                            break;
-                        },
-                        Ok(Some((msg, socket_address))) => {
-                            info!("{:?} from {:?}", msg, socket_address);
-                            handshake.on_packet(&msg, &socket_address, &self.extension)?;
-                        },
-                        Err(err) => {
-                            info!("handshake receive error {}", err);
-                        },
-                    };
+            RECV_TOKEN => loop {
+                let mut internal = self.internal.lock();
+                let ref mut handshake = internal.handshake;
+                match handshake.receive() {
+                    Ok(None) => break,
+                    Ok(Some((msg, socket_address))) => {
+                        info!("{:?} from {:?}", msg, socket_address);
+                        handshake.on_packet(&msg, &socket_address, &self.extension)?;
+                    }
+                    Err(err) => {
+                        info!("handshake receive error {}", err);
+                    }
                 };
             },
             _ => {
                 info!("Unknown stream token {}", stream);
-            },
+            }
         };
         Ok(())
     }
@@ -394,13 +405,18 @@ impl IoHandler<HandlerMessage> for Handler {
         Ok(())
     }
 
-    fn register_stream(&self, stream: StreamToken, reg: Token, event_loop: &mut EventLoop<IoManager<HandlerMessage>>) -> IoHandlerResult<()> {
+    fn register_stream(
+        &self,
+        stream: StreamToken,
+        reg: Token,
+        event_loop: &mut EventLoop<IoManager<HandlerMessage>>,
+    ) -> IoHandlerResult<()> {
         match stream {
             RECV_TOKEN => {
                 let mut internal = self.internal.lock();
                 let ref mut handshake = internal.handshake;
                 event_loop.register(&handshake.socket, reg, Ready::readable() | Ready::writable(), PollOpt::edge())?;
-            },
+            }
             _ => {
                 unreachable!();
             }

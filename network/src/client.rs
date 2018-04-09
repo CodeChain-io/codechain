@@ -20,8 +20,8 @@ use std::sync::{Arc, Weak};
 use cio::IoChannel;
 use parking_lot::RwLock;
 
-use super::{Api, Error as ExtensionError, Extension, NodeId};
 use super::connection::HandlerMessage as ConnectionMessage;
+use super::{Api, Error as ExtensionError, Extension, NodeId};
 
 struct ClientApi {
     extension: Weak<Extension>,
@@ -34,7 +34,12 @@ impl Api for ClientApi {
             let need_encryption = extension.need_encryption();
             let extension_name = extension.name();
             let node_id = *id;
-            if let Err(err) = self.channel.send(ConnectionMessage::SendExtensionMessage { node_id, extension_name, need_encryption, data: message.clone() }) {
+            if let Err(err) = self.channel.send(ConnectionMessage::SendExtensionMessage {
+                node_id,
+                extension_name,
+                need_encryption,
+                data: message.clone(),
+            }) {
                 info!("Cannot send extension message to {:?} : {:?}", id, err);
             } else {
                 info!("Request send extension message to {:?}", id);
@@ -49,7 +54,11 @@ impl Api for ClientApi {
             let extension_name = extension.name();
             let version = 0;
             let node_id = *id;
-            if let Err(err) = self.channel.send(ConnectionMessage::RequestNegotiation { node_id, extension_name, version }) {
+            if let Err(err) = self.channel.send(ConnectionMessage::RequestNegotiation {
+                node_id,
+                extension_name,
+                version,
+            }) {
                 info!("Cannot request negotiation to {:?} : {:?}", id, err);
             } else {
                 info!("Request negotiation to {:?}", id);
@@ -62,7 +71,7 @@ impl Api for ClientApi {
     fn set_timer(&self, timer_id: usize, ms: u64) {
         if let Some(extension) = self.extension.upgrade() {
             let extension_name = extension.name();
-            if let Err(err) = self.channel.send(ConnectionMessage::SetTimer{
+            if let Err(err) = self.channel.send(ConnectionMessage::SetTimer {
                 extension_name,
                 timer_id,
                 ms,
@@ -79,7 +88,7 @@ impl Api for ClientApi {
     fn set_timer_once(&self, timer_id: usize, ms: u64) {
         if let Some(extension) = self.extension.upgrade() {
             let extension_name = extension.name();
-            if let Err(err) = self.channel.send(ConnectionMessage::SetTimerOnce{
+            if let Err(err) = self.channel.send(ConnectionMessage::SetTimerOnce {
                 extension_name,
                 timer_id,
                 ms,
@@ -96,7 +105,7 @@ impl Api for ClientApi {
     fn clear_timer(&self, timer_id: usize) {
         if let Some(extension) = self.extension.upgrade() {
             let extension_name = extension.name();
-            if let Err(err) = self.channel.send(ConnectionMessage::ClearTimer{
+            if let Err(err) = self.channel.send(ConnectionMessage::ClearTimer {
                 extension_name,
                 timer_id,
             }) {
@@ -202,8 +211,7 @@ mod tests {
 
     use super::{Api, Client, Extension, ExtensionError, NodeId};
 
-    struct TestApi {
-    }
+    struct TestApi {}
 
     impl Api for TestApi {
         fn send(&self, _id: &usize, _message: &Vec<u8>) {
@@ -378,7 +386,10 @@ mod tests {
             let callbacks = e1.callbacks.lock();
             assert_eq!(callbacks.deref(), &vec![Callback::Initialize, Callback::Message]);
             let callbacks = e2.callbacks.lock();
-            assert_eq!(callbacks.deref(), &vec![Callback::Initialize, Callback::Message, Callback::Message, Callback::Message]);
+            assert_eq!(
+                callbacks.deref(),
+                &vec![Callback::Initialize, Callback::Message, Callback::Message, Callback::Message]
+            );
         }
     }
 }

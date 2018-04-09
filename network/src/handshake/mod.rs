@@ -18,5 +18,5 @@ mod handshake;
 mod message;
 
 
+pub use self::handshake::{Handler, HandlerMessage, Handshake};
 use self::message::{Body as HandshakeMessageBody, Message as HandshakeMessage};
-pub use self::handshake::{HandlerMessage, Handler, Handshake };

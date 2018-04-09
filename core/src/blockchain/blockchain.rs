@@ -23,20 +23,20 @@ use ctypes::{H256, U256};
 use kvdb::{DBTransaction, KeyValueDB};
 use parking_lot::RwLock;
 use rlp::{Rlp, RlpStream};
-use rlp_compress::{compress, decompress, blocks_swapper};
+use rlp_compress::{blocks_swapper, compress, decompress};
 
-use super::best_block::BestBlock;
-use super::extras::{BlockDetails, TransactionAddress, BlockInvoices, EpochTransitions, EPOCH_KEY_PREFIX};
-use super::block_info::{BlockInfo, BlockLocation, BranchBecomingCanonChainData};
 use super::super::blockchain_info::BlockChainInfo;
-use super::super::consensus::epoch::{Transition as EpochTransition, PendingTransition as PendingEpochTransition};
-use super::super::db::{self, Readable, Writable, CacheUpdatePolicy};
+use super::super::consensus::epoch::{PendingTransition as PendingEpochTransition, Transition as EpochTransition};
+use super::super::db::{self, CacheUpdatePolicy, Readable, Writable};
 use super::super::encoded;
 use super::super::header::Header;
 use super::super::invoice::Invoice;
-use super::super::transaction::{LocalizedTransaction};
+use super::super::transaction::LocalizedTransaction;
 use super::super::types::BlockNumber;
 use super::super::views::{BlockView, HeaderView};
+use super::best_block::BestBlock;
+use super::block_info::{BlockInfo, BlockLocation, BranchBecomingCanonChainData};
+use super::extras::{BlockDetails, BlockInvoices, EpochTransitions, TransactionAddress, EPOCH_KEY_PREFIX};
 
 /// Structure providing fast access to blockchain data.
 ///
@@ -83,9 +83,7 @@ impl BlockChain {
 
         // load best block
         let best_block_hash = match bc.db.get(db::COL_EXTRA, b"best").unwrap() {
-            Some(best) => {
-                H256::from_slice(&best)
-            }
+            Some(best) => H256::from_slice(&best),
             None => {
                 // best block does not exist
                 // we need to insert genesis into the cache
@@ -226,7 +224,7 @@ impl BlockChain {
         Some(TreeRoute {
             blocks: from_branch,
             ancestor: current_from,
-            index: index
+            index,
         })
     }
     /// Inserts the block into backing cache database.
@@ -239,7 +237,7 @@ impl BlockChain {
         let hash = header.hash();
 
         if self.is_known_child(&header.parent_hash(), &hash) {
-            return ImportRoute::none();
+            return ImportRoute::none()
         }
 
         assert!(self.pending_best_block.read().is_none());
@@ -253,15 +251,19 @@ impl BlockChain {
 
         let info = self.block_info(&header);
 
-        self.prepare_update(batch, ExtrasUpdate {
-            block_hashes: self.prepare_block_hashes_update(bytes, &info),
-            block_details: self.prepare_block_details_update(bytes, &info),
-            block_invoices: self.prepare_block_invoices_update(invoices, &info),
-            transactions_addresses: self.prepare_transaction_addresses_update(bytes, &info),
-            info: info.clone(),
-            timestamp: header.timestamp(),
-            block: bytes,
-        }, true);
+        self.prepare_update(
+            batch,
+            ExtrasUpdate {
+                block_hashes: self.prepare_block_hashes_update(bytes, &info),
+                block_details: self.prepare_block_details_update(bytes, &info),
+                block_invoices: self.prepare_block_invoices_update(invoices, &info),
+                transactions_addresses: self.prepare_transaction_addresses_update(bytes, &info),
+                info: info.clone(),
+                timestamp: header.timestamp(),
+                block: bytes,
+            },
+            true,
+        );
 
         ImportRoute::from(info)
     }
@@ -283,7 +285,8 @@ impl BlockChain {
         }
 
         let pending_txs = mem::replace(&mut *pending_write_txs, HashMap::new());
-        let (retracted_txs, enacted_txs) = pending_txs.into_iter().partition::<HashMap<_, _>, _>(|&(_, ref value)| value.is_none());
+        let (retracted_txs, enacted_txs) =
+            pending_txs.into_iter().partition::<HashMap<_, _>, _>(|&(_, ref value)| value.is_none());
 
         write_hashes.extend(mem::replace(&mut *pending_write_hashes, HashMap::new()));
         write_txs.extend(enacted_txs.into_iter().map(|(k, v)| (k, v.expect("Transactions were partitioned; qed"))));
@@ -315,9 +318,24 @@ impl BlockChain {
             let mut write_details = self.pending_block_details.write();
             let mut write_txs = self.pending_transaction_addresses.write();
 
-            batch.extend_with_cache(db::COL_EXTRA, &mut *write_details, update.block_details, CacheUpdatePolicy::Overwrite);
-            batch.extend_with_cache(db::COL_EXTRA, &mut *write_hashes, update.block_hashes, CacheUpdatePolicy::Overwrite);
-            batch.extend_with_option_cache(db::COL_EXTRA, &mut *write_txs, update.transactions_addresses, CacheUpdatePolicy::Overwrite);
+            batch.extend_with_cache(
+                db::COL_EXTRA,
+                &mut *write_details,
+                update.block_details,
+                CacheUpdatePolicy::Overwrite,
+            );
+            batch.extend_with_cache(
+                db::COL_EXTRA,
+                &mut *write_hashes,
+                update.block_hashes,
+                CacheUpdatePolicy::Overwrite,
+            );
+            batch.extend_with_option_cache(
+                db::COL_EXTRA,
+                &mut *write_txs,
+                update.transactions_addresses,
+                CacheUpdatePolicy::Overwrite,
+            );
         }
     }
 
@@ -332,9 +350,10 @@ impl BlockChain {
             BlockLocation::Branch => (),
             BlockLocation::CanonChain => {
                 block_hashes.insert(number, info.hash);
-            },
+            }
             BlockLocation::BranchBecomingCanonChain(ref data) => {
-                let ancestor_number = self.block_number(&data.ancestor).expect("Block number of ancestor is always in DB");
+                let ancestor_number =
+                    self.block_number(&data.ancestor).expect("Block number of ancestor is always in DB");
                 let start_number = ancestor_number + 1;
 
                 for (index, hash) in data.enacted.iter().cloned().enumerate() {
@@ -356,7 +375,8 @@ impl BlockChain {
         let parent_hash = header.parent_hash();
 
         // update parent
-        let mut parent_details = self.block_details(&parent_hash).unwrap_or_else(|| panic!("Invalid parent hash: {:?}", parent_hash));
+        let mut parent_details =
+            self.block_details(&parent_hash).unwrap_or_else(|| panic!("Invalid parent hash: {:?}", parent_hash));
         parent_details.children.push(info.hash);
 
         // create current block details.
@@ -382,44 +402,56 @@ impl BlockChain {
     }
 
     /// This function returns modified transaction addresses.
-    fn prepare_transaction_addresses_update(&self, block_bytes: &[u8], info: &BlockInfo) -> HashMap<H256, Option<TransactionAddress>> {
+    fn prepare_transaction_addresses_update(
+        &self,
+        block_bytes: &[u8],
+        info: &BlockInfo,
+    ) -> HashMap<H256, Option<TransactionAddress>> {
         let block = BlockView::new(block_bytes);
         let transaction_hashes = block.transaction_hashes();
 
         match info.location {
-            BlockLocation::CanonChain => {
-                transaction_hashes.into_iter()
-                    .enumerate()
-                    .map(|(i ,tx_hash)| {
-                        (tx_hash, Some(TransactionAddress {
+            BlockLocation::CanonChain => transaction_hashes
+                .into_iter()
+                .enumerate()
+                .map(|(i, tx_hash)| {
+                    (
+                        tx_hash,
+                        Some(TransactionAddress {
                             block_hash: info.hash,
-                            index: i
-                        }))
-                    })
-                    .collect()
-            },
+                            index: i,
+                        }),
+                    )
+                })
+                .collect(),
             BlockLocation::BranchBecomingCanonChain(ref data) => {
-                let addresses = data.enacted.iter()
-                    .flat_map(|hash| {
-                        let body = self.block_body(hash).expect("Enacted block must be in database.");
-                        let hashes = body.transaction_hashes();
-                        hashes.into_iter()
-                            .enumerate()
-                            .map(|(i, tx_hash)| (tx_hash, Some(TransactionAddress {
-                                block_hash: *hash,
-                                index: i,
-                            })))
-                            .collect::<HashMap<H256, Option<TransactionAddress>>>()
-                    });
+                let addresses = data.enacted.iter().flat_map(|hash| {
+                    let body = self.block_body(hash).expect("Enacted block must be in database.");
+                    let hashes = body.transaction_hashes();
+                    hashes
+                        .into_iter()
+                        .enumerate()
+                        .map(|(i, tx_hash)| {
+                            (
+                                tx_hash,
+                                Some(TransactionAddress {
+                                    block_hash: *hash,
+                                    index: i,
+                                }),
+                            )
+                        })
+                        .collect::<HashMap<H256, Option<TransactionAddress>>>()
+                });
 
-                let current_addresses = transaction_hashes.into_iter()
-                    .enumerate()
-                    .map(|(i ,tx_hash)| {
-                        (tx_hash, Some(TransactionAddress {
+                let current_addresses = transaction_hashes.into_iter().enumerate().map(|(i, tx_hash)| {
+                    (
+                        tx_hash,
+                        Some(TransactionAddress {
                             block_hash: info.hash,
-                            index: i
-                        }))
-                    });
+                            index: i,
+                        }),
+                    )
+                });
 
                 let retracted = data.retracted.iter().flat_map(|hash| {
                     let body = self.block_body(hash).expect("Retracted block must be in database.");
@@ -429,7 +461,7 @@ impl BlockChain {
 
                 // The order here is important! Don't remove transaction if it was part of enacted blocks as well.
                 retracted.chain(addresses).chain(current_addresses).collect()
-            },
+            }
             BlockLocation::Branch => HashMap::new(),
         }
     }
@@ -439,7 +471,8 @@ impl BlockChain {
         let hash = header.hash();
         let number = header.number();
         let parent_hash = header.parent_hash();
-        let parent_details = self.block_details(&parent_hash).unwrap_or_else(|| panic!("Invalid parent hash: {:?}", parent_hash));
+        let parent_details =
+            self.block_details(&parent_hash).unwrap_or_else(|| panic!("Invalid parent hash: {:?}", parent_hash));
         let is_new_best = parent_details.total_score + header.score() > self.best_block_total_score();
 
         BlockInfo {
@@ -459,7 +492,14 @@ impl BlockChain {
                 match route.blocks.len() {
                     0 => BlockLocation::CanonChain,
                     _ => {
-                        let retracted = route.blocks.iter().take(route.index).cloned().collect::<Vec<_>>().into_iter().collect::<Vec<_>>();
+                        let retracted = route
+                            .blocks
+                            .iter()
+                            .take(route.index)
+                            .cloned()
+                            .collect::<Vec<_>>()
+                            .into_iter()
+                            .collect::<Vec<_>>();
                         let enacted = route.blocks.into_iter().skip(route.index).collect::<Vec<_>>();
                         BlockLocation::BranchBecomingCanonChain(BranchBecomingCanonChainData {
                             ancestor: route.ancestor,
@@ -470,7 +510,7 @@ impl BlockChain {
                 }
             } else {
                 BlockLocation::Branch
-            }
+            },
         }
     }
 
@@ -533,7 +573,7 @@ impl BlockChain {
             None => EpochTransitions {
                 number: epoch_num,
                 candidates: Vec::with_capacity(1),
-            }
+            },
         };
 
         // ensure we don't write any duplicates.
@@ -584,10 +624,7 @@ impl BlockChain {
             // if `block_hash` is canonical it will only return transitions up to
             // the parent.
             if self.block_hash(details.number)? == hash {
-                return self.epoch_transitions()
-                    .map(|(_, t)| t)
-                    .take_while(|t| t.block_number <= details.number)
-                    .last()
+                return self.epoch_transitions().map(|(_, t)| t).take_while(|t| t.block_number <= details.number).last()
             }
         }
 
@@ -633,8 +670,7 @@ impl<'a> Iterator for AncestryIter<'a> {
         if self.current.is_zero() {
             None
         } else {
-            self.chain.block_details(&self.current)
-                .map(|details| mem::replace(&mut self.current, details.parent))
+            self.chain.block_details(&self.current).map(|details| mem::replace(&mut self.current, details.parent))
         }
     }
 }
@@ -643,7 +679,7 @@ impl<'a> Iterator for AncestryIter<'a> {
 /// Returns epoch transitions.
 pub struct EpochTransitionIter<'a> {
     chain: &'a BlockChain,
-    prefix_iter: Box<Iterator<Item=(Box<[u8]>, Box<[u8]>)> + 'a>,
+    prefix_iter: Box<Iterator<Item = (Box<[u8]>, Box<[u8]>)> + 'a>,
 }
 
 impl<'a> Iterator for EpochTransitionIter<'a> {
@@ -665,8 +701,8 @@ impl<'a> Iterator for EpochTransitionIter<'a> {
             // if there are multiple candidates, at most one will be on the
             // canon chain.
             for transition in transitions.candidates.into_iter() {
-                let is_in_canon_chain = self.chain.block_hash(transition.block_number)
-                    .map_or(false, |hash| hash == transition.block_hash);
+                let is_in_canon_chain =
+                    self.chain.block_hash(transition.block_number).map_or(false, |hash| hash == transition.block_hash);
 
                 if is_in_canon_chain {
                     return Some((transitions.number, transition))
@@ -715,17 +751,17 @@ pub trait BlockProvider {
 
     /// Get transaction with given transaction hash.
     fn transaction(&self, address: &TransactionAddress) -> Option<LocalizedTransaction> {
-        self.block_body(&address.block_hash)
-            .and_then(|body| self.block_number(&address.block_hash)
-                .and_then(|n| body.view().localized_transaction_at(&address.block_hash, n, address.index)))
+        self.block_body(&address.block_hash).and_then(|body| {
+            self.block_number(&address.block_hash)
+                .and_then(|n| body.view().localized_transaction_at(&address.block_hash, n, address.index))
+        })
     }
 
     /// Get a list of transactions for a given block.
     /// Returns None if block does not exist.
     fn transactions(&self, hash: &H256) -> Option<Vec<LocalizedTransaction>> {
         self.block_body(hash)
-            .and_then(|body| self.block_number(hash)
-                .map(|n| body.view().localized_transactions(hash, n)))
+            .and_then(|body| self.block_number(hash).map(|n| body.view().localized_transactions(hash, n)))
     }
 
     /// Returns reference to genesis hash.
@@ -735,8 +771,7 @@ pub trait BlockProvider {
 
     /// Returns the header of the genesis block.
     fn genesis_header(&self) -> Header {
-        self.block_header(&self.genesis_hash())
-            .expect("Genesis header always stored; qed")
+        self.block_header(&self.genesis_hash()).expect("Genesis header always stored; qed")
     }
 }
 
@@ -763,7 +798,7 @@ impl BlockProvider for BlockChain {
         {
             let read = self.block_headers.read();
             if let Some(v) = read.get(hash) {
-                return Some(encoded::Header::new(v.clone()));
+                return Some(encoded::Header::new(v.clone()))
             }
         }
 
@@ -771,15 +806,12 @@ impl BlockProvider for BlockChain {
         {
             let best_block = self.best_block.read();
             if &best_block.hash == hash {
-                return Some(encoded::Header::new(
-                    Rlp::new(&best_block.block).at(0).as_raw().to_vec()
-                ))
+                return Some(encoded::Header::new(Rlp::new(&best_block.block).at(0).as_raw().to_vec()))
             }
         }
 
         // Read from DB and populate cache
-        let b = self.db.get(db::COL_HEADERS, hash)
-            .expect("Low level database error. Some issue with disk?")?;
+        let b = self.db.get(db::COL_HEADERS, hash).expect("Low level database error. Some issue with disk?")?;
 
         let bytes = decompress(&b, blocks_swapper()).into_vec();
         let mut write = self.block_headers.write();
@@ -794,7 +826,7 @@ impl BlockProvider for BlockChain {
         {
             let read = self.block_bodies.read();
             if let Some(v) = read.get(hash) {
-                return Some(encoded::Body::new(v.clone()));
+                return Some(encoded::Body::new(v.clone()))
             }
         }
 
@@ -802,13 +834,12 @@ impl BlockProvider for BlockChain {
         {
             let best_block = self.best_block.read();
             if &best_block.hash == hash {
-                return Some(encoded::Body::new(Self::block_to_body(&best_block.block)));
+                return Some(encoded::Body::new(Self::block_to_body(&best_block.block)))
             }
         }
 
         // Read from DB and populate cache
-        let b = self.db.get(db::COL_BODIES, hash)
-            .expect("Low level database error. Some issue with disk?")?;
+        let b = self.db.get(db::COL_BODIES, hash).expect("Low level database error. Some issue with disk?")?;
 
         let bytes = decompress(&b, blocks_swapper()).into_vec();
         let mut write = self.block_bodies.write();

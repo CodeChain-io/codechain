@@ -23,55 +23,54 @@
 extern crate error_chain;
 
 extern crate codechain_types;
+extern crate kvdb;
 extern crate rlp;
 extern crate rustc_hex;
-extern crate kvdb;
 
-use std::fmt;
-use rustc_hex::FromHexError;
-use rlp::DecoderError;
 use codechain_types::H256;
+use rlp::DecoderError;
+use rustc_hex::FromHexError;
+use std::fmt;
 
 #[derive(Debug)]
 /// Error in database subsystem.
 pub enum BaseDataError {
-	/// An entry was removed more times than inserted.
-	NegativelyReferencedHash(H256),
-	/// A committed value was inserted more than once.
-	AlreadyExists(H256),
+    /// An entry was removed more times than inserted.
+    NegativelyReferencedHash(H256),
+    /// A committed value was inserted more than once.
+    AlreadyExists(H256),
 }
 
 impl fmt::Display for BaseDataError {
-	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		match *self {
-			BaseDataError::NegativelyReferencedHash(hash) =>
-				write!(f, "Entry {} removed from database more times than it was added.", hash),
-			BaseDataError::AlreadyExists(hash) =>
-				write!(f, "Committed key already exists in database: {}", hash),
-		}
-	}
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            BaseDataError::NegativelyReferencedHash(hash) => {
+                write!(f, "Entry {} removed from database more times than it was added.", hash)
+            }
+            BaseDataError::AlreadyExists(hash) => write!(f, "Committed key already exists in database: {}", hash),
+        }
+    }
 }
 
 impl std::error::Error for BaseDataError {
-	fn description(&self) -> &str {
-		"Error in database subsystem"
-	}
+    fn description(&self) -> &str {
+        "Error in database subsystem"
+    }
 }
 
 error_chain! {
-	types {
-		UtilError, ErrorKind, ResultExt, Result;
-	}
+    types {
+        UtilError, ErrorKind, ResultExt, Result;
+    }
 
-	links {
-		Db(kvdb::Error, kvdb::ErrorKind);
-	}
+    links {
+        Db(kvdb::Error, kvdb::ErrorKind);
+    }
 
-	foreign_links {
-		Io(::std::io::Error);
-		FromHex(FromHexError);
-		Decoder(DecoderError);
-		BaseData(BaseDataError);
-	}
+    foreign_links {
+        Io(::std::io::Error);
+        FromHex(FromHexError);
+        Decoder(DecoderError);
+        BaseData(BaseDataError);
+    }
 }
-

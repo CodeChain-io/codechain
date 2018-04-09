@@ -16,10 +16,10 @@
 
 //! State database abstraction. For more info, see the doc for `StateDB`
 
-use std::collections::{VecDeque, HashSet};
+use std::collections::{HashSet, VecDeque};
 use std::sync::Arc;
 
-use ctypes::{H256, Address};
+use ctypes::{Address, H256};
 use hashdb::HashDB;
 use journaldb::JournalDB;
 use kvdb::DBTransaction;
@@ -103,7 +103,6 @@ pub struct StateDB {
 }
 
 impl StateDB {
-
     /// Create a new instance wrapping `JournalDB` and the maximum allowed size
     /// of the LRU cache in bytes. Actual used memory may (read: will) be higher due to bookkeeping.
     // TODO: make the cache size actually accurate by moving the account storage cache
@@ -113,7 +112,7 @@ impl StateDB {
         let cache_items = acc_cache_size / ::std::mem::size_of::<Option<Account>>();
 
         StateDB {
-            db: db,
+            db,
             account_cache: Arc::new(Mutex::new(AccountCache {
                 accounts: LruCache::new(cache_items),
                 modifications: VecDeque::new(),
@@ -135,7 +134,12 @@ impl StateDB {
 
     /// Mark a given candidate from an ancient era as canonical, enacting its removals from the
     /// backing database and reverting any non-canonical historical commit's insertions.
-    pub fn mark_canonical(&mut self, batch: &mut DBTransaction, end_era: u64, canon_id: &H256) -> Result<u32, UtilError> {
+    pub fn mark_canonical(
+        &mut self,
+        batch: &mut DBTransaction,
+        end_era: u64,
+        canon_id: &H256,
+    ) -> Result<u32, UtilError> {
         self.db.mark_canonical(batch, end_era, canon_id)
     }
 
@@ -146,7 +150,13 @@ impl StateDB {
     /// should be called after the block has been committed and the
     /// blockchain route has ben calculated.
     pub fn sync_cache(&mut self, enacted: &[H256], retracted: &[H256], is_best: bool) {
-        trace!("sync_cache id = (#{:?}, {:?}), parent={:?}, best={}", self.commit_number, self.commit_hash, self.parent_hash, is_best);
+        trace!(
+            "sync_cache id = (#{:?}, {:?}), parent={:?}, best={}",
+            self.commit_number,
+            self.commit_hash,
+            self.parent_hash,
+            is_best
+        );
         let mut cache = self.account_cache.lock();
         let cache = &mut *cache;
 
@@ -194,7 +204,9 @@ impl StateDB {
         // Propagate cache only if committing on top of the latest canonical state
         // blocks are ordered by number and only one block with a given number is marked as canonical
         // (contributed to canonical state cache)
-        if let (Some(ref number), Some(ref hash), Some(ref parent)) = (self.commit_number, self.commit_hash, self.parent_hash) {
+        if let (Some(ref number), Some(ref hash), Some(ref parent)) =
+            (self.commit_number, self.commit_hash, self.parent_hash)
+        {
             if cache.modifications.len() == STATE_CACHE_BLOCKS {
                 cache.modifications.pop_back();
             }
@@ -207,11 +219,11 @@ impl StateDB {
                 if is_best {
                     let acc = account.account;
                     if let Some(&mut Some(ref mut existing)) = cache.accounts.get_mut(&account.address) {
-                        if let Some(new) =  acc {
+                        if let Some(new) = acc {
                             if account.modified {
                                 existing.overwrite_with(new);
                             }
-                            continue;
+                            continue
                         }
                     }
                     cache.accounts.insert(account.address, acc);
@@ -295,12 +307,12 @@ impl StateDB {
         let mut parent = match *parent_hash {
             None => {
                 trace!("Cache lookup skipped for {:?}: no parent hash", addr);
-                return false;
+                return false
             }
             Some(ref parent) => parent,
         };
         if modifications.is_empty() {
-            return true;
+            return true
         }
         // Ignore all accounts modified in later blocks
         // Modifications contains block ordered by the number
@@ -310,13 +322,13 @@ impl StateDB {
         for m in modifications {
             if &m.hash == parent {
                 if m.is_canon {
-                    return true;
+                    return true
                 }
                 parent = &m.parent;
             }
             if m.accounts.contains(addr) {
                 trace!("Cache lookup skipped for {:?}: modified in a later block", addr);
-                return false;
+                return false
             }
         }
         trace!("Cache lookup skipped for {:?}: parent hash is unknown", addr);
@@ -337,23 +349,24 @@ impl state::Backend for StateDB {
         self.local_cache.push(CacheQueueItem {
             address: addr,
             account: data,
-            modified: modified,
+            modified,
         })
     }
 
     fn get_cached_account(&self, addr: &Address) -> Option<Option<Account>> {
         let mut cache = self.account_cache.lock();
         if !Self::is_allowed(addr, &self.parent_hash, &cache.modifications) {
-            return None;
+            return None
         }
         cache.accounts.get_mut(addr).map(|a| a.as_ref().map(|a| a.clone()))
     }
 
     fn get_cached<F, U>(&self, a: &Address, f: F) -> Option<U>
-        where F: FnOnce(Option<&mut Account>) -> U {
+    where
+        F: FnOnce(Option<&mut Account>) -> U, {
         let mut cache = self.account_cache.lock();
         if !Self::is_allowed(a, &self.parent_hash, &cache.modifications) {
-            return None;
+            return None
         }
         cache.accounts.get_mut(a).map(|c| f(c.as_mut()))
     }
@@ -361,12 +374,12 @@ impl state::Backend for StateDB {
 
 #[cfg(test)]
 mod tests {
-    use ctypes::{H256, U256, Address};
-    use kvdb::DBTransaction;
     use clogger::init_log;
+    use ctypes::{Address, H256, U256};
+    use kvdb::DBTransaction;
 
-    use super::state::{Backend, Account};
     use super::super::tests::helpers::get_temp_state_db;
+    use super::state::{Account, Backend};
 
     #[test]
     fn account_cache() {

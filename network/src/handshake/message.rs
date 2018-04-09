@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ctypes::Public;
-use rlp::{UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
+use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 type Version = u32;
 type Raw = Vec<u8>;
@@ -123,29 +123,26 @@ impl Encodable for Message {
     fn rlp_append(&self, s: &mut RlpStream) {
         let version = self.version;
         let seq = self.seq;
-        s.begin_list(4)
-            .append(&version)
-            .append(&seq)
-            .append(&self.protocol_id());
+        s.begin_list(4).append(&version).append(&seq).append(&self.protocol_id());
         match self.body {
             Body::ConnectionRequest(ref body) => {
                 s.append(body);
-            },
+            }
             Body::ConnectionAllowed(ref body) => {
                 s.append(body);
-            },
+            }
             Body::ConnectionDenied(ref reason) => {
                 s.append(reason);
-            },
+            }
             Body::EcdhRequest(ref key) => {
                 s.append(key);
-            },
+            }
             Body::EcdhAllowed(ref key) => {
                 s.append(key);
-            },
+            }
             Body::EcdhDenied(ref reason) => {
                 s.append(reason);
-            },
+            }
         }
     }
 }
@@ -160,47 +157,46 @@ impl Decodable for Message {
             CONNECTION_REQUEST => {
                 let body: Raw = rlp.val_at(3)?;
                 Ok(Message::connection_request(seq, body))
-            },
+            }
             CONNECTION_ALLOWED => {
                 let body: Raw = rlp.val_at(3)?;
                 Ok(Message::connection_allowed(seq, body))
-            },
+            }
             CONNECTION_DENIED => {
                 let reason: String = rlp.val_at(3)?;
                 Ok(Message::connection_denied(seq, reason))
-            },
+            }
             ECDH_REQUEST => {
                 let key: Public = rlp.val_at(3)?;
                 Ok(Message::ecdh_request(seq, key))
-            },
+            }
             ECDH_ALLOWED => {
                 let key: Public = rlp.val_at(3)?;
                 Ok(Message::ecdh_allowed(seq, key))
-            },
+            }
             ECDH_DENIED => {
                 let reason: String = rlp.val_at(3)?;
                 Ok(Message::ecdh_denied(seq, reason))
-            },
-            _ =>
-                Err(DecoderError::Custom("Invalid protocol id")),
+            }
+            _ => Err(DecoderError::Custom("Invalid protocol id")),
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use rlp::{ Decodable, Encodable, UntrustedRlp };
+    use rlp::{Decodable, Encodable, UntrustedRlp};
 
+    use super::super::super::session::Nonce;
     use super::Message;
     use super::Seq;
     use super::Version;
-    use super::super::super::session::Nonce;
 
     const SINGLE: u8 = 0x80;
     const LIST: u8 = 0xc0;
-    use super::CONNECTION_REQUEST;
     use super::CONNECTION_ALLOWED;
     use super::CONNECTION_DENIED;
+    use super::CONNECTION_REQUEST;
 
     const VERSION: Version = 0;
 
@@ -213,10 +209,13 @@ mod tests {
 
         let req = Message::connection_request(SEQ, nonce.clone().into_vec());
         let bytes = req.rlp_bytes();
-        assert_eq!(1
+        assert_eq!(
+            1
                    + 1 /* version */ + 1 /* seq */
                    + 1 /* protocol id */
-                   + nonce.len() /* rlp(nonce) */, bytes.len());
+                   + nonce.len(), /* rlp(nonce) */
+            bytes.len()
+        );
 
         // length prefix
         assert_eq!(LIST as usize + bytes.len() - 1, bytes[0] as usize);
@@ -245,9 +244,12 @@ mod tests {
         let allowed = Message::connection_allowed(SEQ, nonce.clone().into_vec());
 
         let bytes = allowed.rlp_bytes();
-        assert_eq!(1 + 1 /* version */ + 1 /* seq */
+        assert_eq!(
+            1 + 1 /* version */ + 1 /* seq */
                        + 1 /* protocol id */
-                       + nonce.len() /* rlp(nonce) */, bytes.len());
+                       + nonce.len(), /* rlp(nonce) */
+            bytes.len()
+        );
 
         // length prefix
         assert_eq!(LIST as usize + bytes.len() - 1, bytes[0] as usize);
@@ -276,10 +278,13 @@ mod tests {
         let denied = Message::connection_denied(SEQ, REASON.to_string());
 
         let bytes = denied.rlp_bytes();
-        assert_eq!(1
+        assert_eq!(
+            1
                        + 1 /* version */ + 1 /* seq */
                        + 1 /* protocol id */
-                       + 1 + reason_len /* reason */, bytes.len());
+                       + 1 + reason_len, /* reason */
+            bytes.len()
+        );
 
         // length prefix
         assert_eq!(LIST as usize + bytes.len() - 1, bytes[0] as usize);
@@ -308,7 +313,8 @@ mod tests {
         let mut bytes: Vec<u8> = vec![
             LIST + 1 /* version */ + 1 /* seq */
                 + 1 /* protocol id */
-                + nonce.len() as u8 /* rlp(nonce) */];
+                + nonce.len() as u8, /* rlp(nonce) */
+        ];
 
         bytes.push(SINGLE + VERSION as u8);
 
@@ -318,8 +324,11 @@ mod tests {
 
         bytes.extend_from_slice(nonce.as_slice());
 
-        assert_eq!(1 + 1 /* version */ + 1 /* seq */
-                + 1 /* protocol id */ + nonce.len() /* rlp(nonce) */, bytes.len());
+        assert_eq!(
+            1 + 1 /* version */ + 1 /* seq */
+                + 1 /* protocol id */ + nonce.len(), /* rlp(nonce) */
+            bytes.len()
+        );
 
         let rlp = UntrustedRlp::new(&bytes);
 
@@ -338,7 +347,8 @@ mod tests {
         let mut bytes: Vec<u8> = vec![
             LIST + 1 /* version */ + 1 /* seq */
                 + 1 /* protocol id */
-                + nonce.len() as u8 /* rlp(nonce) */];
+                + nonce.len() as u8, /* rlp(nonce) */
+        ];
 
         bytes.push(SINGLE + VERSION as u8);
 
@@ -348,9 +358,12 @@ mod tests {
 
         bytes.extend_from_slice(nonce.as_slice());
 
-        assert_eq!(1 + 1 /* version */ + 1 /* seq */
+        assert_eq!(
+            1 + 1 /* version */ + 1 /* seq */
                        + 1 /* protocol id */
-                       + nonce.len() /* rlp(nonce) */, bytes.len());
+                       + nonce.len(), /* rlp(nonce) */
+            bytes.len()
+        );
 
         let rlp = UntrustedRlp::new(&bytes);
         match Decodable::decode(&rlp) {
@@ -369,7 +382,8 @@ mod tests {
         let mut bytes: Vec<u8> = vec![
             LIST + 1 /* version */ + 1 /* seq */
                 + 1 /* protocol id */
-                + 1 + reason_len as u8 /* reason */];
+                + 1 + reason_len as u8, /* reason */
+        ];
 
         bytes.push(SINGLE + VERSION as u8);
 
@@ -379,9 +393,12 @@ mod tests {
 
         bytes.extend_from_slice(REASON.rlp_bytes().into_vec().as_slice());
 
-        assert_eq!(1 + 1 /* version */ + 1 /* seq */
+        assert_eq!(
+            1 + 1 /* version */ + 1 /* seq */
                 + 1 /* protocol id */
-                + 1 + reason_len, bytes.len());
+                + 1 + reason_len,
+            bytes.len()
+        );
 
         let rlp = UntrustedRlp::new(&bytes);
         match Decodable::decode(&rlp) {
@@ -399,10 +416,13 @@ mod tests {
 
         let req = Message::connection_request(SEQ, nonce.clone().into_vec());
         let bytes = req.rlp_bytes();
-        assert_eq!(1
+        assert_eq!(
+            1
                    + 1 /* version */ + 1 /* seq */
                    + 1 /* protocol id */
-                   + 1 + nonce.len() /* rlp(nonce) */, bytes.len());
+                   + 1 + nonce.len(), /* rlp(nonce) */
+            bytes.len()
+        );
 
         // length prefix
         assert_eq!(LIST as usize + bytes.len() - 1, bytes[0] as usize);
@@ -431,10 +451,13 @@ mod tests {
 
         let allowed = Message::connection_allowed(SEQ, nonce.clone().into_vec());
         let bytes = allowed.rlp_bytes();
-        assert_eq!(1
+        assert_eq!(
+            1
                    +1 /* version */ + 1 /* seq */
                    + 1 /* protocol id */
-                   + 1 + nonce.len() /* rlp(nonce) */, bytes.len());
+                   + 1 + nonce.len(), /* rlp(nonce) */
+            bytes.len()
+        );
 
         // length prefix
         assert_eq!(LIST as usize + bytes.len() - 1, bytes[0] as usize);
@@ -464,7 +487,8 @@ mod tests {
         let mut bytes: Vec<u8> = vec![
             LIST + 1 /* version */ + 1 /* seq */
                 + 1 /* protocol id */
-                + 1 + nonce.len() as u8 /* rlp(nonce) */];
+                + 1 + nonce.len() as u8, /* rlp(nonce) */
+        ];
 
         bytes.push(SINGLE + VERSION as u8);
 
@@ -475,9 +499,12 @@ mod tests {
         bytes.push(SINGLE + nonce.len() as u8);
         bytes.extend_from_slice(nonce.as_slice());
 
-        assert_eq!(1 + 1 /* version */ + 1 /* seq */
+        assert_eq!(
+            1 + 1 /* version */ + 1 /* seq */
                 + 1 /* protocol id */
-                + 1 + nonce.len() /* rlp(nonce) */, bytes.len());
+                + 1 + nonce.len(), /* rlp(nonce) */
+            bytes.len()
+        );
 
         let rlp = UntrustedRlp::new(&bytes);
         match Decodable::decode(&rlp) {
@@ -496,7 +523,8 @@ mod tests {
         let mut bytes: Vec<u8> = vec![
             LIST + 1 /* version */ + 1 /* seq */
                 + 1 /* protocol id */
-                + 1 + nonce.len() as u8 /* rlp(nonce) */];
+                + 1 + nonce.len() as u8, /* rlp(nonce) */
+        ];
 
         bytes.push(SINGLE + VERSION as u8);
 
@@ -507,9 +535,12 @@ mod tests {
         bytes.push(SINGLE + nonce.len() as u8);
         bytes.extend_from_slice(nonce.as_slice());
 
-        assert_eq!(1 + 1 /* version */ + 1 /* seq */
+        assert_eq!(
+            1 + 1 /* version */ + 1 /* seq */
                 + 1 /* protocol id */
-                + 1 + nonce.len() /* rlp(nonce) */, bytes.len());
+                + 1 + nonce.len(), /* rlp(nonce) */
+            bytes.len()
+        );
 
         let rlp = UntrustedRlp::new(&bytes);
 

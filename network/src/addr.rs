@@ -17,10 +17,10 @@
 use std::cmp::Ordering;
 use std::convert::{From, Into};
 use std::fmt;
-use std::net::{AddrParseError, IpAddr, Ipv4Addr, Ipv6Addr, self};
+use std::net::{self, AddrParseError, IpAddr, Ipv4Addr, Ipv6Addr};
 use std::str::FromStr;
 
-use rlp::{UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
+use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct SocketAddr {
@@ -81,11 +81,9 @@ impl Ord for SocketAddr {
         match (self.addr, other.addr) {
             (net::SocketAddr::V4(_), net::SocketAddr::V6(_)) => Ordering::Less,
             (net::SocketAddr::V6(_), net::SocketAddr::V4(_)) => Ordering::Greater,
-            (lhs, rhs) => {
-                match lhs.ip().cmp(&rhs.ip()) {
-                    Ordering::Equal => lhs.port().cmp(&rhs.port()),
-                    order => order,
-                }
+            (lhs, rhs) => match lhs.ip().cmp(&rhs.ip()) {
+                Ordering::Equal => lhs.port().cmp(&rhs.port()),
+                order => order,
             },
         }
     }
@@ -114,7 +112,7 @@ impl Encodable for SocketAddr {
                     s.append(octet);
                 }
                 s.append(&self.port());
-            },
+            }
             IpAddr::V6(ref addr) => {
                 let octets = addr.octets();
                 assert_eq!(16, octets.len());
@@ -123,7 +121,7 @@ impl Encodable for SocketAddr {
                     s.append(octet);
                 }
                 s.append(&self.port());
-            },
+            }
         }
     }
 }
@@ -138,7 +136,7 @@ impl Decodable for SocketAddr {
                 let ip3 = rlp.val_at(3)?;
                 let port = rlp.val_at(4)?;
                 Ok(SocketAddr::v4(ip0, ip1, ip2, ip3, port))
-            },
+            }
             17 => {
                 let mut octets: [u8; 16] = [0; 16];
                 for i in 0..16 {
@@ -147,7 +145,7 @@ impl Decodable for SocketAddr {
                 let port = rlp.val_at(16)?;
                 let ip = IpAddr::V6(Ipv6Addr::from(octets));
                 Ok(SocketAddr::new(ip, port))
-            },
+            }
             _ => Err(DecoderError::RlpIncorrectListLen),
         }
     }
@@ -155,8 +153,8 @@ impl Decodable for SocketAddr {
 
 #[cfg(test)]
 mod tests {
-    use std::cmp::Ordering;
     use super::SocketAddr;
+    use std::cmp::Ordering;
 
     #[test]
     fn test_addresss_are_equal_if_they_have_same_id_and_port() {

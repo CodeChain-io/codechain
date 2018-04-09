@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use rlp::{UntrustedRlp, RlpStream, Encodable, Decodable, DecoderError};
+use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub enum Network {
@@ -23,7 +23,9 @@ pub enum Network {
 }
 
 impl Default for Network {
-    fn default() -> Network { Network::Mainnet }
+    fn default() -> Network {
+        Network::Mainnet
+    }
 }
 
 impl Decodable for Network {
@@ -32,7 +34,7 @@ impl Decodable for Network {
         match network {
             0 => Ok(Network::Mainnet),
             1 => Ok(Network::Testnet),
-            _ => Err(DecoderError::Custom("Unknown network"))
+            _ => Err(DecoderError::Custom("Unknown network")),
         }
     }
 }
@@ -42,4 +44,3 @@ impl Encodable for Network {
         s.append(&(*self as u8));
     }
 }
-

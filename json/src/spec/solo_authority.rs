@@ -34,8 +34,8 @@ mod tests {
     use ctypes::H160;
     use serde_json;
 
-    use super::SoloAuthority;
     use super::super::super::hash::Address;
+    use super::SoloAuthority;
 
     #[test]
     fn basic_authority_deserialization() {
@@ -52,4 +52,3 @@ mod tests {
         assert_eq!(deserialized.params.validators, vs);
     }
 }
-

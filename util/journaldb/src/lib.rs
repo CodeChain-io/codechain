@@ -31,12 +31,12 @@ extern crate codechain_logger;
 #[cfg(test)]
 extern crate kvdb_memorydb;
 
-use std::{fmt, str};
 use std::sync::Arc;
+use std::{fmt, str};
 
+mod archivedb;
 /// Export the journaldb module.
 mod traits;
-mod archivedb;
 
 /// Export the `JournalDB` trait.
 pub use self::traits::JournalDB;
@@ -44,105 +44,107 @@ pub use self::traits::JournalDB;
 /// Journal database operating strategy.
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Algorithm {
-	/// Keep all keys forever.
-	Archive,
+    /// Keep all keys forever.
+    Archive,
 }
 
 impl Default for Algorithm {
-	fn default() -> Algorithm { Algorithm::Archive }
+    fn default() -> Algorithm {
+        Algorithm::Archive
+    }
 }
 
 impl str::FromStr for Algorithm {
-	type Err = String;
+    type Err = String;
 
-	fn from_str(s: &str) -> Result<Self, Self::Err> {
-		match s {
-			"archive" => Ok(Algorithm::Archive),
-			e => Err(format!("Invalid algorithm: {}", e)),
-		}
-	}
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "archive" => Ok(Algorithm::Archive),
+            e => Err(format!("Invalid algorithm: {}", e)),
+        }
+    }
 }
 
 impl Algorithm {
-	/// Returns static str describing journal database algorithm.
-	pub fn as_str(&self) -> &'static str {
-		match *self {
-			Algorithm::Archive => "archive",
-		}
-	}
+    /// Returns static str describing journal database algorithm.
+    pub fn as_str(&self) -> &'static str {
+        match *self {
+            Algorithm::Archive => "archive",
+        }
+    }
 
-	/// Returns static str describing journal database algorithm.
-	pub fn as_internal_name_str(&self) -> &'static str {
-		match *self {
-			Algorithm::Archive => "archive",
-		}
-	}
+    /// Returns static str describing journal database algorithm.
+    pub fn as_internal_name_str(&self) -> &'static str {
+        match *self {
+            Algorithm::Archive => "archive",
+        }
+    }
 
-	/// Returns true if pruning strategy is stable
-	pub fn is_stable(&self) -> bool {
-		match *self {
-			Algorithm::Archive => true,
-		}
-	}
+    /// Returns true if pruning strategy is stable
+    pub fn is_stable(&self) -> bool {
+        match *self {
+            Algorithm::Archive => true,
+        }
+    }
 
-	/// Returns all algorithm types.
-	pub fn all_types() -> Vec<Algorithm> {
-		vec![Algorithm::Archive]
-	}
+    /// Returns all algorithm types.
+    pub fn all_types() -> Vec<Algorithm> {
+        vec![Algorithm::Archive]
+    }
 }
 
 impl fmt::Display for Algorithm {
-	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		write!(f, "{}", self.as_str())
-	}
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
 }
 
 /// Create a new `JournalDB` trait object over a generic key-value database.
 pub fn new(backing: Arc<::kvdb::KeyValueDB>, algorithm: Algorithm, col: Option<u32>) -> Box<JournalDB> {
-	match algorithm {
-		Algorithm::Archive => Box::new(archivedb::ArchiveDB::new(backing, col)),
-	}
+    match algorithm {
+        Algorithm::Archive => Box::new(archivedb::ArchiveDB::new(backing, col)),
+    }
 }
 
 // all keys must be at least 12 bytes
-const DB_PREFIX_LEN : usize = ::kvdb::PREFIX_LEN;
-const LATEST_ERA_KEY : [u8; ::kvdb::PREFIX_LEN] = [ b'l', b'a', b's', b't', 0, 0, 0, 0, 0, 0, 0, 0 ];
+const DB_PREFIX_LEN: usize = ::kvdb::PREFIX_LEN;
+const LATEST_ERA_KEY: [u8; ::kvdb::PREFIX_LEN] = [b'l', b'a', b's', b't', 0, 0, 0, 0, 0, 0, 0, 0];
 
 #[cfg(test)]
 mod tests {
-	use super::Algorithm;
+    use super::Algorithm;
 
-	#[test]
-	fn test_journal_algorithm_parsing() {
-		assert_eq!(Algorithm::Archive, "archive".parse().unwrap());
-	}
+    #[test]
+    fn test_journal_algorithm_parsing() {
+        assert_eq!(Algorithm::Archive, "archive".parse().unwrap());
+    }
 
-	#[test]
-	fn test_journal_algorithm_printing() {
-		assert_eq!(Algorithm::Archive.to_string(), "archive".to_owned());
-	}
+    #[test]
+    fn test_journal_algorithm_printing() {
+        assert_eq!(Algorithm::Archive.to_string(), "archive".to_owned());
+    }
 
-	#[test]
-	fn test_journal_algorithm_is_stable() {
-		assert!(Algorithm::Archive.is_stable());
-	}
+    #[test]
+    fn test_journal_algorithm_is_stable() {
+        assert!(Algorithm::Archive.is_stable());
+    }
 
-	#[test]
-	fn test_journal_algorithm_default() {
-		assert_eq!(Algorithm::default(), Algorithm::Archive);
-	}
+    #[test]
+    fn test_journal_algorithm_default() {
+        assert_eq!(Algorithm::default(), Algorithm::Archive);
+    }
 
-	#[test]
-	fn test_journal_algorithm_all_types() {
-		// compiling should fail if some cases are not covered
-		let mut archive = 0;
+    #[test]
+    fn test_journal_algorithm_all_types() {
+        // compiling should fail if some cases are not covered
+        let mut archive = 0;
 
-		for a in &Algorithm::all_types() {
-			match *a {
-				Algorithm::Archive => archive += 1,
-			}
-		}
+        for a in &Algorithm::all_types() {
+            match *a {
+                Algorithm::Archive => archive += 1,
+            }
+        }
 
-		assert_eq!(archive, 1);
-	}
+        assert_eq!(archive, 1);
+    }
 }

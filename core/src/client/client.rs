@@ -14,9 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::{HashSet, HashMap};
-use std::sync::{Arc, Weak};
+use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
+use std::sync::{Arc, Weak};
 use std::time::Instant;
 
 use cbytes::Bytes;
@@ -27,16 +27,12 @@ use kvdb::{DBTransaction, KeyValueDB};
 use parking_lot::{Mutex, RwLock};
 use trie::{TrieFactory, TrieSpec};
 
-use super::{EngineClient, BlockChainInfo, BlockInfo, TransactionInfo,
-            ChainInfo, ChainNotify, ClientConfig, ImportBlock, Nonce, Balance,
-            BlockChainClient, BlockChain as BlockChainTrait, Error as ClientError, StateOrBlock
-};
-use super::super::block::{IsBlock, LockedBlock, Drain, enact};
-use super::super::blockchain::{BlockChain, BlockProvider, TransactionAddress, ImportRoute};
+use super::super::block::{enact, Drain, IsBlock, LockedBlock};
+use super::super::blockchain::{BlockChain, BlockProvider, ImportRoute, TransactionAddress};
 use super::super::consensus::CodeChainEngine;
-use super::super::consensus::epoch::{Transition as EpochTransition};
+use super::super::consensus::epoch::Transition as EpochTransition;
 use super::super::encoded;
-use super::super::error::{Error, BlockImportError, ImportError};
+use super::super::error::{BlockImportError, Error, ImportError};
 use super::super::header::Header;
 use super::super::invoice::Invoice;
 use super::super::service::ClientIoMessage;
@@ -45,9 +41,13 @@ use super::super::state::State;
 use super::super::state_db::StateDB;
 use super::super::transaction::SignedTransaction;
 use super::super::types::{BlockId, BlockNumber, BlockStatus, TransactionId, VerificationQueueInfo as BlockQueueInfo};
-use super::super::verification::{self, Verifier, PreverifiedBlock};
 use super::super::verification::queue::BlockQueue;
+use super::super::verification::{self, PreverifiedBlock, Verifier};
 use super::super::views::BlockView;
+use super::{
+    Balance, BlockChain as BlockChainTrait, BlockChainClient, BlockChainInfo, BlockInfo, ChainInfo, ChainNotify,
+    ClientConfig, EngineClient, Error as ClientError, ImportBlock, Nonce, StateOrBlock, TransactionInfo,
+};
 
 const MAX_TX_QUEUE_SIZE: usize = 4096;
 
@@ -131,7 +131,9 @@ impl Client {
         self.notify.write().push(Arc::downgrade(&target));
     }
 
-    fn notify<F>(&self, f: F) where F: Fn(&ChainNotify) {
+    fn notify<F>(&self, f: F)
+    where
+        F: Fn(&ChainNotify), {
         for np in self.notify.read().iter() {
             if let Some(n) = np.upgrade() {
                 f(&*n);
@@ -156,10 +158,12 @@ impl Client {
     fn transaction_address(&self, id: TransactionId) -> Option<TransactionAddress> {
         match id {
             TransactionId::Hash(ref hash) => self.chain.read().transaction_address(hash),
-            TransactionId::Location(id, index) => Self::block_hash(&self.chain.read(), id).map(|hash| TransactionAddress {
-                block_hash: hash,
-                index,
-            })
+            TransactionId::Location(id, index) => {
+                Self::block_hash(&self.chain.read(), id).map(|hash| TransactionAddress {
+                    block_hash: hash,
+                    index,
+                })
+            }
         }
     }
 
@@ -185,9 +189,8 @@ impl Client {
             self.state_db.read().boxed_clone_canon(&header.hash()),
             header.state_root(),
             self.engine.machine().account_start_nonce(),
-            self.trie_factory.clone()
-        )
-            .expect("State root of best block header always valid.")
+            self.trie_factory.clone(),
+        ).expect("State root of best block header always valid.")
     }
 
     /// Attempt to get a copy of a specific block's final state.
@@ -199,7 +202,7 @@ impl Client {
         // fast path for latest state.
         match id.clone() {
             BlockId::Latest => return Some(self.latest_state()),
-            _ => {},
+            _ => {}
         }
 
         self.block_header(id).and_then(|header| {
@@ -250,9 +253,7 @@ impl BlockInfo for Client {
     fn block(&self, id: BlockId) -> Option<encoded::Block> {
         let chain = self.chain.read();
 
-        Self::block_hash(&chain, id).and_then(|hash| {
-            chain.block(&hash)
-        })
+        Self::block_hash(&chain, id).and_then(|hash| chain.block(&hash))
     }
 }
 
@@ -270,7 +271,7 @@ impl ImportBlock for Client {
         let unverified = Unverified::new(bytes);
         {
             if self.chain.read().is_known(&unverified.hash()) {
-                return Err(BlockImportError::Import(ImportError::AlreadyInChain));
+                return Err(BlockImportError::Import(ImportError::AlreadyInChain))
             }
         }
         Ok(self.importer.block_queue.import(unverified)?)
@@ -328,7 +329,7 @@ impl BlockChainClient for Client {
         match Self::block_hash(&chain, id) {
             Some(ref hash) if chain.is_known(hash) => BlockStatus::InChain,
             Some(hash) => self.importer.block_queue.status(&hash).into(),
-            None => BlockStatus::Unknown
+            None => BlockStatus::Unknown,
         }
     }
 
@@ -364,7 +365,12 @@ impl Importer {
         engine: Arc<CodeChainEngine>,
         message_channel: IoChannel<ClientIoMessage>,
     ) -> Result<Importer, Error> {
-        let block_queue = BlockQueue::new(config.queue.clone(), engine.clone(), message_channel.clone(), config.verifier_type.verifying_seal());
+        let block_queue = BlockQueue::new(
+            config.queue.clone(),
+            engine.clone(),
+            message_channel.clone(),
+            config.verifier_type.verifying_seal(),
+        );
 
         Ok(Importer {
             import_lock: Mutex::new(()),
@@ -386,7 +392,7 @@ impl Importer {
             let _import_lock = self.import_lock.lock();
             let blocks = self.block_queue.drain(max_blocks_to_import);
             if blocks.is_empty() {
-                return 0;
+                return 0
             }
             let start = Instant::now();
 
@@ -395,7 +401,7 @@ impl Importer {
                 let is_invalid = invalid_blocks.contains(header.parent_hash());
                 if is_invalid {
                     invalid_blocks.insert(header.hash());
-                    continue;
+                    continue
                 }
                 if let Ok(closed_block) = self.check_and_close_block(&block, client) {
                     if self.engine.is_proposal(&block.header) {
@@ -483,7 +489,9 @@ impl Importer {
     // it is for reconstructing the state transition.
     //
     // The header passed is from the original block data and is sealed.
-    fn commit_block<B>(&self, block: B, header: &Header, block_data: &[u8], client: &Client) -> ImportRoute where B: IsBlock + Drain {
+    fn commit_block<B>(&self, block: B, header: &Header, block_data: &[u8], client: &Client) -> ImportRoute
+    where
+        B: IsBlock + Drain, {
         let hash = &header.hash();
         let number = header.number();
         let chain = client.chain.read();
@@ -501,11 +509,7 @@ impl Importer {
         let mut state = block.drain();
 
         // check epoch end signal
-        self.check_epoch_end_signal(
-            &header,
-            &chain,
-            &mut batch,
-        );
+        self.check_epoch_end_signal(&header, &chain, &mut batch);
 
         state.journal_under(&mut batch, number, hash).expect("DB commit failed");
         let route = chain.insert_block(&mut batch, block_data, invoices.clone());
@@ -533,11 +537,15 @@ impl Importer {
             debug!(target: "client", "Epoch transition at block {}", header.hash());
 
             let mut batch = DBTransaction::new();
-            chain.insert_epoch_transition(&mut batch, header.number(), EpochTransition {
-                block_hash: header.hash(),
-                block_number: header.number(),
-                proof,
-            });
+            chain.insert_epoch_transition(
+                &mut batch,
+                header.number(),
+                EpochTransition {
+                    block_hash: header.hash(),
+                    block_number: header.number(),
+                    proof,
+                },
+            );
 
             // always write the batch directly since epoch transition proofs are
             // fetched from a DB iterator and DB iterators are only available on
@@ -548,27 +556,24 @@ impl Importer {
 
     // check for epoch end signal and write pending transition if it occurs.
     // state for the given block must be available.
-    fn check_epoch_end_signal(
-        &self,
-        header: &Header,
-        chain: &BlockChain,
-        batch: &mut DBTransaction,
-    ) {
+    fn check_epoch_end_signal(&self, header: &Header, chain: &BlockChain, batch: &mut DBTransaction) {
         use super::super::consensus::EpochChange;
         let hash = header.hash();
 
         match self.engine.signals_epoch_end(header) {
             EpochChange::Yes(proof) => {
-                use super::super::consensus::epoch::PendingTransition;
                 use super::super::consensus::Proof;
+                use super::super::consensus::epoch::PendingTransition;
 
-                let Proof::Known(proof)  = proof;
+                let Proof::Known(proof) = proof;
                 debug!(target: "client", "Block {} signals epoch end.", hash);
 
-                let pending = PendingTransition { proof };
+                let pending = PendingTransition {
+                    proof,
+                };
                 chain.insert_pending_transition(batch, hash, pending);
-            },
-            EpochChange::No => {},
+            }
+            EpochChange::No => {}
             EpochChange::Unsure => {
                 warn!(target: "client", "Detected invalid engine implementation.");
                 warn!(target: "client", "Engine claims to require more block data, but everything provided.");
@@ -587,7 +592,7 @@ impl Importer {
             Some(h) => h,
             None => {
                 warn!(target: "client", "Block import failed for #{} ({}): Parent not found ({}) ", header.number(), header.hash(), header.parent_hash());
-                return Err(());
+                return Err(())
             }
         };
 
@@ -600,33 +605,27 @@ impl Importer {
                 block_bytes: &block.bytes,
                 transactions: &block.transactions,
                 block_provider: &**chain,
-                client
+                client,
             }),
         );
 
         if let Err(e) = verify_family_result {
             warn!(target: "client", "Stage 3 block verification failed for #{} ({})\nError: {:?}", header.number(), header.hash(), e);
-            return Err(());
+            return Err(())
         };
 
         let verify_external_result = self.verifier.verify_block_external(header, engine);
         if let Err(e) = verify_external_result {
             warn!(target: "client", "Stage 4 block verification failed for #{} ({})\nError: {:?}", header.number(), header.hash(), e);
-            return Err(());
+            return Err(())
         };
 
         // Enact Verified Block
         let db = client.state_db.read().boxed_clone_canon(header.parent_hash());
 
         let is_epoch_begin = chain.epoch_transition(parent.number(), *header.parent_hash()).is_some();
-        let enact_result = enact(&block.header,
-                                          &block.transactions,
-                                          engine,
-                                          db,
-                                          &parent,
-                                          client.trie_factory.clone(),
-                                          is_epoch_begin,
-        );
+        let enact_result =
+            enact(&block.header, &block.transactions, engine, db, &parent, client.trie_factory.clone(), is_epoch_begin);
         let locked_block = enact_result.map_err(|e| {
             warn!(target: "client", "Block import failed for #{} ({})\nError: {:?}", header.number(), header.hash(), e);
         })?;
@@ -634,7 +633,7 @@ impl Importer {
         // Final Verification
         if let Err(e) = self.verifier.verify_block_final(header, locked_block.block().header()) {
             warn!(target: "client", "Stage 5 block verification failed for #{} ({})\nError: {:?}", header.number(), header.hash(), e);
-            return Err(());
+            return Err(())
         }
 
         Ok(locked_block)
@@ -651,8 +650,7 @@ impl Balance for Client {
     fn balance(&self, address: &Address, state: StateOrBlock) -> Option<U256> {
         match state {
             StateOrBlock::State(s) => s.balance(address).ok(),
-            StateOrBlock::Block(id) => self.state_at(id).and_then(|s| s.balance(address).ok())
+            StateOrBlock::Block(id) => self.state_at(id).and_then(|s| s.balance(address).ok()),
         }
     }
 }
-

@@ -15,9 +15,9 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 mod best_block;
-mod blockchain;
 mod block_info;
+mod blockchain;
 mod extras;
 
 pub use self::blockchain::{BlockChain, BlockProvider, ImportRoute};
-pub use self::extras::{TransactionAddress, BlockDetails};
+pub use self::extras::{BlockDetails, TransactionAddress};

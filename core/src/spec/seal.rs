@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ctypes::H520;
 use cjson;
+use ctypes::H520;
 use rlp::RlpStream;
 
 /// Tendermint seal.
@@ -31,10 +31,7 @@ pub struct Tendermint {
 impl Into<Generic> for Tendermint {
     fn into(self) -> Generic {
         let mut stream = RlpStream::new_list(3);
-        stream
-            .append(&self.round)
-            .append(&self.proposal)
-            .append_list(&self.precommits);
+        stream.append(&self.round).append(&self.proposal).append_list(&self.precommits);
         Generic(stream.out())
     }
 }
@@ -55,7 +52,7 @@ impl From<cjson::spec::Seal> for Seal {
             cjson::spec::Seal::Tendermint(tender) => Seal::Tendermint(Tendermint {
                 round: tender.round.into(),
                 proposal: tender.proposal.into(),
-                precommits: tender.precommits.into_iter().map(Into::into).collect()
+                precommits: tender.precommits.into_iter().map(Into::into).collect(),
             }),
             cjson::spec::Seal::Generic(g) => Seal::Generic(Generic(g.into())),
         }

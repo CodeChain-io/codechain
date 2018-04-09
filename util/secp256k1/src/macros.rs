@@ -35,11 +35,15 @@ macro_rules! impl_array_newtype {
 
             #[inline]
             /// Returns the length of the object as an array
-            pub fn len(&self) -> usize { $len }
+            pub fn len(&self) -> usize {
+                $len
+            }
 
             #[inline]
             /// Returns whether the object as an array is empty
-            pub fn is_empty(&self) -> bool { false }
+            pub fn is_empty(&self) -> bool {
+                false
+            }
         }
 
         impl PartialEq for $thing {
@@ -58,9 +62,7 @@ macro_rules! impl_array_newtype {
                     use std::intrinsics::copy_nonoverlapping;
                     use std::mem;
                     let mut ret: $thing = mem::uninitialized();
-                    copy_nonoverlapping(self.as_ptr(),
-                                        ret.as_mut_ptr(),
-                                        mem::size_of::<$thing>());
+                    copy_nonoverlapping(self.as_ptr(), ret.as_mut_ptr(), mem::size_of::<$thing>());
                     ret
                 }
             }
@@ -115,21 +117,21 @@ macro_rules! impl_array_newtype {
                 &dat[..]
             }
         }
-    }
+    };
 }
 
 macro_rules! impl_pretty_debug {
     ($thing:ident) => {
         impl ::std::fmt::Debug for $thing {
             fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-                try!(write!(f, "{}(", stringify!($thing)));
+                write!(f, "{}(", stringify!($thing))?;
                 for i in self[..].iter().cloned() {
-                    try!(write!(f, "{:02x}", i));
+                    write!(f, "{:02x}", i)?;
                 }
                 write!(f, ")")
             }
         }
-     }
+    };
 }
 
 macro_rules! impl_raw_debug {
@@ -137,11 +139,10 @@ macro_rules! impl_raw_debug {
         impl ::std::fmt::Debug for $thing {
             fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
                 for i in self[..].iter().cloned() {
-                    try!(write!(f, "{:02x}", i));
+                    write!(f, "{:02x}", i)?;
                 }
                 Ok(())
             }
         }
-     }
+    };
 }
-
