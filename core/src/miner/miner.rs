@@ -24,11 +24,30 @@ use parking_lot::RwLock;
 use super::super::client::{AccountData, BlockChain, MiningBlockChainClient};
 use super::super::consensus::CodeChainEngine;
 use super::super::error::Error;
+use super::super::spec::Spec;
 use super::super::state::State;
 use super::super::transaction::{SignedTransaction, TransactionError, UnverifiedTransaction};
 use super::super::types::TransactionId;
 use super::transaction_queue::{AccountDetails, TransactionDetailsProvider as TransactionQueueDetailsProvider, TransactionOrigin, TransactionQueue};
 use super::{MinerService, MinerStatus, TransactionImportResult};
+
+/// Configures the behaviour of the miner.
+#[derive(Debug, PartialEq)]
+pub struct MinerOptions {
+    /// Maximum size of the transaction queue.
+    pub tx_queue_size: usize,
+    /// Maximum memory usage of transactions in the queue (current / future).
+    pub tx_queue_memory_limit: Option<usize>,
+}
+
+impl Default for MinerOptions {
+    fn default() -> Self {
+        MinerOptions {
+            tx_queue_size: 8192,
+            tx_queue_memory_limit: Some(2 * 1024 * 1024),
+        }
+    }
+}
 
 pub struct Miner {
     transaction_queue: Arc<RwLock<TransactionQueue>>,
@@ -38,6 +57,17 @@ pub struct Miner {
 }
 
 impl Miner {
+    fn new(options: MinerOptions, spec: &Spec) -> Self {
+        let mem_limit = options.tx_queue_memory_limit.unwrap_or_else(usize::max_value);
+        let txq = TransactionQueue::with_limits(options.tx_queue_size, mem_limit);
+        Self {
+            transaction_queue: Arc::new(RwLock::new(txq)),
+            author: RwLock::new(Address::default()),
+            extra_data: RwLock::new(Vec::new()),
+            engine: spec.engine.clone(),
+        }
+    }
+
     fn add_transactions_to_queue<C: AccountData + BlockChain>(
         &self,
         client: &C,
