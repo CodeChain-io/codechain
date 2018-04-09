@@ -204,8 +204,8 @@ mod tests {
     fn request_rlp_encode() {
         const SEQ: Seq = 0;
 
-        const NONCE: u8 = 32;
-        let nonce = NONCE.rlp_bytes();
+        let nonce = Nonce::new(32);
+        let nonce = nonce.rlp_bytes();
 
         let req = Message::connection_request(SEQ, nonce.clone().into_vec());
         let bytes = req.rlp_bytes();
@@ -238,8 +238,8 @@ mod tests {
     fn allowed_rlp_encode() {
         const SEQ: Seq = 37;
 
-        const NONCE: Nonce = 4;
-        let nonce = NONCE.rlp_bytes();
+        let nonce = Nonce::new(4);
+        let nonce = nonce.rlp_bytes();
 
         let allowed = Message::connection_allowed(SEQ, nonce.clone().into_vec());
 
@@ -306,9 +306,9 @@ mod tests {
 
     #[test]
     fn request_rlp_decode() {
-        const NONCE: Nonce = 42;
+        let nonce = Nonce::new(42);
         const SEQ: Seq = 17;
-        let nonce = NONCE.rlp_bytes().into_vec();
+        let nonce = nonce.rlp_bytes().into_vec();
 
         let mut bytes: Vec<u8> = vec![
             LIST + 1 /* version */ + 1 /* seq */
@@ -340,9 +340,9 @@ mod tests {
 
     #[test]
     fn allowed_rlp_decode() {
-        const NONCE: Nonce = 37;
         const SEQ: Seq = 62;
-        let nonce = NONCE.rlp_bytes().into_vec();
+        let nonce = Nonce::new(37);
+        let nonce = nonce.rlp_bytes().into_vec();
 
         let mut bytes: Vec<u8> = vec![
             LIST + 1 /* version */ + 1 /* seq */
@@ -409,8 +409,8 @@ mod tests {
 
     #[test]
     fn request_rlp_encode_with_large_nonce() {
-        const NONCE: Nonce = 0xDEADBEEF;
-        let nonce = NONCE.rlp_bytes();
+        let nonce = Nonce::new(0xDEADBEEF);
+        let nonce = nonce.rlp_bytes();
 
         const SEQ: Seq = 0;
 
@@ -444,8 +444,8 @@ mod tests {
 
     #[test]
     fn allowed_encode_with_large_nonce() {
-        const NONCE: Nonce = 0xCCAFEC;
-        let nonce = NONCE.rlp_bytes();
+        let nonce = Nonce::new(0xCCAFEC);
+        let nonce = nonce.rlp_bytes();
 
         const SEQ: Seq = 0x4a;
 
@@ -479,9 +479,9 @@ mod tests {
 
     #[test]
     fn request_rlp_decode_with_large_nonce() {
-        const NONCE: Nonce = 0xDEADCAFE;
         const NONCE_LEN: u8 = 4;
-        let nonce = NONCE.rlp_bytes().into_vec();
+        let nonce = Nonce::new(0xDEADCAFE);
+        let nonce = nonce.rlp_bytes().into_vec();
 
         const SEQ: Seq = 0x39;
         let mut bytes: Vec<u8> = vec![
@@ -515,8 +515,8 @@ mod tests {
 
     #[test]
     fn allowed_rlp_decode_with_large_nonce() {
-        const NONCE: Nonce = 0xCCCAFE;
-        let nonce = NONCE.rlp_bytes().into_vec();
+        let nonce = Nonce::new(0xCCCAFE);
+        let nonce = nonce.rlp_bytes().into_vec();
 
         const SEQ: Seq = 0x21;
 
@@ -552,7 +552,7 @@ mod tests {
 
     #[test]
     fn encode_and_decode_connection_request() {
-        let nonce: Nonce = 0xCAFE;
+        let nonce: Nonce = Nonce::new(0xCAFE);
         let nonce = nonce.rlp_bytes().into_vec();
         let msg = Message::connection_request(0, nonce);
         let encoded = msg.rlp_bytes();

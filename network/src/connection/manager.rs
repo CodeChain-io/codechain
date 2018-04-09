@@ -165,9 +165,9 @@ impl Manager {
         socket_address: &SocketAddr,
     ) -> IoHandlerResult<Option<ConnectionToken>> {
         let session = self.socket_to_session.get(&socket_address).ok_or(Error::UnavailableSession)?.clone();
-        let mut connection = Connection::new(stream, session.secret().clone(), *session.nonce());
+        let mut connection = Connection::new(stream, session.secret().clone(), session.nonce().clone());
         let nonce = session.nonce();
-        connection.enqueue_sync(*nonce);
+        connection.enqueue_sync(nonce.clone());
 
         Ok(self.tokens.insert(()).map(|token| self.register_connection(connection, &token)))
     }
@@ -196,7 +196,7 @@ impl Manager {
             return Ok(())
         }
 
-        self.registered_sessions.insert(*session.nonce(), session.clone());
+        self.registered_sessions.insert(session.nonce().clone(), session.clone());
         self.socket_to_session.insert(socket_address, session);
         Ok(())
     }

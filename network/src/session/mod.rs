@@ -14,8 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+mod nonce;
 mod session;
 mod table;
 
-pub use self::session::{Nonce, Session};
+pub use self::nonce::Nonce;
+pub use self::session::Session;
 pub use self::table::Table as SessionTable;

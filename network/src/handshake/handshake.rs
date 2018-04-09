@@ -30,6 +30,7 @@ use mio::deprecated::EventLoop;
 use mio::net::UdpSocket;
 use mio::{PollOpt, Ready, Token};
 use parking_lot::{Mutex, RwLock};
+use rand::{OsRng, Rng};
 use rlp::{Decodable, DecoderError, Encodable, UntrustedRlp};
 
 use super::super::connection;
@@ -220,13 +221,13 @@ impl Handshake {
                     let temporary_session = Session::new_with_zero_nonce(secret.clone());
 
                     let temporary_nonce = decrypt_and_decode_nonce(&temporary_session, received_nonce)?;
-                    let temporary_session = Session::new(*secret, temporary_nonce);
+                    let temporary_session = Session::new(*secret, temporary_nonce.clone());
 
                     // FIXME: let nonce = f(nonce)
                     let nonce = temporary_nonce;
-                    let session = Session::new(*secret, nonce);
+                    let session = Session::new(*secret, nonce.clone());
 
-                    let encrypted_nonce = encode_and_encrypt_nonce(&temporary_session, nonce)?;
+                    let encrypted_nonce = encode_and_encrypt_nonce(&temporary_session, &nonce)?;
                     extension.send(connection::HandlerMessage::RegisterSession(from.clone(), session))?;
                     self.nonces.insert(from.clone(), nonce);
                     encrypted_nonce
@@ -243,7 +244,7 @@ impl Handshake {
                     return Err(From::from(HandshakeError::SessionNotReady))
                 }
                 let temporary_nonce = temporary_nonce.expect("Nonce must exist");
-                let temporary_session = Session::new(*secret, *temporary_nonce);
+                let temporary_session = Session::new(*secret, temporary_nonce.clone());
                 let nonce = decrypt_and_decode_nonce(&temporary_session, &nonce)?;
 
                 if temporary_nonce != &nonce {
@@ -276,8 +277,9 @@ impl Handshake {
                     let secret = exchange(key, &local_private)?;
                     let session = Session::new_with_zero_nonce(secret);
 
-                    let nonce = Handshake::nonce();
-                    let encrypted_nonce = encode_and_encrypt_nonce(&session, nonce)?;
+                    let mut rng = OsRng::new().expect("Cannot generate random number");
+                    let nonce = rng.gen();
+                    let encrypted_nonce = encode_and_encrypt_nonce(&session, &nonce)?;
 
                     if self.secrets.contains_key(&from) {
                         return Err(HandshakeError::SessionAlreadyExists)
@@ -304,13 +306,9 @@ impl Handshake {
             }
         }
     }
-
-    fn nonce() -> Nonce {
-        10000 // FIXME
-    }
 }
 
-fn encode_and_encrypt_nonce(session: &Session, nonce: Nonce) -> Result<Vec<u8>, HandshakeError> {
+fn encode_and_encrypt_nonce(session: &Session, nonce: &Nonce) -> Result<Vec<u8>, HandshakeError> {
     let unencrypted_bytes = nonce.rlp_bytes();
     Ok(session.encrypt(&unencrypted_bytes)?)
 }
