@@ -65,10 +65,11 @@ impl DownloadManager {
 
     /// Import block headers to Download Manager
     /// Headers should be sorted by block number, and connected from start to end
-    pub fn import_headers(&mut self, headers: &[Header]) {
+    /// Returns true if at least one header was imported
+    pub fn import_headers(&mut self, headers: &[Header]) -> bool {
         // Empty header list is valid case
         if headers.len() == 0 {
-            return
+            return false
         }
 
         // Validity check
@@ -77,7 +78,7 @@ impl DownloadManager {
             Some(downloading) if downloading == first_header_hash => {}
             _ => {
                 info!("DownloadManager: Unexpected headers");
-                return
+                return false
             }
         }
 
@@ -87,7 +88,7 @@ impl DownloadManager {
             let child = &neighbors[1];
             if child.number() != parent.number() + 1 || *child.parent_hash() != parent.hash() {
                 info!("DownloadManager: Headers are not continuous");
-                return
+                return false
             }
         }
 
@@ -98,9 +99,11 @@ impl DownloadManager {
             }
         }
         self.downloading_header = None;
+        true
     }
 
-    pub fn import_bodies(&mut self, bodies: &[Vec<UnverifiedTransaction>]) {
+    /// Returns true if bodies were imported
+    pub fn import_bodies(&mut self, bodies: &[Vec<UnverifiedTransaction>]) -> bool {
         let mut valid_bodies = HashMap::new();
         // Validity check
         for body in bodies {
@@ -113,7 +116,7 @@ impl DownloadManager {
                 valid_bodies.insert(tx_root, body);
             } else {
                 info!("DownloadManager: Unexpected body detected");
-                return
+                return false
             }
         }
 
@@ -123,6 +126,7 @@ impl DownloadManager {
                 self.downloading_bodies.remove(&header.hash());
             }
         }
+        true
     }
 
     pub fn create_request(&mut self) -> Option<Message> {

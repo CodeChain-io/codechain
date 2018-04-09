@@ -31,6 +31,7 @@ use message::Message;
 const EXTENSION_NAME: &'static str = "block-propagation";
 const SYNC_TIMER_ID: usize = 0;
 const SYNC_TIMER_INTERVAL: u64 = 1000;
+const MAX_RETRY: usize = 3;
 
 enum RequestInfo {
     Header(BlockNumber),
@@ -41,6 +42,7 @@ struct Peer {
     total_score: U256,
     best_hash: H256,
     last_request: Option<RequestInfo>,
+    retry: usize,
 }
 
 pub struct BlockSyncExtension {
@@ -59,6 +61,16 @@ impl BlockSyncExtension {
             manager: Mutex::new(DownloadManager::new(best_block)),
             api: Mutex::new(None),
         })
+    }
+
+    pub fn reset(&self, best_hash: H256) {
+        let best_block =
+            self.client.block(BlockId::Hash(best_hash)).expect("Parent block of best block should exist").decode();
+        *self.manager.lock() = DownloadManager::new(best_block);
+        self.peers.write().values_mut().for_each(|peer| {
+            peer.last_request = None;
+            peer.retry = 0;
+        });
     }
 }
 
@@ -110,6 +122,8 @@ impl Extension for BlockSyncExtension {
                 return
             }
 
+            // FIXME: Import fully downloaded blocks to client
+
             // Create next message for peer
             let next_message = match received_message {
                 Message::RequestHeaders {
@@ -122,12 +136,16 @@ impl Extension for BlockSyncExtension {
                         .block_total_score(BlockId::Hash(self.manager.lock().best_hash()))
                         .expect("Best block of download manager should exist in chain");
                     // FIXME: Check if this statement really needs `clone`
-                    let peer_total_score =
-                        self.peers.read().get(id).expect("Peer should exist for valid message").total_score.clone();
-                    if peer_total_score > total_score {
-                        self.manager.lock().create_request()
-                    } else {
-                        None
+                    let peer_info = self.peers.read().get(id).map(|peer| (peer.total_score.clone(), peer.retry));
+                    match peer_info {
+                        Some((peer_total_score, peer_retry)) => {
+                            if peer_retry < MAX_RETRY && peer_total_score > total_score {
+                                self.manager.lock().create_request()
+                            } else {
+                                None
+                            }
+                        }
+                        _ => None,
                     }
                 }
             };
@@ -148,10 +166,17 @@ impl Extension for BlockSyncExtension {
 
     fn on_timeout(&self, timer_id: usize) {
         debug_assert_eq!(timer_id, SYNC_TIMER_ID);
+        if self.peers.read().values().all(|peer| peer.retry >= MAX_RETRY) {
+            let best_header = self.client
+                .block_header(BlockId::Hash(self.manager.lock().best_hash()))
+                .expect("Best block of download manager should exist");
+            self.reset(best_header.parent_hash());
+        }
+
         let mut peer_ids: Vec<_> = self.peers
             .read()
             .iter()
-            .filter(|&(_, peer)| peer.last_request.is_none())
+            .filter(|&(_, peer)| peer.last_request.is_none() && peer.retry < MAX_RETRY)
             .map(|(id, _)| id)
             .cloned()
             .collect();
@@ -173,23 +198,30 @@ impl ChainNotify for BlockSyncExtension {
         _imported: Vec<H256>,
         _invalid: Vec<H256>,
         _enacted: Vec<H256>,
-        _retracted: Vec<H256>,
+        retracted: Vec<H256>,
         _sealed: Vec<H256>,
         _proposed: Vec<Bytes>,
         _duration: u64,
     ) {
-        // FIXME: Send status message only when block is imported
-        let chain_info = self.client.chain_info();
-        let peer_ids: Vec<_> = self.peers.read().keys().cloned().collect();
-        for id in peer_ids {
-            self.send_message(
-                &id,
-                Message::Status {
-                    total_score: chain_info.total_score,
-                    best_hash: chain_info.best_block_hash,
-                    genesis_hash: chain_info.genesis_hash,
-                },
-            );
+        if retracted.len() != 0 {
+            let best_header = self.client
+                .block_header(BlockId::Hash(self.manager.lock().best_hash()))
+                .expect("Best block of download manager should exist");
+            self.reset(best_header.parent_hash());
+        } else {
+            // FIXME: Send status message only when block is imported
+            let chain_info = self.client.chain_info();
+            let peer_ids: Vec<_> = self.peers.read().keys().cloned().collect();
+            for id in peer_ids {
+                self.send_message(
+                    &id,
+                    Message::Status {
+                        total_score: chain_info.total_score,
+                        best_hash: chain_info.best_block_hash,
+                        genesis_hash: chain_info.genesis_hash,
+                    },
+                );
+            }
         }
     }
 }
@@ -248,15 +280,33 @@ impl BlockSyncExtension {
                             total_score,
                             best_hash,
                             last_request: None,
+                            retry: 0,
                         },
                     );
                 }
             }
-            &Message::Headers(ref headers) => self.manager.lock().import_headers(headers),
-            &Message::Bodies(ref bodies) => self.manager.lock().import_bodies(bodies),
+            &Message::Headers(ref headers) => {
+                let import_success = self.manager.lock().import_headers(headers);
+                if let Some(peer) = self.peers.write().get_mut(id) {
+                    peer.retry = if import_success {
+                        0
+                    } else {
+                        peer.retry + 1
+                    };
+                }
+            }
+            &Message::Bodies(ref bodies) => {
+                let import_success = self.manager.lock().import_bodies(bodies);
+                if let Some(peer) = self.peers.write().get_mut(id) {
+                    peer.retry = if import_success {
+                        0
+                    } else {
+                        peer.retry + 1
+                    };
+                }
+            }
             _ => {}
-        };
-        // FIXME: Import fully downloaded blocks to client
+        }
     }
 
     fn record_last_request(&self, id: &NodeId, message: &Option<Message>) {
