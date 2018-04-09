@@ -20,6 +20,7 @@ mod message;
 mod negotiation;
 mod signed_message;
 
+use ctypes::Secret;
 use ctypes::hash::{H128, H256};
 
 pub use self::extension::Message as ApplicationMessage;
@@ -31,9 +32,8 @@ pub use self::signed_message::SignedMessage;
 pub type Version = u64;
 pub type ProtocolId = u64;
 pub type Seq = u64;
-pub type SharedSecret = H256;
 pub type Nonce = H128;
-pub type SessionKey = (SharedSecret, Nonce);
+pub type SessionKey = (Secret, Nonce);
 pub type Signature = H256;
 
 pub const SYNC_ID: ProtocolId = 0x00;

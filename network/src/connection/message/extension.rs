@@ -139,8 +139,9 @@ impl Decodable for Message {
 
 #[cfg(test)]
 mod tests {
+    use ctypes::Secret;
+
     use super::super::super::message::Nonce;
-    use super::super::super::message::SharedSecret;
     use super::Message;
 
     #[test]
@@ -158,7 +159,7 @@ mod tests {
         let extension_name = "encrypt".to_string();
         let extension_version = 3;
         let unencrypted_data: Vec<u8> = "this data must be encrypted".as_bytes().to_vec();
-        let shared_secret = SharedSecret::random();
+        let shared_secret = Secret::random();
         let nonce = Nonce::random();
 
         let encrypted = Message::encrypted_from_unencrypted_data(

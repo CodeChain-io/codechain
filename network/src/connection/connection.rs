@@ -21,6 +21,7 @@ use std::io::{self, Write};
 use std::result;
 
 use ccrypto::aes::SymmetricCipherError;
+use ctypes::Secret;
 use mio::deprecated::TryRead;
 use mio::net::TcpStream;
 use rlp::{DecoderError, Encodable, UntrustedRlp};
@@ -28,7 +29,7 @@ use rlp::{DecoderError, Encodable, UntrustedRlp};
 use super::super::SocketAddr;
 use super::super::client::Client;
 use super::super::extension::{Error as ExtensionError, NodeId};
-use super::super::session::{Nonce, Session, SharedSecret};
+use super::super::session::{Nonce, Session};
 use super::SignedMessage;
 use super::message::{Seq, Version};
 use super::{ApplicationMessage, HandshakeMessage, Message, NegotiationBody, NegotiationMessage};
@@ -118,7 +119,7 @@ impl From<SymmetricCipherError> for Error {
 pub type Result<T> = result::Result<T, Error>;
 
 impl Connection {
-    pub fn new(stream: TcpStream, secret: SharedSecret, nonce: Nonce) -> Self {
+    pub fn new(stream: TcpStream, secret: Secret, nonce: Nonce) -> Self {
         Self {
             stream,
             session: Session::new(secret, nonce),

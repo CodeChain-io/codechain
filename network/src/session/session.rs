@@ -22,13 +22,12 @@ use ccrypto::blake256_with_key;
 use ctypes::Secret;
 use ctypes::hash::{H128, H256};
 
-pub type SharedSecret = Secret;
 pub type Nonce = u32;
 type IV = H128;
 
 #[derive(Clone, Debug, Hash, Eq, PartialOrd, PartialEq)]
 pub struct Session {
-    secret: SharedSecret,
+    secret: Secret,
     nonce: Option<Nonce>,
 }
 
@@ -71,14 +70,14 @@ impl From<SymmetricCipherError> for Error {
 }
 
 impl Session {
-    pub fn new_without_nonce(secret: SharedSecret) -> Self {
+    pub fn new_without_nonce(secret: Secret) -> Self {
         Session {
             secret,
             nonce: None,
         }
     }
 
-    pub fn new(secret: SharedSecret, nonce: Nonce) -> Self {
+    pub fn new(secret: Secret, nonce: Nonce) -> Self {
         Session {
             secret,
             nonce: Some(nonce),
@@ -97,7 +96,7 @@ impl Session {
         self.is_ready() && self.nonce == Some(*nonce)
     }
 
-    pub fn secret(&self) -> &SharedSecret {
+    pub fn secret(&self) -> &Secret {
         &self.secret
     }
 
@@ -150,7 +149,7 @@ mod tests {
 
     #[test]
     fn new_session_is_not_ready() {
-        let secret = SharedSecret::random();
+        let secret = Secret::random();
         let session = Session::new_without_nonce(secret);
 
         assert!(!session.is_ready());
@@ -158,7 +157,7 @@ mod tests {
 
     #[test]
     fn ready_with_nonce() {
-        let secret = SharedSecret::random();
+        let secret = Secret::random();
         let mut session = Session::new_without_nonce(secret);
 
         assert!(!session.is_ready());
@@ -173,7 +172,7 @@ mod tests {
 
     #[test]
     fn is_expected_nonce_must_return_false_on_new_session() {
-        let secret = SharedSecret::random();
+        let secret = Secret::random();
         let session = Session::new_without_nonce(secret);
 
         assert!(!session.is_ready());
@@ -182,7 +181,7 @@ mod tests {
 
     #[test]
     fn encrypt_and_decrypt_short_data() {
-        let secret = SharedSecret::random();
+        let secret = Secret::random();
         const NONCE: Nonce = 1000;
 
         let mut session = Session::new_without_nonce(secret);
@@ -199,7 +198,7 @@ mod tests {
 
     #[test]
     fn encrypt_and_decrypt_short_data_in_different_session_with_same_secret() {
-        let secret = SharedSecret::random();
+        let secret = Secret::random();
         const NONCE: Nonce = 1000;
 
         let mut session1 = Session::new_without_nonce(secret);
@@ -219,7 +218,7 @@ mod tests {
 
     #[test]
     fn encrypt_with_different_nonce() {
-        let secret = SharedSecret::random();
+        let secret = Secret::random();
         const NONCE1: Nonce = 1000;
         const NONCE2: Nonce = 1001;
 
@@ -238,8 +237,8 @@ mod tests {
 
     #[test]
     fn encrypt_with_different_secret() {
-        let secret1 = SharedSecret::random();
-        let secret2 = SharedSecret::random();
+        let secret1 = Secret::random();
+        let secret2 = Secret::random();
         debug_assert_ne!(secret1, secret2);
         const NONCE: Nonce = 1000;
 
