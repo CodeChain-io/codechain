@@ -17,7 +17,7 @@
 use std::path::Path;
 use std::sync::Arc;
 
-use ccore::{ClientService, Spec, Miner, MinerOptions};
+use ccore::{ClientService, Miner, MinerOptions, Spec};
 use cnetwork::{DiscoveryApi, NetworkConfig, NetworkService, SocketAddr};
 use crpc::Server as RpcServer;
 use rpc::HttpConfiguration as RpcHttpConfig;
@@ -45,8 +45,8 @@ pub fn client_start(cfg: &config::Config, spec: &Spec) -> Result<ClientService, 
     let client_path = Path::new(&cfg.db_path);
     let client_config = Default::default();
     let miner = Miner::new(MinerOptions::default(), &spec);
-    let service =
-        ClientService::start(client_config, &spec, &client_path, miner).map_err(|e| format!("Client service error: {:?}", e))?;
+    let service = ClientService::start(client_config, &spec, &client_path, miner)
+        .map_err(|e| format!("Client service error: {:?}", e))?;
 
     Ok(service)
 }
