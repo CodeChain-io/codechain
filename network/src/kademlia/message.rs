@@ -21,6 +21,7 @@ use super::contact::Contact;
 
 pub type Id = u64;
 
+#[derive(Debug)]
 pub enum Message {
     FindNode {
         id: Id,
