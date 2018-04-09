@@ -57,6 +57,7 @@ pub const APP_INFO: AppInfo = AppInfo {
     author: "Kodebox",
 };
 
+#[cfg(all(unix, target_arch = "x86_64"))]
 fn main() {
     panic_hook::set();
 
