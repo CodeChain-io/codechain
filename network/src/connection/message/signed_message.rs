@@ -26,16 +26,17 @@ pub struct SignedMessage {
 }
 
 impl SignedMessage {
-    pub fn new(message: Message, session: &Session) -> Option<Self> {
+    pub fn new(message: Message, session: &Session) -> Self {
         let message = message.rlp_bytes().into_vec();
-        session.sign(&message).map(|signature| Self {
+        let signature = session.sign(&message);
+        Self {
             message,
             signature,
-        })
+        }
     }
 
     pub fn is_valid(&self, session: &Session) -> bool {
-        session.sign(&self.message).map(|signature| signature == self.signature).unwrap_or(false)
+        session.sign(&self.message) == self.signature
     }
 }
 

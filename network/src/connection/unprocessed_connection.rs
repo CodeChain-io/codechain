@@ -79,7 +79,7 @@ impl UnprocessedConnection {
 
     pub fn process(self) -> Connection {
         let session = self.session.as_ref().expect("Session must exist");
-        Connection::new(self.stream, *session.secret(), session.nonce().expect("Session must exist"))
+        Connection::new(self.stream, *session.secret(), *session.nonce())
     }
 
     pub fn session(&self) -> &Option<Session> {

@@ -132,15 +132,12 @@ impl Connection {
 
     pub fn send(&mut self) -> Result<bool> {
         if let Some(message) = self.send_queue.pop_front() {
-            if let Some(signed) = SignedMessage::new(message, &self.session) {
-                let bytes_to_send = signed.rlp_bytes();
+            let signed = SignedMessage::new(message, &self.session);
+            let bytes_to_send = signed.rlp_bytes();
 
-                let _ = self.stream.set_nodelay(true)?;
+            let _ = self.stream.set_nodelay(true)?;
 
-                self.stream.write_all(&bytes_to_send)?;
-            } else {
-                info!("Cannot sign the message");
-            }
+            self.stream.write_all(&bytes_to_send)?;
             Ok(true)
         } else {
             Ok(false)
@@ -177,14 +174,9 @@ impl Connection {
     }
 
     pub fn enqueue_extension_message(&mut self, extension_name: String, need_encryption: bool, message: Vec<u8>) {
-        if !self.session.is_ready() {
-            info!("Cannot send extension message since session is not ready");
-            return
-        }
-
         const VERSION: u64 = 0;
         let message = if need_encryption {
-            let session_key = (self.session.secret().clone(), self.session.initialization_vector().unwrap());
+            let session_key = (*self.session.secret(), self.session.initialization_vector());
             match ApplicationMessage::encrypted_from_unencrypted_data(extension_name, VERSION, message, &session_key) {
                 Ok(message) => message,
                 Err(err) => {
@@ -212,8 +204,7 @@ impl Connection {
                 Some(Message::Application(msg)) => {
                     let _ = self.expect_state(State::Established)?;
 
-                    debug_assert!(self.session.is_ready());
-                    let session_key = (self.session.secret().clone(), self.session.initialization_vector().unwrap());
+                    let session_key = (*self.session.secret(), self.session.initialization_vector());
 
                     // FIXME: check version of application
                     callback.on_message(&msg.extension_name(), &msg.unencrypted_data(&session_key)?);

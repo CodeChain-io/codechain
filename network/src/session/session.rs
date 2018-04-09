@@ -14,9 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::error;
-use std::fmt;
-
 use ccrypto::aes::{self, SymmetricCipherError};
 use ccrypto::blake256_with_key;
 use ctypes::hash::{H128, H256};
@@ -28,118 +25,58 @@ type IV = H128;
 #[derive(Clone, Debug, Hash, Eq, PartialOrd, PartialEq)]
 pub struct Session {
     secret: Secret,
-    nonce: Option<Nonce>,
+    nonce: Nonce,
 }
 
-#[derive(Debug)]
-pub enum Error {
-    CryptoError(SymmetricCipherError),
-    NotReady,
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            &Error::CryptoError(ref err) => write!(f, "CryptoError {:?}", err),
-            &Error::NotReady => write!(f, "NotReady"),
-        }
-    }
-}
-
-impl error::Error for Error {
-    fn description(&self) -> &str {
-        match self {
-            &Error::CryptoError(SymmetricCipherError::InvalidLength) => "Invalid length",
-            &Error::CryptoError(SymmetricCipherError::InvalidPadding) => "Invalid padding",
-            &Error::NotReady => "Not ready",
-        }
-    }
-
-    fn cause(&self) -> Option<&error::Error> {
-        match self {
-            &Error::CryptoError(_) => None,
-            &Error::NotReady => None,
-        }
-    }
-}
-
-impl From<SymmetricCipherError> for Error {
-    fn from(err: SymmetricCipherError) -> Error {
-        Error::CryptoError(err)
-    }
-}
+type Error = SymmetricCipherError;
 
 impl Session {
-    pub fn new_without_nonce(secret: Secret) -> Self {
-        Session {
-            secret,
-            nonce: None,
-        }
+    pub fn new_with_zero_nonce(secret: Secret) -> Self {
+        Self::new(secret, 0)
     }
 
     pub fn new(secret: Secret, nonce: Nonce) -> Self {
         Session {
             secret,
-            nonce: Some(nonce),
+            nonce,
         }
     }
 
-    pub fn is_ready(&self) -> bool {
-        self.nonce.is_some()
-    }
-
-    pub fn set_ready(&mut self, nonce: Nonce) {
-        self.nonce = Some(nonce);
-    }
-
     pub fn is_expected_nonce(&self, nonce: &Nonce) -> bool {
-        self.is_ready() && self.nonce == Some(*nonce)
+        self.nonce() == nonce
     }
 
     pub fn secret(&self) -> &Secret {
         &self.secret
     }
 
-    pub fn nonce(&self) -> &Option<Nonce> {
+    pub fn nonce(&self) -> &Nonce {
         &self.nonce
     }
 
     pub fn encrypt(&self, data: &[u8]) -> Result<Vec<u8>, Error> {
-        if !self.is_ready() {
-            return Err(Error::NotReady)
-        }
-        if let Some(iv) = self.initialization_vector() {
-            Ok(aes::encrypt(&data, &self.secret, &iv)?)
-        } else {
-            Err(Error::NotReady)
-        }
+        let iv = self.initialization_vector();
+        Ok(aes::encrypt(&data, &self.secret, &iv)?)
     }
 
     pub fn decrypt(&self, data: &[u8]) -> Result<Vec<u8>, Error> {
-        if !self.is_ready() {
-            return Err(Error::NotReady)
-        }
-        if let Some(iv) = self.initialization_vector() {
-            Ok(aes::decrypt(&data, &self.secret, &iv)?)
-        } else {
-            Err(Error::NotReady)
-        }
+        let iv = self.initialization_vector();
+        Ok(aes::decrypt(&data, &self.secret, &iv)?)
     }
 
-    pub fn sign(&self, data: &[u8]) -> Option<H256> {
-        self.initialization_vector().map(|iv| blake256_with_key(data, &iv))
+    pub fn sign(&self, data: &[u8]) -> H256 {
+        let iv = self.initialization_vector();
+        blake256_with_key(data, &iv)
     }
 
-    pub fn initialization_vector(&self) -> Option<H128> {
-        self.nonce.map(|nonce| {
-            // FIXME: This implementation is so naive.
-            let mut iv: IV = IV::zero();
-            iv[0] = (nonce & 0xFF) as u8;
-            iv[3] = ((nonce >> 8) & 0xFF) as u8;
-            iv[7] = ((nonce >> 16) & 0xFF) as u8;
-            iv[13] = ((nonce >> 24) & 0xFF) as u8;
-            iv
-        })
+    pub fn initialization_vector(&self) -> H128 {
+        // FIXME: This implementation is so naive.
+        let mut iv: IV = IV::zero();
+        iv[0] = (self.nonce & 0xFF) as u8;
+        iv[3] = ((self.nonce >> 8) & 0xFF) as u8;
+        iv[7] = ((self.nonce >> 16) & 0xFF) as u8;
+        iv[13] = ((self.nonce >> 24) & 0xFF) as u8;
+        iv
     }
 }
 
@@ -148,44 +85,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn new_session_is_not_ready() {
-        let secret = Secret::random();
-        let session = Session::new_without_nonce(secret);
-
-        assert!(!session.is_ready());
-    }
-
-    #[test]
-    fn ready_with_nonce() {
-        let secret = Secret::random();
-        let mut session = Session::new_without_nonce(secret);
-
-        assert!(!session.is_ready());
-
-        const NONCE: Nonce = 1000;
-        session.set_ready(NONCE);
-
-        assert!(session.is_ready());
-
-        assert!(session.is_expected_nonce(&NONCE));
-    }
-
-    #[test]
-    fn is_expected_nonce_must_return_false_on_new_session() {
-        let secret = Secret::random();
-        let session = Session::new_without_nonce(secret);
-
-        assert!(!session.is_ready());
-        assert!(!session.is_expected_nonce(&10000));
-    }
-
-    #[test]
     fn encrypt_and_decrypt_short_data() {
         let secret = Secret::random();
         const NONCE: Nonce = 1000;
 
-        let mut session = Session::new_without_nonce(secret);
-        session.set_ready(NONCE);
+        let session = Session::new(secret, NONCE);
 
         let data = Vec::from("some short data".as_bytes());
 
@@ -201,11 +105,8 @@ mod tests {
         let secret = Secret::random();
         const NONCE: Nonce = 1000;
 
-        let mut session1 = Session::new_without_nonce(secret);
-        session1.set_ready(NONCE);
-
-        let mut session2 = Session::new_without_nonce(secret);
-        session2.set_ready(NONCE);
+        let session1 = Session::new(secret, NONCE);
+        let session2 = Session::new(secret, NONCE);
 
         let data = Vec::from("some short data".as_bytes());
 
@@ -222,11 +123,8 @@ mod tests {
         const NONCE1: Nonce = 1000;
         const NONCE2: Nonce = 1001;
 
-        let mut session1 = Session::new_without_nonce(secret);
-        session1.set_ready(NONCE1);
-
-        let mut session2 = Session::new_without_nonce(secret);
-        session2.set_ready(NONCE2);
+        let session1 = Session::new(secret, NONCE1);
+        let session2 = Session::new(secret, NONCE2);
 
         let data = Vec::from("some short data".as_bytes());
         let encrypted1 = session1.encrypt(&data).ok().unwrap();
@@ -242,11 +140,8 @@ mod tests {
         debug_assert_ne!(secret1, secret2);
         const NONCE: Nonce = 1000;
 
-        let mut session1 = Session::new_without_nonce(secret1);
-        session1.set_ready(NONCE);
-
-        let mut session2 = Session::new_without_nonce(secret2);
-        session2.set_ready(NONCE);
+        let session1 = Session::new(secret1, NONCE);
+        let session2 = Session::new(secret2, NONCE);
 
         let data = Vec::from("some short data".as_bytes());
         let encrypted1 = session1.encrypt(&data).ok().unwrap();

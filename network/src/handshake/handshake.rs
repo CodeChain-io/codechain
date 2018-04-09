@@ -22,6 +22,7 @@ use std::result::Result;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
+use ccrypto::aes::SymmetricCipherError;
 use cio::{IoChannel, IoContext, IoError as CIoError, IoHandler, IoHandlerResult, IoManager, StreamToken};
 use ckeys::{exchange, Error as KeysError, Generator, Private, Random};
 use ctypes::Secret;
@@ -32,14 +33,16 @@ use parking_lot::{Mutex, RwLock};
 use rlp::{Decodable, DecoderError, Encodable, UntrustedRlp};
 
 use super::super::connection;
-use super::super::session::{Nonce, Session, SessionError, SessionTable};
+use super::super::session::{Nonce, Session};
 use super::super::{DiscoveryApi, SocketAddr};
 use super::{HandshakeMessage, HandshakeMessageBody};
 
 
 pub struct Handshake {
     socket: UdpSocket,
-    table: SessionTable,
+    secrets: HashMap<SocketAddr, Secret>,
+    nonces: HashMap<SocketAddr, Nonce>,
+    temporary_nonces: HashMap<SocketAddr, Nonce>,
     requested: HashMap<SocketAddr, Private>,
     seq_counter: AtomicUsize,
 }
@@ -50,10 +53,11 @@ enum HandshakeError {
     CIoError(CIoError),
     RlpError(DecoderError),
     SendError(HandshakeMessage, usize),
-    SessionError(SessionError),
+    SymmetricCipherError(SymmetricCipherError),
     NoSession,
     UnexpectedNonce(Nonce),
     SessionAlreadyExists,
+    SessionNotReady,
     ECDHIsNotRequested,
     ECDHAlreadyRequested,
     KeysError(KeysError),
@@ -68,10 +72,11 @@ impl fmt::Display for HandshakeError {
             &HandshakeError::SendError(ref msg, unsent) => {
                 write!(f, "SendError {} bytes of {:?} are not sent", unsent, msg)
             }
-            &HandshakeError::SessionError(ref err) => write!(f, "SessionError {}", err),
+            &HandshakeError::SymmetricCipherError(ref err) => write!(f, "SymmetricCipherError {:?}", err),
             &HandshakeError::NoSession => write!(f, "NoSession"),
             &HandshakeError::UnexpectedNonce(ref nonce) => write!(f, "{:?} is an unexpected nonce", nonce),
             &HandshakeError::SessionAlreadyExists => write!(f, "Session already exists"),
+            &HandshakeError::SessionNotReady => write!(f, "Session is not ready yet"),
             &HandshakeError::ECDHIsNotRequested => write!(f, "Ecdh is not requested"),
             &HandshakeError::ECDHAlreadyRequested => write!(f, "Ecdh is already requested"),
             &HandshakeError::KeysError(ref err) => err.fmt(f),
@@ -86,10 +91,11 @@ impl error::Error for HandshakeError {
             &HandshakeError::CIoError(ref err) => err.description(),
             &HandshakeError::RlpError(ref err) => err.description(),
             &HandshakeError::SendError(..) => "Unsent data",
-            &HandshakeError::SessionError(ref err) => err.description(),
+            &HandshakeError::SymmetricCipherError(_) => "SymmetricCipherError",
             &HandshakeError::NoSession => "No session",
             &HandshakeError::UnexpectedNonce(_) => "Unexpected nonce",
             &HandshakeError::SessionAlreadyExists => "Session already exists",
+            &HandshakeError::SessionNotReady => "Session is not ready yet",
             &HandshakeError::ECDHIsNotRequested => "Ecdh is not requested",
             &HandshakeError::ECDHAlreadyRequested => "Ecdh is already requested",
             &HandshakeError::KeysError(_) => "KeysError",
@@ -102,10 +108,11 @@ impl error::Error for HandshakeError {
             &HandshakeError::CIoError(_) => None,
             &HandshakeError::RlpError(ref err) => Some(err),
             &HandshakeError::SendError(..) => None,
-            &HandshakeError::SessionError(ref err) => Some(err),
+            &HandshakeError::SymmetricCipherError(_) => None,
             &HandshakeError::NoSession => None,
             &HandshakeError::UnexpectedNonce(_) => None,
             &HandshakeError::SessionAlreadyExists => None,
+            &HandshakeError::SessionNotReady => None,
             &HandshakeError::ECDHIsNotRequested => None,
             &HandshakeError::ECDHAlreadyRequested => None,
             &HandshakeError::KeysError(_) => None,
@@ -130,9 +137,9 @@ impl From<DecoderError> for HandshakeError {
     }
 }
 
-impl From<SessionError> for HandshakeError {
-    fn from(err: SessionError) -> HandshakeError {
-        HandshakeError::SessionError(err)
+impl From<SymmetricCipherError> for HandshakeError {
+    fn from(err: SymmetricCipherError) -> HandshakeError {
+        HandshakeError::SymmetricCipherError(err)
     }
 }
 
@@ -149,7 +156,9 @@ impl Handshake {
         let socket = UdpSocket::bind(socket_address.into())?;
         Ok(Self {
             socket,
-            table: SessionTable::new(),
+            secrets: HashMap::new(),
+            nonces: HashMap::new(),
+            temporary_nonces: HashMap::new(),
             requested: HashMap::new(),
             seq_counter: AtomicUsize::new(0),
         })
@@ -201,20 +210,26 @@ impl Handshake {
         extension: &IoChannel<connection::HandlerMessage>,
     ) -> Result<(), HandshakeError> {
         match message.body() {
-            &HandshakeMessageBody::ConnectionRequest(ref nonce) => {
+            &HandshakeMessageBody::ConnectionRequest(ref received_nonce) => {
                 let encrypted_bytes = {
-                    let session = self.table.get_mut(from).ok_or(HandshakeError::NoSession)?;
-                    if session.is_ready() {
+                    let secret = self.secrets.get(from).ok_or(HandshakeError::NoSession)?;
+                    if self.nonces.contains_key(&from) {
                         info!("A nonce already exists");
                     }
-                    session.set_ready(0);
-                    let nonce = decrypt_and_decode_nonce(&session, &nonce)?;
-                    session.set_ready(nonce);
+
+                    let temporary_session = Session::new_with_zero_nonce(secret.clone());
+
+                    let temporary_nonce = decrypt_and_decode_nonce(&temporary_session, received_nonce)?;
+                    let temporary_session = Session::new(*secret, temporary_nonce);
 
                     // FIXME: let nonce = f(nonce)
+                    let nonce = temporary_nonce;
+                    let session = Session::new(*secret, nonce);
 
-                    extension.send(connection::HandlerMessage::RegisterSession(from.clone(), session.clone()))?;
-                    encode_and_encrypt_nonce(&session, nonce)?
+                    let encrypted_nonce = encode_and_encrypt_nonce(&temporary_session, nonce)?;
+                    extension.send(connection::HandlerMessage::RegisterSession(from.clone(), session))?;
+                    self.nonces.insert(from.clone(), nonce);
+                    encrypted_nonce
                 };
 
                 let pong = HandshakeMessage::connection_allowed(message.seq(), encrypted_bytes);
@@ -222,17 +237,21 @@ impl Handshake {
                 Ok(())
             }
             &HandshakeMessageBody::ConnectionAllowed(ref nonce) => {
-                let session = self.table.get(from).ok_or(HandshakeError::NoSession)?;
-                if !session.is_ready() {
-                    return Err(From::from(SessionError::NotReady))
+                let secret = self.secrets.get(from).ok_or(HandshakeError::NoSession)?;
+                let temporary_nonce = self.temporary_nonces.get(&from);
+                if temporary_nonce.is_none() {
+                    return Err(From::from(HandshakeError::SessionNotReady))
                 }
-                let nonce = decrypt_and_decode_nonce(&session, &nonce)?;
+                let temporary_nonce = temporary_nonce.expect("Nonce must exist");
+                let temporary_session = Session::new(*secret, *temporary_nonce);
+                let nonce = decrypt_and_decode_nonce(&temporary_session, &nonce)?;
 
-                if !session.is_expected_nonce(&nonce) {
+                if temporary_nonce != &nonce {
                     return Err(From::from(HandshakeError::UnexpectedNonce(nonce)))
                 }
 
-                extension.send(connection::HandlerMessage::RequestConnection(from.clone(), session.clone()))?;
+                let session = Session::new(*secret, nonce);
+                extension.send(connection::HandlerMessage::RequestConnection(from.clone(), session))?;
                 Ok(())
             }
             &HandshakeMessageBody::ConnectionDenied(ref reason) => {
@@ -242,36 +261,31 @@ impl Handshake {
             &HandshakeMessageBody::EcdhRequest(ref key) => {
                 let ephemeral = Random.generate()?;
                 let secret = exchange(key, &ephemeral.private())?;
-                if self.table.insert(from.clone(), Session::new_without_nonce(secret)).is_some() {
+                if self.secrets.insert(from.clone(), secret).is_some() {
                     self.send_to(
                         &HandshakeMessage::ecdh_denied(message.seq(), "ECDH Already requested".to_string()),
                         from,
                     )?;
-                    Err(HandshakeError::ECDHAlreadyRequested)
-                } else {
-                    self.send_to(&HandshakeMessage::ecdh_allowed(message.seq(), *ephemeral.public()), from)?;
-                    Ok(())
+                    return Err(HandshakeError::ECDHAlreadyRequested)
                 }
+                self.send_to(&HandshakeMessage::ecdh_allowed(message.seq(), *ephemeral.public()), from)?;
+                Ok(())
             }
             &HandshakeMessageBody::EcdhAllowed(ref key) => {
                 if let Some(local_private) = self.requested.remove(from) {
                     let secret = exchange(key, &local_private)?;
-                    let session = {
-                        let mut session = Session::new_without_nonce(secret);
-                        session.set_ready(0);
-                        session
-                    };
-                    if self.table.insert(from.clone(), session.clone()).is_some() {
-                        return Err(HandshakeError::ECDHAlreadyRequested)
-                    }
+                    let session = Session::new_with_zero_nonce(secret);
 
-                    let encrypted_nonce = {
-                        let session = self.table.get_mut(from).expect("Session inserted");
-                        let nonce = Handshake::nonce();
-                        let encrypted_nonce = encode_and_encrypt_nonce(&session, nonce)?;
-                        session.set_ready(nonce);
-                        encrypted_nonce
-                    };
+                    let nonce = Handshake::nonce();
+                    let encrypted_nonce = encode_and_encrypt_nonce(&session, nonce)?;
+
+                    if self.secrets.contains_key(&from) {
+                        return Err(HandshakeError::SessionAlreadyExists)
+                    }
+                    let t = self.secrets.insert(from.clone(), secret);
+                    debug_assert!(t.is_none());
+                    let t = self.temporary_nonces.insert(from.clone(), nonce);
+                    debug_assert!(t.is_none());
 
                     let seq = self.seq_counter.fetch_add(1, Ordering::SeqCst);
                     self.send_to(&HandshakeMessage::connection_request(seq as u64, encrypted_nonce), from)?;

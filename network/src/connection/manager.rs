@@ -165,9 +165,9 @@ impl Manager {
         socket_address: &SocketAddr,
     ) -> IoHandlerResult<Option<ConnectionToken>> {
         let session = self.socket_to_session.get(&socket_address).ok_or(Error::UnavailableSession)?.clone();
-        let mut connection = Connection::new(stream, session.secret().clone(), session.nonce().unwrap());
-        let nonce = session.nonce().unwrap();
-        connection.enqueue_sync(nonce);
+        let mut connection = Connection::new(stream, session.secret().clone(), *session.nonce());
+        let nonce = session.nonce();
+        connection.enqueue_sync(*nonce);
 
         Ok(self.tokens.insert(()).map(|token| self.register_connection(connection, &token)))
     }
@@ -191,14 +191,12 @@ impl Manager {
     }
 
     pub fn register_session(&mut self, socket_address: SocketAddr, session: Session) -> IoHandlerResult<()> {
-        debug_assert!(session.is_ready());
-
         if self.socket_to_session.contains_key(&socket_address) {
             info!("Session registration is requested to the address which already has one");
             return Ok(())
         }
 
-        self.registered_sessions.insert(session.nonce().clone().expect("Nonce already checked"), session.clone());
+        self.registered_sessions.insert(*session.nonce(), session.clone());
         self.socket_to_session.insert(socket_address, session);
         Ok(())
     }
@@ -256,7 +254,7 @@ impl Manager {
             let connection = self.unprocessed_connections.get(&stream).unwrap();
             connection.session().clone().unwrap()
         };
-        let nonce = session.nonce().unwrap();
+        let nonce = session.nonce().clone();
         self.registered_sessions.insert(nonce, session);
         let processed_token = self.process_connection(&stream);
         debug_assert_eq!(&processed_token, stream);
@@ -317,14 +315,12 @@ impl IoHandler<HandlerMessage> for Handler {
     fn message(&self, io: &IoContext<HandlerMessage>, message: &HandlerMessage) -> IoHandlerResult<()> {
         match *message {
             HandlerMessage::RegisterSession(ref socket_address, ref session) => {
-                debug_assert!(session.is_ready());
                 let mut manager = self.manager.lock();
                 info!("Register session {:?}", session);
 
                 manager.register_session(socket_address.clone(), session.clone())?;
             }
             HandlerMessage::RequestConnection(ref socket_address, ref session) => {
-                debug_assert!(session.is_ready());
                 let mut manager = self.manager.lock();
 
                 info!("Register session {:?}", session);
