@@ -107,10 +107,12 @@ impl Kademlia {
     fn handle_nodes_message(&mut self, sender: NodeId, contacts: &Vec<Contact>) -> Option<Command> {
         let local_id = self.local_id();
         let distance_to_target = log2_distance_between_nodes(&local_id, &sender);
+        let add_aggressive = self.table.len() < self.k as usize;
         contacts
             .into_iter()
             .take(self.k as usize)
-            .filter(|contact| contact.log2_distance(&local_id) <= distance_to_target)
+            .filter(|contact| contact.id() != local_id && contact.id() != sender)
+            .filter(|contact| add_aggressive || contact.log2_distance(&local_id) <= distance_to_target)
             .map(|contact| self.touch_contact(contact.clone()))
             .find(|added| *added)
             .and(Some(Command::Verify))
