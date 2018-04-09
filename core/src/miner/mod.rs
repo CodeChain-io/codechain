@@ -15,15 +15,17 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 mod local_transactions;
+mod miner;
 mod transaction_queue;
 
-use ctypes::Address;
+use cbytes::Bytes;
+use ckeys::Private;
+use ctypes::{Address, U256};
 
 use super::client::MiningBlockChainClient;
 use super::error::Error;
 use super::state::StateInfo;
 use super::transaction::{SignedTransaction, UnverifiedTransaction};
-use super::types::BlockNumber;
 
 /// Miner client API
 pub trait MinerService: Send + Sync {
@@ -38,6 +40,21 @@ pub trait MinerService: Send + Sync {
 
     /// Set the author that we will seal blocks as.
     fn set_author(&self, author: Address);
+
+    /// Get the extra_data that we will seal blocks with.
+    fn extra_data(&self) -> Bytes;
+
+    /// Set the extra_data that we will seal blocks with.
+    fn set_extra_data(&self, extra_data: Bytes);
+
+    /// Set info necessary to sign consensus messages.
+    fn set_engine_signer(&self, address: Address, private: Private);
+
+    /// Get current minimal fee for transactions accepted to queue.
+    fn minimal_fee(&self) -> U256;
+
+    /// Set minimal fee of transaction to be accepted for mining.
+    fn set_minimal_fee(&self, min_gas_price: U256);
 
     /// Get current transactions limit in queue.
     fn transactions_limit(&self) -> usize;
@@ -60,11 +77,7 @@ pub trait MinerService: Send + Sync {
     ) -> Result<TransactionImportResult, Error>;
 
     /// Get a list of all pending transactions in the queue.
-    fn pending_transactions(&self) -> Vec<SignedTransaction>;
-
-
-    /// Get a list of all transactions that can go into the given block.
-    fn ready_transactions(&self, best_block: BlockNumber, best_block_timestamp: u64) -> Vec<SignedTransaction>;
+    fn ready_transactions(&self) -> Vec<SignedTransaction>;
 
     /// Get a list of all future transactions.
     fn future_transactions(&self) -> Vec<SignedTransaction>;

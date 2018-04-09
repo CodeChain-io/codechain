@@ -27,6 +27,7 @@ use table::Table;
 use super::super::transaction::{Action, SignedTransaction, TransactionError};
 use super::super::types::BlockNumber;
 use super::local_transactions::{LocalTransactionsList, Status as LocalTransactionStatus};
+use super::TransactionImportResult;
 
 /// Transaction with the same (sender, nonce) can be replaced only if
 /// `new_fee > old_fee + old_fee >> SHIFT`
@@ -439,17 +440,17 @@ impl TransactionQueue {
         origin: TransactionOrigin,
         time: QueuingInstant,
         details_provider: &TransactionDetailsProvider,
-    ) -> Result<ImportResult, TransactionError> {
+    ) -> Result<TransactionImportResult, TransactionError> {
         if origin == TransactionOrigin::Local {
             let hash = tx.hash();
             let cloned_tx = tx.clone();
 
             let result = self.add_internal(tx, origin, time, details_provider);
             match result {
-                Ok(ImportResult::Current) => {
+                Ok(TransactionImportResult::Current) => {
                     self.local_transactions.mark_pending(hash);
                 }
-                Ok(ImportResult::Future) => {
+                Ok(TransactionImportResult::Future) => {
                     self.local_transactions.mark_future(hash);
                 }
                 Err(ref err) => {
@@ -519,6 +520,15 @@ impl TransactionQueue {
             .collect()
     }
 
+    /// Return all future transactions.
+    pub fn future_transactions(&self) -> Vec<SignedTransaction> {
+        self.future.by_priority
+            .iter()
+            .map(|t| self.by_hash.get(&t.hash).expect("All transactions in `current` and `future` are always included in `by_hash`"))
+            .map(|t| t.transaction.clone())
+            .collect()
+    }
+
     /// Returns local transactions (some of them might not be part of the queue anymore).
     pub fn local_transactions(&self) -> &LinkedHashMap<H256, LocalTransactionStatus> {
         self.local_transactions.all_transactions()
@@ -531,7 +541,7 @@ impl TransactionQueue {
         origin: TransactionOrigin,
         time: QueuingInstant,
         details_provider: &TransactionDetailsProvider,
-    ) -> Result<ImportResult, TransactionError> {
+    ) -> Result<TransactionImportResult, TransactionError> {
         if origin != TransactionOrigin::Local && tx.fee < self.minimal_fee {
             trace!(target: "txqueue",
                    "Dropping transaction below minimal fee: {:?} (gp: {} < {})",
@@ -599,7 +609,7 @@ impl TransactionQueue {
         &mut self,
         tx: QueuedTransaction,
         state_nonce: U256,
-    ) -> Result<ImportResult, TransactionError> {
+    ) -> Result<TransactionImportResult, TransactionError> {
         if self.by_hash.get(&tx.hash()).is_some() {
             // Transaction is already imported.
             trace!(target: "txqueue", "Dropping already imported transaction: {:?}", tx.hash());
@@ -648,7 +658,7 @@ impl TransactionQueue {
 
             debug!(target: "txqueue", "Importing transaction to future: {:?}", hash);
             debug!(target: "txqueue", "status: {:?}", self.status());
-            return Ok(ImportResult::Future)
+            return Ok(TransactionImportResult::Future)
         }
 
         // We might have filled a gap - move some more transactions from future
@@ -676,7 +686,7 @@ impl TransactionQueue {
 
         debug!(target: "txqueue", "Imported transaction to current: {:?}", hash);
         debug!(target: "txqueue", "status: {:?}", self.status());
-        Ok(ImportResult::Current)
+        Ok(TransactionImportResult::Current)
     }
 
     /// Always updates future and moves transactions from current to future.
@@ -910,15 +920,6 @@ impl TransactionQueue {
             true
         }
     }
-}
-
-/// Represents the result of importing transaction.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum ImportResult {
-    /// Transaction was imported to current queue.
-    Current,
-    /// Transaction was imported to future queue.
-    Future,
 }
 
 #[derive(Debug)]

@@ -145,7 +145,7 @@ pub trait ImportBlock {
 pub trait BlockChain: ChainInfo + BlockInfo + TransactionInfo {}
 
 /// Blockchain database client. Owns and manages a blockchain and a block queue.
-pub trait BlockChainClient: Sync + Send + BlockChain + ImportBlock {
+pub trait BlockChainClient: Sync + Send + AccountData + BlockChain + ImportBlock {
     /// Get block queue information.
     fn queue_info(&self) -> BlockQueueInfo;
 

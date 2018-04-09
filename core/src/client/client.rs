@@ -45,7 +45,7 @@ use super::super::verification::queue::BlockQueue;
 use super::super::verification::{self, PreverifiedBlock, Verifier};
 use super::super::views::BlockView;
 use super::{
-    Balance, BlockChain as BlockChainTrait, BlockChainClient, BlockChainInfo, BlockInfo, ChainInfo, ChainNotify,
+    AccountData, Balance, BlockChain as BlockChainTrait, BlockChainClient, BlockChainInfo, BlockInfo, ChainInfo, ChainNotify,
     ClientConfig, EngineClient, Error as ClientError, ImportBlock, Nonce, StateOrBlock, TransactionInfo,
 };
 
@@ -639,6 +639,8 @@ impl Importer {
         Ok(locked_block)
     }
 }
+
+impl AccountData for Client {}
 
 impl Nonce for Client {
     fn nonce(&self, address: &Address, id: BlockId) -> Option<U256> {
