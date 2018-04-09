@@ -7,7 +7,7 @@ install:
   - rustup toolchain install nightly
   - rustup component add rustfmt-preview --toolchain nightly
 script:
-  - cargo +nightly fmt
+  - cargo +nightly fmt -- --write-mode=diff
   - cargo build --verbose --all
 matrix:
   allow_failures:
