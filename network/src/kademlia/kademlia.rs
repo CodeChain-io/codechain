@@ -159,18 +159,8 @@ impl Kademlia {
 
     pub fn handle_verify_command(&mut self) -> Option<Command> {
         self.pop_contact_to_be_verified().map(|contact| {
-            let id = self.seq.fetch_add(1, Ordering::SeqCst) as MessageId;
-            let message = Message::FindNode {
-                id,
-                sender: self.local_id(),
-                target: self.local_id(),
-                bucket_size: self.k,
-            };
             let target = contact.addr().clone();
-            Command::Send {
-                message,
-                target,
-            }
+            self.find_node_command(target)
         })
     }
 
