@@ -20,7 +20,7 @@ use std::fmt;
 use std::io;
 use std::result::Result;
 use std::sync::Arc;
-use std::sync::atomic::AtomicUsize;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use cio::{IoChannel, IoContext, IoError as CIoError, IoHandler, IoHandlerResult, IoManager, StreamToken};
 use ckeys::{exchange, Error as KeysError, Generator, Private, Random};
@@ -189,7 +189,8 @@ impl Handshake {
         let ephemeral = Random.generate()?;
         self.requested.insert(target.clone(), ephemeral.private().clone());
 
-        self.send_to(&HandshakeMessage::ecdh_request(0, *ephemeral.public()), target)?; // FIXME: seq
+        let seq = self.seq_counter.fetch_add(1, Ordering::SeqCst);
+        self.send_to(&HandshakeMessage::ecdh_request(seq as u64, *ephemeral.public()), target)?;
         Ok(())
     }
 
@@ -216,7 +217,7 @@ impl Handshake {
                     encode_and_encrypt_nonce(&session, nonce)?
                 };
 
-                let pong = HandshakeMessage::connection_allowed(0, encrypted_bytes); // FIXME: seq
+                let pong = HandshakeMessage::connection_allowed(message.seq(), encrypted_bytes);
                 self.send_to(&pong, &from)?;
                 Ok(())
             }
@@ -272,7 +273,8 @@ impl Handshake {
                         encrypted_nonce
                     };
 
-                    self.send_to(&HandshakeMessage::connection_request(0, encrypted_nonce), from)?;
+                    let seq = self.seq_counter.fetch_add(1, Ordering::SeqCst);
+                    self.send_to(&HandshakeMessage::connection_request(seq as u64, encrypted_nonce), from)?;
                     Ok(())
                 } else {
                     Err(HandshakeError::ECDHIsNotRequested)

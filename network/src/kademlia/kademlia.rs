@@ -17,6 +17,7 @@
 extern crate rand;
 
 use std::collections::VecDeque;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::vec::Vec;
 
 use super::super::SocketAddr;
@@ -35,6 +36,7 @@ pub struct Kademlia {
     pub t_refresh: u32,
     table: RoutingTable,
     to_be_verified: VecDeque<Contact>,
+    seq: AtomicUsize,
 }
 
 impl Kademlia {
@@ -46,6 +48,7 @@ impl Kademlia {
             t_refresh,
             table: RoutingTable::new(local_id, k),
             to_be_verified: VecDeque::new(),
+            seq: AtomicUsize::new(0),
         }
     }
 
@@ -140,8 +143,9 @@ impl Kademlia {
     }
 
     pub fn find_node_command(&mut self, target: SocketAddr) -> Command {
+        let id = self.seq.fetch_add(1, Ordering::SeqCst) as MessageId;
         let message = Message::FindNode {
-            id: 0, // FIXME
+            id,
             sender: self.local_id(),
             target: self.local_id(),
             bucket_size: self.k,
@@ -155,8 +159,9 @@ impl Kademlia {
 
     pub fn handle_verify_command(&mut self) -> Option<Command> {
         self.pop_contact_to_be_verified().map(|contact| {
+            let id = self.seq.fetch_add(1, Ordering::SeqCst) as MessageId;
             let message = Message::FindNode {
-                id: 0,
+                id,
                 sender: self.local_id(),
                 target: self.local_id(),
                 bucket_size: self.k,
