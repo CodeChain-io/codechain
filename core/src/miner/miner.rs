@@ -14,8 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::VecDeque;
+use std::collections::{HashSet, VecDeque};
 use std::sync::Arc;
+use std::time::Instant;
 
 use cbytes::Bytes;
 use ckeys::Private;
@@ -31,7 +32,8 @@ use super::super::state::State;
 use super::super::transaction::{SignedTransaction, TransactionError, UnverifiedTransaction};
 use super::super::types::{BlockId, TransactionId};
 use super::transaction_queue::{
-    AccountDetails, TransactionDetailsProvider as TransactionQueueDetailsProvider, TransactionOrigin, TransactionQueue,
+    AccountDetails, RemovalReason, TransactionDetailsProvider as TransactionQueueDetailsProvider, TransactionOrigin,
+    TransactionQueue,
 };
 use super::{MinerService, MinerStatus, TransactionImportResult};
 
@@ -119,6 +121,72 @@ impl Miner {
             .collect();
 
         results
+    }
+
+    /// Prepares new block for sealing including top transactions from queue.
+    fn prepare_block<C: AccountData + BlockChain + BlockProducer>(&self, chain: &C) -> ClosedBlock {
+        let (transactions, mut open_block) = {
+            let transactions = self.transaction_queue.read().top_transactions();
+
+            trace!(target: "miner", "prepare_block: No existing work - making new block");
+            let open_block = chain.prepare_open_block(self.author(), self.extra_data());
+
+            (transactions, open_block)
+        };
+
+        let mut invalid_transactions = HashSet::new();
+        let mut non_allowed_transactions = HashSet::new();
+        let block_number = open_block.block().header().number();
+
+        let mut tx_count: usize = 0;
+        let tx_total = transactions.len();
+        for tx in transactions {
+            let hash = tx.hash();
+            let start = Instant::now();
+            // Check whether transaction type is allowed for sender
+            let result = match self.engine.machine().verify_transaction(&tx, open_block.header(), chain) {
+                Err(Error::Transaction(TransactionError::NotAllowed)) => Err(TransactionError::NotAllowed.into()),
+                _ => open_block.push_transaction(tx, None),
+            };
+            let took = start.elapsed();
+
+            trace!(target: "miner", "Adding tx {:?} took {:?}", hash, took);
+            match result {
+                // already have transaction - ignore
+                Err(Error::Transaction(TransactionError::AlreadyImported)) => {}
+                Err(Error::Transaction(TransactionError::NotAllowed)) => {
+                    non_allowed_transactions.insert(hash);
+                    debug!(target: "miner",
+                           "Skipping non-allowed transaction for sender {:?}",
+                           hash);
+                }
+                Err(e) => {
+                    invalid_transactions.insert(hash);
+                    debug!(target: "miner",
+                           "Error adding transaction to block: number={}. transaction_hash={:?}, Error: {:?}",
+                           block_number, hash, e);
+                }
+                _ => {
+                    tx_count += 1;
+                } // imported ok
+            }
+        }
+        trace!(target: "miner", "Pushed {}/{} transactions", tx_count, tx_total);
+
+        let block = open_block.close();
+
+        let fetch_nonce = |a: &Address| chain.latest_nonce(a);
+
+        {
+            let mut queue = self.transaction_queue.write();
+            for hash in invalid_transactions {
+                queue.remove(&hash, &fetch_nonce, RemovalReason::Invalid);
+            }
+            for hash in non_allowed_transactions {
+                queue.remove(&hash, &fetch_nonce, RemovalReason::NotAllowed);
+            }
+        }
+        block
     }
 
     /// Attempts to perform internal sealing (one that does not require work) and handles the result depending on the type of Seal.
@@ -260,10 +328,25 @@ impl MinerService for Miner {
         }
     }
 
-    fn update_sealing<C>(&self, _chain: &C)
+    fn update_sealing<C>(&self, chain: &C)
     where
         C: AccountData + BlockChain + BlockProducer + SealedBlockImporter, {
-        unimplemented!();
+        trace!(target: "miner", "update_sealing: preparing a block");
+        let block = self.prepare_block(chain);
+
+        match self.engine.seals_internally() {
+            Some(true) => {
+                trace!(target: "miner", "update_sealing: engine indicates internal sealing");
+                if self.seal_and_import_block_internally(chain, block) {
+                    trace!(target: "miner", "update_sealing: imported internally sealed block");
+                }
+            }
+            Some(false) => trace!(target: "miner", "update_sealing: engine is not keen to seal internally right now"),
+            None => {
+                trace!(target: "miner", "update_sealing: engine does not seal internally, preparing work");
+                unreachable!("External sealing is not supported")
+            }
+        }
     }
 
     fn submit_seal<C: SealedBlockImporter>(

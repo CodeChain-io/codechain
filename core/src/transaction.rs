@@ -68,6 +68,8 @@ pub enum TransactionError {
         /// Actual balance.
         got: U512,
     },
+    /// Not enough permissions given by permission contract.
+    NotAllowed,
     /// Signature error
     InvalidSignature(String),
 }
@@ -101,6 +103,7 @@ impl fmt::Display for TransactionError {
                  but the sender only has {}",
                 required, got
             ),
+            NotAllowed => "Sender does not have permissions to execute this type of transction".into(),
             InvalidSignature(ref err) => format!("Transaction has invalid signature: {}.", err),
         };
 
