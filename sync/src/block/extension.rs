@@ -25,8 +25,8 @@ use cnetwork::{Api, NetworkExtension, NodeToken, TimerToken};
 use ctypes::{H256, U256};
 use rlp::{Encodable, UntrustedRlp};
 
-use manager::DownloadManager;
-use message::Message;
+use super::manager::DownloadManager;
+use super::message::Message;
 
 const EXTENSION_NAME: &'static str = "block-propagation";
 const SYNC_TIMER_TOKEN: usize = 0;

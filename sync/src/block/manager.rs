@@ -22,7 +22,7 @@ use ctypes::H256;
 use rlp::Encodable;
 use triehash::ordered_trie_root;
 
-use message::Message;
+use super::message::Message;
 
 const MAX_BODY_REQUEST_LENGTH: usize = 32;
 const MAX_HEADER_REQUEST_LENGTH: usize = 128;
