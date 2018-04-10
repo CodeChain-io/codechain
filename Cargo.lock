@@ -194,6 +194,7 @@ dependencies = [
  "clap 2.29.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "codechain-core 0.1.0",
  "codechain-discovery 0.1.0",
+ "codechain-finally 0.1.0",
  "codechain-logger 1.9.0",
  "codechain-network 0.1.0",
  "codechain-reactor 0.1.0",
@@ -272,6 +273,10 @@ dependencies = [
  "rand 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "rlp 0.2.1",
 ]
+
+[[package]]
+name = "codechain-finally"
+version = "0.1.0"
 
 [[package]]
 name = "codechain-io"

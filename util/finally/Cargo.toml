@@ -1,0 +1,4 @@
+[package]
+name = "codechain-finally"
+version = "0.1.0"
+authors = ["Kodebox <codechain@kodebox.io>"]
