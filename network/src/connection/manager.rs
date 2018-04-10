@@ -27,9 +27,9 @@ use parking_lot::{Mutex, RwLock};
 
 use super::super::client::Client;
 use super::super::extension::{Error as ExtensionError, NodeToken};
-use super::super::limited_table::{Key as ConnectionToken, LimitedTable};
 use super::super::session::{Nonce, Session, SessionTable};
 use super::super::timer_info::{Error as TimerInfoError, TimerInfo};
+use super::super::token_generator::TokenGenerator;
 use super::super::SocketAddr;
 use super::connection::{Connection, ExtensionCallback as ExtensionChannel};
 use super::message::Version;
@@ -38,7 +38,7 @@ use super::unprocessed_connection::UnprocessedConnection;
 pub struct Manager {
     listener: TcpListener,
 
-    tokens: LimitedTable<()>,
+    tokens: TokenGenerator,
     unprocessed_tokens: HashSet<StreamToken>,
     connections: HashMap<StreamToken, Connection>,
     unprocessed_connections: HashMap<StreamToken, UnprocessedConnection>,
@@ -118,7 +118,7 @@ impl Manager {
         Ok(Manager {
             listener: TcpListener::bind(socket_address.into())?,
 
-            tokens: LimitedTable::new(FIRST_CONNECTION_TOKEN, LAST_CONNECTION_TOKEN),
+            tokens: TokenGenerator::new(FIRST_CONNECTION_TOKEN, LAST_CONNECTION_TOKEN),
             unprocessed_tokens: HashSet::new(),
             connections: HashMap::new(),
             unprocessed_connections: HashMap::new(),
@@ -128,8 +128,8 @@ impl Manager {
         })
     }
 
-    fn register_unprocessed_connection(&mut self, stream: TcpStream) -> Option<ConnectionToken> {
-        self.tokens.insert(()).map(|token| {
+    fn register_unprocessed_connection(&mut self, stream: TcpStream) -> Option<StreamToken> {
+        self.tokens.gen().map(|token| {
             let connection = UnprocessedConnection::new(stream);
 
             let con = self.unprocessed_connections.insert(token, connection);
@@ -142,14 +142,14 @@ impl Manager {
         })
     }
 
-    fn register_connection(&mut self, connection: Connection, token: &ConnectionToken) -> ConnectionToken {
+    fn register_connection(&mut self, connection: Connection, token: &StreamToken) -> StreamToken {
         let con = self.connections.insert(*token, connection);
         debug_assert!(con.is_none());
 
         *token
     }
 
-    fn process_connection(&mut self, unprocessed_token: &ConnectionToken) -> ConnectionToken {
+    fn process_connection(&mut self, unprocessed_token: &StreamToken) -> StreamToken {
         let t = self.unprocessed_tokens.remove(&unprocessed_token);
         debug_assert!(t);
         let unprocessed = self.unprocessed_connections.remove(&unprocessed_token).expect("It must exist");
@@ -163,16 +163,16 @@ impl Manager {
         &mut self,
         stream: TcpStream,
         socket_address: &SocketAddr,
-    ) -> IoHandlerResult<Option<ConnectionToken>> {
+    ) -> IoHandlerResult<Option<StreamToken>> {
         let session = self.socket_to_session.get(&socket_address).ok_or(Error::UnavailableSession)?.clone();
         let mut connection = Connection::new(stream, session.secret().clone(), session.nonce().clone());
         let nonce = session.nonce();
         connection.enqueue_sync(nonce.clone());
 
-        Ok(self.tokens.insert(()).map(|token| self.register_connection(connection, &token)))
+        Ok(self.tokens.gen().map(|token| self.register_connection(connection, &token)))
     }
 
-    pub fn accept(&mut self) -> IoHandlerResult<Option<(ConnectionToken, SocketAddr)>> {
+    pub fn accept(&mut self) -> IoHandlerResult<Option<(StreamToken, SocketAddr)>> {
         match self.listener.accept() {
             Ok((stream, socket_address)) => {
                 Ok(self.register_unprocessed_connection(stream).map(|token| (token, socket_address.into())))
@@ -182,7 +182,7 @@ impl Manager {
         }
     }
 
-    pub fn connect(&mut self, socket_address: &SocketAddr) -> IoHandlerResult<Option<ConnectionToken>> {
+    pub fn connect(&mut self, socket_address: &SocketAddr) -> IoHandlerResult<Option<StreamToken>> {
         match TcpStream::connect(socket_address.into()) {
             Ok(stream) => self.create_connection(stream, &socket_address),
             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => Ok(None),
@@ -203,7 +203,7 @@ impl Manager {
 
     pub fn register_stream(
         &self,
-        token: ConnectionToken,
+        token: StreamToken,
         reg: Token,
         event_loop: &mut EventLoop<IoManager<HandlerMessage>>,
     ) -> IoHandlerResult<()> {
@@ -220,7 +220,7 @@ impl Manager {
 
     pub fn update_stream(
         &self,
-        token: ConnectionToken,
+        token: StreamToken,
         reg: Token,
         event_loop: &mut EventLoop<IoManager<HandlerMessage>>,
     ) -> IoHandlerResult<()> {

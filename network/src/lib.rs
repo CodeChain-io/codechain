@@ -39,6 +39,7 @@ mod handshake;
 mod limited_table;
 mod service;
 mod timer_info;
+mod token_generator;
 
 pub mod connection;
 pub mod session;

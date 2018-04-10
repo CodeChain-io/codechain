@@ -69,6 +69,10 @@ impl<Item> LimitedTable<Item> {
         Some(self.slab.remove(key))
     }
 
+    pub fn contains(&self, key: Key) -> bool {
+        self.slab.contains(key)
+    }
+
     pub fn get(&self, key: Key) -> Option<&Item> {
         self.slab.get(key - self.begin)
     }
