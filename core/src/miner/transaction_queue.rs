@@ -467,6 +467,103 @@ impl TransactionQueue {
         }
     }
 
+    /// Checks the current nonce for all transactions' senders in the queue and removes the old transactions.
+    pub fn remove_old<F>(&mut self, fetch_account: &F, current_time: QueuingInstant)
+    where
+        F: Fn(&Address) -> AccountDetails, {
+        let senders = self.current
+            .by_address
+            .keys()
+            .chain(self.future.by_address.keys())
+            .map(|sender| (*sender, fetch_account(sender)))
+            .collect::<HashMap<_, _>>();
+
+        for (sender, details) in senders.iter() {
+            self.cull(*sender, details.nonce);
+        }
+
+        let max_time = self.max_time_in_queue;
+        let balance_check = max_time >> 3;
+        // Clear transactions occupying the queue too long
+        let invalid = self.by_hash
+            .iter()
+            .filter(|&(_, ref tx)| !tx.origin.is_local())
+            .map(|(hash, tx)| (hash, tx, current_time.saturating_sub(tx.insertion_time)))
+            .filter_map(|(hash, tx, time_diff)| {
+                if time_diff > max_time {
+                    return Some(*hash)
+                }
+
+                if time_diff > balance_check {
+                    return match senders.get(&tx.sender()) {
+                        Some(details) if tx.cost() > details.balance => Some(*hash),
+                        _ => None,
+                    }
+                }
+
+                None
+            })
+            .collect::<Vec<_>>();
+        let fetch_nonce =
+            |a: &Address| senders.get(a).expect("We fetch details for all senders from both current and future").nonce;
+        for hash in invalid {
+            self.remove(&hash, &fetch_nonce, RemovalReason::Invalid);
+        }
+    }
+
+    /// Removes invalid transaction identified by hash from queue.
+    /// Assumption is that this transaction nonce is not related to client nonce,
+    /// so transactions left in queue are processed according to client nonce.
+    ///
+    /// If gap is introduced marks subsequent transactions as future
+    pub fn remove<F>(&mut self, transaction_hash: &H256, fetch_nonce: &F, reason: RemovalReason)
+    where
+        F: Fn(&Address) -> U256, {
+        assert_eq!(self.future.by_priority.len() + self.current.by_priority.len(), self.by_hash.len());
+        let transaction = self.by_hash.remove(transaction_hash);
+        if transaction.is_none() {
+            // We don't know this transaction
+            return
+        }
+
+        let transaction = transaction.expect("None is tested in early-exit condition above; qed");
+        let sender = transaction.sender();
+        let nonce = transaction.nonce();
+        let current_nonce = fetch_nonce(&sender);
+
+        trace!(target: "txqueue", "Removing invalid transaction: {:?}", transaction.hash());
+
+        // Mark in locals
+        if self.local_transactions.contains(transaction_hash) {
+            match reason {
+                RemovalReason::Invalid => self.local_transactions.mark_invalid(transaction.transaction.into()),
+                RemovalReason::NotAllowed => self.local_transactions.mark_invalid(transaction.transaction.into()),
+                RemovalReason::Canceled => self.local_transactions.mark_canceled(transaction.transaction.into()),
+            }
+        }
+
+        // Remove from future
+        let order = self.future.drop(&sender, &nonce);
+        if order.is_some() {
+            self.update_future(&sender, current_nonce);
+            // And now lets check if there is some chain of transactions in future
+            // that should be placed in current
+            self.move_matching_future_to_current(sender, current_nonce, current_nonce);
+            assert_eq!(self.future.by_priority.len() + self.current.by_priority.len(), self.by_hash.len());
+            return
+        }
+
+        // Remove from current
+        let order = self.current.drop(&sender, &nonce);
+        if order.is_some() {
+            // This will keep consistency in queue
+            // Moves all to future and then promotes a batch from current:
+            self.cull_internal(sender, current_nonce);
+            assert_eq!(self.future.by_priority.len() + self.current.by_priority.len(), self.by_hash.len());
+            return
+        }
+    }
+
     /// Removes all transactions from particular sender up to (excluding) given client (state) nonce.
     /// Client (State) Nonce = next valid nonce for this sender.
     pub fn cull(&mut self, sender: Address, client_nonce: U256) {
@@ -948,6 +1045,16 @@ pub struct AccountDetails {
     pub nonce: U256,
     /// Current account balance
     pub balance: U256,
+}
+/// Reason to remove single transaction from the queue.
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum RemovalReason {
+    /// Transaction is invalid
+    Invalid,
+    /// Transaction was canceled
+    Canceled,
+    /// Transaction is not allowed,
+    NotAllowed,
 }
 
 fn check_too_cheap(is_in: bool) -> Result<(), TransactionError> {
