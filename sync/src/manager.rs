@@ -73,7 +73,7 @@ impl DownloadManager {
         match self.downloading_header {
             Some(downloading) if downloading == first_header_hash => {}
             _ => {
-                info!("DownloadManager: Unexpected headers");
+                info!("sync: Unexpected headers");
                 return false
             }
         }
@@ -83,7 +83,7 @@ impl DownloadManager {
             let parent = &neighbors[0];
             let child = &neighbors[1];
             if child.number() != parent.number() + 1 || *child.parent_hash() != parent.hash() {
-                info!("DownloadManager: Headers are not continuous");
+                info!("sync: Headers are not continuous");
                 return false
             }
         }
@@ -104,12 +104,12 @@ impl DownloadManager {
             let tx_root = ordered_trie_root(body.iter().map(|tx| tx.rlp_bytes()));
             let is_valid = self.downloading_bodies
                 .iter()
-                .map(|hash| self.headers.get(hash).expect("DownloadManager: downloading body's header should be known"))
+                .map(|hash| self.headers.get(hash).expect("Downloading body's header must be known"))
                 .any(|header| *header.transactions_root() == tx_root);
             if is_valid {
                 valid_bodies.insert(tx_root, body);
             } else {
-                info!("DownloadManager: Unexpected body detected");
+                info!("sync: Unexpected body detected");
                 return false
             }
         }
@@ -158,7 +158,7 @@ impl DownloadManager {
                 start_number: if target == self.best_hash {
                     self.best_number
                 } else {
-                    self.headers.get(&target).expect("Header download target should be known").number()
+                    self.headers.get(&target).expect("Header download target must be known").number()
                 },
                 max_count: MAX_HEADER_REQUEST_LENGTH as u64,
             })
@@ -176,7 +176,7 @@ impl DownloadManager {
         let mut result = Vec::new();
         while let Some(child_hash) = child_map.get(&self.best_hash) {
             if let Some(body) = self.bodies.remove(child_hash) {
-                let header = self.headers.remove(child_hash).expect("Header should exist to be drained");
+                let header = self.headers.remove(child_hash).expect("Header must exist to be drained");
                 self.best_hash = header.hash();
                 self.best_number = header.number();
                 result.push(Block {
