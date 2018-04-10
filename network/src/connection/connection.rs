@@ -28,7 +28,7 @@ use rlp::{DecoderError, Encodable, UntrustedRlp};
 
 use super::super::SocketAddr;
 use super::super::client::Client;
-use super::super::extension::{Error as ExtensionError, NodeId};
+use super::super::extension::{Error as ExtensionError, NodeToken};
 use super::super::session::{Nonce, Session};
 use super::SignedMessage;
 use super::message::{Seq, Version};
@@ -316,11 +316,11 @@ impl Connection {
 
 pub struct ExtensionCallback<'a> {
     client: &'a Client,
-    id: NodeId,
+    id: NodeToken,
 }
 
 impl<'a> ExtensionCallback<'a> {
-    pub fn new(client: &'a Client, id: NodeId) -> Self {
+    pub fn new(client: &'a Client, id: NodeToken) -> Self {
         Self {
             client,
             id,

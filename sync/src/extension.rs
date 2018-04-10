@@ -21,7 +21,7 @@ use std::sync::Arc;
 
 use cbytes::Bytes;
 use ccore::{BlockChainClient, BlockId, BlockNumber, ChainNotify};
-use cnetwork::{Api, Extension, NodeId};
+use cnetwork::{Api, Extension, NodeToken, TimerToken};
 use ctypes::{H256, U256};
 use rlp::{Encodable, UntrustedRlp};
 
@@ -46,7 +46,7 @@ struct Peer {
 }
 
 pub struct BlockSyncExtension {
-    peers: RwLock<HashMap<NodeId, Peer>>,
+    peers: RwLock<HashMap<NodeToken, Peer>>,
     client: Arc<BlockChainClient>,
     manager: Mutex<DownloadManager>,
     api: Mutex<Option<Arc<Api>>>,
@@ -88,14 +88,14 @@ impl Extension for BlockSyncExtension {
         *self.api.lock() = Some(api);
     }
 
-    fn on_node_added(&self, id: &NodeId) {
+    fn on_node_added(&self, id: &NodeToken) {
         self.api.lock().as_ref().map(|api| api.connect(id));
     }
-    fn on_node_removed(&self, id: &NodeId) {
+    fn on_node_removed(&self, id: &NodeToken) {
         self.peers.write().remove(id);
     }
 
-    fn on_connected(&self, id: &NodeId) {
+    fn on_connected(&self, id: &NodeToken) {
         let chain_info = self.client.chain_info();
         self.send_message(
             id,
@@ -106,11 +106,11 @@ impl Extension for BlockSyncExtension {
             },
         );
     }
-    fn on_connection_allowed(&self, id: &NodeId) {
+    fn on_connection_allowed(&self, id: &NodeToken) {
         self.on_connected(id);
     }
 
-    fn on_message(&self, id: &NodeId, data: &Vec<u8>) {
+    fn on_message(&self, id: &NodeToken, data: &Vec<u8>) {
         if let Ok(received_message) = UntrustedRlp::new(data).as_val() {
             if !self.is_valid_message(id, &received_message) {
                 return
@@ -164,7 +164,7 @@ impl Extension for BlockSyncExtension {
         *self.api.lock() = None
     }
 
-    fn on_timeout(&self, timer_id: usize) {
+    fn on_timeout(&self, timer_id: TimerToken) {
         debug_assert_eq!(timer_id, SYNC_TIMER_ID);
         if self.peers.read().values().all(|peer| peer.retry >= MAX_RETRY) {
             let best_header = self.client
@@ -227,7 +227,7 @@ impl ChainNotify for BlockSyncExtension {
 }
 
 impl BlockSyncExtension {
-    fn is_valid_message(&self, id: &NodeId, message: &Message) -> bool {
+    fn is_valid_message(&self, id: &NodeToken, message: &Message) -> bool {
         match message {
             &Message::Status {
                 genesis_hash,
@@ -261,7 +261,7 @@ impl BlockSyncExtension {
         }
     }
 
-    fn apply_message(&self, id: &NodeId, message: &Message) {
+    fn apply_message(&self, id: &NodeToken, message: &Message) {
         match message {
             &Message::Status {
                 total_score,
@@ -309,7 +309,7 @@ impl BlockSyncExtension {
         }
     }
 
-    fn record_last_request(&self, id: &NodeId, message: &Option<Message>) {
+    fn record_last_request(&self, id: &NodeToken, message: &Option<Message>) {
         let mut peers = self.peers.write();
         if let Some(peer) = peers.get_mut(id) {
             match message {
@@ -330,7 +330,7 @@ impl BlockSyncExtension {
         }
     }
 
-    fn send_message(&self, id: &NodeId, message: Message) {
+    fn send_message(&self, id: &NodeToken, message: Message) {
         self.api.lock().as_ref().map(|api| {
             api.send(id, &message.rlp_bytes().to_vec());
         });

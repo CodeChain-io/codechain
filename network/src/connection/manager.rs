@@ -27,7 +27,7 @@ use parking_lot::{Mutex, RwLock};
 
 use super::super::SocketAddr;
 use super::super::client::Client;
-use super::super::extension::{Error as ExtensionError, NodeId};
+use super::super::extension::{Error as ExtensionError, NodeToken};
 use super::super::limited_table::{Key as ConnectionToken, LimitedTable};
 use super::super::session::{Nonce, Session, SessionTable};
 use super::super::timer_info::{Error as TimerInfoError, TimerInfo};
@@ -66,12 +66,12 @@ pub enum HandlerMessage {
     RequestConnection(SocketAddr, Session),
 
     RequestNegotiation {
-        node_id: NodeId,
+        node_id: NodeToken,
         extension_name: String,
         version: Version,
     },
     SendExtensionMessage {
-        node_id: NodeId,
+        node_id: NodeToken,
         extension_name: String,
         need_encryption: bool,
         data: Vec<u8>,
@@ -98,7 +98,7 @@ enum Error {
     UnavailableSession,
     InvalidStream(StreamToken),
     InvalidTimer(TimerToken),
-    InvalidNode(NodeId),
+    InvalidNode(NodeToken),
 }
 
 impl ::std::fmt::Display for Error {
@@ -279,8 +279,8 @@ pub struct Handler {
     client: Arc<Client>,
     timer: Mutex<TimerInfo>,
 
-    node_id_to_socket: RwLock<HashMap<NodeId, SocketAddr>>,
-    socket_to_node_id: RwLock<HashMap<SocketAddr, NodeId>>,
+    node_token_to_socket: RwLock<HashMap<NodeToken, SocketAddr>>,
+    socket_to_node_token: RwLock<HashMap<SocketAddr, NodeToken>>,
 }
 
 impl Handler {
@@ -292,8 +292,8 @@ impl Handler {
             client,
             timer: Mutex::new(TimerInfo::new(FIRST_TIMER_TOKEN, MAX_TIMERS)),
 
-            node_id_to_socket: RwLock::new(HashMap::new()),
-            socket_to_node_id: RwLock::new(HashMap::new()),
+            node_token_to_socket: RwLock::new(HashMap::new()),
+            socket_to_node_token: RwLock::new(HashMap::new()),
         }
     }
 }
@@ -333,8 +333,8 @@ impl IoHandler<HandlerMessage> for Handler {
                 info!("Connecting to {:?}", socket_address);
                 if let Some(token) = manager.connect(&socket_address)? {
                     io.register_stream(token)?;
-                    self.socket_to_node_id.write().insert(socket_address.clone(), token);
-                    self.node_id_to_socket.write().insert(token, socket_address.clone());
+                    self.socket_to_node_token.write().insert(socket_address.clone(), token);
+                    self.node_token_to_socket.write().insert(token, socket_address.clone());
                 } else {
                     info!("There are no available tokens");
                 }
@@ -417,8 +417,8 @@ impl IoHandler<HandlerMessage> for Handler {
                 let mut manager = self.manager.lock();
                 if let Some((token, socket_address)) = manager.accept()? {
                     io.register_stream(token)?;
-                    self.socket_to_node_id.write().insert(socket_address.clone(), token);
-                    self.node_id_to_socket.write().insert(token, socket_address);
+                    self.socket_to_node_token.write().insert(socket_address.clone(), token);
+                    self.node_token_to_socket.write().insert(token, socket_address);
                 }
                 break
             },
@@ -501,18 +501,18 @@ impl IoHandler<HandlerMessage> for Handler {
 
 
 pub trait AddressConverter: Send + Sync {
-    fn node_id_to_address(&self, node_id: &NodeId) -> Option<SocketAddr>;
-    fn address_to_node_id(&self, address: &SocketAddr) -> Option<NodeId>;
+    fn node_token_to_address(&self, node: &NodeToken) -> Option<SocketAddr>;
+    fn address_to_node_token(&self, address: &SocketAddr) -> Option<NodeToken>;
 }
 
 impl AddressConverter for Handler {
-    fn node_id_to_address(&self, node_id: &NodeId) -> Option<SocketAddr> {
-        let node_id_to_socket = self.node_id_to_socket.read();
+    fn node_token_to_address(&self, node_id: &NodeToken) -> Option<SocketAddr> {
+        let node_id_to_socket = self.node_token_to_socket.read();
         node_id_to_socket.get(&node_id).map(|socket_address| socket_address.clone())
     }
 
-    fn address_to_node_id(&self, socket_address: &SocketAddr) -> Option<NodeId> {
-        let socket_to_node_id = self.socket_to_node_id.read();
-        socket_to_node_id.get(&socket_address).map(|id| id.clone())
+    fn address_to_node_token(&self, socket_address: &SocketAddr) -> Option<NodeToken> {
+        let socket_to_node_token = self.socket_to_node_token.read();
+        socket_to_node_token.get(&socket_address).map(|id| id.clone())
     }
 }

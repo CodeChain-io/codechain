@@ -19,7 +19,9 @@ use std::sync::Arc;
 
 use cio::StreamToken;
 
-pub type NodeId = StreamToken;
+pub use cio::TimerToken;
+
+pub type NodeToken = StreamToken;
 
 #[derive(Clone, Copy, Debug)]
 pub enum Error {
@@ -31,12 +33,12 @@ pub enum Error {
 pub type Result<T> = result::Result<T, Error>;
 
 pub trait Api: Send + Sync {
-    fn send(&self, id: &NodeId, message: &Vec<u8>);
-    fn connect(&self, id: &NodeId);
+    fn send(&self, node: &NodeToken, message: &Vec<u8>);
+    fn connect(&self, node: &NodeToken);
 
-    fn set_timer(&self, timer_id: usize, ms: u64);
-    fn set_timer_once(&self, timer_id: usize, ms: u64);
-    fn clear_timer(&self, timer_id: usize);
+    fn set_timer(&self, timer: TimerToken, ms: u64);
+    fn set_timer_once(&self, timer: TimerToken, ms: u64);
+    fn clear_timer(&self, timer: TimerToken);
 }
 
 pub trait Extension: Send + Sync {
@@ -45,21 +47,21 @@ pub trait Extension: Send + Sync {
 
     fn on_initialize(&self, api: Arc<Api>);
 
-    fn on_node_added(&self, _id: &NodeId) {}
-    fn on_node_removed(&self, _id: &NodeId) {}
+    fn on_node_added(&self, _node: &NodeToken) {}
+    fn on_node_removed(&self, _node: &NodeToken) {}
 
-    fn on_connected(&self, _id: &NodeId) {}
-    fn on_connection_allowed(&self, _id: &NodeId) {}
-    fn on_connection_denied(&self, _id: &NodeId, _error: Error) {}
+    fn on_connected(&self, _node: &NodeToken) {}
+    fn on_connection_allowed(&self, _node: &NodeToken) {}
+    fn on_connection_denied(&self, _node: &NodeToken, _error: Error) {}
 
-    fn on_message(&self, _id: &NodeId, _message: &Vec<u8>) {}
+    fn on_message(&self, _node: &NodeToken, _message: &Vec<u8>) {}
 
     fn on_close(&self) {}
 
-    fn on_timer_set_allowed(&self, _timer_id: usize) {}
-    fn on_timer_set_denied(&self, _timer_id: usize, error: Error) {
+    fn on_timer_set_allowed(&self, _timer: TimerToken) {}
+    fn on_timer_set_denied(&self, _timer: TimerToken, error: Error) {
         unreachable!("Timer set denied {:?}", error);
     }
 
-    fn on_timeout(&self, _timer_id: usize) {}
+    fn on_timeout(&self, _timer: TimerToken) {}
 }
