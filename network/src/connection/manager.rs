@@ -25,12 +25,12 @@ use mio::net::{TcpListener, TcpStream};
 use mio::{PollOpt, Ready, Token};
 use parking_lot::{Mutex, RwLock};
 
-use super::super::SocketAddr;
 use super::super::client::Client;
 use super::super::extension::{Error as ExtensionError, NodeToken};
 use super::super::limited_table::{Key as ConnectionToken, LimitedTable};
 use super::super::session::{Nonce, Session, SessionTable};
 use super::super::timer_info::{Error as TimerInfoError, TimerInfo};
+use super::super::SocketAddr;
 use super::connection::{Connection, ExtensionCallback as ExtensionChannel};
 use super::message::Version;
 use super::unprocessed_connection::UnprocessedConnection;

@@ -24,8 +24,8 @@ use error::{BaseDataError, UtilError};
 use hashdb::*;
 use kvdb::{DBTransaction, KeyValueDB};
 use rlp::{decode, encode};
-use std::collections::HashMap;
 use std::collections::hash_map::Entry;
+use std::collections::HashMap;
 use std::sync::Arc;
 use traits::JournalDB;
 

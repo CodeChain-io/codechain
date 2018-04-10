@@ -19,8 +19,8 @@ use std::str::FromStr;
 
 use cnetwork::SocketAddr;
 
-use super::NodeId;
 use super::node_id::{self, log2_distance_between_nodes};
+use super::NodeId;
 
 
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]

@@ -30,8 +30,8 @@ use trie::{TrieFactory, TrieSpec};
 
 use super::super::block::{enact, ClosedBlock, Drain, IsBlock, LockedBlock, OpenBlock, SealedBlock};
 use super::super::blockchain::{BlockChain, BlockProvider, ImportRoute, TransactionAddress};
-use super::super::consensus::CodeChainEngine;
 use super::super::consensus::epoch::Transition as EpochTransition;
+use super::super::consensus::CodeChainEngine;
 use super::super::encoded;
 use super::super::error::{BlockImportError, Error, ImportError};
 use super::super::header::Header;
@@ -279,8 +279,8 @@ impl TransactionInfo for Client {
 
 impl ImportBlock for Client {
     fn import_block(&self, bytes: Bytes) -> Result<H256, BlockImportError> {
-        use super::super::verification::queue::kind::BlockLike;
         use super::super::verification::queue::kind::blocks::Unverified;
+        use super::super::verification::queue::kind::BlockLike;
 
         let unverified = Unverified::new(bytes);
         {
@@ -580,8 +580,8 @@ impl Importer {
 
         match self.engine.signals_epoch_end(header) {
             EpochChange::Yes(proof) => {
-                use super::super::consensus::Proof;
                 use super::super::consensus::epoch::PendingTransition;
+                use super::super::consensus::Proof;
 
                 let Proof::Known(proof) = proof;
                 debug!(target: "client", "Block {} signals epoch end.", hash);

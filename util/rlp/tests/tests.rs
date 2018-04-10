@@ -209,15 +209,13 @@ fn encode_str() {
 
 #[test]
 fn encode_address() {
-    let tests = vec![
-        ETestPair(
-            H160::from("ef2d6d194084c2de36e0dabfce45d046b37d1106"),
-            vec![
-                0x94, 0xef, 0x2d, 0x6d, 0x19, 0x40, 0x84, 0xc2, 0xde, 0x36, 0xe0, 0xda, 0xbf, 0xce, 0x45, 0xd0, 0x46,
-                0xb3, 0x7d, 0x11, 0x06,
-            ],
-        ),
-    ];
+    let tests = vec![ETestPair(
+        H160::from("ef2d6d194084c2de36e0dabfce45d046b37d1106"),
+        vec![
+            0x94, 0xef, 0x2d, 0x6d, 0x19, 0x40, 0x84, 0xc2, 0xde, 0x36, 0xe0, 0xda, 0xbf, 0xce, 0x45, 0xd0, 0x46, 0xb3,
+            0x7d, 0x11, 0x06,
+        ],
+    )];
     run_encode_tests(tests);
 }
 
@@ -394,15 +392,13 @@ fn decode_untrusted_str() {
 
 #[test]
 fn decode_untrusted_address() {
-    let tests = vec![
-        DTestPair(
-            H160::from("ef2d6d194084c2de36e0dabfce45d046b37d1106"),
-            vec![
-                0x94, 0xef, 0x2d, 0x6d, 0x19, 0x40, 0x84, 0xc2, 0xde, 0x36, 0xe0, 0xda, 0xbf, 0xce, 0x45, 0xd0, 0x46,
-                0xb3, 0x7d, 0x11, 0x06,
-            ],
-        ),
-    ];
+    let tests = vec![DTestPair(
+        H160::from("ef2d6d194084c2de36e0dabfce45d046b37d1106"),
+        vec![
+            0x94, 0xef, 0x2d, 0x6d, 0x19, 0x40, 0x84, 0xc2, 0xde, 0x36, 0xe0, 0xda, 0xbf, 0xce, 0x45, 0xd0, 0x46, 0xb3,
+            0x7d, 0x11, 0x06,
+        ],
+    )];
     run_decode_tests(tests);
 }
 
@@ -422,12 +418,10 @@ fn decode_untrusted_vector_u64() {
 
 #[test]
 fn decode_untrusted_vector_str() {
-    let tests = vec![
-        VDTestPair(
-            vec!["cat".to_owned(), "dog".to_owned()],
-            vec![0xc8, 0x83, b'c', b'a', b't', 0x83, b'd', b'o', b'g'],
-        ),
-    ];
+    let tests = vec![VDTestPair(
+        vec!["cat".to_owned(), "dog".to_owned()],
+        vec![0xc8, 0x83, b'c', b'a', b't', 0x83, b'd', b'o', b'g'],
+    )];
     run_decode_tests_list(tests);
 }
 

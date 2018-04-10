@@ -398,8 +398,8 @@ impl<'a> Iterator for TrieDBIterator<'a> {
 
 #[test]
 fn iterator() {
-    use super::TrieMut;
     use super::triedbmut::*;
+    use super::TrieMut;
     use memorydb::*;
 
     let d = vec![
@@ -428,8 +428,8 @@ fn iterator() {
 
 #[test]
 fn iterator_seek() {
-    use super::TrieMut;
     use super::triedbmut::*;
+    use super::TrieMut;
     use memorydb::*;
 
     let d = vec![
@@ -478,8 +478,8 @@ fn iterator_seek() {
 
 #[test]
 fn get_len() {
-    use super::TrieMut;
     use super::triedbmut::*;
+    use super::TrieMut;
     use memorydb::*;
 
     let mut memdb = MemoryDB::new();

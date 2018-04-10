@@ -16,8 +16,8 @@
 
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
-use super::NodeId;
 use super::contact::Contact;
+use super::NodeId;
 
 pub type Id = u64;
 

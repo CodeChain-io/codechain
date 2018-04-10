@@ -93,8 +93,8 @@ pub fn blake512<T: AsRef<[u8]>>(s: T) -> H512 {
 mod tests {
     use std::panic::catch_unwind;
 
-    use super::{BLAKE_EMPTY, BLAKE_EMPTY_LIST_RLP, BLAKE_NULL_RLP};
     use super::{blake256, blake256_with_key, blake512, ripemd160, sha1};
+    use super::{BLAKE_EMPTY, BLAKE_EMPTY_LIST_RLP, BLAKE_NULL_RLP};
 
     #[test]
     fn test_ripemd160() {

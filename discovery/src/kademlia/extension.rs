@@ -15,8 +15,8 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::collections::{HashSet, VecDeque};
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 
 use cnetwork::connection::AddressConverter;
 use cnetwork::{Api, DiscoveryApi, Extension as NetworkExtension, NodeToken, SocketAddr, TimerToken};

@@ -16,8 +16,8 @@
 
 //! A collection associating pair of keys (row and column) with a single value.
 
-use std::collections::HashMap;
 use std::collections::hash_map::Keys;
+use std::collections::HashMap;
 use std::hash::Hash;
 
 /// Structure to hold double-indexed values

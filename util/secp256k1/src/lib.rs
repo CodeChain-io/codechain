@@ -560,8 +560,8 @@ mod tests {
     extern crate hex;
     use rand::{thread_rng, Rng};
 
-    use super::Error::{IncapableContext, IncorrectSignature, InvalidMessage, InvalidPublicKey, InvalidSignature};
     use super::constants;
+    use super::Error::{IncapableContext, IncorrectSignature, InvalidMessage, InvalidPublicKey, InvalidSignature};
     use super::{ContextFlag, Message, RecoverableSignature, RecoveryId, Secp256k1, Signature};
     use key::{PublicKey, SecretKey};
 

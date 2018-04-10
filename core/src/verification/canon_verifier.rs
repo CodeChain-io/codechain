@@ -18,8 +18,8 @@ use super::super::client::BlockInfo;
 use super::super::consensus::CodeChainEngine;
 use super::super::error::Error;
 use super::super::header::Header;
-use super::Verifier;
 use super::verification;
+use super::Verifier;
 
 /// A canonial verifier -- this does full verification.
 pub struct CanonVerifier;

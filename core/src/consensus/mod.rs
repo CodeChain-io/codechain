@@ -27,8 +27,8 @@ mod vote_collector;
 pub use self::solo::Solo;
 pub use self::solo_authority::SoloAuthority;
 pub use self::tendermint::{Tendermint, TendermintParams};
-pub use self::validator_set::ValidatorSet;
 pub use self::validator_set::validator_list::ValidatorList;
+pub use self::validator_set::ValidatorSet;
 
 use std::fmt;
 use std::sync::Weak;

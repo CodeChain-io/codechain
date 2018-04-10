@@ -26,8 +26,8 @@ use table::Table;
 
 use super::super::transaction::{Action, SignedTransaction, TransactionError};
 use super::super::types::BlockNumber;
-use super::TransactionImportResult;
 use super::local_transactions::{LocalTransactionsList, Status as LocalTransactionStatus};
+use super::TransactionImportResult;
 
 /// Transaction with the same (sender, nonce) can be replaced only if
 /// `new_fee > old_fee + old_fee >> SHIFT`

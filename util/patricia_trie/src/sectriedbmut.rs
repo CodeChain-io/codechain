@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
-use super::TrieMut;
 use super::triedbmut::TrieDBMut;
+use super::TrieMut;
 use codechain_crypto::blake256;
 use codechain_types::H256;
 use hashdb::{DBValue, HashDB};
@@ -87,8 +87,8 @@ impl<'db> TrieMut for SecTrieDBMut<'db> {
 
 #[test]
 fn sectrie_to_trie() {
-    use super::Trie;
     use super::triedb::*;
+    use super::Trie;
     use memorydb::*;
 
     let mut memdb = MemoryDB::new();

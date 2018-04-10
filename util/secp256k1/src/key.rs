@@ -269,8 +269,8 @@ impl From<ffi::PublicKey> for PublicKey {
 
 #[cfg(test)]
 mod test {
-    use super::super::Error::{IncapableContext, InvalidPublicKey, InvalidSecretKey};
     use super::super::constants;
+    use super::super::Error::{IncapableContext, InvalidPublicKey, InvalidSecretKey};
     use super::super::{ContextFlag, Secp256k1};
     use super::{PublicKey, SecretKey};
 
@@ -507,8 +507,8 @@ mod test {
 
     #[test]
     fn pubkey_hash() {
-        use std::collections::HashSet;
         use std::collections::hash_map::DefaultHasher;
+        use std::collections::HashSet;
         use std::hash::{Hash, Hasher};
 
         fn hash<T: Hash>(t: &T) -> u64 {

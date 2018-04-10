@@ -26,12 +26,12 @@ use mio::deprecated::TryRead;
 use mio::net::TcpStream;
 use rlp::{DecoderError, Encodable, UntrustedRlp};
 
-use super::super::SocketAddr;
 use super::super::client::Client;
 use super::super::extension::{Error as ExtensionError, NodeToken};
 use super::super::session::{Nonce, Session};
-use super::SignedMessage;
+use super::super::SocketAddr;
 use super::message::{Seq, Version};
+use super::SignedMessage;
 use super::{ApplicationMessage, HandshakeMessage, Message, NegotiationBody, NegotiationMessage};
 
 #[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq)]

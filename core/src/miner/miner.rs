@@ -28,7 +28,9 @@ use super::super::spec::Spec;
 use super::super::state::State;
 use super::super::transaction::{SignedTransaction, TransactionError, UnverifiedTransaction};
 use super::super::types::{BlockId, TransactionId};
-use super::transaction_queue::{AccountDetails, TransactionDetailsProvider as TransactionQueueDetailsProvider, TransactionOrigin, TransactionQueue};
+use super::transaction_queue::{
+    AccountDetails, TransactionDetailsProvider as TransactionQueueDetailsProvider, TransactionOrigin, TransactionQueue,
+};
 use super::{MinerService, MinerStatus, TransactionImportResult};
 
 /// Configures the behaviour of the miner.

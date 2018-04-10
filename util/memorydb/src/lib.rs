@@ -29,8 +29,8 @@ use hashdb::{DBValue, HashDB};
 use heapsize::HeapSizeOf;
 use plain_hasher::H256FastMap;
 use rlp::NULL_RLP;
-use std::collections::HashMap;
 use std::collections::hash_map::Entry;
+use std::collections::HashMap;
 use std::mem;
 
 /// Reference-counted memory-based `HashDB` implementation.

@@ -106,11 +106,11 @@ impl Secp256k1 {
 #[cfg(test)]
 mod tests {
     use super::Signature;
+    use rand::{thread_rng, Rng};
     use ContextFlag;
     use Error::IncapableContext;
     use Message;
     use Secp256k1;
-    use rand::{thread_rng, Rng};
 
     #[test]
     fn capabilities() {

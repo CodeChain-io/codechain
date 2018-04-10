@@ -67,8 +67,8 @@ extern crate slab;
 mod service;
 mod worker;
 
-use mio::Token;
 use mio::deprecated::{EventLoop, NotifyError};
+use mio::Token;
 use std::{error, fmt};
 
 pub use worker::LOCAL_STACK_SIZE;
@@ -188,8 +188,8 @@ pub use service::IoContext;
 pub use service::IoManager;
 pub use service::IoService;
 pub use service::StreamToken;
-pub use service::TOKENS_PER_HANDLER;
 pub use service::TimerToken;
+pub use service::TOKENS_PER_HANDLER;
 
 #[cfg(test)]
 mod tests {

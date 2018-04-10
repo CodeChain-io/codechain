@@ -27,8 +27,8 @@ use super::super::codechain_machine::CodeChainMachine;
 use super::super::consensus::{CodeChainEngine, Solo, SoloAuthority, Tendermint};
 use super::super::error::Error;
 use super::super::header::Header;
-use super::Genesis;
 use super::seal::Generic as GenericSeal;
+use super::Genesis;
 
 #[derive(Debug, PartialEq, Default)]
 pub struct CommonParams {

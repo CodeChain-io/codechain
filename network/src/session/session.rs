@@ -19,8 +19,8 @@ use std::fmt;
 
 use ccrypto::aes::{self, SymmetricCipherError};
 use ccrypto::blake256_with_key;
-use ctypes::Secret;
 use ctypes::hash::{H128, H256};
+use ctypes::Secret;
 
 pub type Nonce = u32;
 type IV = H128;

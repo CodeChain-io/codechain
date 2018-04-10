@@ -3,8 +3,8 @@ use std::collections::{BTreeSet, HashMap, VecDeque};
 
 use cnetwork::SocketAddr;
 
-use super::NodeId;
 use super::contact::Contact;
+use super::NodeId;
 
 pub struct RoutingTable {
     local_id: NodeId,

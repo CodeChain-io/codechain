@@ -27,8 +27,8 @@ use super::super::codechain_machine::CodeChainMachine;
 use super::super::error::{BlockError, Error};
 use super::super::header::Header;
 use super::signer::EngineSigner;
-use super::validator_set::ValidatorSet;
 use super::validator_set::validator_list::ValidatorList;
+use super::validator_set::ValidatorSet;
 use super::{ConsensusEngine, ConstructedVerifier, EngineError, Seal};
 
 #[derive(Debug, PartialEq)]

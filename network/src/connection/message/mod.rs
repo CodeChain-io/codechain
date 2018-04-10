@@ -20,8 +20,8 @@ mod message;
 mod negotiation;
 mod signed_message;
 
-use ctypes::Secret;
 use ctypes::hash::{H128, H256};
+use ctypes::Secret;
 
 pub use self::extension::Message as ApplicationMessage;
 pub use self::handshake::Message as HandshakeMessage;

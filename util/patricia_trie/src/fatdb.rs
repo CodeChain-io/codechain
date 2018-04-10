@@ -102,8 +102,8 @@ impl<'db> Iterator for FatDBIterator<'db> {
 
 #[test]
 fn fatdb_to_trie() {
-    use super::TrieMut;
     use super::fatdbmut::FatDBMut;
+    use super::TrieMut;
     use hashdb::DBValue;
     use memorydb::MemoryDB;
 

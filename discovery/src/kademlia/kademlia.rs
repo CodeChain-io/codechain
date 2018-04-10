@@ -22,12 +22,12 @@ use std::vec::Vec;
 
 use cnetwork::SocketAddr;
 
-use super::NodeId;
 use super::command::Command;
 use super::contact::Contact;
 use super::message::{self, Message};
 use super::node_id::{self, log2_distance_between_nodes};
 use super::routing_table::RoutingTable;
+use super::NodeId;
 
 pub struct Kademlia {
     alpha: u8,

@@ -19,8 +19,8 @@ use std::error;
 use std::fmt;
 use std::io;
 use std::result::Result;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
 
 use cio::{IoChannel, IoContext, IoError as CIoError, IoHandler, IoHandlerResult, IoManager, StreamToken};
 use ckeys::{exchange, Error as KeysError, Generator, Private, Random};

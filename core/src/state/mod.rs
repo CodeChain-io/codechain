@@ -20,8 +20,8 @@
 //! or rolled back.
 
 use std::cell::{RefCell, RefMut};
-use std::collections::HashMap;
 use std::collections::hash_map::Entry;
+use std::collections::HashMap;
 use std::fmt;
 
 use ctypes::{Address, H256, Public, U256, U512};

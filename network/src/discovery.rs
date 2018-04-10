@@ -16,8 +16,8 @@
 
 use std::sync::Arc;
 
-use super::SocketAddr;
 use super::connection::AddressConverter;
+use super::SocketAddr;
 
 pub trait Api: Send + Sync {
     fn get(&self, max: usize) -> Vec<SocketAddr>;
