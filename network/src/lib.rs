@@ -41,7 +41,6 @@ mod service;
 mod timer_info;
 
 pub mod connection;
-pub mod kademlia;
 pub mod session;
 
 pub use self::addr::SocketAddr;

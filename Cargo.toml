@@ -8,6 +8,7 @@ authors = ["CodeChain Team <codechain@kodebox.io>"]
 app_dirs = "^1.1.1"
 clap = { version = "2", features = ["yaml"] }
 codechain-core = { path = "core" }
+codechain-discovery = { path = "discovery" }
 codechain-logger = { path = "logger" }
 codechain-network = { path = "network" }
 codechain-reactor = { path = "util/reactor" }
@@ -31,6 +32,7 @@ name = "codechain"
 members = [
 	"core",
 	"crypto",
+	"discovery",
 	"json",
 	"keys",
 	"logger",

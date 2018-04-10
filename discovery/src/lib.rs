@@ -14,14 +14,20 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use super::super::SocketAddr;
-use super::message::Message;
+#![allow(deprecated)]
 
-pub enum Command {
-    Verify,
-    Refresh,
-    Send {
-        message: Message,
-        target: SocketAddr,
-    },
-}
+#[macro_use]
+extern crate log;
+extern crate parking_lot;
+extern crate rand;
+extern crate rlp;
+
+extern crate codechain_crypto as ccrypto;
+extern crate codechain_io as cio;
+extern crate codechain_keys as ckeys;
+extern crate codechain_network as cnetwork;
+extern crate codechain_types as ctypes;
+
+mod kademlia;
+
+pub use kademlia::{Config as KademliaConfig, Extension as KademliaExtension};

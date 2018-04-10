@@ -24,6 +24,7 @@ extern crate tokio_core;
 
 extern crate app_dirs;
 extern crate codechain_core as ccore;
+extern crate codechain_discovery as cdiscovery;
 extern crate codechain_logger as clogger;
 extern crate codechain_network as cnetwork;
 extern crate codechain_reactor as creactor;
@@ -44,8 +45,8 @@ mod rpc_apis;
 use std::sync::Arc;
 
 use app_dirs::AppInfo;
+use cdiscovery::KademliaExtension;
 use clogger::{setup_log, Config as LogConfig};
-use cnetwork::kademlia::KademliaExtension;
 use creactor::EventLoop;
 use csync::BlockSyncExtension;
 use ctrlc::CtrlC;

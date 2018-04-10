@@ -20,13 +20,12 @@ use std::collections::VecDeque;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::vec::Vec;
 
-use super::super::SocketAddr;
+use cnetwork::SocketAddr;
+
 use super::NodeId;
 use super::command::Command;
 use super::contact::Contact;
-use super::event::Event;
-use super::message::Id as MessageId;
-use super::message::Message;
+use super::message::{self, Message};
 use super::node_id::{self, log2_distance_between_nodes};
 use super::routing_table::RoutingTable;
 
@@ -85,7 +84,7 @@ impl Kademlia {
 
     fn handle_find_node_message(
         &self,
-        id: MessageId,
+        id: message::Id,
         _sender: NodeId,
         target: NodeId,
         bucket_size: u8,
@@ -145,7 +144,7 @@ impl Kademlia {
     }
 
     pub fn find_node_command(&mut self, target: SocketAddr) -> Command {
-        let id = self.seq.fetch_add(1, Ordering::SeqCst) as MessageId;
+        let id = self.seq.fetch_add(1, Ordering::SeqCst) as message::Id;
         let message = Message::FindNode {
             id,
             sender: self.local_id(),

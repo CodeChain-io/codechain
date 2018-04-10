@@ -19,14 +19,11 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use cio::TimerToken;
+use cnetwork::connection::AddressConverter;
+use cnetwork::{Api, DiscoveryApi, Extension as NetworkExtension, NodeId as ExtensionNodeId, SocketAddr};
 use parking_lot::{Mutex, RwLock};
 use rlp::{Decodable, DecoderError, Encodable, UntrustedRlp};
 
-use super::super::SocketAddr;
-use super::super::connection::AddressConverter;
-use super::super::discovery::Api as DiscoveryApi;
-use super::super::extension::NodeId as ExtensionNodeId;
-use super::super::{Api, Extension as NetworkExtension};
 use super::command::Command;
 use super::config::Config;
 use super::event::Event;

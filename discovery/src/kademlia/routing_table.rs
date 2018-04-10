@@ -1,8 +1,10 @@
-use super::super::SocketAddr;
-use super::NodeId;
-use kademlia::contact::Contact;
 use std::cmp;
 use std::collections::{BTreeSet, HashMap, VecDeque};
+
+use cnetwork::SocketAddr;
+
+use super::NodeId;
+use super::contact::Contact;
 
 pub struct RoutingTable {
     local_id: NodeId,

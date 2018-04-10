@@ -1,0 +1,16 @@
+[package]
+name = "codechain-discovery"
+version = "0.1.0"
+authors = ["Kodebox <codechain@kodebox.io>"]
+
+[dependencies]
+codechain-crypto = { path = "../crypto" }
+codechain-io = { path = "../util/io" }
+codechain-keys = { path="../keys" }
+codechain-network = { path = "../network" }
+codechain-types = { path = "../primitives/codechain-types" }
+log = "0.4.1"
+parking_lot = "0.5"
+rand = "0.4"
+rlp = { path = "../util/rlp" }
+

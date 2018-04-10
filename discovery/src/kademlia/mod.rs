@@ -25,9 +25,9 @@ mod node_id;
 mod routing_table;
 
 
-pub use self::config::Config as KademliaConfig;
-pub use self::extension::Extension as KademliaExtension;
-pub use self::node_id::NodeId;
+pub use self::config::Config;
+pub use self::extension::Extension;
+use self::node_id::NodeId;
 
 
 const ALPHA: u8 = 3;

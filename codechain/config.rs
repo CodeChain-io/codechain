@@ -18,8 +18,8 @@ use std::str::FromStr;
 use std::{fmt, fs};
 
 use ccore::Spec;
+use cdiscovery::KademliaConfig;
 use clap;
-use cnetwork::kademlia::KademliaConfig;
 use cnetwork::{NetworkConfig, SocketAddr};
 use ctypes::Secret;
 use rpc::HttpConfiguration as RpcHttpConfig;
