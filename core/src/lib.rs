@@ -76,7 +76,7 @@ mod tests;
 pub use block::Block;
 pub use client::{BlockChainClient, ChainNotify, Client};
 pub use error::Error;
-pub use header::Header;
+pub use header::{Header, Seal};
 pub use miner::{Miner, MinerOptions};
 pub use service::ClientService;
 pub use spec::Spec;
