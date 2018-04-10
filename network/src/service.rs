@@ -23,7 +23,7 @@ use ctypes::Secret;
 use super::client::Client;
 use super::connection;
 use super::handshake;
-use super::{Api, DiscoveryApi, Extension, SocketAddr};
+use super::{Api, DiscoveryApi, NetworkExtension, SocketAddr};
 
 pub struct Service {
     handshake_service: IoService<handshake::HandlerMessage>,
@@ -62,7 +62,7 @@ impl Service {
         })
     }
 
-    pub fn register_extension(&self, extension: Arc<Extension>) -> Arc<Api> {
+    pub fn register_extension(&self, extension: Arc<NetworkExtension>) -> Arc<Api> {
         let channel = self.extension_service.channel();
         self.client.register_extension(extension, channel)
     }

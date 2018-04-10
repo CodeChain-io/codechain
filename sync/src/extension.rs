@@ -21,7 +21,7 @@ use std::sync::Arc;
 
 use cbytes::Bytes;
 use ccore::{BlockChainClient, BlockId, BlockNumber, ChainNotify};
-use cnetwork::{Api, Extension, NodeToken, TimerToken};
+use cnetwork::{Api, NetworkExtension, NodeToken, TimerToken};
 use ctypes::{H256, U256};
 use rlp::{Encodable, UntrustedRlp};
 
@@ -74,7 +74,7 @@ impl BlockSyncExtension {
     }
 }
 
-impl Extension for BlockSyncExtension {
+impl NetworkExtension for BlockSyncExtension {
     fn name(&self) -> String {
         String::from(EXTENSION_NAME)
     }

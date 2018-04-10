@@ -19,7 +19,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 use cnetwork::connection::AddressConverter;
-use cnetwork::{Api, DiscoveryApi, Extension as NetworkExtension, NodeToken, SocketAddr, TimerToken};
+use cnetwork::{Api, DiscoveryApi, NetworkExtension, NodeToken, SocketAddr, TimerToken};
 use parking_lot::{Mutex, RwLock};
 use rlp::{Decodable, DecoderError, Encodable, UntrustedRlp};
 
