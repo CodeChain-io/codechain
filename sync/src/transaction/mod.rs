@@ -14,21 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-extern crate parking_lot;
+mod extension;
+mod message;
 
-extern crate codechain_bytes as cbytes;
-extern crate codechain_core as ccore;
-extern crate codechain_network as cnetwork;
-extern crate codechain_types as ctypes;
-
-#[macro_use]
-extern crate log;
-extern crate rand;
-extern crate rlp;
-extern crate triehash;
-
-mod block;
-mod transaction;
-
-pub use self::block::BlockSyncExtension;
-pub use self::transaction::TransactionSyncExtension;
+pub use self::extension::Extension as TransactionSyncExtension;
