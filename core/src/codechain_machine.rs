@@ -67,7 +67,7 @@ impl CodeChainMachine {
     pub fn verify_transaction<C: BlockInfo>(
         &self,
         _t: &SignedTransaction,
-        header: &Header,
+        _header: &Header,
         _client: &C,
     ) -> Result<(), Error> {
         // FIXME: Filter transactions.

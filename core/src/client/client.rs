@@ -34,7 +34,6 @@ use super::super::consensus::epoch::Transition as EpochTransition;
 use super::super::encoded;
 use super::super::error::{BlockImportError, Error, ImportError};
 use super::super::header::Header;
-use super::super::invoice::Invoice;
 use super::super::miner::{Miner, MinerService};
 use super::super::service::ClientIoMessage;
 use super::super::spec::Spec;
