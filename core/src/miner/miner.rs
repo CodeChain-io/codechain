@@ -207,6 +207,21 @@ impl MinerService for Miner {
         }
     }
 
+    fn update_sealing<C>(&self, _chain: &C)
+    where
+        C: AccountData + BlockChain + BlockProducer + SealedBlockImporter, {
+        unimplemented!();
+    }
+
+    fn submit_seal<C: SealedBlockImporter>(
+        &self,
+        _chain: &C,
+        _block_hash: H256,
+        _seal: Vec<Bytes>,
+    ) -> Result<(), Error> {
+        unimplemented!();
+    }
+
     fn import_external_transactions<C: MiningBlockChainClient>(
         &self,
         client: &C,

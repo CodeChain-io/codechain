@@ -68,6 +68,15 @@ pub trait MinerService: Send + Sync {
     where
         C: AccountData + BlockChain + BlockProducer + SealedBlockImporter;
 
+    /// New chain head event. Restart mining operation.
+    fn update_sealing<C>(&self, chain: &C)
+    where
+        C: AccountData + BlockChain + BlockProducer + SealedBlockImporter;
+
+    /// Submit `seal` as a valid solution for the header of `pow_hash`.
+    /// Will check the seal, but not actually insert the block into the chain.
+    fn submit_seal<C: SealedBlockImporter>(&self, chain: &C, pow_hash: H256, seal: Vec<Bytes>) -> Result<(), Error>;
+
     /// Imports transactions to transaction queue.
     fn import_external_transactions<C: MiningBlockChainClient>(
         &self,

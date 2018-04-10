@@ -234,12 +234,14 @@ impl EngineClient for Client {
 
     /// Make a new block and seal it.
     fn update_sealing(&self) {
-        unimplemented!()
+        self.importer.miner.update_sealing(self)
     }
 
     /// Submit a seal for a block in the mining queue.
-    fn submit_seal(&self, _block_hash: H256, _seal: Vec<Bytes>) {
-        unimplemented!()
+    fn submit_seal(&self, block_hash: H256, seal: Vec<Bytes>) {
+        if self.importer.miner.submit_seal(self, block_hash, seal).is_err() {
+            warn!(target: "poa", "Wrong internal seal submission!")
+        }
     }
 }
 
