@@ -32,7 +32,6 @@ use super::block::{ClosedBlock, OpenBlock, SealedBlock};
 use super::blockchain_info::BlockChainInfo;
 use super::encoded;
 use super::error::BlockImportError;
-use super::miner::TransactionImportResult;
 use super::state::StateInfo;
 use super::transaction::SignedTransaction;
 use super::types::{BlockId, BlockNumber, BlockStatus, TransactionId, VerificationQueueInfo as BlockQueueInfo};
@@ -175,10 +174,13 @@ pub trait BlockChainClient: Sync + Send + AccountData + BlockChain + ImportBlock
     fn block_hash(&self, id: BlockId) -> Option<H256>;
 }
 
+/// Result of import block operation.
+pub type ImportResult = Result<H256, Error>;
+
 /// Provides `import_sealed_block` method
 pub trait ImportSealedBlock {
     /// Import sealed block. Skips all verifications.
-    fn import_sealed_block(&self, block: SealedBlock) -> TransactionImportResult;
+    fn import_sealed_block(&self, block: SealedBlock) -> ImportResult;
 }
 
 /// Provides `broadcast_proposal_block` method

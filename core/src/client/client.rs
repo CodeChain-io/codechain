@@ -27,7 +27,7 @@ use kvdb::{DBTransaction, KeyValueDB};
 use parking_lot::{Mutex, RwLock};
 use trie::{TrieFactory, TrieSpec};
 
-use super::super::block::{enact, ClosedBlock, Drain, IsBlock, LockedBlock, OpenBlock};
+use super::super::block::{enact, ClosedBlock, Drain, IsBlock, LockedBlock, OpenBlock, SealedBlock};
 use super::super::blockchain::{BlockChain, BlockProvider, ImportRoute, TransactionAddress};
 use super::super::consensus::CodeChainEngine;
 use super::super::consensus::epoch::Transition as EpochTransition;
@@ -47,8 +47,9 @@ use super::super::verification::{self, PreverifiedBlock, Verifier};
 use super::super::views::BlockView;
 use super::{
     AccountData, Balance, BlockChain as BlockChainTrait, BlockChainClient, BlockChainInfo, BlockInfo, BlockProducer,
-    ChainInfo, ChainNotify, ClientConfig, EngineClient, Error as ClientError, ImportBlock, Nonce, PrepareOpenBlock,
-    ReopenBlock, StateOrBlock, TransactionInfo,
+    BroadcastProposalBlock, ChainInfo, ChainNotify, ClientConfig, EngineClient, Error as ClientError, ImportBlock,
+    ImportResult, ImportSealedBlock, Nonce, PrepareOpenBlock, ReopenBlock, SealedBlockImporter, StateOrBlock,
+    TransactionInfo,
 };
 
 const MAX_TX_QUEUE_SIZE: usize = 4096;
@@ -445,8 +446,7 @@ impl Importer {
                 let (enacted, retracted) = self.calculate_enacted_retracted(&import_results);
 
                 if is_empty {
-                    // FIXME: Notify miner.
-                    // self.miner.chain_new_blocks(client, &imported_blocks, &invalid_blocks, &enacted, &retracted);
+                    self.miner.chain_new_blocks(client, &imported_blocks, &invalid_blocks, &enacted, &retracted);
                 }
 
                 client.notify(|notify| {
@@ -693,3 +693,43 @@ impl PrepareOpenBlock for Client {
 }
 
 impl BlockProducer for Client {}
+
+impl SealedBlockImporter for Client {}
+
+impl BroadcastProposalBlock for Client {
+    fn broadcast_proposal_block(&self, block: SealedBlock) {
+        self.notify(|notify| {
+            notify.new_blocks(vec![], vec![], vec![], vec![], vec![], vec![block.rlp_bytes()], 0);
+        });
+    }
+}
+
+impl ImportSealedBlock for Client {
+    fn import_sealed_block(&self, block: SealedBlock) -> ImportResult {
+        let h = block.header().hash();
+        let start = Instant::now();
+        let route = {
+            // scope for self.import_lock
+            let _import_lock = self.importer.import_lock.lock();
+
+            let number = block.header().number();
+            let block_data = block.rlp_bytes();
+            let header = block.header().clone();
+
+            let route = self.importer.commit_block(block, &header, &block_data, self);
+            trace!(target: "client", "Imported sealed block #{} ({})", number, h);
+            self.state_db.write().sync_cache(&route.enacted, &route.retracted, false);
+            route
+        };
+        let (enacted, retracted) = self.importer.calculate_enacted_retracted(&[route]);
+        self.importer.miner.chain_new_blocks(self, &[h.clone()], &[], &enacted, &retracted);
+        self.notify(|notify| {
+            notify.new_blocks(vec![h.clone()], vec![], enacted.clone(), retracted.clone(), vec![h.clone()], vec![], {
+                let elapsed = start.elapsed();
+                elapsed.as_secs() * 1_000_000_000 + elapsed.subsec_nanos() as u64
+            });
+        });
+        self.db.read().flush().expect("DB flush failed.");
+        Ok(h)
+    }
+}

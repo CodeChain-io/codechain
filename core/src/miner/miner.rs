@@ -18,16 +18,16 @@ use std::sync::Arc;
 
 use cbytes::Bytes;
 use ckeys::Private;
-use ctypes::{Address, U256};
+use ctypes::{Address, H256, U256};
 use parking_lot::RwLock;
 
-use super::super::client::{AccountData, BlockChain, MiningBlockChainClient};
+use super::super::client::{AccountData, BlockChain, BlockProducer, MiningBlockChainClient, SealedBlockImporter};
 use super::super::consensus::CodeChainEngine;
 use super::super::error::Error;
 use super::super::spec::Spec;
 use super::super::state::State;
 use super::super::transaction::{SignedTransaction, TransactionError, UnverifiedTransaction};
-use super::super::types::TransactionId;
+use super::super::types::{BlockId, TransactionId};
 use super::transaction_queue::{AccountDetails, TransactionDetailsProvider as TransactionQueueDetailsProvider, TransactionOrigin, TransactionQueue};
 use super::{MinerService, MinerStatus, TransactionImportResult};
 
@@ -165,6 +165,46 @@ impl MinerService for Miner {
 
     fn set_transactions_limit(&self, limit: usize) {
         self.transaction_queue.write().set_limit(limit)
+    }
+
+    fn chain_new_blocks<C>(
+        &self,
+        chain: &C,
+        _imported: &[H256],
+        _invalid: &[H256],
+        _enacted: &[H256],
+        retracted: &[H256],
+    ) where
+        C: AccountData + BlockChain + BlockProducer + SealedBlockImporter, {
+        trace!(target: "miner", "chain_new_blocks");
+
+        // Then import all transactions...
+        {
+            let mut transaction_queue = self.transaction_queue.write();
+            for hash in retracted {
+                let block = chain.block(BlockId::Hash(*hash)).expect(
+                    "Client is sending message after commit to db and inserting to chain; the block is available; qed",
+                );
+                let txs = block.transactions();
+                let _ = self.add_transactions_to_queue(
+                    chain,
+                    txs,
+                    TransactionOrigin::RetractedBlock,
+                    &mut transaction_queue,
+                );
+            }
+        }
+
+        // ...and at the end remove the old ones
+        {
+            let fetch_account = |a: &Address| AccountDetails {
+                nonce: chain.latest_nonce(a),
+                balance: chain.latest_balance(a),
+            };
+            let time = chain.chain_info().best_block_number;
+            let mut transaction_queue = self.transaction_queue.write();
+            transaction_queue.remove_old(&fetch_account, time);
+        }
     }
 
     fn import_external_transactions<C: MiningBlockChainClient>(

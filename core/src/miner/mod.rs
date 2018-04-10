@@ -20,10 +20,10 @@ mod transaction_queue;
 
 use cbytes::Bytes;
 use ckeys::Private;
-use ctypes::{Address, U256};
+use ctypes::{Address, H256, U256};
 
 pub use self::miner::{Miner, MinerOptions};
-use super::client::MiningBlockChainClient;
+use super::client::{AccountData, BlockChain, BlockProducer, MiningBlockChainClient, SealedBlockImporter};
 use super::error::Error;
 use super::state::StateInfo;
 use super::transaction::{SignedTransaction, UnverifiedTransaction};
@@ -62,6 +62,11 @@ pub trait MinerService: Send + Sync {
 
     /// Set maximal number of transactions kept in the queue (both current and future).
     fn set_transactions_limit(&self, limit: usize);
+
+    /// Called when blocks are imported to chain, updates transactions queue.
+    fn chain_new_blocks<C>(&self, chain: &C, imported: &[H256], invalid: &[H256], enacted: &[H256], retracted: &[H256])
+    where
+        C: AccountData + BlockChain + BlockProducer + SealedBlockImporter;
 
     /// Imports transactions to transaction queue.
     fn import_external_transactions<C: MiningBlockChainClient>(

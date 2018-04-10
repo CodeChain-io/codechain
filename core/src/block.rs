@@ -289,6 +289,16 @@ pub struct SealedBlock {
     block: ExecutedBlock,
 }
 
+impl SealedBlock {
+    /// Get the RLP-encoding of the block.
+    pub fn rlp_bytes(&self) -> Bytes {
+        let mut block_rlp = RlpStream::new_list(2);
+        self.block.header.stream_rlp(&mut block_rlp, Seal::With);
+        block_rlp.append_list(&self.block.transactions);
+        block_rlp.out()
+    }
+}
+
 /// Trait for a object that is a `ExecutedBlock`.
 pub trait IsBlock {
     /// Get the `ExecutedBlock` associated with this object.
@@ -334,6 +344,12 @@ impl<'x> IsBlock for ClosedBlock {
 }
 
 impl<'x> IsBlock for LockedBlock {
+    fn block(&self) -> &ExecutedBlock {
+        &self.block
+    }
+}
+
+impl IsBlock for SealedBlock {
     fn block(&self) -> &ExecutedBlock {
         &self.block
     }
