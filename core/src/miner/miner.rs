@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::{HashSet, VecDeque};
+use std::collections::HashSet;
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -55,11 +55,31 @@ impl Default for MinerOptions {
     }
 }
 
+struct SealingQueue {
+    backing: Vec<ClosedBlock>,
+}
+
+impl SealingQueue {
+    fn new() -> Self {
+        Self {
+            backing: Vec::new(),
+        }
+    }
+
+    fn push(&mut self, b: ClosedBlock) {
+        self.backing.push(b)
+    }
+
+    fn take_if<P>(&mut self, predicate: P) -> Option<ClosedBlock> where P: Fn(&ClosedBlock) -> bool {
+        self.backing.iter().position(|r| predicate(r)).map(|i| self.backing.remove(i))
+    }
+}
+
 pub struct Miner {
     transaction_queue: Arc<RwLock<TransactionQueue>>,
     author: RwLock<Address>,
     extra_data: RwLock<Bytes>,
-    sealing_queue: Mutex<VecDeque<ClosedBlock>>,
+    sealing_queue: Mutex<SealingQueue>,
     engine: Arc<CodeChainEngine>,
 }
 
@@ -71,7 +91,7 @@ impl Miner {
             transaction_queue: Arc::new(RwLock::new(txq)),
             author: RwLock::new(Address::default()),
             extra_data: RwLock::new(Vec::new()),
-            sealing_queue: Mutex::new(VecDeque::new()),
+            sealing_queue: Mutex::new(SealingQueue::new()),
             engine: spec.engine.clone(),
         })
     }
@@ -209,7 +229,7 @@ impl Miner {
                 trace!(target: "miner", "Received a Proposal seal.");
                 {
                     let mut sealing_queue = self.sealing_queue.lock();
-                    sealing_queue.push_back(block.clone());
+                    sealing_queue.push(block.clone());
                 }
                 block
                     .lock()
