@@ -29,7 +29,7 @@ use manager::DownloadManager;
 use message::Message;
 
 const EXTENSION_NAME: &'static str = "block-propagation";
-const SYNC_TIMER_ID: usize = 0;
+const SYNC_TIMER_TOKEN: usize = 0;
 const SYNC_TIMER_INTERVAL: u64 = 1000;
 const MAX_RETRY: usize = 3;
 
@@ -45,16 +45,16 @@ struct Peer {
     retry: usize,
 }
 
-pub struct BlockSyncExtension {
+pub struct Extension {
     peers: RwLock<HashMap<NodeToken, Peer>>,
     client: Arc<BlockChainClient>,
     manager: Mutex<DownloadManager>,
     api: Mutex<Option<Arc<Api>>>,
 }
 
-impl BlockSyncExtension {
+impl Extension {
     pub fn new(client: Arc<BlockChainClient>) -> Arc<Self> {
-        let best_header = client.block_header(BlockId::Latest).expect("Best block should exist");
+        let best_header = client.block_header(BlockId::Latest).expect("Best block must exist");
         Arc::new(Self {
             peers: RwLock::new(HashMap::new()),
             client,
@@ -66,7 +66,7 @@ impl BlockSyncExtension {
     fn retract(&self, length: BlockNumber) {
         let mut best_header = self.client
             .block_header(BlockId::Hash(self.manager.lock().best_hash()))
-            .expect("Best block of download manager should exist");
+            .expect("Best block of download manager must exist");
         for _ in 0..length {
             if best_header.parent_hash() == H256::zero() {
                 break
@@ -84,7 +84,7 @@ impl BlockSyncExtension {
     }
 }
 
-impl NetworkExtension for BlockSyncExtension {
+impl NetworkExtension for Extension {
     fn name(&self) -> String {
         String::from(EXTENSION_NAME)
     }
@@ -94,21 +94,21 @@ impl NetworkExtension for BlockSyncExtension {
 
     fn on_initialize(&self, api: Arc<Api>) {
         self.peers.write().clear();
-        api.set_timer(SYNC_TIMER_ID, SYNC_TIMER_INTERVAL);
+        api.set_timer(SYNC_TIMER_TOKEN, SYNC_TIMER_INTERVAL);
         *self.api.lock() = Some(api);
     }
 
-    fn on_node_added(&self, id: &NodeToken) {
-        self.api.lock().as_ref().map(|api| api.connect(id));
+    fn on_node_added(&self, token: &NodeToken) {
+        self.api.lock().as_ref().map(|api| api.connect(token));
     }
-    fn on_node_removed(&self, id: &NodeToken) {
-        self.peers.write().remove(id);
+    fn on_node_removed(&self, token: &NodeToken) {
+        self.peers.write().remove(token);
     }
 
-    fn on_connected(&self, id: &NodeToken) {
+    fn on_connected(&self, token: &NodeToken) {
         let chain_info = self.client.chain_info();
         self.send_message(
-            id,
+            token,
             Message::Status {
                 total_score: chain_info.total_score,
                 best_hash: chain_info.best_block_hash,
@@ -116,16 +116,16 @@ impl NetworkExtension for BlockSyncExtension {
             },
         );
     }
-    fn on_connection_allowed(&self, id: &NodeToken) {
-        self.on_connected(id);
+    fn on_connection_allowed(&self, token: &NodeToken) {
+        self.on_connected(token);
     }
 
-    fn on_message(&self, id: &NodeToken, data: &Vec<u8>) {
+    fn on_message(&self, token: &NodeToken, data: &Vec<u8>) {
         if let Ok(received_message) = UntrustedRlp::new(data).as_val() {
-            if !self.is_valid_message(id, &received_message) {
+            if !self.is_valid_message(token, &received_message) {
                 return
             }
-            self.apply_message(id, &received_message);
+            self.apply_message(token, &received_message);
 
             // Do nothing and return if status message is received
             if received_message.is_status() {
@@ -152,9 +152,9 @@ impl NetworkExtension for BlockSyncExtension {
                 _ => {
                     let total_score = self.client
                         .block_total_score(BlockId::Hash(self.manager.lock().best_hash()))
-                        .expect("Best block of download manager should exist in chain");
+                        .expect("Best block of download manager must exist in chain");
                     // FIXME: Check if this statement really needs `clone`
-                    let peer_info = self.peers.read().get(id).map(|peer| (peer.total_score.clone(), peer.retry));
+                    let peer_info = self.peers.read().get(token).map(|peer| (peer.total_score.clone(), peer.retry));
                     match peer_info {
                         Some((peer_total_score, peer_retry)) => {
                             if peer_retry < MAX_RETRY && peer_total_score > total_score {
@@ -168,13 +168,13 @@ impl NetworkExtension for BlockSyncExtension {
                 }
             };
 
-            self.record_last_request(id, &next_message);
+            self.record_last_request(token, &next_message);
 
             if let Some(message) = next_message {
-                self.send_message(id, message);
+                self.send_message(token, message);
             }
         } else {
-            info!(target: "BlockSyncExtension", "invalid message from peer {}", id);
+            info!(target: "sync", "invalid message from peer {}", token);
         }
     }
 
@@ -182,8 +182,8 @@ impl NetworkExtension for BlockSyncExtension {
         *self.api.lock() = None
     }
 
-    fn on_timeout(&self, timer_id: TimerToken) {
-        debug_assert_eq!(timer_id, SYNC_TIMER_ID);
+    fn on_timeout(&self, timer: TimerToken) {
+        debug_assert_eq!(timer, SYNC_TIMER_TOKEN);
         {
             let peers = self.peers.read();
             if peers.len() != 0 && peers.values().all(|peer| peer.retry >= MAX_RETRY) {
@@ -211,7 +211,7 @@ impl NetworkExtension for BlockSyncExtension {
     }
 }
 
-impl ChainNotify for BlockSyncExtension {
+impl ChainNotify for Extension {
     fn new_blocks(
         &self,
         _imported: Vec<H256>,
@@ -243,15 +243,15 @@ impl ChainNotify for BlockSyncExtension {
     }
 }
 
-impl BlockSyncExtension {
-    fn is_valid_message(&self, id: &NodeToken, message: &Message) -> bool {
+impl Extension {
+    fn is_valid_message(&self, token: &NodeToken, message: &Message) -> bool {
         match message {
             &Message::Status {
                 genesis_hash,
                 ..
             } => {
                 if genesis_hash != self.client.chain_info().genesis_hash {
-                    info!(target: "BlockSyncExtension", "genesis hash mismatch with peer {}", id);
+                    info!(target: "sync", "genesis hash mismatch with peer {}", token);
                     return false
                 } else {
                     return true
@@ -260,7 +260,7 @@ impl BlockSyncExtension {
             _ => {}
         }
 
-        if let Some(last_request) = self.peers.read().get(id).map(|peer| &peer.last_request) {
+        if let Some(last_request) = self.peers.read().get(token).map(|peer| &peer.last_request) {
             match (message, last_request) {
                 (&Message::RequestBodies(ref hashes), _) => hashes.len() != 0,
                 (&Message::Headers(ref headers), &Some(RequestInfo::Header(start_number))) => {
@@ -278,7 +278,7 @@ impl BlockSyncExtension {
         }
     }
 
-    fn apply_message(&self, id: &NodeToken, message: &Message) {
+    fn apply_message(&self, token: &NodeToken, message: &Message) {
         match message {
             &Message::Status {
                 total_score,
@@ -286,13 +286,13 @@ impl BlockSyncExtension {
                 ..
             } => {
                 let mut peers = self.peers.write();
-                if peers.contains_key(id) {
-                    let peer = peers.get_mut(id).expect("Peer list should contain peer for `id`");
+                if peers.contains_key(token) {
+                    let peer = peers.get_mut(token).expect("Peer list must contain peer for `token`");
                     peer.total_score = total_score;
                     peer.best_hash = best_hash;
                 } else {
                     peers.insert(
-                        *id,
+                        *token,
                         Peer {
                             total_score,
                             best_hash,
@@ -304,7 +304,7 @@ impl BlockSyncExtension {
             }
             &Message::Headers(ref headers) => {
                 let import_success = self.manager.lock().import_headers(headers);
-                if let Some(peer) = self.peers.write().get_mut(id) {
+                if let Some(peer) = self.peers.write().get_mut(token) {
                     peer.retry = if import_success {
                         0
                     } else {
@@ -314,7 +314,7 @@ impl BlockSyncExtension {
             }
             &Message::Bodies(ref bodies) => {
                 let import_success = self.manager.lock().import_bodies(bodies);
-                if let Some(peer) = self.peers.write().get_mut(id) {
+                if let Some(peer) = self.peers.write().get_mut(token) {
                     peer.retry = if import_success {
                         0
                     } else {
@@ -326,9 +326,9 @@ impl BlockSyncExtension {
         }
     }
 
-    fn record_last_request(&self, id: &NodeToken, message: &Option<Message>) {
+    fn record_last_request(&self, token: &NodeToken, message: &Option<Message>) {
         let mut peers = self.peers.write();
-        if let Some(peer) = peers.get_mut(id) {
+        if let Some(peer) = peers.get_mut(token) {
             match message {
                 &Some(Message::RequestHeaders {
                     start_number,
@@ -347,9 +347,9 @@ impl BlockSyncExtension {
         }
     }
 
-    fn send_message(&self, id: &NodeToken, message: Message) {
+    fn send_message(&self, token: &NodeToken, message: Message) {
         self.api.lock().as_ref().map(|api| {
-            api.send(id, &message.rlp_bytes().to_vec());
+            api.send(token, &message.rlp_bytes().to_vec());
         });
     }
 

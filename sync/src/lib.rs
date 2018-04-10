@@ -31,4 +31,4 @@ mod extension;
 mod manager;
 mod message;
 
-pub use self::extension::BlockSyncExtension;
+pub use self::extension::Extension as BlockSyncExtension;
