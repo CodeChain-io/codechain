@@ -25,6 +25,7 @@ use ctypes::{Address, H256, U256};
 use journaldb;
 use kvdb::{DBTransaction, KeyValueDB};
 use parking_lot::{Mutex, RwLock};
+use rlp::UntrustedRlp;
 use trie::{TrieFactory, TrieSpec};
 
 use super::super::block::{enact, ClosedBlock, Drain, IsBlock, LockedBlock, OpenBlock, SealedBlock};
@@ -39,7 +40,7 @@ use super::super::service::ClientIoMessage;
 use super::super::spec::Spec;
 use super::super::state::State;
 use super::super::state_db::StateDB;
-use super::super::transaction::SignedTransaction;
+use super::super::transaction::{SignedTransaction, UnverifiedTransaction};
 use super::super::types::{BlockId, BlockNumber, BlockStatus, TransactionId, VerificationQueueInfo as BlockQueueInfo};
 use super::super::verification::queue::BlockQueue;
 use super::super::verification::{self, PreverifiedBlock, Verifier};
@@ -47,8 +48,8 @@ use super::super::views::BlockView;
 use super::{
     AccountData, Balance, BlockChain as BlockChainTrait, BlockChainClient, BlockChainInfo, BlockInfo, BlockProducer,
     BroadcastProposalBlock, ChainInfo, ChainNotify, ClientConfig, EngineClient, Error as ClientError, ImportBlock,
-    ImportResult, ImportSealedBlock, Nonce, PrepareOpenBlock, ReopenBlock, SealedBlockImporter, StateOrBlock,
-    TransactionInfo,
+    ImportResult, ImportSealedBlock, MiningBlockChainClient, Nonce, PrepareOpenBlock, ReopenBlock, SealedBlockImporter,
+    StateOrBlock, TransactionInfo,
 };
 
 const MAX_TX_QUEUE_SIZE: usize = 4096;
@@ -171,9 +172,17 @@ impl Client {
     }
 
     /// Import transactions from the IO queue
-    pub fn import_queued_transactions(&self, transactions: &[Bytes], _peer_id: usize) -> usize {
+    pub fn import_queued_transactions(&self, transactions: &[Bytes], peer_id: usize) -> usize {
+        trace!(target: "external_tx", "Importing queued");
         self.queue_transactions.fetch_sub(transactions.len(), AtomicOrdering::SeqCst);
-        unimplemented!();
+        let txs: Vec<UnverifiedTransaction> =
+            transactions.iter().filter_map(|bytes| UntrustedRlp::new(bytes).as_val().ok()).collect();
+        let hashes: Vec<_> = txs.iter().map(|tx| tx.hash()).collect();
+        self.notify(|notify| {
+            notify.transactions_received(hashes.clone(), peer_id);
+        });
+        let results = self.importer.miner.import_external_transactions(self, txs);
+        results.len()
     }
 
     fn block_number_ref(&self, id: &BlockId) -> Option<BlockNumber> {
@@ -734,3 +743,5 @@ impl ImportSealedBlock for Client {
         Ok(h)
     }
 }
+
+impl MiningBlockChainClient for Client {}
