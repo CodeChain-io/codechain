@@ -22,9 +22,10 @@ use ctypes::{Address, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 use trie::TrieFactory;
 use triehash::ordered_trie_root;
+use unexpected::Mismatch;
 
 use super::consensus::CodeChainEngine;
-use super::error::Error;
+use super::error::{BlockError, Error};
 use super::header::{Header, Seal};
 use super::invoice::Invoice;
 use super::machine::{LiveBlock, Transactions};
@@ -265,6 +266,24 @@ pub struct LockedBlock {
 }
 
 impl LockedBlock {
+    /// Provide a valid seal in order to turn this into a `SealedBlock`.
+    ///
+    /// NOTE: This does not check the validity of `seal` with the engine.
+    pub fn seal(self, engine: &CodeChainEngine, seal: Vec<Bytes>) -> Result<SealedBlock, BlockError> {
+        let expected_seal_fields = engine.seal_fields(self.header());
+        let mut s = self;
+        if seal.len() != expected_seal_fields {
+            return Err(BlockError::InvalidSealArity(Mismatch {
+                expected: expected_seal_fields,
+                found: seal.len(),
+            }))
+        }
+        s.block.header.set_seal(seal);
+        Ok(SealedBlock {
+            block: s.block,
+        })
+    }
+
     /// Provide a valid seal in order to turn this into a `SealedBlock`.
     /// This does check the validity of `seal` with the engine.
     /// Returns the `ClosedBlock` back again if the seal is no good.

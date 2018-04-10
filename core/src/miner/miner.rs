@@ -14,15 +14,17 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::collections::VecDeque;
 use std::sync::Arc;
 
 use cbytes::Bytes;
 use ckeys::Private;
 use ctypes::{Address, H256, U256};
-use parking_lot::RwLock;
+use parking_lot::{Mutex, RwLock};
 
+use super::super::block::{ClosedBlock, IsBlock};
 use super::super::client::{AccountData, BlockChain, BlockProducer, MiningBlockChainClient, SealedBlockImporter};
-use super::super::consensus::CodeChainEngine;
+use super::super::consensus::{CodeChainEngine, Seal};
 use super::super::error::Error;
 use super::super::spec::Spec;
 use super::super::state::State;
@@ -55,6 +57,7 @@ pub struct Miner {
     transaction_queue: Arc<RwLock<TransactionQueue>>,
     author: RwLock<Address>,
     extra_data: RwLock<Bytes>,
+    sealing_queue: Mutex<VecDeque<ClosedBlock>>,
     engine: Arc<CodeChainEngine>,
 }
 
@@ -66,6 +69,7 @@ impl Miner {
             transaction_queue: Arc::new(RwLock::new(txq)),
             author: RwLock::new(Address::default()),
             extra_data: RwLock::new(Vec::new()),
+            sealing_queue: Mutex::new(VecDeque::new()),
             engine: spec.engine.clone(),
         })
     }
@@ -115,6 +119,53 @@ impl Miner {
             .collect();
 
         results
+    }
+
+    /// Attempts to perform internal sealing (one that does not require work) and handles the result depending on the type of Seal.
+    fn seal_and_import_block_internally<C>(&self, chain: &C, block: ClosedBlock) -> bool
+    where
+        C: BlockChain + SealedBlockImporter, {
+        trace!(target: "miner", "seal_block_internally: attempting internal seal.");
+        if block.transactions().is_empty() {
+            return false
+        }
+
+        let parent_header = match chain.block_header(BlockId::Hash(*block.header().parent_hash())) {
+            Some(hdr) => hdr.decode(),
+            None => return false,
+        };
+
+        match self.engine.generate_seal(block.block(), &parent_header) {
+            // Save proposal for later seal submission and broadcast it.
+            Seal::Proposal(seal) => {
+                trace!(target: "miner", "Received a Proposal seal.");
+                {
+                    let mut sealing_queue = self.sealing_queue.lock();
+                    sealing_queue.push_back(block.clone());
+                }
+                block
+                    .lock()
+                    .seal(&*self.engine, seal)
+                    .map(|sealed| {
+                        chain.broadcast_proposal_block(sealed);
+                        true
+                    })
+                    .unwrap_or_else(|e| {
+                        warn!("ERROR: seal failed when given internally generated seal: {}", e);
+                        false
+                    })
+            }
+            // Directly import a regular sealed block.
+            Seal::Regular(seal) => block
+                .lock()
+                .seal(&*self.engine, seal)
+                .map(|sealed| chain.import_sealed_block(sealed).is_ok())
+                .unwrap_or_else(|e| {
+                    warn!("ERROR: seal failed when given internally generated seal: {}", e);
+                    false
+                }),
+            Seal::None => false,
+        }
     }
 }
 
