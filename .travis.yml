@@ -1,8 +1,6 @@
 language: rust
 rust:
   - stable
-  - beta
-  - nightly
 install:
   - rustup toolchain install nightly
   - rustup component add rustfmt-preview --toolchain nightly
