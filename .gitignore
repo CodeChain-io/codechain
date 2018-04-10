@@ -8,3 +8,6 @@
 **/*.iml
 .idea/
 db/
+
+# macOS
+.DS_store
