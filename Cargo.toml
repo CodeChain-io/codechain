@@ -5,7 +5,7 @@ license = "AGPL-3.0"
 authors = ["CodeChain Team <codechain@kodebox.io>"]
 
 [dependencies]
-app_dirs = "^1.1.1"
+app_dirs = "^1.2.1"
 clap = { version = "2", features = ["yaml"] }
 codechain-core = { path = "core" }
 codechain-logger = { path = "logger" }
