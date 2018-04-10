@@ -23,7 +23,6 @@ extern crate rand;
 extern crate rlp;
 
 extern crate codechain_crypto as ccrypto;
-extern crate codechain_io as cio;
 extern crate codechain_keys as ckeys;
 extern crate codechain_network as cnetwork;
 extern crate codechain_types as ctypes;

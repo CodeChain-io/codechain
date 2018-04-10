@@ -21,7 +21,7 @@ use cio::IoChannel;
 use parking_lot::RwLock;
 
 use super::connection::HandlerMessage as ConnectionMessage;
-use super::{Api, Error as ExtensionError, Extension, NodeId};
+use super::{Api, Error as ExtensionError, Extension, NodeToken, TimerToken};
 
 struct ClientApi {
     extension: Weak<Extension>,
@@ -29,7 +29,7 @@ struct ClientApi {
 }
 
 impl Api for ClientApi {
-    fn send(&self, id: &NodeId, message: &Vec<u8>) {
+    fn send(&self, id: &NodeToken, message: &Vec<u8>) {
         if let Some(extension) = self.extension.upgrade() {
             let need_encryption = extension.need_encryption();
             let extension_name = extension.name();
@@ -49,7 +49,7 @@ impl Api for ClientApi {
         }
     }
 
-    fn connect(&self, id: &NodeId) {
+    fn connect(&self, id: &NodeToken) {
         if let Some(extension) = self.extension.upgrade() {
             let extension_name = extension.name();
             let version = 0;
@@ -178,20 +178,20 @@ impl Client {
         })
     }
 
-    define_broadcast_method!(on_node_added; id, &NodeId);
-    define_broadcast_method!(on_node_removed; id, &NodeId);
+    define_broadcast_method!(on_node_added; id, &NodeToken);
+    define_broadcast_method!(on_node_removed; id, &NodeToken);
 
-    define_method!(on_connected; id, &NodeId);
-    define_method!(on_connection_allowed; id, &NodeId);
-    define_method!(on_connection_denied; id, &NodeId; error, ExtensionError);
+    define_method!(on_connected; id, &NodeToken);
+    define_method!(on_connection_allowed; id, &NodeToken);
+    define_method!(on_connection_denied; id, &NodeToken; error, ExtensionError);
 
-    define_method!(on_message; id, &NodeId; data, &Vec<u8>);
+    define_method!(on_message; id, &NodeToken; data, &Vec<u8>);
 
     define_broadcast_method!(on_close);
 
-    define_method!(on_timer_set_allowed; timer_id, usize);
-    define_method!(on_timer_set_denied; timer_id, usize; error, ExtensionError);
-    define_method!(on_timeout; timer_id, usize);
+    define_method!(on_timer_set_allowed; timer_id, TimerToken);
+    define_method!(on_timer_set_denied; timer_id, TimerToken; error, ExtensionError);
+    define_method!(on_timeout; timer_id, TimerToken);
 }
 
 impl Drop for Client {
@@ -209,7 +209,7 @@ mod tests {
     use cio::IoService;
     use parking_lot::Mutex;
 
-    use super::{Api, Client, Extension, ExtensionError, NodeId};
+    use super::{Api, Client, Extension, ExtensionError, NodeToken};
 
     struct TestApi {}
 
@@ -278,32 +278,32 @@ mod tests {
             callbacks.push(Callback::Initialize);
         }
 
-        fn on_node_added(&self, _id: &NodeId) {
+        fn on_node_added(&self, _id: &NodeToken) {
             let mut callbacks = self.callbacks.lock();
             callbacks.push(Callback::NodeAdded);
         }
 
-        fn on_node_removed(&self, _id: &NodeId) {
+        fn on_node_removed(&self, _id: &NodeToken) {
             let mut callbacks = self.callbacks.lock();
             callbacks.push(Callback::NodeRemoved);
         }
 
-        fn on_connected(&self, _id: &NodeId) {
+        fn on_connected(&self, _id: &NodeToken) {
             let mut callbacks = self.callbacks.lock();
             callbacks.push(Callback::Connected);
         }
 
-        fn on_connection_allowed(&self, _id: &NodeId) {
+        fn on_connection_allowed(&self, _id: &NodeToken) {
             let mut callbacks = self.callbacks.lock();
             callbacks.push(Callback::Connected);
         }
 
-        fn on_connection_denied(&self, _id: &NodeId, _error: ExtensionError) {
+        fn on_connection_denied(&self, _id: &NodeToken, _error: ExtensionError) {
             let mut callbacks = self.callbacks.lock();
             callbacks.push(Callback::ConnectionDenied);
         }
 
-        fn on_message(&self, _id: &NodeId, _message: &Vec<u8>) {
+        fn on_message(&self, _id: &NodeToken, _message: &Vec<u8>) {
             let mut callbacks = self.callbacks.lock();
             callbacks.push(Callback::Message);
         }

@@ -18,9 +18,8 @@ use std::collections::{HashSet, VecDeque};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use cio::TimerToken;
 use cnetwork::connection::AddressConverter;
-use cnetwork::{Api, DiscoveryApi, Extension as NetworkExtension, NodeId as ExtensionNodeId, SocketAddr};
+use cnetwork::{Api, DiscoveryApi, Extension as NetworkExtension, NodeToken, SocketAddr, TimerToken};
 use parking_lot::{Mutex, RwLock};
 use rlp::{Decodable, DecoderError, Encodable, UntrustedRlp};
 
@@ -37,7 +36,7 @@ pub struct Extension {
     event_fired: AtomicBool,
     api: Mutex<Option<Arc<Api>>>,
     converter: RwLock<Arc<AddressConverter>>,
-    active_nodes: RwLock<HashSet<ExtensionNodeId>>,
+    active_nodes: RwLock<HashSet<NodeToken>>,
 }
 
 struct DummyConverter;
@@ -48,11 +47,11 @@ impl DummyConverter {
 }
 
 impl AddressConverter for DummyConverter {
-    fn node_id_to_address(&self, _node_id: &ExtensionNodeId) -> Option<SocketAddr> {
+    fn node_token_to_address(&self, _node: &NodeToken) -> Option<SocketAddr> {
         None
     }
 
-    fn address_to_node_id(&self, _address: &SocketAddr) -> Option<usize> {
+    fn address_to_node_token(&self, _address: &SocketAddr) -> Option<usize> {
         None
     }
 }
@@ -73,8 +72,8 @@ impl Extension {
         }
     }
 
-    fn on_receive(&self, id: &ExtensionNodeId, message: &Vec<u8>) -> ::std::result::Result<(), DecoderError> {
-        if let Some(sender) = self.get_address(&id) {
+    fn on_receive(&self, node: &NodeToken, message: &Vec<u8>) -> ::std::result::Result<(), DecoderError> {
+        if let Some(sender) = self.get_address(&node) {
             let rlp = UntrustedRlp::new(&message.as_slice());
             let message: Message = Decodable::decode(&rlp)?;
             let event = Event::Message {
@@ -100,14 +99,14 @@ impl Extension {
         }
     }
 
-    fn get_address(&self, id: &ExtensionNodeId) -> Option<SocketAddr> {
+    fn get_address(&self, node: &NodeToken) -> Option<SocketAddr> {
         let converter = self.converter.read();
-        converter.node_id_to_address(id)
+        converter.node_token_to_address(node)
     }
 
-    fn get_node_id(&self, address: &SocketAddr) -> Option<ExtensionNodeId> {
+    fn get_node_token(&self, address: &SocketAddr) -> Option<NodeToken> {
         let converter = self.converter.read();
-        converter.address_to_node_id(&address)
+        converter.address_to_node_token(&address)
     }
 
     fn consume_events(&self) {
@@ -164,8 +163,8 @@ impl Extension {
     fn handle_send_command(&self, message: &Message, target: &SocketAddr) {
         let api = self.api.lock();
         if let &Some(ref api) = &*api {
-            if let Some(id) = self.get_node_id(&target) {
-                api.send(&id, &message.rlp_bytes().to_vec())
+            if let Some(node) = self.get_node_token(&target) {
+                api.send(&node, &message.rlp_bytes().to_vec())
             }
         }
     }
@@ -217,31 +216,31 @@ impl NetworkExtension for Extension {
         api_clone.set_timer(REFRESH_TOKEN, t_refresh);
     }
 
-    fn on_node_added(&self, id: &ExtensionNodeId) {
-        if let Some(address) = self.get_address(&id) {
+    fn on_node_added(&self, node: &NodeToken) {
+        if let Some(address) = self.get_address(&node) {
             self.add(address);
             let mut active_nodes = self.active_nodes.write();
-            active_nodes.insert(*id);
+            active_nodes.insert(*node);
         }
     }
 
-    fn on_node_removed(&self, id: &ExtensionNodeId) {
-        if let Some(address) = self.get_address(&id) {
+    fn on_node_removed(&self, node: &NodeToken) {
+        if let Some(address) = self.get_address(&node) {
             self.remove(&address);
 
             let mut active_nodes = self.active_nodes.write();
-            active_nodes.remove(&id);
+            active_nodes.remove(&node);
         }
     }
 
-    fn on_message(&self, id: &ExtensionNodeId, message: &Vec<u8>) {
-        if let Err(err) = self.on_receive(id, message) {
-            warn!("Invalid message from {} : {:?}", id, err);
+    fn on_message(&self, node: &NodeToken, message: &Vec<u8>) {
+        if let Err(err) = self.on_receive(node, message) {
+            warn!("Invalid message from {} : {:?}", node, err);
         }
     }
 
-    fn on_timeout(&self, token: TimerToken) {
-        match token {
+    fn on_timeout(&self, timer: TimerToken) {
+        match timer {
             CONSUME_EVENT_TOKEN => {
                 self.consume_events();
             }

@@ -46,5 +46,5 @@ pub mod session;
 pub use self::addr::SocketAddr;
 pub use self::config::Config as NetworkConfig;
 pub use self::discovery::Api as DiscoveryApi;
-pub use self::extension::{Api, Error, Extension, NodeId, Result};
+pub use self::extension::{Api, Error, Extension, NodeToken, Result, TimerToken};
 pub use self::service::Service as NetworkService;
