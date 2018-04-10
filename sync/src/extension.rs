@@ -20,7 +20,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use cbytes::Bytes;
-use ccore::{BlockChainClient, BlockId, BlockNumber, ChainNotify};
+use ccore::{BlockChainClient, BlockId, BlockNumber, ChainNotify, Seal};
 use cnetwork::{Api, NetworkExtension, NodeToken, TimerToken};
 use ctypes::{H256, U256};
 use rlp::{Encodable, UntrustedRlp};
@@ -132,7 +132,15 @@ impl NetworkExtension for BlockSyncExtension {
                 return
             }
 
-            // FIXME: Import fully downloaded blocks to client
+            self.manager.lock().drain().iter().for_each(|block| {
+                // FIXME: Handle block import errors
+                match self.client.import_block(block.rlp_bytes(Seal::With)) {
+                    Ok(_) => {}
+                    Err(error) => {
+                        info!("BlockSyncExtension: block import failed with error({:?})", error);
+                    }
+                }
+            });
 
             // Create next message for peer
             let next_message = match received_message {

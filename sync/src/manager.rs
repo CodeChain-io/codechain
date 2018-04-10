@@ -16,7 +16,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use ccore::{BlockNumber, Header, UnverifiedTransaction};
+use ccore::{Block, BlockNumber, Header, UnverifiedTransaction};
 use ctypes::H256;
 
 use rlp::Encodable;
@@ -164,6 +164,29 @@ impl DownloadManager {
             })
         }
         None
+    }
+
+    pub fn drain(&mut self) -> Vec<Block> {
+        // FIXME: Maintain this map as member variable
+        let mut child_map = HashMap::new();
+        for header in self.headers.values() {
+            child_map.insert(*header.parent_hash(), header.hash());
+        }
+
+        let mut result = Vec::new();
+        while let Some(child_hash) = child_map.get(&self.best_hash) {
+            if let Some(body) = self.bodies.remove(child_hash) {
+                let header = self.headers.remove(child_hash).expect("Header should exist to be drained");
+                self.best_hash = header.hash();
+                self.best_number = header.number();
+                result.push(Block {
+                    header,
+                    transactions: body,
+                });
+            }
+        }
+
+        result
     }
 }
 
