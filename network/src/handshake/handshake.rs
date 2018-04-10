@@ -187,6 +187,7 @@ impl Handshake {
 
         let length_to_send = unencrypted_bytes.len();
 
+        debug_assert!(length_to_send < MAX_HANDSHAKE_PACKET_SIZE);
         let sent_size = self.socket.send_to(&unencrypted_bytes, target.into())?;
         if sent_size != length_to_send {
             return Err(HandshakeError::SendError(message.clone(), length_to_send - sent_size))
