@@ -55,7 +55,7 @@ pub trait MinerService: Send + Sync {
     fn minimal_fee(&self) -> U256;
 
     /// Set minimal fee of transaction to be accepted for mining.
-    fn set_minimal_fee(&self, min_gas_price: U256);
+    fn set_minimal_fee(&self, min_fee: U256);
 
     /// Get current transactions limit in queue.
     fn transactions_limit(&self) -> usize;
