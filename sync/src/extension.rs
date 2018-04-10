@@ -54,19 +54,29 @@ pub struct BlockSyncExtension {
 
 impl BlockSyncExtension {
     pub fn new(client: Arc<BlockChainClient>) -> Arc<Self> {
-        let best_block = client.block(BlockId::Latest).expect("BlockSyncExtension: Best block should exist").decode();
+        let best_header = client.block_header(BlockId::Latest).expect("Best block should exist");
         Arc::new(Self {
             peers: RwLock::new(HashMap::new()),
             client,
-            manager: Mutex::new(DownloadManager::new(best_block)),
+            manager: Mutex::new(DownloadManager::new(best_header.hash(), best_header.number())),
             api: Mutex::new(None),
         })
     }
 
-    pub fn reset(&self, best_hash: H256) {
-        let best_block =
-            self.client.block(BlockId::Hash(best_hash)).expect("Parent block of best block should exist").decode();
-        *self.manager.lock() = DownloadManager::new(best_block);
+    fn retract(&self, length: BlockNumber) {
+        let mut best_header = self.client
+            .block_header(BlockId::Hash(self.manager.lock().best_hash()))
+            .expect("Best block of download manager should exist");
+        for _ in 0..length {
+            if best_header.parent_hash() == H256::zero() {
+                break
+            }
+            // FIXME: This part can panic if warp-like sync mechanism is introduced
+            best_header = self.client
+                .block_header(BlockId::Hash(best_header.parent_hash()))
+                .expect("Parent block of non-genesis block must exist");
+        }
+        *self.manager.lock() = DownloadManager::new(best_header.hash(), best_header.number());
         self.peers.write().values_mut().for_each(|peer| {
             peer.last_request = None;
             peer.retry = 0;
@@ -166,11 +176,12 @@ impl NetworkExtension for BlockSyncExtension {
 
     fn on_timeout(&self, timer_id: TimerToken) {
         debug_assert_eq!(timer_id, SYNC_TIMER_ID);
-        if self.peers.read().values().all(|peer| peer.retry >= MAX_RETRY) {
-            let best_header = self.client
-                .block_header(BlockId::Hash(self.manager.lock().best_hash()))
-                .expect("Best block of download manager should exist");
-            self.reset(best_header.parent_hash());
+        {
+            let peers = self.peers.read();
+            if peers.len() != 0 && peers.values().all(|peer| peer.retry >= MAX_RETRY) {
+                // FIXME: Increase retracting step for each round
+                self.retract(1);
+            }
         }
 
         let mut peer_ids: Vec<_> = self.peers
@@ -204,10 +215,8 @@ impl ChainNotify for BlockSyncExtension {
         _duration: u64,
     ) {
         if retracted.len() != 0 {
-            let best_header = self.client
-                .block_header(BlockId::Hash(self.manager.lock().best_hash()))
-                .expect("Best block of download manager should exist");
-            self.reset(best_header.parent_hash());
+            // FIXME: Increase retracting step for each round
+            self.retract(1);
         } else {
             // FIXME: Send status message only when block is imported
             let chain_info = self.client.chain_info();

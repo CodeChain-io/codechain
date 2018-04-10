@@ -16,7 +16,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use ccore::{Block, BlockNumber, Header, UnverifiedTransaction};
+use ccore::{BlockNumber, Header, UnverifiedTransaction};
 use ctypes::H256;
 
 use rlp::Encodable;
@@ -24,7 +24,6 @@ use triehash::ordered_trie_root;
 
 use message::Message;
 
-const MAX_BUFFER_LENGTH: BlockNumber = 32 * 1024;
 const MAX_BODY_REQUEST_LENGTH: usize = 32;
 const MAX_HEADER_REQUEST_LENGTH: usize = 128;
 
@@ -35,7 +34,9 @@ pub struct DownloadManager {
     // FIXME: Find more appropriate type for block body data
     bodies: HashMap<H256, Vec<UnverifiedTransaction>>,
 
+    /// Hash of currently downloading header. Should be either included in `headers` or equal to `best_hash`
     downloading_header: Option<H256>,
+    /// Hash of currently downloading bodies. All elements should be included in `headers`
     downloading_bodies: HashSet<H256>,
 }
 
@@ -46,17 +47,12 @@ impl DownloadManager {
 }
 
 impl DownloadManager {
-    pub fn new(best_block: Block) -> Self {
-        let mut headers = HashMap::new();
-        headers.insert(best_block.header.hash(), best_block.header.clone());
-        let mut bodies = HashMap::new();
-        bodies.insert(best_block.header.hash(), best_block.transactions.clone());
-
+    pub fn new(best_hash: H256, best_number: BlockNumber) -> Self {
         Self {
-            best_hash: best_block.header.hash(),
-            best_number: best_block.header.number(),
-            headers,
-            bodies,
+            best_hash,
+            best_number,
+            headers: HashMap::new(),
+            bodies: HashMap::new(),
 
             downloading_header: None,
             downloading_bodies: HashSet::new(),
@@ -93,11 +89,9 @@ impl DownloadManager {
         }
 
         // Import headers
-        for header in headers {
-            if header.number() <= self.best_number + MAX_BUFFER_LENGTH {
-                self.headers.insert(header.hash(), header.clone());
-            }
-        }
+        headers.iter().for_each(|header| {
+            self.headers.insert(header.hash(), header.clone());
+        });
         self.downloading_header = None;
         true
     }
@@ -156,20 +150,18 @@ impl DownloadManager {
         // Search for needed headers
         if self.downloading_header.is_none() {
             let mut target = self.best_hash;
-            loop {
-                if let Some(child_hash) = child_map.get(&target) {
-                    target = *child_hash;
-                } else {
-                    self.downloading_header = Some(target);
-                    return Some(Message::RequestHeaders {
-                        start_number: self.headers
-                            .get(&target)
-                            .expect("Header download target should be known")
-                            .number(),
-                        max_count: MAX_HEADER_REQUEST_LENGTH as u64,
-                    })
-                }
+            while let Some(child_hash) = child_map.get(&target) {
+                target = *child_hash;
             }
+            self.downloading_header = Some(target);
+            return Some(Message::RequestHeaders {
+                start_number: if target == self.best_hash {
+                    self.best_number
+                } else {
+                    self.headers.get(&target).expect("Header download target should be known").number()
+                },
+                max_count: MAX_HEADER_REQUEST_LENGTH as u64,
+            })
         }
         None
     }
@@ -201,7 +193,7 @@ mod tests {
     #[test]
     fn should_import_known_blocks() {
         let best_block = create_dummy_block(0, U256::from(0), Vec::new());
-        let mut manager = DownloadManager::new(best_block.clone());
+        let mut manager = DownloadManager::new(best_block.header.hash(), best_block.header.number());
         let mut blocks: Vec<Block> = vec![best_block];
         for i in 1..10 {
             let mut block = create_dummy_block(manager.best_number + i, U256::from(i * 2), Vec::new());
@@ -228,12 +220,12 @@ mod tests {
 
     #[test]
     fn should_not_import_unknown_headers() {
-        let best_number = 0;
-        let mut manager = DownloadManager::new(create_dummy_block(best_number, U256::from(0), Vec::new()));
+        let best_block = create_dummy_block(0, U256::from(0), Vec::new());
+        let mut manager = DownloadManager::new(best_block.header.hash(), best_block.header.number());
         let mut headers: Vec<Header> = Vec::new();
         for i in 0..10 {
             let mut header = Header::default();
-            header.set_number(best_number + i);
+            header.set_number(best_block.header.number() + i);
             header.set_score(U256::from(i * 2));
             header.set_parent_hash(headers.last().map_or(manager.best_hash, |h| h.hash()));
             headers.push(header);
@@ -246,34 +238,15 @@ mod tests {
     }
 
     #[test]
-    fn should_not_import_too_far_headers() {
-        let best_number = 0;
-        let mut manager = DownloadManager::new(create_dummy_block(best_number, U256::from(0), Vec::new()));
-        let mut headers: Vec<Header> = Vec::new();
-        for i in 1..10 {
-            let mut header = Header::default();
-            header.set_number(best_number + i + super::MAX_BUFFER_LENGTH);
-            header.set_score(U256::from(i * 2));
-            header.set_parent_hash(headers.last().map_or(manager.best_hash, |h| h.hash()));
-            headers.push(header);
-        }
-        manager.import_headers(headers.as_slice());
-
-        for header in headers {
-            assert!(!manager.headers.contains_key(&header.hash()));
-        }
-    }
-
-    #[test]
     fn should_not_import_unknown_bodies() {
-        let best_number = 0;
-        let mut manager = DownloadManager::new(create_dummy_block(best_number, U256::from(0), Vec::new()));
+        let best_block = create_dummy_block(0, U256::from(0), Vec::new());
+        let mut manager = DownloadManager::new(best_block.header.hash(), best_block.header.number());
         let mut bodies = Vec::new();
         for _ in 1..10 {
             bodies.push(Vec::new());
         }
         manager.import_bodies(bodies.as_slice());
 
-        assert_eq!(manager.bodies.len(), 1);
+        assert_eq!(manager.bodies.len(), 0);
     }
 }
