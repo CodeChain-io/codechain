@@ -6,6 +6,8 @@ rust:
 install:
   - rustup toolchain install nightly
   - rustup component add rustfmt-preview --toolchain nightly
+before_script:
+  - cargo fetch --verbose
 script:
   - cargo +nightly fmt -- --write-mode=diff
   - cargo build --verbose --all
