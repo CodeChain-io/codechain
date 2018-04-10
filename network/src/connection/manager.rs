@@ -22,7 +22,6 @@ use std::sync::Arc;
 use cio::{IoContext, IoHandler, IoHandlerResult, IoManager, StreamToken, TimerToken};
 use mio::deprecated::EventLoop;
 use mio::net::{TcpListener, TcpStream};
-use mio::unix::UnixReady;
 use mio::{PollOpt, Ready, Token};
 use parking_lot::{Mutex, RwLock};
 
@@ -160,6 +159,26 @@ impl Manager {
         self.register_connection(connection, unprocessed_token)
     }
 
+    fn deregister_unprocessed_connection(&mut self, token: &StreamToken) {
+        if let Some(connection) = self.unprocessed_connections.remove(&token) {
+            let t = self.tokens.restore(*token);
+            debug_assert!(t);
+            let t = self.unprocessed_tokens.remove(&token);
+            debug_assert!(t);
+        } else {
+            unreachable!()
+        }
+    }
+
+    fn deregister_connection(&mut self, token: &StreamToken) {
+        if let Some(connection) = self.connections.remove(&token) {
+            let t = self.tokens.restore(*token);
+            debug_assert!(t);
+        } else {
+            unreachable!()
+        }
+    }
+
     fn create_connection(
         &mut self,
         stream: TcpStream,
@@ -209,62 +228,43 @@ impl Manager {
         event_loop: &mut EventLoop<IoManager<HandlerMessage>>,
     ) -> IoHandlerResult<()> {
         if let Some(connection) = self.connections.get(&token) {
-            event_loop.register(
-                connection.stream(),
-                reg,
-                Ready::readable() | Ready::writable() | UnixReady::hup(),
-                PollOpt::edge(),
-            )?;
-            return Ok(())
+            return Ok(connection.register(reg, event_loop)?)
         }
         if let Some(connection) = self.unprocessed_connections.get(&token) {
-            event_loop.register(connection.stream(), reg, Ready::readable() | Ready::writable(), PollOpt::edge())?;
-            return Ok(())
+            return Ok(connection.register(reg, event_loop)?)
         }
         Err(From::from(Error::InvalidStream(token)))
     }
 
-    pub fn update_stream(
+    pub fn reregister_stream(
         &self,
         token: StreamToken,
         reg: Token,
         event_loop: &mut EventLoop<IoManager<HandlerMessage>>,
     ) -> IoHandlerResult<()> {
         if let Some(connection) = self.connections.get(&token) {
-            event_loop.reregister(
-                connection.stream(),
-                reg,
-                Ready::readable() | Ready::writable() | UnixReady::hup(),
-                PollOpt::edge(),
-            )?;
-            return Ok(())
+            return Ok(connection.reregister(reg, event_loop)?)
         }
         if let Some(connection) = self.unprocessed_connections.get(&token) {
-            event_loop.reregister(connection.stream(), reg, Ready::readable() | Ready::writable(), PollOpt::edge())?;
-            return Ok(())
+            return Ok(connection.reregister(reg, event_loop)?)
         }
         Err(From::from(Error::InvalidStream(token)))
     }
 
+    // return false if it's unprocessed connection
     fn deregister_stream(
-        &mut self,
+        &self,
         token: StreamToken,
         event_loop: &mut EventLoop<IoManager<HandlerMessage>>,
-    ) -> IoHandlerResult<()> {
-        if let Some(connection) = self.connections.remove(&token) {
-            let t = self.tokens.restore(token);
-            debug_assert!(t);
-            event_loop.deregister(connection.stream())?;
-            return Ok(())
+    ) -> IoHandlerResult<bool> {
+        if let Some(connection) = self.connections.get(&token) {
+            connection.deregister(event_loop)?;
+            return Ok(true)
         }
 
-        if let Some(connection) = self.unprocessed_connections.remove(&token) {
-            let t = self.tokens.restore(token);
-            debug_assert!(t);
-            let t = self.unprocessed_tokens.remove(&token);
-            debug_assert!(t);
-            event_loop.deregister(connection.stream())?;
-            return Ok(())
+        if let Some(connection) = self.unprocessed_connections.get(&token) {
+            connection.deregister(event_loop)?;
+            return Ok(false)
         }
 
         Err(From::from(Error::InvalidStream(token)))
@@ -469,7 +469,7 @@ impl IoHandler<HandlerMessage> for Handler {
 
     fn stream_writable(&self, _io: &IoContext<HandlerMessage>, stream: StreamToken) -> IoHandlerResult<()> {
         match stream {
-            ACCEPT_TOKEN => {}
+            ACCEPT_TOKEN => unreachable!(),
             FIRST_CONNECTION_TOKEN...LAST_CONNECTION_TOKEN => loop {
                 let mut manager = self.manager.lock();
                 if manager.unprocessed_tokens.contains(&stream) {
@@ -493,7 +493,7 @@ impl IoHandler<HandlerMessage> for Handler {
         match stream {
             ACCEPT_TOKEN => {
                 let manager = self.manager.lock();
-                event_loop.register(&manager.listener, reg, Ready::readable() | Ready::writable(), PollOpt::edge())?;
+                event_loop.register(&manager.listener, reg, Ready::readable(), PollOpt::edge())?;
                 info!("TCP connection starts for {:?}", self.socket_address);
                 Ok(())
             }
@@ -520,7 +520,7 @@ impl IoHandler<HandlerMessage> for Handler {
             }
             FIRST_CONNECTION_TOKEN...LAST_CONNECTION_TOKEN => {
                 let mut manager = self.manager.lock();
-                manager.update_stream(stream, reg, event_loop)?;
+                manager.reregister_stream(stream, reg, event_loop)?;
                 Ok(())
             }
             _ => {
@@ -549,7 +549,12 @@ impl IoHandler<HandlerMessage> for Handler {
             ACCEPT_TOKEN => unreachable!(),
             FIRST_CONNECTION_TOKEN...LAST_CONNECTION_TOKEN => {
                 let mut manager = self.manager.lock();
-                manager.deregister_stream(stream, event_loop)?;
+                let is_processed = manager.deregister_stream(stream, event_loop)?;
+                if is_processed {
+                    manager.deregister_connection(&stream);
+                } else {
+                    manager.deregister_unprocessed_connection(&stream);
+                }
             }
             _ => unreachable!(),
         }

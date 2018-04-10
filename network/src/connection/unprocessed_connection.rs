@@ -15,9 +15,13 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::collections::{HashMap, VecDeque};
+use std::io;
 
-use mio::deprecated::TryRead;
+use cio::IoManager;
+use mio::deprecated::{EventLoop, TryRead};
 use mio::net::TcpStream;
+use mio::unix::UnixReady;
+use mio::{PollOpt, Ready, Token};
 use rlp::UntrustedRlp;
 
 use super::super::session::{Nonce, Session};
@@ -88,5 +92,27 @@ impl UnprocessedConnection {
 
     pub fn stream(&self) -> &TcpStream {
         &self.stream
+    }
+
+    pub fn interest(&self) -> Ready {
+        Ready::readable() | UnixReady::hup()
+    }
+
+    pub fn register<Message>(&self, reg: Token, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()>
+    where
+        Message: Send + Sync + Clone + 'static, {
+        event_loop.register(self.stream(), reg, self.interest(), PollOpt::edge())
+    }
+
+    pub fn reregister<Message>(&self, reg: Token, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()>
+    where
+        Message: Send + Sync + Clone + 'static, {
+        event_loop.reregister(self.stream(), reg, self.interest(), PollOpt::edge())
+    }
+
+    pub fn deregister<Message>(&self, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()>
+    where
+        Message: Send + Sync + Clone + 'static, {
+        event_loop.deregister(self.stream())
     }
 }

@@ -21,9 +21,12 @@ use std::io::{self, Write};
 use std::result;
 
 use ccrypto::aes::SymmetricCipherError;
+use cio::IoManager;
 use ctypes::Secret;
-use mio::deprecated::TryRead;
+use mio::deprecated::{EventLoop, TryRead};
 use mio::net::TcpStream;
+use mio::unix::UnixReady;
+use mio::{PollOpt, Ready, Token};
 use rlp::{DecoderError, Encodable, UntrustedRlp};
 
 use super::super::client::Client;
@@ -302,6 +305,32 @@ impl Connection {
 
     pub fn session(&self) -> &Session {
         &self.session
+    }
+
+    pub fn interest(&self) -> Ready {
+        if self.send_queue.is_empty() {
+            Ready::readable() | UnixReady::hup()
+        } else {
+            Ready::writable() | Ready::readable() | UnixReady::hup()
+        }
+    }
+
+    pub fn register<Message>(&self, reg: Token, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()>
+    where
+        Message: Send + Sync + Clone + 'static, {
+        event_loop.register(self.stream(), reg, self.interest(), PollOpt::edge())
+    }
+
+    pub fn reregister<Message>(&self, reg: Token, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()>
+    where
+        Message: Send + Sync + Clone + 'static, {
+        event_loop.reregister(self.stream(), reg, self.interest(), PollOpt::edge())
+    }
+
+    pub fn deregister<Message>(&self, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()>
+    where
+        Message: Send + Sync + Clone + 'static, {
+        event_loop.deregister(self.stream())
     }
 }
 
