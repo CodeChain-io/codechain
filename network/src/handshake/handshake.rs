@@ -196,7 +196,7 @@ impl Handshake {
         Ok(())
     }
 
-    fn send_ping_to(&mut self, target: &SocketAddr) -> Result<(), HandshakeError> {
+    fn create_new_connection(&mut self, target: &SocketAddr) -> Result<(), HandshakeError> {
         let ephemeral = Random.generate()?;
         self.requested.insert(target.clone(), ephemeral.private().clone());
 
@@ -412,7 +412,7 @@ impl IoHandler<HandlerMessage> for Handler {
             let mut internal = self.internal.lock();
             if let Some(ref socket_address) = internal.connect_queue.pop_front().as_ref() {
                 let ref mut handshake = internal.handshake;
-                connect_to(handshake, &socket_address)?;
+                handshake.create_new_connection(&socket_address)?;
             } else {
                 break
             }
@@ -438,9 +438,4 @@ impl IoHandler<HandlerMessage> for Handler {
         }
         Ok(())
     }
-}
-
-fn connect_to(handshake: &mut Handshake, socket_address: &SocketAddr) -> IoHandlerResult<()> {
-    handshake.send_ping_to(&socket_address)?;
-    Ok(())
 }
