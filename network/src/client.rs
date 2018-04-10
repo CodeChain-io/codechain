@@ -21,10 +21,10 @@ use cio::IoChannel;
 use parking_lot::RwLock;
 
 use super::connection::HandlerMessage as ConnectionMessage;
-use super::{Api, Error as ExtensionError, Extension, NodeToken, TimerToken};
+use super::{Api, Error as ExtensionError, NetworkExtension, NodeToken, TimerToken};
 
 struct ClientApi {
-    extension: Weak<Extension>,
+    extension: Weak<NetworkExtension>,
     channel: IoChannel<ConnectionMessage>,
 }
 
@@ -120,7 +120,7 @@ impl Api for ClientApi {
 }
 
 pub struct Client {
-    extensions: RwLock<HashMap<String, Arc<Extension>>>,
+    extensions: RwLock<HashMap<String, Arc<NetworkExtension>>>,
 }
 
 macro_rules! define_broadcast_method {
@@ -156,7 +156,11 @@ macro_rules! define_method {
 }
 
 impl Client {
-    pub fn register_extension(&self, extension: Arc<Extension>, channel: IoChannel<ConnectionMessage>) -> Arc<Api> {
+    pub fn register_extension(
+        &self,
+        extension: Arc<NetworkExtension>,
+        channel: IoChannel<ConnectionMessage>,
+    ) -> Arc<Api> {
         let name = extension.name();
         let mut extensions = self.extensions.write();
         if let Some(_) = extensions.insert(name, Arc::clone(&extension)) {
@@ -209,7 +213,7 @@ mod tests {
     use cio::IoService;
     use parking_lot::Mutex;
 
-    use super::{Api, Client, Extension, ExtensionError, NodeToken};
+    use super::{Api, Client, ExtensionError, NetworkExtension, NodeToken};
 
     struct TestApi {}
 
@@ -264,7 +268,7 @@ mod tests {
         }
     }
 
-    impl Extension for TestExtension {
+    impl NetworkExtension for TestExtension {
         fn name(&self) -> String {
             self.name.clone()
         }
@@ -336,9 +340,9 @@ mod tests {
         let client = Client::new();
 
         let e1 = Arc::new(TestExtension::new("e1".to_string()));
-        let _ = client.register_extension(Arc::clone(&e1) as Arc<Extension>, service.channel());
+        let _ = client.register_extension(Arc::clone(&e1) as Arc<NetworkExtension>, service.channel());
         let e2 = Arc::new(TestExtension::new("e2".to_string()));
-        let _ = client.register_extension(Arc::clone(&e2) as Arc<Extension>, service.channel());
+        let _ = client.register_extension(Arc::clone(&e2) as Arc<NetworkExtension>, service.channel());
 
         client.on_node_added(&1);
 
@@ -360,9 +364,9 @@ mod tests {
         let client = Client::new();
 
         let e1 = Arc::new(TestExtension::new("e1".to_string()));
-        let _ = client.register_extension(Arc::clone(&e1) as Arc<Extension>, service.channel());
+        let _ = client.register_extension(Arc::clone(&e1) as Arc<NetworkExtension>, service.channel());
         let e2 = Arc::new(TestExtension::new("e2".to_string()));
-        let _ = client.register_extension(Arc::clone(&e2) as Arc<Extension>, service.channel());
+        let _ = client.register_extension(Arc::clone(&e2) as Arc<NetworkExtension>, service.channel());
 
         client.on_message(&"e1".to_string(), &1, &vec![]);
         {
