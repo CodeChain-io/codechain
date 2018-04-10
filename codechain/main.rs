@@ -48,7 +48,7 @@ use app_dirs::AppInfo;
 use cdiscovery::KademliaExtension;
 use clogger::{setup_log, Config as LogConfig};
 use creactor::EventLoop;
-use csync::BlockSyncExtension;
+use csync::{BlockSyncExtension, TransactionSyncExtension};
 use ctrlc::CtrlC;
 use fdlimit::raise_fd_limit;
 use parking_lot::{Condvar, Mutex};
@@ -107,6 +107,7 @@ fn run() -> Result<(), String> {
             if config.enable_block_sync {
                 service.register_extension(BlockSyncExtension::new(client.client()));
             }
+            service.register_extension(TransactionSyncExtension::new(client.client()));
             Some(service)
         } else {
             None
