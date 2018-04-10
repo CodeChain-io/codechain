@@ -137,7 +137,7 @@ impl NetworkExtension for BlockSyncExtension {
                 match self.client.import_block(block.rlp_bytes(Seal::With)) {
                     Ok(_) => {}
                     Err(error) => {
-                        info!("BlockSyncExtension: block import failed with error({:?})", error);
+                        info!(target: "BlockSyncExtension", "block import failed with error({:?})", error);
                     }
                 }
             });
@@ -174,7 +174,7 @@ impl NetworkExtension for BlockSyncExtension {
                 self.send_message(id, message);
             }
         } else {
-            info!("BlockSyncExtension: invalid message from peer {}", id);
+            info!(target: "BlockSyncExtension", "invalid message from peer {}", id);
         }
     }
 
@@ -251,7 +251,7 @@ impl BlockSyncExtension {
                 ..
             } => {
                 if genesis_hash != self.client.chain_info().genesis_hash {
-                    info!("BlockSyncExtension: genesis hash mismatch with peer {}", id);
+                    info!(target: "BlockSyncExtension", "genesis hash mismatch with peer {}", id);
                     return false
                 } else {
                     return true
