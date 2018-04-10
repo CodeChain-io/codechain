@@ -22,6 +22,7 @@ use std::sync::Arc;
 use cio::{IoContext, IoHandler, IoHandlerResult, IoManager, StreamToken, TimerToken};
 use mio::deprecated::EventLoop;
 use mio::net::{TcpListener, TcpStream};
+use mio::unix::UnixReady;
 use mio::{PollOpt, Ready, Token};
 use parking_lot::{Mutex, RwLock};
 
@@ -208,7 +209,12 @@ impl Manager {
         event_loop: &mut EventLoop<IoManager<HandlerMessage>>,
     ) -> IoHandlerResult<()> {
         if let Some(connection) = self.connections.get(&token) {
-            event_loop.register(connection.stream(), reg, Ready::readable() | Ready::writable(), PollOpt::edge())?;
+            event_loop.register(
+                connection.stream(),
+                reg,
+                Ready::readable() | Ready::writable() | UnixReady::hup(),
+                PollOpt::edge(),
+            )?;
             return Ok(())
         }
         if let Some(connection) = self.unprocessed_connections.get(&token) {
@@ -225,13 +231,42 @@ impl Manager {
         event_loop: &mut EventLoop<IoManager<HandlerMessage>>,
     ) -> IoHandlerResult<()> {
         if let Some(connection) = self.connections.get(&token) {
-            event_loop.reregister(connection.stream(), reg, Ready::readable() | Ready::writable(), PollOpt::edge())?;
+            event_loop.reregister(
+                connection.stream(),
+                reg,
+                Ready::readable() | Ready::writable() | UnixReady::hup(),
+                PollOpt::edge(),
+            )?;
             return Ok(())
         }
         if let Some(connection) = self.unprocessed_connections.get(&token) {
             event_loop.reregister(connection.stream(), reg, Ready::readable() | Ready::writable(), PollOpt::edge())?;
             return Ok(())
         }
+        Err(From::from(Error::InvalidStream(token)))
+    }
+
+    fn deregister_stream(
+        &mut self,
+        token: StreamToken,
+        event_loop: &mut EventLoop<IoManager<HandlerMessage>>,
+    ) -> IoHandlerResult<()> {
+        if let Some(connection) = self.connections.remove(&token) {
+            let t = self.tokens.restore(token);
+            debug_assert!(t);
+            event_loop.deregister(connection.stream())?;
+            return Ok(())
+        }
+
+        if let Some(connection) = self.unprocessed_connections.remove(&token) {
+            let t = self.tokens.restore(token);
+            debug_assert!(t);
+            let t = self.unprocessed_tokens.remove(&token);
+            debug_assert!(t);
+            event_loop.deregister(connection.stream())?;
+            return Ok(())
+        }
+
         Err(From::from(Error::InvalidStream(token)))
     }
 
@@ -492,6 +527,33 @@ impl IoHandler<HandlerMessage> for Handler {
                 unreachable!();
             }
         }
+    }
+
+    fn stream_hup(&self, io: &IoContext<HandlerMessage>, stream: StreamToken) -> IoHandlerResult<()> {
+        match stream {
+            ACCEPT_TOKEN => unreachable!(),
+            FIRST_CONNECTION_TOKEN...LAST_CONNECTION_TOKEN => {
+                io.deregister_stream(stream)?;
+            }
+            _ => unreachable!(),
+        }
+        Ok(())
+    }
+
+    fn deregister_stream(
+        &self,
+        stream: StreamToken,
+        event_loop: &mut EventLoop<IoManager<HandlerMessage>>,
+    ) -> IoHandlerResult<()> {
+        match stream {
+            ACCEPT_TOKEN => unreachable!(),
+            FIRST_CONNECTION_TOKEN...LAST_CONNECTION_TOKEN => {
+                let mut manager = self.manager.lock();
+                manager.deregister_stream(stream, event_loop)?;
+            }
+            _ => unreachable!(),
+        }
+        Ok(())
     }
 }
 
