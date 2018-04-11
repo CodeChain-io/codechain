@@ -70,7 +70,9 @@ impl SealingQueue {
         self.backing.push(b)
     }
 
-    fn take_if<P>(&mut self, predicate: P) -> Option<ClosedBlock> where P: Fn(&ClosedBlock) -> bool {
+    fn take_if<P>(&mut self, predicate: P) -> Option<ClosedBlock>
+    where
+        P: Fn(&ClosedBlock) -> bool, {
         self.backing.iter().position(|r| predicate(r)).map(|i| self.backing.remove(i))
     }
 }
