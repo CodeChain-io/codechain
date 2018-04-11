@@ -141,6 +141,10 @@ impl Extension {
 
     fn random_reset(&self) {
         let mut peers = self.peers.write();
+        if peers.is_empty() {
+            return
+        }
+
         let lucky_index = thread_rng().gen_range(0, peers.len());
         if let Some(peer) = peers.values_mut().nth(lucky_index) {
             peer.transaction_history.clear();
