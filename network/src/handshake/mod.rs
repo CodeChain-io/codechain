@@ -16,6 +16,7 @@
 
 mod handshake;
 mod message;
+mod socket;
 
 
 pub use self::handshake::{Handler, HandlerMessage, Handshake};
