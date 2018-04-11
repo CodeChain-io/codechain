@@ -22,6 +22,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
 use ccrypto::aes::SymmetricCipherError;
+use cfinally::finally;
 use cio::{IoChannel, IoContext, IoError as CIoError, IoHandler, IoHandlerResult, IoManager, StreamToken};
 use ckeys::{exchange, Error as KeysError, Generator, Private, Random};
 use ctypes::Secret;
@@ -381,36 +382,37 @@ impl IoHandler<HandlerMessage> for Handler {
         if stream != RECEIVE_TOKEN {
             unreachable!()
         }
+        let _f = finally(|| {
+            if let Err(err) = io.update_registration(stream) {
+                info!("Cannot update registration for handshake : {:?}", err);
+            }
+        });
         loop {
             let mut handshake = self.handshake.lock();
-            let result = handshake.read(&self.extension);
-            if let Ok(true) = result {
-                continue
+            if !handshake.read(&self.extension)? {
+                break
             }
-            io.update_registration(stream)?;
-            result?;
-            return Ok(())
         }
+        Ok(())
     }
 
     fn stream_writable(&self, io: &IoContext<HandlerMessage>, stream: StreamToken) -> IoHandlerResult<()> {
         if stream != RECEIVE_TOKEN {
             unreachable!()
         }
+
+        let _f = finally(|| {
+            if let Err(err) = io.update_registration(stream) {
+                info!("Cannot update registration for handshake : {:?}", err);
+            }
+        });
         loop {
             let mut handshake = self.handshake.lock();
-            match handshake.send() {
-                Ok(true) => continue,
-                Ok(false) => {
-                    io.update_registration(stream)?;
-                    return Ok(())
-                }
-                Err(err) => {
-                    io.update_registration(stream)?;
-                    return Err(From::from(err))
-                }
+            if !handshake.send()? {
+                break
             }
         }
+        Ok(())
     }
 
     fn register_stream(
