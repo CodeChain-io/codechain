@@ -480,7 +480,6 @@ mod tests {
 
     #[test]
     fn request_rlp_decode_with_large_nonce() {
-        const NONCE_LEN: u8 = 4;
         let nonce = Nonce::new(0xDEADCAFE);
         let nonce = nonce.rlp_bytes().into_vec();
 

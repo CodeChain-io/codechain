@@ -24,7 +24,6 @@ use ccrypto::aes::SymmetricCipherError;
 use cio::IoManager;
 use ctypes::Secret;
 use mio::deprecated::EventLoop;
-use mio::net::TcpStream;
 use mio::unix::UnixReady;
 use mio::{PollOpt, Ready, Token};
 use rlp::DecoderError;
@@ -32,7 +31,6 @@ use rlp::DecoderError;
 use super::super::client::Client;
 use super::super::extension::{Error as ExtensionError, NodeToken};
 use super::super::session::{Nonce, Session};
-use super::super::SocketAddr;
 use super::message::{Seq, Version};
 use super::stream::{Error as StreamError, SignedStream, Stream};
 use super::{ApplicationMessage, HandshakeMessage, Message, NegotiationBody, NegotiationMessage};
@@ -70,20 +68,28 @@ impl fmt::Display for Error {
         match self {
             &Error::StreamError(ref err) => err.fmt(f),
             &Error::DecoderError(ref err) => err.fmt(f),
-            &Error::InvalidSign => write!(f, "InvalidSign"),
+            &Error::InvalidSign => fmt::Debug::fmt(&self, f),
             &Error::InvalidState {
-                ref expected,
-                ref actual,
-            } => write!(f, "InvalidState expected: {:?}, actual: {:?}", expected, actual),
-            &Error::UnreadySession => write!(f, "UnreadySession"),
-            &Error::SymmetricCipherError(ref err) => write!(f, "{:?}", err),
+                ..
+            } => fmt::Debug::fmt(&self, f),
+            &Error::UnreadySession => fmt::Debug::fmt(&self, f),
+            &Error::SymmetricCipherError(ref err) => fmt::Debug::fmt(&err, f),
         }
     }
 }
 
 impl error::Error for Error {
     fn description(&self) -> &str {
-        "Connection Error"
+        match self {
+            &Error::StreamError(ref err) => err.description(),
+            &Error::DecoderError(ref err) => err.description(),
+            &Error::InvalidSign => "Invalid sign",
+            &Error::InvalidState {
+                ..
+            } => "Invalid state",
+            &Error::UnreadySession => "Unready session",
+            &Error::SymmetricCipherError(_) => "Symmetric cipher",
+        }
     }
 
     fn cause(&self) -> Option<&error::Error> {
@@ -260,10 +266,6 @@ impl Connection {
         } else {
             Ok(())
         }
-    }
-
-    pub fn peer_addr(&self) -> Result<SocketAddr> {
-        Ok(self.stream.peer_addr()?)
     }
 
     pub fn session(&self) -> &Session {

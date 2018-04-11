@@ -215,7 +215,8 @@ mod tests {
 
     use super::{Api, Client, ExtensionError, NetworkExtension, NodeToken};
 
-    struct TestApi {}
+    #[allow(dead_code)]
+    struct TestApi;
 
     impl Api for TestApi {
         fn send(&self, _id: &usize, _message: &Vec<u8>) {
@@ -299,7 +300,7 @@ mod tests {
 
         fn on_connection_allowed(&self, _id: &NodeToken) {
             let mut callbacks = self.callbacks.lock();
-            callbacks.push(Callback::Connected);
+            callbacks.push(Callback::ConnectionAllowed);
         }
 
         fn on_connection_denied(&self, _id: &NodeToken, _error: ExtensionError) {

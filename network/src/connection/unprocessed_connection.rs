@@ -31,7 +31,6 @@ use super::stream::Stream;
 pub struct UnprocessedConnection {
     stream: Stream,
     session: Option<Session>,
-    ack: VecDeque<Message>,
 }
 
 impl UnprocessedConnection {
@@ -39,7 +38,6 @@ impl UnprocessedConnection {
         Self {
             stream,
             session: None,
-            ack: VecDeque::new(),
         }
     }
 
@@ -67,7 +65,7 @@ impl UnprocessedConnection {
         Connection::new(self.stream, *session.secret(), session.nonce().clone())
     }
 
-    pub fn interest(&self) -> Ready {
+    fn interest(&self) -> Ready {
         Ready::readable() | UnixReady::hup()
     }
 

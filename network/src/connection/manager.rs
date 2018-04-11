@@ -142,21 +142,19 @@ impl Manager {
         })
     }
 
-    fn register_connection(&mut self, connection: Connection, token: &StreamToken) -> StreamToken {
+    fn register_connection(&mut self, connection: Connection, token: &StreamToken) {
         let con = self.connections.insert(*token, connection);
         debug_assert!(con.is_none());
-
-        *token
     }
 
-    fn process_connection(&mut self, unprocessed_token: &StreamToken) -> StreamToken {
+    fn process_connection(&mut self, unprocessed_token: &StreamToken) -> Connection {
         let t = self.unprocessed_tokens.remove(&unprocessed_token);
         debug_assert!(t);
         let unprocessed = self.unprocessed_connections.remove(&unprocessed_token).expect("It must exist");
 
         let mut connection = unprocessed.process();
         connection.enqueue_ack();
-        self.register_connection(connection, unprocessed_token)
+        connection
     }
 
     fn deregister_unprocessed_connection(&mut self, token: &StreamToken) {
@@ -189,7 +187,10 @@ impl Manager {
         let nonce = session.nonce();
         connection.enqueue_sync(nonce.clone());
 
-        Ok(self.tokens.gen().map(|token| self.register_connection(connection, &token)))
+        Ok(self.tokens.gen().map(|token| {
+            self.register_connection(connection, &token);
+            token
+        }))
     }
 
     pub fn accept(&mut self) -> IoHandlerResult<Option<(StreamToken, SocketAddr)>> {
@@ -285,14 +286,12 @@ impl Manager {
         }
 
         // receive Sync message
-        let session = {
-            let connection = self.unprocessed_connections.get(&stream).unwrap();
-            connection.session().clone().unwrap()
-        };
+        let connection = self.process_connection(&stream);
+
+        let session = connection.session().clone();
         let nonce = session.nonce().clone();
         self.registered_sessions.insert(nonce, session);
-        let processed_token = self.process_connection(&stream);
-        debug_assert_eq!(&processed_token, stream);
+        self.register_connection(connection, stream);
         client.on_node_added(&stream);
         Ok(false)
     }
@@ -442,6 +441,17 @@ impl IoHandler<HandlerMessage> for Handler {
         Ok(())
     }
 
+    fn stream_hup(&self, io: &IoContext<HandlerMessage>, stream: StreamToken) -> IoHandlerResult<()> {
+        match stream {
+            ACCEPT_TOKEN => unreachable!(),
+            FIRST_CONNECTION_TOKEN...LAST_CONNECTION_TOKEN => {
+                io.deregister_stream(stream)?;
+            }
+            _ => unreachable!(),
+        }
+        Ok(())
+    }
+
     fn stream_readable(&self, io: &IoContext<HandlerMessage>, stream: StreamToken) -> IoHandlerResult<()> {
         match stream {
             ACCEPT_TOKEN => loop {
@@ -527,17 +537,6 @@ impl IoHandler<HandlerMessage> for Handler {
                 unreachable!();
             }
         }
-    }
-
-    fn stream_hup(&self, io: &IoContext<HandlerMessage>, stream: StreamToken) -> IoHandlerResult<()> {
-        match stream {
-            ACCEPT_TOKEN => unreachable!(),
-            FIRST_CONNECTION_TOKEN...LAST_CONNECTION_TOKEN => {
-                io.deregister_stream(stream)?;
-            }
-            _ => unreachable!(),
-        }
-        Ok(())
     }
 
     fn deregister_stream(
