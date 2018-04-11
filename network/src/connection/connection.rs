@@ -135,7 +135,7 @@ impl Connection {
 
     pub fn send(&mut self) -> Result<bool> {
         if let Some(message) = self.send_queue.pop_front() {
-            let signed = SignedMessage::new(message, &self.session);
+            let signed = SignedMessage::new(&message, &self.session);
             let bytes_to_send = signed.rlp_bytes();
 
             let _ = self.stream.set_nodelay(true)?;

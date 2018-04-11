@@ -17,6 +17,7 @@
 mod connection;
 mod manager;
 mod message;
+mod stream;
 mod unprocessed_connection;
 
 pub use self::manager::{AddressConverter, Handler, HandlerMessage};

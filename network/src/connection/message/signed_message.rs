@@ -26,7 +26,7 @@ pub struct SignedMessage {
 }
 
 impl SignedMessage {
-    pub fn new(message: Message, session: &Session) -> Self {
+    pub fn new<M>(message: &M, session: &Session) -> Self where M: Encodable {
         let message = message.rlp_bytes().into_vec();
         let signature = session.sign(&message);
         Self {
