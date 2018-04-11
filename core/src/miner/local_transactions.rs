@@ -157,6 +157,7 @@ impl LocalTransactionsList {
 
 #[cfg(test)]
 mod tests {
+    use super::super::super::transaction;
     use super::*;
     use ckeys::{Generator, Random};
     use ctypes::U256;
