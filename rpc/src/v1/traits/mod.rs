@@ -14,24 +14,16 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::sync::Arc;
+use ctypes::H256;
 
-use ccore::{Client, Miner};
-use crpc::{MetaIoHandler, Params, Value};
+use jsonrpc_core::Result;
 
-pub struct ApiDependencies {
-    pub client: Arc<Client>,
-    pub miner: Arc<Miner>,
-}
+use super::types::Bytes;
 
-impl ApiDependencies {
-    pub fn extend_api(&self, handler: &mut MetaIoHandler<()>) {
-        use crpc::v1::*;
-        handler.extend_with(ChainClient::new(&self.client, &self.miner).to_delegate())
+build_rpc_trait! {
+    pub trait Chain {
+        /// Sends signed transaction, returning its hash.
+        # [rpc(name = "chain_sendSignedTransaction")]
+        fn send_signed_transaction(&self, Bytes) -> Result<H256>;
     }
-}
-
-pub fn setup_rpc(mut handler: MetaIoHandler<()>) -> MetaIoHandler<()> {
-    handler.add_method("ping", |_params: Params| Ok(Value::String("pong".to_string())));
-    handler
 }

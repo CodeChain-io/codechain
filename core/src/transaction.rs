@@ -74,38 +74,42 @@ pub enum TransactionError {
     InvalidSignature(String),
 }
 
+pub fn transaction_error_message(error: &TransactionError) -> String {
+    use self::TransactionError::*;
+    match *error {
+        AlreadyImported => "Already imported".into(),
+        Old => "No longer valid".into(),
+        TooCheapToReplace => "Gas price too low to replace".into(),
+        InvalidNetworkId => "Transaction of this network ID is not allowed on this chain.".into(),
+        LimitReached => "Transaction limit reached".into(),
+        InsufficientFee {
+            minimal,
+            got,
+        } => format!("Insufficient fee. Min={}, Given={}", minimal, got),
+        InsufficientBalance {
+            balance,
+            cost,
+        } => format!("Insufficient balance for transaction. Balance={}, Cost={}", balance, cost),
+        InvalidNonce {
+            ref expected,
+            ref got,
+        } => format!("Invalid transaction nonce: expected {}, found {}", expected, got),
+        NotEnoughCash {
+            ref required,
+            ref got,
+        } => format!(
+            "Cost of transaction exceeds sender balance. {} is required \
+             but the sender only has {}",
+            required, got
+        ),
+        NotAllowed => "Sender does not have permissions to execute this type of transction".into(),
+        InvalidSignature(ref err) => format!("Transaction has invalid signature: {}.", err),
+    }
+}
+
 impl fmt::Display for TransactionError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use self::TransactionError::*;
-        let msg: String = match *self {
-            AlreadyImported => "Already imported".into(),
-            Old => "No longer valid".into(),
-            TooCheapToReplace => "Gas price too low to replace".into(),
-            InvalidNetworkId => "Transaction of this network ID is not allowed on this chain.".into(),
-            LimitReached => "Transaction limit reached".into(),
-            InsufficientFee {
-                minimal,
-                got,
-            } => format!("Insufficient fee. Min={}, Given={}", minimal, got),
-            InsufficientBalance {
-                balance,
-                cost,
-            } => format!("Insufficient balance for transaction. Balance={}, Cost={}", balance, cost),
-            InvalidNonce {
-                ref expected,
-                ref got,
-            } => format!("Invalid transaction nonce: expected {}, found {}", expected, got),
-            NotEnoughCash {
-                ref required,
-                ref got,
-            } => format!(
-                "Cost of transaction exceeds sender balance. {} is required \
-                 but the sender only has {}",
-                required, got
-            ),
-            NotAllowed => "Sender does not have permissions to execute this type of transction".into(),
-            InvalidSignature(ref err) => format!("Transaction has invalid signature: {}.", err),
-        };
+        let msg: String = transaction_error_message(self);
 
         f.write_fmt(format_args!("Transaction error ({})", msg))
     }

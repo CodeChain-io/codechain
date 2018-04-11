@@ -17,17 +17,18 @@
 use std::path::Path;
 use std::sync::Arc;
 
-use ccore::{ClientService, Miner, MinerOptions, Spec};
+use ccore::{ClientService, Miner, Spec};
 use cnetwork::{DiscoveryApi, NetworkConfig, NetworkService, SocketAddr};
 use crpc::Server as RpcServer;
 use rpc::HttpConfiguration as RpcHttpConfig;
 
 use super::super::config;
 use super::super::rpc;
+use super::super::rpc_apis::ApiDependencies;
 
-pub fn rpc_start(cfg: RpcHttpConfig) -> Result<RpcServer, String> {
+pub fn rpc_start(cfg: RpcHttpConfig, deps: Arc<ApiDependencies>) -> Result<RpcServer, String> {
     info!("RPC Listening on {}", cfg.port);
-    rpc::new_http(cfg)
+    rpc::new_http(cfg, deps)
 }
 
 pub fn network_start(cfg: NetworkConfig, discovery: Arc<DiscoveryApi>) -> Result<NetworkService, String> {
@@ -40,11 +41,10 @@ pub fn network_start(cfg: NetworkConfig, discovery: Arc<DiscoveryApi>) -> Result
     Ok(service)
 }
 
-pub fn client_start(cfg: &config::Config, spec: &Spec) -> Result<ClientService, String> {
+pub fn client_start(cfg: &config::Config, spec: &Spec, miner: Arc<Miner>) -> Result<ClientService, String> {
     info!("Starting client");
     let client_path = Path::new(&cfg.db_path);
     let client_config = Default::default();
-    let miner = Miner::new(MinerOptions::default(), &spec);
     let service = ClientService::start(client_config, &spec, &client_path, miner)
         .map_err(|e| format!("Client service error: {:?}", e))?;
 
