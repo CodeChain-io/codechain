@@ -42,6 +42,9 @@ mod service;
 mod timer_info;
 mod token_generator;
 
+#[cfg(test)]
+mod test;
+
 pub mod connection;
 pub mod session;
 
