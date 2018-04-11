@@ -224,6 +224,11 @@ impl<'x> OpenBlock<'x> {
             block: s.block,
         }
     }
+
+    /// Alter the timestamp of the block.
+    pub fn set_timestamp(&mut self, timestamp: u64) {
+        self.block.header.set_timestamp(timestamp);
+    }
 }
 
 /// Just like `OpenBlock`, except that we've applied `Engine::on_close_block`, finished up the non-seal header fields.
