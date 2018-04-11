@@ -18,12 +18,14 @@ mod chain_notify;
 mod client;
 mod config;
 mod error;
+mod test_client;
 
 pub use self::chain_notify::ChainNotify;
 
 pub use self::client::Client;
 pub use self::config::ClientConfig;
 pub use self::error::Error;
+pub use self::test_client::TestBlockChainClient;
 
 use cbytes::Bytes;
 use ctypes::{Address, H256, U256};
