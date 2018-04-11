@@ -130,7 +130,7 @@ impl Manager {
 
     fn register_unprocessed_connection(&mut self, stream: TcpStream) -> Option<StreamToken> {
         self.tokens.gen().map(|token| {
-            let connection = UnprocessedConnection::new(stream);
+            let connection = UnprocessedConnection::new(stream.into());
 
             let con = self.unprocessed_connections.insert(token, connection);
             debug_assert!(con.is_none());
@@ -185,7 +185,7 @@ impl Manager {
         socket_address: &SocketAddr,
     ) -> IoHandlerResult<Option<StreamToken>> {
         let session = self.socket_to_session.get(&socket_address).ok_or(Error::UnavailableSession)?.clone();
-        let mut connection = Connection::new(stream, session.secret().clone(), session.nonce().clone());
+        let mut connection = Connection::new(stream.into(), session.secret().clone(), session.nonce().clone());
         let nonce = session.nonce();
         connection.enqueue_sync(nonce.clone());
 

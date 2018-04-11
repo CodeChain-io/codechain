@@ -27,14 +27,14 @@ use mio::deprecated::{EventLoop, TryRead};
 use mio::net::TcpStream;
 use mio::unix::UnixReady;
 use mio::{PollOpt, Ready, Token};
-use rlp::{DecoderError, Encodable, UntrustedRlp};
+use rlp::DecoderError;
 
 use super::super::client::Client;
 use super::super::extension::{Error as ExtensionError, NodeToken};
 use super::super::session::{Nonce, Session};
 use super::super::SocketAddr;
 use super::message::{Seq, Version};
-use super::SignedMessage;
+use super::stream::{Error as StreamError, SignedStream, Stream};
 use super::{ApplicationMessage, HandshakeMessage, Message, NegotiationBody, NegotiationMessage};
 
 #[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq)]
@@ -45,8 +45,7 @@ pub enum State {
 }
 
 pub struct Connection {
-    stream: TcpStream,
-    session: Session,
+    stream: SignedStream,
     state: State,
     send_queue: VecDeque<Message>,
     next_negotiation_seq: Seq,
@@ -55,7 +54,7 @@ pub struct Connection {
 
 #[derive(Debug)]
 pub enum Error {
-    IoError(io::Error),
+    StreamError(StreamError),
     DecoderError(DecoderError),
     InvalidSign,
     InvalidState {
@@ -69,7 +68,7 @@ pub enum Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            &Error::IoError(ref err) => err.fmt(f),
+            &Error::StreamError(ref err) => err.fmt(f),
             &Error::DecoderError(ref err) => err.fmt(f),
             &Error::InvalidSign => write!(f, "InvalidSign"),
             &Error::InvalidState {
@@ -89,7 +88,7 @@ impl error::Error for Error {
 
     fn cause(&self) -> Option<&error::Error> {
         match self {
-            &Error::IoError(ref err) => Some(err),
+            &Error::StreamError(ref err) => Some(err),
             &Error::DecoderError(ref err) => Some(err),
             &Error::InvalidSign => None,
             &Error::InvalidState {
@@ -98,12 +97,6 @@ impl error::Error for Error {
             &Error::UnreadySession => None,
             &Error::SymmetricCipherError(_) => None,
         }
-    }
-}
-
-impl From<io::Error> for Error {
-    fn from(err: io::Error) -> Self {
-        Error::IoError(err)
     }
 }
 
@@ -119,13 +112,18 @@ impl From<SymmetricCipherError> for Error {
     }
 }
 
+impl From<StreamError> for Error {
+    fn from(err: StreamError) -> Self {
+        Error::StreamError(err)
+    }
+}
+
 pub type Result<T> = result::Result<T, Error>;
 
 impl Connection {
-    pub fn new(stream: TcpStream, secret: Secret, nonce: Nonce) -> Self {
+    pub fn new(stream: Stream, secret: Secret, nonce: Nonce) -> Self {
         Self {
-            stream,
-            session: Session::new(secret, nonce),
+            stream: SignedStream::new(stream.into(), Session::new(secret, nonce)),
             state: State::New,
             send_queue: VecDeque::new(),
             next_negotiation_seq: 0,
@@ -135,12 +133,7 @@ impl Connection {
 
     pub fn send(&mut self) -> Result<bool> {
         if let Some(message) = self.send_queue.pop_front() {
-            let signed = SignedMessage::new(&message, &self.session);
-            let bytes_to_send = signed.rlp_bytes();
-
-            let _ = self.stream.set_nodelay(true)?;
-
-            self.stream.write_all(&bytes_to_send)?;
+            self.stream.write(&message)?;
             Ok(true)
         } else {
             Ok(false)
@@ -179,7 +172,7 @@ impl Connection {
     pub fn enqueue_extension_message(&mut self, extension_name: String, need_encryption: bool, message: Vec<u8>) {
         const VERSION: u64 = 0;
         let message = if need_encryption {
-            let session_key = (*self.session.secret(), self.session.initialization_vector());
+            let session_key = (*self.stream.session().secret(), self.stream.session().initialization_vector());
             match ApplicationMessage::encrypted_from_unencrypted_data(extension_name, VERSION, message, &session_key) {
                 Ok(message) => message,
                 Err(err) => {
@@ -201,19 +194,18 @@ impl Connection {
     }
 
     fn receive_internal(&mut self, callback: &ExtensionCallback) -> Result<bool> {
-        self.receive_message().and_then(|messages| {
-            match messages {
-                None => Ok(false),
-                Some(Message::Application(msg)) => {
+        if let Some(message) = self.stream.read()? {
+            match message {
+                Message::Application(msg) => {
                     let _ = self.expect_state(State::Established)?;
 
-                    let session_key = (*self.session.secret(), self.session.initialization_vector());
+                    let session_key = (*self.stream.session().secret(), self.stream.session().initialization_vector());
 
                     // FIXME: check version of application
                     callback.on_message(&msg.extension_name(), &msg.unencrypted_data(&session_key)?);
                     Ok(true)
                 }
-                Some(Message::Handshake(msg)) => {
+                Message::Handshake(msg) => {
                     info!("handshake message received {:?}", msg);
                     match msg {
                         HandshakeMessage::Sync(_version, _nonce) => {
@@ -227,7 +219,7 @@ impl Connection {
                     }
                     Ok(true)
                 }
-                Some(Message::Negotiation(msg)) => {
+                Message::Negotiation(msg) => {
                     let _ = self.expect_state(State::Established)?;
                     match msg.body() {
                         &NegotiationBody::Request {
@@ -254,38 +246,9 @@ impl Connection {
                     Ok(true)
                 }
             }
-        })
-    }
-
-    fn receive_message(&mut self) -> Result<Option<(Message)>> {
-        let mut result: Vec<u8> = Vec::new();
-        let mut bytes: [u8; 1024] = [0; 1024];
-
-        loop {
-            if let Some(read_size) = self.stream.try_read(&mut bytes)? {
-                result.extend_from_slice(&bytes[..read_size]);
-            } else {
-                break
-            }
+        } else {
+            Ok(false)
         }
-
-        if result.len() == 0 {
-            return Ok(None)
-        }
-        let rlp = UntrustedRlp::new(&result);
-        let signed_message = rlp.as_val::<SignedMessage>()?;
-        let message = {
-            let rlp = UntrustedRlp::new(&signed_message.message);
-            rlp.as_val::<Message>()?
-        };
-        if !signed_message.is_valid(&self.session) {
-            return Err(Error::InvalidSign)
-        }
-        Ok(Some(message))
-    }
-
-    pub fn stream(&self) -> &TcpStream {
-        &self.stream
     }
 
     fn expect_state(&self, expected: State) -> Result<()> {
@@ -300,11 +263,11 @@ impl Connection {
     }
 
     pub fn peer_addr(&self) -> Result<SocketAddr> {
-        Ok(SocketAddr::from(self.stream.peer_addr()?))
+        Ok(self.stream.peer_addr()?)
     }
 
     pub fn session(&self) -> &Session {
-        &self.session
+        self.stream.session()
     }
 
     pub fn interest(&self) -> Ready {
@@ -318,19 +281,19 @@ impl Connection {
     pub fn register<Message>(&self, reg: Token, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()>
     where
         Message: Send + Sync + Clone + 'static, {
-        event_loop.register(self.stream(), reg, self.interest(), PollOpt::edge())
+        event_loop.register(&self.stream, reg, self.interest(), PollOpt::edge())
     }
 
     pub fn reregister<Message>(&self, reg: Token, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()>
     where
         Message: Send + Sync + Clone + 'static, {
-        event_loop.reregister(self.stream(), reg, self.interest(), PollOpt::edge())
+        event_loop.reregister(&self.stream, reg, self.interest(), PollOpt::edge())
     }
 
     pub fn deregister<Message>(&self, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()>
     where
         Message: Send + Sync + Clone + 'static, {
-        event_loop.deregister(self.stream())
+        event_loop.deregister(&self.stream)
     }
 }
 

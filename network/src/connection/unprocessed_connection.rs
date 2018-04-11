@@ -18,8 +18,7 @@ use std::collections::{HashMap, VecDeque};
 use std::io;
 
 use cio::IoManager;
-use mio::deprecated::{EventLoop, TryRead};
-use mio::net::TcpStream;
+use mio::deprecated::EventLoop;
 use mio::unix::UnixReady;
 use mio::{PollOpt, Ready, Token};
 use rlp::UntrustedRlp;
@@ -27,15 +26,16 @@ use rlp::UntrustedRlp;
 use super::super::session::{Nonce, Session};
 use super::connection::{Connection, Error as ConnectionError, Result as ConnectionResult};
 use super::message::{HandshakeMessage, Message, SignedMessage};
+use super::stream::Stream;
 
 pub struct UnprocessedConnection {
-    stream: TcpStream,
+    stream: Stream,
     session: Option<Session>,
     ack: VecDeque<Message>,
 }
 
 impl UnprocessedConnection {
-    pub fn new(stream: TcpStream) -> Self {
+    pub fn new(stream: Stream) -> Self {
         Self {
             stream,
             session: None,
@@ -44,7 +44,7 @@ impl UnprocessedConnection {
     }
 
     pub fn receive(&mut self, registered_sessions: &HashMap<Nonce, Session>) -> ConnectionResult<Option<Nonce>> {
-        if let Some(signed_message) = self.receive_signed_message()? {
+        if let Some(signed_message) = self.stream.read::<SignedMessage>()? {
             let rlp = UntrustedRlp::new(&signed_message.message);
             match rlp.as_val::<Message>()? {
                 Message::Handshake(HandshakeMessage::Sync(_version, nonce)) => {
@@ -62,36 +62,9 @@ impl UnprocessedConnection {
         }
     }
 
-    fn receive_signed_message(&mut self) -> ConnectionResult<Option<SignedMessage>> {
-        let mut result: Vec<u8> = Vec::new();
-        let mut bytes: [u8; 1024] = [0; 1024];
-        loop {
-            if let Some(read_size) = self.stream.try_read(&mut bytes)? {
-                result.extend_from_slice(&bytes[..read_size]);
-            } else {
-                break
-            }
-        }
-        if result.len() == 0 {
-            return Ok(None)
-        }
-
-        let rlp = UntrustedRlp::new(&result);
-        let signed_message = rlp.as_val::<SignedMessage>()?;
-        Ok(Some(signed_message))
-    }
-
     pub fn process(self) -> Connection {
         let session = self.session.as_ref().expect("Session must exist");
         Connection::new(self.stream, *session.secret(), session.nonce().clone())
-    }
-
-    pub fn session(&self) -> &Option<Session> {
-        &self.session
-    }
-
-    pub fn stream(&self) -> &TcpStream {
-        &self.stream
     }
 
     pub fn interest(&self) -> Ready {
@@ -101,18 +74,18 @@ impl UnprocessedConnection {
     pub fn register<Message>(&self, reg: Token, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()>
     where
         Message: Send + Sync + Clone + 'static, {
-        event_loop.register(self.stream(), reg, self.interest(), PollOpt::edge())
+        event_loop.register(&self.stream, reg, self.interest(), PollOpt::edge())
     }
 
     pub fn reregister<Message>(&self, reg: Token, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()>
     where
         Message: Send + Sync + Clone + 'static, {
-        event_loop.reregister(self.stream(), reg, self.interest(), PollOpt::edge())
+        event_loop.reregister(&self.stream, reg, self.interest(), PollOpt::edge())
     }
 
     pub fn deregister<Message>(&self, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()>
     where
         Message: Send + Sync + Clone + 'static, {
-        event_loop.deregister(self.stream())
+        event_loop.deregister(&self.stream)
     }
 }
