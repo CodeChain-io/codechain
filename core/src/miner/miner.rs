@@ -87,15 +87,23 @@ pub struct Miner {
 
 impl Miner {
     pub fn new(options: MinerOptions, spec: &Spec) -> Arc<Self> {
+        Arc::new(Self::new_raw(options, spec))
+    }
+
+    pub fn with_spec(spec: &Spec) -> Self {
+        Self::new_raw(Default::default(), spec)
+    }
+
+    fn new_raw(options: MinerOptions, spec: &Spec) -> Self {
         let mem_limit = options.tx_queue_memory_limit.unwrap_or_else(usize::max_value);
         let txq = TransactionQueue::with_limits(options.tx_queue_size, mem_limit);
-        Arc::new(Self {
+        Self {
             transaction_queue: Arc::new(RwLock::new(txq)),
             author: RwLock::new(Address::default()),
             extra_data: RwLock::new(Vec::new()),
             sealing_queue: Mutex::new(SealingQueue::new()),
             engine: spec.engine.clone(),
-        })
+        }
     }
 
     fn add_transactions_to_queue<C: AccountData + BlockChain>(
