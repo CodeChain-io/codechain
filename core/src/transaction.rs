@@ -303,10 +303,12 @@ impl UnverifiedTransaction {
 
     /// Append object with a signature into RLP stream
     fn rlp_append_sealed_transaction(&self, s: &mut RlpStream) {
-        s.begin_list(6);
+        s.begin_list(8);
         s.append(&self.nonce);
         s.append(&self.fee);
+        s.append(&self.action);
         s.append(&self.data);
+        s.append(&self.network_id);
         s.append(&self.v);
         s.append(&self.r);
         s.append(&self.s);
@@ -472,5 +474,25 @@ impl Deref for LocalizedTransaction {
 
     fn deref(&self) -> &Self::Target {
         &self.signed
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use ctypes::{H256, U256};
+    use rlp::Encodable;
+
+    use super::{Transaction, UnverifiedTransaction};
+
+    #[test]
+    fn test_unverified_transaction_rlp() {
+        let tx = UnverifiedTransaction {
+            unsigned: Transaction::default(),
+            v: 0,
+            r: U256::default(),
+            s: U256::default(),
+            hash: H256::default(),
+        }.compute_hash();
+        assert_eq!(tx, ::rlp::decode(tx.rlp_bytes().as_ref()));
     }
 }
