@@ -143,6 +143,11 @@ impl Spec {
         load_bundled!("tendermint")
     }
 
+    /// Get common blockchain parameters.
+    pub fn params(&self) -> &CommonParams {
+        &self.engine.params()
+    }
+
     /// Get the header of the genesis block.
     pub fn genesis_header(&self) -> Header {
         let mut header: Header = Default::default();

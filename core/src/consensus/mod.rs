@@ -43,6 +43,7 @@ use super::codechain_machine::CodeChainMachine;
 use super::error::Error;
 use super::header::Header;
 use super::machine::Machine;
+use super::spec::CommonParams;
 use super::transaction::{SignedTransaction, UnverifiedTransaction};
 
 /// Seal type.
@@ -270,6 +271,11 @@ impl fmt::Display for EngineError {
 
 /// Common type alias for an engine coupled with an CodeChain-like state machine.
 pub trait CodeChainEngine: ConsensusEngine<CodeChainMachine> {
+    /// Get the general parameters of the chain.
+    fn params(&self) -> &CommonParams {
+        self.machine().params()
+    }
+
     /// Additional verification for transactions in blocks.
     fn verify_transaction_basic(&self, t: &UnverifiedTransaction, header: &Header) -> Result<(), Error> {
         self.machine().verify_transaction_basic(t, header)
