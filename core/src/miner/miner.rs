@@ -371,13 +371,24 @@ impl MinerService for Miner {
         }
     }
 
-    fn submit_seal<C: SealedBlockImporter>(
-        &self,
-        _chain: &C,
-        _block_hash: H256,
-        _seal: Vec<Bytes>,
-    ) -> Result<(), Error> {
-        unimplemented!();
+    fn submit_seal<C: SealedBlockImporter>(&self, chain: &C, block_hash: H256, seal: Vec<Bytes>) -> Result<(), Error> {
+        let result = if let Some(b) = self.sealing_queue.lock().take_if(|b| &b.hash() == &block_hash) {
+            trace!(target: "miner", "Submitted block {}={}={} with seal {:?}", block_hash, b.hash(), b.header().bare_hash(), seal);
+            b.lock().try_seal(&*self.engine, seal).or_else(|(e, _)| {
+                warn!(target: "miner", "Mined solution rejected: {}", e);
+                Err(Error::PowInvalid)
+            })
+        } else {
+            warn!(target: "miner", "Submitted solution rejected: Block unknown or out of date.");
+            Err(Error::PowHashInvalid)
+        };
+        result.and_then(|sealed| {
+            let n = sealed.header().number();
+            let h = sealed.header().hash();
+            chain.import_sealed_block(sealed)?;
+            info!(target: "miner", "Submitted block imported OK. #{}: {}", n, h);
+            Ok(())
+        })
     }
 
     fn import_external_transactions<C: MiningBlockChainClient>(

@@ -158,6 +158,10 @@ pub enum Error {
     Key(KeyError),
     /// TrieDB-related error.
     Trie(TrieError),
+    /// PoW hash is invalid or out of date.
+    PowHashInvalid,
+    /// The value of the nonce or mishash is invalid.
+    PowInvalid,
 }
 
 impl fmt::Display for Error {
@@ -172,6 +176,8 @@ impl fmt::Display for Error {
             Error::Engine(ref err) => err.fmt(f),
             Error::Key(ref err) => err.fmt(f),
             Error::Trie(ref err) => err.fmt(f),
+            Error::PowHashInvalid => f.write_str("Invalid or out of date PoW hash."),
+            Error::PowInvalid => f.write_str("Invalid nonce or mishash"),
         }
     }
 }
