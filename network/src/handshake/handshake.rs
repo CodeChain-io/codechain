@@ -14,11 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::{HashMap, VecDeque};
+use std::collections::HashMap;
 use std::error;
 use std::fmt;
 use std::io;
-use std::result::Result;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
@@ -27,8 +26,7 @@ use cio::{IoChannel, IoContext, IoError as CIoError, IoHandler, IoHandlerResult,
 use ckeys::{exchange, Error as KeysError, Generator, Private, Random};
 use ctypes::Secret;
 use mio::deprecated::EventLoop;
-use mio::net::UdpSocket;
-use mio::{PollOpt, Ready, Token};
+use mio::Token;
 use parking_lot::{Mutex, RwLock};
 use rand::{OsRng, Rng};
 use rlp::{Decodable, DecoderError, Encodable, UntrustedRlp};
@@ -36,11 +34,12 @@ use rlp::{Decodable, DecoderError, Encodable, UntrustedRlp};
 use super::super::connection;
 use super::super::session::{Nonce, Session};
 use super::super::{DiscoveryApi, SocketAddr};
+use super::server::{Error as ServerError, Server};
 use super::{HandshakeMessage, HandshakeMessageBody};
 
 
 pub struct Handshake {
-    socket: UdpSocket,
+    server: Server,
     secrets: HashMap<SocketAddr, Secret>,
     nonces: HashMap<SocketAddr, Nonce>,
     temporary_nonces: HashMap<SocketAddr, Nonce>,
@@ -49,114 +48,123 @@ pub struct Handshake {
 }
 
 #[derive(Debug)]
-enum HandshakeError {
-    IoError(io::Error),
-    CIoError(CIoError),
-    RlpError(DecoderError),
-    SendError(HandshakeMessage, usize),
-    SymmetricCipherError(SymmetricCipherError),
+enum Error {
+    Server(ServerError),
+    Io(io::Error),
+    CIo(CIoError),
+    Decoder(DecoderError),
+    SymmetricCipher(SymmetricCipherError),
     NoSession,
     UnexpectedNonce(Nonce),
     SessionAlreadyExists,
     SessionNotReady,
     ECDHIsNotRequested,
     ECDHAlreadyRequested,
-    KeysError(KeysError),
+    Keys(KeysError),
 }
 
-impl fmt::Display for HandshakeError {
+impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            &HandshakeError::IoError(ref err) => write!(f, "IoError {}", err),
-            &HandshakeError::CIoError(ref err) => err.fmt(f),
-            &HandshakeError::RlpError(ref err) => write!(f, "RlpError {}", err),
-            &HandshakeError::SendError(ref msg, unsent) => {
-                write!(f, "SendError {} bytes of {:?} are not sent", unsent, msg)
-            }
-            &HandshakeError::SymmetricCipherError(ref err) => write!(f, "SymmetricCipherError {:?}", err),
-            &HandshakeError::NoSession => write!(f, "NoSession"),
-            &HandshakeError::UnexpectedNonce(ref nonce) => write!(f, "{:?} is an unexpected nonce", nonce),
-            &HandshakeError::SessionAlreadyExists => write!(f, "Session already exists"),
-            &HandshakeError::SessionNotReady => write!(f, "Session is not ready yet"),
-            &HandshakeError::ECDHIsNotRequested => write!(f, "Ecdh is not requested"),
-            &HandshakeError::ECDHAlreadyRequested => write!(f, "Ecdh is already requested"),
-            &HandshakeError::KeysError(ref err) => err.fmt(f),
+            &Error::Server(ref err) => err.fmt(f),
+            &Error::Io(ref err) => err.fmt(f),
+            &Error::CIo(ref err) => err.fmt(f),
+            &Error::Decoder(ref err) => err.fmt(f),
+            &Error::SymmetricCipher(_) => fmt::Debug::fmt(&self, f),
+            &Error::NoSession => fmt::Debug::fmt(&self, f),
+            &Error::UnexpectedNonce(_) => fmt::Debug::fmt(&self, f),
+            &Error::SessionAlreadyExists => fmt::Debug::fmt(&self, f),
+            &Error::SessionNotReady => fmt::Debug::fmt(&self, f),
+            &Error::ECDHIsNotRequested => fmt::Debug::fmt(&self, f),
+            &Error::ECDHAlreadyRequested => fmt::Debug::fmt(&self, f),
+            &Error::Keys(ref err) => err.fmt(f),
         }
     }
 }
 
-impl error::Error for HandshakeError {
+impl error::Error for Error {
     fn description(&self) -> &str {
         match self {
-            &HandshakeError::IoError(ref err) => err.description(),
-            &HandshakeError::CIoError(ref err) => err.description(),
-            &HandshakeError::RlpError(ref err) => err.description(),
-            &HandshakeError::SendError(..) => "Unsent data",
-            &HandshakeError::SymmetricCipherError(_) => "SymmetricCipherError",
-            &HandshakeError::NoSession => "No session",
-            &HandshakeError::UnexpectedNonce(_) => "Unexpected nonce",
-            &HandshakeError::SessionAlreadyExists => "Session already exists",
-            &HandshakeError::SessionNotReady => "Session is not ready yet",
-            &HandshakeError::ECDHIsNotRequested => "Ecdh is not requested",
-            &HandshakeError::ECDHAlreadyRequested => "Ecdh is already requested",
-            &HandshakeError::KeysError(_) => "KeysError",
+            &Error::Server(ref err) => err.description(),
+            &Error::Io(ref err) => err.description(),
+            &Error::CIo(ref err) => err.description(),
+            &Error::Decoder(ref err) => err.description(),
+            &Error::SymmetricCipher(_) => "SymmetricCipherError",
+            &Error::NoSession => "No session",
+            &Error::UnexpectedNonce(_) => "Unexpected nonce",
+            &Error::SessionAlreadyExists => "Session already exists",
+            &Error::SessionNotReady => "Session is not ready yet",
+            &Error::ECDHIsNotRequested => "Ecdh is not requested",
+            &Error::ECDHAlreadyRequested => "Ecdh is already requested",
+            &Error::Keys(_) => "KeysError",
         }
     }
 
     fn cause(&self) -> Option<&error::Error> {
         match self {
-            &HandshakeError::IoError(ref err) => Some(err),
-            &HandshakeError::CIoError(_) => None,
-            &HandshakeError::RlpError(ref err) => Some(err),
-            &HandshakeError::SendError(..) => None,
-            &HandshakeError::SymmetricCipherError(_) => None,
-            &HandshakeError::NoSession => None,
-            &HandshakeError::UnexpectedNonce(_) => None,
-            &HandshakeError::SessionAlreadyExists => None,
-            &HandshakeError::SessionNotReady => None,
-            &HandshakeError::ECDHIsNotRequested => None,
-            &HandshakeError::ECDHAlreadyRequested => None,
-            &HandshakeError::KeysError(_) => None,
+            &Error::Server(ref err) => Some(err),
+            &Error::Io(ref err) => Some(err),
+            &Error::CIo(_) => None,
+            &Error::Decoder(ref err) => Some(err),
+            &Error::SymmetricCipher(_) => None,
+            &Error::NoSession => None,
+            &Error::UnexpectedNonce(_) => None,
+            &Error::SessionAlreadyExists => None,
+            &Error::SessionNotReady => None,
+            &Error::ECDHIsNotRequested => None,
+            &Error::ECDHAlreadyRequested => None,
+            &Error::Keys(_) => None,
         }
     }
 }
 
-impl From<io::Error> for HandshakeError {
-    fn from(err: io::Error) -> HandshakeError {
-        HandshakeError::IoError(err)
+impl From<ServerError> for Error {
+    fn from(err: ServerError) -> Self {
+        Error::Server(err)
     }
 }
 
-impl From<CIoError> for HandshakeError {
-    fn from(err: CIoError) -> HandshakeError {
-        HandshakeError::CIoError(err)
-    }
-}
-impl From<DecoderError> for HandshakeError {
-    fn from(err: DecoderError) -> HandshakeError {
-        HandshakeError::RlpError(err)
+impl From<io::Error> for Error {
+    fn from(err: io::Error) -> Error {
+        Error::Io(err)
     }
 }
 
-impl From<SymmetricCipherError> for HandshakeError {
-    fn from(err: SymmetricCipherError) -> HandshakeError {
-        HandshakeError::SymmetricCipherError(err)
+impl From<CIoError> for Error {
+    fn from(err: CIoError) -> Error {
+        Error::CIo(err)
+    }
+}
+impl From<DecoderError> for Error {
+    fn from(err: DecoderError) -> Error {
+        Error::Decoder(err)
     }
 }
 
-impl From<KeysError> for HandshakeError {
-    fn from(err: KeysError) -> HandshakeError {
-        HandshakeError::KeysError(err)
+impl From<SymmetricCipherError> for Error {
+    fn from(err: SymmetricCipherError) -> Error {
+        Error::SymmetricCipher(err)
     }
 }
 
-const MAX_HANDSHAKE_PACKET_SIZE: usize = 1024;
+impl From<KeysError> for Error {
+    fn from(err: KeysError) -> Error {
+        Error::Keys(err)
+    }
+}
+
+type Result<T> = ::std::result::Result<T, Error>;
+
+#[derive(Clone, Debug, PartialOrd, PartialEq)]
+pub enum HandlerMessage {
+    ConnectTo(SocketAddr),
+}
 
 impl Handshake {
-    fn bind(socket_address: &SocketAddr) -> Result<Self, HandshakeError> {
-        let socket = UdpSocket::bind(socket_address.into())?;
+    fn bind(socket_address: &SocketAddr) -> Result<Self> {
+        let server = Server::bind(socket_address)?;
         Ok(Self {
-            socket,
+            server,
             secrets: HashMap::new(),
             nonces: HashMap::new(),
             temporary_nonces: HashMap::new(),
@@ -165,43 +173,34 @@ impl Handshake {
         })
     }
 
-    fn receive(&self) -> Result<Option<(HandshakeMessage, SocketAddr)>, HandshakeError> {
-        let mut buf: [u8; MAX_HANDSHAKE_PACKET_SIZE] = [0; MAX_HANDSHAKE_PACKET_SIZE];
-        match self.socket.recv_from(&mut buf) {
-            Ok((received_size, socket_address)) => {
-                let socket_address = SocketAddr::from(socket_address);
-                let raw_bytes = &buf[0..received_size];
-                let rlp = UntrustedRlp::new(&raw_bytes);
-                let message = Decodable::decode(&rlp)?;
+    fn receive(&self) -> Result<Option<(HandshakeMessage, SocketAddr)>> {
+        Ok(self.server.receive()?)
+    }
 
-                info!("Handshake {:?} received from {:?}", message, socket_address);
-                Ok(Some((message, SocketAddr::from(socket_address))))
+    // return false if there is no message to be sent
+    fn read(&mut self, extension: &IoChannel<connection::HandlerMessage>) -> Result<bool> {
+        match self.receive() {
+            Ok(None) => Ok(false),
+            Ok(Some((msg, socket_address))) => {
+                self.on_packet(&msg, &socket_address, extension)?;
+                Ok(true)
             }
-            Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => Ok(None),
-            Err(e) => Err(HandshakeError::from(e)),
+            Err(err) => Err(From::from(err)),
         }
     }
 
-    fn send_to(&self, message: &HandshakeMessage, target: &SocketAddr) -> Result<(), HandshakeError> {
-        let unencrypted_bytes = message.rlp_bytes();
-
-        let length_to_send = unencrypted_bytes.len();
-
-        debug_assert!(length_to_send < MAX_HANDSHAKE_PACKET_SIZE);
-        let sent_size = self.socket.send_to(&unencrypted_bytes, target.into())?;
-        if sent_size != length_to_send {
-            return Err(HandshakeError::SendError(message.clone(), length_to_send - sent_size))
-        }
-        info!("Handshake {:?} sent to {:?}", message, target);
-        Ok(())
+    // return false if there is no message to be sent
+    fn send(&mut self) -> Result<bool> {
+        Ok(self.server.send()?)
     }
 
-    fn create_new_connection(&mut self, target: &SocketAddr) -> Result<(), HandshakeError> {
+    fn create_new_connection(&mut self, target: &SocketAddr) -> Result<()> {
         let ephemeral = Random.generate()?;
         self.requested.insert(target.clone(), ephemeral.private().clone());
 
         let seq = self.seq_counter.fetch_add(1, Ordering::SeqCst);
-        self.send_to(&HandshakeMessage::ecdh_request(seq as u64, *ephemeral.public()), target)?;
+        let message = HandshakeMessage::ecdh_request(seq as u64, *ephemeral.public());
+        self.server.enqueue(message, target.clone())?;
         Ok(())
     }
 
@@ -210,11 +209,11 @@ impl Handshake {
         message: &HandshakeMessage,
         from: &SocketAddr,
         extension: &IoChannel<connection::HandlerMessage>,
-    ) -> Result<(), HandshakeError> {
+    ) -> Result<()> {
         match message.body() {
             &HandshakeMessageBody::ConnectionRequest(ref received_nonce) => {
                 let encrypted_bytes = {
-                    let secret = self.secrets.get(from).ok_or(HandshakeError::NoSession)?;
+                    let secret = self.secrets.get(from).ok_or(Error::NoSession)?;
                     if self.nonces.contains_key(&from) {
                         info!("A nonce already exists");
                     }
@@ -235,21 +234,21 @@ impl Handshake {
                 };
 
                 let pong = HandshakeMessage::connection_allowed(message.seq(), encrypted_bytes);
-                self.send_to(&pong, &from)?;
+                self.server.enqueue(pong, from.clone())?;
                 Ok(())
             }
             &HandshakeMessageBody::ConnectionAllowed(ref nonce) => {
-                let secret = self.secrets.get(from).ok_or(HandshakeError::NoSession)?;
+                let secret = self.secrets.get(from).ok_or(Error::NoSession)?;
                 let temporary_nonce = self.temporary_nonces.get(&from);
                 if temporary_nonce.is_none() {
-                    return Err(From::from(HandshakeError::SessionNotReady))
+                    return Err(From::from(Error::SessionNotReady))
                 }
                 let temporary_nonce = temporary_nonce.expect("Nonce must exist");
                 let temporary_session = Session::new(*secret, temporary_nonce.clone());
                 let nonce = decrypt_and_decode_nonce(&temporary_session, &nonce)?;
 
                 if temporary_nonce != &nonce {
-                    return Err(From::from(HandshakeError::UnexpectedNonce(nonce)))
+                    return Err(From::from(Error::UnexpectedNonce(nonce)))
                 }
 
                 let session = Session::new(*secret, nonce);
@@ -264,13 +263,12 @@ impl Handshake {
                 let ephemeral = Random.generate()?;
                 let secret = exchange(key, &ephemeral.private())?;
                 if self.secrets.insert(from.clone(), secret).is_some() {
-                    self.send_to(
-                        &HandshakeMessage::ecdh_denied(message.seq(), "ECDH Already requested".to_string()),
-                        from,
-                    )?;
-                    return Err(HandshakeError::ECDHAlreadyRequested)
+                    let message = HandshakeMessage::ecdh_denied(message.seq(), "ECDH Already requested".to_string());
+                    self.server.enqueue(message, from.clone())?;
+                    return Err(Error::ECDHAlreadyRequested)
                 }
-                self.send_to(&HandshakeMessage::ecdh_allowed(message.seq(), *ephemeral.public()), from)?;
+                let message = HandshakeMessage::ecdh_allowed(message.seq(), *ephemeral.public());
+                self.server.enqueue(message, from.clone())?;
                 Ok(())
             }
             &HandshakeMessageBody::EcdhAllowed(ref key) => {
@@ -283,7 +281,7 @@ impl Handshake {
                     let encrypted_nonce = encode_and_encrypt_nonce(&session, &nonce)?;
 
                     if self.secrets.contains_key(&from) {
-                        return Err(HandshakeError::SessionAlreadyExists)
+                        return Err(Error::SessionAlreadyExists)
                     }
                     let t = self.secrets.insert(from.clone(), secret);
                     debug_assert!(t.is_none());
@@ -291,44 +289,46 @@ impl Handshake {
                     debug_assert!(t.is_none());
 
                     let seq = self.seq_counter.fetch_add(1, Ordering::SeqCst);
-                    self.send_to(&HandshakeMessage::connection_request(seq as u64, encrypted_nonce), from)?;
+                    let message = HandshakeMessage::connection_request(seq as u64, encrypted_nonce);
+                    self.server.enqueue(message, from.clone())?;
                     Ok(())
                 } else {
-                    Err(HandshakeError::ECDHIsNotRequested)
+                    Err(Error::ECDHIsNotRequested)
                 }
             }
             &HandshakeMessageBody::EcdhDenied(ref reason) => {
                 info!("Connection to {:?} refused(reason: {}", from, reason);
                 if self.requested.remove(from).is_none() {
-                    Err(HandshakeError::ECDHIsNotRequested)
+                    Err(Error::ECDHIsNotRequested)
                 } else {
                     Ok(())
                 }
             }
         }
     }
+
+    fn register(&self, reg: Token, event_loop: &mut EventLoop<IoManager<HandlerMessage>>) -> io::Result<()> {
+        Ok(self.server.register(reg, event_loop)?)
+    }
+
+    fn reregister(&self, reg: Token, event_loop: &mut EventLoop<IoManager<HandlerMessage>>) -> io::Result<()> {
+        Ok(self.server.reregister(reg, event_loop)?)
+    }
 }
 
-fn encode_and_encrypt_nonce(session: &Session, nonce: &Nonce) -> Result<Vec<u8>, HandshakeError> {
+fn encode_and_encrypt_nonce(session: &Session, nonce: &Nonce) -> Result<Vec<u8>> {
     let unencrypted_bytes = nonce.rlp_bytes();
     Ok(session.encrypt(&unencrypted_bytes)?)
 }
 
-fn decrypt_and_decode_nonce(session: &Session, encrypted_bytes: &Vec<u8>) -> Result<Nonce, HandshakeError> {
+fn decrypt_and_decode_nonce(session: &Session, encrypted_bytes: &Vec<u8>) -> Result<Nonce> {
     let unencrypted_bytes = session.decrypt(&encrypted_bytes)?;
     let rlp = UntrustedRlp::new(&unencrypted_bytes);
     Ok(Decodable::decode(&rlp)?)
 }
 
-struct Internal {
-    handshake: Handshake,
-    connect_queue: VecDeque<SocketAddr>,
-}
-
 pub struct Handler {
-    #[allow(dead_code)]
-    socket_address: SocketAddr,
-    internal: Mutex<Internal>,
+    handshake: Mutex<Handshake>,
     extension: IoChannel<connection::HandlerMessage>,
     #[allow(dead_code)]
     discovery: RwLock<Arc<DiscoveryApi>>,
@@ -343,14 +343,10 @@ impl Handler {
         extension: IoChannel<connection::HandlerMessage>,
         discovery: Arc<DiscoveryApi>,
     ) -> Self {
-        let handshake = Handshake::bind(&socket_address).expect("Cannot bind UDP port");
+        let handshake = Mutex::new(Handshake::bind(&socket_address).expect("Cannot bind UDP port"));
         let discovery = RwLock::new(discovery);
         Self {
-            socket_address,
-            internal: Mutex::new(Internal {
-                handshake,
-                connect_queue: VecDeque::new(),
-            }),
+            handshake,
             extension,
             discovery,
             secret_key,
@@ -358,69 +354,63 @@ impl Handler {
     }
 }
 
-#[derive(Clone, Debug, PartialOrd, PartialEq)]
-pub enum HandlerMessage {
-    ConnectTo(SocketAddr),
-}
-
-const RECV_TOKEN: usize = 0;
+const RECEIVE_TOKEN: usize = 0;
 
 impl IoHandler<HandlerMessage> for Handler {
     fn initialize(&self, io: &IoContext<HandlerMessage>) -> IoHandlerResult<()> {
-        io.register_stream(RECV_TOKEN)?;
+        io.register_stream(RECEIVE_TOKEN)?;
         Ok(())
     }
 
-    fn message(&self, _io: &IoContext<HandlerMessage>, message: &HandlerMessage) -> IoHandlerResult<()> {
+    fn message(&self, io: &IoContext<HandlerMessage>, message: &HandlerMessage) -> IoHandlerResult<()> {
         match message {
             &HandlerMessage::ConnectTo(ref socket_address) => {
-                let mut internal = self.internal.lock();
-                let ref mut queue = internal.connect_queue;
-                queue.push_back(socket_address.clone());
+                let mut handshake = self.handshake.lock();
+                handshake.create_new_connection(&socket_address)?;
+                io.update_registration(RECEIVE_TOKEN)?;
             }
         };
         Ok(())
     }
 
     fn stream_hup(&self, _io: &IoContext<HandlerMessage>, _stream: StreamToken) -> IoHandlerResult<()> {
-        info!("handshake server closed");
-        Ok(())
+        unreachable!()
     }
 
-    fn stream_readable(&self, _io: &IoContext<HandlerMessage>, stream: StreamToken) -> IoHandlerResult<()> {
-        match stream {
-            RECV_TOKEN => loop {
-                let mut internal = self.internal.lock();
-                let ref mut handshake = internal.handshake;
-                match handshake.receive() {
-                    Ok(None) => break,
-                    Ok(Some((msg, socket_address))) => {
-                        info!("{:?} from {:?}", msg, socket_address);
-                        handshake.on_packet(&msg, &socket_address, &self.extension)?;
-                    }
-                    Err(err) => {
-                        info!("handshake receive error {}", err);
-                    }
-                };
-            },
-            _ => {
-                info!("Unknown stream token {}", stream);
-            }
-        };
-        Ok(())
-    }
-
-    fn stream_writable(&self, _io: &IoContext<HandlerMessage>, _stream: StreamToken) -> IoHandlerResult<()> {
+    fn stream_readable(&self, io: &IoContext<HandlerMessage>, stream: StreamToken) -> IoHandlerResult<()> {
+        if stream != RECEIVE_TOKEN {
+            unreachable!()
+        }
         loop {
-            let mut internal = self.internal.lock();
-            if let Some(ref socket_address) = internal.connect_queue.pop_front().as_ref() {
-                let ref mut handshake = internal.handshake;
-                handshake.create_new_connection(&socket_address)?;
-            } else {
-                break
+            let mut handshake = self.handshake.lock();
+            let result = handshake.read(&self.extension);
+            if let Ok(true) = result {
+                continue
+            }
+            io.update_registration(stream)?;
+            result?;
+            return Ok(())
+        }
+    }
+
+    fn stream_writable(&self, io: &IoContext<HandlerMessage>, stream: StreamToken) -> IoHandlerResult<()> {
+        if stream != RECEIVE_TOKEN {
+            unreachable!()
+        }
+        loop {
+            let mut handshake = self.handshake.lock();
+            match handshake.send() {
+                Ok(true) => continue,
+                Ok(false) => {
+                    io.update_registration(stream)?;
+                    return Ok(())
+                }
+                Err(err) => {
+                    io.update_registration(stream)?;
+                    return Err(From::from(err))
+                }
             }
         }
-        Ok(())
     }
 
     fn register_stream(
@@ -429,16 +419,31 @@ impl IoHandler<HandlerMessage> for Handler {
         reg: Token,
         event_loop: &mut EventLoop<IoManager<HandlerMessage>>,
     ) -> IoHandlerResult<()> {
-        match stream {
-            RECV_TOKEN => {
-                let mut internal = self.internal.lock();
-                let ref mut handshake = internal.handshake;
-                event_loop.register(&handshake.socket, reg, Ready::readable() | Ready::writable(), PollOpt::edge())?;
-            }
-            _ => {
-                unreachable!();
-            }
+        if stream != RECEIVE_TOKEN {
+            unreachable!()
         }
-        Ok(())
+        let handshake = self.handshake.lock();
+        Ok(handshake.register(reg, event_loop)?)
+    }
+
+    fn update_stream(
+        &self,
+        stream: usize,
+        reg: Token,
+        event_loop: &mut EventLoop<IoManager<HandlerMessage>>,
+    ) -> IoHandlerResult<()> {
+        if stream != RECEIVE_TOKEN {
+            unreachable!()
+        }
+        let handshake = self.handshake.lock();
+        Ok(handshake.reregister(reg, event_loop)?)
+    }
+
+    fn deregister_stream(
+        &self,
+        _stream: usize,
+        _event_loop: &mut EventLoop<IoManager<HandlerMessage>>,
+    ) -> IoHandlerResult<()> {
+        unreachable!()
     }
 }
