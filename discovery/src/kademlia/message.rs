@@ -37,6 +37,7 @@ pub enum Message {
 }
 
 impl Message {
+    #[allow(dead_code)]
     pub fn id(&self) -> Id {
         match self {
             &Message::FindNode {

@@ -19,7 +19,7 @@ use std::str::FromStr;
 
 use cnetwork::SocketAddr;
 
-use super::node_id::{self, log2_distance_between_nodes};
+use super::node_id::log2_distance_between_nodes;
 use super::NodeId;
 
 
@@ -35,14 +35,6 @@ fn zero() -> SocketAddr {
 }
 
 impl Contact {
-    pub fn random(addr: SocketAddr) -> Self {
-        let id = node_id::random();
-        Contact {
-            id,
-            addr,
-        }
-    }
-
     pub fn new(id: NodeId, addr: SocketAddr) -> Self {
         Contact {
             id,
@@ -82,7 +74,6 @@ mod tests {
     use super::Contact;
     use std::cmp::Ordering;
     use std::mem::size_of;
-    use std::str::FromStr;
 
     #[test]
     fn test_log2_distance_is_1_if_lsb_is_different() {

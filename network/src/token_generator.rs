@@ -31,22 +31,27 @@ impl TokenGenerator {
         }
     }
 
+    #[allow(dead_code)]
     pub fn limit(&self) -> usize {
         self.limited.limit()
     }
 
+    #[allow(dead_code)]
     pub fn len(&self) -> usize {
         self.limited.len()
     }
 
+    #[allow(dead_code)]
     pub fn capacity(&self) -> usize {
         self.limited.capacity()
     }
 
+    #[allow(dead_code)]
     pub fn is_full(&self) -> bool {
         self.limited.is_full()
     }
 
+    #[allow(dead_code)]
     pub fn is_assigned(&self, token: Token) -> bool {
         self.limited.contains(token)
     }

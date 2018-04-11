@@ -27,6 +27,7 @@ pub enum Message {
 }
 
 impl Message {
+    #[allow(dead_code)]
     pub fn is_sync(&self) -> bool {
         match self {
             &Message::Handshake(HandshakeMessage::Sync(..)) => true,

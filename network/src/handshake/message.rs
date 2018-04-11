@@ -114,6 +114,7 @@ impl Message {
         self.seq
     }
 
+    #[allow(dead_code)]
     pub fn version(&self) -> Version {
         self.version
     }

@@ -63,6 +63,7 @@ impl Message {
         }
     }
 
+    #[allow(dead_code)]
     pub fn denied(seq: Seq, versions: Vec<Version>) -> Self {
         Self {
             version: 0,

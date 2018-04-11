@@ -17,13 +17,13 @@
 use std::collections::{HashMap, VecDeque};
 use std::error;
 use std::fmt;
-use std::io::{self, Write};
+use std::io;
 use std::result;
 
 use ccrypto::aes::SymmetricCipherError;
 use cio::IoManager;
 use ctypes::Secret;
-use mio::deprecated::{EventLoop, TryRead};
+use mio::deprecated::EventLoop;
 use mio::net::TcpStream;
 use mio::unix::UnixReady;
 use mio::{PollOpt, Ready, Token};
@@ -318,6 +318,7 @@ impl<'a> ExtensionCallback<'a> {
         self.client.on_connection_allowed(&name, &self.id);
     }
 
+    #[allow(dead_code)]
     fn on_connection_denied(&self, name: &String, error: ExtensionError) {
         self.client.on_connection_denied(&name, &self.id, error);
     }

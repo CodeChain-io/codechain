@@ -160,7 +160,7 @@ impl Manager {
     }
 
     fn deregister_unprocessed_connection(&mut self, token: &StreamToken) {
-        if let Some(connection) = self.unprocessed_connections.remove(&token) {
+        if let Some(_) = self.unprocessed_connections.remove(&token) {
             let t = self.tokens.restore(*token);
             debug_assert!(t);
             let t = self.unprocessed_tokens.remove(&token);
@@ -171,7 +171,7 @@ impl Manager {
     }
 
     fn deregister_connection(&mut self, token: &StreamToken) {
-        if let Some(connection) = self.connections.remove(&token) {
+        if let Some(_) = self.connections.remove(&token) {
             let t = self.tokens.restore(*token);
             debug_assert!(t);
         } else {

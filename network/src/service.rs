@@ -26,7 +26,7 @@ use super::handshake;
 use super::{Api, DiscoveryApi, NetworkExtension, SocketAddr};
 
 pub struct Service {
-    handshake_service: IoService<handshake::HandlerMessage>,
+    _handshake_service: IoService<handshake::HandlerMessage>,
     extension_service: IoService<connection::HandlerMessage>,
     client: Arc<Client>,
 }
@@ -56,7 +56,7 @@ impl Service {
             }
         }
         Ok(Self {
-            handshake_service,
+            _handshake_service: handshake_service,
             extension_service,
             client,
         })

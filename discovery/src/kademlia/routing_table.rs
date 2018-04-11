@@ -36,6 +36,7 @@ impl RoutingTable {
         bucket.touch_contact(contact)
     }
 
+    #[allow(dead_code)]
     pub fn remove_contact(&mut self, contact: &Contact) -> Option<&Contact> {
         let index = contact.log2_distance(&self.local_id);
         if index == 0 {

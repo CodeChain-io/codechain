@@ -39,6 +39,7 @@ enum Data {
 }
 
 impl Message {
+    #[allow(dead_code)]
     pub fn encrypted(extension_name: String, extension_version: Version, data: Vec<u8>) -> Self {
         Self {
             version: 0,

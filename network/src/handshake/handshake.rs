@@ -326,10 +326,13 @@ struct Internal {
 }
 
 pub struct Handler {
+    #[allow(dead_code)]
     socket_address: SocketAddr,
     internal: Mutex<Internal>,
     extension: IoChannel<connection::HandlerMessage>,
+    #[allow(dead_code)]
     discovery: RwLock<Arc<DiscoveryApi>>,
+    #[allow(dead_code)]
     secret_key: Secret,
 }
 

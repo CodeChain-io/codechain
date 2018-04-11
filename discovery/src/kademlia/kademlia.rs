@@ -30,6 +30,7 @@ use super::routing_table::RoutingTable;
 use super::NodeId;
 
 pub struct Kademlia {
+    #[allow(dead_code)]
     alpha: u8,
     k: u8,
     pub t_refresh: u32,

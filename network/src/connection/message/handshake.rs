@@ -31,14 +31,17 @@ pub enum Message {
 }
 
 impl Message {
+    #[allow(dead_code)]
     pub fn sync(nonce: Nonce) -> Self {
         Message::Sync(0, nonce)
     }
 
+    #[allow(dead_code)]
     pub fn ack() -> Self {
         Message::Ack(0)
     }
 
+    #[allow(dead_code)]
     fn version(&self) -> Version {
         match self {
             &Message::Sync(version, _) => version,
