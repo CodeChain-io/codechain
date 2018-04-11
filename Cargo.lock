@@ -356,10 +356,15 @@ dependencies = [
 name = "codechain-rpc"
 version = "0.1.0"
 dependencies = [
+ "codechain-bytes 0.1.0",
+ "codechain-core 0.1.0",
+ "codechain-types 0.2.0",
  "jsonrpc-core 8.0.1 (git+https://github.com/ethcore/jsonrpc.git)",
  "jsonrpc-http-server 8.0.0 (git+https://github.com/ethcore/jsonrpc.git)",
  "jsonrpc-macros 8.0.0 (git+https://github.com/ethcore/jsonrpc.git)",
  "log 0.3.9 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rlp 0.2.1",
+ "rustc-hex 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-serialize 0.3.24 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.27 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.27 (registry+https://github.com/rust-lang/crates.io-index)",

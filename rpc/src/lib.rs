@@ -1,12 +1,21 @@
+extern crate codechain_bytes as cbytes;
+extern crate codechain_core as ccore;
+extern crate codechain_types as ctypes;
 extern crate jsonrpc_core;
 extern crate jsonrpc_http_server;
 extern crate log;
+extern crate rlp;
+extern crate rustc_hex;
 extern crate rustc_serialize;
 extern crate serde;
 extern crate serde_json;
 extern crate tokio_core;
 
+#[macro_use]
+extern crate jsonrpc_macros;
+
 pub mod rpc_server;
+pub mod v1;
 
 pub use rustc_serialize::hex;
 

@@ -45,6 +45,7 @@ mod rpc_apis;
 use std::sync::Arc;
 
 use app_dirs::AppInfo;
+use ccore::{Miner, MinerOptions};
 use cdiscovery::KademliaExtension;
 use clogger::{setup_log, Config as LogConfig};
 use creactor::EventLoop;
@@ -85,15 +86,21 @@ fn run() -> Result<(), String> {
     let log_config = LogConfig::default();
     let _logger = setup_log(&log_config).expect("Logger is initialized only once; qed");
 
+    let miner = Miner::new(MinerOptions::default(), &spec);
+    let client = commands::client_start(&config, &spec, miner.clone())?;
+
+    let rpc_apis_deps = Arc::new(rpc_apis::ApiDependencies {
+        client: client.client(),
+        miner: miner.clone(),
+    });
+
     let _rpc_server = {
         if let Some(rpc_config) = config::parse_rpc_config(&matches)? {
-            Some(commands::rpc_start(rpc_config)?)
+            Some(commands::rpc_start(rpc_config, rpc_apis_deps.clone())?)
         } else {
             None
         }
     };
-
-    let client = commands::client_start(&config, &spec)?;
 
     let _network_service = {
         if let Some(network_config) = config::parse_network_config(&matches)? {
