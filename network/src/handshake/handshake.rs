@@ -59,14 +59,9 @@ enum Error {
     CIo(CIoError),
     Decoder(DecoderError),
     SymmetricCipher(SymmetricCipherError),
-    NoSession,
     UnexpectedNonce(Nonce),
-    SessionAlreadyExists,
-    SessionNotReady,
-    ECDHIsNotRequested,
-    ECDHAlreadyRequested,
     Keys(KeysError),
-    TooManyTmpNonces,
+    General(&'static str),
 }
 
 impl fmt::Display for Error {
@@ -77,14 +72,9 @@ impl fmt::Display for Error {
             &Error::CIo(ref err) => err.fmt(f),
             &Error::Decoder(ref err) => err.fmt(f),
             &Error::SymmetricCipher(_) => fmt::Debug::fmt(&self, f),
-            &Error::NoSession => fmt::Debug::fmt(&self, f),
             &Error::UnexpectedNonce(_) => fmt::Debug::fmt(&self, f),
-            &Error::SessionAlreadyExists => fmt::Debug::fmt(&self, f),
-            &Error::SessionNotReady => fmt::Debug::fmt(&self, f),
-            &Error::ECDHIsNotRequested => fmt::Debug::fmt(&self, f),
-            &Error::ECDHAlreadyRequested => fmt::Debug::fmt(&self, f),
             &Error::Keys(ref err) => err.fmt(f),
-            &Error::TooManyTmpNonces => fmt::Debug::fmt(&self, f),
+            &Error::General(_) => fmt::Debug::fmt(&self, f),
         }
     }
 }
@@ -97,14 +87,9 @@ impl error::Error for Error {
             &Error::CIo(ref err) => err.description(),
             &Error::Decoder(ref err) => err.description(),
             &Error::SymmetricCipher(_) => "SymmetricCipherError",
-            &Error::NoSession => "No session",
             &Error::UnexpectedNonce(_) => "Unexpected nonce",
-            &Error::SessionAlreadyExists => "Session already exists",
-            &Error::SessionNotReady => "Session is not ready yet",
-            &Error::ECDHIsNotRequested => "Ecdh is not requested",
-            &Error::ECDHAlreadyRequested => "Ecdh is already requested",
             &Error::Keys(_) => "KeysError",
-            &Error::TooManyTmpNonces => "Too many tmp nonces",
+            &Error::General(ref str) => str,
         }
     }
 
@@ -115,14 +100,9 @@ impl error::Error for Error {
             &Error::CIo(_) => None,
             &Error::Decoder(ref err) => Some(err),
             &Error::SymmetricCipher(_) => None,
-            &Error::NoSession => None,
             &Error::UnexpectedNonce(_) => None,
-            &Error::SessionAlreadyExists => None,
-            &Error::SessionNotReady => None,
-            &Error::ECDHIsNotRequested => None,
-            &Error::ECDHAlreadyRequested => None,
             &Error::Keys(_) => None,
-            &Error::TooManyTmpNonces => None,
+            &Error::General(_) => None,
         }
     }
 }
@@ -236,7 +216,7 @@ impl Handshake {
         match message.body() {
             &HandshakeMessageBody::ConnectionRequest(ref received_nonce) => {
                 let encrypted_bytes = {
-                    let secret = self.secrets.get(from).ok_or(Error::NoSession)?;
+                    let secret = self.secrets.get(from).ok_or(Error::General("NoSession"))?;
 
                     let temporary_session = Session::new_with_zero_nonce(secret.clone());
 
@@ -257,8 +237,8 @@ impl Handshake {
                 Ok(())
             }
             &HandshakeMessageBody::ConnectionAllowed(ref nonce) => {
-                let temporary_nonce = self.temporary_nonces.get(&from).ok_or(Error::SessionNotReady)?;
-                let secret = self.secrets.get(from).ok_or(Error::NoSession)?;
+                let temporary_nonce = self.temporary_nonces.get(&from).ok_or(Error::General("SessionNotReady"))?;
+                let secret = self.secrets.get(from).ok_or(Error::General("NoSession"))?;
                 let temporary_session = Session::new(*secret, temporary_nonce.clone());
                 let nonce = decrypt_and_decode_nonce(&temporary_session, &nonce)?;
 
@@ -280,57 +260,51 @@ impl Handshake {
                 if self.secrets.insert(from.clone(), secret).is_some() {
                     let message = HandshakeMessage::ecdh_denied(message.seq(), "ECDH Already requested".to_string());
                     self.server.enqueue(message, from.clone())?;
-                    return Err(Error::ECDHAlreadyRequested)
+                    return Err(Error::General("ECDHAlreadyRequested"))
                 }
                 let message = HandshakeMessage::ecdh_allowed(message.seq(), *ephemeral.public());
                 self.server.enqueue(message, from.clone())?;
                 Ok(())
             }
             &HandshakeMessageBody::EcdhAllowed(ref key) => {
-                if let Some(local_private) = self.requested.remove(from) {
-                    let secret = exchange(key, &local_private)?;
-                    let session = Session::new_with_zero_nonce(secret);
+                let local_private = self.requested.remove(from).ok_or(Error::General("ECDHIsNotRequested"))?;
+                let secret = exchange(key, &local_private)?;
+                let session = Session::new_with_zero_nonce(secret);
 
-                    let mut rng = OsRng::new().expect("Cannot generate random number");
-                    let nonce = rng.gen();
-                    let encrypted_nonce = encode_and_encrypt_nonce(&session, &nonce)?;
+                let mut rng = OsRng::new().expect("Cannot generate random number");
+                let nonce = rng.gen();
+                let encrypted_nonce = encode_and_encrypt_nonce(&session, &nonce)?;
 
-                    if self.secrets.contains_key(&from) {
-                        return Err(Error::SessionAlreadyExists)
-                    }
-
-                    let token = self.tmp_nonce_tokens.gen().ok_or(Error::TooManyTmpNonces)?;
-                    let t = self.secrets.insert(from.clone(), secret);
-                    debug_assert!(t.is_none());
-                    let t = self.temporary_nonces.insert(from.clone(), nonce);
-                    debug_assert!(t.is_none());
-
-                    let seq = self.seq_counter.fetch_add(1, Ordering::SeqCst);
-                    let message = HandshakeMessage::connection_request(seq as u64, encrypted_nonce);
-                    if let Err(err) = self.server.enqueue(message, from.clone()) {
-                        let t = self.tmp_nonce_tokens.restore(token);
-                        debug_assert!(t);
-                        return Err(From::from(err))
-                    };
-
-                    let t = self.tmp_nonce_token_to_addr.insert(token, from.clone());
-                    debug_assert!(t.is_none());
-                    let t = self.addr_to_tmp_nonce_token.insert(from.clone(), token);
-                    debug_assert!(t.is_none());
-
-                    io.register_timer_once(token, TMP_NONCE_TIMEOUT_MS)?;
-                    Ok(())
-                } else {
-                    Err(Error::ECDHIsNotRequested)
+                if self.secrets.contains_key(&from) {
+                    return Err(Error::General("SessionAlreadyExists"))
                 }
+
+                let token = self.tmp_nonce_tokens.gen().ok_or(Error::General("TooManyTemporaryNonces"))?;
+                let t = self.secrets.insert(from.clone(), secret);
+                debug_assert!(t.is_none());
+                let t = self.temporary_nonces.insert(from.clone(), nonce);
+                debug_assert!(t.is_none());
+
+                let seq = self.seq_counter.fetch_add(1, Ordering::SeqCst);
+                let message = HandshakeMessage::connection_request(seq as u64, encrypted_nonce);
+                if let Err(err) = self.server.enqueue(message, from.clone()) {
+                    let t = self.tmp_nonce_tokens.restore(token);
+                    debug_assert!(t);
+                    return Err(From::from(err))
+                };
+
+                let t = self.tmp_nonce_token_to_addr.insert(token, from.clone());
+                debug_assert!(t.is_none());
+                let t = self.addr_to_tmp_nonce_token.insert(from.clone(), token);
+                debug_assert!(t.is_none());
+
+                io.register_timer_once(token, TMP_NONCE_TIMEOUT_MS)?;
+                Ok(())
             }
             &HandshakeMessageBody::EcdhDenied(ref reason) => {
                 info!("Connection to {:?} refused(reason: {}", from, reason);
-                if self.requested.remove(from).is_none() {
-                    Err(Error::ECDHIsNotRequested)
-                } else {
-                    Ok(())
-                }
+                let _ = self.requested.remove(from).ok_or(Error::General("ECDHIsNotRequested"))?;
+                Ok(())
             }
         }
     }
