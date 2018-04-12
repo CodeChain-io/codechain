@@ -46,6 +46,10 @@ pub struct Manager {
 
     registered_sessions: HashMap<Nonce, Session>,
     socket_to_session: SessionTable,
+
+    waiting_sync_tokens: TokenGenerator,
+    waiting_sync_stream_to_timer: HashMap<StreamToken, TimerToken>,
+    waiting_sync_timer_to_stream: HashMap<TimerToken, StreamToken>,
 }
 
 const MAX_CONNECTIONS: usize = 32;
@@ -58,6 +62,12 @@ const LAST_CONNECTION_TOKEN: TimerToken = FIRST_CONNECTION_TOKEN + MAX_CONNECTIO
 const FIRST_TIMER_TOKEN: TimerToken = LAST_CONNECTION_TOKEN;
 const MAX_TIMERS: usize = 100;
 const LAST_TIMER_TOKEN: TimerToken = FIRST_TIMER_TOKEN + MAX_TIMERS;
+
+const FIRST_WAIT_SYNC_TOKEN: TimerToken = LAST_TIMER_TOKEN;
+const MAX_SYNC_WAITS: usize = 10;
+const LAST_WAIT_SYNC_TOKEN: TimerToken = FIRST_WAIT_SYNC_TOKEN + MAX_SYNC_WAITS;
+
+const WAIT_SYNC_MS: u64 = 10 * 1000;
 
 type TimerId = usize;
 
@@ -103,6 +113,8 @@ enum Error {
     General(&'static str),
 }
 
+type Result<T> = ::std::result::Result<T, Error>;
+
 impl ::std::fmt::Display for Error {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         match self {
@@ -127,21 +139,37 @@ impl Manager {
 
             registered_sessions: HashMap::new(),
             socket_to_session: SessionTable::new(),
+
+            waiting_sync_tokens: TokenGenerator::new(FIRST_WAIT_SYNC_TOKEN, LAST_WAIT_SYNC_TOKEN),
+            waiting_sync_stream_to_timer: HashMap::new(),
+            waiting_sync_timer_to_stream: HashMap::new(),
         })
     }
 
-    fn register_unprocessed_connection(&mut self, stream: TcpStream) -> Option<StreamToken> {
-        self.tokens.gen().map(|token| {
-            let connection = UnprocessedConnection::new(stream.into());
+    fn register_unprocessed_connection(&mut self, stream: TcpStream) -> Result<(StreamToken, TimerToken)> {
+        let token = self.tokens.gen().ok_or(Error::General("TooManyConnections"))?;
+        let timer_token = {
+            if let Some(timer_token) = self.waiting_sync_tokens.gen() {
+                timer_token
+            } else {
+                return Err(Error::General("TooManyWaitingSync"))
+            }
+        };
 
-            let con = self.unprocessed_connections.insert(token, connection);
-            debug_assert!(con.is_none());
+        let t = self.waiting_sync_stream_to_timer.insert(token, timer_token);
+        debug_assert!(t.is_none());
+        let t = self.waiting_sync_timer_to_stream.insert(token, timer_token);
+        debug_assert!(t.is_none());
 
-            let t = self.unprocessed_tokens.insert(token);
-            debug_assert!(t);
+        let connection = UnprocessedConnection::new(stream.into());
 
-            token
-        })
+        let con = self.unprocessed_connections.insert(token, connection);
+        debug_assert!(con.is_none());
+
+        let t = self.unprocessed_tokens.insert(token);
+        debug_assert!(t);
+
+        Ok((token, timer_token))
     }
 
     fn register_connection(&mut self, connection: Connection, token: &StreamToken) {
@@ -150,8 +178,7 @@ impl Manager {
     }
 
     fn process_connection(&mut self, unprocessed_token: &StreamToken) -> Connection {
-        let t = self.unprocessed_tokens.remove(&unprocessed_token);
-        debug_assert!(t);
+        self.remove_waiting_sync_by_stream_token(&unprocessed_token);
         let unprocessed = self.unprocessed_connections.remove(&unprocessed_token).expect("It must exist");
 
         let mut connection = unprocessed.process();
@@ -194,10 +221,11 @@ impl Manager {
             .ok_or(Error::General("TooManyConnections"))?)
     }
 
-    pub fn accept(&mut self) -> IoHandlerResult<Option<(StreamToken, SocketAddr)>> {
+    pub fn accept(&mut self) -> IoHandlerResult<Option<(StreamToken, TimerToken, SocketAddr)>> {
         match self.listener.accept() {
             Ok((stream, socket_address)) => {
-                Ok(self.register_unprocessed_connection(stream).map(|token| (token, socket_address.into())))
+                let (stream_token, timer_token) = self.register_unprocessed_connection(stream)?;
+                Ok(Some((stream_token, timer_token, socket_address.into())))
             }
             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => Ok(None),
             Err(e) => Err(From::from(e)),
@@ -300,6 +328,38 @@ impl Manager {
         let connection = self.connections.get_mut(&stream).ok_or(Error::InvalidStream(stream.clone()))?;
         Ok(connection.send()?)
     }
+
+    fn remove_waiting_sync_by_stream_token(&mut self, stream: &StreamToken) {
+        if let Some(timer) = self.waiting_sync_stream_to_timer.remove(&stream) {
+            let t = self.waiting_sync_tokens.restore(timer);
+            debug_assert!(t);
+
+            let t = self.waiting_sync_timer_to_stream.remove(&stream);
+            debug_assert!(t.is_some());
+
+            let t = self.unprocessed_tokens.remove(&stream);
+            debug_assert!(t);
+
+            let t = self.unprocessed_connections.remove(&stream);
+            debug_assert!(t.is_some());
+        }
+    }
+
+    fn remove_waiting_sync_by_timer_token(&mut self, timer: &TimerToken) {
+        if let Some(stream) = self.waiting_sync_timer_to_stream.remove(&timer) {
+            let t = self.waiting_sync_tokens.restore(*timer);
+            debug_assert!(t);
+
+            let t = self.waiting_sync_stream_to_timer.remove(&stream);
+            debug_assert!(t.is_some());
+
+            let t = self.unprocessed_tokens.remove(&stream);
+            debug_assert!(t);
+
+            let t = self.unprocessed_connections.remove(&stream);
+            debug_assert!(t.is_some());
+        }
+    }
 }
 
 pub struct Handler {
@@ -342,6 +402,11 @@ impl IoHandler<HandlerMessage> for Handler {
                     timer.remove_by_token(token);
                 }
                 self.client.on_timeout(&info.name, info.timer_id);
+                Ok(())
+            }
+            FIRST_WAIT_SYNC_TOKEN...LAST_WAIT_SYNC_TOKEN => {
+                let mut manager = self.manager.lock();
+                manager.remove_waiting_sync_by_timer_token(&token);
                 Ok(())
             }
             _ => unreachable!(),
@@ -462,8 +527,9 @@ impl IoHandler<HandlerMessage> for Handler {
         match stream {
             ACCEPT_TOKEN => loop {
                 let mut manager = self.manager.lock();
-                if let Some((token, socket_address)) = manager.accept()? {
+                if let Some((token, timer_token, socket_address)) = manager.accept()? {
                     io.register_stream(token)?;
+                    io.register_timer_once(timer_token, WAIT_SYNC_MS)?;
                     let mut node_token_to_socket = self.node_token_to_socket.write();
                     let t = node_token_to_socket.insert(token, socket_address.clone());
                     debug_assert!(t.is_none());
