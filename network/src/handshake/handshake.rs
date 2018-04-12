@@ -43,7 +43,6 @@ use super::{HandshakeMessage, HandshakeMessageBody};
 pub struct Handshake {
     server: Server,
     secrets: HashMap<SocketAddr, Secret>,
-    nonces: HashMap<SocketAddr, Nonce>,
     temporary_nonces: HashMap<SocketAddr, Nonce>,
     requested: HashMap<SocketAddr, Private>,
     seq_counter: AtomicUsize,
@@ -182,7 +181,6 @@ impl Handshake {
         Ok(Self {
             server,
             secrets: HashMap::new(),
-            nonces: HashMap::new(),
             temporary_nonces: HashMap::new(),
             requested: HashMap::new(),
             seq_counter: AtomicUsize::new(0),
@@ -239,9 +237,6 @@ impl Handshake {
             &HandshakeMessageBody::ConnectionRequest(ref received_nonce) => {
                 let encrypted_bytes = {
                     let secret = self.secrets.get(from).ok_or(Error::NoSession)?;
-                    if self.nonces.contains_key(&from) {
-                        info!("A nonce already exists");
-                    }
 
                     let temporary_session = Session::new_with_zero_nonce(secret.clone());
 
@@ -254,7 +249,6 @@ impl Handshake {
 
                     let encrypted_nonce = encode_and_encrypt_nonce(&temporary_session, &nonce)?;
                     extension.send(connection::HandlerMessage::RegisterSession(from.clone(), session))?;
-                    self.nonces.insert(from.clone(), nonce);
                     encrypted_nonce
                 };
 
