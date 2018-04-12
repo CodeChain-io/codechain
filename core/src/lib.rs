@@ -80,5 +80,5 @@ pub use header::{Header, Seal};
 pub use miner::{Miner, MinerOptions, MinerService};
 pub use service::ClientService;
 pub use spec::Spec;
-pub use transaction::{transaction_error_message, SignedTransaction, UnverifiedTransaction};
+pub use transaction::{transaction_error_message, Action, SignedTransaction, Transaction, UnverifiedTransaction};
 pub use types::{BlockId, BlockNumber};

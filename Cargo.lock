@@ -384,6 +384,7 @@ version = "0.1.0"
 dependencies = [
  "codechain-bytes 0.1.0",
  "codechain-core 0.1.0",
+ "codechain-keys 0.1.0",
  "codechain-network 0.1.0",
  "codechain-types 0.2.0",
  "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",

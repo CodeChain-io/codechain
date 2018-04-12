@@ -32,3 +32,6 @@ mod transaction;
 
 pub use self::block::BlockSyncExtension;
 pub use self::transaction::TransactionSyncExtension;
+
+#[cfg(test)]
+extern crate codechain_keys as ckeys;
