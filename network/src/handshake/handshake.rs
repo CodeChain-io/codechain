@@ -23,7 +23,7 @@ use std::sync::Arc;
 
 use ccrypto::aes::SymmetricCipherError;
 use cfinally::finally;
-use cio::{IoChannel, IoContext, IoError as CIoError, IoHandler, IoHandlerResult, IoManager, StreamToken};
+use cio::{IoChannel, IoContext, IoError as CIoError, IoHandler, IoHandlerResult, IoManager, StreamToken, TimerToken};
 use ckeys::{exchange, Error as KeysError, Generator, Private, Random};
 use ctypes::Secret;
 use mio::deprecated::EventLoop;
@@ -34,6 +34,7 @@ use rlp::{Decodable, DecoderError, Encodable, UntrustedRlp};
 
 use super::super::connection;
 use super::super::session::{Nonce, Session};
+use super::super::token_generator::TokenGenerator;
 use super::super::{DiscoveryApi, SocketAddr};
 use super::server::{Error as ServerError, Server};
 use super::{HandshakeMessage, HandshakeMessageBody};
@@ -46,6 +47,10 @@ pub struct Handshake {
     temporary_nonces: HashMap<SocketAddr, Nonce>,
     requested: HashMap<SocketAddr, Private>,
     seq_counter: AtomicUsize,
+
+    tmp_nonce_tokens: TokenGenerator,
+    tmp_nonce_token_to_addr: HashMap<TimerToken, SocketAddr>,
+    addr_to_tmp_nonce_token: HashMap<SocketAddr, TimerToken>,
 }
 
 #[derive(Debug)]
@@ -62,6 +67,7 @@ enum Error {
     ECDHIsNotRequested,
     ECDHAlreadyRequested,
     Keys(KeysError),
+    TooManyTmpNonces,
 }
 
 impl fmt::Display for Error {
@@ -79,6 +85,7 @@ impl fmt::Display for Error {
             &Error::ECDHIsNotRequested => fmt::Debug::fmt(&self, f),
             &Error::ECDHAlreadyRequested => fmt::Debug::fmt(&self, f),
             &Error::Keys(ref err) => err.fmt(f),
+            &Error::TooManyTmpNonces => fmt::Debug::fmt(&self, f),
         }
     }
 }
@@ -98,6 +105,7 @@ impl error::Error for Error {
             &Error::ECDHIsNotRequested => "Ecdh is not requested",
             &Error::ECDHAlreadyRequested => "Ecdh is already requested",
             &Error::Keys(_) => "KeysError",
+            &Error::TooManyTmpNonces => "Too many tmp nonces",
         }
     }
 
@@ -115,6 +123,7 @@ impl error::Error for Error {
             &Error::ECDHIsNotRequested => None,
             &Error::ECDHAlreadyRequested => None,
             &Error::Keys(_) => None,
+            &Error::TooManyTmpNonces => None,
         }
     }
 }
@@ -161,6 +170,12 @@ pub enum HandlerMessage {
     ConnectTo(SocketAddr),
 }
 
+const START_OF_TMP_NONCE_TOKEN: TimerToken = 0;
+const NUM_OF_TMP_NONCES: usize = 100;
+const END_OF_TMP_NONCE_TOKEN: TimerToken = START_OF_TMP_NONCE_TOKEN + NUM_OF_TMP_NONCES;
+
+const TMP_NONCE_TIMEOUT_MS: u64 = 10 * 1000;
+
 impl Handshake {
     fn bind(socket_address: &SocketAddr) -> Result<Self> {
         let server = Server::bind(socket_address)?;
@@ -171,6 +186,10 @@ impl Handshake {
             temporary_nonces: HashMap::new(),
             requested: HashMap::new(),
             seq_counter: AtomicUsize::new(0),
+
+            tmp_nonce_tokens: TokenGenerator::new(START_OF_TMP_NONCE_TOKEN, NUM_OF_TMP_NONCES),
+            tmp_nonce_token_to_addr: HashMap::new(),
+            addr_to_tmp_nonce_token: HashMap::new(),
         })
     }
 
@@ -179,11 +198,15 @@ impl Handshake {
     }
 
     // return false if there is no message to be sent
-    fn read(&mut self, extension: &IoChannel<connection::HandlerMessage>) -> Result<bool> {
+    fn read(
+        &mut self,
+        extension: &IoChannel<connection::HandlerMessage>,
+        io: &IoContext<HandlerMessage>,
+    ) -> Result<bool> {
         match self.receive() {
             Ok(None) => Ok(false),
             Ok(Some((msg, socket_address))) => {
-                self.on_packet(&msg, &socket_address, extension)?;
+                self.on_packet(&msg, &socket_address, extension, io)?;
                 Ok(true)
             }
             Err(err) => Err(From::from(err)),
@@ -210,6 +233,7 @@ impl Handshake {
         message: &HandshakeMessage,
         from: &SocketAddr,
         extension: &IoChannel<connection::HandlerMessage>,
+        io: &IoContext<HandlerMessage>,
     ) -> Result<()> {
         match message.body() {
             &HandshakeMessageBody::ConnectionRequest(ref received_nonce) => {
@@ -239,12 +263,8 @@ impl Handshake {
                 Ok(())
             }
             &HandshakeMessageBody::ConnectionAllowed(ref nonce) => {
+                let temporary_nonce = self.temporary_nonces.get(&from).ok_or(Error::SessionNotReady)?;
                 let secret = self.secrets.get(from).ok_or(Error::NoSession)?;
-                let temporary_nonce = self.temporary_nonces.get(&from);
-                if temporary_nonce.is_none() {
-                    return Err(From::from(Error::SessionNotReady))
-                }
-                let temporary_nonce = temporary_nonce.expect("Nonce must exist");
                 let temporary_session = Session::new(*secret, temporary_nonce.clone());
                 let nonce = decrypt_and_decode_nonce(&temporary_session, &nonce)?;
 
@@ -284,6 +304,8 @@ impl Handshake {
                     if self.secrets.contains_key(&from) {
                         return Err(Error::SessionAlreadyExists)
                     }
+
+                    let token = self.tmp_nonce_tokens.gen().ok_or(Error::TooManyTmpNonces)?;
                     let t = self.secrets.insert(from.clone(), secret);
                     debug_assert!(t.is_none());
                     let t = self.temporary_nonces.insert(from.clone(), nonce);
@@ -291,7 +313,18 @@ impl Handshake {
 
                     let seq = self.seq_counter.fetch_add(1, Ordering::SeqCst);
                     let message = HandshakeMessage::connection_request(seq as u64, encrypted_nonce);
-                    self.server.enqueue(message, from.clone())?;
+                    if let Err(err) = self.server.enqueue(message, from.clone()) {
+                        let t = self.tmp_nonce_tokens.restore(token);
+                        debug_assert!(t);
+                        return Err(From::from(err))
+                    };
+
+                    let t = self.tmp_nonce_token_to_addr.insert(token, from.clone());
+                    debug_assert!(t.is_none());
+                    let t = self.addr_to_tmp_nonce_token.insert(from.clone(), token);
+                    debug_assert!(t.is_none());
+
+                    io.register_timer_once(token, TMP_NONCE_TIMEOUT_MS)?;
                     Ok(())
                 } else {
                     Err(Error::ECDHIsNotRequested)
@@ -305,6 +338,20 @@ impl Handshake {
                     Ok(())
                 }
             }
+        }
+    }
+
+    fn remove_temporary_nonce(&mut self, timer: &TimerToken) -> bool {
+        if let Some(socket_address) = self.tmp_nonce_token_to_addr.remove(&timer) {
+            let t = self.addr_to_tmp_nonce_token.remove(&socket_address);
+            debug_assert!(t.is_some());
+            let t = self.tmp_nonce_tokens.restore(*timer);
+            debug_assert!(t);
+            let t = self.temporary_nonces.remove(&socket_address);
+            debug_assert!(t.is_some());
+            true
+        } else {
+            false
         }
     }
 
@@ -363,6 +410,18 @@ impl IoHandler<HandlerMessage> for Handler {
         Ok(())
     }
 
+    fn timeout(&self, _io: &IoContext<HandlerMessage>, timer: TimerToken) -> IoHandlerResult<()> {
+        match timer {
+            START_OF_TMP_NONCE_TOKEN...END_OF_TMP_NONCE_TOKEN => {
+                let mut handshake = self.handshake.lock();
+                let t = handshake.remove_temporary_nonce(&timer);
+                debug_assert!(t);
+                Ok(())
+            }
+            _ => unreachable!(),
+        }
+    }
+
     fn message(&self, io: &IoContext<HandlerMessage>, message: &HandlerMessage) -> IoHandlerResult<()> {
         match message {
             &HandlerMessage::ConnectTo(ref socket_address) => {
@@ -389,7 +448,7 @@ impl IoHandler<HandlerMessage> for Handler {
         });
         loop {
             let mut handshake = self.handshake.lock();
-            if !handshake.read(&self.extension)? {
+            if !handshake.read(&self.extension, io)? {
                 break
             }
         }
