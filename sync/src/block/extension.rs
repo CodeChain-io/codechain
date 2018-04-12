@@ -26,22 +26,17 @@ use ctypes::{H256, U256};
 use rlp::{Encodable, UntrustedRlp};
 
 use super::manager::DownloadManager;
-use super::message::Message;
+use super::message::{Message, RequestMessage, ResponseMessage};
 
 const EXTENSION_NAME: &'static str = "block-propagation";
 const SYNC_TIMER_TOKEN: usize = 0;
 const SYNC_TIMER_INTERVAL: u64 = 1000;
 const MAX_RETRY: usize = 3;
 
-enum RequestInfo {
-    Header(BlockNumber),
-    Bodies(Vec<H256>),
-}
-
 struct Peer {
     total_score: U256,
     best_hash: H256,
-    last_request: Option<RequestInfo>,
+    last_request: Option<RequestMessage>,
     retry: usize,
 }
 
@@ -80,6 +75,12 @@ impl Extension {
         self.peers.write().values_mut().for_each(|peer| {
             peer.last_request = None;
             peer.retry = 0;
+        });
+    }
+
+    fn send_message(&self, token: &NodeToken, message: Message) {
+        self.api.lock().as_ref().map(|api| {
+            api.send(token, &message.rlp_bytes().to_vec());
         });
     }
 }
@@ -122,56 +123,16 @@ impl NetworkExtension for Extension {
 
     fn on_message(&self, token: &NodeToken, data: &Vec<u8>) {
         if let Ok(received_message) = UntrustedRlp::new(data).as_val() {
-            if !self.is_valid_message(token, &received_message) {
-                return
-            }
-            self.apply_message(token, &received_message);
-
-            // Do nothing and return if status message is received
-            if received_message.is_status() {
-                return
-            }
-
-            self.manager.lock().drain().iter().for_each(|block| {
-                // FIXME: Handle block import errors
-                match self.client.import_block(block.rlp_bytes(Seal::With)) {
-                    Ok(_) => {}
-                    Err(error) => {
-                        info!(target: "BlockSyncExtension", "block import failed with error({:?})", error);
-                    }
+            match received_message {
+                Message::Status {
+                    total_score,
+                    best_hash,
+                    genesis_hash,
+                } => {
+                    self.on_peer_status(token, total_score, best_hash, genesis_hash);
                 }
-            });
-
-            // Create next message for peer
-            let next_message = match received_message {
-                Message::RequestHeaders {
-                    start_number,
-                    max_count,
-                } => Some(self.create_headers_message(start_number, max_count)),
-                Message::RequestBodies(hashes) => Some(self.create_bodies_message(hashes)),
-                _ => {
-                    let total_score = self.client
-                        .block_total_score(BlockId::Hash(self.manager.lock().best_hash()))
-                        .expect("Best block of download manager must exist in chain");
-                    // FIXME: Check if this statement really needs `clone`
-                    let peer_info = self.peers.read().get(token).map(|peer| (peer.total_score.clone(), peer.retry));
-                    match peer_info {
-                        Some((peer_total_score, peer_retry)) => {
-                            if peer_retry < MAX_RETRY && peer_total_score > total_score {
-                                self.manager.lock().create_request()
-                            } else {
-                                None
-                            }
-                        }
-                        _ => None,
-                    }
-                }
-            };
-
-            self.record_last_request(token, &next_message);
-
-            if let Some(message) = next_message {
-                self.send_message(token, message);
+                Message::Request(request) => self.on_peer_request(token, request),
+                Message::Response(response) => self.on_peer_response(token, response),
             }
         } else {
             info!(target: "sync", "invalid message from peer {}", token);
@@ -203,9 +164,11 @@ impl NetworkExtension for Extension {
         thread_rng().shuffle(peer_ids.as_mut_slice());
         for id in peer_ids {
             let next_message = self.manager.lock().create_request();
-            self.record_last_request(&id, &next_message);
+            if let Some(peer) = self.peers.write().get_mut(&id) {
+                peer.last_request = next_message.clone();
+            }
             if let Some(message) = next_message {
-                self.send_message(&id, message);
+                self.send_message(&id, message.into());
             }
         }
     }
@@ -244,131 +207,176 @@ impl ChainNotify for Extension {
 }
 
 impl Extension {
-    fn is_valid_message(&self, token: &NodeToken, message: &Message) -> bool {
-        match message {
-            &Message::Status {
-                genesis_hash,
-                ..
-            } => {
-                if genesis_hash != self.client.chain_info().genesis_hash {
-                    info!(target: "sync", "genesis hash mismatch with peer {}", token);
-                    return false
-                } else {
-                    return true
-                }
-            }
-            _ => {}
+    fn on_peer_status(&self, from: &NodeToken, total_score: U256, best_hash: H256, genesis_hash: H256) {
+        // Validity check
+        if genesis_hash != self.client.chain_info().genesis_hash {
+            info!(target: "sync", "Genesis hash mismatch with peer {}", from);
+            return
         }
 
-        if let Some(last_request) = self.peers.read().get(token).map(|peer| &peer.last_request) {
-            match (message, last_request) {
-                (&Message::RequestBodies(ref hashes), _) => hashes.len() != 0,
-                (&Message::Headers(ref headers), &Some(RequestInfo::Header(start_number))) => {
-                    if headers.len() == 0 {
-                        true
-                    } else {
-                        headers.first().expect("Response is not empty").number() == start_number
-                    }
-                }
-                (&Message::Bodies(..), &Some(RequestInfo::Bodies(..))) => true,
-                _ => false,
-            }
-        } else {
-            false
-        }
-    }
-
-    fn apply_message(&self, token: &NodeToken, message: &Message) {
-        match message {
-            &Message::Status {
-                total_score,
-                best_hash,
-                ..
-            } => {
-                let mut peers = self.peers.write();
-                if peers.contains_key(token) {
-                    let peer = peers.get_mut(token).expect("Peer list must contain peer for `token`");
-                    peer.total_score = total_score;
-                    peer.best_hash = best_hash;
-                } else {
-                    peers.insert(
-                        *token,
-                        Peer {
-                            total_score,
-                            best_hash,
-                            last_request: None,
-                            retry: 0,
-                        },
-                    );
-                }
-            }
-            &Message::Headers(ref headers) => {
-                let import_success = self.manager.lock().import_headers(headers);
-                if let Some(peer) = self.peers.write().get_mut(token) {
-                    peer.retry = if import_success {
-                        0
-                    } else {
-                        peer.retry + 1
-                    };
-                }
-            }
-            &Message::Bodies(ref bodies) => {
-                let import_success = self.manager.lock().import_bodies(bodies);
-                if let Some(peer) = self.peers.write().get_mut(token) {
-                    peer.retry = if import_success {
-                        0
-                    } else {
-                        peer.retry + 1
-                    };
-                }
-            }
-            _ => {}
-        }
-    }
-
-    fn record_last_request(&self, token: &NodeToken, message: &Option<Message>) {
+        // Update peer status
         let mut peers = self.peers.write();
-        if let Some(peer) = peers.get_mut(token) {
-            match message {
-                &Some(Message::RequestHeaders {
-                    start_number,
-                    ..
-                }) => {
-                    peer.last_request = Some(RequestInfo::Header(start_number));
-                }
-                &Some(Message::RequestBodies(ref hashes)) => {
-                    peer.last_request = Some(RequestInfo::Bodies(hashes.clone()));
-                }
-                &None => {
-                    peer.last_request = None;
-                }
-                _ => {}
-            };
+        if peers.contains_key(from) {
+            let peer = peers.get_mut(from).expect("Peer list must contain peer for `token`");
+            peer.total_score = total_score;
+            peer.best_hash = best_hash;
+        } else {
+            peers.insert(
+                *from,
+                Peer {
+                    total_score,
+                    best_hash,
+                    last_request: None,
+                    retry: 0,
+                },
+            );
+        }
+    }
+}
+
+impl Extension {
+    fn on_peer_request(&self, from: &NodeToken, request: RequestMessage) {
+        if !self.peers.read().contains_key(from) {
+            info!(target: "sync", "Request from invalid peer #{} received", from);
+            return
+        }
+
+        if !self.is_valid_request(&request) {
+            info!(target: "sync", "Invalid request received from peer #{}", from);
+            return
+        }
+
+        let response = match request {
+            RequestMessage::Headers {
+                start_number,
+                max_count,
+            } => self.create_headers_message(start_number, max_count),
+            RequestMessage::Bodies(hashes) => self.create_bodies_message(hashes),
+        };
+
+        self.send_message(from, response.into());
+    }
+
+    fn is_valid_request(&self, request: &RequestMessage) -> bool {
+        match request {
+            &RequestMessage::Headers {
+                ..
+            } => true,
+            &RequestMessage::Bodies(ref hashes) => hashes.len() != 0,
         }
     }
 
-    fn send_message(&self, token: &NodeToken, message: Message) {
-        self.api.lock().as_ref().map(|api| {
-            api.send(token, &message.rlp_bytes().to_vec());
-        });
-    }
-
-    fn create_headers_message(&self, start_number: BlockNumber, max_count: u64) -> Message {
+    fn create_headers_message(&self, start_number: BlockNumber, max_count: u64) -> ResponseMessage {
         let headers = (0..max_count)
             .map(|number| self.client.block_header(BlockId::Number(start_number + number)))
             .take_while(|header| header.is_some())
             .map(|header| header.expect("take_while guarantees existance of item").decode())
             .collect();
-        Message::Headers(headers)
+        ResponseMessage::Headers(headers)
     }
 
-    fn create_bodies_message(&self, hashes: Vec<H256>) -> Message {
+    fn create_bodies_message(&self, hashes: Vec<H256>) -> ResponseMessage {
         let mut bodies = Vec::new();
         for hash in hashes {
             if let Some(body) = self.client.block_body(BlockId::Hash(hash)) {
                 bodies.push(body.transactions());
             }
         }
-        Message::Bodies(bodies)
+        ResponseMessage::Bodies(bodies)
+    }
+}
+
+impl Extension {
+    fn on_peer_response(&self, from: &NodeToken, response: ResponseMessage) {
+        if !self.is_valid_response(from, &response) {
+            info!(target: "sync", "Invalid response received from peer #{}", from);
+            return
+        }
+
+        // Import response data to download manager
+        match &response {
+            &ResponseMessage::Headers(ref headers) => {
+                let import_success = self.manager.lock().import_headers(headers);
+                if let Some(peer) = self.peers.write().get_mut(from) {
+                    peer.retry = if import_success {
+                        0
+                    } else {
+                        peer.retry + 1
+                    };
+                }
+            }
+            &ResponseMessage::Bodies(ref bodies) => {
+                let import_success = self.manager.lock().import_bodies(bodies);
+                if let Some(peer) = self.peers.write().get_mut(from) {
+                    peer.retry = if import_success {
+                        0
+                    } else {
+                        peer.retry + 1
+                    };
+                }
+            }
+        }
+
+        // Import fully downloaded blocks to chain
+        self.manager.lock().drain().iter().for_each(|block| {
+            // FIXME: Handle block import errors
+            match self.client.import_block(block.rlp_bytes(Seal::With)) {
+                Ok(_) => {}
+                Err(error) => {
+                    info!(target: "BlockSyncExtension", "block import failed with error({:?})", error);
+                }
+            }
+        });
+
+        // Create next message for peer
+        let request = {
+            let total_score = self.client
+                .block_total_score(BlockId::Hash(self.manager.lock().best_hash()))
+                .expect("Best block of download manager must exist in chain");
+            // FIXME: Check if this statement really needs `clone`
+            let peer_info = self.peers.read().get(from).map(|peer| (peer.total_score.clone(), peer.retry));
+            match peer_info {
+                Some((peer_total_score, peer_retry)) => {
+                    if peer_retry < MAX_RETRY && peer_total_score > total_score {
+                        self.manager.lock().create_request()
+                    } else {
+                        None
+                    }
+                }
+                _ => None,
+            }
+        };
+
+        if let Some(peer) = self.peers.write().get_mut(from) {
+            peer.last_request = request.clone();
+        }
+
+        if let Some(message) = request {
+            self.send_message(from, message.into());
+        }
+    }
+
+    fn is_valid_response(&self, from: &NodeToken, response: &ResponseMessage) -> bool {
+        if let Some(last_request) = self.peers.read().get(from).map(|peer| &peer.last_request) {
+            match (response, last_request) {
+                (
+                    &ResponseMessage::Headers(ref headers),
+                    &Some(RequestMessage::Headers {
+                        start_number,
+                        ..
+                    }),
+                ) => {
+                    if headers.len() == 0 {
+                        true
+                    } else {
+                        headers.first().expect("Response is not empty").number() == start_number
+                    }
+                }
+                (&ResponseMessage::Bodies(..), &Some(RequestMessage::Bodies(..))) => true,
+                _ => false,
+            }
+        } else {
+            false
+        }
     }
 }

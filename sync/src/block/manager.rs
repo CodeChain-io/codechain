@@ -22,7 +22,7 @@ use ctypes::H256;
 use rlp::Encodable;
 use triehash::ordered_trie_root;
 
-use super::message::Message;
+use super::message::RequestMessage;
 
 const MAX_BODY_REQUEST_LENGTH: usize = 32;
 const MAX_HEADER_REQUEST_LENGTH: usize = 128;
@@ -123,7 +123,7 @@ impl DownloadManager {
         true
     }
 
-    pub fn create_request(&mut self) -> Option<Message> {
+    pub fn create_request(&mut self) -> Option<RequestMessage> {
         // FIXME: Maintain this map as member variable
         let mut child_map = HashMap::new();
         for header in self.headers.values() {
@@ -144,7 +144,7 @@ impl DownloadManager {
         }
         if hashes.len() > 0 {
             self.downloading_bodies.extend(&hashes);
-            return Some(Message::RequestBodies(hashes))
+            return Some(RequestMessage::Bodies(hashes))
         }
 
         // Search for needed headers
@@ -154,7 +154,7 @@ impl DownloadManager {
                 target = *child_hash;
             }
             self.downloading_header = Some(target);
-            return Some(Message::RequestHeaders {
+            return Some(RequestMessage::Headers {
                 start_number: if target == self.best_hash {
                     self.best_number
                 } else {
