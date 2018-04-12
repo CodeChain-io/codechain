@@ -104,10 +104,10 @@ enum Error {
 impl ::std::fmt::Display for Error {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         match self {
-            &Error::UnavailableSession => write!(f, "Unavailable session"),
-            &Error::InvalidStream(token) => write!(f, "{} is an invalid stream token", token),
-            &Error::InvalidTimer(token) => write!(f, "{} is an invalid timer token", token),
-            &Error::InvalidNode(id) => write!(f, "{} is an invalid node id", id),
+            &Error::UnavailableSession => ::std::fmt::Debug::fmt(self, f),
+            &Error::InvalidStream(_) => ::std::fmt::Debug::fmt(self, f),
+            &Error::InvalidTimer(_) => ::std::fmt::Debug::fmt(self, f),
+            &Error::InvalidNode(_) => ::std::fmt::Debug::fmt(self, f),
         }
     }
 }
