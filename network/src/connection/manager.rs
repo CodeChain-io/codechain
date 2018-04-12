@@ -178,8 +178,7 @@ impl Manager {
     }
 
     fn process_connection(&mut self, unprocessed_token: &StreamToken) -> Connection {
-        self.remove_waiting_sync_by_stream_token(&unprocessed_token);
-        let unprocessed = self.unprocessed_connections.remove(&unprocessed_token).expect("It must exist");
+        let unprocessed = self.remove_waiting_sync_by_stream_token(&unprocessed_token).unwrap();
 
         let mut connection = unprocessed.process();
         connection.enqueue_ack();
@@ -207,7 +206,7 @@ impl Manager {
     }
 
     fn create_connection(&mut self, stream: TcpStream, socket_address: &SocketAddr) -> IoHandlerResult<StreamToken> {
-        let session = self.socket_to_session.get(&socket_address).ok_or(Error::General("UnavailableSession"))?.clone();
+        let session = self.socket_to_session.remove(&socket_address).ok_or(Error::General("UnavailableSession"))?;
         let mut connection = Connection::new(stream.into(), session.secret().clone(), session.nonce().clone());
         let nonce = session.nonce();
         connection.enqueue_sync(nonce.clone());
@@ -318,7 +317,11 @@ impl Manager {
 
         let session = connection.session().clone();
         let nonce = session.nonce().clone();
-        self.registered_sessions.insert(nonce, session);
+
+        // Session is not reusable
+        let registered_session = self.registered_sessions.remove(&nonce);
+        debug_assert_eq!(registered_session, Some(session));
+        debug_assert!(registered_session.is_some());
         self.register_connection(connection, stream);
         client.on_node_added(&stream);
         Ok(false)
@@ -329,7 +332,7 @@ impl Manager {
         Ok(connection.send()?)
     }
 
-    fn remove_waiting_sync_by_stream_token(&mut self, stream: &StreamToken) {
+    fn remove_waiting_sync_by_stream_token(&mut self, stream: &StreamToken) -> Option<UnprocessedConnection> {
         if let Some(timer) = self.waiting_sync_stream_to_timer.remove(&stream) {
             let t = self.waiting_sync_tokens.restore(timer);
             debug_assert!(t);
@@ -342,6 +345,9 @@ impl Manager {
 
             let t = self.unprocessed_connections.remove(&stream);
             debug_assert!(t.is_some());
+            t
+        } else {
+            None
         }
     }
 
