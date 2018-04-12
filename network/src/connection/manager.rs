@@ -522,6 +522,14 @@ impl IoHandler<HandlerMessage> for Handler {
         match stream {
             ACCEPT_TOKEN => unreachable!(),
             FIRST_CONNECTION_TOKEN...LAST_CONNECTION_TOKEN => {
+                let mut node_token_to_socket = self.node_token_to_socket.write();
+                let socket_address = node_token_to_socket.remove(&stream);
+                debug_assert!(socket_address.is_some());
+                if let Some(socket_address) = socket_address {
+                    let mut socket_to_node_token = self.socket_to_node_token.write();
+                    let t = socket_to_node_token.remove(&socket_address);
+                    debug_assert!(t.is_some());
+                }
                 io.deregister_stream(stream)?;
             }
             _ => unreachable!(),
