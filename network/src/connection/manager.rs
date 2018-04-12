@@ -19,6 +19,7 @@ use std::convert::{From, Into};
 use std::io;
 use std::sync::Arc;
 
+use cfinally::finally;
 use cio::{IoContext, IoHandler, IoHandlerResult, IoManager, StreamToken, TimerToken};
 use mio::deprecated::EventLoop;
 use mio::net::{TcpListener, TcpStream};
@@ -49,13 +50,14 @@ pub struct Manager {
 
 const MAX_CONNECTIONS: usize = 32;
 
-const ACCEPT_TOKEN: usize = 0;
+const ACCEPT_TOKEN: TimerToken = 0;
 
-const FIRST_CONNECTION_TOKEN: usize = ACCEPT_TOKEN + 1;
-const LAST_CONNECTION_TOKEN: usize = FIRST_CONNECTION_TOKEN + MAX_CONNECTIONS;
+const FIRST_CONNECTION_TOKEN: TimerToken = ACCEPT_TOKEN + 1;
+const LAST_CONNECTION_TOKEN: TimerToken = FIRST_CONNECTION_TOKEN + MAX_CONNECTIONS;
 
-const FIRST_TIMER_TOKEN: usize = LAST_CONNECTION_TOKEN;
+const FIRST_TIMER_TOKEN: TimerToken = LAST_CONNECTION_TOKEN;
 const MAX_TIMERS: usize = 100;
+const LAST_TIMER_TOKEN: TimerToken = FIRST_TIMER_TOKEN + MAX_TIMERS;
 
 type TimerId = usize;
 
@@ -95,19 +97,19 @@ pub enum HandlerMessage {
 
 #[derive(Debug)]
 enum Error {
-    UnavailableSession,
     InvalidStream(StreamToken),
     InvalidTimer(TimerToken),
     InvalidNode(NodeToken),
+    General(&'static str),
 }
 
 impl ::std::fmt::Display for Error {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         match self {
-            &Error::UnavailableSession => ::std::fmt::Debug::fmt(self, f),
             &Error::InvalidStream(_) => ::std::fmt::Debug::fmt(self, f),
             &Error::InvalidTimer(_) => ::std::fmt::Debug::fmt(self, f),
             &Error::InvalidNode(_) => ::std::fmt::Debug::fmt(self, f),
+            &Error::General(_) => ::std::fmt::Debug::fmt(self, f),
         }
     }
 }
@@ -177,20 +179,19 @@ impl Manager {
         }
     }
 
-    fn create_connection(
-        &mut self,
-        stream: TcpStream,
-        socket_address: &SocketAddr,
-    ) -> IoHandlerResult<Option<StreamToken>> {
-        let session = self.socket_to_session.get(&socket_address).ok_or(Error::UnavailableSession)?.clone();
+    fn create_connection(&mut self, stream: TcpStream, socket_address: &SocketAddr) -> IoHandlerResult<StreamToken> {
+        let session = self.socket_to_session.get(&socket_address).ok_or(Error::General("UnavailableSession"))?.clone();
         let mut connection = Connection::new(stream.into(), session.secret().clone(), session.nonce().clone());
         let nonce = session.nonce();
         connection.enqueue_sync(nonce.clone());
 
-        Ok(self.tokens.gen().map(|token| {
-            self.register_connection(connection, &token);
-            token
-        }))
+        Ok(self.tokens
+            .gen()
+            .map(|token| {
+                self.register_connection(connection, &token);
+                token
+            })
+            .ok_or(Error::General("TooManyConnections"))?)
     }
 
     pub fn accept(&mut self) -> IoHandlerResult<Option<(StreamToken, SocketAddr)>> {
@@ -205,16 +206,15 @@ impl Manager {
 
     pub fn connect(&mut self, socket_address: &SocketAddr) -> IoHandlerResult<Option<StreamToken>> {
         match TcpStream::connect(socket_address.into()) {
-            Ok(stream) => self.create_connection(stream, &socket_address),
+            Ok(stream) => Ok(Some(self.create_connection(stream, &socket_address)?)),
             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => Ok(None),
             Err(e) => Err(From::from(e)),
         }
     }
 
-    pub fn register_session(&mut self, socket_address: SocketAddr, session: Session) -> IoHandlerResult<()> {
+    fn register_session(&mut self, socket_address: SocketAddr, session: Session) -> Result<()> {
         if self.socket_to_session.contains_key(&socket_address) {
-            info!("Session registration is requested to the address which already has one");
-            return Ok(())
+            return Err(Error::General("SessionAlreadyRegistered"))
         }
 
         self.registered_sessions.insert(session.nonce().clone(), session.clone());
@@ -231,10 +231,9 @@ impl Manager {
         if let Some(connection) = self.connections.get(&token) {
             return Ok(connection.register(reg, event_loop)?)
         }
-        if let Some(connection) = self.unprocessed_connections.get(&token) {
-            return Ok(connection.register(reg, event_loop)?)
-        }
-        Err(From::from(Error::InvalidStream(token)))
+
+        let connection = self.unprocessed_connections.get(&token).ok_or(Error::InvalidStream(token))?;
+        Ok(connection.register(reg, event_loop)?)
     }
 
     pub fn reregister_stream(
@@ -246,10 +245,9 @@ impl Manager {
         if let Some(connection) = self.connections.get(&token) {
             return Ok(connection.reregister(reg, event_loop)?)
         }
-        if let Some(connection) = self.unprocessed_connections.get(&token) {
-            return Ok(connection.reregister(reg, event_loop)?)
-        }
-        Err(From::from(Error::InvalidStream(token)))
+
+        let connection = self.unprocessed_connections.get(&token).ok_or(Error::InvalidStream(token))?;
+        Ok(connection.reregister(reg, event_loop)?)
     }
 
     // return false if it's unprocessed connection
@@ -271,18 +269,20 @@ impl Manager {
         Err(From::from(Error::InvalidStream(token)))
     }
 
+    // Return false if the received message is sync
     fn receive(&mut self, stream: &StreamToken, client: &Client) -> IoHandlerResult<bool> {
         if let Some(connection) = self.connections.get_mut(&stream) {
             return Ok(connection.receive(&ExtensionChannel::new(&client, *stream)))
-        } else if let Some(connection) = self.unprocessed_connections.get_mut(&stream) {
+        }
+
+        {
+            // connection borrows *self as mutable
+            let connection = self.unprocessed_connections.get_mut(&stream).ok_or(Error::InvalidStream(stream.clone()))?;
             if let Some(_) = connection.receive(&self.registered_sessions)? {
                 // Sync
             } else {
                 return Ok(true)
             }
-        } else {
-            info!("readable event for unregistered stream({:?})", stream);
-            return Ok(false)
         }
 
         // receive Sync message
@@ -297,11 +297,8 @@ impl Manager {
     }
 
     fn send(&mut self, stream: &StreamToken) -> IoHandlerResult<bool> {
-        if let Some(connection) = self.connections.get_mut(&stream) {
-            return Ok(connection.send()?)
-        } else {
-            return Err(From::from(Error::InvalidStream(stream.clone())))
-        }
+        let connection = self.connections.get_mut(&stream).ok_or(Error::InvalidStream(stream.clone()))?;
+        Ok(connection.send()?)
     }
 }
 
@@ -337,37 +334,43 @@ impl IoHandler<HandlerMessage> for Handler {
     }
 
     fn timeout(&self, _io: &IoContext<HandlerMessage>, token: TimerToken) -> IoHandlerResult<()> {
-        let mut timer = self.timer.lock();
-        let info = timer.get_info(token).ok_or(Error::InvalidTimer(token))?;
-        if info.once {
-            timer.remove_by_token(token);
+        match token {
+            FIRST_TIMER_TOKEN...LAST_TIMER_TOKEN => {
+                let mut timer = self.timer.lock();
+                let info = timer.get_info(token).ok_or(Error::InvalidTimer(token))?;
+                if info.once {
+                    timer.remove_by_token(token);
+                }
+                self.client.on_timeout(&info.name, info.timer_id);
+                Ok(())
+            }
+            _ => unreachable!(),
         }
-        self.client.on_timeout(&info.name, info.timer_id);
-        Ok(())
     }
 
     fn message(&self, io: &IoContext<HandlerMessage>, message: &HandlerMessage) -> IoHandlerResult<()> {
         match *message {
             HandlerMessage::RegisterSession(ref socket_address, ref session) => {
                 let mut manager = self.manager.lock();
-                info!("Register session {:?}", session);
-
                 manager.register_session(socket_address.clone(), session.clone())?;
+                Ok(())
             }
             HandlerMessage::RequestConnection(ref socket_address, ref session) => {
                 let mut manager = self.manager.lock();
-
-                info!("Register session {:?}", session);
                 let _ = manager.register_session(socket_address.clone(), session.clone());
 
                 info!("Connecting to {:?}", socket_address);
-                if let Some(token) = manager.connect(&socket_address)? {
-                    io.register_stream(token)?;
-                    self.socket_to_node_token.write().insert(socket_address.clone(), token);
-                    self.node_token_to_socket.write().insert(token, socket_address.clone());
-                } else {
-                    info!("There are no available tokens");
-                }
+                let token = manager.connect(&socket_address)?.ok_or(Error::General("Cannot create connection"))?;
+                io.register_stream(token)?;
+
+                let mut node_token_to_socket = self.node_token_to_socket.write();
+                let t = node_token_to_socket.insert(token, socket_address.clone());
+                debug_assert!(t.is_none());
+
+                let mut socket_to_node_token = self.socket_to_node_token.write();
+                let t = socket_to_node_token.insert(socket_address.clone(), token);
+                debug_assert!(t.is_none());
+                Ok(())
             }
             HandlerMessage::RequestNegotiation {
                 node_id,
@@ -378,6 +381,7 @@ impl IoHandler<HandlerMessage> for Handler {
                 let mut connection = manager.connections.get_mut(&node_id).ok_or(Error::InvalidNode(node_id))?;
                 connection.enqueue_negotiation_request(extension_name.clone(), version);
                 io.update_registration(node_id)?;
+                Ok(())
             }
             HandlerMessage::SendExtensionMessage {
                 node_id,
@@ -389,8 +393,8 @@ impl IoHandler<HandlerMessage> for Handler {
                 let mut connection = manager.connections.get_mut(&node_id).ok_or(Error::InvalidNode(node_id))?;
                 connection.enqueue_extension_message(extension_name.clone(), *need_encryption, data.clone());
                 io.update_registration(node_id)?;
+                Ok(())
             }
-
             HandlerMessage::SetTimer {
                 ref extension_name,
                 timer_id,
@@ -409,6 +413,7 @@ impl IoHandler<HandlerMessage> for Handler {
                         self.client.on_timer_set_denied(extension_name, timer_id, ExtensionError::NoMoreTimerToken);
                     }
                 }
+                Ok(())
             }
             HandlerMessage::SetTimerOnce {
                 ref extension_name,
@@ -428,6 +433,7 @@ impl IoHandler<HandlerMessage> for Handler {
                         self.client.on_timer_set_denied(extension_name, timer_id, ExtensionError::NoMoreTimerToken);
                     }
                 }
+                Ok(())
             }
             HandlerMessage::ClearTimer {
                 ref extension_name,
@@ -436,9 +442,9 @@ impl IoHandler<HandlerMessage> for Handler {
                 let mut timer = self.timer.lock();
                 let token = timer.remove_by_info(extension_name.clone(), timer_id).expect("Unexpected timer id");
                 io.clear_timer(token)?;
+                Ok(())
             }
-        };
-        Ok(())
+        }
     }
 
     fn stream_hup(&self, io: &IoContext<HandlerMessage>, stream: StreamToken) -> IoHandlerResult<()> {
@@ -458,29 +464,43 @@ impl IoHandler<HandlerMessage> for Handler {
                 let mut manager = self.manager.lock();
                 if let Some((token, socket_address)) = manager.accept()? {
                     io.register_stream(token)?;
-                    self.socket_to_node_token.write().insert(socket_address.clone(), token);
-                    self.node_token_to_socket.write().insert(token, socket_address);
+                    let mut node_token_to_socket = self.node_token_to_socket.write();
+                    let t = node_token_to_socket.insert(token, socket_address.clone());
+                    debug_assert!(t.is_none());
+
+                    let mut socket_to_node_token = self.socket_to_node_token.write();
+                    let t = socket_to_node_token.insert(socket_address, token);
+                    debug_assert!(t.is_none());
                 }
                 break
             },
             FIRST_CONNECTION_TOKEN...LAST_CONNECTION_TOKEN => {
+                let _f = finally(|| {
+                    if let Err(err) = io.update_registration(stream) {
+                        info!("Cannot update registration for connection {:?}", err);
+                    }
+                });
                 loop {
                     let mut manager = self.manager.lock();
                     if !manager.receive(&stream, &self.client)? {
                         break
                     }
                 }
-                io.update_registration(stream)?;
             }
             _ => unimplemented!(),
         }
         Ok(())
     }
 
-    fn stream_writable(&self, _io: &IoContext<HandlerMessage>, stream: StreamToken) -> IoHandlerResult<()> {
+    fn stream_writable(&self, io: &IoContext<HandlerMessage>, stream: StreamToken) -> IoHandlerResult<()> {
         match stream {
             ACCEPT_TOKEN => unreachable!(),
             FIRST_CONNECTION_TOKEN...LAST_CONNECTION_TOKEN => loop {
+                let _f = finally(|| {
+                    if let Err(err) = io.update_registration(stream) {
+                        info!("Cannot update registration for connection {:?}", err);
+                    }
+                });
                 let mut manager = self.manager.lock();
                 if manager.unprocessed_tokens.contains(&stream) {
                     break
