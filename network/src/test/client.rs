@@ -14,11 +14,13 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use parking_lot::Mutex;
 use std::collections::{HashMap, HashSet, VecDeque};
+use std::ops::Deref;
 use std::sync::{Arc, Weak};
 
-use extension::{Api, Extension, NodeToken, TimerToken};
+use parking_lot::Mutex;
+
+use super::super::extension::{Api, Extension, NodeToken, TimerToken};
 
 #[derive(Debug, Ord, PartialOrd, Eq, PartialEq)]
 pub enum Call {
@@ -172,12 +174,12 @@ impl TestClient {
         self.extensions.insert(name, (extension, api));
     }
 
-    pub fn get_extension(&self, name: &str) -> Arc<Extension> {
-        Arc::clone(&self.extensions[name].0)
+    pub fn get_extension<'a>(&'a self, name: &str) -> &'a Extension {
+        self.extensions[name].0.deref()
     }
 
-    fn get_api(&self, name: &str) -> Arc<TestApi> {
-        Arc::clone(&self.extensions[name].1)
+    fn get_api<'a>(&'a self, name: &str) -> &'a TestApi {
+        &self.extensions[name].1
     }
 
     pub fn add_node(&self, token: NodeToken) {
@@ -211,6 +213,6 @@ impl TestClient {
     }
 
     pub fn pop_call(&self, name: &str) -> Option<Call> {
-        self.extensions.get(name).and_then(|ext| ext.1.calls.lock().pop_front())
+        self.get_api(name).calls.lock().pop_front()
     }
 }
