@@ -20,7 +20,7 @@ use std::sync::{Arc, Weak};
 
 use parking_lot::Mutex;
 
-use super::super::extension::{Api, Extension, NodeToken, TimerToken};
+use super::super::extension::{Api, Error, Extension, NodeToken, TimerToken};
 
 #[derive(Debug, Ord, PartialOrd, Eq, PartialEq)]
 pub enum Call {
@@ -124,12 +124,20 @@ impl TestApi {
         self.extension().on_node_removed(&token);
     }
 
-    fn push_message(&self, from: NodeToken, message: &[u8]) {
-        self.extension().on_message(&from, &message.to_vec());
+    fn connected(&self, token: NodeToken) {
+        self.extension().on_connected(&token);
     }
 
-    fn pop_message(&self) -> Option<(NodeToken, Vec<u8>)> {
-        self.messages.lock().pop_front().clone()
+    fn allow_connection(&self, token: NodeToken) {
+        self.extension().on_connection_allowed(&token);
+    }
+
+    fn deny_connection(&self, token: NodeToken, error: Error) {
+        self.extension().on_connection_denied(&token, error);
+    }
+
+    fn send_message(&self, from: NodeToken, message: &[u8]) {
+        self.extension().on_message(&from, &message.to_vec());
     }
 
     fn close(&self) {
@@ -194,6 +202,28 @@ impl TestClient {
         }
     }
 
+    fn connected(&self, token: NodeToken) {
+        for name in self.extensions.keys() {
+            self.get_api(name).connected(token);
+        }
+    }
+
+    fn allow_connection(&self, token: NodeToken) {
+        for name in self.extensions.keys() {
+            self.get_api(name).allow_connection(token);
+        }
+    }
+
+    fn deny_connection(&self, token: NodeToken, error: Error) {
+        for name in self.extensions.keys() {
+            self.get_api(name).deny_connection(token, error);
+        }
+    }
+
+    pub fn send_message(&self, name: &str, from: NodeToken, message: &[u8]) {
+        self.get_api(name).send_message(from, message);
+    }
+
     pub fn close(&self) {
         for name in self.extensions.keys() {
             self.get_api(name).close();
@@ -202,14 +232,6 @@ impl TestClient {
 
     pub fn call_timeout(&self, name: &str, token: TimerToken) {
         self.get_api(name).call_timeout(token);
-    }
-
-    pub fn push_message(&self, name: &str, from: NodeToken, message: &[u8]) {
-        self.get_api(name).push_message(from, message);
-    }
-
-    pub fn pop_message(&self, name: &str) -> Option<(NodeToken, Vec<u8>)> {
-        self.get_api(name).pop_message()
     }
 
     pub fn pop_call(&self, name: &str) -> Option<Call> {
