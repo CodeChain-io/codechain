@@ -22,6 +22,10 @@ extern crate parking_lot;
 extern crate rand;
 extern crate rlp;
 
+#[cfg(test)]
+#[macro_use]
+extern crate lazy_static;
+
 extern crate codechain_crypto as ccrypto;
 extern crate codechain_keys as ckeys;
 extern crate codechain_network as cnetwork;

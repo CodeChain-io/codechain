@@ -13,3 +13,5 @@ parking_lot = "0.5"
 rand = "0.4"
 rlp = { path = "../util/rlp" }
 
+[dev-dependencies]
+lazy_static = "1.0"
