@@ -202,7 +202,16 @@ mod tests {
     use rlp::Encodable;
     use triehash::ordered_trie_root;
 
-    use super::DownloadManager;
+    use super::{DownloadManager, MAX_BODY_REQUEST_LENGTH};
+    use block::message::RequestMessage;
+
+    struct TestEnvironment {
+        chain: Vec<Block>,
+        headers: Vec<Header>,
+        bodies: Vec<Vec<UnverifiedTransaction>>,
+        first_block: Block,
+        manager: DownloadManager,
+    }
 
     fn dummy_transaction(nonce: U256) -> UnverifiedTransaction {
         let raw = Transaction {
@@ -244,54 +253,222 @@ mod tests {
         chain
     }
 
-    #[test]
-    fn should_import_known_blocks() {
-        let chain = dummy_chain(10);
+    fn generate_test_environment(chain_length: usize) -> TestEnvironment {
+        let chain = dummy_chain(chain_length);
         let headers: Vec<_> = chain.iter().map(|block| block.header.clone()).collect();
         let bodies: Vec<_> = chain.iter().map(|block| block.transactions.clone()).collect();
         let first_block = chain.first().unwrap().clone();
-        let mut manager = DownloadManager::new(first_block.header.hash(), first_block.header.number());
-        manager.downloading_header = Some(manager.best_hash);
-        manager.import_headers(headers.as_slice());
-        for (hash, _) in &manager.headers {
-            manager.downloading_bodies.insert(*hash);
-        }
-        manager.import_bodies(bodies.as_slice());
+        let manager = DownloadManager::new(first_block.header.hash(), first_block.header.number());
 
-        for block in chain {
-            let hash = block.header.hash();
-            assert!(manager.headers.contains_key(&hash));
-            assert_eq!(*manager.headers.get(&hash).unwrap(), block.header);
-            assert!(manager.bodies.contains_key(&hash));
-            assert_eq!(*manager.bodies.get(&hash).unwrap(), block.transactions);
+        TestEnvironment {
+            chain,
+            headers,
+            bodies,
+            first_block,
+            manager,
         }
+    }
+
+    #[test]
+    fn test_best_header_download() {
+        let TestEnvironment {
+            headers,
+            first_block,
+            mut manager,
+            ..
+        } = generate_test_environment(10);
+
+        // Create header download request
+        let request = manager.create_request();
+        match request {
+            Some(RequestMessage::Headers {
+                start_number,
+                ..
+            }) => {
+                assert_eq!(start_number, first_block.header.number());
+                assert_eq!(manager.downloading_header, Some(first_block.header.hash()));
+            }
+            _ => panic!(),
+        }
+
+        // Import requested headers
+        assert!(manager.import_headers(headers.as_slice()));
+        for header in headers {
+            assert!(manager.headers.contains_key(&header.hash()));
+        }
+    }
+
+    #[test]
+    fn test_last_header_download() {
+        let TestEnvironment {
+            headers,
+            mut manager,
+            ..
+        } = generate_test_environment(10);
+
+        let _ = manager.create_request();
+        assert!(manager.import_headers(headers.as_slice()));
+        let hashes: Vec<_> = headers.iter().map(|h| h.hash()).collect();
+        manager.downloading_bodies.extend(hashes.as_slice());
+
+        let request = manager.create_request();
+        match request {
+            Some(RequestMessage::Headers {
+                start_number,
+                ..
+            }) => {
+                let last_header = headers.last().unwrap();
+                assert_eq!(start_number, last_header.number());
+                assert_eq!(manager.downloading_header, Some(last_header.hash()));
+            }
+            _ => panic!(),
+        }
+    }
+
+    #[test]
+    fn should_import_empty_headers() {
+        let TestEnvironment {
+            mut manager,
+            ..
+        } = generate_test_environment(10);
+        assert!(!manager.import_headers(Vec::new().as_slice()));
+    }
+
+    #[test]
+    fn should_not_import_non_continuous_headers() {
+        let TestEnvironment {
+            mut headers,
+            mut manager,
+            ..
+        } = generate_test_environment(10);
+
+        manager.downloading_header = Some(headers.first().unwrap().hash());
+        headers.drain(3..7);
+        assert!(!manager.import_headers(headers.as_slice()));
     }
 
     #[test]
     fn should_not_import_unknown_headers() {
-        let chain = dummy_chain(10);
-        let headers: Vec<_> = chain.iter().map(|block| block.header.clone()).collect();
-        let first_block = chain.first().unwrap();
-        let mut manager = DownloadManager::new(first_block.header.hash(), first_block.header.number());
-        manager.import_headers(headers.as_slice());
-        for (hash, _) in &manager.headers {
-            manager.downloading_bodies.insert(*hash);
-        }
-        manager.import_headers(headers.as_slice());
+        let TestEnvironment {
+            headers,
+            mut manager,
+            ..
+        } = generate_test_environment(10);
+        assert!(!manager.import_headers(headers.as_slice()));
 
-        for header in headers {
-            assert!(!manager.headers.contains_key(&header.hash()));
+        assert_eq!(manager.headers.len(), 0);
+    }
+
+    #[test]
+    fn test_body_download() {
+        let TestEnvironment {
+            chain,
+            headers,
+            mut manager,
+            ..
+        } = generate_test_environment(MAX_BODY_REQUEST_LENGTH + 2);
+
+        let _ = manager.create_request();
+        assert!(manager.import_headers(headers.as_slice()));
+
+        let request = manager.create_request();
+        let requested_hashes = match request {
+            Some(RequestMessage::Bodies(hashes)) => {
+                assert!(hashes.len() <= MAX_BODY_REQUEST_LENGTH);
+                for header in headers.iter().skip(1).take(MAX_BODY_REQUEST_LENGTH) {
+                    assert!(hashes.contains(&header.hash()));
+                }
+                hashes
+            }
+            _ => panic!(),
+        };
+
+        let importing_bodies: Vec<_> = chain
+            .into_iter()
+            .filter(|block| requested_hashes.contains(&block.header.hash()))
+            .map(|block| block.transactions)
+            .collect();
+        assert!(manager.import_bodies(importing_bodies.as_slice()));
+        for hash in requested_hashes {
+            assert!(manager.bodies.contains_key(&hash));
         }
     }
 
     #[test]
-    fn should_not_import_unknown_bodies() {
-        let chain = dummy_chain(10);
-        let bodies: Vec<_> = chain.iter().map(|block| block.transactions.clone()).collect();
-        let first_block = chain.first().unwrap();
-        let mut manager = DownloadManager::new(first_block.header.hash(), first_block.header.number());
-        manager.import_bodies(bodies.as_slice());
+    fn should_request_middle_bodies() {
+        let TestEnvironment {
+            headers,
+            mut manager,
+            ..
+        } = generate_test_environment(10);
+        let _ = manager.create_request();
+        assert!(manager.import_headers(headers.as_slice()));
 
+        let mut imported_body_hashes: Vec<_> = headers.iter().map(|header| header.hash()).collect();
+        imported_body_hashes.drain(3..7);
+        manager.downloading_bodies.extend(imported_body_hashes);
+
+        let request = manager.create_request();
+        match request {
+            Some(RequestMessage::Bodies(hashes)) => {
+                assert_eq!(hashes.len(), 7 - 3);
+                for header in headers.iter().skip(3).take(7 - 3) {
+                    assert!(hashes.contains(&header.hash()));
+                }
+            }
+            _ => panic!(),
+        };
+    }
+
+    #[test]
+    fn should_not_import_unknown_bodies() {
+        let TestEnvironment {
+            bodies,
+            mut manager,
+            ..
+        } = generate_test_environment(10);
+        assert!(!manager.import_bodies(bodies.as_slice()));
         assert_eq!(manager.bodies.len(), 0);
+    }
+
+    #[test]
+    fn should_not_request_anything_on_complete() {
+        let TestEnvironment {
+            headers,
+            bodies,
+            mut manager,
+            ..
+        } = generate_test_environment(10);
+        let _ = manager.create_request();
+        assert!(manager.import_headers(headers.as_slice()));
+        let _ = manager.create_request();
+        assert!(manager.import_bodies(&bodies[1..]));
+        let _ = manager.create_request();
+        assert_eq!(manager.create_request(), None);
+    }
+
+    #[test]
+    fn test_drain() {
+        let TestEnvironment {
+            chain,
+            mut manager,
+            ..
+        } = generate_test_environment(MAX_BODY_REQUEST_LENGTH + 2);
+
+        let mut importing_blocks = chain.clone();
+        importing_blocks.drain(3..7);
+        for block in &importing_blocks {
+            manager.headers.insert(block.header.hash(), block.header.clone());
+            manager.bodies.insert(block.header.hash(), block.transactions.clone());
+        }
+
+        let drained_blocks = manager.drain();
+        let new_first_block = &chain[2];
+        assert_eq!(manager.best_hash, new_first_block.header.hash());
+        assert_eq!(manager.best_number, new_first_block.header.number());
+        for block in drained_blocks {
+            let original_block = chain[block.header.number() as usize].clone();
+            assert_eq!(original_block, block);
+        }
     }
 }
