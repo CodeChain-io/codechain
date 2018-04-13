@@ -253,3 +253,109 @@ impl NetworkExtension for Extension {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+    use std::sync::Arc;
+
+    use cnetwork::{DiscoveryApi, NetworkExtension, SocketAddr, TestNetworkCall, TestNetworkClient};
+
+    use super::{AddressConverter, Config, Extension, NodeToken};
+
+    struct TestAddressConverter {
+        token_to_address: HashMap<NodeToken, SocketAddr>,
+        address_to_token: HashMap<SocketAddr, NodeToken>,
+    }
+
+    #[derive(Clone)]
+    struct Node {
+        token: NodeToken,
+        address: SocketAddr,
+    }
+
+    impl TestAddressConverter {
+        fn new() -> Self {
+            Self {
+                token_to_address: HashMap::new(),
+                address_to_token: HashMap::new(),
+            }
+        }
+        fn add<'a>(&mut self, node: &'a Node) {
+            self.token_to_address.insert(node.token, node.address.clone());
+            self.address_to_token.insert(node.address.clone(), node.token);
+        }
+    }
+
+    impl AddressConverter for TestAddressConverter {
+        fn node_token_to_address(&self, node: &NodeToken) -> Option<SocketAddr> {
+            self.token_to_address.get(node).map(|a| a.clone())
+        }
+        fn address_to_node_token(&self, address: &SocketAddr) -> Option<NodeToken> {
+            self.address_to_token.get(address).map(|t| t.clone())
+        }
+    }
+
+    lazy_static! {
+        static ref NODES: [Node; 1] = [Node {
+            token: 1,
+            address: SocketAddr::v4(127, 0, 0, 1, 3481),
+        }];
+    }
+
+    #[test]
+    fn test_add_node() {
+        let config = Config::new(None, None, None, None);
+        let default_refresh = config.t_refresh;
+        let extension = Arc::new(Extension::new(config));
+
+
+        let converter = {
+            let mut converter = TestAddressConverter::new();
+            converter.add(&NODES[0]);
+            Arc::new(converter)
+        };
+        extension.set_address_converter(converter);
+
+        let mut client = TestNetworkClient::new();
+        client.register_extension(extension.clone());
+        {
+            let active_nodes = extension.active_nodes.read();
+            assert_eq!(0, active_nodes.len());
+        }
+
+        let command = client.pop_call(&extension.name());
+        assert_eq!(
+            Some(TestNetworkCall::SetTimer {
+                token: 1,
+                ms: default_refresh.into()
+            }),
+            command
+        );
+
+        let command = client.pop_call(&extension.name());
+        assert_eq!(None, command);
+
+        client.add_node(NODES[0].token);
+        {
+            let active_nodes = extension.active_nodes.read();
+            assert_eq!(1, active_nodes.len());
+            assert!(active_nodes.contains(&NODES[0].token))
+        }
+
+        let command = client.pop_call(&extension.name());
+        assert_eq!(
+            Some(TestNetworkCall::SetTimerOnce {
+                token: 0,
+                ms: 0
+            }),
+            command
+        );
+
+        let command = client.pop_call(&extension.name());
+        assert_eq!(None, command);
+
+        let command = client.pop_call(&extension.name());
+        assert_eq!(None, command);
+    }
+}
