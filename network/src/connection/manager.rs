@@ -15,14 +15,13 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::collections::{HashMap, HashSet};
-use std::convert::{From, Into};
+use std::convert::From;
 use std::io;
 use std::sync::Arc;
 
 use cfinally::finally;
 use cio::{IoContext, IoHandler, IoHandlerResult, IoManager, StreamToken, TimerToken};
 use mio::deprecated::EventLoop;
-use mio::net::{TcpListener, TcpStream};
 use mio::{PollOpt, Ready, Token};
 use parking_lot::{Mutex, RwLock};
 
@@ -33,11 +32,13 @@ use super::super::timer_info::{Error as TimerInfoError, TimerInfo};
 use super::super::token_generator::TokenGenerator;
 use super::super::SocketAddr;
 use super::connection::{Connection, ExtensionCallback as ExtensionChannel};
+use super::listener::Listener;
 use super::message::Version;
+use super::stream::Stream;
 use super::unprocessed_connection::UnprocessedConnection;
 
 pub struct Manager {
-    listener: TcpListener,
+    listener: Listener,
 
     tokens: TokenGenerator,
     unprocessed_tokens: HashSet<StreamToken>,
@@ -130,7 +131,7 @@ impl ::std::fmt::Display for Error {
 impl Manager {
     pub fn listen(socket_address: &SocketAddr) -> io::Result<Self> {
         Ok(Manager {
-            listener: TcpListener::bind(socket_address.into())?,
+            listener: Listener::bind(&socket_address)?,
 
             tokens: TokenGenerator::new(FIRST_CONNECTION_TOKEN, LAST_CONNECTION_TOKEN),
             unprocessed_tokens: HashSet::new(),
@@ -146,7 +147,7 @@ impl Manager {
         })
     }
 
-    fn register_unprocessed_connection(&mut self, stream: TcpStream) -> Result<(StreamToken, TimerToken)> {
+    fn register_unprocessed_connection(&mut self, stream: Stream) -> Result<(StreamToken, TimerToken)> {
         let token = self.tokens.gen().ok_or(Error::General("TooManyConnections"))?;
         let timer_token = {
             if let Some(timer_token) = self.waiting_sync_tokens.gen() {
@@ -161,7 +162,7 @@ impl Manager {
         let t = self.waiting_sync_timer_to_stream.insert(token, timer_token);
         debug_assert!(t.is_none());
 
-        let connection = UnprocessedConnection::new(stream.into());
+        let connection = UnprocessedConnection::new(stream);
 
         let con = self.unprocessed_connections.insert(token, connection);
         debug_assert!(con.is_none());
@@ -205,9 +206,9 @@ impl Manager {
         }
     }
 
-    fn create_connection(&mut self, stream: TcpStream, socket_address: &SocketAddr) -> IoHandlerResult<StreamToken> {
+    fn create_connection(&mut self, stream: Stream, socket_address: &SocketAddr) -> IoHandlerResult<StreamToken> {
         let session = self.socket_to_session.remove(&socket_address).ok_or(Error::General("UnavailableSession"))?;
-        let mut connection = Connection::new(stream.into(), session.secret().clone(), session.nonce().clone());
+        let mut connection = Connection::new(stream, session.secret().clone(), session.nonce().clone());
         let nonce = session.nonce();
         connection.enqueue_sync(nonce.clone());
 
@@ -221,22 +222,20 @@ impl Manager {
     }
 
     pub fn accept(&mut self) -> IoHandlerResult<Option<(StreamToken, TimerToken, SocketAddr)>> {
-        match self.listener.accept() {
-            Ok((stream, socket_address)) => {
+        match self.listener.accept()? {
+            Some((stream, socket_address)) => {
                 let (stream_token, timer_token) = self.register_unprocessed_connection(stream)?;
-                Ok(Some((stream_token, timer_token, socket_address.into())))
+                Ok(Some((stream_token, timer_token, socket_address)))
             }
-            Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => Ok(None),
-            Err(e) => Err(From::from(e)),
+            None => Ok(None),
         }
     }
 
     pub fn connect(&mut self, socket_address: &SocketAddr) -> IoHandlerResult<Option<StreamToken>> {
-        match TcpStream::connect(socket_address.into()) {
-            Ok(stream) => Ok(Some(self.create_connection(stream, &socket_address)?)),
-            Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => Ok(None),
-            Err(e) => Err(From::from(e)),
-        }
+        Ok(match Stream::connect(socket_address)? {
+            Some(stream) => Some(self.create_connection(stream, &socket_address)?),
+            None => None,
+        })
     }
 
     fn register_session(&mut self, socket_address: SocketAddr, session: Session) -> Result<()> {

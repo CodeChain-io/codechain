@@ -17,6 +17,7 @@
 use std::error::Error as StdError;
 use std::fmt;
 use std::io::{self, Write};
+use std::net;
 
 use mio::deprecated::TryRead;
 use mio::event::Evented;
@@ -81,6 +82,14 @@ pub struct Stream {
 }
 
 impl Stream {
+    pub fn connect<'a, S: Into<&'a net::SocketAddr>>(socket_address: S) -> Result<Option<Self>> {
+        Ok(match TcpStream::connect(socket_address.into()) {
+            Ok(stream) => Some(Self::from(stream)),
+            Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => None,
+            Err(e) => Err(e)?,
+        })
+    }
+
     pub fn read<M>(&mut self) -> Result<Option<M>>
     where
         M: ?Sized + Decodable, {
