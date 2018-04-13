@@ -209,7 +209,6 @@ mod tests {
             nonce,
             fee: U256::zero(),
             action: Action::default(),
-            data: Vec::new(),
             network_id: 0,
         };
         raw.with_signature(ECDSASignature::default())

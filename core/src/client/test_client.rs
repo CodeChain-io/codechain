@@ -42,7 +42,6 @@ use journaldb;
 use kvdb_memorydb;
 use parking_lot::RwLock;
 use rlp::*;
-use rustc_hex::FromHex;
 use trie;
 
 use super::super::block::{ClosedBlock, OpenBlock, SealedBlock};
@@ -204,7 +203,6 @@ impl TestBlockChainClient {
                     self.nonces.write().insert(keypair.address(), U256::one());
                     let tx = Transaction {
                         action: Action::Noop,
-                        data: "3331600055".from_hex().unwrap(),
                         nonce: U256::zero(),
                         fee: U256::from(10),
                         network_id: 0u64,
@@ -268,7 +266,6 @@ impl TestBlockChainClient {
         let keypair = Random.generate().unwrap();
         let tx = Transaction {
             action: Action::Noop,
-            data: "3331600055".from_hex().unwrap(),
             nonce: U256::zero(),
             fee: U256::from(10),
             network_id: 0u64,

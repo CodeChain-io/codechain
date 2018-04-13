@@ -208,7 +208,6 @@ mod tests {
             nonce,
             fee: U256::from(1245),
             action: transaction::Action::Noop,
-            data: Default::default(),
             network_id: 0u64,
         }.sign(keypair.private())
     }

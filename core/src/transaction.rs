@@ -17,7 +17,6 @@
 use std::fmt;
 use std::ops::Deref;
 
-use cbytes::Bytes;
 use ccrypto::blake256;
 use ckeys::{self, public_to_address, recover_ecdsa, sign_ecdsa, ECDSASignature, Private, Public};
 use ctypes::{Address, H160, H256, U256, U512};
@@ -132,8 +131,6 @@ pub struct Transaction {
     pub fee: U256,
     /// Action, can be either payment or asset transfer
     pub action: Action,
-    /// Transaction data.
-    pub data: Bytes,
     /// Mainnet or Testnet
     pub network_id: u64,
 }
@@ -200,18 +197,17 @@ impl rlp::Encodable for Action {
 
 impl HeapSizeOf for Transaction {
     fn heap_size_of_children(&self) -> usize {
-        self.data.heap_size_of_children()
+        0
     }
 }
 
 impl Transaction {
     /// Append object with a without signature into RLP stream
     pub fn rlp_append_unsigned_transaction(&self, s: &mut RlpStream) {
-        s.begin_list(5);
+        s.begin_list(4);
         s.append(&self.nonce);
         s.append(&self.fee);
         s.append(&self.action);
-        s.append(&self.data);
         s.append(&self.network_id);
     }
 
@@ -266,7 +262,7 @@ impl Deref for UnverifiedTransaction {
 
 impl rlp::Decodable for UnverifiedTransaction {
     fn decode(d: &UntrustedRlp) -> Result<Self, DecoderError> {
-        if d.item_count()? != 8 {
+        if d.item_count()? != 7 {
             return Err(DecoderError::RlpIncorrectListLen)
         }
         let hash = blake256(d.as_raw());
@@ -275,12 +271,11 @@ impl rlp::Decodable for UnverifiedTransaction {
                 nonce: d.val_at(0)?,
                 fee: d.val_at(1)?,
                 action: d.val_at(2)?,
-                data: d.val_at(3)?,
-                network_id: d.val_at(4)?,
+                network_id: d.val_at(3)?,
             },
-            v: d.val_at(5)?,
-            r: d.val_at(6)?,
-            s: d.val_at(7)?,
+            v: d.val_at(4)?,
+            r: d.val_at(5)?,
+            s: d.val_at(6)?,
             hash,
         })
     }
@@ -307,11 +302,10 @@ impl UnverifiedTransaction {
 
     /// Append object with a signature into RLP stream
     fn rlp_append_sealed_transaction(&self, s: &mut RlpStream) {
-        s.begin_list(8);
+        s.begin_list(7);
         s.append(&self.nonce);
         s.append(&self.fee);
         s.append(&self.action);
-        s.append(&self.data);
         s.append(&self.network_id);
         s.append(&self.v);
         s.append(&self.r);
