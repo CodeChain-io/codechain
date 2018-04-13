@@ -16,4 +16,4 @@
 
 mod client;
 
-pub use self::client::TestClient;
+pub use self::client::{Call, TestClient};

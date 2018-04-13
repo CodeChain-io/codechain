@@ -20,6 +20,21 @@ use std::sync::{Arc, Weak};
 
 use extension::{Api, Extension, NodeToken, TimerToken};
 
+#[derive(Debug, Ord, PartialOrd, Eq, PartialEq)]
+pub enum Call {
+    Send(NodeToken, Vec<u8>),
+    Connect(NodeToken),
+    SetTimer {
+        token: TimerToken,
+        ms: u64,
+    },
+    SetTimerOnce {
+        token: TimerToken,
+        ms: u64,
+    },
+    ClearTimer(TimerToken),
+}
+
 struct TestApi {
     extension: Weak<Extension>,
 
@@ -27,6 +42,8 @@ struct TestApi {
     timers: Mutex<HashMap<TimerToken, (u64, bool)>>,
 
     messages: Mutex<VecDeque<(NodeToken, Vec<u8>)>>,
+
+    calls: Mutex<VecDeque<Call>>,
 }
 
 impl TestApi {
@@ -38,6 +55,7 @@ impl TestApi {
             timers: Mutex::new(HashMap::new()),
 
             messages: Mutex::new(VecDeque::new()),
+            calls: Mutex::new(VecDeque::new()),
         })
     }
 
@@ -49,11 +67,13 @@ impl TestApi {
 impl Api for TestApi {
     fn send(&self, node: &NodeToken, message: &Vec<u8>) {
         self.messages.lock().push_back((*node, message.clone()));
+        self.calls.lock().push_back(Call::Send(*node, message.clone()));
     }
 
     fn connect(&self, node: &NodeToken) {
         self.connections.lock().insert(*node);
         self.extension().on_connection_allowed(node);
+        self.calls.lock().push_back(Call::Connect(*node));
     }
 
     fn set_timer(&self, token: TimerToken, ms: u64) {
@@ -62,6 +82,10 @@ impl Api for TestApi {
             panic!("Tried to set timer with token #{} twice", token);
         }
         timers.insert(token, (ms, false));
+        self.calls.lock().push_back(Call::SetTimer {
+            token,
+            ms,
+        });
     }
 
     fn set_timer_once(&self, token: TimerToken, ms: u64) {
@@ -70,6 +94,10 @@ impl Api for TestApi {
             panic!("Tried to set timer with token #{} twice", token);
         }
         timers.insert(token, (ms, true));
+        self.calls.lock().push_back(Call::SetTimerOnce {
+            token,
+            ms,
+        });
     }
 
     fn clear_timer(&self, token: TimerToken) {
@@ -78,6 +106,7 @@ impl Api for TestApi {
             panic!("Tried to clear unregistered timer of token #{}", token);
         }
         timers.remove(&token);
+        self.calls.lock().push_back(Call::ClearTimer(token));
     }
 }
 
@@ -179,5 +208,9 @@ impl TestClient {
 
     pub fn pop_message(&self, name: &str) -> Option<(NodeToken, Vec<u8>)> {
         self.get_api(name).pop_message()
+    }
+
+    pub fn pop_call(&self, name: &str) -> Option<Call> {
+        self.extensions.get(name).and_then(|ext| ext.1.calls.lock().pop_front())
     }
 }
