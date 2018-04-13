@@ -21,7 +21,7 @@ use cio::IoChannel;
 use parking_lot::RwLock;
 
 use super::connection::HandlerMessage as ConnectionMessage;
-use super::{Api, Error as ExtensionError, NetworkExtension, NodeToken, TimerToken};
+use super::{Api, NetworkExtension, NetworkExtensionError, NodeToken, TimerToken};
 
 struct ClientApi {
     extension: Weak<NetworkExtension>,
@@ -187,14 +187,14 @@ impl Client {
 
     define_method!(on_connected; id, &NodeToken);
     define_method!(on_connection_allowed; id, &NodeToken);
-    define_method!(on_connection_denied; id, &NodeToken; error, ExtensionError);
+    define_method!(on_connection_denied; id, &NodeToken; error, NetworkExtensionError);
 
     define_method!(on_message; id, &NodeToken; data, &Vec<u8>);
 
     define_broadcast_method!(on_close);
 
     define_method!(on_timer_set_allowed; timer_id, TimerToken);
-    define_method!(on_timer_set_denied; timer_id, TimerToken; error, ExtensionError);
+    define_method!(on_timer_set_denied; timer_id, TimerToken; error, NetworkExtensionError);
     define_method!(on_timeout; timer_id, TimerToken);
 }
 
@@ -213,7 +213,7 @@ mod tests {
     use cio::IoService;
     use parking_lot::Mutex;
 
-    use super::{Api, Client, ExtensionError, NetworkExtension, NodeToken};
+    use super::{Api, Client, NetworkExtension, NetworkExtensionError, NodeToken};
 
     #[allow(dead_code)]
     struct TestApi;
@@ -303,7 +303,7 @@ mod tests {
             callbacks.push(Callback::ConnectionAllowed);
         }
 
-        fn on_connection_denied(&self, _id: &NodeToken, _error: ExtensionError) {
+        fn on_connection_denied(&self, _id: &NodeToken, _error: NetworkExtensionError) {
             let mut callbacks = self.callbacks.lock();
             callbacks.push(Callback::ConnectionDenied);
         }
@@ -323,7 +323,7 @@ mod tests {
             callbacks.push(Callback::TimerSetAllowed);
         }
 
-        fn on_timer_set_denied(&self, _timer_id: usize, _error: ExtensionError) {
+        fn on_timer_set_denied(&self, _timer_id: usize, _error: NetworkExtensionError) {
             let mut callbacks = self.callbacks.lock();
             callbacks.push(Callback::TimerSetDenied);
         }
