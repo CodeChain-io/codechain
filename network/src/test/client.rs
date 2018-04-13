@@ -20,7 +20,7 @@ use std::sync::{Arc, Weak};
 
 use extension::{Api, Extension, NodeToken, TimerToken};
 
-pub struct TestApi {
+struct TestApi {
     extension: Weak<Extension>,
 
     connections: Mutex<HashSet<NodeToken>>,
@@ -30,7 +30,7 @@ pub struct TestApi {
 }
 
 impl TestApi {
-    pub fn new(extension: Weak<Extension>) -> Arc<Self> {
+    fn new(extension: Weak<Extension>) -> Arc<Self> {
         Arc::new(Self {
             extension,
 
@@ -41,7 +41,7 @@ impl TestApi {
         })
     }
 
-    pub fn extension(&self) -> Arc<Extension> {
+    fn extension(&self) -> Arc<Extension> {
         self.extension.upgrade().expect("Extension must be alive")
     }
 }
@@ -82,31 +82,31 @@ impl Api for TestApi {
 }
 
 impl TestApi {
-    pub fn add_node(&self, token: NodeToken) {
+    fn add_node(&self, token: NodeToken) {
         self.extension().on_node_added(&token);
     }
 
-    pub fn remove_node(&self, token: NodeToken) {
+    fn remove_node(&self, token: NodeToken) {
         if !self.connections.lock().remove(&token) {
             panic!("Tried to remove unregistered node #{}", token);
         }
         self.extension().on_node_removed(&token);
     }
 
-    pub fn push_message(&self, from: NodeToken, message: &[u8]) {
+    fn push_message(&self, from: NodeToken, message: &[u8]) {
         self.extension().on_message(&from, &message.to_vec());
     }
 
-    pub fn pop_message(&self) -> Option<(NodeToken, Vec<u8>)> {
+    fn pop_message(&self) -> Option<(NodeToken, Vec<u8>)> {
         self.messages.lock().pop_front().clone()
     }
 
-    pub fn close(&self) {
+    fn close(&self) {
         self.connections.lock().clear();
         self.extension().on_close();
     }
 
-    pub fn call_timeout(&self, token: TimerToken) {
+    fn call_timeout(&self, token: TimerToken) {
         let extension = self.extension();
         let mut timers = self.timers.lock();
         if let Some(&(_, oneshot)) = timers.get(&token) {
@@ -125,6 +125,12 @@ pub struct TestClient {
 }
 
 impl TestClient {
+    pub fn new() -> Self {
+        Self {
+            extensions: HashMap::new(),
+        }
+    }
+
     pub fn register_extension(&mut self, extension: Arc<Extension>) {
         let name = extension.name();
 
@@ -141,7 +147,7 @@ impl TestClient {
         Arc::clone(&self.extensions[name].0)
     }
 
-    pub fn get_api(&self, name: &str) -> Arc<TestApi> {
+    fn get_api(&self, name: &str) -> Arc<TestApi> {
         Arc::clone(&self.extensions[name].1)
     }
 

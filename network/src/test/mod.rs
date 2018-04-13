@@ -16,4 +16,4 @@
 
 mod client;
 
-pub use self::client::{TestApi as TestNetworkApi, TestClient as TestNetworkClient};
+pub use self::client::TestClient;
