@@ -95,6 +95,8 @@ impl Client {
         let journal_db = journaldb::new(db.clone(), journaldb::Algorithm::Archive, ::db::COL_STATE);
         let mut state_db = StateDB::new(journal_db, config.state_cache_size);
         if state_db.journal_db().is_empty() {
+            // Sets the correct state root.
+            state_db = spec.ensure_db_good(state_db, &trie_factory)?;
             let mut batch = DBTransaction::new();
             state_db.journal_under(&mut batch, 0, &spec.genesis_header().hash())?;
             db.write(batch).map_err(ClientError::Database)?;

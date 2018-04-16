@@ -130,8 +130,7 @@ impl Spec {
         }
     }
 
-    fn initialize_accounts<T: Backend>(&self, mut db: T) -> Result<T, Error> {
-        let trie_factory = TrieFactory::new(Default::default());
+    fn initialize_accounts<T: Backend>(&self, trie_factory: &TrieFactory, mut db: T) -> Result<T, Error> {
         let mut root = BLAKE_NULL_RLP;
 
         // basic accounts in spec.
@@ -144,6 +143,16 @@ impl Spec {
         }
 
         *self.state_root_memo.write() = root;
+        Ok(db)
+    }
+
+    /// Ensure that the given state DB has the trie nodes in for the genesis state.
+    pub fn ensure_db_good<T: Backend>(&self, db: T, trie_factory: &TrieFactory) -> Result<T, Error> {
+        if db.as_hashdb().contains(&self.state_root()) {
+            return Ok(db)
+        }
+
+        let db = self.initialize_accounts(trie_factory, db)?;
         Ok(db)
     }
 
@@ -246,7 +255,7 @@ fn load_from(s: cjson::spec::Spec) -> Result<Spec, Error> {
     match g.state_root {
         Some(root) => *s.state_root_memo.get_mut() = root,
         None => {
-            let _ = s.initialize_accounts(BasicBackend(MemoryDB::new()))?;
+            let _ = s.initialize_accounts(&TrieFactory::new(Default::default()), BasicBackend(MemoryDB::new()))?;
         }
     }
 
