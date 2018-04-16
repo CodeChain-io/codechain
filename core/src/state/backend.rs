@@ -22,7 +22,7 @@
 //! merkle trie is strictly necessary.
 
 use ctypes::Address;
-use hashdb::HashDB;
+use hashdb::{AsHashDB, HashDB};
 
 use super::Account;
 
@@ -48,4 +48,30 @@ pub trait Backend: Send {
     fn get_cached<F, U>(&self, a: &Address, f: F) -> Option<U>
     where
         F: FnOnce(Option<&mut Account>) -> U;
+}
+
+/// A basic backend. Just wraps the given database, directly inserting into and deleting from
+/// it. Doesn't cache anything.
+pub struct Basic<H>(pub H);
+
+impl<H: AsHashDB + Send + Sync> Backend for Basic<H> {
+    fn as_hashdb(&self) -> &HashDB {
+        self.0.as_hashdb()
+    }
+
+    fn as_hashdb_mut(&mut self) -> &mut HashDB {
+        self.0.as_hashdb_mut()
+    }
+
+    fn add_to_account_cache(&mut self, _: Address, _: Option<Account>, _: bool) {}
+
+    fn get_cached_account(&self, _: &Address) -> Option<Option<Account>> {
+        None
+    }
+
+    fn get_cached<F, U>(&self, _: &Address, _: F) -> Option<U>
+    where
+        F: FnOnce(Option<&mut Account>) -> U, {
+        None
+    }
 }

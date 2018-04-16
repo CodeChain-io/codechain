@@ -21,13 +21,18 @@ use cbytes::Bytes;
 use ccrypto::BLAKE_NULL_RLP;
 use cjson;
 use ctypes::{Address, H256, U256};
+use memorydb::MemoryDB;
+use parking_lot::RwLock;
 use rlp::{Rlp, RlpStream};
+use state::Backend;
+use trie::TrieFactory;
 
 use super::super::codechain_machine::CodeChainMachine;
 use super::super::consensus::{CodeChainEngine, NullEngine, Solo, SoloAuthority, Tendermint};
 use super::super::error::Error;
 use super::super::header::Header;
 use super::super::pod_state::PodState;
+use super::super::state::backend::Basic as BasicBackend;
 use super::seal::Generic as GenericSeal;
 use super::Genesis;
 
@@ -81,6 +86,9 @@ pub struct Spec {
     /// Each seal field, expressed as RLP, concatenated.
     pub seal_rlp: Bytes,
 
+    /// May be prepopulated if we know this in advance.
+    state_root_memo: RwLock<H256>,
+
     /// Genesis state as plain old data.
     genesis_state: PodState,
 }
@@ -120,6 +128,28 @@ impl Spec {
             cjson::spec::Engine::Tendermint(tendermint) => Tendermint::new(tendermint.params.into(), machine)
                 .expect("Failed to start the Tendermint consensus engine."),
         }
+    }
+
+    fn initialize_accounts<T: Backend>(&self, mut db: T) -> Result<T, Error> {
+        let trie_factory = TrieFactory::new(Default::default());
+        let mut root = BLAKE_NULL_RLP;
+
+        // basic accounts in spec.
+        {
+            let mut t = trie_factory.create(db.as_hashdb_mut(), &mut root);
+
+            for (address, account) in self.genesis_state.get().iter() {
+                t.insert(&**address, &account.rlp())?;
+            }
+        }
+
+        *self.state_root_memo.write() = root;
+        Ok(db)
+    }
+
+    /// Return the state root for the genesis state, memoising accordingly.
+    pub fn state_root(&self) -> H256 {
+        self.state_root_memo.read().clone()
     }
 
     /// Loads spec from json file. Provide factories for executing contracts and ensuring
@@ -195,7 +225,7 @@ fn load_from(s: cjson::spec::Spec) -> Result<Spec, Error> {
     let GenericSeal(seal_rlp) = g.seal.into();
     let params = CommonParams::from(s.params);
 
-    let s = Spec {
+    let mut s = Spec {
         name: s.name.clone().into(),
         engine: Spec::engine(s.engine, params),
         data_dir: s.data_dir.unwrap_or(s.name).into(),
@@ -208,8 +238,17 @@ fn load_from(s: cjson::spec::Spec) -> Result<Spec, Error> {
         timestamp: g.timestamp,
         extra_data: g.extra_data,
         seal_rlp,
+        state_root_memo: RwLock::new(Default::default()), // will be overwritten right after.
         genesis_state: s.accounts.into(),
     };
+
+    // use memoized state root if provided.
+    match g.state_root {
+        Some(root) => *s.state_root_memo.get_mut() = root,
+        None => {
+            let _ = s.initialize_accounts(BasicBackend(MemoryDB::new()))?;
+        }
+    }
 
     Ok(s)
 }
