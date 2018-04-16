@@ -183,6 +183,8 @@ impl DownloadManager {
                     header,
                     transactions: body,
                 });
+            } else {
+                break
             }
         }
 

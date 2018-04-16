@@ -25,7 +25,7 @@ pub use self::chain_notify::ChainNotify;
 pub use self::client::Client;
 pub use self::config::ClientConfig;
 pub use self::error::Error;
-pub use self::test_client::TestBlockChainClient;
+pub use self::test_client::{EachBlockWith, TestBlockChainClient};
 
 use cbytes::Bytes;
 use ctypes::{Address, H256, U256};

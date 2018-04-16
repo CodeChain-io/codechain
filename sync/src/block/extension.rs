@@ -399,3 +399,214 @@ impl Extension {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use ccore::{BlockChainClient, BlockId, BlockInfo, ChainInfo, EachBlockWith, ImportBlock, TestBlockChainClient};
+    use cnetwork::{NodeToken, TestNetworkCall, TestNetworkClient};
+    use ctypes::{H256, U256};
+    use rlp::Encodable;
+
+    use super::{Extension, EXTENSION_NAME, SYNC_TIMER_TOKEN};
+    use block::message::{Message, RequestMessage, ResponseMessage};
+
+    struct TestEnvironment {
+        client: Arc<TestBlockChainClient>,
+        extension: Arc<Extension>,
+        network: TestNetworkClient,
+    }
+
+    fn generate_test_environment(chain_length: usize) -> TestEnvironment {
+        let client = Arc::new(TestBlockChainClient::new());
+        client.add_blocks(chain_length, EachBlockWith::Transaction);
+        let extension = Extension::new(client.clone());
+        let mut network = TestNetworkClient::new();
+        network.register_extension(extension.clone());
+        let _ = network.pop_call(EXTENSION_NAME);
+
+        TestEnvironment {
+            client,
+            extension,
+            network,
+        }
+    }
+
+    fn assert_add_node(env: &mut TestEnvironment, node: NodeToken) {
+        env.network.add_node(node);
+        assert_eq!(env.network.pop_call(EXTENSION_NAME), Some(TestNetworkCall::Connect(0)));
+
+        env.network.connected(EXTENSION_NAME, 0);
+        match env.network.pop_call(EXTENSION_NAME) {
+            Some(TestNetworkCall::Send(0, data)) => {
+                let chain_info = env.client.chain_info();
+                let message: Message = ::rlp::decode(data.as_slice());
+                assert_eq!(
+                    message,
+                    Message::Status {
+                        total_score: chain_info.total_score,
+                        best_hash: chain_info.best_block_hash,
+                        genesis_hash: chain_info.genesis_hash,
+                    }
+                );
+            }
+            _ => panic!(),
+        }
+    }
+
+    fn assert_accept_status(env: &mut TestEnvironment, node: NodeToken, total_score: U256, best_hash: H256) {
+        let genesis_hash = env.client.chain_info().genesis_hash;
+        let peer_status = Message::Status {
+            total_score,
+            best_hash,
+            genesis_hash,
+        };
+
+        env.network.send_message(EXTENSION_NAME, node, &peer_status.rlp_bytes());
+        let peers = env.extension.peers.read();
+        assert_eq!(peers[&node].total_score, total_score);
+        assert_eq!(peers[&node].best_hash, best_hash);
+    }
+
+    #[test]
+    fn should_update_peer_info_on_status() {
+        let mut env = generate_test_environment(1);
+        assert_add_node(&mut env, 0);
+        let chain_info = env.client.chain_info();
+        let peer_total_score = chain_info.total_score + 2.into();
+        let peer_best_hash = chain_info.best_block_hash;
+        assert_accept_status(&mut env, 0, peer_total_score, peer_best_hash);
+        let peer_total_score = chain_info.total_score + 5.into();
+        let peer_best_hash = chain_info.best_block_hash;
+        assert_accept_status(&mut env, 0, peer_total_score, peer_best_hash);
+    }
+
+    #[test]
+    fn should_not_accept_on_genesis_mismatch() {
+        let mut env = generate_test_environment(1);
+        assert_add_node(&mut env, 0);
+
+        let chain_info = env.client.chain_info();
+        let peer_total_score = chain_info.total_score + 2.into();
+        let peer_best_hash = chain_info.best_block_hash;
+        let mut peer_genesis_hash = chain_info.genesis_hash;
+        peer_genesis_hash[0] += 1;
+
+        let peer_status = Message::Status {
+            total_score: peer_total_score,
+            best_hash: peer_best_hash,
+            genesis_hash: peer_genesis_hash,
+        };
+
+        env.network.send_message(EXTENSION_NAME, 0, &peer_status.rlp_bytes());
+        let peers = env.extension.peers.read();
+        assert!(!peers.contains_key(&0));
+    }
+
+    #[test]
+    fn should_return_requested_data() {
+        let mut env = generate_test_environment(10);
+        assert_add_node(&mut env, 0);
+        let chain_info = env.client.chain_info();
+        assert_accept_status(&mut env, 0, chain_info.total_score, chain_info.best_block_hash);
+
+        let request_range = 3..7;
+
+        let header_request = RequestMessage::Headers {
+            start_number: request_range.start,
+            max_count: 4,
+        };
+        env.network.send_message(EXTENSION_NAME, 0, &Message::Request(header_request).rlp_bytes());
+        if let TestNetworkCall::Send(_, response) = env.network.pop_call(EXTENSION_NAME).unwrap() {
+            if let Message::Response(ResponseMessage::Headers(headers)) = ::rlp::decode(response.as_slice()) {
+                for i in request_range.clone() {
+                    let message_header = headers[(i - request_range.start) as usize].clone();
+                    let chain_header = env.client.block_header(BlockId::Number(i)).unwrap().decode();
+                    assert_eq!(message_header, chain_header);
+                }
+            } else {
+                panic!();
+            }
+        } else {
+            panic!();
+        }
+
+        let body_request = RequestMessage::Bodies(
+            request_range.clone().map(|i| env.client.block_header(BlockId::Number(i)).unwrap().hash()).collect(),
+        );
+        env.network.send_message(EXTENSION_NAME, 0, &Message::Request(body_request).rlp_bytes());
+        if let TestNetworkCall::Send(_, response) = env.network.pop_call(EXTENSION_NAME).unwrap() {
+            if let Message::Response(ResponseMessage::Bodies(bodies)) = ::rlp::decode(response.as_slice()) {
+                for i in request_range.clone() {
+                    let message_body = bodies[(i - request_range.start) as usize].clone();
+                    let chain_body = env.client.block_body(BlockId::Number(i)).unwrap().decode();
+                    assert_eq!(message_body, chain_body);
+                }
+            } else {
+                panic!();
+            }
+        } else {
+            panic!();
+        }
+    }
+
+    #[test]
+    fn should_import_requested_data() {
+        let mut env = generate_test_environment(10);
+        let peer_chain = TestBlockChainClient::new();
+        for i in 0..10 {
+            peer_chain.import_block(env.client.block(BlockId::Number(i)).unwrap().into_inner());
+        }
+        peer_chain.add_blocks(10, EachBlockWith::Transaction);
+        assert_add_node(&mut env, 0);
+        let chain_info = env.client.chain_info();
+        assert_accept_status(&mut env, 0, chain_info.total_score + 2.into(), chain_info.best_block_hash);
+        env.network.call_timeout(EXTENSION_NAME, SYNC_TIMER_TOKEN);
+        let request_start = match env.network.pop_call(EXTENSION_NAME).unwrap() {
+            TestNetworkCall::Send(_, request) => match ::rlp::decode(request.as_slice()) {
+                Message::Request(RequestMessage::Headers {
+                    start_number,
+                    ..
+                }) => start_number,
+                _ => panic!(),
+            },
+            _ => panic!(),
+        };
+        assert_eq!(request_start, chain_info.best_block_number);
+        let header_response = ResponseMessage::Headers(
+            (request_start..(request_start + 5))
+                .map(|i| peer_chain.block_header(BlockId::Number(i)).unwrap().decode())
+                .collect(),
+        );
+        env.network.send_message(EXTENSION_NAME, 0, &Message::Response(header_response).rlp_bytes());
+
+        let requested_bodies = match env.network.pop_call(EXTENSION_NAME).unwrap() {
+            TestNetworkCall::Send(_, request) => match ::rlp::decode(request.as_slice()) {
+                Message::Request(RequestMessage::Bodies(hashes)) => hashes,
+                _ => panic!(),
+            },
+            _ => panic!(),
+        };
+        let body_response = ResponseMessage::Bodies(
+            requested_bodies
+                .into_iter()
+                .map(|hash| peer_chain.block_body(BlockId::Hash(hash)).unwrap().decode())
+                .collect(),
+        );
+        env.network.send_message(EXTENSION_NAME, 0, &Message::Response(body_response).rlp_bytes());
+
+        let new_request_start = match env.network.pop_call(EXTENSION_NAME).unwrap() {
+            TestNetworkCall::Send(_, request) => match ::rlp::decode(request.as_slice()) {
+                Message::Request(RequestMessage::Headers {
+                    start_number,
+                    ..
+                }) => start_number,
+                _ => panic!(),
+            },
+            _ => panic!(),
+        };
+        assert_eq!(new_request_start, request_start + 5 - 1);
+        assert_eq!(env.network.pop_call(EXTENSION_NAME), None);
+    }
+}

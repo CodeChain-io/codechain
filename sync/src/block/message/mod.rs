@@ -80,8 +80,8 @@ impl Decodable for Message {
                     genesis_hash: message.val_at(2)?,
                 }
             }
-            MESSAGE_ID_REQUEST_HEADERS | MESSAGE_ID_REQUEST_BODIES => Message::Request(message.as_val()?),
-            MESSAGE_ID_HEADERS | MESSAGE_ID_BODIES => Message::Response(message.as_val()?),
+            MESSAGE_ID_REQUEST_HEADERS | MESSAGE_ID_REQUEST_BODIES => Message::Request(rlp.as_val()?),
+            MESSAGE_ID_HEADERS | MESSAGE_ID_BODIES => Message::Response(rlp.as_val()?),
             _ => return Err(DecoderError::Custom("Unknown message id detected")),
         })
     }
