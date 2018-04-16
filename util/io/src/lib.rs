@@ -31,16 +31,19 @@
 //! }
 //!
 //! impl IoHandler<MyMessage> for MyHandler {
-//! 	fn initialize(&self, io: &IoContext<MyMessage>) {
+//! 	fn initialize(&self, io: &IoContext<MyMessage>) -> IoHandlerResult<()> {
 //!			io.register_timer(0, 1000).unwrap();
+//!			Ok(())
 //!		}
 //!
-//!		fn timeout(&self, _io: &IoContext<MyMessage>, timer: TimerToken) {
+//!		fn timeout(&self, _io: &IoContext<MyMessage>, timer: TimerToken) -> IoHandlerResult<()> {
 //!			println!("Timeout {}", timer);
+//!			Ok(())
 //!		}
 //!
-//!		fn message(&self, _io: &IoContext<MyMessage>, message: &MyMessage) {
+//!		fn message(&self, _io: &IoContext<MyMessage>, message: &MyMessage) -> IoHandlerResult<()> {
 //!			println!("Message {}", message.data);
+//!			Ok(())
 //!		}
 //! }
 //!
@@ -205,16 +208,19 @@ mod tests {
     }
 
     impl IoHandler<MyMessage> for MyHandler {
-        fn initialize(&self, io: &IoContext<MyMessage>) {
+        fn initialize(&self, io: &IoContext<MyMessage>) -> IoHandlerResult<()> {
             io.register_timer(0, 1000).unwrap();
+            Ok(())
         }
 
-        fn timeout(&self, _io: &IoContext<MyMessage>, timer: TimerToken) {
+        fn timeout(&self, _io: &IoContext<MyMessage>, timer: TimerToken) -> IoHandlerResult<()> {
             println!("Timeout {}", timer);
+            Ok(())
         }
 
-        fn message(&self, _io: &IoContext<MyMessage>, message: &MyMessage) {
+        fn message(&self, _io: &IoContext<MyMessage>, message: &MyMessage) -> IoHandlerResult<()> {
             println!("Message {}", message.data);
+            Ok(())
         }
     }
 
