@@ -59,7 +59,6 @@ enum Error {
     CIo(CIoError),
     Decoder(DecoderError),
     SymmetricCipher(SymmetricCipherError),
-    UnexpectedNonce(Nonce),
     Keys(KeysError),
     General(&'static str),
 }
@@ -72,7 +71,6 @@ impl fmt::Display for Error {
             &Error::CIo(ref err) => err.fmt(f),
             &Error::Decoder(ref err) => err.fmt(f),
             &Error::SymmetricCipher(_) => fmt::Debug::fmt(&self, f),
-            &Error::UnexpectedNonce(_) => fmt::Debug::fmt(&self, f),
             &Error::Keys(ref err) => err.fmt(f),
             &Error::General(_) => fmt::Debug::fmt(&self, f),
         }
@@ -87,7 +85,6 @@ impl error::Error for Error {
             &Error::CIo(ref err) => err.description(),
             &Error::Decoder(ref err) => err.description(),
             &Error::SymmetricCipher(_) => "SymmetricCipherError",
-            &Error::UnexpectedNonce(_) => "Unexpected nonce",
             &Error::Keys(_) => "KeysError",
             &Error::General(ref str) => str,
         }
@@ -100,7 +97,6 @@ impl error::Error for Error {
             &Error::CIo(_) => None,
             &Error::Decoder(ref err) => Some(err),
             &Error::SymmetricCipher(_) => None,
-            &Error::UnexpectedNonce(_) => None,
             &Error::Keys(_) => None,
             &Error::General(_) => None,
         }
@@ -223,11 +219,11 @@ impl Handshake {
                     let temporary_nonce = decrypt_and_decode_nonce(&temporary_session, received_nonce)?;
                     let temporary_session = Session::new(*secret, temporary_nonce.clone());
 
-                    // FIXME: let nonce = f(nonce)
-                    let nonce = temporary_nonce;
-                    let session = Session::new(*secret, nonce.clone());
-
+                    let mut rng = OsRng::new().expect("Cannot generate random number");
+                    let nonce: Nonce = rng.gen();
                     let encrypted_nonce = encode_and_encrypt_nonce(&temporary_session, &nonce)?;
+
+                    let session = Session::new(*secret, nonce);
                     extension.send(connection::HandlerMessage::RegisterSession(from.clone(), session))?;
                     encrypted_nonce
                 };
@@ -241,10 +237,6 @@ impl Handshake {
                 let secret = self.secrets.get(from).ok_or(Error::General("NoSession"))?;
                 let temporary_session = Session::new(*secret, temporary_nonce.clone());
                 let nonce = decrypt_and_decode_nonce(&temporary_session, &nonce)?;
-
-                if temporary_nonce != &nonce {
-                    return Err(From::from(Error::UnexpectedNonce(nonce)))
-                }
 
                 let session = Session::new(*secret, nonce);
                 extension.send(connection::HandlerMessage::RequestConnection(from.clone(), session))?;

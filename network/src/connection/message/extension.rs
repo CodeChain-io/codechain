@@ -141,6 +141,7 @@ impl Decodable for Message {
 #[cfg(test)]
 mod tests {
     use ctypes::Secret;
+    use rand::{OsRng, Rng};
 
     use super::super::super::message::Nonce;
     use super::Message;
@@ -161,13 +162,15 @@ mod tests {
         let extension_version = 3;
         let unencrypted_data: Vec<u8> = "this data must be encrypted".as_bytes().to_vec();
         let shared_secret = Secret::random();
-        let nonce = Nonce::random();
+
+        let mut rng = OsRng::new().expect("Cannot generate random number");
+        let nonce: Nonce = rng.gen();
 
         let encrypted = Message::encrypted_from_unencrypted_data(
             extension_name,
             extension_version,
             unencrypted_data.clone(),
-            &(shared_secret, nonce),
+            &(shared_secret, nonce.clone()),
         ).unwrap();
         assert_ne!(&unencrypted_data, encrypted.data());
         assert_eq!(unencrypted_data, encrypted.unencrypted_data(&(shared_secret, nonce)).unwrap());
