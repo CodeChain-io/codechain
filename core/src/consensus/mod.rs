@@ -24,6 +24,7 @@ mod transition;
 mod validator_set;
 mod vote_collector;
 
+pub use self::null_engine::NullEngine;
 pub use self::solo::Solo;
 pub use self::solo_authority::SoloAuthority;
 pub use self::tendermint::{Tendermint, TendermintParams};

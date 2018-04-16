@@ -26,10 +26,6 @@ use state::State;
 use state_db::StateDB;
 use transaction::SignedTransaction;
 
-pub fn get_test_spec() -> Spec {
-    Spec::new_solo()
-}
-
 pub fn create_test_block(header: &Header) -> Bytes {
     let mut rlp = RlpStream::new_list(2);
     rlp.append(header);
@@ -55,7 +51,7 @@ pub fn get_good_dummy_block() -> Bytes {
 
 pub fn get_good_dummy_block_hash() -> (H256, Bytes) {
     let mut block_header = Header::new();
-    let test_spec = Spec::new_solo();
+    let test_spec = Spec::new_test();
     block_header.set_score(U256::from(0x20000));
     block_header.set_timestamp(40);
     block_header.set_number(1);

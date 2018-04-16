@@ -507,7 +507,7 @@ mod tests {
     // create a test block queue.
     // auto_scaling enables verifier adjustment.
     fn get_test_queue() -> BlockQueue {
-        let spec = get_test_spec();
+        let spec = Spec::new_test();
         let engine = spec.engine;
 
         let config = Config::default();
@@ -517,7 +517,7 @@ mod tests {
     #[test]
     fn can_be_created() {
         // TODO better test
-        let spec = Spec::new_solo();
+        let spec = Spec::new_test();
         let engine = spec.engine;
 
         let config = Config::default();

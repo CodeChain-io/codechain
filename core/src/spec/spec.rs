@@ -24,7 +24,7 @@ use ctypes::{Address, H256, U256};
 use rlp::{Rlp, RlpStream};
 
 use super::super::codechain_machine::CodeChainMachine;
-use super::super::consensus::{CodeChainEngine, Solo, SoloAuthority, Tendermint};
+use super::super::consensus::{CodeChainEngine, NullEngine, Solo, SoloAuthority, Tendermint};
 use super::super::error::Error;
 use super::super::header::Header;
 use super::seal::Generic as GenericSeal;
@@ -108,6 +108,7 @@ impl Spec {
         let machine = Self::machine(&engine_spec, params);
 
         match engine_spec {
+            cjson::spec::Engine::Null(null) => Arc::new(NullEngine::new(null.params.into(), machine)),
             cjson::spec::Engine::Solo => Arc::new(Solo::new(machine)),
             cjson::spec::Engine::SoloAuthority(solo_authority) => {
                 Arc::new(SoloAuthority::new(solo_authority.params.into(), machine))
@@ -123,6 +124,11 @@ impl Spec {
     where
         R: Read, {
         cjson::spec::Spec::load(reader).map_err(fmt_err).and_then(|x| load_from(x).map_err(fmt_err))
+    }
+
+    /// Create a new test Spec.
+    pub fn new_test() -> Self {
+        load_bundled!("null")
     }
 
     /// Create a new Spec with Solo consensus which does internal sealing (not requiring
