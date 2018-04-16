@@ -23,7 +23,7 @@ use ckey::Address;
 use ctypes::util::unexpected::{Mismatch, OutOfBounds};
 use ctypes::{CommonParams, Header};
 use primitives::U256;
-use rlp::UntrustedRlp;
+use rlp::Rlp;
 
 use self::params::BlakePoWParams;
 use super::ConsensusEngine;
@@ -50,7 +50,7 @@ impl Seal {
         }
 
         Ok(Seal {
-            nonce: UntrustedRlp::new(seal[0].as_ref()).as_val()?,
+            nonce: Rlp::new(seal[0].as_ref()).as_val()?,
         })
     }
 }

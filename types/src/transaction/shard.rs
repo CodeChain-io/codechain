@@ -17,7 +17,7 @@
 use ccrypto::{blake128, blake256, blake256_with_key};
 use ckey::{Address, NetworkId};
 use primitives::{Bytes, H160, H256};
-use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
+use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
 
 use super::{AssetMintOutput, AssetTransferInput, AssetTransferOutput, HashingError, PartialHashing};
 use crate::util::tag::Tag;
@@ -339,7 +339,7 @@ const ASSET_SCHEME_CHANGE_ID: TransactionId = 0x15;
 const ASSET_INCREASE_SUPPLY_ID: TransactionId = 0x18;
 
 impl Decodable for ShardTransaction {
-    fn decode(d: &UntrustedRlp) -> Result<Self, DecoderError> {
+    fn decode(d: &Rlp) -> Result<Self, DecoderError> {
         match d.val_at(0)? {
             ASSET_MINT_ID => {
                 let item_count = d.item_count()?;

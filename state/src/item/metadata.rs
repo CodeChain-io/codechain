@@ -16,7 +16,7 @@
 
 use ctypes::{CommonParams, ShardId, TxHash};
 use primitives::H256;
-use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
+use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
 
 use crate::CacheableItem;
 
@@ -163,7 +163,7 @@ impl Encodable for Metadata {
 }
 
 impl Decodable for Metadata {
-    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+    fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
         let (term, seq, params) = match rlp.item_count()? {
             4 => (TermMetadata::default(), 0, None),
             6 => (

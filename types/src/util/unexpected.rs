@@ -18,7 +18,7 @@
 
 use std::fmt;
 
-use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
+use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize)]
 /// Error indicating an expected value was not found.
@@ -48,7 +48,7 @@ impl<T> Decodable for Mismatch<T>
 where
     T: Decodable,
 {
-    fn decode(rlp: &UntrustedRlp) -> Result<Mismatch<T>, DecoderError> {
+    fn decode(rlp: &Rlp) -> Result<Mismatch<T>, DecoderError> {
         Ok(Mismatch {
             expected: rlp.val_at(0)?,
             found: rlp.val_at(1)?,

@@ -18,7 +18,7 @@ use std::fmt::{Display, Formatter, Result as FormatResult};
 
 use ckey::Address;
 use primitives::H160;
-use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
+use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
 
 use super::TaggedRlp;
 use crate::util::unexpected::Mismatch;
@@ -292,7 +292,7 @@ impl Encodable for Error {
 }
 
 impl Decodable for Error {
-    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+    fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
         let tag = rlp.val_at::<u8>(0)?;
         let error = match tag {
             ERROR_ID_ASSET_NOT_FOUND => Error::AssetNotFound {
@@ -473,7 +473,7 @@ impl Encodable for UnlockFailureReason {
 }
 
 impl Decodable for UnlockFailureReason {
-    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+    fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
         Ok(match Decodable::decode(rlp)? {
             FAILURE_REASON_ID_SCRIPT_SHOULD_BE_BURNT => UnlockFailureReason::ScriptShouldBeBurnt,
             FAILURE_REASON_ID_SCRIPT_SHOULD_NOT_BE_BURNT => UnlockFailureReason::ScriptShouldNotBeBurnt,

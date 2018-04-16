@@ -18,7 +18,7 @@ use std::sync::Arc;
 
 use ccrypto::aes::{self, SymmetricCipherError};
 use primitives::Bytes;
-use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
+use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
 
 use crate::session::Session;
 
@@ -123,7 +123,7 @@ impl Encodable for Message {
 }
 
 impl Decodable for Message {
-    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+    fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
         let item_count = rlp.item_count()?;
         if item_count != 3 {
             return Err(DecoderError::RlpInvalidLength {

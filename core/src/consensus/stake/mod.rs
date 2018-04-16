@@ -31,7 +31,7 @@ use ctypes::util::unexpected::Mismatch;
 use ctypes::{CommonParams, Header};
 use parking_lot::RwLock;
 use primitives::{Bytes, H256};
-use rlp::{Decodable, UntrustedRlp};
+use rlp::{Decodable, Rlp};
 
 pub use self::action_data::{Banned, Validator, Validators};
 use self::action_data::{Candidates, Delegation, IntermediateRewards, Jail, ReleaseResult, StakeAccount, Stakeholders};
@@ -91,7 +91,7 @@ impl ActionHandler for Stake {
         fee_payer: &Address,
         sender_public: &Public,
     ) -> StateResult<()> {
-        let action = Action::decode(&UntrustedRlp::new(bytes)).expect("Verification passed");
+        let action = Action::decode(&Rlp::new(bytes)).expect("Verification passed");
         match action {
             Action::TransferCCS {
                 address,
@@ -149,8 +149,8 @@ impl ActionHandler for Stake {
     }
 
     fn verify(&self, bytes: &[u8], current_params: &CommonParams) -> Result<(), SyntaxError> {
-        let action = Action::decode(&UntrustedRlp::new(bytes))
-            .map_err(|err| SyntaxError::InvalidCustomAction(err.to_string()))?;
+        let action =
+            Action::decode(&Rlp::new(bytes)).map_err(|err| SyntaxError::InvalidCustomAction(err.to_string()))?;
         let client: Option<Arc<dyn ConsensusClient>> = self.client.read().as_ref().and_then(Weak::upgrade);
         let validators: Option<Arc<dyn ValidatorSet>> = self.validators.read().as_ref().and_then(Weak::upgrade);
         action.verify(current_params, client, validators)

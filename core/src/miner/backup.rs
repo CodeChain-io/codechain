@@ -50,7 +50,7 @@ pub fn recover_to_data(db: &dyn KeyValueDB) -> HashMap<H256, MemPoolItem> {
         let rlp = rlp::Rlp::new(&bytes);
 
         let decoded_key = (key.as_ref()[PREFIX_SIZE..]).into();
-        let decoded_item = rlp.as_val();
+        let decoded_item = rlp.as_val().unwrap();
         by_hash.insert(decoded_key, decoded_item);
     }
 

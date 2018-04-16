@@ -203,7 +203,7 @@ where
         }
 
         // not found in the cache, get from the DB and insert into cache
-        let maybe_item = db.get_with(a.as_ref(), &|bytes| ::rlp::decode::<Item>(bytes))?;
+        let maybe_item = db.get_with(a.as_ref(), &|bytes| ::rlp::decode::<Item>(bytes).unwrap())?;
         self.insert(a, Entry::<Item>::new_clean(maybe_item.clone()));
         Ok(maybe_item)
     }
@@ -213,7 +213,7 @@ where
     pub fn get_mut(&self, a: &Item::Address, db: &TrieDB) -> cmerkle::Result<RefMut<Item>> {
         let contains_key = self.cache.borrow().contains_key(a);
         if !contains_key {
-            let maybe_item = db.get_with(a.as_ref(), &|bytes| ::rlp::decode::<Item>(bytes))?;
+            let maybe_item = db.get_with(a.as_ref(), &|bytes| ::rlp::decode::<Item>(bytes).unwrap())?;
             self.insert(a, Entry::<Item>::new_clean(maybe_item));
         }
         self.note(a);

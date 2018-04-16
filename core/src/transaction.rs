@@ -21,7 +21,7 @@ use ckey::{self, public_to_address, recover, sign, Private, Public, Signature};
 use ctypes::errors::SyntaxError;
 use ctypes::transaction::Transaction;
 use ctypes::{BlockHash, BlockNumber, CommonParams, TxHash};
-use rlp::{self, DecoderError, Encodable, RlpStream, UntrustedRlp};
+use rlp::{self, DecoderError, Encodable, Rlp, RlpStream};
 
 use crate::error::Error;
 
@@ -51,7 +51,7 @@ impl From<UnverifiedTransaction> for Transaction {
 }
 
 impl rlp::Decodable for UnverifiedTransaction {
-    fn decode(d: &UntrustedRlp) -> Result<Self, DecoderError> {
+    fn decode(d: &Rlp) -> Result<Self, DecoderError> {
         let item_count = d.item_count()?;
         if item_count != 5 {
             return Err(DecoderError::RlpIncorrectListLen {
@@ -168,7 +168,7 @@ impl rlp::Encodable for SignedTransaction {
 }
 
 impl rlp::Decodable for SignedTransaction {
-    fn decode(d: &UntrustedRlp) -> Result<Self, DecoderError> {
+    fn decode(d: &Rlp) -> Result<Self, DecoderError> {
         let unverified_transaction: UnverifiedTransaction = UnverifiedTransaction::decode(d)?;
         match unverified_transaction.recover_public() {
             Ok(key) => Ok(SignedTransaction {

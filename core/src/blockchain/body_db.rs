@@ -272,7 +272,7 @@ impl BodyDB {
     /// Create a block body from a block.
     pub fn block_to_body(block: &BlockView) -> Bytes {
         let mut body = RlpStream::new_list(1);
-        body.append_raw(block.rlp().at(1).as_raw(), 1);
+        body.append_raw(block.rlp().at(1).unwrap().as_raw(), 1);
         body.out()
     }
 }

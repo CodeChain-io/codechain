@@ -25,7 +25,7 @@ fn encode_foo() {
     assert_eq!(out, expected);
 
     let decoded = decode(&expected);
-    assert_eq!(f, decoded);
+    assert_eq!(Ok(f), decoded);
 }
 
 #[test]
@@ -39,5 +39,5 @@ fn encode_foo_wrapper() {
     assert_eq!(out, expected);
 
     let decoded = decode(&expected);
-    assert_eq!(f, decoded);
+    assert_eq!(Ok(f), decoded);
 }

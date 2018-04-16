@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use cnetwork::SocketAddr;
-use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
+use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
 
 #[derive(Debug, PartialEq)]
 pub enum Message {
@@ -37,7 +37,7 @@ impl Encodable for Message {
 }
 
 impl Decodable for Message {
-    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+    fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
         if rlp.is_int() {
             Ok(Message::Request(rlp.as_val()?))
         } else {

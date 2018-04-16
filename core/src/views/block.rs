@@ -53,22 +53,22 @@ impl<'a> BlockView<'a> {
 
     /// Create new Header object from header rlp.
     pub fn header(&self) -> Header {
-        self.rlp.val_at(0)
+        self.rlp.val_at(0).unwrap()
     }
 
     /// Return header rlp.
     pub fn header_rlp(&self) -> Rlp {
-        self.rlp.at(0)
+        self.rlp.at(0).unwrap()
     }
 
     /// Create new header view obto block head rlp.
     pub fn header_view(&self) -> HeaderView<'a> {
-        HeaderView::new_from_rlp(self.rlp.at(0))
+        HeaderView::new_from_rlp(self.rlp.at(0).unwrap())
     }
 
     /// Return List of transactions in given block.
     pub fn transactions(&self) -> Vec<UnverifiedTransaction> {
-        self.rlp.list_at(1)
+        self.rlp.list_at(1).unwrap()
     }
 
     /// Return List of transactions with additional localization info.
@@ -96,17 +96,17 @@ impl<'a> BlockView<'a> {
 
     /// Return List of transactions in given block.
     pub fn transaction_views(&self) -> Vec<TransactionView<'a>> {
-        self.rlp.at(1).iter().map(TransactionView::new_from_rlp).collect()
+        self.rlp.at(1).unwrap().iter().map(TransactionView::new_from_rlp).collect()
     }
 
     /// Return transaction hashes.
     pub fn transaction_hashes(&self) -> Vec<TxHash> {
-        self.rlp.at(1).iter().map(|rlp| blake256(rlp.as_raw()).into()).collect()
+        self.rlp.at(1).unwrap().iter().map(|rlp| blake256(rlp.as_raw()).into()).collect()
     }
 
     /// Returns transaction at given index without deserializing unnecessary data.
     pub fn transaction_at(&self, index: usize) -> Option<UnverifiedTransaction> {
-        self.rlp.at(1).iter().nth(index).map(|rlp| rlp.as_val())
+        self.rlp.at(1).unwrap().iter().nth(index).map(|rlp| rlp.as_val().unwrap())
     }
 
     /// Returns localized transaction at given index.

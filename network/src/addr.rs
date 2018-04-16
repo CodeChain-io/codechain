@@ -21,7 +21,7 @@ use std::net::{self, AddrParseError, IpAddr, Ipv4Addr};
 use std::ops::Deref;
 use std::str::FromStr;
 
-use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
+use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
 
 use crate::NodeId;
 
@@ -190,7 +190,7 @@ impl Encodable for SocketAddr {
 }
 
 impl Decodable for SocketAddr {
-    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+    fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
         match rlp.item_count()? {
             5 => {
                 let ip0 = rlp.val_at(0)?;

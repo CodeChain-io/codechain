@@ -23,7 +23,7 @@ use cnetwork::{Api, NetworkExtension, NodeId};
 use ctimer::TimerToken;
 use ctypes::TxHash;
 use never_type::Never;
-use rlp::{Encodable, UntrustedRlp};
+use rlp::{Encodable, Rlp};
 
 use super::message::Message;
 
@@ -93,7 +93,7 @@ impl NetworkExtension<Never> for Extension {
     }
 
     fn on_message(&mut self, token: &NodeId, data: &[u8]) {
-        if let Ok(received_message) = UntrustedRlp::new(data).as_val() {
+        if let Ok(received_message) = Rlp::new(data).as_val() {
             match received_message {
                 Message::Transactions(transactions) => {
                     let transactions: Vec<_> = {

@@ -19,7 +19,7 @@ use ckey::Address;
 use ctypes::errors::RuntimeError;
 use ctypes::{ShardId, Tracker};
 use primitives::{H160, H256};
-use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
+use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
 
 use super::asset::Asset;
 use crate::CacheableItem;
@@ -178,7 +178,7 @@ impl Encodable for AssetScheme {
 }
 
 impl Decodable for AssetScheme {
-    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+    fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
         let seq = match rlp.item_count()? {
             7 => 0,
             8 => rlp.val_at(7)?,

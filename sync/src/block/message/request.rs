@@ -16,7 +16,7 @@
 
 use ctypes::{BlockHash, BlockNumber};
 use primitives::H256;
-use rlp::{DecoderError, Encodable, RlpStream, UntrustedRlp};
+use rlp::{DecoderError, Encodable, Rlp, RlpStream};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum RequestMessage {
@@ -76,7 +76,7 @@ impl RequestMessage {
         }
     }
 
-    pub fn decode(id: u8, rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+    pub fn decode(id: u8, rlp: &Rlp) -> Result<Self, DecoderError> {
         let message = match id {
             super::MESSAGE_ID_GET_HEADERS => {
                 let item_count = rlp.item_count()?;
@@ -125,12 +125,12 @@ impl RequestMessage {
 #[cfg(test)]
 mod tests {
     use primitives::H256;
-    use rlp::{Encodable, UntrustedRlp};
+    use rlp::{Encodable, Rlp};
 
     use super::RequestMessage;
 
     pub fn decode_bytes(id: u8, bytes: &[u8]) -> RequestMessage {
-        let rlp = UntrustedRlp::new(bytes);
+        let rlp = Rlp::new(bytes);
         RequestMessage::decode(id, &rlp).unwrap()
     }
 

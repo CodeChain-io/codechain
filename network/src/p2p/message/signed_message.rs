@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
+use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
 
 use super::Signature;
 use crate::session::Session;
@@ -49,7 +49,7 @@ impl Encodable for SignedMessage {
 }
 
 impl Decodable for SignedMessage {
-    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+    fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
         if rlp.item_count()? != 2 {
             return Err(DecoderError::Custom("Cannot decode a signed message"))
         }

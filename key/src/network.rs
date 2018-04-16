@@ -17,7 +17,7 @@
 use std::fmt;
 use std::str::{self, FromStr};
 
-use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
+use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
 use serde::de::Error;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
@@ -64,7 +64,7 @@ impl Encodable for NetworkId {
 }
 
 impl Decodable for NetworkId {
-    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+    fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
         let network_id = String::decode(rlp)?;
         if network_id.len() != 2 {
             return Err(DecoderError::RlpInvalidLength {

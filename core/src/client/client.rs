@@ -35,7 +35,7 @@ use journaldb;
 use kvdb::{DBTransaction, KeyValueDB};
 use parking_lot::{Mutex, RwLock, RwLockReadGuard};
 use primitives::{Bytes, H160, H256, U256};
-use rlp::UntrustedRlp;
+use rlp::Rlp;
 
 use super::importer::Importer;
 use super::{
@@ -248,7 +248,7 @@ impl Client {
         ctrace!(EXTERNAL_TX, "Importing queued");
         self.queue_transactions.fetch_sub(transactions.len(), AtomicOrdering::SeqCst);
         let transactions: Vec<UnverifiedTransaction> =
-            transactions.iter().filter_map(|bytes| UntrustedRlp::new(bytes).as_val().ok()).collect();
+            transactions.iter().filter_map(|bytes| Rlp::new(bytes).as_val().ok()).collect();
         let hashes: Vec<_> = transactions.iter().map(UnverifiedTransaction::hash).collect();
         self.transactions_received(&hashes, peer_id);
         let results = self.importer.miner.import_external_transactions(self, transactions);

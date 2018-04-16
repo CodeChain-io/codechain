@@ -16,7 +16,7 @@
 
 use ctypes::{ShardId, Tracker};
 use primitives::{Bytes, H160, H256};
-use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
+use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
 
 use crate::CacheableItem;
 
@@ -116,7 +116,7 @@ impl Encodable for OwnedAsset {
 }
 
 impl Decodable for OwnedAsset {
-    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+    fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
         let item_count = rlp.item_count()?;
         if rlp.item_count()? != 6 {
             return Err(DecoderError::RlpInvalidLength {

@@ -19,7 +19,7 @@ use std::fmt;
 use ckey::SchnorrSignature;
 use ctypes::BlockHash;
 use primitives::Bytes;
-use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
+use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
 
 use super::super::BitSet;
 use super::message::VoteStep;
@@ -179,7 +179,7 @@ impl Step {
 }
 
 impl Decodable for Step {
-    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+    fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
         match rlp.as_val()? {
             0u8 => Ok(Step::Propose),
             1 => Ok(Step::Prevote),
@@ -229,7 +229,7 @@ impl<'a> TendermintSealView<'a> {
     pub fn parent_block_finalized_view(&self) -> Result<u64, DecoderError> {
         let view_rlp =
             self.seal.get(0).expect("block went through verify_block_basic; block has .seal_fields() fields; qed");
-        UntrustedRlp::new(view_rlp.as_slice()).as_val()
+        Rlp::new(view_rlp.as_slice()).as_val()
     }
 
     /// Block is created at auth_view.
@@ -237,17 +237,17 @@ impl<'a> TendermintSealView<'a> {
     pub fn author_view(&self) -> Result<u64, DecoderError> {
         let view_rlp =
             self.seal.get(1).expect("block went through verify_block_basic; block has .seal_fields() fields; qed");
-        UntrustedRlp::new(view_rlp.as_slice()).as_val()
+        Rlp::new(view_rlp.as_slice()).as_val()
     }
 
     pub fn bitset(&self) -> Result<BitSet, DecoderError> {
         let view_rlp =
             self.seal.get(3).expect("block went through verify_block_basic; block has .seal_fields() fields; qed");
-        UntrustedRlp::new(view_rlp.as_slice()).as_val()
+        Rlp::new(view_rlp.as_slice()).as_val()
     }
 
-    pub fn precommits(&self) -> UntrustedRlp<'a> {
-        UntrustedRlp::new(
+    pub fn precommits(&self) -> Rlp<'a> {
+        Rlp::new(
             &self.seal.get(2).expect("block went through verify_block_basic; block has .seal_fields() fields; qed"),
         )
     }

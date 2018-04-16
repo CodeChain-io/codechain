@@ -22,7 +22,7 @@ use client::ConsensusClient;
 use ctypes::errors::SyntaxError;
 use ctypes::CommonParams;
 use primitives::{Bytes, H256};
-use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
+use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
 
 use crate::consensus::{ConsensusMessage, ValidatorSet};
 
@@ -249,7 +249,7 @@ impl Encodable for Action {
 }
 
 impl Decodable for Action {
-    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+    fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
         let tag = rlp.val_at(0)?;
         match tag {
             ACTION_TAG_TRANSFER_CCS => {
@@ -376,7 +376,7 @@ mod tests {
                 expected: 4,
                 got: 3,
             }),
-            UntrustedRlp::new(&rlp::encode(&action)).as_val::<Action>()
+            Rlp::new(&rlp::encode(&action)).as_val::<Action>()
         );
     }
 

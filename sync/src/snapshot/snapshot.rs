@@ -83,12 +83,12 @@ impl Snapshot {
         let mut referenced_keys = HashSet::new();
         referenced_keys.insert(*root);
         for rlp_pair in rlp.iter() {
-            if rlp_pair.item_count() != 2 {
+            if rlp_pair.item_count().unwrap() != 2 {
                 return Err(Error::SyncError("Chunk contains invalid size of pair".to_string()))
             }
 
-            let key = rlp_pair.val_at(0);
-            let value: Vec<_> = rlp_pair.val_at(1);
+            let key = rlp_pair.val_at(0).unwrap();
+            let value: Vec<_> = rlp_pair.val_at(1).unwrap();
 
             let node =
                 Node::decoded(&value).ok_or_else(|| Error::SyncError("Chunk condtains an invalid node".to_string()))?;

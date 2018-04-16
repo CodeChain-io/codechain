@@ -28,7 +28,7 @@ use ctypes::BlockHash;
 use primitives::Bytes;
 use rand::prelude::SliceRandom;
 use rand::thread_rng;
-use rlp::{Encodable, UntrustedRlp};
+use rlp::{Encodable, Rlp};
 
 use super::super::BitSet;
 use super::message::*;
@@ -246,7 +246,7 @@ impl NetworkExtension<Event> for TendermintExtension {
     }
 
     fn on_message(&mut self, token: &NodeId, data: &[u8]) {
-        let m = UntrustedRlp::new(data);
+        let m = Rlp::new(data);
         match m.as_val() {
             Ok(TendermintMessage::ConsensusMessage(ref messages)) => {
                 ctrace!(ENGINE, "Received messages({})", messages.len());

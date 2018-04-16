@@ -26,7 +26,7 @@ use ctypes::util::unexpected::Mismatch;
 use ctypes::{BlockNumber, CommonParams, TxHash};
 use cvm::ChainTimeInfo;
 use primitives::{Bytes, H256};
-use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
+use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
 
 use super::invoice::Invoice;
 use crate::client::{EngineInfo, TermInfo};
@@ -54,7 +54,7 @@ impl Block {
 }
 
 impl Decodable for Block {
-    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+    fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
         let got = rlp.as_raw().len();
         let expected = rlp.payload_info()?.total();
         if got > expected {

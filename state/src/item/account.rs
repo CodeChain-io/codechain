@@ -19,7 +19,7 @@
 use std::fmt;
 
 use ckey::{self, Public};
-use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
+use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
 
 use crate::CacheableItem;
 
@@ -138,7 +138,7 @@ impl Encodable for Account {
 }
 
 impl Decodable for Account {
-    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+    fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
         let item_count = rlp.item_count()?;
         if item_count != 4 {
             return Err(DecoderError::RlpInvalidLength {
@@ -174,13 +174,13 @@ mod tests {
     #[test]
     fn rlpio() {
         let a = Account::new(69, 0);
-        let b = ::rlp::decode::<Account>(&a.rlp_bytes());
+        let b = ::rlp::decode::<Account>(&a.rlp_bytes()).unwrap();
         assert_eq!(a.balance(), b.balance());
         assert_eq!(a.seq(), b.seq());
 
         let mut a = Account::new(69, 0);
         a.set_regular_key(&Public::default());
-        let b = ::rlp::decode::<Account>(&a.rlp_bytes());
+        let b = ::rlp::decode::<Account>(&a.rlp_bytes()).unwrap();
         assert_eq!(a.balance(), b.balance());
         assert_eq!(a.seq(), b.seq());
         assert_eq!(a.regular_key(), b.regular_key());

@@ -16,7 +16,7 @@
 
 use cjson::scheme::Params;
 use ckey::NetworkId;
-use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
+use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct CommonParams {
@@ -350,7 +350,7 @@ impl Encodable for CommonParams {
 }
 
 impl Decodable for CommonParams {
-    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+    fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
         let size = rlp.item_count()?;
         const VALID_SIZE: &[usize] = &[DEFAULT_PARAMS_SIZE, DEFAULT_PARAMS_SIZE + NUMBER_OF_STAKE_PARAMS];
         if !VALID_SIZE.contains(&size) {

@@ -19,7 +19,7 @@ use std::io;
 
 use mio::event::Evented;
 use mio::{Poll, PollOpt, Ready, Token};
-use rlp::{Decodable, DecoderError, Encodable, UntrustedRlp};
+use rlp::{Decodable, DecoderError, Encodable, Rlp};
 
 use super::SignedMessage;
 use crate::session::Session;
@@ -86,7 +86,7 @@ impl SignedStream {
             if !signed.is_valid(&self.session) {
                 return Err(Error::InvalidSign)
             }
-            let rlp = UntrustedRlp::new(&signed.message);
+            let rlp = Rlp::new(&signed.message);
             Ok(Some(rlp.as_val::<M>()?))
         } else {
             Ok(None)

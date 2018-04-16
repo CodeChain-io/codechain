@@ -39,7 +39,7 @@ use kvdb::KeyValueDB;
 use primitives::{H160, H256};
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
-use rlp::UntrustedRlp;
+use rlp::Rlp;
 use time::PreciseTime;
 
 use super::super::errors;
@@ -81,7 +81,7 @@ where
     fn get_state_trie_value(&self, key: H256) -> Result<Vec<Bytes>> {
         match self.db.get(COL_STATE, &key).map_err(|e| errors::kvdb(&e))? {
             Some(value) => {
-                let rlp = UntrustedRlp::new(&value);
+                let rlp = Rlp::new(&value);
                 Ok(rlp.as_list::<Vec<u8>>().map_err(|e| errors::rlp(&e))?.into_iter().map(Bytes::from).collect())
             }
             None => Ok(Vec::new()),

@@ -18,7 +18,7 @@ use std::fmt::{Display, Formatter, Result as FormatResult};
 
 use ckey::NetworkId;
 use primitives::H160;
-use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
+use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
 
 use super::TaggedRlp;
 use crate::{ShardId, Tracker};
@@ -149,7 +149,7 @@ impl Encodable for Error {
 }
 
 impl Decodable for Error {
-    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+    fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
         let tag = rlp.val_at::<u8>(0)?;
         let error = match tag {
             ERORR_ID_DUPLICATED_PREVIOUS_OUTPUT => Error::DuplicatedPreviousOutput {

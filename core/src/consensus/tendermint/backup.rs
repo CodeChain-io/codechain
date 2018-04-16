@@ -152,7 +152,13 @@ fn load_v0(db: &dyn KeyValueDB) -> Option<BackupDataV0> {
     let (height, view, step, votes, last_confirmed_view) = value.map(|bytes| {
         let bytes = bytes.into_vec();
         let rlp = rlp::Rlp::new(&bytes);
-        (rlp.val_at(0), rlp.val_at(1), rlp.val_at(2), rlp.at(3).as_list(), rlp.val_at(4))
+        (
+            rlp.val_at(0).unwrap(),
+            rlp.val_at(1).unwrap(),
+            rlp.val_at(2).unwrap(),
+            rlp.at(3).unwrap().as_list().unwrap(),
+            rlp.val_at(4).unwrap(),
+        )
     })?;
 
     let proposal = find_proposal(&votes, height, view);
@@ -179,7 +185,7 @@ fn load_v1(db: &dyn KeyValueDB) -> Option<BackupDataV1> {
     }
 
     let value = db.get(db::COL_EXTRA, BACKUP_KEY).expect("Low level database error. Some issue with disk?")?;
-    let backup: Backup = rlp::decode(&value);
+    let backup: Backup = rlp::decode(&value).unwrap();
 
     let proposal = find_proposal(&backup.votes, backup.height, backup.view);
 
