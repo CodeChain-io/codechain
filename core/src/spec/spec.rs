@@ -27,6 +27,7 @@ use super::super::codechain_machine::CodeChainMachine;
 use super::super::consensus::{CodeChainEngine, NullEngine, Solo, SoloAuthority, Tendermint};
 use super::super::error::Error;
 use super::super::header::Header;
+use super::super::pod_state::PodState;
 use super::seal::Generic as GenericSeal;
 use super::Genesis;
 
@@ -79,6 +80,9 @@ pub struct Spec {
     pub extra_data: Bytes,
     /// Each seal field, expressed as RLP, concatenated.
     pub seal_rlp: Bytes,
+
+    /// Genesis state as plain old data.
+    genesis_state: PodState,
 }
 
 // helper for formatting errors.
@@ -204,6 +208,7 @@ fn load_from(s: cjson::spec::Spec) -> Result<Spec, Error> {
         timestamp: g.timestamp,
         extra_data: g.extra_data,
         seal_rlp,
+        genesis_state: s.accounts.into(),
     };
 
     Ok(s)
