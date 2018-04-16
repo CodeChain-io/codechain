@@ -18,6 +18,7 @@ use parking_lot::{Mutex, RwLock};
 use rand::{thread_rng, Rng};
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::Instant;
 
 use cbytes::Bytes;
 use ccore::{BlockChainClient, BlockId, BlockNumber, ChainNotify, Seal};
@@ -31,14 +32,28 @@ use super::message::{Message, RequestMessage, ResponseMessage};
 const EXTENSION_NAME: &'static str = "block-propagation";
 const SYNC_TIMER_TOKEN: usize = 0;
 const SYNC_TIMER_INTERVAL: u64 = 1000;
+const MAX_WAIT: u64 = 15;
 const MAX_RETRY: usize = 3;
 
 #[derive(Clone)]
 struct Peer {
     total_score: U256,
     best_hash: H256,
-    last_request: Option<RequestMessage>,
+    last_request: Option<(RequestMessage, Instant)>,
     retry: usize,
+}
+
+impl Peer {
+    fn is_expired(&self) -> bool {
+        let can_retry = self.retry < MAX_RETRY;
+        let is_lazy = if let &Some((_, last_time)) = &self.last_request {
+            (Instant::now() - last_time).as_secs() > MAX_WAIT
+        } else {
+            false
+        };
+
+        !can_retry || is_lazy
+    }
 }
 
 pub struct Extension {
@@ -148,7 +163,7 @@ impl NetworkExtension for Extension {
         debug_assert_eq!(timer, SYNC_TIMER_TOKEN);
         {
             let peers = self.peers.read();
-            if peers.len() != 0 && peers.values().all(|peer| peer.retry >= MAX_RETRY) {
+            if peers.len() != 0 && peers.values().all(|peer| peer.is_expired()) {
                 // FIXME: Increase retracting step for each round
                 self.retract(1);
             }
@@ -166,7 +181,7 @@ impl NetworkExtension for Extension {
         for id in peer_ids {
             let next_message = self.manager.lock().create_request();
             if let Some(peer) = self.peers.write().get_mut(&id) {
-                peer.last_request = next_message.clone();
+                peer.last_request = next_message.clone().map(|message| (message, Instant::now()));
             }
             if let Some(message) = next_message {
                 self.send_message(&id, message.into());
@@ -294,6 +309,16 @@ impl Extension {
             return
         }
 
+        // Check peer expiration
+        if let Some(peer) = self.peers.write().get_mut(from) {
+            if let Some((_, last_time)) = peer.last_request {
+                if (Instant::now() - last_time).as_secs() > MAX_WAIT {
+                    peer.last_request = None;
+                    return
+                }
+            }
+        }
+
         self.apply_response(from, &response);
 
         // Import fully downloaded blocks to chain
@@ -326,7 +351,7 @@ impl Extension {
         };
 
         if let Some(peer) = self.peers.write().get_mut(from) {
-            peer.last_request = request.clone();
+            peer.last_request = request.clone().map(|message| (message, Instant::now()));
         }
 
         if let Some(message) = request {
@@ -335,27 +360,29 @@ impl Extension {
     }
 
     fn is_valid_response(&self, from: &NodeToken, response: &ResponseMessage) -> bool {
-        if let Some(last_request) = self.peers.read().get(from).map(|peer| &peer.last_request) {
-            match (response, last_request) {
-                (
-                    &ResponseMessage::Headers(ref headers),
-                    &Some(RequestMessage::Headers {
-                        start_number,
-                        ..
-                    }),
-                ) => {
-                    if headers.len() == 0 {
-                        true
-                    } else {
-                        headers.first().expect("Response is not empty").number() == start_number
+        let peers = self.peers.read();
+        if let Some(peer) = peers.get(from) {
+            if let &Some((ref last_message, _)) = &peer.last_request {
+                return match (response, last_message) {
+                    (
+                        &ResponseMessage::Headers(ref headers),
+                        &RequestMessage::Headers {
+                            start_number,
+                            ..
+                        },
+                    ) => {
+                        if headers.len() == 0 {
+                            true
+                        } else {
+                            headers.first().expect("Response is not empty").number() == start_number
+                        }
                     }
+                    (&ResponseMessage::Bodies(..), &RequestMessage::Bodies(..)) => true,
+                    _ => false,
                 }
-                (&ResponseMessage::Bodies(..), &Some(RequestMessage::Bodies(..))) => true,
-                _ => false,
             }
-        } else {
-            false
         }
+        false
     }
 
     fn apply_response(&self, from: &NodeToken, response: &ResponseMessage) {
