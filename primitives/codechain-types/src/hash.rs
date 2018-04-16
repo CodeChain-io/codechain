@@ -6,6 +6,8 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 #[cfg(feature = "serialize")]
 use codechain_types_serialize;
 
+pub use fixed_hash::rustc_hex::FromHexError;
+
 construct_hash!(H32, 4);
 construct_hash!(H64, 8);
 construct_hash!(H128, 16);
