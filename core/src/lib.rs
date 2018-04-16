@@ -61,6 +61,7 @@ mod header;
 mod invoice;
 mod machine;
 mod miner;
+mod pod_account;
 mod service;
 mod spec;
 mod state;
