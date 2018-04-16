@@ -14,24 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod account;
-mod engine;
-mod genesis;
-mod null_engine;
-mod params;
-mod seal;
-mod solo_authority;
-mod spec;
-mod state;
-mod tendermint;
+use std::collections::BTreeMap;
 
-pub use self::account::Account;
-pub use self::engine::Engine;
-pub use self::genesis::Genesis;
-pub use self::null_engine::{NullEngine, NullEngineParams};
-pub use self::params::Params;
-pub use self::seal::{Seal, TendermintSeal};
-pub use self::solo_authority::{SoloAuthority, SoloAuthorityParams};
-pub use self::spec::Spec;
-pub use self::state::State;
-pub use self::tendermint::{Tendermint, TendermintParams};
+use super::super::hash::Address;
+use super::Account;
+
+pub type State = BTreeMap<Address, Account>;
