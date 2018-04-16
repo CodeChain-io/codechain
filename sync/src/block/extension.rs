@@ -33,6 +33,7 @@ const SYNC_TIMER_TOKEN: usize = 0;
 const SYNC_TIMER_INTERVAL: u64 = 1000;
 const MAX_RETRY: usize = 3;
 
+#[derive(Clone)]
 struct Peer {
     total_score: U256,
     best_hash: H256,
@@ -250,8 +251,8 @@ impl Extension {
             RequestMessage::Headers {
                 start_number,
                 max_count,
-            } => self.create_headers_message(start_number, max_count),
-            RequestMessage::Bodies(hashes) => self.create_bodies_message(hashes),
+            } => self.create_headers_response(start_number, max_count),
+            RequestMessage::Bodies(hashes) => self.create_bodies_response(hashes),
         };
 
         self.send_message(from, response.into());
@@ -266,7 +267,7 @@ impl Extension {
         }
     }
 
-    fn create_headers_message(&self, start_number: BlockNumber, max_count: u64) -> ResponseMessage {
+    fn create_headers_response(&self, start_number: BlockNumber, max_count: u64) -> ResponseMessage {
         let headers = (0..max_count)
             .map(|number| self.client.block_header(BlockId::Number(start_number + number)))
             .take_while(|header| header.is_some())
@@ -275,7 +276,7 @@ impl Extension {
         ResponseMessage::Headers(headers)
     }
 
-    fn create_bodies_message(&self, hashes: Vec<H256>) -> ResponseMessage {
+    fn create_bodies_response(&self, hashes: Vec<H256>) -> ResponseMessage {
         let mut bodies = Vec::new();
         for hash in hashes {
             if let Some(body) = self.client.block_body(BlockId::Hash(hash)) {
@@ -293,29 +294,7 @@ impl Extension {
             return
         }
 
-        // Import response data to download manager
-        match &response {
-            &ResponseMessage::Headers(ref headers) => {
-                let import_success = self.manager.lock().import_headers(headers);
-                if let Some(peer) = self.peers.write().get_mut(from) {
-                    peer.retry = if import_success {
-                        0
-                    } else {
-                        peer.retry + 1
-                    };
-                }
-            }
-            &ResponseMessage::Bodies(ref bodies) => {
-                let import_success = self.manager.lock().import_bodies(bodies);
-                if let Some(peer) = self.peers.write().get_mut(from) {
-                    peer.retry = if import_success {
-                        0
-                    } else {
-                        peer.retry + 1
-                    };
-                }
-            }
-        }
+        self.apply_response(from, &response);
 
         // Import fully downloaded blocks to chain
         self.manager.lock().drain().iter().for_each(|block| {
@@ -333,11 +312,10 @@ impl Extension {
             let total_score = self.client
                 .block_total_score(BlockId::Hash(self.manager.lock().best_hash()))
                 .expect("Best block of download manager must exist in chain");
-            // FIXME: Check if this statement really needs `clone`
-            let peer_info = self.peers.read().get(from).map(|peer| (peer.total_score.clone(), peer.retry));
-            match peer_info {
-                Some((peer_total_score, peer_retry)) => {
-                    if peer_retry < MAX_RETRY && peer_total_score > total_score {
+            let peer = self.peers.read().get(from).cloned();
+            match peer {
+                Some(p) => {
+                    if p.retry < MAX_RETRY && p.total_score > total_score {
                         self.manager.lock().create_request()
                     } else {
                         None
@@ -377,6 +355,20 @@ impl Extension {
             }
         } else {
             false
+        }
+    }
+
+    fn apply_response(&self, from: &NodeToken, response: &ResponseMessage) {
+        let apply_success = match response {
+            &ResponseMessage::Headers(ref headers) => self.manager.lock().import_headers(headers),
+            &ResponseMessage::Bodies(ref bodies) => self.manager.lock().import_bodies(bodies),
+        };
+        if let Some(peer) = self.peers.write().get_mut(from) {
+            if apply_success {
+                peer.retry = 0;
+            } else {
+                peer.retry += 1;
+            }
         }
     }
 }
