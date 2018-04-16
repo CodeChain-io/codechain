@@ -23,11 +23,13 @@ use ctypes::Secret;
 use super::client::Client;
 use super::connection;
 use super::handshake;
+use super::timer;
 use super::{Api, DiscoveryApi, NetworkExtension, SocketAddr};
 
 pub struct Service {
     _handshake_service: IoService<handshake::HandlerMessage>,
-    extension_service: IoService<connection::HandlerMessage>,
+    connection_service: IoService<connection::HandlerMessage>,
+    timer_service: IoService<timer::HandlerMessage>,
     client: Arc<Client>,
 }
 
@@ -38,16 +40,19 @@ impl Service {
         secret_key: Secret,
         discovery: Arc<DiscoveryApi>,
     ) -> Result<Self, IoError> {
-        let extension_service = IoService::start()?;
-        let extension_channel = extension_service.channel();
+        let connection_service = IoService::start()?;
+        let connection_channel = connection_service.channel();
+
+        let timer_service = IoService::start()?;
 
         let client = Client::new();
         let connection_handler = Arc::new(connection::Handler::new(address.clone(), Arc::clone(&client)));
         discovery.set_address_converter(connection_handler.clone());
-        extension_service.register_handler(connection_handler)?;
+        connection_service.register_handler(connection_handler)?;
+        timer_service.register_handler(Arc::new(timer::Handler::new(Arc::clone(&client))))?;
 
         let handshake_service = IoService::start()?;
-        let handshake_handler = Arc::new(handshake::Handler::new(address, secret_key, extension_channel, discovery));
+        let handshake_handler = Arc::new(handshake::Handler::new(address, secret_key, connection_channel, discovery));
         handshake_service.register_handler(handshake_handler)?;
 
         for address in bootstrap_addresses {
@@ -57,13 +62,15 @@ impl Service {
         }
         Ok(Self {
             _handshake_service: handshake_service,
-            extension_service,
+            connection_service,
+            timer_service,
             client,
         })
     }
 
     pub fn register_extension(&self, extension: Arc<NetworkExtension>) -> Arc<Api> {
-        let channel = self.extension_service.channel();
-        self.client.register_extension(extension, channel)
+        let connection_channel = self.connection_service.channel();
+        let timer_channel = self.timer_service.channel();
+        self.client.register_extension(extension, connection_channel, timer_channel)
     }
 }

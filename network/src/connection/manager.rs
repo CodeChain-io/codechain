@@ -26,9 +26,8 @@ use mio::{PollOpt, Ready, Token};
 use parking_lot::{Mutex, RwLock};
 
 use super::super::client::Client;
-use super::super::extension::{Error as ExtensionError, NodeToken};
+use super::super::extension::NodeToken;
 use super::super::session::{Nonce, Session, SessionTable};
-use super::super::timer_info::{Error as TimerInfoError, TimerInfo};
 use super::super::token_generator::TokenGenerator;
 use super::super::SocketAddr;
 use super::connection::{Connection, ExtensionCallback as ExtensionChannel};
@@ -60,17 +59,11 @@ const ACCEPT_TOKEN: TimerToken = 0;
 const FIRST_CONNECTION_TOKEN: TimerToken = ACCEPT_TOKEN + 1;
 const LAST_CONNECTION_TOKEN: TimerToken = FIRST_CONNECTION_TOKEN + MAX_CONNECTIONS;
 
-const FIRST_TIMER_TOKEN: TimerToken = LAST_CONNECTION_TOKEN;
-const MAX_TIMERS: usize = 100;
-const LAST_TIMER_TOKEN: TimerToken = FIRST_TIMER_TOKEN + MAX_TIMERS;
-
-const FIRST_WAIT_SYNC_TOKEN: TimerToken = LAST_TIMER_TOKEN;
+const FIRST_WAIT_SYNC_TOKEN: TimerToken = LAST_CONNECTION_TOKEN;
 const MAX_SYNC_WAITS: usize = 10;
 const LAST_WAIT_SYNC_TOKEN: TimerToken = FIRST_WAIT_SYNC_TOKEN + MAX_SYNC_WAITS;
 
 const WAIT_SYNC_MS: u64 = 10 * 1000;
-
-type TimerId = usize;
 
 #[derive(Clone, Debug, PartialOrd, PartialEq)]
 pub enum HandlerMessage {
@@ -89,27 +82,11 @@ pub enum HandlerMessage {
         need_encryption: bool,
         data: Vec<u8>,
     },
-
-    SetTimer {
-        extension_name: String,
-        timer_id: TimerId,
-        ms: u64,
-    },
-    SetTimerOnce {
-        extension_name: String,
-        timer_id: TimerId,
-        ms: u64,
-    },
-    ClearTimer {
-        extension_name: String,
-        timer_id: TimerId,
-    },
 }
 
 #[derive(Debug)]
 enum Error {
     InvalidStream(StreamToken),
-    InvalidTimer(TimerToken),
     InvalidNode(NodeToken),
     General(&'static str),
 }
@@ -120,7 +97,6 @@ impl ::std::fmt::Display for Error {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         match self {
             &Error::InvalidStream(_) => ::std::fmt::Debug::fmt(self, f),
-            &Error::InvalidTimer(_) => ::std::fmt::Debug::fmt(self, f),
             &Error::InvalidNode(_) => ::std::fmt::Debug::fmt(self, f),
             &Error::General(_) => ::std::fmt::Debug::fmt(self, f),
         }
@@ -371,7 +347,6 @@ pub struct Handler {
     socket_address: SocketAddr,
     manager: Mutex<Manager>,
     client: Arc<Client>,
-    timer: Mutex<TimerInfo>,
 
     node_token_to_socket: RwLock<HashMap<NodeToken, SocketAddr>>,
     socket_to_node_token: RwLock<HashMap<SocketAddr, NodeToken>>,
@@ -384,7 +359,6 @@ impl Handler {
             socket_address,
             manager,
             client,
-            timer: Mutex::new(TimerInfo::new(FIRST_TIMER_TOKEN, MAX_TIMERS)),
 
             node_token_to_socket: RwLock::new(HashMap::new()),
             socket_to_node_token: RwLock::new(HashMap::new()),
@@ -400,15 +374,6 @@ impl IoHandler<HandlerMessage> for Handler {
 
     fn timeout(&self, _io: &IoContext<HandlerMessage>, token: TimerToken) -> IoHandlerResult<()> {
         match token {
-            FIRST_TIMER_TOKEN...LAST_TIMER_TOKEN => {
-                let mut timer = self.timer.lock();
-                let info = timer.get_info(token).ok_or(Error::InvalidTimer(token))?;
-                if info.once {
-                    timer.remove_by_token(token);
-                }
-                self.client.on_timeout(&info.name, info.timer_id);
-                Ok(())
-            }
             FIRST_WAIT_SYNC_TOKEN...LAST_WAIT_SYNC_TOKEN => {
                 let mut manager = self.manager.lock();
                 manager.remove_waiting_sync_by_timer_token(&token);
@@ -463,55 +428,6 @@ impl IoHandler<HandlerMessage> for Handler {
                 let mut connection = manager.connections.get_mut(&node_id).ok_or(Error::InvalidNode(node_id))?;
                 connection.enqueue_extension_message(extension_name.clone(), *need_encryption, data.clone());
                 io.update_registration(node_id)?;
-                Ok(())
-            }
-            HandlerMessage::SetTimer {
-                ref extension_name,
-                timer_id,
-                ms,
-            } => {
-                let mut timer = self.timer.lock();
-                match timer.insert(extension_name.clone(), timer_id, false) {
-                    Ok(token) => {
-                        io.register_timer(token, ms)?;
-                        self.client.on_timer_set_allowed(extension_name, timer_id);
-                    }
-                    Err(TimerInfoError::DuplicatedTimerId) => {
-                        self.client.on_timer_set_denied(extension_name, timer_id, ExtensionError::DuplicatedTimerId);
-                    }
-                    Err(TimerInfoError::NoSpace) => {
-                        self.client.on_timer_set_denied(extension_name, timer_id, ExtensionError::NoMoreTimerToken);
-                    }
-                }
-                Ok(())
-            }
-            HandlerMessage::SetTimerOnce {
-                ref extension_name,
-                timer_id,
-                ms,
-            } => {
-                let mut timer = self.timer.lock();
-                match timer.insert(extension_name.clone(), timer_id, true) {
-                    Ok(token) => {
-                        io.register_timer_once(token, ms)?;
-                        self.client.on_timer_set_allowed(extension_name, timer_id);
-                    }
-                    Err(TimerInfoError::DuplicatedTimerId) => {
-                        self.client.on_timer_set_denied(extension_name, timer_id, ExtensionError::DuplicatedTimerId);
-                    }
-                    Err(TimerInfoError::NoSpace) => {
-                        self.client.on_timer_set_denied(extension_name, timer_id, ExtensionError::NoMoreTimerToken);
-                    }
-                }
-                Ok(())
-            }
-            HandlerMessage::ClearTimer {
-                ref extension_name,
-                timer_id,
-            } => {
-                let mut timer = self.timer.lock();
-                let token = timer.remove_by_info(extension_name.clone(), timer_id).expect("Unexpected timer id");
-                io.clear_timer(token)?;
                 Ok(())
             }
         }

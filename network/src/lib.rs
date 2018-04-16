@@ -40,6 +40,7 @@ mod handshake;
 mod limited_table;
 mod service;
 mod test;
+mod timer;
 mod timer_info;
 mod token_generator;
 

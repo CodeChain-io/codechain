@@ -21,11 +21,13 @@ use cio::IoChannel;
 use parking_lot::RwLock;
 
 use super::connection::HandlerMessage as ConnectionMessage;
+use super::timer::HandlerMessage as TimerMessage;
 use super::{Api, NetworkExtension, NetworkExtensionError, NodeToken, TimerToken};
 
 struct ClientApi {
     extension: Weak<NetworkExtension>,
-    channel: IoChannel<ConnectionMessage>,
+    connection_channel: IoChannel<ConnectionMessage>,
+    timer_channel: IoChannel<TimerMessage>,
 }
 
 impl Api for ClientApi {
@@ -34,7 +36,7 @@ impl Api for ClientApi {
             let need_encryption = extension.need_encryption();
             let extension_name = extension.name();
             let node_id = *id;
-            if let Err(err) = self.channel.send(ConnectionMessage::SendExtensionMessage {
+            if let Err(err) = self.connection_channel.send(ConnectionMessage::SendExtensionMessage {
                 node_id,
                 extension_name,
                 need_encryption,
@@ -54,7 +56,7 @@ impl Api for ClientApi {
             let extension_name = extension.name();
             let version = 0;
             let node_id = *id;
-            if let Err(err) = self.channel.send(ConnectionMessage::RequestNegotiation {
+            if let Err(err) = self.connection_channel.send(ConnectionMessage::RequestNegotiation {
                 node_id,
                 extension_name,
                 version,
@@ -71,7 +73,7 @@ impl Api for ClientApi {
     fn set_timer(&self, timer_id: usize, ms: u64) {
         if let Some(extension) = self.extension.upgrade() {
             let extension_name = extension.name();
-            if let Err(err) = self.channel.send(ConnectionMessage::SetTimer {
+            if let Err(err) = self.timer_channel.send(TimerMessage::SetTimer {
                 extension_name,
                 timer_id,
                 ms,
@@ -88,7 +90,7 @@ impl Api for ClientApi {
     fn set_timer_once(&self, timer_id: usize, ms: u64) {
         if let Some(extension) = self.extension.upgrade() {
             let extension_name = extension.name();
-            if let Err(err) = self.channel.send(ConnectionMessage::SetTimerOnce {
+            if let Err(err) = self.timer_channel.send(TimerMessage::SetTimerOnce {
                 extension_name,
                 timer_id,
                 ms,
@@ -105,7 +107,7 @@ impl Api for ClientApi {
     fn clear_timer(&self, timer_id: usize) {
         if let Some(extension) = self.extension.upgrade() {
             let extension_name = extension.name();
-            if let Err(err) = self.channel.send(ConnectionMessage::ClearTimer {
+            if let Err(err) = self.timer_channel.send(TimerMessage::ClearTimer {
                 extension_name,
                 timer_id,
             }) {
@@ -159,7 +161,8 @@ impl Client {
     pub fn register_extension(
         &self,
         extension: Arc<NetworkExtension>,
-        channel: IoChannel<ConnectionMessage>,
+        connection_channel: IoChannel<ConnectionMessage>,
+        timer_channel: IoChannel<TimerMessage>,
     ) -> Arc<Api> {
         let name = extension.name();
         let mut extensions = self.extensions.write();
@@ -170,7 +173,8 @@ impl Client {
 
         let api = Arc::new(ClientApi {
             extension: Arc::downgrade(&extension),
-            channel,
+            connection_channel,
+            timer_channel,
         }) as Arc<Api>;
         extension.on_initialize(Arc::clone(&api));
         api
@@ -336,14 +340,23 @@ mod tests {
 
     #[test]
     fn broadcast_node_added() {
-        let service = IoService::start().unwrap();
+        let connection_service = IoService::start().unwrap();
+        let timer_service = IoService::start().unwrap();
 
         let client = Client::new();
 
         let e1 = Arc::new(TestExtension::new("e1".to_string()));
-        let _ = client.register_extension(Arc::clone(&e1) as Arc<NetworkExtension>, service.channel());
+        let _ = client.register_extension(
+            Arc::clone(&e1) as Arc<NetworkExtension>,
+            connection_service.channel(),
+            timer_service.channel(),
+        );
         let e2 = Arc::new(TestExtension::new("e2".to_string()));
-        let _ = client.register_extension(Arc::clone(&e2) as Arc<NetworkExtension>, service.channel());
+        let _ = client.register_extension(
+            Arc::clone(&e2) as Arc<NetworkExtension>,
+            connection_service.channel(),
+            timer_service.channel(),
+        );
 
         client.on_node_added(&1);
 
@@ -360,14 +373,23 @@ mod tests {
 
     #[test]
     fn message_only_to_target() {
-        let service = IoService::start().unwrap();
+        let connection_service = IoService::start().unwrap();
+        let timer_service = IoService::start().unwrap();
 
         let client = Client::new();
 
         let e1 = Arc::new(TestExtension::new("e1".to_string()));
-        let _ = client.register_extension(Arc::clone(&e1) as Arc<NetworkExtension>, service.channel());
+        let _ = client.register_extension(
+            Arc::clone(&e1) as Arc<NetworkExtension>,
+            connection_service.channel(),
+            timer_service.channel(),
+        );
         let e2 = Arc::new(TestExtension::new("e2".to_string()));
-        let _ = client.register_extension(Arc::clone(&e2) as Arc<NetworkExtension>, service.channel());
+        let _ = client.register_extension(
+            Arc::clone(&e2) as Arc<NetworkExtension>,
+            connection_service.channel(),
+            timer_service.channel(),
+        );
 
         client.on_message(&"e1".to_string(), &1, &vec![]);
         {
