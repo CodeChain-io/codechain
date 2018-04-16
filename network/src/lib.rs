@@ -41,7 +41,6 @@ mod service;
 mod session_initiator;
 mod test;
 mod timer;
-mod timer_info;
 mod token_generator;
 
 pub mod connection;

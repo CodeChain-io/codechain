@@ -20,14 +20,14 @@ use std::sync::Arc;
 use cio::{IoContext, IoHandler, IoHandlerResult, TimerToken};
 use parking_lot::Mutex;
 
-use super::client::Client;
-use super::extension::Error as ExtensionError;
+use super::super::client::Client;
+use super::super::extension::Error as ExtensionError;
 use super::timer_info::{Error as TimerInfoError, TimerInfo};
 
 type TimerId = usize;
 
 #[derive(Clone, Debug, PartialOrd, PartialEq)]
-pub enum HandlerMessage {
+pub enum Message {
     SetTimer {
         extension_name: String,
         timer_id: TimerId,
@@ -75,8 +75,8 @@ impl Handler {
     }
 }
 
-impl IoHandler<HandlerMessage> for Handler {
-    fn timeout(&self, _io: &IoContext<HandlerMessage>, token: TimerToken) -> IoHandlerResult<()> {
+impl IoHandler<Message> for Handler {
+    fn timeout(&self, _io: &IoContext<Message>, token: TimerToken) -> IoHandlerResult<()> {
         match token {
             FIRST_TIMER_TOKEN...LAST_TIMER_TOKEN => {
                 let mut timer = self.timer.lock();
@@ -91,9 +91,9 @@ impl IoHandler<HandlerMessage> for Handler {
         }
     }
 
-    fn message(&self, io: &IoContext<HandlerMessage>, message: &HandlerMessage) -> IoHandlerResult<()> {
+    fn message(&self, io: &IoContext<Message>, message: &Message) -> IoHandlerResult<()> {
         match *message {
-            HandlerMessage::SetTimer {
+            Message::SetTimer {
                 ref extension_name,
                 timer_id,
                 ms,
@@ -113,7 +113,7 @@ impl IoHandler<HandlerMessage> for Handler {
                 }
                 Ok(())
             }
-            HandlerMessage::SetTimerOnce {
+            Message::SetTimerOnce {
                 ref extension_name,
                 timer_id,
                 ms,
@@ -133,7 +133,7 @@ impl IoHandler<HandlerMessage> for Handler {
                 }
                 Ok(())
             }
-            HandlerMessage::ClearTimer {
+            Message::ClearTimer {
                 ref extension_name,
                 timer_id,
             } => {

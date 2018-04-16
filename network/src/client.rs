@@ -21,7 +21,7 @@ use cio::IoChannel;
 use parking_lot::RwLock;
 
 use super::connection::HandlerMessage as ConnectionMessage;
-use super::timer::HandlerMessage as TimerMessage;
+use super::timer::Message as TimerMessage;
 use super::{Api, NetworkExtension, NetworkExtensionError, NodeToken, TimerToken};
 
 struct ClientApi {

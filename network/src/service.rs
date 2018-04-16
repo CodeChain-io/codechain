@@ -29,7 +29,7 @@ use super::{Api, DiscoveryApi, NetworkExtension, SocketAddr};
 pub struct Service {
     _handshake_service: IoService<session_initiator::Message>,
     connection_service: IoService<connection::HandlerMessage>,
-    timer_service: IoService<timer::HandlerMessage>,
+    timer_service: IoService<timer::Message>,
     client: Arc<Client>,
 }
 
