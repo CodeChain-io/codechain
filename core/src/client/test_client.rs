@@ -472,9 +472,8 @@ impl BlockChainClient for TestBlockChainClient {
     fn block_body(&self, id: BlockId) -> Option<encoded::Body> {
         self.block_hash(id).and_then(|hash| {
             self.blocks.read().get(&hash).map(|r| {
-                let mut stream = RlpStream::new_list(2);
+                let mut stream = RlpStream::new_list(1);
                 stream.append_raw(Rlp::new(r).at(1).as_raw(), 1);
-                stream.append_raw(Rlp::new(r).at(2).as_raw(), 1);
                 encoded::Body::new(stream.out())
             })
         })
