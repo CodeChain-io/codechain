@@ -15,16 +15,15 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 mod connection;
+mod handler;
 mod listener;
-mod manager;
 mod message;
 mod stream;
 mod unprocessed_connection;
 
-pub use self::manager::{AddressConverter, Handler, HandlerMessage};
+pub use self::handler::{AddressConverter, Handler, Message};
 use self::message::ApplicationMessage;
 use self::message::HandshakeMessage;
-use self::message::Message;
 use self::message::NegotiationBody;
 use self::message::NegotiationMessage;
 use self::message::SignedMessage;

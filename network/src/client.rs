@@ -20,7 +20,7 @@ use std::sync::{Arc, Weak};
 use cio::IoChannel;
 use parking_lot::RwLock;
 
-use super::connection::HandlerMessage as ConnectionMessage;
+use super::p2p::Message as ConnectionMessage;
 use super::timer::Message as TimerMessage;
 use super::{Api, NetworkExtension, NetworkExtensionError, NodeToken, TimerToken};
 

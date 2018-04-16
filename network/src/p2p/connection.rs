@@ -31,9 +31,9 @@ use rlp::DecoderError;
 use super::super::client::Client;
 use super::super::extension::{Error as ExtensionError, NodeToken};
 use super::super::session::{Nonce, Session};
-use super::message::{Seq, Version};
+use super::message::{Message, Seq, Version};
 use super::stream::{Error as StreamError, SignedStream, Stream};
-use super::{ApplicationMessage, HandshakeMessage, Message, NegotiationBody, NegotiationMessage};
+use super::{ApplicationMessage, HandshakeMessage, NegotiationBody, NegotiationMessage};
 
 #[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq)]
 pub enum State {

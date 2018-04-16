@@ -32,7 +32,7 @@ use parking_lot::{Mutex, RwLock};
 use rand::{OsRng, Rng};
 use rlp::{Decodable, DecoderError, Encodable, UntrustedRlp};
 
-use super::super::connection;
+use super::super::p2p;
 use super::super::session::{Nonce, Session};
 use super::super::token_generator::TokenGenerator;
 use super::super::{DiscoveryApi, SocketAddr};
@@ -172,7 +172,7 @@ impl SessionInitiator {
     }
 
     // return false if there is no message to be sent
-    fn read(&mut self, extension: &IoChannel<connection::HandlerMessage>, io: &IoContext<Message>) -> Result<bool> {
+    fn read(&mut self, extension: &IoChannel<p2p::Message>, io: &IoContext<Message>) -> Result<bool> {
         match self.receive() {
             Ok(None) => Ok(false),
             Ok(Some((msg, socket_address))) => {
@@ -202,7 +202,7 @@ impl SessionInitiator {
         &mut self,
         message: &message::Message,
         from: &SocketAddr,
-        extension: &IoChannel<connection::HandlerMessage>,
+        extension: &IoChannel<p2p::Message>,
         io: &IoContext<Message>,
     ) -> Result<()> {
         match message.body() {
@@ -220,7 +220,7 @@ impl SessionInitiator {
                     let encrypted_nonce = encode_and_encrypt_nonce(&temporary_session, &nonce)?;
 
                     let session = Session::new(*secret, nonce);
-                    extension.send(connection::HandlerMessage::RegisterSession(from.clone(), session))?;
+                    extension.send(p2p::Message::RegisterSession(from.clone(), session))?;
                     encrypted_nonce
                 };
 
@@ -235,7 +235,7 @@ impl SessionInitiator {
                 let nonce = decrypt_and_decode_nonce(&temporary_session, &nonce)?;
 
                 let session = Session::new(*secret, nonce);
-                extension.send(connection::HandlerMessage::RequestConnection(from.clone(), session))?;
+                extension.send(p2p::Message::RequestConnection(from.clone(), session))?;
                 Ok(())
             }
             &message::Body::ConnectionDenied(ref reason) => {
@@ -333,7 +333,7 @@ fn decrypt_and_decode_nonce(session: &Session, encrypted_bytes: &Vec<u8>) -> Res
 
 pub struct Handler {
     session_initiator: Mutex<SessionInitiator>,
-    extension: IoChannel<connection::HandlerMessage>,
+    extension: IoChannel<p2p::Message>,
     #[allow(dead_code)]
     discovery: RwLock<Arc<DiscoveryApi>>,
     #[allow(dead_code)]
@@ -344,7 +344,7 @@ impl Handler {
     pub fn new(
         socket_address: SocketAddr,
         secret_key: Secret,
-        extension: IoChannel<connection::HandlerMessage>,
+        extension: IoChannel<p2p::Message>,
         discovery: Arc<DiscoveryApi>,
     ) -> Self {
         let session_initiator = Mutex::new(SessionInitiator::bind(&socket_address).expect("Cannot bind UDP port"));

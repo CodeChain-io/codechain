@@ -21,14 +21,14 @@ use cio::{IoError, IoService};
 use ctypes::Secret;
 
 use super::client::Client;
-use super::connection;
+use super::p2p;
 use super::session_initiator;
 use super::timer;
 use super::{Api, DiscoveryApi, NetworkExtension, SocketAddr};
 
 pub struct Service {
     _handshake_service: IoService<session_initiator::Message>,
-    connection_service: IoService<connection::HandlerMessage>,
+    connection_service: IoService<p2p::Message>,
     timer_service: IoService<timer::Message>,
     client: Arc<Client>,
 }
@@ -46,7 +46,7 @@ impl Service {
         let timer_service = IoService::start()?;
 
         let client = Client::new();
-        let connection_handler = Arc::new(connection::Handler::new(address.clone(), Arc::clone(&client)));
+        let connection_handler = Arc::new(p2p::Handler::new(address.clone(), Arc::clone(&client)));
         discovery.set_address_converter(connection_handler.clone());
         connection_service.register_handler(connection_handler)?;
         timer_service.register_handler(Arc::new(timer::Handler::new(Arc::clone(&client))))?;

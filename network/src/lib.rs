@@ -43,7 +43,7 @@ mod test;
 mod timer;
 mod token_generator;
 
-pub mod connection;
+mod p2p;
 pub mod session;
 
 pub use self::addr::SocketAddr;
@@ -52,5 +52,6 @@ pub use self::discovery::Api as DiscoveryApi;
 pub use self::extension::{
     Api, Error as NetworkExtensionError, Extension as NetworkExtension, NodeToken, Result, TimerToken,
 };
+pub use self::p2p::AddressConverter;
 pub use self::service::Service as NetworkService;
 pub use self::test::{Call as TestNetworkCall, TestClient as TestNetworkClient};

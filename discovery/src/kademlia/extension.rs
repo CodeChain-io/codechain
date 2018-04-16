@@ -18,8 +18,7 @@ use std::collections::{HashSet, VecDeque};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
-use cnetwork::connection::AddressConverter;
-use cnetwork::{Api, DiscoveryApi, NetworkExtension, NodeToken, SocketAddr, TimerToken};
+use cnetwork::{AddressConverter, Api, DiscoveryApi, NetworkExtension, NodeToken, SocketAddr, TimerToken};
 use parking_lot::{Mutex, RwLock};
 use rlp::{Decodable, DecoderError, Encodable, UntrustedRlp};
 

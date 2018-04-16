@@ -16,7 +16,7 @@
 
 use std::sync::Arc;
 
-use super::connection::AddressConverter;
+use super::p2p::AddressConverter;
 use super::SocketAddr;
 
 pub trait Api: Send + Sync {
