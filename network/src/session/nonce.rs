@@ -21,45 +21,41 @@ use rand::{Rand, Rng};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 #[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq)]
-pub struct Nonce(u32);
+pub struct Nonce(H128);
 
 impl Nonce {
-    pub fn new(n: u32) -> Self {
-        Nonce(n)
-    }
-
     pub fn zero() -> Self {
-        Nonce::new(0)
+        From::from(H128::zero())
     }
 }
 
-impl From<u32> for Nonce {
-    fn from(nonce: u32) -> Self {
+impl From<H128> for Nonce {
+    fn from(nonce: H128) -> Self {
         Nonce(nonce)
     }
 }
 
-impl Into<u32> for Nonce {
-    fn into(self) -> u32 {
-        self.0
+impl From<u64> for Nonce {
+    fn from(nonce: u64) -> Self {
+        Nonce(H128::from(nonce))
     }
 }
 
 impl Into<H128> for Nonce {
     fn into(self) -> H128 {
-        // FIXME: This implementation is so naive.
-        let mut hash: H128 = H128::zero();
-        hash[3] = (self.0 & 0xFF) as u8;
-        hash[5] = ((self.0 >> 8) & 0xFF) as u8;
-        hash[7] = ((self.0 >> 16) & 0xFF) as u8;
-        hash[11] = ((self.0 >> 24) & 0xFF) as u8;
-        hash
+        self.0
+    }
+}
+
+impl<'a> Into<&'a H128> for &'a Nonce {
+    fn into(self) -> &'a H128 {
+        &self.0
     }
 }
 
 impl Decodable for Nonce {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
-        Ok(From::from(rlp.as_val::<u32>()?))
+        Ok(From::from(rlp.as_val::<H128>()?))
     }
 }
 

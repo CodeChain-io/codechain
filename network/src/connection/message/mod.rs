@@ -20,7 +20,7 @@ mod message;
 mod negotiation;
 mod signed_message;
 
-use ctypes::hash::{H128, H256};
+use ctypes::hash::H256;
 use ctypes::Secret;
 
 pub use self::extension::Message as ApplicationMessage;
@@ -28,11 +28,11 @@ pub use self::handshake::Message as HandshakeMessage;
 pub use self::message::Message;
 pub use self::negotiation::{Body as NegotiationBody, Message as NegotiationMessage};
 pub use self::signed_message::SignedMessage;
+pub use super::super::session::Nonce;
 
 pub type Version = u64;
 pub type ProtocolId = u64;
 pub type Seq = u64;
-pub type Nonce = H128;
 pub type SessionKey = (Secret, Nonce);
 pub type Signature = H256;
 

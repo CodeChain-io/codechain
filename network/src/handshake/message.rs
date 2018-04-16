@@ -191,374 +191,90 @@ mod tests {
     use super::super::super::session::Nonce;
     use super::Message;
     use super::Seq;
-    use super::Version;
-
-    const SINGLE: u8 = 0x80;
-    const LIST: u8 = 0xc0;
-    use super::CONNECTION_ALLOWED;
-    use super::CONNECTION_DENIED;
-    use super::CONNECTION_REQUEST;
-
-    const VERSION: Version = 0;
 
     #[test]
-    fn request_rlp_encode() {
+    fn encode_and_decode_request() {
         const SEQ: Seq = 0;
 
-        let nonce = Nonce::new(32);
+        let nonce = Nonce::from(32);
         let nonce = nonce.rlp_bytes();
 
         let req = Message::connection_request(SEQ, nonce.clone().into_vec());
         let bytes = req.rlp_bytes();
-        assert_eq!(
-            1
-                   + 1 /* version */ + 1 /* seq */
-                   + 1 /* protocol id */
-                   + nonce.len(), /* rlp(nonce) */
-            bytes.len()
-        );
 
-        // length prefix
-        assert_eq!(LIST as usize + bytes.len() - 1, bytes[0] as usize);
-
-        // version
-        assert_eq!(SINGLE as Version + VERSION, bytes[1] as Version);
-
-        // seq
-        assert_eq!(SINGLE as Seq + SEQ, bytes[2] as Seq);
-
-        // protocol id
-        assert_eq!(CONNECTION_REQUEST, bytes[3]);
-
-        // nonce
-        const START_OF_NONCE: usize = 4;
-        assert_eq!(nonce.into_vec().as_slice(), &bytes[START_OF_NONCE..]);
+        let rlp = UntrustedRlp::new(&bytes);
+        match Decodable::decode(&rlp) {
+            Ok(message) => assert_eq!(req, message),
+            Err(err) => assert!(false, "{:?}", err),
+        }
     }
 
     #[test]
-    fn allowed_rlp_encode() {
+    fn encode_and_decode_allowed() {
         const SEQ: Seq = 37;
 
-        let nonce = Nonce::new(4);
+        let nonce = Nonce::from(4);
         let nonce = nonce.rlp_bytes();
 
         let allowed = Message::connection_allowed(SEQ, nonce.clone().into_vec());
 
         let bytes = allowed.rlp_bytes();
-        assert_eq!(
-            1 + 1 /* version */ + 1 /* seq */
-                       + 1 /* protocol id */
-                       + nonce.len(), /* rlp(nonce) */
-            bytes.len()
-        );
 
-        // length prefix
-        assert_eq!(LIST as usize + bytes.len() - 1, bytes[0] as usize);
-
-        // version
-        assert_eq!(SINGLE as Version + VERSION, bytes[1] as Version);
-
-        // seq
-        assert_eq!(SEQ, bytes[2] as Seq);
-
-        // protocol id
-        assert_eq!(CONNECTION_ALLOWED, bytes[3]);
-
-        // nonce
-        const START_OF_NONCE: usize = 4;
-        assert_eq!(nonce.into_vec().as_slice(), &bytes[START_OF_NONCE..]);
+        let rlp = UntrustedRlp::new(&bytes);
+        match Decodable::decode(&rlp) {
+            Ok(message) => assert_eq!(allowed, message),
+            Err(err) => assert!(false, "{:?}", err),
+        }
     }
 
     #[test]
-    fn denied_rlp_encode() {
+    fn encode_and_decode_denied() {
         const SEQ: Seq = 6;
 
         const REASON: &str = "connection denied";
-        let reason_len: usize = REASON.len();
 
         let denied = Message::connection_denied(SEQ, REASON.to_string());
 
         let bytes = denied.rlp_bytes();
-        assert_eq!(
-            1
-                       + 1 /* version */ + 1 /* seq */
-                       + 1 /* protocol id */
-                       + 1 + reason_len, /* reason */
-            bytes.len()
-        );
-
-        // length prefix
-        assert_eq!(LIST as usize + bytes.len() - 1, bytes[0] as usize);
-
-        // version
-        assert_eq!(SINGLE as Version + VERSION, bytes[1] as Version);
-
-        // seq
-        assert_eq!(SEQ, bytes[2] as Seq);
-
-        // protocol id
-        assert_eq!(CONNECTION_DENIED, bytes[3]);
-        const START_OF_REASON: usize = 4;
-
-        // reason
-        assert_eq!(SINGLE + reason_len as u8, bytes[START_OF_REASON]);
-        assert_eq!(REASON.as_bytes(), &bytes[(START_OF_REASON + 1)..(START_OF_REASON + 1 + reason_len)]);
-    }
-
-    #[test]
-    fn request_rlp_decode() {
-        let nonce = Nonce::new(42);
-        const SEQ: Seq = 17;
-        let nonce = nonce.rlp_bytes().into_vec();
-
-        let mut bytes: Vec<u8> = vec![
-            LIST + 1 /* version */ + 1 /* seq */
-                + 1 /* protocol id */
-                + nonce.len() as u8, /* rlp(nonce) */
-        ];
-
-        bytes.push(SINGLE + VERSION as u8);
-
-        bytes.push(SEQ as u8);
-
-        bytes.push(CONNECTION_REQUEST);
-
-        bytes.extend_from_slice(nonce.as_slice());
-
-        assert_eq!(
-            1 + 1 /* version */ + 1 /* seq */
-                + 1 /* protocol id */ + nonce.len(), /* rlp(nonce) */
-            bytes.len()
-        );
 
         let rlp = UntrustedRlp::new(&bytes);
-
         match Decodable::decode(&rlp) {
-            Ok(message) => assert_eq!(Message::connection_request(SEQ, nonce), message),
+            Ok(message) => assert_eq!(denied, message),
             Err(err) => assert!(false, "{:?}", err),
         }
     }
 
     #[test]
-    fn allowed_rlp_decode() {
-        const SEQ: Seq = 62;
-        let nonce = Nonce::new(37);
-        let nonce = nonce.rlp_bytes().into_vec();
-
-        let mut bytes: Vec<u8> = vec![
-            LIST + 1 /* version */ + 1 /* seq */
-                + 1 /* protocol id */
-                + nonce.len() as u8, /* rlp(nonce) */
-        ];
-
-        bytes.push(SINGLE + VERSION as u8);
-
-        bytes.push(SEQ as u8);
-
-        bytes.push(CONNECTION_ALLOWED);
-
-        bytes.extend_from_slice(nonce.as_slice());
-
-        assert_eq!(
-            1 + 1 /* version */ + 1 /* seq */
-                       + 1 /* protocol id */
-                       + nonce.len(), /* rlp(nonce) */
-            bytes.len()
-        );
-
-        let rlp = UntrustedRlp::new(&bytes);
-        match Decodable::decode(&rlp) {
-            Ok(message) => assert_eq!(Message::connection_allowed(SEQ, nonce), message),
-            Err(err) => assert!(false, "{:?}", err),
-        }
-    }
-
-    #[test]
-    fn denied_rlp_decode() {
-        const REASON: &str = "decode connection denied";
-        let reason_len: usize = REASON.len();
-
-        const SEQ: Seq = 62;
-
-        let mut bytes: Vec<u8> = vec![
-            LIST + 1 /* version */ + 1 /* seq */
-                + 1 /* protocol id */
-                + 1 + reason_len as u8, /* reason */
-        ];
-
-        bytes.push(SINGLE + VERSION as u8);
-
-        bytes.push(SEQ as u8);
-
-        bytes.push(CONNECTION_DENIED);
-
-        bytes.extend_from_slice(REASON.rlp_bytes().into_vec().as_slice());
-
-        assert_eq!(
-            1 + 1 /* version */ + 1 /* seq */
-                + 1 /* protocol id */
-                + 1 + reason_len,
-            bytes.len()
-        );
-
-        let rlp = UntrustedRlp::new(&bytes);
-        match Decodable::decode(&rlp) {
-            Ok(message) => assert_eq!(Message::connection_denied(SEQ, REASON.to_string()), message),
-            Err(err) => assert!(false, "{:?}", err),
-        }
-    }
-
-    #[test]
-    fn request_rlp_encode_with_large_nonce() {
-        let nonce = Nonce::new(0xDEADBEEF);
+    fn encode_and_decode_request_with_large_nonce() {
+        let nonce = Nonce::from(0xDEADBEEF);
         let nonce = nonce.rlp_bytes();
 
         const SEQ: Seq = 0;
 
         let req = Message::connection_request(SEQ, nonce.clone().into_vec());
         let bytes = req.rlp_bytes();
-        assert_eq!(
-            1
-                   + 1 /* version */ + 1 /* seq */
-                   + 1 /* protocol id */
-                   + 1 + nonce.len(), /* rlp(nonce) */
-            bytes.len()
-        );
 
-        // length prefix
-        assert_eq!(LIST as usize + bytes.len() - 1, bytes[0] as usize);
-
-        // version
-        assert_eq!(SINGLE as Version + VERSION, bytes[1] as Version);
-
-        // seq
-        assert_eq!(SINGLE as Seq + SEQ, bytes[2] as Seq);
-
-        // protocol id
-        assert_eq!(CONNECTION_REQUEST, bytes[3]);
-
-        // nonce
-        const START_OF_NONCE: usize = 4;
-        assert_eq!(SINGLE + nonce.len() as u8, bytes[START_OF_NONCE]);
-        assert_eq!(nonce.into_vec().as_slice(), &bytes[(START_OF_NONCE + 1)..]);
+        let rlp = UntrustedRlp::new(&bytes);
+        match Decodable::decode(&rlp) {
+            Ok(message) => assert_eq!(req, message),
+            Err(err) => assert!(false, "{:?}", err),
+        }
     }
 
     #[test]
-    fn allowed_encode_with_large_nonce() {
-        let nonce = Nonce::new(0xCCAFEC);
+    fn encode_and_decode_allowed_with_large_nonce() {
+        let nonce = Nonce::from(0xCCAFEC);
         let nonce = nonce.rlp_bytes();
 
         const SEQ: Seq = 0x4a;
 
         let allowed = Message::connection_allowed(SEQ, nonce.clone().into_vec());
         let bytes = allowed.rlp_bytes();
-        assert_eq!(
-            1
-                   +1 /* version */ + 1 /* seq */
-                   + 1 /* protocol id */
-                   + 1 + nonce.len(), /* rlp(nonce) */
-            bytes.len()
-        );
-
-        // length prefix
-        assert_eq!(LIST as usize + bytes.len() - 1, bytes[0] as usize);
-
-        // version
-        assert_eq!(SINGLE as Version + VERSION, bytes[1] as Version);
-
-        // seq
-        assert_eq!(SEQ, bytes[2] as Seq);
-
-        // name
-        assert_eq!(CONNECTION_ALLOWED, bytes[3]);
-
-        // nonce
-        const START_OF_NONCE: usize = 4;
-        assert_eq!(SINGLE + nonce.len() as u8, bytes[START_OF_NONCE]);
-        assert_eq!(nonce.into_vec().as_slice(), &bytes[(1 + START_OF_NONCE)..]);
-    }
-
-    #[test]
-    fn request_rlp_decode_with_large_nonce() {
-        let nonce = Nonce::new(0xDEADCAFE);
-        let nonce = nonce.rlp_bytes().into_vec();
-
-        const SEQ: Seq = 0x39;
-        let mut bytes: Vec<u8> = vec![
-            LIST + 1 /* version */ + 1 /* seq */
-                + 1 /* protocol id */
-                + 1 + nonce.len() as u8, /* rlp(nonce) */
-        ];
-
-        bytes.push(SINGLE + VERSION as u8);
-
-        bytes.push(SEQ as u8);
-
-        bytes.push(CONNECTION_REQUEST);
-
-        bytes.push(SINGLE + nonce.len() as u8);
-        bytes.extend_from_slice(nonce.as_slice());
-
-        assert_eq!(
-            1 + 1 /* version */ + 1 /* seq */
-                + 1 /* protocol id */
-                + 1 + nonce.len(), /* rlp(nonce) */
-            bytes.len()
-        );
 
         let rlp = UntrustedRlp::new(&bytes);
         match Decodable::decode(&rlp) {
-            Ok(message) => assert_eq!(Message::connection_request(SEQ, nonce), message),
+            Ok(message) => assert_eq!(allowed, message),
             Err(err) => assert!(false, "{:?}", err),
         }
-    }
-
-    #[test]
-    fn allowed_rlp_decode_with_large_nonce() {
-        let nonce = Nonce::new(0xCCCAFE);
-        let nonce = nonce.rlp_bytes().into_vec();
-
-        const SEQ: Seq = 0x21;
-
-        let mut bytes: Vec<u8> = vec![
-            LIST + 1 /* version */ + 1 /* seq */
-                + 1 /* protocol id */
-                + 1 + nonce.len() as u8, /* rlp(nonce) */
-        ];
-
-        bytes.push(SINGLE + VERSION as u8);
-
-        bytes.push(SEQ as u8);
-
-        bytes.push(CONNECTION_ALLOWED);
-
-        bytes.push(SINGLE + nonce.len() as u8);
-        bytes.extend_from_slice(nonce.as_slice());
-
-        assert_eq!(
-            1 + 1 /* version */ + 1 /* seq */
-                + 1 /* protocol id */
-                + 1 + nonce.len(), /* rlp(nonce) */
-            bytes.len()
-        );
-
-        let rlp = UntrustedRlp::new(&bytes);
-
-        match Decodable::decode(&rlp) {
-            Ok(message) => assert_eq!(Message::connection_allowed(SEQ, nonce), message),
-            Err(err) => assert!(false, "{:?}", err),
-        }
-    }
-
-    #[test]
-    fn encode_and_decode_connection_request() {
-        let nonce: Nonce = Nonce::new(0xCAFE);
-        let nonce = nonce.rlp_bytes().into_vec();
-        let msg = Message::connection_request(0, nonce);
-        let encoded = msg.rlp_bytes();
-        let rlp = UntrustedRlp::new(&encoded);
-        let decoded = Decodable::decode(&rlp).unwrap();
-
-        assert_eq!(msg, decoded);
     }
 }

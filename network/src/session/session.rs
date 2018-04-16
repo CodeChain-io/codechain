@@ -54,22 +54,18 @@ impl Session {
     }
 
     pub fn encrypt(&self, data: &[u8]) -> Result<Vec<u8>, Error> {
-        let iv = self.initialization_vector();
-        Ok(aes::encrypt(&data, &self.secret, &iv)?)
+        let iv: &H128 = self.nonce().into();
+        Ok(aes::encrypt(&data, &self.secret, iv)?)
     }
 
     pub fn decrypt(&self, data: &[u8]) -> Result<Vec<u8>, Error> {
-        let iv = self.initialization_vector();
+        let iv: &H128 = self.nonce().into();
         Ok(aes::decrypt(&data, &self.secret, &iv)?)
     }
 
     pub fn sign(&self, data: &[u8]) -> H256 {
-        let iv = self.initialization_vector();
-        blake256_with_key(data, &iv)
-    }
-
-    pub fn initialization_vector(&self) -> H128 {
-        self.nonce.clone().into()
+        let iv: &H128 = self.nonce().into();
+        blake256_with_key(data, iv)
     }
 }
 
@@ -80,7 +76,7 @@ mod tests {
     #[test]
     fn encrypt_and_decrypt_short_data() {
         let secret = Secret::random();
-        let nonce = Nonce::new(1000);
+        let nonce = Nonce::from(1000);
 
         let session = Session::new(secret, nonce);
 
@@ -96,7 +92,7 @@ mod tests {
     #[test]
     fn encrypt_and_decrypt_short_data_in_different_session_with_same_secret() {
         let secret = Secret::random();
-        let nonce = Nonce::new(1000);
+        let nonce = Nonce::from(1000);
 
         let session1 = Session::new(secret, nonce.clone());
         let session2 = Session::new(secret, nonce);
@@ -113,8 +109,8 @@ mod tests {
     #[test]
     fn encrypt_with_different_nonce() {
         let secret = Secret::random();
-        let nonce1 = Nonce::new(1000);
-        let nonce2 = Nonce::new(1001);
+        let nonce1 = Nonce::from(1000);
+        let nonce2 = Nonce::from(1001);
 
         let session1 = Session::new(secret, nonce1);
         let session2 = Session::new(secret, nonce2);
@@ -131,7 +127,7 @@ mod tests {
         let secret1 = Secret::random();
         let secret2 = Secret::random();
         debug_assert_ne!(secret1, secret2);
-        let nonce = Nonce::new(1000);
+        let nonce = Nonce::from(1000);
 
         let session1 = Session::new(secret1, nonce.clone());
         let session2 = Session::new(secret2, nonce);

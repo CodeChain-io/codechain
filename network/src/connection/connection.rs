@@ -178,7 +178,7 @@ impl Connection {
     pub fn enqueue_extension_message(&mut self, extension_name: String, need_encryption: bool, message: Vec<u8>) {
         const VERSION: u64 = 0;
         let message = if need_encryption {
-            let session_key = (*self.stream.session().secret(), self.stream.session().initialization_vector());
+            let session_key = (*self.stream.session().secret(), self.stream.session().nonce().clone());
             match ApplicationMessage::encrypted_from_unencrypted_data(extension_name, VERSION, message, &session_key) {
                 Ok(message) => message,
                 Err(err) => {
@@ -205,7 +205,7 @@ impl Connection {
                 Message::Application(msg) => {
                     let _ = self.expect_state(State::Established)?;
 
-                    let session_key = (*self.stream.session().secret(), self.stream.session().initialization_vector());
+                    let session_key = (*self.stream.session().secret(), self.stream.session().nonce().clone());
 
                     // FIXME: check version of application
                     callback.on_message(&msg.extension_name(), &msg.unencrypted_data(&session_key)?);

@@ -100,12 +100,9 @@ mod tests {
 
     use super::{Message, Nonce};
 
-    const SINGLE: u8 = 0x80;
-    const LIST: u8 = 0xc0;
-
     #[test]
     fn protocol_id_of_sync_is_0() {
-        let nonce = Nonce::new(1000);
+        let nonce = Nonce::from(1000);
         assert_eq!(0x00, Message::sync(nonce).protocol_id());
     }
 
@@ -115,67 +112,28 @@ mod tests {
     }
 
     #[test]
-    fn encode_sync() {
-        let nonce = Nonce::new(1000);
+    fn encode_and_decode_sync() {
+        let nonce = Nonce::from(1000);
         let sync = Message::sync(nonce);
-        let result = sync.rlp_bytes();
-
-        assert_eq!(6, result.len());
-
-        assert_eq!(LIST + 5, result[0]);
-
-        assert_eq!(SINGLE + sync.version() as u8, result[1]);
-
-        assert_eq!(SINGLE + sync.protocol_id() as u8, result[2]);
-    }
-
-    #[test]
-    fn encode_ack() {
-        let ack = Message::ack();
-        let result = ack.rlp_bytes();
-
-        assert_eq!(3, result.len());
-
-        assert_eq!(LIST + 2, result[0]);
-
-        assert_eq!(SINGLE + ack.version() as u8, result[1]);
-
-        assert_eq!(ack.protocol_id() as u8, result[2]);
-    }
-
-    #[test]
-    fn decode_sync() {
-        let mut bytes = vec![LIST + 1 /* version */ + 1 /* protocol id */ + 1 /* nonce */];
-
-        bytes.push(SINGLE + 0); // version
-        bytes.push(SINGLE + 0x00); // protocol id
-
-        let nonce = Nonce::new(3);
-        bytes.push(3); // nonce
-
-        assert_eq!(4, bytes.len());
+        let bytes = sync.rlp_bytes();
 
         let rlp = UntrustedRlp::new(&bytes);
 
         match Decodable::decode(&rlp) {
-            Ok(message) => assert_eq!(Message::sync(nonce), message),
+            Ok(message) => assert_eq!(sync, message),
             Err(err) => assert!(false, "{:?}", err),
         }
     }
 
     #[test]
-    fn decode_ack() {
-        let mut bytes = vec![LIST + 1 /* version */ + 1 /* protocol id */];
-
-        bytes.push(SINGLE + 0); // version
-        bytes.push(0x01); // protocol id
-
-        assert_eq!(3, bytes.len());
+    fn encode_and_decode_ack() {
+        let ack = Message::ack();
+        let bytes = ack.rlp_bytes();
 
         let rlp = UntrustedRlp::new(&bytes);
 
         match Decodable::decode(&rlp) {
-            Ok(message) => assert_eq!(Message::ack(), message),
+            Ok(message) => assert_eq!(ack, message),
             Err(err) => assert!(false, "{:?}", err),
         }
     }
