@@ -39,6 +39,7 @@ members = [
 	"logger",
 	"network",
 	"rpc",
+	"rpc_cli",
 	"rpc_client",
 	"sync"
 ]

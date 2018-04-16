@@ -36,6 +36,7 @@ mod private;
 mod random;
 mod signature;
 
+pub use address::FullAddress;
 pub use error::Error;
 pub use exchange::exchange;
 pub use keypair::{public_to_address, KeyPair};
