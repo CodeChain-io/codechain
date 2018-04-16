@@ -9,9 +9,11 @@ before_script:
 script:
   - cargo +nightly fmt -- --write-mode=diff
   - cargo build --verbose --all
+  - cargo test --verbose --all
 matrix:
   allow_failures:
     - rust: nightly
 notifications:
   slack: kodebox:SEmjeEH17azsBLK6rQjhNfP9
 cache: cargo
+os: osx
