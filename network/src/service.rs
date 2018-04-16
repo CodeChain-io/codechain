@@ -22,12 +22,12 @@ use ctypes::Secret;
 
 use super::client::Client;
 use super::connection;
-use super::handshake;
+use super::session_initiator;
 use super::timer;
 use super::{Api, DiscoveryApi, NetworkExtension, SocketAddr};
 
 pub struct Service {
-    _handshake_service: IoService<handshake::HandlerMessage>,
+    _handshake_service: IoService<session_initiator::Message>,
     connection_service: IoService<connection::HandlerMessage>,
     timer_service: IoService<timer::HandlerMessage>,
     client: Arc<Client>,
@@ -52,11 +52,12 @@ impl Service {
         timer_service.register_handler(Arc::new(timer::Handler::new(Arc::clone(&client))))?;
 
         let handshake_service = IoService::start()?;
-        let handshake_handler = Arc::new(handshake::Handler::new(address, secret_key, connection_channel, discovery));
+        let handshake_handler =
+            Arc::new(session_initiator::Handler::new(address, secret_key, connection_channel, discovery));
         handshake_service.register_handler(handshake_handler)?;
 
         for address in bootstrap_addresses {
-            if let Err(err) = handshake_service.send_message(handshake::HandlerMessage::ConnectTo(address)) {
+            if let Err(err) = handshake_service.send_message(session_initiator::Message::ConnectTo(address)) {
                 info!("Cannot ConnectTo : {:?}", err);
             }
         }

@@ -36,11 +36,11 @@ use super::super::connection;
 use super::super::session::{Nonce, Session};
 use super::super::token_generator::TokenGenerator;
 use super::super::{DiscoveryApi, SocketAddr};
+use super::message;
 use super::server::{Error as ServerError, Server};
-use super::{HandshakeMessage, HandshakeMessageBody};
 
 
-pub struct Handshake {
+struct SessionInitiator {
     server: Server,
     secrets: HashMap<SocketAddr, Secret>,
     temporary_nonces: HashMap<SocketAddr, Nonce>,
@@ -141,7 +141,7 @@ impl From<KeysError> for Error {
 type Result<T> = ::std::result::Result<T, Error>;
 
 #[derive(Clone, Debug, PartialOrd, PartialEq)]
-pub enum HandlerMessage {
+pub enum Message {
     ConnectTo(SocketAddr),
 }
 
@@ -151,7 +151,7 @@ const END_OF_TMP_NONCE_TOKEN: TimerToken = START_OF_TMP_NONCE_TOKEN + NUM_OF_TMP
 
 const TMP_NONCE_TIMEOUT_MS: u64 = 10 * 1000;
 
-impl Handshake {
+impl SessionInitiator {
     fn bind(socket_address: &SocketAddr) -> Result<Self> {
         let server = Server::bind(socket_address)?;
         Ok(Self {
@@ -167,16 +167,12 @@ impl Handshake {
         })
     }
 
-    fn receive(&self) -> Result<Option<(HandshakeMessage, SocketAddr)>> {
+    fn receive(&self) -> Result<Option<(message::Message, SocketAddr)>> {
         Ok(self.server.receive()?)
     }
 
     // return false if there is no message to be sent
-    fn read(
-        &mut self,
-        extension: &IoChannel<connection::HandlerMessage>,
-        io: &IoContext<HandlerMessage>,
-    ) -> Result<bool> {
+    fn read(&mut self, extension: &IoChannel<connection::HandlerMessage>, io: &IoContext<Message>) -> Result<bool> {
         match self.receive() {
             Ok(None) => Ok(false),
             Ok(Some((msg, socket_address))) => {
@@ -197,20 +193,20 @@ impl Handshake {
         self.requested.insert(target.clone(), ephemeral.private().clone());
 
         let seq = self.seq_counter.fetch_add(1, Ordering::SeqCst);
-        let message = HandshakeMessage::ecdh_request(seq as u64, *ephemeral.public());
+        let message = message::Message::ecdh_request(seq as u64, *ephemeral.public());
         self.server.enqueue(message, target.clone())?;
         Ok(())
     }
 
     fn on_packet(
         &mut self,
-        message: &HandshakeMessage,
+        message: &message::Message,
         from: &SocketAddr,
         extension: &IoChannel<connection::HandlerMessage>,
-        io: &IoContext<HandlerMessage>,
+        io: &IoContext<Message>,
     ) -> Result<()> {
         match message.body() {
-            &HandshakeMessageBody::ConnectionRequest(ref received_nonce) => {
+            &message::Body::ConnectionRequest(ref received_nonce) => {
                 let encrypted_bytes = {
                     let secret = self.secrets.get(from).ok_or(Error::General("NoSession"))?;
 
@@ -228,11 +224,11 @@ impl Handshake {
                     encrypted_nonce
                 };
 
-                let pong = HandshakeMessage::connection_allowed(message.seq(), encrypted_bytes);
+                let pong = message::Message::connection_allowed(message.seq(), encrypted_bytes);
                 self.server.enqueue(pong, from.clone())?;
                 Ok(())
             }
-            &HandshakeMessageBody::ConnectionAllowed(ref nonce) => {
+            &message::Body::ConnectionAllowed(ref nonce) => {
                 let temporary_nonce = self.temporary_nonces.get(&from).ok_or(Error::General("SessionNotReady"))?;
                 let secret = self.secrets.get(from).ok_or(Error::General("NoSession"))?;
                 let temporary_session = Session::new(*secret, temporary_nonce.clone());
@@ -242,23 +238,23 @@ impl Handshake {
                 extension.send(connection::HandlerMessage::RequestConnection(from.clone(), session))?;
                 Ok(())
             }
-            &HandshakeMessageBody::ConnectionDenied(ref reason) => {
+            &message::Body::ConnectionDenied(ref reason) => {
                 info!("Connection to {:?} refused(reason: {}", from, reason);
                 Ok(())
             }
-            &HandshakeMessageBody::EcdhRequest(ref key) => {
+            &message::Body::EcdhRequest(ref key) => {
                 let ephemeral = Random.generate()?;
                 let secret = exchange(key, &ephemeral.private())?;
                 if self.secrets.insert(from.clone(), secret).is_some() {
-                    let message = HandshakeMessage::ecdh_denied(message.seq(), "ECDH Already requested".to_string());
+                    let message = message::Message::ecdh_denied(message.seq(), "ECDH Already requested".to_string());
                     self.server.enqueue(message, from.clone())?;
                     return Err(Error::General("ECDHAlreadyRequested"))
                 }
-                let message = HandshakeMessage::ecdh_allowed(message.seq(), *ephemeral.public());
+                let message = message::Message::ecdh_allowed(message.seq(), *ephemeral.public());
                 self.server.enqueue(message, from.clone())?;
                 Ok(())
             }
-            &HandshakeMessageBody::EcdhAllowed(ref key) => {
+            &message::Body::EcdhAllowed(ref key) => {
                 let local_private = self.requested.remove(from).ok_or(Error::General("ECDHIsNotRequested"))?;
                 let secret = exchange(key, &local_private)?;
                 let session = Session::new_with_zero_nonce(secret);
@@ -278,7 +274,7 @@ impl Handshake {
                 debug_assert!(t.is_none());
 
                 let seq = self.seq_counter.fetch_add(1, Ordering::SeqCst);
-                let message = HandshakeMessage::connection_request(seq as u64, encrypted_nonce);
+                let message = message::Message::connection_request(seq as u64, encrypted_nonce);
                 if let Err(err) = self.server.enqueue(message, from.clone()) {
                     let t = self.tmp_nonce_tokens.restore(token);
                     debug_assert!(t);
@@ -293,7 +289,7 @@ impl Handshake {
                 io.register_timer_once(token, TMP_NONCE_TIMEOUT_MS)?;
                 Ok(())
             }
-            &HandshakeMessageBody::EcdhDenied(ref reason) => {
+            &message::Body::EcdhDenied(ref reason) => {
                 info!("Connection to {:?} refused(reason: {}", from, reason);
                 let _ = self.requested.remove(from).ok_or(Error::General("ECDHIsNotRequested"))?;
                 Ok(())
@@ -315,11 +311,11 @@ impl Handshake {
         }
     }
 
-    fn register(&self, reg: Token, event_loop: &mut EventLoop<IoManager<HandlerMessage>>) -> io::Result<()> {
+    fn register(&self, reg: Token, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()> {
         Ok(self.server.register(reg, event_loop)?)
     }
 
-    fn reregister(&self, reg: Token, event_loop: &mut EventLoop<IoManager<HandlerMessage>>) -> io::Result<()> {
+    fn reregister(&self, reg: Token, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()> {
         Ok(self.server.reregister(reg, event_loop)?)
     }
 }
@@ -336,7 +332,7 @@ fn decrypt_and_decode_nonce(session: &Session, encrypted_bytes: &Vec<u8>) -> Res
 }
 
 pub struct Handler {
-    handshake: Mutex<Handshake>,
+    session_initiator: Mutex<SessionInitiator>,
     extension: IoChannel<connection::HandlerMessage>,
     #[allow(dead_code)]
     discovery: RwLock<Arc<DiscoveryApi>>,
@@ -351,10 +347,10 @@ impl Handler {
         extension: IoChannel<connection::HandlerMessage>,
         discovery: Arc<DiscoveryApi>,
     ) -> Self {
-        let handshake = Mutex::new(Handshake::bind(&socket_address).expect("Cannot bind UDP port"));
+        let session_initiator = Mutex::new(SessionInitiator::bind(&socket_address).expect("Cannot bind UDP port"));
         let discovery = RwLock::new(discovery);
         Self {
-            handshake,
+            session_initiator,
             extension,
             discovery,
             secret_key,
@@ -364,17 +360,17 @@ impl Handler {
 
 const RECEIVE_TOKEN: usize = 0;
 
-impl IoHandler<HandlerMessage> for Handler {
-    fn initialize(&self, io: &IoContext<HandlerMessage>) -> IoHandlerResult<()> {
+impl IoHandler<Message> for Handler {
+    fn initialize(&self, io: &IoContext<Message>) -> IoHandlerResult<()> {
         io.register_stream(RECEIVE_TOKEN)?;
         Ok(())
     }
 
-    fn timeout(&self, _io: &IoContext<HandlerMessage>, timer: TimerToken) -> IoHandlerResult<()> {
+    fn timeout(&self, _io: &IoContext<Message>, timer: TimerToken) -> IoHandlerResult<()> {
         match timer {
             START_OF_TMP_NONCE_TOKEN...END_OF_TMP_NONCE_TOKEN => {
-                let mut handshake = self.handshake.lock();
-                let t = handshake.remove_temporary_nonce(&timer);
+                let mut session_initiator = self.session_initiator.lock();
+                let t = session_initiator.remove_temporary_nonce(&timer);
                 debug_assert!(t);
                 Ok(())
             }
@@ -382,52 +378,52 @@ impl IoHandler<HandlerMessage> for Handler {
         }
     }
 
-    fn message(&self, io: &IoContext<HandlerMessage>, message: &HandlerMessage) -> IoHandlerResult<()> {
+    fn message(&self, io: &IoContext<Message>, message: &Message) -> IoHandlerResult<()> {
         match message {
-            &HandlerMessage::ConnectTo(ref socket_address) => {
-                let mut handshake = self.handshake.lock();
-                handshake.create_new_connection(&socket_address)?;
+            &Message::ConnectTo(ref socket_address) => {
+                let mut session_initiator = self.session_initiator.lock();
+                session_initiator.create_new_connection(&socket_address)?;
                 io.update_registration(RECEIVE_TOKEN)?;
             }
         };
         Ok(())
     }
 
-    fn stream_hup(&self, _io: &IoContext<HandlerMessage>, _stream: StreamToken) -> IoHandlerResult<()> {
+    fn stream_hup(&self, _io: &IoContext<Message>, _stream: StreamToken) -> IoHandlerResult<()> {
         unreachable!()
     }
 
-    fn stream_readable(&self, io: &IoContext<HandlerMessage>, stream: StreamToken) -> IoHandlerResult<()> {
+    fn stream_readable(&self, io: &IoContext<Message>, stream: StreamToken) -> IoHandlerResult<()> {
         if stream != RECEIVE_TOKEN {
             unreachable!()
         }
         let _f = finally(|| {
             if let Err(err) = io.update_registration(stream) {
-                info!("Cannot update registration for handshake : {:?}", err);
+                info!("Cannot update registration for session_initiator : {:?}", err);
             }
         });
         loop {
-            let mut handshake = self.handshake.lock();
-            if !handshake.read(&self.extension, io)? {
+            let mut session_initiator = self.session_initiator.lock();
+            if !session_initiator.read(&self.extension, io)? {
                 break
             }
         }
         Ok(())
     }
 
-    fn stream_writable(&self, io: &IoContext<HandlerMessage>, stream: StreamToken) -> IoHandlerResult<()> {
+    fn stream_writable(&self, io: &IoContext<Message>, stream: StreamToken) -> IoHandlerResult<()> {
         if stream != RECEIVE_TOKEN {
             unreachable!()
         }
 
         let _f = finally(|| {
             if let Err(err) = io.update_registration(stream) {
-                info!("Cannot update registration for handshake : {:?}", err);
+                info!("Cannot update registration for session_initiator : {:?}", err);
             }
         });
         loop {
-            let mut handshake = self.handshake.lock();
-            if !handshake.send()? {
+            let mut session_initiator = self.session_initiator.lock();
+            if !session_initiator.send()? {
                 break
             }
         }
@@ -438,32 +434,32 @@ impl IoHandler<HandlerMessage> for Handler {
         &self,
         stream: StreamToken,
         reg: Token,
-        event_loop: &mut EventLoop<IoManager<HandlerMessage>>,
+        event_loop: &mut EventLoop<IoManager<Message>>,
     ) -> IoHandlerResult<()> {
         if stream != RECEIVE_TOKEN {
             unreachable!()
         }
-        let handshake = self.handshake.lock();
-        Ok(handshake.register(reg, event_loop)?)
+        let session_initiator = self.session_initiator.lock();
+        Ok(session_initiator.register(reg, event_loop)?)
     }
 
     fn update_stream(
         &self,
         stream: usize,
         reg: Token,
-        event_loop: &mut EventLoop<IoManager<HandlerMessage>>,
+        event_loop: &mut EventLoop<IoManager<Message>>,
     ) -> IoHandlerResult<()> {
         if stream != RECEIVE_TOKEN {
             unreachable!()
         }
-        let handshake = self.handshake.lock();
-        Ok(handshake.reregister(reg, event_loop)?)
+        let session_initiator = self.session_initiator.lock();
+        Ok(session_initiator.reregister(reg, event_loop)?)
     }
 
     fn deregister_stream(
         &self,
         _stream: usize,
-        _event_loop: &mut EventLoop<IoManager<HandlerMessage>>,
+        _event_loop: &mut EventLoop<IoManager<Message>>,
     ) -> IoHandlerResult<()> {
         unreachable!()
     }

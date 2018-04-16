@@ -14,11 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod handshake;
+mod handler;
 mod message;
 mod server;
 mod socket;
 
 
-pub use self::handshake::{Handler, HandlerMessage, Handshake};
-use self::message::{Body as HandshakeMessageBody, Message as HandshakeMessage};
+pub use self::handler::{Handler, Message};
