@@ -18,7 +18,7 @@ use ckey::{Address, Public};
 use ctypes::errors::SyntaxError;
 use ctypes::{CommonParams, Header};
 use primitives::H256;
-use rlp::{self, Decodable, Encodable, UntrustedRlp};
+use rlp::{self, Decodable, Encodable, Rlp};
 
 use super::{ActionDataKeyBuilder, ActionHandler};
 use crate::{StateResult, TopLevelState, TopState, TopStateView};
@@ -73,17 +73,16 @@ impl ActionHandler for HitHandler {
         _sender_pubkey: &Public,
     ) -> StateResult<()> {
         let address = self.hit_count();
-        let action = HitAction::decode(&UntrustedRlp::new(bytes)).expect("Verification passed");
+        let action = HitAction::decode(&Rlp::new(bytes)).expect("Verification passed");
         let action_data = state.action_data(&address)?.unwrap_or_default();
-        let prev_counter: u32 = rlp::decode(&*action_data);
+        let prev_counter: u32 = rlp::decode(&*action_data).unwrap();
         let increase = u32::from(action.increase);
         state.update_action_data(&address, (prev_counter + increase).rlp_bytes().to_vec())?;
         Ok(())
     }
 
     fn verify(&self, bytes: &[u8], _params: &CommonParams) -> Result<(), SyntaxError> {
-        HitAction::decode(&UntrustedRlp::new(bytes))
-            .map_err(|err| SyntaxError::InvalidCustomAction(err.to_string()))?;
+        HitAction::decode(&Rlp::new(bytes)).map_err(|err| SyntaxError::InvalidCustomAction(err.to_string()))?;
         Ok(())
     }
 
@@ -96,7 +95,7 @@ impl ActionHandler for HitHandler {
     ) -> StateResult<()> {
         let address = self.close_count();
         let action_data = state.action_data(&address)?.unwrap_or_default();
-        let prev_counter: u32 = rlp::decode(&*action_data);
+        let prev_counter: u32 = rlp::decode(&*action_data).unwrap();
         state.update_action_data(&address, (prev_counter + 1).rlp_bytes().to_vec())?;
         Ok(())
     }

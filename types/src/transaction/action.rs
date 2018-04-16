@@ -19,7 +19,7 @@ use std::collections::{HashMap, HashSet};
 use ccrypto::Blake;
 use ckey::{recover, Address, NetworkId, Public, Signature};
 use primitives::{Bytes, H160, H256};
-use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
+use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
 
 use crate::errors::SyntaxError;
 use crate::transaction::{AssetMintOutput, AssetTransferInput, AssetTransferOutput, ShardTransaction};
@@ -639,7 +639,7 @@ impl Encodable for Action {
 }
 
 impl Decodable for Action {
-    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+    fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
         match rlp.val_at(0)? {
             MINT_ASSET => {
                 let item_count = rlp.item_count()?;

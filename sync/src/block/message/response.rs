@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use rlp::{DecoderError, Encodable, RlpStream, UntrustedRlp};
+use rlp::{DecoderError, Encodable, Rlp, RlpStream};
 use snap;
 
 use ccore::UnverifiedTransaction;
@@ -79,7 +79,7 @@ impl ResponseMessage {
         }
     }
 
-    pub fn decode(id: u8, rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+    pub fn decode(id: u8, rlp: &Rlp) -> Result<Self, DecoderError> {
         let message = match id {
             super::MESSAGE_ID_HEADERS => ResponseMessage::Headers(rlp.as_list()?),
             super::MESSAGE_ID_BODIES => {
@@ -101,7 +101,7 @@ impl ResponseMessage {
                     })?
                 };
 
-                let uncompressed_rlp = UntrustedRlp::new(&uncompressed);
+                let uncompressed_rlp = Rlp::new(&uncompressed);
 
                 let mut bodies = Vec::new();
                 for item in uncompressed_rlp.into_iter() {
@@ -138,7 +138,7 @@ impl ResponseMessage {
 
 #[cfg(test)]
 mod tests {
-    use rlp::{Encodable, UntrustedRlp};
+    use rlp::{Encodable, Rlp};
 
     use ccore::UnverifiedTransaction;
     use ckey::{Address, Signature};
@@ -148,7 +148,7 @@ mod tests {
     use super::ResponseMessage;
 
     pub fn decode_bytes(id: u8, bytes: &[u8]) -> ResponseMessage {
-        let rlp = UntrustedRlp::new(bytes);
+        let rlp = Rlp::new(bytes);
         ResponseMessage::decode(id, &rlp).unwrap()
     }
 

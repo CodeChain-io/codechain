@@ -17,7 +17,7 @@
 use std::ops::Deref;
 
 use primitives::{Bytes, H256};
-use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp, NULL_RLP};
+use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream, NULL_RLP};
 
 use crate::CacheableItem;
 
@@ -52,7 +52,7 @@ impl Encodable for ActionData {
 }
 
 impl Decodable for ActionData {
-    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+    fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
         Bytes::decode(rlp).map(ActionData)
     }
 }

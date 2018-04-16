@@ -27,12 +27,6 @@
 //! * You encode a big set of data.
 //!
 //!### Use `Rlp` when:
-//! * You are working on trusted data (not corrupted).
-//! * You want to get view onto rlp-slice.
-//! * You don't want to decode whole rlp at once.
-//!
-//!### Use `UntrustedRlp` when:
-//! * You are working on untrusted data (~corrupted).
 //! * You need to handle data corruption errors.
 //! * You are working on input data.
 //! * You want to get view onto rlp-slice.
@@ -47,16 +41,14 @@ mod impls;
 mod rlpin;
 mod stream;
 mod traits;
-mod untrusted_rlp;
 
 use elastic_array::ElasticArray1024;
 use std::borrow::Borrow;
 
 pub use error::DecoderError;
-pub use rlpin::{Rlp, RlpIterator};
+pub use rlpin::{PayloadInfo, Prototype, Rlp, RlpIterator};
 pub use stream::RlpStream;
 pub use traits::{Compressible, Decodable, Encodable};
-pub use untrusted_rlp::{PayloadInfo, Prototype, UntrustedRlp, UntrustedRlpIterator};
 
 /// The RLP encoded empty data (used to mean "null value").
 pub const NULL_RLP: [u8; 1] = [0x80; 1];
@@ -70,11 +62,11 @@ pub const EMPTY_LIST_RLP: [u8; 1] = [0xC0; 1];
 ///
 /// fn main () {
 /// 	let data = vec![0x83, b'c', b'a', b't'];
-/// 	let animal: String = rlp::decode(&data);
+/// 	let animal: String = rlp::decode(&data).unwrap();
 /// 	assert_eq!(animal, "cat".to_string());
 /// }
 /// ```
-pub fn decode<T>(bytes: &[u8]) -> T
+pub fn decode<T>(bytes: &[u8]) -> Result<T, DecoderError>
 where
     T: Decodable, {
     let rlp = Rlp::new(bytes);
@@ -85,7 +77,7 @@ pub fn decode_list<T>(bytes: &[u8]) -> Vec<T>
 where
     T: Decodable, {
     let rlp = Rlp::new(bytes);
-    rlp.as_list()
+    rlp.as_list().expect("trusted rlp should be valid")
 }
 
 /// Shortcut function to encode structure into rlp.

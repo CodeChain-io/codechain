@@ -21,7 +21,7 @@ use std::ops::{Deref, DerefMut};
 use std::str::FromStr;
 
 use primitives::{remove_0x_prefix, H160};
-use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
+use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
 
 #[derive(Clone, Copy, Default, Debug, Deserialize, Serialize, Eq)]
 pub struct Address(H160);
@@ -83,7 +83,7 @@ impl Encodable for Address {
 }
 
 impl Decodable for Address {
-    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+    fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
         let data = H160::decode(rlp)?;
         Ok(Address(data))
     }

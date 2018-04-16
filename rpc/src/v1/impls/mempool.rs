@@ -20,7 +20,7 @@ use ccore::{BlockChainClient, MiningBlockChainClient, SignedTransaction};
 use cjson::bytes::Bytes;
 use ckey::{Address, PlatformAddress};
 use ctypes::{Tracker, TxHash};
-use rlp::UntrustedRlp;
+use rlp::Rlp;
 
 use jsonrpc_core::Result;
 
@@ -45,7 +45,7 @@ where
     C: BlockChainClient + MiningBlockChainClient + 'static,
 {
     fn send_signed_transaction(&self, raw: Bytes) -> Result<TxHash> {
-        UntrustedRlp::new(&raw.into_vec())
+        Rlp::new(&raw.into_vec())
             .as_val()
             .map_err(|e| errors::rlp(&e))
             .and_then(|tx| SignedTransaction::try_new(tx).map_err(errors::transaction_core))

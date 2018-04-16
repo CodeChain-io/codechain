@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ccore::UnverifiedTransaction;
-use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
+use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
 
 #[derive(Debug, PartialEq)]
 pub enum Message {
@@ -45,7 +45,7 @@ impl Encodable for Message {
 }
 
 impl Decodable for Message {
-    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+    fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
         let compressed: Vec<u8> = rlp.as_val()?;
         let uncompressed = {
             // TODO: Cache the Decoder object
@@ -56,7 +56,7 @@ impl Decodable for Message {
             })?
         };
 
-        let uncompressed_rlp = UntrustedRlp::new(&uncompressed);
+        let uncompressed_rlp = Rlp::new(&uncompressed);
         Ok(Message::Transactions(uncompressed_rlp.as_list()?))
     }
 }

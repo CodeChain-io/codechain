@@ -10,14 +10,14 @@ extern crate primitives;
 extern crate rlp;
 
 use primitives::{H160, U256};
-use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
+use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
 use std::{cmp, fmt};
 
 #[test]
 fn rlp_at() {
     let data = vec![0xc8, 0x83, b'c', b'a', b't', 0x83, b'd', b'o', b'g'];
     {
-        let rlp = UntrustedRlp::new(&data);
+        let rlp = Rlp::new(&data);
         assert!(rlp.is_list());
         let animals: Vec<String> = rlp.as_list().unwrap();
         assert_eq!(animals, vec!["cat".to_string(), "dog".to_string()]);
@@ -43,7 +43,7 @@ fn rlp_at() {
 fn rlp_at_err() {
     let data = vec![0xc8, 0x83, b'c', b'a', b't', 0x83, b'd', b'o'];
     {
-        let rlp = UntrustedRlp::new(&data);
+        let rlp = Rlp::new(&data);
         assert!(rlp.is_list());
 
         let cat_err = rlp.at(0).unwrap_err();
@@ -64,7 +64,7 @@ fn rlp_at_err() {
 fn rlp_iter() {
     let data = vec![0xc8, 0x83, b'c', b'a', b't', 0x83, b'd', b'o', b'g'];
     {
-        let rlp = UntrustedRlp::new(&data);
+        let rlp = Rlp::new(&data);
         let mut iter = rlp.iter();
 
         let cat = iter.next().unwrap();
@@ -234,8 +234,8 @@ fn run_decode_tests<T>(tests: Vec<DTestPair<T>>)
 where
     T: Decodable + fmt::Debug + cmp::Eq, {
     for t in &tests {
-        let res: T = rlp::decode(&t.1);
-        assert_eq!(res, t.0);
+        let res = rlp::decode::<T>(&t.1);
+        assert_eq!(res.as_ref(), Ok(&t.0));
     }
 }
 
@@ -365,7 +365,7 @@ fn decode_untrusted_vector_str() {
 #[test]
 fn rlp_data_length_check() {
     let data = vec![0x84, b'c', b'a', b't'];
-    let rlp = UntrustedRlp::new(&data);
+    let rlp = Rlp::new(&data);
 
     let as_val: Result<String, DecoderError> = rlp.as_val();
     assert_eq!(
@@ -384,7 +384,7 @@ fn rlp_long_data_length_check() {
         data.push(b'c');
     }
 
-    let rlp = UntrustedRlp::new(&data);
+    let rlp = Rlp::new(&data);
 
     let as_val: Result<String, DecoderError> = rlp.as_val();
     assert_eq!(
@@ -403,7 +403,7 @@ fn the_exact_long_string() {
         data.push(b'c');
     }
 
-    let rlp = UntrustedRlp::new(&data);
+    let rlp = Rlp::new(&data);
 
     let as_val: Result<String, DecoderError> = rlp.as_val();
     assert!(as_val.is_ok());
@@ -412,7 +412,7 @@ fn the_exact_long_string() {
 #[test]
 fn null_terminated_string() {
     let data: Vec<u8> = vec![0x84, b'd', b'o', b'g', b'\0'];
-    let rlp = UntrustedRlp::new(&data);
+    let rlp = Rlp::new(&data);
     let as_val: Result<String, DecoderError> = rlp.as_val();
     assert_eq!(Err(DecoderError::RlpNullTerminatedString), as_val);
 }
@@ -424,7 +424,7 @@ fn rlp_2bytes_data_length_check() {
         data.push(b'c');
     }
 
-    let rlp = UntrustedRlp::new(&data);
+    let rlp = Rlp::new(&data);
 
     let as_val: Result<String, DecoderError> = rlp.as_val();
     assert_eq!(
@@ -447,7 +447,7 @@ fn rlp_nested_empty_list_encode() {
 #[test]
 fn rlp_list_length_overflow() {
     let data: Vec<u8> = vec![0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00];
-    let rlp = UntrustedRlp::new(&data);
+    let rlp = Rlp::new(&data);
     let as_val: Result<String, DecoderError> = rlp.val_at(0);
     assert_eq!(
         Err(DecoderError::RlpIsTooShort {

@@ -16,7 +16,7 @@
 
 use ctypes::BlockHash;
 use primitives::U256;
-use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
+use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
 
 mod request;
 mod response;
@@ -78,7 +78,7 @@ impl Encodable for Message {
 }
 
 impl Decodable for Message {
-    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+    fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
         let id = rlp.val_at(0)?;
         if id == MESSAGE_ID_STATUS {
             let item_count = rlp.item_count()?;

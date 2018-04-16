@@ -19,7 +19,7 @@ use std::convert::TryFrom;
 use std::fmt;
 use std::ops::Sub;
 
-use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
+use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
 
 const MAX_VALIDATOR_SIZE: usize = 800;
 const BITSET_SIZE: usize = MAX_VALIDATOR_SIZE / 8;
@@ -122,7 +122,7 @@ impl Encodable for BitSet {
 }
 
 impl Decodable for BitSet {
-    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+    fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
         rlp.decoder().decode_value(|bytes| {
             let expected = BITSET_SIZE;
             let got = bytes.len();

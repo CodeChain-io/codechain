@@ -52,52 +52,52 @@ impl<'a> HeaderView<'a> {
 
     /// Returns parent hash.
     pub fn parent_hash(&self) -> BlockHash {
-        self.rlp.val_at::<BlockHash>(0)
+        self.rlp.val_at(0).unwrap()
     }
 
     /// Returns author.
     pub fn author(&self) -> Address {
-        self.rlp.val_at(1)
+        self.rlp.val_at(1).unwrap()
     }
 
     /// Returns state root.
     pub fn state_root(&self) -> H256 {
-        self.rlp.val_at(2)
+        self.rlp.val_at(2).unwrap()
     }
 
     /// Returns transactions root.
     pub fn transactions_root(&self) -> H256 {
-        self.rlp.val_at(3)
+        self.rlp.val_at(3).unwrap()
     }
 
     /// Returns block score.
     pub fn score(&self) -> U256 {
-        self.rlp.val_at(4)
+        self.rlp.val_at(4).unwrap()
     }
 
     /// Returns block number.
     pub fn number(&self) -> BlockNumber {
-        self.rlp.val_at(5)
+        self.rlp.val_at(5).unwrap()
     }
 
     /// Returns timestamp.
     pub fn timestamp(&self) -> u64 {
-        self.rlp.val_at(6)
+        self.rlp.val_at(6).unwrap()
     }
 
     /// Returns block extra data.
     pub fn extra_data(&self) -> Bytes {
-        self.rlp.val_at(7)
+        self.rlp.val_at(7).unwrap()
     }
 
     /// Returns a vector of post-RLP-encoded seal fields.
     pub fn seal(&self) -> Vec<Bytes> {
         const SIZE_WITHOUT_SEAL: usize = 8;
 
-        let item_count = self.rlp.item_count();
+        let item_count = self.rlp.item_count().unwrap();
         let mut seal = Vec::with_capacity(item_count - SIZE_WITHOUT_SEAL);
         for i in SIZE_WITHOUT_SEAL..item_count {
-            seal.push(self.rlp.at(i).as_raw().to_vec());
+            seal.push(self.rlp.at(i).unwrap().as_raw().to_vec());
         }
         seal
     }
@@ -105,6 +105,6 @@ impl<'a> HeaderView<'a> {
     /// Returns a vector of seal fields (RLP-decoded).
     pub fn decode_seal(&self) -> Result<Vec<Bytes>, rlp::DecoderError> {
         let seal = self.seal();
-        seal.into_iter().map(|s| rlp::UntrustedRlp::new(&s).data().map(|x| x.to_vec())).collect()
+        seal.into_iter().map(|s| rlp::Rlp::new(&s).data().map(|x| x.to_vec())).collect()
     }
 }

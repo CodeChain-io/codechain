@@ -50,32 +50,32 @@ impl<'a> TransactionView<'a> {
 
     /// Get the seq field of the transaction.
     pub fn seq(&self) -> U256 {
-        self.rlp.val_at(0)
+        self.rlp.val_at(0).unwrap()
     }
 
     /// Get the fee field of the transaction.
     pub fn fee(&self) -> U256 {
-        self.rlp.val_at(1)
+        self.rlp.val_at(1).unwrap()
     }
 
     /// Get the data field of the transaction.
     pub fn data(&self) -> Bytes {
-        self.rlp.val_at(2)
+        self.rlp.val_at(2).unwrap()
     }
 
     /// Get the v field of the transaction.
     pub fn v(&self) -> u8 {
-        let r: u16 = self.rlp.val_at(3);
+        let r: u16 = self.rlp.val_at(3).unwrap();
         r as u8
     }
 
     /// Get the r field of the transaction.
     pub fn r(&self) -> U256 {
-        self.rlp.val_at(4)
+        self.rlp.val_at(4).unwrap()
     }
 
     /// Get the s field of the transaction.
     pub fn s(&self) -> U256 {
-        self.rlp.val_at(5)
+        self.rlp.val_at(5).unwrap()
     }
 }

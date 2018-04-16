@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
-use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
+use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", tag = "type", content = "value")]
@@ -44,7 +44,7 @@ impl Encodable for Timelock {
 }
 
 impl Decodable for Timelock {
-    fn decode(d: &UntrustedRlp) -> Result<Self, DecoderError> {
+    fn decode(d: &Rlp) -> Result<Self, DecoderError> {
         let item_count = d.item_count()?;
         if item_count != 2 {
             return Err(DecoderError::RlpIncorrectListLen {

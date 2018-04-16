@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use rlp::{DecoderError, Encodable, RlpStream, UntrustedRlp};
+use rlp::{DecoderError, Encodable, Rlp, RlpStream};
 
 mod history_error;
 mod runtime_error;
@@ -33,7 +33,7 @@ trait TaggedRlp {
         s.begin_list(Self::length_of(tag).unwrap()).append(&tag)
     }
 
-    fn check_size(rlp: &UntrustedRlp, tag: Self::Tag) -> Result<(), DecoderError> {
+    fn check_size(rlp: &Rlp, tag: Self::Tag) -> Result<(), DecoderError> {
         let item_count = rlp.item_count()?;
         let expected = Self::length_of(tag)?;
         if item_count != expected {

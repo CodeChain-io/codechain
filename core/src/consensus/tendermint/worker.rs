@@ -28,7 +28,7 @@ use ctypes::transaction::{Action, Transaction};
 use ctypes::util::unexpected::Mismatch;
 use ctypes::{BlockHash, BlockNumber, Header};
 use primitives::{u256_from_u128, Bytes, U256};
-use rlp::{Encodable, UntrustedRlp};
+use rlp::{Encodable, Rlp};
 
 use super::super::BitSet;
 use super::backup::{backup, restore, BackupView};
@@ -1364,7 +1364,7 @@ impl Worker {
             EngineError::MalformedMessage(format!("{:?}", x))
         }
 
-        let rlp = UntrustedRlp::new(rlp);
+        let rlp = Rlp::new(rlp);
         let message: ConsensusMessage = rlp.as_val().map_err(fmt_err)?;
         if !self.votes.is_old_or_known(&message) {
             let signer_index = message.signer_index;

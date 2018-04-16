@@ -16,7 +16,7 @@
 
 use ckey::{NetworkId, Public};
 use primitives::Bytes;
-use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
+use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
 
 #[derive(Debug, PartialEq)]
 pub enum OutgoingMessage {
@@ -75,7 +75,7 @@ impl Encodable for OutgoingMessage {
 }
 
 impl Decodable for OutgoingMessage {
-    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+    fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
         match rlp.val_at(0)? {
             SYNC1_ID => {
                 let item_count = rlp.item_count()?;
@@ -128,7 +128,7 @@ impl Encodable for IncomingMessage {
 }
 
 impl Decodable for IncomingMessage {
-    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+    fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
         match rlp.val_at(0)? {
             ACK_ID => {
                 let item_count = rlp.item_count()?;

@@ -22,7 +22,7 @@ use ctypes::{Tracker, TxHash};
 use kvdb::{DBTransaction, KeyValueDB};
 use parking_lot::RwLock;
 use primitives::{H256, H264};
-use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
+use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
 
 use crate::db::{self, CacheUpdatePolicy, Key, Readable, Writable};
 
@@ -120,7 +120,7 @@ impl Encodable for TrackerInvoices {
 }
 
 impl Decodable for TrackerInvoices {
-    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+    fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
         let item_count = rlp.item_count()?;
         if item_count % 2 == 1 {
             return Err(DecoderError::RlpInvalidLength {

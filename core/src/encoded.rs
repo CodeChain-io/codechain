@@ -47,7 +47,7 @@ impl Header {
 
     /// Upgrade this encoded view to a fully owned `Header` object.
     pub fn decode(&self) -> FullHeader {
-        ::rlp::decode(&self.0)
+        ::rlp::decode(&self.0).unwrap()
     }
 
     /// Get a borrowed header view onto the data.
@@ -202,17 +202,17 @@ impl Block {
 
     /// Decode to a full block.
     pub fn decode(&self) -> FullBlock {
-        ::rlp::decode(&self.0)
+        ::rlp::decode(&self.0).unwrap()
     }
 
     /// Decode the header.
     pub fn decode_header(&self) -> FullHeader {
-        self.rlp().val_at(0)
+        self.rlp().val_at(0).unwrap()
     }
 
     /// Clone the encoded header.
     pub fn header(&self) -> Header {
-        Header(self.rlp().at(0).as_raw().to_vec())
+        Header(self.rlp().at(0).unwrap().as_raw().to_vec())
     }
 
     /// Get the rlp of this block.

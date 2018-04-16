@@ -21,7 +21,7 @@ use std::ops::{Deref, DerefMut};
 use std::str::FromStr;
 
 use primitives::H512;
-use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
+use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
 use rustc_hex::{FromHex, ToHex};
 use secp256k1::{key, schnorr, Error as SecpError, Message as SecpMessage};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -174,7 +174,7 @@ impl Encodable for SchnorrSignature {
 }
 
 impl Decodable for SchnorrSignature {
-    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+    fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
         let data = H512::decode(rlp)?;
         Ok(SchnorrSignature::from(data))
     }

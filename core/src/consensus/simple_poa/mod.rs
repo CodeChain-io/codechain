@@ -57,10 +57,10 @@ impl SimplePoA {
 }
 
 fn verify_external(header: &Header, validators: &dyn ValidatorSet) -> Result<(), Error> {
-    use rlp::UntrustedRlp;
+    use rlp::Rlp;
 
     // Check if the signature belongs to a validator, can depend on parent state.
-    let sig = UntrustedRlp::new(&header.seal()[0]).as_val::<Signature>()?;
+    let sig = Rlp::new(&header.seal()[0]).as_val::<Signature>()?;
     let signer = public_to_address(&recover(&sig, &header.bare_hash())?);
 
     if *header.author() != signer {

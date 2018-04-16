@@ -37,7 +37,7 @@ use std::ops::{Deref, DerefMut};
 use std::str::FromStr;
 
 use primitives::{H256, H520};
-use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
+use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
 use rustc_hex::{FromHex, ToHex};
 use secp256k1::{key, Error as SecpError, Message as SecpMessage, RecoverableSignature, RecoveryId};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -220,7 +220,7 @@ impl Encodable for ECDSASignature {
 }
 
 impl Decodable for ECDSASignature {
-    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+    fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
         let data = H520::decode(rlp)?;
         Ok(Self::from(data))
     }

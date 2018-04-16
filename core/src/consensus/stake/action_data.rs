@@ -68,7 +68,7 @@ impl<'a> StakeAccount<'a> {
         let action_data = state.action_data(&account_key)?;
 
         let balance = match action_data {
-            Some(data) => Rlp::new(&data).as_val(),
+            Some(data) => Rlp::new(&data).as_val().unwrap(),
             None => StakeQuantity::default(),
         };
 
@@ -701,7 +701,7 @@ where
     let mut result = BTreeSet::new();
     if let Some(rlp) = data.map(|x| Rlp::new(x)) {
         for record in rlp.iter() {
-            let value: V = record.as_val();
+            let value: V = record.as_val().unwrap();
             result.insert(value);
         }
     }
@@ -736,9 +736,9 @@ where
     V: Decodable, {
     let mut result = BTreeMap::new();
     for record in rlp.iter() {
-        let key: K = record.val_at(0);
-        let value: V = record.val_at(1);
-        assert_eq!(2, record.item_count());
+        let key: K = record.val_at(0).unwrap();
+        let value: V = record.val_at(1).unwrap();
+        assert_eq!(Ok(2), record.item_count());
         result.insert(key, value);
     }
     result
@@ -770,9 +770,9 @@ where
     K: Ord + Decodable,
     V: Decodable, {
     if let Some(rlp) = data.map(|x| Rlp::new(x)) {
-        assert_eq!(2, rlp.item_count());
-        let map0 = decode_map_impl(rlp.at(0));
-        let map1 = decode_map_impl(rlp.at(1));
+        assert_eq!(Ok(2), rlp.item_count());
+        let map0 = decode_map_impl(rlp.at(0).unwrap());
+        let map1 = decode_map_impl(rlp.at(1).unwrap());
         (map0, map1)
     } else {
         Default::default()

@@ -17,7 +17,7 @@
 use ccrypto::Blake;
 use ckey::Address;
 use primitives::H256;
-use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
+use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
 
 use crate::CacheableItem;
 
@@ -75,7 +75,7 @@ impl Encodable for Text {
 }
 
 impl Decodable for Text {
-    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+    fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
         let item_count = rlp.item_count()?;
         if item_count != 3 {
             return Err(DecoderError::RlpInvalidLength {

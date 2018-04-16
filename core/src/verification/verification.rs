@@ -20,7 +20,7 @@ use cmerkle::skewed_merkle_root;
 use ctypes::util::unexpected::{Mismatch, OutOfBounds};
 use ctypes::{BlockNumber, CommonParams, Header};
 use primitives::{Bytes, H256};
-use rlp::UntrustedRlp;
+use rlp::Rlp;
 
 use crate::blockchain::BlockProvider;
 use crate::client::BlockChainTrait;
@@ -44,7 +44,7 @@ pub struct PreverifiedBlock {
 pub fn verify_block_basic(header: &Header, bytes: &[u8]) -> Result<(), Error> {
     verify_header_basic(header)?;
 
-    let body_rlp = UntrustedRlp::new(bytes).at(1)?;
+    let body_rlp = Rlp::new(bytes).at(1)?;
 
     for t in body_rlp.iter().map(|rlp| rlp.as_val::<UnverifiedTransaction>()) {
         t?.verify_basic()?;
@@ -73,7 +73,7 @@ pub fn verify_block_with_params(
 ) -> Result<(), Error> {
     verify_header_with_params(&header, common_params)?;
 
-    let body_rlp = UntrustedRlp::new(bytes).at(1).expect("verify_block_basic already checked it");
+    let body_rlp = Rlp::new(bytes).at(1).expect("verify_block_basic already checked it");
     if body_rlp.as_raw().len() > common_params.max_body_size() {
         return Err(BlockError::BodySizeIsTooBig.into())
     }
@@ -139,7 +139,7 @@ fn verify_transactions_root(
     transactions_root: &H256,
     parent_transactions_root: H256,
 ) -> Result<(), Error> {
-    let block = UntrustedRlp::new(block);
+    let block = Rlp::new(block);
     let transaction = block.at(1)?;
     let expected_root = skewed_merkle_root(parent_transactions_root, transaction.iter().map(|r| r.as_raw()));
     if &expected_root != transactions_root {

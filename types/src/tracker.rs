@@ -19,7 +19,7 @@ use std::fmt::{self, Display, Formatter};
 use std::ops::Deref;
 
 use primitives::H256;
-use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
+use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
 
 
 #[derive(Clone, Copy, Default, Eq, Hash, PartialEq, Debug, Deserialize, Serialize)]
@@ -52,7 +52,7 @@ impl Encodable for Tracker {
 }
 
 impl Decodable for Tracker {
-    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+    fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
         Ok(H256::decode(rlp)?.into())
     }
 }
@@ -86,7 +86,7 @@ mod tests {
         let tracker = Tracker(h256);
 
         let encoded = rlp::encode(&tracker);
-        let decoded = rlp::decode(&*encoded);
+        let decoded = rlp::decode(&*encoded).unwrap();
 
         assert_eq!(h256, decoded);
     }
@@ -96,7 +96,7 @@ mod tests {
         let h256 = H256::random();
 
         let encoded = rlp::encode(&h256);
-        let decoded = rlp::decode(&*encoded);
+        let decoded = rlp::decode(&*encoded).unwrap();
 
         let tracker = Tracker(h256);
         assert_eq!(tracker, decoded);

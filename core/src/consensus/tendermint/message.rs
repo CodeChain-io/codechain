@@ -20,7 +20,7 @@ use ccrypto::blake256;
 use ckey::{verify_schnorr, Error as KeyError, Public, SchnorrSignature};
 use ctypes::BlockHash;
 use primitives::{Bytes, H256};
-use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
+use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
 use snap;
 
 use super::super::BitSet;
@@ -188,7 +188,7 @@ impl Encodable for TendermintMessage {
 }
 
 impl Decodable for TendermintMessage {
-    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+    fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
         let id = rlp.val_at(0)?;
         Ok(match id {
             MESSAGE_ID_CONSENSUS_MESSAGE => {
@@ -490,7 +490,7 @@ mod tests {
             },
         };
         let encoded = consensus_message.rlp_bytes();
-        let decoded = rlp::decode::<ConsensusMessage>(&encoded);
+        let decoded = rlp::decode::<ConsensusMessage>(&encoded).unwrap();
         assert_eq!(consensus_message, decoded);
     }
 }

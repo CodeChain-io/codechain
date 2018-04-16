@@ -32,28 +32,28 @@ impl<'a> Node<'a> {
     /// Decode the `node_rlp` and return the Node.
     pub fn decoded(node_rlp: &'a [u8]) -> Option<Self> {
         let r = Rlp::new(node_rlp);
-        match r.prototype() {
+        match r.prototype().unwrap() {
             // Empty node
             Prototype::Data(0) => None,
             // leaf node - first is nibbles and second is value
             Prototype::List(2) => {
-                let slice = NibbleSlice::from_encoded(r.at(0).data());
+                let slice = NibbleSlice::from_encoded(r.at(0).unwrap().data().unwrap());
 
-                Some(Node::Leaf(slice, r.at(1).data()))
+                Some(Node::Leaf(slice, r.at(1).unwrap().data().unwrap()))
             }
             // branch node - first is nibbles (or empty), the rest 16 are nodes.
             Prototype::List(17) => {
                 let mut nodes = [None; 16];
                 debug_assert_eq!(16, nodes.len());
                 for (i, node) in nodes.iter_mut().enumerate().map(|(i, node)| (i + 1, node)) {
-                    *node = if r.at(i).is_empty() {
+                    *node = if r.at(i).unwrap().is_empty() {
                         None
                     } else {
-                        Some(r.val_at::<H256>(i))
+                        Some(r.val_at::<H256>(i).unwrap())
                     };
                 }
 
-                Some(Node::Branch(NibbleSlice::from_encoded(r.at(0).data()), nodes.into()))
+                Some(Node::Branch(NibbleSlice::from_encoded(r.at(0).unwrap().data().unwrap()), nodes.into()))
             }
 
             // something went wrong.

@@ -435,7 +435,7 @@ impl BlockChainTrait for TestBlockChainClient {
 
     fn block_header(&self, id: &BlockId) -> Option<encoded::Header> {
         self.block_hash(id)
-            .and_then(|hash| self.blocks.read().get(&hash).map(|r| Rlp::new(r).at(0).as_raw().to_vec()))
+            .and_then(|hash| self.blocks.read().get(&hash).map(|r| Rlp::new(r).at(0).unwrap().as_raw().to_vec()))
             .map(encoded::Header::new)
     }
 
@@ -466,7 +466,7 @@ impl BlockChainTrait for TestBlockChainClient {
 
 impl ImportBlock for TestBlockChainClient {
     fn import_block(&self, b: Bytes) -> Result<BlockHash, BlockImportError> {
-        let header = Rlp::new(&b).val_at::<BlockHeader>(0);
+        let header = Rlp::new(&b).val_at::<BlockHeader>(0).unwrap();
         let h = header.hash();
         let number: usize = header.number() as usize;
         if number > self.blocks.read().len() {
@@ -477,7 +477,7 @@ impl ImportBlock for TestBlockChainClient {
             let parent = blocks
                 .get(header.parent_hash())
                 .unwrap_or_else(|| panic!("Unknown block parent {:?} for block {}", header.parent_hash(), number));
-            let parent = Rlp::new(parent).val_at::<BlockHeader>(0);
+            let parent = Rlp::new(parent).val_at::<BlockHeader>(0).unwrap();
             assert_eq!(parent.number(), header.number() - 1, "Unexpected block parent");
         }
         let len = self.numbers.read().len();
@@ -497,7 +497,8 @@ impl ImportBlock for TestBlockChainClient {
                 while n > 0 && self.numbers.read()[&n] != parent_hash {
                     *self.numbers.write().get_mut(&n).unwrap() = parent_hash;
                     n -= 1;
-                    parent_hash = *Rlp::new(&self.blocks.read()[&parent_hash]).val_at::<BlockHeader>(0).parent_hash();
+                    parent_hash =
+                        *Rlp::new(&self.blocks.read()[&parent_hash]).val_at::<BlockHeader>(0).unwrap().parent_hash();
                 }
             }
         } else {
@@ -539,8 +540,7 @@ impl BlockChainClient for TestBlockChainClient {
 
     fn queue_transactions(&self, transactions: Vec<Bytes>, _peer_id: NodeId) {
         // import right here
-        let transactions =
-            transactions.into_iter().filter_map(|bytes| UntrustedRlp::new(&bytes).as_val().ok()).collect();
+        let transactions = transactions.into_iter().filter_map(|bytes| Rlp::new(&bytes).as_val().ok()).collect();
         self.miner.import_external_transactions(self, transactions);
     }
 
@@ -565,7 +565,7 @@ impl BlockChainClient for TestBlockChainClient {
         self.block_hash(id).and_then(|hash| {
             self.blocks.read().get(&hash).map(|r| {
                 let mut stream = RlpStream::new_list(1);
-                stream.append_raw(Rlp::new(r).at(1).as_raw(), 1);
+                stream.append_raw(Rlp::new(r).at(1).unwrap().as_raw(), 1);
                 encoded::Body::new(stream.out())
             })
         })

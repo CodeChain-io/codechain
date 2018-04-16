@@ -33,7 +33,7 @@ use ctypes::{BlockHash, BlockNumber};
 use primitives::{H256, U256};
 use rand::prelude::SliceRandom;
 use rand::thread_rng;
-use rlp::{Encodable, UntrustedRlp};
+use rlp::{Encodable, Rlp};
 use token_generator::TokenGenerator;
 
 use super::downloader::{BodyDownloader, HeaderDownloader};
@@ -269,7 +269,7 @@ impl NetworkExtension<Event> for Extension {
             return
         }
 
-        if let Ok(received_message) = UntrustedRlp::new(data).as_val() {
+        if let Ok(received_message) = Rlp::new(data).as_val() {
             match received_message {
                 Message::Status {
                     total_score,

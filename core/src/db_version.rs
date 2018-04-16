@@ -25,7 +25,7 @@ pub const VERSION_KEY_TENDERMINT_BACKUP: &[u8] = b"version_tendermint-backup";
 pub fn get_version(db: &dyn KeyValueDB, key: &[u8]) -> u32 {
     let value = db.get(db::COL_EXTRA, key).expect("Low level database error. Some issue with disk?");
     if let Some(bytes) = value {
-        rlp::decode(&bytes)
+        rlp::decode(&bytes).unwrap()
     } else {
         0
     }

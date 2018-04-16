@@ -11,7 +11,7 @@ use std::{cmp, mem, str};
 use primitives::{H128, H160, H256, H512, H520, U256};
 use stream::RlpStream;
 use traits::{Decodable, Encodable};
-use {DecoderError, UntrustedRlp};
+use {DecoderError, Rlp};
 
 pub fn decode_usize(bytes: &[u8]) -> Result<usize, DecoderError> {
     let expected = mem::size_of::<usize>();
@@ -45,7 +45,7 @@ impl Encodable for bool {
 }
 
 impl Decodable for bool {
-    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+    fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
         rlp.decoder().decode_value(|bytes| match bytes.len() {
             0 => Ok(false),
             1 => Ok(bytes[0] != 0),
@@ -70,7 +70,7 @@ impl Encodable for Vec<u8> {
 }
 
 impl Decodable for Vec<u8> {
-    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+    fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
         rlp.decoder().decode_value(|bytes| Ok(bytes.to_vec()))
     }
 }
@@ -85,7 +85,7 @@ impl Encodable for Vec<Vec<u8>> {
 }
 
 impl Decodable for Vec<Vec<u8>> {
-    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+    fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
         rlp.as_list::<Vec<u8>>()
     }
 }
@@ -111,7 +111,7 @@ impl<T> Decodable for Option<T>
 where
     T: Decodable,
 {
-    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+    fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
         let items = rlp.item_count()?;
         match items {
             1 => rlp.val_at(0).map(Some),
@@ -135,7 +135,7 @@ impl Encodable for u8 {
 }
 
 impl Decodable for u8 {
-    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+    fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
         rlp.decoder().decode_value(|bytes| match bytes.len() {
             1 if bytes[0] != 0 => Ok(bytes[0]),
             0 => Ok(0),
@@ -163,7 +163,7 @@ macro_rules! impl_encodable_for_u {
 macro_rules! impl_decodable_for_u {
     ($name:ident) => {
         impl Decodable for $name {
-            fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+            fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
                 rlp.decoder().decode_value(|bytes| match bytes.len() {
                     0 | 1 => u8::decode(rlp).map($name::from),
                     l if l <= mem::size_of::<$name>() => {
@@ -204,7 +204,7 @@ impl Encodable for usize {
 }
 
 impl Decodable for usize {
-    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+    fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
         u64::decode(rlp).map(|value| value as usize)
     }
 }
@@ -222,7 +222,7 @@ macro_rules! impl_encodable_for_hash {
 macro_rules! impl_decodable_for_hash {
     ($name:ident, $size:expr) => {
         impl Decodable for $name {
-            fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+            fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
                 rlp.decoder().decode_value(|bytes| match bytes.len().cmp(&$size) {
                     cmp::Ordering::Less => Err(DecoderError::RlpIsTooShort {
                         expected: $size,
@@ -271,7 +271,7 @@ macro_rules! impl_encodable_for_uint {
 macro_rules! impl_decodable_for_uint {
     ($name:ident, $size:expr) => {
         impl Decodable for $name {
-            fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+            fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
                 rlp.decoder().decode_value(|bytes| {
                     if !bytes.is_empty() && bytes[0] == 0 {
                         Err(DecoderError::RlpInvalidIndirection)
@@ -306,7 +306,7 @@ impl Encodable for String {
 }
 
 impl Decodable for String {
-    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+    fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
         rlp.decoder().decode_value(|bytes| {
             if bytes.contains(&b'\0') {
                 return Err(DecoderError::RlpNullTerminatedString)
@@ -327,7 +327,7 @@ impl<T1: Encodable, T2: Encodable, T3: Encodable> Encodable for (T1, T2, T3) {
 }
 
 impl<T1: Decodable, T2: Decodable, T3: Decodable> Decodable for (T1, T2, T3) {
-    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+    fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
         let item_count = rlp.item_count()?;
         if item_count != 3 {
             return Err(DecoderError::RlpIncorrectListLen {
@@ -347,7 +347,7 @@ macro_rules! rlp_encode_and_decode_test {
             T: $crate::Encodable + $crate::Decodable + ::std::fmt::Debug + PartialEq, {
             let encoded = $crate::encode(&origin);
             let decoded = $crate::decode::<T>(&encoded);
-            assert_eq!(origin, decoded);
+            assert_eq!(Ok(origin), decoded);
         }
         rlp_encode_and_decode_test($origin);
     };

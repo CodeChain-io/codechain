@@ -48,7 +48,7 @@ impl<'a> BodyView<'a> {
 
     /// Return List of transactions in given block.
     pub fn transactions(&self) -> Vec<UnverifiedTransaction> {
-        self.rlp.list_at(0)
+        self.rlp.list_at(0).unwrap()
     }
 
     /// Return List of transactions with additional localization info.
@@ -72,22 +72,22 @@ impl<'a> BodyView<'a> {
 
     /// Return number of transactions in given block, without deserializing them.
     pub fn transactions_count(&self) -> usize {
-        self.rlp.at(0).item_count()
+        self.rlp.at(0).unwrap().item_count().unwrap()
     }
 
     /// Return List of transactions in given block.
     pub fn transaction_views(&self) -> Vec<TransactionView<'a>> {
-        self.rlp.at(0).iter().map(TransactionView::new_from_rlp).collect()
+        self.rlp.at(0).unwrap().iter().map(TransactionView::new_from_rlp).collect()
     }
 
     /// Return transaction hashes.
     pub fn transaction_hashes(&self) -> Vec<TxHash> {
-        self.rlp.at(0).iter().map(|rlp| blake256(rlp.as_raw()).into()).collect()
+        self.rlp.at(0).unwrap().iter().map(|rlp| blake256(rlp.as_raw()).into()).collect()
     }
 
     /// Returns transaction at given index without deserializing unnecessary data.
     pub fn transaction_at(&self, index: usize) -> Option<UnverifiedTransaction> {
-        self.rlp.at(0).iter().nth(index).map(|rlp| rlp.as_val())
+        self.rlp.at(0).unwrap().iter().nth(index).map(|rlp| rlp.as_val().unwrap())
     }
 
     /// Returns localized transaction at given index.

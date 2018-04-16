@@ -279,7 +279,7 @@ impl Header {
 }
 
 impl Decodable for Header {
-    fn decode(r: &UntrustedRlp) -> Result<Self, DecoderError> {
+    fn decode(r: &Rlp) -> Result<Self, DecoderError> {
         let mut blockheader = Header {
             parent_hash: r.val_at(0)?,
             author: r.val_at(1)?,

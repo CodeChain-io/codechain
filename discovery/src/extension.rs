@@ -23,7 +23,7 @@ use ctimer::TimerToken;
 use never_type::Never;
 use rand::prelude::SliceRandom;
 use rand::thread_rng;
-use rlp::{Decodable, Encodable, UntrustedRlp};
+use rlp::{Decodable, Encodable, Rlp};
 
 use super::message::Message;
 use super::node_id::{address_to_hash, KademliaId};
@@ -82,7 +82,7 @@ impl NetworkExtension<Never> for Extension {
     }
 
     fn on_message(&mut self, node: &NodeId, message: &[u8]) {
-        let message = match Message::decode(&UntrustedRlp::new(message)) {
+        let message = match Message::decode(&Rlp::new(message)) {
             Ok(message) => message,
             Err(err) => {
                 cwarn!(DISCOVERY, "Invalid message from {} : {:?}", node, err);

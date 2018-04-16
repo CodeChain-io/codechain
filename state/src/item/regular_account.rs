@@ -16,7 +16,7 @@
 
 use ckey::{public_to_address, Address, Public};
 use primitives::H256;
-use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
+use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
 
 use crate::CacheableItem;
 
@@ -64,7 +64,7 @@ impl Encodable for RegularAccount {
 }
 
 impl Decodable for RegularAccount {
-    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+    fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
         let item_count = rlp.item_count()?;
         if item_count != 2 {
             return Err(DecoderError::RlpInvalidLength {

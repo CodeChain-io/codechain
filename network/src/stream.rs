@@ -21,7 +21,7 @@ use mio::deprecated::{TryRead, TryWrite};
 use mio::event::Evented;
 use mio::net::TcpStream;
 use mio::{Poll, PollOpt, Ready, Token};
-use rlp::{Decodable, DecoderError, Encodable, UntrustedRlp};
+use rlp::{Decodable, DecoderError, Encodable, Rlp};
 
 use crate::SocketAddr;
 
@@ -294,7 +294,7 @@ impl Stream {
             None => Ok(None),
             Some(ref bytes) if bytes.is_empty() => Ok(None),
             Some(bytes) => {
-                let rlp = UntrustedRlp::new(&bytes);
+                let rlp = Rlp::new(&bytes);
                 Ok(Some(rlp.as_val::<M>()?))
             }
         }
