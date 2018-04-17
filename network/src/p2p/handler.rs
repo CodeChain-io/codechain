@@ -482,7 +482,7 @@ impl IoHandler<Message> for Handler {
                     }
                 }
             }
-            _ => unimplemented!(),
+            _ => unreachable!(),
         }
         Ok(())
     }
@@ -504,7 +504,7 @@ impl IoHandler<Message> for Handler {
                     break
                 }
             },
-            _ => unimplemented!(),
+            _ => unreachable!(),
         }
         Ok(())
     }
