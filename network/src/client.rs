@@ -168,7 +168,7 @@ impl Client {
         let mut extensions = self.extensions.write();
         if let Some(_) = extensions.insert(name, Arc::clone(&extension)) {
             let name = extension.name();
-            panic!("Duplicated application name : {}", name);
+            panic!("Duplicated extension name : {}", name);
         }
 
         let api = Arc::new(ClientApi {

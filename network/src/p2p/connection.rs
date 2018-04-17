@@ -33,7 +33,7 @@ use super::super::extension::{Error as ExtensionError, NodeToken};
 use super::super::session::{Nonce, Session};
 use super::message::{Message, Seq, Version};
 use super::stream::{Error as StreamError, SignedStream, Stream};
-use super::{ApplicationMessage, HandshakeMessage, NegotiationBody, NegotiationMessage};
+use super::{ExtensionMessage, HandshakeMessage, NegotiationBody, NegotiationMessage};
 
 #[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq)]
 pub enum State {
@@ -179,7 +179,7 @@ impl Connection {
         const VERSION: u64 = 0;
         let message = if need_encryption {
             let session_key = (*self.stream.session().secret(), self.stream.session().nonce().clone());
-            match ApplicationMessage::encrypted_from_unencrypted_data(extension_name, VERSION, message, &session_key) {
+            match ExtensionMessage::encrypted_from_unencrypted_data(extension_name, VERSION, message, &session_key) {
                 Ok(message) => message,
                 Err(err) => {
                     info!("Cannot encrypt message : {:?}", err);
@@ -187,9 +187,9 @@ impl Connection {
                 }
             }
         } else {
-            ApplicationMessage::unencrypted(extension_name, VERSION, message)
+            ExtensionMessage::unencrypted(extension_name, VERSION, message)
         };
-        self.enqueue(Message::Application(message));
+        self.enqueue(Message::Extension(message));
     }
 
     pub fn receive(&mut self, callback: &ExtensionCallback) -> bool {
@@ -202,12 +202,12 @@ impl Connection {
     fn receive_internal(&mut self, callback: &ExtensionCallback) -> Result<bool> {
         if let Some(message) = self.stream.read()? {
             match message {
-                Message::Application(msg) => {
+                Message::Extension(msg) => {
                     let _ = self.expect_state(State::Established)?;
 
                     let session_key = (*self.stream.session().secret(), self.stream.session().nonce().clone());
 
-                    // FIXME: check version of application
+                    // FIXME: check version of extension
                     callback.on_message(&msg.extension_name(), &msg.unencrypted_data(&session_key)?);
                     Ok(true)
                 }
@@ -229,12 +229,12 @@ impl Connection {
                     let _ = self.expect_state(State::Established)?;
                     match msg.body() {
                         &NegotiationBody::Request {
-                            ref application_name,
+                            ref extension_name,
                             ..
                         } => {
                             let seq = msg.seq();
                             // FIXME: version negotiation
-                            callback.on_connected(&application_name);
+                            callback.on_connected(&extension_name);
                             self.enqueue_negotiation_allowed(seq);
                         }
                         &NegotiationBody::Allowed => {

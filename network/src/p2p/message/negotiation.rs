@@ -34,8 +34,8 @@ pub struct Message {
 #[derive(Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum Body {
     Request {
-        application_name: String,
-        application_version: Version,
+        extension_name: String,
+        extension_version: Version,
     },
     Allowed,
     Denied(Vec<Version>),
@@ -44,13 +44,13 @@ pub enum Body {
 const COMMON: usize = 3;
 
 impl Message {
-    pub fn request(seq: Seq, application_name: String, application_version: Version) -> Self {
+    pub fn request(seq: Seq, extension_name: String, extension_version: Version) -> Self {
         Self {
             version: 0,
             seq,
             body: Body::Request {
-                application_name,
-                application_version,
+                extension_name,
+                extension_version,
             },
         }
     }
@@ -112,11 +112,11 @@ impl Encodable for Message {
 
         match self.body {
             Body::Request {
-                ref application_name,
-                application_version,
+                ref extension_name,
+                extension_version,
                 ..
             } => {
-                s.append(application_name).append(&application_version);
+                s.append(extension_name).append(&extension_version);
             }
             Body::Allowed => {}
             Body::Denied(ref versions) => {
@@ -135,14 +135,14 @@ impl Decodable for Message {
         let seq: Seq = rlp.val_at(2)?;
         match protocol_id {
             REQUEST_ID => {
-                let application_name: String = rlp.val_at(COMMON)?;
-                let application_version: Version = rlp.val_at(COMMON + 1)?;
+                let extension_name: String = rlp.val_at(COMMON)?;
+                let extension_version: Version = rlp.val_at(COMMON + 1)?;
                 Ok(Message {
                     version,
                     seq,
                     body: Body::Request {
-                        application_name,
-                        application_version,
+                        extension_name,
+                        extension_version,
                     },
                 })
             }
@@ -198,15 +198,15 @@ mod tests {
     #[test]
     fn encode_request() {
         const SEQ: Seq = 0x5432;
-        let application_name = "some-application".to_string();
-        const APPLICATION_VERSION: Version = 63;
+        let extension_name = "some-extension".to_string();
+        const EXTENSION_VERSION: Version = 63;
 
-        let request = Message::request(SEQ, application_name.clone(), APPLICATION_VERSION);
+        let request = Message::request(SEQ, extension_name.clone(), EXTENSION_VERSION);
         let result = request.rlp_bytes();
 
         let length = 1 /* version */ + 1 /* protocol id */ + 1 + 2 /* seq */
-            + 1 + application_name.len() /* application name */
-            + 1 /* application version */;
+            + 1 + extension_name.len() /* extension name */
+            + 1 /* extension version */;
 
         assert_eq!(1 /* prefix */ + length, result.len());
 
@@ -224,12 +224,12 @@ mod tests {
         assert_eq!(0x54 as u8, result[4]);
         assert_eq!(0x32 as u8, result[5]);
 
-        // application name
-        assert_eq!(SINGLE + application_name.len() as u8, result[6]);
-        assert_eq!(application_name.as_bytes(), &result[7..(7 + application_name.len())]);
+        // extension name
+        assert_eq!(SINGLE + extension_name.len() as u8, result[6]);
+        assert_eq!(extension_name.as_bytes(), &result[7..(7 + extension_name.len())]);
 
-        // application version
-        assert_eq!(APPLICATION_VERSION as u8, result[7 + application_name.len()]);
+        // extension version
+        assert_eq!(EXTENSION_VERSION as u8, result[7 + extension_name.len()]);
     }
 
     #[test]
@@ -321,12 +321,12 @@ mod tests {
     #[test]
     fn decode_request() {
         const SEQ: Seq = 0x16a8b1;
-        let application_name = "some-application".to_string();
-        const APPLICATION_VERSION: Version = 63;
+        let extension_name = "some-extension".to_string();
+        const EXTENSION_VERSION: Version = 63;
 
         let length = 1 /* version */ + 1 /* protocol id */ + 1 + 3 /* seq */
-            + 1 + application_name.len() /* application name */
-            + 1 /* application version */;
+            + 1 + extension_name.len() /* extension name */
+            + 1 /* extension version */;
 
         let mut bytes = vec![LIST + length as u8];
         // version
@@ -341,12 +341,12 @@ mod tests {
         bytes.push(0xa8);
         bytes.push(0xb1);
 
-        // application name
-        bytes.push(SINGLE + application_name.len() as u8);
-        bytes.extend_from_slice(application_name.as_bytes());
+        // extension name
+        bytes.push(SINGLE + extension_name.len() as u8);
+        bytes.extend_from_slice(extension_name.as_bytes());
 
-        // application version
-        bytes.push(APPLICATION_VERSION as u8);
+        // extension version
+        bytes.push(EXTENSION_VERSION as u8);
 
         assert_eq!(length + 1, bytes.len());
 
@@ -354,7 +354,7 @@ mod tests {
 
         match Decodable::decode(&rlp) {
             Ok(actual) => {
-                let expected = Message::request(SEQ, application_name.clone(), APPLICATION_VERSION);
+                let expected = Message::request(SEQ, extension_name.clone(), EXTENSION_VERSION);
                 assert_eq!(expected, actual)
             }
             Err(err) => assert!(false, "{:?}", err),

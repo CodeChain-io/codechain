@@ -16,12 +16,12 @@
 
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
-use super::ApplicationMessage;
+use super::ExtensionMessage;
 use super::HandshakeMessage;
 use super::NegotiationMessage;
 
 pub enum Message {
-    Application(ApplicationMessage),
+    Extension(ExtensionMessage),
     Handshake(HandshakeMessage),
     Negotiation(NegotiationMessage),
 }
@@ -47,7 +47,7 @@ use super::UNENCRYPTED_ID;
 impl Encodable for Message {
     fn rlp_append(&self, s: &mut RlpStream) {
         match self {
-            &Message::Application(ref message) => message.rlp_append(s),
+            &Message::Extension(ref message) => message.rlp_append(s),
             &Message::Handshake(ref message) => message.rlp_append(s),
             &Message::Negotiation(ref message) => message.rlp_append(s),
         }
@@ -63,8 +63,8 @@ impl Decodable for Message {
             REQUEST_ID => Ok(Message::Negotiation(NegotiationMessage::decode(rlp)?)),
             ALLOWED_ID => Ok(Message::Negotiation(NegotiationMessage::decode(rlp)?)),
             DENIED_ID => Ok(Message::Negotiation(NegotiationMessage::decode(rlp)?)),
-            ENCRYPTED_ID => Ok(Message::Application(ApplicationMessage::decode(rlp)?)),
-            UNENCRYPTED_ID => Ok(Message::Application(ApplicationMessage::decode(rlp)?)),
+            ENCRYPTED_ID => Ok(Message::Extension(ExtensionMessage::decode(rlp)?)),
+            UNENCRYPTED_ID => Ok(Message::Extension(ExtensionMessage::decode(rlp)?)),
             _ => Err(DecoderError::Custom("unexpected protocol id")),
         }
     }

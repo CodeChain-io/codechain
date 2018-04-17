@@ -23,7 +23,7 @@ mod signed_message;
 use ctypes::hash::H256;
 use ctypes::Secret;
 
-pub use self::extension::Message as ApplicationMessage;
+pub use self::extension::Message as ExtensionMessage;
 pub use self::handshake::Message as HandshakeMessage;
 pub use self::message::Message;
 pub use self::negotiation::{Body as NegotiationBody, Message as NegotiationMessage};

@@ -197,7 +197,7 @@ impl TestClient {
         let name = extension.name();
 
         if self.extensions.contains_key(&name) {
-            panic!("Duplicated application name : {}", name);
+            panic!("Duplicated extension name : {}", name);
         }
         let api = TestApi::new(Arc::downgrade(&extension));
         extension.on_initialize(api.clone());
