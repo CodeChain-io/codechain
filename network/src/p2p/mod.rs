@@ -18,8 +18,8 @@ mod connection;
 mod handler;
 mod listener;
 mod message;
+mod pending_connection;
 mod stream;
-mod unprocessed_connection;
 
 pub use self::handler::{AddressConverter, Handler, Message};
 use self::message::ApplicationMessage;

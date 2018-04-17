@@ -28,12 +28,12 @@ use super::connection::{Connection, Error as ConnectionError, Result as Connecti
 use super::message::{HandshakeMessage, Message, SignedMessage};
 use super::stream::Stream;
 
-pub struct UnprocessedConnection {
+pub struct PendingConnection {
     stream: Stream,
     session: Option<Session>,
 }
 
-impl UnprocessedConnection {
+impl PendingConnection {
     pub fn new(stream: Stream) -> Self {
         Self {
             stream,
