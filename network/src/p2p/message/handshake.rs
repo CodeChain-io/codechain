@@ -26,14 +26,20 @@ use super::super::super::session::Nonce;
 
 #[derive(Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum Message {
-    Sync(Version, Nonce),
+    Sync {
+        version: Version,
+        session_id: Nonce,
+    },
     Ack(Version),
 }
 
 impl Message {
     #[allow(dead_code)]
-    pub fn sync(nonce: Nonce) -> Self {
-        Message::Sync(0, nonce)
+    pub fn sync(session_id: Nonce) -> Self {
+        Message::Sync {
+            version: 0,
+            session_id,
+        }
     }
 
     #[allow(dead_code)]
@@ -44,14 +50,19 @@ impl Message {
     #[allow(dead_code)]
     fn version(&self) -> Version {
         match self {
-            &Message::Sync(version, _) => version,
+            &Message::Sync {
+                version,
+                ..
+            } => version,
             &Message::Ack(version) => version,
         }
     }
 
     fn protocol_id(&self) -> ProtocolId {
         match self {
-            &Message::Sync(..) => SYNC_ID,
+            &Message::Sync {
+                ..
+            } => SYNC_ID,
             &Message::Ack(_) => ACK_ID,
         }
     }
@@ -61,8 +72,11 @@ impl Message {
 impl Encodable for Message {
     fn rlp_append(&self, s: &mut RlpStream) {
         match self {
-            &Message::Sync(version, ref nonce) => {
-                s.begin_list(3).append(&version).append(&self.protocol_id()).append(nonce);
+            &Message::Sync {
+                version,
+                ref session_id,
+            } => {
+                s.begin_list(3).append(&version).append(&self.protocol_id()).append(session_id);
             }
             &Message::Ack(version) => {
                 s.begin_list(2).append(&version).append(&self.protocol_id());
@@ -80,8 +94,11 @@ impl Decodable for Message {
                 if rlp.item_count()? != 3 {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
-                let nonce = rlp.val_at(2)?;
-                Ok(Message::Sync(version, nonce))
+                let session_id = rlp.val_at(2)?;
+                Ok(Message::Sync {
+                    version,
+                    session_id,
+                })
             }
             ACK_ID => {
                 if rlp.item_count()? != 2 {
@@ -102,8 +119,8 @@ mod tests {
 
     #[test]
     fn protocol_id_of_sync_is_0() {
-        let nonce = Nonce::from(1000);
-        assert_eq!(0x00, Message::sync(nonce).protocol_id());
+        let session_id = Nonce::from(1000);
+        assert_eq!(0x00, Message::sync(session_id).protocol_id());
     }
 
     #[test]
@@ -113,8 +130,8 @@ mod tests {
 
     #[test]
     fn encode_and_decode_sync() {
-        let nonce = Nonce::from(1000);
-        let sync = Message::sync(nonce);
+        let session_id = Nonce::from(1000);
+        let sync = Message::sync(session_id);
         let bytes = sync.rlp_bytes();
 
         let rlp = UntrustedRlp::new(&bytes);

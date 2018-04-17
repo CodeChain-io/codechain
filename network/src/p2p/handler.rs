@@ -184,8 +184,8 @@ impl Manager {
 
     fn create_connection(&mut self, stream: Stream, socket_address: &SocketAddr) -> IoHandlerResult<StreamToken> {
         let session = self.socket_to_session.remove(&socket_address).ok_or(Error::General("UnavailableSession"))?;
-        let mut connection = Connection::new(stream, session.secret().clone(), session.nonce().clone());
-        let nonce = session.nonce();
+        let mut connection = Connection::new(stream, session.secret().clone(), session.id().clone());
+        let nonce = session.id();
         connection.enqueue_sync(nonce.clone());
 
         Ok(self.tokens
@@ -219,7 +219,7 @@ impl Manager {
             return Err(Error::General("SessionAlreadyRegistered"))
         }
 
-        self.registered_sessions.insert(session.nonce().clone(), session.clone());
+        self.registered_sessions.insert(session.id().clone(), session.clone());
         self.socket_to_session.insert(socket_address, session);
         Ok(())
     }
@@ -291,7 +291,7 @@ impl Manager {
         let connection = self.process_connection(&stream);
 
         let session = connection.session().clone();
-        let nonce = session.nonce().clone();
+        let nonce = session.id().clone();
 
         // Session is not reusable
         let registered_session = self.registered_sessions.remove(&nonce);

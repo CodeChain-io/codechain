@@ -45,13 +45,16 @@ impl PendingConnection {
         if let Some(signed_message) = self.stream.read::<SignedMessage>()? {
             let rlp = UntrustedRlp::new(&signed_message.message);
             match rlp.as_val::<Message>()? {
-                Message::Handshake(HandshakeMessage::Sync(_version, nonce)) => {
-                    let session = registered_sessions.get(&nonce).ok_or(ConnectionError::UnreadySession)?;
+                Message::Handshake(HandshakeMessage::Sync {
+                    session_id,
+                    ..
+                }) => {
+                    let session = registered_sessions.get(&session_id).ok_or(ConnectionError::UnreadySession)?;
                     if !signed_message.is_valid(&session) {
                         return Err(ConnectionError::InvalidSign)
                     }
                     self.session = Some(session.clone());
-                    Ok(Some(nonce))
+                    Ok(Some(session_id))
                 }
                 _ => Err(ConnectionError::UnreadySession),
             }
@@ -62,7 +65,7 @@ impl PendingConnection {
 
     pub fn process(self) -> Connection {
         let session = self.session.as_ref().expect("Session must exist");
-        Connection::new(self.stream, *session.secret(), session.nonce().clone())
+        Connection::new(self.stream, *session.secret(), session.id().clone())
     }
 
     fn interest(&self) -> Ready {

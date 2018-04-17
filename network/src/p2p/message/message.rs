@@ -30,7 +30,9 @@ impl Message {
     #[allow(dead_code)]
     pub fn is_sync(&self) -> bool {
         match self {
-            &Message::Handshake(HandshakeMessage::Sync(..)) => true,
+            &Message::Handshake(HandshakeMessage::Sync {
+                ..
+            }) => true,
             _ => false,
         }
     }

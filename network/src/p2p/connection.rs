@@ -127,9 +127,9 @@ impl From<StreamError> for Error {
 pub type Result<T> = result::Result<T, Error>;
 
 impl Connection {
-    pub fn new(stream: Stream, secret: Secret, nonce: Nonce) -> Self {
+    pub fn new(stream: Stream, secret: Secret, session_id: Nonce) -> Self {
         Self {
-            stream: SignedStream::new(stream.into(), Session::new(secret, nonce)),
+            stream: SignedStream::new(stream.into(), Session::new(secret, session_id)),
             state: State::New,
             send_queue: VecDeque::new(),
             next_negotiation_seq: 0,
@@ -150,9 +150,12 @@ impl Connection {
         self.send_queue.push_back(message);
     }
 
-    pub fn enqueue_sync(&mut self, nonce: Nonce) {
+    pub fn enqueue_sync(&mut self, session_id: Nonce) {
         const VERSION: u64 = 0;
-        self.enqueue(Message::Handshake(HandshakeMessage::Sync(VERSION, nonce)));
+        self.enqueue(Message::Handshake(HandshakeMessage::Sync {
+            version: VERSION,
+            session_id,
+        }));
         self.state = State::Requested;
     }
 
@@ -178,7 +181,7 @@ impl Connection {
     pub fn enqueue_extension_message(&mut self, extension_name: String, need_encryption: bool, message: Vec<u8>) {
         const VERSION: u64 = 0;
         let message = if need_encryption {
-            let session_key = (*self.stream.session().secret(), self.stream.session().nonce().clone());
+            let session_key = (*self.stream.session().secret(), self.stream.session().id().clone());
             match ExtensionMessage::encrypted_from_unencrypted_data(extension_name, VERSION, message, &session_key) {
                 Ok(message) => message,
                 Err(err) => {
@@ -205,7 +208,7 @@ impl Connection {
                 Message::Extension(msg) => {
                     let _ = self.expect_state(State::Established)?;
 
-                    let session_key = (*self.stream.session().secret(), self.stream.session().nonce().clone());
+                    let session_key = (*self.stream.session().secret(), self.stream.session().id().clone());
 
                     // FIXME: check version of extension
                     callback.on_message(&msg.extension_name(), &msg.unencrypted_data(&session_key)?);
@@ -214,7 +217,9 @@ impl Connection {
                 Message::Handshake(msg) => {
                     info!("handshake message received {:?}", msg);
                     match msg {
-                        HandshakeMessage::Sync(_version, _nonce) => {
+                        HandshakeMessage::Sync {
+                            ..
+                        } => {
                             unreachable!(); // This message must be handled in UnprocessedConnection
                         }
                         HandshakeMessage::Ack(_) => {

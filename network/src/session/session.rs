@@ -24,7 +24,7 @@ use super::Nonce;
 #[derive(Clone, Debug, Hash, Eq, PartialOrd, PartialEq)]
 pub struct Session {
     secret: Secret,
-    nonce: Nonce,
+    id: Nonce,
 }
 
 type Error = SymmetricCipherError;
@@ -37,34 +37,34 @@ impl Session {
     pub fn new(secret: Secret, nonce: Nonce) -> Self {
         Session {
             secret,
-            nonce,
+            id: nonce,
         }
     }
 
     pub fn is_expected_nonce(&self, nonce: &Nonce) -> bool {
-        self.nonce() == nonce
+        self.id() == nonce
     }
 
     pub fn secret(&self) -> &Secret {
         &self.secret
     }
 
-    pub fn nonce(&self) -> &Nonce {
-        &self.nonce
+    pub fn id(&self) -> &Nonce {
+        &self.id
     }
 
     pub fn encrypt(&self, data: &[u8]) -> Result<Vec<u8>, Error> {
-        let iv: &H128 = self.nonce().into();
+        let iv: &H128 = self.id().into();
         Ok(aes::encrypt(&data, &self.secret, iv)?)
     }
 
     pub fn decrypt(&self, data: &[u8]) -> Result<Vec<u8>, Error> {
-        let iv: &H128 = self.nonce().into();
+        let iv: &H128 = self.id().into();
         Ok(aes::decrypt(&data, &self.secret, &iv)?)
     }
 
     pub fn sign(&self, data: &[u8]) -> H256 {
-        let iv: &H128 = self.nonce().into();
+        let iv: &H128 = self.id().into();
         blake256_with_key(data, iv)
     }
 }
@@ -76,9 +76,9 @@ mod tests {
     #[test]
     fn encrypt_and_decrypt_short_data() {
         let secret = Secret::random();
-        let nonce = Nonce::from(1000);
+        let id = Nonce::from(1000);
 
-        let session = Session::new(secret, nonce);
+        let session = Session::new(secret, id);
 
         let data = Vec::from("some short data".as_bytes());
 
@@ -92,10 +92,10 @@ mod tests {
     #[test]
     fn encrypt_and_decrypt_short_data_in_different_session_with_same_secret() {
         let secret = Secret::random();
-        let nonce = Nonce::from(1000);
+        let id = Nonce::from(1000);
 
-        let session1 = Session::new(secret, nonce.clone());
-        let session2 = Session::new(secret, nonce);
+        let session1 = Session::new(secret, id.clone());
+        let session2 = Session::new(secret, id);
 
         let data = Vec::from("some short data".as_bytes());
 
@@ -109,11 +109,11 @@ mod tests {
     #[test]
     fn encrypt_with_different_nonce() {
         let secret = Secret::random();
-        let nonce1 = Nonce::from(1000);
-        let nonce2 = Nonce::from(1001);
+        let id1 = Nonce::from(1000);
+        let id2 = Nonce::from(1001);
 
-        let session1 = Session::new(secret, nonce1);
-        let session2 = Session::new(secret, nonce2);
+        let session1 = Session::new(secret, id1);
+        let session2 = Session::new(secret, id2);
 
         let data = Vec::from("some short data".as_bytes());
         let encrypted1 = session1.encrypt(&data).ok().unwrap();
@@ -127,10 +127,10 @@ mod tests {
         let secret1 = Secret::random();
         let secret2 = Secret::random();
         debug_assert_ne!(secret1, secret2);
-        let nonce = Nonce::from(1000);
+        let id = Nonce::from(1000);
 
-        let session1 = Session::new(secret1, nonce.clone());
-        let session2 = Session::new(secret2, nonce);
+        let session1 = Session::new(secret1, id.clone());
+        let session2 = Session::new(secret2, id);
 
         let data = Vec::from("some short data".as_bytes());
         let encrypted1 = session1.encrypt(&data).ok().unwrap();
