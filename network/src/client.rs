@@ -19,6 +19,7 @@ use std::sync::{Arc, Weak};
 
 use cio::IoChannel;
 use parking_lot::RwLock;
+use rlp::Encodable;
 
 use super::p2p::Message as ConnectionMessage;
 use super::timer::Message as TimerMessage;
@@ -119,6 +120,21 @@ impl Api for ClientApi {
             info!("The extension already dropped");
         }
     }
+
+    fn send_local_message(&self, message: &Encodable) {
+        if let Some(extension) = self.extension.upgrade() {
+            let extension_name = extension.name();
+            let message = message.rlp_bytes().into_vec();
+            if let Err(err) = self.timer_channel.send(TimerMessage::LocalMessage {
+                extension_name,
+                message,
+            }) {
+                info!("Cannot send local message: {:?}", err);
+            }
+        } else {
+            info!("The extension already dropped");
+        }
+    }
 }
 
 pub struct Client {
@@ -200,6 +216,8 @@ impl Client {
     define_method!(on_timer_set_allowed; timer_id, TimerToken);
     define_method!(on_timer_set_denied; timer_id, TimerToken; error, NetworkExtensionError);
     define_method!(on_timeout; timer_id, TimerToken);
+
+    define_method!(on_local_message; message, &[u8]);
 }
 
 impl Drop for Client {
@@ -216,6 +234,7 @@ mod tests {
 
     use cio::IoService;
     use parking_lot::Mutex;
+    use rlp::Encodable;
 
     use super::{Api, Client, NetworkExtension, NetworkExtensionError, NodeToken};
 
@@ -240,6 +259,10 @@ mod tests {
         }
 
         fn clear_timer(&self, _timer_id: usize) {
+            unimplemented!()
+        }
+
+        fn send_local_message(&self, _message: &Encodable) {
             unimplemented!()
         }
     }

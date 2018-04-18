@@ -18,6 +18,7 @@ use std::result;
 use std::sync::Arc;
 
 use cio::StreamToken;
+use rlp::Encodable;
 
 pub use cio::TimerToken;
 
@@ -39,6 +40,8 @@ pub trait Api: Send + Sync {
     fn set_timer(&self, timer: TimerToken, ms: u64);
     fn set_timer_once(&self, timer: TimerToken, ms: u64);
     fn clear_timer(&self, timer: TimerToken);
+
+    fn send_local_message(&self, message: &Encodable);
 }
 
 pub trait Extension: Send + Sync {
@@ -64,4 +67,6 @@ pub trait Extension: Send + Sync {
     }
 
     fn on_timeout(&self, _timer: TimerToken) {}
+
+    fn on_local_message(&self, _message: &[u8]) {}
 }

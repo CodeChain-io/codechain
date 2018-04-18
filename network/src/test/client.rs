@@ -19,6 +19,7 @@ use std::ops::Deref;
 use std::sync::{Arc, Weak};
 
 use parking_lot::Mutex;
+use rlp::Encodable;
 
 use super::super::extension::{Api, Error, Extension, NodeToken, TimerToken};
 
@@ -35,6 +36,7 @@ pub enum Call {
         ms: u64,
     },
     ClearTimer(TimerToken),
+    SendLocalMessage(Vec<u8>),
 }
 
 struct TestApi {
@@ -106,6 +108,11 @@ impl Api for TestApi {
         }
         timers.remove(&token);
         self.calls.lock().push_back(Call::ClearTimer(token));
+    }
+
+    fn send_local_message(&self, message: &Encodable) {
+        let message = message.rlp_bytes().into_vec();
+        self.calls.lock().push_back(Call::SendLocalMessage(message));
     }
 }
 
