@@ -11,7 +11,7 @@
   "data": {
     "secret": "ede1d4ccb4ec9a8bbbae9a13db3f4a7b56ea04189be86ac3a6a439d9a0a1addd",
     "nonce": "0",
-    "fee": "0",
+    "fee": "a",
     "action": {
       "type": "payment",
       "data": {
@@ -19,7 +19,7 @@
         "value": "0"
       }
     },
-    "network_id": "0"
+    "network_id": "17"
   }
 }]
 
