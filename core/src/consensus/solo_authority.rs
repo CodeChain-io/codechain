@@ -14,10 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::sync::Weak;
+use std::sync::{Arc, Weak};
 
 use cjson;
 use ckeys::{public_to_address, recover_ecdsa, ECDSASignature, Private};
+use cnetwork::{Api, NetworkExtension};
 use ctypes::{Address, H256, H520};
 use parking_lot::RwLock;
 
@@ -190,6 +191,22 @@ impl ConsensusEngine<CodeChainMachine> for SoloAuthority {
     fn sign(&self, hash: H256) -> Result<ECDSASignature, Error> {
         self.signer.read().sign(hash).map_err(Into::into)
     }
+
+    fn network_extension(&self) -> Option<Arc<NetworkExtension>> {
+        None
+    }
+}
+
+impl NetworkExtension for SoloAuthority {
+    fn name(&self) -> String {
+        "Solo".to_string()
+    }
+
+    fn need_encryption(&self) -> bool {
+        false
+    }
+
+    fn on_initialize(&self, _api: Arc<Api>) {}
 }
 
 #[cfg(test)]

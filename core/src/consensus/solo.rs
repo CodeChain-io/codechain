@@ -14,6 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::sync::Arc;
+
+use cnetwork::{Api, NetworkExtension};
+
 use super::super::machine::{Machine, Transactions};
 use super::{ConsensusEngine, Seal};
 
@@ -58,6 +62,22 @@ where
     fn verify_local_seal(&self, _header: &M::Header) -> Result<(), M::Error> {
         Ok(())
     }
+
+    fn network_extension(&self) -> Option<Arc<NetworkExtension>> {
+        None
+    }
+}
+
+impl<M: Machine> NetworkExtension for Solo<M> {
+    fn name(&self) -> String {
+        "Solo".to_string()
+    }
+
+    fn need_encryption(&self) -> bool {
+        false
+    }
+
+    fn on_initialize(&self, _api: Arc<Api>) {}
 }
 
 #[cfg(test)]

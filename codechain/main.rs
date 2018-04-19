@@ -115,6 +115,9 @@ fn run() -> Result<(), String> {
                 service.register_extension(BlockSyncExtension::new(client.client()));
             }
             service.register_extension(TransactionSyncExtension::new(client.client()));
+            if let Some(consensus_extension) = spec.engine.network_extension() {
+                service.register_extension(consensus_extension);
+            }
             Some(service)
         } else {
             None

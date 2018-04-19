@@ -20,7 +20,6 @@ mod signer;
 mod solo;
 mod solo_authority;
 mod tendermint;
-mod transition;
 mod validator_set;
 mod vote_collector;
 
@@ -32,10 +31,11 @@ pub use self::validator_set::validator_list::ValidatorList;
 pub use self::validator_set::ValidatorSet;
 
 use std::fmt;
-use std::sync::Weak;
+use std::sync::{Arc, Weak};
 
 use cbytes::Bytes;
 use ckeys::{ECDSASignature, Private};
+use cnetwork::NetworkExtension;
 use ctypes::{Address, H256};
 use unexpected::{Mismatch, OutOfBounds};
 
@@ -202,6 +202,8 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
     fn sign(&self, _hash: H256) -> Result<ECDSASignature, Error> {
         unimplemented!()
     }
+
+    fn network_extension(&self) -> Option<Arc<NetworkExtension>>;
 }
 
 /// Results of a query of whether an epoch change occurred at the given block.

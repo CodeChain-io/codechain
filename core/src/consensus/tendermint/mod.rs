@@ -23,16 +23,17 @@ use std::sync::{Arc, Weak};
 
 use cbytes::Bytes;
 use ccrypto::blake256;
-use cio::IoService;
 use ckeys::{public_to_address, recover_ecdsa};
 use ckeys::{ECDSASignature, Message, Private};
+use cnetwork::{Api, NetworkExtension, NodeToken, TimerToken};
 use ctypes::{Address, H256, H520, U128, U256};
-use parking_lot::RwLock;
-use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
+use parking_lot::{Mutex, RwLock};
+use rlp::{self, Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
+use time::Duration;
 use unexpected::{Mismatch, OutOfBounds};
 
 use self::message::*;
-pub use self::params::TendermintParams;
+pub use self::params::{TendermintParams, TendermintTimeouts};
 use super::super::block::*;
 use super::super::client::EngineClient;
 use super::super::codechain_machine::CodeChainMachine;
@@ -41,11 +42,15 @@ use super::super::header::Header;
 use super::super::machine::Machine;
 use super::super::types::BlockNumber;
 use super::signer::EngineSigner;
-use super::transition::TransitionHandler;
 use super::validator_set::validator_list::ValidatorList;
 use super::validator_set::ValidatorSet;
 use super::vote_collector::VoteCollector;
 use super::{ConsensusEngine, ConstructedVerifier, EngineError, EpochChange, Seal};
+
+const EXTENSION_NAME: &'static str = "tendermint";
+
+/// Timer token representing the consensus step timeouts.
+pub const ENGINE_TIMEOUT_TOKEN: TimerToken = 23;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub enum Step {
@@ -96,7 +101,6 @@ pub type BlockHash = H256;
 
 /// ConsensusEngine using `Tendermint` consensus algorithm
 pub struct Tendermint {
-    step_service: IoService<Step>,
     client: RwLock<Option<Weak<EngineClient>>>,
     /// Blockchain height.
     height: AtomicUsize,
@@ -122,6 +126,8 @@ pub struct Tendermint {
     validators: Box<ValidatorSet>,
     /// Reward per block, in base units.
     block_reward: U256,
+    /// Network extension,
+    extension: Arc<TendermintExtension>,
     /// codechain machine descriptor
     machine: CodeChainMachine,
 }
@@ -129,9 +135,9 @@ pub struct Tendermint {
 impl Tendermint {
     /// Create a new instance of Tendermint engine
     pub fn new(our_params: TendermintParams, machine: CodeChainMachine) -> Result<Arc<Self>, Error> {
+        let extension = TendermintExtension::new(our_params.timeouts);
         let engine = Arc::new(Tendermint {
             client: RwLock::new(None),
-            step_service: IoService::<Step>::start()?,
             height: AtomicUsize::new(1),
             view: AtomicUsize::new(0),
             step: RwLock::new(Step::Propose),
@@ -144,12 +150,10 @@ impl Tendermint {
             last_proposed: Default::default(),
             validators: our_params.validators,
             block_reward: our_params.block_reward,
+            extension: Arc::new(extension),
             machine,
         });
-
-        let handler =
-            TransitionHandler::new(Arc::downgrade(&engine) as Weak<ConsensusEngine<_>>, Box::new(our_params.timeouts));
-        engine.step_service.register_handler(Arc::new(handler))?;
+        engine.extension.register_tendermint(Arc::downgrade(&engine));
 
         Ok(engine)
     }
@@ -287,11 +291,8 @@ impl Tendermint {
         *self.proposal.write() = None;
     }
 
-    /// Use via step_service to transition steps.
     fn to_step(&self, step: Step) {
-        if let Err(io_err) = self.step_service.send_message(step) {
-            warn!(target: "engine", "Could not proceed to step {}.", io_err)
-        }
+        self.extension.send_local_message(step);
         *self.step.write() = step;
         match step {
             Step::Propose => self.update_sealing(),
@@ -698,9 +699,7 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
         self.signer.read().sign(hash).map_err(Into::into)
     }
 
-    fn stop(&self) {
-        self.step_service.stop()
-    }
+    fn stop(&self) {}
 
     fn is_proposal(&self, header: &Header) -> bool {
         let signatures_len = header.seal()[2].len();
@@ -722,6 +721,10 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
         }
         self.votes.vote(proposal, proposer);
         true
+    }
+
+    fn network_extension(&self) -> Option<Arc<NetworkExtension>> {
+        Some(Arc::clone(&self.extension) as Arc<NetworkExtension>)
     }
 }
 
@@ -779,6 +782,102 @@ fn combine_proofs(signal_number: BlockNumber, set_proof: &[u8], finality_proof: 
 fn destructure_proofs(combined: &[u8]) -> Result<(BlockNumber, &[u8], &[u8]), Error> {
     let rlp = UntrustedRlp::new(combined);
     Ok((rlp.at(0)?.as_val()?, rlp.at(1)?.data()?, rlp.at(2)?.data()?))
+}
+
+/// Timeouts lookup
+pub trait Timeouts<S: Sync + Send + Clone>: Send + Sync {
+    /// Return the first timeout.
+    fn initial(&self) -> Duration;
+
+    /// Get a timeout based on step.
+    fn timeout(&self, step: &S) -> Duration;
+}
+
+struct TendermintExtension {
+    tendermint: RwLock<Option<Weak<Tendermint>>>,
+    api: Mutex<Option<Arc<Api>>>,
+    timeouts: TendermintTimeouts,
+}
+
+impl TendermintExtension {
+    fn new(timeouts: TendermintTimeouts) -> Self {
+        Self {
+            tendermint: RwLock::new(None),
+            api: Mutex::new(None),
+            timeouts,
+        }
+    }
+
+    fn send_local_message(&self, message: Step) {
+        self.api.lock().as_ref().map(|api| {
+            api.send_local_message(&message);
+        });
+    }
+
+    fn register_tendermint(&self, tendermint: Weak<Tendermint>) {
+        *self.tendermint.write() = Some(tendermint.clone());
+    }
+}
+
+impl NetworkExtension for TendermintExtension {
+    fn name(&self) -> String {
+        String::from(EXTENSION_NAME)
+    }
+
+    fn need_encryption(&self) -> bool {
+        false
+    }
+
+    fn on_initialize(&self, api: Arc<Api>) {
+        let initial = self.timeouts.initial();
+        trace!(target: "engine", "Setting the initial timeout to {}.", initial);
+        api.set_timer_once_sync(ENGINE_TIMEOUT_TOKEN, initial.num_milliseconds() as u64);
+        *self.api.lock() = Some(api);
+    }
+
+    fn on_node_added(&self, _token: &NodeToken) {
+        unimplemented!();
+    }
+
+    fn on_node_removed(&self, _token: &NodeToken) {
+        unimplemented!();
+    }
+
+    fn on_connected(&self, _token: &NodeToken) {
+        unimplemented!();
+    }
+    fn on_connection_allowed(&self, token: &NodeToken) {
+        self.on_connected(token);
+    }
+
+    fn on_message(&self, _token: &NodeToken, _data: &Vec<u8>) {
+        unimplemented!();
+    }
+
+    fn on_close(&self) {
+        *self.api.lock() = None
+    }
+
+    fn on_local_message(&self, data: &[u8]) {
+        let next: Step = rlp::decode(data);
+        self.api.lock().as_ref().map(|api| {
+            api.clear_timer_sync(ENGINE_TIMEOUT_TOKEN);
+            api.set_timer_once_sync(ENGINE_TIMEOUT_TOKEN, self.timeouts.timeout(&next).num_milliseconds() as u64);
+        });
+    }
+
+    fn on_timeout(&self, timer: TimerToken) {
+        match timer {
+            ENGINE_TIMEOUT_TOKEN => {
+                if let Some(ref weak) = *self.tendermint.read() {
+                    if let Some(c) = weak.upgrade() {
+                        c.step();
+                    }
+                }
+            }
+            _ => debug_assert!(false),
+        }
+    }
 }
 
 #[cfg(test)]
