@@ -13,7 +13,7 @@ use std::process;
 
 use ccore::{Action, Transaction, UnverifiedTransaction};
 use ckeys::hex::FromHex;
-use ckeys::Secret;
+use ckeys::{KeyPair, Private, Secret};
 use codechain_rpc_client::client::{RpcClient, RpcError, RpcHttp};
 use ctypes::{H160, H256, U256};
 
@@ -88,6 +88,12 @@ fn handle_command(rpc: &mut RpcClient, name: &Value, data: &Value) -> Result<(),
                 ()
             })
             .map_err(|e| CommandError::RpcError(e)),
+        "account_getAddressFromPrivate" => {
+            let private: Private = get_h256(&data["private"])?.into();
+            let keypair = KeyPair::from_private(private).map_err(|_| CommandError::InvalidData)?;
+            println!("Address: {:?}", keypair.address());
+            Ok(())
+        }
         "chain_sendSignedTransaction" => {
             let t = get_unverified_transaction(data)?;
             rpc.send_signed_transaction(t)
