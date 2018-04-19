@@ -166,6 +166,24 @@ impl DownloadManager {
         None
     }
 
+    pub fn mark_as_failed(&mut self, message: &RequestMessage) {
+        match message {
+            &RequestMessage::Headers {
+                ..
+            } => {
+                // FIXME: validate this part better
+                if self.downloading_header.is_some() {
+                    self.downloading_header = None;
+                }
+            }
+            &RequestMessage::Bodies(ref hashes) => {
+                for hash in hashes {
+                    self.downloading_bodies.remove(hash);
+                }
+            }
+        }
+    }
+
     pub fn drain(&mut self) -> Vec<Block> {
         // FIXME: Maintain this map as member variable
         let mut child_map = HashMap::new();

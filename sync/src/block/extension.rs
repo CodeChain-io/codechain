@@ -45,14 +45,15 @@ struct Peer {
 
 impl Peer {
     fn is_expired(&self) -> bool {
-        let can_retry = self.retry < MAX_RETRY;
-        let is_lazy = if let &Some((_, last_time)) = &self.last_request {
+        if let &Some((_, last_time)) = &self.last_request {
             (Instant::now() - last_time).as_secs() > MAX_WAIT
         } else {
             false
-        };
+        }
+    }
 
-        !can_retry || is_lazy
+    fn is_invalid(&self) -> bool {
+        self.retry >= MAX_RETRY || self.is_expired()
     }
 }
 
@@ -161,12 +162,25 @@ impl NetworkExtension for Extension {
 
     fn on_timeout(&self, timer: TimerToken) {
         debug_assert_eq!(timer, SYNC_TIMER_TOKEN);
+
+        // Check peer expiration
         {
+            let mut peers = self.peers.write();
+            peers.values_mut().filter(|peer| peer.is_expired()).for_each(|peer| {
+                if let Some((ref last_message, _)) = peer.last_request {
+                    self.manager.lock().mark_as_failed(last_message);
+                }
+                peer.last_request = None;
+            });
+        }
+
+        let trapped = {
             let peers = self.peers.read();
-            if peers.len() != 0 && peers.values().all(|peer| peer.is_expired()) {
-                // FIXME: Increase retracting step for each round
-                self.retract(1);
-            }
+            peers.len() != 0 && peers.values().all(|peer| peer.is_invalid())
+        };
+        if trapped {
+            // FIXME: Increase retracting step for each round
+            self.retract(1);
         }
 
         let mut peer_ids: Vec<_> = self.peers
@@ -307,16 +321,6 @@ impl Extension {
         if !self.is_valid_response(from, &response) {
             info!(target: "sync", "Invalid response received from peer #{}", from);
             return
-        }
-
-        // Check peer expiration
-        if let Some(peer) = self.peers.write().get_mut(from) {
-            if let Some((_, last_time)) = peer.last_request {
-                if (Instant::now() - last_time).as_secs() > MAX_WAIT {
-                    peer.last_request = None;
-                    return
-                }
-            }
         }
 
         self.apply_response(from, &response);
