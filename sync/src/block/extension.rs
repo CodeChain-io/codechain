@@ -17,6 +17,7 @@
 use parking_lot::{Mutex, RwLock};
 use rand::{thread_rng, Rng};
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -62,6 +63,7 @@ pub struct Extension {
     client: Arc<BlockChainClient>,
     manager: Mutex<DownloadManager>,
     api: Mutex<Option<Arc<Api>>>,
+    retract_step: AtomicUsize,
 }
 
 impl Extension {
@@ -72,6 +74,7 @@ impl Extension {
             client,
             manager: Mutex::new(DownloadManager::new(best_header.hash(), best_header.number())),
             api: Mutex::new(None),
+            retract_step: AtomicUsize::new(1),
         })
     }
 
@@ -179,8 +182,11 @@ impl NetworkExtension for Extension {
             peers.len() != 0 && peers.values().all(|peer| peer.is_invalid())
         };
         if trapped {
-            // FIXME: Increase retracting step for each round
-            self.retract(1);
+            let retract_step = self.retract_step.load(Ordering::Relaxed) * 2;
+            self.retract_step.store(retract_step, Ordering::Relaxed);
+            self.retract(retract_step as u64);
+        } else {
+            self.retract_step.store(1, Ordering::Relaxed);
         }
 
         let mut peer_ids: Vec<_> = self.peers
@@ -216,8 +222,7 @@ impl ChainNotify for Extension {
         _duration: u64,
     ) {
         if retracted.len() != 0 {
-            // FIXME: Increase retracting step for each round
-            self.retract(1);
+            self.retract(retracted.len() as u64);
         } else {
             // FIXME: Send status message only when block is imported
             let chain_info = self.client.chain_info();
