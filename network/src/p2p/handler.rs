@@ -445,6 +445,7 @@ impl IoHandler<Message> for Handler {
                     let t = socket_to_node_token.remove(&socket_address);
                     debug_assert!(t.is_some());
                 }
+                self.client.on_node_removed(&stream);
                 io.deregister_stream(stream)?;
             }
             _ => unreachable!(),
