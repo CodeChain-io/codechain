@@ -17,18 +17,25 @@
 use std::result;
 use std::sync::Arc;
 
-use cio::StreamToken;
+use cio::{IoError, StreamToken};
 use rlp::Encodable;
 
 pub use cio::TimerToken;
 
 pub type NodeToken = StreamToken;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Debug)]
 pub enum Error {
     ExtensionDropped,
     DuplicatedTimerId,
     NoMoreTimerToken,
+    IoError(IoError),
+}
+
+impl From<IoError> for Error {
+    fn from(err: IoError) -> Self {
+        Error::IoError(err)
+    }
 }
 
 pub type Result<T> = result::Result<T, Error>;
@@ -40,6 +47,10 @@ pub trait Api: Send + Sync {
     fn set_timer(&self, timer: TimerToken, ms: u64);
     fn set_timer_once(&self, timer: TimerToken, ms: u64);
     fn clear_timer(&self, timer: TimerToken);
+
+    fn set_timer_sync(&self, timer: TimerToken, ms: u64) -> Result<()>;
+    fn set_timer_once_sync(&self, timer: TimerToken, ms: u64) -> Result<()>;
+    fn clear_timer_sync(&self, timer: TimerToken) -> Result<()>;
 
     fn send_local_message(&self, message: &Encodable);
 }

@@ -23,7 +23,7 @@ use rlp::Encodable;
 
 use super::p2p::Message as ConnectionMessage;
 use super::timer::Message as TimerMessage;
-use super::{Api, NetworkExtension, NetworkExtensionError, NodeToken, TimerToken};
+use super::{Api, NetworkExtension, NetworkExtensionError, NetworkExtensionResult, NodeToken, TimerToken};
 
 struct ClientApi {
     extension: Weak<NetworkExtension>,
@@ -116,8 +116,44 @@ impl Api for ClientApi {
             } else {
                 info!("{} clears timer({})", extension.name(), timer_id);
             }
+        }
+    }
+
+    fn set_timer_sync(&self, timer_id: usize, ms: u64) -> NetworkExtensionResult<()> {
+        if let Some(extension) = self.extension.upgrade() {
+            let extension_name = extension.name();
+            Ok(self.timer_channel.send_sync(TimerMessage::SetTimer {
+                extension_name,
+                timer_id,
+                ms,
+            })?)
         } else {
-            info!("The extension already dropped");
+            Err(NetworkExtensionError::ExtensionDropped)
+        }
+    }
+
+    fn set_timer_once_sync(&self, timer_id: usize, ms: u64) -> NetworkExtensionResult<()> {
+        if let Some(extension) = self.extension.upgrade() {
+            let extension_name = extension.name();
+            Ok(self.timer_channel.send_sync(TimerMessage::SetTimerOnce {
+                extension_name,
+                timer_id,
+                ms,
+            })?)
+        } else {
+            Err(NetworkExtensionError::ExtensionDropped)
+        }
+    }
+
+    fn clear_timer_sync(&self, timer_id: usize) -> NetworkExtensionResult<()> {
+        if let Some(extension) = self.extension.upgrade() {
+            let extension_name = extension.name();
+            Ok(self.timer_channel.send_sync(TimerMessage::ClearTimer {
+                extension_name,
+                timer_id,
+            })?)
+        } else {
+            Err(NetworkExtensionError::ExtensionDropped)
         }
     }
 
@@ -236,7 +272,7 @@ mod tests {
     use parking_lot::Mutex;
     use rlp::Encodable;
 
-    use super::{Api, Client, NetworkExtension, NetworkExtensionError, NodeToken};
+    use super::{Api, Client, NetworkExtension, NetworkExtensionError, NetworkExtensionResult, NodeToken};
 
     #[allow(dead_code)]
     struct TestApi;
@@ -259,6 +295,18 @@ mod tests {
         }
 
         fn clear_timer(&self, _timer_id: usize) {
+            unimplemented!()
+        }
+
+        fn set_timer_sync(&self, _timer_id: usize, _ms: u64) -> NetworkExtensionResult<()> {
+            unimplemented!()
+        }
+
+        fn set_timer_once_sync(&self, _timer_id: usize, _ms: u64) -> NetworkExtensionResult<()> {
+            unimplemented!()
+        }
+
+        fn clear_timer_sync(&self, _timer_id: usize) -> NetworkExtensionResult<()> {
             unimplemented!()
         }
 

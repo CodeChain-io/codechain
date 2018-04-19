@@ -21,7 +21,7 @@ use std::sync::{Arc, Weak};
 use parking_lot::Mutex;
 use rlp::Encodable;
 
-use super::super::extension::{Api, Error, Extension, NodeToken, TimerToken};
+use super::super::extension::{Api, Error, Extension, NodeToken, Result, TimerToken};
 
 #[derive(Debug, Ord, PartialOrd, Eq, PartialEq)]
 pub enum Call {
@@ -108,6 +108,42 @@ impl Api for TestApi {
         }
         timers.remove(&token);
         self.calls.lock().push_back(Call::ClearTimer(token));
+    }
+
+    fn set_timer_sync(&self, token: TimerToken, ms: u64) -> Result<()> {
+        let mut timers = self.timers.lock();
+        if timers.contains_key(&token) {
+            panic!("Tried to set timer with token #{} twice", token);
+        }
+        timers.insert(token, (ms, false));
+        self.calls.lock().push_back(Call::SetTimer {
+            token,
+            ms,
+        });
+        Ok(())
+    }
+
+    fn set_timer_once_sync(&self, token: TimerToken, ms: u64) -> Result<()> {
+        let mut timers = self.timers.lock();
+        if timers.contains_key(&token) {
+            panic!("Tried to set timer with token #{} twice", token);
+        }
+        timers.insert(token, (ms, true));
+        self.calls.lock().push_back(Call::SetTimerOnce {
+            token,
+            ms,
+        });
+        Ok(())
+    }
+
+    fn clear_timer_sync(&self, token: TimerToken) -> Result<()> {
+        let mut timers = self.timers.lock();
+        if !timers.contains_key(&token) {
+            panic!("Tried to clear unregistered timer of token #{}", token);
+        }
+        timers.remove(&token);
+        self.calls.lock().push_back(Call::ClearTimer(token));
+        Ok(())
     }
 
     fn send_local_message(&self, message: &Encodable) {
