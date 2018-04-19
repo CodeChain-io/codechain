@@ -79,7 +79,7 @@ pub use block::Block;
 pub use client::{
     BlockChainClient, BlockInfo, ChainInfo, ChainNotify, Client, EachBlockWith, ImportBlock, TestBlockChainClient,
 };
-pub use error::Error;
+pub use error::{BlockImportError, Error, ImportError};
 pub use header::{Header, Seal};
 pub use miner::{Miner, MinerOptions, MinerService};
 pub use service::ClientService;

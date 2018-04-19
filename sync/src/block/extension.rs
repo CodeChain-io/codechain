@@ -22,7 +22,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use cbytes::Bytes;
-use ccore::{BlockChainClient, BlockId, BlockNumber, ChainNotify, Seal};
+use ccore::{BlockChainClient, BlockId, BlockImportError, BlockNumber, ChainNotify, ImportError, Seal};
 use cnetwork::{Api, NetworkExtension, NodeToken, TimerToken};
 use ctypes::{H256, U256};
 use rlp::{Encodable, UntrustedRlp};
@@ -332,11 +332,16 @@ impl Extension {
 
         // Import fully downloaded blocks to chain
         self.manager.lock().drain().iter().for_each(|block| {
-            // FIXME: Handle block import errors
             match self.client.import_block(block.rlp_bytes(Seal::With)) {
                 Ok(_) => {}
+                Err(BlockImportError::Import(ImportError::AlreadyInChain))
+                | Err(BlockImportError::Import(ImportError::AlreadyQueued)) => {}
+                Err(BlockImportError::Import(ImportError::KnownBad)) => {
+                    // FIXME: reset download manager
+                    info!(target: "sync", "tried to import bad block");
+                }
                 Err(error) => {
-                    info!(target: "BlockSyncExtension", "block import failed with error({:?})", error);
+                    info!(target: "sync", "block import failed with error({:?})", error);
                 }
             }
         });
