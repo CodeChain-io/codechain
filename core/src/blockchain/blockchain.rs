@@ -733,6 +733,9 @@ pub trait BlockProvider {
     /// Get invoices of block with given hash.
     fn block_invoices(&self, hash: &H256) -> Option<BlockInvoices>;
 
+    /// Get transaction invoice.
+    fn transaction_invoice(&self, address: &TransactionAddress) -> Option<Invoice>;
+
     /// Get the partial-header of a block.
     fn block_header(&self, hash: &H256) -> Option<Header> {
         self.block_header_data(hash).map(|header| header.decode())
@@ -870,6 +873,11 @@ impl BlockProvider for BlockChain {
     fn block_invoices(&self, hash: &H256) -> Option<BlockInvoices> {
         let result = self.db.read_with_cache(db::COL_EXTRA, &self.block_invoices, hash)?;
         Some(result)
+    }
+
+    /// Get transaction invoice.
+    fn transaction_invoice(&self, address: &TransactionAddress) -> Option<Invoice> {
+        self.block_invoices(&address.block_hash).and_then(|bi| bi.invoices.into_iter().nth(address.index))
     }
 }
 
