@@ -62,7 +62,9 @@ impl Service {
     pub fn register_extension(&self, extension: Arc<NetworkExtension>) -> Result<(), String> {
         let extension_name = extension.name();
         self.client.register_extension(extension);
-        if let Err(err) = self.timer.send_message(timer::Message::InitializeExtension { extension_name }) {
+        if let Err(err) = self.timer.send_message(timer::Message::InitializeExtension {
+            extension_name,
+        }) {
             Err(format!("{:?}", err))
         } else {
             Ok(())

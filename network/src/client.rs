@@ -424,20 +424,14 @@ mod tests {
         let p2p_service = IoService::start().unwrap();
         let timer_service = IoService::start().unwrap();
 
-        let client = Client::new();
+        let client = Client::new(p2p_service.channel(), timer_service.channel());
 
         let e1 = Arc::new(TestExtension::new("e1".to_string()));
-        let _ = client.register_extension(
-            Arc::clone(&e1) as Arc<NetworkExtension>,
-            p2p_service.channel(),
-            timer_service.channel(),
-        );
+        client.register_extension(Arc::clone(&e1) as Arc<NetworkExtension>);
+        client.initialize_extension(&"e1".to_string());
         let e2 = Arc::new(TestExtension::new("e2".to_string()));
-        let _ = client.register_extension(
-            Arc::clone(&e2) as Arc<NetworkExtension>,
-            p2p_service.channel(),
-            timer_service.channel(),
-        );
+        client.register_extension(Arc::clone(&e2) as Arc<NetworkExtension>);
+        client.initialize_extension(&"e2".to_string());
 
         client.on_node_added(&1);
 
@@ -457,20 +451,14 @@ mod tests {
         let p2p_service = IoService::start().unwrap();
         let timer_service = IoService::start().unwrap();
 
-        let client = Client::new();
+        let client = Client::new(p2p_service.channel(), timer_service.channel());
 
         let e1 = Arc::new(TestExtension::new("e1".to_string()));
-        let _ = client.register_extension(
-            Arc::clone(&e1) as Arc<NetworkExtension>,
-            p2p_service.channel(),
-            timer_service.channel(),
-        );
+        client.register_extension(Arc::clone(&e1) as Arc<NetworkExtension>);
+        client.initialize_extension(&"e1".to_string());
         let e2 = Arc::new(TestExtension::new("e2".to_string()));
-        let _ = client.register_extension(
-            Arc::clone(&e2) as Arc<NetworkExtension>,
-            p2p_service.channel(),
-            timer_service.channel(),
-        );
+        client.register_extension(Arc::clone(&e2) as Arc<NetworkExtension>);
+        client.initialize_extension(&"e2".to_string());
 
         client.on_message(&"e1".to_string(), &1, &vec![]);
         {

@@ -49,7 +49,7 @@ pub enum Message {
     },
     InitializeExtension {
         extension_name: String,
-    }
+    },
 }
 
 #[derive(Debug)]
