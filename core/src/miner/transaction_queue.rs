@@ -1039,6 +1039,7 @@ pub trait TransactionDetailsProvider {
     fn fetch_account(&self, address: &Address) -> AccountDetails;
 }
 
+#[derive(Debug)]
 /// Details of account
 pub struct AccountDetails {
     /// Most recent account nonce
@@ -1046,6 +1047,7 @@ pub struct AccountDetails {
     /// Current account balance
     pub balance: U256,
 }
+
 /// Reason to remove single transaction from the queue.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum RemovalReason {
