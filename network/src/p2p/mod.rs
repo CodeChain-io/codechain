@@ -21,7 +21,7 @@ mod message;
 mod pending_connection;
 mod stream;
 
-pub use self::handler::{AddressConverter, Handler, Message};
+pub use self::handler::{Handler, Message};
 use self::message::ExtensionMessage;
 use self::message::HandshakeMessage;
 use self::message::NegotiationBody;

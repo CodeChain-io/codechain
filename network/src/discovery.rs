@@ -14,16 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::sync::Arc;
-
-use super::p2p::AddressConverter;
-use super::SocketAddr;
+use super::{NodeToken, SocketAddr};
 
 pub trait Api: Send + Sync {
     fn get(&self, max: usize) -> Vec<SocketAddr>;
 
-    fn add(&self, address: SocketAddr);
-    fn remove(&self, address: &SocketAddr);
-
-    fn set_address_converter(&self, converter: Arc<AddressConverter>);
+    fn add_connection(&self, token: NodeToken, address: SocketAddr);
+    fn remove_connection(&self, node: &NodeToken);
 }

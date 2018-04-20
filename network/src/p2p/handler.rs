@@ -29,7 +29,7 @@ use super::super::client::Client;
 use super::super::extension::NodeToken;
 use super::super::session::{Nonce, Session, SessionTable};
 use super::super::token_generator::TokenGenerator;
-use super::super::SocketAddr;
+use super::super::{DiscoveryApi, SocketAddr};
 use super::connection::{Connection, ExtensionCallback as ExtensionChannel};
 use super::listener::Listener;
 use super::message::Version;
@@ -348,8 +348,7 @@ pub struct Handler {
     manager: Mutex<Manager>,
     client: Arc<Client>,
 
-    node_token_to_socket: RwLock<HashMap<NodeToken, SocketAddr>>,
-    socket_to_node_token: RwLock<HashMap<SocketAddr, NodeToken>>,
+    discovery: RwLock<Option<Arc<DiscoveryApi>>>,
 }
 
 impl Handler {
@@ -360,9 +359,12 @@ impl Handler {
             manager,
             client,
 
-            node_token_to_socket: RwLock::new(HashMap::new()),
-            socket_to_node_token: RwLock::new(HashMap::new()),
+            discovery: RwLock::new(None),
         }
+    }
+
+    pub fn set_discovery_api(&self, api: Arc<DiscoveryApi>) {
+        *self.discovery.write() = Some(api);
     }
 }
 
@@ -398,13 +400,9 @@ impl IoHandler<Message> for Handler {
                 let token = manager.connect(&socket_address)?.ok_or(Error::General("Cannot create connection"))?;
                 io.register_stream(token)?;
 
-                let mut node_token_to_socket = self.node_token_to_socket.write();
-                let t = node_token_to_socket.insert(token, socket_address.clone());
-                debug_assert!(t.is_none());
-
-                let mut socket_to_node_token = self.socket_to_node_token.write();
-                let t = socket_to_node_token.insert(socket_address.clone(), token);
-                debug_assert!(t.is_none());
+                if let Some(ref discovery) = *self.discovery.read() {
+                    discovery.add_connection(token, socket_address.clone());
+                }
                 Ok(())
             }
             Message::RequestNegotiation {
@@ -437,16 +435,11 @@ impl IoHandler<Message> for Handler {
         match stream {
             ACCEPT_TOKEN => unreachable!(),
             FIRST_CONNECTION_TOKEN...LAST_CONNECTION_TOKEN => {
-                let mut node_token_to_socket = self.node_token_to_socket.write();
-                let socket_address = node_token_to_socket.remove(&stream);
-                debug_assert!(socket_address.is_some());
-                if let Some(socket_address) = socket_address {
-                    let mut socket_to_node_token = self.socket_to_node_token.write();
-                    let t = socket_to_node_token.remove(&socket_address);
-                    debug_assert!(t.is_some());
-                }
                 self.client.on_node_removed(&stream);
                 io.deregister_stream(stream)?;
+                if let Some(ref discovery) = *self.discovery.read() {
+                    discovery.remove_connection(&stream);
+                }
             }
             _ => unreachable!(),
         }
@@ -460,13 +453,9 @@ impl IoHandler<Message> for Handler {
                 if let Some((token, timer_token, socket_address)) = manager.accept()? {
                     io.register_stream(token)?;
                     io.register_timer_once(timer_token, WAIT_SYNC_MS)?;
-                    let mut node_token_to_socket = self.node_token_to_socket.write();
-                    let t = node_token_to_socket.insert(token, socket_address.clone());
-                    debug_assert!(t.is_none());
-
-                    let mut socket_to_node_token = self.socket_to_node_token.write();
-                    let t = socket_to_node_token.insert(socket_address, token);
-                    debug_assert!(t.is_none());
+                    if let Some(ref discovery) = *self.discovery.read() {
+                        discovery.add_connection(token, socket_address.clone());
+                    }
                 }
                 break
             },
@@ -574,23 +563,5 @@ impl IoHandler<Message> for Handler {
             _ => unreachable!(),
         }
         Ok(())
-    }
-}
-
-
-pub trait AddressConverter: Send + Sync {
-    fn node_token_to_address(&self, node: &NodeToken) -> Option<SocketAddr>;
-    fn address_to_node_token(&self, address: &SocketAddr) -> Option<NodeToken>;
-}
-
-impl AddressConverter for Handler {
-    fn node_token_to_address(&self, node_id: &NodeToken) -> Option<SocketAddr> {
-        let node_id_to_socket = self.node_token_to_socket.read();
-        node_id_to_socket.get(&node_id).map(|socket_address| socket_address.clone())
-    }
-
-    fn address_to_node_token(&self, socket_address: &SocketAddr) -> Option<NodeToken> {
-        let socket_to_node_token = self.socket_to_node_token.read();
-        socket_to_node_token.get(&socket_address).map(|id| id.clone())
     }
 }

@@ -14,11 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::{HashSet, VecDeque};
+use std::collections::{HashMap, VecDeque};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
-use cnetwork::{AddressConverter, Api, DiscoveryApi, NetworkExtension, NodeToken, SocketAddr, TimerToken};
+use cnetwork::{Api, DiscoveryApi, NetworkExtension, NodeToken, SocketAddr, TimerToken};
 use parking_lot::{Mutex, RwLock};
 use rlp::{Decodable, DecoderError, Encodable, UntrustedRlp};
 use time::Duration;
@@ -35,25 +35,9 @@ pub struct Extension {
     events: Mutex<VecDeque<Event>>,
     event_fired: AtomicBool,
     api: Mutex<Option<Arc<Api>>>,
-    converter: RwLock<Arc<AddressConverter>>,
-    active_nodes: RwLock<HashSet<NodeToken>>,
-}
 
-struct DummyConverter;
-impl DummyConverter {
-    fn new() -> Arc<Self> {
-        Arc::new(Self {})
-    }
-}
-
-impl AddressConverter for DummyConverter {
-    fn node_token_to_address(&self, _node: &NodeToken) -> Option<SocketAddr> {
-        None
-    }
-
-    fn address_to_node_token(&self, _address: &SocketAddr) -> Option<usize> {
-        None
-    }
+    addr_to_node: RwLock<HashMap<SocketAddr, NodeToken>>,
+    node_to_addr: RwLock<HashMap<NodeToken, SocketAddr>>,
 }
 
 const CONSUME_EVENT_TOKEN: TimerToken = 0;
@@ -67,8 +51,9 @@ impl Extension {
             events: Mutex::new(VecDeque::new()),
             event_fired: AtomicBool::new(false),
             api: Mutex::new(None),
-            converter: RwLock::new(DummyConverter::new()),
-            active_nodes: RwLock::new(HashSet::new()),
+
+            addr_to_node: RwLock::new(HashMap::new()),
+            node_to_addr: RwLock::new(HashMap::new()),
         }
     }
 
@@ -78,7 +63,7 @@ impl Extension {
             let message: Message = Decodable::decode(&rlp)?;
             let event = Event::Message {
                 message,
-                sender,
+                sender: sender.clone(),
             };
             self.push_event(event)
         }
@@ -100,13 +85,11 @@ impl Extension {
     }
 
     fn get_address(&self, node: &NodeToken) -> Option<SocketAddr> {
-        let converter = self.converter.read();
-        converter.node_token_to_address(node)
+        self.node_to_addr.read().get(node).map(Clone::clone)
     }
 
     fn get_node_token(&self, address: &SocketAddr) -> Option<NodeToken> {
-        let converter = self.converter.read();
-        converter.address_to_node_token(&address)
+        self.addr_to_node.read().get(address).map(Clone::clone)
     }
 
     fn consume_events(&self) {
@@ -178,22 +161,21 @@ impl DiscoveryApi for Extension {
         kademlia.get_closest_addresses(max)
     }
 
-    fn add(&self, address: SocketAddr) {
-        let event = {
-            let mut kademlia = self.kademlia.write();
-            let command = kademlia.find_node_command(address);
-            Event::Command(command)
-        };
-        self.push_event(event);
+    fn add_connection(&self, node: NodeToken, address: SocketAddr) {
+        let mut addr_to_node = self.addr_to_node.write();
+        let mut node_to_addr = self.node_to_addr.write();
+
+        addr_to_node.insert(address.clone(), node.clone());
+        node_to_addr.insert(node.clone(), address.clone());
     }
 
-    fn remove(&self, address: &SocketAddr) {
-        let mut kademlia = self.kademlia.write();
-        kademlia.remove(&address);
-    }
+    fn remove_connection(&self, node: &NodeToken) {
+        let mut addr_to_node = self.addr_to_node.write();
+        let mut node_to_addr = self.node_to_addr.write();
 
-    fn set_address_converter(&self, converter: Arc<AddressConverter>) {
-        *self.converter.write() = converter;
+        if let Some(addr) = node_to_addr.remove(node) {
+            addr_to_node.remove(&addr);
+        }
     }
 }
 
@@ -207,29 +189,34 @@ impl NetworkExtension for Extension {
     }
 
     fn on_initialize(&self, api: Arc<Api>) {
-        let api_clone = Arc::clone(&api);
-        *self.api.lock() = Some(api);
-        let t_refresh = {
-            let kademlia = self.kademlia.read();
-            kademlia.t_refresh as i64
-        };
-        api_clone.set_timer(REFRESH_TOKEN, Duration::milliseconds(t_refresh));
+        let kademlia = self.kademlia.read();
+        let mut api_guard = self.api.lock();
+
+        *api_guard = Some(Arc::clone(&api));
+        let t_refresh = Duration::milliseconds(kademlia.t_refresh as i64);
+        api.set_timer(REFRESH_TOKEN, t_refresh);
     }
 
     fn on_node_added(&self, node: &NodeToken) {
-        if let Some(address) = self.get_address(&node) {
-            self.add(address);
-            let mut active_nodes = self.active_nodes.write();
-            active_nodes.insert(*node);
+        let mut kademlia = self.kademlia.write();
+        let node_to_addr = self.node_to_addr.read();
+
+        if let Some(address) = node_to_addr.get(node).map(Clone::clone) {
+            let event = {
+                let command = kademlia.find_node_command(address);
+                Event::Command(command)
+            };
+            self.push_event(event);
         }
     }
 
     fn on_node_removed(&self, node: &NodeToken) {
-        if let Some(address) = self.get_address(&node) {
-            self.remove(&address);
+        let mut kademlia = self.kademlia.write();
 
-            let mut active_nodes = self.active_nodes.write();
-            active_nodes.remove(&node);
+        let address = self.node_to_addr.write().remove(node);
+        if let Some(address) = address {
+            self.addr_to_node.write().remove(&address);
+            kademlia.remove(&address);
         }
     }
 
@@ -256,45 +243,17 @@ impl NetworkExtension for Extension {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
     use std::sync::Arc;
 
-    use cnetwork::{DiscoveryApi, NetworkExtension, SocketAddr, TestNetworkCall, TestNetworkClient};
+    use cnetwork::{NetworkExtension, SocketAddr, TestNetworkCall, TestNetworkClient};
     use time::Duration;
 
-    use super::{AddressConverter, Config, Extension, NodeToken};
-
-    struct TestAddressConverter {
-        token_to_address: HashMap<NodeToken, SocketAddr>,
-        address_to_token: HashMap<SocketAddr, NodeToken>,
-    }
+    use super::{Config, DiscoveryApi, Extension, NodeToken};
 
     #[derive(Clone)]
     struct Node {
         token: NodeToken,
         address: SocketAddr,
-    }
-
-    impl TestAddressConverter {
-        fn new() -> Self {
-            Self {
-                token_to_address: HashMap::new(),
-                address_to_token: HashMap::new(),
-            }
-        }
-        fn add<'a>(&mut self, node: &'a Node) {
-            self.token_to_address.insert(node.token, node.address.clone());
-            self.address_to_token.insert(node.address.clone(), node.token);
-        }
-    }
-
-    impl AddressConverter for TestAddressConverter {
-        fn node_token_to_address(&self, node: &NodeToken) -> Option<SocketAddr> {
-            self.token_to_address.get(node).map(|a| a.clone())
-        }
-        fn address_to_node_token(&self, address: &SocketAddr) -> Option<NodeToken> {
-            self.address_to_token.get(address).map(|t| t.clone())
-        }
     }
 
     lazy_static! {
@@ -311,19 +270,8 @@ mod tests {
         let extension = Arc::new(Extension::new(config));
 
 
-        let converter = {
-            let mut converter = TestAddressConverter::new();
-            converter.add(&NODES[0]);
-            Arc::new(converter)
-        };
-        extension.set_address_converter(converter);
-
         let mut client = TestNetworkClient::new();
         client.register_extension(extension.clone());
-        {
-            let active_nodes = extension.active_nodes.read();
-            assert_eq!(0, active_nodes.len());
-        }
 
         let command = client.pop_call(&extension.name());
         assert_eq!(
@@ -334,15 +282,12 @@ mod tests {
             command
         );
 
+        extension.add_connection(NODES[0].token.clone(), NODES[0].address.clone());
+
         let command = client.pop_call(&extension.name());
         assert_eq!(None, command);
 
         client.add_node(NODES[0].token);
-        {
-            let active_nodes = extension.active_nodes.read();
-            assert_eq!(1, active_nodes.len());
-            assert!(active_nodes.contains(&NODES[0].token))
-        }
 
         let command = client.pop_call(&extension.name());
         assert_eq!(
