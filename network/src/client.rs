@@ -272,6 +272,7 @@ mod tests {
     use cio::IoService;
     use parking_lot::Mutex;
     use rlp::Encodable;
+    use time::Duration;
 
     use super::{Api, Client, NetworkExtension, NetworkExtensionError, NetworkExtensionResult, NodeToken};
 
@@ -287,11 +288,11 @@ mod tests {
             unimplemented!()
         }
 
-        fn set_timer(&self, _timer_id: usize, _ms: u64) {
+        fn set_timer(&self, _timer_id: usize, _duration: Duration) {
             unimplemented!()
         }
 
-        fn set_timer_once(&self, _timer_id: usize, _ms: u64) {
+        fn set_timer_once(&self, _timer_id: usize, _duration: Duration) {
             unimplemented!()
         }
 
@@ -299,11 +300,11 @@ mod tests {
             unimplemented!()
         }
 
-        fn set_timer_sync(&self, _timer_id: usize, _ms: u64) -> NetworkExtensionResult<()> {
+        fn set_timer_sync(&self, _timer_id: usize, _duration: Duration) -> NetworkExtensionResult<()> {
             unimplemented!()
         }
 
-        fn set_timer_once_sync(&self, _timer_id: usize, _ms: u64) -> NetworkExtensionResult<()> {
+        fn set_timer_once_sync(&self, _timer_id: usize, _duration: Duration) -> NetworkExtensionResult<()> {
             unimplemented!()
         }
 

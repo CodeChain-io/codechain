@@ -260,6 +260,7 @@ mod tests {
     use std::sync::Arc;
 
     use cnetwork::{DiscoveryApi, NetworkExtension, SocketAddr, TestNetworkCall, TestNetworkClient};
+    use time::Duration;
 
     use super::{AddressConverter, Config, Extension, NodeToken};
 
@@ -328,7 +329,7 @@ mod tests {
         assert_eq!(
             Some(TestNetworkCall::SetTimer {
                 token: 1,
-                ms: default_refresh.into()
+                duration: Duration::milliseconds(default_refresh as i64),
             }),
             command
         );
@@ -347,7 +348,7 @@ mod tests {
         assert_eq!(
             Some(TestNetworkCall::SetTimerOnce {
                 token: 0,
-                ms: 0
+                duration: Duration::milliseconds(0),
             }),
             command
         );
