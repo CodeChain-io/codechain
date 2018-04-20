@@ -22,13 +22,13 @@ use parking_lot::RwLock;
 use rlp::Encodable;
 use time::Duration;
 
-use super::p2p::Message as ConnectionMessage;
+use super::p2p::Message as P2pMessage;
 use super::timer::Message as TimerMessage;
 use super::{Api, NetworkExtension, NetworkExtensionError, NetworkExtensionResult, NodeToken, TimerToken};
 
 struct ClientApi {
     extension: Weak<NetworkExtension>,
-    connection_channel: IoChannel<ConnectionMessage>,
+    p2p_channel: IoChannel<P2pMessage>,
     timer_channel: IoChannel<TimerMessage>,
 }
 
@@ -38,7 +38,7 @@ impl Api for ClientApi {
             let need_encryption = extension.need_encryption();
             let extension_name = extension.name();
             let node_id = *id;
-            if let Err(err) = self.connection_channel.send(ConnectionMessage::SendExtensionMessage {
+            if let Err(err) = self.p2p_channel.send(P2pMessage::SendExtensionMessage {
                 node_id,
                 extension_name,
                 need_encryption,
@@ -58,7 +58,7 @@ impl Api for ClientApi {
             let extension_name = extension.name();
             let version = 0;
             let node_id = *id;
-            if let Err(err) = self.connection_channel.send(ConnectionMessage::RequestNegotiation {
+            if let Err(err) = self.p2p_channel.send(P2pMessage::RequestNegotiation {
                 node_id,
                 extension_name,
                 version,
@@ -214,7 +214,7 @@ impl Client {
     pub fn register_extension(
         &self,
         extension: Arc<NetworkExtension>,
-        connection_channel: IoChannel<ConnectionMessage>,
+        p2p_channel: IoChannel<P2pMessage>,
         timer_channel: IoChannel<TimerMessage>,
     ) -> Arc<Api> {
         let name = extension.name();
@@ -226,7 +226,7 @@ impl Client {
 
         let api = Arc::new(ClientApi {
             extension: Arc::downgrade(&extension),
-            connection_channel,
+            p2p_channel,
             timer_channel,
         }) as Arc<Api>;
         extension.on_initialize(Arc::clone(&api));
@@ -413,7 +413,7 @@ mod tests {
 
     #[test]
     fn broadcast_node_added() {
-        let connection_service = IoService::start().unwrap();
+        let p2p_service = IoService::start().unwrap();
         let timer_service = IoService::start().unwrap();
 
         let client = Client::new();
@@ -421,13 +421,13 @@ mod tests {
         let e1 = Arc::new(TestExtension::new("e1".to_string()));
         let _ = client.register_extension(
             Arc::clone(&e1) as Arc<NetworkExtension>,
-            connection_service.channel(),
+            p2p_service.channel(),
             timer_service.channel(),
         );
         let e2 = Arc::new(TestExtension::new("e2".to_string()));
         let _ = client.register_extension(
             Arc::clone(&e2) as Arc<NetworkExtension>,
-            connection_service.channel(),
+            p2p_service.channel(),
             timer_service.channel(),
         );
 
@@ -446,7 +446,7 @@ mod tests {
 
     #[test]
     fn message_only_to_target() {
-        let connection_service = IoService::start().unwrap();
+        let p2p_service = IoService::start().unwrap();
         let timer_service = IoService::start().unwrap();
 
         let client = Client::new();
@@ -454,13 +454,13 @@ mod tests {
         let e1 = Arc::new(TestExtension::new("e1".to_string()));
         let _ = client.register_extension(
             Arc::clone(&e1) as Arc<NetworkExtension>,
-            connection_service.channel(),
+            p2p_service.channel(),
             timer_service.channel(),
         );
         let e2 = Arc::new(TestExtension::new("e2".to_string()));
         let _ = client.register_extension(
             Arc::clone(&e2) as Arc<NetworkExtension>,
-            connection_service.channel(),
+            p2p_service.channel(),
             timer_service.channel(),
         );
 
