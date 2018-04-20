@@ -20,6 +20,7 @@ use std::sync::{Arc, Weak};
 use cio::IoChannel;
 use parking_lot::RwLock;
 use rlp::Encodable;
+use time::Duration;
 
 use super::p2p::Message as ConnectionMessage;
 use super::timer::Message as TimerMessage;
@@ -71,34 +72,34 @@ impl Api for ClientApi {
         }
     }
 
-    fn set_timer(&self, timer_id: usize, ms: u64) {
+    fn set_timer(&self, timer_id: usize, duration: Duration) {
         if let Some(extension) = self.extension.upgrade() {
             let extension_name = extension.name();
             if let Err(err) = self.timer_channel.send(TimerMessage::SetTimer {
                 extension_name,
                 timer_id,
-                ms,
+                duration,
             }) {
                 info!("Cannot set timer {}:{} : {:?}", extension.name(), timer_id, err);
             } else {
-                info!("{} sets timer({}) every {} ms", extension.name(), timer_id, ms);
+                info!("{} sets timer({}) every {}", extension.name(), timer_id, duration);
             }
         } else {
             info!("The extension already dropped");
         }
     }
 
-    fn set_timer_once(&self, timer_id: usize, ms: u64) {
+    fn set_timer_once(&self, timer_id: usize, duration: Duration) {
         if let Some(extension) = self.extension.upgrade() {
             let extension_name = extension.name();
             if let Err(err) = self.timer_channel.send(TimerMessage::SetTimerOnce {
                 extension_name,
                 timer_id,
-                ms,
+                duration,
             }) {
                 info!("Cannot set timer {}:{} : {:?}", extension.name(), timer_id, err);
             } else {
-                info!("{} sets timer({}) after {} ms", extension.name(), timer_id, ms);
+                info!("{} sets timer({}) after {:?}", extension.name(), timer_id, duration);
             }
         } else {
             info!("The extension already dropped");
@@ -119,26 +120,26 @@ impl Api for ClientApi {
         }
     }
 
-    fn set_timer_sync(&self, timer_id: usize, ms: u64) -> NetworkExtensionResult<()> {
+    fn set_timer_sync(&self, timer_id: usize, duration: Duration) -> NetworkExtensionResult<()> {
         if let Some(extension) = self.extension.upgrade() {
             let extension_name = extension.name();
             Ok(self.timer_channel.send_sync(TimerMessage::SetTimer {
                 extension_name,
                 timer_id,
-                ms,
+                duration,
             })?)
         } else {
             Err(NetworkExtensionError::ExtensionDropped)
         }
     }
 
-    fn set_timer_once_sync(&self, timer_id: usize, ms: u64) -> NetworkExtensionResult<()> {
+    fn set_timer_once_sync(&self, timer_id: usize, duration: Duration) -> NetworkExtensionResult<()> {
         if let Some(extension) = self.extension.upgrade() {
             let extension_name = extension.name();
             Ok(self.timer_channel.send_sync(TimerMessage::SetTimerOnce {
                 extension_name,
                 timer_id,
-                ms,
+                duration,
             })?)
         } else {
             Err(NetworkExtensionError::ExtensionDropped)

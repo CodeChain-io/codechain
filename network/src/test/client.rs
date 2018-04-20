@@ -20,6 +20,7 @@ use std::sync::{Arc, Weak};
 
 use parking_lot::Mutex;
 use rlp::Encodable;
+use time::Duration;
 
 use super::super::extension::{Api, Error, Extension, NodeToken, Result, TimerToken};
 
@@ -29,11 +30,11 @@ pub enum Call {
     Connect(NodeToken),
     SetTimer {
         token: TimerToken,
-        ms: u64,
+        duration: Duration,
     },
     SetTimerOnce {
         token: TimerToken,
-        ms: u64,
+        duration: Duration,
     },
     ClearTimer(TimerToken),
     SendLocalMessage(Vec<u8>),
@@ -44,7 +45,7 @@ struct TestApi {
 
     connection_requests: Mutex<HashSet<NodeToken>>,
     connections: Mutex<HashSet<NodeToken>>,
-    timers: Mutex<HashMap<TimerToken, (u64, bool)>>,
+    timers: Mutex<HashMap<TimerToken, (Duration, bool)>>,
 
     calls: Mutex<VecDeque<Call>>,
 }
@@ -77,27 +78,27 @@ impl Api for TestApi {
         self.calls.lock().push_back(Call::Connect(*node));
     }
 
-    fn set_timer(&self, token: TimerToken, ms: u64) {
+    fn set_timer(&self, token: TimerToken, duration: Duration) {
         let mut timers = self.timers.lock();
         if timers.contains_key(&token) {
             panic!("Tried to set timer with token #{} twice", token);
         }
-        timers.insert(token, (ms, false));
+        timers.insert(token, (duration, false));
         self.calls.lock().push_back(Call::SetTimer {
             token,
-            ms,
+            duration,
         });
     }
 
-    fn set_timer_once(&self, token: TimerToken, ms: u64) {
+    fn set_timer_once(&self, token: TimerToken, duration: Duration) {
         let mut timers = self.timers.lock();
         if timers.contains_key(&token) {
             panic!("Tried to set timer with token #{} twice", token);
         }
-        timers.insert(token, (ms, true));
+        timers.insert(token, (duration, true));
         self.calls.lock().push_back(Call::SetTimerOnce {
             token,
-            ms,
+            duration,
         });
     }
 
@@ -110,28 +111,28 @@ impl Api for TestApi {
         self.calls.lock().push_back(Call::ClearTimer(token));
     }
 
-    fn set_timer_sync(&self, token: TimerToken, ms: u64) -> Result<()> {
+    fn set_timer_sync(&self, token: TimerToken, duration: Duration) -> Result<()> {
         let mut timers = self.timers.lock();
         if timers.contains_key(&token) {
             panic!("Tried to set timer with token #{} twice", token);
         }
-        timers.insert(token, (ms, false));
+        timers.insert(token, (duration, false));
         self.calls.lock().push_back(Call::SetTimer {
             token,
-            ms,
+            duration,
         });
         Ok(())
     }
 
-    fn set_timer_once_sync(&self, token: TimerToken, ms: u64) -> Result<()> {
+    fn set_timer_once_sync(&self, token: TimerToken, duration: Duration) -> Result<()> {
         let mut timers = self.timers.lock();
         if timers.contains_key(&token) {
             panic!("Tried to set timer with token #{} twice", token);
         }
-        timers.insert(token, (ms, true));
+        timers.insert(token, (duration, true));
         self.calls.lock().push_back(Call::SetTimerOnce {
             token,
-            ms,
+            duration,
         });
         Ok(())
     }

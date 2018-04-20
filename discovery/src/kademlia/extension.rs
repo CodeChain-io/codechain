@@ -21,6 +21,7 @@ use std::sync::Arc;
 use cnetwork::{AddressConverter, Api, DiscoveryApi, NetworkExtension, NodeToken, SocketAddr, TimerToken};
 use parking_lot::{Mutex, RwLock};
 use rlp::{Decodable, DecoderError, Encodable, UntrustedRlp};
+use time::Duration;
 
 use super::command::Command;
 use super::config::Config;
@@ -93,7 +94,7 @@ impl Extension {
         if !already_fired {
             let api = self.api.lock();
             if let &Some(ref api) = &*api {
-                api.set_timer_once(CONSUME_EVENT_TOKEN, 0);
+                api.set_timer_once(CONSUME_EVENT_TOKEN, Duration::milliseconds(0));
             }
         }
     }
@@ -210,9 +211,9 @@ impl NetworkExtension for Extension {
         *self.api.lock() = Some(api);
         let t_refresh = {
             let kademlia = self.kademlia.read();
-            kademlia.t_refresh as u64
+            kademlia.t_refresh as i64
         };
-        api_clone.set_timer(REFRESH_TOKEN, t_refresh);
+        api_clone.set_timer(REFRESH_TOKEN, Duration::milliseconds(t_refresh));
     }
 
     fn on_node_added(&self, node: &NodeToken) {
