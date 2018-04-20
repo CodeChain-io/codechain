@@ -45,7 +45,7 @@ pub trait Backend: Send {
     /// `None` is passed to the closure if the account entry cached
     /// is known not to exist.
     /// `None` is returned if the entry is not cached.
-    fn get_cached<F, U>(&self, a: &Address, f: F) -> Option<U>
+    fn get_cached_account_with<F, U>(&self, a: &Address, f: F) -> Option<U>
     where
         F: FnOnce(Option<&mut Account>) -> U;
 }
@@ -69,7 +69,7 @@ impl<H: AsHashDB + Send + Sync> Backend for Basic<H> {
         None
     }
 
-    fn get_cached<F, U>(&self, _: &Address, _: F) -> Option<U>
+    fn get_cached_account_with<F, U>(&self, _: &Address, _: F) -> Option<U>
     where
         F: FnOnce(Option<&mut Account>) -> U, {
         None

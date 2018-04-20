@@ -19,7 +19,9 @@
 use std::fmt;
 
 use cbytes::Bytes;
-use ctypes::{Public, U256};
+use ctypes::{self, Public, U256};
+
+use super::CacheableItem;
 
 /// Single account in the system.
 #[derive(Clone, RlpEncodable, RlpDecodable)]
@@ -66,11 +68,6 @@ impl Account {
         self.regular_key
     }
 
-    /// Check if account has zero nonce, balance.
-    pub fn is_null(&self) -> bool {
-        self.balance.is_zero() && self.nonce.is_zero()
-    }
-
     /// Increment the nonce of the account by one.
     pub fn inc_nonce(&mut self) {
         self.nonce = self.nonce + U256::from(1u8);
@@ -98,14 +95,22 @@ impl Account {
     pub fn remove_regular_key(&mut self) {
         self.regular_key = None;
     }
+}
 
+impl CacheableItem for Account {
+    type Address = ctypes::Address;
     /// Replace self with the data from other account.
     /// Basic account data and all modifications are overwritten
     /// with new values.
-    pub fn overwrite_with(&mut self, other: Account) {
+    fn overwrite_with(&mut self, other: Self) {
         self.balance = other.balance;
         self.nonce = other.nonce;
         self.regular_key = other.regular_key;
+    }
+
+    /// Check if account has zero nonce, balance.
+    fn is_null(&self) -> bool {
+        self.balance.is_zero() && self.nonce.is_zero()
     }
 }
 
