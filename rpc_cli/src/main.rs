@@ -27,7 +27,13 @@ fn main() {
     let matches = App::from_yaml(yaml).get_matches();
 
     let rpc_url = matches.value_of("rpc-server").unwrap_or("http://localhost:8080/");
-    let mut rpc = RpcHttp::new(rpc_url).unwrap();
+    let mut rpc = match RpcHttp::new(rpc_url) {
+        Ok(rpc) => rpc,
+        Err(e) => {
+            println!("Failed to connect RPC server: {:?}", e);
+            process::exit(0);
+        }
+    };
 
     let json = match matches.value_of("commands-file") {
         Some(filename) => match load_json(filename) {
