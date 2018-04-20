@@ -193,7 +193,10 @@ impl NetworkExtension for Extension {
         let mut peer_ids: Vec<_> = self.peers
             .read()
             .iter()
-            .filter(|&(_, peer)| peer.last_request.is_none() && peer.retry < MAX_RETRY)
+            .filter(|&(_, peer)| {
+                peer.last_request.is_none() && peer.retry < MAX_RETRY
+                    && peer.total_score > self.client.chain_info().total_score
+            })
             .map(|(id, _)| id)
             .cloned()
             .collect();
