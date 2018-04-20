@@ -34,9 +34,11 @@ use super::state_db::StateDB;
 use super::transaction::TransactionError;
 
 mod account;
+mod asset;
 pub mod backend;
 
 pub use self::account::Account;
+pub use self::asset::Asset;
 pub use self::backend::Backend;
 
 /// Used to return information about an `State::apply` operation.
@@ -473,6 +475,12 @@ impl<B: Backend> State<B> {
                 self.set_regular_key(&sender, &key)?;
                 Ok(None)
             }
+            Action::AssetMint {
+                ref metadata,
+                ref registrar,
+                permissioned,
+                ref amount,
+            } => unimplemented!(),
         }
     }
 

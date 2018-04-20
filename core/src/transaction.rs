@@ -148,6 +148,12 @@ pub enum Action {
     SetRegularKey {
         key: Public,
     },
+    AssetMint {
+        metadata: String,
+        registrar: Address,
+        permissioned: bool,
+        amount: Option<U256>,
+    },
 }
 
 impl Default for Action {
@@ -165,13 +171,22 @@ impl rlp::Decodable for Action {
                 key: d.as_val()?,
             })
         } else {
-            if d.item_count()? != 2 {
-                return Err(DecoderError::RlpIncorrectListLen)
+            let item_count = d.item_count()?;
+            if item_count == 2 {
+                Ok(Action::Payment {
+                    address: d.val_at(0)?,
+                    value: d.val_at(1)?,
+                })
+            } else if item_count == 4 {
+                Ok(Action::AssetMint {
+                    metadata: d.val_at(0)?,
+                    registrar: d.val_at(1)?,
+                    permissioned: d.val_at(2)?,
+                    amount: d.val_at(3)?,
+                })
+            } else {
+                Err(DecoderError::RlpIncorrectListLen)
             }
-            Ok(Action::Payment {
-                address: d.val_at(0)?,
-                value: d.val_at(1)?,
-            })
         }
     }
 }
@@ -191,6 +206,12 @@ impl rlp::Encodable for Action {
             Action::SetRegularKey {
                 ref key,
             } => s.append_internal(key),
+            Action::AssetMint {
+                ref metadata,
+                ref registrar,
+                permissioned,
+                ref amount,
+            } => s.begin_list(4).append(metadata).append(registrar).append(&permissioned).append(amount),
         };
     }
 }
@@ -480,7 +501,7 @@ mod tests {
     use ctypes::{H256, U256};
     use rlp::Encodable;
 
-    use super::{Transaction, UnverifiedTransaction};
+    use super::{Action, Address, Transaction, UnverifiedTransaction};
 
     #[test]
     fn test_unverified_transaction_rlp() {
@@ -492,5 +513,17 @@ mod tests {
             hash: H256::default(),
         }.compute_hash();
         assert_eq!(tx, ::rlp::decode(tx.rlp_bytes().as_ref()));
+    }
+
+    #[test]
+    fn encode_and_decode_asset_mint() {
+        let action = Action::AssetMint {
+            metadata: "mint test".to_string(),
+            registrar: Address::random(),
+            permissioned: false,
+            amount: Some(10000.into()),
+        };
+
+        assert_eq!(action, ::rlp::decode(action.rlp_bytes().as_ref()))
     }
 }
