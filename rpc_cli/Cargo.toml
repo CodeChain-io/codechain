@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = ["CodeChain Team <codechain@kodebox.io>"]
 
 [dependencies]
-clap = { version = "2" }
+clap = { version = "2", features = ["yaml"] }
 codechain-core = { path = "../core" }
 codechain-crypto = { path = "../crypto" }
 codechain-keys = { path = "../keys" }

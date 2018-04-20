@@ -1,0 +1,11 @@
+name: codechain-rpc-cli
+version: "0.1.0"
+author: CodeChain Team <codechain@kodebox.io>
+about: CodeChian CLI
+args:
+    - rpc-server:
+        long: rpc-server
+        help: "Set URL of the RPC server (HTTP only) (default: http://localhost:8080/)"
+        takes_value: true
+    - commands-file:
+        help: JSON file contains list of RPC command

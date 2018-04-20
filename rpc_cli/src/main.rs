@@ -1,4 +1,3 @@
-extern crate clap;
 extern crate codechain_core as ccore;
 extern crate codechain_crypto as ccrypto;
 extern crate codechain_keys as ckeys;
@@ -6,6 +5,9 @@ extern crate codechain_rpc_client;
 extern crate codechain_types as ctypes;
 extern crate rlp;
 extern crate serde_json;
+
+#[macro_use]
+extern crate clap;
 
 use std::fs::File;
 use std::io::Read;
@@ -17,20 +19,17 @@ use ckeys::{KeyPair, Private, Secret};
 use codechain_rpc_client::client::{RpcClient, RpcError, RpcHttp};
 use ctypes::{H160, H256, U256};
 
-use clap::{App, Arg};
+use clap::App;
 use serde_json::Value;
 
 fn main() {
-    let matches = App::new("CodeChain CLI")
-        .version("0.1.0")
-        .arg(Arg::with_name("url").help("Set URL of the RPC server (HTTP only)").takes_value(true))
-        .arg(Arg::with_name("file").help("").takes_value(true))
-        .get_matches();
+    let yaml = load_yaml!("cli.yml");
+    let matches = App::from_yaml(yaml).get_matches();
 
-    let rpc_url = matches.value_of("url").unwrap_or("http://localhost:8080");
+    let rpc_url = matches.value_of("rpc-server").unwrap_or("http://localhost:8080/");
     let mut rpc = RpcHttp::new(rpc_url).unwrap();
 
-    let json = match matches.value_of("file") {
+    let json = match matches.value_of("commands-file") {
         Some(filename) => match load_json(filename) {
             Ok(json) => json,
             Err(e) => {
