@@ -176,6 +176,8 @@ impl Api for ClientApi {
 
 pub struct Client {
     extensions: RwLock<HashMap<String, Arc<NetworkExtension>>>,
+    p2p_channel: IoChannel<P2pMessage>,
+    timer_channel: IoChannel<TimerMessage>,
 }
 
 macro_rules! define_broadcast_method {
@@ -211,31 +213,37 @@ macro_rules! define_method {
 }
 
 impl Client {
-    pub fn register_extension(
-        &self,
-        extension: Arc<NetworkExtension>,
-        p2p_channel: IoChannel<P2pMessage>,
-        timer_channel: IoChannel<TimerMessage>,
-    ) -> Arc<Api> {
+    pub fn register_extension(&self, extension: Arc<NetworkExtension>) {
         let name = extension.name();
         let mut extensions = self.extensions.write();
         if let Some(_) = extensions.insert(name, Arc::clone(&extension)) {
             let name = extension.name();
             panic!("Duplicated extension name : {}", name);
         }
-
-        let api = Arc::new(ClientApi {
-            extension: Arc::downgrade(&extension),
-            p2p_channel,
-            timer_channel,
-        }) as Arc<Api>;
-        extension.on_initialize(Arc::clone(&api));
-        api
     }
 
-    pub fn new() -> Arc<Self> {
+    pub fn initialize_extension(&self, extension_name: &String) {
+        let extension = {
+            let mut extensions = self.extensions.read();
+            extensions.get(extension_name).map(Arc::clone)
+        };
+        if let Some(extension) = extension {
+            let p2p_channel = self.p2p_channel.clone();
+            let timer_channel = self.timer_channel.clone();
+            let api: Arc<Api> = Arc::new(ClientApi {
+                extension: Arc::downgrade(&extension),
+                p2p_channel,
+                timer_channel,
+            });
+            extension.on_initialize(api);
+        }
+    }
+
+    pub fn new(p2p_channel: IoChannel<P2pMessage>, timer_channel: IoChannel<TimerMessage>) -> Arc<Self> {
         Arc::new(Self {
             extensions: RwLock::new(HashMap::new()),
+            p2p_channel,
+            timer_channel,
         })
     }
 

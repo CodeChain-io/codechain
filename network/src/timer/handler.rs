@@ -47,6 +47,9 @@ pub enum Message {
         extension_name: String,
         message: Vec<u8>,
     },
+    InitializeExtension {
+        extension_name: String,
+    }
 }
 
 #[derive(Debug)]
@@ -152,6 +155,12 @@ impl IoHandler<Message> for Handler {
                 ref message,
             } => {
                 self.client.on_local_message(extension_name, message);
+                Ok(())
+            }
+            Message::InitializeExtension {
+                ref extension_name,
+            } => {
+                self.client.initialize_extension(extension_name);
                 Ok(())
             }
         }

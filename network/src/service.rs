@@ -24,7 +24,7 @@ use super::client::Client;
 use super::p2p;
 use super::session_initiator;
 use super::timer;
-use super::{Api, DiscoveryApi, NetworkExtension, SocketAddr};
+use super::{DiscoveryApi, NetworkExtension, SocketAddr};
 
 pub struct Service {
     session_initiator: IoService<session_initiator::Message>,
@@ -40,7 +40,7 @@ impl Service {
         let timer = IoService::start()?;
         let session_initiator = IoService::start()?;
 
-        let client = Client::new();
+        let client = Client::new(p2p.channel(), timer.channel());
 
         let p2p_handler = Arc::new(p2p::Handler::new(address.clone(), Arc::clone(&client)));
         p2p.register_handler(p2p_handler)?;
@@ -59,10 +59,14 @@ impl Service {
         })
     }
 
-    pub fn register_extension(&self, extension: Arc<NetworkExtension>) -> Arc<Api> {
-        let connection_channel = self.p2p.channel();
-        let timer_channel = self.timer.channel();
-        self.client.register_extension(extension, connection_channel, timer_channel)
+    pub fn register_extension(&self, extension: Arc<NetworkExtension>) -> Result<(), String> {
+        let extension_name = extension.name();
+        self.client.register_extension(extension);
+        if let Err(err) = self.timer.send_message(timer::Message::InitializeExtension { extension_name }) {
+            Err(format!("{:?}", err))
+        } else {
+            Ok(())
+        }
     }
 
     pub fn set_discovery_api(&self, api: Arc<DiscoveryApi>) {
