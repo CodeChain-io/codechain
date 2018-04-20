@@ -17,14 +17,14 @@
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 /// Information describing execution of a transaction.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Invoice {
     /// Transaction outcome.
     pub outcome: TransactionOutcome,
 }
 
 /// Transaction outcome store in the invoice.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TransactionOutcome {
     Success,
     Failed,

@@ -24,6 +24,12 @@
       },
       "network_id": "17"
     }
+  },
+  {
+    "name": "chain_getTransactionInvoice",
+    "data": {
+      "hash": "e07b92ba2b6c292ae82254bbb5fccc5dce11b9cdd774e25a4fb18fddb8dc3fe4"
+    }
   }
 ]
 

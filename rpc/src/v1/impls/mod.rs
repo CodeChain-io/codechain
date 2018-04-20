@@ -16,7 +16,7 @@
 
 use std::sync::Arc;
 
-use ccore::{Client, Miner, MinerService, SignedTransaction};
+use ccore::{BlockChainClient, Client, Invoice, Miner, MinerService, SignedTransaction};
 use ctypes::H256;
 use rlp::UntrustedRlp;
 
@@ -54,5 +54,9 @@ impl Chain for ChainClient {
                     .map(|_| hash)
             })
             .map(Into::into)
+    }
+
+    fn get_transaction_invoice(&self, hash: H256) -> Result<Option<Invoice>> {
+        Ok(self.client.transaction_invoice(hash.into()))
     }
 }

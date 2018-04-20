@@ -4,7 +4,7 @@ use std::str::FromStr;
 use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
 
 use cbytes::ToPretty;
-use ccore::UnverifiedTransaction;
+use ccore::{Invoice, UnverifiedTransaction};
 use ctypes::hash::FromHexError;
 use ctypes::hash::H256;
 
@@ -22,6 +22,7 @@ use serde_json::{self as json, Value as JsonValue};
 pub trait RpcClient {
     fn ping(&mut self) -> Result<String, RpcError>;
     fn send_signed_transaction(&mut self, t: UnverifiedTransaction) -> Result<H256, RpcError>;
+    fn get_transaction_invoice(&mut self, hash: H256) -> Result<Option<Invoice>, RpcError>;
 }
 
 pub struct RpcHttp {
@@ -78,6 +79,13 @@ impl RpcClient for RpcHttp {
         let v = self.send("chain_sendSignedTransaction", vec![format!("0x{}", encoded).into()])?;
         let result = v["result"].as_str().ok_or_else(|| RpcError::ApiError(v.to_string()))?;
         Ok(H256::from_str(&result[2..])?)
+    }
+
+    fn get_transaction_invoice(&mut self, hash: H256) -> Result<Option<Invoice>, RpcError> {
+        let v = self.send("chain_getTransactionInvoice", vec![format!("0x{:?}", hash).into()])?;
+        let invoice: Option<Invoice> = ::serde_json::from_value(v["result"].clone())
+            .map_err(|e| RpcError::ApiError(format!("Failed to deserialize {:?}", e)))?;
+        Ok(invoice)
     }
 }
 
