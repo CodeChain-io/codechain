@@ -19,6 +19,7 @@ use std::sync::Arc;
 
 use cio::{IoError, StreamToken};
 use rlp::Encodable;
+use time::Duration;
 
 pub use cio::TimerToken;
 
@@ -44,12 +45,12 @@ pub trait Api: Send + Sync {
     fn send(&self, node: &NodeToken, message: &Vec<u8>);
     fn connect(&self, node: &NodeToken);
 
-    fn set_timer(&self, timer: TimerToken, ms: u64);
-    fn set_timer_once(&self, timer: TimerToken, ms: u64);
+    fn set_timer(&self, timer: TimerToken, d: Duration);
+    fn set_timer_once(&self, timer: TimerToken, d: Duration);
     fn clear_timer(&self, timer: TimerToken);
 
-    fn set_timer_sync(&self, timer: TimerToken, ms: u64) -> Result<()>;
-    fn set_timer_once_sync(&self, timer: TimerToken, ms: u64) -> Result<()>;
+    fn set_timer_sync(&self, timer: TimerToken, d: Duration) -> Result<()>;
+    fn set_timer_once_sync(&self, timer: TimerToken, d: Duration) -> Result<()>;
     fn clear_timer_sync(&self, timer: TimerToken) -> Result<()>;
 
     fn send_local_message(&self, message: &Encodable);

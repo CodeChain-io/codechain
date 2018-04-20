@@ -19,6 +19,7 @@ use std::sync::Arc;
 
 use cio::{IoContext, IoHandler, IoHandlerResult, TimerToken};
 use parking_lot::Mutex;
+use time::Duration;
 
 use super::super::client::Client;
 use super::super::extension::Error as ExtensionError;
@@ -31,12 +32,12 @@ pub enum Message {
     SetTimer {
         extension_name: String,
         timer_id: TimerId,
-        ms: u64,
+        duration: Duration,
     },
     SetTimerOnce {
         extension_name: String,
         timer_id: TimerId,
-        ms: u64,
+        duration: Duration,
     },
     ClearTimer {
         extension_name: String,
@@ -100,12 +101,12 @@ impl IoHandler<Message> for Handler {
             Message::SetTimer {
                 ref extension_name,
                 timer_id,
-                ms,
+                duration,
             } => {
                 let mut timer = self.timer.lock();
                 match timer.insert(extension_name.clone(), timer_id, false) {
                     Ok(token) => {
-                        io.register_timer(token, ms)?;
+                        io.register_timer(token, duration.num_milliseconds() as u64)?;
                         self.client.on_timer_set_allowed(extension_name, timer_id);
                     }
                     Err(TimerInfoError::DuplicatedTimerId) => {
@@ -120,12 +121,12 @@ impl IoHandler<Message> for Handler {
             Message::SetTimerOnce {
                 ref extension_name,
                 timer_id,
-                ms,
+                duration,
             } => {
                 let mut timer = self.timer.lock();
                 match timer.insert(extension_name.clone(), timer_id, true) {
                     Ok(token) => {
-                        io.register_timer_once(token, ms)?;
+                        io.register_timer_once(token, duration.num_milliseconds() as u64)?;
                         self.client.on_timer_set_allowed(extension_name, timer_id);
                     }
                     Err(TimerInfoError::DuplicatedTimerId) => {

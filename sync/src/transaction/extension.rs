@@ -23,14 +23,15 @@ use ccore::BlockChainClient;
 use cnetwork::{Api, NetworkExtension, NodeToken, TimerToken};
 use ctypes::H256;
 use rlp::{Encodable, UntrustedRlp};
+use time::Duration;
 
 use super::message::Message;
 
 const EXTENSION_NAME: &'static str = "transaction-propagation";
 const BROADCAST_TIMER_TOKEN: TimerToken = 0;
-const BROADCAST_TIMER_INTERVAL: u64 = 1000;
+const BROADCAST_TIMER_INTERVAL: i64 = 1000;
 const RESET_TIMER_TOKEN: TimerToken = 1;
-const RESET_TIMER_INTERVAL: u64 = 1000;
+const RESET_TIMER_INTERVAL: i64 = 1000;
 
 struct Peer {
     transaction_history: HashSet<H256>,
@@ -62,8 +63,8 @@ impl NetworkExtension for Extension {
 
     fn on_initialize(&self, api: Arc<Api>) {
         self.peers.write().clear();
-        api.set_timer(BROADCAST_TIMER_TOKEN, BROADCAST_TIMER_INTERVAL);
-        api.set_timer(RESET_TIMER_TOKEN, RESET_TIMER_INTERVAL);
+        api.set_timer(BROADCAST_TIMER_TOKEN, Duration::milliseconds(BROADCAST_TIMER_INTERVAL));
+        api.set_timer(RESET_TIMER_TOKEN, Duration::milliseconds(RESET_TIMER_INTERVAL));
         *self.api.lock() = Some(api);
     }
 

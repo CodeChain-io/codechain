@@ -26,13 +26,14 @@ use ccore::{BlockChainClient, BlockId, BlockImportError, BlockNumber, ChainNotif
 use cnetwork::{Api, NetworkExtension, NodeToken, TimerToken};
 use ctypes::{H256, U256};
 use rlp::{Encodable, UntrustedRlp};
+use time::Duration;
 
 use super::manager::DownloadManager;
 use super::message::{Message, RequestMessage, ResponseMessage};
 
 const EXTENSION_NAME: &'static str = "block-propagation";
 const SYNC_TIMER_TOKEN: usize = 0;
-const SYNC_TIMER_INTERVAL: u64 = 1000;
+const SYNC_TIMER_INTERVAL: i64 = 1000;
 const MAX_WAIT: u64 = 15;
 const MAX_RETRY: usize = 3;
 
@@ -115,7 +116,7 @@ impl NetworkExtension for Extension {
 
     fn on_initialize(&self, api: Arc<Api>) {
         self.peers.write().clear();
-        api.set_timer(SYNC_TIMER_TOKEN, SYNC_TIMER_INTERVAL);
+        api.set_timer(SYNC_TIMER_TOKEN, Duration::milliseconds(SYNC_TIMER_INTERVAL));
         *self.api.lock() = Some(api);
     }
 

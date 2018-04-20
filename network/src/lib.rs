@@ -30,6 +30,7 @@ extern crate codechain_io as cio;
 extern crate codechain_keys as ckeys;
 extern crate codechain_types as ctypes;
 extern crate table as ctable;
+extern crate time;
 
 mod addr;
 mod client;

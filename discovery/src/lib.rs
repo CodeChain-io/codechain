@@ -21,6 +21,7 @@ extern crate log;
 extern crate parking_lot;
 extern crate rand;
 extern crate rlp;
+extern crate time;
 
 #[cfg(test)]
 #[macro_use]
