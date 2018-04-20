@@ -45,6 +45,9 @@ args:
     - secret-key:
         long: secret-key
         help: Secret key used by node
+    - no-discovery:
+        long: no-discovery
+        help: Do not use discovery extension
     - kademlia-local-id:
         long: kademlia-local-id
         help: Local Id used by Kademlia

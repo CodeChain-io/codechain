@@ -46,7 +46,7 @@ use std::sync::Arc;
 
 use app_dirs::AppInfo;
 use ccore::{Miner, MinerOptions};
-use cdiscovery::KademliaExtension;
+use cdiscovery::{KademliaExtension, SimpleDiscovery};
 use clogger::{setup_log, Config as LogConfig};
 use creactor::EventLoop;
 use csync::{BlockSyncExtension, TransactionSyncExtension};
@@ -104,14 +104,16 @@ fn run() -> Result<(), String> {
 
     let _network_service = {
         if let Some(network_config) = config::parse_network_config(&matches)? {
-            let kademlia = {
-                let kademlia_config = config::parse_kademlia_config(&matches)?;
-                Arc::new(KademliaExtension::new(kademlia_config))
-            };
-
             let service = commands::network_start(&network_config)?;
-            service.register_extension(kademlia.clone());
-            service.set_discovery_api(kademlia);
+
+            if let Some(kademlia_config) = config::parse_kademlia_config(&matches)? {
+                let kademlia = Arc::new(KademliaExtension::new(kademlia_config));
+                service.register_extension(kademlia.clone());
+                service.set_discovery_api(kademlia);
+            } else {
+                service.set_discovery_api(Arc::new(SimpleDiscovery::new()));
+            }
+
             if config.enable_block_sync {
                 service.register_extension(BlockSyncExtension::new(client.client()));
             }
