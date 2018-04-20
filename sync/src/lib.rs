@@ -25,6 +25,7 @@ extern crate codechain_types as ctypes;
 extern crate log;
 extern crate rand;
 extern crate rlp;
+extern crate time;
 extern crate triehash;
 
 mod block;
