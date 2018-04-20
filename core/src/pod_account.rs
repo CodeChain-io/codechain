@@ -18,7 +18,7 @@ use std::fmt;
 
 use cbytes::Bytes;
 use cjson;
-use ctypes::U256;
+use ctypes::{Public, U256};
 use rlp::RlpStream;
 
 use super::state::Account;
@@ -31,6 +31,8 @@ pub struct PodAccount {
     pub balance: U256,
     /// The nonce of the account.
     pub nonce: U256,
+    /// Regular key of the account.
+    pub regular_key: Option<Public>,
 }
 
 impl PodAccount {
@@ -40,14 +42,17 @@ impl PodAccount {
         PodAccount {
             balance: *acc.balance(),
             nonce: *acc.nonce(),
+            regular_key: acc.regular_key(),
         }
     }
 
     /// Returns the RLP for this account.
     pub fn rlp(&self) -> Bytes {
-        let mut stream = RlpStream::new_list(2);
+        // Don't forget to sync the field list with Account.
+        let mut stream = RlpStream::new_list(3);
         stream.append(&self.nonce);
         stream.append(&self.balance);
+        stream.append(&self.regular_key);
         stream.out()
     }
 }
@@ -57,6 +62,7 @@ impl From<cjson::spec::Account> for PodAccount {
         PodAccount {
             balance: a.balance.map_or_else(U256::zero, Into::into),
             nonce: a.nonce.map_or_else(U256::zero, Into::into),
+            regular_key: None,
         }
     }
 }
