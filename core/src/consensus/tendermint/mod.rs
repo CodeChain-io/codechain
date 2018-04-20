@@ -248,11 +248,7 @@ impl Tendermint {
     }
 
     fn broadcast_message(&self, message: Bytes) {
-        if let Some(ref weak) = *self.client.read() {
-            if let Some(c) = weak.upgrade() {
-                c.broadcast_consensus_message(message);
-            }
-        }
+        unimplemented!();
     }
 
     fn update_sealing(&self) {

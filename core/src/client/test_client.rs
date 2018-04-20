@@ -515,8 +515,6 @@ impl BlockChainClient for TestBlockChainClient {
 }
 
 impl super::EngineClient for TestBlockChainClient {
-    fn broadcast_consensus_message(&self, _message: Bytes) {}
-
     fn update_sealing(&self) {
         self.miner.update_sealing(self)
     }

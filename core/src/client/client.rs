@@ -237,11 +237,6 @@ impl ChainInfo for Client {
 }
 
 impl EngineClient for Client {
-    /// Broadcast a consensus message to the network.
-    fn broadcast_consensus_message(&self, message: Bytes) {
-        self.notify(|notify| notify.broadcast(message.clone()));
-    }
-
     /// Make a new block and seal it.
     fn update_sealing(&self) {
         self.importer.miner.update_sealing(self)

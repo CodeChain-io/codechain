@@ -64,9 +64,6 @@ pub trait TransactionInfo {
 
 /// Client facilities used by internally sealing Engines.
 pub trait EngineClient: Sync + Send + ChainInfo {
-    /// Broadcast a consensus message to the network.
-    fn broadcast_consensus_message(&self, message: Bytes);
-
     /// Make a new block and seal it.
     fn update_sealing(&self);
 
