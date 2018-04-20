@@ -115,7 +115,6 @@ impl NetworkExtension for Extension {
     }
 
     fn on_initialize(&self, api: Arc<Api>) {
-        self.peers.write().clear();
         api.set_timer(SYNC_TIMER_TOKEN, Duration::milliseconds(SYNC_TIMER_INTERVAL));
         *self.api.lock() = Some(api);
     }
