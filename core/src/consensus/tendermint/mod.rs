@@ -17,6 +17,7 @@
 mod message;
 mod params;
 
+use std::cmp;
 use std::collections::HashSet;
 use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
 use std::sync::{Arc, Weak};
@@ -28,6 +29,7 @@ use ckeys::{ECDSASignature, Message, Private};
 use cnetwork::{Api, NetworkExtension, NodeToken, TimerToken};
 use ctypes::{Address, H256, H520, U128, U256};
 use parking_lot::{Mutex, RwLock};
+use rand::{thread_rng, Rng};
 use rlp::{self, Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 use time::Duration;
 use unexpected::{Mismatch, OutOfBounds};
@@ -248,7 +250,7 @@ impl Tendermint {
     }
 
     fn broadcast_message(&self, message: Bytes) {
-        unimplemented!();
+        self.extension.broadcast_message(message);
     }
 
     fn update_sealing(&self) {
@@ -791,17 +793,42 @@ pub trait Timeouts<S: Sync + Send + Clone>: Send + Sync {
 
 struct TendermintExtension {
     tendermint: RwLock<Option<Weak<Tendermint>>>,
+    peers: RwLock<HashSet<NodeToken>>,
     api: Mutex<Option<Arc<Api>>>,
     timeouts: TendermintTimeouts,
 }
+
+const MIN_PEERS_PROPAGATION: usize = 4;
+const MAX_PEERS_PROPAGATION: usize = 128;
 
 impl TendermintExtension {
     fn new(timeouts: TendermintTimeouts) -> Self {
         Self {
             tendermint: RwLock::new(None),
+            peers: RwLock::new(HashSet::new()),
             api: Mutex::new(None),
             timeouts,
         }
+    }
+
+    fn select_random_peers(&self) -> Vec<NodeToken> {
+        let mut peers: Vec<NodeToken> = self.peers.write().iter().cloned().collect();
+        let mut count = (peers.len() as f64).powf(0.5).round() as usize;
+        count = cmp::min(count, MAX_PEERS_PROPAGATION);
+        count = cmp::max(count, MIN_PEERS_PROPAGATION);
+        thread_rng().shuffle(&mut peers);
+        peers.truncate(count);
+        peers
+    }
+
+    fn broadcast_message(&self, message: Bytes) {
+        let tokens = self.select_random_peers();
+
+        self.api.lock().as_ref().map(|api| {
+            for token in tokens {
+                api.send(&token, &message);
+            }
+        });
     }
 
     fn send_local_message(&self, message: Step) {
@@ -831,17 +858,16 @@ impl NetworkExtension for TendermintExtension {
         *self.api.lock() = Some(api);
     }
 
-    fn on_node_added(&self, _token: &NodeToken) {
-        unimplemented!();
+    fn on_node_added(&self, token: &NodeToken) {
+        self.peers.write().insert(*token);
     }
 
-    fn on_node_removed(&self, _token: &NodeToken) {
-        unimplemented!();
+    fn on_node_removed(&self, token: &NodeToken) {
+        self.peers.write().remove(token);
     }
 
-    fn on_connected(&self, _token: &NodeToken) {
-        unimplemented!();
-    }
+    fn on_connected(&self, _token: &NodeToken) {}
+
     fn on_connection_allowed(&self, token: &NodeToken) {
         self.on_connected(token);
     }
