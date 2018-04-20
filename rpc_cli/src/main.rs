@@ -106,7 +106,7 @@ fn handle_command(rpc: &mut RpcClient, name: &Value, data: &Value) -> Result<(),
             let t = get_unverified_transaction(data)?;
             rpc.send_signed_transaction(t)
                 .map(|hash| {
-                    println!("{}", hash);
+                    println!("TxHash: 0x{:?}", hash);
                     ()
                 })
                 .map_err(|e| CommandError::RpcError(e))

@@ -77,7 +77,7 @@ impl RpcClient for RpcHttp {
         let encoded = ::rlp::encode(&t).to_hex();
         let v = self.send("chain_sendSignedTransaction", vec![format!("0x{}", encoded).into()])?;
         let result = v["result"].as_str().ok_or_else(|| RpcError::ApiError(v.to_string()))?;
-        Ok(H256::from_str(result)?)
+        Ok(H256::from_str(&result[2..])?)
     }
 }
 
