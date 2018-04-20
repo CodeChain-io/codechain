@@ -33,5 +33,7 @@ extern crate codechain_network as cnetwork;
 extern crate codechain_types as ctypes;
 
 mod kademlia;
+mod simple;
 
 pub use kademlia::{Config as KademliaConfig, Extension as KademliaExtension};
+pub use simple::Simple as SimpleDiscovery;
