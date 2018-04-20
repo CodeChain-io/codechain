@@ -27,51 +27,52 @@ use super::timer;
 use super::{Api, DiscoveryApi, NetworkExtension, SocketAddr};
 
 pub struct Service {
-    _handshake_service: IoService<session_initiator::Message>,
-    connection_service: IoService<p2p::Message>,
-    timer_service: IoService<timer::Message>,
+    session_initiator: IoService<session_initiator::Message>,
+    p2p: IoService<p2p::Message>,
+    timer: IoService<timer::Message>,
     client: Arc<Client>,
 }
 
 impl Service {
     pub fn start(
         address: SocketAddr,
-        bootstrap_addresses: Vec<SocketAddr>,
         secret_key: Secret,
         discovery: Arc<DiscoveryApi>,
     ) -> Result<Self, IoError> {
-        let connection_service = IoService::start()?;
-        let connection_channel = connection_service.channel();
-
-        let timer_service = IoService::start()?;
+        let p2p = IoService::start()?;
+        let timer = IoService::start()?;
+        let session_initiator = IoService::start()?;
 
         let client = Client::new();
-        let connection_handler = Arc::new(p2p::Handler::new(address.clone(), Arc::clone(&client)));
-        discovery.set_address_converter(connection_handler.clone());
-        connection_service.register_handler(connection_handler)?;
-        timer_service.register_handler(Arc::new(timer::Handler::new(Arc::clone(&client))))?;
 
-        let handshake_service = IoService::start()?;
-        let handshake_handler =
-            Arc::new(session_initiator::Handler::new(address, secret_key, connection_channel, discovery));
-        handshake_service.register_handler(handshake_handler)?;
+        let p2p_handler = Arc::new(p2p::Handler::new(address.clone(), Arc::clone(&client)));
+        discovery.set_address_converter(p2p_handler.clone());
+        p2p.register_handler(p2p_handler)?;
 
-        for address in bootstrap_addresses {
-            if let Err(err) = handshake_service.send_message(session_initiator::Message::ConnectTo(address)) {
-                info!("Cannot ConnectTo : {:?}", err);
-            }
-        }
+        timer.register_handler(Arc::new(timer::Handler::new(Arc::clone(&client))))?;
+
+        let session_initiator_handler = Arc::new(session_initiator::Handler::new(address, secret_key, p2p.channel(), discovery));
+        session_initiator.register_handler(session_initiator_handler)?;
+
         Ok(Self {
-            _handshake_service: handshake_service,
-            connection_service,
-            timer_service,
+            session_initiator,
+            p2p,
+            timer,
             client,
         })
     }
 
     pub fn register_extension(&self, extension: Arc<NetworkExtension>) -> Arc<Api> {
-        let connection_channel = self.connection_service.channel();
-        let timer_channel = self.timer_service.channel();
+        let connection_channel = self.p2p.channel();
+        let timer_channel = self.timer.channel();
         self.client.register_extension(extension, connection_channel, timer_channel)
+    }
+
+    pub fn connect_to(&self, address: SocketAddr) -> Result<(), String> {
+        if let Err(err) = self.session_initiator.send_message(session_initiator::Message::ConnectTo(address)) {
+            return Err(format!("{:?}", err))
+        } else {
+            Ok(())
+        }
     }
 }

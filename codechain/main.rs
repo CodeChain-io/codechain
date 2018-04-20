@@ -109,7 +109,7 @@ fn run() -> Result<(), String> {
                 Arc::new(KademliaExtension::new(kademlia_config))
             };
 
-            let service = commands::network_start(network_config, kademlia.clone())?;
+            let service = commands::network_start(&network_config, kademlia.clone())?;
             service.register_extension(kademlia);
             if config.enable_block_sync {
                 service.register_extension(BlockSyncExtension::new(client.client()));
@@ -117,6 +117,10 @@ fn run() -> Result<(), String> {
             service.register_extension(TransactionSyncExtension::new(client.client()));
             if let Some(consensus_extension) = spec.engine.network_extension() {
                 service.register_extension(consensus_extension);
+            }
+
+            for address in network_config.bootstrap_addresses {
+                service.connect_to(address)?;
             }
             Some(service)
         } else {

@@ -31,11 +31,11 @@ pub fn rpc_start(cfg: RpcHttpConfig, deps: Arc<ApiDependencies>) -> Result<RpcSe
     rpc::new_http(cfg, deps)
 }
 
-pub fn network_start(cfg: NetworkConfig, discovery: Arc<DiscoveryApi>) -> Result<NetworkService, String> {
+pub fn network_start(cfg: &NetworkConfig, discovery: Arc<DiscoveryApi>) -> Result<NetworkService, String> {
     info!("Handshake Listening on {}", cfg.port);
     let secret_key = cfg.secret_key;
     let address = SocketAddr::v4(127, 0, 0, 1, cfg.port);
-    let service = NetworkService::start(address, cfg.bootstrap_addresses, secret_key, discovery)
+    let service = NetworkService::start(address, secret_key, discovery)
         .map_err(|e| format!("Network service error: {:?}", e))?;
 
     Ok(service)
