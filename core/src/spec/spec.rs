@@ -206,7 +206,7 @@ impl Spec {
         header.set_author(self.author.clone());
         header.set_transactions_root(self.transactions_root.clone());
         header.set_extra_data(self.extra_data.clone());
-        header.set_state_root(BLAKE_NULL_RLP);
+        header.set_state_root(self.state_root());
         header.set_invoices_root(self.invoices_root.clone());
         header.set_score(self.score.clone());
         header.set_seal({
