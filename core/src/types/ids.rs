@@ -41,3 +41,9 @@ pub enum TransactionId {
     /// Querying by block position is always faster.
     Location(BlockId, usize),
 }
+
+impl From<H256> for TransactionId {
+    fn from(hash: H256) -> Self {
+        TransactionId::Hash(hash)
+    }
+}

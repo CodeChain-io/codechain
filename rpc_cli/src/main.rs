@@ -111,6 +111,15 @@ fn handle_command(rpc: &mut RpcClient, name: &Value, data: &Value) -> Result<(),
                 })
                 .map_err(|e| CommandError::RpcError(e))
         }
+        "chain_getTransactionInvoice" => {
+            let hash: H256 = get_h256(&data["hash"])?;
+            rpc.get_transaction_invoice(hash)
+                .map(|invoice| {
+                    println!("{:?}", invoice);
+                    ()
+                })
+                .map_err(|e| CommandError::RpcError(e))
+        }
         _ => Err(CommandError::UnknownCommand),
     }
 }
