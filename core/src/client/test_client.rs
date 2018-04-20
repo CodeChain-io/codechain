@@ -49,7 +49,7 @@ use super::super::blockchain_info::BlockChainInfo;
 use super::super::client::ImportResult;
 use super::super::client::{
     AccountData, Balance, BlockChain, BlockChainClient, BlockInfo, BlockProducer, BlockStatus, BroadcastProposalBlock,
-    ChainInfo, ImportBlock, ImportSealedBlock, MiningBlockChainClient, Nonce, PrepareOpenBlock, ReopenBlock,
+    ChainInfo, ImportBlock, ImportSealedBlock, Invoice, MiningBlockChainClient, Nonce, PrepareOpenBlock, ReopenBlock,
     SealedBlockImporter, StateOrBlock, TransactionInfo,
 };
 use super::super::db::{COL_STATE, NUM_COLUMNS};
@@ -511,6 +511,10 @@ impl BlockChainClient for TestBlockChainClient {
 
     fn ready_transactions(&self) -> Vec<SignedTransaction> {
         self.miner.ready_transactions()
+    }
+
+    fn transaction_invoice(&self, _id: TransactionId) -> Option<Invoice> {
+        unimplemented!();
     }
 }
 

@@ -82,6 +82,7 @@ pub use client::{
 };
 pub use error::{BlockImportError, Error, ImportError};
 pub use header::{Header, Seal};
+pub use invoice::Invoice;
 pub use miner::{Miner, MinerOptions, MinerService};
 pub use service::ClientService;
 pub use spec::Spec;

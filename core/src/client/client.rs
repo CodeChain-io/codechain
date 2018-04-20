@@ -48,8 +48,8 @@ use super::super::views::BlockView;
 use super::{
     AccountData, Balance, BlockChain as BlockChainTrait, BlockChainClient, BlockChainInfo, BlockInfo, BlockProducer,
     BroadcastProposalBlock, ChainInfo, ChainNotify, ClientConfig, EngineClient, Error as ClientError, ImportBlock,
-    ImportResult, ImportSealedBlock, MiningBlockChainClient, Nonce, PrepareOpenBlock, ReopenBlock, SealedBlockImporter,
-    StateOrBlock, TransactionInfo,
+    ImportResult, ImportSealedBlock, Invoice, MiningBlockChainClient, Nonce, PrepareOpenBlock, ReopenBlock,
+    SealedBlockImporter, StateOrBlock, TransactionInfo,
 };
 
 const MAX_TX_QUEUE_SIZE: usize = 4096;
@@ -358,6 +358,11 @@ impl BlockChainClient for Client {
     fn block_hash(&self, id: BlockId) -> Option<H256> {
         let chain = self.chain.read();
         Self::block_hash(&chain, id)
+    }
+
+    fn transaction_invoice(&self, id: TransactionId) -> Option<Invoice> {
+        let chain = self.chain.read();
+        self.transaction_address(id).and_then(|address| chain.transaction_invoice(&address))
     }
 }
 

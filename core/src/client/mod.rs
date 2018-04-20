@@ -37,6 +37,7 @@ use super::error::BlockImportError;
 use super::state::StateInfo;
 use super::transaction::SignedTransaction;
 use super::types::{BlockId, BlockNumber, BlockStatus, TransactionId, VerificationQueueInfo as BlockQueueInfo};
+use super::Invoice;
 
 /// Provides `chain_info` method
 pub trait ChainInfo {
@@ -174,6 +175,9 @@ pub trait BlockChainClient: Sync + Send + AccountData + BlockChain + ImportBlock
 
     /// Get block hash.
     fn block_hash(&self, id: BlockId) -> Option<H256>;
+
+    /// Get transaction invoice with given hash.
+    fn transaction_invoice(&self, id: TransactionId) -> Option<Invoice>;
 }
 
 /// Result of import block operation.
