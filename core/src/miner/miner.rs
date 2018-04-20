@@ -16,7 +16,7 @@
 
 use std::collections::HashSet;
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use cbytes::Bytes;
 use ckeys::Private;
@@ -40,6 +40,10 @@ use super::{MinerService, MinerStatus, TransactionImportResult};
 /// Configures the behaviour of the miner.
 #[derive(Debug, PartialEq)]
 pub struct MinerOptions {
+    /// Reseal on receipt of new local transactions.
+    pub reseal_on_own_tx: bool,
+    /// Minimum period between transaction-inspired reseals.
+    pub reseal_min_period: Duration,
     /// Maximum size of the transaction queue.
     pub tx_queue_size: usize,
     /// Maximum memory usage of transactions in the queue (current / future).
@@ -49,6 +53,8 @@ pub struct MinerOptions {
 impl Default for MinerOptions {
     fn default() -> Self {
         MinerOptions {
+            reseal_on_own_tx: true,
+            reseal_min_period: Duration::from_secs(2),
             tx_queue_size: 8192,
             tx_queue_memory_limit: Some(2 * 1024 * 1024),
         }
@@ -79,10 +85,12 @@ impl SealingQueue {
 
 pub struct Miner {
     transaction_queue: Arc<RwLock<TransactionQueue>>,
+    next_allowed_reseal: Mutex<Instant>,
     author: RwLock<Address>,
     extra_data: RwLock<Bytes>,
     sealing_queue: Mutex<SealingQueue>,
     engine: Arc<CodeChainEngine>,
+    options: MinerOptions,
 }
 
 impl Miner {
@@ -99,10 +107,29 @@ impl Miner {
         let txq = TransactionQueue::with_limits(options.tx_queue_size, mem_limit);
         Self {
             transaction_queue: Arc::new(RwLock::new(txq)),
+            next_allowed_reseal: Mutex::new(Instant::now()),
             author: RwLock::new(Address::default()),
             extra_data: RwLock::new(Vec::new()),
             sealing_queue: Mutex::new(SealingQueue::new()),
             engine: spec.engine.clone(),
+            options,
+        }
+    }
+
+    /// Check is reseal is allowed and necessary.
+    fn requires_reseal(&self) -> bool {
+        let has_local_transactions = self.transaction_queue.read().has_local_pending_transactions();
+        let should_disable_sealing = !has_local_transactions && self.engine.seals_internally().is_none();
+
+        trace!(target: "miner", "requires_reseal: should_disable_sealing={}", should_disable_sealing);
+
+        if should_disable_sealing {
+            trace!(target: "miner", "Miner sleeping");
+            false
+        } else {
+            // sealing enabled and we don't want to sleep.
+            *self.next_allowed_reseal.lock() = Instant::now() + self.options.reseal_min_period;
+            true
         }
     }
 
@@ -265,6 +292,11 @@ impl Miner {
             Seal::None => false,
         }
     }
+
+    /// Are we allowed to do a non-mandatory reseal?
+    fn tx_reseal_allowed(&self) -> bool {
+        Instant::now() > *self.next_allowed_reseal.lock()
+    }
 }
 
 impl MinerService for Miner {
@@ -362,19 +394,23 @@ impl MinerService for Miner {
     where
         C: AccountData + BlockChain + BlockProducer + SealedBlockImporter, {
         trace!(target: "miner", "update_sealing: preparing a block");
-        let block = self.prepare_block(chain);
+        if self.requires_reseal() {
+            let block = self.prepare_block(chain);
 
-        match self.engine.seals_internally() {
-            Some(true) => {
-                trace!(target: "miner", "update_sealing: engine indicates internal sealing");
-                if self.seal_and_import_block_internally(chain, block) {
-                    trace!(target: "miner", "update_sealing: imported internally sealed block");
+            match self.engine.seals_internally() {
+                Some(true) => {
+                    trace!(target: "miner", "update_sealing: engine indicates internal sealing");
+                    if self.seal_and_import_block_internally(chain, block) {
+                        trace!(target: "miner", "update_sealing: imported internally sealed block");
+                    }
                 }
-            }
-            Some(false) => trace!(target: "miner", "update_sealing: engine is not keen to seal internally right now"),
-            None => {
-                trace!(target: "miner", "update_sealing: engine does not seal internally, preparing work");
-                unreachable!("External sealing is not supported")
+                Some(false) => {
+                    trace!(target: "miner", "update_sealing: engine is not keen to seal internally right now")
+                }
+                None => {
+                    trace!(target: "miner", "update_sealing: engine does not seal internally, preparing work");
+                    unreachable!("External sealing is not supported")
+                }
             }
         }
     }
@@ -416,27 +452,45 @@ impl MinerService for Miner {
     ) -> Result<TransactionImportResult, Error> {
         trace!(target: "own_tx", "Importing transaction: {:?}", transaction);
 
-        // Be sure to release the lock before we call prepare_work_sealing
-        let mut transaction_queue = self.transaction_queue.write();
-        // We need to re-validate transactions
-        let import = self.add_transactions_to_queue(
-            chain,
-            vec![transaction.into()],
-            TransactionOrigin::Local,
-            &mut transaction_queue,
-        ).pop()
-            .expect("one result returned per added transaction; one added => one result; qed");
+        let imported = {
+            // Be sure to release the lock before we call prepare_work_sealing
+            let mut transaction_queue = self.transaction_queue.write();
+            // We need to re-validate transactions
+            let import = self.add_transactions_to_queue(
+                chain,
+                vec![transaction.into()],
+                TransactionOrigin::Local,
+                &mut transaction_queue,
+            ).pop()
+                .expect("one result returned per added transaction; one added => one result; qed");
 
-        match import {
-            Ok(_) => {
-                trace!(target: "own_tx", "Status: {:?}", transaction_queue.status());
+            match import {
+                Ok(_) => {
+                    trace!(target: "own_tx", "Status: {:?}", transaction_queue.status());
+                }
+                Err(ref e) => {
+                    trace!(target: "own_tx", "Status: {:?}", transaction_queue.status());
+                    warn!(target: "own_tx", "Error importing transaction: {:?}", e);
+                }
             }
-            Err(ref e) => {
-                trace!(target: "own_tx", "Status: {:?}", transaction_queue.status());
-                warn!(target: "own_tx", "Error importing transaction: {:?}", e);
+            import
+        };
+
+        // --------------------------------------------------------------------------
+        // | NOTE Code below requires transaction_queue and sealing_work locks.     |
+        // | Make sure to release the locks before calling that method.             |
+        // --------------------------------------------------------------------------
+        if imported.is_ok() && self.options.reseal_on_own_tx && self.tx_reseal_allowed() {
+            // Make sure to do it after transaction is imported and lock is dropped.
+            // We need to create pending block and enable sealing.
+            if self.engine.seals_internally().unwrap_or(false) {
+                // If new block has not been prepared (means we already had one)
+                // or Engine might be able to seal internally,
+                // we need to update sealing.
+                self.update_sealing(chain);
             }
         }
-        import
+        imported
     }
 
     fn ready_transactions(&self) -> Vec<SignedTransaction> {

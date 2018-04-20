@@ -631,6 +631,11 @@ impl TransactionQueue {
             .collect()
     }
 
+    /// Returns true if there is at least one local transaction pending
+    pub fn has_local_pending_transactions(&self) -> bool {
+        self.current.by_priority.iter().any(|tx| tx.origin == TransactionOrigin::Local)
+    }
+
     /// Returns local transactions (some of them might not be part of the queue anymore).
     pub fn local_transactions(&self) -> &LinkedHashMap<H256, LocalTransactionStatus> {
         self.local_transactions.all_transactions()
