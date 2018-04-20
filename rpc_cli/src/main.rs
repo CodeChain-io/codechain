@@ -37,7 +37,10 @@ fn main() {
                 process::exit(0);
             }
         },
-        None => unimplemented!(),
+        None => {
+            println!("JSON file must be provided. See command-examples.json");
+            process::exit(0);
+        }
     };
 
     if !json.is_array() {
