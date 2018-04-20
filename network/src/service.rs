@@ -28,17 +28,14 @@ use super::{Api, DiscoveryApi, NetworkExtension, SocketAddr};
 
 pub struct Service {
     session_initiator: IoService<session_initiator::Message>,
+    session_initiator_handler: Arc<session_initiator::Handler>,
     p2p: IoService<p2p::Message>,
     timer: IoService<timer::Message>,
     client: Arc<Client>,
 }
 
 impl Service {
-    pub fn start(
-        address: SocketAddr,
-        secret_key: Secret,
-        discovery: Arc<DiscoveryApi>,
-    ) -> Result<Self, IoError> {
+    pub fn start(address: SocketAddr, secret_key: Secret) -> Result<Self, IoError> {
         let p2p = IoService::start()?;
         let timer = IoService::start()?;
         let session_initiator = IoService::start()?;
@@ -46,16 +43,16 @@ impl Service {
         let client = Client::new();
 
         let p2p_handler = Arc::new(p2p::Handler::new(address.clone(), Arc::clone(&client)));
-        discovery.set_address_converter(p2p_handler.clone());
         p2p.register_handler(p2p_handler)?;
 
         timer.register_handler(Arc::new(timer::Handler::new(Arc::clone(&client))))?;
 
-        let session_initiator_handler = Arc::new(session_initiator::Handler::new(address, secret_key, p2p.channel(), discovery));
-        session_initiator.register_handler(session_initiator_handler)?;
+        let session_initiator_handler = Arc::new(session_initiator::Handler::new(address, secret_key, p2p.channel()));
+        session_initiator.register_handler(session_initiator_handler.clone())?;
 
         Ok(Self {
             session_initiator,
+            session_initiator_handler,
             p2p,
             timer,
             client,
@@ -66,6 +63,10 @@ impl Service {
         let connection_channel = self.p2p.channel();
         let timer_channel = self.timer.channel();
         self.client.register_extension(extension, connection_channel, timer_channel)
+    }
+
+    pub fn set_discovery_api(&self, api: Arc<DiscoveryApi>) {
+        self.session_initiator_handler.set_discovery_api(api);
     }
 
     pub fn connect_to(&self, address: SocketAddr) -> Result<(), String> {

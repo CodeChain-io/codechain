@@ -334,27 +334,24 @@ fn decrypt_and_decode_nonce(session: &Session, encrypted_bytes: &Vec<u8>) -> Res
 pub struct Handler {
     session_initiator: Mutex<SessionInitiator>,
     extension: IoChannel<p2p::Message>,
-    #[allow(dead_code)]
-    discovery: RwLock<Arc<DiscoveryApi>>,
+    discovery: RwLock<Option<Arc<DiscoveryApi>>>,
     #[allow(dead_code)]
     secret_key: Secret,
 }
 
 impl Handler {
-    pub fn new(
-        socket_address: SocketAddr,
-        secret_key: Secret,
-        extension: IoChannel<p2p::Message>,
-        discovery: Arc<DiscoveryApi>,
-    ) -> Self {
+    pub fn new(socket_address: SocketAddr, secret_key: Secret, extension: IoChannel<p2p::Message>) -> Self {
         let session_initiator = Mutex::new(SessionInitiator::bind(&socket_address).expect("Cannot bind UDP port"));
-        let discovery = RwLock::new(discovery);
         Self {
             session_initiator,
             extension,
-            discovery,
+            discovery: RwLock::new(None),
             secret_key,
         }
+    }
+
+    pub fn set_discovery_api(&self, api: Arc<DiscoveryApi>) {
+        *self.discovery.write() = Some(api);
     }
 }
 

@@ -109,8 +109,9 @@ fn run() -> Result<(), String> {
                 Arc::new(KademliaExtension::new(kademlia_config))
             };
 
-            let service = commands::network_start(&network_config, kademlia.clone())?;
-            service.register_extension(kademlia);
+            let service = commands::network_start(&network_config)?;
+            service.register_extension(kademlia.clone());
+            service.set_discovery_api(kademlia);
             if config.enable_block_sync {
                 service.register_extension(BlockSyncExtension::new(client.client()));
             }
