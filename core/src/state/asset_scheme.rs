@@ -21,6 +21,8 @@ use cbytes::Bytes;
 use ctypes::hash::H256;
 use ctypes::Address;
 
+use super::CacheableItem;
+
 #[derive(Clone, Debug, RlpEncodable, RlpDecodable)]
 pub struct AssetScheme {
     metadata: String,
@@ -106,6 +108,19 @@ impl Deref for AssetSchemeAddress {
     #[inline]
     fn deref(&self) -> &Self::Target {
         &(*&self.0)
+    }
+}
+
+impl CacheableItem for AssetScheme {
+    type Address = AssetSchemeAddress;
+    fn overwrite_with(&mut self, other: Self) {
+        self.metadata = other.metadata;
+        self.registrar = other.registrar;
+        self.permissioned = other.permissioned;
+    }
+
+    fn is_null(&self) -> bool {
+        false
     }
 }
 
