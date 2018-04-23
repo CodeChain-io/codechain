@@ -211,18 +211,13 @@ impl NetworkExtension for SoloAuthority {
 
 #[cfg(test)]
 mod tests {
-    use ckeys::{Generator, Network, Random};
     use ctypes::H520;
 
     use super::super::super::block::{IsBlock, OpenBlock};
-    use super::super::super::codechain_machine::CodeChainMachine;
     use super::super::super::header::Header;
     use super::super::super::spec::Spec;
     use super::super::super::tests::helpers::get_temp_state_db;
-    use super::super::signer::EngineSigner;
-    use super::super::validator_set::validator_list::ValidatorList;
-    use super::super::{ConsensusEngine, Seal};
-    use super::{SoloAuthority, SoloAuthorityParams};
+    use super::super::Seal;
 
     #[test]
     fn has_valid_metadata() {

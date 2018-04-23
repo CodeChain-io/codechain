@@ -85,12 +85,10 @@ mod tests {
     use ctypes::H520;
 
     use super::super::super::block::{IsBlock, OpenBlock};
-    use super::super::super::codechain_machine::CodeChainMachine;
     use super::super::super::header::Header;
     use super::super::super::spec::Spec;
     use super::super::super::tests::helpers::get_temp_state_db;
-    use super::super::{ConsensusEngine, Seal};
-    use super::Solo;
+    use super::super::Seal;
 
     #[test]
     fn solo_can_seal() {

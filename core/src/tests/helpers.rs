@@ -60,7 +60,7 @@ pub fn get_good_dummy_block_hash() -> (H256, Bytes) {
     (block_header.hash(), create_test_block(&block_header))
 }
 
-fn new_db() -> Arc<::kvdb::KeyValueDB> {
+fn new_db() -> Arc<KeyValueDB> {
     Arc::new(::kvdb_memorydb::create(::db::NUM_COLUMNS.unwrap_or(0)))
 }
 
