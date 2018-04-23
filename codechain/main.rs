@@ -45,9 +45,10 @@ mod rpc_apis;
 use std::sync::Arc;
 
 use app_dirs::AppInfo;
-use ccore::{Miner, MinerOptions};
+use ccore::{ChainNotify, Miner, MinerOptions};
 use cdiscovery::{KademliaExtension, SimpleDiscovery};
 use clogger::{setup_log, Config as LogConfig};
+use cnetwork::NetworkExtension;
 use creactor::EventLoop;
 use csync::{BlockSyncExtension, TransactionSyncExtension};
 use ctrlc::CtrlC;
@@ -115,7 +116,9 @@ fn run() -> Result<(), String> {
             }
 
             if config.enable_block_sync {
-                service.register_extension(BlockSyncExtension::new(client.client()));
+                let sync = BlockSyncExtension::new(client.client());
+                service.register_extension(sync.clone());
+                client.client().add_notify(sync.clone());
             }
             service.register_extension(TransactionSyncExtension::new(client.client()));
             if let Some(consensus_extension) = spec.engine.network_extension() {
