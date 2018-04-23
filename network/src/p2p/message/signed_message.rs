@@ -19,6 +19,7 @@ use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 use super::super::super::session::Session;
 use super::Signature;
 
+#[derive(Debug)]
 pub struct SignedMessage {
     pub message: Vec<u8>,
     signature: Signature,

@@ -20,6 +20,7 @@ use super::ExtensionMessage;
 use super::HandshakeMessage;
 use super::NegotiationMessage;
 
+#[derive(Debug)]
 pub enum Message {
     Extension(ExtensionMessage),
     Handshake(HandshakeMessage),
