@@ -40,7 +40,7 @@ mod asset_scheme;
 pub mod backend;
 
 pub use self::account::Account;
-pub use self::asset_scheme::AssetScheme;
+pub use self::asset_scheme::{AssetScheme, AssetSchemeAddress};
 pub use self::backend::Backend;
 
 /// Used to return information about an `State::apply` operation.

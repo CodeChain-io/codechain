@@ -27,13 +27,14 @@ use lru_cache::LruCache;
 use parking_lot::Mutex;
 use util_error::UtilError;
 
-use super::state::{self, Account, CacheableItem};
+use super::state::{self, Account, AssetScheme, AssetSchemeAddress, CacheableItem};
 use super::types::BlockNumber;
 
 const STATE_CACHE_BLOCKS: usize = 12;
 
 // The percentage of supplied cache size to go to accounts.
 const ACCOUNT_CACHE_RATIO: usize = 90;
+const ASSET_SCHEME_CACHE_RATIO: usize = 10;
 
 /// Shared canonical state cache.
 struct Cache<Item>
@@ -95,8 +96,10 @@ pub struct StateDB {
     db: Box<JournalDB>,
     /// Shared canonical state cache.
     account_cache: Arc<Mutex<Cache<Account>>>,
+    asset_scheme_cache: Arc<Mutex<Cache<AssetScheme>>>,
     /// Local dirty cache.
     local_account_cache: Vec<CacheQueueItem<Account>>,
+    local_asset_scheme_cache: Vec<CacheQueueItem<AssetScheme>>,
     /// Hash of the block on top of which this instance was created or
     /// `None` if cache is disabled
     parent_hash: Option<H256>,
@@ -112,16 +115,26 @@ impl StateDB {
     // TODO: make the cache size actually accurate by moving the account storage cache
     // into the `AccountCache` structure as its own `LruCache<(Address, H256), H256>`.
     pub fn new(db: Box<JournalDB>, cache_size: usize) -> StateDB {
-        let acc_cache_size = cache_size * ACCOUNT_CACHE_RATIO / 100;
-        let cache_items = acc_cache_size / ::std::mem::size_of::<Option<Account>>();
+        assert_eq!(100, ACCOUNT_CACHE_RATIO + ASSET_SCHEME_CACHE_RATIO);
+
+        let account_cache_size = cache_size * ACCOUNT_CACHE_RATIO / 100;
+        let account_cache_items = account_cache_size / ::std::mem::size_of::<Option<Account>>();
+
+        let asset_cache_size = cache_size * ASSET_SCHEME_CACHE_RATIO / 100;
+        let asset_cache_items = asset_cache_size / ::std::mem::size_of::<Option<AssetScheme>>();
 
         StateDB {
             db,
             account_cache: Arc::new(Mutex::new(Cache {
-                cache: LruCache::new(cache_items),
+                cache: LruCache::new(account_cache_items),
+                modifications: VecDeque::new(),
+            })),
+            asset_scheme_cache: Arc::new(Mutex::new(Cache {
+                cache: LruCache::new(asset_cache_items),
                 modifications: VecDeque::new(),
             })),
             local_account_cache: Vec::new(),
+            local_asset_scheme_cache: Vec::new(),
             parent_hash: None,
             commit_hash: None,
             commit_number: None,
@@ -171,7 +184,18 @@ impl StateDB {
             &self.parent_hash,
             &self.commit_hash,
             &self.commit_number,
-        )
+        );
+
+        Self::sync_cache_impl(
+            enacted,
+            retracted,
+            is_best,
+            &mut self.asset_scheme_cache,
+            &mut self.local_asset_scheme_cache,
+            &self.parent_hash,
+            &self.commit_hash,
+            &self.commit_number,
+        );
     }
 
     fn sync_cache_impl<Item>(
@@ -289,7 +313,9 @@ impl StateDB {
         StateDB {
             db: self.db.boxed_clone(),
             account_cache: self.account_cache.clone(),
+            asset_scheme_cache: self.asset_scheme_cache.clone(),
             local_account_cache: Vec::new(),
+            local_asset_scheme_cache: Vec::new(),
             parent_hash: None,
             commit_hash: None,
             commit_number: None,
@@ -301,7 +327,9 @@ impl StateDB {
         StateDB {
             db: self.db.boxed_clone(),
             account_cache: self.account_cache.clone(),
+            asset_scheme_cache: self.asset_scheme_cache.clone(),
             local_account_cache: Vec::new(),
+            local_asset_scheme_cache: Vec::new(),
             parent_hash: Some(parent.clone()),
             commit_hash: None,
             commit_number: None,
@@ -324,6 +352,7 @@ impl StateDB {
     pub fn mem_used(&self) -> usize {
         // TODO: account for LRU-cache overhead; this is a close approximation.
         self.db.mem_used() + Self::mem_used_impl(&self.account_cache.lock())
+            + Self::mem_used_impl(&self.asset_scheme_cache.lock())
     }
 
     /// Returns underlying `JournalDB`.
@@ -410,8 +439,20 @@ impl state::Backend for StateDB {
         })
     }
 
+    fn add_to_asset_scheme_cache(&mut self, addr: AssetSchemeAddress, data: AssetScheme) {
+        self.local_asset_scheme_cache.push(CacheQueueItem {
+            address: addr,
+            item: Some(data),
+            modified: false,
+        })
+    }
+
     fn get_cached_account(&self, addr: &Address) -> Option<Option<Account>> {
         self.get_cached(addr, &self.account_cache)
+    }
+
+    fn get_cached_asset_scheme(&self, hash: &AssetSchemeAddress) -> Option<Option<AssetScheme>> {
+        self.get_cached(hash, &self.asset_scheme_cache)
     }
 
     fn get_cached_account_with<F, U>(&self, a: &Address, f: F) -> Option<U>
@@ -428,7 +469,7 @@ mod tests {
     use kvdb::DBTransaction;
 
     use super::super::tests::helpers::get_temp_state_db;
-    use super::state::{Account, Backend};
+    use super::state::{Account, AssetScheme, AssetSchemeAddress, Backend};
 
     #[test]
     fn account_cache() {
@@ -523,5 +564,38 @@ mod tests {
         s.sync_cache(&[h1b.clone(), h2b.clone(), h3b.clone()], &[h1a.clone(), h2a.clone(), h3a.clone()], true);
         let s = state_db.boxed_clone_canon(&h3a);
         assert!(s.get_cached_account(&address).is_none());
+    }
+
+    #[test]
+    fn asset_scheme_cache() {
+        let state_db = get_temp_state_db();
+        let root_parent = H256::random();
+        let h0 = H256::random();
+        let mut batch = DBTransaction::new();
+
+        let registrar = Address::random();
+        let asset_scheme = AssetScheme::new("A metadata for test asset_scheme".to_string(), registrar, true);
+        let asset_scheme_address: AssetSchemeAddress = h0.into();
+
+        let mut s = state_db.boxed_clone_canon(&root_parent);
+
+        s.add_to_asset_scheme_cache(asset_scheme_address.clone(), asset_scheme);
+
+        assert!(s.get_cached_asset_scheme(&asset_scheme_address).is_none());
+        assert!(s.commit_hash.is_none());
+        assert!(s.commit_number.is_none());
+        assert_eq!(0, batch.ops.len());
+
+        s.journal_under(&mut batch, 0, &h0).unwrap();
+        assert!(s.get_cached_asset_scheme(&asset_scheme_address).is_none());
+        assert_eq!(s.commit_hash.unwrap(), h0);
+        assert_eq!(s.commit_number.unwrap(), 0u64);
+        assert!(batch.ops.len() > 0);
+
+        s.sync_cache(&[], &[], true);
+        assert!(s.get_cached_asset_scheme(&asset_scheme_address).is_none());
+
+        let s = state_db.boxed_clone_canon(&h0);
+        assert!(s.get_cached_asset_scheme(&asset_scheme_address).is_some());
     }
 }
