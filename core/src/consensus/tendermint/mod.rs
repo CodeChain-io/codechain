@@ -872,8 +872,12 @@ impl NetworkExtension for TendermintExtension {
         self.on_connected(token);
     }
 
-    fn on_message(&self, _token: &NodeToken, _data: &Vec<u8>) {
-        unimplemented!();
+    fn on_message(&self, _token: &NodeToken, data: &Vec<u8>) {
+        if let Some(ref weak) = *self.tendermint.read() {
+            if let Some(c) = weak.upgrade() {
+                c.handle_message(data.as_ref());
+            }
+        }
     }
 
     fn on_close(&self) {

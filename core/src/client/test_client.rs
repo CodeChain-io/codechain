@@ -505,10 +505,6 @@ impl BlockChainClient for TestBlockChainClient {
         self.miner.import_external_transactions(self, txs);
     }
 
-    fn queue_consensus_message(&self, message: Bytes) {
-        self.spec.engine.handle_message(&message).unwrap();
-    }
-
     fn ready_transactions(&self) -> Vec<SignedTransaction> {
         self.miner.ready_transactions()
     }

@@ -151,9 +151,6 @@ pub trait BlockChainClient: Sync + Send + AccountData + BlockChain + ImportBlock
     /// Queue transactions for importing.
     fn queue_transactions(&self, transactions: Vec<Bytes>, peer_id: usize);
 
-    /// Queue conensus engine message.
-    fn queue_consensus_message(&self, message: Bytes);
-
     /// List all transactions that are allowed into the next block.
     fn ready_transactions(&self) -> Vec<SignedTransaction>;
 
