@@ -35,7 +35,7 @@ use rlp::{Decodable, DecoderError, Encodable, UntrustedRlp};
 use super::super::p2p;
 use super::super::session::{Nonce, Session};
 use super::super::token_generator::TokenGenerator;
-use super::super::{DiscoveryApi, NodeToken, SocketAddr};
+use super::super::{DiscoveryApi, SocketAddr};
 use super::message;
 use super::server::{Error as ServerError, Server};
 
@@ -352,19 +352,6 @@ impl Handler {
 
     pub fn set_discovery_api(&self, api: Arc<DiscoveryApi>) {
         *self.discovery.write() = Some(api);
-    }
-
-    fn add_connection(&self, token: NodeToken, address: SocketAddr) {
-        let discovery = self.discovery.read();
-        if let Some(ref discovery) = *discovery {
-            discovery.add_connection(token, address);
-        }
-    }
-    fn remove_connection(&self, node: &NodeToken) {
-        let discovery = self.discovery.read();
-        if let Some(ref discovery) = *discovery {
-            discovery.remove_connection(node);
-        }
     }
 }
 
