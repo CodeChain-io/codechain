@@ -72,55 +72,7 @@ impl Api for ClientApi {
         }
     }
 
-    fn set_timer(&self, timer_id: usize, duration: Duration) {
-        if let Some(extension) = self.extension.upgrade() {
-            let extension_name = extension.name();
-            if let Err(err) = self.timer_channel.send(TimerMessage::SetTimer {
-                extension_name,
-                timer_id,
-                duration,
-            }) {
-                info!("Cannot set timer {}:{} : {:?}", extension.name(), timer_id, err);
-            } else {
-                info!("{} sets timer({}) every {}", extension.name(), timer_id, duration);
-            }
-        } else {
-            info!("The extension already dropped");
-        }
-    }
-
-    fn set_timer_once(&self, timer_id: usize, duration: Duration) {
-        if let Some(extension) = self.extension.upgrade() {
-            let extension_name = extension.name();
-            if let Err(err) = self.timer_channel.send(TimerMessage::SetTimerOnce {
-                extension_name,
-                timer_id,
-                duration,
-            }) {
-                info!("Cannot set timer {}:{} : {:?}", extension.name(), timer_id, err);
-            } else {
-                info!("{} sets timer({}) after {:?}", extension.name(), timer_id, duration);
-            }
-        } else {
-            info!("The extension already dropped");
-        }
-    }
-
-    fn clear_timer(&self, timer_id: usize) {
-        if let Some(extension) = self.extension.upgrade() {
-            let extension_name = extension.name();
-            if let Err(err) = self.timer_channel.send(TimerMessage::ClearTimer {
-                extension_name,
-                timer_id,
-            }) {
-                info!("Cannot clear timer {}:{} : {:?}", extension.name(), timer_id, err);
-            } else {
-                info!("{} clears timer({})", extension.name(), timer_id);
-            }
-        }
-    }
-
-    fn set_timer_sync(&self, timer_id: usize, duration: Duration) -> NetworkExtensionResult<()> {
+    fn set_timer(&self, timer_id: usize, duration: Duration) -> NetworkExtensionResult<()> {
         if let Some(extension) = self.extension.upgrade() {
             let extension_name = extension.name();
             Ok(self.timer_channel.send_sync(TimerMessage::SetTimer {
@@ -133,7 +85,7 @@ impl Api for ClientApi {
         }
     }
 
-    fn set_timer_once_sync(&self, timer_id: usize, duration: Duration) -> NetworkExtensionResult<()> {
+    fn set_timer_once(&self, timer_id: usize, duration: Duration) -> NetworkExtensionResult<()> {
         if let Some(extension) = self.extension.upgrade() {
             let extension_name = extension.name();
             Ok(self.timer_channel.send_sync(TimerMessage::SetTimerOnce {
@@ -146,7 +98,7 @@ impl Api for ClientApi {
         }
     }
 
-    fn clear_timer_sync(&self, timer_id: usize) -> NetworkExtensionResult<()> {
+    fn clear_timer(&self, timer_id: usize) -> NetworkExtensionResult<()> {
         if let Some(extension) = self.extension.upgrade() {
             let extension_name = extension.name();
             Ok(self.timer_channel.send_sync(TimerMessage::ClearTimer {
@@ -256,8 +208,6 @@ impl Client {
 
     define_method!(on_message; id, &NodeToken; data, &Vec<u8>);
 
-    define_method!(on_timer_set_allowed; timer_id, TimerToken);
-    define_method!(on_timer_set_denied; timer_id, TimerToken; error, NetworkExtensionError);
     define_method!(on_timeout; timer_id, TimerToken);
 
     define_method!(on_local_message; message, &[u8]);
@@ -288,27 +238,15 @@ mod tests {
             unimplemented!()
         }
 
-        fn set_timer(&self, _timer_id: usize, _duration: Duration) {
+        fn set_timer(&self, _timer_id: usize, _duration: Duration) -> NetworkExtensionResult<()> {
             unimplemented!()
         }
 
-        fn set_timer_once(&self, _timer_id: usize, _duration: Duration) {
+        fn set_timer_once(&self, _timer_id: usize, _duration: Duration) -> NetworkExtensionResult<()> {
             unimplemented!()
         }
 
-        fn clear_timer(&self, _timer_id: usize) {
-            unimplemented!()
-        }
-
-        fn set_timer_sync(&self, _timer_id: usize, _duration: Duration) -> NetworkExtensionResult<()> {
-            unimplemented!()
-        }
-
-        fn set_timer_once_sync(&self, _timer_id: usize, _duration: Duration) -> NetworkExtensionResult<()> {
-            unimplemented!()
-        }
-
-        fn clear_timer_sync(&self, _timer_id: usize) -> NetworkExtensionResult<()> {
+        fn clear_timer(&self, _timer_id: usize) -> NetworkExtensionResult<()> {
             unimplemented!()
         }
 
@@ -387,16 +325,6 @@ mod tests {
         fn on_message(&self, _id: &NodeToken, _message: &Vec<u8>) {
             let mut callbacks = self.callbacks.lock();
             callbacks.push(Callback::Message);
-        }
-
-        fn on_timer_set_allowed(&self, _timer_id: usize) {
-            let mut callbacks = self.callbacks.lock();
-            callbacks.push(Callback::TimerSetAllowed);
-        }
-
-        fn on_timer_set_denied(&self, _timer_id: usize, _error: NetworkExtensionError) {
-            let mut callbacks = self.callbacks.lock();
-            callbacks.push(Callback::TimerSetDenied);
         }
 
         fn on_timeout(&self, _timer_id: usize) {

@@ -78,40 +78,7 @@ impl Api for TestApi {
         self.calls.lock().push_back(Call::Connect(*node));
     }
 
-    fn set_timer(&self, token: TimerToken, duration: Duration) {
-        let mut timers = self.timers.lock();
-        if timers.contains_key(&token) {
-            panic!("Tried to set timer with token #{} twice", token);
-        }
-        timers.insert(token, (duration, false));
-        self.calls.lock().push_back(Call::SetTimer {
-            token,
-            duration,
-        });
-    }
-
-    fn set_timer_once(&self, token: TimerToken, duration: Duration) {
-        let mut timers = self.timers.lock();
-        if timers.contains_key(&token) {
-            panic!("Tried to set timer with token #{} twice", token);
-        }
-        timers.insert(token, (duration, true));
-        self.calls.lock().push_back(Call::SetTimerOnce {
-            token,
-            duration,
-        });
-    }
-
-    fn clear_timer(&self, token: TimerToken) {
-        let mut timers = self.timers.lock();
-        if !timers.contains_key(&token) {
-            panic!("Tried to clear unregistered timer of token #{}", token);
-        }
-        timers.remove(&token);
-        self.calls.lock().push_back(Call::ClearTimer(token));
-    }
-
-    fn set_timer_sync(&self, token: TimerToken, duration: Duration) -> Result<()> {
+    fn set_timer(&self, token: TimerToken, duration: Duration) -> Result<()> {
         let mut timers = self.timers.lock();
         if timers.contains_key(&token) {
             panic!("Tried to set timer with token #{} twice", token);
@@ -124,7 +91,7 @@ impl Api for TestApi {
         Ok(())
     }
 
-    fn set_timer_once_sync(&self, token: TimerToken, duration: Duration) -> Result<()> {
+    fn set_timer_once(&self, token: TimerToken, duration: Duration) -> Result<()> {
         let mut timers = self.timers.lock();
         if timers.contains_key(&token) {
             panic!("Tried to set timer with token #{} twice", token);
@@ -137,7 +104,7 @@ impl Api for TestApi {
         Ok(())
     }
 
-    fn clear_timer_sync(&self, token: TimerToken) -> Result<()> {
+    fn clear_timer(&self, token: TimerToken) -> Result<()> {
         let mut timers = self.timers.lock();
         if !timers.contains_key(&token) {
             panic!("Tried to clear unregistered timer of token #{}", token);

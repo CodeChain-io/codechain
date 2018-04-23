@@ -79,7 +79,8 @@ impl Extension {
         if !already_fired {
             let api = self.api.lock();
             if let &Some(ref api) = &*api {
-                api.set_timer_once(CONSUME_EVENT_TOKEN, Duration::milliseconds(0));
+                api.set_timer_once(CONSUME_EVENT_TOKEN, Duration::milliseconds(0))
+                    .expect("Consume event must be registered");
             }
         }
     }
@@ -194,7 +195,7 @@ impl NetworkExtension for Extension {
 
         *api_guard = Some(Arc::clone(&api));
         let t_refresh = Duration::milliseconds(kademlia.t_refresh as i64);
-        api.set_timer(REFRESH_TOKEN, t_refresh);
+        api.set_timer(REFRESH_TOKEN, t_refresh).expect("Refresh must be registered");
     }
 
     fn on_node_added(&self, node: &NodeToken) {

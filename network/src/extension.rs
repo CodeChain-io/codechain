@@ -45,13 +45,9 @@ pub trait Api: Send + Sync {
     fn send(&self, node: &NodeToken, message: &Vec<u8>);
     fn connect(&self, node: &NodeToken);
 
-    fn set_timer(&self, timer: TimerToken, d: Duration);
-    fn set_timer_once(&self, timer: TimerToken, d: Duration);
-    fn clear_timer(&self, timer: TimerToken);
-
-    fn set_timer_sync(&self, timer: TimerToken, d: Duration) -> Result<()>;
-    fn set_timer_once_sync(&self, timer: TimerToken, d: Duration) -> Result<()>;
-    fn clear_timer_sync(&self, timer: TimerToken) -> Result<()>;
+    fn set_timer(&self, timer: TimerToken, d: Duration) -> Result<()>;
+    fn set_timer_once(&self, timer: TimerToken, d: Duration) -> Result<()>;
+    fn clear_timer(&self, timer: TimerToken) -> Result<()>;
 
     fn send_local_message(&self, message: &Encodable);
 }
@@ -70,11 +66,6 @@ pub trait Extension: Send + Sync {
     fn on_connection_denied(&self, _node: &NodeToken, _error: Error) {}
 
     fn on_message(&self, _node: &NodeToken, _message: &Vec<u8>) {}
-
-    fn on_timer_set_allowed(&self, _timer: TimerToken) {}
-    fn on_timer_set_denied(&self, _timer: TimerToken, error: Error) {
-        unreachable!("Timer set denied {:?}", error);
-    }
 
     fn on_timeout(&self, _timer: TimerToken) {}
 

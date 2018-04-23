@@ -884,8 +884,8 @@ impl NetworkExtension for TendermintExtension {
     fn on_local_message(&self, data: &[u8]) {
         let next: Step = rlp::decode(data);
         self.api.lock().as_ref().map(|api| {
-            let _ = api.clear_timer_sync(ENGINE_TIMEOUT_TOKEN);
-            let _ = api.set_timer_once_sync(ENGINE_TIMEOUT_TOKEN, self.timeouts.timeout(&next));
+            let _ = api.clear_timer(ENGINE_TIMEOUT_TOKEN);
+            let _ = api.set_timer_once(ENGINE_TIMEOUT_TOKEN, self.timeouts.timeout(&next));
         });
     }
 

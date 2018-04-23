@@ -22,8 +22,7 @@ use parking_lot::Mutex;
 use time::Duration;
 
 use super::super::client::Client;
-use super::super::extension::Error as ExtensionError;
-use super::timer_info::{Error as TimerInfoError, TimerInfo};
+use super::timer_info::TimerInfo;
 
 type TimerId = usize;
 
@@ -107,18 +106,8 @@ impl IoHandler<Message> for Handler {
                 duration,
             } => {
                 let mut timer = self.timer.lock();
-                match timer.insert(extension_name.clone(), timer_id, false) {
-                    Ok(token) => {
-                        io.register_timer(token, duration.num_milliseconds() as u64)?;
-                        self.client.on_timer_set_allowed(extension_name, timer_id);
-                    }
-                    Err(TimerInfoError::DuplicatedTimerId) => {
-                        self.client.on_timer_set_denied(extension_name, timer_id, ExtensionError::DuplicatedTimerId);
-                    }
-                    Err(TimerInfoError::NoSpace) => {
-                        self.client.on_timer_set_denied(extension_name, timer_id, ExtensionError::NoMoreTimerToken);
-                    }
-                }
+                let token = timer.insert(extension_name.clone(), timer_id, false)?;
+                io.register_timer(token, duration.num_milliseconds() as u64)?;
                 Ok(())
             }
             Message::SetTimerOnce {
@@ -127,18 +116,8 @@ impl IoHandler<Message> for Handler {
                 duration,
             } => {
                 let mut timer = self.timer.lock();
-                match timer.insert(extension_name.clone(), timer_id, true) {
-                    Ok(token) => {
-                        io.register_timer_once(token, duration.num_milliseconds() as u64)?;
-                        self.client.on_timer_set_allowed(extension_name, timer_id);
-                    }
-                    Err(TimerInfoError::DuplicatedTimerId) => {
-                        self.client.on_timer_set_denied(extension_name, timer_id, ExtensionError::DuplicatedTimerId);
-                    }
-                    Err(TimerInfoError::NoSpace) => {
-                        self.client.on_timer_set_denied(extension_name, timer_id, ExtensionError::NoMoreTimerToken);
-                    }
-                }
+                let token = timer.insert(extension_name.clone(), timer_id, true)?;
+                io.register_timer_once(token, duration.num_milliseconds() as u64)?;
                 Ok(())
             }
             Message::ClearTimer {

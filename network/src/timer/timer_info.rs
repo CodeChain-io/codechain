@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::result;
+use std::string::ToString;
 
 use ctable::Table;
 
@@ -24,6 +25,15 @@ use super::super::limited_table::{Key as TimerToken, LimitedTable};
 pub enum Error {
     DuplicatedTimerId,
     NoSpace,
+}
+
+impl ToString for Error {
+    fn to_string(&self) -> String {
+        match self {
+            &Error::DuplicatedTimerId => "Duplicated timer id".to_string(),
+            &Error::NoSpace => "No space".to_string(),
+        }
+    }
 }
 
 pub type Result<T> = result::Result<T, Error>;
