@@ -104,10 +104,6 @@ impl NetworkExtension for Extension {
         }
     }
 
-    fn on_close(&self) {
-        *self.api.lock() = None
-    }
-
     fn on_timeout(&self, timer: TimerToken) {
         match timer {
             BROADCAST_TIMER_TOKEN => self.random_broadcast(),

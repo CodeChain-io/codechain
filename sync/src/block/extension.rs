@@ -159,10 +159,6 @@ impl NetworkExtension for Extension {
         }
     }
 
-    fn on_close(&self) {
-        *self.api.lock() = None
-    }
-
     fn on_timeout(&self, timer: TimerToken) {
         debug_assert_eq!(timer, SYNC_TIMER_TOKEN);
 

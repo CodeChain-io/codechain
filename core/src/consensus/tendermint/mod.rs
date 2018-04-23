@@ -880,10 +880,6 @@ impl NetworkExtension for TendermintExtension {
         }
     }
 
-    fn on_close(&self) {
-        *self.api.lock() = None
-    }
-
     fn on_local_message(&self, data: &[u8]) {
         let next: Step = rlp::decode(data);
         self.api.lock().as_ref().map(|api| {

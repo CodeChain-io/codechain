@@ -256,19 +256,11 @@ impl Client {
 
     define_method!(on_message; id, &NodeToken; data, &Vec<u8>);
 
-    define_broadcast_method!(on_close);
-
     define_method!(on_timer_set_allowed; timer_id, TimerToken);
     define_method!(on_timer_set_denied; timer_id, TimerToken; error, NetworkExtensionError);
     define_method!(on_timeout; timer_id, TimerToken);
 
     define_method!(on_local_message; message, &[u8]);
-}
-
-impl Drop for Client {
-    fn drop(&mut self) {
-        self.on_close()
-    }
 }
 
 #[cfg(test)]
@@ -334,7 +326,6 @@ mod tests {
         ConnectionAllowed,
         ConnectionDenied,
         Message,
-        Close,
         TimerSetAllowed,
         TimerSetDenied,
         Timeout,
@@ -396,11 +387,6 @@ mod tests {
         fn on_message(&self, _id: &NodeToken, _message: &Vec<u8>) {
             let mut callbacks = self.callbacks.lock();
             callbacks.push(Callback::Message);
-        }
-
-        fn on_close(&self) {
-            let mut callbacks = self.callbacks.lock();
-            callbacks.push(Callback::Close);
         }
 
         fn on_timer_set_allowed(&self, _timer_id: usize) {

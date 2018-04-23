@@ -207,7 +207,6 @@ impl TestApi {
 
     fn close(&self) {
         self.connections.lock().clear();
-        self.extension().on_close();
     }
 
     fn call_timeout(&self, token: TimerToken) {

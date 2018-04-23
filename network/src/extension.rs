@@ -71,8 +71,6 @@ pub trait Extension: Send + Sync {
 
     fn on_message(&self, _node: &NodeToken, _message: &Vec<u8>) {}
 
-    fn on_close(&self) {}
-
     fn on_timer_set_allowed(&self, _timer: TimerToken) {}
     fn on_timer_set_denied(&self, _timer: TimerToken, error: Error) {
         unreachable!("Timer set denied {:?}", error);
