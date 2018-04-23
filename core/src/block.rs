@@ -417,3 +417,23 @@ pub fn enact(
 
     Ok(b.close_and_lock())
 }
+
+#[cfg(test)]
+mod tests {
+    use ctypes::Address;
+
+    use super::super::spec::Spec;
+    use super::super::tests::helpers::get_temp_state_db;
+    use super::OpenBlock;
+
+    #[test]
+    fn open_block() {
+        let spec = Spec::new_test();
+        let genesis_header = spec.genesis_header();
+        let db = spec.ensure_db_good(get_temp_state_db(), &Default::default()).unwrap();
+        let b = OpenBlock::new(&*spec.engine, Default::default(), db, &genesis_header, Address::zero(), vec![], false)
+            .unwrap();
+        let b = b.close_and_lock();
+        let _ = b.seal(&*spec.engine, vec![]);
+    }
+}
