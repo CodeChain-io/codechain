@@ -1,6 +1,6 @@
 #!/bin/sh
 
-if [ $# -ne 1 ]; then
+if [ $# -ne 1 ] && [ $# -ne 2 ]; then
     echo "USAGE :"
     echo "    test NUM_CLIENTS [CHAIN_TYPE]"
     exit 1
@@ -29,6 +29,7 @@ run_server() {
     else
         BOOTSTRAP="--bootstrap-addresses 127.0.0.1:${CODECHAIN_PORT_START}"
     fi
+    cd ${BASE_DIR}
     cargo run -- \
         -c ${CHAIN_TYPE} \
         --db-path ${DB_DIR}/db$1 \
@@ -38,7 +39,10 @@ run_server() {
     > ${LOG_DIR}/codechain.log.$1 2>&1 &
 }
 
+echo "Building..."
 cd ${BASE_DIR}
+cargo build
+
 run_server 0
 
 echo "Waiting for startup...."
