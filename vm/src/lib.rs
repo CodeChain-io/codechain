@@ -17,4 +17,8 @@
 extern crate codechain_bytes as cbytes;
 
 mod decoder;
+mod executor;
 mod opcode;
+
+pub use decoder::{decode, DecoderError};
+pub use executor::{execute, RuntimeError, ScriptResult};
