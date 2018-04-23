@@ -86,12 +86,15 @@ impl IoHandler<Message> for Handler {
     fn timeout(&self, _io: &IoContext<Message>, token: TimerToken) -> IoHandlerResult<()> {
         match token {
             FIRST_TIMER_TOKEN...LAST_TIMER_TOKEN => {
-                let mut timer = self.timer.lock();
-                let info = timer.get_info(token).ok_or(Error::InvalidTimer(token))?;
-                if info.once {
-                    timer.remove_by_token(token);
-                }
-                self.client.on_timeout(&info.name, info.timer_id);
+                let (name, timer_id) = {
+                    let mut timer = self.timer.lock();
+                    let info = timer.get_info(token).ok_or(Error::InvalidTimer(token))?;
+                    if info.once {
+                        timer.remove_by_token(token);
+                    }
+                    (info.name, info.timer_id)
+                };
+                self.client.on_timeout(&name, timer_id);
                 Ok(())
             }
             _ => unreachable!(),

@@ -191,9 +191,10 @@ impl NetworkExtension for Extension {
 
     fn on_initialize(&self, api: Arc<Api>) {
         let kademlia = self.kademlia.read();
-        let mut api_guard = self.api.lock();
-
-        *api_guard = Some(Arc::clone(&api));
+        {
+            let mut api_guard = self.api.lock();
+            *api_guard = Some(Arc::clone(&api));
+        }
         let t_refresh = Duration::milliseconds(kademlia.t_refresh as i64);
         api.set_timer(REFRESH_TOKEN, t_refresh).expect("Refresh must be registered");
     }
