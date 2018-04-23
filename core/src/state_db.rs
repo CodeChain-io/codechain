@@ -120,8 +120,8 @@ impl StateDB {
         let account_cache_size = cache_size * ACCOUNT_CACHE_RATIO / 100;
         let account_cache_items = account_cache_size / ::std::mem::size_of::<Option<Account>>();
 
-        let asset_cache_size = cache_size * ASSET_SCHEME_CACHE_RATIO / 100;
-        let asset_cache_items = asset_cache_size / ::std::mem::size_of::<Option<AssetScheme>>();
+        let asset_scheme_cache_size = cache_size * ASSET_SCHEME_CACHE_RATIO / 100;
+        let asset_scheme_cache_items = asset_scheme_cache_size / ::std::mem::size_of::<Option<AssetScheme>>();
 
         StateDB {
             db,
@@ -130,7 +130,7 @@ impl StateDB {
                 modifications: VecDeque::new(),
             })),
             asset_scheme_cache: Arc::new(Mutex::new(Cache {
-                cache: LruCache::new(asset_cache_items),
+                cache: LruCache::new(asset_scheme_cache_items),
                 modifications: VecDeque::new(),
             })),
             local_account_cache: Vec::new(),
