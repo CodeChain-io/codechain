@@ -109,7 +109,7 @@ fn run() -> Result<(), String> {
 
             if let Some(kademlia_config) = config::parse_kademlia_config(&matches)? {
                 let kademlia = Arc::new(KademliaExtension::new(kademlia_config));
-                service.register_extension(kademlia.clone());
+                service.register_extension(kademlia.clone())?;
                 service.set_discovery_api(kademlia);
             } else {
                 service.set_discovery_api(Arc::new(SimpleDiscovery::new()));
@@ -117,12 +117,12 @@ fn run() -> Result<(), String> {
 
             if config.enable_block_sync {
                 let sync = BlockSyncExtension::new(client.client());
-                service.register_extension(sync.clone());
+                service.register_extension(sync.clone())?;
                 client.client().add_notify(sync.clone());
             }
-            service.register_extension(TransactionSyncExtension::new(client.client()));
+            service.register_extension(TransactionSyncExtension::new(client.client()))?;
             if let Some(consensus_extension) = spec.engine.network_extension() {
-                service.register_extension(consensus_extension);
+                service.register_extension(consensus_extension)?;
             }
 
             for address in network_config.bootstrap_addresses {
