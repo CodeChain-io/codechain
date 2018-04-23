@@ -46,7 +46,15 @@ cargo build
 run_server 0
 
 echo "Waiting for startup...."
-tail -f ${LOG_DIR}/codechain.log.0 | grep -qm 1 "TCP connection starts for"
+
+if [ -x /usr/bin/expect ]; then
+    /usr/bin/expect <<EOD
+spawn tail -f ${LOG_DIR}/codechain.log.0
+expect "TCP connection starts for"
+EOD
+else
+    tail -f ${LOG_DIR}/codechain.log.0 | grep -qm 1 "TCP connection starts for"
+fi
 
 for i in `seq 1 $((${NUM_CLIENTS} - 1))`; do
     run_server $i
