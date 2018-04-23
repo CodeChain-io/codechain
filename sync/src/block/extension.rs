@@ -347,9 +347,7 @@ impl Extension {
 
         // Create next message for peer
         let request = {
-            let total_score = self.client
-                .block_total_score(BlockId::Hash(self.manager.lock().best_hash()))
-                .expect("Best block of download manager must exist in chain");
+            let total_score = self.client.chain_info().total_score;
             let peer = self.peers.read().get(from).cloned();
             match peer {
                 Some(p) => {
