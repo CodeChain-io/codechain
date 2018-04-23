@@ -25,7 +25,7 @@ use std::sync::{Arc, Weak};
 use cbytes::Bytes;
 use ccrypto::blake256;
 use ckeys::{public_to_address, recover_ecdsa};
-use ckeys::{ECDSASignature, Message, Private};
+use ckeys::{ECDSASignature, Message};
 use cnetwork::{Api, NetworkExtension, NodeToken, TimerToken};
 use ctypes::{Address, H256, H520, U128, U256};
 use parking_lot::{Mutex, RwLock};
@@ -36,6 +36,7 @@ use unexpected::{Mismatch, OutOfBounds};
 
 use self::message::*;
 pub use self::params::{TendermintParams, TendermintTimeouts};
+use super::super::account_provider::AccountProvider;
 use super::super::block::*;
 use super::super::client::EngineClient;
 use super::super::codechain_machine::CodeChainMachine;
@@ -686,9 +687,9 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
         header.set_score(new_score);
     }
 
-    fn set_signer(&self, address: Address, private: Private) {
+    fn set_signer(&self, ap: Arc<AccountProvider>, address: Address) {
         {
-            self.signer.write().set(address, private);
+            self.signer.write().set(ap, address);
         }
         self.to_step(Step::Propose);
     }

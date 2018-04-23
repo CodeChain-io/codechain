@@ -19,10 +19,10 @@ mod miner;
 mod transaction_queue;
 
 use cbytes::Bytes;
-use ckeys::Private;
 use ctypes::{Address, H256, U256};
 
 pub use self::miner::{Miner, MinerOptions};
+use super::account_provider::SignError;
 use super::client::{AccountData, BlockChain, BlockProducer, MiningBlockChainClient, SealedBlockImporter};
 use super::error::Error;
 use super::state::StateInfo;
@@ -49,7 +49,7 @@ pub trait MinerService: Send + Sync {
     fn set_extra_data(&self, extra_data: Bytes);
 
     /// Set info necessary to sign consensus messages.
-    fn set_engine_signer(&self, address: Address, private: Private);
+    fn set_engine_signer(&self, address: Address) -> Result<(), SignError>;
 
     /// Get current minimal fee for transactions accepted to queue.
     fn minimal_fee(&self) -> U256;

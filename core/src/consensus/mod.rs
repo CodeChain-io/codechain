@@ -34,12 +34,13 @@ use std::fmt;
 use std::sync::{Arc, Weak};
 
 use cbytes::Bytes;
-use ckeys::{ECDSASignature, Private};
+use ckeys::ECDSASignature;
 use cnetwork::NetworkExtension;
 use ctypes::{Address, H256};
 use unexpected::{Mismatch, OutOfBounds};
 
 use self::epoch::{EpochVerifier, NoOp, PendingTransition};
+use super::account_provider::AccountProvider;
 use super::codechain_machine::CodeChainMachine;
 use super::error::Error;
 use super::header::Header;
@@ -196,7 +197,7 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
     }
 
     /// Register an account which signs consensus messages.
-    fn set_signer(&self, _address: Address, _private: Private) {}
+    fn set_signer(&self, _ap: Arc<AccountProvider>, _address: Address) {}
 
     /// Sign using the EngineSigner, to be used for consensus tx signing.
     fn sign(&self, _hash: H256) -> Result<ECDSASignature, Error> {

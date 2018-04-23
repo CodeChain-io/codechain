@@ -14,39 +14,39 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ckeys::{sign_ecdsa, ECDSASignature, Error as KeyError, Private};
+use std::sync::Arc;
+
+use ckeys::ECDSASignature;
 use ctypes::{Address, H256};
+
+use super::super::account_provider::{AccountProvider, SignError};
 
 /// Everything that an Engine needs to sign messages.
 pub struct EngineSigner {
+    account_provider: Arc<AccountProvider>,
     address: Option<Address>,
-    private: Option<Private>,
 }
 
 impl Default for EngineSigner {
     fn default() -> Self {
         EngineSigner {
+            account_provider: Arc::new(AccountProvider::new()),
             address: Default::default(),
-            private: Default::default(),
         }
     }
 }
 
 impl EngineSigner {
     /// Set up the signer to sign with given address and password.
-    pub fn set(&mut self, address: Address, private: Private) {
+    pub fn set(&mut self, ap: Arc<AccountProvider>, address: Address) {
+        self.account_provider = ap;
         self.address = Some(address);
-        self.private = Some(private);
         debug!(target: "poa", "Setting Engine signer to {}", address);
     }
 
     /// Sign a consensus message hash.
-    pub fn sign(&self, hash: H256) -> Result<ECDSASignature, KeyError> {
-        if let Some(ref p) = self.private {
-            sign_ecdsa(&p, &hash)
-        } else {
-            Err(KeyError::InvalidPrivate)
-        }
+    pub fn sign(&self, hash: H256) -> Result<ECDSASignature, SignError> {
+        self.account_provider.sign(self.address.unwrap_or_else(Default::default), hash)
     }
 
     /// Signing address.

@@ -87,7 +87,8 @@ fn run() -> Result<(), String> {
     let log_config = LogConfig::default();
     let _logger = setup_log(&log_config).expect("Logger is initialized only once; qed");
 
-    let miner = Miner::new(MinerOptions::default(), &spec);
+    // FIXME: Create an AccountProvider.
+    let miner = Miner::new(MinerOptions::default(), &spec, None);
     let client = commands::client_start(&config, &spec, miner.clone())?;
 
     let rpc_apis_deps = Arc::new(rpc_apis::ApiDependencies {

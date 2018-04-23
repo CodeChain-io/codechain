@@ -17,11 +17,12 @@
 use std::sync::{Arc, Weak};
 
 use cjson;
-use ckeys::{public_to_address, recover_ecdsa, ECDSASignature, Private};
+use ckeys::{public_to_address, recover_ecdsa, ECDSASignature};
 use cnetwork::{Api, NetworkExtension};
 use ctypes::{Address, H256, H520};
 use parking_lot::RwLock;
 
+use super::super::account_provider::AccountProvider;
 use super::super::block::{ExecutedBlock, IsBlock};
 use super::super::client::EngineClient;
 use super::super::codechain_machine::CodeChainMachine;
@@ -184,8 +185,8 @@ impl ConsensusEngine<CodeChainMachine> for SoloAuthority {
     }
 
     /// Register an account which signs consensus messages.
-    fn set_signer(&self, address: Address, private: Private) {
-        self.signer.write().set(address, private);
+    fn set_signer(&self, ap: Arc<AccountProvider>, address: Address) {
+        self.signer.write().set(ap, address);
     }
 
     fn sign(&self, hash: H256) -> Result<ECDSASignature, Error> {

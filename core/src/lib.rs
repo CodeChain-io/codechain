@@ -52,6 +52,7 @@ extern crate util_error;
 #[macro_use]
 extern crate log;
 
+mod account_provider;
 mod block;
 mod blockchain;
 mod blockchain_info;

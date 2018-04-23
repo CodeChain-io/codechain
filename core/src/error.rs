@@ -23,6 +23,7 @@ use trie::TrieError;
 use unexpected::{Mismatch, OutOfBounds};
 use util_error::UtilError;
 
+use super::account_provider::SignError as AccountsError;
 use super::client::Error as ClientError;
 use super::consensus::EngineError;
 use super::transaction::TransactionError;
@@ -162,6 +163,8 @@ pub enum Error {
     PowHashInvalid,
     /// The value of the nonce or mishash is invalid.
     PowInvalid,
+    /// Account Provider error.
+    AccountProvider(AccountsError),
 }
 
 impl fmt::Display for Error {
@@ -178,6 +181,7 @@ impl fmt::Display for Error {
             Error::Trie(ref err) => err.fmt(f),
             Error::PowHashInvalid => f.write_str("Invalid or out of date PoW hash."),
             Error::PowInvalid => f.write_str("Invalid nonce or mishash"),
+            Error::AccountProvider(ref err) => err.fmt(f),
         }
     }
 }
@@ -258,5 +262,11 @@ where
 {
     fn from(err: Box<E>) -> Self {
         Error::from(*err)
+    }
+}
+
+impl From<AccountsError> for Error {
+    fn from(err: AccountsError) -> Error {
+        Error::AccountProvider(err)
     }
 }

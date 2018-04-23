@@ -19,10 +19,10 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use cbytes::Bytes;
-use ckeys::Private;
 use ctypes::{Address, H256, U256};
 use parking_lot::{Mutex, RwLock};
 
+use super::super::account_provider::{AccountProvider, SignError};
 use super::super::block::{ClosedBlock, IsBlock};
 use super::super::client::{AccountData, BlockChain, BlockProducer, MiningBlockChainClient, SealedBlockImporter};
 use super::super::consensus::{CodeChainEngine, Seal};
@@ -91,18 +91,19 @@ pub struct Miner {
     sealing_queue: Mutex<SealingQueue>,
     engine: Arc<CodeChainEngine>,
     options: MinerOptions,
+    accounts: Option<Arc<AccountProvider>>,
 }
 
 impl Miner {
-    pub fn new(options: MinerOptions, spec: &Spec) -> Arc<Self> {
-        Arc::new(Self::new_raw(options, spec))
+    pub fn new(options: MinerOptions, spec: &Spec, accounts: Option<Arc<AccountProvider>>) -> Arc<Self> {
+        Arc::new(Self::new_raw(options, spec, accounts))
     }
 
     pub fn with_spec(spec: &Spec) -> Self {
-        Self::new_raw(Default::default(), spec)
+        Self::new_raw(Default::default(), spec, None)
     }
 
-    fn new_raw(options: MinerOptions, spec: &Spec) -> Self {
+    fn new_raw(options: MinerOptions, spec: &Spec, accounts: Option<Arc<AccountProvider>>) -> Self {
         let mem_limit = options.tx_queue_memory_limit.unwrap_or_else(usize::max_value);
         let txq = TransactionQueue::with_limits(options.tx_queue_size, mem_limit);
         Self {
@@ -113,6 +114,7 @@ impl Miner {
             sealing_queue: Mutex::new(SealingQueue::new()),
             engine: spec.engine.clone(),
             options,
+            accounts,
         }
     }
 
@@ -328,9 +330,18 @@ impl MinerService for Miner {
         *self.extra_data.write() = extra_data;
     }
 
-    fn set_engine_signer(&self, address: Address, private: Private) {
+    fn set_engine_signer(&self, address: Address) -> Result<(), SignError> {
         if self.engine.seals_internally().is_some() {
-            self.engine.set_signer(address, private)
+            if let Some(ref ap) = self.accounts {
+                self.engine.set_signer(ap.clone(), address);
+                Ok(())
+            } else {
+                warn!(target: "miner", "No account provider");
+                Err(SignError::NotFound)
+            }
+        } else {
+            warn!(target: "miner", "Cannot set engine signer on a PoW chain.");
+            Err(SignError::InappropriateChain)
         }
     }
 
