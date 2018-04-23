@@ -150,7 +150,7 @@ impl StateDB {
     /// should be called after the block has been committed and the
     /// blockchain route has ben calculated.
     pub fn sync_cache(&mut self, enacted: &[H256], retracted: &[H256], is_best: bool) {
-        trace!(
+        trace!(target: "state_db",
             "sync_cache id = (#{:?}, {:?}), parent={:?}, best={}",
             self.commit_number,
             self.commit_hash,
@@ -166,10 +166,10 @@ impl StateDB {
         for block in enacted.iter().filter(|h| self.commit_hash.as_ref().map_or(true, |p| *h != p)) {
             clear = clear || {
                 if let Some(ref mut m) = cache.modifications.iter_mut().find(|m| &m.hash == block) {
-                    trace!("Reverting enacted block {:?}", block);
+                    trace!(target: "state_db", "Reverting enacted block {:?}", block);
                     m.is_canon = true;
                     for a in &m.accounts {
-                        trace!("Reverting enacted address {:?}", a);
+                        trace!(target: "state_db", "Reverting enacted address {:?}", a);
                         cache.accounts.remove(a);
                     }
                     false
@@ -182,10 +182,10 @@ impl StateDB {
         for block in retracted {
             clear = clear || {
                 if let Some(ref mut m) = cache.modifications.iter_mut().find(|m| &m.hash == block) {
-                    trace!("Retracting block {:?}", block);
+                    trace!(target: "state_db", "Retracting block {:?}", block);
                     m.is_canon = false;
                     for a in &m.accounts {
-                        trace!("Retracted address {:?}", a);
+                        trace!(target: "state_db", "Retracted address {:?}", a);
                         cache.accounts.remove(a);
                     }
                     false
@@ -196,7 +196,7 @@ impl StateDB {
         }
         if clear {
             // We don't know anything about the block; clear everything
-            trace!("Wiping cache");
+            trace!(target: "state_db", "Wiping cache");
             cache.accounts.clear();
             cache.modifications.clear();
         }
@@ -211,7 +211,7 @@ impl StateDB {
                 cache.modifications.pop_back();
             }
             let mut modifications = HashSet::new();
-            trace!("committing {} cache entries", self.local_cache.len());
+            trace!(target: "state_db", "committing {} cache entries", self.local_cache.len());
             for account in self.local_cache.drain(..) {
                 if account.modified {
                     modifications.insert(account.address.clone());
@@ -239,7 +239,7 @@ impl StateDB {
                 parent: parent.clone(),
             };
             let insert_at = cache.modifications.iter().enumerate().find(|&(_, m)| m.number < *number).map(|(i, _)| i);
-            trace!("inserting modifications at {:?}", insert_at);
+            trace!(target: "state_db", "inserting modifications at {:?}", insert_at);
             if let Some(insert_at) = insert_at {
                 cache.modifications.insert(insert_at, block_changes);
             } else {
@@ -306,7 +306,7 @@ impl StateDB {
     fn is_allowed(addr: &Address, parent_hash: &Option<H256>, modifications: &VecDeque<BlockChanges>) -> bool {
         let mut parent = match *parent_hash {
             None => {
-                trace!("Cache lookup skipped for {:?}: no parent hash", addr);
+                trace!(target: "state_db", "Cache lookup skipped for {:?}: no parent hash", addr);
                 return false
             }
             Some(ref parent) => parent,
@@ -327,11 +327,11 @@ impl StateDB {
                 parent = &m.parent;
             }
             if m.accounts.contains(addr) {
-                trace!("Cache lookup skipped for {:?}: modified in a later block", addr);
+                trace!(target: "state_db", "Cache lookup skipped for {:?}: modified in a later block", addr);
                 return false
             }
         }
-        trace!("Cache lookup skipped for {:?}: parent hash is unknown", addr);
+        trace!(target: "state_db", "Cache lookup skipped for {:?}: parent hash is unknown", addr);
         false
     }
 }
