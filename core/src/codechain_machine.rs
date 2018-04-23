@@ -78,6 +78,12 @@ impl CodeChainMachine {
     pub fn account_start_nonce(&self) -> U256 {
         self.params.account_start_nonce
     }
+
+    /// Populate a header's fields based on its parent's header.
+    /// Usually implements the chain scoring rule based on weight.
+    pub fn populate_from_parent(&self, header: &mut Header, parent: &Header) {
+        header.set_score(parent.score().clone());
+    }
 }
 
 impl ::machine::Machine for CodeChainMachine {

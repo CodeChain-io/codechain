@@ -142,6 +142,9 @@ impl<'x> OpenBlock<'x> {
         r.block.header.set_extra_data(extra_data);
         r.block.header.note_dirty();
 
+        engine.machine().populate_from_parent(&mut r.block.header, parent);
+        engine.populate_from_parent(&mut r.block.header, parent);
+
         engine.on_new_block(&mut r.block, is_epoch_begin)?;
 
         Ok(r)
