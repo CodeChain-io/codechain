@@ -1,0 +1,9 @@
+[package]
+name = "codechain-vm"
+version = "0.1.0"
+authors = ["CodeChain Team <codechain@kodebox.io>"]
+
+[lib]
+
+[dependencies]
+codechain-bytes = { path = "../util/bytes" }

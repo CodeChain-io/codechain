@@ -189,6 +189,7 @@ dependencies = [
  "codechain-rpc 0.1.0",
  "codechain-sync 0.1.0",
  "codechain-types 0.2.0",
+ "codechain-vm 0.1.0",
  "ctrlc 1.1.1 (git+https://github.com/paritytech/rust-ctrlc.git)",
  "env_logger 0.5.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "fdlimit 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -438,6 +439,13 @@ version = "0.2.0"
 dependencies = [
  "rustc-hex 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.38 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "codechain-vm"
+version = "0.1.0"
+dependencies = [
+ "codechain-bytes 0.1.0",
 ]
 
 [[package]]
