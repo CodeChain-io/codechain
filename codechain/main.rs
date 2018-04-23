@@ -45,10 +45,9 @@ mod rpc_apis;
 use std::sync::Arc;
 
 use app_dirs::AppInfo;
-use ccore::{ChainNotify, Miner, MinerOptions};
+use ccore::{Miner, MinerOptions};
 use cdiscovery::{KademliaExtension, SimpleDiscovery};
 use clogger::{setup_log, Config as LogConfig};
-use cnetwork::NetworkExtension;
 use creactor::EventLoop;
 use csync::{BlockSyncExtension, TransactionSyncExtension};
 use ctrlc::CtrlC;
