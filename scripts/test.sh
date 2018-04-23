@@ -35,7 +35,7 @@ run_server() {
         --port $((${CODECHAIN_PORT_START} + $1)) \
         --jsonrpc-port $((${RPC_PORT_START} + $1)) \
         ${BOOTSTRAP} \
-    &> ${LOG_DIR}/codechain.log.$1 &
+    > ${LOG_DIR}/codechain.log.$1 2>&1 &
 }
 
 cd ${BASE_DIR}
