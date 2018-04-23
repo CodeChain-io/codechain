@@ -299,6 +299,16 @@ impl BlockChain {
 
     /// Prepares extras update.
     fn prepare_update(&self, batch: &mut DBTransaction, update: ExtrasUpdate, is_best: bool) {
+        {
+            let mut write_invoices = self.block_invoices.write();
+            batch.extend_with_cache(
+                db::COL_EXTRA,
+                &mut *write_invoices,
+                update.block_invoices,
+                CacheUpdatePolicy::Remove,
+            );
+        }
+
         // These cached values must be updated last with all four locks taken to avoid
         // cache decoherence
         {
