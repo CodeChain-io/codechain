@@ -110,12 +110,54 @@ impl Stream {
         Ok(self.write_bytes(&bytes)?)
     }
 
+    fn read_len_of_len(&mut self, mut bytes: Vec<u8>) -> io::Result<(usize, Vec<u8>)> {
+        debug_assert_eq!(1, bytes.len());
+        debug_assert!(bytes[0] >= 0xf7);
+        let len_of_len = (bytes[0] - 0xf7) as usize;
+        debug_assert!(len_of_len <= 8);
+        bytes.resize(1 + len_of_len, 0);
+
+        if let Some(read_size) = self.stream.try_read(&mut bytes[1..(1 + len_of_len)])? {
+            debug_assert_eq!(len_of_len, read_size);
+            let mut total_length: usize = 0;
+            for i in &bytes[1..(1 + len_of_len)] {
+                total_length <<= 8;
+                total_length |= *i as usize;
+            }
+            return Ok((total_length, bytes))
+        }
+        Ok((0, bytes))
+    }
+
+    fn read_len(&mut self) -> io::Result<(usize, Vec<u8>)> {
+        let mut bytes: Vec<u8> = vec![0];
+
+        if let Some(read_size) = self.stream.try_read(&mut bytes)? {
+            debug_assert_eq!(1, read_size);
+            if bytes[0] >= 0xf7 {
+                return self.read_len_of_len(bytes)
+            }
+            if bytes[0] >= 0xc0 {
+                return Ok(((bytes[0] - 0xc0) as usize, bytes))
+            }
+            return Ok((0, vec![]))
+        }
+        return Ok((0, vec![]))
+    }
+
     fn read_bytes(&mut self) -> io::Result<Vec<u8>> {
-        let mut result: Vec<u8> = Vec::new();
+        let (mut total_length, mut result) = self.read_len()?;
         let mut bytes: [u8; 1024] = [0; 1024];
+
         loop {
-            if let Some(read_size) = self.stream.try_read(&mut bytes)? {
+            if total_length == 0 {
+                break
+            }
+            let to_be_read = ::std::cmp::min(total_length, 1024);
+            if let Some(read_size) = self.stream.try_read(&mut bytes[0..to_be_read])? {
                 result.extend_from_slice(&bytes[..read_size]);
+                debug_assert!(total_length >= read_size);
+                total_length -= read_size;
             } else {
                 break
             }
