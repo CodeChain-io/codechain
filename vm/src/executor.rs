@@ -14,6 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use ccrypto::blake256;
+use ckeys::{verify_ecdsa, ECDSASignature};
+use ctypes::{H520, Public};
+
 use opcode::OpCode;
 
 const DEFAULT_MAX_MEMORY: usize = 1024;
@@ -39,6 +43,7 @@ pub enum ScriptResult {
 pub enum RuntimeError {
     OutOfMemory,
     StackUnderflow,
+    TypeMismatch,
     InvalidResult,
 }
 
@@ -89,6 +94,15 @@ impl Stack {
         item.ok_or(RuntimeError::StackUnderflow)
     }
 
+    fn pop_blob(&mut self, len: usize) -> Result<Vec<u8>, RuntimeError> {
+        if let Item::Blob(blob) = self.pop()? {
+            if blob.len() == len {
+                return Ok(blob)
+            }
+        }
+        Err(RuntimeError::TypeMismatch)
+    }
+
     fn len(&self) -> usize {
         self.stack.len()
     }
@@ -105,7 +119,17 @@ pub fn execute(script: &[OpCode], config: Config) -> Result<ScriptResult, Runtim
             OpCode::Pop => {
                 stack.pop()?;
             }
-            OpCode::ChkSig => unimplemented!(),
+            OpCode::ChkSig => {
+                let pubkey = Public::from_slice(stack.pop_blob(64)?.as_slice());
+                let signature = ECDSASignature::from(H520::from(stack.pop_blob(65)?.as_slice()));
+                // FIXME : Use transaction as message
+                let message = blake256("codechain");
+                let result = match verify_ecdsa(&pubkey, &signature, &message) {
+                    Ok(true) => 1,
+                    _ => 0,
+                };
+                stack.push(Item::Integer(result))?;
+            }
         }
         pc += 1;
     }
