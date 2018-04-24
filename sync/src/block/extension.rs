@@ -21,7 +21,6 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Instant;
 
-use cbytes::Bytes;
 use ccore::{BlockChainClient, BlockId, BlockImportError, BlockNumber, ChainNotify, ImportError, Seal};
 use cnetwork::{Api, NetworkExtension, NodeToken, TimerToken};
 use ctypes::{H256, U256};
@@ -217,7 +216,6 @@ impl ChainNotify for Extension {
         _enacted: Vec<H256>,
         retracted: Vec<H256>,
         _sealed: Vec<H256>,
-        _proposed: Vec<Bytes>,
         _duration: u64,
     ) {
         if retracted.len() != 0 {

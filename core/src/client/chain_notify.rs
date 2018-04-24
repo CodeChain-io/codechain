@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use cbytes::Bytes;
 use ctypes::H256;
 
 /// Represents what has to be handled by actor listening to chain events
@@ -27,8 +26,6 @@ pub trait ChainNotify: Send + Sync {
         _enacted: Vec<H256>,
         _retracted: Vec<H256>,
         _sealed: Vec<H256>,
-        // Block bytes.
-        _proposed: Vec<Bytes>,
         _duration: u64,
     ) {
         // does nothing by default

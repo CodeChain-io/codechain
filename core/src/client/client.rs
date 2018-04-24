@@ -397,10 +397,9 @@ impl Importer {
     /// This is triggered by a message coming from a block queue when the block is ready for insertion
     pub fn import_verified_blocks(&self, client: &Client) -> usize {
         let max_blocks_to_import = 4;
-        let (imported_blocks, import_results, invalid_blocks, imported, proposed_blocks, duration, is_empty) = {
+        let (imported_blocks, import_results, invalid_blocks, imported, duration, is_empty) = {
             let mut imported_blocks = Vec::with_capacity(max_blocks_to_import);
             let mut invalid_blocks = HashSet::new();
-            let mut proposed_blocks = Vec::with_capacity(max_blocks_to_import);
             let mut import_results = Vec::with_capacity(max_blocks_to_import);
 
             let _import_lock = self.import_lock.lock();
@@ -420,7 +419,6 @@ impl Importer {
                 if let Ok(closed_block) = self.check_and_close_block(&block, client) {
                     if self.engine.is_proposal(&block.header) {
                         self.block_queue.mark_as_good(&[header.hash()]);
-                        proposed_blocks.push(block.bytes);
                     } else {
                         imported_blocks.push(header.hash());
 
@@ -443,7 +441,7 @@ impl Importer {
                 let elapsed = start.elapsed();
                 elapsed.as_secs() * 1_000_000_000 + elapsed.subsec_nanos() as u64
             };
-            (imported_blocks, import_results, invalid_blocks, imported, proposed_blocks, duration_ns, is_empty)
+            (imported_blocks, import_results, invalid_blocks, imported, duration_ns, is_empty)
         };
 
         {
@@ -461,7 +459,6 @@ impl Importer {
                         enacted.clone(),
                         retracted.clone(),
                         Vec::new(),
-                        proposed_blocks.clone(),
                         duration,
                     );
                 });
@@ -703,9 +700,7 @@ impl SealedBlockImporter for Client {}
 
 impl BroadcastProposalBlock for Client {
     fn broadcast_proposal_block(&self, block: SealedBlock) {
-        self.notify(|notify| {
-            notify.new_blocks(vec![], vec![], vec![], vec![], vec![], vec![block.rlp_bytes()], 0);
-        });
+        unimplemented!();
     }
 }
 
@@ -729,7 +724,7 @@ impl ImportSealedBlock for Client {
         let (enacted, retracted) = self.importer.calculate_enacted_retracted(&[route]);
         self.importer.miner.chain_new_blocks(self, &[h.clone()], &[], &enacted, &retracted);
         self.notify(|notify| {
-            notify.new_blocks(vec![h.clone()], vec![], enacted.clone(), retracted.clone(), vec![h.clone()], vec![], {
+            notify.new_blocks(vec![h.clone()], vec![], enacted.clone(), retracted.clone(), vec![h.clone()], {
                 let elapsed = start.elapsed();
                 elapsed.as_secs() * 1_000_000_000 + elapsed.subsec_nanos() as u64
             });
