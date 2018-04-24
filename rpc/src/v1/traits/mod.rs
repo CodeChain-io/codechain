@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ccore::Invoice;
+use ccore::{AssetScheme, Invoice};
 use ctypes::H256;
 
 use jsonrpc_core::Result;
@@ -30,5 +30,9 @@ build_rpc_trait! {
         /// Gets transaction invoice with given hash.
         # [rpc(name = "chain_getTransactionInvoice")]
         fn get_transaction_invoice(&self, H256) -> Result<Option<Invoice>>;
+
+        /// Gets asset scheme with given asset type.
+        # [rpc(name = "chain_getAssetScheme")]
+        fn get_asset_scheme(&self, H256) -> Result<Option<AssetScheme>>;
     }
 }

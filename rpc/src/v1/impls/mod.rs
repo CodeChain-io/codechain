@@ -16,7 +16,9 @@
 
 use std::sync::Arc;
 
-use ccore::{BlockChainClient, Client, Invoice, Miner, MinerService, SignedTransaction};
+use ccore::{
+    AssetScheme, AssetSchemeAddress, BlockChainClient, BlockId, Client, Invoice, Miner, MinerService, SignedTransaction,
+};
 use ctypes::H256;
 use rlp::UntrustedRlp;
 
@@ -58,5 +60,13 @@ impl Chain for ChainClient {
 
     fn get_transaction_invoice(&self, hash: H256) -> Result<Option<Invoice>> {
         Ok(self.client.transaction_invoice(hash.into()))
+    }
+
+    fn get_asset_scheme(&self, hash: H256) -> Result<Option<AssetScheme>> {
+        if let Some(state) = self.client.state_at(BlockId::Latest) {
+            Ok(state.asset_scheme(&AssetSchemeAddress::from(hash)).map_err(errors::transaction)?)
+        } else {
+            Ok(None)
+        }
     }
 }

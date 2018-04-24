@@ -102,6 +102,15 @@ fn handle_command(rpc: &mut RpcClient, name: &Value, data: &Value) -> Result<(),
             println!("Address: {:?}", keypair.address());
             Ok(())
         }
+        "chain_getAssetScheme" => {
+            let asset_type = get_h256(&data["asset_type"])?;
+            rpc.get_asset_scheme(asset_type)
+                .map(|message| {
+                    println!("{:?}", message);
+                    ()
+                })
+                .map_err(|e| CommandError::RpcError(e))
+        }
         "chain_sendSignedTransaction" => {
             let t = get_unverified_transaction(data)?;
             rpc.send_signed_transaction(t)

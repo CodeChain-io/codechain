@@ -208,6 +208,9 @@ pub trait StateInfo {
 
     /// Get the regular key of account `a`.
     fn regular_key(&self, a: &Address) -> trie::Result<Option<Public>>;
+
+    /// Get the asset.
+    fn asset_scheme(&self, a: &AssetSchemeAddress) -> trie::Result<Option<AssetScheme>>;
 }
 
 impl<B: Backend> StateInfo for State<B> {
@@ -219,6 +222,10 @@ impl<B: Backend> StateInfo for State<B> {
     }
     fn regular_key(&self, a: &Address) -> trie::Result<Option<Public>> {
         State::regular_key(self, a)
+    }
+
+    fn asset_scheme(&self, a: &AssetSchemeAddress) -> trie::Result<Option<AssetScheme>> {
+        State::asset_scheme(self, a)
     }
 }
 
@@ -434,6 +441,21 @@ impl<B: Backend> State<B> {
     /// Get the regular key of account `a`.
     pub fn regular_key(&self, a: &Address) -> trie::Result<Option<Public>> {
         self.ensure_account_cached(a, |a| a.as_ref().map_or(None, |account| account.regular_key()))
+    }
+
+    pub fn asset_scheme(&self, a: &AssetSchemeAddress) -> trie::Result<Option<AssetScheme>> {
+        let cached_asset = self.db.get_cached_asset_scheme(&a).and_then(|asset| asset);
+        if cached_asset.is_some() {
+            return Ok(cached_asset)
+        }
+
+        // because of lexical borrow of self.db
+        let db = self.trie_factory.readonly(self.db.as_hashdb(), &self.root)?;
+        if let Some(r) = db.get_with(&a, AssetScheme::from_rlp)? {
+            Ok(Some(r))
+        } else {
+            return Ok(None)
+        }
     }
 
     /// Add `incr` to the balance of account `a`.
