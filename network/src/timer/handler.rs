@@ -128,8 +128,9 @@ impl IoHandler<Message> for Handler {
                 timer_id,
             } => {
                 let mut timer = self.timer.lock();
-                let token = timer.remove_by_info(extension_name.clone(), timer_id).expect("Unexpected timer id");
-                io.clear_timer(token)?;
+                if let Some(token) = timer.remove_by_info(extension_name.clone(), timer_id) {
+                    io.clear_timer(token)?;
+                }
                 Ok(())
             }
             Message::LocalMessage {

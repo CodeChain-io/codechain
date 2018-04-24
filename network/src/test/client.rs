@@ -106,10 +106,9 @@ impl Api for TestApi {
 
     fn clear_timer(&self, token: TimerToken) -> Result<()> {
         let mut timers = self.timers.lock();
-        if !timers.contains_key(&token) {
-            panic!("Tried to clear unregistered timer of token #{}", token);
+        if timers.contains_key(&token) {
+            timers.remove(&token);
         }
-        timers.remove(&token);
         self.calls.lock().push_back(Call::ClearTimer(token));
         Ok(())
     }
