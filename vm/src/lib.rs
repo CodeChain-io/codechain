@@ -15,6 +15,9 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 extern crate codechain_bytes as cbytes;
+extern crate codechain_crypto as ccrypto;
+extern crate codechain_keys as ckeys;
+extern crate codechain_types as ctypes;
 
 mod decoder;
 mod executor;
