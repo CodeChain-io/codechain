@@ -37,10 +37,13 @@ use super::state_db::StateDB;
 use super::transaction::TransactionError;
 
 mod account;
+mod asset;
 mod asset_scheme;
+
 pub mod backend;
 
 pub use self::account::Account;
+pub use self::asset::{Asset, AssetAddress};
 pub use self::asset_scheme::{AssetScheme, AssetSchemeAddress};
 pub use self::backend::Backend;
 
