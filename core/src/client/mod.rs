@@ -183,12 +183,6 @@ pub trait ImportSealedBlock {
     fn import_sealed_block(&self, block: SealedBlock) -> ImportResult;
 }
 
-/// Provides `broadcast_proposal_block` method
-pub trait BroadcastProposalBlock {
-    /// Broadcast a block proposal.
-    fn broadcast_proposal_block(&self, block: SealedBlock);
-}
-
 /// Provides `reopen_block` method
 pub trait ReopenBlock {
     /// Reopens an OpenBlock and updates uncles.
@@ -204,8 +198,5 @@ pub trait PrepareOpenBlock {
 /// Provides methods used for sealing new state
 pub trait BlockProducer: PrepareOpenBlock + ReopenBlock {}
 
-/// Provides methods to import sealed block and broadcast a block proposal
-pub trait SealedBlockImporter: ImportSealedBlock + BroadcastProposalBlock {}
-
 /// Extended client interface used for mining
-pub trait MiningBlockChainClient: BlockChainClient + BlockProducer + SealedBlockImporter {}
+pub trait MiningBlockChainClient: BlockChainClient + BlockProducer + ImportSealedBlock {}

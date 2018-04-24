@@ -41,6 +41,7 @@ use unexpected::{Mismatch, OutOfBounds};
 
 use self::epoch::{EpochVerifier, NoOp, PendingTransition};
 use super::account_provider::AccountProvider;
+use super::block::SealedBlock;
 use super::codechain_machine::CodeChainMachine;
 use super::error::Error;
 use super::header::Header;
@@ -195,6 +196,9 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
     fn is_proposal(&self, _verified_header: &M::Header) -> bool {
         false
     }
+
+    /// Broadcast a block proposal.
+    fn broadcast_proposal_block(&self, _block: SealedBlock) {}
 
     /// Register an account which signs consensus messages.
     fn set_signer(&self, _ap: Arc<AccountProvider>, _address: Address) {}

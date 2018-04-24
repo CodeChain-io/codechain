@@ -47,9 +47,9 @@ use super::super::verification::{self, PreverifiedBlock, Verifier};
 use super::super::views::BlockView;
 use super::{
     AccountData, Balance, BlockChain as BlockChainTrait, BlockChainClient, BlockChainInfo, BlockInfo, BlockProducer,
-    BroadcastProposalBlock, ChainInfo, ChainNotify, ClientConfig, EngineClient, Error as ClientError, ImportBlock,
-    ImportResult, ImportSealedBlock, Invoice, MiningBlockChainClient, Nonce, PrepareOpenBlock, ReopenBlock,
-    SealedBlockImporter, StateOrBlock, TransactionInfo,
+    ChainInfo, ChainNotify, ClientConfig, EngineClient, Error as ClientError, ImportBlock, ImportResult,
+    ImportSealedBlock, Invoice, MiningBlockChainClient, Nonce, PrepareOpenBlock, ReopenBlock, StateOrBlock,
+    TransactionInfo,
 };
 
 const MAX_TX_QUEUE_SIZE: usize = 4096;
@@ -695,14 +695,6 @@ impl PrepareOpenBlock for Client {
 }
 
 impl BlockProducer for Client {}
-
-impl SealedBlockImporter for Client {}
-
-impl BroadcastProposalBlock for Client {
-    fn broadcast_proposal_block(&self, block: SealedBlock) {
-        unimplemented!();
-    }
-}
 
 impl ImportSealedBlock for Client {
     fn import_sealed_block(&self, block: SealedBlock) -> ImportResult {

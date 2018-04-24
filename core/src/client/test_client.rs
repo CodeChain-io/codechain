@@ -48,9 +48,9 @@ use super::super::block::{ClosedBlock, OpenBlock, SealedBlock};
 use super::super::blockchain_info::BlockChainInfo;
 use super::super::client::ImportResult;
 use super::super::client::{
-    AccountData, Balance, BlockChain, BlockChainClient, BlockInfo, BlockProducer, BlockStatus, BroadcastProposalBlock,
-    ChainInfo, ImportBlock, ImportSealedBlock, Invoice, MiningBlockChainClient, Nonce, PrepareOpenBlock, ReopenBlock,
-    SealedBlockImporter, StateOrBlock, TransactionInfo,
+    AccountData, Balance, BlockChain, BlockChainClient, BlockInfo, BlockProducer, BlockStatus, ChainInfo, ImportBlock,
+    ImportSealedBlock, Invoice, MiningBlockChainClient, Nonce, PrepareOpenBlock, ReopenBlock, StateOrBlock,
+    TransactionInfo,
 };
 use super::super::db::{COL_STATE, NUM_COLUMNS};
 use super::super::encoded;
@@ -318,12 +318,6 @@ impl ImportSealedBlock for TestBlockChainClient {
 }
 
 impl BlockProducer for TestBlockChainClient {}
-
-impl BroadcastProposalBlock for TestBlockChainClient {
-    fn broadcast_proposal_block(&self, _block: SealedBlock) {}
-}
-
-impl SealedBlockImporter for TestBlockChainClient {}
 
 impl MiningBlockChainClient for TestBlockChainClient {}
 

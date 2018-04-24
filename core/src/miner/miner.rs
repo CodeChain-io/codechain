@@ -24,7 +24,7 @@ use parking_lot::{Mutex, RwLock};
 
 use super::super::account_provider::{AccountProvider, SignError};
 use super::super::block::{ClosedBlock, IsBlock};
-use super::super::client::{AccountData, BlockChain, BlockProducer, MiningBlockChainClient, SealedBlockImporter};
+use super::super::client::{AccountData, BlockChain, BlockProducer, ImportSealedBlock, MiningBlockChainClient};
 use super::super::consensus::{CodeChainEngine, Seal};
 use super::super::error::Error;
 use super::super::spec::Spec;
@@ -251,7 +251,7 @@ impl Miner {
     /// Attempts to perform internal sealing (one that does not require work) and handles the result depending on the type of Seal.
     fn seal_and_import_block_internally<C>(&self, chain: &C, block: ClosedBlock) -> bool
     where
-        C: BlockChain + SealedBlockImporter, {
+        C: BlockChain + ImportSealedBlock, {
         trace!(target: "miner", "seal_block_internally: attempting internal seal.");
         if block.transactions().is_empty() {
             return false
@@ -274,7 +274,7 @@ impl Miner {
                     .lock()
                     .seal(&*self.engine, seal)
                     .map(|sealed| {
-                        chain.broadcast_proposal_block(sealed);
+                        self.engine.broadcast_proposal_block(sealed);
                         true
                     })
                     .unwrap_or_else(|e| {
@@ -369,7 +369,7 @@ impl MinerService for Miner {
         _enacted: &[H256],
         retracted: &[H256],
     ) where
-        C: AccountData + BlockChain + BlockProducer + SealedBlockImporter, {
+        C: AccountData + BlockChain + BlockProducer + ImportSealedBlock, {
         trace!(target: "miner", "chain_new_blocks");
 
         // Then import all transactions...
@@ -403,7 +403,7 @@ impl MinerService for Miner {
 
     fn update_sealing<C>(&self, chain: &C)
     where
-        C: AccountData + BlockChain + BlockProducer + SealedBlockImporter, {
+        C: AccountData + BlockChain + BlockProducer + ImportSealedBlock, {
         trace!(target: "miner", "update_sealing: preparing a block");
         if self.requires_reseal() {
             let block = self.prepare_block(chain);
@@ -426,7 +426,7 @@ impl MinerService for Miner {
         }
     }
 
-    fn submit_seal<C: SealedBlockImporter>(&self, chain: &C, block_hash: H256, seal: Vec<Bytes>) -> Result<(), Error> {
+    fn submit_seal<C: ImportSealedBlock>(&self, chain: &C, block_hash: H256, seal: Vec<Bytes>) -> Result<(), Error> {
         let result = if let Some(b) = self.sealing_queue.lock().take_if(|b| &b.hash() == &block_hash) {
             trace!(target: "miner", "Submitted block {}={}={} with seal {:?}", block_hash, b.hash(), b.header().bare_hash(), seal);
             b.lock().try_seal(&*self.engine, seal).or_else(|(e, _)| {
