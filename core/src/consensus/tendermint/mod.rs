@@ -87,6 +87,8 @@ impl Decodable for Step {
             0u8 => Ok(Step::Propose),
             1 => Ok(Step::Prevote),
             2 => Ok(Step::Precommit),
+            // FIXME: Step::Commit case is not necessary if Api::send_local_message does not serialize message.
+            3 => Ok(Step::Commit),
             _ => Err(DecoderError::Custom("Invalid step.")),
         }
     }
