@@ -23,7 +23,7 @@ use ctypes::Address;
 
 use super::CacheableItem;
 
-#[derive(Clone, Debug, RlpEncodable, RlpDecodable)]
+#[derive(Clone, Debug, RlpEncodable, RlpDecodable, Serialize, Deserialize)]
 pub struct AssetScheme {
     metadata: String,
     registrar: Address,

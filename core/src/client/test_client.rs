@@ -58,7 +58,7 @@ use super::super::error::BlockImportError;
 use super::super::header::Header as BlockHeader;
 use super::super::miner::{Miner, MinerService, TransactionImportResult};
 use super::super::spec::Spec;
-use super::super::state::StateInfo;
+use super::super::state::{AssetScheme, AssetSchemeAddress, StateInfo};
 use super::super::state_db::StateDB;
 use super::super::transaction::{Action, SignedTransaction, Transaction};
 use super::super::types::{BlockId, BlockNumber, TransactionId, VerificationQueueInfo as QueueInfo};
@@ -446,6 +446,9 @@ impl StateInfo for () {
         unimplemented!()
     }
     fn regular_key(&self, _address: &Address) -> trie::Result<Option<Public>> {
+        unimplemented!()
+    }
+    fn asset_scheme(&self, a: &AssetSchemeAddress) -> trie::Result<Option<AssetScheme>> {
         unimplemented!()
     }
 }
