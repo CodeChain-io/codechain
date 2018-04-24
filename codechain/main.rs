@@ -45,7 +45,7 @@ mod rpc_apis;
 use std::sync::Arc;
 
 use app_dirs::AppInfo;
-use ccore::{Miner, MinerOptions};
+use ccore::{AccountProvider, Miner, MinerOptions, MinerService};
 use cdiscovery::{KademliaExtension, SimpleDiscovery};
 use clogger::{setup_log, Config as LogConfig};
 use creactor::EventLoop;
@@ -86,8 +86,11 @@ fn run() -> Result<(), String> {
     let log_config = LogConfig::default();
     let _logger = setup_log(&log_config).expect("Logger is initialized only once; qed");
 
-    // FIXME: Create an AccountProvider.
-    let miner = Miner::new(MinerOptions::default(), &spec, None);
+    let ap = Arc::new(AccountProvider::new());
+    let (signer, _) = ap.new_account_and_public();
+    let miner = Miner::new(MinerOptions::default(), &spec, Some(ap.clone()));
+    miner.set_engine_signer(signer).map_err(|err| format!("{:?}", err))?;
+
     let client = commands::client_start(&config, &spec, miner.clone())?;
 
     let rpc_apis_deps = Arc::new(rpc_apis::ApiDependencies {

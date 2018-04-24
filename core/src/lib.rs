@@ -80,6 +80,7 @@ mod views;
 #[cfg(test)]
 mod tests;
 
+pub use account_provider::AccountProvider;
 pub use block::Block;
 pub use client::{
     BlockChainClient, BlockInfo, ChainInfo, ChainNotify, Client, EachBlockWith, ImportBlock, TestBlockChainClient,
