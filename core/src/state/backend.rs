@@ -24,7 +24,7 @@
 use ctypes::Address;
 use hashdb::{AsHashDB, HashDB};
 
-use super::{Account, AssetScheme, AssetSchemeAddress};
+use super::{Account, Asset, AssetAddress, AssetScheme, AssetSchemeAddress};
 
 /// State backend. See module docs for more details.
 pub trait Backend: Send {
@@ -38,12 +38,16 @@ pub trait Backend: Send {
     fn add_to_account_cache(&mut self, addr: Address, data: Option<Account>, modified: bool);
     /// Add an asset entry to the cache.
     fn add_to_asset_scheme_cache(&mut self, addr: AssetSchemeAddress, asset: AssetScheme);
+    /// Add an asset entry to the cache.
+    fn add_to_asset_cache(&mut self, addr: AssetAddress, asset: Asset);
 
     /// Get basic copy of the cached account. Not required to include storage.
     /// Returns 'None' if cache is disabled or if the account is not cached.
     fn get_cached_account(&self, addr: &Address) -> Option<Option<Account>>;
 
     fn get_cached_asset_scheme(&self, hash: &AssetSchemeAddress) -> Option<Option<AssetScheme>>;
+
+    fn get_cached_asset(&self, hash: &AssetAddress) -> Option<Option<Asset>>;
 
     /// Get value from a cached account.
     /// `None` is passed to the closure if the account entry cached
@@ -71,11 +75,17 @@ impl<H: AsHashDB + Send + Sync> Backend for Basic<H> {
 
     fn add_to_asset_scheme_cache(&mut self, _addr: AssetSchemeAddress, _data: AssetScheme) {}
 
+    fn add_to_asset_cache(&mut self, _addr: AssetAddress, _asset: Asset) {}
+
     fn get_cached_account(&self, _: &Address) -> Option<Option<Account>> {
         None
     }
 
     fn get_cached_asset_scheme(&self, _addr: &AssetSchemeAddress) -> Option<Option<AssetScheme>> {
+        None
+    }
+
+    fn get_cached_asset(&self, _addr: &AssetAddress) -> Option<Option<Asset>> {
         None
     }
 
