@@ -449,6 +449,7 @@ dependencies = [
  "codechain-crypto 0.1.0",
  "codechain-keys 0.1.0",
  "codechain-types 0.2.0",
+ "secp256k1 0.5.7",
 ]
 
 [[package]]

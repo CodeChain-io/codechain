@@ -19,6 +19,7 @@ use cbytes::Bytes;
 use opcode;
 use opcode::OpCode;
 
+#[derive(Debug, PartialEq)]
 pub enum DecoderError {
     ScriptTooShort,
     InvalidOpCode(u8),

@@ -34,12 +34,14 @@ impl Default for Config {
     }
 }
 
+#[derive(Debug, PartialEq)]
 pub enum ScriptResult {
     Fail,
     Unlocked,
     Burnt,
 }
 
+#[derive(Debug, PartialEq)]
 pub enum RuntimeError {
     OutOfMemory,
     StackUnderflow,
