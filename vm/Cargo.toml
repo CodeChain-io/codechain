@@ -10,3 +10,6 @@ codechain-bytes = { path = "../util/bytes" }
 codechain-crypto = { path = "../crypto" }
 codechain-keys = { path = "../keys" }
 codechain-types = { path = "../primitives/codechain-types" }
+
+[dev-dependencies]
+secp256k1 = { path = "../util/secp256k1" }

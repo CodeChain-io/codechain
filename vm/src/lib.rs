@@ -19,9 +19,15 @@ extern crate codechain_crypto as ccrypto;
 extern crate codechain_keys as ckeys;
 extern crate codechain_types as ctypes;
 
+#[cfg(test)]
+extern crate secp256k1;
+
 mod decoder;
 mod executor;
 mod opcode;
+
+#[cfg(test)]
+mod tests;
 
 pub use decoder::{decode, DecoderError};
 pub use executor::{execute, RuntimeError, ScriptResult};
