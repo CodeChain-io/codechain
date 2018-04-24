@@ -64,7 +64,7 @@ pub trait TransactionInfo {
 }
 
 /// Client facilities used by internally sealing Engines.
-pub trait EngineClient: Sync + Send + ChainInfo {
+pub trait EngineClient: Sync + Send + ChainInfo + ImportBlock {
     /// Make a new block and seal it.
     fn update_sealing(&self);
 
