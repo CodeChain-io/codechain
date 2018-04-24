@@ -77,6 +77,48 @@ impl Ord for VoteStep {
     }
 }
 
+const MESSAGE_ID_CONSENSUS_MESSAGE: u8 = 0x01;
+const MESSAGE_ID_PROPOSAL_BLOCK: u8 = 0x02;
+
+#[derive(Debug)]
+pub enum TendermintMessage {
+    ConsensusMessage(Bytes),
+    ProposalBlock(Bytes),
+}
+
+impl Encodable for TendermintMessage {
+    fn rlp_append(&self, s: &mut RlpStream) {
+        match self {
+            &TendermintMessage::ConsensusMessage(ref message) => {
+                s.begin_list(2);
+                s.append(&MESSAGE_ID_CONSENSUS_MESSAGE);
+                s.append_raw(&message, 1);
+            }
+            &TendermintMessage::ProposalBlock(ref bytes) => {
+                s.begin_list(2);
+                s.append(&MESSAGE_ID_PROPOSAL_BLOCK);
+                s.append_raw(&bytes, 1);
+            }
+        }
+    }
+}
+
+impl Decodable for TendermintMessage {
+    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+        if rlp.item_count()? != 2 {
+            return Err(DecoderError::RlpIncorrectListLen)
+        }
+        let id = rlp.val_at(0)?;
+        let bytes = rlp.at(1)?;
+
+        Ok(match id {
+            MESSAGE_ID_CONSENSUS_MESSAGE => TendermintMessage::ConsensusMessage(bytes.as_val()?),
+            MESSAGE_ID_PROPOSAL_BLOCK => TendermintMessage::ProposalBlock(bytes.as_val()?),
+            _ => return Err(DecoderError::Custom("Unknown message id detected")),
+        })
+    }
+}
+
 /// Message transmitted between consensus participants.
 #[derive(Debug, PartialEq, Eq, Clone, Hash, Default)]
 pub struct ConsensusMessage {

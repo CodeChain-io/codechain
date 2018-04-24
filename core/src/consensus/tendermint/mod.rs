@@ -722,6 +722,10 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
         true
     }
 
+    fn broadcast_proposal_block(&self, block: SealedBlock) {
+        self.extension.broadcast_proposal_block(block.rlp_bytes());
+    }
+
     fn network_extension(&self) -> Option<Arc<NetworkExtension>> {
         Some(Arc::clone(&self.extension) as Arc<NetworkExtension>)
     }
@@ -794,6 +798,7 @@ pub trait Timeouts<S: Sync + Send + Clone>: Send + Sync {
 
 struct TendermintExtension {
     tendermint: RwLock<Option<Weak<Tendermint>>>,
+    client: RwLock<Option<Weak<EngineClient>>>,
     peers: RwLock<HashSet<NodeToken>>,
     api: Mutex<Option<Arc<Api>>>,
     timeouts: TendermintTimeouts,
@@ -806,10 +811,15 @@ impl TendermintExtension {
     fn new(timeouts: TendermintTimeouts) -> Self {
         Self {
             tendermint: RwLock::new(None),
+            client: RwLock::new(None),
             peers: RwLock::new(HashSet::new()),
             api: Mutex::new(None),
             timeouts,
         }
+    }
+
+    fn register_client(&self, client: Weak<EngineClient>) {
+        *self.client.write() = Some(client.clone());
     }
 
     fn select_random_peers(&self) -> Vec<NodeToken> {
@@ -824,9 +834,18 @@ impl TendermintExtension {
 
     fn broadcast_message(&self, message: Bytes) {
         let tokens = self.select_random_peers();
-
+        let message = TendermintMessage::ConsensusMessage(message).rlp_bytes().into_vec();
         self.api.lock().as_ref().map(|api| {
             for token in tokens {
+                api.send(&token, &message);
+            }
+        });
+    }
+
+    fn broadcast_proposal_block(&self, message: Bytes) {
+        let message = TendermintMessage::ProposalBlock(message).rlp_bytes().into_vec();
+        self.api.lock().as_ref().map(|api| {
+            for token in self.peers.read().iter() {
                 api.send(&token, &message);
             }
         });
@@ -873,11 +892,26 @@ impl NetworkExtension for TendermintExtension {
         self.on_connected(token);
     }
 
-    fn on_message(&self, _token: &NodeToken, data: &Vec<u8>) {
-        if let Some(ref weak) = *self.tendermint.read() {
-            if let Some(c) = weak.upgrade() {
-                c.handle_message(data.as_ref());
+    fn on_message(&self, token: &NodeToken, data: &Vec<u8>) {
+        let m = UntrustedRlp::new(data);
+        match m.as_val() {
+            Ok(TendermintMessage::ConsensusMessage(ref bytes)) => {
+                if let Some(ref weak) = *self.tendermint.read() {
+                    if let Some(c) = weak.upgrade() {
+                        c.handle_message(bytes);
+                    }
+                }
             }
+            Ok(TendermintMessage::ProposalBlock(bytes)) => {
+                if let Some(ref weak) = *self.client.read() {
+                    if let Some(c) = weak.upgrade() {
+                        if let Err(e) = c.import_block(bytes) {
+                            info!(target: "engine", "Failed to import proposal block {:?}", e);
+                        }
+                    }
+                }
+            }
+            _ => info!(target: "engine", "invalid message from peer {}", token),
         }
     }
 
