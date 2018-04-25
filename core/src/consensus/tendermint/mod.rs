@@ -877,7 +877,7 @@ impl NetworkExtension for TendermintExtension {
     fn on_initialize(&self, api: Arc<Api>) {
         let initial = self.timeouts.initial();
         trace!(target: "engine", "Setting the initial timeout to {}.", initial);
-        api.set_timer_once(ENGINE_TIMEOUT_TOKEN, initial);
+        api.set_timer_once(ENGINE_TIMEOUT_TOKEN, initial).expect("Timer set succeeds");
         *self.api.lock() = Some(api);
     }
 
@@ -921,8 +921,8 @@ impl NetworkExtension for TendermintExtension {
     fn on_local_message(&self, data: &[u8]) {
         let next: Step = rlp::decode(data);
         self.api.lock().as_ref().map(|api| {
-            let _ = api.clear_timer(ENGINE_TIMEOUT_TOKEN);
-            let _ = api.set_timer_once(ENGINE_TIMEOUT_TOKEN, self.timeouts.timeout(&next));
+            api.clear_timer(ENGINE_TIMEOUT_TOKEN).expect("Timer clear succeeds");
+            api.set_timer_once(ENGINE_TIMEOUT_TOKEN, self.timeouts.timeout(&next)).expect("Timer set succeeds");
         });
     }
 

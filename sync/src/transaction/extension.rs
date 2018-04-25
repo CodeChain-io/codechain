@@ -62,8 +62,9 @@ impl NetworkExtension for Extension {
     }
 
     fn on_initialize(&self, api: Arc<Api>) {
-        api.set_timer(BROADCAST_TIMER_TOKEN, Duration::milliseconds(BROADCAST_TIMER_INTERVAL));
-        api.set_timer(RESET_TIMER_TOKEN, Duration::milliseconds(RESET_TIMER_INTERVAL));
+        api.set_timer(BROADCAST_TIMER_TOKEN, Duration::milliseconds(BROADCAST_TIMER_INTERVAL))
+            .expect("Timer set succeeds");
+        api.set_timer(RESET_TIMER_TOKEN, Duration::milliseconds(RESET_TIMER_INTERVAL)).expect("Timer set succeeds");
         *self.api.lock() = Some(api);
     }
 
