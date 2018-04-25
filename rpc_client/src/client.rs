@@ -24,6 +24,7 @@ pub trait RpcClient {
     fn send_signed_transaction(&mut self, t: UnverifiedTransaction) -> Result<H256, RpcError>;
     fn get_transaction_invoice(&mut self, hash: H256) -> Result<Option<Invoice>, RpcError>;
     fn get_asset_scheme(&mut self, hash: H256) -> Result<Option<Asset>, RpcError>;
+    fn get_asset(&mut self, hash: H256) -> Result<Option<Asset>, RpcError>;
 }
 
 pub struct RpcHttp {
@@ -91,6 +92,13 @@ impl RpcClient for RpcHttp {
 
     fn get_asset_scheme(&mut self, hash: H256) -> Result<Option<Asset>, RpcError> {
         let v = self.send("chain_getAssetScheme", vec![format!("0x{:?}", hash).into()])?;
+        let asset: Option<Asset> = ::serde_json::from_value(v["result"].clone())
+            .map_err(|e| RpcError::ApiError(format!("Failed to deserialize {:?}", e)))?;
+        Ok(asset)
+    }
+
+    fn get_asset(&mut self, hash: H256) -> Result<Option<Asset>, RpcError> {
+        let v = self.send("chain_getAsset", vec![format!("0x{:?}", hash).into()])?;
         let asset: Option<Asset> = ::serde_json::from_value(v["result"].clone())
             .map_err(|e| RpcError::ApiError(format!("Failed to deserialize {:?}", e)))?;
         Ok(asset)

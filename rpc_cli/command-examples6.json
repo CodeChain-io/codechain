@@ -1,0 +1,25 @@
+[
+  {
+    "name": "ping",
+    "data": {}
+  },
+  {
+    "name": "chain_getTransactionInvoice",
+    "data": {
+      "hash": "3957be1d94b1ebac41f24bc42f0408241495d1bd18e37500f2dbe4eaea1b4828"
+    }
+  },
+  {
+    "name": "chain_getAsset",
+    "data": {
+      "asset_address": "410000000000000069d6674bf71f6c27e7e835f9945d4c4d9b144a9fa6ba009f"
+    }
+  },
+  {
+    "name": "chain_getAsset",
+    "data": {
+      "asset_address": "4100000000000000b1e8972d8ac8202133c030b6ffda912dd6391efe003fdec7"
+    }
+  }
+]
+
