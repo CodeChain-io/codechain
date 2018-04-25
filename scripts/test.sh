@@ -8,7 +8,7 @@ fi
 
 NUM_CLIENTS=$1
 if [ -z "$2" ]; then
-    CHAIN_TYPE=solo
+    CHAIN_TYPE=tendermint
 else
     CHAIN_TYPE=$2
 fi
