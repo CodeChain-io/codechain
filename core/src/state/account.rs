@@ -43,16 +43,6 @@ impl Account {
         }
     }
 
-    /// Create a new account from RLP.
-    pub fn from_rlp(rlp: &[u8]) -> Account {
-        ::rlp::decode(rlp)
-    }
-
-    /// Export to RLP.
-    pub fn rlp(&self) -> Bytes {
-        ::rlp::encode(self).into_vec()
-    }
-
     /// return the balance associated with this account.
     pub fn balance(&self) -> &U256 {
         &self.balance
@@ -111,6 +101,16 @@ impl CacheableItem for Account {
     /// Check if account has zero nonce, balance.
     fn is_null(&self) -> bool {
         self.balance.is_zero() && self.nonce.is_zero()
+    }
+
+    /// Create a new account from RLP.
+    fn from_rlp(rlp: &[u8]) -> Account {
+        ::rlp::decode(rlp)
+    }
+
+    /// Export to RLP.
+    fn rlp(&self) -> Bytes {
+        ::rlp::encode(self).into_vec()
     }
 }
 
