@@ -4,8 +4,10 @@
 		"tendermint": {
 			"params": {
 				"validators" : [
-					"0x82a978b3f5962a5b0957d9ee9eef472ee55b42f1",
-					"0x7d577a597b2742b498cb5cf0c26cdcd726d39e6e"
+					"0x84137e7a75043bed32e4458a45da7549a8169b4d",
+					"0x9f194cba03ecc7004646414e795957ceca32cd20",
+					"0xcfd28c1279645febb7cf8802993291ef433a21f3",
+					"0x1e12d6b5704a665e38051ed04387aaa2b8e63f98"
 				],
 				"timeoutPropose": 10000,
 				"timeoutPrevote": 10000,
