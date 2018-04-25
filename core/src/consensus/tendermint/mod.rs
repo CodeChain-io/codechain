@@ -627,6 +627,7 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
             self.height.store(c.chain_info().best_block_number as usize + 1, AtomicOrdering::SeqCst);
         }
         *self.client.write() = Some(client.clone());
+        self.extension.register_client(client.clone());
         self.validators.register_client(client);
     }
 
