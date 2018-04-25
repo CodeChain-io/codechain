@@ -27,8 +27,6 @@ use ctypes::Secret;
 use rpc::HttpConfiguration as RpcHttpConfig;
 use toml;
 
-const DEFAULT_DB_PATH: &'static str = "./db";
-
 #[derive(Debug, PartialEq, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ChainType {
