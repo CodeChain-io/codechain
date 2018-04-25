@@ -45,6 +45,7 @@ args:
     - secret-key:
         long: secret-key
         help: Secret key used by node
+        takes_value: true
     - no-discovery:
         long: no-discovery
         help: Do not use discovery extension

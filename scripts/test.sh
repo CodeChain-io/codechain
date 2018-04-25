@@ -35,6 +35,7 @@ run_server() {
         --db-path ${DB_DIR}/db$1 \
         --port $((${CODECHAIN_PORT_START} + $1)) \
         --jsonrpc-port $((${RPC_PORT_START} + $1)) \
+        --secret-key "`printf "%064x" $(($1 + 1))`" \
         ${BOOTSTRAP} \
     > ${LOG_DIR}/codechain.log.$1 2>&1 &
 }
