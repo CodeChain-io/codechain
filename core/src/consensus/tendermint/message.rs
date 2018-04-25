@@ -92,12 +92,12 @@ impl Encodable for TendermintMessage {
             &TendermintMessage::ConsensusMessage(ref message) => {
                 s.begin_list(2);
                 s.append(&MESSAGE_ID_CONSENSUS_MESSAGE);
-                s.append_raw(&message, 1);
+                s.append(message);
             }
             &TendermintMessage::ProposalBlock(ref bytes) => {
                 s.begin_list(2);
                 s.append(&MESSAGE_ID_PROPOSAL_BLOCK);
-                s.append_raw(&bytes, 1);
+                s.append(bytes);
             }
         }
     }
