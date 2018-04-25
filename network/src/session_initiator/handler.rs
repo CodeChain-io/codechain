@@ -239,7 +239,7 @@ impl SessionInitiator {
                 Ok(())
             }
             &message::Body::ConnectionDenied(ref reason) => {
-                info!("Connection to {:?} refused(reason: {}", from, reason);
+                info!(target:"net", "Connection to {:?} refused(reason: {}", from, reason);
                 Ok(())
             }
             &message::Body::EcdhRequest(ref key) => {
@@ -290,7 +290,7 @@ impl SessionInitiator {
                 Ok(())
             }
             &message::Body::EcdhDenied(ref reason) => {
-                info!("Connection to {:?} refused(reason: {}", from, reason);
+                info!(target:"net", "Connection to {:?} refused(reason: {}", from, reason);
                 let _ = self.requested.remove(from).ok_or(Error::General("ECDHIsNotRequested"))?;
                 Ok(())
             }
@@ -393,7 +393,7 @@ impl IoHandler<Message> for Handler {
         }
         let _f = finally(|| {
             if let Err(err) = io.update_registration(stream) {
-                info!("Cannot update registration for session_initiator : {:?}", err);
+                warn!(target:"net", "Cannot update registration for session_initiator : {:?}", err);
             }
         });
         loop {
@@ -412,7 +412,7 @@ impl IoHandler<Message> for Handler {
 
         let _f = finally(|| {
             if let Err(err) = io.update_registration(stream) {
-                info!("Cannot update registration for session_initiator : {:?}", err);
+                warn!(target: "net", "Cannot update registration for session_initiator : {:?}", err);
             }
         });
         loop {

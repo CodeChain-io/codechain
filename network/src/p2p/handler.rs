@@ -396,7 +396,7 @@ impl IoHandler<Message> for Handler {
                 let mut manager = self.manager.lock();
                 let _ = manager.register_session(socket_address.clone(), session.clone());
 
-                info!("Connecting to {:?}", socket_address);
+                trace!(target: "net", "Connecting to {:?}", socket_address);
                 let token = manager.connect(&socket_address)?.ok_or(Error::General("Cannot create connection"))?;
                 io.register_stream(token)?;
 
@@ -462,7 +462,7 @@ impl IoHandler<Message> for Handler {
             FIRST_CONNECTION_TOKEN...LAST_CONNECTION_TOKEN => {
                 let _f = finally(|| {
                     if let Err(err) = io.update_registration(stream) {
-                        info!("Cannot update registration for connection {:?}", err);
+                        warn!(target: "net", "Cannot update registration for connection {:?}", err);
                     }
                 });
                 loop {
@@ -483,7 +483,7 @@ impl IoHandler<Message> for Handler {
             FIRST_CONNECTION_TOKEN...LAST_CONNECTION_TOKEN => loop {
                 let _f = finally(|| {
                     if let Err(err) = io.update_registration(stream) {
-                        info!("Cannot update registration for connection {:?}", err);
+                        warn!(target: "net", "Cannot update registration for connection {:?}", err);
                     }
                 });
                 let mut manager = self.manager.lock();
@@ -509,7 +509,7 @@ impl IoHandler<Message> for Handler {
             ACCEPT_TOKEN => {
                 let manager = self.manager.lock();
                 event_loop.register(&manager.listener, reg, Ready::readable(), PollOpt::edge())?;
-                info!("TCP connection starts for {:?}", self.socket_address);
+                trace!(target: "net", "TCP connection starts for {:?}", self.socket_address);
                 Ok(())
             }
             FIRST_CONNECTION_TOKEN...LAST_CONNECTION_TOKEN => {

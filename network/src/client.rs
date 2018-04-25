@@ -44,12 +44,12 @@ impl Api for ClientApi {
                 need_encryption,
                 data: message.clone(),
             }) {
-                info!("Cannot send extension message to {:?} : {:?}", id, err);
+                warn!(target: "netapi", "Cannot send extension message to {:?} : {:?}", id, err);
             } else {
-                info!("Request send extension message to {:?}", id);
+                trace!(target: "netapi", "Request send extension message to {:?}", id);
             }
         } else {
-            info!("The extension already dropped");
+            debug!(target: "netapi", "The extension already dropped");
         }
     }
 
@@ -63,12 +63,12 @@ impl Api for ClientApi {
                 extension_name,
                 version,
             }) {
-                info!("Cannot request negotiation to {:?} : {:?}", id, err);
+                warn!(target: "netapi", "Cannot request negotiation to {:?} : {:?}", id, err);
             } else {
-                info!("Request negotiation to {:?}", id);
+                trace!(target: "netapi", "Request negotiation to {:?}", id);
             }
         } else {
-            info!("The extension already dropped");
+            debug!(target: "netapi", "The extension already dropped");
         }
     }
 
@@ -118,10 +118,10 @@ impl Api for ClientApi {
                 extension_name,
                 message,
             }) {
-                info!("Cannot send local message: {:?}", err);
+                warn!(target: "netapi", "Cannot send local message: {:?}", err);
             }
         } else {
-            info!("The extension already dropped");
+            debug!(target: "netapi", "The extension already dropped");
         }
     }
 }
@@ -158,7 +158,7 @@ macro_rules! define_method {
             if let Some(ref extension) = extensions.get(name) {
                 extension.$method_name($($var),*);
             } else {
-                info!("{} doesn't exist.", name);
+                debug!(target: "netapi", "{} doesn't exist.", name);
             }
         }
     };
