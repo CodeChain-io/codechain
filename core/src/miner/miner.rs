@@ -333,6 +333,7 @@ impl MinerService for Miner {
     fn set_engine_signer(&self, address: Address) -> Result<(), SignError> {
         if self.engine.seals_internally().is_some() {
             if let Some(ref ap) = self.accounts {
+                trace!(target: "miner", "Set engine signer to {:?}", address);
                 self.engine.set_signer(ap.clone(), address);
                 Ok(())
             } else {
