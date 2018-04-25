@@ -1,0 +1,6 @@
+quiet = false
+db_path = "db"
+chain_type = "tendermint"
+enable_block_sync = true
+enable_tx_relay = true
+secret_key = "0x0000000000000000000000000000000000000000000000000000000000000000"

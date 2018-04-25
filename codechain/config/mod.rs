@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::fs::File;
+use std::io::Read;
 use std::str::FromStr;
 use std::{fmt, fs};
 
@@ -23,10 +25,12 @@ use clap;
 use cnetwork::{NetworkConfig, SocketAddr};
 use ctypes::Secret;
 use rpc::HttpConfiguration as RpcHttpConfig;
+use toml;
 
 const DEFAULT_DB_PATH: &'static str = "./db";
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum ChainType {
     Solo,
     SoloAuthority,
@@ -80,6 +84,8 @@ impl ChainType {
     }
 }
 
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Config {
     pub quiet: bool,
     pub db_path: String,
@@ -89,36 +95,38 @@ pub struct Config {
     pub secret_key: Secret,
 }
 
-pub fn parse(matches: &clap::ArgMatches) -> Result<Config, String> {
-    let quiet = matches.is_present("quiet");
+pub fn load(config_path: String) -> Result<Config, String> {
+    let mut toml_string = String::new();
+    File::open(&config_path)
+        .map_err(|e| format!("Error while open file({}): {:?}", config_path, e))?
+        .read_to_string(&mut toml_string)
+        .map_err(|e| format!("Error while read file: {:?}", e))?;
 
-    let db_path = match matches.value_of("db-path") {
-        Some(db_path) => db_path,
-        None => DEFAULT_DB_PATH,
-    };
+    toml::from_str(toml_string.as_ref()).map_err(|e| format!("Error while parse TOML: {:?}", e))
+}
 
-    let chain_type = match matches.value_of("chain") {
-        Some(chain) => chain.parse().unwrap(),
-        None => Default::default(),
-    };
-
-    let enable_block_sync = !matches.is_present("no-sync");
-    let enable_tx_relay = !matches.is_present("no-tx-relay");
-
-    let secret_key = matches
-        .value_of("secret-key")
-        .map(|secret| Secret::from_str(secret))
-        .unwrap_or_else(|| Ok(Secret::random()))
-        .map_err(|_| "Invalid secret key")?;
-
-    Ok(Config {
-        quiet,
-        db_path: db_path.into(),
-        chain_type,
-        enable_block_sync,
-        enable_tx_relay,
-        secret_key,
-    })
+impl Config {
+    pub fn overwrite_with(&mut self, matches: &clap::ArgMatches) -> Result<(), String> {
+        if matches.is_present("quiet") {
+            self.quiet = true;
+        }
+        if let Some(db_path) = matches.value_of("db-path") {
+            self.db_path = db_path.to_string();
+        }
+        if let Some(chain) = matches.value_of("chain") {
+            self.chain_type = chain.parse()?;
+        }
+        if matches.is_present("no-sync") {
+            self.enable_block_sync = false;
+        }
+        if matches.is_present("no-tx-relay") {
+            self.enable_tx_relay = false;
+        }
+        if let Some(secret) = matches.value_of("secret-key") {
+            self.secret_key = Secret::from_str(secret).map_err(|_| "Invalid secret key")?;
+        }
+        Ok(())
+    }
 }
 
 pub fn parse_network_config(matches: &clap::ArgMatches) -> Result<Option<NetworkConfig>, String> {
