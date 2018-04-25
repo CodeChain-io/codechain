@@ -18,7 +18,6 @@
 use std::sync::Arc;
 
 use cio::{IoError, IoService};
-use ctypes::Secret;
 
 use super::client::Client;
 use super::p2p;
@@ -35,7 +34,7 @@ pub struct Service {
 }
 
 impl Service {
-    pub fn start(address: SocketAddr, secret_key: Secret) -> Result<Self, IoError> {
+    pub fn start(address: SocketAddr) -> Result<Self, IoError> {
         let p2p = IoService::start()?;
         let timer = IoService::start()?;
         let session_initiator = IoService::start()?;
@@ -47,7 +46,7 @@ impl Service {
 
         timer.register_handler(Arc::new(timer::Handler::new(Arc::clone(&client))))?;
 
-        let session_initiator_handler = Arc::new(session_initiator::Handler::new(address, secret_key, p2p.channel()));
+        let session_initiator_handler = Arc::new(session_initiator::Handler::new(address, p2p.channel()));
         session_initiator.register_handler(session_initiator_handler.clone())?;
 
         Ok(Self {

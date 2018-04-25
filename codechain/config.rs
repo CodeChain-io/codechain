@@ -85,6 +85,7 @@ pub struct Config {
     pub db_path: String,
     pub chain_type: ChainType,
     pub enable_block_sync: bool,
+    pub secret_key: Secret,
 }
 
 pub fn parse(matches: &clap::ArgMatches) -> Result<Config, String> {
@@ -102,11 +103,18 @@ pub fn parse(matches: &clap::ArgMatches) -> Result<Config, String> {
 
     let enable_block_sync = !matches.is_present("no-sync");
 
+    let secret_key = matches
+        .value_of("secret-key")
+        .map(|secret| Secret::from_str(secret))
+        .unwrap_or_else(|| Ok(Secret::random()))
+        .map_err(|_| "Invalid secret key")?;
+
     Ok(Config {
         quiet,
         db_path: db_path.into(),
         chain_type,
         enable_block_sync,
+        secret_key,
     })
 }
 
@@ -128,16 +136,9 @@ pub fn parse_network_config(matches: &clap::ArgMatches) -> Result<Option<Network
         None => 3485,
     };
 
-    let secret_key = matches
-        .value_of("secret-key")
-        .map(|secret| Secret::from_str(secret))
-        .unwrap_or_else(|| Ok(Secret::random()))
-        .map_err(|_| "Invalid secret key")?;
-
     Ok(Some(NetworkConfig {
         port,
         bootstrap_addresses,
-        secret_key,
     }))
 }
 

@@ -335,18 +335,15 @@ pub struct Handler {
     session_initiator: Mutex<SessionInitiator>,
     extension: IoChannel<p2p::Message>,
     discovery: RwLock<Option<Arc<DiscoveryApi>>>,
-    #[allow(dead_code)]
-    secret_key: Secret,
 }
 
 impl Handler {
-    pub fn new(socket_address: SocketAddr, secret_key: Secret, extension: IoChannel<p2p::Message>) -> Self {
+    pub fn new(socket_address: SocketAddr, extension: IoChannel<p2p::Message>) -> Self {
         let session_initiator = Mutex::new(SessionInitiator::bind(&socket_address).expect("Cannot bind UDP port"));
         Self {
             session_initiator,
             extension,
             discovery: RwLock::new(None),
-            secret_key,
         }
     }
 

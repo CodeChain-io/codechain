@@ -14,12 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ctypes::Secret;
-
 use super::SocketAddr;
 
 pub struct Config {
     pub port: u16,
     pub bootstrap_addresses: Vec<SocketAddr>,
-    pub secret_key: Secret,
 }
