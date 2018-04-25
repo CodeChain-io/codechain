@@ -22,13 +22,13 @@ use ctypes::hash::H256;
 use ctypes::Address;
 
 #[derive(Clone, Debug, RlpEncodable, RlpDecodable)]
-pub struct Asset {
+pub struct AssetScheme {
     metadata: String,
     registrar: Address,
     permissioned: bool,
 }
 
-impl Asset {
+impl AssetScheme {
     pub fn new(metadata: String, registrar: Address, permissioned: bool) -> Self {
         Self {
             metadata,
@@ -59,47 +59,48 @@ impl Asset {
 }
 
 #[derive(Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct AssetAddress(H256);
+pub struct AssetSchemeAddress(H256);
 
-impl AssetAddress {
+impl AssetSchemeAddress {
     fn new(hash: H256) -> Self {
-        debug_assert_eq!(['A' as u8, 0, 0, 0, 0, 0, 0, 0], hash[0..8]);
-        AssetAddress(hash)
+        debug_assert_eq!(['S' as u8, 0, 0, 0], hash[0..4]);
+        debug_assert_eq!([0, 0, 0, 0], hash[4..8]); // world id
+        AssetSchemeAddress(hash)
     }
 }
 
-impl From<H256> for AssetAddress {
+impl From<H256> for AssetSchemeAddress {
     fn from(mut hash: H256) -> Self {
-        hash[0..8].clone_from_slice(&['A' as u8, 0, 0, 0, 0, 0, 0, 0]);
+        hash[0..8].clone_from_slice(&['S' as u8, 0, 0, 0, 0, 0, 0, 0]);
         Self::new(hash)
     }
 }
 
-impl Into<H256> for AssetAddress {
+impl Into<H256> for AssetSchemeAddress {
     fn into(self) -> H256 {
         self.0
     }
 }
 
-impl<'a> Into<&'a H256> for &'a AssetAddress {
+impl<'a> Into<&'a H256> for &'a AssetSchemeAddress {
     fn into(self) -> &'a H256 {
         &self.0
     }
 }
 
-impl fmt::Debug for AssetAddress {
+impl fmt::Debug for AssetSchemeAddress {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.0.fmt(f)
     }
 }
 
-impl fmt::Display for AssetAddress {
+impl fmt::Display for AssetSchemeAddress {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.0.fmt(f)
     }
 }
 
-impl Deref for AssetAddress {
+impl Deref for AssetSchemeAddress {
     type Target = [u8];
 
     #[inline]
@@ -110,7 +111,7 @@ impl Deref for AssetAddress {
 
 #[cfg(test)]
 mod tests {
-    use super::{AssetAddress, H256};
+    use super::{AssetSchemeAddress, H256};
 
     #[test]
     fn asset_from_address() {
@@ -118,7 +119,7 @@ mod tests {
             let mut address = Default::default();
             loop {
                 address = H256::random();
-                if address[0] == 'A' as u8 {
+                if address[0] == 'S' as u8 {
                     continue
                 }
                 for i in 1..8 {
@@ -130,9 +131,11 @@ mod tests {
             }
             address
         };
-        let asset_address = AssetAddress::from(origin);
+        let asset_address = AssetSchemeAddress::from(origin);
         let hash: H256 = asset_address.into();
         assert_ne!(origin, hash);
-        assert_eq!(hash[0..8], ['A' as u8, 0, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(hash[0..4], ['S' as u8, 0, 0, 0]);
+        assert_eq!(hash[4..8], [0, 0, 0, 0]); // world id
+        assert_eq!(origin[8..32], hash[8..32]);
     }
 }
