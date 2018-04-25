@@ -224,7 +224,7 @@ impl NetworkExtension for Extension {
 
     fn on_message(&self, node: &NodeToken, message: &Vec<u8>) {
         if let Err(err) = self.on_receive(node, message) {
-            warn!("Invalid message from {} : {:?}", node, err);
+            warn!(target: "discovery", "Invalid message from {} : {:?}", node, err);
         }
     }
 
