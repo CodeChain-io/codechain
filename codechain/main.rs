@@ -22,6 +22,9 @@ extern crate futures;
 extern crate log;
 extern crate tokio_core;
 
+#[macro_use]
+extern crate serde_derive;
+
 extern crate app_dirs;
 extern crate codechain_core as ccore;
 extern crate codechain_discovery as cdiscovery;
@@ -36,6 +39,7 @@ extern crate env_logger;
 extern crate fdlimit;
 extern crate panic_hook;
 extern crate parking_lot;
+extern crate toml;
 
 mod commands;
 mod config;
@@ -59,6 +63,8 @@ pub const APP_INFO: AppInfo = AppInfo {
     author: "Kodebox",
 };
 
+const DEFAULT_CONFIG_PATH: &'static str = "codechain/config/presets/config.dev.toml";
+
 #[cfg(all(unix, target_arch = "x86_64"))]
 fn main() {
     panic_hook::set();
@@ -80,7 +86,9 @@ fn run() -> Result<(), String> {
 
     let _event_loop = EventLoop::spawn();
 
-    let config = config::parse(&matches)?;
+    let config_path = matches.value_of("config-path").unwrap_or(DEFAULT_CONFIG_PATH).to_string();
+    let mut config = config::load(config_path)?;
+    config.overwrite_with(&matches)?;
     let spec = config.chain_type.spec()?;
 
     let log_config = LogConfig::default();

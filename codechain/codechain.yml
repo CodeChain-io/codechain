@@ -3,6 +3,10 @@ version: "0.1.0"
 author: CodeChain Team <codechain@kodebox.io>
 about: CodeChian Core client
 args:
+    - config-path:
+        long: config-path
+        help: Specify the config file path.
+        takes_value: true
     - port:
         long: port
         value_name: PORT
