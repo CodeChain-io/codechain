@@ -34,11 +34,11 @@ use super::state_db::StateDB;
 use super::transaction::TransactionError;
 
 mod account;
-mod asset;
+mod asset_scheme;
 pub mod backend;
 
 pub use self::account::Account;
-pub use self::asset::Asset;
+pub use self::asset_scheme::AssetScheme;
 pub use self::backend::Backend;
 
 /// Used to return information about an `State::apply` operation.
