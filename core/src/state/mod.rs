@@ -25,6 +25,7 @@ use std::collections::HashMap;
 use std::fmt;
 use std::hash::Hash;
 
+use cbytes::Bytes;
 use ctypes::{Address, H256, Public, U256, U512};
 use error::Error;
 use rlp::{Decodable, Encodable};
@@ -786,6 +787,9 @@ pub trait CacheableItem: Clone + Decodable + Encodable {
     type Address: Clone + fmt::Debug + Eq + Hash;
     fn overwrite_with(&mut self, other: Self);
     fn is_null(&self) -> bool;
+
+    fn from_rlp(rlp: &[u8]) -> Self;
+    fn rlp(&self) -> Bytes;
 }
 
 #[cfg(test)]

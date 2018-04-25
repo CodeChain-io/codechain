@@ -39,14 +39,6 @@ impl AssetScheme {
         }
     }
 
-    pub fn from_rlp(rlp: &[u8]) -> Self {
-        ::rlp::decode(rlp)
-    }
-
-    pub fn rlp(&self) -> Bytes {
-        ::rlp::encode(self).into_vec()
-    }
-
     pub fn metadata(&self) -> &String {
         &self.metadata
     }
@@ -121,6 +113,14 @@ impl CacheableItem for AssetScheme {
 
     fn is_null(&self) -> bool {
         false
+    }
+
+    fn from_rlp(rlp: &[u8]) -> Self {
+        ::rlp::decode(rlp)
+    }
+
+    fn rlp(&self) -> Bytes {
+        ::rlp::encode(self).into_vec()
     }
 }
 
