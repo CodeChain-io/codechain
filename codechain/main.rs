@@ -123,7 +123,9 @@ fn run() -> Result<(), String> {
                 service.register_extension(sync.clone())?;
                 client.client().add_notify(sync.clone());
             }
-            service.register_extension(TransactionSyncExtension::new(client.client()))?;
+            if config.enable_tx_relay {
+                service.register_extension(TransactionSyncExtension::new(client.client()))?;
+            }
             if let Some(consensus_extension) = spec.engine.network_extension() {
                 service.register_extension(consensus_extension)?;
             }

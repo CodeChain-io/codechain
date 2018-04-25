@@ -33,6 +33,9 @@ args:
     - no-sync:
         long: no-sync
         help: Do not run block sync extension
+    - no-tx-relay:
+        long: no-tx-relay
+        help: Do not relay transactions.
     - jsonrpc-port:
         long: jsonrpc-port
         value_name: PORT

@@ -85,6 +85,7 @@ pub struct Config {
     pub db_path: String,
     pub chain_type: ChainType,
     pub enable_block_sync: bool,
+    pub enable_tx_relay: bool,
     pub secret_key: Secret,
 }
 
@@ -102,6 +103,7 @@ pub fn parse(matches: &clap::ArgMatches) -> Result<Config, String> {
     };
 
     let enable_block_sync = !matches.is_present("no-sync");
+    let enable_tx_relay = !matches.is_present("no-tx-relay");
 
     let secret_key = matches
         .value_of("secret-key")
@@ -114,6 +116,7 @@ pub fn parse(matches: &clap::ArgMatches) -> Result<Config, String> {
         db_path: db_path.into(),
         chain_type,
         enable_block_sync,
+        enable_tx_relay,
         secret_key,
     })
 }
