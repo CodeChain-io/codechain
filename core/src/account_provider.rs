@@ -16,6 +16,7 @@
 
 use std::collections::HashMap;
 use std::fmt;
+use std::sync::Arc;
 
 use ckeys::{
     public_to_address, sign_ecdsa, ECDSASignature, Error as KeysError, Generator, KeyPair, Message, Private, Public,
@@ -56,10 +57,10 @@ pub struct AccountProvider {
 }
 
 impl AccountProvider {
-    pub fn new() -> Self {
-        Self {
+    pub fn new() -> Arc<Self> {
+        Arc::new(Self {
             secrets: RwLock::new(HashMap::new()),
-        }
+        })
     }
 
     pub fn new_account_and_public(&self) -> (Address, Public) {
