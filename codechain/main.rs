@@ -150,6 +150,8 @@ fn run() -> Result<(), String> {
     // drop the spec to free up genesis state.
     drop(spec);
 
+    info!(target: "test_script", "Initialization complete");
+
     wait_for_exit();
 
     Ok(())

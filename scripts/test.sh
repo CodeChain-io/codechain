@@ -1,17 +1,13 @@
 #!/bin/sh
 
-if [ $# -ne 1 ] && [ $# -ne 2 ]; then
+if [ $# -eq 0 ]; then
     echo "USAGE :"
-    echo "    test NUM_CLIENTS [CHAIN_TYPE]"
+    echo "    test NUM_CLIENTS [OPTIONS]"
     exit 1
 fi
 
 NUM_CLIENTS=$1
-if [ -z "$2" ]; then
-    CHAIN_TYPE=tendermint
-else
-    CHAIN_TYPE=$2
-fi
+OTHER_OPTIONS=`echo $@ | tr -s ' ' | cut -d' ' -f2-`
 
 BASE_DIR=$(cd "$(dirname "$0")"/.. && pwd)
 LOG_DIR=${BASE_DIR}/log
@@ -31,12 +27,12 @@ run_server() {
     fi
     cd ${BASE_DIR}
     cargo run -- \
-        -c ${CHAIN_TYPE} \
         --db-path ${DB_DIR}/db$1 \
         --port $((${CODECHAIN_PORT_START} + $1)) \
         --jsonrpc-port $((${RPC_PORT_START} + $1)) \
         --secret-key "`printf "%064x" $(($1 + 1))`" \
         ${BOOTSTRAP} \
+        ${OTHER_OPTIONS} \
     > ${LOG_DIR}/codechain.log.$1 2>&1 &
 }
 
@@ -54,7 +50,7 @@ spawn tail -f ${LOG_DIR}/codechain.log.0
 expect "TCP connection starts for"
 EOD
 else
-    tail -f ${LOG_DIR}/codechain.log.0 | grep -qm 1 "TCP connection starts for"
+    tail -f ${LOG_DIR}/codechain.log.0 | grep -qm 1 "Initialization complete"
 fi
 
 for i in `seq 1 $((${NUM_CLIENTS} - 1))`; do
