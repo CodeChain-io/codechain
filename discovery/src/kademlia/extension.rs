@@ -57,9 +57,9 @@ impl Extension {
         }
     }
 
-    fn on_receive(&self, node: &NodeToken, message: &Vec<u8>) -> ::std::result::Result<(), DecoderError> {
+    fn on_receive(&self, node: &NodeToken, message: &[u8]) -> ::std::result::Result<(), DecoderError> {
         if let Some(sender) = self.get_address(&node) {
-            let rlp = UntrustedRlp::new(&message.as_slice());
+            let rlp = UntrustedRlp::new(message);
             let message: Message = Decodable::decode(&rlp)?;
             let event = Event::Message {
                 message,
@@ -222,7 +222,7 @@ impl NetworkExtension for Extension {
         }
     }
 
-    fn on_message(&self, node: &NodeToken, message: &Vec<u8>) {
+    fn on_message(&self, node: &NodeToken, message: &[u8]) {
         if let Err(err) = self.on_receive(node, message) {
             warn!(target: "discovery", "Invalid message from {} : {:?}", node, err);
         }

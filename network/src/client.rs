@@ -206,7 +206,7 @@ impl Client {
     define_method!(on_connection_allowed; id, &NodeToken);
     define_method!(on_connection_denied; id, &NodeToken; error, NetworkExtensionError);
 
-    define_method!(on_message; id, &NodeToken; data, &Vec<u8>);
+    define_method!(on_message; id, &NodeToken; data, &[u8]);
 
     define_method!(on_timeout; timer_id, TimerToken);
 
@@ -322,7 +322,7 @@ mod tests {
             callbacks.push(Callback::ConnectionDenied);
         }
 
-        fn on_message(&self, _id: &NodeToken, _message: &Vec<u8>) {
+        fn on_message(&self, _id: &NodeToken, _message: &[u8]) {
             let mut callbacks = self.callbacks.lock();
             callbacks.push(Callback::Message);
         }

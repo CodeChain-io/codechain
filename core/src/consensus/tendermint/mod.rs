@@ -895,7 +895,7 @@ impl NetworkExtension for TendermintExtension {
         self.on_connected(token);
     }
 
-    fn on_message(&self, token: &NodeToken, data: &Vec<u8>) {
+    fn on_message(&self, token: &NodeToken, data: &[u8]) {
         let m = UntrustedRlp::new(data);
         match m.as_val() {
             Ok(TendermintMessage::ConsensusMessage(ref bytes)) => {

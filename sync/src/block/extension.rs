@@ -140,7 +140,7 @@ impl NetworkExtension for Extension {
         self.on_connected(token);
     }
 
-    fn on_message(&self, token: &NodeToken, data: &Vec<u8>) {
+    fn on_message(&self, token: &NodeToken, data: &[u8]) {
         if let Ok(received_message) = UntrustedRlp::new(data).as_val() {
             match received_message {
                 Message::Status {

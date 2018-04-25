@@ -65,7 +65,7 @@ pub trait Extension: Send + Sync {
     fn on_connection_allowed(&self, _node: &NodeToken) {}
     fn on_connection_denied(&self, _node: &NodeToken, _error: Error) {}
 
-    fn on_message(&self, _node: &NodeToken, _message: &Vec<u8>) {}
+    fn on_message(&self, _node: &NodeToken, _message: &[u8]) {}
 
     fn on_timeout(&self, _timer: TimerToken) {}
 
