@@ -7,7 +7,7 @@ if [ $# -eq 0 ]; then
 fi
 
 NUM_CLIENTS=$1
-OTHER_OPTIONS=`echo $@ | tr -s ' ' | cut -d' ' -f2-`
+OTHER_OPTIONS=${@:2}
 
 BASE_DIR=$(cd "$(dirname "$0")"/.. && pwd)
 LOG_DIR=${BASE_DIR}/log
