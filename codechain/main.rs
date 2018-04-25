@@ -87,7 +87,7 @@ fn run() -> Result<(), String> {
     let _logger = setup_log(&log_config).expect("Logger is initialized only once; qed");
 
     let ap = Arc::new(AccountProvider::new());
-    let (signer, _) = ap.new_account_and_public();
+    let signer = ap.insert_account(config.secret_key.into()).map_err(|e| format!("Invalid secret key: {:?}", e))?;
     let miner = Miner::new(MinerOptions::default(), &spec, Some(ap.clone()));
     miner.set_engine_signer(signer).map_err(|err| format!("{:?}", err))?;
 
