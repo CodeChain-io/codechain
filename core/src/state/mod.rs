@@ -535,6 +535,23 @@ impl<B: Backend> State<B> {
         Ok(())
     }
 
+    fn mint_asset(
+        &mut self,
+        transaction_id: H256,
+        metadata: &String,
+        lock_script: &H256,
+        amount: &Option<U256>,
+        registrar: &Option<Address>,
+    ) -> Result<(), Error> {
+        let asset_scheme_address = transaction_id.into();
+        let remainder = amount.unwrap_or(U256::max_value());
+        let asset_scheme = self.require_asset_scheme(&asset_scheme_address, || {
+            AssetScheme::new(metadata.clone(), lock_script.clone(), remainder, registrar.clone())
+        })?;
+        trace!(target: "tx", "{:?} is minted on {:?}", asset_scheme, asset_scheme_address);
+        Ok(())
+    }
+
     /// Execute a given transaction, charging transaction fee.
     /// This will change the state accordingly.
     pub fn apply(&mut self, t: &SignedTransaction) -> Result<ApplyOutcome, Error> {
@@ -603,7 +620,10 @@ impl<B: Backend> State<B> {
                 ref lock_script,
                 ref amount,
                 ref registrar,
-            } => unimplemented!(),
+            } => {
+                self.mint_asset(t.hash(), metadata, lock_script, amount, registrar)?;
+                Ok(None)
+            }
         }
     }
 
@@ -1299,5 +1319,109 @@ mod tests {
         let mut state = get_temp_state();
         state.commit().unwrap();
         assert_eq!(*state.root(), "45b0cfc220ceec5b7c1c62c4d4193d38e4eba48e8815729ce75f9c0ab0e4c1c0".into());
+    }
+
+    #[test]
+    fn mint_permissioned_asset() {
+        let mut state = {
+            // account_start_nonce is 0
+            let state_db = get_temp_state_db();
+            let root_parent = H256::random();
+
+            let state_db = state_db.boxed_clone_canon(&root_parent);
+            State::new(state_db, U256::from(0), Default::default())
+        };
+
+        let metadata = "metadata".to_string();
+        let lock_script = H256::random();
+        let amount = U256::from(100);
+        let registrar = Some(Address::random());
+        let action = Action::AssetMint {
+            metadata: metadata.clone(),
+            lock_script,
+            amount: Some(amount),
+            registrar,
+        };
+        let signed_transaction = Transaction {
+            fee: 5.into(),
+            action,
+            ..Transaction::default()
+        }.sign(&secret().into());
+        let sender = signed_transaction.sender();
+        let transaction_hash = signed_transaction.hash();
+
+        let added_result = state.add_balance(&sender, &U256::from(69u64));
+        assert!(added_result.is_ok());
+
+        let minted_result =
+            state.mint_asset(transaction_hash.clone(), &metadata, &lock_script, &Some(amount), &registrar);
+        assert!(minted_result.is_ok());
+
+        let commit = state.commit();
+        assert!(commit.is_ok());
+
+        let asset_scheme_address = transaction_hash.clone().into();
+        let asset_scheme = state.asset_scheme(&asset_scheme_address);
+        assert!(asset_scheme.is_ok());
+        let asset_scheme = asset_scheme.unwrap();
+        assert!(asset_scheme.is_some());
+        let asset_scheme = asset_scheme.unwrap();
+
+        assert_eq!(&metadata, asset_scheme.metadata());
+        assert_eq!(&lock_script, asset_scheme.lock_script());
+        assert_eq!(&amount, asset_scheme.remainder());
+        assert_eq!(&registrar, asset_scheme.registrar());
+        assert!(asset_scheme.is_permissioned());
+    }
+
+    #[test]
+    fn mint_infinite_asset() {
+        let mut state = {
+            // account_start_nonce is 0
+            let state_db = get_temp_state_db();
+            let root_parent = H256::random();
+
+            let state_db = state_db.boxed_clone_canon(&root_parent);
+            State::new(state_db, U256::from(0), Default::default())
+        };
+
+        let metadata = "metadata".to_string();
+        let lock_script = H256::random();
+        let registrar = Some(Address::random());
+        let action = Action::AssetMint {
+            metadata: metadata.clone(),
+            lock_script,
+            amount: None,
+            registrar,
+        };
+        let signed_transaction = Transaction {
+            fee: 5.into(),
+            action,
+            ..Transaction::default()
+        }.sign(&secret().into());
+        let sender = signed_transaction.sender();
+        let transaction_hash = signed_transaction.hash();
+
+        let added_result = state.add_balance(&sender, &U256::from(69u64));
+        assert!(added_result.is_ok());
+
+        let minted_result = state.mint_asset(transaction_hash.clone(), &metadata, &lock_script, &None, &registrar);
+        assert!(minted_result.is_ok());
+
+        let commit = state.commit();
+        assert!(commit.is_ok());
+
+        let asset_scheme_address = transaction_hash.clone().into();
+        let asset_scheme = state.asset_scheme(&asset_scheme_address);
+        assert!(asset_scheme.is_ok());
+        let asset_scheme = asset_scheme.unwrap();
+        assert!(asset_scheme.is_some());
+        let asset_scheme = asset_scheme.unwrap();
+
+        assert_eq!(&metadata, asset_scheme.metadata());
+        assert_eq!(&lock_script, asset_scheme.lock_script());
+        assert_eq!(&U256::max_value(), asset_scheme.remainder());
+        assert_eq!(&registrar, asset_scheme.registrar());
+        assert!(asset_scheme.is_permissioned());
     }
 }

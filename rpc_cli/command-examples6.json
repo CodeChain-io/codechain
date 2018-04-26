@@ -10,15 +10,15 @@
     }
   },
   {
-    "name": "chain_getAsset",
+    "name": "chain_getAssetScheme",
     "data": {
-      "asset_address": "410000000000000069d6674bf71f6c27e7e835f9945d4c4d9b144a9fa6ba009f"
+      "asset_type": "5300000000000000a3c892f220d31ac83896c855209ffea089a12b477091ae63"
     }
   },
   {
-    "name": "chain_getAsset",
+    "name": "chain_getAssetScheme",
     "data": {
-      "asset_address": "4100000000000000b1e8972d8ac8202133c030b6ffda912dd6391efe003fdec7"
+      "asset_type": "5300000000000000e9d5ac899c6c7a335bae79994b86344b9be9a6e4ed4f8420"
     }
   }
 ]
