@@ -68,6 +68,21 @@ impl Decodable for Vec<u8> {
     }
 }
 
+impl Encodable for Vec<Vec<u8>> {
+    fn rlp_append(&self, s: &mut RlpStream) {
+        s.begin_list(self.len());
+        for e in self {
+            s.append(e);
+        }
+    }
+}
+
+impl Decodable for Vec<Vec<u8>> {
+    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+        rlp.as_list::<Vec<u8>>()
+    }
+}
+
 impl<T> Encodable for Option<T>
 where
     T: Encodable,
@@ -316,5 +331,30 @@ impl Decodable for String {
                 Err(_err) => Err(DecoderError::RlpExpectedToBeData),
             }
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::RlpStream;
+
+    #[test]
+    fn vec_of_bytes() {
+        let origin: Vec<Vec<u8>> = vec![vec![0, 1, 2, 3, 4], vec![5, 6, 7], vec![], vec![8, 9]];
+        let encoded = ::encode(&origin);
+
+        let expected = {
+            let mut s = RlpStream::new();
+            s.begin_list(4);
+            s.append::<Vec<u8>>(&origin[0]);
+            s.append::<Vec<u8>>(&origin[1]);
+            s.append::<Vec<u8>>(&origin[2]);
+            s.append::<Vec<u8>>(&origin[3]);
+            s.out()
+        };
+        assert_eq!(expected, encoded.to_vec());
+
+        let decoded = ::decode::<Vec<Vec<u8>>>(&encoded);
+        assert_eq!(origin, decoded);
     }
 }
