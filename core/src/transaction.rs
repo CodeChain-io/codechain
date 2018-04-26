@@ -150,9 +150,9 @@ pub enum Action {
     },
     AssetMint {
         metadata: String,
-        registrar: Address,
-        permissioned: bool,
+        lock_script: H256,
         amount: Option<U256>,
+        registrar: Option<Address>,
     },
 }
 
@@ -180,9 +180,9 @@ impl rlp::Decodable for Action {
             } else if item_count == 4 {
                 Ok(Action::AssetMint {
                     metadata: d.val_at(0)?,
-                    registrar: d.val_at(1)?,
-                    permissioned: d.val_at(2)?,
-                    amount: d.val_at(3)?,
+                    lock_script: d.val_at(1)?,
+                    amount: d.val_at(2)?,
+                    registrar: d.val_at(3)?,
                 })
             } else {
                 Err(DecoderError::RlpIncorrectListLen)
@@ -208,10 +208,10 @@ impl rlp::Encodable for Action {
             } => s.append_internal(key),
             Action::AssetMint {
                 ref metadata,
-                ref registrar,
-                permissioned,
+                ref lock_script,
                 ref amount,
-            } => s.begin_list(4).append(metadata).append(registrar).append(&permissioned).append(amount),
+                ref registrar,
+            } => s.begin_list(4).append(metadata).append(lock_script).append(amount).append(registrar),
         };
     }
 }
@@ -501,7 +501,7 @@ mod tests {
     use ctypes::{H256, U256};
     use rlp::Encodable;
 
-    use super::{Action, Address, Transaction, UnverifiedTransaction};
+    use super::{Action, Transaction, UnverifiedTransaction};
 
     #[test]
     fn test_unverified_transaction_rlp() {
@@ -519,9 +519,9 @@ mod tests {
     fn encode_and_decode_asset_mint() {
         let action = Action::AssetMint {
             metadata: "mint test".to_string(),
-            registrar: Address::random(),
-            permissioned: false,
+            lock_script: H256::random(),
             amount: Some(10000.into()),
+            registrar: None,
         };
 
         assert_eq!(action, ::rlp::decode(action.rlp_bytes().as_ref()))

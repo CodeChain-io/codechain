@@ -18,24 +18,25 @@ use std::fmt;
 use std::ops::Deref;
 
 use cbytes::Bytes;
-use ctypes::hash::H256;
-use ctypes::Address;
+use ctypes::{Address, H256, U256};
 
 use super::CacheableItem;
 
 #[derive(Clone, Debug, RlpEncodable, RlpDecodable, Serialize, Deserialize)]
 pub struct AssetScheme {
     metadata: String,
-    registrar: Address,
-    permissioned: bool,
+    lock_script: H256,
+    remainder: U256,
+    registrar: Option<Address>,
 }
 
 impl AssetScheme {
-    pub fn new(metadata: String, registrar: Address, permissioned: bool) -> Self {
+    pub fn new(metadata: String, lock_script: H256, remainder: U256, registrar: Option<Address>) -> Self {
         Self {
             metadata,
+            lock_script,
+            remainder,
             registrar,
-            permissioned,
         }
     }
 
@@ -43,12 +44,20 @@ impl AssetScheme {
         &self.metadata
     }
 
-    pub fn registrar(&self) -> &Address {
+    pub fn lock_script(&self) -> &H256 {
+        &self.lock_script
+    }
+
+    pub fn remainder(&self) -> &U256 {
+        &self.remainder
+    }
+
+    pub fn registrar(&self) -> &Option<Address> {
         &self.registrar
     }
 
-    pub fn permissioned(&self) -> bool {
-        self.permissioned
+    pub fn is_permissioned(&self) -> bool {
+        self.registrar.is_some()
     }
 }
 
@@ -107,12 +116,13 @@ impl CacheableItem for AssetScheme {
     type Address = AssetSchemeAddress;
     fn overwrite_with(&mut self, other: Self) {
         self.metadata = other.metadata;
+        self.lock_script = other.lock_script;
         self.registrar = other.registrar;
-        self.permissioned = other.permissioned;
+        self.remainder = other.remainder;
     }
 
     fn is_null(&self) -> bool {
-        false
+        self.remainder.is_zero()
     }
 
     fn from_rlp(rlp: &[u8]) -> Self {

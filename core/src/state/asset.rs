@@ -26,19 +26,25 @@ use super::CacheableItem;
 #[derive(Clone, Debug, RlpEncodable, RlpDecodable, Serialize, Deserialize)]
 pub struct Asset {
     asset_type: H256,
+    lock_script: H256,
     amount: U256,
 }
 
 impl Asset {
-    pub fn new(asset_type: H256, amount: U256) -> Self {
+    pub fn new(asset_type: H256, lock_script: H256, amount: U256) -> Self {
         Self {
             asset_type,
+            lock_script,
             amount,
         }
     }
 
     pub fn asset_type(&self) -> &H256 {
         &self.asset_type
+    }
+
+    pub fn lock_script(&self) -> &H256 {
+        &self.lock_script
     }
 
     pub fn amount(&self) -> &U256 {
@@ -51,11 +57,12 @@ impl CacheableItem for Asset {
 
     fn overwrite_with(&mut self, other: Self) {
         self.asset_type = other.asset_type;
+        self.lock_script = other.lock_script;
         self.amount = other.amount;
     }
 
     fn is_null(&self) -> bool {
-        false
+        self.amount.is_zero()
     }
 
     fn from_rlp(rlp: &[u8]) -> Self {
