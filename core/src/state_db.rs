@@ -615,8 +615,11 @@ mod tests {
         let h0 = H256::random();
         let mut batch = DBTransaction::new();
 
-        let registrar = Address::random();
-        let asset_scheme = AssetScheme::new("A metadata for test asset_scheme".to_string(), registrar, true);
+        let lock_script = H256::random();
+        let remainder = U256::from(1234);
+        let registrar = Some(Address::random());
+        let asset_scheme =
+            AssetScheme::new("A metadata for test asset_scheme".to_string(), lock_script, remainder, registrar);
         let asset_scheme_address: AssetSchemeAddress = h0.into();
 
         let mut s = state_db.boxed_clone_canon(&root_parent);
@@ -638,7 +641,18 @@ mod tests {
         assert!(s.get_cached_asset_scheme(&asset_scheme_address).is_none());
 
         let s = state_db.boxed_clone_canon(&h0);
-        assert!(s.get_cached_asset_scheme(&asset_scheme_address).is_some());
+        let asset_scheme = s.get_cached_asset_scheme(&asset_scheme_address);
+        assert!(asset_scheme.is_some());
+
+        let asset_scheme = asset_scheme.unwrap();
+        assert!(asset_scheme.is_some());
+
+        let asset_scheme = asset_scheme.unwrap();
+
+        assert!(asset_scheme.is_permissioned());
+        assert_eq!(&remainder, asset_scheme.remainder());
+        assert_eq!(&lock_script, asset_scheme.lock_script());
+        assert_eq!(&registrar, asset_scheme.registrar());
     }
 
     #[test]
@@ -649,8 +663,9 @@ mod tests {
 
         let transaction_id = H256::random();
         let asset_scheme_address = H256::random();
+        let lock_script = H256::random();
         let amount = U256::from(1000);
-        let asset = Asset::new(asset_scheme_address, amount);
+        let asset = Asset::new(asset_scheme_address, lock_script, amount);
         let asset_address = AssetAddress::new(transaction_id, 0);
 
         let mut s = state_db.boxed_clone_canon(&root_parent);

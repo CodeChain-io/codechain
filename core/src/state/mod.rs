@@ -600,9 +600,9 @@ impl<B: Backend> State<B> {
             }
             Action::AssetMint {
                 ref metadata,
-                ref registrar,
-                permissioned,
+                ref lock_script,
                 ref amount,
+                ref registrar,
             } => unimplemented!(),
         }
     }
