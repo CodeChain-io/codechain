@@ -174,6 +174,27 @@ fn get_action(data: &Value) -> Result<Action, CommandError> {
                 value,
             })
         }
+        "mint" => {
+            let data = &data["data"];
+            let metadata: String = data["metadata"].as_str().ok_or(CommandError::InvalidData)?.to_string();
+            let lock_script: H256 = get_h256(&data["lock_script"])?;
+            let amount: Option<U256> = if data["amount"].is_string() {
+                Some(get_u256(&data["amount"])?)
+            } else {
+                None
+            };
+            let registrar: Option<H160> = if data["registrar"].is_string() {
+                Some(get_h160(&data["registrar"])?)
+            } else {
+                None
+            };
+            Ok(Action::AssetMint {
+                metadata,
+                lock_script,
+                amount,
+                registrar,
+            })
+        }
         _ => Err(CommandError::UnknownCommand),
     }
 }
