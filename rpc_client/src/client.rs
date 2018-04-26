@@ -4,7 +4,7 @@ use std::str::FromStr;
 use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
 
 use cbytes::ToPretty;
-use ccore::{Asset, Invoice, UnverifiedTransaction};
+use ccore::{Asset, AssetScheme, Invoice, UnverifiedTransaction};
 use ctypes::hash::FromHexError;
 use ctypes::hash::H256;
 
@@ -23,7 +23,7 @@ pub trait RpcClient {
     fn ping(&mut self) -> Result<String, RpcError>;
     fn send_signed_transaction(&mut self, t: UnverifiedTransaction) -> Result<H256, RpcError>;
     fn get_transaction_invoice(&mut self, hash: H256) -> Result<Option<Invoice>, RpcError>;
-    fn get_asset_scheme(&mut self, hash: H256) -> Result<Option<Asset>, RpcError>;
+    fn get_asset_scheme(&mut self, asset_type: H256) -> Result<Option<AssetScheme>, RpcError>;
     fn get_asset(&mut self, hash: H256) -> Result<Option<Asset>, RpcError>;
 }
 
@@ -90,9 +90,9 @@ impl RpcClient for RpcHttp {
         Ok(invoice)
     }
 
-    fn get_asset_scheme(&mut self, hash: H256) -> Result<Option<Asset>, RpcError> {
-        let v = self.send("chain_getAssetScheme", vec![format!("0x{:?}", hash).into()])?;
-        let asset: Option<Asset> = ::serde_json::from_value(v["result"].clone())
+    fn get_asset_scheme(&mut self, asset_type: H256) -> Result<Option<AssetScheme>, RpcError> {
+        let v = self.send("chain_getAssetScheme", vec![format!("0x{:?}", asset_type).into()])?;
+        let asset: Option<AssetScheme> = ::serde_json::from_value(v["result"].clone())
             .map_err(|e| RpcError::ApiError(format!("Failed to deserialize {:?}", e)))?;
         Ok(asset)
     }
