@@ -156,6 +156,10 @@ pub enum Action {
         amount: Option<U256>,
         registrar: Option<Address>,
     },
+    AssetTransfer {
+        inputs: Vec<AssetTransferInput>,
+        outputs: Vec<AssetTransferOutput>,
+    },
 }
 
 impl Default for Action {
@@ -168,6 +172,7 @@ type ActionId = u8;
 const PAYMENT_ID: ActionId = 0x01;
 const SET_REGULAR_KEY_ID: ActionId = 0x02;
 const ASSET_MINT_ID: ActionId = 0x03;
+const ASSET_TRANSFER_ID: ActionId = 0x04;
 
 impl rlp::Decodable for Action {
     fn decode(d: &UntrustedRlp) -> Result<Self, DecoderError> {
@@ -205,6 +210,15 @@ impl rlp::Decodable for Action {
                     registrar: d.val_at(5)?,
                 })
             }
+            ASSET_TRANSFER_ID => {
+                if d.item_count()? != 3 {
+                    return Err(DecoderError::RlpIncorrectListLen)
+                }
+                Ok(Action::AssetTransfer {
+                    inputs: d.list_at(1)?,
+                    outputs: d.list_at(2)?,
+                })
+            }
             _ => Err(DecoderError::Custom("Unexpected action")),
         }
     }
@@ -234,6 +248,10 @@ impl rlp::Encodable for Action {
                 .append(parameters)
                 .append(amount)
                 .append(registrar),
+            Action::AssetTransfer {
+                ref inputs,
+                ref outputs,
+            } => s.begin_list(3).append(&ASSET_TRANSFER_ID).append_list(inputs).append_list(outputs),
         };
     }
 }
@@ -518,6 +536,30 @@ impl Deref for LocalizedTransaction {
     }
 }
 
+#[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable)]
+pub struct AssetTransactionOutput {
+    pub transaction_hash: H256,
+    pub index: usize,
+    pub address: H256,
+    pub asset_type: H256,
+    pub amount: U256,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable)]
+pub struct AssetTransferInput {
+    pub prev_out: AssetTransactionOutput,
+    pub lock_script: Bytes,
+    pub unlock_script: Bytes,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable)]
+pub struct AssetTransferOutput {
+    pub script_hash: H256,
+    pub parameters: Vec<Bytes>,
+    pub asset_type: H256,
+    pub amount: U256,
+}
+
 #[cfg(test)]
 mod tests {
     use ctypes::{Address, H256, Public, U256};
@@ -584,6 +626,18 @@ mod tests {
             parameters: vec![vec![1, 2, 3], vec![4, 5, 6], vec![0, 7]],
             amount: Some(10000.into()),
             registrar: None,
+        };
+
+        assert_eq!(action, ::rlp::decode(action.rlp_bytes().as_ref()))
+    }
+
+    #[test]
+    fn encode_and_decode_asset_transfer() {
+        let inputs = vec![];
+        let outputs = vec![];
+        let action = Action::AssetTransfer {
+            inputs,
+            outputs,
         };
 
         assert_eq!(action, ::rlp::decode(action.rlp_bytes().as_ref()))

@@ -626,6 +626,10 @@ impl<B: Backend> State<B> {
                 self.mint_asset(t.hash(), metadata, lock_script, parameters, amount, registrar)?;
                 Ok(None)
             }
+            Action::AssetTransfer {
+                ref inputs,
+                ref outputs,
+            } => Ok(None),
         }
     }
 
