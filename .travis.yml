@@ -1,6 +1,10 @@
 language: rust
 rust:
   - stable
+env:
+  - TARGET=FMT
+  - TARGET=TEST
+  - TARGET=BUILD
 install:
   - rustup toolchain install nightly
   - rustup component add rustfmt-preview --toolchain nightly
@@ -9,6 +13,7 @@ before_script:
 script:
   - cargo +nightly fmt -- --write-mode=diff
   - RUST_BACKTRACE=1 cargo test --verbose --all
+  - cargo build --release
 matrix:
   allow_failures:
     - rust: nightly
