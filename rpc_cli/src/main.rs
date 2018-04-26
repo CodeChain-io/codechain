@@ -1,3 +1,4 @@
+extern crate codechain_bytes as cbytes;
 extern crate codechain_core as ccore;
 extern crate codechain_crypto as ccrypto;
 extern crate codechain_keys as ckeys;
@@ -13,6 +14,7 @@ use std::fs::File;
 use std::io::Read;
 use std::process;
 
+use cbytes::Bytes;
 use ccore::{Action, Transaction, UnverifiedTransaction};
 use ckeys::hex::FromHex;
 use ckeys::{KeyPair, Private, Secret};
@@ -178,6 +180,7 @@ fn get_action(data: &Value) -> Result<Action, CommandError> {
             let data = &data["data"];
             let metadata: String = data["metadata"].as_str().ok_or(CommandError::InvalidData)?.to_string();
             let lock_script: H256 = get_h256(&data["lock_script"])?;
+            let parameters: Vec<Bytes> = vec![]; // FIXME: I didn't implement it since rpc_cli will be replaced with JS.
             let amount: Option<U256> = if data["amount"].is_string() {
                 Some(get_u256(&data["amount"])?)
             } else {
@@ -191,6 +194,7 @@ fn get_action(data: &Value) -> Result<Action, CommandError> {
             Ok(Action::AssetMint {
                 metadata,
                 lock_script,
+                parameters,
                 amount,
                 registrar,
             })

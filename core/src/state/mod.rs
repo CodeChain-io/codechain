@@ -540,13 +540,14 @@ impl<B: Backend> State<B> {
         transaction_id: H256,
         metadata: &String,
         lock_script: &H256,
+        parameters: &Vec<Bytes>,
         amount: &Option<U256>,
         registrar: &Option<Address>,
     ) -> Result<(), Error> {
         let asset_scheme_address = transaction_id.into();
         let remainder = amount.unwrap_or(U256::max_value());
         let asset_scheme = self.require_asset_scheme(&asset_scheme_address, || {
-            AssetScheme::new(metadata.clone(), lock_script.clone(), remainder, registrar.clone())
+            AssetScheme::new(metadata.clone(), lock_script.clone(), parameters.clone(), remainder, registrar.clone())
         })?;
         trace!(target: "tx", "{:?} is minted on {:?}", asset_scheme, asset_scheme_address);
         Ok(())
@@ -619,9 +620,10 @@ impl<B: Backend> State<B> {
                 ref metadata,
                 ref lock_script,
                 ref amount,
+                ref parameters,
                 ref registrar,
             } => {
-                self.mint_asset(t.hash(), metadata, lock_script, amount, registrar)?;
+                self.mint_asset(t.hash(), metadata, lock_script, parameters, amount, registrar)?;
                 Ok(None)
             }
         }
@@ -1334,11 +1336,13 @@ mod tests {
 
         let metadata = "metadata".to_string();
         let lock_script = H256::random();
+        let parameters = vec![];
         let amount = U256::from(100);
         let registrar = Some(Address::random());
         let action = Action::AssetMint {
             metadata: metadata.clone(),
             lock_script,
+            parameters,
             amount: Some(amount),
             registrar,
         };
@@ -1354,7 +1358,7 @@ mod tests {
         assert!(added_result.is_ok());
 
         let minted_result =
-            state.mint_asset(transaction_hash.clone(), &metadata, &lock_script, &Some(amount), &registrar);
+            state.mint_asset(transaction_hash.clone(), &metadata, &lock_script, &vec![], &Some(amount), &registrar);
         assert!(minted_result.is_ok());
 
         let commit = state.commit();
@@ -1387,10 +1391,12 @@ mod tests {
 
         let metadata = "metadata".to_string();
         let lock_script = H256::random();
+        let parameters = vec![];
         let registrar = Some(Address::random());
         let action = Action::AssetMint {
             metadata: metadata.clone(),
             lock_script,
+            parameters: vec![],
             amount: None,
             registrar,
         };
@@ -1405,7 +1411,8 @@ mod tests {
         let added_result = state.add_balance(&sender, &U256::from(69u64));
         assert!(added_result.is_ok());
 
-        let minted_result = state.mint_asset(transaction_hash.clone(), &metadata, &lock_script, &None, &registrar);
+        let minted_result =
+            state.mint_asset(transaction_hash.clone(), &metadata, &lock_script, &parameters, &None, &registrar);
         assert!(minted_result.is_ok());
 
         let commit = state.commit();

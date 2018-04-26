@@ -382,6 +382,7 @@ name = "codechain-rpc-cli"
 version = "0.1.0"
 dependencies = [
  "clap 2.31.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "codechain-bytes 0.1.0",
  "codechain-core 0.1.0",
  "codechain-crypto 0.1.0",
  "codechain-keys 0.1.0",

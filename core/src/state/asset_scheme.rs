@@ -26,15 +26,23 @@ use super::CacheableItem;
 pub struct AssetScheme {
     metadata: String,
     lock_script: H256,
+    parameters: Vec<Bytes>,
     remainder: U256,
     registrar: Option<Address>,
 }
 
 impl AssetScheme {
-    pub fn new(metadata: String, lock_script: H256, remainder: U256, registrar: Option<Address>) -> Self {
+    pub fn new(
+        metadata: String,
+        lock_script: H256,
+        parameters: Vec<Bytes>,
+        remainder: U256,
+        registrar: Option<Address>,
+    ) -> Self {
         Self {
             metadata,
             lock_script,
+            parameters,
             remainder,
             registrar,
         }
@@ -46,6 +54,10 @@ impl AssetScheme {
 
     pub fn lock_script(&self) -> &H256 {
         &self.lock_script
+    }
+
+    pub fn parameters(&self) -> &Vec<Bytes> {
+        &self.parameters
     }
 
     pub fn remainder(&self) -> &U256 {

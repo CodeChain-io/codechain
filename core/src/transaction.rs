@@ -17,6 +17,7 @@
 use std::fmt;
 use std::ops::Deref;
 
+use cbytes::Bytes;
 use ccrypto::blake256;
 use ckeys::{self, public_to_address, recover_ecdsa, sign_ecdsa, ECDSASignature, Private, Public};
 use ctypes::{Address, H160, H256, U256, U512};
@@ -151,6 +152,7 @@ pub enum Action {
     AssetMint {
         metadata: String,
         lock_script: H256,
+        parameters: Vec<Bytes>,
         amount: Option<U256>,
         registrar: Option<Address>,
     },
@@ -177,12 +179,13 @@ impl rlp::Decodable for Action {
                     address: d.val_at(0)?,
                     value: d.val_at(1)?,
                 })
-            } else if item_count == 4 {
+            } else if item_count == 5 {
                 Ok(Action::AssetMint {
                     metadata: d.val_at(0)?,
                     lock_script: d.val_at(1)?,
-                    amount: d.val_at(2)?,
-                    registrar: d.val_at(3)?,
+                    parameters: d.val_at(2)?,
+                    amount: d.val_at(3)?,
+                    registrar: d.val_at(4)?,
                 })
             } else {
                 Err(DecoderError::RlpIncorrectListLen)
@@ -209,9 +212,12 @@ impl rlp::Encodable for Action {
             Action::AssetMint {
                 ref metadata,
                 ref lock_script,
+                ref parameters,
                 ref amount,
                 ref registrar,
-            } => s.begin_list(4).append(metadata).append(lock_script).append(amount).append(registrar),
+            } => {
+                s.begin_list(5).append(metadata).append(lock_script).append(parameters).append(amount).append(registrar)
+            }
         };
     }
 }
@@ -520,6 +526,20 @@ mod tests {
         let action = Action::AssetMint {
             metadata: "mint test".to_string(),
             lock_script: H256::random(),
+            parameters: vec![],
+            amount: Some(10000.into()),
+            registrar: None,
+        };
+
+        assert_eq!(action, ::rlp::decode(action.rlp_bytes().as_ref()))
+    }
+
+    #[test]
+    fn encode_and_decode_asset_mint_with_parameters() {
+        let action = Action::AssetMint {
+            metadata: "mint test".to_string(),
+            lock_script: H256::random(),
+            parameters: vec![vec![1, 2, 3], vec![4, 5, 6], vec![0, 7]],
             amount: Some(10000.into()),
             registrar: None,
         };

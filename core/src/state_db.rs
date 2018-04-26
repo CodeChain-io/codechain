@@ -619,7 +619,7 @@ mod tests {
         let remainder = U256::from(1234);
         let registrar = Some(Address::random());
         let asset_scheme =
-            AssetScheme::new("A metadata for test asset_scheme".to_string(), lock_script, remainder, registrar);
+            AssetScheme::new("A metadata for test asset_scheme".to_string(), lock_script, vec![], remainder, registrar);
         let asset_scheme_address: AssetSchemeAddress = h0.into();
 
         let mut s = state_db.boxed_clone_canon(&root_parent);
@@ -664,8 +664,9 @@ mod tests {
         let transaction_id = H256::random();
         let asset_scheme_address = H256::random();
         let lock_script = H256::random();
+        let parameters = vec![];
         let amount = U256::from(1000);
-        let asset = Asset::new(asset_scheme_address, lock_script, amount);
+        let asset = Asset::new(asset_scheme_address, lock_script, parameters, amount);
         let asset_address = AssetAddress::new(transaction_id, 0);
 
         let mut s = state_db.boxed_clone_canon(&root_parent);

@@ -27,14 +27,16 @@ use super::CacheableItem;
 pub struct Asset {
     asset_type: H256,
     lock_script: H256,
+    parameters: Vec<Bytes>,
     amount: U256,
 }
 
 impl Asset {
-    pub fn new(asset_type: H256, lock_script: H256, amount: U256) -> Self {
+    pub fn new(asset_type: H256, lock_script: H256, parameters: Vec<Bytes>, amount: U256) -> Self {
         Self {
             asset_type,
             lock_script,
+            parameters,
             amount,
         }
     }
@@ -45,6 +47,10 @@ impl Asset {
 
     pub fn lock_script(&self) -> &H256 {
         &self.lock_script
+    }
+
+    pub fn parameters(&self) -> &Vec<Bytes> {
+        &self.parameters
     }
 
     pub fn amount(&self) -> &U256 {
@@ -58,6 +64,7 @@ impl CacheableItem for Asset {
     fn overwrite_with(&mut self, other: Self) {
         self.asset_type = other.asset_type;
         self.lock_script = other.lock_script;
+        self.parameters = other.parameters;
         self.amount = other.amount;
     }
 
