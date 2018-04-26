@@ -164,32 +164,48 @@ impl Default for Action {
     }
 }
 
+type ActionId = u8;
+const PAYMENT_ID: ActionId = 0x01;
+const SET_REGULAR_KEY_ID: ActionId = 0x02;
+const ASSET_MINT_ID: ActionId = 0x03;
+
 impl rlp::Decodable for Action {
     fn decode(d: &UntrustedRlp) -> Result<Self, DecoderError> {
         if d.is_empty() {
-            Ok(Action::Noop)
-        } else if d.is_data() {
-            Ok(Action::SetRegularKey {
-                key: d.as_val()?,
-            })
-        } else {
-            let item_count = d.item_count()?;
-            if item_count == 2 {
+            return Ok(Action::Noop)
+        }
+
+        match d.val_at(0)? {
+            PAYMENT_ID => {
+                if d.item_count()? != 3 {
+                    return Err(DecoderError::RlpIncorrectListLen)
+                }
                 Ok(Action::Payment {
-                    address: d.val_at(0)?,
-                    value: d.val_at(1)?,
+                    address: d.val_at(1)?,
+                    value: d.val_at(2)?,
                 })
-            } else if item_count == 5 {
-                Ok(Action::AssetMint {
-                    metadata: d.val_at(0)?,
-                    lock_script: d.val_at(1)?,
-                    parameters: d.val_at(2)?,
-                    amount: d.val_at(3)?,
-                    registrar: d.val_at(4)?,
-                })
-            } else {
-                Err(DecoderError::RlpIncorrectListLen)
             }
+            SET_REGULAR_KEY_ID => {
+                if d.item_count()? != 2 {
+                    return Err(DecoderError::RlpIncorrectListLen)
+                }
+                Ok(Action::SetRegularKey {
+                    key: d.val_at(1)?,
+                })
+            }
+            ASSET_MINT_ID => {
+                if d.item_count()? != 6 {
+                    return Err(DecoderError::RlpIncorrectListLen)
+                }
+                Ok(Action::AssetMint {
+                    metadata: d.val_at(1)?,
+                    lock_script: d.val_at(2)?,
+                    parameters: d.val_at(3)?,
+                    amount: d.val_at(4)?,
+                    registrar: d.val_at(5)?,
+                })
+            }
+            _ => Err(DecoderError::Custom("Unexpected action")),
         }
     }
 }
@@ -201,23 +217,23 @@ impl rlp::Encodable for Action {
             Action::Payment {
                 ref address,
                 ref value,
-            } => {
-                s.begin_list(2);
-                s.append(address);
-                s.append(value)
-            }
+            } => s.begin_list(3).append(&PAYMENT_ID).append(address).append(value),
             Action::SetRegularKey {
                 ref key,
-            } => s.append_internal(key),
+            } => s.begin_list(2).append(&SET_REGULAR_KEY_ID).append(key),
             Action::AssetMint {
                 ref metadata,
                 ref lock_script,
                 ref parameters,
                 ref amount,
                 ref registrar,
-            } => {
-                s.begin_list(5).append(metadata).append(lock_script).append(parameters).append(amount).append(registrar)
-            }
+            } => s.begin_list(6)
+                .append(&ASSET_MINT_ID)
+                .append(metadata)
+                .append(lock_script)
+                .append(parameters)
+                .append(amount)
+                .append(registrar),
         };
     }
 }
@@ -504,7 +520,7 @@ impl Deref for LocalizedTransaction {
 
 #[cfg(test)]
 mod tests {
-    use ctypes::{H256, U256};
+    use ctypes::{Address, H256, Public, U256};
     use rlp::Encodable;
 
     use super::{Action, Transaction, UnverifiedTransaction};
@@ -519,6 +535,32 @@ mod tests {
             hash: H256::default(),
         }.compute_hash();
         assert_eq!(tx, ::rlp::decode(tx.rlp_bytes().as_ref()));
+    }
+
+    #[test]
+    fn encode_and_decode_noop() {
+        let action = Action::Noop;
+        assert_eq!(action, ::rlp::decode(action.rlp_bytes().as_ref()))
+    }
+
+    #[test]
+    fn encode_and_decode_payment() {
+        let address = Address::random();
+        let value = U256::from(12345);
+        let action = Action::Payment {
+            address,
+            value,
+        };
+        assert_eq!(action, ::rlp::decode(action.rlp_bytes().as_ref()))
+    }
+
+    #[test]
+    fn encode_and_decode_set_regular_key() {
+        let key = Public::random();
+        let action = Action::SetRegularKey {
+            key,
+        };
+        assert_eq!(action, ::rlp::decode(action.rlp_bytes().as_ref()))
     }
 
     #[test]
