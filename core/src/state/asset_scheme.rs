@@ -64,6 +64,11 @@ impl AssetScheme {
         &self.remainder
     }
 
+    pub fn release_remainder(&mut self, amount: &U256) {
+        debug_assert!(self.remainder >= *amount);
+        self.remainder = self.remainder - *amount;
+    }
+
     pub fn registrar(&self) -> &Option<Address> {
         &self.registrar
     }

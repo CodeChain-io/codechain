@@ -92,5 +92,5 @@ pub use miner::{Miner, MinerOptions, MinerService};
 pub use service::ClientService;
 pub use spec::Spec;
 pub use state::{Asset, AssetAddress, AssetScheme, AssetSchemeAddress};
-pub use transaction::{transaction_error_message, Action, SignedTransaction, Transaction, UnverifiedTransaction};
+pub use transaction::{transaction_error_message, Action, SignedTransaction, Transaction, UnverifiedTransaction, AssetTransferInput, AssetTransactionOutput, AssetTransferOutput};
 pub use types::{BlockId, BlockNumber};

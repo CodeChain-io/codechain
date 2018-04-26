@@ -15,7 +15,7 @@ use std::io::Read;
 use std::process;
 
 use cbytes::Bytes;
-use ccore::{Action, Transaction, UnverifiedTransaction};
+use ccore::{Action, Transaction, UnverifiedTransaction, AssetTransferOutput, AssetTransferInput, AssetTransactionOutput};
 use ckeys::hex::FromHex;
 use ckeys::{KeyPair, Private, Secret};
 use codechain_rpc_client::client::{RpcClient, RpcError, RpcHttp};
@@ -199,7 +199,69 @@ fn get_action(data: &Value) -> Result<Action, CommandError> {
                 registrar,
             })
         }
+        "transfer" => {
+            let data = &data["data"];
+            let inputs = {
+                let mut result = vec![];
+                for input in data["inputs"].as_array().unwrap_or_else(|| unreachable!()) {
+                    result.push(get_transfer_input(input));
+                }
+                result
+            };
+            let outputs = {
+                let mut result = vec![];
+                for output in data["outputs"].as_array().unwrap_or_else(|| unreachable!()) {
+                    result.push(get_transfer_output(output));
+                }
+                result
+            };
+            Ok(Action::AssetTransfer {
+                inputs,
+                outputs,
+            })
+        }
         _ => Err(CommandError::UnknownCommand),
+    }
+}
+
+fn get_transfer_output(data: &Value) -> AssetTransferOutput {
+    let script_hash = get_h256(&data["script_hash"]).unwrap_or_else(|_| unreachable!());
+    let parameters = {
+        // FIXME
+        vec![]
+    };
+    let asset_type = get_h256(&data["asset_type"]).unwrap_or_else(|_| unreachable!());
+    let amount = get_u256(&data["amount"]).unwrap_or_else(|_| unreachable!());
+    AssetTransferOutput {
+        script_hash,
+        parameters,
+        asset_type,
+        amount,
+    }
+}
+
+fn get_transfer_input(data: &Value) -> AssetTransferInput {
+    let prev_out = {
+        let ref data = data["prev_out"];
+        let transaction_hash = get_h256(&data["transaction_hash"]).unwrap_or_else(|_| unreachable!());
+        let index = data["index"].as_u64().unwrap_or_else(|| unreachable!()) as usize;
+        let address = get_h256(&data["address"]).unwrap_or_else(|_| unreachable!());
+        let asset_type = get_h256(&data["asset_type"]).unwrap_or_else(|_| unreachable!());
+        let amount = get_u256(&data["amount"]).unwrap_or_else(|_| unreachable!());
+        AssetTransactionOutput {
+            transaction_hash,
+            index,
+            address,
+            asset_type,
+            amount,
+        }
+    };
+    let lock_script = data["lock_script"].as_str().unwrap_or_else(|| unreachable!()).to_string().into_bytes();
+    let unlock_script = data["unlock_script"].as_str().unwrap_or_else(|| unreachable!()).to_string().into_bytes();
+    AssetTransferInput {
+        prev_out,
+        lock_script,
+        unlock_script,
     }
 }
 

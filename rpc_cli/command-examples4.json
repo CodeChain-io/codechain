@@ -1,9 +1,5 @@
 [
   {
-    "name": "ping",
-    "data": {}
-  },
-  {
     "name": "chain_sendSignedTransaction",
     "data": {
       "secret": "ede1d4ccb4ec9a8bbbae9a13db3f4a7b56ea04189be86ac3a6a439d9a0a1addd",
@@ -21,9 +17,44 @@
     }
   },
   {
+    "name": "chain_sendSignedTransaction",
+    "data": {
+      "secret": "ede1d4ccb4ec9a8bbbae9a13db3f4a7b56ea04189be86ac3a6a439d9a0a1addd",
+      "nonce": "5",
+      "fee": "a",
+      "action": {
+          "type": "mint",
+          "data": {
+              "metadata": "metadata of non-permissioned asset",
+              "lock_script": "3957be1d94b1ebac41f24bc42f0408241495d1bd18e37500f2dbe4eaea1b4828",
+              "amount": "ABC"
+          }
+      },
+      "network_id": "17"
+    }
+  },
+  {
     "name": "chain_getTransactionInvoice",
     "data": {
       "hash": "8eb7ad47796bddd2c35e8796d7ff86865be61998af8d25df3af2bea6ef2d6e2f"
+    }
+  },
+  {
+    "name": "chain_getTransactionInvoice",
+    "data": {
+      "hash": "8d2ca8907c79a8ca895ee5f53e514e2aeb4b4bb1bc94bae75181dc9a05ef18f9"
+    }
+  },
+  {
+    "name": "chain_getAssetScheme",
+    "data": {
+      "asset_type": "5300000000000000c35e8796d7ff86865be61998af8d25df3af2bea6ef2d6e2f"
+    }
+  },
+  {
+    "name": "chain_getAssetScheme",
+    "data": {
+      "asset_type": "5300000000000000895ee5f53e514e2aeb4b4bb1bc94bae75181dc9a05ef18f9"
     }
   }
 ]

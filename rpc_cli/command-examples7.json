@@ -1,13 +1,9 @@
 [
   {
-    "name": "ping",
-    "data": {}
-  },
-  {
     "name": "chain_sendSignedTransaction",
     "data": {
       "secret": "ede1d4ccb4ec9a8bbbae9a13db3f4a7b56ea04189be86ac3a6a439d9a0a1addd",
-      "nonce": "6",
+      "nonce": "7",
       "fee": "a",
       "action": {
           "type": "transfer",
@@ -16,9 +12,19 @@
                   "prev_out": {
                       "transaction_hash": "861b07bf9c3cf7409516f6a90b740d41d9e54b9d2c5f6b44f9d66da9139bcac6",
                       "index": 0,
-                      "address": "5300000000000000895ee5f53e514e2aeb4b4bb1bc94bae75181dc9a05ef18f9",
+                      "address": "4100000000000000a9c7400ff06323128a62b89b5505aa14df53ecb123a029bc",
                       "asset_type": "5300000000000000895ee5f53e514e2aeb4b4bb1bc94bae75181dc9a05ef18f9",
-                      "amount": "7"
+                      "amount": "4"
+                  },
+                  "lock_script": "",
+                  "unlock_script": ""
+              }, {
+                  "prev_out": {
+                      "transaction_hash": "861b07bf9c3cf7409516f6a90b740d41d9e54b9d2c5f6b44f9d66da9139bcac6",
+                      "index": 0,
+                      "address": "41000000000000004955995a011a54162c1a1fedf8bb22937971262aa779b2ff",
+                      "asset_type": "5300000000000000895ee5f53e514e2aeb4b4bb1bc94bae75181dc9a05ef18f9",
+                      "amount": "1"
                   },
                   "lock_script": "",
                   "unlock_script": ""
@@ -27,17 +33,7 @@
                   "script_hash": "861b07bf9c3cf7409516f6a90b740d41d9e54b9d2c5f6b44f9d66da9139bcac6",
                   "parameters": [],
                   "asset_type": "5300000000000000895ee5f53e514e2aeb4b4bb1bc94bae75181dc9a05ef18f9",
-                  "amount": "4"
-              }, {
-                  "script_hash": "861b07bf9c3cf7409516f6a90b740d41d9e54b9d2c5f6b44f9d66da9139bcac6",
-                  "parameters": [],
-                  "asset_type": "5300000000000000895ee5f53e514e2aeb4b4bb1bc94bae75181dc9a05ef18f9",
-                  "amount": "2"
-              }, {
-                  "script_hash": "861b07bf9c3cf7409516f6a90b740d41d9e54b9d2c5f6b44f9d66da9139bcac6",
-                  "parameters": [],
-                  "asset_type": "5300000000000000895ee5f53e514e2aeb4b4bb1bc94bae75181dc9a05ef18f9",
-                  "amount": "1"
+                  "amount": "5"
               }]
           }
       },
@@ -47,7 +43,7 @@
   {
     "name": "chain_getTransactionInvoice",
     "data": {
-      "hash": "202cade9bd89a85426c8010f4caa25a5f1a2d8ffaaf112061fba523d4b6e8369"
+      "hash": "3f45cce826a7b4e7f8fc5637951b5c768d5797c6fa546b31421f50f4de0a569e"
     }
   }
 ]

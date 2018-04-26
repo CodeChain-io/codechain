@@ -29,7 +29,7 @@ use cbytes::Bytes;
 use ctypes::{Address, H256, Public, U256, U512};
 use error::Error;
 use rlp::{Decodable, Encodable};
-use transaction::{Action, SignedTransaction};
+use transaction::{Action, AssetTransferInput, AssetTransferOutput, SignedTransaction};
 use trie::{self, Trie, TrieError, TrieFactory};
 
 use super::invoice::{Invoice, TransactionOutcome};
@@ -436,6 +436,10 @@ impl<B: Backend> State<B> {
         self.insert_cache_account(account, Entry::<Account>::new_dirty(None));
     }
 
+    pub fn kill_asset(&mut self, account: &AssetAddress) {
+        self.insert_cache_asset(account, Entry::<Asset>::new_dirty(None));
+    }
+
     /// Determine whether an account exists.
     pub fn account_exists(&self, a: &Address) -> trie::Result<bool> {
         // Bloom filter does not contain empty accounts, so it is important here to
@@ -535,6 +539,12 @@ impl<B: Backend> State<B> {
         Ok(())
     }
 
+    fn release_remainder(&mut self, a: &AssetSchemeAddress, amount: &U256) -> trie::Result<()> {
+        let mut asset_scheme = self.require_asset_scheme(a, || unreachable!())?;
+        asset_scheme.release_remainder(amount);
+        Ok(())
+    }
+
     fn mint_asset(
         &mut self,
         transaction_id: H256,
@@ -550,6 +560,47 @@ impl<B: Backend> State<B> {
             AssetScheme::new(metadata.clone(), lock_script.clone(), parameters.clone(), remainder, registrar.clone())
         })?;
         trace!(target: "tx", "{:?} is minted on {:?}", asset_scheme, asset_scheme_address);
+        Ok(())
+    }
+
+    fn transfer_asset(
+        &mut self,
+        transaction_id: H256,
+        inputs: &[AssetTransferInput],
+        outputs: &[AssetTransferOutput],
+    ) -> Result<(), Error> {
+        debug_assert!(is_input_and_output_consistent(inputs, outputs));
+
+        // FIXME: validates unlock script
+
+        let mut deleted_asset = vec![];
+        let mut released_asset = vec![];
+        for input in inputs {
+            let hash = input.prev_out.address;
+            let amount = input.prev_out.amount;
+            if let Some(address) = AssetAddress::from_hash(hash.clone()) {
+                // FIXME: Validate asset
+                self.kill_asset(&address);
+                deleted_asset.push((hash, amount));
+            } else if let Some(address) = AssetSchemeAddress::from_hash(hash) {
+                // FIXME: Validate asset scheme
+                self.release_remainder(&address, &amount)?;
+                released_asset.push((hash, amount));
+            } else {
+                unreachable!();
+            }
+        }
+        let mut created_asset = vec![];
+        for (index, output) in outputs.iter().enumerate() {
+            // FIXME: Check asset scheme exist
+            let asset_address = AssetAddress::new(transaction_id, index);
+            let asset = Asset::new(output.asset_type, output.script_hash, output.parameters.clone(), output.amount);
+            self.require_asset(&asset_address, || asset)?;
+            created_asset.push((asset_address, output.amount));
+        }
+        trace!(target: "tx", "Deleted assets {:?}", deleted_asset);
+        trace!(target: "tx", "Released assets {:?}", released_asset);
+        trace!(target: "tx", "Created assets {:?}", created_asset);
         Ok(())
     }
 
@@ -629,7 +680,10 @@ impl<B: Backend> State<B> {
             Action::AssetTransfer {
                 ref inputs,
                 ref outputs,
-            } => Ok(None),
+            } => {
+                self.transfer_asset(t.hash(), inputs, outputs)?;
+                Ok(None)
+            }
         }
     }
 
@@ -962,6 +1016,34 @@ pub trait CacheableItem: Clone + Decodable + Encodable {
     fn rlp(&self) -> Bytes;
 }
 
+
+fn is_input_and_output_consistent(inputs: &[AssetTransferInput], outputs: &[AssetTransferOutput]) -> bool {
+    let mut sum: HashMap<H256, U512> = HashMap::new();
+
+    for input in inputs {
+        let ref asset_type = input.prev_out.asset_type;
+        let ref amount = input.prev_out.amount;
+        let current_amount = sum.get(&asset_type).map(Clone::clone).unwrap_or(U512::zero());
+        sum.insert(asset_type.clone(), current_amount + U512::from(*amount));
+    }
+    for output in outputs {
+        let ref asset_type = output.asset_type;
+        let ref amount = output.amount;
+        let current_amount = if let Some(current_amount) = sum.get(&asset_type) {
+            if current_amount < &U512::from(amount) {
+                return false
+            }
+            current_amount.clone()
+        } else {
+            return false
+        };
+        let t = sum.insert(asset_type.clone(), current_amount - From::from(*amount));
+        debug_assert!(t.is_some());
+    }
+
+    sum.iter().all(|(_, sum)| sum.is_zero())
+}
+
 #[cfg(test)]
 mod tests {
     use ccrypto::blake256;
@@ -969,7 +1051,7 @@ mod tests {
     use ctypes::{Address, Secret, U256};
 
     use super::super::tests::helpers::{get_temp_state, get_temp_state_db};
-    use super::super::transaction::Transaction;
+    use super::super::transaction::{AssetTransactionOutput, Transaction};
     use super::*;
 
     fn secret() -> Secret {
@@ -1437,5 +1519,209 @@ mod tests {
         assert_eq!(&U256::max_value(), asset_scheme.remainder());
         assert_eq!(&registrar, asset_scheme.registrar());
         assert!(asset_scheme.is_permissioned());
+    }
+
+    #[test]
+    fn test_is_input_and_output_consistent() {
+        let asset_type = H256::random();
+        let amount = U256::from(100);
+
+        assert!(is_input_and_output_consistent(
+            &[AssetTransferInput {
+                prev_out: AssetTransactionOutput {
+                    transaction_hash: H256::random(),
+                    index: 0,
+                    address: H256::random(),
+                    asset_type,
+                    amount,
+                },
+                lock_script: vec![],
+                unlock_script: vec![],
+            }],
+            &[AssetTransferOutput {
+                script_hash: H256::random(),
+                parameters: vec![],
+                asset_type,
+                amount,
+            }]
+        ));
+    }
+
+    #[test]
+    fn test_multiple_asset_is_input_and_output_consistent() {
+        let asset_type1 = H256::random();
+        let asset_type2 = {
+            let mut asset_type = H256::random();
+            while asset_type == asset_type1 {
+                asset_type = H256::random();
+            }
+            asset_type
+        };
+        let amount1 = U256::from(100);
+        let amount2 = U256::from(200);
+
+        assert!(is_input_and_output_consistent(
+            &[
+                AssetTransferInput {
+                    prev_out: AssetTransactionOutput {
+                        transaction_hash: H256::random(),
+                        index: 0,
+                        address: H256::random(),
+                        asset_type: asset_type1,
+                        amount: amount1,
+                    },
+                    lock_script: vec![],
+                    unlock_script: vec![],
+                },
+                AssetTransferInput {
+                    prev_out: AssetTransactionOutput {
+                        transaction_hash: H256::random(),
+                        index: 0,
+                        address: H256::random(),
+                        asset_type: asset_type2,
+                        amount: amount2,
+                    },
+                    lock_script: vec![],
+                    unlock_script: vec![],
+                },
+            ],
+            &[
+                AssetTransferOutput {
+                    script_hash: H256::random(),
+                    parameters: vec![],
+                    asset_type: asset_type1,
+                    amount: amount1,
+                },
+                AssetTransferOutput {
+                    script_hash: H256::random(),
+                    parameters: vec![],
+                    asset_type: asset_type2,
+                    amount: amount2,
+                },
+            ]
+        ));
+    }
+
+    #[test]
+    fn test_multiple_asset_different_order_is_input_and_output_consistent() {
+        let asset_type1 = H256::random();
+        let asset_type2 = {
+            let mut asset_type = H256::random();
+            while asset_type == asset_type1 {
+                asset_type = H256::random();
+            }
+            asset_type
+        };
+        let amount1 = U256::from(100);
+        let amount2 = U256::from(200);
+
+        assert!(is_input_and_output_consistent(
+            &[
+                AssetTransferInput {
+                    prev_out: AssetTransactionOutput {
+                        transaction_hash: H256::random(),
+                        index: 0,
+                        address: H256::random(),
+                        asset_type: asset_type1,
+                        amount: amount1,
+                    },
+                    lock_script: vec![],
+                    unlock_script: vec![],
+                },
+                AssetTransferInput {
+                    prev_out: AssetTransactionOutput {
+                        transaction_hash: H256::random(),
+                        index: 0,
+                        address: H256::random(),
+                        asset_type: asset_type2,
+                        amount: amount2,
+                    },
+                    lock_script: vec![],
+                    unlock_script: vec![],
+                },
+            ],
+            &[
+                AssetTransferOutput {
+                    script_hash: H256::random(),
+                    parameters: vec![],
+                    asset_type: asset_type2,
+                    amount: amount2,
+                },
+                AssetTransferOutput {
+                    script_hash: H256::random(),
+                    parameters: vec![],
+                    asset_type: asset_type1,
+                    amount: amount1,
+                },
+            ]
+        ));
+    }
+
+    #[test]
+    fn test_empty_is_input_and_output_consistent() {
+        assert!(is_input_and_output_consistent(&[], &[]));
+    }
+
+    #[test]
+    fn output_has_more_asset() {
+        let asset_type = H256::random();
+        let output_amount = U256::from(100);
+        assert!(!is_input_and_output_consistent(
+            &[],
+            &[AssetTransferOutput {
+                script_hash: H256::random(),
+                parameters: vec![],
+                asset_type,
+                amount: output_amount,
+            }]
+        ));
+    }
+
+    #[test]
+    fn input_has_more_asset() {
+        let asset_type = H256::random();
+        let input_amount = U256::from(100);
+
+        assert!(!is_input_and_output_consistent(
+            &[AssetTransferInput {
+                prev_out: AssetTransactionOutput {
+                    transaction_hash: H256::random(),
+                    index: 0,
+                    address: H256::random(),
+                    asset_type,
+                    amount: input_amount,
+                },
+                lock_script: vec![],
+                unlock_script: vec![],
+            }],
+            &[]
+        ));
+    }
+
+    #[test]
+    fn input_is_larger_than_output() {
+        let asset_type = H256::random();
+        let input_amount = U256::from(100);
+        let output_amount = U256::from(80);
+
+        assert!(!is_input_and_output_consistent(
+            &[AssetTransferInput {
+                prev_out: AssetTransactionOutput {
+                    transaction_hash: H256::random(),
+                    index: 0,
+                    address: H256::random(),
+                    asset_type,
+                    amount: input_amount,
+                },
+                lock_script: vec![],
+                unlock_script: vec![],
+            }],
+            &[AssetTransferOutput {
+                script_hash: H256::random(),
+                parameters: vec![],
+                asset_type,
+                amount: output_amount,
+            }]
+        ));
     }
 }

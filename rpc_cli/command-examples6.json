@@ -1,15 +1,5 @@
 [
   {
-    "name": "ping",
-    "data": {}
-  },
-  {
-    "name": "chain_getTransactionInvoice",
-    "data": {
-      "hash": "3957be1d94b1ebac41f24bc42f0408241495d1bd18e37500f2dbe4eaea1b4828"
-    }
-  },
-  {
     "name": "chain_getAssetScheme",
     "data": {
       "asset_type": "5300000000000000c35e8796d7ff86865be61998af8d25df3af2bea6ef2d6e2f"
@@ -19,6 +9,30 @@
     "name": "chain_getAssetScheme",
     "data": {
       "asset_type": "5300000000000000895ee5f53e514e2aeb4b4bb1bc94bae75181dc9a05ef18f9"
+    }
+  },
+  {
+    "name": "chain_getAsset",
+    "data": {
+      "asset_address": "4100000000000000a9c7400ff06323128a62b89b5505aa14df53ecb123a029bc"
+    }
+  },
+  {
+    "name": "chain_getAsset",
+    "data": {
+      "asset_address": "41000000000000009f77da87bcdab1d45aef0a105f444071b4050fce4cd78476"
+    }
+  },
+  {
+    "name": "chain_getAsset",
+    "data": {
+      "asset_address": "41000000000000004955995a011a54162c1a1fedf8bb22937971262aa779b2ff"
+    }
+  },
+  {
+    "name": "chain_getAsset",
+    "data": {
+      "asset_address": "4100000000000000f3767a6b7edf90e8676b1d218126e05d0b6e568ce09b2372"
     }
   }
 ]
