@@ -40,6 +40,8 @@ use super::Genesis;
 pub struct CommonParams {
     /// Account start nonce.
     pub account_start_nonce: U256,
+    /// Maximum size of extra data.
+    pub maximum_extra_data_size: usize,
     /// Network id.
     pub network_id: u64,
     /// Minimum transaction cost.
@@ -50,6 +52,7 @@ impl From<cjson::spec::Params> for CommonParams {
     fn from(p: cjson::spec::Params) -> Self {
         Self {
             account_start_nonce: p.account_start_nonce.map_or_else(U256::zero, Into::into),
+            maximum_extra_data_size: p.maximum_extra_data_size.into(),
             network_id: p.network_id.into(),
             min_transaction_cost: p.min_transaction_cost.into(),
         }

@@ -41,6 +41,11 @@ impl CodeChainMachine {
         &self.params
     }
 
+    /// Some intrinsic operation parameters; by default they take their value from the `spec()`'s `engine_params`.
+    pub fn maximum_extra_data_size(&self) -> usize {
+        self.params().maximum_extra_data_size
+    }
+
     /// Does basic verification of the transaction.
     pub fn verify_transaction_basic(&self, t: &UnverifiedTransaction, _header: &Header) -> Result<(), Error> {
         if t.fee < self.params.min_transaction_cost {

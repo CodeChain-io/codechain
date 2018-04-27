@@ -8,6 +8,7 @@
 	},
 	"params": {
 		"accountStartNonce": "0x0",
+		"maximumExtraDataSize": "0x20",
 		"networkID": "0x11",
 		"minTransactionCost": "10"
 	},

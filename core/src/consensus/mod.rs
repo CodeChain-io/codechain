@@ -284,6 +284,11 @@ pub trait CodeChainEngine: ConsensusEngine<CodeChainMachine> {
         self.machine().params()
     }
 
+    /// Some intrinsic operation parameters; by default they take their value from the `spec()`'s `engine_params`.
+    fn maximum_extra_data_size(&self) -> usize {
+        self.machine().maximum_extra_data_size()
+    }
+
     /// Additional verification for transactions in blocks.
     fn verify_transaction_basic(&self, t: &UnverifiedTransaction, header: &Header) -> Result<(), Error> {
         self.machine().verify_transaction_basic(t, header)

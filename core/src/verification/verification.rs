@@ -78,6 +78,14 @@ pub fn verify_header_params(header: &Header, engine: &CodeChainEngine) -> Result
             found: header.number(),
         })))
     }
+    let maximum_extra_data_size = engine.maximum_extra_data_size();
+    if header.number() != 0 && header.extra_data().len() > maximum_extra_data_size {
+        return Err(From::from(BlockError::ExtraDataOutOfBounds(OutOfBounds {
+            min: None,
+            max: Some(maximum_extra_data_size),
+            found: header.extra_data().len(),
+        })))
+    }
 
     const ACCEPTABLE_DRIFT_SECS: u64 = 15;
     let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default();

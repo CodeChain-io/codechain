@@ -76,6 +76,8 @@ impl From<Error> for BlockImportError {
 #[derive(Debug, PartialEq, Clone, Copy, Eq)]
 /// Errors concerning block processing.
 pub enum BlockError {
+    /// Extra data is of an invalid length.
+    ExtraDataOutOfBounds(OutOfBounds<usize>),
     /// Seal is incorrect format.
     InvalidSealArity(Mismatch<usize>),
     /// State root header field is invalid.
@@ -117,6 +119,7 @@ impl fmt::Display for BlockError {
         use self::BlockError::*;
 
         let msg: String = match *self {
+            ExtraDataOutOfBounds(ref oob) => format!("Extra block data too long. {}", oob),
             InvalidSealArity(ref mis) => format!("Block seal in incorrect format: {}", mis),
             InvalidStateRoot(ref mis) => format!("Invalid state root in header: {}", mis),
             InvalidTransactionsRoot(ref mis) => format!("Invalid transactions root in header: {}", mis),
