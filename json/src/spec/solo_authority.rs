@@ -15,12 +15,16 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use super::super::hash::Address;
+use super::super::uint::Uint;
 
 /// Authority params deserialization.
 #[derive(Debug, PartialEq, Deserialize)]
 pub struct SoloAuthorityParams {
     /// Valid authorities
     pub validators: Vec<Address>,
+    /// Block reward.
+    #[serde(rename = "blockReward")]
+    pub block_reward: Option<Uint>,
 }
 
 /// Authority engine deserialization.
@@ -31,18 +35,19 @@ pub struct SoloAuthority {
 
 #[cfg(test)]
 mod tests {
-    use ctypes::H160;
+    use ctypes::{H160, U256};
     use serde_json;
 
     use super::super::super::hash::Address;
+    use super::super::super::uint::Uint;
     use super::SoloAuthority;
 
     #[test]
     fn basic_authority_deserialization() {
         let s = r#"{
 			"params": {
-				"durationLimit": "0x0d",
-				"validators" : ["0xc6d9d2cd449a754c494264e1809c50e34d64562b"]
+				"validators" : ["0xc6d9d2cd449a754c494264e1809c50e34d64562b"],
+				"blockReward": "0x0d"
 			}
 		}"#;
 
@@ -50,5 +55,6 @@ mod tests {
 
         let vs = vec![Address(H160::from("0xc6d9d2cd449a754c494264e1809c50e34d64562b"))];
         assert_eq!(deserialized.params.validators, vs);
+        assert_eq!(deserialized.params.block_reward, Some(Uint(U256::from(0x0d))));
     }
 }

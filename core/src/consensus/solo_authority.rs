@@ -19,7 +19,7 @@ use std::sync::{Arc, Weak};
 use cjson;
 use ckeys::{public_to_address, recover_ecdsa, ECDSASignature};
 use cnetwork::{Api, NetworkExtension};
-use ctypes::{Address, H256, H520};
+use ctypes::{Address, H256, H520, U256};
 use parking_lot::RwLock;
 
 use super::super::account_provider::AccountProvider;
@@ -28,6 +28,7 @@ use super::super::client::EngineClient;
 use super::super::codechain_machine::CodeChainMachine;
 use super::super::error::{BlockError, Error};
 use super::super::header::Header;
+use super::super::machine::Machine;
 use super::signer::EngineSigner;
 use super::validator_set::validator_list::ValidatorList;
 use super::validator_set::ValidatorSet;
@@ -37,12 +38,15 @@ use super::{ConsensusEngine, ConstructedVerifier, EngineError, Seal};
 pub struct SoloAuthorityParams {
     /// Valid signatories.
     pub validators: Vec<Address>,
+    /// base reward for a block.
+    pub block_reward: U256,
 }
 
 impl From<cjson::spec::SoloAuthorityParams> for SoloAuthorityParams {
     fn from(p: cjson::spec::SoloAuthorityParams) -> Self {
         SoloAuthorityParams {
             validators: p.validators.into_iter().map(Into::into).collect(),
+            block_reward: p.block_reward.map_or_else(Default::default, Into::into),
         }
     }
 }
@@ -51,6 +55,8 @@ pub struct SoloAuthority {
     machine: CodeChainMachine,
     signer: RwLock<EngineSigner>,
     validators: Box<ValidatorSet>,
+    /// Reward per block, in base units.
+    block_reward: U256,
 }
 
 impl SoloAuthority {
@@ -60,6 +66,7 @@ impl SoloAuthority {
             machine,
             signer: Default::default(),
             validators: Box::new(ValidatorList::new(params.validators)),
+            block_reward: params.block_reward,
         }
     }
 }
@@ -178,6 +185,15 @@ impl ConsensusEngine<CodeChainMachine> for SoloAuthority {
             }
             Err(e) => ConstructedVerifier::Err(e),
         }
+    }
+
+    fn on_close_block(&self, block: &mut ExecutedBlock) -> Result<(), Error> {
+        let author = *block.header().author();
+        if self.block_reward == U256::zero() {
+            return Ok(())
+        }
+
+        self.machine.add_balance(block, &author, &self.block_reward)
     }
 
     fn register_client(&self, client: Weak<EngineClient>) {
