@@ -319,6 +319,7 @@ impl MinerService for Miner {
     }
 
     fn set_author(&self, author: Address) {
+        trace!(target: "miner", "Set author to {:?}", author);
         *self.author.write() = author;
     }
 
