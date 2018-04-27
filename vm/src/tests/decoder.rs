@@ -34,11 +34,11 @@ fn pushi() {
 }
 
 #[test]
-fn pushs() {
+fn pushb() {
     let blobs = [vec![0xed, 0x11, 0xe7], vec![0x8b, 0x0c, 0x92, 0x24, 0x3f]];
     assert_eq!(
-        decode([&[opcode::PUSHS, 3], &blobs[0][..], &[opcode::PUSHS, 5], &blobs[1][..]].concat()),
-        Ok(vec![OpCode::PushS(blobs[0].clone()), OpCode::PushS(blobs[1].clone())])
+        decode([&[opcode::PUSHB, 3], &blobs[0][..], &[opcode::PUSHB, 5], &blobs[1][..]].concat()),
+        Ok(vec![OpCode::PushB(blobs[0].clone()), OpCode::PushB(blobs[1].clone())])
     );
-    assert_eq!(decode([&[opcode::PUSHS, 4], &blobs[0][..]].concat()), Err(DecoderError::ScriptTooShort));
+    assert_eq!(decode([&[opcode::PUSHB, 4], &blobs[0][..]].concat()), Err(DecoderError::ScriptTooShort));
 }

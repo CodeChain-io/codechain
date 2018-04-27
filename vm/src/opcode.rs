@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 pub const NOP: u8 = 0x00;
-pub const PUSHS: u8 = 0x01;
+pub const PUSHB: u8 = 0x01;
 pub const PUSHI: u8 = 0x02;
 pub const POP: u8 = 0x03;
 pub const CHKSIG: u8 = 0x04;
@@ -23,7 +23,7 @@ pub const CHKSIG: u8 = 0x04;
 #[derive(Clone, Debug, PartialEq)]
 pub enum OpCode {
     Nop,
-    PushS(Vec<u8>),
+    PushB(Vec<u8>),
     PushI(i8),
     Pop,
     ChkSig,

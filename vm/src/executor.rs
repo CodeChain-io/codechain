@@ -116,7 +116,7 @@ pub fn execute(script: &[OpCode], config: Config) -> Result<ScriptResult, Runtim
     while pc < script.len() {
         match script[pc] {
             OpCode::Nop => {}
-            OpCode::PushS(ref blob) => stack.push(Item::Blob(blob.clone()))?,
+            OpCode::PushB(ref blob) => stack.push(Item::Blob(blob.clone()))?,
             OpCode::PushI(val) => stack.push(Item::Integer(val))?,
             OpCode::Pop => {
                 stack.pop()?;

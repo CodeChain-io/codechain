@@ -31,14 +31,14 @@ pub fn decode(bytes: Bytes) -> Result<Vec<OpCode>, DecoderError> {
     while let Some(b) = iter.next() {
         match b {
             opcode::NOP => result.push(OpCode::Nop),
-            opcode::PUSHS => {
+            opcode::PUSHB => {
                 let len = iter.next().ok_or(DecoderError::ScriptTooShort)?;
                 // FIXME : optimize blob assignment
                 let mut blob = Vec::new();
                 for _ in 0..len {
                     blob.push(iter.next().ok_or(DecoderError::ScriptTooShort)?);
                 }
-                result.push(OpCode::PushS(blob));
+                result.push(OpCode::PushB(blob));
             }
             opcode::PUSHI => {
                 let val = iter.next().ok_or(DecoderError::ScriptTooShort)?;

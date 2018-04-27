@@ -55,8 +55,8 @@ fn valid_pay_to_public_key() {
     let pubkey = <&[u8]>::from(keypair.public()).to_vec();
     let message = blake256("codechain");
     let signature = H520::from(sign_ecdsa(keypair.private(), &message).unwrap()).to_vec();
-    let unlock_script = vec![OpCode::PushS(signature)];
-    let lock_script = vec![OpCode::PushS(pubkey), OpCode::ChkSig];
+    let unlock_script = vec![OpCode::PushB(signature)];
+    let lock_script = vec![OpCode::PushB(pubkey), OpCode::ChkSig];
 
     assert_eq!(
         execute(&[&unlock_script[..], &lock_script[..]].concat(), Config::default()),
@@ -69,11 +69,11 @@ fn invalid_pay_to_public_key() {
     let keypair = KeyPair::from_private(Private::from(SecretKey::from(ONE_KEY))).unwrap();
     let pubkey = <&[u8]>::from(keypair.public()).to_vec();
     let message = blake256("codechain");
-    let lock_script = vec![OpCode::PushS(pubkey), OpCode::ChkSig];
+    let lock_script = vec![OpCode::PushB(pubkey), OpCode::ChkSig];
 
     let invalid_keypair = KeyPair::from_private(Private::from(SecretKey::from(MINUS_ONE_KEY))).unwrap();
     let invalid_signature = H520::from(sign_ecdsa(invalid_keypair.private(), &message).unwrap()).to_vec();
-    let unlock_script = vec![OpCode::PushS(invalid_signature)];
+    let unlock_script = vec![OpCode::PushB(invalid_signature)];
 
     assert_eq!(execute(&[&unlock_script[..], &lock_script[..]].concat(), Config::default()), Ok(ScriptResult::Fail));
 }
