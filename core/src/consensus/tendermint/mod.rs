@@ -901,7 +901,9 @@ impl NetworkExtension for TendermintExtension {
             Ok(TendermintMessage::ConsensusMessage(ref bytes)) => {
                 if let Some(ref weak) = *self.tendermint.read() {
                     if let Some(c) = weak.upgrade() {
-                        c.handle_message(bytes);
+                        if let Err(e) = c.handle_message(bytes) {
+                            info!(target: "engine", "Failed to handle message {:?}", e);
+                        }
                     }
                 }
             }
