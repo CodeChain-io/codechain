@@ -14,8 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use cbytes::Bytes;
-
 use instruction::Instruction;
 use opcode;
 
@@ -25,28 +23,28 @@ pub enum DecoderError {
     InvalidOpCode(u8),
 }
 
-pub fn decode(bytes: Bytes) -> Result<Vec<Instruction>, DecoderError> {
-    let mut iter = bytes.into_iter();
+pub fn decode(bytes: &[u8]) -> Result<Vec<Instruction>, DecoderError> {
+    let mut iter = bytes.iter();
     let mut result = Vec::new();
     while let Some(b) = iter.next() {
-        match b {
+        match *b {
             opcode::NOP => result.push(Instruction::Nop),
             opcode::PUSHB => {
-                let len = iter.next().ok_or(DecoderError::ScriptTooShort)?;
+                let len = *iter.next().ok_or(DecoderError::ScriptTooShort)?;
                 // FIXME : optimize blob assignment
                 let mut blob = Vec::new();
                 for _ in 0..len {
-                    blob.push(iter.next().ok_or(DecoderError::ScriptTooShort)?);
+                    blob.push(*iter.next().ok_or(DecoderError::ScriptTooShort)?);
                 }
                 result.push(Instruction::PushB(blob));
             }
             opcode::PUSHI => {
-                let val = iter.next().ok_or(DecoderError::ScriptTooShort)?;
+                let val = *iter.next().ok_or(DecoderError::ScriptTooShort)?;
                 result.push(Instruction::PushI(val as i8));
             }
             opcode::POP => result.push(Instruction::Pop),
             opcode::CHKSIG => result.push(Instruction::ChkSig),
-            _ => return Err(DecoderError::InvalidOpCode(b)),
+            invalid_opcode => return Err(DecoderError::InvalidOpCode(invalid_opcode)),
         }
     }
 

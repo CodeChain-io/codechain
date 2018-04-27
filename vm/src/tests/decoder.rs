@@ -23,26 +23,23 @@ fn test_single_byte_opcodes() {
     let target =
         [(opcode::NOP, Instruction::Nop), (opcode::POP, Instruction::Pop), (opcode::CHKSIG, Instruction::ChkSig)];
     for &(ref byte, ref code) in target.into_iter() {
-        let script = decode(vec![byte.clone(), byte.clone(), byte.clone()]);
+        let script = decode(&[byte.clone(), byte.clone(), byte.clone()]);
         assert_eq!(script, Ok(vec![code.clone(), code.clone(), code.clone()]));
     }
 }
 
 #[test]
 fn pushi() {
-    assert_eq!(
-        decode(vec![opcode::PUSHI, 0, opcode::PUSHI, 10]),
-        Ok(vec![Instruction::PushI(0), Instruction::PushI(10)])
-    );
-    assert_eq!(decode(vec![opcode::PUSHI, 0, opcode::PUSHI]), Err(DecoderError::ScriptTooShort));
+    assert_eq!(decode(&[opcode::PUSHI, 0, opcode::PUSHI, 10]), Ok(vec![Instruction::PushI(0), Instruction::PushI(10)]));
+    assert_eq!(decode(&[opcode::PUSHI, 0, opcode::PUSHI]), Err(DecoderError::ScriptTooShort));
 }
 
 #[test]
 fn pushb() {
-    let blobs = [vec![0xed, 0x11, 0xe7], vec![0x8b, 0x0c, 0x92, 0x24, 0x3f]];
+    let blobs: Vec<&[u8]> = vec![&[0xed, 0x11, 0xe7], &[0x8b, 0x0c, 0x92, 0x24, 0x3f]];
     assert_eq!(
-        decode([&[opcode::PUSHB, 3], &blobs[0][..], &[opcode::PUSHB, 5], &blobs[1][..]].concat()),
-        Ok(vec![Instruction::PushB(blobs[0].clone()), Instruction::PushB(blobs[1].clone())])
+        decode([&[opcode::PUSHB, 3], &blobs[0][..], &[opcode::PUSHB, 5], &blobs[1][..]].concat().as_slice()),
+        Ok(vec![Instruction::PushB(blobs[0].to_vec()), Instruction::PushB(blobs[1].to_vec())])
     );
-    assert_eq!(decode([&[opcode::PUSHB, 4], &blobs[0][..]].concat()), Err(DecoderError::ScriptTooShort));
+    assert_eq!(decode([&[opcode::PUSHB, 4], &blobs[0][..]].concat().as_slice()), Err(DecoderError::ScriptTooShort));
 }
