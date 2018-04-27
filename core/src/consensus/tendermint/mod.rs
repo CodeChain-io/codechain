@@ -438,7 +438,6 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
     /// `Seal::None` will be returned.
     fn generate_seal(&self, block: &ExecutedBlock, _parent: &Header) -> Seal {
         let header = block.header();
-        let author = header.author();
         // Only proposer can generate seal if None was generated.
         if !self.is_signer_proposer(header.parent_hash()) || self.proposal.read().is_some() {
             return Seal::None
@@ -451,7 +450,8 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
         if let Ok(signature) = self.sign(blake256(&vote_info)).map(Into::into) {
             // Insert Propose vote.
             debug!(target: "engine", "Submitting proposal {} at height {} view {}.", header.bare_hash(), height, view);
-            self.votes.vote(ConsensusMessage::new(signature, height, view, Step::Propose, bh), *author);
+            let sender = self.signer.read().address().expect("seals_internally already returned true");
+            self.votes.vote(ConsensusMessage::new(signature, height, view, Step::Propose, bh), sender);
             // Remember the owned block.
             *self.last_proposed.write() = header.bare_hash();
             // Remember proposal for later seal submission.
