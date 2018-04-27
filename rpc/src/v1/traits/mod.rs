@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ccore::{Asset, AssetScheme, Invoice};
-use ctypes::H256;
+use ctypes::{H160, H256, U256};
 
 use jsonrpc_core::Result;
 
@@ -38,5 +38,9 @@ build_rpc_trait! {
         /// Gets asset with given asset type.
         # [rpc(name = "chain_getAsset")]
         fn get_asset(&self, H256) -> Result<Option<Asset>>;
+
+        /// Gets nonce with given account.
+        # [rpc(name = "chain_getNonce")]
+        fn get_nonce(&self, H160, Option<u64>) -> Result<Option<U256>>;
     }
 }

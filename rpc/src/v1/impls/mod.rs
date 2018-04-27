@@ -17,10 +17,10 @@
 use std::sync::Arc;
 
 use ccore::{
-    Asset, AssetAddress, AssetScheme, AssetSchemeAddress, BlockChainClient, BlockId, Client, Invoice, Miner,
-    MinerService, SignedTransaction,
+    Asset, AssetAddress, AssetScheme, AssetSchemeAddress, BlockChainClient, BlockId, ChainInfo, Client, Invoice, Miner,
+    MinerService, Nonce, SignedTransaction,
 };
-use ctypes::H256;
+use ctypes::{H160, H256, U256};
 use rlp::UntrustedRlp;
 
 use jsonrpc_core::Result;
@@ -81,5 +81,10 @@ impl Chain for ChainClient {
         } else {
             Ok(None)
         }
+    }
+
+    fn get_nonce(&self, address: H160, block_number: Option<u64>) -> Result<Option<U256>> {
+        let block_id = BlockId::Number(block_number.unwrap_or(self.client.chain_info().best_block_number));
+        Ok(self.client.nonce(&address.into(), block_id))
     }
 }

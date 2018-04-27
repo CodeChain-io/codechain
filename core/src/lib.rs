@@ -83,7 +83,8 @@ mod tests;
 pub use account_provider::AccountProvider;
 pub use block::Block;
 pub use client::{
-    BlockChainClient, BlockInfo, ChainInfo, ChainNotify, Client, EachBlockWith, ImportBlock, TestBlockChainClient,
+    BlockChainClient, BlockInfo, ChainInfo, ChainNotify, Client, EachBlockWith, ImportBlock, Nonce,
+    TestBlockChainClient,
 };
 pub use error::{BlockImportError, Error, ImportError};
 pub use header::{Header, Seal};
