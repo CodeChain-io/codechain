@@ -544,7 +544,7 @@ impl<B: Backend> State<B> {
         amount: &Option<U256>,
         registrar: &Option<Address>,
     ) -> Result<(), Error> {
-        let asset_scheme_address = transaction_id.into();
+        let asset_scheme_address = AssetSchemeAddress::new(transaction_id);
         let remainder = amount.unwrap_or(U256::max_value());
         let asset_scheme = self.require_asset_scheme(&asset_scheme_address, || {
             AssetScheme::new(metadata.clone(), lock_script.clone(), parameters.clone(), remainder, registrar.clone())
@@ -1364,7 +1364,7 @@ mod tests {
         let commit = state.commit();
         assert!(commit.is_ok());
 
-        let asset_scheme_address = transaction_hash.clone().into();
+        let asset_scheme_address = AssetSchemeAddress::new(transaction_hash.clone());
         let asset_scheme = state.asset_scheme(&asset_scheme_address);
         assert!(asset_scheme.is_ok());
         let asset_scheme = asset_scheme.unwrap();
@@ -1418,7 +1418,7 @@ mod tests {
         let commit = state.commit();
         assert!(commit.is_ok());
 
-        let asset_scheme_address = transaction_hash.clone().into();
+        let asset_scheme_address = AssetSchemeAddress::new(transaction_hash.clone());
         let asset_scheme = state.asset_scheme(&asset_scheme_address);
         assert!(asset_scheme.is_ok());
         let asset_scheme = asset_scheme.unwrap();

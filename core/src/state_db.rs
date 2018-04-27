@@ -620,7 +620,7 @@ mod tests {
         let registrar = Some(Address::random());
         let asset_scheme =
             AssetScheme::new("A metadata for test asset_scheme".to_string(), lock_script, vec![], remainder, registrar);
-        let asset_scheme_address: AssetSchemeAddress = h0.into();
+        let asset_scheme_address = AssetSchemeAddress::new(h0);
 
         let mut s = state_db.boxed_clone_canon(&root_parent);
 

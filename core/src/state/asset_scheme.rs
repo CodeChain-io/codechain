@@ -77,17 +77,17 @@ impl AssetScheme {
 pub struct AssetSchemeAddress(H256);
 
 impl AssetSchemeAddress {
-    fn new(hash: H256) -> Self {
-        debug_assert_eq!(['S' as u8, 0, 0, 0], hash[0..4]);
-        debug_assert_eq!([0, 0, 0, 0], hash[4..8]); // world id
+    pub fn new(mut hash: H256) -> Self {
+        hash[0..8].clone_from_slice(&['S' as u8, 0, 0, 0, 0, 0, 0, 0]);
         AssetSchemeAddress(hash)
     }
-}
 
-impl From<H256> for AssetSchemeAddress {
-    fn from(mut hash: H256) -> Self {
-        hash[0..8].clone_from_slice(&['S' as u8, 0, 0, 0, 0, 0, 0, 0]);
-        Self::new(hash)
+    pub fn from_hash(hash: H256) -> Option<Self> {
+        if hash[0..8] == ['S' as u8, 0, 0, 0, 0, 0, 0, 0] {
+            Some(AssetSchemeAddress(hash))
+        } else {
+            None
+        }
     }
 }
 
@@ -168,7 +168,7 @@ mod tests {
             }
             address
         };
-        let asset_address = AssetSchemeAddress::from(origin);
+        let asset_address = AssetSchemeAddress::new(origin);
         let hash: H256 = asset_address.into();
         assert_ne!(origin, hash);
         assert_eq!(hash[0..4], ['S' as u8, 0, 0, 0]);
