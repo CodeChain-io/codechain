@@ -84,12 +84,7 @@ where
 
     fn on_close_block(&self, block: &mut M::LiveBlock) -> Result<(), M::Error> {
         let author = *LiveBlock::header(&*block).author();
-        let reward = self.params.block_reward;
-        if reward == U256::zero() {
-            return Ok(())
-        }
-
-        self.machine.add_balance(block, &author, &reward)
+        self.machine.add_balance(block, &author, &self.params.block_reward)
     }
 
     fn network_extension(&self) -> Option<Arc<NetworkExtension>> {

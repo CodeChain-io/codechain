@@ -189,10 +189,6 @@ impl ConsensusEngine<CodeChainMachine> for SoloAuthority {
 
     fn on_close_block(&self, block: &mut ExecutedBlock) -> Result<(), Error> {
         let author = *block.header().author();
-        if self.block_reward == U256::zero() {
-            return Ok(())
-        }
-
         self.machine.add_balance(block, &author, &self.block_reward)
     }
 

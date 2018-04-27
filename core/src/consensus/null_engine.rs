@@ -71,12 +71,7 @@ impl<M: Machine> ConsensusEngine<M> for NullEngine<M> {
 
     fn on_close_block(&self, block: &mut M::LiveBlock) -> Result<(), M::Error> {
         let author = *LiveBlock::header(&*block).author();
-        let reward = self.params.block_reward;
-        if reward == U256::zero() {
-            return Ok(())
-        }
-
-        self.machine.add_balance(block, &author, &reward)
+        self.machine.add_balance(block, &author, &self.params.block_reward)
     }
 
     fn verify_local_seal(&self, _header: &M::Header) -> Result<(), M::Error> {
