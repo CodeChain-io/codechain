@@ -12,6 +12,7 @@ codechain-keys = { path="../keys" }
 codechain-logger = { path = "../logger" }
 codechain-network = { path = "../network" }
 codechain-types = { path = "../primitives/codechain-types" }
+codechain-vm = { path = "../vm" }
 hashdb = { path = "../util/hashdb" }
 heapsize = "0.4"
 journaldb = { path = "../util/journaldb" }

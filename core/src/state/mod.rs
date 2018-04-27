@@ -26,11 +26,14 @@ use std::fmt;
 use std::hash::Hash;
 
 use cbytes::Bytes;
+use ccrypto::blake256;
 use ctypes::{Address, H256, Public, U256, U512};
+use cvm::{decode, execute, ScriptResult, VMConfig};
 use error::Error;
 use rlp::{Decodable, Encodable};
 use transaction::{Action, AssetTransferInput, AssetTransferOutput, SignedTransaction};
 use trie::{self, Trie, TrieError, TrieFactory};
+use unexpected::Mismatch;
 
 use super::invoice::{Invoice, TransactionOutcome};
 use super::state_db::StateDB;
@@ -571,7 +574,47 @@ impl<B: Backend> State<B> {
     ) -> Result<(), Error> {
         debug_assert!(is_input_and_output_consistent(inputs, outputs));
 
-        // FIXME: validates unlock script
+        for input in inputs {
+            let asset = {
+                let address = input.prev_out.address;
+                if let Some(asset_address) = AssetAddress::from_hash(address) {
+                    match self.asset(&asset_address)? {
+                        Some(asset) => asset,
+                        None => return Err(TransactionError::AssetNotFound(address).into()),
+                    }
+                } else {
+                    return Err(TransactionError::InvalidAssetAddress(address).into())
+                }
+            };
+
+            if *asset.lock_script() != blake256(&input.lock_script) {
+                let mismatch = Mismatch {
+                    expected: *asset.lock_script(),
+                    found: blake256(&input.lock_script),
+                };
+                return Err(TransactionError::ScriptHashMismatch(mismatch).into())
+            }
+
+            let script_result = match (decode(&input.lock_script), decode(&input.unlock_script)) {
+                (Ok(lock_script), Ok(unlock_script)) => {
+                    let mut script = Vec::new();
+                    script.extend(lock_script);
+                    script.extend(unlock_script);
+                    // FIXME : apply parameters to vm
+                    execute(script.as_slice(), VMConfig::default())
+                }
+                // FIXME : Deliver full decode error
+                _ => return Err(TransactionError::InvalidScript.into()),
+            };
+
+            match script_result {
+                Ok(ScriptResult::Fail) | Err(_) => {
+                    return Err(TransactionError::FailedToUnlock(input.prev_out.address).into())
+                }
+                Ok(ScriptResult::Burnt) => unimplemented!(),
+                Ok(ScriptResult::Unlocked) => {}
+            }
+        }
 
         let mut deleted_asset = vec![];
         let mut released_asset = vec![];

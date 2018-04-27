@@ -22,6 +22,7 @@ extern crate codechain_keys as ckeys;
 extern crate codechain_logger as clogger;
 extern crate codechain_network as cnetwork;
 extern crate codechain_types as ctypes;
+extern crate codechain_vm as cvm;
 extern crate hashdb;
 extern crate heapsize;
 extern crate journaldb;

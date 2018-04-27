@@ -31,4 +31,4 @@ mod opcode;
 mod tests;
 
 pub use decoder::{decode, DecoderError};
-pub use executor::{execute, RuntimeError, ScriptResult};
+pub use executor::{execute, Config as VMConfig, RuntimeError, ScriptResult};
