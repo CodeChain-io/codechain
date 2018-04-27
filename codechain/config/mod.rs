@@ -23,7 +23,7 @@ use ccore::Spec;
 use cdiscovery::KademliaConfig;
 use clap;
 use cnetwork::{NetworkConfig, SocketAddr};
-use ctypes::Secret;
+use ctypes::{Address, Secret};
 use rpc::HttpConfiguration as RpcHttpConfig;
 use toml;
 
@@ -91,6 +91,8 @@ pub struct Config {
     pub enable_block_sync: bool,
     pub enable_tx_relay: bool,
     pub secret_key: Secret,
+    pub author: Option<Address>,
+    pub engine_signer: Option<Address>,
 }
 
 pub fn load(config_path: String) -> Result<Config, String> {
@@ -122,6 +124,12 @@ impl Config {
         }
         if let Some(secret) = matches.value_of("secret-key") {
             self.secret_key = Secret::from_str(secret).map_err(|_| "Invalid secret key")?;
+        }
+        if let Some(author) = matches.value_of("author") {
+            self.author = Some(Address::from_str(author).map_err(|_| "Invalid address")?);
+        }
+        if let Some(engine_signer) = matches.value_of("engine-signer") {
+            self.engine_signer = Some(Address::from_str(engine_signer).map_err(|_| "Invalid address")?);
         }
         Ok(())
     }

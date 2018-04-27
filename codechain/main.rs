@@ -95,10 +95,13 @@ fn run() -> Result<(), String> {
     let _logger = setup_log(&log_config).expect("Logger is initialized only once; qed");
 
     let ap = AccountProvider::new();
-    let signer = ap.insert_account(config.secret_key.into()).map_err(|e| format!("Invalid secret key: {:?}", e))?;
+    let address = ap.insert_account(config.secret_key.into()).map_err(|e| format!("Invalid secret key: {:?}", e))?;
+
     let miner = Miner::new(MinerOptions::default(), &spec, Some(ap.clone()));
-    miner.set_author(signer);
-    miner.set_engine_signer(signer).map_err(|err| format!("{:?}", err))?;
+    let author = config.author.unwrap_or(address);
+    miner.set_author(author);
+    let enginer_signer = config.engine_signer.unwrap_or(address);
+    miner.set_engine_signer(enginer_signer).map_err(|err| format!("{:?}", err))?;
 
     let client = commands::client_start(&config, &spec, miner.clone())?;
 

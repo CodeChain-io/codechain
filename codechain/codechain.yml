@@ -53,6 +53,14 @@ args:
         long: secret-key
         help: Secret key used by node
         takes_value: true
+    - author:
+        long: author
+        help: Specify the block author (aka "coinbase") address for sending block rewards from sealed blocks.
+        takes_value: true
+    - engine-signer:
+        long: engine-signer
+        help: Specify the address which should be used to sign consensus messages and issue blocks.
+        takes_value: true
     - no-discovery:
         long: no-discovery
         help: Do not use discovery extension
