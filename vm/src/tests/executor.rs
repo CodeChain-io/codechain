@@ -16,7 +16,7 @@
 
 use ccrypto::blake256;
 use ckeys::{sign_ecdsa, KeyPair, Private};
-use ctypes::H520;
+use ctypes::{H256, H520};
 
 use secp256k1::key::{SecretKey, MINUS_ONE_KEY, ONE_KEY};
 
@@ -25,17 +25,17 @@ use instruction::Instruction;
 
 #[test]
 fn simple_success() {
-    assert_eq!(execute(&[Instruction::PushI(1)], Config::default()), Ok(ScriptResult::Unlocked));
+    assert_eq!(execute(&[Instruction::PushI(1)], H256::default(), Config::default()), Ok(ScriptResult::Unlocked));
 }
 
 #[test]
 fn simple_failure() {
-    assert_eq!(execute(&[Instruction::PushI(0)], Config::default()), Ok(ScriptResult::Fail));
+    assert_eq!(execute(&[Instruction::PushI(0)], H256::default(), Config::default()), Ok(ScriptResult::Fail));
 }
 
 #[test]
 fn underflow() {
-    assert_eq!(execute(&[Instruction::Pop], Config::default()), Err(RuntimeError::StackUnderflow));
+    assert_eq!(execute(&[Instruction::Pop], H256::default(), Config::default()), Err(RuntimeError::StackUnderflow));
 }
 
 #[test]
@@ -44,7 +44,7 @@ fn out_of_memory() {
         max_memory: 2,
     };
     assert_eq!(
-        execute(&[Instruction::PushI(0), Instruction::PushI(1), Instruction::PushI(2)], config),
+        execute(&[Instruction::PushI(0), Instruction::PushI(1), Instruction::PushI(2)], H256::default(), config),
         Err(RuntimeError::OutOfMemory)
     );
 }
@@ -53,13 +53,13 @@ fn out_of_memory() {
 fn valid_pay_to_public_key() {
     let keypair = KeyPair::from_private(Private::from(SecretKey::from(ONE_KEY))).unwrap();
     let pubkey = <&[u8]>::from(keypair.public()).to_vec();
-    let message = blake256("codechain");
+    let message = blake256("asdf");
     let signature = H520::from(sign_ecdsa(keypair.private(), &message).unwrap()).to_vec();
     let unlock_script = vec![Instruction::PushB(signature)];
     let lock_script = vec![Instruction::PushB(pubkey), Instruction::ChkSig];
 
     assert_eq!(
-        execute(&[&unlock_script[..], &lock_script[..]].concat(), Config::default()),
+        execute(&[&unlock_script[..], &lock_script[..]].concat(), message, Config::default()),
         Ok(ScriptResult::Unlocked)
     );
 }
@@ -68,12 +68,15 @@ fn valid_pay_to_public_key() {
 fn invalid_pay_to_public_key() {
     let keypair = KeyPair::from_private(Private::from(SecretKey::from(ONE_KEY))).unwrap();
     let pubkey = <&[u8]>::from(keypair.public()).to_vec();
-    let message = blake256("codechain");
+    let message = blake256("asdf");
     let lock_script = vec![Instruction::PushB(pubkey), Instruction::ChkSig];
 
     let invalid_keypair = KeyPair::from_private(Private::from(SecretKey::from(MINUS_ONE_KEY))).unwrap();
     let invalid_signature = H520::from(sign_ecdsa(invalid_keypair.private(), &message).unwrap()).to_vec();
     let unlock_script = vec![Instruction::PushB(invalid_signature)];
 
-    assert_eq!(execute(&[&unlock_script[..], &lock_script[..]].concat(), Config::default()), Ok(ScriptResult::Fail));
+    assert_eq!(
+        execute(&[&unlock_script[..], &lock_script[..]].concat(), message, Config::default()),
+        Ok(ScriptResult::Fail)
+    );
 }
