@@ -19,19 +19,17 @@
 //! Unconfirmed sub-states are managed with `checkpoint`s which may be canonicalized
 //! or rolled back.
 
-use std::cell::{RefCell, RefMut};
-use std::collections::hash_map::Entry as HashMapEntry;
+use std::cell::RefMut;
 use std::collections::HashMap;
 use std::fmt;
-use std::hash::Hash;
 
 use cbytes::Bytes;
 use ctypes::{Address, H256, Public, U256, U512};
 use error::Error;
-use rlp::{Decodable, Encodable};
 use transaction::{Action, AssetTransferInput, AssetTransferOutput, SignedTransaction};
 use trie::{self, Trie, TrieError, TrieFactory};
 
+use self::cache::Cache;
 use super::invoice::{Invoice, TransactionOutcome};
 use super::state_db::StateDB;
 use super::transaction::TransactionError;
@@ -39,6 +37,7 @@ use super::transaction::TransactionError;
 mod account;
 mod asset;
 mod asset_scheme;
+mod cache;
 
 pub mod backend;
 
@@ -46,6 +45,7 @@ pub use self::account::Account;
 pub use self::asset::{Asset, AssetAddress};
 pub use self::asset_scheme::{AssetScheme, AssetSchemeAddress};
 pub use self::backend::Backend;
+pub use self::cache::CacheableItem;
 
 /// Used to return information about an `State::apply` operation.
 pub struct ApplyOutcome {
@@ -53,95 +53,6 @@ pub struct ApplyOutcome {
     pub invoice: Invoice,
     /// The output of the applied transaction.
     pub error: Option<TransactionError>,
-}
-
-#[derive(Eq, PartialEq, Clone, Copy, Debug)]
-/// Account modification state. Used to check if the account was
-/// Modified in between commits and overall.
-enum EntryState {
-    /// Account was loaded from disk and never modified in this state object.
-    CleanFresh,
-    /// Account was loaded from the global cache and never modified.
-    CleanCached,
-    /// Account has been modified and is not committed to the trie yet.
-    /// This is set if any of the account data is changed, including
-    /// storage and code.
-    Dirty,
-    /// Account was modified and committed to the trie.
-    Committed,
-}
-
-#[derive(Debug)]
-/// In-memory copy of the account data. Holds the optional account
-/// and the modification status.
-/// Account entry can contain existing (`Some`) or non-existing
-/// account (`None`)
-struct Entry<Item>
-where
-    Item: CacheableItem, {
-    /// Account entry. `None` if account known to be non-existant.
-    item: Option<Item>,
-    /// Entry state.
-    state: EntryState,
-}
-
-// Account cache item. Contains account data and
-// modification state
-impl<Item> Entry<Item>
-where
-    Item: CacheableItem,
-{
-    fn is_dirty(&self) -> bool {
-        self.state == EntryState::Dirty
-    }
-
-    fn exists_and_is_null(&self) -> bool {
-        self.item.as_ref().map_or(false, |a| a.is_null())
-    }
-
-    fn clone(&self) -> Self {
-        Self {
-            item: self.item.as_ref().map(Clone::clone),
-            state: self.state,
-        }
-    }
-
-    // Create a new account entry and mark it as dirty.
-    fn new_dirty(item: Option<Item>) -> Self {
-        Self {
-            item,
-            state: EntryState::Dirty,
-        }
-    }
-
-    // Create a new account entry and mark it as clean.
-    fn new_clean(item: Option<Item>) -> Self {
-        Self {
-            item,
-            state: EntryState::CleanFresh,
-        }
-    }
-
-    // Create a new account entry and mark it as clean and cached.
-    fn new_clean_cached(item: Option<Item>) -> Self {
-        Self {
-            item,
-            state: EntryState::CleanCached,
-        }
-    }
-
-    // Replace data with another entry but preserve storage cache.
-    fn overwrite_with(&mut self, other: Self) {
-        self.state = other.state;
-        match other.item {
-            Some(acc) => {
-                if let Some(ref mut ours) = self.item {
-                    ours.overwrite_with(acc);
-                }
-            }
-            None => self.item = None,
-        }
-    }
 }
 
 /// Representation of the entire state of all accounts in the system.
@@ -192,13 +103,9 @@ where
 pub struct State<B: Backend> {
     db: B,
     root: H256,
-    account_cache: RefCell<HashMap<Address, Entry<Account>>>,
-    asset_scheme_cache: RefCell<HashMap<AssetSchemeAddress, Entry<AssetScheme>>>,
-    asset_cache: RefCell<HashMap<AssetAddress, Entry<Asset>>>,
-    // The original account is preserved in
-    account_checkpoints: RefCell<Vec<HashMap<Address, Option<Entry<Account>>>>>,
-    asset_scheme_checkpoints: RefCell<Vec<HashMap<AssetSchemeAddress, Option<Entry<AssetScheme>>>>>,
-    asset_checkpoints: RefCell<Vec<HashMap<AssetAddress, Option<Entry<Asset>>>>>,
+    account: Cache<Account>,
+    asset_scheme: Cache<AssetScheme>,
+    asset: Cache<Asset>,
     account_start_nonce: U256,
     trie_factory: TrieFactory,
 }
@@ -252,13 +159,10 @@ impl<B: Backend> State<B> {
         State {
             db,
             root,
-            account_cache: RefCell::new(HashMap::new()),
-            asset_scheme_cache: RefCell::new(HashMap::new()),
-            asset_cache: RefCell::new(HashMap::new()),
-            account_checkpoints: RefCell::new(Vec::new()),
+            account: Cache::new(),
+            asset_scheme: Cache::new(),
+            asset: Cache::new(),
             account_start_nonce,
-            asset_scheme_checkpoints: RefCell::new(Vec::new()),
-            asset_checkpoints: RefCell::new(Vec::new()),
             trie_factory,
         }
     }
@@ -277,12 +181,9 @@ impl<B: Backend> State<B> {
         let state = State {
             db,
             root,
-            account_cache: RefCell::new(HashMap::new()),
-            asset_scheme_cache: RefCell::new(HashMap::new()),
-            asset_cache: RefCell::new(HashMap::new()),
-            account_checkpoints: RefCell::new(Vec::new()),
-            asset_scheme_checkpoints: RefCell::new(Vec::new()),
-            asset_checkpoints: RefCell::new(Vec::new()),
+            account: Cache::new(),
+            asset_scheme: Cache::new(),
+            asset: Cache::new(),
             account_start_nonce,
             trie_factory,
         };
@@ -292,132 +193,23 @@ impl<B: Backend> State<B> {
 
     /// Create a recoverable checkpoint of this state.
     pub fn checkpoint(&mut self) {
-        self.account_checkpoints.get_mut().push(HashMap::new());
-        self.asset_scheme_checkpoints.get_mut().push(HashMap::new());
-        self.asset_checkpoints.get_mut().push(HashMap::new());
-    }
-
-    fn discard_checkpoint_impl<Item>(checkpoints: &mut RefCell<Vec<HashMap<Item::Address, Option<Entry<Item>>>>>)
-    where
-        Item: CacheableItem, {
-        // merge with previous checkpoint
-        let last = checkpoints.get_mut().pop();
-        if let Some(mut checkpoint) = last {
-            if let Some(ref mut prev) = checkpoints.get_mut().last_mut() {
-                if prev.is_empty() {
-                    **prev = checkpoint;
-                } else {
-                    for (k, v) in checkpoint.drain() {
-                        prev.entry(k).or_insert(v);
-                    }
-                }
-            }
-        }
+        self.account.checkpoint();
+        self.asset_scheme.checkpoint();
+        self.asset.checkpoint();
     }
 
     /// Merge last checkpoint with previous.
     pub fn discard_checkpoint(&mut self) {
-        Self::discard_checkpoint_impl(&mut self.account_checkpoints);
-        Self::discard_checkpoint_impl(&mut self.asset_scheme_checkpoints);
-        Self::discard_checkpoint_impl(&mut self.asset_checkpoints);
-    }
-
-    fn revert_to_checkpoint_impl<Item>(
-        checkpoints: &mut RefCell<Vec<HashMap<Item::Address, Option<Entry<Item>>>>>,
-        cache: &mut RefCell<HashMap<Item::Address, Entry<Item>>>,
-    ) where
-        Item: CacheableItem, {
-        if let Some(mut checkpoint) = checkpoints.get_mut().pop() {
-            for (k, v) in checkpoint.drain() {
-                match v {
-                    Some(v) => {
-                        match cache.get_mut().entry(k) {
-                            HashMapEntry::Occupied(mut e) => {
-                                // Merge checkpointed changes back into the main account
-                                // storage preserving the cache.
-                                e.get_mut().overwrite_with(v);
-                            }
-                            HashMapEntry::Vacant(e) => {
-                                e.insert(v);
-                            }
-                        }
-                    }
-                    None => {
-                        if let HashMapEntry::Occupied(e) = cache.get_mut().entry(k) {
-                            if e.get().is_dirty() {
-                                e.remove();
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        self.account.discard_checkpoint();
+        self.asset_scheme.discard_checkpoint();
+        self.asset.discard_checkpoint();
     }
 
     /// Revert to the last checkpoint and discard it.
     pub fn revert_to_checkpoint(&mut self) {
-        Self::revert_to_checkpoint_impl(&mut self.account_checkpoints, &mut self.account_cache);
-        Self::revert_to_checkpoint_impl(&mut self.asset_scheme_checkpoints, &mut self.asset_scheme_cache);
-        Self::revert_to_checkpoint_impl(&mut self.asset_checkpoints, &mut self.asset_cache);
-    }
-
-    fn insert_cache<Item>(
-        &self,
-        address: &Item::Address,
-        item: Entry<Item>,
-        cache: &RefCell<HashMap<Item::Address, Entry<Item>>>,
-        checkpoints: &RefCell<Vec<HashMap<Item::Address, Option<Entry<Item>>>>>,
-    ) where
-        Item: CacheableItem, {
-        // Dirty item which is not in the cache means this is a new item.
-        // It goes directly into the checkpoint as there's nothing to rever to.
-        //
-        // In all other cases item is read as clean first, and after that made
-        // dirty in and added to the checkpoint with `note_cache`.
-        let is_dirty = item.is_dirty();
-        let old_value = cache.borrow_mut().insert(address.clone(), item);
-        if !is_dirty {
-            return
-        }
-        if let Some(ref mut checkpoint) = checkpoints.borrow_mut().last_mut() {
-            checkpoint.entry(address.clone()).or_insert(old_value);
-        }
-    }
-
-    fn insert_cache_account(&self, address: &Address, account: Entry<Account>) {
-        self.insert_cache(address, account, &self.account_cache, &self.account_checkpoints)
-    }
-
-    fn insert_cache_asset_scheme(&self, address: &AssetSchemeAddress, asset: Entry<AssetScheme>) {
-        self.insert_cache(address, asset, &self.asset_scheme_cache, &self.asset_scheme_checkpoints)
-    }
-
-    fn insert_cache_asset(&self, address: &AssetAddress, asset: Entry<Asset>) {
-        self.insert_cache(address, asset, &self.asset_cache, &self.asset_checkpoints)
-    }
-
-    fn note_cache<Item>(
-        &self,
-        address: &Item::Address,
-        cache: &RefCell<HashMap<Item::Address, Entry<Item>>>,
-        checkpoints: &RefCell<Vec<HashMap<Item::Address, Option<Entry<Item>>>>>,
-    ) where
-        Item: CacheableItem, {
-        if let Some(ref mut checkpoint) = checkpoints.borrow_mut().last_mut() {
-            checkpoint.entry(address.clone()).or_insert_with(|| cache.borrow().get(address).map(Entry::<Item>::clone));
-        }
-    }
-
-    fn note_cache_account(&self, address: &Address) {
-        self.note_cache(address, &self.account_cache, &self.account_checkpoints)
-    }
-
-    fn note_cache_asset_scheme(&self, address: &AssetSchemeAddress) {
-        self.note_cache(address, &self.asset_scheme_cache, &self.asset_scheme_checkpoints);
-    }
-
-    fn note_cache_asset(&self, address: &AssetAddress) {
-        self.note_cache(address, &self.asset_cache, &self.asset_checkpoints);
+        self.account.revert_to_checkpoint();
+        self.asset_scheme.revert_to_checkpoint();
+        self.asset.revert_to_checkpoint();
     }
 
     /// Destroy the current object and return root and database.
@@ -433,11 +225,11 @@ impl<B: Backend> State<B> {
 
     /// Remove an existing account.
     pub fn kill_account(&mut self, account: &Address) {
-        self.insert_cache_account(account, Entry::<Account>::new_dirty(None));
+        self.account.remove(account);
     }
 
     pub fn kill_asset(&mut self, account: &AssetAddress) {
-        self.insert_cache_asset(account, Entry::<Asset>::new_dirty(None));
+        self.asset.remove(account);
     }
 
     /// Determine whether an account exists.
@@ -689,90 +481,32 @@ impl<B: Backend> State<B> {
 
     /// Commits our cached account changes into the trie.
     pub fn commit(&mut self) -> Result<(), Error> {
-        {
-            let mut accounts = self.account_cache.borrow_mut();
-            let mut trie = self.trie_factory.from_existing(self.db.as_hashdb_mut(), &mut self.root)?;
-            for (address, ref mut a) in accounts.iter_mut().filter(|&(_, ref a)| a.is_dirty()) {
-                a.state = EntryState::Committed;
-                match a.item {
-                    Some(ref mut account) => {
-                        trie.insert(address, &account.rlp())?;
-                    }
-                    None => {
-                        trie.remove(address)?;
-                    }
-                };
-            }
-        }
-
-        {
-            let mut asset_schemes = self.asset_scheme_cache.borrow_mut();
-            let mut trie = self.trie_factory.from_existing(self.db.as_hashdb_mut(), &mut self.root)?;
-            for (address, ref mut a) in asset_schemes.iter_mut().filter(|&(_, ref a)| a.is_dirty()) {
-                a.state = EntryState::Committed;
-                let ref mut asset_scheme = a.item.as_ref().expect("Removing asset_scheme is not supported");
-                trie.insert(address.as_ref(), &asset_scheme.rlp())?;
-            }
-        }
-
-        {
-            let mut assets = self.asset_cache.borrow_mut();
-            let mut trie = self.trie_factory.from_existing(self.db.as_hashdb_mut(), &mut self.root)?;
-            for (address, ref mut a) in assets.iter_mut().filter(|&(_, ref a)| a.is_dirty()) {
-                a.state = EntryState::Committed;
-                match a.item {
-                    Some(ref mut asset) => {
-                        trie.insert(address.as_ref(), &asset.rlp())?;
-                    }
-                    None => {
-                        trie.remove(address.as_ref())?;
-                    }
-                };
-            }
-        }
-
+        let mut trie = self.trie_factory.from_existing(self.db.as_hashdb_mut(), &mut self.root)?;
+        self.account.commit(&mut trie)?;
+        self.asset_scheme.commit(&mut trie)?;
+        self.asset.commit(&mut trie)?;
         Ok(())
     }
 
     /// Propagate local cache into shared canonical state cache.
     fn propagate_to_global_cache(&mut self) {
-        {
-            let mut addresses = self.account_cache.borrow_mut();
-            trace!("Committing cache {:?} entries", addresses.len());
-            for (address, a) in addresses
-                .drain()
-                .filter(|&(_, ref a)| a.state == EntryState::Committed || a.state == EntryState::CleanFresh)
-            {
-                self.db.add_to_account_cache(address, a.item, a.state == EntryState::Committed);
-            }
-        }
-        {
-            let mut assets = self.asset_scheme_cache.borrow_mut();
-            trace!("Committing cache {:?} entries", assets.len());
-            for (address, a) in assets
-                .drain()
-                .filter(|&(_, ref a)| a.state == EntryState::Committed || a.state == EntryState::CleanFresh)
-            {
-                self.db.add_to_asset_scheme_cache(address, a.item, a.state == EntryState::Committed);
-            }
-        }
-        {
-            let mut assets = self.asset_cache.borrow_mut();
-            trace!("Committing cache {:?} entries", assets.len());
-            for (address, a) in assets
-                .drain()
-                .filter(|&(_, ref a)| a.state == EntryState::Committed || a.state == EntryState::CleanFresh)
-            {
-                self.db.add_to_asset_cache(address, a.item, a.state == EntryState::Committed);
-            }
-        }
+        let ref mut db = self.db;
+        self.account.propagate_to_global_cache(|address, item, modified| {
+            db.add_to_account_cache(address, item, modified);
+        });
+        self.asset_scheme.propagate_to_global_cache(|address, item, modified| {
+            db.add_to_asset_scheme_cache(address, item, modified);
+        });
+        self.asset.propagate_to_global_cache(|address, item, modified| {
+            db.add_to_asset_cache(address, item, modified);
+        });
     }
 
     /// Clear state cache
     pub fn clear(&mut self) {
-        self.account_cache.borrow_mut().clear();
-        self.asset_scheme_cache.borrow_mut().clear();
-        self.asset_cache.borrow_mut().clear();
+        self.account.clear();
+        self.asset_scheme.clear();
+        self.asset.clear();
     }
 
     /// Check caches for required data
@@ -781,70 +515,18 @@ impl<B: Backend> State<B> {
     fn ensure_account_cached<F, U>(&self, a: &Address, f: F) -> trie::Result<U>
     where
         F: Fn(Option<&Account>) -> U, {
-        // check local cache first
-        if let Some(ref mut maybe_acc) = self.account_cache.borrow_mut().get_mut(a) {
-            if let Some(ref mut account) = maybe_acc.item {
-                return Ok(f(Some(account)))
-            }
-            return Ok(f(None))
-        }
-        // check global cache
-        let result = self.db.get_cached_account_with(a, |acc| f(acc.map(|a| &*a)));
-        match result {
-            Some(r) => Ok(r),
-            None => {
-                // not found in the global cache, get from the DB and insert into local
-                let db = self.trie_factory.readonly(self.db.as_hashdb(), &self.root)?;
-                let mut maybe_acc = db.get_with(a, Account::from_rlp)?;
-                let r = f(maybe_acc.as_ref());
-                self.insert_cache_account(a, Entry::<Account>::new_clean(maybe_acc));
-                Ok(r)
-            }
-        }
+        let db = self.trie_factory.readonly(self.db.as_hashdb(), &self.root)?;
+        let from_global_cache = |a| self.db.get_cached_account_with(a, |acc| f(acc.map(|a| &*a)));
+        self.account.ensure_cached(a, &f, db, from_global_cache)
     }
 
-    /// Pull account `a` in our cache from the trie DB.
     fn require_account<'a>(&'a self, a: &Address) -> trie::Result<RefMut<'a, Account>> {
-        self.require_account_or_from(a, || Account::new(0u8.into(), self.account_start_nonce))
+        let default = || Account::new(0u8.into(), self.account_start_nonce);
+        let db = self.trie_factory.readonly(self.db.as_hashdb(), &self.root)?;
+        let from_db = || self.db.get_cached_account(a);
+        self.account.require_item_or_from(a, default, db, from_db)
     }
 
-    /// Pull account `a` in our cache from the trie DB.
-    /// If it doesn't exist, make account equal the evaluation of `default`.
-    fn require_account_or_from<'a, F>(&'a self, a: &Address, default: F) -> trie::Result<RefMut<'a, Account>>
-    where
-        F: FnOnce() -> Account, {
-        let contains_key = self.account_cache.borrow().contains_key(a);
-        if !contains_key {
-            match self.db.get_cached_account(a) {
-                Some(acc) => self.insert_cache_account(a, Entry::<Account>::new_clean_cached(acc)),
-                None => {
-                    let db = self.trie_factory.readonly(self.db.as_hashdb(), &self.root)?;
-                    let maybe_acc = Entry::<Account>::new_clean(db.get_with(a, Account::from_rlp)?);
-                    self.insert_cache_account(a, maybe_acc);
-                }
-            }
-        }
-        self.note_cache_account(a);
-
-        // at this point the entry is guaranteed to be in the cache.
-        Ok(RefMut::map(self.account_cache.borrow_mut(), |c| {
-            let entry = c.get_mut(a).expect("entry known to exist in the cache; qed");
-
-            match &mut entry.item {
-                &mut Some(_) => {}
-                slot => *slot = Some(default()),
-            }
-
-            // set the dirty flag after changing account data.
-            entry.state = EntryState::Dirty;
-            match entry.item {
-                Some(ref mut account) => account,
-                _ => panic!("Required account must always exist; qed"),
-            }
-        }))
-    }
-
-    /// Pull account `a` in our cache from the trie DB.
     fn require_asset_scheme<'a, F>(
         &'a self,
         a: &AssetSchemeAddress,
@@ -852,95 +534,23 @@ impl<B: Backend> State<B> {
     ) -> trie::Result<RefMut<'a, AssetScheme>>
     where
         F: FnOnce() -> AssetScheme, {
-        self.require_asset_scheme_or_from(a, default)
+        let db = self.trie_factory.readonly(self.db.as_hashdb(), &self.root)?;
+        let from_db = || self.db.get_cached_asset_scheme(a);
+        self.asset_scheme.require_item_or_from(a, default, db, from_db)
     }
 
     fn require_asset<'a, F>(&'a self, a: &AssetAddress, default: F) -> trie::Result<RefMut<'a, Asset>>
     where
         F: FnOnce() -> Asset, {
-        self.require_asset_or_from(a, default)
-    }
-
-    /// Pull asset `a` in our cache from the trie DB.
-    /// If it doesn't exist, make asset equal the evaluation of `default`.
-    fn require_asset_scheme_or_from<'a, F>(
-        &'a self,
-        a: &AssetSchemeAddress,
-        default: F,
-    ) -> trie::Result<RefMut<'a, AssetScheme>>
-    where
-        F: FnOnce() -> AssetScheme, {
-        let contains_key = self.asset_scheme_cache.borrow().contains_key(a);
-        if !contains_key {
-            match self.db.get_cached_asset_scheme(a) {
-                Some(asset_scheme) => {
-                    self.insert_cache_asset_scheme(a, Entry::<AssetScheme>::new_clean_cached(asset_scheme))
-                }
-                None => {
-                    let db = self.trie_factory.readonly(self.db.as_hashdb(), &self.root)?;
-                    let maybe_asset_scheme = Entry::<AssetScheme>::new_clean(db.get_with(a.as_ref(), AssetScheme::from_rlp)?);
-                    self.insert_cache_asset_scheme(a, maybe_asset_scheme);
-                }
-            }
-        }
-        self.note_cache_asset_scheme(a);
-
-        // at this point the entry is guaranteed to be in the cache.
-        Ok(RefMut::map(self.asset_scheme_cache.borrow_mut(), |c| {
-            let entry = c.get_mut(a).expect("entry known to exist in the cache; qed");
-
-            match &mut entry.item {
-                &mut Some(_) => {}
-                slot => *slot = Some(default()),
-            }
-
-            // set the dirty flag after changing asset_scheme data.
-            entry.state = EntryState::Dirty;
-            match entry.item {
-                Some(ref mut asset_scheme) => asset_scheme,
-                _ => panic!("Required asset_scheme must always exist; qed"),
-            }
-        }))
-    }
-
-    fn require_asset_or_from<'a, F>(&'a self, a: &AssetAddress, default: F) -> trie::Result<RefMut<'a, Asset>>
-    where
-        F: FnOnce() -> Asset, {
-        let contains_key = self.asset_cache.borrow().contains_key(a);
-        if !contains_key {
-            match self.db.get_cached_asset(a) {
-                Some(asset) => self.insert_cache_asset(a, Entry::<Asset>::new_clean_cached(asset)),
-                None => {
-                    let db = self.trie_factory.readonly(self.db.as_hashdb(), &self.root)?;
-                    let maybe_asset = Entry::<Asset>::new_clean(db.get_with(a.as_ref(), Asset::from_rlp)?);
-                    self.insert_cache_asset(a, maybe_asset);
-                }
-            }
-        }
-        self.note_cache_asset(a);
-
-        // at this point the entry is guaranteed to be in the cache.
-        Ok(RefMut::map(self.asset_cache.borrow_mut(), |c| {
-            let entry = c.get_mut(a).expect("entry known to exist in the cache; qed");
-
-            match &mut entry.item {
-                &mut Some(_) => {}
-                slot => *slot = Some(default()),
-            }
-
-            // set the dirty flag after changing asset data.
-            entry.state = EntryState::Dirty;
-            match entry.item {
-                Some(ref mut asset) => asset,
-                _ => panic!("Required asset must always exist; qed"),
-            }
-        }))
+        let db = self.trie_factory.readonly(self.db.as_hashdb(), &self.root)?;
+        let from_db = || self.db.get_cached_asset(a);
+        self.asset.require_item_or_from(a, default, db, from_db)
     }
 }
 
 impl<B: Backend> fmt::Debug for State<B> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self.account_cache.borrow())
+        write!(f, "account: {:?} asset_scheme: {:?} asset: {:?}", self.account, self.asset_scheme, self.asset)
     }
 }
 
@@ -948,60 +558,17 @@ impl<B: Backend> fmt::Debug for State<B> {
 // checkpoints where possible.
 impl Clone for State<StateDB> {
     fn clone(&self) -> State<StateDB> {
-        let account_cache = {
-            let mut cache: HashMap<Address, Entry<Account>> = HashMap::new();
-            for (key, val) in self.account_cache.borrow().iter() {
-                if val.is_dirty() {
-                    cache.insert(key.clone(), Entry::<Account>::new_dirty(val.item.clone()));
-                }
-            }
-            RefCell::new(cache)
-        };
-
-        let asset_scheme_cache = {
-            let mut cache: HashMap<AssetSchemeAddress, Entry<AssetScheme>> = HashMap::new();
-            for (key, val) in self.asset_scheme_cache.borrow().iter() {
-                if val.is_dirty() {
-                    cache.insert(key.clone(), Entry::<AssetScheme>::new_dirty(val.item.clone()));
-                }
-            }
-            RefCell::new(cache)
-        };
-
-        let asset_cache = {
-            let mut cache: HashMap<AssetAddress, Entry<Asset>> = HashMap::new();
-            for (key, val) in self.asset_cache.borrow().iter() {
-                if val.is_dirty() {
-                    cache.insert(key.clone(), Entry::<Asset>::new_dirty(val.item.clone()));
-                }
-            }
-            RefCell::new(cache)
-        };
-
         State {
             db: self.db.boxed_clone(),
             root: self.root.clone(),
-            account_cache,
-            asset_scheme_cache,
-            asset_cache,
-            account_checkpoints: RefCell::new(Vec::new()),
-            asset_scheme_checkpoints: RefCell::new(Vec::new()),
-            asset_checkpoints: RefCell::new(Vec::new()),
+            account: self.account.clone(),
+            asset_scheme: self.asset_scheme.clone(),
+            asset: self.asset.clone(),
             account_start_nonce: self.account_start_nonce.clone(),
             trie_factory: self.trie_factory.clone(),
         }
     }
 }
-
-pub trait CacheableItem: Clone + Decodable + Encodable {
-    type Address: AsRef<[u8]> + Clone + fmt::Debug + Eq + Hash;
-    fn overwrite_with(&mut self, other: Self);
-    fn is_null(&self) -> bool;
-
-    fn from_rlp(rlp: &[u8]) -> Self;
-    fn rlp(&self) -> Bytes;
-}
-
 
 fn is_input_and_output_consistent(inputs: &[AssetTransferInput], outputs: &[AssetTransferOutput]) -> bool {
     let mut sum: HashMap<H256, U512> = HashMap::new();
