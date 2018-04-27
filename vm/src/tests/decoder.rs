@@ -15,12 +15,13 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use decoder::{decode, DecoderError};
+use instruction::Instruction;
 use opcode;
-use opcode::OpCode;
 
 #[test]
 fn test_single_byte_opcodes() {
-    let target = [(opcode::NOP, OpCode::Nop), (opcode::POP, OpCode::Pop), (opcode::CHKSIG, OpCode::ChkSig)];
+    let target =
+        [(opcode::NOP, Instruction::Nop), (opcode::POP, Instruction::Pop), (opcode::CHKSIG, Instruction::ChkSig)];
     for &(ref byte, ref code) in target.into_iter() {
         let script = decode(vec![byte.clone(), byte.clone(), byte.clone()]);
         assert_eq!(script, Ok(vec![code.clone(), code.clone(), code.clone()]));
@@ -29,7 +30,10 @@ fn test_single_byte_opcodes() {
 
 #[test]
 fn pushi() {
-    assert_eq!(decode(vec![opcode::PUSHI, 0, opcode::PUSHI, 10]), Ok(vec![OpCode::PushI(0), OpCode::PushI(10)]));
+    assert_eq!(
+        decode(vec![opcode::PUSHI, 0, opcode::PUSHI, 10]),
+        Ok(vec![Instruction::PushI(0), Instruction::PushI(10)])
+    );
     assert_eq!(decode(vec![opcode::PUSHI, 0, opcode::PUSHI]), Err(DecoderError::ScriptTooShort));
 }
 
@@ -38,7 +42,7 @@ fn pushb() {
     let blobs = [vec![0xed, 0x11, 0xe7], vec![0x8b, 0x0c, 0x92, 0x24, 0x3f]];
     assert_eq!(
         decode([&[opcode::PUSHB, 3], &blobs[0][..], &[opcode::PUSHB, 5], &blobs[1][..]].concat()),
-        Ok(vec![OpCode::PushB(blobs[0].clone()), OpCode::PushB(blobs[1].clone())])
+        Ok(vec![Instruction::PushB(blobs[0].clone()), Instruction::PushB(blobs[1].clone())])
     );
     assert_eq!(decode([&[opcode::PUSHB, 4], &blobs[0][..]].concat()), Err(DecoderError::ScriptTooShort));
 }

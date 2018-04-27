@@ -14,21 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-extern crate codechain_bytes as cbytes;
-extern crate codechain_crypto as ccrypto;
-extern crate codechain_keys as ckeys;
-extern crate codechain_types as ctypes;
-
-#[cfg(test)]
-extern crate secp256k1;
-
-mod decoder;
-mod executor;
-mod instruction;
-mod opcode;
-
-#[cfg(test)]
-mod tests;
-
-pub use decoder::{decode, DecoderError};
-pub use executor::{execute, RuntimeError, ScriptResult};
+#[derive(Clone, Debug, PartialEq)]
+pub enum Instruction {
+    Nop,
+    PushB(Vec<u8>),
+    PushI(i8),
+    Pop,
+    ChkSig,
+}

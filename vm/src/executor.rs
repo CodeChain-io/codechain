@@ -18,7 +18,7 @@ use ccrypto::blake256;
 use ckeys::{verify_ecdsa, ECDSASignature};
 use ctypes::{H520, Public};
 
-use opcode::OpCode;
+use instruction::Instruction;
 
 const DEFAULT_MAX_MEMORY: usize = 1024;
 
@@ -110,18 +110,18 @@ impl Stack {
     }
 }
 
-pub fn execute(script: &[OpCode], config: Config) -> Result<ScriptResult, RuntimeError> {
+pub fn execute(script: &[Instruction], config: Config) -> Result<ScriptResult, RuntimeError> {
     let mut stack = Stack::new(config);
     let mut pc = 0;
     while pc < script.len() {
         match script[pc] {
-            OpCode::Nop => {}
-            OpCode::PushB(ref blob) => stack.push(Item::Blob(blob.clone()))?,
-            OpCode::PushI(val) => stack.push(Item::Integer(val))?,
-            OpCode::Pop => {
+            Instruction::Nop => {}
+            Instruction::PushB(ref blob) => stack.push(Item::Blob(blob.clone()))?,
+            Instruction::PushI(val) => stack.push(Item::Integer(val))?,
+            Instruction::Pop => {
                 stack.pop()?;
             }
-            OpCode::ChkSig => {
+            Instruction::ChkSig => {
                 let pubkey = Public::from_slice(stack.pop_blob(64)?.as_slice());
                 let signature = ECDSASignature::from(H520::from(stack.pop_blob(65)?.as_slice()));
                 // FIXME : Use transaction as message

@@ -19,12 +19,3 @@ pub const PUSHB: u8 = 0x01;
 pub const PUSHI: u8 = 0x02;
 pub const POP: u8 = 0x03;
 pub const CHKSIG: u8 = 0x04;
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum OpCode {
-    Nop,
-    PushB(Vec<u8>),
-    PushI(i8),
-    Pop,
-    ChkSig,
-}
