@@ -805,20 +805,14 @@ impl<B: Backend> State<B> {
 
     /// Pull account `a` in our cache from the trie DB.
     fn require_account<'a>(&'a self, a: &Address) -> trie::Result<RefMut<'a, Account>> {
-        self.require_account_or_from(a, || Account::new(0u8.into(), self.account_start_nonce), |_| {})
+        self.require_account_or_from(a, || Account::new(0u8.into(), self.account_start_nonce))
     }
 
     /// Pull account `a` in our cache from the trie DB.
     /// If it doesn't exist, make account equal the evaluation of `default`.
-    fn require_account_or_from<'a, F, G>(
-        &'a self,
-        a: &Address,
-        default: F,
-        not_default: G,
-    ) -> trie::Result<RefMut<'a, Account>>
+    fn require_account_or_from<'a, F>(&'a self, a: &Address, default: F) -> trie::Result<RefMut<'a, Account>>
     where
-        F: FnOnce() -> Account,
-        G: FnOnce(&mut Account), {
+        F: FnOnce() -> Account, {
         let contains_key = self.account_cache.borrow().contains_key(a);
         if !contains_key {
             match self.db.get_cached_account(a) {
@@ -837,7 +831,7 @@ impl<B: Backend> State<B> {
             let entry = c.get_mut(a).expect("entry known to exist in the cache; qed");
 
             match &mut entry.item {
-                &mut Some(ref mut acc) => not_default(acc),
+                &mut Some(_) => {}
                 slot => *slot = Some(default()),
             }
 
@@ -858,26 +852,24 @@ impl<B: Backend> State<B> {
     ) -> trie::Result<RefMut<'a, AssetScheme>>
     where
         F: FnOnce() -> AssetScheme, {
-        self.require_asset_scheme_or_from(a, default, |_| {})
+        self.require_asset_scheme_or_from(a, default)
     }
 
     fn require_asset<'a, F>(&'a self, a: &AssetAddress, default: F) -> trie::Result<RefMut<'a, Asset>>
     where
         F: FnOnce() -> Asset, {
-        self.require_asset_or_from(a, default, |_| {})
+        self.require_asset_or_from(a, default)
     }
 
     /// Pull asset `a` in our cache from the trie DB.
     /// If it doesn't exist, make asset equal the evaluation of `default`.
-    fn require_asset_scheme_or_from<'a, F, G>(
+    fn require_asset_scheme_or_from<'a, F>(
         &'a self,
         a: &AssetSchemeAddress,
         default: F,
-        not_default: G,
     ) -> trie::Result<RefMut<'a, AssetScheme>>
     where
-        F: FnOnce() -> AssetScheme,
-        G: FnOnce(&mut AssetScheme), {
+        F: FnOnce() -> AssetScheme, {
         let contains_key = self.asset_scheme_cache.borrow().contains_key(a);
         if !contains_key {
             match self.db.get_cached_asset_scheme(a) {
@@ -898,7 +890,7 @@ impl<B: Backend> State<B> {
             let entry = c.get_mut(a).expect("entry known to exist in the cache; qed");
 
             match &mut entry.item {
-                &mut Some(ref mut asset_scheme) => not_default(asset_scheme),
+                &mut Some(_) => {}
                 slot => *slot = Some(default()),
             }
 
@@ -911,15 +903,9 @@ impl<B: Backend> State<B> {
         }))
     }
 
-    fn require_asset_or_from<'a, F, G>(
-        &'a self,
-        a: &AssetAddress,
-        default: F,
-        not_default: G,
-    ) -> trie::Result<RefMut<'a, Asset>>
+    fn require_asset_or_from<'a, F>(&'a self, a: &AssetAddress, default: F) -> trie::Result<RefMut<'a, Asset>>
     where
-        F: FnOnce() -> Asset,
-        G: FnOnce(&mut Asset), {
+        F: FnOnce() -> Asset, {
         let contains_key = self.asset_cache.borrow().contains_key(a);
         if !contains_key {
             match self.db.get_cached_asset(a) {
@@ -938,7 +924,7 @@ impl<B: Backend> State<B> {
             let entry = c.get_mut(a).expect("entry known to exist in the cache; qed");
 
             match &mut entry.item {
-                &mut Some(ref mut asset) => not_default(asset),
+                &mut Some(_) => {}
                 slot => *slot = Some(default()),
             }
 
