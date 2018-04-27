@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use super::{NullEngine, SoloAuthority, Tendermint};
+use super::{NullEngine, Solo, SoloAuthority, Tendermint};
 
 /// Engine deserialization.
 #[derive(Debug, PartialEq, Deserialize)]
@@ -23,7 +23,7 @@ pub enum Engine {
     #[serde(rename = "null")]
     Null(NullEngine),
     #[serde(rename = "solo")]
-    Solo,
+    Solo(Solo),
     #[serde(rename = "soloAuthority")]
     SoloAuthority(SoloAuthority),
     #[serde(rename = "tendermint")]
@@ -52,12 +52,16 @@ mod tests {
         }
 
         let s = r#"{
-			"solo": null
+			"solo": {
+				"params": {
+					"blockReward": "0x0d"
+				}
+			}
 		}"#;
 
         let deserialized: Engine = serde_json::from_str(s).unwrap();
         match deserialized {
-            Engine::Solo => {} // solo is unit tested in its own file.
+            Engine::Solo(_) => {} // solo is unit tested in its own file.
             _ => panic!(),
         };
 

@@ -121,7 +121,7 @@ impl Spec {
 
         match engine_spec {
             cjson::spec::Engine::Null(null) => Arc::new(NullEngine::new(null.params.into(), machine)),
-            cjson::spec::Engine::Solo => Arc::new(Solo::new(machine)),
+            cjson::spec::Engine::Solo(solo) => Arc::new(Solo::new(solo.params.into(), machine)),
             cjson::spec::Engine::SoloAuthority(solo_authority) => {
                 Arc::new(SoloAuthority::new(solo_authority.params.into(), machine))
             }

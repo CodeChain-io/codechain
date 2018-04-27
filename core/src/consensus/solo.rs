@@ -16,20 +16,39 @@
 
 use std::sync::Arc;
 
+use cjson;
 use cnetwork::{Api, NetworkExtension};
+use ctypes::U256;
 
-use super::super::machine::{Machine, Transactions};
+use super::super::machine::{Header, LiveBlock, Machine, Transactions};
 use super::{ConsensusEngine, Seal};
+
+/// Params for a null engine.
+#[derive(Clone, Default)]
+pub struct SoloParams {
+    /// base reward for a block.
+    pub block_reward: U256,
+}
+
+impl From<cjson::spec::SoloParams> for SoloParams {
+    fn from(p: cjson::spec::SoloParams) -> Self {
+        SoloParams {
+            block_reward: p.block_reward.map_or_else(Default::default, Into::into),
+        }
+    }
+}
 
 /// A consensus engine which does not provide any consensus mechanism.
 pub struct Solo<M> {
+    params: SoloParams,
     machine: M,
 }
 
 impl<M> Solo<M> {
     /// Returns new instance of Solo over the given state machine.
-    pub fn new(machine: M) -> Self {
+    pub fn new(params: SoloParams, machine: M) -> Self {
         Solo {
+            params,
             machine,
         }
     }
@@ -61,6 +80,16 @@ where
 
     fn verify_local_seal(&self, _header: &M::Header) -> Result<(), M::Error> {
         Ok(())
+    }
+
+    fn on_close_block(&self, block: &mut M::LiveBlock) -> Result<(), M::Error> {
+        let author = *LiveBlock::header(&*block).author();
+        let reward = self.params.block_reward;
+        if reward == U256::zero() {
+            return Ok(())
+        }
+
+        self.machine.add_balance(block, &author, &reward)
     }
 
     fn network_extension(&self) -> Option<Arc<NetworkExtension>> {

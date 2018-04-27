@@ -1,7 +1,10 @@
 {
 	"name": "Solo",
 	"engine": {
-		"solo": null
+		"solo": {
+			"params": {
+			}
+		}
 	},
 	"params": {
 		"accountStartNonce": "0x0",
