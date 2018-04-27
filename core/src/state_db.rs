@@ -471,19 +471,19 @@ impl state::Backend for StateDB {
         })
     }
 
-    fn add_to_asset_scheme_cache(&mut self, addr: AssetSchemeAddress, data: AssetScheme) {
+    fn add_to_asset_scheme_cache(&mut self, addr: AssetSchemeAddress, item: Option<AssetScheme>, modified: bool) {
         self.local_asset_scheme_cache.push(CacheQueueItem {
             address: addr,
-            item: Some(data),
-            modified: false,
+            item,
+            modified,
         })
     }
 
-    fn add_to_asset_cache(&mut self, addr: AssetAddress, data: Asset) {
+    fn add_to_asset_cache(&mut self, addr: AssetAddress, item: Option<Asset>, modified: bool) {
         self.local_asset_cache.push(CacheQueueItem {
             address: addr,
-            item: Some(data),
-            modified: false,
+            item,
+            modified,
         })
     }
     fn get_cached_account(&self, addr: &Address) -> Option<Option<Account>> {
@@ -624,7 +624,7 @@ mod tests {
 
         let mut s = state_db.boxed_clone_canon(&root_parent);
 
-        s.add_to_asset_scheme_cache(asset_scheme_address.clone(), asset_scheme);
+        s.add_to_asset_scheme_cache(asset_scheme_address.clone(), Some(asset_scheme), false);
 
         assert!(s.get_cached_asset_scheme(&asset_scheme_address).is_none());
         assert!(s.commit_hash.is_none());
@@ -671,7 +671,7 @@ mod tests {
 
         let mut s = state_db.boxed_clone_canon(&root_parent);
 
-        s.add_to_asset_cache(asset_address.clone(), asset);
+        s.add_to_asset_cache(asset_address.clone(), Some(asset), false);
 
         assert!(s.get_cached_asset(&asset_address).is_none());
         assert!(s.commit_hash.is_none());

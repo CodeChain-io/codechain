@@ -662,8 +662,14 @@ impl<B: Backend> State<B> {
             let mut trie = self.trie_factory.from_existing(self.db.as_hashdb_mut(), &mut self.root)?;
             for (address, ref mut a) in assets.iter_mut().filter(|&(_, ref a)| a.is_dirty()) {
                 a.state = EntryState::Committed;
-                let ref mut asset = a.item.as_ref().expect("Removing asset is not supported");
-                trie.insert(address, &asset.rlp())?;
+                match a.item {
+                    Some(ref mut asset) => {
+                        trie.insert(address, &asset.rlp())?;
+                    }
+                    None => {
+                        trie.remove(address)?;
+                    }
+                };
             }
         }
 
@@ -689,10 +695,7 @@ impl<B: Backend> State<B> {
                 .drain()
                 .filter(|&(_, ref a)| a.state == EntryState::Committed || a.state == EntryState::CleanFresh)
             {
-                self.db.add_to_asset_scheme_cache(
-                    address,
-                    a.item.expect("Removing asset scheme is not supported feature"),
-                );
+                self.db.add_to_asset_scheme_cache(address, a.item, a.state == EntryState::Committed);
             }
         }
         {
@@ -702,7 +705,7 @@ impl<B: Backend> State<B> {
                 .drain()
                 .filter(|&(_, ref a)| a.state == EntryState::Committed || a.state == EntryState::CleanFresh)
             {
-                self.db.add_to_asset_cache(address, a.item.expect("Removing asset is not supported feature"));
+                self.db.add_to_asset_cache(address, a.item, a.state == EntryState::Committed);
             }
         }
     }

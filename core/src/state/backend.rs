@@ -37,9 +37,9 @@ pub trait Backend: Send {
     /// Add an account entry to the cache.
     fn add_to_account_cache(&mut self, addr: Address, data: Option<Account>, modified: bool);
     /// Add an asset entry to the cache.
-    fn add_to_asset_scheme_cache(&mut self, addr: AssetSchemeAddress, asset: AssetScheme);
+    fn add_to_asset_scheme_cache(&mut self, addr: AssetSchemeAddress, asset: Option<AssetScheme>, modified: bool);
     /// Add an asset entry to the cache.
-    fn add_to_asset_cache(&mut self, addr: AssetAddress, asset: Asset);
+    fn add_to_asset_cache(&mut self, addr: AssetAddress, asset: Option<Asset>, modified: bool);
 
     /// Get basic copy of the cached account. Not required to include storage.
     /// Returns 'None' if cache is disabled or if the account is not cached.
@@ -73,9 +73,9 @@ impl<H: AsHashDB + Send + Sync> Backend for Basic<H> {
 
     fn add_to_account_cache(&mut self, _: Address, _: Option<Account>, _: bool) {}
 
-    fn add_to_asset_scheme_cache(&mut self, _addr: AssetSchemeAddress, _data: AssetScheme) {}
+    fn add_to_asset_scheme_cache(&mut self, _addr: AssetSchemeAddress, _data: Option<AssetScheme>, _: bool) {}
 
-    fn add_to_asset_cache(&mut self, _addr: AssetAddress, _asset: Asset) {}
+    fn add_to_asset_cache(&mut self, _addr: AssetAddress, _asset: Option<Asset>, _: bool) {}
 
     fn get_cached_account(&self, _: &Address) -> Option<Option<Account>> {
         None
