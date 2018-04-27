@@ -480,7 +480,7 @@ impl<B: Backend> State<B> {
 
         // because of lexical borrow of self.db
         let db = self.trie_factory.readonly(self.db.as_hashdb(), &self.root)?;
-        if let Some(r) = db.get_with(&a, AssetScheme::from_rlp)? {
+        if let Some(r) = db.get_with(a.as_ref(), AssetScheme::from_rlp)? {
             Ok(Some(r))
         } else {
             return Ok(None)
@@ -495,7 +495,7 @@ impl<B: Backend> State<B> {
 
         // because of lexical borrow of self.db
         let db = self.trie_factory.readonly(self.db.as_hashdb(), &self.root)?;
-        if let Some(r) = db.get_with(&a, Asset::from_rlp)? {
+        if let Some(r) = db.get_with(a.as_ref(), Asset::from_rlp)? {
             Ok(Some(r))
         } else {
             return Ok(None)
@@ -711,7 +711,7 @@ impl<B: Backend> State<B> {
             for (address, ref mut a) in asset_schemes.iter_mut().filter(|&(_, ref a)| a.is_dirty()) {
                 a.state = EntryState::Committed;
                 let ref mut asset_scheme = a.item.as_ref().expect("Removing asset_scheme is not supported");
-                trie.insert(address, &asset_scheme.rlp())?;
+                trie.insert(address.as_ref(), &asset_scheme.rlp())?;
             }
         }
 
@@ -722,10 +722,10 @@ impl<B: Backend> State<B> {
                 a.state = EntryState::Committed;
                 match a.item {
                     Some(ref mut asset) => {
-                        trie.insert(address, &asset.rlp())?;
+                        trie.insert(address.as_ref(), &asset.rlp())?;
                     }
                     None => {
-                        trie.remove(address)?;
+                        trie.remove(address.as_ref())?;
                     }
                 };
             }
@@ -878,7 +878,7 @@ impl<B: Backend> State<B> {
                 }
                 None => {
                     let db = self.trie_factory.readonly(self.db.as_hashdb(), &self.root)?;
-                    let maybe_asset_scheme = Entry::<AssetScheme>::new_clean(db.get_with(a, AssetScheme::from_rlp)?);
+                    let maybe_asset_scheme = Entry::<AssetScheme>::new_clean(db.get_with(a.as_ref(), AssetScheme::from_rlp)?);
                     self.insert_cache_asset_scheme(a, maybe_asset_scheme);
                 }
             }
@@ -912,7 +912,7 @@ impl<B: Backend> State<B> {
                 Some(asset) => self.insert_cache_asset(a, Entry::<Asset>::new_clean_cached(asset)),
                 None => {
                     let db = self.trie_factory.readonly(self.db.as_hashdb(), &self.root)?;
-                    let maybe_asset = Entry::<Asset>::new_clean(db.get_with(a, Asset::from_rlp)?);
+                    let maybe_asset = Entry::<Asset>::new_clean(db.get_with(a.as_ref(), Asset::from_rlp)?);
                     self.insert_cache_asset(a, maybe_asset);
                 }
             }
@@ -994,7 +994,7 @@ impl Clone for State<StateDB> {
 }
 
 pub trait CacheableItem: Clone + Decodable + Encodable {
-    type Address: Clone + fmt::Debug + Eq + Hash;
+    type Address: AsRef<[u8]> + Clone + fmt::Debug + Eq + Hash;
     fn overwrite_with(&mut self, other: Self);
     fn is_null(&self) -> bool;
 

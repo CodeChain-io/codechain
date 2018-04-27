@@ -120,6 +120,12 @@ impl fmt::Display for AssetSchemeAddress {
     }
 }
 
+impl AsRef<[u8]> for AssetSchemeAddress {
+    fn as_ref(&self) -> &[u8] {
+        self.0.as_ref()
+    }
+}
+
 impl Deref for AssetSchemeAddress {
     type Target = [u8];
 

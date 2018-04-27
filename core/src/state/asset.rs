@@ -123,6 +123,12 @@ impl fmt::Display for AssetAddress {
     }
 }
 
+impl AsRef<[u8]> for AssetAddress {
+    fn as_ref(&self) -> &[u8] {
+        self.0.as_ref()
+    }
+}
+
 impl Deref for AssetAddress {
     type Target = [u8];
 
@@ -131,6 +137,7 @@ impl Deref for AssetAddress {
         &(*&self.0)
     }
 }
+
 #[derive(Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct AssetAddress(H256);
 
