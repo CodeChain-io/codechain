@@ -51,11 +51,11 @@ pub struct Genesis {
 mod tests {
     use std::str::FromStr;
 
-    use ctypes::{H160, H256 as Eth256, H520 as Eth520, H64 as Eth64, U256};
+    use ctypes::{H160, H256 as Eth256, H520 as Eth520, U256};
     use serde_json;
 
     use super::super::super::bytes::Bytes;
-    use super::super::super::hash::{Address, H256, H520, H64};
+    use super::super::super::hash::{Address, H256, H520};
     use super::super::super::uint::Uint;
     use super::super::{Seal, TendermintSeal};
     use super::Genesis;
