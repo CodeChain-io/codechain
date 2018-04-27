@@ -187,6 +187,31 @@ impl Default for Action {
     }
 }
 
+impl Action {
+    fn without_script(&self) -> Self {
+        match self {
+            &Action::AssetTransfer {
+                ref inputs,
+                ref outputs,
+            } => {
+                let new_inputs: Vec<_> = inputs
+                    .iter()
+                    .map(|input| AssetTransferInput {
+                        prev_out: input.prev_out.clone(),
+                        lock_script: Vec::new(),
+                        unlock_script: Vec::new(),
+                    })
+                    .collect();
+                Action::AssetTransfer {
+                    inputs: new_inputs,
+                    outputs: outputs.clone(),
+                }
+            }
+            _ => unreachable!(),
+        }
+    }
+}
+
 type ActionId = u8;
 const PAYMENT_ID: ActionId = 0x01;
 const SET_REGULAR_KEY_ID: ActionId = 0x02;
@@ -295,6 +320,17 @@ impl Transaction {
     pub fn hash(&self) -> H256 {
         let mut stream = RlpStream::new();
         self.rlp_append_unsigned_transaction(&mut stream);
+        blake256(stream.as_raw())
+    }
+
+    /// Get hash of transaction excluding script field
+    pub fn hash_without_script(&self) -> H256 {
+        let mut stream = RlpStream::new();
+        stream.begin_list(4);
+        stream.append(&self.nonce);
+        stream.append(&self.fee);
+        stream.append(&self.action.without_script());
+        stream.append(&self.network_id);
         blake256(stream.as_raw())
     }
 

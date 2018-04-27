@@ -360,7 +360,7 @@ impl<B: Backend> State<B> {
 
     fn transfer_asset(
         &mut self,
-        transaction_id: H256,
+        tx: &SignedTransaction,
         inputs: &[AssetTransferInput],
         outputs: &[AssetTransferOutput],
     ) -> Result<(), Error> {
@@ -393,7 +393,7 @@ impl<B: Backend> State<B> {
                     script.extend(lock_script);
                     script.extend(unlock_script);
                     // FIXME : apply parameters to vm
-                    execute(script.as_slice(), VMConfig::default())
+                    execute(script.as_slice(), tx.hash_without_script(), VMConfig::default())
                 }
                 // FIXME : Deliver full decode error
                 _ => return Err(TransactionError::InvalidScript.into()),
@@ -428,7 +428,7 @@ impl<B: Backend> State<B> {
         let mut created_asset = Vec::with_capacity(outputs.len());
         for (index, output) in outputs.iter().enumerate() {
             // FIXME: Check asset scheme exist
-            let asset_address = AssetAddress::new(transaction_id, index);
+            let asset_address = AssetAddress::new(tx.hash(), index);
             let asset = Asset::new(output.asset_type, output.script_hash, output.parameters.clone(), output.amount);
             self.require_asset(&asset_address, || asset)?;
             created_asset.push((asset_address, output.amount));
@@ -516,7 +516,7 @@ impl<B: Backend> State<B> {
                 ref inputs,
                 ref outputs,
             } => {
-                self.transfer_asset(t.hash(), inputs, outputs)?;
+                self.transfer_asset(&t, inputs, outputs)?;
                 Ok(None)
             }
         }

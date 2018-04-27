@@ -14,9 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ccrypto::blake256;
 use ckeys::{verify_ecdsa, ECDSASignature};
-use ctypes::{H520, Public};
+use ctypes::{H256, H520, Public};
 
 use instruction::Instruction;
 
@@ -110,7 +109,7 @@ impl Stack {
     }
 }
 
-pub fn execute(script: &[Instruction], config: Config) -> Result<ScriptResult, RuntimeError> {
+pub fn execute(script: &[Instruction], tx_hash: H256, config: Config) -> Result<ScriptResult, RuntimeError> {
     let mut stack = Stack::new(config);
     let mut pc = 0;
     while pc < script.len() {
@@ -124,9 +123,7 @@ pub fn execute(script: &[Instruction], config: Config) -> Result<ScriptResult, R
             Instruction::ChkSig => {
                 let pubkey = Public::from_slice(stack.pop_blob(64)?.as_slice());
                 let signature = ECDSASignature::from(H520::from(stack.pop_blob(65)?.as_slice()));
-                // FIXME : Use transaction as message
-                let message = blake256("codechain");
-                let result = match verify_ecdsa(&pubkey, &signature, &message) {
+                let result = match verify_ecdsa(&pubkey, &signature, &tx_hash) {
                     Ok(true) => 1,
                     _ => 0,
                 };
