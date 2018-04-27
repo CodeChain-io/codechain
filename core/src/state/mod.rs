@@ -571,7 +571,7 @@ impl<B: Backend> State<B> {
         tx: &SignedTransaction,
         inputs: &[AssetTransferInput],
         outputs: &[AssetTransferOutput],
-    ) -> Result<(), Error> {
+    ) -> Result<Option<TransactionError>, Error> {
         debug_assert!(is_input_and_output_consistent(inputs, outputs));
 
         for input in inputs {
@@ -580,10 +580,10 @@ impl<B: Backend> State<B> {
                 if let Some(asset_address) = AssetAddress::from_hash(address) {
                     match self.asset(&asset_address)? {
                         Some(asset) => asset,
-                        None => return Err(TransactionError::AssetNotFound(address).into()),
+                        None => return Ok(Some(TransactionError::AssetNotFound(address))),
                     }
                 } else {
-                    return Err(TransactionError::InvalidAssetAddress(address).into())
+                    return Ok(Some(TransactionError::InvalidAssetAddress(address)))
                 }
             };
 
@@ -592,7 +592,7 @@ impl<B: Backend> State<B> {
                     expected: *asset.lock_script(),
                     found: blake256(&input.lock_script),
                 };
-                return Err(TransactionError::ScriptHashMismatch(mismatch).into())
+                return Ok(Some(TransactionError::ScriptHashMismatch(mismatch)))
             }
 
             let script_result = match (decode(&input.lock_script), decode(&input.unlock_script)) {
@@ -604,12 +604,12 @@ impl<B: Backend> State<B> {
                     execute(script.as_slice(), tx.hash_without_script(), VMConfig::default())
                 }
                 // FIXME : Deliver full decode error
-                _ => return Err(TransactionError::InvalidScript.into()),
+                _ => return Ok(Some(TransactionError::InvalidScript)),
             };
 
             match script_result {
                 Ok(ScriptResult::Fail) | Err(_) => {
-                    return Err(TransactionError::FailedToUnlock(input.prev_out.address).into())
+                    return Ok(Some(TransactionError::FailedToUnlock(input.prev_out.address)))
                 }
                 Ok(ScriptResult::Burnt) => unimplemented!(),
                 Ok(ScriptResult::Unlocked) => {}
@@ -644,7 +644,7 @@ impl<B: Backend> State<B> {
         trace!(target: "tx", "Deleted assets {:?}", deleted_asset);
         trace!(target: "tx", "Released assets {:?}", released_asset);
         trace!(target: "tx", "Created assets {:?}", created_asset);
-        Ok(())
+        Ok(None)
     }
 
     /// Execute a given transaction, charging transaction fee.
@@ -723,10 +723,7 @@ impl<B: Backend> State<B> {
             Action::AssetTransfer {
                 ref inputs,
                 ref outputs,
-            } => {
-                self.transfer_asset(&t, inputs, outputs)?;
-                Ok(None)
-            }
+            } => self.transfer_asset(&t, inputs, outputs),
         }
     }
 
