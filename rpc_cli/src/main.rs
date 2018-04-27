@@ -15,7 +15,9 @@ use std::io::Read;
 use std::process;
 
 use cbytes::Bytes;
-use ccore::{Action, Transaction, UnverifiedTransaction, AssetTransferOutput, AssetTransferInput, AssetTransactionOutput};
+use ccore::{
+    Action, AssetTransactionOutput, AssetTransferInput, AssetTransferOutput, Transaction, UnverifiedTransaction,
+};
 use ckeys::hex::FromHex;
 use ckeys::{KeyPair, Private, Secret};
 use codechain_rpc_client::client::{RpcClient, RpcError, RpcHttp};
