@@ -448,10 +448,10 @@ impl StateInfo for () {
     fn regular_key(&self, _address: &Address) -> trie::Result<Option<Public>> {
         unimplemented!()
     }
-    fn asset_scheme(&self, a: &AssetSchemeAddress) -> trie::Result<Option<AssetScheme>> {
+    fn asset_scheme(&self, _a: &AssetSchemeAddress) -> trie::Result<Option<AssetScheme>> {
         unimplemented!()
     }
-    fn asset(&self, a: &AssetAddress) -> trie::Result<Option<Asset>> {
+    fn asset(&self, _a: &AssetAddress) -> trie::Result<Option<Asset>> {
         unimplemented!()
     }
 }
