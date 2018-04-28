@@ -98,9 +98,9 @@ pub struct Config {
     pub engine_signer: Option<Address>,
 }
 
-pub fn load(config_path: String) -> Result<Config, String> {
+pub fn load(config_path: &str) -> Result<Config, String> {
     let mut toml_string = String::new();
-    File::open(&config_path)
+    File::open(config_path)
         .map_err(|e| format!("Error while open file({}): {:?}", config_path, e))?
         .read_to_string(&mut toml_string)
         .map_err(|e| format!("Error while read file: {:?}", e))?;

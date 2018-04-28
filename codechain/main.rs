@@ -86,8 +86,8 @@ fn run() -> Result<(), String> {
 
     let _event_loop = EventLoop::spawn();
 
-    let config_path = matches.value_of("config-path").unwrap_or(DEFAULT_CONFIG_PATH).to_string();
-    let mut config = config::load(config_path)?;
+    let config_path = matches.value_of("config-path").unwrap_or(DEFAULT_CONFIG_PATH);
+    let mut config = config::load(&config_path)?;
     config.overwrite_with(&matches)?;
     let spec = config.chain_type.spec()?;
 
