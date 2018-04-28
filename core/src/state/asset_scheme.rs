@@ -158,7 +158,7 @@ mod tests {
     #[test]
     fn asset_from_address() {
         let origin = {
-            let mut address = Default::default();
+            let mut address;
             loop {
                 address = H256::random();
                 if address[0] == 'S' as u8 {

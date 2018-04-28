@@ -141,7 +141,7 @@ mod tests {
     #[test]
     fn asset_from_address() {
         let transaction_id = {
-            let mut address = Default::default();
+            let mut address;
             loop {
                 address = H256::random();
                 if address[0] == 'A' as u8 {
@@ -166,7 +166,7 @@ mod tests {
     #[test]
     fn parse_fail_return_none() {
         let hash = {
-            let mut hash = Default::default();
+            let mut hash;
             loop {
                 hash = H256::random();
                 if hash[0] == 'A' as u8 {
