@@ -365,8 +365,8 @@ impl<B: Backend> State<B> {
 
         // FIXME: validates unlock script
 
-        let mut deleted_asset = vec![];
-        let mut released_asset = vec![];
+        let mut deleted_asset = Vec::with_capacity(inputs.len());
+        let mut released_asset = Vec::new();
         for input in inputs {
             let hash = input.prev_out.address;
             let amount = input.prev_out.amount;
@@ -382,7 +382,7 @@ impl<B: Backend> State<B> {
                 unreachable!();
             }
         }
-        let mut created_asset = vec![];
+        let mut created_asset = Vec::with_capacity(outputs.len());
         for (index, output) in outputs.iter().enumerate() {
             // FIXME: Check asset scheme exist
             let asset_address = AssetAddress::new(transaction_id, index);
