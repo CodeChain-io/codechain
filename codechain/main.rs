@@ -41,29 +41,55 @@ extern crate panic_hook;
 extern crate parking_lot;
 extern crate toml;
 
-mod commands;
 mod config;
 mod rpc;
 mod rpc_apis;
 
+use std::path::Path;
 use std::sync::Arc;
 
 use app_dirs::AppInfo;
-use ccore::{AccountProvider, Miner, MinerOptions, MinerService};
+use ccore::{AccountProvider, ClientService, Miner, MinerOptions, MinerService, Spec};
 use cdiscovery::{KademliaExtension, SimpleDiscovery};
 use clogger::{setup_log, Config as LogConfig};
+use cnetwork::{NetworkConfig, NetworkService, SocketAddr};
 use creactor::EventLoop;
+use crpc::Server as RpcServer;
 use csync::{BlockSyncExtension, TransactionSyncExtension};
 use ctrlc::CtrlC;
 use fdlimit::raise_fd_limit;
 use parking_lot::{Condvar, Mutex};
+use rpc::HttpConfiguration as RpcHttpConfig;
+
+const DEFAULT_CONFIG_PATH: &'static str = "codechain/config/presets/config.dev.toml";
 
 pub const APP_INFO: AppInfo = AppInfo {
     name: "codechain",
     author: "Kodebox",
 };
 
-const DEFAULT_CONFIG_PATH: &'static str = "codechain/config/presets/config.dev.toml";
+pub fn rpc_start(cfg: RpcHttpConfig, deps: Arc<rpc_apis::ApiDependencies>) -> Result<RpcServer, String> {
+    info!("RPC Listening on {}", cfg.port);
+    rpc::new_http(cfg, deps)
+}
+
+pub fn network_start(cfg: &NetworkConfig) -> Result<NetworkService, String> {
+    info!("Handshake Listening on {}", cfg.port);
+    let address = SocketAddr::v4(127, 0, 0, 1, cfg.port);
+    let service = NetworkService::start(address).map_err(|e| format!("Network service error: {:?}", e))?;
+
+    Ok(service)
+}
+
+pub fn client_start(cfg: &config::Config, spec: &Spec, miner: Arc<Miner>) -> Result<ClientService, String> {
+    info!("Starting client");
+    let client_path = Path::new(&cfg.db_path);
+    let client_config = Default::default();
+    let service = ClientService::start(client_config, &spec, &client_path, miner)
+        .map_err(|e| format!("Client service error: {:?}", e))?;
+
+    Ok(service)
+}
 
 #[cfg(all(unix, target_arch = "x86_64"))]
 fn main() {
@@ -103,7 +129,7 @@ fn run() -> Result<(), String> {
     let enginer_signer = config.engine_signer.unwrap_or(address);
     miner.set_engine_signer(enginer_signer).map_err(|err| format!("{:?}", err))?;
 
-    let client = commands::client_start(&config, &spec, miner.clone())?;
+    let client = client_start(&config, &spec, miner.clone())?;
 
     let rpc_apis_deps = Arc::new(rpc_apis::ApiDependencies {
         client: client.client(),
@@ -112,7 +138,7 @@ fn run() -> Result<(), String> {
 
     let _rpc_server = {
         if let Some(rpc_config) = config::parse_rpc_config(&matches)? {
-            Some(commands::rpc_start(rpc_config, rpc_apis_deps.clone())?)
+            Some(rpc_start(rpc_config, rpc_apis_deps.clone())?)
         } else {
             None
         }
@@ -120,7 +146,7 @@ fn run() -> Result<(), String> {
 
     let _network_service = {
         if let Some(network_config) = config::parse_network_config(&matches)? {
-            let service = commands::network_start(&network_config)?;
+            let service = network_start(&network_config)?;
 
             if let Some(kademlia_config) = config::parse_kademlia_config(&matches)? {
                 let kademlia = Arc::new(KademliaExtension::new(kademlia_config));
