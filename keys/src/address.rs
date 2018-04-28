@@ -33,7 +33,7 @@ pub struct FullAddress {
     pub address: Address,
 }
 
-fn rearrange_bits(data: &Vec<u8>, from: usize, into: usize) -> Vec<u8> {
+fn rearrange_bits(data: &[u8], from: usize, into: usize) -> Vec<u8> {
     let mut vec = Vec::with_capacity((data.len() * from + (into - 1)) / into);
 
     let mut group_index = 0;
