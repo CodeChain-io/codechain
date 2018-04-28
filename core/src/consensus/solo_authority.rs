@@ -18,7 +18,7 @@ use std::sync::{Arc, Weak};
 
 use cjson;
 use ckeys::{public_to_address, recover_ecdsa, ECDSASignature};
-use cnetwork::{Api, NetworkExtension};
+use cnetwork::NetworkExtension;
 use ctypes::{Address, H256, H520, U256};
 use parking_lot::RwLock;
 
@@ -208,18 +208,6 @@ impl ConsensusEngine<CodeChainMachine> for SoloAuthority {
     fn network_extension(&self) -> Option<Arc<NetworkExtension>> {
         None
     }
-}
-
-impl NetworkExtension for SoloAuthority {
-    fn name(&self) -> String {
-        "Solo".to_string()
-    }
-
-    fn need_encryption(&self) -> bool {
-        false
-    }
-
-    fn on_initialize(&self, _api: Arc<Api>) {}
 }
 
 #[cfg(test)]
