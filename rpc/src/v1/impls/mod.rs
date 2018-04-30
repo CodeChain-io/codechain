@@ -65,7 +65,11 @@ impl Chain for ChainClient {
 
     fn get_asset_scheme(&self, hash: H256) -> Result<Option<AssetScheme>> {
         if let Some(state) = self.client.state_at(BlockId::Latest) {
-            Ok(state.asset_scheme(&AssetSchemeAddress::new(hash)).map_err(errors::transaction)?)
+            if let Some(address) = AssetSchemeAddress::from_hash(hash) {
+                Ok(state.asset_scheme(&address).map_err(errors::transaction)?)
+            } else {
+                Ok(None)
+            }
         } else {
             Ok(None)
         }

@@ -36,25 +36,25 @@
   {
     "name": "chain_getTransactionInvoice",
     "data": {
-      "hash": "8eb7ad47796bddd2c35e8796d7ff86865be61998af8d25df3af2bea6ef2d6e2f"
+      "hash": "b84926ca470ca5c41a350255d19d51f6a0f7f847776db6ae38193dc943bd5189"
     }
   },
   {
     "name": "chain_getTransactionInvoice",
     "data": {
-      "hash": "8d2ca8907c79a8ca895ee5f53e514e2aeb4b4bb1bc94bae75181dc9a05ef18f9"
+      "hash": "1e97aa44f9a839e6836448c0d3a7cc65214a79386a69904482513e822b0ac7f0"
     }
   },
   {
     "name": "chain_getAssetScheme",
     "data": {
-      "asset_type": "5300000000000000c35e8796d7ff86865be61998af8d25df3af2bea6ef2d6e2f"
+      "asset_type": "530000000000000029c077356da6fa33209ca3fa58fd3b07048cf611d80164ea"
     }
   },
   {
     "name": "chain_getAssetScheme",
     "data": {
-      "asset_type": "5300000000000000895ee5f53e514e2aeb4b4bb1bc94bae75181dc9a05ef18f9"
+      "asset_type": "530000000000000056f8c6ab84e128f5f8945d1749225cd5eadef1fc488e4845"
     }
   }
 ]

@@ -14,9 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::fmt;
-use std::ops::Deref;
-
 use cbytes::Bytes;
 use ctypes::{Address, H256, U256};
 
@@ -81,57 +78,14 @@ impl AssetScheme {
 #[derive(Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct AssetSchemeAddress(H256);
 
+const PREFIX: u8 = 'S' as u8;
+impl_address!(AssetSchemeAddress, PREFIX);
+
 impl AssetSchemeAddress {
-    pub fn new(mut hash: H256) -> Self {
-        hash[0..8].clone_from_slice(&['S' as u8, 0, 0, 0, 0, 0, 0, 0]);
-        AssetSchemeAddress(hash)
-    }
+    pub fn new(transaction_hash: H256) -> Self {
+        let index = ::std::u64::MAX;
 
-    pub fn from_hash(hash: H256) -> Option<Self> {
-        if hash[0..8] == ['S' as u8, 0, 0, 0, 0, 0, 0, 0] {
-            Some(AssetSchemeAddress(hash))
-        } else {
-            None
-        }
-    }
-}
-
-impl Into<H256> for AssetSchemeAddress {
-    fn into(self) -> H256 {
-        self.0
-    }
-}
-
-impl<'a> Into<&'a H256> for &'a AssetSchemeAddress {
-    fn into(self) -> &'a H256 {
-        &self.0
-    }
-}
-
-impl fmt::Debug for AssetSchemeAddress {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.0.fmt(f)
-    }
-}
-
-impl fmt::Display for AssetSchemeAddress {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.0.fmt(f)
-    }
-}
-
-impl AsRef<[u8]> for AssetSchemeAddress {
-    fn as_ref(&self) -> &[u8] {
-        self.0.as_ref()
-    }
-}
-
-impl Deref for AssetSchemeAddress {
-    type Target = [u8];
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        &(*&self.0)
+        Self::from_transaction(transaction_hash, index)
     }
 }
 
@@ -159,7 +113,7 @@ impl CacheableItem for AssetScheme {
 
 #[cfg(test)]
 mod tests {
-    use super::{AssetSchemeAddress, H256};
+    use super::{AssetSchemeAddress, H256, PREFIX};
 
     #[test]
     fn asset_from_address() {
@@ -182,8 +136,7 @@ mod tests {
         let asset_address = AssetSchemeAddress::new(origin);
         let hash: H256 = asset_address.into();
         assert_ne!(origin, hash);
-        assert_eq!(hash[0..4], ['S' as u8, 0, 0, 0]);
+        assert_eq!(hash[0..4], [PREFIX, 0, 0, 0]);
         assert_eq!(hash[4..8], [0, 0, 0, 0]); // world id
-        assert_eq!(origin[8..32], hash[8..32]);
     }
 }

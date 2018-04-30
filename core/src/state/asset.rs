@@ -14,12 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::fmt;
-use std::ops::Deref;
-
 use cbytes::Bytes;
-use ccrypto::blake256_with_key;
-use ctypes::{H128, H256, U256};
+use ctypes::{H256, U256};
 
 use super::CacheableItem;
 
@@ -81,69 +77,25 @@ impl CacheableItem for Asset {
     }
 }
 
-impl AssetAddress {
-    pub fn new(txhash: H256, index: usize) -> Self {
-        debug_assert_eq!(::std::mem::size_of::<u64>(), ::std::mem::size_of::<usize>());
-
-        let mut hash = blake256_with_key(&txhash, &H128::from(index as u64));
-        hash[0..8].clone_from_slice(&['A' as u8, 0, 0, 0, 0, 0, 0, 0]);
-        AssetAddress(hash)
-    }
-
-    pub fn from_hash(hash: H256) -> Option<Self> {
-        if hash[0..8] == ['A' as u8, 0, 0, 0, 0, 0, 0, 0] {
-            Some(AssetAddress(hash))
-        } else {
-            None
-        }
-    }
-}
-
-impl Into<H256> for AssetAddress {
-    fn into(self) -> H256 {
-        self.0
-    }
-}
-
-impl<'a> Into<&'a H256> for &'a AssetAddress {
-    fn into(self) -> &'a H256 {
-        &self.0
-    }
-}
-
-impl fmt::Debug for AssetAddress {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.0.fmt(f)
-    }
-}
-
-impl fmt::Display for AssetAddress {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.0.fmt(f)
-    }
-}
-
-impl AsRef<[u8]> for AssetAddress {
-    fn as_ref(&self) -> &[u8] {
-        self.0.as_ref()
-    }
-}
-
-impl Deref for AssetAddress {
-    type Target = [u8];
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        &(*&self.0)
-    }
-}
-
 #[derive(Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct AssetAddress(H256);
 
+const PREFIX: u8 = 'A' as u8;
+impl_address!(AssetAddress, PREFIX);
+
+impl AssetAddress {
+    pub fn new(transaction_hash: H256, index: usize) -> Self {
+        debug_assert_eq!(::std::mem::size_of::<u64>(), ::std::mem::size_of::<usize>());
+        debug_assert_ne!(index as u64, ::std::u64::MAX);
+        let index = index as u64;
+
+        Self::from_transaction(transaction_hash, index)
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{AssetAddress, H256};
+    use super::{AssetAddress, H256, PREFIX};
 
     #[test]
     fn asset_from_address() {
@@ -151,7 +103,7 @@ mod tests {
             let mut address;
             loop {
                 address = H256::random();
-                if address[0] == 'A' as u8 {
+                if address[0] == PREFIX {
                     continue
                 }
                 for i in 1..8 {
@@ -166,8 +118,8 @@ mod tests {
         let address1 = AssetAddress::new(transaction_id, 0);
         let address2 = AssetAddress::new(transaction_id, 1);
         assert_ne!(address1, address2);
-        assert_eq!(address1[0..8], ['A' as u8, 0, 0, 0, 0, 0, 0, 0]);
-        assert_eq!(address2[0..8], ['A' as u8, 0, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(address1[0..8], [PREFIX, 0, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(address2[0..8], [PREFIX, 0, 0, 0, 0, 0, 0, 0]);
     }
 
     #[test]
@@ -176,7 +128,7 @@ mod tests {
             let mut hash;
             loop {
                 hash = H256::random();
-                if hash[0] == 'A' as u8 {
+                if hash[0] == PREFIX {
                     continue
                 }
                 for i in 1..8 {
@@ -196,7 +148,7 @@ mod tests {
     fn parse_return_some() {
         let hash = {
             let mut hash = H256::random();
-            hash[0..8].clone_from_slice(&['A' as u8, 0, 0, 0, 0, 0, 0, 0]);
+            hash[0..8].clone_from_slice(&[PREFIX, 0, 0, 0, 0, 0, 0, 0]);
             hash
         };
         let address = AssetAddress::from_hash(hash.clone());

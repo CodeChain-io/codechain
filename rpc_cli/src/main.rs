@@ -247,13 +247,11 @@ fn get_transfer_input(data: &Value) -> AssetTransferInput {
         let ref data = data["prev_out"];
         let transaction_hash = get_h256(&data["transaction_hash"]).unwrap_or_else(|_| unreachable!());
         let index = data["index"].as_u64().unwrap_or_else(|| unreachable!()) as usize;
-        let address = get_h256(&data["address"]).unwrap_or_else(|_| unreachable!());
         let asset_type = get_h256(&data["asset_type"]).unwrap_or_else(|_| unreachable!());
         let amount = get_u256(&data["amount"]).unwrap_or_else(|_| unreachable!());
         AssetTransactionOutput {
             transaction_hash,
             index,
-            address,
             asset_type,
             amount,
         }

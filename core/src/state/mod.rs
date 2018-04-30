@@ -37,6 +37,9 @@ use super::invoice::{Invoice, TransactionOutcome};
 use super::state_db::StateDB;
 use super::transaction::TransactionError;
 
+#[macro_use]
+mod address;
+
 mod account;
 mod asset;
 mod asset_scheme;
@@ -367,20 +370,20 @@ impl<B: Backend> State<B> {
         debug_assert!(is_input_and_output_consistent(inputs, outputs));
 
         for input in inputs {
-            let script_hash = {
-                let address = input.prev_out.address;
-                if let Some(asset_address) = AssetAddress::from_hash(address) {
-                    match self.asset(&asset_address)? {
-                        Some(asset) => *asset.lock_script(),
-                        None => return Ok(Some(TransactionError::AssetNotFound(address))),
-                    }
-                } else if let Some(scheme_address) = AssetSchemeAddress::from_hash(address) {
-                    match self.asset_scheme(&scheme_address)? {
-                        Some(scheme) => *scheme.lock_script(),
-                        None => return Ok(Some(TransactionError::AssetNotFound(address))),
+            let (address_hash, script_hash) = {
+                let index = input.prev_out.index;
+                if index == ::std::u64::MAX as usize {
+                    let address = AssetSchemeAddress::new(input.prev_out.transaction_hash);
+                    match self.asset_scheme(&address)? {
+                        Some(scheme) => (address.into(), *scheme.lock_script()),
+                        None => return Ok(Some(TransactionError::AssetNotFound(address.into()))),
                     }
                 } else {
-                    return Ok(Some(TransactionError::InvalidAssetAddress(address)))
+                    let address = AssetAddress::new(input.prev_out.transaction_hash, index);
+                    match self.asset(&address)? {
+                        Some(asset) => (address.into(), *asset.lock_script()),
+                        None => return Ok(Some(TransactionError::AssetNotFound(address.into()))),
+                    }
                 }
             };
 
@@ -405,9 +408,7 @@ impl<B: Backend> State<B> {
             };
 
             match script_result {
-                Ok(ScriptResult::Fail) | Err(_) => {
-                    return Ok(Some(TransactionError::FailedToUnlock(input.prev_out.address)))
-                }
+                Ok(ScriptResult::Fail) | Err(_) => return Ok(Some(TransactionError::FailedToUnlock(address_hash))),
                 Ok(ScriptResult::Burnt) => unimplemented!(),
                 Ok(ScriptResult::Unlocked) => {}
             }
@@ -416,18 +417,20 @@ impl<B: Backend> State<B> {
         let mut deleted_asset = Vec::with_capacity(inputs.len());
         let mut released_asset = Vec::new();
         for input in inputs {
-            let hash = input.prev_out.address;
+            let index = input.prev_out.index;
             let amount = input.prev_out.amount;
-            if let Some(address) = AssetAddress::from_hash(hash.clone()) {
-                // FIXME: Validate asset
-                self.kill_asset(&address);
-                deleted_asset.push((hash, amount));
-            } else if let Some(address) = AssetSchemeAddress::from_hash(hash) {
+            if index == ::std::u64::MAX as usize {
+                let address = AssetSchemeAddress::new(input.prev_out.transaction_hash);
                 // FIXME: Validate asset scheme
                 self.release_remainder(&address, &amount)?;
+                let hash: H256 = address.into();
                 released_asset.push((hash, amount));
             } else {
-                unreachable!();
+                let address = AssetAddress::new(input.prev_out.transaction_hash, index);
+                // FIXME: Validate asset
+                self.kill_asset(&address);
+                let hash: H256 = address.into();
+                deleted_asset.push((hash, amount));
             }
         }
         let mut created_asset = Vec::with_capacity(outputs.len());
@@ -1132,7 +1135,6 @@ mod tests {
                 prev_out: AssetTransactionOutput {
                     transaction_hash: H256::random(),
                     index: 0,
-                    address: H256::random(),
                     asset_type,
                     amount,
                 },
@@ -1167,7 +1169,6 @@ mod tests {
                     prev_out: AssetTransactionOutput {
                         transaction_hash: H256::random(),
                         index: 0,
-                        address: H256::random(),
                         asset_type: asset_type1,
                         amount: amount1,
                     },
@@ -1178,7 +1179,6 @@ mod tests {
                     prev_out: AssetTransactionOutput {
                         transaction_hash: H256::random(),
                         index: 0,
-                        address: H256::random(),
                         asset_type: asset_type2,
                         amount: amount2,
                     },
@@ -1222,7 +1222,6 @@ mod tests {
                     prev_out: AssetTransactionOutput {
                         transaction_hash: H256::random(),
                         index: 0,
-                        address: H256::random(),
                         asset_type: asset_type1,
                         amount: amount1,
                     },
@@ -1233,7 +1232,6 @@ mod tests {
                     prev_out: AssetTransactionOutput {
                         transaction_hash: H256::random(),
                         index: 0,
-                        address: H256::random(),
                         asset_type: asset_type2,
                         amount: amount2,
                     },
@@ -1288,7 +1286,6 @@ mod tests {
                 prev_out: AssetTransactionOutput {
                     transaction_hash: H256::random(),
                     index: 0,
-                    address: H256::random(),
                     asset_type,
                     amount: input_amount,
                 },
@@ -1310,7 +1307,6 @@ mod tests {
                 prev_out: AssetTransactionOutput {
                     transaction_hash: H256::random(),
                     index: 0,
-                    address: H256::random(),
                     asset_type,
                     amount: input_amount,
                 },

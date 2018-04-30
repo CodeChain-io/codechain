@@ -73,8 +73,6 @@ pub enum TransactionError {
     NotAllowed,
     /// Signature error
     InvalidSignature(String),
-    /// Asset address is invalid
-    InvalidAssetAddress(H256),
     /// Desired input asset not found
     AssetNotFound(H256),
     /// Script hash does not match with provided lock script
@@ -115,7 +113,6 @@ pub fn transaction_error_message(error: &TransactionError) -> String {
         ),
         NotAllowed => "Sender does not have permissions to execute this type of transction".into(),
         InvalidSignature(ref err) => format!("Transaction has invalid signature: {}.", err),
-        InvalidAssetAddress(ref addr) => format!("Provided asset address is invalid: {}", addr),
         AssetNotFound(ref addr) => format!("Asset not found: {}", addr),
         // FIXME: show more information about script
         ScriptHashMismatch(mismatch) => {
@@ -595,7 +592,6 @@ impl Deref for LocalizedTransaction {
 pub struct AssetTransactionOutput {
     pub transaction_hash: H256,
     pub index: usize,
-    pub address: H256,
     pub asset_type: H256,
     pub amount: U256,
 }
