@@ -446,7 +446,10 @@ impl<B: Backend> State<B> {
         self.commit()?;
 
         let invoice = match error {
-            Some(_) => Invoice::new(TransactionOutcome::Failed),
+            Some(ref err) => {
+                info!(target: "tx", "Cannot apply transaction: {:?}", err);
+                Invoice::new(TransactionOutcome::Failed)
+            }
             None => Invoice::new(TransactionOutcome::Success),
         };
         Ok(ApplyOutcome {
