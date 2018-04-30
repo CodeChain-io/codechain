@@ -87,4 +87,8 @@ impl Chain for ChainClient {
         let block_id = BlockId::Number(block_number.unwrap_or(self.client.chain_info().best_block_number));
         Ok(self.client.nonce(&address.into(), block_id))
     }
+
+    fn get_block_number(&self) -> Result<u64> {
+        Ok(self.client.chain_info().best_block_number)
+    }
 }

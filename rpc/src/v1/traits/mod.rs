@@ -42,5 +42,9 @@ build_rpc_trait! {
         /// Gets nonce with given account.
         # [rpc(name = "chain_getNonce")]
         fn get_nonce(&self, H160, Option<u64>) -> Result<Option<U256>>;
+
+        /// Gets number of best block.
+        # [rpc(name = "chain_getBlockNumber")]
+        fn get_block_number(&self) -> Result<u64>;
     }
 }
