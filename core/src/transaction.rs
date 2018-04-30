@@ -153,7 +153,8 @@ pub struct Transaction {
 }
 
 /// Transaction action type.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub enum Action {
     Noop,
     Payment {
@@ -588,7 +589,7 @@ impl Deref for LocalizedTransaction {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable)]
+#[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable, Serialize)]
 pub struct AssetTransactionOutput {
     pub transaction_hash: H256,
     pub index: usize,
@@ -596,14 +597,14 @@ pub struct AssetTransactionOutput {
     pub amount: U256,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable)]
+#[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable, Serialize)]
 pub struct AssetTransferInput {
     pub prev_out: AssetTransactionOutput,
     pub lock_script: Bytes,
     pub unlock_script: Bytes,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable)]
+#[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable, Serialize)]
 pub struct AssetTransferOutput {
     pub script_hash: H256,
     pub parameters: Vec<Bytes>,
