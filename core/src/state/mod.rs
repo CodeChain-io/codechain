@@ -367,11 +367,16 @@ impl<B: Backend> State<B> {
         debug_assert!(is_input_and_output_consistent(inputs, outputs));
 
         for input in inputs {
-            let asset = {
+            let script_hash = {
                 let address = input.prev_out.address;
                 if let Some(asset_address) = AssetAddress::from_hash(address) {
                     match self.asset(&asset_address)? {
-                        Some(asset) => asset,
+                        Some(asset) => *asset.lock_script(),
+                        None => return Ok(Some(TransactionError::AssetNotFound(address))),
+                    }
+                } else if let Some(scheme_address) = AssetSchemeAddress::from_hash(address) {
+                    match self.asset_scheme(&scheme_address)? {
+                        Some(scheme) => *scheme.lock_script(),
                         None => return Ok(Some(TransactionError::AssetNotFound(address))),
                     }
                 } else {
@@ -379,9 +384,9 @@ impl<B: Backend> State<B> {
                 }
             };
 
-            if *asset.lock_script() != blake256(&input.lock_script) {
+            if script_hash != blake256(&input.lock_script) {
                 let mismatch = Mismatch {
-                    expected: *asset.lock_script(),
+                    expected: script_hash,
                     found: blake256(&input.lock_script),
                 };
                 return Ok(Some(TransactionError::ScriptHashMismatch(mismatch)))
