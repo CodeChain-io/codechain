@@ -17,8 +17,8 @@
 use std::sync::Arc;
 
 use ccore::{
-    Asset, AssetAddress, AssetScheme, AssetSchemeAddress, BlockChainClient, BlockId, ChainInfo, Client, Invoice, Miner,
-    MinerService, Nonce, SignedTransaction,
+    Asset, AssetAddress, AssetScheme, AssetSchemeAddress, BlockChainClient, BlockId, BlockInfo, ChainInfo, Client,
+    Invoice, Miner, MinerService, Nonce, SignedTransaction,
 };
 use ctypes::{H160, H256, U256};
 use rlp::UntrustedRlp;
@@ -27,7 +27,7 @@ use jsonrpc_core::Result;
 
 use super::errors;
 use super::traits::Chain;
-use super::types::Bytes;
+use super::types::{Block, Bytes};
 
 pub struct ChainClient {
     client: Arc<Client>,
@@ -98,5 +98,9 @@ impl Chain for ChainClient {
 
     fn get_block_hash(&self, block_number: u64) -> Result<Option<H256>> {
         Ok(self.client.block_hash(BlockId::Number(block_number)))
+    }
+
+    fn get_block_by_hash(&self, block_hash: H256) -> Result<Option<Block>> {
+        Ok(self.client.block(BlockId::Hash(block_hash)).map(|block| block.decode().into()))
     }
 }
