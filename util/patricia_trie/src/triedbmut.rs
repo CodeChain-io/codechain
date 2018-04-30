@@ -986,7 +986,6 @@ mod tests {
     use super::*;
     use bytes::ToPretty;
     use codechain_crypto::BLAKE_NULL_RLP;
-    use hashdb::*;
     use memorydb::*;
     use standardmap::*;
 
