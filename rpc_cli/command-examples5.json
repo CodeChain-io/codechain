@@ -14,27 +14,27 @@
           "data": {
               "inputs": [{
                   "prev_out": {
-                      "transaction_hash": "861b07bf9c3cf7409516f6a90b740d41d9e54b9d2c5f6b44f9d66da9139bcac6",
+                      "transaction_hash": "eab845a095f830edc425bda36c27aa0c1621e0e43b65c5430fc62aa78fc32e6e",
                       "index": 0,
-                      "address": "5300000000000000895ee5f53e514e2aeb4b4bb1bc94bae75181dc9a05ef18f9",
-                      "asset_type": "5300000000000000895ee5f53e514e2aeb4b4bb1bc94bae75181dc9a05ef18f9",
+                      "address": "5300000000000000836448c0d3a7cc65214a79386a69904482513e822b0ac7f0",
+                      "asset_type": "5300000000000000836448c0d3a7cc65214a79386a69904482513e822b0ac7f0",
                       "amount": "7"
                   },
-                  "lock_script": "",
+                  "lock_script": "\u0002\u0001",
                   "unlock_script": ""
               }],
               "outputs": [{
-                  "script_hash": "861b07bf9c3cf7409516f6a90b740d41d9e54b9d2c5f6b44f9d66da9139bcac6",
+                  "script_hash": "50a2c0d145539c1fb32f60e0d8425b1c03f6120c40171971b8de9c0017a4bfb3",
                   "parameters": [],
                   "asset_type": "5300000000000000895ee5f53e514e2aeb4b4bb1bc94bae75181dc9a05ef18f9",
                   "amount": "4"
               }, {
-                  "script_hash": "861b07bf9c3cf7409516f6a90b740d41d9e54b9d2c5f6b44f9d66da9139bcac6",
+                  "script_hash": "50a2c0d145539c1fb32f60e0d8425b1c03f6120c40171971b8de9c0017a4bfb3",
                   "parameters": [],
                   "asset_type": "5300000000000000895ee5f53e514e2aeb4b4bb1bc94bae75181dc9a05ef18f9",
                   "amount": "2"
               }, {
-                  "script_hash": "861b07bf9c3cf7409516f6a90b740d41d9e54b9d2c5f6b44f9d66da9139bcac6",
+                  "script_hash": "50a2c0d145539c1fb32f60e0d8425b1c03f6120c40171971b8de9c0017a4bfb3",
                   "parameters": [],
                   "asset_type": "5300000000000000895ee5f53e514e2aeb4b4bb1bc94bae75181dc9a05ef18f9",
                   "amount": "1"
@@ -51,4 +51,3 @@
     }
   }
 ]
-

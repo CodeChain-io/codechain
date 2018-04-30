@@ -10,29 +10,29 @@
           "data": {
               "inputs": [{
                   "prev_out": {
-                      "transaction_hash": "861b07bf9c3cf7409516f6a90b740d41d9e54b9d2c5f6b44f9d66da9139bcac6",
+                      "transaction_hash": "1e97aa44f9a839e6836448c0d3a7cc65214a79386a69904482513e822b0ac7f0",
                       "index": 0,
-                      "address": "4100000000000000a9c7400ff06323128a62b89b5505aa14df53ecb123a029bc",
-                      "asset_type": "5300000000000000895ee5f53e514e2aeb4b4bb1bc94bae75181dc9a05ef18f9",
+                      "address": "4100000000000000dbf28476fc288ca0c5d009342759042479cecfb6d99dae25",
+                      "asset_type": "5300000000000000836448c0d3a7cc65214a79386a69904482513e822b0ac7f0",
                       "amount": "4"
                   },
-                  "lock_script": "",
+                  "lock_script": "\u0002\u0001",
                   "unlock_script": ""
               }, {
                   "prev_out": {
-                      "transaction_hash": "861b07bf9c3cf7409516f6a90b740d41d9e54b9d2c5f6b44f9d66da9139bcac6",
-                      "index": 0,
-                      "address": "41000000000000004955995a011a54162c1a1fedf8bb22937971262aa779b2ff",
-                      "asset_type": "5300000000000000895ee5f53e514e2aeb4b4bb1bc94bae75181dc9a05ef18f9",
+                      "transaction_hash": "1e97aa44f9a839e6836448c0d3a7cc65214a79386a69904482513e822b0ac7f0",
+                      "index": 2,
+                      "address": "4100000000000000a75cc4066eae109169a3e17c95dedfbfafa96fe163f1cccf",
+                      "asset_type": "5300000000000000836448c0d3a7cc65214a79386a69904482513e822b0ac7f0",
                       "amount": "1"
                   },
-                  "lock_script": "",
+                  "lock_script": "\u0002\u0001",
                   "unlock_script": ""
               }],
               "outputs": [{
-                  "script_hash": "861b07bf9c3cf7409516f6a90b740d41d9e54b9d2c5f6b44f9d66da9139bcac6",
+                  "script_hash": "50a2c0d145539c1fb32f60e0d8425b1c03f6120c40171971b8de9c0017a4bfb3",
                   "parameters": [],
-                  "asset_type": "5300000000000000895ee5f53e514e2aeb4b4bb1bc94bae75181dc9a05ef18f9",
+                  "asset_type": "5300000000000000836448c0d3a7cc65214a79386a69904482513e822b0ac7f0",
                   "amount": "5"
               }]
           }
@@ -47,4 +47,3 @@
     }
   }
 ]
-
