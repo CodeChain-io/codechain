@@ -19,7 +19,7 @@ use ctypes::{H160, H256, U256};
 
 use jsonrpc_core::Result;
 
-use super::types::Bytes;
+use super::types::{Block, Bytes};
 
 build_rpc_trait! {
     pub trait Chain {
@@ -50,5 +50,9 @@ build_rpc_trait! {
         /// Gets the hash of the block with given number.
         # [rpc(name = "chain_getBlockHash")]
         fn get_block_hash(&self, u64) -> Result<Option<H256>>;
+
+        /// Gets block with given hash.
+        # [rpc(name = "chain_getBlockByHash")]
+        fn get_block_by_hash(&self, H256) -> Result<Option<Block>>;
     }
 }
