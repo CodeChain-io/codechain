@@ -91,4 +91,8 @@ impl Chain for ChainClient {
     fn get_block_number(&self) -> Result<u64> {
         Ok(self.client.chain_info().best_block_number)
     }
+
+    fn get_block_hash(&self, block_number: u64) -> Result<Option<H256>> {
+        Ok(self.client.block_hash(BlockId::Number(block_number)))
+    }
 }

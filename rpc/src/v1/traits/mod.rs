@@ -46,5 +46,9 @@ build_rpc_trait! {
         /// Gets number of best block.
         # [rpc(name = "chain_getBlockNumber")]
         fn get_block_number(&self) -> Result<u64>;
+
+        /// Gets the hash of the block with given number.
+        # [rpc(name = "chain_getBlockHash")]
+        fn get_block_hash(&self, u64) -> Result<Option<H256>>;
     }
 }
