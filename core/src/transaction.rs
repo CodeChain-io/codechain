@@ -590,7 +590,7 @@ impl Deref for LocalizedTransaction {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable, Serialize)]
-pub struct AssetTransactionOutput {
+pub struct AssetOutPoint {
     pub transaction_hash: H256,
     pub index: usize,
     pub asset_type: H256,
@@ -599,7 +599,7 @@ pub struct AssetTransactionOutput {
 
 #[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable, Serialize)]
 pub struct AssetTransferInput {
-    pub prev_out: AssetTransactionOutput,
+    pub prev_out: AssetOutPoint,
     pub lock_script: Bytes,
     pub unlock_script: Bytes,
 }

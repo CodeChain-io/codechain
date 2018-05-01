@@ -15,9 +15,7 @@ use std::io::Read;
 use std::process;
 
 use cbytes::Bytes;
-use ccore::{
-    Action, AssetTransactionOutput, AssetTransferInput, AssetTransferOutput, Transaction, UnverifiedTransaction,
-};
+use ccore::{Action, AssetOutPoint, AssetTransferInput, AssetTransferOutput, Transaction, UnverifiedTransaction};
 use ckeys::hex::FromHex;
 use ckeys::{KeyPair, Private, Secret};
 use codechain_rpc_client::client::{RpcClient, RpcError, RpcHttp};
@@ -246,7 +244,7 @@ fn get_transfer_input(data: &Value) -> AssetTransferInput {
         let index = data["index"].as_u64().unwrap_or_else(|| unreachable!()) as usize;
         let asset_type = get_h256(&data["asset_type"]).unwrap_or_else(|_| unreachable!());
         let amount = data["amount"].as_u64().unwrap();
-        AssetTransactionOutput {
+        AssetOutPoint {
             transaction_hash,
             index,
             asset_type,

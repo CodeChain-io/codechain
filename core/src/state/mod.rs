@@ -655,7 +655,7 @@ mod tests {
     use ctypes::{Address, Secret, U256};
 
     use super::super::tests::helpers::{get_temp_state, get_temp_state_db};
-    use super::super::transaction::{AssetTransactionOutput, Transaction};
+    use super::super::transaction::{AssetOutPoint, Transaction};
     use super::*;
 
     fn secret() -> Secret {
@@ -1132,7 +1132,7 @@ mod tests {
 
         assert!(is_input_and_output_consistent(
             &[AssetTransferInput {
-                prev_out: AssetTransactionOutput {
+                prev_out: AssetOutPoint {
                     transaction_hash: H256::random(),
                     index: 0,
                     asset_type,
@@ -1166,7 +1166,7 @@ mod tests {
         assert!(is_input_and_output_consistent(
             &[
                 AssetTransferInput {
-                    prev_out: AssetTransactionOutput {
+                    prev_out: AssetOutPoint {
                         transaction_hash: H256::random(),
                         index: 0,
                         asset_type: asset_type1,
@@ -1176,7 +1176,7 @@ mod tests {
                     unlock_script: vec![],
                 },
                 AssetTransferInput {
-                    prev_out: AssetTransactionOutput {
+                    prev_out: AssetOutPoint {
                         transaction_hash: H256::random(),
                         index: 0,
                         asset_type: asset_type2,
@@ -1219,7 +1219,7 @@ mod tests {
         assert!(is_input_and_output_consistent(
             &[
                 AssetTransferInput {
-                    prev_out: AssetTransactionOutput {
+                    prev_out: AssetOutPoint {
                         transaction_hash: H256::random(),
                         index: 0,
                         asset_type: asset_type1,
@@ -1229,7 +1229,7 @@ mod tests {
                     unlock_script: vec![],
                 },
                 AssetTransferInput {
-                    prev_out: AssetTransactionOutput {
+                    prev_out: AssetOutPoint {
                         transaction_hash: H256::random(),
                         index: 0,
                         asset_type: asset_type2,
@@ -1283,7 +1283,7 @@ mod tests {
 
         assert!(!is_input_and_output_consistent(
             &[AssetTransferInput {
-                prev_out: AssetTransactionOutput {
+                prev_out: AssetOutPoint {
                     transaction_hash: H256::random(),
                     index: 0,
                     asset_type,
@@ -1304,7 +1304,7 @@ mod tests {
 
         assert!(!is_input_and_output_consistent(
             &[AssetTransferInput {
-                prev_out: AssetTransactionOutput {
+                prev_out: AssetOutPoint {
                     transaction_hash: H256::random(),
                     index: 0,
                     asset_type,
