@@ -23,7 +23,7 @@ use super::CacheableItem;
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AssetScheme {
     metadata: String,
-    lock_script: H256,
+    lock_script_hash: H256,
     parameters: Vec<Bytes>,
     remainder: u64,
     registrar: Option<Address>,
@@ -32,14 +32,14 @@ pub struct AssetScheme {
 impl AssetScheme {
     pub fn new(
         metadata: String,
-        lock_script: H256,
+        lock_script_hash: H256,
         parameters: Vec<Bytes>,
         remainder: u64,
         registrar: Option<Address>,
     ) -> Self {
         Self {
             metadata,
-            lock_script,
+            lock_script_hash,
             parameters,
             remainder,
             registrar,
@@ -50,8 +50,8 @@ impl AssetScheme {
         &self.metadata
     }
 
-    pub fn lock_script(&self) -> &H256 {
-        &self.lock_script
+    pub fn lock_script_hash(&self) -> &H256 {
+        &self.lock_script_hash
     }
 
     pub fn parameters(&self) -> &Vec<Bytes> {
@@ -83,7 +83,7 @@ impl Encodable for AssetScheme {
         s.begin_list(6)
             .append(&PREFIX)
             .append(&self.metadata)
-            .append(&self.lock_script)
+            .append(&self.lock_script_hash)
             .append(&self.parameters)
             .append(&self.remainder)
             .append(&self.registrar);
@@ -99,7 +99,7 @@ impl Decodable for AssetScheme {
         }
         Ok(Self {
             metadata: rlp.val_at(1)?,
-            lock_script: rlp.val_at(2)?,
+            lock_script_hash: rlp.val_at(2)?,
             parameters: rlp.val_at(3)?,
             remainder: rlp.val_at(4)?,
             registrar: rlp.val_at(5)?,
@@ -124,7 +124,7 @@ impl CacheableItem for AssetScheme {
     type Address = AssetSchemeAddress;
     fn overwrite_with(&mut self, other: Self) {
         self.metadata = other.metadata;
-        self.lock_script = other.lock_script;
+        self.lock_script_hash = other.lock_script_hash;
         self.registrar = other.registrar;
         self.remainder = other.remainder;
     }

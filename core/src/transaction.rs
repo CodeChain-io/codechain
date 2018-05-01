@@ -168,7 +168,7 @@ pub enum Action {
     },
     AssetMint {
         metadata: String,
-        lock_script: H256,
+        lock_script_hash: H256,
         parameters: Vec<Bytes>,
         amount: Option<u64>,
         registrar: Option<Address>,
@@ -246,7 +246,7 @@ impl rlp::Decodable for Action {
                 }
                 Ok(Action::AssetMint {
                     metadata: d.val_at(1)?,
-                    lock_script: d.val_at(2)?,
+                    lock_script_hash: d.val_at(2)?,
                     parameters: d.val_at(3)?,
                     amount: d.val_at(4)?,
                     registrar: d.val_at(5)?,
@@ -279,14 +279,14 @@ impl rlp::Encodable for Action {
             } => s.begin_list(2).append(&SET_REGULAR_KEY_ID).append(key),
             Action::AssetMint {
                 ref metadata,
-                ref lock_script,
+                ref lock_script_hash,
                 ref parameters,
                 ref amount,
                 ref registrar,
             } => s.begin_list(6)
                 .append(&ASSET_MINT_ID)
                 .append(metadata)
-                .append(lock_script)
+                .append(lock_script_hash)
                 .append(parameters)
                 .append(amount)
                 .append(registrar),
@@ -606,7 +606,7 @@ pub struct AssetTransferInput {
 
 #[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable, Serialize)]
 pub struct AssetTransferOutput {
-    pub script_hash: H256,
+    pub lock_script_hash: H256,
     pub parameters: Vec<Bytes>,
     pub asset_type: H256,
     pub amount: u64,
@@ -661,7 +661,7 @@ mod tests {
     fn encode_and_decode_asset_mint() {
         let action = Action::AssetMint {
             metadata: "mint test".to_string(),
-            lock_script: H256::random(),
+            lock_script_hash: H256::random(),
             parameters: vec![],
             amount: Some(10000),
             registrar: None,
@@ -674,7 +674,7 @@ mod tests {
     fn encode_and_decode_asset_mint_with_parameters() {
         let action = Action::AssetMint {
             metadata: "mint test".to_string(),
-            lock_script: H256::random(),
+            lock_script_hash: H256::random(),
             parameters: vec![vec![1, 2, 3], vec![4, 5, 6], vec![0, 7]],
             amount: Some(10000),
             registrar: None,

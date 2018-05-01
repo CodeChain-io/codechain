@@ -615,11 +615,16 @@ mod tests {
         let h0 = H256::random();
         let mut batch = DBTransaction::new();
 
-        let lock_script = H256::random();
+        let lock_script_hash = H256::random();
         let remainder = 1234;
         let registrar = Some(Address::random());
-        let asset_scheme =
-            AssetScheme::new("A metadata for test asset_scheme".to_string(), lock_script, vec![], remainder, registrar);
+        let asset_scheme = AssetScheme::new(
+            "A metadata for test asset_scheme".to_string(),
+            lock_script_hash,
+            vec![],
+            remainder,
+            registrar,
+        );
         let asset_scheme_address = AssetSchemeAddress::new(h0);
 
         let mut s = state_db.boxed_clone_canon(&root_parent);
@@ -651,7 +656,7 @@ mod tests {
 
         assert!(asset_scheme.is_permissioned());
         assert_eq!(&remainder, asset_scheme.remainder());
-        assert_eq!(&lock_script, asset_scheme.lock_script());
+        assert_eq!(&lock_script_hash, asset_scheme.lock_script_hash());
         assert_eq!(&registrar, asset_scheme.registrar());
     }
 
@@ -663,10 +668,10 @@ mod tests {
 
         let transaction_id = H256::random();
         let asset_scheme_address = H256::random();
-        let lock_script = H256::random();
+        let lock_script_hash = H256::random();
         let parameters = vec![];
         let amount = 1000;
-        let asset = Asset::new(asset_scheme_address, lock_script, parameters, amount);
+        let asset = Asset::new(asset_scheme_address, lock_script_hash, parameters, amount);
         let asset_address = AssetAddress::new(transaction_id, 0);
 
         let mut s = state_db.boxed_clone_canon(&root_parent);

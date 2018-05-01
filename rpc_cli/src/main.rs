@@ -180,7 +180,7 @@ fn get_action(data: &Value) -> Result<Action, CommandError> {
         "mint" => {
             let data = &data["data"];
             let metadata: String = data["metadata"].as_str().ok_or(CommandError::InvalidData)?.to_string();
-            let lock_script: H256 = get_h256(&data["lock_script"])?;
+            let lock_script_hash: H256 = get_h256(&data["lock_script_hash"])?;
             let parameters: Vec<Bytes> = vec![]; // FIXME: I didn't implement it since rpc_cli will be replaced with JS.
             let amount = data["amount"].as_u64();
             let registrar: Option<H160> = if data["registrar"].is_string() {
@@ -190,7 +190,7 @@ fn get_action(data: &Value) -> Result<Action, CommandError> {
             };
             Ok(Action::AssetMint {
                 metadata,
-                lock_script,
+                lock_script_hash,
                 parameters,
                 amount,
                 registrar,
@@ -222,7 +222,7 @@ fn get_action(data: &Value) -> Result<Action, CommandError> {
 }
 
 fn get_transfer_output(data: &Value) -> AssetTransferOutput {
-    let script_hash = get_h256(&data["script_hash"]).unwrap_or_else(|_| unreachable!());
+    let lock_script_hash = get_h256(&data["lock_script_hash"]).unwrap_or_else(|_| unreachable!());
     let parameters = {
         // FIXME
         vec![]
@@ -230,7 +230,7 @@ fn get_transfer_output(data: &Value) -> AssetTransferOutput {
     let asset_type = get_h256(&data["asset_type"]).unwrap_or_else(|_| unreachable!());
     let amount = data["amount"].as_u64().unwrap();
     AssetTransferOutput {
-        script_hash,
+        lock_script_hash,
         parameters,
         asset_type,
         amount,

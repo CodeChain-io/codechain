@@ -347,7 +347,7 @@ impl<B: Backend> State<B> {
         &mut self,
         transaction_id: H256,
         metadata: &String,
-        lock_script: &H256,
+        lock_script_hash: &H256,
         parameters: &Vec<Bytes>,
         amount: &Option<u64>,
         registrar: &Option<Address>,
@@ -355,7 +355,13 @@ impl<B: Backend> State<B> {
         let asset_scheme_address = AssetSchemeAddress::new(transaction_id);
         let remainder = amount.unwrap_or(::std::u64::MAX);
         let asset_scheme = self.require_asset_scheme(&asset_scheme_address, || {
-            AssetScheme::new(metadata.clone(), lock_script.clone(), parameters.clone(), remainder, registrar.clone())
+            AssetScheme::new(
+                metadata.clone(),
+                lock_script_hash.clone(),
+                parameters.clone(),
+                remainder,
+                registrar.clone(),
+            )
         })?;
         trace!(target: "tx", "{:?} is minted on {:?}", asset_scheme, asset_scheme_address);
         Ok(())
@@ -370,26 +376,26 @@ impl<B: Backend> State<B> {
         debug_assert!(is_input_and_output_consistent(inputs, outputs));
 
         for input in inputs {
-            let (address_hash, script_hash) = {
+            let (address_hash, lock_script_hash) = {
                 let index = input.prev_out.index;
                 if index == ::std::u64::MAX as usize {
                     let address = AssetSchemeAddress::new(input.prev_out.transaction_hash);
                     match self.asset_scheme(&address)? {
-                        Some(scheme) => (address.into(), *scheme.lock_script()),
+                        Some(scheme) => (address.into(), *scheme.lock_script_hash()),
                         None => return Ok(Some(TransactionError::AssetNotFound(address.into()))),
                     }
                 } else {
                     let address = AssetAddress::new(input.prev_out.transaction_hash, index);
                     match self.asset(&address)? {
-                        Some(asset) => (address.into(), *asset.lock_script()),
+                        Some(asset) => (address.into(), *asset.lock_script_hash()),
                         None => return Ok(Some(TransactionError::AssetNotFound(address.into()))),
                     }
                 }
             };
 
-            if script_hash != blake256(&input.lock_script) {
+            if lock_script_hash != blake256(&input.lock_script) {
                 let mismatch = Mismatch {
-                    expected: script_hash,
+                    expected: lock_script_hash,
                     found: blake256(&input.lock_script),
                 };
                 return Ok(Some(TransactionError::ScriptHashMismatch(mismatch)))
@@ -437,7 +443,8 @@ impl<B: Backend> State<B> {
         for (index, output) in outputs.iter().enumerate() {
             // FIXME: Check asset scheme exist
             let asset_address = AssetAddress::new(tx.hash(), index);
-            let asset = Asset::new(output.asset_type, output.script_hash, output.parameters.clone(), output.amount);
+            let asset =
+                Asset::new(output.asset_type, output.lock_script_hash, output.parameters.clone(), output.amount);
             self.require_asset(&asset_address, || asset)?;
             created_asset.push((asset_address, output.amount));
         }
@@ -515,12 +522,12 @@ impl<B: Backend> State<B> {
             }
             Action::AssetMint {
                 ref metadata,
-                ref lock_script,
+                ref lock_script_hash,
                 ref amount,
                 ref parameters,
                 ref registrar,
             } => {
-                self.mint_asset(t.hash(), metadata, lock_script, parameters, amount, registrar)?;
+                self.mint_asset(t.hash(), metadata, lock_script_hash, parameters, amount, registrar)?;
                 Ok(None)
             }
             Action::AssetTransfer {
@@ -1028,13 +1035,13 @@ mod tests {
         };
 
         let metadata = "metadata".to_string();
-        let lock_script = H256::random();
+        let lock_script_hash = H256::random();
         let parameters = vec![];
         let amount = 100;
         let registrar = Some(Address::random());
         let action = Action::AssetMint {
             metadata: metadata.clone(),
-            lock_script,
+            lock_script_hash,
             parameters,
             amount: Some(amount),
             registrar,
@@ -1050,8 +1057,14 @@ mod tests {
         let added_result = state.add_balance(&sender, &U256::from(69u64));
         assert!(added_result.is_ok());
 
-        let minted_result =
-            state.mint_asset(transaction_hash.clone(), &metadata, &lock_script, &vec![], &Some(amount), &registrar);
+        let minted_result = state.mint_asset(
+            transaction_hash.clone(),
+            &metadata,
+            &lock_script_hash,
+            &vec![],
+            &Some(amount),
+            &registrar,
+        );
         assert!(minted_result.is_ok());
 
         let commit = state.commit();
@@ -1065,7 +1078,7 @@ mod tests {
         let asset_scheme = asset_scheme.unwrap();
 
         assert_eq!(&metadata, asset_scheme.metadata());
-        assert_eq!(&lock_script, asset_scheme.lock_script());
+        assert_eq!(&lock_script_hash, asset_scheme.lock_script_hash());
         assert_eq!(&amount, asset_scheme.remainder());
         assert_eq!(&registrar, asset_scheme.registrar());
         assert!(asset_scheme.is_permissioned());
@@ -1083,12 +1096,12 @@ mod tests {
         };
 
         let metadata = "metadata".to_string();
-        let lock_script = H256::random();
+        let lock_script_hash = H256::random();
         let parameters = vec![];
         let registrar = Some(Address::random());
         let action = Action::AssetMint {
             metadata: metadata.clone(),
-            lock_script,
+            lock_script_hash,
             parameters: vec![],
             amount: None,
             registrar,
@@ -1105,7 +1118,7 @@ mod tests {
         assert!(added_result.is_ok());
 
         let minted_result =
-            state.mint_asset(transaction_hash.clone(), &metadata, &lock_script, &parameters, &None, &registrar);
+            state.mint_asset(transaction_hash.clone(), &metadata, &lock_script_hash, &parameters, &None, &registrar);
         assert!(minted_result.is_ok());
 
         let commit = state.commit();
@@ -1119,7 +1132,7 @@ mod tests {
         let asset_scheme = asset_scheme.unwrap();
 
         assert_eq!(&metadata, asset_scheme.metadata());
-        assert_eq!(&lock_script, asset_scheme.lock_script());
+        assert_eq!(&lock_script_hash, asset_scheme.lock_script_hash());
         assert_eq!(&::std::u64::MAX, asset_scheme.remainder());
         assert_eq!(&registrar, asset_scheme.registrar());
         assert!(asset_scheme.is_permissioned());
@@ -1142,7 +1155,7 @@ mod tests {
                 unlock_script: vec![],
             }],
             &[AssetTransferOutput {
-                script_hash: H256::random(),
+                lock_script_hash: H256::random(),
                 parameters: vec![],
                 asset_type,
                 amount,
@@ -1188,13 +1201,13 @@ mod tests {
             ],
             &[
                 AssetTransferOutput {
-                    script_hash: H256::random(),
+                    lock_script_hash: H256::random(),
                     parameters: vec![],
                     asset_type: asset_type1,
                     amount: amount1,
                 },
                 AssetTransferOutput {
-                    script_hash: H256::random(),
+                    lock_script_hash: H256::random(),
                     parameters: vec![],
                     asset_type: asset_type2,
                     amount: amount2,
@@ -1241,13 +1254,13 @@ mod tests {
             ],
             &[
                 AssetTransferOutput {
-                    script_hash: H256::random(),
+                    lock_script_hash: H256::random(),
                     parameters: vec![],
                     asset_type: asset_type2,
                     amount: amount2,
                 },
                 AssetTransferOutput {
-                    script_hash: H256::random(),
+                    lock_script_hash: H256::random(),
                     parameters: vec![],
                     asset_type: asset_type1,
                     amount: amount1,
@@ -1268,7 +1281,7 @@ mod tests {
         assert!(!is_input_and_output_consistent(
             &[],
             &[AssetTransferOutput {
-                script_hash: H256::random(),
+                lock_script_hash: H256::random(),
                 parameters: vec![],
                 asset_type,
                 amount: output_amount,
@@ -1314,7 +1327,7 @@ mod tests {
                 unlock_script: vec![],
             }],
             &[AssetTransferOutput {
-                script_hash: H256::random(),
+                lock_script_hash: H256::random(),
                 parameters: vec![],
                 asset_type,
                 amount: output_amount,

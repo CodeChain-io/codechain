@@ -23,16 +23,16 @@ use super::CacheableItem;
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Asset {
     asset_type: H256,
-    lock_script: H256,
+    lock_script_hash: H256,
     parameters: Vec<Bytes>,
     amount: u64,
 }
 
 impl Asset {
-    pub fn new(asset_type: H256, lock_script: H256, parameters: Vec<Bytes>, amount: u64) -> Self {
+    pub fn new(asset_type: H256, lock_script_hash: H256, parameters: Vec<Bytes>, amount: u64) -> Self {
         Self {
             asset_type,
-            lock_script,
+            lock_script_hash,
             parameters,
             amount,
         }
@@ -42,8 +42,8 @@ impl Asset {
         &self.asset_type
     }
 
-    pub fn lock_script(&self) -> &H256 {
-        &self.lock_script
+    pub fn lock_script_hash(&self) -> &H256 {
+        &self.lock_script_hash
     }
 
     pub fn parameters(&self) -> &Vec<Bytes> {
@@ -60,7 +60,7 @@ impl CacheableItem for Asset {
 
     fn overwrite_with(&mut self, other: Self) {
         self.asset_type = other.asset_type;
-        self.lock_script = other.lock_script;
+        self.lock_script_hash = other.lock_script_hash;
         self.parameters = other.parameters;
         self.amount = other.amount;
     }
@@ -85,7 +85,7 @@ impl Encodable for Asset {
         s.begin_list(5)
             .append(&PREFIX)
             .append(&self.asset_type)
-            .append(&self.lock_script)
+            .append(&self.lock_script_hash)
             .append(&self.parameters)
             .append(&self.amount);
     }
@@ -100,7 +100,7 @@ impl Decodable for Asset {
         }
         Ok(Self {
             asset_type: rlp.val_at(1)?,
-            lock_script: rlp.val_at(2)?,
+            lock_script_hash: rlp.val_at(2)?,
             parameters: rlp.val_at(3)?,
             amount: rlp.val_at(4)?,
         })
