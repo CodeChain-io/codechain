@@ -49,7 +49,9 @@ impl PodAccount {
     /// Returns the RLP for this account.
     pub fn rlp(&self) -> Bytes {
         // Don't forget to sync the field list with Account.
-        let mut stream = RlpStream::new_list(3);
+        let mut stream = RlpStream::new_list(4);
+        const PREFIX: u8 = 'C' as u8;
+        stream.append(&PREFIX);
         stream.append(&self.balance);
         stream.append(&self.nonce);
         stream.append(&self.regular_key);

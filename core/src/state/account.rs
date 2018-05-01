@@ -20,11 +20,13 @@ use std::fmt;
 
 use cbytes::Bytes;
 use ctypes::{self, Public, U256};
+use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::CacheableItem;
 
 /// Single account in the system.
-#[derive(Clone, RlpEncodable, RlpDecodable)]
+// Don't forget to sync the field list with PodAccount.
+#[derive(Clone)]
 pub struct Account {
     // Balance of the account.
     balance: U256,
@@ -114,6 +116,33 @@ impl CacheableItem for Account {
     }
 }
 
+const PREFIX: u8 = 'C' as u8;
+
+impl Encodable for Account {
+    fn rlp_append(&self, s: &mut RlpStream) {
+        s.begin_list(4);
+        s.append(&PREFIX);
+        s.append(&self.balance);
+        s.append(&self.nonce);
+        s.append(&self.regular_key);
+    }
+}
+
+impl Decodable for Account {
+    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+        let prefix = rlp.val_at::<u8>(0)?;
+        if PREFIX != prefix {
+            debug!(target: "state", "{} is not an expected prefix for account", prefix);
+            return Err(DecoderError::Custom("Unexpected prefix"))
+        }
+        Ok(Self {
+            balance: rlp.val_at(1)?,
+            nonce: rlp.val_at(2)?,
+            regular_key: rlp.val_at(3)?,
+        })
+    }
+}
+
 impl fmt::Debug for Account {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Account").field("balance", &self.balance).field("nonce", &self.nonce).finish()
@@ -143,7 +172,7 @@ mod tests {
     #[test]
     fn new_account() {
         let a = Account::new(69u8.into(), 0u8.into());
-        assert_eq!(a.rlp().to_hex(), "c34580c0");
+        assert_eq!(a.rlp().to_hex(), "c4434580c0");
         assert_eq!(*a.balance(), 69u8.into());
         assert_eq!(*a.nonce(), 0u8.into());
         assert_eq!(a.regular_key(), None);

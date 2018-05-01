@@ -16,10 +16,11 @@
 
 use cbytes::Bytes;
 use ctypes::{Address, H256};
+use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::CacheableItem;
 
-#[derive(Clone, Debug, RlpEncodable, RlpDecodable, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AssetScheme {
     metadata: String,
     lock_script: H256,
@@ -75,10 +76,40 @@ impl AssetScheme {
     }
 }
 
+const PREFIX: u8 = 'S' as u8;
+
+impl Encodable for AssetScheme {
+    fn rlp_append(&self, s: &mut RlpStream) {
+        s.begin_list(6)
+            .append(&PREFIX)
+            .append(&self.metadata)
+            .append(&self.lock_script)
+            .append(&self.parameters)
+            .append(&self.remainder)
+            .append(&self.registrar);
+    }
+}
+
+impl Decodable for AssetScheme {
+    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+        let prefix = rlp.val_at::<u8>(0)?;
+        if PREFIX != prefix {
+            debug!(target: "state", "{} is not an expected prefix for asset scheme", prefix);
+            return Err(DecoderError::Custom("Unexpected prefix"))
+        }
+        Ok(Self {
+            metadata: rlp.val_at(1)?,
+            lock_script: rlp.val_at(2)?,
+            parameters: rlp.val_at(3)?,
+            remainder: rlp.val_at(4)?,
+            registrar: rlp.val_at(5)?,
+        })
+    }
+}
+
 #[derive(Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct AssetSchemeAddress(H256);
 
-const PREFIX: u8 = 'S' as u8;
 impl_address!(AssetSchemeAddress, PREFIX);
 
 impl AssetSchemeAddress {

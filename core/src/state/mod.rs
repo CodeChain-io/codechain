@@ -956,7 +956,7 @@ mod tests {
         let a = Address::zero();
         state.require_account(&a).unwrap();
         state.commit().unwrap();
-        assert_eq!(*state.root(), "4b5fdb97048c16016fb85e635a11073e375d07b692d7372ec166885e0aa6624a".into());
+        assert_eq!(*state.root(), "27a2e0676e24a2d55dd6bc3ad8ec876108a47e70534ea49718a1f76d5c05479e".into());
     }
 
     #[test]
