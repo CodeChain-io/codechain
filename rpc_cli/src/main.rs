@@ -107,8 +107,8 @@ fn handle_command(rpc: &mut RpcClient, name: &Value, data: &Value) -> Result<(),
             Ok(())
         }
         "chain_getAssetScheme" => {
-            let asset_type = get_h256(&data["asset_type"])?;
-            rpc.get_asset_scheme(asset_type)
+            let transaction = get_h256(&data["transaction_hash"])?;
+            rpc.get_asset_scheme(transaction)
                 .map(|message| {
                     println!("{:?}", message);
                     ()
@@ -116,8 +116,9 @@ fn handle_command(rpc: &mut RpcClient, name: &Value, data: &Value) -> Result<(),
                 .map_err(|e| CommandError::RpcError(e))
         }
         "chain_getAsset" => {
-            let asset_address = get_h256(&data["asset_address"])?;
-            rpc.get_asset(asset_address)
+            let transaction = get_h256(&data["transaction_hash"])?;
+            let index = data["index"].as_u64().ok_or(CommandError::InvalidData)? as usize;
+            rpc.get_asset(transaction, index)
                 .map(|message| {
                     println!("{:?}", message);
                     ()

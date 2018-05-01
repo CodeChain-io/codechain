@@ -48,13 +48,13 @@
   {
     "name": "chain_getAssetScheme",
     "data": {
-      "asset_type": "530000000000000029c077356da6fa33209ca3fa58fd3b07048cf611d80164ea"
+      "transaction_hash": "b84926ca470ca5c41a350255d19d51f6a0f7f847776db6ae38193dc943bd5189"
     }
   },
   {
     "name": "chain_getAssetScheme",
     "data": {
-      "asset_type": "5300000000000000254e62980bdac8dae8f192cb82e03d0f37a603bab74cb011"
+      "transaction_hash": "591a12799716600c9bb4680ebb8ea802c7ad4b7a0ba6151e7df643068967bc53"
     }
   }
 ]
