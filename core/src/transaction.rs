@@ -170,7 +170,7 @@ pub enum Action {
         metadata: String,
         lock_script: H256,
         parameters: Vec<Bytes>,
-        amount: Option<U256>,
+        amount: Option<u64>,
         registrar: Option<Address>,
     },
     AssetTransfer {
@@ -594,7 +594,7 @@ pub struct AssetTransactionOutput {
     pub transaction_hash: H256,
     pub index: usize,
     pub asset_type: H256,
-    pub amount: U256,
+    pub amount: u64,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable, Serialize)]
@@ -609,7 +609,7 @@ pub struct AssetTransferOutput {
     pub script_hash: H256,
     pub parameters: Vec<Bytes>,
     pub asset_type: H256,
-    pub amount: U256,
+    pub amount: u64,
 }
 
 #[cfg(test)]
@@ -663,7 +663,7 @@ mod tests {
             metadata: "mint test".to_string(),
             lock_script: H256::random(),
             parameters: vec![],
-            amount: Some(10000.into()),
+            amount: Some(10000),
             registrar: None,
         };
 
@@ -676,7 +676,7 @@ mod tests {
             metadata: "mint test".to_string(),
             lock_script: H256::random(),
             parameters: vec![vec![1, 2, 3], vec![4, 5, 6], vec![0, 7]],
-            amount: Some(10000.into()),
+            amount: Some(10000),
             registrar: None,
         };
 

@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use cbytes::Bytes;
-use ctypes::{Address, H256, U256};
+use ctypes::{Address, H256};
 
 use super::CacheableItem;
 
@@ -24,7 +24,7 @@ pub struct AssetScheme {
     metadata: String,
     lock_script: H256,
     parameters: Vec<Bytes>,
-    remainder: U256,
+    remainder: u64,
     registrar: Option<Address>,
 }
 
@@ -33,7 +33,7 @@ impl AssetScheme {
         metadata: String,
         lock_script: H256,
         parameters: Vec<Bytes>,
-        remainder: U256,
+        remainder: u64,
         registrar: Option<Address>,
     ) -> Self {
         Self {
@@ -57,11 +57,11 @@ impl AssetScheme {
         &self.parameters
     }
 
-    pub fn remainder(&self) -> &U256 {
+    pub fn remainder(&self) -> &u64 {
         &self.remainder
     }
 
-    pub fn release_remainder(&mut self, amount: &U256) {
+    pub fn release_remainder(&mut self, amount: &u64) {
         debug_assert!(self.remainder >= *amount);
         self.remainder = self.remainder - *amount;
     }
@@ -99,7 +99,7 @@ impl CacheableItem for AssetScheme {
     }
 
     fn is_null(&self) -> bool {
-        self.remainder.is_zero()
+        self.remainder == 0
     }
 
     fn from_rlp(rlp: &[u8]) -> Self {

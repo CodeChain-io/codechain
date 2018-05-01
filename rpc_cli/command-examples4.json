@@ -27,7 +27,7 @@
           "data": {
               "metadata": "metadata of non-permissioned asset",
               "lock_script": "50a2c0d145539c1fb32f60e0d8425b1c03f6120c40171971b8de9c0017a4bfb3",
-              "amount": "ABC"
+              "amount": 100
           }
       },
       "network_id": "17"
@@ -42,7 +42,7 @@
   {
     "name": "chain_getTransactionInvoice",
     "data": {
-      "hash": "1e97aa44f9a839e6836448c0d3a7cc65214a79386a69904482513e822b0ac7f0"
+      "hash": "591a12799716600c9bb4680ebb8ea802c7ad4b7a0ba6151e7df643068967bc53"
     }
   },
   {
@@ -54,7 +54,7 @@
   {
     "name": "chain_getAssetScheme",
     "data": {
-      "asset_type": "530000000000000056f8c6ab84e128f5f8945d1749225cd5eadef1fc488e4845"
+      "asset_type": "5300000000000000254e62980bdac8dae8f192cb82e03d0f37a603bab74cb011"
     }
   }
 ]

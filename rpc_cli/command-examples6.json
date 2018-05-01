@@ -8,31 +8,31 @@
   {
     "name": "chain_getAssetScheme",
     "data": {
-      "asset_type": "530000000000000056f8c6ab84e128f5f8945d1749225cd5eadef1fc488e4845"
+      "asset_type": "5300000000000000254e62980bdac8dae8f192cb82e03d0f37a603bab74cb011"
     }
   },
   {
     "name": "chain_getAsset",
     "data": {
-      "asset_address": "4100000000000000b0b30506bebf6975752deb19c74bf1fbd720b30ce0569fa6"
+      "asset_address": "410000000000000004a29993a7dcd168d0f2edc61a4bdfadc1bd1ad59dca5b73"
     }
   },
   {
     "name": "chain_getAsset",
     "data": {
-      "asset_address": "410000000000000051aac19f8607cfb4cd88ef78014b9211d9ba01b5aebdfe38"
+      "asset_address": "410000000000000049b11c0c8c0c4a5d2bde76ed3bf238f34634d3cf6bf4253c"
     }
   },
   {
     "name": "chain_getAsset",
     "data": {
-      "asset_address": "4100000000000000b35d93b54102cfbfc9b319dd02f4f62526201ad048fceab4"
+      "asset_address": "4100000000000000f7fb3b4e1e98b5bfaf1977709f21d8adb383e101c3442f77"
     }
   },
   {
     "name": "chain_getAsset",
     "data": {
-      "asset_address": "41000000000000004d491a5d9d7bc3084de90f25dbc7e65de3361d74b5ce65f2"
+      "asset_address": "4100000000000000def745f77d3c7e311be8fb038f5c9efc114d9e056a6ffbe9"
     }
   }
 ]

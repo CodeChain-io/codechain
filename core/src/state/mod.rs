@@ -25,7 +25,7 @@ use std::fmt;
 
 use cbytes::Bytes;
 use ccrypto::blake256;
-use ctypes::{Address, H256, Public, U256, U512};
+use ctypes::{Address, H256, Public, U128, U256, U512};
 use cvm::{decode, execute, ScriptResult, VMConfig};
 use error::Error;
 use transaction::{Action, AssetTransferInput, AssetTransferOutput, SignedTransaction};
@@ -337,7 +337,7 @@ impl<B: Backend> State<B> {
         Ok(())
     }
 
-    fn release_remainder(&mut self, a: &AssetSchemeAddress, amount: &U256) -> trie::Result<()> {
+    fn release_remainder(&mut self, a: &AssetSchemeAddress, amount: &u64) -> trie::Result<()> {
         let mut asset_scheme = self.require_asset_scheme(a, || unreachable!())?;
         asset_scheme.release_remainder(amount);
         Ok(())
@@ -349,11 +349,11 @@ impl<B: Backend> State<B> {
         metadata: &String,
         lock_script: &H256,
         parameters: &Vec<Bytes>,
-        amount: &Option<U256>,
+        amount: &Option<u64>,
         registrar: &Option<Address>,
     ) -> Result<(), Error> {
         let asset_scheme_address = AssetSchemeAddress::new(transaction_id);
-        let remainder = amount.unwrap_or(U256::max_value());
+        let remainder = amount.unwrap_or(::std::u64::MAX);
         let asset_scheme = self.require_asset_scheme(&asset_scheme_address, || {
             AssetScheme::new(metadata.clone(), lock_script.clone(), parameters.clone(), remainder, registrar.clone())
         })?;
@@ -622,19 +622,19 @@ impl Clone for State<StateDB> {
 }
 
 fn is_input_and_output_consistent(inputs: &[AssetTransferInput], outputs: &[AssetTransferOutput]) -> bool {
-    let mut sum: HashMap<H256, U512> = HashMap::new();
+    let mut sum: HashMap<H256, U128> = HashMap::new();
 
     for input in inputs {
         let ref asset_type = input.prev_out.asset_type;
         let ref amount = input.prev_out.amount;
-        let current_amount = sum.get(&asset_type).map(Clone::clone).unwrap_or(U512::zero());
-        sum.insert(asset_type.clone(), current_amount + U512::from(*amount));
+        let current_amount = sum.get(&asset_type).map(Clone::clone).unwrap_or(U128::zero());
+        sum.insert(asset_type.clone(), current_amount + U128::from(*amount));
     }
     for output in outputs {
         let ref asset_type = output.asset_type;
         let ref amount = output.amount;
         let current_amount = if let Some(current_amount) = sum.get(&asset_type) {
-            if current_amount < &U512::from(amount) {
+            if current_amount < &U128::from(*amount) {
                 return false
             }
             current_amount.clone()
@@ -1030,7 +1030,7 @@ mod tests {
         let metadata = "metadata".to_string();
         let lock_script = H256::random();
         let parameters = vec![];
-        let amount = U256::from(100);
+        let amount = 100;
         let registrar = Some(Address::random());
         let action = Action::AssetMint {
             metadata: metadata.clone(),
@@ -1120,7 +1120,7 @@ mod tests {
 
         assert_eq!(&metadata, asset_scheme.metadata());
         assert_eq!(&lock_script, asset_scheme.lock_script());
-        assert_eq!(&U256::max_value(), asset_scheme.remainder());
+        assert_eq!(&::std::u64::MAX, asset_scheme.remainder());
         assert_eq!(&registrar, asset_scheme.registrar());
         assert!(asset_scheme.is_permissioned());
     }
@@ -1128,7 +1128,7 @@ mod tests {
     #[test]
     fn test_is_input_and_output_consistent() {
         let asset_type = H256::random();
-        let amount = U256::from(100);
+        let amount = 100;
 
         assert!(is_input_and_output_consistent(
             &[AssetTransferInput {
@@ -1160,8 +1160,8 @@ mod tests {
             }
             asset_type
         };
-        let amount1 = U256::from(100);
-        let amount2 = U256::from(200);
+        let amount1 = 100;
+        let amount2 = 200;
 
         assert!(is_input_and_output_consistent(
             &[
@@ -1213,8 +1213,8 @@ mod tests {
             }
             asset_type
         };
-        let amount1 = U256::from(100);
-        let amount2 = U256::from(200);
+        let amount1 = 100;
+        let amount2 = 200;
 
         assert!(is_input_and_output_consistent(
             &[
@@ -1264,7 +1264,7 @@ mod tests {
     #[test]
     fn output_has_more_asset() {
         let asset_type = H256::random();
-        let output_amount = U256::from(100);
+        let output_amount = 100;
         assert!(!is_input_and_output_consistent(
             &[],
             &[AssetTransferOutput {
@@ -1279,7 +1279,7 @@ mod tests {
     #[test]
     fn input_has_more_asset() {
         let asset_type = H256::random();
-        let input_amount = U256::from(100);
+        let input_amount = 100;
 
         assert!(!is_input_and_output_consistent(
             &[AssetTransferInput {
@@ -1299,8 +1299,8 @@ mod tests {
     #[test]
     fn input_is_larger_than_output() {
         let asset_type = H256::random();
-        let input_amount = U256::from(100);
-        let output_amount = U256::from(80);
+        let input_amount = 100;
+        let output_amount = 80;
 
         assert!(!is_input_and_output_consistent(
             &[AssetTransferInput {

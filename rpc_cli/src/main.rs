@@ -183,11 +183,7 @@ fn get_action(data: &Value) -> Result<Action, CommandError> {
             let metadata: String = data["metadata"].as_str().ok_or(CommandError::InvalidData)?.to_string();
             let lock_script: H256 = get_h256(&data["lock_script"])?;
             let parameters: Vec<Bytes> = vec![]; // FIXME: I didn't implement it since rpc_cli will be replaced with JS.
-            let amount: Option<U256> = if data["amount"].is_string() {
-                Some(get_u256(&data["amount"])?)
-            } else {
-                None
-            };
+            let amount = data["amount"].as_u64();
             let registrar: Option<H160> = if data["registrar"].is_string() {
                 Some(get_h160(&data["registrar"])?)
             } else {
@@ -233,7 +229,7 @@ fn get_transfer_output(data: &Value) -> AssetTransferOutput {
         vec![]
     };
     let asset_type = get_h256(&data["asset_type"]).unwrap_or_else(|_| unreachable!());
-    let amount = get_u256(&data["amount"]).unwrap_or_else(|_| unreachable!());
+    let amount = data["amount"].as_u64().unwrap();
     AssetTransferOutput {
         script_hash,
         parameters,
@@ -248,7 +244,7 @@ fn get_transfer_input(data: &Value) -> AssetTransferInput {
         let transaction_hash = get_h256(&data["transaction_hash"]).unwrap_or_else(|_| unreachable!());
         let index = data["index"].as_u64().unwrap_or_else(|| unreachable!()) as usize;
         let asset_type = get_h256(&data["asset_type"]).unwrap_or_else(|_| unreachable!());
-        let amount = get_u256(&data["amount"]).unwrap_or_else(|_| unreachable!());
+        let amount = data["amount"].as_u64().unwrap();
         AssetTransactionOutput {
             transaction_hash,
             index,

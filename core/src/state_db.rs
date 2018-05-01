@@ -616,7 +616,7 @@ mod tests {
         let mut batch = DBTransaction::new();
 
         let lock_script = H256::random();
-        let remainder = U256::from(1234);
+        let remainder = 1234;
         let registrar = Some(Address::random());
         let asset_scheme =
             AssetScheme::new("A metadata for test asset_scheme".to_string(), lock_script, vec![], remainder, registrar);
@@ -665,7 +665,7 @@ mod tests {
         let asset_scheme_address = H256::random();
         let lock_script = H256::random();
         let parameters = vec![];
-        let amount = U256::from(1000);
+        let amount = 1000;
         let asset = Asset::new(asset_scheme_address, lock_script, parameters, amount);
         let asset_address = AssetAddress::new(transaction_id, 0);
 

@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use cbytes::Bytes;
-use ctypes::{H256, U256};
+use ctypes::H256;
 
 use super::CacheableItem;
 
@@ -24,11 +24,11 @@ pub struct Asset {
     asset_type: H256,
     lock_script: H256,
     parameters: Vec<Bytes>,
-    amount: U256,
+    amount: u64,
 }
 
 impl Asset {
-    pub fn new(asset_type: H256, lock_script: H256, parameters: Vec<Bytes>, amount: U256) -> Self {
+    pub fn new(asset_type: H256, lock_script: H256, parameters: Vec<Bytes>, amount: u64) -> Self {
         Self {
             asset_type,
             lock_script,
@@ -49,7 +49,7 @@ impl Asset {
         &self.parameters
     }
 
-    pub fn amount(&self) -> &U256 {
+    pub fn amount(&self) -> &u64 {
         &self.amount
     }
 }
@@ -65,7 +65,7 @@ impl CacheableItem for Asset {
     }
 
     fn is_null(&self) -> bool {
-        self.amount.is_zero()
+        self.amount == 0
     }
 
     fn from_rlp(rlp: &[u8]) -> Self {
