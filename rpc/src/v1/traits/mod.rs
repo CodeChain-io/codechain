@@ -56,3 +56,13 @@ build_rpc_trait! {
         fn get_block_by_hash(&self, H256) -> Result<Option<Block>>;
     }
 }
+
+build_rpc_trait! {
+    pub trait Devel {
+        # [rpc(name = "devel_getStateTrieKeys")]
+        fn get_state_trie_keys(&self, usize, usize) -> Result<Vec<H256>>;
+
+        # [rpc(name = "devel_getStateTrieValue")]
+        fn get_state_trie_value(&self, H256) -> Result<Vec<Bytes>>;
+    }
+}

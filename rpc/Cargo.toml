@@ -9,6 +9,8 @@ authors = ["CodeChain <codechain@kodebox.io>"]
 codechain-bytes = { path = "../util/bytes" }
 codechain-core = { path = "../core" }
 codechain-types = { path = "../primitives/codechain-types" }
+kvdb = { path = "../util/kvdb" }
+kvdb-rocksdb = { path = "../util/kvdb-rocksdb" }
 log = "0.3"
 rlp = { path = "../util/rlp" }
 serde = "1.0"

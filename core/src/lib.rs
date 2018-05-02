@@ -87,6 +87,7 @@ pub use client::{
     BlockChainClient, BlockInfo, ChainInfo, ChainNotify, Client, EachBlockWith, ImportBlock, Nonce,
     TestBlockChainClient,
 };
+pub use db::COL_STATE;
 pub use error::{BlockImportError, Error, ImportError};
 pub use header::{Header, Seal};
 pub use invoice::Invoice;

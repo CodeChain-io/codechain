@@ -3,6 +3,8 @@ extern crate codechain_core as ccore;
 extern crate codechain_types as ctypes;
 extern crate jsonrpc_core;
 extern crate jsonrpc_http_server;
+extern crate kvdb;
+extern crate kvdb_rocksdb as rocksdb;
 extern crate log;
 extern crate rlp;
 extern crate rustc_hex;

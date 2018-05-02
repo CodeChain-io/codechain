@@ -141,6 +141,25 @@ fn handle_command(rpc: &mut RpcClient, name: &Value, data: &Value) -> Result<(),
                 })
                 .map_err(|e| CommandError::RpcError(e))
         }
+        "devel_getStateTrieKeys" => {
+            let offset = data["offset"].as_u64().unwrap() as usize;
+            let limit = data["limit"].as_u64().unwrap() as usize;
+            rpc.get_state_trie_keys(offset, limit)
+                .map(|keys| {
+                    println!("{} keys : {:?}", keys.len(), keys);
+                    ()
+                })
+                .map_err(|e| CommandError::RpcError(e))
+        }
+        "devel_getStateTrieValue" => {
+            let key: H256 = get_h256(&data["key"])?;
+            rpc.get_state_trie_value(key)
+                .map(|value| {
+                    println!("{:?}", value);
+                    ()
+                })
+                .map_err(|e| CommandError::RpcError(e))
+        }
         _ => Err(CommandError::UnknownCommand),
     }
 }
