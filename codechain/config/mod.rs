@@ -27,9 +27,6 @@ use ctypes::{Address, Secret};
 use rpc::HttpConfiguration as RpcHttpConfig;
 use toml;
 
-const DEFAULT_PORT: u16 = 3485;
-const DEFAULT_RPC_PORT: u16 = 8080;
-
 #[derive(Debug, PartialEq, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ChainType {
@@ -151,10 +148,7 @@ pub fn parse_network_config(matches: &clap::ArgMatches) -> Result<Option<Network
         }
     };
 
-    let port = match matches.value_of("port") {
-        Some(port) => port.parse().map_err(|_| "Invalid port".to_owned())?,
-        None => DEFAULT_PORT,
-    };
+    let port = value_t_or_exit!(matches, "port", u16);
 
     Ok(Some(NetworkConfig {
         port,
@@ -193,11 +187,10 @@ pub fn parse_rpc_config(matches: &clap::ArgMatches) -> Result<Option<RpcHttpConf
         return Ok(None)
     }
 
-    let mut config = RpcHttpConfig::with_port(DEFAULT_RPC_PORT);
+    let port = value_t_or_exit!(matches, "jsonrpc-port", u16);
 
-    if let Some(port) = matches.value_of("jsonrpc-port") {
-        config.port = port.parse().map_err(|_| "Invalid JSON RPC port".to_owned())?;
-    }
+    let mut config = RpcHttpConfig::with_port(port);
+
     if let Some(interface) = matches.value_of("jsonrpc-interface") {
         config.interface = interface.to_owned();
     }
