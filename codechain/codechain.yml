@@ -12,6 +12,7 @@ args:
         value_name: PORT
         help: Listen for connections on PORT.
         takes_value: true
+        default_value: "3485"
     - bootstrap-addresses:
         long: bootstrap-addresses
         value_name: BOOTSTRAP_ADDRESSES
@@ -45,6 +46,7 @@ args:
         value_name: PORT
         help: Listen for rpc connections on PORT.
         takes_value: true
+        default_value: "8080"
     - no-jsonrpc:
         long: no-jsonrpc
         help: Do not run jsonrpc.
