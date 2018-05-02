@@ -25,6 +25,9 @@ pub trait RpcClient {
     fn get_transaction_invoice(&mut self, hash: H256) -> Result<Option<Invoice>, RpcError>;
     fn get_asset_scheme(&mut self, transaction_hash: H256) -> Result<Option<AssetScheme>, RpcError>;
     fn get_asset(&mut self, transaction_hash: H256, index: usize) -> Result<Option<Asset>, RpcError>;
+
+    fn get_state_trie_keys(&mut self, offset: usize, limit: usize) -> Result<Vec<H256>, RpcError>;
+    fn get_state_trie_value(&mut self, value: H256) -> Result<Vec<String>, RpcError>;
 }
 
 pub struct RpcHttp {
@@ -102,6 +105,18 @@ impl RpcClient for RpcHttp {
         let asset: Option<Asset> = ::serde_json::from_value(v["result"].clone())
             .map_err(|e| RpcError::ApiError(format!("Failed to deserialize {:?}", e)))?;
         Ok(asset)
+    }
+
+    fn get_state_trie_keys(&mut self, offset: usize, limit: usize) -> Result<Vec<H256>, RpcError> {
+        let v = self.send("devel_getStateTrieKeys", vec![offset.into(), limit.into()])?;
+        Ok(::serde_json::from_value(v["result"].clone())
+            .map_err(|e| RpcError::ApiError(format!("Failed to deserialize {:?}", e)))?)
+    }
+
+    fn get_state_trie_value(&mut self, key: H256) -> Result<Vec<String>, RpcError> {
+        let v = self.send("devel_getStateTrieValue", vec![format!("0x{:?}", key).into()])?;
+        Ok(::serde_json::from_value(v["result"].clone())
+            .map_err(|e| RpcError::ApiError(format!("Failed to deserialize {:?}", e)))?)
     }
 }
 

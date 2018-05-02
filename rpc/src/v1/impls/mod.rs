@@ -15,5 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 mod chain;
+mod devel;
 
 pub use self::chain::ChainClient;
+pub use self::devel::DevelClient;

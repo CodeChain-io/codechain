@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ccore::Error as CoreError;
+use kvdb::Error as KVDBError;
 use rlp::DecoderError;
 
 use jsonrpc_core::{Error, ErrorCode, Value};
@@ -22,6 +23,7 @@ use jsonrpc_core::{Error, ErrorCode, Value};
 mod codes {
     pub const UNKNOWN_ERROR: i64 = -32009;
     pub const TRANSACTION_ERROR: i64 = -32010;
+    pub const KVDB_ERROR: i64 = -32011;
 }
 
 pub fn transaction<T: Into<CoreError>>(error: T) -> Error {
@@ -41,9 +43,17 @@ pub fn transaction<T: Into<CoreError>>(error: T) -> Error {
     }
 }
 
+pub fn kvdb(error: KVDBError) -> Error {
+    Error {
+        code: ErrorCode::ServerError(codes::KVDB_ERROR),
+        message: "KVDB error.".into(),
+        data: Some(Value::String(format!("{:?}", error))),
+    }
+}
+
 pub fn rlp(error: DecoderError) -> Error {
     Error {
-        code: ErrorCode::InvalidParams,
+        code: ErrorCode::ServerError(codes::UNKNOWN_ERROR),
         message: "Invalid RLP.".into(),
         data: Some(Value::String(format!("{:?}", error))),
     }
