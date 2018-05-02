@@ -226,6 +226,10 @@ impl Client {
             State::from_existing(db, root, self.engine.machine().account_start_nonce(), self.trie_factory.clone()).ok()
         })
     }
+
+    pub fn database(&self) -> Arc<KeyValueDB> {
+        Arc::clone(&self.db.read())
+    }
 }
 
 impl ChainInfo for Client {
