@@ -27,7 +27,7 @@ use super::super::extension::{Api, Error, Extension, NodeToken, Result, TimerTok
 #[derive(Debug, Ord, PartialOrd, Eq, PartialEq)]
 pub enum Call {
     Send(NodeToken, Vec<u8>),
-    Connect(NodeToken),
+    Negotiate(NodeToken),
     SetTimer {
         token: TimerToken,
         duration: Duration,
@@ -73,9 +73,9 @@ impl Api for TestApi {
         self.calls.lock().push_back(Call::Send(*node, message.clone()));
     }
 
-    fn connect(&self, node: &NodeToken) {
+    fn negotiate(&self, node: &NodeToken) {
         self.connection_requests.lock().insert(*node);
-        self.calls.lock().push_back(Call::Connect(*node));
+        self.calls.lock().push_back(Call::Negotiate(*node));
     }
 
     fn set_timer(&self, token: TimerToken, duration: Duration) -> Result<()> {
@@ -137,7 +137,7 @@ impl TestApi {
             panic!("Duplicated connection detected for node #{}", token);
         }
         connections.insert(token);
-        self.extension().on_connected(&token);
+        self.extension().on_negotiated(&token);
     }
 
     fn allow_connection(&self, token: NodeToken) {
@@ -150,7 +150,7 @@ impl TestApi {
         } else {
             panic!("Invalid connection allowance to node #{}", token);
         }
-        self.extension().on_connection_allowed(&token);
+        self.extension().on_negotiation_allowed(&token);
     }
 
     fn deny_connection(&self, token: NodeToken, error: Error) {
@@ -161,7 +161,7 @@ impl TestApi {
         } else {
             panic!("Invalid connection denial to node #{}", token);
         }
-        self.extension().on_connection_denied(&token, error);
+        self.extension().on_negotiation_denied(&token, error);
     }
 
     fn send_message(&self, from: NodeToken, message: &[u8]) {

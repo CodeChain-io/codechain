@@ -889,10 +889,10 @@ impl NetworkExtension for TendermintExtension {
         self.peers.write().remove(token);
     }
 
-    fn on_connected(&self, _token: &NodeToken) {}
+    fn on_negotiated(&self, _token: &NodeToken) {}
 
-    fn on_connection_allowed(&self, token: &NodeToken) {
-        self.on_connected(token);
+    fn on_negotiation_allowed(&self, token: &NodeToken) {
+        self.on_negotiated(token);
     }
 
     fn on_message(&self, token: &NodeToken, data: &[u8]) {

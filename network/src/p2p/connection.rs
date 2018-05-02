@@ -239,13 +239,13 @@ impl Connection {
                         } => {
                             let seq = msg.seq();
                             // FIXME: version negotiation
-                            callback.on_connected(&extension_name);
+                            callback.on_negotiated(&extension_name);
                             self.enqueue_negotiation_allowed(seq);
                         }
                         &NegotiationBody::Allowed => {
                             let seq = msg.seq();
                             if let Some(name) = self.requested_negotiation.remove(&seq) {
-                                callback.on_connection_allowed(&name);
+                                callback.on_negotiation_allowed(&name);
                             } else {
                                 trace!(target: "net", "Negotiation::Allowed message received from non requested seq");
                             }
@@ -317,17 +317,17 @@ impl<'a> ExtensionCallback<'a> {
         }
     }
 
-    fn on_connected(&self, name: &String) {
-        self.client.on_connected(&name, &self.id);
+    fn on_negotiated(&self, name: &String) {
+        self.client.on_negotiated(&name, &self.id);
     }
 
-    fn on_connection_allowed(&self, name: &String) {
-        self.client.on_connection_allowed(&name, &self.id);
+    fn on_negotiation_allowed(&self, name: &String) {
+        self.client.on_negotiation_allowed(&name, &self.id);
     }
 
     #[allow(dead_code)]
-    fn on_connection_denied(&self, name: &String, error: ExtensionError) {
-        self.client.on_connection_denied(&name, &self.id, error);
+    fn on_negotiation_denied(&self, name: &String, error: ExtensionError) {
+        self.client.on_negotiation_denied(&name, &self.id, error);
     }
 
     fn on_message(&self, name: &String, data: &Vec<u8>) {

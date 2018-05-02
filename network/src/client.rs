@@ -53,7 +53,7 @@ impl Api for ClientApi {
         }
     }
 
-    fn connect(&self, id: &NodeToken) {
+    fn negotiate(&self, id: &NodeToken) {
         if let Some(extension) = self.extension.upgrade() {
             let extension_name = extension.name();
             let version = 0;
@@ -202,9 +202,9 @@ impl Client {
     define_broadcast_method!(on_node_added; id, &NodeToken);
     define_broadcast_method!(on_node_removed; id, &NodeToken);
 
-    define_method!(on_connected; id, &NodeToken);
-    define_method!(on_connection_allowed; id, &NodeToken);
-    define_method!(on_connection_denied; id, &NodeToken; error, NetworkExtensionError);
+    define_method!(on_negotiated; id, &NodeToken);
+    define_method!(on_negotiation_allowed; id, &NodeToken);
+    define_method!(on_negotiation_denied; id, &NodeToken; error, NetworkExtensionError);
 
     define_method!(on_message; id, &NodeToken; data, &[u8]);
 
@@ -234,7 +234,7 @@ mod tests {
             unimplemented!()
         }
 
-        fn connect(&self, _id: &usize) {
+        fn negotiate(&self, _id: &usize) {
             unimplemented!()
         }
 
@@ -260,9 +260,9 @@ mod tests {
         Initialize,
         NodeAdded,
         NodeRemoved,
-        Connected,
-        ConnectionAllowed,
-        ConnectionDenied,
+        Negotiated,
+        NegotiationAllowed,
+        NegotiationDenied,
         Message,
         TimerSetAllowed,
         TimerSetDenied,
@@ -307,19 +307,19 @@ mod tests {
             callbacks.push(Callback::NodeRemoved);
         }
 
-        fn on_connected(&self, _id: &NodeToken) {
+        fn on_negotiated(&self, _id: &NodeToken) {
             let mut callbacks = self.callbacks.lock();
-            callbacks.push(Callback::Connected);
+            callbacks.push(Callback::Negotiated);
         }
 
-        fn on_connection_allowed(&self, _id: &NodeToken) {
+        fn on_negotiation_allowed(&self, _id: &NodeToken) {
             let mut callbacks = self.callbacks.lock();
-            callbacks.push(Callback::ConnectionAllowed);
+            callbacks.push(Callback::NegotiationAllowed);
         }
 
-        fn on_connection_denied(&self, _id: &NodeToken, _error: NetworkExtensionError) {
+        fn on_negotiation_denied(&self, _id: &NodeToken, _error: NetworkExtensionError) {
             let mut callbacks = self.callbacks.lock();
-            callbacks.push(Callback::ConnectionDenied);
+            callbacks.push(Callback::NegotiationDenied);
         }
 
         fn on_message(&self, _id: &NodeToken, _message: &[u8]) {

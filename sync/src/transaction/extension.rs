@@ -69,13 +69,13 @@ impl NetworkExtension for Extension {
     }
 
     fn on_node_added(&self, token: &NodeToken) {
-        self.api.lock().as_ref().map(|api| api.connect(token));
+        self.api.lock().as_ref().map(|api| api.negotiate(token));
     }
     fn on_node_removed(&self, token: &NodeToken) {
         self.peers.write().remove(token);
     }
 
-    fn on_connected(&self, token: &NodeToken) {
+    fn on_negotiated(&self, token: &NodeToken) {
         self.peers.write().insert(
             *token,
             Peer {
@@ -83,8 +83,8 @@ impl NetworkExtension for Extension {
             },
         );
     }
-    fn on_connection_allowed(&self, token: &NodeToken) {
-        self.on_connected(token);
+    fn on_negotiation_allowed(&self, token: &NodeToken) {
+        self.on_negotiated(token);
     }
 
     fn on_message(&self, token: &NodeToken, data: &[u8]) {

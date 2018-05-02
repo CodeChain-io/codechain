@@ -119,13 +119,13 @@ impl NetworkExtension for Extension {
     }
 
     fn on_node_added(&self, token: &NodeToken) {
-        self.api.lock().as_ref().map(|api| api.connect(token));
+        self.api.lock().as_ref().map(|api| api.negotiate(token));
     }
     fn on_node_removed(&self, token: &NodeToken) {
         self.peers.write().remove(token);
     }
 
-    fn on_connected(&self, token: &NodeToken) {
+    fn on_negotiated(&self, token: &NodeToken) {
         let chain_info = self.client.chain_info();
         self.send_message(
             token,
@@ -136,8 +136,8 @@ impl NetworkExtension for Extension {
             },
         );
     }
-    fn on_connection_allowed(&self, token: &NodeToken) {
-        self.on_connected(token);
+    fn on_negotiation_allowed(&self, token: &NodeToken) {
+        self.on_negotiated(token);
     }
 
     fn on_message(&self, token: &NodeToken, data: &[u8]) {
@@ -444,7 +444,7 @@ mod tests {
 
     fn assert_add_node(env: &mut TestEnvironment, node: NodeToken) {
         env.network.add_node(node);
-        assert_eq!(env.network.pop_call(EXTENSION_NAME), Some(TestNetworkCall::Connect(0)));
+        assert_eq!(env.network.pop_call(EXTENSION_NAME), Some(TestNetworkCall::Negotiate(0)));
 
         env.network.connected(EXTENSION_NAME, 0);
         match env.network.pop_call(EXTENSION_NAME) {

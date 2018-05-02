@@ -43,7 +43,7 @@ pub type Result<T> = result::Result<T, Error>;
 
 pub trait Api: Send + Sync {
     fn send(&self, node: &NodeToken, message: &Vec<u8>);
-    fn connect(&self, node: &NodeToken);
+    fn negotiate(&self, node: &NodeToken);
 
     fn set_timer(&self, timer: TimerToken, d: Duration) -> Result<()>;
     fn set_timer_once(&self, timer: TimerToken, d: Duration) -> Result<()>;
@@ -61,9 +61,9 @@ pub trait Extension: Send + Sync {
     fn on_node_added(&self, _node: &NodeToken) {}
     fn on_node_removed(&self, _node: &NodeToken) {}
 
-    fn on_connected(&self, _node: &NodeToken) {}
-    fn on_connection_allowed(&self, _node: &NodeToken) {}
-    fn on_connection_denied(&self, _node: &NodeToken, _error: Error) {}
+    fn on_negotiated(&self, _node: &NodeToken) {}
+    fn on_negotiation_allowed(&self, _node: &NodeToken) {}
+    fn on_negotiation_denied(&self, _node: &NodeToken, _error: Error) {}
 
     fn on_message(&self, _node: &NodeToken, _message: &[u8]) {}
 
