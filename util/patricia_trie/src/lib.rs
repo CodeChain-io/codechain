@@ -17,7 +17,6 @@
 //! Trie interface and implementation.
 extern crate codechain_bytes as bytes;
 extern crate codechain_crypto;
-extern crate codechain_logger;
 extern crate codechain_types;
 extern crate elastic_array;
 extern crate hashdb;

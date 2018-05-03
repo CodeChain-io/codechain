@@ -506,7 +506,6 @@ impl state::Backend for StateDB {
 
 #[cfg(test)]
 mod tests {
-    use clogger::init_log;
     use ctypes::{Address, H256, U256};
     use kvdb::DBTransaction;
 
@@ -543,8 +542,6 @@ mod tests {
 
     #[test]
     fn state_db_smoke() {
-        init_log();
-
         let state_db = get_temp_state_db();
         let root_parent = H256::random();
         let address = Address::random();

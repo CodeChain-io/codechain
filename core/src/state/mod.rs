@@ -658,7 +658,6 @@ fn is_input_and_output_consistent(inputs: &[AssetTransferInput], outputs: &[Asse
 #[cfg(test)]
 mod tests {
     use ccrypto::blake256;
-    use clogger::init_log;
     use ctypes::{Address, Secret, U256};
 
     use super::super::tests::helpers::{get_temp_state, get_temp_state_db};
@@ -817,8 +816,6 @@ mod tests {
 
     #[test]
     fn should_work_when_cloned() {
-        init_log();
-
         let a = Address::zero();
 
         let mut state = {
