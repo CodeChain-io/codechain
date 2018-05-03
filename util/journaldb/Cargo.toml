@@ -16,5 +16,4 @@ util-error = { path = "../error" }
 
 [dev-dependencies]
 codechain-crypto = { path = "../../crypto" }
-codechain-logger = { path = "../../logger" }
 kvdb-memorydb = { path = "../kvdb-memorydb" }

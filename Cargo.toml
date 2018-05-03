@@ -10,7 +10,6 @@ clap = { version = "2", features = ["yaml"] }
 codechain-core = { path = "core" }
 codechain-discovery = { path = "discovery" }
 codechain-finally = { path = "util/finally" }
-codechain-logger = { path = "logger" }
 codechain-network = { path = "network" }
 codechain-reactor = { path = "util/reactor" }
 codechain-rpc = { path = "rpc" }
@@ -40,7 +39,6 @@ members = [
 	"discovery",
 	"json",
 	"keys",
-	"logger",
 	"network",
 	"rpc",
 	"rpc_cli",

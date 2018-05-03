@@ -27,8 +27,6 @@ extern crate util_error as error;
 #[cfg(test)]
 extern crate codechain_crypto as crypto;
 #[cfg(test)]
-extern crate codechain_logger;
-#[cfg(test)]
 extern crate kvdb_memorydb;
 
 use std::sync::Arc;
