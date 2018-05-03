@@ -8,7 +8,7 @@
 **/*.iml
 .idea/
 db/
-log/
+/log/
 
 # macOS
 .DS_store

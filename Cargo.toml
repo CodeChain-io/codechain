@@ -10,6 +10,7 @@ clap = { version = "2", features = ["yaml"] }
 codechain-core = { path = "core" }
 codechain-discovery = { path = "discovery" }
 codechain-finally = { path = "util/finally" }
+codechain-logger = { path = "util/logger" }
 codechain-network = { path = "network" }
 codechain-reactor = { path = "util/reactor" }
 codechain-rpc = { path = "rpc" }
