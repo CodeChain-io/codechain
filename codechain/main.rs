@@ -28,6 +28,7 @@ extern crate serde_derive;
 extern crate app_dirs;
 extern crate codechain_core as ccore;
 extern crate codechain_discovery as cdiscovery;
+extern crate codechain_logger as clogger;
 extern crate codechain_network as cnetwork;
 extern crate codechain_reactor as creactor;
 extern crate codechain_rpc as crpc;
@@ -50,6 +51,7 @@ use std::sync::Arc;
 use app_dirs::AppInfo;
 use ccore::{AccountProvider, ClientService, Miner, MinerOptions, MinerService, Spec};
 use cdiscovery::{KademliaExtension, SimpleDiscovery};
+use clogger::LoggerConfig;
 use cnetwork::{NetworkConfig, NetworkService, SocketAddr};
 use creactor::EventLoop;
 use crpc::Server as RpcServer;
@@ -115,6 +117,8 @@ fn run() -> Result<(), String> {
     let mut config = config::load(&config_path)?;
     config.overwrite_with(&matches)?;
     let spec = config.chain_type.spec()?;
+
+    clogger::init(&LoggerConfig::default()).expect("Logger must be successfully initialized");
 
     let ap = AccountProvider::new();
     let address = ap.insert_account(config.secret_key.into()).map_err(|e| format!("Invalid secret key: {:?}", e))?;

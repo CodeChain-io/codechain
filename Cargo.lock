@@ -178,6 +178,7 @@ dependencies = [
  "codechain-core 0.1.0",
  "codechain-discovery 0.1.0",
  "codechain-finally 0.1.0",
+ "codechain-logger 0.1.0",
  "codechain-network 0.1.0",
  "codechain-reactor 0.1.0",
  "codechain-rpc 0.1.0",
@@ -307,6 +308,15 @@ dependencies = [
  "rustc-hex 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-serialize 0.3.24 (registry+https://github.com/rust-lang/crates.io-index)",
  "secp256k1 0.5.7",
+]
+
+[[package]]
+name = "codechain-logger"
+version = "0.1.0"
+dependencies = [
+ "atty 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "env_logger 0.5.7 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
