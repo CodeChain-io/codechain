@@ -47,6 +47,7 @@ mod rpc_apis;
 
 use std::path::Path;
 use std::sync::Arc;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use app_dirs::AppInfo;
 use ccore::{AccountProvider, ClientService, Miner, MinerOptions, MinerService, Spec};
@@ -118,7 +119,11 @@ fn run() -> Result<(), String> {
     config.overwrite_with(&matches)?;
     let spec = config.chain_type.spec()?;
 
-    clogger::init(&LoggerConfig::default()).expect("Logger must be successfully initialized");
+    let instance_id = config.instance_id.unwrap_or(SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("Current time should be later than unix epoch")
+        .subsec_nanos() as usize);
+    clogger::init(&LoggerConfig::new(instance_id)).expect("Logger must be successfully initialized");
 
     let ap = AccountProvider::new();
     let address = ap.insert_account(config.secret_key.into()).map_err(|e| format!("Invalid secret key: {:?}", e))?;
