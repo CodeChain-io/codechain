@@ -16,8 +16,6 @@
 
 mod nonce;
 mod session;
-mod table;
 
 pub use self::nonce::Nonce;
 pub use self::session::Session;
-pub use self::table::Table as SessionTable;

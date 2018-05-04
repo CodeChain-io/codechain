@@ -27,7 +27,7 @@ use parking_lot::{Mutex, RwLock};
 
 use super::super::client::Client;
 use super::super::extension::NodeToken;
-use super::super::session::{Nonce, Session, SessionTable};
+use super::super::session::{Nonce, Session};
 use super::super::token_generator::TokenGenerator;
 use super::super::{DiscoveryApi, SocketAddr};
 use super::connection::{Connection, ExtensionCallback as ExtensionChannel};
@@ -45,7 +45,6 @@ struct Manager {
     pending_connections: HashMap<StreamToken, PendingConnection>,
 
     registered_sessions: HashMap<Nonce, Session>,
-    socket_to_session: SessionTable,
 
     waiting_sync_tokens: TokenGenerator,
     waiting_sync_stream_to_timer: HashMap<StreamToken, TimerToken>,
@@ -115,7 +114,6 @@ impl Manager {
             pending_connections: HashMap::new(),
 
             registered_sessions: HashMap::new(),
-            socket_to_session: SessionTable::new(),
 
             waiting_sync_tokens: TokenGenerator::new(FIRST_WAIT_SYNC_TOKEN, LAST_WAIT_SYNC_TOKEN),
             waiting_sync_stream_to_timer: HashMap::new(),
