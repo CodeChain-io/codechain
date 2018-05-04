@@ -32,6 +32,11 @@ args:
         help: Maximum number of connections
         takes_value: true
         default_value: "30"
+    - instance-id:
+        short: i
+        long: instance-id
+        help: Specify instance id for logging.
+        takes_value: true
     - quiet:
         short: q
         long: quiet

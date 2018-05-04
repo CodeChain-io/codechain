@@ -15,7 +15,6 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::thread;
-use std::time::{SystemTime, UNIX_EPOCH};
 use time;
 
 use atty;
@@ -27,13 +26,10 @@ pub struct Config {
     pub instance_id: usize,
 }
 
-impl Default for Config {
-    fn default() -> Self {
+impl Config {
+    pub fn new(instance_id: usize) -> Self {
         Self {
-            instance_id: SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .expect("Current time should be later than unix epoch")
-                .subsec_nanos() as usize,
+            instance_id,
         }
     }
 }

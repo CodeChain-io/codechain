@@ -86,6 +86,7 @@ impl ChainType {
 #[serde(deny_unknown_fields)]
 pub struct Config {
     pub quiet: bool,
+    pub instance_id: Option<usize>,
     pub db_path: String,
     pub chain_type: ChainType,
     pub enable_block_sync: bool,
@@ -109,6 +110,9 @@ impl Config {
     pub fn overwrite_with(&mut self, matches: &clap::ArgMatches) -> Result<(), String> {
         if matches.is_present("quiet") {
             self.quiet = true;
+        }
+        if let Some(instance_id) = matches.value_of("instance-id") {
+            self.instance_id = Some(instance_id.parse().map_err(|e| format!("{}", e))?);
         }
         if let Some(db_path) = matches.value_of("db-path") {
             self.db_path = db_path.to_string();
