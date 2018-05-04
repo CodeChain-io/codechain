@@ -5,6 +5,7 @@ authors = ["CodeChain Team <codechain@kodebox.io>"]
 
 [dependencies]
 atty = "0.2"
+colored = "1.6"
 env_logger = "0.5.7"
 log = "0.4.1"
 time = "0.1"

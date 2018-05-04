@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 extern crate atty;
+extern crate colored;
 extern crate env_logger;
 extern crate log;
 extern crate time;

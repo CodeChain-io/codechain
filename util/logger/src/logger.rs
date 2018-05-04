@@ -14,10 +14,12 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::thread;
 use std::time::{SystemTime, UNIX_EPOCH};
 use time;
 
 use atty;
+use colored::Colorize;
 use env_logger::filter::{Builder as FilterBuilder, Filter};
 use log::{LevelFilter, Log, Metadata, Record};
 
@@ -64,8 +66,25 @@ impl Log for Logger {
 
     fn log(&self, record: &Record) {
         if self.filter.matches(record) {
+            let thread_name = thread::current().name().unwrap_or_default().to_string();
             let timestamp = time::strftime("%Y-%m-%d %H:%M:%S %Z", &time::now()).unwrap();
-            eprintln!("#{} {} {} {}  {}", self.instance_id, timestamp, record.level(), record.target(), record.args());
+
+            let stderr_isatty = atty::is(atty::Stream::Stderr);
+            let instance_id = self.instance_id;
+            let timestamp = if stderr_isatty {
+                timestamp.bold()
+            } else {
+                timestamp.normal()
+            };
+            let thread_name = if stderr_isatty {
+                thread_name.blue().bold()
+            } else {
+                thread_name.normal()
+            };
+            let log_level = record.level();
+            let log_target = record.target();
+            let log_message = record.args();
+            eprintln!("#{} {} {} {} {}  {}", instance_id, timestamp, thread_name, log_level, log_target, log_message);
         }
     }
 
