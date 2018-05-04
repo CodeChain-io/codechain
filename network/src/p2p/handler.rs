@@ -182,11 +182,12 @@ impl Manager {
         }
     }
 
-    fn create_connection(&mut self, stream: Stream, socket_address: &SocketAddr) -> IoHandlerResult<StreamToken> {
-        let session = self.socket_to_session.remove(&socket_address).ok_or(Error::General("UnavailableSession"))?;
+    fn create_connection(&mut self, stream: Stream, session: &Session) -> IoHandlerResult<StreamToken> {
         let mut connection = Connection::new(stream, session.secret().clone(), session.id().clone());
         let nonce = session.id();
         connection.enqueue_sync(nonce.clone());
+        let registered_session = self.registered_sessions.remove(nonce);
+        debug_assert_eq!(Some(session), registered_session.as_ref());
 
         Ok(self.tokens
             .gen()
@@ -207,20 +208,19 @@ impl Manager {
         }
     }
 
-    pub fn connect(&mut self, socket_address: &SocketAddr) -> IoHandlerResult<Option<StreamToken>> {
+    pub fn connect(&mut self, socket_address: &SocketAddr, session: &Session) -> IoHandlerResult<Option<StreamToken>> {
         Ok(match Stream::connect(socket_address)? {
-            Some(stream) => Some(self.create_connection(stream, &socket_address)?),
+            Some(stream) => Some(self.create_connection(stream, session)?),
             None => None,
         })
     }
 
     fn register_session(&mut self, socket_address: SocketAddr, session: Session) -> Result<()> {
-        if self.socket_to_session.contains_key(&socket_address) {
+        if self.registered_sessions.contains_key(&session.id()) {
             return Err(Error::General("SessionAlreadyRegistered"))
         }
-
-        self.registered_sessions.insert(session.id().clone(), session.clone());
-        self.socket_to_session.insert(socket_address, session);
+        let t = self.registered_sessions.insert(session.id().clone(), session.clone());
+        debug_assert!(t.is_none());
         Ok(())
     }
 
@@ -295,8 +295,8 @@ impl Manager {
 
         // Session is not reusable
         let registered_session = self.registered_sessions.remove(&nonce);
-        debug_assert_eq!(registered_session, Some(session));
-        debug_assert!(registered_session.is_some());
+        debug_assert_eq!(registered_session, Some(session.clone()));
+
         self.register_connection(connection, stream);
         client.on_node_added(&stream);
         Ok(false)
@@ -397,7 +397,8 @@ impl IoHandler<Message> for Handler {
                 let _ = manager.register_session(socket_address.clone(), session.clone());
 
                 trace!(target: "net", "Connecting to {:?}", socket_address);
-                let token = manager.connect(&socket_address)?.ok_or(Error::General("Cannot create connection"))?;
+                let token =
+                    manager.connect(&socket_address, session)?.ok_or(Error::General("Cannot create connection"))?;
                 io.register_stream(token)?;
 
                 if let Some(ref discovery) = *self.discovery.read() {
