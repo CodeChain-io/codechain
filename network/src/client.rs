@@ -264,8 +264,6 @@ mod tests {
         NegotiationAllowed,
         NegotiationDenied,
         Message,
-        TimerSetAllowed,
-        TimerSetDenied,
         Timeout,
     }
 

@@ -333,7 +333,7 @@ fn decrypt_and_decode_nonce(session: &Session, encrypted_bytes: &Vec<u8>) -> Res
 
 pub struct Handler {
     session_initiator: Mutex<SessionInitiator>,
-    extension: IoChannel<p2p::Message>,
+    channel_to_p2p: IoChannel<p2p::Message>,
     discovery: RwLock<Option<Arc<DiscoveryApi>>>,
 }
 
@@ -342,7 +342,7 @@ impl Handler {
         let session_initiator = Mutex::new(SessionInitiator::bind(&socket_address).expect("Cannot bind UDP port"));
         Self {
             session_initiator,
-            extension,
+            channel_to_p2p: extension,
             discovery: RwLock::new(None),
         }
     }
@@ -398,7 +398,7 @@ impl IoHandler<Message> for Handler {
         });
         loop {
             let mut session_initiator = self.session_initiator.lock();
-            if !session_initiator.read(&self.extension, io)? {
+            if !session_initiator.read(&self.channel_to_p2p, io)? {
                 break
             }
         }
