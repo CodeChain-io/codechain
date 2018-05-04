@@ -15,7 +15,9 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::time::{SystemTime, UNIX_EPOCH};
+use time;
 
+use atty;
 use env_logger::filter::{Builder as FilterBuilder, Filter};
 use log::{LevelFilter, Log, Metadata, Record};
 
@@ -62,7 +64,8 @@ impl Log for Logger {
 
     fn log(&self, record: &Record) {
         if self.filter.matches(record) {
-            println!("{}", record.args());
+            let timestamp = time::strftime("%Y-%m-%d %H:%M:%S %Z", &time::now()).unwrap();
+            eprintln!("#{} {} {} {}  {}", self.instance_id, timestamp, record.level(), record.target(), record.args());
         }
     }
 
