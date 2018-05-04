@@ -34,14 +34,14 @@ pub struct Service {
 }
 
 impl Service {
-    pub fn start(address: SocketAddr) -> Result<Self, IoError> {
+    pub fn start(address: SocketAddr, min_peers: usize, max_peers: usize) -> Result<Self, Error> {
         let p2p = IoService::start()?;
         let timer = IoService::start()?;
         let session_initiator = IoService::start()?;
 
         let client = Client::new(p2p.channel(), timer.channel());
 
-        let p2p_handler = Arc::new(p2p::Handler::new(address.clone(), Arc::clone(&client)));
+        let p2p_handler = Arc::new(p2p::Handler::try_new(address.clone(), Arc::clone(&client), min_peers, max_peers)?);
         p2p.register_handler(p2p_handler)?;
 
         timer.register_handler(Arc::new(timer::Handler::new(Arc::clone(&client))))?;
@@ -80,5 +80,23 @@ impl Service {
         } else {
             Ok(())
         }
+    }
+}
+
+#[derive(Debug)]
+pub enum Error {
+    IoError(IoError),
+    General(String),
+}
+
+impl From<IoError> for Error {
+    fn from(err: IoError) -> Self {
+        Error::IoError(err)
+    }
+}
+
+impl From<String> for Error {
+    fn from(err: String) -> Self {
+        Error::General(err)
     }
 }

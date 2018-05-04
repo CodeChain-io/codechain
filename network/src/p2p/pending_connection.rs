@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::HashMap;
 use std::io;
 
 use cio::IoManager;
@@ -26,6 +25,7 @@ use rlp::UntrustedRlp;
 use super::super::session::{Nonce, Session};
 use super::connection::{Connection, Error as ConnectionError, Result as ConnectionResult};
 use super::message::{HandshakeMessage, Message, SignedMessage};
+use super::session_candidate::SessionCandidate;
 use super::stream::Stream;
 
 pub struct PendingConnection {
@@ -41,7 +41,7 @@ impl PendingConnection {
         }
     }
 
-    pub fn receive(&mut self, registered_sessions: &HashMap<Nonce, Session>) -> ConnectionResult<Option<Nonce>> {
+    pub fn receive(&mut self, registered_sessions: &SessionCandidate) -> ConnectionResult<Option<Nonce>> {
         if let Some(signed_message) = self.stream.read::<SignedMessage>()? {
             let rlp = UntrustedRlp::new(&signed_message.message);
             match rlp.as_val::<Message>()? {
@@ -49,7 +49,8 @@ impl PendingConnection {
                     session_id,
                     ..
                 }) => {
-                    let session = registered_sessions.get(&session_id).ok_or(ConnectionError::UnreadySession)?;
+                    let &(ref session, _) =
+                        registered_sessions.get(&session_id).ok_or(ConnectionError::UnreadySession)?;
                     if !signed_message.is_valid(&session) {
                         return Err(ConnectionError::InvalidSign)
                     }

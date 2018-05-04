@@ -22,6 +22,16 @@ args:
     - no-network:
         long: no-network
         help: Do not open network socket.
+    - min-peers:
+        long: min-peers
+        help: Minimum number of connections
+        takes_value: true
+        default_value: "10"
+    - max-peers:
+        long: max-peers
+        help: Maximum number of connections
+        takes_value: true
+        default_value: "30"
     - quiet:
         short: q
         long: quiet

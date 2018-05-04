@@ -76,7 +76,8 @@ pub fn rpc_start(cfg: RpcHttpConfig, deps: Arc<rpc_apis::ApiDependencies>) -> Re
 pub fn network_start(cfg: &NetworkConfig) -> Result<NetworkService, String> {
     info!("Handshake Listening on {}", cfg.port);
     let address = SocketAddr::v4(127, 0, 0, 1, cfg.port);
-    let service = NetworkService::start(address).map_err(|e| format!("Network service error: {:?}", e))?;
+    let service = NetworkService::start(address, cfg.min_peers, cfg.max_peers)
+        .map_err(|e| format!("Network service error: {:?}", e))?;
 
     Ok(service)
 }

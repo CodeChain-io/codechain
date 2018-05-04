@@ -150,9 +150,19 @@ pub fn parse_network_config(matches: &clap::ArgMatches) -> Result<Option<Network
 
     let port = value_t_or_exit!(matches, "port", u16);
 
+
+    let min_peers = value_t_or_exit!(matches, "min-peers", usize);
+    let max_peers = value_t_or_exit!(matches, "max-peers", usize);
+
+    if min_peers > max_peers {
+        return Err("Invalid min/max peers".to_owned())
+    }
+
     Ok(Some(NetworkConfig {
         port,
         bootstrap_addresses,
+        min_peers,
+        max_peers,
     }))
 }
 

@@ -19,4 +19,6 @@ use super::SocketAddr;
 pub struct Config {
     pub port: u16,
     pub bootstrap_addresses: Vec<SocketAddr>,
+    pub min_peers: usize,
+    pub max_peers: usize,
 }

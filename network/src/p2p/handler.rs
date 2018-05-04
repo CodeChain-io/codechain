@@ -27,13 +27,14 @@ use parking_lot::{Mutex, RwLock};
 
 use super::super::client::Client;
 use super::super::extension::NodeToken;
-use super::super::session::{Nonce, Session};
+use super::super::session::Session;
 use super::super::token_generator::TokenGenerator;
 use super::super::{DiscoveryApi, SocketAddr};
 use super::connection::{Connection, ExtensionCallback as ExtensionChannel};
 use super::listener::Listener;
 use super::message::Version;
 use super::pending_connection::PendingConnection;
+use super::session_candidate::SessionCandidate;
 use super::stream::Stream;
 
 struct Manager {
@@ -44,21 +45,24 @@ struct Manager {
     connections: HashMap<StreamToken, Connection>,
     pending_connections: HashMap<StreamToken, PendingConnection>,
 
-    registered_sessions: HashMap<Nonce, Session>,
+    registered_sessions: SessionCandidate,
 
     waiting_sync_tokens: TokenGenerator,
     waiting_sync_stream_to_timer: HashMap<StreamToken, TimerToken>,
     waiting_sync_timer_to_stream: HashMap<TimerToken, StreamToken>,
 }
 
-const MAX_CONNECTIONS: usize = 32;
+pub const MAX_CONNECTIONS: usize = 200;
 
 const ACCEPT_TOKEN: TimerToken = 0;
 
 const FIRST_CONNECTION_TOKEN: TimerToken = ACCEPT_TOKEN + 1;
 const LAST_CONNECTION_TOKEN: TimerToken = FIRST_CONNECTION_TOKEN + MAX_CONNECTIONS;
 
-const FIRST_WAIT_SYNC_TOKEN: TimerToken = LAST_CONNECTION_TOKEN;
+const PULL_CONNECTIONS_TOKEN: TimerToken = 0;
+const PULL_CONNECTIONS_MS: u64 = 1 * 1000;
+
+const FIRST_WAIT_SYNC_TOKEN: TimerToken = PULL_CONNECTIONS_TOKEN + 1;
 const MAX_SYNC_WAITS: usize = 10;
 const LAST_WAIT_SYNC_TOKEN: TimerToken = FIRST_WAIT_SYNC_TOKEN + MAX_SYNC_WAITS;
 
@@ -102,6 +106,7 @@ impl ::std::fmt::Display for Error {
     }
 }
 
+const WAIT_CREATE_CONNECTION: usize = 5;
 
 impl Manager {
     pub fn listen(socket_address: &SocketAddr) -> io::Result<Self> {
@@ -113,7 +118,7 @@ impl Manager {
             connections: HashMap::new(),
             pending_connections: HashMap::new(),
 
-            registered_sessions: HashMap::new(),
+            registered_sessions: SessionCandidate::new(WAIT_CREATE_CONNECTION),
 
             waiting_sync_tokens: TokenGenerator::new(FIRST_WAIT_SYNC_TOKEN, LAST_WAIT_SYNC_TOKEN),
             waiting_sync_stream_to_timer: HashMap::new(),
@@ -184,8 +189,8 @@ impl Manager {
         let mut connection = Connection::new(stream, session.secret().clone(), session.id().clone());
         let nonce = session.id();
         connection.enqueue_sync(nonce.clone());
-        let registered_session = self.registered_sessions.remove(nonce);
-        debug_assert_eq!(Some(session), registered_session.as_ref());
+        let removed = self.registered_sessions.remove(nonce);
+        debug_assert!(removed);
 
         Ok(self.tokens
             .gen()
@@ -193,7 +198,7 @@ impl Manager {
                 self.register_connection(connection, &token);
                 token
             })
-            .ok_or(Error::General("TooManyConnections"))?)
+            .expect("The number of peers must be checked before"))
     }
 
     pub fn accept(&mut self) -> IoHandlerResult<Option<(StreamToken, TimerToken, SocketAddr)>> {
@@ -217,8 +222,8 @@ impl Manager {
         if self.registered_sessions.contains_key(&session.id()) {
             return Err(Error::General("SessionAlreadyRegistered"))
         }
-        let t = self.registered_sessions.insert(session.id().clone(), session.clone());
-        debug_assert!(t.is_none());
+        let inserted = self.registered_sessions.insert(session, socket_address);
+        debug_assert!(inserted);
         Ok(())
     }
 
@@ -292,8 +297,8 @@ impl Manager {
         let nonce = session.id().clone();
 
         // Session is not reusable
-        let registered_session = self.registered_sessions.remove(&nonce);
-        debug_assert_eq!(registered_session, Some(session.clone()));
+        let removed = self.registered_sessions.remove(&nonce);
+        debug_assert!(removed);
 
         self.register_connection(connection, stream);
         client.on_node_added(&stream);
@@ -347,18 +352,33 @@ pub struct Handler {
     client: Arc<Client>,
 
     discovery: RwLock<Option<Arc<DiscoveryApi>>>,
+
+    min_peers: usize,
+    max_peers: usize,
 }
 
 impl Handler {
-    pub fn new(socket_address: SocketAddr, client: Arc<Client>) -> Self {
+    pub fn try_new(
+        socket_address: SocketAddr,
+        client: Arc<Client>,
+        min_peers: usize,
+        max_peers: usize,
+    ) -> ::std::result::Result<Self, String> {
+        if MAX_CONNECTIONS < max_peers {
+            return Err(format!("Max peers must be less than {}", MAX_CONNECTIONS))
+        }
         let manager = Mutex::new(Manager::listen(&socket_address).expect("Cannot listen TCP port"));
-        Self {
+        debug_assert!(max_peers < MAX_CONNECTIONS);
+        Ok(Self {
             socket_address,
             manager,
             client,
 
             discovery: RwLock::new(None),
-        }
+
+            min_peers,
+            max_peers,
+        })
     }
 
     pub fn set_discovery_api(&self, api: Arc<DiscoveryApi>) {
@@ -369,11 +389,29 @@ impl Handler {
 impl IoHandler<Message> for Handler {
     fn initialize(&self, io: &IoContext<Message>) -> IoHandlerResult<()> {
         io.register_stream(ACCEPT_TOKEN)?;
+        io.register_timer_once(PULL_CONNECTIONS_TOKEN, PULL_CONNECTIONS_MS)?;
         Ok(())
     }
 
-    fn timeout(&self, _io: &IoContext<Message>, token: TimerToken) -> IoHandlerResult<()> {
+    fn timeout(&self, io: &IoContext<Message>, token: TimerToken) -> IoHandlerResult<()> {
         match token {
+            PULL_CONNECTIONS_TOKEN => {
+                io.register_timer_once(PULL_CONNECTIONS_TOKEN, PULL_CONNECTIONS_MS)?;
+                let mut manager = self.manager.lock();
+                manager.registered_sessions.promote();
+                if self.min_peers <= manager.connections.len() {
+                    return Ok(())
+                }
+
+                let num_of_requests = self.min_peers - manager.connections.len();
+                // FIXME: Pick random session
+                for (_, &(ref session, ref socket_address)) in manager.registered_sessions.iter().take(num_of_requests)
+                {
+                    io.channel().send(Message::RequestConnection(socket_address.clone(), session.clone()))?;
+                }
+
+                Ok(())
+            }
             FIRST_WAIT_SYNC_TOKEN...LAST_WAIT_SYNC_TOKEN => {
                 let mut manager = self.manager.lock();
                 manager.remove_waiting_sync_by_timer_token(&token);
@@ -392,7 +430,10 @@ impl IoHandler<Message> for Handler {
             }
             Message::RequestConnection(ref socket_address, ref session) => {
                 let mut manager = self.manager.lock();
-                let _ = manager.register_session(socket_address.clone(), session.clone());
+                if self.max_peers <= manager.connections.len() {
+                    trace!(target: "net", "Already has maximum peers({})", manager.connections.len());
+                    return Ok(())
+                }
 
                 trace!(target: "net", "Connecting to {:?}", socket_address);
                 let token =

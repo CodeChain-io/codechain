@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::collections::hash_map::Iter;
 use std::collections::{HashMap, VecDeque};
 
 use super::super::session::{Nonce, Session};
@@ -45,6 +46,25 @@ impl SessionCandidate {
             return true
         }
         self.prepared.iter().any(|v| v.contains_key(nonce))
+    }
+
+    pub fn get(&self, nonce: &Nonce) -> Option<&(Session, SocketAddr)> {
+        let regisstered = self.registered.get(nonce);
+        if regisstered.is_some() {
+            return regisstered
+        }
+
+        for u in self.prepared.iter() {
+            let u = u.get(nonce);
+            if u.is_some() {
+                return u
+            }
+        }
+        None
+    }
+
+    pub fn iter(&self) -> Iter<Nonce, (Session, SocketAddr)> {
+        self.registered.iter()
     }
 
     pub fn remove(&mut self, nonce: &Nonce) -> bool {

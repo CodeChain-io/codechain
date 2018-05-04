@@ -235,7 +235,7 @@ impl SessionInitiator {
                 let nonce = decrypt_and_decode_nonce(&temporary_session, &nonce)?;
 
                 let session = Session::new(*secret, nonce);
-                extension.send(p2p::Message::RequestConnection(from.clone(), session))?;
+                extension.send(p2p::Message::RegisterSession(from.clone(), session))?;
                 Ok(())
             }
             &message::Body::ConnectionDenied(ref reason) => {

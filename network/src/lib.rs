@@ -54,5 +54,5 @@ pub use self::extension::{
     Api, Error as NetworkExtensionError, Extension as NetworkExtension, NodeToken, Result as NetworkExtensionResult,
     TimerToken,
 };
-pub use self::service::Service as NetworkService;
+pub use self::service::{Error as NetworkServiceError, Service as NetworkService};
 pub use self::test::{Call as TestNetworkCall, TestClient as TestNetworkClient};
