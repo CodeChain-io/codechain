@@ -159,7 +159,9 @@ impl DiscoveryApi for Extension {
         debug_assert!(max <= ::std::u8::MAX as usize);
 
         let kademlia = self.kademlia.read();
-        kademlia.get_closest_addresses(max)
+        let addresses = kademlia.get_closest_addresses(max);
+        trace!(target: "discovery", "Get {} addresses", addresses.len());
+        addresses
     }
 
     fn add_connection(&self, node: NodeToken, address: SocketAddr) {
