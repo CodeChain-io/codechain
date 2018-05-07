@@ -28,7 +28,7 @@ use super::{DiscoveryApi, NetworkExtension, SocketAddr};
 pub struct Service {
     session_initiator: IoService<session_initiator::Message>,
     session_initiator_handler: Arc<session_initiator::Handler>,
-    p2p: IoService<p2p::Message>,
+    _p2p: IoService<p2p::Message>,
     timer: IoService<timer::Message>,
     client: Arc<Client>,
 }
@@ -52,7 +52,7 @@ impl Service {
         Ok(Self {
             session_initiator,
             session_initiator_handler,
-            p2p,
+            _p2p: p2p,
             timer,
             client,
         })

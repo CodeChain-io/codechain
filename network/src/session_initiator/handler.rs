@@ -172,11 +172,11 @@ impl SessionInitiator {
     }
 
     // return false if there is no message to be sent
-    fn read(&mut self, extension: &IoChannel<p2p::Message>, io: &IoContext<Message>) -> Result<bool> {
+    fn read(&mut self, channel_to_p2p: &IoChannel<p2p::Message>, io: &IoContext<Message>) -> Result<bool> {
         match self.receive() {
             Ok(None) => Ok(false),
             Ok(Some((msg, socket_address))) => {
-                self.on_packet(&msg, &socket_address, extension, io)?;
+                self.on_packet(&msg, &socket_address, channel_to_p2p, io)?;
                 Ok(true)
             }
             Err(err) => Err(From::from(err)),
@@ -202,7 +202,7 @@ impl SessionInitiator {
         &mut self,
         message: &message::Message,
         from: &SocketAddr,
-        extension: &IoChannel<p2p::Message>,
+        channel_to_p2p: &IoChannel<p2p::Message>,
         io: &IoContext<Message>,
     ) -> Result<()> {
         match message.body() {
@@ -220,7 +220,7 @@ impl SessionInitiator {
                     let encrypted_nonce = encode_and_encrypt_nonce(&temporary_session, &nonce)?;
 
                     let session = Session::new(*secret, nonce);
-                    extension.send(p2p::Message::RegisterSession(from.clone(), session))?;
+                    channel_to_p2p.send(p2p::Message::RegisterSession(from.clone(), session))?;
                     encrypted_nonce
                 };
 
@@ -235,7 +235,7 @@ impl SessionInitiator {
                 let nonce = decrypt_and_decode_nonce(&temporary_session, &nonce)?;
 
                 let session = Session::new(*secret, nonce);
-                extension.send(p2p::Message::RegisterSession(from.clone(), session))?;
+                channel_to_p2p.send(p2p::Message::RegisterSession(from.clone(), session))?;
                 Ok(())
             }
             &message::Body::ConnectionDenied(ref reason) => {
@@ -338,11 +338,11 @@ pub struct Handler {
 }
 
 impl Handler {
-    pub fn new(socket_address: SocketAddr, extension: IoChannel<p2p::Message>) -> Self {
+    pub fn new(socket_address: SocketAddr, channel_to_p2p: IoChannel<p2p::Message>) -> Self {
         let session_initiator = Mutex::new(SessionInitiator::bind(&socket_address).expect("Cannot bind UDP port"));
         Self {
             session_initiator,
-            channel_to_p2p: extension,
+            channel_to_p2p,
             discovery: RwLock::new(None),
         }
     }
