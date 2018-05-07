@@ -29,6 +29,7 @@ pub struct Service {
     session_initiator: IoService<session_initiator::Message>,
     session_initiator_handler: Arc<session_initiator::Handler>,
     _p2p: IoService<p2p::Message>,
+    p2p_handler: Arc<p2p::Handler>,
     timer: IoService<timer::Message>,
     client: Arc<Client>,
 }
@@ -41,8 +42,14 @@ impl Service {
 
         let client = Client::new(p2p.channel(), timer.channel());
 
-        let p2p_handler = Arc::new(p2p::Handler::try_new(address.clone(), Arc::clone(&client), min_peers, max_peers)?);
-        p2p.register_handler(p2p_handler)?;
+        let p2p_handler = Arc::new(p2p::Handler::try_new(
+            address.clone(),
+            Arc::clone(&client),
+            session_initiator.channel(),
+            min_peers,
+            max_peers,
+        )?);
+        p2p.register_handler(p2p_handler.clone())?;
 
         timer.register_handler(Arc::new(timer::Handler::new(Arc::clone(&client))))?;
 
@@ -53,6 +60,7 @@ impl Service {
             session_initiator,
             session_initiator_handler,
             _p2p: p2p,
+            p2p_handler,
             timer,
             client,
         })
@@ -71,7 +79,8 @@ impl Service {
     }
 
     pub fn set_discovery_api(&self, api: Arc<DiscoveryApi>) {
-        self.session_initiator_handler.set_discovery_api(api);
+        self.session_initiator_handler.set_discovery_api(Arc::clone(&api));
+        self.p2p_handler.set_discovery_api(api);
     }
 
     pub fn connect_to(&self, address: SocketAddr) -> Result<(), String> {

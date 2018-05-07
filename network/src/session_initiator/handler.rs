@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::error;
 use std::fmt;
 use std::io;
@@ -50,6 +50,8 @@ struct SessionInitiator {
     tmp_nonce_tokens: TokenGenerator,
     tmp_nonce_token_to_addr: HashMap<TimerToken, SocketAddr>,
     addr_to_tmp_nonce_token: HashMap<SocketAddr, TimerToken>,
+
+    session_registered_addresses: HashSet<SocketAddr>,
 }
 
 #[derive(Debug)]
@@ -143,6 +145,7 @@ type Result<T> = ::std::result::Result<T, Error>;
 #[derive(Clone, Debug, PartialOrd, PartialEq)]
 pub enum Message {
     ConnectTo(SocketAddr),
+    RequestSession(usize),
 }
 
 const START_OF_TMP_NONCE_TOKEN: TimerToken = 0;
@@ -164,6 +167,8 @@ impl SessionInitiator {
             tmp_nonce_tokens: TokenGenerator::new(START_OF_TMP_NONCE_TOKEN, NUM_OF_TMP_NONCES),
             tmp_nonce_token_to_addr: HashMap::new(),
             addr_to_tmp_nonce_token: HashMap::new(),
+
+            session_registered_addresses: HashSet::new(),
         })
     }
 
@@ -221,6 +226,7 @@ impl SessionInitiator {
 
                     let session = Session::new(*secret, nonce);
                     channel_to_p2p.send(p2p::Message::RegisterSession(from.clone(), session))?;
+                    self.session_registered_addresses.insert(from.clone());
                     encrypted_nonce
                 };
 
@@ -236,6 +242,7 @@ impl SessionInitiator {
 
                 let session = Session::new(*secret, nonce);
                 channel_to_p2p.send(p2p::Message::RegisterSession(from.clone(), session))?;
+                self.session_registered_addresses.insert(from.clone());
                 Ok(())
             }
             &message::Body::ConnectionDenied(ref reason) => {
@@ -378,6 +385,25 @@ impl IoHandler<Message> for Handler {
                 let mut session_initiator = self.session_initiator.lock();
                 session_initiator.create_new_connection(&socket_address)?;
                 io.update_registration(RECEIVE_TOKEN)?;
+            }
+            &Message::RequestSession(n) => {
+                let mut session_initiator = self.session_initiator.lock();
+                let discovery = self.discovery.read();
+                if let Some(ref discovery) = *discovery {
+                    let addresses = discovery.get(n);
+                    if !addresses.is_empty() {
+                        let _f = finally(|| {
+                            if let Err(err) = io.update_registration(RECEIVE_TOKEN) {
+                                warn!(target: "net", "Cannot update registration for session_initiator : {:?}", err);
+                            }
+                        });
+                        for address in addresses {
+                            if !session_initiator.session_registered_addresses.contains(&address) {
+                                session_initiator.create_new_connection(&address)?;
+                            }
+                        }
+                    }
+                }
             }
         };
         Ok(())

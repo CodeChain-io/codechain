@@ -20,7 +20,7 @@ use std::io;
 use std::sync::Arc;
 
 use cfinally::finally;
-use cio::{IoContext, IoHandler, IoHandlerResult, IoManager, StreamToken, TimerToken};
+use cio::{IoChannel, IoContext, IoHandler, IoHandlerResult, IoManager, StreamToken, TimerToken};
 use mio::deprecated::EventLoop;
 use mio::{PollOpt, Ready, Token};
 use parking_lot::{Mutex, RwLock};
@@ -28,6 +28,7 @@ use parking_lot::{Mutex, RwLock};
 use super::super::client::Client;
 use super::super::extension::NodeToken;
 use super::super::session::Session;
+use super::super::session_initiator::Message as SessionMessage;
 use super::super::token_generator::TokenGenerator;
 use super::super::{DiscoveryApi, SocketAddr};
 use super::connection::{Connection, ExtensionCallback as ExtensionChannel};
@@ -152,8 +153,9 @@ impl Manager {
         Ok((token, timer_token))
     }
 
-    fn register_connection(&mut self, connection: Connection, token: &StreamToken) {
+    fn register_connection(&mut self, connection: Connection, token: &StreamToken, client: &Client) {
         let con = self.connections.insert(*token, connection);
+        client.on_node_added(token);
         debug_assert!(con.is_none());
     }
 
@@ -185,7 +187,12 @@ impl Manager {
         }
     }
 
-    fn create_connection(&mut self, stream: Stream, session: &Session) -> IoHandlerResult<StreamToken> {
+    fn create_connection(
+        &mut self,
+        stream: Stream,
+        session: &Session,
+        client: &Client,
+    ) -> IoHandlerResult<StreamToken> {
         let mut connection = Connection::new(stream, session.secret().clone(), session.id().clone());
         let nonce = session.id();
         connection.enqueue_sync(nonce.clone());
@@ -195,7 +202,7 @@ impl Manager {
         Ok(self.tokens
             .gen()
             .map(|token| {
-                self.register_connection(connection, &token);
+                self.register_connection(connection, &token, client);
                 token
             })
             .expect("The number of peers must be checked before"))
@@ -211,9 +218,14 @@ impl Manager {
         }
     }
 
-    pub fn connect(&mut self, socket_address: &SocketAddr, session: &Session) -> IoHandlerResult<Option<StreamToken>> {
+    pub fn connect(
+        &mut self,
+        socket_address: &SocketAddr,
+        session: &Session,
+        client: &Client,
+    ) -> IoHandlerResult<Option<StreamToken>> {
         Ok(match Stream::connect(socket_address)? {
-            Some(stream) => Some(self.create_connection(stream, session)?),
+            Some(stream) => Some(self.create_connection(stream, session, client)?),
             None => None,
         })
     }
@@ -300,8 +312,7 @@ impl Manager {
         let removed = self.registered_sessions.remove(&nonce);
         debug_assert!(removed);
 
-        self.register_connection(connection, stream);
-        client.on_node_added(&stream);
+        self.register_connection(connection, stream, client);
         Ok(false)
     }
 
@@ -352,6 +363,7 @@ pub struct Handler {
     client: Arc<Client>,
 
     discovery: RwLock<Option<Arc<DiscoveryApi>>>,
+    session_initiator: IoChannel<SessionMessage>,
 
     min_peers: usize,
     max_peers: usize,
@@ -361,6 +373,7 @@ impl Handler {
     pub fn try_new(
         socket_address: SocketAddr,
         client: Arc<Client>,
+        session_initiator: IoChannel<SessionMessage>,
         min_peers: usize,
         max_peers: usize,
     ) -> ::std::result::Result<Self, String> {
@@ -375,6 +388,7 @@ impl Handler {
             client,
 
             discovery: RwLock::new(None),
+            session_initiator,
 
             min_peers,
             max_peers,
@@ -405,9 +419,15 @@ impl IoHandler<Message> for Handler {
 
                 let num_of_requests = self.min_peers - manager.connections.len();
                 // FIXME: Pick random session
+                let mut count: usize = 0;
                 for (_, &(ref session, ref socket_address)) in manager.registered_sessions.iter().take(num_of_requests)
                 {
+                    count += 1;
                     io.channel().send(Message::RequestConnection(socket_address.clone(), session.clone()))?;
+                }
+                if count + manager.connections.len() < self.min_peers {
+                    let requests = self.min_peers - count - manager.connections.len();
+                    self.session_initiator.send(SessionMessage::RequestSession(requests))?;
                 }
 
                 Ok(())
@@ -436,8 +456,9 @@ impl IoHandler<Message> for Handler {
                 }
 
                 trace!(target: "net", "Connecting to {:?}", socket_address);
-                let token =
-                    manager.connect(&socket_address, session)?.ok_or(Error::General("Cannot create connection"))?;
+                let token = manager
+                    .connect(&socket_address, session, &self.client)?
+                    .ok_or(Error::General("Cannot create connection"))?;
                 io.register_stream(token)?;
 
                 if let Some(ref discovery) = *self.discovery.read() {
