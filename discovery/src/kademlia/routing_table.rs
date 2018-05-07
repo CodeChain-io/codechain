@@ -52,10 +52,6 @@ impl RoutingTable {
     }
 
     pub fn get_closest_contacts(&self, target: &NodeId, result_limit: u8) -> Vec<Contact> {
-        if target == &self.local_id {
-            return vec![]
-        }
-
         let contacts = self.get_contacts_in_distance_order(target);
         contacts
             .into_iter()
