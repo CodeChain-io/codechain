@@ -10,7 +10,7 @@ NUM_CLIENTS=$1
 OTHER_OPTIONS=${@:2}
 
 BASE_DIR=$(cd "$(dirname "$0")"/.. && pwd)
-LOG_DIR=${BASE_DIR}/log
+LOG_DIR="/var/tmp/codechain"
 DB_DIR=${BASE_DIR}/db
 
 CODECHAIN_PORT_START=3484
@@ -33,7 +33,7 @@ run_server() {
         --secret-key "`printf "%064x" $(($1 + 1))`" \
         ${BOOTSTRAP} \
         ${OTHER_OPTIONS} \
-    > ${LOG_DIR}/codechain.log.$1 2>&1 &
+    >> ${LOG_DIR}/codechain.log.$1 2>&1 &
 }
 
 echo "Building..."
