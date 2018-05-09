@@ -15,7 +15,7 @@
               "inputs": [{
                   "prev_out": {
                       "transaction_hash": "591a12799716600c9bb4680ebb8ea802c7ad4b7a0ba6151e7df643068967bc53",
-                      "index": 18446744073709551615,
+                      "index": 0,
                       "asset_type": "5300000000000000254e62980bdac8dae8f192cb82e03d0f37a603bab74cb011",
                       "amount": 7
                   },
@@ -46,7 +46,7 @@
   {
     "name": "chain_getTransactionInvoice",
     "data": {
-      "hash": "573933bbd737f89e1278fffd38afaacd36167391be51fbe440e62a9dcf0847df"
+      "hash": "44ce819b6a731db103f8ab739558e59974e2edad022cdc7f9e9ea3382609f525"
     }
   }
 ]

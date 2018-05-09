@@ -337,12 +337,6 @@ impl<B: Backend> State<B> {
         Ok(())
     }
 
-    fn release_remainder(&mut self, a: &AssetSchemeAddress, amount: &u64) -> trie::Result<()> {
-        let mut asset_scheme = self.require_asset_scheme(a, || unreachable!())?;
-        asset_scheme.release_remainder(amount);
-        Ok(())
-    }
-
     fn mint_asset(
         &mut self,
         transaction_id: H256,
@@ -353,17 +347,17 @@ impl<B: Backend> State<B> {
         registrar: &Option<Address>,
     ) -> Result<(), Error> {
         let asset_scheme_address = AssetSchemeAddress::new(transaction_id);
-        let remainder = amount.unwrap_or(::std::u64::MAX);
+        let amount = amount.unwrap_or(::std::u64::MAX);
         let asset_scheme = self.require_asset_scheme(&asset_scheme_address, || {
-            AssetScheme::new(
-                metadata.clone(),
-                lock_script_hash.clone(),
-                parameters.clone(),
-                remainder,
-                registrar.clone(),
-            )
+            AssetScheme::new(metadata.clone(), amount, registrar.clone())
         })?;
         trace!(target: "tx", "{:?} is minted on {:?}", asset_scheme, asset_scheme_address);
+
+        let asset_address = AssetAddress::new(transaction_id, 0);
+        let asset = self.require_asset(&asset_address, || {
+            Asset::new(asset_scheme_address.into(), *lock_script_hash, parameters.clone(), amount)
+        });
+        trace!(target: "tx", "{:?} is generated on {:?}", asset, asset_address);
         Ok(())
     }
 
@@ -378,18 +372,10 @@ impl<B: Backend> State<B> {
         for input in inputs {
             let (address_hash, lock_script_hash) = {
                 let index = input.prev_out.index;
-                if index == ::std::u64::MAX as usize {
-                    let address = AssetSchemeAddress::new(input.prev_out.transaction_hash);
-                    match self.asset_scheme(&address)? {
-                        Some(scheme) => (address.into(), *scheme.lock_script_hash()),
-                        None => return Ok(Some(TransactionError::AssetNotFound(address.into()))),
-                    }
-                } else {
-                    let address = AssetAddress::new(input.prev_out.transaction_hash, index);
-                    match self.asset(&address)? {
-                        Some(asset) => (address.into(), *asset.lock_script_hash()),
-                        None => return Ok(Some(TransactionError::AssetNotFound(address.into()))),
-                    }
+                let address = AssetAddress::new(input.prev_out.transaction_hash, index);
+                match self.asset(&address)? {
+                    Some(asset) => (address.into(), *asset.lock_script_hash()),
+                    None => return Ok(Some(TransactionError::AssetNotFound(address.into()))),
                 }
             };
 
@@ -421,23 +407,14 @@ impl<B: Backend> State<B> {
         }
 
         let mut deleted_asset = Vec::with_capacity(inputs.len());
-        let mut released_asset = Vec::new();
         for input in inputs {
             let index = input.prev_out.index;
             let amount = input.prev_out.amount;
-            if index == ::std::u64::MAX as usize {
-                let address = AssetSchemeAddress::new(input.prev_out.transaction_hash);
-                // FIXME: Validate asset scheme
-                self.release_remainder(&address, &amount)?;
-                let hash: H256 = address.into();
-                released_asset.push((hash, amount));
-            } else {
-                let address = AssetAddress::new(input.prev_out.transaction_hash, index);
-                // FIXME: Validate asset
-                self.kill_asset(&address);
-                let hash: H256 = address.into();
-                deleted_asset.push((hash, amount));
-            }
+            let address = AssetAddress::new(input.prev_out.transaction_hash, index);
+            // FIXME: Validate asset
+            self.kill_asset(&address);
+            let hash: H256 = address.into();
+            deleted_asset.push((hash, amount));
         }
         let mut created_asset = Vec::with_capacity(outputs.len());
         for (index, output) in outputs.iter().enumerate() {
@@ -449,7 +426,6 @@ impl<B: Backend> State<B> {
             created_asset.push((asset_address, output.amount));
         }
         trace!(target: "tx", "Deleted assets {:?}", deleted_asset);
-        trace!(target: "tx", "Released assets {:?}", released_asset);
         trace!(target: "tx", "Created assets {:?}", created_asset);
         Ok(None)
     }
@@ -1078,8 +1054,7 @@ mod tests {
         let asset_scheme = asset_scheme.unwrap();
 
         assert_eq!(&metadata, asset_scheme.metadata());
-        assert_eq!(&lock_script_hash, asset_scheme.lock_script_hash());
-        assert_eq!(&amount, asset_scheme.remainder());
+        assert_eq!(&amount, asset_scheme.amount());
         assert_eq!(&registrar, asset_scheme.registrar());
         assert!(asset_scheme.is_permissioned());
     }
@@ -1132,8 +1107,7 @@ mod tests {
         let asset_scheme = asset_scheme.unwrap();
 
         assert_eq!(&metadata, asset_scheme.metadata());
-        assert_eq!(&lock_script_hash, asset_scheme.lock_script_hash());
-        assert_eq!(&::std::u64::MAX, asset_scheme.remainder());
+        assert_eq!(&::std::u64::MAX, asset_scheme.amount());
         assert_eq!(&registrar, asset_scheme.registrar());
         assert!(asset_scheme.is_permissioned());
     }

@@ -56,5 +56,19 @@
     "data": {
       "transaction_hash": "591a12799716600c9bb4680ebb8ea802c7ad4b7a0ba6151e7df643068967bc53"
     }
+  },
+  {
+    "name": "chain_getAsset",
+    "data": {
+      "transaction_hash": "b84926ca470ca5c41a350255d19d51f6a0f7f847776db6ae38193dc943bd5189",
+      "index": 0
+    }
+  },
+  {
+    "name": "chain_getAsset",
+    "data": {
+      "transaction_hash": "591a12799716600c9bb4680ebb8ea802c7ad4b7a0ba6151e7df643068967bc53",
+      "index": 0
+    }
   }
 ]
