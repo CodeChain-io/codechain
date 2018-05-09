@@ -69,12 +69,20 @@ pub enum TransactionError {
         /// Actual balance.
         got: U512,
     },
+    InvalidAssetAmount {
+        address: H256,
+        expected: u64,
+        got: u64,
+    },
     /// Not enough permissions given by permission contract.
     NotAllowed,
     /// Signature error
     InvalidSignature(String),
     /// Desired input asset not found
     AssetNotFound(H256),
+    /// Desired input asset scheme not found
+    AssetSchemeNotFound(H256),
+    InvalidAssetType(H256),
     /// Script hash does not match with provided lock script
     ScriptHashMismatch(Mismatch<H256>),
     /// Failed to decode script
@@ -111,9 +119,19 @@ pub fn transaction_error_message(error: &TransactionError) -> String {
              but the sender only has {}",
             required, got
         ),
+        InvalidAssetAmount {
+            ref address,
+            ref expected,
+            ref got,
+        } => format!(
+            "AssetTransfer must consume input asset completely. The amount of asset({}) must be {}, but {}.",
+            address, expected, got
+        ),
         NotAllowed => "Sender does not have permissions to execute this type of transction".into(),
         InvalidSignature(ref err) => format!("Transaction has invalid signature: {}.", err),
         AssetNotFound(ref addr) => format!("Asset not found: {}", addr),
+        AssetSchemeNotFound(ref addr) => format!("Asset scheme not found: {}", addr),
+        InvalidAssetType(ref addr) => format!("Asset type is invalid: {}", addr),
         // FIXME: show more information about script
         ScriptHashMismatch(mismatch) => {
             format!("Expected script with hash {}, but got {}", mismatch.expected, mismatch.found)
