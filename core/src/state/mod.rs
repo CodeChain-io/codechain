@@ -411,14 +411,35 @@ impl<B: Backend> State<B> {
             let index = input.prev_out.index;
             let amount = input.prev_out.amount;
             let address = AssetAddress::new(input.prev_out.transaction_hash, index);
-            // FIXME: Validate asset
+
+            let asset_type = input.prev_out.asset_type.clone();
+            let asset_scheme_address = AssetSchemeAddress::from_hash(asset_type)
+                .ok_or(TransactionError::AssetSchemeNotFound(asset_type.into()))?;
+            let _asset_scheme = self.asset_scheme((&asset_scheme_address).into())?
+                .ok_or(TransactionError::AssetSchemeNotFound(asset_scheme_address.into()))?;
+
+            match self.asset(&address)? {
+                Some(asset) => {
+                    if asset.amount() != &amount {
+                        let address = address.into();
+                        let expected = *asset.amount();
+                        let got = amount;
+                        return Ok(Some(TransactionError::InvalidAssetAmount {
+                            address,
+                            expected,
+                            got,
+                        }))
+                    }
+                }
+                None => return Ok(Some(TransactionError::AssetNotFound(address.into()))),
+            }
+
             self.kill_asset(&address);
             let hash: H256 = address.into();
             deleted_asset.push((hash, amount));
         }
         let mut created_asset = Vec::with_capacity(outputs.len());
         for (index, output) in outputs.iter().enumerate() {
-            // FIXME: Check asset scheme exist
             let asset_address = AssetAddress::new(tx.hash(), index);
             let asset =
                 Asset::new(output.asset_type, output.lock_script_hash, output.parameters.clone(), output.amount);
