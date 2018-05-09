@@ -59,7 +59,7 @@ pub struct ApplyOutcome {
     /// The invoice for the applied parcel.
     pub invoice: Invoice,
     /// The output of the applied parcel.
-    pub error: Option<ParcelError>,
+    pub error: Option<TransactionError>,
 }
 
 type CheckpointId = usize;
@@ -155,6 +155,9 @@ impl<B: Backend> StateInfo for State<B> {
         State::asset(self, a)
     }
 }
+
+const PARCEL_CHECKPOINT: CheckpointId = 123;
+const TRANSACTION_CHECKPOINT: CheckpointId = 456;
 
 impl<B: Backend> State<B> {
     /// Creates new state with empty state root
@@ -379,7 +382,7 @@ impl<B: Backend> State<B> {
         parcel: &SignedParcel,
         inputs: &[AssetTransferInput],
         outputs: &[AssetTransferOutput],
-    ) -> Result<Option<ParcelError>, Error> {
+    ) -> Result<(), Error> {
         debug_assert!(is_input_and_output_consistent(inputs, outputs));
 
         for input in inputs {
@@ -412,10 +415,13 @@ impl<B: Backend> State<B> {
                 _ => return Err(TransactionError::InvalidScript.into()),
             };
 
-            match script_result {
-                Ok(ScriptResult::Fail) | Err(_) => return Err(TransactionError::FailedToUnlock(address_hash).into()),
-                Ok(ScriptResult::Burnt) => unimplemented!(),
-                Ok(ScriptResult::Unlocked) => {}
+            match script_result.map_err(|err| {
+                trace!(target: "tx", "Cannot run unlock/lock script {:?}", err);
+                TransactionError::FailedToUnlock(address_hash)
+            })? {
+                ScriptResult::Fail => return Err(TransactionError::FailedToUnlock(address_hash).into()),
+                ScriptResult::Burnt => unimplemented!(),
+                ScriptResult::Unlocked => {}
             }
         }
 
@@ -461,54 +467,69 @@ impl<B: Backend> State<B> {
         }
         trace!(target: "tx", "Deleted assets {:?}", deleted_asset);
         trace!(target: "tx", "Created assets {:?}", created_asset);
-        Ok(None)
+        Ok(())
     }
 
     /// Execute a given parcel, charging parcel fee.
     /// This will change the state accordingly.
     pub fn apply(&mut self, t: &SignedParcel) -> Result<ApplyOutcome, Error> {
-        let error = self.execute(t)?;
-        self.commit()?;
+        self.checkpoint(PARCEL_CHECKPOINT);
 
-        let invoice = match &error {
-            Some(err) => {
+        match self.execute(t) {
+            Err(Error::Transaction(err)) => {
+                self.discard_checkpoint(PARCEL_CHECKPOINT);
+                self.commit()?; // FIXME: Remove early commit.
                 info!(target: "tx", "Cannot apply transaction: {:?}", err);
-                Invoice::new(TransactionOutcome::Failed)
+                let invoice = Invoice::new(TransactionOutcome::Failed);
+                Ok(ApplyOutcome {
+                    invoice,
+                    error: Some(err),
+                })
             }
-            None => Invoice::new(TransactionOutcome::Success),
-        };
-        Ok(ApplyOutcome {
-            invoice,
-            error,
-        })
+            Err(err) => {
+                self.revert_to_checkpoint(PARCEL_CHECKPOINT);
+                Err(err)
+            }
+            Ok(_) => {
+                self.discard_checkpoint(PARCEL_CHECKPOINT);
+                self.commit()?; // FIXME: Remove early commit.
+                let invoice = Invoice::new(TransactionOutcome::Success);
+                let error = None;
+                Ok(ApplyOutcome {
+                    invoice,
+                    error,
+                })
+            }
+        }
     }
 
-    fn execute(&mut self, parcel: &SignedParcel) -> Result<Option<ParcelError>, Error> {
+    fn execute(&mut self, parcel: &SignedParcel) -> Result<(), Error> {
         let sender = parcel.sender();
         let fee = parcel.as_unsigned().fee;
         let nonce = self.nonce(&sender)?;
         let mut balance = self.balance(&sender)?;
 
         if parcel.nonce != nonce {
-            return Ok(Some(ParcelError::InvalidNonce {
+            return Err(ParcelError::InvalidNonce {
                 expected: nonce,
                 got: parcel.nonce,
-            }))
+            }.into())
         }
 
         if fee > balance {
-            return Ok(Some(ParcelError::NotEnoughCash {
+            return Err(ParcelError::NotEnoughCash {
                 required: fee.into(),
                 got: balance.into(),
-            }))
+            }.into())
         }
 
         self.inc_nonce(&sender)?;
         self.sub_balance(&sender, &fee.into())?;
         balance = balance - fee;
 
-        match parcel.transaction {
-            Transaction::Noop => Ok(None),
+        self.checkpoint(TRANSACTION_CHECKPOINT);
+        let result = (|| match parcel.transaction {
+            Transaction::Noop => Ok(()),
             Transaction::Payment {
                 address,
                 value,
@@ -523,13 +544,13 @@ impl<B: Backend> State<B> {
                 self.transfer_balance(&sender, &address, &value)?;
                 // NOTE: Uncomment the below line if balance is used after
                 // balance = balance - value.into()
-                Ok(None)
+                Ok(())
             }
             Transaction::SetRegularKey {
                 key,
             } => {
                 self.set_regular_key(&sender, &key)?;
-                Ok(None)
+                Ok(())
             }
             Transaction::AssetMint {
                 ref metadata,
@@ -539,7 +560,7 @@ impl<B: Backend> State<B> {
                 ref registrar,
             } => {
                 self.mint_asset(parcel.hash(), metadata, lock_script_hash, parameters, amount, registrar)?;
-                Ok(None)
+                Ok(())
             }
             Transaction::AssetTransfer {
                 ref inputs,
@@ -554,7 +575,13 @@ impl<B: Backend> State<B> {
                 }
                 self.transfer_asset(&parcel, inputs, outputs)
             }
+        })();
+        match result {
+            Ok(_) => self.discard_checkpoint(TRANSACTION_CHECKPOINT),
+            Err(Error::Transaction(_)) => self.revert_to_checkpoint(TRANSACTION_CHECKPOINT),
+            Err(_) => self.revert_to_checkpoint(TRANSACTION_CHECKPOINT),
         }
+        result
     }
 
     /// Commits our cached account changes into the trie.
@@ -721,15 +748,20 @@ mod tests {
         let sender = signed_parcel.sender();
         state.add_balance(&sender, &20.into()).unwrap();
 
-        let res = state.apply(&signed_parcel).unwrap();
-        assert_eq!(res.invoice.outcome, TransactionOutcome::Failed);
-        assert_eq!(
-            res.error.unwrap(),
-            ParcelError::InvalidNonce {
-                expected: 0.into(),
-                got: 2.into()
+        match state.apply(&signed_parcel) {
+            Err(Error::Parcel(err)) => {
+                assert_eq!(
+                    ParcelError::InvalidNonce {
+                        expected: 0.into(),
+                        got: 2.into()
+                    },
+                    err
+                );
             }
-        );
+            Ok(_) => unreachable!(),
+            Err(_) => unreachable!(),
+        }
+
         assert_eq!(state.balance(&sender).unwrap(), 20.into());
         assert_eq!(state.nonce(&sender).unwrap(), 0.into());
     }
@@ -744,15 +776,19 @@ mod tests {
         let sender = signed_parcel.sender();
         state.add_balance(&sender, &4.into()).unwrap();
 
-        let res = state.apply(&signed_parcel).unwrap();
-        assert_eq!(res.invoice.outcome, TransactionOutcome::Failed);
-        assert_eq!(
-            res.error.unwrap(),
-            ParcelError::NotEnoughCash {
-                required: 5.into(),
-                got: 4.into()
+        match state.apply(&signed_parcel) {
+            Err(Error::Parcel(err)) => {
+                assert_eq!(
+                    ParcelError::NotEnoughCash {
+                        required: 5.into(),
+                        got: 4.into()
+                    },
+                    err
+                );
             }
-        );
+            Ok(_) => unreachable!(),
+            Err(_) => unreachable!(),
+        }
         assert_eq!(state.balance(&sender).unwrap(), 4.into());
         assert_eq!(state.nonce(&sender).unwrap(), 0.into());
     }
@@ -825,9 +861,10 @@ mod tests {
         assert_eq!(res.invoice.outcome, TransactionOutcome::Failed);
         assert_eq!(
             res.error.unwrap(),
-            ParcelError::NotEnoughCash {
-                required: 35.into(),
-                got: 20.into()
+            TransactionError::InsufficientBalance {
+                address: sender,
+                required: 30.into(),
+                got: 15.into(),
             }
         );
         assert_eq!(state.balance(&receiver).unwrap(), 0.into());
