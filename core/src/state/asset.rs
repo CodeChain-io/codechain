@@ -115,7 +115,6 @@ impl_address!(AssetAddress, PREFIX);
 impl AssetAddress {
     pub fn new(transaction_hash: H256, index: usize) -> Self {
         debug_assert_eq!(::std::mem::size_of::<u64>(), ::std::mem::size_of::<usize>());
-        debug_assert_ne!(index as u64, ::std::u64::MAX);
         let index = index as u64;
 
         Self::from_transaction(transaction_hash, index)

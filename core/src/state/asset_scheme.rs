@@ -23,25 +23,15 @@ use super::CacheableItem;
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AssetScheme {
     metadata: String,
-    lock_script_hash: H256,
-    parameters: Vec<Bytes>,
-    remainder: u64,
+    amount: u64,
     registrar: Option<Address>,
 }
 
 impl AssetScheme {
-    pub fn new(
-        metadata: String,
-        lock_script_hash: H256,
-        parameters: Vec<Bytes>,
-        remainder: u64,
-        registrar: Option<Address>,
-    ) -> Self {
+    pub fn new(metadata: String, amount: u64, registrar: Option<Address>) -> Self {
         Self {
             metadata,
-            lock_script_hash,
-            parameters,
-            remainder,
+            amount,
             registrar,
         }
     }
@@ -50,21 +40,8 @@ impl AssetScheme {
         &self.metadata
     }
 
-    pub fn lock_script_hash(&self) -> &H256 {
-        &self.lock_script_hash
-    }
-
-    pub fn parameters(&self) -> &Vec<Bytes> {
-        &self.parameters
-    }
-
-    pub fn remainder(&self) -> &u64 {
-        &self.remainder
-    }
-
-    pub fn release_remainder(&mut self, amount: &u64) {
-        debug_assert!(self.remainder >= *amount);
-        self.remainder = self.remainder - *amount;
+    pub fn amount(&self) -> &u64 {
+        &self.amount
     }
 
     pub fn registrar(&self) -> &Option<Address> {
@@ -80,13 +57,7 @@ const PREFIX: u8 = 'S' as u8;
 
 impl Encodable for AssetScheme {
     fn rlp_append(&self, s: &mut RlpStream) {
-        s.begin_list(6)
-            .append(&PREFIX)
-            .append(&self.metadata)
-            .append(&self.lock_script_hash)
-            .append(&self.parameters)
-            .append(&self.remainder)
-            .append(&self.registrar);
+        s.begin_list(4).append(&PREFIX).append(&self.metadata).append(&self.amount).append(&self.registrar);
     }
 }
 
@@ -99,10 +70,8 @@ impl Decodable for AssetScheme {
         }
         Ok(Self {
             metadata: rlp.val_at(1)?,
-            lock_script_hash: rlp.val_at(2)?,
-            parameters: rlp.val_at(3)?,
-            remainder: rlp.val_at(4)?,
-            registrar: rlp.val_at(5)?,
+            amount: rlp.val_at(2)?,
+            registrar: rlp.val_at(3)?,
         })
     }
 }
@@ -124,13 +93,12 @@ impl CacheableItem for AssetScheme {
     type Address = AssetSchemeAddress;
     fn overwrite_with(&mut self, other: Self) {
         self.metadata = other.metadata;
-        self.lock_script_hash = other.lock_script_hash;
+        self.amount = other.amount;
         self.registrar = other.registrar;
-        self.remainder = other.remainder;
     }
 
     fn is_null(&self) -> bool {
-        self.remainder == 0
+        self.amount == 0
     }
 
     fn from_rlp(rlp: &[u8]) -> Self {

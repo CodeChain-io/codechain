@@ -612,16 +612,9 @@ mod tests {
         let h0 = H256::random();
         let mut batch = DBTransaction::new();
 
-        let lock_script_hash = H256::random();
-        let remainder = 1234;
+        let amount = 1234;
         let registrar = Some(Address::random());
-        let asset_scheme = AssetScheme::new(
-            "A metadata for test asset_scheme".to_string(),
-            lock_script_hash,
-            vec![],
-            remainder,
-            registrar,
-        );
+        let asset_scheme = AssetScheme::new("A metadata for test asset_scheme".to_string(), amount, registrar);
         let asset_scheme_address = AssetSchemeAddress::new(h0);
 
         let mut s = state_db.boxed_clone_canon(&root_parent);
@@ -652,8 +645,7 @@ mod tests {
         let asset_scheme = asset_scheme.unwrap();
 
         assert!(asset_scheme.is_permissioned());
-        assert_eq!(&remainder, asset_scheme.remainder());
-        assert_eq!(&lock_script_hash, asset_scheme.lock_script_hash());
+        assert_eq!(&amount, asset_scheme.amount());
         assert_eq!(&registrar, asset_scheme.registrar());
     }
 
