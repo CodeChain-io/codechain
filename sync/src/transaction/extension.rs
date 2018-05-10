@@ -15,8 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use parking_lot::{Mutex, RwLock};
-use rand::{thread_rng, Rng};
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::Arc;
 
 use ccore::BlockChainClient;
@@ -30,11 +29,34 @@ use super::message::Message;
 const EXTENSION_NAME: &'static str = "transaction-propagation";
 const BROADCAST_TIMER_TOKEN: TimerToken = 0;
 const BROADCAST_TIMER_INTERVAL: i64 = 1000;
-const RESET_TIMER_TOKEN: TimerToken = 1;
-const RESET_TIMER_INTERVAL: i64 = 1000;
+const MAX_HISTORY_SIZE: usize = 100;
 
 struct Peer {
-    transaction_history: HashSet<H256>,
+    history_set: HashSet<H256>,
+    history_queue: VecDeque<H256>,
+}
+
+impl Peer {
+    fn new() -> Self {
+        Self {
+            history_set: HashSet::new(),
+            history_queue: VecDeque::new(),
+        }
+    }
+
+    fn push(&mut self, hash: &H256) {
+        if !self.history_set.contains(hash) {
+            self.history_set.insert(*hash);
+            self.history_queue.push_back(*hash);
+            if self.history_queue.len() > MAX_HISTORY_SIZE {
+                self.history_queue.pop_front();
+            }
+        }
+    }
+
+    fn contains(&mut self, hash: &H256) -> bool {
+        self.history_set.contains(hash)
+    }
 }
 
 pub struct Extension {
@@ -64,7 +86,6 @@ impl NetworkExtension for Extension {
     fn on_initialize(&self, api: Arc<Api>) {
         api.set_timer(BROADCAST_TIMER_TOKEN, Duration::milliseconds(BROADCAST_TIMER_INTERVAL))
             .expect("Timer set succeeds");
-        api.set_timer(RESET_TIMER_TOKEN, Duration::milliseconds(RESET_TIMER_INTERVAL)).expect("Timer set succeeds");
         *self.api.lock() = Some(api);
     }
 
@@ -76,12 +97,7 @@ impl NetworkExtension for Extension {
     }
 
     fn on_negotiated(&self, token: &NodeToken) {
-        self.peers.write().insert(
-            *token,
-            Peer {
-                transaction_history: HashSet::new(),
-            },
-        );
+        self.peers.write().insert(*token, Peer::new());
     }
     fn on_negotiation_allowed(&self, token: &NodeToken) {
         self.on_negotiated(token);
@@ -95,7 +111,7 @@ impl NetworkExtension for Extension {
                         .queue_transactions(transactions.iter().map(|tx| tx.rlp_bytes().to_vec()).collect(), *token);
                     if let Some(peer) = self.peers.write().get_mut(token) {
                         transactions.iter().for_each(|tx| {
-                            peer.transaction_history.insert(tx.hash());
+                            peer.push(&tx.hash());
                         });
                     }
                 }
@@ -108,7 +124,6 @@ impl NetworkExtension for Extension {
     fn on_timeout(&self, timer: TimerToken) {
         match timer {
             BROADCAST_TIMER_TOKEN => self.random_broadcast(),
-            RESET_TIMER_TOKEN => self.random_reset(),
             _ => debug_assert!(false),
         }
     }
@@ -124,27 +139,15 @@ impl Extension {
     fn random_broadcast(&self) {
         let transactions = self.client.ready_transactions();
         for (token, peer) in self.peers.write().iter_mut() {
-            if thread_rng().gen() {
-                let unsent: Vec<_> = transactions
-                    .iter()
-                    .filter(|tx| !peer.transaction_history.contains(&tx.hash()))
-                    .map(|tx| tx.clone().deconstruct().0)
-                    .collect();
-                peer.transaction_history.extend(unsent.iter().map(|tx| tx.hash()));
-                self.send_message(token, Message::Transactions(unsent));
+            let unsent: Vec<_> = transactions
+                .iter()
+                .filter(|tx| !peer.contains(&tx.hash()))
+                .map(|tx| tx.clone().deconstruct().0)
+                .collect();
+            for tx in unsent.iter() {
+                peer.push(&tx.hash());
             }
-        }
-    }
-
-    fn random_reset(&self) {
-        let mut peers = self.peers.write();
-        if peers.is_empty() {
-            return
-        }
-
-        let lucky_index = thread_rng().gen_range(0, peers.len());
-        if let Some(peer) = peers.values_mut().nth(lucky_index) {
-            peer.transaction_history.clear();
+            self.send_message(token, Message::Transactions(unsent));
         }
     }
 }
