@@ -10,8 +10,8 @@
           "data": {
               "inputs": [{
                   "prev_out": {
-                      "transaction_hash": "44ce819b6a731db103f8ab739558e59974e2edad022cdc7f9e9ea3382609f525",
-                      "index": 0,
+                      "transaction_hash": "4a78a702772d23960a0267fb407d9751dfa3110d12df6952a19f65c2ed4ef088",
+                      "index": 1,
                       "asset_type": "5300000000000000254e62980bdac8dae8f192cb82e03d0f37a603bab74cb011",
                       "amount": 4
                   },
@@ -19,8 +19,8 @@
                   "unlock_script": ""
               }, {
                   "prev_out": {
-                      "transaction_hash": "44ce819b6a731db103f8ab739558e59974e2edad022cdc7f9e9ea3382609f525",
-                      "index": 2,
+                      "transaction_hash": "4a78a702772d23960a0267fb407d9751dfa3110d12df6952a19f65c2ed4ef088",
+                      "index": 3,
                       "asset_type": "5300000000000000254e62980bdac8dae8f192cb82e03d0f37a603bab74cb011",
                       "amount": 1
                   },
@@ -41,7 +41,7 @@
   {
     "name": "chain_getTransactionInvoice",
     "data": {
-      "hash": "cc99efb35ab19c1842b9a14025d5b980418b69aa1c40d2b19a069fe6bb823f58"
+      "hash": "b788051b302dec551f88f84427d4924a847645589e195cbdc8ca0fe56972c01b"
     }
   }
 ]

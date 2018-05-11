@@ -28,28 +28,35 @@
   {
     "name": "chain_getAsset",
     "data": {
-      "transaction_hash": "44ce819b6a731db103f8ab739558e59974e2edad022cdc7f9e9ea3382609f525",
+      "transaction_hash": "4a78a702772d23960a0267fb407d9751dfa3110d12df6952a19f65c2ed4ef088",
       "index": 0
     }
   },
   {
     "name": "chain_getAsset",
     "data": {
-      "transaction_hash": "44ce819b6a731db103f8ab739558e59974e2edad022cdc7f9e9ea3382609f525",
+      "transaction_hash": "4a78a702772d23960a0267fb407d9751dfa3110d12df6952a19f65c2ed4ef088",
       "index": 1
     }
   },
   {
     "name": "chain_getAsset",
     "data": {
-      "transaction_hash": "44ce819b6a731db103f8ab739558e59974e2edad022cdc7f9e9ea3382609f525",
+      "transaction_hash": "4a78a702772d23960a0267fb407d9751dfa3110d12df6952a19f65c2ed4ef088",
       "index": 2
     }
   },
   {
     "name": "chain_getAsset",
     "data": {
-      "transaction_hash": "cc99efb35ab19c1842b9a14025d5b980418b69aa1c40d2b19a069fe6bb823f58",
+      "transaction_hash": "4a78a702772d23960a0267fb407d9751dfa3110d12df6952a19f65c2ed4ef088",
+      "index": 3
+    }
+  },
+  {
+    "name": "chain_getAsset",
+    "data": {
+      "transaction_hash": "b788051b302dec551f88f84427d4924a847645589e195cbdc8ca0fe56972c01b",
       "index": 0
     }
   }
