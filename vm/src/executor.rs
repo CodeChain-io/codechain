@@ -71,8 +71,8 @@ impl Stack {
     /// Returns true if value is successfully pushed
     fn push(&mut self, val: Item) -> Result<(), RuntimeError> {
         let item_size = match &val {
-            &Item::Integer(..) => 1,
-            &Item::Blob(ref blob) => blob.len(),
+            Item::Integer(..) => 1,
+            Item::Blob(blob) => blob.len(),
         };
 
         if self.memory_usage + item_size > self.config.max_memory {
@@ -87,9 +87,9 @@ impl Stack {
     fn pop(&mut self) -> Result<Item, RuntimeError> {
         let item = self.stack.pop();
         let item_size = match &item {
-            &Some(Item::Integer(..)) => 1,
-            &Some(Item::Blob(ref blob)) => blob.len(),
-            &None => 0,
+            Some(Item::Integer(..)) => 1,
+            Some(Item::Blob(blob)) => blob.len(),
+            None => 0,
         };
         self.memory_usage -= item_size;
         item.ok_or(RuntimeError::StackUnderflow)
@@ -113,10 +113,10 @@ pub fn execute(script: &[Instruction], tx_hash: H256, config: Config) -> Result<
     let mut stack = Stack::new(config);
     let mut pc = 0;
     while pc < script.len() {
-        match script[pc] {
+        match &script[pc] {
             Instruction::Nop => {}
-            Instruction::PushB(ref blob) => stack.push(Item::Blob(blob.clone()))?,
-            Instruction::PushI(val) => stack.push(Item::Integer(val))?,
+            Instruction::PushB(blob) => stack.push(Item::Blob(blob.clone()))?,
+            Instruction::PushI(val) => stack.push(Item::Integer(*val))?,
             Instruction::Pop => {
                 stack.pop()?;
             }

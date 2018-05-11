@@ -59,7 +59,7 @@ enum Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            &Error::InvalidTimer(_) => fmt::Debug::fmt(self, f),
+            Error::InvalidTimer(_) => fmt::Debug::fmt(self, f),
         }
     }
 }
@@ -102,46 +102,46 @@ impl IoHandler<Message> for Handler {
     }
 
     fn message(&self, io: &IoContext<Message>, message: &Message) -> IoHandlerResult<()> {
-        match *message {
+        match message {
             Message::SetTimer {
-                ref extension_name,
+                extension_name,
                 timer_id,
                 duration,
             } => {
                 let mut timer = self.timer.lock();
-                let token = timer.insert(extension_name.clone(), timer_id, false)?;
+                let token = timer.insert(extension_name.clone(), *timer_id, false)?;
                 io.register_timer(token, duration.num_milliseconds() as u64)?;
                 Ok(())
             }
             Message::SetTimerOnce {
-                ref extension_name,
+                extension_name,
                 timer_id,
                 duration,
             } => {
                 let mut timer = self.timer.lock();
-                let token = timer.insert(extension_name.clone(), timer_id, true)?;
+                let token = timer.insert(extension_name.clone(), *timer_id, true)?;
                 io.register_timer_once(token, duration.num_milliseconds() as u64)?;
                 Ok(())
             }
             Message::ClearTimer {
-                ref extension_name,
+                extension_name,
                 timer_id,
             } => {
                 let mut timer = self.timer.lock();
-                if let Some(token) = timer.remove_by_info(extension_name.clone(), timer_id) {
+                if let Some(token) = timer.remove_by_info(extension_name.clone(), *timer_id) {
                     io.clear_timer(token)?;
                 }
                 Ok(())
             }
             Message::LocalMessage {
-                ref extension_name,
-                ref message,
+                extension_name,
+                message,
             } => {
                 self.client.on_local_message(extension_name, message);
                 Ok(())
             }
             Message::InitializeExtension {
-                ref extension_name,
+                extension_name,
             } => {
                 self.client.initialize_extension(extension_name);
                 Ok(())

@@ -43,7 +43,7 @@ pub enum Message {
 impl Encodable for Message {
     fn rlp_append(&self, s: &mut RlpStream) {
         match self {
-            &Message::Status {
+            Message::Status {
                 total_score,
                 best_hash,
                 genesis_hash,
@@ -52,12 +52,12 @@ impl Encodable for Message {
                 s.append(&MESSAGE_ID_STATUS);
 
                 s.begin_list(3);
-                s.append(&total_score);
-                s.append(&best_hash);
-                s.append(&genesis_hash);
+                s.append(total_score);
+                s.append(best_hash);
+                s.append(genesis_hash);
             }
-            &Message::Request(ref request) => request.rlp_append(s),
-            &Message::Response(ref response) => response.rlp_append(s),
+            Message::Request(request) => request.rlp_append(s),
+            Message::Response(response) => response.rlp_append(s),
         }
     }
 }

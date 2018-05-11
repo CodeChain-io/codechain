@@ -1069,7 +1069,7 @@ fn check_if_removed(
     dropped: Option<HashMap<Address, U256>>,
 ) -> Result<(), ParcelError> {
     match dropped {
-        Some(ref dropped) => match dropped.get(sender) {
+        Some(dropped) => match dropped.get(sender) {
             Some(min) if nonce >= min => Err(ParcelError::LimitReached),
             _ => Ok(()),
         },

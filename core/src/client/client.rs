@@ -185,9 +185,9 @@ impl Client {
     }
 
     fn block_number_ref(&self, id: &BlockId) -> Option<BlockNumber> {
-        match *id {
-            BlockId::Number(number) => Some(number),
-            BlockId::Hash(ref hash) => self.chain.read().block_number(hash),
+        match id {
+            BlockId::Number(number) => Some(number.clone()),
+            BlockId::Hash(hash) => self.chain.read().block_number(hash),
             BlockId::Earliest => Some(0),
             BlockId::Latest => Some(self.chain.read().best_block_number()),
         }
@@ -211,7 +211,7 @@ impl Client {
     /// is unknown.
     pub fn state_at(&self, id: BlockId) -> Option<State<StateDB>> {
         // fast path for latest state.
-        match id.clone() {
+        match id {
             BlockId::Latest => return Some(self.latest_state()),
             _ => {}
         }

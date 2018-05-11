@@ -30,8 +30,8 @@ pub enum Error {
 impl ToString for Error {
     fn to_string(&self) -> String {
         match self {
-            &Error::DuplicatedTimerId => "Duplicated timer id".to_string(),
-            &Error::NoSpace => "No space".to_string(),
+            Error::DuplicatedTimerId => "Duplicated timer id".to_string(),
+            Error::NoSpace => "No space".to_string(),
         }
     }
 }

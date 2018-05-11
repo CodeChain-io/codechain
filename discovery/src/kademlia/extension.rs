@@ -108,11 +108,11 @@ impl Extension {
             let command = {
                 match event {
                     Event::Message {
-                        ref message,
-                        ref sender,
+                        message,
+                        sender,
                     } => {
                         let mut kademlia = self.kademlia.write();
-                        kademlia.handle_message(message, sender)
+                        kademlia.handle_message(&message, &sender)
                     }
                     Event::Command(ref command) => self.handle_command(command),
                 }
@@ -126,17 +126,17 @@ impl Extension {
 
     fn handle_command(&self, command: &Command) -> Option<Command> {
         match command {
-            &Command::Verify => {
+            Command::Verify => {
                 let mut kademlia = self.kademlia.write();
                 kademlia.handle_verify_command()
             }
-            &Command::Refresh => {
+            Command::Refresh => {
                 let mut kademlia = self.kademlia.write();
                 kademlia.handle_refresh_command()
             }
-            &Command::Send {
-                ref message,
-                ref target,
+            Command::Send {
+                message,
+                target,
             } => {
                 self.handle_send_command(&message, &target);
                 None

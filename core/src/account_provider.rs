@@ -44,9 +44,9 @@ impl From<KeysError> for SignError {
 
 impl fmt::Display for SignError {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        match *self {
+        match self {
             SignError::NotFound => write!(f, "Account does not exist"),
-            SignError::KeysError(ref e) => write!(f, "{}", e),
+            SignError::KeysError(e) => write!(f, "{}", e),
             SignError::InappropriateChain => write!(f, "Inappropriate chain"),
         }
     }

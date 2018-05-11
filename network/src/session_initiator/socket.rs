@@ -44,9 +44,9 @@ pub struct Socket {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            &Error::Io(ref err) => err.fmt(f),
-            &Error::Decoder(ref err) => err.fmt(f),
-            &Error::InsufficientSent {
+            Error::Io(err) => err.fmt(f),
+            Error::Decoder(err) => err.fmt(f),
+            Error::InsufficientSent {
                 ..
             } => fmt::Debug::fmt(&self, f),
         }
@@ -56,18 +56,18 @@ impl fmt::Display for Error {
 impl StdError for Error {
     fn description(&self) -> &str {
         match self {
-            &Error::Io(ref err) => err.description(),
-            &Error::Decoder(ref err) => err.description(),
-            &Error::InsufficientSent {
+            Error::Io(err) => err.description(),
+            Error::Decoder(err) => err.description(),
+            Error::InsufficientSent {
                 ..
             } => "insufficient sent",
         }
     }
     fn cause(&self) -> Option<&StdError> {
         match self {
-            &Error::Io(ref err) => Some(err),
-            &Error::Decoder(ref err) => Some(err),
-            &Error::InsufficientSent {
+            Error::Io(err) => Some(err),
+            Error::Decoder(err) => Some(err),
+            Error::InsufficientSent {
                 ..
             } => None,
         }

@@ -130,17 +130,17 @@ impl Kademlia {
         self.touch_contact(sender_contact);
 
         match message {
-            &Message::FindNode {
+            Message::FindNode {
                 id,
                 sender,
                 target,
                 bucket_size,
-            } => self.handle_find_node_message(id, sender, target, bucket_size, sender_address),
-            &Message::Nodes {
-                ref contacts,
+            } => self.handle_find_node_message(*id, *sender, *target, *bucket_size, sender_address),
+            Message::Nodes {
+                contacts,
                 sender,
                 ..
-            } => self.handle_nodes_message(sender, contacts),
+            } => self.handle_nodes_message(*sender, contacts),
         }
     }
 

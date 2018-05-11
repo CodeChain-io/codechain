@@ -73,16 +73,16 @@ impl Message {
     }
 
     pub fn data(&self) -> &Vec<u8> {
-        match &self.data {
-            &Data::Encrypted(ref data) => &data,
-            &Data::Unencrypted(ref data) => &data,
+        match self.data {
+            Data::Encrypted(ref data) => &data,
+            Data::Unencrypted(ref data) => &data,
         }
     }
 
     pub fn unencrypted_data(&self, session_key: &SessionKey) -> Result<Vec<u8>, SymmetricCipherError> {
-        match &self.data {
-            &Data::Encrypted(ref data) => aes::decrypt(data.as_slice(), &session_key.0, (&session_key.1).into()),
-            &Data::Unencrypted(ref data) => Ok(data.clone()),
+        match self.data {
+            Data::Encrypted(ref data) => aes::decrypt(data.as_slice(), &session_key.0, (&session_key.1).into()),
+            Data::Unencrypted(ref data) => Ok(data.clone()),
         }
     }
 

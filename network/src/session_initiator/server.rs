@@ -37,9 +37,9 @@ pub enum Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            &Error::Socket(ref err) => err.fmt(f),
-            &Error::Io(ref err) => err.fmt(f),
-            &Error::QueueOverflow => fmt::Debug::fmt(&self, f),
+            Error::Socket(err) => err.fmt(f),
+            Error::Io(err) => err.fmt(f),
+            Error::QueueOverflow => fmt::Debug::fmt(&self, f),
         }
     }
 }
@@ -47,17 +47,17 @@ impl fmt::Display for Error {
 impl StdError for Error {
     fn description(&self) -> &str {
         match self {
-            &Error::Socket(ref err) => err.description(),
-            &Error::Io(ref err) => err.description(),
-            &Error::QueueOverflow => "Queue overflow",
+            Error::Socket(err) => err.description(),
+            Error::Io(err) => err.description(),
+            Error::QueueOverflow => "Queue overflow",
         }
     }
 
     fn cause(&self) -> Option<&StdError> {
         match self {
-            &Error::Socket(ref err) => Some(err),
-            &Error::Io(ref err) => Some(err),
-            &Error::QueueOverflow => None,
+            Error::Socket(err) => Some(err),
+            Error::Io(err) => Some(err),
+            Error::QueueOverflow => None,
         }
     }
 }

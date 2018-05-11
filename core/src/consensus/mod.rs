@@ -264,13 +264,13 @@ pub enum EngineError {
 impl fmt::Display for EngineError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use self::EngineError::*;
-        let msg = match *self {
-            NotAuthorized(ref address) => format!("Signer {} is not authorized.", address),
-            DoubleVote(ref address) => format!("Author {} issued too many blocks.", address),
-            NotProposer(ref mis) => format!("Author is not a current proposer: {}", mis),
+        let msg = match self {
+            NotAuthorized(address) => format!("Signer {} is not authorized.", address),
+            DoubleVote(address) => format!("Author {} issued too many blocks.", address),
+            NotProposer(mis) => format!("Author is not a current proposer: {}", mis),
             UnexpectedMessage => "This Engine should not be fed messages.".into(),
-            BadSealFieldSize(ref oob) => format!("Seal field has an unexpected length: {}", oob),
-            MalformedMessage(ref msg) => format!("Received malformed consensus message: {}", msg),
+            BadSealFieldSize(oob) => format!("Seal field has an unexpected length: {}", oob),
+            MalformedMessage(msg) => format!("Received malformed consensus message: {}", msg),
         };
 
         f.write_fmt(format_args!("Engine error ({})", msg))

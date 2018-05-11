@@ -31,7 +31,7 @@ impl Message {
     #[allow(dead_code)]
     pub fn is_sync(&self) -> bool {
         match self {
-            &Message::Handshake(HandshakeMessage::Sync {
+            Message::Handshake(HandshakeMessage::Sync {
                 ..
             }) => true,
             _ => false,
@@ -50,9 +50,9 @@ use super::UNENCRYPTED_ID;
 impl Encodable for Message {
     fn rlp_append(&self, s: &mut RlpStream) {
         match self {
-            &Message::Extension(ref message) => message.rlp_append(s),
-            &Message::Handshake(ref message) => message.rlp_append(s),
-            &Message::Negotiation(ref message) => message.rlp_append(s),
+            Message::Extension(message) => message.rlp_append(s),
+            Message::Handshake(message) => message.rlp_append(s),
+            Message::Negotiation(message) => message.rlp_append(s),
         }
     }
 }

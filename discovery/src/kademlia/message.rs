@@ -38,13 +38,13 @@ pub enum Message {
 
 impl Message {
     #[allow(dead_code)]
-    pub fn id(&self) -> Id {
+    pub fn id(&self) -> &Id {
         match self {
-            &Message::FindNode {
+            Message::FindNode {
                 id,
                 ..
             } => id,
-            &Message::Nodes {
+            Message::Nodes {
                 id,
                 ..
             } => id,
@@ -53,12 +53,12 @@ impl Message {
 
     pub fn sender(&self) -> &NodeId {
         match self {
-            &Message::FindNode {
-                ref sender,
+            Message::FindNode {
+                sender,
                 ..
             } => sender,
-            &Message::Nodes {
-                ref sender,
+            Message::Nodes {
+                sender,
                 ..
             } => sender,
         }
@@ -73,20 +73,20 @@ const NODES_ID: ProtocolId = 0x3;
 impl Encodable for Message {
     fn rlp_append(&self, s: &mut RlpStream) {
         match self {
-            &Message::FindNode {
+            Message::FindNode {
                 id,
-                ref sender,
-                ref target,
+                sender,
+                target,
                 bucket_size,
             } => {
-                s.begin_list(5).append(&FIND_NODE_ID).append(&id).append(sender).append(target).append(&bucket_size);
+                s.begin_list(5).append(&FIND_NODE_ID).append(id).append(sender).append(target).append(bucket_size);
             }
-            &Message::Nodes {
+            Message::Nodes {
                 id,
-                ref sender,
-                ref contacts,
+                sender,
+                contacts,
             } => {
-                s.begin_list(3 + contacts.len() * 2).append(&NODES_ID).append(&id).append(sender);
+                s.begin_list(3 + contacts.len() * 2).append(&NODES_ID).append(id).append(sender);
                 for ref contact in contacts.iter() {
                     s.append(&contact.id());
                     s.append(contact.addr());

@@ -42,7 +42,7 @@ pub enum VerifierType {
 impl VerifierType {
     /// Check if seal verification is enabled for this verifier type.
     pub fn verifying_seal(&self) -> bool {
-        match *self {
+        match self {
             VerifierType::Canon => true,
             VerifierType::Noop | VerifierType::CanonNoSeal => false,
         }

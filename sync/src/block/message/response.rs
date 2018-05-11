@@ -36,10 +36,10 @@ impl Encodable for ResponseMessage {
         s.begin_list(2);
 
         s.append(match self {
-            &ResponseMessage::Headers {
+            ResponseMessage::Headers {
                 ..
             } => &MESSAGE_ID_HEADERS,
-            &ResponseMessage::Bodies {
+            ResponseMessage::Bodies {
                 ..
             } => &MESSAGE_ID_BODIES,
         });

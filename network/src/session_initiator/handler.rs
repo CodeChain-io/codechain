@@ -68,13 +68,13 @@ enum Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            &Error::Server(ref err) => err.fmt(f),
-            &Error::Io(ref err) => err.fmt(f),
-            &Error::CIo(ref err) => err.fmt(f),
-            &Error::Decoder(ref err) => err.fmt(f),
-            &Error::SymmetricCipher(_) => fmt::Debug::fmt(&self, f),
-            &Error::Keys(ref err) => err.fmt(f),
-            &Error::General(_) => fmt::Debug::fmt(&self, f),
+            Error::Server(err) => err.fmt(f),
+            Error::Io(err) => err.fmt(f),
+            Error::CIo(err) => err.fmt(f),
+            Error::Decoder(err) => err.fmt(f),
+            Error::SymmetricCipher(_) => fmt::Debug::fmt(&self, f),
+            Error::Keys(err) => err.fmt(f),
+            Error::General(_) => fmt::Debug::fmt(&self, f),
         }
     }
 }
@@ -82,25 +82,25 @@ impl fmt::Display for Error {
 impl error::Error for Error {
     fn description(&self) -> &str {
         match self {
-            &Error::Server(ref err) => err.description(),
-            &Error::Io(ref err) => err.description(),
-            &Error::CIo(ref err) => err.description(),
-            &Error::Decoder(ref err) => err.description(),
-            &Error::SymmetricCipher(_) => "SymmetricCipherError",
-            &Error::Keys(_) => "KeysError",
-            &Error::General(ref str) => str,
+            Error::Server(err) => err.description(),
+            Error::Io(err) => err.description(),
+            Error::CIo(err) => err.description(),
+            Error::Decoder(err) => err.description(),
+            Error::SymmetricCipher(_) => "SymmetricCipherError",
+            Error::Keys(_) => "KeysError",
+            Error::General(str) => str,
         }
     }
 
     fn cause(&self) -> Option<&error::Error> {
         match self {
-            &Error::Server(ref err) => Some(err),
-            &Error::Io(ref err) => Some(err),
-            &Error::CIo(_) => None,
-            &Error::Decoder(ref err) => Some(err),
-            &Error::SymmetricCipher(_) => None,
-            &Error::Keys(_) => None,
-            &Error::General(_) => None,
+            Error::Server(err) => Some(err),
+            Error::Io(err) => Some(err),
+            Error::CIo(_) => None,
+            Error::Decoder(err) => Some(err),
+            Error::SymmetricCipher(_) => None,
+            Error::Keys(_) => None,
+            Error::General(_) => None,
         }
     }
 }
@@ -211,7 +211,7 @@ impl SessionInitiator {
         io: &IoContext<Message>,
     ) -> Result<()> {
         match message.body() {
-            &message::Body::ConnectionRequest(ref received_nonce) => {
+            message::Body::ConnectionRequest(received_nonce) => {
                 let encrypted_bytes = {
                     let secret = self.secrets.get(from).ok_or(Error::General("NoSession"))?;
 
@@ -234,7 +234,7 @@ impl SessionInitiator {
                 self.server.enqueue(pong, from.clone())?;
                 Ok(())
             }
-            &message::Body::ConnectionAllowed(ref nonce) => {
+            message::Body::ConnectionAllowed(nonce) => {
                 let temporary_nonce = self.temporary_nonces.get(&from).ok_or(Error::General("SessionNotReady"))?;
                 let secret = self.secrets.get(from).ok_or(Error::General("NoSession"))?;
                 let temporary_session = Session::new(*secret, temporary_nonce.clone());
@@ -245,11 +245,11 @@ impl SessionInitiator {
                 self.session_registered_addresses.insert(from.clone());
                 Ok(())
             }
-            &message::Body::ConnectionDenied(ref reason) => {
+            message::Body::ConnectionDenied(reason) => {
                 info!(target:"net", "Connection to {:?} refused(reason: {}", from, reason);
                 Ok(())
             }
-            &message::Body::EcdhRequest(ref key) => {
+            message::Body::EcdhRequest(key) => {
                 let ephemeral = Random.generate()?;
                 let secret = exchange(key, &ephemeral.private())?;
                 if self.secrets.insert(from.clone(), secret).is_some() {
@@ -261,7 +261,7 @@ impl SessionInitiator {
                 self.server.enqueue(message, from.clone())?;
                 Ok(())
             }
-            &message::Body::EcdhAllowed(ref key) => {
+            message::Body::EcdhAllowed(key) => {
                 let local_private = self.requested.remove(from).ok_or(Error::General("ECDHIsNotRequested"))?;
                 let secret = exchange(key, &local_private)?;
                 let session = Session::new_with_zero_nonce(secret);
@@ -296,7 +296,7 @@ impl SessionInitiator {
                 io.register_timer_once(token, TMP_NONCE_TIMEOUT_MS)?;
                 Ok(())
             }
-            &message::Body::EcdhDenied(ref reason) => {
+            message::Body::EcdhDenied(reason) => {
                 info!(target:"net", "Connection to {:?} refused(reason: {}", from, reason);
                 let _ = self.requested.remove(from).ok_or(Error::General("ECDHIsNotRequested"))?;
                 Ok(())
@@ -381,16 +381,16 @@ impl IoHandler<Message> for Handler {
 
     fn message(&self, io: &IoContext<Message>, message: &Message) -> IoHandlerResult<()> {
         match message {
-            &Message::ConnectTo(ref socket_address) => {
+            Message::ConnectTo(socket_address) => {
                 let mut session_initiator = self.session_initiator.lock();
                 session_initiator.create_new_connection(&socket_address)?;
                 io.update_registration(RECEIVE_TOKEN)?;
             }
-            &Message::RequestSession(n) => {
+            Message::RequestSession(n) => {
                 let mut session_initiator = self.session_initiator.lock();
                 let discovery = self.discovery.read();
                 if let Some(ref discovery) = *discovery {
-                    let addresses = discovery.get(n);
+                    let addresses = discovery.get(*n);
                     if !addresses.is_empty() {
                         let _f = finally(|| {
                             if let Err(err) = io.update_registration(RECEIVE_TOKEN) {
