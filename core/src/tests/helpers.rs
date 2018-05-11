@@ -20,11 +20,11 @@ use cbytes::Bytes;
 use ctypes::{H256, U256};
 use header::Header;
 use kvdb::KeyValueDB;
+use parcel::SignedParcel;
 use rlp::{self, RlpStream};
 use spec::Spec;
 use state::State;
 use state_db::StateDB;
-use transaction::SignedParcel;
 
 pub fn create_test_block(header: &Header) -> Bytes {
     let mut rlp = RlpStream::new_list(2);

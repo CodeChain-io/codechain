@@ -26,7 +26,7 @@ use util_error::UtilError;
 use super::account_provider::SignError as AccountsError;
 use super::client::Error as ClientError;
 use super::consensus::EngineError;
-use super::transaction::ParcelError;
+use super::parcel::ParcelError;
 use super::types::BlockNumber;
 
 #[derive(Debug, Clone, Copy, PartialEq)]

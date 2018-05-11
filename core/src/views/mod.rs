@@ -17,9 +17,9 @@
 mod block;
 mod body;
 mod header;
-mod transaction;
+mod parcel;
 
 pub use self::block::BlockView;
 pub use self::body::BodyView;
 pub use self::header::HeaderView;
-pub use self::transaction::ParcelView;
+pub use self::parcel::ParcelView;

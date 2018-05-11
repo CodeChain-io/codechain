@@ -18,7 +18,7 @@ use ccrypto::blake256;
 use ctypes::H256;
 use rlp::Rlp;
 
-use super::super::transaction::{LocalizedParcel, UnverifiedParcel};
+use super::super::parcel::{LocalizedParcel, UnverifiedParcel};
 use super::super::types::BlockNumber;
 use super::ParcelView;
 

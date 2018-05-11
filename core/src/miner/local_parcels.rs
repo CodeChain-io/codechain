@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use super::super::transaction::{ParcelError, SignedParcel};
+use super::super::parcel::{ParcelError, SignedParcel};
 use ctypes::{H256, U256};
 use linked_hash_map::LinkedHashMap;
 
@@ -157,7 +157,7 @@ impl LocalParcelsList {
 
 #[cfg(test)]
 mod tests {
-    use super::super::super::transaction;
+    use super::super::super::parcel;
     use super::*;
     use ckeys::{Generator, Random};
     use ctypes::U256;
@@ -204,10 +204,10 @@ mod tests {
 
     fn new_parcel(nonce: U256) -> SignedParcel {
         let keypair = Random.generate().unwrap();
-        transaction::Parcel {
+        parcel::Parcel {
             nonce,
             fee: U256::from(1245),
-            action: transaction::Action::Noop,
+            action: parcel::Action::Noop,
             network_id: 0u64,
         }.sign(keypair.private())
     }

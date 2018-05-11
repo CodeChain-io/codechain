@@ -24,9 +24,9 @@ use linked_hash_map::LinkedHashMap;
 use multimap::MultiMap;
 use table::Table;
 
-use super::super::transaction::{Action, ParcelError, SignedParcel};
+use super::super::parcel::{Action, ParcelError, SignedParcel};
 use super::super::types::BlockNumber;
-use super::local_transactions::{LocalParcelsList, Status as LocalParcelStatus};
+use super::local_parcels::{LocalParcelsList, Status as LocalParcelStatus};
 use super::ParcelImportResult;
 
 /// Parcel with the same (sender, nonce) can be replaced only if

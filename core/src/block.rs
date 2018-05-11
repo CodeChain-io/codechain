@@ -29,9 +29,9 @@ use super::error::{BlockError, Error};
 use super::header::{Header, Seal};
 use super::invoice::Invoice;
 use super::machine::{LiveBlock, Parcels};
+use super::parcel::{ParcelError, SignedParcel, UnverifiedParcel};
 use super::state::State;
 use super::state_db::StateDB;
-use super::transaction::{ParcelError, SignedParcel, UnverifiedParcel};
 
 /// A block, encoded as it is on the block chain.
 #[derive(Debug, Clone, PartialEq)]

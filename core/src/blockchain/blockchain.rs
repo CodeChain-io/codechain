@@ -31,7 +31,7 @@ use super::super::db::{self, CacheUpdatePolicy, Readable, Writable};
 use super::super::encoded;
 use super::super::header::Header;
 use super::super::invoice::Invoice;
-use super::super::transaction::LocalizedParcel;
+use super::super::parcel::LocalizedParcel;
 use super::super::types::BlockNumber;
 use super::super::views::{BlockView, HeaderView};
 use super::best_block::BestBlock;

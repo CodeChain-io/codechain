@@ -34,8 +34,8 @@ use super::block::{ClosedBlock, OpenBlock, SealedBlock};
 use super::blockchain_info::BlockChainInfo;
 use super::encoded;
 use super::error::BlockImportError;
+use super::parcel::SignedParcel;
 use super::state::StateInfo;
-use super::transaction::SignedParcel;
 use super::types::{BlockId, BlockNumber, BlockStatus, ParcelId, VerificationQueueInfo as BlockQueueInfo};
 use super::Invoice;
 
