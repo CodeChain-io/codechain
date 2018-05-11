@@ -73,6 +73,7 @@ mod service;
 mod spec;
 mod state;
 mod state_db;
+mod transaction;
 mod types;
 mod verification;
 mod views;
@@ -92,10 +93,11 @@ pub use header::{Header, Seal};
 pub use invoice::Invoice;
 pub use miner::{Miner, MinerOptions, MinerService};
 pub use parcel::{
-    parcel_error_message, AssetOutPoint, AssetTransferInput, AssetTransferOutput, Parcel, SignedParcel, Transaction,
+    parcel_error_message, AssetOutPoint, AssetTransferInput, AssetTransferOutput, Parcel, SignedParcel,
     UnverifiedParcel,
 };
 pub use service::ClientService;
 pub use spec::Spec;
 pub use state::{Asset, AssetAddress, AssetScheme, AssetSchemeAddress};
+pub use transaction::Transaction;
 pub use types::{BlockId, BlockNumber};

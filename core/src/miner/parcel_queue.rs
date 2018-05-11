@@ -24,8 +24,9 @@ use linked_hash_map::LinkedHashMap;
 use multimap::MultiMap;
 use table::Table;
 
-use super::super::parcel::{ParcelError, SignedParcel, Transaction};
+use super::super::parcel::{ParcelError, SignedParcel};
 use super::super::types::BlockNumber;
+use super::super::Transaction;
 use super::local_parcels::{LocalParcelsList, Status as LocalParcelStatus};
 use super::ParcelImportResult;
 
