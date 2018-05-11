@@ -32,18 +32,18 @@ pub enum BlockId {
     Latest,
 }
 
-/// Uniquely identifies transaction.
+/// Uniquely identifies parcel.
 #[derive(Debug, PartialEq, Clone, Hash, Eq)]
-pub enum TransactionId {
-    /// Transaction's blake256.
+pub enum ParcelId {
+    /// Parcel's blake256.
     Hash(H256),
-    /// Block id and transaction index within this block.
+    /// Block id and parcel index within this block.
     /// Querying by block position is always faster.
     Location(BlockId, usize),
 }
 
-impl From<H256> for TransactionId {
+impl From<H256> for ParcelId {
     fn from(hash: H256) -> Self {
-        TransactionId::Hash(hash)
+        ParcelId::Hash(hash)
     }
 }

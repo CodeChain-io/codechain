@@ -14,25 +14,25 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ccore::UnverifiedTransaction;
+use ccore::UnverifiedParcel;
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 #[derive(Debug, PartialEq)]
 pub enum Message {
-    Transactions(Vec<UnverifiedTransaction>),
+    Parcels(Vec<UnverifiedParcel>),
 }
 
 impl Encodable for Message {
     fn rlp_append(&self, s: &mut RlpStream) {
         match self {
-            &Message::Transactions(ref transactions) => s.append_list(transactions),
+            &Message::Parcels(ref parcels) => s.append_list(parcels),
         };
     }
 }
 
 impl Decodable for Message {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
-        Ok(Message::Transactions(rlp.as_list()?))
+        Ok(Message::Parcels(rlp.as_list()?))
     }
 }
 
@@ -43,8 +43,8 @@ mod tests {
     use super::Message;
 
     #[test]
-    fn test_transactions_message_rlp() {
-        let message = Message::Transactions(Vec::new());
+    fn test_parcels_message_rlp() {
+        let message = Message::Parcels(Vec::new());
         assert_eq!(message, ::rlp::decode(message.rlp_bytes().as_ref()));
     }
 }

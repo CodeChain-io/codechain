@@ -56,7 +56,7 @@ use clogger::LoggerConfig;
 use cnetwork::{NetworkConfig, NetworkService, SocketAddr};
 use creactor::EventLoop;
 use crpc::Server as RpcServer;
-use csync::{BlockSyncExtension, TransactionSyncExtension};
+use csync::{BlockSyncExtension, ParcelSyncExtension};
 use ctrlc::CtrlC;
 use fdlimit::raise_fd_limit;
 use parking_lot::{Condvar, Mutex};
@@ -166,8 +166,8 @@ fn run() -> Result<(), String> {
                 service.register_extension(sync.clone())?;
                 client.client().add_notify(sync.clone());
             }
-            if config.enable_tx_relay {
-                service.register_extension(TransactionSyncExtension::new(client.client()))?;
+            if config.enable_parcel_relay {
+                service.register_extension(ParcelSyncExtension::new(client.client()))?;
             }
             if let Some(consensus_extension) = spec.engine.network_extension() {
                 service.register_extension(consensus_extension)?;

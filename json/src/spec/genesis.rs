@@ -33,9 +33,9 @@ pub struct Genesis {
     /// Parent hash, defaults to 0.
     #[serde(rename = "parentHash")]
     pub parent_hash: Option<H256>,
-    /// Transactions root.
-    #[serde(rename = "transactionsRoot")]
-    pub transactions_root: Option<H256>,
+    /// Parcels root.
+    #[serde(rename = "parcelsRoot")]
+    pub parcels_root: Option<H256>,
     /// Invoices root.
     #[serde(rename = "invoicesRoot")]
     pub invoices_root: Option<H256>,
@@ -92,7 +92,7 @@ mod tests {
             author: Some(Address(H160::from("0x1000000000000000000000000000000000000001"))),
             timestamp: Some(Uint(U256::from(0x07))),
             parent_hash: Some(H256(Eth256::from("0x9000000000000000000000000000000000000000000000000000000000000000"))),
-            transactions_root: None,
+            parcels_root: None,
             invoices_root: None,
             state_root: Some(H256(Eth256::from("0xd7f8974fb5ac78d9ac099b9ad5018bedc2ce0a72dad1827a1709da30580f0544"))),
             extra_data: Some(Bytes::from_str("0x11bbe8db4e347b4e8c937c1c8370e4b5ed33adb3db69cbdb7a38e1e50b1b82fa").unwrap()),

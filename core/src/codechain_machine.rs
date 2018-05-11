@@ -23,7 +23,7 @@ use super::client::BlockInfo;
 use super::error::Error;
 use super::header::Header;
 use super::spec::CommonParams;
-use super::transaction::{SignedTransaction, TransactionError, UnverifiedTransaction};
+use super::transaction::{ParcelError, SignedParcel, UnverifiedParcel};
 
 pub struct CodeChainMachine {
     params: CommonParams,
@@ -46,11 +46,11 @@ impl CodeChainMachine {
         self.params().maximum_extra_data_size
     }
 
-    /// Does basic verification of the transaction.
-    pub fn verify_transaction_basic(&self, t: &UnverifiedTransaction, _header: &Header) -> Result<(), Error> {
-        if t.fee < self.params.min_transaction_cost {
-            return Err(TransactionError::InsufficientFee {
-                minimal: self.params.min_transaction_cost,
+    /// Does basic verification of the parcel.
+    pub fn verify_parcel_basic(&self, t: &UnverifiedParcel, _header: &Header) -> Result<(), Error> {
+        if t.fee < self.params.min_parcel_cost {
+            return Err(ParcelError::InsufficientFee {
+                minimal: self.params.min_parcel_cost,
                 got: t.fee,
             }.into())
         }
@@ -59,23 +59,14 @@ impl CodeChainMachine {
         Ok(())
     }
 
-    /// Verify a particular transaction is valid, regardless of order.
-    pub fn verify_transaction_unordered(
-        &self,
-        t: UnverifiedTransaction,
-        _header: &Header,
-    ) -> Result<SignedTransaction, Error> {
-        Ok(SignedTransaction::new(t)?)
+    /// Verify a particular parcel is valid, regardless of order.
+    pub fn verify_parcel_unordered(&self, t: UnverifiedParcel, _header: &Header) -> Result<SignedParcel, Error> {
+        Ok(SignedParcel::new(t)?)
     }
 
-    /// Does verification of the transaction against the parent state.
-    pub fn verify_transaction<C: BlockInfo>(
-        &self,
-        _t: &SignedTransaction,
-        _header: &Header,
-        _client: &C,
-    ) -> Result<(), Error> {
-        // FIXME: Filter transactions.
+    /// Does verification of the parcel against the parent state.
+    pub fn verify_parcel<C: BlockInfo>(&self, _t: &SignedParcel, _header: &Header, _client: &C) -> Result<(), Error> {
+        // FIXME: Filter parcels.
         Ok(())
     }
 

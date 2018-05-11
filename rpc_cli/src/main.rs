@@ -15,7 +15,7 @@ use std::io::Read;
 use std::process;
 
 use cbytes::Bytes;
-use ccore::{Action, AssetOutPoint, AssetTransferInput, AssetTransferOutput, Transaction, UnverifiedTransaction};
+use ccore::{Action, AssetOutPoint, AssetTransferInput, AssetTransferOutput, Parcel, UnverifiedParcel};
 use ckeys::hex::FromHex;
 use ckeys::{KeyPair, Private, Secret};
 use codechain_rpc_client::client::{RpcClient, RpcError, RpcHttp};
@@ -105,8 +105,8 @@ fn handle_command(rpc: &mut RpcClient, name: &Value, data: &Value) -> Result<(),
             Ok(())
         }
         "chain_getAssetScheme" => {
-            let transaction = get_h256(&data["transaction_hash"])?;
-            rpc.get_asset_scheme(transaction)
+            let parcel = get_h256(&data["parcel_hash"])?;
+            rpc.get_asset_scheme(parcel)
                 .map(|message| {
                     println!("{:?}", message);
                     ()
@@ -114,27 +114,27 @@ fn handle_command(rpc: &mut RpcClient, name: &Value, data: &Value) -> Result<(),
                 .map_err(|e| CommandError::RpcError(e))
         }
         "chain_getAsset" => {
-            let transaction = get_h256(&data["transaction_hash"])?;
+            let parcel = get_h256(&data["parcel_hash"])?;
             let index = data["index"].as_u64().ok_or(CommandError::InvalidData)? as usize;
-            rpc.get_asset(transaction, index)
+            rpc.get_asset(parcel, index)
                 .map(|message| {
                     println!("{:?}", message);
                     ()
                 })
                 .map_err(|e| CommandError::RpcError(e))
         }
-        "chain_sendSignedTransaction" => {
-            let t = get_unverified_transaction(data)?;
-            rpc.send_signed_transaction(t)
+        "chain_sendSignedParcel" => {
+            let parcel = get_unverified_parcel(data)?;
+            rpc.send_signed_parcel(parcel)
                 .map(|hash| {
                     println!("TxHash: 0x{:?}", hash);
                     ()
                 })
                 .map_err(|e| CommandError::RpcError(e))
         }
-        "chain_getTransactionInvoice" => {
+        "chain_getParcelInvoice" => {
             let hash: H256 = get_h256(&data["hash"])?;
-            rpc.get_transaction_invoice(hash)
+            rpc.get_parcel_invoice(hash)
                 .map(|invoice| {
                     println!("{:?}", invoice);
                     ()
@@ -164,7 +164,7 @@ fn handle_command(rpc: &mut RpcClient, name: &Value, data: &Value) -> Result<(),
     }
 }
 
-fn get_unverified_transaction(data: &Value) -> Result<UnverifiedTransaction, CommandError> {
+fn get_unverified_parcel(data: &Value) -> Result<UnverifiedParcel, CommandError> {
     let secret: Secret = get_h256(&data["secret"])?;
     let nonce: U256 = get_u256(&data["nonce"])?;
     let fee: U256 = get_u256(&data["fee"])?;
@@ -174,7 +174,7 @@ fn get_unverified_transaction(data: &Value) -> Result<UnverifiedTransaction, Com
         .ok_or_else(|| CommandError::InvalidData)?
         .parse()
         .map_err(|_| CommandError::InvalidData)?;
-    let (t, _address, _) = Transaction {
+    let (t, _address, _) = Parcel {
         nonce,
         fee,
         action,
@@ -259,12 +259,12 @@ fn get_transfer_output(data: &Value) -> AssetTransferOutput {
 fn get_transfer_input(data: &Value) -> AssetTransferInput {
     let prev_out = {
         let ref data = data["prev_out"];
-        let transaction_hash = get_h256(&data["transaction_hash"]).unwrap_or_else(|_| unreachable!());
+        let parcel_hash = get_h256(&data["parcel_hash"]).unwrap_or_else(|_| unreachable!());
         let index = data["index"].as_u64().unwrap_or_else(|| unreachable!()) as usize;
         let asset_type = get_h256(&data["asset_type"]).unwrap_or_else(|_| unreachable!());
         let amount = data["amount"].as_u64().unwrap();
         AssetOutPoint {
-            transaction_hash,
+            parcel_hash,
             index,
             asset_type,
             amount,

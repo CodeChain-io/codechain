@@ -28,7 +28,7 @@ use super::super::client::BlockInfo;
 use super::super::consensus::CodeChainEngine;
 use super::super::error::{BlockError, Error};
 use super::super::header::Header;
-use super::super::transaction::{SignedTransaction, UnverifiedTransaction};
+use super::super::transaction::{SignedParcel, UnverifiedParcel};
 use super::super::types::BlockNumber;
 use super::super::views::BlockView;
 
@@ -36,27 +36,26 @@ use super::super::views::BlockView;
 pub struct PreverifiedBlock {
     /// Populated block header
     pub header: Header,
-    /// Populated block transactions
-    pub transactions: Vec<SignedTransaction>,
+    /// Populated block parcels
+    pub parcels: Vec<SignedParcel>,
     /// Block bytes
     pub bytes: Bytes,
 }
 
 impl HeapSizeOf for PreverifiedBlock {
     fn heap_size_of_children(&self) -> usize {
-        self.header.heap_size_of_children() + self.transactions.heap_size_of_children()
-            + self.bytes.heap_size_of_children()
+        self.header.heap_size_of_children() + self.parcels.heap_size_of_children() + self.bytes.heap_size_of_children()
     }
 }
 
 /// Phase 1 quick block verification. Only does checks that are cheap. Operates on a single block
 pub fn verify_block_basic(header: &Header, bytes: &[u8], engine: &CodeChainEngine) -> Result<(), Error> {
     verify_header_params(&header, engine)?;
-    verify_block_integrity(bytes, &header.transactions_root())?;
+    verify_block_integrity(bytes, &header.parcels_root())?;
     engine.verify_block_basic(&header)?;
 
-    for t in UntrustedRlp::new(bytes).at(1)?.iter().map(|rlp| rlp.as_val::<UnverifiedTransaction>()) {
-        engine.verify_transaction_basic(&t?, &header)?;
+    for t in UntrustedRlp::new(bytes).at(1)?.iter().map(|rlp| rlp.as_val::<UnverifiedParcel>()) {
+        engine.verify_parcel_basic(&t?, &header)?;
     }
     Ok(())
 }
@@ -112,23 +111,23 @@ pub fn verify_header_params(header: &Header, engine: &CodeChainEngine) -> Result
     Ok(())
 }
 
-/// Verify block data against header: transactions root and uncles hash.
-fn verify_block_integrity(block: &[u8], transactions_root: &H256) -> Result<(), Error> {
+/// Verify block data against header: parcels root and uncles hash.
+fn verify_block_integrity(block: &[u8], parcels_root: &H256) -> Result<(), Error> {
     let block = UntrustedRlp::new(block);
-    let tx = block.at(1)?;
-    let expected_root = &ordered_trie_root(tx.iter().map(|r| r.as_raw()));
-    if expected_root != transactions_root {
-        return Err(From::from(BlockError::InvalidTransactionsRoot(Mismatch {
+    let parcel = block.at(1)?;
+    let expected_root = &ordered_trie_root(parcel.iter().map(|r| r.as_raw()));
+    if expected_root != parcels_root {
+        return Err(From::from(BlockError::InvalidParcelsRoot(Mismatch {
             expected: expected_root.clone(),
-            found: transactions_root.clone(),
+            found: parcels_root.clone(),
         })))
     }
     Ok(())
 }
 
-/// Phase 2 verification. Perform costly checks such as transaction signatures and block nonce for ethash.
+/// Phase 2 verification. Perform costly checks such as parcel signatures and block nonce for ethash.
 /// Still operates on a individual block
-/// Returns a `PreverifiedBlock` structure populated with transactions
+/// Returns a `PreverifiedBlock` structure populated with parcels
 pub fn verify_block_unordered(
     header: Header,
     bytes: Bytes,
@@ -138,18 +137,18 @@ pub fn verify_block_unordered(
     if check_seal {
         engine.verify_block_unordered(&header)?;
     }
-    // Verify transactions.
-    let mut transactions = Vec::new();
+    // Verify parcels.
+    let mut parcels = Vec::new();
     {
         let v = BlockView::new(&bytes);
-        for t in v.transactions() {
-            let t = engine.verify_transaction_unordered(t, &header)?;
-            transactions.push(t);
+        for t in v.parcels() {
+            let t = engine.verify_parcel_unordered(t, &header)?;
+            parcels.push(t);
         }
     }
     Ok(PreverifiedBlock {
         header,
-        transactions,
+        parcels,
         bytes,
     })
 }
@@ -159,8 +158,8 @@ pub struct FullFamilyParams<'a, C: BlockInfo + 'a> {
     /// Serialized block bytes
     pub block_bytes: &'a [u8],
 
-    /// Signed transactions
-    pub transactions: &'a [SignedTransaction],
+    /// Signed parcels
+    pub parcels: &'a [SignedParcel],
 
     /// Block provider to use during verification
     pub block_provider: &'a BlockProvider,
@@ -185,8 +184,8 @@ pub fn verify_block_family<C: BlockInfo>(
         None => return Ok(()),
     };
 
-    for transaction in params.transactions {
-        engine.machine().verify_transaction(transaction, header, params.client)?;
+    for parcel in params.parcels {
+        engine.machine().verify_parcel(parcel, header, params.client)?;
     }
 
     Ok(())
@@ -225,7 +224,7 @@ fn verify_parent(header: &Header, parent: &Header) -> Result<(), Error> {
     Ok(())
 }
 
-/// Phase 4 verification. Check block information against transaction enactment results,
+/// Phase 4 verification. Check block information against parcel enactment results,
 pub fn verify_block_final(expected: &Header, got: &Header) -> Result<(), Error> {
     if expected.state_root() != got.state_root() {
         return Err(From::from(BlockError::InvalidStateRoot(Mismatch {

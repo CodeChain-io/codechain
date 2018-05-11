@@ -401,7 +401,7 @@ impl Database {
         })
     }
 
-    /// Helper to create new transaction for this database.
+    /// Helper to create new parcel for this database.
     pub fn transaction(&self) -> DBTransaction {
         DBTransaction::new()
     }
@@ -411,7 +411,7 @@ impl Database {
         col.map_or(0, |c| (c + 1) as usize)
     }
 
-    /// Commit transaction to database.
+    /// Commit parcel to database.
     pub fn write_buffered(&self, tr: DBTransaction) {
         let mut overlay = self.overlay.write();
         let ops = tr.ops;
@@ -511,7 +511,7 @@ impl Database {
         result
     }
 
-    /// Commit transaction to database.
+    /// Commit parcel to database.
     pub fn write(&self, tr: DBTransaction) -> Result<()> {
         match *self.db.read() {
             Some(DBAndColumns {

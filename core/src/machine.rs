@@ -46,13 +46,13 @@ pub trait LiveBlock: 'static {
     fn header(&self) -> &Self::Header;
 }
 
-/// Trait for blocks which have a transaction type.
-pub trait Transactions: LiveBlock {
-    /// The transaction type.
-    type Transaction;
+/// Trait for blocks which have a parcel type.
+pub trait Parcels: LiveBlock {
+    /// The parcel type.
+    type Parcel;
 
-    /// Get a reference to the transactions in this block.
-    fn transactions(&self) -> &[Self::Transaction];
+    /// Get a reference to the parcels in this block.
+    fn parcels(&self) -> &[Self::Parcel];
 }
 
 /// Generalization of types surrounding blockchain-suitable state machines.

@@ -95,7 +95,7 @@ pub use service::ClientService;
 pub use spec::Spec;
 pub use state::{Asset, AssetAddress, AssetScheme, AssetSchemeAddress};
 pub use transaction::{
-    transaction_error_message, Action, AssetOutPoint, AssetTransferInput, AssetTransferOutput, SignedTransaction,
-    Transaction, UnverifiedTransaction,
+    parcel_error_message, Action, AssetOutPoint, AssetTransferInput, AssetTransferOutput, Parcel, SignedParcel,
+    UnverifiedParcel,
 };
 pub use types::{BlockId, BlockNumber};

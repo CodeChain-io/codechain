@@ -79,8 +79,8 @@ impl ClientService {
 pub enum ClientIoMessage {
     /// A block is ready
     BlockVerified,
-    /// New transaction RLPs are ready to be imported
-    NewTransactions(Vec<Bytes>, usize),
+    /// New parcel RLPs are ready to be imported
+    NewParcels(Vec<Bytes>, usize),
 }
 
 /// IO interface for the Client handler
@@ -94,8 +94,8 @@ impl IoHandler<ClientIoMessage> for ClientIoHandler {
             ClientIoMessage::BlockVerified => {
                 self.client.import_verified_blocks();
             }
-            ClientIoMessage::NewTransactions(ref transactions, peer_id) => {
-                self.client.import_queued_transactions(transactions, peer_id);
+            ClientIoMessage::NewParcels(ref parcels, peer_id) => {
+                self.client.import_queued_parcels(parcels, peer_id);
             }
         }
         Ok(())

@@ -655,13 +655,13 @@ mod tests {
         let root_parent = H256::random();
         let mut batch = DBTransaction::new();
 
-        let transaction_id = H256::random();
+        let parcel_hash = H256::random();
         let asset_scheme_address = H256::random();
         let lock_script_hash = H256::random();
         let parameters = vec![];
         let amount = 1000;
         let asset = Asset::new(asset_scheme_address, lock_script_hash, parameters, amount);
-        let asset_address = AssetAddress::new(transaction_id, 0);
+        let asset_address = AssetAddress::new(parcel_hash, 0);
 
         let mut s = state_db.boxed_clone_canon(&root_parent);
 

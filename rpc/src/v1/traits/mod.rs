@@ -23,13 +23,13 @@ use super::types::{Block, Bytes};
 
 build_rpc_trait! {
     pub trait Chain {
-        /// Sends signed transaction, returning its hash.
-        # [rpc(name = "chain_sendSignedTransaction")]
-        fn send_signed_transaction(&self, Bytes) -> Result<H256>;
+        /// Sends signed parcel, returning its hash.
+        # [rpc(name = "chain_sendSignedParcel")]
+        fn send_signed_parcel(&self, Bytes) -> Result<H256>;
 
-        /// Gets transaction invoice with given hash.
-        # [rpc(name = "chain_getTransactionInvoice")]
-        fn get_transaction_invoice(&self, H256) -> Result<Option<Invoice>>;
+        /// Gets parcel invoices with given hash.
+        # [rpc(name = "chain_getParcelInvoice")]
+        fn get_parcel_invoice(&self, H256) -> Result<Option<Invoice>>;
 
         /// Gets asset scheme with given asset type.
         # [rpc(name = "chain_getAssetScheme")]

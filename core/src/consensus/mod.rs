@@ -47,7 +47,7 @@ use super::error::Error;
 use super::header::Header;
 use super::machine::Machine;
 use super::spec::CommonParams;
-use super::transaction::{SignedTransaction, UnverifiedTransaction};
+use super::transaction::{SignedParcel, UnverifiedParcel};
 
 /// Seal type.
 #[derive(Debug, PartialEq, Eq)]
@@ -110,7 +110,7 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
         Ok(())
     }
 
-    /// Phase 2 verification. Perform costly checks such as transaction signatures. Returns either a null `Ok` or a general error detailing the problem with import.
+    /// Phase 2 verification. Perform costly checks such as parcel signatures. Returns either a null `Ok` or a general error detailing the problem with import.
     fn verify_block_unordered(&self, _header: &M::Header) -> Result<(), M::Error> {
         Ok(())
     }
@@ -172,12 +172,12 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
     /// Stops any services that the may hold the Engine and makes it safe to drop.
     fn stop(&self) {}
 
-    /// Block transformation functions, before the transactions.
+    /// Block transformation functions, before the parcels.
     fn on_new_block(&self, _block: &mut M::LiveBlock, _epoch_begin: bool) -> Result<(), M::Error> {
         Ok(())
     }
 
-    /// Block transformation functions, after the transactions.
+    /// Block transformation functions, after the parcels.
     fn on_close_block(&self, _block: &mut M::LiveBlock) -> Result<(), M::Error> {
         Ok(())
     }
@@ -203,7 +203,7 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
     /// Register an account which signs consensus messages.
     fn set_signer(&self, _ap: Arc<AccountProvider>, _address: Address) {}
 
-    /// Sign using the EngineSigner, to be used for consensus tx signing.
+    /// Sign using the EngineSigner, to be used for consensus parcel signing.
     fn sign(&self, _hash: H256) -> Result<ECDSASignature, Error> {
         unimplemented!()
     }
@@ -289,18 +289,14 @@ pub trait CodeChainEngine: ConsensusEngine<CodeChainMachine> {
         self.machine().maximum_extra_data_size()
     }
 
-    /// Additional verification for transactions in blocks.
-    fn verify_transaction_basic(&self, t: &UnverifiedTransaction, header: &Header) -> Result<(), Error> {
-        self.machine().verify_transaction_basic(t, header)
+    /// Additional verification for parcels in blocks.
+    fn verify_parcel_basic(&self, t: &UnverifiedParcel, header: &Header) -> Result<(), Error> {
+        self.machine().verify_parcel_basic(t, header)
     }
 
-    /// Verify a particular transaction is valid.
-    fn verify_transaction_unordered(
-        &self,
-        t: UnverifiedTransaction,
-        header: &Header,
-    ) -> Result<SignedTransaction, Error> {
-        self.machine().verify_transaction_unordered(t, header)
+    /// Verify a particular parcel is valid.
+    fn verify_parcel_unordered(&self, t: UnverifiedParcel, header: &Header) -> Result<SignedParcel, Error> {
+        self.machine().verify_parcel_unordered(t, header)
     }
 }
 

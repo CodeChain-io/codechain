@@ -16,7 +16,7 @@
 
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
-/// Information describing execution of a transaction.
+/// Information describing execution of a parcel.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Invoice {
     /// Transaction outcome.
@@ -53,7 +53,7 @@ impl Decodable for Invoice {
         let outcome = match rlp.as_val::<u8>()? {
             1 => TransactionOutcome::Success,
             0 => TransactionOutcome::Failed,
-            _ => return Err(DecoderError::Custom("Invalid transaction outcome")),
+            _ => return Err(DecoderError::Custom("Invalid parcel outcome")),
         };
         Ok(Self {
             outcome,

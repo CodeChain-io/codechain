@@ -29,10 +29,10 @@ extern crate time;
 extern crate triehash;
 
 mod block;
-mod transaction;
+mod parcel;
 
 pub use self::block::BlockSyncExtension;
-pub use self::transaction::TransactionSyncExtension;
+pub use self::parcel::ParcelSyncExtension;
 
 #[cfg(test)]
 extern crate codechain_keys as ckeys;

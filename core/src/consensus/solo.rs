@@ -20,7 +20,7 @@ use cjson;
 use cnetwork::NetworkExtension;
 use ctypes::U256;
 
-use super::super::machine::{Header, LiveBlock, Machine, Transactions};
+use super::super::machine::{Header, LiveBlock, Machine, Parcels};
 use super::{ConsensusEngine, Seal};
 
 /// Params for a null engine.
@@ -56,7 +56,7 @@ impl<M> Solo<M> {
 
 impl<M: Machine> ConsensusEngine<M> for Solo<M>
 where
-    M::LiveBlock: Transactions,
+    M::LiveBlock: Parcels,
 {
     fn name(&self) -> &str {
         "Solo"
@@ -71,7 +71,7 @@ where
     }
 
     fn generate_seal(&self, block: &M::LiveBlock, _parent: &M::Header) -> Seal {
-        if block.transactions().is_empty() {
+        if block.parcels().is_empty() {
             Seal::None
         } else {
             Seal::Regular(Vec::new())

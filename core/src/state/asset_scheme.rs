@@ -82,10 +82,10 @@ pub struct AssetSchemeAddress(H256);
 impl_address!(AssetSchemeAddress, PREFIX);
 
 impl AssetSchemeAddress {
-    pub fn new(transaction_hash: H256) -> Self {
+    pub fn new(parcel_hash: H256) -> Self {
         let index = ::std::u64::MAX;
 
-        Self::from_transaction(transaction_hash, index)
+        Self::from_parcel_hash(parcel_hash, index)
     }
 }
 

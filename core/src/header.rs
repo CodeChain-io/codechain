@@ -49,8 +49,8 @@ pub struct Header {
     /// Block extra data.
     extra_data: Bytes,
 
-    /// Transactions root.
-    transactions_root: H256,
+    /// Parcels root.
+    parcels_root: H256,
     /// State root.
     state_root: H256,
     /// Block invoices root.
@@ -77,7 +77,7 @@ impl Default for Header {
             author: Default::default(),
             extra_data: vec![],
 
-            transactions_root: BLAKE_NULL_RLP,
+            parcels_root: BLAKE_NULL_RLP,
             state_root: BLAKE_NULL_RLP,
             invoices_root: BLAKE_NULL_RLP,
 
@@ -130,9 +130,9 @@ impl Header {
     pub fn invoices_root(&self) -> &H256 {
         &self.invoices_root
     }
-    /// Get the transactions root field of the header.
-    pub fn transactions_root(&self) -> &H256 {
-        &self.transactions_root
+    /// Get the parcels root field of the header.
+    pub fn parcels_root(&self) -> &H256 {
+        &self.parcels_root
     }
 
     /// Get the score field of the header.
@@ -184,9 +184,9 @@ impl Header {
         self.state_root = a;
         self.note_dirty();
     }
-    /// Set the transactions root field of the header.
-    pub fn set_transactions_root(&mut self, a: H256) {
-        self.transactions_root = a;
+    /// Set the parcels root field of the header.
+    pub fn set_parcels_root(&mut self, a: H256) {
+        self.parcels_root = a;
         self.note_dirty()
     }
     /// Set the invoices root field of the header.
@@ -243,7 +243,7 @@ impl Header {
         s.append(&self.parent_hash);
         s.append(&self.author);
         s.append(&self.state_root);
-        s.append(&self.transactions_root);
+        s.append(&self.parcels_root);
         s.append(&self.invoices_root);
         s.append(&self.score);
         s.append(&self.number);
@@ -287,7 +287,7 @@ impl Decodable for Header {
             parent_hash: r.val_at(0)?,
             author: r.val_at(1)?,
             state_root: r.val_at(2)?,
-            transactions_root: r.val_at(3)?,
+            parcels_root: r.val_at(3)?,
             invoices_root: r.val_at(4)?,
             score: r.val_at(5)?,
             number: r.val_at(6)?,

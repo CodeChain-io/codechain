@@ -22,4 +22,4 @@ mod transaction;
 pub use self::block::BlockView;
 pub use self::body::BodyView;
 pub use self::header::HeaderView;
-pub use self::transaction::TransactionView;
+pub use self::transaction::ParcelView;

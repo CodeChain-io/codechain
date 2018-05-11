@@ -16,7 +16,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use ccore::{Block, BlockNumber, Header, UnverifiedTransaction};
+use ccore::{Block, BlockNumber, Header, UnverifiedParcel};
 use ctypes::H256;
 
 use rlp::Encodable;
@@ -32,7 +32,7 @@ pub struct DownloadManager {
     best_number: BlockNumber,
     headers: HashMap<H256, Header>,
     // FIXME: Find more appropriate type for block body data
-    bodies: HashMap<H256, Vec<UnverifiedTransaction>>,
+    bodies: HashMap<H256, Vec<UnverifiedParcel>>,
 
     /// Hash of currently downloading header. Should be either included in `headers` or equal to `best_hash`
     downloading_header: Option<H256>,
@@ -97,25 +97,25 @@ impl DownloadManager {
     }
 
     /// Returns true if bodies were imported
-    pub fn import_bodies(&mut self, bodies: &[Vec<UnverifiedTransaction>]) -> bool {
+    pub fn import_bodies(&mut self, bodies: &[Vec<UnverifiedParcel>]) -> bool {
         let mut valid_bodies = HashMap::new();
         // Validity check
         for body in bodies {
-            let tx_root = ordered_trie_root(body.iter().map(|tx| tx.rlp_bytes()));
+            let parcels_root = ordered_trie_root(body.iter().map(|parcel| parcel.rlp_bytes()));
             let is_valid = self.downloading_bodies
                 .iter()
                 .map(|hash| self.headers.get(hash).expect("Downloading body's header must be known"))
-                .any(|header| *header.transactions_root() == tx_root);
+                .any(|header| *header.parcels_root() == parcels_root);
             if is_valid {
-                valid_bodies.insert(tx_root, body);
+                valid_bodies.insert(parcels_root, body);
             } else {
                 info!(target: "sync", "Unexpected body detected");
                 return false
             }
         }
 
-        for (tx_root, body) in valid_bodies {
-            for header in self.headers.values().filter(|header| *header.transactions_root() == tx_root) {
+        for (parcels_root, body) in valid_bodies {
+            for header in self.headers.values().filter(|header| *header.parcels_root() == parcels_root) {
                 self.bodies.insert(header.hash(), body.clone());
                 self.downloading_bodies.remove(&header.hash());
             }
@@ -199,7 +199,7 @@ impl DownloadManager {
                 self.best_number = header.number();
                 result.push(Block {
                     header,
-                    transactions: body,
+                    parcels: body,
                 });
             } else {
                 break
@@ -214,7 +214,7 @@ impl DownloadManager {
 mod tests {
     use std::ops::Range;
 
-    use ccore::{Action, Block, BlockNumber, Header, Transaction, UnverifiedTransaction};
+    use ccore::{Action, Block, BlockNumber, Header, Parcel, UnverifiedParcel};
     use ckeys::ECDSASignature;
     use ctypes::{H256, U256};
 
@@ -228,13 +228,13 @@ mod tests {
     struct TestEnvironment {
         chain: Vec<Block>,
         headers: Vec<Header>,
-        bodies: Vec<Vec<UnverifiedTransaction>>,
+        bodies: Vec<Vec<UnverifiedParcel>>,
         first_block: Block,
         manager: DownloadManager,
     }
 
-    fn dummy_transaction(nonce: U256) -> UnverifiedTransaction {
-        let raw = Transaction {
+    fn dummy_parcel(nonce: U256) -> UnverifiedParcel {
+        let raw = Parcel {
             nonce,
             fee: U256::zero(),
             action: Action::default(),
@@ -246,17 +246,17 @@ mod tests {
     fn dummy_block(number: BlockNumber, score: U256, nonces: Range<usize>) -> Block {
         let mut body = Vec::new();
         for n in nonces {
-            body.push(dummy_transaction(U256::from(n)));
+            body.push(dummy_parcel(U256::from(n)));
         }
         let mut header = Header::default();
         header.set_parent_hash(H256::default());
         header.set_number(number);
         header.set_score(score);
-        header.set_transactions_root(ordered_trie_root(body.iter().map(|tx| tx.rlp_bytes())));
+        header.set_parcels_root(ordered_trie_root(body.iter().map(|parcel| parcel.rlp_bytes())));
 
         Block {
             header,
-            transactions: body,
+            parcels: body,
         }
     }
 
@@ -276,7 +276,7 @@ mod tests {
     fn generate_test_environment(chain_length: usize) -> TestEnvironment {
         let chain = dummy_chain(chain_length);
         let headers: Vec<_> = chain.iter().map(|block| block.header.clone()).collect();
-        let bodies: Vec<_> = chain.iter().map(|block| block.transactions.clone()).collect();
+        let bodies: Vec<_> = chain.iter().map(|block| block.parcels.clone()).collect();
         let first_block = chain.first().unwrap().clone();
         let manager = DownloadManager::new(first_block.header.hash(), first_block.header.number());
 
@@ -406,7 +406,7 @@ mod tests {
         let importing_bodies: Vec<_> = chain
             .into_iter()
             .filter(|block| requested_hashes.contains(&block.header.hash()))
-            .map(|block| block.transactions)
+            .map(|block| block.parcels)
             .collect();
         assert!(manager.import_bodies(importing_bodies.as_slice()));
         for hash in requested_hashes {
@@ -479,7 +479,7 @@ mod tests {
         importing_blocks.drain(3..7);
         for block in &importing_blocks {
             manager.headers.insert(block.header.hash(), block.header.clone());
-            manager.bodies.insert(block.header.hash(), block.transactions.clone());
+            manager.bodies.insert(block.header.hash(), block.parcels.clone());
         }
 
         let drained_blocks = manager.drain();

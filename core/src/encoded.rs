@@ -30,7 +30,7 @@ use rlp::Rlp;
 
 use super::block::Block as FullBlock;
 use super::header::Header as FullHeader;
-use super::transaction::UnverifiedTransaction;
+use super::transaction::UnverifiedParcel;
 use super::types::BlockNumber;
 use super::views;
 
@@ -97,9 +97,9 @@ impl Header {
         self.view().state_root()
     }
 
-    /// Returns the transaction trie root.
-    pub fn transactions_root(&self) -> H256 {
-        self.view().transactions_root()
+    /// Returns the parcel trie root.
+    pub fn parcels_root(&self) -> H256 {
+        self.view().parcels_root()
     }
 
     /// Returns the invoices trie root
@@ -157,8 +157,8 @@ impl Body {
     }
 
     /// Fully decode this block body.
-    pub fn decode(&self) -> Vec<UnverifiedTransaction> {
-        self.view().transactions()
+    pub fn decode(&self) -> Vec<UnverifiedParcel> {
+        self.view().parcels()
     }
 
     /// Get the RLP of this block body.
@@ -175,24 +175,24 @@ impl Body {
 
 // forwarders to borrowed view.
 impl Body {
-    /// Get a vector of all transactions.
-    pub fn transactions(&self) -> Vec<UnverifiedTransaction> {
-        self.view().transactions()
+    /// Get a vector of all parcels.
+    pub fn parcels(&self) -> Vec<UnverifiedParcel> {
+        self.view().parcels()
     }
 
-    /// Number of transactions in the block.
-    pub fn transactions_count(&self) -> usize {
-        self.view().transactions_count()
+    /// Number of parcels in the block.
+    pub fn parcels_count(&self) -> usize {
+        self.view().parcels_count()
     }
 
-    /// A view over each transaction in the block.
-    pub fn transaction_views(&self) -> Vec<views::TransactionView> {
-        self.view().transaction_views()
+    /// A view over each parcel in the block.
+    pub fn parcel_views(&self) -> Vec<views::ParcelView> {
+        self.view().parcel_views()
     }
 
-    /// The hash of each transaction in the block.
-    pub fn transaction_hashes(&self) -> Vec<H256> {
-        self.view().transaction_hashes()
+    /// The hash of each parcel in the block.
+    pub fn parcel_hashes(&self) -> Vec<H256> {
+        self.view().parcel_hashes()
     }
 }
 
@@ -273,9 +273,9 @@ impl Block {
         self.header_view().state_root()
     }
 
-    /// Returns the transaction trie root.
-    pub fn transactions_root(&self) -> H256 {
-        self.header_view().transactions_root()
+    /// Returns the parcel trie root.
+    pub fn parcels_root(&self) -> H256 {
+        self.header_view().parcels_root()
     }
 
     /// Returns the invoices trie root
@@ -311,23 +311,23 @@ impl Block {
 
 // forwarders to body view.
 impl Block {
-    /// Get a vector of all transactions.
-    pub fn transactions(&self) -> Vec<UnverifiedTransaction> {
-        self.view().transactions()
+    /// Get a vector of all parcels.
+    pub fn parcels(&self) -> Vec<UnverifiedParcel> {
+        self.view().parcels()
     }
 
-    /// Number of transactions in the block.
-    pub fn transactions_count(&self) -> usize {
-        self.view().transactions_count()
+    /// Number of parcels in the block.
+    pub fn parcels_count(&self) -> usize {
+        self.view().parcels_count()
     }
 
-    /// A view over each transaction in the block.
-    pub fn transaction_views(&self) -> Vec<views::TransactionView> {
-        self.view().transaction_views()
+    /// A view over each parcel in the block.
+    pub fn parcel_views(&self) -> Vec<views::ParcelView> {
+        self.view().parcel_views()
     }
 
-    /// The hash of each transaction in the block.
-    pub fn transaction_hashes(&self) -> Vec<H256> {
-        self.view().transaction_hashes()
+    /// The hash of each parcel in the block.
+    pub fn parcel_hashes(&self) -> Vec<H256> {
+        self.view().parcel_hashes()
     }
 }
