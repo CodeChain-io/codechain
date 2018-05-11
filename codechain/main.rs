@@ -94,15 +94,13 @@ pub fn client_start(cfg: &config::Config, spec: &Spec, miner: Arc<Miner>) -> Res
 }
 
 #[cfg(all(unix, target_arch = "x86_64"))]
-fn main() {
+fn main() -> Result<(), String> {
     panic_hook::set();
 
     // Always print backtrace on panic.
     ::std::env::set_var("RUST_BACKTRACE", "1");
 
-    if let Err(err) = run() {
-        println!("{}", err);
-    }
+    run()
 }
 
 fn run() -> Result<(), String> {
