@@ -1,4 +1,4 @@
-use ccore::{Action, Block as CoreBlock};
+use ccore::{Block as CoreBlock, Transaction};
 use ctypes::{H160, H256, U256};
 
 #[derive(Debug, Serialize)]
@@ -6,7 +6,7 @@ use ctypes::{H160, H256, U256};
 pub struct Parcel {
     nonce: U256,
     fee: U256,
-    action: Action,
+    transaction: Transaction,
     network_id: u64,
     hash: H256,
 }
@@ -56,7 +56,7 @@ impl From<CoreBlock> for Block {
                 .map(|unverified| Parcel {
                     nonce: unverified.as_unsigned().nonce.clone(),
                     fee: unverified.as_unsigned().fee.clone(),
-                    action: unverified.as_unsigned().action.clone(),
+                    transaction: unverified.as_unsigned().transaction.clone(),
                     network_id: unverified.as_unsigned().network_id,
                     hash: unverified.hash(),
                 })

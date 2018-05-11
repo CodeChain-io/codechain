@@ -207,7 +207,7 @@ mod tests {
         parcel::Parcel {
             nonce,
             fee: U256::from(1245),
-            action: parcel::Action::Noop,
+            transaction: parcel::Transaction::Noop,
             network_id: 0u64,
         }.sign(keypair.private())
     }

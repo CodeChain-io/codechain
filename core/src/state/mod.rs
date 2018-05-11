@@ -28,7 +28,7 @@ use ccrypto::blake256;
 use ctypes::{Address, H256, Public, U128, U256, U512};
 use cvm::{decode, execute, ScriptResult, VMConfig};
 use error::Error;
-use parcel::{Action, AssetTransferInput, AssetTransferOutput, SignedParcel};
+use parcel::{AssetTransferInput, AssetTransferOutput, SignedParcel, Transaction};
 use trie::{self, Trie, TrieError, TrieFactory};
 use unexpected::Mismatch;
 
@@ -494,9 +494,9 @@ impl<B: Backend> State<B> {
         self.sub_balance(&sender, &fee.into())?;
         balance = balance - fee;
 
-        match t.action {
-            Action::Noop => Ok(None),
-            Action::Payment {
+        match t.transaction {
+            Transaction::Noop => Ok(None),
+            Transaction::Payment {
                 address,
                 value,
             } => {
@@ -511,13 +511,13 @@ impl<B: Backend> State<B> {
                 // balance = balance - value.into()
                 Ok(None)
             }
-            Action::SetRegularKey {
+            Transaction::SetRegularKey {
                 key,
             } => {
                 self.set_regular_key(&sender, &key)?;
                 Ok(None)
             }
-            Action::AssetMint {
+            Transaction::AssetMint {
                 ref metadata,
                 ref lock_script_hash,
                 ref amount,
@@ -527,7 +527,7 @@ impl<B: Backend> State<B> {
                 self.mint_asset(t.hash(), metadata, lock_script_hash, parameters, amount, registrar)?;
                 Ok(None)
             }
-            Action::AssetTransfer {
+            Transaction::AssetTransfer {
                 ref inputs,
                 ref outputs,
             } => self.transfer_asset(&t, inputs, outputs),
@@ -741,7 +741,7 @@ mod tests {
 
         let t = Parcel {
             fee: 5.into(),
-            action: Action::Payment {
+            transaction: Transaction::Payment {
                 address: receiver,
                 value: 10.into(),
             },
@@ -766,7 +766,7 @@ mod tests {
 
         let t = Parcel {
             fee: 5.into(),
-            action: Action::SetRegularKey {
+            transaction: Transaction::SetRegularKey {
                 key,
             },
             ..Parcel::default()
@@ -788,7 +788,7 @@ mod tests {
 
         let t = Parcel {
             fee: 5.into(),
-            action: Action::Payment {
+            transaction: Transaction::Payment {
                 address: receiver,
                 value: 30.into(),
             },
@@ -1033,7 +1033,7 @@ mod tests {
         let parameters = vec![];
         let amount = 100;
         let registrar = Some(Address::random());
-        let action = Action::AssetMint {
+        let transaction = Transaction::AssetMint {
             metadata: metadata.clone(),
             lock_script_hash,
             parameters,
@@ -1042,7 +1042,7 @@ mod tests {
         };
         let signed_parcel = Parcel {
             fee: 5.into(),
-            action,
+            transaction,
             ..Parcel::default()
         }.sign(&secret().into());
         let sender = signed_parcel.sender();
@@ -1086,7 +1086,7 @@ mod tests {
         let lock_script_hash = H256::random();
         let parameters = vec![];
         let registrar = Some(Address::random());
-        let action = Action::AssetMint {
+        let transaction = Transaction::AssetMint {
             metadata: metadata.clone(),
             lock_script_hash,
             parameters: vec![],
@@ -1095,7 +1095,7 @@ mod tests {
         };
         let signed_parcel = Parcel {
             fee: 5.into(),
-            action,
+            transaction,
             ..Parcel::default()
         }.sign(&secret().into());
         let sender = signed_parcel.sender();

@@ -164,16 +164,16 @@ pub struct Parcel {
     pub nonce: U256,
     /// Amount of CCC to be paid as a cost for distributing this parcel to the network.
     pub fee: U256,
-    /// Action, can be either payment or asset transfer
-    pub action: Action,
+    /// Transaction, can be either payment or asset transfer
+    pub transaction: Transaction,
     /// Mainnet or Testnet
     pub network_id: u64,
 }
 
-/// Parcel action type.
+/// Parcel transaction type.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub enum Action {
+pub enum Transaction {
     Noop,
     Payment {
         /// The receiver's address.
@@ -197,16 +197,16 @@ pub enum Action {
     },
 }
 
-impl Default for Action {
-    fn default() -> Action {
-        Action::Noop
+impl Default for Transaction {
+    fn default() -> Transaction {
+        Transaction::Noop
     }
 }
 
-impl Action {
+impl Transaction {
     fn without_script(&self) -> Self {
         match self {
-            &Action::AssetTransfer {
+            &Transaction::AssetTransfer {
                 ref inputs,
                 ref outputs,
             } => {
@@ -218,7 +218,7 @@ impl Action {
                         unlock_script: Vec::new(),
                     })
                     .collect();
-                Action::AssetTransfer {
+                Transaction::AssetTransfer {
                     inputs: new_inputs,
                     outputs: outputs.clone(),
                 }
@@ -228,16 +228,16 @@ impl Action {
     }
 }
 
-type ActionId = u8;
-const PAYMENT_ID: ActionId = 0x01;
-const SET_REGULAR_KEY_ID: ActionId = 0x02;
-const ASSET_MINT_ID: ActionId = 0x03;
-const ASSET_TRANSFER_ID: ActionId = 0x04;
+type TransactionId = u8;
+const PAYMENT_ID: TransactionId = 0x01;
+const SET_REGULAR_KEY_ID: TransactionId = 0x02;
+const ASSET_MINT_ID: TransactionId = 0x03;
+const ASSET_TRANSFER_ID: TransactionId = 0x04;
 
-impl rlp::Decodable for Action {
+impl rlp::Decodable for Transaction {
     fn decode(d: &UntrustedRlp) -> Result<Self, DecoderError> {
         if d.is_empty() {
-            return Ok(Action::Noop)
+            return Ok(Transaction::Noop)
         }
 
         match d.val_at(0)? {
@@ -245,7 +245,7 @@ impl rlp::Decodable for Action {
                 if d.item_count()? != 3 {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
-                Ok(Action::Payment {
+                Ok(Transaction::Payment {
                     address: d.val_at(1)?,
                     value: d.val_at(2)?,
                 })
@@ -254,7 +254,7 @@ impl rlp::Decodable for Action {
                 if d.item_count()? != 2 {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
-                Ok(Action::SetRegularKey {
+                Ok(Transaction::SetRegularKey {
                     key: d.val_at(1)?,
                 })
             }
@@ -262,7 +262,7 @@ impl rlp::Decodable for Action {
                 if d.item_count()? != 6 {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
-                Ok(Action::AssetMint {
+                Ok(Transaction::AssetMint {
                     metadata: d.val_at(1)?,
                     lock_script_hash: d.val_at(2)?,
                     parameters: d.val_at(3)?,
@@ -274,28 +274,28 @@ impl rlp::Decodable for Action {
                 if d.item_count()? != 3 {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
-                Ok(Action::AssetTransfer {
+                Ok(Transaction::AssetTransfer {
                     inputs: d.list_at(1)?,
                     outputs: d.list_at(2)?,
                 })
             }
-            _ => Err(DecoderError::Custom("Unexpected action")),
+            _ => Err(DecoderError::Custom("Unexpected transaction")),
         }
     }
 }
 
-impl rlp::Encodable for Action {
+impl rlp::Encodable for Transaction {
     fn rlp_append(&self, s: &mut RlpStream) {
         match *self {
-            Action::Noop => s.append_internal(&""),
-            Action::Payment {
+            Transaction::Noop => s.append_internal(&""),
+            Transaction::Payment {
                 ref address,
                 ref value,
             } => s.begin_list(3).append(&PAYMENT_ID).append(address).append(value),
-            Action::SetRegularKey {
+            Transaction::SetRegularKey {
                 ref key,
             } => s.begin_list(2).append(&SET_REGULAR_KEY_ID).append(key),
-            Action::AssetMint {
+            Transaction::AssetMint {
                 ref metadata,
                 ref lock_script_hash,
                 ref parameters,
@@ -308,7 +308,7 @@ impl rlp::Encodable for Action {
                 .append(parameters)
                 .append(amount)
                 .append(registrar),
-            Action::AssetTransfer {
+            Transaction::AssetTransfer {
                 ref inputs,
                 ref outputs,
             } => s.begin_list(3).append(&ASSET_TRANSFER_ID).append_list(inputs).append_list(outputs),
@@ -328,7 +328,7 @@ impl Parcel {
         s.begin_list(4);
         s.append(&self.nonce);
         s.append(&self.fee);
-        s.append(&self.action);
+        s.append(&self.transaction);
         s.append(&self.network_id);
     }
 
@@ -345,7 +345,7 @@ impl Parcel {
         stream.begin_list(4);
         stream.append(&self.nonce);
         stream.append(&self.fee);
-        stream.append(&self.action.without_script());
+        stream.append(&self.transaction.without_script());
         stream.append(&self.network_id);
         blake256(stream.as_raw())
     }
@@ -402,7 +402,7 @@ impl rlp::Decodable for UnverifiedParcel {
             unsigned: Parcel {
                 nonce: d.val_at(0)?,
                 fee: d.val_at(1)?,
-                action: d.val_at(2)?,
+                transaction: d.val_at(2)?,
                 network_id: d.val_at(3)?,
             },
             v: d.val_at(4)?,
@@ -437,7 +437,7 @@ impl UnverifiedParcel {
         s.begin_list(7);
         s.append(&self.nonce);
         s.append(&self.fee);
-        s.append(&self.action);
+        s.append(&self.transaction);
         s.append(&self.network_id);
         s.append(&self.v);
         s.append(&self.r);
@@ -635,7 +635,7 @@ mod tests {
     use ctypes::{Address, H256, Public, U256};
     use rlp::Encodable;
 
-    use super::{Action, Parcel, UnverifiedParcel};
+    use super::{Parcel, Transaction, UnverifiedParcel};
 
     #[test]
     fn test_unverified_parcel_rlp() {
@@ -651,33 +651,33 @@ mod tests {
 
     #[test]
     fn encode_and_decode_noop() {
-        let action = Action::Noop;
-        assert_eq!(action, ::rlp::decode(action.rlp_bytes().as_ref()))
+        let transaction = Transaction::Noop;
+        assert_eq!(transaction, ::rlp::decode(transaction.rlp_bytes().as_ref()))
     }
 
     #[test]
     fn encode_and_decode_payment() {
         let address = Address::random();
         let value = U256::from(12345);
-        let action = Action::Payment {
+        let transaction = Transaction::Payment {
             address,
             value,
         };
-        assert_eq!(action, ::rlp::decode(action.rlp_bytes().as_ref()))
+        assert_eq!(transaction, ::rlp::decode(transaction.rlp_bytes().as_ref()))
     }
 
     #[test]
     fn encode_and_decode_set_regular_key() {
         let key = Public::random();
-        let action = Action::SetRegularKey {
+        let transaction = Transaction::SetRegularKey {
             key,
         };
-        assert_eq!(action, ::rlp::decode(action.rlp_bytes().as_ref()))
+        assert_eq!(transaction, ::rlp::decode(transaction.rlp_bytes().as_ref()))
     }
 
     #[test]
     fn encode_and_decode_asset_mint() {
-        let action = Action::AssetMint {
+        let transaction = Transaction::AssetMint {
             metadata: "mint test".to_string(),
             lock_script_hash: H256::random(),
             parameters: vec![],
@@ -685,12 +685,12 @@ mod tests {
             registrar: None,
         };
 
-        assert_eq!(action, ::rlp::decode(action.rlp_bytes().as_ref()))
+        assert_eq!(transaction, ::rlp::decode(transaction.rlp_bytes().as_ref()))
     }
 
     #[test]
     fn encode_and_decode_asset_mint_with_parameters() {
-        let action = Action::AssetMint {
+        let transaction = Transaction::AssetMint {
             metadata: "mint test".to_string(),
             lock_script_hash: H256::random(),
             parameters: vec![vec![1, 2, 3], vec![4, 5, 6], vec![0, 7]],
@@ -698,18 +698,18 @@ mod tests {
             registrar: None,
         };
 
-        assert_eq!(action, ::rlp::decode(action.rlp_bytes().as_ref()))
+        assert_eq!(transaction, ::rlp::decode(transaction.rlp_bytes().as_ref()))
     }
 
     #[test]
     fn encode_and_decode_asset_transfer() {
         let inputs = vec![];
         let outputs = vec![];
-        let action = Action::AssetTransfer {
+        let transaction = Transaction::AssetTransfer {
             inputs,
             outputs,
         };
 
-        assert_eq!(action, ::rlp::decode(action.rlp_bytes().as_ref()))
+        assert_eq!(transaction, ::rlp::decode(transaction.rlp_bytes().as_ref()))
     }
 }

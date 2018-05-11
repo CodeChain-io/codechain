@@ -15,7 +15,7 @@ use std::io::Read;
 use std::process;
 
 use cbytes::Bytes;
-use ccore::{Action, AssetOutPoint, AssetTransferInput, AssetTransferOutput, Parcel, UnverifiedParcel};
+use ccore::{AssetOutPoint, AssetTransferInput, AssetTransferOutput, Parcel, Transaction, UnverifiedParcel};
 use ckeys::hex::FromHex;
 use ckeys::{KeyPair, Private, Secret};
 use codechain_rpc_client::client::{RpcClient, RpcError, RpcHttp};
@@ -168,7 +168,7 @@ fn get_unverified_parcel(data: &Value) -> Result<UnverifiedParcel, CommandError>
     let secret: Secret = get_h256(&data["secret"])?;
     let nonce: U256 = get_u256(&data["nonce"])?;
     let fee: U256 = get_u256(&data["fee"])?;
-    let action = get_action(&data["action"])?;
+    let transaction = get_transaction(&data["transaction"])?;
     let network_id: u64 = data["network_id"]
         .as_str()
         .ok_or_else(|| CommandError::InvalidData)?
@@ -177,21 +177,21 @@ fn get_unverified_parcel(data: &Value) -> Result<UnverifiedParcel, CommandError>
     let (t, _address, _) = Parcel {
         nonce,
         fee,
-        action,
+        transaction,
         network_id,
     }.sign(&secret.into())
         .deconstruct();
     Ok(t)
 }
 
-fn get_action(data: &Value) -> Result<Action, CommandError> {
-    let action_type = data["type"].as_str().ok_or_else(|| CommandError::InvalidData)?;
-    match action_type {
-        "noop" => Ok(Action::Noop),
+fn get_transaction(data: &Value) -> Result<Transaction, CommandError> {
+    let transaction_type = data["type"].as_str().ok_or_else(|| CommandError::InvalidData)?;
+    match transaction_type {
+        "noop" => Ok(Transaction::Noop),
         "payment" => {
             let address: H160 = get_h160(&data["data"]["address"])?;
             let value: U256 = get_u256(&data["data"]["value"])?;
-            Ok(Action::Payment {
+            Ok(Transaction::Payment {
                 address,
                 value,
             })
@@ -207,7 +207,7 @@ fn get_action(data: &Value) -> Result<Action, CommandError> {
             } else {
                 None
             };
-            Ok(Action::AssetMint {
+            Ok(Transaction::AssetMint {
                 metadata,
                 lock_script_hash,
                 parameters,
@@ -231,7 +231,7 @@ fn get_action(data: &Value) -> Result<Action, CommandError> {
                 }
                 result
             };
-            Ok(Action::AssetTransfer {
+            Ok(Transaction::AssetTransfer {
                 inputs,
                 outputs,
             })
