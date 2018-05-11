@@ -66,14 +66,14 @@ pub enum Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            &Error::StreamError(ref err) => err.fmt(f),
-            &Error::DecoderError(ref err) => err.fmt(f),
-            &Error::InvalidSign => fmt::Debug::fmt(&self, f),
-            &Error::InvalidState {
+            Error::StreamError(err) => err.fmt(f),
+            Error::DecoderError(err) => err.fmt(f),
+            Error::InvalidSign => fmt::Debug::fmt(&self, f),
+            Error::InvalidState {
                 ..
             } => fmt::Debug::fmt(&self, f),
-            &Error::UnreadySession => fmt::Debug::fmt(&self, f),
-            &Error::SymmetricCipherError(ref err) => fmt::Debug::fmt(&err, f),
+            Error::UnreadySession => fmt::Debug::fmt(&self, f),
+            Error::SymmetricCipherError(err) => fmt::Debug::fmt(&err, f),
         }
     }
 }
@@ -81,27 +81,27 @@ impl fmt::Display for Error {
 impl error::Error for Error {
     fn description(&self) -> &str {
         match self {
-            &Error::StreamError(ref err) => err.description(),
-            &Error::DecoderError(ref err) => err.description(),
-            &Error::InvalidSign => "Invalid sign",
-            &Error::InvalidState {
+            Error::StreamError(err) => err.description(),
+            Error::DecoderError(err) => err.description(),
+            Error::InvalidSign => "Invalid sign",
+            Error::InvalidState {
                 ..
             } => "Invalid state",
-            &Error::UnreadySession => "Unready session",
-            &Error::SymmetricCipherError(_) => "Symmetric cipher",
+            Error::UnreadySession => "Unready session",
+            Error::SymmetricCipherError(_) => "Symmetric cipher",
         }
     }
 
     fn cause(&self) -> Option<&error::Error> {
         match self {
-            &Error::StreamError(ref err) => Some(err),
-            &Error::DecoderError(ref err) => Some(err),
-            &Error::InvalidSign => None,
-            &Error::InvalidState {
+            Error::StreamError(err) => Some(err),
+            Error::DecoderError(err) => Some(err),
+            Error::InvalidSign => None,
+            Error::InvalidState {
                 ..
             } => None,
-            &Error::UnreadySession => None,
-            &Error::SymmetricCipherError(_) => None,
+            Error::UnreadySession => None,
+            Error::SymmetricCipherError(_) => None,
         }
     }
 }
@@ -233,7 +233,7 @@ impl Connection {
                 Message::Negotiation(msg) => {
                     let _ = self.expect_state(State::Established)?;
                     match msg.body() {
-                        &NegotiationBody::Request {
+                        NegotiationBody::Request {
                             ref extension_name,
                             ..
                         } => {
@@ -242,7 +242,7 @@ impl Connection {
                             callback.on_negotiated(&extension_name);
                             self.enqueue_negotiation_allowed(seq);
                         }
-                        &NegotiationBody::Allowed => {
+                        NegotiationBody::Allowed => {
                             let seq = msg.seq();
                             if let Some(name) = self.requested_negotiation.remove(&seq) {
                                 callback.on_negotiation_allowed(&name);
@@ -250,7 +250,7 @@ impl Connection {
                                 trace!(target: "net", "Negotiation::Allowed message received from non requested seq");
                             }
                         }
-                        &NegotiationBody::Denied(_) => {
+                        NegotiationBody::Denied(_) => {
                             // FIXME: Call on_connection_denied
                         }
                     };

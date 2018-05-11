@@ -59,9 +59,9 @@ impl Default for Transaction {
 impl Transaction {
     pub fn without_script(&self) -> Self {
         match self {
-            &Transaction::AssetTransfer {
-                ref inputs,
-                ref outputs,
+            Transaction::AssetTransfer {
+                inputs,
+                outputs,
             } => {
                 let new_inputs: Vec<_> = inputs
                     .iter()
@@ -139,21 +139,21 @@ impl Decodable for Transaction {
 
 impl Encodable for Transaction {
     fn rlp_append(&self, s: &mut RlpStream) {
-        match *self {
+        match self {
             Transaction::Noop => s.append_internal(&""),
             Transaction::Payment {
-                ref address,
-                ref value,
+                address,
+                value,
             } => s.begin_list(3).append(&PAYMENT_ID).append(address).append(value),
             Transaction::SetRegularKey {
-                ref key,
+                key,
             } => s.begin_list(2).append(&SET_REGULAR_KEY_ID).append(key),
             Transaction::AssetMint {
-                ref metadata,
-                ref lock_script_hash,
-                ref parameters,
-                ref amount,
-                ref registrar,
+                metadata,
+                lock_script_hash,
+                parameters,
+                amount,
+                registrar,
             } => s.begin_list(6)
                 .append(&ASSET_MINT_ID)
                 .append(metadata)
@@ -162,8 +162,8 @@ impl Encodable for Transaction {
                 .append(amount)
                 .append(registrar),
             Transaction::AssetTransfer {
-                ref inputs,
-                ref outputs,
+                inputs,
+                outputs,
             } => s.begin_list(3).append(&ASSET_TRANSFER_ID).append_list(inputs).append_list(outputs),
         };
     }
@@ -191,24 +191,24 @@ pub enum Error {
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
+        match self {
             Error::InvalidAssetAmount {
-                ref address,
-                ref expected,
-                ref got,
+                address,
+                expected,
+                got,
             } => write!(
                 f,
                 "AssetTransfer must consume input asset completely. The amount of asset({}) must be {}, but {}.",
                 address, expected, got
             ),
-            Error::AssetNotFound(ref addr) => write!(f, "Asset not found: {}", addr),
-            Error::AssetSchemeNotFound(ref addr) => write!(f, "Asset scheme not found: {}", addr),
-            Error::InvalidAssetType(ref addr) => write!(f, "Asset type is invalid: {}", addr),
+            Error::AssetNotFound(addr) => write!(f, "Asset not found: {}", addr),
+            Error::AssetSchemeNotFound(addr) => write!(f, "Asset scheme not found: {}", addr),
+            Error::InvalidAssetType(addr) => write!(f, "Asset type is invalid: {}", addr),
             Error::ScriptHashMismatch(mismatch) => {
                 write!(f, "Expected script with hash {}, but got {}", mismatch.expected, mismatch.found)
             }
             Error::InvalidScript => write!(f, "Failed to decode script"),
-            Error::FailedToUnlock(ref hash) => write!(f, "Failed to unlock asset {}", hash),
+            Error::FailedToUnlock(hash) => write!(f, "Failed to unlock asset {}", hash),
         }
     }
 }

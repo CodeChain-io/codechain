@@ -41,7 +41,7 @@ impl Default for DatabaseCompactionProfile {
 impl DatabaseCompactionProfile {
     /// Returns corresponding compaction profile.
     pub fn compaction_profile(&self, db_path: &Path) -> CompactionProfile {
-        match *self {
+        match self {
             DatabaseCompactionProfile::Auto => CompactionProfile::auto(db_path),
             DatabaseCompactionProfile::SSD => CompactionProfile::ssd(),
             DatabaseCompactionProfile::HDD => CompactionProfile::hdd(),

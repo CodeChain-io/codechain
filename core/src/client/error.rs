@@ -44,9 +44,9 @@ where
 
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter) -> Result<(), FmtError> {
-        match *self {
-            Error::Util(ref err) => write!(f, "{}", err),
-            Error::Database(ref s) => write!(f, "Database error: {}", s),
+        match self {
+            Error::Util(err) => write!(f, "{}", err),
+            Error::Database(s) => write!(f, "Database error: {}", s),
         }
     }
 }

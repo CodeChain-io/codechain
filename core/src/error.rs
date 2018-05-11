@@ -43,7 +43,7 @@ pub enum ImportError {
 
 impl fmt::Display for ImportError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let msg = match *self {
+        let msg = match self {
             ImportError::AlreadyInChain => "block already in chain",
             ImportError::AlreadyQueued => "block already in the block queue",
             ImportError::KnownBad => "block known to be bad",
@@ -119,23 +119,23 @@ impl fmt::Display for BlockError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use self::BlockError::*;
 
-        let msg: String = match *self {
-            ExtraDataOutOfBounds(ref oob) => format!("Extra block data too long. {}", oob),
-            InvalidSealArity(ref mis) => format!("Block seal in incorrect format: {}", mis),
-            InvalidStateRoot(ref mis) => format!("Invalid state root in header: {}", mis),
-            InvalidParcelsRoot(ref mis) => format!("Invalid parcels root in header: {}", mis),
-            ScoreOutOfBounds(ref oob) => format!("Invalid block score: {}", oob),
-            InvalidScore(ref mis) => format!("Invalid block score: {}", mis),
-            MismatchedH256SealElement(ref mis) => format!("Seal element out of bounds: {}", mis),
+        let msg: String = match self {
+            ExtraDataOutOfBounds(oob) => format!("Extra block data too long. {}", oob),
+            InvalidSealArity(mis) => format!("Block seal in incorrect format: {}", mis),
+            InvalidStateRoot(mis) => format!("Invalid state root in header: {}", mis),
+            InvalidParcelsRoot(mis) => format!("Invalid parcels root in header: {}", mis),
+            ScoreOutOfBounds(oob) => format!("Invalid block score: {}", oob),
+            InvalidScore(mis) => format!("Invalid block score: {}", mis),
+            MismatchedH256SealElement(mis) => format!("Seal element out of bounds: {}", mis),
             InvalidSeal => "Block has invalid seal.".into(),
-            InvalidInvoicesRoot(ref mis) => format!("Invalid invoices trie root in header: {}", mis),
-            InvalidTimestamp(ref oob) => format!("Invalid timestamp in header: {}", oob),
-            TemporarilyInvalid(ref oob) => format!("Future timestamp in header: {}", oob),
-            InvalidParentHash(ref mis) => format!("Invalid parent hash: {}", mis),
-            InvalidNumber(ref mis) => format!("Invalid number in header: {}", mis),
-            RidiculousNumber(ref oob) => format!("Implausible block number. {}", oob),
-            UnknownParent(ref hash) => format!("Unknown parent: {}", hash),
-            TooManyParcels(ref address) => format!("Too many parcels from: {}", address),
+            InvalidInvoicesRoot(mis) => format!("Invalid invoices trie root in header: {}", mis),
+            InvalidTimestamp(oob) => format!("Invalid timestamp in header: {}", oob),
+            TemporarilyInvalid(oob) => format!("Future timestamp in header: {}", oob),
+            InvalidParentHash(mis) => format!("Invalid parent hash: {}", mis),
+            InvalidNumber(mis) => format!("Invalid number in header: {}", mis),
+            RidiculousNumber(oob) => format!("Implausible block number. {}", oob),
+            UnknownParent(hash) => format!("Unknown parent: {}", hash),
+            TooManyParcels(address) => format!("Too many parcels from: {}", address),
         };
 
         f.write_fmt(format_args!("Block error ({})", msg))
@@ -174,20 +174,20 @@ pub enum Error {
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            Error::Client(ref err) => err.fmt(f),
-            Error::Util(ref err) => err.fmt(f),
-            Error::Io(ref err) => err.fmt(f),
-            Error::Block(ref err) => err.fmt(f),
-            Error::Parcel(ref err) => err.fmt(f),
-            Error::Import(ref err) => err.fmt(f),
-            Error::Engine(ref err) => err.fmt(f),
-            Error::Key(ref err) => err.fmt(f),
-            Error::Trie(ref err) => err.fmt(f),
+        match self {
+            Error::Client(err) => err.fmt(f),
+            Error::Util(err) => err.fmt(f),
+            Error::Io(err) => err.fmt(f),
+            Error::Block(err) => err.fmt(f),
+            Error::Parcel(err) => err.fmt(f),
+            Error::Import(err) => err.fmt(f),
+            Error::Engine(err) => err.fmt(f),
+            Error::Key(err) => err.fmt(f),
+            Error::Trie(err) => err.fmt(f),
             Error::PowHashInvalid => f.write_str("Invalid or out of date PoW hash."),
             Error::PowInvalid => f.write_str("Invalid nonce or mishash"),
-            Error::AccountProvider(ref err) => err.fmt(f),
-            Error::Transaction(ref err) => err.fmt(f),
+            Error::AccountProvider(err) => err.fmt(f),
+            Error::Transaction(err) => err.fmt(f),
         }
     }
 }

@@ -51,7 +51,7 @@ pub enum ExpectedLen {
 
 impl fmt::Display for ExpectedLen {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
+        match self {
             ExpectedLen::Any => write!(fmt, "even length"),
             ExpectedLen::Exact(v) => write!(fmt, "length of {}", v * 2),
             ExpectedLen::Between(min, max) => write!(fmt, "length between ({}; {}]", min * 2, max * 2),

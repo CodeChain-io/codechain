@@ -291,10 +291,10 @@ impl Extension {
 
     fn is_valid_request(&self, request: &RequestMessage) -> bool {
         match request {
-            &RequestMessage::Headers {
+            RequestMessage::Headers {
                 ..
             } => true,
-            &RequestMessage::Bodies(ref hashes) => hashes.len() != 0,
+            RequestMessage::Bodies(hashes) => hashes.len() != 0,
         }
     }
 
@@ -374,8 +374,8 @@ impl Extension {
             if let &Some((ref last_message, _)) = &peer.last_request {
                 return match (response, last_message) {
                     (
-                        &ResponseMessage::Headers(ref headers),
-                        &RequestMessage::Headers {
+                        ResponseMessage::Headers(headers),
+                        RequestMessage::Headers {
                             start_number,
                             ..
                         },
@@ -383,10 +383,10 @@ impl Extension {
                         if headers.len() == 0 {
                             true
                         } else {
-                            headers.first().expect("Response is not empty").number() == start_number
+                            &headers.first().expect("Response is not empty").number() == start_number
                         }
                     }
-                    (&ResponseMessage::Bodies(..), &RequestMessage::Bodies(..)) => true,
+                    (ResponseMessage::Bodies(..), RequestMessage::Bodies(..)) => true,
                     _ => false,
                 }
             }
@@ -396,8 +396,8 @@ impl Extension {
 
     fn apply_response(&self, from: &NodeToken, response: &ResponseMessage) {
         let apply_success = match response {
-            &ResponseMessage::Headers(ref headers) => self.manager.lock().import_headers(headers),
-            &ResponseMessage::Bodies(ref bodies) => self.manager.lock().import_bodies(bodies),
+            ResponseMessage::Headers(headers) => self.manager.lock().import_headers(headers),
+            ResponseMessage::Bodies(bodies) => self.manager.lock().import_bodies(bodies),
         };
         if let Some(peer) = self.peers.write().get_mut(from) {
             if apply_success {

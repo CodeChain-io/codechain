@@ -168,7 +168,7 @@ impl DownloadManager {
 
     pub fn mark_as_failed(&mut self, message: &RequestMessage) {
         match message {
-            &RequestMessage::Headers {
+            RequestMessage::Headers {
                 ..
             } => {
                 // FIXME: validate this part better
@@ -176,7 +176,7 @@ impl DownloadManager {
                     self.downloading_header = None;
                 }
             }
-            &RequestMessage::Bodies(ref hashes) => {
+            RequestMessage::Bodies(hashes) => {
                 for hash in hashes {
                     self.downloading_bodies.remove(hash);
                 }

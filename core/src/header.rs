@@ -210,7 +210,7 @@ impl Header {
     pub fn hash(&self) -> H256 {
         let mut hash = self.hash.borrow_mut();
         match &mut *hash {
-            &mut Some(ref h) => h.clone(),
+            Some(h) => h.clone(),
             hash @ &mut None => {
                 let h = self.rlp_blake(Seal::With);
                 *hash = Some(h.clone());

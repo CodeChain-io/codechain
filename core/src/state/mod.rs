@@ -458,8 +458,8 @@ impl<B: Backend> State<B> {
         let error = self.execute(t)?;
         self.commit()?;
 
-        let invoice = match error {
-            Some(ref err) => {
+        let invoice = match &error {
+            Some(err) => {
                 info!(target: "tx", "Cannot apply transaction: {:?}", err);
                 Invoice::new(TransactionOutcome::Failed)
             }

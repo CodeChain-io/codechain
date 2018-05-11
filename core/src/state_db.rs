@@ -401,12 +401,12 @@ impl StateDB {
     ) -> bool
     where
         Item: CacheableItem, {
-        let mut parent = match *parent_hash {
+        let mut parent = match parent_hash {
             None => {
                 trace!(target: "state_db", "Cache lookup skipped for {:?}: no parent hash", addr);
                 return false
             }
-            Some(ref parent) => parent,
+            Some(parent) => parent,
         };
         if modifications.is_empty() {
             return true

@@ -223,8 +223,8 @@ where
         let mut cache = self.cache.borrow_mut();
         for (address, ref mut a) in cache.iter_mut().filter(|&(_, ref a)| a.is_dirty()) {
             a.state = EntryState::Committed;
-            match a.item {
-                Some(ref mut item) => {
+            match &a.item {
+                Some(item) => {
                     trie.insert(address.as_ref(), &item.rlp())?;
                 }
                 None => {
@@ -310,7 +310,7 @@ where
             let entry = c.get_mut(a).expect("entry known to exist in the cache; qed");
 
             match &mut entry.item {
-                &mut Some(_) => {}
+                Some(_) => {}
                 slot => *slot = Some(default()),
             }
 

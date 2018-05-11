@@ -48,22 +48,22 @@ impl Message {
     }
 
     #[allow(dead_code)]
-    fn version(&self) -> Version {
+    fn version(&self) -> &Version {
         match self {
-            &Message::Sync {
+            Message::Sync {
                 version,
                 ..
             } => version,
-            &Message::Ack(version) => version,
+            Message::Ack(version) => version,
         }
     }
 
     fn protocol_id(&self) -> ProtocolId {
         match self {
-            &Message::Sync {
+            Message::Sync {
                 ..
             } => SYNC_ID,
-            &Message::Ack(_) => ACK_ID,
+            Message::Ack(_) => ACK_ID,
         }
     }
 }
@@ -72,14 +72,14 @@ impl Message {
 impl Encodable for Message {
     fn rlp_append(&self, s: &mut RlpStream) {
         match self {
-            &Message::Sync {
+            Message::Sync {
                 version,
-                ref session_id,
+                session_id,
             } => {
-                s.begin_list(3).append(&version).append(&self.protocol_id()).append(session_id);
+                s.begin_list(3).append(version).append(&self.protocol_id()).append(session_id);
             }
-            &Message::Ack(version) => {
-                s.begin_list(2).append(&version).append(&self.protocol_id());
+            Message::Ack(version) => {
+                s.begin_list(2).append(version).append(&self.protocol_id());
             }
         }
     }

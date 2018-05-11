@@ -39,9 +39,9 @@ pub enum Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            &Error::IoError(ref err) => err.fmt(f),
-            &Error::DecoderError(ref err) => err.fmt(f),
-            &Error::InvalidSign => fmt::Debug::fmt(&self, f),
+            Error::IoError(err) => err.fmt(f),
+            Error::DecoderError(err) => err.fmt(f),
+            Error::InvalidSign => fmt::Debug::fmt(&self, f),
         }
     }
 }
@@ -49,16 +49,16 @@ impl fmt::Display for Error {
 impl StdError for Error {
     fn description(&self) -> &str {
         match self {
-            &Error::IoError(ref err) => err.description(),
-            &Error::DecoderError(ref err) => err.description(),
-            &Error::InvalidSign => "invalid sign",
+            Error::IoError(err) => err.description(),
+            Error::DecoderError(err) => err.description(),
+            Error::InvalidSign => "invalid sign",
         }
     }
     fn cause(&self) -> Option<&StdError> {
         match self {
-            &Error::IoError(ref err) => Some(err),
-            &Error::DecoderError(ref err) => Some(err),
-            &Error::InvalidSign => None,
+            Error::IoError(err) => Some(err),
+            Error::DecoderError(err) => Some(err),
+            Error::InvalidSign => None,
         }
     }
 }

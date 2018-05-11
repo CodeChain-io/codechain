@@ -100,9 +100,9 @@ type Result<T> = ::std::result::Result<T, Error>;
 impl ::std::fmt::Display for Error {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         match self {
-            &Error::InvalidStream(_) => ::std::fmt::Debug::fmt(self, f),
-            &Error::InvalidNode(_) => ::std::fmt::Debug::fmt(self, f),
-            &Error::General(_) => ::std::fmt::Debug::fmt(self, f),
+            Error::InvalidStream(_) => ::std::fmt::Debug::fmt(self, f),
+            Error::InvalidNode(_) => ::std::fmt::Debug::fmt(self, f),
+            Error::General(_) => ::std::fmt::Debug::fmt(self, f),
         }
     }
 }
@@ -442,13 +442,13 @@ impl IoHandler<Message> for Handler {
     }
 
     fn message(&self, io: &IoContext<Message>, message: &Message) -> IoHandlerResult<()> {
-        match *message {
-            Message::RegisterSession(ref socket_address, ref session) => {
+        match message {
+            Message::RegisterSession(socket_address, session) => {
                 let mut manager = self.manager.lock();
                 manager.register_session(socket_address.clone(), session.clone())?;
                 Ok(())
             }
-            Message::RequestConnection(ref socket_address, ref session) => {
+            Message::RequestConnection(socket_address, session) => {
                 let mut manager = self.manager.lock();
                 if self.max_peers <= manager.connections.len() {
                     trace!(target: "net", "Already has maximum peers({})", manager.connections.len());
@@ -468,25 +468,25 @@ impl IoHandler<Message> for Handler {
             }
             Message::RequestNegotiation {
                 node_id,
-                ref extension_name,
+                extension_name,
                 version,
             } => {
                 let mut manager = self.manager.lock();
-                let mut connection = manager.connections.get_mut(&node_id).ok_or(Error::InvalidNode(node_id))?;
-                connection.enqueue_negotiation_request(extension_name.clone(), version);
-                io.update_registration(node_id)?;
+                let mut connection = manager.connections.get_mut(node_id).ok_or(Error::InvalidNode(*node_id))?;
+                connection.enqueue_negotiation_request(extension_name.clone(), *version);
+                io.update_registration(*node_id)?;
                 Ok(())
             }
             Message::SendExtensionMessage {
                 node_id,
-                ref extension_name,
-                ref need_encryption,
-                ref data,
+                extension_name,
+                need_encryption,
+                data,
             } => {
                 let mut manager = self.manager.lock();
-                let mut connection = manager.connections.get_mut(&node_id).ok_or(Error::InvalidNode(node_id))?;
+                let mut connection = manager.connections.get_mut(node_id).ok_or(Error::InvalidNode(*node_id))?;
                 connection.enqueue_extension_message(extension_name.clone(), *need_encryption, data.clone());
-                io.update_registration(node_id)?;
+                io.update_registration(*node_id)?;
                 Ok(())
             }
         }

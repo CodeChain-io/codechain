@@ -89,12 +89,12 @@ pub enum TendermintMessage {
 impl Encodable for TendermintMessage {
     fn rlp_append(&self, s: &mut RlpStream) {
         match self {
-            &TendermintMessage::ConsensusMessage(ref message) => {
+            TendermintMessage::ConsensusMessage(message) => {
                 s.begin_list(2);
                 s.append(&MESSAGE_ID_CONSENSUS_MESSAGE);
                 s.append(message);
             }
-            &TendermintMessage::ProposalBlock(ref bytes) => {
+            TendermintMessage::ProposalBlock(bytes) => {
                 s.begin_list(2);
                 s.append(&MESSAGE_ID_PROPOSAL_BLOCK);
                 s.append(bytes);

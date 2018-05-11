@@ -72,7 +72,7 @@ impl Step {
     }
 
     fn number(&self) -> u8 {
-        match *self {
+        match self {
             Step::Propose => 0,
             Step::Prevote => 1,
             Step::Precommit => 2,
@@ -356,8 +356,8 @@ impl Tendermint {
 
     fn handle_valid_message(&self, message: &ConsensusMessage) {
         let ref vote_step = message.vote_step;
-        let is_newer_than_lock = match *self.lock_change.read() {
-            Some(ref lock) => vote_step > &lock.vote_step,
+        let is_newer_than_lock = match &*self.lock_change.read() {
+            Some(lock) => vote_step > &lock.vote_step,
             None => true,
         };
         let lock_change = is_newer_than_lock && vote_step.step == Step::Prevote && message.block_hash.is_some()

@@ -90,12 +90,12 @@ struct ClientIoHandler {
 
 impl IoHandler<ClientIoMessage> for ClientIoHandler {
     fn message(&self, _io: &IoContext<ClientIoMessage>, net_message: &ClientIoMessage) -> IoHandlerResult<()> {
-        match *net_message {
+        match net_message {
             ClientIoMessage::BlockVerified => {
                 self.client.import_verified_blocks();
             }
-            ClientIoMessage::NewParcels(ref parcels, peer_id) => {
-                self.client.import_queued_parcels(parcels, peer_id);
+            ClientIoMessage::NewParcels(parcels, peer_id) => {
+                self.client.import_queued_parcels(parcels, *peer_id);
             }
         }
         Ok(())

@@ -77,7 +77,7 @@ pub enum ParcelError {
 
 pub fn parcel_error_message(error: &ParcelError) -> String {
     use self::ParcelError::*;
-    match *error {
+    match error {
         AlreadyImported => "Already imported".into(),
         Old => "No longer valid".into(),
         TooCheapToReplace => "Gas price too low to replace".into(),
@@ -92,19 +92,19 @@ pub fn parcel_error_message(error: &ParcelError) -> String {
             cost,
         } => format!("Insufficient balance for parcel. Balance={}, Cost={}", balance, cost),
         InvalidNonce {
-            ref expected,
-            ref got,
+            expected,
+            got,
         } => format!("Invalid parcel nonce: expected {}, found {}", expected, got),
         NotEnoughCash {
-            ref required,
-            ref got,
+            required,
+            got,
         } => format!(
             "Cost of parcel exceeds sender balance. {} is required \
              but the sender only has {}",
             required, got
         ),
         NotAllowed => "Sender does not have permissions to execute this type of transction".into(),
-        InvalidSignature(ref err) => format!("Parcel has invalid signature: {}.", err),
+        InvalidSignature(err) => format!("Parcel has invalid signature: {}.", err),
     }
 }
 
