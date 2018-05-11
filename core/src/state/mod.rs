@@ -28,7 +28,7 @@ use ccrypto::blake256;
 use ctypes::{Address, H256, Public, U128, U256, U512};
 use cvm::{decode, execute, ScriptResult, VMConfig};
 use error::Error;
-use parcel::{AssetTransferInput, AssetTransferOutput, SignedParcel, Transaction};
+use parcel::{AssetTransferInput, AssetTransferOutput, SignedParcel};
 use trie::{self, Trie, TrieError, TrieFactory};
 use unexpected::Mismatch;
 
@@ -36,6 +36,7 @@ use self::cache::Cache;
 use super::invoice::{Invoice, TransactionOutcome};
 use super::parcel::ParcelError;
 use super::state_db::StateDB;
+use super::Transaction;
 
 #[macro_use]
 mod address;
