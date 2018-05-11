@@ -46,8 +46,8 @@ use super::codechain_machine::CodeChainMachine;
 use super::error::Error;
 use super::header::Header;
 use super::machine::Machine;
+use super::parcel::{SignedParcel, UnverifiedParcel};
 use super::spec::CommonParams;
-use super::transaction::{SignedParcel, UnverifiedParcel};
 
 /// Seal type.
 #[derive(Debug, PartialEq, Eq)]

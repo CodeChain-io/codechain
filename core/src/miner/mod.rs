@@ -14,9 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod local_transactions;
+mod local_parcels;
 mod miner;
-mod transaction_queue;
+mod parcel_queue;
 
 use cbytes::Bytes;
 use ctypes::{Address, H256, U256};
@@ -25,8 +25,8 @@ pub use self::miner::{Miner, MinerOptions};
 use super::account_provider::SignError;
 use super::client::{AccountData, BlockChain, BlockProducer, ImportSealedBlock, MiningBlockChainClient};
 use super::error::Error;
+use super::parcel::{SignedParcel, UnverifiedParcel};
 use super::state::StateInfo;
-use super::transaction::{SignedParcel, UnverifiedParcel};
 
 /// Miner client API
 pub trait MinerService: Send + Sync {

@@ -27,11 +27,11 @@ use super::super::block::{ClosedBlock, IsBlock};
 use super::super::client::{AccountData, BlockChain, BlockProducer, ImportSealedBlock, MiningBlockChainClient};
 use super::super::consensus::{CodeChainEngine, Seal};
 use super::super::error::Error;
+use super::super::parcel::{ParcelError, SignedParcel, UnverifiedParcel};
 use super::super::spec::Spec;
 use super::super::state::State;
-use super::super::transaction::{ParcelError, SignedParcel, UnverifiedParcel};
 use super::super::types::{BlockId, ParcelId};
-use super::transaction_queue::{
+use super::parcel_queue::{
     AccountDetails, ParcelDetailsProvider as ParcelQueueDetailsProvider, ParcelOrigin, ParcelQueue, RemovalReason,
 };
 use super::{MinerService, MinerStatus, ParcelImportResult};

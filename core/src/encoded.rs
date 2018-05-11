@@ -30,7 +30,7 @@ use rlp::Rlp;
 
 use super::block::Block as FullBlock;
 use super::header::Header as FullHeader;
-use super::transaction::UnverifiedParcel;
+use super::parcel::UnverifiedParcel;
 use super::types::BlockNumber;
 use super::views;
 

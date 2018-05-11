@@ -28,14 +28,14 @@ use ccrypto::blake256;
 use ctypes::{Address, H256, Public, U128, U256, U512};
 use cvm::{decode, execute, ScriptResult, VMConfig};
 use error::Error;
-use transaction::{Action, AssetTransferInput, AssetTransferOutput, SignedParcel};
+use parcel::{Action, AssetTransferInput, AssetTransferOutput, SignedParcel};
 use trie::{self, Trie, TrieError, TrieFactory};
 use unexpected::Mismatch;
 
 use self::cache::Cache;
 use super::invoice::{Invoice, TransactionOutcome};
+use super::parcel::ParcelError;
 use super::state_db::StateDB;
-use super::transaction::ParcelError;
 
 #[macro_use]
 mod address;
@@ -657,8 +657,8 @@ mod tests {
     use ccrypto::blake256;
     use ctypes::{Address, Secret, U256};
 
+    use super::super::parcel::{AssetOutPoint, Parcel};
     use super::super::tests::helpers::{get_temp_state, get_temp_state_db};
-    use super::super::transaction::{AssetOutPoint, Parcel};
     use super::*;
 
     fn secret() -> Secret {

@@ -66,13 +66,13 @@ mod header;
 mod invoice;
 mod machine;
 mod miner;
+mod parcel;
 mod pod_account;
 mod pod_state;
 mod service;
 mod spec;
 mod state;
 mod state_db;
-mod transaction;
 mod types;
 mod verification;
 mod views;
@@ -91,11 +91,11 @@ pub use error::{BlockImportError, Error, ImportError};
 pub use header::{Header, Seal};
 pub use invoice::Invoice;
 pub use miner::{Miner, MinerOptions, MinerService};
-pub use service::ClientService;
-pub use spec::Spec;
-pub use state::{Asset, AssetAddress, AssetScheme, AssetSchemeAddress};
-pub use transaction::{
+pub use parcel::{
     parcel_error_message, Action, AssetOutPoint, AssetTransferInput, AssetTransferOutput, Parcel, SignedParcel,
     UnverifiedParcel,
 };
+pub use service::ClientService;
+pub use spec::Spec;
+pub use state::{Asset, AssetAddress, AssetScheme, AssetSchemeAddress};
 pub use types::{BlockId, BlockNumber};

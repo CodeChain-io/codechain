@@ -28,7 +28,7 @@ use super::super::client::BlockInfo;
 use super::super::consensus::CodeChainEngine;
 use super::super::error::{BlockError, Error};
 use super::super::header::Header;
-use super::super::transaction::{SignedParcel, UnverifiedParcel};
+use super::super::parcel::{SignedParcel, UnverifiedParcel};
 use super::super::types::BlockNumber;
 use super::super::views::BlockView;
 

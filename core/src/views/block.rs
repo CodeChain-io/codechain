@@ -19,7 +19,7 @@ use ctypes::H256;
 use rlp::Rlp;
 
 use super::super::header::Header;
-use super::super::transaction::{LocalizedParcel, UnverifiedParcel};
+use super::super::parcel::{LocalizedParcel, UnverifiedParcel};
 use super::{HeaderView, ParcelView};
 
 /// View onto block rlp.
