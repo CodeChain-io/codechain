@@ -24,7 +24,7 @@ use linked_hash_map::LinkedHashMap;
 use multimap::MultiMap;
 use table::Table;
 
-use super::super::parcel::{Action, ParcelError, SignedParcel};
+use super::super::parcel::{ParcelError, SignedParcel, Transaction};
 use super::super::types::BlockNumber;
 use super::local_parcels::{LocalParcelsList, Status as LocalParcelStatus};
 use super::ParcelImportResult;
@@ -182,8 +182,8 @@ impl QueuedParcel {
     }
 
     fn cost(&self) -> U256 {
-        let value = match (*self.parcel).action {
-            Action::Payment {
+        let value = match (*self.parcel).transaction {
+            Transaction::Payment {
                 value,
                 ..
             } => value,
