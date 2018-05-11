@@ -14,31 +14,31 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use super::super::transaction::{SignedTransaction, TransactionError};
+use super::super::transaction::{ParcelError, SignedParcel};
 use ctypes::{H256, U256};
 use linked_hash_map::LinkedHashMap;
 
-/// Status of local transaction.
-/// Can indicate that the transaction is currently part of the queue (`Pending/Future`)
-/// or gives a reason why the transaction was removed.
+/// Status of local parcel.
+/// Can indicate that the parcel is currently part of the queue (`Pending/Future`)
+/// or gives a reason why the parcel was removed.
 #[derive(Debug, PartialEq, Clone)]
 pub enum Status {
-    /// The transaction is currently in the transaction queue.
+    /// The parcel is currently in the parcel queue.
     Pending,
-    /// The transaction is in future part of the queue.
+    /// The parcel is in future part of the queue.
     Future,
-    /// Transaction is already mined.
-    Mined(SignedTransaction),
-    /// Transaction is dropped because of limit
-    Dropped(SignedTransaction),
-    /// Replaced because of higher gas price of another transaction.
-    Replaced(SignedTransaction, U256, H256),
-    /// Transaction was never accepted to the queue.
-    Rejected(SignedTransaction, TransactionError),
-    /// Transaction is invalid.
-    Invalid(SignedTransaction),
-    /// Transaction was canceled.
-    Canceled(SignedTransaction),
+    /// Parcel is already mined.
+    Mined(SignedParcel),
+    /// Parcel is dropped because of limit
+    Dropped(SignedParcel),
+    /// Replaced because of higher gas price of another parcel.
+    Replaced(SignedParcel, U256, H256),
+    /// Parcel was never accepted to the queue.
+    Rejected(SignedParcel, ParcelError),
+    /// Parcel is invalid.
+    Invalid(SignedParcel),
+    /// Parcel was canceled.
+    Canceled(SignedParcel),
 }
 
 impl Status {
@@ -47,102 +47,102 @@ impl Status {
     }
 }
 
-/// Keeps track of local transactions that are in the queue or were mined/dropped recently.
+/// Keeps track of local parcels that are in the queue or were mined/dropped recently.
 #[derive(Debug)]
-pub struct LocalTransactionsList {
+pub struct LocalParcelsList {
     max_old: usize,
-    transactions: LinkedHashMap<H256, Status>,
+    parcels: LinkedHashMap<H256, Status>,
 }
 
-impl Default for LocalTransactionsList {
+impl Default for LocalParcelsList {
     fn default() -> Self {
         Self::new(10)
     }
 }
 
-impl LocalTransactionsList {
-    /// Create a new list of local transactions.
+impl LocalParcelsList {
+    /// Create a new list of local parcels.
     pub fn new(max_old: usize) -> Self {
-        LocalTransactionsList {
+        LocalParcelsList {
             max_old,
-            transactions: Default::default(),
+            parcels: Default::default(),
         }
     }
 
-    /// Mark transaction with given hash as pending.
+    /// Mark parcel with given hash as pending.
     pub fn mark_pending(&mut self, hash: H256) {
-        debug!(target: "own_tx", "Imported to Current (hash {:?})", hash);
+        debug!(target: "own_parcel", "Imported to Current (hash {:?})", hash);
         self.clear_old();
-        self.transactions.insert(hash, Status::Pending);
+        self.parcels.insert(hash, Status::Pending);
     }
 
-    /// Mark transaction with given hash as future.
+    /// Mark parcel with given hash as future.
     pub fn mark_future(&mut self, hash: H256) {
-        debug!(target: "own_tx", "Imported to Future (hash {:?})", hash);
-        self.transactions.insert(hash, Status::Future);
+        debug!(target: "own_parcel", "Imported to Future (hash {:?})", hash);
+        self.parcels.insert(hash, Status::Future);
         self.clear_old();
     }
 
-    /// Mark given transaction as rejected from the queue.
-    pub fn mark_rejected(&mut self, tx: SignedTransaction, err: TransactionError) {
-        debug!(target: "own_tx", "Transaction rejected (hash {:?}): {:?}", tx.hash(), err);
-        self.transactions.insert(tx.hash(), Status::Rejected(tx, err));
+    /// Mark given parcel as rejected from the queue.
+    pub fn mark_rejected(&mut self, parcel: SignedParcel, err: ParcelError) {
+        debug!(target: "own_parcel", "Parcel rejected (hash {:?}): {:?}", parcel.hash(), err);
+        self.parcels.insert(parcel.hash(), Status::Rejected(parcel, err));
         self.clear_old();
     }
 
-    /// Mark the transaction as replaced by transaction with given hash.
-    pub fn mark_replaced(&mut self, tx: SignedTransaction, gas_price: U256, hash: H256) {
-        debug!(target: "own_tx", "Transaction replaced (hash {:?}) by {:?} (new gas price: {:?})", tx.hash(), hash, gas_price);
-        self.transactions.insert(tx.hash(), Status::Replaced(tx, gas_price, hash));
+    /// Mark the parcel as replaced by parcel with given hash.
+    pub fn mark_replaced(&mut self, parcel: SignedParcel, gas_price: U256, hash: H256) {
+        debug!(target: "own_parcel", "Parcel replaced (hash {:?}) by {:?} (new gas price: {:?})", parcel.hash(), hash, gas_price);
+        self.parcels.insert(parcel.hash(), Status::Replaced(parcel, gas_price, hash));
         self.clear_old();
     }
 
-    /// Mark transaction as invalid.
-    pub fn mark_invalid(&mut self, tx: SignedTransaction) {
-        warn!(target: "own_tx", "Transaction marked invalid (hash {:?})", tx.hash());
-        self.transactions.insert(tx.hash(), Status::Invalid(tx));
+    /// Mark parcel as invalid.
+    pub fn mark_invalid(&mut self, signed: SignedParcel) {
+        warn!(target: "own_parcel", "Parcel marked invalid (hash {:?})", signed.hash());
+        self.parcels.insert(signed.hash(), Status::Invalid(signed));
         self.clear_old();
     }
 
-    /// Mark transaction as canceled.
-    pub fn mark_canceled(&mut self, tx: SignedTransaction) {
-        warn!(target: "own_tx", "Transaction canceled (hash {:?})", tx.hash());
-        self.transactions.insert(tx.hash(), Status::Canceled(tx));
+    /// Mark parcel as canceled.
+    pub fn mark_canceled(&mut self, signed: SignedParcel) {
+        warn!(target: "own_parcel", "Parcel canceled (hash {:?})", signed.hash());
+        self.parcels.insert(signed.hash(), Status::Canceled(signed));
         self.clear_old();
     }
 
-    /// Mark transaction as dropped because of limit.
-    pub fn mark_dropped(&mut self, tx: SignedTransaction) {
-        warn!(target: "own_tx", "Transaction dropped (hash {:?})", tx.hash());
-        self.transactions.insert(tx.hash(), Status::Dropped(tx));
+    /// Mark parcel as dropped because of limit.
+    pub fn mark_dropped(&mut self, signed: SignedParcel) {
+        warn!(target: "own_parcel", "Parcel dropped (hash {:?})", signed.hash());
+        self.parcels.insert(signed.hash(), Status::Dropped(signed));
         self.clear_old();
     }
 
-    /// Mark transaction as mined.
-    pub fn mark_mined(&mut self, tx: SignedTransaction) {
-        info!(target: "own_tx", "Transaction mined (hash {:?})", tx.hash());
-        self.transactions.insert(tx.hash(), Status::Mined(tx));
+    /// Mark parcel as mined.
+    pub fn mark_mined(&mut self, signed: SignedParcel) {
+        info!(target: "own_parcel", "Parcel mined (hash {:?})", signed.hash());
+        self.parcels.insert(signed.hash(), Status::Mined(signed));
         self.clear_old();
     }
 
-    /// Returns true if the transaction is already in local transactions.
+    /// Returns true if the parcel is already in local parcels.
     pub fn contains(&self, hash: &H256) -> bool {
-        self.transactions.contains_key(hash)
+        self.parcels.contains_key(hash)
     }
 
-    /// Return a map of all currently stored transactions.
-    pub fn all_transactions(&self) -> &LinkedHashMap<H256, Status> {
-        &self.transactions
+    /// Return a map of all currently stored parcels.
+    pub fn all_parcels(&self) -> &LinkedHashMap<H256, Status> {
+        &self.parcels
     }
 
     fn clear_old(&mut self) {
-        let number_of_old = self.transactions.values().filter(|status| !status.is_current()).count();
+        let number_of_old = self.parcels.values().filter(|status| !status.is_current()).count();
 
         if self.max_old >= number_of_old {
             return
         }
 
-        let to_remove = self.transactions
+        let to_remove = self.parcels
             .iter()
             .filter(|&(_, status)| !status.is_current())
             .map(|(hash, _)| *hash)
@@ -150,7 +150,7 @@ impl LocalTransactionsList {
             .collect::<Vec<_>>();
 
         for hash in to_remove {
-            self.transactions.remove(&hash);
+            self.parcels.remove(&hash);
         }
     }
 }
@@ -163,35 +163,35 @@ mod tests {
     use ctypes::U256;
 
     #[test]
-    fn should_add_transaction_as_pending() {
+    fn should_add_parcel_as_pending() {
         // given
-        let mut list = LocalTransactionsList::default();
+        let mut list = LocalParcelsList::default();
 
         // when
         list.mark_pending(10.into());
         list.mark_future(20.into());
 
         // then
-        assert!(list.contains(&10.into()), "Should contain the transaction.");
-        assert!(list.contains(&20.into()), "Should contain the transaction.");
-        let statuses = list.all_transactions().values().cloned().collect::<Vec<Status>>();
+        assert!(list.contains(&10.into()), "Should contain the parcel.");
+        assert!(list.contains(&20.into()), "Should contain the parcel.");
+        let statuses = list.all_parcels().values().cloned().collect::<Vec<Status>>();
         assert_eq!(statuses, vec![Status::Pending, Status::Future]);
     }
 
     #[test]
-    fn should_clear_old_transactions() {
+    fn should_clear_old_parcels() {
         // given
-        let mut list = LocalTransactionsList::new(1);
-        let tx1 = new_tx(10.into());
-        let tx1_hash = tx1.hash();
-        let tx2 = new_tx(50.into());
-        let tx2_hash = tx2.hash();
+        let mut list = LocalParcelsList::new(1);
+        let parcel1 = new_parcel(10.into());
+        let parcel1_hash = parcel1.hash();
+        let parcel2 = new_parcel(50.into());
+        let parcel2_hash = parcel2.hash();
 
         list.mark_pending(10.into());
-        list.mark_invalid(tx1);
-        list.mark_dropped(tx2);
-        assert!(list.contains(&tx2_hash));
-        assert!(!list.contains(&tx1_hash));
+        list.mark_invalid(parcel1);
+        list.mark_dropped(parcel2);
+        assert!(list.contains(&parcel2_hash));
+        assert!(!list.contains(&parcel1_hash));
         assert!(list.contains(&10.into()));
 
         // when
@@ -202,9 +202,9 @@ mod tests {
         assert!(list.contains(&15.into()));
     }
 
-    fn new_tx(nonce: U256) -> SignedTransaction {
+    fn new_parcel(nonce: U256) -> SignedParcel {
         let keypair = Random.generate().unwrap();
-        transaction::Transaction {
+        transaction::Parcel {
             nonce,
             fee: U256::from(1245),
             action: transaction::Action::Noop,

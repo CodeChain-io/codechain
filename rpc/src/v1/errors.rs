@@ -22,22 +22,22 @@ use jsonrpc_core::{Error, ErrorCode, Value};
 
 mod codes {
     pub const UNKNOWN_ERROR: i64 = -32009;
-    pub const TRANSACTION_ERROR: i64 = -32010;
+    pub const PARCEL_ERROR: i64 = -32010;
     pub const KVDB_ERROR: i64 = -32011;
 }
 
-pub fn transaction<T: Into<CoreError>>(error: T) -> Error {
+pub fn parcel<T: Into<CoreError>>(error: T) -> Error {
     let error = error.into();
-    if let CoreError::Transaction(e) = error {
+    if let CoreError::Parcel(e) = error {
         Error {
-            code: ErrorCode::ServerError(codes::TRANSACTION_ERROR),
-            message: ::ccore::transaction_error_message(&e),
+            code: ErrorCode::ServerError(codes::PARCEL_ERROR),
+            message: ::ccore::parcel_error_message(&e),
             data: None,
         }
     } else {
         Error {
             code: ErrorCode::ServerError(codes::UNKNOWN_ERROR),
-            message: "Unknown error when sending transaction.".into(),
+            message: "Unknown error when sending parcel.".into(),
             data: Some(Value::String(format!("{:?}", error))),
         }
     }

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ccore::{Header, UnverifiedTransaction};
+use ccore::{Header, UnverifiedParcel};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::{Message, MESSAGE_ID_BODIES, MESSAGE_ID_HEADERS};
@@ -22,7 +22,7 @@ use super::{Message, MESSAGE_ID_BODIES, MESSAGE_ID_HEADERS};
 #[derive(Debug, PartialEq)]
 pub enum ResponseMessage {
     Headers(Vec<Header>),
-    Bodies(Vec<Vec<UnverifiedTransaction>>),
+    Bodies(Vec<Vec<UnverifiedParcel>>),
 }
 
 impl Into<Message> for ResponseMessage {

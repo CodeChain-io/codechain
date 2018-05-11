@@ -3,7 +3,7 @@ use ctypes::{H160, H256, U256};
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Transaction {
+pub struct Parcel {
     nonce: U256,
     fee: U256,
     action: Action,
@@ -21,7 +21,7 @@ pub struct Block {
 
     extra_data: Vec<u8>,
 
-    transactions_root: H256,
+    parcelss_root: H256,
     state_root: H256,
     invoices_root: H256,
 
@@ -29,7 +29,7 @@ pub struct Block {
     seal: Vec<Vec<u8>>,
 
     hash: H256,
-    transactions: Vec<Transaction>,
+    parcels: Vec<Parcel>,
 }
 
 impl From<CoreBlock> for Block {
@@ -42,7 +42,7 @@ impl From<CoreBlock> for Block {
 
             extra_data: block.header.extra_data().clone(),
 
-            transactions_root: block.header.transactions_root().clone(),
+            parcelss_root: block.header.parcels_root().clone(),
             state_root: block.header.state_root().clone(),
             invoices_root: block.header.invoices_root().clone(),
 
@@ -50,10 +50,10 @@ impl From<CoreBlock> for Block {
             seal: block.header.seal().clone().to_vec(),
 
             hash: block.header.hash(),
-            transactions: block
-                .transactions
+            parcels: block
+                .parcels
                 .into_iter()
-                .map(|unverified| Transaction {
+                .map(|unverified| Parcel {
                     nonce: unverified.as_unsigned().nonce.clone(),
                     fee: unverified.as_unsigned().fee.clone(),
                     action: unverified.as_unsigned().action.clone(),

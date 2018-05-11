@@ -31,12 +31,12 @@ use super::super::db::{self, CacheUpdatePolicy, Readable, Writable};
 use super::super::encoded;
 use super::super::header::Header;
 use super::super::invoice::Invoice;
-use super::super::transaction::LocalizedTransaction;
+use super::super::transaction::LocalizedParcel;
 use super::super::types::BlockNumber;
 use super::super::views::{BlockView, HeaderView};
 use super::best_block::BestBlock;
 use super::block_info::{BlockInfo, BlockLocation, BranchBecomingCanonChainData};
-use super::extras::{BlockDetails, BlockInvoices, EpochTransitions, TransactionAddress, EPOCH_KEY_PREFIX};
+use super::extras::{BlockDetails, BlockInvoices, EpochTransitions, ParcelAddress, EPOCH_KEY_PREFIX};
 
 /// Structure providing fast access to blockchain data.
 ///
@@ -52,7 +52,7 @@ pub struct BlockChain {
     // extra caches
     block_details: RwLock<HashMap<H256, BlockDetails>>,
     block_hashes: RwLock<HashMap<BlockNumber, H256>>,
-    transaction_addresses: RwLock<HashMap<H256, TransactionAddress>>,
+    parcel_addresses: RwLock<HashMap<H256, ParcelAddress>>,
     block_invoices: RwLock<HashMap<H256, BlockInvoices>>,
 
     db: Arc<KeyValueDB>,
@@ -60,7 +60,7 @@ pub struct BlockChain {
     pending_best_block: RwLock<Option<BestBlock>>,
     pending_block_hashes: RwLock<HashMap<BlockNumber, H256>>,
     pending_block_details: RwLock<HashMap<H256, BlockDetails>>,
-    pending_transaction_addresses: RwLock<HashMap<H256, Option<TransactionAddress>>>,
+    pending_parcel_addresses: RwLock<HashMap<H256, Option<ParcelAddress>>>,
 }
 
 impl BlockChain {
@@ -72,13 +72,13 @@ impl BlockChain {
             block_bodies: RwLock::new(HashMap::new()),
             block_details: RwLock::new(HashMap::new()),
             block_hashes: RwLock::new(HashMap::new()),
-            transaction_addresses: RwLock::new(HashMap::new()),
+            parcel_addresses: RwLock::new(HashMap::new()),
             block_invoices: RwLock::new(HashMap::new()),
             db: db.clone(),
             pending_best_block: RwLock::new(None),
             pending_block_hashes: RwLock::new(HashMap::new()),
             pending_block_details: RwLock::new(HashMap::new()),
-            pending_transaction_addresses: RwLock::new(HashMap::new()),
+            pending_parcel_addresses: RwLock::new(HashMap::new()),
         };
 
         // load best block
@@ -257,7 +257,7 @@ impl BlockChain {
                 block_hashes: self.prepare_block_hashes_update(bytes, &info),
                 block_details: self.prepare_block_details_update(bytes, &info),
                 block_invoices: self.prepare_block_invoices_update(invoices, &info),
-                transactions_addresses: self.prepare_transaction_addresses_update(bytes, &info),
+                parcels_addresses: self.prepare_parcel_addresses_update(bytes, &info),
                 info: info.clone(),
                 timestamp: header.timestamp(),
                 block: bytes,
@@ -273,27 +273,27 @@ impl BlockChain {
         let mut pending_best_block = self.pending_best_block.write();
         let mut pending_write_hashes = self.pending_block_hashes.write();
         let mut pending_block_details = self.pending_block_details.write();
-        let mut pending_write_txs = self.pending_transaction_addresses.write();
+        let mut pending_write_parcels = self.pending_parcel_addresses.write();
 
         let mut best_block = self.best_block.write();
         let mut write_block_details = self.block_details.write();
         let mut write_hashes = self.block_hashes.write();
-        let mut write_txs = self.transaction_addresses.write();
+        let mut write_parcels = self.parcel_addresses.write();
         // update best block
         if let Some(block) = pending_best_block.take() {
             *best_block = block;
         }
 
-        let pending_txs = mem::replace(&mut *pending_write_txs, HashMap::new());
-        let (retracted_txs, enacted_txs) =
-            pending_txs.into_iter().partition::<HashMap<_, _>, _>(|&(_, ref value)| value.is_none());
+        let pending_parcels = mem::replace(&mut *pending_write_parcels, HashMap::new());
+        let (retracted_parcels, enacted_parcels) =
+            pending_parcels.into_iter().partition::<HashMap<_, _>, _>(|&(_, ref value)| value.is_none());
 
         write_hashes.extend(mem::replace(&mut *pending_write_hashes, HashMap::new()));
-        write_txs.extend(enacted_txs.into_iter().map(|(k, v)| (k, v.expect("Transactions were partitioned; qed"))));
+        write_parcels.extend(enacted_parcels.into_iter().map(|(k, v)| (k, v.expect("Parcels were partitioned; qed"))));
         write_block_details.extend(mem::replace(&mut *pending_block_details, HashMap::new()));
 
-        for hash in retracted_txs.keys() {
-            write_txs.remove(hash);
+        for hash in retracted_parcels.keys() {
+            write_parcels.remove(hash);
         }
     }
 
@@ -326,7 +326,7 @@ impl BlockChain {
 
             let mut write_hashes = self.pending_block_hashes.write();
             let mut write_details = self.pending_block_details.write();
-            let mut write_txs = self.pending_transaction_addresses.write();
+            let mut write_parcels = self.pending_parcel_addresses.write();
 
             batch.extend_with_cache(
                 db::COL_EXTRA,
@@ -342,8 +342,8 @@ impl BlockChain {
             );
             batch.extend_with_option_cache(
                 db::COL_EXTRA,
-                &mut *write_txs,
-                update.transactions_addresses,
+                &mut *write_parcels,
+                update.parcels_addresses,
                 CacheUpdatePolicy::Overwrite,
             );
         }
@@ -411,23 +411,23 @@ impl BlockChain {
         block_invoices
     }
 
-    /// This function returns modified transaction addresses.
-    fn prepare_transaction_addresses_update(
+    /// This function returns modified parcel addresses.
+    fn prepare_parcel_addresses_update(
         &self,
         block_bytes: &[u8],
         info: &BlockInfo,
-    ) -> HashMap<H256, Option<TransactionAddress>> {
+    ) -> HashMap<H256, Option<ParcelAddress>> {
         let block = BlockView::new(block_bytes);
-        let transaction_hashes = block.transaction_hashes();
+        let parcel_hashes = block.parcel_hashes();
 
         match info.location {
-            BlockLocation::CanonChain => transaction_hashes
+            BlockLocation::CanonChain => parcel_hashes
                 .into_iter()
                 .enumerate()
-                .map(|(i, tx_hash)| {
+                .map(|(i, parcel_hash)| {
                     (
-                        tx_hash,
-                        Some(TransactionAddress {
+                        parcel_hash,
+                        Some(ParcelAddress {
                             block_hash: info.hash,
                             index: i,
                         }),
@@ -437,26 +437,26 @@ impl BlockChain {
             BlockLocation::BranchBecomingCanonChain(ref data) => {
                 let addresses = data.enacted.iter().flat_map(|hash| {
                     let body = self.block_body(hash).expect("Enacted block must be in database.");
-                    let hashes = body.transaction_hashes();
+                    let hashes = body.parcel_hashes();
                     hashes
                         .into_iter()
                         .enumerate()
-                        .map(|(i, tx_hash)| {
+                        .map(|(i, parcel_hash)| {
                             (
-                                tx_hash,
-                                Some(TransactionAddress {
+                                parcel_hash,
+                                Some(ParcelAddress {
                                     block_hash: *hash,
                                     index: i,
                                 }),
                             )
                         })
-                        .collect::<HashMap<H256, Option<TransactionAddress>>>()
+                        .collect::<HashMap<H256, Option<ParcelAddress>>>()
                 });
 
-                let current_addresses = transaction_hashes.into_iter().enumerate().map(|(i, tx_hash)| {
+                let current_addresses = parcel_hashes.into_iter().enumerate().map(|(i, parcel_hash)| {
                     (
-                        tx_hash,
-                        Some(TransactionAddress {
+                        parcel_hash,
+                        Some(ParcelAddress {
                             block_hash: info.hash,
                             index: i,
                         }),
@@ -465,11 +465,11 @@ impl BlockChain {
 
                 let retracted = data.retracted.iter().flat_map(|hash| {
                     let body = self.block_body(hash).expect("Retracted block must be in database.");
-                    let hashes = body.transaction_hashes();
-                    hashes.into_iter().map(|hash| (hash, None)).collect::<HashMap<H256, Option<TransactionAddress>>>()
+                    let hashes = body.parcel_hashes();
+                    hashes.into_iter().map(|hash| (hash, None)).collect::<HashMap<H256, Option<ParcelAddress>>>()
                 });
 
-                // The order here is important! Don't remove transaction if it was part of enacted blocks as well.
+                // The order here is important! Don't remove parcel if it was part of enacted blocks as well.
                 retracted.chain(addresses).chain(current_addresses).collect()
             }
             BlockLocation::Branch => HashMap::new(),
@@ -737,14 +737,14 @@ pub trait BlockProvider {
     /// Get the hash of given block's number.
     fn block_hash(&self, index: BlockNumber) -> Option<H256>;
 
-    /// Get the address of transaction with given hash.
-    fn transaction_address(&self, hash: &H256) -> Option<TransactionAddress>;
+    /// Get the address of parcel with given hash.
+    fn parcel_address(&self, hash: &H256) -> Option<ParcelAddress>;
 
     /// Get invoices of block with given hash.
     fn block_invoices(&self, hash: &H256) -> Option<BlockInvoices>;
 
-    /// Get transaction invoice.
-    fn transaction_invoice(&self, address: &TransactionAddress) -> Option<Invoice>;
+    /// Get parcel invoice.
+    fn parcel_invoice(&self, address: &ParcelAddress) -> Option<Invoice>;
 
     /// Get the partial-header of a block.
     fn block_header(&self, hash: &H256) -> Option<Header> {
@@ -754,7 +754,7 @@ pub trait BlockProvider {
     /// Get the header RLP of a block.
     fn block_header_data(&self, hash: &H256) -> Option<encoded::Header>;
 
-    /// Get the block body (uncles and transactions).
+    /// Get the block body (uncles and parcels).
     fn block_body(&self, hash: &H256) -> Option<encoded::Body>;
 
     /// Get the number of given block's hash.
@@ -762,19 +762,18 @@ pub trait BlockProvider {
         self.block_details(hash).map(|details| details.number)
     }
 
-    /// Get transaction with given transaction hash.
-    fn transaction(&self, address: &TransactionAddress) -> Option<LocalizedTransaction> {
+    /// Get parcel with given parcel hash.
+    fn parcel(&self, address: &ParcelAddress) -> Option<LocalizedParcel> {
         self.block_body(&address.block_hash).and_then(|body| {
             self.block_number(&address.block_hash)
-                .and_then(|n| body.view().localized_transaction_at(&address.block_hash, n, address.index))
+                .and_then(|n| body.view().localized_parcel_at(&address.block_hash, n, address.index))
         })
     }
 
-    /// Get a list of transactions for a given block.
+    /// Get a list of parcels for a given block.
     /// Returns None if block does not exist.
-    fn transactions(&self, hash: &H256) -> Option<Vec<LocalizedTransaction>> {
-        self.block_body(hash)
-            .and_then(|body| self.block_number(hash).map(|n| body.view().localized_transactions(hash, n)))
+    fn parcels(&self, hash: &H256) -> Option<Vec<LocalizedParcel>> {
+        self.block_body(hash).and_then(|body| self.block_number(hash).map(|n| body.view().localized_parcels(hash, n)))
     }
 
     /// Returns reference to genesis hash.
@@ -873,9 +872,9 @@ impl BlockProvider for BlockChain {
         Some(result)
     }
 
-    /// Get the address of transaction with given hash.
-    fn transaction_address(&self, hash: &H256) -> Option<TransactionAddress> {
-        let result = self.db.read_with_cache(db::COL_EXTRA, &self.transaction_addresses, hash)?;
+    /// Get the address of parcel with given hash.
+    fn parcel_address(&self, hash: &H256) -> Option<ParcelAddress> {
+        let result = self.db.read_with_cache(db::COL_EXTRA, &self.parcel_addresses, hash)?;
         Some(result)
     }
 
@@ -885,8 +884,8 @@ impl BlockProvider for BlockChain {
         Some(result)
     }
 
-    /// Get transaction invoice.
-    fn transaction_invoice(&self, address: &TransactionAddress) -> Option<Invoice> {
+    /// Get parcel invoice.
+    fn parcel_invoice(&self, address: &ParcelAddress) -> Option<Invoice> {
         self.block_invoices(&address.block_hash).and_then(|bi| bi.invoices.into_iter().nth(address.index))
     }
 }
@@ -951,8 +950,8 @@ pub struct ExtrasUpdate<'a> {
     pub block_details: HashMap<H256, BlockDetails>,
     /// Modified block invoices.
     pub block_invoices: HashMap<H256, BlockInvoices>,
-    /// Modified transaction addresses (None signifies removed transactions).
-    pub transactions_addresses: HashMap<H256, Option<TransactionAddress>>,
+    /// Modified parcel addresses (None signifies removed parcels).
+    pub parcels_addresses: HashMap<H256, Option<ParcelAddress>>,
 }
 
 /// Represents a tree route between `from` block and `to` block:

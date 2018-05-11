@@ -90,7 +90,7 @@ pub struct Config {
     pub db_path: String,
     pub chain_type: ChainType,
     pub enable_block_sync: bool,
-    pub enable_tx_relay: bool,
+    pub enable_parcel_relay: bool,
     pub secret_key: Secret,
     pub author: Option<Address>,
     pub engine_signer: Option<Address>,
@@ -123,8 +123,8 @@ impl Config {
         if matches.is_present("no-sync") {
             self.enable_block_sync = false;
         }
-        if matches.is_present("no-tx-relay") {
-            self.enable_tx_relay = false;
+        if matches.is_present("no-parcel-relay") {
+            self.enable_parcel_relay = false;
         }
         if let Some(secret) = matches.value_of("secret-key") {
             self.secret_key = Secret::from_str(secret).map_err(|_| "Invalid secret key")?;

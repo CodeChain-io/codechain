@@ -10,7 +10,7 @@
     }
   },
   {
-    "name": "chain_sendSignedTransaction",
+    "name": "chain_sendSignedParcel",
     "data": {
       "secret": "ede1d4ccb4ec9a8bbbae9a13db3f4a7b56ea04189be86ac3a6a439d9a0a1addd",
       "nonce": "2",
@@ -26,7 +26,7 @@
     }
   },
   {
-    "name": "chain_getTransactionInvoice",
+    "name": "chain_getParcelInvoice",
     "data": {
       "hash": "884ec79b24b486b4f8c1aa37a0eb1b9a986fd8749ce063499c811032b08cca7d"
     }

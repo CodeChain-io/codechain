@@ -24,7 +24,7 @@ use rlp::{self, RlpStream};
 use spec::Spec;
 use state::State;
 use state_db::StateDB;
-use transaction::SignedTransaction;
+use transaction::SignedParcel;
 
 pub fn create_test_block(header: &Header) -> Bytes {
     let mut rlp = RlpStream::new_list(2);
@@ -33,11 +33,11 @@ pub fn create_test_block(header: &Header) -> Bytes {
     rlp.out()
 }
 
-pub fn create_test_block_with_data(header: &Header, transactions: &[SignedTransaction], uncles: &[Header]) -> Bytes {
+pub fn create_test_block_with_data(header: &Header, parcels: &[SignedParcel], uncles: &[Header]) -> Bytes {
     let mut rlp = RlpStream::new_list(3);
     rlp.append(header);
-    rlp.begin_list(transactions.len());
-    for t in transactions {
+    rlp.begin_list(parcels.len());
+    for t in parcels {
         rlp.append_raw(&rlp::encode(t).into_vec(), 1);
     }
     rlp.append_list(&uncles);

@@ -41,7 +41,7 @@ error_chain! {
     }
 }
 
-/// Write transaction. Batches a sequence of put/delete operations for efficiency.
+/// Write parcel. Batches a sequence of put/delete operations for efficiency.
 #[derive(Default, Clone, PartialEq)]
 pub struct DBTransaction {
     /// Database operations.
@@ -68,19 +68,19 @@ pub enum DBOp {
 }
 
 impl DBTransaction {
-    /// Create new transaction.
+    /// Create new parcel.
     pub fn new() -> DBTransaction {
         DBTransaction::with_capacity(256)
     }
 
-    /// Create new transaction with capacity.
+    /// Create new parcel with capacity.
     pub fn with_capacity(cap: usize) -> DBTransaction {
         DBTransaction {
             ops: Vec::with_capacity(cap),
         }
     }
 
-    /// Insert a key-value pair in the transaction. Any existing value will be overwritten upon write.
+    /// Insert a key-value pair in the parcel. Any existing value will be overwritten upon write.
     pub fn put(&mut self, col: Option<u32>, key: &[u8], value: &[u8]) {
         let mut ekey = ElasticArray32::new();
         ekey.append_slice(key);
@@ -91,7 +91,7 @@ impl DBTransaction {
         });
     }
 
-    /// Insert a key-value pair in the transaction. Any existing value will be overwritten upon write.
+    /// Insert a key-value pair in the parcel. Any existing value will be overwritten upon write.
     pub fn put_vec(&mut self, col: Option<u32>, key: &[u8], value: Bytes) {
         let mut ekey = ElasticArray32::new();
         ekey.append_slice(key);
@@ -102,7 +102,7 @@ impl DBTransaction {
         });
     }
 
-    /// Insert a key-value pair in the transaction. Any existing value will be overwritten upon write.
+    /// Insert a key-value pair in the parcel. Any existing value will be overwritten upon write.
     /// Value will be RLP-compressed on flush
     pub fn put_compressed(&mut self, col: Option<u32>, key: &[u8], value: Bytes) {
         let mut ekey = ElasticArray32::new();
@@ -144,7 +144,7 @@ impl DBTransaction {
 /// The API laid out here, along with the `Sync` bound implies interior synchronization for
 /// implementation.
 pub trait KeyValueDB: Sync + Send {
-    /// Helper to create a new transaction.
+    /// Helper to create a new parcel.
     fn transaction(&self) -> DBTransaction {
         DBTransaction::new()
     }
@@ -155,10 +155,10 @@ pub trait KeyValueDB: Sync + Send {
     /// Get a value by partial key. Only works for flushed data.
     fn get_by_prefix(&self, col: Option<u32>, prefix: &[u8]) -> Option<Box<[u8]>>;
 
-    /// Write a transaction of changes to the buffer.
+    /// Write a parcel of changes to the buffer.
     fn write_buffered(&self, transaction: DBTransaction);
 
-    /// Write a transaction of changes to the backing store.
+    /// Write a parcel of changes to the backing store.
     fn write(&self, transaction: DBTransaction) -> Result<()> {
         self.write_buffered(transaction);
         self.flush()

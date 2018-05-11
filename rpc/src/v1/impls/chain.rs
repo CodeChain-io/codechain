@@ -18,7 +18,7 @@ use std::sync::Arc;
 
 use ccore::{
     Asset, AssetAddress, AssetScheme, AssetSchemeAddress, BlockChainClient, BlockId, BlockInfo, ChainInfo, Client,
-    Invoice, Miner, MinerService, Nonce, SignedTransaction,
+    Invoice, Miner, MinerService, Nonce, SignedParcel,
 };
 use ctypes::{H160, H256, U256};
 use rlp::UntrustedRlp;
@@ -44,38 +44,35 @@ impl ChainClient {
 }
 
 impl Chain for ChainClient {
-    fn send_signed_transaction(&self, raw: Bytes) -> Result<H256> {
+    fn send_signed_parcel(&self, raw: Bytes) -> Result<H256> {
         UntrustedRlp::new(&raw.into_vec())
             .as_val()
             .map_err(errors::rlp)
-            .and_then(|tx| SignedTransaction::new(tx).map_err(errors::transaction))
-            .and_then(|signed_transaction| {
-                let hash = signed_transaction.hash();
-                self.miner
-                    .import_own_transaction(&*self.client, signed_transaction)
-                    .map_err(errors::transaction)
-                    .map(|_| hash)
+            .and_then(|parcel| SignedParcel::new(parcel).map_err(errors::parcel))
+            .and_then(|signed| {
+                let hash = signed.hash();
+                self.miner.import_own_parcel(&*self.client, signed).map_err(errors::parcel).map(|_| hash)
             })
             .map(Into::into)
     }
 
-    fn get_transaction_invoice(&self, hash: H256) -> Result<Option<Invoice>> {
-        Ok(self.client.transaction_invoice(hash.into()))
+    fn get_parcel_invoice(&self, parcel_hash: H256) -> Result<Option<Invoice>> {
+        Ok(self.client.parcel_invoice(parcel_hash.into()))
     }
 
-    fn get_asset_scheme(&self, transaction_hash: H256) -> Result<Option<AssetScheme>> {
+    fn get_asset_scheme(&self, parcel_hash: H256) -> Result<Option<AssetScheme>> {
         if let Some(state) = self.client.state_at(BlockId::Latest) {
-            let address = AssetSchemeAddress::new(transaction_hash);
-            Ok(state.asset_scheme(&address).map_err(errors::transaction)?)
+            let address = AssetSchemeAddress::new(parcel_hash);
+            Ok(state.asset_scheme(&address).map_err(errors::parcel)?)
         } else {
             Ok(None)
         }
     }
 
-    fn get_asset(&self, transaction_hash: H256, index: usize) -> Result<Option<Asset>> {
+    fn get_asset(&self, parcel_hash: H256, index: usize) -> Result<Option<Asset>> {
         if let Some(state) = self.client.state_at(BlockId::Latest) {
-            let address = AssetAddress::new(transaction_hash, index);
-            Ok(state.asset(&address).map_err(errors::transaction)?)
+            let address = AssetAddress::new(parcel_hash, index);
+            Ok(state.asset(&address).map_err(errors::parcel)?)
         } else {
             Ok(None)
         }

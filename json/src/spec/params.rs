@@ -28,9 +28,9 @@ pub struct Params {
     /// Network id.
     #[serde(rename = "networkID")]
     pub network_id: Uint,
-    /// Minimum transaction cost.
-    #[serde(rename = "minTransactionCost")]
-    pub min_transaction_cost: Uint,
+    /// Minimum parcel cost.
+    #[serde(rename = "minParcelCost")]
+    pub min_parcel_cost: Uint,
 }
 
 #[cfg(test)]
@@ -47,13 +47,13 @@ mod tests {
 			"accountStartNonce": "0x01",
 			"maximumExtraDataSize": "0x20",
 			"networkID" : "0x1",
-			"minTransactionCost" : "10"
+			"minParcelCost" : "10"
 		}"#;
 
         let deserialized: Params = serde_json::from_str(s).unwrap();
         assert_eq!(deserialized.account_start_nonce, Some(Uint(U256::from(0x01))));
         assert_eq!(deserialized.maximum_extra_data_size, Uint(U256::from(0x20)));
         assert_eq!(deserialized.network_id, Uint(U256::from(0x1)));
-        assert_eq!(deserialized.min_transaction_cost, Uint(U256::from(10)));
+        assert_eq!(deserialized.min_parcel_cost, Uint(U256::from(10)));
     }
 }

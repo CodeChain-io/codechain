@@ -35,8 +35,8 @@ use super::blockchain_info::BlockChainInfo;
 use super::encoded;
 use super::error::BlockImportError;
 use super::state::StateInfo;
-use super::transaction::SignedTransaction;
-use super::types::{BlockId, BlockNumber, BlockStatus, TransactionId, VerificationQueueInfo as BlockQueueInfo};
+use super::transaction::SignedParcel;
+use super::types::{BlockId, BlockNumber, BlockStatus, ParcelId, VerificationQueueInfo as BlockQueueInfo};
 use super::Invoice;
 
 /// Provides `chain_info` method
@@ -57,10 +57,10 @@ pub trait BlockInfo {
     fn block(&self, id: BlockId) -> Option<encoded::Block>;
 }
 
-/// Provides various information on a transaction by it's ID
-pub trait TransactionInfo {
-    /// Get the hash of block that contains the transaction, if any.
-    fn transaction_block(&self, id: TransactionId) -> Option<H256>;
+/// Provides various information on a parcel by it's ID
+pub trait ParcelInfo {
+    /// Get the hash of block that contains the parcel, if any.
+    fn parcel_block(&self, id: ParcelId) -> Option<H256>;
 }
 
 /// Client facilities used by internally sealing Engines.
@@ -141,24 +141,24 @@ pub trait ImportBlock {
 }
 
 /// Provides various blockchain information, like block header, chain state etc.
-pub trait BlockChain: ChainInfo + BlockInfo + TransactionInfo {}
+pub trait BlockChain: ChainInfo + BlockInfo + ParcelInfo {}
 
 /// Blockchain database client. Owns and manages a blockchain and a block queue.
 pub trait BlockChainClient: Sync + Send + AccountData + BlockChain + ImportBlock {
     /// Get block queue information.
     fn queue_info(&self) -> BlockQueueInfo;
 
-    /// Queue transactions for importing.
-    fn queue_transactions(&self, transactions: Vec<Bytes>, peer_id: usize);
+    /// Queue parcels for importing.
+    fn queue_parcels(&self, parcels: Vec<Bytes>, peer_id: usize);
 
-    /// List all transactions that are allowed into the next block.
-    fn ready_transactions(&self) -> Vec<SignedTransaction>;
+    /// List all parcels that are allowed into the next block.
+    fn ready_parcels(&self) -> Vec<SignedParcel>;
 
     /// Look up the block number for the given block ID.
     fn block_number(&self, id: BlockId) -> Option<BlockNumber>;
 
     /// Get raw block body data by block id.
-    /// Block body is an RLP list of one item: transactions.
+    /// Block body is an RLP list of one item: parcels.
     fn block_body(&self, id: BlockId) -> Option<encoded::Body>;
 
     /// Get block status by block header hash.
@@ -170,8 +170,8 @@ pub trait BlockChainClient: Sync + Send + AccountData + BlockChain + ImportBlock
     /// Get block hash.
     fn block_hash(&self, id: BlockId) -> Option<H256>;
 
-    /// Get transaction invoice with given hash.
-    fn transaction_invoice(&self, id: TransactionId) -> Option<Invoice>;
+    /// Get parcel invoice with given hash.
+    fn parcel_invoice(&self, id: ParcelId) -> Option<Invoice>;
 }
 
 /// Result of import block operation.

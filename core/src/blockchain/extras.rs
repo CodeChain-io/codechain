@@ -33,8 +33,8 @@ pub enum ExtrasIndex {
     BlockDetails = 0,
     /// Block hash index
     BlockHash = 1,
-    /// Transaction address index
-    TransactionAddress = 2,
+    /// Parcel address index
+    ParcelAddress = 2,
     /// Block invoices index
     BlockInvoices = 3,
     /// Epoch transition data index.
@@ -83,11 +83,11 @@ impl Key<BlockDetails> for H256 {
     }
 }
 
-impl Key<TransactionAddress> for H256 {
+impl Key<ParcelAddress> for H256 {
     type Target = H264;
 
     fn key(&self) -> H264 {
-        with_index(self, ExtrasIndex::TransactionAddress)
+        with_index(self, ExtrasIndex::ParcelAddress)
     }
 }
 
@@ -158,16 +158,16 @@ impl HeapSizeOf for BlockDetails {
     }
 }
 
-/// Represents address of certain transaction within block
+/// Represents address of certain parcel within block
 #[derive(Debug, PartialEq, Clone, RlpEncodable, RlpDecodable)]
-pub struct TransactionAddress {
+pub struct ParcelAddress {
     /// Block hash
     pub block_hash: H256,
-    /// Transaction index within the block
+    /// Parcel index within the block
     pub index: usize,
 }
 
-impl HeapSizeOf for TransactionAddress {
+impl HeapSizeOf for ParcelAddress {
     fn heap_size_of_children(&self) -> usize {
         0
     }

@@ -113,11 +113,11 @@ pub struct AssetAddress(H256);
 impl_address!(AssetAddress, PREFIX);
 
 impl AssetAddress {
-    pub fn new(transaction_hash: H256, index: usize) -> Self {
+    pub fn new(parcel_hash: H256, index: usize) -> Self {
         debug_assert_eq!(::std::mem::size_of::<u64>(), ::std::mem::size_of::<usize>());
         let index = index as u64;
 
-        Self::from_transaction(transaction_hash, index)
+        Self::from_parcel_hash(parcel_hash, index)
     }
 }
 
@@ -127,7 +127,7 @@ mod tests {
 
     #[test]
     fn asset_from_address() {
-        let transaction_id = {
+        let parcel_id = {
             let mut address;
             loop {
                 address = H256::random();
@@ -143,8 +143,8 @@ mod tests {
             }
             address
         };
-        let address1 = AssetAddress::new(transaction_id, 0);
-        let address2 = AssetAddress::new(transaction_id, 1);
+        let address1 = AssetAddress::new(parcel_id, 0);
+        let address2 = AssetAddress::new(parcel_id, 1);
         assert_ne!(address1, address2);
         assert_eq!(address1[0..8], [PREFIX, 0, 0, 0, 0, 0, 0, 0]);
         assert_eq!(address2[0..8], [PREFIX, 0, 0, 0, 0, 0, 0, 0]);

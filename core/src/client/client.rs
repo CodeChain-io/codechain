@@ -29,7 +29,7 @@ use rlp::UntrustedRlp;
 use trie::{TrieFactory, TrieSpec};
 
 use super::super::block::{enact, ClosedBlock, Drain, IsBlock, LockedBlock, OpenBlock, SealedBlock};
-use super::super::blockchain::{BlockChain, BlockProvider, ImportRoute, TransactionAddress};
+use super::super::blockchain::{BlockChain, BlockProvider, ImportRoute, ParcelAddress};
 use super::super::consensus::epoch::Transition as EpochTransition;
 use super::super::consensus::CodeChainEngine;
 use super::super::encoded;
@@ -40,19 +40,18 @@ use super::super::service::ClientIoMessage;
 use super::super::spec::Spec;
 use super::super::state::State;
 use super::super::state_db::StateDB;
-use super::super::transaction::{SignedTransaction, UnverifiedTransaction};
-use super::super::types::{BlockId, BlockNumber, BlockStatus, TransactionId, VerificationQueueInfo as BlockQueueInfo};
+use super::super::transaction::{SignedParcel, UnverifiedParcel};
+use super::super::types::{BlockId, BlockNumber, BlockStatus, ParcelId, VerificationQueueInfo as BlockQueueInfo};
 use super::super::verification::queue::BlockQueue;
 use super::super::verification::{self, PreverifiedBlock, Verifier};
 use super::super::views::BlockView;
 use super::{
     AccountData, Balance, BlockChain as BlockChainTrait, BlockChainClient, BlockChainInfo, BlockInfo, BlockProducer,
     ChainInfo, ChainNotify, ClientConfig, EngineClient, Error as ClientError, ImportBlock, ImportResult,
-    ImportSealedBlock, Invoice, MiningBlockChainClient, Nonce, PrepareOpenBlock, ReopenBlock, StateOrBlock,
-    TransactionInfo,
+    ImportSealedBlock, Invoice, MiningBlockChainClient, Nonce, ParcelInfo, PrepareOpenBlock, ReopenBlock, StateOrBlock,
 };
 
-const MAX_TX_QUEUE_SIZE: usize = 4096;
+const MAX_PARCEL_QUEUE_SIZE: usize = 4096;
 
 pub struct Client {
     engine: Arc<CodeChainEngine>,
@@ -70,8 +69,8 @@ pub struct Client {
     /// List of actors to be notified on certain chain events
     notify: RwLock<Vec<Weak<ChainNotify>>>,
 
-    /// Count of pending transactions in the queue
-    queue_transactions: AtomicUsize,
+    /// Count of pending parcels in the queue
+    queue_parcels: AtomicUsize,
     trie_factory: TrieFactory,
 
     importer: Importer,
@@ -117,7 +116,7 @@ impl Client {
             db: RwLock::new(db),
             state_db: RwLock::new(state_db),
             notify: RwLock::new(Vec::new()),
-            queue_transactions: AtomicUsize::new(0),
+            queue_parcels: AtomicUsize::new(0),
             trie_factory,
             importer,
         });
@@ -161,29 +160,27 @@ impl Client {
         }
     }
 
-    fn transaction_address(&self, id: TransactionId) -> Option<TransactionAddress> {
+    fn parcel_address(&self, id: ParcelId) -> Option<ParcelAddress> {
         match id {
-            TransactionId::Hash(ref hash) => self.chain.read().transaction_address(hash),
-            TransactionId::Location(id, index) => {
-                Self::block_hash(&self.chain.read(), id).map(|hash| TransactionAddress {
-                    block_hash: hash,
-                    index,
-                })
-            }
+            ParcelId::Hash(ref hash) => self.chain.read().parcel_address(hash),
+            ParcelId::Location(id, index) => Self::block_hash(&self.chain.read(), id).map(|hash| ParcelAddress {
+                block_hash: hash,
+                index,
+            }),
         }
     }
 
-    /// Import transactions from the IO queue
-    pub fn import_queued_transactions(&self, transactions: &[Bytes], peer_id: usize) -> usize {
-        trace!(target: "external_tx", "Importing queued");
-        self.queue_transactions.fetch_sub(transactions.len(), AtomicOrdering::SeqCst);
-        let txs: Vec<UnverifiedTransaction> =
-            transactions.iter().filter_map(|bytes| UntrustedRlp::new(bytes).as_val().ok()).collect();
-        let hashes: Vec<_> = txs.iter().map(|tx| tx.hash()).collect();
+    /// Import parcels from the IO queue
+    pub fn import_queued_parcels(&self, parcels: &[Bytes], peer_id: usize) -> usize {
+        trace!(target: "external_parcel", "Importing queued");
+        self.queue_parcels.fetch_sub(parcels.len(), AtomicOrdering::SeqCst);
+        let parcels: Vec<UnverifiedParcel> =
+            parcels.iter().filter_map(|bytes| UntrustedRlp::new(bytes).as_val().ok()).collect();
+        let hashes: Vec<_> = parcels.iter().map(|parcel| parcel.hash()).collect();
         self.notify(|notify| {
-            notify.transactions_received(hashes.clone(), peer_id);
+            notify.parcels_received(hashes.clone(), peer_id);
         });
-        let results = self.importer.miner.import_external_transactions(self, txs);
+        let results = self.importer.miner.import_external_parcels(self, parcels);
         results.len()
     }
 
@@ -272,9 +269,9 @@ impl BlockInfo for Client {
     }
 }
 
-impl TransactionInfo for Client {
-    fn transaction_block(&self, id: TransactionId) -> Option<H256> {
-        self.transaction_address(id).map(|addr| addr.block_hash)
+impl ParcelInfo for Client {
+    fn parcel_block(&self, id: ParcelId) -> Option<H256> {
+        self.parcel_address(id).map(|addr| addr.block_hash)
     }
 }
 
@@ -300,26 +297,26 @@ impl BlockChainClient for Client {
         self.importer.block_queue.queue_info()
     }
 
-    fn queue_transactions(&self, transactions: Vec<Bytes>, peer_id: usize) {
-        let queue_size = self.queue_transactions.load(AtomicOrdering::Relaxed);
-        trace!(target: "external_tx", "Queue size: {}", queue_size);
-        if queue_size > MAX_TX_QUEUE_SIZE {
-            debug!("Ignoring {} transactions: queue is full", transactions.len());
+    fn queue_parcels(&self, parcels: Vec<Bytes>, peer_id: usize) {
+        let queue_size = self.queue_parcels.load(AtomicOrdering::Relaxed);
+        trace!(target: "external_parcel", "Queue size: {}", queue_size);
+        if queue_size > MAX_PARCEL_QUEUE_SIZE {
+            debug!("Ignoring {} parcels: queue is full", parcels.len());
         } else {
-            let len = transactions.len();
-            match self.io_channel.lock().send(ClientIoMessage::NewTransactions(transactions, peer_id)) {
+            let len = parcels.len();
+            match self.io_channel.lock().send(ClientIoMessage::NewParcels(parcels, peer_id)) {
                 Ok(_) => {
-                    self.queue_transactions.fetch_add(len, AtomicOrdering::SeqCst);
+                    self.queue_parcels.fetch_add(len, AtomicOrdering::SeqCst);
                 }
                 Err(e) => {
-                    debug!("Ignoring {} transactions: error queueing: {}", len, e);
+                    debug!("Ignoring {} parcels: error queueing: {}", len, e);
                 }
             }
         }
     }
 
-    fn ready_transactions(&self) -> Vec<SignedTransaction> {
-        self.importer.miner.ready_transactions()
+    fn ready_parcels(&self) -> Vec<SignedParcel> {
+        self.importer.miner.ready_parcels()
     }
 
     fn block_number(&self, id: BlockId) -> Option<BlockNumber> {
@@ -352,9 +349,9 @@ impl BlockChainClient for Client {
         Self::block_hash(&chain, id)
     }
 
-    fn transaction_invoice(&self, id: TransactionId) -> Option<Invoice> {
+    fn parcel_invoice(&self, id: ParcelId) -> Option<Invoice> {
         let chain = self.chain.read();
-        self.transaction_address(id).and_then(|address| chain.transaction_invoice(&address))
+        self.parcel_address(id).and_then(|address| chain.parcel_invoice(&address))
     }
 }
 
@@ -617,7 +614,7 @@ impl Importer {
             engine,
             Some(verification::FullFamilyParams {
                 block_bytes: &block.bytes,
-                transactions: &block.transactions,
+                parcels: &block.parcels,
                 block_provider: &**chain,
                 client,
             }),
@@ -639,7 +636,7 @@ impl Importer {
 
         let is_epoch_begin = chain.epoch_transition(parent.number(), *header.parent_hash()).is_some();
         let enact_result =
-            enact(&block.header, &block.transactions, engine, db, &parent, client.trie_factory.clone(), is_epoch_begin);
+            enact(&block.header, &block.parcels, engine, db, &parent, client.trie_factory.clone(), is_epoch_begin);
         let locked_block = enact_result.map_err(|e| {
             warn!(target: "client", "Block import failed for #{} ({})\nError: {:?}", header.number(), header.hash(), e);
         })?;

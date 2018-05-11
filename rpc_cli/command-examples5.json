@@ -4,7 +4,7 @@
     "data": {}
   },
   {
-    "name": "chain_sendSignedTransaction",
+    "name": "chain_sendSignedParcel",
     "data": {
       "secret": "ede1d4ccb4ec9a8bbbae9a13db3f4a7b56ea04189be86ac3a6a439d9a0a1addd",
       "nonce": "6",
@@ -14,7 +14,7 @@
           "data": {
               "inputs": [{
                   "prev_out": {
-                      "transaction_hash": "591a12799716600c9bb4680ebb8ea802c7ad4b7a0ba6151e7df643068967bc53",
+                      "parcel_hash": "591a12799716600c9bb4680ebb8ea802c7ad4b7a0ba6151e7df643068967bc53",
                       "index": 0,
                       "asset_type": "5300000000000000254e62980bdac8dae8f192cb82e03d0f37a603bab74cb011",
                       "amount": 100
@@ -49,7 +49,7 @@
     }
   },
   {
-    "name": "chain_getTransactionInvoice",
+    "name": "chain_getParcelInvoice",
     "data": {
       "hash": "4a78a702772d23960a0267fb407d9751dfa3110d12df6952a19f65c2ed4ef088"
     }

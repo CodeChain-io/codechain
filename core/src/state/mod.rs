@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
-//! A mutable state representation suitable to execute transactions.
+//! A mutable state representation suitable to execute parcels.
 //! Generic over a `Backend`. Deals with `Account`s.
 //! Unconfirmed sub-states are managed with `checkpoint`s which may be canonicalized
 //! or rolled back.
@@ -28,14 +28,14 @@ use ccrypto::blake256;
 use ctypes::{Address, H256, Public, U128, U256, U512};
 use cvm::{decode, execute, ScriptResult, VMConfig};
 use error::Error;
-use transaction::{Action, AssetTransferInput, AssetTransferOutput, SignedTransaction};
+use transaction::{Action, AssetTransferInput, AssetTransferOutput, SignedParcel};
 use trie::{self, Trie, TrieError, TrieFactory};
 use unexpected::Mismatch;
 
 use self::cache::Cache;
 use super::invoice::{Invoice, TransactionOutcome};
 use super::state_db::StateDB;
-use super::transaction::TransactionError;
+use super::transaction::ParcelError;
 
 #[macro_use]
 mod address;
@@ -55,10 +55,10 @@ pub use self::cache::CacheableItem;
 
 /// Used to return information about an `State::apply` operation.
 pub struct ApplyOutcome {
-    /// The invoice for the applied transaction.
+    /// The invoice for the applied parcel.
     pub invoice: Invoice,
-    /// The output of the applied transaction.
-    pub error: Option<TransactionError>,
+    /// The output of the applied parcel.
+    pub error: Option<ParcelError>,
 }
 
 /// Representation of the entire state of all accounts in the system.
@@ -339,21 +339,21 @@ impl<B: Backend> State<B> {
 
     fn mint_asset(
         &mut self,
-        transaction_id: H256,
+        parcel_hash: H256,
         metadata: &String,
         lock_script_hash: &H256,
         parameters: &Vec<Bytes>,
         amount: &Option<u64>,
         registrar: &Option<Address>,
     ) -> Result<(), Error> {
-        let asset_scheme_address = AssetSchemeAddress::new(transaction_id);
+        let asset_scheme_address = AssetSchemeAddress::new(parcel_hash);
         let amount = amount.unwrap_or(::std::u64::MAX);
         let asset_scheme = self.require_asset_scheme(&asset_scheme_address, || {
             AssetScheme::new(metadata.clone(), amount, registrar.clone())
         })?;
         trace!(target: "tx", "{:?} is minted on {:?}", asset_scheme, asset_scheme_address);
 
-        let asset_address = AssetAddress::new(transaction_id, 0);
+        let asset_address = AssetAddress::new(parcel_hash, 0);
         let asset = self.require_asset(&asset_address, || {
             Asset::new(asset_scheme_address.into(), *lock_script_hash, parameters.clone(), amount)
         });
@@ -363,19 +363,19 @@ impl<B: Backend> State<B> {
 
     fn transfer_asset(
         &mut self,
-        tx: &SignedTransaction,
+        parcel: &SignedParcel,
         inputs: &[AssetTransferInput],
         outputs: &[AssetTransferOutput],
-    ) -> Result<Option<TransactionError>, Error> {
+    ) -> Result<Option<ParcelError>, Error> {
         debug_assert!(is_input_and_output_consistent(inputs, outputs));
 
         for input in inputs {
             let (address_hash, lock_script_hash) = {
                 let index = input.prev_out.index;
-                let address = AssetAddress::new(input.prev_out.transaction_hash, index);
+                let address = AssetAddress::new(input.prev_out.parcel_hash, index);
                 match self.asset(&address)? {
                     Some(asset) => (address.into(), *asset.lock_script_hash()),
-                    None => return Ok(Some(TransactionError::AssetNotFound(address.into()))),
+                    None => return Ok(Some(ParcelError::AssetNotFound(address.into()))),
                 }
             };
 
@@ -384,7 +384,7 @@ impl<B: Backend> State<B> {
                     expected: lock_script_hash,
                     found: blake256(&input.lock_script),
                 };
-                return Ok(Some(TransactionError::ScriptHashMismatch(mismatch)))
+                return Ok(Some(ParcelError::ScriptHashMismatch(mismatch)))
             }
 
             let script_result = match (decode(&input.lock_script), decode(&input.unlock_script)) {
@@ -393,14 +393,14 @@ impl<B: Backend> State<B> {
                     script.extend(lock_script);
                     script.extend(unlock_script);
                     // FIXME : apply parameters to vm
-                    execute(script.as_slice(), tx.hash_without_script(), VMConfig::default())
+                    execute(script.as_slice(), parcel.hash_without_script(), VMConfig::default())
                 }
                 // FIXME : Deliver full decode error
-                _ => return Ok(Some(TransactionError::InvalidScript)),
+                _ => return Ok(Some(ParcelError::InvalidScript)),
             };
 
             match script_result {
-                Ok(ScriptResult::Fail) | Err(_) => return Ok(Some(TransactionError::FailedToUnlock(address_hash))),
+                Ok(ScriptResult::Fail) | Err(_) => return Ok(Some(ParcelError::FailedToUnlock(address_hash))),
                 Ok(ScriptResult::Burnt) => unimplemented!(),
                 Ok(ScriptResult::Unlocked) => {}
             }
@@ -410,13 +410,13 @@ impl<B: Backend> State<B> {
         for input in inputs {
             let index = input.prev_out.index;
             let amount = input.prev_out.amount;
-            let address = AssetAddress::new(input.prev_out.transaction_hash, index);
+            let address = AssetAddress::new(input.prev_out.parcel_hash, index);
 
             let asset_type = input.prev_out.asset_type.clone();
-            let asset_scheme_address = AssetSchemeAddress::from_hash(asset_type)
-                .ok_or(TransactionError::AssetSchemeNotFound(asset_type.into()))?;
+            let asset_scheme_address =
+                AssetSchemeAddress::from_hash(asset_type).ok_or(ParcelError::AssetSchemeNotFound(asset_type.into()))?;
             let _asset_scheme = self.asset_scheme((&asset_scheme_address).into())?
-                .ok_or(TransactionError::AssetSchemeNotFound(asset_scheme_address.into()))?;
+                .ok_or(ParcelError::AssetSchemeNotFound(asset_scheme_address.into()))?;
 
             match self.asset(&address)? {
                 Some(asset) => {
@@ -424,14 +424,14 @@ impl<B: Backend> State<B> {
                         let address = address.into();
                         let expected = *asset.amount();
                         let got = amount;
-                        return Ok(Some(TransactionError::InvalidAssetAmount {
+                        return Ok(Some(ParcelError::InvalidAssetAmount {
                             address,
                             expected,
                             got,
                         }))
                     }
                 }
-                None => return Ok(Some(TransactionError::AssetNotFound(address.into()))),
+                None => return Ok(Some(ParcelError::AssetNotFound(address.into()))),
             }
 
             self.kill_asset(&address);
@@ -440,7 +440,7 @@ impl<B: Backend> State<B> {
         }
         let mut created_asset = Vec::with_capacity(outputs.len());
         for (index, output) in outputs.iter().enumerate() {
-            let asset_address = AssetAddress::new(tx.hash(), index);
+            let asset_address = AssetAddress::new(parcel.hash(), index);
             let asset =
                 Asset::new(output.asset_type, output.lock_script_hash, output.parameters.clone(), output.amount);
             self.require_asset(&asset_address, || asset)?;
@@ -451,9 +451,9 @@ impl<B: Backend> State<B> {
         Ok(None)
     }
 
-    /// Execute a given transaction, charging transaction fee.
+    /// Execute a given parcel, charging parcel fee.
     /// This will change the state accordingly.
-    pub fn apply(&mut self, t: &SignedTransaction) -> Result<ApplyOutcome, Error> {
+    pub fn apply(&mut self, t: &SignedParcel) -> Result<ApplyOutcome, Error> {
         let error = self.execute(t)?;
         self.commit()?;
 
@@ -470,21 +470,21 @@ impl<B: Backend> State<B> {
         })
     }
 
-    fn execute(&mut self, t: &SignedTransaction) -> Result<Option<TransactionError>, Error> {
+    fn execute(&mut self, t: &SignedParcel) -> Result<Option<ParcelError>, Error> {
         let sender = t.sender();
         let fee = U512::from(t.as_unsigned().fee);
         let nonce = self.nonce(&sender)?;
         let mut balance = U512::from(self.balance(&sender)?);
 
         if t.nonce != nonce {
-            return Ok(Some(TransactionError::InvalidNonce {
+            return Ok(Some(ParcelError::InvalidNonce {
                 expected: nonce,
                 got: t.nonce,
             }))
         }
 
         if fee > balance {
-            return Ok(Some(TransactionError::NotEnoughCash {
+            return Ok(Some(ParcelError::NotEnoughCash {
                 required: fee,
                 got: balance,
             }))
@@ -501,7 +501,7 @@ impl<B: Backend> State<B> {
                 value,
             } => {
                 if balance < value.into() {
-                    return Ok(Some(TransactionError::NotEnoughCash {
+                    return Ok(Some(ParcelError::NotEnoughCash {
                         required: fee + value.into(),
                         got: fee + balance,
                     }))
@@ -658,7 +658,7 @@ mod tests {
     use ctypes::{Address, Secret, U256};
 
     use super::super::tests::helpers::{get_temp_state, get_temp_state_db};
-    use super::super::transaction::{AssetOutPoint, Transaction};
+    use super::super::transaction::{AssetOutPoint, Parcel};
     use super::*;
 
     fn secret() -> Secret {
@@ -670,9 +670,9 @@ mod tests {
         // account_start_nonce is 0
         let mut state = get_temp_state();
 
-        let t = Transaction {
+        let t = Parcel {
             fee: 5.into(),
-            ..Transaction::default()
+            ..Parcel::default()
         }.sign(&secret().into());
         let sender = t.sender();
         state.add_balance(&sender, &20.into()).unwrap();
@@ -689,10 +689,10 @@ mod tests {
         // account_start_nonce is 0
         let mut state = get_temp_state();
 
-        let t = Transaction {
+        let t = Parcel {
             nonce: 2.into(),
             fee: 5.into(),
-            ..Transaction::default()
+            ..Parcel::default()
         }.sign(&secret().into());
         let sender = t.sender();
         state.add_balance(&sender, &20.into()).unwrap();
@@ -701,7 +701,7 @@ mod tests {
         assert_eq!(res.invoice.outcome, TransactionOutcome::Failed);
         assert_eq!(
             res.error.unwrap(),
-            TransactionError::InvalidNonce {
+            ParcelError::InvalidNonce {
                 expected: 0.into(),
                 got: 2.into()
             }
@@ -713,9 +713,9 @@ mod tests {
     #[test]
     fn should_apply_error_for_not_enough_cash() {
         let mut state = get_temp_state();
-        let t = Transaction {
+        let t = Parcel {
             fee: 5.into(),
-            ..Transaction::default()
+            ..Parcel::default()
         }.sign(&secret().into());
         let sender = t.sender();
         state.add_balance(&sender, &4.into()).unwrap();
@@ -724,7 +724,7 @@ mod tests {
         assert_eq!(res.invoice.outcome, TransactionOutcome::Failed);
         assert_eq!(
             res.error.unwrap(),
-            TransactionError::NotEnoughCash {
+            ParcelError::NotEnoughCash {
                 required: 5.into(),
                 got: 4.into()
             }
@@ -739,13 +739,13 @@ mod tests {
         let mut state = get_temp_state();
         let receiver = 1u64.into();
 
-        let t = Transaction {
+        let t = Parcel {
             fee: 5.into(),
             action: Action::Payment {
                 address: receiver,
                 value: 10.into(),
             },
-            ..Transaction::default()
+            ..Parcel::default()
         }.sign(&secret().into());
         let sender = t.sender();
         state.add_balance(&sender, &20.into()).unwrap();
@@ -764,12 +764,12 @@ mod tests {
         let mut state = get_temp_state();
         let key = 1u64.into();
 
-        let t = Transaction {
+        let t = Parcel {
             fee: 5.into(),
             action: Action::SetRegularKey {
                 key,
             },
-            ..Transaction::default()
+            ..Parcel::default()
         }.sign(&secret().into());
         let sender = t.sender();
         state.add_balance(&sender, &5.into()).unwrap();
@@ -786,13 +786,13 @@ mod tests {
         let mut state = get_temp_state();
         let receiver = 1u64.into();
 
-        let t = Transaction {
+        let t = Parcel {
             fee: 5.into(),
             action: Action::Payment {
                 address: receiver,
                 value: 30.into(),
             },
-            ..Transaction::default()
+            ..Parcel::default()
         }.sign(&secret().into());
         let sender = t.sender();
         state.add_balance(&sender, &20.into()).unwrap();
@@ -801,7 +801,7 @@ mod tests {
         assert_eq!(res.invoice.outcome, TransactionOutcome::Failed);
         assert_eq!(
             res.error.unwrap(),
-            TransactionError::NotEnoughCash {
+            ParcelError::NotEnoughCash {
                 required: 35.into(),
                 got: 20.into()
             }
@@ -1040,31 +1040,25 @@ mod tests {
             amount: Some(amount),
             registrar,
         };
-        let signed_transaction = Transaction {
+        let signed_parcel = Parcel {
             fee: 5.into(),
             action,
-            ..Transaction::default()
+            ..Parcel::default()
         }.sign(&secret().into());
-        let sender = signed_transaction.sender();
-        let transaction_hash = signed_transaction.hash();
+        let sender = signed_parcel.sender();
+        let parcel_hash = signed_parcel.hash();
 
         let added_result = state.add_balance(&sender, &U256::from(69u64));
         assert!(added_result.is_ok());
 
-        let minted_result = state.mint_asset(
-            transaction_hash.clone(),
-            &metadata,
-            &lock_script_hash,
-            &vec![],
-            &Some(amount),
-            &registrar,
-        );
+        let minted_result =
+            state.mint_asset(parcel_hash.clone(), &metadata, &lock_script_hash, &vec![], &Some(amount), &registrar);
         assert!(minted_result.is_ok());
 
         let commit = state.commit();
         assert!(commit.is_ok());
 
-        let asset_scheme_address = AssetSchemeAddress::new(transaction_hash.clone());
+        let asset_scheme_address = AssetSchemeAddress::new(parcel_hash.clone());
         let asset_scheme = state.asset_scheme(&asset_scheme_address);
         assert!(asset_scheme.is_ok());
         let asset_scheme = asset_scheme.unwrap();
@@ -1099,25 +1093,25 @@ mod tests {
             amount: None,
             registrar,
         };
-        let signed_transaction = Transaction {
+        let signed_parcel = Parcel {
             fee: 5.into(),
             action,
-            ..Transaction::default()
+            ..Parcel::default()
         }.sign(&secret().into());
-        let sender = signed_transaction.sender();
-        let transaction_hash = signed_transaction.hash();
+        let sender = signed_parcel.sender();
+        let parcel_hash = signed_parcel.hash();
 
         let added_result = state.add_balance(&sender, &U256::from(69u64));
         assert!(added_result.is_ok());
 
         let minted_result =
-            state.mint_asset(transaction_hash.clone(), &metadata, &lock_script_hash, &parameters, &None, &registrar);
+            state.mint_asset(parcel_hash.clone(), &metadata, &lock_script_hash, &parameters, &None, &registrar);
         assert!(minted_result.is_ok());
 
         let commit = state.commit();
         assert!(commit.is_ok());
 
-        let asset_scheme_address = AssetSchemeAddress::new(transaction_hash.clone());
+        let asset_scheme_address = AssetSchemeAddress::new(parcel_hash.clone());
         let asset_scheme = state.asset_scheme(&asset_scheme_address);
         assert!(asset_scheme.is_ok());
         let asset_scheme = asset_scheme.unwrap();
@@ -1138,7 +1132,7 @@ mod tests {
         assert!(is_input_and_output_consistent(
             &[AssetTransferInput {
                 prev_out: AssetOutPoint {
-                    transaction_hash: H256::random(),
+                    parcel_hash: H256::random(),
                     index: 0,
                     asset_type,
                     amount,
@@ -1172,7 +1166,7 @@ mod tests {
             &[
                 AssetTransferInput {
                     prev_out: AssetOutPoint {
-                        transaction_hash: H256::random(),
+                        parcel_hash: H256::random(),
                         index: 0,
                         asset_type: asset_type1,
                         amount: amount1,
@@ -1182,7 +1176,7 @@ mod tests {
                 },
                 AssetTransferInput {
                     prev_out: AssetOutPoint {
-                        transaction_hash: H256::random(),
+                        parcel_hash: H256::random(),
                         index: 0,
                         asset_type: asset_type2,
                         amount: amount2,
@@ -1225,7 +1219,7 @@ mod tests {
             &[
                 AssetTransferInput {
                     prev_out: AssetOutPoint {
-                        transaction_hash: H256::random(),
+                        parcel_hash: H256::random(),
                         index: 0,
                         asset_type: asset_type1,
                         amount: amount1,
@@ -1235,7 +1229,7 @@ mod tests {
                 },
                 AssetTransferInput {
                     prev_out: AssetOutPoint {
-                        transaction_hash: H256::random(),
+                        parcel_hash: H256::random(),
                         index: 0,
                         asset_type: asset_type2,
                         amount: amount2,
@@ -1289,7 +1283,7 @@ mod tests {
         assert!(!is_input_and_output_consistent(
             &[AssetTransferInput {
                 prev_out: AssetOutPoint {
-                    transaction_hash: H256::random(),
+                    parcel_hash: H256::random(),
                     index: 0,
                     asset_type,
                     amount: input_amount,
@@ -1310,7 +1304,7 @@ mod tests {
         assert!(!is_input_and_output_consistent(
             &[AssetTransferInput {
                 prev_out: AssetOutPoint {
-                    transaction_hash: H256::random(),
+                    parcel_hash: H256::random(),
                     index: 0,
                     asset_type,
                     amount: input_amount,

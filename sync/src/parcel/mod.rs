@@ -17,4 +17,4 @@
 mod extension;
 mod message;
 
-pub use self::extension::Extension as TransactionSyncExtension;
+pub use self::extension::Extension as ParcelSyncExtension;

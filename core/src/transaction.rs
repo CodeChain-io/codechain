@@ -28,41 +28,41 @@ use unexpected::Mismatch;
 use super::types::BlockNumber;
 
 #[derive(Debug, PartialEq, Clone)]
-/// Errors concerning transaction processing.
-pub enum TransactionError {
-    /// Transaction is already imported to the queue
+/// Errors concerning parcel processing.
+pub enum ParcelError {
+    /// Parcel is already imported to the queue
     AlreadyImported,
-    /// Transaction is not valid anymore (state already has higher nonce)
+    /// Parcel is not valid anymore (state already has higher nonce)
     Old,
-    /// Transaction has too low fee
-    /// (there is already a transaction with the same sender-nonce but higher gas price)
+    /// Parcel has too low fee
+    /// (there is already a parcel with the same sender-nonce but higher gas price)
     TooCheapToReplace,
     /// Invalid chain ID given.
     InvalidNetworkId,
-    /// Transaction was not imported to the queue because limit has been reached.
+    /// Parcel was not imported to the queue because limit has been reached.
     LimitReached,
-    /// Transaction's fee is below currently set minimal fee requirement.
+    /// Parcel's fee is below currently set minimal fee requirement.
     InsufficientFee {
         /// Minimal expected fee
         minimal: U256,
-        /// Transaction fee
+        /// Parcel fee
         got: U256,
     },
-    /// Sender doesn't have enough funds to pay for this transaction
+    /// Sender doesn't have enough funds to pay for this Parcel
     InsufficientBalance {
         /// Senders balance
         balance: U256,
-        /// Transaction cost
+        /// Parcel cost
         cost: U256,
     },
-    /// Returned when transaction nonce does not match state nonce.
+    /// Returned when parcel nonce does not match state nonce.
     InvalidNonce {
         /// Nonce expected.
         expected: U256,
         /// Nonce found.
         got: U256,
     },
-    /// Returned when cost of transaction exceeds current sender balance.
+    /// Returned when cost of parcel exceeds current sender balance.
     NotEnoughCash {
         /// Minimum required balance.
         required: U512,
@@ -91,14 +91,14 @@ pub enum TransactionError {
     FailedToUnlock(H256),
 }
 
-pub fn transaction_error_message(error: &TransactionError) -> String {
-    use self::TransactionError::*;
+pub fn parcel_error_message(error: &ParcelError) -> String {
+    use self::ParcelError::*;
     match *error {
         AlreadyImported => "Already imported".into(),
         Old => "No longer valid".into(),
         TooCheapToReplace => "Gas price too low to replace".into(),
-        InvalidNetworkId => "Transaction of this network ID is not allowed on this chain.".into(),
-        LimitReached => "Transaction limit reached".into(),
+        InvalidNetworkId => "Parcel of this network ID is not allowed on this chain.".into(),
+        LimitReached => "Parcel limit reached".into(),
         InsufficientFee {
             minimal,
             got,
@@ -106,16 +106,16 @@ pub fn transaction_error_message(error: &TransactionError) -> String {
         InsufficientBalance {
             balance,
             cost,
-        } => format!("Insufficient balance for transaction. Balance={}, Cost={}", balance, cost),
+        } => format!("Insufficient balance for parcel. Balance={}, Cost={}", balance, cost),
         InvalidNonce {
             ref expected,
             ref got,
-        } => format!("Invalid transaction nonce: expected {}, found {}", expected, got),
+        } => format!("Invalid parcel nonce: expected {}, found {}", expected, got),
         NotEnoughCash {
             ref required,
             ref got,
         } => format!(
-            "Cost of transaction exceeds sender balance. {} is required \
+            "Cost of parcel exceeds sender balance. {} is required \
              but the sender only has {}",
             required, got
         ),
@@ -128,7 +128,7 @@ pub fn transaction_error_message(error: &TransactionError) -> String {
             address, expected, got
         ),
         NotAllowed => "Sender does not have permissions to execute this type of transction".into(),
-        InvalidSignature(ref err) => format!("Transaction has invalid signature: {}.", err),
+        InvalidSignature(ref err) => format!("Parcel has invalid signature: {}.", err),
         AssetNotFound(ref addr) => format!("Asset not found: {}", addr),
         AssetSchemeNotFound(ref addr) => format!("Asset scheme not found: {}", addr),
         InvalidAssetType(ref addr) => format!("Asset type is invalid: {}", addr),
@@ -141,28 +141,28 @@ pub fn transaction_error_message(error: &TransactionError) -> String {
     }
 }
 
-impl fmt::Display for TransactionError {
+impl fmt::Display for ParcelError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let msg: String = transaction_error_message(self);
+        let msg: String = parcel_error_message(self);
 
-        f.write_fmt(format_args!("Transaction error ({})", msg))
+        f.write_fmt(format_args!("Parcel error ({})", msg))
     }
 }
 
-impl From<ckeys::Error> for TransactionError {
+impl From<ckeys::Error> for ParcelError {
     fn from(err: ckeys::Error) -> Self {
-        TransactionError::InvalidSignature(format!("{}", err))
+        ParcelError::InvalidSignature(format!("{}", err))
     }
 }
 
-/// Fake address for unsigned transactions as defined by EIP-86.
+/// Fake address for unsigned parcel as defined by EIP-86.
 pub const UNSIGNED_SENDER: Address = H160([0xff; 20]);
 
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
-pub struct Transaction {
+pub struct Parcel {
     /// Nonce.
     pub nonce: U256,
-    /// Amount of CCC to be paid as a cost for distributing this transaction to the network.
+    /// Amount of CCC to be paid as a cost for distributing this parcel to the network.
     pub fee: U256,
     /// Action, can be either payment or asset transfer
     pub action: Action,
@@ -170,7 +170,7 @@ pub struct Transaction {
     pub network_id: u64,
 }
 
-/// Transaction action type.
+/// Parcel action type.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum Action {
@@ -316,15 +316,15 @@ impl rlp::Encodable for Action {
     }
 }
 
-impl HeapSizeOf for Transaction {
+impl HeapSizeOf for Parcel {
     fn heap_size_of_children(&self) -> usize {
         0
     }
 }
 
-impl Transaction {
+impl Parcel {
     /// Append object with a without signature into RLP stream
-    pub fn rlp_append_unsigned_transaction(&self, s: &mut RlpStream) {
+    pub fn rlp_append_unsigned_parcel(&self, s: &mut RlpStream) {
         s.begin_list(4);
         s.append(&self.nonce);
         s.append(&self.fee);
@@ -332,14 +332,14 @@ impl Transaction {
         s.append(&self.network_id);
     }
 
-    /// The message hash of the transaction.
+    /// The message hash of the parcel.
     pub fn hash(&self) -> H256 {
         let mut stream = RlpStream::new();
-        self.rlp_append_unsigned_transaction(&mut stream);
+        self.rlp_append_unsigned_parcel(&mut stream);
         blake256(stream.as_raw())
     }
 
-    /// Get hash of transaction excluding script field
+    /// Get hash of parcel excluding script field
     pub fn hash_without_script(&self) -> H256 {
         let mut stream = RlpStream::new();
         stream.begin_list(4);
@@ -350,15 +350,15 @@ impl Transaction {
         blake256(stream.as_raw())
     }
 
-    /// Signs the transaction as coming from `sender`.
-    pub fn sign(self, private: &Private) -> SignedTransaction {
+    /// Signs the parcel as coming from `sender`.
+    pub fn sign(self, private: &Private) -> SignedParcel {
         let sig = sign_ecdsa(&private, &self.hash()).expect("data is valid and context has signing capabilities; qed");
-        SignedTransaction::new(self.with_signature(sig)).expect("secret is valid so it's recoverable")
+        SignedParcel::new(self.with_signature(sig)).expect("secret is valid so it's recoverable")
     }
 
-    /// Signs the transaction with signature.
-    pub fn with_signature(self, sig: ECDSASignature) -> UnverifiedTransaction {
-        UnverifiedTransaction {
+    /// Signs the parcel with signature.
+    pub fn with_signature(self, sig: ECDSASignature) -> UnverifiedParcel {
+        UnverifiedParcel {
             unsigned: self,
             r: sig.r().into(),
             s: sig.s().into(),
@@ -368,38 +368,38 @@ impl Transaction {
     }
 }
 
-/// Signed transaction information without verified signature.
+/// Signed parcel information without verified signature.
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct UnverifiedTransaction {
-    /// Plain Transaction.
-    unsigned: Transaction,
+pub struct UnverifiedParcel {
+    /// Plain Parcel.
+    unsigned: Parcel,
     /// The V field of the signature; the LS bit described which half of the curve our point falls
-    /// in. The MS bits describe which chain this transaction is for. If 27/28, its for all chains.
+    /// in. The MS bits describe which chain this parcel is for. If 27/28, its for all chains.
     v: u64,
     /// The R field of the signature; helps describe the point on the curve.
     r: U256,
     /// The S field of the signature; helps describe the point on the curve.
     s: U256,
-    /// Hash of the transaction
+    /// Hash of the parcel
     hash: H256,
 }
 
-impl Deref for UnverifiedTransaction {
-    type Target = Transaction;
+impl Deref for UnverifiedParcel {
+    type Target = Parcel;
 
     fn deref(&self) -> &Self::Target {
         &self.unsigned
     }
 }
 
-impl rlp::Decodable for UnverifiedTransaction {
+impl rlp::Decodable for UnverifiedParcel {
     fn decode(d: &UntrustedRlp) -> Result<Self, DecoderError> {
         if d.item_count()? != 7 {
             return Err(DecoderError::RlpIncorrectListLen)
         }
         let hash = blake256(d.as_raw());
-        Ok(UnverifiedTransaction {
-            unsigned: Transaction {
+        Ok(UnverifiedParcel {
+            unsigned: Parcel {
                 nonce: d.val_at(0)?,
                 fee: d.val_at(1)?,
                 action: d.val_at(2)?,
@@ -413,15 +413,15 @@ impl rlp::Decodable for UnverifiedTransaction {
     }
 }
 
-impl rlp::Encodable for UnverifiedTransaction {
+impl rlp::Encodable for UnverifiedParcel {
     fn rlp_append(&self, s: &mut RlpStream) {
-        self.rlp_append_sealed_transaction(s)
+        self.rlp_append_sealed_parcel(s)
     }
 }
 
-impl UnverifiedTransaction {
-    /// Used to compute hash of created transactions
-    fn compute_hash(mut self) -> UnverifiedTransaction {
+impl UnverifiedParcel {
+    /// Used to compute hash of created parcels
+    fn compute_hash(mut self) -> UnverifiedParcel {
         let hash = blake256(&*self.rlp_bytes());
         self.hash = hash;
         self
@@ -433,7 +433,7 @@ impl UnverifiedTransaction {
     }
 
     /// Append object with a signature into RLP stream
-    fn rlp_append_sealed_transaction(&self, s: &mut RlpStream) {
+    fn rlp_append_sealed_parcel(&self, s: &mut RlpStream) {
         s.begin_list(7);
         s.append(&self.nonce);
         s.append(&self.fee);
@@ -444,8 +444,8 @@ impl UnverifiedTransaction {
         s.append(&self.s);
     }
 
-    /// Reference to unsigned part of this transaction.
-    pub fn as_unsigned(&self) -> &Transaction {
+    /// Reference to unsigned part of this parcel.
+    pub fn as_unsigned(&self) -> &Parcel {
         &self.unsigned
     }
 
@@ -482,71 +482,71 @@ impl UnverifiedTransaction {
     }
 
     /// Verify basic signature params. Does not attempt sender recovery.
-    pub fn verify_basic(&self, network_id: u64, allow_empty_signature: bool) -> Result<(), TransactionError> {
+    pub fn verify_basic(&self, network_id: u64, allow_empty_signature: bool) -> Result<(), ParcelError> {
         if !(allow_empty_signature && self.is_unsigned()) {
             self.check_low_s()?;
         }
         if self.network_id != network_id {
-            return Err(TransactionError::InvalidNetworkId)
+            return Err(ParcelError::InvalidNetworkId)
         }
         Ok(())
     }
 }
 
-/// A `UnverifiedTransaction` with successfully recovered `sender`.
+/// A `UnverifiedParcel` with successfully recovered `sender`.
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct SignedTransaction {
-    transaction: UnverifiedTransaction,
+pub struct SignedParcel {
+    parcel: UnverifiedParcel,
     sender: Address,
     public: Option<Public>,
 }
 
-impl HeapSizeOf for SignedTransaction {
+impl HeapSizeOf for SignedParcel {
     fn heap_size_of_children(&self) -> usize {
-        self.transaction.unsigned.heap_size_of_children()
+        self.parcel.unsigned.heap_size_of_children()
     }
 }
 
-impl rlp::Encodable for SignedTransaction {
+impl rlp::Encodable for SignedParcel {
     fn rlp_append(&self, s: &mut RlpStream) {
-        self.transaction.rlp_append_sealed_transaction(s)
+        self.parcel.rlp_append_sealed_parcel(s)
     }
 }
 
-impl Deref for SignedTransaction {
-    type Target = UnverifiedTransaction;
+impl Deref for SignedParcel {
+    type Target = UnverifiedParcel;
     fn deref(&self) -> &Self::Target {
-        &self.transaction
+        &self.parcel
     }
 }
 
-impl From<SignedTransaction> for UnverifiedTransaction {
-    fn from(tx: SignedTransaction) -> Self {
-        tx.transaction
+impl From<SignedParcel> for UnverifiedParcel {
+    fn from(parcel: SignedParcel) -> Self {
+        parcel.parcel
     }
 }
 
-impl SignedTransaction {
-    /// Try to verify transaction and recover sender.
-    pub fn new(transaction: UnverifiedTransaction) -> Result<Self, ckeys::Error> {
-        if transaction.is_unsigned() {
-            Ok(SignedTransaction {
-                transaction,
+impl SignedParcel {
+    /// Try to verify parcel and recover sender.
+    pub fn new(parcel: UnverifiedParcel) -> Result<Self, ckeys::Error> {
+        if parcel.is_unsigned() {
+            Ok(SignedParcel {
+                parcel,
                 sender: UNSIGNED_SENDER,
                 public: None,
             })
         } else {
-            let public = transaction.recover_public()?;
+            let public = parcel.recover_public()?;
             let sender = public_to_address(&public);
-            Ok(SignedTransaction {
-                transaction,
+            Ok(SignedParcel {
+                parcel,
                 sender,
                 public: Some(public),
             })
         }
     }
 
-    /// Returns transaction sender.
+    /// Returns parcel sender.
     pub fn sender(&self) -> Address {
         self.sender.clone()
     }
@@ -558,33 +558,33 @@ impl SignedTransaction {
 
     /// Checks is signature is empty.
     pub fn is_unsigned(&self) -> bool {
-        self.transaction.is_unsigned()
+        self.parcel.is_unsigned()
     }
 
-    /// Deconstructs this transaction back into `UnverifiedTransaction`
-    pub fn deconstruct(self) -> (UnverifiedTransaction, Address, Option<Public>) {
-        (self.transaction, self.sender, self.public)
+    /// Deconstructs this parcel back into `UnverifiedParcel`
+    pub fn deconstruct(self) -> (UnverifiedParcel, Address, Option<Public>) {
+        (self.parcel, self.sender, self.public)
     }
 }
 
-/// Signed Transaction that is a part of canon blockchain.
+/// Signed Parcel that is a part of canon blockchain.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct LocalizedTransaction {
+pub struct LocalizedParcel {
     /// Signed part.
-    pub signed: UnverifiedTransaction,
+    pub signed: UnverifiedParcel,
     /// Block number.
     pub block_number: BlockNumber,
     /// Block hash.
     pub block_hash: H256,
-    /// Transaction index within block.
-    pub transaction_index: usize,
+    /// Parcel index within block.
+    pub parcel_index: usize,
     /// Cached sender
     pub cached_sender: Option<Address>,
 }
 
-impl LocalizedTransaction {
-    /// Returns transaction sender.
-    /// Panics if `LocalizedTransaction` is constructed using invalid `UnverifiedTransaction`.
+impl LocalizedParcel {
+    /// Returns parcel sender.
+    /// Panics if `LocalizedParcel` is constructed using invalid `UnverifiedParcel`.
     pub fn sender(&mut self) -> Address {
         if let Some(sender) = self.cached_sender {
             return sender
@@ -593,14 +593,14 @@ impl LocalizedTransaction {
             return UNSIGNED_SENDER.clone()
         }
         let sender = public_to_address(&self.recover_public()
-            .expect("LocalizedTransaction is always constructed from transaction from blockchain; Blockchain only stores verified transactions; qed"));
+            .expect("LocalizedParcel is always constructed from parcel from blockchain; Blockchain only stores verified parcels; qed"));
         self.cached_sender = Some(sender);
         sender
     }
 }
 
-impl Deref for LocalizedTransaction {
-    type Target = UnverifiedTransaction;
+impl Deref for LocalizedParcel {
+    type Target = UnverifiedParcel;
 
     fn deref(&self) -> &Self::Target {
         &self.signed
@@ -609,7 +609,7 @@ impl Deref for LocalizedTransaction {
 
 #[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable, Serialize)]
 pub struct AssetOutPoint {
-    pub transaction_hash: H256,
+    pub parcel_hash: H256,
     pub index: usize,
     pub asset_type: H256,
     pub amount: u64,
@@ -635,18 +635,18 @@ mod tests {
     use ctypes::{Address, H256, Public, U256};
     use rlp::Encodable;
 
-    use super::{Action, Transaction, UnverifiedTransaction};
+    use super::{Action, Parcel, UnverifiedParcel};
 
     #[test]
-    fn test_unverified_transaction_rlp() {
-        let tx = UnverifiedTransaction {
-            unsigned: Transaction::default(),
+    fn test_unverified_parcel_rlp() {
+        let parcel = UnverifiedParcel {
+            unsigned: Parcel::default(),
             v: 0,
             r: U256::default(),
             s: U256::default(),
             hash: H256::default(),
         }.compute_hash();
-        assert_eq!(tx, ::rlp::decode(tx.rlp_bytes().as_ref()));
+        assert_eq!(parcel, ::rlp::decode(parcel.rlp_bytes().as_ref()));
     }
 
     #[test]

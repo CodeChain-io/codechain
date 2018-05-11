@@ -1,6 +1,6 @@
 [
   {
-    "name": "chain_sendSignedTransaction",
+    "name": "chain_sendSignedParcel",
     "data": {
       "secret": "ede1d4ccb4ec9a8bbbae9a13db3f4a7b56ea04189be86ac3a6a439d9a0a1addd",
       "nonce": "4",
@@ -17,7 +17,7 @@
     }
   },
   {
-    "name": "chain_sendSignedTransaction",
+    "name": "chain_sendSignedParcel",
     "data": {
       "secret": "ede1d4ccb4ec9a8bbbae9a13db3f4a7b56ea04189be86ac3a6a439d9a0a1addd",
       "nonce": "5",
@@ -34,13 +34,13 @@
     }
   },
   {
-    "name": "chain_getTransactionInvoice",
+    "name": "chain_getParcelInvoice",
     "data": {
       "hash": "b84926ca470ca5c41a350255d19d51f6a0f7f847776db6ae38193dc943bd5189"
     }
   },
   {
-    "name": "chain_getTransactionInvoice",
+    "name": "chain_getParcelInvoice",
     "data": {
       "hash": "591a12799716600c9bb4680ebb8ea802c7ad4b7a0ba6151e7df643068967bc53"
     }
@@ -48,26 +48,26 @@
   {
     "name": "chain_getAssetScheme",
     "data": {
-      "transaction_hash": "b84926ca470ca5c41a350255d19d51f6a0f7f847776db6ae38193dc943bd5189"
+      "parcel_hash": "b84926ca470ca5c41a350255d19d51f6a0f7f847776db6ae38193dc943bd5189"
     }
   },
   {
     "name": "chain_getAssetScheme",
     "data": {
-      "transaction_hash": "591a12799716600c9bb4680ebb8ea802c7ad4b7a0ba6151e7df643068967bc53"
+      "parcel_hash": "591a12799716600c9bb4680ebb8ea802c7ad4b7a0ba6151e7df643068967bc53"
     }
   },
   {
     "name": "chain_getAsset",
     "data": {
-      "transaction_hash": "b84926ca470ca5c41a350255d19d51f6a0f7f847776db6ae38193dc943bd5189",
+      "parcel_hash": "b84926ca470ca5c41a350255d19d51f6a0f7f847776db6ae38193dc943bd5189",
       "index": 0
     }
   },
   {
     "name": "chain_getAsset",
     "data": {
-      "transaction_hash": "591a12799716600c9bb4680ebb8ea802c7ad4b7a0ba6151e7df643068967bc53",
+      "parcel_hash": "591a12799716600c9bb4680ebb8ea802c7ad4b7a0ba6151e7df643068967bc53",
       "index": 0
     }
   }

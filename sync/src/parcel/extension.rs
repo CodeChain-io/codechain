@@ -26,7 +26,7 @@ use time::Duration;
 
 use super::message::Message;
 
-const EXTENSION_NAME: &'static str = "transaction-propagation";
+const EXTENSION_NAME: &'static str = "parcel-propagation";
 const BROADCAST_TIMER_TOKEN: TimerToken = 0;
 const BROADCAST_TIMER_INTERVAL: i64 = 1000;
 const MAX_HISTORY_SIZE: usize = 100;
@@ -106,12 +106,14 @@ impl NetworkExtension for Extension {
     fn on_message(&self, token: &NodeToken, data: &[u8]) {
         if let Ok(received_message) = UntrustedRlp::new(data).as_val() {
             match received_message {
-                Message::Transactions(transactions) => {
-                    self.client
-                        .queue_transactions(transactions.iter().map(|tx| tx.rlp_bytes().to_vec()).collect(), *token);
+                Message::Parcels(parcels) => {
+                    self.client.queue_parcels(
+                        parcels.iter().map(|unverified| unverified.rlp_bytes().to_vec()).collect(),
+                        *token,
+                    );
                     if let Some(peer) = self.peers.write().get_mut(token) {
-                        transactions.iter().for_each(|tx| {
-                            peer.push(&tx.hash());
+                        parcels.iter().for_each(|unverified| {
+                            peer.push(&unverified.hash());
                         });
                     }
                 }
@@ -137,17 +139,17 @@ impl Extension {
     }
 
     fn random_broadcast(&self) {
-        let transactions = self.client.ready_transactions();
+        let parcels = self.client.ready_parcels();
         for (token, peer) in self.peers.write().iter_mut() {
-            let unsent: Vec<_> = transactions
+            let unsent: Vec<_> = parcels
                 .iter()
-                .filter(|tx| !peer.contains(&tx.hash()))
-                .map(|tx| tx.clone().deconstruct().0)
+                .filter(|parcel| !peer.contains(&parcel.hash()))
+                .map(|signed| signed.clone().deconstruct().0)
                 .collect();
-            for tx in unsent.iter() {
-                peer.push(&tx.hash());
+            for unverified in unsent.iter() {
+                peer.push(&unverified.hash());
             }
-            self.send_message(token, Message::Transactions(unsent));
+            self.send_message(token, Message::Parcels(unsent));
         }
     }
 }

@@ -868,7 +868,7 @@ mod tests {
 
     #[test]
     fn test_low_s() {
-        // nb this is a transaction on testnet
+        // nb this is a parcel on testnet
         // txid 8ccc87b72d766ab3128f03176bb1c98293f2d1f85ebfaf07b82cc81ea6891fa9
         //      input number 3
         let sig = hex!("3046022100839c1fbc5304de944f697c9f4b1d01d1faeba32d751c0f7acb21ac8a0f436a72022100e89bd46bb3a5a62adc679f659b7ce876d83ee297c7a5587b2011c4fcc72eab45");

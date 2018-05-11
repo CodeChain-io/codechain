@@ -26,7 +26,7 @@ use util_error::UtilError;
 use super::account_provider::SignError as AccountsError;
 use super::client::Error as ClientError;
 use super::consensus::EngineError;
-use super::transaction::TransactionError;
+use super::transaction::ParcelError;
 use super::types::BlockNumber;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -82,8 +82,8 @@ pub enum BlockError {
     InvalidSealArity(Mismatch<usize>),
     /// State root header field is invalid.
     InvalidStateRoot(Mismatch<H256>),
-    /// Transactions root header field is invalid.
-    InvalidTransactionsRoot(Mismatch<H256>),
+    /// Parcels root header field is invalid.
+    InvalidParcelsRoot(Mismatch<H256>),
     /// Score is out of range; this can be used as an looser error prior to getting a definitive
     /// value for score. This error needs only provide bounds of which it is out.
     ScoreOutOfBounds(OutOfBounds<U256>),
@@ -108,8 +108,8 @@ pub enum BlockError {
     InvalidNumber(Mismatch<BlockNumber>),
     /// Block number isn't sensible.
     RidiculousNumber(OutOfBounds<BlockNumber>),
-    /// Too many transactions from a particular address.
-    TooManyTransactions(Address),
+    /// Too many parcels from a particular address.
+    TooManyParcels(Address),
     /// Parent given is unknown.
     UnknownParent(H256),
 }
@@ -122,7 +122,7 @@ impl fmt::Display for BlockError {
             ExtraDataOutOfBounds(ref oob) => format!("Extra block data too long. {}", oob),
             InvalidSealArity(ref mis) => format!("Block seal in incorrect format: {}", mis),
             InvalidStateRoot(ref mis) => format!("Invalid state root in header: {}", mis),
-            InvalidTransactionsRoot(ref mis) => format!("Invalid transactions root in header: {}", mis),
+            InvalidParcelsRoot(ref mis) => format!("Invalid parcels root in header: {}", mis),
             ScoreOutOfBounds(ref oob) => format!("Invalid block score: {}", oob),
             InvalidScore(ref mis) => format!("Invalid block score: {}", mis),
             MismatchedH256SealElement(ref mis) => format!("Seal element out of bounds: {}", mis),
@@ -134,7 +134,7 @@ impl fmt::Display for BlockError {
             InvalidNumber(ref mis) => format!("Invalid number in header: {}", mis),
             RidiculousNumber(ref oob) => format!("Implausible block number. {}", oob),
             UnknownParent(ref hash) => format!("Unknown parent: {}", hash),
-            TooManyTransactions(ref address) => format!("Too many transactions from: {}", address),
+            TooManyParcels(ref address) => format!("Too many parcels from: {}", address),
         };
 
         f.write_fmt(format_args!("Block error ({})", msg))
@@ -150,8 +150,8 @@ pub enum Error {
     Util(UtilError),
     /// Error concerning block processing.
     Block(BlockError),
-    /// Error concerning transaction processing.
-    Transaction(TransactionError),
+    /// Error concerning parcel processing.
+    Parcel(ParcelError),
     /// Error concerning block import.
     Import(ImportError),
     /// Io crate error.
@@ -177,7 +177,7 @@ impl fmt::Display for Error {
             Error::Util(ref err) => err.fmt(f),
             Error::Io(ref err) => err.fmt(f),
             Error::Block(ref err) => err.fmt(f),
-            Error::Transaction(ref err) => err.fmt(f),
+            Error::Parcel(ref err) => err.fmt(f),
             Error::Import(ref err) => err.fmt(f),
             Error::Engine(ref err) => err.fmt(f),
             Error::Key(ref err) => err.fmt(f),
@@ -195,9 +195,9 @@ impl From<ClientError> for Error {
     }
 }
 
-impl From<TransactionError> for Error {
-    fn from(err: TransactionError) -> Error {
-        Error::Transaction(err)
+impl From<ParcelError> for Error {
+    fn from(err: ParcelError) -> Error {
+        Error::Parcel(err)
     }
 }
 

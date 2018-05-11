@@ -49,19 +49,18 @@ use super::super::blockchain_info::BlockChainInfo;
 use super::super::client::ImportResult;
 use super::super::client::{
     AccountData, Balance, BlockChain, BlockChainClient, BlockInfo, BlockProducer, BlockStatus, ChainInfo, ImportBlock,
-    ImportSealedBlock, Invoice, MiningBlockChainClient, Nonce, PrepareOpenBlock, ReopenBlock, StateOrBlock,
-    TransactionInfo,
+    ImportSealedBlock, Invoice, MiningBlockChainClient, Nonce, ParcelInfo, PrepareOpenBlock, ReopenBlock, StateOrBlock,
 };
 use super::super::db::{COL_STATE, NUM_COLUMNS};
 use super::super::encoded;
 use super::super::error::BlockImportError;
 use super::super::header::Header as BlockHeader;
-use super::super::miner::{Miner, MinerService, TransactionImportResult};
+use super::super::miner::{Miner, MinerService, ParcelImportResult};
 use super::super::spec::Spec;
 use super::super::state::{Asset, AssetAddress, AssetScheme, AssetSchemeAddress, StateInfo};
 use super::super::state_db::StateDB;
-use super::super::transaction::{Action, SignedTransaction, Transaction};
-use super::super::types::{BlockId, BlockNumber, TransactionId, VerificationQueueInfo as QueueInfo};
+use super::super::transaction::{Action, Parcel, SignedParcel};
+use super::super::types::{BlockId, BlockNumber, ParcelId, VerificationQueueInfo as QueueInfo};
 
 /// Test client.
 pub struct TestBlockChainClient {
@@ -102,10 +101,10 @@ pub enum EachBlockWith {
     Nothing,
     /// Block with an uncle.
     Uncle,
-    /// Block with a transaction.
-    Transaction,
-    /// Block with an uncle and transaction.
-    UncleAndTransaction,
+    /// Block with a parcel.
+    Parcel,
+    /// Block with an uncle and parcel.
+    UncleAndParcel,
 }
 
 impl Default for TestBlockChainClient {
@@ -195,28 +194,28 @@ impl TestBlockChainClient {
             header.set_parent_hash(self.last_hash.read().clone());
             header.set_number(n as BlockNumber);
             header.set_extra_data(self.extra_data.clone());
-            let txs = match with {
-                EachBlockWith::Transaction | EachBlockWith::UncleAndTransaction => {
-                    let mut txs = RlpStream::new_list(1);
+            let parcels = match with {
+                EachBlockWith::Parcel | EachBlockWith::UncleAndParcel => {
+                    let mut parcels = RlpStream::new_list(1);
                     let keypair = Random.generate().unwrap();
                     // Update nonces value
                     self.nonces.write().insert(keypair.address(), U256::one());
-                    let tx = Transaction {
+                    let parcel = Parcel {
                         action: Action::Noop,
                         nonce: U256::zero(),
                         fee: U256::from(10),
                         network_id: 0u64,
                     };
-                    let signed_tx = tx.sign(keypair.private());
-                    txs.append(&signed_tx);
-                    txs.out()
+                    let signed_parcel = parcel.sign(keypair.private());
+                    parcels.append(&signed_parcel);
+                    parcels.out()
                 }
                 _ => ::rlp::EMPTY_LIST_RLP.to_vec(),
             };
 
             let mut rlp = RlpStream::new_list(2);
             rlp.append(&header);
-            rlp.append_raw(&txs, 1);
+            rlp.append_raw(&parcels, 1);
             self.import_block(rlp.as_raw().to_vec()).unwrap();
         }
     }
@@ -261,21 +260,21 @@ impl TestBlockChainClient {
         }
     }
 
-    /// Inserts a transaction to miners transactions queue.
-    pub fn insert_transaction_to_queue(&self) -> H256 {
+    /// Inserts a parcel to miners parcels queue.
+    pub fn insert_parcel_to_queue(&self) -> H256 {
         let keypair = Random.generate().unwrap();
-        let tx = Transaction {
+        let parcel = Parcel {
             action: Action::Noop,
             nonce: U256::zero(),
             fee: U256::from(10),
             network_id: 0u64,
         };
-        let signed_tx = tx.sign(keypair.private());
-        self.set_balance(signed_tx.sender(), 10_000_000_000_000_000_000u64.into());
-        let hash = signed_tx.hash();
-        let res = self.miner.import_external_transactions(self, vec![signed_tx.into()]);
+        let signed_parcel = parcel.sign(keypair.private());
+        self.set_balance(signed_parcel.sender(), 10_000_000_000_000_000_000u64.into());
+        let hash = signed_parcel.hash();
+        let res = self.miner.import_external_parcels(self, vec![signed_parcel.into()]);
         let res = res.into_iter().next().unwrap().expect("Successful import");
-        assert_eq!(res, TransactionImportResult::Current);
+        assert_eq!(res, ParcelImportResult::Current);
         hash
     }
 
@@ -383,8 +382,8 @@ impl BlockInfo for TestBlockChainClient {
     }
 }
 
-impl TransactionInfo for TestBlockChainClient {
-    fn transaction_block(&self, _id: TransactionId) -> Option<H256> {
+impl ParcelInfo for TestBlockChainClient {
+    fn parcel_block(&self, _id: ParcelId) -> Option<H256> {
         None // Simple default.
     }
 }
@@ -499,17 +498,17 @@ impl BlockChainClient for TestBlockChainClient {
         }
     }
 
-    fn queue_transactions(&self, transactions: Vec<Bytes>, _peer_id: usize) {
+    fn queue_parcels(&self, parcels: Vec<Bytes>, _peer_id: usize) {
         // import right here
-        let txs = transactions.into_iter().filter_map(|bytes| UntrustedRlp::new(&bytes).as_val().ok()).collect();
-        self.miner.import_external_transactions(self, txs);
+        let parcels = parcels.into_iter().filter_map(|bytes| UntrustedRlp::new(&bytes).as_val().ok()).collect();
+        self.miner.import_external_parcels(self, parcels);
     }
 
-    fn ready_transactions(&self) -> Vec<SignedTransaction> {
-        self.miner.ready_transactions()
+    fn ready_parcels(&self) -> Vec<SignedParcel> {
+        self.miner.ready_parcels()
     }
 
-    fn transaction_invoice(&self, _id: TransactionId) -> Option<Invoice> {
+    fn parcel_invoice(&self, _id: ParcelId) -> Option<Invoice> {
         unimplemented!();
     }
 }

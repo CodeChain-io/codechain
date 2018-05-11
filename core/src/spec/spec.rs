@@ -44,8 +44,8 @@ pub struct CommonParams {
     pub maximum_extra_data_size: usize,
     /// Network id.
     pub network_id: u64,
-    /// Minimum transaction cost.
-    pub min_transaction_cost: U256,
+    /// Minimum parcel cost.
+    pub min_parcel_cost: U256,
 }
 
 impl From<cjson::spec::Params> for CommonParams {
@@ -54,7 +54,7 @@ impl From<cjson::spec::Params> for CommonParams {
             account_start_nonce: p.account_start_nonce.map_or_else(U256::zero, Into::into),
             maximum_extra_data_size: p.maximum_extra_data_size.into(),
             network_id: p.network_id.into(),
-            min_transaction_cost: p.min_transaction_cost.into(),
+            min_parcel_cost: p.min_parcel_cost.into(),
         }
     }
 }
@@ -80,8 +80,8 @@ pub struct Spec {
     pub score: U256,
     /// The genesis block's timestamp field.
     pub timestamp: u64,
-    /// Transactions root of the genesis block. Should be BLAKE_NULL_RLP.
-    pub transactions_root: H256,
+    /// Parcel root of the genesis block. Should be BLAKE_NULL_RLP.
+    pub parcels_root: H256,
     /// Invoices root of the genesis block. Should be BLAKE_NULL_RLP.
     pub invoices_root: H256,
     /// The genesis block's extra data field.
@@ -207,7 +207,7 @@ impl Spec {
         header.set_timestamp(self.timestamp);
         header.set_number(0);
         header.set_author(self.author.clone());
-        header.set_transactions_root(self.transactions_root.clone());
+        header.set_parcels_root(self.parcels_root.clone());
         header.set_extra_data(self.extra_data.clone());
         header.set_state_root(self.state_root());
         header.set_invoices_root(self.invoices_root.clone());
@@ -243,7 +243,7 @@ fn load_from(s: cjson::spec::Spec) -> Result<Spec, Error> {
         data_dir: s.data_dir.unwrap_or(s.name).into(),
         nodes: s.nodes.unwrap_or_else(Vec::new),
         parent_hash: g.parent_hash,
-        transactions_root: g.transactions_root,
+        parcels_root: g.parcelss_root,
         invoices_root: g.invoices_root,
         author: g.author,
         score: g.score,

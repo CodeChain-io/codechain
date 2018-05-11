@@ -311,7 +311,7 @@ impl Extension {
         let mut bodies = Vec::new();
         for hash in hashes {
             if let Some(body) = self.client.block_body(BlockId::Hash(hash)) {
-                bodies.push(body.transactions());
+                bodies.push(body.parcels());
             }
         }
         ResponseMessage::Bodies(bodies)
@@ -429,7 +429,7 @@ mod tests {
 
     fn generate_test_environment(chain_length: usize) -> TestEnvironment {
         let client = Arc::new(TestBlockChainClient::new());
-        client.add_blocks(chain_length, EachBlockWith::Transaction);
+        client.add_blocks(chain_length, EachBlockWith::Parcel);
         let extension = Extension::new(client.clone());
         let mut network = TestNetworkClient::new();
         network.register_extension(extension.clone());
@@ -567,7 +567,7 @@ mod tests {
         for i in 0..10 {
             peer_chain.import_block(env.client.block(BlockId::Number(i)).unwrap().into_inner());
         }
-        peer_chain.add_blocks(10, EachBlockWith::Transaction);
+        peer_chain.add_blocks(10, EachBlockWith::Parcel);
         assert_add_node(&mut env, 0);
         let chain_info = env.client.chain_info();
         assert_accept_status(&mut env, 0, chain_info.total_score + 2.into(), chain_info.best_block_hash);
