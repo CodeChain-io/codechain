@@ -28,6 +28,7 @@ use super::client::Error as ClientError;
 use super::consensus::EngineError;
 use super::parcel::ParcelError;
 use super::types::BlockNumber;
+use super::TransactionError;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 /// Import to the block queue result
@@ -168,6 +169,7 @@ pub enum Error {
     PowInvalid,
     /// Account Provider error.
     AccountProvider(AccountsError),
+    Transaction(TransactionError),
 }
 
 impl fmt::Display for Error {
@@ -185,6 +187,7 @@ impl fmt::Display for Error {
             Error::PowHashInvalid => f.write_str("Invalid or out of date PoW hash."),
             Error::PowInvalid => f.write_str("Invalid nonce or mishash"),
             Error::AccountProvider(ref err) => err.fmt(f),
+            Error::Transaction(ref err) => err.fmt(f),
         }
     }
 }
@@ -271,5 +274,11 @@ where
 impl From<AccountsError> for Error {
     fn from(err: AccountsError) -> Error {
         Error::AccountProvider(err)
+    }
+}
+
+impl From<TransactionError> for Error {
+    fn from(err: TransactionError) -> Self {
+        Error::Transaction(err)
     }
 }

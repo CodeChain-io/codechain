@@ -36,7 +36,7 @@ use self::cache::Cache;
 use super::invoice::{Invoice, TransactionOutcome};
 use super::parcel::ParcelError;
 use super::state_db::StateDB;
-use super::Transaction;
+use super::{Transaction, TransactionError};
 
 #[macro_use]
 mod address;
@@ -376,7 +376,7 @@ impl<B: Backend> State<B> {
                 let address = AssetAddress::new(input.prev_out.parcel_hash, index);
                 match self.asset(&address)? {
                     Some(asset) => (address.into(), *asset.lock_script_hash()),
-                    None => return Ok(Some(ParcelError::AssetNotFound(address.into()))),
+                    None => return Err(TransactionError::AssetNotFound(address.into()).into()),
                 }
             };
 
@@ -385,7 +385,7 @@ impl<B: Backend> State<B> {
                     expected: lock_script_hash,
                     found: blake256(&input.lock_script),
                 };
-                return Ok(Some(ParcelError::ScriptHashMismatch(mismatch)))
+                return Err(TransactionError::ScriptHashMismatch(mismatch).into())
             }
 
             let script_result = match (decode(&input.lock_script), decode(&input.unlock_script)) {
@@ -397,11 +397,11 @@ impl<B: Backend> State<B> {
                     execute(script.as_slice(), parcel.hash_without_script(), VMConfig::default())
                 }
                 // FIXME : Deliver full decode error
-                _ => return Ok(Some(ParcelError::InvalidScript)),
+                _ => return Err(TransactionError::InvalidScript.into()),
             };
 
             match script_result {
-                Ok(ScriptResult::Fail) | Err(_) => return Ok(Some(ParcelError::FailedToUnlock(address_hash))),
+                Ok(ScriptResult::Fail) | Err(_) => return Err(TransactionError::FailedToUnlock(address_hash).into()),
                 Ok(ScriptResult::Burnt) => unimplemented!(),
                 Ok(ScriptResult::Unlocked) => {}
             }
@@ -414,10 +414,10 @@ impl<B: Backend> State<B> {
             let address = AssetAddress::new(input.prev_out.parcel_hash, index);
 
             let asset_type = input.prev_out.asset_type.clone();
-            let asset_scheme_address =
-                AssetSchemeAddress::from_hash(asset_type).ok_or(ParcelError::AssetSchemeNotFound(asset_type.into()))?;
+            let asset_scheme_address = AssetSchemeAddress::from_hash(asset_type)
+                .ok_or(TransactionError::AssetSchemeNotFound(asset_type.into()))?;
             let _asset_scheme = self.asset_scheme((&asset_scheme_address).into())?
-                .ok_or(ParcelError::AssetSchemeNotFound(asset_scheme_address.into()))?;
+                .ok_or(TransactionError::AssetSchemeNotFound(asset_scheme_address.into()))?;
 
             match self.asset(&address)? {
                 Some(asset) => {
@@ -425,14 +425,14 @@ impl<B: Backend> State<B> {
                         let address = address.into();
                         let expected = *asset.amount();
                         let got = amount;
-                        return Ok(Some(ParcelError::InvalidAssetAmount {
+                        return Err(TransactionError::InvalidAssetAmount {
                             address,
                             expected,
                             got,
-                        }))
+                        }.into())
                     }
                 }
-                None => return Ok(Some(ParcelError::AssetNotFound(address.into()))),
+                None => return Err(TransactionError::AssetNotFound(address.into()).into()),
             }
 
             self.kill_asset(&address);

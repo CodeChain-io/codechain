@@ -14,9 +14,12 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::fmt;
+
 use cbytes::Bytes;
 use ctypes::{Address, H256, Public, U256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
+use unexpected::Mismatch;
 
 use super::parcel::{AssetTransferInput, AssetTransferOutput};
 
@@ -163,5 +166,49 @@ impl Encodable for Transaction {
                 ref outputs,
             } => s.begin_list(3).append(&ASSET_TRANSFER_ID).append_list(inputs).append_list(outputs),
         };
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum Error {
+    InvalidAssetAmount {
+        address: H256,
+        expected: u64,
+        got: u64,
+    },
+    /// Desired input asset not found
+    AssetNotFound(H256),
+    /// Desired input asset scheme not found
+    AssetSchemeNotFound(H256),
+    InvalidAssetType(H256),
+    /// Script hash does not match with provided lock script
+    ScriptHashMismatch(Mismatch<H256>),
+    /// Failed to decode script
+    InvalidScript,
+    /// Script execution result is `Fail`
+    FailedToUnlock(H256),
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            Error::InvalidAssetAmount {
+                ref address,
+                ref expected,
+                ref got,
+            } => write!(
+                f,
+                "AssetTransfer must consume input asset completely. The amount of asset({}) must be {}, but {}.",
+                address, expected, got
+            ),
+            Error::AssetNotFound(ref addr) => write!(f, "Asset not found: {}", addr),
+            Error::AssetSchemeNotFound(ref addr) => write!(f, "Asset scheme not found: {}", addr),
+            Error::InvalidAssetType(ref addr) => write!(f, "Asset type is invalid: {}", addr),
+            Error::ScriptHashMismatch(mismatch) => {
+                write!(f, "Expected script with hash {}, but got {}", mismatch.expected, mismatch.found)
+            }
+            Error::InvalidScript => write!(f, "Failed to decode script"),
+            Error::FailedToUnlock(ref hash) => write!(f, "Failed to unlock asset {}", hash),
+        }
     }
 }
