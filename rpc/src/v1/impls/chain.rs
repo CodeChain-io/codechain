@@ -17,8 +17,8 @@
 use std::sync::Arc;
 
 use ccore::{
-    Asset, AssetAddress, AssetScheme, AssetSchemeAddress, BlockChainClient, BlockId, BlockInfo, ChainInfo, Client,
-    Invoice, Miner, MinerService, Nonce, SignedParcel,
+    Asset, AssetAddress, AssetScheme, AssetSchemeAddress, Balance, BlockChainClient, BlockId, BlockInfo, ChainInfo,
+    Client, Invoice, Miner, MinerService, Nonce, SignedParcel,
 };
 use ctypes::{H160, H256, U256};
 use rlp::UntrustedRlp;
@@ -81,6 +81,11 @@ impl Chain for ChainClient {
     fn get_nonce(&self, address: H160, block_number: Option<u64>) -> Result<Option<U256>> {
         let block_id = BlockId::Number(block_number.unwrap_or(self.client.chain_info().best_block_number));
         Ok(self.client.nonce(&address.into(), block_id))
+    }
+
+    fn get_balance(&self, address: H160, block_number: Option<u64>) -> Result<Option<U256>> {
+        let block_id = block_number.map(|num| BlockId::Number(num)).unwrap_or(BlockId::Latest);
+        Ok(self.client.balance(&address.into(), block_id.into()))
     }
 
     fn get_block_number(&self) -> Result<u64> {

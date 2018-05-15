@@ -84,7 +84,7 @@ mod tests;
 pub use account_provider::AccountProvider;
 pub use block::Block;
 pub use client::{
-    BlockChainClient, BlockInfo, ChainInfo, ChainNotify, Client, EachBlockWith, ImportBlock, Nonce,
+    Balance, BlockChainClient, BlockInfo, ChainInfo, ChainNotify, Client, EachBlockWith, ImportBlock, Nonce,
     TestBlockChainClient,
 };
 pub use db::COL_STATE;
