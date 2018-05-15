@@ -176,6 +176,11 @@ impl Encodable for Transaction {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Error {
+    InsufficientBalance {
+        address: Address,
+        required: U256,
+        got: U256,
+    },
     InvalidAssetAmount {
         address: H256,
         expected: u64,
@@ -198,6 +203,11 @@ pub enum Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            Error::InsufficientBalance {
+                address,
+                required,
+                got,
+            } => write!(f, "{} has only {:?} but it must be larger than {:?}", address, required, got),
             Error::InvalidAssetAmount {
                 address,
                 expected,

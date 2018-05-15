@@ -25,7 +25,7 @@ use std::fmt;
 
 use cbytes::Bytes;
 use ccrypto::blake256;
-use ctypes::{Address, H256, Public, U128, U256, U512};
+use ctypes::{Address, H256, Public, U128, U256};
 use cvm::{decode, execute, ScriptResult, VMConfig};
 use error::Error;
 use parcel::{AssetTransferInput, AssetTransferOutput, SignedParcel};
@@ -473,9 +473,9 @@ impl<B: Backend> State<B> {
 
     fn execute(&mut self, parcel: &SignedParcel) -> Result<Option<ParcelError>, Error> {
         let sender = parcel.sender();
-        let fee = U512::from(parcel.as_unsigned().fee);
+        let fee = parcel.as_unsigned().fee;
         let nonce = self.nonce(&sender)?;
-        let mut balance = U512::from(self.balance(&sender)?);
+        let mut balance = self.balance(&sender)?;
 
         if parcel.nonce != nonce {
             return Ok(Some(ParcelError::InvalidNonce {
@@ -486,8 +486,8 @@ impl<B: Backend> State<B> {
 
         if fee > balance {
             return Ok(Some(ParcelError::NotEnoughCash {
-                required: fee,
-                got: balance,
+                required: fee.into(),
+                got: balance.into(),
             }))
         }
 
@@ -502,10 +502,11 @@ impl<B: Backend> State<B> {
                 value,
             } => {
                 if balance < value.into() {
-                    return Ok(Some(ParcelError::NotEnoughCash {
-                        required: fee + value.into(),
-                        got: fee + balance,
-                    }))
+                    return Err(TransactionError::InsufficientBalance {
+                        address: sender,
+                        required: value,
+                        got: balance,
+                    }.into())
                 }
                 self.transfer_balance(&sender, &address, &value)?;
                 // NOTE: Uncomment the below line if balance is used after
