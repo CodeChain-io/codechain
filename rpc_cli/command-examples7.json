@@ -8,9 +8,10 @@
       "transaction": {
           "type": "transfer",
           "data": {
+              "network_id": "17",
               "inputs": [{
                   "prev_out": {
-                      "parcel_hash": "4a78a702772d23960a0267fb407d9751dfa3110d12df6952a19f65c2ed4ef088",
+                      "parcel_hash": "f2aedb5e3482bb2bc961ea0ed5537594344076e2b18eca68e40871c9568de166",
                       "index": 1,
                       "asset_type": "5300000000000000254e62980bdac8dae8f192cb82e03d0f37a603bab74cb011",
                       "amount": 4
@@ -19,7 +20,7 @@
                   "unlock_script": ""
               }, {
                   "prev_out": {
-                      "parcel_hash": "4a78a702772d23960a0267fb407d9751dfa3110d12df6952a19f65c2ed4ef088",
+                      "parcel_hash": "f2aedb5e3482bb2bc961ea0ed5537594344076e2b18eca68e40871c9568de166",
                       "index": 3,
                       "asset_type": "5300000000000000254e62980bdac8dae8f192cb82e03d0f37a603bab74cb011",
                       "amount": 1
@@ -41,7 +42,7 @@
   {
     "name": "chain_getParcelInvoice",
     "data": {
-      "hash": "b788051b302dec551f88f84427d4924a847645589e195cbdc8ca0fe56972c01b"
+      "hash": "3bbbb078bf6cf80321b55e31372dd71b7bc8df560817fff4f410814cf7ae4c9e"
     }
   }
 ]

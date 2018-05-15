@@ -531,6 +531,7 @@ impl<B: Backend> State<B> {
             Transaction::AssetTransfer {
                 ref inputs,
                 ref outputs,
+                ..
             } => self.transfer_asset(&t, inputs, outputs),
         }
     }

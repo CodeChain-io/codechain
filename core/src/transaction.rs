@@ -45,6 +45,7 @@ pub enum Transaction {
         registrar: Option<Address>,
     },
     AssetTransfer {
+        network_id: u64,
         inputs: Vec<AssetTransferInput>,
         outputs: Vec<AssetTransferOutput>,
     },
@@ -60,6 +61,7 @@ impl Transaction {
     pub fn without_script(&self) -> Self {
         match self {
             Transaction::AssetTransfer {
+                network_id,
                 inputs,
                 outputs,
             } => {
@@ -72,6 +74,7 @@ impl Transaction {
                     })
                     .collect();
                 Transaction::AssetTransfer {
+                    network_id: *network_id,
                     inputs: new_inputs,
                     outputs: outputs.clone(),
                 }
@@ -124,12 +127,13 @@ impl Decodable for Transaction {
                 })
             }
             ASSET_TRANSFER_ID => {
-                if d.item_count()? != 3 {
+                if d.item_count()? != 4 {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
                 Ok(Transaction::AssetTransfer {
-                    inputs: d.list_at(1)?,
-                    outputs: d.list_at(2)?,
+                    network_id: d.val_at(1)?,
+                    inputs: d.list_at(2)?,
+                    outputs: d.list_at(3)?,
                 })
             }
             _ => Err(DecoderError::Custom("Unexpected transaction")),
@@ -162,9 +166,10 @@ impl Encodable for Transaction {
                 .append(amount)
                 .append(registrar),
             Transaction::AssetTransfer {
+                network_id,
                 inputs,
                 outputs,
-            } => s.begin_list(3).append(&ASSET_TRANSFER_ID).append_list(inputs).append_list(outputs),
+            } => s.begin_list(4).append(&ASSET_TRANSFER_ID).append(network_id).append_list(inputs).append_list(outputs),
         };
     }
 }

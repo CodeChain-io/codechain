@@ -12,6 +12,7 @@
       "transaction": {
           "type": "transfer",
           "data": {
+              "network_id": "17",
               "inputs": [{
                   "prev_out": {
                       "parcel_hash": "591a12799716600c9bb4680ebb8ea802c7ad4b7a0ba6151e7df643068967bc53",
@@ -51,7 +52,7 @@
   {
     "name": "chain_getParcelInvoice",
     "data": {
-      "hash": "4a78a702772d23960a0267fb407d9751dfa3110d12df6952a19f65c2ed4ef088"
+      "hash": "f2aedb5e3482bb2bc961ea0ed5537594344076e2b18eca68e40871c9568de166"
     }
   }
 ]

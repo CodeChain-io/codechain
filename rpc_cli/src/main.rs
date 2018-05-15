@@ -217,6 +217,11 @@ fn get_transaction(data: &Value) -> Result<Transaction, CommandError> {
         }
         "transfer" => {
             let data = &data["data"];
+            let network_id = data["network_id"]
+                .as_str()
+                .ok_or(CommandError::InvalidData)?
+                .parse()
+                .map_err(|_| CommandError::InvalidData)?;
             let inputs = {
                 let mut result = vec![];
                 for input in data["inputs"].as_array().unwrap_or_else(|| unreachable!()) {
@@ -232,6 +237,7 @@ fn get_transaction(data: &Value) -> Result<Transaction, CommandError> {
                 result
             };
             Ok(Transaction::AssetTransfer {
+                network_id,
                 inputs,
                 outputs,
             })

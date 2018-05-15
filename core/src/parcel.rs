@@ -526,7 +526,9 @@ mod tests {
     fn encode_and_decode_asset_transfer() {
         let inputs = vec![];
         let outputs = vec![];
+        let network_id = 0;
         let transaction = Transaction::AssetTransfer {
+            network_id,
             inputs,
             outputs,
         };
