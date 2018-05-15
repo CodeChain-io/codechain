@@ -36,7 +36,7 @@ use super::super::encoded;
 use super::super::error::{BlockImportError, Error, ImportError};
 use super::super::header::Header;
 use super::super::miner::{Miner, MinerService};
-use super::super::parcel::{SignedParcel, UnverifiedParcel};
+use super::super::parcel::{LocalizedParcel, SignedParcel, UnverifiedParcel};
 use super::super::service::ClientIoMessage;
 use super::super::spec::Spec;
 use super::super::state::State;
@@ -347,6 +347,11 @@ impl BlockChainClient for Client {
     fn block_hash(&self, id: BlockId) -> Option<H256> {
         let chain = self.chain.read();
         Self::block_hash(&chain, id)
+    }
+
+    fn parcel(&self, id: ParcelId) -> Option<LocalizedParcel> {
+        let chain = self.chain.read();
+        self.parcel_address(id).and_then(|address| chain.parcel(&address))
     }
 
     fn parcel_invoice(&self, id: ParcelId) -> Option<Invoice> {

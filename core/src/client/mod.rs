@@ -34,7 +34,7 @@ use super::block::{ClosedBlock, OpenBlock, SealedBlock};
 use super::blockchain_info::BlockChainInfo;
 use super::encoded;
 use super::error::BlockImportError;
-use super::parcel::SignedParcel;
+use super::parcel::{LocalizedParcel, SignedParcel};
 use super::state::StateInfo;
 use super::types::{BlockId, BlockNumber, BlockStatus, ParcelId, VerificationQueueInfo as BlockQueueInfo};
 use super::Invoice;
@@ -169,6 +169,9 @@ pub trait BlockChainClient: Sync + Send + AccountData + BlockChain + ImportBlock
 
     /// Get block hash.
     fn block_hash(&self, id: BlockId) -> Option<H256>;
+
+    /// Get parcel with given hash.
+    fn parcel(&self, id: ParcelId) -> Option<LocalizedParcel>;
 
     /// Get parcel invoice with given hash.
     fn parcel_invoice(&self, id: ParcelId) -> Option<Invoice>;

@@ -56,7 +56,7 @@ use super::super::encoded;
 use super::super::error::BlockImportError;
 use super::super::header::Header as BlockHeader;
 use super::super::miner::{Miner, MinerService, ParcelImportResult};
-use super::super::parcel::{Parcel, SignedParcel};
+use super::super::parcel::{LocalizedParcel, Parcel, SignedParcel};
 use super::super::spec::Spec;
 use super::super::state::{Asset, AssetAddress, AssetScheme, AssetSchemeAddress, StateInfo};
 use super::super::state_db::StateDB;
@@ -507,6 +507,10 @@ impl BlockChainClient for TestBlockChainClient {
 
     fn ready_parcels(&self) -> Vec<SignedParcel> {
         self.miner.ready_parcels()
+    }
+
+    fn parcel(&self, _id: ParcelId) -> Option<LocalizedParcel> {
+        unimplemented!();
     }
 
     fn parcel_invoice(&self, _id: ParcelId) -> Option<Invoice> {
