@@ -113,11 +113,11 @@ pub struct AssetAddress(H256);
 impl_address!(AssetAddress, PREFIX);
 
 impl AssetAddress {
-    pub fn new(parcel_hash: H256, index: usize) -> Self {
+    pub fn new(transaction_hash: H256, index: usize) -> Self {
         debug_assert_eq!(::std::mem::size_of::<u64>(), ::std::mem::size_of::<usize>());
         let index = index as u64;
 
-        Self::from_parcel_hash(parcel_hash, index)
+        Self::from_transaction_hash(transaction_hash, index)
     }
 }
 

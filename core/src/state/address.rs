@@ -17,8 +17,8 @@
 macro_rules! impl_address {
     ($name:ident, $prefix:expr) => {
         impl $name {
-            fn from_parcel_hash(parcel_hash: ::ctypes::H256, index: u64) -> Self {
-                let mut hash = ::ccrypto::blake256_with_key(&parcel_hash, &::ctypes::H128::from(index));
+            fn from_transaction_hash(transaction_hash: ::ctypes::H256, index: u64) -> Self {
+                let mut hash = ::ccrypto::blake256_with_key(&transaction_hash, &::ctypes::H128::from(index));
                 hash[0..8].clone_from_slice(&[$prefix, 0, 0, 0, 0, 0, 0, 0]);
                 $name(hash)
             }

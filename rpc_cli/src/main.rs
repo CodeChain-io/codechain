@@ -105,8 +105,8 @@ fn handle_command(rpc: &mut RpcClient, name: &Value, data: &Value) -> Result<(),
             Ok(())
         }
         "chain_getAssetScheme" => {
-            let parcel = get_h256(&data["parcel_hash"])?;
-            rpc.get_asset_scheme(parcel)
+            let transaction_hash = get_h256(&data["transaction_hash"])?;
+            rpc.get_asset_scheme(transaction_hash)
                 .map(|message| {
                     println!("{:?}", message);
                     ()
@@ -114,9 +114,9 @@ fn handle_command(rpc: &mut RpcClient, name: &Value, data: &Value) -> Result<(),
                 .map_err(|e| CommandError::RpcError(e))
         }
         "chain_getAsset" => {
-            let parcel = get_h256(&data["parcel_hash"])?;
+            let transaction_hash = get_h256(&data["transaction_hash"])?;
             let index = data["index"].as_u64().ok_or(CommandError::InvalidData)? as usize;
-            rpc.get_asset(parcel, index)
+            rpc.get_asset(transaction_hash, index)
                 .map(|message| {
                     println!("{:?}", message);
                     ()
@@ -265,12 +265,12 @@ fn get_transfer_output(data: &Value) -> AssetTransferOutput {
 fn get_transfer_input(data: &Value) -> AssetTransferInput {
     let prev_out = {
         let ref data = data["prev_out"];
-        let parcel_hash = get_h256(&data["parcel_hash"]).unwrap_or_else(|_| unreachable!());
+        let transaction_hash = get_h256(&data["transaction_hash"]).unwrap_or_else(|_| unreachable!());
         let index = data["index"].as_u64().unwrap_or_else(|| unreachable!()) as usize;
         let asset_type = get_h256(&data["asset_type"]).unwrap_or_else(|_| unreachable!());
         let amount = data["amount"].as_u64().unwrap();
         AssetOutPoint {
-            parcel_hash,
+            transaction_hash,
             index,
             asset_type,
             amount,

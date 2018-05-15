@@ -23,8 +23,8 @@ pub trait RpcClient {
     fn ping(&mut self) -> Result<String, RpcError>;
     fn send_signed_parcel(&mut self, t: UnverifiedParcel) -> Result<H256, RpcError>;
     fn get_parcel_invoice(&mut self, hash: H256) -> Result<Option<Invoice>, RpcError>;
-    fn get_asset_scheme(&mut self, parcel_hash: H256) -> Result<Option<AssetScheme>, RpcError>;
-    fn get_asset(&mut self, parcel_hash: H256, index: usize) -> Result<Option<Asset>, RpcError>;
+    fn get_asset_scheme(&mut self, transaction_hash: H256) -> Result<Option<AssetScheme>, RpcError>;
+    fn get_asset(&mut self, transaction_hash: H256, index: usize) -> Result<Option<Asset>, RpcError>;
 
     fn get_state_trie_keys(&mut self, offset: usize, limit: usize) -> Result<Vec<H256>, RpcError>;
     fn get_state_trie_value(&mut self, value: H256) -> Result<Vec<String>, RpcError>;
@@ -93,15 +93,15 @@ impl RpcClient for RpcHttp {
         Ok(invoice)
     }
 
-    fn get_asset_scheme(&mut self, parcel_hash: H256) -> Result<Option<AssetScheme>, RpcError> {
-        let v = self.send("chain_getAssetScheme", vec![format!("0x{:?}", parcel_hash).into()])?;
+    fn get_asset_scheme(&mut self, transaction_hash: H256) -> Result<Option<AssetScheme>, RpcError> {
+        let v = self.send("chain_getAssetScheme", vec![format!("0x{:?}", transaction_hash).into()])?;
         let asset: Option<AssetScheme> = ::serde_json::from_value(v["result"].clone())
             .map_err(|e| RpcError::ApiError(format!("Failed to deserialize {:?}", e)))?;
         Ok(asset)
     }
 
-    fn get_asset(&mut self, parcel_hash: H256, index: usize) -> Result<Option<Asset>, RpcError> {
-        let v = self.send("chain_getAsset", vec![format!("0x{:?}", parcel_hash).into(), index.into()])?;
+    fn get_asset(&mut self, transaction_hash: H256, index: usize) -> Result<Option<Asset>, RpcError> {
+        let v = self.send("chain_getAsset", vec![format!("0x{:?}", transaction_hash).into(), index.into()])?;
         let asset: Option<Asset> = ::serde_json::from_value(v["result"].clone())
             .map_err(|e| RpcError::ApiError(format!("Failed to deserialize {:?}", e)))?;
         Ok(asset)

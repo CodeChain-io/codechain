@@ -15,9 +15,9 @@
               "network_id": "17",
               "inputs": [{
                   "prev_out": {
-                      "parcel_hash": "591a12799716600c9bb4680ebb8ea802c7ad4b7a0ba6151e7df643068967bc53",
+                      "transaction_hash": "84c8d5d2328dc4ea6da1cdaddaf8cfa5ce6ba0373f724d91bdc6a69c6977183d",
                       "index": 0,
-                      "asset_type": "5300000000000000254e62980bdac8dae8f192cb82e03d0f37a603bab74cb011",
+                      "asset_type": "5300000000000000e97740b63d40849b152624cd468aef4c95838689b0fdb551",
                       "amount": 100
                   },
                   "lock_script": "\u0002\u0001",
@@ -26,22 +26,22 @@
               "outputs": [{
                   "lock_script_hash": "50a2c0d145539c1fb32f60e0d8425b1c03f6120c40171971b8de9c0017a4bfb3",
                   "parameters": [],
-                  "asset_type": "5300000000000000254e62980bdac8dae8f192cb82e03d0f37a603bab74cb011",
+                  "asset_type": "5300000000000000e97740b63d40849b152624cd468aef4c95838689b0fdb551",
                   "amount": 93
               }, {
                   "lock_script_hash": "50a2c0d145539c1fb32f60e0d8425b1c03f6120c40171971b8de9c0017a4bfb3",
                   "parameters": [],
-                  "asset_type": "5300000000000000254e62980bdac8dae8f192cb82e03d0f37a603bab74cb011",
+                  "asset_type": "5300000000000000e97740b63d40849b152624cd468aef4c95838689b0fdb551",
                   "amount": 4
               }, {
                   "lock_script_hash": "50a2c0d145539c1fb32f60e0d8425b1c03f6120c40171971b8de9c0017a4bfb3",
                   "parameters": [],
-                  "asset_type": "5300000000000000254e62980bdac8dae8f192cb82e03d0f37a603bab74cb011",
+                  "asset_type": "5300000000000000e97740b63d40849b152624cd468aef4c95838689b0fdb551",
                   "amount": 2
               }, {
                   "lock_script_hash": "50a2c0d145539c1fb32f60e0d8425b1c03f6120c40171971b8de9c0017a4bfb3",
                   "parameters": [],
-                  "asset_type": "5300000000000000254e62980bdac8dae8f192cb82e03d0f37a603bab74cb011",
+                  "asset_type": "5300000000000000e97740b63d40849b152624cd468aef4c95838689b0fdb551",
                   "amount": 1
               }]
           }
@@ -52,7 +52,7 @@
   {
     "name": "chain_getParcelInvoice",
     "data": {
-      "hash": "f2aedb5e3482bb2bc961ea0ed5537594344076e2b18eca68e40871c9568de166"
+      "hash": "c420a5c961205036380cd152d86ade0f4c5afe24de9a65f22a96837bfcfb639c"
     }
   }
 ]

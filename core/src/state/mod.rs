@@ -355,21 +355,21 @@ impl<B: Backend> State<B> {
 
     fn mint_asset(
         &mut self,
-        parcel_hash: H256,
+        transaction_hash: H256,
         metadata: &String,
         lock_script_hash: &H256,
         parameters: &Vec<Bytes>,
         amount: &Option<u64>,
         registrar: &Option<Address>,
     ) -> Result<(), Error> {
-        let asset_scheme_address = AssetSchemeAddress::new(parcel_hash);
+        let asset_scheme_address = AssetSchemeAddress::new(transaction_hash);
         let amount = amount.unwrap_or(::std::u64::MAX);
         let asset_scheme = self.require_asset_scheme(&asset_scheme_address, || {
             AssetScheme::new(metadata.clone(), amount, registrar.clone())
         })?;
         trace!(target: "tx", "{:?} is minted on {:?}", asset_scheme, asset_scheme_address);
 
-        let asset_address = AssetAddress::new(parcel_hash, 0);
+        let asset_address = AssetAddress::new(transaction_hash, 0);
         let asset = self.require_asset(&asset_address, || {
             Asset::new(asset_scheme_address.into(), *lock_script_hash, parameters.clone(), amount)
         });
@@ -379,7 +379,7 @@ impl<B: Backend> State<B> {
 
     fn transfer_asset(
         &mut self,
-        parcel: &SignedParcel,
+        transaction: &Transaction,
         inputs: &[AssetTransferInput],
         outputs: &[AssetTransferOutput],
     ) -> Result<(), Error> {
@@ -388,7 +388,7 @@ impl<B: Backend> State<B> {
         for input in inputs {
             let (address_hash, lock_script_hash) = {
                 let index = input.prev_out.index;
-                let address = AssetAddress::new(input.prev_out.parcel_hash, index);
+                let address = AssetAddress::new(input.prev_out.transaction_hash, index);
                 match self.asset(&address)? {
                     Some(asset) => (address.into(), *asset.lock_script_hash()),
                     None => return Err(TransactionError::AssetNotFound(address.into()).into()),
@@ -409,7 +409,7 @@ impl<B: Backend> State<B> {
                     script.extend(lock_script);
                     script.extend(unlock_script);
                     // FIXME : apply parameters to vm
-                    execute(script.as_slice(), parcel.hash_without_script(), VMConfig::default())
+                    execute(script.as_slice(), transaction.hash_without_script(), VMConfig::default())
                 }
                 // FIXME : Deliver full decode error
                 _ => return Err(TransactionError::InvalidScript.into()),
@@ -429,7 +429,7 @@ impl<B: Backend> State<B> {
         for input in inputs {
             let index = input.prev_out.index;
             let amount = input.prev_out.amount;
-            let address = AssetAddress::new(input.prev_out.parcel_hash, index);
+            let address = AssetAddress::new(input.prev_out.transaction_hash, index);
 
             let asset_type = input.prev_out.asset_type.clone();
             let asset_scheme_address = AssetSchemeAddress::from_hash(asset_type)
@@ -459,7 +459,7 @@ impl<B: Backend> State<B> {
         }
         let mut created_asset = Vec::with_capacity(outputs.len());
         for (index, output) in outputs.iter().enumerate() {
-            let asset_address = AssetAddress::new(parcel.hash(), index);
+            let asset_address = AssetAddress::new(transaction.hash(), index);
             let asset =
                 Asset::new(output.asset_type, output.lock_script_hash, output.parameters.clone(), output.amount);
             self.require_asset(&asset_address, || asset)?;
@@ -527,8 +527,27 @@ impl<B: Backend> State<B> {
         self.sub_balance(&sender, &fee.into())?;
         balance = balance - fee;
 
+        // The failed parcel also must pay the fee and increase nonce.
         self.checkpoint(TRANSACTION_CHECKPOINT);
-        let result = (|| match parcel.transaction {
+
+        let result = self.execute_transaction(&parcel.transaction, &sender, &balance, &parcel.network_id);
+        match result {
+            Ok(_) => self.discard_checkpoint(TRANSACTION_CHECKPOINT),
+            Err(Error::Transaction(_)) => self.revert_to_checkpoint(TRANSACTION_CHECKPOINT),
+            Err(_) => self.revert_to_checkpoint(TRANSACTION_CHECKPOINT),
+        }
+        result
+    }
+
+    fn execute_transaction(
+        &mut self,
+        transaction: &Transaction,
+        sender: &Address,
+        balance: &U256,
+        parcel_network_id: &u64,
+    ) -> Result<(), Error> {
+        trace!(target: "tx", "{:?}({:?}) is executed", transaction, transaction.hash());
+        match transaction {
             Transaction::Noop => Ok(()),
             Transaction::Payment {
                 address,
@@ -536,52 +555,39 @@ impl<B: Backend> State<B> {
             } => {
                 if balance < value.into() {
                     return Err(TransactionError::InsufficientBalance {
-                        address: sender,
-                        required: value,
-                        got: balance,
+                        address: *sender,
+                        required: *value,
+                        got: *balance,
                     }.into())
                 }
-                self.transfer_balance(&sender, &address, &value)?;
+                Ok(self.transfer_balance(&sender, &address, &value)?)
                 // NOTE: Uncomment the below line if balance is used after
                 // balance = balance - value.into()
-                Ok(())
             }
             Transaction::SetRegularKey {
                 key,
-            } => {
-                self.set_regular_key(&sender, &key)?;
-                Ok(())
-            }
+            } => Ok(self.set_regular_key(sender, &key)?),
             Transaction::AssetMint {
                 ref metadata,
                 ref lock_script_hash,
                 ref amount,
                 ref parameters,
                 ref registrar,
-            } => {
-                self.mint_asset(parcel.hash(), metadata, lock_script_hash, parameters, amount, registrar)?;
-                Ok(())
-            }
+            } => Ok(self.mint_asset(transaction.hash(), metadata, lock_script_hash, parameters, amount, registrar)?),
             Transaction::AssetTransfer {
                 ref inputs,
                 ref outputs,
                 network_id,
             } => {
-                if parcel.network_id != network_id {
+                if parcel_network_id != network_id {
                     return Err(TransactionError::InvalidNetworkId(Mismatch {
-                        expected: parcel.network_id,
-                        found: network_id,
+                        expected: *parcel_network_id,
+                        found: *network_id,
                     }).into())
                 }
-                self.transfer_asset(&parcel, inputs, outputs)
+                self.transfer_asset(&transaction, inputs, outputs)
             }
-        })();
-        match result {
-            Ok(_) => self.discard_checkpoint(TRANSACTION_CHECKPOINT),
-            Err(Error::Transaction(_)) => self.revert_to_checkpoint(TRANSACTION_CHECKPOINT),
-            Err(_) => self.revert_to_checkpoint(TRANSACTION_CHECKPOINT),
         }
-        result
     }
 
     /// Commits our cached account changes into the trie.
@@ -1193,7 +1199,7 @@ mod tests {
         assert!(is_input_and_output_consistent(
             &[AssetTransferInput {
                 prev_out: AssetOutPoint {
-                    parcel_hash: H256::random(),
+                    transaction_hash: H256::random(),
                     index: 0,
                     asset_type,
                     amount,
@@ -1227,7 +1233,7 @@ mod tests {
             &[
                 AssetTransferInput {
                     prev_out: AssetOutPoint {
-                        parcel_hash: H256::random(),
+                        transaction_hash: H256::random(),
                         index: 0,
                         asset_type: asset_type1,
                         amount: amount1,
@@ -1237,7 +1243,7 @@ mod tests {
                 },
                 AssetTransferInput {
                     prev_out: AssetOutPoint {
-                        parcel_hash: H256::random(),
+                        transaction_hash: H256::random(),
                         index: 0,
                         asset_type: asset_type2,
                         amount: amount2,
@@ -1280,7 +1286,7 @@ mod tests {
             &[
                 AssetTransferInput {
                     prev_out: AssetOutPoint {
-                        parcel_hash: H256::random(),
+                        transaction_hash: H256::random(),
                         index: 0,
                         asset_type: asset_type1,
                         amount: amount1,
@@ -1290,7 +1296,7 @@ mod tests {
                 },
                 AssetTransferInput {
                     prev_out: AssetOutPoint {
-                        parcel_hash: H256::random(),
+                        transaction_hash: H256::random(),
                         index: 0,
                         asset_type: asset_type2,
                         amount: amount2,
@@ -1344,7 +1350,7 @@ mod tests {
         assert!(!is_input_and_output_consistent(
             &[AssetTransferInput {
                 prev_out: AssetOutPoint {
-                    parcel_hash: H256::random(),
+                    transaction_hash: H256::random(),
                     index: 0,
                     asset_type,
                     amount: input_amount,
@@ -1365,7 +1371,7 @@ mod tests {
         assert!(!is_input_and_output_consistent(
             &[AssetTransferInput {
                 prev_out: AssetOutPoint {
-                    parcel_hash: H256::random(),
+                    transaction_hash: H256::random(),
                     index: 0,
                     asset_type,
                     amount: input_amount,
