@@ -36,6 +36,7 @@ use super::super::types::BlockNumber;
 use super::super::views::{BlockView, HeaderView};
 use super::best_block::BestBlock;
 use super::block_info::{BlockInfo, BlockLocation, BranchBecomingCanonChainData};
+use super::body_db::{BodyDB, BodyProvider};
 use super::extras::{BlockDetails, BlockInvoices, EpochTransitions, ParcelAddress, EPOCH_KEY_PREFIX};
 
 /// Structure providing fast access to blockchain data.
@@ -47,38 +48,37 @@ pub struct BlockChain {
 
     // block cache
     block_headers: RwLock<HashMap<H256, Bytes>>,
-    block_bodies: RwLock<HashMap<H256, Bytes>>,
 
     // extra caches
     block_details: RwLock<HashMap<H256, BlockDetails>>,
     block_hashes: RwLock<HashMap<BlockNumber, H256>>,
-    parcel_addresses: RwLock<HashMap<H256, ParcelAddress>>,
     block_invoices: RwLock<HashMap<H256, BlockInvoices>>,
+
+    body_db: BodyDB,
 
     db: Arc<KeyValueDB>,
 
     pending_best_block: RwLock<Option<BestBlock>>,
     pending_block_hashes: RwLock<HashMap<BlockNumber, H256>>,
     pending_block_details: RwLock<HashMap<H256, BlockDetails>>,
-    pending_parcel_addresses: RwLock<HashMap<H256, Option<ParcelAddress>>>,
 }
 
 impl BlockChain {
     /// Create new instance of blockchain from given Genesis.
     pub fn new(genesis: &[u8], db: Arc<KeyValueDB>) -> BlockChain {
+        let genesis_block = BlockView::new(genesis);
+
         let bc = BlockChain {
             best_block: RwLock::new(BestBlock::default()),
             block_headers: RwLock::new(HashMap::new()),
-            block_bodies: RwLock::new(HashMap::new()),
             block_details: RwLock::new(HashMap::new()),
             block_hashes: RwLock::new(HashMap::new()),
-            parcel_addresses: RwLock::new(HashMap::new()),
             block_invoices: RwLock::new(HashMap::new()),
+            body_db: BodyDB::new(&genesis_block, db.clone()),
             db: db.clone(),
             pending_best_block: RwLock::new(None),
             pending_block_hashes: RwLock::new(HashMap::new()),
             pending_block_details: RwLock::new(HashMap::new()),
-            pending_parcel_addresses: RwLock::new(HashMap::new()),
         };
 
         // load best block
@@ -100,7 +100,6 @@ impl BlockChain {
 
                 let mut batch = DBTransaction::new();
                 batch.put(db::COL_HEADERS, &hash, block.header_rlp().as_raw());
-                batch.put(db::COL_BODIES, &hash, &Self::block_to_body(genesis));
 
                 batch.write(db::COL_EXTRA, &hash, &details);
                 batch.write(db::COL_EXTRA, &header.number(), &hash);
@@ -242,14 +241,12 @@ impl BlockChain {
 
         assert!(self.pending_best_block.read().is_none());
 
-        let compressed_header = compress(block.header_rlp().as_raw(), blocks_swapper());
-        let compressed_body = compress(&Self::block_to_body(bytes), blocks_swapper());
+        let info = self.block_info(&header);
 
         // store block in db
+        let compressed_header = compress(block.header_rlp().as_raw(), blocks_swapper());
         batch.put(db::COL_HEADERS, &hash, &compressed_header);
-        batch.put(db::COL_BODIES, &hash, &compressed_body);
-
-        let info = self.block_info(&header);
+        self.body_db.insert_body(batch, &block, &info.location);
 
         self.prepare_update(
             batch,
@@ -257,7 +254,6 @@ impl BlockChain {
                 block_hashes: self.prepare_block_hashes_update(bytes, &info),
                 block_details: self.prepare_block_details_update(bytes, &info),
                 block_invoices: self.prepare_block_invoices_update(invoices, &info),
-                parcels_addresses: self.prepare_parcel_addresses_update(bytes, &info),
                 info: info.clone(),
                 timestamp: header.timestamp(),
                 block: bytes,
@@ -273,28 +269,18 @@ impl BlockChain {
         let mut pending_best_block = self.pending_best_block.write();
         let mut pending_write_hashes = self.pending_block_hashes.write();
         let mut pending_block_details = self.pending_block_details.write();
-        let mut pending_write_parcels = self.pending_parcel_addresses.write();
 
         let mut best_block = self.best_block.write();
         let mut write_block_details = self.block_details.write();
         let mut write_hashes = self.block_hashes.write();
-        let mut write_parcels = self.parcel_addresses.write();
         // update best block
         if let Some(block) = pending_best_block.take() {
             *best_block = block;
         }
-
-        let pending_parcels = mem::replace(&mut *pending_write_parcels, HashMap::new());
-        let (retracted_parcels, enacted_parcels) =
-            pending_parcels.into_iter().partition::<HashMap<_, _>, _>(|&(_, ref value)| value.is_none());
+        self.body_db.commit();
 
         write_hashes.extend(mem::replace(&mut *pending_write_hashes, HashMap::new()));
-        write_parcels.extend(enacted_parcels.into_iter().map(|(k, v)| (k, v.expect("Parcels were partitioned; qed"))));
         write_block_details.extend(mem::replace(&mut *pending_block_details, HashMap::new()));
-
-        for hash in retracted_parcels.keys() {
-            write_parcels.remove(hash);
-        }
     }
 
     /// Prepares extras update.
@@ -326,7 +312,6 @@ impl BlockChain {
 
             let mut write_hashes = self.pending_block_hashes.write();
             let mut write_details = self.pending_block_details.write();
-            let mut write_parcels = self.pending_parcel_addresses.write();
 
             batch.extend_with_cache(
                 db::COL_EXTRA,
@@ -338,12 +323,6 @@ impl BlockChain {
                 db::COL_EXTRA,
                 &mut *write_hashes,
                 update.block_hashes,
-                CacheUpdatePolicy::Overwrite,
-            );
-            batch.extend_with_option_cache(
-                db::COL_EXTRA,
-                &mut *write_parcels,
-                update.parcels_addresses,
                 CacheUpdatePolicy::Overwrite,
             );
         }
@@ -411,71 +390,6 @@ impl BlockChain {
         block_invoices
     }
 
-    /// This function returns modified parcel addresses.
-    fn prepare_parcel_addresses_update(
-        &self,
-        block_bytes: &[u8],
-        info: &BlockInfo,
-    ) -> HashMap<H256, Option<ParcelAddress>> {
-        let block = BlockView::new(block_bytes);
-        let parcel_hashes = block.parcel_hashes();
-
-        match info.location {
-            BlockLocation::CanonChain => parcel_hashes
-                .into_iter()
-                .enumerate()
-                .map(|(i, parcel_hash)| {
-                    (
-                        parcel_hash,
-                        Some(ParcelAddress {
-                            block_hash: info.hash,
-                            index: i,
-                        }),
-                    )
-                })
-                .collect(),
-            BlockLocation::BranchBecomingCanonChain(ref data) => {
-                let addresses = data.enacted.iter().flat_map(|hash| {
-                    let body = self.block_body(hash).expect("Enacted block must be in database.");
-                    let hashes = body.parcel_hashes();
-                    hashes
-                        .into_iter()
-                        .enumerate()
-                        .map(|(i, parcel_hash)| {
-                            (
-                                parcel_hash,
-                                Some(ParcelAddress {
-                                    block_hash: *hash,
-                                    index: i,
-                                }),
-                            )
-                        })
-                        .collect::<HashMap<H256, Option<ParcelAddress>>>()
-                });
-
-                let current_addresses = parcel_hashes.into_iter().enumerate().map(|(i, parcel_hash)| {
-                    (
-                        parcel_hash,
-                        Some(ParcelAddress {
-                            block_hash: info.hash,
-                            index: i,
-                        }),
-                    )
-                });
-
-                let retracted = data.retracted.iter().flat_map(|hash| {
-                    let body = self.block_body(hash).expect("Retracted block must be in database.");
-                    let hashes = body.parcel_hashes();
-                    hashes.into_iter().map(|hash| (hash, None)).collect::<HashMap<H256, Option<ParcelAddress>>>()
-                });
-
-                // The order here is important! Don't remove parcel if it was part of enacted blocks as well.
-                retracted.chain(addresses).chain(current_addresses).collect()
-            }
-            BlockLocation::Branch => HashMap::new(),
-        }
-    }
-
     /// Get inserted block info which is critical to prepare extras updates.
     fn block_info(&self, header: &HeaderView) -> BlockInfo {
         let hash = header.hash();
@@ -536,14 +450,6 @@ impl BlockChain {
             best_block_number: best_block.number,
             best_block_timestamp: best_block.timestamp,
         }
-    }
-
-    /// Create a block body from a block.
-    pub fn block_to_body(block: &[u8]) -> Bytes {
-        let mut body = RlpStream::new_list(1);
-        let block_rlp = Rlp::new(block);
-        body.append_raw(block_rlp.at(1).as_raw(), 1);
-        body.out()
     }
 
     /// Get best block hash.
@@ -723,7 +629,7 @@ impl<'a> Iterator for EpochTransitionIter<'a> {
 }
 
 /// Interface for querying blocks by hash and by number.
-pub trait BlockProvider {
+pub trait BlockProvider: BodyProvider {
     /// Returns true if the given block is known
     /// (though not necessarily a part of the canon chain).
     fn is_known(&self, hash: &H256) -> bool;
@@ -736,9 +642,6 @@ pub trait BlockProvider {
 
     /// Get the hash of given block's number.
     fn block_hash(&self, index: BlockNumber) -> Option<H256>;
-
-    /// Get the address of parcel with given hash.
-    fn parcel_address(&self, hash: &H256) -> Option<ParcelAddress>;
 
     /// Get invoices of block with given hash.
     fn block_invoices(&self, hash: &H256) -> Option<BlockInvoices>;
@@ -753,9 +656,6 @@ pub trait BlockProvider {
 
     /// Get the header RLP of a block.
     fn block_header_data(&self, hash: &H256) -> Option<encoded::Header>;
-
-    /// Get the block body (uncles and parcels).
-    fn block_body(&self, hash: &H256) -> Option<encoded::Body>;
 
     /// Get the number of given block's hash.
     fn block_number(&self, hash: &H256) -> Option<BlockNumber> {
@@ -784,6 +684,20 @@ pub trait BlockProvider {
     /// Returns the header of the genesis block.
     fn genesis_header(&self) -> Header {
         self.block_header(&self.genesis_hash()).expect("Genesis header always stored; qed")
+    }
+}
+
+impl BodyProvider for BlockChain {
+    fn is_known_body(&self, hash: &H256) -> bool {
+        self.body_db.is_known_body(hash)
+    }
+
+    fn parcel_address(&self, hash: &H256) -> Option<ParcelAddress> {
+        self.body_db.parcel_address(hash)
+    }
+
+    fn block_body(&self, hash: &H256) -> Option<encoded::Body> {
+        self.body_db.block_body(hash)
     }
 }
 
@@ -832,34 +746,6 @@ impl BlockProvider for BlockChain {
         Some(encoded::Header::new(bytes))
     }
 
-    /// Get block body data
-    fn block_body(&self, hash: &H256) -> Option<encoded::Body> {
-        // Check cache first
-        {
-            let read = self.block_bodies.read();
-            if let Some(v) = read.get(hash) {
-                return Some(encoded::Body::new(v.clone()))
-            }
-        }
-
-        // Check if it's the best block
-        {
-            let best_block = self.best_block.read();
-            if &best_block.hash == hash {
-                return Some(encoded::Body::new(Self::block_to_body(&best_block.block)))
-            }
-        }
-
-        // Read from DB and populate cache
-        let b = self.db.get(db::COL_BODIES, hash).expect("Low level database error. Some issue with disk?")?;
-
-        let bytes = decompress(&b, blocks_swapper()).into_vec();
-        let mut write = self.block_bodies.write();
-        write.insert(*hash, bytes.clone());
-
-        Some(encoded::Body::new(bytes))
-    }
-
     /// Get the familial details concerning a block.
     fn block_details(&self, hash: &H256) -> Option<BlockDetails> {
         let result = self.db.read_with_cache(db::COL_EXTRA, &self.block_details, hash)?;
@@ -869,12 +755,6 @@ impl BlockProvider for BlockChain {
     /// Get the hash of given block's number.
     fn block_hash(&self, index: BlockNumber) -> Option<H256> {
         let result = self.db.read_with_cache(db::COL_EXTRA, &self.block_hashes, &index)?;
-        Some(result)
-    }
-
-    /// Get the address of parcel with given hash.
-    fn parcel_address(&self, hash: &H256) -> Option<ParcelAddress> {
-        let result = self.db.read_with_cache(db::COL_EXTRA, &self.parcel_addresses, hash)?;
         Some(result)
     }
 
@@ -950,8 +830,6 @@ pub struct ExtrasUpdate<'a> {
     pub block_details: HashMap<H256, BlockDetails>,
     /// Modified block invoices.
     pub block_invoices: HashMap<H256, BlockInvoices>,
-    /// Modified parcel addresses (None signifies removed parcels).
-    pub parcels_addresses: HashMap<H256, Option<ParcelAddress>>,
 }
 
 /// Represents a tree route between `from` block and `to` block:

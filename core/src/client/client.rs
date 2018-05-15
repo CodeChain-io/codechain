@@ -29,7 +29,7 @@ use rlp::UntrustedRlp;
 use trie::{TrieFactory, TrieSpec};
 
 use super::super::block::{enact, ClosedBlock, Drain, IsBlock, LockedBlock, OpenBlock, SealedBlock};
-use super::super::blockchain::{BlockChain, BlockProvider, ImportRoute, ParcelAddress};
+use super::super::blockchain::{BlockChain, BlockProvider, BodyProvider, ImportRoute, ParcelAddress};
 use super::super::consensus::epoch::Transition as EpochTransition;
 use super::super::consensus::CodeChainEngine;
 use super::super::encoded;
