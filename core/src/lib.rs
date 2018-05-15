@@ -93,8 +93,8 @@ pub use header::{Header, Seal};
 pub use invoice::Invoice;
 pub use miner::{Miner, MinerOptions, MinerService};
 pub use parcel::{
-    parcel_error_message, AssetOutPoint, AssetTransferInput, AssetTransferOutput, Parcel, SignedParcel,
-    UnverifiedParcel,
+    parcel_error_message, AssetOutPoint, AssetTransferInput, AssetTransferOutput, LocalizedParcel, Parcel,
+    SignedParcel, UnverifiedParcel,
 };
 pub use service::ClientService;
 pub use spec::Spec;

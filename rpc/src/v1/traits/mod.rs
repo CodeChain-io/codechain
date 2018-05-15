@@ -19,13 +19,17 @@ use ctypes::{H160, H256, U256};
 
 use jsonrpc_core::Result;
 
-use super::types::{Block, Bytes};
+use super::types::{Block, Bytes, Parcel};
 
 build_rpc_trait! {
     pub trait Chain {
         /// Sends signed parcel, returning its hash.
         # [rpc(name = "chain_sendSignedParcel")]
         fn send_signed_parcel(&self, Bytes) -> Result<H256>;
+
+        /// Gets parcel with given hash.
+        # [rpc(name = "chain_getParcel")]
+        fn get_parcel(&self, H256) -> Result<Option<Parcel>>;
 
         /// Gets parcel invoices with given hash.
         # [rpc(name = "chain_getParcelInvoice")]

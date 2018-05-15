@@ -27,7 +27,7 @@ use jsonrpc_core::Result;
 
 use super::super::errors;
 use super::super::traits::Chain;
-use super::super::types::{Block, Bytes};
+use super::super::types::{Block, Bytes, Parcel};
 
 pub struct ChainClient {
     client: Arc<Client>,
@@ -54,6 +54,13 @@ impl Chain for ChainClient {
                 self.miner.import_own_parcel(&*self.client, signed).map_err(errors::parcel).map(|_| hash)
             })
             .map(Into::into)
+    }
+
+    fn get_parcel(&self, parcel_hash: H256) -> Result<Option<Parcel>> {
+        match self.client.parcel(parcel_hash.into()) {
+            Some(parcel) => Ok(Some(Parcel::from_localized(parcel))),
+            None => Ok(None),
+        }
     }
 
     fn get_parcel_invoice(&self, parcel_hash: H256) -> Result<Option<Invoice>> {

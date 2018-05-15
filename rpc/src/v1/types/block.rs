@@ -1,15 +1,7 @@
-use ccore::{Block as CoreBlock, Transaction};
+use ccore::Block as CoreBlock;
 use ctypes::{H160, H256, U256};
 
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Parcel {
-    nonce: U256,
-    fee: U256,
-    transaction: Transaction,
-    network_id: u64,
-    hash: H256,
-}
+use super::Parcel;
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -34,6 +26,8 @@ pub struct Block {
 
 impl From<CoreBlock> for Block {
     fn from(block: CoreBlock) -> Self {
+        let block_number = block.header.number();
+        let block_hash = block.header.hash();
         Block {
             parent_hash: block.header.parent_hash().clone(),
             timestamp: block.header.timestamp(),
@@ -53,12 +47,22 @@ impl From<CoreBlock> for Block {
             parcels: block
                 .parcels
                 .into_iter()
-                .map(|unverified| Parcel {
-                    nonce: unverified.as_unsigned().nonce.clone(),
-                    fee: unverified.as_unsigned().fee.clone(),
-                    transaction: unverified.as_unsigned().transaction.clone(),
-                    network_id: unverified.as_unsigned().network_id,
-                    hash: unverified.hash(),
+                .enumerate()
+                .map(|(i, unverified)| {
+                    let sig = unverified.signature();
+                    Parcel {
+                        block_number: Some(block_number),
+                        block_hash: Some(block_hash),
+                        parcel_index: Some(i),
+                        nonce: unverified.as_unsigned().nonce.clone(),
+                        fee: unverified.as_unsigned().fee.clone(),
+                        transaction: unverified.as_unsigned().transaction.clone(),
+                        network_id: unverified.as_unsigned().network_id,
+                        hash: unverified.hash(),
+                        v: sig.v(),
+                        r: sig.r().into(),
+                        s: sig.s().into(),
+                    }
                 })
                 .collect(),
         }
