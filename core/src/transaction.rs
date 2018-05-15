@@ -192,6 +192,7 @@ pub enum Error {
     InvalidScript,
     /// Script execution result is `Fail`
     FailedToUnlock(H256),
+    InvalidNetworkId(Mismatch<u64>),
 }
 
 impl fmt::Display for Error {
@@ -214,6 +215,7 @@ impl fmt::Display for Error {
             }
             Error::InvalidScript => write!(f, "Failed to decode script"),
             Error::FailedToUnlock(hash) => write!(f, "Failed to unlock asset {}", hash),
+            Error::InvalidNetworkId(mismatch) => write!(f, "Invalid network id. {}", mismatch),
         }
     }
 }

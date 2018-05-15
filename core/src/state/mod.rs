@@ -531,8 +531,16 @@ impl<B: Backend> State<B> {
             Transaction::AssetTransfer {
                 ref inputs,
                 ref outputs,
-                ..
-            } => self.transfer_asset(&parcel, inputs, outputs),
+                network_id,
+            } => {
+                if parcel.network_id != network_id {
+                    return Err(TransactionError::InvalidNetworkId(Mismatch {
+                        expected: parcel.network_id,
+                        found: network_id,
+                    }).into())
+                }
+                self.transfer_asset(&parcel, inputs, outputs)
+            }
         }
     }
 
