@@ -471,16 +471,16 @@ impl<B: Backend> State<B> {
         })
     }
 
-    fn execute(&mut self, t: &SignedParcel) -> Result<Option<ParcelError>, Error> {
-        let sender = t.sender();
-        let fee = U512::from(t.as_unsigned().fee);
+    fn execute(&mut self, parcel: &SignedParcel) -> Result<Option<ParcelError>, Error> {
+        let sender = parcel.sender();
+        let fee = U512::from(parcel.as_unsigned().fee);
         let nonce = self.nonce(&sender)?;
         let mut balance = U512::from(self.balance(&sender)?);
 
-        if t.nonce != nonce {
+        if parcel.nonce != nonce {
             return Ok(Some(ParcelError::InvalidNonce {
                 expected: nonce,
-                got: t.nonce,
+                got: parcel.nonce,
             }))
         }
 
@@ -495,7 +495,7 @@ impl<B: Backend> State<B> {
         self.sub_balance(&sender, &fee.into())?;
         balance = balance - fee;
 
-        match t.transaction {
+        match parcel.transaction {
             Transaction::Noop => Ok(None),
             Transaction::Payment {
                 address,
@@ -525,14 +525,14 @@ impl<B: Backend> State<B> {
                 ref parameters,
                 ref registrar,
             } => {
-                self.mint_asset(t.hash(), metadata, lock_script_hash, parameters, amount, registrar)?;
+                self.mint_asset(parcel.hash(), metadata, lock_script_hash, parameters, amount, registrar)?;
                 Ok(None)
             }
             Transaction::AssetTransfer {
                 ref inputs,
                 ref outputs,
                 ..
-            } => self.transfer_asset(&t, inputs, outputs),
+            } => self.transfer_asset(&parcel, inputs, outputs),
         }
     }
 
@@ -672,14 +672,14 @@ mod tests {
         // account_start_nonce is 0
         let mut state = get_temp_state();
 
-        let t = Parcel {
+        let signed_parcel = Parcel {
             fee: 5.into(),
             ..Parcel::default()
         }.sign(&secret().into());
-        let sender = t.sender();
+        let sender = signed_parcel.sender();
         state.add_balance(&sender, &20.into()).unwrap();
 
-        let res = state.apply(&t).unwrap();
+        let res = state.apply(&signed_parcel).unwrap();
         assert_eq!(res.invoice.outcome, TransactionOutcome::Success);
         assert!(res.error.is_none());
         assert_eq!(state.balance(&sender).unwrap(), 15.into());
@@ -691,15 +691,15 @@ mod tests {
         // account_start_nonce is 0
         let mut state = get_temp_state();
 
-        let t = Parcel {
+        let signed_parcel = Parcel {
             nonce: 2.into(),
             fee: 5.into(),
             ..Parcel::default()
         }.sign(&secret().into());
-        let sender = t.sender();
+        let sender = signed_parcel.sender();
         state.add_balance(&sender, &20.into()).unwrap();
 
-        let res = state.apply(&t).unwrap();
+        let res = state.apply(&signed_parcel).unwrap();
         assert_eq!(res.invoice.outcome, TransactionOutcome::Failed);
         assert_eq!(
             res.error.unwrap(),
@@ -715,14 +715,14 @@ mod tests {
     #[test]
     fn should_apply_error_for_not_enough_cash() {
         let mut state = get_temp_state();
-        let t = Parcel {
+        let signed_parcel = Parcel {
             fee: 5.into(),
             ..Parcel::default()
         }.sign(&secret().into());
-        let sender = t.sender();
+        let sender = signed_parcel.sender();
         state.add_balance(&sender, &4.into()).unwrap();
 
-        let res = state.apply(&t).unwrap();
+        let res = state.apply(&signed_parcel).unwrap();
         assert_eq!(res.invoice.outcome, TransactionOutcome::Failed);
         assert_eq!(
             res.error.unwrap(),
@@ -741,7 +741,7 @@ mod tests {
         let mut state = get_temp_state();
         let receiver = 1u64.into();
 
-        let t = Parcel {
+        let signed_parcel = Parcel {
             fee: 5.into(),
             transaction: Transaction::Payment {
                 address: receiver,
@@ -749,10 +749,10 @@ mod tests {
             },
             ..Parcel::default()
         }.sign(&secret().into());
-        let sender = t.sender();
+        let sender = signed_parcel.sender();
         state.add_balance(&sender, &20.into()).unwrap();
 
-        let res = state.apply(&t).unwrap();
+        let res = state.apply(&signed_parcel).unwrap();
         assert_eq!(res.invoice.outcome, TransactionOutcome::Success);
         assert!(res.error.is_none());
         assert_eq!(state.balance(&receiver).unwrap(), 10.into());
@@ -766,18 +766,18 @@ mod tests {
         let mut state = get_temp_state();
         let key = 1u64.into();
 
-        let t = Parcel {
+        let signed_parcel = Parcel {
             fee: 5.into(),
             transaction: Transaction::SetRegularKey {
                 key,
             },
             ..Parcel::default()
         }.sign(&secret().into());
-        let sender = t.sender();
+        let sender = signed_parcel.sender();
         state.add_balance(&sender, &5.into()).unwrap();
 
         assert_eq!(state.regular_key(&sender).unwrap(), None);
-        let res = state.apply(&t).unwrap();
+        let res = state.apply(&signed_parcel).unwrap();
         assert_eq!(res.invoice.outcome, TransactionOutcome::Success);
         assert_eq!(state.regular_key(&sender).unwrap(), Some(key));
     }
@@ -788,7 +788,7 @@ mod tests {
         let mut state = get_temp_state();
         let receiver = 1u64.into();
 
-        let t = Parcel {
+        let signed_parcel = Parcel {
             fee: 5.into(),
             transaction: Transaction::Payment {
                 address: receiver,
@@ -796,10 +796,10 @@ mod tests {
             },
             ..Parcel::default()
         }.sign(&secret().into());
-        let sender = t.sender();
+        let sender = signed_parcel.sender();
         state.add_balance(&sender, &20.into()).unwrap();
 
-        let res = state.apply(&t).unwrap();
+        let res = state.apply(&signed_parcel).unwrap();
         assert_eq!(res.invoice.outcome, TransactionOutcome::Failed);
         assert_eq!(
             res.error.unwrap(),

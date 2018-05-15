@@ -174,14 +174,14 @@ fn get_unverified_parcel(data: &Value) -> Result<UnverifiedParcel, CommandError>
         .ok_or_else(|| CommandError::InvalidData)?
         .parse()
         .map_err(|_| CommandError::InvalidData)?;
-    let (t, _address, _) = Parcel {
+    let (unverified_parcel, _address, _) = Parcel {
         nonce,
         fee,
         transaction,
         network_id,
     }.sign(&secret.into())
         .deconstruct();
-    Ok(t)
+    Ok(unverified_parcel)
 }
 
 fn get_transaction(data: &Value) -> Result<Transaction, CommandError> {

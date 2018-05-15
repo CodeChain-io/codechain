@@ -142,8 +142,8 @@ pub fn verify_block_unordered(
     {
         let v = BlockView::new(&bytes);
         for t in v.parcels() {
-            let t = engine.verify_parcel_unordered(t, &header)?;
-            parcels.push(t);
+            let signed_parcel = engine.verify_parcel_unordered(t, &header)?;
+            parcels.push(signed_parcel);
         }
     }
     Ok(PreverifiedBlock {
