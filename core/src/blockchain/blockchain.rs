@@ -38,6 +38,7 @@ use super::best_block::BestBlock;
 use super::block_info::{BlockInfo, BlockLocation, BranchBecomingCanonChainData};
 use super::body_db::{BodyDB, BodyProvider};
 use super::extras::{BlockDetails, BlockInvoices, EpochTransitions, ParcelAddress, EPOCH_KEY_PREFIX};
+use super::invoice_db::{InvoiceDB, InvoiceProvider};
 
 /// Structure providing fast access to blockchain data.
 ///
@@ -52,9 +53,9 @@ pub struct BlockChain {
     // extra caches
     block_details: RwLock<HashMap<H256, BlockDetails>>,
     block_hashes: RwLock<HashMap<BlockNumber, H256>>,
-    block_invoices: RwLock<HashMap<H256, BlockInvoices>>,
 
     body_db: BodyDB,
+    invoice_db: InvoiceDB,
 
     db: Arc<KeyValueDB>,
 
@@ -73,8 +74,8 @@ impl BlockChain {
             block_headers: RwLock::new(HashMap::new()),
             block_details: RwLock::new(HashMap::new()),
             block_hashes: RwLock::new(HashMap::new()),
-            block_invoices: RwLock::new(HashMap::new()),
             body_db: BodyDB::new(&genesis_block, db.clone()),
+            invoice_db: InvoiceDB::new(db.clone()),
             db: db.clone(),
             pending_best_block: RwLock::new(None),
             pending_block_hashes: RwLock::new(HashMap::new()),
@@ -247,13 +248,13 @@ impl BlockChain {
         let compressed_header = compress(block.header_rlp().as_raw(), blocks_swapper());
         batch.put(db::COL_HEADERS, &hash, &compressed_header);
         self.body_db.insert_body(batch, &block, &info.location);
+        self.invoice_db.insert_invoice(batch, &hash, invoices);
 
         self.prepare_update(
             batch,
             ExtrasUpdate {
                 block_hashes: self.prepare_block_hashes_update(bytes, &info),
                 block_details: self.prepare_block_details_update(bytes, &info),
-                block_invoices: self.prepare_block_invoices_update(invoices, &info),
                 info: info.clone(),
                 timestamp: header.timestamp(),
                 block: bytes,
@@ -278,6 +279,7 @@ impl BlockChain {
             *best_block = block;
         }
         self.body_db.commit();
+        // NOTE: There are no commit for InvoiceDB
 
         write_hashes.extend(mem::replace(&mut *pending_write_hashes, HashMap::new()));
         write_block_details.extend(mem::replace(&mut *pending_block_details, HashMap::new()));
@@ -285,47 +287,25 @@ impl BlockChain {
 
     /// Prepares extras update.
     fn prepare_update(&self, batch: &mut DBTransaction, update: ExtrasUpdate, is_best: bool) {
-        {
-            let mut write_invoices = self.block_invoices.write();
-            batch.extend_with_cache(
-                db::COL_EXTRA,
-                &mut *write_invoices,
-                update.block_invoices,
-                CacheUpdatePolicy::Remove,
-            );
-        }
-
         // These cached values must be updated last with all four locks taken to avoid
         // cache decoherence
-        {
-            let mut best_block = self.pending_best_block.write();
-            if is_best && update.info.location != BlockLocation::Branch {
-                batch.put(db::COL_EXTRA, b"best", &update.info.hash);
-                *best_block = Some(BestBlock {
-                    hash: update.info.hash,
-                    number: update.info.number,
-                    total_score: update.info.total_score,
-                    timestamp: update.timestamp,
-                    block: update.block.to_vec(),
-                });
-            }
-
-            let mut write_hashes = self.pending_block_hashes.write();
-            let mut write_details = self.pending_block_details.write();
-
-            batch.extend_with_cache(
-                db::COL_EXTRA,
-                &mut *write_details,
-                update.block_details,
-                CacheUpdatePolicy::Overwrite,
-            );
-            batch.extend_with_cache(
-                db::COL_EXTRA,
-                &mut *write_hashes,
-                update.block_hashes,
-                CacheUpdatePolicy::Overwrite,
-            );
+        let mut best_block = self.pending_best_block.write();
+        if is_best && update.info.location != BlockLocation::Branch {
+            batch.put(db::COL_EXTRA, b"best", &update.info.hash);
+            *best_block = Some(BestBlock {
+                hash: update.info.hash,
+                number: update.info.number,
+                total_score: update.info.total_score,
+                timestamp: update.timestamp,
+                block: update.block.to_vec(),
+            });
         }
+
+        let mut write_hashes = self.pending_block_hashes.write();
+        let mut write_details = self.pending_block_details.write();
+
+        batch.extend_with_cache(db::COL_EXTRA, &mut *write_details, update.block_details, CacheUpdatePolicy::Overwrite);
+        batch.extend_with_cache(db::COL_EXTRA, &mut *write_hashes, update.block_hashes, CacheUpdatePolicy::Overwrite);
     }
 
     /// This function returns modified block hashes.
@@ -381,13 +361,6 @@ impl BlockChain {
         block_details.insert(parent_hash, parent_details);
         block_details.insert(info.hash, details);
         block_details
-    }
-
-    /// This function returns modified block invoices.
-    fn prepare_block_invoices_update(&self, invoices: Vec<Invoice>, info: &BlockInfo) -> HashMap<H256, BlockInvoices> {
-        let mut block_invoices = HashMap::new();
-        block_invoices.insert(info.hash, BlockInvoices::new(invoices));
-        block_invoices
     }
 
     /// Get inserted block info which is critical to prepare extras updates.
@@ -629,7 +602,7 @@ impl<'a> Iterator for EpochTransitionIter<'a> {
 }
 
 /// Interface for querying blocks by hash and by number.
-pub trait BlockProvider: BodyProvider {
+pub trait BlockProvider: BodyProvider + InvoiceProvider {
     /// Returns true if the given block is known
     /// (though not necessarily a part of the canon chain).
     fn is_known(&self, hash: &H256) -> bool;
@@ -642,12 +615,6 @@ pub trait BlockProvider: BodyProvider {
 
     /// Get the hash of given block's number.
     fn block_hash(&self, index: BlockNumber) -> Option<H256>;
-
-    /// Get invoices of block with given hash.
-    fn block_invoices(&self, hash: &H256) -> Option<BlockInvoices>;
-
-    /// Get parcel invoice.
-    fn parcel_invoice(&self, address: &ParcelAddress) -> Option<Invoice>;
 
     /// Get the partial-header of a block.
     fn block_header(&self, hash: &H256) -> Option<Header> {
@@ -698,6 +665,23 @@ impl BodyProvider for BlockChain {
 
     fn block_body(&self, hash: &H256) -> Option<encoded::Body> {
         self.body_db.block_body(hash)
+    }
+}
+
+impl InvoiceProvider for BlockChain {
+    /// Returns true if invoices for given hash is known
+    fn is_known_invoice(&self, hash: &H256) -> bool {
+        self.invoice_db.is_known_invoice(hash)
+    }
+
+    /// Get invoices of block with given hash.
+    fn block_invoices(&self, hash: &H256) -> Option<BlockInvoices> {
+        self.invoice_db.block_invoices(hash)
+    }
+
+    /// Get parcel invoice.
+    fn parcel_invoice(&self, address: &ParcelAddress) -> Option<Invoice> {
+        self.invoice_db.parcel_invoice(address)
     }
 }
 
@@ -756,17 +740,6 @@ impl BlockProvider for BlockChain {
     fn block_hash(&self, index: BlockNumber) -> Option<H256> {
         let result = self.db.read_with_cache(db::COL_EXTRA, &self.block_hashes, &index)?;
         Some(result)
-    }
-
-    /// Get invoices of block with given hash.
-    fn block_invoices(&self, hash: &H256) -> Option<BlockInvoices> {
-        let result = self.db.read_with_cache(db::COL_EXTRA, &self.block_invoices, hash)?;
-        Some(result)
-    }
-
-    /// Get parcel invoice.
-    fn parcel_invoice(&self, address: &ParcelAddress) -> Option<Invoice> {
-        self.block_invoices(&address.block_hash).and_then(|bi| bi.invoices.into_iter().nth(address.index))
     }
 }
 
@@ -828,8 +801,6 @@ pub struct ExtrasUpdate<'a> {
     pub block_hashes: HashMap<BlockNumber, H256>,
     /// Modified block details.
     pub block_details: HashMap<H256, BlockDetails>,
-    /// Modified block invoices.
-    pub block_invoices: HashMap<H256, BlockInvoices>,
 }
 
 /// Represents a tree route between `from` block and `to` block:
