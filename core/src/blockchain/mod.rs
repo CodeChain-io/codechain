@@ -17,7 +17,9 @@
 mod best_block;
 mod block_info;
 mod blockchain;
+mod body_db;
 mod extras;
 
 pub use self::blockchain::{BlockChain, BlockProvider, ImportRoute};
+pub use self::body_db::BodyProvider;
 pub use self::extras::{BlockDetails, ParcelAddress};
