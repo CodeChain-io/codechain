@@ -160,17 +160,6 @@ impl Parcel {
         blake256(stream.as_raw())
     }
 
-    /// Get hash of parcel excluding script field
-    pub fn hash_without_script(&self) -> H256 {
-        let mut stream = RlpStream::new();
-        stream.begin_list(4);
-        stream.append(&self.nonce);
-        stream.append(&self.fee);
-        stream.append(&self.transaction.without_script());
-        stream.append(&self.network_id);
-        blake256(stream.as_raw())
-    }
-
     /// Signs the parcel as coming from `sender`.
     pub fn sign(self, private: &Private) -> SignedParcel {
         let sig = sign_ecdsa(&private, &self.hash()).expect("data is valid and context has signing capabilities; qed");
@@ -430,7 +419,7 @@ impl Deref for LocalizedParcel {
 
 #[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable, Serialize)]
 pub struct AssetOutPoint {
-    pub parcel_hash: H256,
+    pub transaction_hash: H256,
     pub index: usize,
     pub asset_type: H256,
     pub amount: u64,

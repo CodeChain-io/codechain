@@ -17,6 +17,7 @@
 use std::fmt;
 
 use cbytes::Bytes;
+use ccrypto::blake256;
 use ctypes::{Address, H256, Public, U256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 use unexpected::Mismatch;
@@ -81,6 +82,14 @@ impl Transaction {
             }
             _ => unreachable!(),
         }
+    }
+
+    pub fn hash(&self) -> H256 {
+        blake256(&*self.rlp_bytes())
+    }
+
+    pub fn hash_without_script(&self) -> H256 {
+        blake256(&*self.without_script().rlp_bytes())
     }
 }
 
