@@ -688,6 +688,7 @@ impl ParcelQueue {
             );
 
             return Err(ParcelError::InsufficientBalance {
+                address: parcel.sender(),
                 cost: parcel.fee,
                 balance: client_account.balance,
             })
