@@ -18,6 +18,7 @@
       "transaction": {
         "type": "payment",
         "data": {
+          "nonce": "1",
           "address": "3f4aa1fedf1f54eeb03b759deadb36676b184911",
           "value": "0"
         }
@@ -28,7 +29,7 @@
   {
     "name": "chain_getParcelInvoice",
     "data": {
-      "hash": "6149cffbd8567c16591eb8e0ef428d07b487c7dd9f295e08de53b76a4e523c4b"
+      "hash": "8cd5afa74438c814aebcdb430459947342f6e926e9fbe3453b61190ea1498a3c"
     }
   }
 ]

@@ -3,7 +3,7 @@
     "name": "chain_sendSignedParcel",
     "data": {
       "secret": "ede1d4ccb4ec9a8bbbae9a13db3f4a7b56ea04189be86ac3a6a439d9a0a1addd",
-      "nonce": "7",
+      "nonce": "b",
       "fee": "a",
       "transaction": {
           "type": "transfer",
@@ -42,7 +42,7 @@
   {
     "name": "chain_getParcelInvoice",
     "data": {
-      "hash": "b4a0a86169ed2de050aac009bb4d6a5f5cd6700053c5bc24f1372ecb1e75e356"
+      "hash": "5d98a4e3d65999838859a3c28e643b2125e9a87fc6020a86c10461125aef7367"
     }
   }
 ]

@@ -457,6 +457,7 @@ mod tests {
         let address = Address::random();
         let value = U256::from(12345);
         let transaction = Transaction::Payment {
+            nonce: 1.into(),
             address,
             value,
         };
@@ -467,6 +468,7 @@ mod tests {
     fn encode_and_decode_set_regular_key() {
         let key = Public::random();
         let transaction = Transaction::SetRegularKey {
+            nonce: 36.into(),
             key,
         };
         assert_eq!(transaction, ::rlp::decode(transaction.rlp_bytes().as_ref()))

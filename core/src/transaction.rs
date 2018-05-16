@@ -30,12 +30,14 @@ use super::parcel::{AssetTransferInput, AssetTransferOutput};
 pub enum Transaction {
     Noop,
     Payment {
+        nonce: U256,
         /// The receiver's address.
         address: Address,
         /// Transferred value.
         value: U256,
     },
     SetRegularKey {
+        nonce: U256,
         key: Public,
     },
     AssetMint {
@@ -107,20 +109,22 @@ impl Decodable for Transaction {
 
         match d.val_at(0)? {
             PAYMENT_ID => {
-                if d.item_count()? != 3 {
+                if d.item_count()? != 4 {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
                 Ok(Transaction::Payment {
-                    address: d.val_at(1)?,
-                    value: d.val_at(2)?,
+                    nonce: d.val_at(1)?,
+                    address: d.val_at(2)?,
+                    value: d.val_at(3)?,
                 })
             }
             SET_REGULAR_KEY_ID => {
-                if d.item_count()? != 2 {
+                if d.item_count()? != 3 {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
                 Ok(Transaction::SetRegularKey {
-                    key: d.val_at(1)?,
+                    nonce: d.val_at(1)?,
+                    key: d.val_at(2)?,
                 })
             }
             ASSET_MINT_ID => {
@@ -155,12 +159,14 @@ impl Encodable for Transaction {
         match self {
             Transaction::Noop => s.append_internal(&""),
             Transaction::Payment {
+                nonce,
                 address,
                 value,
-            } => s.begin_list(3).append(&PAYMENT_ID).append(address).append(value),
+            } => s.begin_list(4).append(&PAYMENT_ID).append(nonce).append(address).append(value),
             Transaction::SetRegularKey {
+                nonce,
                 key,
-            } => s.begin_list(2).append(&SET_REGULAR_KEY_ID).append(key),
+            } => s.begin_list(3).append(&SET_REGULAR_KEY_ID).append(nonce).append(key),
             Transaction::AssetMint {
                 metadata,
                 lock_script_hash,
