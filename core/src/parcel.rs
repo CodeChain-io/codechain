@@ -20,7 +20,7 @@ use std::ops::Deref;
 use cbytes::Bytes;
 use ccrypto::blake256;
 use ckeys::{self, public_to_address, recover_ecdsa, sign_ecdsa, ECDSASignature, Private, Public};
-use ctypes::{Address, H160, H256, U256, U512};
+use ctypes::{Address, H160, H256, U256};
 use heapsize::HeapSizeOf;
 use rlp::{self, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
@@ -50,6 +50,7 @@ pub enum ParcelError {
     },
     /// Sender doesn't have enough funds to pay for this Parcel
     InsufficientBalance {
+        address: Address,
         /// Senders balance
         balance: U256,
         /// Parcel cost
@@ -61,13 +62,6 @@ pub enum ParcelError {
         expected: U256,
         /// Nonce found.
         got: U256,
-    },
-    /// Returned when cost of parcel exceeds current sender balance.
-    NotEnoughCash {
-        /// Minimum required balance.
-        required: U512,
-        /// Actual balance.
-        got: U512,
     },
     /// Not enough permissions given by permission contract.
     NotAllowed,
@@ -88,21 +82,14 @@ pub fn parcel_error_message(error: &ParcelError) -> String {
             got,
         } => format!("Insufficient fee. Min={}, Given={}", minimal, got),
         InsufficientBalance {
+            address,
             balance,
             cost,
-        } => format!("Insufficient balance for parcel. Balance={}, Cost={}", balance, cost),
+        } => format!("{} has only {:?} but it must be larger than {:?}", address, balance, cost),
         InvalidNonce {
             expected,
             got,
         } => format!("Invalid parcel nonce: expected {}, found {}", expected, got),
-        NotEnoughCash {
-            required,
-            got,
-        } => format!(
-            "Cost of parcel exceeds sender balance. {} is required \
-             but the sender only has {}",
-            required, got
-        ),
         NotAllowed => "Sender does not have permissions to execute this type of transction".into(),
         InvalidSignature(err) => format!("Parcel has invalid signature: {}.", err),
     }

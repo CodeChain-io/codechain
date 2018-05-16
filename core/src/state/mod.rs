@@ -517,9 +517,10 @@ impl<B: Backend> State<B> {
         }
 
         if fee > balance {
-            return Err(ParcelError::NotEnoughCash {
-                required: fee.into(),
-                got: balance.into(),
+            return Err(ParcelError::InsufficientBalance {
+                address: sender,
+                cost: fee,
+                balance,
             }.into())
         }
 
@@ -785,9 +786,10 @@ mod tests {
         match state.apply(&signed_parcel) {
             Err(Error::Parcel(err)) => {
                 assert_eq!(
-                    ParcelError::NotEnoughCash {
-                        required: 5.into(),
-                        got: 4.into()
+                    ParcelError::InsufficientBalance {
+                        address: sender,
+                        balance: 4.into(),
+                        cost: 5.into(),
                     },
                     err
                 );
