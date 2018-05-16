@@ -336,7 +336,15 @@ impl<B: Backend> State<B> {
     }
 
     /// Subtracts `by` from the balance of `from` and adds it to that of `to`.
-    pub fn transfer_balance(&mut self, from: &Address, to: &Address, by: &U256) -> trie::Result<()> {
+    pub fn transfer_balance(&mut self, from: &Address, to: &Address, by: &U256) -> Result<(), Error> {
+        let balance = self.balance(from)?;
+        if &balance < by {
+            return Err(TransactionError::InsufficientBalance {
+                address: *from,
+                required: *by,
+                got: balance,
+            }.into())
+        }
         self.sub_balance(from, by)?;
         self.add_balance(to, by)?;
         Ok(())
@@ -505,9 +513,7 @@ impl<B: Backend> State<B> {
 
     fn execute(&mut self, parcel: &SignedParcel) -> Result<(), Error> {
         let sender = parcel.sender();
-        let fee = parcel.as_unsigned().fee;
         let nonce = self.nonce(&sender)?;
-        let mut balance = self.balance(&sender)?;
 
         if parcel.nonce != nonce {
             return Err(ParcelError::InvalidNonce {
@@ -516,6 +522,8 @@ impl<B: Backend> State<B> {
             }.into())
         }
 
+        let fee = parcel.as_unsigned().fee;
+        let balance = self.balance(&sender)?;
         if fee > balance {
             return Err(ParcelError::InsufficientBalance {
                 address: sender,
@@ -526,12 +534,11 @@ impl<B: Backend> State<B> {
 
         self.inc_nonce(&sender)?;
         self.sub_balance(&sender, &fee.into())?;
-        balance = balance - fee;
 
         // The failed parcel also must pay the fee and increase nonce.
         self.checkpoint(TRANSACTION_CHECKPOINT);
 
-        let result = self.execute_transaction(&parcel.transaction, &sender, &balance, &parcel.network_id);
+        let result = self.execute_transaction(&parcel.transaction, &sender, &parcel.network_id);
         match result {
             Ok(_) => self.discard_checkpoint(TRANSACTION_CHECKPOINT),
             Err(Error::Transaction(_)) => self.revert_to_checkpoint(TRANSACTION_CHECKPOINT),
@@ -544,30 +551,51 @@ impl<B: Backend> State<B> {
         &mut self,
         transaction: &Transaction,
         sender: &Address,
-        balance: &U256,
         parcel_network_id: &u64,
     ) -> Result<(), Error> {
         trace!(target: "tx", "{:?}({:?}) is executed", transaction, transaction.hash());
         match transaction {
             Transaction::Noop => Ok(()),
             Transaction::Payment {
+                nonce,
                 address,
                 value,
             } => {
-                if balance < value.into() {
-                    return Err(TransactionError::InsufficientBalance {
-                        address: *sender,
-                        required: *value,
-                        got: *balance,
+                let expected = self.nonce(&sender)?;
+
+                if nonce != &expected {
+                    return Err(ParcelError::InvalidNonce {
+                        expected,
+                        got: *nonce,
                     }.into())
                 }
+
+                self.inc_nonce(&sender)?;
+                self.discard_checkpoint(TRANSACTION_CHECKPOINT);
+                self.checkpoint(TRANSACTION_CHECKPOINT);
+
                 Ok(self.transfer_balance(&sender, &address, &value)?)
-                // NOTE: Uncomment the below line if balance is used after
-                // balance = balance - value.into()
             }
             Transaction::SetRegularKey {
+                nonce,
                 key,
-            } => Ok(self.set_regular_key(sender, &key)?),
+            } => {
+                let expected = self.nonce(&sender)?;
+
+                if nonce != &expected {
+                    return Err(ParcelError::InvalidNonce {
+                        expected,
+                        got: *nonce,
+                    }.into())
+                }
+
+                self.inc_nonce(&sender)?;
+                self.discard_checkpoint(TRANSACTION_CHECKPOINT);
+                self.checkpoint(TRANSACTION_CHECKPOINT);
+
+                self.set_regular_key(&sender, &key)?;
+                Ok(())
+            }
             Transaction::AssetMint {
                 ref metadata,
                 ref lock_script_hash,
@@ -810,6 +838,7 @@ mod tests {
         let signed_parcel = Parcel {
             fee: 5.into(),
             transaction: Transaction::Payment {
+                nonce: 1.into(),
                 address: receiver,
                 value: 10.into(),
             },
@@ -823,7 +852,7 @@ mod tests {
         assert!(res.error.is_none());
         assert_eq!(state.balance(&receiver).unwrap(), 10.into());
         assert_eq!(state.balance(&sender).unwrap(), 5.into());
-        assert_eq!(state.nonce(&sender).unwrap(), 1.into());
+        assert_eq!(state.nonce(&sender).unwrap(), 2.into());
     }
 
     #[test]
@@ -835,6 +864,7 @@ mod tests {
         let signed_parcel = Parcel {
             fee: 5.into(),
             transaction: Transaction::SetRegularKey {
+                nonce: 1.into(),
                 key,
             },
             ..Parcel::default()
@@ -857,6 +887,7 @@ mod tests {
         let signed_parcel = Parcel {
             fee: 5.into(),
             transaction: Transaction::Payment {
+                nonce: 1.into(),
                 address: receiver,
                 value: 30.into(),
             },
@@ -877,7 +908,7 @@ mod tests {
         );
         assert_eq!(state.balance(&receiver).unwrap(), 0.into());
         assert_eq!(state.balance(&sender).unwrap(), 15.into());
-        assert_eq!(state.nonce(&sender).unwrap(), 1.into());
+        assert_eq!(state.nonce(&sender).unwrap(), 2.into());
     }
 
     #[test]

@@ -189,9 +189,11 @@ fn get_transaction(data: &Value) -> Result<Transaction, CommandError> {
     match transaction_type {
         "noop" => Ok(Transaction::Noop),
         "payment" => {
+            let nonce: U256 = get_u256(&data["data"]["nonce"])?;
             let address: H160 = get_h160(&data["data"]["address"])?;
             let value: U256 = get_u256(&data["data"]["value"])?;
             Ok(Transaction::Payment {
+                nonce,
                 address,
                 value,
             })
