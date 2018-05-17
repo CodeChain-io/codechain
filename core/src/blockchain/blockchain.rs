@@ -29,10 +29,10 @@ use super::super::invoice::Invoice;
 use super::super::parcel::LocalizedParcel;
 use super::super::types::BlockNumber;
 use super::super::views::BlockView;
-use super::block_info::BlockLocation;
 use super::body_db::{BodyDB, BodyProvider};
 use super::extras::{BlockDetails, BlockInvoices, EpochTransitions, ParcelAddress, EPOCH_KEY_PREFIX};
 use super::headerchain::{HeaderChain, HeaderProvider};
+use super::import_route::ImportRoute;
 use super::invoice_db::{InvoiceDB, InvoiceProvider};
 
 /// Structure providing fast access to blockchain data.
@@ -359,49 +359,3 @@ impl InvoiceProvider for BlockChain {
 }
 
 impl BlockProvider for BlockChain {}
-
-/// Import route for newly inserted block.
-#[derive(Debug, PartialEq)]
-pub struct ImportRoute {
-    /// Blocks that were invalidated by new block.
-    pub retracted: Vec<H256>,
-    /// Blocks that were validated by new block.
-    pub enacted: Vec<H256>,
-    /// Blocks which are neither retracted nor enacted.
-    pub omitted: Vec<H256>,
-}
-
-impl ImportRoute {
-    pub fn new(hash: &H256, location: &BlockLocation) -> Self {
-        match location {
-            BlockLocation::CanonChain => ImportRoute {
-                retracted: vec![],
-                enacted: vec![*hash],
-                omitted: vec![],
-            },
-            BlockLocation::Branch => ImportRoute {
-                retracted: vec![],
-                enacted: vec![],
-                omitted: vec![*hash],
-            },
-            BlockLocation::BranchBecomingCanonChain(data) => {
-                let mut enacted = vec![*hash];
-                enacted.extend(data.enacted.iter());
-                let retracted = data.retracted.clone();
-                ImportRoute {
-                    retracted,
-                    enacted,
-                    omitted: vec![],
-                }
-            }
-        }
-    }
-
-    pub fn none() -> Self {
-        ImportRoute {
-            retracted: vec![],
-            enacted: vec![],
-            omitted: vec![],
-        }
-    }
-}
