@@ -29,7 +29,9 @@ use rlp::UntrustedRlp;
 use trie::{TrieFactory, TrieSpec};
 
 use super::super::block::{enact, ClosedBlock, Drain, IsBlock, LockedBlock, OpenBlock, SealedBlock};
-use super::super::blockchain::{BlockChain, BlockProvider, BodyProvider, ImportRoute, InvoiceProvider, ParcelAddress};
+use super::super::blockchain::{
+    BlockChain, BlockProvider, BodyProvider, HeaderProvider, ImportRoute, InvoiceProvider, ParcelAddress,
+};
 use super::super::consensus::epoch::Transition as EpochTransition;
 use super::super::consensus::CodeChainEngine;
 use super::super::encoded;
@@ -187,7 +189,7 @@ impl Client {
             BlockId::Number(number) => Some(number.clone()),
             BlockId::Hash(hash) => self.chain.read().block_number(hash),
             BlockId::Earliest => Some(0),
-            BlockId::Latest => Some(self.chain.read().best_block_number()),
+            BlockId::Latest => Some(self.chain.read().best_block_detail().number),
         }
     }
 

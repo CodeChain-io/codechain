@@ -19,9 +19,11 @@ mod block_info;
 mod blockchain;
 mod body_db;
 mod extras;
+mod headerchain;
 mod invoice_db;
 
 pub use self::blockchain::{BlockChain, BlockProvider, ImportRoute};
 pub use self::body_db::BodyProvider;
 pub use self::extras::{BlockDetails, ParcelAddress};
+pub use self::headerchain::HeaderProvider;
 pub use self::invoice_db::InvoiceProvider;
