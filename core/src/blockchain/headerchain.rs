@@ -30,7 +30,6 @@ use super::super::encoded;
 use super::super::header::Header;
 use super::super::types::BlockNumber;
 use super::super::views::HeaderView;
-use super::best_block::BestBlock;
 use super::block_info::{BlockLocation, BranchBecomingCanonChainData};
 use super::extras::BlockDetails;
 
@@ -41,7 +40,7 @@ const BEST_HEADER_KEY: &[u8] = b"best-header";
 /// **Does not do input data verification.**
 pub struct HeaderChain {
     // All locks must be captured in the order declared here.
-    best_header: RwLock<BestBlock>,
+    best_header_hash: RwLock<H256>,
 
     // cache
     header_cache: RwLock<HashMap<H256, Bytes>>,
@@ -50,7 +49,7 @@ pub struct HeaderChain {
 
     db: Arc<KeyValueDB>,
 
-    pending_best_header: RwLock<Option<BestBlock>>,
+    pending_best_hash: RwLock<Option<H256>>,
     pending_hashes: RwLock<HashMap<BlockNumber, H256>>,
     pending_details: RwLock<HashMap<H256, BlockDetails>>,
 }
@@ -58,25 +57,11 @@ pub struct HeaderChain {
 impl HeaderChain {
     /// Create new instance of blockchain from given Genesis.
     pub fn new(genesis: &HeaderView, db: Arc<KeyValueDB>) -> Self {
-        let hc = Self {
-            best_header: RwLock::new(BestBlock::default()),
-
-            header_cache: RwLock::new(HashMap::new()),
-            detail_cache: RwLock::new(HashMap::new()),
-            hash_cache: RwLock::new(HashMap::new()),
-
-            db,
-
-            pending_best_header: RwLock::new(None),
-            pending_hashes: RwLock::new(HashMap::new()),
-            pending_details: RwLock::new(HashMap::new()),
-        };
-
-        // load best block
-        let best_header_hash = match hc.db.get(db::COL_EXTRA, BEST_HEADER_KEY).unwrap() {
+        // load best header
+        let best_header_hash = match db.get(db::COL_EXTRA, BEST_HEADER_KEY).unwrap() {
             Some(hash) => H256::from_slice(&hash),
             None => {
-                // best block does not exist
+                // best header does not exist
                 // we need to insert genesis into the cache
                 let hash = genesis.hash();
 
@@ -94,26 +79,24 @@ impl HeaderChain {
                 batch.write(db::COL_EXTRA, &genesis.number(), &hash);
 
                 batch.put(db::COL_EXTRA, BEST_HEADER_KEY, &hash);
-                hc.db.write(batch).expect("Low level database error. Some issue with disk?");
+                db.write(batch).expect("Low level database error. Some issue with disk?");
                 hash
             }
         };
 
-        // Fetch best block details
-        let best_block_number = hc.block_number(&best_header_hash).unwrap();
-        let best_block_total_score = hc.block_details(&best_header_hash).unwrap().total_score;
-        let best_block_timestamp = hc.block_header_data(&best_header_hash).unwrap().timestamp();
+        Self {
+            best_header_hash: RwLock::new(best_header_hash),
 
-        // and write them
-        *hc.best_header.write() = BestBlock {
-            number: best_block_number,
-            total_score: best_block_total_score,
-            hash: best_header_hash,
-            timestamp: best_block_timestamp,
-            block: vec![], // FIXME
-        };
+            header_cache: RwLock::new(HashMap::new()),
+            detail_cache: RwLock::new(HashMap::new()),
+            hash_cache: RwLock::new(HashMap::new()),
 
-        hc
+            db,
+
+            pending_best_hash: RwLock::new(None),
+            pending_hashes: RwLock::new(HashMap::new()),
+            pending_details: RwLock::new(HashMap::new()),
+        }
     }
 
     /// Returns true if the given parent block has given child
@@ -224,7 +207,7 @@ impl HeaderChain {
             return None
         }
 
-        assert!(self.pending_best_header.read().is_none());
+        assert!(self.pending_best_hash.read().is_none());
 
         // store block in db
         let compressed_header = compress(header.rlp().as_raw(), blocks_swapper());
@@ -235,18 +218,10 @@ impl HeaderChain {
         let new_hashes = self.new_hash_entries(header, &location);
         let new_details = self.new_detail_entries(header);
 
-        // These cached values must be updated last with all locks taken to avoid
-        // cache decoherence
-        let mut pending_best = self.pending_best_header.write();
+        let mut pending_best_hash = self.pending_best_hash.write();
         if location != BlockLocation::Branch {
             batch.put(db::COL_EXTRA, BEST_HEADER_KEY, &header.hash());
-            *pending_best = Some(BestBlock {
-                hash: header.hash(),
-                number: header.number(),
-                total_score: new_details.get(&header.hash()).unwrap().total_score,
-                timestamp: header.timestamp(),
-                block: vec![], // FIXME
-            });
+            *pending_best_hash = Some(header.hash());
         }
 
         let mut pending_hashes = self.pending_hashes.write();
@@ -260,16 +235,16 @@ impl HeaderChain {
 
     /// Apply pending insertion updates
     pub fn commit(&self) {
-        let mut pending_best_block = self.pending_best_header.write();
+        let mut pending_best_hash = self.pending_best_hash.write();
         let mut pending_write_hashes = self.pending_hashes.write();
         let mut pending_block_details = self.pending_details.write();
 
-        let mut best_block = self.best_header.write();
+        let mut best_header_hash = self.best_header_hash.write();
         let mut write_block_details = self.detail_cache.write();
         let mut write_hashes = self.hash_cache.write();
         // update best block
-        if let Some(block) = pending_best_block.take() {
-            *best_block = block;
+        if let Some(hash) = pending_best_hash.take() {
+            *best_header_hash = hash;
         }
 
         write_hashes.extend(mem::replace(&mut *pending_write_hashes, HashMap::new()));
@@ -365,20 +340,23 @@ impl HeaderChain {
     /// Returns general blockchain information
     pub fn chain_info(&self) -> BlockChainInfo {
         // ensure data consistently by locking everything first
-        let best_block = self.best_header.read();
+        let best_header_hash = self.best_header_hash();
+        let best_header_detail = self.best_header_detail();
+        let best_header = self.best_header();
+
         BlockChainInfo {
-            total_score: best_block.total_score.clone(),
-            pending_total_score: best_block.total_score.clone(),
+            total_score: best_header_detail.total_score.clone(),
+            pending_total_score: best_header_detail.total_score.clone(),
             genesis_hash: self.genesis_hash(),
-            best_block_hash: best_block.hash,
-            best_block_number: best_block.number,
-            best_block_timestamp: best_block.timestamp,
+            best_block_hash: best_header_hash,
+            best_block_number: best_header_detail.number,
+            best_block_timestamp: best_header.timestamp(),
         }
     }
 
     /// Get best block hash.
     pub fn best_header_hash(&self) -> H256 {
-        self.best_header.read().hash
+        self.best_header_hash.read().clone()
     }
 
     #[allow(dead_code)]
