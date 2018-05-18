@@ -565,7 +565,7 @@ mod tests {
         let mut env = generate_test_environment(10);
         let peer_chain = TestBlockChainClient::new();
         for i in 0..10 {
-            peer_chain.import_block(env.client.block(BlockId::Number(i)).unwrap().into_inner());
+            peer_chain.import_block(env.client.block(BlockId::Number(i)).unwrap().into_inner()).unwrap();
         }
         peer_chain.add_blocks(10, EachBlockWith::Parcel);
         assert_add_node(&mut env, 0);

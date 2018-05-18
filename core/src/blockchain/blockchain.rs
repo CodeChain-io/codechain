@@ -436,6 +436,7 @@ impl BlockChain {
     }
 
     /// Get best block timestamp.
+    #[allow(dead_code)]
     pub fn best_block_timestamp(&self) -> u64 {
         self.best_block.read().timestamp
     }
@@ -474,6 +475,7 @@ impl BlockChain {
 
     /// Iterate over all epoch transitions.
     /// This will only return transitions within the canonical chain.
+    #[allow(dead_code)]
     pub fn epoch_transitions(&self) -> EpochTransitionIter {
         let iter = self.db.iter_from_prefix(db::COL_EXTRA, &EPOCH_KEY_PREFIX[..]);
         EpochTransitionIter {
@@ -497,6 +499,7 @@ impl BlockChain {
     /// This will give the epoch that any children of this parent belong to.
     ///
     /// The block corresponding the the parent hash must be stored already.
+    #[allow(dead_code)]
     pub fn epoch_transition_for(&self, parent_hash: H256) -> Option<EpochTransition> {
         // slow path: loop back block by block
         for hash in self.ancestry_iter(parent_hash)? {
@@ -522,6 +525,7 @@ impl BlockChain {
     }
 
     /// Iterator that lists `first` and then all of `first`'s ancestors, by hash.
+    #[allow(dead_code)]
     pub fn ancestry_iter(&self, first: H256) -> Option<AncestryIter> {
         if self.is_known(&first) {
             Some(AncestryIter {
@@ -566,6 +570,7 @@ impl<'a> Iterator for AncestryIter<'a> {
 
 /// An iterator which walks all epoch transitions.
 /// Returns epoch transitions.
+#[allow(dead_code)]
 pub struct EpochTransitionIter<'a> {
     chain: &'a BlockChain,
     prefix_iter: Box<Iterator<Item = (Box<[u8]>, Box<[u8]>)> + 'a>,

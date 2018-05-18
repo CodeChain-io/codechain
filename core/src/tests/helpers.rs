@@ -33,6 +33,7 @@ pub fn create_test_block(header: &Header) -> Bytes {
     rlp.out()
 }
 
+#[allow(dead_code)]
 pub fn create_test_block_with_data(header: &Header, parcels: &[SignedParcel], uncles: &[Header]) -> Bytes {
     let mut rlp = RlpStream::new_list(3);
     rlp.append(header);

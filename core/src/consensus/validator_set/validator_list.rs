@@ -39,6 +39,7 @@ impl ValidatorList {
     }
 
     /// Convert into inner representation.
+    #[allow(dead_code)]
     pub fn into_inner(self) -> Vec<Address> {
         self.validators
     }

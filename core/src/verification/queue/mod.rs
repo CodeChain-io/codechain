@@ -67,11 +67,14 @@ pub struct VerificationQueue<K: Kind> {
     engine: Arc<CodeChainEngine>,
     verification: Arc<Verification<K>>,
     processing: RwLock<HashMap<H256, U256>>, // hash to score
+    #[allow(dead_code)]
     deleting: Arc<AtomicBool>,
     ready_signal: Arc<QueueSignal>,
     total_score: RwLock<U256>,
+    #[allow(dead_code)]
     empty: Arc<SCondvar>,
     more_to_verify: Arc<SCondvar>,
+    #[allow(dead_code)]
     verifier_handles: Vec<JoinHandle<()>>,
     max_queue_size: usize,
     max_mem_use: usize,
@@ -484,6 +487,7 @@ struct Verification<K: Kind> {
     bad: Mutex<HashSet<H256>>,
     sizes: Sizes,
     check_seal: bool,
+    #[allow(dead_code)]
     empty_mutex: SMutex<()>,
     more_to_verify_mutex: SMutex<()>,
 }

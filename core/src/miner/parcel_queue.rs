@@ -302,6 +302,7 @@ impl ParcelSet {
     }
 
     /// Drop all parcels.
+    #[allow(dead_code)]
     fn clear(&mut self) {
         self.by_priority.clear();
         self.by_address.clear();
@@ -581,6 +582,7 @@ impl ParcelQueue {
     }
 
     /// Removes all elements (in any state) from the queue
+    #[allow(dead_code)]
     pub fn clear(&mut self) {
         self.current.clear();
         self.future.clear();
@@ -589,11 +591,13 @@ impl ParcelQueue {
     }
 
     /// Finds parcel in the queue by hash (if any)
+    #[allow(dead_code)]
     pub fn find(&self, hash: &H256) -> Option<SignedParcel> {
         self.by_hash.get(hash).map(|parcel| parcel.parcel.clone())
     }
 
     /// Returns highest parcel nonce for given address.
+    #[allow(dead_code)]
     pub fn last_nonce(&self, address: &Address) -> Option<U256> {
         self.last_nonces.get(address).cloned()
     }
@@ -632,6 +636,7 @@ impl ParcelQueue {
     }
 
     /// Returns local parcels (some of them might not be part of the queue anymore).
+    #[allow(dead_code)]
     pub fn local_parcels(&self) -> &LinkedHashMap<H256, LocalParcelStatus> {
         self.local_parcels.all_parcels()
     }
@@ -1050,6 +1055,7 @@ pub enum RemovalReason {
     /// Parcel is invalid
     Invalid,
     /// Parcel was canceled
+    #[allow(dead_code)]
     Canceled,
     /// Parcel is not allowed,
     NotAllowed,

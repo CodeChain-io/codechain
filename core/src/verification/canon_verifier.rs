@@ -22,6 +22,7 @@ use super::verification;
 use super::Verifier;
 
 /// A canonial verifier -- this does full verification.
+#[allow(dead_code)]
 pub struct CanonVerifier;
 
 impl<C: BlockInfo> Verifier<C> for CanonVerifier {

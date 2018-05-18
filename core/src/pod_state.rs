@@ -29,11 +29,13 @@ pub struct PodState(BTreeMap<Address, PodAccount>);
 
 impl PodState {
     /// Contruct a new object from the `m`.
+    #[allow(dead_code)]
     pub fn new() -> PodState {
         Default::default()
     }
 
     /// Contruct a new object from the `m`.
+    #[allow(dead_code)]
     pub fn from(m: BTreeMap<Address, PodAccount>) -> PodState {
         PodState(m)
     }
@@ -44,11 +46,13 @@ impl PodState {
     }
 
     /// Get the root hash of the trie of the RLP of this.
+    #[allow(dead_code)]
     pub fn root(&self) -> H256 {
         sec_trie_root(self.0.iter().map(|(k, v)| (k, v.rlp())))
     }
 
     /// Drain object to get the underlying map.
+    #[allow(dead_code)]
     pub fn drain(self) -> BTreeMap<Address, PodAccount> {
         self.0
     }

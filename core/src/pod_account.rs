@@ -38,6 +38,7 @@ pub struct PodAccount {
 impl PodAccount {
     /// Convert Account to a PodAccount.
     /// NOTE: This will silently fail unless the account is fully cached.
+    #[allow(dead_code)]
     pub fn from_account(acc: &Account) -> PodAccount {
         PodAccount {
             balance: *acc.balance(),

@@ -28,9 +28,8 @@ use super::spec::Spec;
 
 /// Client service setup.
 pub struct ClientService {
-    io_service: Arc<IoService<ClientIoMessage>>,
+    _io_service: Arc<IoService<ClientIoMessage>>,
     client: Arc<Client>,
-    database: Arc<Database>,
 }
 
 impl ClientService {
@@ -53,7 +52,7 @@ impl ClientService {
             &client_path.to_str().expect("DB path could not be converted to string."),
         ).map_err(::client::Error::Database)?);
 
-        let client = Client::new(config, &spec, db.clone(), miner, io_service.channel())?;
+        let client = Client::new(config, &spec, db, miner, io_service.channel())?;
 
         let client_io = Arc::new(ClientIoHandler {
             client: client.clone(),
@@ -63,9 +62,8 @@ impl ClientService {
         spec.engine.register_client(Arc::downgrade(&client) as _);
 
         Ok(ClientService {
-            io_service: Arc::new(io_service),
+            _io_service: Arc::new(io_service),
             client,
-            database: db,
         })
     }
 

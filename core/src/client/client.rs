@@ -55,7 +55,6 @@ const MAX_PARCEL_QUEUE_SIZE: usize = 4096;
 
 pub struct Client {
     engine: Arc<CodeChainEngine>,
-    config: ClientConfig,
 
     io_channel: Mutex<IoChannel<ClientIoMessage>>,
 
@@ -110,7 +109,6 @@ impl Client {
 
         let client = Arc::new(Client {
             engine,
-            config,
             io_channel: Mutex::new(message_channel),
             chain: RwLock::new(chain),
             db: RwLock::new(db),

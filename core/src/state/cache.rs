@@ -77,6 +77,7 @@ where
         self.state == EntryState::Dirty
     }
 
+    #[allow(dead_code)]
     fn exists_and_is_null(&self) -> bool {
         self.item.as_ref().map_or(false, |a| a.is_null())
     }

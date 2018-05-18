@@ -28,7 +28,7 @@ use super::super::types::BlockNumber;
 
 /// Represents index of extra data in database
 #[derive(Copy, Debug, Hash, Eq, PartialEq, Clone)]
-pub enum ExtrasIndex {
+enum ExtrasIndex {
     /// Block details index
     BlockDetails = 0,
     /// Block hash index
@@ -100,7 +100,7 @@ impl Key<BlockInvoices> for H256 {
 }
 
 /// length of epoch keys.
-pub const EPOCH_KEY_LEN: usize = DB_PREFIX_LEN + 16;
+const EPOCH_KEY_LEN: usize = DB_PREFIX_LEN + 16;
 
 /// epoch key prefix.
 /// used to iterate over all epoch transitions in order from genesis.
