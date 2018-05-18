@@ -28,7 +28,7 @@ use super::spec::Spec;
 
 /// Client service setup.
 pub struct ClientService {
-    _io_service: Arc<IoService<ClientIoMessage>>,
+    _io_service: IoService<ClientIoMessage>,
     client: Arc<Client>,
 }
 
@@ -62,7 +62,7 @@ impl ClientService {
         spec.engine.register_client(Arc::downgrade(&client) as _);
 
         Ok(ClientService {
-            _io_service: Arc::new(io_service),
+            _io_service: io_service,
             client,
         })
     }
