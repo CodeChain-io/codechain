@@ -167,12 +167,6 @@ pub struct ParcelAddress {
     pub index: usize,
 }
 
-impl HeapSizeOf for ParcelAddress {
-    fn heap_size_of_children(&self) -> usize {
-        0
-    }
-}
-
 #[derive(Clone, RlpEncodableWrapper, RlpDecodableWrapper)]
 pub struct BlockInvoices {
     pub invoices: Vec<Invoice>,
