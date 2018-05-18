@@ -62,6 +62,8 @@ pub struct ApplyOutcome {
     pub error: Option<ParcelError>,
 }
 
+type CheckpointId = usize;
+
 /// Representation of the entire state of all accounts in the system.
 ///
 /// `State` can work together with `StateDB` to share account cache.
@@ -113,6 +115,7 @@ pub struct State<B: Backend> {
     account: Cache<Account>,
     asset_scheme: Cache<AssetScheme>,
     asset: Cache<Asset>,
+    id_of_checkpoints: Vec<CheckpointId>,
     account_start_nonce: U256,
     trie_factory: TrieFactory,
 }
@@ -169,6 +172,7 @@ impl<B: Backend> State<B> {
             account: Cache::new(),
             asset_scheme: Cache::new(),
             asset: Cache::new(),
+            id_of_checkpoints: Default::default(),
             account_start_nonce,
             trie_factory,
         }
@@ -191,6 +195,7 @@ impl<B: Backend> State<B> {
             account: Cache::new(),
             asset_scheme: Cache::new(),
             asset: Cache::new(),
+            id_of_checkpoints: Default::default(),
             account_start_nonce,
             trie_factory,
         };
@@ -199,21 +204,28 @@ impl<B: Backend> State<B> {
     }
 
     /// Create a recoverable checkpoint of this state.
-    pub fn checkpoint(&mut self) {
+    pub fn checkpoint(&mut self, id: CheckpointId) {
+        self.id_of_checkpoints.push(id);
         self.account.checkpoint();
         self.asset_scheme.checkpoint();
         self.asset.checkpoint();
     }
 
     /// Merge last checkpoint with previous.
-    pub fn discard_checkpoint(&mut self) {
+    pub fn discard_checkpoint(&mut self, id: CheckpointId) {
+        let expected = self.id_of_checkpoints.pop().expect("The checkpoint must exist");
+        assert_eq!(expected, id);
+
         self.account.discard_checkpoint();
         self.asset_scheme.discard_checkpoint();
         self.asset.discard_checkpoint();
     }
 
     /// Revert to the last checkpoint and discard it.
-    pub fn revert_to_checkpoint(&mut self) {
+    pub fn revert_to_checkpoint(&mut self, id: CheckpointId) {
+        let expected = self.id_of_checkpoints.pop().expect("The checkpoint must exist");
+        assert_eq!(expected, id);
+
         self.account.revert_to_checkpoint();
         self.asset_scheme.revert_to_checkpoint();
         self.asset.revert_to_checkpoint();
@@ -627,6 +639,7 @@ impl Clone for State<StateDB> {
         State {
             db: self.db.boxed_clone(),
             root: self.root.clone(),
+            id_of_checkpoints: self.id_of_checkpoints.clone(),
             account: self.account.clone(),
             asset_scheme: self.asset_scheme.clone(),
             asset: self.asset.clone(),
@@ -975,15 +988,15 @@ mod tests {
     fn checkpoint_basic() {
         let mut state = get_temp_state();
         let a = Address::zero();
-        state.checkpoint();
+        state.checkpoint(0);
         state.add_balance(&a, &U256::from(69u64)).unwrap();
         assert_eq!(state.balance(&a).unwrap(), U256::from(69u64));
-        state.discard_checkpoint();
+        state.discard_checkpoint(0);
         assert_eq!(state.balance(&a).unwrap(), U256::from(69u64));
-        state.checkpoint();
+        state.checkpoint(1);
         state.add_balance(&a, &U256::from(1u64)).unwrap();
         assert_eq!(state.balance(&a).unwrap(), U256::from(70u64));
-        state.revert_to_checkpoint();
+        state.revert_to_checkpoint(1);
         assert_eq!(state.balance(&a).unwrap(), U256::from(69u64));
     }
 
@@ -991,14 +1004,14 @@ mod tests {
     fn checkpoint_nested() {
         let mut state = get_temp_state();
         let a = Address::zero();
-        state.checkpoint();
+        state.checkpoint(0);
         state.add_balance(&a, &U256::from(69u64)).unwrap();
-        state.checkpoint();
+        state.checkpoint(1);
         state.add_balance(&a, &U256::from(69u64)).unwrap();
         assert_eq!(state.balance(&a).unwrap(), U256::from(69u64 + 69u64));
-        state.revert_to_checkpoint();
+        state.revert_to_checkpoint(1);
         assert_eq!(state.balance(&a).unwrap(), U256::from(69u64));
-        state.revert_to_checkpoint();
+        state.revert_to_checkpoint(0);
         assert_eq!(state.balance(&a).unwrap(), U256::from(0));
     }
 
@@ -1006,17 +1019,17 @@ mod tests {
     fn checkpoint_discard() {
         let mut state = get_temp_state();
         let a = Address::zero();
-        state.checkpoint();
+        state.checkpoint(0);
         state.add_balance(&a, &U256::from(69u64)).unwrap();
-        state.checkpoint();
+        state.checkpoint(1);
         state.add_balance(&a, &U256::from(69u64)).unwrap();
         state.inc_nonce(&a).unwrap();
         assert_eq!(state.balance(&a).unwrap(), U256::from(69u64 + 69u64));
         assert_eq!(state.nonce(&a).unwrap(), U256::from(1u64));
-        state.discard_checkpoint();
+        state.discard_checkpoint(1);
         assert_eq!(state.balance(&a).unwrap(), U256::from(69u64 + 69u64));
         assert_eq!(state.nonce(&a).unwrap(), U256::from(1u64));
-        state.revert_to_checkpoint();
+        state.revert_to_checkpoint(0);
         assert_eq!(state.balance(&a).unwrap(), U256::from(0u64));
         assert_eq!(state.nonce(&a).unwrap(), U256::from(0u64));
     }
