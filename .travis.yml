@@ -2,12 +2,12 @@ language: rust
 rust:
   - stable
 install:
-  - rustup toolchain install nightly
-  - rustup component add rustfmt-preview --toolchain nightly
+  - rustup toolchain install nightly-2018-05-07
+  - rustup component add rustfmt-preview --toolchain nightly-2018-05-07
 before_script:
   - cargo fetch --verbose
 script:
-  - cargo +nightly fmt -- --write-mode=diff
+  - cargo +nightly-2018-05-07 fmt -- --write-mode=diff
   - RUST_BACKTRACE=1 cargo test --verbose --all
 matrix:
   allow_failures:
