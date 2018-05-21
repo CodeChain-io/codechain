@@ -151,23 +151,23 @@ impl<'x> OpenBlock<'x> {
     }
 
     /// Push a parcel into the block.
-    pub fn push_parcel(&mut self, t: SignedParcel, h: Option<H256>) -> Result<(), Error> {
-        if self.block.parcels_set.contains(&t.hash()) {
+    pub fn push_parcel(&mut self, parcel: SignedParcel, h: Option<H256>) -> Result<(), Error> {
+        if self.block.parcels_set.contains(&parcel.hash()) {
             return Err(ParcelError::AlreadyImported.into())
         }
 
-        let outcome = self.block.state.apply(&t)?;
+        let outcome = self.block.state.apply(&parcel)?;
 
-        self.block.parcels_set.insert(h.unwrap_or_else(|| t.hash()));
-        self.block.parcels.push(t.into());
+        self.block.parcels_set.insert(h.unwrap_or_else(|| parcel.hash()));
+        self.block.parcels.push(parcel.into());
         self.block.invoices.push(outcome.invoice);
         Ok(())
     }
 
     /// Push parcels onto the block.
     pub fn push_parcels(&mut self, parcels: &[SignedParcel]) -> Result<(), Error> {
-        for t in parcels {
-            self.push_parcel(t.clone(), None)?;
+        for parcel in parcels {
+            self.push_parcel(parcel.clone(), None)?;
         }
         Ok(())
     }
