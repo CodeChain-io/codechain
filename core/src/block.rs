@@ -24,6 +24,7 @@ use trie::TrieFactory;
 use triehash::ordered_trie_root;
 use unexpected::Mismatch;
 
+use super::blockchain::ParcelInvoices;
 use super::consensus::CodeChainEngine;
 use super::error::{BlockError, Error};
 use super::header::{Header, Seal};
@@ -73,7 +74,7 @@ pub struct ExecutedBlock {
     header: Header,
     state: State<StateDB>,
     parcels: Vec<SignedParcel>,
-    invoices: Vec<Invoice>,
+    invoices: Vec<ParcelInvoices>,
     parcels_set: HashSet<H256>,
 }
 
@@ -156,11 +157,11 @@ impl<'x> OpenBlock<'x> {
             return Err(ParcelError::AlreadyImported.into())
         }
 
-        let outcome = self.block.state.apply(&parcel)?;
+        let outcomes = self.block.state.apply(&parcel)?;
 
         self.block.parcels_set.insert(h.unwrap_or_else(|| parcel.hash()));
         self.block.parcels.push(parcel.into());
-        self.block.invoices.push(outcome.invoice);
+        self.block.invoices.push(outcomes.into_iter().map(|outcome| outcome.invoice).collect::<Vec<Invoice>>().into());
         Ok(())
     }
 
@@ -196,7 +197,9 @@ impl<'x> OpenBlock<'x> {
         }
         s.block.header.set_parcels_root(ordered_trie_root(s.block.parcels.iter().map(|e| e.rlp_bytes())));
         s.block.header.set_state_root(s.block.state.root().clone());
-        s.block.header.set_invoices_root(ordered_trie_root(s.block.invoices.iter().map(|r| r.rlp_bytes())));
+        s.block.header.set_invoices_root(ordered_trie_root(
+            s.block.invoices.iter().flat_map(|invoices| invoices.iter().map(|invoice| invoice.rlp_bytes())),
+        ));
 
         ClosedBlock {
             block: s.block,
@@ -219,7 +222,9 @@ impl<'x> OpenBlock<'x> {
             s.block.header.set_parcels_root(ordered_trie_root(s.block.parcels.iter().map(|e| e.rlp_bytes())));
         }
         if s.block.header.invoices_root().is_zero() || s.block.header.invoices_root() == &BLAKE_NULL_RLP {
-            s.block.header.set_invoices_root(ordered_trie_root(s.block.invoices.iter().map(|r| r.rlp_bytes())));
+            s.block.header.set_invoices_root(ordered_trie_root(
+                s.block.invoices.iter().flat_map(|invoices| invoices.iter().map(|invoice| invoice.rlp_bytes())),
+            ));
         }
         s.block.header.set_state_root(s.block.state.root().clone());
 
@@ -342,7 +347,7 @@ pub trait IsBlock {
     }
 
     /// Get all information on receipts in this block.
-    fn invoices(&self) -> &[Invoice] {
+    fn invoices(&self) -> &[ParcelInvoices] {
         &self.block().invoices
     }
 

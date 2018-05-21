@@ -56,7 +56,7 @@ impl From<CoreBlock> for Block {
                         parcel_index: Some(i),
                         nonce: unverified.as_unsigned().nonce.clone(),
                         fee: unverified.as_unsigned().fee.clone(),
-                        transaction: unverified.as_unsigned().transaction.clone(),
+                        transactions: unverified.as_unsigned().transactions.clone(),
                         network_id: unverified.as_unsigned().network_id,
                         hash: unverified.hash(),
                         v: sig.v(),

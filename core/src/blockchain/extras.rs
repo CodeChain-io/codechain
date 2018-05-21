@@ -20,6 +20,7 @@ use std::ops::{self, Deref};
 use ctypes::{H256, H264, U256};
 use heapsize::HeapSizeOf;
 use kvdb::PREFIX_LEN as DB_PREFIX_LEN;
+use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::super::consensus::epoch::{PendingTransition as PendingEpochTransition, Transition as EpochTransition};
 use super::super::db::Key;
@@ -193,15 +194,74 @@ pub struct TransactionAddress {
 }
 
 
-#[derive(Clone, RlpEncodableWrapper, RlpDecodableWrapper)]
-pub struct BlockInvoices {
+#[derive(Clone, Debug, PartialEq, RlpEncodableWrapper, RlpDecodableWrapper)]
+pub struct ParcelInvoices {
     pub invoices: Vec<Invoice>,
 }
 
-impl BlockInvoices {
+impl ParcelInvoices {
     pub fn new(invoices: Vec<Invoice>) -> Self {
         Self {
             invoices,
+        }
+    }
+
+    pub fn iter(&self) -> ::std::slice::Iter<Invoice> {
+        self.invoices.iter()
+    }
+}
+
+impl Into<Vec<Invoice>> for ParcelInvoices {
+    fn into(self) -> Vec<Invoice> {
+        self.invoices
+    }
+}
+
+impl<'a> Into<&'a Vec<Invoice>> for &'a ParcelInvoices {
+    fn into(self) -> &'a Vec<Invoice> {
+        &self.invoices
+    }
+}
+
+impl From<Vec<Invoice>> for ParcelInvoices {
+    fn from(invoices: Vec<Invoice>) -> Self {
+        Self {
+            invoices,
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct BlockInvoices {
+    pub invoices: Vec<ParcelInvoices>,
+}
+
+impl BlockInvoices {
+    pub fn new(invoices: Vec<ParcelInvoices>) -> Self {
+        Self {
+            invoices,
+        }
+    }
+}
+
+impl Decodable for BlockInvoices {
+    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+        let invoices = rlp.as_list::<Vec<u8>>()?
+            .iter()
+            .map(|parcel_invoices| UntrustedRlp::new(&parcel_invoices).as_val::<ParcelInvoices>())
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(Self {
+            invoices,
+        })
+    }
+}
+
+impl Encodable for BlockInvoices {
+    fn rlp_append(&self, s: &mut RlpStream) {
+        s.begin_list(self.invoices.len());
+        for i in self.invoices.iter() {
+            let encoded = i.rlp_bytes();
+            s.append(&encoded.into_vec());
         }
     }
 }
@@ -211,4 +271,70 @@ impl BlockInvoices {
 pub struct EpochTransitions {
     pub number: u64,
     pub candidates: Vec<EpochTransition>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::super::super::invoice::TransactionOutcome;
+    use super::*;
+    use rlp::{Encodable, UntrustedRlp};
+
+    #[test]
+    fn rlp_encode_and_decode_parcel_invoices() {
+        let invoices = vec![
+            Invoice {
+                outcome: TransactionOutcome::Success,
+            },
+            Invoice {
+                outcome: TransactionOutcome::Success,
+            },
+            Invoice {
+                outcome: TransactionOutcome::Failed,
+            },
+            Invoice {
+                outcome: TransactionOutcome::Success,
+            },
+            Invoice {
+                outcome: TransactionOutcome::Success,
+            },
+            Invoice {
+                outcome: TransactionOutcome::Success,
+            },
+        ];
+        let parcel_invoices = ParcelInvoices {
+            invoices,
+        };
+        let rlp_encoded = parcel_invoices.rlp_bytes();
+        let stream = UntrustedRlp::new(&rlp_encoded);
+        let rlp_decoded = stream.as_val();
+        assert_eq!(Ok(parcel_invoices), rlp_decoded);
+    }
+
+    #[test]
+    fn rlp_encode_and_decode_block_invoices() {
+        let invoices = vec![
+            Invoice {
+                outcome: TransactionOutcome::Success,
+            },
+            Invoice {
+                outcome: TransactionOutcome::Failed,
+            },
+        ];
+        let parcel_invoices = ParcelInvoices {
+            invoices,
+        };
+        let block_invoices = BlockInvoices {
+            invoices: vec![
+                parcel_invoices.clone(),
+                parcel_invoices.clone(),
+                parcel_invoices.clone(),
+                parcel_invoices.clone(),
+            ],
+        };
+        let rlp_encoded = block_invoices.rlp_bytes();
+        println!("..:{:?}:", rlp_encoded);
+        let rlp = UntrustedRlp::new(&rlp_encoded);
+        let rlp_decoded = rlp.as_val();
+        assert_eq!(Ok(block_invoices), rlp_decoded);
+    }
 }

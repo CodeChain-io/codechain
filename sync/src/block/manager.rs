@@ -214,7 +214,7 @@ impl DownloadManager {
 mod tests {
     use std::ops::Range;
 
-    use ccore::{Block, BlockNumber, Header, Parcel, Transaction, UnverifiedParcel};
+    use ccore::{Block, BlockNumber, Header, Parcel, UnverifiedParcel};
     use ckeys::ECDSASignature;
     use ctypes::{H256, U256};
 
@@ -237,7 +237,7 @@ mod tests {
         let raw = Parcel {
             nonce,
             fee: U256::zero(),
-            transaction: Transaction::default(),
+            transactions: Default::default(),
             network_id: 0,
         };
         raw.with_signature(ECDSASignature::default())

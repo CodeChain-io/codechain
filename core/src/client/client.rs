@@ -354,9 +354,9 @@ impl BlockChainClient for Client {
         self.parcel_address(id).and_then(|address| chain.parcel(&address))
     }
 
-    fn parcel_invoice(&self, id: ParcelId) -> Option<Invoice> {
+    fn parcel_invoices(&self, id: ParcelId) -> Option<Vec<Invoice>> {
         let chain = self.chain.read();
-        self.parcel_address(id).and_then(|address| chain.parcel_invoice(&address))
+        self.parcel_address(id).and_then(|address| chain.parcel_invoices(&address))
     }
 }
 

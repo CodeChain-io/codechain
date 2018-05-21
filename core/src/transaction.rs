@@ -56,12 +56,6 @@ pub enum Transaction {
     },
 }
 
-impl Default for Transaction {
-    fn default() -> Transaction {
-        Transaction::Noop
-    }
-}
-
 impl Transaction {
     pub fn without_script(&self) -> Self {
         match self {

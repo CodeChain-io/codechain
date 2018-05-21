@@ -174,7 +174,7 @@ pub trait BlockChainClient: Sync + Send + AccountData + BlockChain + ImportBlock
     fn parcel(&self, id: ParcelId) -> Option<LocalizedParcel>;
 
     /// Get parcel invoice with given hash.
-    fn parcel_invoice(&self, id: ParcelId) -> Option<Invoice>;
+    fn parcel_invoices(&self, id: ParcelId) -> Option<Vec<Invoice>>;
 }
 
 /// Result of import block operation.
