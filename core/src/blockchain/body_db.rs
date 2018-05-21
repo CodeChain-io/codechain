@@ -200,6 +200,12 @@ impl BodyProvider for BodyDB {
         self.block_body(hash).is_some()
     }
 
+    /// Get the address of parcel with given hash.
+    fn parcel_address(&self, hash: &H256) -> Option<ParcelAddress> {
+        let result = self.db.read_with_cache(db::COL_EXTRA, &self.parcel_address_cache, hash)?;
+        Some(result)
+    }
+
     /// Get block body data
     fn block_body(&self, hash: &H256) -> Option<encoded::Body> {
         // Check cache first
@@ -219,11 +225,5 @@ impl BodyProvider for BodyDB {
         write.insert(*hash, raw_body.clone());
 
         Some(encoded::Body::new(raw_body))
-    }
-
-    /// Get the address of parcel with given hash.
-    fn parcel_address(&self, hash: &H256) -> Option<ParcelAddress> {
-        let result = self.db.read_with_cache(db::COL_EXTRA, &self.parcel_address_cache, hash)?;
-        Some(result)
     }
 }
