@@ -100,12 +100,6 @@ impl HeaderChain {
         }
     }
 
-    /// Returns true if the given parent block has given child
-    /// (though not necessarily a part of the canon chain).
-    fn is_known_child(&self, parent: &H256, hash: &H256) -> bool {
-        self.block_details(parent).map_or(false, |d| d.children.contains(hash))
-    }
-
     /// Inserts the header into backing cache database.
     /// Expects the header to be valid and already verified.
     /// If the header is already known, does nothing.
@@ -113,7 +107,7 @@ impl HeaderChain {
     pub fn insert_header(&self, batch: &mut DBTransaction, header: &HeaderView) -> Option<BlockLocation> {
         let hash = header.hash();
 
-        if self.is_known_child(&header.parent_hash(), &hash) {
+        if self.is_known_header(&hash) {
             return None
         }
 
