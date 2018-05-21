@@ -32,8 +32,8 @@ use super::super::views::BlockView;
 use super::body_db::{BodyDB, BodyProvider};
 use super::extras::{BlockDetails, BlockInvoices, EpochTransitions, ParcelAddress, EPOCH_KEY_PREFIX};
 use super::headerchain::{HeaderChain, HeaderProvider};
-use super::import_route::ImportRoute;
 use super::invoice_db::{InvoiceDB, InvoiceProvider};
+use super::route::ImportRoute;
 
 /// Structure providing fast access to blockchain data.
 ///
