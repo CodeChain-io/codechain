@@ -183,13 +183,18 @@ impl QueuedParcel {
     }
 
     fn cost(&self) -> U256 {
-        let value = match (*self.parcel).transaction {
-            Transaction::Payment {
-                value,
-                ..
-            } => value,
-            _ => U256::from(0),
-        };
+        let zero = U256::from(0);
+        let value: U256 = self.parcel
+            .transactions
+            .iter()
+            .map(|transaction| match transaction {
+                Transaction::Payment {
+                    value,
+                    ..
+                } => value,
+                _ => &zero,
+            })
+            .fold(zero, |sum, &val| sum + val);
         value + self.parcel.fee
     }
 }
@@ -1084,8 +1089,12 @@ fn check_if_removed(
 
 #[cfg(test)]
 pub mod test {
-    use super::ParcelOrigin;
     use std::cmp::Ordering;
+
+    use ckeys::{Generator, Random};
+
+    use super::super::super::Parcel;
+    use super::*;
 
     #[test]
     fn test_ordering() {
@@ -1096,5 +1105,166 @@ pub mod test {
         assert_eq!(ParcelOrigin::External.cmp(&ParcelOrigin::Local), Ordering::Greater);
         assert_eq!(ParcelOrigin::Local.cmp(&ParcelOrigin::RetractedBlock), Ordering::Greater);
         assert_eq!(ParcelOrigin::External.cmp(&ParcelOrigin::RetractedBlock), Ordering::Greater);
+    }
+
+    #[test]
+    fn cost_of_empty_parcel_is_fee() {
+        let fee = U256::from(100);
+        let parcel = Parcel {
+            nonce: U256::zero(),
+            fee,
+            transactions: vec![],
+            network_id: 200,
+        };
+        let keypair = Random.generate().unwrap();
+        let signed = parcel.sign(keypair.private());
+        let queued = QueuedParcel::new(signed, ParcelOrigin::Local, 0, 0);
+
+        assert_eq!(fee, queued.cost());
+    }
+
+    #[test]
+    fn mint_transaction_does_not_increase_cost() {
+        let fee = U256::from(100);
+        let transactions = vec![
+            Transaction::Noop,
+            Transaction::AssetMint {
+                metadata: "Metadata".to_string(),
+                lock_script_hash: H256::zero(),
+                parameters: vec![],
+                amount: None,
+                registrar: None,
+            },
+        ];
+        let parcel = Parcel {
+            nonce: U256::zero(),
+            fee,
+            transactions,
+            network_id: 200,
+        };
+        let keypair = Random.generate().unwrap();
+        let signed = parcel.sign(keypair.private());
+        let queued = QueuedParcel::new(signed, ParcelOrigin::Local, 0, 0);
+
+        assert_eq!(fee, queued.cost());
+    }
+
+    #[test]
+    fn transfer_transaction_does_not_increase_cost() {
+        let fee = U256::from(100);
+        let transactions = vec![
+            Transaction::Noop,
+            Transaction::AssetMint {
+                metadata: "Metadata".to_string(),
+                lock_script_hash: H256::zero(),
+                parameters: vec![],
+                amount: None,
+                registrar: None,
+            },
+            Transaction::AssetTransfer {
+                network_id: 0,
+                inputs: vec![],
+                outputs: vec![],
+            },
+        ];
+        let parcel = Parcel {
+            nonce: U256::zero(),
+            fee,
+            transactions,
+            network_id: 200,
+        };
+        let keypair = Random.generate().unwrap();
+        let signed = parcel.sign(keypair.private());
+        let queued = QueuedParcel::new(signed, ParcelOrigin::Local, 0, 0);
+
+        assert_eq!(fee, queued.cost());
+    }
+
+    #[test]
+    fn payment_increases_cost() {
+        let fee = U256::from(100);
+        let pay_value = U256::from(100000);
+        let transactions = vec![
+            Transaction::Noop,
+            Transaction::AssetMint {
+                metadata: "Metadata".to_string(),
+                lock_script_hash: H256::zero(),
+                parameters: vec![],
+                amount: None,
+                registrar: None,
+            },
+            Transaction::AssetTransfer {
+                network_id: 0,
+                inputs: vec![],
+                outputs: vec![],
+            },
+            Transaction::Payment {
+                nonce: 1.into(),
+                address: Address::zero(),
+                value: pay_value,
+            },
+            Transaction::Noop,
+        ];
+        let parcel = Parcel {
+            nonce: U256::zero(),
+            fee,
+            transactions,
+            network_id: 200,
+        };
+        let keypair = Random.generate().unwrap();
+        let signed = parcel.sign(keypair.private());
+        let queued = QueuedParcel::new(signed, ParcelOrigin::Local, 0, 0);
+
+        assert_eq!(fee + pay_value, queued.cost());
+    }
+
+    #[test]
+    fn cost_is_sum_of_payment_add_fee() {
+        let fee = 100.into();
+        let pay_value0 = 100000.into();
+        let pay_value1 = 20000.into();
+        let pay_value2 = 3000.into();
+        let transactions = vec![
+            Transaction::Payment {
+                nonce: 1.into(),
+                address: Address::zero(),
+                value: pay_value0,
+            },
+            Transaction::Noop,
+            Transaction::AssetMint {
+                metadata: "Metadata".to_string(),
+                lock_script_hash: H256::zero(),
+                parameters: vec![],
+                amount: None,
+                registrar: None,
+            },
+            Transaction::Payment {
+                nonce: 2.into(),
+                address: Address::zero(),
+                value: pay_value1,
+            },
+            Transaction::AssetTransfer {
+                network_id: 0,
+                inputs: vec![],
+                outputs: vec![],
+            },
+            Transaction::Payment {
+                nonce: 3.into(),
+                address: Address::zero(),
+                value: pay_value2,
+            },
+            Transaction::Noop,
+        ];
+        let parcel = Parcel {
+            nonce: U256::zero(),
+            fee,
+            transactions,
+            network_id: 200,
+        };
+        let keypair = Random.generate().unwrap();
+        let signed = parcel.sign(keypair.private());
+        let queued = QueuedParcel::new(signed, ParcelOrigin::Local, 0, 0);
+
+        assert_eq!(fee + pay_value0 + pay_value1 + pay_value2, queued.cost());
     }
 }

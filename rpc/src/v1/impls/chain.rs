@@ -63,8 +63,8 @@ impl Chain for ChainClient {
         }
     }
 
-    fn get_parcel_invoice(&self, parcel_hash: H256) -> Result<Option<Invoice>> {
-        Ok(self.client.parcel_invoice(parcel_hash.into()))
+    fn get_parcel_invoices(&self, parcel_hash: H256) -> Result<Option<Vec<Invoice>>> {
+        Ok(self.client.parcel_invoices(parcel_hash.into()))
     }
 
     fn get_asset_scheme(&self, transaction_hash: H256) -> Result<Option<AssetScheme>> {

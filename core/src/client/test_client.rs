@@ -201,8 +201,9 @@ impl TestBlockChainClient {
                     let keypair = Random.generate().unwrap();
                     // Update nonces value
                     self.nonces.write().insert(keypair.address(), U256::one());
+                    let transactions = vec![Transaction::Noop];
                     let parcel = Parcel {
-                        transaction: Transaction::Noop,
+                        transactions,
                         nonce: U256::zero(),
                         fee: U256::from(10),
                         network_id: 0u64,
@@ -264,8 +265,9 @@ impl TestBlockChainClient {
     /// Inserts a parcel to miners parcels queue.
     pub fn insert_parcel_to_queue(&self) -> H256 {
         let keypair = Random.generate().unwrap();
+        let transactions = vec![Transaction::Noop];
         let parcel = Parcel {
-            transaction: Transaction::Noop,
+            transactions,
             nonce: U256::zero(),
             fee: U256::from(10),
             network_id: 0u64,
@@ -513,7 +515,7 @@ impl BlockChainClient for TestBlockChainClient {
         unimplemented!();
     }
 
-    fn parcel_invoice(&self, _id: ParcelId) -> Option<Invoice> {
+    fn parcel_invoices(&self, _id: ParcelId) -> Option<Vec<Invoice>> {
         unimplemented!();
     }
 }

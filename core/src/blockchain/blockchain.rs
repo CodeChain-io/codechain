@@ -30,7 +30,7 @@ use super::super::parcel::LocalizedParcel;
 use super::super::types::BlockNumber;
 use super::super::views::BlockView;
 use super::body_db::{BodyDB, BodyProvider};
-use super::extras::{BlockDetails, BlockInvoices, EpochTransitions, ParcelAddress, EPOCH_KEY_PREFIX};
+use super::extras::{BlockDetails, BlockInvoices, EpochTransitions, ParcelAddress, ParcelInvoices, EPOCH_KEY_PREFIX};
 use super::headerchain::{HeaderChain, HeaderProvider};
 use super::invoice_db::{InvoiceDB, InvoiceProvider};
 use super::route::ImportRoute;
@@ -64,7 +64,7 @@ impl BlockChain {
     /// Inserts the block into backing cache database.
     /// Expects the block to be valid and already verified.
     /// If the block is already known, does nothing.
-    pub fn insert_block(&self, batch: &mut DBTransaction, bytes: &[u8], invoices: Vec<Invoice>) -> ImportRoute {
+    pub fn insert_block(&self, batch: &mut DBTransaction, bytes: &[u8], invoices: Vec<ParcelInvoices>) -> ImportRoute {
         // create views onto rlp
         let block = BlockView::new(bytes);
         let header = block.header_view();
@@ -353,8 +353,8 @@ impl InvoiceProvider for BlockChain {
     }
 
     /// Get parcel invoice.
-    fn parcel_invoice(&self, address: &ParcelAddress) -> Option<Invoice> {
-        self.invoice_db.parcel_invoice(address)
+    fn parcel_invoices(&self, address: &ParcelAddress) -> Option<Vec<Invoice>> {
+        self.invoice_db.parcel_invoices(address)
     }
 }
 

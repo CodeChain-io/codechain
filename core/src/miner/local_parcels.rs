@@ -206,10 +206,11 @@ mod tests {
 
     fn new_parcel(nonce: U256) -> SignedParcel {
         let keypair = Random.generate().unwrap();
+        let transactions = vec![Transaction::Noop];
         parcel::Parcel {
             nonce,
             fee: U256::from(1245),
-            transaction: Transaction::Noop,
+            transactions,
             network_id: 0u64,
         }.sign(keypair.private())
     }

@@ -119,7 +119,7 @@ pub struct Parcel {
     /// Amount of CCC to be paid as a cost for distributing this parcel to the network.
     pub fee: U256,
     /// Transaction, can be either payment or asset transfer
-    pub transaction: Transaction,
+    pub transactions: Vec<Transaction>,
     /// Mainnet or Testnet
     pub network_id: u64,
 }
@@ -136,7 +136,7 @@ impl Parcel {
         s.begin_list(4);
         s.append(&self.nonce);
         s.append(&self.fee);
-        s.append(&self.transaction);
+        s.append_list(&self.transactions);
         s.append(&self.network_id);
     }
 
@@ -199,7 +199,7 @@ impl rlp::Decodable for UnverifiedParcel {
             unsigned: Parcel {
                 nonce: d.val_at(0)?,
                 fee: d.val_at(1)?,
-                transaction: d.val_at(2)?,
+                transactions: d.list_at(2)?,
                 network_id: d.val_at(3)?,
             },
             v: d.val_at(4)?,
@@ -234,7 +234,7 @@ impl UnverifiedParcel {
         s.begin_list(7);
         s.append(&self.nonce);
         s.append(&self.fee);
-        s.append(&self.transaction);
+        s.append_list(&self.transactions);
         s.append(&self.network_id);
         s.append(&self.v);
         s.append(&self.r);
