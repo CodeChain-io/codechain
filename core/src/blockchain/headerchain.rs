@@ -30,8 +30,9 @@ use super::super::encoded;
 use super::super::header::Header;
 use super::super::types::BlockNumber;
 use super::super::views::HeaderView;
-use super::block_info::{BlockLocation, BranchBecomingCanonChainData};
+use super::block_info::BlockLocation;
 use super::extras::BlockDetails;
+use super::route::tree_route;
 
 const BEST_HEADER_KEY: &[u8] = b"best-header";
 
@@ -103,97 +104,6 @@ impl HeaderChain {
     /// (though not necessarily a part of the canon chain).
     fn is_known_child(&self, parent: &H256, hash: &H256) -> bool {
         self.block_details(parent).map_or(false, |d| d.children.contains(hash))
-    }
-
-    /// Returns a tree route between `from` and `to`, which is a tuple of:
-    ///
-    /// - a vector of hashes of all blocks, ordered from `from` to `to`.
-    ///
-    /// - common ancestor of these blocks.
-    ///
-    /// - an index where best common ancestor would be
-    ///
-    /// 1.) from newer to older
-    ///
-    /// - bc: `A1 -> A2 -> A3 -> A4 -> A5`
-    /// - from: A5, to: A4
-    /// - route:
-    ///
-    ///   ```json
-    ///   { blocks: [A5], ancestor: A4, index: 1 }
-    ///   ```
-    ///
-    /// 2.) from older to newer
-    ///
-    /// - bc: `A1 -> A2 -> A3 -> A4 -> A5`
-    /// - from: A3, to: A4
-    /// - route:
-    ///
-    ///   ```json
-    ///   { blocks: [A4], ancestor: A3, index: 0 }
-    ///   ```
-    ///
-    /// 3.) fork:
-    ///
-    /// - bc:
-    ///
-    ///   ```text
-    ///   A1 -> A2 -> A3 -> A4
-    ///              -> B3 -> B4
-    ///   ```
-    /// - from: B4, to: A4
-    /// - route:
-    ///
-    ///   ```json
-    ///   { blocks: [B4, B3, A3, A4], ancestor: A2, index: 2 }
-    ///   ```
-    ///
-    /// If the tree route verges into pruned or unknown blocks,
-    /// `None` is returned.
-    pub fn tree_route(&self, from: H256, to: H256) -> Option<TreeRoute> {
-        let mut from_branch = vec![];
-        let mut to_branch = vec![];
-
-        let mut from_details = self.block_details(&from)?;
-        let mut to_details = self.block_details(&to)?;
-        let mut current_from = from;
-        let mut current_to = to;
-
-        // reset from && to to the same level
-        while from_details.number > to_details.number {
-            from_branch.push(current_from);
-            current_from = from_details.parent.clone();
-            from_details = self.block_details(&from_details.parent)?;
-        }
-
-        while to_details.number > from_details.number {
-            to_branch.push(current_to);
-            current_to = to_details.parent.clone();
-            to_details = self.block_details(&to_details.parent)?;
-        }
-
-        assert_eq!(from_details.number, to_details.number);
-
-        // move to shared parent
-        while current_from != current_to {
-            from_branch.push(current_from);
-            current_from = from_details.parent.clone();
-            from_details = self.block_details(&from_details.parent)?;
-
-            to_branch.push(current_to);
-            current_to = to_details.parent.clone();
-            to_details = self.block_details(&to_details.parent)?;
-        }
-
-        let index = from_branch.len();
-
-        from_branch.extend(to_branch.into_iter().rev());
-
-        Some(TreeRoute {
-            blocks: from_branch,
-            ancestor: current_from,
-            index,
-        })
     }
 
     /// Inserts the header into backing cache database.
@@ -310,27 +220,12 @@ impl HeaderChain {
             // are moved to "canon chain"
             // find the route between old best block and the new one
             let best_hash = self.best_header_hash();
-            let route = self.tree_route(best_hash, parent_hash)
+            let route = tree_route(self, best_hash, parent_hash)
                 .expect("blocks being imported always within recent history; qed");
 
-            match route.blocks.len() {
+            match route.retracted.len() {
                 0 => BlockLocation::CanonChain,
-                _ => {
-                    let retracted = route
-                        .blocks
-                        .iter()
-                        .take(route.index)
-                        .cloned()
-                        .collect::<Vec<_>>()
-                        .into_iter()
-                        .collect::<Vec<_>>();
-                    let enacted = route.blocks.into_iter().skip(route.index).collect::<Vec<_>>();
-                    BlockLocation::BranchBecomingCanonChain(BranchBecomingCanonChainData {
-                        ancestor: route.ancestor,
-                        enacted,
-                        retracted,
-                    })
-                }
+                _ => BlockLocation::BranchBecomingCanonChain(route),
             }
         } else {
             BlockLocation::Branch
@@ -441,15 +336,4 @@ impl HeaderProvider for HeaderChain {
         let result = self.db.read_with_cache(db::COL_EXTRA, &self.hash_cache, &index)?;
         Some(result)
     }
-}
-
-/// Represents a tree route between `from` block and `to` block:
-#[derive(Debug)]
-pub struct TreeRoute {
-    /// A vector of hashes of all blocks, ordered from `from` to `to`.
-    pub blocks: Vec<H256>,
-    /// Best common ancestor of these blocks.
-    pub ancestor: H256,
-    /// An index where best common ancestor would be.
-    pub index: usize,
 }

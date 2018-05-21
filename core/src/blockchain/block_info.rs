@@ -17,6 +17,7 @@
 use ctypes::{H256, U256};
 
 use super::super::types::BlockNumber;
+use super::route::TreeRoute;
 
 /// Brief info about inserted block.
 #[derive(Clone)]
@@ -41,15 +42,5 @@ pub enum BlockLocation {
     /// It's part of the fork which should become canon chain,
     /// because its total difficulty is higher than current
     /// canon chain difficulty.
-    BranchBecomingCanonChain(BranchBecomingCanonChainData),
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct BranchBecomingCanonChainData {
-    /// Hash of the newest common ancestor with old canon chain.
-    pub ancestor: H256,
-    /// Hashes of the blocks between ancestor and this block.
-    pub enacted: Vec<H256>,
-    /// Hashes of the blocks which were invalidated.
-    pub retracted: Vec<H256>,
+    BranchBecomingCanonChain(TreeRoute),
 }
