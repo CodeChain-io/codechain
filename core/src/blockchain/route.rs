@@ -16,11 +16,10 @@
 
 use ctypes::H256;
 
-use super::block_info::BlockLocation;
 use super::headerchain::HeaderProvider;
 
 /// Represents a tree route between `from` block and `to` block:
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct TreeRoute {
     /// Best common ancestor of these blocks.
     pub ancestor: H256,
@@ -68,9 +67,6 @@ pub struct TreeRoute {
 ///   ```json
 ///   { ancestor: A2, forward: [A3, A4], backward: [B4, B3] }
 ///   ```
-///
-/// If the tree route verges into pruned or unknown blocks,
-/// `None` is returned.
 pub fn tree_route<P>(db: &HeaderProvider, from: H256, to: H256, predicate: P) -> Option<TreeRoute>
 where
     P: Fn(&H256) -> bool, {
@@ -116,46 +112,27 @@ where
 
 /// Import route for newly inserted block.
 #[derive(Debug, PartialEq)]
-pub struct ImportRoute {
-    /// Blocks that were invalidated by new block.
-    pub retracted: Vec<H256>,
-    /// Blocks that were validated by new block.
-    pub enacted: Vec<H256>,
-    /// Blocks which are neither retracted nor enacted.
-    pub omitted: Vec<H256>,
+pub enum ImportRoute {
+    Canonical(TreeRoute),
+    Branch,
+    #[allow(dead_code)]
+    Dangling,
+    AlreadyInChain,
 }
 
-impl ImportRoute {
-    pub fn new(hash: &H256, location: &BlockLocation) -> Self {
-        match location {
-            BlockLocation::CanonChain => ImportRoute {
-                retracted: vec![],
-                enacted: vec![*hash],
-                omitted: vec![],
-            },
-            BlockLocation::Branch => ImportRoute {
-                retracted: vec![],
-                enacted: vec![],
-                omitted: vec![*hash],
-            },
-            BlockLocation::BranchBecomingCanonChain(data) => {
-                let mut enacted = vec![*hash];
-                enacted.extend(data.enacted.iter());
-                let retracted = data.retracted.clone();
-                ImportRoute {
-                    retracted,
-                    enacted,
-                    omitted: vec![],
-                }
-            }
+impl<'a> ImportRoute {
+    pub fn canonical_route(&'a self) -> Option<&'a TreeRoute> {
+        match self {
+            ImportRoute::Canonical(tree_route) => Some(tree_route),
+            _ => None,
         }
     }
 
-    pub fn none() -> Self {
-        ImportRoute {
-            retracted: vec![],
-            enacted: vec![],
-            omitted: vec![],
-        }
+    pub fn enacted(&self) -> Vec<H256> {
+        self.canonical_route().map_or(Vec::new(), |route| route.forward.clone())
+    }
+
+    pub fn retracted(&self) -> Vec<H256> {
+        self.canonical_route().map_or(Vec::new(), |route| route.backward.clone())
     }
 }
