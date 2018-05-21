@@ -14,16 +14,18 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::collections::HashMap;
 use std::mem;
 use std::sync::Arc;
 
 use ctypes::H256;
 use kvdb::{DBTransaction, KeyValueDB};
+use parking_lot::RwLock;
 use rlp::RlpStream;
 
 use super::super::blockchain_info::BlockChainInfo;
 use super::super::consensus::epoch::{PendingTransition as PendingEpochTransition, Transition as EpochTransition};
-use super::super::db::{self, Readable, Writable};
+use super::super::db::{self, CacheUpdatePolicy, Readable, Writable};
 use super::super::encoded;
 use super::super::invoice::Invoice;
 use super::super::parcel::LocalizedParcel;
@@ -33,18 +35,24 @@ use super::body_db::{BodyDB, BodyProvider};
 use super::extras::{BlockDetails, BlockInvoices, EpochTransitions, ParcelAddress, EPOCH_KEY_PREFIX};
 use super::headerchain::{HeaderChain, HeaderProvider};
 use super::invoice_db::{InvoiceDB, InvoiceProvider};
-use super::route::ImportRoute;
+use super::route::{ImportRoute, TreeRoute};
 
 /// Structure providing fast access to blockchain data.
 ///
 /// **Does not do input data verification.**
 pub struct BlockChain {
     // FIXME: add best block
+    parcel_address_cache: RwLock<HashMap<H256, ParcelAddress>>,
+
     headerchain: HeaderChain,
     body_db: BodyDB,
     invoice_db: InvoiceDB,
 
     db: Arc<KeyValueDB>,
+
+    /// `None` represents retracted parcels
+    // FIXME: find better way to represent this
+    pending_parcel_addresses: RwLock<HashMap<H256, Option<ParcelAddress>>>,
 }
 
 impl BlockChain {
@@ -53,11 +61,15 @@ impl BlockChain {
         let genesis_block = BlockView::new(genesis);
 
         Self {
+            parcel_address_cache: RwLock::new(HashMap::new()),
+
             headerchain: HeaderChain::new(&genesis_block.header_view(), db.clone()),
             body_db: BodyDB::new(&genesis_block, db.clone()),
             invoice_db: InvoiceDB::new(db.clone()),
 
             db,
+
+            pending_parcel_addresses: RwLock::new(HashMap::new()),
         }
     }
 
@@ -72,26 +84,75 @@ impl BlockChain {
 
         // FIXME: assert!(self.pending_best_block.read().is_none());
 
-        let location = self.headerchain.insert_header(batch, &header);
+        let route = self.headerchain.insert_header(batch, &header);
 
-        match location {
-            Some(l) => {
-                // store block in db
-                // FIXME
-                self.body_db.insert_body(batch, &block, &l);
-                self.invoice_db.insert_invoice(batch, &hash, invoices);
+        self.body_db.insert_body(batch, &block);
+        self.invoice_db.insert_invoice(batch, &hash, invoices);
 
-                ImportRoute::new(&hash, &l)
-            }
-            None => ImportRoute::none(),
+        if let Some(tree_route) = route.canonical_route() {
+            let mut pending_parcel_addresses = self.pending_parcel_addresses.write();
+
+            batch.extend_with_option_cache(
+                db::COL_EXTRA,
+                &mut *pending_parcel_addresses,
+                self.new_parcel_address_entries(tree_route),
+                CacheUpdatePolicy::Overwrite,
+            );
         }
+
+        route
     }
 
     /// Apply pending insertion updates
     pub fn commit(&self) {
         self.headerchain.commit();
-        self.body_db.commit();
+        // NOTE: There are no commit for BodyDB
         // NOTE: There are no commit for InvoiceDB
+
+        let mut parcel_address_cache = self.parcel_address_cache.write();
+        let mut pending_parcel_addresses = self.pending_parcel_addresses.write();
+
+        let new_parcels = mem::replace(&mut *pending_parcel_addresses, HashMap::new());
+        let (retracted_parcels, enacted_parcels) =
+            new_parcels.into_iter().partition::<HashMap<_, _>, _>(|&(_, ref value)| value.is_none());
+
+        parcel_address_cache
+            .extend(enacted_parcels.into_iter().map(|(k, v)| (k, v.expect("Parcels were partitioned; qed"))));
+
+        for hash in retracted_parcels.keys() {
+            parcel_address_cache.remove(hash);
+        }
+    }
+
+    /// This function returns modified parcel addresses.
+    fn new_parcel_address_entries(&self, route: &TreeRoute) -> HashMap<H256, Option<ParcelAddress>> {
+        let addresses = route.forward.iter().flat_map(|hash| {
+            let body = self.block_body(hash).expect("Enacted block must be in database.");
+            let hashes = body.parcel_hashes();
+            hashes
+                .into_iter()
+                .enumerate()
+                .map(|(i, parcel_hash)| {
+                    (
+                        parcel_hash,
+                        Some(ParcelAddress {
+                            block_hash: *hash,
+                            index: i,
+                        }),
+                    )
+                })
+                .collect::<HashMap<H256, Option<ParcelAddress>>>()
+        });
+
+        let retracted = route.backward.iter().flat_map(|hash| {
+            let body = self.block_body(hash).expect("Retracted block must be in database.");
+            let hashes = body.parcel_hashes();
+            hashes.into_iter().map(|hash| (hash, None)).collect::<HashMap<H256, Option<ParcelAddress>>>()
+        });
+
+        // FIXME: Verify comment below. I think this doesn't happen
+        // The order here is important! Don't remove parcel if it was part of enacted blocks as well.
+        retracted.chain(addresses).collect()
     }
 
     /// Returns general blockchain information
@@ -271,6 +332,9 @@ impl<'a> Iterator for EpochTransitionIter<'a> {
 
 /// Interface for querying blocks by hash and by number.
 pub trait BlockProvider: HeaderProvider + BodyProvider + InvoiceProvider {
+    /// Get the address of parcel with given hash.
+    fn parcel_address(&self, hash: &H256) -> Option<ParcelAddress>;
+
     /// Returns true if the given block is known
     /// (though not necessarily a part of the canon chain).
     fn is_known(&self, hash: &H256) -> bool {
@@ -332,10 +396,6 @@ impl BodyProvider for BlockChain {
         self.body_db.is_known_body(hash)
     }
 
-    fn parcel_address(&self, hash: &H256) -> Option<ParcelAddress> {
-        self.body_db.parcel_address(hash)
-    }
-
     fn block_body(&self, hash: &H256) -> Option<encoded::Body> {
         self.body_db.block_body(hash)
     }
@@ -358,4 +418,10 @@ impl InvoiceProvider for BlockChain {
     }
 }
 
-impl BlockProvider for BlockChain {}
+impl BlockProvider for BlockChain {
+    /// Get the address of parcel with given hash.
+    fn parcel_address(&self, hash: &H256) -> Option<ParcelAddress> {
+        let result = self.db.read_with_cache(db::COL_EXTRA, &self.parcel_address_cache, hash)?;
+        Some(result)
+    }
+}
