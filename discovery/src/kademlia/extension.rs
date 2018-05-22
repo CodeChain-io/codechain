@@ -78,7 +78,7 @@ impl Extension {
         };
         if !already_fired {
             let api = self.api.lock();
-            if let &Some(ref api) = &*api {
+            if let Some(api) = &*api {
                 api.set_timer_once(CONSUME_EVENT_TOKEN, Duration::milliseconds(0))
                     .expect("Consume event must be registered");
             }
@@ -146,7 +146,7 @@ impl Extension {
 
     fn handle_send_command(&self, message: &Message, target: &SocketAddr) {
         let api = self.api.lock();
-        if let &Some(ref api) = &*api {
+        if let Some(api) = &*api {
             if let Some(node) = self.get_node_token(&target) {
                 api.send(&node, &message.rlp_bytes().to_vec())
             }

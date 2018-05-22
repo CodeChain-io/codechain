@@ -279,7 +279,7 @@ impl StateDB {
         // Propagate cache only if committing on top of the latest canonical state
         // blocks are ordered by number and only one block with a given number is marked as canonical
         // (contributed to canonical state cache)
-        if let (&Some(ref number), &Some(ref hash), &Some(ref parent)) = (commit_number, commit_hash, parent_hash) {
+        if let (Some(number), Some(hash), Some(parent)) = (commit_number, commit_hash, parent_hash) {
             if cache.modifications.len() == STATE_CACHE_BLOCKS {
                 cache.modifications.pop_back();
             }
@@ -291,7 +291,7 @@ impl StateDB {
                 }
                 if is_best {
                     let acc = local_item.item;
-                    if let Some(&mut Some(ref mut existing)) = cache.cache.get_mut(&local_item.address) {
+                    if let Some(Some(existing)) = cache.cache.get_mut(&local_item.address) {
                         if let Some(new) = acc {
                             if local_item.modified {
                                 existing.overwrite_with(new);

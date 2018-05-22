@@ -223,8 +223,8 @@ impl Header {
     pub fn bare_hash(&self) -> H256 {
         let mut hash = self.bare_hash.borrow_mut();
         match &mut *hash {
-            &mut Some(ref h) => h.clone(),
-            hash @ &mut None => {
+            Some(h) => h.clone(),
+            hash @ None => {
                 let h = self.rlp_blake(Seal::Without);
                 *hash = Some(h.clone());
                 h
