@@ -10,8 +10,7 @@ extern crate serde_json;
 #[macro_use]
 extern crate clap;
 
-use std::fs::File;
-use std::io::Read;
+use std::fs;
 use std::process;
 
 use cbytes::Bytes;
@@ -70,11 +69,9 @@ fn main() {
     }
 }
 
-fn load_json(filename: &str) -> Result<Value, &'static str> {
-    let mut f = File::open(filename).expect("File not found");
-    let mut json_string = String::new();
-    f.read_to_string(&mut json_string).expect("File went wrong");
-    serde_json::from_str(json_string.as_ref()).map_err(|_| "Failed to parse string")
+fn load_json(filename: &str) -> Result<Value, String> {
+    let json_string = fs::read_to_string(filename).map_err(|e| format!("Failed to read file: {:?}", e))?;
+    serde_json::from_str(json_string.as_ref()).map_err(|_| "Failed to parse string".to_owned())
 }
 
 #[derive(Debug)]

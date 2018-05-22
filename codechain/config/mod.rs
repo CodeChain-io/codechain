@@ -14,8 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::fs::File;
-use std::io::Read;
 use std::str::FromStr;
 use std::{fmt, fs};
 
@@ -97,12 +95,7 @@ pub struct Config {
 }
 
 pub fn load(config_path: &str) -> Result<Config, String> {
-    let mut toml_string = String::new();
-    File::open(config_path)
-        .map_err(|e| format!("Error while open file({}): {:?}", config_path, e))?
-        .read_to_string(&mut toml_string)
-        .map_err(|e| format!("Error while read file: {:?}", e))?;
-
+    let toml_string = fs::read_to_string(config_path).map_err(|e| format!("Fail to read file: {:?}", e))?;
     toml::from_str(toml_string.as_ref()).map_err(|e| format!("Error while parse TOML: {:?}", e))
 }
 
