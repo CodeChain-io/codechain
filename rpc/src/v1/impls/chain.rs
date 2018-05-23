@@ -67,18 +67,18 @@ impl Chain for ChainClient {
         Ok(self.client.parcel_invoice(parcel_hash.into()))
     }
 
-    fn get_asset_scheme(&self, parcel_hash: H256) -> Result<Option<AssetScheme>> {
+    fn get_asset_scheme(&self, transaction_hash: H256) -> Result<Option<AssetScheme>> {
         if let Some(state) = self.client.state_at(BlockId::Latest) {
-            let address = AssetSchemeAddress::new(parcel_hash);
+            let address = AssetSchemeAddress::new(transaction_hash);
             Ok(state.asset_scheme(&address).map_err(errors::parcel)?)
         } else {
             Ok(None)
         }
     }
 
-    fn get_asset(&self, parcel_hash: H256, index: usize) -> Result<Option<Asset>> {
+    fn get_asset(&self, transaction_hash: H256, index: usize) -> Result<Option<Asset>> {
         if let Some(state) = self.client.state_at(BlockId::Latest) {
-            let address = AssetAddress::new(parcel_hash, index);
+            let address = AssetAddress::new(transaction_hash, index);
             Ok(state.asset(&address).map_err(errors::parcel)?)
         } else {
             Ok(None)
