@@ -154,7 +154,7 @@ impl NetworkExtension for Extension {
                 Message::Response(response) => self.on_peer_response(token, response),
             }
         } else {
-            info!(target: "sync", "invalid message from peer {}", token);
+            cinfo!(Sync, "invalid message from peer {}", token);
         }
     }
 
@@ -242,7 +242,7 @@ impl Extension {
     fn on_peer_status(&self, from: &NodeToken, total_score: U256, best_hash: H256, genesis_hash: H256) {
         // Validity check
         if genesis_hash != self.client.chain_info().genesis_hash {
-            info!(target: "sync", "Genesis hash mismatch with peer {}", from);
+            cinfo!(Sync, "Genesis hash mismatch with peer {}", from);
             return
         }
 
@@ -269,12 +269,12 @@ impl Extension {
 impl Extension {
     fn on_peer_request(&self, from: &NodeToken, request: RequestMessage) {
         if !self.peers.read().contains_key(from) {
-            info!(target: "sync", "Request from invalid peer #{} received", from);
+            cinfo!(Sync, "Request from invalid peer #{} received", from);
             return
         }
 
         if !self.is_valid_request(&request) {
-            info!(target: "sync", "Invalid request received from peer #{}", from);
+            cinfo!(Sync, "Invalid request received from peer #{}", from);
             return
         }
 
@@ -321,7 +321,7 @@ impl Extension {
 impl Extension {
     fn on_peer_response(&self, from: &NodeToken, response: ResponseMessage) {
         if !self.is_valid_response(from, &response) {
-            info!(target: "sync", "Invalid response received from peer #{}", from);
+            cinfo!(Sync, "Invalid response received from peer #{}", from);
             return
         }
 
@@ -335,10 +335,10 @@ impl Extension {
                 | Err(BlockImportError::Import(ImportError::AlreadyQueued)) => {}
                 Err(BlockImportError::Import(ImportError::KnownBad)) => {
                     // FIXME: reset download manager
-                    info!(target: "sync", "tried to import bad block");
+                    cinfo!(Sync, "tried to import bad block");
                 }
                 Err(error) => {
-                    info!(target: "sync", "block import failed with error({:?})", error);
+                    cinfo!(Sync, "block import failed with error({:?})", error);
                 }
             }
         });
