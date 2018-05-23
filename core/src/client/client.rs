@@ -486,10 +486,10 @@ impl Importer {
         // the block is enacted or retracted we iterate over all routes and at the end final state
         // will be in the hashmap
         let map = import_results.iter().fold(HashMap::new(), |mut map, route| {
-            for hash in &route.enacted {
+            for hash in &route.enacted() {
                 map.insert(hash.clone(), true);
             }
-            for hash in &route.retracted {
+            for hash in &route.retracted() {
                 map.insert(hash.clone(), false);
             }
             map
@@ -530,8 +530,8 @@ impl Importer {
         state.journal_under(&mut batch, number, hash).expect("DB commit failed");
         let route = chain.insert_block(&mut batch, block_data, invoices.clone());
 
-        let is_canon = route.enacted.last().map_or(false, |h| h == hash);
-        state.sync_cache(&route.enacted, &route.retracted, is_canon);
+        let is_canon = route.enacted().last().map_or(false, |h| h == hash);
+        state.sync_cache(&route.enacted(), &route.retracted(), is_canon);
         // Final commit to the DB
         client.db.read().write_buffered(batch);
         chain.commit();
@@ -716,7 +716,7 @@ impl ImportSealedBlock for Client {
 
             let route = self.importer.commit_block(block, &header, &block_data, self);
             trace!(target: "client", "Imported sealed block #{} ({})", number, h);
-            self.state_db.write().sync_cache(&route.enacted, &route.retracted, false);
+            self.state_db.write().sync_cache(&route.enacted(), &route.retracted(), false);
             route
         };
         let (enacted, retracted) = self.importer.calculate_enacted_retracted(&[route]);
