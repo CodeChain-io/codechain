@@ -119,7 +119,7 @@ impl NetworkExtension for Extension {
                 }
             }
         } else {
-            info!(target: "sync", "invalid message from peer {}", token);
+            cinfo!(Sync, "invalid message from peer {}", token);
         }
     }
 

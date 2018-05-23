@@ -9,6 +9,7 @@ authors = ["CodeChain Team <codechain@kodebox.io>"]
 codechain-bytes = { path = "../util/bytes" }
 codechain-core = { path = "../core" }
 codechain-keys = { path = "../keys" }
+codechain-logger = { path = "../util/logger" }
 codechain-network = { path = "../network" }
 codechain-types = { path = "../primitives/codechain-types" }
 log = "0.4.1"
