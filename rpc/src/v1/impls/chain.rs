@@ -58,7 +58,7 @@ impl Chain for ChainClient {
 
     fn get_parcel(&self, parcel_hash: H256) -> Result<Option<Parcel>> {
         match self.client.parcel(parcel_hash.into()) {
-            Some(parcel) => Ok(Some(Parcel::from_localized(parcel))),
+            Some(parcel) => Ok(Some(parcel.into())),
             None => Ok(None),
         }
     }
@@ -105,5 +105,9 @@ impl Chain for ChainClient {
 
     fn get_block_by_hash(&self, block_hash: H256) -> Result<Option<Block>> {
         Ok(self.client.block(BlockId::Hash(block_hash)).map(|block| block.decode().into()))
+    }
+
+    fn get_pending_parcels(&self) -> Result<Vec<Parcel>> {
+        Ok(self.client.ready_parcels().into_iter().map(|signed| signed.into()).collect())
     }
 }

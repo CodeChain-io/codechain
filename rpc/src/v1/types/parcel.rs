@@ -1,4 +1,4 @@
-use ccore::{LocalizedParcel, Transaction};
+use ccore::{LocalizedParcel, SignedParcel, Transaction};
 use ctypes::{H256, U256};
 
 #[derive(Debug, Serialize)]
@@ -17,17 +17,36 @@ pub struct Parcel {
     pub s: U256,
 }
 
-impl Parcel {
-    pub fn from_localized(p: LocalizedParcel) -> Parcel {
+impl From<LocalizedParcel> for Parcel {
+    fn from(p: LocalizedParcel) -> Self {
         let sig = p.signature();
-        Parcel {
-            block_number: Some(p.block_number.clone()),
-            block_hash: Some(p.block_hash.clone()),
-            parcel_index: Some(p.parcel_index.clone()),
-            nonce: p.nonce.clone(),
-            fee: p.fee.clone(),
+        Self {
+            block_number: Some(p.block_number),
+            block_hash: Some(p.block_hash),
+            parcel_index: Some(p.parcel_index),
+            nonce: p.nonce,
+            fee: p.fee,
             transactions: p.transactions.clone(),
-            network_id: p.network_id.clone(),
+            network_id: p.network_id,
+            hash: p.hash(),
+            v: sig.v(),
+            r: sig.r().into(),
+            s: sig.s().into(),
+        }
+    }
+}
+
+impl From<SignedParcel> for Parcel {
+    fn from(p: SignedParcel) -> Self {
+        let sig = p.signature();
+        Self {
+            block_number: None,
+            block_hash: None,
+            parcel_index: None,
+            nonce: p.nonce,
+            fee: p.fee,
+            transactions: p.transactions.clone(),
+            network_id: p.network_id,
             hash: p.hash(),
             v: sig.v(),
             r: sig.r().into(),
