@@ -21,10 +21,12 @@ extern crate log;
 extern crate time;
 
 mod logger;
+mod macros;
 
 use log::SetLoggerError;
 
 pub use logger::Config as LoggerConfig;
+pub use macros::LogTarget;
 use logger::Logger;
 
 pub fn init(config: &LoggerConfig) -> Result<(), SetLoggerError> {
