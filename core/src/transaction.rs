@@ -40,6 +40,7 @@ pub enum Transaction {
         nonce: U256,
         key: Public,
     },
+    #[serde(rename_all = "camelCase")]
     AssetMint {
         metadata: String,
         lock_script_hash: H256,
@@ -47,6 +48,7 @@ pub enum Transaction {
         amount: Option<u64>,
         registrar: Option<Address>,
     },
+    #[serde(rename_all = "camelCase")]
     AssetTransfer {
         network_id: u64,
         inputs: Vec<AssetTransferInput>,
