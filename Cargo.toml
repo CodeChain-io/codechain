@@ -42,8 +42,6 @@ members = [
 	"keys",
 	"network",
 	"rpc",
-	"rpc_cli",
-	"rpc_client",
 	"sync",
 	"vm",
 ]
