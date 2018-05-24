@@ -77,6 +77,8 @@ impl ClientService {
 pub enum ClientIoMessage {
     /// A block is ready
     BlockVerified,
+    /// A header is ready
+    HeaderVerified,
     /// New parcel RLPs are ready to be imported
     NewParcels(Vec<Bytes>, usize),
 }
@@ -91,6 +93,9 @@ impl IoHandler<ClientIoMessage> for ClientIoHandler {
         match net_message {
             ClientIoMessage::BlockVerified => {
                 self.client.import_verified_blocks();
+            }
+            ClientIoMessage::HeaderVerified => {
+                self.client.import_verified_headers();
             }
             ClientIoMessage::NewParcels(parcels, peer_id) => {
                 self.client.import_queued_parcels(parcels, *peer_id);

@@ -149,6 +149,11 @@ impl Client {
         }
     }
 
+    /// This is triggered by a message coming from a header queue when the header is ready for insertion
+    pub fn import_verified_headers(&self) -> usize {
+        self.importer.import_verified_headers(self)
+    }
+
     /// This is triggered by a message coming from a block queue when the block is ready for insertion
     pub fn import_verified_blocks(&self) -> usize {
         self.importer.import_verified_blocks(self)
@@ -687,6 +692,13 @@ impl Importer {
         }
 
         Ok(locked_block)
+    }
+}
+
+impl Importer {
+    /// This is triggered by a message coming from a header queue when the header is ready for insertion
+    pub fn import_verified_headers(&self, client: &Client) -> usize {
+        unimplemented!();
     }
 }
 

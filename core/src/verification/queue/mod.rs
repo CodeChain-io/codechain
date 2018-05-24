@@ -85,6 +85,7 @@ struct QueueSignal {
     deleting: Arc<AtomicBool>,
     signalled: AtomicBool,
     message_channel: Mutex<IoChannel<ClientIoMessage>>,
+    message: ClientIoMessage,
 }
 
 impl QueueSignal {
@@ -96,8 +97,8 @@ impl QueueSignal {
 
         if self.signalled.compare_and_swap(false, true, AtomicOrdering::Relaxed) == false {
             let channel = self.message_channel.lock().clone();
-            if let Err(e) = channel.send_sync(ClientIoMessage::BlockVerified) {
-                debug!("Error sending BlockVerified message: {:?}", e);
+            if let Err(e) = channel.send_sync(self.message.clone()) {
+                debug!("Error sending verified message: {:?}", e);
             }
         }
     }
@@ -110,8 +111,8 @@ impl QueueSignal {
 
         if self.signalled.compare_and_swap(false, true, AtomicOrdering::Relaxed) == false {
             let channel = self.message_channel.lock().clone();
-            if let Err(e) = channel.send(ClientIoMessage::BlockVerified) {
-                debug!("Error sending BlockVerified message: {:?}", e);
+            if let Err(e) = channel.send(self.message.clone()) {
+                debug!("Error sending verified message: {:?}", e);
             }
         }
     }
@@ -147,6 +148,7 @@ impl<K: Kind> VerificationQueue<K> {
             deleting: deleting.clone(),
             signalled: AtomicBool::new(false),
             message_channel: Mutex::new(message_channel),
+            message: K::signal(),
         });
         let empty = Arc::new(SCondvar::new());
         let more_to_verify = Arc::new(SCondvar::new());
