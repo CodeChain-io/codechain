@@ -31,9 +31,7 @@ use super::super::parcel::{ParcelError, SignedParcel, UnverifiedParcel};
 use super::super::spec::Spec;
 use super::super::state::State;
 use super::super::types::{BlockId, ParcelId};
-use super::parcel_queue::{
-    AccountDetails, ParcelDetailsProvider as ParcelQueueDetailsProvider, ParcelOrigin, ParcelQueue, RemovalReason,
-};
+use super::parcel_queue::{AccountDetails, ParcelOrigin, ParcelQueue, RemovalReason};
 use super::{MinerService, MinerStatus, ParcelImportResult};
 
 /// Configures the behaviour of the miner.
@@ -167,9 +165,14 @@ impl Miner {
 
                         // FIXME: Determine the origin from parcel.sender().
                         let origin = default_origin;
-                        let details_provider = ParcelDetailsProvider::new(client);
+                        let fetch_account = |a: &Address| -> AccountDetails {
+                            AccountDetails {
+                                nonce: client.latest_nonce(a),
+                                balance: client.latest_balance(a),
+                            }
+                        };
                         let hash = parcel.hash();
-                        let result = parcel_queue.add(parcel, origin, insertion_time, &details_provider)?;
+                        let result = parcel_queue.add(parcel, origin, insertion_time, &fetch_account)?;
 
                         inserted.push(hash);
                         Ok(result)
@@ -503,29 +506,5 @@ impl MinerService for Miner {
     /// Get a list of all future parcels.
     fn future_parcels(&self) -> Vec<SignedParcel> {
         self.parcel_queue.read().future_parcels()
-    }
-}
-
-struct ParcelDetailsProvider<'a, C: 'a> {
-    client: &'a C,
-}
-
-impl<'a, C> ParcelDetailsProvider<'a, C> {
-    pub fn new(client: &'a C) -> Self {
-        ParcelDetailsProvider {
-            client,
-        }
-    }
-}
-
-impl<'a, C> ParcelQueueDetailsProvider for ParcelDetailsProvider<'a, C>
-where
-    C: AccountData,
-{
-    fn fetch_account(&self, address: &Address) -> AccountDetails {
-        AccountDetails {
-            nonce: self.client.latest_nonce(address),
-            balance: self.client.latest_balance(address),
-        }
     }
 }

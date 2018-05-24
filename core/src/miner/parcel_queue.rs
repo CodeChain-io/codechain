@@ -430,18 +430,20 @@ impl ParcelQueue {
     ///
     /// NOTE details_provider methods should be cheap to compute
     /// otherwise it might open up an attack vector.
-    pub fn add(
+    pub fn add<F>(
         &mut self,
         parcel: SignedParcel,
         origin: ParcelOrigin,
         time: QueuingInstant,
-        details_provider: &ParcelDetailsProvider,
-    ) -> Result<ParcelImportResult, ParcelError> {
+        fetch_account: &F,
+    ) -> Result<ParcelImportResult, ParcelError>
+    where
+        F: Fn(&Address) -> AccountDetails, {
         if origin == ParcelOrigin::Local {
             let hash = parcel.hash();
             let closed_parcel = parcel.clone();
 
-            let result = self.add_internal(parcel, origin, time, details_provider);
+            let result = self.add_internal(parcel, origin, time, fetch_account);
             match result {
                 Ok(ParcelImportResult::Current) => {
                     self.local_parcels.mark_pending(hash);
@@ -459,7 +461,7 @@ impl ParcelQueue {
             }
             result
         } else {
-            self.add_internal(parcel, origin, time, details_provider)
+            self.add_internal(parcel, origin, time, fetch_account)
         }
     }
 
@@ -642,13 +644,15 @@ impl ParcelQueue {
     }
 
     /// Adds signed parcel to the queue.
-    fn add_internal(
+    fn add_internal<F>(
         &mut self,
         parcel: SignedParcel,
         origin: ParcelOrigin,
         time: QueuingInstant,
-        details_provider: &ParcelDetailsProvider,
-    ) -> Result<ParcelImportResult, ParcelError> {
+        fetch_account: &F,
+    ) -> Result<ParcelImportResult, ParcelError>
+    where
+        F: Fn(&Address) -> AccountDetails, {
         if origin != ParcelOrigin::Local && parcel.fee < self.minimal_fee {
             trace!(target: "parcelqueue",
                    "Dropping parcel below minimal fee: {:?} (gp: {} < {})",
@@ -678,7 +682,7 @@ impl ParcelQueue {
             })
         }
 
-        let client_account = details_provider.fetch_account(&parcel.sender());
+        let client_account = fetch_account(&parcel.sender());
         if client_account.balance < parcel.fee {
             trace!(target: "parcelqueue",
                    "Dropping parcel without sufficient balance: {:?} ({} < {})",
@@ -1033,12 +1037,6 @@ pub struct ParcelQueueStatus {
     pub pending: usize,
     /// Number of future parcels (waiting for parcels with lower nonces first)
     pub future: usize,
-}
-
-/// `ParcelQueue` parcel details provider.
-pub trait ParcelDetailsProvider {
-    /// Fetch parcel-related account details.
-    fn fetch_account(&self, address: &Address) -> AccountDetails;
 }
 
 #[derive(Debug)]
