@@ -14,23 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ctypes::{H256, U256};
-
-use super::super::types::BlockNumber;
 use super::route::TreeRoute;
-
-/// Brief info about inserted block.
-#[derive(Clone)]
-pub struct BlockInfo {
-    /// Block hash.
-    pub hash: H256,
-    /// Block number.
-    pub number: BlockNumber,
-    /// Total block score.
-    pub total_score: U256,
-    /// Block location in blockchain.
-    pub location: BlockLocation,
-}
 
 /// Describes location of newly inserted block.
 #[derive(Debug, Clone, PartialEq)]
