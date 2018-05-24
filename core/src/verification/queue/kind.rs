@@ -22,6 +22,7 @@ pub use self::headers::Headers;
 
 use super::super::super::consensus::CodeChainEngine;
 use super::super::super::error::Error;
+use super::super::super::service::ClientIoMessage;
 
 /// Something which can produce a hash and a parent hash.
 pub trait BlockLike {
@@ -64,6 +65,8 @@ pub trait Kind: 'static + Sized + Send + Sync {
         engine: &CodeChainEngine,
         check_seal: bool,
     ) -> Result<Self::Verified, Error>;
+
+    fn signal() -> ClientIoMessage;
 }
 
 /// Verification for headers.
@@ -74,6 +77,7 @@ pub mod headers {
     use super::super::super::super::consensus::CodeChainEngine;
     use super::super::super::super::error::Error;
     use super::super::super::super::header::Header;
+    use super::super::super::super::service::ClientIoMessage;
     use super::super::super::verification::verify_header_params;
     use super::{BlockLike, Kind};
 
@@ -111,6 +115,10 @@ pub mod headers {
                 false => Ok(un),
             }
         }
+
+        fn signal() -> ClientIoMessage {
+            ClientIoMessage::HeaderVerified
+        }
     }
 }
 
@@ -123,6 +131,7 @@ pub mod blocks {
     use super::super::super::super::consensus::CodeChainEngine;
     use super::super::super::super::error::Error;
     use super::super::super::super::header::Header;
+    use super::super::super::super::service::ClientIoMessage;
     use super::super::super::verification::{verify_block_basic, verify_block_unordered, PreverifiedBlock};
     use super::{BlockLike, Kind};
 
@@ -153,6 +162,10 @@ pub mod blocks {
                     Err(e)
                 }
             }
+        }
+
+        fn signal() -> ClientIoMessage {
+            ClientIoMessage::BlockVerified
         }
     }
 
