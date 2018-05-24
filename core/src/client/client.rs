@@ -47,7 +47,7 @@ use super::super::state_db::StateDB;
 use super::super::types::{
     BlockId, BlockNumber, BlockStatus, ParcelId, TransactionId, VerificationQueueInfo as BlockQueueInfo,
 };
-use super::super::verification::queue::BlockQueue;
+use super::super::verification::queue::{BlockQueue, HeaderQueue};
 use super::super::verification::{self, PreverifiedBlock, Verifier};
 use super::super::views::BlockView;
 use super::{
@@ -393,6 +393,9 @@ pub struct Importer {
     /// Queue containing pending blocks
     pub block_queue: BlockQueue,
 
+    /// Queue containing pending headers
+    pub header_queue: HeaderQueue,
+
     /// Handles block sealing
     pub miner: Arc<Miner>,
 
@@ -414,10 +417,18 @@ impl Importer {
             config.verifier_type.verifying_seal(),
         );
 
+        let header_queue = HeaderQueue::new(
+            config.queue.clone(),
+            engine.clone(),
+            message_channel.clone(),
+            config.verifier_type.verifying_seal(),
+        );
+
         Ok(Importer {
             import_lock: Mutex::new(()),
             verifier: verification::new(config.verifier_type.clone()),
             block_queue,
+            header_queue,
             miner,
             engine,
         })

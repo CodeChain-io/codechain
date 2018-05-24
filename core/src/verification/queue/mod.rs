@@ -42,6 +42,7 @@ const MAX_VERIFIERS: usize = 8;
 
 /// Type alias for block queue convenience.
 pub type BlockQueue = VerificationQueue<kind::Blocks>;
+pub type HeaderQueue = VerificationQueue<kind::Headers>;
 
 /// Verification queue configuration
 #[derive(Debug, PartialEq, Clone)]

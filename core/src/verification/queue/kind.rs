@@ -18,6 +18,7 @@ use ctypes::{H256, U256};
 use heapsize::HeapSizeOf;
 
 pub use self::blocks::Blocks;
+pub use self::headers::Headers;
 
 use super::super::super::consensus::CodeChainEngine;
 use super::super::super::error::Error;
@@ -63,6 +64,54 @@ pub trait Kind: 'static + Sized + Send + Sync {
         engine: &CodeChainEngine,
         check_seal: bool,
     ) -> Result<Self::Verified, Error>;
+}
+
+/// Verification for headers.
+pub mod headers {
+
+    use ctypes::{H256, U256};
+
+    use super::super::super::super::consensus::CodeChainEngine;
+    use super::super::super::super::error::Error;
+    use super::super::super::super::header::Header;
+    use super::super::super::verification::verify_header_params;
+    use super::{BlockLike, Kind};
+
+
+    impl BlockLike for Header {
+        fn hash(&self) -> H256 {
+            self.hash()
+        }
+
+        fn parent_hash(&self) -> H256 {
+            self.parent_hash().clone()
+        }
+
+        fn score(&self) -> U256 {
+            self.score().clone()
+        }
+    }
+
+    /// A mode for verifying headers.
+    pub struct Headers;
+
+    impl Kind for Headers {
+        type Input = Header;
+        type Unverified = Header;
+        type Verified = Header;
+
+        fn create(input: Self::Input, engine: &CodeChainEngine) -> Result<Self::Unverified, Error> {
+            // FIXME: this doesn't seem to match with full block verification
+            verify_header_params(&input, engine).map(|_| input)
+        }
+
+        fn verify(un: Self::Unverified, engine: &CodeChainEngine, check_seal: bool) -> Result<Self::Verified, Error> {
+            match check_seal {
+                true => engine.verify_block_unordered(&un).map(|_| un),
+                false => Ok(un),
+            }
+        }
+    }
 }
 
 /// The blocks verification module.
