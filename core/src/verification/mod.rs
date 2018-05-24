@@ -20,6 +20,7 @@ pub mod queue;
 mod verification;
 mod verifier;
 
+pub use self::canon_verifier::CanonVerifier;
 pub use self::noop_verifier::NoopVerifier;
 pub use self::queue::{BlockQueue, Config as QueueConfig};
 pub use self::verification::*;
@@ -50,16 +51,15 @@ impl VerifierType {
 }
 
 impl Default for VerifierType {
-    // FIXME: Change the default verifier to Canon once it is implemented.
     fn default() -> Self {
-        VerifierType::Noop
+        VerifierType::Canon
     }
 }
 
 /// Create a new verifier based on type.
 pub fn new<C: BlockInfo>(v: VerifierType) -> Box<Verifier<C>> {
     match v {
-        VerifierType::Canon | VerifierType::CanonNoSeal => unimplemented!(),
+        VerifierType::Canon | VerifierType::CanonNoSeal => Box::new(CanonVerifier),
         VerifierType::Noop => Box::new(NoopVerifier),
     }
 }
