@@ -19,6 +19,7 @@ use std::sync::Arc;
 
 use ctypes::H256;
 use kvdb::{DBTransaction, KeyValueDB};
+use parking_lot::RwLock;
 use rlp::RlpStream;
 
 use super::super::blockchain_info::BlockChainInfo;
@@ -27,25 +28,31 @@ use super::super::db::{self, Readable, Writable};
 use super::super::encoded;
 use super::super::parcel::LocalizedParcel;
 use super::super::types::BlockNumber;
-use super::super::views::BlockView;
+use super::super::views::{BlockView, HeaderView};
+use super::block_info::BlockLocation;
 use super::body_db::{BodyDB, BodyProvider};
 use super::extras::{
     BlockDetails, BlockInvoices, EpochTransitions, ParcelAddress, ParcelInvoices, TransactionAddress, EPOCH_KEY_PREFIX,
 };
 use super::headerchain::{HeaderChain, HeaderProvider};
 use super::invoice_db::{InvoiceDB, InvoiceProvider};
-use super::route::ImportRoute;
+use super::route::{tree_route, ImportRoute};
+
+const BEST_BLOCK_KEY: &[u8] = b"best-block";
 
 /// Structure providing fast access to blockchain data.
 ///
 /// **Does not do input data verification.**
 pub struct BlockChain {
-    // FIXME: add best block
+    best_block_hash: RwLock<H256>,
+
     headerchain: HeaderChain,
     body_db: BodyDB,
     invoice_db: InvoiceDB,
 
     db: Arc<KeyValueDB>,
+
+    pending_best_hash: RwLock<Option<H256>>,
 }
 
 impl BlockChain {
@@ -53,12 +60,36 @@ impl BlockChain {
     pub fn new(genesis: &[u8], db: Arc<KeyValueDB>) -> Self {
         let genesis_block = BlockView::new(genesis);
 
+        // load best block
+        let best_block_hash = match db.get(db::COL_EXTRA, BEST_BLOCK_KEY).unwrap() {
+            Some(hash) => H256::from_slice(&hash),
+            None => {
+                let hash = genesis_block.hash();
+
+                let mut batch = DBTransaction::new();
+                batch.put(db::COL_EXTRA, BEST_BLOCK_KEY, &hash);
+                db.write(batch).expect("Low level database error. Some issue with disk?");
+                hash
+            }
+        };
+
         Self {
+            best_block_hash: RwLock::new(best_block_hash),
+
             headerchain: HeaderChain::new(&genesis_block.header_view(), db.clone()),
             body_db: BodyDB::new(&genesis_block, db.clone()),
             invoice_db: InvoiceDB::new(db.clone()),
 
             db,
+
+            pending_best_hash: RwLock::new(None),
+        }
+    }
+
+    pub fn insert_header(&self, batch: &mut DBTransaction, header: &HeaderView) -> ImportRoute {
+        match self.headerchain.insert_header(batch, header) {
+            Some(l) => ImportRoute::new(&header.hash(), &l),
+            None => ImportRoute::none(),
         }
     }
 
@@ -71,21 +102,25 @@ impl BlockChain {
         let header = block.header_view();
         let hash = header.hash();
 
-        // FIXME: assert!(self.pending_best_block.read().is_none());
-
-        let location = self.headerchain.insert_header(batch, &header);
-
-        match location {
-            Some(l) => {
-                // store block in db
-                // FIXME
-                self.body_db.insert_body(batch, &block, &l);
-                self.invoice_db.insert_invoice(batch, &hash, invoices);
-
-                ImportRoute::new(&hash, &l)
-            }
-            None => ImportRoute::none(),
+        if self.is_known(&hash) {
+            return ImportRoute::none()
         }
+
+        assert!(self.pending_best_hash.read().is_none());
+
+        let location = self.block_location(&block);
+
+        self.headerchain.insert_header(batch, &header);
+        self.body_db.insert_body(batch, &block, &location);
+        self.invoice_db.insert_invoice(batch, &hash, invoices);
+
+        if location != BlockLocation::Branch {
+            let mut pending_best_hash = self.pending_best_hash.write();
+            batch.put(db::COL_EXTRA, BEST_BLOCK_KEY, &header.hash());
+            *pending_best_hash = Some(header.hash());
+        }
+
+        ImportRoute::new(&hash, &location)
     }
 
     /// Apply pending insertion updates
@@ -93,6 +128,33 @@ impl BlockChain {
         self.headerchain.commit();
         self.body_db.commit();
         // NOTE: There are no commit for InvoiceDB
+
+        let mut best_block_hash = self.best_block_hash.write();
+        let mut pending_best_hash = self.pending_best_hash.write();
+        // update best block
+        if let Some(hash) = pending_best_hash.take() {
+            *best_block_hash = hash;
+        }
+    }
+
+    /// Calculate insert location for new block
+    fn block_location(&self, block: &BlockView) -> BlockLocation {
+        let header = block.header_view();
+        let parent_hash = header.parent_hash();
+        let parent_details = self.block_details(&parent_hash).expect("Invalid parent hash");
+
+        if parent_details.total_score + header.score() > self.best_block_detail().total_score {
+            let best_hash = self.best_block_hash();
+            let route = tree_route(self, best_hash, parent_hash)
+                .expect("blocks being imported always within recent history; qed");
+
+            match route.retracted.len() {
+                0 => BlockLocation::CanonChain,
+                _ => BlockLocation::BranchBecomingCanonChain(route),
+            }
+        } else {
+            BlockLocation::Branch
+        }
     }
 
     /// Returns general blockchain information
@@ -103,8 +165,7 @@ impl BlockChain {
 
     /// Get best block hash.
     pub fn best_block_hash(&self) -> H256 {
-        // FIXME: should return "best block", not "best header"
-        self.headerchain.best_header_hash()
+        self.best_block_hash.read().clone()
     }
 
     /// Get best block detail
