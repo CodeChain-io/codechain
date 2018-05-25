@@ -28,7 +28,7 @@ pub use self::error::Error;
 pub use self::test_client::TestBlockChainClient;
 
 use cbytes::Bytes;
-use ctypes::{Address, H256, U256};
+use ctypes::{Address, H256, Public, U256};
 
 use super::block::{ClosedBlock, OpenBlock, SealedBlock};
 use super::blockchain::ParcelInvoices;
@@ -132,6 +132,10 @@ pub trait Balance {
              Therefore balance has returned Some; qed",
         )
     }
+}
+
+pub trait RegularKey {
+    fn regular_key(&self, address: &Address, state: StateOrBlock) -> Option<Public>;
 }
 
 /// Provides methods to access account info

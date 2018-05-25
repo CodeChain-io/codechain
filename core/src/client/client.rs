@@ -21,7 +21,7 @@ use std::time::Instant;
 
 use cbytes::Bytes;
 use cio::IoChannel;
-use ctypes::{Address, H256, U256};
+use ctypes::{Address, H256, Public, U256};
 use journaldb;
 use kvdb::{DBTransaction, KeyValueDB};
 use parking_lot::{Mutex, RwLock};
@@ -53,7 +53,8 @@ use super::super::views::{BlockView, HeaderView};
 use super::{
     AccountData, Balance, BlockChain as BlockChainTrait, BlockChainClient, BlockChainInfo, BlockInfo, BlockProducer,
     ChainInfo, ChainNotify, ClientConfig, EngineClient, Error as ClientError, ImportBlock, ImportResult,
-    ImportSealedBlock, Invoice, MiningBlockChainClient, Nonce, ParcelInfo, PrepareOpenBlock, ReopenBlock, StateOrBlock,
+    ImportSealedBlock, Invoice, MiningBlockChainClient, Nonce, ParcelInfo, PrepareOpenBlock, RegularKey, ReopenBlock,
+    StateOrBlock,
 };
 
 const MAX_PARCEL_QUEUE_SIZE: usize = 4096;
@@ -784,6 +785,15 @@ impl Balance for Client {
         match state {
             StateOrBlock::State(s) => s.balance(address).ok(),
             StateOrBlock::Block(id) => self.state_at(id).and_then(|s| s.balance(address).ok()),
+        }
+    }
+}
+
+impl RegularKey for Client {
+    fn regular_key(&self, address: &Address, state: StateOrBlock) -> Option<Public> {
+        match state {
+            StateOrBlock::State(s) => s.regular_key(address).ok()?,
+            StateOrBlock::Block(id) => self.state_at(id)?.regular_key(address).ok()?,
         }
     }
 }

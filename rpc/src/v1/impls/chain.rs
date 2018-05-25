@@ -18,9 +18,9 @@ use std::sync::Arc;
 
 use ccore::{
     Asset, AssetAddress, AssetScheme, AssetSchemeAddress, Balance, BlockChainClient, BlockId, BlockInfo, ChainInfo,
-    Client, Invoice, Miner, MinerService, Nonce, SignedParcel,
+    Client, Invoice, Miner, MinerService, Nonce, RegularKey, SignedParcel,
 };
-use ctypes::{H160, H256, U256};
+use ctypes::{H160, H256, Public, U256};
 use rlp::UntrustedRlp;
 
 use jsonrpc_core::Result;
@@ -97,6 +97,11 @@ impl Chain for ChainClient {
     fn get_balance(&self, address: H160, block_number: Option<u64>) -> Result<Option<U256>> {
         let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
         Ok(self.client.balance(&address.into(), block_id.into()))
+    }
+
+    fn get_regular_key(&self, address: H160, block_number: Option<u64>) -> Result<Option<Public>> {
+        let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
+        Ok(self.client.regular_key(&address.into(), block_id.into()))
     }
 
     fn get_block_number(&self) -> Result<u64> {

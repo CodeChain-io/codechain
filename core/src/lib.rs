@@ -84,7 +84,8 @@ mod tests;
 pub use account_provider::AccountProvider;
 pub use block::Block;
 pub use client::{
-    Balance, BlockChainClient, BlockInfo, ChainInfo, ChainNotify, Client, ImportBlock, Nonce, TestBlockChainClient,
+    Balance, BlockChainClient, BlockInfo, ChainInfo, ChainNotify, Client, ImportBlock, Nonce, RegularKey,
+    TestBlockChainClient,
 };
 pub use db::COL_STATE;
 pub use error::{BlockImportError, Error, ImportError};
