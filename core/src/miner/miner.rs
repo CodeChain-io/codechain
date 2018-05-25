@@ -496,10 +496,10 @@ impl MinerService for Miner {
             import
         };
 
-        // --------------------------------------------------------------------------
-        // | NOTE Code below requires parcel_queue and sealing_work locks.     |
-        // | Make sure to release the locks before calling that method.             |
-        // --------------------------------------------------------------------------
+        // ------------------------------------------------------------------
+        // | NOTE Code below requires parcel_queue and sealing_queue locks. |
+        // | Make sure to release the locks before calling that method.     |
+        // ------------------------------------------------------------------
         if imported.is_ok() && self.options.reseal_on_own_parcel && self.parcel_reseal_allowed() {
             // Make sure to do it after parcel is imported and lock is dropped.
             // We need to create pending block and enable sealing.
