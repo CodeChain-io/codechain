@@ -14,58 +14,49 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-pub use std::string::ToString;
-
-pub enum LogTarget {
-    Sync,
-}
-
-impl ToString for LogTarget {
-    fn to_string(&self) -> String {
-        match self {
-            LogTarget::Sync => String::from("sync"),
-        }
-    }
+#[macro_export]
+macro_rules! log_target {
+    (SYNC) => ("sync")
 }
 
 #[macro_export]
 macro_rules! clog {
-    ($target:expr, $lvl:expr, $($arg:tt)+) => ({
-        log!(target: $crate::LogTarget::$target.to_string(), $lvl, $($arg)*);
+    ($target:ident, $lvl:expr, $($arg:tt)+) => ({
+        log!(target: log_target!($target), $lvl, $($arg)*);
     });
 }
 
 #[macro_export]
 macro_rules! cerror {
     ($target:ident, $($arg:tt)*) => (
-        error!(target: &$crate::LogTarget::$target.to_string(), $($arg)*);
+        clog!($target, $crate::Level::Error, $($arg)*)
     );
 }
 
 #[macro_export]
 macro_rules! cwarn {
     ($target:ident, $($arg:tt)*) => (
-        warn!(target: &$crate::LogTarget::$target.to_string(), $($arg)*);
+        clog!($target, $crate::Level::Warn, $($arg)*)
     );
 }
 
 #[macro_export]
 macro_rules! cinfo {
     ($target:ident, $($arg:tt)*) => (
-        info!(target: &$crate::LogTarget::$target.to_string(), $($arg)*);
+        clog!($target, $crate::Level::Info, $($arg)*)
     );
 }
 
 #[macro_export]
 macro_rules! cdebug {
     ($target:ident, $($arg:tt)*) => (
-        debug!(target: &$crate::LogTarget::$target.to_string(), $($arg)*);
+        clog!($target, $crate::Level::Debug, $($arg)*)
     );
 }
 
 #[macro_export]
 macro_rules! ctrace {
     ($target:ident, $($arg:tt)*) => (
-        trace!(target: &$crate::LogTarget::$target.to_string(), $($arg)*);
+        clog!($target, $crate::Level::Trace, $($arg)*)
     );
 }

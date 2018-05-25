@@ -73,7 +73,7 @@ impl DownloadManager {
         match self.downloading_header {
             Some(downloading) if downloading == first_header_hash => {}
             _ => {
-                cinfo!(Sync, "Unexpected headers");
+                cinfo!(SYNC, "Unexpected headers");
                 return false
             }
         }
@@ -83,7 +83,7 @@ impl DownloadManager {
             let parent = &neighbors[0];
             let child = &neighbors[1];
             if child.number() != parent.number() + 1 || *child.parent_hash() != parent.hash() {
-                cinfo!(Sync, "Headers are not continuous");
+                cinfo!(SYNC, "Headers are not continuous");
                 return false
             }
         }
@@ -109,7 +109,7 @@ impl DownloadManager {
             if is_valid {
                 valid_bodies.insert(parcels_root, body);
             } else {
-                cinfo!(Sync, "Unexpected body detected");
+                cinfo!(SYNC, "Unexpected body detected");
                 return false
             }
         }
