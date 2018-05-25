@@ -45,6 +45,7 @@ use rlp::*;
 use trie;
 
 use super::super::block::{ClosedBlock, OpenBlock, SealedBlock};
+use super::super::blockchain::ParcelInvoices;
 use super::super::blockchain_info::BlockChainInfo;
 use super::super::client::ImportResult;
 use super::super::client::{
@@ -515,7 +516,7 @@ impl BlockChainClient for TestBlockChainClient {
         unimplemented!();
     }
 
-    fn parcel_invoices(&self, _id: ParcelId) -> Option<Vec<Invoice>> {
+    fn parcel_invoices(&self, _id: ParcelId) -> Option<ParcelInvoices> {
         unimplemented!();
     }
 

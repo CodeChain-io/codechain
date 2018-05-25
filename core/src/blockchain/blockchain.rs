@@ -25,7 +25,6 @@ use super::super::blockchain_info::BlockChainInfo;
 use super::super::consensus::epoch::{PendingTransition as PendingEpochTransition, Transition as EpochTransition};
 use super::super::db::{self, Readable, Writable};
 use super::super::encoded;
-use super::super::invoice::Invoice;
 use super::super::parcel::LocalizedParcel;
 use super::super::types::BlockNumber;
 use super::super::views::BlockView;
@@ -359,7 +358,7 @@ impl InvoiceProvider for BlockChain {
     }
 
     /// Get parcel invoice.
-    fn parcel_invoices(&self, address: &ParcelAddress) -> Option<Vec<Invoice>> {
+    fn parcel_invoices(&self, address: &ParcelAddress) -> Option<ParcelInvoices> {
         self.invoice_db.parcel_invoices(address)
     }
 }
