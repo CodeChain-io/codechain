@@ -185,7 +185,7 @@ impl Connection {
             match ExtensionMessage::encrypted_from_unencrypted_data(extension_name, VERSION, message, &session_key) {
                 Ok(message) => message,
                 Err(err) => {
-                    debug!(target: "net", "Cannot encrypt message : {:?}", err);
+                    cdebug!(NET, "Cannot encrypt message : {:?}", err);
                     return
                 }
             }
@@ -197,7 +197,7 @@ impl Connection {
 
     pub fn receive(&mut self, callback: &ExtensionCallback) -> bool {
         self.receive_internal(&callback).unwrap_or_else(|err| {
-            debug!(target: "net", "Cannot receive message {:?}", err);
+            cdebug!(NET, "Cannot receive message {:?}", err);
             false
         })
     }
@@ -215,7 +215,7 @@ impl Connection {
                     Ok(true)
                 }
                 Message::Handshake(msg) => {
-                    trace!(target: "net", "handshake message received {:?}", msg);
+                    ctrace!(NET, "handshake message received {:?}", msg);
                     match msg {
                         HandshakeMessage::Sync {
                             ..
@@ -247,7 +247,7 @@ impl Connection {
                             if let Some(name) = self.requested_negotiation.remove(&seq) {
                                 callback.on_negotiation_allowed(&name);
                             } else {
-                                trace!(target: "net", "Negotiation::Allowed message received from non requested seq");
+                                ctrace!(NET, "Negotiation::Allowed message received from non requested seq");
                             }
                         }
                         NegotiationBody::Denied(_) => {

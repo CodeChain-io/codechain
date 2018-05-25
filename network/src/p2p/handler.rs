@@ -451,11 +451,11 @@ impl IoHandler<Message> for Handler {
             Message::RequestConnection(socket_address, session) => {
                 let mut manager = self.manager.lock();
                 if self.max_peers <= manager.connections.len() {
-                    trace!(target: "net", "Already has maximum peers({})", manager.connections.len());
+                    ctrace!(NET, "Already has maximum peers({})", manager.connections.len());
                     return Ok(())
                 }
 
-                trace!(target: "net", "Connecting to {:?}", socket_address);
+                ctrace!(NET, "Connecting to {:?}", socket_address);
                 let token = manager
                     .connect(&socket_address, session, &self.client)?
                     .ok_or(Error::General("Cannot create connection"))?;
@@ -523,7 +523,7 @@ impl IoHandler<Message> for Handler {
             FIRST_CONNECTION_TOKEN...LAST_CONNECTION_TOKEN => {
                 let _f = finally(|| {
                     if let Err(err) = io.update_registration(stream) {
-                        warn!(target: "net", "Cannot update registration for connection {:?}", err);
+                        cwarn!(NET, "Cannot update registration for connection {:?}", err);
                     }
                 });
                 loop {
@@ -544,7 +544,7 @@ impl IoHandler<Message> for Handler {
             FIRST_CONNECTION_TOKEN...LAST_CONNECTION_TOKEN => loop {
                 let _f = finally(|| {
                     if let Err(err) = io.update_registration(stream) {
-                        warn!(target: "net", "Cannot update registration for connection {:?}", err);
+                        cwarn!(NET, "Cannot update registration for connection {:?}", err);
                     }
                 });
                 let mut manager = self.manager.lock();
@@ -570,7 +570,7 @@ impl IoHandler<Message> for Handler {
             ACCEPT_TOKEN => {
                 let manager = self.manager.lock();
                 event_loop.register(&manager.listener, reg, Ready::readable(), PollOpt::edge())?;
-                trace!(target: "net", "TCP connection starts for {:?}", self.socket_address);
+                ctrace!(NET, "TCP connection starts for {:?}", self.socket_address);
                 Ok(())
             }
             FIRST_CONNECTION_TOKEN...LAST_CONNECTION_TOKEN => {
