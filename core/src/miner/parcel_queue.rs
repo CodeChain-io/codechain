@@ -1180,6 +1180,7 @@ pub mod test {
     fn payment_increases_cost() {
         let fee = U256::from(100);
         let pay_value = U256::from(100000);
+        let keypair = Random.generate().unwrap();
         let transactions = vec![
             Transaction::AssetMint {
                 metadata: "Metadata".to_string(),
@@ -1195,7 +1196,8 @@ pub mod test {
             },
             Transaction::Payment {
                 nonce: 1.into(),
-                address: Address::zero(),
+                sender: keypair.address(),
+                receiver: Address::zero(),
                 value: pay_value,
             },
         ];
@@ -1205,7 +1207,6 @@ pub mod test {
             transactions,
             network_id: 200,
         };
-        let keypair = Random.generate().unwrap();
         let signed = parcel.sign(keypair.private());
         let queued = QueuedParcel::new(signed, ParcelOrigin::Local, 0, 0);
 
@@ -1218,10 +1219,12 @@ pub mod test {
         let pay_value0 = 100000.into();
         let pay_value1 = 20000.into();
         let pay_value2 = 3000.into();
+        let keypair = Random.generate().unwrap();
         let transactions = vec![
             Transaction::Payment {
                 nonce: 1.into(),
-                address: Address::zero(),
+                sender: keypair.address(),
+                receiver: Address::zero(),
                 value: pay_value0,
             },
             Transaction::AssetMint {
@@ -1233,7 +1236,8 @@ pub mod test {
             },
             Transaction::Payment {
                 nonce: 2.into(),
-                address: Address::zero(),
+                sender: keypair.address(),
+                receiver: Address::zero(),
                 value: pay_value1,
             },
             Transaction::AssetTransfer {
@@ -1243,7 +1247,8 @@ pub mod test {
             },
             Transaction::Payment {
                 nonce: 3.into(),
-                address: Address::zero(),
+                sender: keypair.address(),
+                receiver: Address::zero(),
                 value: pay_value2,
             },
         ];
@@ -1253,7 +1258,6 @@ pub mod test {
             transactions,
             network_id: 200,
         };
-        let keypair = Random.generate().unwrap();
         let signed = parcel.sign(keypair.private());
         let queued = QueuedParcel::new(signed, ParcelOrigin::Local, 0, 0);
 
