@@ -294,11 +294,11 @@ impl MinerService for Miner {
 
     fn status(&self) -> MinerStatus {
         let status = self.parcel_queue.read().status();
+        let sealing_queue = self.sealing_queue.lock();
         MinerStatus {
             parcels_in_pending_queue: status.pending,
             parcels_in_future_queue: status.future,
-            // FIXME: Fill in parcels_in_pending_block.
-            parcels_in_pending_block: 0,
+            parcels_in_pending_block: sealing_queue.peek_last_ref().map_or(0, |b| b.parcels().len()),
         }
     }
 

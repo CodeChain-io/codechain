@@ -34,6 +34,12 @@ impl SealingQueue {
         }
     }
 
+    /// Return a reference to the item at the top of the queue (or `None` if the queue is empty);
+    /// it doesn't constitute noting that the item is used.
+    pub fn peek_last_ref(&self) -> Option<&ClosedBlock> {
+        self.pending.as_ref().or(self.in_use.last())
+    }
+
     pub fn push(&mut self, b: ClosedBlock) {
         self.pending = Some(b);
     }
