@@ -17,23 +17,43 @@
 use super::super::block::ClosedBlock;
 
 pub struct SealingQueue {
-    backing: Vec<ClosedBlock>,
+    /// Not yet being sealed by a miner, but if one asks for work, we'd prefer they do this.
+    pending: Option<ClosedBlock>,
+    /// Currently being sealed by miners.
+    in_use: Vec<ClosedBlock>,
+    /// The maximum allowable number of items in_use.
+    max_size: usize,
 }
 
 impl SealingQueue {
-    pub fn new() -> Self {
+    pub fn new(max_size: usize) -> Self {
         Self {
-            backing: Vec::new(),
+            pending: None,
+            in_use: Vec::new(),
+            max_size,
         }
     }
 
     pub fn push(&mut self, b: ClosedBlock) {
-        self.backing.push(b)
+        self.pending = Some(b);
     }
 
-    pub fn take_if<P>(&mut self, predicate: P) -> Option<ClosedBlock>
+    /// Return a reference to the item at the top of the queue (or `None` if the queue is empty);
+    /// this constitutes using the item and will remain in the queue for at least another
+    /// `max_size` invocations of `push()`.
+    pub fn use_last_ref(&mut self) -> Option<&ClosedBlock> {
+        if let Some(x) = self.pending.take() {
+            self.in_use.push(x);
+            if self.in_use.len() > self.max_size {
+                self.in_use.remove(0);
+            }
+        }
+        self.in_use.last()
+    }
+
+    pub fn take_used_if<P>(&mut self, predicate: P) -> Option<ClosedBlock>
     where
         P: Fn(&ClosedBlock) -> bool, {
-        self.backing.iter().position(|r| predicate(r)).map(|i| self.backing.remove(i))
+        self.in_use.iter().position(|r| predicate(r)).map(|i| self.in_use.remove(i))
     }
 }

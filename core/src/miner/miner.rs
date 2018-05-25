@@ -48,6 +48,8 @@ pub struct MinerOptions {
     pub parcel_queue_size: usize,
     /// Maximum memory usage of parcels in the queue (current / future).
     pub parcel_queue_memory_limit: Option<usize>,
+    /// How many historical work packages can we store before running out?
+    pub work_queue_size: usize,
 }
 
 impl Default for MinerOptions {
@@ -58,6 +60,7 @@ impl Default for MinerOptions {
             reseal_min_period: Duration::from_secs(2),
             parcel_queue_size: 8192,
             parcel_queue_memory_limit: Some(2 * 1024 * 1024),
+            work_queue_size: 20,
         }
     }
 }
@@ -90,7 +93,7 @@ impl Miner {
             next_allowed_reseal: Mutex::new(Instant::now()),
             author: RwLock::new(Address::default()),
             extra_data: RwLock::new(Vec::new()),
-            sealing_queue: Mutex::new(SealingQueue::new()),
+            sealing_queue: Mutex::new(SealingQueue::new(options.work_queue_size)),
             engine: spec.engine.clone(),
             options,
             accounts,
@@ -253,6 +256,7 @@ impl Miner {
                 {
                     let mut sealing_queue = self.sealing_queue.lock();
                     sealing_queue.push(block.clone());
+                    sealing_queue.use_last_ref();
                 }
                 block
                     .lock()
@@ -408,7 +412,7 @@ impl MinerService for Miner {
     }
 
     fn submit_seal<C: ImportSealedBlock>(&self, chain: &C, block_hash: H256, seal: Vec<Bytes>) -> Result<(), Error> {
-        let result = if let Some(b) = self.sealing_queue.lock().take_if(|b| &b.hash() == &block_hash) {
+        let result = if let Some(b) = self.sealing_queue.lock().take_used_if(|b| &b.hash() == &block_hash) {
             trace!(target: "miner", "Submitted block {}={}={} with seal {:?}", block_hash, b.hash(), b.header().bare_hash(), seal);
             b.lock().try_seal(&*self.engine, seal).or_else(|(e, _)| {
                 warn!(target: "miner", "Mined solution rejected: {}", e);
