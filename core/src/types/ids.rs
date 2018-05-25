@@ -58,3 +58,18 @@ impl From<H256> for ParcelId {
         ParcelId::Hash(hash)
     }
 }
+
+#[derive(Debug, PartialEq, Clone, Hash, Eq)]
+pub enum TransactionId {
+    Hash(H256),
+    /// Parcel id and transaction index within this parcel.
+    /// Querying by parcel position is always faster.
+    #[allow(dead_code)]
+    Location(ParcelId, usize),
+}
+
+impl From<H256> for TransactionId {
+    fn from(hash: H256) -> Self {
+        TransactionId::Hash(hash)
+    }
+}

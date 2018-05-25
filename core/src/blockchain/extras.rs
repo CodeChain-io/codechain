@@ -35,12 +35,14 @@ enum ExtrasIndex {
     BlockHash = 1,
     /// Parcel address index
     ParcelAddress = 2,
+    /// Transaction address index
+    TransactionAddress = 3,
     /// Block invoices index
-    BlockInvoices = 3,
+    BlockInvoices = 4,
     /// Epoch transition data index.
-    EpochTransitions = 4,
+    EpochTransitions = 5,
     /// Pending epoch transition data index.
-    PendingEpochTransition = 5,
+    PendingEpochTransition = 6,
 }
 
 fn with_index(hash: &H256, i: ExtrasIndex) -> H264 {
@@ -96,6 +98,14 @@ impl Key<BlockInvoices> for H256 {
 
     fn key(&self) -> H264 {
         with_index(self, ExtrasIndex::BlockInvoices)
+    }
+}
+
+impl Key<TransactionAddress> for H256 {
+    type Target = H264;
+
+    fn key(&self) -> H264 {
+        with_index(self, ExtrasIndex::TransactionAddress)
     }
 }
 
@@ -166,6 +176,16 @@ pub struct ParcelAddress {
     /// Parcel index within the block
     pub index: usize,
 }
+
+
+/// Represents address of certain transaction within parcel
+#[derive(Debug, PartialEq, Clone, RlpEncodable, RlpDecodable)]
+pub struct TransactionAddress {
+    pub parcel_address: ParcelAddress,
+    /// Transaction index within the parcel
+    pub index: usize,
+}
+
 
 #[derive(Clone, RlpEncodableWrapper, RlpDecodableWrapper)]
 pub struct BlockInvoices {
