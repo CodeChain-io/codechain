@@ -37,6 +37,8 @@ use super::{MinerService, MinerStatus, ParcelImportResult};
 /// Configures the behaviour of the miner.
 #[derive(Debug, PartialEq)]
 pub struct MinerOptions {
+    /// Reseal on receipt of new external parcels.
+    pub reseal_on_external_parcel: bool,
     /// Reseal on receipt of new local parcels.
     pub reseal_on_own_parcel: bool,
     /// Minimum period between parcel-inspired reseals.
@@ -50,6 +52,7 @@ pub struct MinerOptions {
 impl Default for MinerOptions {
     fn default() -> Self {
         MinerOptions {
+            reseal_on_external_parcel: false,
             reseal_on_own_parcel: true,
             reseal_min_period: Duration::from_secs(2),
             parcel_queue_size: 8192,
@@ -451,8 +454,19 @@ impl MinerService for Miner {
         parcels: Vec<UnverifiedParcel>,
     ) -> Vec<Result<ParcelImportResult, Error>> {
         trace!(target: "external_parcel", "Importing external parcels");
-        let mut parcel_queue = self.parcel_queue.write();
-        self.add_parcels_to_queue(client, parcels, ParcelOrigin::External, &mut parcel_queue)
+        let results = {
+            let mut parcel_queue = self.parcel_queue.write();
+            self.add_parcels_to_queue(client, parcels, ParcelOrigin::External, &mut parcel_queue)
+        };
+
+        if !results.is_empty() && self.options.reseal_on_external_parcel && self.parcel_reseal_allowed() {
+            // ------------------------------------------------------------------
+            // | NOTE Code below requires parcel_queue and sealing_queue locks. |
+            // | Make sure to release the locks before calling that method.     |
+            // ------------------------------------------------------------------
+            self.update_sealing(client);
+        }
+        results
     }
 
     fn import_own_parcel<C: MiningBlockChainClient>(
