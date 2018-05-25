@@ -29,16 +29,18 @@ use super::super::db::{self, CacheUpdatePolicy, Readable, Writable};
 use super::super::encoded;
 use super::super::views::BlockView;
 use super::block_info::BlockLocation;
-use super::extras::ParcelAddress;
+use super::extras::{ParcelAddress, TransactionAddress};
 
 pub struct BodyDB {
     // block cache
     body_cache: RwLock<HashMap<H256, Bytes>>,
     parcel_address_cache: RwLock<HashMap<H256, ParcelAddress>>,
+    pending_parcel_addresses: RwLock<HashMap<H256, Option<ParcelAddress>>>,
+
+    transaction_address_cache: RwLock<HashMap<H256, TransactionAddress>>,
+    pending_transaction_addresses: RwLock<HashMap<H256, Option<TransactionAddress>>>,
 
     db: Arc<KeyValueDB>,
-
-    pending_parcel_addresses: RwLock<HashMap<H256, Option<ParcelAddress>>>,
 }
 
 impl BodyDB {
@@ -47,10 +49,12 @@ impl BodyDB {
         let bdb = Self {
             body_cache: RwLock::new(HashMap::new()),
             parcel_address_cache: RwLock::new(HashMap::new()),
+            pending_parcel_addresses: RwLock::new(HashMap::new()),
+
+            transaction_address_cache: RwLock::new(HashMap::new()),
+            pending_transaction_addresses: RwLock::new(HashMap::new()),
 
             db,
-
-            pending_parcel_addresses: RwLock::new(HashMap::new()),
         };
 
         let genesis_hash = genesis.hash();
@@ -83,6 +87,7 @@ impl BodyDB {
         batch.put(db::COL_BODIES, &hash, &compressed_body);
 
         let mut pending_parcel_addresses = self.pending_parcel_addresses.write();
+        let mut pending_transaction_addresses = self.pending_transaction_addresses.write();
 
         batch.extend_with_option_cache(
             db::COL_EXTRA,
@@ -90,13 +95,21 @@ impl BodyDB {
             self.new_parcel_address_entries(block, location),
             CacheUpdatePolicy::Overwrite,
         );
+        batch.extend_with_option_cache(
+            db::COL_EXTRA,
+            &mut *pending_transaction_addresses,
+            self.new_transaction_address_entries(block, location),
+            CacheUpdatePolicy::Overwrite,
+        );
     }
 
     /// Apply pending insertion updates
     pub fn commit(&self) {
+        let mut parcel_address_cache = self.parcel_address_cache.write();
         let mut pending_parcel_addresses = self.pending_parcel_addresses.write();
 
-        let mut parcel_address_cache = self.parcel_address_cache.write();
+        let mut transaction_address_cache = self.transaction_address_cache.write();
+        let mut pending_transaction_addresses = self.pending_transaction_addresses.write();
 
         let new_parcels = mem::replace(&mut *pending_parcel_addresses, HashMap::new());
         let (retracted_parcels, enacted_parcels) =
@@ -107,6 +120,17 @@ impl BodyDB {
 
         for hash in retracted_parcels.keys() {
             parcel_address_cache.remove(hash);
+        }
+
+        let new_transactions = mem::replace(&mut *pending_transaction_addresses, HashMap::new());
+        let (retracted_transactions, enacted_transactions) =
+            new_transactions.into_iter().partition::<HashMap<_, _>, _>(|&(_, ref value)| value.is_none());
+
+        transaction_address_cache
+            .extend(enacted_transactions.into_iter().map(|(k, v)| (k, v.expect("Parcels were partitioned; qed"))));
+
+        for hash in retracted_transactions.keys() {
+            transaction_address_cache.remove(hash);
         }
     }
 
@@ -165,6 +189,97 @@ impl BodyDB {
                     let body = self.block_body(hash).expect("Retracted block must be in database.");
                     let hashes = body.parcel_hashes();
                     hashes.into_iter().map(|hash| (hash, None)).collect::<HashMap<H256, Option<ParcelAddress>>>()
+                });
+
+                // The order here is important! Don't remove parcel if it was part of enacted blocks as well.
+                retracted.chain(addresses).chain(current_addresses).collect()
+            }
+            BlockLocation::Branch => HashMap::new(),
+        }
+    }
+
+    fn new_transaction_address_entries(
+        &self,
+        block: &BlockView,
+        location: &BlockLocation,
+    ) -> HashMap<H256, Option<TransactionAddress>> {
+        match location {
+            BlockLocation::CanonChain => block
+                .parcels()
+                .into_iter()
+                .enumerate()
+                .flat_map(|(parcel_index, parcel)| {
+                    parcel
+                        .transactions
+                        .iter()
+                        .enumerate()
+                        .map(|(index, transaction)| {
+                            let parcel_address = ParcelAddress {
+                                block_hash: block.hash(),
+                                index: parcel_index,
+                            };
+                            (
+                                transaction.hash(),
+                                Some(TransactionAddress {
+                                    parcel_address,
+                                    index,
+                                }),
+                            )
+                        })
+                        .collect::<Vec<_>>() // FIXME: Find a way to remove collect.
+                })
+                .collect(),
+            BlockLocation::BranchBecomingCanonChain(ref data) => {
+                let addresses = data.enacted.iter().flat_map(|hash| {
+                    let body = self.block_body(hash).expect("Enacted block must be in database.");
+                    body.parcels().into_iter().enumerate().flat_map(|(parcel_index, parcel)| {
+                        parcel
+                            .transactions
+                            .iter()
+                            .enumerate()
+                            .map(|(index, transaction)| {
+                                let parcel_address = ParcelAddress {
+                                    block_hash: block.hash(),
+                                    index: parcel_index,
+                                };
+                                (
+                                    transaction.hash(),
+                                    Some(TransactionAddress {
+                                        parcel_address,
+                                        index,
+                                    }),
+                                )
+                            })
+                            .collect::<Vec<_>>() // FIXME: Find a way to remove collect
+                    })
+                });
+
+                let current_addresses = block.parcels().into_iter().enumerate().flat_map(|(parcel_index, parcel)| {
+                    parcel
+                        .transactions
+                        .iter()
+                        .enumerate()
+                        .map(|(index, transaction)| {
+                            let parcel_address = ParcelAddress {
+                                block_hash: block.hash(),
+                                index: parcel_index,
+                            };
+                            (
+                                transaction.hash(),
+                                Some(TransactionAddress {
+                                    parcel_address,
+                                    index,
+                                }),
+                            )
+                        })
+                        .collect::<Vec<_>>() // FIXME: Find a way to remove collect
+                });
+
+                let retracted = data.retracted.iter().flat_map(|hash| {
+                    let body = self.block_body(hash).expect("Retracted block must be in database.");
+                    body.parcels().into_iter().map(|parcel| (*parcel).clone()).flat_map(|parcel| {
+                        parcel.transactions.into_iter().map(|transaction| (transaction.hash(), None))
+                    })
                 });
 
                 // The order here is important! Don't remove parcel if it was part of enacted blocks as well.
