@@ -159,7 +159,6 @@ impl LocalParcelsList {
 #[cfg(test)]
 mod tests {
     use super::super::super::parcel;
-    use super::super::super::Transaction;
     use super::*;
     use ckeys::{Generator, Random};
     use ctypes::U256;
@@ -206,7 +205,7 @@ mod tests {
 
     fn new_parcel(nonce: U256) -> SignedParcel {
         let keypair = Random.generate().unwrap();
-        let transactions = vec![Transaction::Noop];
+        let transactions = vec![];
         parcel::Parcel {
             nonce,
             fee: U256::from(1245),

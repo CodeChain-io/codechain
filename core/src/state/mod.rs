@@ -570,7 +570,6 @@ impl<B: Backend> State<B> {
     ) -> Result<(), Error> {
         trace!(target: "tx", "Execute {:?}(TxHash:{:?})", transaction, transaction.hash());
         match transaction {
-            Transaction::Noop => Ok(()),
             Transaction::Payment {
                 nonce,
                 address,

@@ -447,12 +447,6 @@ mod tests {
     }
 
     #[test]
-    fn encode_and_decode_noop() {
-        let transaction = Transaction::Noop;
-        assert_eq!(transaction, ::rlp::decode(transaction.rlp_bytes().as_ref()))
-    }
-
-    #[test]
     fn encode_and_decode_payment() {
         let address = Address::random();
         let value = U256::from(12345);

@@ -62,7 +62,6 @@ use super::super::spec::Spec;
 use super::super::state::{Asset, AssetAddress, AssetScheme, AssetSchemeAddress, StateInfo};
 use super::super::state_db::StateDB;
 use super::super::types::{BlockId, BlockNumber, ParcelId, TransactionId, VerificationQueueInfo as QueueInfo};
-use super::super::Transaction;
 
 /// Test client.
 pub struct TestBlockChainClient {
@@ -202,7 +201,7 @@ impl TestBlockChainClient {
                     let keypair = Random.generate().unwrap();
                     // Update nonces value
                     self.nonces.write().insert(keypair.address(), U256::one());
-                    let transactions = vec![Transaction::Noop];
+                    let transactions = vec![];
                     let parcel = Parcel {
                         transactions,
                         nonce: U256::zero(),
@@ -266,7 +265,7 @@ impl TestBlockChainClient {
     /// Inserts a parcel to miners parcels queue.
     pub fn insert_parcel_to_queue(&self) -> H256 {
         let keypair = Random.generate().unwrap();
-        let transactions = vec![Transaction::Noop];
+        let transactions = vec![];
         let parcel = Parcel {
             transactions,
             nonce: U256::zero(),
