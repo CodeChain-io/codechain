@@ -64,7 +64,6 @@ pub enum TransactionId {
     Hash(H256),
     /// Parcel id and transaction index within this parcel.
     /// Querying by parcel position is always faster.
-    #[allow(dead_code)]
     Location(ParcelId, usize),
 }
 

@@ -60,7 +60,7 @@ use super::super::parcel::{LocalizedParcel, Parcel, SignedParcel};
 use super::super::spec::Spec;
 use super::super::state::{Asset, AssetAddress, AssetScheme, AssetSchemeAddress, StateInfo};
 use super::super::state_db::StateDB;
-use super::super::types::{BlockId, BlockNumber, ParcelId, VerificationQueueInfo as QueueInfo};
+use super::super::types::{BlockId, BlockNumber, ParcelId, TransactionId, VerificationQueueInfo as QueueInfo};
 use super::super::Transaction;
 
 /// Test client.
@@ -517,6 +517,10 @@ impl BlockChainClient for TestBlockChainClient {
 
     fn parcel_invoices(&self, _id: ParcelId) -> Option<Vec<Invoice>> {
         unimplemented!();
+    }
+
+    fn transaction_invoice(&self, _id: TransactionId) -> Option<Invoice> {
+        unimplemented!()
     }
 }
 

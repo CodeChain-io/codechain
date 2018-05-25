@@ -100,4 +100,4 @@ pub use service::ClientService;
 pub use spec::Spec;
 pub use state::{Asset, AssetAddress, AssetScheme, AssetSchemeAddress};
 pub use transaction::{Error as TransactionError, Transaction};
-pub use types::{BlockId, BlockNumber};
+pub use types::{BlockId, BlockNumber, ParcelId};
