@@ -36,6 +36,7 @@ pub enum Transaction {
         value: U256,
     },
     SetRegularKey {
+        address: Address,
         nonce: U256,
         key: Public,
     },
@@ -111,12 +112,13 @@ impl Decodable for Transaction {
                 })
             }
             SET_REGULAR_KEY_ID => {
-                if d.item_count()? != 3 {
+                if d.item_count()? != 4 {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
                 Ok(Transaction::SetRegularKey {
-                    nonce: d.val_at(1)?,
-                    key: d.val_at(2)?,
+                    address: d.val_at(1)?,
+                    nonce: d.val_at(2)?,
+                    key: d.val_at(3)?,
                 })
             }
             ASSET_MINT_ID => {
@@ -156,9 +158,10 @@ impl Encodable for Transaction {
                 value,
             } => s.begin_list(5).append(&PAYMENT_ID).append(nonce).append(sender).append(receiver).append(value),
             Transaction::SetRegularKey {
+                address,
                 nonce,
                 key,
-            } => s.begin_list(3).append(&SET_REGULAR_KEY_ID).append(nonce).append(key),
+            } => s.begin_list(4).append(&SET_REGULAR_KEY_ID).append(address).append(nonce).append(key),
             Transaction::AssetMint {
                 metadata,
                 lock_script_hash,
@@ -184,6 +187,7 @@ impl Encodable for Transaction {
 #[derive(Debug, PartialEq, Clone)]
 pub enum Error {
     InvalidPaymentSender(Mismatch<Address>),
+    InvalidAddressToSetKey(Mismatch<Address>),
     InsufficientBalance {
         address: Address,
         required: U256,
@@ -212,6 +216,7 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Error::InvalidPaymentSender(mismatch) => write!(f, "Invalid payment sender {}", mismatch),
+            Error::InvalidAddressToSetKey(mismatch) => write!(f, "Invalid address to set key {}", mismatch),
             Error::InsufficientBalance {
                 address,
                 required,

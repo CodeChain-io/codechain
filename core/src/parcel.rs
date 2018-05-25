@@ -463,7 +463,9 @@ mod tests {
     #[test]
     fn encode_and_decode_set_regular_key() {
         let key = Public::random();
+        let address = Address::random();
         let transaction = Transaction::SetRegularKey {
+            address,
             nonce: 36.into(),
             key,
         };
