@@ -24,7 +24,7 @@ use kvdb::PREFIX_LEN as DB_PREFIX_LEN;
 use super::super::consensus::epoch::{PendingTransition as PendingEpochTransition, Transition as EpochTransition};
 use super::super::db::Key;
 use super::super::invoice::Invoice;
-use super::super::types::BlockNumber;
+use super::super::types::{BlockNumber, ParcelId};
 
 /// Represents index of extra data in database
 #[derive(Copy, Debug, Hash, Eq, PartialEq, Clone)]
@@ -175,6 +175,12 @@ pub struct ParcelAddress {
     pub block_hash: H256,
     /// Parcel index within the block
     pub index: usize,
+}
+
+impl Into<ParcelId> for ParcelAddress {
+    fn into(self) -> ParcelId {
+        ParcelId::Location(self.block_hash.into(), self.index)
+    }
 }
 
 
