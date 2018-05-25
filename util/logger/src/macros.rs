@@ -16,7 +16,15 @@
 
 #[macro_export]
 macro_rules! log_target {
-    (SYNC) => ("sync")
+    (SYNC) => {
+        "sync"
+    };
+    (NET) => {
+        "net"
+    };
+    (NETAPI) => {
+        "netapi"
+    };
 }
 
 #[macro_export]

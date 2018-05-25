@@ -32,6 +32,9 @@ extern crate codechain_types as ctypes;
 extern crate table as ctable;
 extern crate time;
 
+#[macro_use]
+extern crate codechain_logger as clogger;
+
 mod addr;
 mod client;
 mod config;

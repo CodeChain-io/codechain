@@ -44,12 +44,12 @@ impl Api for ClientApi {
                 need_encryption,
                 data: message.clone(),
             }) {
-                warn!(target: "netapi", "Cannot send extension message to {:?} : {:?}", id, err);
+                cwarn!(NETAPI, "Cannot send extension message to {:?} : {:?}", id, err);
             } else {
-                trace!(target: "netapi", "Request send extension message to {:?}", id);
+                ctrace!(NETAPI, "Request send extension message to {:?}", id);
             }
         } else {
-            debug!(target: "netapi", "The extension already dropped");
+            cdebug!(NETAPI, "The extension already dropped");
         }
     }
 
@@ -63,12 +63,12 @@ impl Api for ClientApi {
                 extension_name,
                 version,
             }) {
-                warn!(target: "netapi", "Cannot request negotiation to {:?} : {:?}", id, err);
+                cwarn!(NETAPI, "Cannot request negotiation to {:?} : {:?}", id, err);
             } else {
-                trace!(target: "netapi", "Request negotiation to {:?}", id);
+                ctrace!(NETAPI, "Request negotiation to {:?}", id);
             }
         } else {
-            debug!(target: "netapi", "The extension already dropped");
+            cdebug!(NETAPI, "The extension already dropped");
         }
     }
 
@@ -118,10 +118,10 @@ impl Api for ClientApi {
                 extension_name,
                 message,
             }) {
-                warn!(target: "netapi", "Cannot send local message: {:?}", err);
+                cwarn!(NETAPI, "Cannot send local message: {:?}", err);
             }
         } else {
-            debug!(target: "netapi", "The extension already dropped");
+            cdebug!(NETAPI, "The extension already dropped");
         }
     }
 }
@@ -158,7 +158,7 @@ macro_rules! define_method {
             if let Some(ref extension) = extensions.get(name) {
                 extension.$method_name($($var),*);
             } else {
-                debug!(target: "netapi", "{} doesn't exist.", name);
+                cdebug!(NETAPI, "{} doesn't exist.", name);
             }
         }
     };
