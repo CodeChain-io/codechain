@@ -33,7 +33,7 @@ pub struct Genesis {
     /// Parent hash.
     pub parent_hash: H256,
     /// Parcel root.
-    pub parcelss_root: H256,
+    pub parcels_root: H256,
     /// Invoices root.
     pub invoices_root: H256,
     /// State root.
@@ -50,7 +50,7 @@ impl From<cjson::spec::Genesis> for Genesis {
             author: g.author.map_or_else(Address::zero, Into::into),
             timestamp: g.timestamp.map_or(0, Into::into),
             parent_hash: g.parent_hash.map_or_else(H256::zero, Into::into),
-            parcelss_root: g.parcels_root.map_or_else(|| BLAKE_NULL_RLP.clone(), Into::into),
+            parcels_root: g.parcels_root.map_or_else(|| BLAKE_NULL_RLP.clone(), Into::into),
             invoices_root: g.invoices_root.map_or_else(|| BLAKE_NULL_RLP.clone(), Into::into),
             state_root: g.state_root.map(Into::into),
             extra_data: g.extra_data.map_or_else(Vec::new, Into::into),

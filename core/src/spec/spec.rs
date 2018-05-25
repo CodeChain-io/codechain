@@ -243,7 +243,7 @@ fn load_from(s: cjson::spec::Spec) -> Result<Spec, Error> {
         data_dir: s.data_dir.unwrap_or(s.name).into(),
         nodes: s.nodes.unwrap_or_else(Vec::new),
         parent_hash: g.parent_hash,
-        parcels_root: g.parcelss_root,
+        parcels_root: g.parcels_root,
         invoices_root: g.invoices_root,
         author: g.author,
         score: g.score,

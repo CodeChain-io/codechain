@@ -13,7 +13,7 @@ pub struct Block {
 
     extra_data: Vec<u8>,
 
-    parcelss_root: H256,
+    parcels_root: H256,
     state_root: H256,
     invoices_root: H256,
 
@@ -36,7 +36,7 @@ impl From<CoreBlock> for Block {
 
             extra_data: block.header.extra_data().clone(),
 
-            parcelss_root: block.header.parcels_root().clone(),
+            parcels_root: block.header.parcels_root().clone(),
             state_root: block.header.state_root().clone(),
             invoices_root: block.header.invoices_root().clone(),
 
