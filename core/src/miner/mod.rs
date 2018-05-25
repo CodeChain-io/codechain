@@ -17,6 +17,7 @@
 mod local_parcels;
 mod miner;
 mod parcel_queue;
+mod sealing_queue;
 
 use cbytes::Bytes;
 use ctypes::{Address, H256, U256};

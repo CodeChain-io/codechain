@@ -32,6 +32,7 @@ use super::super::spec::Spec;
 use super::super::state::State;
 use super::super::types::ParcelId;
 use super::parcel_queue::{AccountDetails, ParcelOrigin, ParcelQueue, RemovalReason};
+use super::sealing_queue::SealingQueue;
 use super::{MinerService, MinerStatus, ParcelImportResult};
 
 /// Configures the behaviour of the miner.
@@ -58,28 +59,6 @@ impl Default for MinerOptions {
             parcel_queue_size: 8192,
             parcel_queue_memory_limit: Some(2 * 1024 * 1024),
         }
-    }
-}
-
-struct SealingQueue {
-    backing: Vec<ClosedBlock>,
-}
-
-impl SealingQueue {
-    fn new() -> Self {
-        Self {
-            backing: Vec::new(),
-        }
-    }
-
-    fn push(&mut self, b: ClosedBlock) {
-        self.backing.push(b)
-    }
-
-    fn take_if<P>(&mut self, predicate: P) -> Option<ClosedBlock>
-    where
-        P: Fn(&ClosedBlock) -> bool, {
-        self.backing.iter().position(|r| predicate(r)).map(|i| self.backing.remove(i))
     }
 }
 
