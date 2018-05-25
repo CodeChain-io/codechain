@@ -1126,16 +1126,13 @@ pub mod test {
     #[test]
     fn mint_transaction_does_not_increase_cost() {
         let fee = U256::from(100);
-        let transactions = vec![
-            Transaction::Noop,
-            Transaction::AssetMint {
-                metadata: "Metadata".to_string(),
-                lock_script_hash: H256::zero(),
-                parameters: vec![],
-                amount: None,
-                registrar: None,
-            },
-        ];
+        let transactions = vec![Transaction::AssetMint {
+            metadata: "Metadata".to_string(),
+            lock_script_hash: H256::zero(),
+            parameters: vec![],
+            amount: None,
+            registrar: None,
+        }];
         let parcel = Parcel {
             nonce: U256::zero(),
             fee,
@@ -1153,7 +1150,6 @@ pub mod test {
     fn transfer_transaction_does_not_increase_cost() {
         let fee = U256::from(100);
         let transactions = vec![
-            Transaction::Noop,
             Transaction::AssetMint {
                 metadata: "Metadata".to_string(),
                 lock_script_hash: H256::zero(),
@@ -1185,7 +1181,6 @@ pub mod test {
         let fee = U256::from(100);
         let pay_value = U256::from(100000);
         let transactions = vec![
-            Transaction::Noop,
             Transaction::AssetMint {
                 metadata: "Metadata".to_string(),
                 lock_script_hash: H256::zero(),
@@ -1203,7 +1198,6 @@ pub mod test {
                 address: Address::zero(),
                 value: pay_value,
             },
-            Transaction::Noop,
         ];
         let parcel = Parcel {
             nonce: U256::zero(),
@@ -1230,7 +1224,6 @@ pub mod test {
                 address: Address::zero(),
                 value: pay_value0,
             },
-            Transaction::Noop,
             Transaction::AssetMint {
                 metadata: "Metadata".to_string(),
                 lock_script_hash: H256::zero(),
@@ -1253,7 +1246,6 @@ pub mod test {
                 address: Address::zero(),
                 value: pay_value2,
             },
-            Transaction::Noop,
         ];
         let parcel = Parcel {
             nonce: U256::zero(),

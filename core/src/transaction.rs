@@ -28,7 +28,6 @@ use super::parcel::{AssetTransferInput, AssetTransferOutput};
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum Transaction {
-    Noop,
     Payment {
         nonce: U256,
         /// The receiver's address.
@@ -99,10 +98,6 @@ const ASSET_TRANSFER_ID: TransactionId = 0x04;
 
 impl Decodable for Transaction {
     fn decode(d: &UntrustedRlp) -> Result<Self, DecoderError> {
-        if d.is_empty() {
-            return Ok(Transaction::Noop)
-        }
-
         match d.val_at(0)? {
             PAYMENT_ID => {
                 if d.item_count()? != 4 {
@@ -153,7 +148,6 @@ impl Decodable for Transaction {
 impl Encodable for Transaction {
     fn rlp_append(&self, s: &mut RlpStream) {
         match self {
-            Transaction::Noop => s.append_internal(&""),
             Transaction::Payment {
                 nonce,
                 address,
