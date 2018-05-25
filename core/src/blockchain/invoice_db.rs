@@ -22,7 +22,6 @@ use kvdb::{DBTransaction, KeyValueDB};
 use parking_lot::RwLock;
 
 use super::super::db::{self, CacheUpdatePolicy, Readable, Writable};
-use super::super::invoice::Invoice;
 use super::extras::{BlockInvoices, ParcelAddress, ParcelInvoices};
 
 /// Structure providing fast access to blockchain data.
@@ -69,7 +68,7 @@ pub trait InvoiceProvider {
     fn block_invoices(&self, hash: &H256) -> Option<BlockInvoices>;
 
     /// Get parcel invoice.
-    fn parcel_invoices(&self, address: &ParcelAddress) -> Option<Vec<Invoice>>;
+    fn parcel_invoices(&self, address: &ParcelAddress) -> Option<ParcelInvoices>;
 }
 
 impl InvoiceProvider for InvoiceDB {
@@ -84,7 +83,7 @@ impl InvoiceProvider for InvoiceDB {
     }
 
     /// Get parcel invoice.
-    fn parcel_invoices(&self, address: &ParcelAddress) -> Option<Vec<Invoice>> {
+    fn parcel_invoices(&self, address: &ParcelAddress) -> Option<ParcelInvoices> {
         self.block_invoices(&address.block_hash)
             .and_then(|bi| bi.invoices.into_iter().nth(address.index))
             .map(Into::into)
