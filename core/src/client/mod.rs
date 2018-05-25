@@ -36,7 +36,9 @@ use super::encoded;
 use super::error::BlockImportError;
 use super::parcel::{LocalizedParcel, SignedParcel};
 use super::state::StateInfo;
-use super::types::{BlockId, BlockNumber, BlockStatus, ParcelId, VerificationQueueInfo as BlockQueueInfo};
+use super::types::{
+    BlockId, BlockNumber, BlockStatus, ParcelId, TransactionId, VerificationQueueInfo as BlockQueueInfo,
+};
 use super::Invoice;
 
 /// Provides `chain_info` method
@@ -175,6 +177,8 @@ pub trait BlockChainClient: Sync + Send + AccountData + BlockChain + ImportBlock
 
     /// Get parcel invoice with given hash.
     fn parcel_invoices(&self, id: ParcelId) -> Option<Vec<Invoice>>;
+
+    fn transaction_invoice(&self, id: TransactionId) -> Option<Invoice>;
 }
 
 /// Result of import block operation.

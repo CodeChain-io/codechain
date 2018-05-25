@@ -67,6 +67,10 @@ impl Chain for ChainClient {
         Ok(self.client.parcel_invoices(parcel_hash.into()))
     }
 
+    fn get_transaction_invoice(&self, transaction_hash: H256) -> Result<Option<Invoice>> {
+        Ok(self.client.transaction_invoice(transaction_hash.into()))
+    }
+
     fn get_asset_scheme(&self, transaction_hash: H256) -> Result<Option<AssetScheme>> {
         if let Some(state) = self.client.state_at(BlockId::Latest) {
             let address = AssetSchemeAddress::new(transaction_hash);

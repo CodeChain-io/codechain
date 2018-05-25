@@ -30,7 +30,9 @@ use super::super::parcel::LocalizedParcel;
 use super::super::types::BlockNumber;
 use super::super::views::BlockView;
 use super::body_db::{BodyDB, BodyProvider};
-use super::extras::{BlockDetails, BlockInvoices, EpochTransitions, ParcelAddress, ParcelInvoices, EPOCH_KEY_PREFIX};
+use super::extras::{
+    BlockDetails, BlockInvoices, EpochTransitions, ParcelAddress, ParcelInvoices, TransactionAddress, EPOCH_KEY_PREFIX,
+};
 use super::headerchain::{HeaderChain, HeaderProvider};
 use super::invoice_db::{InvoiceDB, InvoiceProvider};
 use super::route::ImportRoute;
@@ -334,6 +336,10 @@ impl BodyProvider for BlockChain {
 
     fn parcel_address(&self, hash: &H256) -> Option<ParcelAddress> {
         self.body_db.parcel_address(hash)
+    }
+
+    fn transaction_address(&self, hash: &H256) -> Option<TransactionAddress> {
+        self.body_db.transaction_address(hash)
     }
 
     fn block_body(&self, hash: &H256) -> Option<encoded::Body> {

@@ -31,6 +31,7 @@ use trie::{TrieFactory, TrieSpec};
 use super::super::block::{enact, ClosedBlock, Drain, IsBlock, LockedBlock, OpenBlock, SealedBlock};
 use super::super::blockchain::{
     BlockChain, BlockProvider, BodyProvider, HeaderProvider, ImportRoute, InvoiceProvider, ParcelAddress,
+    TransactionAddress,
 };
 use super::super::consensus::epoch::Transition as EpochTransition;
 use super::super::consensus::CodeChainEngine;
@@ -43,7 +44,9 @@ use super::super::service::ClientIoMessage;
 use super::super::spec::Spec;
 use super::super::state::State;
 use super::super::state_db::StateDB;
-use super::super::types::{BlockId, BlockNumber, BlockStatus, ParcelId, VerificationQueueInfo as BlockQueueInfo};
+use super::super::types::{
+    BlockId, BlockNumber, BlockStatus, ParcelId, TransactionId, VerificationQueueInfo as BlockQueueInfo,
+};
 use super::super::verification::queue::BlockQueue;
 use super::super::verification::{self, PreverifiedBlock, Verifier};
 use super::super::views::BlockView;
@@ -165,6 +168,16 @@ impl Client {
             ParcelId::Hash(ref hash) => self.chain.read().parcel_address(hash),
             ParcelId::Location(id, index) => Self::block_hash(&self.chain.read(), id).map(|hash| ParcelAddress {
                 block_hash: hash,
+                index,
+            }),
+        }
+    }
+
+    fn transaction_address(&self, id: TransactionId) -> Option<TransactionAddress> {
+        match id {
+            TransactionId::Hash(ref hash) => self.chain.read().transaction_address(hash),
+            TransactionId::Location(id, index) => self.parcel_address(id).map(|parcel_address| TransactionAddress {
+                parcel_address,
                 index,
             }),
         }
@@ -357,6 +370,16 @@ impl BlockChainClient for Client {
     fn parcel_invoices(&self, id: ParcelId) -> Option<Vec<Invoice>> {
         let chain = self.chain.read();
         self.parcel_address(id).and_then(|address| chain.parcel_invoices(&address))
+    }
+
+    fn transaction_invoice(&self, id: TransactionId) -> Option<Invoice> {
+        self.transaction_address(id).and_then(|transaction_address| {
+            let parcel_address = transaction_address.parcel_address.clone();
+            let parcel_id = parcel_address.into();
+
+            self.parcel_invoices(parcel_id)
+                .and_then(|invoices| invoices.get(transaction_address.index).map(|i| i.clone()))
+        })
     }
 }
 

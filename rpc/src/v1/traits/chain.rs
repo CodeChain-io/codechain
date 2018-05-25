@@ -35,6 +35,10 @@ build_rpc_trait! {
         # [rpc(name = "chain_getParcelInvoices")]
         fn get_parcel_invoices(&self, H256) -> Result<Option<Vec<Invoice>>>;
 
+        /// Gets transaction invoice with given hash.
+        # [rpc(name = "chain_getTransactionInvoice")]
+        fn get_transaction_invoice(&self, H256) -> Result<Option<Invoice>>;
+
         /// Gets asset scheme with given asset type.
         # [rpc(name = "chain_getAssetScheme")]
         fn get_asset_scheme(&self, H256) -> Result<Option<AssetScheme>>;
