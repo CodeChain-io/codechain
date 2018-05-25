@@ -50,7 +50,7 @@ pub struct HeaderChain {
 
     db: Arc<KeyValueDB>,
 
-    pending_best_hash: RwLock<Option<H256>>,
+    pending_best_header_hash: RwLock<Option<H256>>,
     pending_hashes: RwLock<HashMap<BlockNumber, H256>>,
     pending_details: RwLock<HashMap<H256, BlockDetails>>,
 }
@@ -94,7 +94,7 @@ impl HeaderChain {
 
             db,
 
-            pending_best_hash: RwLock::new(None),
+            pending_best_header_hash: RwLock::new(None),
             pending_hashes: RwLock::new(HashMap::new()),
             pending_details: RwLock::new(HashMap::new()),
         }
@@ -111,7 +111,7 @@ impl HeaderChain {
             return None
         }
 
-        assert!(self.pending_best_hash.read().is_none());
+        assert!(self.pending_best_header_hash.read().is_none());
 
         // store block in db
         let compressed_header = compress(header.rlp().as_raw(), blocks_swapper());
@@ -122,10 +122,10 @@ impl HeaderChain {
         let new_hashes = self.new_hash_entries(header, &location);
         let new_details = self.new_detail_entries(header);
 
-        let mut pending_best_hash = self.pending_best_hash.write();
+        let mut pending_best_header_hash = self.pending_best_header_hash.write();
         if location != BlockLocation::Branch {
             batch.put(db::COL_EXTRA, BEST_HEADER_KEY, &header.hash());
-            *pending_best_hash = Some(header.hash());
+            *pending_best_header_hash = Some(header.hash());
         }
 
         let mut pending_hashes = self.pending_hashes.write();
@@ -139,7 +139,7 @@ impl HeaderChain {
 
     /// Apply pending insertion updates
     pub fn commit(&self) {
-        let mut pending_best_hash = self.pending_best_hash.write();
+        let mut pending_best_header_hash = self.pending_best_header_hash.write();
         let mut pending_write_hashes = self.pending_hashes.write();
         let mut pending_block_details = self.pending_details.write();
 
@@ -147,7 +147,7 @@ impl HeaderChain {
         let mut write_block_details = self.detail_cache.write();
         let mut write_hashes = self.hash_cache.write();
         // update best block
-        if let Some(hash) = pending_best_hash.take() {
+        if let Some(hash) = pending_best_header_hash.take() {
             *best_header_hash = hash;
         }
 
