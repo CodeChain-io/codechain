@@ -597,10 +597,17 @@ impl<B: Backend> State<B> {
                 Ok(self.transfer_balance(&sender, &receiver, &value)?)
             }
             Transaction::SetRegularKey {
+                address,
                 nonce,
                 key,
             } => {
                 let expected = self.nonce(&fee_payer)?;
+                if address != fee_payer {
+                    return Err(TransactionError::InvalidAddressToSetKey(Mismatch {
+                        expected: *fee_payer,
+                        found: *address,
+                    }).into())
+                }
                 if nonce != &expected {
                     return Err(ParcelError::InvalidNonce {
                         expected,
@@ -887,7 +894,10 @@ mod tests {
         let mut state = get_temp_state();
         let key = 1u64.into();
 
+        let keypair = Random.generate().unwrap();
+
         let transactions = vec![Transaction::SetRegularKey {
+            address: keypair.address(),
             nonce: 1.into(),
             key,
         }];
