@@ -14,8 +14,18 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod chain;
-mod devel;
+use ctypes::H256;
 
-pub use self::chain::Chain;
-pub use self::devel::Devel;
+use jsonrpc_core::Result;
+
+use super::super::types::Bytes;
+
+build_rpc_trait! {
+    pub trait Devel {
+        # [rpc(name = "devel_getStateTrieKeys")]
+        fn get_state_trie_keys(&self, usize, usize) -> Result<Vec<H256>>;
+
+        # [rpc(name = "devel_getStateTrieValue")]
+        fn get_state_trie_value(&self, H256) -> Result<Vec<Bytes>>;
+    }
+}
