@@ -125,23 +125,23 @@ impl Encodable for Message {
         let version = self.version;
         let seq = self.seq;
         s.begin_list(4).append(&version).append(&seq).append(&self.protocol_id());
-        match self.body {
-            Body::ConnectionRequest(ref body) => {
+        match &self.body {
+            Body::ConnectionRequest(body) => {
                 s.append(body);
             }
-            Body::ConnectionAllowed(ref body) => {
+            Body::ConnectionAllowed(body) => {
                 s.append(body);
             }
-            Body::ConnectionDenied(ref reason) => {
+            Body::ConnectionDenied(reason) => {
                 s.append(reason);
             }
-            Body::EcdhRequest(ref key) => {
+            Body::EcdhRequest(key) => {
                 s.append(key);
             }
-            Body::EcdhAllowed(ref key) => {
+            Body::EcdhAllowed(key) => {
                 s.append(key);
             }
-            Body::EcdhDenied(ref reason) => {
+            Body::EcdhDenied(reason) => {
                 s.append(reason);
             }
         }
