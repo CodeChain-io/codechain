@@ -26,8 +26,8 @@ mod macros;
 use log::SetLoggerError;
 
 pub use logger::Config as LoggerConfig;
-pub use macros::LogTarget;
 use logger::Logger;
+pub use macros::LogTarget;
 
 pub fn init(config: &LoggerConfig) -> Result<(), SetLoggerError> {
     let logger = Logger::new(config);
