@@ -500,8 +500,8 @@ impl<B: Backend> State<B> {
     }
 
     fn execute(&mut self, parcel: &SignedParcel) -> Result<Vec<ApplyOutcome>, Error> {
-        let sender = parcel.sender();
-        let nonce = self.nonce(&sender)?;
+        let fee_payer = parcel.sender();
+        let nonce = self.nonce(&fee_payer)?;
 
         if parcel.nonce != nonce {
             return Err(ParcelError::InvalidNonce {
@@ -511,17 +511,17 @@ impl<B: Backend> State<B> {
         }
 
         let fee = parcel.as_unsigned().fee;
-        let balance = self.balance(&sender)?;
+        let balance = self.balance(&fee_payer)?;
         if fee > balance {
             return Err(ParcelError::InsufficientBalance {
-                address: sender,
+                address: fee_payer,
                 cost: fee,
                 balance,
             }.into())
         }
 
-        self.inc_nonce(&sender)?;
-        self.sub_balance(&sender, &fee.into())?;
+        self.inc_nonce(&fee_payer)?;
+        self.sub_balance(&fee_payer, &fee)?;
 
         // The failed parcel also must pay the fee and increase nonce.
         self.checkpoint(TRANSACTIONS_CHECKPOINT);
@@ -529,7 +529,7 @@ impl<B: Backend> State<B> {
         let mut results = Vec::with_capacity(parcel.transactions.len());
         for t in &parcel.transactions {
             self.checkpoint(TRANSACTION_CHECKPOINT);
-            results.push(match self.execute_transaction(t, &sender, &parcel.network_id) {
+            results.push(match self.execute_transaction(t, &fee_payer, &parcel.network_id) {
                 Ok(_) => {
                     info!(target: "tx", "Tx({}) is applied", t.hash());
                     self.discard_checkpoint(TRANSACTION_CHECKPOINT);
@@ -565,16 +565,23 @@ impl<B: Backend> State<B> {
     fn execute_transaction(
         &mut self,
         transaction: &Transaction,
-        sender: &Address,
+        fee_payer: &Address,
         parcel_network_id: &u64,
     ) -> Result<(), Error> {
         trace!(target: "tx", "Execute {:?}(TxHash:{:?})", transaction, transaction.hash());
         match transaction {
             Transaction::Payment {
                 nonce,
-                address,
+                sender,
+                receiver,
                 value,
             } => {
+                if sender != fee_payer {
+                    return Err(TransactionError::InvalidPaymentSender(Mismatch {
+                        expected: *fee_payer,
+                        found: *sender,
+                    }).into())
+                }
                 let expected = self.nonce(&sender)?;
                 if nonce != &expected {
                     return Err(ParcelError::InvalidNonce {
@@ -587,13 +594,13 @@ impl<B: Backend> State<B> {
                 self.discard_checkpoint(TRANSACTION_CHECKPOINT);
                 self.checkpoint(TRANSACTION_CHECKPOINT);
 
-                Ok(self.transfer_balance(&sender, &address, &value)?)
+                Ok(self.transfer_balance(&sender, &receiver, &value)?)
             }
             Transaction::SetRegularKey {
                 nonce,
                 key,
             } => {
-                let expected = self.nonce(&sender)?;
+                let expected = self.nonce(&fee_payer)?;
                 if nonce != &expected {
                     return Err(ParcelError::InvalidNonce {
                         expected,
@@ -601,11 +608,11 @@ impl<B: Backend> State<B> {
                     }.into())
                 }
 
-                self.inc_nonce(&sender)?;
+                self.inc_nonce(&fee_payer)?;
                 self.discard_checkpoint(TRANSACTION_CHECKPOINT);
                 self.checkpoint(TRANSACTION_CHECKPOINT);
 
-                self.set_regular_key(&sender, &key)?;
+                self.set_regular_key(&fee_payer, &key)?;
                 Ok(())
             }
             Transaction::AssetMint {
@@ -753,6 +760,7 @@ fn is_input_and_output_consistent(inputs: &[AssetTransferInput], outputs: &[Asse
 #[cfg(test)]
 mod tests {
     use ccrypto::blake256;
+    use ckeys::{Generator, Random};
     use ctypes::{Address, Secret, U256};
 
     use super::super::parcel::{AssetOutPoint, Parcel};
@@ -846,17 +854,21 @@ mod tests {
         let mut state = get_temp_state();
         let receiver = 1u64.into();
 
+        let keypair = Random.generate().unwrap();
+
         let transactions = vec![Transaction::Payment {
             nonce: 1.into(),
-            address: receiver,
+            sender: keypair.address(),
+            receiver,
             value: 10.into(),
         }];
         let signed_parcel = Parcel {
             fee: 5.into(),
             transactions,
             ..Parcel::default()
-        }.sign(&secret().into());
+        }.sign(keypair.private());
         let sender = signed_parcel.sender();
+        assert_eq!(keypair.address(), sender);
         state.add_balance(&sender, &20.into()).unwrap();
 
         let res = state.apply(&signed_parcel).unwrap();
@@ -883,8 +895,9 @@ mod tests {
             fee: 5.into(),
             transactions,
             ..Parcel::default()
-        }.sign(&secret().into());
+        }.sign(keypair.private());
         let sender = signed_parcel.sender();
+        assert_eq!(sender, keypair.address());
         state.add_balance(&sender, &5.into()).unwrap();
 
         assert_eq!(state.regular_key(&sender).unwrap(), None);
@@ -900,18 +913,21 @@ mod tests {
         // account_start_nonce is 0
         let mut state = get_temp_state();
         let receiver = 1u64.into();
+        let keypair = Random.generate().unwrap();
 
         let transactions = vec![Transaction::Payment {
             nonce: 1.into(),
-            address: receiver,
+            sender: keypair.address(),
+            receiver,
             value: 30.into(),
         }];
         let signed_parcel = Parcel {
             fee: 5.into(),
             transactions,
             ..Parcel::default()
-        }.sign(&secret().into());
+        }.sign(keypair.private());
         let sender = signed_parcel.sender();
+        assert_eq!(keypair.address(), sender);
         state.add_balance(&sender, &20.into()).unwrap();
 
         let res = state.apply(&signed_parcel).unwrap();

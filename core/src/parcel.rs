@@ -448,11 +448,13 @@ mod tests {
 
     #[test]
     fn encode_and_decode_payment() {
-        let address = Address::random();
+        let receiver = Address::random();
+        let sender = Address::random();
         let value = U256::from(12345);
         let transaction = Transaction::Payment {
             nonce: 1.into(),
-            address,
+            sender,
+            receiver,
             value,
         };
         assert_eq!(transaction, ::rlp::decode(transaction.rlp_bytes().as_ref()))

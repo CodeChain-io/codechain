@@ -30,8 +30,8 @@ use super::parcel::{AssetTransferInput, AssetTransferOutput};
 pub enum Transaction {
     Payment {
         nonce: U256,
-        /// The receiver's address.
-        address: Address,
+        sender: Address,
+        receiver: Address,
         /// Transferred value.
         value: U256,
     },
@@ -100,13 +100,14 @@ impl Decodable for Transaction {
     fn decode(d: &UntrustedRlp) -> Result<Self, DecoderError> {
         match d.val_at(0)? {
             PAYMENT_ID => {
-                if d.item_count()? != 4 {
+                if d.item_count()? != 5 {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
                 Ok(Transaction::Payment {
                     nonce: d.val_at(1)?,
-                    address: d.val_at(2)?,
-                    value: d.val_at(3)?,
+                    sender: d.val_at(2)?,
+                    receiver: d.val_at(3)?,
+                    value: d.val_at(4)?,
                 })
             }
             SET_REGULAR_KEY_ID => {
@@ -150,9 +151,10 @@ impl Encodable for Transaction {
         match self {
             Transaction::Payment {
                 nonce,
-                address,
+                sender,
+                receiver,
                 value,
-            } => s.begin_list(4).append(&PAYMENT_ID).append(nonce).append(address).append(value),
+            } => s.begin_list(5).append(&PAYMENT_ID).append(nonce).append(sender).append(receiver).append(value),
             Transaction::SetRegularKey {
                 nonce,
                 key,
@@ -181,6 +183,7 @@ impl Encodable for Transaction {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Error {
+    InvalidPaymentSender(Mismatch<Address>),
     InsufficientBalance {
         address: Address,
         required: U256,
@@ -208,6 +211,7 @@ pub enum Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            Error::InvalidPaymentSender(mismatch) => write!(f, "Invalid payment sender {}", mismatch),
             Error::InsufficientBalance {
                 address,
                 required,
