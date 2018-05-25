@@ -698,7 +698,76 @@ impl Importer {
 impl Importer {
     /// This is triggered by a message coming from a header queue when the header is ready for insertion
     pub fn import_verified_headers(&self, client: &Client) -> usize {
-        unimplemented!();
+        let max_headers_to_import = 256;
+
+        let _lock = self.import_lock.lock();
+
+        let mut bad = HashSet::new();
+        let mut imported = Vec::new();
+        for header in self.header_queue.drain(max_headers_to_import) {
+            let hash = header.hash();
+            trace!(target: "client", "importing header {}", header.number());
+
+            if bad.contains(&hash) || bad.contains(header.parent_hash()) {
+                trace!(target: "client", "Bad header detected : {}", hash);
+                bad.insert(hash);
+                continue
+            }
+
+            let parent_header = client
+                .block_header(BlockId::Hash(*header.parent_hash()))
+                .expect("Parent of importing header must exist")
+                .decode();
+            if self.check_header(&header, &parent_header) {
+                if self.engine.is_proposal(&header) {
+                    self.header_queue.mark_as_good(&[hash]);
+                } else {
+                    imported.push(hash);
+                    self.commit_header(&header, client);
+                }
+            } else {
+                bad.insert(hash);
+            }
+        }
+
+        self.header_queue.mark_as_bad(&bad.drain().collect::<Vec<_>>());
+
+        // FIXME: notify new headers
+        client.db.read().flush().expect("DB flush failed.");
+
+        imported.len()
+    }
+
+    fn check_header(&self, header: &Header, parent: &Header) -> bool {
+        // FIXME: self.verifier.verify_block_family
+        if let Err(e) = self.engine.verify_block_family(&header, &parent) {
+            warn!(target: "client", "Stage 3 block verification failed for #{} ({})\nError: {:?}",
+            header.number(), header.hash(), e);
+            return false
+        };
+
+        // "external" verification.
+        if let Err(e) = self.engine.verify_block_external(&header) {
+            warn!(target: "client", "Stage 4 block verification failed for #{} ({})\nError: {:?}",
+            header.number(), header.hash(), e);
+            return false
+        };
+
+        true
+    }
+
+    fn commit_header(&self, _header: &Header, client: &Client) {
+        let chain = client.chain.read();
+
+        let batch = DBTransaction::new();
+        // FIXME: Check if this line is still necessary.
+        // self.check_epoch_end_signal(header, &chain, &mut batch);
+        // FIXME: client.chain.insert_header(&mut batch, header);
+        client.db.read().write_buffered(batch);
+        chain.commit();
+
+        // FIXME: Check if this line is still necessary.
+        // self.check_epoch_end(&header, &chain, client);
     }
 }
 
