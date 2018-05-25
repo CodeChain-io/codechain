@@ -27,7 +27,8 @@ use log::SetLoggerError;
 
 pub use logger::Config as LoggerConfig;
 use logger::Logger;
-pub use macros::LogTarget;
+
+pub use log::Level;
 
 pub fn init(config: &LoggerConfig) -> Result<(), SetLoggerError> {
     let logger = Logger::new(config);
