@@ -52,7 +52,7 @@ pub struct BlockChain {
 
     db: Arc<KeyValueDB>,
 
-    pending_best_hash: RwLock<Option<H256>>,
+    pending_best_block_hash: RwLock<Option<H256>>,
 }
 
 impl BlockChain {
@@ -82,7 +82,7 @@ impl BlockChain {
 
             db,
 
-            pending_best_hash: RwLock::new(None),
+            pending_best_block_hash: RwLock::new(None),
         }
     }
 
@@ -106,7 +106,7 @@ impl BlockChain {
             return ImportRoute::none()
         }
 
-        assert!(self.pending_best_hash.read().is_none());
+        assert!(self.pending_best_block_hash.read().is_none());
 
         let location = self.block_location(&block);
 
@@ -115,9 +115,9 @@ impl BlockChain {
         self.invoice_db.insert_invoice(batch, &hash, invoices);
 
         if location != BlockLocation::Branch {
-            let mut pending_best_hash = self.pending_best_hash.write();
+            let mut pending_best_block_hash = self.pending_best_block_hash.write();
             batch.put(db::COL_EXTRA, BEST_BLOCK_KEY, &header.hash());
-            *pending_best_hash = Some(header.hash());
+            *pending_best_block_hash = Some(header.hash());
         }
 
         ImportRoute::new(&hash, &location)
@@ -130,9 +130,9 @@ impl BlockChain {
         // NOTE: There are no commit for InvoiceDB
 
         let mut best_block_hash = self.best_block_hash.write();
-        let mut pending_best_hash = self.pending_best_hash.write();
+        let mut pending_best_block_hash = self.pending_best_block_hash.write();
         // update best block
-        if let Some(hash) = pending_best_hash.take() {
+        if let Some(hash) = pending_best_block_hash.take() {
             *best_block_hash = hash;
         }
     }
