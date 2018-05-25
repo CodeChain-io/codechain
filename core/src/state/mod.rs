@@ -163,6 +163,7 @@ const TRANSACTIONS_CHECKPOINT: CheckpointId = 789;
 impl<B: Backend> State<B> {
     /// Creates new state with empty state root
     /// Used for tests.
+    #[cfg(test)]
     pub fn new(mut db: B, account_start_nonce: U256, trie_factory: TrieFactory) -> State<B> {
         let mut root = H256::new();
         {
