@@ -32,6 +32,17 @@ pub enum BlockId {
     Latest,
 }
 
+impl From<H256> for BlockId {
+    fn from(hash: H256) -> Self {
+        BlockId::Hash(hash)
+    }
+}
+
+impl From<BlockNumber> for BlockId {
+    fn from(number: BlockNumber) -> Self {
+        BlockId::Number(number)
+    }
+}
 /// Uniquely identifies parcel.
 #[derive(Debug, PartialEq, Clone, Hash, Eq)]
 pub enum ParcelId {

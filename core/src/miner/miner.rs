@@ -30,7 +30,7 @@ use super::super::error::Error;
 use super::super::parcel::{ParcelError, SignedParcel, UnverifiedParcel};
 use super::super::spec::Spec;
 use super::super::state::State;
-use super::super::types::{BlockId, ParcelId};
+use super::super::types::ParcelId;
 use super::parcel_queue::{AccountDetails, ParcelOrigin, ParcelQueue, RemovalReason};
 use super::{MinerService, MinerStatus, ParcelImportResult};
 
@@ -262,7 +262,7 @@ impl Miner {
             return false
         }
 
-        let parent_header = match chain.block_header(BlockId::Hash(*block.header().parent_hash())) {
+        let parent_header = match chain.block_header((*block.header().parent_hash()).into()) {
             Some(hdr) => hdr.decode(),
             None => return false,
         };
@@ -383,7 +383,7 @@ impl MinerService for Miner {
         {
             let mut parcel_queue = self.parcel_queue.write();
             for hash in retracted {
-                let block = chain.block(BlockId::Hash(*hash)).expect(
+                let block = chain.block((*hash).into()).expect(
                     "Client is sending message after commit to db and inserting to chain; the block is available; qed",
                 );
                 let parcels = block.parcels();
