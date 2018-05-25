@@ -25,7 +25,7 @@ use ctypes::{Address, H256, U256};
 use journaldb;
 use kvdb::{DBTransaction, KeyValueDB};
 use parking_lot::{Mutex, RwLock};
-use rlp::UntrustedRlp;
+use rlp::{Encodable, UntrustedRlp};
 use trie::{TrieFactory, TrieSpec};
 
 use super::super::block::{enact, ClosedBlock, Drain, IsBlock, LockedBlock, OpenBlock, SealedBlock};
@@ -49,7 +49,7 @@ use super::super::types::{
 };
 use super::super::verification::queue::{BlockQueue, HeaderQueue};
 use super::super::verification::{self, PreverifiedBlock, Verifier};
-use super::super::views::BlockView;
+use super::super::views::{BlockView, HeaderView};
 use super::{
     AccountData, Balance, BlockChain as BlockChainTrait, BlockChainClient, BlockChainInfo, BlockInfo, BlockProducer,
     ChainInfo, ChainNotify, ClientConfig, EngineClient, Error as ClientError, ImportBlock, ImportResult,
@@ -756,13 +756,13 @@ impl Importer {
         true
     }
 
-    fn commit_header(&self, _header: &Header, client: &Client) {
+    fn commit_header(&self, header: &Header, client: &Client) {
         let chain = client.chain.read();
 
-        let batch = DBTransaction::new();
+        let mut batch = DBTransaction::new();
         // FIXME: Check if this line is still necessary.
         // self.check_epoch_end_signal(header, &chain, &mut batch);
-        // FIXME: client.chain.insert_header(&mut batch, header);
+        chain.insert_header(&mut batch, &HeaderView::new(&header.rlp_bytes()));
         client.db.read().write_buffered(batch);
         chain.commit();
 
