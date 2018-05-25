@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ccore::{Asset, AssetScheme, Invoice};
-use ctypes::{H160, H256, U256};
+use ctypes::{H160, H256, Public, U256};
 
 use jsonrpc_core::Result;
 
@@ -54,6 +54,10 @@ build_rpc_trait! {
         /// Gets balance with given account.
         # [rpc(name = "chain_getBalance")]
         fn get_balance(&self, H160, Option<u64>) -> Result<Option<U256>>;
+
+        /// Gets regular key with given account
+        # [rpc(name = "chain_getRegularKey")]
+        fn get_regular_key(&self, H160, Option<u64>) -> Result<Option<Public>>;
 
         /// Gets number of best block.
         # [rpc(name = "chain_getBlockNumber")]
