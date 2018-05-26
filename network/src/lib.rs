@@ -50,6 +50,8 @@ mod token_generator;
 mod p2p;
 pub mod session;
 
+use ctypes::hash::H512;
+
 pub use self::addr::SocketAddr;
 pub use self::config::Config as NetworkConfig;
 pub use self::discovery::Api as DiscoveryApi;
@@ -59,3 +61,5 @@ pub use self::extension::{
 };
 pub use self::service::{Error as NetworkServiceError, Service as NetworkService};
 pub use self::test::{Call as TestNetworkCall, TestClient as TestNetworkClient};
+
+pub type NodeId = H512;

@@ -14,26 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ccrypto::blake512;
-use ctypes::Public;
-use rand;
+use cnetwork::NodeId as NetworkNodeId;
 
 use super::B;
 
-pub type NodeId = Public;
-
-fn hash<T: AsRef<[u8]>>(block: T) -> NodeId {
-    blake512(block.as_ref())
-}
-
-pub fn random() -> NodeId {
-    const RAND_BLOCK_SIZE: usize = 16;
-    let mut rand_block: [u8; RAND_BLOCK_SIZE] = [0; RAND_BLOCK_SIZE];
-    for iter in rand_block.iter_mut() {
-        *iter = rand::random::<u8>();
-    }
-    hash(rand_block)
-}
+pub type NodeId = NetworkNodeId;
 
 pub fn log2_distance_between_nodes(lhs: &NodeId, rhs: &NodeId) -> usize {
     let distance = lhs ^ rhs;
