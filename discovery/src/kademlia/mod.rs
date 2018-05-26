@@ -31,6 +31,6 @@ use self::node_id::NodeId;
 
 
 const ALPHA: u8 = 3;
-const B: usize = 64 * 8;
+const B: usize = 32 * 8;
 const K: u8 = 16;
 const T_REFRESH: u32 = 60_000;
