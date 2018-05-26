@@ -17,6 +17,8 @@
 use ctypes::Public;
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
+use super::super::NodeId;
+
 type Version = u32;
 type Raw = Vec<u8>;
 type Seq = u64;
@@ -30,6 +32,8 @@ pub struct Message {
 
 #[derive(Clone, Debug, PartialOrd, PartialEq)]
 pub enum Body {
+    NodeIdRequest(NodeId),
+    NodeIdResponse(NodeId),
     ConnectionRequest(Raw),
     ConnectionAllowed(Raw),
     ConnectionDenied(String),
@@ -38,13 +42,16 @@ pub enum Body {
     EcdhDenied(String),
 }
 
-const CONNECTION_REQUEST: u8 = 0x1;
-const CONNECTION_ALLOWED: u8 = 0x2;
-const CONNECTION_DENIED: u8 = 0x3;
+const NODE_ID_REQUEST: u8 = 0x01;
+const NODE_ID_RESPONSE: u8 = 0x02;
 
-const ECDH_REQUEST: u8 = 0x04;
-const ECDH_ALLOWED: u8 = 0x05;
-const ECDH_DENIED: u8 = 0x06;
+const CONNECTION_REQUEST: u8 = 0x3;
+const CONNECTION_ALLOWED: u8 = 0x4;
+const CONNECTION_DENIED: u8 = 0x5;
+
+const ECDH_REQUEST: u8 = 0x06;
+const ECDH_ALLOWED: u8 = 0x07;
+const ECDH_DENIED: u8 = 0x08;
 
 impl Message {
     pub fn connection_request(seq: Seq, body: Vec<u8>) -> Self {
@@ -95,6 +102,22 @@ impl Message {
         }
     }
 
+    pub fn node_id_request(seq: Seq, id: NodeId) -> Self {
+        Self {
+            version: 0,
+            seq,
+            body: Body::NodeIdRequest(id),
+        }
+    }
+
+    pub fn node_id_response(seq: Seq, id: NodeId) -> Self {
+        Self {
+            version: 0,
+            seq,
+            body: Body::NodeIdResponse(id),
+        }
+    }
+
     pub fn protocol_id(&self) -> u8 {
         match self.body {
             Body::ConnectionRequest(_) => CONNECTION_REQUEST,
@@ -103,6 +126,8 @@ impl Message {
             Body::EcdhRequest(_) => ECDH_REQUEST,
             Body::EcdhAllowed(_) => ECDH_ALLOWED,
             Body::EcdhDenied(_) => ECDH_DENIED,
+            Body::NodeIdRequest(_) => NODE_ID_REQUEST,
+            Body::NodeIdResponse(_) => NODE_ID_RESPONSE,
         }
     }
 
@@ -130,6 +155,12 @@ impl Encodable for Message {
         let seq = self.seq;
         s.begin_list(self.item_count()).append(&version).append(&seq).append(&self.protocol_id());
         match &self.body {
+            Body::NodeIdRequest(id) => {
+                s.append(id);
+            }
+            Body::NodeIdResponse(id) => {
+                s.append(id);
+            }
             Body::ConnectionRequest(body) => {
                 s.append(body);
             }
@@ -159,6 +190,11 @@ impl Decodable for Message {
         let protocol_id: u8 = rlp.val_at(2)?;
         debug_assert_eq!(0, version);
         let message = match protocol_id {
+            NODE_ID_REQUEST => Message::node_id_request(seq, rlp.val_at(3)?),
+            NODE_ID_RESPONSE => {
+                let node_id = rlp.val_at(3)?;
+                Message::node_id_response(seq, node_id)
+            }
             CONNECTION_REQUEST => {
                 let body: Raw = rlp.val_at(3)?;
                 Message::connection_request(seq, body)
@@ -197,8 +233,7 @@ mod tests {
     use rlp::{Decodable, Encodable, UntrustedRlp};
 
     use super::super::super::session::Nonce;
-    use super::Message;
-    use super::Seq;
+    use super::*;
 
     #[test]
     fn encode_and_decode_request() {
@@ -282,6 +317,32 @@ mod tests {
         let rlp = UntrustedRlp::new(&bytes);
         match Decodable::decode(&rlp) {
             Ok(message) => assert_eq!(allowed, message),
+            Err(err) => assert!(false, "{:?}", err),
+        }
+    }
+
+    #[test]
+    fn encode_and_decode_node_id_request() {
+        let node_id = 0xBEEFCAFE.into();
+        let request = Message::node_id_request(0x8a, node_id);
+
+        let encoded = request.rlp_bytes();
+        let rlp = UntrustedRlp::new(&encoded);
+        match Decodable::decode(&rlp) {
+            Ok(decoded) => assert_eq!(request, decoded),
+            Err(err) => assert!(false, "{:?}", err),
+        }
+    }
+
+    #[test]
+    fn encode_and_decode_node_id_response() {
+        let id = NodeId::random();
+        let response = Message::node_id_response(0x9a, id);
+
+        let encoded = response.rlp_bytes();
+        let rlp = UntrustedRlp::new(&encoded);
+        match Decodable::decode(&rlp) {
+            Ok(decoded) => assert_eq!(response, decoded),
             Err(err) => assert!(false, "{:?}", err),
         }
     }
