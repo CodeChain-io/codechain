@@ -148,8 +148,14 @@ impl Miner {
                         // This check goes here because verify_parcel takes SignedParcel parameter
                         self.engine.machine().verify_parcel(&parcel, &best_block_header, client)?;
 
-                        // FIXME: Determine the origin from parcel.sender().
-                        let origin = default_origin;
+                        let origin = self.accounts
+                            .as_ref()
+                            .and_then(|accounts| match accounts.has_account(parcel.sender()) {
+                                true => Some(ParcelOrigin::Local),
+                                false => None,
+                            })
+                            .unwrap_or(default_origin);
+
                         let fetch_account = |a: &Address| -> AccountDetails {
                             AccountDetails {
                                 nonce: client.latest_nonce(a),

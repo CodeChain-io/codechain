@@ -88,4 +88,8 @@ impl AccountProvider {
             Err(SignError::NotFound)
         }
     }
+
+    pub fn has_account(&self, address: Address) -> bool {
+        self.secrets.read().contains_key(&address)
+    }
 }
