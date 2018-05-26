@@ -336,6 +336,14 @@ pub trait IsBlock {
     /// Get the `ExecutedBlock` associated with this object.
     fn block(&self) -> &ExecutedBlock;
 
+    /// Get the base `Block` object associated with this.
+    fn to_base(&self) -> Block {
+        Block {
+            header: self.header().clone(),
+            parcels: self.parcels().iter().cloned().map(Into::into).collect(),
+        }
+    }
+
     /// Get the header associated with this object's block.
     fn header(&self) -> &Header {
         &self.block().header

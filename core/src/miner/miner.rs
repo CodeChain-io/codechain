@@ -23,14 +23,15 @@ use ctypes::{Address, H256, U256};
 use parking_lot::{Mutex, RwLock};
 
 use super::super::account_provider::{AccountProvider, SignError};
-use super::super::block::{ClosedBlock, IsBlock};
+use super::super::block::{Block, ClosedBlock, IsBlock};
 use super::super::client::{AccountData, BlockChain, BlockProducer, ImportSealedBlock, MiningBlockChainClient};
 use super::super::consensus::{CodeChainEngine, Seal};
 use super::super::error::Error;
+use super::super::header::Header;
 use super::super::parcel::{ParcelError, SignedParcel, UnverifiedParcel};
 use super::super::spec::Spec;
 use super::super::state::State;
-use super::super::types::ParcelId;
+use super::super::types::{BlockNumber, ParcelId};
 use super::parcel_queue::{AccountDetails, ParcelOrigin, ParcelQueue, RemovalReason};
 use super::sealing_queue::SealingQueue;
 use super::{MinerService, MinerStatus, ParcelImportResult};
@@ -105,6 +106,21 @@ impl Miner {
     /// Set a callback to be notified about imported parcels' hashes.
     pub fn add_parcels_listener(&self, f: Box<Fn(&[H256]) + Send + Sync>) {
         self.parcel_listener.write().push(f);
+    }
+
+    /// Get `Some` `clone()` of the current pending block's state or `None` if we're not sealing.
+    pub fn pending_state(&self, latest_block_number: BlockNumber) -> Option<State<::state_db::StateDB>> {
+        self.map_pending_block(|b| b.state().clone(), latest_block_number)
+    }
+
+    /// Get `Some` `clone()` of the current pending block or `None` if we're not sealing.
+    pub fn pending_block(&self, latest_block_number: BlockNumber) -> Option<Block> {
+        self.map_pending_block(|b| b.to_base(), latest_block_number)
+    }
+
+    /// Get `Some` `clone()` of the current pending block header or `None` if we're not sealing.
+    pub fn pending_block_header(&self, latest_block_number: BlockNumber) -> Option<Header> {
+        self.map_pending_block(|b| b.header().clone(), latest_block_number)
     }
 
     /// Check is reseal is allowed and necessary.
@@ -303,6 +319,19 @@ impl Miner {
     /// Are we allowed to do a non-mandatory reseal?
     fn parcel_reseal_allowed(&self) -> bool {
         Instant::now() > *self.next_allowed_reseal.lock()
+    }
+
+    fn map_pending_block<F, T>(&self, f: F, latest_block_number: BlockNumber) -> Option<T>
+    where
+        F: FnOnce(&ClosedBlock) -> T, {
+        let sealing_queue = self.sealing_queue.lock();
+        sealing_queue.peek_last_ref().and_then(|b| {
+            if b.block().header().number() > latest_block_number {
+                Some(f(b))
+            } else {
+                None
+            }
+        })
     }
 }
 
