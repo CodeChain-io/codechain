@@ -211,54 +211,35 @@ mod tests {
     }
 
 
-    const ID: &str = "0000000000000000\
-                      0000000000000000\
-                      0000000000000000\
-                      0000000000000000\
-                      0000000000000000\
-                      0000000000000000\
-                      0000000000000000\
-                      0000000000000000";
-
-    const ID1: &str = "0000000000000000\
-                       0000000000000000\
-                       0000000000000000\
-                       0000000000000000\
-                       0000000000000000\
-                       0000000000000000\
-                       0000000000000000\
-                       0000000000000001";
-
-    const ID4: &str = "0000000000000000000000000000000000000000000000000000000000000000\
-                       0000000000000000000000000000000000000000000000000000000000000004";
-
-    const ID5: &str = "0000000000000000000000000000000000000000000000000000000000000000\
-                       0000000000000000000000000000000000000000000000000000000000000005";
+    const ID0: &str = "0000000000000000000000000000000000000000000000000000000000000000";
+    const ID1: &str = "0000000000000000000000000000000000000000000000000000000000000001";
+    const ID4: &str = "0000000000000000000000000000000000000000000000000000000000000004";
+    const ID5: &str = "0000000000000000000000000000000000000000000000000000000000000005";
 
     #[test]
     fn test_default_alpha() {
-        let id = Contact::from_hash(ID).id();
+        let id = Contact::from_hash(ID0).id();
         let kademlia = default_kademlia(id);
         assert_eq!(3, kademlia.alpha);
     }
 
     #[test]
     fn test_default_k() {
-        let id = Contact::from_hash(ID).id();
+        let id = Contact::from_hash(ID0).id();
         let kademlia = default_kademlia(id);
         assert_eq!(16, kademlia.k);
     }
 
     #[test]
     fn test_default_t_refresh() {
-        let id = Contact::from_hash(ID).id();
+        let id = Contact::from_hash(ID0).id();
         let kademlia = default_kademlia(id);
         assert_eq!(60_000, kademlia.t_refresh);
     }
 
     #[test]
     fn test_add_contact_to_be_verfied_does_not_add_duplicates() {
-        let id = Contact::from_hash(ID).id();
+        let id = Contact::from_hash(ID0).id();
         let mut kademlia = default_kademlia(id);
 
         let new_contact = Contact::from_hash(ID1);
@@ -274,7 +255,7 @@ mod tests {
 
     #[test]
     fn test_pop_contact_to_be_verfied() {
-        let id = Contact::from_hash(ID).id();
+        let id = Contact::from_hash(ID0).id();
         let mut kademlia = default_kademlia(id);
 
         let new_contact = Contact::from_hash(ID1);
@@ -291,7 +272,7 @@ mod tests {
 
     #[test]
     fn test_pop_contact_to_be_verfied_returns_none_when_empty() {
-        let id = Contact::from_hash(ID).id();
+        let id = Contact::from_hash(ID0).id();
         let mut kademlia = default_kademlia(id);
 
         let new_contact = Contact::from_hash(ID1);
@@ -310,7 +291,7 @@ mod tests {
 
     #[test]
     fn test_pop_contact_to_be_verfied_skips_the_contact_which_is_not_in_routing_table() {
-        let id = Contact::from_hash(ID).id();
+        let id = Contact::from_hash(ID0).id();
         let mut kademlia = default_kademlia(id);
 
         let new_contact = Contact::from_hash(ID1);
@@ -326,7 +307,7 @@ mod tests {
 
     #[test]
     fn test_add_contact_adds_to_be_verified_when_bucket_is_full() {
-        let id = Some(Contact::from_hash(ID).id());
+        let id = Some(Contact::from_hash(ID0).id());
         let mut kademlia = Kademlia::new(id, ALPHA, 1, T_REFRESH);
 
         let contact4 = Contact::from_hash(ID4);
