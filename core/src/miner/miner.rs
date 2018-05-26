@@ -145,7 +145,7 @@ impl Miner {
                         Err(e)
                     }
                     Ok(parcel) => {
-                        // This check goes here because verify_parcel takes SignedPArcel parameter
+                        // This check goes here because verify_parcel takes SignedParcel parameter
                         self.engine.machine().verify_parcel(&parcel, &best_block_header, client)?;
 
                         // FIXME: Determine the origin from parcel.sender().
