@@ -67,6 +67,7 @@ impl Default for MinerOptions {
 
 pub struct Miner {
     parcel_queue: Arc<RwLock<ParcelQueue>>,
+    parcel_listener: RwLock<Vec<Box<Fn(&[H256]) + Send + Sync>>>,
     next_allowed_reseal: Mutex<Instant>,
     author: RwLock<Address>,
     extra_data: RwLock<Bytes>,
@@ -90,6 +91,7 @@ impl Miner {
         let parcel_queue = Arc::new(RwLock::new(ParcelQueue::with_limits(options.parcel_queue_size, mem_limit)));
         Self {
             parcel_queue,
+            parcel_listener: RwLock::new(vec![]),
             next_allowed_reseal: Mutex::new(Instant::now()),
             author: RwLock::new(Address::default()),
             extra_data: RwLock::new(Vec::new()),
@@ -98,6 +100,11 @@ impl Miner {
             options,
             accounts,
         }
+    }
+
+    /// Set a callback to be notified about imported parcels' hashes.
+    pub fn add_parcels_listener(&self, f: Box<Fn(&[H256]) + Send + Sync>) {
+        self.parcel_listener.write().push(f);
     }
 
     /// Check is reseal is allowed and necessary.
@@ -171,6 +178,10 @@ impl Miner {
                 }
             })
             .collect();
+
+        for listener in &*self.parcel_listener.read() {
+            listener(&inserted);
+        }
 
         results
     }
