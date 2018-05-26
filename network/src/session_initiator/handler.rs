@@ -35,7 +35,7 @@ use rlp::{Decodable, DecoderError, Encodable, UntrustedRlp};
 use super::super::p2p;
 use super::super::session::{Nonce, Session};
 use super::super::token_generator::TokenGenerator;
-use super::super::{DiscoveryApi, SocketAddr};
+use super::super::{DiscoveryApi, NodeId, SocketAddr};
 use super::message;
 use super::server::{Error as ServerError, Server};
 
@@ -50,6 +50,8 @@ struct SessionInitiator {
     tmp_nonce_tokens: TokenGenerator,
     tmp_nonce_token_to_addr: HashMap<TimerToken, SocketAddr>,
     addr_to_tmp_nonce_token: HashMap<SocketAddr, TimerToken>,
+
+    address_to_node_id: HashMap<SocketAddr, NodeId>,
 
     session_registered_addresses: HashSet<SocketAddr>,
 }
@@ -168,6 +170,8 @@ impl SessionInitiator {
             tmp_nonce_token_to_addr: HashMap::new(),
             addr_to_tmp_nonce_token: HashMap::new(),
 
+            address_to_node_id: HashMap::new(),
+
             session_registered_addresses: HashSet::new(),
         })
     }
@@ -194,11 +198,8 @@ impl SessionInitiator {
     }
 
     fn create_new_connection(&mut self, target: &SocketAddr) -> Result<()> {
-        let ephemeral = Random.generate()?;
-        self.requested.insert(target.clone(), ephemeral.private().clone());
-
         let seq = self.seq_counter.fetch_add(1, Ordering::SeqCst);
-        let message = message::Message::ecdh_request(seq as u64, *ephemeral.public());
+        let message = message::Message::node_id_request(seq as u64, target.clone().into());
         self.server.enqueue(message, target.clone())?;
         Ok(())
     }
@@ -211,6 +212,35 @@ impl SessionInitiator {
         io: &IoContext<Message>,
     ) -> Result<()> {
         match message.body() {
+            message::Body::NodeIdRequest(node_id) => {
+                let t = self.address_to_node_id.insert(from.clone(), node_id.clone());
+                match t {
+                    Some(previous_id) => {
+                        cdebug!(NET, "{:?} changes my node id from {} to {}", from, previous_id, node_id)
+                    }
+                    None => ctrace!(NET, "{:?} thinks my node id is {}", from, node_id),
+                }
+                let node_id = from.into();
+                let message = message::Message::node_id_response(message.seq(), node_id);
+                self.server.enqueue(message, from.clone())?;
+                Ok(())
+            }
+            message::Body::NodeIdResponse(node_id) => {
+                let t = self.address_to_node_id.insert(from.clone(), node_id.clone());
+                match t {
+                    Some(previous_id) => {
+                        cdebug!(NET, "{:?} changes my node id from {} to {}", from, previous_id, node_id)
+                    }
+                    None => ctrace!(NET, "{:?} thinks my node id is {}", from, node_id),
+                }
+
+                let seq = self.seq_counter.fetch_add(1, Ordering::SeqCst);
+                let ephemeral = Random.generate()?;
+                self.requested.insert(from.clone(), ephemeral.private().clone());
+                let message = message::Message::ecdh_request(seq as u64, *ephemeral.public());
+                self.server.enqueue(message, from.clone())?;
+                Ok(())
+            }
             message::Body::ConnectionRequest(received_nonce) => {
                 let encrypted_bytes = {
                     let secret = self.secrets.get(from).ok_or(Error::General("NoSession"))?;
