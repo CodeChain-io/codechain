@@ -25,7 +25,7 @@ use cnetwork::SocketAddr;
 use super::command::Command;
 use super::contact::Contact;
 use super::message::{self, Message};
-use super::node_id::{self, log2_distance_between_nodes};
+use super::node_id::log2_distance_between_nodes;
 use super::routing_table::RoutingTable;
 use super::NodeId;
 
@@ -41,7 +41,7 @@ pub struct Kademlia {
 
 impl Kademlia {
     pub fn new(local_id: Option<NodeId>, alpha: u8, k: u8, t_refresh: u32) -> Self {
-        let local_id = local_id.unwrap_or(node_id::random());
+        let local_id = local_id.unwrap_or(NodeId::random());
         Kademlia {
             alpha,
             k,
