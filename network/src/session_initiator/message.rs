@@ -118,13 +118,17 @@ impl Message {
     pub fn version(&self) -> Version {
         self.version
     }
+
+    fn item_count(&self) -> usize {
+        4
+    }
 }
 
 impl Encodable for Message {
     fn rlp_append(&self, s: &mut RlpStream) {
         let version = self.version;
         let seq = self.seq;
-        s.begin_list(4).append(&version).append(&seq).append(&self.protocol_id());
+        s.begin_list(self.item_count()).append(&version).append(&seq).append(&self.protocol_id());
         match &self.body {
             Body::ConnectionRequest(body) => {
                 s.append(body);
@@ -154,33 +158,37 @@ impl Decodable for Message {
         let seq: Seq = rlp.val_at(1)?;
         let protocol_id: u8 = rlp.val_at(2)?;
         debug_assert_eq!(0, version);
-        match protocol_id {
+        let message = match protocol_id {
             CONNECTION_REQUEST => {
                 let body: Raw = rlp.val_at(3)?;
-                Ok(Message::connection_request(seq, body))
+                Message::connection_request(seq, body)
             }
             CONNECTION_ALLOWED => {
                 let body: Raw = rlp.val_at(3)?;
-                Ok(Message::connection_allowed(seq, body))
+                Message::connection_allowed(seq, body)
             }
             CONNECTION_DENIED => {
                 let reason: String = rlp.val_at(3)?;
-                Ok(Message::connection_denied(seq, reason))
+                Message::connection_denied(seq, reason)
             }
             ECDH_REQUEST => {
                 let key: Public = rlp.val_at(3)?;
-                Ok(Message::ecdh_request(seq, key))
+                Message::ecdh_request(seq, key)
             }
             ECDH_ALLOWED => {
                 let key: Public = rlp.val_at(3)?;
-                Ok(Message::ecdh_allowed(seq, key))
+                Message::ecdh_allowed(seq, key)
             }
             ECDH_DENIED => {
                 let reason: String = rlp.val_at(3)?;
-                Ok(Message::ecdh_denied(seq, reason))
+                Message::ecdh_denied(seq, reason)
             }
-            _ => Err(DecoderError::Custom("Invalid protocol id")),
+            _ => return Err(DecoderError::Custom("Invalid protocol id")),
+        };
+        if message.item_count() != rlp.item_count()? {
+            return Err(DecoderError::RlpInvalidLength)
         }
+        Ok(message)
     }
 }
 
