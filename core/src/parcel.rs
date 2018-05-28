@@ -480,6 +480,7 @@ mod tests {
             parameters: vec![],
             amount: Some(10000),
             registrar: None,
+            nonce: 0,
         };
 
         assert_eq!(transaction, ::rlp::decode(transaction.rlp_bytes().as_ref()))
@@ -493,6 +494,7 @@ mod tests {
             parameters: vec![vec![1, 2, 3], vec![4, 5, 6], vec![0, 7]],
             amount: Some(10000),
             registrar: None,
+            nonce: 0,
         };
 
         assert_eq!(transaction, ::rlp::decode(transaction.rlp_bytes().as_ref()))
@@ -507,6 +509,7 @@ mod tests {
             network_id,
             inputs,
             outputs,
+            nonce: 0,
         };
 
         assert_eq!(transaction, ::rlp::decode(transaction.rlp_bytes().as_ref()))

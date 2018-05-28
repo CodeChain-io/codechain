@@ -47,12 +47,14 @@ pub enum Transaction {
         parameters: Vec<Bytes>,
         amount: Option<u64>,
         registrar: Option<Address>,
+        nonce: u64,
     },
     #[serde(rename_all = "camelCase")]
     AssetTransfer {
         network_id: u64,
         inputs: Vec<AssetTransferInput>,
         outputs: Vec<AssetTransferOutput>,
+        nonce: u64,
     },
 }
 
@@ -63,6 +65,7 @@ impl Transaction {
                 network_id,
                 inputs,
                 outputs,
+                nonce,
             } => {
                 let new_inputs: Vec<_> = inputs
                     .iter()
@@ -76,6 +79,7 @@ impl Transaction {
                     network_id: *network_id,
                     inputs: new_inputs,
                     outputs: outputs.clone(),
+                    nonce: *nonce,
                 }
             }
             _ => unreachable!(),
@@ -122,7 +126,7 @@ impl Decodable for Transaction {
                 })
             }
             ASSET_MINT_ID => {
-                if d.item_count()? != 6 {
+                if d.item_count()? != 7 {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
                 Ok(Transaction::AssetMint {
@@ -131,16 +135,18 @@ impl Decodable for Transaction {
                     parameters: d.val_at(3)?,
                     amount: d.val_at(4)?,
                     registrar: d.val_at(5)?,
+                    nonce: d.val_at(6)?,
                 })
             }
             ASSET_TRANSFER_ID => {
-                if d.item_count()? != 4 {
+                if d.item_count()? != 5 {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
                 Ok(Transaction::AssetTransfer {
                     network_id: d.val_at(1)?,
                     inputs: d.list_at(2)?,
                     outputs: d.list_at(3)?,
+                    nonce: d.val_at(4)?,
                 })
             }
             _ => Err(DecoderError::Custom("Unexpected transaction")),
@@ -168,18 +174,26 @@ impl Encodable for Transaction {
                 parameters,
                 amount,
                 registrar,
-            } => s.begin_list(6)
+                nonce,
+            } => s.begin_list(7)
                 .append(&ASSET_MINT_ID)
                 .append(metadata)
                 .append(lock_script_hash)
                 .append(parameters)
                 .append(amount)
-                .append(registrar),
+                .append(registrar)
+                .append(nonce),
             Transaction::AssetTransfer {
                 network_id,
                 inputs,
                 outputs,
-            } => s.begin_list(4).append(&ASSET_TRANSFER_ID).append(network_id).append_list(inputs).append_list(outputs),
+                nonce,
+            } => s.begin_list(5)
+                .append(&ASSET_TRANSFER_ID)
+                .append(network_id)
+                .append_list(inputs)
+                .append_list(outputs)
+                .append(nonce),
         };
     }
 }
