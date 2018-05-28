@@ -628,11 +628,13 @@ impl<B: Backend> State<B> {
                 ref amount,
                 ref parameters,
                 ref registrar,
+                ..
             } => Ok(self.mint_asset(transaction.hash(), metadata, lock_script_hash, parameters, amount, registrar)?),
             Transaction::AssetTransfer {
                 ref inputs,
                 ref outputs,
                 network_id,
+                ..
             } => {
                 if parcel_network_id != network_id {
                     return Err(TransactionError::InvalidNetworkId(Mismatch {
@@ -1185,6 +1187,7 @@ mod tests {
             parameters,
             amount: Some(amount),
             registrar,
+            nonce: 0,
         }];
         let signed_parcel = Parcel {
             fee: 5.into(),
@@ -1238,6 +1241,7 @@ mod tests {
             parameters: vec![],
             amount: None,
             registrar,
+            nonce: 0,
         }];
         let signed_parcel = Parcel {
             fee: 5.into(),

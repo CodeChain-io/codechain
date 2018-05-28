@@ -1132,6 +1132,7 @@ pub mod test {
             parameters: vec![],
             amount: None,
             registrar: None,
+            nonce: 0,
         }];
         let parcel = Parcel {
             nonce: U256::zero(),
@@ -1156,11 +1157,13 @@ pub mod test {
                 parameters: vec![],
                 amount: None,
                 registrar: None,
+                nonce: 0,
             },
             Transaction::AssetTransfer {
                 network_id: 0,
                 inputs: vec![],
                 outputs: vec![],
+                nonce: 0,
             },
         ];
         let parcel = Parcel {
@@ -1188,11 +1191,13 @@ pub mod test {
                 parameters: vec![],
                 amount: None,
                 registrar: None,
+                nonce: 0,
             },
             Transaction::AssetTransfer {
                 network_id: 0,
                 inputs: vec![],
                 outputs: vec![],
+                nonce: 0,
             },
             Transaction::Payment {
                 nonce: 1.into(),
@@ -1233,6 +1238,7 @@ pub mod test {
                 parameters: vec![],
                 amount: None,
                 registrar: None,
+                nonce: 0,
             },
             Transaction::Payment {
                 nonce: 2.into(),
@@ -1244,6 +1250,7 @@ pub mod test {
                 network_id: 0,
                 inputs: vec![],
                 outputs: vec![],
+                nonce: 0,
             },
             Transaction::Payment {
                 nonce: 3.into(),
