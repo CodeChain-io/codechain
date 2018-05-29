@@ -413,7 +413,7 @@ impl Extension {
 mod tests {
     use std::sync::Arc;
 
-    use ccore::{BlockChainClient, BlockId, BlockInfo, ChainInfo, EachBlockWith, ImportBlock, TestBlockChainClient};
+    use ccore::{BlockChainClient, BlockId, BlockInfo, ChainInfo, ImportBlock, TestBlockChainClient};
     use cnetwork::{NodeToken, TestNetworkCall, TestNetworkClient};
     use ctypes::{H256, U256};
     use rlp::Encodable;
@@ -429,7 +429,7 @@ mod tests {
 
     fn generate_test_environment(chain_length: usize) -> TestEnvironment {
         let client = Arc::new(TestBlockChainClient::new());
-        client.add_blocks(chain_length, EachBlockWith::Parcel);
+        client.add_blocks(chain_length, 1);
         let extension = Extension::new(client.clone());
         let mut network = TestNetworkClient::new();
         network.register_extension(extension.clone());
@@ -567,7 +567,7 @@ mod tests {
         for i in 0..10 {
             peer_chain.import_block(env.client.block(BlockId::Number(i)).unwrap().into_inner()).unwrap();
         }
-        peer_chain.add_blocks(10, EachBlockWith::Parcel);
+        peer_chain.add_blocks(10, 1);
         assert_add_node(&mut env, 0);
         let chain_info = env.client.chain_info();
         assert_accept_status(&mut env, 0, chain_info.total_score + 2.into(), chain_info.best_block_hash);

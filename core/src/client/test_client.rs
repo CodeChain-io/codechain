@@ -43,6 +43,7 @@ use kvdb_memorydb;
 use parking_lot::RwLock;
 use rlp::*;
 use trie;
+use triehash::ordered_trie_root;
 
 use super::super::block::{ClosedBlock, OpenBlock, SealedBlock};
 use super::super::blockchain::ParcelInvoices;
@@ -93,19 +94,6 @@ pub struct TestBlockChainClient {
     pub latest_block_timestamp: RwLock<u64>,
     /// Pruning history size to report.
     pub history: RwLock<Option<u64>>,
-}
-
-/// Used for generating test client blocks.
-#[derive(Clone)]
-pub enum EachBlockWith {
-    /// Plain block.
-    Nothing,
-    /// Block with an uncle.
-    Uncle,
-    /// Block with a parcel.
-    Parcel,
-    /// Block with an uncle and parcel.
-    UncleAndParcel,
 }
 
 impl Default for TestBlockChainClient {
@@ -187,7 +175,7 @@ impl TestBlockChainClient {
     }
 
     /// Add blocks to test client.
-    pub fn add_blocks(&self, count: usize, with: EachBlockWith) {
+    pub fn add_blocks(&self, count: usize, parcel_length: usize) {
         let len = self.numbers.read().len();
         for n in len..(len + count) {
             let mut header = BlockHeader::new();
@@ -195,29 +183,24 @@ impl TestBlockChainClient {
             header.set_parent_hash(self.last_hash.read().clone());
             header.set_number(n as BlockNumber);
             header.set_extra_data(self.extra_data.clone());
-            let parcels = match with {
-                EachBlockWith::Parcel | EachBlockWith::UncleAndParcel => {
-                    let mut parcels = RlpStream::new_list(1);
-                    let keypair = Random.generate().unwrap();
-                    // Update nonces value
-                    self.nonces.write().insert(keypair.address(), U256::one());
-                    let transactions = vec![];
-                    let parcel = Parcel {
-                        transactions,
-                        nonce: U256::zero(),
-                        fee: U256::from(10),
-                        network_id: 0u64,
-                    };
-                    let signed_parcel = parcel.sign(keypair.private());
-                    parcels.append(&signed_parcel);
-                    parcels.out()
-                }
-                _ => ::rlp::EMPTY_LIST_RLP.to_vec(),
-            };
-
+            let mut parcels = Vec::new();
+            for _ in 0..parcel_length {
+                let keypair = Random.generate().unwrap();
+                // Update nonces value
+                self.nonces.write().insert(keypair.address(), U256::zero());
+                let parcel = Parcel {
+                    transactions: vec![],
+                    nonce: U256::zero(),
+                    fee: U256::from(10),
+                    network_id: 0u64,
+                };
+                let signed_parcel = parcel.sign(keypair.private());
+                parcels.push(signed_parcel);
+            }
+            header.set_parcels_root(ordered_trie_root(parcels.iter().map(|parcel| parcel.rlp_bytes())));
             let mut rlp = RlpStream::new_list(2);
             rlp.append(&header);
-            rlp.append_raw(&parcels, 1);
+            rlp.append_list(&parcels);
             self.import_block(rlp.as_raw().to_vec()).unwrap();
         }
     }
