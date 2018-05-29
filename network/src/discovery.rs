@@ -14,9 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use super::{NodeToken, SocketAddr};
+use super::{NodeId, NodeToken, SocketAddr};
 
 pub trait Api: Send + Sync {
+    fn start(&self, local_node_id: NodeId);
     fn get(&self, max: usize) -> Vec<SocketAddr>;
 
     fn add_connection(&self, token: NodeToken, address: SocketAddr);

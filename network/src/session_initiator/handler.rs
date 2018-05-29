@@ -28,7 +28,7 @@ use ckeys::{exchange, Error as KeysError, Generator, Private, Random};
 use ctypes::Secret;
 use mio::deprecated::EventLoop;
 use mio::Token;
-use parking_lot::{Mutex, RwLock};
+use parking_lot::Mutex;
 use rand::{OsRng, Rng};
 use rlp::{Decodable, DecoderError, Encodable, UntrustedRlp};
 
@@ -54,6 +54,8 @@ struct SessionInitiator {
     address_to_node_id: HashMap<SocketAddr, NodeId>,
 
     session_registered_addresses: HashSet<SocketAddr>,
+
+    discovery: Option<Arc<DiscoveryApi>>,
 }
 
 #[derive(Debug)]
@@ -173,7 +175,13 @@ impl SessionInitiator {
             address_to_node_id: HashMap::new(),
 
             session_registered_addresses: HashSet::new(),
+
+            discovery: None,
         })
+    }
+
+    fn set_discovery_api(&mut self, api: Arc<DiscoveryApi>) {
+        self.discovery = Some(api);
     }
 
     fn receive(&self) -> Result<Option<(message::Message, SocketAddr)>> {
@@ -258,6 +266,11 @@ impl SessionInitiator {
                     let local_node_id =
                         self.address_to_node_id.get(from).ok_or(Error::General("Node id is unknown"))?.clone();
                     let remote_node_id = from.into();
+
+                    match &self.discovery {
+                        Some(discovery) => discovery.start(local_node_id.clone()),
+                        None => {}
+                    }
                     channel_to_p2p.send(p2p::Message::RegisterSession {
                         local_node_id,
                         remote_node_id,
@@ -281,6 +294,10 @@ impl SessionInitiator {
                 let session = Session::new(*secret, nonce);
                 let local_node_id =
                     self.address_to_node_id.get(from).ok_or(Error::General("Node id is unknown"))?.clone();
+                match &self.discovery {
+                    Some(discovery) => discovery.start(local_node_id.clone()),
+                    None => {}
+                }
                 channel_to_p2p.send(p2p::Message::RegisterSession {
                     local_node_id,
                     remote_node_id: from.into(),
@@ -386,7 +403,6 @@ fn decrypt_and_decode_nonce(session: &Session, encrypted_bytes: &Vec<u8>) -> Res
 pub struct Handler {
     session_initiator: Mutex<SessionInitiator>,
     channel_to_p2p: IoChannel<p2p::Message>,
-    discovery: RwLock<Option<Arc<DiscoveryApi>>>,
 }
 
 impl Handler {
@@ -395,12 +411,11 @@ impl Handler {
         Self {
             session_initiator,
             channel_to_p2p,
-            discovery: RwLock::new(None),
         }
     }
 
     pub fn set_discovery_api(&self, api: Arc<DiscoveryApi>) {
-        *self.discovery.write() = Some(api);
+        self.session_initiator.lock().set_discovery_api(api)
     }
 }
 
@@ -433,19 +448,19 @@ impl IoHandler<Message> for Handler {
             }
             Message::RequestSession(n) => {
                 let mut session_initiator = self.session_initiator.lock();
-                let discovery = self.discovery.read();
-                if let Some(ref discovery) = *discovery {
-                    let addresses = discovery.get(*n);
-                    if !addresses.is_empty() {
-                        let _f = finally(|| {
-                            if let Err(err) = io.update_registration(RECEIVE_TOKEN) {
-                                cwarn!(NET, "Cannot update registration for session_initiator : {:?}", err);
-                            }
-                        });
-                        for address in addresses {
-                            if !session_initiator.session_registered_addresses.contains(&address) {
-                                session_initiator.create_new_connection(&address)?;
-                            }
+                if session_initiator.discovery.is_none() {
+                    return Ok(())
+                }
+                let addresses = { session_initiator.discovery.as_ref().unwrap().get(*n).clone() };
+                if !addresses.is_empty() {
+                    let _f = finally(|| {
+                        if let Err(err) = io.update_registration(RECEIVE_TOKEN) {
+                            cwarn!(NET, "Cannot update registration for session_initiator : {:?}", err);
+                        }
+                    });
+                    for address in addresses {
+                        if !session_initiator.session_registered_addresses.contains(&address) {
+                            session_initiator.create_new_connection(&address)?;
                         }
                     }
                 }

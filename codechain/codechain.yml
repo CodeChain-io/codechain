@@ -81,10 +81,6 @@ args:
     - no-discovery:
         long: no-discovery
         help: Do not use discovery extension
-    - kademlia-local-id:
-        long: kademlia-local-id
-        help: Local Id used by Kademlia
-        takes_value: true
     - kademlia-alpha:
         long: kademlia-alpha
         help: Degree of parallelism in Kademlia
