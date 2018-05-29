@@ -21,8 +21,11 @@ use mio::deprecated::EventLoop;
 use mio::unix::UnixReady;
 use mio::{PollOpt, Ready, Token};
 use rlp::UntrustedRlp;
+use unexpected::Mismatch;
 
+use super::super::addr::convert_to_node_id;
 use super::super::session::{Nonce, Session};
+use super::super::NodeId;
 use super::connection::{Connection, Error as ConnectionError, Result as ConnectionResult};
 use super::message::{HandshakeMessage, Message, SignedMessage};
 use super::session_candidate::SessionCandidate;
@@ -31,6 +34,7 @@ use super::stream::Stream;
 pub struct PendingConnection {
     stream: Stream,
     session: Option<Session>,
+    peer_node_id: Option<NodeId>,
 }
 
 impl PendingConnection {
@@ -38,6 +42,7 @@ impl PendingConnection {
         Self {
             stream,
             session: None,
+            peer_node_id: None,
         }
     }
 
@@ -46,16 +51,27 @@ impl PendingConnection {
             let rlp = UntrustedRlp::new(&signed_message.message);
             match rlp.as_val::<Message>()? {
                 Message::Handshake(HandshakeMessage::Sync {
-                    session_id,
+                    port,
+                    node_id,
                     ..
                 }) => {
+                    let peer_addr = self.stream.peer_addr()?;
+                    let peer_node_id = convert_to_node_id(&peer_addr.ip(), port);
+
+                    if peer_node_id != node_id {
+                        return Err(ConnectionError::UnexpectedNodeId(Mismatch {
+                            expected: peer_node_id,
+                            found: node_id,
+                        }))
+                    }
                     let &(ref session, _) =
-                        registered_sessions.get(&session_id).ok_or(ConnectionError::UnreadySession)?;
+                        registered_sessions.get(&peer_node_id).ok_or(ConnectionError::UnreadySession)?;
                     if !signed_message.is_valid(&session) {
                         return Err(ConnectionError::InvalidSign)
                     }
+                    self.peer_node_id = Some(peer_node_id);
                     self.session = Some(session.clone());
-                    Ok(Some(session_id))
+                    Ok(Some(session.id().clone()))
                 }
                 _ => Err(ConnectionError::UnreadySession),
             }
@@ -66,7 +82,8 @@ impl PendingConnection {
 
     pub fn process(self) -> Connection {
         let session = self.session.as_ref().expect("Session must exist");
-        Connection::new(self.stream, *session.secret(), session.id().clone())
+        let peer_node_id = self.peer_node_id.expect("Sync message set peer node id");
+        Connection::new(self.stream, *session.secret(), session.id().clone(), peer_node_id)
     }
 
     fn interest(&self) -> Ready {

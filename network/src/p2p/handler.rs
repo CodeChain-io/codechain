@@ -30,7 +30,7 @@ use super::super::extension::NodeToken;
 use super::super::session::Session;
 use super::super::session_initiator::Message as SessionMessage;
 use super::super::token_generator::TokenGenerator;
-use super::super::{DiscoveryApi, SocketAddr};
+use super::super::{DiscoveryApi, NodeId, SocketAddr};
 use super::connection::{Connection, ExtensionCallback as ExtensionChannel};
 use super::listener::Listener;
 use super::message::Version;
@@ -51,6 +51,10 @@ struct Manager {
     waiting_sync_tokens: TokenGenerator,
     waiting_sync_stream_to_timer: HashMap<StreamToken, TimerToken>,
     waiting_sync_timer_to_stream: HashMap<TimerToken, StreamToken>,
+
+    peer_to_local: HashMap<NodeId, NodeId>,
+
+    port: u16,
 }
 
 pub const MAX_CONNECTIONS: usize = 200;
@@ -71,7 +75,12 @@ const WAIT_SYNC_MS: u64 = 10 * 1000;
 
 #[derive(Clone, Debug, PartialOrd, PartialEq)]
 pub enum Message {
-    RegisterSession(SocketAddr, Session),
+    RegisterSession {
+        local_node_id: NodeId,
+        remote_node_id: NodeId,
+        remote_addr: SocketAddr,
+        session: Session,
+    },
 
     RequestConnection(SocketAddr, Session),
 
@@ -124,6 +133,10 @@ impl Manager {
             waiting_sync_tokens: TokenGenerator::new(FIRST_WAIT_SYNC_TOKEN, LAST_WAIT_SYNC_TOKEN),
             waiting_sync_stream_to_timer: HashMap::new(),
             waiting_sync_timer_to_stream: HashMap::new(),
+
+            peer_to_local: HashMap::new(),
+
+            port: socket_address.port(),
         })
     }
 
@@ -193,10 +206,12 @@ impl Manager {
         session: &Session,
         client: &Client,
     ) -> IoHandlerResult<StreamToken> {
-        let mut connection = Connection::new(stream, session.secret().clone(), session.id().clone());
-        let nonce = session.id();
-        connection.enqueue_sync(nonce.clone());
-        let removed = self.registered_sessions.remove(nonce);
+        let peer_node_id: NodeId = stream.peer_addr()?.into();
+        let mut connection = Connection::new(stream, session.secret().clone(), session.id().clone(), peer_node_id);
+        let local_id =
+            self.peer_to_local.get(&peer_node_id).ok_or(Error::General("Node id is not registrerd"))?.clone();
+        connection.enqueue_sync(self.port, local_id);
+        let removed = self.registered_sessions.remove(connection.peer_node_id());
         debug_assert!(removed);
 
         Ok(self.tokens
@@ -230,11 +245,11 @@ impl Manager {
         })
     }
 
-    fn register_session(&mut self, socket_address: SocketAddr, session: Session) -> Result<()> {
-        if self.registered_sessions.contains_key(&session.id()) {
+    fn register_session(&mut self, node_id: &NodeId, socket_address: &SocketAddr, session: &Session) -> Result<()> {
+        if self.registered_sessions.contains_key(node_id) {
             return Err(Error::General("SessionAlreadyRegistered"))
         }
-        let inserted = self.registered_sessions.insert(session, socket_address);
+        let inserted = self.registered_sessions.insert(node_id.clone(), session.clone(), socket_address.clone());
         debug_assert!(inserted);
         Ok(())
     }
@@ -305,11 +320,8 @@ impl Manager {
         // receive Sync message
         let connection = self.process_connection(&stream);
 
-        let session = connection.session().clone();
-        let nonce = session.id().clone();
-
         // Session is not reusable
-        let removed = self.registered_sessions.remove(&nonce);
+        let removed = self.registered_sessions.remove(connection.peer_node_id());
         debug_assert!(removed);
 
         self.register_connection(connection, stream, client);
@@ -443,9 +455,15 @@ impl IoHandler<Message> for Handler {
 
     fn message(&self, io: &IoContext<Message>, message: &Message) -> IoHandlerResult<()> {
         match message {
-            Message::RegisterSession(socket_address, session) => {
+            Message::RegisterSession {
+                local_node_id,
+                remote_node_id,
+                remote_addr,
+                session,
+            } => {
                 let mut manager = self.manager.lock();
-                manager.register_session(socket_address.clone(), session.clone())?;
+                manager.peer_to_local.insert(remote_node_id.clone(), local_node_id.clone());
+                manager.register_session(&remote_node_id, remote_addr, session)?;
                 Ok(())
             }
             Message::RequestConnection(socket_address, session) => {

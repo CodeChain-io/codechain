@@ -17,12 +17,12 @@
 use std::collections::hash_map::Iter;
 use std::collections::{HashMap, VecDeque};
 
-use super::super::session::{Nonce, Session};
-use super::super::SocketAddr;
+use super::super::session::Session;
+use super::super::{NodeId, SocketAddr};
 
 pub struct SessionCandidate {
-    registered: HashMap<Nonce, (Session, SocketAddr)>,
-    prepared: VecDeque<HashMap<Nonce, (Session, SocketAddr)>>,
+    registered: HashMap<NodeId, (Session, SocketAddr)>,
+    prepared: VecDeque<HashMap<NodeId, (Session, SocketAddr)>>,
 }
 
 impl SessionCandidate {
@@ -37,25 +37,25 @@ impl SessionCandidate {
         }
     }
 
-    pub fn contains_registered(&self, nonce: &Nonce) -> bool {
-        self.registered.contains_key(nonce)
+    pub fn contains_registered(&self, node_id: &NodeId) -> bool {
+        self.registered.contains_key(node_id)
     }
 
-    pub fn contains_key(&self, nonce: &Nonce) -> bool {
-        if self.registered.contains_key(nonce) {
+    pub fn contains_key(&self, node_id: &NodeId) -> bool {
+        if self.registered.contains_key(node_id) {
             return true
         }
-        self.prepared.iter().any(|v| v.contains_key(nonce))
+        self.prepared.iter().any(|v| v.contains_key(node_id))
     }
 
-    pub fn get(&self, nonce: &Nonce) -> Option<&(Session, SocketAddr)> {
-        let regisstered = self.registered.get(nonce);
+    pub fn get(&self, node_id: &NodeId) -> Option<&(Session, SocketAddr)> {
+        let regisstered = self.registered.get(node_id);
         if regisstered.is_some() {
             return regisstered
         }
 
         for u in self.prepared.iter() {
-            let u = u.get(nonce);
+            let u = u.get(node_id);
             if u.is_some() {
                 return u
             }
@@ -63,30 +63,30 @@ impl SessionCandidate {
         None
     }
 
-    pub fn iter(&self) -> Iter<Nonce, (Session, SocketAddr)> {
+    pub fn iter(&self) -> Iter<NodeId, (Session, SocketAddr)> {
         self.registered.iter()
     }
 
-    pub fn remove(&mut self, nonce: &Nonce) -> bool {
-        let removed = self.registered.remove(nonce);
+    pub fn remove(&mut self, node_id: &NodeId) -> bool {
+        let removed = self.registered.remove(node_id);
         if removed.is_some() {
             return true
         }
 
         for mut u in self.prepared.iter_mut() {
-            if u.remove(nonce).is_some() {
+            if u.remove(node_id).is_some() {
                 return true
             }
         }
         return false
     }
 
-    pub fn insert(&mut self, session: Session, socket_address: SocketAddr) -> bool {
-        if self.contains_key(session.id()) {
+    pub fn insert(&mut self, node_id: NodeId, session: Session, socket_address: SocketAddr) -> bool {
+        if self.contains_key(&node_id) {
             return false
         }
         let unmatured = self.prepared.front_mut().expect("It must be exist");
-        let t = unmatured.insert(session.id().clone(), (session, socket_address));
+        let t = unmatured.insert(node_id, (session, socket_address));
         debug_assert!(t.is_none());
         true
     }
@@ -94,8 +94,8 @@ impl SessionCandidate {
     pub fn promote(&mut self) {
         let unmatured = self.prepared.pop_back().expect("It must be exist");
         self.prepared.push_front(Default::default());
-        for (nonce, candidate) in unmatured {
-            let session = self.registered.insert(nonce, candidate);
+        for (node_id, candidate) in unmatured {
+            let session = self.registered.insert(node_id, candidate);
             debug_assert!(session.is_none());
         }
     }
@@ -105,6 +105,7 @@ impl SessionCandidate {
 mod tests {
     use ctypes::Secret;
 
+    use super::super::super::session::Nonce;
     use super::*;
 
     #[test]
@@ -121,7 +122,8 @@ mod tests {
         let nonce0 = Nonce::zero();
         let session0 = Session::new(secret0, nonce0);
         let socket_address0 = SocketAddr::v4(127, 0, 0, 1, 8000);
-        let t = candidates.insert(session0, socket_address0);
+        let node_id0 = 123456.into();
+        let t = candidates.insert(node_id0, session0, socket_address0);
         assert!(t);
 
         assert!(candidates.registered.is_empty());

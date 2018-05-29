@@ -255,7 +255,15 @@ impl SessionInitiator {
                     let encrypted_nonce = encode_and_encrypt_nonce(&temporary_session, &nonce)?;
 
                     let session = Session::new(*secret, nonce);
-                    channel_to_p2p.send(p2p::Message::RegisterSession(from.clone(), session))?;
+                    let local_node_id =
+                        self.address_to_node_id.get(from).ok_or(Error::General("Node id is unknown"))?.clone();
+                    let remote_node_id = from.into();
+                    channel_to_p2p.send(p2p::Message::RegisterSession {
+                        local_node_id,
+                        remote_node_id,
+                        remote_addr: from.clone(),
+                        session,
+                    })?;
                     self.session_registered_addresses.insert(from.clone());
                     encrypted_nonce
                 };
@@ -271,7 +279,14 @@ impl SessionInitiator {
                 let nonce = decrypt_and_decode_nonce(&temporary_session, &nonce)?;
 
                 let session = Session::new(*secret, nonce);
-                channel_to_p2p.send(p2p::Message::RegisterSession(from.clone(), session))?;
+                let local_node_id =
+                    self.address_to_node_id.get(from).ok_or(Error::General("Node id is unknown"))?.clone();
+                channel_to_p2p.send(p2p::Message::RegisterSession {
+                    local_node_id,
+                    remote_node_id: from.into(),
+                    remote_addr: from.clone(),
+                    session,
+                })?;
                 self.session_registered_addresses.insert(from.clone());
                 Ok(())
             }
