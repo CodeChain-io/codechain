@@ -168,11 +168,6 @@ pub fn parse_kademlia_config(matches: &clap::ArgMatches) -> Result<Option<Kademl
         return Ok(None)
     }
 
-    let local_id = match matches.value_of("kademlia-local-id") {
-        Some(local_id) => Some(local_id.parse().map_err(|_| "Invalid kademlia-local-id")?),
-        None => None,
-    };
-
     let alpha = match matches.value_of("kademlia-alpha") {
         Some(alpha) => Some(alpha.parse().map_err(|_| "Invalid kademlia-alpha")?),
         None => None,
@@ -186,7 +181,7 @@ pub fn parse_kademlia_config(matches: &clap::ArgMatches) -> Result<Option<Kademl
         None => None,
     };
 
-    Ok(Some(KademliaConfig::new(local_id, alpha, k, refresh)))
+    Ok(Some(KademliaConfig::new(alpha, k, refresh)))
 }
 
 pub fn parse_rpc_config(matches: &clap::ArgMatches) -> Result<Option<RpcHttpConfig>, String> {

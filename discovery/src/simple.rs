@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use cnetwork::{DiscoveryApi, NodeToken, SocketAddr};
+use cnetwork::{DiscoveryApi, NodeId, NodeToken, SocketAddr};
 use parking_lot::RwLock;
 use std::vec::Vec;
 
@@ -31,6 +31,8 @@ impl Simple {
 }
 
 impl DiscoveryApi for Simple {
+    fn start(&self, _local_node_id: NodeId) {}
+
     fn get(&self, max: usize) -> Vec<SocketAddr> {
         debug_assert!(max <= ::std::u8::MAX as usize);
         self.vec.read().iter().take(max).map(|&(_, ref addr)| addr.clone()).collect()

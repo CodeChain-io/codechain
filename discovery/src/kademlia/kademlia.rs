@@ -40,8 +40,7 @@ pub struct Kademlia {
 }
 
 impl Kademlia {
-    pub fn new(local_id: Option<NodeId>, alpha: u8, k: u8, t_refresh: u32) -> Self {
-        let local_id = local_id.unwrap_or(NodeId::random());
+    pub fn new(local_id: NodeId, alpha: u8, k: u8, t_refresh: u32) -> Self {
         Kademlia {
             alpha,
             k,
@@ -206,7 +205,6 @@ mod tests {
     use super::super::{ALPHA, K, T_REFRESH};
 
     pub fn default_kademlia(local_id: NodeId) -> Kademlia {
-        let local_id = Some(local_id);
         Kademlia::new(local_id, ALPHA, K, T_REFRESH)
     }
 
@@ -307,7 +305,7 @@ mod tests {
 
     #[test]
     fn test_add_contact_adds_to_be_verified_when_bucket_is_full() {
-        let id = Some(Contact::from_hash(ID0).id());
+        let id = Contact::from_hash(ID0).id();
         let mut kademlia = Kademlia::new(id, ALPHA, 1, T_REFRESH);
 
         let contact4 = Contact::from_hash(ID4);
@@ -324,7 +322,7 @@ mod tests {
 
     #[test]
     fn handle_refresh_command_must_not_crash() {
-        let mut kademlia = Kademlia::new(None, 3, 8, 60_000);
+        let mut kademlia = Kademlia::new(0xDEADBEEF.into(), 3, 8, 60_000);
         kademlia.handle_refresh_command();
     }
 }

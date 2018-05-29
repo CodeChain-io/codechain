@@ -14,10 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use super::NodeId;
-
 pub struct Config {
-    pub node_id: Option<NodeId>,
     pub alpha: u8,
     pub k: u8,
     pub t_refresh: u32,
@@ -28,13 +25,12 @@ use super::K;
 use super::T_REFRESH;
 
 impl Config {
-    pub fn new(node_id: Option<NodeId>, alpha: Option<u8>, k: Option<u8>, t_refresh: Option<u32>) -> Self {
+    pub fn new(alpha: Option<u8>, k: Option<u8>, t_refresh: Option<u32>) -> Self {
         let alpha = alpha.unwrap_or(ALPHA);
         let k = k.unwrap_or(K);
         let t_refresh = t_refresh.unwrap_or(T_REFRESH);
 
         Self {
-            node_id,
             alpha,
             k,
             t_refresh,

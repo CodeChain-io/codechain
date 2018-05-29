@@ -18,7 +18,7 @@ use std::collections::{HashMap, VecDeque};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
-use cnetwork::{Api, DiscoveryApi, NetworkExtension, NodeToken, SocketAddr, TimerToken};
+use cnetwork::{Api, DiscoveryApi, NetworkExtension, NodeId, NodeToken, SocketAddr, TimerToken};
 use parking_lot::{Mutex, RwLock};
 use rlp::{Decodable, DecoderError, Encodable, UntrustedRlp};
 use time::Duration;
@@ -31,7 +31,8 @@ use super::message::Message;
 
 
 pub struct Extension {
-    kademlia: RwLock<Kademlia>,
+    kademlia: RwLock<Option<Kademlia>>,
+    config: Config,
     events: Mutex<VecDeque<Event>>,
     event_fired: AtomicBool,
     api: Mutex<Option<Arc<Api>>>,
@@ -45,9 +46,9 @@ const REFRESH_TOKEN: TimerToken = 1;
 
 impl Extension {
     pub fn new(config: Config) -> Self {
-        let kademlia = RwLock::new(Kademlia::new(config.node_id, config.alpha, config.k, config.t_refresh));
         Self {
-            kademlia,
+            kademlia: RwLock::new(None),
+            config,
             events: Mutex::new(VecDeque::new()),
             event_fired: AtomicBool::new(false),
             api: Mutex::new(None),
@@ -112,7 +113,10 @@ impl Extension {
                         sender,
                     } => {
                         let mut kademlia = self.kademlia.write();
-                        kademlia.handle_message(&message, &sender)
+                        match &mut *kademlia {
+                            Some(kademlia) => kademlia.handle_message(&message, &sender),
+                            None => None,
+                        }
                     }
                     Event::Command(ref command) => self.handle_command(command),
                 }
@@ -128,11 +132,17 @@ impl Extension {
         match command {
             Command::Verify => {
                 let mut kademlia = self.kademlia.write();
-                kademlia.handle_verify_command()
+                match &mut *kademlia {
+                    Some(kademlia) => kademlia.handle_verify_command(),
+                    None => None,
+                }
             }
             Command::Refresh => {
                 let mut kademlia = self.kademlia.write();
-                kademlia.handle_refresh_command()
+                match &mut *kademlia {
+                    Some(kademlia) => kademlia.handle_refresh_command(),
+                    None => None,
+                }
             }
             Command::Send {
                 message,
@@ -155,13 +165,25 @@ impl Extension {
 }
 
 impl DiscoveryApi for Extension {
+    fn start(&self, local_node_id: NodeId) {
+        let mut kademlia = self.kademlia.write();
+        if kademlia.is_some() {
+            return
+        }
+        *kademlia = Some(Kademlia::new(local_node_id, self.config.alpha, self.config.k, self.config.t_refresh));
+    }
+
     fn get(&self, max: usize) -> Vec<SocketAddr> {
         debug_assert!(max <= ::std::u8::MAX as usize);
 
         let kademlia = self.kademlia.read();
-        let addresses = kademlia.get_closest_addresses(max);
-        trace!(target: "discovery", "Get {} addresses", addresses.len());
-        addresses
+        if let Some(kademlia) = &*kademlia {
+            let addresses = kademlia.get_closest_addresses(max);
+            trace!(target: "discovery", "Get {} addresses", addresses.len());
+            addresses
+        } else {
+            vec![]
+        }
     }
 
     fn add_connection(&self, node: NodeToken, address: SocketAddr) {
@@ -193,34 +215,39 @@ impl NetworkExtension for Extension {
 
     fn on_initialize(&self, api: Arc<Api>) {
         let kademlia = self.kademlia.read();
-        {
-            let mut api_guard = self.api.lock();
-            *api_guard = Some(Arc::clone(&api));
+        if let Some(kademlia) = &*kademlia {
+            {
+                let mut api_guard = self.api.lock();
+                *api_guard = Some(Arc::clone(&api));
+            }
+            let t_refresh = Duration::milliseconds(kademlia.t_refresh as i64);
+            api.set_timer(REFRESH_TOKEN, t_refresh).expect("Refresh must be registered");
         }
-        let t_refresh = Duration::milliseconds(kademlia.t_refresh as i64);
-        api.set_timer(REFRESH_TOKEN, t_refresh).expect("Refresh must be registered");
     }
 
     fn on_node_added(&self, node: &NodeToken) {
         let mut kademlia = self.kademlia.write();
-        let node_to_addr = self.node_to_addr.read();
+        if let Some(kademlia) = &mut *kademlia {
+            let node_to_addr = self.node_to_addr.read();
 
-        if let Some(address) = node_to_addr.get(node).map(Clone::clone) {
-            let event = {
-                let command = kademlia.find_node_command(address);
-                Event::Command(command)
-            };
-            self.push_event(event);
+            if let Some(address) = node_to_addr.get(node).map(Clone::clone) {
+                let event = {
+                    let command = kademlia.find_node_command(address);
+                    Event::Command(command)
+                };
+                self.push_event(event);
+            }
         }
     }
 
     fn on_node_removed(&self, node: &NodeToken) {
         let mut kademlia = self.kademlia.write();
-
-        let address = self.node_to_addr.write().remove(node);
-        if let Some(address) = address {
-            self.addr_to_node.write().remove(&address);
-            kademlia.remove(&address);
+        if let Some(kademlia) = &mut *kademlia {
+            let address = self.node_to_addr.write().remove(node);
+            if let Some(address) = address {
+                self.addr_to_node.write().remove(&address);
+                kademlia.remove(&address);
+            }
         }
     }
 
@@ -269,10 +296,11 @@ mod tests {
 
     #[test]
     fn test_add_node() {
-        let config = Config::new(None, None, None, None);
+        let config = Config::new(None, None, None);
         let default_refresh = config.t_refresh;
         let extension = Arc::new(Extension::new(config));
 
+        extension.start(0xBEEFCAFE.into());
 
         let mut client = TestNetworkClient::new();
         client.register_extension(extension.clone());
