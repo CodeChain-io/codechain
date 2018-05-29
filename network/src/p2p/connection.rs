@@ -27,10 +27,13 @@ use mio::deprecated::EventLoop;
 use mio::unix::UnixReady;
 use mio::{PollOpt, Ready, Token};
 use rlp::DecoderError;
+use unexpected::Mismatch;
+
 
 use super::super::client::Client;
 use super::super::extension::{Error as ExtensionError, NodeToken};
 use super::super::session::{Nonce, Session};
+use super::super::NodeId;
 use super::message::{Message, Seq, Version};
 use super::stream::{Error as StreamError, SignedStream, Stream};
 use super::{ExtensionMessage, HandshakeMessage, NegotiationBody, NegotiationMessage};
@@ -48,6 +51,7 @@ pub struct Connection {
     send_queue: VecDeque<Message>,
     next_negotiation_seq: Seq,
     requested_negotiation: HashMap<Seq, String>,
+    peer_node_id: NodeId,
 }
 
 #[derive(Debug)]
@@ -60,6 +64,7 @@ pub enum Error {
         actual: State,
     },
     UnreadySession,
+    UnexpectedNodeId(Mismatch<NodeId>),
     SymmetricCipherError(SymmetricCipherError),
 }
 
@@ -73,6 +78,7 @@ impl fmt::Display for Error {
                 ..
             } => fmt::Debug::fmt(&self, f),
             Error::UnreadySession => fmt::Debug::fmt(&self, f),
+            Error::UnexpectedNodeId(_) => fmt::Debug::fmt(&self, f),
             Error::SymmetricCipherError(err) => fmt::Debug::fmt(&err, f),
         }
     }
@@ -88,6 +94,7 @@ impl error::Error for Error {
                 ..
             } => "Invalid state",
             Error::UnreadySession => "Unready session",
+            Error::UnexpectedNodeId(_) => "Unexpected node id",
             Error::SymmetricCipherError(_) => "Symmetric cipher",
         }
     }
@@ -101,6 +108,7 @@ impl error::Error for Error {
                 ..
             } => None,
             Error::UnreadySession => None,
+            Error::UnexpectedNodeId(_) => None,
             Error::SymmetricCipherError(_) => None,
         }
     }
@@ -127,13 +135,14 @@ impl From<StreamError> for Error {
 pub type Result<T> = result::Result<T, Error>;
 
 impl Connection {
-    pub fn new(stream: Stream, secret: Secret, session_id: Nonce) -> Self {
+    pub fn new(stream: Stream, secret: Secret, session_id: Nonce, peer_node_id: NodeId) -> Self {
         Self {
             stream: SignedStream::new(stream.into(), Session::new(secret, session_id)),
             state: State::New,
             send_queue: VecDeque::new(),
             next_negotiation_seq: 0,
             requested_negotiation: HashMap::new(),
+            peer_node_id,
         }
     }
 
@@ -150,8 +159,8 @@ impl Connection {
         self.send_queue.push_back(message);
     }
 
-    pub fn enqueue_sync(&mut self, session_id: Nonce) {
-        self.enqueue(Message::Handshake(HandshakeMessage::sync(session_id)));
+    pub fn enqueue_sync(&mut self, port: u16, node_id: NodeId) {
+        self.enqueue(Message::Handshake(HandshakeMessage::sync(port, node_id)));
         self.state = State::Requested;
     }
 
@@ -268,8 +277,8 @@ impl Connection {
         }
     }
 
-    pub fn session(&self) -> &Session {
-        self.stream.session()
+    pub fn peer_node_id(&self) -> &NodeId {
+        &self.peer_node_id
     }
 
     pub fn interest(&self) -> Ready {

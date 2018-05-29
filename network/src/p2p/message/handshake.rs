@@ -22,22 +22,24 @@ use super::Version;
 use super::ACK_ID;
 use super::SYNC_ID;
 
-use super::super::super::session::Nonce;
+use super::super::super::NodeId;
 
 #[derive(Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum Message {
     Sync {
         version: Version,
-        session_id: Nonce,
+        port: u16,
+        node_id: NodeId,
     },
     Ack(Version),
 }
 
 impl Message {
-    pub fn sync(session_id: Nonce) -> Self {
+    pub fn sync(port: u16, node_id: NodeId) -> Self {
         Message::Sync {
             version: 0,
-            session_id,
+            port,
+            node_id,
         }
     }
 
@@ -72,9 +74,10 @@ impl Encodable for Message {
         match self {
             Message::Sync {
                 version,
-                session_id,
+                port,
+                node_id,
             } => {
-                s.begin_list(3).append(version).append(&self.protocol_id()).append(session_id);
+                s.begin_list(4).append(version).append(&self.protocol_id()).append(port).append(node_id);
             }
             Message::Ack(version) => {
                 s.begin_list(2).append(version).append(&self.protocol_id());
@@ -89,13 +92,13 @@ impl Decodable for Message {
         let protocol_id: ProtocolId = rlp.val_at(1)?;
         match protocol_id {
             SYNC_ID => {
-                if rlp.item_count()? != 3 {
+                if rlp.item_count()? != 4 {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
-                let session_id = rlp.val_at(2)?;
                 Ok(Message::Sync {
                     version,
-                    session_id,
+                    port: rlp.val_at(2)?,
+                    node_id: rlp.val_at(3)?,
                 })
             }
             ACK_ID => {
@@ -113,12 +116,13 @@ impl Decodable for Message {
 mod tests {
     use rlp::{Decodable, Encodable, UntrustedRlp};
 
-    use super::{Message, Nonce};
+    use super::*;
 
     #[test]
     fn protocol_id_of_sync_is_0() {
-        let session_id = Nonce::from(1000);
-        assert_eq!(0x00, Message::sync(session_id).protocol_id());
+        const PORT: u16 = 1234;
+        let node_id = 1000.into();
+        assert_eq!(0x00, Message::sync(PORT, node_id).protocol_id());
     }
 
     #[test]
@@ -128,8 +132,9 @@ mod tests {
 
     #[test]
     fn encode_and_decode_sync() {
-        let session_id = Nonce::from(1000);
-        let sync = Message::sync(session_id);
+        const PORT: u16 = 1234;
+        let node_id = 1000.into();
+        let sync = Message::sync(PORT, node_id);
         let bytes = sync.rlp_bytes();
 
         let rlp = UntrustedRlp::new(&bytes);
