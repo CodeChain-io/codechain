@@ -328,7 +328,8 @@ impl Extension {
         self.apply_response(from, &response);
 
         // Import fully downloaded blocks to chain
-        self.manager.lock().drain().iter().for_each(|block| {
+        let drained: Vec<_> = self.manager.lock().drain().iter().cloned().collect();
+        drained.iter().for_each(|block| {
             match self.client.import_block(block.rlp_bytes(Seal::With)) {
                 Ok(_) => {}
                 Err(BlockImportError::Import(ImportError::AlreadyInChain))
@@ -564,13 +565,13 @@ mod tests {
     fn should_import_requested_data() {
         let mut env = generate_test_environment(10);
         let peer_chain = TestBlockChainClient::new();
-        for i in 0..10 {
+        for i in 0..(env.client.best_block_header().number() + 1) {
             peer_chain.import_block(env.client.block(BlockId::Number(i)).unwrap().into_inner()).unwrap();
         }
         peer_chain.add_blocks(10, 1);
         assert_add_node(&mut env, 0);
-        let chain_info = env.client.chain_info();
-        assert_accept_status(&mut env, 0, chain_info.total_score + 2.into(), chain_info.best_block_hash);
+        let peer_info = peer_chain.chain_info();
+        assert_accept_status(&mut env, 0, peer_info.total_score + 2.into(), peer_info.best_block_hash);
         env.network.call_timeout(EXTENSION_NAME, SYNC_TIMER_TOKEN);
         let request_start = match env.network.pop_call(EXTENSION_NAME).unwrap() {
             TestNetworkCall::Send(_, request) => match ::rlp::decode(request.as_slice()) {
@@ -582,7 +583,7 @@ mod tests {
             },
             _ => panic!(),
         };
-        assert_eq!(request_start, chain_info.best_block_number);
+        assert_eq!(request_start, env.client.best_block_header().number());
         let header_response = ResponseMessage::Headers(
             (request_start..(request_start + 5))
                 .map(|i| peer_chain.block_header(BlockId::Number(i)).unwrap().decode())
