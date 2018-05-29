@@ -151,17 +151,12 @@ impl Connection {
     }
 
     pub fn enqueue_sync(&mut self, session_id: Nonce) {
-        const VERSION: u64 = 0;
-        self.enqueue(Message::Handshake(HandshakeMessage::Sync {
-            version: VERSION,
-            session_id,
-        }));
+        self.enqueue(Message::Handshake(HandshakeMessage::sync(session_id)));
         self.state = State::Requested;
     }
 
     pub fn enqueue_ack(&mut self) {
-        const VERSION: u64 = 0;
-        self.enqueue(Message::Handshake(HandshakeMessage::Ack(VERSION)));
+        self.enqueue(Message::Handshake(HandshakeMessage::ack()));
         self.state = State::Established;
     }
 

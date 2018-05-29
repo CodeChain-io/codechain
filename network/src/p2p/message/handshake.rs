@@ -34,7 +34,6 @@ pub enum Message {
 }
 
 impl Message {
-    #[allow(dead_code)]
     pub fn sync(session_id: Nonce) -> Self {
         Message::Sync {
             version: 0,
@@ -42,7 +41,6 @@ impl Message {
         }
     }
 
-    #[allow(dead_code)]
     pub fn ack() -> Self {
         Message::Ack(0)
     }
