@@ -159,7 +159,7 @@ impl Parcel {
             unsigned: self,
             r: sig.r().into(),
             s: sig.s().into(),
-            v: sig.v() as u64 + 27,
+            v: sig.v(),
             hash: 0.into(),
         }.compute_hash()
     }
@@ -171,8 +171,8 @@ pub struct UnverifiedParcel {
     /// Plain Parcel.
     unsigned: Parcel,
     /// The V field of the signature; the LS bit described which half of the curve our point falls
-    /// in. The MS bits describe which chain this parcel is for. If 27/28, its for all chains.
-    v: u64,
+    /// in.
+    v: u8,
     /// The R field of the signature; helps describe the point on the curve.
     r: U256,
     /// The S field of the signature; helps describe the point on the curve.
@@ -251,17 +251,9 @@ impl UnverifiedParcel {
         self.hash
     }
 
-    /// 0 if `v` would have been 27 under "Electrum" notation, 1 if 28 or 4 if invalid.
-    pub fn standard_v(&self) -> u8 {
-        match self.v {
-            v if v == 27 || v == 28 => ((v - 1) % 2) as u8,
-            _ => 4,
-        }
-    }
-
     /// Construct a signature object from the sig.
     pub fn signature(&self) -> ECDSASignature {
-        ECDSASignature::from_rsv(&self.r.into(), &self.s.into(), self.standard_v())
+        ECDSASignature::from_rsv(&self.r.into(), &self.s.into(), self.v)
     }
 
     /// Recovers the public key of the sender.
