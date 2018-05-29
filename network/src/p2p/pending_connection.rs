@@ -17,6 +17,7 @@
 use std::io;
 
 use cio::IoManager;
+use ctypes::Secret;
 use mio::deprecated::EventLoop;
 use mio::unix::UnixReady;
 use mio::{PollOpt, Ready, Token};
@@ -29,12 +30,20 @@ use super::super::NodeId;
 use super::connection::{Connection, Error as ConnectionError, Result as ConnectionResult};
 use super::message::{HandshakeMessage, Message, SignedMessage};
 use super::session_candidate::SessionCandidate;
-use super::stream::Stream;
+use super::stream::{SignedStream, Stream};
+
+#[derive(Debug, PartialEq)]
+enum WaitSyncConnectionState {
+    Created,
+    Received,
+    Sent,
+}
 
 pub struct WaitSyncConnection {
     stream: Stream,
     session: Option<Session>,
     peer_node_id: Option<NodeId>,
+    state: WaitSyncConnectionState,
 }
 
 impl WaitSyncConnection {
@@ -43,10 +52,29 @@ impl WaitSyncConnection {
             stream,
             session: None,
             peer_node_id: None,
+            state: WaitSyncConnectionState::Created,
         }
     }
 
+    pub fn send(&mut self) -> ConnectionResult<()> {
+        if self.state != WaitSyncConnectionState::Received {
+            return Ok(())
+        }
+
+        let session = self.session.as_ref().expect("Session must exist");
+        let message = Message::Handshake(HandshakeMessage::ack());
+        let signed_message = SignedMessage::new(&message, session);
+
+        use rlp::Encodable;
+        self.stream.write(&signed_message)?;
+        self.state = WaitSyncConnectionState::Sent;
+        Ok(())
+    }
+
     pub fn receive(&mut self, registered_sessions: &SessionCandidate) -> ConnectionResult<Option<Nonce>> {
+        if self.state != WaitSyncConnectionState::Created {
+            return Ok(None)
+        }
         if let Some(signed_message) = self.stream.read::<SignedMessage>()? {
             let rlp = UntrustedRlp::new(&signed_message.message);
             match rlp.as_val::<Message>()? {
@@ -71,6 +99,7 @@ impl WaitSyncConnection {
                     }
                     self.peer_node_id = Some(peer_node_id);
                     self.session = Some(session.clone());
+                    self.state = WaitSyncConnectionState::Received;
                     Ok(Some(session.id().clone()))
                 }
                 _ => Err(ConnectionError::UnreadySession),
@@ -81,13 +110,111 @@ impl WaitSyncConnection {
     }
 
     pub fn process(self) -> Connection {
+        debug_assert_eq!(self.state, WaitSyncConnectionState::Sent);
         let session = self.session.as_ref().expect("Session must exist");
         let peer_node_id = self.peer_node_id.expect("Sync message set peer node id");
-        Connection::new(self.stream, *session.secret(), session.id().clone(), peer_node_id)
+        Connection::new(SignedStream::new(self.stream, session.clone()), peer_node_id)
     }
 
     fn interest(&self) -> Ready {
-        Ready::readable() | UnixReady::hup()
+        match self.state {
+            WaitSyncConnectionState::Created => Ready::readable() | UnixReady::hup(),
+            WaitSyncConnectionState::Received => Ready::writable() | UnixReady::hup(),
+            WaitSyncConnectionState::Sent => Ready::empty() | UnixReady::hup(),
+        }
+    }
+
+    pub fn register<Message>(&self, reg: Token, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()>
+    where
+        Message: Send + Sync + Clone + 'static, {
+        event_loop.register(&self.stream, reg, self.interest(), PollOpt::edge())
+    }
+
+    pub fn reregister<Message>(&self, reg: Token, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()>
+    where
+        Message: Send + Sync + Clone + 'static, {
+        event_loop.reregister(&self.stream, reg, self.interest(), PollOpt::edge())
+    }
+
+    pub fn deregister<Message>(&self, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()>
+    where
+        Message: Send + Sync + Clone + 'static, {
+        event_loop.deregister(&self.stream)
+    }
+}
+
+#[derive(Debug, PartialEq)]
+enum WaitAckConnectionState {
+    Created,
+    Sent,
+    Received,
+}
+
+pub struct WaitAckConnection {
+    stream: SignedStream,
+    session: Session,
+    port: u16,
+    local_node_id: NodeId,
+    peer_node_id: NodeId,
+    state: WaitAckConnectionState,
+}
+
+impl WaitAckConnection {
+    pub fn new(
+        stream: Stream,
+        secret: Secret,
+        nonce: Nonce,
+        port: u16,
+        local_node_id: NodeId,
+        peer_node_id: NodeId,
+    ) -> Self {
+        Self {
+            stream: SignedStream::new(stream, Session::new(secret, nonce.clone())),
+            session: Session::new(secret, nonce),
+            port,
+            local_node_id,
+            peer_node_id,
+            state: WaitAckConnectionState::Created,
+        }
+    }
+
+    pub fn send(&mut self) -> ConnectionResult<()> {
+        if self.state == WaitAckConnectionState::Created {
+            self.stream.write(&Message::Handshake(HandshakeMessage::sync(self.port, self.local_node_id.clone())))?;
+            self.state = WaitAckConnectionState::Sent;
+        }
+        Ok(())
+    }
+
+    pub fn receive(&mut self) -> ConnectionResult<bool> {
+        if self.state != WaitAckConnectionState::Sent {
+            return Ok(false)
+        }
+        if let Some(message) = self.stream.read()? {
+            match message {
+                Message::Handshake(HandshakeMessage::Ack(_)) => {
+                    self.state = WaitAckConnectionState::Received;
+                    Ok(true)
+                }
+                _ => Err(ConnectionError::UnreadySession),
+            }
+        } else {
+            Ok(false)
+        }
+    }
+
+    pub fn process(self) -> Connection {
+        debug_assert_eq!(WaitAckConnectionState::Received, self.state);
+        let peer_node_id = self.peer_node_id;
+        Connection::new(self.stream, peer_node_id)
+    }
+
+    fn interest(&self) -> Ready {
+        match self.state {
+            WaitAckConnectionState::Created => Ready::writable() | UnixReady::hup(),
+            WaitAckConnectionState::Sent => Ready::readable() | UnixReady::hup(),
+            WaitAckConnectionState::Received => Ready::empty() | UnixReady::hup(),
+        }
     }
 
     pub fn register<Message>(&self, reg: Token, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()>
