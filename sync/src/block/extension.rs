@@ -403,6 +403,9 @@ impl Extension {
         if let Some(peer) = self.peers.write().get_mut(from) {
             if apply_success {
                 peer.retry = 0;
+                self.manager
+                    .lock()
+                    .mark_as_failed(&peer.last_request.as_ref().expect("Last request must exist to apply response").0);
             } else {
                 peer.retry += 1;
             }
