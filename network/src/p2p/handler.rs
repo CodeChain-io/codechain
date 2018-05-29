@@ -566,9 +566,6 @@ impl IoHandler<Message> for Handler {
                     }
                 });
                 let mut manager = self.manager.lock();
-                if manager.wait_sync_tokens.contains(&stream) {
-                    break
-                }
                 if !manager.send(&stream)? {
                     break
                 }
