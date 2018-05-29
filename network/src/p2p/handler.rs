@@ -34,7 +34,7 @@ use super::super::{DiscoveryApi, NodeId, SocketAddr};
 use super::connection::{Connection, ExtensionCallback as ExtensionChannel};
 use super::listener::Listener;
 use super::message::Version;
-use super::pending_connection::PendingConnection;
+use super::pending_connection::WaitSyncConnection;
 use super::session_candidate::SessionCandidate;
 use super::stream::Stream;
 
@@ -42,9 +42,9 @@ struct Manager {
     listener: Listener,
 
     tokens: TokenGenerator,
-    pending_tokens: HashSet<StreamToken>,
+    wait_sync_tokens: HashSet<StreamToken>,
     connections: HashMap<StreamToken, Connection>,
-    pending_connections: HashMap<StreamToken, PendingConnection>,
+    wait_sync_connections: HashMap<StreamToken, WaitSyncConnection>,
 
     registered_sessions: SessionCandidate,
 
@@ -124,9 +124,9 @@ impl Manager {
             listener: Listener::bind(&socket_address)?,
 
             tokens: TokenGenerator::new(FIRST_CONNECTION_TOKEN, LAST_CONNECTION_TOKEN),
-            pending_tokens: HashSet::new(),
+            wait_sync_tokens: HashSet::new(),
             connections: HashMap::new(),
-            pending_connections: HashMap::new(),
+            wait_sync_connections: HashMap::new(),
 
             registered_sessions: SessionCandidate::new(WAIT_CREATE_CONNECTION),
 
@@ -155,12 +155,12 @@ impl Manager {
         let t = self.waiting_sync_timer_to_stream.insert(token, timer_token);
         debug_assert!(t.is_none());
 
-        let connection = PendingConnection::new(stream);
+        let connection = WaitSyncConnection::new(stream);
 
-        let con = self.pending_connections.insert(token, connection);
+        let con = self.wait_sync_connections.insert(token, connection);
         debug_assert!(con.is_none());
 
-        let t = self.pending_tokens.insert(token);
+        let t = self.wait_sync_tokens.insert(token);
         debug_assert!(t);
 
         Ok((token, timer_token))
@@ -172,19 +172,19 @@ impl Manager {
         debug_assert!(con.is_none());
     }
 
-    fn process_connection(&mut self, pending_token: &StreamToken) -> Connection {
-        let pending = self.remove_waiting_sync_by_stream_token(&pending_token).unwrap();
+    fn process_connection(&mut self, wait_sync_token: &StreamToken) -> Connection {
+        let wait_sync_connection = self.remove_waiting_sync_by_stream_token(&wait_sync_token).unwrap();
 
-        let mut connection = pending.process();
+        let mut connection = wait_sync_connection.process();
         connection.enqueue_ack();
         connection
     }
 
     fn deregister_unprocessed_connection(&mut self, token: &StreamToken) {
-        if let Some(_) = self.pending_connections.remove(&token) {
+        if let Some(_) = self.wait_sync_connections.remove(&token) {
             let t = self.tokens.restore(*token);
             debug_assert!(t);
-            let t = self.pending_tokens.remove(&token);
+            let t = self.wait_sync_tokens.remove(&token);
             debug_assert!(t);
         } else {
             unreachable!()
@@ -264,7 +264,7 @@ impl Manager {
             return Ok(connection.register(reg, event_loop)?)
         }
 
-        let connection = self.pending_connections.get(&token).ok_or(Error::InvalidStream(token))?;
+        let connection = self.wait_sync_connections.get(&token).ok_or(Error::InvalidStream(token))?;
         Ok(connection.register(reg, event_loop)?)
     }
 
@@ -278,11 +278,11 @@ impl Manager {
             return Ok(connection.reregister(reg, event_loop)?)
         }
 
-        let connection = self.pending_connections.get(&token).ok_or(Error::InvalidStream(token))?;
+        let connection = self.wait_sync_connections.get(&token).ok_or(Error::InvalidStream(token))?;
         Ok(connection.reregister(reg, event_loop)?)
     }
 
-    // return false if it's pending connection
+    // return false if it's wait sync connection
     fn deregister_stream(
         &self,
         token: StreamToken,
@@ -293,7 +293,7 @@ impl Manager {
             return Ok(true)
         }
 
-        if let Some(connection) = self.pending_connections.get(&token) {
+        if let Some(connection) = self.wait_sync_connections.get(&token) {
             connection.deregister(event_loop)?;
             return Ok(false)
         }
@@ -309,7 +309,7 @@ impl Manager {
 
         {
             // connection borrows *self as mutable
-            let connection = self.pending_connections.get_mut(&stream).ok_or(Error::InvalidStream(stream.clone()))?;
+            let connection = self.wait_sync_connections.get_mut(&stream).ok_or(Error::InvalidStream(stream.clone()))?;
             if let Some(_) = connection.receive(&self.registered_sessions)? {
                 // Sync
             } else {
@@ -333,7 +333,7 @@ impl Manager {
         Ok(connection.send()?)
     }
 
-    fn remove_waiting_sync_by_stream_token(&mut self, stream: &StreamToken) -> Option<PendingConnection> {
+    fn remove_waiting_sync_by_stream_token(&mut self, stream: &StreamToken) -> Option<WaitSyncConnection> {
         if let Some(timer) = self.waiting_sync_stream_to_timer.remove(&stream) {
             let t = self.waiting_sync_tokens.restore(timer);
             debug_assert!(t);
@@ -341,10 +341,10 @@ impl Manager {
             let t = self.waiting_sync_timer_to_stream.remove(&stream);
             debug_assert!(t.is_some());
 
-            let t = self.pending_tokens.remove(&stream);
+            let t = self.wait_sync_tokens.remove(&stream);
             debug_assert!(t);
 
-            let t = self.pending_connections.remove(&stream);
+            let t = self.wait_sync_connections.remove(&stream);
             debug_assert!(t.is_some());
             t
         } else {
@@ -360,10 +360,10 @@ impl Manager {
             let t = self.waiting_sync_stream_to_timer.remove(&stream);
             debug_assert!(t.is_some());
 
-            let t = self.pending_tokens.remove(&stream);
+            let t = self.wait_sync_tokens.remove(&stream);
             debug_assert!(t);
 
-            let t = self.pending_connections.remove(&stream);
+            let t = self.wait_sync_connections.remove(&stream);
             debug_assert!(t.is_some());
         }
     }
@@ -566,7 +566,7 @@ impl IoHandler<Message> for Handler {
                     }
                 });
                 let mut manager = self.manager.lock();
-                if manager.pending_tokens.contains(&stream) {
+                if manager.wait_sync_tokens.contains(&stream) {
                     break
                 }
                 if !manager.send(&stream)? {
