@@ -31,13 +31,13 @@ use super::message::{HandshakeMessage, Message, SignedMessage};
 use super::session_candidate::SessionCandidate;
 use super::stream::Stream;
 
-pub struct PendingConnection {
+pub struct WaitSyncConnection {
     stream: Stream,
     session: Option<Session>,
     peer_node_id: Option<NodeId>,
 }
 
-impl PendingConnection {
+impl WaitSyncConnection {
     pub fn new(stream: Stream) -> Self {
         Self {
             stream,
