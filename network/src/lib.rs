@@ -50,7 +50,7 @@ mod token_generator;
 mod p2p;
 pub mod session;
 
-use ctypes::hash::H256;
+use ctypes::H256;
 
 pub use self::addr::SocketAddr;
 pub use self::config::Config as NetworkConfig;

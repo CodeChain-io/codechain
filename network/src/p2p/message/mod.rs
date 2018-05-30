@@ -20,7 +20,7 @@ mod message;
 mod negotiation;
 mod signed_message;
 
-use ctypes::hash::H256;
+use ctypes::H256;
 use ctypes::Secret;
 
 pub use self::extension::Message as ExtensionMessage;

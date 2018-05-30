@@ -16,7 +16,7 @@
 
 use std::hash::{Hash, Hasher};
 
-use ctypes::hash::H128;
+use ctypes::H128;
 use rand::{Rand, Rng};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 

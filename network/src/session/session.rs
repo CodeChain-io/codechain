@@ -16,7 +16,7 @@
 
 use ccrypto::aes::{self, SymmetricCipherError};
 use ccrypto::blake256_with_key;
-use ctypes::hash::{H128, H256};
+use ctypes::{H128, H256};
 use ctypes::Secret;
 
 use super::Nonce;

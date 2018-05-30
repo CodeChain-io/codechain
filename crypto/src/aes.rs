@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ctypes::hash::{H128, H256};
+use ctypes::{H128, H256};
 use rcrypto::aes::KeySize::KeySize256;
 use rcrypto::aes::{cbc_decryptor, cbc_encryptor};
 use rcrypto::blockmodes::PkcsPadding;
@@ -69,7 +69,7 @@ pub fn decrypt(encrypted_data: &[u8], key: &H256, iv: &H128) -> Result<Vec<u8>, 
 mod tests {
     extern crate rand;
 
-    use ctypes::hash::{H128, H256};
+    use ctypes::{H128, H256};
 
     use self::rand::{OsRng, Rng};
     use super::{decrypt, encrypt};
