@@ -36,7 +36,7 @@ use super::message::{Message, Seq, Version};
 use super::stream::{Error as StreamError, SignedStream};
 use super::{ExtensionMessage, NegotiationBody, NegotiationMessage};
 
-pub struct Connection {
+pub struct EstablishedConnection {
     stream: SignedStream,
     send_queue: VecDeque<Message>,
     next_negotiation_seq: Seq,
@@ -111,7 +111,7 @@ impl From<StreamError> for Error {
 
 pub type Result<T> = result::Result<T, Error>;
 
-impl Connection {
+impl EstablishedConnection {
     pub fn new(stream: SignedStream, peer_node_id: NodeId) -> Self {
         Self {
             stream,

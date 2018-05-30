@@ -30,7 +30,7 @@ use super::super::session::Session;
 use super::super::session_initiator::Message as SessionMessage;
 use super::super::token_generator::TokenGenerator;
 use super::super::{DiscoveryApi, NodeId, SocketAddr};
-use super::connection::{Connection, ExtensionCallback as ExtensionChannel};
+use super::connection::{EstablishedConnection, ExtensionCallback as ExtensionChannel};
 use super::listener::Listener;
 use super::message::Version;
 use super::pending_connection::{WaitAckConnection, WaitSyncConnection};
@@ -45,7 +45,7 @@ struct Manager {
     wait_ack_tokens: HashSet<StreamToken>,
     wait_sync_tokens: HashSet<StreamToken>,
 
-    connections: HashMap<StreamToken, Connection>,
+    connections: HashMap<StreamToken, EstablishedConnection>,
     wait_ack_connections: HashMap<StreamToken, WaitAckConnection>,
     wait_sync_connections: HashMap<StreamToken, WaitSyncConnection>,
 
@@ -221,23 +221,23 @@ impl Manager {
         Ok((token, timer_token))
     }
 
-    fn register_connection(&mut self, connection: Connection, token: &StreamToken, client: &Client) {
+    fn register_connection(&mut self, connection: EstablishedConnection, token: &StreamToken, client: &Client) {
         let con = self.connections.insert(*token, connection);
         client.on_node_added(token);
         debug_assert!(con.is_none());
     }
 
-    fn process_wait_ack_connection(&mut self, wait_ack_token: &StreamToken) -> Connection {
+    fn process_wait_ack_connection(&mut self, wait_ack_token: &StreamToken) -> EstablishedConnection {
         let wait_ack_connection = self.remove_waiting_ack_by_stream_token(&wait_ack_token).unwrap();
 
-        let connection = wait_ack_connection.process();
+        let connection = wait_ack_connection.establish();
         connection
     }
 
-    fn process_wait_sync_connection(&mut self, wait_sync_token: &StreamToken) -> Connection {
+    fn process_wait_sync_connection(&mut self, wait_sync_token: &StreamToken) -> EstablishedConnection {
         let wait_sync_connection = self.remove_waiting_sync_by_stream_token(&wait_sync_token).unwrap();
 
-        let connection = wait_sync_connection.process();
+        let connection = wait_sync_connection.establish();
         let removed = self.registered_sessions.remove(connection.peer_node_id());
         debug_assert!(removed);
         connection
