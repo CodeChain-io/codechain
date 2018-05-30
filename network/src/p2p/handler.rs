@@ -15,7 +15,6 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::collections::{HashMap, HashSet};
-use std::convert::From;
 use std::io;
 use std::sync::Arc;
 
@@ -34,7 +33,7 @@ use super::super::{DiscoveryApi, NodeId, SocketAddr};
 use super::connection::{Connection, ExtensionCallback as ExtensionChannel};
 use super::listener::Listener;
 use super::message::Version;
-use super::pending_connection::WaitSyncConnection;
+use super::pending_connection::{WaitAckConnection, WaitSyncConnection};
 use super::session_candidate::SessionCandidate;
 use super::stream::Stream;
 
@@ -42,11 +41,19 @@ struct Manager {
     listener: Listener,
 
     tokens: TokenGenerator,
+
+    wait_ack_tokens: HashSet<StreamToken>,
     wait_sync_tokens: HashSet<StreamToken>,
+
     connections: HashMap<StreamToken, Connection>,
+    wait_ack_connections: HashMap<StreamToken, WaitAckConnection>,
     wait_sync_connections: HashMap<StreamToken, WaitSyncConnection>,
 
     registered_sessions: SessionCandidate,
+
+    waiting_ack_tokens: TokenGenerator,
+    waiting_ack_stream_to_timer: HashMap<StreamToken, TimerToken>,
+    waiting_ack_timer_to_stream: HashMap<TimerToken, StreamToken>,
 
     waiting_sync_tokens: TokenGenerator,
     waiting_sync_stream_to_timer: HashMap<StreamToken, TimerToken>,
@@ -67,7 +74,11 @@ const LAST_CONNECTION_TOKEN: TimerToken = FIRST_CONNECTION_TOKEN + MAX_CONNECTIO
 const PULL_CONNECTIONS_TOKEN: TimerToken = 0;
 const PULL_CONNECTIONS_MS: u64 = 1 * 1000;
 
-const FIRST_WAIT_SYNC_TOKEN: TimerToken = PULL_CONNECTIONS_TOKEN + 1;
+const FIRST_WAIT_ACK_TOKEN: TimerToken = PULL_CONNECTIONS_TOKEN + 1;
+const MAX_ACK_WAITS: usize = 10;
+const LAST_WAIT_ACK_TOKEN: TimerToken = FIRST_WAIT_ACK_TOKEN + MAX_ACK_WAITS;
+
+const FIRST_WAIT_SYNC_TOKEN: TimerToken = LAST_WAIT_ACK_TOKEN;
 const MAX_SYNC_WAITS: usize = 10;
 const LAST_WAIT_SYNC_TOKEN: TimerToken = FIRST_WAIT_SYNC_TOKEN + MAX_SYNC_WAITS;
 
@@ -124,11 +135,18 @@ impl Manager {
             listener: Listener::bind(&socket_address)?,
 
             tokens: TokenGenerator::new(FIRST_CONNECTION_TOKEN, LAST_CONNECTION_TOKEN),
+            wait_ack_tokens: HashSet::new(),
             wait_sync_tokens: HashSet::new(),
+
             connections: HashMap::new(),
+            wait_ack_connections: HashMap::new(),
             wait_sync_connections: HashMap::new(),
 
             registered_sessions: SessionCandidate::new(WAIT_CREATE_CONNECTION),
+
+            waiting_ack_tokens: TokenGenerator::new(FIRST_WAIT_ACK_TOKEN, LAST_WAIT_ACK_TOKEN),
+            waiting_ack_stream_to_timer: HashMap::new(),
+            waiting_ack_timer_to_stream: HashMap::new(),
 
             waiting_sync_tokens: TokenGenerator::new(FIRST_WAIT_SYNC_TOKEN, LAST_WAIT_SYNC_TOKEN),
             waiting_sync_stream_to_timer: HashMap::new(),
@@ -140,7 +158,44 @@ impl Manager {
         })
     }
 
-    fn register_unprocessed_connection(&mut self, stream: Stream) -> Result<(StreamToken, TimerToken)> {
+    fn register_wait_ack_connection(
+        &mut self,
+        stream: Stream,
+        session: Session,
+        remote_node_id: NodeId,
+    ) -> Result<(StreamToken, TimerToken)> {
+        let token = self.tokens.gen().ok_or(Error::General("TooManyConnections"))?;
+        let timer_token = {
+            if let Some(timer_token) = self.waiting_ack_tokens.gen() {
+                timer_token
+            } else {
+                return Err(Error::General("TooManyWaitingSync"))
+            }
+        };
+
+        let t = self.waiting_ack_stream_to_timer.insert(token, timer_token);
+        debug_assert!(t.is_none());
+        let t = self.waiting_ack_timer_to_stream.insert(token, timer_token);
+        debug_assert!(t.is_none());
+
+        let local_node_id =
+            self.peer_to_local.get(&remote_node_id).ok_or(Error::General("Node id is not registered"))?.clone();
+        let connection = WaitAckConnection::new(stream, session, self.port, local_node_id, remote_node_id.clone());
+
+        let con = self.wait_ack_connections.insert(token, connection);
+        debug_assert!(con.is_none());
+
+        let t = self.wait_ack_tokens.insert(token);
+        debug_assert!(t);
+
+        // Session is not reusable
+        let removed = self.registered_sessions.remove(&remote_node_id);
+        debug_assert!(removed);
+
+        Ok((token, timer_token))
+    }
+
+    fn register_wait_sync_connection(&mut self, stream: Stream) -> Result<(StreamToken, TimerToken)> {
         let token = self.tokens.gen().ok_or(Error::General("TooManyConnections"))?;
         let timer_token = {
             if let Some(timer_token) = self.waiting_sync_tokens.gen() {
@@ -172,75 +227,66 @@ impl Manager {
         debug_assert!(con.is_none());
     }
 
-    fn process_connection(&mut self, wait_sync_token: &StreamToken) -> Connection {
-        let wait_sync_connection = self.remove_waiting_sync_by_stream_token(&wait_sync_token).unwrap();
+    fn process_wait_ack_connection(&mut self, wait_ack_token: &StreamToken) -> Connection {
+        let wait_ack_connection = self.remove_waiting_ack_by_stream_token(&wait_ack_token).unwrap();
 
-        let mut connection = wait_sync_connection.process();
-        connection.enqueue_ack();
+        let connection = wait_ack_connection.process();
         connection
     }
 
-    fn deregister_unprocessed_connection(&mut self, token: &StreamToken) {
-        if let Some(_) = self.wait_sync_connections.remove(&token) {
-            let t = self.tokens.restore(*token);
-            debug_assert!(t);
-            let t = self.wait_sync_tokens.remove(&token);
-            debug_assert!(t);
-        } else {
-            unreachable!()
-        }
+    fn process_wait_sync_connection(&mut self, wait_sync_token: &StreamToken) -> Connection {
+        let wait_sync_connection = self.remove_waiting_sync_by_stream_token(&wait_sync_token).unwrap();
+
+        let connection = wait_sync_connection.process();
+        let removed = self.registered_sessions.remove(connection.peer_node_id());
+        debug_assert!(removed);
+        connection
     }
 
     fn deregister_connection(&mut self, token: &StreamToken) {
         if let Some(_) = self.connections.remove(&token) {
             let t = self.tokens.restore(*token);
             debug_assert!(t);
-        } else {
-            unreachable!()
+            return
         }
-    }
 
-    fn create_connection(
-        &mut self,
-        stream: Stream,
-        session: &Session,
-        client: &Client,
-    ) -> IoHandlerResult<StreamToken> {
-        let peer_node_id: NodeId = stream.peer_addr()?.into();
-        let mut connection = Connection::new(stream, session.secret().clone(), session.id().clone(), peer_node_id);
-        let local_id =
-            self.peer_to_local.get(&peer_node_id).ok_or(Error::General("Node id is not registrerd"))?.clone();
-        connection.enqueue_sync(self.port, local_id);
-        let removed = self.registered_sessions.remove(connection.peer_node_id());
-        debug_assert!(removed);
+        if let Some(_) = self.wait_ack_connections.remove(&token) {
+            let t = self.tokens.restore(*token);
+            debug_assert!(t);
+            let t = self.wait_ack_tokens.remove(&token);
+            debug_assert!(t);
+            return
+        }
 
-        Ok(self.tokens
-            .gen()
-            .map(|token| {
-                self.register_connection(connection, &token, client);
-                token
-            })
-            .expect("The number of peers must be checked before"))
+        if let Some(_) = self.wait_sync_connections.remove(&token) {
+            let t = self.tokens.restore(*token);
+            debug_assert!(t);
+            let t = self.wait_sync_tokens.remove(&token);
+            debug_assert!(t);
+            return
+        }
+
+        unreachable!()
     }
 
     pub fn accept(&mut self) -> IoHandlerResult<Option<(StreamToken, TimerToken, SocketAddr)>> {
         match self.listener.accept()? {
             Some((stream, socket_address)) => {
-                let (stream_token, timer_token) = self.register_unprocessed_connection(stream)?;
+                let (stream_token, timer_token) = self.register_wait_sync_connection(stream)?;
                 Ok(Some((stream_token, timer_token, socket_address)))
             }
             None => Ok(None),
         }
     }
 
-    pub fn connect(
-        &mut self,
-        socket_address: &SocketAddr,
-        session: &Session,
-        client: &Client,
-    ) -> IoHandlerResult<Option<StreamToken>> {
+    pub fn connect(&mut self, socket_address: &SocketAddr, session: &Session) -> IoHandlerResult<Option<StreamToken>> {
         Ok(match Stream::connect(socket_address)? {
-            Some(stream) => Some(self.create_connection(stream, session, client)?),
+            Some(stream) => {
+                let remote_node_id = socket_address.into();
+                let (stream_token, _timer_token) =
+                    self.register_wait_ack_connection(stream, session.clone(), remote_node_id)?;
+                Some(stream_token)
+            }
             None => None,
         })
     }
@@ -264,8 +310,15 @@ impl Manager {
             return Ok(connection.register(reg, event_loop)?)
         }
 
-        let connection = self.wait_sync_connections.get(&token).ok_or(Error::InvalidStream(token))?;
-        Ok(connection.register(reg, event_loop)?)
+        if let Some(connection) = self.wait_ack_connections.get(&token) {
+            return Ok(connection.register(reg, event_loop)?)
+        }
+
+        if let Some(connection) = self.wait_sync_connections.get(&token) {
+            return Ok(connection.register(reg, event_loop)?)
+        }
+
+        Err(Error::InvalidStream(token).into())
     }
 
     pub fn reregister_stream(
@@ -278,8 +331,15 @@ impl Manager {
             return Ok(connection.reregister(reg, event_loop)?)
         }
 
-        let connection = self.wait_sync_connections.get(&token).ok_or(Error::InvalidStream(token))?;
-        Ok(connection.reregister(reg, event_loop)?)
+        if let Some(connection) = self.wait_ack_connections.get(&token) {
+            return Ok(connection.reregister(reg, event_loop)?)
+        }
+
+        if let Some(connection) = self.wait_sync_connections.get(&token) {
+            return Ok(connection.reregister(reg, event_loop)?)
+        }
+
+        Err(Error::InvalidStream(token).into())
     }
 
     // return false if it's wait sync connection
@@ -287,18 +347,23 @@ impl Manager {
         &self,
         token: StreamToken,
         event_loop: &mut EventLoop<IoManager<Message>>,
-    ) -> IoHandlerResult<bool> {
+    ) -> IoHandlerResult<()> {
         if let Some(connection) = self.connections.get(&token) {
             connection.deregister(event_loop)?;
-            return Ok(true)
+            return Ok(())
+        }
+
+        if let Some(connection) = self.wait_ack_connections.get(&token) {
+            connection.deregister(event_loop)?;
+            return Ok(())
         }
 
         if let Some(connection) = self.wait_sync_connections.get(&token) {
             connection.deregister(event_loop)?;
-            return Ok(false)
+            return Ok(())
         }
 
-        Err(From::from(Error::InvalidStream(token)))
+        Err(Error::InvalidStream(token).into())
     }
 
     // Return false if the received message is sync
@@ -307,30 +372,80 @@ impl Manager {
             return Ok(connection.receive(&ExtensionChannel::new(&client, *stream)))
         }
 
-        {
-            // connection borrows *self as mutable
-            let connection = self.wait_sync_connections.get_mut(&stream).ok_or(Error::InvalidStream(stream.clone()))?;
-            if let Some(_) = connection.receive(&self.registered_sessions)? {
-                // Sync
-            } else {
-                return Ok(true)
+        if self.wait_ack_connections.contains_key(stream) {
+            {
+                // connection borrows *self as mutable
+                let connection = self.wait_ack_connections.get_mut(&stream).unwrap();
+                if connection.receive()? {
+                    // Ack
+                } else {
+                    return Ok(true)
+                }
             }
+
+            // receive Ack message
+            let connection = self.process_wait_ack_connection(&stream);
+
+            self.register_connection(connection, stream, client);
+            return Ok(false)
         }
 
-        // receive Sync message
-        let connection = self.process_connection(&stream);
+        if self.wait_sync_connections.contains_key(stream) {
+            {
+                // connection borrows *self as mutable
+                let connection = self.wait_sync_connections.get_mut(&stream).unwrap();
+                if let Some(_) = connection.receive(&self.registered_sessions)? {
+                    // Sync
+                } else {
+                    return Ok(true)
+                }
+            }
+            return Ok(false)
+        }
 
-        // Session is not reusable
-        let removed = self.registered_sessions.remove(connection.peer_node_id());
-        debug_assert!(removed);
-
-        self.register_connection(connection, stream, client);
-        Ok(false)
+        Err(Error::InvalidStream(stream.clone()).into())
     }
 
-    fn send(&mut self, stream: &StreamToken) -> IoHandlerResult<bool> {
-        let connection = self.connections.get_mut(&stream).ok_or(Error::InvalidStream(stream.clone()))?;
-        Ok(connection.send()?)
+    fn send(&mut self, stream: &StreamToken, client: &Client) -> IoHandlerResult<bool> {
+        if let Some(ref mut connection) = self.connections.get_mut(&stream) {
+            return Ok(connection.send()?)
+        }
+
+        if let Some(ref mut wait_ack_connection) = self.wait_ack_connections.get_mut(&stream) {
+            wait_ack_connection.send()?;
+            return Ok(false)
+        }
+
+        if let Some(ref mut wait_sync_connection) = self.wait_sync_connections.get_mut(&stream) {
+            wait_sync_connection.send()?;
+        } else {
+            return Err(Error::InvalidStream(stream.clone()).into())
+        }
+
+        // Ack message was sent
+        let connection = self.process_wait_sync_connection(&stream);
+
+        self.register_connection(connection, stream, client);
+        return Ok(false)
+    }
+
+    fn remove_waiting_ack_by_stream_token(&mut self, stream: &StreamToken) -> Option<WaitAckConnection> {
+        if let Some(timer) = self.waiting_ack_stream_to_timer.remove(&stream) {
+            let t = self.waiting_ack_tokens.restore(timer);
+            debug_assert!(t);
+
+            let t = self.waiting_ack_timer_to_stream.remove(&stream);
+            debug_assert!(t.is_some());
+
+            let t = self.wait_ack_tokens.remove(&stream);
+            debug_assert!(t);
+
+            let t = self.wait_ack_connections.remove(&stream);
+            debug_assert!(t.is_some());
+            t
+        } else {
+            None
+        }
     }
 
     fn remove_waiting_sync_by_stream_token(&mut self, stream: &StreamToken) -> Option<WaitSyncConnection> {
@@ -349,6 +464,22 @@ impl Manager {
             t
         } else {
             None
+        }
+    }
+
+    fn remove_waiting_ack_by_timer_token(&mut self, timer: &TimerToken) {
+        if let Some(stream) = self.waiting_ack_timer_to_stream.remove(&timer) {
+            let t = self.waiting_ack_tokens.restore(*timer);
+            debug_assert!(t);
+
+            let t = self.waiting_ack_stream_to_timer.remove(&stream);
+            debug_assert!(t.is_some());
+
+            let t = self.wait_ack_tokens.remove(&stream);
+            debug_assert!(t);
+
+            let t = self.wait_ack_connections.remove(&stream);
+            debug_assert!(t.is_some());
         }
     }
 
@@ -444,6 +575,11 @@ impl IoHandler<Message> for Handler {
 
                 Ok(())
             }
+            FIRST_WAIT_ACK_TOKEN...LAST_WAIT_ACK_TOKEN => {
+                let mut manager = self.manager.lock();
+                manager.remove_waiting_ack_by_timer_token(&token);
+                Ok(())
+            }
             FIRST_WAIT_SYNC_TOKEN...LAST_WAIT_SYNC_TOKEN => {
                 let mut manager = self.manager.lock();
                 manager.remove_waiting_sync_by_timer_token(&token);
@@ -474,9 +610,8 @@ impl IoHandler<Message> for Handler {
                 }
 
                 ctrace!(NET, "Connecting to {:?}", socket_address);
-                let token = manager
-                    .connect(&socket_address, session, &self.client)?
-                    .ok_or(Error::General("Cannot create connection"))?;
+                let token =
+                    manager.connect(&socket_address, session)?.ok_or(Error::General("Cannot create connection"))?;
                 io.register_stream(token)?;
 
                 if let Some(ref discovery) = *self.discovery.read() {
@@ -559,17 +694,19 @@ impl IoHandler<Message> for Handler {
     fn stream_writable(&self, io: &IoContext<Message>, stream: StreamToken) -> IoHandlerResult<()> {
         match stream {
             ACCEPT_TOKEN => unreachable!(),
-            FIRST_CONNECTION_TOKEN...LAST_CONNECTION_TOKEN => loop {
+            FIRST_CONNECTION_TOKEN...LAST_CONNECTION_TOKEN => {
                 let _f = finally(|| {
                     if let Err(err) = io.update_registration(stream) {
                         cwarn!(NET, "Cannot update registration for connection {:?}", err);
                     }
                 });
-                let mut manager = self.manager.lock();
-                if !manager.send(&stream)? {
-                    break
+                loop {
+                    let mut manager = self.manager.lock();
+                    if !manager.send(&stream, &self.client)? {
+                        break
+                    }
                 }
-            },
+            }
             _ => unreachable!(),
         }
         Ok(())
@@ -629,12 +766,8 @@ impl IoHandler<Message> for Handler {
             ACCEPT_TOKEN => unreachable!(),
             FIRST_CONNECTION_TOKEN...LAST_CONNECTION_TOKEN => {
                 let mut manager = self.manager.lock();
-                let is_processed = manager.deregister_stream(stream, event_loop)?;
-                if is_processed {
-                    manager.deregister_connection(&stream);
-                } else {
-                    manager.deregister_unprocessed_connection(&stream);
-                }
+                manager.deregister_stream(stream, event_loop)?;
+                manager.deregister_connection(&stream);
             }
             _ => unreachable!(),
         }

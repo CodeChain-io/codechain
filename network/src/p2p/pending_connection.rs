@@ -17,7 +17,6 @@
 use std::io;
 
 use cio::IoManager;
-use ctypes::Secret;
 use mio::deprecated::EventLoop;
 use mio::unix::UnixReady;
 use mio::{PollOpt, Ready, Token};
@@ -65,7 +64,6 @@ impl WaitSyncConnection {
         let message = Message::Handshake(HandshakeMessage::ack());
         let signed_message = SignedMessage::new(&message, session);
 
-        use rlp::Encodable;
         self.stream.write(&signed_message)?;
         self.state = WaitSyncConnectionState::Sent;
         Ok(())
@@ -152,7 +150,6 @@ enum WaitAckConnectionState {
 
 pub struct WaitAckConnection {
     stream: SignedStream,
-    session: Session,
     port: u16,
     local_node_id: NodeId,
     peer_node_id: NodeId,
@@ -160,17 +157,9 @@ pub struct WaitAckConnection {
 }
 
 impl WaitAckConnection {
-    pub fn new(
-        stream: Stream,
-        secret: Secret,
-        nonce: Nonce,
-        port: u16,
-        local_node_id: NodeId,
-        peer_node_id: NodeId,
-    ) -> Self {
+    pub fn new(stream: Stream, session: Session, port: u16, local_node_id: NodeId, peer_node_id: NodeId) -> Self {
         Self {
-            stream: SignedStream::new(stream, Session::new(secret, nonce.clone())),
-            session: Session::new(secret, nonce),
+            stream: SignedStream::new(stream, session),
             port,
             local_node_id,
             peer_node_id,
