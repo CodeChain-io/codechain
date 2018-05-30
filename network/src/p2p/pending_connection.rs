@@ -26,7 +26,7 @@ use unexpected::Mismatch;
 use super::super::addr::convert_to_node_id;
 use super::super::session::{Nonce, Session};
 use super::super::NodeId;
-use super::connection::{Connection, Error as ConnectionError, Result as ConnectionResult};
+use super::connection::{Error as ConnectionError, EstablishedConnection, Result as ConnectionResult};
 use super::message::{HandshakeMessage, Message, SignedMessage};
 use super::session_candidate::SessionCandidate;
 use super::stream::{SignedStream, Stream};
@@ -107,11 +107,11 @@ impl WaitSyncConnection {
         }
     }
 
-    pub fn process(self) -> Connection {
+    pub fn establish(self) -> EstablishedConnection {
         debug_assert_eq!(self.state, WaitSyncConnectionState::Sent);
         let session = self.session.as_ref().expect("Session must exist");
         let peer_node_id = self.peer_node_id.expect("Sync message set peer node id");
-        Connection::new(SignedStream::new(self.stream, session.clone()), peer_node_id)
+        EstablishedConnection::new(SignedStream::new(self.stream, session.clone()), peer_node_id)
     }
 
     fn interest(&self) -> Ready {
@@ -192,10 +192,10 @@ impl WaitAckConnection {
         }
     }
 
-    pub fn process(self) -> Connection {
+    pub fn establish(self) -> EstablishedConnection {
         debug_assert_eq!(WaitAckConnectionState::Received, self.state);
         let peer_node_id = self.peer_node_id;
-        Connection::new(self.stream, peer_node_id)
+        EstablishedConnection::new(self.stream, peer_node_id)
     }
 
     fn interest(&self) -> Ready {
