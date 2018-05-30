@@ -23,6 +23,7 @@ use std::result;
 use ccrypto::aes::SymmetricCipherError;
 use cio::IoManager;
 use mio::deprecated::EventLoop;
+use mio::event::Evented;
 use mio::unix::UnixReady;
 use mio::{PollOpt, Ready, Token};
 use rlp::DecoderError;
@@ -122,15 +123,6 @@ impl EstablishedConnection {
         }
     }
 
-    pub fn send(&mut self) -> Result<bool> {
-        if let Some(message) = self.send_queue.pop_front() {
-            self.stream.write(&message)?;
-            Ok(true)
-        } else {
-            Ok(false)
-        }
-    }
-
     fn enqueue(&mut self, message: Message) {
         self.send_queue.push_back(message);
     }
@@ -224,8 +216,41 @@ impl EstablishedConnection {
     pub fn peer_node_id(&self) -> &NodeId {
         &self.peer_node_id
     }
+}
 
-    pub fn interest(&self) -> Ready {
+pub trait Connection<S: Sized>
+where
+    S: Evented, {
+    fn stream(&self) -> &S;
+    fn interest(&self) -> Ready;
+
+    fn send(&mut self) -> Result<bool>;
+
+    fn register<Message>(&self, reg: Token, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()>
+    where
+        Message: Send + Sync + Clone + 'static, {
+        event_loop.register(self.stream(), reg, self.interest(), PollOpt::edge())
+    }
+
+    fn reregister<Message>(&self, reg: Token, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()>
+    where
+        Message: Send + Sync + Clone + 'static, {
+        event_loop.reregister(self.stream(), reg, self.interest(), PollOpt::edge())
+    }
+
+    fn deregister<Message>(&self, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()>
+    where
+        Message: Send + Sync + Clone + 'static, {
+        event_loop.deregister(self.stream())
+    }
+}
+
+impl Connection<SignedStream> for EstablishedConnection {
+    fn stream(&self) -> &SignedStream {
+        &self.stream
+    }
+
+    fn interest(&self) -> Ready {
         if self.send_queue.is_empty() {
             Ready::readable() | UnixReady::hup()
         } else {
@@ -233,22 +258,13 @@ impl EstablishedConnection {
         }
     }
 
-    pub fn register<Message>(&self, reg: Token, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()>
-    where
-        Message: Send + Sync + Clone + 'static, {
-        event_loop.register(&self.stream, reg, self.interest(), PollOpt::edge())
-    }
-
-    pub fn reregister<Message>(&self, reg: Token, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()>
-    where
-        Message: Send + Sync + Clone + 'static, {
-        event_loop.reregister(&self.stream, reg, self.interest(), PollOpt::edge())
-    }
-
-    pub fn deregister<Message>(&self, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()>
-    where
-        Message: Send + Sync + Clone + 'static, {
-        event_loop.deregister(&self.stream)
+    fn send(&mut self) -> Result<bool> {
+        if let Some(message) = self.send_queue.pop_front() {
+            self.stream.write(&message)?;
+            Ok(true)
+        } else {
+            Ok(false)
+        }
     }
 }
 

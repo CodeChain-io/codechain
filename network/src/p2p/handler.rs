@@ -30,7 +30,7 @@ use super::super::session::Session;
 use super::super::session_initiator::Message as SessionMessage;
 use super::super::token_generator::TokenGenerator;
 use super::super::{DiscoveryApi, NodeId, SocketAddr};
-use super::connection::{EstablishedConnection, ExtensionCallback as ExtensionChannel};
+use super::connection::{Connection, EstablishedConnection, ExtensionCallback as ExtensionChannel};
 use super::listener::Listener;
 use super::message::Version;
 use super::pending_connection::{WaitAckConnection, WaitSyncConnection};
