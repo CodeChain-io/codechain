@@ -22,7 +22,6 @@ use std::result;
 
 use ccrypto::aes::SymmetricCipherError;
 use cio::IoManager;
-use ctypes::Secret;
 use mio::deprecated::EventLoop;
 use mio::unix::UnixReady;
 use mio::{PollOpt, Ready, Token};
@@ -32,22 +31,13 @@ use unexpected::Mismatch;
 
 use super::super::client::Client;
 use super::super::extension::{Error as ExtensionError, NodeToken};
-use super::super::session::{Nonce, Session};
 use super::super::NodeId;
 use super::message::{Message, Seq, Version};
-use super::stream::{Error as StreamError, SignedStream, Stream};
-use super::{ExtensionMessage, HandshakeMessage, NegotiationBody, NegotiationMessage};
-
-#[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq)]
-pub enum State {
-    New,         // create socket
-    Requested,   // send sync
-    Established, // send ack or receive ack
-}
+use super::stream::{Error as StreamError, SignedStream};
+use super::{ExtensionMessage, NegotiationBody, NegotiationMessage};
 
 pub struct Connection {
     stream: SignedStream,
-    state: State,
     send_queue: VecDeque<Message>,
     next_negotiation_seq: Seq,
     requested_negotiation: HashMap<Seq, String>,
@@ -59,10 +49,6 @@ pub enum Error {
     StreamError(StreamError),
     DecoderError(DecoderError),
     InvalidSign,
-    InvalidState {
-        expected: State,
-        actual: State,
-    },
     UnreadySession,
     UnexpectedNodeId(Mismatch<NodeId>),
     SymmetricCipherError(SymmetricCipherError),
@@ -74,9 +60,6 @@ impl fmt::Display for Error {
             Error::StreamError(err) => err.fmt(f),
             Error::DecoderError(err) => err.fmt(f),
             Error::InvalidSign => fmt::Debug::fmt(&self, f),
-            Error::InvalidState {
-                ..
-            } => fmt::Debug::fmt(&self, f),
             Error::UnreadySession => fmt::Debug::fmt(&self, f),
             Error::UnexpectedNodeId(_) => fmt::Debug::fmt(&self, f),
             Error::SymmetricCipherError(err) => fmt::Debug::fmt(&err, f),
@@ -90,9 +73,6 @@ impl error::Error for Error {
             Error::StreamError(err) => err.description(),
             Error::DecoderError(err) => err.description(),
             Error::InvalidSign => "Invalid sign",
-            Error::InvalidState {
-                ..
-            } => "Invalid state",
             Error::UnreadySession => "Unready session",
             Error::UnexpectedNodeId(_) => "Unexpected node id",
             Error::SymmetricCipherError(_) => "Symmetric cipher",
@@ -104,9 +84,6 @@ impl error::Error for Error {
             Error::StreamError(err) => Some(err),
             Error::DecoderError(err) => Some(err),
             Error::InvalidSign => None,
-            Error::InvalidState {
-                ..
-            } => None,
             Error::UnreadySession => None,
             Error::UnexpectedNodeId(_) => None,
             Error::SymmetricCipherError(_) => None,
@@ -135,10 +112,9 @@ impl From<StreamError> for Error {
 pub type Result<T> = result::Result<T, Error>;
 
 impl Connection {
-    pub fn new(stream: Stream, secret: Secret, session_id: Nonce, peer_node_id: NodeId) -> Self {
+    pub fn new(stream: SignedStream, peer_node_id: NodeId) -> Self {
         Self {
-            stream: SignedStream::new(stream.into(), Session::new(secret, session_id)),
-            state: State::New,
+            stream,
             send_queue: VecDeque::new(),
             next_negotiation_seq: 0,
             requested_negotiation: HashMap::new(),
@@ -155,18 +131,8 @@ impl Connection {
         }
     }
 
-    pub fn enqueue(&mut self, message: Message) {
+    fn enqueue(&mut self, message: Message) {
         self.send_queue.push_back(message);
-    }
-
-    pub fn enqueue_sync(&mut self, port: u16, node_id: NodeId) {
-        self.enqueue(Message::Handshake(HandshakeMessage::sync(port, node_id)));
-        self.state = State::Requested;
-    }
-
-    pub fn enqueue_ack(&mut self) {
-        self.enqueue(Message::Handshake(HandshakeMessage::ack()));
-        self.state = State::Established;
     }
 
     pub fn enqueue_negotiation_request(&mut self, name: String, version: Version) {
@@ -214,8 +180,6 @@ impl Connection {
         if let Some(message) = self.stream.read()? {
             match message {
                 Message::Extension(msg) => {
-                    let _ = self.expect_state(State::Established)?;
-
                     let session = self.stream.session();
 
                     // FIXME: check version of extension
@@ -224,22 +188,9 @@ impl Connection {
                 }
                 Message::Handshake(msg) => {
                     ctrace!(NET, "handshake message received {:?}", msg);
-                    match msg {
-                        HandshakeMessage::Sync {
-                            ..
-                        } => {
-                            unreachable!(); // This message must be handled in UnprocessedConnection
-                        }
-                        HandshakeMessage::Ack(_) => {
-                            let _ = self.expect_state(State::Requested)?;
-                            self.state = State::Established;
-                            callback.on_node_added();
-                        }
-                    }
-                    Ok(true)
+                    unreachable!();
                 }
                 Message::Negotiation(msg) => {
-                    let _ = self.expect_state(State::Established)?;
                     match msg.body() {
                         NegotiationBody::Request {
                             ref extension_name,
@@ -267,17 +218,6 @@ impl Connection {
             }
         } else {
             Ok(false)
-        }
-    }
-
-    fn expect_state(&self, expected: State) -> Result<()> {
-        if self.state != expected {
-            Err(Error::InvalidState {
-                expected,
-                actual: self.state.clone(),
-            })
-        } else {
-            Ok(())
         }
     }
 
@@ -340,9 +280,5 @@ impl<'a> ExtensionCallback<'a> {
 
     fn on_message(&self, name: &String, data: &[u8]) {
         self.client.on_message(&name, &self.id, &data);
-    }
-
-    fn on_node_added(&self) {
-        self.client.on_node_added(&self.id);
     }
 }

@@ -24,7 +24,6 @@ mod stream;
 
 pub use self::handler::{Handler, Message};
 use self::message::ExtensionMessage;
-use self::message::HandshakeMessage;
 use self::message::NegotiationBody;
 use self::message::NegotiationMessage;
 use self::message::SignedMessage;
