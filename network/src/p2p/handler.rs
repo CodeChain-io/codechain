@@ -676,7 +676,7 @@ impl IoHandler<Message> for Handler {
             FIRST_CONNECTION_TOKEN...LAST_CONNECTION_TOKEN => {
                 let _f = finally(|| {
                     if let Err(err) = io.update_registration(stream) {
-                        cwarn!(NET, "Cannot update registration for connection {:?}", err);
+                        cwarn!(NET, "Cannot update registration in stream_readable for {} {:?}", stream, err);
                     }
                 });
                 loop {
@@ -697,7 +697,7 @@ impl IoHandler<Message> for Handler {
             FIRST_CONNECTION_TOKEN...LAST_CONNECTION_TOKEN => {
                 let _f = finally(|| {
                     if let Err(err) = io.update_registration(stream) {
-                        cwarn!(NET, "Cannot update registration for connection {:?}", err);
+                        cwarn!(NET, "Cannot update registration in stream_writable for {} {:?}", stream, err);
                     }
                 });
                 loop {
