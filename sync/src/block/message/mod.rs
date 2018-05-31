@@ -85,7 +85,7 @@ impl Decodable for Message {
                 }
             }
             MESSAGE_ID_GET_HEADERS | MESSAGE_ID_GET_BODIES => Message::Request(RequestMessage::decode(id, &message)?),
-            MESSAGE_ID_HEADERS | MESSAGE_ID_BODIES => Message::Response(rlp.as_val()?),
+            MESSAGE_ID_HEADERS | MESSAGE_ID_BODIES => Message::Response(ResponseMessage::decode(id, &message)?),
             _ => return Err(DecoderError::Custom("Unknown message id detected")),
         })
     }

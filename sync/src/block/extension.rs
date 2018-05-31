@@ -401,6 +401,7 @@ impl Extension {
         let apply_success = match response {
             ResponseMessage::Headers(headers) => self.manager.lock().import_headers(headers),
             ResponseMessage::Bodies(bodies) => self.manager.lock().import_bodies(bodies),
+            _ => unimplemented!(),
         };
         if let Some(peer) = self.peers.write().get_mut(from) {
             if apply_success {
