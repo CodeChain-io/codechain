@@ -17,20 +17,12 @@
 use ccore::{Header, UnverifiedParcel};
 use rlp::{DecoderError, Encodable, RlpStream, UntrustedRlp};
 
-use super::Message;
-
 #[derive(Debug, PartialEq)]
 pub enum ResponseMessage {
     Headers(Vec<Header>),
     Bodies(Vec<Vec<UnverifiedParcel>>),
     StateHead(Vec<u8>),
     StateChunk(Vec<u8>),
-}
-
-impl Into<Message> for ResponseMessage {
-    fn into(self) -> Message {
-        Message::Response(self)
-    }
 }
 
 impl Encodable for ResponseMessage {
@@ -58,6 +50,19 @@ impl Encodable for ResponseMessage {
 }
 
 impl ResponseMessage {
+    pub fn message_id(&self) -> u8 {
+        match self {
+            ResponseMessage::Headers {
+                ..
+            } => super::MESSAGE_ID_HEADERS,
+            ResponseMessage::Bodies(..) => super::MESSAGE_ID_BODIES,
+            ResponseMessage::StateHead(..) => super::MESSAGE_ID_STATE_HEAD,
+            ResponseMessage::StateChunk {
+                ..
+            } => super::MESSAGE_ID_STATE_CHUNK,
+        }
+    }
+
     pub fn decode(id: u8, rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
         let message = match id {
             super::MESSAGE_ID_HEADERS => ResponseMessage::Headers(rlp.as_list()?),
@@ -101,34 +106,30 @@ mod tests {
 
     #[test]
     fn test_headers_message_rlp() {
-        let id = super::super::MESSAGE_ID_HEADERS;
         let headers = vec![Header::default()];
         headers.iter().for_each(|header| {
             header.hash();
         });
 
         let message = ResponseMessage::Headers(headers);
-        assert_eq!(message, decode_bytes(id, message.rlp_bytes().as_ref()));
+        assert_eq!(message, decode_bytes(message.message_id(), message.rlp_bytes().as_ref()));
     }
 
     #[test]
     fn test_bodies_message_rlp() {
-        let id = super::super::MESSAGE_ID_BODIES;
         let message = ResponseMessage::Bodies(vec![vec![]]);
-        assert_eq!(message, decode_bytes(id, message.rlp_bytes().as_ref()));
+        assert_eq!(message, decode_bytes(message.message_id(), message.rlp_bytes().as_ref()));
     }
 
     #[test]
     fn test_state_head_message_rlp() {
-        let id = super::super::MESSAGE_ID_STATE_HEAD;
         let message = ResponseMessage::StateHead(vec![]);
-        assert_eq!(message, decode_bytes(id, message.rlp_bytes().as_ref()));
+        assert_eq!(message, decode_bytes(message.message_id(), message.rlp_bytes().as_ref()));
     }
 
     #[test]
     fn test_state_chunk_message_rlp() {
-        let id = super::super::MESSAGE_ID_STATE_CHUNK;
         let message = ResponseMessage::StateChunk(vec![]);
-        assert_eq!(message, decode_bytes(id, message.rlp_bytes().as_ref()));
+        assert_eq!(message, decode_bytes(message.message_id(), message.rlp_bytes().as_ref()));
     }
 }

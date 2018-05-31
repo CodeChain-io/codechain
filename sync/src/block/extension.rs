@@ -150,8 +150,8 @@ impl NetworkExtension for Extension {
                 } => {
                     self.on_peer_status(token, total_score, best_hash, genesis_hash);
                 }
-                Message::Request(request) => self.on_peer_request(token, request),
-                Message::Response(response) => self.on_peer_response(token, response),
+                Message::Request(_, request) => self.on_peer_request(token, request),
+                Message::Response(_, response) => self.on_peer_response(token, response),
             }
         } else {
             cinfo!(SYNC, "invalid message from peer {}", token);
@@ -202,7 +202,8 @@ impl NetworkExtension for Extension {
                 peer.last_request = next_message.clone().map(|message| (message, Instant::now()));
             }
             if let Some(message) = next_message {
-                self.send_message(&id, message.into());
+                // FIXME: assign request id
+                self.send_message(&id, Message::Request(0, message));
             }
         }
     }
@@ -287,7 +288,8 @@ impl Extension {
             _ => unimplemented!(),
         };
 
-        self.send_message(from, response.into());
+        // FIXME: assign request id
+        self.send_message(from, Message::Response(0, response));
     }
 
     fn is_valid_request(&self, request: &RequestMessage) -> bool {
@@ -367,7 +369,8 @@ impl Extension {
         }
 
         if let Some(message) = request {
-            self.send_message(from, message.into());
+            // FIXME: assign request id
+            self.send_message(from, Message::Request(0, message));
         }
     }
 
@@ -533,9 +536,11 @@ mod tests {
             start_number: request_range.start,
             max_count: 4,
         };
-        env.network.send_message(EXTENSION_NAME, 0, &Message::Request(header_request).rlp_bytes());
+        // FIXME: assign request id
+        env.network.send_message(EXTENSION_NAME, 0, &Message::Request(0, header_request).rlp_bytes());
         if let TestNetworkCall::Send(_, response) = env.network.pop_call(EXTENSION_NAME).unwrap() {
-            if let Message::Response(ResponseMessage::Headers(headers)) = ::rlp::decode(response.as_slice()) {
+            // FIXME: assign request id
+            if let Message::Response(0, ResponseMessage::Headers(headers)) = ::rlp::decode(response.as_slice()) {
                 for i in request_range.clone() {
                     let message_header = headers[(i - request_range.start) as usize].clone();
                     let chain_header = env.client.block_header(BlockId::Number(i)).unwrap().decode();
@@ -551,9 +556,11 @@ mod tests {
         let body_request = RequestMessage::Bodies(
             request_range.clone().map(|i| env.client.block_header(BlockId::Number(i)).unwrap().hash()).collect(),
         );
-        env.network.send_message(EXTENSION_NAME, 0, &Message::Request(body_request).rlp_bytes());
+        // FIXME: assign request id
+        env.network.send_message(EXTENSION_NAME, 0, &Message::Request(0, body_request).rlp_bytes());
         if let TestNetworkCall::Send(_, response) = env.network.pop_call(EXTENSION_NAME).unwrap() {
-            if let Message::Response(ResponseMessage::Bodies(bodies)) = ::rlp::decode(response.as_slice()) {
+            // FIXME: assign request id
+            if let Message::Response(0, ResponseMessage::Bodies(bodies)) = ::rlp::decode(response.as_slice()) {
                 for i in request_range.clone() {
                     let message_body = bodies[(i - request_range.start) as usize].clone();
                     let chain_body = env.client.block_body(BlockId::Number(i)).unwrap().decode();
@@ -581,10 +588,14 @@ mod tests {
         env.network.call_timeout(EXTENSION_NAME, SYNC_TIMER_TOKEN);
         let request_start = match env.network.pop_call(EXTENSION_NAME).unwrap() {
             TestNetworkCall::Send(_, request) => match ::rlp::decode(request.as_slice()) {
-                Message::Request(RequestMessage::Headers {
-                    start_number,
-                    ..
-                }) => start_number,
+                // FIXME: assign request id
+                Message::Request(
+                    0,
+                    RequestMessage::Headers {
+                        start_number,
+                        ..
+                    },
+                ) => start_number,
                 _ => panic!(),
             },
             _ => panic!(),
@@ -595,11 +606,13 @@ mod tests {
                 .map(|i| peer_chain.block_header(BlockId::Number(i)).unwrap().decode())
                 .collect(),
         );
-        env.network.send_message(EXTENSION_NAME, 0, &Message::Response(header_response).rlp_bytes());
+        // FIXME: assign request id
+        env.network.send_message(EXTENSION_NAME, 0, &Message::Response(0, header_response).rlp_bytes());
 
         let requested_bodies = match env.network.pop_call(EXTENSION_NAME).unwrap() {
             TestNetworkCall::Send(_, request) => match ::rlp::decode(request.as_slice()) {
-                Message::Request(RequestMessage::Bodies(hashes)) => hashes,
+                // FIXME: assign request id
+                Message::Request(0, RequestMessage::Bodies(hashes)) => hashes,
                 _ => panic!(),
             },
             _ => panic!(),
@@ -610,14 +623,19 @@ mod tests {
                 .map(|hash| peer_chain.block_body(BlockId::Hash(hash)).unwrap().decode())
                 .collect(),
         );
-        env.network.send_message(EXTENSION_NAME, 0, &Message::Response(body_response).rlp_bytes());
+        // FIXME: assign request id
+        env.network.send_message(EXTENSION_NAME, 0, &Message::Response(0, body_response).rlp_bytes());
 
         let new_request_start = match env.network.pop_call(EXTENSION_NAME).unwrap() {
             TestNetworkCall::Send(_, request) => match ::rlp::decode(request.as_slice()) {
-                Message::Request(RequestMessage::Headers {
-                    start_number,
-                    ..
-                }) => start_number,
+                // FIXME: assign request id
+                Message::Request(
+                    0,
+                    RequestMessage::Headers {
+                        start_number,
+                        ..
+                    },
+                ) => start_number,
                 _ => panic!(),
             },
             _ => panic!(),

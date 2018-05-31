@@ -40,8 +40,8 @@ pub enum Message {
         best_hash: H256,
         genesis_hash: H256,
     },
-    Request(RequestMessage),
-    Response(ResponseMessage),
+    Request(u64, RequestMessage),
+    Response(u64, ResponseMessage),
 }
 
 impl Encodable for Message {
@@ -60,34 +60,57 @@ impl Encodable for Message {
                 s.append(best_hash);
                 s.append(genesis_hash);
             }
-            Message::Request(request) => request.rlp_append(s),
-            Message::Response(response) => response.rlp_append(s),
+            Message::Request(request_id, request) => {
+                s.begin_list(3);
+                s.append(&request.message_id());
+                s.append(request_id);
+                s.append(request);
+            }
+            Message::Response(response_id, response) => {
+                s.begin_list(3);
+                s.append(&response.message_id());
+                s.append(response_id);
+                s.append(response);
+            }
         }
     }
 }
 
 impl Decodable for Message {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
-        if rlp.item_count()? != 2 {
-            return Err(DecoderError::RlpIncorrectListLen)
-        }
         let id = rlp.val_at(0)?;
-        let message = rlp.at(1)?;
-        Ok(match id {
-            MESSAGE_ID_STATUS => {
-                if message.item_count()? != 3 {
-                    return Err(DecoderError::RlpIncorrectListLen)
-                }
-                Message::Status {
-                    total_score: message.val_at(0)?,
-                    best_hash: message.val_at(1)?,
-                    genesis_hash: message.val_at(2)?,
-                }
+        if id == MESSAGE_ID_STATUS {
+            if rlp.item_count()? != 2 {
+                return Err(DecoderError::RlpIncorrectListLen)
             }
-            MESSAGE_ID_GET_HEADERS | MESSAGE_ID_GET_BODIES => Message::Request(RequestMessage::decode(id, &message)?),
-            MESSAGE_ID_HEADERS | MESSAGE_ID_BODIES => Message::Response(ResponseMessage::decode(id, &message)?),
-            _ => return Err(DecoderError::Custom("Unknown message id detected")),
-        })
+            let message = rlp.at(1)?;
+
+            if message.item_count()? != 3 {
+                return Err(DecoderError::RlpIncorrectListLen)
+            }
+
+            Ok(Message::Status {
+                total_score: message.val_at(0)?,
+                best_hash: message.val_at(1)?,
+                genesis_hash: message.val_at(2)?,
+            })
+        } else {
+            if rlp.item_count()? != 3 {
+                return Err(DecoderError::RlpIncorrectListLen)
+            }
+            let request_id = rlp.val_at(1)?;
+            let message = rlp.at(2)?;
+            match id {
+                MESSAGE_ID_GET_HEADERS
+                | MESSAGE_ID_GET_BODIES
+                | MESSAGE_ID_GET_STATE_HEAD
+                | MESSAGE_ID_GET_STATE_CHUNK => Ok(Message::Request(request_id, RequestMessage::decode(id, &message)?)),
+                MESSAGE_ID_HEADERS | MESSAGE_ID_BODIES | MESSAGE_ID_STATE_HEAD | MESSAGE_ID_STATE_CHUNK => {
+                    Ok(Message::Response(request_id, ResponseMessage::decode(id, &message)?))
+                }
+                _ => Err(DecoderError::Custom("Unknown message id detected")),
+            }
+        }
     }
 }
 
