@@ -21,7 +21,6 @@ mod negotiation;
 mod signed_message;
 
 use ctypes::H256;
-use ctypes::Secret;
 
 pub use self::extension::Message as ExtensionMessage;
 pub use self::handshake::Message as HandshakeMessage;
@@ -33,7 +32,6 @@ pub use super::super::session::Nonce;
 pub type Version = u64;
 pub type ProtocolId = u64;
 pub type Seq = u64;
-pub type SessionKey = (Secret, Nonce);
 pub type Signature = H256;
 
 pub const SYNC_ID: ProtocolId = 0x00;

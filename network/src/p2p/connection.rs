@@ -185,8 +185,12 @@ impl Connection {
     pub fn enqueue_extension_message(&mut self, extension_name: String, need_encryption: bool, message: Vec<u8>) {
         const VERSION: u64 = 0;
         let message = if need_encryption {
-            let session_key = (*self.stream.session().secret(), self.stream.session().id().clone());
-            match ExtensionMessage::encrypted_from_unencrypted_data(extension_name, VERSION, message, &session_key) {
+            match ExtensionMessage::encrypted_from_unencrypted_data(
+                extension_name,
+                VERSION,
+                message,
+                self.stream.session(),
+            ) {
                 Ok(message) => message,
                 Err(err) => {
                     cdebug!(NET, "Cannot encrypt message : {:?}", err);
@@ -212,10 +216,10 @@ impl Connection {
                 Message::Extension(msg) => {
                     let _ = self.expect_state(State::Established)?;
 
-                    let session_key = (*self.stream.session().secret(), self.stream.session().id().clone());
+                    let session = self.stream.session();
 
                     // FIXME: check version of extension
-                    callback.on_message(&msg.extension_name(), &msg.unencrypted_data(&session_key)?);
+                    callback.on_message(&msg.extension_name(), &msg.unencrypted_data(session)?);
                     Ok(true)
                 }
                 Message::Handshake(msg) => {

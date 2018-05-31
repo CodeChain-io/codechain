@@ -17,12 +17,13 @@
 use ccrypto::aes::{self, SymmetricCipherError};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
+use super::super::super::session::Session;
 use super::ProtocolId;
-use super::SessionKey;
 use super::Version;
 
 use super::ENCRYPTED_ID;
 use super::UNENCRYPTED_ID;
+
 
 #[derive(Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct Message {
@@ -53,9 +54,10 @@ impl Message {
         extension_name: String,
         extension_version: Version,
         unencrypted_data: Vec<u8>,
-        session_key: &SessionKey,
+        session: &Session,
     ) -> Result<Self, SymmetricCipherError> {
-        let data = Data::Encrypted(aes::encrypt(unencrypted_data.as_slice(), &session_key.0, (&session_key.1).into())?);
+        let data =
+            Data::Encrypted(aes::encrypt(unencrypted_data.as_slice(), session.secret(), &session.id().clone().into())?);
         Ok(Self {
             version: 0,
             extension_name,
@@ -79,9 +81,9 @@ impl Message {
         }
     }
 
-    pub fn unencrypted_data(&self, session_key: &SessionKey) -> Result<Vec<u8>, SymmetricCipherError> {
+    pub fn unencrypted_data(&self, session: &Session) -> Result<Vec<u8>, SymmetricCipherError> {
         match self.data {
-            Data::Encrypted(ref data) => aes::decrypt(data.as_slice(), &session_key.0, (&session_key.1).into()),
+            Data::Encrypted(ref data) => aes::decrypt(data.as_slice(), session.secret(), &session.id().clone().into()),
             Data::Unencrypted(ref data) => Ok(data.clone()),
         }
     }
@@ -144,7 +146,7 @@ mod tests {
     use rand::{OsRng, Rng};
 
     use super::super::super::message::Nonce;
-    use super::Message;
+    use super::*;
 
     #[test]
     fn encrypted_id_is_5() {
@@ -166,13 +168,14 @@ mod tests {
         let mut rng = OsRng::new().expect("Cannot generate random number");
         let nonce: Nonce = rng.gen();
 
+        let session = Session::new(shared_secret, nonce);
         let encrypted = Message::encrypted_from_unencrypted_data(
             extension_name,
             extension_version,
             unencrypted_data.clone(),
-            &(shared_secret, nonce.clone()),
+            &session,
         ).unwrap();
         assert_ne!(&unencrypted_data, encrypted.data());
-        assert_eq!(unencrypted_data, encrypted.unencrypted_data(&(shared_secret, nonce)).unwrap());
+        assert_eq!(unencrypted_data, encrypted.unencrypted_data(&session).unwrap());
     }
 }
