@@ -18,6 +18,7 @@ use std::collections::{HashMap, HashSet};
 use std::io;
 use std::sync::Arc;
 
+use ccrypto::aes::SymmetricCipherError;
 use cfinally::finally;
 use cio::{IoChannel, IoContext, IoHandler, IoHandlerResult, IoManager, StreamToken, TimerToken};
 use mio::deprecated::EventLoop;
@@ -30,12 +31,13 @@ use super::super::session::Session;
 use super::super::session_initiator::Message as SessionMessage;
 use super::super::token_generator::TokenGenerator;
 use super::super::{DiscoveryApi, NodeId, SocketAddr};
-use super::connection::{Connection, EstablishedConnection, ExtensionCallback as ExtensionChannel};
+use super::connection::{Connection, EstablishedConnection};
 use super::listener::Listener;
-use super::message::Version;
+use super::message::{Message as NetworkMessage, Version};
 use super::pending_connection::{WaitAckConnection, WaitSyncConnection};
 use super::session_candidate::SessionCandidate;
 use super::stream::Stream;
+use super::NegotiationBody;
 
 struct Manager {
     listener: Listener,
@@ -112,6 +114,7 @@ pub enum Message {
 enum Error {
     InvalidStream(StreamToken),
     InvalidNode(NodeToken),
+    SymmetricCipherError(SymmetricCipherError),
     General(&'static str),
 }
 
@@ -122,6 +125,7 @@ impl ::std::fmt::Display for Error {
         match self {
             Error::InvalidStream(_) => ::std::fmt::Debug::fmt(self, f),
             Error::InvalidNode(_) => ::std::fmt::Debug::fmt(self, f),
+            Error::SymmetricCipherError(err) => ::std::fmt::Debug::fmt(&err, f),
             Error::General(_) => ::std::fmt::Debug::fmt(self, f),
         }
     }
@@ -369,7 +373,50 @@ impl Manager {
     // Return false if the received message is sync
     fn receive(&mut self, stream: &StreamToken, client: &Client) -> IoHandlerResult<bool> {
         if let Some(connection) = self.connections.get_mut(&stream) {
-            return Ok(connection.receive(&ExtensionChannel::new(&client, *stream)))
+            let message = connection.receive()?;
+            match message {
+                Some(NetworkMessage::Extension(msg)) => {
+                    let session = connection.session();
+                    // FIXME: check version of extension
+                    let message = msg.unencrypted_data(session).map_err(Error::from)?;
+                    client.on_message(msg.extension_name(), stream, &message);
+                    return Ok(true)
+                }
+                Some(NetworkMessage::Handshake(msg)) => {
+                    unreachable!("handshake message received {:?}", msg);
+                }
+                Some(NetworkMessage::Negotiation(msg)) => {
+                    match msg.body() {
+                        NegotiationBody::Request {
+                            ref extension_name,
+                            ..
+                        } => {
+                            let seq = msg.seq();
+                            // FIXME: version negotiation
+                            client.on_negotiated(extension_name, stream);
+                            connection.enqueue_negotiation_allowed(seq);
+                        }
+                        NegotiationBody::Allowed => {
+                            let seq = msg.seq();
+                            if let Some(name) = connection.remove_requested_negotiation(&seq) {
+                                client.on_negotiation_allowed(&name, stream);
+                            } else {
+                                ctrace!(NET, "Negotiation::Allowed message received from non requested seq");
+                            }
+                        }
+                        NegotiationBody::Denied(_) => {
+                            let seq = msg.seq();
+                            if let Some(name) = connection.remove_requested_negotiation(&seq) {
+                                client.on_negotiation_denied(&name, stream);
+                            } else {
+                                ctrace!(NET, "Negotiation::Denied message received from non requested seq");
+                            }
+                        }
+                    };
+                    return Ok(true)
+                }
+                None => return Ok(false),
+            }
         }
 
         if self.wait_ack_connections.contains_key(stream) {
@@ -772,5 +819,11 @@ impl IoHandler<Message> for Handler {
             _ => unreachable!(),
         }
         Ok(())
+    }
+}
+
+impl From<SymmetricCipherError> for Error {
+    fn from(err: SymmetricCipherError) -> Self {
+        Error::SymmetricCipherError(err)
     }
 }
