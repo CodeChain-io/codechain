@@ -26,7 +26,6 @@ use mio::event::Evented;
 use mio::unix::UnixReady;
 use mio::{PollOpt, Ready, Token};
 use rlp::DecoderError;
-use unexpected::Mismatch;
 
 
 use super::super::session::Session;
@@ -47,9 +46,7 @@ pub struct EstablishedConnection {
 pub enum Error {
     StreamError(StreamError),
     DecoderError(DecoderError),
-    InvalidSign,
     UnreadySession,
-    UnexpectedNodeId(Mismatch<NodeId>),
 }
 
 impl fmt::Display for Error {
@@ -57,9 +54,7 @@ impl fmt::Display for Error {
         match self {
             Error::StreamError(err) => err.fmt(f),
             Error::DecoderError(err) => err.fmt(f),
-            Error::InvalidSign => fmt::Debug::fmt(&self, f),
-            Error::UnreadySession => fmt::Debug::fmt(&self, f),
-            Error::UnexpectedNodeId(_) => fmt::Debug::fmt(&self, f),
+            Error::UnreadySession => fmt::Debug::fmt(self, f),
         }
     }
 }
@@ -69,9 +64,7 @@ impl error::Error for Error {
         match self {
             Error::StreamError(err) => err.description(),
             Error::DecoderError(err) => err.description(),
-            Error::InvalidSign => "Invalid sign",
-            Error::UnreadySession => "Unready session",
-            Error::UnexpectedNodeId(_) => "Unexpected node id",
+            Error::UnreadySession => "Session is not ready",
         }
     }
 
@@ -79,9 +72,7 @@ impl error::Error for Error {
         match self {
             Error::StreamError(err) => Some(err),
             Error::DecoderError(err) => Some(err),
-            Error::InvalidSign => None,
             Error::UnreadySession => None,
-            Error::UnexpectedNodeId(_) => None,
         }
     }
 }

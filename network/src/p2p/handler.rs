@@ -24,7 +24,10 @@ use cio::{IoChannel, IoContext, IoHandler, IoHandlerResult, IoManager, StreamTok
 use mio::deprecated::EventLoop;
 use mio::{PollOpt, Ready, Token};
 use parking_lot::{Mutex, RwLock};
+use rlp::UntrustedRlp;
+use unexpected::Mismatch;
 
+use super::super::addr::convert_to_node_id;
 use super::super::client::Client;
 use super::super::extension::NodeToken;
 use super::super::session::Session;
@@ -33,7 +36,7 @@ use super::super::token_generator::TokenGenerator;
 use super::super::{DiscoveryApi, NodeId, SocketAddr};
 use super::connection::{Connection, EstablishedConnection};
 use super::listener::Listener;
-use super::message::{Message as NetworkMessage, Version};
+use super::message::{HandshakeMessage, Message as NetworkMessage, Version};
 use super::pending_connection::{WaitAckConnection, WaitSyncConnection};
 use super::session_candidate::SessionCandidate;
 use super::stream::Stream;
@@ -114,6 +117,9 @@ pub enum Message {
 enum Error {
     InvalidStream(StreamToken),
     InvalidNode(NodeToken),
+    InvalidSign,
+    UnreadySession,
+    UnexpectedNodeId(Mismatch<NodeId>),
     SymmetricCipherError(SymmetricCipherError),
     General(&'static str),
 }
@@ -125,6 +131,9 @@ impl ::std::fmt::Display for Error {
         match self {
             Error::InvalidStream(_) => ::std::fmt::Debug::fmt(self, f),
             Error::InvalidNode(_) => ::std::fmt::Debug::fmt(self, f),
+            Error::InvalidSign => ::std::fmt::Debug::fmt(&self, f),
+            Error::UnreadySession => ::std::fmt::Debug::fmt(&self, f),
+            Error::UnexpectedNodeId(_) => ::std::fmt::Debug::fmt(&self, f),
             Error::SymmetricCipherError(err) => ::std::fmt::Debug::fmt(&err, f),
             Error::General(_) => ::std::fmt::Debug::fmt(self, f),
         }
@@ -423,10 +432,10 @@ impl Manager {
             {
                 // connection borrows *self as mutable
                 let connection = self.wait_ack_connections.get_mut(&stream).unwrap();
-                if connection.receive()? {
-                    // Ack
-                } else {
-                    return Ok(true)
+                match connection.receive()? {
+                    Some(NetworkMessage::Handshake(HandshakeMessage::Ack(_))) => {}
+                    Some(_) => unreachable!(),
+                    None => return Ok(false),
                 }
             }
 
@@ -434,20 +443,47 @@ impl Manager {
             let connection = self.process_wait_ack_connection(&stream);
 
             self.register_connection(connection, stream, client);
-            return Ok(false)
+            return Ok(true)
         }
 
         if self.wait_sync_connections.contains_key(stream) {
             {
                 // connection borrows *self as mutable
                 let connection = self.wait_sync_connections.get_mut(&stream).unwrap();
-                if let Some(_) = connection.receive(&self.registered_sessions)? {
-                    // Sync
-                } else {
-                    return Ok(true)
+                let signed_message = connection.receive()?;
+                if signed_message.is_none() {
+                    return Ok(false)
+                }
+                let signed_message = signed_message.unwrap();
+                let rlp = UntrustedRlp::new(&signed_message.message);
+                let message = rlp.as_val::<NetworkMessage>()?;
+
+                match message {
+                    NetworkMessage::Handshake(HandshakeMessage::Sync {
+                        port,
+                        node_id,
+                        ..
+                    }) => {
+                        let peer_addr = connection.remote_addr()?;
+                        let peer_node_id = convert_to_node_id(&peer_addr.ip(), port);
+
+                        if peer_node_id != node_id {
+                            return Err(Error::UnexpectedNodeId(Mismatch {
+                                expected: peer_node_id,
+                                found: node_id,
+                            }).into())
+                        }
+                        let (session, _) = self.registered_sessions.get(&peer_node_id).ok_or(Error::UnreadySession)?;
+                        if !signed_message.is_valid(session) {
+                            return Err(Error::InvalidSign.into())
+                        }
+
+                        connection.ready_session(peer_node_id, session.clone());
+                    }
+                    _ => unreachable!(),
                 }
             }
-            return Ok(false)
+            return Ok(true)
         }
 
         Err(Error::InvalidStream(stream.clone()).into())
