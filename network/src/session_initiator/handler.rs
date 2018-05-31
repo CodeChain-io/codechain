@@ -245,11 +245,11 @@ impl SessionInitiator {
                 let seq = self.seq_counter.fetch_add(1, Ordering::SeqCst);
                 let ephemeral = Random.generate()?;
                 self.requested.insert(from.clone(), ephemeral.private().clone());
-                let message = message::Message::ecdh_request(seq as u64, *ephemeral.public());
+                let message = message::Message::secret_request(seq as u64, *ephemeral.public());
                 self.server.enqueue(message, from.clone())?;
                 Ok(())
             }
-            message::Body::ConnectionRequest(received_nonce) => {
+            message::Body::NonceRequest(received_nonce) => {
                 let encrypted_bytes = {
                     let secret = self.secrets.get(from).ok_or(Error::General("NoSession"))?;
 
@@ -281,11 +281,11 @@ impl SessionInitiator {
                     encrypted_nonce
                 };
 
-                let pong = message::Message::connection_allowed(message.seq(), encrypted_bytes);
+                let pong = message::Message::nonce_allowed(message.seq(), encrypted_bytes);
                 self.server.enqueue(pong, from.clone())?;
                 Ok(())
             }
-            message::Body::ConnectionAllowed(nonce) => {
+            message::Body::NonceAllowed(nonce) => {
                 let temporary_nonce = self.temporary_nonces.get(&from).ok_or(Error::General("SessionNotReady"))?;
                 let secret = self.secrets.get(from).ok_or(Error::General("NoSession"))?;
                 let temporary_session = Session::new(*secret, temporary_nonce.clone());
@@ -307,23 +307,23 @@ impl SessionInitiator {
                 self.session_registered_addresses.insert(from.clone());
                 Ok(())
             }
-            message::Body::ConnectionDenied(reason) => {
+            message::Body::NonceDenied(reason) => {
                 info!(target:"net", "Connection to {:?} refused(reason: {}", from, reason);
                 Ok(())
             }
-            message::Body::EcdhRequest(key) => {
+            message::Body::SecretRequest(key) => {
                 let ephemeral = Random.generate()?;
                 let secret = exchange(key, &ephemeral.private())?;
                 if self.secrets.insert(from.clone(), secret).is_some() {
-                    let message = message::Message::ecdh_denied(message.seq(), "ECDH Already requested".to_string());
+                    let message = message::Message::secret_denied(message.seq(), "ECDH Already requested".to_string());
                     self.server.enqueue(message, from.clone())?;
                     return Err(Error::General("ECDHAlreadyRequested"))
                 }
-                let message = message::Message::ecdh_allowed(message.seq(), *ephemeral.public());
+                let message = message::Message::secret_allowed(message.seq(), *ephemeral.public());
                 self.server.enqueue(message, from.clone())?;
                 Ok(())
             }
-            message::Body::EcdhAllowed(key) => {
+            message::Body::SecretAllowed(key) => {
                 let local_private = self.requested.remove(from).ok_or(Error::General("ECDHIsNotRequested"))?;
                 let secret = exchange(key, &local_private)?;
                 let session = Session::new_with_zero_nonce(secret);
@@ -343,7 +343,7 @@ impl SessionInitiator {
                 debug_assert!(t.is_none());
 
                 let seq = self.seq_counter.fetch_add(1, Ordering::SeqCst);
-                let message = message::Message::connection_request(seq as u64, encrypted_nonce);
+                let message = message::Message::nonce_request(seq as u64, encrypted_nonce);
                 if let Err(err) = self.server.enqueue(message, from.clone()) {
                     let t = self.tmp_nonce_tokens.restore(token);
                     debug_assert!(t);
@@ -358,7 +358,7 @@ impl SessionInitiator {
                 io.register_timer_once(token, TMP_NONCE_TIMEOUT_MS)?;
                 Ok(())
             }
-            message::Body::EcdhDenied(reason) => {
+            message::Body::SecretDenied(reason) => {
                 info!(target:"net", "Connection to {:?} refused(reason: {}", from, reason);
                 let _ = self.requested.remove(from).ok_or(Error::General("ECDHIsNotRequested"))?;
                 Ok(())

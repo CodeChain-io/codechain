@@ -34,74 +34,26 @@ pub struct Message {
 pub enum Body {
     NodeIdRequest(NodeId),
     NodeIdResponse(NodeId),
-    ConnectionRequest(Raw),
-    ConnectionAllowed(Raw),
-    ConnectionDenied(String),
-    EcdhRequest(Public),
-    EcdhAllowed(Public),
-    EcdhDenied(String),
+    SecretRequest(Public),
+    SecretAllowed(Public),
+    SecretDenied(String),
+    NonceRequest(Raw),
+    NonceAllowed(Raw),
+    NonceDenied(String),
 }
 
 const NODE_ID_REQUEST: u8 = 0x01;
 const NODE_ID_RESPONSE: u8 = 0x02;
 
-const CONNECTION_REQUEST: u8 = 0x3;
-const CONNECTION_ALLOWED: u8 = 0x4;
-const CONNECTION_DENIED: u8 = 0x5;
+const SECRET_REQUEST: u8 = 0x03;
+const SECRET_ALLOWED: u8 = 0x04;
+const SECRET_DENIED: u8 = 0x05;
 
-const ECDH_REQUEST: u8 = 0x06;
-const ECDH_ALLOWED: u8 = 0x07;
-const ECDH_DENIED: u8 = 0x08;
+const NONCE_REQUEST: u8 = 0x6;
+const NONCE_ALLOWED: u8 = 0x7;
+const NONCE_DENIED: u8 = 0x8;
 
 impl Message {
-    pub fn connection_request(seq: Seq, body: Vec<u8>) -> Self {
-        Self {
-            version: 0,
-            seq,
-            body: Body::ConnectionRequest(body),
-        }
-    }
-
-    pub fn connection_allowed(seq: Seq, body: Vec<u8>) -> Self {
-        Self {
-            version: 0,
-            seq,
-            body: Body::ConnectionAllowed(body),
-        }
-    }
-
-    pub fn connection_denied(seq: Seq, reason: String) -> Self {
-        Self {
-            version: 0,
-            seq,
-            body: Body::ConnectionDenied(reason),
-        }
-    }
-
-    pub fn ecdh_request(seq: Seq, key: Public) -> Self {
-        Self {
-            version: 0,
-            seq,
-            body: Body::EcdhRequest(key),
-        }
-    }
-
-    pub fn ecdh_allowed(seq: Seq, key: Public) -> Self {
-        Self {
-            version: 0,
-            seq,
-            body: Body::EcdhAllowed(key),
-        }
-    }
-
-    pub fn ecdh_denied(seq: Seq, reason: String) -> Self {
-        Self {
-            version: 0,
-            seq,
-            body: Body::EcdhDenied(reason),
-        }
-    }
-
     pub fn node_id_request(seq: Seq, id: NodeId) -> Self {
         Self {
             version: 0,
@@ -118,16 +70,64 @@ impl Message {
         }
     }
 
+    pub fn secret_request(seq: Seq, key: Public) -> Self {
+        Self {
+            version: 0,
+            seq,
+            body: Body::SecretRequest(key),
+        }
+    }
+
+    pub fn secret_allowed(seq: Seq, key: Public) -> Self {
+        Self {
+            version: 0,
+            seq,
+            body: Body::SecretAllowed(key),
+        }
+    }
+
+    pub fn secret_denied(seq: Seq, reason: String) -> Self {
+        Self {
+            version: 0,
+            seq,
+            body: Body::SecretDenied(reason),
+        }
+    }
+
+    pub fn nonce_request(seq: Seq, body: Vec<u8>) -> Self {
+        Self {
+            version: 0,
+            seq,
+            body: Body::NonceRequest(body),
+        }
+    }
+
+    pub fn nonce_allowed(seq: Seq, body: Vec<u8>) -> Self {
+        Self {
+            version: 0,
+            seq,
+            body: Body::NonceAllowed(body),
+        }
+    }
+
+    pub fn nonce_denied(seq: Seq, reason: String) -> Self {
+        Self {
+            version: 0,
+            seq,
+            body: Body::NonceDenied(reason),
+        }
+    }
+
     pub fn protocol_id(&self) -> u8 {
         match self.body {
-            Body::ConnectionRequest(_) => CONNECTION_REQUEST,
-            Body::ConnectionAllowed(_) => CONNECTION_ALLOWED,
-            Body::ConnectionDenied(_) => CONNECTION_DENIED,
-            Body::EcdhRequest(_) => ECDH_REQUEST,
-            Body::EcdhAllowed(_) => ECDH_ALLOWED,
-            Body::EcdhDenied(_) => ECDH_DENIED,
             Body::NodeIdRequest(_) => NODE_ID_REQUEST,
             Body::NodeIdResponse(_) => NODE_ID_RESPONSE,
+            Body::SecretRequest(_) => SECRET_REQUEST,
+            Body::SecretAllowed(_) => SECRET_ALLOWED,
+            Body::SecretDenied(_) => SECRET_DENIED,
+            Body::NonceRequest(_) => NONCE_REQUEST,
+            Body::NonceAllowed(_) => NONCE_ALLOWED,
+            Body::NonceDenied(_) => NONCE_DENIED,
         }
     }
 
@@ -161,22 +161,22 @@ impl Encodable for Message {
             Body::NodeIdResponse(id) => {
                 s.append(id);
             }
-            Body::ConnectionRequest(body) => {
-                s.append(body);
+            Body::SecretRequest(key) => {
+                s.append(key);
             }
-            Body::ConnectionAllowed(body) => {
-                s.append(body);
+            Body::SecretAllowed(key) => {
+                s.append(key);
             }
-            Body::ConnectionDenied(reason) => {
+            Body::SecretDenied(reason) => {
                 s.append(reason);
             }
-            Body::EcdhRequest(key) => {
-                s.append(key);
+            Body::NonceRequest(body) => {
+                s.append(body);
             }
-            Body::EcdhAllowed(key) => {
-                s.append(key);
+            Body::NonceAllowed(body) => {
+                s.append(body);
             }
-            Body::EcdhDenied(reason) => {
+            Body::NonceDenied(reason) => {
                 s.append(reason);
             }
         }
@@ -195,29 +195,29 @@ impl Decodable for Message {
                 let node_id = rlp.val_at(3)?;
                 Message::node_id_response(seq, node_id)
             }
-            CONNECTION_REQUEST => {
-                let body: Raw = rlp.val_at(3)?;
-                Message::connection_request(seq, body)
-            }
-            CONNECTION_ALLOWED => {
-                let body: Raw = rlp.val_at(3)?;
-                Message::connection_allowed(seq, body)
-            }
-            CONNECTION_DENIED => {
-                let reason: String = rlp.val_at(3)?;
-                Message::connection_denied(seq, reason)
-            }
-            ECDH_REQUEST => {
+            SECRET_REQUEST => {
                 let key: Public = rlp.val_at(3)?;
-                Message::ecdh_request(seq, key)
+                Message::secret_request(seq, key)
             }
-            ECDH_ALLOWED => {
+            SECRET_ALLOWED => {
                 let key: Public = rlp.val_at(3)?;
-                Message::ecdh_allowed(seq, key)
+                Message::secret_allowed(seq, key)
             }
-            ECDH_DENIED => {
+            SECRET_DENIED => {
                 let reason: String = rlp.val_at(3)?;
-                Message::ecdh_denied(seq, reason)
+                Message::secret_denied(seq, reason)
+            }
+            NONCE_REQUEST => {
+                let body: Raw = rlp.val_at(3)?;
+                Message::nonce_request(seq, body)
+            }
+            NONCE_ALLOWED => {
+                let body: Raw = rlp.val_at(3)?;
+                Message::nonce_allowed(seq, body)
+            }
+            NONCE_DENIED => {
+                let reason: String = rlp.val_at(3)?;
+                Message::nonce_denied(seq, reason)
             }
             _ => return Err(DecoderError::Custom("Invalid protocol id")),
         };
@@ -234,92 +234,6 @@ mod tests {
 
     use super::super::super::session::Nonce;
     use super::*;
-
-    #[test]
-    fn encode_and_decode_request() {
-        const SEQ: Seq = 0;
-
-        let nonce = Nonce::from(32);
-        let nonce = nonce.rlp_bytes();
-
-        let req = Message::connection_request(SEQ, nonce.clone().into_vec());
-        let bytes = req.rlp_bytes();
-
-        let rlp = UntrustedRlp::new(&bytes);
-        match Decodable::decode(&rlp) {
-            Ok(message) => assert_eq!(req, message),
-            Err(err) => assert!(false, "{:?}", err),
-        }
-    }
-
-    #[test]
-    fn encode_and_decode_allowed() {
-        const SEQ: Seq = 37;
-
-        let nonce = Nonce::from(4);
-        let nonce = nonce.rlp_bytes();
-
-        let allowed = Message::connection_allowed(SEQ, nonce.clone().into_vec());
-
-        let bytes = allowed.rlp_bytes();
-
-        let rlp = UntrustedRlp::new(&bytes);
-        match Decodable::decode(&rlp) {
-            Ok(message) => assert_eq!(allowed, message),
-            Err(err) => assert!(false, "{:?}", err),
-        }
-    }
-
-    #[test]
-    fn encode_and_decode_denied() {
-        const SEQ: Seq = 6;
-
-        const REASON: &str = "connection denied";
-
-        let denied = Message::connection_denied(SEQ, REASON.to_string());
-
-        let bytes = denied.rlp_bytes();
-
-        let rlp = UntrustedRlp::new(&bytes);
-        match Decodable::decode(&rlp) {
-            Ok(message) => assert_eq!(denied, message),
-            Err(err) => assert!(false, "{:?}", err),
-        }
-    }
-
-    #[test]
-    fn encode_and_decode_request_with_large_nonce() {
-        let nonce = Nonce::from(0xDEADBEEF);
-        let nonce = nonce.rlp_bytes();
-
-        const SEQ: Seq = 0;
-
-        let req = Message::connection_request(SEQ, nonce.clone().into_vec());
-        let bytes = req.rlp_bytes();
-
-        let rlp = UntrustedRlp::new(&bytes);
-        match Decodable::decode(&rlp) {
-            Ok(message) => assert_eq!(req, message),
-            Err(err) => assert!(false, "{:?}", err),
-        }
-    }
-
-    #[test]
-    fn encode_and_decode_allowed_with_large_nonce() {
-        let nonce = Nonce::from(0xCCAFEC);
-        let nonce = nonce.rlp_bytes();
-
-        const SEQ: Seq = 0x4a;
-
-        let allowed = Message::connection_allowed(SEQ, nonce.clone().into_vec());
-        let bytes = allowed.rlp_bytes();
-
-        let rlp = UntrustedRlp::new(&bytes);
-        match Decodable::decode(&rlp) {
-            Ok(message) => assert_eq!(allowed, message),
-            Err(err) => assert!(false, "{:?}", err),
-        }
-    }
 
     #[test]
     fn encode_and_decode_node_id_request() {
@@ -343,6 +257,92 @@ mod tests {
         let rlp = UntrustedRlp::new(&encoded);
         match Decodable::decode(&rlp) {
             Ok(decoded) => assert_eq!(response, decoded),
+            Err(err) => assert!(false, "{:?}", err),
+        }
+    }
+
+    #[test]
+    fn encode_and_decode_nonce_request() {
+        const SEQ: Seq = 0;
+
+        let nonce = Nonce::from(32);
+        let nonce = nonce.rlp_bytes();
+
+        let req = Message::nonce_request(SEQ, nonce.clone().into_vec());
+        let bytes = req.rlp_bytes();
+
+        let rlp = UntrustedRlp::new(&bytes);
+        match Decodable::decode(&rlp) {
+            Ok(message) => assert_eq!(req, message),
+            Err(err) => assert!(false, "{:?}", err),
+        }
+    }
+
+    #[test]
+    fn encode_and_decode_nonce_allowed() {
+        const SEQ: Seq = 37;
+
+        let nonce = Nonce::from(4);
+        let nonce = nonce.rlp_bytes();
+
+        let allowed = Message::nonce_allowed(SEQ, nonce.clone().into_vec());
+
+        let bytes = allowed.rlp_bytes();
+
+        let rlp = UntrustedRlp::new(&bytes);
+        match Decodable::decode(&rlp) {
+            Ok(message) => assert_eq!(allowed, message),
+            Err(err) => assert!(false, "{:?}", err),
+        }
+    }
+
+    #[test]
+    fn encode_and_decode_nonce_denied() {
+        const SEQ: Seq = 6;
+
+        const REASON: &str = "connection denied";
+
+        let denied = Message::nonce_denied(SEQ, REASON.to_string());
+
+        let bytes = denied.rlp_bytes();
+
+        let rlp = UntrustedRlp::new(&bytes);
+        match Decodable::decode(&rlp) {
+            Ok(message) => assert_eq!(denied, message),
+            Err(err) => assert!(false, "{:?}", err),
+        }
+    }
+
+    #[test]
+    fn encode_and_decode_large_nonce_request() {
+        let nonce = Nonce::from(0xDEADBEEF);
+        let nonce = nonce.rlp_bytes();
+
+        const SEQ: Seq = 0;
+
+        let req = Message::nonce_request(SEQ, nonce.clone().into_vec());
+        let bytes = req.rlp_bytes();
+
+        let rlp = UntrustedRlp::new(&bytes);
+        match Decodable::decode(&rlp) {
+            Ok(message) => assert_eq!(req, message),
+            Err(err) => assert!(false, "{:?}", err),
+        }
+    }
+
+    #[test]
+    fn encode_and_decode_large_nonce_allowed() {
+        let nonce = Nonce::from(0xCCAFEC);
+        let nonce = nonce.rlp_bytes();
+
+        const SEQ: Seq = 0x4a;
+
+        let allowed = Message::nonce_allowed(SEQ, nonce.clone().into_vec());
+        let bytes = allowed.rlp_bytes();
+
+        let rlp = UntrustedRlp::new(&bytes);
+        match Decodable::decode(&rlp) {
+            Ok(message) => assert_eq!(allowed, message),
             Err(err) => assert!(false, "{:?}", err),
         }
     }
