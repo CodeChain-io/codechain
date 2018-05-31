@@ -123,6 +123,10 @@ impl EstablishedConnection {
         }
     }
 
+    pub fn session(&self) -> &Session {
+        self.stream.session()
+    }
+
     fn enqueue(&mut self, message: Message) {
         self.send_queue.push_back(message);
     }
