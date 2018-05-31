@@ -16,9 +16,9 @@
 
 use ccore::BlockNumber;
 use ctypes::H256;
-use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
+use rlp::{DecoderError, Encodable, RlpStream, UntrustedRlp};
 
-use super::{Message, MESSAGE_ID_REQUEST_BODIES, MESSAGE_ID_REQUEST_HEADERS};
+use super::Message;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum RequestMessage {
@@ -27,6 +27,11 @@ pub enum RequestMessage {
         max_count: u64,
     },
     Bodies(Vec<H256>),
+    StateHead(H256),
+    StateChunk {
+        block_hash: H256,
+        tree_root: H256,
+    },
 }
 
 impl Into<Message> for RequestMessage {
@@ -37,75 +42,112 @@ impl Into<Message> for RequestMessage {
 
 impl Encodable for RequestMessage {
     fn rlp_append(&self, s: &mut RlpStream) {
-        s.begin_list(2);
-
-        s.append(match self {
-            &RequestMessage::Headers {
-                ..
-            } => &MESSAGE_ID_REQUEST_HEADERS,
-            &RequestMessage::Bodies {
-                ..
-            } => &MESSAGE_ID_REQUEST_BODIES,
-        });
-
         match self {
-            &RequestMessage::Headers {
+            RequestMessage::Headers {
                 start_number,
                 max_count,
             } => {
                 s.begin_list(2);
-                s.append(&start_number);
-                s.append(&max_count);
+                s.append(start_number);
+                s.append(max_count);
             }
-            &RequestMessage::Bodies(ref hashes) => {
+            RequestMessage::Bodies(hashes) => {
                 s.append_list(hashes);
+            }
+            RequestMessage::StateHead(block_hash) => {
+                s.begin_list(1);
+                s.append(block_hash);
+            }
+            RequestMessage::StateChunk {
+                block_hash,
+                tree_root,
+            } => {
+                s.begin_list(2);
+                s.append(block_hash);
+                s.append(tree_root);
             }
         };
     }
 }
 
-impl Decodable for RequestMessage {
-    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
-        if rlp.item_count()? != 2 {
-            return Err(DecoderError::RlpIncorrectListLen)
-        }
-        let id = rlp.val_at(0)?;
-        let message = rlp.at(1)?;
-        Ok(match id {
-            MESSAGE_ID_REQUEST_HEADERS => {
-                if message.item_count()? != 2 {
+impl RequestMessage {
+    pub fn decode(id: u8, rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+        let message = match id {
+            super::MESSAGE_ID_GET_HEADERS => {
+                if rlp.item_count()? != 2 {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
                 RequestMessage::Headers {
-                    start_number: message.val_at(0)?,
-                    max_count: message.val_at(1)?,
+                    start_number: rlp.val_at(0)?,
+                    max_count: rlp.val_at(1)?,
                 }
             }
-            MESSAGE_ID_REQUEST_BODIES => RequestMessage::Bodies(message.as_list()?),
+            super::MESSAGE_ID_GET_BODIES => RequestMessage::Bodies(rlp.as_list()?),
+            super::MESSAGE_ID_GET_STATE_HEAD => {
+                if rlp.item_count()? != 1 {
+                    return Err(DecoderError::RlpIncorrectListLen)
+                }
+                RequestMessage::StateHead(rlp.val_at(0)?)
+            }
+            super::MESSAGE_ID_GET_STATE_CHUNK => {
+                if rlp.item_count()? != 2 {
+                    return Err(DecoderError::RlpIncorrectListLen)
+                }
+                RequestMessage::StateChunk {
+                    block_hash: rlp.val_at(0)?,
+                    tree_root: rlp.val_at(1)?,
+                }
+            }
             _ => return Err(DecoderError::Custom("Unknown message id detected")),
-        })
+        };
+
+        Ok(message)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use ctypes::H256;
-    use rlp::Encodable;
+    use rlp::{Encodable, UntrustedRlp};
 
     use super::RequestMessage;
 
+    pub fn decode_bytes(id: u8, bytes: &[u8]) -> RequestMessage {
+        let rlp = UntrustedRlp::new(bytes);
+        RequestMessage::decode(id, &rlp).unwrap()
+    }
+
     #[test]
     fn test_request_headers_message_rlp() {
+        let id = super::super::MESSAGE_ID_GET_HEADERS;
         let message = RequestMessage::Headers {
             start_number: 100,
             max_count: 100,
         };
-        assert_eq!(message, ::rlp::decode(message.rlp_bytes().as_ref()));
+        assert_eq!(message, decode_bytes(id, message.rlp_bytes().as_ref()));
     }
 
     #[test]
     fn test_request_bodies_message_rlp() {
+        let id = super::super::MESSAGE_ID_GET_BODIES;
         let message = RequestMessage::Bodies(vec![H256::default()]);
-        assert_eq!(message, ::rlp::decode(message.rlp_bytes().as_ref()));
+        assert_eq!(message, decode_bytes(id, message.rlp_bytes().as_ref()));
+    }
+
+    #[test]
+    fn test_request_state_head_message_rlp() {
+        let id = super::super::MESSAGE_ID_GET_STATE_HEAD;
+        let message = RequestMessage::StateHead(H256::default());
+        assert_eq!(message, decode_bytes(id, message.rlp_bytes().as_ref()));
+    }
+
+    #[test]
+    fn test_request_state_chunk_message_rlp() {
+        let id = super::super::MESSAGE_ID_GET_STATE_CHUNK;
+        let message = RequestMessage::StateChunk {
+            block_hash: H256::default(),
+            tree_root: H256::default(),
+        };
+        assert_eq!(message, decode_bytes(id, message.rlp_bytes().as_ref()));
     }
 }

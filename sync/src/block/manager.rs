@@ -181,6 +181,7 @@ impl DownloadManager {
                     self.downloading_bodies.remove(hash);
                 }
             }
+            _ => unimplemented!(),
         }
     }
 

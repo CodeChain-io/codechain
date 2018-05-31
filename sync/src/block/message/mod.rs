@@ -24,10 +24,14 @@ pub use self::request::RequestMessage;
 pub use self::response::ResponseMessage;
 
 const MESSAGE_ID_STATUS: u8 = 0x01;
-const MESSAGE_ID_REQUEST_HEADERS: u8 = 0x02;
+const MESSAGE_ID_GET_HEADERS: u8 = 0x02;
 const MESSAGE_ID_HEADERS: u8 = 0x03;
-const MESSAGE_ID_REQUEST_BODIES: u8 = 0x04;
+const MESSAGE_ID_GET_BODIES: u8 = 0x04;
 const MESSAGE_ID_BODIES: u8 = 0x05;
+const MESSAGE_ID_GET_STATE_HEAD: u8 = 0x06;
+const MESSAGE_ID_STATE_HEAD: u8 = 0x07;
+const MESSAGE_ID_GET_STATE_CHUNK: u8 = 0x08;
+const MESSAGE_ID_STATE_CHUNK: u8 = 0x09;
 
 #[derive(Debug, PartialEq)]
 pub enum Message {
@@ -80,7 +84,7 @@ impl Decodable for Message {
                     genesis_hash: message.val_at(2)?,
                 }
             }
-            MESSAGE_ID_REQUEST_HEADERS | MESSAGE_ID_REQUEST_BODIES => Message::Request(rlp.as_val()?),
+            MESSAGE_ID_GET_HEADERS | MESSAGE_ID_GET_BODIES => Message::Request(RequestMessage::decode(id, &message)?),
             MESSAGE_ID_HEADERS | MESSAGE_ID_BODIES => Message::Response(rlp.as_val()?),
             _ => return Err(DecoderError::Custom("Unknown message id detected")),
         })

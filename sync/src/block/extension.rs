@@ -284,6 +284,7 @@ impl Extension {
                 max_count,
             } => self.create_headers_response(start_number, max_count),
             RequestMessage::Bodies(hashes) => self.create_bodies_response(hashes),
+            _ => unimplemented!(),
         };
 
         self.send_message(from, response.into());
@@ -295,6 +296,7 @@ impl Extension {
                 ..
             } => true,
             RequestMessage::Bodies(hashes) => hashes.len() != 0,
+            _ => unimplemented!(),
         }
     }
 
