@@ -20,7 +20,6 @@ use std::fmt;
 use std::io;
 use std::result;
 
-use ccrypto::aes::SymmetricCipherError;
 use cio::IoManager;
 use mio::deprecated::EventLoop;
 use mio::event::Evented;
@@ -30,12 +29,11 @@ use rlp::DecoderError;
 use unexpected::Mismatch;
 
 
-use super::super::client::Client;
-use super::super::extension::{Error as ExtensionError, NodeToken};
+use super::super::session::Session;
 use super::super::NodeId;
 use super::message::{Message, Seq, Version};
 use super::stream::{Error as StreamError, SignedStream};
-use super::{ExtensionMessage, NegotiationBody, NegotiationMessage};
+use super::{ExtensionMessage, NegotiationMessage};
 
 pub struct EstablishedConnection {
     stream: SignedStream,
@@ -52,7 +50,6 @@ pub enum Error {
     InvalidSign,
     UnreadySession,
     UnexpectedNodeId(Mismatch<NodeId>),
-    SymmetricCipherError(SymmetricCipherError),
 }
 
 impl fmt::Display for Error {
@@ -63,7 +60,6 @@ impl fmt::Display for Error {
             Error::InvalidSign => fmt::Debug::fmt(&self, f),
             Error::UnreadySession => fmt::Debug::fmt(&self, f),
             Error::UnexpectedNodeId(_) => fmt::Debug::fmt(&self, f),
-            Error::SymmetricCipherError(err) => fmt::Debug::fmt(&err, f),
         }
     }
 }
@@ -76,7 +72,6 @@ impl error::Error for Error {
             Error::InvalidSign => "Invalid sign",
             Error::UnreadySession => "Unready session",
             Error::UnexpectedNodeId(_) => "Unexpected node id",
-            Error::SymmetricCipherError(_) => "Symmetric cipher",
         }
     }
 
@@ -87,7 +82,6 @@ impl error::Error for Error {
             Error::InvalidSign => None,
             Error::UnreadySession => None,
             Error::UnexpectedNodeId(_) => None,
-            Error::SymmetricCipherError(_) => None,
         }
     }
 }
@@ -95,12 +89,6 @@ impl error::Error for Error {
 impl From<DecoderError> for Error {
     fn from(err: DecoderError) -> Self {
         Error::DecoderError(err)
-    }
-}
-
-impl From<SymmetricCipherError> for Error {
-    fn from(err: SymmetricCipherError) -> Self {
-        Error::SymmetricCipherError(err)
     }
 }
 
@@ -140,6 +128,10 @@ impl EstablishedConnection {
         self.enqueue(Message::Negotiation(NegotiationMessage::request(seq, name, version)));
     }
 
+    pub fn remove_requested_negotiation(&mut self, seq: &u64) -> Option<String> {
+        self.requested_negotiation.remove(seq)
+    }
+
     pub fn enqueue_negotiation_allowed(&mut self, seq: Seq) {
         self.enqueue(Message::Negotiation(NegotiationMessage::allowed(seq)));
     }
@@ -165,56 +157,12 @@ impl EstablishedConnection {
         self.enqueue(Message::Extension(message));
     }
 
-    pub fn receive(&mut self, callback: &ExtensionCallback) -> bool {
-        self.receive_internal(&callback).unwrap_or_else(|err| {
-            cdebug!(NET, "Cannot receive message {:?}", err);
-            false
-        })
+    pub fn receive(&mut self) -> Result<Option<Message>> {
+        self.receive_internal()
     }
 
-    fn receive_internal(&mut self, callback: &ExtensionCallback) -> Result<bool> {
-        if let Some(message) = self.stream.read()? {
-            match message {
-                Message::Extension(msg) => {
-                    let session = self.stream.session();
-
-                    // FIXME: check version of extension
-                    callback.on_message(&msg.extension_name(), &msg.unencrypted_data(session)?);
-                    Ok(true)
-                }
-                Message::Handshake(msg) => {
-                    ctrace!(NET, "handshake message received {:?}", msg);
-                    unreachable!();
-                }
-                Message::Negotiation(msg) => {
-                    match msg.body() {
-                        NegotiationBody::Request {
-                            ref extension_name,
-                            ..
-                        } => {
-                            let seq = msg.seq();
-                            // FIXME: version negotiation
-                            callback.on_negotiated(&extension_name);
-                            self.enqueue_negotiation_allowed(seq);
-                        }
-                        NegotiationBody::Allowed => {
-                            let seq = msg.seq();
-                            if let Some(name) = self.requested_negotiation.remove(&seq) {
-                                callback.on_negotiation_allowed(&name);
-                            } else {
-                                ctrace!(NET, "Negotiation::Allowed message received from non requested seq");
-                            }
-                        }
-                        NegotiationBody::Denied(_) => {
-                            // FIXME: Call on_connection_denied
-                        }
-                    };
-                    Ok(true)
-                }
-            }
-        } else {
-            Ok(false)
-        }
+    fn receive_internal(&mut self) -> Result<Option<Message>> {
+        Ok(self.stream.read()?)
     }
 
     pub fn peer_node_id(&self) -> &NodeId {
@@ -269,36 +217,5 @@ impl Connection<SignedStream> for EstablishedConnection {
         } else {
             Ok(false)
         }
-    }
-}
-
-pub struct ExtensionCallback<'a> {
-    client: &'a Client,
-    id: NodeToken,
-}
-
-impl<'a> ExtensionCallback<'a> {
-    pub fn new(client: &'a Client, id: NodeToken) -> Self {
-        Self {
-            client,
-            id,
-        }
-    }
-
-    fn on_negotiated(&self, name: &String) {
-        self.client.on_negotiated(&name, &self.id);
-    }
-
-    fn on_negotiation_allowed(&self, name: &String) {
-        self.client.on_negotiation_allowed(&name, &self.id);
-    }
-
-    #[allow(dead_code)]
-    fn on_negotiation_denied(&self, name: &String, error: ExtensionError) {
-        self.client.on_negotiation_denied(&name, &self.id, error);
-    }
-
-    fn on_message(&self, name: &String, data: &[u8]) {
-        self.client.on_message(&name, &self.id, &data);
     }
 }
