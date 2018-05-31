@@ -63,7 +63,7 @@ pub trait Extension: Send + Sync {
 
     fn on_negotiated(&self, _node: &NodeToken) {}
     fn on_negotiation_allowed(&self, _node: &NodeToken) {}
-    fn on_negotiation_denied(&self, _node: &NodeToken, _error: Error) {}
+    fn on_negotiation_denied(&self, _node: &NodeToken) {}
 
     fn on_message(&self, _node: &NodeToken, _message: &[u8]) {}
 

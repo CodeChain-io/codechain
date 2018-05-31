@@ -22,7 +22,7 @@ use parking_lot::Mutex;
 use rlp::Encodable;
 use time::Duration;
 
-use super::super::extension::{Api, Error, Extension, NodeToken, Result, TimerToken};
+use super::super::extension::{Api, Extension, NodeToken, Result, TimerToken};
 
 #[derive(Debug, Ord, PartialOrd, Eq, PartialEq)]
 pub enum Call {
@@ -153,7 +153,7 @@ impl TestApi {
         self.extension().on_negotiation_allowed(&token);
     }
 
-    fn deny_connection(&self, token: NodeToken, error: Error) {
+    fn deny_connection(&self, token: NodeToken) {
         let mut connection_requests = self.connection_requests.lock();
 
         if connection_requests.contains(&token) {
@@ -161,7 +161,7 @@ impl TestApi {
         } else {
             panic!("Invalid connection denial to node #{}", token);
         }
-        self.extension().on_negotiation_denied(&token, error);
+        self.extension().on_negotiation_denied(&token);
     }
 
     fn send_message(&self, from: NodeToken, message: &[u8]) {
@@ -248,8 +248,8 @@ impl TestClient {
         self.get_api(name).allow_connection(token);
     }
 
-    pub fn deny_connection(&self, name: &str, token: NodeToken, error: Error) {
-        self.get_api(name).deny_connection(token, error);
+    pub fn deny_connection(&self, name: &str, token: NodeToken) {
+        self.get_api(name).deny_connection(token);
     }
 
     pub fn send_message(&self, name: &str, from: NodeToken, message: &[u8]) {

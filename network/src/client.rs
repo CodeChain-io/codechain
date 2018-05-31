@@ -204,7 +204,7 @@ impl Client {
 
     define_method!(on_negotiated; id, &NodeToken);
     define_method!(on_negotiation_allowed; id, &NodeToken);
-    define_method!(on_negotiation_denied; id, &NodeToken; error, NetworkExtensionError);
+    define_method!(on_negotiation_denied; id, &NodeToken);
 
     define_method!(on_message; id, &NodeToken; data, &[u8]);
 
@@ -224,7 +224,7 @@ mod tests {
     use rlp::Encodable;
     use time::Duration;
 
-    use super::{Api, Client, NetworkExtension, NetworkExtensionError, NetworkExtensionResult, NodeToken};
+    use super::{Api, Client, NetworkExtension, NetworkExtensionResult, NodeToken};
 
     #[allow(dead_code)]
     struct TestApi;
@@ -315,7 +315,7 @@ mod tests {
             callbacks.push(Callback::NegotiationAllowed);
         }
 
-        fn on_negotiation_denied(&self, _id: &NodeToken, _error: NetworkExtensionError) {
+        fn on_negotiation_denied(&self, _id: &NodeToken) {
             let mut callbacks = self.callbacks.lock();
             callbacks.push(Callback::NegotiationDenied);
         }
