@@ -433,7 +433,7 @@ impl Manager {
                 // connection borrows *self as mutable
                 let connection = self.wait_ack_connections.get_mut(&stream).unwrap();
                 match connection.receive()? {
-                    Some(NetworkMessage::Handshake(HandshakeMessage::Ack(_))) => {}
+                    Some(HandshakeMessage::Ack(_)) => {}
                     Some(_) => unreachable!(),
                     None => return Ok(false),
                 }
