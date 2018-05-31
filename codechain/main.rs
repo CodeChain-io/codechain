@@ -62,6 +62,9 @@ use fdlimit::raise_fd_limit;
 use parking_lot::{Condvar, Mutex};
 use rpc::HttpConfiguration as RpcHttpConfig;
 
+#[cfg(feature = "stratum")]
+extern crate stratum;
+
 const DEFAULT_CONFIG_PATH: &'static str = "codechain/config/presets/config.dev.toml";
 
 pub const APP_INFO: AppInfo = AppInfo {
