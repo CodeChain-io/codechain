@@ -148,26 +148,20 @@ impl EstablishedConnection {
         self.enqueue(Message::Extension(message));
     }
 
-    pub fn receive(&mut self) -> Result<Option<Message>> {
-        self.receive_internal()
-    }
-
-    fn receive_internal(&mut self) -> Result<Option<Message>> {
-        Ok(self.stream.read()?)
-    }
-
     pub fn peer_node_id(&self) -> &NodeId {
         &self.peer_node_id
     }
 }
 
-pub trait Connection<S: Sized>
+pub trait Connection<S: Sized, M: Sized>
 where
     S: Evented, {
     fn stream(&self) -> &S;
     fn interest(&self) -> Ready;
 
     fn send(&mut self) -> Result<bool>;
+    fn receive(&mut self) -> Result<Option<M>>;
+
 
     fn register<Message>(&self, reg: Token, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()>
     where
@@ -188,7 +182,7 @@ where
     }
 }
 
-impl Connection<SignedStream> for EstablishedConnection {
+impl Connection<SignedStream, Message> for EstablishedConnection {
     fn stream(&self) -> &SignedStream {
         &self.stream
     }
@@ -208,5 +202,9 @@ impl Connection<SignedStream> for EstablishedConnection {
         } else {
             Ok(false)
         }
+    }
+
+    fn receive(&mut self) -> Result<Option<Message>> {
+        Ok(self.stream.read()?)
     }
 }

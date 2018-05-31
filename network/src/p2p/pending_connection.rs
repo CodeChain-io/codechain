@@ -49,27 +49,6 @@ impl WaitSyncConnection {
         }
     }
 
-    pub fn receive(&mut self) -> ConnectionResult<Option<SignedMessage>> {
-        if self.state != WaitSyncConnectionState::Created {
-            return Ok(None)
-        }
-        if let Some(signed_message) = self.stream.read::<SignedMessage>()? {
-            let message = {
-                let rlp = UntrustedRlp::new(&signed_message.message);
-                rlp.as_val::<Message>()?
-            };
-
-            match &message {
-                Message::Handshake(HandshakeMessage::Sync {
-                    ..
-                }) => Ok(Some(signed_message)),
-                _ => Err(ConnectionError::UnreadySession),
-            }
-        } else {
-            Ok(None)
-        }
-    }
-
     pub fn ready_session(&mut self, peer_node_id: NodeId, session: Session) {
         debug_assert_eq!(self.state, WaitSyncConnectionState::Created);
         self.peer_node_id = Some(peer_node_id);
@@ -115,23 +94,6 @@ impl WaitAckConnection {
         }
     }
 
-    pub fn receive(&mut self) -> ConnectionResult<Option<Message>> {
-        if self.state != WaitAckConnectionState::Sent {
-            return Ok(None)
-        }
-        if let Some(message) = self.stream.read()? {
-            match message {
-                Message::Handshake(HandshakeMessage::Ack(_)) => {
-                    self.state = WaitAckConnectionState::Received;
-                    Ok(Some(message))
-                }
-                _ => Err(ConnectionError::UnreadySession),
-            }
-        } else {
-            Ok(None)
-        }
-    }
-
     pub fn establish(self) -> EstablishedConnection {
         debug_assert_eq!(WaitAckConnectionState::Received, self.state);
         let peer_node_id = self.peer_node_id;
@@ -139,7 +101,7 @@ impl WaitAckConnection {
     }
 }
 
-impl Connection<SignedStream> for WaitAckConnection {
+impl Connection<SignedStream, HandshakeMessage> for WaitAckConnection {
     fn stream(&self) -> &SignedStream {
         &self.stream
     }
@@ -161,9 +123,26 @@ impl Connection<SignedStream> for WaitAckConnection {
         self.state = WaitAckConnectionState::Sent;
         Ok(false)
     }
+
+    fn receive(&mut self) -> ConnectionResult<Option<HandshakeMessage>> {
+        if self.state != WaitAckConnectionState::Sent {
+            return Ok(None)
+        }
+        if let Some(message) = self.stream.read()? {
+            match message {
+                Message::Handshake(HandshakeMessage::Ack(version)) => {
+                    self.state = WaitAckConnectionState::Received;
+                    Ok(Some(HandshakeMessage::Ack(version)))
+                }
+                _ => Err(ConnectionError::UnreadySession),
+            }
+        } else {
+            Ok(None)
+        }
+    }
 }
 
-impl Connection<Stream> for WaitSyncConnection {
+impl Connection<Stream, SignedMessage> for WaitSyncConnection {
     fn stream(&self) -> &Stream {
         &self.stream
     }
@@ -188,5 +167,26 @@ impl Connection<Stream> for WaitSyncConnection {
         self.stream.write(&signed_message)?;
         self.state = WaitSyncConnectionState::Sent;
         Ok(false)
+    }
+
+    fn receive(&mut self) -> ConnectionResult<Option<SignedMessage>> {
+        if self.state != WaitSyncConnectionState::Created {
+            return Ok(None)
+        }
+        if let Some(signed_message) = self.stream.read::<SignedMessage>()? {
+            let message = {
+                let rlp = UntrustedRlp::new(&signed_message.message);
+                rlp.as_val::<Message>()?
+            };
+
+            match &message {
+                Message::Handshake(HandshakeMessage::Sync {
+                    ..
+                }) => Ok(Some(signed_message)),
+                _ => Err(ConnectionError::UnreadySession),
+            }
+        } else {
+            Ok(None)
+        }
     }
 }
