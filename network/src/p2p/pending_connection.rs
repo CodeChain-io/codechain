@@ -17,14 +17,12 @@
 use mio::unix::UnixReady;
 use mio::Ready;
 use rlp::UntrustedRlp;
-use unexpected::Mismatch;
 
-use super::super::addr::convert_to_node_id;
-use super::super::session::{Nonce, Session};
+use super::super::session::Session;
 use super::super::NodeId;
+use super::super::SocketAddr;
 use super::connection::{Connection, Error as ConnectionError, EstablishedConnection, Result as ConnectionResult};
 use super::message::{HandshakeMessage, Message, SignedMessage};
-use super::session_candidate::SessionCandidate;
 use super::stream::{SignedStream, Stream};
 
 #[derive(Debug, PartialEq)]
@@ -51,37 +49,20 @@ impl WaitSyncConnection {
         }
     }
 
-    pub fn receive(&mut self, registered_sessions: &SessionCandidate) -> ConnectionResult<Option<Nonce>> {
+    pub fn receive(&mut self) -> ConnectionResult<Option<SignedMessage>> {
         if self.state != WaitSyncConnectionState::Created {
             return Ok(None)
         }
         if let Some(signed_message) = self.stream.read::<SignedMessage>()? {
-            let rlp = UntrustedRlp::new(&signed_message.message);
-            match rlp.as_val::<Message>()? {
-                Message::Handshake(HandshakeMessage::Sync {
-                    port,
-                    node_id,
-                    ..
-                }) => {
-                    let peer_addr = self.stream.peer_addr()?;
-                    let peer_node_id = convert_to_node_id(&peer_addr.ip(), port);
+            let message = {
+                let rlp = UntrustedRlp::new(&signed_message.message);
+                rlp.as_val::<Message>()?
+            };
 
-                    if peer_node_id != node_id {
-                        return Err(ConnectionError::UnexpectedNodeId(Mismatch {
-                            expected: peer_node_id,
-                            found: node_id,
-                        }))
-                    }
-                    let &(ref session, _) =
-                        registered_sessions.get(&peer_node_id).ok_or(ConnectionError::UnreadySession)?;
-                    if !signed_message.is_valid(&session) {
-                        return Err(ConnectionError::InvalidSign)
-                    }
-                    self.peer_node_id = Some(peer_node_id);
-                    self.session = Some(session.clone());
-                    self.state = WaitSyncConnectionState::Received;
-                    Ok(Some(session.id().clone()))
-                }
+            match &message {
+                Message::Handshake(HandshakeMessage::Sync {
+                    ..
+                }) => Ok(Some(signed_message)),
                 _ => Err(ConnectionError::UnreadySession),
             }
         } else {
@@ -89,11 +70,22 @@ impl WaitSyncConnection {
         }
     }
 
+    pub fn ready_session(&mut self, peer_node_id: NodeId, session: Session) {
+        debug_assert_eq!(self.state, WaitSyncConnectionState::Created);
+        self.peer_node_id = Some(peer_node_id);
+        self.session = Some(session);
+        self.state = WaitSyncConnectionState::Received;
+    }
+
     pub fn establish(self) -> EstablishedConnection {
         debug_assert_eq!(self.state, WaitSyncConnectionState::Sent);
         let session = self.session.as_ref().expect("Session must exist");
         let peer_node_id = self.peer_node_id.expect("Sync message set peer node id");
         EstablishedConnection::new(SignedStream::new(self.stream, session.clone()), peer_node_id)
+    }
+
+    pub fn remote_addr(&self) -> ConnectionResult<SocketAddr> {
+        Ok(self.stream.peer_addr()?)
     }
 }
 
@@ -123,20 +115,20 @@ impl WaitAckConnection {
         }
     }
 
-    pub fn receive(&mut self) -> ConnectionResult<bool> {
+    pub fn receive(&mut self) -> ConnectionResult<Option<Message>> {
         if self.state != WaitAckConnectionState::Sent {
-            return Ok(false)
+            return Ok(None)
         }
         if let Some(message) = self.stream.read()? {
             match message {
                 Message::Handshake(HandshakeMessage::Ack(_)) => {
                     self.state = WaitAckConnectionState::Received;
-                    Ok(true)
+                    Ok(Some(message))
                 }
                 _ => Err(ConnectionError::UnreadySession),
             }
         } else {
-            Ok(false)
+            Ok(None)
         }
     }
 
