@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 mod connection;
+mod connections;
 mod handler;
 mod listener;
 mod message;
