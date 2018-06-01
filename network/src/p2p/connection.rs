@@ -182,7 +182,7 @@ impl Connection {
         self.enqueue(Message::Negotiation(NegotiationMessage::allowed(seq)));
     }
 
-    pub fn enqueue_extension_message(&mut self, extension_name: String, need_encryption: bool, message: Vec<u8>) {
+    pub fn enqueue_extension_message(&mut self, extension_name: String, need_encryption: bool, message: &[u8]) {
         const VERSION: u64 = 0;
         let message = if need_encryption {
             match ExtensionMessage::encrypted_from_unencrypted_data(
@@ -198,7 +198,7 @@ impl Connection {
                 }
             }
         } else {
-            ExtensionMessage::unencrypted(extension_name, VERSION, message)
+            ExtensionMessage::unencrypted(extension_name, VERSION, &message)
         };
         self.enqueue(Message::Extension(message));
     }
@@ -338,7 +338,7 @@ impl<'a> ExtensionCallback<'a> {
         self.client.on_negotiation_denied(&name, &self.id, error);
     }
 
-    fn on_message(&self, name: &String, data: &Vec<u8>) {
+    fn on_message(&self, name: &String, data: &[u8]) {
         self.client.on_message(&name, &self.id, &data);
     }
 

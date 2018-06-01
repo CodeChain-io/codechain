@@ -42,7 +42,7 @@ impl From<IoError> for Error {
 pub type Result<T> = result::Result<T, Error>;
 
 pub trait Api: Send + Sync {
-    fn send(&self, node: &NodeToken, message: &Vec<u8>);
+    fn send(&self, node: &NodeToken, message: &[u8]);
     fn negotiate(&self, node: &NodeToken);
 
     fn set_timer(&self, timer: TimerToken, d: Duration) -> Result<()>;

@@ -33,7 +33,7 @@ struct ClientApi {
 }
 
 impl Api for ClientApi {
-    fn send(&self, id: &NodeToken, message: &Vec<u8>) {
+    fn send(&self, id: &NodeToken, message: &[u8]) {
         if let Some(extension) = self.extension.upgrade() {
             let need_encryption = extension.need_encryption();
             let extension_name = extension.name();
@@ -42,7 +42,7 @@ impl Api for ClientApi {
                 node_id,
                 extension_name,
                 need_encryption,
-                data: message.clone(),
+                data: message.to_vec(),
             }) {
                 cwarn!(NETAPI, "Cannot send extension message to {:?} : {:?}", id, err);
             } else {
@@ -230,7 +230,7 @@ mod tests {
     struct TestApi;
 
     impl Api for TestApi {
-        fn send(&self, _id: &usize, _message: &Vec<u8>) {
+        fn send(&self, _id: &usize, _message: &[u8]) {
             unimplemented!()
         }
 

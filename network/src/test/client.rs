@@ -69,8 +69,8 @@ impl TestApi {
 }
 
 impl Api for TestApi {
-    fn send(&self, node: &NodeToken, message: &Vec<u8>) {
-        self.calls.lock().push_back(Call::Send(*node, message.clone()));
+    fn send(&self, node: &NodeToken, message: &[u8]) {
+        self.calls.lock().push_back(Call::Send(*node, message.to_vec()));
     }
 
     fn negotiate(&self, node: &NodeToken) {

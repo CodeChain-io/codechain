@@ -41,23 +41,22 @@ enum Data {
 
 impl Message {
     #[allow(dead_code)]
-    pub fn encrypted(extension_name: String, extension_version: Version, data: Vec<u8>) -> Self {
+    pub fn encrypted(extension_name: String, extension_version: Version, data: &[u8]) -> Self {
         Self {
             version: 0,
             extension_name,
             extension_version,
-            data: Data::Encrypted(data),
+            data: Data::Encrypted(data.to_vec()),
         }
     }
 
     pub fn encrypted_from_unencrypted_data(
         extension_name: String,
         extension_version: Version,
-        unencrypted_data: Vec<u8>,
+        unencrypted_data: &[u8],
         session: &Session,
     ) -> Result<Self, SymmetricCipherError> {
-        let data =
-            Data::Encrypted(aes::encrypt(unencrypted_data.as_slice(), session.secret(), &session.id().clone().into())?);
+        let data = Data::Encrypted(aes::encrypt(unencrypted_data, session.secret(), &session.id().clone().into())?);
         Ok(Self {
             version: 0,
             extension_name,
@@ -65,16 +64,16 @@ impl Message {
             data,
         })
     }
-    pub fn unencrypted(extension_name: String, extension_version: Version, data: Vec<u8>) -> Self {
+    pub fn unencrypted(extension_name: String, extension_version: Version, data: &[u8]) -> Self {
         Self {
             version: 0,
             extension_name,
             extension_version,
-            data: Data::Unencrypted(data),
+            data: Data::Unencrypted(data.to_vec()),
         }
     }
 
-    pub fn data(&self) -> &Vec<u8> {
+    pub fn data(&self) -> &[u8] {
         match self.data {
             Data::Encrypted(ref data) => &data,
             Data::Unencrypted(ref data) => &data,
@@ -83,7 +82,7 @@ impl Message {
 
     pub fn unencrypted_data(&self, session: &Session) -> Result<Vec<u8>, SymmetricCipherError> {
         match self.data {
-            Data::Encrypted(ref data) => aes::decrypt(data.as_slice(), session.secret(), &session.id().clone().into()),
+            Data::Encrypted(ref data) => aes::decrypt(&data, session.secret(), &session.id().clone().into()),
             Data::Unencrypted(ref data) => Ok(data.clone()),
         }
     }
@@ -115,7 +114,7 @@ impl Encodable for Message {
             .append(&self.protocol_id())
             .append(self.extension_name())
             .append(&self.extension_version())
-            .append(self.data());
+            .append(&self.data());
     }
 }
 
@@ -162,20 +161,17 @@ mod tests {
     fn encrypted_with_unencrypted_data_function_internally_encrypts() {
         let extension_name = "encrypt".to_string();
         let extension_version = 3;
-        let unencrypted_data: Vec<u8> = "this data must be encrypted".as_bytes().to_vec();
+        let unencrypted_data = "this data must be encrypted".as_bytes();
         let shared_secret = Secret::random();
 
         let mut rng = OsRng::new().expect("Cannot generate random number");
         let nonce: Nonce = rng.gen();
 
         let session = Session::new(shared_secret, nonce);
-        let encrypted = Message::encrypted_from_unencrypted_data(
-            extension_name,
-            extension_version,
-            unencrypted_data.clone(),
-            &session,
-        ).unwrap();
-        assert_ne!(&unencrypted_data, encrypted.data());
-        assert_eq!(unencrypted_data, encrypted.unencrypted_data(&session).unwrap());
+        let encrypted =
+            Message::encrypted_from_unencrypted_data(extension_name, extension_version, &unencrypted_data, &session)
+                .unwrap();
+        assert_ne!(unencrypted_data, encrypted.data());
+        assert_eq!(unencrypted_data, encrypted.unencrypted_data(&session).unwrap().as_slice());
     }
 }

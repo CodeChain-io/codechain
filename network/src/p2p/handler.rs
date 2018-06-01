@@ -503,7 +503,7 @@ impl IoHandler<Message> for Handler {
             } => {
                 let mut manager = self.manager.lock();
                 let mut connection = manager.connections.get_mut(node_id).ok_or(Error::InvalidNode(*node_id))?;
-                connection.enqueue_extension_message(extension_name.clone(), *need_encryption, data.clone());
+                connection.enqueue_extension_message(extension_name.clone(), *need_encryption, &data);
                 io.update_registration(*node_id)?;
                 Ok(())
             }
