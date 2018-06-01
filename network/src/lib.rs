@@ -42,6 +42,7 @@ mod config;
 mod discovery;
 mod extension;
 mod limited_table;
+mod routing_table;
 mod service;
 mod session_initiator;
 mod test;
@@ -62,5 +63,7 @@ pub use self::extension::{
 };
 pub use self::service::{Error as NetworkServiceError, Service as NetworkService};
 pub use self::test::{Call as TestNetworkCall, TestClient as TestNetworkClient};
+
+use self::routing_table::RoutingTable;
 
 pub type NodeId = H256;
