@@ -174,8 +174,9 @@ impl Miner {
                         let origin = self.accounts
                             .as_ref()
                             .and_then(|accounts| match accounts.has_account(parcel.sender()) {
-                                true => Some(ParcelOrigin::Local),
-                                false => None,
+                                Ok(true) => Some(ParcelOrigin::Local),
+                                Ok(false) => None,
+                                Err(_) => None,
                             })
                             .unwrap_or(default_origin);
 

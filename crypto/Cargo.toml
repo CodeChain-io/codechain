@@ -4,6 +4,8 @@ version = "0.1.0"
 authors = ["CodeChain Team <codechain@kodebox.io>"]
 
 [dependencies]
+ring = "0.12"
+quick-error = "1.2"
 rust-crypto = "0.2.36"
 codechain-types = { path = "../primitives/codechain-types" }
 

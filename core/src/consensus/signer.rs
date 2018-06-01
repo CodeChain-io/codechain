@@ -30,7 +30,7 @@ pub struct EngineSigner {
 impl Default for EngineSigner {
     fn default() -> Self {
         EngineSigner {
-            account_provider: AccountProvider::new(),
+            account_provider: AccountProvider::transient_provider(),
             address: Default::default(),
         }
     }

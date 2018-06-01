@@ -28,6 +28,7 @@ extern crate serde_derive;
 extern crate app_dirs;
 extern crate codechain_core as ccore;
 extern crate codechain_discovery as cdiscovery;
+extern crate codechain_keystore as ckeystore;
 extern crate codechain_logger as clogger;
 extern crate codechain_network as cnetwork;
 extern crate codechain_reactor as creactor;
@@ -52,6 +53,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use app_dirs::AppInfo;
 use ccore::{AccountProvider, ClientService, Miner, MinerOptions, MinerService, Spec};
 use cdiscovery::{KademliaExtension, SimpleDiscovery};
+use ckeystore::accounts_dir::RootDiskDirectory;
+use ckeystore::KeyStore;
 use clogger::LoggerConfig;
 use cnetwork::{NetworkConfig, NetworkService, SocketAddr};
 use creactor::EventLoop;
@@ -126,8 +129,16 @@ fn run() -> Result<(), String> {
         .subsec_nanos() as usize);
     clogger::init(&LoggerConfig::new(instance_id)).expect("Logger must be successfully initialized");
 
-    let ap = AccountProvider::new();
-    let address = ap.insert_account(config.secret_key.into()).map_err(|e| format!("Invalid secret key: {:?}", e))?;
+    // FIXME : Add cli option.
+    let dir = RootDiskDirectory::create("keystoreData").expect("Cannot read key path directory");
+    let keystore = KeyStore::open(Box::new(dir)).unwrap();
+    let ap = AccountProvider::new(keystore);
+    let addresses = ap.get_list().expect("Account provider should success to get address list");
+    let address = if addresses.len() > 0 {
+        addresses[0]
+    } else {
+        ap.insert_account(config.secret_key.into()).map_err(|e| format!("Invalid secret key: {:?}", e))?
+    };
 
     let miner = Miner::new(MinerOptions::default(), &spec, Some(ap.clone()));
     let author = config.author.unwrap_or(address);

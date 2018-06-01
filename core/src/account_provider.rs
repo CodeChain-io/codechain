@@ -14,14 +14,14 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::HashMap;
 use std::fmt;
 use std::sync::Arc;
 
 use ckeys::{
-    public_to_address, sign_ecdsa, ECDSASignature, Error as KeysError, Generator, KeyPair, Message, Private, Public,
-    Random,
+    public_to_address, ECDSASignature, Error as KeysError, Generator, KeyPair, Message, Private, Public, Random,
 };
+use ckeystore::accounts_dir::MemoryDirectory;
+use ckeystore::{Error as KeystoreError, KeyStore, SimpleSecretStore};
 use ctypes::Address;
 use parking_lot::RwLock;
 
@@ -32,6 +32,8 @@ pub enum SignError {
     NotFound,
     /// Key error.
     KeysError(KeysError),
+    /// Keystore error.
+    KeystoreError(KeystoreError),
     /// Inappropriate chain
     InappropriateChain,
 }
@@ -42,54 +44,71 @@ impl From<KeysError> for SignError {
     }
 }
 
+impl From<KeystoreError> for SignError {
+    fn from(e: KeystoreError) -> Self {
+        SignError::KeystoreError(e)
+    }
+}
+
 impl fmt::Display for SignError {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match self {
             SignError::NotFound => write!(f, "Account does not exist"),
             SignError::KeysError(e) => write!(f, "{}", e),
+            SignError::KeystoreError(e) => write!(f, "{}", e),
             SignError::InappropriateChain => write!(f, "Inappropriate chain"),
         }
     }
 }
 
 pub struct AccountProvider {
-    secrets: RwLock<HashMap<Address, Private>>,
+    keystore: RwLock<KeyStore>,
 }
 
 impl AccountProvider {
-    pub fn new() -> Arc<Self> {
+    pub fn new(keystore: KeyStore) -> Arc<Self> {
         Arc::new(Self {
-            secrets: RwLock::new(HashMap::new()),
+            keystore: RwLock::new(keystore),
         })
     }
 
-    pub fn new_account_and_public(&self) -> (Address, Public) {
+    /// Creates not disk backed provider.
+    pub fn transient_provider() -> Arc<Self> {
+        Arc::new(Self {
+            keystore: RwLock::new(KeyStore::open(Box::new(MemoryDirectory::default())).unwrap()),
+        })
+    }
+
+    pub fn new_account_and_public(&self) -> Result<(Address, Public), SignError> {
         let acc = Random.generate().expect("secp context has generation capabilities; qed");
         let private = acc.private().clone();
         let public = acc.public().clone();
         let address = public_to_address(&public);
-        self.secrets.write().insert(address, private);
-        (address, public)
+        self.keystore.write().insert_account(*private, "password")?;
+        Ok((address, public))
     }
 
-    pub fn insert_account(&self, private: Private) -> Result<Address, KeysError> {
+    pub fn insert_account(&self, private: Private) -> Result<Address, SignError> {
         let acc = KeyPair::from_private(private)?;
         let private = acc.private().clone();
         let public = acc.public().clone();
         let address = public_to_address(&public);
-        self.secrets.write().insert(address, private);
+        self.keystore.write().insert_account(*private, "password")?;
         Ok(address)
     }
 
     pub fn sign(&self, address: Address, message: Message) -> Result<ECDSASignature, SignError> {
-        if let Some(private) = self.secrets.read().get(&address) {
-            sign_ecdsa(private, &message).map_err(Into::into)
-        } else {
-            Err(SignError::NotFound)
-        }
+        let signature = self.keystore.read().sign(&address, "password", &message)?;
+        Ok(signature)
     }
 
-    pub fn has_account(&self, address: Address) -> bool {
-        self.secrets.read().contains_key(&address)
+    pub fn has_account(&self, address: Address) -> Result<bool, SignError> {
+        let has = self.keystore.read().has_account(&address)?;
+        Ok(has)
+    }
+
+    pub fn get_list(&self) -> Result<Vec<Address>, SignError> {
+        let addresses = self.keystore.read().accounts()?;
+        Ok(addresses)
     }
 }
