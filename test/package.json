@@ -6,12 +6,13 @@
   "author": "CodeChain Team <codechain@kodebox.io>",
   "license": "AGPL-3.0",
   "scripts": {
-    "lint": "tslint -c tslint.json"
+    "lint": "tslint -c tslint.json -p tsconfig.json"
   },
   "devDependencies": {
     "tslint": "^5.10.0"
   },
   "dependencies": {
+    "ts-node": "^6.0.5",
     "typescript": "^2.9.1"
   }
 }
