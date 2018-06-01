@@ -20,7 +20,6 @@ mod handler;
 mod listener;
 mod message;
 mod pending_connection;
-mod session_candidate;
 mod stream;
 
 pub use self::handler::{Handler, Message};
