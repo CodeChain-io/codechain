@@ -187,10 +187,9 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
 
             if let Some(kademlia_config) = config::parse_kademlia_config(&matches)? {
                 let kademlia = Arc::new(KademliaExtension::new(kademlia_config));
-                service.register_extension(kademlia.clone())?;
-                service.set_discovery_api(kademlia);
+                service.set_routing_table(&*kademlia);
+                service.register_extension(kademlia)?;
             } else {
-                service.set_discovery_api(Arc::new(SimpleDiscovery::new()));
             }
 
             if config.enable_block_sync {

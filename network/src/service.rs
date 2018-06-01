@@ -21,17 +21,18 @@ use cio::{IoError, IoService};
 
 use super::client::Client;
 use super::p2p;
+use super::routing_table::RoutingTable;
 use super::session_initiator;
 use super::timer;
-use super::{DiscoveryApi, NetworkExtension, SocketAddr};
+use super::{NetworkExtension, SocketAddr};
+use super::DiscoveryApi;
 
 pub struct Service {
     session_initiator: IoService<session_initiator::Message>,
-    session_initiator_handler: Arc<session_initiator::Handler>,
     _p2p: IoService<p2p::Message>,
-    p2p_handler: Arc<p2p::Handler>,
     timer: IoService<timer::Message>,
     client: Arc<Client>,
+    routing_table: Arc<RoutingTable>,
 }
 
 impl Service {
@@ -40,29 +41,30 @@ impl Service {
         let timer = IoService::start()?;
         let session_initiator = IoService::start()?;
 
+        let routing_table = RoutingTable::new();
+
         let client = Client::new(p2p.channel(), timer.channel());
 
         let p2p_handler = Arc::new(p2p::Handler::try_new(
             address.clone(),
             Arc::clone(&client),
-            session_initiator.channel(),
+            Arc::clone(&routing_table),
             min_peers,
             max_peers,
         )?);
-        p2p.register_handler(p2p_handler.clone())?;
+        p2p.register_handler(p2p_handler)?;
 
         timer.register_handler(Arc::new(timer::Handler::new(Arc::clone(&client))))?;
 
-        let session_initiator_handler = Arc::new(session_initiator::Handler::new(address, p2p.channel()));
-        session_initiator.register_handler(session_initiator_handler.clone())?;
+        let session_initiator_handler = Arc::new(session_initiator::Handler::new(address, Arc::clone(&routing_table)));
+        session_initiator.register_handler(session_initiator_handler)?;
 
         Ok(Self {
             session_initiator,
-            session_initiator_handler,
             _p2p: p2p,
-            p2p_handler,
             timer,
             client,
+            routing_table,
         })
     }
 
@@ -78,17 +80,16 @@ impl Service {
         }
     }
 
-    pub fn set_discovery_api(&self, api: Arc<DiscoveryApi>) {
-        self.session_initiator_handler.set_discovery_api(Arc::clone(&api));
-        self.p2p_handler.set_discovery_api(api);
-    }
-
     pub fn connect_to(&self, address: SocketAddr) -> Result<(), String> {
         if let Err(err) = self.session_initiator.send_message(session_initiator::Message::ConnectTo(address)) {
             return Err(format!("{:?}", err))
         } else {
             Ok(())
         }
+    }
+
+    pub fn set_routing_table(&self, disc: &DiscoveryApi) {
+        disc.set_routing_table(Arc::clone(&self.routing_table));
     }
 }
 

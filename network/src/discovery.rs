@@ -14,12 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use super::{NodeId, NodeToken, SocketAddr};
+use std::sync::Arc;
+
+use super::RoutingTable;
 
 pub trait Api: Send + Sync {
-    fn start(&self, local_node_id: NodeId);
-    fn get(&self, max: usize) -> Vec<SocketAddr>;
-
-    fn add_connection(&self, token: NodeToken, address: SocketAddr);
-    fn remove_connection(&self, node: &NodeToken);
+    fn set_routing_table(&self, routing_table: Arc<RoutingTable>);
 }

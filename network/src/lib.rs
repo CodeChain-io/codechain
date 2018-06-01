@@ -64,6 +64,6 @@ pub use self::extension::{
 pub use self::service::{Error as NetworkServiceError, Service as NetworkService};
 pub use self::test::{Call as TestNetworkCall, TestClient as TestNetworkClient};
 
-use self::routing_table::RoutingTable;
+pub use self::routing_table::RoutingTable;
 
 pub type NodeId = H256;

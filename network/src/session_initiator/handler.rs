@@ -14,48 +14,79 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::error;
 use std::fmt;
 use std::io;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
 use ccrypto::aes::SymmetricCipherError;
 use cfinally::finally;
-use cio::{IoChannel, IoContext, IoError as CIoError, IoHandler, IoHandlerResult, IoManager, StreamToken, TimerToken};
-use ckeys::{exchange, Error as KeysError, Generator, Private, Random};
-use ctypes::Secret;
+use cio::{IoContext, IoError as CIoError, IoHandler, IoHandlerResult, IoManager, StreamToken, TimerToken};
+use ckeys::Error as KeysError;
 use mio::deprecated::EventLoop;
 use mio::Token;
 use parking_lot::Mutex;
-use rand::{OsRng, Rng};
-use rlp::{Decodable, DecoderError, Encodable, UntrustedRlp};
+use rlp::DecoderError;
 
-use super::super::p2p;
-use super::super::session::{Nonce, Session};
 use super::super::token_generator::TokenGenerator;
-use super::super::{DiscoveryApi, NodeId, SocketAddr};
+use super::super::RoutingTable;
+use super::super::SocketAddr;
 use super::message;
 use super::server::{Error as ServerError, Server};
 
+const REFRESH_TIMER_TOKEN: TimerToken = 0;
+const BEGIN_OF_REQUEST_TOKEN: TimerToken = 1;
+const NUMBER_OF_REQUESTS: usize = 100;
+const END_OF_REQUEST_TOKEN: TimerToken = BEGIN_OF_REQUEST_TOKEN + NUMBER_OF_REQUESTS;
+
+struct Requests {
+    request_tokens: TokenGenerator,
+    requests: HashMap<usize, SocketAddr>,
+}
+
+impl Requests {
+    fn new() -> Self {
+        Self {
+            request_tokens: TokenGenerator::new(BEGIN_OF_REQUEST_TOKEN, NUMBER_OF_REQUESTS),
+            requests: HashMap::new(),
+        }
+    }
+
+    fn gen(&mut self, socket_address: SocketAddr) -> Result<usize> {
+        let seq = self.request_tokens.gen().ok_or(Error::General("Too many connections"))?;
+        let t = self.requests.insert(seq, socket_address);
+        debug_assert!(t.is_none());
+        Ok(seq)
+    }
+
+    fn restore(&mut self, seq: usize, address: Option<SocketAddr>) -> Result<Option<SocketAddr>> {
+        match address {
+            Some(address) => match self.requests.get(&seq) {
+                None => {
+                    debug_assert!(!self.request_tokens.is_assigned(seq));
+                    return Ok(None)
+                }
+                Some(sent_address) => {
+                    if sent_address != &address {
+                        return Err(Error::General("Invalid address"))
+                    }
+                }
+            },
+            None => {}
+        }
+        let t = self.request_tokens.restore(seq);
+        let address = self.requests.remove(&seq);
+        debug_assert_eq!(t, address.is_some());
+        Ok(address)
+    }
+}
 
 struct SessionInitiator {
     server: Server,
-    secrets: HashMap<SocketAddr, Secret>,
-    temporary_nonces: HashMap<SocketAddr, Nonce>,
-    requested: HashMap<SocketAddr, Private>,
-    seq_counter: AtomicUsize,
 
-    tmp_nonce_tokens: TokenGenerator,
-    tmp_nonce_token_to_addr: HashMap<TimerToken, SocketAddr>,
-    addr_to_tmp_nonce_token: HashMap<SocketAddr, TimerToken>,
-
-    address_to_node_id: HashMap<SocketAddr, NodeId>,
-
-    session_registered_addresses: HashSet<SocketAddr>,
-
-    discovery: Option<Arc<DiscoveryApi>>,
+    routing_table: Arc<RoutingTable>,
+    requests: Requests,
 }
 
 #[derive(Debug)]
@@ -152,36 +183,16 @@ pub enum Message {
     RequestSession(usize),
 }
 
-const START_OF_TMP_NONCE_TOKEN: TimerToken = 0;
-const NUM_OF_TMP_NONCES: usize = 100;
-const END_OF_TMP_NONCE_TOKEN: TimerToken = START_OF_TMP_NONCE_TOKEN + NUM_OF_TMP_NONCES;
-
-const TMP_NONCE_TIMEOUT_MS: u64 = 10 * 1000;
+const MESSAGE_TIMEOUT_MS: u64 = 10_000;
 
 impl SessionInitiator {
-    fn bind(socket_address: &SocketAddr) -> Result<Self> {
+    fn bind(socket_address: &SocketAddr, routing_table: Arc<RoutingTable>) -> Result<Self> {
         let server = Server::bind(socket_address)?;
         Ok(Self {
             server,
-            secrets: HashMap::new(),
-            temporary_nonces: HashMap::new(),
-            requested: HashMap::new(),
-            seq_counter: AtomicUsize::new(0),
-
-            tmp_nonce_tokens: TokenGenerator::new(START_OF_TMP_NONCE_TOKEN, NUM_OF_TMP_NONCES),
-            tmp_nonce_token_to_addr: HashMap::new(),
-            addr_to_tmp_nonce_token: HashMap::new(),
-
-            address_to_node_id: HashMap::new(),
-
-            session_registered_addresses: HashSet::new(),
-
-            discovery: None,
+            routing_table,
+            requests: Requests::new(),
         })
-    }
-
-    fn set_discovery_api(&mut self, api: Arc<DiscoveryApi>) {
-        self.discovery = Some(api);
     }
 
     fn receive(&self) -> Result<Option<(message::Message, SocketAddr)>> {
@@ -189,11 +200,11 @@ impl SessionInitiator {
     }
 
     // return false if there is no message to be sent
-    fn read(&mut self, channel_to_p2p: &IoChannel<p2p::Message>, io: &IoContext<Message>) -> Result<bool> {
+    fn read(&mut self, io: &IoContext<Message>) -> Result<bool> {
         match self.receive() {
             Ok(None) => Ok(false),
             Ok(Some((msg, socket_address))) => {
-                self.on_packet(&msg, &socket_address, channel_to_p2p, io)?;
+                self.on_packet(&msg, &socket_address, io)?;
                 Ok(true)
             }
             Err(err) => Err(From::from(err)),
@@ -205,178 +216,131 @@ impl SessionInitiator {
         Ok(self.server.send()?)
     }
 
-    fn create_new_connection(&mut self, target: &SocketAddr) -> Result<()> {
-        let seq = self.seq_counter.fetch_add(1, Ordering::SeqCst);
+    fn create_new_connection(&mut self, target: &SocketAddr, io: &IoContext<Message>) -> Result<()> {
+        let seq = self.requests.gen(target.clone())?;
+        io.register_timer_once(seq, MESSAGE_TIMEOUT_MS)?;
         let message = message::Message::node_id_request(seq as u64, target.clone().into());
         self.server.enqueue(message, target.clone())?;
         Ok(())
     }
 
-    fn on_packet(
-        &mut self,
-        message: &message::Message,
-        from: &SocketAddr,
-        channel_to_p2p: &IoChannel<p2p::Message>,
-        io: &IoContext<Message>,
-    ) -> Result<()> {
+    fn on_packet(&mut self, message: &message::Message, from: &SocketAddr, io: &IoContext<Message>) -> Result<()> {
         match message.body() {
-            message::Body::NodeIdRequest(node_id) => {
-                let t = self.address_to_node_id.insert(from.clone(), node_id.clone());
-                match t {
-                    Some(previous_id) => {
-                        cdebug!(NET, "{:?} changes my node id from {} to {}", from, previous_id, node_id)
-                    }
-                    None => ctrace!(NET, "{:?} thinks my node id is {}", from, node_id),
+            message::Body::NodeIdRequest(responder_node_id) => {
+                if !self.routing_table.add_node(from, *responder_node_id) {
+                    ctrace!(NET, "{:?} is not a new candidate", from);
                 }
-                let node_id = from.into();
-                let message = message::Message::node_id_response(message.seq(), node_id);
+
+                let requester_node_id = from.into();
+                let message = message::Message::node_id_response(message.seq(), requester_node_id);
                 self.server.enqueue(message, from.clone())?;
                 Ok(())
             }
-            message::Body::NodeIdResponse(node_id) => {
-                let t = self.address_to_node_id.insert(from.clone(), node_id.clone());
-                match t {
-                    Some(previous_id) => {
-                        cdebug!(NET, "{:?} changes my node id from {} to {}", from, previous_id, node_id)
-                    }
-                    None => ctrace!(NET, "{:?} thinks my node id is {}", from, node_id),
+            message::Body::NodeIdResponse(requester_node_id) => {
+                if self.requests.restore(message.seq() as usize, Some(from.clone())).is_err() {
+                    ctrace!(NET, "Invalid message({:?}) from {:?}", message, from);
+                    return Ok(())
                 }
 
-                let seq = self.seq_counter.fetch_add(1, Ordering::SeqCst);
-                let ephemeral = Random.generate()?;
-                self.requested.insert(from.clone(), ephemeral.private().clone());
-                let message = message::Message::secret_request(seq as u64, *ephemeral.public());
+                if !self.routing_table.add_node(from, *requester_node_id) {
+                    ctrace!(NET, "{:?} is not a new candidate", from);
+                }
+
+                let requester_pub_key = self.routing_table
+                    .register_key_pair_for_secret(from)
+                    .ok_or(Error::General("Cannot register key pair"))?;
+
+                let seq = self.requests.gen(from.clone())?;
+                io.register_timer_once(seq, MESSAGE_TIMEOUT_MS)?;
+
+                let message = message::Message::secret_request(seq as u64, requester_pub_key);
                 self.server.enqueue(message, from.clone())?;
+
                 Ok(())
             }
-            message::Body::NonceRequest(received_nonce) => {
-                let encrypted_bytes = {
-                    let secret = self.secrets.get(from).ok_or(Error::General("NoSession"))?;
-
-                    let temporary_session = Session::new_with_zero_nonce(secret.clone());
-
-                    let temporary_nonce = decrypt_and_decode_nonce(&temporary_session, received_nonce)?;
-                    let temporary_session = Session::new(*secret, temporary_nonce.clone());
-
-                    let mut rng = OsRng::new().expect("Cannot generate random number");
-                    let nonce: Nonce = rng.gen();
-                    let encrypted_nonce = encode_and_encrypt_nonce(&temporary_session, &nonce)?;
-
-                    let session = Session::new(*secret, nonce);
-                    let local_node_id =
-                        self.address_to_node_id.get(from).ok_or(Error::General("Node id is unknown"))?.clone();
-                    let remote_node_id = from.into();
-
-                    match &self.discovery {
-                        Some(discovery) => discovery.start(local_node_id.clone()),
-                        None => {}
+            message::Body::SecretRequest(requester_pub_key) => {
+                if let Some(responder_pub_key) = self.routing_table.register_key_pair_for_secret(from) {
+                    if let Some(_secret) = self.routing_table.share_secret(from, requester_pub_key) {
+                        let message = message::Message::secret_allowed(message.seq(), responder_pub_key.clone());
+                        self.server.enqueue(message, from.clone())?;
+                        return Ok(())
+                    } else {
+                        if !self.routing_table.reset_key_pair_for_secret(from) {
+                            cwarn!(NET, "Cannot reset key pair to {:?}", from);
+                        }
                     }
-                    channel_to_p2p.send(p2p::Message::RegisterSession {
-                        local_node_id,
-                        remote_node_id,
-                        remote_addr: from.clone(),
-                        session,
-                    })?;
-                    self.session_registered_addresses.insert(from.clone());
-                    encrypted_nonce
-                };
-
-                let pong = message::Message::nonce_allowed(message.seq(), encrypted_bytes);
-                self.server.enqueue(pong, from.clone())?;
-                Ok(())
-            }
-            message::Body::NonceAllowed(nonce) => {
-                let temporary_nonce = self.temporary_nonces.get(&from).ok_or(Error::General("SessionNotReady"))?;
-                let secret = self.secrets.get(from).ok_or(Error::General("NoSession"))?;
-                let temporary_session = Session::new(*secret, temporary_nonce.clone());
-                let nonce = decrypt_and_decode_nonce(&temporary_session, &nonce)?;
-
-                let session = Session::new(*secret, nonce);
-                let local_node_id =
-                    self.address_to_node_id.get(from).ok_or(Error::General("Node id is unknown"))?.clone();
-                match &self.discovery {
-                    Some(discovery) => discovery.start(local_node_id.clone()),
-                    None => {}
                 }
-                channel_to_p2p.send(p2p::Message::RegisterSession {
-                    local_node_id,
-                    remote_node_id: from.into(),
-                    remote_addr: from.clone(),
-                    session,
-                })?;
-                self.session_registered_addresses.insert(from.clone());
-                Ok(())
-            }
-            message::Body::NonceDenied(reason) => {
-                info!(target:"net", "Connection to {:?} refused(reason: {}", from, reason);
-                Ok(())
-            }
-            message::Body::SecretRequest(key) => {
-                let ephemeral = Random.generate()?;
-                let secret = exchange(key, &ephemeral.private())?;
-                if self.secrets.insert(from.clone(), secret).is_some() {
-                    let message = message::Message::secret_denied(message.seq(), "ECDH Already requested".to_string());
-                    self.server.enqueue(message, from.clone())?;
-                    return Err(Error::General("ECDHAlreadyRequested"))
-                }
-                let message = message::Message::secret_allowed(message.seq(), *ephemeral.public());
+
+                let message = message::Message::secret_denied(message.seq(), "ECDH Already requested".to_string());
                 self.server.enqueue(message, from.clone())?;
-                Ok(())
+                Err(Error::General("Cannot response to secret request"))
             }
-            message::Body::SecretAllowed(key) => {
-                let local_private = self.requested.remove(from).ok_or(Error::General("ECDHIsNotRequested"))?;
-                let secret = exchange(key, &local_private)?;
-                let session = Session::new_with_zero_nonce(secret);
-
-                let mut rng = OsRng::new().expect("Cannot generate random number");
-                let nonce = rng.gen();
-                let encrypted_nonce = encode_and_encrypt_nonce(&session, &nonce)?;
-
-                if self.secrets.contains_key(&from) {
-                    return Err(Error::General("SessionAlreadyExists"))
+            message::Body::SecretAllowed(responder_pub_key) => {
+                if self.requests.restore(message.seq() as usize, Some(from.clone())).is_err() {
+                    ctrace!(NET, "Invalid message({:?}) from {:?}", message, from);
+                    return Ok(())
                 }
 
-                let token = self.tmp_nonce_tokens.gen().ok_or(Error::General("TooManyTemporaryNonces"))?;
-                let t = self.secrets.insert(from.clone(), secret);
-                debug_assert!(t.is_none());
-                let t = self.temporary_nonces.insert(from.clone(), nonce);
-                debug_assert!(t.is_none());
+                let _secret = self.routing_table
+                    .share_secret(from, responder_pub_key)
+                    .ok_or(Error::General("Cannot share secret"))?;
+                let encrypted_nonce =
+                    self.routing_table.request_session(from).ok_or(Error::General("Cannot generate nonce"))?;
 
-                let seq = self.seq_counter.fetch_add(1, Ordering::SeqCst);
+                let seq = self.requests.gen(from.clone())?;
+                io.register_timer_once(seq, MESSAGE_TIMEOUT_MS)?;
+
                 let message = message::Message::nonce_request(seq as u64, encrypted_nonce);
-                if let Err(err) = self.server.enqueue(message, from.clone()) {
-                    let t = self.tmp_nonce_tokens.restore(token);
-                    debug_assert!(t);
-                    return Err(From::from(err))
-                };
+                self.server.enqueue(message, from.clone())?;
 
-                let t = self.tmp_nonce_token_to_addr.insert(token, from.clone());
-                debug_assert!(t.is_none());
-                let t = self.addr_to_tmp_nonce_token.insert(from.clone(), token);
-                debug_assert!(t.is_none());
-
-                io.register_timer_once(token, TMP_NONCE_TIMEOUT_MS)?;
                 Ok(())
             }
             message::Body::SecretDenied(reason) => {
-                info!(target:"net", "Connection to {:?} refused(reason: {}", from, reason);
-                let _ = self.requested.remove(from).ok_or(Error::General("ECDHIsNotRequested"))?;
+                if self.requests.restore(message.seq() as usize, Some(from.clone())).is_err() {
+                    ctrace!(NET, "Invalid message({:?}) from {:?}", message, from);
+                    return Ok(())
+                }
+
+                if self.routing_table.reset_key_pair_for_secret(from) {
+                    cinfo!(NET, "Shared Secret to {:?} denied (reason: {})", from, reason);
+                } else {
+                    cwarn!(NET, "Shared Secret to {:?} denied (reason: {}), but it's not requested", from, reason);
+                }
                 Ok(())
             }
-        }
-    }
+            message::Body::NonceRequest(encrypted_temporary_nonce) => {
+                if let Some(encrypted_nonce) =
+                    self.routing_table.create_requested_session(from, &encrypted_temporary_nonce)
+                {
+                    let message = message::Message::nonce_allowed(message.seq(), encrypted_nonce);
+                    self.server.enqueue(message, from.clone())?;
+                    return Ok(())
+                }
 
-    fn remove_temporary_nonce(&mut self, timer: &TimerToken) -> bool {
-        if let Some(socket_address) = self.tmp_nonce_token_to_addr.remove(&timer) {
-            let t = self.addr_to_tmp_nonce_token.remove(&socket_address);
-            debug_assert!(t.is_some());
-            let t = self.tmp_nonce_tokens.restore(*timer);
-            debug_assert!(t);
-            let t = self.temporary_nonces.remove(&socket_address);
-            debug_assert!(t.is_some());
-            true
-        } else {
-            false
+                let message = message::Message::nonce_denied(message.seq(), "Cannot create session".to_string());
+                self.server.enqueue(message, from.clone())?;
+                Err(Error::General("Cannot create session"))
+            }
+            message::Body::NonceAllowed(encrypted_nonce) => {
+                if self.requests.restore(message.seq() as usize, Some(from.clone())).is_err() {
+                    ctrace!(NET, "Invalid message({:?}) from {:?}", message, from);
+                    return Ok(())
+                }
+
+                if !self.routing_table.create_allowed_session(from, &encrypted_nonce) {
+                    cwarn!(NET, "Cannot create session to {:?}", from);
+                }
+                Ok(())
+            }
+            message::Body::NonceDenied(reason) => {
+                if self.requests.restore(message.seq() as usize, Some(from.clone())).is_err() {
+                    ctrace!(NET, "Invalid message({:?}) from {:?}", message, from);
+                    return Ok(())
+                }
+
+                cinfo!(NET, "Connection to {:?} refused(reason: {})", from, reason);
+                Ok(())
+            }
         }
     }
 
@@ -389,33 +353,17 @@ impl SessionInitiator {
     }
 }
 
-fn encode_and_encrypt_nonce(session: &Session, nonce: &Nonce) -> Result<Vec<u8>> {
-    let unencrypted_bytes = nonce.rlp_bytes();
-    Ok(session.encrypt(&unencrypted_bytes)?)
-}
-
-fn decrypt_and_decode_nonce(session: &Session, encrypted_bytes: &Vec<u8>) -> Result<Nonce> {
-    let unencrypted_bytes = session.decrypt(&encrypted_bytes)?;
-    let rlp = UntrustedRlp::new(&unencrypted_bytes);
-    Ok(Decodable::decode(&rlp)?)
-}
-
 pub struct Handler {
     session_initiator: Mutex<SessionInitiator>,
-    channel_to_p2p: IoChannel<p2p::Message>,
 }
 
 impl Handler {
-    pub fn new(socket_address: SocketAddr, channel_to_p2p: IoChannel<p2p::Message>) -> Self {
-        let session_initiator = Mutex::new(SessionInitiator::bind(&socket_address).expect("Cannot bind UDP port"));
+    pub fn new(socket_address: SocketAddr, routing_table: Arc<RoutingTable>) -> Self {
+        let session_initiator =
+            Mutex::new(SessionInitiator::bind(&socket_address, routing_table).expect("Cannot bind UDP port"));
         Self {
             session_initiator,
-            channel_to_p2p,
         }
-    }
-
-    pub fn set_discovery_api(&self, api: Arc<DiscoveryApi>) {
-        self.session_initiator.lock().set_discovery_api(api)
     }
 }
 
@@ -424,15 +372,28 @@ const RECEIVE_TOKEN: usize = 0;
 impl IoHandler<Message> for Handler {
     fn initialize(&self, io: &IoContext<Message>) -> IoHandlerResult<()> {
         io.register_stream(RECEIVE_TOKEN)?;
+        io.register_timer(REFRESH_TIMER_TOKEN, 10_000)?;
         Ok(())
     }
 
-    fn timeout(&self, _io: &IoContext<Message>, timer: TimerToken) -> IoHandlerResult<()> {
+    fn timeout(&self, io: &IoContext<Message>, timer: TimerToken) -> IoHandlerResult<()> {
         match timer {
-            START_OF_TMP_NONCE_TOKEN...END_OF_TMP_NONCE_TOKEN => {
+            REFRESH_TIMER_TOKEN => {
+                io.message(Message::RequestSession(10))?;
+                Ok(())
+            }
+            BEGIN_OF_REQUEST_TOKEN...END_OF_REQUEST_TOKEN => {
                 let mut session_initiator = self.session_initiator.lock();
-                let t = session_initiator.remove_temporary_nonce(&timer);
-                debug_assert!(t);
+                match session_initiator
+                    .requests
+                    .restore(timer, None)
+                    .expect("restore return error only when the address is specified")
+                {
+                    None => {}
+                    Some(address) => {
+                        session_initiator.routing_table.remove_node(address);
+                    }
+                }
                 Ok(())
             }
             _ => unreachable!(),
@@ -443,15 +404,13 @@ impl IoHandler<Message> for Handler {
         match message {
             Message::ConnectTo(socket_address) => {
                 let mut session_initiator = self.session_initiator.lock();
-                session_initiator.create_new_connection(&socket_address)?;
+                session_initiator.routing_table.add_candidate(socket_address.clone());
+                session_initiator.create_new_connection(&socket_address, io)?;
                 io.update_registration(RECEIVE_TOKEN)?;
             }
             Message::RequestSession(n) => {
                 let mut session_initiator = self.session_initiator.lock();
-                if session_initiator.discovery.is_none() {
-                    return Ok(())
-                }
-                let addresses = { session_initiator.discovery.as_ref().unwrap().get(*n).clone() };
+                let addresses = session_initiator.routing_table.candidates(n);
                 if !addresses.is_empty() {
                     let _f = finally(|| {
                         if let Err(err) = io.update_registration(RECEIVE_TOKEN) {
@@ -459,9 +418,7 @@ impl IoHandler<Message> for Handler {
                         }
                     });
                     for address in addresses {
-                        if !session_initiator.session_registered_addresses.contains(&address) {
-                            session_initiator.create_new_connection(&address)?;
-                        }
+                        session_initiator.create_new_connection(&address, io)?;
                     }
                 }
             }
@@ -484,7 +441,7 @@ impl IoHandler<Message> for Handler {
         });
         loop {
             let mut session_initiator = self.session_initiator.lock();
-            if !session_initiator.read(&self.channel_to_p2p, io)? {
+            if !session_initiator.read(io)? {
                 break
             }
         }

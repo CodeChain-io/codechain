@@ -14,31 +14,27 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::{HashMap, HashSet};
 use std::io;
 use std::sync::Arc;
 
 use ccrypto::aes::SymmetricCipherError;
 use cfinally::finally;
-use cio::{IoChannel, IoContext, IoHandler, IoHandlerResult, IoManager, StreamToken, TimerToken};
+use cio::{IoContext, IoHandler, IoHandlerResult, IoManager, StreamToken, TimerToken};
 use mio::deprecated::EventLoop;
 use mio::{PollOpt, Ready, Token};
-use parking_lot::{Mutex, RwLock};
+use parking_lot::Mutex;
 use rlp::UntrustedRlp;
 use unexpected::Mismatch;
 
 use super::super::addr::convert_to_node_id;
 use super::super::client::Client;
 use super::super::extension::NodeToken;
-use super::super::session::Session;
-use super::super::session_initiator::Message as SessionMessage;
 use super::super::token_generator::TokenGenerator;
-use super::super::{DiscoveryApi, NodeId, SocketAddr};
-use super::connection::{Connection, EstablishedConnection};
+use super::super::RoutingTable;
+use super::super::{NodeId, SocketAddr};
+use super::connections::{ConnectionType, Connections, ReceivedMessage};
 use super::listener::Listener;
 use super::message::{HandshakeMessage, Message as NetworkMessage, Version};
-use super::pending_connection::{WaitAckConnection, WaitSyncConnection};
-use super::session_candidate::SessionCandidate;
 use super::stream::Stream;
 use super::NegotiationBody;
 
@@ -47,24 +43,8 @@ struct Manager {
 
     tokens: TokenGenerator,
 
-    wait_ack_tokens: HashSet<StreamToken>,
-    wait_sync_tokens: HashSet<StreamToken>,
-
-    connections: HashMap<StreamToken, EstablishedConnection>,
-    wait_ack_connections: HashMap<StreamToken, WaitAckConnection>,
-    wait_sync_connections: HashMap<StreamToken, WaitSyncConnection>,
-
-    registered_sessions: SessionCandidate,
-
-    waiting_ack_tokens: TokenGenerator,
-    waiting_ack_stream_to_timer: HashMap<StreamToken, TimerToken>,
-    waiting_ack_timer_to_stream: HashMap<TimerToken, StreamToken>,
-
-    waiting_sync_tokens: TokenGenerator,
-    waiting_sync_stream_to_timer: HashMap<StreamToken, TimerToken>,
-    waiting_sync_timer_to_stream: HashMap<TimerToken, StreamToken>,
-
-    peer_to_local: HashMap<NodeId, NodeId>,
+    routing_table: Arc<RoutingTable>,
+    connections: Connections,
 
     port: u16,
 }
@@ -76,29 +56,12 @@ const ACCEPT_TOKEN: TimerToken = 0;
 const FIRST_CONNECTION_TOKEN: TimerToken = ACCEPT_TOKEN + 1;
 const LAST_CONNECTION_TOKEN: TimerToken = FIRST_CONNECTION_TOKEN + MAX_CONNECTIONS;
 
-const PULL_CONNECTIONS_TOKEN: TimerToken = 0;
+const CREATE_CONNECTIONS_TOKEN: TimerToken = 0;
 const PULL_CONNECTIONS_MS: u64 = 1 * 1000;
-
-const FIRST_WAIT_ACK_TOKEN: TimerToken = PULL_CONNECTIONS_TOKEN + 1;
-const MAX_ACK_WAITS: usize = 10;
-const LAST_WAIT_ACK_TOKEN: TimerToken = FIRST_WAIT_ACK_TOKEN + MAX_ACK_WAITS;
-
-const FIRST_WAIT_SYNC_TOKEN: TimerToken = LAST_WAIT_ACK_TOKEN;
-const MAX_SYNC_WAITS: usize = 10;
-const LAST_WAIT_SYNC_TOKEN: TimerToken = FIRST_WAIT_SYNC_TOKEN + MAX_SYNC_WAITS;
-
-const WAIT_SYNC_MS: u64 = 10 * 1000;
 
 #[derive(Clone, Debug, PartialOrd, PartialEq)]
 pub enum Message {
-    RegisterSession {
-        local_node_id: NodeId,
-        remote_node_id: NodeId,
-        remote_addr: SocketAddr,
-        session: Session,
-    },
-
-    RequestConnection(SocketAddr, Session),
+    RequestConnection(SocketAddr),
 
     RequestNegotiation {
         node_id: NodeToken,
@@ -118,13 +81,10 @@ enum Error {
     InvalidStream(StreamToken),
     InvalidNode(NodeToken),
     InvalidSign,
-    UnreadySession,
     UnexpectedNodeId(Mismatch<NodeId>),
     SymmetricCipherError(SymmetricCipherError),
     General(&'static str),
 }
-
-type Result<T> = ::std::result::Result<T, Error>;
 
 impl ::std::fmt::Display for Error {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
@@ -132,7 +92,6 @@ impl ::std::fmt::Display for Error {
             Error::InvalidStream(_) => ::std::fmt::Debug::fmt(self, f),
             Error::InvalidNode(_) => ::std::fmt::Debug::fmt(self, f),
             Error::InvalidSign => ::std::fmt::Debug::fmt(&self, f),
-            Error::UnreadySession => ::std::fmt::Debug::fmt(&self, f),
             Error::UnexpectedNodeId(_) => ::std::fmt::Debug::fmt(&self, f),
             Error::SymmetricCipherError(err) => ::std::fmt::Debug::fmt(&err, f),
             Error::General(_) => ::std::fmt::Debug::fmt(self, f),
@@ -140,178 +99,54 @@ impl ::std::fmt::Display for Error {
     }
 }
 
-const WAIT_CREATE_CONNECTION: usize = 5;
-
 impl Manager {
-    pub fn listen(socket_address: &SocketAddr) -> io::Result<Self> {
+    pub fn listen(socket_address: &SocketAddr, routing_table: Arc<RoutingTable>) -> io::Result<Self> {
         Ok(Manager {
             listener: Listener::bind(&socket_address)?,
 
             tokens: TokenGenerator::new(FIRST_CONNECTION_TOKEN, LAST_CONNECTION_TOKEN),
-            wait_ack_tokens: HashSet::new(),
-            wait_sync_tokens: HashSet::new(),
 
-            connections: HashMap::new(),
-            wait_ack_connections: HashMap::new(),
-            wait_sync_connections: HashMap::new(),
-
-            registered_sessions: SessionCandidate::new(WAIT_CREATE_CONNECTION),
-
-            waiting_ack_tokens: TokenGenerator::new(FIRST_WAIT_ACK_TOKEN, LAST_WAIT_ACK_TOKEN),
-            waiting_ack_stream_to_timer: HashMap::new(),
-            waiting_ack_timer_to_stream: HashMap::new(),
-
-            waiting_sync_tokens: TokenGenerator::new(FIRST_WAIT_SYNC_TOKEN, LAST_WAIT_SYNC_TOKEN),
-            waiting_sync_stream_to_timer: HashMap::new(),
-            waiting_sync_timer_to_stream: HashMap::new(),
-
-            peer_to_local: HashMap::new(),
+            routing_table,
+            connections: Connections::new(),
 
             port: socket_address.port(),
         })
     }
 
-    fn register_wait_ack_connection(
-        &mut self,
-        stream: Stream,
-        session: Session,
-        remote_node_id: NodeId,
-    ) -> Result<(StreamToken, TimerToken)> {
-        let token = self.tokens.gen().ok_or(Error::General("TooManyConnections"))?;
-        let timer_token = {
-            if let Some(timer_token) = self.waiting_ack_tokens.gen() {
-                timer_token
-            } else {
-                return Err(Error::General("TooManyWaitingSync"))
-            }
-        };
-
-        let t = self.waiting_ack_stream_to_timer.insert(token, timer_token);
-        debug_assert!(t.is_none());
-        let t = self.waiting_ack_timer_to_stream.insert(token, timer_token);
-        debug_assert!(t.is_none());
-
-        let local_node_id =
-            self.peer_to_local.get(&remote_node_id).ok_or(Error::General("Node id is not registered"))?.clone();
-        let connection = WaitAckConnection::new(stream, session, self.port, local_node_id, remote_node_id.clone());
-
-        let con = self.wait_ack_connections.insert(token, connection);
-        debug_assert!(con.is_none());
-
-        let t = self.wait_ack_tokens.insert(token);
-        debug_assert!(t);
-
-        // Session is not reusable
-        let removed = self.registered_sessions.remove(&remote_node_id);
-        debug_assert!(removed);
-
-        Ok((token, timer_token))
-    }
-
-    fn register_wait_sync_connection(&mut self, stream: Stream) -> Result<(StreamToken, TimerToken)> {
-        let token = self.tokens.gen().ok_or(Error::General("TooManyConnections"))?;
-        let timer_token = {
-            if let Some(timer_token) = self.waiting_sync_tokens.gen() {
-                timer_token
-            } else {
-                return Err(Error::General("TooManyWaitingSync"))
-            }
-        };
-
-        let t = self.waiting_sync_stream_to_timer.insert(token, timer_token);
-        debug_assert!(t.is_none());
-        let t = self.waiting_sync_timer_to_stream.insert(token, timer_token);
-        debug_assert!(t.is_none());
-
-        let connection = WaitSyncConnection::new(stream);
-
-        let con = self.wait_sync_connections.insert(token, connection);
-        debug_assert!(con.is_none());
-
-        let t = self.wait_sync_tokens.insert(token);
-        debug_assert!(t);
-
-        Ok((token, timer_token))
-    }
-
-    fn register_connection(&mut self, connection: EstablishedConnection, token: &StreamToken, client: &Client) {
-        let con = self.connections.insert(*token, connection);
-        client.on_node_added(token);
-        debug_assert!(con.is_none());
-    }
-
-    fn process_wait_ack_connection(&mut self, wait_ack_token: &StreamToken) -> EstablishedConnection {
-        let wait_ack_connection = self.remove_waiting_ack_by_stream_token(&wait_ack_token).unwrap();
-
-        let connection = wait_ack_connection.establish();
-        connection
-    }
-
-    fn process_wait_sync_connection(&mut self, wait_sync_token: &StreamToken) -> EstablishedConnection {
-        let wait_sync_connection = self.remove_waiting_sync_by_stream_token(&wait_sync_token).unwrap();
-
-        let connection = wait_sync_connection.establish();
-        let remote_node_id = connection.remote_node_id().expect("WaitSyncConnection MUST have a remote node id");
-        let removed = self.registered_sessions.remove(&remote_node_id);
-        debug_assert!(removed);
-        connection
-    }
-
-    fn deregister_connection(&mut self, token: &StreamToken) {
-        if let Some(_) = self.connections.remove(&token) {
-            let t = self.tokens.restore(*token);
-            debug_assert!(t);
-            return
-        }
-
-        if let Some(_) = self.wait_ack_connections.remove(&token) {
-            let t = self.tokens.restore(*token);
-            debug_assert!(t);
-            let t = self.wait_ack_tokens.remove(&token);
-            debug_assert!(t);
-            return
-        }
-
-        if let Some(_) = self.wait_sync_connections.remove(&token) {
-            let t = self.tokens.restore(*token);
-            debug_assert!(t);
-            let t = self.wait_sync_tokens.remove(&token);
-            debug_assert!(t);
-            return
-        }
-
-        unreachable!()
-    }
-
-    pub fn accept(&mut self) -> IoHandlerResult<Option<(StreamToken, TimerToken, SocketAddr)>> {
+    pub fn accept(&mut self) -> IoHandlerResult<Option<(StreamToken)>> {
         match self.listener.accept()? {
-            Some((stream, socket_address)) => {
-                let (stream_token, timer_token) = self.register_wait_sync_connection(stream)?;
-                Ok(Some((stream_token, timer_token, socket_address)))
+            Some((stream, _socket_address)) => {
+                let token = self.tokens.gen().ok_or(Error::General("TooManyConnections"))?;
+                self.connections.accept(token, stream);
+                Ok(Some(token))
             }
             None => Ok(None),
         }
     }
 
-    pub fn connect(&mut self, socket_address: &SocketAddr, session: &Session) -> IoHandlerResult<Option<StreamToken>> {
+    pub fn connect(&mut self, socket_address: &SocketAddr) -> IoHandlerResult<Option<StreamToken>> {
         Ok(match Stream::connect(socket_address)? {
             Some(stream) => {
                 let remote_node_id = socket_address.into();
-                let (stream_token, _timer_token) =
-                    self.register_wait_ack_connection(stream, session.clone(), remote_node_id)?;
-                Some(stream_token)
+
+                let local_node_id =
+                    self.routing_table.local_node_id(&remote_node_id).ok_or(Error::General("Not handshaked"))?;
+                let session = self.routing_table
+                    .unestablished_session(&socket_address)
+                    .ok_or(Error::General("Session doesn't exist"))?;
+
+                let token = self.tokens.gen().ok_or(Error::General("TooManyConnections"))?;
+                if self.connections.connect(token, stream, local_node_id, session, socket_address, self.port) {
+                    self.routing_table.establish(socket_address);
+                    Some(token)
+                } else {
+                    cwarn!(NET, "Cannot create connection to {:?}", socket_address);
+                    self.tokens.restore(token);
+                    None
+                }
             }
             None => None,
         })
-    }
-
-    fn register_session(&mut self, node_id: &NodeId, socket_address: &SocketAddr, session: &Session) -> Result<()> {
-        if self.registered_sessions.contains_key(node_id) {
-            return Err(Error::General("SessionAlreadyRegistered"))
-        }
-        let inserted = self.registered_sessions.insert(node_id.clone(), session.clone(), socket_address.clone());
-        debug_assert!(inserted);
-        Ok(())
     }
 
     pub fn register_stream(
@@ -320,19 +155,10 @@ impl Manager {
         reg: Token,
         event_loop: &mut EventLoop<IoManager<Message>>,
     ) -> IoHandlerResult<()> {
-        if let Some(connection) = self.connections.get(&token) {
-            return Ok(connection.register(reg, event_loop)?)
+        if self.connections.register(&token, reg, event_loop)? == ConnectionType::None {
+            return Err(Error::InvalidStream(token).into())
         }
-
-        if let Some(connection) = self.wait_ack_connections.get(&token) {
-            return Ok(connection.register(reg, event_loop)?)
-        }
-
-        if let Some(connection) = self.wait_sync_connections.get(&token) {
-            return Ok(connection.register(reg, event_loop)?)
-        }
-
-        Err(Error::InvalidStream(token).into())
+        Ok(())
     }
 
     pub fn reregister_stream(
@@ -341,121 +167,37 @@ impl Manager {
         reg: Token,
         event_loop: &mut EventLoop<IoManager<Message>>,
     ) -> IoHandlerResult<()> {
-        if let Some(connection) = self.connections.get(&token) {
-            return Ok(connection.reregister(reg, event_loop)?)
+        if self.connections.reregister(&token, reg, event_loop)? == ConnectionType::None {
+            return Err(Error::InvalidStream(token).into())
         }
-
-        if let Some(connection) = self.wait_ack_connections.get(&token) {
-            return Ok(connection.reregister(reg, event_loop)?)
-        }
-
-        if let Some(connection) = self.wait_sync_connections.get(&token) {
-            return Ok(connection.reregister(reg, event_loop)?)
-        }
-
-        Err(Error::InvalidStream(token).into())
+        Ok(())
     }
 
-    // return false if it's wait sync connection
     fn deregister_stream(
         &self,
         token: StreamToken,
         event_loop: &mut EventLoop<IoManager<Message>>,
     ) -> IoHandlerResult<()> {
-        if let Some(connection) = self.connections.get(&token) {
-            connection.deregister(event_loop)?;
-            return Ok(())
+        if self.connections.deregister(&token, event_loop)? == ConnectionType::None {
+            return Err(Error::InvalidStream(token).into())
         }
-
-        if let Some(connection) = self.wait_ack_connections.get(&token) {
-            connection.deregister(event_loop)?;
-            return Ok(())
-        }
-
-        if let Some(connection) = self.wait_sync_connections.get(&token) {
-            connection.deregister(event_loop)?;
-            return Ok(())
-        }
-
-        Err(Error::InvalidStream(token).into())
+        Ok(())
     }
 
-    // Return false if the received message is sync
+    // Return false if there is no message
     fn receive(&mut self, stream: &StreamToken, client: &Client) -> IoHandlerResult<bool> {
-        if let Some(connection) = self.connections.get_mut(&stream) {
-            let message = connection.receive()?;
-            match message {
-                Some(NetworkMessage::Extension(msg)) => {
-                    let session = connection.session().expect("Established connection MUST have a session");
-                    // FIXME: check version of extension
-                    let message = msg.unencrypted_data(&session).map_err(Error::from)?;
-                    client.on_message(msg.extension_name(), stream, &message);
-                    return Ok(true)
+        Ok(match self.connections.receive(stream)? {
+            None => false,
+            Some(ReceivedMessage::Ack {
+                ..
+            }) => {
+                if !self.connections.establish_wait_ack_connection(stream) {
+                    return Err(Error::InvalidStream(*stream).into())
                 }
-                Some(NetworkMessage::Handshake(msg)) => {
-                    unreachable!("handshake message received {:?}", msg);
-                }
-                Some(NetworkMessage::Negotiation(msg)) => {
-                    match msg.body() {
-                        NegotiationBody::Request {
-                            ref extension_name,
-                            ..
-                        } => {
-                            let seq = msg.seq();
-                            // FIXME: version negotiation
-                            client.on_negotiated(extension_name, stream);
-                            connection.enqueue_negotiation_allowed(seq);
-                        }
-                        NegotiationBody::Allowed => {
-                            let seq = msg.seq();
-                            if let Some(name) = connection.remove_requested_negotiation(&seq) {
-                                client.on_negotiation_allowed(&name, stream);
-                            } else {
-                                ctrace!(NET, "Negotiation::Allowed message received from non requested seq");
-                            }
-                        }
-                        NegotiationBody::Denied(_) => {
-                            let seq = msg.seq();
-                            if let Some(name) = connection.remove_requested_negotiation(&seq) {
-                                client.on_negotiation_denied(&name, stream);
-                            } else {
-                                ctrace!(NET, "Negotiation::Denied message received from non requested seq");
-                            }
-                        }
-                    };
-                    return Ok(true)
-                }
-                None => return Ok(false),
+                client.on_node_added(stream);
+                true
             }
-        }
-
-        if self.wait_ack_connections.contains_key(stream) {
-            {
-                // connection borrows *self as mutable
-                let connection = self.wait_ack_connections.get_mut(&stream).unwrap();
-                match connection.receive()? {
-                    Some(HandshakeMessage::Ack(_)) => {}
-                    Some(_) => unreachable!(),
-                    None => return Ok(false),
-                }
-            }
-
-            // receive Ack message
-            let connection = self.process_wait_ack_connection(&stream);
-
-            self.register_connection(connection, stream, client);
-            return Ok(true)
-        }
-
-        if self.wait_sync_connections.contains_key(stream) {
-            {
-                // connection borrows *self as mutable
-                let connection = self.wait_sync_connections.get_mut(&stream).unwrap();
-                let signed_message = connection.receive()?;
-                if signed_message.is_none() {
-                    return Ok(false)
-                }
-                let signed_message = signed_message.unwrap();
+            Some(ReceivedMessage::Sync(signed_message)) => {
                 let rlp = UntrustedRlp::new(&signed_message.message);
                 let message = rlp.as_val::<NetworkMessage>()?;
 
@@ -465,122 +207,94 @@ impl Manager {
                         node_id,
                         ..
                     }) => {
-                        let peer_addr = connection.remote_addr()?;
-                        let peer_node_id = convert_to_node_id(&peer_addr.ip(), port);
+                        let remote_addr = self.connections
+                            .remote_addr_of_waiting_sync(stream)
+                            .ok_or(Error::General("Cannot find remote address"))?;
+                        let remote_node_id = convert_to_node_id(&remote_addr.ip(), port);
 
-                        if peer_node_id != node_id {
+                        if remote_node_id != node_id {
                             return Err(Error::UnexpectedNodeId(Mismatch {
-                                expected: peer_node_id,
+                                expected: remote_node_id,
                                 found: node_id,
                             }).into())
                         }
-                        let (session, _) = self.registered_sessions.get(&peer_node_id).ok_or(Error::UnreadySession)?;
-                        if !signed_message.is_valid(session) {
+
+                        let remote_addr = SocketAddr::new(remote_addr.ip(), port);
+                        let session = self.routing_table
+                            .unestablished_session(&remote_addr)
+                            .ok_or(Error::General("Cannot find session"))?;
+                        if !signed_message.is_valid(&session) {
                             return Err(Error::InvalidSign.into())
                         }
 
-                        connection.ready_session(peer_node_id, session.clone());
+                        self.routing_table.establish(&remote_addr);
+                        self.connections.ready_session(stream, remote_node_id, session);
+                        true
                     }
                     _ => unreachable!(),
                 }
             }
-            return Ok(true)
-        }
-
-        Err(Error::InvalidStream(stream.clone()).into())
+            Some(ReceivedMessage::Extension(msg)) => {
+                let session = self.connections.established_session(stream).ok_or(Error::General("Invalid stream"))?;
+                // FIXME: check version of extension
+                let message = msg.unencrypted_data(&session).map_err(Error::from)?;
+                client.on_message(msg.extension_name(), stream, &message);
+                true
+            }
+            Some(ReceivedMessage::Negotiation(msg)) => {
+                match msg.body() {
+                    NegotiationBody::Request {
+                        ref extension_name,
+                        ..
+                    } => {
+                        let seq = msg.seq();
+                        // FIXME: version negotiation
+                        if self.connections.enqueue_negotiation_allowed(stream, seq) {
+                            client.on_negotiated(extension_name, stream);
+                        } else {
+                            cwarn!(NET, "Cannot enqueue negotiation message for {}", stream);
+                        }
+                    }
+                    NegotiationBody::Allowed => {
+                        let seq = msg.seq();
+                        if let Some(name) = self.connections.remove_requested_negotiation(stream, &seq) {
+                            client.on_negotiation_allowed(&name, stream);
+                        } else {
+                            ctrace!(NET, "Negotiation::Allowed message received from non requested seq");
+                        }
+                    }
+                    NegotiationBody::Denied(_) => {
+                        let seq = msg.seq();
+                        if let Some(name) = self.connections.remove_requested_negotiation(stream, &seq) {
+                            client.on_negotiation_denied(&name, stream);
+                        } else {
+                            ctrace!(NET, "Negotiation::Denied message received from non requested seq");
+                        }
+                    }
+                };
+                true
+            }
+        })
     }
 
     fn send(&mut self, stream: &StreamToken, client: &Client) -> IoHandlerResult<bool> {
-        if let Some(ref mut connection) = self.connections.get_mut(&stream) {
-            return Ok(connection.send()?)
-        }
+        let (connection_type, remain) = self.connections.send(stream)?;
+        Ok(match connection_type {
+            ConnectionType::None => return Err(Error::InvalidStream(stream.clone()).into()),
+            ConnectionType::AckWaiting => {
+                debug_assert!(!remain);
+                false
+            }
+            ConnectionType::SyncWaiting => {
+                // Ack message was sent
+                debug_assert!(!remain);
+                self.connections.establish_wait_sync_connection(stream);
 
-        if let Some(ref mut wait_ack_connection) = self.wait_ack_connections.get_mut(&stream) {
-            wait_ack_connection.send()?;
-            return Ok(false)
-        }
-
-        if let Some(ref mut wait_sync_connection) = self.wait_sync_connections.get_mut(&stream) {
-            wait_sync_connection.send()?;
-        } else {
-            return Err(Error::InvalidStream(stream.clone()).into())
-        }
-
-        // Ack message was sent
-        let connection = self.process_wait_sync_connection(&stream);
-
-        self.register_connection(connection, stream, client);
-        return Ok(false)
-    }
-
-    fn remove_waiting_ack_by_stream_token(&mut self, stream: &StreamToken) -> Option<WaitAckConnection> {
-        if let Some(timer) = self.waiting_ack_stream_to_timer.remove(&stream) {
-            let t = self.waiting_ack_tokens.restore(timer);
-            debug_assert!(t);
-
-            let t = self.waiting_ack_timer_to_stream.remove(&stream);
-            debug_assert!(t.is_some());
-
-            let t = self.wait_ack_tokens.remove(&stream);
-            debug_assert!(t);
-
-            let t = self.wait_ack_connections.remove(&stream);
-            debug_assert!(t.is_some());
-            t
-        } else {
-            None
-        }
-    }
-
-    fn remove_waiting_sync_by_stream_token(&mut self, stream: &StreamToken) -> Option<WaitSyncConnection> {
-        if let Some(timer) = self.waiting_sync_stream_to_timer.remove(&stream) {
-            let t = self.waiting_sync_tokens.restore(timer);
-            debug_assert!(t);
-
-            let t = self.waiting_sync_timer_to_stream.remove(&stream);
-            debug_assert!(t.is_some());
-
-            let t = self.wait_sync_tokens.remove(&stream);
-            debug_assert!(t);
-
-            let t = self.wait_sync_connections.remove(&stream);
-            debug_assert!(t.is_some());
-            t
-        } else {
-            None
-        }
-    }
-
-    fn remove_waiting_ack_by_timer_token(&mut self, timer: &TimerToken) {
-        if let Some(stream) = self.waiting_ack_timer_to_stream.remove(&timer) {
-            let t = self.waiting_ack_tokens.restore(*timer);
-            debug_assert!(t);
-
-            let t = self.waiting_ack_stream_to_timer.remove(&stream);
-            debug_assert!(t.is_some());
-
-            let t = self.wait_ack_tokens.remove(&stream);
-            debug_assert!(t);
-
-            let t = self.wait_ack_connections.remove(&stream);
-            debug_assert!(t.is_some());
-        }
-    }
-
-    fn remove_waiting_sync_by_timer_token(&mut self, timer: &TimerToken) {
-        if let Some(stream) = self.waiting_sync_timer_to_stream.remove(&timer) {
-            let t = self.waiting_sync_tokens.restore(*timer);
-            debug_assert!(t);
-
-            let t = self.waiting_sync_stream_to_timer.remove(&stream);
-            debug_assert!(t.is_some());
-
-            let t = self.wait_sync_tokens.remove(&stream);
-            debug_assert!(t);
-
-            let t = self.wait_sync_connections.remove(&stream);
-            debug_assert!(t.is_some());
-        }
+                client.on_node_added(stream);
+                false
+            }
+            ConnectionType::Established => remain,
+        })
     }
 }
 
@@ -588,9 +302,6 @@ pub struct Handler {
     socket_address: SocketAddr,
     manager: Mutex<Manager>,
     client: Arc<Client>,
-
-    discovery: RwLock<Option<Arc<DiscoveryApi>>>,
-    session_initiator: IoChannel<SessionMessage>,
 
     min_peers: usize,
     max_peers: usize,
@@ -600,73 +311,45 @@ impl Handler {
     pub fn try_new(
         socket_address: SocketAddr,
         client: Arc<Client>,
-        session_initiator: IoChannel<SessionMessage>,
+        routing_table: Arc<RoutingTable>,
         min_peers: usize,
         max_peers: usize,
     ) -> ::std::result::Result<Self, String> {
         if MAX_CONNECTIONS < max_peers {
             return Err(format!("Max peers must be less than {}", MAX_CONNECTIONS))
         }
-        let manager = Mutex::new(Manager::listen(&socket_address).expect("Cannot listen TCP port"));
+        let manager = Mutex::new(Manager::listen(&socket_address, routing_table).expect("Cannot listen TCP port"));
         debug_assert!(max_peers < MAX_CONNECTIONS);
         Ok(Self {
             socket_address,
             manager,
             client,
 
-            discovery: RwLock::new(None),
-            session_initiator,
-
             min_peers,
             max_peers,
         })
-    }
-
-    pub fn set_discovery_api(&self, api: Arc<DiscoveryApi>) {
-        *self.discovery.write() = Some(api);
     }
 }
 
 impl IoHandler<Message> for Handler {
     fn initialize(&self, io: &IoContext<Message>) -> IoHandlerResult<()> {
         io.register_stream(ACCEPT_TOKEN)?;
-        io.register_timer_once(PULL_CONNECTIONS_TOKEN, PULL_CONNECTIONS_MS)?;
+        io.register_timer_once(CREATE_CONNECTIONS_TOKEN, PULL_CONNECTIONS_MS)?;
         Ok(())
     }
 
     fn timeout(&self, io: &IoContext<Message>, token: TimerToken) -> IoHandlerResult<()> {
         match token {
-            PULL_CONNECTIONS_TOKEN => {
-                io.register_timer_once(PULL_CONNECTIONS_TOKEN, PULL_CONNECTIONS_MS)?;
-                let mut manager = self.manager.lock();
-                manager.registered_sessions.promote();
-                if self.min_peers <= manager.connections.len() {
-                    return Ok(())
+            CREATE_CONNECTIONS_TOKEN => {
+                let manager = self.manager.lock();
+                let number_of_connections = manager.connections.len();
+                if manager.connections.len() < self.min_peers {
+                    let count = (self.min_peers - number_of_connections + 1) / 2;
+                    let addresses = manager.routing_table.unestablished_addresses(count);
+                    for address in addresses {
+                        io.message(Message::RequestConnection(address))?;
+                    }
                 }
-
-                let num_of_requests = self.min_peers - manager.connections.len();
-                // FIXME: Pick random session
-                let mut count: usize = 0;
-                for (_, &(ref session, ref socket_address)) in manager.registered_sessions.iter().take(num_of_requests)
-                {
-                    count += 1;
-                    io.channel().send(Message::RequestConnection(socket_address.clone(), session.clone()))?;
-                }
-                if count + manager.connections.len() < self.min_peers {
-                    let requests = self.min_peers - count - manager.connections.len();
-                    self.session_initiator.send(SessionMessage::RequestSession(requests))?;
-                }
-
-                Ok(())
-            }
-            FIRST_WAIT_ACK_TOKEN...LAST_WAIT_ACK_TOKEN => {
-                let mut manager = self.manager.lock();
-                manager.remove_waiting_ack_by_timer_token(&token);
-                Ok(())
-            }
-            FIRST_WAIT_SYNC_TOKEN...LAST_WAIT_SYNC_TOKEN => {
-                let mut manager = self.manager.lock();
-                manager.remove_waiting_sync_by_timer_token(&token);
                 Ok(())
             }
             _ => unreachable!(),
@@ -675,32 +358,17 @@ impl IoHandler<Message> for Handler {
 
     fn message(&self, io: &IoContext<Message>, message: &Message) -> IoHandlerResult<()> {
         match message {
-            Message::RegisterSession {
-                local_node_id,
-                remote_node_id,
-                remote_addr,
-                session,
-            } => {
+            Message::RequestConnection(socket_address) => {
                 let mut manager = self.manager.lock();
-                manager.peer_to_local.insert(remote_node_id.clone(), local_node_id.clone());
-                manager.register_session(&remote_node_id, remote_addr, session)?;
-                Ok(())
-            }
-            Message::RequestConnection(socket_address, session) => {
-                let mut manager = self.manager.lock();
+                let number_of_connections = manager.connections.len();
                 if self.max_peers <= manager.connections.len() {
-                    ctrace!(NET, "Already has maximum peers({})", manager.connections.len());
+                    ctrace!(NET, "Already has maximum peers({})", number_of_connections);
                     return Ok(())
                 }
 
                 ctrace!(NET, "Connecting to {:?}", socket_address);
-                let token =
-                    manager.connect(&socket_address, session)?.ok_or(Error::General("Cannot create connection"))?;
+                let token = manager.connect(&socket_address)?.ok_or(Error::General("Cannot create connection"))?;
                 io.register_stream(token)?;
-
-                if let Some(ref discovery) = *self.discovery.read() {
-                    discovery.add_connection(token, socket_address.clone());
-                }
                 Ok(())
             }
             Message::RequestNegotiation {
@@ -709,8 +377,9 @@ impl IoHandler<Message> for Handler {
                 version,
             } => {
                 let mut manager = self.manager.lock();
-                let mut connection = manager.connections.get_mut(node_id).ok_or(Error::InvalidNode(*node_id))?;
-                connection.enqueue_negotiation_request(extension_name.clone(), *version);
+                if !manager.connections.enqueue_negotiation_request(node_id, extension_name.clone(), *version) {
+                    return Err(Error::InvalidNode(*node_id).into())
+                }
                 io.update_registration(*node_id)?;
                 Ok(())
             }
@@ -721,8 +390,9 @@ impl IoHandler<Message> for Handler {
                 data,
             } => {
                 let mut manager = self.manager.lock();
-                let mut connection = manager.connections.get_mut(node_id).ok_or(Error::InvalidNode(*node_id))?;
-                connection.enqueue_extension_message(extension_name.clone(), *need_encryption, &data);
+                if !manager.connections.enqueue_extension_message(node_id, extension_name, *need_encryption, data) {
+                    return Err(Error::InvalidNode(*node_id).into())
+                }
                 io.update_registration(*node_id)?;
                 Ok(())
             }
@@ -735,9 +405,6 @@ impl IoHandler<Message> for Handler {
             FIRST_CONNECTION_TOKEN...LAST_CONNECTION_TOKEN => {
                 self.client.on_node_removed(&stream);
                 io.deregister_stream(stream)?;
-                if let Some(ref discovery) = *self.discovery.read() {
-                    discovery.remove_connection(&stream);
-                }
             }
             _ => unreachable!(),
         }
@@ -748,12 +415,8 @@ impl IoHandler<Message> for Handler {
         match stream {
             ACCEPT_TOKEN => loop {
                 let mut manager = self.manager.lock();
-                if let Some((token, timer_token, socket_address)) = manager.accept()? {
+                if let Some(token) = manager.accept()? {
                     io.register_stream(token)?;
-                    io.register_timer_once(timer_token, WAIT_SYNC_MS)?;
-                    if let Some(ref discovery) = *self.discovery.read() {
-                        discovery.add_connection(token, socket_address.clone());
-                    }
                 }
                 break
             },
@@ -851,7 +514,6 @@ impl IoHandler<Message> for Handler {
             FIRST_CONNECTION_TOKEN...LAST_CONNECTION_TOKEN => {
                 let mut manager = self.manager.lock();
                 manager.deregister_stream(stream, event_loop)?;
-                manager.deregister_connection(&stream);
             }
             _ => unreachable!(),
         }

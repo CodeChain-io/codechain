@@ -51,7 +51,6 @@ impl TokenGenerator {
         self.limited.is_full()
     }
 
-    #[allow(dead_code)]
     pub fn is_assigned(&self, token: Token) -> bool {
         self.limited.contains(token)
     }

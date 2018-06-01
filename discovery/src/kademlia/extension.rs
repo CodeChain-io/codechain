@@ -18,7 +18,7 @@ use std::collections::{HashMap, VecDeque};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
-use cnetwork::{Api, DiscoveryApi, NetworkExtension, NodeId, NodeToken, SocketAddr, TimerToken};
+use cnetwork::{Api, DiscoveryApi, NetworkExtension, NodeToken, SocketAddr, TimerToken, RoutingTable};
 use parking_lot::{Mutex, RwLock};
 use rlp::{Decodable, DecoderError, Encodable, UntrustedRlp};
 use time::Duration;
@@ -165,42 +165,8 @@ impl Extension {
 }
 
 impl DiscoveryApi for Extension {
-    fn start(&self, local_node_id: NodeId) {
-        let mut kademlia = self.kademlia.write();
-        if kademlia.is_some() {
-            return
-        }
-        *kademlia = Some(Kademlia::new(local_node_id, self.config.alpha, self.config.k, self.config.t_refresh));
-    }
-
-    fn get(&self, max: usize) -> Vec<SocketAddr> {
-        debug_assert!(max <= ::std::u8::MAX as usize);
-
-        let kademlia = self.kademlia.read();
-        if let Some(kademlia) = &*kademlia {
-            let addresses = kademlia.get_closest_addresses(max);
-            trace!(target: "discovery", "Get {} addresses", addresses.len());
-            addresses
-        } else {
-            vec![]
-        }
-    }
-
-    fn add_connection(&self, node: NodeToken, address: SocketAddr) {
-        let mut addr_to_node = self.addr_to_node.write();
-        let mut node_to_addr = self.node_to_addr.write();
-
-        addr_to_node.insert(address.clone(), node.clone());
-        node_to_addr.insert(node.clone(), address.clone());
-    }
-
-    fn remove_connection(&self, node: &NodeToken) {
-        let mut addr_to_node = self.addr_to_node.write();
-        let mut node_to_addr = self.node_to_addr.write();
-
-        if let Some(addr) = node_to_addr.remove(node) {
-            addr_to_node.remove(&addr);
-        }
+    fn set_routing_table(&self, routing_table: Arc<RoutingTable>) {
+        unimplemented!()
     }
 }
 
