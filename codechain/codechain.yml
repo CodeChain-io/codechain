@@ -93,3 +93,40 @@ args:
         long: kademlia-refresh
         help: Refresh timeout of Kademlia (ms)
         takes_value: true
+subcommands:
+    - account:
+        about: account managing commands
+        subcommands:
+            - create:
+                about: create account
+                args:
+                    - passphrase:
+                        short: p
+                        long: passphrase
+                        help: account passphrase
+                        takes_value: true
+            - import:
+                about: import private key
+                args:
+                    - passphrase:
+                        short: p
+                        long: passphrase
+                        help: account passphrase
+                        takes_value: true
+                    - raw-key:
+                        short: k
+                        long: raw-key
+                        help: key to import
+                        takes_value: true
+            - list:
+                about: list managed accounts
+            - lock:
+                about: lock account
+                args:
+                    - address:
+                        help: address to lock
+            - unlock:
+                about: unlock account
+                args:
+                    - address:
+                        help: address to unlock
