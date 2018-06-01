@@ -82,13 +82,9 @@ export default class CodeChain {
     if (this.process !== undefined) {
       // wait until process is killed
       await new Promise((resolve) => {
-        const onExit = () => {
-          this.process!.off("exit", onExit);
-          resolve();
-        };
-
-        this.process!.on("exit", onExit);
+        this.process!.on("exit", () => resolve());
         this.process!.kill();
+        this.process = undefined;
       });
     }
   }
