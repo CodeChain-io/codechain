@@ -28,6 +28,7 @@ extern crate serde_derive;
 extern crate app_dirs;
 extern crate codechain_core as ccore;
 extern crate codechain_discovery as cdiscovery;
+extern crate codechain_keys as ckeys;
 extern crate codechain_keystore as ckeystore;
 extern crate codechain_logger as clogger;
 extern crate codechain_network as cnetwork;
@@ -42,6 +43,7 @@ extern crate panic_hook;
 extern crate parking_lot;
 extern crate toml;
 
+mod account_command;
 mod config;
 mod rpc;
 mod rpc_apis;
@@ -50,11 +52,13 @@ use std::path::Path;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use account_command::run_account_command;
 use app_dirs::AppInfo;
 use ccore::{AccountProvider, ClientService, Miner, MinerOptions, MinerService, Spec};
 use cdiscovery::{KademliaExtension, SimpleDiscovery};
 use ckeystore::accounts_dir::RootDiskDirectory;
 use ckeystore::KeyStore;
+use clap::ArgMatches;
 use clogger::LoggerConfig;
 use cnetwork::{NetworkConfig, NetworkService, SocketAddr};
 use creactor::EventLoop;
@@ -113,6 +117,22 @@ fn run() -> Result<(), String> {
     let yaml = load_yaml!("codechain.yml");
     let matches = clap::App::from_yaml(yaml).get_matches();
 
+    match matches.subcommand {
+        Some(_) => run_subcommand(matches),
+        None => run_node(matches),
+    }
+}
+
+fn run_subcommand(matches: ArgMatches) -> Result<(), String> {
+    let subcommand = matches.subcommand.unwrap();
+    if subcommand.name == "account" {
+        run_account_command(subcommand.matches)
+    } else {
+        Err("Invalid subcommand".to_string())
+    }
+}
+
+fn run_node(matches: ArgMatches) -> Result<(), String> {
     // increase max number of open files
     raise_fd_limit();
 
