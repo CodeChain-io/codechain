@@ -22,7 +22,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use ccore::{BlockChainClient, BlockId, BlockImportError, BlockNumber, ChainNotify, ImportError, Seal};
-use cnetwork::{Api, NetworkExtension, NodeToken, TimerToken};
+use cnetwork::{Api, NetworkExtension, NodeId, TimerToken};
 use ctypes::{H256, U256};
 use rlp::{Encodable, UntrustedRlp};
 use time::Duration;
@@ -61,7 +61,7 @@ impl Peer {
 }
 
 pub struct Extension {
-    peers: RwLock<HashMap<NodeToken, Peer>>,
+    peers: RwLock<HashMap<NodeId, Peer>>,
     client: Arc<BlockChainClient>,
     manager: Mutex<DownloadManager>,
     api: Mutex<Option<Arc<Api>>>,
@@ -100,7 +100,7 @@ impl Extension {
         });
     }
 
-    fn send_message(&self, token: &NodeToken, message: Message) {
+    fn send_message(&self, token: &NodeId, message: Message) {
         self.api.lock().as_ref().map(|api| {
             api.send(token, &message.rlp_bytes().to_vec());
         });
@@ -121,16 +121,16 @@ impl NetworkExtension for Extension {
         cinfo!(SYNC, "Sync extension initialized");
     }
 
-    fn on_node_added(&self, token: &NodeToken) {
+    fn on_node_added(&self, token: &NodeId) {
         cinfo!(SYNC, "New peer detected #{}", token);
         self.api.lock().as_ref().map(|api| api.negotiate(token));
     }
-    fn on_node_removed(&self, token: &NodeToken) {
+    fn on_node_removed(&self, token: &NodeId) {
         self.peers.write().remove(token);
         cinfo!(SYNC, "Peer removed #{}", token);
     }
 
-    fn on_negotiated(&self, token: &NodeToken) {
+    fn on_negotiated(&self, token: &NodeId) {
         ctrace!(SYNC, "New peer negotiated #{}", token);
         let chain_info = self.client.chain_info();
         self.send_message(
@@ -142,11 +142,11 @@ impl NetworkExtension for Extension {
             },
         );
     }
-    fn on_negotiation_allowed(&self, token: &NodeToken) {
+    fn on_negotiation_allowed(&self, token: &NodeId) {
         self.on_negotiated(token);
     }
 
-    fn on_message(&self, token: &NodeToken, data: &[u8]) {
+    fn on_message(&self, token: &NodeId, data: &[u8]) {
         if let Ok(received_message) = UntrustedRlp::new(data).as_val() {
             match received_message {
                 Message::Status {
@@ -246,7 +246,7 @@ impl ChainNotify for Extension {
 }
 
 impl Extension {
-    fn on_peer_status(&self, from: &NodeToken, total_score: U256, best_hash: H256, genesis_hash: H256) {
+    fn on_peer_status(&self, from: &NodeId, total_score: U256, best_hash: H256, genesis_hash: H256) {
         // Validity check
         if genesis_hash != self.client.chain_info().genesis_hash {
             cinfo!(SYNC, "Genesis hash mismatch with peer {}", from);
@@ -274,7 +274,7 @@ impl Extension {
 }
 
 impl Extension {
-    fn on_peer_request(&self, from: &NodeToken, request: RequestMessage) {
+    fn on_peer_request(&self, from: &NodeId, request: RequestMessage) {
         if !self.peers.read().contains_key(from) {
             cinfo!(SYNC, "Request from invalid peer #{} received", from);
             return
@@ -355,7 +355,7 @@ impl Extension {
 }
 
 impl Extension {
-    fn on_peer_response(&self, from: &NodeToken, response: ResponseMessage) {
+    fn on_peer_response(&self, from: &NodeId, response: ResponseMessage) {
         if !self.is_valid_response(from, &response) {
             cinfo!(SYNC, "Invalid response received from peer #{}", from);
             return
@@ -406,7 +406,7 @@ impl Extension {
         }
     }
 
-    fn is_valid_response(&self, from: &NodeToken, response: &ResponseMessage) -> bool {
+    fn is_valid_response(&self, from: &NodeId, response: &ResponseMessage) -> bool {
         let peers = self.peers.read();
         if let Some(peer) = peers.get(from) {
             if let &Some((ref last_message, _)) = &peer.last_request {
@@ -439,7 +439,7 @@ impl Extension {
         false
     }
 
-    fn apply_response(&self, from: &NodeToken, response: &ResponseMessage) {
+    fn apply_response(&self, from: &NodeId, response: &ResponseMessage) {
         let apply_success = match response {
             ResponseMessage::Headers(headers) => self.manager.lock().import_headers(headers),
             ResponseMessage::Bodies(bodies) => self.manager.lock().import_bodies(bodies),
@@ -464,7 +464,7 @@ mod tests {
     use std::sync::Arc;
 
     use ccore::{BlockChainClient, BlockId, BlockInfo, ChainInfo, ImportBlock, TestBlockChainClient};
-    use cnetwork::{NodeToken, TestNetworkCall, TestNetworkClient};
+    use cnetwork::{NodeId, TestNetworkCall, TestNetworkClient};
     use ctypes::{H256, U256};
     use rlp::Encodable;
 
@@ -492,15 +492,15 @@ mod tests {
         }
     }
 
-    fn assert_add_node(env: &mut TestEnvironment, node: NodeToken) {
+    fn assert_add_node(env: &mut TestEnvironment, node: NodeId) {
         env.network.add_node(node);
-        assert_eq!(env.network.pop_call(EXTENSION_NAME), Some(TestNetworkCall::Negotiate(0)));
+        assert_eq!(env.network.pop_call(EXTENSION_NAME), Some(TestNetworkCall::Negotiate(0.into())));
 
-        env.network.connected(EXTENSION_NAME, 0);
+        env.network.connected(EXTENSION_NAME, 0.into());
         match env.network.pop_call(EXTENSION_NAME) {
-            Some(TestNetworkCall::Send(0, data)) => {
+            Some(TestNetworkCall::Send(node_id, ref data)) if node_id == 0.into() => {
                 let chain_info = env.client.chain_info();
-                let message: Message = ::rlp::decode(data.as_slice());
+                let message: Message = ::rlp::decode(&data);
                 assert_eq!(
                     message,
                     Message::Status {
@@ -514,7 +514,7 @@ mod tests {
         }
     }
 
-    fn assert_accept_status(env: &mut TestEnvironment, node: NodeToken, total_score: U256, best_hash: H256) {
+    fn assert_accept_status(env: &mut TestEnvironment, node: NodeId, total_score: U256, best_hash: H256) {
         let genesis_hash = env.client.chain_info().genesis_hash;
         let peer_status = Message::Status {
             total_score,
@@ -531,20 +531,20 @@ mod tests {
     #[test]
     fn should_update_peer_info_on_status() {
         let mut env = generate_test_environment(1);
-        assert_add_node(&mut env, 0);
+        assert_add_node(&mut env, 0.into());
         let chain_info = env.client.chain_info();
         let peer_total_score = chain_info.total_score + 2.into();
         let peer_best_hash = chain_info.best_block_hash;
-        assert_accept_status(&mut env, 0, peer_total_score, peer_best_hash);
+        assert_accept_status(&mut env, 0.into(), peer_total_score, peer_best_hash);
         let peer_total_score = chain_info.total_score + 5.into();
         let peer_best_hash = chain_info.best_block_hash;
-        assert_accept_status(&mut env, 0, peer_total_score, peer_best_hash);
+        assert_accept_status(&mut env, 0.into(), peer_total_score, peer_best_hash);
     }
 
     #[test]
     fn should_not_accept_on_genesis_mismatch() {
         let mut env = generate_test_environment(1);
-        assert_add_node(&mut env, 0);
+        assert_add_node(&mut env, 0.into());
 
         let chain_info = env.client.chain_info();
         let peer_total_score = chain_info.total_score + 2.into();
@@ -558,17 +558,17 @@ mod tests {
             genesis_hash: peer_genesis_hash,
         };
 
-        env.network.send_message(EXTENSION_NAME, 0, &peer_status.rlp_bytes());
+        env.network.send_message(EXTENSION_NAME, 0.into(), &peer_status.rlp_bytes());
         let peers = env.extension.peers.read();
-        assert!(!peers.contains_key(&0));
+        assert!(!peers.contains_key(&0.into()));
     }
 
     #[test]
     fn should_return_requested_data() {
         let mut env = generate_test_environment(10);
-        assert_add_node(&mut env, 0);
+        assert_add_node(&mut env, 0.into());
         let chain_info = env.client.chain_info();
-        assert_accept_status(&mut env, 0, chain_info.total_score, chain_info.best_block_hash);
+        assert_accept_status(&mut env, 0.into(), chain_info.total_score, chain_info.best_block_hash);
 
         let request_range = 3..7;
 
@@ -577,7 +577,7 @@ mod tests {
             max_count: 4,
         };
         // FIXME: assign request id
-        env.network.send_message(EXTENSION_NAME, 0, &Message::Request(0, header_request).rlp_bytes());
+        env.network.send_message(EXTENSION_NAME, 0.into(), &Message::Request(0, header_request).rlp_bytes());
         if let TestNetworkCall::Send(_, response) = env.network.pop_call(EXTENSION_NAME).unwrap() {
             // FIXME: assign request id
             if let Message::Response(0, ResponseMessage::Headers(headers)) = ::rlp::decode(response.as_slice()) {
@@ -597,7 +597,7 @@ mod tests {
             request_range.clone().map(|i| env.client.block_header(BlockId::Number(i)).unwrap().hash()).collect(),
         );
         // FIXME: assign request id
-        env.network.send_message(EXTENSION_NAME, 0, &Message::Request(0, body_request).rlp_bytes());
+        env.network.send_message(EXTENSION_NAME, 0.into(), &Message::Request(0, body_request).rlp_bytes());
         if let TestNetworkCall::Send(_, response) = env.network.pop_call(EXTENSION_NAME).unwrap() {
             // FIXME: assign request id
             if let Message::Response(0, ResponseMessage::Bodies(bodies)) = ::rlp::decode(response.as_slice()) {
@@ -622,9 +622,9 @@ mod tests {
             peer_chain.import_block(env.client.block(BlockId::Number(i)).unwrap().into_inner()).unwrap();
         }
         peer_chain.add_blocks(10, 1);
-        assert_add_node(&mut env, 0);
+        assert_add_node(&mut env, 0.into());
         let peer_info = peer_chain.chain_info();
-        assert_accept_status(&mut env, 0, peer_info.total_score + 2.into(), peer_info.best_block_hash);
+        assert_accept_status(&mut env, 0.into(), peer_info.total_score + 2.into(), peer_info.best_block_hash);
         env.network.call_timeout(EXTENSION_NAME, SYNC_TIMER_TOKEN);
         let request_start = match env.network.pop_call(EXTENSION_NAME).unwrap() {
             TestNetworkCall::Send(_, request) => match ::rlp::decode(request.as_slice()) {
@@ -647,7 +647,7 @@ mod tests {
                 .collect(),
         );
         // FIXME: assign request id
-        env.network.send_message(EXTENSION_NAME, 0, &Message::Response(0, header_response).rlp_bytes());
+        env.network.send_message(EXTENSION_NAME, 0.into(), &Message::Response(0, header_response).rlp_bytes());
 
         let requested_bodies = match env.network.pop_call(EXTENSION_NAME).unwrap() {
             TestNetworkCall::Send(_, request) => match ::rlp::decode(request.as_slice()) {
@@ -664,7 +664,7 @@ mod tests {
                 .collect(),
         );
         // FIXME: assign request id
-        env.network.send_message(EXTENSION_NAME, 0, &Message::Response(0, body_response).rlp_bytes());
+        env.network.send_message(EXTENSION_NAME, 0.into(), &Message::Response(0, body_response).rlp_bytes());
 
         let new_request_start = match env.network.pop_call(EXTENSION_NAME).unwrap() {
             TestNetworkCall::Send(_, request) => match ::rlp::decode(request.as_slice()) {

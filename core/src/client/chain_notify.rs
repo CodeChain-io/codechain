@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use cnetwork::NodeId;
 use ctypes::H256;
 
 /// Represents what has to be handled by actor listening to chain events
@@ -32,7 +33,7 @@ pub trait ChainNotify: Send + Sync {
     }
 
     /// fires when new parcels are received from a peer
-    fn parcels_received(&self, _hashes: Vec<H256>, _peer_id: usize) {
+    fn parcels_received(&self, _hashes: Vec<H256>, _peer_id: NodeId) {
         // does nothing by default
     }
 }

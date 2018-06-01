@@ -37,6 +37,7 @@ use std::sync::Arc;
 
 use cbytes::Bytes;
 use ckeys::{Generator, Public, Random};
+use cnetwork::NodeId;
 use ctypes::{Address, H256, U256};
 use journaldb;
 use kvdb_memorydb;
@@ -484,7 +485,7 @@ impl BlockChainClient for TestBlockChainClient {
         }
     }
 
-    fn queue_parcels(&self, parcels: Vec<Bytes>, _peer_id: usize) {
+    fn queue_parcels(&self, parcels: Vec<Bytes>, _peer_id: NodeId) {
         // import right here
         let parcels = parcels.into_iter().filter_map(|bytes| UntrustedRlp::new(&bytes).as_val().ok()).collect();
         self.miner.import_external_parcels(self, parcels);

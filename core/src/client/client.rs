@@ -21,6 +21,7 @@ use std::time::Instant;
 
 use cbytes::Bytes;
 use cio::IoChannel;
+use cnetwork::NodeId;
 use ctypes::{Address, H256, Public, U256};
 use journaldb;
 use kvdb::{DBTransaction, KeyValueDB};
@@ -190,7 +191,7 @@ impl Client {
     }
 
     /// Import parcels from the IO queue
-    pub fn import_queued_parcels(&self, parcels: &[Bytes], peer_id: usize) -> usize {
+    pub fn import_queued_parcels(&self, parcels: &[Bytes], peer_id: NodeId) -> usize {
         trace!(target: "external_parcel", "Importing queued");
         self.queue_parcels.fetch_sub(parcels.len(), AtomicOrdering::SeqCst);
         let parcels: Vec<UnverifiedParcel> =
@@ -316,7 +317,7 @@ impl BlockChainClient for Client {
         self.importer.block_queue.queue_info()
     }
 
-    fn queue_parcels(&self, parcels: Vec<Bytes>, peer_id: usize) {
+    fn queue_parcels(&self, parcels: Vec<Bytes>, peer_id: NodeId) {
         let queue_size = self.queue_parcels.load(AtomicOrdering::Relaxed);
         trace!(target: "external_parcel", "Queue size: {}", queue_size);
         if queue_size > MAX_PARCEL_QUEUE_SIZE {

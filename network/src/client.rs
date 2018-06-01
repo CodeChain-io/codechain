@@ -24,7 +24,7 @@ use time::Duration;
 
 use super::p2p::Message as P2pMessage;
 use super::timer::Message as TimerMessage;
-use super::{Api, NetworkExtension, NetworkExtensionError, NetworkExtensionResult, NodeToken, TimerToken};
+use super::{Api, NetworkExtension, NetworkExtensionError, NetworkExtensionResult, NodeId, TimerToken};
 
 struct ClientApi {
     extension: Weak<NetworkExtension>,
@@ -33,7 +33,7 @@ struct ClientApi {
 }
 
 impl Api for ClientApi {
-    fn send(&self, id: &NodeToken, message: &[u8]) {
+    fn send(&self, id: &NodeId, message: &[u8]) {
         if let Some(extension) = self.extension.upgrade() {
             let need_encryption = extension.need_encryption();
             let extension_name = extension.name();
@@ -53,7 +53,7 @@ impl Api for ClientApi {
         }
     }
 
-    fn negotiate(&self, id: &NodeToken) {
+    fn negotiate(&self, id: &NodeId) {
         if let Some(extension) = self.extension.upgrade() {
             let extension_name = extension.name();
             let version = 0;
@@ -199,14 +199,14 @@ impl Client {
         })
     }
 
-    define_broadcast_method!(on_node_added; id, &NodeToken);
-    define_broadcast_method!(on_node_removed; id, &NodeToken);
+    define_broadcast_method!(on_node_added; id, &NodeId);
+    define_broadcast_method!(on_node_removed; id, &NodeId);
 
-    define_method!(on_negotiated; id, &NodeToken);
-    define_method!(on_negotiation_allowed; id, &NodeToken);
-    define_method!(on_negotiation_denied; id, &NodeToken);
+    define_method!(on_negotiated; id, &NodeId);
+    define_method!(on_negotiation_allowed; id, &NodeId);
+    define_method!(on_negotiation_denied; id, &NodeId);
 
-    define_method!(on_message; id, &NodeToken; data, &[u8]);
+    define_method!(on_message; id, &NodeId; data, &[u8]);
 
     define_method!(on_timeout; timer_id, TimerToken);
 
@@ -224,17 +224,17 @@ mod tests {
     use rlp::Encodable;
     use time::Duration;
 
-    use super::{Api, Client, NetworkExtension, NetworkExtensionResult, NodeToken};
+    use super::{Api, Client, NetworkExtension, NetworkExtensionResult, NodeId};
 
     #[allow(dead_code)]
     struct TestApi;
 
     impl Api for TestApi {
-        fn send(&self, _id: &usize, _message: &[u8]) {
+        fn send(&self, _id: &NodeId, _message: &[u8]) {
             unimplemented!()
         }
 
-        fn negotiate(&self, _id: &usize) {
+        fn negotiate(&self, _id: &NodeId) {
             unimplemented!()
         }
 
@@ -295,32 +295,32 @@ mod tests {
             callbacks.push(Callback::Initialize);
         }
 
-        fn on_node_added(&self, _id: &NodeToken) {
+        fn on_node_added(&self, _id: &NodeId) {
             let mut callbacks = self.callbacks.lock();
             callbacks.push(Callback::NodeAdded);
         }
 
-        fn on_node_removed(&self, _id: &NodeToken) {
+        fn on_node_removed(&self, _id: &NodeId) {
             let mut callbacks = self.callbacks.lock();
             callbacks.push(Callback::NodeRemoved);
         }
 
-        fn on_negotiated(&self, _id: &NodeToken) {
+        fn on_negotiated(&self, _id: &NodeId) {
             let mut callbacks = self.callbacks.lock();
             callbacks.push(Callback::Negotiated);
         }
 
-        fn on_negotiation_allowed(&self, _id: &NodeToken) {
+        fn on_negotiation_allowed(&self, _id: &NodeId) {
             let mut callbacks = self.callbacks.lock();
             callbacks.push(Callback::NegotiationAllowed);
         }
 
-        fn on_negotiation_denied(&self, _id: &NodeToken) {
+        fn on_negotiation_denied(&self, _id: &NodeId) {
             let mut callbacks = self.callbacks.lock();
             callbacks.push(Callback::NegotiationDenied);
         }
 
-        fn on_message(&self, _id: &NodeToken, _message: &[u8]) {
+        fn on_message(&self, _id: &NodeId, _message: &[u8]) {
             let mut callbacks = self.callbacks.lock();
             callbacks.push(Callback::Message);
         }
@@ -345,7 +345,7 @@ mod tests {
         client.register_extension(Arc::clone(&e2) as Arc<NetworkExtension>);
         client.initialize_extension(&"e2".to_string());
 
-        client.on_node_added(&1);
+        client.on_node_added(&1.into());
 
         {
             let callbacks = e1.callbacks.lock();
@@ -372,7 +372,7 @@ mod tests {
         client.register_extension(Arc::clone(&e2) as Arc<NetworkExtension>);
         client.initialize_extension(&"e2".to_string());
 
-        client.on_message(&"e1".to_string(), &1, &vec![]);
+        client.on_message(&"e1".to_string(), &1.into(), &vec![]);
         {
             let callbacks = e1.callbacks.lock();
             assert_eq!(callbacks.deref(), &vec![Callback::Initialize, Callback::Message]);
@@ -380,7 +380,7 @@ mod tests {
             assert_eq!(callbacks.deref(), &vec![Callback::Initialize]);
         }
 
-        client.on_message(&"e2".to_string(), &1, &vec![]);
+        client.on_message(&"e2".to_string(), &1.into(), &vec![]);
         {
             let callbacks = e1.callbacks.lock();
             assert_eq!(callbacks.deref(), &vec![Callback::Initialize, Callback::Message]);
@@ -388,8 +388,8 @@ mod tests {
             assert_eq!(callbacks.deref(), &vec![Callback::Initialize, Callback::Message]);
         }
 
-        client.on_message(&"e2".to_string(), &5, &vec![]);
-        client.on_message(&"e2".to_string(), &1, &vec![]);
+        client.on_message(&"e2".to_string(), &5.into(), &vec![]);
+        client.on_message(&"e2".to_string(), &1.into(), &vec![]);
         {
             let callbacks = e1.callbacks.lock();
             assert_eq!(callbacks.deref(), &vec![Callback::Initialize, Callback::Message]);

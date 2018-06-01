@@ -58,8 +58,7 @@ pub use self::addr::SocketAddr;
 pub use self::config::Config as NetworkConfig;
 pub use self::discovery::Api as DiscoveryApi;
 pub use self::extension::{
-    Api, Error as NetworkExtensionError, Extension as NetworkExtension, NodeToken, Result as NetworkExtensionResult,
-    TimerToken,
+    Api, Error as NetworkExtensionError, Extension as NetworkExtension, Result as NetworkExtensionResult, TimerToken,
 };
 pub use self::service::{Error as NetworkServiceError, Service as NetworkService};
 pub use self::test::{Call as TestNetworkCall, TestClient as TestNetworkClient};

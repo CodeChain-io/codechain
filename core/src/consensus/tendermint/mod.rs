@@ -26,7 +26,7 @@ use cbytes::Bytes;
 use ccrypto::blake256;
 use ckeys::{public_to_address, recover_ecdsa};
 use ckeys::{ECDSASignature, Message};
-use cnetwork::{Api, NetworkExtension, NodeToken, TimerToken};
+use cnetwork::{Api, NetworkExtension, NodeId, TimerToken};
 use ctypes::{Address, H256, H520, U128, U256};
 use parking_lot::{Mutex, RwLock};
 use rand::{thread_rng, Rng};
@@ -802,7 +802,7 @@ pub trait Timeouts<S: Sync + Send + Clone>: Send + Sync {
 struct TendermintExtension {
     tendermint: RwLock<Option<Weak<Tendermint>>>,
     client: RwLock<Option<Weak<EngineClient>>>,
-    peers: RwLock<HashSet<NodeToken>>,
+    peers: RwLock<HashSet<NodeId>>,
     api: Mutex<Option<Arc<Api>>>,
     timeouts: TendermintTimeouts,
 }
@@ -825,8 +825,8 @@ impl TendermintExtension {
         *self.client.write() = Some(client.clone());
     }
 
-    fn select_random_peers(&self) -> Vec<NodeToken> {
-        let mut peers: Vec<NodeToken> = self.peers.write().iter().cloned().collect();
+    fn select_random_peers(&self) -> Vec<NodeId> {
+        let mut peers: Vec<NodeId> = self.peers.write().iter().cloned().collect();
         let mut count = (peers.len() as f64).powf(0.5).round() as usize;
         count = cmp::min(count, MAX_PEERS_PROPAGATION);
         count = cmp::max(count, MIN_PEERS_PROPAGATION);
@@ -881,21 +881,21 @@ impl NetworkExtension for TendermintExtension {
         *self.api.lock() = Some(api);
     }
 
-    fn on_node_added(&self, token: &NodeToken) {
+    fn on_node_added(&self, token: &NodeId) {
         self.peers.write().insert(*token);
     }
 
-    fn on_node_removed(&self, token: &NodeToken) {
+    fn on_node_removed(&self, token: &NodeId) {
         self.peers.write().remove(token);
     }
 
-    fn on_negotiated(&self, _token: &NodeToken) {}
+    fn on_negotiated(&self, _token: &NodeId) {}
 
-    fn on_negotiation_allowed(&self, token: &NodeToken) {
+    fn on_negotiation_allowed(&self, token: &NodeId) {
         self.on_negotiated(token);
     }
 
-    fn on_message(&self, token: &NodeToken, data: &[u8]) {
+    fn on_message(&self, token: &NodeId, data: &[u8]) {
         let m = UntrustedRlp::new(data);
         match m.as_val() {
             Ok(TendermintMessage::ConsensusMessage(ref bytes)) => {

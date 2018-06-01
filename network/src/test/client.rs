@@ -22,12 +22,13 @@ use parking_lot::Mutex;
 use rlp::Encodable;
 use time::Duration;
 
-use super::super::extension::{Api, Extension, NodeToken, Result, TimerToken};
+use super::super::extension::{Api, Extension, Result, TimerToken};
+use super::super::NodeId;
 
 #[derive(Debug, Ord, PartialOrd, Eq, PartialEq)]
 pub enum Call {
-    Send(NodeToken, Vec<u8>),
-    Negotiate(NodeToken),
+    Send(NodeId, Vec<u8>),
+    Negotiate(NodeId),
     SetTimer {
         token: TimerToken,
         duration: Duration,
@@ -43,8 +44,8 @@ pub enum Call {
 struct TestApi {
     extension: Weak<Extension>,
 
-    connection_requests: Mutex<HashSet<NodeToken>>,
-    connections: Mutex<HashSet<NodeToken>>,
+    connection_requests: Mutex<HashSet<NodeId>>,
+    connections: Mutex<HashSet<NodeId>>,
     timers: Mutex<HashMap<TimerToken, (Duration, bool)>>,
 
     calls: Mutex<VecDeque<Call>>,
@@ -69,11 +70,11 @@ impl TestApi {
 }
 
 impl Api for TestApi {
-    fn send(&self, node: &NodeToken, message: &[u8]) {
+    fn send(&self, node: &NodeId, message: &[u8]) {
         self.calls.lock().push_back(Call::Send(*node, message.to_vec()));
     }
 
-    fn negotiate(&self, node: &NodeToken) {
+    fn negotiate(&self, node: &NodeId) {
         self.connection_requests.lock().insert(*node);
         self.calls.lock().push_back(Call::Negotiate(*node));
     }
@@ -120,51 +121,51 @@ impl Api for TestApi {
 }
 
 impl TestApi {
-    fn add_node(&self, token: NodeToken) {
-        self.extension().on_node_added(&token);
+    fn add_node(&self, node: NodeId) {
+        self.extension().on_node_added(&node);
     }
 
-    fn remove_node(&self, token: NodeToken) {
-        if !self.connections.lock().remove(&token) {
-            panic!("Tried to remove unregistered node #{}", token);
+    fn remove_node(&self, node: NodeId) {
+        if !self.connections.lock().remove(&node) {
+            panic!("Tried to remove unregistered node #{}", node);
         }
-        self.extension().on_node_removed(&token);
+        self.extension().on_node_removed(&node);
     }
 
-    fn connected(&self, token: NodeToken) {
+    fn connected(&self, node: NodeId) {
         let mut connections = self.connections.lock();
-        if connections.contains(&token) {
-            panic!("Duplicated connection detected for node #{}", token);
+        if connections.contains(&node) {
+            panic!("Duplicated connection detected for node #{}", node);
         }
-        connections.insert(token);
-        self.extension().on_negotiated(&token);
+        connections.insert(node);
+        self.extension().on_negotiated(&node);
     }
 
-    fn allow_connection(&self, token: NodeToken) {
+    fn allow_connection(&self, node: NodeId) {
         let mut connection_requests = self.connection_requests.lock();
         let mut connections = self.connections.lock();
 
-        if connection_requests.contains(&token) && !connections.contains(&token) {
-            connection_requests.remove(&token);
-            connections.insert(token);
+        if connection_requests.contains(&node) && !connections.contains(&node) {
+            connection_requests.remove(&node);
+            connections.insert(node);
         } else {
-            panic!("Invalid connection allowance to node #{}", token);
+            panic!("Invalid connection allowance to node #{}", node);
         }
-        self.extension().on_negotiation_allowed(&token);
+        self.extension().on_negotiation_allowed(&node);
     }
 
-    fn deny_connection(&self, token: NodeToken) {
+    fn deny_connection(&self, node: NodeId) {
         let mut connection_requests = self.connection_requests.lock();
 
-        if connection_requests.contains(&token) {
-            connection_requests.remove(&token);
+        if connection_requests.contains(&node) {
+            connection_requests.remove(&node);
         } else {
-            panic!("Invalid connection denial to node #{}", token);
+            panic!("Invalid connection denial to node #{}", node);
         }
-        self.extension().on_negotiation_denied(&token);
+        self.extension().on_negotiation_denied(&node);
     }
 
-    fn send_message(&self, from: NodeToken, message: &[u8]) {
+    fn send_message(&self, from: NodeId, message: &[u8]) {
         if !self.connections.lock().contains(&from) {
             panic!("Tried to inject message from unconnected node #{}", from);
         }
@@ -190,7 +191,7 @@ impl TestApi {
 }
 
 pub struct TestClient {
-    nodes: HashSet<NodeToken>,
+    nodes: HashSet<NodeId>,
     extensions: HashMap<String, (Arc<Extension>, Arc<TestApi>)>,
 }
 
@@ -222,37 +223,37 @@ impl TestClient {
         &self.extensions[name].1
     }
 
-    pub fn add_node(&mut self, token: NodeToken) {
-        if self.nodes.contains(&token) {
-            panic!("Duplicated node #{} detected", token);
+    pub fn add_node(&mut self, node: NodeId) {
+        if self.nodes.contains(&node) {
+            panic!("Duplicated node #{} detected", node);
         }
         for name in self.extensions.keys() {
-            self.get_api(name).add_node(token);
+            self.get_api(name).add_node(node);
         }
     }
 
-    pub fn remove_node(&self, token: NodeToken) {
-        if !self.nodes.contains(&token) {
-            panic!("Tried to remove non existent node #{}", token);
+    pub fn remove_node(&self, node: NodeId) {
+        if !self.nodes.contains(&node) {
+            panic!("Tried to remove non existent node #{}", node);
         }
         for name in self.extensions.keys() {
-            self.get_api(name).remove_node(token);
+            self.get_api(name).remove_node(node);
         }
     }
 
-    pub fn connected(&self, name: &str, token: NodeToken) {
-        self.get_api(name).connected(token);
+    pub fn connected(&self, name: &str, node: NodeId) {
+        self.get_api(name).connected(node);
     }
 
-    pub fn allow_connection(&self, name: &str, token: NodeToken) {
-        self.get_api(name).allow_connection(token);
+    pub fn allow_connection(&self, name: &str, node: NodeId) {
+        self.get_api(name).allow_connection(node);
     }
 
-    pub fn deny_connection(&self, name: &str, token: NodeToken) {
-        self.get_api(name).deny_connection(token);
+    pub fn deny_connection(&self, name: &str, node: NodeId) {
+        self.get_api(name).deny_connection(node);
     }
 
-    pub fn send_message(&self, name: &str, from: NodeToken, message: &[u8]) {
+    pub fn send_message(&self, name: &str, from: NodeId, message: &[u8]) {
         self.get_api(name).send_message(from, message);
     }
 

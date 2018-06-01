@@ -28,6 +28,7 @@ pub use self::error::Error;
 pub use self::test_client::TestBlockChainClient;
 
 use cbytes::Bytes;
+use cnetwork::NodeId;
 use ctypes::{Address, H256, Public, U256};
 
 use super::block::{ClosedBlock, OpenBlock, SealedBlock};
@@ -156,7 +157,7 @@ pub trait BlockChainClient: Sync + Send + AccountData + BlockChain + ImportBlock
     fn queue_info(&self) -> BlockQueueInfo;
 
     /// Queue parcels for importing.
-    fn queue_parcels(&self, parcels: Vec<Bytes>, peer_id: usize);
+    fn queue_parcels(&self, parcels: Vec<Bytes>, peer_id: NodeId);
 
     /// List all parcels that are allowed into the next block.
     fn ready_parcels(&self) -> Vec<SignedParcel>;

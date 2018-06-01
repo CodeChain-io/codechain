@@ -19,7 +19,7 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::Arc;
 
 use ccore::BlockChainClient;
-use cnetwork::{Api, NetworkExtension, NodeToken, TimerToken};
+use cnetwork::{Api, NetworkExtension, NodeId, TimerToken};
 use ctypes::H256;
 use rlp::{Encodable, UntrustedRlp};
 use time::Duration;
@@ -60,7 +60,7 @@ impl Peer {
 }
 
 pub struct Extension {
-    peers: RwLock<HashMap<NodeToken, Peer>>,
+    peers: RwLock<HashMap<NodeId, Peer>>,
     client: Arc<BlockChainClient>,
     api: Mutex<Option<Arc<Api>>>,
 }
@@ -89,21 +89,21 @@ impl NetworkExtension for Extension {
         *self.api.lock() = Some(api);
     }
 
-    fn on_node_added(&self, token: &NodeToken) {
+    fn on_node_added(&self, token: &NodeId) {
         self.api.lock().as_ref().map(|api| api.negotiate(token));
     }
-    fn on_node_removed(&self, token: &NodeToken) {
+    fn on_node_removed(&self, token: &NodeId) {
         self.peers.write().remove(token);
     }
 
-    fn on_negotiated(&self, token: &NodeToken) {
+    fn on_negotiated(&self, token: &NodeId) {
         self.peers.write().insert(*token, Peer::new());
     }
-    fn on_negotiation_allowed(&self, token: &NodeToken) {
+    fn on_negotiation_allowed(&self, token: &NodeId) {
         self.on_negotiated(token);
     }
 
-    fn on_message(&self, token: &NodeToken, data: &[u8]) {
+    fn on_message(&self, token: &NodeId, data: &[u8]) {
         if let Ok(received_message) = UntrustedRlp::new(data).as_val() {
             match received_message {
                 Message::Parcels(parcels) => {
@@ -132,7 +132,7 @@ impl NetworkExtension for Extension {
 }
 
 impl Extension {
-    fn send_message(&self, token: &NodeToken, message: Message) {
+    fn send_message(&self, token: &NodeId, message: Message) {
         self.api.lock().as_ref().map(|api| {
             api.send(token, &message.rlp_bytes().to_vec());
         });

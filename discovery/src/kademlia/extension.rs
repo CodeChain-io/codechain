@@ -18,7 +18,7 @@ use std::collections::{HashMap, VecDeque};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
-use cnetwork::{Api, DiscoveryApi, NetworkExtension, NodeToken, SocketAddr, TimerToken, RoutingTable};
+use cnetwork::{Api, DiscoveryApi, NetworkExtension, NodeId, RoutingTable, SocketAddr, TimerToken};
 use parking_lot::{Mutex, RwLock};
 use rlp::{Decodable, DecoderError, Encodable, UntrustedRlp};
 use time::Duration;
@@ -37,8 +37,8 @@ pub struct Extension {
     event_fired: AtomicBool,
     api: Mutex<Option<Arc<Api>>>,
 
-    addr_to_node: RwLock<HashMap<SocketAddr, NodeToken>>,
-    node_to_addr: RwLock<HashMap<NodeToken, SocketAddr>>,
+    addr_to_node: RwLock<HashMap<SocketAddr, NodeId>>,
+    node_to_addr: RwLock<HashMap<NodeId, SocketAddr>>,
 }
 
 const CONSUME_EVENT_TOKEN: TimerToken = 0;
@@ -58,7 +58,7 @@ impl Extension {
         }
     }
 
-    fn on_receive(&self, node: &NodeToken, message: &[u8]) -> ::std::result::Result<(), DecoderError> {
+    fn on_receive(&self, node: &NodeId, message: &[u8]) -> ::std::result::Result<(), DecoderError> {
         if let Some(sender) = self.get_address(&node) {
             let rlp = UntrustedRlp::new(message);
             let message: Message = Decodable::decode(&rlp)?;
@@ -86,11 +86,11 @@ impl Extension {
         }
     }
 
-    fn get_address(&self, node: &NodeToken) -> Option<SocketAddr> {
+    fn get_address(&self, node: &NodeId) -> Option<SocketAddr> {
         self.node_to_addr.read().get(node).map(Clone::clone)
     }
 
-    fn get_node_token(&self, address: &SocketAddr) -> Option<NodeToken> {
+    fn get_node_token(&self, address: &SocketAddr) -> Option<NodeId> {
         self.addr_to_node.read().get(address).map(Clone::clone)
     }
 
@@ -191,7 +191,7 @@ impl NetworkExtension for Extension {
         }
     }
 
-    fn on_node_added(&self, node: &NodeToken) {
+    fn on_node_added(&self, node: &NodeId) {
         let mut kademlia = self.kademlia.write();
         if let Some(kademlia) = &mut *kademlia {
             let node_to_addr = self.node_to_addr.read();
@@ -206,7 +206,7 @@ impl NetworkExtension for Extension {
         }
     }
 
-    fn on_node_removed(&self, node: &NodeToken) {
+    fn on_node_removed(&self, node: &NodeId) {
         let mut kademlia = self.kademlia.write();
         if let Some(kademlia) = &mut *kademlia {
             let address = self.node_to_addr.write().remove(node);
@@ -217,7 +217,7 @@ impl NetworkExtension for Extension {
         }
     }
 
-    fn on_message(&self, node: &NodeToken, message: &[u8]) {
+    fn on_message(&self, node: &NodeId, message: &[u8]) {
         if let Err(err) = self.on_receive(node, message) {
             warn!(target: "discovery", "Invalid message from {} : {:?}", node, err);
         }
@@ -245,17 +245,17 @@ mod tests {
     use cnetwork::{NetworkExtension, SocketAddr, TestNetworkCall, TestNetworkClient};
     use time::Duration;
 
-    use super::{Config, DiscoveryApi, Extension, NodeToken};
+    use super::{Config, DiscoveryApi, Extension, NodeId};
 
     #[derive(Clone)]
     struct Node {
-        token: NodeToken,
+        node_id: NodeId,
         address: SocketAddr,
     }
 
     lazy_static! {
         static ref NODES: [Node; 1] = [Node {
-            token: 1,
+            node_id: 1.into(),
             address: SocketAddr::v4(127, 0, 0, 1, 3481),
         }];
     }
@@ -265,8 +265,6 @@ mod tests {
         let config = Config::new(None, None, None);
         let default_refresh = config.t_refresh;
         let extension = Arc::new(Extension::new(config));
-
-        extension.start(0xBEEFCAFE.into());
 
         let mut client = TestNetworkClient::new();
         client.register_extension(extension.clone());
@@ -280,12 +278,10 @@ mod tests {
             command
         );
 
-        extension.add_connection(NODES[0].token.clone(), NODES[0].address.clone());
-
         let command = client.pop_call(&extension.name());
         assert_eq!(None, command);
 
-        client.add_node(NODES[0].token);
+        client.add_node(NODES[0].node_id);
 
         let command = client.pop_call(&extension.name());
         assert_eq!(

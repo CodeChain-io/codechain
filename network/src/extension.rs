@@ -17,13 +17,12 @@
 use std::result;
 use std::sync::Arc;
 
-use cio::{IoError, StreamToken};
+use cio::IoError;
 use rlp::Encodable;
 use time::Duration;
 
+use super::NodeId;
 pub use cio::TimerToken;
-
-pub type NodeToken = StreamToken;
 
 #[derive(Debug)]
 pub enum Error {
@@ -42,8 +41,8 @@ impl From<IoError> for Error {
 pub type Result<T> = result::Result<T, Error>;
 
 pub trait Api: Send + Sync {
-    fn send(&self, node: &NodeToken, message: &[u8]);
-    fn negotiate(&self, node: &NodeToken);
+    fn send(&self, node: &NodeId, message: &[u8]);
+    fn negotiate(&self, node: &NodeId);
 
     fn set_timer(&self, timer: TimerToken, d: Duration) -> Result<()>;
     fn set_timer_once(&self, timer: TimerToken, d: Duration) -> Result<()>;
@@ -58,14 +57,14 @@ pub trait Extension: Send + Sync {
 
     fn on_initialize(&self, api: Arc<Api>);
 
-    fn on_node_added(&self, _node: &NodeToken) {}
-    fn on_node_removed(&self, _node: &NodeToken) {}
+    fn on_node_added(&self, _node: &NodeId) {}
+    fn on_node_removed(&self, _node: &NodeId) {}
 
-    fn on_negotiated(&self, _node: &NodeToken) {}
-    fn on_negotiation_allowed(&self, _node: &NodeToken) {}
-    fn on_negotiation_denied(&self, _node: &NodeToken) {}
+    fn on_negotiated(&self, _node: &NodeId) {}
+    fn on_negotiation_allowed(&self, _node: &NodeId) {}
+    fn on_negotiation_denied(&self, _node: &NodeId) {}
 
-    fn on_message(&self, _node: &NodeToken, _message: &[u8]) {}
+    fn on_message(&self, _node: &NodeId, _message: &[u8]) {}
 
     fn on_timeout(&self, _timer: TimerToken) {}
 

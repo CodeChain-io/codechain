@@ -19,6 +19,7 @@ use std::sync::Arc;
 
 use cbytes::Bytes;
 use cio::{IoContext, IoHandler, IoHandlerResult, IoService};
+use cnetwork::NodeId;
 use kvdb_rocksdb::{Database, DatabaseConfig};
 
 use super::client::{Client, ClientConfig};
@@ -80,7 +81,7 @@ pub enum ClientIoMessage {
     /// A header is ready
     HeaderVerified,
     /// New parcel RLPs are ready to be imported
-    NewParcels(Vec<Bytes>, usize),
+    NewParcels(Vec<Bytes>, NodeId),
 }
 
 /// IO interface for the Client handler

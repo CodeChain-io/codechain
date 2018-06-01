@@ -24,8 +24,8 @@ use super::p2p;
 use super::routing_table::RoutingTable;
 use super::session_initiator;
 use super::timer;
-use super::{NetworkExtension, SocketAddr};
 use super::DiscoveryApi;
+use super::{NetworkExtension, SocketAddr};
 
 pub struct Service {
     session_initiator: IoService<session_initiator::Message>,
