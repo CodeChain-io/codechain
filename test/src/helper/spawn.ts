@@ -14,16 +14,24 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import { ChildProcess, spawn } from "child_process";
 import { SDK } from "codechain-sdk";
 import { mkdtempSync } from "fs";
+import { createInterface as createReadline } from "readline";
 
 const projectRoot = `${__dirname}/../../..`;
 let idCounter = 0;
+
+function zeroPad(val: string, totalLength: number): string {
+  const padded = `${"0".repeat(totalLength)}${val}`;
+  return padded.substr(padded.length - 64);
+}
 
 export default class CodeChain {
   private _id: number;
   private _sdk: SDK;
   private _dbPath: string;
+  private process?: ChildProcess;
 
   public get id(): number { return this._id; }
   public get sdk(): SDK { return this._sdk; }
@@ -38,5 +46,55 @@ export default class CodeChain {
 
     this._dbPath = mkdtempSync(`${projectRoot}/db/`);
     this._sdk = new SDK(`http://localhost:${this.rpcPort}`);
+  }
+
+  public async start(bin: string, argv: string[]) {
+
+    const params = [
+      "--db-path", this.dbPath,
+      "--jsonrpc-port", this.rpcPort.toString(),
+      "--port", this.port.toString(),
+      "--secret-key", zeroPad(this.secretKey.toString(), 64),
+      "--instance-id", this.id.toString(),
+    ];
+    this.process = spawn(bin, [...argv, ...params], { cwd: projectRoot, env: process.env });
+
+    // wait until codechain is initialized
+    return new Promise((resolve, reject) => {
+      const onError = (error: Error) => {
+        this.process!.off("error", onError);
+        reject(error);
+      };
+      this.process!.on("error", onError);
+
+      const readline = createReadline({ input: this.process!.stderr });
+      readline.on("line", (line: string) => {
+        if (line.includes("Initialization complete")) {
+          readline.close();
+          this.process!.off("error", onError);
+          resolve();
+        }
+      });
+    });
+  }
+
+  public async clean() {
+    if (this.process !== undefined) {
+      // wait until process is killed
+      await new Promise((resolve) => {
+        const onExit = () => {
+          this.process!.off("exit", onExit);
+          resolve();
+        };
+
+        this.process!.on("exit", onExit);
+        this.process!.kill();
+      });
+    }
+  }
+
+  public async restart(bin: string, argv: string[]) {
+    await this.clean();
+    return this.start(bin, argv);
   }
 }
