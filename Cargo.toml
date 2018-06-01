@@ -11,6 +11,8 @@ codechain-core = { path = "core" }
 codechain-discovery = { path = "discovery" }
 codechain-finally = { path = "util/finally" }
 codechain-logger = { path = "util/logger" }
+codechain-keys = { path = "keys" }
+codechain-keystore = { path = "keystore" }
 codechain-network = { path = "network" }
 codechain-reactor = { path = "util/reactor" }
 codechain-rpc = { path = "rpc" }
@@ -41,6 +43,7 @@ members = [
 	"discovery",
 	"json",
 	"keys",
+	"keystore",
 	"network",
 	"rpc",
 	"sync",

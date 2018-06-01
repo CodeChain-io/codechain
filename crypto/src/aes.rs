@@ -15,11 +15,14 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ctypes::{H128, H256};
+use error::SymmError;
 use rcrypto::aes::KeySize::KeySize256;
 use rcrypto::aes::{cbc_decryptor, cbc_encryptor};
-use rcrypto::blockmodes::PkcsPadding;
+use rcrypto::aessafe::AesSafe128Encryptor;
+use rcrypto::blockmodes::{CtrMode, PkcsPadding};
 use rcrypto::buffer::{BufferResult, ReadBuffer, RefReadBuffer, RefWriteBuffer, WriteBuffer};
 pub use rcrypto::symmetriccipher::SymmetricCipherError;
+use rcrypto::symmetriccipher::{Decryptor, Encryptor};
 
 fn is_underflow(result: BufferResult) -> bool {
     match result {
@@ -63,6 +66,26 @@ pub fn decrypt(encrypted_data: &[u8], key: &H256, iv: &H128) -> Result<Vec<u8>, 
     }
 
     Ok(final_result)
+}
+
+/// Encrypt a message (CTR mode).
+///
+/// Key (`k`) length and initialisation vector (`iv`) length have to be 16 bytes each.
+/// An error is returned if the input lengths are invalid.
+pub fn encrypt_128_ctr(k: &[u8], iv: &[u8], plain: &[u8], dest: &mut [u8]) -> Result<(), SymmError> {
+    let mut encryptor = CtrMode::new(AesSafe128Encryptor::new(k), iv.to_vec());
+    encryptor.encrypt(&mut RefReadBuffer::new(plain), &mut RefWriteBuffer::new(dest), true)?;
+    Ok(())
+}
+
+/// Decrypt a message (CTR mode).
+///
+/// Key (`k`) length and initialisation vector (`iv`) length have to be 16 bytes each.
+/// An error is returned if the input lengths are invalid.
+pub fn decrypt_128_ctr(k: &[u8], iv: &[u8], encrypted: &[u8], dest: &mut [u8]) -> Result<(), SymmError> {
+    let mut encryptor = CtrMode::new(AesSafe128Encryptor::new(k), iv.to_vec());
+    encryptor.decrypt(&mut RefReadBuffer::new(encrypted), &mut RefWriteBuffer::new(dest), true)?;
+    Ok(())
 }
 
 #[cfg(test)]

@@ -16,10 +16,41 @@
 
 extern crate codechain_types as ctypes;
 extern crate crypto as rcrypto;
+#[macro_use]
+extern crate quick_error;
+extern crate ring;
 
 pub mod aes;
+pub mod error;
 mod hash;
+pub mod pbkdf2;
+pub mod scrypt;
+
+pub use error::Error;
+
+pub const KEY_LENGTH: usize = 32;
+pub const KEY_ITERATIONS: usize = 10240;
+pub const KEY_LENGTH_AES: usize = KEY_LENGTH / 2;
 
 pub use self::hash::{
     blake256, blake256_with_key, blake512, ripemd160, sha1, BLAKE_EMPTY, BLAKE_EMPTY_LIST_RLP, BLAKE_NULL_RLP,
 };
+
+pub fn derive_key_iterations(password: &str, salt: &[u8; 32], c: u32) -> (Vec<u8>, Vec<u8>) {
+    let mut derived_key = [0u8; KEY_LENGTH];
+    pbkdf2::sha256(c, pbkdf2::Salt(salt), pbkdf2::Secret(password.as_bytes()), &mut derived_key);
+    let derived_right_bits = &derived_key[0..KEY_LENGTH_AES];
+    let derived_left_bits = &derived_key[KEY_LENGTH_AES..KEY_LENGTH];
+    (derived_right_bits.to_vec(), derived_left_bits.to_vec())
+}
+
+pub fn derive_mac(derived_left_bits: &[u8], cipher_text: &[u8]) -> Vec<u8> {
+    let mut mac = vec![0u8; KEY_LENGTH_AES + cipher_text.len()];
+    mac[0..KEY_LENGTH_AES].copy_from_slice(derived_left_bits);
+    mac[KEY_LENGTH_AES..cipher_text.len() + KEY_LENGTH_AES].copy_from_slice(cipher_text);
+    mac
+}
+
+pub fn is_equal(a: &[u8], b: &[u8]) -> bool {
+    ring::constant_time::verify_slices_are_equal(a, b).is_ok()
+}

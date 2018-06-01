@@ -40,7 +40,7 @@ use codechain_types::{H256, H512, H520};
 use rustc_hex::{FromHex, ToHex};
 use secp256k1::{key, schnorr, Error as SecpError, Message as SecpMessage, RecoverableSignature, RecoveryId};
 
-use super::{Error, Message, Private, Public, SECP256K1};
+use super::{public_to_address, Address, Error, Message, Private, Public, SECP256K1};
 
 /// Signature encoded as RSV components
 #[repr(C)]
@@ -217,6 +217,12 @@ pub fn verify_ecdsa(public: &Public, signature: &ECDSASignature, message: &Messa
         Err(SecpError::IncorrectSignature) => Ok(false),
         Err(x) => Err(Error::from(x)),
     }
+}
+
+pub fn verify_ecdsa_address(address: &Address, signature: &ECDSASignature, message: &Message) -> Result<bool, Error> {
+    let public = recover_ecdsa(signature, message)?;
+    let recovered_address = public_to_address(&public);
+    Ok(address == &recovered_address)
 }
 
 pub fn recover_ecdsa(signature: &ECDSASignature, message: &Message) -> Result<Public, Error> {
