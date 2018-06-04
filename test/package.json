@@ -6,15 +6,18 @@
   "author": "CodeChain Team <codechain@kodebox.io>",
   "license": "AGPL-3.0",
   "scripts": {
+    "start": "jest --watchAll",
     "lint": "tslint -c tslint.json -p tsconfig.json"
   },
   "devDependencies": {
     "tslint": "^5.10.0"
   },
   "dependencies": {
+    "@types/jest": "^23.0.0",
     "@types/node": "^10.3.0",
     "codechain-sdk": "file:../../sdk",
-    "ts-node": "^6.0.5",
+    "jest": "^23.1.0",
+    "ts-jest": "^22.4.6",
     "typescript": "^2.9.1"
   }
 }
