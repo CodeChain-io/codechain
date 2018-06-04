@@ -116,16 +116,20 @@ impl NetworkExtension for Extension {
     fn on_initialize(&self, api: Arc<Api>) {
         api.set_timer(SYNC_TIMER_TOKEN, Duration::milliseconds(SYNC_TIMER_INTERVAL)).expect("Timer set succeeds");
         *self.api.lock() = Some(api);
+        cinfo!(SYNC, "Sync extension initialized");
     }
 
     fn on_node_added(&self, token: &NodeToken) {
+        cinfo!(SYNC, "New peer detected #{}", token);
         self.api.lock().as_ref().map(|api| api.negotiate(token));
     }
     fn on_node_removed(&self, token: &NodeToken) {
         self.peers.write().remove(token);
+        cinfo!(SYNC, "Peer removed #{}", token);
     }
 
     fn on_negotiated(&self, token: &NodeToken) {
+        ctrace!(SYNC, "New peer negotiated #{}", token);
         let chain_info = self.client.chain_info();
         self.send_message(
             token,
@@ -154,7 +158,7 @@ impl NetworkExtension for Extension {
                 Message::Response(_, response) => self.on_peer_response(token, response),
             }
         } else {
-            cinfo!(SYNC, "invalid message from peer {}", token);
+            cinfo!(SYNC, "Invalid message from peer {}", token);
         }
     }
 
