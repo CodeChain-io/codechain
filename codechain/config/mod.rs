@@ -18,7 +18,7 @@ use std::str::FromStr;
 use std::{fmt, fs};
 
 use ccore::Spec;
-use cdiscovery::KademliaConfig;
+use cdiscovery::{KademliaConfig, UnstructuredConfig};
 use clap;
 use cnetwork::{NetworkConfig, SocketAddr};
 use ctypes::{Address, Secret};
@@ -163,25 +163,37 @@ pub fn parse_network_config(matches: &clap::ArgMatches) -> Result<Option<Network
     }))
 }
 
-pub fn parse_kademlia_config(matches: &clap::ArgMatches) -> Result<Option<KademliaConfig>, String> {
+pub enum Discovery {
+    Kademlia(KademliaConfig),
+    Unstructured(UnstructuredConfig),
+}
+
+pub fn parse_discovery_config(matches: &clap::ArgMatches) -> Result<Option<Discovery>, String> {
     if matches.is_present("no-discovery") {
         return Ok(None)
     }
 
-    let alpha = match matches.value_of("kademlia-alpha") {
-        Some(alpha) => Some(alpha.parse().map_err(|_| "Invalid kademlia-alpha")?),
-        None => None,
-    };
-    let k = match matches.value_of("kademlia-k") {
-        Some(k) => Some(k.parse().map_err(|_| "Invalid kademlia-k")?),
-        None => None,
-    };
-    let refresh = match matches.value_of("kademlia-refresh") {
-        Some(refresh) => Some(refresh.parse().map_err(|_| "Invalid kademlia-refresh")?),
+    let refresh = match matches.value_of("discovery-refresh") {
+        Some(refresh) => Some(refresh.parse().map_err(|_| "Invalid discovery-refresh")?),
         None => None,
     };
 
-    Ok(Some(KademliaConfig::new(alpha, k, refresh)))
+    match matches.value_of("discovery") {
+        Some("unstructured") => Ok(Some(Discovery::Unstructured(UnstructuredConfig::new(refresh)))),
+        Some("kademlia") => {
+            let alpha = match matches.value_of("kademlia-alpha") {
+                Some(alpha) => Some(alpha.parse().map_err(|_| "Invalid kademlia-alpha")?),
+                None => None,
+            };
+            let k = match matches.value_of("kademlia-k") {
+                Some(k) => Some(k.parse().map_err(|_| "Invalid kademlia-k")?),
+                None => None,
+            };
+
+            Ok(Some(Discovery::Kademlia(KademliaConfig::new(alpha, k, refresh))))
+        }
+        _ => unreachable!(),
+    }
 }
 
 pub fn parse_rpc_config(matches: &clap::ArgMatches) -> Result<Option<RpcHttpConfig>, String> {

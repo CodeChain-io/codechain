@@ -14,26 +14,14 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#![allow(deprecated)]
+pub struct Config {
+    pub t_refresh: u32,
+}
 
-#[macro_use]
-extern crate log;
-extern crate parking_lot;
-extern crate rand;
-extern crate rlp;
-extern crate time;
-
-#[cfg(test)]
-#[macro_use]
-extern crate lazy_static;
-
-extern crate codechain_crypto as ccrypto;
-extern crate codechain_keys as ckeys;
-extern crate codechain_network as cnetwork;
-extern crate codechain_types as ctypes;
-
-mod kademlia;
-mod unstructured;
-
-pub use kademlia::{Config as KademliaConfig, Extension as KademliaExtension};
-pub use unstructured::{Config as UnstructuredConfig, Extension as UnstructuredExtension};
+impl Config {
+    pub fn new(t_refresh: Option<u32>) -> Self {
+        Self {
+            t_refresh: t_refresh.unwrap_or(60_000),
+        }
+    }
+}

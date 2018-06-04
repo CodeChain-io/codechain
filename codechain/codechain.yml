@@ -80,7 +80,17 @@ args:
         takes_value: true
     - no-discovery:
         long: no-discovery
-        help: Do not use discovery extension
+        help: Do not use discovery
+    - discovery:
+        long: discovery
+        help: p2p discovery extension
+        takes_value: true
+        possible_values:
+            - kademlia
+            - unstructured
+        conflicts_with:
+            - no-discovery
+        default_value: "unstructured"
     - kademlia-alpha:
         long: kademlia-alpha
         help: Degree of parallelism in Kademlia
@@ -89,10 +99,12 @@ args:
         long: kademlia-k
         help: Bucket size of Kademlia
         takes_value: true
-    - kademlia-refresh:
-        long: kademlia-refresh
-        help: Refresh timeout of Kademlia (ms)
+    - discovery-refresh:
+        long: discovery-refresh
+        help: Refresh timeout of discovery (ms)
         takes_value: true
+        conflicts_with:
+            - no-discovery
 subcommands:
     - account:
         about: account managing commands

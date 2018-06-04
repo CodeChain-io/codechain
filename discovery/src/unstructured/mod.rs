@@ -14,26 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#![allow(deprecated)]
+mod config;
+mod extension;
+mod message;
 
-#[macro_use]
-extern crate log;
-extern crate parking_lot;
-extern crate rand;
-extern crate rlp;
-extern crate time;
-
-#[cfg(test)]
-#[macro_use]
-extern crate lazy_static;
-
-extern crate codechain_crypto as ccrypto;
-extern crate codechain_keys as ckeys;
-extern crate codechain_network as cnetwork;
-extern crate codechain_types as ctypes;
-
-mod kademlia;
-mod unstructured;
-
-pub use kademlia::{Config as KademliaConfig, Extension as KademliaExtension};
-pub use unstructured::{Config as UnstructuredConfig, Extension as UnstructuredExtension};
+pub use self::config::Config;
+pub use self::extension::Extension;
+use self::message::Message;

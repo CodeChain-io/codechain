@@ -55,7 +55,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use account_command::run_account_command;
 use app_dirs::AppInfo;
 use ccore::{AccountProvider, ClientService, Miner, MinerOptions, MinerService, Spec};
-use cdiscovery::{KademliaExtension, SimpleDiscovery};
+use cdiscovery::{KademliaExtension, UnstructuredExtension};
 use ckeystore::accounts_dir::RootDiskDirectory;
 use ckeystore::KeyStore;
 use clap::ArgMatches;
@@ -185,11 +185,22 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
         if let Some(network_config) = config::parse_network_config(&matches)? {
             let service = network_start(&network_config)?;
 
-            if let Some(kademlia_config) = config::parse_kademlia_config(&matches)? {
-                let kademlia = Arc::new(KademliaExtension::new(kademlia_config));
-                service.set_routing_table(&*kademlia);
-                service.register_extension(kademlia)?;
-            } else {
+            match config::parse_discovery_config(&matches)? {
+                Some(config::Discovery::Unstructured(config)) => {
+                    let unstructured = UnstructuredExtension::new(config);
+                    service.set_routing_table(&*unstructured);
+                    service.register_extension(unstructured)?;
+                    info!(target: "discovery", "Node runs with unstructured discovery");
+                }
+                Some(config::Discovery::Kademlia(config)) => {
+                    let kademlia = Arc::new(KademliaExtension::new(config));
+                    service.set_routing_table(&*kademlia);
+                    service.register_extension(kademlia)?;
+                    info!(target: "discovery", "Node runs with kademlia discovery");
+                }
+                None => {
+                    warn!(target: "discovery", "Node runs without discovery extension");
+                }
             }
 
             if config.enable_block_sync {
