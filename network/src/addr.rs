@@ -50,6 +50,13 @@ impl SocketAddr {
     pub fn port(&self) -> u16 {
         self.addr.port()
     }
+
+    pub fn is_global(&self) -> bool {
+        match self.ip() {
+            net::IpAddr::V4(ip) => !ip.is_loopback() && ip.is_private(),
+            net::IpAddr::V6(ip) => !ip.is_loopback(),
+        }
+    }
 }
 
 pub fn convert_to_node_id(ip: &IpAddr, port: u16) -> NodeId {
