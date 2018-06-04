@@ -31,14 +31,13 @@ use super::message::Message;
 
 
 pub struct Extension {
-    kademlia: RwLock<Option<Kademlia>>,
+    kademlias: RwLock<HashMap<NodeId, Kademlia>>,
     config: Config,
     events: Mutex<VecDeque<Event>>,
     event_fired: AtomicBool,
-    api: Mutex<Option<Arc<Api>>>,
 
-    addr_to_node: RwLock<HashMap<SocketAddr, NodeId>>,
-    node_to_addr: RwLock<HashMap<NodeId, SocketAddr>>,
+    routing_table: RwLock<Option<Arc<RoutingTable>>>,
+    api: Mutex<Option<Arc<Api>>>,
 }
 
 const CONSUME_EVENT_TOKEN: TimerToken = 0;
@@ -47,14 +46,13 @@ const REFRESH_TOKEN: TimerToken = 1;
 impl Extension {
     pub fn new(config: Config) -> Self {
         Self {
-            kademlia: RwLock::new(None),
+            kademlias: RwLock::new(HashMap::new()),
             config,
             events: Mutex::new(VecDeque::new()),
             event_fired: AtomicBool::new(false),
-            api: Mutex::new(None),
 
-            addr_to_node: RwLock::new(HashMap::new()),
-            node_to_addr: RwLock::new(HashMap::new()),
+            routing_table: RwLock::new(None),
+            api: Mutex::new(None),
         }
     }
 
@@ -87,11 +85,8 @@ impl Extension {
     }
 
     fn get_address(&self, node: &NodeId) -> Option<SocketAddr> {
-        self.node_to_addr.read().get(node).map(Clone::clone)
-    }
-
-    fn get_node_token(&self, address: &SocketAddr) -> Option<NodeId> {
-        self.addr_to_node.read().get(address).map(Clone::clone)
+        let routing_table = self.routing_table.read();
+        routing_table.as_ref().and_then(|routing_table| routing_table.address(node))
     }
 
     fn consume_events(&self) {
@@ -106,50 +101,41 @@ impl Extension {
                 event.expect("Already check none")
             };
 
-            let command = {
+            let commands = {
                 match event {
                     Event::Message {
                         message,
                         sender,
                     } => {
-                        let mut kademlia = self.kademlia.write();
-                        match &mut *kademlia {
-                            Some(kademlia) => kademlia.handle_message(&message, &sender),
-                            None => None,
-                        }
+                        let mut kademlias = self.kademlias.write();
+                        kademlias.values_mut().flat_map(|kademlia| kademlia.handle_message(&message, &sender)).collect()
                     }
                     Event::Command(ref command) => self.handle_command(command),
                 }
             };
 
-            if let Some(command) = command {
+            for command in commands {
                 self.push_event(Event::Command(command));
             }
         }
     }
 
-    fn handle_command(&self, command: &Command) -> Option<Command> {
+    fn handle_command(&self, command: &Command) -> Vec<Command> {
         match command {
             Command::Verify => {
-                let mut kademlia = self.kademlia.write();
-                match &mut *kademlia {
-                    Some(kademlia) => kademlia.handle_verify_command(),
-                    None => None,
-                }
+                let mut kademlias = self.kademlias.write();
+                kademlias.values_mut().flat_map(|kademlia| kademlia.handle_verify_command()).collect()
             }
             Command::Refresh => {
-                let mut kademlia = self.kademlia.write();
-                match &mut *kademlia {
-                    Some(kademlia) => kademlia.handle_refresh_command(),
-                    None => None,
-                }
+                let mut kademlias = self.kademlias.write();
+                kademlias.values_mut().flat_map(|kademlia| kademlia.handle_refresh_command()).collect()
             }
             Command::Send {
                 message,
                 target,
             } => {
                 self.handle_send_command(&message, &target);
-                None
+                vec![]
             }
         }
     }
@@ -157,16 +143,15 @@ impl Extension {
     fn handle_send_command(&self, message: &Message, target: &SocketAddr) {
         let api = self.api.lock();
         if let Some(api) = &*api {
-            if let Some(node) = self.get_node_token(&target) {
-                api.send(&node, &message.rlp_bytes().to_vec())
-            }
+            let node = target.into();
+            api.send(&node, &message.rlp_bytes().to_vec())
         }
     }
 }
 
 impl DiscoveryApi for Extension {
     fn set_routing_table(&self, routing_table: Arc<RoutingTable>) {
-        unimplemented!()
+        *self.routing_table.write() = Some(routing_table);
     }
 }
 
@@ -180,41 +165,58 @@ impl NetworkExtension for Extension {
     }
 
     fn on_initialize(&self, api: Arc<Api>) {
-        let kademlia = self.kademlia.read();
-        if let Some(kademlia) = &*kademlia {
-            {
-                let mut api_guard = self.api.lock();
-                *api_guard = Some(Arc::clone(&api));
-            }
-            let t_refresh = Duration::milliseconds(kademlia.t_refresh as i64);
-            api.set_timer(REFRESH_TOKEN, t_refresh).expect("Refresh must be registered");
-        }
+        let mut api_guard = self.api.lock();
+        let t_refresh = Duration::milliseconds(self.config.t_refresh as i64);
+        api.set_timer(REFRESH_TOKEN, t_refresh).expect("Refresh must be registered");
+        *api_guard = Some(Arc::clone(&api));
     }
 
     fn on_node_added(&self, node: &NodeId) {
-        let mut kademlia = self.kademlia.write();
-        if let Some(kademlia) = &mut *kademlia {
-            let node_to_addr = self.node_to_addr.read();
+        let mut kademlias = self.kademlias.write();
+        let routing_table = self.routing_table.read();
 
-            if let Some(address) = node_to_addr.get(node).map(Clone::clone) {
-                let event = {
-                    let command = kademlia.find_node_command(address);
-                    Event::Command(command)
-                };
-                self.push_event(event);
-            }
-        }
+        routing_table.as_ref().map(|routing_table| {
+            match routing_table.local_node_id(node) {
+                Some(local_node_id) => {
+                    if !kademlias.contains_key(&local_node_id) {
+                        let t = kademlias.insert(
+                            local_node_id.clone(),
+                            Kademlia::new(local_node_id, self.config.alpha, self.config.k, self.config.t_refresh),
+                        );
+                        debug_assert!(t.is_none());
+                    }
+                }
+                None => {
+                    warn!(target: "discovery", "Cannot find routing table");
+                    return
+                }
+            };
+            routing_table.address(node).map(|address| {
+                for kademlia in kademlias.values_mut() {
+                    let event = {
+                        let command = kademlia.find_node_command(address.clone());
+                        Event::Command(command)
+                    };
+                    self.push_event(event);
+                }
+            });
+        });
     }
 
     fn on_node_removed(&self, node: &NodeId) {
-        let mut kademlia = self.kademlia.write();
-        if let Some(kademlia) = &mut *kademlia {
-            let address = self.node_to_addr.write().remove(node);
-            if let Some(address) = address {
-                self.addr_to_node.write().remove(&address);
-                kademlia.remove(&address);
-            }
+        let mut kademlias = self.kademlias.write();
+        let routing_table = self.routing_table.read();
+        let address = routing_table.as_ref().and_then(|routing_table| routing_table.address(node));
+        if address.is_none() {
+            return
         }
+        let address = address.unwrap();
+        kademlias
+            .values_mut()
+            .map(|ref mut kademlia| {
+                kademlia.remove(&address);
+            })
+            .collect::<Vec<_>>();
     }
 
     fn on_message(&self, node: &NodeId, message: &[u8]) {
@@ -240,12 +242,9 @@ impl NetworkExtension for Extension {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
+    use cnetwork::{TestNetworkCall, TestNetworkClient};
 
-    use cnetwork::{NetworkExtension, SocketAddr, TestNetworkCall, TestNetworkClient};
-    use time::Duration;
-
-    use super::{Config, DiscoveryApi, Extension, NodeId};
+    use super::*;
 
     #[derive(Clone)]
     struct Node {
@@ -255,9 +254,18 @@ mod tests {
 
     lazy_static! {
         static ref NODES: [Node; 1] = [Node {
-            node_id: 1.into(),
+            node_id: SocketAddr::v4(127, 0, 0, 1, 3481).into(),
             address: SocketAddr::v4(127, 0, 0, 1, 3481),
         }];
+    }
+
+    fn dummy_routing_table() -> Arc<RoutingTable> {
+        let routing_table = RoutingTable::new();
+        let address = NODES[0].address.clone();
+        let node_id = NODES[0].node_id.clone();
+        routing_table.add_candidate(address.clone());
+        routing_table.add_node(&address, node_id.clone());
+        routing_table
     }
 
     #[test]
@@ -268,6 +276,7 @@ mod tests {
 
         let mut client = TestNetworkClient::new();
         client.register_extension(extension.clone());
+        extension.set_routing_table(dummy_routing_table());
 
         let command = client.pop_call(&extension.name());
         assert_eq!(

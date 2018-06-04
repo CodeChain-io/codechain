@@ -183,12 +183,6 @@ impl Kademlia {
         Some(Command::Verify)
     }
 
-    pub fn get_closest_addresses(&self, max: usize) -> Vec<SocketAddr> {
-        debug_assert!(max <= ::std::u8::MAX as usize);
-        let contacts = self.table.get_closest_contacts(&self.local_id(), max as u8);
-        contacts.into_iter().map(|contact| contact.addr().clone()).collect()
-    }
-
     pub fn remove(&mut self, address: &SocketAddr) {
         let _ = self.table.remove_address(&address);
         let _ = self.to_be_verified.retain(|contact| contact.addr() != address);
