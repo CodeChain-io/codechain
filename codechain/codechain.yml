@@ -95,9 +95,9 @@ args:
         long: kademlia-alpha
         help: Degree of parallelism in Kademlia
         takes_value: true
-    - kademlia-k:
-        long: kademlia-k
-        help: Bucket size of Kademlia
+    - discovery-bucket-size:
+        long: discovery-bucket-size
+        help: Bucket size for discovery
         takes_value: true
     - discovery-refresh:
         long: discovery-refresh

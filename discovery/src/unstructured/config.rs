@@ -15,12 +15,14 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 pub struct Config {
+    pub bucket_size: u8,
     pub t_refresh: u32,
 }
 
 impl Config {
-    pub fn new(t_refresh: Option<u32>) -> Self {
+    pub fn new(bucket_size: Option<u8>, t_refresh: Option<u32>) -> Self {
         Self {
+            bucket_size: bucket_size.unwrap_or(10),
             t_refresh: t_refresh.unwrap_or(60_000),
         }
     }

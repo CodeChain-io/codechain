@@ -177,20 +177,20 @@ pub fn parse_discovery_config(matches: &clap::ArgMatches) -> Result<Option<Disco
         Some(refresh) => Some(refresh.parse().map_err(|_| "Invalid discovery-refresh")?),
         None => None,
     };
+    let bucket_size = match matches.value_of("discovery-bucket-size") {
+        Some(k) => Some(k.parse().map_err(|_| "Invalid discovery-bucket-size")?),
+        None => None,
+    };
 
     match matches.value_of("discovery") {
-        Some("unstructured") => Ok(Some(Discovery::Unstructured(UnstructuredConfig::new(refresh)))),
+        Some("unstructured") => Ok(Some(Discovery::Unstructured(UnstructuredConfig::new(bucket_size, refresh)))),
         Some("kademlia") => {
             let alpha = match matches.value_of("kademlia-alpha") {
                 Some(alpha) => Some(alpha.parse().map_err(|_| "Invalid kademlia-alpha")?),
                 None => None,
             };
-            let k = match matches.value_of("kademlia-k") {
-                Some(k) => Some(k.parse().map_err(|_| "Invalid kademlia-k")?),
-                None => None,
-            };
 
-            Ok(Some(Discovery::Kademlia(KademliaConfig::new(alpha, k, refresh))))
+            Ok(Some(Discovery::Kademlia(KademliaConfig::new(alpha, bucket_size, refresh))))
         }
         _ => unreachable!(),
     }

@@ -19,17 +19,15 @@ use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 #[derive(Debug, PartialEq)]
 pub enum Message {
-    Request,
+    Request(usize),
     Response(Vec<SocketAddr>),
 }
-
-const REQUEST_ID: u8 = 1;
 
 impl Encodable for Message {
     fn rlp_append(&self, s: &mut RlpStream) {
         match self {
-            Message::Request => {
-                s.append(&REQUEST_ID);
+            Message::Request(len) => {
+                s.append(len);
             }
             Message::Response(addresses) => {
                 s.append_list(addresses);
@@ -41,10 +39,7 @@ impl Encodable for Message {
 impl Decodable for Message {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
         if rlp.is_int() {
-            if rlp.as_val::<u8>()? != REQUEST_ID {
-                return Err(DecoderError::RlpExpectedToBeData)
-            }
-            Ok(Message::Request)
+            Ok(Message::Request(rlp.as_val()?))
         } else {
             Ok(Message::Response(rlp.as_list()?))
         }
@@ -56,8 +51,35 @@ mod tests {
     use super::*;
 
     #[test]
-    fn encode_and_decode_request() {
-        let request = Message::Request;
+    fn encode_and_decode_request_0() {
+        let request = Message::Request(0);
+        let encoded = request.rlp_bytes();
+        let rlp = UntrustedRlp::new(&encoded);
+        let decoded: Message = Decodable::decode(&rlp).unwrap();
+        assert_eq!(request, decoded);
+    }
+
+    #[test]
+    fn encode_and_decode_request_1() {
+        let request = Message::Request(1);
+        let encoded = request.rlp_bytes();
+        let rlp = UntrustedRlp::new(&encoded);
+        let decoded: Message = Decodable::decode(&rlp).unwrap();
+        assert_eq!(request, decoded);
+    }
+
+    #[test]
+    fn encode_and_decode_request_2() {
+        let request = Message::Request(2);
+        let encoded = request.rlp_bytes();
+        let rlp = UntrustedRlp::new(&encoded);
+        let decoded: Message = Decodable::decode(&rlp).unwrap();
+        assert_eq!(request, decoded);
+    }
+
+    #[test]
+    fn encode_and_decode_request_3() {
+        let request = Message::Request(3);
         let encoded = request.rlp_bytes();
         let rlp = UntrustedRlp::new(&encoded);
         let decoded: Message = Decodable::decode(&rlp).unwrap();
