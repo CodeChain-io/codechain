@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import { H160, H256, Parcel, PaymentTransaction, U256, privateKeyToAddress } from "codechain-sdk";
-import { waitFor } from "./helper/promise";
+import { wait } from "./helper/promise";
 import CodeChain from "./helper/spawn";
 
 const secret = new H256("ede1d4ccb4ec9a8bbbae9a13db3f4a7b56ea04189be86ac3a6a439d9a0a1addd");
@@ -34,18 +34,12 @@ function payment(nonce: U256): Parcel {
   return new Parcel(nonce, new U256(10), networkId, transaction);
 }
 
-instance.start("cargo", ["run", "--", "-c", "solo"])
-.then(() => instance.sdk.getNonce(address))
-.then((nonce) => {
-  return instance.sdk.sendSignedParcel(payment(nonce!).sign(secret));
-})
-.then(waitFor(3000))
-.then((hash) => instance.sdk.getParcelInvoices(hash))
-.then((invoice) => {
-  if (invoice) {
-    console.log(invoice);
-  } else {
-    console.log("no invoice");
-  }
-})
-.then(() => instance.clean());
+test("basic scenario", async () => {
+  await instance.start("cargo", ["run", "--", "-c", "solo"]);
+  const nonce = await instance.sdk.getNonce(address);
+  const hash = await instance.sdk.sendSignedParcel(payment(nonce!).sign(secret));
+  await wait(3000);
+  const invoices = await instance.sdk.getParcelInvoices(hash);
+  expect(invoices[0].toJSON().outcome).toBe("Success");
+  await instance.clean();
+});

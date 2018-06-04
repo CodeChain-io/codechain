@@ -14,6 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-export function waitFor<T>(duration: number): (val: T) => Promise<T> {
-  return (val) => new Promise(resolve => setTimeout(() => resolve(val), duration));
+export async function wait(duration: number) {
+  await new Promise(resolve => setTimeout(() => resolve(), duration));
 }
