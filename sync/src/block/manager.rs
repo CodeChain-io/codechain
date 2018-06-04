@@ -181,7 +181,10 @@ impl DownloadManager {
                     self.downloading_bodies.remove(hash);
                 }
             }
-            _ => unimplemented!(),
+            RequestMessage::StateHead(..) => unimplemented!(),
+            RequestMessage::StateChunk {
+                ..
+            } => unimplemented!(),
         }
     }
 

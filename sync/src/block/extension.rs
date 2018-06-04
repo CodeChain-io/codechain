@@ -36,6 +36,8 @@ const SYNC_TIMER_INTERVAL: i64 = 1000;
 const MAX_WAIT: u64 = 15;
 const MAX_RETRY: usize = 3;
 
+const SNAPSHOT_PERIOD: u64 = (1 << 14);
+
 #[derive(Clone)]
 struct Peer {
     total_score: U256,
@@ -289,7 +291,11 @@ impl Extension {
                 max_count,
             } => self.create_headers_response(start_number, max_count),
             RequestMessage::Bodies(hashes) => self.create_bodies_response(hashes),
-            _ => unimplemented!(),
+            RequestMessage::StateHead(hash) => self.create_state_head_response(hash),
+            RequestMessage::StateChunk {
+                block_hash,
+                tree_root,
+            } => self.create_state_chunk_response(block_hash, tree_root),
         };
 
         // FIXME: assign request id
@@ -302,7 +308,21 @@ impl Extension {
                 ..
             } => true,
             RequestMessage::Bodies(hashes) => hashes.len() != 0,
-            _ => unimplemented!(),
+            RequestMessage::StateHead(hash) => match self.client.block_number(BlockId::Hash(*hash)) {
+                Some(number) if number % SNAPSHOT_PERIOD == 0 => true,
+                _ => false,
+            },
+            RequestMessage::StateChunk {
+                block_hash,
+                tree_root: _tree_root,
+            } => {
+                let _is_checkpoint = match self.client.block_number(BlockId::Hash(*block_hash)) {
+                    Some(number) if number % SNAPSHOT_PERIOD == 0 => true,
+                    _ => false,
+                };
+                // FIXME:  check tree_root
+                unimplemented!()
+            }
         }
     }
 
@@ -323,6 +343,14 @@ impl Extension {
             }
         }
         ResponseMessage::Bodies(bodies)
+    }
+
+    fn create_state_head_response(&self, _hash: H256) -> ResponseMessage {
+        unimplemented!()
+    }
+
+    fn create_state_chunk_response(&self, _hash: H256, _tree_root: H256) -> ResponseMessage {
+        unimplemented!()
     }
 }
 
@@ -397,6 +425,13 @@ impl Extension {
                         }
                     }
                     (ResponseMessage::Bodies(..), RequestMessage::Bodies(..)) => true,
+                    (ResponseMessage::StateHead(..), RequestMessage::StateHead(..)) => unimplemented!(),
+                    (
+                        ResponseMessage::StateChunk(..),
+                        RequestMessage::StateChunk {
+                            ..
+                        },
+                    ) => unimplemented!(),
                     _ => false,
                 }
             }
@@ -408,7 +443,8 @@ impl Extension {
         let apply_success = match response {
             ResponseMessage::Headers(headers) => self.manager.lock().import_headers(headers),
             ResponseMessage::Bodies(bodies) => self.manager.lock().import_bodies(bodies),
-            _ => unimplemented!(),
+            ResponseMessage::StateHead(..) => unimplemented!(),
+            ResponseMessage::StateChunk(..) => unimplemented!(),
         };
         if let Some(peer) = self.peers.write().get_mut(from) {
             if apply_success {
