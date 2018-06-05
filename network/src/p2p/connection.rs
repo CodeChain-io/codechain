@@ -39,7 +39,7 @@ pub struct EstablishedConnection {
     send_queue: VecDeque<Message>,
     next_negotiation_seq: Seq,
     requested_negotiation: HashMap<Seq, String>,
-    peer_node_id: NodeId,
+    remote_node_id: NodeId,
 }
 
 #[derive(Debug)]
@@ -92,18 +92,14 @@ impl From<StreamError> for Error {
 pub type Result<T> = result::Result<T, Error>;
 
 impl EstablishedConnection {
-    pub fn new(stream: SignedStream, peer_node_id: NodeId) -> Self {
+    pub fn new(stream: SignedStream, remote_node_id: NodeId) -> Self {
         Self {
             stream,
             send_queue: VecDeque::new(),
             next_negotiation_seq: 0,
             requested_negotiation: HashMap::new(),
-            peer_node_id,
+            remote_node_id,
         }
-    }
-
-    pub fn session(&self) -> &Session {
-        self.stream.session()
     }
 
     fn enqueue(&mut self, message: Message) {
@@ -147,10 +143,6 @@ impl EstablishedConnection {
         };
         self.enqueue(Message::Extension(message));
     }
-
-    pub fn peer_node_id(&self) -> &NodeId {
-        &self.peer_node_id
-    }
 }
 
 pub trait Connection<S: Sized, M: Sized>
@@ -162,6 +154,8 @@ where
     fn send(&mut self) -> Result<bool>;
     fn receive(&mut self) -> Result<Option<M>>;
 
+    fn remote_node_id(&self) -> Option<NodeId>;
+    fn session(&self) -> Option<Session>;
 
     fn register<Message>(&self, reg: Token, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()>
     where
@@ -206,5 +200,13 @@ impl Connection<SignedStream, Message> for EstablishedConnection {
 
     fn receive(&mut self) -> Result<Option<Message>> {
         Ok(self.stream.read()?)
+    }
+
+    fn remote_node_id(&self) -> Option<NodeId> {
+        Some(self.remote_node_id.clone())
+    }
+
+    fn session(&self) -> Option<Session> {
+        Some(self.stream.session().clone())
     }
 }

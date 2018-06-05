@@ -35,7 +35,7 @@ enum WaitSyncConnectionState {
 pub struct WaitSyncConnection {
     stream: Stream,
     session: Option<Session>,
-    peer_node_id: Option<NodeId>,
+    remote_node_id: Option<NodeId>,
     state: WaitSyncConnectionState,
 }
 
@@ -44,14 +44,14 @@ impl WaitSyncConnection {
         Self {
             stream,
             session: None,
-            peer_node_id: None,
+            remote_node_id: None,
             state: WaitSyncConnectionState::Created,
         }
     }
 
-    pub fn ready_session(&mut self, peer_node_id: NodeId, session: Session) {
+    pub fn ready_session(&mut self, remote_node_id: NodeId, session: Session) {
         debug_assert_eq!(self.state, WaitSyncConnectionState::Created);
-        self.peer_node_id = Some(peer_node_id);
+        self.remote_node_id = Some(remote_node_id);
         self.session = Some(session);
         self.state = WaitSyncConnectionState::Received;
     }
@@ -59,8 +59,8 @@ impl WaitSyncConnection {
     pub fn establish(self) -> EstablishedConnection {
         debug_assert_eq!(self.state, WaitSyncConnectionState::Sent);
         let session = self.session.as_ref().expect("Session must exist");
-        let peer_node_id = self.peer_node_id.expect("Sync message set peer node id");
-        EstablishedConnection::new(SignedStream::new(self.stream, session.clone()), peer_node_id)
+        let remote_node_id = self.remote_node_id.expect("Sync message set peer node id");
+        EstablishedConnection::new(SignedStream::new(self.stream, session.clone()), remote_node_id)
     }
 
     pub fn remote_addr(&self) -> ConnectionResult<SocketAddr> {
@@ -79,25 +79,25 @@ pub struct WaitAckConnection {
     stream: SignedStream,
     port: u16,
     local_node_id: NodeId,
-    peer_node_id: NodeId,
+    remote_node_id: NodeId,
     state: WaitAckConnectionState,
 }
 
 impl WaitAckConnection {
-    pub fn new(stream: Stream, session: Session, port: u16, local_node_id: NodeId, peer_node_id: NodeId) -> Self {
+    pub fn new(stream: Stream, session: Session, port: u16, local_node_id: NodeId, remote_node_id: NodeId) -> Self {
         Self {
             stream: SignedStream::new(stream, session),
             port,
             local_node_id,
-            peer_node_id,
+            remote_node_id,
             state: WaitAckConnectionState::Created,
         }
     }
 
     pub fn establish(self) -> EstablishedConnection {
         debug_assert_eq!(WaitAckConnectionState::Received, self.state);
-        let peer_node_id = self.peer_node_id;
-        EstablishedConnection::new(self.stream, peer_node_id)
+        let remote_node_id = self.remote_node_id;
+        EstablishedConnection::new(self.stream, remote_node_id)
     }
 }
 
@@ -139,6 +139,14 @@ impl Connection<SignedStream, HandshakeMessage> for WaitAckConnection {
         } else {
             Ok(None)
         }
+    }
+
+    fn remote_node_id(&self) -> Option<NodeId> {
+        Some(self.remote_node_id.clone())
+    }
+
+    fn session(&self) -> Option<Session> {
+        Some(self.stream.session().clone())
     }
 }
 
@@ -188,5 +196,13 @@ impl Connection<Stream, SignedMessage> for WaitSyncConnection {
         } else {
             Ok(None)
         }
+    }
+
+    fn remote_node_id(&self) -> Option<NodeId> {
+        self.remote_node_id.clone()
+    }
+
+    fn session(&self) -> Option<Session> {
+        self.session.clone()
     }
 }

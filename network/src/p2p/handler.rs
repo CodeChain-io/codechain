@@ -251,7 +251,8 @@ impl Manager {
         let wait_sync_connection = self.remove_waiting_sync_by_stream_token(&wait_sync_token).unwrap();
 
         let connection = wait_sync_connection.establish();
-        let removed = self.registered_sessions.remove(connection.peer_node_id());
+        let remote_node_id = connection.remote_node_id().expect("WaitSyncConnection MUST have a remote node id");
+        let removed = self.registered_sessions.remove(&remote_node_id);
         debug_assert!(removed);
         connection
     }
@@ -385,9 +386,9 @@ impl Manager {
             let message = connection.receive()?;
             match message {
                 Some(NetworkMessage::Extension(msg)) => {
-                    let session = connection.session();
+                    let session = connection.session().expect("Established connection MUST have a session");
                     // FIXME: check version of extension
-                    let message = msg.unencrypted_data(session).map_err(Error::from)?;
+                    let message = msg.unencrypted_data(&session).map_err(Error::from)?;
                     client.on_message(msg.extension_name(), stream, &message);
                     return Ok(true)
                 }
