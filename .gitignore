@@ -9,6 +9,7 @@
 .idea/
 db/
 /log/
+/keystoreData/
 
 # macOS
 .DS_store
