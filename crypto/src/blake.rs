@@ -56,6 +56,29 @@ pub fn blake512_with_key<T: AsRef<[u8]>>(s: T, key: &[u8]) -> H512 {
     result
 }
 
+pub trait Blake {
+    fn blake<T: AsRef<[u8]>>(s: T) -> Self;
+    fn blake_with_key<T: AsRef<[u8]>>(s: T, key: &[u8]) -> Self;
+}
+
+impl Blake for H256 {
+    fn blake<T: AsRef<[u8]>>(s: T) -> Self {
+        blake256(s)
+    }
+    fn blake_with_key<T: AsRef<[u8]>>(s: T, key: &[u8]) -> Self {
+        blake256_with_key(s, key)
+    }
+}
+
+impl Blake for H512 {
+    fn blake<T: AsRef<[u8]>>(s: T) -> Self {
+        blake512(s)
+    }
+    fn blake_with_key<T: AsRef<[u8]>>(s: T, key: &[u8]) -> Self {
+        blake512_with_key(s, key)
+    }
+}
+
 /// Get the 256-bits BLAKE2b hash of the empty bytes string.
 pub const BLAKE_EMPTY: H256 = H256([
     0x0e, 0x57, 0x51, 0xc0, 0x26, 0xe5, 0x43, 0xb2, 0xe8, 0xab, 0x2e, 0xb0, 0x60, 0x99, 0xda, 0xa1, 0xd1, 0xe5, 0xdf,
@@ -138,5 +161,21 @@ mod tests {
         let r1 = blake256_with_key([0u8; 0], &[0; 64]);
         let r2 = blake256_with_key([0u8; 0], &[1; 64]);
         assert_ne!(r1, r2);
+    }
+
+    #[test]
+    fn test_blake_trait_with_h256() {
+        let input = b"hello world";
+        let hash_result = blake256(&input);
+        let trait_result = H256::blake(&input);
+        assert_eq!(hash_result, trait_result);
+    }
+
+    #[test]
+    fn test_blake_trait_with_h512() {
+        let input = b"hello world";
+        let hash_result = blake512(&input);
+        let trait_result = H512::blake(&input);
+        assert_eq!(hash_result, trait_result);
     }
 }
