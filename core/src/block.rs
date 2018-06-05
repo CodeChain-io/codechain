@@ -183,53 +183,49 @@ impl<'x> OpenBlock<'x> {
     }
 
     /// Turn this into a `ClosedBlock`.
-    pub fn close(self) -> ClosedBlock {
-        let mut s = self;
+    pub fn close(mut self) -> ClosedBlock {
+        let unclosed_state = self.block.state.clone();
 
-        let unclosed_state = s.block.state.clone();
-
-        if let Err(e) = s.engine.on_close_block(&mut s.block) {
+        if let Err(e) = self.engine.on_close_block(&mut self.block) {
             warn!("Encountered error on closing the block: {}", e);
         }
 
-        if let Err(e) = s.block.state.commit() {
+        if let Err(e) = self.block.state.commit() {
             warn!("Encountered error on state commit: {}", e);
         }
-        s.block.header.set_parcels_root(ordered_trie_root(s.block.parcels.iter().map(|e| e.rlp_bytes())));
-        s.block.header.set_state_root(s.block.state.root().clone());
-        s.block.header.set_invoices_root(ordered_trie_root(
-            s.block.invoices.iter().flat_map(|invoices| invoices.iter().map(|invoice| invoice.rlp_bytes())),
+        self.block.header.set_parcels_root(ordered_trie_root(self.block.parcels.iter().map(|e| e.rlp_bytes())));
+        self.block.header.set_state_root(self.block.state.root().clone());
+        self.block.header.set_invoices_root(ordered_trie_root(
+            self.block.invoices.iter().flat_map(|invoices| invoices.iter().map(|invoice| invoice.rlp_bytes())),
         ));
 
         ClosedBlock {
-            block: s.block,
+            block: self.block,
             unclosed_state,
         }
     }
 
     /// Turn this into a `LockedBlock`.
-    pub fn close_and_lock(self) -> LockedBlock {
-        let mut s = self;
-
-        if let Err(e) = s.engine.on_close_block(&mut s.block) {
+    pub fn close_and_lock(mut self) -> LockedBlock {
+        if let Err(e) = self.engine.on_close_block(&mut self.block) {
             warn!("Encountered error on closing the block: {}", e);
         }
 
-        if let Err(e) = s.block.state.commit() {
+        if let Err(e) = self.block.state.commit() {
             warn!("Encountered error on state commit: {}", e);
         }
-        if s.block.header.parcels_root().is_zero() || s.block.header.parcels_root() == &BLAKE_NULL_RLP {
-            s.block.header.set_parcels_root(ordered_trie_root(s.block.parcels.iter().map(|e| e.rlp_bytes())));
+        if self.block.header.parcels_root().is_zero() || self.block.header.parcels_root() == &BLAKE_NULL_RLP {
+            self.block.header.set_parcels_root(ordered_trie_root(self.block.parcels.iter().map(|e| e.rlp_bytes())));
         }
-        if s.block.header.invoices_root().is_zero() || s.block.header.invoices_root() == &BLAKE_NULL_RLP {
-            s.block.header.set_invoices_root(ordered_trie_root(
-                s.block.invoices.iter().flat_map(|invoices| invoices.iter().map(|invoice| invoice.rlp_bytes())),
+        if self.block.header.invoices_root().is_zero() || self.block.header.invoices_root() == &BLAKE_NULL_RLP {
+            self.block.header.set_invoices_root(ordered_trie_root(
+                self.block.invoices.iter().flat_map(|invoices| invoices.iter().map(|invoice| invoice.rlp_bytes())),
             ));
         }
-        s.block.header.set_state_root(s.block.state.root().clone());
+        self.block.header.set_state_root(self.block.state.root().clone());
 
         LockedBlock {
-            block: s.block,
+            block: self.block,
         }
     }
 
@@ -282,33 +278,31 @@ impl LockedBlock {
     /// Provide a valid seal in order to turn this into a `SealedBlock`.
     ///
     /// NOTE: This does not check the validity of `seal` with the engine.
-    pub fn seal(self, engine: &CodeChainEngine, seal: Vec<Bytes>) -> Result<SealedBlock, BlockError> {
+    pub fn seal(mut self, engine: &CodeChainEngine, seal: Vec<Bytes>) -> Result<SealedBlock, BlockError> {
         let expected_seal_fields = engine.seal_fields(self.header());
-        let mut s = self;
         if seal.len() != expected_seal_fields {
             return Err(BlockError::InvalidSealArity(Mismatch {
                 expected: expected_seal_fields,
                 found: seal.len(),
             }))
         }
-        s.block.header.set_seal(seal);
+        self.block.header.set_seal(seal);
         Ok(SealedBlock {
-            block: s.block,
+            block: self.block,
         })
     }
 
     /// Provide a valid seal in order to turn this into a `SealedBlock`.
     /// This does check the validity of `seal` with the engine.
     /// Returns the `ClosedBlock` back again if the seal is no good.
-    pub fn try_seal(self, engine: &CodeChainEngine, seal: Vec<Bytes>) -> Result<SealedBlock, (Error, LockedBlock)> {
-        let mut s = self;
-        s.block.header.set_seal(seal);
+    pub fn try_seal(mut self, engine: &CodeChainEngine, seal: Vec<Bytes>) -> Result<SealedBlock, (Error, LockedBlock)> {
+        self.block.header.set_seal(seal);
 
         // TODO: passing state context to avoid engines owning it?
-        match engine.verify_local_seal(&s.block.header) {
-            Err(e) => Err((e, s)),
+        match engine.verify_local_seal(&self.block.header) {
+            Err(e) => Err((e, self)),
             _ => Ok(SealedBlock {
-                block: s.block,
+                block: self.block,
             }),
         }
     }
