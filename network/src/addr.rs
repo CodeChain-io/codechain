@@ -20,7 +20,7 @@ use std::fmt;
 use std::net::{self, AddrParseError, IpAddr, Ipv4Addr, Ipv6Addr};
 use std::str::FromStr;
 
-use ccrypto::blake256;
+use ccrypto::Blake;
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::NodeId;
@@ -67,10 +67,10 @@ pub fn convert_to_node_id(ip: &IpAddr, port: u16) -> NodeId {
                 octets[0..16].clone_from_slice(&ip.to_ipv6_compatible().octets());
                 octets[16] = (port >> 8) as u8;
                 octets[17] = (port & 0xFF) as u8;
-                return blake256(&octets)
+                return NodeId::blake(&octets)
             }
             let octets: [u8; 16] = ip.to_ipv6_compatible().octets();
-            let mut hash = blake256(&octets);
+            let mut hash = NodeId::blake(&octets);
             hash[14] ^= (port >> 8) as u8;
             hash[15] ^= (port & 0xFF) as u8;
             hash
@@ -81,10 +81,10 @@ pub fn convert_to_node_id(ip: &IpAddr, port: u16) -> NodeId {
                 octets.clone_from_slice(&ip.octets());
                 octets[16] = (port >> 8) as u8;
                 octets[17] = (port & 0xFF) as u8;
-                return blake256(&octets)
+                return NodeId::blake(&octets)
             }
             let octets: [u8; 16] = ip.octets();
-            let mut hash = blake256(&octets);
+            let mut hash = NodeId::blake(&octets);
             hash[14] ^= (port >> 8) as u8;
             hash[15] ^= (port & 0xFF) as u8;
             hash

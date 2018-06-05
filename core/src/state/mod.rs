@@ -24,7 +24,7 @@ use std::collections::HashMap;
 use std::fmt;
 
 use cbytes::Bytes;
-use ccrypto::blake256;
+use ccrypto::Blake;
 use ctypes::{Address, H256, Public, U128, U256};
 use cvm::{decode, execute, ScriptResult, VMConfig};
 use error::Error;
@@ -405,10 +405,10 @@ impl<B: Backend> State<B> {
                 }
             };
 
-            if lock_script_hash != blake256(&input.lock_script) {
+            if lock_script_hash != Blake::blake(&input.lock_script) {
                 let mismatch = Mismatch {
                     expected: lock_script_hash,
-                    found: blake256(&input.lock_script),
+                    found: Blake::blake(&input.lock_script),
                 };
                 return Err(TransactionError::ScriptHashMismatch(mismatch).into())
             }
@@ -768,7 +768,7 @@ fn is_input_and_output_consistent(inputs: &[AssetTransferInput], outputs: &[Asse
 
 #[cfg(test)]
 mod tests {
-    use ccrypto::blake256;
+    use ccrypto::Blake;
     use ckeys::{Generator, Random};
     use ctypes::{Address, Secret, U256};
 
@@ -777,7 +777,7 @@ mod tests {
     use super::*;
 
     fn secret() -> Secret {
-        blake256("").into()
+        Secret::blake("")
     }
 
     #[test]

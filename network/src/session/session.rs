@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ccrypto::aes::{self, SymmetricCipherError};
-use ccrypto::blake256_with_key;
+use ccrypto::Blake;
 use ctypes::Secret;
 use ctypes::{H128, H256};
 
@@ -65,7 +65,7 @@ impl Session {
 
     pub fn sign(&self, data: &[u8]) -> H256 {
         let iv: &H128 = self.id().into();
-        blake256_with_key(data, iv)
+        Blake::blake_with_key(data, iv)
     }
 }
 
