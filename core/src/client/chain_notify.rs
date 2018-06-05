@@ -19,6 +19,19 @@ use ctypes::H256;
 
 /// Represents what has to be handled by actor listening to chain events
 pub trait ChainNotify: Send + Sync {
+    /// fires when chain has new headers.
+    fn new_headers(
+        &self,
+        _imported: Vec<H256>,
+        _invalid: Vec<H256>,
+        _enacted: Vec<H256>,
+        _retracted: Vec<H256>,
+        _sealed: Vec<H256>,
+        _duration: u64,
+    ) {
+        // does nothing by default
+    }
+
     /// fires when chain has new blocks.
     fn new_blocks(
         &self,

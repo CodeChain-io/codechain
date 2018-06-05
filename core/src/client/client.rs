@@ -706,6 +706,7 @@ impl Importer {
 
         let mut bad = HashSet::new();
         let mut imported = Vec::new();
+        let mut routes = Vec::new();
         for header in self.header_queue.drain(max_headers_to_import) {
             let hash = header.hash();
             trace!(target: "client", "importing header {}", header.number());
@@ -725,7 +726,7 @@ impl Importer {
                     self.header_queue.mark_as_good(&[hash]);
                 } else {
                     imported.push(hash);
-                    self.commit_header(&header, client);
+                    routes.push(self.commit_header(&header, client));
                 }
             } else {
                 bad.insert(hash);
@@ -733,8 +734,19 @@ impl Importer {
         }
 
         self.header_queue.mark_as_bad(&bad.drain().collect::<Vec<_>>());
+        let (enacted, retracted) = self.calculate_enacted_retracted(&routes);
 
-        // FIXME: notify new headers
+        client.notify(|notify| {
+            notify.new_headers(
+                imported.clone(),
+                bad.iter().cloned().collect(),
+                enacted.clone(),
+                retracted.clone(),
+                Vec::new(),
+                0,
+            );
+        });
+
         client.db.read().flush().expect("DB flush failed.");
 
         imported.len()
@@ -758,18 +770,20 @@ impl Importer {
         true
     }
 
-    fn commit_header(&self, header: &Header, client: &Client) {
+    fn commit_header(&self, header: &Header, client: &Client) -> ImportRoute {
         let chain = client.chain.read();
 
         let mut batch = DBTransaction::new();
         // FIXME: Check if this line is still necessary.
         // self.check_epoch_end_signal(header, &chain, &mut batch);
-        chain.insert_header(&mut batch, &HeaderView::new(&header.rlp_bytes()));
+        let route = chain.insert_header(&mut batch, &HeaderView::new(&header.rlp_bytes()));
         client.db.read().write_buffered(batch);
         chain.commit();
 
         // FIXME: Check if this line is still necessary.
         // self.check_epoch_end(&header, &chain, client);
+
+        route
     }
 }
 
