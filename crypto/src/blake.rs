@@ -47,6 +47,15 @@ pub fn blake512<T: AsRef<[u8]>>(s: T) -> H512 {
     result
 }
 
+pub fn blake512_with_key<T: AsRef<[u8]>>(s: T, key: &[u8]) -> H512 {
+    let input = s.as_ref();
+    let mut result = H512::default();
+    let mut hasher = Blake2b::new_keyed(64, &key);
+    hasher.input(input);
+    hasher.result(&mut *result);
+    result
+}
+
 /// Get the 256-bits BLAKE2b hash of the empty bytes string.
 pub const BLAKE_EMPTY: H256 = H256([
     0x0e, 0x57, 0x51, 0xc0, 0x26, 0xe5, 0x43, 0xb2, 0xe8, 0xab, 0x2e, 0xb0, 0x60, 0x99, 0xda, 0xa1, 0xd1, 0xe5, 0xdf,
@@ -107,9 +116,20 @@ mod tests {
     }
 
     #[test]
-    fn test_maximum_length_of_blake_key_is_512() {
+    fn test_maximum_length_of_blake256_key_is_512() {
         let _ = blake256_with_key([0u8; 0], &[0; 64]);
+        let must_not_fail = catch_unwind(|| blake256_with_key([0u8; 0], &[0; 64]));
+        assert!(must_not_fail.is_ok());
         let must_fail = catch_unwind(|| blake256_with_key([0u8; 0], &[0; 65]));
+        assert!(must_fail.is_err());
+    }
+
+    #[test]
+    fn test_maximum_length_of_blake512_key_is_512() {
+        let _ = blake256_with_key([0u8; 0], &[0; 64]);
+        let must_not_fail = catch_unwind(|| blake512_with_key([0u8; 0], &[0; 64]));
+        assert!(must_not_fail.is_ok());
+        let must_fail = catch_unwind(|| blake512_with_key([0u8; 0], &[0; 65]));
         assert!(must_fail.is_err());
     }
 
