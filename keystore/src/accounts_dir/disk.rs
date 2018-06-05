@@ -259,7 +259,7 @@ impl KeyFileManager for DiskKeyFileManager {
         Ok(SafeAccount::from_file(key_file, filename))
     }
 
-    fn write<T>(&self, mut account: SafeAccount, writer: &mut T) -> Result<(), Error>
+    fn write<T>(&self, account: SafeAccount, writer: &mut T) -> Result<(), Error>
     where
         T: io::Write, {
         let key_file: json::KeyFile = account.into();
