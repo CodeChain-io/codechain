@@ -21,6 +21,7 @@ extern crate quick_error;
 extern crate ring;
 
 pub mod aes;
+mod blake;
 pub mod error;
 mod hash;
 pub mod pbkdf2;
@@ -32,9 +33,9 @@ pub const KEY_LENGTH: usize = 32;
 pub const KEY_ITERATIONS: usize = 10240;
 pub const KEY_LENGTH_AES: usize = KEY_LENGTH / 2;
 
-pub use self::hash::{
-    blake256, blake256_with_key, blake512, ripemd160, sha1, BLAKE_EMPTY, BLAKE_EMPTY_LIST_RLP, BLAKE_NULL_RLP,
-};
+pub use self::blake::*;
+
+pub use self::hash::{ripemd160, sha1};
 
 pub fn derive_key_iterations(password: &str, salt: &[u8; 32], c: u32) -> (Vec<u8>, Vec<u8>) {
     let mut derived_key = [0u8; KEY_LENGTH];
