@@ -13,6 +13,7 @@ codechain-finally = { path = "util/finally" }
 codechain-logger = { path = "util/logger" }
 codechain-keys = { path = "keys" }
 codechain-keystore = { path = "keystore" }
+codechain-merkle = { path = "util/merkle" }
 codechain-network = { path = "network" }
 codechain-reactor = { path = "util/reactor" }
 codechain-rpc = { path = "rpc" }
