@@ -288,22 +288,21 @@ fn hash256aux<A: AsRef<[u8]>, B: AsRef<[u8]>>(input: &[(A, B)], pre_len: usize, 
 }
 
 
-#[test]
-fn test_nibbles() {
-    let v = vec![0x31, 0x23, 0x45];
-    let e = vec![3, 1, 2, 3, 4, 5];
-    assert_eq!(as_nibbles(&v), e);
-
-    // A => 65 => 0x41 => [4, 1]
-    let v: Vec<u8> = From::from("A");
-    let e = vec![4, 1];
-    assert_eq!(as_nibbles(&v), e);
-}
-
-
 #[cfg(test)]
 mod tests {
-    use super::{hex_prefix_encode, shared_prefix_len, trie_root};
+    use super::*;
+
+    #[test]
+    fn test_nibbles() {
+        let v = vec![0x31, 0x23, 0x45];
+        let e = vec![3, 1, 2, 3, 4, 5];
+        assert_eq!(as_nibbles(&v), e);
+
+        // A => 65 => 0x41 => [4, 1]
+        let v: Vec<u8> = From::from("A");
+        let e = vec![4, 1];
+        assert_eq!(as_nibbles(&v), e);
+    }
 
     #[test]
     fn test_hex_prefix_encode() {
@@ -348,17 +347,17 @@ mod tests {
 
     #[test]
     fn test_triehash_out_of_order() {
-        assert!(
+        assert_eq!(
             trie_root(vec![
                 (vec![0x01u8, 0x23], vec![0x01u8, 0x23]),
                 (vec![0x81u8, 0x23], vec![0x81u8, 0x23]),
                 (vec![0xf1u8, 0x23], vec![0xf1u8, 0x23]),
+            ]),
+            trie_root(vec![
+                (vec![0x01u8, 0x23], vec![0x01u8, 0x23]),
+                (vec![0xf1u8, 0x23], vec![0xf1u8, 0x23]),
+                (vec![0x81u8, 0x23], vec![0x81u8, 0x23]),
             ])
-                == trie_root(vec![
-                    (vec![0x01u8, 0x23], vec![0x01u8, 0x23]),
-                    (vec![0xf1u8, 0x23], vec![0xf1u8, 0x23]),
-                    (vec![0x81u8, 0x23], vec![0x81u8, 0x23]),
-                ])
         );
     }
 
