@@ -422,6 +422,10 @@ impl ImportBlock for TestBlockChainClient {
         }
         Ok(h)
     }
+
+    fn import_header(&self, _bytes: Bytes) -> Result<H256, BlockImportError> {
+        unimplemented!()
+    }
 }
 
 impl StateInfo for () {

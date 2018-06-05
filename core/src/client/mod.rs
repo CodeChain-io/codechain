@@ -146,6 +146,9 @@ pub trait AccountData: Nonce + Balance {}
 pub trait ImportBlock {
     /// Import a block into the blockchain.
     fn import_block(&self, bytes: Bytes) -> Result<H256, BlockImportError>;
+
+    /// Import a header into the blockchain
+    fn import_header(&self, bytes: Bytes) -> Result<H256, BlockImportError>;
 }
 
 /// Provides various blockchain information, like block header, chain state etc.

@@ -308,6 +308,16 @@ impl ImportBlock for Client {
         }
         Ok(self.importer.block_queue.import(unverified)?)
     }
+
+    fn import_header(&self, bytes: Bytes) -> Result<H256, BlockImportError> {
+        let unverified = ::encoded::Header::new(bytes).decode();
+        {
+            if self.chain.read().is_known(&unverified.hash()) {
+                return Err(BlockImportError::Import(ImportError::AlreadyInChain))
+            }
+        }
+        Ok(self.importer.header_queue.import(unverified)?)
+    }
 }
 
 impl BlockChainTrait for Client {}
