@@ -1,0 +1,10 @@
+[package]
+name = "codechain-merkle"
+version = "0.1.0"
+authors = ["CodeChain Team <codechain@kodebox.io>"]
+
+[dependencies]
+codechain-crypto = { path="../../crypto" }
+
+[dev-dependencies]
+codechain-types = { path = "../../primitives/codechain-types" }
