@@ -15,7 +15,6 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 mod extension;
-mod manager;
 mod message;
 
 pub use self::extension::Extension as BlockSyncExtension;
