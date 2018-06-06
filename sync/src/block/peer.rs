@@ -14,8 +14,24 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod extension;
-mod message;
-mod peer;
+use ctypes::{H256, U256};
 
-pub use self::extension::Extension as BlockSyncExtension;
+#[derive(Clone)]
+pub struct Peer {
+    total_score: U256,
+    best_hash: H256,
+}
+
+impl Peer {
+    pub fn new(total_score: U256, best_hash: H256) -> Self {
+        Self {
+            total_score,
+            best_hash,
+        }
+    }
+
+    pub fn update(&mut self, total_score: U256, best_hash: H256) {
+        self.total_score = total_score;
+        self.best_hash = best_hash;
+    }
+}

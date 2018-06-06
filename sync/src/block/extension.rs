@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use parking_lot::{Mutex, RwLock};
-use std::collections::HashSet;
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use ccore::{BlockChainClient, BlockId, BlockNumber, ChainNotify};
@@ -25,6 +25,7 @@ use rlp::{Encodable, UntrustedRlp};
 use time::Duration;
 
 use super::message::{Message, RequestMessage, ResponseMessage};
+use super::peer::Peer;
 
 const EXTENSION_NAME: &'static str = "block-propagation";
 const SYNC_TIMER_TOKEN: usize = 0;
@@ -33,7 +34,7 @@ const SYNC_TIMER_INTERVAL: i64 = 1000;
 const SNAPSHOT_PERIOD: u64 = (1 << 14);
 
 pub struct Extension {
-    peers: RwLock<HashSet<NodeId>>,
+    peers: RwLock<HashMap<NodeId, Peer>>,
     client: Arc<BlockChainClient>,
     api: Mutex<Option<Arc<Api>>>,
 }
@@ -41,7 +42,7 @@ pub struct Extension {
 impl Extension {
     pub fn new(client: Arc<BlockChainClient>) -> Arc<Self> {
         Arc::new(Self {
-            peers: RwLock::new(HashSet::new()),
+            peers: RwLock::new(HashMap::new()),
             client,
             api: Mutex::new(None),
         })
@@ -130,21 +131,25 @@ impl ChainNotify for Extension {
 }
 
 impl Extension {
-    fn on_peer_status(&self, from: &NodeId, _total_score: U256, _best_hash: H256, genesis_hash: H256) {
+    fn on_peer_status(&self, from: &NodeId, total_score: U256, best_hash: H256, genesis_hash: H256) {
         // Validity check
         if genesis_hash != self.client.chain_info().genesis_hash {
             cinfo!(SYNC, "Genesis hash mismatch with peer {}", from);
             return
         }
 
-        // FIXME: Update peer status
-        self.peers.write().insert(*from);
+        let mut peers = self.peers.write();
+        if peers.contains_key(from) {
+            peers.get_mut(from).unwrap().update(total_score, best_hash);
+        } else {
+            peers.insert(*from, Peer::new(total_score, best_hash));
+        }
     }
 }
 
 impl Extension {
     fn on_peer_request(&self, from: &NodeId, request: RequestMessage) {
-        if !self.peers.read().contains(from) {
+        if !self.peers.read().contains_key(from) {
             cinfo!(SYNC, "Request from invalid peer #{} received", from);
             return
         }
