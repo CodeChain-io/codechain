@@ -14,7 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use ccore::Header;
 use ctypes::{H256, U256};
+
+use super::message::RequestMessage;
 
 #[derive(Clone)]
 pub struct Peer {
@@ -33,5 +36,19 @@ impl Peer {
     pub fn update(&mut self, total_score: U256, best_hash: H256) {
         self.total_score = total_score;
         self.best_hash = best_hash;
+    }
+
+    pub fn create_request(&mut self) -> Option<RequestMessage> {
+        unimplemented!()
+    }
+
+    /// Imports headers and mark success
+    /// Expects importing headers matches requested header
+    pub fn import_headers(&mut self, headers: Vec<Header>) {
+        unimplemented!()
+    }
+
+    pub fn drain(&mut self) -> Vec<Header> {
+        unimplemented!()
     }
 }

@@ -18,7 +18,7 @@ use parking_lot::{Mutex, RwLock};
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use ccore::{BlockChainClient, BlockId, BlockNumber, ChainNotify};
+use ccore::{BlockChainClient, BlockId, BlockNumber, ChainNotify, Header};
 use cnetwork::{Api, NetworkExtension, NodeId, TimerToken};
 use ctypes::{H256, U256};
 use rlp::{Encodable, UntrustedRlp};
@@ -105,7 +105,10 @@ impl NetworkExtension for Extension {
                     self.on_peer_status(token, total_score, best_hash, genesis_hash);
                 }
                 Message::Request(_, request) => self.on_peer_request(token, request),
-                Message::Response(_, response) => self.on_peer_response(token, response),
+                Message::Response(_, response) => match response {
+                    ResponseMessage::Headers(headers) => self.on_header_response(token, headers),
+                    _ => unimplemented!(),
+                },
             }
         } else {
             cinfo!(SYNC, "Invalid message from peer {}", token);
@@ -114,6 +117,15 @@ impl NetworkExtension for Extension {
 
     fn on_timeout(&self, timer: TimerToken) {
         debug_assert_eq!(timer, SYNC_TIMER_TOKEN);
+
+        let peer_ids: Vec<_> = self.peers.read().keys().cloned().collect();
+        for id in peer_ids {
+            if let Some(peer) = self.peers.write().get_mut(&id) {
+                if let Some(request) = peer.create_request() {
+                    self.send_message(&id, Message::Request(0, request));
+                }
+            }
+        }
     }
 }
 
@@ -229,7 +241,26 @@ impl Extension {
 }
 
 impl Extension {
-    fn on_peer_response(&self, _from: &NodeId, _response: ResponseMessage) {
-        unimplemented!();
+    fn on_header_response(&self, from: &NodeId, headers: Vec<Header>) {
+        let completed: Vec<Header> = if let Some(peer) = self.peers.write().get_mut(from) {
+            // FIXME: check validity of headers
+            peer.import_headers(headers);
+            peer.drain()
+        } else {
+            Vec::new()
+        };
+        for header in completed {
+            // FIXME: handle import errors
+            match self.client.import_header(header.rlp_bytes().to_vec()) {
+                Ok(_) => {}
+                Err(_) => {}
+            }
+        }
+
+        if let Some(peer) = self.peers.write().get_mut(from) {
+            if let Some(request) = peer.create_request() {
+                self.send_message(from, Message::Request(0, request));
+            }
+        }
     }
 }
