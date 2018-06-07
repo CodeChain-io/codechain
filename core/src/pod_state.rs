@@ -18,8 +18,7 @@ use std::collections::BTreeMap;
 use std::fmt;
 
 use cjson;
-use ctypes::{Address, H256};
-use triehash::sec_trie_root;
+use ctypes::Address;
 
 use super::pod_account::PodAccount;
 
@@ -28,42 +27,16 @@ use super::pod_account::PodAccount;
 pub struct PodState(BTreeMap<Address, PodAccount>);
 
 impl PodState {
-    /// Contruct a new object from the `m`.
-    #[allow(dead_code)]
-    pub fn new() -> PodState {
-        Default::default()
-    }
-
-    /// Contruct a new object from the `m`.
-    #[allow(dead_code)]
-    pub fn from(m: BTreeMap<Address, PodAccount>) -> PodState {
-        PodState(m)
-    }
-
     /// Get the underlying map.
     pub fn get(&self) -> &BTreeMap<Address, PodAccount> {
         &self.0
-    }
-
-    /// Get the root hash of the trie of the RLP of this.
-    #[allow(dead_code)]
-    pub fn root(&self) -> H256 {
-        sec_trie_root(self.0.iter().map(|(k, v)| (k, v.rlp())))
-    }
-
-    /// Drain object to get the underlying map.
-    #[allow(dead_code)]
-    pub fn drain(self) -> BTreeMap<Address, PodAccount> {
-        self.0
     }
 }
 
 impl From<cjson::spec::State> for PodState {
     fn from(s: cjson::spec::State) -> PodState {
-        let state: BTreeMap<_, _> = s.into_iter()
-            .filter(|pair| !pair.1.is_empty())
-            .map(|(addr, acc)| (addr.into(), PodAccount::from(acc)))
-            .collect();
+        let state: BTreeMap<_, _> =
+            s.into_iter().filter(|(_, acc)| !acc.is_empty()).map(|(addr, acc)| (addr.into(), acc.into())).collect();
         PodState(state)
     }
 }
