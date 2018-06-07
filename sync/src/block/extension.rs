@@ -18,6 +18,7 @@ use parking_lot::{Mutex, RwLock};
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use ccore::encoded::Header as EncodedHeader;
 use ccore::{BlockChainClient, BlockId, BlockNumber, ChainNotify, Header};
 use cnetwork::{Api, NetworkExtension, NodeId, TimerToken};
 use ctypes::{H256, U256};
@@ -154,7 +155,7 @@ impl Extension {
         if peers.contains_key(from) {
             peers.get_mut(from).unwrap().update(total_score, best_hash);
         } else {
-            peers.insert(*from, Peer::new(total_score, best_hash));
+            peers.insert(*from, Peer::new(self.client.clone(), total_score, best_hash));
         }
     }
 }
@@ -242,16 +243,17 @@ impl Extension {
 
 impl Extension {
     fn on_header_response(&self, from: &NodeId, headers: Vec<Header>) {
-        let completed: Vec<Header> = if let Some(peer) = self.peers.write().get_mut(from) {
+        let completed = if let Some(peer) = self.peers.write().get_mut(from) {
             // FIXME: check validity of headers
-            peer.import_headers(headers);
+            let encoded = headers.iter().map(|h| EncodedHeader::new(h.rlp_bytes().to_vec())).collect();
+            peer.import_headers(encoded);
             peer.drain()
         } else {
             Vec::new()
         };
         for header in completed {
             // FIXME: handle import errors
-            match self.client.import_header(header.rlp_bytes().to_vec()) {
+            match self.client.import_header(header.into_inner()) {
                 Ok(_) => {}
                 Err(_) => {}
             }

@@ -61,7 +61,7 @@ mod client;
 mod codechain_machine;
 mod consensus;
 mod db;
-mod encoded;
+pub mod encoded;
 mod error;
 mod header;
 mod invoice;
