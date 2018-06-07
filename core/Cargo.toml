@@ -10,6 +10,7 @@ codechain-io = { path = "../util/io" }
 codechain-json = { path = "../json" }
 codechain-keys = { path="../keys" }
 codechain-keystore = { path="../keystore" }
+codechain-merkle = { path = "../util/merkle" }
 codechain-network = { path = "../network" }
 codechain-types = { path = "../primitives/codechain-types" }
 codechain-vm = { path = "../vm" }

@@ -20,6 +20,7 @@ extern crate codechain_io as cio;
 extern crate codechain_json as cjson;
 extern crate codechain_keys as ckeys;
 extern crate codechain_keystore as ckeystore;
+extern crate codechain_merkle as cmerkle;
 extern crate codechain_network as cnetwork;
 extern crate codechain_types as ctypes;
 extern crate codechain_vm as cvm;

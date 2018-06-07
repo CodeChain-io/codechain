@@ -665,6 +665,7 @@ impl Importer {
 
         // Verify Block Family
         let verify_family_result = self.verifier.verify_block_family(
+            &block.bytes,
             header,
             &parent,
             engine,

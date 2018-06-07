@@ -31,7 +31,7 @@ use super::super::header::Header;
 use super::super::parcel::{ParcelError, SignedParcel, UnverifiedParcel};
 use super::super::spec::Spec;
 use super::super::state::State;
-use super::super::types::{BlockNumber, ParcelId};
+use super::super::types::{BlockId, BlockNumber, ParcelId};
 use super::parcel_queue::{AccountDetails, ParcelOrigin, ParcelQueue, RemovalReason};
 use super::sealing_queue::SealingQueue;
 use super::{MinerService, MinerStatus, ParcelImportResult};
@@ -253,7 +253,13 @@ impl Miner {
         }
         trace!(target: "miner", "Pushed {}/{} parcels", parcel_count, parcel_total);
 
-        let block = open_block.close();
+        let (parcels_root, invoices_root) = {
+            let parent_hash = open_block.header().parent_hash();
+            let parent_header = chain.block_header(BlockId::Hash(*parent_hash)).expect("Parent header MUST exist");
+            let parent_view = parent_header.view();
+            (parent_view.parcels_root(), parent_view.invoices_root())
+        };
+        let block = open_block.close(parcels_root, invoices_root);
 
         let fetch_nonce = |a: &Address| chain.latest_nonce(a);
 

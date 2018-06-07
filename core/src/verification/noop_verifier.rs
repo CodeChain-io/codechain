@@ -26,6 +26,7 @@ pub struct NoopVerifier;
 impl<C: BlockInfo> Verifier<C> for NoopVerifier {
     fn verify_block_family(
         &self,
+        _block: &[u8],
         _: &Header,
         _t: &Header,
         _: &CodeChainEngine,
