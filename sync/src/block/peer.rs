@@ -92,12 +92,16 @@ impl Peer {
         }
     }
 
+    pub fn last_request_number(&self) -> Option<BlockNumber> {
+        self.last_request.clone().map(|info| info.number)
+    }
+
     /// Find header from download cache, and then from blockchain
     /// Panics if header dosn't exist
     fn pivot_header(&self) -> Header {
         match self.downloaded.get(&self.pivot.hash) {
             Some(header) => header.clone(),
-            None => self.client.block_header(BlockId::Hash(self.pivot.hash)).unwrap()
+            None => self.client.block_header(BlockId::Hash(self.pivot.hash)).unwrap(),
         }
     }
 

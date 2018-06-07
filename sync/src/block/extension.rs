@@ -261,9 +261,21 @@ impl Extension {
 impl Extension {
     fn on_header_response(&self, from: &NodeId, headers: Vec<Header>) {
         let mut completed = if let Some(peer) = self.peers.write().get_mut(from) {
-            // FIXME: check validity of headers
-            let encoded = headers.iter().map(|h| EncodedHeader::new(h.rlp_bytes().to_vec())).collect();
-            peer.import_headers(encoded);
+            let mut encoded: Vec<_> = headers.iter().map(|h| EncodedHeader::new(h.rlp_bytes().to_vec())).collect();
+            encoded.sort_unstable_by_key(|header| header.number());
+
+            // Continuity check
+            for neighbors in encoded.windows(2) {
+                let parent = &neighbors[0];
+                let child = &neighbors[1];
+                if child.number() != parent.number() + 1 || child.parent_hash() != parent.hash() {
+                    cinfo!(SYNC, "Headers are not continuous");
+                }
+            }
+
+            if encoded.len() != 0 && encoded.first().map(|header| header.number()) == peer.last_request_number() {
+                peer.import_headers(encoded);
+            }
             peer.downloaded()
         } else {
             Vec::new()
@@ -276,7 +288,7 @@ impl Extension {
             // FIXME: handle import errors
             match self.client.import_header(header.into_inner()) {
                 Err(BlockImportError::Import(ImportError::AlreadyInChain)) => exists.push(hash),
-                _ => {},
+                _ => {}
             }
         }
 
