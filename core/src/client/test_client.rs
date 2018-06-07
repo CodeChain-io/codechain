@@ -123,15 +123,17 @@ impl TestBlockChainClient {
     /// Create test client with custom spec and extra data.
     pub fn new_with_spec_and_extra(spec: Spec, extra_data: Bytes) -> Self {
         let genesis_block = spec.genesis_block();
-        let genesis_hash = spec.genesis_header().hash();
+        let genesis_header = spec.genesis_header();
+        let genesis_hash = genesis_header.hash();
+        let genesis_score = *genesis_header.score();
 
         let mut client = TestBlockChainClient {
             blocks: RwLock::new(HashMap::new()),
             numbers: RwLock::new(HashMap::new()),
-            genesis_hash: H256::new(),
+            genesis_hash,
             extra_data,
-            last_hash: RwLock::new(H256::new()),
-            score: RwLock::new(spec.genesis_header().score().clone()),
+            last_hash: RwLock::new(genesis_hash),
+            score: RwLock::new(genesis_score),
             balances: RwLock::new(HashMap::new()),
             nonces: RwLock::new(HashMap::new()),
             storage: RwLock::new(HashMap::new()),
@@ -145,8 +147,6 @@ impl TestBlockChainClient {
         // insert genesis hash.
         client.blocks.get_mut().insert(genesis_hash, genesis_block);
         client.numbers.get_mut().insert(0, genesis_hash);
-        *client.last_hash.get_mut() = genesis_hash;
-        client.genesis_hash = genesis_hash;
         client
     }
 
