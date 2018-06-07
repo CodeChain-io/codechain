@@ -232,9 +232,9 @@ impl Extension {
 
     fn create_headers_response(&self, start_number: BlockNumber, max_count: u64) -> ResponseMessage {
         let headers = (0..max_count)
-            .map(|number| self.client.block_header(BlockId::Number(start_number + number)))
-            .take_while(|header| header.is_some())
-            .map(|header| header.expect("take_while guarantees existance of item").decode())
+            .map(|number| self.client.block(BlockId::Number(start_number + number)))
+            .take_while(|block| block.is_some())
+            .map(|block| block.expect("take_while guarantees existance of item").header().decode())
             .collect();
         ResponseMessage::Headers(headers)
     }
