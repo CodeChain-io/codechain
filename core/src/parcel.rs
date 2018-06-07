@@ -397,6 +397,7 @@ impl Deref for LocalizedParcel {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AssetOutPoint {
     pub transaction_hash: H256,
     pub index: usize,
@@ -405,6 +406,7 @@ pub struct AssetOutPoint {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AssetTransferInput {
     pub prev_out: AssetOutPoint,
     pub lock_script: Bytes,
@@ -412,6 +414,7 @@ pub struct AssetTransferInput {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AssetTransferOutput {
     pub lock_script_hash: H256,
     pub parameters: Vec<Bytes>,
