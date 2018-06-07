@@ -18,50 +18,20 @@
 //!
 //! This module should be used to generate trie root hash.
 
-extern crate codechain_crypto;
-extern crate codechain_types;
+extern crate codechain_crypto as ccrypto;
+extern crate codechain_types as ctypes;
 extern crate rlp;
 
-use codechain_crypto::blake256;
-use codechain_types::H256;
-use rlp::RlpStream;
 use std::cmp;
 use std::collections::BTreeMap;
+
+use ccrypto::blake256;
+use ctypes::H256;
+use rlp::RlpStream;
 
 fn shared_prefix_len<T: Eq>(first: &[T], second: &[T]) -> usize {
     let len = cmp::min(first.len(), second.len());
     (0..len).take_while(|&i| first[i] == second[i]).count()
-}
-
-/// Generates a trie root hash for a vector of values
-///
-/// ```rust
-/// extern crate triehash;
-/// use triehash::ordered_trie_root;
-///
-/// fn main() {
-/// 	let v = &["doe", "reindeer"];
-/// 	let root = "ac57bd4773cb143f3d553d4bd887170a6f18a6e6bd39957b97c35f47db0fe90a";
-/// 	assert_eq!(ordered_trie_root(v), root.into());
-/// }
-/// ```
-pub fn ordered_trie_root<I, A>(input: I) -> H256
-where
-    I: IntoIterator<Item = A>,
-    A: AsRef<[u8]>, {
-    let gen_input: Vec<_> = input
-		// first put elements into btree to sort them by nibbles
-		// optimize it later
-		.into_iter()
-		.enumerate()
-		.map(|(i, slice)| (rlp::encode(&i), slice))
-		.collect::<BTreeMap<_, _>>()
-		// then move them to a vector
-		.into_iter()
-		.map(|(k, v)| (as_nibbles(&k), v) )
-		.collect();
-
-    gen_trie_root(&gen_input)
 }
 
 /// Generates a trie root hash for a vector of key-values
@@ -93,41 +63,6 @@ where
 		// then move them to a vector
 		.into_iter()
 		.map(|(k, v)| (as_nibbles(k.as_ref()), v) )
-		.collect();
-
-    gen_trie_root(&gen_input)
-}
-
-/// Generates a key-hashed (secure) trie root hash for a vector of key-values.
-///
-/// ```rust
-/// extern crate triehash;
-/// use triehash::sec_trie_root;
-///
-/// fn main() {
-/// 	let v = vec![
-/// 		("doe", "reindeer"),
-/// 		("dog", "puppy"),
-/// 		("dogglesworth", "cat"),
-/// 	];
-///
-/// 	let root = "9816e53f2e3960e056094915e839c355474f82329af2ef731dce76edc3dbfff5";
-/// 	assert_eq!(sec_trie_root(v), root.into());
-/// }
-/// ```
-pub fn sec_trie_root<I, A, B>(input: I) -> H256
-where
-    I: IntoIterator<Item = (A, B)>,
-    A: AsRef<[u8]>,
-    B: AsRef<[u8]>, {
-    let gen_input: Vec<_> = input
-		// first put elements into btree to sort them and to remove duplicates
-		.into_iter()
-		.map(|(k, v)| (blake256(k), v))
-		.collect::<BTreeMap<_, _>>()
-		// then move them to a vector
-		.into_iter()
-		.map(|(k, v)| (as_nibbles(&k), v) )
 		.collect();
 
     gen_trie_root(&gen_input)
