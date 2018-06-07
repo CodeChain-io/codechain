@@ -27,12 +27,13 @@ pub struct CanonVerifier;
 impl<C: BlockInfo> Verifier<C> for CanonVerifier {
     fn verify_block_family(
         &self,
+        block: &[u8],
         header: &Header,
         parent: &Header,
         engine: &CodeChainEngine,
         do_full: Option<verification::FullFamilyParams<C>>,
     ) -> Result<(), Error> {
-        verification::verify_block_family(header, parent, engine, do_full)
+        verification::verify_block_family(block, header, parent, engine, do_full)
     }
 
     fn verify_block_final(&self, expected: &Header, got: &Header) -> Result<(), Error> {

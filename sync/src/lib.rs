@@ -18,6 +18,7 @@ extern crate parking_lot;
 
 extern crate codechain_bytes as cbytes;
 extern crate codechain_core as ccore;
+extern crate codechain_merkle as cmerkle;
 #[macro_use]
 extern crate codechain_logger as clogger;
 extern crate codechain_network as cnetwork;

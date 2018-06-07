@@ -10,6 +10,7 @@ codechain-bytes = { path = "../util/bytes" }
 codechain-core = { path = "../core" }
 codechain-keys = { path = "../keys" }
 codechain-logger = { path = "../util/logger" }
+codechain-merkle = { path = "../util/merkle" }
 codechain-network = { path = "../network" }
 codechain-types = { path = "../primitives/codechain-types" }
 log = "0.4.1"

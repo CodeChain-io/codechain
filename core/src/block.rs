@@ -18,10 +18,10 @@ use std::collections::HashSet;
 
 use cbytes::Bytes;
 use ccrypto::BLAKE_NULL_RLP;
+use cmerkle::skewed_merkle_root;
 use ctypes::{Address, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 use trie::TrieFactory;
-use triehash::ordered_trie_root;
 use unexpected::Mismatch;
 
 use super::blockchain::ParcelInvoices;
@@ -183,7 +183,7 @@ impl<'x> OpenBlock<'x> {
     }
 
     /// Turn this into a `ClosedBlock`.
-    pub fn close(mut self) -> ClosedBlock {
+    pub fn close(mut self, parent_parcels_root: H256, parent_invoices_root: H256) -> ClosedBlock {
         let unclosed_state = self.block.state.clone();
 
         if let Err(e) = self.engine.on_close_block(&mut self.block) {
@@ -193,9 +193,13 @@ impl<'x> OpenBlock<'x> {
         if let Err(e) = self.block.state.commit() {
             warn!("Encountered error on state commit: {}", e);
         }
-        self.block.header.set_parcels_root(ordered_trie_root(self.block.parcels.iter().map(|e| e.rlp_bytes())));
+        self.block.header.set_parcels_root(skewed_merkle_root(
+            parent_parcels_root,
+            self.block.parcels.iter().map(|e| e.rlp_bytes()),
+        ));
         self.block.header.set_state_root(self.block.state.root().clone());
-        self.block.header.set_invoices_root(ordered_trie_root(
+        self.block.header.set_invoices_root(skewed_merkle_root(
+            parent_invoices_root,
             self.block.invoices.iter().flat_map(|invoices| invoices.iter().map(|invoice| invoice.rlp_bytes())),
         ));
 
@@ -206,7 +210,7 @@ impl<'x> OpenBlock<'x> {
     }
 
     /// Turn this into a `LockedBlock`.
-    pub fn close_and_lock(mut self) -> LockedBlock {
+    pub fn close_and_lock(mut self, parent_parcels_root: H256, parent_invoices_root: H256) -> LockedBlock {
         if let Err(e) = self.engine.on_close_block(&mut self.block) {
             warn!("Encountered error on closing the block: {}", e);
         }
@@ -215,10 +219,14 @@ impl<'x> OpenBlock<'x> {
             warn!("Encountered error on state commit: {}", e);
         }
         if self.block.header.parcels_root().is_zero() || self.block.header.parcels_root() == &BLAKE_NULL_RLP {
-            self.block.header.set_parcels_root(ordered_trie_root(self.block.parcels.iter().map(|e| e.rlp_bytes())));
+            self.block.header.set_parcels_root(skewed_merkle_root(
+                parent_parcels_root,
+                self.block.parcels.iter().map(|e| e.rlp_bytes()),
+            ));
         }
         if self.block.header.invoices_root().is_zero() || self.block.header.invoices_root() == &BLAKE_NULL_RLP {
-            self.block.header.set_invoices_root(ordered_trie_root(
+            self.block.header.set_invoices_root(skewed_merkle_root(
+                parent_invoices_root,
                 self.block.invoices.iter().flat_map(|invoices| invoices.iter().map(|invoice| invoice.rlp_bytes())),
             ));
         }
@@ -422,7 +430,7 @@ pub fn enact(
     b.populate_from(header);
     b.push_parcels(parcels)?;
 
-    Ok(b.close_and_lock())
+    Ok(b.close_and_lock(parent.parcels_root().clone(), parent.invoices_root().clone()))
 }
 
 #[cfg(test)]
@@ -440,7 +448,9 @@ mod tests {
         let db = spec.ensure_db_good(get_temp_state_db(), &Default::default()).unwrap();
         let b = OpenBlock::new(&*spec.engine, Default::default(), db, &genesis_header, Address::zero(), vec![], false)
             .unwrap();
-        let b = b.close_and_lock();
+        let parent_parcels_root = genesis_header.parcels_root().clone();
+        let parent_invoices_root = genesis_header.invoices_root().clone();
+        let b = b.close_and_lock(parent_parcels_root, parent_invoices_root);
         let _ = b.seal(&*spec.engine, vec![]);
     }
 }

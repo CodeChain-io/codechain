@@ -17,10 +17,10 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use cbytes::Bytes;
+use cmerkle::skewed_merkle_root;
 use ctypes::H256;
 use heapsize::HeapSizeOf;
 use rlp::UntrustedRlp;
-use triehash::ordered_trie_root;
 use unexpected::{Mismatch, OutOfBounds};
 
 use super::super::blockchain::BlockProvider;
@@ -51,7 +51,6 @@ impl HeapSizeOf for PreverifiedBlock {
 /// Phase 1 quick block verification. Only does checks that are cheap. Operates on a single block
 pub fn verify_block_basic(header: &Header, bytes: &[u8], engine: &CodeChainEngine) -> Result<(), Error> {
     verify_header_params(&header, engine)?;
-    verify_block_integrity(bytes, &header.parcels_root())?;
     engine.verify_block_basic(&header)?;
 
     for t in UntrustedRlp::new(bytes).at(1)?.iter().map(|rlp| rlp.as_val::<UnverifiedParcel>()) {
@@ -111,12 +110,12 @@ pub fn verify_header_params(header: &Header, engine: &CodeChainEngine) -> Result
     Ok(())
 }
 
-/// Verify block data against header: parcels root and uncles hash.
-fn verify_block_integrity(block: &[u8], parcels_root: &H256) -> Result<(), Error> {
+/// Verify block data against header: parcels root
+fn verify_parcels_root(block: &[u8], parcels_root: &H256, parent_parcels_root: H256) -> Result<(), Error> {
     let block = UntrustedRlp::new(block);
     let parcel = block.at(1)?;
-    let expected_root = &ordered_trie_root(parcel.iter().map(|r| r.as_raw()));
-    if expected_root != parcels_root {
+    let expected_root = skewed_merkle_root(parent_parcels_root, parcel.iter().map(|r| r.as_raw()));
+    if &expected_root != parcels_root {
         return Err(From::from(BlockError::InvalidParcelsRoot(Mismatch {
             expected: expected_root.clone(),
             found: parcels_root.clone(),
@@ -170,6 +169,7 @@ pub struct FullFamilyParams<'a, C: BlockInfo + 'a> {
 
 /// Phase 3 verification. Check block information against parent and uncles.
 pub fn verify_block_family<C: BlockInfo>(
+    block: &[u8],
     header: &Header,
     parent: &Header,
     engine: &CodeChainEngine,
@@ -177,6 +177,7 @@ pub fn verify_block_family<C: BlockInfo>(
 ) -> Result<(), Error> {
     // TODO: verify timestamp
     verify_parent(&header, &parent)?;
+    verify_parcels_root(block, header.parcels_root(), parent.parcels_root().clone())?;
     engine.verify_block_family(&header, &parent)?;
 
     let params = match do_full {

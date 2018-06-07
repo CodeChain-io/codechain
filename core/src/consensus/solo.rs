@@ -110,7 +110,9 @@ mod tests {
         let genesis_header = spec.genesis_header();
         let b =
             OpenBlock::new(engine, Default::default(), db, &genesis_header, Default::default(), vec![], false).unwrap();
-        let b = b.close_and_lock();
+        let parent_parcels_root = genesis_header.parcels_root().clone();
+        let parent_invoices_root = genesis_header.invoices_root().clone();
+        let b = b.close_and_lock(parent_parcels_root, parent_invoices_root);
         if let Seal::Regular(seal) = engine.generate_seal(b.block(), &genesis_header) {
             assert!(b.try_seal(engine, seal).is_ok());
         }

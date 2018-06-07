@@ -37,6 +37,7 @@ use std::sync::Arc;
 
 use cbytes::Bytes;
 use ckeys::{Generator, Public, Random};
+use cmerkle::skewed_merkle_root;
 use cnetwork::NodeId;
 use ctypes::{Address, H256, U256};
 use journaldb;
@@ -44,7 +45,6 @@ use kvdb_memorydb;
 use parking_lot::RwLock;
 use rlp::*;
 use trie;
-use triehash::ordered_trie_root;
 
 use super::super::block::{ClosedBlock, OpenBlock, SealedBlock};
 use super::super::blockchain::ParcelInvoices;
@@ -75,6 +75,8 @@ pub struct TestBlockChainClient {
     pub genesis_hash: H256,
     /// Last block hash.
     pub last_hash: RwLock<H256>,
+    /// Last parcels_root
+    pub last_parcels_root: RwLock<H256>,
     /// Extra data do set for each block
     pub extra_data: Bytes,
     /// Score.
@@ -125,6 +127,7 @@ impl TestBlockChainClient {
         let genesis_block = spec.genesis_block();
         let genesis_header = spec.genesis_header();
         let genesis_hash = genesis_header.hash();
+        let genesis_parcels_root = *genesis_header.parcels_root();
         let genesis_score = *genesis_header.score();
 
         let mut client = TestBlockChainClient {
@@ -133,6 +136,7 @@ impl TestBlockChainClient {
             genesis_hash,
             extra_data,
             last_hash: RwLock::new(genesis_hash),
+            last_parcels_root: RwLock::new(genesis_parcels_root),
             score: RwLock::new(genesis_score),
             balances: RwLock::new(HashMap::new()),
             nonces: RwLock::new(HashMap::new()),
@@ -198,7 +202,10 @@ impl TestBlockChainClient {
                 let signed_parcel = parcel.sign(keypair.private());
                 parcels.push(signed_parcel);
             }
-            header.set_parcels_root(ordered_trie_root(parcels.iter().map(|parcel| parcel.rlp_bytes())));
+            header.set_parcels_root(skewed_merkle_root(
+                self.last_parcels_root.read().clone(),
+                parcels.iter().map(Encodable::rlp_bytes),
+            ));
             let mut rlp = RlpStream::new_list(2);
             rlp.append(&header);
             rlp.append_list(&parcels);
@@ -402,6 +409,7 @@ impl ImportBlock for TestBlockChainClient {
                 *score = *score + header.score().clone();
             }
             mem::replace(&mut *self.last_hash.write(), h.clone());
+            mem::replace(&mut *self.last_parcels_root.write(), h.clone());
             self.blocks.write().insert(h.clone(), b);
             self.numbers.write().insert(number, h.clone());
             let mut parent_hash = header.parent_hash().clone();

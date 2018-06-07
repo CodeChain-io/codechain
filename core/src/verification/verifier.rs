@@ -27,6 +27,7 @@ where
     /// Verify a block relative to its parent and uncles.
     fn verify_block_family(
         &self,
+        block: &[u8],
         header: &Header,
         parent: &Header,
         engine: &CodeChainEngine,
