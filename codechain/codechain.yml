@@ -88,8 +88,6 @@ args:
         possible_values:
             - kademlia
             - unstructured
-        conflicts_with:
-            - no-discovery
         default_value: "unstructured"
     - kademlia-alpha:
         long: kademlia-alpha
