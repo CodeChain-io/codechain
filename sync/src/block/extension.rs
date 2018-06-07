@@ -19,7 +19,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use ccore::encoded::Header as EncodedHeader;
-use ccore::{BlockChainClient, BlockId, BlockNumber, ChainNotify, Header};
+use ccore::{BlockChainClient, BlockId, BlockImportError, BlockNumber, ChainNotify, Header, ImportError};
 use cnetwork::{Api, NetworkExtension, NodeId, TimerToken};
 use ctypes::{H256, U256};
 use rlp::{Encodable, UntrustedRlp};
@@ -141,6 +141,23 @@ impl ChainNotify for Extension {
         _duration: u64,
     ) {
     }
+
+    fn new_headers(
+        &self,
+        imported: Vec<H256>,
+        _invalid: Vec<H256>,
+        _enacted: Vec<H256>,
+        _retracted: Vec<H256>,
+        _sealed: Vec<H256>,
+        _duration: u64,
+    ) {
+        let peer_ids: Vec<_> = self.peers.read().keys().cloned().collect();
+        for id in peer_ids {
+            if let Some(peer) = self.peers.write().get_mut(&id) {
+                peer.mark_as_imported(imported.clone());
+            }
+        }
+    }
 }
 
 impl Extension {
@@ -243,23 +260,28 @@ impl Extension {
 
 impl Extension {
     fn on_header_response(&self, from: &NodeId, headers: Vec<Header>) {
-        let completed = if let Some(peer) = self.peers.write().get_mut(from) {
+        let mut completed = if let Some(peer) = self.peers.write().get_mut(from) {
             // FIXME: check validity of headers
             let encoded = headers.iter().map(|h| EncodedHeader::new(h.rlp_bytes().to_vec())).collect();
             peer.import_headers(encoded);
-            peer.drain()
+            peer.downloaded()
         } else {
             Vec::new()
         };
+        completed.sort_unstable_by_key(|header| header.number());
+
+        let mut exists = Vec::new();
         for header in completed {
+            let hash = header.hash();
             // FIXME: handle import errors
             match self.client.import_header(header.into_inner()) {
-                Ok(_) => {}
-                Err(_) => {}
+                Err(BlockImportError::Import(ImportError::AlreadyInChain)) => exists.push(hash),
+                _ => {},
             }
         }
 
         if let Some(peer) = self.peers.write().get_mut(from) {
+            peer.mark_as_imported(exists);
             if let Some(request) = peer.create_request() {
                 self.send_message(from, Message::Request(0, request));
             }

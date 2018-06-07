@@ -312,7 +312,7 @@ impl ImportBlock for Client {
     fn import_header(&self, bytes: Bytes) -> Result<H256, BlockImportError> {
         let unverified = ::encoded::Header::new(bytes).decode();
         {
-            if self.chain.read().is_known(&unverified.hash()) {
+            if self.chain.read().is_known_header(&unverified.hash()) {
                 return Err(BlockImportError::Import(ImportError::AlreadyInChain))
             }
         }

@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -30,8 +31,13 @@ const MAX_WAIT: u64 = 15;
 #[derive(Clone)]
 struct RequestInfo {
     number: BlockNumber,
-    total_score: U256,
     time: Instant,
+}
+
+#[derive(Clone)]
+struct Pivot {
+    hash: H256,
+    total_score: U256,
 }
 
 #[derive(Clone)]
@@ -42,15 +48,16 @@ pub struct Peer {
     total_score: U256,
     best_hash: H256,
 
-    pivot: H256,
+    pivot: Pivot,
     last_request: Option<RequestInfo>,
-    downloaded: Vec<Header>,
+    downloaded: HashMap<H256, Header>,
     trial: usize,
 }
 
 impl Peer {
     pub fn new(client: Arc<BlockChainClient>, total_score: U256, best_hash: H256) -> Self {
         let best_header_hash = client.best_block_header().hash();
+        let best_score = client.block_total_score(BlockId::Latest).expect("Best block always exist");
 
         Self {
             client,
@@ -58,9 +65,12 @@ impl Peer {
             total_score,
             best_hash,
 
-            pivot: best_header_hash,
+            pivot: Pivot {
+                hash: best_header_hash,
+                total_score: best_score,
+            },
             last_request: None,
-            downloaded: Vec::new(),
+            downloaded: HashMap::new(),
             trial: 0,
         }
     }
@@ -82,11 +92,17 @@ impl Peer {
         }
     }
 
-    pub fn is_idle(&self) -> bool {
-        let pivot_total_score =
-            self.client.block_total_score(BlockId::Hash(self.pivot)).expect("Pivot must exist in chain");
+    /// Find header from download cache, and then from blockchain
+    /// Panics if header dosn't exist
+    fn pivot_header(&self) -> Header {
+        match self.downloaded.get(&self.pivot.hash) {
+            Some(header) => header.clone(),
+            None => self.client.block_header(BlockId::Hash(self.pivot.hash)).unwrap()
+        }
+    }
 
-        let can_request = self.last_request.is_none() && self.total_score > pivot_total_score;
+    pub fn is_idle(&self) -> bool {
+        let can_request = self.last_request.is_none() && self.total_score > self.pivot.total_score;
 
         self.is_valid() && (can_request || self.is_expired())
     }
@@ -96,13 +112,13 @@ impl Peer {
             return None
         }
 
-        let pivot_number = self.client.block_number(BlockId::Hash(self.pivot)).expect("Pivot must exist in chain");
-        let pivot_score = self.client.block_total_score(BlockId::Hash(self.pivot)).expect("Pivot must exist in chain");
+        let pivot_number = self.pivot_header().number();
+
         self.last_request = Some(RequestInfo {
             number: pivot_number,
-            total_score: pivot_score,
             time: Instant::now(),
         });
+
         Some(RequestMessage::Headers {
             start_number: pivot_number,
             max_count: MAX_HEADER_REQUEST_LENGTH,
@@ -113,23 +129,36 @@ impl Peer {
     /// Expects importing headers matches requested header
     pub fn import_headers(&mut self, headers: Vec<Header>) {
         let first_header_hash = headers.first().expect("First header must exist").hash();
-        if first_header_hash == self.pivot {
-            self.downloaded.extend(headers);
-            self.downloaded.sort_unstable_by_key(|h| h.number());
+        if first_header_hash == self.pivot.hash {
+            for header in headers.iter() {
+                self.downloaded.insert(header.hash(), header.clone());
+            }
 
             // FIXME: skip known headers
-            self.pivot = self.downloaded.last().expect("Last downloaded header must exist").hash();
+            let new_scores = headers[1..].iter().fold(U256::zero(), |acc, header| acc + header.score());
+            self.pivot = Pivot {
+                hash: headers.last().expect("Last downloaded header must exist").hash(),
+                total_score: self.pivot.total_score + new_scores,
+            }
         } else {
-            self.downloaded.drain(..);
-            self.pivot =
-                self.client.block_header(BlockId::Hash(self.pivot)).expect("Pivot must exist in chain").parent_hash();
+            let pivot_header = self.pivot_header();
+            self.pivot = Pivot {
+                hash: pivot_header.parent_hash(),
+                total_score: self.pivot.total_score - pivot_header.score(),
+            }
         }
 
         self.last_request = None;
         self.trial = 0;
     }
 
-    pub fn drain(&mut self) -> Vec<Header> {
-        self.downloaded.drain(..).collect()
+    pub fn downloaded(&self) -> Vec<Header> {
+        self.downloaded.values().cloned().collect()
+    }
+
+    pub fn mark_as_imported(&mut self, hashes: Vec<H256>) {
+        for hash in hashes {
+            self.downloaded.remove(&hash);
+        }
     }
 }
