@@ -210,9 +210,7 @@ where
 
     fn note(&self, address: &Item::Address) {
         if let Some(ref mut checkpoint) = self.checkpoints.borrow_mut().last_mut() {
-            checkpoint
-                .entry(address.clone())
-                .or_insert_with(|| self.cache.borrow().get(address).map(Entry::<Item>::clone));
+            checkpoint.entry(address.clone()).or_insert_with(|| self.cache.borrow().get(address).cloned());
         }
     }
 

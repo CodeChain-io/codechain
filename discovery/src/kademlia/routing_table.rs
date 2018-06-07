@@ -125,10 +125,7 @@ impl RoutingTable {
     }
 
     pub fn distances(&self) -> Vec<usize> {
-        if self.buckets.len() == 0 {
-            return vec![]
-        }
-        self.buckets.keys().map(|distance| distance.clone()).collect()
+        self.buckets.keys().cloned().collect()
     }
 
     pub fn get_contacts_with_distance(&self, distance: usize) -> Vec<Contact> {

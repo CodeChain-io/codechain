@@ -85,11 +85,11 @@ impl RoutingTable {
 
         uninitialized
             .iter()
-            .map(|address| address.clone())
+            .cloned()
             .chain(key_pairs.iter().map(|(address, _)| address.clone()))
             .chain(shared_secrets.iter().map(|(address, _)| address.clone()))
             .chain(unestablished_sessions.iter().map(|(address, _)| address.clone()))
-            .chain(established.iter().map(|address| address.clone()))
+            .chain(established.iter().cloned())
             .collect()
     }
 
@@ -345,7 +345,7 @@ impl RoutingTable {
     pub fn unestablished_session(&self, remote_address: &SocketAddr) -> Option<Session> {
         let unestablished_sessions = self.unestablished_sessions.read();
 
-        unestablished_sessions.get(&remote_address).map(Clone::clone)
+        unestablished_sessions.get(&remote_address).cloned()
     }
 
     pub fn unestablished_addresses(&self, len: usize) -> Vec<SocketAddr> {
@@ -356,19 +356,19 @@ impl RoutingTable {
     pub fn local_node_id(&self, remote_node_id: &NodeId) -> Option<NodeId> {
         let remote_to_local_node_ids = self.remote_to_local_node_ids.read();
 
-        remote_to_local_node_ids.get(&remote_node_id).map(Clone::clone)
+        remote_to_local_node_ids.get(&remote_node_id).cloned()
     }
 
     pub fn address(&self, remote_node_id: &NodeId) -> Option<SocketAddr> {
         let id_to_addresses = self.id_to_addresses.read();
-        id_to_addresses.get(remote_node_id).map(Clone::clone)
+        id_to_addresses.get(remote_node_id).cloned()
     }
 
     pub fn candidates(&self, len: &usize) -> Vec<SocketAddr> {
         let candidates = self.candidates.read();
         let mut rng = self.rng.lock();
 
-        let mut addresses = candidates.iter().map(Clone::clone).collect::<Vec<_>>();
+        let mut addresses = candidates.iter().cloned().collect::<Vec<_>>();
         rng.shuffle(&mut addresses);
         addresses.into_iter().take(*len).collect()
     }

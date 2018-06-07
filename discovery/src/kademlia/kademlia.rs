@@ -56,7 +56,7 @@ impl Kademlia {
     }
 
     fn touch_contact(&mut self, contact: Contact) -> bool {
-        if let Some(head) = self.table.touch_contact(contact.clone()).map(|head| head.clone()) {
+        if let Some(head) = self.table.touch_contact(contact.clone()).cloned() {
             self.add_contact_to_be_verified(head)
         } else {
             false

@@ -439,7 +439,7 @@ impl StateDB {
         if !Self::is_allowed(addr, &self.parent_hash, &cache.modifications) {
             return None
         }
-        cache.cache.get_mut(addr).map(|a| a.as_ref().map(|a| a.clone()))
+        cache.cache.get_mut(addr).cloned()
     }
 
     fn get_cached_with<Item, F, U>(&self, a: &Item::Address, f: F, cache: &Mutex<Cache<Item>>) -> Option<U>

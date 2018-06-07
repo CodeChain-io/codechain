@@ -78,7 +78,7 @@ impl TimerInfo {
     }
 
     pub fn get_info(&self, token: TimerToken) -> Option<TimerItem> {
-        self.tokens.get(token).map(|info| info.clone())
+        self.tokens.get(token).cloned()
     }
 
     pub fn remove_by_token(&mut self, token: TimerToken) {

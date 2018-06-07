@@ -395,7 +395,7 @@ impl BlockChainClient for Client {
             let parcel_id = parcel_address.into();
 
             self.parcel_invoices(parcel_id)
-                .and_then(|invoices| invoices.invoices.get(transaction_address.index).map(|i| i.clone()))
+                .and_then(|invoices| invoices.invoices.get(transaction_address.index).cloned())
         })
     }
 }

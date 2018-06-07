@@ -329,12 +329,12 @@ impl Connections {
 
     pub fn stream_token(&self, node: &NodeId) -> Option<StreamToken> {
         let connected_nodes = self.connected_nodes.read();
-        connected_nodes.get(node).map(Clone::clone)
+        connected_nodes.get(node).cloned()
     }
 
     pub fn node_id(&self, token: &StreamToken) -> Option<NodeId> {
         let reversed_connected_nodes = self.reversed_connected_nodes.read();
-        reversed_connected_nodes.get(token).map(Clone::clone)
+        reversed_connected_nodes.get(token).cloned()
     }
 
     pub fn established_session(&self, token: &StreamToken) -> Option<Session> {
