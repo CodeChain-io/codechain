@@ -386,17 +386,14 @@ impl ImportBlock for TestBlockChainClient {
             panic!("Unexpected block number. Expected {}, got {}", self.blocks.read().len(), number);
         }
         if number > 0 {
-            match self.blocks.read().get(header.parent_hash()) {
-                Some(parent) => {
-                    let parent = Rlp::new(parent).val_at::<BlockHeader>(0);
-                    if parent.number() != (header.number() - 1) {
-                        panic!("Unexpected block parent");
-                    }
-                }
-                None => {
-                    panic!("Unknown block parent {:?} for block {}", header.parent_hash(), number);
-                }
-            }
+            let blocks = self.blocks.read();
+            let parent = blocks.get(header.parent_hash()).expect(&format!(
+                "Unknown block parent {:?} for block {}",
+                header.parent_hash(),
+                number
+            ));
+            let parent = Rlp::new(parent).val_at::<BlockHeader>(0);
+            assert_eq!(parent.number(), header.number() - 1, "Unexpected block parent");
         }
         let len = self.numbers.read().len();
         if number == len {
