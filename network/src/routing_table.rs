@@ -86,9 +86,9 @@ impl RoutingTable {
         uninitialized
             .iter()
             .cloned()
-            .chain(key_pairs.iter().map(|(address, _)| address.clone()))
-            .chain(shared_secrets.iter().map(|(address, _)| address.clone()))
-            .chain(unestablished_sessions.iter().map(|(address, _)| address.clone()))
+            .chain(key_pairs.keys().cloned())
+            .chain(shared_secrets.keys().cloned())
+            .chain(unestablished_sessions.keys().cloned())
             .chain(established.iter().cloned())
             .collect()
     }
@@ -350,7 +350,7 @@ impl RoutingTable {
 
     pub fn unestablished_addresses(&self, len: usize) -> Vec<SocketAddr> {
         let unestablished_sessions = self.unestablished_sessions.read();
-        unestablished_sessions.iter().take(len).map(|(addr, _session)| addr.clone()).collect()
+        unestablished_sessions.keys().take(len).cloned().collect()
     }
 
     pub fn local_node_id(&self, remote_node_id: &NodeId) -> Option<NodeId> {

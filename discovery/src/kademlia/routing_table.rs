@@ -139,7 +139,7 @@ impl RoutingTable {
     }
 
     pub fn len(&self) -> usize {
-        self.buckets.iter().map(|(_, bucket)| bucket.contacts.len()).sum()
+        self.buckets.values().map(|bucket| bucket.contacts.len()).sum()
     }
 }
 
