@@ -22,13 +22,13 @@ use ctypes::H256;
 use super::super::message::RequestMessage;
 
 pub struct BodyDownloader {
-    targets: Vec<(H256, H256)>,
+    targets: Vec<(H256, H256, H256)>,
     downloading: HashSet<H256>,
     downloaded: HashMap<H256, Vec<UnverifiedParcel>>,
 }
 
 impl BodyDownloader {
-    pub fn new(targets: Vec<(H256, H256)>) -> Self {
+    pub fn new(targets: Vec<(H256, H256, H256)>) -> Self {
         Self {
             targets,
             downloading: HashSet::new(),
@@ -38,12 +38,13 @@ impl BodyDownloader {
 
     pub fn create_request(&mut self) -> Option<RequestMessage> {
         let mut hashes = Vec::new();
-        for (hash, _) in &self.targets {
+        for (hash, ..) in &self.targets {
             if !self.downloading.contains(hash) && !self.downloaded.contains_key(hash) {
                 hashes.push(*hash);
             }
         }
         if hashes.len() != 0 {
+            self.downloading.extend(&hashes);
             Some(RequestMessage::Bodies(hashes))
         } else {
             None
@@ -52,18 +53,27 @@ impl BodyDownloader {
 
     pub fn import_bodies(&mut self, hashes: Vec<H256>, bodies: Vec<Vec<UnverifiedParcel>>) {
         for (hash, body) in hashes.into_iter().zip(bodies) {
-            self.downloading.remove(&hash);
-            self.downloaded.insert(hash, body);
+            if self.downloading.contains(&hash) {
+                if body.len() == 0 {
+                    let (_, prev_root, parcels_root) =
+                        self.targets.iter().find(|(h, ..)| *h == hash).expect("Downloading target must exist");
+                    if prev_root != parcels_root {
+                        continue
+                    }
+                }
+                self.downloading.remove(&hash);
+                self.downloaded.insert(hash, body);
+            }
         }
     }
 
-    pub fn add_target(&mut self, targets: Vec<(H256, H256)>) {
+    pub fn add_target(&mut self, targets: Vec<(H256, H256, H256)>) {
         self.targets.extend(targets);
     }
 
     pub fn remove_target(&mut self, targets: Vec<H256>) {
         for hash in targets {
-            if let Some(index) = self.targets.iter().position(|(h, _)| *h == hash) {
+            if let Some(index) = self.targets.iter().position(|(h, ..)| *h == hash) {
                 self.targets.remove(index);
             }
             self.downloading.remove(&hash);
@@ -73,7 +83,7 @@ impl BodyDownloader {
 
     pub fn drain(&mut self) -> Vec<(H256, Vec<UnverifiedParcel>)> {
         let mut result = Vec::new();
-        for (target, _) in &self.targets {
+        for (target, ..) in &self.targets {
             if let Some(body) = self.downloaded.remove(target) {
                 result.push((*target, body));
             }

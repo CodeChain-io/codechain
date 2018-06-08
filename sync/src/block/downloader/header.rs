@@ -49,6 +49,10 @@ pub struct HeaderDownloader {
 }
 
 impl HeaderDownloader {
+    pub fn total_score(&self) -> U256 {
+        self.total_score
+    }
+
     pub fn new(client: Arc<BlockChainClient>, total_score: U256, best_hash: H256) -> Self {
         let best_header_hash = client.best_block_header().hash();
         let best_score = client.block_total_score(BlockId::Latest).expect("Best block always exist");

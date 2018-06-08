@@ -23,7 +23,6 @@ use kvdb::{DBTransaction, KeyValueDB};
 use parking_lot::RwLock;
 use rlp_compress::{blocks_swapper, compress, decompress};
 
-use super::super::blockchain_info::BlockChainInfo;
 use super::super::db::{self, CacheUpdatePolicy, Readable, Writable};
 use super::super::encoded;
 use super::super::header::Header;
@@ -222,23 +221,6 @@ impl HeaderChain {
             }
         } else {
             BlockLocation::Branch
-        }
-    }
-
-    /// Returns general blockchain information
-    pub fn chain_info(&self) -> BlockChainInfo {
-        // ensure data consistently by locking everything first
-        let best_header_hash = self.best_header_hash();
-        let best_header_detail = self.best_header_detail();
-        let best_header = self.best_header();
-
-        BlockChainInfo {
-            total_score: best_header_detail.total_score.clone(),
-            pending_total_score: best_header_detail.total_score.clone(),
-            genesis_hash: self.genesis_hash(),
-            best_block_hash: best_header_hash,
-            best_block_number: best_header_detail.number,
-            best_block_timestamp: best_header.timestamp(),
         }
     }
 

@@ -159,8 +159,17 @@ impl BlockChain {
 
     /// Returns general blockchain information
     pub fn chain_info(&self) -> BlockChainInfo {
-        // FIXME: add additional info to header chain info
-        self.headerchain.chain_info()
+        let best_block_header = self.best_block_header();
+        let best_block_detail = self.best_block_detail();
+
+        BlockChainInfo {
+            total_score: best_block_detail.total_score.clone(),
+            pending_total_score: best_block_detail.total_score.clone(),
+            genesis_hash: self.genesis_hash(),
+            best_block_hash: best_block_header.hash(),
+            best_block_number: best_block_detail.number,
+            best_block_timestamp: best_block_header.timestamp(),
+        }
     }
 
     /// Get best block hash.

@@ -65,6 +65,12 @@ impl Extension {
         });
     }
 
+    fn dismiss_request(&self, token: &NodeId, id: u64) {
+        if let Some(requests) = self.requests.write().get_mut(token) {
+            requests.retain(|(i, _)| *i == id);
+        }
+    }
+
     fn send_request(&self, token: &NodeId, request: RequestMessage) {
         if let Some(requests) = self.requests.write().get_mut(token) {
             let id = self.last_request.fetch_add(1, Ordering::Relaxed) as u64;
@@ -138,6 +144,7 @@ impl NetworkExtension for Extension {
     fn on_timeout(&self, timer: TimerToken) {
         debug_assert_eq!(timer, SYNC_TIMER_TOKEN);
 
+        let total_score = self.client.chain_info().total_score;
         let peer_ids: Vec<_> = self.header_downloaders.read().keys().cloned().collect();
         for id in peer_ids {
             if let Some(peer) = self.header_downloaders.write().get_mut(&id) {
@@ -147,6 +154,11 @@ impl NetworkExtension for Extension {
             }
 
             // FIXME: invalidate expired body requests
+            let peer_score = if let Some(peer) = self.header_downloaders.read().get(&id) {
+                peer.total_score()
+            } else {
+                U256::zero()
+            };
             let have_body_request = {
                 if let Some(request_list) = self.requests.read().get(&id) {
                     request_list.iter().any(|r| match r {
@@ -157,7 +169,7 @@ impl NetworkExtension for Extension {
                     false
                 }
             };
-            if !have_body_request {
+            if !have_body_request && peer_score > total_score {
                 if let Some(request) = self.body_downloader.lock().create_request() {
                     self.send_request(&id, request);
                 }
@@ -218,7 +230,14 @@ impl ChainNotify for Extension {
         let body_targets = enacted_headers
             .into_iter()
             .filter(|header| self.client.block_body(BlockId::Hash(header.hash())).is_none())
-            .map(|header| (header.hash(), header.parcels_root()))
+            .map(|header| {
+                let prev_root = if let Some(parent) = self.client.block_header(BlockId::Hash(header.parent_hash())) {
+                    parent.parcels_root()
+                } else {
+                    H256::zero()
+                };
+                (header.hash(), prev_root, header.parcels_root())
+            })
             .collect();
         self.body_downloader.lock().add_target(body_targets);
         self.body_downloader.lock().remove_target(retracted);
@@ -342,6 +361,7 @@ impl Extension {
             if !self.is_valid_response(&request, &response) {
                 return
             }
+            self.dismiss_request(from, id);
 
             match response {
                 ResponseMessage::Headers(headers) => self.on_header_response(from, headers),
@@ -435,8 +455,17 @@ impl Extension {
         }
         self.body_downloader.lock().remove_target(exists);
 
-        if let Some(request) = self.body_downloader.lock().create_request() {
-            self.send_request(from, request);
+        let total_score = self.client.chain_info().total_score;
+        let peer_score = if let Some(peer) = self.header_downloaders.read().get(from) {
+            peer.total_score()
+        } else {
+            U256::zero()
+        };
+
+        if peer_score > total_score {
+            if let Some(request) = self.body_downloader.lock().create_request() {
+                self.send_request(from, request);
+            }
         }
     }
 }
