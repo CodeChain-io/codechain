@@ -3,12 +3,29 @@ CodeChain Core [![Build Status](https://travis-ci.com/kodebox-io/codechain.svg?t
 
 CodeChain Core is software designed to operate and connect to highly scalable permissioned blockchain networks conforming to the CodeChain Protocol.
 
-# Run
+# Build
 
-Use [cargo-watch](https://github.com/passcod/cargo-watch) to monitor for any changes in the source tree and restart the server.
+Download CodeChain code
 
 ```
-cargo watch -x run
+git clone git@github.com:CodeChain-io/codechain.git
+cd codechain
+```
+
+Build in release mode
+
+```
+cargo build --release
+```
+
+This will produce an executable in the `./target/release` directory.
+
+# Run
+
+To run CodeChain, just run
+
+```
+./target/release/codechain
 ```
 
 # Testing
