@@ -28,6 +28,22 @@ To run CodeChain, just run
 ./target/release/codechain
 ```
 
+# Formatting
+
+
+Make sure you run `rustfmt` before creating a PR to the repo. You need to install the nightly-2018-05-07 version of `rustfmt`.
+
+```
+rustup toolchain install nightly-2018-05-07
+rustup component add rustfmt-preview --toolchain nightly-2018-05-07
+```
+
+To run `rustfmt`,
+
+```
+cargo +nightly-2018-05-07 fmt
+```
+
 # Testing
 
 Developers are strongly encouraged to write unit tests for new code, and to submit new unit tests for old code. Unit tests can be compiled and run with: `cargo test --all`.
