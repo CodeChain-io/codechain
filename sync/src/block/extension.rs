@@ -195,13 +195,16 @@ impl ChainNotify for Extension {
                 peer.mark_as_imported(imported.clone());
             }
         }
-        let body_targets = enacted
+        let mut enacted_headers: Vec<_> = enacted
             .into_iter()
-            .filter(|hash| self.client.block_body(BlockId::Hash(*hash)).is_none())
-            .map(|hash| {
-                let header = self.client.block_header(BlockId::Hash(hash)).expect("Enacted header must exist");
-                (hash, header.parcels_root())
-            })
+            .map(|hash| self.client.block_header(BlockId::Hash(hash)).expect("Enacted header must exist"))
+            .collect();
+        enacted_headers.sort_unstable_by_key(|header| header.number());
+
+        let body_targets = enacted_headers
+            .into_iter()
+            .filter(|header| self.client.block_body(BlockId::Hash(header.hash())).is_none())
+            .map(|header| (header.hash(), header.parcels_root()))
             .collect();
         self.body_downloader.lock().add_target(body_targets);
         self.body_downloader.lock().remove_target(retracted);
@@ -216,10 +219,14 @@ impl Extension {
             return
         }
 
+        ctrace!(SYNC, "Peer #{} status update: total_score: {}, best_hash: {}", from, total_score, best_hash);
+
+        let mut requests = self.requests.write();
         let mut peers = self.header_downloaders.write();
         if peers.contains_key(from) {
             peers.get_mut(from).unwrap().update(total_score, best_hash);
         } else {
+            requests.insert(*from, Vec::new());
             peers.insert(*from, HeaderDownloader::new(self.client.clone(), total_score, best_hash));
         }
     }
@@ -309,7 +316,8 @@ impl Extension {
 
 impl Extension {
     fn on_peer_response(&self, from: &NodeId, id: u64, mut response: ResponseMessage) {
-        if let Some((_, request)) = self.requests.read()[from].iter().find(|(i, _)| *i == id).cloned() {
+        let last_request = self.requests.read()[from].iter().find(|(i, _)| *i == id).cloned();
+        if let Some((_, request)) = last_request {
             match &mut response {
                 ResponseMessage::Headers(headers) => {
                     headers.sort_unstable_by_key(|h| h.number());
@@ -355,7 +363,7 @@ impl Extension {
 
                 headers.first().map(|header| header.number()) == Some(*start_number)
             }
-            (RequestMessage::Bodies(..), ResponseMessage::Bodies(..)) => unimplemented!(),
+            (RequestMessage::Bodies(..), ResponseMessage::Bodies(..)) => true,
             (RequestMessage::StateHead(..), ResponseMessage::StateHead(..)) => unimplemented!(),
             (
                 RequestMessage::StateChunk {
