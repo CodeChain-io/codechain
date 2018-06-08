@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-extern crate codechain_bytes as cbytes;
 extern crate codechain_core as ccore;
 extern crate codechain_types as ctypes;
 extern crate jsonrpc_core;

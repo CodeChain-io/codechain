@@ -23,9 +23,8 @@ use std::cell::RefMut;
 use std::collections::HashMap;
 use std::fmt;
 
-use cbytes::Bytes;
 use ccrypto::Blake;
-use ctypes::{Address, H256, Public, U128, U256};
+use ctypes::{Address, Bytes, H256, Public, U128, U256};
 use cvm::{decode, execute, ScriptResult, VMConfig};
 use error::Error;
 use parcel::{AssetTransferInput, AssetTransferOutput, SignedParcel};

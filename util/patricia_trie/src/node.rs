@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
-use bytes::*;
+use codechain_types::Bytes;
 use elastic_array::ElasticArray36;
 use hashdb::DBValue;
 use nibbleslice::NibbleSlice;

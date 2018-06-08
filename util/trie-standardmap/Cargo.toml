@@ -5,7 +5,6 @@ authors = ["debris <marek.kotewicz@gmail.com>", "CodeChain Team <codechain@kodeb
 description = "Standard test map for profiling tries"
 
 [dependencies]
-codechain-bytes = { path = "../bytes" }
 codechain-crypto = { path = "../../crypto" }
 codechain-types = { path = "../../primitives/codechain-types" }
 rlp = { path = "../rlp" }

@@ -22,7 +22,7 @@ use std::fmt;
 use std::hash::Hash;
 use std::vec::Vec;
 
-use cbytes::Bytes;
+use ctypes::Bytes;
 use rlp::{Decodable, Encodable};
 use trie::{self, Trie, TrieKinds, TrieMut};
 

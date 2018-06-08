@@ -9,7 +9,6 @@ license = "GPL-3.0"
 elastic-array = "0.9"
 log = "0.3"
 rand = "0.4"
-codechain-bytes = { version = "0.1.0", path = "../bytes" }
 codechain-crypto = { path = "../../crypto" }
 codechain-types = { path = "../../primitives/codechain-types" }
 hashdb = { version = "0.1.1", path = "../hashdb" }

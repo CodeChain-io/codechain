@@ -18,9 +18,8 @@ use std::cell::RefCell;
 use std::cmp;
 use time::get_time;
 
-use cbytes::Bytes;
 use ccrypto::{blake256, BLAKE_NULL_RLP};
-use ctypes::{Address, H256, U256};
+use ctypes::{Address, Bytes, H256, U256};
 use heapsize::HeapSizeOf;
 use rlp::*;
 

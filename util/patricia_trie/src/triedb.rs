@@ -17,8 +17,8 @@
 use super::lookup::Lookup;
 use super::node::{Node, OwnedNode};
 use super::{Query, Trie, TrieError, TrieItem, TrieIterator};
-use bytes::{Bytes, ToPretty};
-use codechain_types::H256;
+use codechain_types::bytes::ToPretty;
+use codechain_types::{Bytes, H256};
 use hashdb::*;
 use nibbleslice::NibbleSlice;
 use rlp::*;

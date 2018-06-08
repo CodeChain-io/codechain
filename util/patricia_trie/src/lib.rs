@@ -15,7 +15,6 @@
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
 //! Trie interface and implementation.
-extern crate codechain_bytes as bytes;
 extern crate codechain_crypto;
 extern crate codechain_types;
 extern crate elastic_array;

@@ -18,8 +18,7 @@ use std::collections::HashMap;
 use std::mem;
 use std::sync::Arc;
 
-use cbytes::Bytes;
-use ctypes::H256;
+use ctypes::{Bytes, H256};
 use kvdb::{DBTransaction, KeyValueDB};
 use parking_lot::RwLock;
 use rlp::RlpStream;

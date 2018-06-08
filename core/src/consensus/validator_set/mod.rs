@@ -16,8 +16,7 @@
 
 use std::sync::Weak;
 
-use cbytes::Bytes;
-use ctypes::{Address, H256};
+use ctypes::{Address, Bytes, H256};
 
 use self::validator_list::ValidatorList;
 use super::super::client::EngineClient;
