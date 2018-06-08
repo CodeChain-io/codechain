@@ -11,6 +11,10 @@ Use [cargo-watch](https://github.com/passcod/cargo-watch) to monitor for any cha
 cargo watch -x run
 ```
 
+# Testing
+
+Developers are strongly encouraged to write unit tests for new code, and to submit new unit tests for old code. Unit tests can be compiled and run with: `cargo test`.
+
 # User Manual
 
 Under `docs` folder, run following command.
