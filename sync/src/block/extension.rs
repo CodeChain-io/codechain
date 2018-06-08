@@ -35,6 +35,7 @@ const SYNC_TIMER_INTERVAL: i64 = 1000;
 const SNAPSHOT_PERIOD: u64 = (1 << 14);
 
 pub struct Extension {
+    requests: RwLock<HashMap<NodeId, Vec<(u64, RequestMessage)>>>,
     peers: RwLock<HashMap<NodeId, Peer>>,
     client: Arc<BlockChainClient>,
     api: Mutex<Option<Arc<Api>>>,
@@ -43,6 +44,7 @@ pub struct Extension {
 impl Extension {
     pub fn new(client: Arc<BlockChainClient>) -> Arc<Self> {
         Arc::new(Self {
+            requests: RwLock::new(HashMap::new()),
             peers: RwLock::new(HashMap::new()),
             client,
             api: Mutex::new(None),
@@ -53,6 +55,13 @@ impl Extension {
         self.api.lock().as_ref().map(|api| {
             api.send(token, &message.rlp_bytes().to_vec());
         });
+    }
+
+    fn send_request(&self, token: &NodeId, id: u64, request: RequestMessage) {
+        if let Some(requests) = self.requests.write().get_mut(token) {
+            requests.push((id, request.clone()));
+            self.send_message(token, Message::Request(id, request));
+        }
     }
 }
 
@@ -106,10 +115,7 @@ impl NetworkExtension for Extension {
                     self.on_peer_status(token, total_score, best_hash, genesis_hash);
                 }
                 Message::Request(_, request) => self.on_peer_request(token, request),
-                Message::Response(_, response) => match response {
-                    ResponseMessage::Headers(headers) => self.on_header_response(token, headers),
-                    _ => unimplemented!(),
-                },
+                Message::Response(id, response) => self.on_peer_response(token, id, response),
             }
         } else {
             cinfo!(SYNC, "Invalid message from peer {}", token);
@@ -123,7 +129,8 @@ impl NetworkExtension for Extension {
         for id in peer_ids {
             if let Some(peer) = self.peers.write().get_mut(&id) {
                 if let Some(request) = peer.create_request() {
-                    self.send_message(&id, Message::Request(0, request));
+                    // FIXME: change id for each request
+                    self.send_request(&id, 0, request);
                 }
             }
         }
@@ -259,23 +266,62 @@ impl Extension {
 }
 
 impl Extension {
+    fn on_peer_response(&self, from: &NodeId, id: u64, mut response: ResponseMessage) {
+        if let Some((_, request)) = self.requests.read()[from].iter().find(|(i, _)| *i == id).cloned() {
+            match &mut response {
+                ResponseMessage::Headers(headers) => {
+                    headers.sort_unstable_by_key(|h| h.number());
+                }
+                _ => {}
+            }
+
+            if !self.is_valid_response(&request, &response) {
+                return
+            }
+
+            match response {
+                ResponseMessage::Headers(headers) => self.on_header_response(from, headers),
+                _ => unimplemented!(),
+            }
+        }
+    }
+
+    fn is_valid_response(&self, request: &RequestMessage, response: &ResponseMessage) -> bool {
+        match (request, response) {
+            (
+                RequestMessage::Headers {
+                    start_number,
+                    ..
+                },
+                ResponseMessage::Headers(headers),
+            ) => {
+                // Continuity check
+                for neighbors in headers.windows(2) {
+                    let parent = &neighbors[0];
+                    let child = &neighbors[1];
+                    if child.number() != parent.number() + 1 || *child.parent_hash() != parent.hash() {
+                        return false
+                    }
+                }
+
+                headers.first().map(|header| header.number()) == Some(*start_number)
+            }
+            (RequestMessage::Bodies(..), ResponseMessage::Bodies(..)) => unimplemented!(),
+            (RequestMessage::StateHead(..), ResponseMessage::StateHead(..)) => unimplemented!(),
+            (
+                RequestMessage::StateChunk {
+                    ..
+                },
+                ResponseMessage::StateChunk(..),
+            ) => unimplemented!(),
+            _ => false,
+        }
+    }
+
     fn on_header_response(&self, from: &NodeId, headers: Vec<Header>) {
         let mut completed = if let Some(peer) = self.peers.write().get_mut(from) {
-            let mut encoded: Vec<_> = headers.iter().map(|h| EncodedHeader::new(h.rlp_bytes().to_vec())).collect();
-            encoded.sort_unstable_by_key(|header| header.number());
-
-            // Continuity check
-            for neighbors in encoded.windows(2) {
-                let parent = &neighbors[0];
-                let child = &neighbors[1];
-                if child.number() != parent.number() + 1 || child.parent_hash() != parent.hash() {
-                    cinfo!(SYNC, "Headers are not continuous");
-                }
-            }
-
-            if encoded.len() != 0 && encoded.first().map(|header| header.number()) == peer.last_request_number() {
-                peer.import_headers(encoded);
-            }
+            let encoded = headers.iter().map(|h| EncodedHeader::new(h.rlp_bytes().to_vec())).collect();
+            peer.import_headers(encoded);
             peer.downloaded()
         } else {
             Vec::new()
@@ -295,7 +341,8 @@ impl Extension {
         if let Some(peer) = self.peers.write().get_mut(from) {
             peer.mark_as_imported(exists);
             if let Some(request) = peer.create_request() {
-                self.send_message(from, Message::Request(0, request));
+                // FIXME: change id for each request
+                self.send_request(from, 0, request);
             }
         }
     }
