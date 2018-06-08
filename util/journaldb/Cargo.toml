@@ -6,7 +6,6 @@ description = "A `HashDB` which can manage a short-term journal potentially cont
 license = "GPL3"
 
 [dependencies]
-codechain-bytes = { path = "../bytes" }
 codechain-types = { path = "../../primitives/codechain-types" }
 hashdb = { path = "../hashdb" }
 kvdb = { path = "../kvdb" }

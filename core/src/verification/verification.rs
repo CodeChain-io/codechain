@@ -16,9 +16,8 @@
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use cbytes::Bytes;
 use cmerkle::skewed_merkle_root;
-use ctypes::H256;
+use ctypes::{Bytes, H256};
 use heapsize::HeapSizeOf;
 use rlp::UntrustedRlp;
 use unexpected::{Mismatch, OutOfBounds};

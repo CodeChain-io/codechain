@@ -10,6 +10,7 @@ description = "CodeChain types"
 rustc_version = "0.2"
 
 [dependencies]
+ethcore-bytes = "0.1.1"
 ethereum-types = "0.3"
 crunchy = "0.1.5"
 serde = { version = "1.0", optional = true }

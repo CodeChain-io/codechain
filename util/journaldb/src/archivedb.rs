@@ -18,8 +18,7 @@
 
 use super::memorydb::*;
 use super::{DB_PREFIX_LEN, LATEST_ERA_KEY};
-use bytes::Bytes;
-use codechain_types::H256;
+use codechain_types::{Bytes, H256};
 use error::{BaseDataError, UtilError};
 use hashdb::*;
 use kvdb::{DBTransaction, KeyValueDB};

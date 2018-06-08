@@ -22,12 +22,11 @@ use std::collections::HashSet;
 use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
 use std::sync::{Arc, Weak};
 
-use cbytes::Bytes;
 use ccrypto::blake256;
 use ckeys::{public_to_address, recover_ecdsa};
 use ckeys::{ECDSASignature, Message};
 use cnetwork::{Api, NetworkExtension, NodeId, TimerToken};
-use ctypes::{Address, H256, H520, U128, U256};
+use ctypes::{Address, Bytes, H256, H520, U128, U256};
 use parking_lot::{Mutex, RwLock};
 use rand::{thread_rng, Rng};
 use rlp::{self, Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};

@@ -17,9 +17,9 @@
 use std::path::Path;
 use std::sync::Arc;
 
-use cbytes::Bytes;
 use cio::{IoContext, IoHandler, IoHandlerResult, IoService};
 use cnetwork::NodeId;
+use ctypes::Bytes;
 use kvdb_rocksdb::{Database, DatabaseConfig};
 
 use super::client::{Client, ClientConfig};

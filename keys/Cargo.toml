@@ -10,7 +10,6 @@ rustc-serialize = "0.3"
 lazy_static = "0.2"
 bech32 = "0.2.2"
 codechain-crypto = { path = "../crypto" }
-codechain-bytes = { path = "../util/bytes" }
 codechain-types = { path = "../primitives/codechain-types" }
 heapsize = "0.4"
 rlp = { path = "../util/rlp" }

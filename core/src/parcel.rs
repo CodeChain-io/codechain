@@ -17,10 +17,9 @@
 use std::fmt;
 use std::ops::Deref;
 
-use cbytes::Bytes;
 use ccrypto::blake256;
 use ckeys::{self, public_to_address, recover_ecdsa, sign_ecdsa, ECDSASignature, Private, Public};
-use ctypes::{Address, H160, H256, U256};
+use ctypes::{Address, Bytes, H160, H256, U256};
 use heapsize::HeapSizeOf;
 use rlp::{self, DecoderError, Encodable, RlpStream, UntrustedRlp};
 

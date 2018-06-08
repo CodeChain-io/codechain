@@ -1,8 +1,0 @@
-[package]
-name = "codechain-bytes"
-version = "0.1.0"
-authors = ["Parity Technologies <admin@parity.io>", "CodeChain Team <codechain@kodebox.io>"]
-description = "byte utilities for CodeChain"
-license = "GPL-3.0"
-
-[dependencies]

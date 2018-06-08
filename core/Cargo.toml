@@ -4,7 +4,6 @@ version = "0.1.0"
 authors = ["CodeChain Team <codechain@kodebox.io>"]
 
 [dependencies]
-codechain-bytes = { path = "../util/bytes" }
 codechain-crypto = { path = "../crypto" }
 codechain-io = { path = "../util/io" }
 codechain-json = { path = "../json" }

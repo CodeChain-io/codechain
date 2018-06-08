@@ -16,7 +16,7 @@
 
 use std::sync::Arc;
 
-use cbytes::Bytes;
+use ctypes::Bytes;
 use ctypes::{H256, U256};
 use header::Header;
 use kvdb::KeyValueDB;

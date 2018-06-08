@@ -16,9 +16,8 @@
 
 use std::fmt;
 
-use cbytes::Bytes;
 use ccrypto::blake256;
-use ctypes::{Address, H256, Public, U256};
+use ctypes::{Address, Bytes, H256, Public, U256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 use unexpected::Mismatch;
 

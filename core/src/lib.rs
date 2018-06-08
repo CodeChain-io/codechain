@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-extern crate codechain_bytes as cbytes;
 extern crate codechain_crypto as ccrypto;
 extern crate codechain_io as cio;
 extern crate codechain_json as cjson;

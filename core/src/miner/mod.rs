@@ -19,8 +19,7 @@ mod miner;
 mod parcel_queue;
 mod sealing_queue;
 
-use cbytes::Bytes;
-use ctypes::{Address, H256, U256};
+use ctypes::{Address, Bytes, H256, U256};
 
 pub use self::miner::{Miner, MinerOptions};
 use super::account_provider::SignError;

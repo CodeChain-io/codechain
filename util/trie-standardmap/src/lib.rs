@@ -16,13 +16,12 @@
 
 //! Key-value datastore with a modified Merkle tree.
 
-extern crate codechain_bytes as bytes;
 extern crate codechain_crypto;
 extern crate codechain_types;
 extern crate rlp;
 
-use bytes::Bytes;
 use codechain_crypto::blake256;
+use codechain_types::Bytes;
 use codechain_types::H256;
 use rlp::encode;
 

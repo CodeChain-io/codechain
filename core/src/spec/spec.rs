@@ -17,10 +17,9 @@
 use std::io::Read;
 use std::sync::Arc;
 
-use cbytes::Bytes;
 use ccrypto::BLAKE_NULL_RLP;
 use cjson;
-use ctypes::{Address, H256, U256};
+use ctypes::{Address, Bytes, H256, U256};
 use memorydb::MemoryDB;
 use parking_lot::RwLock;
 use rlp::{Rlp, RlpStream};

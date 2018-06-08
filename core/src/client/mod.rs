@@ -27,9 +27,8 @@ pub use self::config::ClientConfig;
 pub use self::error::Error;
 pub use self::test_client::TestBlockChainClient;
 
-use cbytes::Bytes;
 use cnetwork::NodeId;
-use ctypes::{Address, H256, Public, U256};
+use ctypes::{Address, Bytes, H256, Public, U256};
 
 use super::block::{ClosedBlock, OpenBlock, SealedBlock};
 use super::blockchain::ParcelInvoices;

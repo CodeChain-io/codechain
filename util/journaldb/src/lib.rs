@@ -16,7 +16,6 @@
 
 //! `JournalDB` interface and implementation.
 
-extern crate codechain_bytes as bytes;
 extern crate codechain_types;
 extern crate hashdb;
 extern crate kvdb;

@@ -21,7 +21,7 @@ use super::node::Node as RlpNode;
 use super::node::NodeKey;
 use super::{TrieError, TrieMut};
 
-use bytes::ToPretty;
+use codechain_types::bytes::ToPretty;
 use hashdb::DBValue;
 use hashdb::HashDB;
 use nibbleslice::NibbleSlice;
@@ -984,8 +984,8 @@ mod tests {
     use self::triehash::trie_root;
     use super::super::TrieMut;
     use super::*;
-    use bytes::ToPretty;
     use codechain_crypto::BLAKE_NULL_RLP;
+    use codechain_types::bytes::ToPretty;
     use memorydb::*;
     use standardmap::*;
 

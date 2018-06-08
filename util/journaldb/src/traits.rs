@@ -16,8 +16,7 @@
 
 //! Disk-backed `HashDB` implementation.
 
-use bytes::Bytes;
-use codechain_types::H256;
+use codechain_types::{Bytes, H256};
 use error::UtilError;
 use hashdb::*;
 use kvdb::{self, DBTransaction};

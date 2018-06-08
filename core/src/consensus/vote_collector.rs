@@ -18,8 +18,7 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::Debug;
 use std::hash::Hash;
 
-use cbytes::Bytes;
-use ctypes::{Address, H256, H520};
+use ctypes::{Address, Bytes, H256, H520};
 use parking_lot::RwLock;
 use rlp::{Encodable, RlpStream};
 

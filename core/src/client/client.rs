@@ -19,10 +19,9 @@ use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
 use std::sync::{Arc, Weak};
 use std::time::Instant;
 
-use cbytes::Bytes;
 use cio::IoChannel;
 use cnetwork::NodeId;
-use ctypes::{Address, H256, Public, U256};
+use ctypes::{Address, Bytes, H256, Public, U256};
 use journaldb;
 use kvdb::{DBTransaction, KeyValueDB};
 use parking_lot::{Mutex, RwLock};

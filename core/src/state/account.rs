@@ -18,8 +18,7 @@
 
 use std::fmt;
 
-use cbytes::Bytes;
-use ctypes::{self, Public, U256};
+use ctypes::{self, Bytes, Public, U256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::CacheableItem;

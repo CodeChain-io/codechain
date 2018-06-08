@@ -14,10 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use cbytes::Bytes;
 use ccrypto::BLAKE_NULL_RLP;
 use cjson;
-use ctypes::{Address, H256, U256};
+use ctypes::{Address, Bytes, H256, U256};
 use spec::seal::Seal;
 
 /// Genesis components.

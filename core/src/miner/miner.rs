@@ -18,8 +18,7 @@ use std::collections::HashSet;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use cbytes::Bytes;
-use ctypes::{Address, H256, U256};
+use ctypes::{Address, Bytes, H256, U256};
 use parking_lot::{Mutex, RwLock};
 
 use super::super::account_provider::{AccountProvider, SignError};

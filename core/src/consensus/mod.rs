@@ -33,10 +33,9 @@ pub use self::validator_set::ValidatorSet;
 use std::fmt;
 use std::sync::{Arc, Weak};
 
-use cbytes::Bytes;
 use ckeys::ECDSASignature;
 use cnetwork::NetworkExtension;
-use ctypes::{Address, H256};
+use ctypes::{Address, Bytes, H256};
 use unexpected::{Mismatch, OutOfBounds};
 
 use self::epoch::{EpochVerifier, NoOp, PendingTransition};

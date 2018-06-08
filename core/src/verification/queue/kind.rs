@@ -124,8 +124,7 @@ pub mod headers {
 
 /// The blocks verification module.
 pub mod blocks {
-    use cbytes::Bytes;
-    use ctypes::{H256, U256};
+    use ctypes::{Bytes, H256, U256};
     use heapsize::HeapSizeOf;
 
     use super::super::super::super::consensus::CodeChainEngine;
