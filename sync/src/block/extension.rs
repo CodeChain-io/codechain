@@ -20,14 +20,17 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
 use ccore::encoded::Header as EncodedHeader;
-use ccore::{BlockChainClient, BlockId, BlockImportError, BlockNumber, ChainNotify, Header, ImportError};
+use ccore::{
+    Block, BlockChainClient, BlockId, BlockImportError, BlockNumber, ChainNotify, Header, ImportError, Seal,
+    UnverifiedParcel,
+};
 use cnetwork::{Api, NetworkExtension, NodeId, TimerToken};
 use ctypes::{H256, U256};
 use rlp::{Encodable, UntrustedRlp};
 use time::Duration;
 
+use super::downloader::{BodyDownloader, HeaderDownloader};
 use super::message::{Message, RequestMessage, ResponseMessage};
-use super::downloader::HeaderDownloader;
 
 const EXTENSION_NAME: &'static str = "block-propagation";
 const SYNC_TIMER_TOKEN: usize = 0;
@@ -38,6 +41,7 @@ const SNAPSHOT_PERIOD: u64 = (1 << 14);
 pub struct Extension {
     requests: RwLock<HashMap<NodeId, Vec<(u64, RequestMessage)>>>,
     header_downloaders: RwLock<HashMap<NodeId, HeaderDownloader>>,
+    body_downloader: Mutex<BodyDownloader>,
     client: Arc<BlockChainClient>,
     api: Mutex<Option<Arc<Api>>>,
     last_request: AtomicUsize,
@@ -48,6 +52,7 @@ impl Extension {
         Arc::new(Self {
             requests: RwLock::new(HashMap::new()),
             header_downloaders: RwLock::new(HashMap::new()),
+            body_downloader: Mutex::new(BodyDownloader::new(Vec::new())),
             client,
             api: Mutex::new(None),
             last_request: AtomicUsize::new(0),
@@ -140,6 +145,23 @@ impl NetworkExtension for Extension {
                     self.send_request(&id, request);
                 }
             }
+
+            // FIXME: invalidate expired body requests
+            let have_body_request = {
+                if let Some(request_list) = self.requests.read().get(&id) {
+                    request_list.iter().any(|r| match r {
+                        (_, RequestMessage::Bodies(..)) => true,
+                        _ => false,
+                    })
+                } else {
+                    false
+                }
+            };
+            if !have_body_request {
+                if let Some(request) = self.body_downloader.lock().create_request() {
+                    self.send_request(&id, request);
+                }
+            }
         }
     }
 }
@@ -147,21 +169,23 @@ impl NetworkExtension for Extension {
 impl ChainNotify for Extension {
     fn new_blocks(
         &self,
-        _imported: Vec<H256>,
-        _invalid: Vec<H256>,
+        imported: Vec<H256>,
+        invalid: Vec<H256>,
         _enacted: Vec<H256>,
         _retracted: Vec<H256>,
         _sealed: Vec<H256>,
         _duration: u64,
     ) {
+        self.body_downloader.lock().remove_target(imported);
+        self.body_downloader.lock().remove_target(invalid);
     }
 
     fn new_headers(
         &self,
         imported: Vec<H256>,
         _invalid: Vec<H256>,
-        _enacted: Vec<H256>,
-        _retracted: Vec<H256>,
+        enacted: Vec<H256>,
+        retracted: Vec<H256>,
         _sealed: Vec<H256>,
         _duration: u64,
     ) {
@@ -171,6 +195,16 @@ impl ChainNotify for Extension {
                 peer.mark_as_imported(imported.clone());
             }
         }
+        let body_targets = enacted
+            .into_iter()
+            .filter(|hash| self.client.block_body(BlockId::Hash(*hash)).is_none())
+            .map(|hash| {
+                let header = self.client.block_header(BlockId::Hash(hash)).expect("Enacted header must exist");
+                (hash, header.parcels_root())
+            })
+            .collect();
+        self.body_downloader.lock().add_target(body_targets);
+        self.body_downloader.lock().remove_target(retracted);
     }
 }
 
@@ -257,6 +291,8 @@ impl Extension {
         for hash in hashes {
             if let Some(body) = self.client.block_body(BlockId::Hash(hash)) {
                 bodies.push(body.parcels());
+            } else {
+                bodies.push(Vec::new());
             }
         }
         ResponseMessage::Bodies(bodies)
@@ -287,6 +323,13 @@ impl Extension {
 
             match response {
                 ResponseMessage::Headers(headers) => self.on_header_response(from, headers),
+                ResponseMessage::Bodies(bodies) => {
+                    let hashes = match request {
+                        RequestMessage::Bodies(hashes) => hashes,
+                        _ => unreachable!(),
+                    };
+                    self.on_body_response(from, hashes, bodies)
+                }
                 _ => unimplemented!(),
             }
         }
@@ -349,6 +392,29 @@ impl Extension {
             if let Some(request) = peer.create_request() {
                 self.send_request(from, request);
             }
+        }
+    }
+
+    fn on_body_response(&self, from: &NodeId, hashes: Vec<H256>, bodies: Vec<Vec<UnverifiedParcel>>) {
+        self.body_downloader.lock().import_bodies(hashes, bodies);
+        let completed = self.body_downloader.lock().drain();
+        let mut exists = Vec::new();
+        for (hash, body) in completed {
+            let header = self.client.block_header(BlockId::Hash(hash)).expect("Downloaded body's header must exist");
+            let block = Block {
+                header: header.decode(),
+                parcels: body,
+            };
+            // FIXME: handle import errors
+            match self.client.import_block(block.rlp_bytes(Seal::With)) {
+                Err(BlockImportError::Import(ImportError::AlreadyInChain)) => exists.push(hash),
+                _ => {}
+            }
+        }
+        self.body_downloader.lock().remove_target(exists);
+
+        if let Some(request) = self.body_downloader.lock().create_request() {
+            self.send_request(from, request);
         }
     }
 }
