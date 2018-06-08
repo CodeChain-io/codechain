@@ -178,6 +178,20 @@ impl ChainNotify for Extension {
     ) {
         self.body_downloader.lock().remove_target(imported);
         self.body_downloader.lock().remove_target(invalid);
+
+
+        let chain_info = self.client.chain_info();
+        let peer_ids: Vec<_> = self.header_downloaders.read().keys().cloned().collect();
+        for id in peer_ids {
+            self.send_message(
+                &id,
+                Message::Status {
+                    total_score: chain_info.total_score,
+                    best_hash: chain_info.best_block_hash,
+                    genesis_hash: chain_info.genesis_hash,
+                },
+            );
+        }
     }
 
     fn new_headers(
