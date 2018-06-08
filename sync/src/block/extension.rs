@@ -16,6 +16,7 @@
 
 use parking_lot::{Mutex, RwLock};
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
 use ccore::encoded::Header as EncodedHeader;
@@ -39,6 +40,7 @@ pub struct Extension {
     peers: RwLock<HashMap<NodeId, Peer>>,
     client: Arc<BlockChainClient>,
     api: Mutex<Option<Arc<Api>>>,
+    last_request: AtomicUsize,
 }
 
 impl Extension {
@@ -48,6 +50,7 @@ impl Extension {
             peers: RwLock::new(HashMap::new()),
             client,
             api: Mutex::new(None),
+            last_request: AtomicUsize::new(0),
         })
     }
 
@@ -57,11 +60,16 @@ impl Extension {
         });
     }
 
-    fn send_request(&self, token: &NodeId, id: u64, request: RequestMessage) {
+    fn send_request(&self, token: &NodeId, request: RequestMessage) {
         if let Some(requests) = self.requests.write().get_mut(token) {
+            let id = self.last_request.fetch_add(1, Ordering::Relaxed) as u64;
             requests.push((id, request.clone()));
             self.send_message(token, Message::Request(id, request));
         }
+    }
+
+    fn send_response(&self, token: &NodeId, id: u64, response: ResponseMessage) {
+        self.send_message(token, Message::Response(id, response));
     }
 }
 
@@ -114,7 +122,7 @@ impl NetworkExtension for Extension {
                 } => {
                     self.on_peer_status(token, total_score, best_hash, genesis_hash);
                 }
-                Message::Request(_, request) => self.on_peer_request(token, request),
+                Message::Request(id, request) => self.on_peer_request(token, id, request),
                 Message::Response(id, response) => self.on_peer_response(token, id, response),
             }
         } else {
@@ -129,8 +137,7 @@ impl NetworkExtension for Extension {
         for id in peer_ids {
             if let Some(peer) = self.peers.write().get_mut(&id) {
                 if let Some(request) = peer.create_request() {
-                    // FIXME: change id for each request
-                    self.send_request(&id, 0, request);
+                    self.send_request(&id, request);
                 }
             }
         }
@@ -185,7 +192,7 @@ impl Extension {
 }
 
 impl Extension {
-    fn on_peer_request(&self, from: &NodeId, request: RequestMessage) {
+    fn on_peer_request(&self, from: &NodeId, id: u64, request: RequestMessage) {
         if !self.peers.read().contains_key(from) {
             cinfo!(SYNC, "Request from invalid peer #{} received", from);
             return
@@ -209,8 +216,7 @@ impl Extension {
             } => self.create_state_chunk_response(block_hash, tree_root),
         };
 
-        // FIXME: assign request id
-        self.send_message(from, Message::Response(0, response));
+        self.send_response(from, id, response);
     }
 
     fn is_valid_request(&self, request: &RequestMessage) -> bool {
@@ -341,8 +347,7 @@ impl Extension {
         if let Some(peer) = self.peers.write().get_mut(from) {
             peer.mark_as_imported(exists);
             if let Some(request) = peer.create_request() {
-                // FIXME: change id for each request
-                self.send_request(from, 0, request);
+                self.send_request(from, request);
             }
         }
     }

@@ -19,7 +19,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use ccore::encoded::Header;
-use ccore::{BlockChainClient, BlockId, BlockNumber};
+use ccore::{BlockChainClient, BlockId};
 use ctypes::{H256, U256};
 
 use super::message::RequestMessage;
@@ -27,12 +27,6 @@ use super::message::RequestMessage;
 const MAX_HEADER_REQUEST_LENGTH: u64 = 128;
 const MAX_RETRY: usize = 3;
 const MAX_WAIT: u64 = 15;
-
-#[derive(Clone)]
-struct RequestInfo {
-    number: BlockNumber,
-    time: Instant,
-}
 
 #[derive(Clone)]
 struct Pivot {
@@ -49,7 +43,7 @@ pub struct Peer {
     best_hash: H256,
 
     pivot: Pivot,
-    last_request: Option<RequestInfo>,
+    request_time: Option<Instant>,
     downloaded: HashMap<H256, Header>,
     trial: usize,
 }
@@ -69,7 +63,7 @@ impl Peer {
                 hash: best_header_hash,
                 total_score: best_score,
             },
-            last_request: None,
+            request_time: None,
             downloaded: HashMap::new(),
             trial: 0,
         }
@@ -85,15 +79,7 @@ impl Peer {
     }
 
     fn is_expired(&self) -> bool {
-        if let Some(info) = &self.last_request {
-            (Instant::now() - info.time).as_secs() > MAX_WAIT
-        } else {
-            false
-        }
-    }
-
-    pub fn last_request_number(&self) -> Option<BlockNumber> {
-        self.last_request.clone().map(|info| info.number)
+        self.request_time.map_or(false, |time| (Instant::now() - time).as_secs() > MAX_WAIT)
     }
 
     /// Find header from download cache, and then from blockchain
@@ -106,7 +92,7 @@ impl Peer {
     }
 
     pub fn is_idle(&self) -> bool {
-        let can_request = self.last_request.is_none() && self.total_score > self.pivot.total_score;
+        let can_request = self.request_time.is_none() && self.total_score > self.pivot.total_score;
 
         self.is_valid() && (can_request || self.is_expired())
     }
@@ -118,10 +104,7 @@ impl Peer {
 
         let pivot_number = self.pivot_header().number();
 
-        self.last_request = Some(RequestInfo {
-            number: pivot_number,
-            time: Instant::now(),
-        });
+        self.request_time = Some(Instant::now());
 
         Some(RequestMessage::Headers {
             start_number: pivot_number,
@@ -152,7 +135,7 @@ impl Peer {
             }
         }
 
-        self.last_request = None;
+        self.request_time = None;
         self.trial = 0;
     }
 
