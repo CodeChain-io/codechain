@@ -1,7 +1,7 @@
 CodeChain Core [![Build Status](https://travis-ci.com/kodebox-io/codechain.svg?token=M5mUpGsZqiCqxcx6XsLP&branch=master)](https://travis-ci.com/kodebox-io/codechain) [![Gitter chat](https://badges.gitter.im/CodeChain-io/codechain.png)](https://gitter.im/CodeChain-io/codechain)
 ==============
 
-CodeChain Core is software designed to operate and connect to highly scalable permissioned blockchain networks conforming to the CodeChain Protocol.
+CodeChain is a programmable open source blockchain technology optimal for developing and customizing multi-asset management systems.
 
 # Build
 
