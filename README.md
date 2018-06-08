@@ -11,5 +11,13 @@ Use [cargo-watch](https://github.com/passcod/cargo-watch) to monitor for any cha
 cargo watch -x run
 ```
 
+# User Manual
+
+Under `docs` folder, run following command.
+```
+make html
+```
+User manual will be generated at `docs/_build/html`.
+
 # License
 CodeChain is licensed under the AGPL License - see the LICENSE file for details
