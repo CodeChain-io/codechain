@@ -22,7 +22,7 @@ use ccore::encoded::Header;
 use ccore::{BlockChainClient, BlockId};
 use ctypes::{H256, U256};
 
-use super::message::RequestMessage;
+use super::super::message::RequestMessage;
 
 const MAX_HEADER_REQUEST_LENGTH: u64 = 128;
 const MAX_RETRY: usize = 3;
@@ -35,7 +35,7 @@ struct Pivot {
 }
 
 #[derive(Clone)]
-pub struct Peer {
+pub struct HeaderDownloader {
     // NOTE: Use this member as minimum as possible.
     client: Arc<BlockChainClient>,
 
@@ -48,7 +48,7 @@ pub struct Peer {
     trial: usize,
 }
 
-impl Peer {
+impl HeaderDownloader {
     pub fn new(client: Arc<BlockChainClient>, total_score: U256, best_hash: H256) -> Self {
         let best_header_hash = client.best_block_header().hash();
         let best_score = client.block_total_score(BlockId::Latest).expect("Best block always exist");

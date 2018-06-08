@@ -14,8 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod downloader;
-mod extension;
-mod message;
+mod header;
 
-pub use self::extension::Extension as BlockSyncExtension;
+pub use self::header::HeaderDownloader;

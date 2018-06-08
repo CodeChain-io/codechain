@@ -27,7 +27,7 @@ use rlp::{Encodable, UntrustedRlp};
 use time::Duration;
 
 use super::message::{Message, RequestMessage, ResponseMessage};
-use super::peer::Peer;
+use super::downloader::HeaderDownloader;
 
 const EXTENSION_NAME: &'static str = "block-propagation";
 const SYNC_TIMER_TOKEN: usize = 0;
@@ -37,7 +37,7 @@ const SNAPSHOT_PERIOD: u64 = (1 << 14);
 
 pub struct Extension {
     requests: RwLock<HashMap<NodeId, Vec<(u64, RequestMessage)>>>,
-    peers: RwLock<HashMap<NodeId, Peer>>,
+    header_downloaders: RwLock<HashMap<NodeId, HeaderDownloader>>,
     client: Arc<BlockChainClient>,
     api: Mutex<Option<Arc<Api>>>,
     last_request: AtomicUsize,
@@ -47,7 +47,7 @@ impl Extension {
     pub fn new(client: Arc<BlockChainClient>) -> Arc<Self> {
         Arc::new(Self {
             requests: RwLock::new(HashMap::new()),
-            peers: RwLock::new(HashMap::new()),
+            header_downloaders: RwLock::new(HashMap::new()),
             client,
             api: Mutex::new(None),
             last_request: AtomicUsize::new(0),
@@ -92,7 +92,7 @@ impl NetworkExtension for Extension {
         self.api.lock().as_ref().map(|api| api.negotiate(token));
     }
     fn on_node_removed(&self, token: &NodeId) {
-        self.peers.write().remove(token);
+        self.header_downloaders.write().remove(token);
         cinfo!(SYNC, "Peer removed #{}", token);
     }
 
@@ -133,9 +133,9 @@ impl NetworkExtension for Extension {
     fn on_timeout(&self, timer: TimerToken) {
         debug_assert_eq!(timer, SYNC_TIMER_TOKEN);
 
-        let peer_ids: Vec<_> = self.peers.read().keys().cloned().collect();
+        let peer_ids: Vec<_> = self.header_downloaders.read().keys().cloned().collect();
         for id in peer_ids {
-            if let Some(peer) = self.peers.write().get_mut(&id) {
+            if let Some(peer) = self.header_downloaders.write().get_mut(&id) {
                 if let Some(request) = peer.create_request() {
                     self.send_request(&id, request);
                 }
@@ -165,9 +165,9 @@ impl ChainNotify for Extension {
         _sealed: Vec<H256>,
         _duration: u64,
     ) {
-        let peer_ids: Vec<_> = self.peers.read().keys().cloned().collect();
+        let peer_ids: Vec<_> = self.header_downloaders.read().keys().cloned().collect();
         for id in peer_ids {
-            if let Some(peer) = self.peers.write().get_mut(&id) {
+            if let Some(peer) = self.header_downloaders.write().get_mut(&id) {
                 peer.mark_as_imported(imported.clone());
             }
         }
@@ -182,18 +182,18 @@ impl Extension {
             return
         }
 
-        let mut peers = self.peers.write();
+        let mut peers = self.header_downloaders.write();
         if peers.contains_key(from) {
             peers.get_mut(from).unwrap().update(total_score, best_hash);
         } else {
-            peers.insert(*from, Peer::new(self.client.clone(), total_score, best_hash));
+            peers.insert(*from, HeaderDownloader::new(self.client.clone(), total_score, best_hash));
         }
     }
 }
 
 impl Extension {
     fn on_peer_request(&self, from: &NodeId, id: u64, request: RequestMessage) {
-        if !self.peers.read().contains_key(from) {
+        if !self.header_downloaders.read().contains_key(from) {
             cinfo!(SYNC, "Request from invalid peer #{} received", from);
             return
         }
@@ -325,7 +325,7 @@ impl Extension {
     }
 
     fn on_header_response(&self, from: &NodeId, headers: Vec<Header>) {
-        let mut completed = if let Some(peer) = self.peers.write().get_mut(from) {
+        let mut completed = if let Some(peer) = self.header_downloaders.write().get_mut(from) {
             let encoded = headers.iter().map(|h| EncodedHeader::new(h.rlp_bytes().to_vec())).collect();
             peer.import_headers(encoded);
             peer.downloaded()
@@ -344,7 +344,7 @@ impl Extension {
             }
         }
 
-        if let Some(peer) = self.peers.write().get_mut(from) {
+        if let Some(peer) = self.header_downloaders.write().get_mut(from) {
             peer.mark_as_imported(exists);
             if let Some(request) = peer.create_request() {
                 self.send_request(from, request);
