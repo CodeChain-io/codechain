@@ -10,7 +10,7 @@ codechain-core = { path = "../core" }
 codechain-types = { path = "../primitives/codechain-types" }
 kvdb = { path = "../util/kvdb" }
 kvdb-rocksdb = { path = "../util/kvdb-rocksdb" }
-log = "0.3"
+log = "0.4.1"
 rlp = { path = "../util/rlp" }
 serde = "1.0"
 serde_json = "1.0"

@@ -9,6 +9,7 @@ codechain-io = { path = "../util/io" }
 codechain-json = { path = "../json" }
 codechain-keys = { path="../keys" }
 codechain-keystore = { path="../keystore" }
+codechain-logger = { path = "../util/logger" }
 codechain-merkle = { path = "../util/merkle" }
 codechain-network = { path = "../network" }
 codechain-types = { path = "../primitives/codechain-types" }
@@ -17,7 +18,7 @@ hashdb = { path = "../util/hashdb" }
 heapsize = "0.4"
 journaldb = { path = "../util/journaldb" }
 linked-hash-map = "0.5"
-log = "0.3"
+log = "0.4.1"
 lru-cache = "0.1"
 num_cpus = "1.2"
 kvdb = { path = "../util/kvdb" }

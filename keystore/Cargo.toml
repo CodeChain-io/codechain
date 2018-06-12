@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = ["CodeChain Team <codechain@kodebox.io>", "Parity Technologies <admin@parity.io>"]
 
 [dependencies]
-log = "0.3"
+log = "0.4.1"
 libc = "0.2"
 rand = "0.4"
 codechain-keys = { path = "../keys" }
