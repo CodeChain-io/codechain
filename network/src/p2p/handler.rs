@@ -154,9 +154,7 @@ impl Manager {
         reg: Token,
         event_loop: &mut EventLoop<IoManager<Message>>,
     ) -> IoHandlerResult<()> {
-        if self.connections.register(&token, reg, event_loop)? == ConnectionType::None {
-            return Err(Error::InvalidStream(token).into())
-        }
+        self.connections.register(&token, reg, event_loop)?;
         Ok(())
     }
 
@@ -166,9 +164,7 @@ impl Manager {
         reg: Token,
         event_loop: &mut EventLoop<IoManager<Message>>,
     ) -> IoHandlerResult<()> {
-        if self.connections.reregister(&token, reg, event_loop)? == ConnectionType::None {
-            return Err(Error::InvalidStream(token).into())
-        }
+        self.connections.reregister(&token, reg, event_loop)?;
         Ok(())
     }
 
@@ -177,9 +173,7 @@ impl Manager {
         token: StreamToken,
         event_loop: &mut EventLoop<IoManager<Message>>,
     ) -> IoHandlerResult<()> {
-        if self.connections.deregister(&token, event_loop)? == ConnectionType::None {
-            return Err(Error::InvalidStream(token).into())
-        }
+        self.connections.deregister(&token, event_loop)?;
         Ok(())
     }
 

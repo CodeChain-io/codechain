@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::cell::Cell;
 use std::collections::{HashMap, VecDeque};
 use std::error;
 use std::fmt;
@@ -22,19 +23,18 @@ use std::result;
 
 use cio::IoManager;
 use mio::deprecated::EventLoop;
-use mio::event::Evented;
 use mio::unix::UnixReady;
 use mio::{PollOpt, Ready, Token};
-use rlp::DecoderError;
-
+use parking_lot::Mutex;
+use rlp::{DecoderError, UntrustedRlp};
 
 use super::super::session::Session;
-use super::super::NodeId;
-use super::message::{Message, Seq, Version};
-use super::stream::{Error as StreamError, SignedStream};
+use super::super::{NodeId, SocketAddr};
+use super::message::{HandshakeMessage, Message, Seq, SignedMessage, Version};
+use super::stream::{Error as StreamError, SignedStream, Stream};
 use super::{ExtensionMessage, NegotiationMessage};
 
-pub struct EstablishedConnection {
+struct EstablishedConnection {
     stream: SignedStream,
     send_queue: VecDeque<Message>,
     next_negotiation_seq: Seq,
@@ -92,7 +92,7 @@ impl From<StreamError> for Error {
 pub type Result<T> = result::Result<T, Error>;
 
 impl EstablishedConnection {
-    pub fn new(stream: SignedStream, remote_node_id: NodeId) -> Self {
+    fn new(stream: SignedStream, remote_node_id: NodeId) -> Self {
         Self {
             stream,
             send_queue: VecDeque::new(),
@@ -106,7 +106,7 @@ impl EstablishedConnection {
         self.send_queue.push_back(message);
     }
 
-    pub fn enqueue_negotiation_request(&mut self, name: String, version: Version) {
+    fn enqueue_negotiation_request(&mut self, name: String, version: Version) {
         let seq = self.next_negotiation_seq;
         self.next_negotiation_seq += 1;
         if let Some(_) = self.requested_negotiation.insert(seq, name.clone()) {
@@ -115,15 +115,15 @@ impl EstablishedConnection {
         self.enqueue(Message::Negotiation(NegotiationMessage::request(seq, name, version)));
     }
 
-    pub fn remove_requested_negotiation(&mut self, seq: &u64) -> Option<String> {
+    fn remove_requested_negotiation(&mut self, seq: &u64) -> Option<String> {
         self.requested_negotiation.remove(seq)
     }
 
-    pub fn enqueue_negotiation_allowed(&mut self, seq: Seq) {
+    fn enqueue_negotiation_allowed(&mut self, seq: Seq) {
         self.enqueue(Message::Negotiation(NegotiationMessage::allowed(seq)));
     }
 
-    pub fn enqueue_extension_message(&mut self, extension_name: String, need_encryption: bool, message: &[u8]) {
+    fn enqueue_extension_message(&mut self, extension_name: String, need_encryption: bool, message: &[u8]) {
         const VERSION: u64 = 0;
         let message = if need_encryption {
             match ExtensionMessage::encrypted_from_unencrypted_data(
@@ -143,40 +143,7 @@ impl EstablishedConnection {
         };
         self.enqueue(Message::Extension(message));
     }
-}
 
-pub trait Connection<S: Sized, M: Sized>
-where
-    S: Evented, {
-    fn stream(&self) -> &S;
-    fn interest(&self) -> Ready;
-
-    fn send(&mut self) -> Result<bool>;
-    fn receive(&mut self) -> Result<Option<M>>;
-
-    fn remote_node_id(&self) -> Option<NodeId>;
-    fn session(&self) -> Option<Session>;
-
-    fn register<Message>(&self, reg: Token, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()>
-    where
-        Message: Send + Sync + Clone + 'static, {
-        event_loop.register(self.stream(), reg, self.interest(), PollOpt::edge())
-    }
-
-    fn reregister<Message>(&self, reg: Token, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()>
-    where
-        Message: Send + Sync + Clone + 'static, {
-        event_loop.reregister(self.stream(), reg, self.interest(), PollOpt::edge())
-    }
-
-    fn deregister<Message>(&self, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()>
-    where
-        Message: Send + Sync + Clone + 'static, {
-        event_loop.deregister(self.stream())
-    }
-}
-
-impl Connection<SignedStream, Message> for EstablishedConnection {
     fn stream(&self) -> &SignedStream {
         &self.stream
     }
@@ -209,4 +176,489 @@ impl Connection<SignedStream, Message> for EstablishedConnection {
     fn session(&self) -> Option<Session> {
         Some(self.stream.session().clone())
     }
+
+    fn register<Message>(&self, reg: Token, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()>
+    where
+        Message: Send + Sync + Clone + 'static, {
+        event_loop.register(self.stream(), reg, self.interest(), PollOpt::edge())
+    }
+
+    fn reregister<Message>(&self, reg: Token, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()>
+    where
+        Message: Send + Sync + Clone + 'static, {
+        event_loop.reregister(self.stream(), reg, self.interest(), PollOpt::edge())
+    }
+
+    fn deregister<Message>(&self, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()>
+    where
+        Message: Send + Sync + Clone + 'static, {
+        event_loop.deregister(self.stream())
+    }
+}
+
+#[derive(Debug, PartialEq)]
+enum WaitState {
+    Created,
+    Sent,
+    Received,
+}
+
+struct WaitSyncConnection {
+    stream: Stream,
+    session: Option<Session>,
+    remote_node_id: Option<NodeId>,
+    state: WaitState,
+}
+
+impl WaitSyncConnection {
+    fn new(stream: Stream) -> Self {
+        Self {
+            stream,
+            session: None,
+            remote_node_id: None,
+            state: WaitState::Created,
+        }
+    }
+
+    fn ready_session(&mut self, remote_node_id: NodeId, session: Session) {
+        debug_assert_eq!(self.state, WaitState::Created);
+        self.remote_node_id = Some(remote_node_id);
+        self.session = Some(session);
+        self.state = WaitState::Received;
+    }
+
+    fn establish(self) -> EstablishedConnection {
+        debug_assert_eq!(self.state, WaitState::Sent);
+        let session = self.session.as_ref().expect("Session must exist");
+        let remote_node_id = self.remote_node_id.expect("Sync message set peer node id");
+        EstablishedConnection::new(SignedStream::new(self.stream, session.clone()), remote_node_id)
+    }
+
+    fn remote_addr(&self) -> Result<SocketAddr> {
+        Ok(self.stream.peer_addr()?)
+    }
+
+    fn stream(&self) -> &Stream {
+        &self.stream
+    }
+
+    fn interest(&self) -> Ready {
+        match self.state {
+            WaitState::Created => Ready::readable() | UnixReady::hup(),
+            WaitState::Received => Ready::writable() | UnixReady::hup(),
+            WaitState::Sent => Ready::empty() | UnixReady::hup(),
+        }
+    }
+
+    fn send(&mut self) -> Result<bool> {
+        if self.state != WaitState::Received {
+            return Ok(false)
+        }
+
+        let session = self.session.as_ref().expect("Session must exist");
+        let message = Message::Handshake(HandshakeMessage::ack());
+        let signed_message = SignedMessage::new(&message, session);
+
+        self.stream.write(&signed_message)?;
+        self.state = WaitState::Sent;
+        Ok(false)
+    }
+
+    fn receive(&mut self) -> Result<Option<SignedMessage>> {
+        if self.state != WaitState::Created {
+            return Ok(None)
+        }
+        if let Some(signed_message) = self.stream.read::<SignedMessage>()? {
+            let message = {
+                let rlp = UntrustedRlp::new(&signed_message.message);
+                rlp.as_val::<Message>()?
+            };
+
+            match &message {
+                Message::Handshake(HandshakeMessage::Sync {
+                    ..
+                }) => Ok(Some(signed_message)),
+                _ => Err(Error::UnreadySession),
+            }
+        } else {
+            Ok(None)
+        }
+    }
+
+    fn remote_node_id(&self) -> Option<NodeId> {
+        self.remote_node_id.clone()
+    }
+
+    fn register<Message>(&self, reg: Token, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()>
+    where
+        Message: Send + Sync + Clone + 'static, {
+        event_loop.register(self.stream(), reg, self.interest(), PollOpt::edge())
+    }
+
+    fn reregister<Message>(&self, reg: Token, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()>
+    where
+        Message: Send + Sync + Clone + 'static, {
+        event_loop.reregister(self.stream(), reg, self.interest(), PollOpt::edge())
+    }
+
+    fn deregister<Message>(&self, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()>
+    where
+        Message: Send + Sync + Clone + 'static, {
+        event_loop.deregister(self.stream())
+    }
+}
+
+struct WaitAckConnection {
+    stream: SignedStream,
+    port: u16,
+    local_node_id: NodeId,
+    remote_node_id: NodeId,
+    state: WaitState,
+}
+
+impl WaitAckConnection {
+    fn new(stream: Stream, session: Session, port: u16, local_node_id: NodeId, remote_node_id: NodeId) -> Self {
+        Self {
+            stream: SignedStream::new(stream, session),
+            port,
+            local_node_id,
+            remote_node_id,
+            state: WaitState::Created,
+        }
+    }
+
+    fn establish(self) -> EstablishedConnection {
+        debug_assert_eq!(WaitState::Received, self.state);
+        let remote_node_id = self.remote_node_id;
+        EstablishedConnection::new(self.stream, remote_node_id)
+    }
+
+    fn stream(&self) -> &SignedStream {
+        &self.stream
+    }
+
+    fn interest(&self) -> Ready {
+        match self.state {
+            WaitState::Created => Ready::writable() | UnixReady::hup(),
+            WaitState::Sent => Ready::readable() | UnixReady::hup(),
+            WaitState::Received => Ready::empty() | UnixReady::hup(),
+        }
+    }
+
+    fn send(&mut self) -> Result<bool> {
+        if self.state != WaitState::Created {
+            return Ok(false)
+        }
+
+        self.stream.write(&Message::Handshake(HandshakeMessage::sync(self.port, self.local_node_id.clone())))?;
+        self.state = WaitState::Sent;
+        Ok(false)
+    }
+
+    fn receive(&mut self) -> Result<Option<HandshakeMessage>> {
+        if self.state != WaitState::Sent {
+            return Ok(None)
+        }
+        if let Some(message) = self.stream.read()? {
+            match message {
+                Message::Handshake(HandshakeMessage::Ack(version)) => {
+                    self.state = WaitState::Received;
+                    Ok(Some(HandshakeMessage::Ack(version)))
+                }
+                _ => Err(Error::UnreadySession),
+            }
+        } else {
+            Ok(None)
+        }
+    }
+
+    fn remote_node_id(&self) -> Option<NodeId> {
+        Some(self.remote_node_id.clone())
+    }
+
+    fn register<Message>(&self, reg: Token, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()>
+    where
+        Message: Send + Sync + Clone + 'static, {
+        event_loop.register(self.stream(), reg, self.interest(), PollOpt::edge())
+    }
+
+    fn reregister<Message>(&self, reg: Token, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()>
+    where
+        Message: Send + Sync + Clone + 'static, {
+        event_loop.reregister(self.stream(), reg, self.interest(), PollOpt::edge())
+    }
+
+    fn deregister<Message>(&self, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()>
+    where
+        Message: Send + Sync + Clone + 'static, {
+        event_loop.deregister(self.stream())
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub enum ConnectionType {
+    None,
+    AckWaiting,
+    SyncWaiting,
+    Established,
+}
+
+enum State {
+    WaitSync(WaitSyncConnection),
+    WaitAck(WaitAckConnection),
+    Established(EstablishedConnection),
+    Intermediate, // An intermediate state before established
+}
+
+pub struct Connection {
+    state: Mutex<Cell<State>>,
+}
+
+impl Connection {
+    pub fn connect(
+        stream: Stream,
+        session: Session,
+        local_port: u16,
+        local_node_id: NodeId,
+        remote_node_id: NodeId,
+    ) -> Self {
+        let connection = WaitAckConnection::new(stream, session, local_port, local_node_id, remote_node_id);
+        Self {
+            state: Mutex::new(Cell::new(State::WaitAck(connection))),
+        }
+    }
+
+    pub fn accept(stream: Stream) -> Self {
+        let connection = WaitSyncConnection::new(stream);
+        Self {
+            state: Mutex::new(Cell::new(State::WaitSync(connection))),
+        }
+    }
+
+    pub fn establish(&self) -> bool {
+        let state = self.state.lock();
+        let old_state = state.replace(State::Intermediate);
+        match old_state {
+            State::WaitAck(connection) => {
+                state.replace(State::Established(connection.establish()));
+                true
+            }
+            State::WaitSync(connection) => {
+                state.replace(State::Established(connection.establish()));
+                true
+            }
+            State::Established(_) => false,
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn register<Message>(
+        &self,
+        reg: Token,
+        event_loop: &mut EventLoop<IoManager<Message>>,
+    ) -> io::Result<ConnectionType>
+    where
+        Message: Send + Sync + Clone + 'static, {
+        let mut state = self.state.lock();
+        match state.get_mut() {
+            State::WaitAck(connection) => {
+                connection.register(reg, event_loop)?;
+                Ok(ConnectionType::AckWaiting)
+            }
+            State::WaitSync(connection) => {
+                connection.register(reg, event_loop)?;
+                Ok(ConnectionType::SyncWaiting)
+            }
+            State::Established(connection) => {
+                connection.register(reg, event_loop)?;
+                Ok(ConnectionType::Established)
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn reregister<Message>(
+        &self,
+        reg: Token,
+        event_loop: &mut EventLoop<IoManager<Message>>,
+    ) -> io::Result<ConnectionType>
+    where
+        Message: Send + Sync + Clone + 'static, {
+        let mut state = self.state.lock();
+        match state.get_mut() {
+            State::WaitAck(connection) => {
+                connection.reregister(reg, event_loop)?;
+                Ok(ConnectionType::AckWaiting)
+            }
+            State::WaitSync(connection) => {
+                connection.reregister(reg, event_loop)?;
+                Ok(ConnectionType::SyncWaiting)
+            }
+            State::Established(connection) => {
+                connection.reregister(reg, event_loop)?;
+                Ok(ConnectionType::Established)
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn deregister<Message>(&self, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<ConnectionType>
+    where
+        Message: Send + Sync + Clone + 'static, {
+        let mut state = self.state.lock();
+        match state.get_mut() {
+            State::WaitAck(connection) => {
+                connection.deregister(event_loop)?;
+                Ok(ConnectionType::AckWaiting)
+            }
+            State::WaitSync(connection) => {
+                connection.deregister(event_loop)?;
+                Ok(ConnectionType::SyncWaiting)
+            }
+            State::Established(connection) => {
+                connection.deregister(event_loop)?;
+                Ok(ConnectionType::Established)
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn send(&self) -> Result<(ConnectionType, bool)> {
+        let mut state = self.state.lock();
+        match state.get_mut() {
+            State::WaitAck(connection) => {
+                let remain = connection.send()?;
+                Ok((ConnectionType::AckWaiting, remain))
+            }
+            State::WaitSync(connection) => {
+                let remain = connection.send()?;
+                Ok((ConnectionType::SyncWaiting, remain))
+            }
+            State::Established(connection) => {
+                let remain = connection.send()?;
+                Ok((ConnectionType::Established, remain))
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn receive(&self) -> Result<Option<ReceivedMessage>> {
+        let mut state = self.state.lock();
+        match state.get_mut() {
+            State::WaitAck(connection) => Ok(connection.receive()?.map(|message| match message {
+                HandshakeMessage::Ack(version) => ReceivedMessage::Ack {
+                    version,
+                },
+                _ => unreachable!(),
+            })),
+            State::WaitSync(connection) => Ok(connection.receive()?.map(ReceivedMessage::Sync)),
+            State::Established(connection) => Ok(connection.receive()?.map(|message| match message {
+                Message::Negotiation(msg) => ReceivedMessage::Negotiation(msg),
+                Message::Extension(msg) => ReceivedMessage::Extension(msg),
+                _ => unreachable!(),
+            })),
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn ready_session(&self, remote_node_id: NodeId, session: Session) -> bool {
+        let mut state = self.state.lock();
+        match state.get_mut() {
+            State::WaitAck(_) => false,
+            State::WaitSync(connection) => {
+                connection.ready_session(remote_node_id, session);
+                true
+            }
+            State::Established(_) => false,
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn enqueue_negotiation_request(&self, name: String, version: u64) -> bool {
+        let mut state = self.state.lock();
+        match state.get_mut() {
+            State::WaitAck(_) => false,
+            State::WaitSync(_) => false,
+            State::Established(connection) => {
+                connection.enqueue_negotiation_request(name, version);
+                true
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn enqueue_negotiation_allowed(&self, seq: u64) -> bool {
+        let mut state = self.state.lock();
+        match state.get_mut() {
+            State::WaitAck(_) => false,
+            State::WaitSync(_) => false,
+            State::Established(connection) => {
+                connection.enqueue_negotiation_allowed(seq);
+                true
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn enqueue_extension_message(&self, extension_name: &String, need_encryption: bool, data: &[u8]) -> bool {
+        let mut state = self.state.lock();
+        match state.get_mut() {
+            State::WaitAck(_) => false,
+            State::WaitSync(_) => false,
+            State::Established(connection) => {
+                connection.enqueue_extension_message(extension_name.clone(), need_encryption, &data);
+                true
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn remove_requested_negotiation(&self, seq: &u64) -> Option<String> {
+        let mut state = self.state.lock();
+        match state.get_mut() {
+            State::WaitAck(_) => None,
+            State::WaitSync(_) => None,
+            State::Established(connection) => connection.remove_requested_negotiation(seq),
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn remote_addr_of_waiting_sync(&self) -> Option<SocketAddr> {
+        let mut state = self.state.lock();
+        match state.get_mut() {
+            State::WaitAck(_) => None,
+            State::WaitSync(connection) => connection.remote_addr().ok(),
+            State::Established(_) => None,
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn remote_node_id(&self) -> Option<NodeId> {
+        let mut state = self.state.lock();
+        match state.get_mut() {
+            State::WaitAck(connection) => connection.remote_node_id(),
+            State::WaitSync(connection) => connection.remote_node_id(),
+            State::Established(connection) => connection.remote_node_id(),
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn established_session(&self) -> Option<Session> {
+        let mut state = self.state.lock();
+        match state.get_mut() {
+            State::WaitAck(_) => None,
+            State::WaitSync(_) => None,
+            State::Established(connection) => connection.session(),
+            _ => unreachable!(),
+        }
+    }
+}
+
+pub enum ReceivedMessage {
+    Ack {
+        version: u64,
+    },
+    Sync(SignedMessage),
+    Extension(ExtensionMessage),
+    Negotiation(NegotiationMessage),
 }

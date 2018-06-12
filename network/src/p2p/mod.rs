@@ -19,7 +19,6 @@ mod connections;
 mod handler;
 mod listener;
 mod message;
-mod pending_connection;
 mod stream;
 
 pub use self::handler::{Handler, Message};
