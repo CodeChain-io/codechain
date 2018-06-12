@@ -16,7 +16,6 @@
 
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
-use super::contact::Contact;
 use super::NodeId;
 
 pub type Id = u64;
@@ -32,7 +31,7 @@ pub enum Message {
     Nodes {
         id: Id,
         sender: NodeId,
-        contacts: Vec<Contact>,
+        nodes: Vec<NodeId>,
     },
 }
 
@@ -84,12 +83,11 @@ impl Encodable for Message {
             Message::Nodes {
                 id,
                 sender,
-                contacts,
+                nodes,
             } => {
-                s.begin_list(3 + contacts.len() * 2).append(&NODES_ID).append(id).append(sender);
-                for ref contact in contacts.iter() {
-                    s.append(&contact.id());
-                    s.append(contact.addr());
+                s.begin_list(3 + nodes.len()).append(&NODES_ID).append(id).append(sender);
+                for node_id in nodes.iter() {
+                    s.append(node_id);
                 }
             }
         }
@@ -119,23 +117,20 @@ impl Decodable for Message {
                 if (rlp.item_count()? - 3) % 2 != 0 {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
-                let contacts = {
-                    let mut contacts: Vec<Contact> = vec![];
+                let nodes = {
+                    let mut nodes: Vec<NodeId> = vec![];
                     let mut i = 3;
                     let len = rlp.item_count()?;
                     while i < len {
-                        let id = rlp.val_at(i)?;
-                        let addr = rlp.val_at(i + 1)?;
-                        let contact = Contact::new(id, addr);
-                        contacts.push(contact);
-                        i += 2;
+                        let node = rlp.val_at(i)?;
+                        nodes.push(node);
                     }
-                    contacts
+                    nodes
                 };
                 Ok(Message::Nodes {
                     id,
                     sender,
-                    contacts,
+                    nodes,
                 })
             }
             _ => Err(DecoderError::Custom("Invalid protocol id")),

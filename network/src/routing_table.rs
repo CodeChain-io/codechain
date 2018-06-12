@@ -52,8 +52,6 @@ pub struct RoutingTable {
     // This field represents the local node id that remote node thinks.
     remote_to_local_node_ids: RwLock<HashMap<NodeId, NodeId>>,
 
-    id_to_addresses: RwLock<HashMap<NodeId, SocketAddr>>,
-
     rng: Mutex<OsRng>,
 }
 
@@ -70,7 +68,6 @@ impl RoutingTable {
             established: RwLock::new(HashSet::new()),
 
             remote_to_local_node_ids: RwLock::new(HashMap::new()),
-            id_to_addresses: RwLock::new(HashMap::new()),
 
             rng: Mutex::new(OsRng::new().unwrap()),
         })
@@ -139,18 +136,12 @@ impl RoutingTable {
         let mut unestablished_sessions = self.unestablished_sessions.write();
         let mut established = self.established.write();
         let mut remote_to_local_node_ids = self.remote_to_local_node_ids.write();
-        let mut id_to_addresses = self.id_to_addresses.write();
 
         if candidates.remove(&addr) {
             return true
         }
         let remote_node_id = addr.clone().into();
         let removed = remote_to_local_node_ids.remove(&remote_node_id).is_some();
-        let remote_address = id_to_addresses.remove(&remote_node_id);
-        remote_address.map(|address| {
-            debug_assert!(removed);
-            debug_assert_eq!(address, addr)
-        });
 
         if uninitializeds.remove(&addr) {
             debug_assert!(removed);
@@ -185,7 +176,6 @@ impl RoutingTable {
         let mut candidates = self.candidates.write();
         let mut uninitializeds = self.uninitializeds.write();
         let mut remote_to_local_node_ids = self.remote_to_local_node_ids.write();
-        let mut id_to_addresses = self.id_to_addresses.write();
 
         candidates.remove(addr);
         if !uninitializeds.insert(addr.clone()) {
@@ -196,7 +186,6 @@ impl RoutingTable {
 
 
         let remote_node_id: NodeId = addr.into();
-        id_to_addresses.insert(remote_node_id, addr.clone());
 
         match remote_to_local_node_ids.insert(remote_node_id, local_node_id) {
             None => cinfo!(NET, "{:?} thinks my node id is {}", addr, local_node_id),
@@ -357,11 +346,6 @@ impl RoutingTable {
         let remote_to_local_node_ids = self.remote_to_local_node_ids.read();
 
         remote_to_local_node_ids.get(&remote_node_id).cloned()
-    }
-
-    pub fn address(&self, remote_node_id: &NodeId) -> Option<SocketAddr> {
-        let id_to_addresses = self.id_to_addresses.read();
-        id_to_addresses.get(remote_node_id).cloned()
     }
 
     pub fn candidates(&self, len: &usize) -> Vec<SocketAddr> {

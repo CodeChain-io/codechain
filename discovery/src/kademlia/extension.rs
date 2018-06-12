@@ -18,7 +18,7 @@ use std::collections::{HashMap, VecDeque};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
-use cnetwork::{Api, DiscoveryApi, NetworkExtension, NodeId, RoutingTable, SocketAddr, TimerToken};
+use cnetwork::{Api, DiscoveryApi, IntoSocketAddr, NetworkExtension, NodeId, RoutingTable, SocketAddr, TimerToken};
 use parking_lot::{Mutex, RwLock};
 use rlp::{Decodable, DecoderError, Encodable, UntrustedRlp};
 use time::Duration;
@@ -57,15 +57,14 @@ impl Extension {
     }
 
     fn on_receive(&self, node: &NodeId, message: &[u8]) -> ::std::result::Result<(), DecoderError> {
-        if let Some(sender) = self.get_address(&node) {
-            let rlp = UntrustedRlp::new(message);
-            let message: Message = Decodable::decode(&rlp)?;
-            let event = Event::Message {
-                message,
-                sender: sender.clone(),
-            };
-            self.push_event(event)
-        }
+        let sender = node.into_addr();
+        let rlp = UntrustedRlp::new(message);
+        let message: Message = Decodable::decode(&rlp)?;
+        let event = Event::Message {
+            message,
+            sender,
+        };
+        self.push_event(event);
         Ok(())
     }
 
@@ -82,11 +81,6 @@ impl Extension {
                     .expect("Consume event must be registered");
             }
         }
-    }
-
-    fn get_address(&self, node: &NodeId) -> Option<SocketAddr> {
-        let routing_table = self.routing_table.read();
-        routing_table.as_ref().and_then(|routing_table| routing_table.address(node))
     }
 
     fn consume_events(&self) {
@@ -191,26 +185,20 @@ impl NetworkExtension for Extension {
                     return
                 }
             };
-            routing_table.address(node).map(|address| {
-                for kademlia in kademlias.values_mut() {
-                    let event = {
-                        let command = kademlia.find_node_command(address.clone());
-                        Event::Command(command)
-                    };
-                    self.push_event(event);
-                }
-            });
+            let address = node.into_addr();
+            for kademlia in kademlias.values_mut() {
+                let event = {
+                    let command = kademlia.find_node_command(address.clone());
+                    Event::Command(command)
+                };
+                self.push_event(event);
+            }
         });
     }
 
     fn on_node_removed(&self, node: &NodeId) {
         let mut kademlias = self.kademlias.write();
-        let routing_table = self.routing_table.read();
-        let address = routing_table.as_ref().and_then(|routing_table| routing_table.address(node));
-        if address.is_none() {
-            return
-        }
-        let address = address.unwrap();
+        let address = node.into_addr();
         kademlias
             .values_mut()
             .map(|ref mut kademlia| {
@@ -242,29 +230,19 @@ impl NetworkExtension for Extension {
 
 #[cfg(test)]
 mod tests {
-    use cnetwork::{TestNetworkCall, TestNetworkClient};
+    use cnetwork::{IntoSocketAddr, NodeId as NetworkNodeId, TestNetworkCall, TestNetworkClient};
 
     use super::*;
 
-    #[derive(Clone)]
-    struct Node {
-        node_id: NodeId,
-        address: SocketAddr,
-    }
-
     lazy_static! {
-        static ref NODES: [Node; 1] = [Node {
-            node_id: SocketAddr::v4(127, 0, 0, 1, 3481).into(),
-            address: SocketAddr::v4(127, 0, 0, 1, 3481),
-        }];
+        static ref NODES: [NetworkNodeId; 1] = [SocketAddr::v4(127, 0, 0, 1, 3480).into(),];
     }
 
     fn dummy_routing_table() -> Arc<RoutingTable> {
         let routing_table = RoutingTable::new();
-        let address = NODES[0].address.clone();
-        let node_id = NODES[0].node_id.clone();
-        routing_table.add_candidate(address.clone());
-        routing_table.add_node(&address, node_id.clone());
+        let node_id = NODES[0].clone();
+        routing_table.add_candidate(node_id.into_addr().clone());
+        routing_table.add_node(&node_id.into_addr(), node_id.clone());
         routing_table
     }
 
@@ -290,7 +268,7 @@ mod tests {
         let command = client.pop_call(&extension.name());
         assert_eq!(None, command);
 
-        client.add_node(NODES[0].node_id);
+        client.add_node(NODES[0].clone());
 
         let command = client.pop_call(&extension.name());
         assert_eq!(

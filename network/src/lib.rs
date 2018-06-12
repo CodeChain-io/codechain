@@ -22,6 +22,8 @@ extern crate mio;
 extern crate parking_lot;
 extern crate rand;
 extern crate rlp;
+#[macro_use]
+extern crate rlp_derive;
 extern crate slab;
 extern crate unexpected;
 
@@ -42,6 +44,7 @@ mod config;
 mod discovery;
 mod extension;
 mod limited_table;
+mod node_id;
 mod routing_table;
 mod service;
 mod session_initiator;
@@ -52,17 +55,14 @@ mod token_generator;
 mod p2p;
 pub mod session;
 
-use ctypes::H256;
-
 pub use self::addr::SocketAddr;
 pub use self::config::Config as NetworkConfig;
 pub use self::discovery::Api as DiscoveryApi;
 pub use self::extension::{
     Api, Error as NetworkExtensionError, Extension as NetworkExtension, Result as NetworkExtensionResult, TimerToken,
 };
+pub use self::node_id::{IntoSocketAddr, NodeId};
 pub use self::service::{Error as NetworkServiceError, Service as NetworkService};
 pub use self::test::{Call as TestNetworkCall, TestClient as TestNetworkClient};
 
 pub use self::routing_table::RoutingTable;
-
-pub type NodeId = H256;

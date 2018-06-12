@@ -14,13 +14,58 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::net::IpAddr;
+
+use ccrypto::Blake;
+
+use cnetwork::IntoSocketAddr;
 use cnetwork::NodeId as NetworkNodeId;
+use ctypes::H256;
 
 use super::B;
 
 pub type NodeId = NetworkNodeId;
 
+fn node_id_to_hash(lhs: &NodeId) -> H256 {
+    let addr = lhs.into_addr();
+    let ip = addr.ip();
+    let port = addr.port();
+    match ip {
+        IpAddr::V4(ip) => {
+            if ip.is_loopback() || ip.is_private() {
+                let mut octets = [0u8; 18];
+                octets[0..16].clone_from_slice(&ip.to_ipv6_compatible().octets());
+                octets[16] = (port >> 8) as u8;
+                octets[17] = (port & 0xFF) as u8;
+                return Blake::blake(&octets)
+            }
+            let octets: [u8; 16] = ip.to_ipv6_compatible().octets();
+            let mut hash = H256::blake(&octets);
+            hash[14] ^= (port >> 8) as u8;
+            hash[15] ^= (port & 0xFF) as u8;
+            hash
+        }
+        IpAddr::V6(ip) => {
+            if ip.is_loopback() {
+                let mut octets = [0u8; 18];
+                octets.clone_from_slice(&ip.octets());
+                octets[16] = (port >> 8) as u8;
+                octets[17] = (port & 0xFF) as u8;
+                return Blake::blake(&octets)
+            }
+            let octets: [u8; 16] = ip.octets();
+            let mut hash = H256::blake(&octets);
+            hash[14] ^= (port >> 8) as u8;
+            hash[15] ^= (port & 0xFF) as u8;
+            hash
+        }
+    }
+}
+
 pub fn log2_distance_between_nodes(lhs: &NodeId, rhs: &NodeId) -> usize {
+    let lhs = node_id_to_hash(lhs);
+    let rhs = node_id_to_hash(rhs);
+
     let distance = lhs ^ rhs;
     const BYTES_SIZE: usize = B / 8;
     debug_assert_eq!(B % 8, 0);

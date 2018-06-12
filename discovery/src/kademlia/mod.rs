@@ -16,7 +16,6 @@
 
 mod command;
 mod config;
-mod contact;
 mod event;
 mod extension;
 mod kademlia;

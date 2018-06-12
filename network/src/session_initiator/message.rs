@@ -233,11 +233,12 @@ mod tests {
     use rlp::{Decodable, Encodable, UntrustedRlp};
 
     use super::super::super::session::Nonce;
+    use super::super::super::SocketAddr;
     use super::*;
 
     #[test]
     fn encode_and_decode_node_id_request() {
-        let node_id = 0xBEEFCAFE.into();
+        let node_id: NodeId = SocketAddr::v4(80, 80, 80, 80, 8080).into();
         let request = Message::node_id_request(0x8a, node_id);
 
         let encoded = request.rlp_bytes();
@@ -250,7 +251,7 @@ mod tests {
 
     #[test]
     fn encode_and_decode_node_id_response() {
-        let id = NodeId::random();
+        let id: NodeId = SocketAddr::v4(80, 80, 80, 80, 8080).into();
         let response = Message::node_id_response(0x9a, id);
 
         let encoded = response.rlp_bytes();

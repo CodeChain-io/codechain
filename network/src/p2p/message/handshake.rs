@@ -116,12 +116,13 @@ impl Decodable for Message {
 mod tests {
     use rlp::{Decodable, Encodable, UntrustedRlp};
 
+    use super::super::super::super::SocketAddr;
     use super::*;
 
     #[test]
     fn protocol_id_of_sync_is_0() {
         const PORT: u16 = 1234;
-        let node_id = 1000.into();
+        let node_id = SocketAddr::v4(127, 0, 0, 1, 8080).into();
         assert_eq!(0x00, Message::sync(PORT, node_id).protocol_id());
     }
 
@@ -133,7 +134,7 @@ mod tests {
     #[test]
     fn encode_and_decode_sync() {
         const PORT: u16 = 1234;
-        let node_id = 1000.into();
+        let node_id = SocketAddr::v4(127, 0, 0, 1, 8080).into();
         let sync = Message::sync(PORT, node_id);
         let bytes = sync.rlp_bytes();
 

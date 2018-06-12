@@ -20,10 +20,9 @@ use std::collections::VecDeque;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::vec::Vec;
 
-use cnetwork::SocketAddr;
+use cnetwork::{IntoSocketAddr, SocketAddr};
 
 use super::command::Command;
-use super::contact::Contact;
 use super::message::{self, Message};
 use super::node_id::log2_distance_between_nodes;
 use super::routing_table::RoutingTable;
@@ -33,7 +32,7 @@ pub struct Kademlia {
     k: u8,
     pub t_refresh: u32,
     table: RoutingTable,
-    to_be_verified: VecDeque<Contact>,
+    to_be_verified: VecDeque<NodeId>,
     seq: AtomicUsize,
 }
 
@@ -52,27 +51,27 @@ impl Kademlia {
         self.table.local_id()
     }
 
-    fn touch_contact(&mut self, contact: Contact) -> bool {
-        if let Some(head) = self.table.touch_contact(contact.clone()).cloned() {
+    fn touch_contact(&mut self, node_id: NodeId) -> bool {
+        if let Some(head) = self.table.touch_contact(node_id.clone()).cloned() {
             self.add_contact_to_be_verified(head)
         } else {
             false
         }
     }
 
-    fn add_contact_to_be_verified(&mut self, contact: Contact) -> bool {
-        if self.to_be_verified.contains(&contact) {
+    fn add_contact_to_be_verified(&mut self, node_id: NodeId) -> bool {
+        if self.to_be_verified.contains(&node_id) {
             false
         } else {
-            self.to_be_verified.push_back(contact);
+            self.to_be_verified.push_back(node_id);
             true
         }
     }
 
-    fn pop_contact_to_be_verified(&mut self) -> Option<Contact> {
-        while let Some(contact) = self.to_be_verified.pop_front() {
-            if self.table.contains(&contact) {
-                return Some(contact)
+    fn pop_contact_to_be_verified(&mut self) -> Option<NodeId> {
+        while let Some(node_id) = self.to_be_verified.pop_front() {
+            if self.table.contains(&node_id) {
+                return Some(node_id)
             }
         }
         None
@@ -87,11 +86,11 @@ impl Kademlia {
         bucket_size: u8,
         sender_address: &SocketAddr,
     ) -> Option<Command> {
-        let contacts = self.table.get_closest_contacts(&target, bucket_size);
+        let nodes = self.table.get_closest_nodes(&target, bucket_size);
         let message = Message::Nodes {
             id,
             sender: self.local_id(),
-            contacts,
+            nodes,
         };
         let target = sender_address.clone();
         Some(Command::Send {
@@ -100,16 +99,16 @@ impl Kademlia {
         })
     }
 
-    fn handle_nodes_message(&mut self, sender: NodeId, contacts: &Vec<Contact>) -> Option<Command> {
+    fn handle_nodes_message(&mut self, sender: NodeId, nodes: &Vec<NodeId>) -> Option<Command> {
         let local_id = self.local_id();
         let distance_to_target = log2_distance_between_nodes(&local_id, &sender);
         let add_aggressive = self.table.len() < self.k as usize;
-        contacts
+        nodes
             .into_iter()
             .take(self.k as usize)
-            .filter(|contact| contact.id() != local_id && contact.id() != sender)
-            .filter(|contact| add_aggressive || contact.log2_distance(&local_id) <= distance_to_target)
-            .map(|contact| self.touch_contact(contact.clone()))
+            .filter(|node_id| *node_id != &local_id)
+            .filter(|node_id| add_aggressive || log2_distance_between_nodes(node_id, &local_id) <= distance_to_target)
+            .map(|node_id| self.touch_contact(node_id.clone()))
             .find(|added| *added)
             .and(Some(Command::Verify))
     }
@@ -117,11 +116,7 @@ impl Kademlia {
     pub fn handle_message(&mut self, message: &Message, sender_address: &SocketAddr) -> Option<Command> {
         // FIXME : Check validity of response first.
 
-        let sender_contact = Contact::new(message.sender().clone(), sender_address.clone());
-        if self.table.conflicts(&sender_contact) {
-            // Duplicated id with different address
-            return None
-        }
+        let sender_contact = message.sender().clone().into();
 
         self.touch_contact(sender_contact);
 
@@ -133,10 +128,10 @@ impl Kademlia {
                 bucket_size,
             } => self.handle_find_node_message(*id, *sender, *target, *bucket_size, sender_address),
             Message::Nodes {
-                contacts,
+                nodes,
                 sender,
                 ..
-            } => self.handle_nodes_message(*sender, contacts),
+            } => self.handle_nodes_message(*sender, nodes),
         }
     }
 
@@ -156,8 +151,8 @@ impl Kademlia {
 
 
     pub fn handle_verify_command(&mut self) -> Option<Command> {
-        self.pop_contact_to_be_verified().map(|contact| {
-            let target = contact.addr().clone();
+        self.pop_contact_to_be_verified().map(|node_id| {
+            let target = node_id.into_addr();
             self.find_node_command(target)
         })
     }
@@ -172,8 +167,8 @@ impl Kademlia {
         let index = rand::random::<usize>() % len;
 
         if let Some(distance) = distances.get(index) {
-            for contact in self.table.get_contacts_with_distance(*distance) {
-                self.add_contact_to_be_verified(contact);
+            for node_id in self.table.get_contacts_with_distance(*distance) {
+                self.add_contact_to_be_verified(node_id);
             }
         }
 
@@ -182,49 +177,63 @@ impl Kademlia {
 
     pub fn remove(&mut self, address: &SocketAddr) {
         let _ = self.table.remove_address(&address);
-        let _ = self.to_be_verified.retain(|contact| contact.addr() != address);
+        let _ = self.to_be_verified.retain(|node_id| &node_id.into_addr() != address);
     }
 }
 
 
 #[cfg(test)]
 mod tests {
-    use super::super::contact::Contact;
-    use super::Kademlia;
-    use super::NodeId;
-
     use super::super::{K, T_REFRESH};
+    use super::*;
 
     pub fn default_kademlia(local_id: NodeId) -> Kademlia {
         Kademlia::new(local_id, K, T_REFRESH)
     }
 
-
-    const ID0: &str = "0000000000000000000000000000000000000000000000000000000000000000";
-    const ID1: &str = "0000000000000000000000000000000000000000000000000000000000000001";
-    const ID4: &str = "0000000000000000000000000000000000000000000000000000000000000004";
-    const ID5: &str = "0000000000000000000000000000000000000000000000000000000000000005";
+    lazy_static! {
+        static ref IDS: [SocketAddr; 18] = [
+            SocketAddr::v4(127, 0, 0, 1, 8000),
+            SocketAddr::v4(127, 0, 0, 1, 8001),
+            SocketAddr::v4(127, 0, 0, 1, 8002),
+            SocketAddr::v4(127, 0, 0, 1, 8003),
+            SocketAddr::v4(127, 0, 0, 1, 8004),
+            SocketAddr::v4(127, 0, 0, 1, 8005),
+            SocketAddr::v4(127, 0, 0, 1, 8006),
+            SocketAddr::v4(127, 0, 0, 1, 8007),
+            SocketAddr::v4(127, 0, 0, 1, 8008),
+            SocketAddr::v4(127, 0, 0, 1, 8009),
+            SocketAddr::v4(127, 0, 0, 1, 8010),
+            SocketAddr::v4(127, 0, 0, 1, 8011),
+            SocketAddr::v4(127, 0, 0, 1, 8012),
+            SocketAddr::v4(127, 0, 0, 1, 8013),
+            SocketAddr::v4(127, 0, 0, 1, 8014),
+            SocketAddr::v4(127, 0, 0, 1, 8015),
+            SocketAddr::v4(127, 0, 0, 1, 8016),
+            SocketAddr::v4(127, 0, 0, 1, 8017),
+        ];
+    }
 
     #[test]
     fn test_default_k() {
-        let id = Contact::from_hash(ID0).id();
+        let id = IDS[0].clone().into();
         let kademlia = default_kademlia(id);
         assert_eq!(16, kademlia.k);
     }
 
     #[test]
     fn test_default_t_refresh() {
-        let id = Contact::from_hash(ID0).id();
+        let id = IDS[0].clone().into();
         let kademlia = default_kademlia(id);
         assert_eq!(60_000, kademlia.t_refresh);
     }
 
     #[test]
     fn test_add_contact_to_be_verfied_does_not_add_duplicates() {
-        let id = Contact::from_hash(ID0).id();
+        let id = IDS[0].clone().into();
         let mut kademlia = default_kademlia(id);
 
-        let new_contact = Contact::from_hash(ID1);
+        let new_contact: NodeId = IDS[1].clone().into();
 
         assert_eq!(0, kademlia.to_be_verified.len());
 
@@ -237,10 +246,10 @@ mod tests {
 
     #[test]
     fn test_pop_contact_to_be_verfied() {
-        let id = Contact::from_hash(ID0).id();
+        let id = IDS[0].clone().into();
         let mut kademlia = default_kademlia(id);
 
-        let new_contact = Contact::from_hash(ID1);
+        let new_contact: NodeId = IDS[1].clone().into();
 
         assert_eq!(0, kademlia.to_be_verified.len());
 
@@ -254,10 +263,10 @@ mod tests {
 
     #[test]
     fn test_pop_contact_to_be_verfied_returns_none_when_empty() {
-        let id = Contact::from_hash(ID0).id();
+        let id = IDS[0].clone().into();
         let mut kademlia = default_kademlia(id);
 
-        let new_contact = Contact::from_hash(ID1);
+        let new_contact: NodeId = IDS[1].clone().into();
 
         assert_eq!(0, kademlia.to_be_verified.len());
 
@@ -273,10 +282,10 @@ mod tests {
 
     #[test]
     fn test_pop_contact_to_be_verfied_skips_the_contact_which_is_not_in_routing_table() {
-        let id = Contact::from_hash(ID0).id();
+        let id = IDS[0].clone().into();
         let mut kademlia = default_kademlia(id);
 
-        let new_contact = Contact::from_hash(ID1);
+        let new_contact: NodeId = IDS[1].clone().into();
 
         assert_eq!(0, kademlia.to_be_verified.len());
 
@@ -289,24 +298,25 @@ mod tests {
 
     #[test]
     fn test_add_contact_adds_to_be_verified_when_bucket_is_full() {
-        let id = Contact::from_hash(ID0).id();
+        let id = IDS[0].clone().into();
         let mut kademlia = Kademlia::new(id, 1, T_REFRESH);
 
-        let contact4 = Contact::from_hash(ID4);
-        let contact5 = Contact::from_hash(ID5);
+        let node4 = IDS[4].clone().into();
+        let node5 = IDS[5].clone().into();
 
         assert_eq!(0, kademlia.to_be_verified.len());
 
-        kademlia.touch_contact(contact4);
+        kademlia.touch_contact(node4);
         assert_eq!(0, kademlia.to_be_verified.len());
 
-        kademlia.touch_contact(contact5);
-        assert_eq!(1, kademlia.to_be_verified.len());
+        kademlia.touch_contact(node5);
+        assert_eq!(0, kademlia.to_be_verified.len());
     }
 
     #[test]
     fn handle_refresh_command_must_not_crash() {
-        let mut kademlia = Kademlia::new(0xDEADBEEF.into(), 8, 60_000);
+        let node_id = SocketAddr::v4(127, 0, 0, 1, 8080).into();
+        let mut kademlia = Kademlia::new(node_id, 8, 60_000);
         kademlia.handle_refresh_command();
     }
 }

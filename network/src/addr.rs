@@ -20,12 +20,11 @@ use std::fmt;
 use std::net::{self, AddrParseError, IpAddr, Ipv4Addr, Ipv6Addr};
 use std::str::FromStr;
 
-use ccrypto::Blake;
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::NodeId;
 
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct SocketAddr {
     addr: net::SocketAddr,
 }
@@ -59,37 +58,8 @@ impl SocketAddr {
     }
 }
 
-pub fn convert_to_node_id(ip: &IpAddr, port: u16) -> NodeId {
-    match ip {
-        net::IpAddr::V4(ip) => {
-            if ip.is_loopback() || ip.is_private() {
-                let mut octets = [0u8; 18];
-                octets[0..16].clone_from_slice(&ip.to_ipv6_compatible().octets());
-                octets[16] = (port >> 8) as u8;
-                octets[17] = (port & 0xFF) as u8;
-                return NodeId::blake(&octets)
-            }
-            let octets: [u8; 16] = ip.to_ipv6_compatible().octets();
-            let mut hash = NodeId::blake(&octets);
-            hash[14] ^= (port >> 8) as u8;
-            hash[15] ^= (port & 0xFF) as u8;
-            hash
-        }
-        net::IpAddr::V6(ip) => {
-            if ip.is_loopback() {
-                let mut octets = [0u8; 18];
-                octets.clone_from_slice(&ip.octets());
-                octets[16] = (port >> 8) as u8;
-                octets[17] = (port & 0xFF) as u8;
-                return NodeId::blake(&octets)
-            }
-            let octets: [u8; 16] = ip.octets();
-            let mut hash = NodeId::blake(&octets);
-            hash[14] ^= (port >> 8) as u8;
-            hash[15] ^= (port & 0xFF) as u8;
-            hash
-        }
-    }
+pub fn convert_to_node_id(ip: IpAddr, port: u16) -> NodeId {
+    NodeId::new(ip, port)
 }
 
 impl Into<NodeId> for SocketAddr {
@@ -102,7 +72,7 @@ impl<'a> Into<NodeId> for &'a SocketAddr {
     fn into(self) -> NodeId {
         let ip = self.addr.ip();
         let port = self.addr.port();
-        convert_to_node_id(&ip, port)
+        convert_to_node_id(ip, port)
     }
 }
 

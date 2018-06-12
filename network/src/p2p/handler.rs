@@ -204,7 +204,7 @@ impl Manager {
                         let remote_addr = self.connections
                             .remote_addr_of_waiting_sync(stream)
                             .ok_or(Error::General("Cannot find remote address"))?;
-                        let remote_node_id = convert_to_node_id(&remote_addr.ip(), port);
+                        let remote_node_id = convert_to_node_id(remote_addr.ip(), port);
 
                         if remote_node_id != node_id {
                             return Err(Error::UnexpectedNodeId(Mismatch {

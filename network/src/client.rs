@@ -224,6 +224,7 @@ mod tests {
     use rlp::Encodable;
     use time::Duration;
 
+    use super::super::SocketAddr;
     use super::{Api, Client, NetworkExtension, NetworkExtensionResult, NodeId};
 
     #[allow(dead_code)]
@@ -345,7 +346,9 @@ mod tests {
         client.register_extension(Arc::clone(&e2) as Arc<NetworkExtension>);
         client.initialize_extension(&"e2".to_string());
 
-        client.on_node_added(&1.into());
+        let node_id1 = SocketAddr::v4(127, 0, 0, 1, 8081).into();
+
+        client.on_node_added(&node_id1);
 
         {
             let callbacks = e1.callbacks.lock();
@@ -365,6 +368,9 @@ mod tests {
 
         let client = Client::new(p2p_service.channel(), timer_service.channel());
 
+        let node_id1 = SocketAddr::v4(127, 0, 0, 1, 8081).into();
+        let node_id5 = SocketAddr::v4(127, 0, 0, 1, 8085).into();
+
         let e1 = Arc::new(TestExtension::new("e1".to_string()));
         client.register_extension(Arc::clone(&e1) as Arc<NetworkExtension>);
         client.initialize_extension(&"e1".to_string());
@@ -372,7 +378,7 @@ mod tests {
         client.register_extension(Arc::clone(&e2) as Arc<NetworkExtension>);
         client.initialize_extension(&"e2".to_string());
 
-        client.on_message(&"e1".to_string(), &1.into(), &vec![]);
+        client.on_message(&"e1".to_string(), &node_id1, &vec![]);
         {
             let callbacks = e1.callbacks.lock();
             assert_eq!(callbacks.deref(), &vec![Callback::Initialize, Callback::Message]);
@@ -380,7 +386,7 @@ mod tests {
             assert_eq!(callbacks.deref(), &vec![Callback::Initialize]);
         }
 
-        client.on_message(&"e2".to_string(), &1.into(), &vec![]);
+        client.on_message(&"e2".to_string(), &node_id1, &vec![]);
         {
             let callbacks = e1.callbacks.lock();
             assert_eq!(callbacks.deref(), &vec![Callback::Initialize, Callback::Message]);
@@ -388,8 +394,8 @@ mod tests {
             assert_eq!(callbacks.deref(), &vec![Callback::Initialize, Callback::Message]);
         }
 
-        client.on_message(&"e2".to_string(), &5.into(), &vec![]);
-        client.on_message(&"e2".to_string(), &1.into(), &vec![]);
+        client.on_message(&"e2".to_string(), &node_id5, &vec![]);
+        client.on_message(&"e2".to_string(), &node_id1, &vec![]);
         {
             let callbacks = e1.callbacks.lock();
             assert_eq!(callbacks.deref(), &vec![Callback::Initialize, Callback::Message]);
