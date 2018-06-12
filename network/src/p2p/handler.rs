@@ -30,7 +30,7 @@ use super::super::addr::convert_to_node_id;
 use super::super::client::Client;
 use super::super::token_generator::TokenGenerator;
 use super::super::RoutingTable;
-use super::super::{NodeId, SocketAddr};
+use super::super::{IntoSocketAddr, NodeId, SocketAddr};
 use super::connections::{ConnectionType, Connections, ReceivedMessage};
 use super::listener::Listener;
 use super::message::{HandshakeMessage, Message as NetworkMessage, Version};
@@ -174,6 +174,7 @@ impl Manager {
         event_loop: &mut EventLoop<IoManager<Message>>,
     ) -> IoHandlerResult<()> {
         self.connections.deregister(&token, event_loop)?;
+        self.connections.remove(&token);
         Ok(())
     }
 
@@ -406,6 +407,7 @@ impl IoHandler<Message> for Handler {
             FIRST_CONNECTION_TOKEN...LAST_CONNECTION_TOKEN => {
                 let manager = self.manager.lock();
                 let node_id = manager.connections.node_id(&stream).ok_or(Error::InvalidStream(stream))?;
+                manager.routing_table.remove_node(node_id.into_addr());
                 self.client.on_node_removed(&node_id);
                 io.deregister_stream(stream)?;
             }

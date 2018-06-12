@@ -171,6 +171,19 @@ impl Connections {
         }
     }
 
+    pub fn remove(&self, token: &StreamToken) {
+        let mut connections = self.connections.write();
+        let mut connected_nodes = self.connected_nodes.write();
+        let mut reversed_connected_nodes = self.reversed_connected_nodes.write();
+
+        let t = connections.remove(token);
+        assert!(t.is_some());
+
+        let node_id = reversed_connected_nodes.remove(token).unwrap();
+        let t = connected_nodes.remove(&node_id);
+        assert_eq!(t, Some(*token));
+    }
+
     // Return true if the queue is not empty
     pub fn send(&self, token: &StreamToken) -> Result<(ConnectionType, bool)> {
         let connections = self.connections.read();
