@@ -113,11 +113,17 @@ pub fn execute(script: &[Instruction], tx_hash: H256, config: Config) -> Result<
     while pc < script.len() {
         match &script[pc] {
             Instruction::Nop => {}
-            Instruction::PushB(blob) => stack.push(Item(blob.clone()))?,
-            Instruction::PushI(val) => stack.push(Item(vec![*val as u8]))?,
+            Instruction::Not => unimplemented!(),
+            Instruction::Eq => unimplemented!(),
+            Instruction::Jmp => unimplemented!(),
+            Instruction::Push(val) => stack.push(Item(vec![*val]))?,
             Instruction::Pop => {
                 stack.pop()?;
             }
+            Instruction::PushB(blob) => stack.push(Item(blob.clone()))?,
+            Instruction::Dup => unimplemented!(),
+            Instruction::Swap => unimplemented!(),
+            Instruction::Blake256 => unimplemented!(),
             Instruction::ChkSig => {
                 let pubkey = Public::from_slice(stack.pop()?.assert_len(64)?.as_ref());
                 let signature = ECDSASignature::from(H520::from(stack.pop()?.assert_len(65)?.as_ref()));

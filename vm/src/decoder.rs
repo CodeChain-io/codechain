@@ -29,6 +29,14 @@ pub fn decode(bytes: &[u8]) -> Result<Vec<Instruction>, DecoderError> {
     while let Some(b) = iter.next() {
         match *b {
             opcode::NOP => result.push(Instruction::Nop),
+            opcode::NOT => result.push(Instruction::Not),
+            opcode::EQ => result.push(Instruction::Eq),
+            opcode::JMP => result.push(Instruction::Jmp),
+            opcode::PUSH => {
+                let val = *iter.next().ok_or(DecoderError::ScriptTooShort)?;
+                result.push(Instruction::Push(val));
+            }
+            opcode::POP => result.push(Instruction::Pop),
             opcode::PUSHB => {
                 let len = *iter.next().ok_or(DecoderError::ScriptTooShort)?;
                 // FIXME : optimize blob assignment
@@ -38,11 +46,9 @@ pub fn decode(bytes: &[u8]) -> Result<Vec<Instruction>, DecoderError> {
                 }
                 result.push(Instruction::PushB(blob));
             }
-            opcode::PUSHI => {
-                let val = *iter.next().ok_or(DecoderError::ScriptTooShort)?;
-                result.push(Instruction::PushI(val as i8));
-            }
-            opcode::POP => result.push(Instruction::Pop),
+            opcode::DUP => result.push(Instruction::Dup),
+            opcode::SWAP => result.push(Instruction::Swap),
+            opcode::BLAKE256 => result.push(Instruction::Blake256),
             opcode::CHKSIG => result.push(Instruction::ChkSig),
             invalid_opcode => return Err(DecoderError::InvalidOpCode(invalid_opcode)),
         }
