@@ -125,7 +125,7 @@ impl ConsensusEngine<CodeChainMachine> for SoloAuthority {
             if let Ok(signature) = self.sign(header.bare_hash()) {
                 return Seal::Regular(vec![::rlp::encode(&(&H520::from(signature) as &[u8])).into_vec()])
             } else {
-                trace!(target: "soloauthority", "generate_seal: FAIL: accounts secret key unavailable");
+                ctrace!(SOLO_AUTHORITY, "generate_seal: FAIL: accounts secret key unavailable");
             }
         }
         Seal::None

@@ -220,8 +220,7 @@ impl BlockChain {
 
     /// Get a specific epoch transition by block number and provided block hash.
     pub fn epoch_transition(&self, block_num: u64, block_hash: H256) -> Option<EpochTransition> {
-        trace!(target: "blockchain", "Loading epoch transition at block {}, {}",
-               block_num, block_hash);
+        ctrace!(BLOCKCHAIN, "Loading epoch transition at block {}, {}", block_num, block_hash);
 
         self.db.read(db::COL_EXTRA, &block_num).and_then(|transitions: EpochTransitions| {
             transitions.candidates.into_iter().find(|c| c.block_hash == block_hash)

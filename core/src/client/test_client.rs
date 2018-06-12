@@ -523,7 +523,7 @@ impl super::EngineClient for TestBlockChainClient {
 
     fn submit_seal(&self, block_hash: H256, seal: Vec<Bytes>) {
         if self.miner.submit_seal(self, block_hash, seal).is_err() {
-            warn!(target: "poa", "Wrong internal seal submission!")
+            cwarn!(POA, "Wrong internal seal submission!")
         }
     }
 }

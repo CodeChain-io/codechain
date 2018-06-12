@@ -270,7 +270,7 @@ impl ParcelSet {
         Some(to_drop.into_iter().fold(HashMap::new(), |mut removed, (sender, nonce)| {
             let order = self.drop(&sender, &nonce)
                 .expect("Parcel has just been found in `by_priority`; so it is in `by_address` also.");
-            trace!(target: "parcel_queue", "Dropped out of limit parcel: {:?}", order.hash);
+            ctrace!(PARCEL_QUEUE, "Dropped out of limit parcel: {:?}", order.hash);
 
             let order = by_hash
                 .remove(&order.hash)
@@ -534,7 +534,7 @@ impl ParcelQueue {
         let nonce = parcel.nonce();
         let current_nonce = fetch_nonce(&sender);
 
-        trace!(target: "parcel_queue", "Removing invalid parcel: {:?}", parcel.hash());
+        ctrace!(PARCEL_QUEUE, "Removing invalid parcel: {:?}", parcel.hash());
 
         // Mark in locals
         if self.local_parcels.contains(parcel_hash) {
@@ -659,11 +659,12 @@ impl ParcelQueue {
     where
         F: Fn(&Address) -> AccountDetails, {
         if origin != ParcelOrigin::Local && parcel.fee < self.minimal_fee {
-            trace!(target: "parcel_queue",
-                   "Dropping parcel below minimal fee: {:?} (gp: {} < {})",
-                   parcel.hash(),
-                   parcel.fee,
-                   self.minimal_fee
+            ctrace!(
+                PARCEL_QUEUE,
+                "Dropping parcel below minimal fee: {:?} (gp: {} < {})",
+                parcel.hash(),
+                parcel.fee,
+                self.minimal_fee
             );
 
             return Err(ParcelError::InsufficientFee {
@@ -674,11 +675,12 @@ impl ParcelQueue {
 
         let full_queues_lowest = self.effective_minimum_fee();
         if parcel.fee < full_queues_lowest && origin != ParcelOrigin::Local {
-            trace!(target: "parcel_queue",
-                   "Dropping parcel below lowest fee in a full queue: {:?} (gp: {} < {})",
-                   parcel.hash(),
-                   parcel.fee,
-                   full_queues_lowest
+            ctrace!(
+                PARCEL_QUEUE,
+                "Dropping parcel below lowest fee in a full queue: {:?} (gp: {} < {})",
+                parcel.hash(),
+                parcel.fee,
+                full_queues_lowest
             );
 
             return Err(ParcelError::InsufficientFee {
@@ -689,11 +691,12 @@ impl ParcelQueue {
 
         let client_account = fetch_account(&parcel.sender());
         if client_account.balance < parcel.fee {
-            trace!(target: "parcel_queue",
-                   "Dropping parcel without sufficient balance: {:?} ({} < {})",
-                   parcel.hash(),
-                   client_account.balance,
-                   parcel.fee
+            ctrace!(
+                PARCEL_QUEUE,
+                "Dropping parcel without sufficient balance: {:?} ({} < {})",
+                parcel.hash(),
+                client_account.balance,
+                parcel.fee
             );
 
             return Err(ParcelError::InsufficientBalance {
@@ -725,7 +728,7 @@ impl ParcelQueue {
     fn import_parcel(&mut self, parcel: QueuedParcel, state_nonce: U256) -> Result<ParcelImportResult, ParcelError> {
         if self.by_hash.get(&parcel.hash()).is_some() {
             // Parcel is already imported.
-            trace!(target: "parcel_queue", "Dropping already imported parcel: {:?}", parcel.hash());
+            ctrace!(PARCEL_QUEUE, "Dropping already imported parcel: {:?}", parcel.hash());
             return Err(ParcelError::AlreadyImported)
         }
 
@@ -738,7 +741,7 @@ impl ParcelQueue {
         // nonce height would result in overflow.
         if nonce < state_nonce {
             // Droping parcel
-            trace!(target: "parcel_queue", "Dropping old parcel: {:?} (nonce: {} < {})", parcel.hash(), nonce, state_nonce);
+            ctrace!(PARCEL_QUEUE, "Dropping old parcel: {:?} (nonce: {} < {})", parcel.hash(), nonce, state_nonce);
             return Err(ParcelError::Old)
         }
 
@@ -769,8 +772,8 @@ impl ParcelQueue {
             // Return an error if this parcel was not imported because of limit.
             check_if_removed(&address, &nonce, removed)?;
 
-            debug!(target: "parcel_queue", "Importing parcel to future: {:?}", hash);
-            debug!(target: "parcel_queue", "status: {:?}", self.status());
+            cdebug!(PARCEL_QUEUE, "Importing parcel to future: {:?}", hash);
+            cdebug!(PARCEL_QUEUE, "status: {:?}", self.status());
             return Ok(ParcelImportResult::Future)
         }
 
@@ -797,8 +800,8 @@ impl ParcelQueue {
         // Trigger error if the parcel we are importing was removed.
         check_if_removed(&address, &nonce, removed)?;
 
-        debug!(target: "parcel_queue", "Imported parcel to current: {:?}", hash);
-        debug!(target: "parcel_queue", "status: {:?}", self.status());
+        cdebug!(PARCEL_QUEUE, "Imported parcel to current: {:?}", hash);
+        cdebug!(PARCEL_QUEUE, "status: {:?}", self.status());
         Ok(ParcelImportResult::Current)
     }
 
@@ -842,7 +845,7 @@ impl ParcelQueue {
             if k >= current_nonce {
                 self.future.insert(*sender, k, order.update_height(k, current_nonce));
             } else {
-                trace!(target: "parcel_queue", "Removing old parcel: {:?} (nonce: {} < {})", order.hash, k, current_nonce);
+                ctrace!(PARCEL_QUEUE, "Removing old parcel: {:?} (nonce: {} < {})", order.hash, k, current_nonce);
                 // Remove the parcel completely
                 self.by_hash.remove(&order.hash).expect("All parcels in `future` are also in `by_hash`");
             }
@@ -919,7 +922,7 @@ impl ParcelQueue {
                     );
                 }
             } else {
-                trace!(target: "parcel_queue", "Removing old parcel: {:?} (nonce: {} < {})", order.hash, k, current_nonce);
+                ctrace!(PARCEL_QUEUE, "Removing old parcel: {:?} (nonce: {} < {})", order.hash, k, current_nonce);
                 let parcel = self.by_hash.remove(&order.hash).expect("All parcels in `future` are also in `by_hash`");
                 if parcel.origin.is_local() {
                     self.local_parcels.mark_mined(parcel.parcel);
@@ -984,7 +987,7 @@ impl ParcelQueue {
         let old_hash = by_hash.insert(hash, parcel);
         assert!(old_hash.is_none(), "Each hash has to be inserted exactly once.");
 
-        trace!(target: "parcel_queue", "Inserting: {:?}", order);
+        ctrace!(PARCEL_QUEUE, "Inserting: {:?}", order);
 
         if let Some(old) = set.insert(address, nonce, order.clone()) {
             Self::replace_orders(address, nonce, old, order, set, by_hash, local)
@@ -1011,7 +1014,12 @@ impl ParcelQueue {
         let min_required_fee = old_fee + (old_fee >> FEE_BUMP_SHIFT);
 
         if min_required_fee > new_fee {
-            trace!(target: "parcel_queue", "Didn't insert parcel because fee was too low: {:?} ({:?} stays in the queue)", order.hash, old.hash);
+            ctrace!(
+                PARCEL_QUEUE,
+                "Didn't insert parcel because fee was too low: {:?} ({:?} stays in the queue)",
+                order.hash,
+                old.hash
+            );
             // Put back old parcel since it has greater priority (higher fee)
             set.insert(address, nonce, old);
             // and remove new one
@@ -1023,7 +1031,7 @@ impl ParcelQueue {
             }
             false
         } else {
-            trace!(target: "parcel_queue", "Replaced parcel: {:?} with parcel with higher fee: {:?}", old.hash, order.hash);
+            ctrace!(PARCEL_QUEUE, "Replaced parcel: {:?} with parcel with higher fee: {:?}", old.hash, order.hash);
             // Make sure we remove old parcel entirely
             let old =
                 by_hash.remove(&old.hash).expect("The hash is coming from `future` so it has to be in `by_hash`.");

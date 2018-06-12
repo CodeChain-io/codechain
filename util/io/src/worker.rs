@@ -120,27 +120,27 @@ impl Worker {
         match work.work_type {
             WorkType::Readable => {
                 if let Err(err) = work.handler.stream_readable(&IoContext::new(channel, work.handler_id), work.token) {
-                    warn!(target: "io", "Error in stream_readable {:?}", err);
+                    cwarn!(IO, "Error in stream_readable {:?}", err);
                 }
             }
             WorkType::Writable => {
                 if let Err(err) = work.handler.stream_writable(&IoContext::new(channel, work.handler_id), work.token) {
-                    warn!(target: "io", "Error in stream_writable {:?}", err);
+                    cwarn!(IO, "Error in stream_writable {:?}", err);
                 }
             }
             WorkType::Hup => {
                 if let Err(err) = work.handler.stream_hup(&IoContext::new(channel, work.handler_id), work.token) {
-                    warn!(target: "io", "Error in stream_hup {:?}", err);
+                    cwarn!(IO, "Error in stream_hup {:?}", err);
                 }
             }
             WorkType::Timeout => {
                 if let Err(err) = work.handler.timeout(&IoContext::new(channel, work.handler_id), work.token) {
-                    warn!(target: "io", "Error in timeout {:?}", err);
+                    cwarn!(IO, "Error in timeout {:?}", err);
                 }
             }
             WorkType::Message(message) => {
                 if let Err(err) = work.handler.message(&IoContext::new(channel, work.handler_id), &message) {
-                    warn!(target: "io", "Error in message {:?}", err);
+                    cwarn!(IO, "Error in message {:?}", err);
                 }
             }
         }
@@ -149,13 +149,13 @@ impl Worker {
 
 impl Drop for Worker {
     fn drop(&mut self) {
-        trace!(target: "shutdown", "[IoWorker] Closing...");
+        ctrace!(SHUTDOWN, "[IoWorker] Closing...");
         let _ = self.wait_mutex.lock().expect("Poisoned work_loop mutex");
         self.deleting.store(true, AtomicOrdering::Release);
         self.wait.notify_all();
         if let Some(thread) = self.thread.take() {
             thread.join().ok();
         }
-        trace!(target: "shutdown", "[IoWorker] Closed");
+        ctrace!(SHUTDOWN, "[IoWorker] Closed");
     }
 }

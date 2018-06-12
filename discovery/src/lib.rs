@@ -29,6 +29,8 @@ extern crate lazy_static;
 
 extern crate codechain_crypto as ccrypto;
 extern crate codechain_keys as ckeys;
+#[macro_use]
+extern crate codechain_logger as clogger;
 extern crate codechain_network as cnetwork;
 extern crate codechain_types as ctypes;
 

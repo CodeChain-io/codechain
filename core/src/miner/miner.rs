@@ -127,10 +127,10 @@ impl Miner {
         let has_local_parcels = self.parcel_queue.read().has_local_pending_parcels();
         let should_disable_sealing = !has_local_parcels && self.engine.seals_internally().is_none();
 
-        trace!(target: "miner", "requires_reseal: should_disable_sealing={}", should_disable_sealing);
+        ctrace!(MINER, "requires_reseal: should_disable_sealing={}", should_disable_sealing);
 
         if should_disable_sealing {
-            trace!(target: "miner", "Miner sleeping");
+            ctrace!(MINER, "Miner sleeping");
             false
         } else {
             // sealing enabled and we don't want to sleep.
@@ -155,7 +155,7 @@ impl Miner {
             .map(|parcel| {
                 let hash = parcel.hash();
                 if client.parcel_block(ParcelId::Hash(hash)).is_some() {
-                    debug!(target: "miner", "Rejected parcel {:?}: already in the blockchain", hash);
+                    cdebug!(MINER, "Rejected parcel {:?}: already in the blockchain", hash);
                     return Err(Error::Parcel(ParcelError::AlreadyImported))
                 }
                 match self.engine
@@ -163,7 +163,7 @@ impl Miner {
                     .and_then(|_| self.engine.verify_parcel_unordered(parcel, &best_block_header))
                 {
                     Err(e) => {
-                        debug!(target: "miner", "Rejected parcel {:?} with invalid signature: {:?}", hash, e);
+                        cdebug!(MINER, "Rejected parcel {:?} with invalid signature: {:?}", hash, e);
                         Err(e)
                     }
                     Ok(parcel) => {
@@ -207,7 +207,7 @@ impl Miner {
         let (parcels, mut open_block) = {
             let parcels = self.parcel_queue.read().top_parcels();
 
-            trace!(target: "miner", "prepare_block: No existing work - making new block");
+            ctrace!(MINER, "prepare_block: No existing work - making new block");
             let open_block = chain.prepare_open_block(self.author(), self.extra_data());
 
             (parcels, open_block)
@@ -229,28 +229,30 @@ impl Miner {
             };
             let took = start.elapsed();
 
-            trace!(target: "miner", "Adding parcel {:?} took {:?}", hash, took);
+            ctrace!(MINER, "Adding parcel {:?} took {:?}", hash, took);
             match result {
                 // already have parcel - ignore
                 Err(Error::Parcel(ParcelError::AlreadyImported)) => {}
                 Err(Error::Parcel(ParcelError::NotAllowed)) => {
                     non_allowed_parcels.insert(hash);
-                    debug!(target: "miner",
-                           "Skipping non-allowed parcel for sender {:?}",
-                           hash);
+                    cdebug!(MINER, "Skipping non-allowed parcel for sender {:?}", hash);
                 }
                 Err(e) => {
                     invalid_parcels.insert(hash);
-                    debug!(target: "miner",
-                           "Error adding parcel to block: number={}. parcel_hash={:?}, Error: {:?}",
-                           block_number, hash, e);
+                    cdebug!(
+                        MINER,
+                        "Error adding parcel to block: number={}. parcel_hash={:?}, Error: {:?}",
+                        block_number,
+                        hash,
+                        e
+                    );
                 }
                 _ => {
                     parcel_count += 1;
                 } // imported ok
             }
         }
-        trace!(target: "miner", "Pushed {}/{} parcels", parcel_count, parcel_total);
+        ctrace!(MINER, "Pushed {}/{} parcels", parcel_count, parcel_total);
 
         let (parcels_root, invoices_root) = {
             let parent_hash = open_block.header().parent_hash();
@@ -278,7 +280,7 @@ impl Miner {
     fn seal_and_import_block_internally<C>(&self, chain: &C, block: ClosedBlock) -> bool
     where
         C: BlockChain + ImportSealedBlock, {
-        trace!(target: "miner", "seal_block_internally: attempting internal seal.");
+        ctrace!(MINER, "seal_block_internally: attempting internal seal.");
         if block.parcels().is_empty() {
             return false
         }
@@ -291,7 +293,7 @@ impl Miner {
         match self.engine.generate_seal(block.block(), &parent_header) {
             // Save proposal for later seal submission and broadcast it.
             Seal::Proposal(seal) => {
-                trace!(target: "miner", "Received a Proposal seal.");
+                ctrace!(MINER, "Received a Proposal seal.");
                 {
                     let mut sealing_queue = self.sealing_queue.lock();
                     sealing_queue.push(block.clone());
@@ -359,7 +361,7 @@ impl MinerService for Miner {
     }
 
     fn set_author(&self, author: Address) {
-        trace!(target: "miner", "Set author to {:?}", author);
+        ctrace!(MINER, "Set author to {:?}", author);
         *self.author.write() = author;
     }
 
@@ -374,15 +376,15 @@ impl MinerService for Miner {
     fn set_engine_signer(&self, address: Address) -> Result<(), SignError> {
         if self.engine.seals_internally().is_some() {
             if let Some(ref ap) = self.accounts {
-                trace!(target: "miner", "Set engine signer to {:?}", address);
+                ctrace!(MINER, "Set engine signer to {:?}", address);
                 self.engine.set_signer(ap.clone(), address);
                 Ok(())
             } else {
-                warn!(target: "miner", "No account provider");
+                cwarn!(MINER, "No account provider");
                 Err(SignError::NotFound)
             }
         } else {
-            warn!(target: "miner", "Cannot set engine signer on a PoW chain.");
+            cwarn!(MINER, "Cannot set engine signer on a PoW chain.");
             Err(SignError::InappropriateChain)
         }
     }
@@ -412,7 +414,7 @@ impl MinerService for Miner {
         retracted: &[H256],
     ) where
         C: AccountData + BlockChain + BlockProducer + ImportSealedBlock, {
-        trace!(target: "miner", "chain_new_blocks");
+        ctrace!(MINER, "chain_new_blocks");
 
         // Then import all parcels...
         {
@@ -441,22 +443,20 @@ impl MinerService for Miner {
     fn update_sealing<C>(&self, chain: &C)
     where
         C: AccountData + BlockChain + BlockProducer + ImportSealedBlock, {
-        trace!(target: "miner", "update_sealing: preparing a block");
+        ctrace!(MINER, "update_sealing: preparing a block");
         if self.requires_reseal() {
             let block = self.prepare_block(chain);
 
             match self.engine.seals_internally() {
                 Some(true) => {
-                    trace!(target: "miner", "update_sealing: engine indicates internal sealing");
+                    ctrace!(MINER, "update_sealing: engine indicates internal sealing");
                     if self.seal_and_import_block_internally(chain, block) {
-                        trace!(target: "miner", "update_sealing: imported internally sealed block");
+                        ctrace!(MINER, "update_sealing: imported internally sealed block");
                     }
                 }
-                Some(false) => {
-                    trace!(target: "miner", "update_sealing: engine is not keen to seal internally right now")
-                }
+                Some(false) => ctrace!(MINER, "update_sealing: engine is not keen to seal internally right now"),
                 None => {
-                    trace!(target: "miner", "update_sealing: engine does not seal internally, preparing work");
+                    ctrace!(MINER, "update_sealing: engine does not seal internally, preparing work");
                     unreachable!("External sealing is not supported")
                 }
             }
@@ -465,20 +465,27 @@ impl MinerService for Miner {
 
     fn submit_seal<C: ImportSealedBlock>(&self, chain: &C, block_hash: H256, seal: Vec<Bytes>) -> Result<(), Error> {
         let result = if let Some(b) = self.sealing_queue.lock().take_used_if(|b| &b.hash() == &block_hash) {
-            trace!(target: "miner", "Submitted block {}={}={} with seal {:?}", block_hash, b.hash(), b.header().bare_hash(), seal);
+            ctrace!(
+                MINER,
+                "Submitted block {}={}={} with seal {:?}",
+                block_hash,
+                b.hash(),
+                b.header().bare_hash(),
+                seal
+            );
             b.lock().try_seal(&*self.engine, seal).or_else(|(e, _)| {
-                warn!(target: "miner", "Mined solution rejected: {}", e);
+                cwarn!(MINER, "Mined solution rejected: {}", e);
                 Err(Error::PowInvalid)
             })
         } else {
-            warn!(target: "miner", "Submitted solution rejected: Block unknown or out of date.");
+            cwarn!(MINER, "Submitted solution rejected: Block unknown or out of date.");
             Err(Error::PowHashInvalid)
         };
         result.and_then(|sealed| {
             let n = sealed.header().number();
             let h = sealed.header().hash();
             chain.import_sealed_block(sealed)?;
-            info!(target: "miner", "Submitted block imported OK. #{}: {}", n, h);
+            cinfo!(MINER, "Submitted block imported OK. #{}: {}", n, h);
             Ok(())
         })
     }
@@ -488,7 +495,7 @@ impl MinerService for Miner {
         client: &C,
         parcels: Vec<UnverifiedParcel>,
     ) -> Vec<Result<ParcelImportResult, Error>> {
-        trace!(target: "external_parcel", "Importing external parcels");
+        ctrace!(EXTERNAL_PARCEL, "Importing external parcels");
         let results = {
             let mut parcel_queue = self.parcel_queue.write();
             self.add_parcels_to_queue(client, parcels, ParcelOrigin::External, &mut parcel_queue)
@@ -509,7 +516,7 @@ impl MinerService for Miner {
         chain: &C,
         parcel: SignedParcel,
     ) -> Result<ParcelImportResult, Error> {
-        trace!(target: "own_parcel", "Importing parcel: {:?}", parcel);
+        ctrace!(OWN_PARCEL, "Importing parcel: {:?}", parcel);
 
         let imported = {
             // Be sure to release the lock before we call prepare_work_sealing
@@ -521,11 +528,11 @@ impl MinerService for Miner {
 
             match import {
                 Ok(_) => {
-                    trace!(target: "own_parcel", "Status: {:?}", parcel_queue.status());
+                    ctrace!(OWN_PARCEL, "Status: {:?}", parcel_queue.status());
                 }
                 Err(ref e) => {
-                    trace!(target: "own_parcel", "Status: {:?}", parcel_queue.status());
-                    warn!(target: "own_parcel", "Error importing parcel: {:?}", e);
+                    ctrace!(OWN_PARCEL, "Status: {:?}", parcel_queue.status());
+                    cwarn!(OWN_PARCEL, "Error importing parcel: {:?}", e);
                 }
             }
             import

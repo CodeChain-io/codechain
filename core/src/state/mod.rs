@@ -319,7 +319,7 @@ impl<B: Backend> State<B> {
 
     /// Add `incr` to the balance of account `a`.
     pub fn add_balance(&mut self, a: &Address, incr: &U256) -> trie::Result<()> {
-        trace!(target: "state", "add_balance({}, {}): {}", a, incr, self.balance(a)?);
+        ctrace!(STATE, "add_balance({}, {}): {}", a, incr, self.balance(a)?);
         let is_value_transfer = !incr.is_zero();
         if is_value_transfer {
             self.require_account(a)?.add_balance(incr);
@@ -329,7 +329,7 @@ impl<B: Backend> State<B> {
 
     /// Subtract `decr` from the balance of account `a`.
     pub fn sub_balance(&mut self, a: &Address, decr: &U256) -> trie::Result<()> {
-        trace!(target: "state", "sub_balance({}, {}): {}", a, decr, self.balance(a)?);
+        ctrace!(STATE, "sub_balance({}, {}): {}", a, decr, self.balance(a)?);
         if !decr.is_zero() || !self.account_exists(a)? {
             self.require_account(a)?.sub_balance(decr);
         }
@@ -376,13 +376,13 @@ impl<B: Backend> State<B> {
         let asset_scheme = self.require_asset_scheme(&asset_scheme_address, || {
             AssetScheme::new(metadata.clone(), amount, registrar.clone())
         })?;
-        trace!(target: "tx", "{:?} is minted on {:?}", asset_scheme, asset_scheme_address);
+        ctrace!(TX, "{:?} is minted on {:?}", asset_scheme, asset_scheme_address);
 
         let asset_address = AssetAddress::new(transaction_hash, 0);
         let asset = self.require_asset(&asset_address, || {
             Asset::new(asset_scheme_address.into(), *lock_script_hash, parameters.clone(), amount)
         });
-        trace!(target: "tx", "{:?} is generated on {:?}", asset, asset_address);
+        ctrace!(TX, "{:?} is generated on {:?}", asset, asset_address);
         Ok(())
     }
 
@@ -425,7 +425,7 @@ impl<B: Backend> State<B> {
             };
 
             match script_result.map_err(|err| {
-                trace!(target: "tx", "Cannot run unlock/lock script {:?}", err);
+                ctrace!(TX, "Cannot run unlock/lock script {:?}", err);
                 TransactionError::FailedToUnlock(address_hash)
             })? {
                 ScriptResult::Fail => return Err(TransactionError::FailedToUnlock(address_hash).into()),
@@ -474,8 +474,8 @@ impl<B: Backend> State<B> {
             self.require_asset(&asset_address, || asset)?;
             created_asset.push((asset_address, output.amount));
         }
-        trace!(target: "tx", "Deleted assets {:?}", deleted_asset);
-        trace!(target: "tx", "Created assets {:?}", created_asset);
+        ctrace!(TX, "Deleted assets {:?}", deleted_asset);
+        ctrace!(TX, "Created assets {:?}", created_asset);
         Ok(())
     }
 
@@ -530,7 +530,7 @@ impl<B: Backend> State<B> {
             self.checkpoint(TRANSACTION_CHECKPOINT);
             results.push(match self.execute_transaction(t, &fee_payer, &parcel.network_id) {
                 Ok(_) => {
-                    info!(target: "tx", "Tx({}) is applied", t.hash());
+                    cinfo!(TX, "Tx({}) is applied", t.hash());
                     self.discard_checkpoint(TRANSACTION_CHECKPOINT);
                     let invoice = Invoice::new(TransactionOutcome::Success);
                     let error = None;
@@ -540,7 +540,7 @@ impl<B: Backend> State<B> {
                     }
                 }
                 Err(Error::Transaction(err)) => {
-                    info!(target: "tx", "Cannot apply Tx({}): {:?}", t.hash(), err);
+                    cinfo!(TX, "Cannot apply Tx({}): {:?}", t.hash(), err);
                     self.revert_to_checkpoint(TRANSACTION_CHECKPOINT);
                     let invoice = Invoice::new(TransactionOutcome::Failed);
                     let error = Some(err);
@@ -550,7 +550,7 @@ impl<B: Backend> State<B> {
                     }
                 }
                 Err(err) => {
-                    info!(target: "tx", "Tx({}) is invalid: {:?}", t.hash(), err);
+                    cinfo!(TX, "Tx({}) is invalid: {:?}", t.hash(), err);
                     self.discard_checkpoint(TRANSACTION_CHECKPOINT);
                     self.revert_to_checkpoint(TRANSACTIONS_CHECKPOINT);
                     return Err(err)
@@ -567,7 +567,7 @@ impl<B: Backend> State<B> {
         fee_payer: &Address,
         parcel_network_id: &u64,
     ) -> Result<(), Error> {
-        trace!(target: "tx", "Execute {:?}(TxHash:{:?})", transaction, transaction.hash());
+        ctrace!(TX, "Execute {:?}(TxHash:{:?})", transaction, transaction.hash());
         match transaction {
             Transaction::Payment {
                 nonce,

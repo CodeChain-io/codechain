@@ -16,14 +16,71 @@
 
 #[macro_export]
 macro_rules! log_target {
-    (SYNC) => {
-        "sync"
+    (BLOCKCHAIN) => {
+        "blockchain"
+    };
+    (CLIENT) => {
+        "client"
+    };
+    (DISCOVERY) => {
+        "discovery"
+    };
+    (ENGINE) => {
+        "engine"
+    };
+    (EXTERNAL_PARCEL) => {
+        "external_parcel"
+    };
+    (IO) => {
+        "io"
+    };
+    (MINER) => {
+        "miner"
     };
     (NET) => {
         "net"
     };
     (NETAPI) => {
         "netapi"
+    };
+    (OWN_PARCEL) => {
+        "own_parcel"
+    };
+    (PARCEL_QUEUE) => {
+        "parcel_queue"
+    };
+    (POA) => {
+        "poa"
+    };
+    (SHUTDOWN) => {
+        "shutdown"
+    };
+    (SOLO_AUTHORITY) => {
+        "solo_authoirty"
+    };
+    (SPEC) => {
+        "spec"
+    };
+    (STATE) => {
+        "state"
+    };
+    (STATE_DB) => {
+        "state_db"
+    };
+    (STRATUM) => {
+        "stratum"
+    };
+    (SYNC) => {
+        "sync"
+    };
+    (TEST_SCRIPT) => {
+        "test_script"
+    };
+    (TRIE) => {
+        "trie"
+    };
+    (TX) => {
+        "tx"
     };
 }
 

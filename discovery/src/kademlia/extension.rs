@@ -187,7 +187,7 @@ impl NetworkExtension for Extension {
                     }
                 }
                 None => {
-                    warn!(target: "discovery", "Cannot find routing table");
+                    cwarn!(DISCOVERY, "Cannot find routing table");
                     return
                 }
             };
@@ -221,7 +221,7 @@ impl NetworkExtension for Extension {
 
     fn on_message(&self, node: &NodeId, message: &[u8]) {
         if let Err(err) = self.on_receive(node, message) {
-            warn!(target: "discovery", "Invalid message from {} : {:?}", node, err);
+            cwarn!(DISCOVERY, "Invalid message from {} : {:?}", node, err);
         }
     }
 

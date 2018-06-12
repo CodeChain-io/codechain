@@ -60,9 +60,11 @@
 //TODO: use Poll from mio
 #![allow(deprecated)]
 
+#[macro_use]
+extern crate codechain_logger as clogger;
 extern crate mio;
 #[macro_use]
-extern crate log as rlog;
+extern crate log;
 extern crate crossbeam;
 extern crate parking_lot;
 extern crate slab;

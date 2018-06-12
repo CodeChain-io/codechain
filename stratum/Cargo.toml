@@ -7,6 +7,7 @@ authors = ["Parity Technologies <admin@parity.io>", "CodeChain Team <codechain@k
 
 [dependencies]
 codechain-crypto = { path = "../crypto" }
+codechain-logger = { path = "../util/logger" }
 codechain-types = { path = "../primitives/codechain-types" }
 jsonrpc-core = { git = "https://github.com/paritytech/jsonrpc.git", branch = "parity-1.11" }
 jsonrpc-macros = { git = "https://github.com/paritytech/jsonrpc.git", branch = "parity-1.11" }

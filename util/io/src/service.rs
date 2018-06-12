@@ -314,7 +314,7 @@ where
                     IoChannel::new(event_loop.channel(), Arc::downgrade(&self.handlers)),
                     handler_id,
                 )) {
-                    error!(target: "io", "Error in initialize {:?}", err);
+                    cerror!(IO, "Error in initialize {:?}", err);
                 }
             }
             IoMessage::RemoveHandler {
@@ -367,7 +367,7 @@ where
                     if let Err(err) =
                         handler.register_stream(token, Token(token + handler_id * TOKENS_PER_HANDLER), event_loop)
                     {
-                        warn!(target: "io", "Error in register_stream {:?}", err);
+                        cwarn!(IO, "Error in register_stream {:?}", err);
                     }
                 }
             }
@@ -377,7 +377,7 @@ where
             } => {
                 if let Some(handler) = self.handlers.read().get(handler_id) {
                     if let Err(err) = handler.deregister_stream(token, event_loop) {
-                        warn!(target: "io", "Error in deregister_stream {:?}", err);
+                        cwarn!(IO, "Error in deregister_stream {:?}", err);
                     }
                     // unregister a timer associated with the token (if any)
                     let timer_id = token + handler_id * TOKENS_PER_HANDLER;
@@ -394,7 +394,7 @@ where
                     if let Err(err) =
                         handler.update_stream(token, Token(token + handler_id * TOKENS_PER_HANDLER), event_loop)
                     {
-                        warn!(target: "io", "Error in update_stream {:?}", err);
+                        cwarn!(IO, "Error in update_stream {:?}", err);
                     }
                 }
             }
@@ -468,7 +468,7 @@ where
                         if let Some(h) = handlers.read().get(id) {
                             let handler = h.clone();
                             if let Err(err) = handler.message(&IoContext::new(self.clone(), id), &message) {
-                                warn!(target: "io", "Error in message {:?}", err);
+                                cwarn!(IO, "Error in message {:?}", err);
                             }
                         }
                     }
@@ -477,7 +477,7 @@ where
             Handlers::Single(ref handler) => {
                 if let Some(handler) = handler.upgrade() {
                     if let Err(err) = handler.message(&IoContext::new(self.clone(), 0), &message) {
-                        warn!(target: "io", "Error in message {:?}", err);
+                        cwarn!(IO, "Error in message {:?}", err);
                     }
                 }
             }
@@ -551,20 +551,20 @@ where
     }
 
     pub fn stop(&self) {
-        trace!(target: "shutdown", "[IoService] Closing...");
+        ctrace!(SHUTDOWN, "[IoService] Closing...");
         // Clear handlers so that shared pointers are not stuck on stack
         // in Channel::send_sync
         self.handlers.write().clear();
         self.host_channel
             .lock()
             .send(IoMessage::Shutdown)
-            .unwrap_or_else(|e| warn!(target: "io", "Error on IO service shutdown: {:?}", e));
+            .unwrap_or_else(|e| cwarn!(IO, "Error on IO service shutdown: {:?}", e));
         if let Some(thread) = self.thread.lock().take() {
             thread.join().unwrap_or_else(|e| {
-                debug!(target: "shutdown", "Error joining IO service event loop thread: {:?}", e);
+                cdebug!(SHUTDOWN, "Error joining IO service event loop thread: {:?}", e);
             });
         }
-        trace!(target: "shutdown", "[IoService] Closed.");
+        ctrace!(SHUTDOWN, "[IoService] Closed.");
     }
 
     /// Regiter an IO handler with the event loop.

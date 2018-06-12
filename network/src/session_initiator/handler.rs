@@ -436,7 +436,7 @@ impl IoHandler<Message> for Handler {
         }
         let _f = finally(|| {
             if let Err(err) = io.update_registration(stream) {
-                warn!(target:"net", "Cannot update registration for session_initiator : {:?}", err);
+                cwarn!(NET, "Cannot update registration for session_initiator : {:?}", err);
             }
         });
         loop {
