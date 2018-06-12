@@ -25,12 +25,12 @@ use instruction::Instruction;
 
 #[test]
 fn simple_success() {
-    assert_eq!(execute(&[Instruction::PushI(1)], H256::default(), Config::default()), Ok(ScriptResult::Unlocked));
+    assert_eq!(execute(&[Instruction::Push(1)], H256::default(), Config::default()), Ok(ScriptResult::Unlocked));
 }
 
 #[test]
 fn simple_failure() {
-    assert_eq!(execute(&[Instruction::PushI(0)], H256::default(), Config::default()), Ok(ScriptResult::Fail));
+    assert_eq!(execute(&[Instruction::Push(0)], H256::default(), Config::default()), Ok(ScriptResult::Fail));
 }
 
 #[test]
@@ -44,7 +44,7 @@ fn out_of_memory() {
         max_memory: 2,
     };
     assert_eq!(
-        execute(&[Instruction::PushI(0), Instruction::PushI(1), Instruction::PushI(2)], H256::default(), config),
+        execute(&[Instruction::Push(0), Instruction::Push(1), Instruction::Push(2)], H256::default(), config),
         Err(RuntimeError::OutOfMemory)
     );
 }

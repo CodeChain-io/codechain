@@ -20,8 +20,17 @@ use opcode;
 
 #[test]
 fn test_single_byte_opcodes() {
-    let target =
-        [(opcode::NOP, Instruction::Nop), (opcode::POP, Instruction::Pop), (opcode::CHKSIG, Instruction::ChkSig)];
+    let target = [
+        (opcode::NOP, Instruction::Nop),
+        (opcode::NOT, Instruction::Not),
+        (opcode::EQ, Instruction::Eq),
+        (opcode::JMP, Instruction::Jmp),
+        (opcode::POP, Instruction::Pop),
+        (opcode::DUP, Instruction::Dup),
+        (opcode::SWAP, Instruction::Swap),
+        (opcode::BLAKE256, Instruction::Blake256),
+        (opcode::CHKSIG, Instruction::ChkSig),
+    ];
     for &(ref byte, ref code) in target.into_iter() {
         let script = decode(&[byte.clone(), byte.clone(), byte.clone()]);
         assert_eq!(script, Ok(vec![code.clone(), code.clone(), code.clone()]));
@@ -29,9 +38,9 @@ fn test_single_byte_opcodes() {
 }
 
 #[test]
-fn pushi() {
-    assert_eq!(decode(&[opcode::PUSHI, 0, opcode::PUSHI, 10]), Ok(vec![Instruction::PushI(0), Instruction::PushI(10)]));
-    assert_eq!(decode(&[opcode::PUSHI, 0, opcode::PUSHI]), Err(DecoderError::ScriptTooShort));
+fn push() {
+    assert_eq!(decode(&[opcode::PUSH, 0, opcode::PUSH, 10]), Ok(vec![Instruction::Push(0), Instruction::Push(10)]));
+    assert_eq!(decode(&[opcode::PUSH, 0, opcode::PUSH]), Err(DecoderError::ScriptTooShort));
 }
 
 #[test]
