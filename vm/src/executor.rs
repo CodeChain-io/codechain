@@ -107,7 +107,17 @@ impl Stack {
     }
 }
 
-pub fn execute(script: &[Instruction], tx_hash: H256, config: Config) -> Result<ScriptResult, RuntimeError> {
+pub fn execute(
+    unlock: &[Instruction],
+    params: &[Vec<u8>],
+    lock: &[Instruction],
+    tx_hash: H256,
+    config: Config,
+) -> Result<ScriptResult, RuntimeError> {
+    // FIXME: don't merge scripts
+    let param_scripts: Vec<_> = params.iter().map(|p| Instruction::PushB(p.clone())).collect();
+    let script = [unlock, &param_scripts, lock].concat();
+
     let mut stack = Stack::new(config);
     let mut pc = 0;
     while pc < script.len() {
