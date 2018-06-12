@@ -30,8 +30,6 @@ use super::routing_table::RoutingTable;
 use super::NodeId;
 
 pub struct Kademlia {
-    #[allow(dead_code)]
-    alpha: u8,
     k: u8,
     pub t_refresh: u32,
     table: RoutingTable,
@@ -40,9 +38,8 @@ pub struct Kademlia {
 }
 
 impl Kademlia {
-    pub fn new(local_id: NodeId, alpha: u8, k: u8, t_refresh: u32) -> Self {
+    pub fn new(local_id: NodeId, k: u8, t_refresh: u32) -> Self {
         Kademlia {
-            alpha,
             k,
             t_refresh,
             table: RoutingTable::new(local_id, k),
@@ -196,10 +193,10 @@ mod tests {
     use super::Kademlia;
     use super::NodeId;
 
-    use super::super::{ALPHA, K, T_REFRESH};
+    use super::super::{K, T_REFRESH};
 
     pub fn default_kademlia(local_id: NodeId) -> Kademlia {
-        Kademlia::new(local_id, ALPHA, K, T_REFRESH)
+        Kademlia::new(local_id, K, T_REFRESH)
     }
 
 
@@ -207,13 +204,6 @@ mod tests {
     const ID1: &str = "0000000000000000000000000000000000000000000000000000000000000001";
     const ID4: &str = "0000000000000000000000000000000000000000000000000000000000000004";
     const ID5: &str = "0000000000000000000000000000000000000000000000000000000000000005";
-
-    #[test]
-    fn test_default_alpha() {
-        let id = Contact::from_hash(ID0).id();
-        let kademlia = default_kademlia(id);
-        assert_eq!(3, kademlia.alpha);
-    }
 
     #[test]
     fn test_default_k() {
@@ -300,7 +290,7 @@ mod tests {
     #[test]
     fn test_add_contact_adds_to_be_verified_when_bucket_is_full() {
         let id = Contact::from_hash(ID0).id();
-        let mut kademlia = Kademlia::new(id, ALPHA, 1, T_REFRESH);
+        let mut kademlia = Kademlia::new(id, 1, T_REFRESH);
 
         let contact4 = Contact::from_hash(ID4);
         let contact5 = Contact::from_hash(ID5);
@@ -316,7 +306,7 @@ mod tests {
 
     #[test]
     fn handle_refresh_command_must_not_crash() {
-        let mut kademlia = Kademlia::new(0xDEADBEEF.into(), 3, 8, 60_000);
+        let mut kademlia = Kademlia::new(0xDEADBEEF.into(), 8, 60_000);
         kademlia.handle_refresh_command();
     }
 }

@@ -181,7 +181,7 @@ impl NetworkExtension for Extension {
                     if !kademlias.contains_key(&local_node_id) {
                         let t = kademlias.insert(
                             local_node_id.clone(),
-                            Kademlia::new(local_node_id, self.config.alpha, self.config.k, self.config.t_refresh),
+                            Kademlia::new(local_node_id, self.config.k, self.config.t_refresh),
                         );
                         debug_assert!(t.is_none());
                     }
@@ -270,7 +270,7 @@ mod tests {
 
     #[test]
     fn test_add_node() {
-        let config = Config::new(None, None, None);
+        let config = Config::new(None, None);
         let default_refresh = config.t_refresh;
         let extension = Arc::new(Extension::new(config));
 

@@ -184,14 +184,7 @@ pub fn parse_discovery_config(matches: &clap::ArgMatches) -> Result<Option<Disco
 
     match matches.value_of("discovery") {
         Some("unstructured") => Ok(Some(Discovery::Unstructured(UnstructuredConfig::new(bucket_size, refresh)))),
-        Some("kademlia") => {
-            let alpha = match matches.value_of("kademlia-alpha") {
-                Some(alpha) => Some(alpha.parse().map_err(|_| "Invalid kademlia-alpha")?),
-                None => None,
-            };
-
-            Ok(Some(Discovery::Kademlia(KademliaConfig::new(alpha, bucket_size, refresh))))
-        }
+        Some("kademlia") => Ok(Some(Discovery::Kademlia(KademliaConfig::new(bucket_size, refresh)))),
         _ => unreachable!(),
     }
 }

@@ -15,23 +15,19 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 pub struct Config {
-    pub alpha: u8,
     pub k: u8,
     pub t_refresh: u32,
 }
 
-use super::ALPHA;
 use super::K;
 use super::T_REFRESH;
 
 impl Config {
-    pub fn new(alpha: Option<u8>, k: Option<u8>, t_refresh: Option<u32>) -> Self {
-        let alpha = alpha.unwrap_or(ALPHA);
+    pub fn new(k: Option<u8>, t_refresh: Option<u32>) -> Self {
         let k = k.unwrap_or(K);
         let t_refresh = t_refresh.unwrap_or(T_REFRESH);
 
         Self {
-            alpha,
             k,
             t_refresh,
         }
