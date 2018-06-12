@@ -30,6 +30,7 @@ extern crate codechain_core as ccore;
 extern crate codechain_discovery as cdiscovery;
 extern crate codechain_keys as ckeys;
 extern crate codechain_keystore as ckeystore;
+#[macro_use]
 extern crate codechain_logger as clogger;
 extern crate codechain_network as cnetwork;
 extern crate codechain_reactor as creactor;
@@ -190,16 +191,16 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
                     let unstructured = UnstructuredExtension::new(config);
                     service.set_routing_table(&*unstructured);
                     service.register_extension(unstructured)?;
-                    info!(target: "discovery", "Node runs with unstructured discovery");
+                    cinfo!(DISCOVERY, "Node runs with unstructured discovery");
                 }
                 Some(config::Discovery::Kademlia(config)) => {
                     let kademlia = Arc::new(KademliaExtension::new(config));
                     service.set_routing_table(&*kademlia);
                     service.register_extension(kademlia)?;
-                    info!(target: "discovery", "Node runs with kademlia discovery");
+                    cinfo!(DISCOVERY, "Node runs with kademlia discovery");
                 }
                 None => {
-                    warn!(target: "discovery", "Node runs without discovery extension");
+                    cwarn!(DISCOVERY, "Node runs without discovery extension");
                 }
             }
 
@@ -227,7 +228,7 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
     // drop the spec to free up genesis state.
     drop(spec);
 
-    info!(target: "test_script", "Initialization complete");
+    cinfo!(TEST_SCRIPT, "Initialization complete");
 
     wait_for_exit();
 

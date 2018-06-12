@@ -131,7 +131,7 @@ impl Decodable for Account {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
         let prefix = rlp.val_at::<u8>(0)?;
         if PREFIX != prefix {
-            debug!(target: "state", "{} is not an expected prefix for account", prefix);
+            cdebug!(STATE, "{} is not an expected prefix for account", prefix);
             return Err(DecoderError::Custom("Unexpected prefix"))
         }
         Ok(Self {

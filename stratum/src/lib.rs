@@ -17,6 +17,8 @@
 //! Stratum protocol implementation for CodeChain clients
 
 extern crate codechain_crypto as ccrypto;
+#[macro_use]
+extern crate codechain_logger as clogger;
 extern crate codechain_types as ctypes;
 extern crate jsonrpc_core;
 extern crate jsonrpc_macros;
@@ -145,13 +147,13 @@ impl StratumImpl {
 
         self.subscribers.write().push(meta.addr().clone());
         self.job_que.write().insert(meta.addr().clone());
-        trace!(target: "stratum", "Subscription request from {:?}", meta.addr());
+        ctrace!(STRATUM, "Subscription request from {:?}", meta.addr());
 
         Ok(match self.dispatcher.initial() {
             Some(initial) => match jsonrpc_core::Value::from_str(&initial) {
                 Ok(val) => Ok(val),
                 Err(e) => {
-                    warn!(target: "stratum", "Invalid payload: '{}' ({:?})", &initial, e);
+                    cwarn!(STRATUM, "Invalid payload: '{}' ({:?})", &initial, e);
                     to_value(&[0u8; 0])
                 }
             },
@@ -170,7 +172,7 @@ impl StratumImpl {
                         return to_value(&false)
                     }
                 }
-                trace!(target: "stratum", "New worker #{} registered", worker_id);
+                ctrace!(STRATUM, "New worker #{} registered", worker_id);
                 self.workers.write().insert(meta.addr().clone(), worker_id);
                 to_value(true)
             })
@@ -202,7 +204,7 @@ impl StratumImpl {
                 }
             }
             _ => {
-                trace!(target: "stratum", "Invalid submit work format {:?}", params);
+                ctrace!(STRATUM, "Invalid submit work format {:?}", params);
                 to_value(false)
             }
         }.expect("Only true/false is returned and it's always serializable; qed"))
@@ -233,16 +235,16 @@ impl StratumImpl {
             let mut hup_peers = HashSet::with_capacity(0); // most of the cases won't be needed, hence avoid allocation
             let workers_msg =
                 format!("{{ \"id\": {}, \"method\": \"mining.notify\", \"params\": {} }}", next_request_id, payload);
-            trace!(target: "stratum", "pushing work for {} workers (payload: '{}')", workers.len(), &workers_msg);
+            ctrace!(STRATUM, "pushing work for {} workers (payload: '{}')", workers.len(), &workers_msg);
             for (ref addr, _) in workers.iter() {
-                trace!(target: "stratum", "pusing work to {}", addr);
+                ctrace!(STRATUM, "pusing work to {}", addr);
                 match tcp_dispatcher.push_message(addr, workers_msg.clone()) {
                     Err(PushMessageError::NoSuchPeer) => {
-                        trace!(target: "stratum", "Worker no longer connected: {}", &addr);
+                        ctrace!(STRATUM, "Worker no longer connected: {}", &addr);
                         hup_peers.insert(*addr.clone());
                     }
                     Err(e) => {
-                        warn!(target: "stratum", "Unexpected transport error: {:?}", e);
+                        cwarn!(STRATUM, "Unexpected transport error: {:?}", e);
                     }
                     Ok(_) => {}
                 }
@@ -468,22 +470,22 @@ mod tests {
             .and_then(|stream| io::write_all(stream, &auth_request))
             .and_then(|(stream, _)| io::read(stream, &mut buffer))
             .and_then(|(stream, ..)| {
-                trace!(target: "stratum", "Received authorization confirmation");
+                ctrace!(STRATUM, "Received authorization confirmation");
                 timeout1.join(future::ok(stream))
             })
             .and_then(|(_, stream)| {
-                trace!(target: "stratum", "Pusing work to peers");
+                ctrace!(STRATUM, "Pusing work to peers");
                 stratum
                     .push_work_all(r#"{ "00040008", "100500" }"#.to_owned())
                     .expect("Pushing work should produce no errors");
                 timeout2.join(future::ok(stream))
             })
             .and_then(|(_, stream)| {
-                trace!(target: "stratum", "Ready to read work from server");
+                ctrace!(STRATUM, "Ready to read work from server");
                 io::read(stream, &mut buffer2)
             })
             .and_then(|(_, read_buf, len)| {
-                trace!(target: "stratum", "Received work from server");
+                ctrace!(STRATUM, "Received work from server");
                 future::ok(read_buf[0..len].to_vec())
             });
         let response = String::from_utf8(core.run(stream).expect("Core should run with no errors"))

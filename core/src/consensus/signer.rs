@@ -41,7 +41,7 @@ impl EngineSigner {
     pub fn set(&mut self, ap: Arc<AccountProvider>, address: Address) {
         self.account_provider = ap;
         self.address = Some(address);
-        debug!(target: "poa", "Setting Engine signer to {}", address);
+        cdebug!(POA, "Setting Engine signer to {}", address);
     }
 
     /// Sign a consensus message hash.

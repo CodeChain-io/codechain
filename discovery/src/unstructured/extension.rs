@@ -88,7 +88,7 @@ impl NetworkExtension for Extension {
         let message = match Message::decode(&UntrustedRlp::new(&message)) {
             Ok(message) => message,
             Err(err) => {
-                warn!(target: "discovery", "Invalid message from {} : {:?}", node, err);
+                cwarn!(DISCOVERY, "Invalid message from {} : {:?}", node, err);
                 return
             }
         };
@@ -111,7 +111,7 @@ impl NetworkExtension for Extension {
             Message::Response(addresses) => {
                 let routing_table = self.routing_table.read();
                 match routing_table.as_ref() {
-                    None => warn!(target: "discovery", "No routing table"),
+                    None => cwarn!(DISCOVERY, "No routing table"),
                     Some(routing_table) => {
                         for address in addresses.into_iter() {
                             routing_table.add_candidate(address);

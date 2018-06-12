@@ -165,7 +165,7 @@ impl Tendermint {
     /// Find the designated for the given view.
     fn view_proposer(&self, bh: &H256, height: Height, view: View) -> Address {
         let proposer_nonce = height + view;
-        trace!(target: "engine", "Proposer nonce: {}", proposer_nonce);
+        ctrace!(ENGINE, "Proposer nonce: {}", proposer_nonce);
         self.validators.get(bh, proposer_nonce)
     }
 
@@ -272,7 +272,7 @@ impl Tendermint {
     }
 
     fn increment_view(&self, n: View) {
-        trace!(target: "engine", "increment_view: New view.");
+        ctrace!(ENGINE, "increment_view: New view.");
         self.view.fetch_add(n, AtomicOrdering::SeqCst);
     }
 
@@ -283,7 +283,7 @@ impl Tendermint {
 
     fn to_next_height(&self, height: Height) {
         let new_height = height + 1;
-        debug!(target: "engine", "Received a Commit, transitioning to height {}.", new_height);
+        cdebug!(ENGINE, "Received a Commit, transitioning to height {}.", new_height);
         self.last_lock.store(0, AtomicOrdering::SeqCst);
         self.height.store(new_height, AtomicOrdering::SeqCst);
         self.view.store(0, AtomicOrdering::SeqCst);
@@ -304,10 +304,10 @@ impl Tendermint {
                 self.generate_and_broadcast_message(block_hash);
             }
             Step::Precommit => {
-                trace!(target: "engine", "to_step: Precommit.");
+                ctrace!(ENGINE, "to_step: Precommit.");
                 let block_hash = match *self.lock_change.read() {
                     Some(ref m) if self.is_view(m) && m.block_hash.is_some() => {
-                        trace!(target: "engine", "Setting last lock: {}", m.vote_step.view);
+                        ctrace!(ENGINE, "Setting last lock: {}", m.vote_step.view);
                         self.last_lock.store(m.vote_step.view, AtomicOrdering::SeqCst);
                         m.block_hash
                     }
@@ -316,7 +316,7 @@ impl Tendermint {
                 self.generate_and_broadcast_message(block_hash);
             }
             Step::Commit => {
-                trace!(target: "engine", "to_step: Commit.");
+                ctrace!(ENGINE, "to_step: Commit.");
             }
         }
     }
@@ -337,17 +337,17 @@ impl Tendermint {
                 let message_rlp = message_full_rlp(&signature, &vote_info);
                 let message = ConsensusMessage::new(signature, h, r, s, block_hash);
                 self.votes.vote(message.clone(), validator);
-                debug!(target: "engine", "Generated {:?} as {}.", message, validator);
+                cdebug!(ENGINE, "Generated {:?} as {}.", message, validator);
                 self.handle_valid_message(&message);
 
                 Some(message_rlp)
             }
             (None, _) => {
-                trace!(target: "engine", "No message, since there is no engine signer.");
+                ctrace!(ENGINE, "No message, since there is no engine signer.");
                 None
             }
             (Some(v), Err(e)) => {
-                trace!(target: "engine", "{} could not sign the message {}", v, e);
+                ctrace!(ENGINE, "{} could not sign the message {}", v, e);
                 None
             }
         }
@@ -362,7 +362,7 @@ impl Tendermint {
         let lock_change = is_newer_than_lock && vote_step.step == Step::Prevote && message.block_hash.is_some()
             && self.has_enough_aligned_votes(message);
         if lock_change {
-            trace!(target: "engine", "handle_valid_message: Lock change.");
+            ctrace!(ENGINE, "handle_valid_message: Lock change.");
             *self.lock_change.write() = Some(message.clone());
         }
         // Check if it can affect the step transition.
@@ -378,7 +378,7 @@ impl Tendermint {
                         // Commit the block using a complete signature set.
                         // Generate seal and remove old votes.
                         let precommits = self.votes.round_signatures(vote_step, &bh);
-                        trace!(target: "engine", "Collected seal: {:?}", precommits);
+                        ctrace!(ENGINE, "Collected seal: {:?}", precommits);
                         let seal = vec![
                             ::rlp::encode(&vote_step.view).into_vec(),
                             ::rlp::NULL_RLP.to_vec(),
@@ -405,7 +405,7 @@ impl Tendermint {
             };
 
             if let Some(step) = next_step {
-                trace!(target: "engine", "Transition to {:?} triggered.", step);
+                ctrace!(ENGINE, "Transition to {:?} triggered.", step);
                 self.to_step(step);
             }
         }
@@ -448,7 +448,7 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
         let vote_info = message_info_rlp(&VoteStep::new(height, view, Step::Propose), bh.clone());
         if let Ok(signature) = self.sign(blake256(&vote_info)).map(Into::into) {
             // Insert Propose vote.
-            debug!(target: "engine", "Submitting proposal {} at height {} view {}.", header.bare_hash(), height, view);
+            cdebug!(ENGINE, "Submitting proposal {} at height {} view {}.", header.bare_hash(), height, view);
             let sender = self.signer.read().address().expect("seals_internally already returned true");
             self.votes.vote(ConsensusMessage::new(signature, height, view, Step::Propose, bh), sender);
             // Remember the owned block.
@@ -462,7 +462,7 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
                 ::rlp::EMPTY_LIST_RLP.to_vec(),
             ])
         } else {
-            warn!(target: "engine", "generate_seal: FAIL: accounts secret key unavailable");
+            cwarn!(ENGINE, "generate_seal: FAIL: accounts secret key unavailable");
             Seal::None
         }
     }
@@ -479,7 +479,7 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
             if (header.seal()[1] == ::rlp::NULL_RLP) != (header.seal()[2] == ::rlp::EMPTY_LIST_RLP) {
                 Ok(())
             } else {
-                warn!(target: "engine", "verify_block_basic: Block is neither a Commit nor Proposal.");
+                cwarn!(ENGINE, "verify_block_basic: Block is neither a Commit nor Proposal.");
                 Err(BlockError::InvalidSeal.into())
             }
         } else {
@@ -525,7 +525,7 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
                 }
 
                 if !origins.insert(address) {
-                    warn!(target: "engine", "verify_block_unordered: Duplicate signature from {} on the seal.", address);
+                    cwarn!(ENGINE, "verify_block_unordered: Duplicate signature from {} on the seal.", address);
                     return Err(BlockError::InvalidSeal.into())
                 }
             }
@@ -571,7 +571,7 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
                 self.validators.report_malicious(&sender, height, height, ::rlp::encode(&double).into_vec());
                 return Err(EngineError::DoubleVote(sender))
             }
-            trace!(target: "engine", "Handling a valid {:?} from {}.", message, sender);
+            ctrace!(ENGINE, "Handling a valid {:?} from {}.", message, sender);
             self.handle_valid_message(&message);
         }
         Ok(())
@@ -581,7 +581,7 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
     fn step(&self) {
         let next_step = match *self.step.read() {
             Step::Propose => {
-                trace!(target: "engine", "Propose timeout.");
+                ctrace!(ENGINE, "Propose timeout.");
                 if self.proposal.read().is_none() {
                     // Report the proposer if no proposal was received.
                     let height = self.height.load(AtomicOrdering::SeqCst);
@@ -595,26 +595,26 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
                 Step::Prevote
             }
             Step::Prevote if self.has_enough_any_votes() => {
-                trace!(target: "engine", "Prevote timeout.");
+                ctrace!(ENGINE, "Prevote timeout.");
                 Step::Precommit
             }
             Step::Prevote => {
-                trace!(target: "engine", "Prevote timeout without enough votes.");
+                ctrace!(ENGINE, "Prevote timeout without enough votes.");
                 self.broadcast_old_messages();
                 Step::Prevote
             }
             Step::Precommit if self.has_enough_any_votes() => {
-                trace!(target: "engine", "Precommit timeout.");
+                ctrace!(ENGINE, "Precommit timeout.");
                 self.increment_view(1);
                 Step::Propose
             }
             Step::Precommit => {
-                trace!(target: "engine", "Precommit timeout without enough votes.");
+                ctrace!(ENGINE, "Precommit timeout without enough votes.");
                 self.broadcast_old_messages();
                 Step::Precommit
             }
             Step::Commit => {
-                trace!(target: "engine", "Commit timeout.");
+                ctrace!(ENGINE, "Commit timeout.");
                 Step::Propose
             }
         };
@@ -707,7 +707,7 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
         // Signatures have to be an empty list rlp.
         if signatures_len != 1 {
             // New Commit received, skip to next height.
-            trace!(target: "engine", "Received a commit: {:?}.", header.number());
+            ctrace!(ENGINE, "Received a commit: {:?}.", header.number());
             self.to_next_height(header.number() as usize);
             self.to_step(Step::Commit);
             return false
@@ -715,7 +715,7 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
         let proposal = ConsensusMessage::new_proposal(header)
             .expect("block went through full verification; this Engine verifies new_proposal creation; qed");
         let proposer = proposal.verify().expect("block went through full verification; this Engine tries verify; qed");
-        debug!(target: "engine", "Received a new proposal {:?} from {}.", proposal.vote_step, proposer);
+        cdebug!(ENGINE, "Received a new proposal {:?} from {}.", proposal.vote_step, proposer);
         if self.is_view(&proposal) {
             *self.proposal.write() = proposal.block_hash.clone();
             *self.proposal_parent.write() = header.parent_hash().clone();
@@ -875,7 +875,7 @@ impl NetworkExtension for TendermintExtension {
 
     fn on_initialize(&self, api: Arc<Api>) {
         let initial = self.timeouts.initial();
-        trace!(target: "engine", "Setting the initial timeout to {}.", initial);
+        ctrace!(ENGINE, "Setting the initial timeout to {}.", initial);
         api.set_timer_once(ENGINE_TIMEOUT_TOKEN, initial).expect("Timer set succeeds");
         *self.api.lock() = Some(api);
     }
@@ -901,7 +901,7 @@ impl NetworkExtension for TendermintExtension {
                 if let Some(ref weak) = *self.tendermint.read() {
                     if let Some(c) = weak.upgrade() {
                         if let Err(e) = c.handle_message(bytes) {
-                            info!(target: "engine", "Failed to handle message {:?}", e);
+                            cinfo!(ENGINE, "Failed to handle message {:?}", e);
                         }
                     }
                 }
@@ -910,12 +910,12 @@ impl NetworkExtension for TendermintExtension {
                 if let Some(ref weak) = *self.client.read() {
                     if let Some(c) = weak.upgrade() {
                         if let Err(e) = c.import_block(bytes) {
-                            info!(target: "engine", "Failed to import proposal block {:?}", e);
+                            cinfo!(ENGINE, "Failed to import proposal block {:?}", e);
                         }
                     }
                 }
             }
-            _ => info!(target: "engine", "invalid message from peer {}", token),
+            _ => cinfo!(ENGINE, "Invalid message from peer {}", token),
         }
     }
 

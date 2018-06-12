@@ -15,7 +15,10 @@
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
 //! Trie interface and implementation.
+
 extern crate codechain_crypto;
+#[macro_use]
+extern crate codechain_logger as clogger;
 extern crate codechain_types;
 extern crate elastic_array;
 extern crate hashdb;

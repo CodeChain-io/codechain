@@ -72,56 +72,62 @@ impl LocalParcelsList {
 
     /// Mark parcel with given hash as pending.
     pub fn mark_pending(&mut self, hash: H256) {
-        debug!(target: "own_parcel", "Imported to Current (hash {:?})", hash);
+        cdebug!(OWN_PARCEL, "Imported to Current (hash {:?})", hash);
         self.clear_old();
         self.parcels.insert(hash, Status::Pending);
     }
 
     /// Mark parcel with given hash as future.
     pub fn mark_future(&mut self, hash: H256) {
-        debug!(target: "own_parcel", "Imported to Future (hash {:?})", hash);
+        cdebug!(OWN_PARCEL, "Imported to Future (hash {:?})", hash);
         self.parcels.insert(hash, Status::Future);
         self.clear_old();
     }
 
     /// Mark given parcel as rejected from the queue.
     pub fn mark_rejected(&mut self, parcel: SignedParcel, err: ParcelError) {
-        debug!(target: "own_parcel", "Parcel rejected (hash {:?}): {:?}", parcel.hash(), err);
+        cdebug!(OWN_PARCEL, "Parcel rejected (hash {:?}): {:?}", parcel.hash(), err);
         self.parcels.insert(parcel.hash(), Status::Rejected(parcel, err));
         self.clear_old();
     }
 
     /// Mark the parcel as replaced by parcel with given hash.
     pub fn mark_replaced(&mut self, parcel: SignedParcel, gas_price: U256, hash: H256) {
-        debug!(target: "own_parcel", "Parcel replaced (hash {:?}) by {:?} (new gas price: {:?})", parcel.hash(), hash, gas_price);
+        cdebug!(
+            OWN_PARCEL,
+            "Parcel replaced (hash {:?}) by {:?} (new gas price: {:?})",
+            parcel.hash(),
+            hash,
+            gas_price
+        );
         self.parcels.insert(parcel.hash(), Status::Replaced(parcel, gas_price, hash));
         self.clear_old();
     }
 
     /// Mark parcel as invalid.
     pub fn mark_invalid(&mut self, signed: SignedParcel) {
-        warn!(target: "own_parcel", "Parcel marked invalid (hash {:?})", signed.hash());
+        cwarn!(OWN_PARCEL, "Parcel marked invalid (hash {:?})", signed.hash());
         self.parcels.insert(signed.hash(), Status::Invalid(signed));
         self.clear_old();
     }
 
     /// Mark parcel as canceled.
     pub fn mark_canceled(&mut self, signed: SignedParcel) {
-        warn!(target: "own_parcel", "Parcel canceled (hash {:?})", signed.hash());
+        cwarn!(OWN_PARCEL, "Parcel canceled (hash {:?})", signed.hash());
         self.parcels.insert(signed.hash(), Status::Canceled(signed));
         self.clear_old();
     }
 
     /// Mark parcel as dropped because of limit.
     pub fn mark_dropped(&mut self, signed: SignedParcel) {
-        warn!(target: "own_parcel", "Parcel dropped (hash {:?})", signed.hash());
+        cwarn!(OWN_PARCEL, "Parcel dropped (hash {:?})", signed.hash());
         self.parcels.insert(signed.hash(), Status::Dropped(signed));
         self.clear_old();
     }
 
     /// Mark parcel as mined.
     pub fn mark_mined(&mut self, signed: SignedParcel) {
-        info!(target: "own_parcel", "Parcel mined (hash {:?})", signed.hash());
+        cinfo!(OWN_PARCEL, "Parcel mined (hash {:?})", signed.hash());
         self.parcels.insert(signed.hash(), Status::Mined(signed));
         self.clear_old();
     }

@@ -191,7 +191,7 @@ impl Client {
 
     /// Import parcels from the IO queue
     pub fn import_queued_parcels(&self, parcels: &[Bytes], peer_id: NodeId) -> usize {
-        trace!(target: "external_parcel", "Importing queued");
+        ctrace!(EXTERNAL_PARCEL, "Importing queued");
         self.queue_parcels.fetch_sub(parcels.len(), AtomicOrdering::SeqCst);
         let parcels: Vec<UnverifiedParcel> =
             parcels.iter().filter_map(|bytes| UntrustedRlp::new(bytes).as_val().ok()).collect();
@@ -265,7 +265,7 @@ impl EngineClient for Client {
     /// Submit a seal for a block in the mining queue.
     fn submit_seal(&self, block_hash: H256, seal: Vec<Bytes>) {
         if self.importer.miner.submit_seal(self, block_hash, seal).is_err() {
-            warn!(target: "poa", "Wrong internal seal submission!")
+            cwarn!(POA, "Wrong internal seal submission!")
         }
     }
 }
@@ -328,7 +328,7 @@ impl BlockChainClient for Client {
 
     fn queue_parcels(&self, parcels: Vec<Bytes>, peer_id: NodeId) {
         let queue_size = self.queue_parcels.load(AtomicOrdering::Relaxed);
-        trace!(target: "external_parcel", "Queue size: {}", queue_size);
+        ctrace!(EXTERNAL_PARCEL, "Queue size: {}", queue_size);
         if queue_size > MAX_PARCEL_QUEUE_SIZE {
             debug!("Ignoring {} parcels: queue is full", parcels.len());
         } else {
@@ -600,7 +600,7 @@ impl Importer {
         );
 
         if let Some(proof) = is_epoch_end {
-            debug!(target: "client", "Epoch transition at block {}", header.hash());
+            cdebug!(CLIENT, "Epoch transition at block {}", header.hash());
 
             let mut batch = DBTransaction::new();
             chain.insert_epoch_transition(
@@ -632,7 +632,7 @@ impl Importer {
                 use super::super::consensus::Proof;
 
                 let Proof::Known(proof) = proof;
-                debug!(target: "client", "Block {} signals epoch end.", hash);
+                cdebug!(CLIENT, "Block {} signals epoch end.", hash);
 
                 let pending = PendingTransition {
                     proof,
@@ -641,8 +641,8 @@ impl Importer {
             }
             EpochChange::No => {}
             EpochChange::Unsure => {
-                warn!(target: "client", "Detected invalid engine implementation.");
-                warn!(target: "client", "Engine claims to require more block data, but everything provided.");
+                cwarn!(CLIENT, "Detected invalid engine implementation.");
+                cwarn!(CLIENT, "Engine claims to require more block data, but everything provided.");
             }
         }
     }
@@ -657,7 +657,13 @@ impl Importer {
         let parent = match chain.block_header(header.parent_hash()) {
             Some(h) => h,
             None => {
-                warn!(target: "client", "Block import failed for #{} ({}): Parent not found ({}) ", header.number(), header.hash(), header.parent_hash());
+                cwarn!(
+                    CLIENT,
+                    "Block import failed for #{} ({}): Parent not found ({}) ",
+                    header.number(),
+                    header.hash(),
+                    header.parent_hash()
+                );
                 return Err(())
             }
         };
@@ -677,13 +683,25 @@ impl Importer {
         );
 
         if let Err(e) = verify_family_result {
-            warn!(target: "client", "Stage 3 block verification failed for #{} ({})\nError: {:?}", header.number(), header.hash(), e);
+            cwarn!(
+                CLIENT,
+                "Stage 3 block verification failed for #{} ({})\nError: {:?}",
+                header.number(),
+                header.hash(),
+                e
+            );
             return Err(())
         };
 
         let verify_external_result = self.verifier.verify_block_external(header, engine);
         if let Err(e) = verify_external_result {
-            warn!(target: "client", "Stage 4 block verification failed for #{} ({})\nError: {:?}", header.number(), header.hash(), e);
+            cwarn!(
+                CLIENT,
+                "Stage 4 block verification failed for #{} ({})\nError: {:?}",
+                header.number(),
+                header.hash(),
+                e
+            );
             return Err(())
         };
 
@@ -694,12 +712,18 @@ impl Importer {
         let enact_result =
             enact(&block.header, &block.parcels, engine, db, &parent, client.trie_factory.clone(), is_epoch_begin);
         let locked_block = enact_result.map_err(|e| {
-            warn!(target: "client", "Block import failed for #{} ({})\nError: {:?}", header.number(), header.hash(), e);
+            cwarn!(CLIENT, "Block import failed for #{} ({})\nError: {:?}", header.number(), header.hash(), e);
         })?;
 
         // Final Verification
         if let Err(e) = self.verifier.verify_block_final(header, locked_block.block().header()) {
-            warn!(target: "client", "Stage 5 block verification failed for #{} ({})\nError: {:?}", header.number(), header.hash(), e);
+            cwarn!(
+                CLIENT,
+                "Stage 5 block verification failed for #{} ({})\nError: {:?}",
+                header.number(),
+                header.hash(),
+                e
+            );
             return Err(())
         }
 
@@ -719,10 +743,10 @@ impl Importer {
         let mut routes = Vec::new();
         for header in self.header_queue.drain(max_headers_to_import) {
             let hash = header.hash();
-            trace!(target: "client", "importing header {}", header.number());
+            ctrace!(CLIENT, "Importing header {}", header.number());
 
             if bad.contains(&hash) || bad.contains(header.parent_hash()) {
-                trace!(target: "client", "Bad header detected : {}", hash);
+                ctrace!(CLIENT, "Bad header detected : {}", hash);
                 bad.insert(hash);
                 continue
             }
@@ -765,15 +789,25 @@ impl Importer {
     fn check_header(&self, header: &Header, parent: &Header) -> bool {
         // FIXME: self.verifier.verify_block_family
         if let Err(e) = self.engine.verify_block_family(&header, &parent) {
-            warn!(target: "client", "Stage 3 block verification failed for #{} ({})\nError: {:?}",
-            header.number(), header.hash(), e);
+            cwarn!(
+                CLIENT,
+                "Stage 3 block verification failed for #{} ({})\nError: {:?}",
+                header.number(),
+                header.hash(),
+                e
+            );
             return false
         };
 
         // "external" verification.
         if let Err(e) = self.engine.verify_block_external(&header) {
-            warn!(target: "client", "Stage 4 block verification failed for #{} ({})\nError: {:?}",
-            header.number(), header.hash(), e);
+            cwarn!(
+                CLIENT,
+                "Stage 4 block verification failed for #{} ({})\nError: {:?}",
+                header.number(),
+                header.hash(),
+                e
+            );
             return false
         };
 
@@ -865,7 +899,7 @@ impl ImportSealedBlock for Client {
             let header = block.header().clone();
 
             let route = self.importer.commit_block(block, &header, &block_data, self);
-            trace!(target: "client", "Imported sealed block #{} ({})", number, h);
+            ctrace!(CLIENT, "Imported sealed block #{} ({})", number, h);
             self.state_db.write().sync_cache(&route.enacted, &route.retracted, false);
             route
         };

@@ -94,7 +94,7 @@ impl Decodable for Asset {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
         let prefix = rlp.val_at::<u8>(0)?;
         if PREFIX != prefix {
-            debug!(target: "state", "{} is not an expected prefix for asset", prefix);
+            cdebug!(STATE, "{} is not an expected prefix for asset", prefix);
             return Err(DecoderError::Custom("Unexpected prefix"))
         }
         Ok(Self {

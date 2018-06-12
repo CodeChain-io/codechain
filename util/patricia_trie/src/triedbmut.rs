@@ -469,15 +469,15 @@ impl<'a> TrieDBMut<'a> {
         value: DBValue,
         old_val: &mut Option<DBValue>,
     ) -> super::Result<InsertAction> {
-        trace!(target: "trie", "augmented (partial: {:?}, value: {:?})", partial, value.pretty());
+        ctrace!(TRIE, "augmented (partial: {:?}, value: {:?})", partial, value.pretty());
 
         Ok(match node {
             Node::Empty => {
-                trace!(target: "trie", "empty: COMPOSE");
+                ctrace!(TRIE, "empty: COMPOSE");
                 InsertAction::Replace(Node::Leaf(partial.encoded(true), value))
             }
             Node::Branch(mut children, stored_value) => {
-                trace!(target: "trie", "branch: ROUTE,AUGMENT");
+                ctrace!(TRIE, "branch: ROUTE,AUGMENT");
 
                 if partial.is_empty() {
                     let unchanged = stored_value.as_ref() == Some(&value);
@@ -512,7 +512,7 @@ impl<'a> TrieDBMut<'a> {
                 let existing_key = NibbleSlice::from_encoded(&encoded).0;
                 let cp = partial.common_prefix(&existing_key);
                 if cp == existing_key.len() && cp == partial.len() {
-                    trace!(target: "trie", "equivalent-leaf: REPLACE");
+                    ctrace!(TRIE, "equivalent-leaf: REPLACE");
                     // equivalent leaf.
                     let unchanged = stored_value == value;
                     *old_val = Some(stored_value);
@@ -523,7 +523,12 @@ impl<'a> TrieDBMut<'a> {
                         false => InsertAction::Replace(Node::Leaf(encoded.clone(), value)),
                     }
                 } else if cp == 0 {
-                    trace!(target: "trie", "no-common-prefix, not-both-empty (exist={:?}; new={:?}): TRANSMUTE,AUGMENT", existing_key.len(), partial.len());
+                    ctrace!(
+                        TRIE,
+                        "no-common-prefix, not-both-empty (exist={:?}; new={:?}): TRANSMUTE,AUGMENT",
+                        existing_key.len(),
+                        partial.len()
+                    );
 
                     // one of us isn't empty: transmute to branch here
                     let mut children = empty_children();
@@ -542,7 +547,7 @@ impl<'a> TrieDBMut<'a> {
                     let branch_action = self.insert_inspector(branch, partial, value, old_val)?.unwrap_node();
                     InsertAction::Replace(branch_action)
                 } else if cp == existing_key.len() {
-                    trace!(target: "trie", "complete-prefix (cp={:?}): AUGMENT-AT-END", cp);
+                    ctrace!(TRIE, "complete-prefix (cp={:?}): AUGMENT-AT-END", cp);
 
                     // fully-shared prefix for an extension.
                     // make a stub branch and an extension.
@@ -554,7 +559,13 @@ impl<'a> TrieDBMut<'a> {
                     let branch_handle = self.storage.alloc(Stored::New(branch)).into();
                     InsertAction::Replace(Node::Extension(existing_key.encoded(false), branch_handle))
                 } else {
-                    trace!(target: "trie", "partially-shared-prefix (exist={:?}; new={:?}; cp={:?}): AUGMENT-AT-END", existing_key.len(), partial.len(), cp);
+                    ctrace!(
+                        TRIE,
+                        "partially-shared-prefix (exist={:?}; new={:?}; cp={:?}): AUGMENT-AT-END",
+                        existing_key.len(),
+                        partial.len(),
+                        cp
+                    );
 
                     // partially-shared prefix for an extension.
                     // start by making a leaf.
@@ -575,7 +586,12 @@ impl<'a> TrieDBMut<'a> {
                 let existing_key = NibbleSlice::from_encoded(&encoded).0;
                 let cp = partial.common_prefix(&existing_key);
                 if cp == 0 {
-                    trace!(target: "trie", "no-common-prefix, not-both-empty (exist={:?}; new={:?}): TRANSMUTE,AUGMENT", existing_key.len(), partial.len());
+                    ctrace!(
+                        TRIE,
+                        "no-common-prefix, not-both-empty (exist={:?}; new={:?}): TRANSMUTE,AUGMENT",
+                        existing_key.len(),
+                        partial.len()
+                    );
 
                     // partial isn't empty: make a branch here
                     // extensions may not have empty partial keys.
@@ -597,7 +613,7 @@ impl<'a> TrieDBMut<'a> {
                         self.insert_inspector(Node::Branch(children, None), partial, value, old_val)?.unwrap_node();
                     InsertAction::Replace(branch_action)
                 } else if cp == existing_key.len() {
-                    trace!(target: "trie", "complete-prefix (cp={:?}): AUGMENT-AT-END", cp);
+                    ctrace!(TRIE, "complete-prefix (cp={:?}): AUGMENT-AT-END", cp);
 
                     // fully-shared prefix.
 
@@ -611,7 +627,13 @@ impl<'a> TrieDBMut<'a> {
                         false => InsertAction::Restore(new_ext),
                     }
                 } else {
-                    trace!(target: "trie", "partially-shared-prefix (exist={:?}; new={:?}; cp={:?}): AUGMENT-AT-END", existing_key.len(), partial.len(), cp);
+                    ctrace!(
+                        TRIE,
+                        "partially-shared-prefix (exist={:?}; new={:?}; cp={:?}): AUGMENT-AT-END",
+                        existing_key.len(),
+                        partial.len(),
+                        cp
+                    );
 
                     // partially-shared.
                     let low = Node::Extension(existing_key.mid(cp).encoded(false), child_branch);
@@ -667,7 +689,7 @@ impl<'a> TrieDBMut<'a> {
             (Node::Branch(mut children, value), false) => {
                 let idx = partial.at(0) as usize;
                 if let Some(child) = children[idx].take() {
-                    trace!(target: "trie", "removing value out of branch child, partial={:?}", partial);
+                    ctrace!(TRIE, "removing value out of branch child, partial={:?}", partial);
                     match self.remove_at(child, partial.mid(1), old_val)? {
                         Some((new, changed)) => {
                             children[idx] = Some(new.into());
@@ -682,7 +704,7 @@ impl<'a> TrieDBMut<'a> {
                         None => {
                             // the child we took was deleted.
                             // the node may need fixing.
-                            trace!(target: "trie", "branch child deleted, partial={:?}", partial);
+                            ctrace!(TRIE, "branch child deleted, partial={:?}", partial);
                             Action::Replace(self.fix(Node::Branch(children, value))?)
                         }
                     }
@@ -698,7 +720,12 @@ impl<'a> TrieDBMut<'a> {
                     Action::Delete
                 } else {
                     // leaf the node alone.
-                    trace!(target: "trie", "restoring leaf wrong partial, partial={:?}, existing={:?}", partial, NibbleSlice::from_encoded(&encoded).0);
+                    ctrace!(
+                        TRIE,
+                        "restoring leaf wrong partial, partial={:?}, existing={:?}",
+                        partial,
+                        NibbleSlice::from_encoded(&encoded).0
+                    );
                     Action::Restore(Node::Leaf(encoded, value))
                 }
             }
@@ -709,7 +736,7 @@ impl<'a> TrieDBMut<'a> {
                 };
                 if cp == existing_len {
                     // try to remove from the child branch.
-                    trace!(target: "trie", "removing from extension child, partial={:?}", partial);
+                    ctrace!(TRIE, "removing from extension child, partial={:?}", partial);
                     match self.remove_at(child_branch, partial.mid(cp), old_val)? {
                         Some((new_child, changed)) => {
                             let new_child = new_child.into();
@@ -774,12 +801,12 @@ impl<'a> TrieDBMut<'a> {
                     }
                     (UsedIndex::None, Some(value)) => {
                         // make a leaf.
-                        trace!(target: "trie", "fixing: branch -> leaf");
+                        ctrace!(TRIE, "fixing: branch -> leaf");
                         Ok(Node::Leaf(NibbleSlice::new(&[]).encoded(true), value))
                     }
                     (_, value) => {
                         // all is well.
-                        trace!(target: "trie", "fixing: restoring branch");
+                        ctrace!(TRIE, "fixing: restoring branch");
                         Ok(Node::Branch(children, value))
                     }
                 }
@@ -809,7 +836,7 @@ impl<'a> TrieDBMut<'a> {
                         let sub_partial = NibbleSlice::from_encoded(&sub_partial).0;
 
                         let new_partial = NibbleSlice::new_composed(&partial, &sub_partial);
-                        trace!(target: "trie", "fixing: extension combination. new_partial={:?}", new_partial);
+                        ctrace!(TRIE, "fixing: extension combination. new_partial={:?}", new_partial);
                         self.fix(Node::Extension(new_partial.encoded(false), sub_child))
                     }
                     Node::Leaf(sub_partial, value) => {
@@ -822,11 +849,11 @@ impl<'a> TrieDBMut<'a> {
                         let sub_partial = NibbleSlice::from_encoded(&sub_partial).0;
 
                         let new_partial = NibbleSlice::new_composed(&partial, &sub_partial);
-                        trace!(target: "trie", "fixing: extension -> leaf. new_partial={:?}", new_partial);
+                        ctrace!(TRIE, "fixing: extension -> leaf. new_partial={:?}", new_partial);
                         Ok(Node::Leaf(new_partial.encoded(true), value))
                     }
                     child_node => {
-                        trace!(target: "trie", "fixing: restoring extension");
+                        ctrace!(TRIE, "fixing: restoring extension");
 
                         // reallocate the child node.
                         let stored = if let Some(hash) = maybe_hash {
@@ -846,10 +873,10 @@ impl<'a> TrieDBMut<'a> {
     /// Commit the in-memory changes to disk, freeing their storage and
     /// updating the state root.
     pub fn commit(&mut self) {
-        trace!(target: "trie", "Committing trie changes to db.");
+        ctrace!(TRIE, "Committing trie changes to db.");
 
         // always kill all the nodes on death row.
-        trace!(target: "trie", "{:?} nodes to remove from db", self.death_row.len());
+        ctrace!(TRIE, "{:?} nodes to remove from db", self.death_row.len());
         for hash in self.death_row.drain() {
             self.db.remove(&hash);
         }
@@ -865,7 +892,7 @@ impl<'a> TrieDBMut<'a> {
                 *self.root = self.db.insert(&root_rlp[..]);
                 self.hash_count += 1;
 
-                trace!(target: "trie", "root node rlp: {:?}", (&root_rlp[..]).pretty());
+                ctrace!(TRIE, "root node rlp: {:?}", (&root_rlp[..]).pretty());
                 self.root_handle = NodeHandle::Hash(*self.root);
             }
             Stored::Cached(node, hash) => {
@@ -936,20 +963,20 @@ impl<'a> TrieMut for TrieDBMut<'a> {
 
         let mut old_val = None;
 
-        trace!(target: "trie", "insert: key={:?}, value={:?}", key.pretty(), value.pretty());
+        ctrace!(TRIE, "insert: key={:?}, value={:?}", key.pretty(), value.pretty());
 
         let root_handle = self.root_handle();
         let (new_handle, changed) =
             self.insert_at(root_handle, NibbleSlice::new(key), DBValue::from_slice(value), &mut old_val)?;
 
-        trace!(target: "trie", "insert: altered trie={}", changed);
+        ctrace!(TRIE, "insert: altered trie={}", changed);
         self.root_handle = NodeHandle::InMemory(new_handle);
 
         Ok(old_val)
     }
 
     fn remove(&mut self, key: &[u8]) -> super::Result<Option<DBValue>> {
-        trace!(target: "trie", "remove: key={:?}", key.pretty());
+        ctrace!(TRIE, "remove: key={:?}", key.pretty());
 
         let root_handle = self.root_handle();
         let key = NibbleSlice::new(key);
@@ -957,11 +984,11 @@ impl<'a> TrieMut for TrieDBMut<'a> {
 
         match self.remove_at(root_handle, key, &mut old_val)? {
             Some((handle, changed)) => {
-                trace!(target: "trie", "remove: altered trie={}", changed);
+                ctrace!(TRIE, "remove: altered trie={}", changed);
                 self.root_handle = NodeHandle::InMemory(handle);
             }
             None => {
-                trace!(target: "trie", "remove: obliterated trie");
+                ctrace!(TRIE, "remove: obliterated trie");
                 self.root_handle = NodeHandle::Hash(BLAKE_NULL_RLP);
                 *self.root = BLAKE_NULL_RLP;
             }
