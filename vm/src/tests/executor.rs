@@ -25,17 +25,23 @@ use instruction::Instruction;
 
 #[test]
 fn simple_success() {
-    assert_eq!(execute(&[Instruction::Push(1)], H256::default(), Config::default()), Ok(ScriptResult::Unlocked));
+    assert_eq!(
+        execute(&[Instruction::Push(1)], &[], &[], H256::default(), Config::default()),
+        Ok(ScriptResult::Unlocked)
+    );
 }
 
 #[test]
 fn simple_failure() {
-    assert_eq!(execute(&[Instruction::Push(0)], H256::default(), Config::default()), Ok(ScriptResult::Fail));
+    assert_eq!(execute(&[Instruction::Push(0)], &[], &[], H256::default(), Config::default()), Ok(ScriptResult::Fail));
 }
 
 #[test]
 fn underflow() {
-    assert_eq!(execute(&[Instruction::Pop], H256::default(), Config::default()), Err(RuntimeError::StackUnderflow));
+    assert_eq!(
+        execute(&[Instruction::Pop], &[], &[], H256::default(), Config::default()),
+        Err(RuntimeError::StackUnderflow)
+    );
 }
 
 #[test]
@@ -44,7 +50,7 @@ fn out_of_memory() {
         max_memory: 2,
     };
     assert_eq!(
-        execute(&[Instruction::Push(0), Instruction::Push(1), Instruction::Push(2)], H256::default(), config),
+        execute(&[Instruction::Push(0), Instruction::Push(1), Instruction::Push(2)], &[], &[], H256::default(), config),
         Err(RuntimeError::OutOfMemory)
     );
 }
@@ -58,10 +64,7 @@ fn valid_pay_to_public_key() {
     let unlock_script = vec![Instruction::PushB(signature)];
     let lock_script = vec![Instruction::PushB(pubkey), Instruction::ChkSig];
 
-    assert_eq!(
-        execute(&[&unlock_script[..], &lock_script[..]].concat(), message, Config::default()),
-        Ok(ScriptResult::Unlocked)
-    );
+    assert_eq!(execute(&unlock_script, &[], &lock_script, message, Config::default()), Ok(ScriptResult::Unlocked));
 }
 
 #[test]
@@ -75,8 +78,5 @@ fn invalid_pay_to_public_key() {
     let invalid_signature = H520::from(sign_ecdsa(invalid_keypair.private(), &message).unwrap()).to_vec();
     let unlock_script = vec![Instruction::PushB(invalid_signature)];
 
-    assert_eq!(
-        execute(&[&unlock_script[..], &lock_script[..]].concat(), message, Config::default()),
-        Ok(ScriptResult::Fail)
-    );
+    assert_eq!(execute(&unlock_script[..], &[], &lock_script, message, Config::default()), Ok(ScriptResult::Fail));
 }

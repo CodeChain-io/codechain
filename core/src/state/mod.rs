@@ -395,18 +395,18 @@ impl<B: Backend> State<B> {
         debug_assert!(is_input_and_output_consistent(inputs, outputs));
 
         for input in inputs {
-            let (address_hash, lock_script_hash) = {
+            let (address_hash, asset) = {
                 let index = input.prev_out.index;
                 let address = AssetAddress::new(input.prev_out.transaction_hash, index);
                 match self.asset(&address)? {
-                    Some(asset) => (address.into(), *asset.lock_script_hash()),
+                    Some(asset) => (address.into(), asset),
                     None => return Err(TransactionError::AssetNotFound(address.into()).into()),
                 }
             };
 
-            if lock_script_hash != Blake::blake(&input.lock_script) {
+            if *asset.lock_script_hash() != Blake::blake(&input.lock_script) {
                 let mismatch = Mismatch {
-                    expected: lock_script_hash,
+                    expected: *asset.lock_script_hash(),
                     found: Blake::blake(&input.lock_script),
                 };
                 return Err(TransactionError::ScriptHashMismatch(mismatch).into())
@@ -414,11 +414,14 @@ impl<B: Backend> State<B> {
 
             let script_result = match (decode(&input.lock_script), decode(&input.unlock_script)) {
                 (Ok(lock_script), Ok(unlock_script)) => {
-                    let mut script = Vec::new();
-                    script.extend(lock_script);
-                    script.extend(unlock_script);
                     // FIXME : apply parameters to vm
-                    execute(script.as_slice(), transaction.hash_without_script(), VMConfig::default())
+                    execute(
+                        &unlock_script,
+                        &asset.parameters(),
+                        &lock_script,
+                        transaction.hash_without_script(),
+                        VMConfig::default(),
+                    )
                 }
                 // FIXME : Deliver full decode error
                 _ => return Err(TransactionError::InvalidScript.into()),
