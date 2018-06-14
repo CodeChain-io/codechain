@@ -15,7 +15,13 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 pub const NOP: u8 = 0x00;
-pub const PUSHB: u8 = 0x01;
-pub const PUSHI: u8 = 0x02;
-pub const POP: u8 = 0x03;
-pub const CHKSIG: u8 = 0x04;
+pub const NOT: u8 = 0x10;
+pub const EQ: u8 = 0x11;
+pub const JMP: u8 = 0x20;
+pub const PUSH: u8 = 0x30;
+pub const POP: u8 = 0x31;
+pub const PUSHB: u8 = 0x32;
+pub const DUP: u8 = 0x33;
+pub const SWAP: u8 = 0x34;
+pub const BLAKE256: u8 = 0x80;
+pub const CHKSIG: u8 = 0x81;

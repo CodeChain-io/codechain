@@ -17,8 +17,14 @@
 #[derive(Clone, Debug, PartialEq)]
 pub enum Instruction {
     Nop,
-    PushB(Vec<u8>),
-    PushI(i8),
+    Not,
+    Eq,
+    Jmp,
+    Push(u8),
     Pop,
+    PushB(Vec<u8>),
+    Dup,
+    Swap,
+    Blake256,
     ChkSig,
 }

@@ -48,9 +48,26 @@ pub enum RuntimeError {
     InvalidResult,
 }
 
-enum Item {
-    Integer(i8),
-    Blob(Vec<u8>),
+struct Item(Vec<u8>);
+
+impl Item {
+    fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    fn assert_len(self, len: usize) -> Result<Self, RuntimeError> {
+        if self.len() == len {
+            Ok(self)
+        } else {
+            Err(RuntimeError::TypeMismatch)
+        }
+    }
+}
+
+impl AsRef<[u8]> for Item {
+    fn as_ref(&self) -> &[u8] {
+        &self.0
+    }
 }
 
 struct Stack {
@@ -70,15 +87,10 @@ impl Stack {
 
     /// Returns true if value is successfully pushed
     fn push(&mut self, val: Item) -> Result<(), RuntimeError> {
-        let item_size = match &val {
-            Item::Integer(..) => 1,
-            Item::Blob(blob) => blob.len(),
-        };
-
-        if self.memory_usage + item_size > self.config.max_memory {
+        if self.memory_usage + val.len() > self.config.max_memory {
             Err(RuntimeError::OutOfMemory)
         } else {
-            self.memory_usage += item_size;
+            self.memory_usage += val.len();
             self.stack.push(val);
             Ok(())
         }
@@ -86,22 +98,8 @@ impl Stack {
 
     fn pop(&mut self) -> Result<Item, RuntimeError> {
         let item = self.stack.pop();
-        let item_size = match &item {
-            Some(Item::Integer(..)) => 1,
-            Some(Item::Blob(blob)) => blob.len(),
-            None => 0,
-        };
-        self.memory_usage -= item_size;
+        self.memory_usage -= item.as_ref().map_or(0, |i| i.len());
         item.ok_or(RuntimeError::StackUnderflow)
-    }
-
-    fn pop_blob(&mut self, len: usize) -> Result<Vec<u8>, RuntimeError> {
-        if let Item::Blob(blob) = self.pop()? {
-            if blob.len() == len {
-                return Ok(blob)
-            }
-        }
-        Err(RuntimeError::TypeMismatch)
     }
 
     fn len(&self) -> usize {
@@ -109,38 +107,51 @@ impl Stack {
     }
 }
 
-pub fn execute(script: &[Instruction], tx_hash: H256, config: Config) -> Result<ScriptResult, RuntimeError> {
+pub fn execute(
+    unlock: &[Instruction],
+    params: &[Vec<u8>],
+    lock: &[Instruction],
+    tx_hash: H256,
+    config: Config,
+) -> Result<ScriptResult, RuntimeError> {
+    // FIXME: don't merge scripts
+    let param_scripts: Vec<_> = params.iter().map(|p| Instruction::PushB(p.clone())).collect();
+    let script = [unlock, &param_scripts, lock].concat();
+
     let mut stack = Stack::new(config);
     let mut pc = 0;
     while pc < script.len() {
         match &script[pc] {
             Instruction::Nop => {}
-            Instruction::PushB(blob) => stack.push(Item::Blob(blob.clone()))?,
-            Instruction::PushI(val) => stack.push(Item::Integer(*val))?,
+            Instruction::Not => unimplemented!(),
+            Instruction::Eq => unimplemented!(),
+            Instruction::Jmp => unimplemented!(),
+            Instruction::Push(val) => stack.push(Item(vec![*val]))?,
             Instruction::Pop => {
                 stack.pop()?;
             }
+            Instruction::PushB(blob) => stack.push(Item(blob.clone()))?,
+            Instruction::Dup => unimplemented!(),
+            Instruction::Swap => unimplemented!(),
+            Instruction::Blake256 => unimplemented!(),
             Instruction::ChkSig => {
-                let pubkey = Public::from_slice(stack.pop_blob(64)?.as_slice());
-                let signature = ECDSASignature::from(H520::from(stack.pop_blob(65)?.as_slice()));
+                let pubkey = Public::from_slice(stack.pop()?.assert_len(64)?.as_ref());
+                let signature = ECDSASignature::from(H520::from(stack.pop()?.assert_len(65)?.as_ref()));
                 let result = match verify_ecdsa(&pubkey, &signature, &tx_hash) {
                     Ok(true) => 1,
                     _ => 0,
                 };
-                stack.push(Item::Integer(result))?;
+                stack.push(Item(vec![result]))?;
             }
         }
         pc += 1;
     }
 
-    match stack.pop() {
-        Ok(Item::Integer(result)) if stack.len() == 0 => {
-            if result == 0 {
-                Ok(ScriptResult::Fail)
-            } else {
-                Ok(ScriptResult::Unlocked)
-            }
-        }
-        _ => Err(RuntimeError::InvalidResult),
+    let result = stack.pop()?;
+    // FIXME: convert stack top value to integer value
+    if result.as_ref() != [0] && stack.len() == 0 {
+        Ok(ScriptResult::Unlocked)
+    } else {
+        Ok(ScriptResult::Fail)
     }
 }
