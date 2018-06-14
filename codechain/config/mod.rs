@@ -93,6 +93,7 @@ pub struct Operating {
     pub quiet: bool,
     pub instance_id: Option<usize>,
     pub db_path: String,
+    pub snapshot_path: String,
     pub chain_type: ChainType,
     pub enable_block_sync: bool,
     pub enable_parcel_relay: bool,
@@ -116,6 +117,9 @@ impl Operating {
         }
         if let Some(db_path) = matches.value_of("db-path") {
             self.db_path = db_path.to_string();
+        }
+        if let Some(snapshot_path) = matches.value_of("snapshot-path") {
+            self.snapshot_path = snapshot_path.to_string();
         }
         if let Some(chain) = matches.value_of("chain") {
             self.chain_type = chain.parse()?;

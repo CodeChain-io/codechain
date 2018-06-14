@@ -1,6 +1,7 @@
 [codechain]
 quiet = false
 db_path = "db"
+snapshot_path = "snapshot"
 chain_type = "tendermint"
 enable_block_sync = true
 enable_parcel_relay = true

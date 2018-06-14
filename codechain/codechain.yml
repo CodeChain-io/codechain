@@ -50,6 +50,10 @@ args:
         long: db-path
         help: Specify the database directory path.
         takes_value: true
+    - snapshot-path:
+        long: snapshot-path
+        help: Specify the snapshot directory path.
+        takes_value: true
     - no-sync:
         long: no-sync
         help: Do not run block sync extension
