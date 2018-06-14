@@ -22,6 +22,11 @@ use clap::ArgMatches;
 use clogger::{self, LoggerConfig};
 
 pub fn run_account_command(matches: ArgMatches) -> Result<(), String> {
+    if matches.subcommand.is_none() {
+        println!("{}", matches.usage());
+        return Ok(())
+    }
+
     clogger::init(&LoggerConfig::new(0)).expect("Logger must be successfully initialized");
 
     let subcommand = matches.subcommand.unwrap();
