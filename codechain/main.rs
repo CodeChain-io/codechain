@@ -64,7 +64,7 @@ use clogger::LoggerConfig;
 use cnetwork::{NetworkConfig, NetworkService, SocketAddr};
 use creactor::EventLoop;
 use crpc::Server as RpcServer;
-use csync::{BlockSyncExtension, ParcelSyncExtension};
+use csync::{BlockSyncExtension, ParcelSyncExtension, SnapshotService};
 use ctrlc::CtrlC;
 use fdlimit::raise_fd_limit;
 use parking_lot::{Condvar, Mutex};
@@ -224,6 +224,11 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
             None
         }
     };
+
+    // FIXME: Get snapshot root directory from config
+    // FIXME: Get snapshot period from genesis block
+    let snapshot_service = SnapshotService::new(client.client(), "snapshot".to_string(), 1 << 14);
+    client.client().add_notify(snapshot_service.clone());
 
     // drop the spec to free up genesis state.
     drop(spec);
