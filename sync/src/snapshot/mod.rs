@@ -14,29 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-extern crate parking_lot;
+mod service;
 
-extern crate codechain_core as ccore;
-extern crate codechain_merkle as cmerkle;
-#[macro_use]
-extern crate codechain_logger as clogger;
-extern crate codechain_network as cnetwork;
-extern crate codechain_types as ctypes;
-
-#[macro_use]
-extern crate log;
-extern crate rand;
-extern crate rlp;
-extern crate time;
-extern crate triehash;
-
-mod block;
-mod parcel;
-mod snapshot;
-
-pub use self::block::BlockSyncExtension;
-pub use self::parcel::ParcelSyncExtension;
-pub use self::snapshot::SnapshotService;
-
-#[cfg(test)]
-extern crate codechain_keys as ckeys;
+pub use self::service::Service as SnapshotService;
