@@ -96,7 +96,7 @@ pub fn network_start(cfg: &NetworkConfig) -> Result<NetworkService, String> {
 
 pub fn client_start(cfg: &config::Config, spec: &Spec, miner: Arc<Miner>) -> Result<ClientService, String> {
     info!("Starting client");
-    let client_path = Path::new(&cfg.db_path);
+    let client_path = Path::new(&cfg.operating.db_path);
     let client_config = Default::default();
     let service = ClientService::start(client_config, &spec, &client_path, miner)
         .map_err(|e| format!("Client service error: {:?}", e))?;
@@ -141,10 +141,10 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
 
     let config_path = matches.value_of("config-path").unwrap_or(DEFAULT_CONFIG_PATH);
     let mut config = config::load(&config_path)?;
-    config.overwrite_with(&matches)?;
-    let spec = config.chain_type.spec()?;
+    config.operating.overwrite_with(&matches)?;
+    let spec = config.operating.chain_type.spec()?;
 
-    let instance_id = config.instance_id.unwrap_or(SystemTime::now()
+    let instance_id = config.operating.instance_id.unwrap_or(SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("Current time should be later than unix epoch")
         .subsec_nanos() as usize);
@@ -158,13 +158,13 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
     let address = if addresses.len() > 0 {
         addresses[0]
     } else {
-        ap.insert_account(config.secret_key.into()).map_err(|e| format!("Invalid secret key: {:?}", e))?
+        ap.insert_account(config.operating.secret_key.into()).map_err(|e| format!("Invalid secret key: {:?}", e))?
     };
 
     let miner = Miner::new(MinerOptions::default(), &spec, Some(ap.clone()));
-    let author = config.author.unwrap_or(address);
+    let author = config.operating.author.unwrap_or(address);
     miner.set_author(author);
-    let enginer_signer = config.engine_signer.unwrap_or(address);
+    let enginer_signer = config.operating.engine_signer.unwrap_or(address);
     miner.set_engine_signer(enginer_signer).map_err(|err| format!("{:?}", err))?;
 
     let client = client_start(&config, &spec, miner.clone())?;
@@ -204,12 +204,12 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
                 }
             }
 
-            if config.enable_block_sync {
+            if config.operating.enable_block_sync {
                 let sync = BlockSyncExtension::new(client.client());
                 service.register_extension(sync.clone())?;
                 client.client().add_notify(sync.clone());
             }
-            if config.enable_parcel_relay {
+            if config.operating.enable_parcel_relay {
                 service.register_extension(ParcelSyncExtension::new(client.client()))?;
             }
             if let Some(consensus_extension) = spec.engine.network_extension() {

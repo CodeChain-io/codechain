@@ -83,6 +83,13 @@ impl ChainType {
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Config {
+    #[serde(rename = "codechain")]
+    pub operating: Operating,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Operating {
     pub quiet: bool,
     pub instance_id: Option<usize>,
     pub db_path: String,
@@ -99,7 +106,7 @@ pub fn load(config_path: &str) -> Result<Config, String> {
     toml::from_str(toml_string.as_ref()).map_err(|e| format!("Error while parse TOML: {:?}", e))
 }
 
-impl Config {
+impl Operating {
     pub fn overwrite_with(&mut self, matches: &clap::ArgMatches) -> Result<(), String> {
         if matches.is_present("quiet") {
             self.quiet = true;
