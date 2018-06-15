@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::env;
 use std::thread;
 use time;
 
@@ -41,8 +42,12 @@ pub struct Logger {
 
 impl Logger {
     pub fn new(config: &Config) -> Self {
-        let mut builder = FilterBuilder::from_env("RUST_LOG");
+        let mut builder = FilterBuilder::new();
         builder.filter(None, LevelFilter::Info);
+
+        if let Ok(rust_log) = env::var("RUST_LOG") {
+            builder.parse(&rust_log);
+        }
 
         Self {
             instance_id: config.instance_id,
