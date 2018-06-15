@@ -1,3 +1,4 @@
+[codechain]
 quiet = false
 db_path = "db"
 chain_type = "tendermint"
