@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::cell::Cell;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
@@ -24,28 +25,22 @@ use rand::{OsRng, Rng};
 use rlp::{Decodable, Encodable, UntrustedRlp};
 
 use super::session::{Nonce, Session};
-use super::{NodeId, SocketAddr};
+use super::{IntoSocketAddr, NodeId, SocketAddr};
+
+#[derive(Clone, Debug, PartialEq)]
+enum State {
+    Intermediate,
+    Candidate,
+    Alived,
+    KeyPairShared(KeyPair),
+    SecretShared(Secret),
+    TemporaryNonceShared(Secret, Nonce),
+    SessionShared(Session),
+    Established(NodeId),
+}
 
 pub struct RoutingTable {
-    // Only the addresses are known
-    candidates: RwLock<HashSet<SocketAddr>>,
-
-    // addresses that shares node id
-    uninitializeds: RwLock<HashSet<SocketAddr>>,
-
-    // remote node id => key pair
-    key_pairs: RwLock<HashMap<SocketAddr, KeyPair>>,
-
-    // remote node id -> shared secret
-    shared_secrets: RwLock<HashMap<SocketAddr, Secret>>,
-
-    // remote node id -> temporary nonce
-    temporary_nonces: RwLock<HashMap<SocketAddr, Nonce>>,
-
-    // remote node id -> Session
-    unestablished_sessions: RwLock<HashMap<SocketAddr, Session>>,
-
-    established: RwLock<HashSet<SocketAddr>>,
+    entries: RwLock<HashMap<NodeId, Mutex<Cell<State>>>>,
 
     // remote node id => local node id
     // One node can have multiple node ids because the machine can has a multiple ip addresses
@@ -58,202 +53,132 @@ pub struct RoutingTable {
 impl RoutingTable {
     pub fn new() -> Arc<Self> {
         Arc::new(Self {
-            candidates: RwLock::new(HashSet::new()),
-            uninitializeds: RwLock::new(HashSet::new()),
-
-            key_pairs: RwLock::new(HashMap::new()),
-            shared_secrets: RwLock::new(HashMap::new()),
-            temporary_nonces: RwLock::new(HashMap::new()),
-            unestablished_sessions: RwLock::new(HashMap::new()),
-            established: RwLock::new(HashSet::new()),
-
+            entries: RwLock::new(HashMap::new()),
             remote_to_local_node_ids: RwLock::new(HashMap::new()),
-
             rng: Mutex::new(OsRng::new().unwrap()),
         })
     }
 
     pub fn all_addresses(&self) -> HashSet<SocketAddr> {
-        let uninitialized = self.uninitializeds.read();
-        let key_pairs = self.key_pairs.read();
-        let shared_secrets = self.shared_secrets.read();
-        let unestablished_sessions = self.unestablished_sessions.read();
-        let established = self.established.read();
-
-        uninitialized
-            .iter()
-            .cloned()
-            .chain(key_pairs.keys().cloned())
-            .chain(shared_secrets.keys().cloned())
-            .chain(unestablished_sessions.keys().cloned())
-            .chain(established.iter().cloned())
-            .collect()
+        let entries = self.entries.read();
+        entries.keys().map(|node_id| node_id.into_addr()).collect()
     }
 
     pub fn add_candidate(&self, addr: SocketAddr) -> bool {
-        let mut candidates = self.candidates.write();
-        let uninitialized = self.uninitializeds.read();
-        let key_pair = self.key_pairs.read();
-        let shared_secret = self.shared_secrets.read();
-        let temporary_nonce = self.temporary_nonces.read();
-        let unestablished_sessions = self.unestablished_sessions.read();
-        let established = self.established.read();
-
-        if candidates.contains(&addr) {
+        let mut entries = self.entries.write();
+        let remote_node_id = addr.into();
+        if entries.contains_key(&remote_node_id) {
             return false
         }
-
-        if uninitialized.contains(&addr) {
-            return false
-        }
-        if key_pair.contains_key(&addr) {
-            return false
-        }
-        if shared_secret.contains_key(&addr) {
-            return false
-        }
-        if temporary_nonce.contains_key(&addr) {
-            return false
-        }
-        if unestablished_sessions.contains_key(&addr) {
-            return false
-        }
-        if established.contains(&addr) {
-            return false
-        }
-
-        let t = candidates.insert(addr);
-        debug_assert!(t);
-        return true
+        let t = entries.insert(remote_node_id, Mutex::new(Cell::new(State::Candidate)));
+        debug_assert!(t.is_none());
+        true
     }
 
     pub fn remove_node(&self, addr: SocketAddr) -> bool {
-        let mut candidates = self.candidates.write();
-        let mut uninitializeds = self.uninitializeds.write();
-        let mut key_pairs = self.key_pairs.write();
-        let mut shared_secrets = self.shared_secrets.write();
-        let mut temporary_nonces = self.temporary_nonces.write();
-        let mut unestablished_sessions = self.unestablished_sessions.write();
-        let mut established = self.established.write();
+        let mut entries = self.entries.write();
         let mut remote_to_local_node_ids = self.remote_to_local_node_ids.write();
 
-        if candidates.remove(&addr) {
-            return true
-        }
-        let remote_node_id = addr.clone().into();
-        let removed = remote_to_local_node_ids.remove(&remote_node_id).is_some();
-
-        if uninitializeds.remove(&addr) {
-            debug_assert!(removed);
-            return true
-        }
-        if key_pairs.remove(&addr).is_some() {
-            debug_assert!(removed);
-            return true
-        }
-        if shared_secrets.remove(&addr).is_some() {
-            debug_assert!(removed);
-            return true
-        }
-        if temporary_nonces.remove(&addr).is_some() {
-            debug_assert!(removed);
-            return true
-        }
-        if unestablished_sessions.remove(&addr).is_some() {
-            debug_assert!(removed);
-            return true
-        }
-        if established.remove(&addr) {
-            debug_assert!(removed);
-            return true
-        }
-
-        debug_assert!(!removed);
-        false
+        let remote_node_id = addr.into();
+        remote_to_local_node_ids.remove(&remote_node_id);
+        entries.remove(&remote_node_id).is_some()
     }
 
     pub fn add_node(&self, addr: &SocketAddr, local_node_id: NodeId) -> bool {
-        let mut candidates = self.candidates.write();
-        let mut uninitializeds = self.uninitializeds.write();
+        let mut entries = self.entries.write();
         let mut remote_to_local_node_ids = self.remote_to_local_node_ids.write();
 
-        candidates.remove(addr);
-        if !uninitializeds.insert(addr.clone()) {
-            let remote_node_id: NodeId = addr.into();
-            debug_assert!(remote_to_local_node_ids.contains_key(&remote_node_id));
-            return false
-        }
+        let remote_node_id = addr.into();
 
-
-        let remote_node_id: NodeId = addr.into();
-
-        match remote_to_local_node_ids.insert(remote_node_id, local_node_id) {
-            None => cinfo!(NET, "{:?} thinks my node id is {}", addr, local_node_id),
-            Some(previous_local_node_id) if previous_local_node_id != local_node_id => {
-                cinfo!(NET, "{:?} changes my node id {} to {}", addr, previous_local_node_id, local_node_id)
+        if let Some(entry) = entries.get(&remote_node_id) {
+            let entry = entry.lock();
+            let old_state = entry.replace(State::Intermediate);
+            if old_state != State::Candidate {
+                entry.set(old_state);
+                return false
             }
-            _ => {}
+            entry.set(State::Alived);
+
+            let t = remote_to_local_node_ids.insert(remote_node_id, local_node_id);
+            assert!(t.is_none());
+            return true
         }
+
+        let t = entries.insert(remote_node_id, Mutex::new(Cell::new(State::Alived)));
+        debug_assert!(t.is_none());
+        let t = remote_to_local_node_ids.insert(remote_node_id, local_node_id);
+        assert!(t.is_none());
         true
     }
 
     pub fn register_key_pair_for_secret(&self, remote_address: &SocketAddr) -> Option<Public> {
-        let mut uninitializeds = self.uninitializeds.write();
-        let mut key_pairs = self.key_pairs.write();
-
-        if !uninitializeds.remove(remote_address) {
-            return None
-        }
-
-        let ephemeral = Random.generate().unwrap();
-        let pub_key = ephemeral.public().clone();
-        let t = key_pairs.insert(remote_address.clone(), ephemeral);
-        debug_assert!(t.is_none());
-        Some(pub_key)
+        let entries = self.entries.read();
+        let remote_node_id = remote_address.into();
+        entries.get(&remote_node_id).and_then(|entry| {
+            let entry = entry.lock();
+            let old_state = entry.replace(State::Intermediate);
+            if old_state != State::Alived {
+                entry.set(old_state);
+                return None
+            }
+            let ephemeral = Random.generate().unwrap();
+            let pub_key = ephemeral.public().clone();
+            entry.set(State::KeyPairShared(ephemeral));
+            Some(pub_key)
+        })
     }
 
     pub fn reset_key_pair_for_secret(&self, remote_address: &SocketAddr) -> bool {
-        let mut candidates = self.candidates.write();
-        let mut key_pairs = self.key_pairs.write();
+        let entries = self.entries.read();
+        let remote_node_id = remote_address.into();
 
-        if let None = key_pairs.remove(remote_address) {
+        if let Some(entry) = entries.get(&remote_node_id) {
+            let entry = entry.lock();
+            let old_state = entry.replace(State::Intermediate);
+            if let State::KeyPairShared(_) = old_state {
+                entry.set(State::Candidate);
+                return true
+            }
+            entry.set(old_state);
             return false
         }
-
-        let t = candidates.insert(remote_address.clone());
-        debug_assert!(t);
-        true
+        false
     }
 
     pub fn share_secret(&self, remote_address: &SocketAddr, remote_public: &Public) -> Option<Secret> {
-        let mut key_pairs = self.key_pairs.write();
-        let mut shared_secrets = self.shared_secrets.write();
-
-        key_pairs
-            .remove(remote_address)
-            .and_then(|local_key_pair| exchange(remote_public, local_key_pair.private()).ok())
-            .map(|secret| {
-                let t = shared_secrets.insert(remote_address.clone(), secret.clone());
-                debug_assert!(t.is_none());
-                secret
-            })
+        let entries = self.entries.read();
+        let remote_node_id = remote_address.into();
+        entries.get(&remote_node_id).and_then(|entry| {
+            let entry = entry.lock();
+            let old_state = entry.replace(State::Intermediate);
+            if let State::KeyPairShared(local_key_pair) = &old_state {
+                if let Some(secret) = exchange(remote_public, local_key_pair.clone().private()).ok() {
+                    entry.set(State::SecretShared(secret.clone()));
+                    return Some(secret)
+                }
+            }
+            entry.set(old_state);
+            None
+        })
     }
 
     pub fn request_session(&self, remote_address: &SocketAddr) -> Option<Vec<u8>> {
-        let shared_secrets = self.shared_secrets.read();
-        let mut temporary_nonces = self.temporary_nonces.write();
+        let entries = self.entries.read();
         let mut rng = self.rng.lock();
 
-        if !shared_secrets.contains_key(remote_address) {
-            return None
-        }
-        let shared_secret = shared_secrets.get(remote_address).unwrap();
-        let temporary_nonce: Nonce = rng.gen();
-        let t = temporary_nonces.insert(remote_address.clone(), temporary_nonce.clone());
-        debug_assert!(t.is_none());
-
-        let temporary_session = Session::new_with_zero_nonce(shared_secret.clone());
-        encode_and_encrypt_nonce(&temporary_session, &temporary_nonce)
+        let remote_node_id = remote_address.into();
+        entries.get(&remote_node_id).and_then(|entry| {
+            let entry = entry.lock();
+            let old_state = entry.replace(State::Intermediate);
+            if let State::SecretShared(shared_secret) = &old_state {
+                let temporary_nonce: Nonce = rng.gen();
+                entry.set(State::TemporaryNonceShared(shared_secret.clone(), temporary_nonce.clone()));
+                let temporary_session = Session::new_with_zero_nonce(shared_secret.clone());
+                return encode_and_encrypt_nonce(&temporary_session, &temporary_nonce)
+            }
+            entry.set(old_state);
+            None
+        })
     }
 
     pub fn create_requested_session(
@@ -261,85 +186,102 @@ impl RoutingTable {
         remote_address: &SocketAddr,
         encrypted_temporary_nonce: &[u8],
     ) -> Option<Vec<u8>> {
-        let mut shared_secrets = self.shared_secrets.write();
-        let temporary_nonces = self.temporary_nonces.read();
-        let mut unestablished_sessions = self.unestablished_sessions.write();
+        let entries = self.entries.read();
         let mut rng = self.rng.lock();
 
-        if temporary_nonces.contains_key(remote_address) {
-            return None
-        }
-        debug_assert!(shared_secrets.contains_key(remote_address));
+        let remote_node_id = remote_address.into();
+        entries.get(&remote_node_id).and_then(|entry| {
+            let entry = entry.lock();
+            let old_state = entry.replace(State::Intermediate);
+            if let State::SecretShared(shared_secret) = old_state {
+                let temporary_session = {
+                    let temporary_zero_session = Session::new_with_zero_nonce(shared_secret.clone());
+                    let temporary_nonce = decrypt_and_decode_nonce(&temporary_zero_session, encrypted_temporary_nonce)?;
+                    Session::new(shared_secret.clone(), temporary_nonce)
+                };
 
-        let secret = shared_secrets.remove(remote_address).unwrap();
+                let nonce: Nonce = rng.gen();
+                entry.set(State::SessionShared(Session::new(shared_secret, nonce.clone())));
 
-        let temporary_session = {
-            let temporary_zero_session = Session::new_with_zero_nonce(secret.clone());
-            let temporary_nonce = decrypt_and_decode_nonce(&temporary_zero_session, encrypted_temporary_nonce)?;
-            Session::new(secret.clone(), temporary_nonce)
-        };
-
-        let nonce: Nonce = rng.gen();
-        let encrypted_nonce = encode_and_encrypt_nonce(&temporary_session, &nonce);
-
-        let t = unestablished_sessions.insert(remote_address.clone(), Session::new(secret, nonce));
-        debug_assert!(t.is_none());
-        encrypted_nonce
+                let encrypted_nonce = encode_and_encrypt_nonce(&temporary_session, &nonce);
+                return encrypted_nonce
+            }
+            entry.set(old_state);
+            None
+        })
     }
 
     pub fn create_allowed_session(&self, remote_address: &SocketAddr, received_nonce: &[u8]) -> bool {
-        let mut shared_secrets = self.shared_secrets.write();
-        let mut temporary_nonces = self.temporary_nonces.write();
-        let mut unestablished_sessions = self.unestablished_sessions.write();
+        let entries = self.entries.read();
+        let remote_node_id = remote_address.into();
+        if let Some(entry) = entries.get(&remote_node_id) {
+            let entry = entry.lock();
+            let old_state = entry.replace(State::Intermediate);
+            if let State::TemporaryNonceShared(shared_secret, temporary_nonce) = old_state.clone() {
+                let temporary_session = Session::new(shared_secret.clone(), temporary_nonce);
+                let nonce = match decrypt_and_decode_nonce(&temporary_session, &received_nonce) {
+                    Some(nonce) => nonce,
+                    None => {
+                        entry.set(old_state);
+                        return false
+                    }
+                };
 
-        if !temporary_nonces.contains_key(remote_address) {
-            return false
+                entry.set(State::SessionShared(Session::new(shared_secret, nonce)));
+                return true
+            }
+            entry.set(old_state);
         }
-        debug_assert!(shared_secrets.contains_key(remote_address));
-
-        let secret = shared_secrets.get(remote_address).unwrap().clone();
-        let temporary_nonce = temporary_nonces.get(remote_address).unwrap().clone();
-
-        let temporary_session = Session::new(secret.clone(), temporary_nonce);
-        let nonce = match decrypt_and_decode_nonce(&temporary_session, &received_nonce) {
-            Some(nonce) => nonce,
-            None => return false,
-        };
-        let t = shared_secrets.remove(remote_address);
-        debug_assert!(t.is_some());
-        let t = temporary_nonces.remove(remote_address);
-        debug_assert!(t.is_some());
-
-        let session = Session::new(secret, nonce);
-        let t = unestablished_sessions.insert(remote_address.clone(), session);
-        debug_assert!(t.is_none());
-        true
+        false
     }
 
     pub fn establish(&self, remote_address: &SocketAddr) -> bool {
-        let mut unestablished_sessions = self.unestablished_sessions.write();
-        let mut established = self.established.write();
-
-        if !unestablished_sessions.contains_key(remote_address) {
-            return false
+        let entries = self.entries.read();
+        let remote_node_id = remote_address.into();
+        if let Some(entry) = entries.get(&remote_node_id) {
+            let entry = entry.lock();
+            let old_state = entry.replace(State::Intermediate);
+            if let State::SessionShared(_) = old_state {
+                entry.set(State::Established(remote_node_id));
+                return true
+            }
+            entry.set(old_state);
         }
-        debug_assert!(!established.contains(remote_address));
-
-        let t = unestablished_sessions.remove(remote_address);
-        debug_assert!(t.is_some());
-        established.insert(remote_address.clone());
-        true
+        false
     }
 
     pub fn unestablished_session(&self, remote_address: &SocketAddr) -> Option<Session> {
-        let unestablished_sessions = self.unestablished_sessions.read();
-
-        unestablished_sessions.get(&remote_address).cloned()
+        let entries = self.entries.read();
+        let remote_node_id = remote_address.into();
+        if let Some(entry) = entries.get(&remote_node_id) {
+            let entry = entry.lock();
+            let old_state = entry.replace(State::Intermediate);
+            if let State::SessionShared(session) = old_state {
+                entry.set(State::SessionShared(session.clone()));
+                return Some(session)
+            }
+            entry.set(old_state);
+        }
+        None
     }
 
     pub fn unestablished_addresses(&self, len: usize) -> Vec<SocketAddr> {
-        let unestablished_sessions = self.unestablished_sessions.read();
-        unestablished_sessions.keys().take(len).cloned().collect()
+        let entries = self.entries.read();
+        entries
+            .iter()
+            .filter(|(_remote_node_id, entry)| {
+                let entry = entry.lock();
+                let old_state = entry.replace(State::Intermediate);
+                if let State::SessionShared(_) = old_state {
+                    entry.set(old_state);
+                    return true
+                }
+                entry.set(old_state);
+                false
+            })
+            .take(len)
+            .map(|(remote_node_id, _entry)| remote_node_id.into_addr())
+            .collect()
     }
 
     pub fn local_node_id(&self, remote_node_id: &NodeId) -> Option<NodeId> {
@@ -349,12 +291,23 @@ impl RoutingTable {
     }
 
     pub fn candidates(&self, len: &usize) -> Vec<SocketAddr> {
-        let candidates = self.candidates.read();
+        let entries = self.entries.read();
         let mut rng = self.rng.lock();
 
-        let mut addresses = candidates.iter().cloned().collect::<Vec<_>>();
+        let mut addresses = entries
+            .iter()
+            .filter(|(_remote_node_id, entry)| {
+                let entry = entry.lock();
+                let old_state = entry.replace(State::Intermediate);
+                let result = State::Candidate == old_state;
+                entry.set(old_state);
+                result
+            })
+            .map(|(remote_node_id, _entry)| remote_node_id.into_addr())
+            .collect::<Vec<_>>();
+
         rng.shuffle(&mut addresses);
-        addresses.into_iter().take(*len).collect()
+        addresses.into_iter().take(*len).collect::<Vec<_>>()
     }
 }
 
