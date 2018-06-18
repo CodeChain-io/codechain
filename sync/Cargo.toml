@@ -12,8 +12,10 @@ codechain-logger = { path = "../util/logger" }
 codechain-merkle = { path = "../util/merkle" }
 codechain-network = { path = "../network" }
 codechain-types = { path = "../primitives/codechain-types" }
+kvdb = { path = "../util/kvdb" }
 log = "0.4.1"
 parking_lot = "0.5"
+patricia-trie = { path = "../util/patricia_trie" }
 rand = "0.4"
 rlp = { path = "../util/rlp" }
 time = "0.1"
