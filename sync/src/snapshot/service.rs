@@ -106,6 +106,26 @@ impl ChainNotify for Service {
                     };
                 }
 
+                for (grandchild, _) in &grandchildren {
+                    let nodes = enumerate_subtree(&db, &grandchild)?;
+                    let mut file = match File::create(path.join(format!("{:x}", grandchild))) {
+                        Ok(file) => file,
+                        Err(_) => return None,
+                    };
+                    let mut stream = RlpStream::new();
+                    stream.begin_unbounded_list();
+                    for (key, value) in nodes {
+                        stream.begin_list(2);
+                        stream.append(&key);
+                        stream.append(&value);
+                    }
+                    stream.complete_unbounded_list();
+                    match file.write(&stream.drain()) {
+                        Ok(_) => {}
+                        Err(_) => return None,
+                    };
+                }
+
                 Some(())
             });
         }
@@ -141,4 +161,32 @@ fn children_of(db: &Arc<KeyValueDB>, node: &[u8]) -> Option<Vec<(H256, Vec<u8>)>
         result.push((key, get_node(db, &key)?));
     }
     Some(result)
+}
+
+fn enumerate_subtree(db: &Arc<KeyValueDB>, root: &H256) -> Option<Vec<(H256, Vec<u8>)>> {
+    let node = get_node(db, root)?;
+    let children = match OwnedNode::from(Node::decoded(&node)) {
+        OwnedNode::Empty => Vec::new(),
+        OwnedNode::Leaf(..) => Vec::new(),
+        OwnedNode::Extension(_, child) => vec![H256::from_slice(&child)],
+        OwnedNode::Branch(children, _) => children
+            .iter()
+            .filter_map(|child| {
+                let decoded: Vec<u8> = rlp_decode(child);
+                if decoded.len() != 0 {
+                    Some(H256::from_slice(&decoded))
+                } else {
+                    None
+                }
+            })
+            .collect(),
+    };
+    let subtree: Vec<_> = children.iter().map(|child| enumerate_subtree(db, &child)).collect();
+    if subtree.iter().any(|c| c.is_none()) {
+        None
+    } else {
+        let mut result: Vec<_> = subtree.into_iter().flat_map(|st| st.unwrap()).collect();
+        result.push((*root, node));
+        Some(result)
+    }
 }
