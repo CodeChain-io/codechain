@@ -1,5 +1,6 @@
 name: codechain
 version: "0.1.0"
+version_short: "v"
 author: CodeChain Team <codechain@kodebox.io>
 about: CodeChian Core client
 args:
