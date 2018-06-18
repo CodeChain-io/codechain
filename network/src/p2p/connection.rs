@@ -106,21 +106,21 @@ impl EstablishedConnection {
         self.send_queue.push_back(message);
     }
 
-    fn enqueue_negotiation_request(&mut self, name: String, version: Version) {
+    fn enqueue_negotiation_request(&mut self, name: String, extension_versions: Vec<Version>) {
         let seq = self.next_negotiation_seq;
         self.next_negotiation_seq += 1;
         if let Some(_) = self.requested_negotiation.insert(seq, name.clone()) {
             unreachable!();
         }
-        self.enqueue(Message::Negotiation(NegotiationMessage::request(seq, name, version)));
+        self.enqueue(Message::Negotiation(NegotiationMessage::request(seq, name, extension_versions)));
     }
 
     fn remove_requested_negotiation(&mut self, seq: &u64) -> Option<String> {
         self.requested_negotiation.remove(seq)
     }
 
-    fn enqueue_negotiation_allowed(&mut self, seq: Seq) {
-        self.enqueue(Message::Negotiation(NegotiationMessage::allowed(seq)));
+    fn enqueue_negotiation_allowed(&mut self, seq: Seq, version: u64) {
+        self.enqueue(Message::Negotiation(NegotiationMessage::allowed(seq, version)));
     }
 
     fn enqueue_extension_message(&mut self, extension_name: String, need_encryption: bool, message: &[u8]) {
@@ -574,26 +574,26 @@ impl Connection {
         }
     }
 
-    pub fn enqueue_negotiation_request(&self, name: String, version: u64) -> bool {
+    pub fn enqueue_negotiation_request(&self, name: String, versions: Vec<Version>) -> bool {
         let mut state = self.state.lock();
         match state.get_mut() {
             State::WaitAck(_) => false,
             State::WaitSync(_) => false,
             State::Established(connection) => {
-                connection.enqueue_negotiation_request(name, version);
+                connection.enqueue_negotiation_request(name, versions);
                 true
             }
             _ => unreachable!(),
         }
     }
 
-    pub fn enqueue_negotiation_allowed(&self, seq: u64) -> bool {
+    pub fn enqueue_negotiation_allowed(&self, seq: u64, version: u64) -> bool {
         let mut state = self.state.lock();
         match state.get_mut() {
             State::WaitAck(_) => false,
             State::WaitSync(_) => false,
             State::Established(connection) => {
-                connection.enqueue_negotiation_allowed(seq);
+                connection.enqueue_negotiation_allowed(seq, version);
                 true
             }
             _ => unreachable!(),
