@@ -92,7 +92,7 @@ fn main() {
 		.define("ENABLE_MODULE_RECOVERY", Some("1"));
 
     base_config.flag("-Wno-unused-function");
-    base_config.flag_if_supported("-Wnonnull-compare");
+    base_config.flag("-Wno-nonnull-compare");
 
     // secp256k1
     base_config
