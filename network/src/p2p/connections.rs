@@ -206,19 +206,19 @@ impl Connections {
         }
     }
 
-    pub fn enqueue_negotiation_request(&self, token: &StreamToken, name: String, version: u64) -> bool {
+    pub fn enqueue_negotiation_request(&self, token: &StreamToken, name: String, versions: Vec<u64>) -> bool {
         let connections = self.connections.read();
         if let Some(connection) = connections.get(token) {
-            connection.enqueue_negotiation_request(name, version)
+            connection.enqueue_negotiation_request(name, versions)
         } else {
             false
         }
     }
 
-    pub fn enqueue_negotiation_allowed(&self, token: &StreamToken, seq: u64) -> bool {
+    pub fn enqueue_negotiation_allowed(&self, token: &StreamToken, seq: u64, version: u64) -> bool {
         let connections = self.connections.read();
         if let Some(connection) = connections.get(token) {
-            connection.enqueue_negotiation_allowed(seq)
+            connection.enqueue_negotiation_allowed(seq, version)
         } else {
             false
         }

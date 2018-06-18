@@ -245,14 +245,15 @@ impl Manager {
                     } => {
                         let seq = msg.seq();
                         // FIXME: version negotiation
-                        if self.connections.enqueue_negotiation_allowed(stream, seq) {
+                        const VERSION: Version = 0;
+                        if self.connections.enqueue_negotiation_allowed(stream, seq, VERSION) {
                             let node_id = self.connections.node_id(&stream).ok_or(Error::InvalidStream(*stream))?;
                             client.on_negotiated(extension_name, &node_id);
                         } else {
                             cwarn!(NET, "Cannot enqueue negotiation message for {}", stream);
                         }
                     }
-                    NegotiationBody::Allowed => {
+                    NegotiationBody::Allowed(_extension_version) => {
                         let seq = msg.seq();
                         if let Some(name) = self.connections.remove_requested_negotiation(stream, &seq) {
                             let node_id = self.connections.node_id(&stream).ok_or(Error::InvalidStream(*stream))?;
@@ -261,7 +262,7 @@ impl Manager {
                             ctrace!(NET, "Negotiation::Allowed message received from non requested seq");
                         }
                     }
-                    NegotiationBody::Denied(_) => {
+                    NegotiationBody::Denied => {
                         let seq = msg.seq();
                         if let Some(name) = self.connections.remove_requested_negotiation(stream, &seq) {
                             let node_id = self.connections.node_id(&stream).ok_or(Error::InvalidStream(*stream))?;
@@ -378,7 +379,7 @@ impl IoHandler<Message> for Handler {
             } => {
                 let mut manager = self.manager.lock();
                 let token = manager.connections.stream_token(&node_id).ok_or(Error::InvalidNode(*node_id))?;
-                if !manager.connections.enqueue_negotiation_request(&token, extension_name.clone(), *version) {
+                if !manager.connections.enqueue_negotiation_request(&token, extension_name.clone(), vec![*version]) {
                     return Err(Error::InvalidStream(token).into())
                 }
                 io.update_registration(token)?;
