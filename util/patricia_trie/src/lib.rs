@@ -52,6 +52,7 @@ mod nibblevec;
 
 pub use self::fatdb::{FatDB, FatDBIterator};
 pub use self::fatdbmut::FatDBMut;
+pub use self::node::{Node, OwnedNode};
 pub use self::recorder::Recorder;
 pub use self::sectriedb::SecTrieDB;
 pub use self::sectriedbmut::SecTrieDBMut;

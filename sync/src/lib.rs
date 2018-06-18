@@ -23,8 +23,10 @@ extern crate codechain_logger as clogger;
 extern crate codechain_network as cnetwork;
 extern crate codechain_types as ctypes;
 
+extern crate kvdb;
 #[macro_use]
 extern crate log;
+extern crate patricia_trie as trie;
 extern crate rand;
 extern crate rlp;
 extern crate time;
