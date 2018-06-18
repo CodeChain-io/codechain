@@ -6,8 +6,25 @@
 Welcome to CodeChain's documentation!
 =====================================
 
-.. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+CodeChain is a programmable open source blockchain technology optimal for developing and customizing multi-asset management systems.
 
-.. image:: under_construction.jpg
+
+
+Building From Source
+--------------------
+
+Dependencies
+^^^^^^^^^^^^
+
+For Linux Systems:
+
+    * Ubuntu
+    Must install GCC
+
+For Mac Systems:
+
+    * MacOS 10.13.2 (17C88) tested
+
+For Windows Systems:
+
+    * Currently not supported for Windows. If on a Windows system, please install `WSL <https://docs.microsoft.com/en-us/windows/wsl/install-win10>`_ to continue.
