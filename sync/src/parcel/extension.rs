@@ -83,24 +83,21 @@ impl NetworkExtension for Extension {
         false
     }
 
+    fn versions(&self) -> Vec<u64> {
+        vec![0]
+    }
+
     fn on_initialize(&self, api: Arc<Api>) {
         api.set_timer(BROADCAST_TIMER_TOKEN, Duration::milliseconds(BROADCAST_TIMER_INTERVAL))
             .expect("Timer set succeeds");
         *self.api.lock() = Some(api);
     }
 
-    fn on_node_added(&self, token: &NodeId) {
-        self.api.lock().as_ref().map(|api| api.negotiate(token));
+    fn on_node_added(&self, token: &NodeId, _version: u64) {
+        self.peers.write().insert(*token, Peer::new());
     }
     fn on_node_removed(&self, token: &NodeId) {
         self.peers.write().remove(token);
-    }
-
-    fn on_negotiated(&self, token: &NodeId) {
-        self.peers.write().insert(*token, Peer::new());
-    }
-    fn on_negotiation_allowed(&self, token: &NodeId) {
-        self.on_negotiated(token);
     }
 
     fn on_message(&self, token: &NodeId, data: &[u8]) {

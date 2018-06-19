@@ -44,7 +44,6 @@ pub enum Call {
 struct TestApi {
     extension: Weak<Extension>,
 
-    connection_requests: Mutex<HashSet<NodeId>>,
     connections: Mutex<HashSet<NodeId>>,
     timers: Mutex<HashMap<TimerToken, (Duration, bool)>>,
 
@@ -56,7 +55,6 @@ impl TestApi {
         Arc::new(Self {
             extension,
 
-            connection_requests: Mutex::new(HashSet::new()),
             connections: Mutex::new(HashSet::new()),
             timers: Mutex::new(HashMap::new()),
 
@@ -72,11 +70,6 @@ impl TestApi {
 impl Api for TestApi {
     fn send(&self, node: &NodeId, message: &[u8]) {
         self.calls.lock().push_back(Call::Send(*node, message.to_vec()));
-    }
-
-    fn negotiate(&self, node: &NodeId) {
-        self.connection_requests.lock().insert(*node);
-        self.calls.lock().push_back(Call::Negotiate(*node));
     }
 
     fn set_timer(&self, token: TimerToken, duration: Duration) -> Result<()> {
@@ -121,10 +114,6 @@ impl Api for TestApi {
 }
 
 impl TestApi {
-    fn add_node(&self, node: NodeId) {
-        self.extension().on_node_added(&node);
-    }
-
     fn remove_node(&self, node: NodeId) {
         if !self.connections.lock().remove(&node) {
             panic!("Tried to remove unregistered node #{}", node);
@@ -132,37 +121,14 @@ impl TestApi {
         self.extension().on_node_removed(&node);
     }
 
-    fn connected(&self, node: NodeId) {
+    fn add_node(&self, node: NodeId) {
         let mut connections = self.connections.lock();
         if connections.contains(&node) {
             panic!("Duplicated connection detected for node #{}", node);
         }
         connections.insert(node);
-        self.extension().on_negotiated(&node);
-    }
-
-    fn allow_connection(&self, node: NodeId) {
-        let mut connection_requests = self.connection_requests.lock();
-        let mut connections = self.connections.lock();
-
-        if connection_requests.contains(&node) && !connections.contains(&node) {
-            connection_requests.remove(&node);
-            connections.insert(node);
-        } else {
-            panic!("Invalid connection allowance to node #{}", node);
-        }
-        self.extension().on_negotiation_allowed(&node);
-    }
-
-    fn deny_connection(&self, node: NodeId) {
-        let mut connection_requests = self.connection_requests.lock();
-
-        if connection_requests.contains(&node) {
-            connection_requests.remove(&node);
-        } else {
-            panic!("Invalid connection denial to node #{}", node);
-        }
-        self.extension().on_negotiation_denied(&node);
+        let version = *self.extension().versions().iter().max().unwrap();
+        self.extension().on_node_added(&node, version);
     }
 
     fn send_message(&self, from: NodeId, message: &[u8]) {
@@ -223,15 +189,6 @@ impl TestClient {
         &self.extensions[name].1
     }
 
-    pub fn add_node(&mut self, node: NodeId) {
-        if self.nodes.contains(&node) {
-            panic!("Duplicated node #{} detected", node);
-        }
-        for name in self.extensions.keys() {
-            self.get_api(name).add_node(node);
-        }
-    }
-
     pub fn remove_node(&self, node: NodeId) {
         if !self.nodes.contains(&node) {
             panic!("Tried to remove non existent node #{}", node);
@@ -241,16 +198,8 @@ impl TestClient {
         }
     }
 
-    pub fn connected(&self, name: &str, node: NodeId) {
-        self.get_api(name).connected(node);
-    }
-
-    pub fn allow_connection(&self, name: &str, node: NodeId) {
-        self.get_api(name).allow_connection(node);
-    }
-
-    pub fn deny_connection(&self, name: &str, node: NodeId) {
-        self.get_api(name).deny_connection(node);
+    pub fn add_node(&self, name: &str, node: NodeId) {
+        self.get_api(name).add_node(node);
     }
 
     pub fn send_message(&self, name: &str, from: NodeId, message: &[u8]) {

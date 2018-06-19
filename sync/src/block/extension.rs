@@ -92,23 +92,18 @@ impl NetworkExtension for Extension {
         false
     }
 
+    fn versions(&self) -> Vec<u64> {
+        vec![0]
+    }
+
     fn on_initialize(&self, api: Arc<Api>) {
         api.set_timer(SYNC_TIMER_TOKEN, Duration::milliseconds(SYNC_TIMER_INTERVAL)).expect("Timer set succeeds");
         *self.api.lock() = Some(api);
         cinfo!(SYNC, "Sync extension initialized");
     }
 
-    fn on_node_added(&self, token: &NodeId) {
+    fn on_node_added(&self, token: &NodeId, _version: u64) {
         cinfo!(SYNC, "New peer detected #{}", token);
-        self.api.lock().as_ref().map(|api| api.negotiate(token));
-    }
-    fn on_node_removed(&self, token: &NodeId) {
-        self.header_downloaders.write().remove(token);
-        cinfo!(SYNC, "Peer removed #{}", token);
-    }
-
-    fn on_negotiated(&self, token: &NodeId) {
-        ctrace!(SYNC, "New peer negotiated #{}", token);
         let chain_info = self.client.chain_info();
         self.send_message(
             token,
@@ -119,8 +114,10 @@ impl NetworkExtension for Extension {
             },
         );
     }
-    fn on_negotiation_allowed(&self, token: &NodeId) {
-        self.on_negotiated(token);
+
+    fn on_node_removed(&self, token: &NodeId) {
+        self.header_downloaders.write().remove(token);
+        cinfo!(SYNC, "Peer removed #{}", token);
     }
 
     fn on_message(&self, token: &NodeId, data: &[u8]) {

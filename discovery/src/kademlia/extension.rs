@@ -158,6 +158,10 @@ impl NetworkExtension for Extension {
         false
     }
 
+    fn versions(&self) -> Vec<u64> {
+        vec![0]
+    }
+
     fn on_initialize(&self, api: Arc<Api>) {
         let mut api_guard = self.api.lock();
         let t_refresh = Duration::milliseconds(self.config.t_refresh as i64);
@@ -165,7 +169,7 @@ impl NetworkExtension for Extension {
         *api_guard = Some(Arc::clone(&api));
     }
 
-    fn on_node_added(&self, node: &NodeId) {
+    fn on_node_added(&self, node: &NodeId, _version: u64) {
         let mut kademlias = self.kademlias.write();
         let routing_table = self.routing_table.read();
 
@@ -268,7 +272,7 @@ mod tests {
         let command = client.pop_call(&extension.name());
         assert_eq!(None, command);
 
-        client.add_node(NODES[0].clone());
+        client.add_node(&extension.name(), NODES[0].clone());
 
         let command = client.pop_call(&extension.name());
         assert_eq!(

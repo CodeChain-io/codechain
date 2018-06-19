@@ -873,6 +873,10 @@ impl NetworkExtension for TendermintExtension {
         false
     }
 
+    fn versions(&self) -> Vec<u64> {
+        vec![0]
+    }
+
     fn on_initialize(&self, api: Arc<Api>) {
         let initial = self.timeouts.initial();
         ctrace!(ENGINE, "Setting the initial timeout to {}.", initial);
@@ -880,18 +884,12 @@ impl NetworkExtension for TendermintExtension {
         *self.api.lock() = Some(api);
     }
 
-    fn on_node_added(&self, token: &NodeId) {
+    fn on_node_added(&self, token: &NodeId, _version: u64) {
         self.peers.write().insert(*token);
     }
 
     fn on_node_removed(&self, token: &NodeId) {
         self.peers.write().remove(token);
-    }
-
-    fn on_negotiated(&self, _token: &NodeId) {}
-
-    fn on_negotiation_allowed(&self, token: &NodeId) {
-        self.on_negotiated(token);
     }
 
     fn on_message(&self, token: &NodeId, data: &[u8]) {
