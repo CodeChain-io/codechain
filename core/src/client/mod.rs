@@ -31,7 +31,7 @@ use cnetwork::NodeId;
 use ctypes::{Address, Bytes, H256, Public, U256};
 
 use super::block::{ClosedBlock, OpenBlock, SealedBlock};
-use super::blockchain::ParcelInvoices;
+use super::blockchain::ParcelInvoice;
 use super::blockchain_info::BlockChainInfo;
 use super::encoded;
 use super::error::BlockImportError;
@@ -184,7 +184,7 @@ pub trait BlockChainClient: Sync + Send + AccountData + BlockChain + ImportBlock
     fn parcel(&self, id: ParcelId) -> Option<LocalizedParcel>;
 
     /// Get parcel invoice with given hash.
-    fn parcel_invoices(&self, id: ParcelId) -> Option<ParcelInvoices>;
+    fn parcel_invoice(&self, id: ParcelId) -> Option<ParcelInvoice>;
 
     fn transaction_invoice(&self, id: TransactionId) -> Option<Invoice>;
 }

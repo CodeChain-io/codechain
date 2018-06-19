@@ -24,7 +24,7 @@ mod route;
 
 pub use self::blockchain::{BlockChain, BlockProvider};
 pub use self::body_db::BodyProvider;
-pub use self::extras::{BlockDetails, ParcelAddress, ParcelInvoices, TransactionAddress};
+pub use self::extras::{BlockDetails, ParcelAddress, ParcelInvoice, TransactionAddress};
 pub use self::headerchain::HeaderProvider;
 pub use self::invoice_db::InvoiceProvider;
 pub use self::route::ImportRoute;

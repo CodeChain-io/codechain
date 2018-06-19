@@ -194,50 +194,68 @@ pub struct TransactionAddress {
 }
 
 
-#[derive(Clone, Debug, PartialEq, RlpEncodableWrapper, RlpDecodableWrapper)]
-pub struct ParcelInvoices {
-    pub invoices: Vec<Invoice>,
+#[derive(Clone, Debug, PartialEq, Serialize)]
+#[serde(untagged)]
+pub enum ParcelInvoice {
+    Single(Invoice),
+    Multiple(Vec<Invoice>),
 }
 
-impl ParcelInvoices {
+impl ParcelInvoice {
     pub fn new(invoices: Vec<Invoice>) -> Self {
-        Self {
-            invoices,
-        }
+        ParcelInvoice::Multiple(invoices)
     }
 
-    pub fn iter(&self) -> ::std::slice::Iter<Invoice> {
-        self.invoices.iter()
+    pub fn iter<'a>(&'a self) -> Box<::std::iter::Iterator<Item = &'a Invoice> + 'a> {
+        match self {
+            ParcelInvoice::Single(invoice) => Box::new(::std::iter::once(invoice)),
+            ParcelInvoice::Multiple(invoices) => Box::new(invoices.iter()),
+        }
     }
 }
 
-impl Into<Vec<Invoice>> for ParcelInvoices {
+impl Encodable for ParcelInvoice {
+    fn rlp_append(&self, s: &mut RlpStream) {
+        match self {
+            ParcelInvoice::Single(invoice) => {
+                s.append(invoice);
+            }
+            ParcelInvoice::Multiple(invoices) => {
+                s.append_list(invoices);
+            }
+        }
+    }
+}
+
+impl Decodable for ParcelInvoice {
+    fn decode(rlp: &UntrustedRlp) -> Result<ParcelInvoice, DecoderError> {
+        Ok(if rlp.is_list() {
+            ParcelInvoice::Multiple(rlp.as_list()?)
+        } else {
+            ParcelInvoice::Single(rlp.as_val()?)
+        })
+    }
+}
+
+impl Into<Vec<Invoice>> for ParcelInvoice {
     fn into(self) -> Vec<Invoice> {
-        self.invoices
+        self.iter().cloned().collect()
     }
 }
 
-impl<'a> Into<&'a Vec<Invoice>> for &'a ParcelInvoices {
-    fn into(self) -> &'a Vec<Invoice> {
-        &self.invoices
-    }
-}
-
-impl From<Vec<Invoice>> for ParcelInvoices {
+impl From<Vec<Invoice>> for ParcelInvoice {
     fn from(invoices: Vec<Invoice>) -> Self {
-        Self {
-            invoices,
-        }
+        ParcelInvoice::Multiple(invoices)
     }
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct BlockInvoices {
-    pub invoices: Vec<ParcelInvoices>,
+    pub invoices: Vec<ParcelInvoice>,
 }
 
 impl BlockInvoices {
-    pub fn new(invoices: Vec<ParcelInvoices>) -> Self {
+    pub fn new(invoices: Vec<ParcelInvoice>) -> Self {
         Self {
             invoices,
         }
@@ -248,7 +266,7 @@ impl Decodable for BlockInvoices {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
         let invoices = rlp.as_list::<Vec<u8>>()?
             .iter()
-            .map(|parcel_invoices| UntrustedRlp::new(&parcel_invoices).as_val::<ParcelInvoices>())
+            .map(|parcel_invoice| UntrustedRlp::new(&parcel_invoice).as_val::<ParcelInvoice>())
             .collect::<Result<Vec<_>, _>>()?;
         Ok(Self {
             invoices,
@@ -279,7 +297,7 @@ mod tests {
     use rlp::{Encodable, UntrustedRlp};
 
     #[test]
-    fn rlp_encode_and_decode_parcel_invoices() {
+    fn rlp_encode_and_decode_parcel_invoice() {
         let invoices = vec![
             Invoice::Success,
             Invoice::Success,
@@ -288,33 +306,100 @@ mod tests {
             Invoice::Success,
             Invoice::Success,
         ];
-        let parcel_invoices = ParcelInvoices {
-            invoices,
-        };
-        let rlp_encoded = parcel_invoices.rlp_bytes();
+        let parcel_invoice = ParcelInvoice::new(invoices);
+        let rlp_encoded = parcel_invoice.rlp_bytes();
         let stream = UntrustedRlp::new(&rlp_encoded);
         let rlp_decoded = stream.as_val();
-        assert_eq!(Ok(parcel_invoices), rlp_decoded);
+        assert_eq!(Ok(parcel_invoice), rlp_decoded);
     }
 
     #[test]
     fn rlp_encode_and_decode_block_invoices() {
         let invoices = vec![Invoice::Success, Invoice::Failed];
-        let parcel_invoices = ParcelInvoices {
-            invoices,
-        };
+        let parcel_invoice = ParcelInvoice::new(invoices);
         let block_invoices = BlockInvoices {
             invoices: vec![
-                parcel_invoices.clone(),
-                parcel_invoices.clone(),
-                parcel_invoices.clone(),
-                parcel_invoices.clone(),
+                parcel_invoice.clone(),
+                parcel_invoice.clone(),
+                parcel_invoice.clone(),
+                parcel_invoice.clone(),
             ],
         };
         let rlp_encoded = block_invoices.rlp_bytes();
-        println!("..:{:?}:", rlp_encoded);
         let rlp = UntrustedRlp::new(&rlp_encoded);
         let rlp_decoded = rlp.as_val();
         assert_eq!(Ok(block_invoices), rlp_decoded);
+    }
+
+    #[test]
+    fn encode_and_decode_single_success_parcel_invoice() {
+        let parcel_invoice = ParcelInvoice::Single(Invoice::Success);
+
+        let encoded = parcel_invoice.rlp_bytes();
+        let rlp = UntrustedRlp::new(&encoded);
+        let decoded = rlp.as_val();
+
+        assert_eq!(Ok(parcel_invoice), decoded);
+    }
+
+    #[test]
+    fn encode_and_decode_single_failed_parcel_invoice() {
+        let parcel_invoice = ParcelInvoice::Single(Invoice::Failed);
+
+        let encoded = parcel_invoice.rlp_bytes();
+        let rlp = UntrustedRlp::new(&encoded);
+        let decoded = rlp.as_val();
+
+        assert_eq!(Ok(parcel_invoice), decoded);
+    }
+
+    #[test]
+    fn encode_and_decode_empty_multiple_parcel_invoice() {
+        let parcel_invoice = ParcelInvoice::Multiple(vec![]);
+
+        let encoded = parcel_invoice.rlp_bytes();
+        let rlp = UntrustedRlp::new(&encoded);
+        let decoded = rlp.as_val();
+
+        assert_eq!(Ok(parcel_invoice), decoded);
+    }
+
+    #[test]
+    fn encode_and_decode_multiple_parcel_invoice_with_success() {
+        let parcel_invoice = ParcelInvoice::Multiple(vec![Invoice::Success]);
+
+        let encoded = parcel_invoice.rlp_bytes();
+        let rlp = UntrustedRlp::new(&encoded);
+        let decoded = rlp.as_val();
+
+        assert_eq!(Ok(parcel_invoice), decoded);
+    }
+
+    #[test]
+    fn encode_and_decode_multiple_parcel_invoice_with_failed() {
+        let parcel_invoice = ParcelInvoice::Multiple(vec![Invoice::Failed]);
+
+        let encoded = parcel_invoice.rlp_bytes();
+        let rlp = UntrustedRlp::new(&encoded);
+        let decoded = rlp.as_val();
+
+        assert_eq!(Ok(parcel_invoice), decoded);
+    }
+
+    #[test]
+    fn encode_and_decode_multiple_parcel_invoice() {
+        let parcel_invoice = ParcelInvoice::Multiple(vec![
+            Invoice::Failed,
+            Invoice::Success,
+            Invoice::Success,
+            Invoice::Success,
+            Invoice::Success,
+        ]);
+
+        let encoded = parcel_invoice.rlp_bytes();
+        let rlp = UntrustedRlp::new(&encoded);
+        let decoded = rlp.as_val();
+
+        assert_eq!(Ok(parcel_invoice), decoded);
     }
 }

@@ -22,7 +22,7 @@ use kvdb::{DBTransaction, KeyValueDB};
 use parking_lot::RwLock;
 
 use super::super::db::{self, CacheUpdatePolicy, Readable, Writable};
-use super::extras::{BlockInvoices, ParcelAddress, ParcelInvoices};
+use super::extras::{BlockInvoices, ParcelAddress, ParcelInvoice};
 
 /// Structure providing fast access to blockchain data.
 ///
@@ -46,7 +46,7 @@ impl InvoiceDB {
     /// Inserts the block into backing cache database.
     /// Expects the block to be valid and already verified.
     /// If the block is already known, does nothing.
-    pub fn insert_invoice(&self, batch: &mut DBTransaction, hash: &H256, invoices: Vec<ParcelInvoices>) {
+    pub fn insert_invoice(&self, batch: &mut DBTransaction, hash: &H256, invoices: Vec<ParcelInvoice>) {
         if self.is_known_invoice(hash) {
             return
         }
@@ -68,7 +68,7 @@ pub trait InvoiceProvider {
     fn block_invoices(&self, hash: &H256) -> Option<BlockInvoices>;
 
     /// Get parcel invoice.
-    fn parcel_invoices(&self, address: &ParcelAddress) -> Option<ParcelInvoices>;
+    fn parcel_invoice(&self, address: &ParcelAddress) -> Option<ParcelInvoice>;
 }
 
 impl InvoiceProvider for InvoiceDB {
@@ -83,7 +83,7 @@ impl InvoiceProvider for InvoiceDB {
     }
 
     /// Get parcel invoice.
-    fn parcel_invoices(&self, address: &ParcelAddress) -> Option<ParcelInvoices> {
+    fn parcel_invoice(&self, address: &ParcelAddress) -> Option<ParcelInvoice> {
         self.block_invoices(&address.block_hash)
             .and_then(|bi| bi.invoices.into_iter().nth(address.index))
             .map(Into::into)
