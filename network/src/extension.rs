@@ -42,7 +42,6 @@ pub type Result<T> = result::Result<T, Error>;
 
 pub trait Api: Send + Sync {
     fn send(&self, node: &NodeId, message: &[u8]);
-    fn negotiate(&self, node: &NodeId);
 
     fn set_timer(&self, timer: TimerToken, d: Duration) -> Result<()>;
     fn set_timer_once(&self, timer: TimerToken, d: Duration) -> Result<()>;
@@ -54,15 +53,12 @@ pub trait Api: Send + Sync {
 pub trait Extension: Send + Sync {
     fn name(&self) -> String;
     fn need_encryption(&self) -> bool;
+    fn versions(&self) -> Vec<u64>;
 
     fn on_initialize(&self, api: Arc<Api>);
 
-    fn on_node_added(&self, _node: &NodeId) {}
+    fn on_node_added(&self, _node: &NodeId, _version: u64) {}
     fn on_node_removed(&self, _node: &NodeId) {}
-
-    fn on_negotiated(&self, _node: &NodeId) {}
-    fn on_negotiation_allowed(&self, _node: &NodeId) {}
-    fn on_negotiation_denied(&self, _node: &NodeId) {}
 
     fn on_message(&self, _node: &NodeId, _message: &[u8]) {}
 

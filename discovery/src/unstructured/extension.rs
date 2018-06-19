@@ -55,6 +55,10 @@ impl NetworkExtension for Extension {
         false
     }
 
+    fn versions(&self) -> Vec<u64> {
+        vec![0]
+    }
+
     fn on_initialize(&self, api: Arc<Api>) {
         let mut api_lock = self.api.lock();
 
@@ -64,24 +68,14 @@ impl NetworkExtension for Extension {
         *api_lock = Some(api);
     }
 
-    fn on_node_added(&self, node: &NodeId) {
-        let api = self.api.lock();
-        api.as_ref().unwrap().negotiate(node);
+    fn on_node_added(&self, node: &NodeId, _version: u64) {
+        let mut nodes = self.nodes.write();
+        nodes.insert(node.clone());
     }
 
     fn on_node_removed(&self, node: &NodeId) {
         let mut nodes = self.nodes.write();
         nodes.remove(node);
-    }
-
-    fn on_negotiated(&self, node: &NodeId) {
-        let mut nodes = self.nodes.write();
-        nodes.insert(node.clone());
-    }
-
-    fn on_negotiation_allowed(&self, node: &NodeId) {
-        let mut nodes = self.nodes.write();
-        nodes.insert(node.clone());
     }
 
     fn on_message(&self, node: &NodeId, message: &[u8]) {

@@ -64,8 +64,6 @@ pub enum Message {
 
     RequestNegotiation {
         node_id: NodeId,
-        extension_name: String,
-        version: Version,
     },
     SendExtensionMessage {
         node_id: NodeId,
@@ -179,7 +177,7 @@ impl Manager {
     }
 
     // Return false if there is no message
-    fn receive(&mut self, stream: &StreamToken, client: &Client) -> IoHandlerResult<bool> {
+    fn receive(&mut self, stream: &StreamToken, client: &Client, io: &IoContext<Message>) -> IoHandlerResult<bool> {
         Ok(match self.connections.receive(stream)? {
             None => false,
             Some(ReceivedMessage::Ack {
@@ -189,7 +187,9 @@ impl Manager {
                     return Err(Error::InvalidStream(*stream).into())
                 }
                 let node_id = self.connections.node_id(&stream).ok_or(Error::InvalidStream(*stream))?;
-                client.on_node_added(&node_id);
+                io.message(Message::RequestNegotiation {
+                    node_id,
+                })?;
                 true
             }
             Some(ReceivedMessage::Sync(signed_message)) => {
@@ -248,25 +248,24 @@ impl Manager {
                         const VERSION: Version = 0;
                         if self.connections.enqueue_negotiation_allowed(stream, seq, VERSION) {
                             let node_id = self.connections.node_id(&stream).ok_or(Error::InvalidStream(*stream))?;
-                            client.on_negotiated(extension_name, &node_id);
+                            client.on_node_added(&extension_name, &node_id, VERSION);
                         } else {
                             cwarn!(NET, "Cannot enqueue negotiation message for {}", stream);
                         }
                     }
-                    NegotiationBody::Allowed(_extension_version) => {
+                    NegotiationBody::Allowed(extension_version) => {
                         let seq = msg.seq();
                         if let Some(name) = self.connections.remove_requested_negotiation(stream, &seq) {
                             let node_id = self.connections.node_id(&stream).ok_or(Error::InvalidStream(*stream))?;
-                            client.on_negotiation_allowed(&name, &node_id);
+                            client.on_node_added(&name, &node_id, *extension_version);
                         } else {
                             ctrace!(NET, "Negotiation::Allowed message received from non requested seq");
                         }
                     }
                     NegotiationBody::Denied => {
                         let seq = msg.seq();
-                        if let Some(name) = self.connections.remove_requested_negotiation(stream, &seq) {
-                            let node_id = self.connections.node_id(&stream).ok_or(Error::InvalidStream(*stream))?;
-                            client.on_negotiation_denied(&name, &node_id);
+                        if let Some(_) = self.connections.remove_requested_negotiation(stream, &seq) {
+                            self.connections.node_id(&stream).ok_or(Error::InvalidStream(*stream))?;
                         } else {
                             ctrace!(NET, "Negotiation::Denied message received from non requested seq");
                         }
@@ -277,7 +276,7 @@ impl Manager {
         })
     }
 
-    fn send(&mut self, stream: &StreamToken, client: &Client) -> IoHandlerResult<bool> {
+    fn send(&mut self, stream: &StreamToken) -> IoHandlerResult<bool> {
         let (connection_type, remain) = self.connections.send(stream)?;
         Ok(match connection_type {
             ConnectionType::None => return Err(Error::InvalidStream(stream.clone()).into()),
@@ -289,9 +288,7 @@ impl Manager {
                 // Ack message was sent
                 debug_assert!(!remain);
                 self.connections.establish_wait_sync_connection(stream);
-                let node_id = self.connections.node_id(&stream).ok_or(Error::InvalidStream(*stream))?;
-
-                client.on_node_added(&node_id);
+                self.connections.node_id(&stream).ok_or(Error::InvalidStream(*stream))?;
                 false
             }
             ConnectionType::Established => remain,
@@ -374,15 +371,16 @@ impl IoHandler<Message> for Handler {
             }
             Message::RequestNegotiation {
                 node_id,
-                extension_name,
-                version,
             } => {
                 let mut manager = self.manager.lock();
-                let token = manager.connections.stream_token(&node_id).ok_or(Error::InvalidNode(*node_id))?;
-                if !manager.connections.enqueue_negotiation_request(&token, extension_name.clone(), vec![*version]) {
-                    return Err(Error::InvalidStream(token).into())
+                let versions = self.client.extension_versions();
+                for (extension_name, versions) in versions.into_iter() {
+                    let token = manager.connections.stream_token(&node_id).ok_or(Error::InvalidNode(*node_id))?;
+                    if !manager.connections.enqueue_negotiation_request(&token, extension_name, versions) {
+                        return Err(Error::InvalidStream(token).into())
+                    }
+                    io.update_registration(token)?;
                 }
-                io.update_registration(token)?;
                 Ok(())
             }
             Message::SendExtensionMessage {
@@ -434,7 +432,7 @@ impl IoHandler<Message> for Handler {
                 });
                 loop {
                     let mut manager = self.manager.lock();
-                    if !manager.receive(&stream, &self.client)? {
+                    if !manager.receive(&stream, &self.client, io)? {
                         break
                     }
                 }
@@ -455,7 +453,7 @@ impl IoHandler<Message> for Handler {
                 });
                 loop {
                     let mut manager = self.manager.lock();
-                    if !manager.send(&stream, &self.client)? {
+                    if !manager.send(&stream)? {
                         break
                     }
                 }
