@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::fmt::{Display, Formatter, Result as FormatResult};
 use std::io::{Error as FileError, ErrorKind};
 
 use ctypes::H256;
@@ -35,5 +36,15 @@ impl From<DBError> for Error {
 impl From<FileError> for Error {
     fn from(error: FileError) -> Self {
         Error::FileError(error.kind())
+    }
+}
+
+impl Display for Error {
+    fn fmt(&self, f: &mut Formatter) -> FormatResult {
+        match self {
+            Error::NodeNotFound(key) => write!(f, "State node not found: {:x}", key),
+            Error::DBError(error) => write!(f, "DB Error: {:?}", error),
+            Error::FileError(kind) => write!(f, "File system error: {:?}", kind),
+        }
     }
 }

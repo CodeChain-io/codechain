@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::fs::{create_dir_all, File};
-use std::io::Write;
+use std::io::{ErrorKind, Write};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::thread::spawn;
@@ -70,18 +70,19 @@ impl ChainNotify for Service {
             let db = self.client.database();
             let path: PathBuf = [self.root_dir.clone(), format!("{:x}", header.hash())].iter().collect();
             let root = header.state_root();
-            spawn(move || match write_snapshot(db, path, root) {
+            spawn(move || match write_snapshot(db, path, &root) {
                 Ok(_) => {}
-                Err(_) => {}
+                Err(Error::FileError(ErrorKind::AlreadyExists)) => {}
+                Err(e) => cerror!(SNAPSHOT, "{}", e),
             });
         }
     }
 }
 
-fn write_snapshot(db: Arc<KeyValueDB>, path: PathBuf, root: H256) -> Result<(), Error> {
+fn write_snapshot(db: Arc<KeyValueDB>, path: PathBuf, root: &H256) -> Result<(), Error> {
     create_dir_all(&path)?;
 
-    let root_val = get_node(&db, &root)?;
+    let root_val = get_node(&db, root)?;
     let children = children_of(&db, &root_val)?;
     let mut grandchildren = Vec::new();
     for (_, value) in &children {
@@ -93,7 +94,7 @@ fn write_snapshot(db: Arc<KeyValueDB>, path: PathBuf, root: H256) -> Result<(), 
 
         let mut stream = RlpStream::new();
         stream.begin_unbounded_list();
-        for (key, value) in vec![(root, root_val)].iter().chain(&grandchildren).chain(&children) {
+        for (key, value) in vec![(*root, root_val)].iter().chain(&grandchildren).chain(&children) {
             stream.begin_list(2);
             stream.append(key);
             stream.append(value);

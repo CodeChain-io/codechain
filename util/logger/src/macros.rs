@@ -55,6 +55,9 @@ macro_rules! log_target {
     (SHUTDOWN) => {
         "shutdown"
     };
+    (SNAPSHOT) => {
+        "snapshot"
+    };
     (SOLO_AUTHORITY) => {
         "solo_authoirty"
     };
