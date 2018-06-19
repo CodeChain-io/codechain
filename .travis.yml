@@ -15,4 +15,6 @@ matrix:
 notifications:
   slack: kodebox:SEmjeEH17azsBLK6rQjhNfP9
 cache: cargo
-os: osx
+os:
+  - linux
+  - osx
