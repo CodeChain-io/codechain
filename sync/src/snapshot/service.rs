@@ -27,6 +27,8 @@ use kvdb::KeyValueDB;
 use rlp::{decode as rlp_decode, RlpStream};
 use trie::{Node, OwnedNode};
 
+use super::error::Error;
+
 pub struct Service {
     client: Arc<Client>,
     /// Snapshot root directory
@@ -62,84 +64,71 @@ impl ChainNotify for Service {
             .map(|hash| self.client.block_number(BlockId::Hash(*hash)).expect("Enacted block must exist"))
             .any(|number| number % self.period == 0);
         if is_checkpoint && best_number > self.period {
-            let client = self.client.clone();
-            let root_dir = self.root_dir.clone();
-            let period = self.period;
-            spawn(move || {
-                let number = (best_number / period - 1) * period;
-                let header = client.block_header(BlockId::Number(number)).expect("Snapshot target must exist");
-                let path: PathBuf = [root_dir, format!("{:x}", header.hash())].iter().collect();
-                match create_dir_all(&path) {
-                    Ok(_) => {}
-                    // FIXME: Handle file system errors
-                    Err(_) => return None,
-                }
-                let db = client.database();
+            let number = (best_number / self.period - 1) * self.period;
+            let header = self.client.block_header(BlockId::Number(number)).expect("Snapshot target must exist");
 
-                // FIXME: Handle non-existant nodes
-                let root_key = header.state_root();
-                let root_val = get_node(&db, &root_key)?;
-                let children = children_of(&db, &root_val)?;
-                let mut grandchildren = Vec::new();
-                for (_, value) in &children {
-                    grandchildren.extend(children_of(&db, &value)?);
-                }
-
-                {
-                    let mut file = match File::create(path.join("head")) {
-                        Ok(file) => file,
-                        Err(_) => return None,
-                    };
-
-                    let mut stream = RlpStream::new();
-                    stream.begin_unbounded_list();
-                    for (key, value) in vec![(root_key, root_val)].iter().chain(&grandchildren).chain(&children) {
-                        stream.begin_list(2);
-                        stream.append(key);
-                        stream.append(value);
-                    }
-                    stream.complete_unbounded_list();
-
-                    match file.write(&stream.drain()) {
-                        Ok(_) => {}
-                        Err(_) => return None,
-                    };
-                }
-
-                for (grandchild, _) in &grandchildren {
-                    let nodes = enumerate_subtree(&db, &grandchild)?;
-                    let mut file = match File::create(path.join(format!("{:x}", grandchild))) {
-                        Ok(file) => file,
-                        Err(_) => return None,
-                    };
-                    let mut stream = RlpStream::new();
-                    stream.begin_unbounded_list();
-                    for (key, value) in nodes {
-                        stream.begin_list(2);
-                        stream.append(&key);
-                        stream.append(&value);
-                    }
-                    stream.complete_unbounded_list();
-                    match file.write(&stream.drain()) {
-                        Ok(_) => {}
-                        Err(_) => return None,
-                    };
-                }
-
-                Some(())
+            let db = self.client.database();
+            let path: PathBuf = [self.root_dir.clone(), format!("{:x}", header.hash())].iter().collect();
+            let root = header.state_root();
+            spawn(move || match write_snapshot(db, path, root) {
+                Ok(_) => {}
+                Err(_) => {}
             });
         }
     }
 }
 
-fn get_node(db: &Arc<KeyValueDB>, key: &H256) -> Option<Vec<u8>> {
-    match db.get(COL_STATE, &key) {
-        Ok(Some(value)) => Some(value.to_vec()),
-        _ => None,
+fn write_snapshot(db: Arc<KeyValueDB>, path: PathBuf, root: H256) -> Result<(), Error> {
+    create_dir_all(&path)?;
+
+    let root_val = get_node(&db, &root)?;
+    let children = children_of(&db, &root_val)?;
+    let mut grandchildren = Vec::new();
+    for (_, value) in &children {
+        grandchildren.extend(children_of(&db, value)?);
+    }
+
+    {
+        let mut file = File::create(path.join("head"))?;
+
+        let mut stream = RlpStream::new();
+        stream.begin_unbounded_list();
+        for (key, value) in vec![(root, root_val)].iter().chain(&grandchildren).chain(&children) {
+            stream.begin_list(2);
+            stream.append(key);
+            stream.append(value);
+        }
+        stream.complete_unbounded_list();
+
+        file.write(&stream.drain())?;
+    }
+
+    for (grandchild, _) in &grandchildren {
+        let nodes = enumerate_subtree(&db, grandchild)?;
+        let mut file = File::create(path.join(format!("{:x}", grandchild)))?;
+        let mut stream = RlpStream::new();
+        stream.begin_unbounded_list();
+        for (key, value) in nodes {
+            stream.begin_list(2);
+            stream.append(&key);
+            stream.append(&value);
+        }
+        stream.complete_unbounded_list();
+        file.write(&stream.drain())?;
+    }
+
+    Ok(())
+}
+
+fn get_node(db: &Arc<KeyValueDB>, key: &H256) -> Result<Vec<u8>, Error> {
+    match db.get(COL_STATE, key) {
+        Ok(Some(value)) => Ok(value.to_vec()),
+        Ok(None) => Err(Error::NodeNotFound(*key)),
+        Err(e) => Err(Error::DBError(e)),
     }
 }
 
-fn children_of(db: &Arc<KeyValueDB>, node: &[u8]) -> Option<Vec<(H256, Vec<u8>)>> {
+fn children_of(db: &Arc<KeyValueDB>, node: &[u8]) -> Result<Vec<(H256, Vec<u8>)>, Error> {
     let keys = match OwnedNode::from(Node::decoded(node)) {
         OwnedNode::Empty => Vec::new(),
         OwnedNode::Leaf(..) => Vec::new(),
@@ -160,10 +149,10 @@ fn children_of(db: &Arc<KeyValueDB>, node: &[u8]) -> Option<Vec<(H256, Vec<u8>)>
     for key in keys {
         result.push((key, get_node(db, &key)?));
     }
-    Some(result)
+    Ok(result)
 }
 
-fn enumerate_subtree(db: &Arc<KeyValueDB>, root: &H256) -> Option<Vec<(H256, Vec<u8>)>> {
+fn enumerate_subtree(db: &Arc<KeyValueDB>, root: &H256) -> Result<Vec<(H256, Vec<u8>)>, Error> {
     let node = get_node(db, root)?;
     let children = match OwnedNode::from(Node::decoded(&node)) {
         OwnedNode::Empty => Vec::new(),
@@ -181,12 +170,9 @@ fn enumerate_subtree(db: &Arc<KeyValueDB>, root: &H256) -> Option<Vec<(H256, Vec
             })
             .collect(),
     };
-    let subtree: Vec<_> = children.iter().map(|child| enumerate_subtree(db, &child)).collect();
-    if subtree.iter().any(|c| c.is_none()) {
-        None
-    } else {
-        let mut result: Vec<_> = subtree.into_iter().flat_map(|st| st.unwrap()).collect();
-        result.push((*root, node));
-        Some(result)
+    let mut result: Vec<_> = vec![(*root, node)];
+    for child in children {
+        result.extend(enumerate_subtree(db, &child)?);
     }
+    Ok(result)
 }

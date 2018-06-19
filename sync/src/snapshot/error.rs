@@ -14,7 +14,26 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod error;
-mod service;
+use std::io::{Error as FileError, ErrorKind};
 
-pub use self::service::Service as SnapshotService;
+use ctypes::H256;
+use kvdb::Error as DBError;
+
+#[derive(Debug)]
+pub enum Error {
+    NodeNotFound(H256),
+    DBError(DBError),
+    FileError(ErrorKind),
+}
+
+impl From<DBError> for Error {
+    fn from(error: DBError) -> Self {
+        Error::DBError(error)
+    }
+}
+
+impl From<FileError> for Error {
+    fn from(error: FileError) -> Self {
+        Error::FileError(error.kind())
+    }
+}
