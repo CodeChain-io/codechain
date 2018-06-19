@@ -18,7 +18,7 @@ use std::sync::Arc;
 
 use ccore::{
     Asset, AssetAddress, AssetScheme, AssetSchemeAddress, Balance, BlockChainClient, BlockId, BlockInfo, ChainInfo,
-    Client, Invoice, Miner, MinerService, Nonce, RegularKey, SignedParcel,
+    Client, Invoice, Miner, MinerService, Nonce, ParcelInvoice, RegularKey, SignedParcel,
 };
 use ctypes::{H160, H256, Public, U256};
 use rlp::UntrustedRlp;
@@ -63,8 +63,8 @@ impl Chain for ChainClient {
         }
     }
 
-    fn get_parcel_invoices(&self, parcel_hash: H256) -> Result<Option<Vec<Invoice>>> {
-        Ok(self.client.parcel_invoices(parcel_hash.into()).map(|parcel_invoices| parcel_invoices.invoices))
+    fn get_parcel_invoice(&self, parcel_hash: H256) -> Result<Option<ParcelInvoice>> {
+        Ok(self.client.parcel_invoice(parcel_hash.into()))
     }
 
     fn get_transaction_invoice(&self, transaction_hash: H256) -> Result<Option<Invoice>> {

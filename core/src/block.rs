@@ -23,7 +23,7 @@ use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 use trie::TrieFactory;
 use unexpected::Mismatch;
 
-use super::blockchain::ParcelInvoices;
+use super::blockchain::ParcelInvoice;
 use super::consensus::CodeChainEngine;
 use super::error::{BlockError, Error};
 use super::header::{Header, Seal};
@@ -73,7 +73,7 @@ pub struct ExecutedBlock {
     header: Header,
     state: State<StateDB>,
     parcels: Vec<SignedParcel>,
-    invoices: Vec<ParcelInvoices>,
+    invoices: Vec<ParcelInvoice>,
     parcels_set: HashSet<H256>,
 }
 
@@ -356,7 +356,7 @@ pub trait IsBlock {
     }
 
     /// Get all information on receipts in this block.
-    fn invoices(&self) -> &[ParcelInvoices] {
+    fn invoices(&self) -> &[ParcelInvoice] {
         &self.block().invoices
     }
 

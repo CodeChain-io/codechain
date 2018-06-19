@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ccore::{Asset, AssetScheme, Invoice};
+use ccore::{Asset, AssetScheme, Invoice, ParcelInvoice};
 use ctypes::{H160, H256, Public, U256};
 
 use jsonrpc_core::Result;
@@ -32,8 +32,8 @@ build_rpc_trait! {
         fn get_parcel(&self, H256) -> Result<Option<Parcel>>;
 
         /// Gets parcel invoices with given hash.
-        # [rpc(name = "chain_getParcelInvoices")]
-        fn get_parcel_invoices(&self, H256) -> Result<Option<Vec<Invoice>>>;
+        # [rpc(name = "chain_getParcelInvoice")]
+        fn get_parcel_invoice(&self, H256) -> Result<Option<ParcelInvoice>>;
 
         /// Gets transaction invoice with given hash.
         # [rpc(name = "chain_getTransactionInvoice")]

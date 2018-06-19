@@ -31,7 +31,7 @@ use trie::{TrieFactory, TrieSpec};
 use super::super::block::{enact, ClosedBlock, Drain, IsBlock, LockedBlock, OpenBlock, SealedBlock};
 use super::super::blockchain::{
     BlockChain, BlockProvider, BodyProvider, HeaderProvider, ImportRoute, InvoiceProvider, ParcelAddress,
-    ParcelInvoices, TransactionAddress,
+    ParcelInvoice, TransactionAddress,
 };
 use super::super::consensus::epoch::Transition as EpochTransition;
 use super::super::consensus::CodeChainEngine;
@@ -383,9 +383,9 @@ impl BlockChainClient for Client {
         self.parcel_address(id).and_then(|address| chain.parcel(&address))
     }
 
-    fn parcel_invoices(&self, id: ParcelId) -> Option<ParcelInvoices> {
+    fn parcel_invoice(&self, id: ParcelId) -> Option<ParcelInvoice> {
         let chain = self.chain.read();
-        self.parcel_address(id).and_then(|address| chain.parcel_invoices(&address))
+        self.parcel_address(id).and_then(|address| chain.parcel_invoice(&address))
     }
 
     fn transaction_invoice(&self, id: TransactionId) -> Option<Invoice> {
@@ -393,8 +393,10 @@ impl BlockChainClient for Client {
             let parcel_address = transaction_address.parcel_address.clone();
             let parcel_id = parcel_address.into();
 
-            self.parcel_invoices(parcel_id)
-                .and_then(|invoices| invoices.invoices.get(transaction_address.index).cloned())
+            self.parcel_invoice(parcel_id).and_then(|parcel_invoice| match parcel_invoice {
+                ParcelInvoice::Multiple(invoices) => invoices.get(transaction_address.index).cloned(),
+                ParcelInvoice::Single(_) => None,
+            })
         })
     }
 }
