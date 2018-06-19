@@ -64,6 +64,7 @@ quick_error! {
 }
 
 impl SymmError {
+    #[allow(dead_code)]
     pub(crate) fn offset_error(x: usize) -> SymmError {
         SymmError(PrivSymmErr::Offset(x))
     }

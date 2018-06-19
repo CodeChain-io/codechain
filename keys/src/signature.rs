@@ -335,6 +335,7 @@ impl DerefMut for SchnorrSignature {
     }
 }
 
+#[allow(dead_code)]
 pub fn sign_schnorr(private: &Private, message: &Message) -> Result<SchnorrSignature, Error> {
     let context = &SECP256K1;
     let sec = key::SecretKey::from_slice(context, &private)?;
@@ -345,6 +346,7 @@ pub fn sign_schnorr(private: &Private, message: &Message) -> Result<SchnorrSigna
     Ok(SchnorrSignature(data))
 }
 
+#[allow(dead_code)]
 pub fn verify_schnorr(public: &Public, signature: &SchnorrSignature, message: &Message) -> Result<bool, Error> {
     let context = &SECP256K1;
     let pdata: [u8; 65] = {
@@ -362,6 +364,7 @@ pub fn verify_schnorr(public: &Public, signature: &SchnorrSignature, message: &M
     }
 }
 
+#[allow(dead_code)]
 pub fn recover_schnorr(signature: &SchnorrSignature, message: &Message) -> Result<Public, Error> {
     let context = &SECP256K1;
 
