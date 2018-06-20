@@ -31,7 +31,18 @@ pub fn decode(bytes: &[u8]) -> Result<Vec<Instruction>, DecoderError> {
             opcode::NOP => result.push(Instruction::Nop),
             opcode::NOT => result.push(Instruction::Not),
             opcode::EQ => result.push(Instruction::Eq),
-            opcode::JMP => result.push(Instruction::Jmp),
+            opcode::JMP => {
+                let val = *iter.next().ok_or(DecoderError::ScriptTooShort)?;
+                result.push(Instruction::Jmp(val));
+            },
+            opcode::JNZ => {
+                let val = *iter.next().ok_or(DecoderError::ScriptTooShort)?;
+                result.push(Instruction::Jnz(val));
+            },
+            opcode::JZ => {
+                let val = *iter.next().ok_or(DecoderError::ScriptTooShort)?;
+                result.push(Instruction::Jz(val));
+            },
             opcode::PUSH => {
                 let val = *iter.next().ok_or(DecoderError::ScriptTooShort)?;
                 result.push(Instruction::Push(val));
@@ -48,8 +59,18 @@ pub fn decode(bytes: &[u8]) -> Result<Vec<Instruction>, DecoderError> {
             }
             opcode::DUP => result.push(Instruction::Dup),
             opcode::SWAP => result.push(Instruction::Swap),
-            opcode::BLAKE256 => result.push(Instruction::Blake256),
+            opcode::COPY => {
+                let val = *iter.next().ok_or(DecoderError::ScriptTooShort)?;
+                result.push(Instruction::Copy(val));
+            },
+            opcode::DROP => {
+                let val = *iter.next().ok_or(DecoderError::ScriptTooShort)?;
+                result.push(Instruction::Drop(val));
+            },
             opcode::CHKSIG => result.push(Instruction::ChkSig),
+            opcode::BLAKE256 => result.push(Instruction::Blake256),
+            opcode::SHA256 => result.push(Instruction::Sha256),
+            opcode::RIPEMD160 => result.push(Instruction::Ripemd160),
             invalid_opcode => return Err(DecoderError::InvalidOpCode(invalid_opcode)),
         }
     }

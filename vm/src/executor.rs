@@ -125,7 +125,9 @@ pub fn execute(
             Instruction::Nop => {}
             Instruction::Not => unimplemented!(),
             Instruction::Eq => unimplemented!(),
-            Instruction::Jmp => unimplemented!(),
+            Instruction::Jmp(..) => unimplemented!(),
+            Instruction::Jnz(..) => unimplemented!(),
+            Instruction::Jz(..) => unimplemented!(),
             Instruction::Push(val) => stack.push(Item(vec![*val]))?,
             Instruction::Pop => {
                 stack.pop()?;
@@ -133,7 +135,8 @@ pub fn execute(
             Instruction::PushB(blob) => stack.push(Item(blob.clone()))?,
             Instruction::Dup => unimplemented!(),
             Instruction::Swap => unimplemented!(),
-            Instruction::Blake256 => unimplemented!(),
+            Instruction::Copy(..) => unimplemented!(),
+            Instruction::Drop(..) => unimplemented!(),
             Instruction::ChkSig => {
                 let pubkey = Public::from_slice(stack.pop()?.assert_len(64)?.as_ref());
                 let signature = ECDSASignature::from(H520::from(stack.pop()?.assert_len(65)?.as_ref()));
@@ -142,7 +145,10 @@ pub fn execute(
                     _ => 0,
                 };
                 stack.push(Item(vec![result]))?;
-            }
+            },
+            Instruction::Blake256 => unimplemented!(),
+            Instruction::Sha256 => unimplemented!(),
+            Instruction::Ripemd160 => unimplemented!(),
         }
         pc += 1;
     }

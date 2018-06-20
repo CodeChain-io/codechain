@@ -24,12 +24,13 @@ fn test_single_byte_opcodes() {
         (opcode::NOP, Instruction::Nop),
         (opcode::NOT, Instruction::Not),
         (opcode::EQ, Instruction::Eq),
-        (opcode::JMP, Instruction::Jmp),
         (opcode::POP, Instruction::Pop),
         (opcode::DUP, Instruction::Dup),
         (opcode::SWAP, Instruction::Swap),
-        (opcode::BLAKE256, Instruction::Blake256),
         (opcode::CHKSIG, Instruction::ChkSig),
+        (opcode::BLAKE256, Instruction::Blake256),
+        (opcode::SHA256, Instruction::Sha256),
+        (opcode::RIPEMD160, Instruction::Ripemd160),
     ];
     for &(ref byte, ref code) in target.into_iter() {
         let script = decode(&[byte.clone(), byte.clone(), byte.clone()]);
@@ -41,6 +42,36 @@ fn test_single_byte_opcodes() {
 fn push() {
     assert_eq!(decode(&[opcode::PUSH, 0, opcode::PUSH, 10]), Ok(vec![Instruction::Push(0), Instruction::Push(10)]));
     assert_eq!(decode(&[opcode::PUSH, 0, opcode::PUSH]), Err(DecoderError::ScriptTooShort));
+}
+
+#[test]
+fn copy() {
+    assert_eq!(decode(&[opcode::COPY, 0, opcode::COPY, 10]), Ok(vec![Instruction::Copy(0), Instruction::Copy(10)]));
+    assert_eq!(decode(&[opcode::COPY, 0, opcode::COPY]), Err(DecoderError::ScriptTooShort));
+}
+
+#[test]
+fn drop() {
+    assert_eq!(decode(&[opcode::DROP, 0, opcode::DROP, 10]), Ok(vec![Instruction::Drop(0), Instruction::Drop(10)]));
+    assert_eq!(decode(&[opcode::DROP, 0, opcode::DROP]), Err(DecoderError::ScriptTooShort));
+}
+
+#[test]
+fn jmp() {
+    assert_eq!(decode(&[opcode::JMP, 0, opcode::JMP, 10]), Ok(vec![Instruction::Jmp(0), Instruction::Jmp(10)]));
+    assert_eq!(decode(&[opcode::JMP, 0, opcode::JMP]), Err(DecoderError::ScriptTooShort));
+}
+
+#[test]
+fn jnz() {
+    assert_eq!(decode(&[opcode::JNZ, 0, opcode::JNZ, 10]), Ok(vec![Instruction::Jnz(0), Instruction::Jnz(10)]));
+    assert_eq!(decode(&[opcode::JNZ, 0, opcode::JNZ]), Err(DecoderError::ScriptTooShort));
+}
+
+#[test]
+fn jz() {
+    assert_eq!(decode(&[opcode::JZ, 0, opcode::JZ, 10]), Ok(vec![Instruction::Jz(0), Instruction::Jz(10)]));
+    assert_eq!(decode(&[opcode::JZ, 0, opcode::JZ]), Err(DecoderError::ScriptTooShort));
 }
 
 #[test]
