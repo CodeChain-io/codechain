@@ -27,7 +27,7 @@ use ccrypto::Blake;
 use ctypes::{Address, Bytes, H256, Public, U128, U256};
 use cvm::{decode, execute, ScriptResult, VMConfig};
 use error::Error;
-use parcel::{AssetTransferInput, AssetTransferOutput, SignedParcel};
+use parcel::{Action, AssetTransferInput, AssetTransferOutput, SignedParcel};
 use trie::{self, Trie, TrieError, TrieFactory};
 use unexpected::Mismatch;
 
@@ -54,7 +54,15 @@ pub use self::backend::Backend;
 pub use self::cache::CacheableItem;
 
 /// Used to return information about an `State::apply` operation.
-pub struct ApplyOutcome {
+pub enum ParcelOutcome {
+    Single {
+        invoice: Invoice,
+        error: Option<ParcelError>,
+    },
+    Transactions(Vec<TransactionOutcome>),
+}
+
+pub struct TransactionOutcome {
     /// The invoice for the applied parcel.
     pub invoice: Invoice,
     /// The output of the applied parcel.
@@ -156,6 +164,7 @@ impl<B: Backend> StateInfo for State<B> {
 }
 
 const PARCEL_CHECKPOINT: CheckpointId = 123;
+const PARCEL_BODY_CHECKPOINT: CheckpointId = 130;
 const TRANSACTION_CHECKPOINT: CheckpointId = 456;
 const TRANSACTIONS_CHECKPOINT: CheckpointId = 789;
 
@@ -340,10 +349,10 @@ impl<B: Backend> State<B> {
     pub fn transfer_balance(&mut self, from: &Address, to: &Address, by: &U256) -> Result<(), Error> {
         let balance = self.balance(from)?;
         if &balance < by {
-            return Err(TransactionError::InsufficientBalance {
+            return Err(ParcelError::InsufficientBalance {
                 address: *from,
-                required: *by,
-                got: balance,
+                cost: *by,
+                balance,
             }.into())
         }
         self.sub_balance(from, by)?;
@@ -357,7 +366,7 @@ impl<B: Backend> State<B> {
     }
 
     /// Set the regular key of account `a`
-    pub fn set_regular_key(&mut self, a: &Address, key: &Public) -> trie::Result<()> {
+    pub fn set_regular_key(&mut self, a: &Address, key: &Public) -> Result<(), Error> {
         self.require_account(a)?.set_regular_key(key);
         Ok(())
     }
@@ -484,7 +493,7 @@ impl<B: Backend> State<B> {
 
     /// Execute a given parcel, charging parcel fee.
     /// This will change the state accordingly.
-    pub fn apply(&mut self, parcel: &SignedParcel) -> Result<Vec<ApplyOutcome>, Error> {
+    pub fn apply(&mut self, parcel: &SignedParcel) -> Result<ParcelOutcome, Error> {
         self.checkpoint(PARCEL_CHECKPOINT);
 
         match self.execute(parcel) {
@@ -501,7 +510,7 @@ impl<B: Backend> State<B> {
         }
     }
 
-    fn execute(&mut self, parcel: &SignedParcel) -> Result<Vec<ApplyOutcome>, Error> {
+    fn execute(&mut self, parcel: &SignedParcel) -> Result<ParcelOutcome, Error> {
         let fee_payer = parcel.sender();
         let nonce = self.nonce(&fee_payer)?;
 
@@ -526,18 +535,68 @@ impl<B: Backend> State<B> {
         self.sub_balance(&fee_payer, &fee)?;
 
         // The failed parcel also must pay the fee and increase nonce.
-        self.checkpoint(TRANSACTIONS_CHECKPOINT);
 
-        let mut results = Vec::with_capacity(parcel.transactions.len());
-        for t in &parcel.transactions {
+        self.checkpoint(PARCEL_BODY_CHECKPOINT);
+        let transactions = match &parcel.action {
+            Action::ChangeShardState {
+                transactions,
+            } => transactions,
+            Action::Payment {
+                receiver,
+                value,
+            } => match self.transfer_balance(&fee_payer, receiver, value) {
+                Ok(()) => {
+                    self.discard_checkpoint(PARCEL_BODY_CHECKPOINT);
+                    return Ok(ParcelOutcome::Single {
+                        invoice: Invoice::Success,
+                        error: None,
+                    })
+                }
+                Err(Error::Parcel(
+                    err @ ParcelError::InsufficientBalance {
+                        ..
+                    },
+                )) => {
+                    self.discard_checkpoint(PARCEL_BODY_CHECKPOINT);
+                    return Ok(ParcelOutcome::Single {
+                        invoice: Invoice::Failed,
+                        error: Some(err),
+                    })
+                }
+                Err(err) => {
+                    self.revert_to_checkpoint(PARCEL_BODY_CHECKPOINT);
+                    return Err(err)
+                }
+            },
+            Action::SetRegularKey {
+                key,
+            } => match self.set_regular_key(&fee_payer, key) {
+                Ok(()) => {
+                    self.discard_checkpoint(PARCEL_BODY_CHECKPOINT);
+                    return Ok(ParcelOutcome::Single {
+                        invoice: Invoice::Success,
+                        error: None,
+                    })
+                }
+                Err(error) => {
+                    self.revert_to_checkpoint(PARCEL_BODY_CHECKPOINT);
+                    return Err(error)
+                }
+            },
+        };
+        self.discard_checkpoint(PARCEL_BODY_CHECKPOINT);
+
+        self.checkpoint(TRANSACTIONS_CHECKPOINT);
+        let mut results = Vec::with_capacity(transactions.len());
+        for t in transactions {
             self.checkpoint(TRANSACTION_CHECKPOINT);
-            results.push(match self.execute_transaction(t, &fee_payer, &parcel.network_id) {
+            results.push(match self.execute_transaction(t, &parcel.network_id) {
                 Ok(_) => {
                     cinfo!(TX, "Tx({}) is applied", t.hash());
                     self.discard_checkpoint(TRANSACTION_CHECKPOINT);
                     let invoice = Invoice::Success;
                     let error = None;
-                    ApplyOutcome {
+                    TransactionOutcome {
                         invoice,
                         error,
                     }
@@ -547,7 +606,7 @@ impl<B: Backend> State<B> {
                     self.revert_to_checkpoint(TRANSACTION_CHECKPOINT);
                     let invoice = Invoice::Failed;
                     let error = Some(err);
-                    ApplyOutcome {
+                    TransactionOutcome {
                         invoice,
                         error,
                     }
@@ -561,69 +620,12 @@ impl<B: Backend> State<B> {
             });
         }
         self.discard_checkpoint(TRANSACTIONS_CHECKPOINT);
-        Ok(results)
+        Ok(ParcelOutcome::Transactions(results))
     }
 
-    fn execute_transaction(
-        &mut self,
-        transaction: &Transaction,
-        fee_payer: &Address,
-        parcel_network_id: &u64,
-    ) -> Result<(), Error> {
+    fn execute_transaction(&mut self, transaction: &Transaction, parcel_network_id: &u64) -> Result<(), Error> {
         ctrace!(TX, "Execute {:?}(TxHash:{:?})", transaction, transaction.hash());
         match transaction {
-            Transaction::Payment {
-                nonce,
-                sender,
-                receiver,
-                value,
-            } => {
-                if sender != fee_payer {
-                    return Err(TransactionError::InvalidPaymentSender(Mismatch {
-                        expected: *fee_payer,
-                        found: *sender,
-                    }).into())
-                }
-                let expected = self.nonce(&sender)?;
-                if nonce != &expected {
-                    return Err(ParcelError::InvalidNonce {
-                        expected,
-                        got: *nonce,
-                    }.into())
-                }
-
-                self.inc_nonce(&sender)?;
-                self.discard_checkpoint(TRANSACTION_CHECKPOINT);
-                self.checkpoint(TRANSACTION_CHECKPOINT);
-
-                Ok(self.transfer_balance(&sender, &receiver, &value)?)
-            }
-            Transaction::SetRegularKey {
-                address,
-                nonce,
-                key,
-            } => {
-                let expected = self.nonce(&fee_payer)?;
-                if address != fee_payer {
-                    return Err(TransactionError::InvalidAddressToSetKey(Mismatch {
-                        expected: *fee_payer,
-                        found: *address,
-                    }).into())
-                }
-                if nonce != &expected {
-                    return Err(ParcelError::InvalidNonce {
-                        expected,
-                        got: *nonce,
-                    }.into())
-                }
-
-                self.inc_nonce(&fee_payer)?;
-                self.discard_checkpoint(TRANSACTION_CHECKPOINT);
-                self.checkpoint(TRANSACTION_CHECKPOINT);
-
-                self.set_regular_key(&fee_payer, &key)?;
-                Ok(())
-            }
             Transaction::AssetMint {
                 ref metadata,
                 ref lock_script_hash,
@@ -795,7 +797,14 @@ mod tests {
         state.add_balance(&sender, &20.into()).unwrap();
 
         let res = state.apply(&signed_parcel).unwrap();
-        assert!(res.is_empty());
+        match res {
+            ParcelOutcome::Single {
+                ..
+            } => unreachable!(),
+            ParcelOutcome::Transactions(res) => {
+                assert!(res.is_empty());
+            }
+        }
         assert_eq!(state.balance(&sender).unwrap(), 15.into());
         assert_eq!(state.nonce(&sender).unwrap(), 1.into());
     }
@@ -867,15 +876,12 @@ mod tests {
 
         let keypair = Random.generate().unwrap();
 
-        let transactions = vec![Transaction::Payment {
-            nonce: 1.into(),
-            sender: keypair.address(),
-            receiver,
-            value: 10.into(),
-        }];
         let signed_parcel = Parcel {
             fee: 5.into(),
-            transactions,
+            action: Action::Payment {
+                receiver,
+                value: 10.into(),
+            },
             ..Parcel::default()
         }.sign(keypair.private());
         let sender = signed_parcel.sender();
@@ -883,13 +889,21 @@ mod tests {
         state.add_balance(&sender, &20.into()).unwrap();
 
         let res = state.apply(&signed_parcel).unwrap();
-        assert_eq!(1, res.len());
-        let res = &res[0];
-        assert_eq!(res.invoice, Invoice::Success);
-        assert!(res.error.is_none());
+        match res {
+            ParcelOutcome::Single {
+                invoice,
+                error,
+            } => {
+                assert_eq!(invoice, Invoice::Success);
+                assert!(error.is_none());
+            }
+            ParcelOutcome::Transactions(_) => {
+                unreachable!();
+            }
+        }
         assert_eq!(state.balance(&receiver).unwrap(), 10.into());
         assert_eq!(state.balance(&sender).unwrap(), 5.into());
-        assert_eq!(state.nonce(&sender).unwrap(), 2.into());
+        assert_eq!(state.nonce(&sender).unwrap(), 1.into());
     }
 
     #[test]
@@ -900,14 +914,11 @@ mod tests {
 
         let keypair = Random.generate().unwrap();
 
-        let transactions = vec![Transaction::SetRegularKey {
-            address: keypair.address(),
-            nonce: 1.into(),
-            key,
-        }];
         let signed_parcel = Parcel {
             fee: 5.into(),
-            transactions,
+            action: Action::SetRegularKey {
+                key,
+            },
             ..Parcel::default()
         }.sign(keypair.private());
         let sender = signed_parcel.sender();
@@ -916,9 +927,18 @@ mod tests {
 
         assert_eq!(state.regular_key(&sender).unwrap(), None);
         let res = state.apply(&signed_parcel).unwrap();
-        assert_eq!(1, res.len());
-        let res = &res[0];
-        assert_eq!(res.invoice, Invoice::Success);
+        match res {
+            ParcelOutcome::Single {
+                invoice,
+                error,
+            } => {
+                assert_eq!(invoice, Invoice::Success);
+                assert!(error.is_none());
+            }
+            ParcelOutcome::Transactions(_) => {
+                unreachable!();
+            }
+        }
         assert_eq!(state.regular_key(&sender).unwrap(), Some(key));
     }
 
@@ -929,15 +949,12 @@ mod tests {
         let receiver = 1u64.into();
         let keypair = Random.generate().unwrap();
 
-        let transactions = vec![Transaction::Payment {
-            nonce: 1.into(),
-            sender: keypair.address(),
-            receiver,
-            value: 30.into(),
-        }];
         let signed_parcel = Parcel {
             fee: 5.into(),
-            transactions,
+            action: Action::Payment {
+                receiver,
+                value: 30.into(),
+            },
             ..Parcel::default()
         }.sign(keypair.private());
         let sender = signed_parcel.sender();
@@ -945,20 +962,28 @@ mod tests {
         state.add_balance(&sender, &20.into()).unwrap();
 
         let res = state.apply(&signed_parcel).unwrap();
-        assert_eq!(1, res.len());
-        let res = &res[0];
-        assert_eq!(res.invoice, Invoice::Failed);
-        assert_eq!(
-            res.error.as_ref().unwrap(),
-            &TransactionError::InsufficientBalance {
-                address: sender,
-                required: 30.into(),
-                got: 15.into(),
+        match res {
+            ParcelOutcome::Single {
+                invoice,
+                error,
+            } => {
+                assert_eq!(invoice, Invoice::Failed);
+                assert_eq!(
+                    error.as_ref().unwrap(),
+                    &ParcelError::InsufficientBalance {
+                        address: sender,
+                        balance: 15.into(),
+                        cost: 30.into(),
+                    }
+                );
             }
-        );
+            ParcelOutcome::Transactions(_) => {
+                unreachable!();
+            }
+        }
         assert_eq!(state.balance(&receiver).unwrap(), 0.into());
         assert_eq!(state.balance(&sender).unwrap(), 15.into());
-        assert_eq!(state.nonce(&sender).unwrap(), 2.into());
+        assert_eq!(state.nonce(&sender).unwrap(), 1.into());
     }
 
     #[test]
@@ -1193,7 +1218,9 @@ mod tests {
         }];
         let signed_parcel = Parcel {
             fee: 5.into(),
-            transactions,
+            action: Action::ChangeShardState {
+                transactions,
+            },
             ..Parcel::default()
         }.sign(&secret().into());
         let sender = signed_parcel.sender();
@@ -1247,7 +1274,9 @@ mod tests {
         }];
         let signed_parcel = Parcel {
             fee: 5.into(),
-            transactions,
+            action: Action::ChangeShardState {
+                transactions,
+            },
             ..Parcel::default()
         }.sign(&secret().into());
         let sender = signed_parcel.sender();

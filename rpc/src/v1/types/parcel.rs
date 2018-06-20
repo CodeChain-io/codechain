@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ccore::{LocalizedParcel, SignedParcel, Transaction};
+use ccore::{Action, LocalizedParcel, SignedParcel};
 use ctypes::{H256, U256};
 
 #[derive(Debug, Serialize)]
@@ -25,8 +25,8 @@ pub struct Parcel {
     pub parcel_index: Option<usize>,
     pub nonce: U256,
     pub fee: U256,
-    pub transactions: Vec<Transaction>,
     pub network_id: u64,
+    pub action: Action,
     pub hash: H256,
     pub v: u8,
     pub r: U256,
@@ -42,8 +42,8 @@ impl From<LocalizedParcel> for Parcel {
             parcel_index: Some(p.parcel_index),
             nonce: p.nonce,
             fee: p.fee,
-            transactions: p.transactions.clone(),
             network_id: p.network_id,
+            action: p.action.clone(),
             hash: p.hash(),
             v: sig.v(),
             r: sig.r().into(),
@@ -61,8 +61,8 @@ impl From<SignedParcel> for Parcel {
             parcel_index: None,
             nonce: p.nonce,
             fee: p.fee,
-            transactions: p.transactions.clone(),
             network_id: p.network_id,
+            action: p.action.clone(),
             hash: p.hash(),
             v: sig.v(),
             r: sig.r().into(),

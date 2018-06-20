@@ -17,7 +17,7 @@
 use std::fmt;
 
 use ccrypto::blake256;
-use ctypes::{Address, Bytes, H256, Public, U256};
+use ctypes::{Address, Bytes, H256, U256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 use unexpected::Mismatch;
 
@@ -27,18 +27,6 @@ use super::parcel::{AssetTransferInput, AssetTransferOutput};
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum Transaction {
-    Payment {
-        nonce: U256,
-        sender: Address,
-        receiver: Address,
-        /// Transferred value.
-        value: U256,
-    },
-    SetRegularKey {
-        address: Address,
-        nonce: U256,
-        key: Public,
-    },
     #[serde(rename_all = "camelCase")]
     AssetMint {
         metadata: String,
@@ -95,35 +83,12 @@ impl Transaction {
 }
 
 type TransactionId = u8;
-const PAYMENT_ID: TransactionId = 0x01;
-const SET_REGULAR_KEY_ID: TransactionId = 0x02;
 const ASSET_MINT_ID: TransactionId = 0x03;
 const ASSET_TRANSFER_ID: TransactionId = 0x04;
 
 impl Decodable for Transaction {
     fn decode(d: &UntrustedRlp) -> Result<Self, DecoderError> {
         match d.val_at(0)? {
-            PAYMENT_ID => {
-                if d.item_count()? != 5 {
-                    return Err(DecoderError::RlpIncorrectListLen)
-                }
-                Ok(Transaction::Payment {
-                    nonce: d.val_at(1)?,
-                    sender: d.val_at(2)?,
-                    receiver: d.val_at(3)?,
-                    value: d.val_at(4)?,
-                })
-            }
-            SET_REGULAR_KEY_ID => {
-                if d.item_count()? != 4 {
-                    return Err(DecoderError::RlpIncorrectListLen)
-                }
-                Ok(Transaction::SetRegularKey {
-                    address: d.val_at(1)?,
-                    nonce: d.val_at(2)?,
-                    key: d.val_at(3)?,
-                })
-            }
             ASSET_MINT_ID => {
                 if d.item_count()? != 7 {
                     return Err(DecoderError::RlpIncorrectListLen)
@@ -156,17 +121,6 @@ impl Decodable for Transaction {
 impl Encodable for Transaction {
     fn rlp_append(&self, s: &mut RlpStream) {
         match self {
-            Transaction::Payment {
-                nonce,
-                sender,
-                receiver,
-                value,
-            } => s.begin_list(5).append(&PAYMENT_ID).append(nonce).append(sender).append(receiver).append(value),
-            Transaction::SetRegularKey {
-                address,
-                nonce,
-                key,
-            } => s.begin_list(4).append(&SET_REGULAR_KEY_ID).append(address).append(nonce).append(key),
             Transaction::AssetMint {
                 metadata,
                 lock_script_hash,

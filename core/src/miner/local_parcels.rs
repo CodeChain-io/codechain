@@ -215,7 +215,9 @@ mod tests {
         parcel::Parcel {
             nonce,
             fee: U256::from(1245),
-            transactions,
+            action: parcel::Action::ChangeShardState {
+                transactions,
+            },
             network_id: 0u64,
         }.sign(keypair.private())
     }

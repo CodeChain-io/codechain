@@ -117,15 +117,92 @@ pub struct Parcel {
     pub nonce: U256,
     /// Amount of CCC to be paid as a cost for distributing this parcel to the network.
     pub fee: U256,
-    /// Transaction, can be either payment or asset transfer
-    pub transactions: Vec<Transaction>,
     /// Mainnet or Testnet
     pub network_id: u64,
+
+    pub action: Action,
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase", tag = "action")]
+pub enum Action {
+    ChangeShardState {
+        /// Transaction, can be either asset mint or asset transfer
+        transactions: Vec<Transaction>,
+    },
+    Payment {
+        receiver: Address,
+        /// Transferred value.
+        value: U256,
+    },
+    SetRegularKey {
+        key: Public,
+    },
+}
+
+impl Default for Action {
+    fn default() -> Self {
+        Action::ChangeShardState {
+            transactions: Default::default(),
+        }
+    }
+}
+
+const CHANGE_SHARD_STATE: u8 = 1;
+const PAYMENT: u8 = 2;
+const SET_REGULAR_KEY: u8 = 3;
 
 impl HeapSizeOf for Parcel {
     fn heap_size_of_children(&self) -> usize {
         0
+    }
+}
+
+impl rlp::Encodable for Action {
+    fn rlp_append(&self, s: &mut RlpStream) {
+        match self {
+            Action::ChangeShardState {
+                transactions,
+            } => {
+                s.begin_list(2);
+                s.append(&CHANGE_SHARD_STATE);
+                s.append_list(transactions);
+            }
+            Action::Payment {
+                receiver,
+                value,
+            } => {
+                s.begin_list(3);
+                s.append(&PAYMENT);
+                s.append(receiver);
+                s.append(value);
+            }
+            Action::SetRegularKey {
+                key,
+            } => {
+                s.begin_list(2);
+                s.append(&SET_REGULAR_KEY);
+                s.append(key);
+            }
+        }
+    }
+}
+
+impl rlp::Decodable for Action {
+    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+        match rlp.val_at(0)? {
+            CHANGE_SHARD_STATE => Ok(Action::ChangeShardState {
+                transactions: rlp.list_at(1)?,
+            }),
+            PAYMENT => Ok(Action::Payment {
+                receiver: rlp.val_at(1)?,
+                value: rlp.val_at(2)?,
+            }),
+            SET_REGULAR_KEY => Ok(Action::SetRegularKey {
+                key: rlp.val_at(1)?,
+            }),
+            _ => Err(DecoderError::Custom("Unexpected action prefix")),
+        }
     }
 }
 
@@ -135,8 +212,8 @@ impl Parcel {
         s.begin_list(4);
         s.append(&self.nonce);
         s.append(&self.fee);
-        s.append_list(&self.transactions);
         s.append(&self.network_id);
+        s.append(&self.action);
     }
 
     /// The message hash of the parcel.
@@ -198,8 +275,8 @@ impl rlp::Decodable for UnverifiedParcel {
             unsigned: Parcel {
                 nonce: d.val_at(0)?,
                 fee: d.val_at(1)?,
-                transactions: d.list_at(2)?,
-                network_id: d.val_at(3)?,
+                network_id: d.val_at(2)?,
+                action: d.val_at(3)?,
             },
             v: d.val_at(4)?,
             r: d.val_at(5)?,
@@ -233,8 +310,8 @@ impl UnverifiedParcel {
         s.begin_list(7);
         s.append(&self.nonce);
         s.append(&self.fee);
-        s.append_list(&self.transactions);
         s.append(&self.network_id);
+        s.append(&self.action);
         s.append(&self.v);
         s.append(&self.r);
         s.append(&self.s);
@@ -426,7 +503,7 @@ mod tests {
     use ctypes::{Address, H256, Public, U256};
     use rlp::Encodable;
 
-    use super::{Parcel, Transaction, UnverifiedParcel};
+    use super::*;
 
     #[test]
     fn test_unverified_parcel_rlp() {
@@ -438,32 +515,6 @@ mod tests {
             hash: H256::default(),
         }.compute_hash();
         assert_eq!(parcel, ::rlp::decode(parcel.rlp_bytes().as_ref()));
-    }
-
-    #[test]
-    fn encode_and_decode_payment() {
-        let receiver = Address::random();
-        let sender = Address::random();
-        let value = U256::from(12345);
-        let transaction = Transaction::Payment {
-            nonce: 1.into(),
-            sender,
-            receiver,
-            value,
-        };
-        assert_eq!(transaction, ::rlp::decode(transaction.rlp_bytes().as_ref()))
-    }
-
-    #[test]
-    fn encode_and_decode_set_regular_key() {
-        let key = Public::random();
-        let address = Address::random();
-        let transaction = Transaction::SetRegularKey {
-            address,
-            nonce: 36.into(),
-            key,
-        };
-        assert_eq!(transaction, ::rlp::decode(transaction.rlp_bytes().as_ref()))
     }
 
     #[test]
@@ -507,5 +558,65 @@ mod tests {
         };
 
         assert_eq!(transaction, ::rlp::decode(transaction.rlp_bytes().as_ref()))
+    }
+
+    #[test]
+    fn encode_and_decode_payment_action() {
+        let origin = Action::Payment {
+            receiver: Address::random(),
+            value: 300.into(),
+        };
+
+        let encoded = origin.rlp_bytes();
+        let decoded = ::rlp::decode(&encoded);
+
+        assert_eq!(origin, decoded);
+    }
+
+    #[test]
+    fn encode_and_decode_payment_parcel() {
+        let origin = UnverifiedParcel {
+            unsigned: Parcel {
+                nonce: 30.into(),
+                fee: 40.into(),
+                network_id: 50,
+                action: Action::Payment {
+                    receiver: Address::random(),
+                    value: 300.into(),
+                },
+            },
+            v: 0,
+            r: U256::default(),
+            s: U256::default(),
+            hash: H256::default(),
+        }.compute_hash();
+
+        let encoded = origin.rlp_bytes();
+        let decoded = ::rlp::decode(&encoded);
+
+        assert_eq!(origin, decoded);
+    }
+
+    #[test]
+    fn encode_and_decode_set_regular_key_parcel() {
+        let origin = UnverifiedParcel {
+            unsigned: Parcel {
+                nonce: 30.into(),
+                fee: 40.into(),
+                network_id: 50,
+                action: Action::SetRegularKey {
+                    key: Public::random(),
+                },
+            },
+            v: 0,
+            r: U256::default(),
+            s: U256::default(),
+            hash: H256::default(),
+        }.compute_hash();
+
+        let encoded = origin.rlp_bytes();
+        let decoded = ::rlp::decode(&encoded);
+
+        assert_eq!(origin, decoded);
     }
 }
