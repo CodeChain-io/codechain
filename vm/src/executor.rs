@@ -72,6 +72,22 @@ impl AsRef<[u8]> for Item {
     }
 }
 
+impl From<bool> for Item {
+    fn from(val: bool) -> Item {
+        if val {
+            Item(vec![1])
+        } else {
+            Item(vec![])
+        }
+    }
+}
+
+impl Into<bool> for Item {
+    fn into(self) -> bool {
+        self.as_ref().iter().find(|b| **b != 0).is_some()
+    }
+}
+
 struct Stack {
     stack: Vec<Item>,
     memory_usage: usize,
@@ -139,13 +155,29 @@ pub fn execute(
     while pc < script.len() {
         match &script[pc] {
             Instruction::Nop => {}
-            Instruction::Not => unimplemented!(),
-            Instruction::Eq => unimplemented!(),
+            Instruction::Not => {
+                let value: bool = stack.pop()?.into();
+                stack.push(Item::from(!value))?;
+            }
+            Instruction::Eq => {
+                let first = stack.pop()?;
+                let second = stack.pop()?;
+                stack.push(Item::from(first.as_ref() == second.as_ref()))?;
+            }
             Instruction::Jmp(val) => {
                 pc += *val as usize;
             }
-            Instruction::Jnz(..) => unimplemented!(),
-            Instruction::Jz(..) => unimplemented!(),
+            Instruction::Jnz(val) => {
+                if stack.pop()?.into() {
+                    pc += *val as usize;
+                }
+            }
+            Instruction::Jz(val) => {
+                let condition: bool = stack.pop()?.into();
+                if !condition {
+                    pc += *val as usize;
+                }
+            }
             Instruction::Push(val) => stack.push(Item(vec![*val]))?,
             Instruction::Pop => {
                 stack.pop()?;
