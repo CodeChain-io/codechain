@@ -58,7 +58,7 @@ use super::super::encoded;
 use super::super::error::BlockImportError;
 use super::super::header::Header as BlockHeader;
 use super::super::miner::{Miner, MinerService, ParcelImportResult};
-use super::super::parcel::{LocalizedParcel, Parcel, SignedParcel};
+use super::super::parcel::{Action, LocalizedParcel, Parcel, SignedParcel};
 use super::super::spec::Spec;
 use super::super::state::{Asset, AssetAddress, AssetScheme, AssetSchemeAddress, StateInfo};
 use super::super::state_db::StateDB;
@@ -193,10 +193,12 @@ impl TestBlockChainClient {
                 // Update nonces value
                 self.nonces.write().insert(keypair.address(), U256::zero());
                 let parcel = Parcel {
-                    transactions: vec![],
                     nonce: U256::zero(),
                     fee: U256::from(10),
                     network_id: 0u64,
+                    action: Action::ChangeShardState {
+                        transactions: vec![],
+                    },
                 };
                 let signed_parcel = parcel.sign(keypair.private());
                 parcels.push(signed_parcel);
@@ -257,10 +259,12 @@ impl TestBlockChainClient {
         let keypair = Random.generate().unwrap();
         let transactions = vec![];
         let parcel = Parcel {
-            transactions,
             nonce: U256::zero(),
             fee: U256::from(10),
             network_id: 0u64,
+            action: Action::ChangeShardState {
+                transactions,
+            },
         };
         let signed_parcel = parcel.sign(keypair.private());
         self.set_balance(signed_parcel.sender(), 10_000_000_000_000_000_000u64.into());

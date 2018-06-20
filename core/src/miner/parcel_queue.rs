@@ -24,9 +24,8 @@ use linked_hash_map::LinkedHashMap;
 use multimap::MultiMap;
 use table::Table;
 
-use super::super::parcel::{ParcelError, SignedParcel};
+use super::super::parcel::{Action, ParcelError, SignedParcel};
 use super::super::types::BlockNumber;
-use super::super::Transaction;
 use super::local_parcels::{LocalParcelsList, Status as LocalParcelStatus};
 use super::ParcelImportResult;
 
@@ -183,19 +182,13 @@ impl QueuedParcel {
     }
 
     fn cost(&self) -> U256 {
-        let zero = U256::from(0);
-        let value: U256 = self.parcel
-            .transactions
-            .iter()
-            .map(|transaction| match transaction {
-                Transaction::Payment {
-                    value,
-                    ..
-                } => value,
-                _ => &zero,
-            })
-            .fold(zero, |sum, &val| sum + val);
-        value + self.parcel.fee
+        match &self.parcel.action {
+            Action::Payment {
+                value,
+                ..
+            } => self.parcel.fee + *value,
+            _ => self.parcel.fee,
+        }
     }
 }
 
@@ -1101,7 +1094,7 @@ pub mod test {
 
     use ckeys::{Generator, Random};
 
-    use super::super::super::Parcel;
+    use super::super::super::{Parcel, Transaction};
     use super::*;
 
     #[test]
@@ -1121,8 +1114,10 @@ pub mod test {
         let parcel = Parcel {
             nonce: U256::zero(),
             fee,
-            transactions: vec![],
             network_id: 200,
+            action: Action::ChangeShardState {
+                transactions: vec![],
+            },
         };
         let keypair = Random.generate().unwrap();
         let signed = parcel.sign(keypair.private());
@@ -1145,8 +1140,10 @@ pub mod test {
         let parcel = Parcel {
             nonce: U256::zero(),
             fee,
-            transactions,
             network_id: 200,
+            action: Action::ChangeShardState {
+                transactions,
+            },
         };
         let keypair = Random.generate().unwrap();
         let signed = parcel.sign(keypair.private());
@@ -1177,8 +1174,10 @@ pub mod test {
         let parcel = Parcel {
             nonce: U256::zero(),
             fee,
-            transactions,
             network_id: 200,
+            action: Action::ChangeShardState {
+                transactions,
+            },
         };
         let keypair = Random.generate().unwrap();
         let signed = parcel.sign(keypair.private());
@@ -1190,92 +1189,21 @@ pub mod test {
     #[test]
     fn payment_increases_cost() {
         let fee = U256::from(100);
-        let pay_value = U256::from(100000);
+        let value = U256::from(100000);
+        let receiver = 1u64.into();
         let keypair = Random.generate().unwrap();
-        let transactions = vec![
-            Transaction::AssetMint {
-                metadata: "Metadata".to_string(),
-                lock_script_hash: H256::zero(),
-                parameters: vec![],
-                amount: None,
-                registrar: None,
-                nonce: 0,
-            },
-            Transaction::AssetTransfer {
-                network_id: 0,
-                inputs: vec![],
-                outputs: vec![],
-                nonce: 0,
-            },
-            Transaction::Payment {
-                nonce: 1.into(),
-                sender: keypair.address(),
-                receiver: Address::zero(),
-                value: pay_value,
-            },
-        ];
         let parcel = Parcel {
             nonce: U256::zero(),
             fee,
-            transactions,
             network_id: 200,
+            action: Action::Payment {
+                receiver,
+                value,
+            },
         };
         let signed = parcel.sign(keypair.private());
         let queued = QueuedParcel::new(signed, ParcelOrigin::Local, 0, 0);
 
-        assert_eq!(fee + pay_value, queued.cost());
-    }
-
-    #[test]
-    fn cost_is_sum_of_payment_add_fee() {
-        let fee = 100.into();
-        let pay_value0 = 100000.into();
-        let pay_value1 = 20000.into();
-        let pay_value2 = 3000.into();
-        let keypair = Random.generate().unwrap();
-        let transactions = vec![
-            Transaction::Payment {
-                nonce: 1.into(),
-                sender: keypair.address(),
-                receiver: Address::zero(),
-                value: pay_value0,
-            },
-            Transaction::AssetMint {
-                metadata: "Metadata".to_string(),
-                lock_script_hash: H256::zero(),
-                parameters: vec![],
-                amount: None,
-                registrar: None,
-                nonce: 0,
-            },
-            Transaction::Payment {
-                nonce: 2.into(),
-                sender: keypair.address(),
-                receiver: Address::zero(),
-                value: pay_value1,
-            },
-            Transaction::AssetTransfer {
-                network_id: 0,
-                inputs: vec![],
-                outputs: vec![],
-                nonce: 0,
-            },
-            Transaction::Payment {
-                nonce: 3.into(),
-                sender: keypair.address(),
-                receiver: Address::zero(),
-                value: pay_value2,
-            },
-        ];
-        let parcel = Parcel {
-            nonce: U256::zero(),
-            fee,
-            transactions,
-            network_id: 200,
-        };
-        let signed = parcel.sign(keypair.private());
-        let queued = QueuedParcel::new(signed, ParcelOrigin::Local, 0, 0);
-
-        assert_eq!(fee + pay_value0 + pay_value1 + pay_value2, queued.cost());
+        assert_eq!(fee + value, queued.cost());
     }
 }

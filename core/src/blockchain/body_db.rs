@@ -26,6 +26,7 @@ use rlp_compress::{blocks_swapper, compress, decompress};
 
 use super::super::db::{self, CacheUpdatePolicy, Readable, Writable};
 use super::super::encoded;
+use super::super::parcel::Action;
 use super::super::views::BlockView;
 use super::block_info::BlockLocation;
 use super::extras::{ParcelAddress, TransactionAddress};
@@ -208,9 +209,13 @@ impl BodyDB {
                 .into_iter()
                 .enumerate()
                 .flat_map(|(parcel_index, parcel)| {
-                    parcel
-                        .transactions
-                        .iter()
+                    match &parcel.action {
+                        Action::ChangeShardState {
+                            transactions,
+                        } => Some(transactions),
+                        _ => None,
+                    }.iter()
+                        .flat_map(|transactions| transactions.iter())
                         .enumerate()
                         .map(|(index, transaction)| {
                             let parcel_address = ParcelAddress {
@@ -232,9 +237,13 @@ impl BodyDB {
                 let addresses = data.enacted.iter().flat_map(|hash| {
                     let body = self.block_body(hash).expect("Enacted block must be in database.");
                     body.parcels().into_iter().enumerate().flat_map(|(parcel_index, parcel)| {
-                        parcel
-                            .transactions
-                            .iter()
+                        match &parcel.action {
+                            Action::ChangeShardState {
+                                transactions,
+                            } => Some(transactions),
+                            _ => None,
+                        }.iter()
+                            .flat_map(|transactions| transactions.iter())
                             .enumerate()
                             .map(|(index, transaction)| {
                                 let parcel_address = ParcelAddress {
@@ -254,9 +263,13 @@ impl BodyDB {
                 });
 
                 let current_addresses = block.parcels().into_iter().enumerate().flat_map(|(parcel_index, parcel)| {
-                    parcel
-                        .transactions
-                        .iter()
+                    match &parcel.action {
+                        Action::ChangeShardState {
+                            transactions,
+                        } => Some(transactions),
+                        _ => None,
+                    }.iter()
+                        .flat_map(|transactions| transactions.iter())
                         .enumerate()
                         .map(|(index, transaction)| {
                             let parcel_address = ParcelAddress {
@@ -276,9 +289,16 @@ impl BodyDB {
 
                 let retracted = data.retracted.iter().flat_map(|hash| {
                     let body = self.block_body(hash).expect("Retracted block must be in database.");
-                    body.parcels().into_iter().map(|parcel| (*parcel).clone()).flat_map(|parcel| {
-                        parcel.transactions.into_iter().map(|transaction| (transaction.hash(), None))
-                    })
+                    body.parcels()
+                        .into_iter()
+                        .map(|parcel| (*parcel).clone())
+                        .filter_map(|parcel| match parcel.action {
+                            Action::ChangeShardState {
+                                transactions,
+                            } => Some(transactions),
+                            _ => None,
+                        })
+                        .flat_map(|transactions| transactions.into_iter().map(|transaction| (transaction.hash(), None)))
                 });
 
                 // The order here is important! Don't remove parcel if it was part of enacted blocks as well.

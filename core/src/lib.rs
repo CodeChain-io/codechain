@@ -97,7 +97,7 @@ pub use header::{Header, Seal};
 pub use invoice::Invoice;
 pub use miner::{Miner, MinerOptions, MinerService};
 pub use parcel::{
-    parcel_error_message, AssetOutPoint, AssetTransferInput, AssetTransferOutput, LocalizedParcel, Parcel,
+    parcel_error_message, Action, AssetOutPoint, AssetTransferInput, AssetTransferOutput, LocalizedParcel, Parcel,
     SignedParcel, UnverifiedParcel,
 };
 pub use service::ClientService;

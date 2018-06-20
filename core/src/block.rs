@@ -30,7 +30,7 @@ use super::header::{Header, Seal};
 use super::invoice::Invoice;
 use super::machine::{LiveBlock, Parcels};
 use super::parcel::{ParcelError, SignedParcel, UnverifiedParcel};
-use super::state::State;
+use super::state::{ParcelOutcome, State};
 use super::state_db::StateDB;
 
 /// A block, encoded as it is on the block chain.
@@ -160,7 +160,19 @@ impl<'x> OpenBlock<'x> {
 
         self.block.parcels_set.insert(h.unwrap_or_else(|| parcel.hash()));
         self.block.parcels.push(parcel.into());
-        self.block.invoices.push(outcomes.into_iter().map(|outcome| outcome.invoice).collect::<Vec<Invoice>>().into());
+        match outcomes {
+            ParcelOutcome::Single {
+                invoice,
+                ..
+            } => {
+                self.block.invoices.push(ParcelInvoice::Single(invoice));
+            }
+            ParcelOutcome::Transactions(invoices) => {
+                self.block
+                    .invoices
+                    .push(invoices.into_iter().map(|outcome| outcome.invoice).collect::<Vec<Invoice>>().into());
+            }
+        }
         Ok(())
     }
 
