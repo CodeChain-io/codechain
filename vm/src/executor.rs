@@ -43,11 +43,13 @@ pub enum ScriptResult {
 #[derive(Debug, PartialEq)]
 pub enum RuntimeError {
     OutOfMemory,
+    IndexOutOfBound,
     StackUnderflow,
     TypeMismatch,
     InvalidResult,
 }
 
+#[derive(Clone)]
 struct Item(Vec<u8>);
 
 impl Item {
@@ -105,6 +107,20 @@ impl Stack {
     fn len(&self) -> usize {
         self.stack.len()
     }
+
+    fn get(&self, index: usize) -> Result<Item, RuntimeError> {
+        self.stack.get(index).cloned().ok_or(RuntimeError::IndexOutOfBound)
+    }
+
+    fn remove(&mut self, index: usize) -> Result<Item, RuntimeError> {
+        if index < self.stack.len() {
+            let item = self.stack.remove(index);
+            self.memory_usage -= item.len();
+            Ok(item)
+        } else {
+            Err(RuntimeError::IndexOutOfBound)
+        }
+    }
 }
 
 pub fn execute(
@@ -135,10 +151,24 @@ pub fn execute(
                 stack.pop()?;
             }
             Instruction::PushB(blob) => stack.push(Item(blob.clone()))?,
-            Instruction::Dup => unimplemented!(),
-            Instruction::Swap => unimplemented!(),
-            Instruction::Copy(..) => unimplemented!(),
-            Instruction::Drop(..) => unimplemented!(),
+            Instruction::Dup => {
+                let top = stack.pop()?;
+                stack.push(top.clone())?;
+                stack.push(top)?;
+            }
+            Instruction::Swap => {
+                let first = stack.pop()?;
+                let second = stack.pop()?;
+                stack.push(first)?;
+                stack.push(second)?;
+            }
+            Instruction::Copy(index) => {
+                let item = stack.get(*index as usize)?;
+                stack.push(item)?
+            }
+            Instruction::Drop(index) => {
+                stack.remove(*index as usize)?;
+            }
             Instruction::ChkSig => {
                 let pubkey = Public::from_slice(stack.pop()?.assert_len(64)?.as_ref());
                 let signature = ECDSASignature::from(H520::from(stack.pop()?.assert_len(65)?.as_ref()));
