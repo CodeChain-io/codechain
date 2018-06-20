@@ -145,7 +145,7 @@ pub fn execute(
                     _ => 0,
                 };
                 stack.push(Item(vec![result]))?;
-            },
+            }
             Instruction::Blake256 => unimplemented!(),
             Instruction::Sha256 => unimplemented!(),
             Instruction::Ripemd160 => unimplemented!(),

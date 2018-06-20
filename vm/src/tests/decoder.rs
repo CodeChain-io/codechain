@@ -18,64 +18,56 @@ use decoder::{decode, DecoderError};
 use instruction::Instruction;
 use opcode;
 
-#[test]
-fn test_single_byte_opcodes() {
-    let target = [
-        (opcode::NOP, Instruction::Nop),
-        (opcode::NOT, Instruction::Not),
-        (opcode::EQ, Instruction::Eq),
-        (opcode::POP, Instruction::Pop),
-        (opcode::DUP, Instruction::Dup),
-        (opcode::SWAP, Instruction::Swap),
-        (opcode::CHKSIG, Instruction::ChkSig),
-        (opcode::BLAKE256, Instruction::Blake256),
-        (opcode::SHA256, Instruction::Sha256),
-        (opcode::RIPEMD160, Instruction::Ripemd160),
-    ];
-    for &(ref byte, ref code) in target.into_iter() {
-        let script = decode(&[byte.clone(), byte.clone(), byte.clone()]);
-        assert_eq!(script, Ok(vec![code.clone(), code.clone(), code.clone()]));
-    }
+macro_rules! test_no_argument_opcode {
+    ($opcode:ident, $instruction:ident) => {
+        #[test]
+        #[allow(non_snake_case)]
+        fn $instruction() {
+            assert_eq!(decode(&[opcode::$opcode]), Ok(vec![Instruction::$instruction]));
+            assert_eq!(
+                decode(&[opcode::$opcode, opcode::$opcode]),
+                Ok(vec![Instruction::$instruction, Instruction::$instruction])
+            );
+        }
+    };
 }
 
-#[test]
-fn push() {
-    assert_eq!(decode(&[opcode::PUSH, 0, opcode::PUSH, 10]), Ok(vec![Instruction::Push(0), Instruction::Push(10)]));
-    assert_eq!(decode(&[opcode::PUSH, 0, opcode::PUSH]), Err(DecoderError::ScriptTooShort));
+macro_rules! test_one_argument_opcode {
+    ($opcode:ident, $instruction:ident) => {
+        #[test]
+        #[allow(non_snake_case)]
+        fn $instruction() {
+            assert_eq!(decode(&[opcode::$opcode]), Err(DecoderError::ScriptTooShort));
+            assert_eq!(decode(&[opcode::$opcode, 0]), Ok(vec![Instruction::$instruction(0)]));
+            assert_eq!(decode(&[opcode::$opcode, 0, opcode::$opcode]), Err(DecoderError::ScriptTooShort));
+            assert_eq!(
+                decode(&[opcode::$opcode, 0, opcode::$opcode, 1]),
+                Ok(vec![Instruction::$instruction(0), Instruction::$instruction(1)])
+            );
+        }
+    };
 }
 
-#[test]
-fn copy() {
-    assert_eq!(decode(&[opcode::COPY, 0, opcode::COPY, 10]), Ok(vec![Instruction::Copy(0), Instruction::Copy(10)]));
-    assert_eq!(decode(&[opcode::COPY, 0, opcode::COPY]), Err(DecoderError::ScriptTooShort));
-}
+test_no_argument_opcode!(NOP, Nop);
+test_no_argument_opcode!(NOT, Not);
+test_no_argument_opcode!(EQ, Eq);
+test_one_argument_opcode!(JMP, Jmp);
+test_one_argument_opcode!(JNZ, Jnz);
+test_one_argument_opcode!(JZ, Jz);
+test_one_argument_opcode!(PUSH, Push);
+test_no_argument_opcode!(POP, Pop);
+test_no_argument_opcode!(DUP, Dup);
+test_no_argument_opcode!(SWAP, Swap);
+test_one_argument_opcode!(COPY, Copy);
+test_one_argument_opcode!(DROP, Drop);
+test_no_argument_opcode!(CHKSIG, ChkSig);
+test_no_argument_opcode!(BLAKE256, Blake256);
+test_no_argument_opcode!(SHA256, Sha256);
+test_no_argument_opcode!(RIPEMD160, Ripemd160);
 
 #[test]
-fn drop() {
-    assert_eq!(decode(&[opcode::DROP, 0, opcode::DROP, 10]), Ok(vec![Instruction::Drop(0), Instruction::Drop(10)]));
-    assert_eq!(decode(&[opcode::DROP, 0, opcode::DROP]), Err(DecoderError::ScriptTooShort));
-}
-
-#[test]
-fn jmp() {
-    assert_eq!(decode(&[opcode::JMP, 0, opcode::JMP, 10]), Ok(vec![Instruction::Jmp(0), Instruction::Jmp(10)]));
-    assert_eq!(decode(&[opcode::JMP, 0, opcode::JMP]), Err(DecoderError::ScriptTooShort));
-}
-
-#[test]
-fn jnz() {
-    assert_eq!(decode(&[opcode::JNZ, 0, opcode::JNZ, 10]), Ok(vec![Instruction::Jnz(0), Instruction::Jnz(10)]));
-    assert_eq!(decode(&[opcode::JNZ, 0, opcode::JNZ]), Err(DecoderError::ScriptTooShort));
-}
-
-#[test]
-fn jz() {
-    assert_eq!(decode(&[opcode::JZ, 0, opcode::JZ, 10]), Ok(vec![Instruction::Jz(0), Instruction::Jz(10)]));
-    assert_eq!(decode(&[opcode::JZ, 0, opcode::JZ]), Err(DecoderError::ScriptTooShort));
-}
-
-#[test]
-fn pushb() {
+#[allow(non_snake_case)]
+fn PushB() {
     let blobs: Vec<&[u8]> = vec![&[0xed, 0x11, 0xe7], &[0x8b, 0x0c, 0x92, 0x24, 0x3f]];
     assert_eq!(
         decode([&[opcode::PUSHB, 3], &blobs[0][..], &[opcode::PUSHB, 5], &blobs[1][..]].concat().as_slice()),
