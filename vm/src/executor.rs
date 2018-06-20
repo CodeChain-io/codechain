@@ -125,7 +125,9 @@ pub fn execute(
             Instruction::Nop => {}
             Instruction::Not => unimplemented!(),
             Instruction::Eq => unimplemented!(),
-            Instruction::Jmp(..) => unimplemented!(),
+            Instruction::Jmp(val) => {
+                pc += *val as usize;
+            }
             Instruction::Jnz(..) => unimplemented!(),
             Instruction::Jz(..) => unimplemented!(),
             Instruction::Push(val) => stack.push(Item(vec![*val]))?,
