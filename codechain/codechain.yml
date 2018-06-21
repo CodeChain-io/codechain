@@ -6,7 +6,7 @@ about: CodeChian Core client
 args:
     - config-path:
         long: config-path
-        help: Specify the config file path.
+        help: Specify the certain config file path that you want to use to configure CodeChain to your needs.
         takes_value: true
     - port:
         long: port
@@ -25,18 +25,18 @@ args:
         help: Do not open network socket.
     - min-peers:
         long: min-peers
-        help: Minimum number of connections
+        help: Sets the minimum number of connections the user would like.
         takes_value: true
         default_value: "10"
     - max-peers:
         long: max-peers
-        help: Maximum number of connections
+        help: Sets the maximum number of connections the user would like.
         takes_value: true
         default_value: "30"
     - instance-id:
         short: i
         long: instance-id
-        help: Specify instance id for logging.
+        help: Specify instance id for logging. Used when running multiple instances of CodeChain.
         takes_value: true
     - quiet:
         short: q
@@ -45,7 +45,7 @@ args:
     - chain:
         short: c
         long: chain
-        help: Chain type; solo, solo_authority, tendermint or a path to chain spec file.
+        help: Sets the blockchain type out of solo, solo_authority, tendermint or a path to chain spec file.
         takes_value: true
     - db-path:
         long: db-path
@@ -88,7 +88,7 @@ args:
         help: Do not use discovery
     - discovery:
         long: discovery
-        help: p2p discovery extension
+        help: Decides which p2p discovery extension to use. Options are kademlia and unstructured. In a testing environment, an unstructured p2p network is desirable because it is more than sufficient when there are a few users.
         takes_value: true
         possible_values:
             - kademlia
