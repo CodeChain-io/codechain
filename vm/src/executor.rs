@@ -46,7 +46,6 @@ pub enum RuntimeError {
     IndexOutOfBound,
     StackUnderflow,
     TypeMismatch,
-    InvalidResult,
 }
 
 #[derive(Clone)]
@@ -155,6 +154,7 @@ pub fn execute(
     while pc < script.len() {
         match &script[pc] {
             Instruction::Nop => {}
+            Instruction::Burn => return Ok(ScriptResult::Burnt),
             Instruction::Not => {
                 let value: bool = stack.pop()?.into();
                 stack.push(Item::from(!value))?;
