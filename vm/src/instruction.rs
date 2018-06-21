@@ -17,6 +17,7 @@
 #[derive(Clone, Debug, PartialEq)]
 pub enum Instruction {
     Nop,
+    Burn,
     Not,
     Eq,
     Jmp(u8),

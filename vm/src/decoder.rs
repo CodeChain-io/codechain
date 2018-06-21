@@ -29,6 +29,7 @@ pub fn decode(bytes: &[u8]) -> Result<Vec<Instruction>, DecoderError> {
     while let Some(b) = iter.next() {
         match *b {
             opcode::NOP => result.push(Instruction::Nop),
+            opcode::BURN => result.push(Instruction::Burn),
             opcode::NOT => result.push(Instruction::Not),
             opcode::EQ => result.push(Instruction::Eq),
             opcode::JMP => {

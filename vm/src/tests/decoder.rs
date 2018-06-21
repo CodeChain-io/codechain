@@ -49,6 +49,7 @@ macro_rules! test_one_argument_opcode {
 }
 
 test_no_argument_opcode!(NOP, Nop);
+test_no_argument_opcode!(BURN, Burn);
 test_no_argument_opcode!(NOT, Not);
 test_no_argument_opcode!(EQ, Eq);
 test_one_argument_opcode!(JMP, Jmp);

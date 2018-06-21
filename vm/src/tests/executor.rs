@@ -37,6 +37,11 @@ fn simple_failure() {
 }
 
 #[test]
+fn simple_burn() {
+    assert_eq!(execute(&[Instruction::Burn], &[], &[], H256::default(), Config::default()), Ok(ScriptResult::Burnt));
+}
+
+#[test]
 fn underflow() {
     assert_eq!(
         execute(&[Instruction::Pop], &[], &[], H256::default(), Config::default()),
@@ -79,4 +84,17 @@ fn invalid_pay_to_public_key() {
     let unlock_script = vec![Instruction::PushB(invalid_signature)];
 
     assert_eq!(execute(&unlock_script[..], &[], &lock_script, message, Config::default()), Ok(ScriptResult::Fail));
+}
+
+#[test]
+fn conditional_burn() {
+    let lock_script = vec![Instruction::Eq, Instruction::Dup, Instruction::Jnz(1), Instruction::Burn];
+    assert_eq!(
+        execute(&[Instruction::Push(0)], &[vec![0]], &lock_script, H256::default(), Config::default()),
+        Ok(ScriptResult::Unlocked)
+    );
+    assert_eq!(
+        execute(&[Instruction::Push(0)], &[vec![1]], &lock_script, H256::default(), Config::default()),
+        Ok(ScriptResult::Burnt)
+    );
 }

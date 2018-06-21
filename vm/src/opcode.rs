@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 pub const NOP: u8 = 0x00;
+pub const BURN: u8 = 0x01;
 pub const NOT: u8 = 0x10;
 pub const EQ: u8 = 0x11;
 pub const JMP: u8 = 0x20;
