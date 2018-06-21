@@ -18,7 +18,8 @@ use std::io;
 use std::net::SocketAddr;
 use std::sync::Arc;
 
-use crpc::{start_http, Compatibility, MetaIoHandler, Server};
+use crpc::{start_http, start_ipc, HttpServer, IpcServer};
+use crpc::{Compatibility, MetaIoHandler};
 use rpc_apis;
 
 #[derive(Debug, PartialEq)]
@@ -40,7 +41,7 @@ impl HttpConfiguration {
     }
 }
 
-pub fn new_http(cfg: HttpConfiguration, deps: Arc<rpc_apis::ApiDependencies>) -> Result<Server, String> {
+pub fn new_http(cfg: HttpConfiguration, deps: Arc<rpc_apis::ApiDependencies>) -> Result<HttpServer, String> {
     let url = format!("{}:{}", cfg.interface, cfg.port);
     let addr = url.parse().map_err(|_| format!("Invalid JSONRPC listen host/port given: {}", url))?;
     let server = setup_http_rpc_server(&addr, cfg.cors, cfg.hosts, deps)?;
@@ -52,7 +53,7 @@ pub fn setup_http_rpc_server(
     cors_domains: Option<Vec<String>>,
     allowed_hosts: Option<Vec<String>>,
     deps: Arc<rpc_apis::ApiDependencies>,
-) -> Result<Server, String> {
+) -> Result<HttpServer, String> {
     let server = setup_rpc_server(deps);
     let start_result = start_http(url, cors_domains, allowed_hosts, server);
     match start_result {
@@ -60,6 +61,23 @@ pub fn setup_http_rpc_server(
             Err(format!("RPC address {} is already in use, make sure that another instance of a Bitcoin node is not running or change the address using the --jsonrpc-port and --jsonrpc-interface options.", url))
         },
         Err(e) => Err(format!("RPC error: {:?}", e)),
+        Ok(server) => Ok(server),
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub struct IpcConfiguration {
+    pub socket_addr: String,
+}
+
+pub fn new_ipc(cfg: IpcConfiguration, deps: Arc<rpc_apis::ApiDependencies>) -> Result<IpcServer, String> {
+    let server = setup_rpc_server(deps);
+    let start_result = start_ipc(&cfg.socket_addr, server);
+    match start_result {
+        Err(ref err) if err.kind() == io::ErrorKind::AddrInUse => {
+            Err(format!("IPC address {} is already in use, make sure that another instance of a Codechain node is not running or change the address using the --ipc-path options.", cfg.socket_addr))
+            },
+        Err(e) => Err(format!("IPC error: {:?}", e)),
         Ok(server) => Ok(server),
     }
 }

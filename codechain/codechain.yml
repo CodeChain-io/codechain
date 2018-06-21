@@ -67,6 +67,12 @@ args:
         help: Listen for rpc connections on PORT.
         takes_value: true
         default_value: "8080"
+    - ipc-path:
+        long: ipc-path
+        value_name: path
+        help: Specify custom path for JSON-RPC over IPC service.
+        takes_value: true
+        default_value: "/tmp/jsonrpc.ipc"
     - no-jsonrpc:
         long: no-jsonrpc
         help: Do not run jsonrpc.
