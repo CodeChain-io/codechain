@@ -398,12 +398,13 @@ impl<B: Backend> State<B> {
     fn transfer_asset(
         &mut self,
         transaction: &Transaction,
+        burns: &[AssetTransferInput],
         inputs: &[AssetTransferInput],
         outputs: &[AssetTransferOutput],
     ) -> Result<(), Error> {
         debug_assert!(is_input_and_output_consistent(inputs, outputs));
 
-        for input in inputs {
+        for (input, burn) in inputs.iter().map(|input| (input, false)).chain(burns.iter().map(|input| (input, true))) {
             let (address_hash, asset) = {
                 let index = input.prev_out.index;
                 let address = AssetAddress::new(input.prev_out.transaction_hash, index);
@@ -436,13 +437,16 @@ impl<B: Backend> State<B> {
                 _ => return Err(TransactionError::InvalidScript.into()),
             };
 
-            match script_result.map_err(|err| {
-                ctrace!(TX, "Cannot run unlock/lock script {:?}", err);
-                TransactionError::FailedToUnlock(address_hash)
-            })? {
-                ScriptResult::Fail => return Err(TransactionError::FailedToUnlock(address_hash).into()),
-                ScriptResult::Burnt => unimplemented!(),
-                ScriptResult::Unlocked => {}
+            match script_result {
+                Ok(result) => match (result, burn) {
+                    (ScriptResult::Unlocked, false) => {}
+                    (ScriptResult::Burnt, true) => {}
+                    _ => return Err(TransactionError::FailedToUnlock(address_hash).into()),
+                },
+                Err(err) => {
+                    ctrace!(TX, "Cannot run unlock/lock script {:?}", err);
+                    return Err(TransactionError::FailedToUnlock(address_hash).into())
+                }
             }
         }
 
@@ -635,6 +639,7 @@ impl<B: Backend> State<B> {
                 ..
             } => Ok(self.mint_asset(transaction.hash(), metadata, lock_script_hash, parameters, amount, registrar)?),
             Transaction::AssetTransfer {
+                ref burns,
                 ref inputs,
                 ref outputs,
                 network_id,
@@ -646,7 +651,7 @@ impl<B: Backend> State<B> {
                         found: *network_id,
                     }).into())
                 }
-                self.transfer_asset(&transaction, inputs, outputs)
+                self.transfer_asset(&transaction, burns, inputs, outputs)
             }
         }
     }

@@ -1166,6 +1166,7 @@ pub mod test {
             },
             Transaction::AssetTransfer {
                 network_id: 0,
+                burns: vec![],
                 inputs: vec![],
                 outputs: vec![],
                 nonce: 0,

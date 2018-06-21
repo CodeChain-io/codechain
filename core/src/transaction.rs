@@ -39,6 +39,7 @@ pub enum Transaction {
     #[serde(rename_all = "camelCase")]
     AssetTransfer {
         network_id: u64,
+        burns: Vec<AssetTransferInput>,
         inputs: Vec<AssetTransferInput>,
         outputs: Vec<AssetTransferOutput>,
         nonce: u64,
@@ -50,10 +51,19 @@ impl Transaction {
         match self {
             Transaction::AssetTransfer {
                 network_id,
+                burns,
                 inputs,
                 outputs,
                 nonce,
             } => {
+                let new_burns: Vec<_> = burns
+                    .iter()
+                    .map(|input| AssetTransferInput {
+                        prev_out: input.prev_out.clone(),
+                        lock_script: Vec::new(),
+                        unlock_script: Vec::new(),
+                    })
+                    .collect();
                 let new_inputs: Vec<_> = inputs
                     .iter()
                     .map(|input| AssetTransferInput {
@@ -64,6 +74,7 @@ impl Transaction {
                     .collect();
                 Transaction::AssetTransfer {
                     network_id: *network_id,
+                    burns: new_burns,
                     inputs: new_inputs,
                     outputs: outputs.clone(),
                     nonce: *nonce,
@@ -103,14 +114,15 @@ impl Decodable for Transaction {
                 })
             }
             ASSET_TRANSFER_ID => {
-                if d.item_count()? != 5 {
+                if d.item_count()? != 6 {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
                 Ok(Transaction::AssetTransfer {
                     network_id: d.val_at(1)?,
-                    inputs: d.list_at(2)?,
-                    outputs: d.list_at(3)?,
-                    nonce: d.val_at(4)?,
+                    burns: d.list_at(2)?,
+                    inputs: d.list_at(3)?,
+                    outputs: d.list_at(4)?,
+                    nonce: d.val_at(5)?,
                 })
             }
             _ => Err(DecoderError::Custom("Unexpected transaction")),
@@ -138,12 +150,14 @@ impl Encodable for Transaction {
                 .append(nonce),
             Transaction::AssetTransfer {
                 network_id,
+                burns,
                 inputs,
                 outputs,
                 nonce,
             } => s.begin_list(5)
                 .append(&ASSET_TRANSFER_ID)
                 .append(network_id)
+                .append_list(burns)
                 .append_list(inputs)
                 .append_list(outputs)
                 .append(nonce),
