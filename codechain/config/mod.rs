@@ -22,7 +22,7 @@ use cdiscovery::{KademliaConfig, UnstructuredConfig};
 use clap;
 use cnetwork::{NetworkConfig, SocketAddr};
 use ctypes::{Address, Secret};
-use rpc::HttpConfiguration as RpcHttpConfig;
+use rpc::{HttpConfiguration as RpcHttpConfig, IpcConfiguration as RpcIpcConfig};
 use toml;
 
 #[derive(Debug, PartialEq, Deserialize)]
@@ -220,4 +220,16 @@ pub fn parse_rpc_config(matches: &clap::ArgMatches) -> Result<Option<RpcHttpConf
     }
 
     Ok(Some(config))
+}
+
+pub fn parse_rpc_ipc_config(matches: &clap::ArgMatches) -> Result<Option<RpcIpcConfig>, String> {
+    if matches.is_present("no-jsonrpc") {
+        return Ok(None)
+    }
+
+    let socket_addr = value_t_or_exit!(matches, "ipc-path", String);
+
+    Ok(Some(RpcIpcConfig {
+        socket_addr,
+    }))
 }

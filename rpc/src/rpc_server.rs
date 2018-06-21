@@ -16,7 +16,8 @@
 
 // TODO: panic handler
 use jsonrpc_core;
-use jsonrpc_http_server::{self, Host, Server, ServerBuilder};
+use jsonrpc_http_server::{self, Host, Server as HttpServer, ServerBuilder as HttpServerBuilder};
+use jsonrpc_ipc_server::{Server as IpcServer, ServerBuilder as IpcServerBuilder};
 use std::default::Default;
 use std::io;
 use std::net::SocketAddr;
@@ -27,7 +28,7 @@ pub fn start_http<M: jsonrpc_core::Metadata>(
     cors_domains: Option<Vec<String>>,
     allowed_hosts: Option<Vec<String>>,
     handler: jsonrpc_core::MetaIoHandler<M>,
-) -> Result<Server, io::Error>
+) -> Result<HttpServer, io::Error>
 where
     M: Default, {
     let cors_domains = cors_domains.map(|domains| {
@@ -41,8 +42,18 @@ where
             .collect()
     });
 
-    ServerBuilder::new(handler)
+    HttpServerBuilder::new(handler)
         .cors(cors_domains.into())
         .allowed_hosts(allowed_hosts.map(|hosts| hosts.into_iter().map(Host::from).collect()).into())
         .start_http(addr)
+}
+
+/// Start ipc server asynchronously and returns result with `Server` handle on success or an error.
+pub fn start_ipc<M: jsonrpc_core::Metadata>(
+    addr: &str,
+    handler: jsonrpc_core::MetaIoHandler<M>,
+) -> Result<IpcServer, io::Error>
+where
+    M: Default, {
+    IpcServerBuilder::new(handler).start(addr)
 }

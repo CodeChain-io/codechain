@@ -63,12 +63,12 @@ use clap::ArgMatches;
 use clogger::LoggerConfig;
 use cnetwork::{NetworkConfig, NetworkService, SocketAddr};
 use creactor::EventLoop;
-use crpc::Server as RpcServer;
+use crpc::{HttpServer, IpcServer};
 use csync::{BlockSyncExtension, ParcelSyncExtension, SnapshotService};
 use ctrlc::CtrlC;
 use fdlimit::raise_fd_limit;
 use parking_lot::{Condvar, Mutex};
-use rpc::HttpConfiguration as RpcHttpConfig;
+use rpc::{HttpConfiguration as RpcHttpConfig, IpcConfiguration as RpcIpcConfig};
 
 #[cfg(feature = "stratum")]
 extern crate stratum;
@@ -80,9 +80,14 @@ pub const APP_INFO: AppInfo = AppInfo {
     author: "Kodebox",
 };
 
-pub fn rpc_start(cfg: RpcHttpConfig, deps: Arc<rpc_apis::ApiDependencies>) -> Result<RpcServer, String> {
+pub fn rpc_start(cfg: RpcHttpConfig, deps: Arc<rpc_apis::ApiDependencies>) -> Result<HttpServer, String> {
     info!("RPC Listening on {}", cfg.port);
     rpc::new_http(cfg, deps)
+}
+
+pub fn rpc_ipc_start(cfg: RpcIpcConfig, deps: Arc<rpc_apis::ApiDependencies>) -> Result<IpcServer, String> {
+    info!("IPC Listening on {}", cfg.socket_addr);
+    rpc::new_ipc(cfg, deps)
 }
 
 pub fn network_start(cfg: &NetworkConfig) -> Result<NetworkService, String> {
@@ -177,6 +182,14 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
     let _rpc_server = {
         if let Some(rpc_config) = config::parse_rpc_config(&matches)? {
             Some(rpc_start(rpc_config, rpc_apis_deps.clone())?)
+        } else {
+            None
+        }
+    };
+
+    let _ipc_server = {
+        if let Some(rpc_ipcconfig) = config::parse_rpc_ipc_config(&matches)? {
+            Some(rpc_ipc_start(rpc_ipcconfig, rpc_apis_deps.clone())?)
         } else {
             None
         }

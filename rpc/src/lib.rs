@@ -18,6 +18,7 @@ extern crate codechain_core as ccore;
 extern crate codechain_types as ctypes;
 extern crate jsonrpc_core;
 extern crate jsonrpc_http_server;
+extern crate jsonrpc_ipc_server;
 extern crate kvdb;
 extern crate kvdb_rocksdb as rocksdb;
 extern crate log;
@@ -41,5 +42,8 @@ pub use rustc_serialize::hex;
 pub use jsonrpc_core::{Compatibility, Error, MetaIoHandler, Params, Value};
 pub use jsonrpc_http_server::tokio_core::reactor::Remote;
 
-pub use jsonrpc_http_server::Server;
+pub use jsonrpc_http_server::Server as HttpServer;
 pub use rpc_server::start_http;
+
+pub use jsonrpc_ipc_server::Server as IpcServer;
+pub use rpc_server::start_ipc;
