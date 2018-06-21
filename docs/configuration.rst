@@ -30,99 +30,158 @@ In order to test CodeChain alone, one may want to change ``change_type`` into So
 
 CLI Options for CodeChain client
 ================================
-::
-
-    --config-path = [PATH]
+    ``--config-path=[PATH]``
         Specify the certain config file path that you want to use to configure CodeChain to your needs.
 
-    --port = [PORT]
+    ``--port=[PORT]``
         Listen for connections on PORT. (default: 3485)
 
-    --bootstrap-addresses = [BOOTSTRAP_ADDRESSES]
+    ``--bootstrap-addresses=[BOOTSTRAP_ADDRESSES]``
         Bootstrap addresses to connect.
 
-    --no-network
+    ``--no-network``
         Do not open network socket.
 
-    --min-peers = [NUM]
+    ``--min-peers=[NUM]``
         Sets the minimum number of connections the user would like. (default: 10)
 
-    --max-peers = [NUM]
+    ``--max-peers=[NUM]``
         Sets the maximum number of connections the user would like. (default: 30)
 
-    --instance-id = [ID]
+    ``--instance-id=[ID]``
         Specify instance id for logging. Used when running multiple instances of CodeChain.
 
-    --quiet
+    ``--quiet``
         Do not show any synchronization information in the console.
 
-    --chain = [CHAIN]
+    ``--chain=[CHAIN]``
         Sets the blockchain type out of solo, solo_authority, tendermint or a path to chain spec file. (default: tendermint)
 
-    --db-path = [PATH]
+    ``--db-path=[PATH]``
         Specify the database directory path.
 
-    --no-sync
+    ``--no-sync``
         Do not run block sync extension.
 
-    --no-parcel-relay
+    ``--no-parcel-relay``
         Do not relay parcels.
 
-    --jsonrpc-port = [PORT]
+    ``--jsonrpc-port=[PORT]``
         Listen for rpc connections on PORT. (default: 8080)
 
-    --no-jsonrpc
+    ``--no-jsonrpc``
         Do not run jsonrpc.
 
-    --secret-key = [KEY]
+    ``--secret-key=[KEY]``
         Secret key used by node.
 
-    --author = [ADDRESS]
+    ``--author=[ADDRESS]``
         Specify the block's author (aka "coinbase") address for sending block rewards from 
         sealed blocks.
 
-    --engine-signer = [ADDRESS]
+    ``--engine-signer=[ADDRESS]``
         Specify the address which should be used to sign consensus messages and 
         issue blocks.
 
-    --no-discovery
+    ``--no-discovery``
         Do not use discovery. No automated peer finding.
 
-    --discovery = "kademlia" | "unstructured"
-        Decides which p2p discovery extension to use. Options are kademlia and unstructured. 
+    ``--discovery="kademlia" | "unstructured"``
+        Decides which p2p discovery extension to use. Options are `kademlia <https://github.com/CodeChain-io/codechain/wiki/Kademlia-Extension>`_ and unstructured.
+        In a testing environment, an unstructured p2p network is desirable because it is
+        more than sufficient when there are a few users.
         (default: unstructured)
 
-    --discovery-bucket-size = [NUM]
+    ``--discovery-bucket-size=[NUM]``
         Bucket size for discovery. Choose how many addresses to exchange at a time
         during discovery.
 
-    --discovery-refresh = [ms]
+    ``--discovery-refresh=[ms]``
         Refresh timeout of discovery (ms). It may conflict with:`` --no-discovery``.
 
-    Subcommands
+Subcommands
+-----------
 
-    CodeChain has a subcommand called ``account``. ``amount``is the account managing commands 
-    of CodeChain, and also has subcommands of its own, which are the following:
+CodeChain has a subcommand called ``account``. It has subcommands of its own, which are the following:
 
-        Subcommands of codechain account:
-            create
-                create account
-                    --passphrase = []
-                        account passphrase
+    ``create``
+        create account
 
-            import
-                import private key
-                    --passphrase = []
-                        account passphrase
+        ``--passphrase <PASSWORD>``
+            account passphrase
 
-                    --raw-key = []
-                        key to import
+    ``import``
+        import private key
 
-            list
-                list managed accounts
+        ``--passphrase <PASSWORD>``
+            set account passphrase
 
-            lock
-                lock account
+        ``--raw-key <RAW-KEY>``
+            specify key to import
 
-            unlock
-                unlock account
+    ``list``
+        list managed accounts
+
+For example, if you want to create an account with a password of '1234', run the following:
+::
+
+    ./target/release/codechain account create --passphrase 1234
+
+
+Logging
+=======
+For logging, run the following to configure:
+``$ RUST_LOG=<level> codechain``
+
+Log Levels
+----------
+CodeChain currently offers five different ``<level>``. They are error, warn, info, debug, and trace.
+
+For example, the log level will be set to debug, if you run the following:
+
+``$ RUST_LOG="debug" codechain``
+
+* The **error** level represents an event where something can be dangerous, but can still run. In the case in which it cannot run anymore, it must crash ASAP instead of logging.
+
+* The **warn** level represents an event which can be potentially dangerous.
+
+* The **info** level represents an event which is not dangerous, but can be useful information for users.
+
+* The **debug** level represents an event that is useful for developers, but not for users.
+
+* The **trace** level is used for tracing.
+
+Log Targets
+-----------
+
+Log levels can be set differently for each log targets. For example, you can run the following to set ``tx``'s log level as ``trace`` and ``parcel``'s 
+log level as ``info`` with the following code:
+
+``$ RUST_LOG="tx=trace, parcel=info" codechain``
+
+The possible log targets are as follows:
+::
+
+    "blockchain"
+    "client"
+    "discovery"
+    "engine"
+    "external_parcel"
+    "io"
+    "miner"
+    "net"
+    "netapi"
+    "own_parcel"
+    "parcel_queue"
+    "poa"
+    "shutdown"
+    "snapshot"
+    "solo_authoirty"
+    "spec"
+    "state"
+    "state_db"
+    "stratum"
+    "sync"
+    "test_script"
+    "trie"
+    "tx"
