@@ -18,45 +18,26 @@ use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 /// Information describing execution of a parcel.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Invoice {
-    /// Transaction outcome.
-    pub outcome: TransactionOutcome,
-}
-
-/// Transaction outcome store in the invoice.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum TransactionOutcome {
+pub enum Invoice {
     Success,
     Failed,
 }
 
-impl Invoice {
-    /// Create a new invocie.
-    pub fn new(outcome: TransactionOutcome) -> Self {
-        Self {
-            outcome,
-        }
-    }
-}
-
 impl Encodable for Invoice {
     fn rlp_append(&self, s: &mut RlpStream) {
-        match self.outcome {
-            TransactionOutcome::Success => s.append(&1u8),
-            TransactionOutcome::Failed => s.append(&0u8),
+        match self {
+            Invoice::Success => s.append(&1u8),
+            Invoice::Failed => s.append(&0u8),
         };
     }
 }
 
 impl Decodable for Invoice {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
-        let outcome = match rlp.as_val::<u8>()? {
-            1 => TransactionOutcome::Success,
-            0 => TransactionOutcome::Failed,
+        Ok(match rlp.as_val::<u8>()? {
+            1 => Invoice::Success,
+            0 => Invoice::Failed,
             _ => return Err(DecoderError::Custom("Invalid parcel outcome")),
-        };
-        Ok(Self {
-            outcome,
         })
     }
 }

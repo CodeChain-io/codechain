@@ -275,31 +275,18 @@ pub struct EpochTransitions {
 
 #[cfg(test)]
 mod tests {
-    use super::super::super::invoice::TransactionOutcome;
     use super::*;
     use rlp::{Encodable, UntrustedRlp};
 
     #[test]
     fn rlp_encode_and_decode_parcel_invoices() {
         let invoices = vec![
-            Invoice {
-                outcome: TransactionOutcome::Success,
-            },
-            Invoice {
-                outcome: TransactionOutcome::Success,
-            },
-            Invoice {
-                outcome: TransactionOutcome::Failed,
-            },
-            Invoice {
-                outcome: TransactionOutcome::Success,
-            },
-            Invoice {
-                outcome: TransactionOutcome::Success,
-            },
-            Invoice {
-                outcome: TransactionOutcome::Success,
-            },
+            Invoice::Success,
+            Invoice::Success,
+            Invoice::Failed,
+            Invoice::Success,
+            Invoice::Success,
+            Invoice::Success,
         ];
         let parcel_invoices = ParcelInvoices {
             invoices,
@@ -312,14 +299,7 @@ mod tests {
 
     #[test]
     fn rlp_encode_and_decode_block_invoices() {
-        let invoices = vec![
-            Invoice {
-                outcome: TransactionOutcome::Success,
-            },
-            Invoice {
-                outcome: TransactionOutcome::Failed,
-            },
-        ];
+        let invoices = vec![Invoice::Success, Invoice::Failed];
         let parcel_invoices = ParcelInvoices {
             invoices,
         };

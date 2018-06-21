@@ -32,7 +32,7 @@ use trie::{self, Trie, TrieError, TrieFactory};
 use unexpected::Mismatch;
 
 use self::cache::Cache;
-use super::invoice::{Invoice, TransactionOutcome};
+use super::invoice::Invoice;
 use super::parcel::ParcelError;
 use super::state_db::StateDB;
 use super::{Transaction, TransactionError};
@@ -535,7 +535,7 @@ impl<B: Backend> State<B> {
                 Ok(_) => {
                     cinfo!(TX, "Tx({}) is applied", t.hash());
                     self.discard_checkpoint(TRANSACTION_CHECKPOINT);
-                    let invoice = Invoice::new(TransactionOutcome::Success);
+                    let invoice = Invoice::Success;
                     let error = None;
                     ApplyOutcome {
                         invoice,
@@ -545,7 +545,7 @@ impl<B: Backend> State<B> {
                 Err(Error::Transaction(err)) => {
                     cinfo!(TX, "Cannot apply Tx({}): {:?}", t.hash(), err);
                     self.revert_to_checkpoint(TRANSACTION_CHECKPOINT);
-                    let invoice = Invoice::new(TransactionOutcome::Failed);
+                    let invoice = Invoice::Failed;
                     let error = Some(err);
                     ApplyOutcome {
                         invoice,
@@ -885,7 +885,7 @@ mod tests {
         let res = state.apply(&signed_parcel).unwrap();
         assert_eq!(1, res.len());
         let res = &res[0];
-        assert_eq!(res.invoice.outcome, TransactionOutcome::Success);
+        assert_eq!(res.invoice, Invoice::Success);
         assert!(res.error.is_none());
         assert_eq!(state.balance(&receiver).unwrap(), 10.into());
         assert_eq!(state.balance(&sender).unwrap(), 5.into());
@@ -918,7 +918,7 @@ mod tests {
         let res = state.apply(&signed_parcel).unwrap();
         assert_eq!(1, res.len());
         let res = &res[0];
-        assert_eq!(res.invoice.outcome, TransactionOutcome::Success);
+        assert_eq!(res.invoice, Invoice::Success);
         assert_eq!(state.regular_key(&sender).unwrap(), Some(key));
     }
 
@@ -947,7 +947,7 @@ mod tests {
         let res = state.apply(&signed_parcel).unwrap();
         assert_eq!(1, res.len());
         let res = &res[0];
-        assert_eq!(res.invoice.outcome, TransactionOutcome::Failed);
+        assert_eq!(res.invoice, Invoice::Failed);
         assert_eq!(
             res.error.as_ref().unwrap(),
             &TransactionError::InsufficientBalance {
