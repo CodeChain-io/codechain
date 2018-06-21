@@ -547,11 +547,13 @@ mod tests {
 
     #[test]
     fn encode_and_decode_asset_transfer() {
+        let burns = vec![];
         let inputs = vec![];
         let outputs = vec![];
         let network_id = 0;
         let transaction = Transaction::AssetTransfer {
             network_id,
+            burns,
             inputs,
             outputs,
             nonce: 0,
