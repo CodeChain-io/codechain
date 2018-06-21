@@ -5,7 +5,6 @@ CodeChain can be configured with either CLI options or a config file. When it co
 
 CLI options can be listed by running the command ``$codechain --help``. By using the CLI options, or custom config files, the user can overwrite config.dev.toml's configurations. 
 
-
 Config File
 ===========
 The default preset ``config.dev.toml`` file can be located in ``codechain/config/presets/config.dev.toml``.
@@ -33,34 +32,34 @@ CLI Options for CodeChain client
 ================================
 ::
 
-    --config-path
+    --config-path = [PATH]
         Specify the certain config file path that you want to use to configure CodeChain to your needs.
 
-    --port
+    --port = [PORT]
         Listen for connections on PORT. (default: 3485)
 
-    --bootstrap-addresses
+    --bootstrap-addresses = [BOOTSTRAP_ADDRESSES]
         Bootstrap addresses to connect.
 
     --no-network
         Do not open network socket.
 
-    --min-peers
+    --min-peers = [NUM]
         Sets the minimum number of connections the user would like. (default: 10)
 
-    --max-peers
+    --max-peers = [NUM]
         Sets the maximum number of connections the user would like. (default: 30)
 
-    --instance-id
-        Specify instance id for logging.
+    --instance-id = [ID]
+        Specify instance id for logging. Used when running multiple instances of CodeChain.
 
     --quiet
         Do not show any synchronization information in the console.
 
-    --chain
+    --chain = [CHAIN]
         Sets the blockchain type out of solo, solo_authority, tendermint or a path to chain spec file. (default: tendermint)
 
-    --db-path
+    --db-path = [PATH]
         Specify the database directory path.
 
     --no-sync
@@ -69,73 +68,61 @@ CLI Options for CodeChain client
     --no-parcel-relay
         Do not relay parcels.
 
-    --jsonrpc-port
+    --jsonrpc-port = [PORT]
         Listen for rpc connections on PORT. (default: 8080)
 
     --no-jsonrpc
         Do not run jsonrpc.
 
-    --secret-key
+    --secret-key = [KEY]
         Secret key used by node.
 
-    --author
-        Specify the block author (aka "coinbase") address for sending block rewards from 
+    --author = [ADDRESS]
+        Specify the block's author (aka "coinbase") address for sending block rewards from 
         sealed blocks.
 
-    --engine-signer
+    --engine-signer = [ADDRESS]
         Specify the address which should be used to sign consensus messages and 
         issue blocks.
 
     --no-discovery
-        Do not use discovery.
+        Do not use discovery. No automated peer finding.
 
-    --discovery
-        p2p discovery extension. Options are kademlia and unstructured. (default: unstructured)
+    --discovery = "kademlia" | "unstructured"
+        Decides which p2p discovery extension to use. Options are kademlia and unstructured. 
+        (default: unstructured)
 
-    --kademlia-alpha
-        Degree of parallelism in Kademlia.
+    --discovery-bucket-size = [NUM]
+        Bucket size for discovery. Choose how many addresses to exchange at a time
+        during discovery.
 
-    --discovery-bucket-size
-        Bucket size for discovery.
-
-    --discovery-refresh
-        Refresh timeout of discovery (ms). (Conflicts with: --no-discovery)
+    --discovery-refresh = [ms]
+        Refresh timeout of discovery (ms). It may conflict with:`` --no-discovery``.
 
     Subcommands
 
-    CodeChain has a subcommand called ``account``. ``amount``is the account managing commands of CodeChain, and also has subcommands of its own, which are the following:
+    CodeChain has a subcommand called ``account``. ``amount``is the account managing commands 
+    of CodeChain, and also has subcommands of its own, which are the following:
 
         Subcommands of codechain account:
-            --create
-                about: create account
-                args:
-                    - passphrase:
-                        short: p
-                        long: passphrase
-                        help: account passphrase
-                        takes_value: true
-            --import
-                about: import private key
-                args:
-                    - passphrase:
-                        short: p
-                        long: passphrase
-                        help: account passphrase
-                        takes_value: true
-                    - raw-key:
-                        short: k
-                        long: raw-key
-                        help: key to import
-                        takes_value: true
-            --list
-                about: list managed accounts
-            --lock
-                about: lock account
-                args:
-                    - address:
-                        help: address to lock
-            --unlock
-                about: unlock account
-                args:
-                    - address:
-                        help: address to unlock
+            create
+                create account
+                    --passphrase = []
+                        account passphrase
+
+            import
+                import private key
+                    --passphrase = []
+                        account passphrase
+
+                    --raw-key = []
+                        key to import
+
+            list
+                list managed accounts
+
+            lock
+                lock account
+
+            unlock
+                unlock account
