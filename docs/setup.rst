@@ -40,19 +40,10 @@ Download CodeChain's source code and go into its directory.
     cd codechain
 
 
-Build as release version
+Build as Release Version
 ------------------------
 ::
 
     cargo build --release
 
 This will produce an executable in the ./target/release directory.
-
-Run Built Executable
-====================
-In order to run CodeChain, run
-::
-
-    ./target/release/codechain
-
-Currently only operates in standalone mode, and you can create a block by sending a parcel through `JSON-RPC <https://github.com/CodeChain-io/codechain/wiki/JSON-RPC>`_ or `JavaScript SDK <https://api.codechain.io/>`_.
