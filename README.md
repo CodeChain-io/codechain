@@ -58,4 +58,4 @@ make html
 User manual will be generated at `docs/_build/html`.
 
 # License
-CodeChain is licensed under the AGPL License - see the LICENSE file for details
+CodeChain is licensed under the AGPL License - see the [LICENSE](https://github.com/CodeChain-io/codechain/blob/master/LICENSE) file for details
