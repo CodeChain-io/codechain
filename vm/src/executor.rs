@@ -146,7 +146,7 @@ pub fn execute(
     config: Config,
 ) -> Result<ScriptResult, RuntimeError> {
     // FIXME: don't merge scripts
-    let param_scripts: Vec<_> = params.iter().map(|p| Instruction::PushB(p.clone())).collect();
+    let param_scripts: Vec<_> = params.iter().map(|p| Instruction::PushB(p.clone())).rev().collect();
     let script = [unlock, &param_scripts, lock].concat();
 
     let mut stack = Stack::new(config);
