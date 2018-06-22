@@ -218,8 +218,7 @@ pub fn execute(
     }
 
     let result = stack.pop()?;
-    // FIXME: convert stack top value to integer value
-    if result.as_ref() != [0] && stack.len() == 0 {
+    if result.into() && stack.len() == 0 {
         Ok(ScriptResult::Unlocked)
     } else {
         Ok(ScriptResult::Fail)
