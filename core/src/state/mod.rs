@@ -631,17 +631,17 @@ impl<B: Backend> State<B> {
         ctrace!(TX, "Execute {:?}(TxHash:{:?})", transaction, transaction.hash());
         match transaction {
             Transaction::AssetMint {
-                ref metadata,
-                ref lock_script_hash,
-                ref amount,
-                ref parameters,
-                ref registrar,
+                metadata,
+                lock_script_hash,
+                amount,
+                parameters,
+                registrar,
                 ..
             } => Ok(self.mint_asset(transaction.hash(), metadata, lock_script_hash, parameters, amount, registrar)?),
             Transaction::AssetTransfer {
-                ref burns,
-                ref inputs,
-                ref outputs,
+                burns,
+                inputs,
+                outputs,
                 network_id,
                 ..
             } => {
