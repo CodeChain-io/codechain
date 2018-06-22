@@ -17,3 +17,5 @@ matrix:
       sudo: required
     - os: osx
 cache: cargo
+git:
+  depth: 1
