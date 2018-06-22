@@ -64,6 +64,7 @@ mod asset_scheme;
 mod backend;
 mod cache;
 mod info;
+mod shard;
 mod shard_state;
 mod top_state;
 mod traits;
