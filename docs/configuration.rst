@@ -19,7 +19,7 @@ The following represents the default configuration values of ``config.dev.toml``
     [codechain]
     quiet = false
     db_path = "db"
-    chain_type = "tendermint"
+    chain = "tendermint"
     enable_block_sync = true
     enable_parcel_relay = true
     secret_key = "0x0000000000000000000000000000000000000000000000000000000000000001"
