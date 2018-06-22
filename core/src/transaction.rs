@@ -154,7 +154,7 @@ impl Encodable for Transaction {
                 inputs,
                 outputs,
                 nonce,
-            } => s.begin_list(5)
+            } => s.begin_list(6)
                 .append(&ASSET_TRANSFER_ID)
                 .append(network_id)
                 .append_list(burns)
