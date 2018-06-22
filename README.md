@@ -1,4 +1,4 @@
-CodeChain Core [![Build Status](https://travis-ci.org/CodeChain-io/codechain.svg?branch=master)](https://travis-ci.org/CodeChain-io/codechain) [![Gitter: CodeChain](https://img.shields.io/badge/gitter-codechain-4AB495.svg)](https://gitter.im/CodeChain-io/codechain) [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
+CodeChain Core [![Build Status](https://travis-ci.org/CodeChain-io/codechain.svg?branch=master)](https://travis-ci.org/CodeChain-io/codechain) [![Gitter: CodeChain](https://img.shields.io/badge/gitter-codechain-4AB495.svg)](https://gitter.im/CodeChain-io/codechain) [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0) [![Read the Docs](https://img.shields.io/readthedocs/pip.svg)](https://codechain.readthedocs.io/en/latest/)
 ==============
 
 CodeChain is a programmable open source blockchain technology optimal for developing and customizing multi-asset management systems.
