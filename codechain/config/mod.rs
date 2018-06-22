@@ -94,7 +94,7 @@ pub struct Operating {
     pub instance_id: Option<usize>,
     pub db_path: String,
     pub snapshot_path: String,
-    pub chain_type: ChainType,
+    pub chain: ChainType,
     pub enable_block_sync: bool,
     pub enable_parcel_relay: bool,
     pub secret_key: Secret,
@@ -122,7 +122,7 @@ impl Operating {
             self.snapshot_path = snapshot_path.to_string();
         }
         if let Some(chain) = matches.value_of("chain") {
-            self.chain_type = chain.parse()?;
+            self.chain = chain.parse()?;
         }
         if matches.is_present("no-sync") {
             self.enable_block_sync = false;

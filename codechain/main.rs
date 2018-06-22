@@ -147,7 +147,7 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
     let config_path = matches.value_of("config-path").unwrap_or(DEFAULT_CONFIG_PATH);
     let mut config = config::load(&config_path)?;
     config.operating.overwrite_with(&matches)?;
-    let spec = config.operating.chain_type.spec()?;
+    let spec = config.operating.chain.spec()?;
 
     let instance_id = config.operating.instance_id.unwrap_or(SystemTime::now()
         .duration_since(UNIX_EPOCH)
