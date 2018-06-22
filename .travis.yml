@@ -12,7 +12,8 @@ script:
 matrix:
   allow_failures:
     - rust: nightly
+  include:
+    - os: linux
+      sudo: required
+    - os: osx
 cache: cargo
-os:
-  - linux
-  - osx
