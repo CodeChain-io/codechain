@@ -14,9 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ccrypto::blake256;
+use ccrypto::{blake256, BLAKE_EMPTY, BLAKE_NULL_RLP};
 use ckeys::{sign_ecdsa, KeyPair, Private};
-use ctypes::{H256, H520};
+use ctypes::{H160, H256, H520};
 
 use secp256k1::key::{SecretKey, MINUS_ONE_KEY, ONE_KEY};
 
@@ -96,5 +96,55 @@ fn conditional_burn() {
     assert_eq!(
         execute(&[Instruction::Push(0)], &[vec![1]], &lock_script, H256::default(), Config::default()),
         Ok(ScriptResult::Burnt)
+    );
+}
+
+#[test]
+fn test_blake256() {
+    let lock_script = vec![Instruction::Blake256, Instruction::Eq];
+    assert_eq!(
+        execute(&[], &[vec![], BLAKE_EMPTY.to_vec()], &lock_script, H256::default(), Config::default()),
+        Ok(ScriptResult::Unlocked)
+    );
+    assert_eq!(
+        execute(&[], &[vec![], BLAKE_NULL_RLP.to_vec()], &lock_script, H256::default(), Config::default()),
+        Ok(ScriptResult::Fail)
+    );
+    assert_eq!(
+        execute(&[], &[vec![0x80], BLAKE_NULL_RLP.to_vec()], &lock_script, H256::default(), Config::default()),
+        Ok(ScriptResult::Unlocked)
+    );
+    assert_eq!(
+        execute(&[], &[vec![0x80], BLAKE_EMPTY.to_vec()], &lock_script, H256::default(), Config::default()),
+        Ok(ScriptResult::Fail)
+    );
+}
+
+#[test]
+fn test_ripemd160() {
+    const RIPEMD160_EMPTY: H160 = H160([
+        0x9c, 0x11, 0x85, 0xa5, 0xc5, 0xe9, 0xfc, 0x54, 0x61, 0x28, 0x08, 0x97, 0x7e, 0xe8, 0xf5, 0x48, 0xb2, 0x25,
+        0x8d, 0x31,
+    ]);
+    const RIPEMD160_NULL_RLP: H160 = H160([
+        0xb4, 0x36, 0x44, 0x1e, 0x6b, 0xb8, 0x82, 0xfe, 0x0a, 0x0f, 0xa0, 0x32, 0x0c, 0xb2, 0xd9, 0x7d, 0x96, 0xb4,
+        0xd1, 0xbc,
+    ]);
+    let lock_script = vec![Instruction::Ripemd160, Instruction::Eq];
+    assert_eq!(
+        execute(&[], &[vec![], RIPEMD160_EMPTY.to_vec()], &lock_script, H256::default(), Config::default()),
+        Ok(ScriptResult::Unlocked)
+    );
+    assert_eq!(
+        execute(&[], &[vec![], RIPEMD160_NULL_RLP.to_vec()], &lock_script, H256::default(), Config::default()),
+        Ok(ScriptResult::Fail)
+    );
+    assert_eq!(
+        execute(&[], &[vec![0x80], RIPEMD160_NULL_RLP.to_vec()], &lock_script, H256::default(), Config::default()),
+        Ok(ScriptResult::Unlocked)
+    );
+    assert_eq!(
+        execute(&[], &[vec![0x80], RIPEMD160_EMPTY.to_vec()], &lock_script, H256::default(), Config::default()),
+        Ok(ScriptResult::Fail)
     );
 }
