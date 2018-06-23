@@ -24,9 +24,9 @@ use super::super::parcel::{ParcelError, SignedParcel};
 /// or gives a reason why the parcel was removed.
 #[derive(Debug, PartialEq, Clone)]
 pub enum Status {
-    /// The parcel is currently in the parcel queue.
+    /// The parcel is currently in the mem pool.
     Pending,
-    /// The parcel is in future part of the queue.
+    /// The parcel is in future part of the mem pool.
     Future,
     /// Parcel is already mined.
     Mined(SignedParcel),
@@ -34,7 +34,7 @@ pub enum Status {
     Dropped(SignedParcel),
     /// Replaced because of higher gas price of another parcel.
     Replaced(SignedParcel, U256, H256),
-    /// Parcel was never accepted to the queue.
+    /// Parcel was never accepted to the mem pool.
     Rejected(SignedParcel, ParcelError),
     /// Parcel is invalid.
     Invalid(SignedParcel),

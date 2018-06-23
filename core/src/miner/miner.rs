@@ -31,7 +31,7 @@ use super::super::parcel::{ParcelError, SignedParcel, UnverifiedParcel};
 use super::super::spec::Spec;
 use super::super::state::State;
 use super::super::types::{BlockId, BlockNumber, ParcelId};
-use super::parcel_queue::{AccountDetails, ParcelOrigin, ParcelQueue, RemovalReason};
+use super::mem_pool::{AccountDetails, MemPool, ParcelOrigin, RemovalReason};
 use super::sealing_queue::SealingQueue;
 use super::{MinerService, MinerStatus, ParcelImportResult};
 
@@ -44,10 +44,10 @@ pub struct MinerOptions {
     pub reseal_on_own_parcel: bool,
     /// Minimum period between parcel-inspired reseals.
     pub reseal_min_period: Duration,
-    /// Maximum size of the parcel queue.
-    pub parcel_queue_size: usize,
+    /// Maximum size of the mem pool.
+    pub mem_pool_size: usize,
     /// Maximum memory usage of parcels in the queue (current / future).
-    pub parcel_queue_memory_limit: Option<usize>,
+    pub mem_pool_memory_limit: Option<usize>,
     /// How many historical work packages can we store before running out?
     pub work_queue_size: usize,
 }
@@ -58,15 +58,15 @@ impl Default for MinerOptions {
             reseal_on_external_parcel: false,
             reseal_on_own_parcel: true,
             reseal_min_period: Duration::from_secs(2),
-            parcel_queue_size: 8192,
-            parcel_queue_memory_limit: Some(2 * 1024 * 1024),
+            mem_pool_size: 8192,
+            mem_pool_memory_limit: Some(2 * 1024 * 1024),
             work_queue_size: 20,
         }
     }
 }
 
 pub struct Miner {
-    parcel_queue: Arc<RwLock<ParcelQueue>>,
+    mem_pool: Arc<RwLock<MemPool>>,
     parcel_listener: RwLock<Vec<Box<Fn(&[H256]) + Send + Sync>>>,
     next_allowed_reseal: Mutex<Instant>,
     author: RwLock<Address>,
@@ -87,10 +87,10 @@ impl Miner {
     }
 
     fn new_raw(options: MinerOptions, spec: &Spec, accounts: Option<Arc<AccountProvider>>) -> Self {
-        let mem_limit = options.parcel_queue_memory_limit.unwrap_or_else(usize::max_value);
-        let parcel_queue = Arc::new(RwLock::new(ParcelQueue::with_limits(options.parcel_queue_size, mem_limit)));
+        let mem_limit = options.mem_pool_memory_limit.unwrap_or_else(usize::max_value);
+        let mem_pool = Arc::new(RwLock::new(MemPool::with_limits(options.mem_pool_size, mem_limit)));
         Self {
-            parcel_queue,
+            mem_pool,
             parcel_listener: RwLock::new(vec![]),
             next_allowed_reseal: Mutex::new(Instant::now()),
             author: RwLock::new(Address::default()),
@@ -124,7 +124,7 @@ impl Miner {
 
     /// Check is reseal is allowed and necessary.
     fn requires_reseal(&self) -> bool {
-        let has_local_parcels = self.parcel_queue.read().has_local_pending_parcels();
+        let has_local_parcels = self.mem_pool.read().has_local_pending_parcels();
         let should_disable_sealing = !has_local_parcels && self.engine.seals_internally().is_none();
 
         ctrace!(MINER, "requires_reseal: should_disable_sealing={}", should_disable_sealing);
@@ -139,12 +139,12 @@ impl Miner {
         }
     }
 
-    fn add_parcels_to_queue<C: AccountData + BlockChain>(
+    fn add_parcels_to_pool<C: AccountData + BlockChain>(
         &self,
         client: &C,
         parcels: Vec<UnverifiedParcel>,
         default_origin: ParcelOrigin,
-        parcel_queue: &mut ParcelQueue,
+        mem_pool: &mut MemPool,
     ) -> Vec<Result<ParcelImportResult, Error>> {
         let best_block_header = client.best_block_header().decode();
         let insertion_time = client.chain_info().best_block_number;
@@ -186,7 +186,7 @@ impl Miner {
                             }
                         };
                         let hash = parcel.hash();
-                        let result = parcel_queue.add(parcel, origin, insertion_time, &fetch_account)?;
+                        let result = mem_pool.add(parcel, origin, insertion_time, &fetch_account)?;
 
                         inserted.push(hash);
                         Ok(result)
@@ -205,7 +205,7 @@ impl Miner {
     /// Prepares new block for sealing including top parcels from queue.
     fn prepare_block<C: AccountData + BlockChain + BlockProducer>(&self, chain: &C) -> ClosedBlock {
         let (parcels, mut open_block) = {
-            let parcels = self.parcel_queue.read().top_parcels();
+            let parcels = self.mem_pool.read().top_parcels();
 
             ctrace!(MINER, "prepare_block: No existing work - making new block");
             let open_block = chain.prepare_open_block(self.author(), self.extra_data());
@@ -265,7 +265,7 @@ impl Miner {
         let fetch_nonce = |a: &Address| chain.latest_nonce(a);
 
         {
-            let mut queue = self.parcel_queue.write();
+            let mut queue = self.mem_pool.write();
             for hash in invalid_parcels {
                 queue.remove(&hash, &fetch_nonce, RemovalReason::Invalid);
             }
@@ -347,7 +347,7 @@ impl MinerService for Miner {
     type State = State<::state_db::StateDB>;
 
     fn status(&self) -> MinerStatus {
-        let status = self.parcel_queue.read().status();
+        let status = self.mem_pool.read().status();
         let sealing_queue = self.sealing_queue.lock();
         MinerStatus {
             parcels_in_pending_queue: status.pending,
@@ -390,19 +390,19 @@ impl MinerService for Miner {
     }
 
     fn minimal_fee(&self) -> U256 {
-        *self.parcel_queue.read().minimal_fee()
+        *self.mem_pool.read().minimal_fee()
     }
 
     fn set_minimal_fee(&self, min_fee: U256) {
-        self.parcel_queue.write().set_minimal_fee(min_fee);
+        self.mem_pool.write().set_minimal_fee(min_fee);
     }
 
     fn parcels_limit(&self) -> usize {
-        self.parcel_queue.read().limit()
+        self.mem_pool.read().limit()
     }
 
     fn set_parcels_limit(&self, limit: usize) {
-        self.parcel_queue.write().set_limit(limit)
+        self.mem_pool.write().set_limit(limit)
     }
 
     fn chain_new_blocks<C>(
@@ -418,13 +418,13 @@ impl MinerService for Miner {
 
         // Then import all parcels...
         {
-            let mut parcel_queue = self.parcel_queue.write();
+            let mut mem_pool = self.mem_pool.write();
             for hash in retracted {
                 let block = chain.block((*hash).into()).expect(
                     "Client is sending message after commit to db and inserting to chain; the block is available; qed",
                 );
                 let parcels = block.parcels();
-                let _ = self.add_parcels_to_queue(chain, parcels, ParcelOrigin::RetractedBlock, &mut parcel_queue);
+                let _ = self.add_parcels_to_pool(chain, parcels, ParcelOrigin::RetractedBlock, &mut mem_pool);
             }
         }
 
@@ -435,8 +435,8 @@ impl MinerService for Miner {
                 balance: chain.latest_balance(a),
             };
             let time = chain.chain_info().best_block_number;
-            let mut parcel_queue = self.parcel_queue.write();
-            parcel_queue.remove_old(&fetch_account, time);
+            let mut mem_pool = self.mem_pool.write();
+            mem_pool.remove_old(&fetch_account, time);
         }
     }
 
@@ -497,13 +497,13 @@ impl MinerService for Miner {
     ) -> Vec<Result<ParcelImportResult, Error>> {
         ctrace!(EXTERNAL_PARCEL, "Importing external parcels");
         let results = {
-            let mut parcel_queue = self.parcel_queue.write();
-            self.add_parcels_to_queue(client, parcels, ParcelOrigin::External, &mut parcel_queue)
+            let mut mem_pool = self.mem_pool.write();
+            self.add_parcels_to_pool(client, parcels, ParcelOrigin::External, &mut mem_pool)
         };
 
         if !results.is_empty() && self.options.reseal_on_external_parcel && self.parcel_reseal_allowed() {
             // ------------------------------------------------------------------
-            // | NOTE Code below requires parcel_queue and sealing_queue locks. |
+            // | NOTE Code below requires mem_pool and sealing_queue locks.     |
             // | Make sure to release the locks before calling that method.     |
             // ------------------------------------------------------------------
             self.update_sealing(client);
@@ -520,18 +520,18 @@ impl MinerService for Miner {
 
         let imported = {
             // Be sure to release the lock before we call prepare_work_sealing
-            let mut parcel_queue = self.parcel_queue.write();
+            let mut mem_pool = self.mem_pool.write();
             // We need to re-validate parcels
-            let import = self.add_parcels_to_queue(chain, vec![parcel.into()], ParcelOrigin::Local, &mut parcel_queue)
+            let import = self.add_parcels_to_pool(chain, vec![parcel.into()], ParcelOrigin::Local, &mut mem_pool)
                 .pop()
                 .expect("one result returned per added parcel; one added => one result; qed");
 
             match import {
                 Ok(_) => {
-                    ctrace!(OWN_PARCEL, "Status: {:?}", parcel_queue.status());
+                    ctrace!(OWN_PARCEL, "Status: {:?}", mem_pool.status());
                 }
                 Err(ref e) => {
-                    ctrace!(OWN_PARCEL, "Status: {:?}", parcel_queue.status());
+                    ctrace!(OWN_PARCEL, "Status: {:?}", mem_pool.status());
                     cwarn!(OWN_PARCEL, "Error importing parcel: {:?}", e);
                 }
             }
@@ -539,7 +539,7 @@ impl MinerService for Miner {
         };
 
         // ------------------------------------------------------------------
-        // | NOTE Code below requires parcel_queue and sealing_queue locks. |
+        // | NOTE Code below requires mem_pool and sealing_queue locks.     |
         // | Make sure to release the locks before calling that method.     |
         // ------------------------------------------------------------------
         if imported.is_ok() && self.options.reseal_on_own_parcel && self.parcel_reseal_allowed() {
@@ -556,11 +556,11 @@ impl MinerService for Miner {
     }
 
     fn ready_parcels(&self) -> Vec<SignedParcel> {
-        self.parcel_queue.read().top_parcels()
+        self.mem_pool.read().top_parcels()
     }
 
     /// Get a list of all future parcels.
     fn future_parcels(&self) -> Vec<SignedParcel> {
-        self.parcel_queue.read().future_parcels()
+        self.mem_pool.read().future_parcels()
     }
 }

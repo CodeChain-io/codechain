@@ -57,7 +57,7 @@ use super::{
     StateOrBlock,
 };
 
-const MAX_PARCEL_QUEUE_SIZE: usize = 4096;
+const MAX_MEM_POOL_SIZE: usize = 4096;
 
 pub struct Client {
     engine: Arc<CodeChainEngine>,
@@ -329,7 +329,7 @@ impl BlockChainClient for Client {
     fn queue_parcels(&self, parcels: Vec<Bytes>, peer_id: NodeId) {
         let queue_size = self.queue_parcels.load(AtomicOrdering::Relaxed);
         ctrace!(EXTERNAL_PARCEL, "Queue size: {}", queue_size);
-        if queue_size > MAX_PARCEL_QUEUE_SIZE {
+        if queue_size > MAX_MEM_POOL_SIZE {
             debug!("Ignoring {} parcels: queue is full", parcels.len());
         } else {
             let len = parcels.len();

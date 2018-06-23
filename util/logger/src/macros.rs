@@ -34,6 +34,9 @@ macro_rules! log_target {
     (IO) => {
         "io"
     };
+    (MEM_POOL) => {
+        "mem_pool"
+    };
     (MINER) => {
         "miner"
     };
@@ -45,9 +48,6 @@ macro_rules! log_target {
     };
     (OWN_PARCEL) => {
         "own_parcel"
-    };
-    (PARCEL_QUEUE) => {
-        "parcel_queue"
     };
     (POA) => {
         "poa"

@@ -34,8 +34,8 @@ use super::ParcelImportResult;
 const FEE_BUMP_SHIFT: usize = 3; // 2 = 25%, 3 = 12.5%, 4 = 6.25%
 
 /// Point in time when parcel was inserted.
-pub type QueuingInstant = BlockNumber;
-const DEFAULT_QUEUING_PERIOD: BlockNumber = 128;
+pub type PoolingInstant = BlockNumber;
+const DEFAULT_POOLING_PERIOD: BlockNumber = 128;
 
 /// Parcel origin
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -88,21 +88,21 @@ struct ParcelOrder {
     mem_usage: usize,
     /// Hash to identify associated parcel
     hash: H256,
-    /// Incremental id assigned when parcel is inserted to the queue.
+    /// Incremental id assigned when parcel is inserted to the pool.
     insertion_id: u64,
     /// Origin of the parcel
     origin: ParcelOrigin,
 }
 
 impl ParcelOrder {
-    fn for_parcel(parcel: &QueuedParcel, base_nonce: U256) -> Self {
+    fn for_parcel(item: &MemPoolItem, base_nonce: U256) -> Self {
         Self {
-            nonce_height: parcel.nonce() - base_nonce,
-            fee: parcel.parcel.fee,
-            mem_usage: parcel.parcel.heap_size_of_children(),
-            hash: parcel.hash(),
-            insertion_id: parcel.insertion_id,
-            origin: parcel.origin,
+            nonce_height: item.nonce() - base_nonce,
+            fee: item.parcel.fee,
+            mem_usage: item.parcel.heap_size_of_children(),
+            hash: item.hash(),
+            insertion_id: item.insertion_id,
+            origin: item.origin,
         }
     }
 
@@ -146,22 +146,22 @@ impl Ord for ParcelOrder {
     }
 }
 
-/// Queued Parcel
+/// Parcel item in the mem pool.
 #[derive(Debug)]
-struct QueuedParcel {
+struct MemPoolItem {
     /// Parcel.
     parcel: SignedParcel,
     /// Parcel origin.
     origin: ParcelOrigin,
     /// Insertion time
-    insertion_time: QueuingInstant,
+    insertion_time: PoolingInstant,
     /// ID assigned upon insertion, should be unique.
     insertion_id: u64,
 }
 
-impl QueuedParcel {
-    fn new(parcel: SignedParcel, origin: ParcelOrigin, insertion_time: QueuingInstant, insertion_id: u64) -> Self {
-        QueuedParcel {
+impl MemPoolItem {
+    fn new(parcel: SignedParcel, origin: ParcelOrigin, insertion_time: PoolingInstant, insertion_id: u64) -> Self {
+        MemPoolItem {
             parcel,
             origin,
             insertion_time,
@@ -234,7 +234,7 @@ impl ParcelSet {
     /// Returns addresses and lowest nonces of parcels removed because of limit.
     fn enforce_limit(
         &mut self,
-        by_hash: &mut HashMap<H256, QueuedParcel>,
+        by_hash: &mut HashMap<H256, MemPoolItem>,
         local: &mut LocalParcelsList,
     ) -> Option<HashMap<Address, U256>> {
         let mut count = 0;
@@ -263,7 +263,7 @@ impl ParcelSet {
         Some(to_drop.into_iter().fold(HashMap::new(), |mut removed, (sender, nonce)| {
             let order = self.drop(&sender, &nonce)
                 .expect("Parcel has just been found in `by_priority`; so it is in `by_address` also.");
-            ctrace!(PARCEL_QUEUE, "Dropped out of limit parcel: {:?}", order.hash);
+            ctrace!(MEM_POOL, "Dropped out of limit parcel: {:?}", order.hash);
 
             let order = by_hash
                 .remove(&order.hash)
@@ -312,8 +312,8 @@ impl ParcelSet {
         self.limit = limit;
     }
 
-    /// Get the minimum fee that we can accept into this queue that wouldn't cause the parcel to
-    /// immediately be dropped. 0 if the queue isn't at capacity; 1 plus the lowest if it is.
+    /// Get the minimum fee that we can accept into this pool that wouldn't cause the parcel to
+    /// immediately be dropped. 0 if the pool isn't at capacity; 1 plus the lowest if it is.
     fn fee_entry_limit(&self) -> U256 {
         match self.by_fee.keys().next() {
             Some(k) if self.by_priority.len() >= self.limit => *k + 1.into(),
@@ -322,34 +322,34 @@ impl ParcelSet {
     }
 }
 
-pub struct ParcelQueue {
-    /// Fee threshold for parcels that can be imported to this queue (defaults to 0)
+pub struct MemPool {
+    /// Fee threshold for parcels that can be imported to this pool (defaults to 0)
     minimal_fee: U256,
-    /// Maximal time parcel may occupy the queue.
-    /// When we reach `max_time_in_queue / 2^3` we re-validate
+    /// Maximal time parcel may occupy the pool.
+    /// When we reach `max_time_in_pool / 2^3` we re-validate
     /// account balance.
-    max_time_in_queue: QueuingInstant,
+    max_time_in_pool: PoolingInstant,
     /// Priority queue for parcels that can go to block
     current: ParcelSet,
     /// Priority queue for parcels that has been received but are not yet valid to go to block
     future: ParcelSet,
-    /// All parcels managed by queue indexed by hash
-    by_hash: HashMap<H256, QueuedParcel>,
+    /// All parcels managed by pool indexed by hash
+    by_hash: HashMap<H256, MemPoolItem>,
     /// Last nonce of parcel in current (to quickly check next expected parcel)
     last_nonces: HashMap<Address, U256>,
     /// List of local parcels and their statuses.
     local_parcels: LocalParcelsList,
-    /// Next id that should be assigned to a parcel imported to the queue.
+    /// Next id that should be assigned to a parcel imported to the pool.
     next_parcel_id: u64,
 }
 
-impl Default for ParcelQueue {
+impl Default for MemPool {
     fn default() -> Self {
-        ParcelQueue::new()
+        MemPool::new()
     }
 }
 
-impl ParcelQueue {
+impl MemPool {
     /// Creates new instance of this Queue
     pub fn new() -> Self {
         Self::with_limits(8192, usize::max_value())
@@ -373,9 +373,9 @@ impl ParcelQueue {
             memory_limit,
         };
 
-        ParcelQueue {
+        MemPool {
             minimal_fee: U256::zero(),
-            max_time_in_queue: DEFAULT_QUEUING_PERIOD,
+            max_time_in_pool: DEFAULT_POOLING_PERIOD,
             current,
             future,
             by_hash: HashMap::new(),
@@ -394,7 +394,7 @@ impl ParcelQueue {
         self.future.enforce_limit(&mut self.by_hash, &mut self.local_parcels);
     }
 
-    /// Returns current limit of parcels in the queue.
+    /// Returns current limit of parcels in the pool.
     pub fn limit(&self) -> usize {
         self.current.limit
     }
@@ -405,26 +405,26 @@ impl ParcelQueue {
     }
 
     /// Sets new fee threshold for incoming parcels.
-    /// Any parcel already imported to the queue is not affected.
+    /// Any parcel already imported to the pool is not affected.
     pub fn set_minimal_fee(&mut self, min_fee: U256) {
         self.minimal_fee = min_fee;
     }
 
-    /// Get one more than the lowest fee in the queue iff the pool is
+    /// Get one more than the lowest fee in the pool iff the pool is
     /// full, otherwise 0.
     pub fn effective_minimum_fee(&self) -> U256 {
         self.current.fee_entry_limit()
     }
 
-    /// Returns current status for this queue
-    pub fn status(&self) -> ParcelQueueStatus {
-        ParcelQueueStatus {
+    /// Returns current status for this pool
+    pub fn status(&self) -> MemPoolStatus {
+        MemPoolStatus {
             pending: self.current.by_priority.len(),
             future: self.future.by_priority.len(),
         }
     }
 
-    /// Add signed parcel to queue to be verified and imported.
+    /// Add signed parcel to pool to be verified and imported.
     ///
     /// NOTE details_provider methods should be cheap to compute
     /// otherwise it might open up an attack vector.
@@ -432,7 +432,7 @@ impl ParcelQueue {
         &mut self,
         parcel: SignedParcel,
         origin: ParcelOrigin,
-        time: QueuingInstant,
+        time: PoolingInstant,
         fetch_account: &F,
     ) -> Result<ParcelImportResult, ParcelError>
     where
@@ -463,8 +463,8 @@ impl ParcelQueue {
         }
     }
 
-    /// Checks the current nonce for all parcels' senders in the queue and removes the old parcels.
-    pub fn remove_old<F>(&mut self, fetch_account: &F, current_time: QueuingInstant)
+    /// Checks the current nonce for all parcels' senders in the pool and removes the old parcels.
+    pub fn remove_old<F>(&mut self, fetch_account: &F, current_time: PoolingInstant)
     where
         F: Fn(&Address) -> AccountDetails, {
         let senders = self.current
@@ -478,9 +478,9 @@ impl ParcelQueue {
             self.cull(*sender, details.nonce);
         }
 
-        let max_time = self.max_time_in_queue;
+        let max_time = self.max_time_in_pool;
         let balance_check = max_time >> 3;
-        // Clear parcels occupying the queue too long
+        // Clear parcels occupying the pool too long
         let invalid = self.by_hash
             .iter()
             .filter(|&(_, ref parcel)| !parcel.origin.is_local())
@@ -507,9 +507,9 @@ impl ParcelQueue {
         }
     }
 
-    /// Removes invalid parcel identified by hash from queue.
+    /// Removes invalid parcel identified by hash from pool.
     /// Assumption is that this parcel nonce is not related to client nonce,
-    /// so parcels left in queue are processed according to client nonce.
+    /// so parcels left in pool are processed according to client nonce.
     ///
     /// If gap is introduced marks subsequent parcels as future
     pub fn remove<F>(&mut self, parcel_hash: &H256, fetch_nonce: &F, reason: RemovalReason)
@@ -527,7 +527,7 @@ impl ParcelQueue {
         let nonce = parcel.nonce();
         let current_nonce = fetch_nonce(&sender);
 
-        ctrace!(PARCEL_QUEUE, "Removing invalid parcel: {:?}", parcel.hash());
+        ctrace!(MEM_POOL, "Removing invalid parcel: {:?}", parcel.hash());
 
         // Mark in locals
         if self.local_parcels.contains(parcel_hash) {
@@ -552,7 +552,7 @@ impl ParcelQueue {
         // Remove from current
         let order = self.current.drop(&sender, &nonce);
         if order.is_some() {
-            // This will keep consistency in queue
+            // This will keep consistency in pool
             // Moves all to future and then promotes a batch from current:
             self.cull_internal(sender, current_nonce);
             assert_eq!(self.future.by_priority.len() + self.current.by_priority.len(), self.by_hash.len());
@@ -581,7 +581,7 @@ impl ParcelQueue {
         self.cull_internal(sender, client_nonce);
     }
 
-    /// Removes all elements (in any state) from the queue
+    /// Removes all elements (in any state) from the pool
     #[allow(dead_code)]
     pub fn clear(&mut self) {
         self.current.clear();
@@ -590,7 +590,7 @@ impl ParcelQueue {
         self.last_nonces.clear();
     }
 
-    /// Finds parcel in the queue by hash (if any)
+    /// Finds parcel in the pool by hash (if any)
     #[allow(dead_code)]
     pub fn find(&self, hash: &H256) -> Option<SignedParcel> {
         self.by_hash.get(hash).map(|parcel| parcel.parcel.clone())
@@ -602,7 +602,7 @@ impl ParcelQueue {
         self.last_nonces.get(address).cloned()
     }
 
-    /// Returns top parcels from the queue ordered by priority.
+    /// Returns top parcels from the pool ordered by priority.
     pub fn top_parcels(&self) -> Vec<SignedParcel> {
         self.current
             .by_priority
@@ -635,25 +635,25 @@ impl ParcelQueue {
         self.current.by_priority.iter().any(|parcel| parcel.origin == ParcelOrigin::Local)
     }
 
-    /// Returns local parcels (some of them might not be part of the queue anymore).
+    /// Returns local parcels (some of them might not be part of the pool anymore).
     #[allow(dead_code)]
     pub fn local_parcels(&self) -> &LinkedHashMap<H256, LocalParcelStatus> {
         self.local_parcels.all_parcels()
     }
 
-    /// Adds signed parcel to the queue.
+    /// Adds signed parcel to the pool.
     fn add_internal<F>(
         &mut self,
         parcel: SignedParcel,
         origin: ParcelOrigin,
-        time: QueuingInstant,
+        time: PoolingInstant,
         fetch_account: &F,
     ) -> Result<ParcelImportResult, ParcelError>
     where
         F: Fn(&Address) -> AccountDetails, {
         if origin != ParcelOrigin::Local && parcel.fee < self.minimal_fee {
             ctrace!(
-                PARCEL_QUEUE,
+                MEM_POOL,
                 "Dropping parcel below minimal fee: {:?} (gp: {} < {})",
                 parcel.hash(),
                 parcel.fee,
@@ -666,18 +666,18 @@ impl ParcelQueue {
             })
         }
 
-        let full_queues_lowest = self.effective_minimum_fee();
-        if parcel.fee < full_queues_lowest && origin != ParcelOrigin::Local {
+        let full_pools_lowest = self.effective_minimum_fee();
+        if parcel.fee < full_pools_lowest && origin != ParcelOrigin::Local {
             ctrace!(
-                PARCEL_QUEUE,
-                "Dropping parcel below lowest fee in a full queue: {:?} (gp: {} < {})",
+                MEM_POOL,
+                "Dropping parcel below lowest fee in a full pool: {:?} (gp: {} < {})",
                 parcel.hash(),
                 parcel.fee,
-                full_queues_lowest
+                full_pools_lowest
             );
 
             return Err(ParcelError::InsufficientFee {
-                minimal: full_queues_lowest,
+                minimal: full_pools_lowest,
                 got: parcel.fee,
             })
         }
@@ -685,7 +685,7 @@ impl ParcelQueue {
         let client_account = fetch_account(&parcel.sender());
         if client_account.balance < parcel.fee {
             ctrace!(
-                PARCEL_QUEUE,
+                MEM_POOL,
                 "Dropping parcel without sufficient balance: {:?} ({} < {})",
                 parcel.hash(),
                 client_account.balance,
@@ -702,13 +702,13 @@ impl ParcelQueue {
         // No invalid parcels beyond this point.
         let id = self.next_parcel_id;
         self.next_parcel_id += 1;
-        let vparcel = QueuedParcel::new(parcel, origin, time, id);
+        let vparcel = MemPoolItem::new(parcel, origin, time, id);
         let r = self.import_parcel(vparcel, client_account.nonce);
         assert_eq!(self.future.by_priority.len() + self.current.by_priority.len(), self.by_hash.len());
         r
     }
 
-    /// Adds VerifiedParcel to this queue.
+    /// Adds VerifiedParcel to this pool.
     ///
     /// Determines if it should be placed in current or future. When parcel is
     /// imported to `current` also checks if there are any `future` parcels that should be promoted because of
@@ -718,10 +718,10 @@ impl ParcelQueue {
     /// iff `(address, nonce)` is the same but `fee` is higher.
     ///
     /// Returns `true` when parcel was imported successfully
-    fn import_parcel(&mut self, parcel: QueuedParcel, state_nonce: U256) -> Result<ParcelImportResult, ParcelError> {
+    fn import_parcel(&mut self, parcel: MemPoolItem, state_nonce: U256) -> Result<ParcelImportResult, ParcelError> {
         if self.by_hash.get(&parcel.hash()).is_some() {
             // Parcel is already imported.
-            ctrace!(PARCEL_QUEUE, "Dropping already imported parcel: {:?}", parcel.hash());
+            ctrace!(MEM_POOL, "Dropping already imported parcel: {:?}", parcel.hash());
             return Err(ParcelError::AlreadyImported)
         }
 
@@ -734,7 +734,7 @@ impl ParcelQueue {
         // nonce height would result in overflow.
         if nonce < state_nonce {
             // Droping parcel
-            ctrace!(PARCEL_QUEUE, "Dropping old parcel: {:?} (nonce: {} < {})", parcel.hash(), nonce, state_nonce);
+            ctrace!(MEM_POOL, "Dropping old parcel: {:?} (nonce: {} < {})", parcel.hash(), nonce, state_nonce);
             return Err(ParcelError::Old)
         }
 
@@ -765,8 +765,8 @@ impl ParcelQueue {
             // Return an error if this parcel was not imported because of limit.
             check_if_removed(&address, &nonce, removed)?;
 
-            cdebug!(PARCEL_QUEUE, "Importing parcel to future: {:?}", hash);
-            cdebug!(PARCEL_QUEUE, "status: {:?}", self.status());
+            cdebug!(MEM_POOL, "Importing parcel to future: {:?}", hash);
+            cdebug!(MEM_POOL, "status: {:?}", self.status());
             return Ok(ParcelImportResult::Future)
         }
 
@@ -793,8 +793,8 @@ impl ParcelQueue {
         // Trigger error if the parcel we are importing was removed.
         check_if_removed(&address, &nonce, removed)?;
 
-        cdebug!(PARCEL_QUEUE, "Imported parcel to current: {:?}", hash);
-        cdebug!(PARCEL_QUEUE, "status: {:?}", self.status());
+        cdebug!(MEM_POOL, "Imported parcel to current: {:?}", hash);
+        cdebug!(MEM_POOL, "status: {:?}", self.status());
         Ok(ParcelImportResult::Current)
     }
 
@@ -838,7 +838,7 @@ impl ParcelQueue {
             if k >= current_nonce {
                 self.future.insert(*sender, k, order.update_height(k, current_nonce));
             } else {
-                ctrace!(PARCEL_QUEUE, "Removing old parcel: {:?} (nonce: {} < {})", order.hash, k, current_nonce);
+                ctrace!(MEM_POOL, "Removing old parcel: {:?} (nonce: {} < {})", order.hash, k, current_nonce);
                 // Remove the parcel completely
                 self.by_hash.remove(&order.hash).expect("All parcels in `future` are also in `by_hash`");
             }
@@ -887,7 +887,7 @@ impl ParcelQueue {
     }
 
     /// Drop all parcels from given sender from `current`.
-    /// Either moves them to `future` or removes them from queue completely.
+    /// Either moves them to `future` or removes them from pool completely.
     fn move_all_to_future(&mut self, sender: &Address, current_nonce: U256) {
         let all_nonces_from_sender = match self.current.by_address.row(sender) {
             Some(row_map) => row_map.keys().cloned().collect::<Vec<U256>>(),
@@ -915,7 +915,7 @@ impl ParcelQueue {
                     );
                 }
             } else {
-                ctrace!(PARCEL_QUEUE, "Removing old parcel: {:?} (nonce: {} < {})", order.hash, k, current_nonce);
+                ctrace!(MEM_POOL, "Removing old parcel: {:?} (nonce: {} < {})", order.hash, k, current_nonce);
                 let parcel = self.by_hash.remove(&order.hash).expect("All parcels in `future` are also in `by_hash`");
                 if parcel.origin.is_local() {
                     self.local_parcels.mark_mined(parcel.parcel);
@@ -961,15 +961,15 @@ impl ParcelQueue {
     /// Replaces parcel in given set (could be `future` or `current`).
     ///
     /// If there is already parcel with same `(sender, nonce)` it will be replaced iff `fee` is higher.
-    /// One of the parcels is dropped from set and also removed from queue entirely (from `by_hash`).
+    /// One of the parcels is dropped from set and also removed from pool entirely (from `by_hash`).
     ///
-    /// Returns `true` if parcel actually got to the queue (`false` if there was already a parcel with higher
+    /// Returns `true` if parcel actually got to the pool (`false` if there was already a parcel with higher
     /// fee)
     fn replace_parcel(
-        parcel: QueuedParcel,
+        parcel: MemPoolItem,
         base_nonce: U256,
         set: &mut ParcelSet,
-        by_hash: &mut HashMap<H256, QueuedParcel>,
+        by_hash: &mut HashMap<H256, MemPoolItem>,
         local: &mut LocalParcelsList,
     ) -> bool {
         let order = ParcelOrder::for_parcel(&parcel, base_nonce);
@@ -980,7 +980,7 @@ impl ParcelQueue {
         let old_hash = by_hash.insert(hash, parcel);
         assert!(old_hash.is_none(), "Each hash has to be inserted exactly once.");
 
-        ctrace!(PARCEL_QUEUE, "Inserting: {:?}", order);
+        ctrace!(MEM_POOL, "Inserting: {:?}", order);
 
         if let Some(old) = set.insert(address, nonce, order.clone()) {
             Self::replace_orders(address, nonce, old, order, set, by_hash, local)
@@ -995,10 +995,10 @@ impl ParcelQueue {
         old: ParcelOrder,
         order: ParcelOrder,
         set: &mut ParcelSet,
-        by_hash: &mut HashMap<H256, QueuedParcel>,
+        by_hash: &mut HashMap<H256, MemPoolItem>,
         local: &mut LocalParcelsList,
     ) -> bool {
-        // There was already parcel in queue. Let's check which one should stay
+        // There was already parcel in pool. Let's check which one should stay
         let old_hash = old.hash;
         let new_hash = order.hash;
 
@@ -1008,8 +1008,8 @@ impl ParcelQueue {
 
         if min_required_fee > new_fee {
             ctrace!(
-                PARCEL_QUEUE,
-                "Didn't insert parcel because fee was too low: {:?} ({:?} stays in the queue)",
+                MEM_POOL,
+                "Didn't insert parcel because fee was too low: {:?} ({:?} stays in the pool)",
                 order.hash,
                 old.hash
             );
@@ -1024,7 +1024,7 @@ impl ParcelQueue {
             }
             false
         } else {
-            ctrace!(PARCEL_QUEUE, "Replaced parcel: {:?} with parcel with higher fee: {:?}", old.hash, order.hash);
+            ctrace!(MEM_POOL, "Replaced parcel: {:?} with parcel with higher fee: {:?}", old.hash, order.hash);
             // Make sure we remove old parcel entirely
             let old =
                 by_hash.remove(&old.hash).expect("The hash is coming from `future` so it has to be in `by_hash`.");
@@ -1037,8 +1037,8 @@ impl ParcelQueue {
 }
 
 #[derive(Debug)]
-/// Current status of the queue
-pub struct ParcelQueueStatus {
+/// Current status of the pool
+pub struct MemPoolStatus {
     /// Number of pending parcels (ready to go to block)
     pub pending: usize,
     /// Number of future parcels (waiting for parcels with lower nonces first)
@@ -1054,7 +1054,7 @@ pub struct AccountDetails {
     pub balance: U256,
 }
 
-/// Reason to remove single parcel from the queue.
+/// Reason to remove single parcel from the pool.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum RemovalReason {
     /// Parcel is invalid
@@ -1121,9 +1121,9 @@ pub mod test {
         };
         let keypair = Random.generate().unwrap();
         let signed = parcel.sign(keypair.private());
-        let queued = QueuedParcel::new(signed, ParcelOrigin::Local, 0, 0);
+        let item = MemPoolItem::new(signed, ParcelOrigin::Local, 0, 0);
 
-        assert_eq!(fee, queued.cost());
+        assert_eq!(fee, item.cost());
     }
 
     #[test]
@@ -1147,9 +1147,9 @@ pub mod test {
         };
         let keypair = Random.generate().unwrap();
         let signed = parcel.sign(keypair.private());
-        let queued = QueuedParcel::new(signed, ParcelOrigin::Local, 0, 0);
+        let item = MemPoolItem::new(signed, ParcelOrigin::Local, 0, 0);
 
-        assert_eq!(fee, queued.cost());
+        assert_eq!(fee, item.cost());
     }
 
     #[test]
@@ -1182,9 +1182,9 @@ pub mod test {
         };
         let keypair = Random.generate().unwrap();
         let signed = parcel.sign(keypair.private());
-        let queued = QueuedParcel::new(signed, ParcelOrigin::Local, 0, 0);
+        let item = MemPoolItem::new(signed, ParcelOrigin::Local, 0, 0);
 
-        assert_eq!(fee, queued.cost());
+        assert_eq!(fee, item.cost());
     }
 
     #[test]
@@ -1203,8 +1203,8 @@ pub mod test {
             },
         };
         let signed = parcel.sign(keypair.private());
-        let queued = QueuedParcel::new(signed, ParcelOrigin::Local, 0, 0);
+        let item = MemPoolItem::new(signed, ParcelOrigin::Local, 0, 0);
 
-        assert_eq!(fee + value, queued.cost());
+        assert_eq!(fee + value, item.cost());
     }
 }

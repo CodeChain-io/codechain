@@ -71,7 +71,7 @@ build_rpc_trait! {
         # [rpc(name = "chain_getBlockByHash")]
         fn get_block_by_hash(&self, H256) -> Result<Option<Block>>;
 
-        /// Gets parcels in the current parcel queue.
+        /// Gets parcels in the current mem pool.
         # [rpc(name = "chain_getPendingParcels")]
         fn get_pending_parcels(&self) -> Result<Vec<Parcel>>;
     }

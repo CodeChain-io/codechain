@@ -15,8 +15,8 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 mod local_parcels;
+mod mem_pool;
 mod miner;
-mod parcel_queue;
 mod sealing_queue;
 
 use ctypes::{Address, Bytes, H256, U256};
@@ -77,21 +77,21 @@ pub trait MinerService: Send + Sync {
     /// Will check the seal, but not actually insert the block into the chain.
     fn submit_seal<C: ImportSealedBlock>(&self, chain: &C, pow_hash: H256, seal: Vec<Bytes>) -> Result<(), Error>;
 
-    /// Imports parcels to parcel queue.
+    /// Imports parcels to mem pool.
     fn import_external_parcels<C: MiningBlockChainClient>(
         &self,
         client: &C,
         parcels: Vec<UnverifiedParcel>,
     ) -> Vec<Result<ParcelImportResult, Error>>;
 
-    /// Imports own (node owner) parcel to queue.
+    /// Imports own (node owner) parcel to mem pool.
     fn import_own_parcel<C: MiningBlockChainClient>(
         &self,
         chain: &C,
         parcel: SignedParcel,
     ) -> Result<ParcelImportResult, Error>;
 
-    /// Get a list of all pending parcels in the queue.
+    /// Get a list of all pending parcels in the mem pool.
     fn ready_parcels(&self) -> Vec<SignedParcel>;
 
     /// Get a list of all future parcels.

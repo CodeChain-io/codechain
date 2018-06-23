@@ -254,8 +254,8 @@ impl TestBlockChainClient {
         }
     }
 
-    /// Inserts a parcel to miners parcels queue.
-    pub fn insert_parcel_to_queue(&self) -> H256 {
+    /// Inserts a parcel to miners mem pool.
+    pub fn insert_parcel_to_pool(&self) -> H256 {
         let keypair = Random.generate().unwrap();
         let transactions = vec![];
         let parcel = Parcel {
