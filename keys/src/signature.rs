@@ -187,3 +187,44 @@ pub fn recover_schnorr(signature: &SchnorrSignature, message: &Message) -> Resul
     public.copy_from_slice(&serialized[1..65]);
     Ok(public)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::super::{Generator, Message, Random};
+    use super::{recover_schnorr, sign_schnorr, verify_schnorr, verify_schnorr_address, SchnorrSignature};
+    use std::str::FromStr;
+
+    #[test]
+    fn signature_to_and_from_str() {
+        let keypair = Random.generate().unwrap();
+        let message = Message::default();
+        let signature = sign_schnorr(keypair.private(), &message).unwrap();
+        let string = format!("{}", signature);
+        let deserialized = SchnorrSignature::from_str(&string).unwrap();
+        assert_eq!(signature, deserialized);
+    }
+
+    #[test]
+    fn sign_and_recover_public() {
+        let keypair = Random.generate().unwrap();
+        let message = Message::default();
+        let signature = sign_schnorr(keypair.private(), &message).unwrap();
+        assert_eq!(keypair.public(), &recover_schnorr(&signature, &message).unwrap());
+    }
+
+    #[test]
+    fn sign_and_verify_public() {
+        let keypair = Random.generate().unwrap();
+        let message = Message::default();
+        let signature = sign_schnorr(keypair.private(), &message).unwrap();
+        assert!(verify_schnorr(keypair.public(), &signature, &message).unwrap());
+    }
+
+    #[test]
+    fn sign_and_verify_address() {
+        let keypair = Random.generate().unwrap();
+        let message = Message::default();
+        let signature = sign_schnorr(keypair.private(), &message).unwrap();
+        assert!(verify_schnorr_address(&keypair.address(), &signature, &message).unwrap());
+    }
+}
