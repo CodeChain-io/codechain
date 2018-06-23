@@ -8,7 +8,7 @@ pub use ethereum_types::{U128, U256, U512};
 pub type Address = H160;
 pub type Secret = H256;
 pub type Public = H512;
-pub type Signature = H520;
+pub type Signature = H512;
 
 pub mod bytes {
     pub use ebytes::ToPretty;

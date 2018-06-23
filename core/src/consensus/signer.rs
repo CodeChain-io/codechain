@@ -16,7 +16,7 @@
 
 use std::sync::Arc;
 
-use ckeys::ECDSASignature;
+use ckeys::SchnorrSignature;
 use ctypes::{Address, H256};
 
 use super::super::account_provider::{AccountProvider, SignError};
@@ -45,7 +45,7 @@ impl EngineSigner {
     }
 
     /// Sign a consensus message hash.
-    pub fn sign(&self, hash: H256) -> Result<ECDSASignature, SignError> {
+    pub fn sign(&self, hash: H256) -> Result<SchnorrSignature, SignError> {
         self.account_provider.sign(self.address.unwrap_or_else(Default::default), hash)
     }
 

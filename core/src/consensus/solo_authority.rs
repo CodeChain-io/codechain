@@ -17,9 +17,9 @@
 use std::sync::{Arc, Weak};
 
 use cjson;
-use ckeys::{public_to_address, recover_ecdsa, ECDSASignature};
+use ckeys::{public_to_address, recover_schnorr, SchnorrSignature};
 use cnetwork::NetworkExtension;
-use ctypes::{Address, H256, H520, U256};
+use ctypes::{Address, H256, H512, U256};
 use parking_lot::RwLock;
 
 use super::super::account_provider::AccountProvider;
@@ -85,8 +85,8 @@ fn verify_external(header: &Header, validators: &ValidatorSet) -> Result<(), Err
     use rlp::UntrustedRlp;
 
     // Check if the signature belongs to a validator, can depend on parent state.
-    let sig = UntrustedRlp::new(&header.seal()[0]).as_val::<H520>()?;
-    let signer = public_to_address(&recover_ecdsa(&sig.into(), &header.bare_hash())?);
+    let sig = UntrustedRlp::new(&header.seal()[0]).as_val::<H512>()?;
+    let signer = public_to_address(&recover_schnorr(&sig.into(), &header.bare_hash())?);
 
     if *header.author() != signer {
         return Err(EngineError::NotAuthorized(header.author().clone()).into())
@@ -123,7 +123,7 @@ impl ConsensusEngine<CodeChainMachine> for SoloAuthority {
         if self.validators.contains(header.parent_hash(), author) {
             // account should be permanently unlocked, otherwise sealing will fail
             if let Ok(signature) = self.sign(header.bare_hash()) {
-                return Seal::Regular(vec![::rlp::encode(&(&H520::from(signature) as &[u8])).into_vec()])
+                return Seal::Regular(vec![::rlp::encode(&(&H512::from(signature) as &[u8])).into_vec()])
             } else {
                 ctrace!(SOLO_AUTHORITY, "generate_seal: FAIL: accounts secret key unavailable");
             }
@@ -201,7 +201,7 @@ impl ConsensusEngine<CodeChainMachine> for SoloAuthority {
         self.signer.write().set(ap, address);
     }
 
-    fn sign(&self, hash: H256) -> Result<ECDSASignature, Error> {
+    fn sign(&self, hash: H256) -> Result<SchnorrSignature, Error> {
         self.signer.read().sign(hash).map_err(Into::into)
     }
 

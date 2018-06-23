@@ -17,7 +17,7 @@
 use super::crypto::Crypto;
 use account::Version;
 use ccrypto;
-use ckeys::{sign_ecdsa, Address, ECDSASignature, KeyPair, Message, Public};
+use ckeys::{sign_schnorr, Address, KeyPair, Message, Public, SchnorrSignature};
 use {json, Error};
 
 /// Account representation.
@@ -89,9 +89,9 @@ impl SafeAccount {
     }
 
     /// Sign a message.
-    pub fn sign(&self, password: &str, message: &Message) -> Result<ECDSASignature, Error> {
+    pub fn sign(&self, password: &str, message: &Message) -> Result<SchnorrSignature, Error> {
         let secret = self.crypto.secret(password)?;
-        sign_ecdsa(&secret.into(), message).map_err(From::from)
+        sign_schnorr(&secret.into(), message).map_err(From::from)
     }
 
     /// Derive public key.
@@ -124,7 +124,7 @@ impl SafeAccount {
 #[cfg(test)]
 mod tests {
     use super::SafeAccount;
-    use ckeys::{verify_ecdsa, Generator, Message, Random};
+    use ckeys::{verify_schnorr, Generator, Message, Random};
 
     #[test]
     fn sign_and_verify_public() {
@@ -133,7 +133,7 @@ mod tests {
         let message = Message::default();
         let account = SafeAccount::create(&keypair, [0u8; 16], password, 10240, "Test".to_owned(), "{}".to_owned());
         let signature = account.unwrap().sign(password, &message).unwrap();
-        assert!(verify_ecdsa(keypair.public(), &signature, &message).unwrap());
+        assert!(verify_schnorr(keypair.public(), &signature, &message).unwrap());
     }
 
     #[test]
