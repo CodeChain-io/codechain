@@ -15,8 +15,8 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ccrypto::{blake256, ripemd160};
-use ckeys::{verify_ecdsa, ECDSASignature};
-use ctypes::{H256, H520, Public};
+use ckeys::{verify_schnorr, SchnorrSignature};
+use ctypes::{H256, H512, Public};
 
 use instruction::Instruction;
 
@@ -204,8 +204,8 @@ pub fn execute(
             }
             Instruction::ChkSig => {
                 let pubkey = Public::from_slice(stack.pop()?.assert_len(64)?.as_ref());
-                let signature = ECDSASignature::from(H520::from(stack.pop()?.assert_len(65)?.as_ref()));
-                let result = match verify_ecdsa(&pubkey, &signature, &tx_hash) {
+                let signature = SchnorrSignature::from(H512::from(stack.pop()?.assert_len(64)?.as_ref()));
+                let result = match verify_schnorr(&pubkey, &signature, &tx_hash) {
                     Ok(true) => 1,
                     _ => 0,
                 };

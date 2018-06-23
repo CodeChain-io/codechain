@@ -33,7 +33,7 @@ pub use self::validator_set::ValidatorSet;
 use std::fmt;
 use std::sync::{Arc, Weak};
 
-use ckeys::ECDSASignature;
+use ckeys::SchnorrSignature;
 use cnetwork::NetworkExtension;
 use ctypes::{Address, Bytes, H256};
 use unexpected::{Mismatch, OutOfBounds};
@@ -203,7 +203,7 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
     fn set_signer(&self, _ap: Arc<AccountProvider>, _address: Address) {}
 
     /// Sign using the EngineSigner, to be used for consensus parcel signing.
-    fn sign(&self, _hash: H256) -> Result<ECDSASignature, Error> {
+    fn sign(&self, _hash: H256) -> Result<SchnorrSignature, Error> {
         unimplemented!()
     }
 

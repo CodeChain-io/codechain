@@ -698,7 +698,6 @@ impl MemPool {
                 balance: client_account.balance,
             })
         }
-        parcel.check_low_s()?;
         // No invalid parcels beyond this point.
         let id = self.next_parcel_id;
         self.next_parcel_id += 1;

@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ccore::{Action, LocalizedParcel, SignedParcel};
-use ctypes::{H256, U256};
+use ctypes::{H256, H512, U256};
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -28,9 +28,7 @@ pub struct Parcel {
     pub network_id: u64,
     pub action: Action,
     pub hash: H256,
-    pub v: u8,
-    pub r: U256,
-    pub s: U256,
+    pub sig: H512,
 }
 
 impl From<LocalizedParcel> for Parcel {
@@ -45,9 +43,7 @@ impl From<LocalizedParcel> for Parcel {
             network_id: p.network_id,
             action: p.action.clone(),
             hash: p.hash(),
-            v: sig.v(),
-            r: sig.r().into(),
-            s: sig.s().into(),
+            sig: sig.into(),
         }
     }
 }
@@ -64,9 +60,7 @@ impl From<SignedParcel> for Parcel {
             network_id: p.network_id,
             action: p.action.clone(),
             hash: p.hash(),
-            v: sig.v(),
-            r: sig.r().into(),
-            s: sig.s().into(),
+            sig: sig.into(),
         }
     }
 }

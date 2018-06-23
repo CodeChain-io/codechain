@@ -23,7 +23,7 @@ use std::time::{Duration, Instant};
 use account::SafeAccount;
 use accounts_dir::KeyDirectory;
 use ccrypto::KEY_ITERATIONS;
-use ckeys::{Address, ECDSASignature, KeyPair, Message, Public, Secret};
+use ckeys::{Address, KeyPair, Message, Public, SchnorrSignature, Secret};
 use json::{self, OpaqueKeyFile, Uuid};
 use random::Random;
 use {Error, OpaqueSecret, SecretStore, SimpleSecretStore};
@@ -87,7 +87,7 @@ impl SimpleSecretStore for KeyStore {
         self.store.remove_account(account, password)
     }
 
-    fn sign(&self, account: &Address, password: &str, message: &Message) -> Result<ECDSASignature, Error> {
+    fn sign(&self, account: &Address, password: &str, message: &Message) -> Result<SchnorrSignature, Error> {
         self.get(account)?.sign(password, message)
     }
 }
@@ -377,7 +377,7 @@ impl SimpleSecretStore for KeyMultiStore {
         self.get_matching(account_ref, password)?.into_iter().nth(0).map(Into::into).ok_or(Error::InvalidPassword)
     }
 
-    fn sign(&self, account: &Address, password: &str, message: &Message) -> Result<ECDSASignature, Error> {
+    fn sign(&self, account: &Address, password: &str, message: &Message) -> Result<SchnorrSignature, Error> {
         let accounts = self.get_matching(account, password)?;
         match accounts.first() {
             Some(ref account) => account.sign(password, message),

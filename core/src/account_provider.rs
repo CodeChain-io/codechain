@@ -18,7 +18,7 @@ use std::fmt;
 use std::sync::Arc;
 
 use ckeys::{
-    public_to_address, ECDSASignature, Error as KeysError, Generator, KeyPair, Message, Private, Public, Random,
+    public_to_address, Error as KeysError, Generator, KeyPair, Message, Private, Public, Random, SchnorrSignature,
 };
 use ckeystore::accounts_dir::MemoryDirectory;
 use ckeystore::{Error as KeystoreError, KeyStore, SimpleSecretStore};
@@ -97,7 +97,7 @@ impl AccountProvider {
         Ok(address)
     }
 
-    pub fn sign(&self, address: Address, message: Message) -> Result<ECDSASignature, SignError> {
+    pub fn sign(&self, address: Address, message: Message) -> Result<SchnorrSignature, SignError> {
         let signature = self.keystore.read().sign(&address, "password", &message)?;
         Ok(signature)
     }

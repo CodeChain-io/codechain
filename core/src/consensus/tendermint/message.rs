@@ -17,8 +17,8 @@
 use std::cmp;
 
 use ccrypto::blake256;
-use ckeys::{public_to_address, recover_ecdsa};
-use ctypes::{Address, Bytes, H256, H520};
+use ckeys::{public_to_address, recover_schnorr};
+use ctypes::{Address, Bytes, H256, H512};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::super::super::error::Error;
@@ -123,11 +123,11 @@ impl Decodable for TendermintMessage {
 pub struct ConsensusMessage {
     pub vote_step: VoteStep,
     pub block_hash: Option<BlockHash>,
-    pub signature: H520,
+    pub signature: H512,
 }
 
 impl ConsensusMessage {
-    pub fn new(signature: H520, height: Height, view: View, step: Step, block_hash: Option<BlockHash>) -> Self {
+    pub fn new(signature: H512, height: Height, view: View, step: Step, block_hash: Option<BlockHash>) -> Self {
         ConsensusMessage {
             signature,
             block_hash,
@@ -146,7 +146,7 @@ impl ConsensusMessage {
     pub fn verify(&self) -> Result<Address, Error> {
         let full_rlp = ::rlp::encode(self);
         let block_info = ::rlp::Rlp::new(&full_rlp).at(1);
-        let public_key = recover_ecdsa(&self.signature.into(), &blake256(block_info.as_raw()))?;
+        let public_key = recover_schnorr(&self.signature.into(), &blake256(block_info.as_raw()))?;
         Ok(public_to_address(&public_key))
     }
 }
@@ -158,7 +158,7 @@ pub fn consensus_view(header: &Header) -> Result<View, ::rlp::DecoderError> {
 }
 
 /// Proposal signature.
-pub fn proposal_signature(header: &Header) -> Result<H520, ::rlp::DecoderError> {
+pub fn proposal_signature(header: &Header) -> Result<H512, ::rlp::DecoderError> {
     UntrustedRlp::new(header.seal().get(1).expect("seal passed basic verification; seal has 3 fields; qed").as_slice())
         .as_val()
 }
@@ -166,7 +166,7 @@ pub fn proposal_signature(header: &Header) -> Result<H520, ::rlp::DecoderError> 
 impl Message for ConsensusMessage {
     type Round = VoteStep;
 
-    fn signature(&self) -> H520 {
+    fn signature(&self) -> H512 {
         self.signature
     }
 
@@ -215,7 +215,7 @@ pub fn message_info_rlp(vote_step: &VoteStep, block_hash: Option<BlockHash>) -> 
     s.out()
 }
 
-pub fn message_full_rlp(signature: &H520, vote_info: &Bytes) -> Bytes {
+pub fn message_full_rlp(signature: &H512, vote_info: &Bytes) -> Bytes {
     let mut s = RlpStream::new_list(2);
     s.append(signature).append_raw(vote_info, 1);
     s.out()
