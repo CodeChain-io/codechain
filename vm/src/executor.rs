@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ccrypto::{blake256, ripemd160};
+use ccrypto::{blake256, keccak256, ripemd160};
 use ckeys::{verify_ecdsa, ECDSASignature};
 use ctypes::{H256, H520, Public};
 
@@ -219,6 +219,10 @@ pub fn execute(
             Instruction::Ripemd160 => {
                 let value = stack.pop()?;
                 stack.push(Item(ripemd160(value).to_vec()))?;
+            }
+            Instruction::Keccak256 => {
+                let value = stack.pop()?;
+                stack.push(Item(keccak256(value).to_vec()))?;
             }
         }
         pc += 1;

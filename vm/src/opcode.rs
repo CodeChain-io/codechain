@@ -32,3 +32,4 @@ pub const CHKSIG: u8 = 0x80;
 pub const BLAKE256: u8 = 0x90;
 pub const SHA256: u8 = 0x91;
 pub const RIPEMD160: u8 = 0x92;
+pub const KECCAK256: u8 = 0x93;
