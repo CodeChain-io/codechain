@@ -65,6 +65,7 @@ test_no_argument_opcode!(CHKSIG, ChkSig);
 test_no_argument_opcode!(BLAKE256, Blake256);
 test_no_argument_opcode!(SHA256, Sha256);
 test_no_argument_opcode!(RIPEMD160, Ripemd160);
+test_no_argument_opcode!(KECCAK256, Keccak256);
 
 #[test]
 #[allow(non_snake_case)]

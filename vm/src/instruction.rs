@@ -34,4 +34,5 @@ pub enum Instruction {
     Blake256,
     Sha256,
     Ripemd160,
+    Keccak256,
 }
