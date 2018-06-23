@@ -14,10 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ctypes::H160;
+use ctypes::{H160, H256};
 use rcrypto::digest::Digest;
 use rcrypto::ripemd160::Ripemd160;
 use rcrypto::sha1::Sha1;
+use rcrypto::sha3::Sha3;
 
 /// RIPEMD160
 #[inline]
@@ -41,9 +42,20 @@ pub fn sha1<T: AsRef<[u8]>>(s: T) -> H160 {
     result
 }
 
+/// KECCAK256
+#[inline]
+pub fn keccak256<T: AsRef<[u8]>>(s: T) -> H256 {
+    let input = s.as_ref();
+    let mut result = H256::default();
+    let mut hasher = Sha3::keccak256();
+    hasher.input(input);
+    hasher.result(&mut result);
+    result
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{ripemd160, sha1};
+    use super::{keccak256, ripemd160, sha1};
 
     #[test]
     fn test_ripemd160() {
@@ -56,6 +68,13 @@ mod tests {
     fn test_sha1() {
         let expected = "aaf4c61ddcc5e8a2dabede0f3b482cd9aea9434d".into();
         let result = sha1(b"hello");
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_keccak256() {
+        let expected = "1c8aff950685c2ed4bc3174f3472287b56d9517b9c948127319a09a7a36deac8".into();
+        let result = keccak256(b"hello");
         assert_eq!(result, expected);
     }
 }
