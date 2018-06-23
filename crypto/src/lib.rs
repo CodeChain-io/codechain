@@ -35,7 +35,7 @@ pub const KEY_LENGTH_AES: usize = KEY_LENGTH / 2;
 
 pub use self::blake::*;
 
-pub use self::hash::{ripemd160, sha1};
+pub use self::hash::{keccak256, ripemd160, sha1};
 
 pub fn derive_key_iterations(password: &str, salt: &[u8; 32], c: u32) -> (Vec<u8>, Vec<u8>) {
     let mut derived_key = [0u8; KEY_LENGTH];
