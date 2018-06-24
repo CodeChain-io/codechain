@@ -94,8 +94,10 @@ impl NetworkExtension for Extension {
                     (Some(api), Some(routing_table)) => {
                         let mut addresses = routing_table.all_addresses().into_iter().collect::<Vec<_>>();
                         thread_rng().shuffle(&mut addresses);
-                        let addresses =
-                            addresses.into_iter().take(::std::cmp::min(self.config.t_refresh as usize, len)).collect();
+                        let addresses = addresses
+                            .into_iter()
+                            .take(::std::cmp::min(self.config.bucket_size, len) as usize)
+                            .collect();
                         let response = Message::Response(addresses).rlp_bytes();
                         api.send(&node, &response);
                     }
@@ -123,7 +125,7 @@ impl NetworkExtension for Extension {
                 let nodes = self.nodes.read();
 
                 api.as_ref().map(|api| {
-                    let request = Message::Request(self.config.t_refresh as usize).rlp_bytes();
+                    let request = Message::Request(self.config.bucket_size).rlp_bytes();
                     for node in nodes.iter() {
                         api.send(&node, &request);
                     }

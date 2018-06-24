@@ -19,7 +19,7 @@ use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 #[derive(Debug, PartialEq)]
 pub enum Message {
-    Request(usize),
+    Request(u8),
     Response(Vec<SocketAddr>),
 }
 
