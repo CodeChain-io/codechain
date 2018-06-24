@@ -14,19 +14,15 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod command;
 mod config;
-mod event;
 mod extension;
-mod kademlia;
 mod message;
 mod node_id;
-mod routing_table;
 
 
 pub use self::config::Config;
 pub use self::extension::Extension;
-use self::node_id::NodeId;
+use self::message::Message;
 
 
 const B: usize = 32 * 8;

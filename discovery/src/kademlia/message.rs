@@ -14,81 +14,23 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use cnetwork::SocketAddr;
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
-use super::NodeId;
-
-pub type Id = u64;
-
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Message {
-    FindNode {
-        id: Id,
-        sender: NodeId,
-        target: NodeId,
-        bucket_size: u8,
-    },
-    Nodes {
-        id: Id,
-        sender: NodeId,
-        nodes: Vec<NodeId>,
-    },
+    FindNode(u8),
+    Nodes(Vec<SocketAddr>),
 }
-
-impl Message {
-    #[allow(dead_code)]
-    pub fn id(&self) -> &Id {
-        match self {
-            Message::FindNode {
-                id,
-                ..
-            } => id,
-            Message::Nodes {
-                id,
-                ..
-            } => id,
-        }
-    }
-
-    pub fn sender(&self) -> &NodeId {
-        match self {
-            Message::FindNode {
-                sender,
-                ..
-            } => sender,
-            Message::Nodes {
-                sender,
-                ..
-            } => sender,
-        }
-    }
-}
-
-type ProtocolId = u64;
-
-const FIND_NODE_ID: ProtocolId = 0x2;
-const NODES_ID: ProtocolId = 0x3;
 
 impl Encodable for Message {
     fn rlp_append(&self, s: &mut RlpStream) {
         match self {
-            Message::FindNode {
-                id,
-                sender,
-                target,
-                bucket_size,
-            } => {
-                s.begin_list(5).append(&FIND_NODE_ID).append(id).append(sender).append(target).append(bucket_size);
+            Message::FindNode(len) => {
+                s.append(len);
             }
-            Message::Nodes {
-                id,
-                sender,
-                nodes,
-            } => {
-                s.begin_list(3 + nodes.len()).append(&NODES_ID).append(id).append(sender);
-                for node_id in nodes.iter() {
-                    s.append(node_id);
-                }
+            Message::Nodes(addresses) => {
+                s.append_list(addresses);
             }
         }
     }
@@ -96,44 +38,78 @@ impl Encodable for Message {
 
 impl Decodable for Message {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
-        let protocol = rlp.val_at::<ProtocolId>(0)?;
-        let id = rlp.val_at(1)?;
-        let sender = rlp.val_at(2)?;
-        match protocol {
-            FIND_NODE_ID => {
-                if rlp.item_count()? != 5 {
-                    return Err(DecoderError::RlpIncorrectListLen)
-                }
-                let target = rlp.val_at(3)?;
-                let bucket_size = rlp.val_at(4)?;
-                Ok(Message::FindNode {
-                    id,
-                    sender,
-                    target,
-                    bucket_size,
-                })
-            }
-            NODES_ID => {
-                if (rlp.item_count()? - 3) % 2 != 0 {
-                    return Err(DecoderError::RlpIncorrectListLen)
-                }
-                let nodes = {
-                    let mut nodes: Vec<NodeId> = vec![];
-                    let mut i = 3;
-                    let len = rlp.item_count()?;
-                    while i < len {
-                        let node = rlp.val_at(i)?;
-                        nodes.push(node);
-                    }
-                    nodes
-                };
-                Ok(Message::Nodes {
-                    id,
-                    sender,
-                    nodes,
-                })
-            }
-            _ => Err(DecoderError::Custom("Invalid protocol id")),
+        if rlp.is_int() {
+            Ok(Message::FindNode(rlp.as_val()?))
+        } else {
+            Ok(Message::Nodes(rlp.as_list()?))
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn encode_and_decode_request_0() {
+        let request = Message::FindNode(0);
+        let encoded = request.rlp_bytes();
+        let rlp = UntrustedRlp::new(&encoded);
+        let decoded: Message = Decodable::decode(&rlp).unwrap();
+        assert_eq!(request, decoded);
+    }
+
+    #[test]
+    fn encode_and_decode_request_1() {
+        let request = Message::FindNode(1);
+        let encoded = request.rlp_bytes();
+        let rlp = UntrustedRlp::new(&encoded);
+        let decoded: Message = Decodable::decode(&rlp).unwrap();
+        assert_eq!(request, decoded);
+    }
+
+    #[test]
+    fn encode_and_decode_request_2() {
+        let request = Message::FindNode(2);
+        let encoded = request.rlp_bytes();
+        let rlp = UntrustedRlp::new(&encoded);
+        let decoded: Message = Decodable::decode(&rlp).unwrap();
+        assert_eq!(request, decoded);
+    }
+
+    #[test]
+    fn encode_and_decode_request_3() {
+        let request = Message::FindNode(3);
+        let encoded = request.rlp_bytes();
+        let rlp = UntrustedRlp::new(&encoded);
+        let decoded: Message = Decodable::decode(&rlp).unwrap();
+        assert_eq!(request, decoded);
+    }
+
+    #[test]
+    fn encode_and_decode_empty_response() {
+        let request = Message::Nodes(vec![]);
+        let encoded = request.rlp_bytes();
+        let rlp = UntrustedRlp::new(&encoded);
+        let decoded: Message = Decodable::decode(&rlp).unwrap();
+        assert_eq!(request, decoded);
+    }
+
+    #[test]
+    fn encode_and_decode_one_response() {
+        let request = Message::Nodes(vec![SocketAddr::v4(127, 0, 0, 1, 3480)]);
+        let encoded = request.rlp_bytes();
+        let rlp = UntrustedRlp::new(&encoded);
+        let decoded: Message = Decodable::decode(&rlp).unwrap();
+        assert_eq!(request, decoded);
+    }
+
+    #[test]
+    fn encode_and_decode_two_response() {
+        let request = Message::Nodes(vec![SocketAddr::v4(127, 0, 0, 1, 3480), SocketAddr::v4(127, 0, 0, 1, 3481)]);
+        let encoded = request.rlp_bytes();
+        let rlp = UntrustedRlp::new(&encoded);
+        let decoded: Message = Decodable::decode(&rlp).unwrap();
+        assert_eq!(request, decoded);
     }
 }

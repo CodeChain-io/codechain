@@ -23,10 +23,6 @@ extern crate rand;
 extern crate rlp;
 extern crate time;
 
-#[cfg(test)]
-#[macro_use]
-extern crate lazy_static;
-
 extern crate codechain_crypto as ccrypto;
 extern crate codechain_keys as ckeys;
 #[macro_use]

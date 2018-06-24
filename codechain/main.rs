@@ -207,7 +207,7 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
                     cinfo!(DISCOVERY, "Node runs with unstructured discovery");
                 }
                 Some(config::Discovery::Kademlia(config)) => {
-                    let kademlia = Arc::new(KademliaExtension::new(config));
+                    let kademlia = KademliaExtension::new(config);
                     service.set_routing_table(&*kademlia);
                     service.register_extension(kademlia)?;
                     cinfo!(DISCOVERY, "Node runs with kademlia discovery");

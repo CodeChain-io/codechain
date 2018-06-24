@@ -14,144 +14,41 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::{HashMap, VecDeque};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::collections::HashSet;
 use std::sync::Arc;
 
-use cnetwork::{Api, DiscoveryApi, IntoSocketAddr, NetworkExtension, NodeId, RoutingTable, SocketAddr, TimerToken};
+use cnetwork::{Api, DiscoveryApi, IntoSocketAddr, NetworkExtension, NodeId, RoutingTable, TimerToken};
 use parking_lot::{Mutex, RwLock};
-use rlp::{Decodable, DecoderError, Encodable, UntrustedRlp};
+use rlp::{Decodable, Encodable, UntrustedRlp};
 use time::Duration;
 
-use super::command::Command;
-use super::config::Config;
-use super::event::Event;
-use super::kademlia::Kademlia;
-use super::message::Message;
-
+use super::node_id::{address_to_hash, KademliaId};
+use super::Config;
+use super::Message;
 
 pub struct Extension {
-    kademlias: RwLock<HashMap<NodeId, Kademlia>>,
     config: Config,
-    events: Mutex<VecDeque<Event>>,
-    event_fired: AtomicBool,
-
     routing_table: RwLock<Option<Arc<RoutingTable>>>,
     api: Mutex<Option<Arc<Api>>>,
+    nodes: RwLock<HashSet<NodeId>>, // FIXME: Find the optimized data structure for it
 }
-
-const CONSUME_EVENT_TOKEN: TimerToken = 0;
-const REFRESH_TOKEN: TimerToken = 1;
 
 impl Extension {
-    pub fn new(config: Config) -> Self {
-        Self {
-            kademlias: RwLock::new(HashMap::new()),
+    pub fn new(config: Config) -> Arc<Self> {
+        Arc::new(Self {
             config,
-            events: Mutex::new(VecDeque::new()),
-            event_fired: AtomicBool::new(false),
-
             routing_table: RwLock::new(None),
             api: Mutex::new(None),
-        }
-    }
-
-    fn on_receive(&self, node: &NodeId, message: &[u8]) -> ::std::result::Result<(), DecoderError> {
-        let sender = node.into_addr();
-        let rlp = UntrustedRlp::new(message);
-        let message: Message = Decodable::decode(&rlp)?;
-        let event = Event::Message {
-            message,
-            sender,
-        };
-        self.push_event(event);
-        Ok(())
-    }
-
-    fn push_event(&self, event: Event) {
-        let already_fired = {
-            let mut events = self.events.lock();
-            events.push_back(event);
-            self.event_fired.swap(true, Ordering::SeqCst)
-        };
-        if !already_fired {
-            let api = self.api.lock();
-            if let Some(api) = &*api {
-                api.set_timer_once(CONSUME_EVENT_TOKEN, Duration::milliseconds(0))
-                    .expect("Consume event must be registered");
-            }
-        }
-    }
-
-    fn consume_events(&self) {
-        loop {
-            let event = {
-                let mut events = self.events.lock();
-                let event = events.pop_front();
-                if event.is_none() {
-                    let _ = self.event_fired.swap(false, Ordering::SeqCst);
-                    break
-                }
-                event.expect("Already check none")
-            };
-
-            let commands = {
-                match event {
-                    Event::Message {
-                        message,
-                        sender,
-                    } => {
-                        let mut kademlias = self.kademlias.write();
-                        kademlias.values_mut().flat_map(|kademlia| kademlia.handle_message(&message, &sender)).collect()
-                    }
-                    Event::Command(ref command) => self.handle_command(command),
-                }
-            };
-
-            for command in commands {
-                self.push_event(Event::Command(command));
-            }
-        }
-    }
-
-    fn handle_command(&self, command: &Command) -> Vec<Command> {
-        match command {
-            Command::Verify => {
-                let mut kademlias = self.kademlias.write();
-                kademlias.values_mut().flat_map(|kademlia| kademlia.handle_verify_command()).collect()
-            }
-            Command::Refresh => {
-                let mut kademlias = self.kademlias.write();
-                kademlias.values_mut().flat_map(|kademlia| kademlia.handle_refresh_command()).collect()
-            }
-            Command::Send {
-                message,
-                target,
-            } => {
-                self.handle_send_command(&message, &target);
-                vec![]
-            }
-        }
-    }
-
-    fn handle_send_command(&self, message: &Message, target: &SocketAddr) {
-        let api = self.api.lock();
-        if let Some(api) = &*api {
-            let node = target.into();
-            api.send(&node, &message.rlp_bytes().to_vec())
-        }
+            nodes: RwLock::new(HashSet::new()),
+        })
     }
 }
 
-impl DiscoveryApi for Extension {
-    fn set_routing_table(&self, routing_table: Arc<RoutingTable>) {
-        *self.routing_table.write() = Some(routing_table);
-    }
-}
+const REFRESH_TOKEN: TimerToken = 0;
 
 impl NetworkExtension for Extension {
     fn name(&self) -> String {
-        "kademlia".to_string()
+        "unstructured-discovery".to_string()
     }
 
     fn need_encryption(&self) -> bool {
@@ -163,130 +60,92 @@ impl NetworkExtension for Extension {
     }
 
     fn on_initialize(&self, api: Arc<Api>) {
-        let mut api_guard = self.api.lock();
-        let t_refresh = Duration::milliseconds(self.config.t_refresh as i64);
-        api.set_timer(REFRESH_TOKEN, t_refresh).expect("Refresh must be registered");
-        *api_guard = Some(Arc::clone(&api));
+        let mut api_lock = self.api.lock();
+
+        api.set_timer(REFRESH_TOKEN, Duration::milliseconds(self.config.t_refresh as i64))
+            .expect("Refresh msut be registered");
+
+        *api_lock = Some(api);
     }
 
     fn on_node_added(&self, node: &NodeId, _version: u64) {
-        let mut kademlias = self.kademlias.write();
-        let routing_table = self.routing_table.read();
-
-        routing_table.as_ref().map(|routing_table| {
-            match routing_table.local_node_id(node) {
-                Some(local_node_id) => {
-                    if !kademlias.contains_key(&local_node_id) {
-                        let t = kademlias.insert(
-                            local_node_id.clone(),
-                            Kademlia::new(local_node_id, self.config.k, self.config.t_refresh),
-                        );
-                        debug_assert!(t.is_none());
-                    }
-                }
-                None => {
-                    cwarn!(DISCOVERY, "Cannot find routing table");
-                    return
-                }
-            };
-            let address = node.into_addr();
-            for kademlia in kademlias.values_mut() {
-                let event = {
-                    let command = kademlia.find_node_command(address.clone());
-                    Event::Command(command)
-                };
-                self.push_event(event);
-            }
-        });
+        let mut nodes = self.nodes.write();
+        nodes.insert(node.clone());
     }
 
     fn on_node_removed(&self, node: &NodeId) {
-        let mut kademlias = self.kademlias.write();
-        let address = node.into_addr();
-        kademlias
-            .values_mut()
-            .map(|ref mut kademlia| {
-                kademlia.remove(&address);
-            })
-            .collect::<Vec<_>>();
+        let mut nodes = self.nodes.write();
+        nodes.remove(node);
     }
 
     fn on_message(&self, node: &NodeId, message: &[u8]) {
-        if let Err(err) = self.on_receive(node, message) {
-            cwarn!(DISCOVERY, "Invalid message from {} : {:?}", node, err);
+        let message = match Message::decode(&UntrustedRlp::new(&message)) {
+            Ok(message) => message,
+            Err(err) => {
+                cwarn!(DISCOVERY, "Invalid message from {} : {:?}", node, err);
+                return
+            }
+        };
+        match message {
+            Message::FindNode(len) => {
+                let routing_table = self.routing_table.read();
+                let api = self.api.lock();
+                match (&*api, &*routing_table) {
+                    (Some(api), Some(routing_table)) => {
+                        let datum = address_to_hash(&node.into_addr());
+                        let mut addresses = routing_table
+                            .all_addresses()
+                            .into_iter()
+                            .map(|address| KademliaId::new(address.clone(), &datum))
+                            .collect::<Vec<_>>();
+
+                        addresses.sort_unstable();
+
+                        let addresses = addresses
+                            .into_iter()
+                            .map(|kademlia_id| kademlia_id.into())
+                            .take(::std::cmp::min(self.config.k, len) as usize)
+                            .collect();
+                        let response = Message::Nodes(addresses).rlp_bytes();
+                        api.send(&node, &response);
+                    }
+                    _ => {}
+                }
+            }
+            Message::Nodes(addresses) => {
+                let routing_table = self.routing_table.read();
+                match routing_table.as_ref() {
+                    None => cwarn!(DISCOVERY, "No routing table"),
+                    Some(routing_table) => {
+                        for address in addresses.into_iter() {
+                            routing_table.add_candidate(address);
+                        }
+                    }
+                }
+            }
         }
     }
 
     fn on_timeout(&self, timer: TimerToken) {
         match timer {
-            CONSUME_EVENT_TOKEN => {
-                self.consume_events();
-            }
             REFRESH_TOKEN => {
-                let command = Command::Refresh;
-                let event = Event::Command(command);
-                self.push_event(event);
+                let mut api = self.api.lock();
+                let nodes = self.nodes.read();
+
+                api.as_ref().map(|api| {
+                    let request = Message::FindNode(self.config.k).rlp_bytes();
+                    for node in nodes.iter() {
+                        api.send(&node, &request);
+                    }
+                });
             }
             _ => unreachable!(),
         }
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use cnetwork::{IntoSocketAddr, NodeId as NetworkNodeId, TestNetworkCall, TestNetworkClient};
-
-    use super::*;
-
-    lazy_static! {
-        static ref NODES: [NetworkNodeId; 1] = [SocketAddr::v4(127, 0, 0, 1, 3480).into(),];
-    }
-
-    fn dummy_routing_table() -> Arc<RoutingTable> {
-        let routing_table = RoutingTable::new();
-        let node_id = NODES[0].clone();
-        routing_table.add_candidate(node_id.into_addr().clone());
-        routing_table.add_node(&node_id.into_addr(), node_id.clone());
-        routing_table
-    }
-
-    #[test]
-    fn test_add_node() {
-        let config = Config::new(None, None);
-        let default_refresh = config.t_refresh;
-        let extension = Arc::new(Extension::new(config));
-
-        let mut client = TestNetworkClient::new();
-        client.register_extension(extension.clone());
-        extension.set_routing_table(dummy_routing_table());
-
-        let command = client.pop_call(&extension.name());
-        assert_eq!(
-            Some(TestNetworkCall::SetTimer {
-                token: 1,
-                duration: Duration::milliseconds(default_refresh as i64),
-            }),
-            command
-        );
-
-        let command = client.pop_call(&extension.name());
-        assert_eq!(None, command);
-
-        client.add_node(&extension.name(), NODES[0].clone());
-
-        let command = client.pop_call(&extension.name());
-        assert_eq!(
-            Some(TestNetworkCall::SetTimerOnce {
-                token: 0,
-                duration: Duration::milliseconds(0),
-            }),
-            command
-        );
-
-        let command = client.pop_call(&extension.name());
-        assert_eq!(None, command);
-
-        let command = client.pop_call(&extension.name());
-        assert_eq!(None, command);
+impl DiscoveryApi for Extension {
+    fn set_routing_table(&self, routing_table: Arc<RoutingTable>) {
+        *self.routing_table.write() = Some(routing_table);
     }
 }

@@ -18,16 +18,33 @@ use std::net::IpAddr;
 
 use ccrypto::Blake;
 
-use cnetwork::IntoSocketAddr;
-use cnetwork::NodeId as NetworkNodeId;
+use cnetwork::{IntoSocketAddr, NodeId, SocketAddr};
 use ctypes::H256;
 
 use super::B;
 
-pub type NodeId = NetworkNodeId;
+#[derive(Eq, Ord, PartialEq, PartialOrd)]
+pub struct KademliaId {
+    distance: usize,
+    node_id: NodeId,
+}
 
-fn node_id_to_hash(lhs: &NodeId) -> H256 {
-    let addr = lhs.into_addr();
+impl KademliaId {
+    pub fn new(address: SocketAddr, datum: &H256) -> Self {
+        Self {
+            distance: log2_distance(&address, datum),
+            node_id: address.into(),
+        }
+    }
+}
+
+impl Into<SocketAddr> for KademliaId {
+    fn into(self) -> SocketAddr {
+        self.node_id.into_addr()
+    }
+}
+
+pub fn address_to_hash(addr: &SocketAddr) -> H256 {
     let ip = addr.ip();
     let port = addr.port();
     match ip {
@@ -62,11 +79,10 @@ fn node_id_to_hash(lhs: &NodeId) -> H256 {
     }
 }
 
-pub fn log2_distance_between_nodes(lhs: &NodeId, rhs: &NodeId) -> usize {
-    let lhs = node_id_to_hash(lhs);
-    let rhs = node_id_to_hash(rhs);
+fn log2_distance(addr: &SocketAddr, datum: &H256) -> usize {
+    let hash = address_to_hash(addr);
 
-    let distance = lhs ^ rhs;
+    let distance = hash ^ *datum;
     const BYTES_SIZE: usize = B / 8;
     debug_assert_eq!(B % 8, 0);
     let mut distance_as_bytes: [u8; BYTES_SIZE] = [0; BYTES_SIZE];
