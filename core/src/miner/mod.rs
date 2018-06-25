@@ -26,12 +26,12 @@ use super::account_provider::SignError;
 use super::client::{AccountData, BlockChain, BlockProducer, ImportSealedBlock, MiningBlockChainClient};
 use super::error::Error;
 use super::parcel::{SignedParcel, UnverifiedParcel};
-use super::state::StateInfo;
+use super::state::TopStateInfo;
 
 /// Miner client API
 pub trait MinerService: Send + Sync {
     /// Type representing chain state
-    type State: StateInfo + 'static;
+    type State: TopStateInfo + 'static;
 
     /// Returns miner's status.
     fn status(&self) -> MinerStatus;

@@ -60,7 +60,7 @@ use super::super::header::Header as BlockHeader;
 use super::super::miner::{Miner, MinerService, ParcelImportResult};
 use super::super::parcel::{Action, LocalizedParcel, Parcel, SignedParcel};
 use super::super::spec::Spec;
-use super::super::state::{Asset, AssetAddress, AssetScheme, AssetSchemeAddress, StateInfo};
+use super::super::state::{Asset, AssetAddress, AssetScheme, AssetSchemeAddress, ShardStateInfo, TopStateInfo};
 use super::super::state_db::StateDB;
 use super::super::types::{BlockId, BlockNumber, ParcelId, TransactionId, VerificationQueueInfo as QueueInfo};
 
@@ -436,7 +436,7 @@ impl ImportBlock for TestBlockChainClient {
     }
 }
 
-impl StateInfo for () {
+impl TopStateInfo for () {
     fn nonce(&self, _address: &Address) -> trie::Result<U256> {
         unimplemented!()
     }
@@ -446,6 +446,9 @@ impl StateInfo for () {
     fn regular_key(&self, _address: &Address) -> trie::Result<Option<Public>> {
         unimplemented!()
     }
+}
+
+impl ShardStateInfo for () {
     fn asset_scheme(&self, _a: &AssetSchemeAddress) -> trie::Result<Option<AssetScheme>> {
         unimplemented!()
     }

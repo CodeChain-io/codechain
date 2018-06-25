@@ -1,16 +1,16 @@
 // Copyright 2015-2017 Parity Technologies (UK) Ltd.
 // This file is part of Parity.
-
+//
 // Parity is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
-
+//
 // Parity is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-
+//
 // You should have received a copy of the GNU General Public License
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
@@ -45,12 +45,14 @@ mod asset;
 mod asset_scheme;
 mod backend;
 mod cache;
+mod info;
 
 pub use self::account::Account;
 pub use self::asset::{Asset, AssetAddress};
 pub use self::asset_scheme::{AssetScheme, AssetSchemeAddress};
 pub use self::backend::{Backend, Basic as BasicBackend, ShardBackend, TopBackend};
 pub use self::cache::CacheableItem;
+pub use self::info::{ShardStateInfo, TopStateInfo};
 
 /// Used to return information about an `State::apply` operation.
 pub enum ParcelOutcome {
@@ -128,23 +130,7 @@ where
     trie_factory: TrieFactory,
 }
 
-/// Provides subset of `State` methods to query state information
-pub trait StateInfo {
-    /// Get the nonce of account `a`.
-    fn nonce(&self, a: &Address) -> trie::Result<U256>;
-
-    /// Get the balance of account `a`.
-    fn balance(&self, a: &Address) -> trie::Result<U256>;
-
-    /// Get the regular key of account `a`.
-    fn regular_key(&self, a: &Address) -> trie::Result<Option<Public>>;
-
-    /// Get the asset.
-    fn asset_scheme(&self, a: &AssetSchemeAddress) -> trie::Result<Option<AssetScheme>>;
-    fn asset(&self, a: &AssetAddress) -> trie::Result<Option<Asset>>;
-}
-
-impl<B> StateInfo for State<B>
+impl<B> TopStateInfo for State<B>
 where
     B: Backend + TopBackend + ShardBackend,
 {
@@ -157,7 +143,12 @@ where
     fn regular_key(&self, a: &Address) -> trie::Result<Option<Public>> {
         State::regular_key(self, a)
     }
+}
 
+impl<B> ShardStateInfo for State<B>
+where
+    B: Backend + TopBackend + ShardBackend,
+{
     fn asset_scheme(&self, a: &AssetSchemeAddress) -> trie::Result<Option<AssetScheme>> {
         State::asset_scheme(self, a)
     }
