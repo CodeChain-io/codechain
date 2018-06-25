@@ -42,7 +42,7 @@ use super::super::miner::{Miner, MinerService};
 use super::super::parcel::{LocalizedParcel, SignedParcel, UnverifiedParcel};
 use super::super::service::ClientIoMessage;
 use super::super::spec::Spec;
-use super::super::state::State;
+use super::super::state::{State, TopStateInfo};
 use super::super::state_db::StateDB;
 use super::super::types::{
     BlockId, BlockNumber, BlockStatus, ParcelId, TransactionId, VerificationQueueInfo as BlockQueueInfo,
