@@ -36,7 +36,7 @@ use super::blockchain_info::BlockChainInfo;
 use super::encoded;
 use super::error::BlockImportError;
 use super::parcel::{LocalizedParcel, SignedParcel};
-use super::state::StateInfo;
+use super::state::TopStateInfo;
 use super::types::{
     BlockId, BlockNumber, BlockStatus, ParcelId, TransactionId, VerificationQueueInfo as BlockQueueInfo,
 };
@@ -93,20 +93,20 @@ pub trait Nonce {
 /// State information to be used during client query
 pub enum StateOrBlock {
     /// State to be used, may be pending
-    State(Box<StateInfo>),
+    State(Box<TopStateInfo>),
 
     /// Id of an existing block from a chain to get state from
     Block(BlockId),
 }
 
-impl<S: StateInfo + 'static> From<S> for StateOrBlock {
+impl<S: TopStateInfo + 'static> From<S> for StateOrBlock {
     fn from(info: S) -> StateOrBlock {
         StateOrBlock::State(Box::new(info) as Box<_>)
     }
 }
 
-impl From<Box<StateInfo>> for StateOrBlock {
-    fn from(info: Box<StateInfo>) -> StateOrBlock {
+impl From<Box<TopStateInfo>> for StateOrBlock {
+    fn from(info: Box<TopStateInfo>) -> StateOrBlock {
         StateOrBlock::State(info)
     }
 }
