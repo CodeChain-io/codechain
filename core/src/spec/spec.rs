@@ -31,7 +31,7 @@ use super::super::consensus::{CodeChainEngine, NullEngine, Solo, SoloAuthority, 
 use super::super::error::Error;
 use super::super::header::Header;
 use super::super::pod_state::PodState;
-use super::super::state::backend::Basic as BasicBackend;
+use super::super::state::BasicBackend;
 use super::seal::Generic as GenericSeal;
 use super::Genesis;
 

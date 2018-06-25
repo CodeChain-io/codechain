@@ -43,14 +43,13 @@ mod address;
 mod account;
 mod asset;
 mod asset_scheme;
+mod backend;
 mod cache;
-
-pub mod backend;
 
 pub use self::account::Account;
 pub use self::asset::{Asset, AssetAddress};
 pub use self::asset_scheme::{AssetScheme, AssetSchemeAddress};
-pub use self::backend::Backend;
+pub use self::backend::{Backend, Basic as BasicBackend, ShardBackend, TopBackend};
 pub use self::cache::CacheableItem;
 
 /// Used to return information about an `State::apply` operation.
@@ -116,7 +115,9 @@ type CheckpointId = usize;
 /// checkpoint can be discarded with `discard_checkpoint`. All of the orignal
 /// backed-up values are moved into a parent checkpoint (if any).
 ///
-pub struct State<B: Backend> {
+pub struct State<B>
+where
+    B: TopBackend + ShardBackend, {
     db: B,
     root: H256,
     account: Cache<Account>,
@@ -143,7 +144,10 @@ pub trait StateInfo {
     fn asset(&self, a: &AssetAddress) -> trie::Result<Option<Asset>>;
 }
 
-impl<B: Backend> StateInfo for State<B> {
+impl<B> StateInfo for State<B>
+where
+    B: Backend + TopBackend + ShardBackend,
+{
     fn nonce(&self, a: &Address) -> trie::Result<U256> {
         State::nonce(self, a)
     }
@@ -168,7 +172,10 @@ const PARCEL_BODY_CHECKPOINT: CheckpointId = 130;
 const TRANSACTION_CHECKPOINT: CheckpointId = 456;
 const TRANSACTIONS_CHECKPOINT: CheckpointId = 789;
 
-impl<B: Backend> State<B> {
+impl<B> State<B>
+where
+    B: Backend + TopBackend + ShardBackend,
+{
     /// Creates new state with empty state root
     /// Used for tests.
     #[cfg(test)]
@@ -725,7 +732,10 @@ impl<B: Backend> State<B> {
     }
 }
 
-impl<B: Backend> fmt::Debug for State<B> {
+impl<B> fmt::Debug for State<B>
+where
+    B: TopBackend + ShardBackend,
+{
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "account: {:?} asset_scheme: {:?} asset: {:?}", self.account, self.asset_scheme, self.asset)
     }
