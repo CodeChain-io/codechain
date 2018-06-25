@@ -27,7 +27,7 @@ To run CodeChain, just run
 ```
 ./target/release/codechain
 ```
-Currently only operates in standalone mode, and you can create a block by sending a parcel through [JSON-RPC](https://github.com/CodeChain-io/codechain/wiki/JSON-RPC) or [JavaScript SDK](https://api.codechain.io/).
+You can create a block by sending a parcel through [JSON-RPC](https://github.com/CodeChain-io/codechain/wiki/JSON-RPC) or [JavaScript SDK](https://api.codechain.io/).
 
 # Formatting
 
