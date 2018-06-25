@@ -18,7 +18,7 @@ use std::sync::Arc;
 
 use ccore::{
     Asset, AssetAddress, AssetScheme, AssetSchemeAddress, Balance, BlockChainClient, BlockId, BlockInfo, ChainInfo,
-    Client, Invoice, Miner, MinerService, Nonce, ParcelInvoice, RegularKey, SignedParcel,
+    Client, Invoice, Miner, MinerService, Nonce, ParcelInvoice, RegularKey, ShardStateInfo, SignedParcel,
 };
 use ctypes::{H160, H256, Public, U256};
 use rlp::UntrustedRlp;

@@ -24,6 +24,7 @@ use super::error::Error;
 use super::header::Header;
 use super::parcel::{ParcelError, SignedParcel, UnverifiedParcel};
 use super::spec::CommonParams;
+use super::state::{TopState, TopStateInfo};
 
 pub struct CodeChainMachine {
     params: CommonParams,
