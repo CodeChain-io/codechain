@@ -463,7 +463,9 @@ impl state::Backend for StateDB {
     fn as_hashdb_mut(&mut self) -> &mut HashDB {
         self.db.as_hashdb_mut()
     }
+}
 
+impl state::TopBackend for StateDB {
     fn add_to_account_cache(&mut self, addr: Address, data: Option<Account>, modified: bool) {
         self.local_account_cache.push(CacheQueueItem {
             address: addr,
@@ -472,6 +474,18 @@ impl state::Backend for StateDB {
         })
     }
 
+    fn get_cached_account(&self, addr: &Address) -> Option<Option<Account>> {
+        self.get_cached(addr, &self.account_cache)
+    }
+
+    fn get_cached_account_with<F, U>(&self, a: &Address, f: F) -> Option<U>
+    where
+        F: FnOnce(Option<&mut Account>) -> U, {
+        self.get_cached_with(a, f, &self.account_cache)
+    }
+}
+
+impl state::ShardBackend for StateDB {
     fn add_to_asset_scheme_cache(&mut self, addr: AssetSchemeAddress, item: Option<AssetScheme>, modified: bool) {
         self.local_asset_scheme_cache.push(CacheQueueItem {
             address: addr,
@@ -487,9 +501,6 @@ impl state::Backend for StateDB {
             modified,
         })
     }
-    fn get_cached_account(&self, addr: &Address) -> Option<Option<Account>> {
-        self.get_cached(addr, &self.account_cache)
-    }
 
     fn get_cached_asset_scheme(&self, hash: &AssetSchemeAddress) -> Option<Option<AssetScheme>> {
         self.get_cached(hash, &self.asset_scheme_cache)
@@ -498,20 +509,15 @@ impl state::Backend for StateDB {
     fn get_cached_asset(&self, hash: &AssetAddress) -> Option<Option<Asset>> {
         self.get_cached(hash, &self.asset_cache)
     }
-    fn get_cached_account_with<F, U>(&self, a: &Address, f: F) -> Option<U>
-    where
-        F: FnOnce(Option<&mut Account>) -> U, {
-        self.get_cached_with(a, f, &self.account_cache)
-    }
 }
 
 #[cfg(test)]
 mod tests {
-    use ctypes::{Address, H256, U256};
-    use kvdb::DBTransaction;
+    use ctypes::U256;
 
     use super::super::tests::helpers::get_temp_state_db;
-    use super::state::{Account, Asset, AssetAddress, AssetScheme, AssetSchemeAddress, Backend};
+    use super::state::{ShardBackend, TopBackend};
+    use super::*;
 
     #[test]
     fn account_cache() {
