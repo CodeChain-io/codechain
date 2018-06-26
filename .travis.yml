@@ -16,6 +16,8 @@ matrix:
     - os: linux
       sudo: required
     - os: osx
+notifications:
+  webhooks: https://webhooks.gitter.im/e/71bb03cf9abce5b02c43
 cache: cargo
 git:
   depth: 1
