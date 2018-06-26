@@ -217,12 +217,12 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
                 }
             }
 
-            if config.operating.enable_block_sync {
+            if !config.operating.no_sync {
                 let sync = BlockSyncExtension::new(client.client());
                 service.register_extension(sync.clone())?;
                 client.client().add_notify(sync.clone());
             }
-            if config.operating.enable_parcel_relay {
+            if !config.operating.no_parcel_relay {
                 service.register_extension(ParcelSyncExtension::new(client.client()))?;
             }
             if let Some(consensus_extension) = spec.engine.network_extension() {
