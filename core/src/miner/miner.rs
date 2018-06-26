@@ -65,6 +65,12 @@ impl Default for MinerOptions {
     }
 }
 
+/// Trait for notifying about new mining work
+pub trait NotifyWork: Send + Sync {
+    /// Fired when new mining job available
+    fn notify(&self, pow_hash: H256, score: U256, number: u64);
+}
+
 struct SealingWork {
     queue: SealingQueue,
     enabled: bool,
@@ -76,10 +82,13 @@ pub struct Miner {
     next_allowed_reseal: Mutex<Instant>,
     author: RwLock<Address>,
     extra_data: RwLock<Bytes>,
+    sealing_block_last_request: Mutex<u64>,
     sealing_work: Mutex<SealingWork>,
     engine: Arc<CodeChainEngine>,
     options: MinerOptions,
+
     accounts: Option<Arc<AccountProvider>>,
+    notifiers: RwLock<Vec<Box<NotifyWork>>>,
 }
 
 impl Miner {
@@ -94,12 +103,16 @@ impl Miner {
     fn new_raw(options: MinerOptions, spec: &Spec, accounts: Option<Arc<AccountProvider>>) -> Self {
         let mem_limit = options.mem_pool_memory_limit.unwrap_or_else(usize::max_value);
         let mem_pool = Arc::new(RwLock::new(MemPool::with_limits(options.mem_pool_size, mem_limit)));
+        // FIXME: Get the list of notifiers from options.
+        let notifiers: Vec<Box<NotifyWork>> = Vec::new();
+
         Self {
             mem_pool,
             parcel_listener: RwLock::new(vec![]),
             next_allowed_reseal: Mutex::new(Instant::now()),
             author: RwLock::new(Address::default()),
             extra_data: RwLock::new(Vec::new()),
+            sealing_block_last_request: Mutex::new(0),
             sealing_work: Mutex::new(SealingWork {
                 queue: SealingQueue::new(options.work_queue_size),
                 enabled: spec.engine.seals_internally().is_some(),
@@ -107,6 +120,7 @@ impl Miner {
             engine: spec.engine.clone(),
             options,
             accounts,
+            notifiers: RwLock::new(notifiers),
         }
     }
 
@@ -131,14 +145,23 @@ impl Miner {
     }
 
     /// Check is reseal is allowed and necessary.
-    fn requires_reseal(&self) -> bool {
+    fn requires_reseal(&self, best_block: BlockNumber) -> bool {
         let has_local_parcels = self.mem_pool.read().has_local_pending_parcels();
         let mut sealing_work = self.sealing_work.lock();
         if sealing_work.enabled {
             ctrace!(MINER, "requires_reseal: sealing enabled");
-            let should_disable_sealing = !has_local_parcels && self.engine.seals_internally().is_none();
+            let last_request = *self.sealing_block_last_request.lock();
+            let should_disable_sealing = !has_local_parcels && self.engine.seals_internally().is_none()
+                && best_block > last_request
+                && best_block - last_request > SEALING_TIMEOUT_IN_BLOCKS;
 
-            ctrace!(MINER, "requires_reseal: should_disable_sealing={}", should_disable_sealing);
+            ctrace!(
+                MINER,
+                "requires_reseal: should_disable_sealing={}; best_block={}, last_request={}",
+                should_disable_sealing,
+                best_block,
+                last_request
+            );
 
             if should_disable_sealing {
                 ctrace!(MINER, "Miner sleeping");
@@ -219,15 +242,102 @@ impl Miner {
         results
     }
 
+    /// Returns true if we had to prepare new pending block.
+    fn prepare_work_sealing<C: AccountData + BlockChain + BlockProducer>(&self, client: &C) -> bool {
+        ctrace!(MINER, "prepare_work_sealing: entering");
+        let prepare_new = {
+            let mut sealing_work = self.sealing_work.lock();
+            let have_work = sealing_work.queue.peek_last_ref().is_some();
+            ctrace!(MINER, "prepare_work_sealing: have_work={}", have_work);
+            if !have_work {
+                sealing_work.enabled = true;
+                true
+            } else {
+                false
+            }
+        };
+        if prepare_new {
+            // --------------------------------------------------------------------------
+            // | NOTE Code below requires transaction_queue and sealing_work locks.     |
+            // | Make sure to release the locks before calling that method.             |
+            // --------------------------------------------------------------------------
+            let (block, original_work_hash) = self.prepare_block(client);
+            self.prepare_work(block, original_work_hash);
+        }
+        let mut sealing_block_last_request = self.sealing_block_last_request.lock();
+        let best_number = client.chain_info().best_block_number;
+        if *sealing_block_last_request != best_number {
+            ctrace!(
+                MINER,
+                "prepare_work_sealing: Miner received request (was {}, now {}) - waking up.",
+                *sealing_block_last_request,
+                best_number
+            );
+            *sealing_block_last_request = best_number;
+        }
+
+        // Return if we restarted
+        prepare_new
+    }
+
+    /// Prepares work which has to be done to seal.
+    fn prepare_work(&self, block: ClosedBlock, original_work_hash: Option<H256>) {
+        let (work, is_new) = {
+            let mut sealing_work = self.sealing_work.lock();
+            let last_work_hash = sealing_work.queue.peek_last_ref().map(|pb| pb.block().header().hash());
+            ctrace!(
+                MINER,
+                "prepare_work: Checking whether we need to reseal: orig={:?} last={:?}, this={:?}",
+                original_work_hash,
+                last_work_hash,
+                block.block().header().hash()
+            );
+            let (work, is_new) = if last_work_hash.map_or(true, |h| h != block.block().header().hash()) {
+                ctrace!(
+                    MINER,
+                    "prepare_work: Pushing a new, refreshed or borrowed pending {}...",
+                    block.block().header().hash()
+                );
+                let pow_hash = block.block().header().hash();
+                let number = block.block().header().number();
+                let score = *block.block().header().score();
+                let is_new = original_work_hash.map_or(true, |h| block.block().header().hash() != h);
+                sealing_work.queue.push(block);
+                // If push notifications are enabled we assume all work items are used.
+                if !self.notifiers.read().is_empty() && is_new {
+                    sealing_work.queue.use_last_ref();
+                }
+                (Some((pow_hash, score, number)), is_new)
+            } else {
+                (None, false)
+            };
+            ctrace!(
+                MINER,
+                "prepare_work: leaving (last={:?})",
+                sealing_work.queue.peek_last_ref().map(|b| b.block().header().hash())
+            );
+            (work, is_new)
+        };
+        if is_new {
+            work.map(|(pow_hash, score, number)| {
+                for notifier in self.notifiers.read().iter() {
+                    notifier.notify(pow_hash, score, number)
+                }
+            });
+        }
+    }
+
     /// Prepares new block for sealing including top parcels from queue.
-    fn prepare_block<C: AccountData + BlockChain + BlockProducer>(&self, chain: &C) -> ClosedBlock {
-        let (parcels, mut open_block) = {
+    fn prepare_block<C: AccountData + BlockChain + BlockProducer>(&self, chain: &C) -> (ClosedBlock, Option<H256>) {
+        let (parcels, mut open_block, original_work_hash) = {
             let parcels = self.mem_pool.read().top_parcels();
+            let mut sealing_work = self.sealing_work.lock();
+            let last_work_hash = sealing_work.queue.peek_last_ref().map(|pb| pb.block().header().hash());
 
             ctrace!(MINER, "prepare_block: No existing work - making new block");
             let open_block = chain.prepare_open_block(self.author(), self.extra_data());
 
-            (parcels, open_block)
+            (parcels, open_block, last_work_hash)
         };
 
         let mut invalid_parcels = HashSet::new();
@@ -290,7 +400,7 @@ impl Miner {
                 queue.remove(&hash, &fetch_nonce, RemovalReason::NotAllowed);
             }
         }
-        block
+        (block, original_work_hash)
     }
 
     /// Attempts to perform internal sealing (one that does not require work) and handles the result depending on the type of Seal.
@@ -359,6 +469,8 @@ impl Miner {
         })
     }
 }
+
+const SEALING_TIMEOUT_IN_BLOCKS: u64 = 5;
 
 impl MinerService for Miner {
     type State = State<::state_db::StateDB>;
@@ -461,8 +573,9 @@ impl MinerService for Miner {
     where
         C: AccountData + BlockChain + BlockProducer + ImportSealedBlock, {
         ctrace!(MINER, "update_sealing: preparing a block");
-        if self.requires_reseal() {
-            let block = self.prepare_block(chain);
+
+        if self.requires_reseal(chain.chain_info().best_block_number) {
+            let (block, original_work_hash) = self.prepare_block(chain);
 
             match self.engine.seals_internally() {
                 Some(true) => {
@@ -474,7 +587,7 @@ impl MinerService for Miner {
                 Some(false) => ctrace!(MINER, "update_sealing: engine is not keen to seal internally right now"),
                 None => {
                     ctrace!(MINER, "update_sealing: engine does not seal internally, preparing work");
-                    unreachable!("External sealing is not supported")
+                    self.prepare_work(block, original_work_hash)
                 }
             }
         }
@@ -562,7 +675,7 @@ impl MinerService for Miner {
         if imported.is_ok() && self.options.reseal_on_own_parcel && self.parcel_reseal_allowed() {
             // Make sure to do it after parcel is imported and lock is dropped.
             // We need to create pending block and enable sealing.
-            if self.engine.seals_internally().unwrap_or(false) {
+            if self.engine.seals_internally().unwrap_or(false) || !self.prepare_work_sealing(chain) {
                 // If new block has not been prepared (means we already had one)
                 // or Engine might be able to seal internally,
                 // we need to update sealing.
