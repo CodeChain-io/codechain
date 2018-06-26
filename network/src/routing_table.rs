@@ -68,10 +68,12 @@ impl RoutingTable {
         let mut entries = self.entries.write();
         let remote_node_id = addr.into();
         if entries.contains_key(&remote_node_id) {
+            ctrace!(ROUTING_TABLE, "{:?} is already in table", addr);
             return false
         }
         let t = entries.insert(remote_node_id, Mutex::new(Cell::new(State::Candidate)));
         debug_assert!(t.is_none());
+        ctrace!(ROUTING_TABLE, "Candidate added {:?}", addr);
         true
     }
 
@@ -80,8 +82,12 @@ impl RoutingTable {
         let mut remote_to_local_node_ids = self.remote_to_local_node_ids.write();
 
         let remote_node_id = addr.into();
-        remote_to_local_node_ids.remove(&remote_node_id);
-        entries.remove(&remote_node_id).is_some()
+        let result = entries.remove(&remote_node_id).is_some();
+        if result {
+            remote_to_local_node_ids.remove(&remote_node_id);
+            ctrace!(ROUTING_TABLE, "Remove {:?}", addr);
+        }
+        result
     }
 
     pub fn add_node(&self, addr: &SocketAddr, local_node_id: NodeId) -> bool {
@@ -95,26 +101,29 @@ impl RoutingTable {
             let old_state = entry.replace(State::Intermediate);
             if old_state != State::Candidate {
                 entry.set(old_state);
+                ctrace!(ROUTING_TABLE, "{:?} is already alive", addr);
                 return false
             }
             entry.set(State::Alive);
 
             let t = remote_to_local_node_ids.insert(remote_node_id, local_node_id);
-            assert!(t.is_none());
+            assert_eq!(None, t);
+            ctrace!(ROUTING_TABLE, "Mark {:?} alive", addr);
             return true
         }
 
         let t = entries.insert(remote_node_id, Mutex::new(Cell::new(State::Alive)));
         debug_assert!(t.is_none());
         let t = remote_to_local_node_ids.insert(remote_node_id, local_node_id);
-        assert!(t.is_none());
+        assert_eq!(None, t);
+        ctrace!(ROUTING_TABLE, "Add {:?} as alive", addr);
         true
     }
 
     pub fn register_key_pair_for_secret(&self, remote_address: &SocketAddr) -> Option<Public> {
         let entries = self.entries.read();
         let remote_node_id = remote_address.into();
-        entries.get(&remote_node_id).and_then(|entry| {
+        let result = entries.get(&remote_node_id).and_then(|entry| {
             let entry = entry.lock();
             let old_state = entry.replace(State::Intermediate);
             if old_state != State::Alive {
@@ -124,8 +133,13 @@ impl RoutingTable {
             let ephemeral = Random.generate().unwrap();
             let pub_key = ephemeral.public().clone();
             entry.set(State::KeyPairShared(ephemeral));
+            ctrace!(ROUTING_TABLE, "Share pub-key({}) with {:?}", pub_key, remote_address);
             Some(pub_key)
-        })
+        });
+        if result.is_none() {
+            ctrace!(ROUTING_TABLE, "{:?} is not alive", remote_address);
+        }
+        result
     }
 
     pub fn reset_key_pair_for_secret(&self, remote_address: &SocketAddr) -> bool {
@@ -137,29 +151,37 @@ impl RoutingTable {
             let old_state = entry.replace(State::Intermediate);
             if let State::KeyPairShared(_) = old_state {
                 entry.set(State::Candidate);
+                ctrace!(ROUTING_TABLE, "Reset shard key with {:?}", remote_address);
                 return true
             }
             entry.set(old_state);
+            ctrace!(ROUTING_TABLE, "No key shared with {:?}", remote_address);
             return false
         }
+        ctrace!(ROUTING_TABLE, "No key shared with {:?}", remote_address);
         false
     }
 
     pub fn share_secret(&self, remote_address: &SocketAddr, remote_public: &Public) -> Option<Secret> {
         let entries = self.entries.read();
         let remote_node_id = remote_address.into();
-        entries.get(&remote_node_id).and_then(|entry| {
+        let result = entries.get(&remote_node_id).and_then(|entry| {
             let entry = entry.lock();
             let old_state = entry.replace(State::Intermediate);
             if let State::KeyPairShared(local_key_pair) = &old_state {
                 if let Some(secret) = exchange(remote_public, local_key_pair.clone().private()).ok() {
                     entry.set(State::SecretShared(secret.clone()));
+                    ctrace!(ROUTING_TABLE, "Secret shared with {:?}", remote_address);
                     return Some(secret)
                 }
             }
             entry.set(old_state);
             None
-        })
+        });
+        if result.is_none() {
+            ctrace!(ROUTING_TABLE, "Cannot share secret with {:?}", remote_address);
+        }
+        result
     }
 
     pub fn request_session(&self, remote_address: &SocketAddr) -> Option<Vec<u8>> {
@@ -167,18 +189,26 @@ impl RoutingTable {
         let mut rng = self.rng.lock();
 
         let remote_node_id = remote_address.into();
-        entries.get(&remote_node_id).and_then(|entry| {
+        let result = entries.get(&remote_node_id).and_then(|entry| {
             let entry = entry.lock();
             let old_state = entry.replace(State::Intermediate);
             if let State::SecretShared(shared_secret) = &old_state {
                 let temporary_nonce: Nonce = rng.gen();
                 entry.set(State::TemporaryNonceShared(shared_secret.clone(), temporary_nonce.clone()));
                 let temporary_session = Session::new_with_zero_nonce(shared_secret.clone());
-                return encode_and_encrypt_nonce(&temporary_session, &temporary_nonce)
+                let result = encode_and_encrypt_nonce(&temporary_session, &temporary_nonce);
+                if result.is_some() {
+                    ctrace!(ROUTING_TABLE, "Temporary nonce shared with {:?}", remote_address);
+                }
+                return result
             }
             entry.set(old_state);
             None
-        })
+        });
+        if result.is_none() {
+            ctrace!(ROUTING_TABLE, "Cannot share temporary nonce with {:?}", remote_address);
+        }
+        result
     }
 
     pub fn create_requested_session(
@@ -190,7 +220,7 @@ impl RoutingTable {
         let mut rng = self.rng.lock();
 
         let remote_node_id = remote_address.into();
-        entries.get(&remote_node_id).and_then(|entry| {
+        let result = entries.get(&remote_node_id).and_then(|entry| {
             let entry = entry.lock();
             let old_state = entry.replace(State::Intermediate);
             if let State::SecretShared(shared_secret) = old_state {
@@ -204,11 +234,18 @@ impl RoutingTable {
                 entry.set(State::SessionShared(Session::new(shared_secret, nonce.clone())));
 
                 let encrypted_nonce = encode_and_encrypt_nonce(&temporary_session, &nonce);
+                if encrypted_nonce.is_some() {
+                    ctrace!(ROUTING_TABLE, "Create session to {:?}", remote_address);
+                }
                 return encrypted_nonce
             }
             entry.set(old_state);
             None
-        })
+        });
+        if result.is_none() {
+            ctrace!(ROUTING_TABLE, "Cannot create session to {:?}", remote_address);
+        }
+        result
     }
 
     pub fn create_allowed_session(&self, remote_address: &SocketAddr, received_nonce: &[u8]) -> bool {
@@ -223,15 +260,18 @@ impl RoutingTable {
                     Some(nonce) => nonce,
                     None => {
                         entry.set(old_state);
+                        ctrace!(ROUTING_TABLE, "Cannot allow session to {:?}. Cannot decrypt nonce", remote_address);
                         return false
                     }
                 };
 
                 entry.set(State::SessionShared(Session::new(shared_secret, nonce)));
+                ctrace!(ROUTING_TABLE, "Allow session to {:?}", remote_address);
                 return true
             }
             entry.set(old_state);
         }
+        ctrace!(ROUTING_TABLE, "Cannot allow session to {:?}. Invalid state", remote_address);
         false
     }
 
@@ -243,10 +283,12 @@ impl RoutingTable {
             let old_state = entry.replace(State::Intermediate);
             if let State::SessionShared(_) = old_state {
                 entry.set(State::Established(remote_node_id));
+                ctrace!(ROUTING_TABLE, "Connection to {:?} established", remote_address);
                 return true
             }
             entry.set(old_state);
         }
+        ctrace!(ROUTING_TABLE, "Cannot establish connection to {:?} established", remote_address);
         false
     }
 
@@ -258,10 +300,12 @@ impl RoutingTable {
             let old_state = entry.replace(State::Intermediate);
             if let State::SessionShared(session) = old_state {
                 entry.set(State::SessionShared(session.clone()));
+                ctrace!(ROUTING_TABLE, "Unestablish connection to {:?}", remote_address);
                 return Some(session)
             }
             entry.set(old_state);
         }
+        ctrace!(ROUTING_TABLE, "Connection to {:?} is not established yet", remote_address);
         None
     }
 
@@ -312,13 +356,31 @@ impl RoutingTable {
 }
 
 fn decrypt_and_decode_nonce(session: &Session, encrypted_bytes: &[u8]) -> Option<Nonce> {
-    session.decrypt(&encrypted_bytes).ok().and_then(|unencrypted_bytes| {
-        let rlp = UntrustedRlp::new(&unencrypted_bytes);
-        Decodable::decode(&rlp).ok()
-    })
+    session
+        .decrypt(&encrypted_bytes)
+        .map_err(|err| {
+            ctrace!(ROUTING_TABLE, "Cannot decode nonce {:?}", err);
+            err
+        })
+        .ok()
+        .and_then(|unencrypted_bytes| {
+            let rlp = UntrustedRlp::new(&unencrypted_bytes);
+            Decodable::decode(&rlp)
+                .map_err(|err| {
+                    ctrace!(ROUTING_TABLE, "Cannot decrypt nonce {:?}", err);
+                    err
+                })
+                .ok()
+        })
 }
 
 fn encode_and_encrypt_nonce(session: &Session, nonce: &Nonce) -> Option<Vec<u8>> {
     let encoded_nonce = nonce.rlp_bytes();
-    session.encrypt(&encoded_nonce).ok()
+    session
+        .encrypt(&encoded_nonce)
+        .map_err(|err| {
+            ctrace!(ROUTING_TABLE, "Cannot encrypt nonce {:?}", err);
+            err
+        })
+        .ok()
 }
