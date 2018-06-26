@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ccrypto::{blake256, keccak256, ripemd160};
+use ccrypto::{blake256, keccak256, ripemd160, sha256};
 use ckeys::{verify_ecdsa, ECDSASignature};
 use ctypes::{H256, H520, Public};
 
@@ -215,7 +215,10 @@ pub fn execute(
                 let value = stack.pop()?;
                 stack.push(Item(blake256(value).to_vec()))?;
             }
-            Instruction::Sha256 => unimplemented!(),
+            Instruction::Sha256 => {
+                let value = stack.pop()?;
+                stack.push(Item(sha256(value).to_vec()))?;
+            }
             Instruction::Ripemd160 => {
                 let value = stack.pop()?;
                 stack.push(Item(ripemd160(value).to_vec()))?;
