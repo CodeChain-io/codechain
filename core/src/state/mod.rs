@@ -53,6 +53,7 @@ use super::state_db::StateDB;
 use super::{Transaction, TransactionError};
 
 use self::cache::Cache;
+use self::traits::{CheckpointId, StateWithCheckpoint};
 
 #[macro_use]
 mod address;
@@ -65,6 +66,7 @@ mod cache;
 mod info;
 mod shard_state;
 mod top_state;
+mod traits;
 
 pub use self::account::Account;
 pub use self::asset::{Asset, AssetAddress};
@@ -90,8 +92,6 @@ pub struct TransactionOutcome {
     /// The output of the applied parcel.
     pub error: Option<TransactionError>,
 }
-
-type CheckpointId = usize;
 
 /// Representation of the entire state of all accounts in the system.
 ///
@@ -195,6 +195,36 @@ const PARCEL_BODY_CHECKPOINT: CheckpointId = 130;
 const TRANSACTION_CHECKPOINT: CheckpointId = 456;
 const TRANSACTIONS_CHECKPOINT: CheckpointId = 789;
 
+impl<B> StateWithCheckpoint for State<B>
+where
+    B: Backend + TopBackend + ShardBackend,
+{
+    fn create_checkpoint(&mut self, id: CheckpointId) {
+        self.id_of_checkpoints.push(id);
+        self.account.checkpoint();
+        self.asset_scheme.checkpoint();
+        self.asset.checkpoint();
+    }
+
+    fn discard_checkpoint(&mut self, id: CheckpointId) {
+        let expected = self.id_of_checkpoints.pop().expect("The checkpoint must exist");
+        assert_eq!(expected, id);
+
+        self.account.discard_checkpoint();
+        self.asset_scheme.discard_checkpoint();
+        self.asset.discard_checkpoint();
+    }
+
+    fn revert_to_checkpoint(&mut self, id: CheckpointId) {
+        let expected = self.id_of_checkpoints.pop().expect("The checkpoint must exist");
+        assert_eq!(expected, id);
+
+        self.account.revert_to_checkpoint();
+        self.asset_scheme.revert_to_checkpoint();
+        self.asset.revert_to_checkpoint();
+    }
+}
+
 impl<B> State<B>
 where
     B: Backend + TopBackend + ShardBackend,
@@ -239,34 +269,6 @@ where
         Ok(state)
     }
 
-    /// Create a recoverable checkpoint of this state.
-    pub fn checkpoint(&mut self, id: CheckpointId) {
-        self.id_of_checkpoints.push(id);
-        self.account.checkpoint();
-        self.asset_scheme.checkpoint();
-        self.asset.checkpoint();
-    }
-
-    /// Merge last checkpoint with previous.
-    pub fn discard_checkpoint(&mut self, id: CheckpointId) {
-        let expected = self.id_of_checkpoints.pop().expect("The checkpoint must exist");
-        assert_eq!(expected, id);
-
-        self.account.discard_checkpoint();
-        self.asset_scheme.discard_checkpoint();
-        self.asset.discard_checkpoint();
-    }
-
-    /// Revert to the last checkpoint and discard it.
-    pub fn revert_to_checkpoint(&mut self, id: CheckpointId) {
-        let expected = self.id_of_checkpoints.pop().expect("The checkpoint must exist");
-        assert_eq!(expected, id);
-
-        self.account.revert_to_checkpoint();
-        self.asset_scheme.revert_to_checkpoint();
-        self.asset.revert_to_checkpoint();
-    }
-
     /// Destroy the current object and return root and database.
     pub fn drop(mut self) -> (H256, B) {
         self.propagate_to_global_cache();
@@ -281,7 +283,7 @@ where
     /// Execute a given parcel, charging parcel fee.
     /// This will change the state accordingly.
     pub fn apply(&mut self, parcel: &SignedParcel) -> Result<ParcelOutcome, Error> {
-        self.checkpoint(PARCEL_CHECKPOINT);
+        self.create_checkpoint(PARCEL_CHECKPOINT);
 
         match self.execute(parcel) {
             Err(Error::Transaction(_)) => unreachable!(),
@@ -323,7 +325,7 @@ where
 
         // The failed parcel also must pay the fee and increase nonce.
 
-        self.checkpoint(PARCEL_BODY_CHECKPOINT);
+        self.create_checkpoint(PARCEL_BODY_CHECKPOINT);
         let transactions = match &parcel.action {
             Action::ChangeShardState {
                 transactions,
@@ -373,10 +375,10 @@ where
         };
         self.discard_checkpoint(PARCEL_BODY_CHECKPOINT);
 
-        self.checkpoint(TRANSACTIONS_CHECKPOINT);
+        self.create_checkpoint(TRANSACTIONS_CHECKPOINT);
         let mut results = Vec::with_capacity(transactions.len());
         for t in transactions {
-            self.checkpoint(TRANSACTION_CHECKPOINT);
+            self.create_checkpoint(TRANSACTION_CHECKPOINT);
             results.push(match self.execute_transaction(t, &parcel.network_id) {
                 Ok(_) => {
                     cinfo!(TX, "Tx({}) is applied", t.hash());
@@ -1179,12 +1181,12 @@ mod tests {
     fn checkpoint_basic() {
         let mut state = get_temp_state();
         let a = Address::zero();
-        state.checkpoint(0);
+        state.create_checkpoint(0);
         state.add_balance(&a, &U256::from(69u64)).unwrap();
         assert_eq!(state.balance(&a).unwrap(), U256::from(69u64));
         state.discard_checkpoint(0);
         assert_eq!(state.balance(&a).unwrap(), U256::from(69u64));
-        state.checkpoint(1);
+        state.create_checkpoint(1);
         state.add_balance(&a, &U256::from(1u64)).unwrap();
         assert_eq!(state.balance(&a).unwrap(), U256::from(70u64));
         state.revert_to_checkpoint(1);
@@ -1195,9 +1197,9 @@ mod tests {
     fn checkpoint_nested() {
         let mut state = get_temp_state();
         let a = Address::zero();
-        state.checkpoint(0);
+        state.create_checkpoint(0);
         state.add_balance(&a, &U256::from(69u64)).unwrap();
-        state.checkpoint(1);
+        state.create_checkpoint(1);
         state.add_balance(&a, &U256::from(69u64)).unwrap();
         assert_eq!(state.balance(&a).unwrap(), U256::from(69u64 + 69u64));
         state.revert_to_checkpoint(1);
@@ -1210,9 +1212,9 @@ mod tests {
     fn checkpoint_discard() {
         let mut state = get_temp_state();
         let a = Address::zero();
-        state.checkpoint(0);
+        state.create_checkpoint(0);
         state.add_balance(&a, &U256::from(69u64)).unwrap();
-        state.checkpoint(1);
+        state.create_checkpoint(1);
         state.add_balance(&a, &U256::from(69u64)).unwrap();
         state.inc_nonce(&a).unwrap();
         assert_eq!(state.balance(&a).unwrap(), U256::from(69u64 + 69u64));
