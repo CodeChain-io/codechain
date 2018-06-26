@@ -18,6 +18,7 @@ use ctypes::{H160, H256};
 use rcrypto::digest::Digest;
 use rcrypto::ripemd160::Ripemd160;
 use rcrypto::sha1::Sha1;
+use rcrypto::sha2::Sha256;
 use rcrypto::sha3::Sha3;
 
 /// RIPEMD160
@@ -42,6 +43,17 @@ pub fn sha1<T: AsRef<[u8]>>(s: T) -> H160 {
     result
 }
 
+/// SHA-256
+#[inline]
+pub fn sha256<T: AsRef<[u8]>>(s: T) -> H256 {
+    let input = s.as_ref();
+    let mut result = H256::default();
+    let mut hasher = Sha256::new();
+    hasher.input(input);
+    hasher.result(&mut *result);
+    result
+}
+
 /// KECCAK256
 #[inline]
 pub fn keccak256<T: AsRef<[u8]>>(s: T) -> H256 {
@@ -55,7 +67,7 @@ pub fn keccak256<T: AsRef<[u8]>>(s: T) -> H256 {
 
 #[cfg(test)]
 mod tests {
-    use super::{keccak256, ripemd160, sha1};
+    use super::{keccak256, ripemd160, sha1, sha256};
 
     #[test]
     fn test_ripemd160() {
@@ -68,6 +80,13 @@ mod tests {
     fn test_sha1() {
         let expected = "aaf4c61ddcc5e8a2dabede0f3b482cd9aea9434d".into();
         let result = sha1(b"hello");
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_sha256() {
+        let expected = "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824".into();
+        let result = sha256(b"hello");
         assert_eq!(result, expected);
     }
 
