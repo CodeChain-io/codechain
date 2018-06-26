@@ -142,26 +142,6 @@ impl RoutingTable {
         result
     }
 
-    pub fn reset_key_pair_for_secret(&self, remote_address: &SocketAddr) -> bool {
-        let entries = self.entries.read();
-        let remote_node_id = remote_address.into();
-
-        if let Some(entry) = entries.get(&remote_node_id) {
-            let entry = entry.lock();
-            let old_state = entry.replace(State::Intermediate);
-            if let State::KeyPairShared(_) = old_state {
-                entry.set(State::Candidate);
-                ctrace!(ROUTING_TABLE, "Reset shard key with {:?}", remote_address);
-                return true
-            }
-            entry.set(old_state);
-            ctrace!(ROUTING_TABLE, "No key shared with {:?}", remote_address);
-            return false
-        }
-        ctrace!(ROUTING_TABLE, "No key shared with {:?}", remote_address);
-        false
-    }
-
     pub fn share_secret(&self, remote_address: &SocketAddr, remote_public: &Public) -> Option<Secret> {
         let entries = self.entries.read();
         let remote_node_id = remote_address.into();
