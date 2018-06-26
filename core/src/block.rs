@@ -30,7 +30,7 @@ use super::header::{Header, Seal};
 use super::invoice::Invoice;
 use super::machine::{LiveBlock, Parcels};
 use super::parcel::{ParcelError, SignedParcel, UnverifiedParcel};
-use super::state::{ParcelOutcome, State};
+use super::state::{ParcelOutcome, State, StateWithCache};
 use super::state_db::StateDB;
 
 /// A block, encoded as it is on the block chain.

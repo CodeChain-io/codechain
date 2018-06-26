@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use error::Error;
+
 pub type CheckpointId = usize;
 
 pub trait StateWithCheckpoint {
@@ -23,4 +25,15 @@ pub trait StateWithCheckpoint {
     fn discard_checkpoint(&mut self, id: CheckpointId);
     /// Revert to the last checkpoint and discard it.
     fn revert_to_checkpoint(&mut self, id: CheckpointId);
+}
+
+pub trait StateWithCache {
+    /// Commits our cached account changes into the trie.
+    fn commit(&mut self) -> Result<(), Error>;
+
+    /// Propagate local cache into shared canonical state cache.
+    fn propagate_to_global_cache(&mut self);
+
+    /// Clear state cache
+    fn clear(&mut self);
 }

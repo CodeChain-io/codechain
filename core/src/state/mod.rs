@@ -76,6 +76,7 @@ pub use self::cache::CacheableItem;
 pub use self::info::{ShardStateInfo, TopStateInfo};
 pub use self::shard_state::ShardState;
 pub use self::top_state::TopState;
+pub use self::traits::StateWithCache;
 
 /// Used to return information about an `State::apply` operation.
 pub enum ParcelOutcome {
@@ -225,6 +226,38 @@ where
     }
 }
 
+impl<B> StateWithCache for State<B>
+where
+    B: Backend + TopBackend + ShardBackend,
+{
+    fn commit(&mut self) -> Result<(), Error> {
+        let mut trie = self.trie_factory.from_existing(self.db.as_hashdb_mut(), &mut self.root)?;
+        self.account.commit(&mut trie)?;
+        self.asset_scheme.commit(&mut trie)?;
+        self.asset.commit(&mut trie)?;
+        Ok(())
+    }
+
+    fn propagate_to_global_cache(&mut self) {
+        let ref mut db = self.db;
+        self.account.propagate_to_global_cache(|address, item, modified| {
+            db.add_to_account_cache(address, item, modified);
+        });
+        self.asset_scheme.propagate_to_global_cache(|address, item, modified| {
+            db.add_to_asset_scheme_cache(address, item, modified);
+        });
+        self.asset.propagate_to_global_cache(|address, item, modified| {
+            db.add_to_asset_cache(address, item, modified);
+        });
+    }
+
+    fn clear(&mut self) {
+        self.account.clear();
+        self.asset_scheme.clear();
+        self.asset.clear();
+    }
+}
+
 impl<B> State<B>
 where
     B: Backend + TopBackend + ShardBackend,
@@ -269,15 +302,14 @@ where
         Ok(state)
     }
 
+    pub fn root(&self) -> &H256 {
+        &self.root
+    }
+
     /// Destroy the current object and return root and database.
     pub fn drop(mut self) -> (H256, B) {
         self.propagate_to_global_cache();
         (self.root, self.db)
-    }
-
-    /// Return reference to root
-    pub fn root(&self) -> &H256 {
-        &self.root
     }
 
     /// Execute a given parcel, charging parcel fee.
@@ -410,36 +442,6 @@ where
         }
         self.discard_checkpoint(TRANSACTIONS_CHECKPOINT);
         Ok(ParcelOutcome::Transactions(results))
-    }
-
-    /// Commits our cached account changes into the trie.
-    pub fn commit(&mut self) -> Result<(), Error> {
-        let mut trie = self.trie_factory.from_existing(self.db.as_hashdb_mut(), &mut self.root)?;
-        self.account.commit(&mut trie)?;
-        self.asset_scheme.commit(&mut trie)?;
-        self.asset.commit(&mut trie)?;
-        Ok(())
-    }
-
-    /// Propagate local cache into shared canonical state cache.
-    fn propagate_to_global_cache(&mut self) {
-        let ref mut db = self.db;
-        self.account.propagate_to_global_cache(|address, item, modified| {
-            db.add_to_account_cache(address, item, modified);
-        });
-        self.asset_scheme.propagate_to_global_cache(|address, item, modified| {
-            db.add_to_asset_scheme_cache(address, item, modified);
-        });
-        self.asset.propagate_to_global_cache(|address, item, modified| {
-            db.add_to_asset_cache(address, item, modified);
-        });
-    }
-
-    /// Clear state cache
-    pub fn clear(&mut self) {
-        self.account.clear();
-        self.asset_scheme.clear();
-        self.asset.clear();
     }
 }
 
