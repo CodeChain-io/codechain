@@ -376,3 +376,44 @@ pub fn recover_schnorr(signature: &SchnorrSignature, message: &Message) -> Resul
     public.copy_from_slice(&serialized[1..65]);
     Ok(public)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::super::{Generator, Message, Random};
+    use super::{recover_ecdsa, sign_ecdsa, verify_ecdsa, verify_ecdsa_address, ECDSASignature};
+    use std::str::FromStr;
+
+    #[test]
+    fn signature_to_and_from_str() {
+        let keypair = Random.generate().unwrap();
+        let message = Message::default();
+        let signature = sign_ecdsa(keypair.private(), &message).unwrap();
+        let string = format!("{}", signature);
+        let deserialized = ECDSASignature::from_str(&string).unwrap();
+        assert_eq!(signature, deserialized);
+    }
+
+    #[test]
+    fn sign_and_recover_public() {
+        let keypair = Random.generate().unwrap();
+        let message = Message::default();
+        let signature = sign_ecdsa(keypair.private(), &message).unwrap();
+        assert_eq!(keypair.public(), &recover_ecdsa(&signature, &message).unwrap());
+    }
+
+    #[test]
+    fn sign_and_verify_public() {
+        let keypair = Random.generate().unwrap();
+        let message = Message::default();
+        let signature = sign_ecdsa(keypair.private(), &message).unwrap();
+        assert!(verify_ecdsa(keypair.public(), &signature, &message).unwrap());
+    }
+
+    #[test]
+    fn sign_and_verify_address() {
+        let keypair = Random.generate().unwrap();
+        let message = Message::default();
+        let signature = sign_ecdsa(keypair.private(), &message).unwrap();
+        assert!(verify_ecdsa_address(&keypair.address(), &signature, &message).unwrap());
+    }
+}
