@@ -24,9 +24,7 @@ use std::vec::Vec;
 
 use ctypes::Bytes;
 use rlp::{Decodable, Encodable};
-use trie::{self, Trie, TrieKinds, TrieMut};
-
-use super::Error;
+use trie::{self, Result as TrieResult, Trie, TrieKinds, TrieMut};
 
 pub trait CacheableItem: Clone + fmt::Debug + Decodable + Encodable {
     type Address: AsRef<[u8]> + Clone + fmt::Debug + Eq + Hash;
@@ -218,7 +216,7 @@ where
         self.cache.borrow_mut().clear();
     }
 
-    pub fn commit<'db>(&mut self, trie: &mut Box<TrieMut + 'db>) -> Result<(), Error> {
+    pub fn commit<'db>(&mut self, trie: &mut Box<TrieMut + 'db>) -> TrieResult<()> {
         let mut cache = self.cache.borrow_mut();
         for (address, ref mut a) in cache.iter_mut().filter(|&(_, ref a)| a.is_dirty()) {
             a.state = EntryState::Committed;

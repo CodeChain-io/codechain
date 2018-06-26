@@ -44,7 +44,7 @@ use ctypes::{Address, Bytes, H256, Public, U128, U256};
 use cvm::{decode, execute, ScriptResult, VMConfig};
 use error::Error;
 use parcel::{Action, AssetTransferInput, AssetTransferOutput, SignedParcel};
-use trie::{self, Trie, TrieError, TrieFactory};
+use trie::{self, Result as TrieResult, Trie, TrieError, TrieFactory};
 use unexpected::Mismatch;
 
 use super::invoice::Invoice;
@@ -230,7 +230,7 @@ impl<B> StateWithCache for State<B>
 where
     B: Backend + TopBackend + ShardBackend,
 {
-    fn commit(&mut self) -> Result<(), Error> {
+    fn commit(&mut self) -> TrieResult<()> {
         let mut trie = self.trie_factory.from_existing(self.db.as_hashdb_mut(), &mut self.root)?;
         self.account.commit(&mut trie)?;
         self.asset_scheme.commit(&mut trie)?;

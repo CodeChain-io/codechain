@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use error::Error;
+use trie::Result as TrieResult;
 
 pub type CheckpointId = usize;
 
@@ -29,7 +29,7 @@ pub trait StateWithCheckpoint {
 
 pub trait StateWithCache {
     /// Commits our cached account changes into the trie.
-    fn commit(&mut self) -> Result<(), Error>;
+    fn commit(&mut self) -> TrieResult<()>;
 
     /// Propagate local cache into shared canonical state cache.
     fn propagate_to_global_cache(&mut self);
