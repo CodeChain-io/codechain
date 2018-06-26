@@ -76,6 +76,7 @@ pub use self::asset_scheme::{AssetScheme, AssetSchemeAddress};
 pub use self::backend::{Backend, Basic as BasicBackend, ShardBackend, TopBackend};
 pub use self::cache::CacheableItem;
 pub use self::info::{ShardStateInfo, TopStateInfo};
+pub use self::shard::{Shard, ShardAddress};
 pub use self::shard_state::ShardState;
 pub use self::top_state::TopState;
 pub use self::traits::StateWithCache;
