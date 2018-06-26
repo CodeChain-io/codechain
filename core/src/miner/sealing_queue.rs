@@ -57,6 +57,12 @@ impl SealingQueue {
         self.in_use.last()
     }
 
+    /// Clears everything; the queue is entirely reset.
+    pub fn reset(&mut self) {
+        self.pending = None;
+        self.in_use.clear();
+    }
+
     pub fn take_used_if<P>(&mut self, predicate: P) -> Option<ClosedBlock>
     where
         P: Fn(&ClosedBlock) -> bool, {
