@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::io;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 use ccrypto::aes::SymmetricCipherError;
@@ -56,7 +57,7 @@ const FIRST_CONNECTION_TOKEN: TimerToken = ACCEPT_TOKEN + 1;
 const LAST_CONNECTION_TOKEN: TimerToken = FIRST_CONNECTION_TOKEN + MAX_CONNECTIONS;
 
 const CREATE_CONNECTIONS_TOKEN: TimerToken = 0;
-const PULL_CONNECTIONS_MS: u64 = 1 * 1000;
+const PULL_CONNECTIONS_MS: u64 = 10 * 1000;
 
 #[derive(Clone, Debug, PartialOrd, PartialEq)]
 pub enum Message {
@@ -332,16 +333,25 @@ impl Handler {
 impl IoHandler<Message> for Handler {
     fn initialize(&self, io: &IoContext<Message>) -> IoHandlerResult<()> {
         io.register_stream(ACCEPT_TOKEN)?;
-        io.register_timer_once(CREATE_CONNECTIONS_TOKEN, PULL_CONNECTIONS_MS)?;
+        io.register_timer_once(CREATE_CONNECTIONS_TOKEN, PULL_CONNECTIONS_MS)
+            .expect("Pull connections must be registered");
         Ok(())
     }
 
     fn timeout(&self, io: &IoContext<Message>, token: TimerToken) -> IoHandlerResult<()> {
         match token {
             CREATE_CONNECTIONS_TOKEN => {
+                let register_new_timer = AtomicBool::new(false);
+                let _f = finally(|| {
+                    if register_new_timer.load(Ordering::SeqCst) {
+                        io.register_timer_once(CREATE_CONNECTIONS_TOKEN, PULL_CONNECTIONS_MS)
+                            .expect("Pull connections must be registered");
+                    }
+                });
                 let manager = self.manager.lock();
                 let number_of_connections = manager.connections.len();
                 if manager.connections.len() < self.min_peers {
+                    register_new_timer.store(true, Ordering::SeqCst);
                     let count = (self.min_peers - number_of_connections + 1) / 2;
                     let addresses = manager.routing_table.unestablished_addresses(count);
                     for address in addresses {
@@ -404,7 +414,18 @@ impl IoHandler<Message> for Handler {
         match stream {
             ACCEPT_TOKEN => unreachable!(),
             FIRST_CONNECTION_TOKEN...LAST_CONNECTION_TOKEN => {
+                let register_new_timer = AtomicBool::new(false);
+                let _f = finally(|| {
+                    if register_new_timer.load(Ordering::SeqCst) {
+                        io.register_timer_once(CREATE_CONNECTIONS_TOKEN, PULL_CONNECTIONS_MS)
+                            .expect("Pull connections must be registered");
+                    }
+                });
+
                 let manager = self.manager.lock();
+                if manager.connections.len() < self.min_peers {
+                    register_new_timer.store(true, Ordering::SeqCst);
+                }
                 let node_id = manager.connections.node_id(&stream).ok_or(Error::InvalidStream(stream))?;
                 manager.routing_table.remove_node(node_id.into_addr());
                 self.client.on_node_removed(&node_id);
