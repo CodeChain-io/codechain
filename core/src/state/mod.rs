@@ -145,7 +145,6 @@ pub struct State<B> {
     asset_scheme: Cache<AssetScheme>,
     asset: Cache<Asset>,
     id_of_checkpoints: Vec<CheckpointId>,
-    account_start_nonce: U256,
     trie_factory: TrieFactory,
 }
 
@@ -154,7 +153,7 @@ where
     B: Backend + TopBackend,
 {
     fn nonce(&self, a: &Address) -> trie::Result<U256> {
-        self.ensure_account_cached(a, |a| a.as_ref().map_or(self.account_start_nonce, |account| *account.nonce()))
+        self.ensure_account_cached(a, |a| a.as_ref().map_or_else(U256::zero, |account| *account.nonce()))
     }
     fn balance(&self, a: &Address) -> trie::Result<U256> {
         self.ensure_account_cached(a, |a| a.as_ref().map_or(U256::zero(), |account| *account.balance()))
@@ -203,7 +202,7 @@ where
     /// Creates new state with empty state root
     /// Used for tests.
     #[cfg(test)]
-    pub fn new(mut db: B, account_start_nonce: U256, trie_factory: TrieFactory) -> State<B> {
+    pub fn new(mut db: B, trie_factory: TrieFactory) -> State<B> {
         let mut root = H256::new();
         {
             // init trie and reset root too null
@@ -217,18 +216,12 @@ where
             asset_scheme: Cache::new(),
             asset: Cache::new(),
             id_of_checkpoints: Default::default(),
-            account_start_nonce,
             trie_factory,
         }
     }
 
     /// Creates new state with existing state root
-    pub fn from_existing(
-        db: B,
-        root: H256,
-        account_start_nonce: U256,
-        trie_factory: TrieFactory,
-    ) -> Result<State<B>, TrieError> {
+    pub fn from_existing(db: B, root: H256, trie_factory: TrieFactory) -> Result<State<B>, TrieError> {
         if !db.as_hashdb().contains(&root) {
             return Err(TrieError::InvalidStateRoot(root))
         }
@@ -240,7 +233,6 @@ where
             asset_scheme: Cache::new(),
             asset: Cache::new(),
             id_of_checkpoints: Default::default(),
-            account_start_nonce,
             trie_factory,
         };
 
@@ -478,7 +470,7 @@ where
     }
 
     fn require_account<'a>(&'a self, a: &Address) -> trie::Result<RefMut<'a, Account>> {
-        let default = || Account::new(0u8.into(), self.account_start_nonce);
+        let default = || Account::new(0u8.into(), 0.into());
         let db = self.trie_factory.readonly(self.db.as_hashdb(), &self.root)?;
         let from_db = || self.db.get_cached_account(a);
         self.account.require_item_or_from(a, default, db, from_db)
@@ -719,7 +711,6 @@ impl Clone for State<StateDB> {
             account: self.account.clone(),
             asset_scheme: self.asset_scheme.clone(),
             asset: self.asset.clone(),
-            account_start_nonce: self.account_start_nonce.clone(),
             trie_factory: self.trie_factory.clone(),
         }
     }
@@ -771,7 +762,7 @@ where
     }
 
     fn account_exists_and_has_nonce(&self, a: &Address) -> trie::Result<bool> {
-        self.ensure_account_cached(a, |a| a.map_or(false, |a| *a.nonce() != self.account_start_nonce))
+        self.ensure_account_cached(a, |a| a.map_or(false, |a| !a.nonce().is_zero()))
     }
 
     fn add_balance(&mut self, a: &Address, incr: &U256) -> trie::Result<()> {
@@ -840,7 +831,6 @@ mod tests {
 
     #[test]
     fn apply_empty_parcel() {
-        // account_start_nonce is 0
         let mut state = get_temp_state();
 
         let signed_parcel = Parcel {
@@ -865,7 +855,6 @@ mod tests {
 
     #[test]
     fn should_apply_error_for_invalid_nonce() {
-        // account_start_nonce is 0
         let mut state = get_temp_state();
 
         let signed_parcel = Parcel {
@@ -924,7 +913,6 @@ mod tests {
 
     #[test]
     fn should_apply_payment() {
-        // account_start_nonce is 0
         let mut state = get_temp_state();
         let receiver = 1u64.into();
 
@@ -962,7 +950,6 @@ mod tests {
 
     #[test]
     fn should_apply_set_regular_key() {
-        // account_start_nonce is 0
         let mut state = get_temp_state();
         let key = 1u64.into();
 
@@ -998,7 +985,6 @@ mod tests {
 
     #[test]
     fn should_apply_error_for_action_failure() {
-        // account_start_nonce is 0
         let mut state = get_temp_state();
         let receiver = 1u64.into();
         let keypair = Random.generate().unwrap();
@@ -1068,7 +1054,7 @@ mod tests {
             state.drop()
         };
 
-        let state = State::from_existing(db, root, U256::from(0u8), Default::default()).unwrap();
+        let state = State::from_existing(db, root, Default::default()).unwrap();
         assert_eq!(state.balance(&a).unwrap(), U256::from(69u64));
         assert_eq!(state.nonce(&a).unwrap(), U256::from(1u64));
     }
@@ -1094,12 +1080,12 @@ mod tests {
         let a = Address::zero();
         let db = get_temp_state_db();
         let (root, db) = {
-            let mut state = State::new(db, U256::from(0), Default::default());
+            let mut state = State::new(db, Default::default());
             state.add_balance(&a, &U256::default()).unwrap(); // create an empty account
             state.commit().unwrap();
             state.drop()
         };
-        let state = State::from_existing(db, root, U256::from(0u8), Default::default()).unwrap();
+        let state = State::from_existing(db, root, Default::default()).unwrap();
         assert!(!state.account_exists(&a).unwrap());
         assert!(!state.account_exists_and_not_null(&a).unwrap());
     }
@@ -1117,7 +1103,7 @@ mod tests {
         };
 
         let (root, db) = {
-            let mut state = State::from_existing(db, root, U256::from(0u8), Default::default()).unwrap();
+            let mut state = State::from_existing(db, root, Default::default()).unwrap();
             assert_eq!(state.account_exists(&a).unwrap(), true);
             assert_eq!(state.nonce(&a).unwrap(), U256::from(1u64));
             state.kill_account(&a);
@@ -1127,7 +1113,7 @@ mod tests {
             state.drop()
         };
 
-        let state = State::from_existing(db, root, U256::from(0u8), Default::default()).unwrap();
+        let state = State::from_existing(db, root, Default::default()).unwrap();
         assert_eq!(state.account_exists(&a).unwrap(), false);
         assert_eq!(state.nonce(&a).unwrap(), U256::from(0u64));
     }
@@ -1249,12 +1235,11 @@ mod tests {
     #[test]
     fn mint_permissioned_asset() {
         let mut state = {
-            // account_start_nonce is 0
             let state_db = get_temp_state_db();
             let root_parent = H256::random();
 
             let state_db = state_db.boxed_clone_canon(&root_parent);
-            State::new(state_db, U256::from(0), Default::default())
+            State::new(state_db, Default::default())
         };
 
         let metadata = "metadata".to_string();
@@ -1306,12 +1291,11 @@ mod tests {
     #[test]
     fn mint_infinite_asset() {
         let mut state = {
-            // account_start_nonce is 0
             let state_db = get_temp_state_db();
             let root_parent = H256::random();
 
             let state_db = state_db.boxed_clone_canon(&root_parent);
-            State::new(state_db, U256::from(0), Default::default())
+            State::new(state_db, Default::default())
         };
 
         let metadata = "metadata".to_string();

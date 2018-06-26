@@ -73,7 +73,6 @@ mod tests {
 		}
 	},
 	"params": {
-		"accountStartNonce": "0x01",
 		"maximumExtraDataSize": "0x20",
 		"networkID" : "0x2",
 		"minParcelCost" : "10"

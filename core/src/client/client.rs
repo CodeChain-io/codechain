@@ -218,7 +218,6 @@ impl Client {
         State::from_existing(
             self.state_db.read().boxed_clone_canon(&header.hash()),
             header.state_root(),
-            self.engine.machine().account_start_nonce(),
             self.trie_factory.clone(),
         ).expect("State root of best block header always valid.")
     }
@@ -239,7 +238,7 @@ impl Client {
             let db = self.state_db.read().boxed_clone();
 
             let root = header.state_root();
-            State::from_existing(db, root, self.engine.machine().account_start_nonce(), self.trie_factory.clone()).ok()
+            State::from_existing(db, root, self.trie_factory.clone()).ok()
         })
     }
 

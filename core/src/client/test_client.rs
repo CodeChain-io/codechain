@@ -320,9 +320,7 @@ impl MiningBlockChainClient for TestBlockChainClient {}
 impl Nonce for TestBlockChainClient {
     fn nonce(&self, address: &Address, id: BlockId) -> Option<U256> {
         match id {
-            BlockId::Latest => {
-                Some(self.nonces.read().get(address).cloned().unwrap_or(self.spec.params().account_start_nonce))
-            }
+            BlockId::Latest => Some(self.nonces.read().get(address).cloned().unwrap_or_else(U256::zero)),
             _ => None,
         }
     }

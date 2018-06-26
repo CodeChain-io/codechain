@@ -73,5 +73,5 @@ pub fn get_temp_state_db() -> StateDB {
 
 pub fn get_temp_state() -> State<StateDB> {
     let journal_db = get_temp_state_db();
-    State::new(journal_db, U256::from(0), Default::default())
+    State::new(journal_db, Default::default())
 }
