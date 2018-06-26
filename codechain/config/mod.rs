@@ -95,8 +95,8 @@ pub struct Operating {
     pub db_path: String,
     pub snapshot_path: String,
     pub chain: ChainType,
-    pub enable_block_sync: bool,
-    pub enable_parcel_relay: bool,
+    pub no_sync: bool,
+    pub no_parcel_relay: bool,
     pub secret_key: Secret,
     pub author: Option<Address>,
     pub engine_signer: Option<Address>,
@@ -125,10 +125,10 @@ impl Operating {
             self.chain = chain.parse()?;
         }
         if matches.is_present("no-sync") {
-            self.enable_block_sync = false;
+            self.no_sync = true;
         }
         if matches.is_present("no-parcel-relay") {
-            self.enable_parcel_relay = false;
+            self.no_parcel_relay = true;
         }
         if let Some(secret) = matches.value_of("secret-key") {
             self.secret_key = Secret::from_str(secret).map_err(|_| "Invalid secret key")?;
