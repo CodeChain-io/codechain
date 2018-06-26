@@ -265,7 +265,7 @@ impl SessionInitiator {
                         self.server.enqueue(message, from.clone())?;
                         return Ok(())
                     } else {
-                        if !self.routing_table.reset_key_pair_for_secret(from) {
+                        if !self.routing_table.remove_node(*from) {
                             cwarn!(NET, "Cannot reset key pair to {:?}", from);
                         }
                     }
@@ -301,10 +301,8 @@ impl SessionInitiator {
                     return Ok(())
                 }
 
-                if self.routing_table.reset_key_pair_for_secret(from) {
+                if self.routing_table.remove_node(*from) {
                     cinfo!(NET, "Shared Secret to {:?} denied (reason: {})", from, reason);
-                } else {
-                    cwarn!(NET, "Shared Secret to {:?} denied (reason: {}), but it's not requested", from, reason);
                 }
                 Ok(())
             }
