@@ -112,6 +112,10 @@ impl Chain for ChainClient {
         Ok(self.client.block_hash(BlockId::Number(block_number)))
     }
 
+    fn get_block_by_number(&self, block_number: u64) -> Result<Option<Block>> {
+        Ok(self.client.block(BlockId::Number(block_number)).map(|block| block.decode().into()))
+    }
+
     fn get_block_by_hash(&self, block_hash: H256) -> Result<Option<Block>> {
         Ok(self.client.block(BlockId::Hash(block_hash)).map(|block| block.decode().into()))
     }

@@ -67,6 +67,10 @@ build_rpc_trait! {
         # [rpc(name = "chain_getBlockHash")]
         fn get_block_hash(&self, u64) -> Result<Option<H256>>;
 
+        /// Gets block with given number.
+        # [rpc(name = "chain_getBlockByNumber")]
+        fn get_block_by_number(&self, u64) -> Result<Option<Block>>;
+
         /// Gets block with given hash.
         # [rpc(name = "chain_getBlockByHash")]
         fn get_block_by_hash(&self, H256) -> Result<Option<Block>>;
