@@ -52,6 +52,9 @@ macro_rules! log_target {
     (POA) => {
         "poa"
     };
+    (ROUTING_TABLE) => {
+        "routing_table"
+    };
     (SHUTDOWN) => {
         "shutdown"
     };
