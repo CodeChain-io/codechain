@@ -31,7 +31,7 @@ use super::{IntoSocketAddr, NodeId, SocketAddr};
 enum State {
     Intermediate,
     Candidate,
-    Alived,
+    Alive,
     KeyPairShared(KeyPair),
     SecretShared(Secret),
     TemporaryNonceShared(Secret, Nonce),
@@ -97,14 +97,14 @@ impl RoutingTable {
                 entry.set(old_state);
                 return false
             }
-            entry.set(State::Alived);
+            entry.set(State::Alive);
 
             let t = remote_to_local_node_ids.insert(remote_node_id, local_node_id);
             assert!(t.is_none());
             return true
         }
 
-        let t = entries.insert(remote_node_id, Mutex::new(Cell::new(State::Alived)));
+        let t = entries.insert(remote_node_id, Mutex::new(Cell::new(State::Alive)));
         debug_assert!(t.is_none());
         let t = remote_to_local_node_ids.insert(remote_node_id, local_node_id);
         assert!(t.is_none());
@@ -117,7 +117,7 @@ impl RoutingTable {
         entries.get(&remote_node_id).and_then(|entry| {
             let entry = entry.lock();
             let old_state = entry.replace(State::Intermediate);
-            if old_state != State::Alived {
+            if old_state != State::Alive {
                 entry.set(old_state);
                 return None
             }
