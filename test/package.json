@@ -6,7 +6,7 @@
   "author": "CodeChain Team <codechain@kodebox.io>",
   "license": "AGPL-3.0",
   "scripts": {
-    "start": "jest",
+    "start": "cd ..; cargo build; cd test; jest",
     "lint": "tslint -c tslint.json -p tsconfig.json"
   },
   "devDependencies": {
