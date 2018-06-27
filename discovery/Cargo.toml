@@ -1,7 +1,7 @@
 [package]
 name = "codechain-discovery"
 version = "0.1.0"
-authors = ["Kodebox <codechain@kodebox.io>"]
+authors = ["CodeChain Team <codechain@kodebox.io>"]
 
 [dependencies]
 codechain-crypto = { path = "../crypto" }
