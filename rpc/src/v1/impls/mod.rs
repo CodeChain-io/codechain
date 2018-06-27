@@ -16,6 +16,8 @@
 
 mod chain;
 mod devel;
+mod miner;
 
 pub use self::chain::ChainClient;
 pub use self::devel::DevelClient;
+pub use self::miner::MinerClient;

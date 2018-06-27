@@ -17,7 +17,9 @@
 mod block;
 mod bytes;
 mod parcel;
+mod work;
 
 pub use self::block::Block;
 pub use self::bytes::Bytes;
 pub use self::parcel::Parcel;
+pub use self::work::Work;

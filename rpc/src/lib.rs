@@ -15,12 +15,15 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 extern crate codechain_core as ccore;
+#[macro_use]
+extern crate codechain_logger as clogger;
 extern crate codechain_types as ctypes;
 extern crate jsonrpc_core;
 extern crate jsonrpc_http_server;
 extern crate jsonrpc_ipc_server;
 extern crate kvdb;
 extern crate kvdb_rocksdb as rocksdb;
+#[macro_use]
 extern crate log;
 extern crate rlp;
 extern crate rustc_hex;
