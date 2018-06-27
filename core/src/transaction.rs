@@ -25,7 +25,7 @@ use super::parcel::{AssetTransferInput, AssetTransferOutput};
 
 /// Parcel transaction type.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", tag = "type", content = "data")]
 pub enum Transaction {
     #[serde(rename_all = "camelCase")]
     AssetMint {
