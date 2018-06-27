@@ -99,35 +99,6 @@ CLI Options for CodeChain client
     ``--discovery-refresh=[ms]``
         Refresh timeout of discovery (ms). It may conflict with:`` --no-discovery``.
 
-Subcommands
------------
-
-CodeChain has a subcommand called ``account``. It has subcommands of its own, which are the following:
-
-    ``create``
-        create account
-
-        ``--passphrase <PASSWORD>``
-            account passphrase
-
-    ``import``
-        import private key
-
-        ``--passphrase <PASSWORD>``
-            set account passphrase
-
-        ``--raw-key <RAW-KEY>``
-            specify key to import
-
-    ``list``
-        list managed accounts
-
-For example, if you want to create an account with a password of '1234', run the following:
-::
-
-    ./target/release/codechain account create --passphrase 1234
-
-
 Logging
 =======
 For logging, run the following to configure:

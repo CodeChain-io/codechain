@@ -15,7 +15,7 @@ First, install the package with the following command:
 
 ``npm install codechain-sdk`` or ``yarn add codechain-sdk``
 
-Then, make sure that your CodeChain RPC server is up and running. You can read about how that is done in the configure section.
+Then, make sure that your CodeChain RPC server is up and running. You can read about how that is done in the `configure section <https://codechain.readthedocs.io/en/latest/configuration.html>`_.
 
 Running the Sample Assets Minting Code
 ======================================
