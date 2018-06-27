@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import { H160, H256, Parcel, PaymentTransaction, U256, privateKeyToAddress } from "codechain-sdk";
+import { H160, H256, Parcel, U256, privateKeyToAddress } from "codechain-sdk";
 import { wait } from "./helper/promise";
 import CodeChain from "./helper/spawn";
 
@@ -25,13 +25,13 @@ const instance = new CodeChain();
 
 function payment(nonce: U256): Parcel {
   const networkId = 17;
-  const transaction = new PaymentTransaction({
-    nonce: nonce.increase(),
-    sender: address,
-    receiver: new H160("3f4aa1fedf1f54eeb03b759deadb36676b184911"),
-    value: new U256("0"),
-  });
-  return new Parcel(nonce, new U256(10), networkId, transaction);
+  return Parcel.payment(
+    nonce,
+    new U256(10),
+    networkId,
+    new H160("3f4aa1fedf1f54eeb03b759deadb36676b184911"),
+    new U256("0")
+  );
 }
 
 test("basic scenario", async () => {
@@ -39,7 +39,7 @@ test("basic scenario", async () => {
   const nonce = await instance.sdk.getNonce(address);
   const hash = await instance.sdk.sendSignedParcel(payment(nonce!).sign(secret));
   await wait(3000);
-  const invoices = await instance.sdk.getParcelInvoices(hash);
-  expect(invoices[0].toJSON().outcome).toBe("Success");
+  const invoice = await instance.sdk.getParcelInvoice(hash);
+  expect(invoice.success).toBe(true);
   await instance.clean();
 });
