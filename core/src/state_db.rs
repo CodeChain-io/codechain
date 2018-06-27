@@ -332,26 +332,8 @@ impl StateDB {
         self.db.as_hashdb_mut()
     }
 
-    /// Clone the database.
-    pub fn boxed_clone(&self) -> StateDB {
-        StateDB {
-            db: self.db.boxed_clone(),
-            account_cache: self.account_cache.clone(),
-            asset_scheme_cache: self.asset_scheme_cache.clone(),
-            asset_cache: self.asset_cache.clone(),
-
-            local_account_cache: Vec::new(),
-            local_asset_scheme_cache: Vec::new(),
-            local_asset_cache: Vec::new(),
-
-            parent_hash: None,
-            commit_hash: None,
-            commit_number: None,
-        }
-    }
-
     /// Clone the database for a canonical state.
-    pub fn boxed_clone_canon(&self, parent: &H256) -> StateDB {
+    pub fn clone_canon(&self, parent: &H256) -> StateDB {
         StateDB {
             db: self.db.boxed_clone(),
             account_cache: self.account_cache.clone(),
@@ -455,6 +437,25 @@ impl StateDB {
     }
 }
 
+impl Clone for StateDB {
+    fn clone(&self) -> Self {
+        Self {
+            db: self.db.boxed_clone(),
+            account_cache: self.account_cache.clone(),
+            asset_scheme_cache: self.asset_scheme_cache.clone(),
+            asset_cache: self.asset_cache.clone(),
+
+            local_account_cache: Vec::new(),
+            local_asset_scheme_cache: Vec::new(),
+            local_asset_cache: Vec::new(),
+
+            parent_hash: None,
+            commit_hash: None,
+            commit_number: None,
+        }
+    }
+}
+
 impl state::Backend for StateDB {
     fn as_hashdb(&self) -> &HashDB {
         self.db.as_hashdb()
@@ -527,7 +528,7 @@ mod tests {
         let h0 = H256::random();
         let mut batch = DBTransaction::new();
 
-        let mut s = state_db.boxed_clone_canon(&root_parent);
+        let mut s = state_db.clone_canon(&root_parent);
         s.add_to_account_cache(address, Some(Account::new(2.into(), 0.into())), false);
         assert!(s.get_cached_account(&address).is_none());
         assert!(s.commit_hash.is_none());
@@ -543,7 +544,7 @@ mod tests {
         s.sync_cache(&[], &[], true);
         assert!(s.get_cached_account(&address).is_none());
 
-        let s = state_db.boxed_clone_canon(&h0);
+        let s = state_db.clone_canon(&h0);
         assert!(s.get_cached_account(&address).is_some());
     }
 
@@ -563,52 +564,52 @@ mod tests {
 
         // blocks  [ 3a(c) 2a(c) 2b 1b 1a(c) 0 ]
         // balance [ 5     5     4  3  2     2 ]
-        let mut s = state_db.boxed_clone_canon(&root_parent);
+        let mut s = state_db.clone_canon(&root_parent);
         s.add_to_account_cache(address, Some(Account::new(2.into(), 0.into())), false);
         s.journal_under(&mut batch, 0, &h0).unwrap();
         s.sync_cache(&[], &[], true);
 
-        let mut s = state_db.boxed_clone_canon(&h0);
+        let mut s = state_db.clone_canon(&h0);
         s.journal_under(&mut batch, 1, &h1a).unwrap();
         s.sync_cache(&[], &[], true);
 
-        let mut s = state_db.boxed_clone_canon(&h0);
+        let mut s = state_db.clone_canon(&h0);
         s.add_to_account_cache(address, Some(Account::new(3.into(), 0.into())), true);
         s.journal_under(&mut batch, 1, &h1b).unwrap();
         s.sync_cache(&[], &[], false);
 
-        let mut s = state_db.boxed_clone_canon(&h1b);
+        let mut s = state_db.clone_canon(&h1b);
         s.add_to_account_cache(address, Some(Account::new(4.into(), 0.into())), true);
         s.journal_under(&mut batch, 2, &h2b).unwrap();
         s.sync_cache(&[], &[], false);
 
-        let mut s = state_db.boxed_clone_canon(&h1a);
+        let mut s = state_db.clone_canon(&h1a);
         s.add_to_account_cache(address, Some(Account::new(5.into(), 0.into())), true);
         s.journal_under(&mut batch, 2, &h2a).unwrap();
         s.sync_cache(&[], &[], true);
 
-        let mut s = state_db.boxed_clone_canon(&h2a);
+        let mut s = state_db.clone_canon(&h2a);
         s.journal_under(&mut batch, 3, &h3a).unwrap();
         s.sync_cache(&[], &[], true);
 
-        let s = state_db.boxed_clone_canon(&h3a);
+        let s = state_db.clone_canon(&h3a);
         assert_eq!(s.get_cached_account(&address).unwrap().unwrap().balance(), &U256::from(5));
 
-        let s = state_db.boxed_clone_canon(&h1a);
+        let s = state_db.clone_canon(&h1a);
         assert!(s.get_cached_account(&address).is_none());
 
-        let s = state_db.boxed_clone_canon(&h2b);
+        let s = state_db.clone_canon(&h2b);
         assert!(s.get_cached_account(&address).is_none());
 
-        let s = state_db.boxed_clone_canon(&h1b);
+        let s = state_db.clone_canon(&h1b);
         assert!(s.get_cached_account(&address).is_none());
 
         // reorg to 3b
         // blocks  [ 3b(c) 3a 2a 2b(c) 1b 1a 0 ]
-        let mut s = state_db.boxed_clone_canon(&h2b);
+        let mut s = state_db.clone_canon(&h2b);
         s.journal_under(&mut batch, 3, &h3b).unwrap();
         s.sync_cache(&[h1b.clone(), h2b.clone(), h3b.clone()], &[h1a.clone(), h2a.clone(), h3a.clone()], true);
-        let s = state_db.boxed_clone_canon(&h3a);
+        let s = state_db.clone_canon(&h3a);
         assert!(s.get_cached_account(&address).is_none());
     }
 
@@ -624,7 +625,7 @@ mod tests {
         let asset_scheme = AssetScheme::new("A metadata for test asset_scheme".to_string(), amount, registrar);
         let asset_scheme_address = AssetSchemeAddress::new(h0);
 
-        let mut s = state_db.boxed_clone_canon(&root_parent);
+        let mut s = state_db.clone_canon(&root_parent);
 
         s.add_to_asset_scheme_cache(asset_scheme_address.clone(), Some(asset_scheme), false);
 
@@ -642,7 +643,7 @@ mod tests {
         s.sync_cache(&[], &[], true);
         assert!(s.get_cached_asset_scheme(&asset_scheme_address).is_none());
 
-        let s = state_db.boxed_clone_canon(&h0);
+        let s = state_db.clone_canon(&h0);
         let asset_scheme = s.get_cached_asset_scheme(&asset_scheme_address);
         assert!(asset_scheme.is_some());
 
@@ -670,7 +671,7 @@ mod tests {
         let asset = Asset::new(asset_scheme_address, lock_script_hash, parameters, amount);
         let asset_address = AssetAddress::new(parcel_hash, 0);
 
-        let mut s = state_db.boxed_clone_canon(&root_parent);
+        let mut s = state_db.clone_canon(&root_parent);
 
         s.add_to_asset_cache(asset_address.clone(), Some(asset), false);
 
@@ -688,7 +689,7 @@ mod tests {
         s.sync_cache(&[], &[], true);
         assert!(s.get_cached_asset(&asset_address).is_none());
 
-        let s = state_db.boxed_clone_canon(&asset_address.clone().into());
+        let s = state_db.clone_canon(&asset_address.clone().into());
         assert!(s.get_cached_asset(&asset_address).is_some());
         let asset = s.get_cached_asset(&asset_address).unwrap();
         assert!(asset.is_some());

@@ -709,7 +709,7 @@ where
 impl Clone for State<StateDB> {
     fn clone(&self) -> State<StateDB> {
         State {
-            db: self.db.boxed_clone(),
+            db: self.db.clone(),
             root: self.root.clone(),
             id_of_checkpoints: self.id_of_checkpoints.clone(),
             account: self.account.clone(),
@@ -1242,7 +1242,7 @@ mod tests {
             let state_db = get_temp_state_db();
             let root_parent = H256::random();
 
-            let state_db = state_db.boxed_clone_canon(&root_parent);
+            let state_db = state_db.clone_canon(&root_parent);
             State::new(state_db, Default::default())
         };
 
@@ -1298,7 +1298,7 @@ mod tests {
             let state_db = get_temp_state_db();
             let root_parent = H256::random();
 
-            let state_db = state_db.boxed_clone_canon(&root_parent);
+            let state_db = state_db.clone_canon(&root_parent);
             State::new(state_db, Default::default())
         };
 

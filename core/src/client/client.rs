@@ -216,7 +216,7 @@ impl Client {
     pub fn latest_state(&self) -> State<StateDB> {
         let header = self.best_block_header();
         State::from_existing(
-            self.state_db.read().boxed_clone_canon(&header.hash()),
+            self.state_db.read().clone_canon(&header.hash()),
             header.state_root(),
             self.trie_factory.clone(),
         ).expect("State root of best block header always valid.")
@@ -235,7 +235,7 @@ impl Client {
         }
 
         self.block_header(id).and_then(|header| {
-            let db = self.state_db.read().boxed_clone();
+            let db = self.state_db.read().clone();
 
             let root = header.state_root();
             State::from_existing(db, root, self.trie_factory.clone()).ok()
@@ -707,7 +707,7 @@ impl Importer {
         };
 
         // Enact Verified Block
-        let db = client.state_db.read().boxed_clone_canon(header.parent_hash());
+        let db = client.state_db.read().clone_canon(header.parent_hash());
 
         let is_epoch_begin = chain.epoch_transition(parent.number(), *header.parent_hash()).is_some();
         let enact_result =
@@ -876,7 +876,7 @@ impl PrepareOpenBlock for Client {
         OpenBlock::new(
             engine,
             self.trie_factory.clone(),
-            self.state_db.read().boxed_clone_canon(&h),
+            self.state_db.read().clone_canon(&h),
             best_header,
             author,
             extra_data,
