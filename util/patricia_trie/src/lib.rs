@@ -213,7 +213,7 @@ pub trait TrieIterator: Iterator {
 }
 
 /// Trie types
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum TrieSpec {
     /// Generic trie.
     Generic,
@@ -230,7 +230,7 @@ impl Default for TrieSpec {
 }
 
 /// Trie factory.
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Copy)]
 pub struct TrieFactory {
     spec: TrieSpec,
 }
