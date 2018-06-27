@@ -14,10 +14,16 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod chain;
-mod devel;
-mod miner;
+use jsonrpc_core::Result;
 
-pub use self::chain::Chain;
-pub use self::devel::Devel;
-pub use self::miner::Miner;
+use super::super::types::{Bytes, Work};
+
+build_rpc_trait! {
+    pub trait Miner {
+        # [rpc(name = "miner_getWork")]
+        fn get_work(&self) -> Result<Work>;
+
+        # [rpc(name = "miner_submitWork")]
+        fn submit_work(&self, Bytes, Bytes) -> Result<bool>;
+    }
+}

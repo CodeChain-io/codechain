@@ -14,10 +14,12 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod chain;
-mod devel;
-mod miner;
+use ctypes::{H256, U256};
 
-pub use self::chain::Chain;
-pub use self::devel::Devel;
-pub use self::miner::Miner;
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Work {
+    pub block_hash: H256,
+    pub score: U256,
+    pub block_number: u64,
+}

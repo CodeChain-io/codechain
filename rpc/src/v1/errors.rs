@@ -21,6 +21,7 @@ use rlp::DecoderError;
 use jsonrpc_core::{Error, ErrorCode, Value};
 
 mod codes {
+    pub const NO_WORK_REQUIRED: i64 = -32004;
     pub const UNKNOWN_ERROR: i64 = -32009;
     pub const PARCEL_ERROR: i64 = -32010;
     pub const KVDB_ERROR: i64 = -32011;
@@ -56,5 +57,13 @@ pub fn rlp(error: DecoderError) -> Error {
         code: ErrorCode::ServerError(codes::UNKNOWN_ERROR),
         message: "Invalid RLP.".into(),
         data: Some(Value::String(format!("{:?}", error))),
+    }
+}
+
+pub fn no_work_required() -> Error {
+    Error {
+        code: ErrorCode::ServerError(codes::NO_WORK_REQUIRED),
+        message: "External work is only required for Proof of Work engines.".into(),
+        data: None,
     }
 }
