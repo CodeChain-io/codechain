@@ -569,6 +569,10 @@ impl MinerService for Miner {
         }
     }
 
+    fn can_produce_work_package(&self) -> bool {
+        self.engine.seals_internally().is_none()
+    }
+
     fn update_sealing<C>(&self, chain: &C)
     where
         C: AccountData + BlockChain + BlockProducer + ImportSealedBlock, {
