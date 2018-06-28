@@ -11,9 +11,12 @@ CodeChain is a programmable open source blockchain technology optimal for develo
 .. toctree::
     :maxdepth: 2
 
+    introduction
     setup
     configuration
     basic-usage
     account-management
+    codechain-coin
     minting-sending-assets
+    glossary
     frequently-asked-questions

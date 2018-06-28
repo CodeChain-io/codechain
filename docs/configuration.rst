@@ -1,5 +1,8 @@
+.. _configuration:
+
+####################
 Configuration
-#############
+####################
 
 CodeChain can be configured with either CLI options or a config file. When it comes to which options take precedence, it goes from CLI, user's own config.toml file, and config.dev.toml in that order.
 
