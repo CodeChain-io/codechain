@@ -390,9 +390,8 @@ impl SimpleSecretStore for KeyMultiStore {
 mod tests {
     extern crate tempdir;
 
-    use self::tempdir::TempDir;
     use super::{KeyMultiStore, KeyStore};
-    use accounts_dir::{KeyDirectory, MemoryDirectory, RootDiskDirectory};
+    use accounts_dir::MemoryDirectory;
     use ckeys::{Generator, KeyPair, Random};
     use ctypes::H256;
     use secret_store::{SecretStore, SimpleSecretStore};
@@ -407,23 +406,6 @@ mod tests {
 
     fn multi_store() -> KeyMultiStore {
         KeyMultiStore::open(Box::new(MemoryDirectory::default())).expect("MemoryDirectory always load successfuly; qed")
-    }
-
-    struct RootDiskDirectoryGuard {
-        pub key_dir: Option<Box<KeyDirectory>>,
-        _path: TempDir,
-    }
-
-    impl RootDiskDirectoryGuard {
-        pub fn new() -> Self {
-            let temp_path = TempDir::new("").unwrap();
-            let disk_dir = Box::new(RootDiskDirectory::create(temp_path.path()).unwrap());
-
-            RootDiskDirectoryGuard {
-                key_dir: Some(disk_dir),
-                _path: temp_path,
-            }
-        }
     }
 
     #[test]
