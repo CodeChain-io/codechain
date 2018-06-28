@@ -14,10 +14,12 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use super::{AssetAddress, ShardBackend};
+use error::Error;
+
+use super::{ShardBackend, Transaction};
 
 pub trait ShardState<B>
 where
     B: ShardBackend, {
-    fn kill_asset(&mut self, account: &AssetAddress);
+    fn execute_transaction(&mut self, transaction: &Transaction, parcel_network_id: &u64) -> Result<(), Error>;
 }

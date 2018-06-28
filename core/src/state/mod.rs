@@ -484,8 +484,6 @@ where
 trait ShardStateInternal<B>
 where
     B: Backend + ShardBackend, {
-    fn execute_transaction(&mut self, transaction: &Transaction, parcel_network_id: &u64) -> Result<(), Error>;
-
     fn mint_asset(
         &mut self,
         transaction_hash: H256,
@@ -504,6 +502,8 @@ where
         outputs: &[AssetTransferOutput],
     ) -> Result<(), Error>;
 
+    fn kill_asset(&mut self, account: &AssetAddress);
+
     fn require_asset_scheme<'a, F>(
         &'a self,
         a: &AssetSchemeAddress,
@@ -521,35 +521,6 @@ impl<B> ShardStateInternal<B> for State<B>
 where
     B: Backend + ShardBackend,
 {
-    fn execute_transaction(&mut self, transaction: &Transaction, parcel_network_id: &u64) -> Result<(), Error> {
-        ctrace!(TX, "Execute {:?}(TxHash:{:?})", transaction, transaction.hash());
-        match transaction {
-            Transaction::AssetMint {
-                metadata,
-                lock_script_hash,
-                amount,
-                parameters,
-                registrar,
-                ..
-            } => Ok(self.mint_asset(transaction.hash(), metadata, lock_script_hash, parameters, amount, registrar)?),
-            Transaction::AssetTransfer {
-                burns,
-                inputs,
-                outputs,
-                network_id,
-                ..
-            } => {
-                if parcel_network_id != network_id {
-                    return Err(TransactionError::InvalidNetworkId(Mismatch {
-                        expected: *parcel_network_id,
-                        found: *network_id,
-                    }).into())
-                }
-                self.transfer_asset(&transaction, burns, inputs, outputs)
-            }
-        }
-    }
-
     fn mint_asset(
         &mut self,
         transaction_hash: H256,
@@ -672,6 +643,10 @@ where
         ctrace!(TX, "Deleted assets {:?}", deleted_asset);
         ctrace!(TX, "Created assets {:?}", created_asset);
         Ok(())
+    }
+
+    fn kill_asset(&mut self, account: &AssetAddress) {
+        self.asset.remove(account);
     }
 
     fn require_asset_scheme<'a, F>(
@@ -814,8 +789,33 @@ impl<B> ShardState<B> for State<B>
 where
     B: Backend + ShardBackend,
 {
-    fn kill_asset(&mut self, account: &AssetAddress) {
-        self.asset.remove(account);
+    fn execute_transaction(&mut self, transaction: &Transaction, parcel_network_id: &u64) -> Result<(), Error> {
+        ctrace!(TX, "Execute {:?}(TxHash:{:?})", transaction, transaction.hash());
+        match transaction {
+            Transaction::AssetMint {
+                metadata,
+                lock_script_hash,
+                amount,
+                parameters,
+                registrar,
+                ..
+            } => Ok(self.mint_asset(transaction.hash(), metadata, lock_script_hash, parameters, amount, registrar)?),
+            Transaction::AssetTransfer {
+                burns,
+                inputs,
+                outputs,
+                network_id,
+                ..
+            } => {
+                if parcel_network_id != network_id {
+                    return Err(TransactionError::InvalidNetworkId(Mismatch {
+                        expected: *parcel_network_id,
+                        found: *network_id,
+                    }).into())
+                }
+                self.transfer_asset(&transaction, burns, inputs, outputs)
+            }
+        }
     }
 }
 
