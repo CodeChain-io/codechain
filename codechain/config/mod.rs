@@ -85,6 +85,7 @@ impl ChainType {
 pub struct Config {
     #[serde(rename = "codechain")]
     pub operating: Operating,
+    pub mining: Mining,
 }
 
 #[derive(Deserialize)]
@@ -98,6 +99,11 @@ pub struct Operating {
     pub no_sync: bool,
     pub no_parcel_relay: bool,
     pub secret_key: Secret,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Mining {
     pub author: Option<Address>,
     pub engine_signer: Option<Address>,
 }
@@ -133,6 +139,12 @@ impl Operating {
         if let Some(secret) = matches.value_of("secret-key") {
             self.secret_key = Secret::from_str(secret).map_err(|_| "Invalid secret key")?;
         }
+        Ok(())
+    }
+}
+
+impl Mining {
+    pub fn overwrite_with(&mut self, matches: &clap::ArgMatches) -> Result<(), String> {
         if let Some(author) = matches.value_of("author") {
             self.author = Some(Address::from_str(author).map_err(|_| "Invalid address")?);
         }

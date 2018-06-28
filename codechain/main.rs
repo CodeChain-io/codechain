@@ -147,6 +147,7 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
     let config_path = matches.value_of("config-path").unwrap_or(DEFAULT_CONFIG_PATH);
     let mut config = config::load(&config_path)?;
     config.operating.overwrite_with(&matches)?;
+    config.mining.overwrite_with(&matches)?;
     let spec = config.operating.chain.spec()?;
 
     let instance_id = config.operating.instance_id.unwrap_or(SystemTime::now()
@@ -169,9 +170,9 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
     };
 
     let miner = Miner::new(MinerOptions::default(), &spec, Some(ap.clone()));
-    let author = config.operating.author.unwrap_or(address);
+    let author = config.mining.author.unwrap_or(address);
     miner.set_author(author);
-    let enginer_signer = config.operating.engine_signer.unwrap_or(address);
+    let enginer_signer = config.mining.engine_signer.unwrap_or(address);
     // FIXME: Don't hardcode password.
     miner.set_engine_signer(enginer_signer, "password".to_string()).map_err(|err| format!("{:?}", err))?;
 
