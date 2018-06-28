@@ -163,7 +163,9 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
     let address = if addresses.len() > 0 {
         addresses[0]
     } else {
-        ap.insert_account(config.operating.secret_key.into()).map_err(|e| format!("Invalid secret key: {:?}", e))?
+        // FIXME: Don't hard password.
+        ap.insert_account(config.operating.secret_key.into(), "password")
+            .map_err(|e| format!("Invalid secret key: {:?}", e))?
     };
 
     let miner = Miner::new(MinerOptions::default(), &spec, Some(ap.clone()));

@@ -79,21 +79,21 @@ impl AccountProvider {
         })
     }
 
-    pub fn new_account_and_public(&self) -> Result<(Address, Public), SignError> {
+    pub fn new_account_and_public(&self, password: &str) -> Result<(Address, Public), SignError> {
         let acc = Random.generate().expect("secp context has generation capabilities; qed");
         let private = acc.private().clone();
         let public = acc.public().clone();
         let address = public_to_address(&public);
-        self.keystore.write().insert_account(*private, "password")?;
+        self.keystore.write().insert_account(*private, password)?;
         Ok((address, public))
     }
 
-    pub fn insert_account(&self, private: Private) -> Result<Address, SignError> {
+    pub fn insert_account(&self, private: Private, password: &str) -> Result<Address, SignError> {
         let acc = KeyPair::from_private(private)?;
         let private = acc.private().clone();
         let public = acc.public().clone();
         let address = public_to_address(&public);
-        self.keystore.write().insert_account(*private, "password")?;
+        self.keystore.write().insert_account(*private, password)?;
         Ok(address)
     }
 

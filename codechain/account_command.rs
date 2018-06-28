@@ -37,14 +37,16 @@ pub fn run_account_command(matches: ArgMatches) -> Result<(), String> {
 
     match subcommand.name.as_ref() {
         "create" => {
-            let (address, _) = ap.new_account_and_public().expect("Cannot create account");
+            // FIXME: Input password.
+            let (address, _) = ap.new_account_and_public("password").expect("Cannot create account");
             info!("Addresss {} is created", address);
             Ok(())
         }
         "import" => {
             let keystring = subcommand.matches.value_of("raw-key").unwrap();
             let keypair = KeyPair::from_private(keystring.parse().unwrap()).unwrap();
-            ap.insert_account(keypair.private().clone()).expect("Cannot insert account");
+            // FIXME: Don't hard password.
+            ap.insert_account(keypair.private().clone(), "password").expect("Cannot insert account");
             Ok(())
         }
         "list" => {
