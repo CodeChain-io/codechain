@@ -1251,14 +1251,16 @@ mod tests {
         let parameters = vec![];
         let amount = 100;
         let registrar = Some(Address::random());
-        let transactions = vec![Transaction::AssetMint {
+        let transaction = Transaction::AssetMint {
             metadata: metadata.clone(),
             lock_script_hash,
             parameters,
             amount: Some(amount),
             registrar,
             nonce: 0,
-        }];
+        };
+        let transaction_hash = transaction.hash();
+        let transactions = vec![transaction];
         let signed_parcel = Parcel {
             fee: 5.into(),
             action: Action::ChangeShardState {
@@ -1267,19 +1269,18 @@ mod tests {
             ..Parcel::default()
         }.sign(&secret().into());
         let sender = signed_parcel.sender();
-        let parcel_hash = signed_parcel.hash();
 
         let added_result = state.add_balance(&sender, &U256::from(69u64));
         assert!(added_result.is_ok());
 
         let minted_result =
-            state.mint_asset(parcel_hash.clone(), &metadata, &lock_script_hash, &vec![], &Some(amount), &registrar);
+            state.mint_asset(transaction_hash, &metadata, &lock_script_hash, &vec![], &Some(amount), &registrar);
         assert!(minted_result.is_ok());
 
         let commit = state.commit();
         assert!(commit.is_ok());
 
-        let asset_scheme_address = AssetSchemeAddress::new(parcel_hash.clone());
+        let asset_scheme_address = AssetSchemeAddress::new(transaction_hash);
         let asset_scheme = state.asset_scheme(&asset_scheme_address);
         assert!(asset_scheme.is_ok());
         let asset_scheme = asset_scheme.unwrap();
@@ -1306,14 +1307,16 @@ mod tests {
         let lock_script_hash = H256::random();
         let parameters = vec![];
         let registrar = Some(Address::random());
-        let transactions = vec![Transaction::AssetMint {
+        let transaction = Transaction::AssetMint {
             metadata: metadata.clone(),
             lock_script_hash,
             parameters: vec![],
             amount: None,
             registrar,
             nonce: 0,
-        }];
+        };
+        let transaction_hash = transaction.hash();
+        let transactions = vec![transaction];
         let signed_parcel = Parcel {
             fee: 5.into(),
             action: Action::ChangeShardState {
@@ -1322,19 +1325,18 @@ mod tests {
             ..Parcel::default()
         }.sign(&secret().into());
         let sender = signed_parcel.sender();
-        let parcel_hash = signed_parcel.hash();
 
         let added_result = state.add_balance(&sender, &U256::from(69u64));
         assert!(added_result.is_ok());
 
         let minted_result =
-            state.mint_asset(parcel_hash.clone(), &metadata, &lock_script_hash, &parameters, &None, &registrar);
+            state.mint_asset(transaction_hash, &metadata, &lock_script_hash, &parameters, &None, &registrar);
         assert!(minted_result.is_ok());
 
         let commit = state.commit();
         assert!(commit.is_ok());
 
-        let asset_scheme_address = AssetSchemeAddress::new(parcel_hash.clone());
+        let asset_scheme_address = AssetSchemeAddress::new(transaction_hash);
         let asset_scheme = state.asset_scheme(&asset_scheme_address);
         assert!(asset_scheme.is_ok());
         let asset_scheme = asset_scheme.unwrap();
