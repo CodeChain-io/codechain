@@ -689,9 +689,9 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
         header.set_score(new_score);
     }
 
-    fn set_signer(&self, ap: Arc<AccountProvider>, address: Address) {
+    fn set_signer(&self, ap: Arc<AccountProvider>, address: Address, password: String) {
         {
-            self.signer.write().set(ap, address);
+            self.signer.write().set(ap, address, password);
         }
         self.to_step(Step::Propose);
     }

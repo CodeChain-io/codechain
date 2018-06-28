@@ -25,6 +25,7 @@ use super::super::account_provider::{AccountProvider, SignError};
 pub struct EngineSigner {
     account_provider: Arc<AccountProvider>,
     address: Option<Address>,
+    password: Option<String>,
 }
 
 impl Default for EngineSigner {
@@ -32,21 +33,23 @@ impl Default for EngineSigner {
         EngineSigner {
             account_provider: AccountProvider::transient_provider(),
             address: Default::default(),
+            password: Default::default(),
         }
     }
 }
 
 impl EngineSigner {
     /// Set up the signer to sign with given address and password.
-    pub fn set(&mut self, ap: Arc<AccountProvider>, address: Address) {
+    pub fn set(&mut self, ap: Arc<AccountProvider>, address: Address, password: String) {
         self.account_provider = ap;
         self.address = Some(address);
+        self.password = Some(password);
         cdebug!(POA, "Setting Engine signer to {}", address);
     }
 
     /// Sign a consensus message hash.
     pub fn sign(&self, hash: H256) -> Result<ECDSASignature, SignError> {
-        self.account_provider.sign(self.address.unwrap_or_else(Default::default), hash)
+        self.account_provider.sign(self.address.unwrap_or_else(Default::default), self.password.clone(), hash)
     }
 
     /// Signing address.

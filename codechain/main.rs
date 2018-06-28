@@ -172,7 +172,8 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
     let author = config.operating.author.unwrap_or(address);
     miner.set_author(author);
     let enginer_signer = config.operating.engine_signer.unwrap_or(address);
-    miner.set_engine_signer(enginer_signer).map_err(|err| format!("{:?}", err))?;
+    // FIXME: Don't hardcode password.
+    miner.set_engine_signer(enginer_signer, "password".to_string()).map_err(|err| format!("{:?}", err))?;
 
     let client = client_start(&config, &spec, miner.clone())?;
 

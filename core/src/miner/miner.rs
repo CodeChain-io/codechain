@@ -502,11 +502,11 @@ impl MinerService for Miner {
         *self.extra_data.write() = extra_data;
     }
 
-    fn set_engine_signer(&self, address: Address) -> Result<(), SignError> {
+    fn set_engine_signer(&self, address: Address, password: String) -> Result<(), SignError> {
         if self.engine.seals_internally().is_some() {
             if let Some(ref ap) = self.accounts {
                 ctrace!(MINER, "Set engine signer to {:?}", address);
-                self.engine.set_signer(ap.clone(), address);
+                self.engine.set_signer(ap.clone(), address, password);
                 Ok(())
             } else {
                 cwarn!(MINER, "No account provider");

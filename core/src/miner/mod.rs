@@ -49,7 +49,7 @@ pub trait MinerService: Send + Sync {
     fn set_extra_data(&self, extra_data: Bytes);
 
     /// Set info necessary to sign consensus messages.
-    fn set_engine_signer(&self, address: Address) -> Result<(), SignError>;
+    fn set_engine_signer(&self, address: Address, password: String) -> Result<(), SignError>;
 
     /// Get current minimal fee for parcels accepted to queue.
     fn minimal_fee(&self) -> U256;

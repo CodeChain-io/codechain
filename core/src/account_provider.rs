@@ -28,6 +28,8 @@ use parking_lot::RwLock;
 /// Signing error
 #[derive(Debug)]
 pub enum SignError {
+    /// Account is not unlocked
+    NotUnlocked,
     /// Account does not exist.
     NotFound,
     /// Key error.
@@ -53,6 +55,7 @@ impl From<KeystoreError> for SignError {
 impl fmt::Display for SignError {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match self {
+            SignError::NotUnlocked => write!(f, "Account is locked"),
             SignError::NotFound => write!(f, "Account does not exist"),
             SignError::KeysError(e) => write!(f, "{}", e),
             SignError::KeystoreError(e) => write!(f, "{}", e),
@@ -97,9 +100,19 @@ impl AccountProvider {
         Ok(address)
     }
 
-    pub fn sign(&self, address: Address, message: Message) -> Result<ECDSASignature, SignError> {
-        let signature = self.keystore.read().sign(&address, "password", &message)?;
-        Ok(signature)
+    pub fn sign(
+        &self,
+        address: Address,
+        password: Option<String>,
+        message: Message,
+    ) -> Result<ECDSASignature, SignError> {
+        match password {
+            Some(password) => {
+                let signature = self.keystore.read().sign(&address, &password, &message)?;
+                Ok(signature)
+            }
+            None => Err(SignError::NotUnlocked),
+        }
     }
 
     pub fn has_account(&self, address: Address) -> Result<bool, SignError> {

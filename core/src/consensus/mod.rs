@@ -200,7 +200,7 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
     fn broadcast_proposal_block(&self, _block: SealedBlock) {}
 
     /// Register an account which signs consensus messages.
-    fn set_signer(&self, _ap: Arc<AccountProvider>, _address: Address) {}
+    fn set_signer(&self, _ap: Arc<AccountProvider>, _address: Address, _password: String) {}
 
     /// Sign using the EngineSigner, to be used for consensus parcel signing.
     fn sign(&self, _hash: H256) -> Result<ECDSASignature, Error> {
