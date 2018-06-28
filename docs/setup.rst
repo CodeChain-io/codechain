@@ -1,3 +1,5 @@
+.. _setup:
+
 Setup
 #####
 
@@ -9,20 +11,24 @@ CodeChain requires Rust version 1.26 to build. Using `rustup <https://rustup.rs/
 * For Linux Systems:
 
     * Ubuntu
+    
     .. note::
         ``gcc`` and ``g++`` are required for installing packages.
-::
 
-    $ curl https://sh.rustup.rs -sSf | sh
+    ::
+
+        $ curl https://sh.rustup.rs -sSf | sh
 
 * For Mac Systems:
 
     * MacOS 10.13.2 (17C88) tested
+
     .. note::
         ``clang`` is required for installing packages.
-::
 
-    $ curl https://sh.rustup.rs -sSf | sh
+    ::
+
+        $ curl https://sh.rustup.rs -sSf | sh
 
 * For Windows Systems:
 
