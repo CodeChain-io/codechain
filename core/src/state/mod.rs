@@ -1248,13 +1248,12 @@ mod tests {
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H256::random();
-        let parameters = vec![];
-        let amount = 100;
         let registrar = Some(Address::random());
+        let amount = 30;
         let transaction = Transaction::AssetMint {
             metadata: metadata.clone(),
             lock_script_hash,
-            parameters,
+            parameters: vec![],
             amount: Some(amount),
             registrar,
             nonce: 0,
@@ -1262,7 +1261,7 @@ mod tests {
         let transaction_hash = transaction.hash();
         let transactions = vec![transaction];
         let signed_parcel = Parcel {
-            fee: 5.into(),
+            fee: 11.into(),
             action: Action::ChangeShardState {
                 transactions,
             },
@@ -1270,31 +1269,45 @@ mod tests {
         }.sign(&secret().into());
         let sender = signed_parcel.sender();
 
-        let added_result = state.add_balance(&sender, &U256::from(69u64));
-        assert!(added_result.is_ok());
+        state.add_balance(&sender, &U256::from(69u64)).unwrap();
 
-        let minted_result =
-            state.mint_asset(transaction_hash, &metadata, &lock_script_hash, &vec![], &Some(amount), &registrar);
-        assert!(minted_result.is_ok());
+        match state.apply(&signed_parcel).unwrap() {
+            ParcelOutcome::Transactions(res) => match res.as_slice() {
+                [TransactionOutcome {
+                    invoice,
+                    error,
+                }] => {
+                    assert_eq!(&None, error);
+                    assert_eq!(&Invoice::Success, invoice);
+                }
+                _ => unreachable!(),
+            },
+            _ => unreachable!(),
+        };
 
-        let commit = state.commit();
-        assert!(commit.is_ok());
+        assert_eq!(state.balance(&sender).unwrap(), 58.into());
+        assert_eq!(state.nonce(&sender).unwrap(), 1.into());
 
         let asset_scheme_address = AssetSchemeAddress::new(transaction_hash);
-        let asset_scheme = state.asset_scheme(&asset_scheme_address);
-        assert!(asset_scheme.is_ok());
+        let asset_scheme = state.asset_scheme(&asset_scheme_address).unwrap();
         let asset_scheme = asset_scheme.unwrap();
-        assert!(asset_scheme.is_some());
-        let asset_scheme = asset_scheme.unwrap();
-
         assert_eq!(&metadata, asset_scheme.metadata());
         assert_eq!(&amount, asset_scheme.amount());
         assert_eq!(&registrar, asset_scheme.registrar());
         assert!(asset_scheme.is_permissioned());
+
+        let asset_address = AssetAddress::new(transaction_hash, 0);
+        let asset = state.asset(&asset_address).unwrap();
+        let asset = asset.unwrap();
+        let asset_type: H256 = asset_scheme_address.into();
+        assert_eq!(&asset_type, asset.asset_type());
+        assert_eq!(&lock_script_hash, asset.lock_script_hash());
+        assert_eq!(&Vec::<Bytes>::new(), asset.parameters());
+        assert_eq!(&amount, asset.amount());
     }
 
     #[test]
-    fn mint_infinite_asset() {
+    fn mint_infinite_permissioned_asset() {
         let mut state = {
             let state_db = get_temp_state_db();
             let root_parent = H256::random();
@@ -1305,7 +1318,6 @@ mod tests {
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H256::random();
-        let parameters = vec![];
         let registrar = Some(Address::random());
         let transaction = Transaction::AssetMint {
             metadata: metadata.clone(),
@@ -1326,27 +1338,41 @@ mod tests {
         }.sign(&secret().into());
         let sender = signed_parcel.sender();
 
-        let added_result = state.add_balance(&sender, &U256::from(69u64));
-        assert!(added_result.is_ok());
+        state.add_balance(&sender, &U256::from(69u64)).unwrap();
 
-        let minted_result =
-            state.mint_asset(transaction_hash, &metadata, &lock_script_hash, &parameters, &None, &registrar);
-        assert!(minted_result.is_ok());
+        match state.apply(&signed_parcel).unwrap() {
+            ParcelOutcome::Transactions(res) => match res.as_slice() {
+                [TransactionOutcome {
+                    invoice,
+                    error,
+                }] => {
+                    assert_eq!(&None, error);
+                    assert_eq!(&Invoice::Success, invoice);
+                }
+                _ => unreachable!(),
+            },
+            _ => unreachable!(),
+        };
 
-        let commit = state.commit();
-        assert!(commit.is_ok());
+        assert_eq!(state.balance(&sender).unwrap(), 64.into());
+        assert_eq!(state.nonce(&sender).unwrap(), 1.into());
 
         let asset_scheme_address = AssetSchemeAddress::new(transaction_hash);
-        let asset_scheme = state.asset_scheme(&asset_scheme_address);
-        assert!(asset_scheme.is_ok());
+        let asset_scheme = state.asset_scheme(&asset_scheme_address).unwrap();
         let asset_scheme = asset_scheme.unwrap();
-        assert!(asset_scheme.is_some());
-        let asset_scheme = asset_scheme.unwrap();
-
         assert_eq!(&metadata, asset_scheme.metadata());
         assert_eq!(&::std::u64::MAX, asset_scheme.amount());
         assert_eq!(&registrar, asset_scheme.registrar());
         assert!(asset_scheme.is_permissioned());
+
+        let asset_address = AssetAddress::new(transaction_hash, 0);
+        let asset = state.asset(&asset_address).unwrap();
+        let asset = asset.unwrap();
+        let asset_type: H256 = asset_scheme_address.into();
+        assert_eq!(&asset_type, asset.asset_type());
+        assert_eq!(&lock_script_hash, asset.lock_script_hash());
+        assert_eq!(&Vec::<Bytes>::new(), asset.parameters());
+        assert_eq!(&::std::u64::MAX, asset.amount());
     }
 
     #[test]
