@@ -6,3 +6,5 @@ chain = "solo"
 no_sync = false
 no_parcel_relay = false
 secret_key = "0x0000000000000000000000000000000000000000000000000000000000000001"
+
+[mining]
