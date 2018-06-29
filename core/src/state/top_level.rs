@@ -522,7 +522,7 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopState<B> for TopLevelSta
 mod tests {
     use ccrypto::Blake;
     use ckeys::{Generator, Random};
-    use ctypes::{Address, Bytes, Secret, U256};
+    use ctypes::{Address, Secret, U256};
 
     use super::super::super::parcel::Parcel;
     use super::super::super::tests::helpers::{get_temp_state, get_temp_state_db};
@@ -947,12 +947,13 @@ mod tests {
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H256::random();
+        let parameters = vec![];
         let registrar = Some(Address::random());
         let amount = 30;
         let transaction = Transaction::AssetMint {
             metadata: metadata.clone(),
             lock_script_hash,
-            parameters: vec![],
+            parameters: parameters.clone(),
             amount: Some(amount),
             registrar,
             nonce: 0,
@@ -970,39 +971,25 @@ mod tests {
 
         state.add_balance(&sender, &U256::from(69u64)).unwrap();
 
-        match state.apply(&signed_parcel).unwrap() {
-            ParcelOutcome::Transactions(res) => match res.as_slice() {
-                [TransactionOutcome {
-                    invoice,
-                    error,
-                }] => {
-                    assert_eq!(&None, error);
-                    assert_eq!(&Invoice::Success, invoice);
-                }
-                _ => unreachable!(),
-            },
-            _ => unreachable!(),
-        };
+        assert_eq!(
+            ParcelOutcome::Transactions(vec![TransactionOutcome {
+                invoice: Invoice::Success,
+                error: None,
+            }]),
+            state.apply(&signed_parcel).unwrap()
+        );
 
-        assert_eq!(state.balance(&sender).unwrap(), 58.into());
-        assert_eq!(state.nonce(&sender).unwrap(), 1.into());
+        assert_eq!(state.balance(&sender), Ok(58.into()));
+        assert_eq!(state.nonce(&sender), Ok(1.into()));
 
+        let shard_id = 0;
         let asset_scheme_address = AssetSchemeAddress::new(transaction_hash);
-        let asset_scheme = state.asset_scheme(0, &asset_scheme_address).unwrap();
-        let asset_scheme = asset_scheme.unwrap();
-        assert_eq!(&metadata, asset_scheme.metadata());
-        assert_eq!(&amount, asset_scheme.amount());
-        assert_eq!(&registrar, asset_scheme.registrar());
-        assert!(asset_scheme.is_permissioned());
+        let asset_scheme = state.asset_scheme(shard_id, &asset_scheme_address);
+        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), amount, registrar))), asset_scheme);
 
         let asset_address = AssetAddress::new(transaction_hash, 0);
-        let asset = state.asset(0, &asset_address).unwrap();
-        let asset = asset.unwrap();
-        let asset_type: H256 = asset_scheme_address.into();
-        assert_eq!(&asset_type, asset.asset_type());
-        assert_eq!(&lock_script_hash, asset.lock_script_hash());
-        assert_eq!(&Vec::<Bytes>::new(), asset.parameters());
-        assert_eq!(&amount, asset.amount());
+        let asset = state.asset(shard_id, &asset_address);
+        assert_eq!(Ok(Some(Asset::new(asset_scheme_address.into(), lock_script_hash, parameters, amount))), asset);
     }
 
     #[test]
@@ -1017,11 +1004,12 @@ mod tests {
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H256::random();
+        let parameters = vec![];
         let registrar = Some(Address::random());
         let transaction = Transaction::AssetMint {
             metadata: metadata.clone(),
             lock_script_hash,
-            parameters: vec![],
+            parameters: parameters.clone(),
             amount: None,
             registrar,
             nonce: 0,
@@ -1039,38 +1027,28 @@ mod tests {
 
         state.add_balance(&sender, &U256::from(69u64)).unwrap();
 
-        match state.apply(&signed_parcel).unwrap() {
-            ParcelOutcome::Transactions(res) => match res.as_slice() {
-                [TransactionOutcome {
-                    invoice,
-                    error,
-                }] => {
-                    assert_eq!(&None, error);
-                    assert_eq!(&Invoice::Success, invoice);
-                }
-                _ => unreachable!(),
-            },
-            _ => unreachable!(),
-        };
+        assert_eq!(
+            ParcelOutcome::Transactions(vec![TransactionOutcome {
+                invoice: Invoice::Success,
+                error: None,
+            }]),
+            state.apply(&signed_parcel).unwrap()
+        );
 
-        assert_eq!(state.balance(&sender).unwrap(), 64.into());
-        assert_eq!(state.nonce(&sender).unwrap(), 1.into());
+        assert_eq!(state.balance(&sender), Ok(64.into()));
+        assert_eq!(state.nonce(&sender), Ok(1.into()));
+
+        let shard_id = 0;
 
         let asset_scheme_address = AssetSchemeAddress::new(transaction_hash);
-        let asset_scheme = state.asset_scheme(0, &asset_scheme_address).unwrap();
-        let asset_scheme = asset_scheme.unwrap();
-        assert_eq!(&metadata, asset_scheme.metadata());
-        assert_eq!(&::std::u64::MAX, asset_scheme.amount());
-        assert_eq!(&registrar, asset_scheme.registrar());
-        assert!(asset_scheme.is_permissioned());
+        let asset_scheme = state.asset_scheme(shard_id, &asset_scheme_address);
+        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), ::std::u64::MAX, registrar))), asset_scheme);
 
         let asset_address = AssetAddress::new(transaction_hash, 0);
-        let asset = state.asset(0, &asset_address).unwrap();
-        let asset = asset.unwrap();
-        let asset_type: H256 = asset_scheme_address.into();
-        assert_eq!(&asset_type, asset.asset_type());
-        assert_eq!(&lock_script_hash, asset.lock_script_hash());
-        assert_eq!(&Vec::<Bytes>::new(), asset.parameters());
-        assert_eq!(&::std::u64::MAX, asset.amount());
+        let asset = state.asset(shard_id, &asset_address);
+        assert_eq!(
+            Ok(Some(Asset::new(asset_scheme_address.into(), lock_script_hash, parameters, ::std::u64::MAX))),
+            asset
+        );
     }
 }
