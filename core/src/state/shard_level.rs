@@ -25,12 +25,16 @@ use error::Error;
 use trie::{self, Result as TrieResult, Trie, TrieError, TrieFactory};
 use unexpected::Mismatch;
 
+use super::super::invoice::Invoice;
 use super::super::parcel::{AssetTransferInput, AssetTransferOutput};
 use super::super::state_db::StateDB;
 use super::super::{Transaction, TransactionError};
 use super::cache::{Cache, CacheableItem};
 use super::traits::{CheckpointId, StateWithCache, StateWithCheckpoint};
-use super::{Asset, AssetAddress, AssetScheme, AssetSchemeAddress, Backend, ShardBackend, ShardState, ShardStateInfo};
+use super::{
+    Asset, AssetAddress, AssetScheme, AssetSchemeAddress, Backend, ShardBackend, ShardState, ShardStateInfo,
+    TransactionOutcome,
+};
 
 pub struct ShardLevelState<B> {
     db: B,
@@ -81,6 +85,34 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
     pub fn drop(mut self) -> (H256, B) {
         self.propagate_to_global_cache();
         (self.root, self.db)
+    }
+
+    fn apply_internal(&mut self, transaction: &Transaction, parcel_network_id: &u64) -> Result<(), Error> {
+        match transaction {
+            Transaction::AssetMint {
+                metadata,
+                lock_script_hash,
+                amount,
+                parameters,
+                registrar,
+                ..
+            } => Ok(self.mint_asset(transaction.hash(), metadata, lock_script_hash, parameters, amount, registrar)?),
+            Transaction::AssetTransfer {
+                burns,
+                inputs,
+                outputs,
+                network_id,
+                ..
+            } => {
+                if parcel_network_id != network_id {
+                    return Err(TransactionError::InvalidNetworkId(Mismatch {
+                        expected: *parcel_network_id,
+                        found: *network_id,
+                    }).into())
+                }
+                self.transfer_asset(&transaction, burns, inputs, outputs)
+            }
+        }
     }
 }
 
@@ -387,32 +419,34 @@ fn is_input_and_output_consistent(inputs: &[AssetTransferInput], outputs: &[Asse
     sum.iter().all(|(_, sum)| sum.is_zero())
 }
 
+const TRANSACTION_CHECKPOINT: CheckpointId = 456;
+
 impl<B: Backend + ShardBackend> ShardState<B> for ShardLevelState<B> {
-    fn execute_transaction(&mut self, transaction: &Transaction, parcel_network_id: &u64) -> Result<(), Error> {
+    fn apply(&mut self, transaction: &Transaction, parcel_network_id: &u64) -> Result<TransactionOutcome, Error> {
         ctrace!(TX, "Execute {:?}(TxHash:{:?})", transaction, transaction.hash());
-        match transaction {
-            Transaction::AssetMint {
-                metadata,
-                lock_script_hash,
-                amount,
-                parameters,
-                registrar,
-                ..
-            } => Ok(self.mint_asset(transaction.hash(), metadata, lock_script_hash, parameters, amount, registrar)?),
-            Transaction::AssetTransfer {
-                burns,
-                inputs,
-                outputs,
-                network_id,
-                ..
-            } => {
-                if parcel_network_id != network_id {
-                    return Err(TransactionError::InvalidNetworkId(Mismatch {
-                        expected: *parcel_network_id,
-                        found: *network_id,
-                    }).into())
-                }
-                self.transfer_asset(&transaction, burns, inputs, outputs)
+
+        self.create_checkpoint(TRANSACTION_CHECKPOINT);
+        let result = self.apply_internal(transaction, parcel_network_id);
+        match result {
+            Ok(_) => {
+                cinfo!(TX, "Tx({}) is applied", transaction.hash());
+                self.discard_checkpoint(TRANSACTION_CHECKPOINT);
+                Ok(TransactionOutcome {
+                    invoice: Invoice::Success,
+                    error: None,
+                })
+            }
+            Err(Error::Transaction(err)) => {
+                cinfo!(TX, "Cannot apply Tx({}): {:?}", transaction.hash(), err);
+                self.revert_to_checkpoint(TRANSACTION_CHECKPOINT);
+                Ok(TransactionOutcome {
+                    invoice: Invoice::Failed,
+                    error: Some(err),
+                })
+            }
+            Err(err) => {
+                self.revert_to_checkpoint(TRANSACTION_CHECKPOINT);
+                Err(err)
             }
         }
     }

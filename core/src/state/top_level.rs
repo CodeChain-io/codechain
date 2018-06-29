@@ -47,7 +47,6 @@ use trie::{Result as TrieResult, Trie, TrieError, TrieFactory};
 use super::super::invoice::Invoice;
 use super::super::parcel::ParcelError;
 use super::super::state_db::StateDB;
-use super::super::TransactionError;
 use super::account::Account;
 use super::asset::{Asset, AssetAddress};
 use super::asset_scheme::{AssetScheme, AssetSchemeAddress};
@@ -56,7 +55,7 @@ use super::cache::{Cache, CacheableItem};
 use super::info::{ShardStateInfo, TopStateInfo};
 use super::shard::{Shard, ShardAddress};
 use super::shard_level::ShardLevelState;
-use super::shard_state::ShardState;
+use super::shard_state::{ShardState, TransactionOutcome};
 use super::top_state::TopState;
 use super::traits::{CheckpointId, StateWithCache, StateWithCheckpoint};
 
@@ -68,14 +67,6 @@ pub enum ParcelOutcome {
         error: Option<ParcelError>,
     },
     Transactions(Vec<TransactionOutcome>),
-}
-
-#[derive(Debug, PartialEq)]
-pub struct TransactionOutcome {
-    /// The invoice for the applied parcel.
-    pub invoice: Invoice,
-    /// The output of the applied parcel.
-    pub error: Option<TransactionError>,
 }
 
 /// Representation of the entire state of all accounts in the system.
@@ -176,8 +167,6 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopStateInfo for TopLevelSt
 
 const PARCEL_CHECKPOINT: CheckpointId = 123;
 const PARCEL_BODY_CHECKPOINT: CheckpointId = 130;
-const TRANSACTION_CHECKPOINT: CheckpointId = 456;
-const TRANSACTIONS_CHECKPOINT: CheckpointId = 789;
 
 impl<B: Backend + TopBackend> StateWithCheckpoint for TopLevelState<B> {
     fn create_checkpoint(&mut self, id: CheckpointId) {
@@ -368,7 +357,6 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopLevelState<B> {
                 }
             },
         };
-        self.discard_checkpoint(PARCEL_BODY_CHECKPOINT);
 
         let shard_id = 0;
         // FIXME: Use shard id when introducing mutli-shard
@@ -377,51 +365,23 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopLevelState<B> {
         // FIXME: Make it mutable borrow db instead of cloning.
         let mut shard_level_state = ShardLevelState::from_existing(self.db.clone(), shard_root, self.trie_factory)?;
 
-        self.create_checkpoint(TRANSACTIONS_CHECKPOINT);
-
         let mut results = Vec::with_capacity(transactions.len());
         for t in transactions {
-            shard_level_state.create_checkpoint(TRANSACTION_CHECKPOINT);
-            results.push(match shard_level_state.execute_transaction(t, &parcel.network_id) {
-                Ok(_) => {
-                    cinfo!(TX, "Tx({}) is applied", t.hash());
-                    shard_level_state.discard_checkpoint(TRANSACTION_CHECKPOINT);
-                    let invoice = Invoice::Success;
-                    let error = None;
-                    TransactionOutcome {
-                        invoice,
-                        error,
-                    }
-                }
-                Err(Error::Transaction(err)) => {
-                    cinfo!(TX, "Cannot apply Tx({}): {:?}", t.hash(), err);
-                    shard_level_state.revert_to_checkpoint(TRANSACTION_CHECKPOINT);
-                    let invoice = Invoice::Failed;
-                    let error = Some(err);
-                    TransactionOutcome {
-                        invoice,
-                        error,
-                    }
-                }
-                Err(err) => {
-                    cinfo!(TX, "Tx({}) is invalid: {:?}", t.hash(), err);
-                    shard_level_state.discard_checkpoint(TRANSACTION_CHECKPOINT);
-                    self.revert_to_checkpoint(TRANSACTIONS_CHECKPOINT);
-                    return Err(err)
-                }
-            });
+            let result = shard_level_state.apply(t, &parcel.network_id)?;
+            results.push(result);
         }
         shard_level_state.commit()?;
         let (new_shard_root, db) = shard_level_state.drop();
         self.db = db;
         // FIXME: Use shard id when introducing multi-shards
+
         match self.set_shard_root(0, &shard_root, &new_shard_root) {
             Err(err) => {
-                self.revert_to_checkpoint(TRANSACTIONS_CHECKPOINT);
+                self.revert_to_checkpoint(PARCEL_BODY_CHECKPOINT);
                 Err(err.into())
             }
             _ => {
-                self.discard_checkpoint(TRANSACTIONS_CHECKPOINT);
+                self.discard_checkpoint(PARCEL_BODY_CHECKPOINT);
                 Ok(ParcelOutcome::Transactions(results))
             }
         }

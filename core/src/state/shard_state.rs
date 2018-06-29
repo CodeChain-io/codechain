@@ -16,11 +16,20 @@
 
 use error::Error;
 
-use super::super::transaction::Transaction;
+use super::super::invoice::Invoice;
+use super::super::{Transaction, TransactionError};
 use super::ShardBackend;
 
 pub trait ShardState<B>
 where
     B: ShardBackend, {
-    fn execute_transaction(&mut self, transaction: &Transaction, parcel_network_id: &u64) -> Result<(), Error>;
+    fn apply(&mut self, transaction: &Transaction, parcel_network_id: &u64) -> Result<TransactionOutcome, Error>;
+}
+
+#[derive(Debug, PartialEq)]
+pub struct TransactionOutcome {
+    /// The invoice for the applied parcel.
+    pub invoice: Invoice,
+    /// The output of the applied parcel.
+    pub error: Option<TransactionError>,
 }
