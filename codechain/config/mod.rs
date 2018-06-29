@@ -87,6 +87,7 @@ pub struct Config {
     pub operating: Operating,
     pub mining: Mining,
     pub network: Network,
+    pub rpc: Rpc,
 }
 
 #[derive(Deserialize)]
@@ -119,6 +120,13 @@ pub struct Network {
     pub parcel_relay: bool,
 }
 
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Rpc {
+    pub disable: bool,
+    pub port: u16,
+}
+
 impl<'a> Into<NetworkConfig> for &'a Network {
     fn into(self) -> NetworkConfig {
         let bootstrap_addresses =
@@ -128,6 +136,18 @@ impl<'a> Into<NetworkConfig> for &'a Network {
             bootstrap_addresses,
             min_peers: self.min_peers,
             max_peers: self.max_peers,
+        }
+    }
+}
+
+impl<'a> Into<RpcHttpConfig> for &'a Rpc {
+    // FIXME: Add interface, cors and hosts options.
+    fn into(self) -> RpcHttpConfig {
+        RpcHttpConfig {
+            interface: "127.0.0.1".to_string(),
+            port: self.port,
+            cors: None,
+            hosts: None,
         }
     }
 }
@@ -207,6 +227,19 @@ impl Network {
     }
 }
 
+impl Rpc {
+    pub fn overwrite_with(&mut self, matches: &clap::ArgMatches) -> Result<(), String> {
+        if matches.is_present("no-jsonrpc") {
+            self.disable = true;
+        }
+
+        if let Some(port) = matches.value_of("jsonrpc-port") {
+            self.port = port.parse().map_err(|_| "Invalid port")?;
+        }
+        Ok(())
+    }
+}
+
 pub enum Discovery {
     Kademlia(KademliaConfig),
     Unstructured(UnstructuredConfig),
@@ -231,28 +264,6 @@ pub fn parse_discovery_config(matches: &clap::ArgMatches) -> Result<Option<Disco
         Some("kademlia") => Ok(Some(Discovery::Kademlia(KademliaConfig::new(bucket_size, refresh)))),
         _ => unreachable!(),
     }
-}
-
-pub fn parse_rpc_config(matches: &clap::ArgMatches) -> Result<Option<RpcHttpConfig>, String> {
-    if matches.is_present("no-jsonrpc") {
-        return Ok(None)
-    }
-
-    let port = value_t_or_exit!(matches, "jsonrpc-port", u16);
-
-    let mut config = RpcHttpConfig::with_port(port);
-
-    if let Some(interface) = matches.value_of("jsonrpc-interface") {
-        config.interface = interface.to_owned();
-    }
-    if let Some(cors) = matches.value_of("jsonrpc-cors") {
-        config.cors = Some(vec![cors.parse().map_err(|_| "Invalid JSON RPC CORS".to_owned())?]);
-    }
-    if let Some(hosts) = matches.value_of("jsonrpc-hosts") {
-        config.hosts = Some(vec![hosts.parse().map_err(|_| "Invalid JSON RPC hosts".to_owned())?]);
-    }
-
-    Ok(Some(config))
 }
 
 pub fn parse_rpc_ipc_config(matches: &clap::ArgMatches) -> Result<Option<RpcIpcConfig>, String> {

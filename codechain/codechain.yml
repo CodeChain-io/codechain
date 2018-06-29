@@ -63,7 +63,6 @@ args:
         value_name: PORT
         help: Listen for rpc connections on PORT.
         takes_value: true
-        default_value: "8080"
     - ipc-path:
         long: ipc-path
         value_name: path

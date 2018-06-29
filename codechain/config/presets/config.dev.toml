@@ -16,3 +16,7 @@ bootstrap_addresses = []
 sync = true
 parcel_relay = true
 
+[rpc]
+disable = false
+port = 8080
+

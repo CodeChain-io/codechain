@@ -149,6 +149,7 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
     config.operating.overwrite_with(&matches)?;
     config.mining.overwrite_with(&matches)?;
     config.network.overwrite_with(&matches)?;
+    config.rpc.overwrite_with(&matches)?;
     let spec = config.operating.chain.spec()?;
 
     let instance_id = config.operating.instance_id.unwrap_or(SystemTime::now()
@@ -185,7 +186,8 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
     });
 
     let _rpc_server = {
-        if let Some(rpc_config) = config::parse_rpc_config(&matches)? {
+        if !config.rpc.disable {
+            let rpc_config = (&config.rpc).into();
             Some(rpc_start(rpc_config, rpc_apis_deps.clone())?)
         } else {
             None
