@@ -23,7 +23,7 @@ use kvdb::KeyValueDB;
 use parcel::SignedParcel;
 use rlp::{self, RlpStream};
 use spec::Spec;
-use state::State;
+use state::TopLevelState;
 use state_db::StateDB;
 
 pub fn create_test_block(header: &Header) -> Bytes {
@@ -71,7 +71,7 @@ pub fn get_temp_state_db() -> StateDB {
     StateDB::new(journal_db, 5 * 1024 * 1024)
 }
 
-pub fn get_temp_state() -> State<StateDB> {
+pub fn get_temp_state() -> TopLevelState<StateDB> {
     let journal_db = get_temp_state_db();
-    State::new(journal_db, Default::default())
+    TopLevelState::new(journal_db, Default::default())
 }

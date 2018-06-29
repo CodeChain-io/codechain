@@ -29,7 +29,7 @@ use super::super::error::Error;
 use super::super::header::Header;
 use super::super::parcel::{ParcelError, SignedParcel, UnverifiedParcel};
 use super::super::spec::Spec;
-use super::super::state::State;
+use super::super::state::TopLevelState;
 use super::super::types::{BlockId, BlockNumber, ParcelId};
 use super::mem_pool::{AccountDetails, MemPool, ParcelOrigin, RemovalReason};
 use super::sealing_queue::SealingQueue;
@@ -130,7 +130,7 @@ impl Miner {
     }
 
     /// Get `Some` `clone()` of the current pending block's state or `None` if we're not sealing.
-    pub fn pending_state(&self, latest_block_number: BlockNumber) -> Option<State<::state_db::StateDB>> {
+    pub fn pending_state(&self, latest_block_number: BlockNumber) -> Option<TopLevelState<::state_db::StateDB>> {
         self.map_pending_block(|b| b.state().clone(), latest_block_number)
     }
 
@@ -473,7 +473,7 @@ impl Miner {
 const SEALING_TIMEOUT_IN_BLOCKS: u64 = 5;
 
 impl MinerService for Miner {
-    type State = State<::state_db::StateDB>;
+    type State = TopLevelState<::state_db::StateDB>;
 
     fn status(&self) -> MinerStatus {
         let status = self.mem_pool.read().status();

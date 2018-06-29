@@ -30,7 +30,7 @@ use super::header::{Header, Seal};
 use super::invoice::Invoice;
 use super::machine::{LiveBlock, Parcels};
 use super::parcel::{ParcelError, SignedParcel, UnverifiedParcel};
-use super::state::{ParcelOutcome, State, StateWithCache};
+use super::state::{ParcelOutcome, StateWithCache, TopLevelState};
 use super::state_db::StateDB;
 
 /// A block, encoded as it is on the block chain.
@@ -71,14 +71,14 @@ impl Decodable for Block {
 #[derive(Clone)]
 pub struct ExecutedBlock {
     header: Header,
-    state: State<StateDB>,
+    state: TopLevelState<StateDB>,
     parcels: Vec<SignedParcel>,
     invoices: Vec<ParcelInvoice>,
     parcels_set: HashSet<H256>,
 }
 
 impl ExecutedBlock {
-    fn new(state: State<StateDB>) -> ExecutedBlock {
+    fn new(state: TopLevelState<StateDB>) -> ExecutedBlock {
         ExecutedBlock {
             header: Default::default(),
             state,
@@ -89,7 +89,7 @@ impl ExecutedBlock {
     }
 
     /// Get mutable access to a state.
-    pub fn state_mut(&mut self) -> &mut State<StateDB> {
+    pub fn state_mut(&mut self) -> &mut TopLevelState<StateDB> {
         &mut self.state
     }
 }
@@ -128,7 +128,7 @@ impl<'x> OpenBlock<'x> {
         is_epoch_begin: bool,
     ) -> Result<Self, Error> {
         let number = parent.number() + 1;
-        let state = State::from_existing(db, *parent.state_root(), trie_factory)?;
+        let state = TopLevelState::from_existing(db, *parent.state_root(), trie_factory)?;
         let mut r = OpenBlock {
             block: ExecutedBlock::new(state),
             engine,
@@ -259,7 +259,7 @@ impl<'x> OpenBlock<'x> {
 #[derive(Clone)]
 pub struct ClosedBlock {
     block: ExecutedBlock,
-    unclosed_state: State<StateDB>,
+    unclosed_state: TopLevelState<StateDB>,
 }
 
 impl ClosedBlock {
@@ -372,7 +372,7 @@ pub trait IsBlock {
     }
 
     /// Get the final state associated with this object's block.
-    fn state(&self) -> &State<StateDB> {
+    fn state(&self) -> &TopLevelState<StateDB> {
         &self.block().state
     }
 }

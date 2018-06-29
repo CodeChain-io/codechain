@@ -16,7 +16,8 @@
 
 use error::Error;
 
-use super::{ShardBackend, Transaction};
+use super::super::transaction::Transaction;
+use super::ShardBackend;
 
 pub trait ShardState<B>
 where
