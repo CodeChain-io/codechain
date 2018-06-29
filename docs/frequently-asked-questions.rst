@@ -11,25 +11,28 @@ Questions
 
 What is CodeChain?
 ------------------------------------------------------------------------------------------------------------------------------------------
-CodeChain is...
+CodeChain is a programmable open source blockchain technology optimal for developing and customizing multi-asset management systems. 
 
 How is CodeChain unique?
 ------------------------------------------------------------------------------------------------------------------------------------------
-
-Why use CodeChain if I can just use other common alternatives, such as Ethereum?
-------------------------------------------------------------------------------------------------------------------------------------------
+CodeChain offers modular features that allow it to be seamlessly incorporated into a variety of different blockchain systems.
 
 Is CodeChain safe to use?
 ------------------------------------------------------------------------------------------------------------------------------------------
 
 How do I report bugs?
 ------------------------------------------------------------------------------------------------------------------------------------------
+If you have questions whether something is a bug or not, please use our :ref:`gitter-rooms` to ask questions first. If you are certain
+that something is a bug, please report it as an issue at CodeChain's `git page <https://github.com/CodeChain-io>`_. For security issues,
+please email us at codechain@kodebox.io.
 
 What is CodeChain's vision? How does it plan on competing with other existing blockchain technologies?
 ------------------------------------------------------------------------------------------------------------------------------------------
 
 How efficient is CodeChain?
 ------------------------------------------------------------------------------------------------------------------------------------------
+CodeChain aims to solve the scalability issues that many blockchains face as they grow larger. By integrating sharding, CodeChain provides
+horizontal scaling to achieve higher transaction speeds.
 
 How do I get started?
 ------------------------------------------------------------------------------------------------------------------------------------------
