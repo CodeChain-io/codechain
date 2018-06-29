@@ -18,7 +18,7 @@ use ccrypto::{blake256, keccak256, ripemd160, sha256};
 use ckeys::{verify_ecdsa, ECDSASignature};
 use ctypes::{H256, H520, Public};
 
-use instruction::Instruction;
+use instruction::{is_valid_unlock_script, Instruction};
 
 const DEFAULT_MAX_MEMORY: usize = 1024;
 
@@ -147,6 +147,11 @@ pub fn execute(
     config: Config,
 ) -> Result<ScriptResult, RuntimeError> {
     // FIXME: don't merge scripts
+
+    if !is_valid_unlock_script(unlock) {
+        return Ok(ScriptResult::Fail)
+    }
+
     let param_scripts: Vec<_> = params.iter().map(|p| Instruction::PushB(p.clone())).rev().collect();
     let script = [unlock, &param_scripts, lock].concat();
 
