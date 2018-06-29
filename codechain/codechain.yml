@@ -94,7 +94,6 @@ args:
         possible_values:
             - kademlia
             - unstructured
-        default_value: "unstructured"
     - kademlia-alpha:
         long: kademlia-alpha
         help: Degree of parallelism in Kademlia

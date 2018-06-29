@@ -18,7 +18,6 @@ use std::str::FromStr;
 use std::{fmt, fs};
 
 use ccore::Spec;
-use cdiscovery::{KademliaConfig, UnstructuredConfig};
 use clap;
 use cnetwork::{NetworkConfig, SocketAddr};
 use ctypes::{Address, Secret};
@@ -126,6 +125,10 @@ pub struct Network {
     pub max_peers: usize,
     pub sync: bool,
     pub parcel_relay: bool,
+    pub discovery: bool,
+    pub discovery_type: String,
+    pub discovery_refresh: u32,
+    pub discovery_bucket_size: u8,
 }
 
 #[derive(Deserialize)]
@@ -251,6 +254,20 @@ impl Network {
         if matches.is_present("no-parcel-relay") {
             self.parcel_relay = false;
         }
+
+        if matches.is_present("no-discovery") {
+            self.discovery = false;
+        }
+        if let Some(discovery_type) = matches.value_of("discovery") {
+            self.discovery_type = discovery_type.to_string();
+        }
+        if let Some(refresh) = matches.value_of("discovery-refresh") {
+            self.discovery_refresh = refresh.parse().map_err(|_| "Invalid discovery-refresh")?;
+        }
+        if let Some(bucket_size) = matches.value_of("discovery-bucket-size") {
+            self.discovery_bucket_size = bucket_size.parse().map_err(|_| "Invalid discovery-bucket-size")?;
+        }
+
         Ok(())
     }
 }
@@ -265,31 +282,5 @@ impl Rpc {
             self.port = port.parse().map_err(|_| "Invalid port")?;
         }
         Ok(())
-    }
-}
-
-pub enum Discovery {
-    Kademlia(KademliaConfig),
-    Unstructured(UnstructuredConfig),
-}
-
-pub fn parse_discovery_config(matches: &clap::ArgMatches) -> Result<Option<Discovery>, String> {
-    if matches.is_present("no-discovery") {
-        return Ok(None)
-    }
-
-    let refresh = match matches.value_of("discovery-refresh") {
-        Some(refresh) => Some(refresh.parse().map_err(|_| "Invalid discovery-refresh")?),
-        None => None,
-    };
-    let bucket_size = match matches.value_of("discovery-bucket-size") {
-        Some(k) => Some(k.parse().map_err(|_| "Invalid discovery-bucket-size")?),
-        None => None,
-    };
-
-    match matches.value_of("discovery") {
-        Some("unstructured") => Ok(Some(Discovery::Unstructured(UnstructuredConfig::new(bucket_size, refresh)))),
-        Some("kademlia") => Ok(Some(Discovery::Kademlia(KademliaConfig::new(bucket_size, refresh)))),
-        _ => unreachable!(),
     }
 }

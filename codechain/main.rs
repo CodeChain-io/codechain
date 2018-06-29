@@ -58,7 +58,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use account_command::run_account_command;
 use app_dirs::AppInfo;
 use ccore::{AccountProvider, ClientService, Miner, MinerOptions, MinerService, Spec};
-use cdiscovery::{KademliaExtension, UnstructuredExtension};
+use cdiscovery::{KademliaConfig, KademliaExtension, UnstructuredConfig, UnstructuredExtension};
 use ckeystore::accounts_dir::RootDiskDirectory;
 use ckeystore::KeyStore;
 use clap::ArgMatches;
@@ -208,22 +208,32 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
             let network_config = (&config.network).into();
             let service = network_start(&network_config)?;
 
-            match config::parse_discovery_config(&matches)? {
-                Some(config::Discovery::Unstructured(config)) => {
-                    let unstructured = UnstructuredExtension::new(config);
-                    service.set_routing_table(&*unstructured);
-                    service.register_extension(unstructured)?;
-                    cinfo!(DISCOVERY, "Node runs with unstructured discovery");
+            if config.network.discovery {
+                match config.network.discovery_type.as_ref() {
+                    "unstructured" => {
+                        let config = UnstructuredConfig {
+                            bucket_size: config.network.discovery_bucket_size,
+                            t_refresh: config.network.discovery_refresh,
+                        };
+                        let unstructured = UnstructuredExtension::new(config);
+                        service.set_routing_table(&*unstructured);
+                        service.register_extension(unstructured)?;
+                        cinfo!(DISCOVERY, "Node runs with unstructured discovery");
+                    }
+                    "kademlia" => {
+                        let config = KademliaConfig {
+                            k: config.network.discovery_bucket_size,
+                            t_refresh: config.network.discovery_refresh,
+                        };
+                        let kademlia = KademliaExtension::new(config);
+                        service.set_routing_table(&*kademlia);
+                        service.register_extension(kademlia)?;
+                        cinfo!(DISCOVERY, "Node runs with kademlia discovery");
+                    }
+                    discovery_type => return Err(format!("Unknown discovery {}", discovery_type)),
                 }
-                Some(config::Discovery::Kademlia(config)) => {
-                    let kademlia = KademliaExtension::new(config);
-                    service.set_routing_table(&*kademlia);
-                    service.register_extension(kademlia)?;
-                    cinfo!(DISCOVERY, "Node runs with kademlia discovery");
-                }
-                None => {
-                    cwarn!(DISCOVERY, "Node runs without discovery extension");
-                }
+            } else {
+                cwarn!(DISCOVERY, "Node runs without discovery extension");
             }
 
             if config.network.sync {

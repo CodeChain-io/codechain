@@ -15,6 +15,10 @@ min_peers = 10
 bootstrap_addresses = []
 sync = true
 parcel_relay = true
+discovery = true
+discovery_type = "unstructured"
+discovery_refresh = 60000
+discovery_bucket_size = 10
 
 [rpc]
 disable = false
