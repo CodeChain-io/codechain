@@ -1046,6 +1046,23 @@ mod tests {
         state.commit().unwrap();
     }
 
+
+    #[test]
+    fn state_is_not_synchronized_when_cloned() {
+        let a = Address::random();
+
+        let original_state = get_temp_state();
+
+        assert_eq!(original_state.account_exists(&a).unwrap(), false);
+
+        let mut cloned_state = original_state.clone();
+
+        cloned_state.inc_nonce(&a).unwrap();
+        cloned_state.commit().unwrap();
+
+        assert_ne!(original_state.nonce(&a), cloned_state.nonce(&a));
+    }
+
     #[test]
     fn get_from_database() {
         let a = Address::zero();
