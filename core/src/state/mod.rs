@@ -786,6 +786,13 @@ where
         self.require_account(a)?.set_regular_key(key);
         Ok(())
     }
+
+    fn set_shard_root(&mut self, shard_id: u32, old_root: &H256, new_root: &H256) -> Result<(), Error> {
+        let mut shard = self.require_shard(shard_id)?;
+        assert_eq!(old_root, shard.root());
+        shard.set_root(*new_root);
+        Ok(())
+    }
 }
 
 impl<B> ShardState<B> for State<B>
