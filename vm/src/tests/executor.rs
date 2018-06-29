@@ -38,13 +38,13 @@ fn simple_failure() {
 
 #[test]
 fn simple_burn() {
-    assert_eq!(execute(&[Instruction::Burn], &[], &[], H256::default(), Config::default()), Ok(ScriptResult::Burnt));
+    assert_eq!(execute(&[], &[], &[Instruction::Burn], H256::default(), Config::default()), Ok(ScriptResult::Burnt));
 }
 
 #[test]
 fn underflow() {
     assert_eq!(
-        execute(&[Instruction::Pop], &[], &[], H256::default(), Config::default()),
+        execute(&[], &[], &[Instruction::Pop], H256::default(), Config::default()),
         Err(RuntimeError::StackUnderflow)
     );
 }
@@ -58,6 +58,11 @@ fn out_of_memory() {
         execute(&[Instruction::Push(0), Instruction::Push(1), Instruction::Push(2)], &[], &[], H256::default(), config),
         Err(RuntimeError::OutOfMemory)
     );
+}
+
+#[test]
+fn invalid_unlock_script() {
+    assert_eq!(execute(&[Instruction::Nop], &[], &[], H256::default(), Config::default()), Ok(ScriptResult::Fail));
 }
 
 #[test]

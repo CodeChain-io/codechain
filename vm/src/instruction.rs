@@ -36,3 +36,11 @@ pub enum Instruction {
     Ripemd160,
     Keccak256,
 }
+
+pub fn is_valid_unlock_script(instrs: &[Instruction]) -> bool {
+    instrs.iter().all(|instr| match instr {
+        Instruction::Push(_) => true,
+        Instruction::PushB(_) => true,
+        _ => false,
+    })
+}
