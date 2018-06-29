@@ -242,7 +242,7 @@ impl Network {
             self.max_peers = max_peers.parse().map_err(|_| "Invalid max-peers")?;
         }
         if self.min_peers > self.max_peers {
-            return Err("Invalid min/max peers".to_owned())
+            return Err("Invalid min/max peers".to_string())
         }
 
         if matches.is_present("no-sync") {

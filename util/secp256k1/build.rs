@@ -37,15 +37,15 @@ const OS: &'static str = "windows";
 const ANDROID_INCLUDE: &'static str = "platforms/android-21/arch-arm64/usr/include";
 
 fn android_aarch_compiler() -> String {
-    "toolchains/aarch64-linux-android-4.9/prebuilt/".to_owned() + OS + "-x86_64/bin"
+    "toolchains/aarch64-linux-android-4.9/prebuilt/".to_string() + OS + "-x86_64/bin"
 }
 
 fn android_arm_compiler() -> String {
-    "toolchains/arm-linux-androideabi-4.9/prebuilt/".to_owned() + OS + "-x86_64/bin"
+    "toolchains/arm-linux-androideabi-4.9/prebuilt/".to_string() + OS + "-x86_64/bin"
 }
 
 fn android_i686_compiler() -> String {
-    "toolchains/x86-4.9/prebuilt/".to_owned() + OS + "-x86_64/bin"
+    "toolchains/x86-4.9/prebuilt/".to_string() + OS + "-x86_64/bin"
 }
 
 fn concat_paths(first: &str, second: &str) -> PathBuf {

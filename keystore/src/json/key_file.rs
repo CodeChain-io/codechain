@@ -256,8 +256,8 @@ mod tests {
                 }),
                 mac: "46325c5d4e8c991ad2683d525c7854da387138b6ca45068985aa4959fa2b8c8f".into(),
             },
-            name: Some("Test".to_owned()),
-            meta: Some("{}".to_owned()),
+            name: Some("Test".to_string()),
+            meta: Some("{}".to_string()),
         };
 
         let keyfile: KeyFile = serde_json::from_str(json).unwrap();
@@ -335,7 +335,7 @@ mod tests {
                 }),
                 mac: "46325c5d4e8c991ad2683d525c7854da387138b6ca45068985aa4959fa2b8c8f".into(),
             },
-            name: Some("Test".to_owned()),
+            name: Some("Test".to_string()),
             meta: None,
         };
 

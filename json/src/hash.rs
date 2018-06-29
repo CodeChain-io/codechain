@@ -85,7 +85,7 @@ macro_rules! impl_hash {
             fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
             where
                 S: Serializer, {
-                let mut hex = "0x".to_owned();
+                let mut hex = "0x".to_string();
                 hex.push_str(&self.0.to_hex());
                 serializer.serialize_str(&hex)
             }

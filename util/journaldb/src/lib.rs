@@ -118,7 +118,7 @@ mod tests {
 
     #[test]
     fn test_journal_algorithm_printing() {
-        assert_eq!(Algorithm::Archive.to_string(), "archive".to_owned());
+        assert_eq!(Algorithm::Archive.to_string(), "archive".to_string());
     }
 
     #[test]

@@ -84,7 +84,7 @@ impl SafeAccount {
             crypto: json.crypto.into(),
             filename,
             name: json.name.unwrap_or(String::new()),
-            meta: json.meta.unwrap_or("{}".to_owned()),
+            meta: json.meta.unwrap_or("{}".to_string()),
         }
     }
 
@@ -131,7 +131,7 @@ mod tests {
         let keypair = Random.generate().unwrap();
         let password = "hello world";
         let message = Message::default();
-        let account = SafeAccount::create(&keypair, [0u8; 16], password, 10240, "Test".to_owned(), "{}".to_owned());
+        let account = SafeAccount::create(&keypair, [0u8; 16], password, 10240, "Test".to_string(), "{}".to_string());
         let signature = account.unwrap().sign(password, &message).unwrap();
         assert!(verify_ecdsa(keypair.public(), &signature, &message).unwrap());
     }
@@ -144,7 +144,7 @@ mod tests {
         let i = 10240;
         let message = Message::default();
         let account =
-            SafeAccount::create(&keypair, [0u8; 16], first_password, i, "Test".to_owned(), "{}".to_owned()).unwrap();
+            SafeAccount::create(&keypair, [0u8; 16], first_password, i, "Test".to_string(), "{}".to_string()).unwrap();
         let new_account = account.change_password(first_password, sec_password, i).unwrap();
         assert!(account.sign(first_password, &message).is_ok());
         assert!(account.sign(sec_password, &message).is_err());
