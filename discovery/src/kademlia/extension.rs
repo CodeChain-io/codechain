@@ -104,7 +104,7 @@ impl NetworkExtension for Extension {
                         let addresses = addresses
                             .into_iter()
                             .map(|kademlia_id| kademlia_id.into())
-                            .take(::std::cmp::min(self.config.k, len) as usize)
+                            .take(::std::cmp::min(self.config.bucket_size, len) as usize)
                             .collect();
                         let response = Message::Nodes(addresses).rlp_bytes();
                         api.send(&node, &response);
@@ -133,7 +133,7 @@ impl NetworkExtension for Extension {
                 let nodes = self.nodes.read();
 
                 api.as_ref().map(|api| {
-                    let request = Message::FindNode(self.config.k).rlp_bytes();
+                    let request = Message::FindNode(self.config.bucket_size).rlp_bytes();
                     for node in nodes.iter() {
                         api.send(&node, &request);
                     }

@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 pub struct Config {
-    pub k: u8,
+    pub bucket_size: u8,
     pub t_refresh: u32,
 }
 
@@ -23,12 +23,12 @@ use super::K;
 use super::T_REFRESH;
 
 impl Config {
-    pub fn new(k: Option<u8>, t_refresh: Option<u32>) -> Self {
-        let k = k.unwrap_or(K);
+    pub fn new(bucket_size: Option<u8>, t_refresh: Option<u32>) -> Self {
+        let bucket_size = bucket_size.unwrap_or(K);
         let t_refresh = t_refresh.unwrap_or(T_REFRESH);
 
         Self {
-            k,
+            bucket_size,
             t_refresh,
         }
     }

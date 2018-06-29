@@ -222,7 +222,7 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
                     }
                     "kademlia" => {
                         let config = KademliaConfig {
-                            k: config.network.discovery_bucket_size,
+                            bucket_size: config.network.discovery_bucket_size,
                             t_refresh: config.network.discovery_refresh,
                         };
                         let kademlia = KademliaExtension::new(config);
