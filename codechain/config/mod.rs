@@ -83,11 +83,19 @@ impl ChainType {
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Config {
+    pub ipc: Ipc,
     #[serde(rename = "codechain")]
     pub operating: Operating,
     pub mining: Mining,
     pub network: Network,
     pub rpc: Rpc,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Ipc {
+    pub disable: bool,
+    pub path: String,
 }
 
 #[derive(Deserialize)]
@@ -127,6 +135,14 @@ pub struct Rpc {
     pub port: u16,
 }
 
+impl<'a> Into<RpcIpcConfig> for &'a Ipc {
+    fn into(self) -> RpcIpcConfig {
+        RpcIpcConfig {
+            socket_addr: self.path.clone(),
+        }
+    }
+}
+
 impl<'a> Into<NetworkConfig> for &'a Network {
     fn into(self) -> NetworkConfig {
         let bootstrap_addresses =
@@ -155,6 +171,18 @@ impl<'a> Into<RpcHttpConfig> for &'a Rpc {
 pub fn load(config_path: &str) -> Result<Config, String> {
     let toml_string = fs::read_to_string(config_path).map_err(|e| format!("Fail to read file: {:?}", e))?;
     toml::from_str(toml_string.as_ref()).map_err(|e| format!("Error while parse TOML: {:?}", e))
+}
+
+impl Ipc {
+    pub fn overwrite_with(&mut self, matches: &clap::ArgMatches) -> Result<(), String> {
+        if matches.is_present("no-jsonrpc") {
+            self.disable = true;
+        }
+        if let Some(path) = matches.value_of("ipc-path") {
+            self.path = path.to_string();
+        }
+        Ok(())
+    }
 }
 
 impl Operating {
@@ -264,16 +292,4 @@ pub fn parse_discovery_config(matches: &clap::ArgMatches) -> Result<Option<Disco
         Some("kademlia") => Ok(Some(Discovery::Kademlia(KademliaConfig::new(bucket_size, refresh)))),
         _ => unreachable!(),
     }
-}
-
-pub fn parse_rpc_ipc_config(matches: &clap::ArgMatches) -> Result<Option<RpcIpcConfig>, String> {
-    if matches.is_present("no-jsonrpc") {
-        return Ok(None)
-    }
-
-    let socket_addr = value_t_or_exit!(matches, "ipc-path", String);
-
-    Ok(Some(RpcIpcConfig {
-        socket_addr,
-    }))
 }

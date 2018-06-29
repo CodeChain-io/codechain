@@ -20,3 +20,7 @@ parcel_relay = true
 disable = false
 port = 8080
 
+[ipc]
+disable = false
+path = "/tmp/jsonrpc.ipc"
+

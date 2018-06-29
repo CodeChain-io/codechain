@@ -146,6 +146,7 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
 
     let config_path = matches.value_of("config-path").unwrap_or(DEFAULT_CONFIG_PATH);
     let mut config = config::load(&config_path)?;
+    config.ipc.overwrite_with(&matches)?;
     config.operating.overwrite_with(&matches)?;
     config.mining.overwrite_with(&matches)?;
     config.network.overwrite_with(&matches)?;
@@ -195,8 +196,9 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
     };
 
     let _ipc_server = {
-        if let Some(rpc_ipcconfig) = config::parse_rpc_ipc_config(&matches)? {
-            Some(rpc_ipc_start(rpc_ipcconfig, rpc_apis_deps.clone())?)
+        if !config.ipc.disable {
+            let ipc_config = (&config.ipc).into();
+            Some(rpc_ipc_start(ipc_config, rpc_apis_deps.clone())?)
         } else {
             None
         }
