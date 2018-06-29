@@ -68,8 +68,8 @@ impl fmt::Display for ChainType {
 impl ChainType {
     pub fn spec<'a>(&self) -> Result<Spec, String> {
         match self {
-            ChainType::Solo => Ok(Spec::new_solo()),
-            ChainType::SoloAuthority => Ok(Spec::new_solo_authority()),
+            ChainType::Solo => Ok(Spec::new_test_solo()),
+            ChainType::SoloAuthority => Ok(Spec::new_test_solo_authority()),
             ChainType::Tendermint => Ok(Spec::new_test_tendermint()),
             ChainType::Custom(filename) => {
                 let file = fs::File::open(filename)

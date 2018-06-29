@@ -222,13 +222,13 @@ mod tests {
 
     #[test]
     fn has_valid_metadata() {
-        let engine = Spec::new_solo_authority().engine;
+        let engine = Spec::new_test_solo_authority().engine;
         assert!(!engine.name().is_empty());
     }
 
     #[test]
     fn can_do_signature_verification_fail() {
-        let engine = Spec::new_solo_authority().engine;
+        let engine = Spec::new_test_solo_authority().engine;
         let mut header: Header = Header::default();
         header.set_seal(vec![::rlp::encode(&H520::default()).into_vec()]);
 
@@ -238,7 +238,7 @@ mod tests {
 
     #[test]
     fn can_generate_seal() {
-        let spec = Spec::new_solo_authority();
+        let spec = Spec::new_test_solo_authority();
         let engine = &*spec.engine;
         let db = spec.ensure_db_good(get_temp_state_db(), &Default::default()).unwrap();
         let genesis_header = spec.genesis_header();
@@ -254,7 +254,7 @@ mod tests {
 
     #[test]
     fn seals_internally() {
-        let engine = Spec::new_solo_authority().engine;
+        let engine = Spec::new_test_solo_authority().engine;
         assert!(!engine.seals_internally().unwrap());
     }
 }
