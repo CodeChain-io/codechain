@@ -18,7 +18,7 @@ use std::sync::Arc;
 
 use ccore::{
     Asset, AssetAddress, AssetScheme, AssetSchemeAddress, Balance, BlockChainClient, BlockId, BlockInfo, ChainInfo,
-    Client, Invoice, Miner, MinerService, Nonce, ParcelInvoice, RegularKey, ShardStateInfo, SignedParcel,
+    Client, Invoice, Miner, MinerService, Nonce, ParcelInvoice, RegularKey, SignedParcel, TopStateInfo,
 };
 use ctypes::{H160, H256, Public, U256};
 use rlp::UntrustedRlp;
@@ -73,8 +73,9 @@ impl Chain for ChainClient {
 
     fn get_asset_scheme(&self, transaction_hash: H256) -> Result<Option<AssetScheme>> {
         if let Some(state) = self.client.state_at(BlockId::Latest) {
+            let shard_id = 0; // FIXME
             let address = AssetSchemeAddress::new(transaction_hash);
-            Ok(state.asset_scheme(&address).map_err(errors::parcel)?)
+            Ok(state.asset_scheme(shard_id, &address).map_err(errors::parcel)?)
         } else {
             Ok(None)
         }
@@ -82,8 +83,9 @@ impl Chain for ChainClient {
 
     fn get_asset(&self, transaction_hash: H256, index: usize) -> Result<Option<Asset>> {
         if let Some(state) = self.client.state_at(BlockId::Latest) {
+            let shard_id = 0; // FIXME
             let address = AssetAddress::new(transaction_hash, index);
-            Ok(state.asset(&address).map_err(errors::parcel)?)
+            Ok(state.asset(shard_id, &address).map_err(errors::parcel)?)
         } else {
             Ok(None)
         }
