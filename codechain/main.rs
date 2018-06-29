@@ -148,6 +148,7 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
     let mut config = config::load(&config_path)?;
     config.operating.overwrite_with(&matches)?;
     config.mining.overwrite_with(&matches)?;
+    config.network.overwrite_with(&matches)?;
     let spec = config.operating.chain.spec()?;
 
     let instance_id = config.operating.instance_id.unwrap_or(SystemTime::now()
@@ -200,7 +201,8 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
     };
 
     let _network_service = {
-        if let Some(network_config) = config::parse_network_config(&matches)? {
+        if !config.network.disable {
+            let network_config = (&config.network).into();
             let service = network_start(&network_config)?;
 
             match config::parse_discovery_config(&matches)? {
@@ -221,12 +223,12 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
                 }
             }
 
-            if !config.operating.no_sync {
+            if config.network.sync {
                 let sync = BlockSyncExtension::new(client.client());
                 service.register_extension(sync.clone())?;
                 client.client().add_notify(sync.clone());
             }
-            if !config.operating.no_parcel_relay {
+            if config.network.parcel_relay {
                 service.register_extension(ParcelSyncExtension::new(client.client()))?;
             }
             if let Some(consensus_extension) = spec.engine.network_extension() {

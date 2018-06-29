@@ -86,6 +86,7 @@ pub struct Config {
     #[serde(rename = "codechain")]
     pub operating: Operating,
     pub mining: Mining,
+    pub network: Network,
 }
 
 #[derive(Deserialize)]
@@ -96,8 +97,6 @@ pub struct Operating {
     pub db_path: String,
     pub snapshot_path: String,
     pub chain: ChainType,
-    pub no_sync: bool,
-    pub no_parcel_relay: bool,
     pub secret_key: Secret,
 }
 
@@ -106,6 +105,31 @@ pub struct Operating {
 pub struct Mining {
     pub author: Option<Address>,
     pub engine_signer: Option<Address>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Network {
+    pub disable: bool,
+    pub port: u16,
+    pub bootstrap_addresses: Vec<String>,
+    pub min_peers: usize,
+    pub max_peers: usize,
+    pub sync: bool,
+    pub parcel_relay: bool,
+}
+
+impl<'a> Into<NetworkConfig> for &'a Network {
+    fn into(self) -> NetworkConfig {
+        let bootstrap_addresses =
+            self.bootstrap_addresses.iter().map(|s| SocketAddr::from_str(s).unwrap()).collect::<Vec<_>>();
+        NetworkConfig {
+            port: self.port,
+            bootstrap_addresses,
+            min_peers: self.min_peers,
+            max_peers: self.max_peers,
+        }
+    }
 }
 
 pub fn load(config_path: &str) -> Result<Config, String> {
@@ -130,12 +154,6 @@ impl Operating {
         if let Some(chain) = matches.value_of("chain") {
             self.chain = chain.parse()?;
         }
-        if matches.is_present("no-sync") {
-            self.no_sync = true;
-        }
-        if matches.is_present("no-parcel-relay") {
-            self.no_parcel_relay = true;
-        }
         if let Some(secret) = matches.value_of("secret-key") {
             self.secret_key = Secret::from_str(secret).map_err(|_| "Invalid secret key")?;
         }
@@ -155,35 +173,38 @@ impl Mining {
     }
 }
 
-pub fn parse_network_config(matches: &clap::ArgMatches) -> Result<Option<NetworkConfig>, String> {
-    if matches.is_present("no-network") {
-        return Ok(None)
-    }
-
-    let bootstrap_addresses = {
-        if let Some(addresses) = matches.values_of("bootstrap-addresses") {
-            addresses.map(|s| SocketAddr::from_str(s).unwrap()).collect::<Vec<_>>()
-        } else {
-            vec![]
+impl Network {
+    pub fn overwrite_with(&mut self, matches: &clap::ArgMatches) -> Result<(), String> {
+        if matches.is_present("no-network") {
+            self.disable = true;
         }
-    };
 
-    let port = value_t_or_exit!(matches, "port", u16);
+        if let Some(addresses) = matches.values_of("bootstrap-addresses") {
+            self.bootstrap_addresses = addresses.into_iter().map(|a| a.into()).collect();
+        }
 
+        if let Some(port) = matches.value_of("port") {
+            self.port = port.parse().map_err(|_| "Invalid port")?;
+        }
 
-    let min_peers = value_t_or_exit!(matches, "min-peers", usize);
-    let max_peers = value_t_or_exit!(matches, "max-peers", usize);
+        if let Some(min_peers) = matches.value_of("min-peers") {
+            self.min_peers = min_peers.parse().map_err(|_| "Invalid min-peers")?;
+        }
+        if let Some(max_peers) = matches.value_of("min-peers") {
+            self.max_peers = max_peers.parse().map_err(|_| "Invalid max-peers")?;
+        }
+        if self.min_peers > self.max_peers {
+            return Err("Invalid min/max peers".to_owned())
+        }
 
-    if min_peers > max_peers {
-        return Err("Invalid min/max peers".to_owned())
+        if matches.is_present("no-sync") {
+            self.sync = false;
+        }
+        if matches.is_present("no-parcel-relay") {
+            self.parcel_relay = false;
+        }
+        Ok(())
     }
-
-    Ok(Some(NetworkConfig {
-        port,
-        bootstrap_addresses,
-        min_peers,
-        max_peers,
-    }))
 }
 
 pub enum Discovery {

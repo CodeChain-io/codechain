@@ -13,7 +13,6 @@ args:
         value_name: PORT
         help: Listen for connections on PORT.
         takes_value: true
-        default_value: "3485"
     - bootstrap-addresses:
         long: bootstrap-addresses
         value_name: BOOTSTRAP_ADDRESSES
@@ -27,12 +26,10 @@ args:
         long: min-peers
         help: Sets the minimum number of connections the user would like.
         takes_value: true
-        default_value: "10"
     - max-peers:
         long: max-peers
         help: Sets the maximum number of connections the user would like.
         takes_value: true
-        default_value: "30"
     - instance-id:
         short: i
         long: instance-id
