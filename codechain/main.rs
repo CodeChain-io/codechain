@@ -42,6 +42,8 @@ extern crate env_logger;
 extern crate fdlimit;
 extern crate panic_hook;
 extern crate parking_lot;
+#[cfg(feature = "stratum")]
+extern crate stratum;
 extern crate toml;
 
 mod account_command;
@@ -69,9 +71,6 @@ use ctrlc::CtrlC;
 use fdlimit::raise_fd_limit;
 use parking_lot::{Condvar, Mutex};
 use rpc::{HttpConfiguration as RpcHttpConfig, IpcConfiguration as RpcIpcConfig};
-
-#[cfg(feature = "stratum")]
-extern crate stratum;
 
 const DEFAULT_CONFIG_PATH: &'static str = "codechain/config/presets/config.dev.toml";
 
