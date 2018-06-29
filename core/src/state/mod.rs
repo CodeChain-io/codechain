@@ -36,16 +36,13 @@
 //! or rolled back.
 
 use std::cell::RefMut;
-use std::collections::HashMap;
 use std::fmt;
 
-use ccrypto::Blake;
-use ctypes::{Address, Bytes, H256, Public, U128, U256};
-use cvm::{decode, execute, ScriptResult, VMConfig};
+use ccrypto::BLAKE_NULL_RLP;
+use ctypes::{Address, H256, Public, U256};
 use error::Error;
-use parcel::{Action, AssetTransferInput, AssetTransferOutput, SignedParcel};
+use parcel::{Action, SignedParcel};
 use trie::{self, Result as TrieResult, Trie, TrieError, TrieFactory};
-use unexpected::Mismatch;
 
 use super::invoice::Invoice;
 use super::parcel::ParcelError;
@@ -53,6 +50,7 @@ use super::state_db::StateDB;
 use super::{Transaction, TransactionError};
 
 use self::cache::Cache;
+use self::shard_level::ShardLevelState;
 use self::traits::{CheckpointId, StateWithCheckpoint};
 
 #[macro_use]
@@ -146,15 +144,14 @@ pub struct State<B> {
     db: B,
     root: H256,
     account: Cache<Account>,
-    asset_scheme: Cache<AssetScheme>,
-    asset: Cache<Asset>,
+    shard: Cache<Shard>,
     id_of_checkpoints: Vec<CheckpointId>,
     trie_factory: TrieFactory,
 }
 
 impl<B> TopStateInfo for State<B>
 where
-    B: Backend + TopBackend,
+    B: Backend + TopBackend + ShardBackend + Clone,
 {
     fn nonce(&self, a: &Address) -> trie::Result<U256> {
         self.ensure_account_cached(a, |a| a.as_ref().map_or_else(U256::zero, |account| *account.nonce()))
@@ -165,32 +162,36 @@ where
     fn regular_key(&self, a: &Address) -> trie::Result<Option<Public>> {
         self.ensure_account_cached(a, |a| a.as_ref().map_or(None, |account| account.regular_key()))
     }
-}
 
-impl<B> ShardStateInfo for State<B>
-where
-    B: Backend + ShardBackend,
-{
-    fn asset_scheme(&self, a: &AssetSchemeAddress) -> trie::Result<Option<AssetScheme>> {
-        let cached_asset = self.db.get_cached_asset_scheme(&a).and_then(|asset| asset);
-        if cached_asset.is_some() {
-            return Ok(cached_asset)
+    fn shard_root(&self, a: &ShardAddress) -> trie::Result<Option<H256>> {
+        let shard = self.db.get_cached_shard(&a).and_then(|s| s).map(|s| s.root().clone());
+        if shard.is_some() {
+            return Ok(shard)
         }
 
         // because of lexical borrow of self.db
         let db = self.trie_factory.readonly(self.db.as_hashdb(), &self.root)?;
-        Ok(db.get_with(a.as_ref(), AssetScheme::from_rlp)?)
+        Ok(db.get_with(&a, Shard::from_rlp)?.map(|s| s.root().clone()))
     }
 
-    fn asset(&self, a: &AssetAddress) -> trie::Result<Option<Asset>> {
-        let cached_asset = self.db.get_cached_asset(&a).and_then(|asset| asset);
-        if cached_asset.is_some() {
-            return Ok(cached_asset)
-        }
+    fn asset_scheme(
+        &self,
+        shard_id: u32,
+        asset_scheme_address: &AssetSchemeAddress,
+    ) -> trie::Result<Option<AssetScheme>> {
+        // FIXME: Handle the case that shard doesn't exist
+        let shard_root = self.shard_root(&ShardAddress::new(shard_id))?.unwrap_or(BLAKE_NULL_RLP);
+        // FIXME: Make it mutable borrow db instead of cloning.
+        let shard_level_state = ShardLevelState::from_existing(self.db.clone(), shard_root, self.trie_factory)?;
+        shard_level_state.asset_scheme(asset_scheme_address)
+    }
 
-        // because of lexical borrow of self.db
-        let db = self.trie_factory.readonly(self.db.as_hashdb(), &self.root)?;
-        Ok(db.get_with(a.as_ref(), Asset::from_rlp)?)
+    fn asset(&self, shard_id: u32, asset_address: &AssetAddress) -> trie::Result<Option<Asset>> {
+        // FIXME: Handle the case that shard doesn't exist
+        let shard_root = self.shard_root(&ShardAddress::new(shard_id))?.unwrap_or(BLAKE_NULL_RLP);
+        // FIXME: Make it mutable borrow db instead of cloning.
+        let shard_level_state = ShardLevelState::from_existing(self.db.clone(), shard_root, self.trie_factory)?;
+        shard_level_state.asset(asset_address)
     }
 }
 
@@ -201,13 +202,12 @@ const TRANSACTIONS_CHECKPOINT: CheckpointId = 789;
 
 impl<B> StateWithCheckpoint for State<B>
 where
-    B: Backend + TopBackend + ShardBackend,
+    B: Backend + TopBackend,
 {
     fn create_checkpoint(&mut self, id: CheckpointId) {
         self.id_of_checkpoints.push(id);
         self.account.checkpoint();
-        self.asset_scheme.checkpoint();
-        self.asset.checkpoint();
+        self.shard.checkpoint();
     }
 
     fn discard_checkpoint(&mut self, id: CheckpointId) {
@@ -215,8 +215,7 @@ where
         assert_eq!(expected, id);
 
         self.account.discard_checkpoint();
-        self.asset_scheme.discard_checkpoint();
-        self.asset.discard_checkpoint();
+        self.shard.discard_checkpoint();
     }
 
     fn revert_to_checkpoint(&mut self, id: CheckpointId) {
@@ -224,8 +223,7 @@ where
         assert_eq!(expected, id);
 
         self.account.revert_to_checkpoint();
-        self.asset_scheme.revert_to_checkpoint();
-        self.asset.revert_to_checkpoint();
+        self.shard.revert_to_checkpoint();
     }
 }
 
@@ -236,8 +234,7 @@ where
     fn commit(&mut self) -> TrieResult<()> {
         let mut trie = self.trie_factory.from_existing(self.db.as_hashdb_mut(), &mut self.root)?;
         self.account.commit(&mut trie)?;
-        self.asset_scheme.commit(&mut trie)?;
-        self.asset.commit(&mut trie)?;
+        self.shard.commit(&mut trie)?;
         Ok(())
     }
 
@@ -246,24 +243,20 @@ where
         self.account.propagate_to_global_cache(|address, item, modified| {
             db.add_to_account_cache(address, item, modified);
         });
-        self.asset_scheme.propagate_to_global_cache(|address, item, modified| {
-            db.add_to_asset_scheme_cache(address, item, modified);
-        });
-        self.asset.propagate_to_global_cache(|address, item, modified| {
-            db.add_to_asset_cache(address, item, modified);
+        self.shard.propagate_to_global_cache(|address, item, modified| {
+            db.add_to_shard_cache(address, item, modified);
         });
     }
 
     fn clear(&mut self) {
         self.account.clear();
-        self.asset_scheme.clear();
-        self.asset.clear();
+        self.shard.clear();
     }
 }
 
 impl<B> State<B>
 where
-    B: Backend + TopBackend + ShardBackend,
+    B: Backend + TopBackend + ShardBackend + Clone,
 {
     /// Creates new state with empty state root
     /// Used for tests.
@@ -279,8 +272,7 @@ where
             db,
             root,
             account: Cache::new(),
-            asset_scheme: Cache::new(),
-            asset: Cache::new(),
+            shard: Cache::new(),
             id_of_checkpoints: Default::default(),
             trie_factory,
         }
@@ -296,8 +288,7 @@ where
             db,
             root,
             account: Cache::new(),
-            asset_scheme: Cache::new(),
-            asset: Cache::new(),
+            shard: Cache::new(),
             id_of_checkpoints: Default::default(),
             trie_factory,
         };
@@ -410,14 +401,22 @@ where
         };
         self.discard_checkpoint(PARCEL_BODY_CHECKPOINT);
 
+        let shard_id = 0;
+        // FIXME: Use shard id when introducing mutli-shard
+        // FIXME: Handle the case that shard doesn't exist
+        let shard_root = self.shard_root(&ShardAddress::new(shard_id))?.unwrap_or(BLAKE_NULL_RLP);
+        // FIXME: Make it mutable borrow db instead of cloning.
+        let mut shard_level_state = ShardLevelState::from_existing(self.db.clone(), shard_root, self.trie_factory)?;
+
         self.create_checkpoint(TRANSACTIONS_CHECKPOINT);
+
         let mut results = Vec::with_capacity(transactions.len());
         for t in transactions {
-            self.create_checkpoint(TRANSACTION_CHECKPOINT);
-            results.push(match self.execute_transaction(t, &parcel.network_id) {
+            shard_level_state.create_checkpoint(TRANSACTION_CHECKPOINT);
+            results.push(match shard_level_state.execute_transaction(t, &parcel.network_id) {
                 Ok(_) => {
                     cinfo!(TX, "Tx({}) is applied", t.hash());
-                    self.discard_checkpoint(TRANSACTION_CHECKPOINT);
+                    shard_level_state.discard_checkpoint(TRANSACTION_CHECKPOINT);
                     let invoice = Invoice::Success;
                     let error = None;
                     TransactionOutcome {
@@ -427,7 +426,7 @@ where
                 }
                 Err(Error::Transaction(err)) => {
                     cinfo!(TX, "Cannot apply Tx({}): {:?}", t.hash(), err);
-                    self.revert_to_checkpoint(TRANSACTION_CHECKPOINT);
+                    shard_level_state.revert_to_checkpoint(TRANSACTION_CHECKPOINT);
                     let invoice = Invoice::Failed;
                     let error = Some(err);
                     TransactionOutcome {
@@ -437,14 +436,26 @@ where
                 }
                 Err(err) => {
                     cinfo!(TX, "Tx({}) is invalid: {:?}", t.hash(), err);
-                    self.discard_checkpoint(TRANSACTION_CHECKPOINT);
+                    shard_level_state.discard_checkpoint(TRANSACTION_CHECKPOINT);
                     self.revert_to_checkpoint(TRANSACTIONS_CHECKPOINT);
                     return Err(err)
                 }
             });
         }
-        self.discard_checkpoint(TRANSACTIONS_CHECKPOINT);
-        Ok(ParcelOutcome::Transactions(results))
+        shard_level_state.commit()?;
+        let (new_shard_root, db) = shard_level_state.drop();
+        self.db = db;
+        // FIXME: Use shard id when introducing multi-shards
+        match self.set_shard_root(0, &shard_root, &new_shard_root) {
+            Err(err) => {
+                self.revert_to_checkpoint(TRANSACTIONS_CHECKPOINT);
+                Err(err.into())
+            }
+            _ => {
+                self.discard_checkpoint(TRANSACTIONS_CHECKPOINT);
+                Ok(ParcelOutcome::Transactions(results))
+            }
+        }
     }
 }
 
@@ -459,6 +470,8 @@ where
     /// First searches for account in the local, then the shared cache.
     /// Populates local cache if nothing found.
     fn require_account<'a>(&'a self, a: &Address) -> trie::Result<RefMut<'a, Account>>;
+
+    fn require_shard<'a>(&'a self, shard_id: u32) -> trie::Result<RefMut<'a, Shard>>;
 }
 
 impl<B> TopStateInternal<B> for State<B>
@@ -482,194 +495,13 @@ where
         let from_db = || self.db.get_cached_account(a);
         self.account.require_item_or_from(a, default, db, from_db)
     }
-}
 
-trait ShardStateInternal<B>
-where
-    B: Backend + ShardBackend, {
-    fn mint_asset(
-        &mut self,
-        transaction_hash: H256,
-        metadata: &String,
-        lock_script_hash: &H256,
-        parameters: &Vec<Bytes>,
-        amount: &Option<u64>,
-        registrar: &Option<Address>,
-    ) -> Result<(), Error>;
-
-    fn transfer_asset(
-        &mut self,
-        transaction: &Transaction,
-        burns: &[AssetTransferInput],
-        inputs: &[AssetTransferInput],
-        outputs: &[AssetTransferOutput],
-    ) -> Result<(), Error>;
-
-    fn kill_asset(&mut self, account: &AssetAddress);
-
-    fn require_asset_scheme<'a, F>(
-        &'a self,
-        a: &AssetSchemeAddress,
-        default: F,
-    ) -> trie::Result<RefMut<'a, AssetScheme>>
-    where
-        F: FnOnce() -> AssetScheme;
-
-    fn require_asset<'a, F>(&'a self, a: &AssetAddress, default: F) -> trie::Result<RefMut<'a, Asset>>
-    where
-        F: FnOnce() -> Asset;
-}
-
-impl<B> ShardStateInternal<B> for State<B>
-where
-    B: Backend + ShardBackend,
-{
-    fn mint_asset(
-        &mut self,
-        transaction_hash: H256,
-        metadata: &String,
-        lock_script_hash: &H256,
-        parameters: &Vec<Bytes>,
-        amount: &Option<u64>,
-        registrar: &Option<Address>,
-    ) -> Result<(), Error> {
-        let asset_scheme_address = AssetSchemeAddress::new(transaction_hash);
-        let amount = amount.unwrap_or(::std::u64::MAX);
-        let asset_scheme = self.require_asset_scheme(&asset_scheme_address, || {
-            AssetScheme::new(metadata.clone(), amount, registrar.clone())
-        })?;
-        ctrace!(TX, "{:?} is minted on {:?}", asset_scheme, asset_scheme_address);
-
-        let asset_address = AssetAddress::new(transaction_hash, 0);
-        let asset = self.require_asset(&asset_address, || {
-            Asset::new(asset_scheme_address.into(), *lock_script_hash, parameters.clone(), amount)
-        });
-        ctrace!(TX, "{:?} is generated on {:?}", asset, asset_address);
-        Ok(())
-    }
-
-    fn transfer_asset(
-        &mut self,
-        transaction: &Transaction,
-        burns: &[AssetTransferInput],
-        inputs: &[AssetTransferInput],
-        outputs: &[AssetTransferOutput],
-    ) -> Result<(), Error> {
-        debug_assert!(is_input_and_output_consistent(inputs, outputs));
-
-        for (input, burn) in inputs.iter().map(|input| (input, false)).chain(burns.iter().map(|input| (input, true))) {
-            let (address_hash, asset) = {
-                let index = input.prev_out.index;
-                let address = AssetAddress::new(input.prev_out.transaction_hash, index);
-                match self.asset(&address)? {
-                    Some(asset) => (address.into(), asset),
-                    None => return Err(TransactionError::AssetNotFound(address.into()).into()),
-                }
-            };
-
-            if *asset.lock_script_hash() != Blake::blake(&input.lock_script) {
-                let mismatch = Mismatch {
-                    expected: *asset.lock_script_hash(),
-                    found: Blake::blake(&input.lock_script),
-                };
-                return Err(TransactionError::ScriptHashMismatch(mismatch).into())
-            }
-
-            let script_result = match (decode(&input.lock_script), decode(&input.unlock_script)) {
-                (Ok(lock_script), Ok(unlock_script)) => {
-                    // FIXME : apply parameters to vm
-                    execute(
-                        &unlock_script,
-                        &asset.parameters(),
-                        &lock_script,
-                        transaction.hash_without_script(),
-                        VMConfig::default(),
-                    )
-                }
-                // FIXME : Deliver full decode error
-                _ => return Err(TransactionError::InvalidScript.into()),
-            };
-
-            match script_result {
-                Ok(result) => match (result, burn) {
-                    (ScriptResult::Unlocked, false) => {}
-                    (ScriptResult::Burnt, true) => {}
-                    _ => return Err(TransactionError::FailedToUnlock(address_hash).into()),
-                },
-                Err(err) => {
-                    ctrace!(TX, "Cannot run unlock/lock script {:?}", err);
-                    return Err(TransactionError::FailedToUnlock(address_hash).into())
-                }
-            }
-        }
-
-        let mut deleted_asset = Vec::with_capacity(inputs.len());
-        for input in inputs {
-            let index = input.prev_out.index;
-            let amount = input.prev_out.amount;
-            let address = AssetAddress::new(input.prev_out.transaction_hash, index);
-
-            let asset_type = input.prev_out.asset_type.clone();
-            let asset_scheme_address = AssetSchemeAddress::from_hash(asset_type)
-                .ok_or(TransactionError::AssetSchemeNotFound(asset_type.into()))?;
-            let _asset_scheme = self.asset_scheme((&asset_scheme_address).into())?
-                .ok_or(TransactionError::AssetSchemeNotFound(asset_scheme_address.into()))?;
-
-            match self.asset(&address)? {
-                Some(asset) => {
-                    if asset.amount() != &amount {
-                        let address = address.into();
-                        let expected = *asset.amount();
-                        let got = amount;
-                        return Err(TransactionError::InvalidAssetAmount {
-                            address,
-                            expected,
-                            got,
-                        }.into())
-                    }
-                }
-                None => return Err(TransactionError::AssetNotFound(address.into()).into()),
-            }
-
-            self.kill_asset(&address);
-            let hash: H256 = address.into();
-            deleted_asset.push((hash, amount));
-        }
-        let mut created_asset = Vec::with_capacity(outputs.len());
-        for (index, output) in outputs.iter().enumerate() {
-            let asset_address = AssetAddress::new(transaction.hash(), index);
-            let asset =
-                Asset::new(output.asset_type, output.lock_script_hash, output.parameters.clone(), output.amount);
-            self.require_asset(&asset_address, || asset)?;
-            created_asset.push((asset_address, output.amount));
-        }
-        ctrace!(TX, "Deleted assets {:?}", deleted_asset);
-        ctrace!(TX, "Created assets {:?}", created_asset);
-        Ok(())
-    }
-
-    fn kill_asset(&mut self, account: &AssetAddress) {
-        self.asset.remove(account);
-    }
-
-    fn require_asset_scheme<'a, F>(
-        &'a self,
-        a: &AssetSchemeAddress,
-        default: F,
-    ) -> trie::Result<RefMut<'a, AssetScheme>>
-    where
-        F: FnOnce() -> AssetScheme, {
+    fn require_shard<'a>(&'a self, shard_id: u32) -> trie::Result<RefMut<'a, Shard>> {
+        let default = || Shard::new(BLAKE_NULL_RLP);
         let db = self.trie_factory.readonly(self.db.as_hashdb(), &self.root)?;
-        let from_db = || self.db.get_cached_asset_scheme(a);
-        self.asset_scheme.require_item_or_from(a, default, db, from_db)
-    }
-
-    fn require_asset<'a, F>(&'a self, a: &AssetAddress, default: F) -> trie::Result<RefMut<'a, Asset>>
-    where
-        F: FnOnce() -> Asset, {
-        let db = self.trie_factory.readonly(self.db.as_hashdb(), &self.root)?;
-        let from_db = || self.db.get_cached_asset(a);
-        self.asset.require_item_or_from(a, default, db, from_db)
+        let shard_address = ShardAddress::new(shard_id);
+        let from_db = || self.db.get_cached_shard(&shard_address);
+        self.shard.require_item_or_from(&shard_address, default, db, from_db)
     }
 }
 
@@ -678,7 +510,7 @@ where
     B: TopBackend + ShardBackend,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "account: {:?} asset_scheme: {:?} asset: {:?}", self.account, self.asset_scheme, self.asset)
+        write!(f, "account: {:?} shard: {:?}", self.account, self.shard)
     }
 }
 
@@ -691,43 +523,15 @@ impl Clone for State<StateDB> {
             root: self.root.clone(),
             id_of_checkpoints: self.id_of_checkpoints.clone(),
             account: self.account.clone(),
-            asset_scheme: self.asset_scheme.clone(),
-            asset: self.asset.clone(),
+            shard: self.shard.clone(),
             trie_factory: self.trie_factory.clone(),
         }
     }
 }
 
-fn is_input_and_output_consistent(inputs: &[AssetTransferInput], outputs: &[AssetTransferOutput]) -> bool {
-    let mut sum: HashMap<H256, U128> = HashMap::new();
-
-    for input in inputs {
-        let ref asset_type = input.prev_out.asset_type;
-        let ref amount = input.prev_out.amount;
-        let current_amount = sum.get(&asset_type).cloned().unwrap_or(U128::zero());
-        sum.insert(asset_type.clone(), current_amount + U128::from(*amount));
-    }
-    for output in outputs {
-        let ref asset_type = output.asset_type;
-        let ref amount = output.amount;
-        let current_amount = if let Some(current_amount) = sum.get(&asset_type) {
-            if current_amount < &U128::from(*amount) {
-                return false
-            }
-            current_amount.clone()
-        } else {
-            return false
-        };
-        let t = sum.insert(asset_type.clone(), current_amount - From::from(*amount));
-        debug_assert!(t.is_some());
-    }
-
-    sum.iter().all(|(_, sum)| sum.is_zero())
-}
-
 impl<B> TopState<B> for State<B>
 where
-    B: Backend + TopBackend,
+    B: Backend + TopBackend + ShardBackend + Clone,
 {
     fn kill_account(&mut self, account: &Address) {
         self.account.remove(account);
@@ -795,47 +599,13 @@ where
     }
 }
 
-impl<B> ShardState<B> for State<B>
-where
-    B: Backend + ShardBackend,
-{
-    fn execute_transaction(&mut self, transaction: &Transaction, parcel_network_id: &u64) -> Result<(), Error> {
-        ctrace!(TX, "Execute {:?}(TxHash:{:?})", transaction, transaction.hash());
-        match transaction {
-            Transaction::AssetMint {
-                metadata,
-                lock_script_hash,
-                amount,
-                parameters,
-                registrar,
-                ..
-            } => Ok(self.mint_asset(transaction.hash(), metadata, lock_script_hash, parameters, amount, registrar)?),
-            Transaction::AssetTransfer {
-                burns,
-                inputs,
-                outputs,
-                network_id,
-                ..
-            } => {
-                if parcel_network_id != network_id {
-                    return Err(TransactionError::InvalidNetworkId(Mismatch {
-                        expected: *parcel_network_id,
-                        found: *network_id,
-                    }).into())
-                }
-                self.transfer_asset(&transaction, burns, inputs, outputs)
-            }
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use ccrypto::Blake;
     use ckeys::{Generator, Random};
-    use ctypes::{Address, Secret, U256};
+    use ctypes::{Address, Bytes, Secret, U256};
 
-    use super::super::parcel::{AssetOutPoint, Parcel};
+    use super::super::parcel::Parcel;
     use super::super::tests::helpers::{get_temp_state, get_temp_state_db};
     use super::*;
 
@@ -1316,7 +1086,7 @@ mod tests {
         assert_eq!(state.nonce(&sender).unwrap(), 1.into());
 
         let asset_scheme_address = AssetSchemeAddress::new(transaction_hash);
-        let asset_scheme = state.asset_scheme(&asset_scheme_address).unwrap();
+        let asset_scheme = state.asset_scheme(0, &asset_scheme_address).unwrap();
         let asset_scheme = asset_scheme.unwrap();
         assert_eq!(&metadata, asset_scheme.metadata());
         assert_eq!(&amount, asset_scheme.amount());
@@ -1324,7 +1094,7 @@ mod tests {
         assert!(asset_scheme.is_permissioned());
 
         let asset_address = AssetAddress::new(transaction_hash, 0);
-        let asset = state.asset(&asset_address).unwrap();
+        let asset = state.asset(0, &asset_address).unwrap();
         let asset = asset.unwrap();
         let asset_type: H256 = asset_scheme_address.into();
         assert_eq!(&asset_type, asset.asset_type());
@@ -1385,7 +1155,7 @@ mod tests {
         assert_eq!(state.nonce(&sender).unwrap(), 1.into());
 
         let asset_scheme_address = AssetSchemeAddress::new(transaction_hash);
-        let asset_scheme = state.asset_scheme(&asset_scheme_address).unwrap();
+        let asset_scheme = state.asset_scheme(0, &asset_scheme_address).unwrap();
         let asset_scheme = asset_scheme.unwrap();
         assert_eq!(&metadata, asset_scheme.metadata());
         assert_eq!(&::std::u64::MAX, asset_scheme.amount());
@@ -1393,7 +1163,7 @@ mod tests {
         assert!(asset_scheme.is_permissioned());
 
         let asset_address = AssetAddress::new(transaction_hash, 0);
-        let asset = state.asset(&asset_address).unwrap();
+        let asset = state.asset(0, &asset_address).unwrap();
         let asset = asset.unwrap();
         let asset_type: H256 = asset_scheme_address.into();
         assert_eq!(&asset_type, asset.asset_type());
