@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ctypes::{Address, Public, U256};
+use ctypes::{Address, H256, Public, U256};
 use error::Error;
 use trie;
 
@@ -43,4 +43,6 @@ where
 
     /// Set the regular key of account `a`
     fn set_regular_key(&mut self, a: &Address, key: &Public) -> Result<(), Error>;
+
+    fn set_shard_root(&mut self, shard_id: u32, old_root: &H256, new_root: &H256) -> Result<(), Error>;
 }
