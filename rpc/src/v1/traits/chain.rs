@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ccore::{Asset, AssetScheme, Invoice, ParcelInvoice};
+use ccore::{Asset, AssetScheme, BlockNumber, Invoice, ParcelInvoice};
 use ctypes::{H160, H256, Public, U256};
 
 use jsonrpc_core::Result;
@@ -60,8 +60,8 @@ build_rpc_trait! {
         fn get_regular_key(&self, H160, Option<u64>) -> Result<Option<Public>>;
 
         /// Gets number of best block.
-        # [rpc(name = "chain_getBlockNumber")]
-        fn get_block_number(&self) -> Result<u64>;
+        # [rpc(name = "chain_getBestBlockNumber")]
+        fn get_best_block_number(&self) -> Result<BlockNumber>;
 
         /// Gets the hash of the block with given number.
         # [rpc(name = "chain_getBlockHash")]
