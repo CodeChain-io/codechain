@@ -431,6 +431,7 @@ impl<B: Backend + ShardBackend> ShardState<B> for ShardLevelState<B> {
             Ok(_) => {
                 cinfo!(TX, "Tx({}) is applied", transaction.hash());
                 self.discard_checkpoint(TRANSACTION_CHECKPOINT);
+                self.commit()?; // FIXME: Remove early commit.
                 Ok(TransactionOutcome {
                     invoice: Invoice::Success,
                     error: None,
@@ -454,7 +455,9 @@ impl<B: Backend + ShardBackend> ShardState<B> for ShardLevelState<B> {
 
 #[cfg(test)]
 mod tests {
-    use super::super::super::parcel::AssetOutPoint;
+    use std::str::FromStr;
+
+    use super::super::super::parcel::{AssetOutPoint, AssetTransferInput, AssetTransferOutput};
     use super::super::super::tests::helpers::get_temp_state_db;
     use super::*;
 
@@ -491,7 +494,6 @@ mod tests {
             },
             result
         );
-        state.commit().unwrap();
 
         let transaction_hash = transaction.hash();
         let asset_scheme_address = AssetSchemeAddress::new(transaction_hash);
@@ -535,7 +537,6 @@ mod tests {
             },
             result
         );
-        state.commit().unwrap();
 
         let transaction_hash = transaction.hash();
         let asset_scheme_address = AssetSchemeAddress::new(transaction_hash);
@@ -745,5 +746,239 @@ mod tests {
                 amount: output_amount,
             }]
         ));
+    }
+
+    #[test]
+    fn mint_and_transfer() {
+        let mut state = {
+            let state_db = get_temp_state_db();
+            let root_parent = H256::random();
+
+            let state_db = state_db.clone_canon(&root_parent);
+            ShardLevelState::new(state_db, Default::default())
+        };
+
+        let metadata = "metadata".to_string();
+        let lock_script_hash =
+            H256::from_str("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050").unwrap();
+        let registrar = None;
+        let amount = 30;
+        let mint = Transaction::AssetMint {
+            metadata: metadata.clone(),
+            lock_script_hash,
+            parameters: vec![],
+            amount: Some(amount),
+            registrar,
+            nonce: 0,
+        };
+        let mint_hash = mint.hash();
+
+        let network_id = 0xCafe;
+
+        assert_eq!(
+            TransactionOutcome {
+                invoice: Invoice::Success,
+                error: None,
+            },
+            state.apply(&mint, &network_id).unwrap()
+        );
+
+        let asset_scheme_address = AssetSchemeAddress::new(mint_hash);
+        let asset_scheme = state.asset_scheme(&asset_scheme_address);
+        let asset_type = asset_scheme_address.into();
+
+        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), amount, registrar))), asset_scheme);
+
+        let asset_address = AssetAddress::new(mint_hash, 0);
+        let asset = state.asset(&asset_address);
+        assert_eq!(Ok(Some(Asset::new(asset_type, lock_script_hash, vec![], amount))), asset);
+
+        let random_lock_script_hash = H256::random();
+        let transfer = Transaction::AssetTransfer {
+            network_id,
+            burns: vec![],
+            inputs: vec![AssetTransferInput {
+                prev_out: AssetOutPoint {
+                    transaction_hash: mint_hash,
+                    index: 0,
+                    asset_type,
+                    amount: 30,
+                },
+                lock_script: vec![0x30, 0x01],
+                unlock_script: vec![],
+            }],
+            outputs: vec![
+                AssetTransferOutput {
+                    lock_script_hash,
+                    parameters: vec![vec![1]],
+                    asset_type,
+                    amount: 10,
+                },
+                AssetTransferOutput {
+                    lock_script_hash,
+                    parameters: vec![],
+                    asset_type,
+                    amount: 5,
+                },
+                AssetTransferOutput {
+                    lock_script_hash: random_lock_script_hash,
+                    parameters: vec![],
+                    asset_type,
+                    amount: 15,
+                },
+            ],
+            nonce: 0,
+        };
+        let transfer_hash = transfer.hash();
+
+        assert_eq!(
+            TransactionOutcome {
+                invoice: Invoice::Success,
+                error: None,
+            },
+            state.apply(&transfer, &network_id).unwrap()
+        );
+
+        let asset0_address = AssetAddress::new(transfer_hash, 0);
+        let asset0 = state.asset(&asset0_address);
+        assert_eq!(Ok(Some(Asset::new(asset_type, lock_script_hash, vec![vec![1]], 10))), asset0);
+
+        let asset1_address = AssetAddress::new(transfer_hash, 1);
+        let asset1 = state.asset(&asset1_address);
+        assert_eq!(Ok(Some(Asset::new(asset_type, lock_script_hash, vec![], 5))), asset1);
+
+        let asset2_address = AssetAddress::new(transfer_hash, 2);
+        let asset2 = state.asset(&asset2_address);
+        assert_eq!(Ok(Some(Asset::new(asset_type, random_lock_script_hash, vec![], 15))), asset2);
+    }
+
+    #[test]
+    fn mint_and_failed_transfer_and_successful_transfer() {
+        let mut state = {
+            let state_db = get_temp_state_db();
+            let root_parent = H256::random();
+
+            let state_db = state_db.clone_canon(&root_parent);
+            ShardLevelState::new(state_db, Default::default())
+        };
+
+        let metadata = "metadata".to_string();
+        let lock_script_hash =
+            H256::from_str("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050").unwrap();
+        let registrar = None;
+        let amount = 30;
+        let mint = Transaction::AssetMint {
+            metadata: metadata.clone(),
+            lock_script_hash,
+            parameters: vec![],
+            amount: Some(amount),
+            registrar,
+            nonce: 0,
+        };
+        let mint_hash = mint.hash();
+
+        let network_id = 0xCafe;
+
+        assert_eq!(
+            TransactionOutcome {
+                invoice: Invoice::Success,
+                error: None,
+            },
+            state.apply(&mint, &network_id).unwrap()
+        );
+
+        let asset_scheme_address = AssetSchemeAddress::new(mint_hash);
+        let asset_scheme = state.asset_scheme(&asset_scheme_address);
+        let asset_type = asset_scheme_address.into();
+
+        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), amount, registrar))), asset_scheme);
+
+        let asset_address = AssetAddress::new(mint_hash, 0);
+        let asset = state.asset(&asset_address);
+        assert_eq!(Ok(Some(Asset::new(asset_type, lock_script_hash, vec![], amount))), asset);
+
+        let failed_transfer = Transaction::AssetTransfer {
+            network_id,
+            burns: vec![],
+            inputs: vec![AssetTransferInput {
+                prev_out: AssetOutPoint {
+                    transaction_hash: mint_hash,
+                    index: 0,
+                    asset_type,
+                    amount: 30,
+                },
+                lock_script: vec![0x30],
+                unlock_script: vec![],
+            }],
+            outputs: vec![AssetTransferOutput {
+                lock_script_hash,
+                parameters: vec![vec![1]],
+                asset_type,
+                amount: 30,
+            }],
+            nonce: 0,
+        };
+
+        let failed_outcome = state.apply(&failed_transfer, &network_id).unwrap();
+        assert_eq!(Invoice::Failed, failed_outcome.invoice);
+        assert_ne!(None, failed_outcome.error);
+
+        let random_lock_script_hash = H256::random();
+        let successful_transfer = Transaction::AssetTransfer {
+            network_id,
+            burns: vec![],
+            inputs: vec![AssetTransferInput {
+                prev_out: AssetOutPoint {
+                    transaction_hash: mint_hash,
+                    index: 0,
+                    asset_type,
+                    amount: 30,
+                },
+                lock_script: vec![0x30, 0x01],
+                unlock_script: vec![],
+            }],
+            outputs: vec![
+                AssetTransferOutput {
+                    lock_script_hash,
+                    parameters: vec![vec![1]],
+                    asset_type,
+                    amount: 10,
+                },
+                AssetTransferOutput {
+                    lock_script_hash,
+                    parameters: vec![],
+                    asset_type,
+                    amount: 5,
+                },
+                AssetTransferOutput {
+                    lock_script_hash: random_lock_script_hash,
+                    parameters: vec![],
+                    asset_type,
+                    amount: 15,
+                },
+            ],
+            nonce: 0,
+        };
+        let successful_transfer_hash = successful_transfer.hash();
+
+        assert_eq!(
+            TransactionOutcome {
+                invoice: Invoice::Success,
+                error: None,
+            },
+            state.apply(&successful_transfer, &network_id).unwrap()
+        );
+
+        let asset0_address = AssetAddress::new(successful_transfer_hash, 0);
+        let asset0 = state.asset(&asset0_address);
+        assert_eq!(Ok(Some(Asset::new(asset_type, lock_script_hash, vec![vec![1]], 10))), asset0);
+
+        let asset1_address = AssetAddress::new(successful_transfer_hash, 1);
+        let asset1 = state.asset(&asset1_address);
+        assert_eq!(Ok(Some(Asset::new(asset_type, lock_script_hash, vec![], 5))), asset1);
+
+        let asset2_address = AssetAddress::new(successful_transfer_hash, 2);
+        let asset2 = state.asset(&asset2_address);
+        assert_eq!(Ok(Some(Asset::new(asset_type, random_lock_script_hash, vec![], 15))), asset2);
     }
 }
