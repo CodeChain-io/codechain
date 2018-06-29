@@ -47,6 +47,7 @@ use trie::{Result as TrieResult, Trie, TrieError, TrieFactory};
 use super::super::invoice::Invoice;
 use super::super::parcel::ParcelError;
 use super::super::state_db::StateDB;
+use super::super::transaction::Transaction;
 use super::account::Account;
 use super::asset::{Asset, AssetAddress};
 use super::asset_scheme::{AssetScheme, AssetSchemeAddress};
@@ -165,8 +166,8 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopStateInfo for TopLevelSt
     }
 }
 
-const PARCEL_CHECKPOINT: CheckpointId = 123;
-const PARCEL_BODY_CHECKPOINT: CheckpointId = 130;
+const PARCEL_FEE_CHECKPOINT: CheckpointId = 123;
+const PARCEL_ACTION_CHECKPOINT: CheckpointId = 130;
 
 impl<B: Backend + TopBackend> StateWithCheckpoint for TopLevelState<B> {
     fn create_checkpoint(&mut self, id: CheckpointId) {
@@ -267,23 +268,23 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopLevelState<B> {
     /// Execute a given parcel, charging parcel fee.
     /// This will change the state accordingly.
     pub fn apply(&mut self, parcel: &SignedParcel) -> Result<ParcelOutcome, Error> {
-        self.create_checkpoint(PARCEL_CHECKPOINT);
+        self.create_checkpoint(PARCEL_FEE_CHECKPOINT);
 
-        match self.execute(parcel) {
+        match self.apply_internal(parcel) {
             Err(Error::Transaction(_)) => unreachable!(),
             Err(err) => {
-                self.revert_to_checkpoint(PARCEL_CHECKPOINT);
+                self.revert_to_checkpoint(PARCEL_FEE_CHECKPOINT);
                 Err(err)
             }
             Ok(outcomes) => {
-                self.discard_checkpoint(PARCEL_CHECKPOINT);
+                self.discard_checkpoint(PARCEL_FEE_CHECKPOINT);
                 self.commit()?; // FIXME: Remove early commit.
                 Ok(outcomes)
             }
         }
     }
 
-    fn execute(&mut self, parcel: &SignedParcel) -> Result<ParcelOutcome, Error> {
+    fn apply_internal(&mut self, parcel: &SignedParcel) -> Result<ParcelOutcome, Error> {
         let fee_payer = parcel.sender();
         let nonce = self.nonce(&fee_payer)?;
 
@@ -308,83 +309,83 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopLevelState<B> {
         self.sub_balance(&fee_payer, &fee)?;
 
         // The failed parcel also must pay the fee and increase nonce.
+        self.create_checkpoint(PARCEL_ACTION_CHECKPOINT);
 
-        self.create_checkpoint(PARCEL_BODY_CHECKPOINT);
-        let transactions = match &parcel.action {
+        match self.apply_action(&parcel.action, &parcel.network_id, &fee_payer) {
+            Ok(outcome) => {
+                self.discard_checkpoint(PARCEL_ACTION_CHECKPOINT);
+                Ok(outcome)
+            }
+            Err(err) => {
+                self.revert_to_checkpoint(PARCEL_ACTION_CHECKPOINT);
+                Err(err)
+            }
+        }
+    }
+
+    fn apply_action(&mut self, action: &Action, network_id: &u64, fee_payer: &Address) -> Result<ParcelOutcome, Error> {
+        match action {
             Action::ChangeShardState {
                 transactions,
-            } => transactions,
+            } => {
+                // FIXME: Use shard id when introducing mutli-shard
+                let shard_id = 0;
+                let result = self.apply_transactions(&transactions, network_id, shard_id)?;
+                Ok(ParcelOutcome::Transactions(result))
+            }
             Action::Payment {
                 receiver,
                 value,
-            } => match self.transfer_balance(&fee_payer, receiver, value) {
-                Ok(()) => {
-                    self.discard_checkpoint(PARCEL_BODY_CHECKPOINT);
-                    return Ok(ParcelOutcome::Single {
-                        invoice: Invoice::Success,
-                        error: None,
-                    })
-                }
+            } => match self.transfer_balance(fee_payer, receiver, value) {
+                Ok(()) => Ok(ParcelOutcome::Single {
+                    invoice: Invoice::Success,
+                    error: None,
+                }),
                 Err(Error::Parcel(
                     err @ ParcelError::InsufficientBalance {
                         ..
                     },
-                )) => {
-                    self.discard_checkpoint(PARCEL_BODY_CHECKPOINT);
-                    return Ok(ParcelOutcome::Single {
-                        invoice: Invoice::Failed,
-                        error: Some(err),
-                    })
-                }
-                Err(err) => {
-                    self.revert_to_checkpoint(PARCEL_BODY_CHECKPOINT);
-                    return Err(err)
-                }
+                )) => Ok(ParcelOutcome::Single {
+                    invoice: Invoice::Failed,
+                    error: Some(err),
+                }),
+                Err(err) => Err(err.into()),
             },
             Action::SetRegularKey {
                 key,
-            } => match self.set_regular_key(&fee_payer, key) {
-                Ok(()) => {
-                    self.discard_checkpoint(PARCEL_BODY_CHECKPOINT);
-                    return Ok(ParcelOutcome::Single {
-                        invoice: Invoice::Success,
-                        error: None,
-                    })
-                }
-                Err(error) => {
-                    self.revert_to_checkpoint(PARCEL_BODY_CHECKPOINT);
-                    return Err(error)
-                }
+            } => match self.set_regular_key(fee_payer, key) {
+                Ok(()) => Ok(ParcelOutcome::Single {
+                    invoice: Invoice::Success,
+                    error: None,
+                }),
+                Err(error) => Err(error.into()),
             },
-        };
+        }
+    }
 
-        let shard_id = 0;
-        // FIXME: Use shard id when introducing mutli-shard
+    fn apply_transactions(
+        &mut self,
+        transactions: &[Transaction],
+        network_id: &u64,
+        shard_id: u32,
+    ) -> Result<Vec<TransactionOutcome>, Error> {
         // FIXME: Handle the case that shard doesn't exist
         let shard_root = self.shard_root(&ShardAddress::new(shard_id))?.unwrap_or(BLAKE_NULL_RLP);
+
         // FIXME: Make it mutable borrow db instead of cloning.
         let mut shard_level_state = ShardLevelState::from_existing(self.db.clone(), shard_root, self.trie_factory)?;
 
         let mut results = Vec::with_capacity(transactions.len());
         for t in transactions {
-            let result = shard_level_state.apply(t, &parcel.network_id)?;
+            let result = shard_level_state.apply(t, network_id)?;
             results.push(result);
         }
         shard_level_state.commit()?;
         let (new_shard_root, db) = shard_level_state.drop();
         self.db = db;
-        // FIXME: Use shard id when introducing multi-shards
 
-        match self.set_shard_root(0, &shard_root, &new_shard_root) {
-            Err(err) => {
-                self.revert_to_checkpoint(PARCEL_BODY_CHECKPOINT);
-                Err(err.into())
-            }
-            _ => {
-                self.discard_checkpoint(PARCEL_BODY_CHECKPOINT);
-                Ok(ParcelOutcome::Transactions(results))
-            }
-        }
+        self.set_shard_root(shard_id, &shard_root, &new_shard_root)?;
+        Ok(results)
     }
 }
 
