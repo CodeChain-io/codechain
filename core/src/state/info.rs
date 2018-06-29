@@ -14,10 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ctypes::{Address, Public, U256};
+use ctypes::{Address, H256, Public, U256};
 use trie::Result as TrieResult;
 
-use super::{Asset, AssetAddress, AssetScheme, AssetSchemeAddress};
+use super::{Asset, AssetAddress, AssetScheme, AssetSchemeAddress, ShardAddress};
 
 pub trait TopStateInfo {
     /// Get the nonce of account `a`.
@@ -28,6 +28,13 @@ pub trait TopStateInfo {
 
     /// Get the regular key of account `a`.
     fn regular_key(&self, a: &Address) -> TrieResult<Option<Public>>;
+
+    fn shard_root(&self, a: &ShardAddress) -> TrieResult<Option<H256>>;
+
+    /// Get the asset scheme.
+    fn asset_scheme(&self, shard_id: u32, a: &AssetSchemeAddress) -> TrieResult<Option<AssetScheme>>;
+    /// Get the asset.
+    fn asset(&self, shard_id: u32, a: &AssetAddress) -> TrieResult<Option<Asset>>;
 }
 
 pub trait ShardStateInfo {
