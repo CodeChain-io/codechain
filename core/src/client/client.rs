@@ -42,7 +42,7 @@ use super::super::miner::{Miner, MinerService};
 use super::super::parcel::{LocalizedParcel, SignedParcel, UnverifiedParcel};
 use super::super::service::ClientIoMessage;
 use super::super::spec::Spec;
-use super::super::state::{State, TopStateInfo};
+use super::super::state::{TopLevelState, TopStateInfo};
 use super::super::state_db::StateDB;
 use super::super::types::{
     BlockId, BlockNumber, BlockStatus, ParcelId, TransactionId, VerificationQueueInfo as BlockQueueInfo,
@@ -213,9 +213,9 @@ impl Client {
     }
 
     /// Get a copy of the best block's state.
-    pub fn latest_state(&self) -> State<StateDB> {
+    pub fn latest_state(&self) -> TopLevelState<StateDB> {
         let header = self.best_block_header();
-        State::from_existing(
+        TopLevelState::from_existing(
             self.state_db.read().clone_canon(&header.hash()),
             header.state_root(),
             self.trie_factory.clone(),
@@ -227,7 +227,7 @@ impl Client {
     /// This will not fail if given BlockId::Latest.
     /// Otherwise, this can fail (but may not) if the DB prunes state or the block
     /// is unknown.
-    pub fn state_at(&self, id: BlockId) -> Option<State<StateDB>> {
+    pub fn state_at(&self, id: BlockId) -> Option<TopLevelState<StateDB>> {
         // fast path for latest state.
         match id {
             BlockId::Latest => return Some(self.latest_state()),
@@ -238,7 +238,7 @@ impl Client {
             let db = self.state_db.read().clone();
 
             let root = header.state_root();
-            State::from_existing(db, root, self.trie_factory.clone()).ok()
+            TopLevelState::from_existing(db, root, self.trie_factory.clone()).ok()
         })
     }
 
