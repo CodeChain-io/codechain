@@ -460,6 +460,7 @@ mod tests {
 
     #[test]
     fn mint_permissioned_asset() {
+        let parcel_network_id = 30;
         let mut state = {
             let state_db = get_temp_state_db();
             let root_parent = H256::random();
@@ -476,35 +477,35 @@ mod tests {
         let transaction = Transaction::AssetMint {
             metadata: metadata.clone(),
             lock_script_hash,
-            parameters,
+            parameters: parameters.clone(),
             amount: Some(amount),
             registrar,
             nonce: 0,
         };
+
+        let result = state.apply(&transaction, &parcel_network_id).unwrap();
+        assert_eq!(
+            TransactionOutcome {
+                invoice: Invoice::Success,
+                error: None,
+            },
+            result
+        );
+        state.commit().unwrap();
+
         let transaction_hash = transaction.hash();
-
-        let minted_result =
-            state.mint_asset(transaction_hash, &metadata, &lock_script_hash, &vec![], &Some(amount), &registrar);
-        assert!(minted_result.is_ok());
-
-        let commit = state.commit();
-        assert!(commit.is_ok());
-
         let asset_scheme_address = AssetSchemeAddress::new(transaction_hash);
         let asset_scheme = state.asset_scheme(&asset_scheme_address);
-        assert!(asset_scheme.is_ok());
-        let asset_scheme = asset_scheme.unwrap();
-        assert!(asset_scheme.is_some());
-        let asset_scheme = asset_scheme.unwrap();
+        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), amount, registrar))), asset_scheme);
 
-        assert_eq!(&metadata, asset_scheme.metadata());
-        assert_eq!(&amount, asset_scheme.amount());
-        assert_eq!(&registrar, asset_scheme.registrar());
-        assert!(asset_scheme.is_permissioned());
+        let asset_address = AssetAddress::new(transaction_hash, 0);
+        let asset = state.asset(&asset_address);
+        assert_eq!(Ok(Some(Asset::new(asset_scheme_address.into(), lock_script_hash, parameters, amount))), asset);
     }
 
     #[test]
     fn mint_infinite_asset() {
+        let parcel_network_id = 30;
         let mut state = {
             let state_db = get_temp_state_db();
             let root_parent = H256::random();
@@ -520,31 +521,33 @@ mod tests {
         let transaction = Transaction::AssetMint {
             metadata: metadata.clone(),
             lock_script_hash,
-            parameters: vec![],
+            parameters: parameters.clone(),
             amount: None,
             registrar,
             nonce: 0,
         };
+
+        let result = state.apply(&transaction, &parcel_network_id).unwrap();
+        assert_eq!(
+            TransactionOutcome {
+                invoice: Invoice::Success,
+                error: None,
+            },
+            result
+        );
+        state.commit().unwrap();
+
         let transaction_hash = transaction.hash();
-
-        let minted_result =
-            state.mint_asset(transaction_hash, &metadata, &lock_script_hash, &parameters, &None, &registrar);
-        assert!(minted_result.is_ok());
-
-        let commit = state.commit();
-        assert!(commit.is_ok());
-
         let asset_scheme_address = AssetSchemeAddress::new(transaction_hash);
         let asset_scheme = state.asset_scheme(&asset_scheme_address);
-        assert!(asset_scheme.is_ok());
-        let asset_scheme = asset_scheme.unwrap();
-        assert!(asset_scheme.is_some());
-        let asset_scheme = asset_scheme.unwrap();
+        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), ::std::u64::MAX, registrar))), asset_scheme);
 
-        assert_eq!(&metadata, asset_scheme.metadata());
-        assert_eq!(&::std::u64::MAX, asset_scheme.amount());
-        assert_eq!(&registrar, asset_scheme.registrar());
-        assert!(asset_scheme.is_permissioned());
+        let asset_address = AssetAddress::new(transaction_hash, 0);
+        let asset = state.asset(&asset_address);
+        assert_eq!(
+            Ok(Some(Asset::new(asset_scheme_address.into(), lock_script_hash, parameters, ::std::u64::MAX))),
+            asset
+        );
     }
 
     #[test]
