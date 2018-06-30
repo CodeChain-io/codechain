@@ -443,7 +443,7 @@ mod test {
             fn next_u64(&mut self) -> u64 {
                 ((self.next_u32() as u64) << 32) | (self.next_u32() as u64)
             }
-            fn fill_bytes(&mut self, data: &mut [u8]) {
+            fn fill_bytes(&mut self, dest: &mut [u8]) {
                 // this could, in theory, be done by transmuting dest to a
                 // [u64], but this is (1) likely to be undefined behaviour for
                 // LLVM, (2) has to be very careful about alignment concerns,
@@ -466,7 +466,7 @@ mod test {
                     count -= 1;
                 }
             }
-            fn try_fill_bytes(&mut self, data: &mut [u8]) -> Result<(), Error> {
+            fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), Error> {
                 Ok(self.fill_bytes(dest))
             }
         }
@@ -488,7 +488,7 @@ mod test {
             fn next_u64(&mut self) -> u64 {
                 ((self.next_u32() as u64) << 32) | (self.next_u32() as u64)
             }
-            fn fill_bytes(&mut self, data: &mut [u8]) {
+            fn fill_bytes(&mut self, dest: &mut [u8]) {
                 // this could, in theory, be done by transmuting dest to a
                 // [u64], but this is (1) likely to be undefined behaviour for
                 // LLVM, (2) has to be very careful about alignment concerns,
@@ -511,7 +511,7 @@ mod test {
                     count -= 1;
                 }
             }
-            fn try_fill_bytes(&mut self, data: &mut [u8]) -> Result<(), Error> {
+            fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), Error> {
                 Ok(self.fill_bytes(dest))
             }
         }
