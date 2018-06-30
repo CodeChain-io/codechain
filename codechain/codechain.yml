@@ -24,11 +24,11 @@ args:
         help: Do not open network socket.
     - min-peers:
         long: min-peers
-        help: Sets the minimum number of connections the user would like.
+        help: Set the minimum number of connections the user would like.
         takes_value: true
     - max-peers:
         long: max-peers
-        help: Sets the maximum number of connections the user would like.
+        help: Set the maximum number of connections the user would like.
         takes_value: true
     - instance-id:
         short: i
@@ -42,7 +42,7 @@ args:
     - chain:
         short: c
         long: chain
-        help: Sets the blockchain type out of solo, solo_authority, tendermint or a path to chain spec file.
+        help: Set the blockchain type out of solo, solo_authority, tendermint or a path to chain spec file.
         takes_value: true
     - db-path:
         long: db-path

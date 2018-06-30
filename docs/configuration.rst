@@ -46,10 +46,10 @@ CLI Options for CodeChain client
         Do not open network socket.
 
     ``--min-peers=[NUM]``
-        Sets the minimum number of connections the user would like. (default: 10)
+        Set the minimum number of connections the user would like. (default: 10)
 
     ``--max-peers=[NUM]``
-        Sets the maximum number of connections the user would like. (default: 30)
+        Set the maximum number of connections the user would like. (default: 30)
 
     ``--instance-id=[ID]``
         Specify instance id for logging. Used when running multiple instances of CodeChain.
@@ -58,7 +58,7 @@ CLI Options for CodeChain client
         Do not show any synchronization information in the console.
 
     ``--chain=[CHAIN]``
-        Sets the blockchain type out of solo, solo_authority, tendermint or a path to chain spec file. (default: tendermint)
+        Set the blockchain type out of solo, solo_authority, tendermint or a path to chain spec file. (default: tendermint)
 
     ``--db-path=[PATH]``
         Specify the database directory path.
