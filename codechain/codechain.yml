@@ -94,10 +94,6 @@ args:
         possible_values:
             - kademlia
             - unstructured
-    - kademlia-alpha:
-        long: kademlia-alpha
-        help: Degree of parallelism in Kademlia
-        takes_value: true
     - discovery-bucket-size:
         long: discovery-bucket-size
         help: Bucket size for discovery
