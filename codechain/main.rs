@@ -55,7 +55,6 @@ use std::path::Path;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use account_command::run_account_command;
 use app_dirs::AppInfo;
 use ccore::{AccountProvider, ClientService, Miner, MinerOptions, MinerService, Spec};
 use cdiscovery::{KademliaConfig, KademliaExtension, UnstructuredConfig, UnstructuredExtension};
@@ -70,7 +69,9 @@ use csync::{BlockSyncExtension, ParcelSyncExtension, SnapshotService};
 use ctrlc::CtrlC;
 use fdlimit::raise_fd_limit;
 use parking_lot::{Condvar, Mutex};
-use rpc::{HttpConfiguration as RpcHttpConfig, IpcConfiguration as RpcIpcConfig};
+
+use self::account_command::run_account_command;
+use self::rpc::{HttpConfiguration as RpcHttpConfig, IpcConfiguration as RpcIpcConfig};
 
 const DEFAULT_CONFIG_PATH: &'static str = "codechain/config/presets/config.dev.toml";
 
