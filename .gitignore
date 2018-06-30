@@ -10,7 +10,7 @@
 db/
 /snapshot/
 /log/
-/keystoreData/
+/keys/
 
 # macOS
 .DS_store
