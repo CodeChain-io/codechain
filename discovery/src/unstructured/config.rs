@@ -19,11 +19,14 @@ pub struct Config {
     pub t_refresh: u32,
 }
 
+use super::K;
+use super::T_REFRESH;
+
 impl Config {
     pub fn new(bucket_size: Option<u8>, t_refresh: Option<u32>) -> Self {
         Self {
-            bucket_size: bucket_size.unwrap_or(10),
-            t_refresh: t_refresh.unwrap_or(60_000),
+            bucket_size: bucket_size.unwrap_or(K),
+            t_refresh: t_refresh.unwrap_or(T_REFRESH),
         }
     }
 }
