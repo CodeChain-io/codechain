@@ -52,6 +52,7 @@ pub struct Operating {
     pub quiet: bool,
     pub instance_id: Option<usize>,
     pub db_path: String,
+    pub keys_path: String,
     pub chain: ChainType,
     pub secret_key: Secret,
 }
@@ -153,6 +154,9 @@ impl Operating {
         }
         if let Some(db_path) = matches.value_of("db-path") {
             self.db_path = db_path.to_string();
+        }
+        if let Some(keys_path) = matches.value_of("keys-path") {
+            self.keys_path = keys_path.to_string();
         }
         if let Some(chain) = matches.value_of("chain") {
             self.chain = chain.parse()?;

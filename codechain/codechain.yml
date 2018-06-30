@@ -48,6 +48,10 @@ args:
         long: db-path
         help: Specify the database directory path.
         takes_value: true
+    - keys-path:
+        long: keys-path
+        help: Specify the path for JSON key files to be found
+        takes_value: true
     - snapshot-path:
         long: snapshot-path
         help: Specify the snapshot directory path.

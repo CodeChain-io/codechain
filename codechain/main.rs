@@ -186,8 +186,8 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
         .subsec_nanos() as usize);
     clogger::init(&LoggerConfig::new(instance_id)).expect("Logger must be successfully initialized");
 
-    // FIXME : Add cli option.
-    let dir = RootDiskDirectory::create("keystoreData").expect("Cannot read key path directory");
+    // FIXME: Handle IO error.
+    let dir = RootDiskDirectory::create(config.operating.keys_path.clone()).expect("Cannot read key path directory");
     let keystore = KeyStore::open(Box::new(dir)).unwrap();
     let ap = AccountProvider::new(keystore);
     let addresses = ap.get_list().expect("Account provider should success to get address list");
