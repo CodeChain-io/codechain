@@ -1092,7 +1092,7 @@ fn check_if_removed(
 pub mod test {
     use std::cmp::Ordering;
 
-    use ckeys::{Generator, Random};
+    use ckey::{Generator, Random};
 
     use super::super::super::{Parcel, Transaction};
     use super::*;

@@ -18,7 +18,7 @@ use std::fmt;
 use std::ops::Deref;
 
 use ccrypto::blake256;
-use ckeys::{self, public_to_address, recover_ecdsa, sign_ecdsa, ECDSASignature, Private, Public};
+use ckey::{self, public_to_address, recover_ecdsa, sign_ecdsa, ECDSASignature, Private, Public};
 use ctypes::{Address, Bytes, H160, H256, U256};
 use heapsize::HeapSizeOf;
 use rlp::{self, DecoderError, Encodable, RlpStream, UntrustedRlp};
@@ -102,8 +102,8 @@ impl fmt::Display for ParcelError {
     }
 }
 
-impl From<ckeys::Error> for ParcelError {
-    fn from(err: ckeys::Error) -> Self {
+impl From<ckey::Error> for ParcelError {
+    fn from(err: ckey::Error) -> Self {
         ParcelError::InvalidSignature(format!("{}", err))
     }
 }
@@ -333,14 +333,14 @@ impl UnverifiedParcel {
     }
 
     /// Recovers the public key of the sender.
-    pub fn recover_public(&self) -> Result<Public, ckeys::Error> {
+    pub fn recover_public(&self) -> Result<Public, ckey::Error> {
         Ok(recover_ecdsa(&self.signature(), &self.unsigned.hash())?)
     }
 
     /// Checks whether the signature has a low 's' value.
-    pub fn check_low_s(&self) -> Result<(), ckeys::Error> {
+    pub fn check_low_s(&self) -> Result<(), ckey::Error> {
         if !self.signature().is_low_s() {
-            Err(ckeys::Error::InvalidSignature.into())
+            Err(ckey::Error::InvalidSignature.into())
         } else {
             Ok(())
         }
@@ -393,7 +393,7 @@ impl From<SignedParcel> for UnverifiedParcel {
 
 impl SignedParcel {
     /// Try to verify parcel and recover sender.
-    pub fn new(parcel: UnverifiedParcel) -> Result<Self, ckeys::Error> {
+    pub fn new(parcel: UnverifiedParcel) -> Result<Self, ckey::Error> {
         if parcel.is_unsigned() {
             Ok(SignedParcel {
                 parcel,

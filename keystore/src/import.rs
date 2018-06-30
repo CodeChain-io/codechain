@@ -19,7 +19,7 @@ use std::fs;
 use std::path::Path;
 
 use accounts_dir::{DiskKeyFileManager, KeyDirectory, KeyFileManager};
-use ckeys::Address;
+use ckey::Address;
 use Error;
 
 /// Import an account from a file.

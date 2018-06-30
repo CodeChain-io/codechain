@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 // A state machine.
 
-use ckeys::Address;
+use ckey::Address;
 use ctypes::U256;
 
 use super::block::{ExecutedBlock, IsBlock};

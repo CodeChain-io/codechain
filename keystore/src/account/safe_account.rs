@@ -17,7 +17,7 @@
 use super::crypto::Crypto;
 use account::Version;
 use ccrypto;
-use ckeys::{sign_ecdsa, Address, ECDSASignature, KeyPair, Message, Public};
+use ckey::{sign_ecdsa, Address, ECDSASignature, KeyPair, Message, Public};
 use {json, Error};
 
 /// Account representation.
@@ -124,7 +124,7 @@ impl SafeAccount {
 #[cfg(test)]
 mod tests {
     use super::SafeAccount;
-    use ckeys::{verify_ecdsa, Generator, Message, Random};
+    use ckey::{verify_ecdsa, Generator, Message, Random};
 
     #[test]
     fn sign_and_verify_public() {

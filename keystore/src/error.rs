@@ -16,7 +16,7 @@
 
 use ccrypto;
 use ccrypto::Error as CCryptoError;
-use ckeys::Error as CKeysError;
+use ckey::Error as CKeysError;
 use std::fmt;
 use std::io::Error as IoError;
 

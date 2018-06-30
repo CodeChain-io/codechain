@@ -30,7 +30,7 @@ extern crate unexpected;
 extern crate codechain_crypto as ccrypto;
 extern crate codechain_finally as cfinally;
 extern crate codechain_io as cio;
-extern crate codechain_keys as ckeys;
+extern crate codechain_key as ckey;
 extern crate codechain_types as ctypes;
 extern crate table as ctable;
 extern crate time;

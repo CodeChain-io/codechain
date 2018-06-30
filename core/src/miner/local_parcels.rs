@@ -166,7 +166,7 @@ impl LocalParcelsList {
 mod tests {
     use super::super::super::parcel;
     use super::*;
-    use ckeys::{Generator, Random};
+    use ckey::{Generator, Random};
     use ctypes::U256;
 
     #[test]

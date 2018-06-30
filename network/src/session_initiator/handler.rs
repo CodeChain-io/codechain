@@ -23,7 +23,7 @@ use std::sync::Arc;
 use ccrypto::aes::SymmetricCipherError;
 use cfinally::finally;
 use cio::{IoContext, IoError as CIoError, IoHandler, IoHandlerResult, IoManager, StreamToken, TimerToken};
-use ckeys::Error as KeysError;
+use ckey::Error as KeysError;
 use mio::deprecated::EventLoop;
 use mio::Token;
 use parking_lot::Mutex;

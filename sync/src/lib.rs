@@ -41,4 +41,4 @@ pub use self::parcel::ParcelSyncExtension;
 pub use self::snapshot::SnapshotService;
 
 #[cfg(test)]
-extern crate codechain_keys as ckeys;
+extern crate codechain_key as ckey;

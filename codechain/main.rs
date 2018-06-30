@@ -28,7 +28,7 @@ extern crate serde_derive;
 extern crate app_dirs;
 extern crate codechain_core as ccore;
 extern crate codechain_discovery as cdiscovery;
-extern crate codechain_keys as ckeys;
+extern crate codechain_key as ckey;
 extern crate codechain_keystore as ckeystore;
 #[macro_use]
 extern crate codechain_logger as clogger;

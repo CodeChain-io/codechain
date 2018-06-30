@@ -15,7 +15,7 @@
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
 use account::{Aes128Ctr, Cipher, Kdf, Pbkdf2, Prf};
-use ckeys::{Private, Secret};
+use ckey::{Private, Secret};
 use random::Random;
 use smallvec::SmallVec;
 use std::str;
@@ -158,7 +158,7 @@ impl Crypto {
 #[cfg(test)]
 mod tests {
     use super::{Crypto, Error};
-    use ckeys::{Generator, Random};
+    use ckey::{Generator, Random};
 
     #[test]
     fn crypto_with_secret_create() {

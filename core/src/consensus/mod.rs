@@ -33,7 +33,7 @@ pub use self::validator_set::ValidatorSet;
 use std::fmt;
 use std::sync::{Arc, Weak};
 
-use ckeys::ECDSASignature;
+use ckey::ECDSASignature;
 use cnetwork::NetworkExtension;
 use ctypes::{Address, Bytes, H256};
 use unexpected::{Mismatch, OutOfBounds};

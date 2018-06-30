@@ -23,7 +23,7 @@ use std::time::{Duration, Instant};
 use account::SafeAccount;
 use accounts_dir::KeyDirectory;
 use ccrypto::KEY_ITERATIONS;
-use ckeys::{Address, ECDSASignature, KeyPair, Message, Public, Secret};
+use ckey::{Address, ECDSASignature, KeyPair, Message, Public, Secret};
 use json::{self, OpaqueKeyFile, Uuid};
 use random::Random;
 use {Error, OpaqueSecret, SecretStore, SimpleSecretStore};
@@ -392,7 +392,7 @@ mod tests {
 
     use super::{KeyMultiStore, KeyStore};
     use accounts_dir::MemoryDirectory;
-    use ckeys::{Generator, KeyPair, Random};
+    use ckey::{Generator, KeyPair, Random};
     use ctypes::H256;
     use secret_store::{SecretStore, SimpleSecretStore};
 

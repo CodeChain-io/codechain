@@ -24,7 +24,7 @@ extern crate rlp;
 extern crate time;
 
 extern crate codechain_crypto as ccrypto;
-extern crate codechain_keys as ckeys;
+extern crate codechain_key as ckey;
 #[macro_use]
 extern crate codechain_logger as clogger;
 extern crate codechain_network as cnetwork;

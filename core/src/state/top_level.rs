@@ -523,7 +523,7 @@ mod tests {
     use std::str::FromStr;
 
     use ccrypto::Blake;
-    use ckeys::{Generator, Random};
+    use ckey::{Generator, Random};
     use ctypes::{Address, Secret, U256};
 
     use super::super::super::parcel::{AssetOutPoint, AssetTransferInput, AssetTransferOutput, Parcel};

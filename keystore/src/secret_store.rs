@@ -30,7 +30,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ckeys::{Address, ECDSASignature, Message, Public, Secret};
+use ckey::{Address, ECDSASignature, Message, Public, Secret};
 use json::{OpaqueKeyFile, Uuid};
 use std::path::PathBuf;
 use Error;
@@ -62,7 +62,7 @@ pub trait SecretStore: SimpleSecretStore {
 
     /// Signs a message with raw secret.
     fn sign_with_secret(&self, secret: &OpaqueSecret, message: &Message) -> Result<ECDSASignature, Error> {
-        Ok(::ckeys::sign_ecdsa(&secret.0.into(), message)?)
+        Ok(::ckey::sign_ecdsa(&secret.0.into(), message)?)
     }
 
     /// Imports existing JSON wallet

@@ -17,7 +17,7 @@
 use std::fmt;
 
 use cio::IoError;
-use ckeys::Error as KeyError;
+use ckey::Error as KeyError;
 use ctypes::{Address, H256, U256};
 use trie::TrieError;
 use unexpected::{Mismatch, OutOfBounds};

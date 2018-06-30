@@ -282,7 +282,7 @@ mod test {
     use self::tempdir::TempDir;
     use super::{KeyDirectory, RootDiskDirectory};
     use account::SafeAccount;
-    use ckeys::{Generator, Random};
+    use ckey::{Generator, Random};
     use std::{env, fs};
 
     #[test]

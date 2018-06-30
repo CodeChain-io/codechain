@@ -1,5 +1,5 @@
 [package]
-name = "codechain-keys"
+name = "codechain-key"
 version = "0.1.0"
 authors = ["debris <marek.kotewicz@gmail.com>", "CodeChain Team <codechain@kodebox.io>"]
 

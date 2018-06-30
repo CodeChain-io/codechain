@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ccrypto::{blake256, keccak256, ripemd160, sha256};
-use ckeys::{verify_ecdsa, ECDSASignature};
+use ckey::{verify_ecdsa, ECDSASignature};
 use ctypes::{H256, H520, Public};
 
 use instruction::{is_valid_unlock_script, Instruction};

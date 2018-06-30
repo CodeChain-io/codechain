@@ -17,7 +17,7 @@
 use std::fmt;
 use std::sync::Arc;
 
-use ckeys::{
+use ckey::{
     public_to_address, ECDSASignature, Error as KeysError, Generator, KeyPair, Message, Private, Public, Random,
 };
 use ckeystore::accounts_dir::MemoryDirectory;

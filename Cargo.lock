@@ -184,7 +184,7 @@ dependencies = [
  "codechain-core 0.1.0",
  "codechain-discovery 0.1.0",
  "codechain-finally 0.1.0",
- "codechain-keys 0.1.0",
+ "codechain-key 0.1.0",
  "codechain-keystore 0.1.0",
  "codechain-logger 0.1.0",
  "codechain-merkle 0.1.0",
@@ -215,7 +215,7 @@ dependencies = [
  "codechain-crypto 0.1.0",
  "codechain-io 1.9.0",
  "codechain-json 0.1.0",
- "codechain-keys 0.1.0",
+ "codechain-key 0.1.0",
  "codechain-keystore 0.1.0",
  "codechain-logger 0.1.0",
  "codechain-merkle 0.1.0",
@@ -266,7 +266,7 @@ name = "codechain-discovery"
 version = "0.1.0"
 dependencies = [
  "codechain-crypto 0.1.0",
- "codechain-keys 0.1.0",
+ "codechain-key 0.1.0",
  "codechain-logger 0.1.0",
  "codechain-network 0.1.0",
  "codechain-types 0.2.0",
@@ -306,7 +306,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "codechain-keys"
+name = "codechain-key"
 version = "0.1.0"
 dependencies = [
  "bech32 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -326,7 +326,7 @@ name = "codechain-keystore"
 version = "0.1.0"
 dependencies = [
  "codechain-crypto 0.1.0",
- "codechain-keys 0.1.0",
+ "codechain-key 0.1.0",
  "codechain-types 0.2.0",
  "itertools 0.5.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.40 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -369,7 +369,7 @@ dependencies = [
  "codechain-crypto 0.1.0",
  "codechain-finally 0.1.0",
  "codechain-io 1.9.0",
- "codechain-keys 0.1.0",
+ "codechain-key 0.1.0",
  "codechain-logger 0.1.0",
  "codechain-types 0.2.0",
  "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -420,7 +420,7 @@ name = "codechain-sync"
 version = "0.1.0"
 dependencies = [
  "codechain-core 0.1.0",
- "codechain-keys 0.1.0",
+ "codechain-key 0.1.0",
  "codechain-logger 0.1.0",
  "codechain-merkle 0.1.0",
  "codechain-network 0.1.0",
@@ -451,7 +451,7 @@ name = "codechain-vm"
 version = "0.1.0"
 dependencies = [
  "codechain-crypto 0.1.0",
- "codechain-keys 0.1.0",
+ "codechain-key 0.1.0",
  "codechain-types 0.2.0",
  "secp256k1 0.5.7",
 ]

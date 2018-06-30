@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ccrypto::{blake256, BLAKE_EMPTY, BLAKE_NULL_RLP};
-use ckeys::{sign_ecdsa, KeyPair, Private};
+use ckey::{sign_ecdsa, KeyPair, Private};
 use ctypes::{H160, H256, H520};
 
 use secp256k1::key::{SecretKey, MINUS_ONE_KEY, ONE_KEY};

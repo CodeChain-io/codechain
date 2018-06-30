@@ -14,14 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
+extern crate codechain_key as ckey;
 extern crate codechain_keystore as ckeystore;
 extern crate codechain_types as ctypes;
 extern crate rand;
 
 mod util;
 
+use ckey::{verify_ecdsa_address, Generator, KeyPair, Random, Secret};
 use ckeystore::accounts_dir::RootDiskDirectory;
-use ckeystore::ckeys::{verify_ecdsa_address, Generator, KeyPair, Random, Secret};
 use ckeystore::{KeyStore, SimpleSecretStore};
 use util::TransientDir;
 

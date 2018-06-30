@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
-pub use _ckeys::*;
+pub use ckey::*;
 use json;
 
 impl Into<json::H160> for Address {

@@ -44,7 +44,7 @@ extern crate tempdir;
 extern crate time;
 
 extern crate codechain_crypto as ccrypto;
-extern crate codechain_keys as _ckeys;
+extern crate codechain_key as ckey;
 extern crate codechain_types as ctypes;
 
 #[macro_use]
@@ -77,4 +77,4 @@ pub use self::random::random_string;
 pub use self::secret_store::{SecretStore, SimpleSecretStore};
 
 /// An opaque wrapper for secret.
-pub struct OpaqueSecret(::ckeys::Secret);
+pub struct OpaqueSecret(::ckey::Secret);

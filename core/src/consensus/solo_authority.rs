@@ -17,7 +17,7 @@
 use std::sync::{Arc, Weak};
 
 use cjson;
-use ckeys::{public_to_address, recover_ecdsa, ECDSASignature};
+use ckey::{public_to_address, recover_ecdsa, ECDSASignature};
 use cnetwork::NetworkExtension;
 use ctypes::{Address, H256, H520, U256};
 use parking_lot::RwLock;
