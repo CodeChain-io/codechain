@@ -108,7 +108,8 @@ args:
         takes_value: true
     - discovery-refresh:
         long: discovery-refresh
-        help: Refresh timeout of discovery (ms)
+        value_name: MS
+        help: Refresh timeout of discovery. MS is time measured in milliseconds.
         takes_value: true
         conflicts_with:
             - no-discovery
