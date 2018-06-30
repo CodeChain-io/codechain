@@ -14,70 +14,18 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::str::FromStr;
-use std::{fmt, fs};
+mod chain_type;
 
-use ccore::Spec;
+use std::fs;
+use std::str::FromStr;
+
 use clap;
 use cnetwork::{NetworkConfig, SocketAddr};
 use ctypes::{Address, Secret};
 use rpc::{HttpConfiguration as RpcHttpConfig, IpcConfiguration as RpcIpcConfig};
 use toml;
 
-#[derive(Debug, PartialEq, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum ChainType {
-    Solo,
-    SoloAuthority,
-    Tendermint,
-    Custom(String),
-}
-
-impl Default for ChainType {
-    fn default() -> Self {
-        ChainType::Tendermint
-    }
-}
-
-impl FromStr for ChainType {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let spec = match s {
-            "solo" => ChainType::Solo,
-            "solo_authority" => ChainType::SoloAuthority,
-            "tendermint" => ChainType::Tendermint,
-            other => ChainType::Custom(other.into()),
-        };
-        Ok(spec)
-    }
-}
-
-impl fmt::Display for ChainType {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str(match self {
-            ChainType::Solo => "solo",
-            ChainType::SoloAuthority => "solo_authority",
-            ChainType::Tendermint => "tendermint",
-            ChainType::Custom(custom) => custom,
-        })
-    }
-}
-
-impl ChainType {
-    pub fn spec<'a>(&self) -> Result<Spec, String> {
-        match self {
-            ChainType::Solo => Ok(Spec::new_test_solo()),
-            ChainType::SoloAuthority => Ok(Spec::new_test_solo_authority()),
-            ChainType::Tendermint => Ok(Spec::new_test_tendermint()),
-            ChainType::Custom(filename) => {
-                let file = fs::File::open(filename)
-                    .map_err(|e| format!("Could not load specification file at {}: {}", filename, e))?;
-                Spec::load(file)
-            }
-        }
-    }
-}
+use self::chain_type::ChainType;
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
