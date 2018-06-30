@@ -28,4 +28,5 @@ disable = false
 path = "/tmp/jsonrpc.ipc"
 
 [snapshot]
+disable = false
 path = "snapshot"

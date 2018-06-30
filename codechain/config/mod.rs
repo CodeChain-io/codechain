@@ -89,6 +89,7 @@ pub struct Rpc {
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Snapshot {
+    pub disable: bool,
     pub path: String,
 }
 
@@ -238,6 +239,10 @@ impl Rpc {
 
 impl Snapshot {
     pub fn overwrite_with(&mut self, matches: &clap::ArgMatches) -> Result<(), String> {
+        if matches.is_present("no-snapshot") {
+            self.disable = true;
+        }
+
         if let Some(snapshot_path) = matches.value_of("snapshot-path") {
             self.path = snapshot_path.to_string();
         }

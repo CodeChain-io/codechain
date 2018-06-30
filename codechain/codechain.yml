@@ -108,6 +108,9 @@ args:
         takes_value: true
         conflicts_with:
             - no-discovery
+    - no-snapshot:
+        long: no-snapshot
+        help: Disable snapshots
 subcommands:
     - account:
         about: account managing commands

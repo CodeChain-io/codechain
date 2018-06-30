@@ -263,9 +263,16 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
         }
     };
 
-    // FIXME: Get snapshot period from genesis block
-    let snapshot_service = SnapshotService::new(client.client(), config.snapshot.path, 1 << 14);
-    client.client().add_notify(snapshot_service.clone());
+    let _snapshot_service = {
+        if !config.snapshot.disable {
+            // FIXME: Get snapshot period from genesis block
+            let service = SnapshotService::new(client.client(), config.snapshot.path, 1 << 14);
+            client.client().add_notify(service.clone());
+            Some(service)
+        } else {
+            None
+        }
+    };
 
     // drop the spec to free up genesis state.
     drop(spec);
