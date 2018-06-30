@@ -434,7 +434,7 @@ impl Miner {
                         true
                     })
                     .unwrap_or_else(|e| {
-                        warn!("ERROR: seal failed when given internally generated seal: {}", e);
+                        cwarn!(MINER, "ERROR: seal failed when given internally generated seal: {}", e);
                         false
                     })
             }
@@ -444,7 +444,7 @@ impl Miner {
                 .seal(&*self.engine, seal)
                 .map(|sealed| chain.import_sealed_block(sealed).is_ok())
                 .unwrap_or_else(|e| {
-                    warn!("ERROR: seal failed when given internally generated seal: {}", e);
+                    cwarn!(MINER, "ERROR: seal failed when given internally generated seal: {}", e);
                     false
                 }),
             Seal::None => false,
