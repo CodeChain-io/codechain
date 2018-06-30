@@ -558,7 +558,7 @@ impl Secp256k1 {
 #[cfg(test)]
 mod tests {
     extern crate hex;
-    use rand::{thread_rng, Rng};
+    use rand::{thread_rng, RngCore};
 
     use super::constants;
     use super::Error::{IncapableContext, IncorrectSignature, InvalidMessage, InvalidPublicKey, InvalidSignature};

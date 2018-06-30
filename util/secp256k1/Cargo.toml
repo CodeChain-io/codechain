@@ -27,7 +27,7 @@ dev = ["clippy"]
 [dependencies]
 arrayvec = "0.4"
 clippy = {version = "0.0", optional = true}
-rand = "0.4"
+rand = "0.5.3"
 
 [dev-dependencies]
 hex = "0.3.1"

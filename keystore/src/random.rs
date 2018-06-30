@@ -14,7 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
-use rand::{OsRng, Rng};
+use rand::distributions::Alphanumeric;
+use rand::{OsRng, Rng, RngCore};
 
 pub trait Random {
     fn random() -> Self
@@ -43,5 +44,5 @@ impl Random for [u8; 32] {
 /// Generate a random string of given length.
 pub fn random_string(length: usize) -> String {
     let mut rng = OsRng::new().expect("Not able to operate without random source.");
-    rng.gen_ascii_chars().take(length).collect()
+    rng.sample_iter(&Alphanumeric).take(length).collect()
 }

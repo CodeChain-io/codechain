@@ -10,4 +10,4 @@ rust-crypto = "0.2.36"
 codechain-types = { path = "../primitives/codechain-types" }
 
 [dev-dependencies]
-rand = "0.4"
+rand = "0.5.3"

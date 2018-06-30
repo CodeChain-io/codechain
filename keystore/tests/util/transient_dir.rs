@@ -16,7 +16,7 @@
 
 use ckeystore::accounts_dir::{KeyDirectory, RootDiskDirectory};
 use ckeystore::{Error, SafeAccount};
-use rand::{OsRng, Rng};
+use rand::{OsRng, RngCore};
 use std::path::PathBuf;
 use std::{env, fs};
 

@@ -13,7 +13,7 @@ codechain-types = { path = "../primitives/codechain-types" }
 log = "0.4.1"
 mio = "0.6.8"
 parking_lot = "0.5"
-rand = "0.4"
+rand = "0.5.3"
 rlp = { path = "../util/rlp" }
 rlp_derive = { path = "../util/rlp_derive" }
 slab = "0.4"

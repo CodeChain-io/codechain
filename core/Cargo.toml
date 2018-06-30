@@ -28,7 +28,7 @@ memorydb = { path = "../util/memorydb" }
 multimap = { path = "../util/multimap" }
 parking_lot = "0.5"
 patricia-trie = { path = "../util/patricia_trie" }
-rand = "0.4"
+rand = "0.5.3"
 rlp = { path = "../util/rlp" }
 rlp_compress = { path = "../util/rlp_compress" }
 rlp_derive = { path = "../util/rlp_derive" }
