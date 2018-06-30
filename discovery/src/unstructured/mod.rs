@@ -21,3 +21,6 @@ mod message;
 pub use self::config::Config;
 pub use self::extension::Extension;
 use self::message::Message;
+
+const K: u8 = 16;
+const T_REFRESH: u32 = 60_000;
