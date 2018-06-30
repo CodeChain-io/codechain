@@ -12,7 +12,7 @@ Config File
 ===========
 The default preset ``config.dev.toml`` file can be located in ``codechain/config/presets/config.dev.toml``.
 
-Config files can be customized by the user and its location can be designated by using the CLI command ``--config-path``. Custom config files created by the user must have the proper custom path.
+Config files can be customized by the user and its location can be designated by using the CLI command ``--config``. Custom config files created by the user must have the proper custom path.
 
 Default config.dev.toml
 =======================
@@ -33,7 +33,7 @@ In order to test CodeChain alone, one may want to change ``change_type`` into So
 
 CLI Options for CodeChain client
 ================================
-    ``--config-path=[PATH]``
+    ``--config=[PATH]``
         Specify the certain config file path that you want to use to configure CodeChain to your needs.
 
     ``--port=[PORT]``

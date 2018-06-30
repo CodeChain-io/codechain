@@ -171,7 +171,7 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
 
     let _event_loop = EventLoop::spawn();
 
-    let config_path = matches.value_of("config-path").unwrap_or(DEFAULT_CONFIG_PATH);
+    let config_path = matches.value_of("config").unwrap_or(DEFAULT_CONFIG_PATH);
     let mut config = config::load(&config_path)?;
     config.ipc.overwrite_with(&matches)?;
     config.operating.overwrite_with(&matches)?;

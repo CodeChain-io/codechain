@@ -4,8 +4,8 @@ version_short: "v"
 author: CodeChain Team <codechain@kodebox.io>
 about: CodeChian Core client
 args:
-    - config-path:
-        long: config-path
+    - config:
+        long: config
         help: Specify the certain config file path that you want to use to configure CodeChain to your needs.
         takes_value: true
     - port:
