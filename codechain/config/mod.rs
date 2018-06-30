@@ -88,6 +88,7 @@ pub struct Config {
     pub mining: Mining,
     pub network: Network,
     pub rpc: Rpc,
+    pub snapshot: Snapshot,
 }
 
 #[derive(Deserialize)]
@@ -103,7 +104,6 @@ pub struct Operating {
     pub quiet: bool,
     pub instance_id: Option<usize>,
     pub db_path: String,
-    pub snapshot_path: String,
     pub chain: ChainType,
     pub secret_key: Secret,
 }
@@ -136,6 +136,12 @@ pub struct Network {
 pub struct Rpc {
     pub disable: bool,
     pub port: u16,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Snapshot {
+    pub path: String,
 }
 
 impl<'a> Into<RpcIpcConfig> for &'a Ipc {
@@ -198,9 +204,6 @@ impl Operating {
         }
         if let Some(db_path) = matches.value_of("db-path") {
             self.db_path = db_path.to_string();
-        }
-        if let Some(snapshot_path) = matches.value_of("snapshot-path") {
-            self.snapshot_path = snapshot_path.to_string();
         }
         if let Some(chain) = matches.value_of("chain") {
             self.chain = chain.parse()?;
@@ -280,6 +283,15 @@ impl Rpc {
 
         if let Some(port) = matches.value_of("jsonrpc-port") {
             self.port = port.parse().map_err(|_| "Invalid port")?;
+        }
+        Ok(())
+    }
+}
+
+impl Snapshot {
+    pub fn overwrite_with(&mut self, matches: &clap::ArgMatches) -> Result<(), String> {
+        if let Some(snapshot_path) = matches.value_of("snapshot-path") {
+            self.path = snapshot_path.to_string();
         }
         Ok(())
     }

@@ -177,6 +177,7 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
     config.mining.overwrite_with(&matches)?;
     config.network.overwrite_with(&matches)?;
     config.rpc.overwrite_with(&matches)?;
+    config.snapshot.overwrite_with(&matches)?;
     let spec = config.operating.chain.spec()?;
 
     let instance_id = config.operating.instance_id.unwrap_or(SystemTime::now()
@@ -263,7 +264,7 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
     };
 
     // FIXME: Get snapshot period from genesis block
-    let snapshot_service = SnapshotService::new(client.client(), config.operating.snapshot_path, 1 << 14);
+    let snapshot_service = SnapshotService::new(client.client(), config.snapshot.path, 1 << 14);
     client.client().add_notify(snapshot_service.clone());
 
     // drop the spec to free up genesis state.

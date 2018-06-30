@@ -1,7 +1,6 @@
 [codechain]
 quiet = false
 db_path = "db"
-snapshot_path = "snapshot"
 chain = "solo"
 secret_key = "0x0000000000000000000000000000000000000000000000000000000000000001"
 
@@ -28,3 +27,5 @@ port = 8080
 disable = false
 path = "/tmp/jsonrpc.ipc"
 
+[snapshot]
+path = "snapshot"
