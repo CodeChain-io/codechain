@@ -274,7 +274,7 @@ mod test {
     use super::super::{ContextFlag, Secp256k1};
     use super::{PublicKey, SecretKey};
 
-    use rand::{thread_rng, Rng};
+    use rand::{thread_rng, Error, RngCore};
 
     #[test]
     fn skey_from_slice() {
@@ -387,10 +387,14 @@ mod test {
     #[test]
     fn test_out_of_range() {
         struct BadRng(u8);
-        impl Rng for BadRng {
+        impl RngCore for BadRng {
             fn next_u32(&mut self) -> u32 {
                 unimplemented!()
             }
+            fn next_u64(&mut self) -> u64 {
+                unimplemented!()
+            }
+
             // This will set a secret key to a little over the
             // group order, then decrement with repeated calls
             // until it returns a valid key
@@ -403,6 +407,10 @@ mod test {
                 data.copy_from_slice(&group_order[..]);
                 data[31] = self.0;
                 self.0 -= 1;
+            }
+
+            fn try_fill_bytes(&mut self, data: &mut [u8]) -> Result<(), Error> {
+                Ok(self.fill_bytes(data))
             }
         }
 
@@ -427,10 +435,39 @@ mod test {
     #[test]
     fn test_debug_output() {
         struct DumbRng(u32);
-        impl Rng for DumbRng {
+        impl RngCore for DumbRng {
             fn next_u32(&mut self) -> u32 {
                 self.0 = self.0.wrapping_add(1);
                 self.0
+            }
+            fn next_u64(&mut self) -> u64 {
+                ((self.next_u32() as u64) << 32) | (self.next_u32() as u64)
+            }
+            fn fill_bytes(&mut self, dest: &mut [u8]) {
+                // this could, in theory, be done by transmuting dest to a
+                // [u64], but this is (1) likely to be undefined behaviour for
+                // LLVM, (2) has to be very careful about alignment concerns,
+                // (3) adds more `unsafe` that needs to be checked, (4)
+                // probably doesn't give much performance gain if
+                // optimisations are on.
+                let mut count = 0;
+                let mut num = 0;
+                for byte in dest.iter_mut() {
+                    if count == 0 {
+                        // we could micro-optimise here by generating a u32 if
+                        // we only need a few more bytes to fill the vector
+                        // (i.e. at most 4).
+                        num = self.next_u64();
+                        count = 8;
+                    }
+
+                    *byte = (num & 0xff) as u8;
+                    num >>= 8;
+                    count -= 1;
+                }
+            }
+            fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), Error> {
+                Ok(self.fill_bytes(dest))
             }
         }
 
@@ -443,10 +480,39 @@ mod test {
     #[test]
     fn test_pubkey_serialize() {
         struct DumbRng(u32);
-        impl Rng for DumbRng {
+        impl RngCore for DumbRng {
             fn next_u32(&mut self) -> u32 {
                 self.0 = self.0.wrapping_add(1);
                 self.0
+            }
+            fn next_u64(&mut self) -> u64 {
+                ((self.next_u32() as u64) << 32) | (self.next_u32() as u64)
+            }
+            fn fill_bytes(&mut self, dest: &mut [u8]) {
+                // this could, in theory, be done by transmuting dest to a
+                // [u64], but this is (1) likely to be undefined behaviour for
+                // LLVM, (2) has to be very careful about alignment concerns,
+                // (3) adds more `unsafe` that needs to be checked, (4)
+                // probably doesn't give much performance gain if
+                // optimisations are on.
+                let mut count = 0;
+                let mut num = 0;
+                for byte in dest.iter_mut() {
+                    if count == 0 {
+                        // we could micro-optimise here by generating a u32 if
+                        // we only need a few more bytes to fill the vector
+                        // (i.e. at most 4).
+                        num = self.next_u64();
+                        count = 8;
+                    }
+
+                    *byte = (num & 0xff) as u8;
+                    num >>= 8;
+                    count -= 1;
+                }
+            }
+            fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), Error> {
+                Ok(self.fill_bytes(dest))
             }
         }
 

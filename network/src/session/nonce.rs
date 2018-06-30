@@ -16,8 +16,9 @@
 
 use std::hash::{Hash, Hasher};
 
-use ctypes::H128;
-use rand::{Rand, Rng};
+use ctypes::{H128, U128};
+use rand::distributions::{Distribution, Standard};
+use rand::Rng;
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 #[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq)]
@@ -65,9 +66,11 @@ impl Encodable for Nonce {
     }
 }
 
-impl Rand for Nonce {
-    fn rand<R: Rng>(rng: &mut R) -> Self {
-        Nonce(Rand::rand(rng))
+impl Distribution<Nonce> for Standard {
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Nonce {
+        let mut result = [0u8; 16];
+        rng.fill_bytes(&mut result);
+        Nonce(H128::from(U128::from(result)))
     }
 }
 

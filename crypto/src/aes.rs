@@ -94,7 +94,7 @@ mod tests {
 
     use ctypes::{H128, H256};
 
-    use self::rand::{OsRng, Rng};
+    use self::rand::{OsRng, RngCore};
     use super::{decrypt, encrypt};
 
     #[test]

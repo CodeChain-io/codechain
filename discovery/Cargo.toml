@@ -11,7 +11,7 @@ codechain-network = { path = "../network" }
 codechain-types = { path = "../primitives/codechain-types" }
 log = "0.4.1"
 parking_lot = "0.5"
-rand = "0.4"
+rand = "0.5.3"
 rlp = { path = "../util/rlp" }
 time = "0.1"
 
