@@ -48,14 +48,17 @@ args:
         takes_value: true
     - db-path:
         long: db-path
+        value_name: PATH
         help: Specify the database directory path.
         takes_value: true
     - keys-path:
         long: keys-path
+        value_name: PATH
         help: Specify the path for JSON key files to be found
         takes_value: true
     - snapshot-path:
         long: snapshot-path
+        value_name: PATH
         help: Specify the snapshot directory path.
         takes_value: true
     - no-sync:
@@ -75,7 +78,7 @@ args:
         takes_value: false
     - ipc-path:
         long: ipc-path
-        value_name: path
+        value_name: PATH
         help: Specify custom path for JSON-RPC over IPC service.
         takes_value: true
         conflicts_with:
