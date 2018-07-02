@@ -22,14 +22,40 @@ The following represents the default configuration values of ``config.dev.toml``
     [codechain]
     quiet = false
     db_path = "db"
+    keys_path = "keys"
     chain = "solo"
-    enable_block_sync = true
-    enable_parcel_relay = true
     secret_key = "0x0000000000000000000000000000000000000000000000000000000000000001"
 
-CodeChain is set to use the Tendermint consensus algorithm by default. Tendermint is not suitable for solo testing purposes, since it requires a minimum of 4 users to function properly.
+    [mining]
 
-In order to test CodeChain alone, one may want to change ``change_type`` into Solo. To do this, use ``--chain solo``.
+    [network]
+    disable = false
+    port = 3485
+    max_peers = 30
+    min_peers = 10
+    bootstrap_addresses = []
+    sync = true
+    parcel_relay = true
+    discovery = true
+    discovery_type = "unstructured"
+    discovery_refresh = 60000
+    discovery_bucket_size = 10
+
+    [rpc]
+    disable = false
+    port = 8080
+
+    [ipc]
+    disable = false
+    path = "/tmp/jsonrpc.ipc"
+
+    [snapshot]
+    disable = false
+    path = "snapshot"
+
+CodeChain is set to use the Solo consensus algorithm by default. Tendermint is not suitable for solo testing purposes, since it requires a minimum of 4 users to function properly.
+
+In order to test CodeChain alone, you may want to change chain to Solo. To do this, use ``--chain solo``.
 
 CLI Options for CodeChain client
 ================================
@@ -72,6 +98,12 @@ CLI Options for CodeChain client
     ``--jsonrpc-port=[PORT]``
         Listen for rpc connections on PORT. (default: 8080)
 
+    ``--no-ipc``
+        Do not run JSON-RPC over IPC service.    
+
+    ``--ipc-path=[PATH]``
+        Specify custom path for JSON-RPC over IPC service
+
     ``--no-jsonrpc``
         Do not run jsonrpc.
 
@@ -101,6 +133,9 @@ CLI Options for CodeChain client
 
     ``--discovery-refresh=[ms]``
         Refresh timeout of discovery (ms). It may conflict with:`` --no-discovery``.
+
+    ``--no-snapshot``
+        Disable snapshots
 
 Logging
 =======
