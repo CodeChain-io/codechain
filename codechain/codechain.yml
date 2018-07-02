@@ -24,10 +24,12 @@ args:
         help: Do not open network socket.
     - min-peers:
         long: min-peers
+        value_name: NUM
         help: Set the minimum number of connections the user would like.
         takes_value: true
     - max-peers:
         long: max-peers
+        value_name: NUM
         help: Set the maximum number of connections the user would like.
         takes_value: true
     - instance-id:
