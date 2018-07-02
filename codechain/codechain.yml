@@ -114,6 +114,11 @@ args:
         value_name: MS
         help: Specify the minimum time between reseals from incoming parcels. MS is time measured in milliseconds.
         takes_value: true
+    - reseal-max-period:
+        long: reseal-max-period
+        value_name: MS
+        help: Specify the maximum time since last block to enable force-sealing. MS is time measured in milliseconds.
+        takes_value: true
     - work-queue-size:
         long: work-queue-size
         value_name: ITEMS

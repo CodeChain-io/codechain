@@ -190,6 +190,7 @@ fn new_miner(config: &config::Config, spec: &Spec) -> Result<Arc<Miner>, String>
         mem_size => Some(mem_size * 1024 * 1024),
     };
     miner_options.reseal_min_period = Duration::from_millis(config.mining.reseal_min_period);
+    miner_options.reseal_max_period = Duration::from_millis(config.mining.reseal_max_period);
     miner_options.work_queue_size = config.mining.work_queue_size;
 
     let ap = AccountProvider::new(keystore);

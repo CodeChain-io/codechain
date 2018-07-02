@@ -9,6 +9,7 @@ secret_key = "0x0000000000000000000000000000000000000000000000000000000000000001
 mem_pool_mem_limit = 4 # MB
 mem_pool_size = 8192
 reseal_min_period = 2000
+reseal_max_period = 120000
 work_queue_size = 20
 
 [network]
