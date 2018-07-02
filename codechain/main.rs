@@ -73,8 +73,6 @@ use parking_lot::{Condvar, Mutex};
 use self::account_command::run_account_command;
 use self::rpc::{HttpConfiguration as RpcHttpConfig, IpcConfiguration as RpcIpcConfig};
 
-const DEFAULT_CONFIG_PATH: &'static str = "codechain/config/presets/config.dev.toml";
-
 pub const APP_INFO: AppInfo = AppInfo {
     name: "codechain",
     author: "Kodebox",
@@ -165,11 +163,8 @@ fn run_subcommand(matches: ArgMatches) -> Result<(), String> {
     }
 }
 
-fn run_node(matches: ArgMatches) -> Result<(), String> {
-    // increase max number of open files
-    raise_fd_limit();
-
-    let _event_loop = EventLoop::spawn();
+fn load_config(matches: &ArgMatches) -> Result<config::Config, String> {
+    const DEFAULT_CONFIG_PATH: &'static str = "codechain/config/presets/config.dev.toml";
 
     let config_path = matches.value_of("config").unwrap_or(DEFAULT_CONFIG_PATH);
     let mut config = config::load(&config_path)?;
@@ -179,6 +174,16 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
     config.network.overwrite_with(&matches)?;
     config.rpc.overwrite_with(&matches)?;
     config.snapshot.overwrite_with(&matches)?;
+
+    Ok(config)
+}
+
+fn run_node(matches: ArgMatches) -> Result<(), String> {
+    // increase max number of open files
+    raise_fd_limit();
+
+    let _event_loop = EventLoop::spawn();
+    let config = load_config(&matches)?;
     let spec = config.operating.chain.spec()?;
 
     let instance_id = config.operating.instance_id.unwrap_or(SystemTime::now()
