@@ -1,5 +1,6 @@
-Minting Assets
-##############
+#####################
+Asset Management
+#####################
 
 Getting Started
 ===============
@@ -169,15 +170,31 @@ In order to check if all the transactions were successful, we run the following:
 
 This should return the following:
 ::
-    Asset {
+
+    Alice's lock script hash:  0597cf9ef3ab4c61274a31973fc46a3551f44600668efba67c4b754d9007e073
+    Alice's address:  ccaqqqqt970nme6knrpya9rr9elc34r2505gcqxdrhm5e7yka2djqr7quczzktzj
+    Bob's lock script hash:  92e9b25eed924b5b17268934798c0c70f66de38bda64b480012de9be57ac4ec1
+    Bob's address:  ccaqqqf96djtmkeyj6mzungjdre3sx8panduw9a5e95sqqjm6d727kyasgznna6v
+    minted asset scheme:  AssetScheme {
+    metadata: '{"name":"Gold","imageUrl":"https://gold.image/"}',
+    registrar: null,
+    amount: 10000 }
+    alice's gold:  Asset {
     assetType:
     H256 {
         value: '53000000000000009364bc7d89c5a424c1367e280cefc86461624fedb306fc59' },
     lockScriptHash:
-        H256 {
-        value: '92e9b25eed924b5b17268934798c0c70f66de38bda64b480012de9be57ac4ec1' },
-        parameters: [],
-        amount: 3000 }
+    H256 {
+        value: '0597cf9ef3ab4c61274a31973fc46a3551f44600668efba67c4b754d9007e073' },
+    parameters: [],
+    amount: 10000,
+    outPoint:
+    AssetOutPoint {
+        data:
+        { transactionHash: [Object],
+            index: 0,
+            assetType: [Object],
+            amount: 10000 } } }
     Asset {
     assetType:
     H256 {
@@ -185,8 +202,17 @@ This should return the following:
     lockScriptHash:
     H256 {
         value: '0597cf9ef3ab4c61274a31973fc46a3551f44600668efba67c4b754d9007e073' },
-        parameters: [],
-        amount: 7000 }
+    parameters: [],
+    amount: 10000,
+    outPoint:
+    AssetOutPoint {
+        data:
+        { transactionHash: [Object],
+            index: 0,
+            assetType: [Object],
+            amount: 10000 } } }
+    null
+    null
 
 
 The results show that 7000 gold went to ``0597cf9ef3ab4c61274a31973fc46a3551f44600668efba67c4b754d9007e073`` and 
@@ -195,3 +221,47 @@ that 3000 gold went to ``92e9b25eed924b5b17268934798c0c70f66de38bda64b480012de9b
 
 These are the values of each individual’s LockScripts that went through the blake256 hash function. 
 If you run each individual’s LockScript under blake256 yourself, you will find that it corresponds to the rightful owners of the assets. 
+
+Address Format
+=================================
+CodeChain adopted `Bitcoin's Bech32 Specification <https://github.com/bitcoin/bips/blob/master/bip-0173.mediawiki#bech32>`_. However,
+there are differences. Codechain does not have a seperator. Also, there are two types of addresses used in CodeChain, which are 
+Platform Address and Asset Address. Platform Addresses are used for CCC, while Asset Addresses are used 
+for mintable assets. These addresses have a human readable part, followed by code. Platform Addresses have a ``"ccc"`` tag, while
+Asset Addresses have a ``"cca"`` tag.
+
+Platform Account Address Format
+------------------------------------
+HRP: ``"ccc"`` for Mainnet, ``"tcc"`` for Testnet.
+
+Data Part: ``version`` . ``body``
+
+**Version 0 (0x00)**
+Data body: ``Account ID`` (20 bytes)
+
+Account ID is a result of ripemd160 of blake256 of a public key(64 bytes uncompressed form).
+
+
+Asset Transfer Address Format
+------------------------------------
+HRP: ``"cca"`` for Mainnet, ``"tca"`` for Testnet.
+
+Data: ``version`` . ``body``
+
+**Version 0 (0x00)**
+Data body: ``type`` . ``payload``
+
+Type 0 (0x00)
+Payload: <LockScriptHash> (32 bytes)
+
+Type 0 with given payload represents:
+
+Lock Script Hash: <LockScriptHash>
+Parameters: []
+Type 1 (0x01)
+Payload: <Public Key Hash> (32 bytes)
+
+Type 1 with given payload represents:
+
+Lock Script Hash: P2PKH Standard Script Hash
+Parameters: [<Public Key Hash>]
