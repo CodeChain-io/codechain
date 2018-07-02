@@ -28,6 +28,7 @@ extern crate kvdb;
 extern crate log;
 extern crate patricia_trie as trie;
 extern crate rand;
+#[cfg_attr(test, macro_use)]
 extern crate rlp;
 extern crate time;
 extern crate triehash;

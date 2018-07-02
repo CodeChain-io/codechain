@@ -501,48 +501,44 @@ pub struct AssetTransferOutput {
 #[cfg(test)]
 mod tests {
     use ctypes::{Address, H256, Public, U256};
-    use rlp::Encodable;
 
     use super::*;
 
     #[test]
     fn test_unverified_parcel_rlp() {
-        let parcel = UnverifiedParcel {
-            unsigned: Parcel::default(),
-            v: 0,
-            r: U256::default(),
-            s: U256::default(),
-            hash: H256::default(),
-        }.compute_hash();
-        assert_eq!(parcel, ::rlp::decode(parcel.rlp_bytes().as_ref()));
+        rlp_encode_and_decode_test!(
+            UnverifiedParcel {
+                unsigned: Parcel::default(),
+                v: 0,
+                r: U256::default(),
+                s: U256::default(),
+                hash: H256::default(),
+            }.compute_hash()
+        );
     }
 
     #[test]
     fn encode_and_decode_asset_mint() {
-        let transaction = Transaction::AssetMint {
+        rlp_encode_and_decode_test!(Transaction::AssetMint {
             metadata: "mint test".to_string(),
             lock_script_hash: H256::random(),
             parameters: vec![],
             amount: Some(10000),
             registrar: None,
             nonce: 0,
-        };
-
-        assert_eq!(transaction, ::rlp::decode(transaction.rlp_bytes().as_ref()))
+        });
     }
 
     #[test]
     fn encode_and_decode_asset_mint_with_parameters() {
-        let transaction = Transaction::AssetMint {
+        rlp_encode_and_decode_test!(Transaction::AssetMint {
             metadata: "mint test".to_string(),
             lock_script_hash: H256::random(),
             parameters: vec![vec![1, 2, 3], vec![4, 5, 6], vec![0, 7]],
             amount: Some(10000),
             registrar: None,
             nonce: 0,
-        };
-
-        assert_eq!(transaction, ::rlp::decode(transaction.rlp_bytes().as_ref()))
+        });
     }
 
     #[test]
@@ -551,74 +547,61 @@ mod tests {
         let inputs = vec![];
         let outputs = vec![];
         let network_id = 0;
-        let transaction = Transaction::AssetTransfer {
+        rlp_encode_and_decode_test!(Transaction::AssetTransfer {
             network_id,
             burns,
             inputs,
             outputs,
             nonce: 0,
-        };
-
-        assert_eq!(transaction, ::rlp::decode(transaction.rlp_bytes().as_ref()))
+        });
     }
 
     #[test]
     fn encode_and_decode_payment_action() {
-        let origin = Action::Payment {
+        rlp_encode_and_decode_test!(Action::Payment {
             receiver: Address::random(),
             value: 300.into(),
-        };
-
-        let encoded = origin.rlp_bytes();
-        let decoded = ::rlp::decode(&encoded);
-
-        assert_eq!(origin, decoded);
+        });
     }
 
     #[test]
     fn encode_and_decode_payment_parcel() {
-        let origin = UnverifiedParcel {
-            unsigned: Parcel {
-                nonce: 30.into(),
-                fee: 40.into(),
-                network_id: 50,
-                action: Action::Payment {
-                    receiver: Address::random(),
-                    value: 300.into(),
+        rlp_encode_and_decode_test!(
+            UnverifiedParcel {
+                unsigned: Parcel {
+                    nonce: 30.into(),
+                    fee: 40.into(),
+                    network_id: 50,
+                    action: Action::Payment {
+                        receiver: Address::random(),
+                        value: 300.into(),
+                    },
                 },
-            },
-            v: 0,
-            r: U256::default(),
-            s: U256::default(),
-            hash: H256::default(),
-        }.compute_hash();
-
-        let encoded = origin.rlp_bytes();
-        let decoded = ::rlp::decode(&encoded);
-
-        assert_eq!(origin, decoded);
+                v: 0,
+                r: U256::default(),
+                s: U256::default(),
+                hash: H256::default(),
+            }.compute_hash()
+        );
     }
 
     #[test]
     fn encode_and_decode_set_regular_key_parcel() {
-        let origin = UnverifiedParcel {
-            unsigned: Parcel {
-                nonce: 30.into(),
-                fee: 40.into(),
-                network_id: 50,
-                action: Action::SetRegularKey {
-                    key: Public::random(),
+        rlp_encode_and_decode_test!(
+            UnverifiedParcel {
+                unsigned: Parcel {
+                    nonce: 30.into(),
+                    fee: 40.into(),
+                    network_id: 50,
+                    action: Action::SetRegularKey {
+                        key: Public::random(),
+                    },
                 },
-            },
-            v: 0,
-            r: U256::default(),
-            s: U256::default(),
-            hash: H256::default(),
-        }.compute_hash();
-
-        let encoded = origin.rlp_bytes();
-        let decoded = ::rlp::decode(&encoded);
-
-        assert_eq!(origin, decoded);
+                v: 0,
+                r: U256::default(),
+                s: U256::default(),
+                hash: H256::default(),
+            }.compute_hash()
+        );
     }
 }

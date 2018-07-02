@@ -38,13 +38,10 @@ impl Decodable for Message {
 
 #[cfg(test)]
 mod tests {
-    use rlp::Encodable;
-
     use super::Message;
 
     #[test]
     fn test_parcels_message_rlp() {
-        let message = Message::Parcels(Vec::new());
-        assert_eq!(message, ::rlp::decode(message.rlp_bytes().as_ref()));
+        rlp_encode_and_decode_test!(Message::Parcels(Vec::new()));
     }
 }

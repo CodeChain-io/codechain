@@ -334,6 +334,20 @@ impl Decodable for String {
     }
 }
 
+#[macro_export]
+macro_rules! rlp_encode_and_decode_test {
+    ($origin:expr) => {
+        fn rlp_encode_and_decode_test<T>(origin: T)
+        where
+            T: $crate::Encodable + $crate::Decodable + ::std::fmt::Debug + PartialEq, {
+            let encoded = $crate::encode(&origin);
+            let decoded = $crate::decode::<T>(&encoded);
+            assert_eq!(origin, decoded);
+        }
+        rlp_encode_and_decode_test($origin);
+    };
+}
+
 #[cfg(test)]
 mod tests {
     use super::RlpStream;
@@ -341,6 +355,7 @@ mod tests {
     #[test]
     fn vec_of_bytes() {
         let origin: Vec<Vec<u8>> = vec![vec![0, 1, 2, 3, 4], vec![5, 6, 7], vec![], vec![8, 9]];
+
         let encoded = ::encode(&origin);
 
         let expected = {
@@ -354,7 +369,6 @@ mod tests {
         };
         assert_eq!(expected, encoded.to_vec());
 
-        let decoded = ::decode::<Vec<Vec<u8>>>(&encoded);
-        assert_eq!(origin, decoded);
+        rlp_encode_and_decode_test!(origin);
     }
 }

@@ -20,6 +20,7 @@
 extern crate log;
 extern crate parking_lot;
 extern crate rand;
+#[cfg_attr(test, macro_use)]
 extern crate rlp;
 extern crate time;
 

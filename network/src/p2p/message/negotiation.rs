@@ -190,40 +190,19 @@ mod tests {
     fn encode_and_decode_request() {
         const SEQ: Seq = 0x5432;
         let extension_name = "some-extension".to_string();
-
-        let origin = Message::request(SEQ, extension_name, vec![1, 2, 3]);
-        let encoded = origin.rlp_bytes();
-
-        let rlp = UntrustedRlp::new(&encoded);
-
-        let decoded = Decodable::decode(&rlp).unwrap();
-        assert_eq!(origin, decoded)
+        rlp_encode_and_decode_test!(Message::request(SEQ, extension_name, vec![1, 2, 3]));
     }
 
     #[test]
     fn encode_and_decode_allowed() {
         const SEQ: Seq = 0x716216a8b1;
         const VERSION: Version = 2;
-
-        let origin = Message::allowed(SEQ, VERSION);
-        let encoded = origin.rlp_bytes();
-
-        let rlp = UntrustedRlp::new(&encoded);
-
-        let decoded = Decodable::decode(&rlp).unwrap();
-        assert_eq!(origin, decoded)
+        rlp_encode_and_decode_test!(Message::allowed(SEQ, VERSION));
     }
 
     #[test]
     fn encode_and_decode_denied() {
         const SEQ: Seq = 0x3712;
-
-        let origin = Message::denied(SEQ);
-        let encoded = origin.rlp_bytes();
-
-        let rlp = UntrustedRlp::new(&encoded);
-
-        let decoded = Decodable::decode(&rlp).unwrap();
-        assert_eq!(origin, decoded)
+        rlp_encode_and_decode_test!(Message::denied(SEQ));
     }
 }

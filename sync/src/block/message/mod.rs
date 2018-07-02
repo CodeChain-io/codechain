@@ -117,17 +117,15 @@ impl Decodable for Message {
 #[cfg(test)]
 mod tests {
     use ctypes::{H256, U256};
-    use rlp::Encodable;
 
     use super::Message;
 
     #[test]
     fn test_status_message_rlp() {
-        let message = Message::Status {
+        rlp_encode_and_decode_test!(Message::Status {
             total_score: U256::default(),
             best_hash: H256::default(),
             genesis_hash: H256::default(),
-        };
-        assert_eq!(message, ::rlp::decode(message.rlp_bytes().as_ref()));
+        });
     }
 }

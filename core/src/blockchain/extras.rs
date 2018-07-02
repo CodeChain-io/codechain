@@ -294,7 +294,6 @@ pub struct EpochTransitions {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rlp::{Encodable, UntrustedRlp};
 
     #[test]
     fn rlp_encode_and_decode_parcel_invoice() {
@@ -306,100 +305,56 @@ mod tests {
             Invoice::Success,
             Invoice::Success,
         ];
-        let parcel_invoice = ParcelInvoice::new(invoices);
-        let rlp_encoded = parcel_invoice.rlp_bytes();
-        let stream = UntrustedRlp::new(&rlp_encoded);
-        let rlp_decoded = stream.as_val();
-        assert_eq!(Ok(parcel_invoice), rlp_decoded);
+        rlp_encode_and_decode_test!(ParcelInvoice::new(invoices));
     }
 
     #[test]
     fn rlp_encode_and_decode_block_invoices() {
         let invoices = vec![Invoice::Success, Invoice::Failed];
         let parcel_invoice = ParcelInvoice::new(invoices);
-        let block_invoices = BlockInvoices {
+        rlp_encode_and_decode_test!(BlockInvoices {
             invoices: vec![
                 parcel_invoice.clone(),
                 parcel_invoice.clone(),
                 parcel_invoice.clone(),
                 parcel_invoice.clone(),
             ],
-        };
-        let rlp_encoded = block_invoices.rlp_bytes();
-        let rlp = UntrustedRlp::new(&rlp_encoded);
-        let rlp_decoded = rlp.as_val();
-        assert_eq!(Ok(block_invoices), rlp_decoded);
+        });
     }
 
     #[test]
     fn encode_and_decode_single_success_parcel_invoice() {
-        let parcel_invoice = ParcelInvoice::Single(Invoice::Success);
-
-        let encoded = parcel_invoice.rlp_bytes();
-        let rlp = UntrustedRlp::new(&encoded);
-        let decoded = rlp.as_val();
-
-        assert_eq!(Ok(parcel_invoice), decoded);
+        rlp_encode_and_decode_test!(ParcelInvoice::Single(Invoice::Success));
     }
 
     #[test]
     fn encode_and_decode_single_failed_parcel_invoice() {
-        let parcel_invoice = ParcelInvoice::Single(Invoice::Failed);
-
-        let encoded = parcel_invoice.rlp_bytes();
-        let rlp = UntrustedRlp::new(&encoded);
-        let decoded = rlp.as_val();
-
-        assert_eq!(Ok(parcel_invoice), decoded);
+        rlp_encode_and_decode_test!(ParcelInvoice::Single(Invoice::Failed));
     }
 
     #[test]
     fn encode_and_decode_empty_multiple_parcel_invoice() {
-        let parcel_invoice = ParcelInvoice::Multiple(vec![]);
-
-        let encoded = parcel_invoice.rlp_bytes();
-        let rlp = UntrustedRlp::new(&encoded);
-        let decoded = rlp.as_val();
-
-        assert_eq!(Ok(parcel_invoice), decoded);
+        rlp_encode_and_decode_test!(ParcelInvoice::Multiple(vec![]));
     }
 
     #[test]
     fn encode_and_decode_multiple_parcel_invoice_with_success() {
-        let parcel_invoice = ParcelInvoice::Multiple(vec![Invoice::Success]);
-
-        let encoded = parcel_invoice.rlp_bytes();
-        let rlp = UntrustedRlp::new(&encoded);
-        let decoded = rlp.as_val();
-
-        assert_eq!(Ok(parcel_invoice), decoded);
+        rlp_encode_and_decode_test!(ParcelInvoice::Multiple(vec![Invoice::Success]));
     }
 
     #[test]
     fn encode_and_decode_multiple_parcel_invoice_with_failed() {
-        let parcel_invoice = ParcelInvoice::Multiple(vec![Invoice::Failed]);
-
-        let encoded = parcel_invoice.rlp_bytes();
-        let rlp = UntrustedRlp::new(&encoded);
-        let decoded = rlp.as_val();
-
-        assert_eq!(Ok(parcel_invoice), decoded);
+        rlp_encode_and_decode_test!(ParcelInvoice::Multiple(vec![Invoice::Failed]));
     }
 
     #[test]
     fn encode_and_decode_multiple_parcel_invoice() {
-        let parcel_invoice = ParcelInvoice::Multiple(vec![
+        rlp_encode_and_decode_test!(ParcelInvoice::Multiple(vec![
             Invoice::Failed,
             Invoice::Success,
             Invoice::Success,
             Invoice::Success,
             Invoice::Success,
-        ]);
-
-        let encoded = parcel_invoice.rlp_bytes();
-        let rlp = UntrustedRlp::new(&encoded);
-        let decoded = rlp.as_val();
-
-        assert_eq!(Ok(parcel_invoice), decoded);
+        ]));
     }
 }

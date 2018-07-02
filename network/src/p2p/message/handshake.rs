@@ -114,8 +114,6 @@ impl Decodable for Message {
 
 #[cfg(test)]
 mod tests {
-    use rlp::{Decodable, Encodable, UntrustedRlp};
-
     use super::super::super::super::SocketAddr;
     use super::*;
 
@@ -135,27 +133,11 @@ mod tests {
     fn encode_and_decode_sync() {
         const PORT: u16 = 1234;
         let node_id = SocketAddr::v4(127, 0, 0, 1, 8080).into();
-        let sync = Message::sync(PORT, node_id);
-        let bytes = sync.rlp_bytes();
-
-        let rlp = UntrustedRlp::new(&bytes);
-
-        match Decodable::decode(&rlp) {
-            Ok(message) => assert_eq!(sync, message),
-            Err(err) => assert!(false, "{:?}", err),
-        }
+        rlp_encode_and_decode_test!(Message::sync(PORT, node_id));
     }
 
     #[test]
     fn encode_and_decode_ack() {
-        let ack = Message::ack();
-        let bytes = ack.rlp_bytes();
-
-        let rlp = UntrustedRlp::new(&bytes);
-
-        match Decodable::decode(&rlp) {
-            Ok(message) => assert_eq!(ack, message),
-            Err(err) => assert!(false, "{:?}", err),
-        }
+        rlp_encode_and_decode_test!(Message::ack());
     }
 }

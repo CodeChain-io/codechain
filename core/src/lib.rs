@@ -38,6 +38,7 @@ extern crate multimap;
 extern crate num_cpus;
 extern crate patricia_trie as trie;
 extern crate rand;
+#[cfg_attr(test, macro_use)]
 extern crate rlp;
 extern crate rlp_compress;
 #[macro_use]

@@ -52,64 +52,39 @@ mod tests {
 
     #[test]
     fn encode_and_decode_request_0() {
-        let request = Message::FindNode(0);
-        let encoded = request.rlp_bytes();
-        let rlp = UntrustedRlp::new(&encoded);
-        let decoded: Message = Decodable::decode(&rlp).unwrap();
-        assert_eq!(request, decoded);
+        rlp_encode_and_decode_test!(Message::FindNode(0));
     }
 
     #[test]
     fn encode_and_decode_request_1() {
-        let request = Message::FindNode(1);
-        let encoded = request.rlp_bytes();
-        let rlp = UntrustedRlp::new(&encoded);
-        let decoded: Message = Decodable::decode(&rlp).unwrap();
-        assert_eq!(request, decoded);
+        rlp_encode_and_decode_test!(Message::FindNode(1));
     }
 
     #[test]
     fn encode_and_decode_request_2() {
-        let request = Message::FindNode(2);
-        let encoded = request.rlp_bytes();
-        let rlp = UntrustedRlp::new(&encoded);
-        let decoded: Message = Decodable::decode(&rlp).unwrap();
-        assert_eq!(request, decoded);
+        rlp_encode_and_decode_test!(Message::FindNode(2));
     }
 
     #[test]
     fn encode_and_decode_request_3() {
-        let request = Message::FindNode(3);
-        let encoded = request.rlp_bytes();
-        let rlp = UntrustedRlp::new(&encoded);
-        let decoded: Message = Decodable::decode(&rlp).unwrap();
-        assert_eq!(request, decoded);
+        rlp_encode_and_decode_test!(Message::FindNode(3));
     }
 
     #[test]
     fn encode_and_decode_empty_response() {
-        let request = Message::Nodes(vec![]);
-        let encoded = request.rlp_bytes();
-        let rlp = UntrustedRlp::new(&encoded);
-        let decoded: Message = Decodable::decode(&rlp).unwrap();
-        assert_eq!(request, decoded);
+        rlp_encode_and_decode_test!(Message::Nodes(vec![]));
     }
 
     #[test]
     fn encode_and_decode_one_response() {
-        let request = Message::Nodes(vec![SocketAddr::v4(127, 0, 0, 1, 3480)]);
-        let encoded = request.rlp_bytes();
-        let rlp = UntrustedRlp::new(&encoded);
-        let decoded: Message = Decodable::decode(&rlp).unwrap();
-        assert_eq!(request, decoded);
+        rlp_encode_and_decode_test!(Message::Nodes(vec![SocketAddr::v4(127, 0, 0, 1, 3480)]));
     }
 
     #[test]
     fn encode_and_decode_two_response() {
-        let request = Message::Nodes(vec![SocketAddr::v4(127, 0, 0, 1, 3480), SocketAddr::v4(127, 0, 0, 1, 3481)]);
-        let encoded = request.rlp_bytes();
-        let rlp = UntrustedRlp::new(&encoded);
-        let decoded: Message = Decodable::decode(&rlp).unwrap();
-        assert_eq!(request, decoded);
+        rlp_encode_and_decode_test!(Message::Nodes(vec![
+            SocketAddr::v4(127, 0, 0, 1, 3480),
+            SocketAddr::v4(127, 0, 0, 1, 3481),
+        ]));
     }
 }
