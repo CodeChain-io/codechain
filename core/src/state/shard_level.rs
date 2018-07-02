@@ -48,8 +48,6 @@ pub struct ShardLevelState<B> {
 
 impl<B: Backend + ShardBackend> ShardLevelState<B> {
     /// Creates new state with empty state root
-    /// Used for tests.
-    #[cfg(test)]
     pub fn try_new(shard_id: u32, mut db: B, trie_factory: TrieFactory) -> trie::Result<ShardLevelState<B>> {
         let mut root = BLAKE_NULL_RLP;
 
@@ -126,6 +124,10 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
 }
 
 impl<B: Backend + ShardBackend> ShardStateInfo for ShardLevelState<B> {
+    fn root(&self) -> &H256 {
+        &self.root
+    }
+
     fn asset_scheme(&self, a: &AssetSchemeAddress) -> trie::Result<Option<AssetScheme>> {
         let cached_asset = self.db.get_cached_asset_scheme(&a).and_then(|asset_scheme| asset_scheme);
         if cached_asset.is_some() {

@@ -44,5 +44,6 @@ where
     /// Set the regular key of account `a`
     fn set_regular_key(&mut self, a: &Address, key: &Public) -> Result<(), Error>;
 
+    fn create_shard(&mut self, shard_creation_cost: &U256, fee_payer: &Address) -> Result<(), Error>;
     fn set_shard_root(&mut self, shard_id: u32, old_root: &H256, new_root: &H256) -> Result<(), Error>;
 }
