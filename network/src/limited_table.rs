@@ -70,7 +70,7 @@ impl<Item> LimitedTable<Item> {
     }
 
     pub fn contains(&self, key: Key) -> bool {
-        self.slab.contains(key)
+        self.slab.contains(key - self.begin)
     }
 
     pub fn get(&self, key: Key) -> Option<&Item> {
