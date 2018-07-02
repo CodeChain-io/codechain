@@ -8,7 +8,7 @@ Script is encoded as a byte string, and each byte of this string is referred to 
 
 # CCVM (CodeChain Virtual Machine)
 
-Script language in CodeChain uses [[CodeChain Virtual Machine]] as underlying execution environment. 
+Script language in CodeChain uses [CodeChain Virtual Machine](CodeChain-Virtual-Machine.md) as underlying execution environment.
 
 # Script execution
 
