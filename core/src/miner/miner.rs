@@ -506,6 +506,10 @@ impl MinerService for Miner {
 
     fn set_author(&self, author: Address) {
         ctrace!(MINER, "Set author to {:?}", author);
+        if self.engine.seals_internally().is_some() {
+            let mut sealing_work = self.sealing_work.lock();
+            sealing_work.enabled = true;
+        }
         *self.author.write() = author;
     }
 
@@ -521,6 +525,12 @@ impl MinerService for Miner {
         if self.engine.seals_internally().is_some() {
             if let Some(ref ap) = self.accounts {
                 ctrace!(MINER, "Set engine signer to {:?}", address);
+                // Limit the scope of the locks.
+                {
+                    let mut sealing_work = self.sealing_work.lock();
+                    sealing_work.enabled = true;
+                    *self.author.write() = address;
+                }
                 self.engine.set_signer(ap.clone(), address, password);
                 Ok(())
             } else {
