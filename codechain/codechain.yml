@@ -98,10 +98,14 @@ args:
         possible_values:
             - kademlia
             - unstructured
+        conflicts_with:
+            - no-discovery
     - discovery-bucket-size:
         long: discovery-bucket-size
         help: Bucket size for discovery
         takes_value: true
+        conflicts_with:
+            - no-discovery
     - discovery-refresh:
         long: discovery-refresh
         value_name: MS
