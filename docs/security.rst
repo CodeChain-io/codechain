@@ -11,7 +11,7 @@ Security issues fall into one of three categories. These three categories are cl
 
 * **P1(high)**: a security vulnerability that will result in loss of value.
 
-    e.g. Steal ERC20/721 tokens from someone, mint tokens at your discretion
+    e.g. Steal tokens from someone, mint tokens at your discretion
 
 * **P2(medium)**: a security vulnerability that will not result in loss of value but can result in a loss of function of the CodeChain engine.
 

@@ -55,7 +55,7 @@ The following represents the default configuration values of ``config.dev.toml``
 
 CodeChain is set to use the Solo consensus algorithm by default. Tendermint is not suitable for solo testing purposes, since it requires a minimum of 4 users to function properly.
 
-In order to test CodeChain alone, you may want to change ``change_type`` into Solo. To do this, use ``--chain solo``.
+In order to test CodeChain alone, you may want to change chain to Solo. To do this, use ``--chain solo``.
 
 CLI Options for CodeChain client
 ================================
@@ -98,6 +98,9 @@ CLI Options for CodeChain client
     ``--jsonrpc-port=[PORT]``
         Listen for rpc connections on PORT. (default: 8080)
 
+    ``--no-ipc``
+        Do not run JSON-RPC over IPC service.    
+
     ``--ipc-path=[PATH]``
         Specify custom path for JSON-RPC over IPC service
 
@@ -132,7 +135,7 @@ CLI Options for CodeChain client
         Refresh timeout of discovery (ms). It may conflict with:`` --no-discovery``.
 
     ``--no-snapshot``
-        Disables snapshots
+        Disable snapshots
 
 Logging
 =======
