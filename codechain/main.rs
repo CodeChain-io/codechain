@@ -203,9 +203,9 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
     let miner = Miner::new(MinerOptions::default(), &spec, Some(ap.clone()));
     let author = config.mining.author.unwrap_or(address);
     miner.set_author(author);
-    let enginer_signer = config.mining.engine_signer.unwrap_or(address);
+    let engine_signer = config.mining.engine_signer.unwrap_or(address);
     // FIXME: Don't hardcode password.
-    miner.set_engine_signer(enginer_signer, "password".to_string()).map_err(|err| format!("{:?}", err))?;
+    miner.set_engine_signer(engine_signer, "password".to_string()).map_err(|err| format!("{:?}", err))?;
 
     let client = client_start(&config, &spec, miner.clone())?;
 
