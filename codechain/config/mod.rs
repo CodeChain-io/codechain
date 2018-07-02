@@ -64,6 +64,7 @@ pub struct Mining {
     pub engine_signer: Option<Address>,
     pub mem_pool_size: usize,
     pub mem_pool_mem_limit: usize,
+    pub reseal_min_period: u64,
     pub work_queue_size: usize,
 }
 
@@ -184,6 +185,9 @@ impl Mining {
         }
         if let Some(mem_pool_size) = matches.value_of("mem-pool-size") {
             self.mem_pool_size = mem_pool_size.parse().map_err(|_| "Invalid size")?;
+        }
+        if let Some(reseal_min_period) = matches.value_of("reseal-min-period") {
+            self.reseal_min_period = reseal_min_period.parse().map_err(|_| "Invalid period")?;
         }
         if let Some(work_queue_size) = matches.value_of("work-queue-size") {
             self.work_queue_size = work_queue_size.parse().map_err(|_| "Invalid size")?;

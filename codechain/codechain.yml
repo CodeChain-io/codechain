@@ -109,6 +109,11 @@ args:
         value_name: LIMIT
         help: Maximum amount of parcels in the queue (waiting to be included in next block).
         takes_value: true
+    - reseal-min-period:
+        long: reseal-min-period
+        value_name: MS
+        help: Specify the minimum time between reseals from incoming parcels. MS is time measured in milliseconds.
+        takes_value: true
     - work-queue-size:
         long: work-queue-size
         value_name: ITEMS

@@ -53,7 +53,7 @@ mod rpc_apis;
 
 use std::path::Path;
 use std::sync::Arc;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use app_dirs::AppInfo;
 use ccore::{AccountProvider, ClientService, Miner, MinerOptions, MinerService, Spec};
@@ -211,6 +211,7 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
         0 => None,
         mem_size => Some(mem_size * 1024 * 1024),
     };
+    miner_options.reseal_min_period = Duration::from_millis(config.mining.reseal_min_period);
     miner_options.work_queue_size = config.mining.work_queue_size;
     let miner = Miner::new(miner_options, &spec, Some(ap.clone()));
     let author = config.mining.author.unwrap_or(address);
