@@ -94,6 +94,16 @@ args:
         long: engine-signer
         help: Specify the address which should be used to sign consensus messages and issue blocks.
         takes_value: true
+    - mem-pool-mem-limit:
+        long: mem-pool-mem-limit
+        value_name: MB
+        help: Maximum amount of memory that can be used by the mem pool. Setting this parameter to 0 disables limiting.
+        takes_value: true
+    - mem-pool-size:
+        long: mem-pool-size
+        value_name: LIMIT
+        help: Maximum amount of parcels in the queue (waiting to be included in next block).
+        takes_value: true
     - no-discovery:
         long: no-discovery
         help: Do not use discovery

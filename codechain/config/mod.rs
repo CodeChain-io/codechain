@@ -62,6 +62,8 @@ pub struct Operating {
 pub struct Mining {
     pub author: Option<Address>,
     pub engine_signer: Option<Address>,
+    pub mem_pool_size: usize,
+    pub mem_pool_mem_limit: usize,
 }
 
 #[derive(Deserialize)]
@@ -175,6 +177,12 @@ impl Mining {
         }
         if let Some(engine_signer) = matches.value_of("engine-signer") {
             self.engine_signer = Some(Address::from_str(engine_signer).map_err(|_| "Invalid address")?);
+        }
+        if let Some(mem_pool_mem_limit) = matches.value_of("mem-pool-mem-limit") {
+            self.mem_pool_mem_limit = mem_pool_mem_limit.parse().map_err(|_| "Invalid mem limit")?;
+        }
+        if let Some(mem_pool_size) = matches.value_of("mem-pool-size") {
+            self.mem_pool_size = mem_pool_size.parse().map_err(|_| "Invalid size")?;
         }
         Ok(())
     }

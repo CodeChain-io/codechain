@@ -200,7 +200,13 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
             .map_err(|e| format!("Invalid secret key: {:?}", e))?
     };
 
-    let miner = Miner::new(MinerOptions::default(), &spec, Some(ap.clone()));
+    let mut miner_options = MinerOptions::default();
+    miner_options.mem_pool_size = config.mining.mem_pool_size;
+    miner_options.mem_pool_memory_limit = match config.mining.mem_pool_mem_limit {
+        0 => None,
+        mem_size => Some(mem_size * 1024 * 1024)
+    };
+    let miner = Miner::new(miner_options, &spec, Some(ap.clone()));
     let author = config.mining.author.unwrap_or(address);
     miner.set_author(author);
     let engine_signer = config.mining.engine_signer.unwrap_or(address);
