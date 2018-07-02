@@ -34,6 +34,12 @@ impl Metadata {
     pub fn number_of_shards(&self) -> &u32 {
         &self.number_of_shards
     }
+
+    pub fn increase_number_of_shards(&mut self) -> u32 {
+        let r = self.number_of_shards;
+        self.number_of_shards += 1;
+        r
+    }
 }
 
 impl CacheableItem for Metadata {

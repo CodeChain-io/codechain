@@ -40,6 +40,7 @@ pub trait TopStateInfo {
 }
 
 pub trait ShardStateInfo {
+    fn root(&self) -> &H256;
     /// Get the asset scheme.
     fn asset_scheme(&self, a: &AssetSchemeAddress) -> TrieResult<Option<AssetScheme>>;
     /// Get the asset.

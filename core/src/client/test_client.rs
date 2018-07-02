@@ -463,6 +463,10 @@ impl TopStateInfo for () {
 }
 
 impl ShardStateInfo for () {
+    fn root(&self) -> &H256 {
+        unimplemented!()
+    }
+
     fn asset_scheme(&self, _a: &AssetSchemeAddress) -> trie::Result<Option<AssetScheme>> {
         unimplemented!()
     }

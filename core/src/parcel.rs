@@ -142,6 +142,7 @@ pub enum Action {
     SetRegularKey {
         key: Public,
     },
+    CreateShard,
 }
 
 impl Default for Action {
@@ -155,6 +156,7 @@ impl Default for Action {
 const CHANGE_SHARD_STATE: u8 = 1;
 const PAYMENT: u8 = 2;
 const SET_REGULAR_KEY: u8 = 3;
+const CREATE_SHARD: u8 = 4;
 
 impl HeapSizeOf for Parcel {
     fn heap_size_of_children(&self) -> usize {
@@ -188,6 +190,10 @@ impl rlp::Encodable for Action {
                 s.append(&SET_REGULAR_KEY);
                 s.append(key);
             }
+            Action::CreateShard => {
+                s.begin_list(1);
+                s.append(&CREATE_SHARD);
+            }
         }
     }
 }
@@ -205,6 +211,7 @@ impl rlp::Decodable for Action {
             SET_REGULAR_KEY => Ok(Action::SetRegularKey {
                 key: rlp.val_at(1)?,
             }),
+            CREATE_SHARD => Ok(Action::CreateShard),
             _ => Err(DecoderError::Custom("Unexpected action prefix")),
         }
     }
@@ -620,6 +627,24 @@ mod tests {
                     action: Action::SetRegularKey {
                         key: Public::random(),
                     },
+                },
+                v: 0,
+                r: U256::default(),
+                s: U256::default(),
+                hash: H256::default(),
+            }.compute_hash()
+        );
+    }
+
+    #[test]
+    fn encode_and_decode_create_shard_parcel() {
+        rlp_encode_and_decode_test!(
+            UnverifiedParcel {
+                unsigned: Parcel {
+                    nonce: 30.into(),
+                    fee: 40.into(),
+                    network_id: 50,
+                    action: Action::CreateShard,
                 },
                 v: 0,
                 r: U256::default(),

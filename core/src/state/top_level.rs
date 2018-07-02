@@ -378,6 +378,14 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopLevelState<B> {
                 }),
                 Err(error) => Err(error.into()),
             },
+            Action::CreateShard => {
+                let shard_creation_cost = 1.into(); // FIXME: Make shard creation cost configurable
+                self.create_shard(&shard_creation_cost, fee_payer)?;
+                Ok(ParcelOutcome::Single {
+                    invoice: Invoice::Success,
+                    error: None,
+                })
+            }
         }
     }
 
@@ -403,6 +411,28 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopLevelState<B> {
 
         self.set_shard_root(shard_id, &shard_root, &new_shard_root)?;
         Ok(results)
+    }
+
+    fn create_shard_level_state(&mut self) -> Result<(), Error> {
+        let (shard_id, shard_root, db) = {
+            let mut metadata = self.require_metadata()?;
+            let shard_id = metadata.increase_number_of_shards();
+
+            let mut shard_level_state = ShardLevelState::try_new(shard_id, self.db.clone(), self.trie_factory)?;
+
+            let (shard_root, db) = shard_level_state.drop();
+
+            (shard_id, shard_root, db)
+        };
+
+        {
+            self.db = db;
+        }
+
+        ctrace!(STATE, "shard created({}, {:?})", shard_id, shard_root);
+
+        self.set_shard_root(shard_id, &BLAKE_NULL_RLP, &shard_root)?;
+        Ok(())
     }
 }
 
@@ -539,6 +569,22 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopState<B> for TopLevelSta
 
     fn set_regular_key(&mut self, a: &Address, key: &Public) -> Result<(), Error> {
         self.require_account(a)?.set_regular_key(key);
+        Ok(())
+    }
+
+    fn create_shard(&mut self, shard_creation_cost: &U256, fee_payer: &Address) -> Result<(), Error> {
+        let balance = self.balance(fee_payer)?;
+        if &balance < shard_creation_cost {
+            return Err(ParcelError::InsufficientBalance {
+                address: *fee_payer,
+                cost: *shard_creation_cost,
+                balance,
+            }.into())
+        }
+        self.sub_balance(fee_payer, shard_creation_cost)?;
+
+        self.create_shard_level_state()?;
+
         Ok(())
     }
 
@@ -1323,4 +1369,106 @@ mod tests_parcel {
         let asset2 = state.asset(shard_id, &asset2_address);
         assert_eq!(Ok(Some(Asset::new(asset_type, random_lock_script_hash, vec![], 15))), asset2);
     }
+
+    #[test]
+    fn get_invalid_shard_root() {
+        let state = get_temp_state();
+
+        let shard_id = 3;
+        assert_eq!(Ok(None), state.shard_root(shard_id));
+    }
+
+    #[test]
+    fn get_asset_in_invalid_shard() {
+        let state = get_temp_state();
+
+        let shard_id = 3;
+        assert_eq!(Ok(None), state.asset(shard_id, &AssetAddress::new(H256::random(), 0)));
+    }
+
+
+    #[test]
+    fn get_asset_scheme_in_invalid_shard() {
+        let state = get_temp_state();
+
+        let shard_id = 3;
+        assert_eq!(Ok(None), state.asset_scheme(shard_id, &AssetSchemeAddress::new(H256::random())));
+    }
+
+    #[test]
+    fn apply_create_shard() {
+        let mut state = get_temp_state();
+
+        let signed_parcel = Parcel {
+            action: Action::CreateShard,
+            fee: 5.into(),
+            ..Parcel::default()
+        }.sign(&secret().into());
+        let sender = signed_parcel.sender();
+        state.add_balance(&sender, &20.into()).unwrap();
+        let res = state.apply(&signed_parcel).unwrap();
+        assert_eq!(
+            ParcelOutcome::Single {
+                invoice: Invoice::Success,
+                error: None,
+            },
+            res
+        );
+        assert_eq!(Ok(14.into()), state.balance(&sender));
+        assert_eq!(Ok(1.into()), state.nonce(&sender));
+        assert_ne!(None, state.shard_root(0).unwrap());
+    }
+
+    #[test]
+    fn get_asset_in_invalid_shard2() {
+        let mut state = get_temp_state();
+
+        let signed_parcel = Parcel {
+            action: Action::CreateShard,
+            fee: 5.into(),
+            ..Parcel::default()
+        }.sign(&secret().into());
+        let sender = signed_parcel.sender();
+        state.add_balance(&sender, &20.into()).unwrap();
+        let res = state.apply(&signed_parcel).unwrap();
+        assert_eq!(
+            ParcelOutcome::Single {
+                invoice: Invoice::Success,
+                error: None,
+            },
+            res
+        );
+        assert_eq!(Ok(14.into()), state.balance(&sender));
+        assert_eq!(Ok(1.into()), state.nonce(&sender));
+
+        let shard_id = 3;
+        assert_eq!(Ok(None), state.asset(shard_id, &AssetAddress::new(H256::random(), 0)));
+    }
+
+    #[test]
+    fn get_asset_scheme_in_invalid_shard2() {
+        let mut state = get_temp_state();
+
+        let signed_parcel = Parcel {
+            action: Action::CreateShard,
+            fee: 5.into(),
+            ..Parcel::default()
+        }.sign(&secret().into());
+        let sender = signed_parcel.sender();
+        state.add_balance(&sender, &20.into()).unwrap();
+        let res = state.apply(&signed_parcel).unwrap();
+        assert_eq!(
+            ParcelOutcome::Single {
+                invoice: Invoice::Success,
+                error: None,
+            },
+            res
+        );
+        assert_eq!(Ok(14.into()), state.balance(&sender));
+        assert_eq!(Ok(1.into()), state.nonce(&sender));
+
+        let shard_id = 3;
+        assert_eq!(Ok(None), state.asset_scheme(shard_id, &AssetSchemeAddress::new(H256::random())));
+    }
+
 }
