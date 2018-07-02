@@ -18,7 +18,7 @@
 
 use std::fmt;
 
-use ctypes::{self, Bytes, Public, U256};
+use ctypes::{self, Public, U256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::CacheableItem;
@@ -103,16 +103,6 @@ impl CacheableItem for Account {
     fn is_null(&self) -> bool {
         self.balance.is_zero() && self.nonce.is_zero()
     }
-
-    /// Create a new account from RLP.
-    fn from_rlp(rlp: &[u8]) -> Account {
-        ::rlp::decode(rlp)
-    }
-
-    /// Export to RLP.
-    fn rlp(&self) -> Bytes {
-        ::rlp::encode(self).into_vec()
-    }
 }
 
 const PREFIX: u8 = 'C' as u8;
@@ -156,13 +146,13 @@ mod tests {
     #[test]
     fn rlpio() {
         let a = Account::new(69u8.into(), 0u8.into());
-        let b = Account::from_rlp(&a.rlp());
+        let b = ::rlp::decode::<Account>(&a.rlp_bytes());
         assert_eq!(a.balance(), b.balance());
         assert_eq!(a.nonce(), b.nonce());
 
         let mut a = Account::new(69u8.into(), 0u8.into());
         a.set_regular_key(&Public::default());
-        let b = Account::from_rlp(&a.rlp());
+        let b = ::rlp::decode::<Account>(&a.rlp_bytes());
         assert_eq!(a.balance(), b.balance());
         assert_eq!(a.nonce(), b.nonce());
         assert_eq!(a.regular_key(), b.regular_key());
@@ -171,7 +161,7 @@ mod tests {
     #[test]
     fn new_account() {
         let a = Account::new(69u8.into(), 0u8.into());
-        assert_eq!(a.rlp().to_hex(), "c4434580c0");
+        assert_eq!(a.rlp_bytes().to_hex(), "c4434580c0");
         assert_eq!(*a.balance(), 69u8.into());
         assert_eq!(*a.nonce(), 0u8.into());
         assert_eq!(a.regular_key(), None);

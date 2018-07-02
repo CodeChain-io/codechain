@@ -29,7 +29,7 @@ use super::super::invoice::Invoice;
 use super::super::parcel::{AssetTransferInput, AssetTransferOutput};
 use super::super::state_db::StateDB;
 use super::super::{Transaction, TransactionError};
-use super::cache::{Cache, CacheableItem};
+use super::cache::Cache;
 use super::traits::{CheckpointId, StateWithCache, StateWithCheckpoint};
 use super::{
     Asset, AssetAddress, AssetScheme, AssetSchemeAddress, Backend, ShardBackend, ShardState, ShardStateInfo,
@@ -124,7 +124,7 @@ impl<B: Backend + ShardBackend> ShardStateInfo for ShardLevelState<B> {
         }
 
         let trie = self.trie_factory.readonly(self.db.as_hashdb(), &self.root)?;
-        Ok(trie.get_with(a.as_ref(), AssetScheme::from_rlp)?)
+        Ok(trie.get_with(a.as_ref(), ::rlp::decode::<AssetScheme>)?)
     }
 
     fn asset(&self, a: &AssetAddress) -> trie::Result<Option<Asset>> {
@@ -134,7 +134,7 @@ impl<B: Backend + ShardBackend> ShardStateInfo for ShardLevelState<B> {
         }
 
         let trie = self.trie_factory.readonly(self.db.as_hashdb(), &self.root)?;
-        Ok(trie.get_with(a.as_ref(), Asset::from_rlp)?)
+        Ok(trie.get_with(a.as_ref(), ::rlp::decode::<Asset>)?)
     }
 }
 

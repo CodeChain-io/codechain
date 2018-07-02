@@ -67,14 +67,6 @@ impl CacheableItem for Asset {
     fn is_null(&self) -> bool {
         self.amount == 0
     }
-
-    fn from_rlp(rlp: &[u8]) -> Self {
-        ::rlp::decode(rlp)
-    }
-
-    fn rlp(&self) -> Bytes {
-        ::rlp::encode(self).into_vec()
-    }
 }
 
 const PREFIX: u8 = 'A' as u8;

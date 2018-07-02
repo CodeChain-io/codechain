@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ctypes::{Address, Bytes, H256};
+use ctypes::{Address, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::CacheableItem;
@@ -98,14 +98,6 @@ impl CacheableItem for AssetScheme {
 
     fn is_null(&self) -> bool {
         self.amount == 0
-    }
-
-    fn from_rlp(rlp: &[u8]) -> Self {
-        ::rlp::decode(rlp)
-    }
-
-    fn rlp(&self) -> Bytes {
-        ::rlp::encode(self).into_vec()
     }
 }
 

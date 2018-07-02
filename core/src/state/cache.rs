@@ -22,7 +22,6 @@ use std::fmt;
 use std::hash::Hash;
 use std::vec::Vec;
 
-use ctypes::Bytes;
 use rlp::{Decodable, Encodable};
 use trie::{self, Result as TrieResult, Trie, TrieKinds, TrieMut};
 
@@ -30,9 +29,6 @@ pub trait CacheableItem: Clone + fmt::Debug + Decodable + Encodable {
     type Address: AsRef<[u8]> + Clone + fmt::Debug + Eq + Hash;
     fn overwrite_with(&mut self, other: Self);
     fn is_null(&self) -> bool;
-
-    fn from_rlp(rlp: &[u8]) -> Self;
-    fn rlp(&self) -> Bytes;
 }
 
 #[derive(Eq, PartialEq, Clone, Copy, Debug)]
@@ -222,7 +218,7 @@ where
             a.state = EntryState::Committed;
             match &a.item {
                 Some(item) => {
-                    trie.insert(address.as_ref(), &item.rlp())?;
+                    trie.insert(address.as_ref(), &item.rlp_bytes())?;
                 }
                 None => {
                     trie.remove(address.as_ref())?;
@@ -270,7 +266,7 @@ where
             Some(r) => Ok(r),
             None => {
                 // not found in the global cache, get from the DB and insert into local
-                let mut maybe_item = db.get_with(a.as_ref(), Item::from_rlp)?;
+                let mut maybe_item = db.get_with(a.as_ref(), ::rlp::decode::<Item>)?;
                 let r = f(maybe_item.as_ref());
                 self.insert(a, Entry::<Item>::new_clean(maybe_item));
                 Ok(r)
@@ -295,7 +291,7 @@ where
             match from_db() {
                 Some(item) => self.insert(a, Entry::<Item>::new_clean_cached(item)),
                 None => {
-                    let maybe_item = Entry::<Item>::new_clean(db.get_with(a.as_ref(), Item::from_rlp)?);
+                    let maybe_item = Entry::<Item>::new_clean(db.get_with(a.as_ref(), ::rlp::decode::<Item>)?);
                     self.insert(a, maybe_item);
                 }
             }

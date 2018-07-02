@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ccrypto::BLAKE_NULL_RLP;
-use ctypes::{Bytes, H256};
+use ctypes::H256;
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::CacheableItem;
@@ -50,14 +50,6 @@ impl CacheableItem for Shard {
 
     fn is_null(&self) -> bool {
         self.root == BLAKE_NULL_RLP
-    }
-
-    fn from_rlp(rlp: &[u8]) -> Self {
-        ::rlp::decode(rlp)
-    }
-
-    fn rlp(&self) -> Bytes {
-        ::rlp::encode(self).into_vec()
     }
 }
 

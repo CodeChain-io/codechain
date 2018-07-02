@@ -142,7 +142,7 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopStateInfo for TopLevelSt
 
         // because of lexical borrow of self.db
         let db = self.trie_factory.readonly(self.db.as_hashdb(), &self.root)?;
-        Ok(db.get_with(&a, Shard::from_rlp)?.map(|s| s.root().clone()))
+        Ok(db.get_with(&a, ::rlp::decode::<Shard>)?.map(|s| s.root().clone()))
     }
 
     fn asset_scheme(
