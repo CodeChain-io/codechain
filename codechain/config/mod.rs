@@ -134,7 +134,7 @@ pub fn load(config_path: &str) -> Result<Config, String> {
 
 impl Ipc {
     pub fn overwrite_with(&mut self, matches: &clap::ArgMatches) -> Result<(), String> {
-        if matches.is_present("no-jsonrpc") {
+        if matches.is_present("no-ipc") {
             self.disable = true;
         }
         if let Some(path) = matches.value_of("ipc-path") {

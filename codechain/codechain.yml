@@ -67,11 +67,17 @@ args:
         value_name: PORT
         help: Listen for rpc connections on PORT.
         takes_value: true
+    - no-ipc:
+        long: no-jsonrpc
+        help: Do not run JSON-RPC over IPC service.
+        takes_value: false
     - ipc-path:
         long: ipc-path
         value_name: path
         help: Specify custom path for JSON-RPC over IPC service.
         takes_value: true
+        conflicts_with:
+            - no-ipc
     - no-jsonrpc:
         long: no-jsonrpc
         help: Do not run jsonrpc.
