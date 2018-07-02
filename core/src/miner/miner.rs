@@ -38,6 +38,8 @@ use super::{MinerService, MinerStatus, ParcelImportResult};
 /// Configures the behaviour of the miner.
 #[derive(Debug, PartialEq)]
 pub struct MinerOptions {
+    /// Force the miner to reseal, even when nobody has asked for work.
+    pub force_sealing: bool,
     /// Reseal on receipt of new external parcels.
     pub reseal_on_external_parcel: bool,
     /// Reseal on receipt of new local parcels.
@@ -57,6 +59,7 @@ pub struct MinerOptions {
 impl Default for MinerOptions {
     fn default() -> Self {
         MinerOptions {
+            force_sealing: false,
             reseal_on_external_parcel: false,
             reseal_on_own_parcel: true,
             reseal_min_period: Duration::from_secs(2),
@@ -120,7 +123,7 @@ impl Miner {
             sealing_block_last_request: Mutex::new(0),
             sealing_work: Mutex::new(SealingWork {
                 queue: SealingQueue::new(options.work_queue_size),
-                enabled: spec.engine.seals_internally().is_some(),
+                enabled: options.force_sealing || spec.engine.seals_internally().is_some(),
             }),
             engine: spec.engine.clone(),
             options,
@@ -156,7 +159,8 @@ impl Miner {
         if sealing_work.enabled {
             ctrace!(MINER, "requires_reseal: sealing enabled");
             let last_request = *self.sealing_block_last_request.lock();
-            let should_disable_sealing = !has_local_parcels && self.engine.seals_internally().is_none()
+            let should_disable_sealing = !self.options.force_sealing && !has_local_parcels
+                && self.engine.seals_internally().is_none()
                 && best_block > last_request
                 && best_block - last_request > SEALING_TIMEOUT_IN_BLOCKS;
 
@@ -412,7 +416,9 @@ impl Miner {
     fn seal_and_import_block_internally<C>(&self, chain: &C, block: ClosedBlock) -> bool
     where
         C: BlockChain + ImportSealedBlock, {
-        if block.parcels().is_empty() && Instant::now() <= *self.next_mandatory_reseal.read() {
+        if block.parcels().is_empty() && !self.options.force_sealing
+            && Instant::now() <= *self.next_mandatory_reseal.read()
+        {
             return false
         }
         ctrace!(MINER, "seal_block_internally: attempting internal seal.");
