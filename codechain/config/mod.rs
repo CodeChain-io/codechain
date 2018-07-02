@@ -64,6 +64,7 @@ pub struct Mining {
     pub engine_signer: Option<Address>,
     pub mem_pool_size: usize,
     pub mem_pool_mem_limit: usize,
+    pub work_queue_size: usize,
 }
 
 #[derive(Deserialize)]
@@ -183,6 +184,9 @@ impl Mining {
         }
         if let Some(mem_pool_size) = matches.value_of("mem-pool-size") {
             self.mem_pool_size = mem_pool_size.parse().map_err(|_| "Invalid size")?;
+        }
+        if let Some(work_queue_size) = matches.value_of("work-queue-size") {
+            self.work_queue_size = work_queue_size.parse().map_err(|_| "Invalid size")?;
         }
         Ok(())
     }

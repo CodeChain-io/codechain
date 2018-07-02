@@ -211,6 +211,7 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
         0 => None,
         mem_size => Some(mem_size * 1024 * 1024),
     };
+    miner_options.work_queue_size = config.mining.work_queue_size;
     let miner = Miner::new(miner_options, &spec, Some(ap.clone()));
     let author = config.mining.author.unwrap_or(address);
     miner.set_author(author);
