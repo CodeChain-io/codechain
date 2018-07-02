@@ -438,13 +438,12 @@ impl IoHandler<Message> for Handler {
 
     fn stream_readable(&self, io: &IoContext<Message>, stream: StreamToken) -> IoHandlerResult<()> {
         match stream {
-            ACCEPT_TOKEN => loop {
+            ACCEPT_TOKEN => {
                 let mut manager = self.manager.lock();
                 if let Some(token) = manager.accept()? {
                     io.register_stream(token)?;
                 }
-                break
-            },
+            }
             FIRST_CONNECTION_TOKEN...LAST_CONNECTION_TOKEN => {
                 let _f = finally(|| {
                     if let Err(err) = io.update_registration(stream) {
