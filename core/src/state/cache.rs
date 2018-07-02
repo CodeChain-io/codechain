@@ -70,11 +70,6 @@ where
         self.state == EntryState::Dirty
     }
 
-    #[allow(dead_code)]
-    fn exists_and_is_null(&self) -> bool {
-        self.item.as_ref().map_or(false, |a| a.is_null())
-    }
-
     // Create a new account entry and mark it as dirty.
     fn new_dirty(item: Option<Item>) -> Self {
         Self {
