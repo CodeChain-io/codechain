@@ -44,10 +44,6 @@ impl Shard {
 impl CacheableItem for Shard {
     type Address = ShardAddress;
 
-    fn overwrite_with(&mut self, other: Self) {
-        self.root = other.root;
-    }
-
     fn is_null(&self) -> bool {
         self.root == BLAKE_NULL_RLP
     }

@@ -90,11 +90,6 @@ impl AssetSchemeAddress {
 
 impl CacheableItem for AssetScheme {
     type Address = AssetSchemeAddress;
-    fn overwrite_with(&mut self, other: Self) {
-        self.metadata = other.metadata;
-        self.amount = other.amount;
-        self.registrar = other.registrar;
-    }
 
     fn is_null(&self) -> bool {
         self.amount == 0

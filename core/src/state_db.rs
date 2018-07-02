@@ -320,7 +320,7 @@ impl StateDB {
                     if let Some(Some(existing)) = cache.cache.get_mut(&local_item.address) {
                         if let Some(new) = acc {
                             if local_item.modified {
-                                existing.overwrite_with(new);
+                                *existing = new;
                             }
                             continue
                         }

@@ -27,7 +27,6 @@ use trie::{self, Result as TrieResult, Trie, TrieKinds, TrieMut};
 
 pub trait CacheableItem: Clone + fmt::Debug + Decodable + Encodable {
     type Address: AsRef<[u8]> + Clone + fmt::Debug + Eq + Hash;
-    fn overwrite_with(&mut self, other: Self);
     fn is_null(&self) -> bool;
 }
 
@@ -106,7 +105,7 @@ where
         match other.item {
             Some(acc) => {
                 if let Some(ref mut ours) = self.item {
-                    ours.overwrite_with(acc);
+                    *ours = acc;
                 }
             }
             None => self.item = None,

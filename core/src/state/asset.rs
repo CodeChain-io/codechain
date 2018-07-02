@@ -57,13 +57,6 @@ impl Asset {
 impl CacheableItem for Asset {
     type Address = AssetAddress;
 
-    fn overwrite_with(&mut self, other: Self) {
-        self.asset_type = other.asset_type;
-        self.lock_script_hash = other.lock_script_hash;
-        self.parameters = other.parameters;
-        self.amount = other.amount;
-    }
-
     fn is_null(&self) -> bool {
         self.amount == 0
     }

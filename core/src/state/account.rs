@@ -90,14 +90,6 @@ impl Account {
 
 impl CacheableItem for Account {
     type Address = ctypes::Address;
-    /// Replace self with the data from other account.
-    /// Basic account data and all modifications are overwritten
-    /// with new values.
-    fn overwrite_with(&mut self, other: Self) {
-        self.balance = other.balance;
-        self.nonce = other.nonce;
-        self.regular_key = other.regular_key;
-    }
 
     /// Check if account has zero nonce, balance.
     fn is_null(&self) -> bool {
@@ -194,10 +186,11 @@ mod tests {
 
     #[test]
     fn overwrite() {
-        let mut a = Account::new(69u8.into(), 0u8.into());
+        let mut a0 = Account::new(69u8.into(), 0u8.into());
+        let a = &mut a0;
         let mut b = Account::new(79u8.into(), 1u8.into());
         b.set_regular_key(&Public::default());
-        a.overwrite_with(b);
+        *a = b;
         assert_eq!(*a.balance(), 79u8.into());
         assert_eq!(*a.nonce(), 1u8.into());
         assert_eq!(a.regular_key(), Some(Public::default()));
