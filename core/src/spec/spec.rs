@@ -22,7 +22,7 @@ use cjson;
 use ctypes::{Address, Bytes, H256, U256};
 use memorydb::MemoryDB;
 use parking_lot::RwLock;
-use rlp::{Rlp, RlpStream};
+use rlp::{Encodable, Rlp, RlpStream};
 use state::Backend;
 use trie::TrieFactory;
 
@@ -129,15 +129,16 @@ impl Spec {
         }
     }
 
-    fn initialize_accounts<T: Backend>(&self, trie_factory: &TrieFactory, mut db: T) -> Result<T, Error> {
+    fn initialize_accounts<DB: Backend>(&self, trie_factory: &TrieFactory, mut db: DB) -> Result<DB, Error> {
         let mut root = BLAKE_NULL_RLP;
 
         // basic accounts in spec.
         {
             let mut t = trie_factory.create(db.as_hashdb_mut(), &mut root);
 
-            for (address, account) in self.genesis_state.get().iter() {
-                t.insert(&**address, &account.rlp())?;
+            for (address, account) in self.genesis_state.get() {
+                let r = t.insert(&**address, &account.rlp_bytes())?;
+                debug_assert_eq!(None, r);
             }
         }
 
@@ -146,7 +147,7 @@ impl Spec {
     }
 
     /// Ensure that the given state DB has the trie nodes in for the genesis state.
-    pub fn ensure_db_good<T: Backend>(&self, db: T, trie_factory: &TrieFactory) -> Result<T, Error> {
+    pub fn ensure_genesis_state<DB: Backend>(&self, db: DB, trie_factory: &TrieFactory) -> Result<DB, Error> {
         if db.as_hashdb().contains(&self.state_root()) {
             return Ok(db)
         }

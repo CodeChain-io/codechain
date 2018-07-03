@@ -17,8 +17,8 @@
 use std::fmt;
 
 use cjson;
-use ctypes::{Bytes, Public, U256};
-use rlp::RlpStream;
+use ctypes::{Public, U256};
+use rlp::{Encodable, RlpStream};
 
 use super::state::Account;
 
@@ -45,17 +45,17 @@ impl PodAccount {
             regular_key: acc.regular_key(),
         }
     }
+}
 
-    /// Returns the RLP for this account.
-    pub fn rlp(&self) -> Bytes {
+impl Encodable for PodAccount {
+    fn rlp_append(&self, stream: &mut RlpStream) {
         // Don't forget to sync the field list with Account.
-        let mut stream = RlpStream::new_list(4);
         const PREFIX: u8 = 'C' as u8;
+        stream.begin_list(4);
         stream.append(&PREFIX);
         stream.append(&self.balance);
         stream.append(&self.nonce);
         stream.append(&self.regular_key);
-        stream.out()
     }
 }
 
