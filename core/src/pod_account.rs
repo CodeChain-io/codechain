@@ -34,19 +34,6 @@ pub struct PodAccount {
     pub regular_key: Option<Public>,
 }
 
-impl PodAccount {
-    /// Convert Account to a PodAccount.
-    /// NOTE: This will silently fail unless the account is fully cached.
-    #[allow(dead_code)]
-    pub fn from_account(acc: &Account) -> PodAccount {
-        PodAccount {
-            balance: *acc.balance(),
-            nonce: *acc.nonce(),
-            regular_key: acc.regular_key(),
-        }
-    }
-}
-
 impl Encodable for PodAccount {
     fn rlp_append(&self, stream: &mut RlpStream) {
         // Don't forget to sync the field list with Account.
