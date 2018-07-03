@@ -89,11 +89,13 @@ pub enum BlockError {
     /// value for score. This error needs only provide bounds of which it is out.
     ScoreOutOfBounds(OutOfBounds<U256>),
     /// Score header field is invalid; this is a strong error used after getting a definitive
-    /// value for score (which is provided).
-    InvalidScore(Mismatch<U256>),
+    /// value for difficulty (which is provided).
+    InvalidScore(OutOfBounds<U256>),
     /// Seal element of type H256 (max_hash for Ethash, but could be something else for
     /// other seal engines) is out of bounds.
     MismatchedH256SealElement(Mismatch<H256>),
+    /// Proof-of-work aspect of seal is invalid.
+    InvalidProofOfWork,
     /// Some low-level aspect of the seal is incorrect.
     InvalidSeal,
     /// Invoices trie root header field is invalid.
@@ -125,8 +127,9 @@ impl fmt::Display for BlockError {
             InvalidStateRoot(mis) => format!("Invalid state root in header: {}", mis),
             InvalidParcelsRoot(mis) => format!("Invalid parcels root in header: {}", mis),
             ScoreOutOfBounds(oob) => format!("Invalid block score: {}", oob),
-            InvalidScore(mis) => format!("Invalid block score: {}", mis),
+            InvalidScore(oob) => format!("Invalid block score: {}", oob),
             MismatchedH256SealElement(mis) => format!("Seal element out of bounds: {}", mis),
+            InvalidProofOfWork => "Invalid proof of work.".into(),
             InvalidSeal => "Block has invalid seal.".into(),
             InvalidInvoicesRoot(mis) => format!("Invalid invoices trie root in header: {}", mis),
             InvalidTimestamp(oob) => format!("Invalid timestamp in header: {}", oob),
