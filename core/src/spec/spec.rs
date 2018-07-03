@@ -136,8 +136,9 @@ impl Spec {
             let mut t = trie_factory.create(db.as_hashdb_mut(), &mut root);
 
             for (address, account) in &*self.genesis_state {
-                let r = t.insert(&**address, &account.rlp_bytes())?;
-                debug_assert_eq!(None, r);
+                let r = t.insert(&**address, &account.rlp_bytes());
+                debug_assert_eq!(Ok(None), r);
+                r?;
             }
         }
 
