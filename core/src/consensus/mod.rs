@@ -207,7 +207,9 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
         unimplemented!()
     }
 
-    fn network_extension(&self) -> Option<Arc<NetworkExtension>>;
+    fn network_extension(&self) -> Option<Arc<NetworkExtension>> {
+        None
+    }
 }
 
 /// Results of a query of whether an epoch change occurred at the given block.

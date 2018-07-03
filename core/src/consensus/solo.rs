@@ -14,10 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::sync::Arc;
-
 use cjson;
-use cnetwork::NetworkExtension;
 use ctypes::U256;
 
 use super::super::machine::{Header, LiveBlock, Machine, Parcels};
@@ -85,10 +82,6 @@ where
     fn on_close_block(&self, block: &mut M::LiveBlock) -> Result<(), M::Error> {
         let author = *LiveBlock::header(&*block).author();
         self.machine.add_balance(block, &author, &self.params.block_reward)
-    }
-
-    fn network_extension(&self) -> Option<Arc<NetworkExtension>> {
-        None
     }
 }
 

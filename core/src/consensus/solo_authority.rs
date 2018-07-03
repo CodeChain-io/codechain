@@ -18,7 +18,6 @@ use std::sync::{Arc, Weak};
 
 use cjson;
 use ckey::{public_to_address, recover_ecdsa, ECDSASignature};
-use cnetwork::NetworkExtension;
 use ctypes::{Address, H256, H520, U256};
 use parking_lot::RwLock;
 
@@ -203,10 +202,6 @@ impl ConsensusEngine<CodeChainMachine> for SoloAuthority {
 
     fn sign(&self, hash: H256) -> Result<ECDSASignature, Error> {
         self.signer.read().sign(hash).map_err(Into::into)
-    }
-
-    fn network_extension(&self) -> Option<Arc<NetworkExtension>> {
-        None
     }
 }
 

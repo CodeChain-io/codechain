@@ -14,10 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::sync::Arc;
-
 use cjson;
-use cnetwork::NetworkExtension;
 use ctypes::U256;
 
 use super::super::machine::{Header, LiveBlock, Machine};
@@ -76,9 +73,5 @@ impl<M: Machine> ConsensusEngine<M> for NullEngine<M> {
 
     fn verify_local_seal(&self, _header: &M::Header) -> Result<(), M::Error> {
         Ok(())
-    }
-
-    fn network_extension(&self) -> Option<Arc<NetworkExtension>> {
-        None
     }
 }
