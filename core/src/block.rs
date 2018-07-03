@@ -455,7 +455,7 @@ mod tests {
     fn open_block() {
         let spec = Spec::new_test();
         let genesis_header = spec.genesis_header();
-        let db = spec.ensure_db_good(get_temp_state_db(), &Default::default()).unwrap();
+        let db = spec.ensure_genesis_state(get_temp_state_db(), &Default::default()).unwrap();
         let b = OpenBlock::new(&*spec.engine, Default::default(), db, &genesis_header, Address::zero(), vec![], false)
             .unwrap();
         let parent_parcels_root = genesis_header.parcels_root().clone();

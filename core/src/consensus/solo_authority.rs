@@ -240,7 +240,7 @@ mod tests {
     fn can_generate_seal() {
         let spec = Spec::new_test_solo_authority();
         let engine = &*spec.engine;
-        let db = spec.ensure_db_good(get_temp_state_db(), &Default::default()).unwrap();
+        let db = spec.ensure_genesis_state(get_temp_state_db(), &Default::default()).unwrap();
         let genesis_header = spec.genesis_header();
         let b =
             OpenBlock::new(engine, Default::default(), db, &genesis_header, Default::default(), vec![], false).unwrap();
