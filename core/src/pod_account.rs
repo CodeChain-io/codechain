@@ -34,15 +34,16 @@ pub struct PodAccount {
     pub regular_key: Option<Public>,
 }
 
+impl<'a> Into<Account> for &'a PodAccount {
+    fn into(self) -> Account {
+        Account::new_with_key(self.balance, self.nonce, self.regular_key)
+    }
+}
+
 impl Encodable for PodAccount {
     fn rlp_append(&self, stream: &mut RlpStream) {
-        // Don't forget to sync the field list with Account.
-        const PREFIX: u8 = 'C' as u8;
-        stream.begin_list(4);
-        stream.append(&PREFIX);
-        stream.append(&self.balance);
-        stream.append(&self.nonce);
-        stream.append(&self.regular_key);
+        let account: Account = self.into();
+        account.rlp_append(stream);
     }
 }
 
