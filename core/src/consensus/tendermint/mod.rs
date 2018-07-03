@@ -137,7 +137,7 @@ pub struct Tendermint {
 
 impl Tendermint {
     /// Create a new instance of Tendermint engine
-    pub fn new(our_params: TendermintParams, machine: CodeChainMachine) -> Result<Arc<Self>, Error> {
+    pub fn new(our_params: TendermintParams, machine: CodeChainMachine) -> Arc<Self> {
         let extension = TendermintExtension::new(our_params.timeouts);
         let engine = Arc::new(Tendermint {
             client: RwLock::new(None),
@@ -158,7 +158,7 @@ impl Tendermint {
         });
         engine.extension.register_tendermint(Arc::downgrade(&engine));
 
-        Ok(engine)
+        engine
     }
 
     /// Find the designated for the given view.

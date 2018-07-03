@@ -124,8 +124,7 @@ impl Spec {
             cjson::spec::Engine::SoloAuthority(solo_authority) => {
                 Arc::new(SoloAuthority::new(solo_authority.params.into(), machine))
             }
-            cjson::spec::Engine::Tendermint(tendermint) => Tendermint::new(tendermint.params.into(), machine)
-                .expect("Failed to start the Tendermint consensus engine."),
+            cjson::spec::Engine::Tendermint(tendermint) => Tendermint::new(tendermint.params.into(), machine),
         }
     }
 
