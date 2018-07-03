@@ -100,9 +100,9 @@ In the current version, it's only supported through HTTP.
   * [miner_getWork](#miner_getwork)
   * [miner_submitWork](#miner_submitwork)
 ***
-  * [net_shareSecret](#net_sharesecret)
-  * [net_isConnected](#net_isconnected)
-  * [net_disconnect](#net_disconnect)
+  * [net_shareSecret](#net_sharesecret) (not implemented yet)
+  * [net_isConnected](#net_isconnected) (not implemented yet)
+  * [net_disconnect](#net_disconnect) (not implemented yet)
 ***
  * [devel_getStateTrieKeys](#devel_getstatetriekeys)
  * [devel_getStateTrieValue](#devel_getstatetrievalue)
