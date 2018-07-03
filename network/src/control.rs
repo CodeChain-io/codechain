@@ -14,12 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod chain;
-mod devel;
-mod miner;
-mod net;
+use ctypes::H256;
 
-pub use self::chain::Chain;
-pub use self::devel::Devel;
-pub use self::miner::Miner;
-pub use self::net::Net;
+use super::addr::SocketAddr;
+
+pub trait Control: Send + Sync {
+    fn register_secret(&self, secret: H256, addr: SocketAddr);
+    fn connect(&self, addr: SocketAddr);
+}

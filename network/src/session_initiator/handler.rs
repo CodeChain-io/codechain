@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::error;
 use std::fmt;
 use std::io;
@@ -24,6 +24,7 @@ use ccrypto::aes::SymmetricCipherError;
 use cfinally::finally;
 use cio::{IoContext, IoError as CIoError, IoHandler, IoHandlerResult, IoManager, StreamToken, TimerToken};
 use ckey::Error as KeysError;
+use ctypes::Secret;
 use mio::deprecated::EventLoop;
 use mio::Token;
 use parking_lot::Mutex;
@@ -43,6 +44,7 @@ const END_OF_REQUEST_TOKEN: TimerToken = BEGIN_OF_REQUEST_TOKEN + NUMBER_OF_REQU
 struct Requests {
     request_tokens: TokenGenerator,
     requests: HashMap<usize, SocketAddr>,
+    manually_connected_address: HashSet<SocketAddr>,
 }
 
 impl Requests {
@@ -50,6 +52,7 @@ impl Requests {
         Self {
             request_tokens: TokenGenerator::new(BEGIN_OF_REQUEST_TOKEN, NUMBER_OF_REQUESTS),
             requests: HashMap::new(),
+            manually_connected_address: HashSet::new(),
         }
     }
 
@@ -180,6 +183,8 @@ type Result<T> = ::std::result::Result<T, Error>;
 #[derive(Clone, Debug, PartialOrd, PartialEq)]
 pub enum Message {
     ConnectTo(SocketAddr),
+    ManuallyConnectTo(SocketAddr),
+    PreimportSecret(Secret, SocketAddr),
     RequestSession(usize),
 }
 
@@ -246,15 +251,26 @@ impl SessionInitiator {
                     ctrace!(NET, "{:?} is not a new candidate", from);
                 }
 
-                let requester_pub_key = self.routing_table
-                    .register_key_pair_for_secret(from)
-                    .ok_or(Error::General("Cannot register key pair"))?;
+                if self.routing_table.is_secret_preimported(from) {
+                    let seq = self.requests.gen(from.clone())?;
+                    io.register_timer_once(seq, MESSAGE_TIMEOUT_MS)?;
 
-                let seq = self.requests.gen(from.clone())?;
-                io.register_timer_once(seq, MESSAGE_TIMEOUT_MS)?;
+                    let encrypted_nonce =
+                        self.routing_table.request_session(from).ok_or(Error::General("Cannot generate nonce"))?;
 
-                let message = message::Message::secret_request(seq as u64, requester_pub_key);
-                self.server.enqueue(message, from.clone())?;
+                    let message = message::Message::nonce_request(seq as u64, encrypted_nonce);
+                    self.server.enqueue(message, from.clone())?;
+                } else {
+                    let requester_pub_key = self.routing_table
+                        .register_key_pair_for_secret(from)
+                        .ok_or(Error::General("Cannot register key pair"))?;
+
+                    let seq = self.requests.gen(from.clone())?;
+                    io.register_timer_once(seq, MESSAGE_TIMEOUT_MS)?;
+
+                    let message = message::Message::secret_request(seq as u64, requester_pub_key);
+                    self.server.enqueue(message, from.clone())?;
+                }
 
                 Ok(())
             }
@@ -325,6 +341,8 @@ impl SessionInitiator {
                     return Ok(())
                 }
 
+                self.requests.manually_connected_address.take(from);
+
                 if !self.routing_table.create_allowed_session(from, &encrypted_nonce) {
                     cwarn!(NET, "Cannot create session to {:?}", from);
                 }
@@ -335,6 +353,8 @@ impl SessionInitiator {
                     ctrace!(NET, "Invalid message({:?}) from {:?}", message, from);
                     return Ok(())
                 }
+
+                self.routing_table.reset_imported_secret(from);
 
                 cinfo!(NET, "Connection to {:?} refused(reason: {})", from, reason);
                 Ok(())
@@ -389,6 +409,9 @@ impl IoHandler<Message> for Handler {
                 {
                     None => {}
                     Some(address) => {
+                        if let Some(_) = session_initiator.requests.manually_connected_address.take(&address) {
+                            cinfo!(NET, "Timeout occured when connecting to {}", address);
+                        }
                         session_initiator.routing_table.remove_node(address);
                     }
                 }
@@ -406,6 +429,13 @@ impl IoHandler<Message> for Handler {
                 session_initiator.create_new_connection(&socket_address, io)?;
                 io.update_registration(RECEIVE_TOKEN)?;
             }
+            Message::ManuallyConnectTo(socket_address) => {
+                let mut session_initiator = self.session_initiator.lock();
+                session_initiator.routing_table.add_candidate(socket_address.clone());
+                session_initiator.requests.manually_connected_address.insert(socket_address.clone());
+                session_initiator.create_new_connection(&socket_address, io)?;
+                io.update_registration(RECEIVE_TOKEN)?;
+            }
             Message::RequestSession(n) => {
                 let mut session_initiator = self.session_initiator.lock();
                 let addresses = session_initiator.routing_table.candidates(n);
@@ -418,6 +448,12 @@ impl IoHandler<Message> for Handler {
                     for address in addresses {
                         session_initiator.create_new_connection(&address, io)?;
                     }
+                }
+            }
+            Message::PreimportSecret(secret, socket_address) => {
+                let mut session_initiator = self.session_initiator.lock();
+                if !session_initiator.routing_table.preimport_secret(*secret, &socket_address) {
+                    cwarn!(NET, "Cannot import the secret key for already connected host");
                 }
             }
         };
