@@ -14,28 +14,37 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod account;
-mod blake_pow;
-mod engine;
-mod genesis;
-mod null_engine;
-mod params;
-mod seal;
-mod solo;
-mod solo_authority;
-mod spec;
-mod state;
-mod tendermint;
+use super::super::uint::Uint;
 
-pub use self::account::Account;
-pub use self::blake_pow::{BlakePoW, BlakePoWParams};
-pub use self::engine::Engine;
-pub use self::genesis::Genesis;
-pub use self::null_engine::{NullEngine, NullEngineParams};
-pub use self::params::Params;
-pub use self::seal::{Seal, TendermintSeal};
-pub use self::solo::{Solo, SoloParams};
-pub use self::solo_authority::{SoloAuthority, SoloAuthorityParams};
-pub use self::spec::Spec;
-pub use self::state::State;
-pub use self::tendermint::{Tendermint, TendermintParams};
+#[derive(Debug, PartialEq, Deserialize)]
+pub struct BlakePoWParams {
+    /// Block reward.
+    #[serde(rename = "blockReward")]
+    pub block_reward: Option<Uint>,
+}
+
+#[derive(Debug, PartialEq, Deserialize)]
+pub struct BlakePoW {
+    pub params: BlakePoWParams,
+}
+
+#[cfg(test)]
+mod tests {
+    use ctypes::U256;
+    use serde_json;
+
+    use super::super::super::uint::Uint;
+    use super::*;
+
+    #[test]
+    fn blake_pow_deserialization() {
+        let s = r#"{
+			"params": {
+				"blockReward": "0x0d"
+			}
+		}"#;
+
+        let deserialized: BlakePoW = serde_json::from_str(s).unwrap();
+        assert_eq!(deserialized.params.block_reward, Some(Uint(U256::from(0x0d))));
+    }
+}

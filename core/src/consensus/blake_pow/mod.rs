@@ -14,28 +14,20 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod account;
-mod blake_pow;
-mod engine;
-mod genesis;
-mod null_engine;
 mod params;
-mod seal;
-mod solo;
-mod solo_authority;
-mod spec;
-mod state;
-mod tendermint;
 
-pub use self::account::Account;
-pub use self::blake_pow::{BlakePoW, BlakePoWParams};
-pub use self::engine::Engine;
-pub use self::genesis::Genesis;
-pub use self::null_engine::{NullEngine, NullEngineParams};
-pub use self::params::Params;
-pub use self::seal::{Seal, TendermintSeal};
-pub use self::solo::{Solo, SoloParams};
-pub use self::solo_authority::{SoloAuthority, SoloAuthorityParams};
-pub use self::spec::Spec;
-pub use self::state::State;
-pub use self::tendermint::{Tendermint, TendermintParams};
+use self::params::BlakePoWParams;
+
+pub struct BlakePoW<M> {
+    params: BlakePoWParams,
+    machine: M,
+}
+
+impl<M> BlakePoW<M> {
+    pub fn new(params: BlakePoWParams, machine: M) -> Self {
+        Self {
+            params,
+            machine,
+        }
+    }
+}
