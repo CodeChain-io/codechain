@@ -72,6 +72,7 @@ mod machine;
 mod miner;
 mod parcel;
 mod pod_account;
+mod pod_shard_metadata;
 mod pod_state;
 mod service;
 mod spec;
