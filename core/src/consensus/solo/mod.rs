@@ -14,26 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use cjson;
-use ctypes::U256;
+mod params;
 
+use self::params::SoloParams;
 use super::super::machine::{Header, LiveBlock, Machine, Parcels};
 use super::{ConsensusEngine, Seal};
-
-/// Params for a null engine.
-#[derive(Clone, Default)]
-pub struct SoloParams {
-    /// base reward for a block.
-    pub block_reward: U256,
-}
-
-impl From<cjson::spec::SoloParams> for SoloParams {
-    fn from(p: cjson::spec::SoloParams) -> Self {
-        SoloParams {
-            block_reward: p.block_reward.map_or_else(Default::default, Into::into),
-        }
-    }
-}
 
 /// A consensus engine which does not provide any consensus mechanism.
 pub struct Solo<M> {

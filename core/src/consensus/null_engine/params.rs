@@ -17,9 +17,6 @@
 use cjson;
 use ctypes::U256;
 
-use super::super::machine::{Header, LiveBlock, Machine};
-use super::ConsensusEngine;
-
 /// Params for a null engine.
 #[derive(Clone, Default)]
 pub struct NullEngineParams {
@@ -32,46 +29,5 @@ impl From<cjson::spec::NullEngineParams> for NullEngineParams {
         NullEngineParams {
             block_reward: p.block_reward.map_or_else(Default::default, Into::into),
         }
-    }
-}
-
-/// An engine which does not provide any consensus mechanism and does not seal blocks.
-pub struct NullEngine<M> {
-    params: NullEngineParams,
-    machine: M,
-}
-
-impl<M> NullEngine<M> {
-    /// Returns new instance of NullEngine with default VM Factory
-    pub fn new(params: NullEngineParams, machine: M) -> Self {
-        NullEngine {
-            params,
-            machine,
-        }
-    }
-}
-
-impl<M: Default> Default for NullEngine<M> {
-    fn default() -> Self {
-        Self::new(Default::default(), Default::default())
-    }
-}
-
-impl<M: Machine> ConsensusEngine<M> for NullEngine<M> {
-    fn name(&self) -> &str {
-        "NullEngine"
-    }
-
-    fn machine(&self) -> &M {
-        &self.machine
-    }
-
-    fn on_close_block(&self, block: &mut M::LiveBlock) -> Result<(), M::Error> {
-        let author = *LiveBlock::header(&*block).author();
-        self.machine.add_balance(block, &author, &self.params.block_reward)
-    }
-
-    fn verify_local_seal(&self, _header: &M::Header) -> Result<(), M::Error> {
-        Ok(())
     }
 }
