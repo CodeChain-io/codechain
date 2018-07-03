@@ -62,7 +62,7 @@ use ckeystore::accounts_dir::RootDiskDirectory;
 use ckeystore::KeyStore;
 use clap::ArgMatches;
 use clogger::LoggerConfig;
-use cnetwork::{NetworkConfig, NetworkService, SocketAddr};
+use cnetwork::{NetworkConfig, NetworkControl, NetworkService, SocketAddr};
 use creactor::EventLoop;
 use crpc::{HttpServer, IpcServer};
 use csync::{BlockSyncExtension, ParcelSyncExtension, SnapshotService};
@@ -78,17 +78,21 @@ pub const APP_INFO: AppInfo = AppInfo {
     author: "Kodebox",
 };
 
-pub fn rpc_start(cfg: RpcHttpConfig, deps: Arc<rpc_apis::ApiDependencies>) -> Result<HttpServer, String> {
+pub fn rpc_start<NC>(cfg: RpcHttpConfig, deps: Arc<rpc_apis::ApiDependencies<NC>>) -> Result<HttpServer, String>
+where
+    NC: NetworkControl + Send + Sync, {
     info!("RPC Listening on {}", cfg.port);
     rpc::new_http(cfg, deps)
 }
 
-pub fn rpc_ipc_start(cfg: RpcIpcConfig, deps: Arc<rpc_apis::ApiDependencies>) -> Result<IpcServer, String> {
+pub fn rpc_ipc_start<NC>(cfg: RpcIpcConfig, deps: Arc<rpc_apis::ApiDependencies<NC>>) -> Result<IpcServer, String>
+where
+    NC: NetworkControl + Send + Sync, {
     info!("IPC Listening on {}", cfg.socket_addr);
     rpc::new_ipc(cfg, deps)
 }
 
-pub fn network_start(cfg: &NetworkConfig) -> Result<NetworkService, String> {
+pub fn network_start(cfg: &NetworkConfig) -> Result<Arc<NetworkService>, String> {
     info!("Handshake Listening on {}", cfg.port);
     let address = SocketAddr::v4(127, 0, 0, 1, cfg.port);
     let service = NetworkService::start(address, cfg.min_peers, cfg.max_peers)
@@ -233,30 +237,7 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
     let miner = new_miner(&config, &spec)?;
     let client = client_start(&config, &spec, miner.clone())?;
 
-    let rpc_apis_deps = Arc::new(rpc_apis::ApiDependencies {
-        client: client.client(),
-        miner: miner.clone(),
-    });
-
-    let _rpc_server = {
-        if !config.rpc.disable {
-            let rpc_config = (&config.rpc).into();
-            Some(rpc_start(rpc_config, rpc_apis_deps.clone())?)
-        } else {
-            None
-        }
-    };
-
-    let _ipc_server = {
-        if !config.ipc.disable {
-            let ipc_config = (&config.ipc).into();
-            Some(rpc_ipc_start(ipc_config, rpc_apis_deps.clone())?)
-        } else {
-            None
-        }
-    };
-
-    let _network_service = {
+    let network_service = {
         if !config.network.disable {
             let network_config = (&config.network).into();
             let service = network_start(&network_config)?;
@@ -283,6 +264,30 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
                 service.connect_to(address)?;
             }
             Some(service)
+        } else {
+            None
+        }
+    };
+
+    let rpc_apis_deps = Arc::new(rpc_apis::ApiDependencies {
+        client: client.client(),
+        miner: Arc::clone(&miner),
+        network_control: network_service.as_ref().map(Arc::clone),
+    });
+
+    let _rpc_server = {
+        if !config.rpc.disable {
+            let rpc_config = (&config.rpc).into();
+            Some(rpc_start(rpc_config, Arc::clone(&rpc_apis_deps))?)
+        } else {
+            None
+        }
+    };
+
+    let _ipc_server = {
+        if !config.ipc.disable {
+            let ipc_config = (&config.ipc).into();
+            Some(rpc_ipc_start(ipc_config, Arc::clone(&rpc_apis_deps))?)
         } else {
             None
         }

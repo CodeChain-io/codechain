@@ -14,12 +14,15 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod chain;
-mod devel;
-mod miner;
-mod net;
+use ctypes::H256;
+use jsonrpc_core::Result;
 
-pub use self::chain::Chain;
-pub use self::devel::Devel;
-pub use self::miner::Miner;
-pub use self::net::Net;
+build_rpc_trait! {
+    pub trait Net {
+        # [rpc(name = "net_shareSecret")]
+        fn share_secret(&self, H256, ::std::net::IpAddr, u16) -> Result<()>;
+
+        # [rpc(name = "net_connect")]
+        fn connect(&self, ::std::net::IpAddr, u16) -> Result<()>;
+    }
+}

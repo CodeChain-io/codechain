@@ -28,13 +28,23 @@ use super::session::{Nonce, Session};
 use super::{IntoSocketAddr, NodeId, SocketAddr};
 
 #[derive(Clone, Debug, PartialEq)]
+enum SecretOrigin {
+    Shared,
+    Preimported,
+}
+
+// Intermediate : Middle state in changing state, ex) A state -> Intermediate -> B state
+// Discovery flow : Candidate -> Alive -> KeyPairShared -> SecretShared -> TemporaryNonceShared -> SessionShared -> Established
+// Offline secret exchange flow : SecretpreImported -> TemporaryNonceShared -> SessionShared -> Established
+#[derive(Clone, Debug, PartialEq)]
 enum State {
     Intermediate,
     Candidate,
     Alive,
+    SecretPreimported(Secret),
     KeyPairShared(KeyPair),
     SecretShared(Secret),
-    TemporaryNonceShared(Secret, Nonce),
+    TemporaryNonceShared(Secret, Nonce, SecretOrigin),
     SessionShared(Session),
     Established(NodeId),
 }
@@ -57,6 +67,47 @@ impl RoutingTable {
             remote_to_local_node_ids: RwLock::new(HashMap::new()),
             rng: Mutex::new(OsRng::new().unwrap()),
         })
+    }
+
+    pub fn is_secret_preimported(&self, addr: &SocketAddr) -> bool {
+        let entries = self.entries.read();
+        let remote_node_id = addr.into();
+        if let Some(entry) = entries.get(&remote_node_id) {
+            let entry = entry.lock();
+            let old_state = entry.replace(State::Intermediate);
+            match old_state {
+                State::SecretPreimported(_) => {
+                    entry.set(old_state);
+                    return true
+                }
+                _ => {
+                    entry.set(old_state);
+                    return false
+                }
+            }
+        }
+        false
+    }
+
+    pub fn reset_imported_secret(&self, addr: &SocketAddr) -> bool {
+        let entries = self.entries.read();
+        let remote_node_id = addr.into();
+        if let Some(entry) = entries.get(&remote_node_id) {
+            let entry = entry.lock();
+            let old_state = entry.replace(State::Intermediate);
+            match old_state {
+                State::TemporaryNonceShared(secret, _nonce, SecretOrigin::Preimported) => {
+                    cinfo!(NET, "{:?} does not load secret", addr);
+                    entry.set(State::SecretPreimported(secret));
+                    return true
+                }
+                _ => {
+                    entry.set(old_state);
+                    return false
+                }
+            }
+        }
+        false
     }
 
     pub fn all_addresses(&self) -> HashSet<SocketAddr> {
@@ -99,17 +150,25 @@ impl RoutingTable {
         if let Some(entry) = entries.get(&remote_node_id) {
             let entry = entry.lock();
             let old_state = entry.replace(State::Intermediate);
-            if old_state != State::Candidate {
-                entry.set(old_state);
-                ctrace!(ROUTING_TABLE, "{:?} is already alive", addr);
-                return false
+            match old_state {
+                State::Candidate => {
+                    entry.set(State::Alive);
+                    let t = remote_to_local_node_ids.insert(remote_node_id, local_node_id);
+                    assert_eq!(None, t);
+                    ctrace!(ROUTING_TABLE, "Mark {:?} alive", addr);
+                    return true
+                }
+                State::SecretPreimported(_secret) => {
+                    entry.set(old_state);
+                    remote_to_local_node_ids.insert(remote_node_id, local_node_id);
+                    return true
+                }
+                _ => {
+                    entry.set(old_state);
+                    ctrace!(ROUTING_TABLE, "{:?} is already alive", addr);
+                    return false
+                }
             }
-            entry.set(State::Alive);
-
-            let t = remote_to_local_node_ids.insert(remote_node_id, local_node_id);
-            assert_eq!(None, t);
-            ctrace!(ROUTING_TABLE, "Mark {:?} alive", addr);
-            return true
         }
 
         let t = entries.insert(remote_node_id, Mutex::new(Cell::new(State::Alive)));
@@ -117,6 +176,31 @@ impl RoutingTable {
         let t = remote_to_local_node_ids.insert(remote_node_id, local_node_id);
         assert_eq!(None, t);
         ctrace!(ROUTING_TABLE, "Add {:?} as alive", addr);
+        true
+    }
+
+    pub fn preimport_secret(&self, secret: Secret, addr: &SocketAddr) -> bool {
+        let mut entries = self.entries.write();
+        let remote_node_id = addr.into();
+
+        if let Some(entry) = entries.get(&remote_node_id) {
+            let entry = entry.lock();
+            let old_state = entry.replace(State::Intermediate);
+
+            match old_state {
+                State::Established(_) => {
+                    entry.set(old_state);
+                    return false
+                }
+                _ => {
+                    entry.set(State::SecretPreimported(secret));
+                    return true
+                }
+            }
+        }
+
+        let t = entries.insert(remote_node_id, Mutex::new(Cell::new(State::SecretPreimported(secret))));
+        debug_assert!(t.is_none());
         true
     }
 
@@ -172,9 +256,20 @@ impl RoutingTable {
         let result = entries.get(&remote_node_id).and_then(|entry| {
             let entry = entry.lock();
             let old_state = entry.replace(State::Intermediate);
-            if let State::SecretShared(shared_secret) = &old_state {
+            let shared_secret = match old_state {
+                State::SecretShared(shared_secret) => Some(shared_secret),
+                State::SecretPreimported(secret) => Some(secret),
+                _ => None,
+            };
+
+            if let Some(shared_secret) = shared_secret {
+                let secret_origin = match &old_state {
+                    State::SecretShared(_secret) => SecretOrigin::Shared,
+                    State::SecretPreimported(_secret) => SecretOrigin::Preimported,
+                    _ => unreachable!(),
+                };
                 let temporary_nonce: Nonce = rng.gen();
-                entry.set(State::TemporaryNonceShared(shared_secret.clone(), temporary_nonce.clone()));
+                entry.set(State::TemporaryNonceShared(shared_secret.clone(), temporary_nonce.clone(), secret_origin));
                 let temporary_session = Session::new_with_zero_nonce(shared_secret.clone());
                 let result = encode_and_encrypt_nonce(&temporary_session, &temporary_nonce);
                 if result.is_some() {
@@ -203,7 +298,12 @@ impl RoutingTable {
         let result = entries.get(&remote_node_id).and_then(|entry| {
             let entry = entry.lock();
             let old_state = entry.replace(State::Intermediate);
-            if let State::SecretShared(shared_secret) = old_state {
+            let shared_secret = match old_state {
+                State::SecretShared(shared_secret) => Some(shared_secret),
+                State::SecretPreimported(secret) => Some(secret),
+                _ => None,
+            };
+            if let Some(shared_secret) = shared_secret {
                 let temporary_session = {
                     let temporary_zero_session = Session::new_with_zero_nonce(shared_secret.clone());
                     let temporary_nonce = decrypt_and_decode_nonce(&temporary_zero_session, encrypted_temporary_nonce)?;
@@ -234,7 +334,7 @@ impl RoutingTable {
         if let Some(entry) = entries.get(&remote_node_id) {
             let entry = entry.lock();
             let old_state = entry.replace(State::Intermediate);
-            if let State::TemporaryNonceShared(shared_secret, temporary_nonce) = old_state.clone() {
+            if let State::TemporaryNonceShared(shared_secret, temporary_nonce, _secret_origin) = old_state.clone() {
                 let temporary_session = Session::new(shared_secret.clone(), temporary_nonce);
                 let nonce = match decrypt_and_decode_nonce(&temporary_session, &received_nonce) {
                     Some(nonce) => nonce,

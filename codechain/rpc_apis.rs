@@ -17,19 +17,27 @@
 use std::sync::Arc;
 
 use ccore::{Client, Miner};
+use cnetwork::NetworkControl;
 use crpc::{MetaIoHandler, Params, Value};
 
-pub struct ApiDependencies {
+pub struct ApiDependencies<NC>
+where
+    NC: 'static + NetworkControl + Send + Sync, {
     pub client: Arc<Client>,
     pub miner: Arc<Miner>,
+    pub network_control: Option<Arc<NC>>,
 }
 
-impl ApiDependencies {
+impl<NC> ApiDependencies<NC>
+where
+    NC: 'static + NetworkControl + Send + Sync,
+{
     pub fn extend_api(&self, handler: &mut MetaIoHandler<()>) {
         use crpc::v1::*;
         handler.extend_with(ChainClient::new(&self.client, &self.miner).to_delegate());
         handler.extend_with(DevelClient::new(&self.client).to_delegate());
         handler.extend_with(MinerClient::new(&self.miner).to_delegate());
+        handler.extend_with(NetClient::new(&self.network_control).to_delegate());
     }
 }
 

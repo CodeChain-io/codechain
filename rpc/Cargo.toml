@@ -8,6 +8,7 @@ authors = ["CodeChain Team <codechain@kodebox.io>"]
 [dependencies]
 codechain-core = { path = "../core" }
 codechain-logger = { path = "../util/logger" }
+codechain-network = { path = "../network" }
 codechain-types = { path = "../primitives/codechain-types" }
 kvdb = { path = "../util/kvdb" }
 kvdb-rocksdb = { path = "../util/kvdb-rocksdb" }
