@@ -4,6 +4,7 @@ version = "0.1.0"
 authors = ["CodeChain Team <codechain@kodebox.io>"]
 
 [dependencies]
+byteorder = "1.2.3"
 codechain-crypto = { path = "../crypto" }
 codechain-io = { path = "../util/io" }
 codechain-json = { path = "../json" }
@@ -14,6 +15,7 @@ codechain-merkle = { path = "../util/merkle" }
 codechain-network = { path = "../network" }
 codechain-types = { path = "../primitives/codechain-types" }
 codechain-vm = { path = "../vm" }
+cuckoo = { git = "https://github.com/CodeChain-io/rust-cuckoo.git", rev = "3d34673" }
 hashdb = { path = "../util/hashdb" }
 heapsize = "0.4"
 journaldb = { path = "../util/journaldb" }
