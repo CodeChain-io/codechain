@@ -21,7 +21,12 @@ Then, make sure that your CodeChain RPC server is up and running. You can read a
 Running the Sample Assets Minting Code
 ======================================
 Once you have installed codechain-sdk, go to the installed directory and create a JavaScript file with the example code. 
-For simplicity, we will call this sample script sampleScript.js. Then, run the following command:
+For simplicity, we will call this sample script sampleScript.js. To download the .js file, run:
+::
+
+    wget https://gist.githubusercontent.com/ScarletBlue/c2ce044b4a0fb38766b4e05cc7b4dcc6/raw/43862ea5f628b851a0b90410c0cdb6e4651445ec/sampleTransfer.js
+
+Then, run the following command:
 
 ``node sampleTransfer.js``
 
