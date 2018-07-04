@@ -5,9 +5,9 @@ Asset Management
 Getting Started
 ===============
 
-If you want to start creating assets that can be transferred amongst users, you can do it with codechain-sdk-js. 
-If you visit this `link <https://api.codechain.io>`_, you can see an example JavaScript code. 
-This page will guide you along on how to use codechain-sdk-js based on the example provided, 
+If you want to start creating assets that can be transferred amongst users, you can do it with codechain-sdk-js.
+If you visit this `link <https://api.codechain.io>`_, you can see an example JavaScript code.
+This page will guide you along on how to use codechain-sdk-js based on the example provided,
 called “Mint 10000 Gold and send 3000 Gold using AssetMintTransaction, AssetTransferTransaction”.
 
 Before starting, please install node.js by going to this `page <https://nodejs.org/en/>`_.
@@ -20,7 +20,7 @@ Then, make sure that your CodeChain RPC server is up and running. You can read a
 
 Running the Sample Assets Minting Code
 ======================================
-Once you have installed codechain-sdk, go to the installed directory and create a JavaScript file with the example code. 
+Once you have installed codechain-sdk, go to the installed directory and create a JavaScript file with the example code.
 For simplicity, we will call this sample script sampleScript.js. To download the .js file, run:
 ::
 
@@ -121,14 +121,14 @@ In order to create new assets, you must create a new instance of AssetMintTransa
     });
 
 .. note::
-    You should note that the registrar is kept as null. This value is only filled out when there should be an overseer amongst transactions. 
-    If not null, the registrar must approve of every transaction being made with that newly created Asset. In this case, if the 10000 gold 
-    that was minted had a registrar, then every time any of those 10000 gold is involved in a transaction, the set registrar would have to 
-    sign off and approve for the transaction to be successful. 
+    You should note that the registrar is kept as null. This value is only filled out when there should be an overseer amongst transactions.
+    If not null, the registrar must approve of every transaction being made with that newly created Asset. In this case, if the 10000 gold
+    that was minted had a registrar, then every time any of those 10000 gold is involved in a transaction, the set registrar would have to
+    sign off and approve for the transaction to be successful.
 
 Sending/Transferring Assets
 ===========================
-In this example, in order for Alice to send 3000 gold to Bob, she must first input all of her 10000 gold into a transaction. 
+In this example, in order for Alice to send 3000 gold to Bob, she must first input all of her 10000 gold into a transaction.
 According to UTXO, a spender must spend all of his/her assets first, even if he/she wants to use a partial amount, and receive remainder back later.
 ::
 
@@ -220,18 +220,18 @@ This should return the following:
     null
 
 
-The results show that 7000 gold went to ``0597cf9ef3ab4c61274a31973fc46a3551f44600668efba67c4b754d9007e073`` and 
+The results show that 7000 gold went to ``0597cf9ef3ab4c61274a31973fc46a3551f44600668efba67c4b754d9007e073`` and
 that 3000 gold went to ``92e9b25eed924b5b17268934798c0c70f66de38bda64b480012de9be57ac4ec1``.
 
 
-These are the values of each individual’s LockScripts that went through the blake256 hash function. 
-If you run each individual’s LockScript under blake256 yourself, you will find that it corresponds to the rightful owners of the assets. 
+These are the values of each individual’s LockScripts that went through the blake256 hash function.
+If you run each individual’s LockScript under blake256 yourself, you will find that it corresponds to the rightful owners of the assets.
 
 Address Format
 =================================
 CodeChain adopted `Bitcoin's Bech32 Specification <https://github.com/bitcoin/bips/blob/master/bip-0173.mediawiki#bech32>`_. However,
-there are differences. Codechain does not have a seperator. Also, there are two types of addresses used in CodeChain, which are 
-Platform Address and Asset Address. Platform Addresses are used for CCC, while Asset Addresses are used 
+there are differences. Codechain does not have a seperator. Also, there are two types of addresses used in CodeChain, which are
+Platform Address and Asset Address. Platform Addresses are used for CCC, while Asset Addresses are used
 for mintable assets. These addresses have a human readable part, followed by code. Platform Addresses have a ``"ccc"`` tag, while
 Asset Addresses have a ``"cca"`` tag.
 
