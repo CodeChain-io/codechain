@@ -59,6 +59,10 @@ build_rpc_trait! {
         # [rpc(name = "chain_getRegularKey")]
         fn get_regular_key(&self, H160, Option<u64>) -> Result<Option<Public>>;
 
+        /// Gets the number of shards
+        # [rpc(name = "chain_getNumberOfShards")]
+        fn get_number_of_shards(&self, Option<u64>) -> Result<Option<u32>>;
+
         /// Gets number of best block.
         # [rpc(name = "chain_getBestBlockNumber")]
         fn get_best_block_number(&self) -> Result<BlockNumber>;

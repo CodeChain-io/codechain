@@ -138,6 +138,10 @@ pub trait RegularKey {
     fn regular_key(&self, address: &Address, state: StateOrBlock) -> Option<Public>;
 }
 
+pub trait Shard {
+    fn number_of_shards(&self, state: StateOrBlock) -> Option<u32>;
+}
+
 /// Provides methods to access account info
 pub trait AccountData: Nonce + Balance {}
 
