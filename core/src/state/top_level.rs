@@ -136,6 +136,10 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopStateInfo for TopLevelSt
         self.ensure_account_cached(a, |a| a.as_ref().map_or(None, |account| account.regular_key()))
     }
 
+    fn number_of_shards(&self) -> TrieResult<u32> {
+        let metadata = self.require_metadata()?;
+        Ok(*metadata.number_of_shards())
+    }
 
     fn shard_root(&self, shard_id: u32) -> TrieResult<Option<H256>> {
         let shard_address = ShardAddress::new(shard_id);

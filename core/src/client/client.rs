@@ -54,7 +54,7 @@ use super::{
     AccountData, Balance, BlockChain as BlockChainTrait, BlockChainClient, BlockChainInfo, BlockInfo, BlockProducer,
     ChainInfo, ChainNotify, ClientConfig, EngineClient, Error as ClientError, ImportBlock, ImportResult,
     ImportSealedBlock, Invoice, MiningBlockChainClient, Nonce, ParcelInfo, PrepareOpenBlock, RegularKey, ReopenBlock,
-    StateOrBlock,
+    Shard, StateOrBlock,
 };
 
 const MAX_MEM_POOL_SIZE: usize = 4096;
@@ -855,6 +855,16 @@ impl RegularKey for Client {
             StateOrBlock::State(s) => s.regular_key(address).ok()?,
             StateOrBlock::Block(id) => self.state_at(id)?.regular_key(address).ok()?,
         }
+    }
+}
+
+impl Shard for Client {
+    fn number_of_shards(&self, state: StateOrBlock) -> Option<u32> {
+        let state = match state {
+            StateOrBlock::State(s) => s,
+            StateOrBlock::Block(id) => Box::new(self.state_at(id)?),
+        };
+        state.number_of_shards().ok()
     }
 }
 
