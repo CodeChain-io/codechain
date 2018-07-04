@@ -208,10 +208,13 @@ fn new_miner(config: &config::Config, spec: &Spec) -> Result<Arc<Miner>, String>
     let miner = Miner::new(miner_options, spec, Some(ap.clone()));
 
     let author = config.mining.author.unwrap_or(address);
-    let engine_signer = config.mining.engine_signer.unwrap_or(address);
-    miner.set_author(author);
-    // FIXME: Don't hardcode password.
-    miner.set_engine_signer(engine_signer, "password".to_string()).map_err(|err| format!("{:?}", err))?;
+    if miner.can_produce_work_package() {
+        miner.set_author(author);
+    } else {
+        // FIXME: Don't hardcode password.
+        let engine_signer = config.mining.engine_signer.unwrap_or(address);
+        miner.set_engine_signer(engine_signer, "password".to_string()).map_err(|err| format!("{:?}", err))?;
+    }
 
     Ok(miner)
 }
