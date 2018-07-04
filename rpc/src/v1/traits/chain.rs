@@ -19,7 +19,7 @@ use ctypes::{H160, H256, Public, U256};
 
 use jsonrpc_core::Result;
 
-use super::super::types::{Block, Bytes, Parcel};
+use super::super::types::{Block, BlockNumberAndHash, Bytes, Parcel};
 
 build_rpc_trait! {
     pub trait Chain {
@@ -62,6 +62,10 @@ build_rpc_trait! {
         /// Gets number of best block.
         # [rpc(name = "chain_getBestBlockNumber")]
         fn get_best_block_number(&self) -> Result<BlockNumber>;
+
+        /// Gets the number and the hash of the best block.
+        # [rpc(name = "chain_getBestBlockId")]
+        fn get_best_block_id(&self) -> Result<BlockNumberAndHash>;
 
         /// Gets the hash of the block with given number.
         # [rpc(name = "chain_getBlockHash")]
