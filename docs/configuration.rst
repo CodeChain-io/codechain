@@ -6,7 +6,7 @@ Configuration
 
 CodeChain can be configured with either CLI options or a config file. When it comes to which options take precedence, it goes from CLI, user's own config.toml file, and config.dev.toml in that order.
 
-CLI options can be listed by running the command ``$codechain --help``. By using the CLI options, or custom config files, the user can overwrite config.dev.toml's configurations. 
+CLI options can be listed by running the command ``$codechain --help``. By using the CLI options, or custom config files, the user can overwrite config.dev.toml's configurations.
 
 Config File
 ===========
