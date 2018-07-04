@@ -174,6 +174,7 @@ fn load_config(matches: &ArgMatches) -> Result<config::Config, String> {
     config.network.overwrite_with(&matches)?;
     config.rpc.overwrite_with(&matches)?;
     config.snapshot.overwrite_with(&matches)?;
+    config.stratum.overwrite_with(&matches)?;
 
     Ok(config)
 }

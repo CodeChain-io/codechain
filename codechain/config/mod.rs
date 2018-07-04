@@ -37,6 +37,7 @@ pub struct Config {
     pub network: Network,
     pub rpc: Rpc,
     pub snapshot: Snapshot,
+    pub stratum: Stratum,
 }
 
 #[derive(Deserialize)]
@@ -98,6 +99,13 @@ pub struct Rpc {
 pub struct Snapshot {
     pub disable: bool,
     pub path: String,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Stratum {
+    pub disable: bool,
+    pub port: u16,
 }
 
 impl<'a> Into<RpcIpcConfig> for &'a Ipc {
@@ -273,6 +281,19 @@ impl Snapshot {
 
         if let Some(snapshot_path) = matches.value_of("snapshot-path") {
             self.path = snapshot_path.to_string();
+        }
+        Ok(())
+    }
+}
+
+impl Stratum {
+    pub fn overwrite_with(&mut self, matches: &clap::ArgMatches) -> Result<(), String> {
+        if matches.is_present("no-stratum") {
+            self.disable = true;
+        }
+
+        if let Some(port) = matches.value_of("stratum-port") {
+            self.port = port.parse().map_err(|_| "Invalid port")?;
         }
         Ok(())
     }
