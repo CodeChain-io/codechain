@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use cjson;
 use ctypes::U256;
 
 pub struct CuckooParams {
@@ -22,4 +23,16 @@ pub struct CuckooParams {
     pub max_vertex: usize,
     pub max_edge: usize,
     pub cycle_length: usize,
+}
+
+impl From<cjson::spec::CuckooParams> for CuckooParams {
+    fn from(p: cjson::spec::CuckooParams) -> Self {
+        CuckooParams {
+            block_reward: p.block_reward.map_or(U256::from(0), Into::into),
+            min_score: p.min_score.map_or(U256::from(0x020000), Into::into),
+            max_vertex: p.max_vertex.map_or(1 << 30, Into::into),
+            max_edge: p.max_edge.map_or(1 << 29, Into::into),
+            cycle_length: p.cycle_length.map_or(42, Into::into),
+        }
+    }
 }
