@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ccore::Block as CoreBlock;
+use ccore::{Block as CoreBlock, BlockNumber};
 use ctypes::{H160, H256, U256};
 
 use super::Parcel;
@@ -83,4 +83,11 @@ impl From<CoreBlock> for Block {
                 .collect(),
         }
     }
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BlockNumberAndHash {
+    pub number: BlockNumber,
+    pub hash: H256,
 }

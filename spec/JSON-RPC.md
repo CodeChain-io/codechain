@@ -82,7 +82,7 @@ In the current version, it's only supported through HTTP.
  * [version](#version)
 ***
  * [chain_getBestBlockNumber](#chain_getbestblocknumber)
- * [chain_getBestBlockId](#chain_getbestblockid) (not implemented yet)
+ * [chain_getBestBlockId](#chain_getbestblockid)
  * [chain_getBlockHash](#chain_getblockhash)
  * [chain_getBlockByHash](#chain_getblockbyhash)
  * [chain_sendSignedParcel](#chain_sendsignedparcel)
@@ -173,7 +173,7 @@ Response Example
 ```
 
 ## chain_getBestBlockId
-(not implemented yet) Gets the number and the hash of the best block.
+Gets the number and the hash of the best block.
 
 Params: No parameters
 
@@ -189,7 +189,7 @@ Request Example
 
 Response Example
 ```
-{"jsonrpc":"2.0","result":{"number":1,"hash":"0x56642f04d519ae3262c7ba6facf1c5b11450ebaeb7955337cfbc45420d573077"},"id":null}
+{"jsonrpc":"2.0","result":{"hash":"0x56642f04d519ae3262c7ba6facf1c5b11450ebaeb7955337cfbc45420d573077","number":1},"id":null}
 ```
 
 ## chain_getBlockHash
