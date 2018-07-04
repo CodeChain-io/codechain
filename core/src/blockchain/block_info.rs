@@ -24,7 +24,7 @@ pub enum BlockLocation {
     /// It's not a part of the canon chain.
     Branch,
     /// It's part of the fork which should become canon chain,
-    /// because its total difficulty is higher than current
-    /// canon chain difficulty.
+    /// because its total score is higher than current
+    /// canon chain score.
     BranchBecomingCanonChain(TreeRoute),
 }
