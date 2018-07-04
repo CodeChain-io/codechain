@@ -286,8 +286,8 @@ pub trait CodeChainEngine: ConsensusEngine<CodeChainMachine> {
     }
 
     /// Some intrinsic operation parameters; by default they take their value from the `spec()`'s `engine_params`.
-    fn maximum_extra_data_size(&self) -> usize {
-        self.machine().maximum_extra_data_size()
+    fn max_extra_data_size(&self) -> usize {
+        self.machine().max_extra_data_size()
     }
 
     /// Additional verification for parcels in blocks.

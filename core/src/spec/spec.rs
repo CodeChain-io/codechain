@@ -38,7 +38,7 @@ use super::Genesis;
 #[derive(Debug, PartialEq, Default)]
 pub struct CommonParams {
     /// Maximum size of extra data.
-    pub maximum_extra_data_size: usize,
+    pub max_extra_data_size: usize,
     /// Network id.
     pub network_id: u64,
     /// Minimum parcel cost.
@@ -48,7 +48,7 @@ pub struct CommonParams {
 impl From<cjson::spec::Params> for CommonParams {
     fn from(p: cjson::spec::Params) -> Self {
         Self {
-            maximum_extra_data_size: p.maximum_extra_data_size.into(),
+            max_extra_data_size: p.max_extra_data_size.into(),
             network_id: p.network_id.into(),
             min_parcel_cost: p.min_parcel_cost.into(),
         }

@@ -73,7 +73,7 @@ mod tests {
 		}
 	},
 	"params": {
-		"maximumExtraDataSize": "0x20",
+		"maxExtraDataSize": "0x20",
 		"networkID" : "0x2",
 		"minParcelCost" : "10"
 	},
