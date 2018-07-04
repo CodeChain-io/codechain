@@ -113,6 +113,11 @@ impl Chain for ChainClient {
         Ok(self.client.number_of_shards(block_id.into()))
     }
 
+    fn get_shard_root(&self, shard_id: u32, block_number: Option<u64>) -> Result<Option<H256>> {
+        let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
+        Ok(self.client.shard_root(shard_id, block_id.into()))
+    }
+
     fn get_best_block_number(&self) -> Result<BlockNumber> {
         Ok(self.client.chain_info().best_block_number)
     }
