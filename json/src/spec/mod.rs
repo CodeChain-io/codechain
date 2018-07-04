@@ -37,5 +37,5 @@ pub use self::shard::Shard;
 pub use self::solo::{Solo, SoloParams};
 pub use self::solo_authority::{SoloAuthority, SoloAuthorityParams};
 pub use self::spec::Spec;
-pub use self::state::Accounts;
+pub use self::state::{Accounts, Shards};
 pub use self::tendermint::{Tendermint, TendermintParams};
