@@ -16,6 +16,7 @@
 
 use std::collections::BTreeMap;
 use std::fmt;
+use std::ops::Deref;
 
 use cjson;
 use ctypes::Address;
@@ -26,9 +27,10 @@ use super::pod_account::PodAccount;
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct PodState(BTreeMap<Address, PodAccount>);
 
-impl PodState {
-    /// Get the underlying map.
-    pub fn get(&self) -> &BTreeMap<Address, PodAccount> {
+impl Deref for PodState {
+    type Target = BTreeMap<Address, PodAccount>;
+
+    fn deref(&self) -> &<Self as Deref>::Target {
         &self.0
     }
 }
