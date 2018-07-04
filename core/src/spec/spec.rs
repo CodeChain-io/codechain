@@ -17,6 +17,7 @@
 use std::io::Read;
 use std::sync::Arc;
 
+use ccrypto::blake256;
 use ccrypto::BLAKE_NULL_RLP;
 use cjson;
 use ctypes::{Address, Bytes, H256, U256};
@@ -35,7 +36,7 @@ use super::super::state::BasicBackend;
 use super::seal::Generic as GenericSeal;
 use super::Genesis;
 
-#[derive(Debug, PartialEq, Default)]
+#[derive(Debug, PartialEq, Default, RlpEncodable)]
 pub struct CommonParams {
     /// Maximum size of extra data.
     pub max_extra_data_size: usize,
@@ -205,7 +206,7 @@ impl Spec {
         header.set_number(0);
         header.set_author(self.author.clone());
         header.set_parcels_root(self.parcels_root.clone());
-        header.set_extra_data(self.extra_data.clone());
+        header.set_extra_data(blake256(&self.params().rlp_bytes()).to_vec());
         header.set_state_root(self.state_root());
         header.set_invoices_root(self.invoices_root.clone());
         header.set_score(self.score.clone());
@@ -260,4 +261,23 @@ fn load_from(s: cjson::spec::Spec) -> Result<Spec, Error> {
     }
 
     Ok(s)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Spec;
+    use ctypes::Bytes;
+
+    #[test]
+    fn should_be_extra_hashed() {
+        // FIXME: depends on params field in null.json file.
+        let expected: Bytes = vec![
+            0x20, 0xbe, 0x63, 0xbb, 0x52, 0xc7, 0x60, 0x9c, 0xed, 0x69, 0x9e, 0xb0, 0xda, 0x49, 0x13, 0x46, 0xef, 0xad,
+            0xa4, 0x83, 0xa0, 0x14, 0xdc, 0xf, 0x64, 0x29, 0x4c, 0xa0, 0x47, 0x64, 0x62, 0x83,
+        ];
+        let spec = Spec::new_test();
+        let genesis_header = spec.genesis_header();
+        let result = genesis_header.extra_data();
+        assert_eq!(result, &expected);
+    }
 }
