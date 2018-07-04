@@ -134,15 +134,17 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopStateInfo for TopLevelSt
         self.ensure_account_cached(a, |a| a.as_ref().map_or(None, |account| account.regular_key()))
     }
 
-    fn shard_root(&self, a: &ShardAddress) -> TrieResult<Option<H256>> {
-        let shard = self.db.get_cached_shard(&a).and_then(|s| s).map(|s| s.root().clone());
+
+    fn shard_root(&self, shard_id: u32) -> TrieResult<Option<H256>> {
+        let shard_address = ShardAddress::new(shard_id);
+        let shard = self.db.get_cached_shard(&shard_address).and_then(|s| s).map(|s| s.root().clone());
         if shard.is_some() {
             return Ok(shard)
         }
 
         // because of lexical borrow of self.db
         let db = self.trie_factory.readonly(self.db.as_hashdb(), &self.root)?;
-        Ok(db.get_with(&a, ::rlp::decode::<Shard>)?.map(|s| s.root().clone()))
+        Ok(db.get_with(&shard_address, ::rlp::decode::<Shard>)?.map(|s| s.root().clone()))
     }
 
     fn asset_scheme(
@@ -151,7 +153,7 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopStateInfo for TopLevelSt
         asset_scheme_address: &AssetSchemeAddress,
     ) -> TrieResult<Option<AssetScheme>> {
         // FIXME: Handle the case that shard doesn't exist
-        let shard_root = self.shard_root(&ShardAddress::new(shard_id))?.unwrap_or(BLAKE_NULL_RLP);
+        let shard_root = self.shard_root(shard_id)?.unwrap_or(BLAKE_NULL_RLP);
         // FIXME: Make it mutable borrow db instead of cloning.
         let shard_level_state = ShardLevelState::from_existing(self.db.clone(), shard_root, self.trie_factory)?;
         shard_level_state.asset_scheme(asset_scheme_address)
@@ -159,7 +161,7 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopStateInfo for TopLevelSt
 
     fn asset(&self, shard_id: u32, asset_address: &AssetAddress) -> TrieResult<Option<Asset>> {
         // FIXME: Handle the case that shard doesn't exist
-        let shard_root = self.shard_root(&ShardAddress::new(shard_id))?.unwrap_or(BLAKE_NULL_RLP);
+        let shard_root = self.shard_root(shard_id)?.unwrap_or(BLAKE_NULL_RLP);
         // FIXME: Make it mutable borrow db instead of cloning.
         let shard_level_state = ShardLevelState::from_existing(self.db.clone(), shard_root, self.trie_factory)?;
         shard_level_state.asset(asset_address)
@@ -370,7 +372,7 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopLevelState<B> {
         shard_id: u32,
     ) -> Result<Vec<TransactionOutcome>, Error> {
         // FIXME: Handle the case that shard doesn't exist
-        let shard_root = self.shard_root(&ShardAddress::new(shard_id))?.unwrap_or(BLAKE_NULL_RLP);
+        let shard_root = self.shard_root(shard_id)?.unwrap_or(BLAKE_NULL_RLP);
 
         // FIXME: Make it mutable borrow db instead of cloning.
         let mut shard_level_state = ShardLevelState::from_existing(self.db.clone(), shard_root, self.trie_factory)?;

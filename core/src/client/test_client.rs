@@ -60,9 +60,7 @@ use super::super::header::Header as BlockHeader;
 use super::super::miner::{Miner, MinerService, ParcelImportResult};
 use super::super::parcel::{Action, LocalizedParcel, Parcel, SignedParcel};
 use super::super::spec::Spec;
-use super::super::state::{
-    Asset, AssetAddress, AssetScheme, AssetSchemeAddress, ShardAddress, ShardStateInfo, TopStateInfo,
-};
+use super::super::state::{Asset, AssetAddress, AssetScheme, AssetSchemeAddress, ShardStateInfo, TopStateInfo};
 use super::super::state_db::StateDB;
 use super::super::types::{BlockId, BlockNumber, ParcelId, TransactionId, VerificationQueueInfo as QueueInfo};
 
@@ -447,7 +445,7 @@ impl TopStateInfo for () {
         unimplemented!()
     }
 
-    fn shard_root(&self, _: &ShardAddress) -> trie::Result<Option<H256>> {
+    fn shard_root(&self, _shard_id: u32) -> trie::Result<Option<H256>> {
         unimplemented!()
     }
 
