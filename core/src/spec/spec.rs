@@ -29,7 +29,7 @@ use super::super::codechain_machine::CodeChainMachine;
 use super::super::consensus::{CodeChainEngine, NullEngine, Solo, SoloAuthority, Tendermint};
 use super::super::error::Error;
 use super::super::header::Header;
-use super::super::pod_state::PodAccounts;
+use super::super::pod_state::{PodAccounts, PodShards};
 use super::super::state::{Backend, BasicBackend};
 use super::seal::Generic as GenericSeal;
 use super::Genesis;
@@ -92,6 +92,7 @@ pub struct Spec {
 
     /// Genesis state as plain old data.
     genesis_accounts: PodAccounts,
+    genesis_shards: PodShards,
 }
 
 // helper for formatting errors.
@@ -251,6 +252,7 @@ fn load_from(s: cjson::spec::Spec) -> Result<Spec, Error> {
         seal_rlp,
         state_root_memo: RwLock::new(Default::default()), // will be overwritten right after.
         genesis_accounts: s.accounts.into(),
+        genesis_shards: s.shards.into(),
     };
 
     // use memoized state root if provided.
