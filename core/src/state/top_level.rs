@@ -54,6 +54,7 @@ use super::asset_scheme::{AssetScheme, AssetSchemeAddress};
 use super::backend::{Backend, ShardBackend, TopBackend};
 use super::cache::{Cache, CacheableItem};
 use super::info::{ShardStateInfo, TopStateInfo};
+use super::metadata::{Metadata, MetadataAddress};
 use super::shard::{Shard, ShardAddress};
 use super::shard_level::ShardLevelState;
 use super::shard_state::{ShardState, TransactionOutcome};
@@ -118,6 +119,7 @@ pub struct TopLevelState<B> {
     db: B,
     root: H256,
     account: Cache<Account>,
+    metadata: Cache<Metadata>,
     shard: Cache<Shard>,
     id_of_checkpoints: Vec<CheckpointId>,
     trie_factory: TrieFactory,
@@ -175,6 +177,7 @@ impl<B: Backend + TopBackend> StateWithCheckpoint for TopLevelState<B> {
     fn create_checkpoint(&mut self, id: CheckpointId) {
         self.id_of_checkpoints.push(id);
         self.account.checkpoint();
+        self.metadata.checkpoint();
         self.shard.checkpoint();
     }
 
@@ -183,6 +186,7 @@ impl<B: Backend + TopBackend> StateWithCheckpoint for TopLevelState<B> {
         assert_eq!(expected, id);
 
         self.account.discard_checkpoint();
+        self.metadata.discard_checkpoint();
         self.shard.discard_checkpoint();
     }
 
@@ -191,6 +195,7 @@ impl<B: Backend + TopBackend> StateWithCheckpoint for TopLevelState<B> {
         assert_eq!(expected, id);
 
         self.account.revert_to_checkpoint();
+        self.metadata.revert_to_checkpoint();
         self.shard.revert_to_checkpoint();
     }
 }
@@ -199,6 +204,7 @@ impl<B: Backend + TopBackend + ShardBackend> StateWithCache for TopLevelState<B>
     fn commit(&mut self) -> TrieResult<()> {
         let mut trie = self.trie_factory.from_existing(self.db.as_hashdb_mut(), &mut self.root)?;
         self.account.commit(&mut trie)?;
+        self.metadata.commit(&mut trie)?;
         self.shard.commit(&mut trie)?;
         Ok(())
     }
@@ -208,6 +214,9 @@ impl<B: Backend + TopBackend + ShardBackend> StateWithCache for TopLevelState<B>
         self.account.propagate_to_global_cache(|address, item, modified| {
             db.add_to_account_cache(address, item, modified);
         });
+        self.metadata.propagate_to_global_cache(|address, item, modified| {
+            db.add_to_metadata_cache(address, item, modified);
+        });
         self.shard.propagate_to_global_cache(|address, item, modified| {
             db.add_to_shard_cache(address, item, modified);
         });
@@ -215,6 +224,7 @@ impl<B: Backend + TopBackend + ShardBackend> StateWithCache for TopLevelState<B>
 
     fn clear(&mut self) {
         self.account.clear();
+        self.metadata.clear();
         self.shard.clear();
     }
 }
@@ -233,6 +243,7 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopLevelState<B> {
             db,
             root,
             account: Cache::new(),
+            metadata: Cache::new(),
             shard: Cache::new(),
             id_of_checkpoints: Default::default(),
             trie_factory,
@@ -249,6 +260,7 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopLevelState<B> {
             db,
             root,
             account: Cache::new(),
+            metadata: Cache::new(),
             shard: Cache::new(),
             id_of_checkpoints: Default::default(),
             trie_factory,
@@ -400,6 +412,8 @@ trait TopStateInternal<B: Backend + TopBackend> {
     /// Populates local cache if nothing found.
     fn require_account<'a>(&'a self, a: &Address) -> TrieResult<RefMut<'a, Account>>;
 
+    fn require_metadata<'a>(&'a self) -> TrieResult<RefMut<'a, Metadata>>;
+
     fn require_shard<'a>(&'a self, shard_id: u32) -> TrieResult<RefMut<'a, Shard>>;
 }
 
@@ -422,6 +436,14 @@ impl<B: Backend + TopBackend> TopStateInternal<B> for TopLevelState<B> {
         self.account.require_item_or_from(a, default, db, from_db)
     }
 
+    fn require_metadata<'a>(&'a self) -> TrieResult<RefMut<'a, Metadata>> {
+        let default = || Metadata::new(0);
+        let db = self.trie_factory.readonly(self.db.as_hashdb(), &self.root)?;
+        let address = MetadataAddress::new();
+        let from_db = || self.db.get_cached_metadata(&address);
+        self.metadata.require_item_or_from(&address, default, db, from_db)
+    }
+
     fn require_shard<'a>(&'a self, shard_id: u32) -> TrieResult<RefMut<'a, Shard>> {
         let default = || Shard::new(BLAKE_NULL_RLP);
         let db = self.trie_factory.readonly(self.db.as_hashdb(), &self.root)?;
@@ -433,7 +455,10 @@ impl<B: Backend + TopBackend> TopStateInternal<B> for TopLevelState<B> {
 
 impl<B: TopBackend + ShardBackend> fmt::Debug for TopLevelState<B> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "account: {:?} shard: {:?}", self.account, self.shard)
+        writeln!(f, "account: {:?}", self.account)?;
+        writeln!(f, "metadata: {:?}", self.metadata)?;
+        writeln!(f, "shard: {:?}", self.shard)?;
+        Ok(())
     }
 }
 
@@ -446,6 +471,7 @@ impl Clone for TopLevelState<StateDB> {
             root: self.root.clone(),
             id_of_checkpoints: self.id_of_checkpoints.clone(),
             account: self.account.clone(),
+            metadata: self.metadata.clone(),
             shard: self.shard.clone(),
             trie_factory: self.trie_factory.clone(),
         }
