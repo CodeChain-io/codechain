@@ -866,6 +866,14 @@ impl Shard for Client {
         };
         state.number_of_shards().ok()
     }
+
+    fn shard_root(&self, shard_id: u32, state: StateOrBlock) -> Option<H256> {
+        let state = match state {
+            StateOrBlock::State(s) => s,
+            StateOrBlock::Block(id) => Box::new(self.state_at(id)?),
+        };
+        state.shard_root(shard_id).ok()?
+    }
 }
 
 impl ReopenBlock for Client {

@@ -140,6 +140,8 @@ pub trait RegularKey {
 
 pub trait Shard {
     fn number_of_shards(&self, state: StateOrBlock) -> Option<u32>;
+
+    fn shard_root(&self, shard_id: u32, state: StateOrBlock) -> Option<H256>;
 }
 
 /// Provides methods to access account info
