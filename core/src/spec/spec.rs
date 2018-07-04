@@ -30,7 +30,7 @@ use super::super::codechain_machine::CodeChainMachine;
 use super::super::consensus::{CodeChainEngine, NullEngine, Solo, SoloAuthority, Tendermint};
 use super::super::error::Error;
 use super::super::header::Header;
-use super::super::pod_state::PodState;
+use super::super::pod_state::PodAccounts;
 use super::super::state::BasicBackend;
 use super::seal::Generic as GenericSeal;
 use super::Genesis;
@@ -89,7 +89,7 @@ pub struct Spec {
     state_root_memo: RwLock<H256>,
 
     /// Genesis state as plain old data.
-    genesis_state: PodState,
+    genesis_accounts: PodAccounts,
 }
 
 // helper for formatting errors.
@@ -135,7 +135,7 @@ impl Spec {
         {
             let mut t = trie_factory.create(db.as_hashdb_mut(), &mut root);
 
-            for (address, account) in &*self.genesis_state {
+            for (address, account) in &*self.genesis_accounts {
                 let r = t.insert(&**address, &account.rlp_bytes());
                 debug_assert_eq!(Ok(None), r);
                 r?;
@@ -248,7 +248,7 @@ fn load_from(s: cjson::spec::Spec) -> Result<Spec, Error> {
         extra_data: g.extra_data,
         seal_rlp,
         state_root_memo: RwLock::new(Default::default()), // will be overwritten right after.
-        genesis_state: s.accounts.into(),
+        genesis_accounts: s.accounts.into(),
     };
 
     // use memoized state root if provided.

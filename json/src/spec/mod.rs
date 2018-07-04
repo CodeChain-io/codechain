@@ -35,5 +35,5 @@ pub use self::seal::{Seal, TendermintSeal};
 pub use self::solo::{Solo, SoloParams};
 pub use self::solo_authority::{SoloAuthority, SoloAuthorityParams};
 pub use self::spec::Spec;
-pub use self::state::State;
+pub use self::state::Accounts;
 pub use self::tendermint::{Tendermint, TendermintParams};

@@ -19,4 +19,4 @@ use std::collections::BTreeMap;
 use super::super::hash::Address;
 use super::Account;
 
-pub type State = BTreeMap<Address, Account>;
+pub type Accounts = BTreeMap<Address, Account>;
