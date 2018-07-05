@@ -18,10 +18,11 @@ use std::cell::RefMut;
 use std::collections::HashMap;
 use std::fmt;
 
-use ccrypto::Blake;
+use ccrypto::{Blake, BLAKE_NULL_RLP};
 use ctypes::{Address, Bytes, H256, U128};
 use cvm::{decode, execute, ScriptResult, VMConfig};
 use error::Error;
+use rlp::Encodable;
 use trie::{self, Result as TrieResult, Trie, TrieError, TrieFactory};
 use unexpected::Mismatch;
 
@@ -32,8 +33,8 @@ use super::super::{Transaction, TransactionError};
 use super::cache::Cache;
 use super::traits::{CheckpointId, StateWithCache, StateWithCheckpoint};
 use super::{
-    Asset, AssetAddress, AssetScheme, AssetSchemeAddress, Backend, ShardBackend, ShardState, ShardStateInfo,
-    TransactionOutcome,
+    Asset, AssetAddress, AssetScheme, AssetSchemeAddress, Backend, ShardBackend, ShardMetadata, ShardMetadataAddress,
+    ShardState, ShardStateInfo, TransactionOutcome,
 };
 
 pub struct ShardLevelState<B> {
@@ -49,20 +50,28 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
     /// Creates new state with empty state root
     /// Used for tests.
     #[cfg(test)]
-    pub fn new(mut db: B, trie_factory: TrieFactory) -> ShardLevelState<B> {
-        let mut root = H256::new();
+    pub fn try_new(shard_id: u32, mut db: B, trie_factory: TrieFactory) -> trie::Result<ShardLevelState<B>> {
+        let mut root = BLAKE_NULL_RLP;
 
-        // init trie and reset root too null
-        let _ = trie_factory.create(db.as_hashdb_mut(), &mut root);
+        {
+            let mut t = trie_factory.from_existing(db.as_hashdb_mut(), &mut root)?;
 
-        ShardLevelState {
+            let metadata = ShardMetadata::new(0);
+            let address = ShardMetadataAddress::new(shard_id);
+
+            let r = t.insert(&*address, &metadata.rlp_bytes());
+            debug_assert_eq!(Ok(None), r);
+            r?;
+        }
+
+        Ok(ShardLevelState {
             db,
             root,
             asset_scheme: Cache::new(),
             asset: Cache::new(),
             id_of_checkpoints: Default::default(),
             trie_factory,
-        }
+        })
     }
 
     /// Creates new state with existing state root
@@ -461,18 +470,19 @@ mod tests {
     use super::super::super::tests::helpers::get_temp_state_db;
     use super::*;
 
-    fn get_temp_shard_state() -> ShardLevelState<StateDB> {
+    fn get_temp_shard_state(shard_id: u32) -> ShardLevelState<StateDB> {
         let state_db = get_temp_state_db();
         let root_parent = H256::random();
 
         let state_db = state_db.clone_canon(&root_parent);
-        ShardLevelState::new(state_db, Default::default())
+        ShardLevelState::try_new(shard_id, state_db, Default::default()).unwrap()
     }
 
     #[test]
     fn mint_permissioned_asset() {
+        let shard_id = 0;
         let parcel_network_id = 30;
-        let mut state = get_temp_shard_state();
+        let mut state = get_temp_shard_state(shard_id);
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H256::random();
@@ -510,7 +520,8 @@ mod tests {
     #[test]
     fn mint_infinite_asset() {
         let parcel_network_id = 30;
-        let mut state = get_temp_shard_state();
+        let shard_id = 0;
+        let mut state = get_temp_shard_state(shard_id);
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H256::random();
@@ -746,7 +757,8 @@ mod tests {
 
     #[test]
     fn mint_and_transfer() {
-        let mut state = get_temp_shard_state();
+        let shard_id = 0;
+        let mut state = get_temp_shard_state(shard_id);
 
         let metadata = "metadata".to_string();
         let lock_script_hash =
@@ -844,7 +856,8 @@ mod tests {
 
     #[test]
     fn mint_and_failed_transfer_and_successful_transfer() {
-        let mut state = get_temp_shard_state();
+        let shard_id = 0;
+        let mut state = get_temp_shard_state(shard_id);
 
         let metadata = "metadata".to_string();
         let lock_script_hash =
