@@ -17,14 +17,12 @@
 use std::io::Read;
 use std::sync::Arc;
 
-use ccrypto::blake256;
-use ccrypto::BLAKE_NULL_RLP;
+use ccrypto::{blake256, BLAKE_NULL_RLP};
 use cjson;
 use ctypes::{Address, Bytes, H256, U256};
 use memorydb::MemoryDB;
 use parking_lot::RwLock;
 use rlp::{Encodable, Rlp, RlpStream};
-use state::Backend;
 use trie::TrieFactory;
 
 use super::super::codechain_machine::CodeChainMachine;
@@ -32,7 +30,7 @@ use super::super::consensus::{CodeChainEngine, NullEngine, Solo, SoloAuthority, 
 use super::super::error::Error;
 use super::super::header::Header;
 use super::super::pod_state::PodAccounts;
-use super::super::state::BasicBackend;
+use super::super::state::{Backend, BasicBackend};
 use super::seal::Generic as GenericSeal;
 use super::Genesis;
 
