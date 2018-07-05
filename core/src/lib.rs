@@ -72,6 +72,7 @@ mod machine;
 mod miner;
 mod parcel;
 mod pod_account;
+mod pod_shard_metadata;
 mod pod_state;
 mod service;
 mod spec;
@@ -89,7 +90,7 @@ pub use account_provider::AccountProvider;
 pub use block::Block;
 pub use blockchain::ParcelInvoice;
 pub use client::{
-    Balance, BlockChainClient, BlockInfo, ChainInfo, ChainNotify, Client, ImportBlock, Nonce, RegularKey,
+    Balance, BlockChainClient, BlockInfo, ChainInfo, ChainNotify, Client, ImportBlock, Nonce, RegularKey, Shard,
     TestBlockChainClient,
 };
 pub use db::COL_STATE;

@@ -93,6 +93,8 @@ In the current version, it's only supported through HTTP.
  * [chain_getNonce](#chain_getnonce)
  * [chain_getBalance](#chain_getbalance)
  * [chain_getRegularKey](#chain_getregularkey)
+ * [chain_getNumberOfShards](#chain_getnumberofshards)
+ * [chain_getShardRoot](#chain_getshardroot)
  * [chain_getPendingParcels](#chain_getpendingparcels)
 ***
   * [miner_getWork](#miner_getwork)
@@ -465,6 +467,50 @@ Response Example
 ```
 {"jsonrpc":"2.0","result":"0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000","id":null}
 ```
+
+## chain_getNumberOfShards
+Gets the number of shards, at state of given blockNumber.
+
+Param:
+1. block number: `number` or `null`
+
+Return Type: `number` - the number of shards
+
+Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "chain_getNumberOfShards", "params": [null], "id": null}' \
+    localhost:8080
+```
+
+Response Example
+```
+{"jsonrpc":"2.0","result":3,"id":null}
+```
+
+## chain_getShardRoot
+Gets the root of shard, at state of given blockNumber.
+
+Param:
+1. shard id: `number`
+1. block number: `number` or `null`
+
+Return Type: `null` or `string` - the root of shard
+
+Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "chain_getShardRoot", "params": [1, null], "id": null}' \
+    localhost:8080
+```
+
+Response Example
+```
+{"jsonrpc":"2.0","result":"0xf3841adc1615bfeabb801dda23585c1722b80d810df084a5f2198e92285d4bfd","id":null}
+```
+
 
 ## chain_getPendingParcels
 Gets parcels in the current parcel queue.

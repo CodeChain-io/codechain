@@ -22,6 +22,9 @@ pub struct Params {
     /// Maximum size of extra data.
     #[serde(rename = "maxExtraDataSize")]
     pub max_extra_data_size: Uint,
+    /// Maximum size of metadata.
+    #[serde(rename = "maxMetadataSize")]
+    pub max_metadata_size: Uint,
     /// Network id.
     #[serde(rename = "networkID")]
     pub network_id: Uint,
@@ -42,12 +45,14 @@ mod tests {
     fn params_deserialization() {
         let s = r#"{
 			"maxExtraDataSize": "0x20",
+			"maxMetadataSize": "0x0400",
 			"networkID" : "0x1",
 			"minParcelCost" : "10"
 		}"#;
 
         let deserialized: Params = serde_json::from_str(s).unwrap();
         assert_eq!(deserialized.max_extra_data_size, Uint(U256::from(0x20)));
+        assert_eq!(deserialized.max_metadata_size, Uint(U256::from(0x0400)));
         assert_eq!(deserialized.network_id, Uint(U256::from(0x1)));
         assert_eq!(deserialized.min_parcel_cost, Uint(U256::from(10)));
     }

@@ -29,6 +29,8 @@ pub trait TopStateInfo {
     /// Get the regular key of account `a`.
     fn regular_key(&self, a: &Address) -> TrieResult<Option<Public>>;
 
+    fn number_of_shards(&self) -> TrieResult<u32>;
+
     fn shard_root(&self, shard_id: u32) -> TrieResult<Option<H256>>;
 
     /// Get the asset scheme.
