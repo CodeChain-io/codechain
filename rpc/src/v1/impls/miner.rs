@@ -16,7 +16,8 @@
 
 use std::sync::Arc;
 
-use ccore::{self, MinerService};
+use ccore::{self, Client, MinerService};
+use ctypes::H256;
 use jsonrpc_core::Result;
 
 use super::super::errors;
@@ -24,12 +25,14 @@ use super::super::traits::Miner;
 use super::super::types::{Bytes, Work};
 
 pub struct MinerClient {
+    client: Arc<Client>,
     miner: Arc<ccore::Miner>,
 }
 
 impl MinerClient {
-    pub fn new(miner: &Arc<ccore::Miner>) -> Self {
+    pub fn new(client: &Arc<Client>, miner: &Arc<ccore::Miner>) -> Self {
         Self {
+            client: client.clone(),
             miner: miner.clone(),
         }
     }
@@ -44,11 +47,12 @@ impl Miner for MinerClient {
         unimplemented!();
     }
 
-    fn submit_work(&self, _nonce: Bytes, _pow_hash: Bytes) -> Result<bool> {
+    fn submit_work(&self, pow_hash: H256, seal: Vec<Bytes>) -> Result<bool> {
         if !self.miner.can_produce_work_package() {
             cwarn!(MINER, "Cannot give work package - engine seals internally.");
             return Err(errors::no_work_required())
         }
-        unimplemented!();
+        let seal = seal.iter().cloned().map(Into::into).collect();
+        Ok(self.miner.submit_seal(&*self.client, pow_hash, seal).is_ok())
     }
 }

@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use ctypes::H256;
 use jsonrpc_core::Result;
 
 use super::super::types::{Bytes, Work};
@@ -24,6 +25,6 @@ build_rpc_trait! {
         fn get_work(&self) -> Result<Work>;
 
         # [rpc(name = "miner_submitWork")]
-        fn submit_work(&self, Bytes, Bytes) -> Result<bool>;
+        fn submit_work(&self, H256, Vec<Bytes>) -> Result<bool>;
     }
 }
