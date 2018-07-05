@@ -246,7 +246,6 @@ Data body: ``Account ID`` (20 bytes)
 
 Account ID is a result of ripemd160 of blake256 of a public key(64 bytes uncompressed form).
 
-
 Asset Transfer Address Format
 ------------------------------------
 HRP: ``"cca"`` for Mainnet, ``"tca"`` for Testnet.

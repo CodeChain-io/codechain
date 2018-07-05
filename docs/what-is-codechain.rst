@@ -25,32 +25,6 @@ Finally, CodeChain offers higher transaction speeds with its scalability feature
 to bring faster transactions than ever before on a blockchain.
 
 ====================================
-How Does CodeChain Operate?
-====================================
-
-Platform Account
-------------------------------------
-
-Parcels
-------------------------------------
-
-Gateway
-------------------------------------
-
-Consensus Algorithms
-------------------------------------
-
-
-What is UTXO?
-------------------------------------
-A UTXO is an acronym for Unspent Transaction Outputs, which always requires users to first spend their entire balance defined in a UTXO, and then receving
-the unspent amount back. For instance, if you have a UTXO that defines that you have 10 potions, and you want to buy something that costs 2 potions, you would make a
-transaction that would "spend" your entire UTXO balance by sending 2 potions to the other person, and 8 potions back to yourself. Once this transaction is
-complete, a UTXO would be created, both for the spender and the receiver. In general, the UTXO specifies how much the user got back or received, which basically defines how much
-the user can spend. The amount the user gets back would be added to his/her account balance. Thus, it is most likely that each user would
-have more than one UTXOs, and the sum of all the unspent coins in every UTXOs would be the user's total account balance.
-
-====================================
 Learn More About CodeChain
 ====================================
 
