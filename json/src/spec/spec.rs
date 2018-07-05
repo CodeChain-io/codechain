@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use super::{Engine, Genesis, Params, State};
+use super::{Accounts, Engine, Genesis, Params};
 use serde_json;
 use serde_json::Error;
 use std::io::Read;
@@ -34,7 +34,7 @@ pub struct Spec {
     /// Genesis header.
     pub genesis: Genesis,
     /// Genesis state.
-    pub accounts: State,
+    pub accounts: Accounts,
     /// Boot nodes.
     pub nodes: Option<Vec<String>>,
 }

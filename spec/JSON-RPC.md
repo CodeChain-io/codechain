@@ -40,13 +40,23 @@ In the current version, it's only supported through HTTP.
  - v: `number`
  - action: `action object`
 
-## action object
+## action objects
 
- - action: `string` - "changeShardState" | "payment" | "setRegularKey"
- - transactions: Array of `transaction object`, exists only for "changeShardState" action
- - receiver: `string`, exists only for "payment" action
- - value: `string`, exists only for "payment" action
- - key: `string`, exists only for "setRegularKey" action
+### ChangeShardState action object
+
+ - action: "changeShardState"
+ - transactions: Array of `transaction object`
+
+### Payment action object
+
+ - action: "payment"
+ - receiver: `string`
+ - value: `string`
+
+### SetRegularKey action object
+
+ - action: "setRegularKey"
+ - key: `string`
 
 ## transaction object
 
@@ -218,39 +228,41 @@ Request Example:
 
 Response Example
 ```
-{"jsonrpc":"2.0","result":{
-  "author":"0x84137e7a75043bed32e4458a45da7549a8169b4d",
-  "extraData":[],
-  "hash":"0x56642f04d519ae3262c7ba6facf1c5b11450ebaeb7955337cfbc45420d573077",
-  "invoicesRoot":"0x77b66ced7f8e4370021badc1dcb306b33020579c2ed468c7d0d2a78a2b9d352f",
-  "number":1,
-  "parcels":[{
-    "blockHash":"0x56642f04d519ae3262c7ba6facf1c5b11450ebaeb7955337cfbc45420d573077",
-    "blockNumber":1,
-    "fee":"0xa",
-    "hash":"0x8ae3363ccdcc02d8d662d384deee34fb89d1202124e8065f0d6c84ab31e68d8a",
-    "networkId":17,
-    "nonce":"0x0",
-    "parcelIndex":0,
-    "r":"0x22605d6b9fb713d3a415e02eeed8b4a630e0d867c91bf7d9b7721f94159c0fe1",
-    "s":"0x772f19f1c27f1db8b28289caa9e99ad756878fd56b2415c25cd47cc737f7e0c2",
-    "transactions":[{
-      "payment":{
-        "nonce":"0x1",
-        "receiver":"0xa6594b7196808d161b6fb137e781abbc251385d9",
-        "sender":"0xa6594b7196808d161b6fb137e781abbc251385d9",
-        "value":"0x0"
-      }
-    }],
-    "v":0
-  }],
-  "parcelsRoot":"0xa5815aa98d820dfe7820d6eba68fab4120b5db464fdcdadca8a6b7343b7b0ec1",
-  "parentHash":"0xc2338c8fd5a9b4ca5dd5dd12fc548e796bbb953ee6043afa14377037d0387e25",
-  "score":"0x20000",
-  "seal":[],
-  "stateRoot":"0x127eb8ce890adec59c38d90efecfcb976b0557ec1c741e9627191586ceadbddb",
-  "timestamp":1528355177
-},"id":null}
+{
+    "id": null,
+    "jsonrpc": "2.0",
+    "result": {
+        "author": "0x84137e7a75043bed32e4458a45da7549a8169b4d",
+        "extraData": [],
+        "hash": "0x49b5fda89dbfa92e9a744d3019790107757d189608e2cfe15e796825f4561959",
+        "invoicesRoot": "0x45b0cfc220ceec5b7c1c62c4d4193d38e4eba48e8815729ce75f9c0ab0e4c1c0",
+        "number": 1,
+        "parcels": [
+            {
+                "action": {
+                    "action": "changeShardState",
+                    "transactions": []
+                },
+                "blockHash": "0x49b5fda89dbfa92e9a744d3019790107757d189608e2cfe15e796825f4561959",
+                "blockNumber": 1,
+                "fee": "0xa",
+                "hash": "0x20dced7a95e82cf165bbb7ef111bfda24b664e3c3ffd5a255e970300eea5ec56",
+                "networkId": 17,
+                "nonce": "0x0",
+                "parcelIndex": 0,
+                "r": "0xab2f74e74344b0b24932c85e29a4039150ae0b9fab17398b7e138a70022fd09c",
+                "s": "0x364dd6aeee95f45cbd6773c3edc6507d07505f7fbfb5d85ce128d19fa104d2a6",
+                "v": 1
+            }
+        ],
+        "parcelsRoot": "0x934b77fa1ff7f405127de3c63efd44b92dad7ee4ff923c9b77f06abebd4844a4",
+        "parentHash": "0xc2338c8fd5a9b4ca5dd5dd12fc548e796bbb953ee6043afa14377037d0387e25",
+        "score": "0x20000",
+        "seal": [],
+        "stateRoot": "0x223ac1b388a6f3a2e001482d328c7f6f3b8f0b8686d3988224870a8fed99c8b1",
+        "timestamp": 1530694371
+    }
+}
 ```
 
 ## chain_sendSignedParcel
@@ -286,32 +298,32 @@ Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "chain_getParcel", "params": ["0x8ae3363ccdcc02d8d662d384deee34fb89d1202124e8065f0d6c84ab31e68d8a"], "id": null}' \
+    -d '{"jsonrpc": "2.0", "method": "chain_getParcel", "params": ["0x20dced7a95e82cf165bbb7ef111bfda24b664e3c3ffd5a255e970300eea5ec56"], "id": null}' \
     localhost:8080
 ```
 
 Response Example
 ```
-{"jsonrpc":"2.0","result":{
-  "blockHash":"0x56642f04d519ae3262c7ba6facf1c5b11450ebaeb7955337cfbc45420d573077",
-  "blockNumber":1,
-  "fee":"0xa",
-  "hash":"0x8ae3363ccdcc02d8d662d384deee34fb89d1202124e8065f0d6c84ab31e68d8a",
-  "networkId":17,
-  "nonce":"0x0",
-  "parcelIndex":0,
-  "r":"0x22605d6b9fb713d3a415e02eeed8b4a630e0d867c91bf7d9b7721f94159c0fe1",
-  "s":"0x772f19f1c27f1db8b28289caa9e99ad756878fd56b2415c25cd47cc737f7e0c2",
-  "transactions":[{
-    "payment":{
-      "nonce":"0x1",
-      "receiver":"0xa6594b7196808d161b6fb137e781abbc251385d9",
-      "sender":"0xa6594b7196808d161b6fb137e781abbc251385d9",
-      "value":"0x0"
+{
+    "id": null,
+    "jsonrpc": "2.0",
+    "result": {
+        "action": {
+            "action": "changeShardState",
+            "transactions": []
+        },
+        "blockHash": "0x49b5fda89dbfa92e9a744d3019790107757d189608e2cfe15e796825f4561959",
+        "blockNumber": 1,
+        "fee": "0xa",
+        "hash": "0x20dced7a95e82cf165bbb7ef111bfda24b664e3c3ffd5a255e970300eea5ec56",
+        "networkId": 17,
+        "nonce": "0x0",
+        "parcelIndex": 0,
+        "r": "0xab2f74e74344b0b24932c85e29a4039150ae0b9fab17398b7e138a70022fd09c",
+        "s": "0x364dd6aeee95f45cbd6773c3edc6507d07505f7fbfb5d85ce128d19fa104d2a6",
+        "v": 1
     }
-  }],
-  "v":0
-},"id":null}
+}
 ```
 
 ## chain_getParcelInvoice

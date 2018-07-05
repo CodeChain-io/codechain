@@ -55,7 +55,7 @@ impl CodeChainMachine {
                 got: t.fee,
             }.into())
         }
-        t.verify_basic(self.params().network_id, false)?;
+        t.verify_basic(self.params(), false)?;
 
         Ok(())
     }

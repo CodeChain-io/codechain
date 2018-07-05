@@ -1316,6 +1316,21 @@ mod tests {
     }
 
     #[test]
+    fn from_null_rlp_succeeds() {
+        let mut root = BLAKE_NULL_RLP;
+        let mut db = MemoryDB::new();
+        TrieDBMut::from_existing(&mut db, &mut root).unwrap();
+    }
+
+    #[test]
+    #[should_panic]
+    fn from_zero_fails() {
+        let mut root = H256::zero();
+        let mut db = MemoryDB::new();
+        TrieDBMut::from_existing(&mut db, &mut root).unwrap();
+    }
+
+    #[test]
     fn insert_empty() {
         let mut seed = H256::new();
         let x = StandardMap {
