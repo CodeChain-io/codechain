@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+mod cuckoo;
 pub mod epoch;
 mod null_engine;
 mod signer;
@@ -23,6 +24,7 @@ mod tendermint;
 mod validator_set;
 mod vote_collector;
 
+pub use self::cuckoo::Cuckoo;
 pub use self::null_engine::NullEngine;
 pub use self::solo::Solo;
 pub use self::solo_authority::SoloAuthority;

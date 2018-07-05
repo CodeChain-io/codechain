@@ -16,18 +16,24 @@
 
 use super::super::uint::Uint;
 
-/// Authority params deserialization.
 #[derive(Debug, PartialEq, Deserialize)]
-pub struct NullEngineParams {
+pub struct CuckooParams {
     /// Block reward.
     #[serde(rename = "blockReward")]
     pub block_reward: Option<Uint>,
+    #[serde(rename = "minScore")]
+    pub min_score: Option<Uint>,
+    #[serde(rename = "maxVertex")]
+    pub max_vertex: Option<Uint>,
+    #[serde(rename = "maxEdge")]
+    pub max_edge: Option<Uint>,
+    #[serde(rename = "cycleLength")]
+    pub cycle_length: Option<Uint>,
 }
 
-/// Null engine descriptor
 #[derive(Debug, PartialEq, Deserialize)]
-pub struct NullEngine {
-    pub params: NullEngineParams,
+pub struct Cuckoo {
+    pub params: CuckooParams,
 }
 
 #[cfg(test)]
@@ -39,14 +45,22 @@ mod tests {
     use super::*;
 
     #[test]
-    fn null_engine_deserialization() {
+    fn cuckoo_deserialization() {
         let s = r#"{
             "params": {
-                "blockReward": "0x0d"
+                "blockReward": "0x0d",
+                "minScore" : "0x020000",
+                "maxVertex" : "16",
+                "maxEdge" : "8",
+                "cycleLength" : "6"
             }
         }"#;
 
-        let deserialized: NullEngine = serde_json::from_str(s).unwrap();
+        let deserialized: Cuckoo = serde_json::from_str(s).unwrap();
         assert_eq!(deserialized.params.block_reward, Some(Uint(U256::from(0x0d))));
+        assert_eq!(deserialized.params.min_score, Some(Uint(U256::from(0x020000))));
+        assert_eq!(deserialized.params.max_vertex, Some(Uint(U256::from(16))));
+        assert_eq!(deserialized.params.max_edge, Some(Uint(U256::from(8))));
+        assert_eq!(deserialized.params.cycle_length, Some(Uint(U256::from(6))));
     }
 }

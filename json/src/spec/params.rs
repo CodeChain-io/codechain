@@ -44,11 +44,11 @@ mod tests {
     #[test]
     fn params_deserialization() {
         let s = r#"{
-			"maxExtraDataSize": "0x20",
-			"maxMetadataSize": "0x0400",
-			"networkID" : "0x1",
-			"minParcelCost" : "10"
-		}"#;
+            "maxExtraDataSize": "0x20",
+            "maxMetadataSize": "0x0400",
+            "networkID" : "0x1",
+            "minParcelCost" : "10"
+        }"#;
 
         let deserialized: Params = serde_json::from_str(s).unwrap();
         assert_eq!(deserialized.max_extra_data_size, Uint(U256::from(0x20)));

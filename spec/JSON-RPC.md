@@ -79,6 +79,7 @@ In the current version, it's only supported through HTTP.
 # List of methods
 
  * [ping](#ping)
+ * [version](#version)
 ***
  * [chain_getBestBlockNumber](#chain_getbestblocknumber)
  * [chain_getBestBlockId](#chain_getbestblockid) (not implemented yet)
@@ -129,6 +130,26 @@ Request Example
 Response Example
 ```
 {"jsonrpc":"2.0","result":"pong","id":null}
+```
+
+## version
+Gets the version of CodeChain
+
+Params: No parameters
+
+Return Type: `string`
+
+Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "version", "params": [], "id": null}' \
+    localhost:8080
+```
+
+Response Example
+```
+{"jsonrpc":"2.0","result":"0.1.0","id":null}
 ```
 
 ## chain_getBestBlockNumber

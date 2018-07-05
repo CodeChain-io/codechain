@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use super::{NullEngine, Solo, SoloAuthority, Tendermint};
+use super::{Cuckoo, NullEngine, Solo, SoloAuthority, Tendermint};
 
 /// Engine deserialization.
 #[derive(Debug, PartialEq, Deserialize)]
@@ -28,6 +28,8 @@ pub enum Engine {
     SoloAuthority(SoloAuthority),
     #[serde(rename = "tendermint")]
     Tendermint(Tendermint),
+    #[serde(rename = "cuckoo")]
+    Cuckoo(Cuckoo),
 }
 
 #[cfg(test)]
@@ -38,12 +40,12 @@ mod tests {
     #[test]
     fn engine_deserialization() {
         let s = r#"{
-			"null": {
-				"params": {
-					"blockReward": "0x0d"
-				}
-			}
-		}"#;
+            "null": {
+                "params": {
+                    "blockReward": "0x0d"
+                }
+            }
+        }"#;
 
         let deserialized: Engine = serde_json::from_str(s).unwrap();
         match deserialized {
@@ -52,12 +54,12 @@ mod tests {
         }
 
         let s = r#"{
-			"solo": {
-				"params": {
-					"blockReward": "0x0d"
-				}
-			}
-		}"#;
+            "solo": {
+                "params": {
+                    "blockReward": "0x0d"
+                }
+            }
+        }"#;
 
         let deserialized: Engine = serde_json::from_str(s).unwrap();
         match deserialized {
@@ -66,13 +68,13 @@ mod tests {
         };
 
         let s = r#"{
-			"soloAuthority": {
-				"params": {
-					"durationLimit": "0x0d",
-					"validators" : ["0xc6d9d2cd449a754c494264e1809c50e34d64562b"]
-				}
-			}
-		}"#;
+            "soloAuthority": {
+                "params": {
+                    "durationLimit": "0x0d",
+                    "validators" : ["0xc6d9d2cd449a754c494264e1809c50e34d64562b"]
+                }
+            }
+        }"#;
         let deserialized: Engine = serde_json::from_str(s).unwrap();
         match deserialized {
             Engine::SoloAuthority(_) => {} // solo authority is unit tested in its own file.
@@ -80,15 +82,32 @@ mod tests {
         };
 
         let s = r#"{
-			"tendermint": {
-				"params": {
-					"validators": ["0xc6d9d2cd449a754c494264e1809c50e34d64562b"]
-				}
-			}
-		}"#;
+            "tendermint": {
+                "params": {
+                    "validators": ["0xc6d9d2cd449a754c494264e1809c50e34d64562b"]
+                }
+            }
+        }"#;
         let deserialized: Engine = serde_json::from_str(s).unwrap();
         match deserialized {
             Engine::Tendermint(_) => {} // Tendermint is unit tested in its own file.
+            _ => panic!(),
+        };
+
+        let s = r#"{
+            "cuckoo": {
+                "params": {
+                    "blockReward": "0x0d",
+                    "minScore" : "0x020000",
+                    "maxVertex" : "16",
+                    "maxEdge" : "8",
+                    "cycleLength" : "6"
+                }
+            }
+        }"#;
+        let deserialized: Engine = serde_json::from_str(s).unwrap();
+        match deserialized {
+            Engine::Cuckoo(_) => {} // Tendermint is unit tested in its own file.
             _ => panic!(),
         };
     }

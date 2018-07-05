@@ -56,10 +56,10 @@ mod tests {
     #[test]
     fn tendermint_deserialization() {
         let s = r#"{
-			"params": {
-				"validators": ["0xc6d9d2cd449a754c494264e1809c50e34d64562b"]
-			}
-		}"#;
+            "params": {
+                "validators": ["0xc6d9d2cd449a754c494264e1809c50e34d64562b"]
+            }
+        }"#;
 
         let deserialized: Tendermint = serde_json::from_str(s).unwrap();
         let vs = vec![Address(H160::from("0xc6d9d2cd449a754c494264e1809c50e34d64562b"))];

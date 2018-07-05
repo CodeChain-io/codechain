@@ -45,11 +45,11 @@ mod tests {
     #[test]
     fn basic_authority_deserialization() {
         let s = r#"{
-			"params": {
-				"validators" : ["0xc6d9d2cd449a754c494264e1809c50e34d64562b"],
-				"blockReward": "0x0d"
-			}
-		}"#;
+            "params": {
+                "validators" : ["0xc6d9d2cd449a754c494264e1809c50e34d64562b"],
+                "blockReward": "0x0d"
+            }
+        }"#;
 
         let deserialized: SoloAuthority = serde_json::from_str(s).unwrap();
 
