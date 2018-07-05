@@ -17,7 +17,7 @@
 use ctypes::{Address, H256, Public, U256};
 use trie::Result as TrieResult;
 
-use super::{Asset, AssetAddress, AssetScheme, AssetSchemeAddress, ShardAddress};
+use super::{Asset, AssetAddress, AssetScheme, AssetSchemeAddress};
 
 pub trait TopStateInfo {
     /// Get the nonce of account `a`.
@@ -29,7 +29,9 @@ pub trait TopStateInfo {
     /// Get the regular key of account `a`.
     fn regular_key(&self, a: &Address) -> TrieResult<Option<Public>>;
 
-    fn shard_root(&self, a: &ShardAddress) -> TrieResult<Option<H256>>;
+    fn number_of_shards(&self) -> TrieResult<u32>;
+
+    fn shard_root(&self, shard_id: u32) -> TrieResult<Option<H256>>;
 
     /// Get the asset scheme.
     fn asset_scheme(&self, shard_id: u32, a: &AssetSchemeAddress) -> TrieResult<Option<AssetScheme>>;

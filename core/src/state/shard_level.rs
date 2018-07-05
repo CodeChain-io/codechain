@@ -66,9 +66,9 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
     }
 
     /// Creates new state with existing state root
-    pub fn from_existing(db: B, root: H256, trie_factory: TrieFactory) -> Result<ShardLevelState<B>, TrieError> {
+    pub fn from_existing(db: B, root: H256, trie_factory: TrieFactory) -> trie::Result<ShardLevelState<B>> {
         if !db.as_hashdb().contains(&root) {
-            return Err(TrieError::InvalidStateRoot(root))
+            return Err(TrieError::InvalidStateRoot(root).into())
         }
 
         Ok(ShardLevelState {

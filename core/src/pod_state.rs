@@ -22,12 +22,13 @@ use cjson;
 use ctypes::Address;
 
 use super::pod_account::PodAccount;
+use super::pod_shard_metadata::PodShardMetadata;
 
 /// State of all accounts in the system expressed in Plain Old Data.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct PodState(BTreeMap<Address, PodAccount>);
+pub struct PodAccounts(BTreeMap<Address, PodAccount>);
 
-impl Deref for PodState {
+impl Deref for PodAccounts {
     type Target = BTreeMap<Address, PodAccount>;
 
     fn deref(&self) -> &<Self as Deref>::Target {
@@ -35,18 +36,47 @@ impl Deref for PodState {
     }
 }
 
-impl From<cjson::spec::State> for PodState {
-    fn from(s: cjson::spec::State) -> PodState {
-        let state: BTreeMap<_, _> =
+impl From<cjson::spec::Accounts> for PodAccounts {
+    fn from(s: cjson::spec::Accounts) -> PodAccounts {
+        let accounts =
             s.into_iter().filter(|(_, acc)| !acc.is_empty()).map(|(addr, acc)| (addr.into(), acc.into())).collect();
-        PodState(state)
+        PodAccounts(accounts)
     }
 }
 
-impl fmt::Display for PodState {
+impl fmt::Display for PodAccounts {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for (add, acc) in &self.0 {
             writeln!(f, "{} => {}", add, acc)?;
+        }
+        Ok(())
+    }
+}
+
+
+/// State of all accounts in the system expressed in Plain Old Data.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct PodShards(BTreeMap<u32, PodShardMetadata>);
+
+impl Deref for PodShards {
+    type Target = BTreeMap<u32, PodShardMetadata>;
+
+    fn deref(&self) -> &<Self as Deref>::Target {
+        &self.0
+    }
+}
+
+impl From<cjson::spec::Shards> for PodShards {
+    fn from(s: cjson::spec::Shards) -> PodShards {
+        let shards = s.into_iter().map(|(shard_id, shard)| (shard_id, shard.into())).collect();
+        PodShards(shards)
+    }
+}
+
+impl fmt::Display for PodShards {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for (shard_id, shard) in &self.0 {
+            writeln!(f, "{}: {}", shard_id, shard)?;
         }
         Ok(())
     }

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use super::{Engine, Genesis, Params, State};
+use super::{Accounts, Engine, Genesis, Params, Shards};
 use serde_json;
 use serde_json::Error;
 use std::io::Read;
@@ -34,7 +34,8 @@ pub struct Spec {
     /// Genesis header.
     pub genesis: Genesis,
     /// Genesis state.
-    pub accounts: State,
+    pub accounts: Accounts,
+    pub shards: Shards,
     /// Boot nodes.
     pub nodes: Option<Vec<String>>,
 }
@@ -74,6 +75,7 @@ mod tests {
 	},
 	"params": {
 		"maxExtraDataSize": "0x20",
+		"maxMetadataSize": "0x0400",
 		"networkID" : "0x2",
 		"minParcelCost" : "10"
 	},
@@ -101,6 +103,8 @@ mod tests {
 		"0000000000000000000000000000000000000003": { "balance": "1", "nonce": "1048576" },
 		"0000000000000000000000000000000000000004": { "balance": "1", "nonce": "1048576" },
 		"102e61f5d8f9bc71d0ad4a084df4e65e05ce0e1c": { "balance": "1606938044258990275541962092341162602522202993782792835301376", "nonce": "1048576" }
+	},
+	"shards": {
 	}
 		}"#;
         let _deserialized: Spec = serde_json::from_str(s).unwrap();

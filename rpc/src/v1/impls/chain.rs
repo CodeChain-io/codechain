@@ -18,7 +18,8 @@ use std::sync::Arc;
 
 use ccore::{
     Asset, AssetAddress, AssetScheme, AssetSchemeAddress, Balance, BlockChainClient, BlockId, BlockInfo, BlockNumber,
-    ChainInfo, Client, Invoice, Miner, MinerService, Nonce, ParcelInvoice, RegularKey, SignedParcel, TopStateInfo,
+    ChainInfo, Client, Invoice, Miner, MinerService, Nonce, ParcelInvoice, RegularKey, Shard, SignedParcel,
+    TopStateInfo,
 };
 use ctypes::{H160, H256, Public, U256};
 use rlp::UntrustedRlp;
@@ -104,6 +105,17 @@ impl Chain for ChainClient {
     fn get_regular_key(&self, address: H160, block_number: Option<u64>) -> Result<Option<Public>> {
         let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
         Ok(self.client.regular_key(&address.into(), block_id.into()))
+    }
+
+
+    fn get_number_of_shards(&self, block_number: Option<u64>) -> Result<Option<u32>> {
+        let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
+        Ok(self.client.number_of_shards(block_id.into()))
+    }
+
+    fn get_shard_root(&self, shard_id: u32, block_number: Option<u64>) -> Result<Option<H256>> {
+        let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
+        Ok(self.client.shard_root(shard_id, block_id.into()))
     }
 
     fn get_best_block_number(&self) -> Result<BlockNumber> {
