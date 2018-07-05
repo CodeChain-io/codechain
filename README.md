@@ -3,7 +3,7 @@ CodeChain [![Build Status](https://travis-ci.org/CodeChain-io/codechain.svg?bran
 
 CodeChain is a programmable open source blockchain technology optimal for developing and customizing multi-asset management systems.
 
-# Build
+## Build
 
 Download CodeChain code
 
@@ -20,7 +20,7 @@ cargo build --release
 
 This will produce an executable in the `./target/release` directory.
 
-# Run
+## Run
 
 To run CodeChain, just run
 
@@ -29,7 +29,7 @@ To run CodeChain, just run
 ```
 You can create a block by sending a parcel through [JSON-RPC](https://github.com/CodeChain-io/codechain/wiki/JSON-RPC) or [JavaScript SDK](https://api.codechain.io/).
 
-# Formatting
+## Formatting
 
 
 Make sure you run `rustfmt` before creating a PR to the repo. You need to install the nightly-2018-05-07 version of `rustfmt`.
@@ -45,11 +45,11 @@ To run `rustfmt`,
 cargo +nightly-2018-05-07 fmt
 ```
 
-# Testing
+## Testing
 
 Developers are strongly encouraged to write unit tests for new code, and to submit new unit tests for old code. Unit tests can be compiled and run with: `cargo test --all`. For more details, please reference [[Unit Tests]].
 
-# User Manual
+## User Manual
 
 Under `docs` folder, run following command.
 ```
@@ -57,5 +57,5 @@ make html
 ```
 User manual will be generated at `docs/_build/html`.
 
-# License
+## License
 CodeChain is licensed under the AGPL License - see the [LICENSE](https://github.com/CodeChain-io/codechain/blob/master/LICENSE) file for details
