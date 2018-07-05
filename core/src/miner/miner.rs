@@ -108,7 +108,6 @@ impl Miner {
     fn new_raw(options: MinerOptions, spec: &Spec, accounts: Option<Arc<AccountProvider>>) -> Self {
         let mem_limit = options.mem_pool_memory_limit.unwrap_or_else(usize::max_value);
         let mem_pool = Arc::new(RwLock::new(MemPool::with_limits(options.mem_pool_size, mem_limit)));
-        // FIXME: Get the list of notifiers from options.
         let notifiers: Vec<Box<NotifyWork>> = match options.new_work_notify.is_empty() {
             true => Vec::new(),
             false => vec![Box::new(WorkPoster::new(&options.new_work_notify))],
