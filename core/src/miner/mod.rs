@@ -18,6 +18,7 @@ mod local_parcels;
 mod mem_pool;
 mod miner;
 mod sealing_queue;
+mod work_notify;
 
 use ctypes::{Address, Bytes, H256, U256};
 
