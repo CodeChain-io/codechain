@@ -74,6 +74,7 @@ mod tests {
 	},
 	"params": {
 		"maxExtraDataSize": "0x20",
+		"maxMetadataSize": "0x0400",
 		"networkID" : "0x2",
 		"minParcelCost" : "10"
 	},
