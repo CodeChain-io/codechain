@@ -21,7 +21,7 @@ mod listener;
 mod message;
 mod stream;
 
-pub use self::handler::{Handler, Message};
+pub use self::handler::{Handler, IgnoreConnectionLimit, Message};
 use self::message::ExtensionMessage;
 use self::message::NegotiationBody;
 use self::message::NegotiationMessage;

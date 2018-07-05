@@ -22,7 +22,7 @@ use std::sync::Arc;
 
 use ccrypto::aes::SymmetricCipherError;
 use cfinally::finally;
-use cio::{IoContext, IoError as CIoError, IoHandler, IoHandlerResult, IoManager, StreamToken, TimerToken};
+use cio::{IoChannel, IoContext, IoError as CIoError, IoHandler, IoHandlerResult, IoManager, StreamToken, TimerToken};
 use ckey::Error as KeysError;
 use ctypes::Secret;
 use mio::deprecated::EventLoop;
@@ -30,6 +30,7 @@ use mio::Token;
 use parking_lot::Mutex;
 use rlp::DecoderError;
 
+use super::super::p2p;
 use super::super::token_generator::TokenGenerator;
 use super::super::RoutingTable;
 use super::super::SocketAddr;
@@ -90,6 +91,7 @@ struct SessionInitiator {
 
     routing_table: Arc<RoutingTable>,
     requests: Requests,
+    channel_to_p2p: IoChannel<p2p::Message>,
 }
 
 #[derive(Debug)]
@@ -191,12 +193,17 @@ pub enum Message {
 const MESSAGE_TIMEOUT_MS: u64 = 10_000;
 
 impl SessionInitiator {
-    fn bind(socket_address: &SocketAddr, routing_table: Arc<RoutingTable>) -> Result<Self> {
+    fn bind(
+        socket_address: &SocketAddr,
+        routing_table: Arc<RoutingTable>,
+        channel_to_p2p: IoChannel<p2p::Message>,
+    ) -> Result<Self> {
         let server = Server::bind(socket_address)?;
         Ok(Self {
             server,
             routing_table,
             requests: Requests::new(),
+            channel_to_p2p,
         })
     }
 
@@ -341,7 +348,10 @@ impl SessionInitiator {
                     return Ok(())
                 }
 
-                self.requests.manually_connected_address.take(from);
+                if self.requests.manually_connected_address.take(from).is_some() {
+                    self.channel_to_p2p
+                        .send(p2p::Message::RequestConnection(from.clone(), p2p::IgnoreConnectionLimit::Ignore))?;
+                }
 
                 if !self.routing_table.create_allowed_session(from, &encrypted_nonce) {
                     cwarn!(NET, "Cannot create session to {:?}", from);
@@ -376,9 +386,14 @@ pub struct Handler {
 }
 
 impl Handler {
-    pub fn new(socket_address: SocketAddr, routing_table: Arc<RoutingTable>) -> Self {
-        let session_initiator =
-            Mutex::new(SessionInitiator::bind(&socket_address, routing_table).expect("Cannot bind UDP port"));
+    pub fn new(
+        socket_address: SocketAddr,
+        routing_table: Arc<RoutingTable>,
+        channel_to_p2p: IoChannel<p2p::Message>,
+    ) -> Self {
+        let session_initiator = Mutex::new(
+            SessionInitiator::bind(&socket_address, routing_table, channel_to_p2p).expect("Cannot bind UDP port"),
+        );
         Self {
             session_initiator,
         }

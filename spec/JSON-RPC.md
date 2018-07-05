@@ -590,9 +590,8 @@ Request Example
 Response Example
 ```
 {"jsonrpc":"2.0","result":{
-  "blockHash": "0x56642f04d519ae3262c7ba6facf1c5b11450ebaeb7955337cfbc45420d573077",
-  "score": 100,
-  "blockNumber": 30,
+  "powHash": "0x56642f04d519ae3262c7ba6facf1c5b11450ebaeb7955337cfbc45420d573077",
+  "target": 100
 },"id":null}
 ```
 
@@ -600,8 +599,8 @@ Response Example
 Used for submitting a proof-of-work solution.
 
 Params:
- 1. nonce: `string`
  1. powHash: `string`
+ 1. seal: Array of `string`
 
 Return Type: `bool`
 
@@ -609,7 +608,7 @@ Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "miner_submitWork", "params": ["0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef", "0x56642f04d519ae3262c7ba6facf1c5b11450ebaeb7955337cfbc45420d573077"], "id": null}' \
+    -d '{"jsonrpc": "2.0", "method": "miner_submitWork", "params": ["0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef", ["0x56642f04d519ae3262c7ba6facf1c5b11450ebaeb7955337cfbc45420d573077"]], "id": null}' \
     localhost:8080
 ```
 

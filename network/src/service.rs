@@ -58,7 +58,8 @@ impl Service {
 
         timer.register_handler(Arc::new(timer::Handler::new(Arc::clone(&client))))?;
 
-        let session_initiator_handler = Arc::new(session_initiator::Handler::new(address, Arc::clone(&routing_table)));
+        let session_initiator_handler =
+            Arc::new(session_initiator::Handler::new(address, Arc::clone(&routing_table), p2p.channel()));
         session_initiator.register_handler(session_initiator_handler)?;
 
         Ok(Arc::new(Self {
