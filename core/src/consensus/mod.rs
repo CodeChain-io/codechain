@@ -37,7 +37,7 @@ use std::sync::{Arc, Weak};
 
 use ckey::ECDSASignature;
 use cnetwork::NetworkExtension;
-use ctypes::{Address, Bytes, H256};
+use ctypes::{Address, Bytes, H256, U256};
 use unexpected::{Mismatch, OutOfBounds};
 
 use self::epoch::{EpochVerifier, NoOp, PendingTransition};
@@ -211,6 +211,10 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
 
     fn network_extension(&self) -> Option<Arc<NetworkExtension>> {
         None
+    }
+
+    fn score_to_target(&self, _score: &U256) -> U256 {
+        U256::zero()
     }
 }
 

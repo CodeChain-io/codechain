@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::fmt;
+
 use ccore::Error as CoreError;
 use kvdb::Error as KVDBError;
 use rlp::DecoderError;
@@ -21,6 +23,7 @@ use rlp::DecoderError;
 use jsonrpc_core::{Error, ErrorCode, Value};
 
 mod codes {
+    pub const NO_AUTHOR: i64 = -32002;
     pub const NO_WORK_REQUIRED: i64 = -32004;
     pub const UNKNOWN_ERROR: i64 = -32009;
     pub const PARCEL_ERROR: i64 = -32010;
@@ -61,6 +64,14 @@ pub fn rlp(error: DecoderError) -> Error {
     }
 }
 
+pub fn no_author() -> Error {
+    Error {
+        code: ErrorCode::ServerError(codes::NO_AUTHOR),
+        message: "Author not configured. Run Parity with --author to configure.".into(),
+        data: None,
+    }
+}
+
 pub fn no_work_required() -> Error {
     Error {
         code: ErrorCode::ServerError(codes::NO_WORK_REQUIRED),
@@ -74,5 +85,16 @@ pub fn network_disabled() -> Error {
         code: ErrorCode::ServerError(codes::NETWORK_DISABLED),
         message: "Network is diabled.".into(),
         data: None,
+    }
+}
+
+/// Internal error signifying a logic error in code.
+/// Should not be used when function can just fail
+/// because of invalid parameters or incomplete node state.
+pub fn internal<T: fmt::Debug>(error: &str, data: T) -> Error {
+    Error {
+        code: ErrorCode::InternalError,
+        message: format!("Internal error occurred: {}", error),
+        data: Some(Value::String(format!("{:?}", data))),
     }
 }
