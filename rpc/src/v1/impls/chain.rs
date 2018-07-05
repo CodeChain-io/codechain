@@ -17,9 +17,8 @@
 use std::sync::Arc;
 
 use ccore::{
-    Asset, AssetAddress, AssetScheme, AssetSchemeAddress, Balance, BlockChainClient, BlockId, BlockInfo, BlockNumber,
-    ChainInfo, Client, Invoice, Miner, MinerService, Nonce, ParcelInvoice, RegularKey, Shard, SignedParcel,
-    TopStateInfo,
+    Asset, AssetClient, AssetScheme, BlockId, BlockNumber, Invoice, MinerService, MiningBlockChainClient, Nonce,
+    ParcelInvoice, RegularKey, Shard, SignedParcel,
 };
 use ctypes::{H160, H256, Public, U256};
 use rlp::UntrustedRlp;
@@ -30,13 +29,20 @@ use super::super::errors;
 use super::super::traits::Chain;
 use super::super::types::{Block, BlockNumberAndHash, Bytes, Parcel};
 
-pub struct ChainClient {
-    client: Arc<Client>,
-    miner: Arc<Miner>,
+pub struct ChainClient<C, M>
+where
+    C: AssetClient + MiningBlockChainClient + Shard + RegularKey,
+    M: MinerService, {
+    client: Arc<C>,
+    miner: Arc<M>,
 }
 
-impl ChainClient {
-    pub fn new(client: &Arc<Client>, miner: &Arc<Miner>) -> Self {
+impl<C, M> ChainClient<C, M>
+where
+    C: AssetClient + MiningBlockChainClient + Shard + RegularKey,
+    M: MinerService,
+{
+    pub fn new(client: &Arc<C>, miner: &Arc<M>) -> Self {
         ChainClient {
             client: client.clone(),
             miner: miner.clone(),
@@ -44,7 +50,11 @@ impl ChainClient {
     }
 }
 
-impl Chain for ChainClient {
+impl<C, M> Chain for ChainClient<C, M>
+where
+    C: AssetClient + MiningBlockChainClient + Shard + RegularKey + 'static,
+    M: MinerService + 'static,
+{
     fn send_signed_parcel(&self, raw: Bytes) -> Result<H256> {
         UntrustedRlp::new(&raw.into_vec())
             .as_val()
@@ -73,23 +83,11 @@ impl Chain for ChainClient {
     }
 
     fn get_asset_scheme(&self, transaction_hash: H256) -> Result<Option<AssetScheme>> {
-        if let Some(state) = self.client.state_at(BlockId::Latest) {
-            let shard_id = 0; // FIXME
-            let address = AssetSchemeAddress::new(transaction_hash);
-            Ok(state.asset_scheme(shard_id, &address).map_err(errors::parcel)?)
-        } else {
-            Ok(None)
-        }
+        self.client.get_asset_scheme(transaction_hash).map_err(errors::parcel)
     }
 
     fn get_asset(&self, transaction_hash: H256, index: usize) -> Result<Option<Asset>> {
-        if let Some(state) = self.client.state_at(BlockId::Latest) {
-            let shard_id = 0; // FIXME
-            let address = AssetAddress::new(transaction_hash, index);
-            Ok(state.asset(shard_id, &address).map_err(errors::parcel)?)
-        } else {
-            Ok(None)
-        }
+        self.client.get_asset(transaction_hash, index).map_err(errors::parcel)
     }
 
     fn get_nonce(&self, address: H160, block_number: Option<u64>) -> Result<Option<U256>> {

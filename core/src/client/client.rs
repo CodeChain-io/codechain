@@ -26,7 +26,7 @@ use journaldb;
 use kvdb::{DBTransaction, KeyValueDB};
 use parking_lot::{Mutex, RwLock};
 use rlp::{Encodable, UntrustedRlp};
-use trie::{TrieFactory, TrieSpec};
+use trie::{Result as TrieResult, TrieFactory, TrieSpec};
 
 use super::super::block::{enact, ClosedBlock, Drain, IsBlock, LockedBlock, OpenBlock, SealedBlock};
 use super::super::blockchain::{
@@ -42,7 +42,7 @@ use super::super::miner::{Miner, MinerService};
 use super::super::parcel::{LocalizedParcel, SignedParcel, UnverifiedParcel};
 use super::super::service::ClientIoMessage;
 use super::super::spec::Spec;
-use super::super::state::{TopLevelState, TopStateInfo};
+use super::super::state::{Asset, AssetAddress, AssetScheme, AssetSchemeAddress, TopLevelState, TopStateInfo};
 use super::super::state_db::StateDB;
 use super::super::types::{
     BlockId, BlockNumber, BlockStatus, ParcelId, TransactionId, VerificationQueueInfo as BlockQueueInfo,
@@ -51,8 +51,8 @@ use super::super::verification::queue::{BlockQueue, HeaderQueue};
 use super::super::verification::{self, PreverifiedBlock, Verifier};
 use super::super::views::{BlockView, HeaderView};
 use super::{
-    AccountData, Balance, BlockChain as BlockChainTrait, BlockChainClient, BlockChainInfo, BlockInfo, BlockProducer,
-    ChainInfo, ChainNotify, ClientConfig, EngineClient, Error as ClientError, ImportBlock, ImportResult,
+    AccountData, AssetClient, Balance, BlockChain as BlockChainTrait, BlockChainClient, BlockChainInfo, BlockInfo,
+    BlockProducer, ChainInfo, ChainNotify, ClientConfig, EngineClient, Error as ClientError, ImportBlock, ImportResult,
     ImportSealedBlock, Invoice, MiningBlockChainClient, Nonce, ParcelInfo, PrepareOpenBlock, RegularKey, ReopenBlock,
     Shard, StateOrBlock,
 };
@@ -244,6 +244,28 @@ impl Client {
 
     pub fn database(&self) -> Arc<KeyValueDB> {
         Arc::clone(&self.db.read())
+    }
+}
+
+impl AssetClient for Client {
+    fn get_asset_scheme(&self, transaction_hash: H256) -> TrieResult<Option<AssetScheme>> {
+        if let Some(state) = Client::state_at(&self, BlockId::Latest) {
+            let shard_id = 0; // FIXME
+            let address = AssetSchemeAddress::new(transaction_hash);
+            Ok(state.asset_scheme(shard_id, &address)?)
+        } else {
+            Ok(None)
+        }
+    }
+
+    fn get_asset(&self, transaction_hash: H256, index: usize) -> TrieResult<Option<Asset>> {
+        if let Some(state) = Client::state_at(&self, BlockId::Latest) {
+            let shard_id = 0; // FIXME
+            let address = AssetAddress::new(transaction_hash, index);
+            Ok(state.asset(shard_id, &address)?)
+        } else {
+            Ok(None)
+        }
     }
 }
 
