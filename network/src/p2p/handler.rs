@@ -59,9 +59,15 @@ const LAST_CONNECTION_TOKEN: TimerToken = FIRST_CONNECTION_TOKEN + MAX_CONNECTIO
 const CREATE_CONNECTIONS_TOKEN: TimerToken = 0;
 const PULL_CONNECTIONS_MS: u64 = 10 * 1000;
 
-#[derive(Clone, Debug, PartialOrd, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
+pub enum IgnoreConnectionLimit {
+    Ignore,
+    Not,
+}
+
+#[derive(Clone, Debug, PartialEq)]
 pub enum Message {
-    RequestConnection(SocketAddr),
+    RequestConnection(SocketAddr, IgnoreConnectionLimit),
 
     RequestNegotiation {
         node_id: NodeId,
@@ -355,7 +361,7 @@ impl IoHandler<Message> for Handler {
                     let count = (self.min_peers - number_of_connections + 1) / 2;
                     let addresses = manager.routing_table.unestablished_addresses(count);
                     for address in addresses {
-                        io.message(Message::RequestConnection(address))?;
+                        io.message(Message::RequestConnection(address, IgnoreConnectionLimit::Not))?;
                     }
                 }
                 Ok(())
@@ -366,12 +372,14 @@ impl IoHandler<Message> for Handler {
 
     fn message(&self, io: &IoContext<Message>, message: &Message) -> IoHandlerResult<()> {
         match message {
-            Message::RequestConnection(socket_address) => {
+            Message::RequestConnection(socket_address, ignore_connection_limit) => {
                 let mut manager = self.manager.lock();
-                let number_of_connections = manager.connections.len();
-                if self.max_peers <= manager.connections.len() {
-                    ctrace!(NET, "Already has maximum peers({})", number_of_connections);
-                    return Ok(())
+                if ignore_connection_limit == &IgnoreConnectionLimit::Not {
+                    let number_of_connections = manager.connections.len();
+                    if self.max_peers <= manager.connections.len() {
+                        ctrace!(NET, "Already has maximum peers({})", number_of_connections);
+                        return Ok(())
+                    }
                 }
 
                 ctrace!(NET, "Connecting to {:?}", socket_address);

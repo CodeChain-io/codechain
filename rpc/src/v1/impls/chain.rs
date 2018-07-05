@@ -27,7 +27,7 @@ use jsonrpc_core::Result;
 
 use super::super::errors;
 use super::super::traits::Chain;
-use super::super::types::{Block, Bytes, Parcel};
+use super::super::types::{Block, BlockNumberAndHash, Bytes, Parcel};
 
 pub struct ChainClient<C, M>
 where
@@ -118,6 +118,13 @@ where
 
     fn get_best_block_number(&self) -> Result<BlockNumber> {
         Ok(self.client.chain_info().best_block_number)
+    }
+
+    fn get_best_block_id(&self) -> Result<BlockNumberAndHash> {
+        Ok(BlockNumberAndHash {
+            number: self.client.chain_info().best_block_number,
+            hash: self.client.chain_info().best_block_hash,
+        })
     }
 
     fn get_block_hash(&self, block_number: u64) -> Result<Option<H256>> {

@@ -19,6 +19,7 @@ mod params;
 use std::cmp::{max, min};
 
 use byteorder::{ByteOrder, LittleEndian};
+use ccrypto::blake256;
 use ctypes::U256;
 use cuckoo::Cuckoo as CuckooVerifier;
 use rlp::UntrustedRlp;
@@ -126,11 +127,14 @@ impl ConsensusEngine<CodeChainMachine> for Cuckoo {
         if !self.verifier.verify(&message, &seal.proof) {
             return Err(From::from(BlockError::InvalidProofOfWork))
         }
-        if U256::from(header.hash()) > self.score_to_target(header.score()) {
+
+        let target = self.score_to_target(header.score());
+        let hash = blake256(::rlp::encode_list(&seal.proof));
+        if U256::from(hash) > target {
             return Err(From::from(BlockError::InvalidScore(OutOfBounds {
-                min: Some(*header.score()),
-                max: Some(*header.score()),
-                found: U256::from(header.hash()),
+                min: Some(target),
+                max: Some(target),
+                found: U256::from(hash),
             })))
         }
         Ok(())
