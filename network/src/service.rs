@@ -18,8 +18,10 @@
 use std::sync::Arc;
 
 use cio::{IoError, IoService};
+use ctypes::H256;
 
 use super::client::Client;
+use super::control::Control;
 use super::p2p;
 use super::routing_table::RoutingTable;
 use super::session_initiator;
@@ -36,7 +38,7 @@ pub struct Service {
 }
 
 impl Service {
-    pub fn start(address: SocketAddr, min_peers: usize, max_peers: usize) -> Result<Self, Error> {
+    pub fn start(address: SocketAddr, min_peers: usize, max_peers: usize) -> Result<Arc<Self>, Error> {
         let p2p = IoService::start()?;
         let timer = IoService::start()?;
         let session_initiator = IoService::start()?;
@@ -59,13 +61,13 @@ impl Service {
         let session_initiator_handler = Arc::new(session_initiator::Handler::new(address, Arc::clone(&routing_table)));
         session_initiator.register_handler(session_initiator_handler)?;
 
-        Ok(Self {
+        Ok(Arc::new(Self {
             session_initiator,
             _p2p: p2p,
             timer,
             client,
             routing_table,
-        })
+        }))
     }
 
     pub fn register_extension(&self, extension: Arc<NetworkExtension>) -> Result<(), String> {
@@ -90,6 +92,22 @@ impl Service {
 
     pub fn set_routing_table(&self, disc: &DiscoveryApi) {
         disc.set_routing_table(Arc::clone(&self.routing_table));
+    }
+}
+
+impl Control for Service {
+    fn register_secret(&self, secret: H256, addr: SocketAddr) {
+        let message = session_initiator::Message::PreimportSecret(secret, addr);
+        if let Err(err) = self.session_initiator.send_message(message) {
+            cerror!(NET, "Error occurred while sending message PreimportSecret : {:?}", err);
+        }
+    }
+
+    fn connect(&self, addr: SocketAddr) {
+        let message = session_initiator::Message::ManuallyConnectTo(addr);
+        if let Err(err) = self.session_initiator.send_message(message) {
+            cerror!(NET, "Error occured while sending message ManuallyConnectTo: {:?}", err);
+        }
     }
 }
 

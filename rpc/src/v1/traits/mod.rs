@@ -17,7 +17,9 @@
 mod chain;
 mod devel;
 mod miner;
+mod net;
 
 pub use self::chain::Chain;
 pub use self::devel::Devel;
 pub use self::miner::Miner;
+pub use self::net::Net;

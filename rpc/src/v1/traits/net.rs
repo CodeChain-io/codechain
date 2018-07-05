@@ -14,30 +14,15 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod account;
-mod cuckoo;
-mod engine;
-mod genesis;
-mod null_engine;
-mod params;
-mod seal;
-mod shard;
-mod solo;
-mod solo_authority;
-mod spec;
-mod state;
-mod tendermint;
+use ctypes::H256;
+use jsonrpc_core::Result;
 
-pub use self::account::Account;
-pub use self::cuckoo::{Cuckoo, CuckooParams};
-pub use self::engine::Engine;
-pub use self::genesis::Genesis;
-pub use self::null_engine::{NullEngine, NullEngineParams};
-pub use self::params::Params;
-pub use self::seal::{Seal, TendermintSeal};
-pub use self::shard::Shard;
-pub use self::solo::{Solo, SoloParams};
-pub use self::solo_authority::{SoloAuthority, SoloAuthorityParams};
-pub use self::spec::Spec;
-pub use self::state::{Accounts, Shards};
-pub use self::tendermint::{Tendermint, TendermintParams};
+build_rpc_trait! {
+    pub trait Net {
+        # [rpc(name = "net_shareSecret")]
+        fn share_secret(&self, H256, ::std::net::IpAddr, u16) -> Result<()>;
+
+        # [rpc(name = "net_connect")]
+        fn connect(&self, ::std::net::IpAddr, u16) -> Result<()>;
+    }
+}

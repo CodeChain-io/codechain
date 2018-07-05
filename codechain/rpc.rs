@@ -18,6 +18,7 @@ use std::io;
 use std::net::SocketAddr;
 use std::sync::Arc;
 
+use cnetwork::NetworkControl;
 use crpc::{start_http, start_ipc, HttpServer, IpcServer};
 use crpc::{Compatibility, MetaIoHandler};
 use rpc_apis;
@@ -41,19 +42,23 @@ impl HttpConfiguration {
     }
 }
 
-pub fn new_http(cfg: HttpConfiguration, deps: Arc<rpc_apis::ApiDependencies>) -> Result<HttpServer, String> {
+pub fn new_http<NC>(cfg: HttpConfiguration, deps: Arc<rpc_apis::ApiDependencies<NC>>) -> Result<HttpServer, String>
+where
+    NC: NetworkControl + Send + Sync, {
     let url = format!("{}:{}", cfg.interface, cfg.port);
     let addr = url.parse().map_err(|_| format!("Invalid JSONRPC listen host/port given: {}", url))?;
     let server = setup_http_rpc_server(&addr, cfg.cors, cfg.hosts, deps)?;
     Ok(server)
 }
 
-pub fn setup_http_rpc_server(
+pub fn setup_http_rpc_server<NC>(
     url: &SocketAddr,
     cors_domains: Option<Vec<String>>,
     allowed_hosts: Option<Vec<String>>,
-    deps: Arc<rpc_apis::ApiDependencies>,
-) -> Result<HttpServer, String> {
+    deps: Arc<rpc_apis::ApiDependencies<NC>>,
+) -> Result<HttpServer, String>
+where
+    NC: NetworkControl + Send + Sync, {
     let server = setup_rpc_server(deps);
     let start_result = start_http(url, cors_domains, allowed_hosts, server);
     match start_result {
@@ -70,7 +75,9 @@ pub struct IpcConfiguration {
     pub socket_addr: String,
 }
 
-pub fn new_ipc(cfg: IpcConfiguration, deps: Arc<rpc_apis::ApiDependencies>) -> Result<IpcServer, String> {
+pub fn new_ipc<NC>(cfg: IpcConfiguration, deps: Arc<rpc_apis::ApiDependencies<NC>>) -> Result<IpcServer, String>
+where
+    NC: NetworkControl + Send + Sync, {
     let server = setup_rpc_server(deps);
     let start_result = start_ipc(&cfg.socket_addr, server);
     match start_result {
@@ -82,7 +89,9 @@ pub fn new_ipc(cfg: IpcConfiguration, deps: Arc<rpc_apis::ApiDependencies>) -> R
     }
 }
 
-fn setup_rpc_server(deps: Arc<rpc_apis::ApiDependencies>) -> MetaIoHandler<()> {
+fn setup_rpc_server<NC>(deps: Arc<rpc_apis::ApiDependencies<NC>>) -> MetaIoHandler<()>
+where
+    NC: NetworkControl + Send + Sync, {
     let mut handler = MetaIoHandler::with_compatibility(Compatibility::Both);
     deps.extend_api(&mut handler);
     rpc_apis::setup_rpc(handler)
