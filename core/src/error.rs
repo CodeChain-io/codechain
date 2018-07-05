@@ -89,7 +89,7 @@ pub enum BlockError {
     /// value for score. This error needs only provide bounds of which it is out.
     ScoreOutOfBounds(OutOfBounds<U256>),
     /// Score header field is invalid; this is a strong error used after getting a definitive
-    /// value for difficulty (which is provided).
+    /// value for score (which is provided).
     InvalidScore(Mismatch<U256>),
     /// Seal element of type H256 (max_hash for Ethash, but could be something else for
     /// other seal engines) is out of bounds.

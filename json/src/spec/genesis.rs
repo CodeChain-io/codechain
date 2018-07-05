@@ -24,7 +24,7 @@ use super::Seal;
 pub struct Genesis {
     /// Seal.
     pub seal: Seal,
-    /// Difficulty.
+    /// Score. Difficulty in PoW.
     pub score: Uint,
     /// Block author, defaults to 0.
     pub author: Option<Address>,

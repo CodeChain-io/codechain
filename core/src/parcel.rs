@@ -23,6 +23,7 @@ use ctypes::{Address, Bytes, H160, H256, U256};
 use heapsize::HeapSizeOf;
 use rlp::{self, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
+use super::spec::CommonParams;
 use super::types::BlockNumber;
 use super::Transaction;
 
@@ -38,6 +39,8 @@ pub enum ParcelError {
     TooCheapToReplace,
     /// Invalid chain ID given.
     InvalidNetworkId,
+    /// Max metadata size is exceeded.
+    MetadataTooBig,
     /// Parcel was not imported to the queue because limit has been reached.
     LimitReached,
     /// Parcel's fee is below currently set minimal fee requirement.
@@ -75,6 +78,7 @@ pub fn parcel_error_message(error: &ParcelError) -> String {
         Old => "No longer valid".into(),
         TooCheapToReplace => "Gas price too low to replace".into(),
         InvalidNetworkId => "Parcel of this network ID is not allowed on this chain.".into(),
+        MetadataTooBig => "Metadata size is too big.".into(),
         LimitReached => "Parcel limit reached".into(),
         InsufficientFee {
             minimal,
@@ -347,12 +351,32 @@ impl UnverifiedParcel {
     }
 
     /// Verify basic signature params. Does not attempt sender recovery.
-    pub fn verify_basic(&self, network_id: u64, allow_empty_signature: bool) -> Result<(), ParcelError> {
+    pub fn verify_basic(&self, params: &CommonParams, allow_empty_signature: bool) -> Result<(), ParcelError> {
         if !(allow_empty_signature && self.is_unsigned()) {
             self.check_low_s()?;
         }
-        if self.network_id != network_id {
+        if self.network_id != params.network_id {
             return Err(ParcelError::InvalidNetworkId)
+        }
+        match &self.action {
+            Action::ChangeShardState {
+                transactions,
+            } => {
+                for t in transactions {
+                    match &t {
+                        Transaction::AssetMint {
+                            metadata,
+                            ..
+                        } => {
+                            if metadata.len() > params.max_metadata_size {
+                                return Err(ParcelError::MetadataTooBig)
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            _ => {}
         }
         Ok(())
     }

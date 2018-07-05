@@ -43,8 +43,12 @@ impl CodeChainMachine {
     }
 
     /// Some intrinsic operation parameters; by default they take their value from the `spec()`'s `engine_params`.
-    pub fn maximum_extra_data_size(&self) -> usize {
-        self.params().maximum_extra_data_size
+    pub fn max_extra_data_size(&self) -> usize {
+        self.params().max_extra_data_size
+    }
+
+    pub fn max_metadata_size(&self) -> usize {
+        self.params().max_metadata_size
     }
 
     /// Does basic verification of the parcel.
@@ -55,7 +59,7 @@ impl CodeChainMachine {
                 got: t.fee,
             }.into())
         }
-        t.verify_basic(self.params().network_id, false)?;
+        t.verify_basic(self.params(), false)?;
 
         Ok(())
     }

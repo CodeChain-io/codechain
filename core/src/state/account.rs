@@ -44,6 +44,14 @@ impl Account {
         }
     }
 
+    pub fn new_with_key(balance: U256, nonce: U256, regular_key: Option<Public>) -> Self {
+        Self {
+            balance,
+            nonce,
+            regular_key,
+        }
+    }
+
     /// return the balance associated with this account.
     pub fn balance(&self) -> &U256 {
         &self.balance

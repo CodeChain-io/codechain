@@ -37,6 +37,7 @@ pub struct Config {
     pub network: Network,
     pub rpc: Rpc,
     pub snapshot: Snapshot,
+    pub stratum: Stratum,
 }
 
 #[derive(Deserialize)]
@@ -64,6 +65,9 @@ pub struct Mining {
     pub engine_signer: Option<Address>,
     pub mem_pool_size: usize,
     pub mem_pool_mem_limit: usize,
+    pub force_sealing: bool,
+    pub reseal_min_period: u64,
+    pub reseal_max_period: u64,
     pub work_queue_size: usize,
 }
 
@@ -95,6 +99,13 @@ pub struct Rpc {
 pub struct Snapshot {
     pub disable: bool,
     pub path: String,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Stratum {
+    pub disable: bool,
+    pub port: u16,
 }
 
 impl<'a> Into<RpcIpcConfig> for &'a Ipc {
@@ -185,6 +196,15 @@ impl Mining {
         if let Some(mem_pool_size) = matches.value_of("mem-pool-size") {
             self.mem_pool_size = mem_pool_size.parse().map_err(|_| "Invalid size")?;
         }
+        if matches.is_present("force-sealing") {
+            self.force_sealing = true;
+        }
+        if let Some(reseal_min_period) = matches.value_of("reseal-min-period") {
+            self.reseal_min_period = reseal_min_period.parse().map_err(|_| "Invalid period")?;
+        }
+        if let Some(reseal_max_period) = matches.value_of("reseal-max-period") {
+            self.reseal_max_period = reseal_max_period.parse().map_err(|_| "Invalid period")?;
+        }
         if let Some(work_queue_size) = matches.value_of("work-queue-size") {
             self.work_queue_size = work_queue_size.parse().map_err(|_| "Invalid size")?;
         }
@@ -261,6 +281,19 @@ impl Snapshot {
 
         if let Some(snapshot_path) = matches.value_of("snapshot-path") {
             self.path = snapshot_path.to_string();
+        }
+        Ok(())
+    }
+}
+
+impl Stratum {
+    pub fn overwrite_with(&mut self, matches: &clap::ArgMatches) -> Result<(), String> {
+        if matches.is_present("no-stratum") {
+            self.disable = true;
+        }
+
+        if let Some(port) = matches.value_of("stratum-port") {
+            self.port = port.parse().map_err(|_| "Invalid port")?;
         }
         Ok(())
     }

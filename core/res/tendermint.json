@@ -17,7 +17,8 @@
 		}
 	},
 	"params": {
-		"maximumExtraDataSize": "0x20",
+		"maxExtraDataSize": "0x20",
+		"maxMetadataSize": "0x0400",
 		"networkID": "0x11",
 		"minParcelCost": "10"
 	},
@@ -48,5 +49,7 @@
 		"0000000000000000000000000000000000000008": { "balance": "100" },
 		"a6594b7196808d161b6fb137e781abbc251385d9": { "balance": "100" },
 		"9cce34f7ab185c7aba1b7c8140d620b4bda941d6": { "balance": "1606938044258990275541962092341162602522202993782792835301376", "nonce": "0" }
+	},
+	"shards": {
 	}
 }

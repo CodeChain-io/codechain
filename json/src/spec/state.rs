@@ -17,6 +17,7 @@
 use std::collections::BTreeMap;
 
 use super::super::hash::Address;
-use super::Account;
+use super::{Account, Shard};
 
-pub type State = BTreeMap<Address, Account>;
+pub type Accounts = BTreeMap<Address, Account>;
+pub type Shards = BTreeMap<u32, Shard>;

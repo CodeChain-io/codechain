@@ -109,6 +109,20 @@ args:
         value_name: LIMIT
         help: Maximum amount of parcels in the queue (waiting to be included in next block).
         takes_value: true
+    - force-sealing:
+        long: force-sealing
+        help: Force the node to author new blocks as if it were always sealing/mining.
+        takes_value: false
+    - reseal-min-period:
+        long: reseal-min-period
+        value_name: MS
+        help: Specify the minimum time between reseals from incoming parcels. MS is time measured in milliseconds.
+        takes_value: true
+    - reseal-max-period:
+        long: reseal-max-period
+        value_name: MS
+        help: Specify the maximum time since last block to enable force-sealing. MS is time measured in milliseconds.
+        takes_value: true
     - work-queue-size:
         long: work-queue-size
         value_name: ITEMS
@@ -142,6 +156,16 @@ args:
     - no-snapshot:
         long: no-snapshot
         help: Disable snapshots
+    - no-stratum:
+        long: no-stratum
+        help: Do not run Stratum server for miner push notification.
+    - stratum-port:
+        long: stratum-port
+        value_name: PORT
+        help: Specify the port portion of the Stratum server.
+        takes_value: true
+        conflicts_with:
+            - no-stratum
 subcommands:
     - account:
         about: account managing commands

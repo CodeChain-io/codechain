@@ -207,7 +207,9 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
         unimplemented!()
     }
 
-    fn network_extension(&self) -> Option<Arc<NetworkExtension>>;
+    fn network_extension(&self) -> Option<Arc<NetworkExtension>> {
+        None
+    }
 }
 
 /// Results of a query of whether an epoch change occurred at the given block.
@@ -284,8 +286,12 @@ pub trait CodeChainEngine: ConsensusEngine<CodeChainMachine> {
     }
 
     /// Some intrinsic operation parameters; by default they take their value from the `spec()`'s `engine_params`.
-    fn maximum_extra_data_size(&self) -> usize {
-        self.machine().maximum_extra_data_size()
+    fn max_extra_data_size(&self) -> usize {
+        self.machine().max_extra_data_size()
+    }
+
+    fn max_metadata_size(&self) -> usize {
+        self.machine().max_metadata_size()
     }
 
     /// Additional verification for parcels in blocks.

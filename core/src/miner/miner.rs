@@ -38,12 +38,16 @@ use super::{MinerService, MinerStatus, ParcelImportResult};
 /// Configures the behaviour of the miner.
 #[derive(Debug, PartialEq)]
 pub struct MinerOptions {
+    /// Force the miner to reseal, even when nobody has asked for work.
+    pub force_sealing: bool,
     /// Reseal on receipt of new external parcels.
     pub reseal_on_external_parcel: bool,
     /// Reseal on receipt of new local parcels.
     pub reseal_on_own_parcel: bool,
     /// Minimum period between parcel-inspired reseals.
     pub reseal_min_period: Duration,
+    /// Maximum period between blocks (enables force sealing after that).
+    pub reseal_max_period: Duration,
     /// Maximum size of the mem pool.
     pub mem_pool_size: usize,
     /// Maximum memory usage of parcels in the queue (current / future).
@@ -55,9 +59,11 @@ pub struct MinerOptions {
 impl Default for MinerOptions {
     fn default() -> Self {
         MinerOptions {
+            force_sealing: false,
             reseal_on_external_parcel: false,
             reseal_on_own_parcel: true,
             reseal_min_period: Duration::from_secs(2),
+            reseal_max_period: Duration::from_secs(120),
             mem_pool_size: 8192,
             mem_pool_memory_limit: Some(2 * 1024 * 1024),
             work_queue_size: 20,
@@ -80,6 +86,7 @@ pub struct Miner {
     mem_pool: Arc<RwLock<MemPool>>,
     parcel_listener: RwLock<Vec<Box<Fn(&[H256]) + Send + Sync>>>,
     next_allowed_reseal: Mutex<Instant>,
+    next_mandatory_reseal: RwLock<Instant>,
     author: RwLock<Address>,
     extra_data: RwLock<Bytes>,
     sealing_block_last_request: Mutex<u64>,
@@ -110,12 +117,13 @@ impl Miner {
             mem_pool,
             parcel_listener: RwLock::new(vec![]),
             next_allowed_reseal: Mutex::new(Instant::now()),
+            next_mandatory_reseal: RwLock::new(Instant::now() + options.reseal_max_period),
             author: RwLock::new(Address::default()),
             extra_data: RwLock::new(Vec::new()),
             sealing_block_last_request: Mutex::new(0),
             sealing_work: Mutex::new(SealingWork {
                 queue: SealingQueue::new(options.work_queue_size),
-                enabled: spec.engine.seals_internally().is_some(),
+                enabled: options.force_sealing || spec.engine.seals_internally().is_some(),
             }),
             engine: spec.engine.clone(),
             options,
@@ -151,7 +159,8 @@ impl Miner {
         if sealing_work.enabled {
             ctrace!(MINER, "requires_reseal: sealing enabled");
             let last_request = *self.sealing_block_last_request.lock();
-            let should_disable_sealing = !has_local_parcels && self.engine.seals_internally().is_none()
+            let should_disable_sealing = !self.options.force_sealing && !has_local_parcels
+                && self.engine.seals_internally().is_none()
                 && best_block > last_request
                 && best_block - last_request > SEALING_TIMEOUT_IN_BLOCKS;
 
@@ -407,10 +416,12 @@ impl Miner {
     fn seal_and_import_block_internally<C>(&self, chain: &C, block: ClosedBlock) -> bool
     where
         C: BlockChain + ImportSealedBlock, {
-        ctrace!(MINER, "seal_block_internally: attempting internal seal.");
-        if block.parcels().is_empty() {
+        if block.parcels().is_empty() && !self.options.force_sealing
+            && Instant::now() <= *self.next_mandatory_reseal.read()
+        {
             return false
         }
+        ctrace!(MINER, "seal_block_internally: attempting internal seal.");
 
         let parent_header = match chain.block_header((*block.header().parent_hash()).into()) {
             Some(hdr) => hdr.decode(),
@@ -421,6 +432,7 @@ impl Miner {
             // Save proposal for later seal submission and broadcast it.
             Seal::Proposal(seal) => {
                 ctrace!(MINER, "Received a Proposal seal.");
+                *self.next_mandatory_reseal.write() = Instant::now() + self.options.reseal_max_period;
                 {
                     let mut sealing_work = self.sealing_work.lock();
                     sealing_work.queue.push(block.clone());
@@ -439,14 +451,17 @@ impl Miner {
                     })
             }
             // Directly import a regular sealed block.
-            Seal::Regular(seal) => block
-                .lock()
-                .seal(&*self.engine, seal)
-                .map(|sealed| chain.import_sealed_block(sealed).is_ok())
-                .unwrap_or_else(|e| {
-                    cwarn!(MINER, "ERROR: seal failed when given internally generated seal: {}", e);
-                    false
-                }),
+            Seal::Regular(seal) => {
+                *self.next_mandatory_reseal.write() = Instant::now() + self.options.reseal_max_period;
+                block
+                    .lock()
+                    .seal(&*self.engine, seal)
+                    .map(|sealed| chain.import_sealed_block(sealed).is_ok())
+                    .unwrap_or_else(|e| {
+                        cwarn!(MINER, "ERROR: seal failed when given internally generated seal: {}", e);
+                        false
+                    })
+            }
             Seal::None => false,
         }
     }
@@ -491,6 +506,10 @@ impl MinerService for Miner {
 
     fn set_author(&self, author: Address) {
         ctrace!(MINER, "Set author to {:?}", author);
+        if self.engine.seals_internally().is_some() {
+            let mut sealing_work = self.sealing_work.lock();
+            sealing_work.enabled = true;
+        }
         *self.author.write() = author;
     }
 
@@ -506,6 +525,12 @@ impl MinerService for Miner {
         if self.engine.seals_internally().is_some() {
             if let Some(ref ap) = self.accounts {
                 ctrace!(MINER, "Set engine signer to {:?}", address);
+                // Limit the scope of the locks.
+                {
+                    let mut sealing_work = self.sealing_work.lock();
+                    sealing_work.enabled = true;
+                    *self.author.write() = address;
+                }
                 self.engine.set_signer(ap.clone(), address, password);
                 Ok(())
             } else {

@@ -14,14 +14,15 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+mod params;
+
 use std::sync::{Arc, Weak};
 
-use cjson;
 use ckey::{public_to_address, recover_ecdsa, ECDSASignature};
-use cnetwork::NetworkExtension;
 use ctypes::{Address, H256, H520, U256};
 use parking_lot::RwLock;
 
+use self::params::SoloAuthorityParams;
 use super::super::account_provider::AccountProvider;
 use super::super::block::{ExecutedBlock, IsBlock};
 use super::super::client::EngineClient;
@@ -33,23 +34,6 @@ use super::signer::EngineSigner;
 use super::validator_set::validator_list::ValidatorList;
 use super::validator_set::ValidatorSet;
 use super::{ConsensusEngine, ConstructedVerifier, EngineError, Seal};
-
-#[derive(Debug, PartialEq)]
-pub struct SoloAuthorityParams {
-    /// Valid signatories.
-    pub validators: Vec<Address>,
-    /// base reward for a block.
-    pub block_reward: U256,
-}
-
-impl From<cjson::spec::SoloAuthorityParams> for SoloAuthorityParams {
-    fn from(p: cjson::spec::SoloAuthorityParams) -> Self {
-        SoloAuthorityParams {
-            validators: p.validators.into_iter().map(Into::into).collect(),
-            block_reward: p.block_reward.map_or_else(Default::default, Into::into),
-        }
-    }
-}
 
 pub struct SoloAuthority {
     machine: CodeChainMachine,
@@ -204,10 +188,6 @@ impl ConsensusEngine<CodeChainMachine> for SoloAuthority {
     fn sign(&self, hash: H256) -> Result<ECDSASignature, Error> {
         self.signer.read().sign(hash).map_err(Into::into)
     }
-
-    fn network_extension(&self) -> Option<Arc<NetworkExtension>> {
-        None
-    }
 }
 
 #[cfg(test)]
@@ -240,7 +220,7 @@ mod tests {
     fn can_generate_seal() {
         let spec = Spec::new_test_solo_authority();
         let engine = &*spec.engine;
-        let db = spec.ensure_db_good(get_temp_state_db(), &Default::default()).unwrap();
+        let db = spec.ensure_genesis_state(get_temp_state_db(), &Default::default()).unwrap();
         let genesis_header = spec.genesis_header();
         let b =
             OpenBlock::new(engine, Default::default(), db, &genesis_header, Default::default(), vec![], false).unwrap();

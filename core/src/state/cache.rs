@@ -70,11 +70,6 @@ where
         self.state == EntryState::Dirty
     }
 
-    #[allow(dead_code)]
-    fn exists_and_is_null(&self) -> bool {
-        self.item.as_ref().map_or(false, |a| a.is_null())
-    }
-
     // Create a new account entry and mark it as dirty.
     fn new_dirty(item: Option<Item>) -> Self {
         Self {
@@ -96,19 +91,6 @@ where
         Self {
             item,
             state: EntryState::CleanCached,
-        }
-    }
-
-    // Replace data with another entry but preserve storage cache.
-    fn overwrite_with(&mut self, other: Self) {
-        self.state = other.state;
-        match other.item {
-            Some(acc) => {
-                if let Some(ref mut ours) = self.item {
-                    *ours = acc;
-                }
-            }
-            None => self.item = None,
         }
     }
 }
@@ -157,18 +139,14 @@ where
         if let Some(mut checkpoint) = self.checkpoints.get_mut().pop() {
             for (k, v) in checkpoint.drain() {
                 match v {
-                    Some(v) => {
-                        match self.cache.get_mut().entry(k) {
-                            HashMapEntry::Occupied(mut e) => {
-                                // Merge checkpointed changes back into the main account
-                                // storage preserving the cache.
-                                e.get_mut().overwrite_with(v);
-                            }
-                            HashMapEntry::Vacant(e) => {
-                                e.insert(v);
-                            }
+                    Some(v) => match self.cache.get_mut().entry(k) {
+                        HashMapEntry::Occupied(mut e) => {
+                            *e.get_mut() = v;
                         }
-                    }
+                        HashMapEntry::Vacant(e) => {
+                            e.insert(v);
+                        }
+                    },
                     None => {
                         if let HashMapEntry::Occupied(e) = self.cache.get_mut().entry(k) {
                             if e.get().is_dirty() {

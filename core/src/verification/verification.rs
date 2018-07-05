@@ -75,11 +75,11 @@ pub fn verify_header_params(header: &Header, engine: &CodeChainEngine) -> Result
             found: header.number(),
         })))
     }
-    let maximum_extra_data_size = engine.maximum_extra_data_size();
-    if header.number() != 0 && header.extra_data().len() > maximum_extra_data_size {
+    let max_extra_data_size = engine.max_extra_data_size();
+    if header.number() != 0 && header.extra_data().len() > max_extra_data_size {
         return Err(From::from(BlockError::ExtraDataOutOfBounds(OutOfBounds {
             min: None,
-            max: Some(maximum_extra_data_size),
+            max: Some(max_extra_data_size),
             found: header.extra_data().len(),
         })))
     }

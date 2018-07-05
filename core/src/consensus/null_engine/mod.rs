@@ -14,29 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::sync::Arc;
+mod params;
 
-use cjson;
-use cnetwork::NetworkExtension;
-use ctypes::U256;
-
+use self::params::NullEngineParams;
 use super::super::machine::{Header, LiveBlock, Machine};
 use super::ConsensusEngine;
-
-/// Params for a null engine.
-#[derive(Clone, Default)]
-pub struct NullEngineParams {
-    /// base reward for a block.
-    pub block_reward: U256,
-}
-
-impl From<cjson::spec::NullEngineParams> for NullEngineParams {
-    fn from(p: cjson::spec::NullEngineParams) -> Self {
-        NullEngineParams {
-            block_reward: p.block_reward.map_or_else(Default::default, Into::into),
-        }
-    }
-}
 
 /// An engine which does not provide any consensus mechanism and does not seal blocks.
 pub struct NullEngine<M> {
@@ -76,9 +58,5 @@ impl<M: Machine> ConsensusEngine<M> for NullEngine<M> {
 
     fn verify_local_seal(&self, _header: &M::Header) -> Result<(), M::Error> {
         Ok(())
-    }
-
-    fn network_extension(&self) -> Option<Arc<NetworkExtension>> {
-        None
     }
 }

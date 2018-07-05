@@ -53,7 +53,7 @@ mod rpc_apis;
 
 use std::path::Path;
 use std::sync::Arc;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use app_dirs::AppInfo;
 use ccore::{AccountProvider, ClientService, Miner, MinerOptions, MinerService, Spec};
@@ -174,8 +174,49 @@ fn load_config(matches: &ArgMatches) -> Result<config::Config, String> {
     config.network.overwrite_with(&matches)?;
     config.rpc.overwrite_with(&matches)?;
     config.snapshot.overwrite_with(&matches)?;
+    config.stratum.overwrite_with(&matches)?;
 
     Ok(config)
+}
+
+fn new_miner(config: &config::Config, spec: &Spec) -> Result<Arc<Miner>, String> {
+    // FIXME: Handle IO error.
+    let dir = RootDiskDirectory::create(config.operating.keys_path.clone()).expect("Cannot read key path directory");
+    let keystore = KeyStore::open(Box::new(dir)).unwrap();
+
+    let mut miner_options = MinerOptions::default();
+    miner_options.mem_pool_size = config.mining.mem_pool_size;
+    miner_options.mem_pool_memory_limit = match config.mining.mem_pool_mem_limit {
+        0 => None,
+        mem_size => Some(mem_size * 1024 * 1024),
+    };
+    miner_options.force_sealing = config.mining.force_sealing;
+    miner_options.reseal_min_period = Duration::from_millis(config.mining.reseal_min_period);
+    miner_options.reseal_max_period = Duration::from_millis(config.mining.reseal_max_period);
+    miner_options.work_queue_size = config.mining.work_queue_size;
+
+    let ap = AccountProvider::new(keystore);
+    let addresses = ap.get_list().expect("Account provider should success to get address list");
+    let address = if addresses.len() > 0 {
+        addresses[0]
+    } else {
+        // FIXME: Don't hardcode password.
+        ap.insert_account(config.operating.secret_key.into(), "password")
+            .map_err(|e| format!("Invalid secret key: {:?}", e))?
+    };
+
+    let miner = Miner::new(miner_options, spec, Some(ap.clone()));
+
+    let author = config.mining.author.unwrap_or(address);
+    if miner.can_produce_work_package() {
+        miner.set_author(author);
+    } else {
+        // FIXME: Don't hardcode password.
+        let engine_signer = config.mining.engine_signer.unwrap_or(address);
+        miner.set_engine_signer(engine_signer, "password".to_string()).map_err(|err| format!("{:?}", err))?;
+    }
+
+    Ok(miner)
 }
 
 fn run_node(matches: ArgMatches) -> Result<(), String> {
@@ -192,33 +233,7 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
         .subsec_nanos() as usize);
     clogger::init(&LoggerConfig::new(instance_id)).expect("Logger must be successfully initialized");
 
-    // FIXME: Handle IO error.
-    let dir = RootDiskDirectory::create(config.operating.keys_path.clone()).expect("Cannot read key path directory");
-    let keystore = KeyStore::open(Box::new(dir)).unwrap();
-    let ap = AccountProvider::new(keystore);
-    let addresses = ap.get_list().expect("Account provider should success to get address list");
-    let address = if addresses.len() > 0 {
-        addresses[0]
-    } else {
-        // FIXME: Don't hard password.
-        ap.insert_account(config.operating.secret_key.into(), "password")
-            .map_err(|e| format!("Invalid secret key: {:?}", e))?
-    };
-
-    let mut miner_options = MinerOptions::default();
-    miner_options.mem_pool_size = config.mining.mem_pool_size;
-    miner_options.mem_pool_memory_limit = match config.mining.mem_pool_mem_limit {
-        0 => None,
-        mem_size => Some(mem_size * 1024 * 1024),
-    };
-    miner_options.work_queue_size = config.mining.work_queue_size;
-    let miner = Miner::new(miner_options, &spec, Some(ap.clone()));
-    let author = config.mining.author.unwrap_or(address);
-    miner.set_author(author);
-    let engine_signer = config.mining.engine_signer.unwrap_or(address);
-    // FIXME: Don't hardcode password.
-    miner.set_engine_signer(engine_signer, "password".to_string()).map_err(|err| format!("{:?}", err))?;
-
+    let miner = new_miner(&config, &spec)?;
     let client = client_start(&config, &spec, miner.clone())?;
 
     let rpc_apis_deps = Arc::new(rpc_apis::ApiDependencies {

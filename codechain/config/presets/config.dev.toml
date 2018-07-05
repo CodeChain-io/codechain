@@ -8,6 +8,9 @@ secret_key = "0x0000000000000000000000000000000000000000000000000000000000000001
 [mining]
 mem_pool_mem_limit = 4 # MB
 mem_pool_size = 8192
+force_sealing = false
+reseal_min_period = 2000
+reseal_max_period = 120000
 work_queue_size = 20
 
 [network]
@@ -34,3 +37,8 @@ path = "/tmp/jsonrpc.ipc"
 [snapshot]
 disable = false
 path = "snapshot"
+
+[stratum]
+disable = false
+port = 8008
+

@@ -14,29 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::sync::Arc;
+mod params;
 
-use cjson;
-use cnetwork::NetworkExtension;
-use ctypes::U256;
-
+use self::params::SoloParams;
 use super::super::machine::{Header, LiveBlock, Machine, Parcels};
 use super::{ConsensusEngine, Seal};
-
-/// Params for a null engine.
-#[derive(Clone, Default)]
-pub struct SoloParams {
-    /// base reward for a block.
-    pub block_reward: U256,
-}
-
-impl From<cjson::spec::SoloParams> for SoloParams {
-    fn from(p: cjson::spec::SoloParams) -> Self {
-        SoloParams {
-            block_reward: p.block_reward.map_or_else(Default::default, Into::into),
-        }
-    }
-}
 
 /// A consensus engine which does not provide any consensus mechanism.
 pub struct Solo<M> {
@@ -86,10 +68,6 @@ where
         let author = *LiveBlock::header(&*block).author();
         self.machine.add_balance(block, &author, &self.params.block_reward)
     }
-
-    fn network_extension(&self) -> Option<Arc<NetworkExtension>> {
-        None
-    }
 }
 
 #[cfg(test)]
@@ -106,7 +84,7 @@ mod tests {
     fn solo_can_seal() {
         let spec = Spec::new_test_solo();
         let engine = &*spec.engine;
-        let db = spec.ensure_db_good(get_temp_state_db(), &Default::default()).unwrap();
+        let db = spec.ensure_genesis_state(get_temp_state_db(), &Default::default()).unwrap();
         let genesis_header = spec.genesis_header();
         let b =
             OpenBlock::new(engine, Default::default(), db, &genesis_header, Default::default(), vec![], false).unwrap();
