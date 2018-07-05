@@ -26,7 +26,7 @@ use rlp::{Encodable, Rlp, RlpStream};
 use trie::TrieFactory;
 
 use super::super::codechain_machine::CodeChainMachine;
-use super::super::consensus::{CodeChainEngine, NullEngine, Solo, SoloAuthority, Tendermint};
+use super::super::consensus::{BlakePoW, CodeChainEngine, NullEngine, Solo, SoloAuthority, Tendermint};
 use super::super::error::Error;
 use super::super::header::Header;
 use super::super::pod_state::{PodAccounts, PodShards};
@@ -130,6 +130,7 @@ impl Spec {
                 Arc::new(SoloAuthority::new(solo_authority.params.into(), machine))
             }
             cjson::spec::Engine::Tendermint(tendermint) => Tendermint::new(tendermint.params.into(), machine),
+            cjson::spec::Engine::BlakePoW(blake_pow) => Arc::new(BlakePoW::new(blake_pow.params.into(), machine)),
         }
     }
 
@@ -261,6 +262,11 @@ impl Spec {
     /// work).
     pub fn new_test_tendermint() -> Self {
         load_bundled!("tendermint")
+    }
+
+    /// Create a new Spec with Blake PoW consensus.
+    pub fn new_test_blake_pow() -> Self {
+        load_bundled!("blake_pow")
     }
 
     /// Get common blockchain parameters.
