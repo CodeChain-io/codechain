@@ -14,10 +14,15 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::BTreeMap;
+use ctypes::H256;
+use jsonrpc_core::Result;
 
-use super::super::hash::Address;
-use super::{Account, Shard};
+build_rpc_trait! {
+    pub trait Net {
+        # [rpc(name = "net_shareSecret")]
+        fn share_secret(&self, H256, ::std::net::IpAddr, u16) -> Result<()>;
 
-pub type Accounts = BTreeMap<Address, Account>;
-pub type Shards = BTreeMap<u32, Shard>;
+        # [rpc(name = "net_connect")]
+        fn connect(&self, ::std::net::IpAddr, u16) -> Result<()>;
+    }
+}

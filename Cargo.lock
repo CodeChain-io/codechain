@@ -408,6 +408,7 @@ version = "0.1.0"
 dependencies = [
  "codechain-core 0.1.0",
  "codechain-logger 0.1.0",
+ "codechain-network 0.1.0",
  "codechain-types 0.2.0",
  "jsonrpc-core 8.0.2 (git+https://github.com/ethcore/jsonrpc.git)",
  "jsonrpc-http-server 8.0.1 (git+https://github.com/ethcore/jsonrpc.git)",

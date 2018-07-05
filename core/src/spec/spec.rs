@@ -29,8 +29,10 @@ use super::super::codechain_machine::CodeChainMachine;
 use super::super::consensus::{CodeChainEngine, Cuckoo, NullEngine, Solo, SoloAuthority, Tendermint};
 use super::super::error::Error;
 use super::super::header::Header;
-use super::super::pod_state::PodAccounts;
-use super::super::state::{Backend, BasicBackend};
+use super::super::pod_state::{PodAccounts, PodShards};
+use super::super::state::{
+    Backend, BasicBackend, Metadata, MetadataAddress, Shard, ShardAddress, ShardMetadataAddress,
+};
 use super::seal::Generic as GenericSeal;
 use super::Genesis;
 
@@ -92,6 +94,7 @@ pub struct Spec {
 
     /// Genesis state as plain old data.
     genesis_accounts: PodAccounts,
+    genesis_shards: PodShards,
 }
 
 // helper for formatting errors.
@@ -131,9 +134,21 @@ impl Spec {
         }
     }
 
-    fn initialize_accounts<DB: Backend>(&self, trie_factory: &TrieFactory, mut db: DB) -> Result<DB, Error> {
-        let mut root = BLAKE_NULL_RLP;
+    fn initialize_state<DB: Backend>(&self, trie_factory: &TrieFactory, db: DB) -> Result<DB, Error> {
+        let root = BLAKE_NULL_RLP;
+        let (db, root) = self.initialize_accounts(trie_factory, db, root)?;
+        let (db, root) = self.initialize_shards(trie_factory, db, root)?;
 
+        *self.state_root_memo.write() = root;
+        Ok(db)
+    }
+
+    fn initialize_accounts<DB: Backend>(
+        &self,
+        trie_factory: &TrieFactory,
+        mut db: DB,
+        mut root: H256,
+    ) -> Result<(DB, H256), Error> {
         // basic accounts in spec.
         {
             let mut t = trie_factory.create(db.as_hashdb_mut(), &mut root);
@@ -145,8 +160,63 @@ impl Spec {
             }
         }
 
-        *self.state_root_memo.write() = root;
-        Ok(db)
+        Ok((db, root))
+    }
+
+    fn initialize_shards<DB: Backend>(
+        &self,
+        trie_factory: &TrieFactory,
+        mut db: DB,
+        mut root: H256,
+    ) -> Result<(DB, H256), Error> {
+        let mut shard_roots = Vec::<(u32, H256)>::with_capacity(self.genesis_shards.len());
+
+        // Initialize shard-level tries
+        for (shard_id, shard) in &*self.genesis_shards {
+            let mut shard_root = BLAKE_NULL_RLP;
+
+            {
+                let mut t = trie_factory.from_existing(db.as_hashdb_mut(), &mut shard_root)?;
+                let address = ShardMetadataAddress::new(*shard_id);
+
+                let r = t.insert(&*address, &shard.rlp_bytes());
+                debug_assert_eq!(Ok(None), r);
+                r?;
+            }
+            shard_roots.push((*shard_id, shard_root));
+        }
+
+        debug_assert!(
+            shard_roots.len() <= ::std::u32::MAX as usize,
+            "{} <= {}",
+            shard_roots.len(),
+            ::std::u32::MAX as usize
+        );
+        let global_metadata = Metadata::new(shard_roots.len() as u32);
+
+        // Initialize shards
+        for (shard_id, shard_root) in shard_roots.into_iter() {
+            {
+                let mut t = trie_factory.from_existing(db.as_hashdb_mut(), &mut root)?;
+                let address = ShardAddress::new(shard_id);
+
+                let shard = Shard::new(shard_root);
+                let r = t.insert(&*address, &shard.rlp_bytes());
+                debug_assert_eq!(Ok(None), r);
+                r?;
+            }
+        }
+
+        {
+            let mut t = trie_factory.from_existing(db.as_hashdb_mut(), &mut root)?;
+            let address = MetadataAddress::new();
+
+            let r = t.insert(&*address, &global_metadata.rlp_bytes());
+            debug_assert_eq!(Ok(None), r);
+            r?;
+        }
+
+        Ok((db, root))
     }
 
     /// Ensure that the given state DB has the trie nodes in for the genesis state.
@@ -155,8 +225,7 @@ impl Spec {
             return Ok(db)
         }
 
-        let db = self.initialize_accounts(trie_factory, db)?;
-        Ok(db)
+        Ok(self.initialize_state(trie_factory, db)?)
     }
 
     /// Return the state root for the genesis state, memoising accordingly.
@@ -257,13 +326,16 @@ fn load_from(s: cjson::spec::Spec) -> Result<Spec, Error> {
         seal_rlp,
         state_root_memo: RwLock::new(Default::default()), // will be overwritten right after.
         genesis_accounts: s.accounts.into(),
+        genesis_shards: s.shards.into(),
     };
 
     // use memoized state root if provided.
     match g.state_root {
         Some(root) => *s.state_root_memo.get_mut() = root,
         None => {
-            let _ = s.initialize_accounts(&TrieFactory::new(Default::default()), BasicBackend(MemoryDB::new()))?;
+            let db = BasicBackend(MemoryDB::new());
+            let trie_factory = TrieFactory::new(Default::default());
+            let _ = s.initialize_state(&trie_factory, db)?;
         }
     }
 

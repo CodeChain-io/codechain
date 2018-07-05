@@ -14,10 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::BTreeMap;
+use ctypes::H256;
 
-use super::super::hash::Address;
-use super::{Account, Shard};
+use super::addr::SocketAddr;
 
-pub type Accounts = BTreeMap<Address, Account>;
-pub type Shards = BTreeMap<u32, Shard>;
+pub trait Control: Send + Sync {
+    fn register_secret(&self, secret: H256, addr: SocketAddr);
+    fn connect(&self, addr: SocketAddr);
+}

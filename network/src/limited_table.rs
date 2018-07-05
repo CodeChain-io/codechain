@@ -155,4 +155,14 @@ mod tests {
         let t = table.insert(TestItem);
         assert!(t.is_none());
     }
+
+    #[test]
+    fn contains_returns_true_when_item_is_inserted() {
+        let begin: Key = 11;
+        let limit: usize = 54;
+        let mut table: LimitedTable<TestItem> = LimitedTable::new(begin, limit);
+        let t1 = table.insert(TestItem);
+        assert_ne!(None, t1);
+        assert!(table.contains(t1.unwrap()));
+    }
 }

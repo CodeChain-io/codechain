@@ -25,6 +25,7 @@ mod codes {
     pub const UNKNOWN_ERROR: i64 = -32009;
     pub const PARCEL_ERROR: i64 = -32010;
     pub const KVDB_ERROR: i64 = -32011;
+    pub const NETWORK_DISABLED: i64 = -32014;
 }
 
 pub fn parcel<T: Into<CoreError>>(error: T) -> Error {
@@ -64,6 +65,14 @@ pub fn no_work_required() -> Error {
     Error {
         code: ErrorCode::ServerError(codes::NO_WORK_REQUIRED),
         message: "External work is only required for Proof of Work engines.".into(),
+        data: None,
+    }
+}
+
+pub fn network_disabled() -> Error {
+    Error {
+        code: ErrorCode::ServerError(codes::NETWORK_DISABLED),
+        message: "Network is diabled.".into(),
         data: None,
     }
 }
