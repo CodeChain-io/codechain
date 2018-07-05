@@ -65,6 +65,7 @@ pub struct Mining {
     pub engine_signer: Option<Address>,
     pub mem_pool_size: usize,
     pub mem_pool_mem_limit: usize,
+    pub notify_work: Vec<String>,
     pub force_sealing: bool,
     pub reseal_min_period: u64,
     pub reseal_max_period: u64,
@@ -195,6 +196,9 @@ impl Mining {
         }
         if let Some(mem_pool_size) = matches.value_of("mem-pool-size") {
             self.mem_pool_size = mem_pool_size.parse().map_err(|_| "Invalid size")?;
+        }
+        if let Some(notify_work) = matches.values_of("notify-work") {
+            self.notify_work = notify_work.into_iter().map(|a| a.into()).collect();
         }
         if matches.is_present("force-sealing") {
             self.force_sealing = true;

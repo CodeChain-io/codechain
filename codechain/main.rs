@@ -194,6 +194,7 @@ fn new_miner(config: &config::Config, spec: &Spec) -> Result<Arc<Miner>, String>
         0 => None,
         mem_size => Some(mem_size * 1024 * 1024),
     };
+    miner_options.new_work_notify = config.mining.notify_work.clone();
     miner_options.force_sealing = config.mining.force_sealing;
     miner_options.reseal_min_period = Duration::from_millis(config.mining.reseal_min_period);
     miner_options.reseal_max_period = Duration::from_millis(config.mining.reseal_max_period);
