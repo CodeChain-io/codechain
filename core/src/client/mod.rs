@@ -29,6 +29,7 @@ pub use self::test_client::TestBlockChainClient;
 
 use cnetwork::NodeId;
 use ctypes::{Address, Bytes, H256, Public, U256};
+use trie::Result as TrieResult;
 
 use super::block::{ClosedBlock, OpenBlock, SealedBlock};
 use super::blockchain::ParcelInvoice;
@@ -36,7 +37,7 @@ use super::blockchain_info::BlockChainInfo;
 use super::encoded;
 use super::error::BlockImportError;
 use super::parcel::{LocalizedParcel, SignedParcel};
-use super::state::TopStateInfo;
+use super::state::{Asset, AssetScheme, TopStateInfo};
 use super::types::{
     BlockId, BlockNumber, BlockStatus, ParcelId, TransactionId, VerificationQueueInfo as BlockQueueInfo,
 };
@@ -221,3 +222,10 @@ pub trait BlockProducer: PrepareOpenBlock + ReopenBlock {}
 
 /// Extended client interface used for mining
 pub trait MiningBlockChainClient: BlockChainClient + BlockProducer + ImportSealedBlock {}
+
+/// Provides methods to access asset
+pub trait AssetClient {
+    fn get_asset_scheme(&self, transaction_hash: H256) -> TrieResult<Option<AssetScheme>>;
+
+    fn get_asset(&self, transaction_hash: H256, index: usize) -> TrieResult<Option<Asset>>;
+}
