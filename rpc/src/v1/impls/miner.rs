@@ -16,6 +16,7 @@
 
 use std::sync::Arc;
 
+use ccore::block::IsBlock;
 use ccore::{self, Client, MinerService};
 use ctypes::H256;
 use jsonrpc_core::Result;
@@ -44,7 +45,21 @@ impl Miner for MinerClient {
             cwarn!(MINER, "Cannot give work package - engine seals internally.");
             return Err(errors::no_work_required())
         }
-        unimplemented!();
+        if self.miner.author().is_zero() {
+            cwarn!(MINER, "Cannot give work package - no author is configured. Use --author to configure!");
+            return Err(errors::no_author())
+        }
+        self.miner
+            .map_sealing_work(&*self.client, |b| {
+                let pow_hash = b.hash();
+                let target = self.client.engine().score_to_target(b.block().header().score());
+
+                Ok(Work {
+                    pow_hash,
+                    target,
+                })
+            })
+            .unwrap_or(Err(errors::internal("No work found.", "")))
     }
 
     fn submit_work(&self, pow_hash: H256, seal: Vec<Bytes>) -> Result<bool> {
