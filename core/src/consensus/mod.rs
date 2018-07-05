@@ -290,6 +290,10 @@ pub trait CodeChainEngine: ConsensusEngine<CodeChainMachine> {
         self.machine().max_extra_data_size()
     }
 
+    fn max_metadata_size(&self) -> usize {
+        self.machine().max_metadata_size()
+    }
+
     /// Additional verification for parcels in blocks.
     fn verify_parcel_basic(&self, t: &UnverifiedParcel, header: &Header) -> Result<(), Error> {
         self.machine().verify_parcel_basic(t, header)

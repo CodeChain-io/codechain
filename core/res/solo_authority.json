@@ -12,6 +12,7 @@
 	},
 	"params": {
 		"maxExtraDataSize": "0x20",
+		"maxMetadataSize": "0x0400",
 		"networkID": "0x11",
 		"minParcelCost": "10"
 	},
