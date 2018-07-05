@@ -268,20 +268,18 @@ fn load_from(s: cjson::spec::Spec) -> Result<Spec, Error> {
 
 #[cfg(test)]
 mod tests {
-    use super::Spec;
-    use ctypes::Bytes;
+    use ccrypto::Blake;
+
+    use super::*;
 
     #[test]
-    #[ignore]
-    fn should_be_extra_hashed() {
-        // FIXME: depends on params field in null.json file.
-        let expected: Bytes = vec![
-            0x20, 0xbe, 0x63, 0xbb, 0x52, 0xc7, 0x60, 0x9c, 0xed, 0x69, 0x9e, 0xb0, 0xda, 0x49, 0x13, 0x46, 0xef, 0xad,
-            0xa4, 0x83, 0xa0, 0x14, 0xdc, 0xf, 0x64, 0x29, 0x4c, 0xa0, 0x47, 0x64, 0x62, 0x83,
-        ];
+    fn extra_data_of_genesis_header_is_hash_of_common_params() {
         let spec = Spec::new_test();
+        let common_params = spec.params();
+        let hash_of_common_params = H256::blake(&common_params.rlp_bytes()).to_vec();
+
         let genesis_header = spec.genesis_header();
         let result = genesis_header.extra_data();
-        assert_eq!(result, &expected);
+        assert_eq!(&hash_of_common_params, result);
     }
 }
