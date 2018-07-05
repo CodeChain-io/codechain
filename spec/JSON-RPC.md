@@ -79,6 +79,7 @@ In the current version, it's only supported through HTTP.
 # List of methods
 
  * [ping](#ping)
+ * [version](#version)
 ***
  * [chain_getBestBlockNumber](#chain_getbestblocknumber)
  * [chain_getBestBlockId](#chain_getbestblockid)
@@ -100,9 +101,10 @@ In the current version, it's only supported through HTTP.
   * [miner_getWork](#miner_getwork)
   * [miner_submitWork](#miner_submitwork)
 ***
-  * [net_shareSecret](#net_sharesecret)
-  * [net_isConnected](#net_isconnected)
-  * [net_disconnect](#net_disconnect)
+  * [net_shareSecret](#net_sharesecret) (not implemented yet)
+  * [net_connect](#net_connect) (not implemented yet)
+  * [net_isConnected](#net_isconnected) (not implemented yet)
+  * [net_disconnect](#net_disconnect) (not implemented yet)
 ***
  * [devel_getStateTrieKeys](#devel_getstatetriekeys)
  * [devel_getStateTrieValue](#devel_getstatetrievalue)
@@ -128,6 +130,26 @@ Request Example
 Response Example
 ```
 {"jsonrpc":"2.0","result":"pong","id":null}
+```
+
+## version
+Gets the version of CodeChain
+
+Params: No parameters
+
+Return Type: `string`
+
+Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "version", "params": [], "id": null}' \
+    localhost:8080
+```
+
+Response Example
+```
+{"jsonrpc":"2.0","result":"0.1.0","id":null}
 ```
 
 ## chain_getBestBlockNumber
@@ -610,7 +632,29 @@ Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "net_shareSecret", "params": ['0x8ae3363ccdcc02d8d662d384deefb89d', 'codechain.example.com', '3485'], "id": 5}' \
+    -d '{"jsonrpc": "2.0", "method": "net_shareSecret", "params": ["0x24df02abcd4e984e90253dc344e89b8431bbb319c66643bfef566dfdf46ec6bc", "192.168.0.3", 3485], "id": 5}' \
+    localhost:8080
+```
+
+Response Example
+```
+{"jsonrpc":"2.0","result":null,"id":5}
+```
+
+## net_connect
+Connect to a given address.
+
+Params:
+ 1. address: `string`
+ 1. port: `number`
+
+Return Type: null
+
+Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "net_connect", "params": ["192.168.0.3", 3485], "id": 5}' \
     localhost:8080
 ```
 

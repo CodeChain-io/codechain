@@ -14,30 +14,25 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod account;
-mod cuckoo;
-mod engine;
-mod genesis;
-mod null_engine;
-mod params;
-mod seal;
-mod shard;
-mod solo;
-mod solo_authority;
-mod spec;
-mod state;
-mod tendermint;
+use cjson;
+use ctypes::U256;
 
-pub use self::account::Account;
-pub use self::cuckoo::{Cuckoo, CuckooParams};
-pub use self::engine::Engine;
-pub use self::genesis::Genesis;
-pub use self::null_engine::{NullEngine, NullEngineParams};
-pub use self::params::Params;
-pub use self::seal::{Seal, TendermintSeal};
-pub use self::shard::Shard;
-pub use self::solo::{Solo, SoloParams};
-pub use self::solo_authority::{SoloAuthority, SoloAuthorityParams};
-pub use self::spec::Spec;
-pub use self::state::{Accounts, Shards};
-pub use self::tendermint::{Tendermint, TendermintParams};
+pub struct CuckooParams {
+    pub block_reward: U256,
+    pub min_score: U256,
+    pub max_vertex: usize,
+    pub max_edge: usize,
+    pub cycle_length: usize,
+}
+
+impl From<cjson::spec::CuckooParams> for CuckooParams {
+    fn from(p: cjson::spec::CuckooParams) -> Self {
+        CuckooParams {
+            block_reward: p.block_reward.map_or(U256::from(0), Into::into),
+            min_score: p.min_score.map_or(U256::from(0x020000), Into::into),
+            max_vertex: p.max_vertex.map_or(1 << 30, Into::into),
+            max_edge: p.max_edge.map_or(1 << 29, Into::into),
+            cycle_length: p.cycle_length.map_or(42, Into::into),
+        }
+    }
+}
