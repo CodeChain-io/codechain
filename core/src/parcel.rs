@@ -23,6 +23,7 @@ use ctypes::{Address, Bytes, H160, H256, U256};
 use heapsize::HeapSizeOf;
 use rlp::{self, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
+use super::spec::CommonParams;
 use super::types::BlockNumber;
 use super::Transaction;
 
@@ -347,11 +348,11 @@ impl UnverifiedParcel {
     }
 
     /// Verify basic signature params. Does not attempt sender recovery.
-    pub fn verify_basic(&self, network_id: u64, allow_empty_signature: bool) -> Result<(), ParcelError> {
+    pub fn verify_basic(&self, params: &CommonParams, allow_empty_signature: bool) -> Result<(), ParcelError> {
         if !(allow_empty_signature && self.is_unsigned()) {
             self.check_low_s()?;
         }
-        if self.network_id != network_id {
+        if self.network_id != params.network_id {
             return Err(ParcelError::InvalidNetworkId)
         }
         Ok(())
