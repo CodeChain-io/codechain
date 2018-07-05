@@ -445,6 +445,10 @@ impl TopStateInfo for () {
         unimplemented!()
     }
 
+    fn number_of_shards(&self) -> trie::Result<u32> {
+        unimplemented!()
+    }
+
     fn shard_root(&self, _shard_id: u32) -> trie::Result<Option<H256>> {
         unimplemented!()
     }
