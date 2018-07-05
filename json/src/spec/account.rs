@@ -43,9 +43,9 @@ mod tests {
     #[test]
     fn account_deserialization() {
         let s = r#"{
-			"balance": "1",
-			"nonce": "0"
-		}"#;
+            "balance": "1",
+            "nonce": "0"
+        }"#;
         let deserialized: Account = serde_json::from_str(s).unwrap();
         assert!(!deserialized.is_empty());
         assert_eq!(deserialized.balance.unwrap(), Uint(U256::from(1)));

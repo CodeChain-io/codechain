@@ -57,56 +57,56 @@ mod tests {
     #[test]
     fn spec_deserialization() {
         let s = r#"{
-	"name": "Morden",
-	"dataDir": "morden",
-	"engine": {
-		"tendermint": {
-			"params": {
-				"validators" : [
-                                            "0x82a978b3f5962a5b0957d9ee9eef472ee55b42f1",
-                                            "0x7d577a597b2742b498cb5cf0c26cdcd726d39e6e"
-                                ],
-				"timeoutPropose": 10000,
-				"timeoutPrevote": 10000,
-				"timeoutPrecommit": 10000,
-				"timeoutCommit": 10000
-			}
-		}
-	},
-	"params": {
-		"maxExtraDataSize": "0x20",
-		"maxMetadataSize": "0x0400",
-		"networkID" : "0x2",
-		"minParcelCost" : "10"
-	},
-	"genesis": {
-		"seal": {
-			"tendermint": {
-				"round": "0x0",
-				"proposal": "0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-				"precommits": [
-					"0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
-				]
-			}
-		},
-		"score": "0x20000",
-		"author": "0x0000000000000000000000000000000000000000",
-		"timestamp": "0x00",
-		"parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000"
-	},
-	"nodes": [
-		"enode://b1217cbaa440e35ed471157123fe468e19e8b5ad5bedb4b1fdbcbdab6fb2f5ed3e95dd9c24a22a79fdb2352204cea207df27d92bfd21bfd41545e8b16f637499@104.44.138.37:30303"
-	],
-	"accounts": {
-		"0000000000000000000000000000000000000001": { "balance": "1", "nonce": "1048576" },
-		"0000000000000000000000000000000000000002": { "balance": "1", "nonce": "1048576" },
-		"0000000000000000000000000000000000000003": { "balance": "1", "nonce": "1048576" },
-		"0000000000000000000000000000000000000004": { "balance": "1", "nonce": "1048576" },
-		"102e61f5d8f9bc71d0ad4a084df4e65e05ce0e1c": { "balance": "1606938044258990275541962092341162602522202993782792835301376", "nonce": "1048576" }
-	},
-	"shards": {
-	}
-		}"#;
+            "name": "Morden",
+            "dataDir": "morden",
+            "engine": {
+                "tendermint": {
+                    "params": {
+                        "validators" : [
+                        "0x82a978b3f5962a5b0957d9ee9eef472ee55b42f1",
+                        "0x7d577a597b2742b498cb5cf0c26cdcd726d39e6e"
+                        ],
+                        "timeoutPropose": 10000,
+                        "timeoutPrevote": 10000,
+                        "timeoutPrecommit": 10000,
+                        "timeoutCommit": 10000
+                    }
+                }
+            },
+            "params": {
+                "maxExtraDataSize": "0x20",
+                "maxMetadataSize": "0x0400",
+                "networkID" : "0x2",
+                "minParcelCost" : "10"
+            },
+            "genesis": {
+                "seal": {
+                    "tendermint": {
+                        "round": "0x0",
+                        "proposal": "0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+                        "precommits": [
+                        "0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+                        ]
+                    }
+                },
+                "score": "0x20000",
+                "author": "0x0000000000000000000000000000000000000000",
+                "timestamp": "0x00",
+                "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+            },
+            "nodes": [
+            "enode://b1217cbaa440e35ed471157123fe468e19e8b5ad5bedb4b1fdbcbdab6fb2f5ed3e95dd9c24a22a79fdb2352204cea207df27d92bfd21bfd41545e8b16f637499@104.44.138.37:30303"
+            ],
+            "accounts": {
+                "0000000000000000000000000000000000000001": { "balance": "1", "nonce": "1048576" },
+                "0000000000000000000000000000000000000002": { "balance": "1", "nonce": "1048576" },
+                "0000000000000000000000000000000000000003": { "balance": "1", "nonce": "1048576" },
+                "0000000000000000000000000000000000000004": { "balance": "1", "nonce": "1048576" },
+                "102e61f5d8f9bc71d0ad4a084df4e65e05ce0e1c": { "balance": "1606938044258990275541962092341162602522202993782792835301376", "nonce": "1048576" }
+            },
+            "shards": {
+            }
+        }"#;
         let _deserialized: Spec = serde_json::from_str(s).unwrap();
         // TODO: validate all fields
     }

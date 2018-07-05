@@ -41,10 +41,10 @@ mod tests {
     #[test]
     fn null_engine_deserialization() {
         let s = r#"{
-			"params": {
-				"blockReward": "0x0d"
-			}
-		}"#;
+            "params": {
+                "blockReward": "0x0d"
+            }
+        }"#;
 
         let deserialized: NullEngine = serde_json::from_str(s).unwrap();
         assert_eq!(deserialized.params.block_reward, Some(Uint(U256::from(0x0d))));

@@ -29,8 +29,8 @@ mod tests {
     #[test]
     fn shard_deserialization() {
         let s = r#"{
-			"nonce": 0
-		}"#;
+            "nonce": 0
+        }"#;
         let shard: Shard = serde_json::from_str(s).unwrap();
         assert_eq!(
             Shard {
@@ -43,8 +43,8 @@ mod tests {
     #[test]
     fn shard_with_non_zero_nonce_deserialization() {
         let s = r#"{
-			"nonce": 100
-		}"#;
+            "nonce": 100
+        }"#;
         let shard: Shard = serde_json::from_str(s).unwrap();
         assert_eq!(
             Shard {
@@ -57,7 +57,7 @@ mod tests {
     #[test]
     fn shard_without_nonce_deserialization() {
         let s = r#"{
-		}"#;
+        }"#;
         let shard: Shard = serde_json::from_str(s).unwrap();
         assert_eq!(
             Shard {

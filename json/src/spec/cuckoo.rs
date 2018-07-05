@@ -47,14 +47,14 @@ mod tests {
     #[test]
     fn cuckoo_deserialization() {
         let s = r#"{
-			"params": {
-				"blockReward": "0x0d",
+            "params": {
+                "blockReward": "0x0d",
                 "minScore" : "0x020000",
                 "maxVertex" : "16",
                 "maxEdge" : "8",
                 "cycleLength" : "6"
-			}
-		}"#;
+            }
+        }"#;
 
         let deserialized: Cuckoo = serde_json::from_str(s).unwrap();
         assert_eq!(deserialized.params.block_reward, Some(Uint(U256::from(0x0d))));
