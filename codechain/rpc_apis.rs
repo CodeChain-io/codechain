@@ -36,7 +36,7 @@ where
         use crpc::v1::*;
         handler.extend_with(ChainClient::new(&self.client, &self.miner).to_delegate());
         handler.extend_with(DevelClient::new(&self.client).to_delegate());
-        handler.extend_with(MinerClient::new(&self.miner).to_delegate());
+        handler.extend_with(MinerClient::new(&self.client, &self.miner).to_delegate());
         handler.extend_with(NetClient::new(&self.network_control).to_delegate());
     }
 }

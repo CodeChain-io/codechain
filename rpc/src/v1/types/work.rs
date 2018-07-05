@@ -19,7 +19,6 @@ use ctypes::{H256, U256};
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Work {
-    pub block_hash: H256,
-    pub score: U256,
-    pub block_number: u64,
+    pub pow_hash: H256,
+    pub target: U256,
 }

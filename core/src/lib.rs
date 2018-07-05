@@ -59,7 +59,7 @@ extern crate util_error;
 extern crate log;
 
 mod account_provider;
-mod block;
+pub mod block;
 mod blockchain;
 mod blockchain_info;
 mod client;
