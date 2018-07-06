@@ -92,7 +92,7 @@ pub use account_provider::AccountProvider;
 pub use block::Block;
 pub use blockchain::ParcelInvoice;
 pub use client::{
-    AssetClient, Balance, BlockChainClient, BlockInfo, ChainInfo, ChainNotify, Client, ImportBlock,
+    AssetClient, Balance, BlockChainClient, BlockInfo, ChainInfo, ChainNotify, Client, EngineClient, ImportBlock,
     MiningBlockChainClient, Nonce, RegularKey, Shard, TestBlockChainClient,
 };
 pub use db::COL_STATE;

@@ -74,6 +74,9 @@ pub trait EngineClient: Sync + Send + ChainInfo + ImportBlock {
 
     /// Submit a seal for a block in the mining queue.
     fn submit_seal(&self, block_hash: H256, seal: Vec<Bytes>);
+
+    /// Convert PoW difficulty to target.
+    fn score_to_target(&self, score: &U256) -> U256;
 }
 
 /// Provides `nonce` and `latest_nonce` methods

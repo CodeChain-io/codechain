@@ -289,6 +289,11 @@ impl EngineClient for Client {
             cwarn!(POA, "Wrong internal seal submission!")
         }
     }
+
+    /// Convert PoW difficulty to target.
+    fn score_to_target(&self, score: &U256) -> U256 {
+        self.engine.score_to_target(score)
+    }
 }
 
 impl BlockInfo for Client {

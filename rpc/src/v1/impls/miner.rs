@@ -17,7 +17,7 @@
 use std::sync::Arc;
 
 use ccore::block::IsBlock;
-use ccore::{self, Client, MinerService};
+use ccore::{EngineClient, MinerService, MiningBlockChainClient};
 use ctypes::H256;
 use jsonrpc_core::Result;
 
@@ -25,13 +25,20 @@ use super::super::errors;
 use super::super::traits::Miner;
 use super::super::types::{Bytes, Work};
 
-pub struct MinerClient {
-    client: Arc<Client>,
-    miner: Arc<ccore::Miner>,
+pub struct MinerClient<C, M>
+where
+    C: MiningBlockChainClient + EngineClient,
+    M: MinerService, {
+    client: Arc<C>,
+    miner: Arc<M>,
 }
 
-impl MinerClient {
-    pub fn new(client: &Arc<Client>, miner: &Arc<ccore::Miner>) -> Self {
+impl<C, M> MinerClient<C, M>
+where
+    C: MiningBlockChainClient + EngineClient,
+    M: MinerService,
+{
+    pub fn new(client: &Arc<C>, miner: &Arc<M>) -> Self {
         Self {
             client: client.clone(),
             miner: miner.clone(),
@@ -39,7 +46,11 @@ impl MinerClient {
     }
 }
 
-impl Miner for MinerClient {
+impl<C, M> Miner for MinerClient<C, M>
+where
+    C: MiningBlockChainClient + EngineClient + 'static,
+    M: MinerService + 'static,
+{
     fn get_work(&self) -> Result<Work> {
         if !self.miner.can_produce_work_package() {
             cwarn!(MINER, "Cannot give work package - engine seals internally.");
@@ -52,7 +63,7 @@ impl Miner for MinerClient {
         self.miner
             .map_sealing_work(&*self.client, |b| {
                 let pow_hash = b.hash();
-                let target = self.client.engine().score_to_target(b.block().header().score());
+                let target = self.client.score_to_target(b.block().header().score());
 
                 Ok(Work {
                     pow_hash,

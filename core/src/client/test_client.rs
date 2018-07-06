@@ -547,4 +547,8 @@ impl super::EngineClient for TestBlockChainClient {
             cwarn!(POA, "Wrong internal seal submission!")
         }
     }
+
+    fn score_to_target(&self, _score: &U256) -> U256 {
+        U256::zero()
+    }
 }
