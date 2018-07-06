@@ -21,7 +21,7 @@ use cio::{IoError, IoService};
 use ctypes::H256;
 
 use super::client::Client;
-use super::control::Control;
+use super::control::{Control, Error as ControlError};
 use super::p2p;
 use super::routing_table::RoutingTable;
 use super::session_initiator;
@@ -31,7 +31,7 @@ use super::{NetworkExtension, SocketAddr};
 
 pub struct Service {
     session_initiator: IoService<session_initiator::Message>,
-    _p2p: IoService<p2p::Message>,
+    p2p: IoService<p2p::Message>,
     timer: IoService<timer::Message>,
     client: Arc<Client>,
     routing_table: Arc<RoutingTable>,
@@ -64,7 +64,7 @@ impl Service {
 
         Ok(Arc::new(Self {
             session_initiator,
-            _p2p: p2p,
+            p2p,
             timer,
             client,
             routing_table,
@@ -107,8 +107,18 @@ impl Control for Service {
     fn connect(&self, addr: SocketAddr) {
         let message = session_initiator::Message::ManuallyConnectTo(addr);
         if let Err(err) = self.session_initiator.send_message(message) {
-            cerror!(NET, "Error occured while sending message ManuallyConnectTo: {:?}", err);
+            cerror!(NET, "Error occurred while sending message ManuallyConnectTo: {:?}", err);
         }
+    }
+
+    fn disconnect(&self, addr: SocketAddr) -> Result<(), ControlError> {
+        if !self.routing_table.is_connected(&addr) {
+            return Err(ControlError::NotConnected)
+        }
+        if let Err(err) = self.p2p.send_message(p2p::Message::Disconnect(addr)) {
+            cerror!(NET, "Error occurred while sending message Disconnect: {:?}", err);
+        }
+        Ok(())
     }
 }
 

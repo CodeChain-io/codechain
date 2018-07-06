@@ -102,6 +102,10 @@ impl EstablishedConnection {
         }
     }
 
+    fn disconnect(self) -> DisconnectingConnection {
+        DisconnectingConnection::new(self.stream.into())
+    }
+
     fn enqueue(&mut self, message: Message) {
         self.send_queue.push_back(message);
     }
@@ -234,6 +238,10 @@ impl WaitSyncConnection {
         EstablishedConnection::new(SignedStream::new(self.stream, session.clone()), remote_node_id)
     }
 
+    fn disconnect(self) -> DisconnectingConnection {
+        DisconnectingConnection::new(self.stream)
+    }
+
     fn remote_addr(&self) -> Result<SocketAddr> {
         Ok(self.stream.peer_addr()?)
     }
@@ -333,6 +341,10 @@ impl WaitAckConnection {
         EstablishedConnection::new(self.stream, remote_node_id)
     }
 
+    fn disconnect(self) -> DisconnectingConnection {
+        DisconnectingConnection::new(self.stream.into())
+    }
+
     fn stream(&self) -> &SignedStream {
         &self.stream
     }
@@ -395,18 +407,38 @@ impl WaitAckConnection {
     }
 }
 
+struct DisconnectingConnection {
+    stream: Stream,
+}
+
+impl DisconnectingConnection {
+    fn new(stream: Stream) -> Self {
+        Self {
+            stream,
+        }
+    }
+
+    fn deregister<Message>(&self, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()>
+    where
+        Message: Send + Sync + Clone + 'static, {
+        event_loop.deregister(&self.stream)
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub enum ConnectionType {
     None,
     AckWaiting,
     SyncWaiting,
     Established,
+    Disconnecting,
 }
 
 enum State {
     WaitSync(WaitSyncConnection),
     WaitAck(WaitAckConnection),
     Established(EstablishedConnection),
+    Disconnecting(DisconnectingConnection),
     Intermediate, // An intermediate state before established
 }
 
@@ -432,6 +464,36 @@ impl Connection {
         let connection = WaitSyncConnection::new(stream);
         Self {
             state: Mutex::new(Cell::new(State::WaitSync(connection))),
+        }
+    }
+
+    pub fn shutdown(&self) -> io::Result<()> {
+        let mut state = self.state.lock();
+        match state.get_mut() {
+            State::WaitAck(connection) => connection.stream.shutdown(),
+            State::WaitSync(connection) => connection.stream.shutdown(),
+            State::Established(connection) => connection.stream.shutdown(),
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn set_disconnecting(&self) {
+        let state = self.state.lock();
+        let old_state = state.replace(State::Intermediate);
+        let connection = match old_state {
+            State::WaitAck(connection) => connection.disconnect(),
+            State::WaitSync(connection) => connection.disconnect(),
+            State::Established(connection) => connection.disconnect(),
+            _ => unreachable!(),
+        };
+        state.set(State::Disconnecting(connection));
+    }
+
+    pub fn is_disconnecting(&self) -> bool {
+        let mut state = self.state.lock();
+        match state.get_mut() {
+            State::Disconnecting(_) => true,
+            _ => false,
         }
     }
 
@@ -519,6 +581,10 @@ impl Connection {
                 connection.deregister(event_loop)?;
                 Ok(ConnectionType::Established)
             }
+            State::Disconnecting(connection) => {
+                connection.deregister(event_loop)?;
+                Ok(ConnectionType::Disconnecting)
+            }
             _ => unreachable!(),
         }
     }
@@ -557,6 +623,7 @@ impl Connection {
                 Message::Extension(msg) => ReceivedMessage::Extension(msg),
                 _ => unreachable!(),
             })),
+            State::Disconnecting(_) => Ok(None),
             _ => unreachable!(),
         }
     }

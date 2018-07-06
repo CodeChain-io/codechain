@@ -47,6 +47,7 @@ enum State {
     TemporaryNonceShared(Secret, Nonce, SecretOrigin),
     SessionShared(Session),
     Established(NodeId),
+    Banned,
 }
 
 pub struct RoutingTable {
@@ -115,6 +116,25 @@ impl RoutingTable {
         entries.keys().map(|node_id| node_id.into_addr()).collect()
     }
 
+    pub fn is_connected(&self, addr: &SocketAddr) -> bool {
+        let entries = self.entries.read();
+        if let Some(entry) = entries.get(&addr.into()) {
+            let entry = entry.lock();
+            let old_state = entry.replace(State::Intermediate);
+            match old_state {
+                State::Established(_) => {
+                    entry.set(old_state);
+                    return true
+                }
+                _ => {
+                    entry.set(old_state);
+                    return false
+                }
+            }
+        }
+        false
+    }
+
     pub fn add_candidate(&self, addr: SocketAddr) -> bool {
         let mut entries = self.entries.write();
         let remote_node_id = addr.into();
@@ -133,6 +153,20 @@ impl RoutingTable {
         let mut remote_to_local_node_ids = self.remote_to_local_node_ids.write();
 
         let remote_node_id = addr.into();
+        if let Some(entry) = entries.get(&remote_node_id) {
+            let entry = entry.lock();
+            let old_state = entry.replace(State::Intermediate);
+            match old_state {
+                State::Banned => {
+                    entry.set(old_state);
+                    remote_to_local_node_ids.remove(&remote_node_id);
+                    return false
+                }
+                _ => {
+                    entry.set(old_state);
+                }
+            }
+        }
         let result = entries.remove(&remote_node_id).is_some();
         if result {
             remote_to_local_node_ids.remove(&remote_node_id);
@@ -369,6 +403,37 @@ impl RoutingTable {
             entry.set(old_state);
         }
         ctrace!(ROUTING_TABLE, "Cannot establish connection to {:?} established", remote_address);
+        false
+    }
+
+    pub fn ban(&self, remote_address: &SocketAddr) -> bool {
+        let entries = self.entries.read();
+        let remote_node_id = remote_address.into();
+        if let Some(entry) = entries.get(&remote_node_id) {
+            let entry = entry.lock();
+            entry.set(State::Banned);
+            return true
+        }
+        false
+    }
+
+    pub fn unban(&self, remote_address: &SocketAddr) -> bool {
+        let entries = self.entries.read();
+        let remote_node_id = remote_address.into();
+        if let Some(entry) = entries.get(&remote_node_id) {
+            let entry = entry.lock();
+            let old_state = entry.replace(State::Intermediate);
+            match old_state {
+                State::Banned => {
+                    entry.set(State::Candidate);
+                    return true
+                }
+                _ => {
+                    entry.set(old_state);
+                    return false
+                }
+            }
+        }
         false
     }
 

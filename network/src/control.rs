@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::result::Result;
+
 use ctypes::H256;
 
 use super::addr::SocketAddr;
@@ -21,4 +23,10 @@ use super::addr::SocketAddr;
 pub trait Control: Send + Sync {
     fn register_secret(&self, secret: H256, addr: SocketAddr);
     fn connect(&self, addr: SocketAddr);
+    fn disconnect(&self, addr: SocketAddr) -> Result<(), Error>;
+}
+
+#[derive(Clone, Debug)]
+pub enum Error {
+    NotConnected,
 }

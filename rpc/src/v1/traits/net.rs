@@ -24,5 +24,8 @@ build_rpc_trait! {
 
         # [rpc(name = "net_connect")]
         fn connect(&self, ::std::net::IpAddr, u16) -> Result<()>;
+
+        # [rpc(name = "net_disconnect")]
+        fn disconnect(&self, ::std::net::IpAddr, u16) -> Result<()>;
     }
 }

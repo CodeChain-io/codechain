@@ -17,6 +17,7 @@
 use std::fmt;
 
 use ccore::Error as CoreError;
+use cnetwork::control::Error as NetworkControlError;
 use kvdb::Error as KVDBError;
 use rlp::DecoderError;
 
@@ -29,6 +30,7 @@ mod codes {
     pub const PARCEL_ERROR: i64 = -32010;
     pub const KVDB_ERROR: i64 = -32011;
     pub const NETWORK_DISABLED: i64 = -32014;
+    pub const NETWORK_CANNOT_DISCONNECT_NOT_CONNECTED_ERROR: i64 = -32015;
 }
 
 pub fn parcel<T: Into<CoreError>>(error: T) -> Error {
@@ -85,6 +87,16 @@ pub fn network_disabled() -> Error {
         code: ErrorCode::ServerError(codes::NETWORK_DISABLED),
         message: "Network is diabled.".into(),
         data: None,
+    }
+}
+
+pub fn network_control(error: NetworkControlError) -> Error {
+    match error {
+        NetworkControlError::NotConnected => Error {
+            code: ErrorCode::ServerError(codes::NETWORK_CANNOT_DISCONNECT_NOT_CONNECTED_ERROR),
+            message: "Cannot disconnect not connected node".into(),
+            data: None,
+        },
     }
 }
 

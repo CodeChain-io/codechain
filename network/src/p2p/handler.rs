@@ -78,6 +78,7 @@ pub enum Message {
         need_encryption: bool,
         data: Vec<u8>,
     },
+    Disconnect(SocketAddr),
 }
 
 #[derive(Debug)]
@@ -299,6 +300,7 @@ impl Manager {
                 false
             }
             ConnectionType::Established => remain,
+            ConnectionType::Disconnecting => return Err(Error::InvalidStream(stream.clone()).into()),
         })
     }
 }
@@ -415,6 +417,12 @@ impl IoHandler<Message> for Handler {
                 io.update_registration(token)?;
                 Ok(())
             }
+            Message::Disconnect(socket_address) => {
+                let manager = self.manager.lock();
+                manager.connections.shutdown(&socket_address)?;
+                manager.routing_table.ban(&socket_address);
+                Ok(())
+            }
         }
     }
 
@@ -422,6 +430,11 @@ impl IoHandler<Message> for Handler {
         match stream {
             ACCEPT_TOKEN => unreachable!(),
             FIRST_CONNECTION_TOKEN...LAST_CONNECTION_TOKEN => {
+                let manager = self.manager.lock();
+                if !manager.connections.is_connected(&stream) {
+                    ctrace!(NET, "stream's hup event called twice from {:?}", stream);
+                    return Ok(())
+                }
                 let register_new_timer = AtomicBool::new(false);
                 let _f = finally(|| {
                     if register_new_timer.load(Ordering::SeqCst) {
@@ -429,11 +442,10 @@ impl IoHandler<Message> for Handler {
                             .expect("Pull connections must be registered");
                     }
                 });
-
-                let manager = self.manager.lock();
                 if manager.connections.len() < self.min_peers {
                     register_new_timer.store(true, Ordering::SeqCst);
                 }
+                manager.connections.set_disconnecting(&stream);
                 let node_id = manager.connections.node_id(&stream).ok_or(Error::InvalidStream(stream))?;
                 manager.routing_table.remove_node(node_id.into_addr());
                 self.client.on_node_removed(&node_id);
