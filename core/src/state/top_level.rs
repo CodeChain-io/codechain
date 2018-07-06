@@ -551,200 +551,12 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopState<B> for TopLevelSta
 }
 
 #[cfg(test)]
-mod tests {
-    use std::str::FromStr;
+mod tests_state {
+    use ccrypto::BLAKE_NULL_RLP;
+    use ctypes::{Address, U256};
 
-    use ccrypto::Blake;
-    use ckey::{Generator, Random};
-    use ctypes::{Address, Secret, U256};
-
-    use super::super::super::parcel::{AssetOutPoint, AssetTransferInput, AssetTransferOutput, Parcel};
     use super::super::super::tests::helpers::{get_temp_state, get_temp_state_db};
-    use super::super::super::transaction::Transaction;
     use super::*;
-
-    fn secret() -> Secret {
-        Secret::blake("")
-    }
-
-    #[test]
-    fn apply_empty_parcel() {
-        let mut state = get_temp_state();
-
-        let signed_parcel = Parcel {
-            fee: 5.into(),
-            ..Parcel::default()
-        }.sign(&secret().into());
-        let sender = signed_parcel.sender();
-        state.add_balance(&sender, &20.into()).unwrap();
-
-        let res = state.apply(&signed_parcel).unwrap();
-        match res {
-            ParcelOutcome::Transactions(res) => {
-                assert!(res.is_empty());
-            }
-            _ => unreachable!(),
-        }
-        assert_eq!(state.balance(&sender).unwrap(), 15.into());
-        assert_eq!(state.nonce(&sender).unwrap(), 1.into());
-    }
-
-    #[test]
-    fn should_apply_error_for_invalid_nonce() {
-        let mut state = get_temp_state();
-
-        let signed_parcel = Parcel {
-            nonce: 2.into(),
-            fee: 5.into(),
-            ..Parcel::default()
-        }.sign(&secret().into());
-        let sender = signed_parcel.sender();
-        state.add_balance(&sender, &20.into()).unwrap();
-
-        match state.apply(&signed_parcel) {
-            Err(Error::Parcel(err)) => {
-                assert_eq!(
-                    ParcelError::InvalidNonce {
-                        expected: 0.into(),
-                        got: 2.into()
-                    },
-                    err
-                );
-            }
-            _ => unreachable!(),
-        }
-
-        assert_eq!(state.balance(&sender).unwrap(), 20.into());
-        assert_eq!(state.nonce(&sender).unwrap(), 0.into());
-    }
-
-    #[test]
-    fn should_apply_error_for_not_enough_cash() {
-        let mut state = get_temp_state();
-        let signed_parcel = Parcel {
-            fee: 5.into(),
-            ..Parcel::default()
-        }.sign(&secret().into());
-        let sender = signed_parcel.sender();
-        state.add_balance(&sender, &4.into()).unwrap();
-
-        match state.apply(&signed_parcel) {
-            Err(Error::Parcel(err)) => {
-                assert_eq!(
-                    ParcelError::InsufficientBalance {
-                        address: sender,
-                        balance: 4.into(),
-                        cost: 5.into(),
-                    },
-                    err
-                );
-            }
-            _ => unreachable!(),
-        }
-        assert_eq!(state.balance(&sender).unwrap(), 4.into());
-        assert_eq!(state.nonce(&sender).unwrap(), 0.into());
-    }
-
-    #[test]
-    fn should_apply_payment() {
-        let mut state = get_temp_state();
-        let receiver = 1u64.into();
-
-        let keypair = Random.generate().unwrap();
-
-        let signed_parcel = Parcel {
-            fee: 5.into(),
-            action: Action::Payment {
-                receiver,
-                value: 10.into(),
-            },
-            ..Parcel::default()
-        }.sign(keypair.private());
-        let sender = signed_parcel.sender();
-        assert_eq!(keypair.address(), sender);
-        state.add_balance(&sender, &20.into()).unwrap();
-
-        let res = state.apply(&signed_parcel).unwrap();
-        match res {
-            ParcelOutcome::Single {
-                invoice,
-                error,
-            } => {
-                assert_eq!(invoice, Invoice::Success);
-                assert!(error.is_none());
-            }
-            _ => unreachable!(),
-        }
-        assert_eq!(state.balance(&receiver).unwrap(), 10.into());
-        assert_eq!(state.balance(&sender).unwrap(), 5.into());
-        assert_eq!(state.nonce(&sender).unwrap(), 1.into());
-    }
-
-    #[test]
-    fn should_apply_set_regular_key() {
-        let mut state = get_temp_state();
-        let key = 1u64.into();
-
-        let keypair = Random.generate().unwrap();
-
-        let signed_parcel = Parcel {
-            fee: 5.into(),
-            action: Action::SetRegularKey {
-                key,
-            },
-            ..Parcel::default()
-        }.sign(keypair.private());
-        let sender = signed_parcel.sender();
-        assert_eq!(sender, keypair.address());
-        state.add_balance(&sender, &5.into()).unwrap();
-
-        assert_eq!(state.regular_key(&sender), Ok(None));
-        let res = state.apply(&signed_parcel).unwrap();
-        assert_eq!(
-            ParcelOutcome::Single {
-                invoice: Invoice::Success,
-                error: None
-            },
-            res
-        );
-        assert_eq!(state.regular_key(&sender), Ok(Some(key)));
-    }
-
-    #[test]
-    fn should_apply_error_for_action_failure() {
-        let mut state = get_temp_state();
-        let receiver = 1u64.into();
-        let keypair = Random.generate().unwrap();
-
-        let signed_parcel = Parcel {
-            fee: 5.into(),
-            action: Action::Payment {
-                receiver,
-                value: 30.into(),
-            },
-            ..Parcel::default()
-        }.sign(keypair.private());
-        let sender = signed_parcel.sender();
-        assert_eq!(keypair.address(), sender);
-        state.add_balance(&sender, &20.into()).unwrap();
-
-        let res = state.apply(&signed_parcel).unwrap();
-        assert_eq!(
-            ParcelOutcome::Single {
-                invoice: Invoice::Failed,
-                error: Some(ParcelError::InsufficientBalance {
-                    address: sender,
-                    balance: 15.into(),
-                    cost: 30.into(),
-                })
-            },
-            res
-        );
-
-        assert_eq!(state.balance(&receiver).unwrap(), 0.into());
-        assert_eq!(state.balance(&sender).unwrap(), 15.into());
-        assert_eq!(state.nonce(&sender).unwrap(), 1.into());
-    }
 
     #[test]
     fn should_work_when_cloned() {
@@ -966,7 +778,198 @@ mod tests {
     fn create_empty() {
         let mut state = get_temp_state();
         state.commit().unwrap();
-        assert_eq!(*state.root(), "45b0cfc220ceec5b7c1c62c4d4193d38e4eba48e8815729ce75f9c0ab0e4c1c0".into());
+        assert_eq!(state.root(), &BLAKE_NULL_RLP);
+    }
+}
+
+#[cfg(test)]
+mod tests_parcel {
+    use std::str::FromStr;
+
+    use ccrypto::Blake;
+    use ckey::{Generator, Random};
+    use ctypes::{Address, Secret, U256};
+
+    use super::super::super::parcel::{AssetOutPoint, AssetTransferInput, AssetTransferOutput, Parcel};
+    use super::super::super::tests::helpers::get_temp_state;
+    use super::super::super::transaction::Transaction;
+    use super::*;
+
+    fn secret() -> Secret {
+        Secret::blake("")
+    }
+
+    #[test]
+    fn apply_empty_parcel() {
+        let mut state = get_temp_state();
+
+        let signed_parcel = Parcel {
+            fee: 5.into(),
+            ..Parcel::default()
+        }.sign(&secret().into());
+        let sender = signed_parcel.sender();
+        state.add_balance(&sender, &20.into()).unwrap();
+
+        match state.apply(&signed_parcel).unwrap() {
+            ParcelOutcome::Transactions(res) => {
+                assert!(res.is_empty());
+            }
+            _ => unreachable!(),
+        }
+        assert_eq!(Ok(15.into()), state.balance(&sender));
+        assert_eq!(Ok(1.into()), state.nonce(&sender));
+    }
+
+    #[test]
+    fn should_apply_error_for_invalid_nonce() {
+        let mut state = get_temp_state();
+
+        let signed_parcel = Parcel {
+            nonce: 2.into(),
+            fee: 5.into(),
+            ..Parcel::default()
+        }.sign(&secret().into());
+        let sender = signed_parcel.sender();
+        state.add_balance(&sender, &20.into()).unwrap();
+
+        match state.apply(&signed_parcel) {
+            Err(Error::Parcel(err)) => {
+                assert_eq!(
+                    ParcelError::InvalidNonce {
+                        expected: 0.into(),
+                        got: 2.into()
+                    },
+                    err
+                );
+            }
+            other => panic!("{:?}", other),
+        }
+
+        assert_eq!(Ok(20.into()), state.balance(&sender));
+        assert_eq!(Ok(0.into()), state.nonce(&sender));
+    }
+
+    #[test]
+    fn should_apply_error_for_not_enough_cash() {
+        let mut state = get_temp_state();
+        let signed_parcel = Parcel {
+            fee: 5.into(),
+            ..Parcel::default()
+        }.sign(&secret().into());
+        let sender = signed_parcel.sender();
+        state.add_balance(&sender, &4.into()).unwrap();
+
+        match state.apply(&signed_parcel) {
+            Err(Error::Parcel(err)) => {
+                assert_eq!(
+                    ParcelError::InsufficientBalance {
+                        address: sender,
+                        balance: 4.into(),
+                        cost: 5.into(),
+                    },
+                    err
+                );
+            }
+            other => panic!("{:?}", other),
+        }
+        assert_eq!(Ok(4.into()), state.balance(&sender));
+        assert_eq!(Ok(0.into()), state.nonce(&sender));
+    }
+
+    #[test]
+    fn should_apply_payment() {
+        let mut state = get_temp_state();
+        let receiver = 1u64.into();
+
+        let keypair = Random.generate().unwrap();
+
+        let signed_parcel = Parcel {
+            fee: 5.into(),
+            action: Action::Payment {
+                receiver,
+                value: 10.into(),
+            },
+            ..Parcel::default()
+        }.sign(keypair.private());
+        let sender = signed_parcel.sender();
+        assert_eq!(keypair.address(), sender);
+        state.add_balance(&sender, &20.into()).unwrap();
+
+        assert_eq!(
+            ParcelOutcome::Single {
+                invoice: Invoice::Success,
+                error: None,
+            },
+            state.apply(&signed_parcel).unwrap()
+        );
+
+        assert_eq!(Ok(10.into()), state.balance(&receiver));
+        assert_eq!(Ok(5.into()), state.balance(&sender));
+        assert_eq!(Ok(1.into()), state.nonce(&sender));
+    }
+
+    #[test]
+    fn should_apply_set_regular_key() {
+        let mut state = get_temp_state();
+        let key = 1u64.into();
+
+        let keypair = Random.generate().unwrap();
+
+        let signed_parcel = Parcel {
+            fee: 5.into(),
+            action: Action::SetRegularKey {
+                key,
+            },
+            ..Parcel::default()
+        }.sign(keypair.private());
+        let sender = signed_parcel.sender();
+        assert_eq!(sender, keypair.address());
+        state.add_balance(&sender, &5.into()).unwrap();
+
+        assert_eq!(state.regular_key(&sender), Ok(None));
+        assert_eq!(
+            ParcelOutcome::Single {
+                invoice: Invoice::Success,
+                error: None
+            },
+            state.apply(&signed_parcel).unwrap()
+        );
+        assert_eq!(Ok(Some(key)), state.regular_key(&sender));
+    }
+
+    #[test]
+    fn should_apply_error_for_action_failure() {
+        let mut state = get_temp_state();
+        let receiver = 1u64.into();
+        let keypair = Random.generate().unwrap();
+
+        let signed_parcel = Parcel {
+            fee: 5.into(),
+            action: Action::Payment {
+                receiver,
+                value: 30.into(),
+            },
+            ..Parcel::default()
+        }.sign(keypair.private());
+        let sender = signed_parcel.sender();
+        assert_eq!(keypair.address(), sender);
+        state.add_balance(&sender, &20.into()).unwrap();
+
+        assert_eq!(
+            ParcelOutcome::Single {
+                invoice: Invoice::Failed,
+                error: Some(ParcelError::InsufficientBalance {
+                    address: sender,
+                    balance: 15.into(),
+                    cost: 30.into(),
+                })
+            },
+            state.apply(&signed_parcel).unwrap()
+        );
+
+        assert_eq!(Ok(0.into()), state.balance(&receiver));
+        assert_eq!(Ok(15.into()), state.balance(&sender));
+        assert_eq!(Ok(1.into()), state.nonce(&sender));
     }
 
     #[test]
@@ -1192,7 +1195,6 @@ mod tests {
     #[test]
     fn mint_and_transfer_in_different_parcel() {
         let mut state = get_temp_state();
-
 
         let metadata = "metadata".to_string();
         let lock_script_hash =
