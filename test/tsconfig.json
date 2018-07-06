@@ -1,18 +1,18 @@
 {
-    "compilerOptions": {
-        "target": "es2015",
-        "types": [
-            "node"
-        ],
-        "module": "commonjs",
-        "declaration": true,
-        "outDir": "lib",
-        "strict": true
-    },
-    "include": [
-        "./src/**/*",
+  "compilerOptions": {
+    "target": "es2015",
+    "types": [
+      "node"
     ],
-    "exclude": [
-        "./src/**/*.test.ts"
-    ]
+    "module": "commonjs",
+    "declaration": true,
+    "outDir": "lib",
+    "strict": true
+  },
+  "include": [
+    "./src/**/*",
+  ],
+  "exclude": [
+    "./src/**/*.test.ts"
+  ]
 }
