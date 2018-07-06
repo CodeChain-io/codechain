@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use super::{Cuckoo, NullEngine, Solo, SoloAuthority, Tendermint};
+use super::{BlakePoW, Cuckoo, NullEngine, Solo, SoloAuthority, Tendermint};
 
 /// Engine deserialization.
 #[derive(Debug, PartialEq, Deserialize)]
@@ -30,6 +30,8 @@ pub enum Engine {
     Tendermint(Tendermint),
     #[serde(rename = "cuckoo")]
     Cuckoo(Cuckoo),
+    #[serde(rename = "blakePoW")]
+    BlakePoW(BlakePoW),
 }
 
 #[cfg(test)]
@@ -108,6 +110,19 @@ mod tests {
         let deserialized: Engine = serde_json::from_str(s).unwrap();
         match deserialized {
             Engine::Cuckoo(_) => {} // Tendermint is unit tested in its own file.
+            _ => panic!(),
+        };
+
+        let s = r#"{
+            "blakePoW": {
+                "params": {
+                    "blockReward": "0x0d"
+                }
+            }
+        }"#;
+        let deserialized: Engine = serde_json::from_str(s).unwrap();
+        match deserialized {
+            Engine::BlakePoW(_) => {} // BlakePoW is unit tested in its own file.
             _ => panic!(),
         };
     }
