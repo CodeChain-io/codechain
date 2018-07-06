@@ -176,6 +176,10 @@ impl Stream {
     pub fn peer_addr(&self) -> Result<SocketAddr> {
         Ok(self.stream.peer_addr()?.into())
     }
+
+    pub fn shutdown(&self) -> io::Result<()> {
+        self.stream.shutdown(net::Shutdown::Both)
+    }
 }
 
 pub struct SignedStream {
@@ -215,6 +219,10 @@ impl SignedStream {
     pub fn session(&self) -> &Session {
         &self.session
     }
+
+    pub fn shutdown(&self) -> io::Result<()> {
+        self.stream.shutdown()
+    }
 }
 
 impl From<TcpStream> for Stream {
@@ -234,6 +242,12 @@ impl Into<TcpStream> for Stream {
 impl<'a> Into<&'a TcpStream> for &'a Stream {
     fn into(self) -> &'a TcpStream {
         &self.stream
+    }
+}
+
+impl Into<Stream> for SignedStream {
+    fn into(self) -> Stream {
+        self.stream
     }
 }
 

@@ -446,6 +446,7 @@ impl IoHandler<Message> for Handler {
             }
             Message::ManuallyConnectTo(socket_address) => {
                 let mut session_initiator = self.session_initiator.lock();
+                session_initiator.routing_table.unban(&socket_address);
                 session_initiator.routing_table.add_candidate(socket_address.clone());
                 session_initiator.requests.manually_connected_address.insert(socket_address.clone());
                 session_initiator.create_new_connection(&socket_address, io)?;

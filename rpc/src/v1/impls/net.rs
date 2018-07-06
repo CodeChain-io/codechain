@@ -55,4 +55,10 @@ where
         network_control.connect(SocketAddr::new(address, port));
         Ok(())
     }
+
+    fn disconnect(&self, address: ::std::net::IpAddr, port: u16) -> Result<()> {
+        let network_control = self.network_control.as_ref().ok_or_else(|| errors::network_disabled())?;
+        network_control.disconnect(SocketAddr::new(address, port)).map_err(errors::network_control)?;
+        Ok(())
+    }
 }
