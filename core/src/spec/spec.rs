@@ -290,7 +290,8 @@ impl Spec {
             let r = Rlp::new(&self.seal_rlp);
             r.iter().map(|f| f.as_raw().to_vec()).collect()
         });
-        ctrace!(SPEC, "Header hash is {}", header.hash());
+        ctrace!(SPEC, "Genesis header is {:?}", header);
+        ctrace!(SPEC, "Genesis header hash is {}", header.hash());
         header
     }
 
