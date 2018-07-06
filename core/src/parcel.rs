@@ -117,7 +117,7 @@ impl From<ckey::Error> for ParcelError {
 /// Fake address for unsigned parcel as defined by EIP-86.
 pub const UNSIGNED_SENDER: Address = H160([0xff; 20]);
 
-#[derive(Default, Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Parcel {
     /// Nonce.
     pub nonce: U256,
@@ -145,14 +145,6 @@ pub enum Action {
         key: Public,
     },
     CreateShard,
-}
-
-impl Default for Action {
-    fn default() -> Self {
-        Action::ChangeShardState {
-            transactions: Default::default(),
-        }
-    }
 }
 
 const CHANGE_SHARD_STATE: u8 = 1;
@@ -541,7 +533,12 @@ mod tests {
     fn test_unverified_parcel_rlp() {
         rlp_encode_and_decode_test!(
             UnverifiedParcel {
-                unsigned: Parcel::default(),
+                unsigned: Parcel {
+                    nonce: 0.into(),
+                    fee: 10.into(),
+                    action: Action::CreateShard,
+                    network_id: 0xBE,
+                },
                 v: 0,
                 r: U256::default(),
                 s: U256::default(),

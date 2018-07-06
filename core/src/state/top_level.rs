@@ -853,7 +853,11 @@ mod tests_parcel {
 
         let signed_parcel = Parcel {
             fee: 5.into(),
-            ..Parcel::default()
+            nonce: 0.into(),
+            network_id: 0xCA,
+            action: Action::ChangeShardState {
+                transactions: vec![],
+            },
         }.sign(&secret().into());
         let sender = signed_parcel.sender();
         state.add_balance(&sender, &20.into()).unwrap();
@@ -875,7 +879,10 @@ mod tests_parcel {
         let signed_parcel = Parcel {
             nonce: 2.into(),
             fee: 5.into(),
-            ..Parcel::default()
+            network_id: 0xCA,
+            action: Action::ChangeShardState {
+                transactions: vec![],
+            },
         }.sign(&secret().into());
         let sender = signed_parcel.sender();
         state.add_balance(&sender, &20.into()).unwrap();
@@ -902,7 +909,11 @@ mod tests_parcel {
         let mut state = get_temp_state();
         let signed_parcel = Parcel {
             fee: 5.into(),
-            ..Parcel::default()
+            nonce: 0.into(),
+            network_id: 0xCA,
+            action: Action::ChangeShardState {
+                transactions: vec![],
+            },
         }.sign(&secret().into());
         let sender = signed_parcel.sender();
         state.add_balance(&sender, &4.into()).unwrap();
@@ -937,7 +948,8 @@ mod tests_parcel {
                 receiver,
                 value: 10.into(),
             },
-            ..Parcel::default()
+            nonce: 0.into(),
+            network_id: 0xCA,
         }.sign(keypair.private());
         let sender = signed_parcel.sender();
         assert_eq!(keypair.address(), sender);
@@ -968,7 +980,8 @@ mod tests_parcel {
             action: Action::SetRegularKey {
                 key,
             },
-            ..Parcel::default()
+            nonce: 0.into(),
+            network_id: 0xCA,
         }.sign(keypair.private());
         let sender = signed_parcel.sender();
         assert_eq!(sender, keypair.address());
@@ -997,7 +1010,8 @@ mod tests_parcel {
                 receiver,
                 value: 30.into(),
             },
-            ..Parcel::default()
+            nonce: 0.into(),
+            network_id: 0xCA,
         }.sign(keypair.private());
         let sender = signed_parcel.sender();
         assert_eq!(keypair.address(), sender);
@@ -1046,7 +1060,8 @@ mod tests_parcel {
             action: Action::ChangeShardState {
                 transactions,
             },
-            ..Parcel::default()
+            nonce: 0.into(),
+            network_id: 0xCA,
         }.sign(&secret().into());
         let sender = signed_parcel.sender();
 
@@ -1098,7 +1113,8 @@ mod tests_parcel {
             action: Action::ChangeShardState {
                 transactions,
             },
-            ..Parcel::default()
+            nonce: 0.into(),
+            network_id: 0xCA,
         }.sign(&secret().into());
         let sender = signed_parcel.sender();
 
@@ -1198,11 +1214,11 @@ mod tests_parcel {
         let transactions = vec![mint, transfer];
         let signed_parcel = Parcel {
             fee: 20.into(),
+            nonce: 0.into(),
             network_id,
             action: Action::ChangeShardState {
                 transactions,
             },
-            ..Parcel::default()
         }.sign(&secret().into());
         let sender = signed_parcel.sender();
 
@@ -1276,7 +1292,6 @@ mod tests_parcel {
             action: Action::ChangeShardState {
                 transactions: vec![mint],
             },
-            ..Parcel::default()
         }.sign(&secret().into());
         let sender = mint_parcel.sender();
 
@@ -1347,7 +1362,6 @@ mod tests_parcel {
             action: Action::ChangeShardState {
                 transactions: vec![transfer],
             },
-            ..Parcel::default()
         }.sign(&secret().into());
 
         assert_eq!(
@@ -1412,7 +1426,8 @@ mod tests_parcel {
         let signed_parcel = Parcel {
             action: Action::CreateShard,
             fee: 5.into(),
-            ..Parcel::default()
+            nonce: 0.into(),
+            network_id: 0xCA,
         }.sign(&secret().into());
         let sender = signed_parcel.sender();
         state.add_balance(&sender, &20.into()).unwrap();
@@ -1436,7 +1451,8 @@ mod tests_parcel {
         let signed_parcel = Parcel {
             action: Action::CreateShard,
             fee: 5.into(),
-            ..Parcel::default()
+            nonce: 0.into(),
+            network_id: 0xCA,
         }.sign(&secret().into());
         let sender = signed_parcel.sender();
         state.add_balance(&sender, &20.into()).unwrap();
@@ -1462,7 +1478,8 @@ mod tests_parcel {
         let signed_parcel = Parcel {
             action: Action::CreateShard,
             fee: 5.into(),
-            ..Parcel::default()
+            nonce: 0.into(),
+            network_id: 0xCA,
         }.sign(&secret().into());
         let sender = signed_parcel.sender();
         state.add_balance(&sender, &20.into()).unwrap();
@@ -1501,10 +1518,11 @@ mod tests_parcel {
         let transactions = vec![transaction];
         let signed_parcel = Parcel {
             fee: 11.into(),
+            nonce: 0.into(),
             action: Action::ChangeShardState {
                 transactions,
             },
-            ..Parcel::default()
+            network_id: 0xCA,
         }.sign(&secret().into());
         let sender = signed_parcel.sender();
 
@@ -1566,7 +1584,6 @@ mod tests_parcel {
             action: Action::ChangeShardState {
                 transactions: vec![transfer],
             },
-            ..Parcel::default()
         }.sign(&secret().into());
 
         let sender = signed_parcel.sender();
