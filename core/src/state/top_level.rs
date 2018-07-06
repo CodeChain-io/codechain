@@ -396,7 +396,7 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopLevelState<B> {
         shard_id: u32,
     ) -> Result<Vec<TransactionOutcome>, Error> {
         // FIXME: Handle the case that shard doesn't exist
-        let shard_root = self.shard_root(shard_id)?.unwrap_or(BLAKE_NULL_RLP);
+        let shard_root = self.shard_root(shard_id)?.ok_or_else(|| ParcelError::InvalidShardId(shard_id))?;
 
         // FIXME: Make it mutable borrow db instead of cloning.
         let mut shard_level_state = ShardLevelState::from_existing(self.db.clone(), shard_root, self.trie_factory)?;
@@ -848,6 +848,8 @@ mod tests_parcel {
     #[test]
     fn apply_empty_parcel() {
         let mut state = get_temp_state();
+        state.create_shard_level_state().unwrap();
+        state.commit().unwrap();
 
         let signed_parcel = Parcel {
             fee: 5.into(),
@@ -1021,6 +1023,8 @@ mod tests_parcel {
     #[test]
     fn mint_permissioned_asset() {
         let mut state = get_temp_state();
+        state.create_shard_level_state().unwrap();
+        state.commit().unwrap();
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H256::random();
@@ -1072,6 +1076,8 @@ mod tests_parcel {
     #[test]
     fn mint_infinite_permissioned_asset() {
         let mut state = get_temp_state();
+        state.create_shard_level_state().unwrap();
+        state.commit().unwrap();
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H256::random();
@@ -1126,6 +1132,8 @@ mod tests_parcel {
     #[test]
     fn mint_and_transfer_in_the_same_parcel() {
         let mut state = get_temp_state();
+        state.create_shard_level_state().unwrap();
+        state.commit().unwrap();
 
         let metadata = "metadata".to_string();
         let lock_script_hash =
@@ -1241,6 +1249,8 @@ mod tests_parcel {
     #[test]
     fn mint_and_transfer_in_different_parcel() {
         let mut state = get_temp_state();
+        state.create_shard_level_state().unwrap();
+        state.commit().unwrap();
 
         let metadata = "metadata".to_string();
         let lock_script_hash =
@@ -1471,4 +1481,100 @@ mod tests_parcel {
         assert_eq!(Ok(None), state.asset_scheme(shard_id, &AssetSchemeAddress::new(H256::random())));
     }
 
+    #[test]
+    fn mint_asset_on_invalid_parcel_must_fail() {
+        let mut state = get_temp_state();
+
+        let metadata = "metadata".to_string();
+        let lock_script_hash = H256::random();
+        let parameters = vec![];
+        let registrar = Some(Address::random());
+        let amount = 30;
+        let transaction = Transaction::AssetMint {
+            metadata: metadata.clone(),
+            lock_script_hash,
+            parameters: parameters.clone(),
+            amount: Some(amount),
+            registrar,
+            nonce: 0,
+        };
+        let transactions = vec![transaction];
+        let signed_parcel = Parcel {
+            fee: 11.into(),
+            action: Action::ChangeShardState {
+                transactions,
+            },
+            ..Parcel::default()
+        }.sign(&secret().into());
+        let sender = signed_parcel.sender();
+
+        state.add_balance(&sender, &U256::from(69u64)).unwrap();
+
+        match state.apply(&signed_parcel).unwrap_err() {
+            Error::Parcel(err) => assert_eq!(ParcelError::InvalidShardId(0), err),
+            other => panic!("{:?}", other),
+        }
+    }
+
+    #[test]
+    fn transfer_on_invalid_parcel_must_fail() {
+        let mut state = get_temp_state();
+
+        let network_id = 0xBeef;
+
+        let asset_type = H256::random();
+        let transfer = Transaction::AssetTransfer {
+            network_id,
+            burns: vec![],
+            inputs: vec![AssetTransferInput {
+                prev_out: AssetOutPoint {
+                    transaction_hash: H256::random(),
+                    index: 0,
+                    asset_type,
+                    amount: 30,
+                },
+                lock_script: vec![0x30, 0x01],
+                unlock_script: vec![],
+            }],
+            outputs: vec![
+                AssetTransferOutput {
+                    lock_script_hash: H256::random(),
+                    parameters: vec![vec![1]],
+                    asset_type,
+                    amount: 10,
+                },
+                AssetTransferOutput {
+                    lock_script_hash: H256::random(),
+                    parameters: vec![],
+                    asset_type,
+                    amount: 5,
+                },
+                AssetTransferOutput {
+                    lock_script_hash: H256::random(),
+                    parameters: vec![],
+                    asset_type,
+                    amount: 15,
+                },
+            ],
+            nonce: 0,
+        };
+
+        let signed_parcel = Parcel {
+            fee: 30.into(),
+            network_id,
+            nonce: 0.into(),
+            action: Action::ChangeShardState {
+                transactions: vec![transfer],
+            },
+            ..Parcel::default()
+        }.sign(&secret().into());
+
+        let sender = signed_parcel.sender();
+        state.add_balance(&sender, &U256::from(120)).unwrap();
+
+        match state.apply(&signed_parcel).unwrap_err() {
+            Error::Parcel(err) => assert_eq!(ParcelError::InvalidShardId(0), err),
+            other => panic!("{:?}", other),
+        }
+    }
 }

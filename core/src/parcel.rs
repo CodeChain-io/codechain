@@ -65,6 +65,7 @@ pub enum ParcelError {
         /// Nonce found.
         got: U256,
     },
+    InvalidShardId(u32),
     /// Not enough permissions given by permission contract.
     NotAllowed,
     /// Signature error
@@ -93,6 +94,7 @@ pub fn parcel_error_message(error: &ParcelError) -> String {
             expected,
             got,
         } => format!("Invalid parcel nonce: expected {}, found {}", expected, got),
+        InvalidShardId(shard_id) => format!("{} is an invalid shard id", shard_id),
         NotAllowed => "Sender does not have permissions to execute this type of transaction".into(),
         InvalidSignature(err) => format!("Parcel has invalid signature: {}.", err),
     }
