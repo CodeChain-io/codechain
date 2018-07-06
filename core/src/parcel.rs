@@ -93,7 +93,7 @@ pub fn parcel_error_message(error: &ParcelError) -> String {
             expected,
             got,
         } => format!("Invalid parcel nonce: expected {}, found {}", expected, got),
-        NotAllowed => "Sender does not have permissions to execute this type of transction".into(),
+        NotAllowed => "Sender does not have permissions to execute this type of transaction".into(),
         InvalidSignature(err) => format!("Parcel has invalid signature: {}.", err),
     }
 }
