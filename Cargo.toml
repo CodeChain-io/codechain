@@ -39,14 +39,14 @@ name = "codechain"
 
 [workspace]
 members = [
-	"core",
-	"crypto",
-	"discovery",
-	"json",
-	"key",
-	"keystore",
-	"network",
-	"rpc",
-	"sync",
-	"vm",
+    "core",
+    "crypto",
+    "discovery",
+    "json",
+    "key",
+    "keystore",
+    "network",
+    "rpc",
+    "sync",
+    "vm",
 ]
