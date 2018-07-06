@@ -17,7 +17,7 @@
 use std::sync::Arc;
 
 use ccore::{
-    Asset, AssetClient, AssetScheme, BlockId, BlockNumber, Invoice, MinerService, MiningBlockChainClient, Nonce,
+    Asset, AssetClient, AssetScheme, BlockId, BlockNumber, Invoice, MinerService, MiningBlockChainClient,
     ParcelInvoice, RegularKey, Shard, SignedParcel,
 };
 use ctypes::{H160, H256, Public, U256};
