@@ -21,14 +21,14 @@ Then, make sure that your CodeChain RPC server is up and running. You can read a
 Running the Sample Assets Minting Code
 ======================================
 Once you have installed codechain-sdk, go to the installed directory and create a JavaScript file with the example code.
-For simplicity, we will call this sample script sampleScript.js. To download the .js file, run:
+For simplicity, we will call this sample script mint-and-transfer.js. To download the .js file, run:
 ::
 
-    wget https://gist.githubusercontent.com/ScarletBlue/c2ce044b4a0fb38766b4e05cc7b4dcc6/raw/43862ea5f628b851a0b90410c0cdb6e4651445ec/sampleTransfer.js
+    wget https://raw.githubusercontent.com/CodeChain-io/codechain-sdk-js/gh-pages/examples/mint-and-transfer.js
 
 Then, run the following command:
 
-``node sampleTransfer.js``
+``node mint-and-transfer.js``
 
 This should give you the following result:
 ::
@@ -66,7 +66,6 @@ This should give you the following result:
         parameters: [],
         amount: 7000 }
 
-
 In this example, 10000 gold has been minted for Alice. Alice then basically sends 3000 gold to Bob. 
 Let’s see how all of this works specifically by inspecting parts of the code one by one.
 
@@ -77,48 +76,44 @@ Make sure you are accessing the CodeChain port. In this example, it is assumed t
 
     const sdk = new SDK("http://localhost:8080");
 
-Next, set Alice and Bob’s private and public keys. LockScripts, which are made out of public keys, are needed to unlock transactions.
+We create new instances of a keyStore and an assetAgent. keyStore is where all the public and private keys are managed.
 ::
 
-    // CodeChain opcodes for P2PK(Pay to Public Key)
-    const OP_PUSHB = 0x32;
-    const OP_CHECKSIG = 0x80;
+    const keyStore = new MemoryKeyStore();
+    const assetAgent = new PubkeyAssetAgent({ keyStore });
 
-    // Alice's key pair
-    const alicePrivate = "37a948d2e9ae622f3b9e224657249259312ffd3f2d105eabda6f222074608df3";
-    const alicePublic = privateKeyToPublic(alicePrivate);
-    // Alice's P2PK script
-    const aliceLockScript = Buffer.from([OP_PUSHB, 64, ...Buffer.from(alicePublic, "hex"), OP_CHECKSIG]);
+In this example, it is assumed that there is something that created a parcel out of the transactions. sendTransaction has been declared for later use.
+::
 
-    // Bob's key pair
-    const bobPrivate = "f9387b3247c21e88c656490914f4598a3b52b807517753b4a9d7a51d54a6260c";
-    const bobPublic = privateKeyToPublic(bobPrivate);
-    // Bob's P2PK script
-    const bobLockScript = Buffer.from([OP_PUSHB, 64, ...Buffer.from(bobPublic, "hex"), OP_CHECKSIG]);
+    // sendTransaction() is a function to make transaction to be processed.
+    async function sendTransaction(tx) {
+        const parcelSignerSecret = new H256("ede1d4ccb4ec9a8bbbae9a13db3f4a7b56ea04189be86ac3a6a439d9a0a1addd");
+        const parcelSignerAddress = new H160(privateKeyToAddress("ede1d4ccb4ec9a8bbbae9a13db3f4a7b56ea04189be86ac3a6a439d9a0a1addd"));
+        const parcelSignerNonce = await sdk.getNonce(parcelSignerAddress);
+        const parcel = Parcel.transactions(parcelSignerNonce, new U256(10), 17, tx);
+        const signedParcel = parcel.sign(parcelSignerSecret);
+        return await sdk.sendSignedParcel(signedParcel);
+    }
+
+Each users need an address for them to receive/send assets to. Addresses are created by the assetAgent.
+::
+
+    const aliceAddress = await assetAgent.createAddress();
+    const bobAddress = await assetAgent.createAddress();
 
 Minting/Creating New Assets
 ===========================
-In order to create new assets, you must create a new instance of AssetMintTransaction. In this example, we create 10000 gold with the following code:
+In order to create new assets, you must create a new instance of AssetScheme. In this example, we create 10000 gold with the following code:
 ::
 
-    // Create AssetMintTransaction that creates 10000 amount of asset named Gold for Alice.
-    const mintGoldTx = new AssetMintTransaction({
-       // Put name, description and imageUrl to metadata.
-       metadata: JSON.stringify({
-           name: "Gold",
-           imageUrl: "https://gold.image/"
-       }),
-       // hash value of locking script of the asset
-       lockScriptHash: new H256(blake256(aliceLockScript)), //shows ownership
-       parameters: [], //shows ownership
-       // Mints 10000 golds
-       amount: 10000,
-       // No registrar for Gold. It means AssetTransfer of Gold can be done with any
-       // parcel. If registrar is present, the parcel must be signed with the
-       // registrar.
-       registrar: null, //if not null, the creator must allow this transaction
-       nonce: 0
-    });
+    const goldAssetScheme = new AssetScheme({
+            metadata: JSON.stringify({
+                name: "Gold",
+                imageUrl: "https://gold.image/",
+            }),
+            amount: 10000,
+            registrar: null,
+        });
 
 .. note::
     You should note that the registrar is kept as null. This value is only filled out when there should be an overseer amongst transactions.
@@ -126,42 +121,53 @@ In order to create new assets, you must create a new instance of AssetMintTransa
     that was minted had a registrar, then every time any of those 10000 gold is involved in a transaction, the set registrar would have to
     sign off and approve for the transaction to be successful.
 
-Sending/Transferring Assets
-===========================
-In this example, in order for Alice to send 3000 gold to Bob, she must first input all of her 10000 gold into a transaction.
-According to UTXO, a spender must spend all of his/her assets first, even if he/she wants to use a partial amount, and receive remainder back later.
+After Gold has been defined in the scheme, the amount that is minted but belong to someone initially. In this example, we create 10000 gold for Alice.
 ::
 
-    // Create an input that spends 10000 golds
-    const inputs = [new AssetTransferInput({
-       prevOut: new AssetOutPoint({
-           transactionHash: mintGoldTx.hash(),
-           index: 0,
-           assetType: goldAssetType,
-           amount: 10000
-       }),
-       // Provide the preimage of the lockScriptHash.
-       lockScript: aliceLockScript,
-       // unlockScript can't be calculated at this moment.
-       unlockScript: Buffer.from([])
-    })];
+    const mintTx = goldAssetScheme.mint(aliceAddress);
+
+Then, the AssetMintTransaction is processed with the following code:
+::
+
+    // Process the AssetMintTransaction
+    await sendTransaction(mintTx);
+
+    // AssetMintTransaction creates Asset and AssetScheme object
+    console.log("minted asset scheme: ", await sdk.getAssetScheme(mintTx.hash()));
+    const firstGold = await sdk.getAsset(mintTx.hash(), 0);
+    console.log("alice's gold: ", firstGold);
+
+Sending/Transferring Assets
+===========================
+Alice then sends 3000 gold to Bob. In CodeChain, users must follow the `UTXO <https://codechain.readthedocs.io/en/latest/what-is-codechain.html#what-is-utxo>`_
+standard, and make a transaction that spends an entire UTXO balance, and receive the change back through another transaction.
 
 Next, we create an output which gives 3000 gold to Bob, and returns 7000 gold to Alice.
 ::
 
-    // Create outputs. The sum of amount must equals to 10000. In this case, Alice
-    // pays 3000 golds to Bob. Alice is paid the remains back.
-    const outputs = [new AssetTransferOutput({
-       lockScriptHash: new H256(blake256(bobLockScript)), //shows ownership to bob
-       parameters: [],
-       assetType: goldAssetType,
-       amount: 3000
-    }), new AssetTransferOutput({
-       lockScriptHash: new H256(blake256(aliceLockScript)), //shows ownership to alice
-       parameters: [],
-       assetType: goldAssetType,
-       amount: 7000
-    })];
+    // Spend Alice's 10000 golds. In this case, Alice pays 3000 golds to Bob. Alice
+    // is paid the remains back.
+    // The sum of amount must equal to the amount of firstGold.
+    const transferTx = await firstGold.transfer(assetAgent, [{
+        address: bobAddress,
+        amount: 3000
+    }, {
+        address: aliceAddress,
+        amount: 7000
+    }]);
+
+By using Alice's signature, the 10000 Gold that was first minted can now be transferred to other users like Bob.
+::
+
+    await sendTransaction(transferTx);
+
+    // Spent asset will be null
+    console.log(await sdk.getAsset(mintTx.hash(), 0));
+
+    // Unspent Bob's 3000 golds
+    console.log(await sdk.getAsset(transferTx.hash(), 0));
+    // Unspent Alice's 7000 golds
+    console.log(await sdk.getAsset(transferTx.hash(), 1));
 
 In order to check if all the transactions were successful, we run the following:
 ::
@@ -219,10 +225,8 @@ This should return the following:
     null
     null
 
-
 The results show that 7000 gold went to ``0597cf9ef3ab4c61274a31973fc46a3551f44600668efba67c4b754d9007e073`` and
 that 3000 gold went to ``92e9b25eed924b5b17268934798c0c70f66de38bda64b480012de9be57ac4ec1``.
-
 
 These are the values of each individual’s LockScripts that went through the blake256 hash function.
 If you run each individual’s LockScript under blake256 yourself, you will find that it corresponds to the rightful owners of the assets.
@@ -245,7 +249,6 @@ Data Part: ``version`` . ``body``
 Data body: ``Account ID`` (20 bytes)
 
 Account ID is a result of ripemd160 of blake256 of a public key(64 bytes uncompressed form).
-
 
 Asset Transfer Address Format
 ------------------------------------
