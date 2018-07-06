@@ -461,16 +461,18 @@ mod tests {
     use super::super::super::tests::helpers::get_temp_state_db;
     use super::*;
 
+    fn get_temp_shard_state() -> ShardLevelState<StateDB> {
+        let state_db = get_temp_state_db();
+        let root_parent = H256::random();
+
+        let state_db = state_db.clone_canon(&root_parent);
+        ShardLevelState::new(state_db, Default::default())
+    }
+
     #[test]
     fn mint_permissioned_asset() {
         let parcel_network_id = 30;
-        let mut state = {
-            let state_db = get_temp_state_db();
-            let root_parent = H256::random();
-
-            let state_db = state_db.clone_canon(&root_parent);
-            ShardLevelState::new(state_db, Default::default())
-        };
+        let mut state = get_temp_shard_state();
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H256::random();
@@ -508,13 +510,7 @@ mod tests {
     #[test]
     fn mint_infinite_asset() {
         let parcel_network_id = 30;
-        let mut state = {
-            let state_db = get_temp_state_db();
-            let root_parent = H256::random();
-
-            let state_db = state_db.clone_canon(&root_parent);
-            ShardLevelState::new(state_db, Default::default())
-        };
+        let mut state = get_temp_shard_state();
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H256::random();
@@ -750,13 +746,7 @@ mod tests {
 
     #[test]
     fn mint_and_transfer() {
-        let mut state = {
-            let state_db = get_temp_state_db();
-            let root_parent = H256::random();
-
-            let state_db = state_db.clone_canon(&root_parent);
-            ShardLevelState::new(state_db, Default::default())
-        };
+        let mut state = get_temp_shard_state();
 
         let metadata = "metadata".to_string();
         let lock_script_hash =
@@ -854,13 +844,7 @@ mod tests {
 
     #[test]
     fn mint_and_failed_transfer_and_successful_transfer() {
-        let mut state = {
-            let state_db = get_temp_state_db();
-            let root_parent = H256::random();
-
-            let state_db = state_db.clone_canon(&root_parent);
-            ShardLevelState::new(state_db, Default::default())
-        };
+        let mut state = get_temp_shard_state();
 
         let metadata = "metadata".to_string();
         let lock_script_hash =

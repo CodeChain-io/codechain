@@ -971,13 +971,7 @@ mod tests {
 
     #[test]
     fn mint_permissioned_asset() {
-        let mut state = {
-            let state_db = get_temp_state_db();
-            let root_parent = H256::random();
-
-            let state_db = state_db.clone_canon(&root_parent);
-            TopLevelState::new(state_db, Default::default())
-        };
+        let mut state = get_temp_state();
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H256::random();
@@ -1028,13 +1022,7 @@ mod tests {
 
     #[test]
     fn mint_infinite_permissioned_asset() {
-        let mut state = {
-            let state_db = get_temp_state_db();
-            let root_parent = H256::random();
-
-            let state_db = state_db.clone_canon(&root_parent);
-            TopLevelState::new(state_db, Default::default())
-        };
+        let mut state = get_temp_state();
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H256::random();
@@ -1088,13 +1076,7 @@ mod tests {
 
     #[test]
     fn mint_and_transfer_in_the_same_parcel() {
-        let mut state = {
-            let state_db = get_temp_state_db();
-            let root_parent = H256::random();
-
-            let state_db = state_db.clone_canon(&root_parent);
-            TopLevelState::new(state_db, Default::default())
-        };
+        let mut state = get_temp_state();
 
         let metadata = "metadata".to_string();
         let lock_script_hash =
@@ -1209,13 +1191,7 @@ mod tests {
 
     #[test]
     fn mint_and_transfer_in_different_parcel() {
-        let mut state = {
-            let state_db = get_temp_state_db();
-            let root_parent = H256::random();
-
-            let state_db = state_db.clone_canon(&root_parent);
-            TopLevelState::new(state_db, Default::default())
-        };
+        let mut state = get_temp_state();
 
 
         let metadata = "metadata".to_string();
