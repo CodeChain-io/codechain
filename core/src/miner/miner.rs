@@ -33,11 +33,14 @@ use super::super::state::TopLevelState;
 use super::super::types::{BlockId, BlockNumber, ParcelId};
 use super::mem_pool::{AccountDetails, MemPool, ParcelOrigin, RemovalReason};
 use super::sealing_queue::SealingQueue;
+use super::work_notify::{NotifyWork, WorkPoster};
 use super::{MinerService, MinerStatus, ParcelImportResult};
 
 /// Configures the behaviour of the miner.
 #[derive(Debug, PartialEq)]
 pub struct MinerOptions {
+    /// URLs to notify when there is new work.
+    pub new_work_notify: Vec<String>,
     /// Force the miner to reseal, even when nobody has asked for work.
     pub force_sealing: bool,
     /// Reseal on receipt of new external parcels.
@@ -59,6 +62,7 @@ pub struct MinerOptions {
 impl Default for MinerOptions {
     fn default() -> Self {
         MinerOptions {
+            new_work_notify: vec![],
             force_sealing: false,
             reseal_on_external_parcel: false,
             reseal_on_own_parcel: true,
@@ -69,12 +73,6 @@ impl Default for MinerOptions {
             work_queue_size: 20,
         }
     }
-}
-
-/// Trait for notifying about new mining work
-pub trait NotifyWork: Send + Sync {
-    /// Fired when new mining job available
-    fn notify(&self, pow_hash: H256, score: U256, number: u64);
 }
 
 struct SealingWork {
@@ -110,8 +108,10 @@ impl Miner {
     fn new_raw(options: MinerOptions, spec: &Spec, accounts: Option<Arc<AccountProvider>>) -> Self {
         let mem_limit = options.mem_pool_memory_limit.unwrap_or_else(usize::max_value);
         let mem_pool = Arc::new(RwLock::new(MemPool::with_limits(options.mem_pool_size, mem_limit)));
-        // FIXME: Get the list of notifiers from options.
-        let notifiers: Vec<Box<NotifyWork>> = Vec::new();
+        let notifiers: Vec<Box<NotifyWork>> = match options.new_work_notify.is_empty() {
+            true => Vec::new(),
+            false => vec![Box::new(WorkPoster::new(&options.new_work_notify))],
+        };
 
         Self {
             mem_pool,
@@ -328,9 +328,10 @@ impl Miner {
             (work, is_new)
         };
         if is_new {
-            work.map(|(pow_hash, score, number)| {
+            work.map(|(pow_hash, score, _number)| {
+                let target = self.engine.score_to_target(&score);
                 for notifier in self.notifiers.read().iter() {
-                    notifier.notify(pow_hash, score, number)
+                    notifier.notify(pow_hash, target)
                 }
             });
         }

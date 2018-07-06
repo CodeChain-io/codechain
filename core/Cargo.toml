@@ -18,6 +18,7 @@ codechain-vm = { path = "../vm" }
 cuckoo = { git = "https://github.com/CodeChain-io/rust-cuckoo.git", rev = "3d34673" }
 hashdb = { path = "../util/hashdb" }
 heapsize = "0.4"
+hyper = { git = "https://github.com/paritytech/hyper", default-features = false }
 journaldb = { path = "../util/journaldb" }
 linked-hash-map = "0.5"
 log = "0.4.1"
