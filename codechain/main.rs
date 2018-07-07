@@ -188,17 +188,19 @@ fn new_miner(config: &config::Config, spec: &Spec) -> Result<Arc<Miner>, String>
     let dir = RootDiskDirectory::create(config.operating.keys_path.clone()).expect("Cannot read key path directory");
     let keystore = KeyStore::open(Box::new(dir)).unwrap();
 
-    let mut miner_options = MinerOptions::default();
-    miner_options.mem_pool_size = config.mining.mem_pool_size;
-    miner_options.mem_pool_memory_limit = match config.mining.mem_pool_mem_limit {
-        0 => None,
-        mem_size => Some(mem_size * 1024 * 1024),
+    let miner_options = MinerOptions {
+        mem_pool_size: config.mining.mem_pool_size,
+        mem_pool_memory_limit: match config.mining.mem_pool_mem_limit {
+            0 => None,
+            mem_size => Some(mem_size * 1024 * 1024),
+        },
+        new_work_notify: config.mining.notify_work.clone(),
+        force_sealing: config.mining.force_sealing,
+        reseal_min_period: Duration::from_millis(config.mining.reseal_min_period),
+        reseal_max_period: Duration::from_millis(config.mining.reseal_max_period),
+        work_queue_size: config.mining.work_queue_size,
+        ..MinerOptions::default()
     };
-    miner_options.new_work_notify = config.mining.notify_work.clone();
-    miner_options.force_sealing = config.mining.force_sealing;
-    miner_options.reseal_min_period = Duration::from_millis(config.mining.reseal_min_period);
-    miner_options.reseal_max_period = Duration::from_millis(config.mining.reseal_max_period);
-    miner_options.work_queue_size = config.mining.work_queue_size;
 
     let ap = AccountProvider::new(keystore);
     let addresses = ap.get_list().expect("Account provider should success to get address list");
