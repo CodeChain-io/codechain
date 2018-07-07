@@ -29,7 +29,7 @@ use super::super::client::EngineClient;
 use super::super::codechain_machine::CodeChainMachine;
 use super::super::error::{BlockError, Error};
 use super::super::header::Header;
-use super::super::machine::Machine;
+use super::super::machine::WithBalances;
 use super::signer::EngineSigner;
 use super::validator_set::validator_list::ValidatorList;
 use super::validator_set::ValidatorSet;

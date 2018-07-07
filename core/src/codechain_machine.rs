@@ -88,7 +88,9 @@ impl ::machine::Machine for CodeChainMachine {
     type EngineClient = super::client::EngineClient;
 
     type Error = Error;
+}
 
+impl ::machine::WithBalances for CodeChainMachine {
     fn balance(&self, live: &ExecutedBlock, address: &Address) -> Result<U256, Self::Error> {
         live.state().balance(address).map_err(Into::into)
     }

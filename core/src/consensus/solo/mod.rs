@@ -17,7 +17,7 @@
 mod params;
 
 use self::params::SoloParams;
-use super::super::machine::{Header, LiveBlock, Machine, Parcels};
+use super::super::machine::{Header, LiveBlock, Parcels, WithBalances};
 use super::{ConsensusEngine, Seal};
 
 /// A consensus engine which does not provide any consensus mechanism.
@@ -36,7 +36,7 @@ impl<M> Solo<M> {
     }
 }
 
-impl<M: Machine> ConsensusEngine<M> for Solo<M>
+impl<M: WithBalances> ConsensusEngine<M> for Solo<M>
 where
     M::LiveBlock: Parcels,
 {

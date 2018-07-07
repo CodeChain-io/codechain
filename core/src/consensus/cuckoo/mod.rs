@@ -30,7 +30,7 @@ use super::super::block::{ExecutedBlock, IsBlock};
 use super::super::codechain_machine::CodeChainMachine;
 use super::super::error::{BlockError, Error};
 use super::super::header::Header;
-use super::super::machine::Machine;
+use super::super::machine::WithBalances;
 use super::ConsensusEngine;
 
 /// Cuckoo specific seal
