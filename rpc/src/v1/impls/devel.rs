@@ -18,7 +18,7 @@ use std::ops::Deref;
 use std::sync::Arc;
 use std::vec::Vec;
 
-use ccore::{Client, COL_STATE};
+use ccore::{DatabaseClient, COL_STATE};
 use ctypes::H256;
 use jsonrpc_core::Result;
 use kvdb::KeyValueDB;
@@ -33,7 +33,9 @@ pub struct DevelClient {
 }
 
 impl DevelClient {
-    pub fn new(client: &Client) -> Self {
+    pub fn new<C>(client: &Arc<C>) -> Self
+    where
+        C: DatabaseClient, {
         Self {
             db: client.database(),
         }
