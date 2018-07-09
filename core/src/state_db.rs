@@ -693,11 +693,12 @@ mod tests {
         let root_parent = H256::random();
         let h0 = H256::random();
         let mut batch = DBTransaction::new();
+        let shard_id = 0;
 
         let amount = 1234;
         let registrar = Some(Address::random());
         let asset_scheme = AssetScheme::new("A metadata for test asset_scheme".to_string(), amount, registrar);
-        let asset_scheme_address = AssetSchemeAddress::new(h0);
+        let asset_scheme_address = AssetSchemeAddress::new(h0, shard_id);
 
         let mut s = state_db.clone_canon(&root_parent);
 
@@ -742,8 +743,9 @@ mod tests {
         let lock_script_hash = H256::random();
         let parameters = vec![];
         let amount = 1000;
+        let shard_id = 0;
         let asset = Asset::new(asset_scheme_address, lock_script_hash, parameters, amount);
-        let asset_address = AssetAddress::new(parcel_hash, 0);
+        let asset_address = AssetAddress::new(parcel_hash, 0, shard_id);
 
         let mut s = state_db.clone_canon(&root_parent);
 
