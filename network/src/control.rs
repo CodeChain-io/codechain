@@ -24,6 +24,7 @@ pub trait Control: Send + Sync {
     fn register_secret(&self, secret: H256, addr: SocketAddr);
     fn connect(&self, addr: SocketAddr);
     fn disconnect(&self, addr: SocketAddr) -> Result<(), Error>;
+    fn is_connected(&self, addr: &SocketAddr) -> bool;
 }
 
 #[derive(Clone, Debug)]
