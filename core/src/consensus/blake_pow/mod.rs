@@ -102,7 +102,7 @@ impl ConsensusEngine<CodeChainMachine> for BlakePoW {
 
     fn verify_block_basic(&self, header: &Header) -> Result<(), Error> {
         if *header.score() < self.params.min_score {
-            return Err(From::from(BlockError::InvalidScore(OutOfBounds {
+            return Err(From::from(BlockError::ScoreOutOfBounds(OutOfBounds {
                 min: Some(self.params.min_score),
                 max: None,
                 found: *header.score(),
@@ -121,7 +121,11 @@ impl ConsensusEngine<CodeChainMachine> for BlakePoW {
         let target = self.score_to_target(header.score());
         let hash = blake256(message);
         if U256::from(hash) > target {
-            return Err(From::from(BlockError::InvalidProofOfWork))
+            return Err(From::from(BlockError::PowOutOfBounds(OutOfBounds {
+                min: None,
+                max: Some(target),
+                found: U256::from(hash),
+            })))
         }
         Ok(())
     }
@@ -137,9 +141,8 @@ impl ConsensusEngine<CodeChainMachine> for BlakePoW {
 
         let expected_score = self.calculate_score(header, parent);
         if header.score() != &expected_score {
-            return Err(From::from(BlockError::InvalidScore(OutOfBounds {
-                min: Some(expected_score),
-                max: Some(expected_score),
+            return Err(From::from(BlockError::InvalidScore(Mismatch {
+                expected: expected_score,
                 found: U256::from(header.hash()),
             })))
         }
