@@ -17,7 +17,7 @@
 mod params;
 
 use self::params::NullEngineParams;
-use super::super::machine::{Header, LiveBlock, Machine};
+use super::super::machine::{Header, LiveBlock, WithBalances};
 use super::ConsensusEngine;
 
 /// An engine which does not provide any consensus mechanism and does not seal blocks.
@@ -42,7 +42,7 @@ impl<M: Default> Default for NullEngine<M> {
     }
 }
 
-impl<M: Machine> ConsensusEngine<M> for NullEngine<M> {
+impl<M: WithBalances> ConsensusEngine<M> for NullEngine<M> {
     fn name(&self) -> &str {
         "NullEngine"
     }

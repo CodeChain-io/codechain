@@ -21,11 +21,10 @@ use std::cmp::{max, min};
 use byteorder::{ByteOrder, LittleEndian};
 use ccrypto::blake256;
 use ctypes::U256;
-use cuckoo::Cuckoo as CuckooVerifier;
 use rlp::UntrustedRlp;
 use unexpected::{Mismatch, OutOfBounds};
 
-use self::params::CuckooParams;
+use self::params::BlakePoWParams;
 use super::super::block::{ExecutedBlock, IsBlock};
 use super::super::codechain_machine::CodeChainMachine;
 use super::super::error::{BlockError, Error};
@@ -33,43 +32,38 @@ use super::super::header::Header;
 use super::super::machine::WithBalances;
 use super::ConsensusEngine;
 
-/// Cuckoo specific seal
+/// BlakePoW specific seal
 #[derive(Debug, PartialEq)]
 pub struct Seal {
     pub nonce: u64,
-    pub proof: Vec<u32>,
 }
 
 impl Seal {
     /// Tries to parse rlp as cuckoo seal.
     pub fn parse_seal<T: AsRef<[u8]>>(seal: &[T]) -> Result<Self, Error> {
-        if seal.len() != 2 {
+        if seal.len() != 1 {
             return Err(BlockError::InvalidSealArity(Mismatch {
-                expected: 2,
+                expected: 1,
                 found: seal.len(),
             }).into())
         }
 
         Ok(Seal {
             nonce: UntrustedRlp::new(seal[0].as_ref()).as_val()?,
-            proof: UntrustedRlp::new(seal[1].as_ref()).as_list()?,
         })
     }
 }
 
-pub struct Cuckoo {
-    params: CuckooParams,
+pub struct BlakePoW {
+    params: BlakePoWParams,
     machine: CodeChainMachine,
-    verifier: CuckooVerifier,
 }
 
-impl Cuckoo {
-    pub fn new(params: CuckooParams, machine: CodeChainMachine) -> Self {
-        let verifier = CuckooVerifier::new(params.max_vertex, params.max_edge, params.cycle_length);
+impl BlakePoW {
+    pub fn new(params: BlakePoWParams, machine: CodeChainMachine) -> Self {
         Self {
             params,
             machine,
-            verifier,
         }
     }
 
@@ -89,9 +83,9 @@ impl Cuckoo {
     }
 }
 
-impl ConsensusEngine<CodeChainMachine> for Cuckoo {
+impl ConsensusEngine<CodeChainMachine> for BlakePoW {
     fn name(&self) -> &str {
-        "Cuckoo"
+        "BlakePoW"
     }
 
     fn machine(&self) -> &CodeChainMachine {
@@ -99,7 +93,7 @@ impl ConsensusEngine<CodeChainMachine> for Cuckoo {
     }
 
     fn seal_fields(&self, _header: &Header) -> usize {
-        2
+        1
     }
 
     fn verify_local_seal(&self, header: &Header) -> Result<(), Error> {
@@ -124,18 +118,10 @@ impl ConsensusEngine<CodeChainMachine> for Cuckoo {
         let mut message = header.bare_hash().0;
         LittleEndian::write_u64(&mut message, seal.nonce);
 
-        if !self.verifier.verify(&message, &seal.proof) {
-            return Err(From::from(BlockError::InvalidProofOfWork))
-        }
-
         let target = self.score_to_target(header.score());
-        let hash = blake256(::rlp::encode_list(&seal.proof));
+        let hash = blake256(message);
         if U256::from(hash) > target {
-            return Err(From::from(BlockError::InvalidScore(OutOfBounds {
-                min: Some(target),
-                max: Some(target),
-                found: U256::from(hash),
-            })))
+            return Err(From::from(BlockError::InvalidProofOfWork))
         }
         Ok(())
     }

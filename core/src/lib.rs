@@ -92,8 +92,8 @@ pub use account_provider::AccountProvider;
 pub use block::Block;
 pub use blockchain::ParcelInvoice;
 pub use client::{
-    AssetClient, Balance, BlockChainClient, BlockInfo, ChainInfo, ChainNotify, Client, EngineClient, ImportBlock,
-    MiningBlockChainClient, Nonce, RegularKey, Shard, TestBlockChainClient,
+    AssetClient, Balance, BlockChainClient, BlockInfo, ChainInfo, ChainNotify, Client, DatabaseClient, EngineClient,
+    ImportBlock, MiningBlockChainClient, Nonce, RegularKey, Shard, TestBlockChainClient,
 };
 pub use db::COL_STATE;
 pub use error::{BlockImportError, Error, ImportError};

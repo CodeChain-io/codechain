@@ -27,8 +27,11 @@ pub use self::config::ClientConfig;
 pub use self::error::Error;
 pub use self::test_client::TestBlockChainClient;
 
+use std::sync::Arc;
+
 use cnetwork::NodeId;
 use ctypes::{Address, Bytes, H256, Public, U256};
+use kvdb::KeyValueDB;
 use trie::Result as TrieResult;
 
 use super::block::{ClosedBlock, OpenBlock, SealedBlock};
@@ -225,6 +228,11 @@ pub trait BlockProducer: PrepareOpenBlock + ReopenBlock {}
 
 /// Extended client interface used for mining
 pub trait MiningBlockChainClient: BlockChainClient + BlockProducer + ImportSealedBlock {}
+
+/// Provides methods to access database.
+pub trait DatabaseClient {
+    fn database(&self) -> Arc<KeyValueDB>;
+}
 
 /// Provides methods to access asset
 pub trait AssetClient {

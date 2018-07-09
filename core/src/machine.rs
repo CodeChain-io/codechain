@@ -66,7 +66,9 @@ pub trait Machine: Send + Sync {
 
     /// Errors which can occur when querying or interacting with the machine.
     type Error;
+}
 
+pub trait WithBalances: Machine {
     /// Get the balance, in base units, associated with an account.
     /// Extracts data from the live block.
     fn balance(&self, live: &Self::LiveBlock, address: &Address) -> Result<U256, Self::Error>;

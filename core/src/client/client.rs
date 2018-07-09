@@ -52,9 +52,9 @@ use super::super::verification::{self, PreverifiedBlock, Verifier};
 use super::super::views::{BlockView, HeaderView};
 use super::{
     AccountData, AssetClient, Balance, BlockChain as BlockChainTrait, BlockChainClient, BlockChainInfo, BlockInfo,
-    BlockProducer, ChainInfo, ChainNotify, ClientConfig, EngineClient, Error as ClientError, ImportBlock, ImportResult,
-    ImportSealedBlock, Invoice, MiningBlockChainClient, Nonce, ParcelInfo, PrepareOpenBlock, RegularKey, ReopenBlock,
-    Shard, StateOrBlock,
+    BlockProducer, ChainInfo, ChainNotify, ClientConfig, DatabaseClient, EngineClient, Error as ClientError,
+    ImportBlock, ImportResult, ImportSealedBlock, Invoice, MiningBlockChainClient, Nonce, ParcelInfo, PrepareOpenBlock,
+    RegularKey, ReopenBlock, Shard, StateOrBlock,
 };
 
 const MAX_MEM_POOL_SIZE: usize = 4096;
@@ -241,8 +241,10 @@ impl Client {
             TopLevelState::from_existing(db, root, self.trie_factory.clone()).ok()
         })
     }
+}
 
-    pub fn database(&self) -> Arc<KeyValueDB> {
+impl DatabaseClient for Client {
+    fn database(&self) -> Arc<KeyValueDB> {
         Arc::clone(&self.db.read())
     }
 }

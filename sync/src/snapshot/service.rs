@@ -20,7 +20,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::thread::spawn;
 
-use ccore::{BlockChainClient, BlockId, BlockInfo, ChainInfo, ChainNotify, Client, COL_STATE};
+use ccore::{BlockChainClient, BlockId, BlockInfo, ChainInfo, ChainNotify, Client, DatabaseClient, COL_STATE};
 use ctypes::H256;
 
 use kvdb::KeyValueDB;

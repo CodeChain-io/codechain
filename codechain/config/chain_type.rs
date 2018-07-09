@@ -26,6 +26,7 @@ pub enum ChainType {
     SoloAuthority,
     Tendermint,
     Cuckoo,
+    BlakePoW,
     Custom(String),
 }
 
@@ -44,6 +45,7 @@ impl FromStr for ChainType {
             "solo_authority" => ChainType::SoloAuthority,
             "tendermint" => ChainType::Tendermint,
             "cuckoo" => ChainType::Cuckoo,
+            "blake_pow" => ChainType::BlakePoW,
             other => ChainType::Custom(other.into()),
         };
         Ok(spec)
@@ -57,6 +59,7 @@ impl fmt::Display for ChainType {
             ChainType::SoloAuthority => "solo_authority",
             ChainType::Tendermint => "tendermint",
             ChainType::Cuckoo => "cuckoo",
+            ChainType::BlakePoW => "blake_pow",
             ChainType::Custom(custom) => custom,
         })
     }
@@ -69,6 +72,7 @@ impl ChainType {
             ChainType::SoloAuthority => Ok(Spec::new_test_solo_authority()),
             ChainType::Tendermint => Ok(Spec::new_test_tendermint()),
             ChainType::Cuckoo => Ok(Spec::new_test_cuckoo()),
+            ChainType::BlakePoW => Ok(Spec::new_test_blake_pow()),
             ChainType::Custom(filename) => {
                 let file = fs::File::open(filename)
                     .map_err(|e| format!("Could not load specification file at {}: {}", filename, e))?;
