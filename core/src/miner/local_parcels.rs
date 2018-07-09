@@ -218,6 +218,7 @@ mod tests {
             fee: U256::from(1245),
             action: Action::ChangeShardState {
                 transactions,
+                changes: vec![],
             },
             network_id: 0u64,
         };

@@ -1095,7 +1095,7 @@ pub mod test {
     use std::cmp::Ordering;
 
     use ckey::{Generator, Random};
-    use ctypes::parcel::Parcel;
+    use ctypes::parcel::{ChangeShard, Parcel};
     use ctypes::transaction::{AssetMintOutput, Transaction};
 
     use super::*;
@@ -1120,6 +1120,7 @@ pub mod test {
             network_id: 200,
             action: Action::ChangeShardState {
                 transactions: vec![],
+                changes: vec![],
             },
         };
         let keypair = Random.generate().unwrap();
@@ -1149,6 +1150,11 @@ pub mod test {
             network_id: 200,
             action: Action::ChangeShardState {
                 transactions,
+                changes: vec![ChangeShard {
+                    shard_id: 0,
+                    pre_root: H256::zero(),
+                    post_root: H256::zero(),
+                }],
             },
         };
         let keypair = Random.generate().unwrap();
@@ -1187,6 +1193,11 @@ pub mod test {
             network_id: 200,
             action: Action::ChangeShardState {
                 transactions,
+                changes: vec![ChangeShard {
+                    shard_id: 0,
+                    pre_root: H256::zero(),
+                    post_root: H256::zero(),
+                }],
             },
         };
         let keypair = Random.generate().unwrap();

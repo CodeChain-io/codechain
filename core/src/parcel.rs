@@ -145,6 +145,7 @@ impl UnverifiedParcel {
         match &self.action {
             Action::ChangeShardState {
                 transactions,
+                ..
             } => {
                 for t in transactions {
                     match &t {

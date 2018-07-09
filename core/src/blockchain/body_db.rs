@@ -212,6 +212,7 @@ impl BodyDB {
                     match &parcel.action {
                         Action::ChangeShardState {
                             transactions,
+                            ..
                         } => Some(transactions),
                         _ => None,
                     }.iter()
@@ -240,6 +241,7 @@ impl BodyDB {
                         match &parcel.action {
                             Action::ChangeShardState {
                                 transactions,
+                                ..
                             } => Some(transactions),
                             _ => None,
                         }.iter()
@@ -266,6 +268,7 @@ impl BodyDB {
                     match &parcel.action {
                         Action::ChangeShardState {
                             transactions,
+                            ..
                         } => Some(transactions),
                         _ => None,
                     }.iter()
@@ -295,6 +298,7 @@ impl BodyDB {
                         .filter_map(|parcel| match parcel.action {
                             Action::ChangeShardState {
                                 transactions,
+                                ..
                             } => Some(transactions),
                             _ => None,
                         })
