@@ -27,15 +27,19 @@ extern crate rustc_serialize;
 extern crate secp256k1;
 
 mod address;
+mod ecdsa;
 mod error;
 mod exchange;
 mod keypair;
 mod network;
 mod private;
 mod random;
-mod signature;
+#[cfg(feature = "schnorr")]
+mod schnorr;
 
 pub use address::FullAddress;
+use codechain_types::H256;
+pub use ecdsa::{recover_ecdsa, sign_ecdsa, verify_ecdsa, verify_ecdsa_address, ECDSASignature};
 pub use error::Error;
 pub use exchange::exchange;
 pub use keypair::{public_to_address, KeyPair};
@@ -43,9 +47,8 @@ pub use network::Network;
 pub use private::Private;
 pub use random::Random;
 pub use rustc_serialize::hex;
-pub use signature::{recover_ecdsa, sign_ecdsa, verify_ecdsa, verify_ecdsa_address, ECDSASignature};
-
-use codechain_types::H256;
+#[cfg(feature = "schnorr")]
+pub use schnorr::{recover_schnorr, sign_schnorr, verify_schnorr, SchnorrSignature};
 
 /// 32 bytes long signable message
 pub type Message = H256;

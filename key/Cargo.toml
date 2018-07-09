@@ -14,3 +14,6 @@ codechain-types = { path = "../primitives/codechain-types" }
 heapsize = "0.4"
 rlp = { path = "../util/rlp" }
 secp256k1 = { path = "../util/secp256k1" }
+
+[features]
+schnorr = []
