@@ -138,8 +138,8 @@ pub enum Action {
     },
     Payment {
         receiver: Address,
-        /// Transferred value.
-        value: U256,
+        /// Transferred amount.
+        amount: U256,
     },
     SetRegularKey {
         key: Public,
@@ -170,12 +170,12 @@ impl rlp::Encodable for Action {
             }
             Action::Payment {
                 receiver,
-                value,
+                amount,
             } => {
                 s.begin_list(3);
                 s.append(&PAYMENT);
                 s.append(receiver);
-                s.append(value);
+                s.append(amount);
             }
             Action::SetRegularKey {
                 key,
@@ -209,7 +209,7 @@ impl rlp::Decodable for Action {
                 }
                 Ok(Action::Payment {
                     receiver: rlp.val_at(1)?,
-                    value: rlp.val_at(2)?,
+                    amount: rlp.val_at(2)?,
                 })
             }
             SET_REGULAR_KEY => {
@@ -610,7 +610,7 @@ mod tests {
     fn encode_and_decode_payment_action() {
         rlp_encode_and_decode_test!(Action::Payment {
             receiver: Address::random(),
-            value: 300.into(),
+            amount: 300.into(),
         });
     }
 
@@ -624,7 +624,7 @@ mod tests {
                     network_id: 50,
                     action: Action::Payment {
                         receiver: Address::random(),
-                        value: 300.into(),
+                        amount: 300.into(),
                     },
                 },
                 v: 0,

@@ -184,9 +184,9 @@ impl MemPoolItem {
     fn cost(&self) -> U256 {
         match &self.parcel.action {
             Action::Payment {
-                value,
+                amount,
                 ..
-            } => self.parcel.fee + *value,
+            } => self.parcel.fee + *amount,
             _ => self.parcel.fee,
         }
     }
@@ -1190,7 +1190,7 @@ pub mod test {
     #[test]
     fn payment_increases_cost() {
         let fee = U256::from(100);
-        let value = U256::from(100000);
+        let amount = U256::from(100000);
         let receiver = 1u64.into();
         let keypair = Random.generate().unwrap();
         let parcel = Parcel {
@@ -1199,12 +1199,12 @@ pub mod test {
             network_id: 200,
             action: Action::Payment {
                 receiver,
-                value,
+                amount,
             },
         };
         let signed = parcel.sign(keypair.private());
         let item = MemPoolItem::new(signed, ParcelOrigin::Local, 0, 0);
 
-        assert_eq!(fee + value, item.cost());
+        assert_eq!(fee + amount, item.cost());
     }
 }
