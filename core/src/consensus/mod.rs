@@ -303,13 +303,13 @@ pub trait CodeChainEngine: ConsensusEngine<CodeChainMachine> {
     }
 
     /// Additional verification for parcels in blocks.
-    fn verify_parcel_basic(&self, t: &UnverifiedParcel, header: &Header) -> Result<(), Error> {
-        self.machine().verify_parcel_basic(t, header)
+    fn verify_parcel_basic(&self, p: &UnverifiedParcel, header: &Header) -> Result<(), Error> {
+        self.machine().verify_parcel_basic(p, header)
     }
 
     /// Verify a particular parcel is valid.
-    fn verify_parcel_unordered(&self, t: UnverifiedParcel, header: &Header) -> Result<SignedParcel, Error> {
-        self.machine().verify_parcel_unordered(t, header)
+    fn verify_parcel_unordered(&self, p: UnverifiedParcel, header: &Header) -> Result<SignedParcel, Error> {
+        self.machine().verify_parcel_unordered(p, header)
     }
 }
 

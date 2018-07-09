@@ -52,25 +52,25 @@ impl CodeChainMachine {
     }
 
     /// Does basic verification of the parcel.
-    pub fn verify_parcel_basic(&self, t: &UnverifiedParcel, _header: &Header) -> Result<(), Error> {
-        if t.fee < self.params.min_parcel_cost {
+    pub fn verify_parcel_basic(&self, p: &UnverifiedParcel, _header: &Header) -> Result<(), Error> {
+        if p.fee < self.params.min_parcel_cost {
             return Err(ParcelError::InsufficientFee {
                 minimal: self.params.min_parcel_cost,
-                got: t.fee,
+                got: p.fee,
             }.into())
         }
-        t.verify_basic(self.params(), false)?;
+        p.verify_basic(self.params(), false)?;
 
         Ok(())
     }
 
     /// Verify a particular parcel is valid, regardless of order.
-    pub fn verify_parcel_unordered(&self, t: UnverifiedParcel, _header: &Header) -> Result<SignedParcel, Error> {
-        Ok(SignedParcel::new(t)?)
+    pub fn verify_parcel_unordered(&self, p: UnverifiedParcel, _header: &Header) -> Result<SignedParcel, Error> {
+        Ok(SignedParcel::new(p)?)
     }
 
     /// Does verification of the parcel against the parent state.
-    pub fn verify_parcel<C: BlockInfo>(&self, _t: &SignedParcel, _header: &Header, _client: &C) -> Result<(), Error> {
+    pub fn verify_parcel<C: BlockInfo>(&self, _p: &SignedParcel, _header: &Header, _client: &C) -> Result<(), Error> {
         // FIXME: Filter parcels.
         Ok(())
     }
