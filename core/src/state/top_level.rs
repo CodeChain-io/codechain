@@ -355,8 +355,8 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopLevelState<B> {
             }
             Action::Payment {
                 receiver,
-                value,
-            } => match self.transfer_balance(fee_payer, receiver, value) {
+                amount,
+            } => match self.transfer_balance(fee_payer, receiver, amount) {
                 Ok(()) => Ok(ParcelOutcome::Single {
                     invoice: Invoice::Success,
                     error: None,
@@ -949,7 +949,7 @@ mod tests_parcel {
             fee: 5.into(),
             action: Action::Payment {
                 receiver,
-                value: 10.into(),
+                amount: 10.into(),
             },
             nonce: 0.into(),
             network_id: 0xCA,
@@ -1011,7 +1011,7 @@ mod tests_parcel {
             fee: 5.into(),
             action: Action::Payment {
                 receiver,
-                value: 30.into(),
+                amount: 30.into(),
             },
             nonce: 0.into(),
             network_id: 0xCA,
