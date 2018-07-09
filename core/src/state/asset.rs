@@ -94,14 +94,14 @@ impl Decodable for Asset {
 #[derive(Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct AssetAddress(H256);
 
-impl_address!(AssetAddress, PREFIX);
+impl_address!(SHARD, AssetAddress, PREFIX);
 
 impl AssetAddress {
-    pub fn new(transaction_hash: H256, index: usize) -> Self {
+    pub fn new(transaction_hash: H256, index: usize, shard_id: u32) -> Self {
         debug_assert_eq!(::std::mem::size_of::<u64>(), ::std::mem::size_of::<usize>());
         let index = index as u64;
 
-        Self::from_transaction_hash(transaction_hash, index)
+        Self::from_transaction_hash_with_shard_id(transaction_hash, index, shard_id)
     }
 }
 
@@ -127,11 +127,14 @@ mod tests {
             }
             address
         };
-        let address1 = AssetAddress::new(parcel_id, 0);
-        let address2 = AssetAddress::new(parcel_id, 1);
+        let shard_id = 0xBeefCafe;
+        let address1 = AssetAddress::new(parcel_id, 0, shard_id);
+        let address2 = AssetAddress::new(parcel_id, 1, shard_id);
         assert_ne!(address1, address2);
-        assert_eq!(address1[0..8], [PREFIX, 0, 0, 0, 0, 0, 0, 0]);
-        assert_eq!(address2[0..8], [PREFIX, 0, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(address1[0..4], [PREFIX, 0, 0, 0]);
+        assert_eq!(address1[4..8], [0xBE, 0xEF, 0xCA, 0xFE]); // shard id
+        assert_eq!(address2[0..4], [PREFIX, 0, 0, 0]);
+        assert_eq!(address2[4..8], [0xBE, 0xEF, 0xCA, 0xFE]); // shard id
     }
 
     #[test]

@@ -76,7 +76,7 @@ impl Decodable for Shard {
 #[derive(Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct ShardAddress(H256);
 
-impl_address!(ShardAddress, PREFIX);
+impl_address!(TOP, ShardAddress, PREFIX);
 
 impl ShardAddress {
     pub fn new(shard_id: u32) -> Self {

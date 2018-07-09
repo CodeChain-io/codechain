@@ -78,13 +78,13 @@ impl Decodable for AssetScheme {
 #[derive(Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct AssetSchemeAddress(H256);
 
-impl_address!(AssetSchemeAddress, PREFIX);
+impl_address!(SHARD, AssetSchemeAddress, PREFIX);
 
 impl AssetSchemeAddress {
-    pub fn new(transaction_hash: H256) -> Self {
+    pub fn new(transaction_hash: H256, shard_id: u32) -> Self {
         let index = ::std::u64::MAX;
 
-        Self::from_transaction_hash(transaction_hash, index)
+        Self::from_transaction_hash_with_shard_id(transaction_hash, index, shard_id)
     }
 }
 
@@ -118,10 +118,11 @@ mod tests {
             }
             address
         };
-        let asset_address = AssetSchemeAddress::new(origin);
+        let shard_id = 0xBEE;
+        let asset_address = AssetSchemeAddress::new(origin, shard_id);
         let hash: H256 = asset_address.into();
         assert_ne!(origin, hash);
         assert_eq!(hash[0..4], [PREFIX, 0, 0, 0]);
-        assert_eq!(hash[4..8], [0, 0, 0, 0]); // world id
+        assert_eq!(hash[4..8], [0, 0, 0x0B, 0xEE]); // shard id
     }
 }

@@ -161,7 +161,8 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopStateInfo for TopLevelSt
         // FIXME: Handle the case that shard doesn't exist
         let shard_root = self.shard_root(shard_id)?.unwrap_or(BLAKE_NULL_RLP);
         // FIXME: Make it mutable borrow db instead of cloning.
-        let shard_level_state = ShardLevelState::from_existing(self.db.clone(), shard_root, self.trie_factory)?;
+        let shard_level_state =
+            ShardLevelState::from_existing(shard_id, self.db.clone(), shard_root, self.trie_factory)?;
         shard_level_state.asset_scheme(asset_scheme_address)
     }
 
@@ -169,7 +170,8 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopStateInfo for TopLevelSt
         // FIXME: Handle the case that shard doesn't exist
         let shard_root = self.shard_root(shard_id)?.unwrap_or(BLAKE_NULL_RLP);
         // FIXME: Make it mutable borrow db instead of cloning.
-        let shard_level_state = ShardLevelState::from_existing(self.db.clone(), shard_root, self.trie_factory)?;
+        let shard_level_state =
+            ShardLevelState::from_existing(shard_id, self.db.clone(), shard_root, self.trie_factory)?;
         shard_level_state.asset(asset_address)
     }
 }
@@ -399,7 +401,8 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopLevelState<B> {
         let shard_root = self.shard_root(shard_id)?.ok_or_else(|| ParcelError::InvalidShardId(shard_id))?;
 
         // FIXME: Make it mutable borrow db instead of cloning.
-        let mut shard_level_state = ShardLevelState::from_existing(self.db.clone(), shard_root, self.trie_factory)?;
+        let mut shard_level_state =
+            ShardLevelState::from_existing(shard_id, self.db.clone(), shard_root, self.trie_factory)?;
 
         let mut results = Vec::with_capacity(transactions.len());
         for t in transactions {
@@ -1040,6 +1043,8 @@ mod tests_parcel {
         state.create_shard_level_state().unwrap();
         state.commit().unwrap();
 
+        let shard_id = 0x0;
+
         let metadata = "metadata".to_string();
         let lock_script_hash = H256::random();
         let parameters = vec![];
@@ -1078,12 +1083,11 @@ mod tests_parcel {
         assert_eq!(state.balance(&sender), Ok(58.into()));
         assert_eq!(state.nonce(&sender), Ok(1.into()));
 
-        let shard_id = 0;
-        let asset_scheme_address = AssetSchemeAddress::new(transaction_hash);
+        let asset_scheme_address = AssetSchemeAddress::new(transaction_hash, shard_id);
         let asset_scheme = state.asset_scheme(shard_id, &asset_scheme_address);
         assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), amount, registrar))), asset_scheme);
 
-        let asset_address = AssetAddress::new(transaction_hash, 0);
+        let asset_address = AssetAddress::new(transaction_hash, 0, shard_id);
         let asset = state.asset(shard_id, &asset_address);
         assert_eq!(Ok(Some(Asset::new(asset_scheme_address.into(), lock_script_hash, parameters, amount))), asset);
     }
@@ -1133,11 +1137,11 @@ mod tests_parcel {
 
         let shard_id = 0;
 
-        let asset_scheme_address = AssetSchemeAddress::new(transaction_hash);
+        let asset_scheme_address = AssetSchemeAddress::new(transaction_hash, shard_id);
         let asset_scheme = state.asset_scheme(shard_id, &asset_scheme_address);
         assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), ::std::u64::MAX, registrar))), asset_scheme);
 
-        let asset_address = AssetAddress::new(transaction_hash, 0);
+        let asset_address = AssetAddress::new(transaction_hash, 0, shard_id);
         let asset = state.asset(shard_id, &asset_address);
         assert_eq!(
             Ok(Some(Asset::new(asset_scheme_address.into(), lock_script_hash, parameters, ::std::u64::MAX))),
@@ -1150,6 +1154,8 @@ mod tests_parcel {
         let mut state = get_temp_state();
         state.create_shard_level_state().unwrap();
         state.commit().unwrap();
+
+        let shard_id = 0x00;
 
         let metadata = "metadata".to_string();
         let lock_script_hash =
@@ -1168,9 +1174,9 @@ mod tests_parcel {
 
         let network_id = 0xBeef;
 
-        let asset_scheme_address = AssetSchemeAddress::new(mint_hash);
+        let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id);
         let asset_type = asset_scheme_address.clone().into();
-        let asset_address = AssetAddress::new(mint_hash, 0);
+        let asset_address = AssetAddress::new(mint_hash, 0, shard_id);
 
         let random_lock_script_hash = H256::random();
         let transfer = Transaction::AssetTransfer {
@@ -1224,8 +1230,6 @@ mod tests_parcel {
 
         state.add_balance(&sender, &U256::from(120)).unwrap();
 
-        let shard_id = 0x00;
-
         assert_eq!(
             ParcelOutcome::Transactions(vec![
                 TransactionOutcome {
@@ -1249,15 +1253,15 @@ mod tests_parcel {
         let asset = state.asset(shard_id, &asset_address);
         assert_eq!(Ok(None), asset);
 
-        let asset0_address = AssetAddress::new(transfer_hash, 0);
+        let asset0_address = AssetAddress::new(transfer_hash, 0, shard_id);
         let asset0 = state.asset(shard_id, &asset0_address);
         assert_eq!(Ok(Some(Asset::new(asset_type, lock_script_hash, vec![vec![1]], 10))), asset0);
 
-        let asset1_address = AssetAddress::new(transfer_hash, 1);
+        let asset1_address = AssetAddress::new(transfer_hash, 1, shard_id);
         let asset1 = state.asset(shard_id, &asset1_address);
         assert_eq!(Ok(Some(Asset::new(asset_type, lock_script_hash, vec![], 5))), asset1);
 
-        let asset2_address = AssetAddress::new(transfer_hash, 2);
+        let asset2_address = AssetAddress::new(transfer_hash, 2, shard_id);
         let asset2 = state.asset(shard_id, &asset2_address);
         assert_eq!(Ok(Some(Asset::new(asset_type, random_lock_script_hash, vec![], 15))), asset2);
     }
@@ -1308,11 +1312,11 @@ mod tests_parcel {
         assert_eq!(state.balance(&sender), Ok(100.into()));
         assert_eq!(state.nonce(&sender), Ok(1.into()));
 
-        let asset_scheme_address = AssetSchemeAddress::new(mint_hash);
-        let asset_type = asset_scheme_address.clone().into();
-        let asset_address = AssetAddress::new(mint_hash, 0);
-
         let shard_id = 0x00;
+
+        let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id);
+        let asset_type = asset_scheme_address.clone().into();
+        let asset_address = AssetAddress::new(mint_hash, 0, shard_id);
 
         let asset = state.asset(shard_id, &asset_address);
         assert_eq!(Ok(Some(Asset::new(asset_type, lock_script_hash, vec![], 30))), asset);
@@ -1381,15 +1385,15 @@ mod tests_parcel {
         let asset = state.asset(shard_id, &asset_address);
         assert_eq!(Ok(None), asset);
 
-        let asset0_address = AssetAddress::new(transfer_hash, 0);
+        let asset0_address = AssetAddress::new(transfer_hash, 0, shard_id);
         let asset0 = state.asset(shard_id, &asset0_address);
         assert_eq!(Ok(Some(Asset::new(asset_type, lock_script_hash, vec![vec![1]], 10))), asset0);
 
-        let asset1_address = AssetAddress::new(transfer_hash, 1);
+        let asset1_address = AssetAddress::new(transfer_hash, 1, shard_id);
         let asset1 = state.asset(shard_id, &asset1_address);
         assert_eq!(Ok(Some(Asset::new(asset_type, lock_script_hash, vec![], 5))), asset1);
 
-        let asset2_address = AssetAddress::new(transfer_hash, 2);
+        let asset2_address = AssetAddress::new(transfer_hash, 2, shard_id);
         let asset2 = state.asset(shard_id, &asset2_address);
         assert_eq!(Ok(Some(Asset::new(asset_type, random_lock_script_hash, vec![], 15))), asset2);
     }
@@ -1407,7 +1411,7 @@ mod tests_parcel {
         let state = get_temp_state();
 
         let shard_id = 3;
-        assert_eq!(Ok(None), state.asset(shard_id, &AssetAddress::new(H256::random(), 0)));
+        assert_eq!(Ok(None), state.asset(shard_id, &AssetAddress::new(H256::random(), 0, shard_id)));
     }
 
 
@@ -1416,7 +1420,7 @@ mod tests_parcel {
         let state = get_temp_state();
 
         let shard_id = 3;
-        assert_eq!(Ok(None), state.asset_scheme(shard_id, &AssetSchemeAddress::new(H256::random())));
+        assert_eq!(Ok(None), state.asset_scheme(shard_id, &AssetSchemeAddress::new(H256::random(), shard_id)));
     }
 
     #[test]
@@ -1468,7 +1472,7 @@ mod tests_parcel {
         assert_eq!(Ok(1.into()), state.nonce(&sender));
 
         let shard_id = 3;
-        assert_eq!(Ok(None), state.asset(shard_id, &AssetAddress::new(H256::random(), 0)));
+        assert_eq!(Ok(None), state.asset(shard_id, &AssetAddress::new(H256::random(), 0, shard_id)));
     }
 
     #[test]
@@ -1495,7 +1499,7 @@ mod tests_parcel {
         assert_eq!(Ok(1.into()), state.nonce(&sender));
 
         let shard_id = 3;
-        assert_eq!(Ok(None), state.asset_scheme(shard_id, &AssetSchemeAddress::new(H256::random())));
+        assert_eq!(Ok(None), state.asset_scheme(shard_id, &AssetSchemeAddress::new(H256::random(), shard_id)));
     }
 
     #[test]
