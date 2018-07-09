@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ccrypto::{blake256, BLAKE_EMPTY, BLAKE_NULL_RLP};
-use ckey::{sign_ecdsa, KeyPair, Private};
+use ckey::{sign, KeyPair, Private};
 use ctypes::{H160, H256, H520};
 
 use secp256k1::key::{SecretKey, MINUS_ONE_KEY, ONE_KEY};
@@ -70,7 +70,7 @@ fn valid_pay_to_public_key() {
     let keypair = KeyPair::from_private(Private::from(SecretKey::from(ONE_KEY))).unwrap();
     let pubkey = <&[u8]>::from(keypair.public()).to_vec();
     let message = blake256("asdf");
-    let signature = H520::from(sign_ecdsa(keypair.private(), &message).unwrap()).to_vec();
+    let signature = H520::from(sign(keypair.private(), &message).unwrap()).to_vec();
     let unlock_script = vec![Instruction::PushB(signature)];
     let lock_script = vec![Instruction::PushB(pubkey), Instruction::ChkSig];
 
@@ -85,7 +85,7 @@ fn invalid_pay_to_public_key() {
     let lock_script = vec![Instruction::PushB(pubkey), Instruction::ChkSig];
 
     let invalid_keypair = KeyPair::from_private(Private::from(SecretKey::from(MINUS_ONE_KEY))).unwrap();
-    let invalid_signature = H520::from(sign_ecdsa(invalid_keypair.private(), &message).unwrap()).to_vec();
+    let invalid_signature = H520::from(sign(invalid_keypair.private(), &message).unwrap()).to_vec();
     let unlock_script = vec![Instruction::PushB(invalid_signature)];
 
     assert_eq!(execute(&unlock_script[..], &[], &lock_script, message, Config::default()), Ok(ScriptResult::Fail));

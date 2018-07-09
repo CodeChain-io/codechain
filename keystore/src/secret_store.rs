@@ -30,7 +30,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ckey::{Address, ECDSASignature, Message, Public, Secret};
+use ckey::{Address, Message, Public, Secret, Signature};
 use json::{OpaqueKeyFile, Uuid};
 use std::path::PathBuf;
 use Error;
@@ -48,7 +48,7 @@ pub trait SimpleSecretStore: Send + Sync {
     /// Entirely removes account from the store and underlying storage.
     fn remove_account(&self, account: &Address, password: &str) -> Result<(), Error>;
     /// Sign a message with given account.
-    fn sign(&self, account: &Address, password: &str, message: &Message) -> Result<ECDSASignature, Error>;
+    fn sign(&self, account: &Address, password: &str, message: &Message) -> Result<Signature, Error>;
     /// Returns all accounts in this secret store.
     fn accounts(&self) -> Result<Vec<Address>, Error>;
     ///  Check existance of account
@@ -61,8 +61,8 @@ pub trait SecretStore: SimpleSecretStore {
     fn raw_secret(&self, account: &Address, password: &str) -> Result<OpaqueSecret, Error>;
 
     /// Signs a message with raw secret.
-    fn sign_with_secret(&self, secret: &OpaqueSecret, message: &Message) -> Result<ECDSASignature, Error> {
-        Ok(::ckey::sign_ecdsa(&secret.0.into(), message)?)
+    fn sign_with_secret(&self, secret: &OpaqueSecret, message: &Message) -> Result<Signature, Error> {
+        Ok(::ckey::sign(&secret.0.into(), message)?)
     }
 
     /// Imports existing JSON wallet

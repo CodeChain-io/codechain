@@ -21,7 +21,7 @@ extern crate rand;
 
 mod util;
 
-use ckey::{verify_ecdsa_address, Generator, KeyPair, Random, Secret};
+use ckey::{verify_address, Generator, KeyPair, Random, Secret};
 use ckeystore::accounts_dir::RootDiskDirectory;
 use ckeystore::{KeyStore, SimpleSecretStore};
 use util::TransientDir;
@@ -137,7 +137,7 @@ fn test_decrypting_files_with_short_ciphertext() {
 
     let s1 = store.sign(&accounts[0], "password", &message).unwrap();
     let s2 = store.sign(&accounts[1], "password", &message).unwrap();
-    assert!(verify_ecdsa_address(&accounts[0], &s1, &message).unwrap());
-    assert!(verify_ecdsa_address(&kp1.address(), &s1, &message).unwrap());
-    assert!(verify_ecdsa_address(&kp2.address(), &s2, &message).unwrap());
+    assert!(verify_address(&accounts[0], &s1, &message).unwrap());
+    assert!(verify_address(&kp1.address(), &s1, &message).unwrap());
+    assert!(verify_address(&kp2.address(), &s2, &message).unwrap());
 }

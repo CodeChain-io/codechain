@@ -17,7 +17,7 @@
 use super::crypto::Crypto;
 use account::Version;
 use ccrypto;
-use ckey::{sign_ecdsa, Address, ECDSASignature, KeyPair, Message, Public};
+use ckey::{sign, Address, KeyPair, Message, Public, Signature};
 use {json, Error};
 
 /// Account representation.
@@ -89,9 +89,9 @@ impl SafeAccount {
     }
 
     /// Sign a message.
-    pub fn sign(&self, password: &str, message: &Message) -> Result<ECDSASignature, Error> {
+    pub fn sign(&self, password: &str, message: &Message) -> Result<Signature, Error> {
         let secret = self.crypto.secret(password)?;
-        sign_ecdsa(&secret.into(), message).map_err(From::from)
+        sign(&secret.into(), message).map_err(From::from)
     }
 
     /// Derive public key.
@@ -124,7 +124,7 @@ impl SafeAccount {
 #[cfg(test)]
 mod tests {
     use super::SafeAccount;
-    use ckey::{verify_ecdsa, Generator, Message, Random};
+    use ckey::{verify, Generator, Message, Random};
 
     #[test]
     fn sign_and_verify_public() {
@@ -133,7 +133,7 @@ mod tests {
         let message = Message::default();
         let account = SafeAccount::create(&keypair, [0u8; 16], password, 10240, "Test".to_string(), "{}".to_string());
         let signature = account.unwrap().sign(password, &message).unwrap();
-        assert!(verify_ecdsa(keypair.public(), &signature, &message).unwrap());
+        assert!(verify(keypair.public(), &signature, &message).unwrap());
     }
 
     #[test]

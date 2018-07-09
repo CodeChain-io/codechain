@@ -11,7 +11,7 @@ codechain-core = { path = "core" }
 codechain-discovery = { path = "discovery" }
 codechain-finally = { path = "util/finally" }
 codechain-logger = { path = "util/logger" }
-codechain-key = { path = "key" }
+codechain-key = { path = "key", features = ["ecdsa"] }
 codechain-keystore = { path = "keystore" }
 codechain-merkle = { path = "util/merkle" }
 codechain-network = { path = "network" }

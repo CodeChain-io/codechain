@@ -18,7 +18,7 @@ use std::fmt;
 use std::ops::Deref;
 
 use ccrypto::blake256;
-use ckey::{self, public_to_address, recover_ecdsa, sign_ecdsa, ECDSASignature, Private, Public};
+use ckey::{self, public_to_address, recover, sign, Private, Public, Signature};
 use ctypes::{Address, Bytes, H160, H256, U256};
 use heapsize::HeapSizeOf;
 use rlp::{self, DecoderError, Encodable, RlpStream, UntrustedRlp};
@@ -250,12 +250,12 @@ impl Parcel {
 
     /// Signs the parcel as coming from `sender`.
     pub fn sign(self, private: &Private) -> SignedParcel {
-        let sig = sign_ecdsa(&private, &self.hash()).expect("data is valid and context has signing capabilities; qed");
+        let sig = sign(&private, &self.hash()).expect("data is valid and context has signing capabilities; qed");
         SignedParcel::new(self.with_signature(sig)).expect("secret is valid so it's recoverable")
     }
 
     /// Signs the parcel with signature.
-    pub fn with_signature(self, sig: ECDSASignature) -> UnverifiedParcel {
+    pub fn with_signature(self, sig: Signature) -> UnverifiedParcel {
         UnverifiedParcel {
             unsigned: self,
             r: sig.r().into(),
@@ -353,13 +353,13 @@ impl UnverifiedParcel {
     }
 
     /// Construct a signature object from the sig.
-    pub fn signature(&self) -> ECDSASignature {
-        ECDSASignature::from_rsv(&self.r.into(), &self.s.into(), self.v)
+    pub fn signature(&self) -> Signature {
+        Signature::from_rsv(&self.r.into(), &self.s.into(), self.v)
     }
 
     /// Recovers the public key of the sender.
     pub fn recover_public(&self) -> Result<Public, ckey::Error> {
-        Ok(recover_ecdsa(&self.signature(), &self.unsigned.hash())?)
+        Ok(recover(&self.signature(), &self.unsigned.hash())?)
     }
 
     /// Checks whether the signature has a low 's' value.

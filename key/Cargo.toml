@@ -16,4 +16,5 @@ rlp = { path = "../util/rlp" }
 secp256k1 = { path = "../util/secp256k1" }
 
 [features]
+ecdsa = []
 schnorr = []
