@@ -120,6 +120,10 @@ impl Control for Service {
         }
         Ok(())
     }
+
+    fn is_connected(&self, addr: &SocketAddr) -> bool {
+        self.routing_table.is_connected(addr)
+    }
 }
 
 #[derive(Debug)]
