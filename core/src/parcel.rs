@@ -195,17 +195,37 @@ impl rlp::Encodable for Action {
 impl rlp::Decodable for Action {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
         match rlp.val_at(0)? {
-            CHANGE_SHARD_STATE => Ok(Action::ChangeShardState {
-                transactions: rlp.list_at(1)?,
-            }),
-            PAYMENT => Ok(Action::Payment {
-                receiver: rlp.val_at(1)?,
-                value: rlp.val_at(2)?,
-            }),
-            SET_REGULAR_KEY => Ok(Action::SetRegularKey {
-                key: rlp.val_at(1)?,
-            }),
-            CREATE_SHARD => Ok(Action::CreateShard),
+            CHANGE_SHARD_STATE => {
+                if rlp.item_count()? != 2 {
+                    return Err(DecoderError::RlpIncorrectListLen)
+                }
+                Ok(Action::ChangeShardState {
+                    transactions: rlp.list_at(1)?,
+                })
+            }
+            PAYMENT => {
+                if rlp.item_count()? != 3 {
+                    return Err(DecoderError::RlpIncorrectListLen)
+                }
+                Ok(Action::Payment {
+                    receiver: rlp.val_at(1)?,
+                    value: rlp.val_at(2)?,
+                })
+            }
+            SET_REGULAR_KEY => {
+                if rlp.item_count()? != 2 {
+                    return Err(DecoderError::RlpIncorrectListLen)
+                }
+                Ok(Action::SetRegularKey {
+                    key: rlp.val_at(1)?,
+                })
+            }
+            CREATE_SHARD => {
+                if rlp.item_count()? != 1 {
+                    return Err(DecoderError::RlpIncorrectListLen)
+                }
+                Ok(Action::CreateShard)
+            }
             _ => Err(DecoderError::Custom("Unexpected action prefix")),
         }
     }
