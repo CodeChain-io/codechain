@@ -14,15 +14,35 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+macro_rules! define_address_constructor {
+    (TOP, $name:ident, $prefix:expr) => {
+        fn from_transaction_hash(transaction_hash: ::ctypes::H256, index: u64) -> Self {
+            let mut hash: ::ctypes::H256 =
+                ::ccrypto::Blake::blake_with_key(&transaction_hash, &::ctypes::H128::from(index));
+            hash[0..8].clone_from_slice(&[$prefix, 0, 0, 0, 0, 0, 0, 0]);
+            $name(hash)
+        }
+    };
+    (SHARD, $name:ident, $prefix:expr) => {
+        fn from_transaction_hash_with_shard_id(transaction_hash: ::ctypes::H256, index: u64, shard_id: u32) -> Self {
+            let mut hash: ::ctypes::H256 =
+                ::ccrypto::Blake::blake_with_key(&transaction_hash, &::ctypes::H128::from(index));
+            hash[0..4].clone_from_slice(&[$prefix, 0, 0, 0]);
+
+            let mut shard_id_bytes = Vec::<u8>::new();
+            ::byteorder::WriteBytesExt::write_u32::<::byteorder::BigEndian>(&mut shard_id_bytes, shard_id).unwrap();
+            assert_eq!(4, shard_id_bytes.len());
+            hash[4..8].clone_from_slice(&shard_id_bytes);
+
+            $name(hash)
+        }
+    };
+}
+
 macro_rules! impl_address {
-    ($name:ident, $prefix:expr) => {
+    ($type:ident, $name:ident, $prefix:expr) => {
         impl $name {
-            fn from_transaction_hash(transaction_hash: ::ctypes::H256, index: u64) -> Self {
-                let mut hash: ::ctypes::H256 =
-                    ::ccrypto::Blake::blake_with_key(&transaction_hash, &::ctypes::H128::from(index));
-                hash[0..8].clone_from_slice(&[$prefix, 0, 0, 0, 0, 0, 0, 0]);
-                $name(hash)
-            }
+            define_address_constructor!($type, $name, $prefix);
 
             pub fn from_hash(hash: ::ctypes::H256) -> Option<Self> {
                 if Self::is_valid_format(&hash) {

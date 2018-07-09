@@ -85,11 +85,11 @@ impl Decodable for ShardMetadata {
 #[derive(Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct ShardMetadataAddress(H256);
 
-impl_address!(ShardMetadataAddress, PREFIX);
+impl_address!(SHARD, ShardMetadataAddress, PREFIX);
 
 impl ShardMetadataAddress {
-    pub fn new(id: u32) -> Self {
-        Self::from_transaction_hash(H256::from_slice(b"metadata address"), id as u64)
+    pub fn new(shard_id: u32) -> Self {
+        Self::from_transaction_hash_with_shard_id(H256::from_slice(b"metadata address"), shard_id as u64, shard_id)
     }
 }
 
@@ -102,8 +102,10 @@ mod tests {
         let address1 = ShardMetadataAddress::new(0);
         let address2 = ShardMetadataAddress::new(1);
         assert_ne!(address1, address2);
-        assert_eq!(address1[0..8], [PREFIX, 0, 0, 0, 0, 0, 0, 0]);
-        assert_eq!(address2[0..8], [PREFIX, 0, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(address1[0..4], [PREFIX, 0, 0, 0]);
+        assert_eq!(address1[4..8], [0, 0, 0, 0]); // shard id
+        assert_eq!(address2[0..4], [PREFIX, 0, 0, 0]);
+        assert_eq!(address2[4..8], [0, 0, 0, 1]); // shard id
     }
 
     #[test]

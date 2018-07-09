@@ -77,7 +77,7 @@ impl Decodable for Metadata {
 #[derive(Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct MetadataAddress(H256);
 
-impl_address!(MetadataAddress, PREFIX);
+impl_address!(TOP, MetadataAddress, PREFIX);
 
 impl MetadataAddress {
     pub fn new() -> Self {
