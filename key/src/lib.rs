@@ -48,7 +48,7 @@ pub use private::Private;
 pub use random::Random;
 pub use rustc_serialize::hex;
 #[cfg(feature = "schnorr")]
-pub use schnorr::{recover_schnorr, sign_schnorr, verify_schnorr, SchnorrSignature};
+pub use schnorr::{recover_schnorr, sign_schnorr, verify_schnorr, verify_schnorr_address, SchnorrSignature};
 
 /// 32 bytes long signable message
 pub type Message = H256;

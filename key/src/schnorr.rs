@@ -24,7 +24,7 @@ use codechain_types::H512;
 use rustc_hex::{FromHex, ToHex};
 use secp256k1::{key, schnorr, Error as SecpError, Message as SecpMessage};
 
-use super::{Error, Message, Private, Public, SECP256K1};
+use super::{public_to_address, Address, Error, Message, Private, Public, SECP256K1};
 
 pub struct SchnorrSignature([u8; 64]);
 
@@ -148,6 +148,16 @@ pub fn verify_schnorr(public: &Public, signature: &SchnorrSignature, message: &M
         Err(SecpError::IncorrectSignature) => Ok(false),
         Err(x) => Err(Error::from(x)),
     }
+}
+
+pub fn verify_schnorr_address(
+    address: &Address,
+    signature: &SchnorrSignature,
+    message: &Message,
+) -> Result<bool, Error> {
+    let public = recover_schnorr(signature, message)?;
+    let recovered_address = public_to_address(&public);
+    Ok(address == &recovered_address)
 }
 
 pub fn recover_schnorr(signature: &SchnorrSignature, message: &Message) -> Result<Public, Error> {
