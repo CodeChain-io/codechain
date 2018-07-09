@@ -199,6 +199,7 @@ impl TestBlockChainClient {
                     network_id: 0u64,
                     action: Action::ChangeShardState {
                         transactions: vec![],
+                        changes: vec![],
                     },
                 };
                 let signed_parcel = SignedParcel::new_with_sign(parcel, keypair.private());
@@ -265,6 +266,7 @@ impl TestBlockChainClient {
             network_id: 0u64,
             action: Action::ChangeShardState {
                 transactions,
+                changes: vec![],
             },
         };
         let signed_parcel = SignedParcel::new_with_sign(parcel, keypair.private());

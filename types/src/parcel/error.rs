@@ -17,7 +17,8 @@
 use std::fmt::{Display, Formatter, Result as FormatResult};
 
 use ckey::{Address, Error as KeyError};
-use primitives::U256;
+use primitives::{H256, U256};
+use unexpected::Mismatch;
 
 #[derive(Debug, PartialEq, Clone)]
 /// Errors concerning parcel processing.
@@ -58,10 +59,12 @@ pub enum Error {
         got: U256,
     },
     InvalidShardId(u32),
+    InvalidShardRoot(Mismatch<H256>),
     /// Not enough permissions given by permission contract.
     NotAllowed,
     /// Signature error
     InvalidSignature(String),
+    InconsistentShardOutcomes,
 }
 
 impl Display for Error {
@@ -87,8 +90,10 @@ impl Display for Error {
                 got,
             } => format!("Invalid parcel nonce: expected {}, found {}", expected, got),
             Error::InvalidShardId(shard_id) => format!("{} is an invalid shard id", shard_id),
+            Error::InvalidShardRoot(mismatch) => format!("Invalid shard root {}", mismatch),
             Error::NotAllowed => "Sender does not have permissions to execute this type of transaction".into(),
             Error::InvalidSignature(err) => format!("Parcel has invalid signature: {}.", err),
+            Error::InconsistentShardOutcomes => "Shard outcomes are inconsistent".to_string(),
         };
 
         f.write_fmt(format_args!("Parcel error ({})", msg))
