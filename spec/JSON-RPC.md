@@ -101,10 +101,10 @@ In the current version, it's only supported through HTTP.
   * [miner_getWork](#miner_getwork)
   * [miner_submitWork](#miner_submitwork)
 ***
-  * [net_shareSecret](#net_sharesecret) (not implemented yet)
-  * [net_connect](#net_connect) (not implemented yet)
-  * [net_isConnected](#net_isconnected) (not implemented yet)
-  * [net_disconnect](#net_disconnect) (not implemented yet)
+  * [net_shareSecret](#net_sharesecret)
+  * [net_connect](#net_connect)
+  * [net_isConnected](#net_isconnected)
+  * [net_disconnect](#net_disconnect)
 ***
  * [devel_getStateTrieKeys](#devel_getstatetriekeys)
  * [devel_getStateTrieValue](#devel_getstatetrievalue)
