@@ -26,6 +26,8 @@ use secp256k1::{key, schnorr, Error as SecpError, Message as SecpMessage};
 
 use super::{public_to_address, Address, Error, Message, Private, Public, SECP256K1};
 
+pub const SCHNORR_SIGNATURE_LENGTH: usize = 64;
+
 pub struct SchnorrSignature([u8; 64]);
 
 // manual implementation large arrays don't have trait impls by default.

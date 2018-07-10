@@ -42,6 +42,8 @@ use secp256k1::{key, Error as SecpError, Message as SecpMessage, RecoverableSign
 
 use super::{public_to_address, Address, Error, Message, Private, Public, SECP256K1};
 
+pub const ECDSA_SIGNATURE_LENGTH: usize = 65;
+
 /// Signature encoded as RSV components
 #[repr(C)]
 pub struct ECDSASignature([u8; 65]);
