@@ -15,8 +15,8 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ccrypto::{blake256, keccak256, ripemd160, sha256};
-use ckey::{verify, Signature, SIGNATURE_LENGTH};
-use ctypes::{H256, H520, Public};
+use ckey::{verify, Signature, SignatureData, SIGNATURE_LENGTH};
+use ctypes::{H256, Public};
 
 use instruction::{is_valid_unlock_script, Instruction};
 
@@ -209,7 +209,8 @@ pub fn execute(
             }
             Instruction::ChkSig => {
                 let pubkey = Public::from_slice(stack.pop()?.assert_len(64)?.as_ref());
-                let signature = Signature::from(H520::from(stack.pop()?.assert_len(SIGNATURE_LENGTH)?.as_ref()));
+                let signature =
+                    Signature::from(SignatureData::from(stack.pop()?.assert_len(SIGNATURE_LENGTH)?.as_ref()));
                 let result = match verify(&pubkey, &signature, &tx_hash) {
                     Ok(true) => 1,
                     _ => 0,

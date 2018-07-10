@@ -28,6 +28,8 @@ use super::{public_to_address, Address, Error, Message, Private, Public, SECP256
 
 pub const SCHNORR_SIGNATURE_LENGTH: usize = 64;
 
+pub type SchnorrSignatureData = H512;
+
 pub struct SchnorrSignature([u8; 64]);
 
 // manual implementation large arrays don't have trait impls by default.

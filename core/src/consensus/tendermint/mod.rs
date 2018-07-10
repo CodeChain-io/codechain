@@ -23,9 +23,9 @@ use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
 use std::sync::{Arc, Weak};
 
 use ccrypto::blake256;
-use ckey::{public_to_address, recover, Message, Signature};
+use ckey::{public_to_address, recover, Message, Signature, SignatureData};
 use cnetwork::{Api, NetworkExtension, NodeId, TimerToken};
-use ctypes::{Address, Bytes, H256, H520, U128, U256};
+use ctypes::{Address, Bytes, H256, U128, U256};
 use parking_lot::{Mutex, RwLock};
 use rand::{thread_rng, Rng};
 use rlp::{self, Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
@@ -749,7 +749,7 @@ where
         let mut addresses = HashSet::new();
         let ref header_signatures_field = header.seal().get(2).ok_or(BlockError::InvalidSeal)?;
         for rlp in UntrustedRlp::new(header_signatures_field).iter() {
-            let signature: H520 = rlp.as_val()?;
+            let signature: SignatureData = rlp.as_val()?;
             let address = (self.recover)(&signature.into(), &message)?;
 
             if !self.subchain_validators.contains(header.parent_hash(), &address) {

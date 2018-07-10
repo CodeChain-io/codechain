@@ -44,6 +44,8 @@ use super::{public_to_address, Address, Error, Message, Private, Public, SECP256
 
 pub const ECDSA_SIGNATURE_LENGTH: usize = 65;
 
+pub type ECDSASignatureData = H520;
+
 /// Signature encoded as RSV components
 #[repr(C)]
 pub struct ECDSASignature([u8; 65]);
