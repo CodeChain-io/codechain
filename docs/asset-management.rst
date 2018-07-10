@@ -87,19 +87,24 @@ In this example, it is assumed that there is something that created a parcel out
 
     // sendTransaction() is a function to make transaction to be processed.
     async function sendTransaction(tx) {
-        const parcelSignerSecret = new H256("ede1d4ccb4ec9a8bbbae9a13db3f4a7b56ea04189be86ac3a6a439d9a0a1addd");
-        const parcelSignerAddress = new H160(privateKeyToAddress("ede1d4ccb4ec9a8bbbae9a13db3f4a7b56ea04189be86ac3a6a439d9a0a1addd"));
-        const parcelSignerNonce = await sdk.getNonce(parcelSignerAddress);
-        const parcel = Parcel.transactions(parcelSignerNonce, new U256(10), 17, tx);
-        const signedParcel = parcel.sign(parcelSignerSecret);
-        return await sdk.sendSignedParcel(signedParcel);
+        const parcelSignerSecret = "ede1d4ccb4ec9a8bbbae9a13db3f4a7b56ea04189be86ac3a6a439d9a0a1addd";
+        const parcelSignerAddress = SDK.util.getAccountIdFromPrivate(parcelSignerSecret);
+        const parcel = sdk.core.createChangeShardStateParcel({
+            transactions: [tx],
+            nonce: await sdk.rpc.chain.getNonce(parcelSignerAddress),
+            fee: 10,
+        }).sign(parcelSignerSecret)
+        return await sdk.rpc.chain.sendSignedParcel(parcel);
     }
 
 Each users need an address for them to receive/send assets to. Addresses are created by the assetAgent.
 ::
 
-    const aliceAddress = await assetAgent.createAddress();
-    const bobAddress = await assetAgent.createAddress();
+    // Start of wrapping async function, we use async/await here because a lot of
+    // Promises are there.
+    (async () => {
+        const aliceAddress = await assetAgent.createAddress();
+        const bobAddress = await assetAgent.createAddress();
 
 Minting/Creating New Assets
 ===========================
@@ -129,13 +134,13 @@ After Gold has been defined in the scheme, the amount that is minted but belong 
 Then, the AssetMintTransaction is processed with the following code:
 ::
 
-    // Process the AssetMintTransaction
     await sendTransaction(mintTx);
-
-    // AssetMintTransaction creates Asset and AssetScheme object
-    console.log("minted asset scheme: ", await sdk.getAssetScheme(mintTx.hash()));
-    const firstGold = await sdk.getAsset(mintTx.hash(), 0);
-    console.log("alice's gold: ", firstGold);
+    // Wait up to 5 minutes for transaction processing
+    const mintTxInvoice = await sdk.rpc.chain.getTransactionInvoice(mintTx.hash(), 5 * 60 * 1000);
+    if (!mintTxInvoice.success) {
+        throw "AssetMintTransaction failed";
+    }
+    const firstGold = await sdk.rpc.chain.getAsset(mintTx.hash(), 0);
 
 Sending/Transferring Assets
 ===========================
@@ -145,8 +150,6 @@ standard, and make a transaction that spends an entire UTXO balance, and receive
 Next, we create an output which gives 3000 gold to Bob, and returns 7000 gold to Alice.
 ::
 
-    // Spend Alice's 10000 golds. In this case, Alice pays 3000 golds to Bob. Alice
-    // is paid the remains back.
     // The sum of amount must equal to the amount of firstGold.
     const transferTx = await firstGold.transfer(assetAgent, [{
         address: bobAddress,
@@ -158,8 +161,11 @@ Next, we create an output which gives 3000 gold to Bob, and returns 7000 gold to
 
 By using Alice's signature, the 10000 Gold that was first minted can now be transferred to other users like Bob.
 ::
-
     await sendTransaction(transferTx);
+    const transferTxInvoice = await sdk.rpc.chain.getTransactionInvoice(transferTx.hash(), 5 * 60 * 1000);
+    if (!transferTxInvoice.success) {
+        throw "AssetTransferTransaction failed";
+    }
 
     // Spent asset will be null
     console.log(await sdk.getAsset(mintTx.hash(), 0));
