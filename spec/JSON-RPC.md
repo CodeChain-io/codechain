@@ -85,7 +85,7 @@ In the current version, it's only supported through HTTP.
  * [chain_getBlockByHash](#chain_getblockbyhash)
  * [chain_sendSignedParcel](#chain_sendsignedparcel)
  * [chain_getParcel](#chain_getparcel)
- * [chain_getParcelInvoices](#chain_getparcelinvoices)
+ * [chain_getParcelInvoice](#chain_getparcelinvoice)
  * [chain_getTransactionInvoice](#chain_gettransactioninvoice)
  * [chain_getAssetScheme](#chain_getassetscheme)
  * [chain_getAsset](#chain_getasset)
@@ -95,6 +95,7 @@ In the current version, it's only supported through HTTP.
  * [chain_getNumberOfShards](#chain_getnumberofshards)
  * [chain_getShardRoot](#chain_getshardroot)
  * [chain_getPendingParcels](#chain_getpendingparcels)
+ * [chain_getCoinbase](#chain_getcoinbase)
 ***
   * [miner_getWork](#miner_getwork)
   * [miner_submitWork](#miner_submitwork)
@@ -569,6 +570,24 @@ Response Example
   "v":0
 }],"id":null}
 ```
+
+## chain_getCoinbase (not implemented)
+Gets coinbase's account id.
+
+Params: No parameters
+
+Return Type: `160 bit hexadecimal string` or `null`
+
+Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "chain_getCoinbase", "params": [], "id": null}' \
+    localhost:8080
+```
+
+Response Example
+{"jsonrpc":"2.0","result":"0xa6594b7196808d161b6fb137e781abbc251385d9","id":null}
 
 ## miner_getWork
 Returns the hash of the current block, the score and the block number.
