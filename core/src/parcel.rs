@@ -382,7 +382,14 @@ impl UnverifiedParcel {
                                 return Err(ParcelError::MetadataTooBig)
                             }
                         }
-                        _ => {}
+                        Transaction::AssetTransfer {
+                            network_id,
+                            ..
+                        } => {
+                            if network_id != &self.network_id {
+                                return Err(ParcelError::InvalidNetworkId)
+                            }
+                        }
                     }
                 }
             }
