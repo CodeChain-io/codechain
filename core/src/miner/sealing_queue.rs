@@ -69,3 +69,140 @@ impl SealingQueue {
         self.in_use.iter().position(|r| predicate(r)).map(|i| self.in_use.remove(i))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use ctypes::Address;
+
+    use super::super::super::block::{ClosedBlock, OpenBlock};
+    use super::super::super::spec::Spec;
+    use super::super::super::tests::helpers::get_temp_state_db;
+    use super::SealingQueue;
+
+    const QUEUE_SIZE: usize = 2;
+
+    fn create_closed_block(address: Address) -> ClosedBlock {
+        let spec = Spec::new_test();
+        let genesis_header = spec.genesis_header();
+        let db = spec.ensure_genesis_state(get_temp_state_db(), &Default::default()).unwrap();
+        let b = OpenBlock::new(&*spec.engine, Default::default(), db, &genesis_header, address, vec![], false).unwrap();
+        let parent_parcels_root = genesis_header.parcels_root().clone();
+        let parent_invoices_root = genesis_header.invoices_root().clone();
+        b.close(parent_parcels_root, parent_invoices_root)
+    }
+
+    #[test]
+    fn should_not_find_when_pushed() {
+        let mut q = SealingQueue::new(QUEUE_SIZE);
+        let b = create_closed_block(Address::zero());
+        let h = b.hash();
+
+        q.push(b);
+
+        assert!(q.take_used_if(|b| b.hash() == h).is_none());
+    }
+
+    #[test]
+    fn should_find_when_pushed_and_used() {
+        let mut q = SealingQueue::new(QUEUE_SIZE);
+        let b = create_closed_block(Address::zero());
+        let h = b.hash();
+
+        q.push(b);
+        q.use_last_ref();
+
+        assert!(q.take_used_if(|b| b.hash() == h).is_some());
+    }
+
+    #[test]
+    fn should_find_when_others_used() {
+        let mut q = SealingQueue::new(QUEUE_SIZE);
+        let b1 = create_closed_block(Address::from(1));
+        let b2 = create_closed_block(Address::from(2));
+        let h1 = b1.hash();
+
+        q.push(b1);
+        q.use_last_ref();
+        q.push(b2);
+        q.use_last_ref();
+
+        assert!(q.take_used_if(|b| b.hash() == h1).is_some());
+    }
+
+    #[test]
+    fn should_not_find_when_too_many_used() {
+        let mut q = SealingQueue::new(1);
+        let b1 = create_closed_block(Address::from(1));
+        let b2 = create_closed_block(Address::from(2));
+        let h1 = b1.hash();
+
+        q.push(b1);
+        q.use_last_ref();
+        q.push(b2);
+        q.use_last_ref();
+
+        assert!(q.take_used_if(|b| b.hash() == h1).is_none());
+    }
+
+    #[test]
+    fn should_not_find_when_not_used_and_then_pushed() {
+        let mut q = SealingQueue::new(QUEUE_SIZE);
+        let b1 = create_closed_block(Address::from(1));
+        let b2 = create_closed_block(Address::from(2));
+        let h1 = b1.hash();
+
+        q.push(b1);
+        q.push(b2);
+        q.use_last_ref();
+
+        assert!(q.take_used_if(|b| b.hash() == h1).is_none());
+    }
+
+    #[test]
+    fn should_peek_correctly_after_push() {
+        let mut q = SealingQueue::new(QUEUE_SIZE);
+        let b1 = create_closed_block(Address::from(1));
+        let b2 = create_closed_block(Address::from(2));
+        let h1 = b1.hash();
+        let h2 = b2.hash();
+
+        q.push(b1);
+        assert_eq!(q.peek_last_ref().unwrap().hash(), h1);
+
+        q.push(b2);
+        assert_eq!(q.peek_last_ref().unwrap().hash(), h2);
+    }
+
+    #[test]
+    fn should_inspect_correctly() {
+        let mut q = SealingQueue::new(QUEUE_SIZE);
+        let b1 = create_closed_block(Address::from(1));
+        let b2 = create_closed_block(Address::from(2));
+        let h1 = b1.hash();
+        let h2 = b2.hash();
+
+        q.push(b1);
+        assert_eq!(q.use_last_ref().unwrap().hash(), h1);
+        assert_eq!(q.peek_last_ref().unwrap().hash(), h1);
+
+        q.push(b2);
+        assert_eq!(q.use_last_ref().unwrap().hash(), h2);
+        assert_eq!(q.peek_last_ref().unwrap().hash(), h2);
+    }
+
+    #[test]
+    fn should_not_find_when_not_used_peeked_and_then_pushed() {
+        let mut q = SealingQueue::new(QUEUE_SIZE);
+        let b1 = create_closed_block(Address::from(1));
+        let b2 = create_closed_block(Address::from(2));
+        let h = b1.hash();
+
+        q.push(b1);
+        q.peek_last_ref();
+        q.push(b2);
+        q.use_last_ref();
+
+        assert!(q.take_used_if(|b| b.hash() == h).is_none());
+    }
+
+}
