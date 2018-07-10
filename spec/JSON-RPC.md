@@ -571,8 +571,8 @@ Response Example
 }],"id":null}
 ```
 
-## chain_getCoinbase (not implemented)
-Gets coinbase's account id.
+## chain_getCoinbase
+(not implemented) Gets coinbase's account id.
 
 Params: No parameters
 
@@ -587,7 +587,9 @@ Request Example
 ```
 
 Response Example
+```
 {"jsonrpc":"2.0","result":"0xa6594b7196808d161b6fb137e781abbc251385d9","id":null}
+```
 
 ## miner_getWork
 Returns the hash of the current block, the score and the block number.
