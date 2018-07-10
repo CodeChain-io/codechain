@@ -13,31 +13,29 @@ In the current version, it's only supported through HTTP.
 
 ## block object
 
- - author: `string`
+ - author: `160 bit hexadecimal string`
  - extraData: Array of any
- - hash: `string`
+ - hash: `256 bit hexadecimal string`
  - invoicesRoot: `string`
  - number: `number`
  - parcels: Array of `parcel object`
- - parcelsRoot: `string`
- - parentHash: `string`
+ - parcelsRoot: `256 bit hexadecimal string`
+ - parentHash: `256 bit hexadecimal string`
  - score: `number`
  - seal: Array of `string`
- - stateRoot: `string`
+ - stateRoot: `256 bit hexadecimal string`
  - timestamp: `number`
 
 ## parcel object
 
- - blockHash: `string`
+ - blockHash: `256 bit hexadecimal string`
  - blockNumber: `number`
- - fee: `string`
- - hash: `string`
+ - fee: `hexadecimal string of 256 bit unsigned integer`
+ - hash: `256 bit hexadecimal string`
  - networkId: `number`
- - nonce: `string`
+ - nonce: `hexadecimal string of 256 bit unsigned integer`
  - parcelIndex: `number`
- - r: `string`
- - s: `string`
- - v: `number`
+ - sig: `520 bit hexadecimal string` for ECDSA signature or `512 bit hexadecimal string` for Schnorr signature
  - action: `action object`
 
 ## action objects
@@ -50,13 +48,13 @@ In the current version, it's only supported through HTTP.
 ### Payment action object
 
  - action: "payment"
- - receiver: `string`
- - value: `string`
+ - receiver: `160 bit hexadecimal string`
+ - amount: `hexadecimal string of 256 bit unsigned integer`
 
 ### SetRegularKey action object
 
  - action: "setRegularKey"
- - key: `string`
+ - key: `512 bit hexadecimal string`
 
 ## transaction object
 
@@ -67,14 +65,14 @@ In the current version, it's only supported through HTTP.
 
  - amount: `number`
  - metadata: `string`
- - registrar: `string` or `null`
+ - registrar: `160 bit hexadecimal string` or `null`
 
 ## asset object
 
  - amount: `number`
- - asset_type: `string`
- - lock_script_hash: `string`
- - parameters: Array of `string`
+ - asset_type: `256 bit hexadecimal string`
+ - lock_script_hash: `256 bit hexadecimal string`
+ - parameters: Array of `hexadecimal string`
 
 # List of methods
 
@@ -117,7 +115,7 @@ Sends ping to check whether CodeChain's RPC server is responding or not
 
 Params: No parameters
 
-Return Type: `string`
+Return Type: `string` - "pong"
 
 Request Example
 ```
@@ -137,7 +135,7 @@ Gets the version of CodeChain
 
 Params: No parameters
 
-Return Type: `string`
+Return Type: `string` - e.g. 0.1.0
 
 Request Example
 ```
@@ -177,7 +175,7 @@ Gets the number and the hash of the best block.
 
 Params: No parameters
 
-Return Type: { number: `number`, hash: `string` }
+Return Type: { number: `number`, hash: `256 bit hexadecimal string` }
 
 Request Example
 ```
@@ -198,7 +196,7 @@ Gets the hash of the block with given number.
 Params:
  1. n - `number`
 
-Return Type: `null` or `string`
+Return Type: `null` or `256 bit hexadecimal string`
 
 Request Example:
 ```
@@ -217,7 +215,7 @@ Response Example
 Gets block with given hash.
 
 Params:
- 1. hash: `string`
+ 1. hash: `256 bit hexadecimal string`
 
 Return Type: `null` or `block object`
 
@@ -272,9 +270,9 @@ Response Example
 Sends signed parcel, returning its hash.
 
 Params: 
- 1. bytes: `string` - RLP encoded hex string of SignedParcel
+ 1. bytes: `hexadecimal string` - RLP encoded hex string of SignedParcel
 
-Return Type: `string` - parcel hash
+Return Type: `256 bit hexadecimal string` - parcel hash
 
 Request Example:
 ```
@@ -293,7 +291,7 @@ Response Example
 Gets parcel with given hash.
 
 Params:
- 1. parcel hash - `string`
+ 1. parcel hash - `256 bit hexadecimal string`
 
 Return Type: `null` or `parcel object`
 
@@ -333,9 +331,9 @@ Response Example
 Gets a parcel invoice with given hash.
 
 Params:
- 1. parcel hash - `string`
+ 1. parcel hash - `256 bit hexadecimal string`
 
-Return Type: `null` or Array of string `Success` or `Failed`
+Return Type: `null` or Array of string. The string either `Success` or `Failed`
 
 Request Example
 ```
@@ -354,7 +352,7 @@ Response Example
 Gets transaction invoice with given hash
 
 Params:
- 1. transaction hash - `string`
+ 1. transaction hash - `256 bit hexadecimal string`
 
 Return Type: `null` or string `Success` or `Failed`
 
@@ -375,7 +373,7 @@ Response Example
 Gets asset scheme with given asset type.
 
 Params:
- 1. transaction hash of AssetMintTransaction - `string`
+ 1. transaction hash of AssetMintTransaction - `256 bit hexadecimal string`
 
 Return Type: `null` or `asset scheme object`
 
@@ -400,7 +398,7 @@ Response Example
 Gets asset with given asset type.
 
 Params:
- 1. transaction hash of AssetMintTransaction or AssetTransferTransaction - `string`
+ 1. transaction hash of AssetMintTransaction or AssetTransferTransaction - `256 bit hexadecimal string`
  2. index - `number`
 
 Return Type: `null` or `asset object`
@@ -427,10 +425,10 @@ Response Example
 Gets nonce of an account of given address, at state of given blockNumber.
 
 Params:
- 1. address: `string`
+ 1. address: `160 bit hexadecimal string`
  2. block number: `number` or `null`
 
-Return Type: `string`
+Return Type: `hexadecimal string for 256 bit unsigned integer`
 
 Request Example
 ```
@@ -449,10 +447,10 @@ Response Example
 Gets balance of an account of given address, at state of given blockNumber.
 
 Params:
- 1. address: `string`
+ 1. address: `160 bit hexadecimal string`
  2. block number: `number` or `null`
 
-Return Type: `string`
+Return Type: `hexadecimal string for 256 bit unsigned integer`
 
 Request Example
 ```
@@ -471,10 +469,10 @@ Response Example
 Gets the regular key of an account of given address, at state of given blockNumber.
 
 Params:
- 1. address: `string`
+ 1. address: `160 bit hexadecimal string`
  2. block number: `number` or `null`
 
-Return Type: `string` - 512-bit public key
+Return Type: `512 bit hexadecimal string` - 512-bit public key
 
 Request Example
 ```
@@ -517,7 +515,7 @@ Param:
 1. shard id: `number`
 1. block number: `number` or `null`
 
-Return Type: `null` or `string` - the root of shard
+Return Type: `null` or `256 bit hexadecimal string` - the root of shard
 
 Request Example
 ```
