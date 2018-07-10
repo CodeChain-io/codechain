@@ -75,9 +75,7 @@ impl From<CoreBlock> for Block {
                         network_id: unverified.as_unsigned().network_id,
                         action: unverified.as_unsigned().action.clone(),
                         hash: unverified.hash(),
-                        v: sig.v(),
-                        r: sig.r().into(),
-                        s: sig.s().into(),
+                        sig: sig.into(),
                     }
                 })
                 .collect(),

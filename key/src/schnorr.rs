@@ -32,6 +32,18 @@ pub type SchnorrSignatureData = H512;
 
 pub struct SchnorrSignature([u8; 64]);
 
+impl SchnorrSignature {
+    /// Check if this is a "low" signature.
+    pub fn is_low_s(&self) -> bool {
+        true
+    }
+
+    pub fn is_unsigned(&self) -> bool {
+        let signature_data: H512 = self.0.into();
+        signature_data.is_zero()
+    }
+}
+
 // manual implementation large arrays don't have trait impls by default.
 // remove when integer generics exist
 impl PartialEq for SchnorrSignature {

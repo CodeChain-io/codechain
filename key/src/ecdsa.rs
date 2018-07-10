@@ -88,6 +88,10 @@ impl ECDSASignature {
             && H256::from_slice(self.s()) < "fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141".into()
             && H256::from_slice(self.s()) >= 1.into()
     }
+
+    pub fn is_unsigned(&self) -> bool {
+        self.r().is_zero() && self.s().is_zero()
+    }
 }
 
 // manual implementation large arrays don't have trait impls by default.

@@ -18,7 +18,7 @@ use std::fmt;
 use std::ops::Deref;
 
 use ccrypto::blake256;
-use ckey::{self, public_to_address, recover, sign, Private, Public, Signature};
+use ckey::{self, public_to_address, recover, sign, Private, Public, Signature, SignatureData};
 use ctypes::{Address, Bytes, H160, H256, U256};
 use heapsize::HeapSizeOf;
 use rlp::{self, DecoderError, Encodable, RlpStream, UntrustedRlp};
@@ -258,9 +258,7 @@ impl Parcel {
     pub fn with_signature(self, sig: Signature) -> UnverifiedParcel {
         UnverifiedParcel {
             unsigned: self,
-            r: sig.r().into(),
-            s: sig.s().into(),
-            v: sig.v(),
+            sig: sig.into(),
             hash: 0.into(),
         }.compute_hash()
     }
@@ -271,13 +269,8 @@ impl Parcel {
 pub struct UnverifiedParcel {
     /// Plain Parcel.
     unsigned: Parcel,
-    /// The V field of the signature; the LS bit described which half of the curve our point falls
-    /// in.
-    v: u8,
-    /// The R field of the signature; helps describe the point on the curve.
-    r: U256,
-    /// The S field of the signature; helps describe the point on the curve.
-    s: U256,
+    /// Signature.
+    sig: SignatureData,
     /// Hash of the parcel
     hash: H256,
 }
@@ -292,7 +285,7 @@ impl Deref for UnverifiedParcel {
 
 impl rlp::Decodable for UnverifiedParcel {
     fn decode(d: &UntrustedRlp) -> Result<Self, DecoderError> {
-        if d.item_count()? != 7 {
+        if d.item_count()? != 5 {
             return Err(DecoderError::RlpIncorrectListLen)
         }
         let hash = blake256(d.as_raw());
@@ -303,9 +296,7 @@ impl rlp::Decodable for UnverifiedParcel {
                 network_id: d.val_at(2)?,
                 action: d.val_at(3)?,
             },
-            v: d.val_at(4)?,
-            r: d.val_at(5)?,
-            s: d.val_at(6)?,
+            sig: d.val_at(4)?,
             hash,
         })
     }
@@ -327,19 +318,17 @@ impl UnverifiedParcel {
 
     /// Checks is signature is empty.
     pub fn is_unsigned(&self) -> bool {
-        self.r.is_zero() && self.s.is_zero()
+        self.signature().is_unsigned()
     }
 
     /// Append object with a signature into RLP stream
     fn rlp_append_sealed_parcel(&self, s: &mut RlpStream) {
-        s.begin_list(7);
+        s.begin_list(5);
         s.append(&self.nonce);
         s.append(&self.fee);
         s.append(&self.network_id);
         s.append(&self.action);
-        s.append(&self.v);
-        s.append(&self.r);
-        s.append(&self.s);
+        s.append(&self.sig);
     }
 
     /// Reference to unsigned part of this parcel.
@@ -354,7 +343,7 @@ impl UnverifiedParcel {
 
     /// Construct a signature object from the sig.
     pub fn signature(&self) -> Signature {
-        Signature::from_rsv(&self.r.into(), &self.s.into(), self.v)
+        Signature::from(self.sig)
     }
 
     /// Recovers the public key of the sender.
@@ -545,7 +534,8 @@ pub struct AssetTransferOutput {
 
 #[cfg(test)]
 mod tests {
-    use ctypes::{Address, H256, Public, U256};
+    use ckey::SignatureData;
+    use ctypes::{Address, H256, Public};
 
     use super::*;
 
@@ -559,9 +549,7 @@ mod tests {
                     action: Action::CreateShard,
                     network_id: 0xBE,
                 },
-                v: 0,
-                r: U256::default(),
-                s: U256::default(),
+                sig: SignatureData::default(),
                 hash: H256::default(),
             }.compute_hash()
         );
@@ -627,9 +615,7 @@ mod tests {
                         amount: 300.into(),
                     },
                 },
-                v: 0,
-                r: U256::default(),
-                s: U256::default(),
+                sig: SignatureData::default(),
                 hash: H256::default(),
             }.compute_hash()
         );
@@ -647,9 +633,7 @@ mod tests {
                         key: Public::random(),
                     },
                 },
-                v: 0,
-                r: U256::default(),
-                s: U256::default(),
+                sig: SignatureData::default(),
                 hash: H256::default(),
             }.compute_hash()
         );
@@ -665,9 +649,7 @@ mod tests {
                     network_id: 50,
                     action: Action::CreateShard,
                 },
-                v: 0,
-                r: U256::default(),
-                s: U256::default(),
+                sig: SignatureData::default(),
                 hash: H256::default(),
             }.compute_hash()
         );
