@@ -84,10 +84,16 @@ CLI Options for CodeChain client
         Do not show any synchronization information in the console.
 
     ``--chain=[CHAIN]``
-        Set the blockchain type out of solo, solo_authority, tendermint or a path to chain spec file. (default: tendermint)
+        Set the blockchain type out of solo, solo_authority, tendermint or a path to chain spec file. (default: solo)
 
     ``--db-path=[PATH]``
         Specify the database directory path.
+
+    ``--keys-path=[PATH]``
+        Specify the path for JSON key files to be found.
+
+    ``snapshot-path=[PATH]``
+        Specify the snapshot directory path.
 
     ``--no-sync``
         Do not run block sync extension.
@@ -117,6 +123,27 @@ CLI Options for CodeChain client
     ``--engine-signer=[ADDRESS]``
         Specify the address which should be used to sign consensus messages and 
         issue blocks.
+
+    ``--mem-pool-mem-limit=[MB]``
+        Maximum amount of memory that can be used by the mem pool. Setting this parameter to 0 disables limiting.
+
+    ``--mem-pool-size=[LIMIT]``
+        Maximum amount of parcels in the queue (waiting to be included in next block).
+
+    ``notify-work=[URLS]``
+        URLs to which work package notifications are pushed.
+
+    ``force-sealing``
+        Force the node to author new blocks as if it were always sealing/mining.
+
+    ``reseal-min-period=[MS]``
+        Specify the minimum time between reseals from incoming parcels. MS is time measured in milliseconds.
+
+    ``reseal-max-period=[MS]``
+        Specify the maximum time since last block to enable force-sealing. MS is time measured in milliseconds.
+
+    ``work-queue-size=[ITEMS]``
+        Specify the number of historical work packages which are kept cached lest a solution is found for them later. High values take more memory but result in fewer unusable solutions.
 
     ``--no-discovery``
         Do not use discovery. No automated peer finding.
