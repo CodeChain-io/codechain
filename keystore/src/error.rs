@@ -16,7 +16,7 @@
 
 use ccrypto;
 use ccrypto::Error as CCryptoError;
-use ckey::Error as CKeysError;
+use ckey::Error as CKeyError;
 use std::fmt;
 use std::io::Error as IoError;
 
@@ -38,7 +38,7 @@ pub enum Error {
     /// Account creation failed.
     CreationFailed,
     /// `ckeys` error
-    CKeys(CKeysError),
+    CKey(CKeyError),
     /// `CCrypto` error
     CCrypto(CCryptoError),
     /// Custom error
@@ -55,7 +55,7 @@ impl fmt::Display for Error {
             Error::InvalidMessage => "Invalid message".into(),
             Error::InvalidKeyFile(ref reason) => format!("Invalid key file: {}", reason),
             Error::CreationFailed => "Account creation failed".into(),
-            Error::CKeys(ref err) => err.to_string(),
+            Error::CKey(ref err) => err.to_string(),
             Error::CCrypto(ref err) => err.to_string(),
             Error::Custom(ref s) => s.clone(),
         };
@@ -70,9 +70,9 @@ impl From<IoError> for Error {
     }
 }
 
-impl From<CKeysError> for Error {
-    fn from(err: CKeysError) -> Self {
-        Error::CKeys(err)
+impl From<CKeyError> for Error {
+    fn from(err: CKeyError) -> Self {
+        Error::CKey(err)
     }
 }
 

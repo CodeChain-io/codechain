@@ -17,7 +17,7 @@
 use std::fmt;
 use std::sync::Arc;
 
-use ckey::{public_to_address, Error as KeysError, Generator, KeyPair, Message, Private, Public, Random, Signature};
+use ckey::{public_to_address, Error as KeyError, Generator, KeyPair, Message, Private, Public, Random, Signature};
 use ckeystore::accounts_dir::MemoryDirectory;
 use ckeystore::{Error as KeystoreError, KeyStore, SimpleSecretStore};
 use ctypes::Address;
@@ -31,16 +31,16 @@ pub enum SignError {
     /// Account does not exist.
     NotFound,
     /// Key error.
-    KeysError(KeysError),
+    KeyError(KeyError),
     /// Keystore error.
     KeystoreError(KeystoreError),
     /// Inappropriate chain
     InappropriateChain,
 }
 
-impl From<KeysError> for SignError {
-    fn from(e: KeysError) -> Self {
-        SignError::KeysError(e)
+impl From<KeyError> for SignError {
+    fn from(e: KeyError) -> Self {
+        SignError::KeyError(e)
     }
 }
 
@@ -55,7 +55,7 @@ impl fmt::Display for SignError {
         match self {
             SignError::NotUnlocked => write!(f, "Account is locked"),
             SignError::NotFound => write!(f, "Account does not exist"),
-            SignError::KeysError(e) => write!(f, "{}", e),
+            SignError::KeyError(e) => write!(f, "{}", e),
             SignError::KeystoreError(e) => write!(f, "{}", e),
             SignError::InappropriateChain => write!(f, "Inappropriate chain"),
         }

@@ -23,7 +23,7 @@ use std::sync::Arc;
 use ccrypto::aes::SymmetricCipherError;
 use cfinally::finally;
 use cio::{IoChannel, IoContext, IoError as CIoError, IoHandler, IoHandlerResult, IoManager, StreamToken, TimerToken};
-use ckey::Error as KeysError;
+use ckey::Error as KeyError;
 use ctypes::Secret;
 use mio::deprecated::EventLoop;
 use mio::Token;
@@ -101,7 +101,7 @@ enum Error {
     CIo(CIoError),
     Decoder(DecoderError),
     SymmetricCipher(SymmetricCipherError),
-    Keys(KeysError),
+    Key(KeyError),
     General(&'static str),
 }
 
@@ -113,7 +113,7 @@ impl fmt::Display for Error {
             Error::CIo(err) => err.fmt(f),
             Error::Decoder(err) => err.fmt(f),
             Error::SymmetricCipher(_) => fmt::Debug::fmt(&self, f),
-            Error::Keys(err) => err.fmt(f),
+            Error::Key(err) => err.fmt(f),
             Error::General(_) => fmt::Debug::fmt(&self, f),
         }
     }
@@ -127,7 +127,7 @@ impl error::Error for Error {
             Error::CIo(err) => err.description(),
             Error::Decoder(err) => err.description(),
             Error::SymmetricCipher(_) => "SymmetricCipherError",
-            Error::Keys(_) => "KeysError",
+            Error::Key(_) => "KeyError",
             Error::General(str) => str,
         }
     }
@@ -139,7 +139,7 @@ impl error::Error for Error {
             Error::CIo(_) => None,
             Error::Decoder(err) => Some(err),
             Error::SymmetricCipher(_) => None,
-            Error::Keys(_) => None,
+            Error::Key(_) => None,
             Error::General(_) => None,
         }
     }
@@ -174,9 +174,9 @@ impl From<SymmetricCipherError> for Error {
     }
 }
 
-impl From<KeysError> for Error {
-    fn from(err: KeysError) -> Error {
-        Error::Keys(err)
+impl From<KeyError> for Error {
+    fn from(err: KeyError) -> Error {
+        Error::Key(err)
     }
 }
 
