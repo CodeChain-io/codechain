@@ -161,6 +161,7 @@ Next, we create an output which gives 3000 gold to Bob, and returns 7000 gold to
 
 By using Alice's signature, the 10000 Gold that was first minted can now be transferred to other users like Bob.
 ::
+
     await sendTransaction(transferTx);
     const transferTxInvoice = await sdk.rpc.chain.getTransactionInvoice(transferTx.hash(), 5 * 60 * 1000);
     if (!transferTxInvoice.success) {
