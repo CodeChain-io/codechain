@@ -29,6 +29,7 @@ use super::parcel::{AssetTransferInput, AssetTransferOutput};
 pub enum Transaction {
     #[serde(rename_all = "camelCase")]
     AssetMint {
+        network_id: u64,
         metadata: String,
         lock_script_hash: H256,
         parameters: Vec<Bytes>,
@@ -101,16 +102,17 @@ impl Decodable for Transaction {
     fn decode(d: &UntrustedRlp) -> Result<Self, DecoderError> {
         match d.val_at(0)? {
             ASSET_MINT_ID => {
-                if d.item_count()? != 7 {
+                if d.item_count()? != 8 {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
                 Ok(Transaction::AssetMint {
-                    metadata: d.val_at(1)?,
-                    lock_script_hash: d.val_at(2)?,
-                    parameters: d.val_at(3)?,
-                    amount: d.val_at(4)?,
-                    registrar: d.val_at(5)?,
-                    nonce: d.val_at(6)?,
+                    network_id: d.val_at(1)?,
+                    metadata: d.val_at(2)?,
+                    lock_script_hash: d.val_at(3)?,
+                    parameters: d.val_at(4)?,
+                    amount: d.val_at(5)?,
+                    registrar: d.val_at(6)?,
+                    nonce: d.val_at(7)?,
                 })
             }
             ASSET_TRANSFER_ID => {
@@ -134,14 +136,16 @@ impl Encodable for Transaction {
     fn rlp_append(&self, s: &mut RlpStream) {
         match self {
             Transaction::AssetMint {
+                network_id,
                 metadata,
                 lock_script_hash,
                 parameters,
                 amount,
                 registrar,
                 nonce,
-            } => s.begin_list(7)
+            } => s.begin_list(8)
                 .append(&ASSET_MINT_ID)
+                .append(network_id)
                 .append(metadata)
                 .append(lock_script_hash)
                 .append(parameters)

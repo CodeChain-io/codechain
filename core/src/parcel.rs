@@ -78,7 +78,7 @@ pub fn parcel_error_message(error: &ParcelError) -> String {
         AlreadyImported => "Already imported".into(),
         Old => "No longer valid".into(),
         TooCheapToReplace => "Fee too low to replace".into(),
-        InvalidNetworkId => "Parcel of this network ID is not allowed on this chain.".into(),
+        InvalidNetworkId => "This network ID is not allowed on this chain".into(),
         MetadataTooBig => "Metadata size is too big.".into(),
         LimitReached => "Parcel limit reached".into(),
         InsufficientFee {
@@ -375,11 +375,15 @@ impl UnverifiedParcel {
                 for t in transactions {
                     match &t {
                         Transaction::AssetMint {
+                            network_id,
                             metadata,
                             ..
                         } => {
                             if metadata.len() > params.max_metadata_size {
                                 return Err(ParcelError::MetadataTooBig)
+                            }
+                            if network_id != &self.network_id {
+                                return Err(ParcelError::InvalidNetworkId)
                             }
                         }
                         Transaction::AssetTransfer {
