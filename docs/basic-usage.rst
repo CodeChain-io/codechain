@@ -46,7 +46,7 @@ The way each node is connected does not matter, as long as each node is connecte
 the node with a secret key of 1, use this command:
 ::
 
-    codechain --db-path db/db0 --port 3485 --jsonrpc-port 8080 --secret-key 0000000000000000000000000000000000000000000000000000000000000001 -c tendermint --bootstrap-addresses 127.0.0.1:8080
+    codechain --db-path db/db1 --port 3486 --jsonrpc-port 8081 --secret-key 0000000000000000000000000000000000000000000000000000000000000002 -c tendermint --bootstrap-addresses 127.0.0.1:3485
 
 Checking if CodeChain is Configured Properly
 ============================================

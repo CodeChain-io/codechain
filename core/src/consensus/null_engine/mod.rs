@@ -51,12 +51,12 @@ impl<M: WithBalances> ConsensusEngine<M> for NullEngine<M> {
         &self.machine
     }
 
+    fn verify_local_seal(&self, _header: &M::Header) -> Result<(), M::Error> {
+        Ok(())
+    }
+
     fn on_close_block(&self, block: &mut M::LiveBlock) -> Result<(), M::Error> {
         let author = *LiveBlock::header(&*block).author();
         self.machine.add_balance(block, &author, &self.params.block_reward)
-    }
-
-    fn verify_local_seal(&self, _header: &M::Header) -> Result<(), M::Error> {
-        Ok(())
     }
 }

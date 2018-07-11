@@ -11,68 +11,76 @@ In the current version, it's only supported through HTTP.
 
 # List of types
 
-## block object
+## H160, H256, H512, ...
 
- - author: `160 bit hexadecimal string`
- - extraData: Array of any
- - hash: `256 bit hexadecimal string`
- - invoicesRoot: `string`
+A XXX-bit hexadecimal string. (e.g. H160: 160-bit hexadecimal string)
+
+## U128, U256, U512, ...
+
+A hexadecimal string for XXX-bit unsigned integer
+
+## BlockObject
+
+ - author: `H160`
+ - extraData: `any[]`
+ - hash: `H256`
+ - invoicesRoot: `H256`
  - number: `number`
- - parcels: Array of `parcel object`
- - parcelsRoot: `256 bit hexadecimal string`
- - parentHash: `256 bit hexadecimal string`
+ - parcels: `ParcelObject[]`
+ - parcelsRoot: `H256`
+ - parentHash: `H256`
  - score: `number`
- - seal: Array of `string`
- - stateRoot: `256 bit hexadecimal string`
+ - seal: `string[]`
+ - stateRoot: `H256`
  - timestamp: `number`
 
-## parcel object
+## ParcelObject
 
- - blockHash: `256 bit hexadecimal string`
+ - blockHash: `H256`
  - blockNumber: `number`
- - fee: `hexadecimal string of 256 bit unsigned integer`
- - hash: `256 bit hexadecimal string`
+ - fee: `U256`
+ - hash: `H256`
  - networkId: `number`
- - nonce: `hexadecimal string of 256 bit unsigned integer`
+ - nonce: `U256`
  - parcelIndex: `number`
- - sig: `520 bit hexadecimal string` for ECDSA signature or `512 bit hexadecimal string` for Schnorr signature
- - action: `action object`
+ - sig: `H520` for ECDSA signature | `H512` for Schnorr signature
+ - action: `ActionObject`
 
-## action objects
+## ActionObjects
 
-### ChangeShardState action object
+### ChangeShardState ActionObject
 
  - action: "changeShardState"
- - transactions: Array of `transaction object`
+ - transactions: `TransactionObject[]`
 
-### Payment action object
+### Payment ActionObject
 
  - action: "payment"
- - receiver: `160 bit hexadecimal string`
- - amount: `hexadecimal string of 256 bit unsigned integer`
+ - receiver: `H160`
+ - amount: `U256`
 
-### SetRegularKey action object
+### SetRegularKey ActionObject
 
  - action: "setRegularKey"
- - key: `512 bit hexadecimal string`
+ - key: `H512`
 
-## transaction object
+## TransactionObject
 
- - type: `string` - "assetMint" | "assetTransfer"
- - data: `asset mint object` or `asset transfer object`
+ - type: "assetMint" | "assetTransfer"
+ - data: `AssetMintObject` | `AssetTransferObject`
 
-## asset scheme object
+## AssetSchemeObject
 
  - amount: `number`
  - metadata: `string`
- - registrar: `160 bit hexadecimal string` or `null`
+ - registrar: `H160` | `null`
 
-## asset object
+## AssetObject
 
  - amount: `number`
- - asset_type: `256 bit hexadecimal string`
- - lock_script_hash: `256 bit hexadecimal string`
- - parameters: Array of `hexadecimal string`
+ - asset_type: `H256`
+ - lock_script_hash: `H256`
+ - parameters: `hexadecimal string[]`
 
 # List of methods
 
@@ -128,7 +136,11 @@ Request Example
 
 Response Example
 ```
-{"jsonrpc":"2.0","result":"pong","id":null}
+{
+  "jsonrpc":"2.0",
+  "result":"pong",
+  "id":null
+}
 ```
 
 ## version
@@ -148,7 +160,11 @@ Request Example
 
 Response Example
 ```
-{"jsonrpc":"2.0","result":"0.1.0","id":null}
+{
+  "jsonrpc":"2.0",
+  "result":"0.1.0",
+  "id":null
+}
 ```
 
 ## chain_getBestBlockNumber
@@ -168,7 +184,11 @@ Request Example
 
 Response Example
 ```
-{"jsonrpc":"2.0","result":1,"id":null}
+{
+  "jsonrpc":"2.0",
+  "result":1,
+  "id":null
+}
 ```
 
 ## chain_getBestBlockId
@@ -176,7 +196,7 @@ Gets the number and the hash of the best block.
 
 Params: No parameters
 
-Return Type: { number: `number`, hash: `256 bit hexadecimal string` }
+Return Type: { number: `number`, hash: `H256` }
 
 Request Example
 ```
@@ -188,7 +208,14 @@ Request Example
 
 Response Example
 ```
-{"jsonrpc":"2.0","result":{"hash":"0x56642f04d519ae3262c7ba6facf1c5b11450ebaeb7955337cfbc45420d573077","number":1},"id":null}
+{
+  "jsonrpc":"2.0",
+  "result":{
+    "hash":"0x56642f04d519ae3262c7ba6facf1c5b11450ebaeb7955337cfbc45420d573077",
+    "number":1
+  },
+  "id":null
+}
 ```
 
 ## chain_getBlockHash
@@ -197,7 +224,7 @@ Gets the hash of the block with given number.
 Params:
  1. n - `number`
 
-Return Type: `null` or `256 bit hexadecimal string`
+Return Type: `null` | `H256`
 
 Request Example:
 ```
@@ -209,16 +236,20 @@ Request Example:
 
 Response Example
 ```
-{"jsonrpc":"2.0","result":"0x56642f04d519ae3262c7ba6facf1c5b11450ebaeb7955337cfbc45420d573077","id":null}
+{
+  "jsonrpc":"2.0",
+  "result":"0x56642f04d519ae3262c7ba6facf1c5b11450ebaeb7955337cfbc45420d573077",
+  "id":null
+}
 ```
 
 ## chain_getBlockByHash
 Gets block with given hash.
 
 Params:
- 1. hash: `256 bit hexadecimal string`
+ 1. hash: `H256`
 
-Return Type: `null` or `block object`
+Return Type: `null` | `BlockObject`
 
 Request Example:
 ```
@@ -231,39 +262,45 @@ Request Example:
 Response Example
 ```
 {
-    "id": null,
-    "jsonrpc": "2.0",
-    "result": {
-        "author": "0x84137e7a75043bed32e4458a45da7549a8169b4d",
-        "extraData": [],
-        "hash": "0x49b5fda89dbfa92e9a744d3019790107757d189608e2cfe15e796825f4561959",
-        "invoicesRoot": "0x45b0cfc220ceec5b7c1c62c4d4193d38e4eba48e8815729ce75f9c0ab0e4c1c0",
-        "number": 1,
-        "parcels": [
-            {
-                "action": {
-                    "action": "changeShardState",
-                    "transactions": []
-                },
-                "blockHash": "0x49b5fda89dbfa92e9a744d3019790107757d189608e2cfe15e796825f4561959",
-                "blockNumber": 1,
-                "fee": "0xa",
-                "hash": "0x20dced7a95e82cf165bbb7ef111bfda24b664e3c3ffd5a255e970300eea5ec56",
-                "networkId": 17,
-                "nonce": "0x0",
-                "parcelIndex": 0,
-                "r": "0xab2f74e74344b0b24932c85e29a4039150ae0b9fab17398b7e138a70022fd09c",
-                "s": "0x364dd6aeee95f45cbd6773c3edc6507d07505f7fbfb5d85ce128d19fa104d2a6",
-                "v": 1
-            }
-        ],
-        "parcelsRoot": "0x934b77fa1ff7f405127de3c63efd44b92dad7ee4ff923c9b77f06abebd4844a4",
-        "parentHash": "0xc2338c8fd5a9b4ca5dd5dd12fc548e796bbb953ee6043afa14377037d0387e25",
-        "score": "0x20000",
-        "seal": [],
-        "stateRoot": "0x223ac1b388a6f3a2e001482d328c7f6f3b8f0b8686d3988224870a8fed99c8b1",
-        "timestamp": 1530694371
-    }
+  "id":null,
+  "jsonrpc":"2.0",
+  "result":{
+    "author":"0x84137e7a75043bed32e4458a45da7549a8169b4d",
+    "extraData":[
+
+    ],
+    "hash":"0x49b5fda89dbfa92e9a744d3019790107757d189608e2cfe15e796825f4561959",
+    "invoicesRoot":"0x45b0cfc220ceec5b7c1c62c4d4193d38e4eba48e8815729ce75f9c0ab0e4c1c0",
+    "number":1,
+    "parcels":[
+      {
+        "action":{
+          "action":"changeShardState",
+          "transactions":[
+
+          ]
+        },
+        "blockHash":"0x49b5fda89dbfa92e9a744d3019790107757d189608e2cfe15e796825f4561959",
+        "blockNumber":1,
+        "fee":"0xa",
+        "hash":"0x20dced7a95e82cf165bbb7ef111bfda24b664e3c3ffd5a255e970300eea5ec56",
+        "networkId":17,
+        "nonce":"0x0",
+        "parcelIndex":0,
+        "r":"0xab2f74e74344b0b24932c85e29a4039150ae0b9fab17398b7e138a70022fd09c",
+        "s":"0x364dd6aeee95f45cbd6773c3edc6507d07505f7fbfb5d85ce128d19fa104d2a6",
+        "v":1
+      }
+    ],
+    "parcelsRoot":"0x934b77fa1ff7f405127de3c63efd44b92dad7ee4ff923c9b77f06abebd4844a4",
+    "parentHash":"0xc2338c8fd5a9b4ca5dd5dd12fc548e796bbb953ee6043afa14377037d0387e25",
+    "score":"0x20000",
+    "seal":[
+
+    ],
+    "stateRoot":"0x223ac1b388a6f3a2e001482d328c7f6f3b8f0b8686d3988224870a8fed99c8b1",
+    "timestamp":1530694371
+  }
 }
 ```
 
@@ -273,7 +310,7 @@ Sends signed parcel, returning its hash.
 Params: 
  1. bytes: `hexadecimal string` - RLP encoded hex string of SignedParcel
 
-Return Type: `256 bit hexadecimal string` - parcel hash
+Return Type: `H256` - parcel hash
 
 Request Example:
 ```
@@ -285,16 +322,20 @@ Request Example:
 
 Response Example
 ```
-{"jsonrpc":"2.0","result":"0x20dced7a95e82cf165bbb7ef111bfda24b664e3c3ffd5a255e970300eea5ec56","id":null}
+{
+  "jsonrpc":"2.0",
+  "result":"0x20dced7a95e82cf165bbb7ef111bfda24b664e3c3ffd5a255e970300eea5ec56",
+  "id":null
+}
 ```
 
 ## chain_getParcel
 Gets parcel with given hash.
 
 Params:
- 1. parcel hash - `256 bit hexadecimal string`
+ 1. parcel hash - `H256`
 
-Return Type: `null` or `parcel object`
+Return Type: `null` or `ParcelObject`
 
 Request Example
 ```
@@ -332,9 +373,9 @@ Response Example
 Gets a parcel invoice with given hash.
 
 Params:
- 1. parcel hash - `256 bit hexadecimal string`
+ 1. parcel hash - `H256`
 
-Return Type: `null` or Array of string. The string either `Success` or `Failed`
+Return Type: `null` | string[]. The string either "Success" or "Failed"
 
 Request Example
 ```
@@ -346,16 +387,22 @@ Request Example
 
 Response Example
 ```
-{"jsonrpc":"2.0","result":["Success"],"id":null}
+{
+  "jsonrpc":"2.0",
+  "result":[
+    "Success"
+  ],
+  "id":null
+}
 ```
 
 ## chain_getTransactionInvoice
 Gets transaction invoice with given hash
 
 Params:
- 1. transaction hash - `256 bit hexadecimal string`
+ 1. transaction hash - `H256`
 
-Return Type: `null` or string `Success` or `Failed`
+Return Type: `null` | "Success" | "Failed"
 
 Request Example
 ```
@@ -367,16 +414,20 @@ Request Example
 
 Response Example
 ```
-{"jsonrpc":"2.0","result":"Success","id":null}
+{
+  "jsonrpc":"2.0",
+  "result":"Success",
+  "id":null
+}
 ```
 
 ## chain_getAssetScheme
 Gets asset scheme with given asset type.
 
 Params:
- 1. transaction hash of AssetMintTransaction - `256 bit hexadecimal string`
+ 1. transaction hash of AssetMintTransaction - `H256`
 
-Return Type: `null` or `asset scheme object`
+Return Type: `null` | `AssetSchemeObject`
 
 Request Example
 ```
@@ -388,21 +439,25 @@ Request Example
 
 Response Example
 ```
-{"jsonrpc":"2.0","result":{
-  "amount":100,
-  "metadata":"",
-  "registrar":null
-},"id":null}
+{
+  "jsonrpc":"2.0",
+  "result":{
+    "amount":100,
+    "metadata":"",
+    "registrar":null
+  },
+  "id":null
+}
 ```
 
 ## chain_getAsset
 Gets asset with given asset type.
 
 Params:
- 1. transaction hash of AssetMintTransaction or AssetTransferTransaction - `256 bit hexadecimal string`
+ 1. transaction hash - `H256`
  2. index - `number`
 
-Return Type: `null` or `asset object`
+Return Type: `null` | `AssetObject`
 
 Request Example
 ```
@@ -414,22 +469,28 @@ Request Example
 
 Response Example
 ```
-{"jsonrpc":"2.0","result":{
-  "amount":100,
-  "asset_type":"0x53000000000000002ec1193ecd52e2833ffc10b45bea1fda49f857e34db67c68",
-  "lock_script_hash":"0x0000000000000000000000000000000000000000000000000000000000000000",
-  "parameters":[]
-},"id":null}
+{
+  "jsonrpc":"2.0",
+  "result":{
+    "amount":100,
+    "asset_type":"0x53000000000000002ec1193ecd52e2833ffc10b45bea1fda49f857e34db67c68",
+    "lock_script_hash":"0x0000000000000000000000000000000000000000000000000000000000000000",
+    "parameters":[
+
+    ]
+  },
+  "id":null
+}
 ```
 
 ## chain_getNonce
 Gets nonce of an account of given address, at state of given blockNumber.
 
 Params:
- 1. address: `160 bit hexadecimal string`
- 2. block number: `number` or `null`
+ 1. address: `H160`
+ 2. block number: `number` | `null`
 
-Return Type: `hexadecimal string for 256 bit unsigned integer`
+Return Type: `U256`
 
 Request Example
 ```
@@ -441,17 +502,21 @@ Request Example
 
 Response Example
 ```
-{"jsonrpc":"2.0","result":"0x54","id":null}
+{
+  "jsonrpc":"2.0",
+  "result":"0x54",
+  "id":null
+}
 ```
 
 ## chain_getBalance
 Gets balance of an account of given address, at state of given blockNumber.
 
 Params:
- 1. address: `160 bit hexadecimal string`
- 2. block number: `number` or `null`
+ 1. address: `H160`
+ 2. block number: `number` | `null`
 
-Return Type: `hexadecimal string for 256 bit unsigned integer`
+Return Type: `U256`
 
 Request Example
 ```
@@ -463,17 +528,21 @@ Request Example
 
 Response Example
 ```
-{"jsonrpc":"2.0","result":"0xe8d4a50dd0","id":null}
+{
+  "jsonrpc":"2.0",
+  "result":"0xe8d4a50dd0",
+  "id":null
+}
 ```
 
 ## chain_getRegularKey
 Gets the regular key of an account of given address, at state of given blockNumber.
 
 Params:
- 1. address: `160 bit hexadecimal string`
- 2. block number: `number` or `null`
+ 1. address: `H160`
+ 2. block number: `number` | `null`
 
-Return Type: `512 bit hexadecimal string` - 512-bit public key
+Return Type: `H512` - 512-bit public key
 
 Request Example
 ```
@@ -485,14 +554,18 @@ Request Example
 
 Response Example
 ```
-{"jsonrpc":"2.0","result":"0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000","id":null}
+{
+  "jsonrpc":"2.0",
+  "result":"0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+  "id":null
+}
 ```
 
 ## chain_getNumberOfShards
 Gets the number of shards, at state of given blockNumber.
 
 Param:
-1. block number: `number` or `null`
+1. block number: `number` | `null`
 
 Return Type: `number` - the number of shards
 
@@ -506,7 +579,11 @@ Request Example
 
 Response Example
 ```
-{"jsonrpc":"2.0","result":3,"id":null}
+{
+  "jsonrpc":"2.0",
+  "result":3,
+  "id":null
+}
 ```
 
 ## chain_getShardRoot
@@ -514,9 +591,9 @@ Gets the root of shard, at state of given blockNumber.
 
 Param:
 1. shard id: `number`
-1. block number: `number` or `null`
+1. block number: `number` | `null`
 
-Return Type: `null` or `256 bit hexadecimal string` - the root of shard
+Return Type: `null` | `H256` - the root of shard
 
 Request Example
 ```
@@ -528,7 +605,11 @@ Request Example
 
 Response Example
 ```
-{"jsonrpc":"2.0","result":"0xf3841adc1615bfeabb801dda23585c1722b80d810df084a5f2198e92285d4bfd","id":null}
+{
+  "jsonrpc":"2.0",
+  "result":"0xf3841adc1615bfeabb801dda23585c1722b80d810df084a5f2198e92285d4bfd",
+  "id":null
+}
 ```
 
 
@@ -537,7 +618,7 @@ Gets parcels in the current parcel queue.
 
 Params: No parameters
 
-Return Type: Array of `parcel object`
+Return Type: `ParcelObject[]`
 
 Request Example
 ```
@@ -549,26 +630,34 @@ Request Example
 
 Response Example
 ```
-{"jsonrpc":"2.0","result":[{
-  "blockHash":null,
-  "blockNumber":null,
-  "fee":"0xa",
-  "hash":"0x8ae3363ccdcc02d8d662d384deee34fb89d1202124e8065f0d6c84ab31e68d8a",
-  "networkId":17,
-  "nonce":"0x0",
-  "parcelIndex":null,
-  "r":"0x22605d6b9fb713d3a415e02eeed8b4a630e0d867c91bf7d9b7721f94159c0fe1",
-  "s":"0x772f19f1c27f1db8b28289caa9e99ad756878fd56b2415c25cd47cc737f7e0c2",
-  "transactions":[{
-    "payment":{
-      "nonce":"0x1",
-      "receiver":"0xa6594b7196808d161b6fb137e781abbc251385d9",
-      "sender":"0xa6594b7196808d161b6fb137e781abbc251385d9",
-      "value":"0x0"
+{
+  "jsonrpc":"2.0",
+  "result":[
+    {
+      "blockHash":null,
+      "blockNumber":null,
+      "fee":"0xa",
+      "hash":"0x8ae3363ccdcc02d8d662d384deee34fb89d1202124e8065f0d6c84ab31e68d8a",
+      "networkId":17,
+      "nonce":"0x0",
+      "parcelIndex":null,
+      "r":"0x22605d6b9fb713d3a415e02eeed8b4a630e0d867c91bf7d9b7721f94159c0fe1",
+      "s":"0x772f19f1c27f1db8b28289caa9e99ad756878fd56b2415c25cd47cc737f7e0c2",
+      "transactions":[
+        {
+          "payment":{
+            "nonce":"0x1",
+            "receiver":"0xa6594b7196808d161b6fb137e781abbc251385d9",
+            "sender":"0xa6594b7196808d161b6fb137e781abbc251385d9",
+            "value":"0x0"
+          }
+        }
+      ],
+      "v":0
     }
-  }],
-  "v":0
-}],"id":null}
+  ],
+  "id":null
+}
 ```
 
 ## chain_getCoinbase
@@ -576,7 +665,7 @@ Response Example
 
 Params: No parameters
 
-Return Type: `160 bit hexadecimal string` or `null`
+Return Type: `H160` | `null`
 
 Request Example
 ```
@@ -588,7 +677,11 @@ Request Example
 
 Response Example
 ```
-{"jsonrpc":"2.0","result":"0xa6594b7196808d161b6fb137e781abbc251385d9","id":null}
+{
+  "jsonrpc":"2.0",
+  "result":"0xa6594b7196808d161b6fb137e781abbc251385d9",
+  "id":null
+}
 ```
 
 ## miner_getWork
@@ -596,7 +689,7 @@ Returns the hash of the current block, the score and the block number.
 
 Params: No parameters
 
-Return Type: `work object`
+Return Type: `WorkObject`
 
 Request Example
 ```
@@ -608,10 +701,14 @@ Request Example
 
 Response Example
 ```
-{"jsonrpc":"2.0","result":{
-  "powHash": "0x56642f04d519ae3262c7ba6facf1c5b11450ebaeb7955337cfbc45420d573077",
-  "target": 100
-},"id":null}
+{
+  "jsonrpc":"2.0",
+  "result":{
+    "powHash":"0x56642f04d519ae3262c7ba6facf1c5b11450ebaeb7955337cfbc45420d573077",
+    "target":100
+  },
+  "id":null
+}
 ```
 
 ## miner_submitWork
@@ -619,7 +716,7 @@ Used for submitting a proof-of-work solution.
 
 Params:
  1. powHash: `string`
- 1. seal: Array of `string`
+ 1. seal: `string[]`
 
 Return Type: `bool`
 
@@ -633,7 +730,11 @@ Request Example
 
 Response Example
 ```
-{"jsonrpc":"2.0","result":true,"id":6}
+{
+  "jsonrpc":"2.0",
+  "result":true,
+  "id":6
+}
 ```
 
 ## net_shareSecret
@@ -656,7 +757,11 @@ Request Example
 
 Response Example
 ```
-{"jsonrpc":"2.0","result":null,"id":5}
+{
+  "jsonrpc":"2.0",
+  "result":null,
+  "id":5
+}
 ```
 
 ## net_connect
@@ -678,7 +783,11 @@ Request Example
 
 Response Example
 ```
-{"jsonrpc":"2.0","result":null,"id":5}
+{
+  "jsonrpc":"2.0",
+  "result":null,
+  "id":5
+}
 ```
 
 ## net_isConnected
@@ -700,7 +809,11 @@ Request Example
 
 Response Example
 ```
-{"jsonrpc":"2.0","result":true,"id":6}
+{
+  "jsonrpc":"2.0",
+  "result":true,
+  "id":6
+}
 ```
 
 ## net_disconnect
@@ -722,7 +835,11 @@ Request Example
 
 Response Example
 ```
-{"jsonrpc":"2.0","result":true,"id":6}
+{
+  "jsonrpc":"2.0",
+  "result":true,
+  "id":6
+}
 ```
 
 ## devel_getStateTrieKeys
@@ -732,7 +849,7 @@ Params:
  1. offset: `number`
  2. limit: `number`
 
-Return Type: Array of `string` with maximum length _limit_
+Return Type: `string[]` with maximum length _limit_
 
 Request Example
 ```
@@ -744,7 +861,13 @@ Request Example
 
 Response Example
 ```
-{"jsonrpc":"2.0","result":["0x00acf5cba5c53e11f1512b8b480521cb546e7a17a96235a9282f6253b90de043"],"id":null}
+{
+  "jsonrpc":"2.0",
+  "result":[
+    "0x00acf5cba5c53e11f1512b8b480521cb546e7a17a96235a9282f6253b90de043"
+  ],
+  "id":null
+}
 ```
 
 ## devel_getStateTrieValue
@@ -753,7 +876,7 @@ Gets the value of the state trie with given key.
 Params: 
  1. key: `string`
 
-Return Type: Array of `string` - each string is RLP encoded
+Return Type: `string[]` - each string is RLP encoded
 
 Request Example
 ```
@@ -765,5 +888,12 @@ Request Example
 
 Response Example
 ```
-{"jsonrpc":"2.0","result":["0x20d560025f3a1c6675cb32384355ae05b224a3473ae17d3d15b6aa164af7d717","0xf84541a053000000000000002ab33f741ba153ff1ffdf1107845828637c864d5360e4932a00000000000000000000000000000000000000000000000000000000000000000c06f"],"id":null}
+{
+  "jsonrpc":"2.0",
+  "result":[
+    "0x20d560025f3a1c6675cb32384355ae05b224a3473ae17d3d15b6aa164af7d717",
+    "0xf84541a053000000000000002ab33f741ba153ff1ffdf1107845828637c864d5360e4932a00000000000000000000000000000000000000000000000000000000000000000c06f"
+  ],
+  "id":null
+}
 ```
