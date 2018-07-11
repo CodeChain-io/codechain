@@ -112,6 +112,9 @@ A hexadecimal string for XXX-bit unsigned integer
   * [net_connect](#net_connect)
   * [net_isConnected](#net_isconnected)
   * [net_disconnect](#net_disconnect)
+  * [net_getPeerCount](#net_getPeerCount)
+  * [net_getPort](#net_getPort)
+  * [net_getNetworkId](#net_getNetworkId)
 ***
  * [devel_getStateTrieKeys](#devel_getstatetriekeys)
  * [devel_getStateTrieValue](#devel_getstatetrievalue)
@@ -838,6 +841,79 @@ Response Example
 {
   "jsonrpc":"2.0",
   "result":true,
+  "id":6
+}
+```
+
+## net_getPeerCount
+(not implemented) Return the count of peers which client is connected.
+
+Params: No parameters
+
+Return Type: `number`
+
+Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "net_getPeerCount", "params": [], "id": 6}' \
+    localhost:8080
+```
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result": 34,
+  "id":6
+}
+```
+
+
+## net_getPort
+(not implemented) Return the port number on which client is listening for peer
+
+Params: No parameters
+
+Return Type: `number`
+
+Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "net_getPort", "params": [], "id": 6}' \
+    localhost:8080
+```
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result": 3485,
+  "id":6
+}
+```
+
+## net_getNetworkId
+(not implemented) Return the nework id which is used in this chain
+
+Params: No parameters
+
+Return Type: `number`
+
+Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "net_getNetworkId", "params": [], "id": 6}' \
+    localhost:8080
+```
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result": 17,
   "id":6
 }
 ```
