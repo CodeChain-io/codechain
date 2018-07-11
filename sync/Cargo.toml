@@ -7,7 +7,7 @@ authors = ["CodeChain Team <codechain@kodebox.io>"]
 
 [dependencies]
 codechain-core = { path = "../core" }
-codechain-key = { path = "../key" }
+codechain-key = { path = "../key", features = ["ecdsa"] }
 codechain-logger = { path = "../util/logger" }
 codechain-merkle = { path = "../util/merkle" }
 codechain-network = { path = "../network" }
@@ -22,4 +22,4 @@ time = "0.1"
 triehash = { path = "../util/triehash" }
 
 [dev-dependencies]
-codechain-key = { path = "../key" }
+codechain-key = { path = "../key", features = ["ecdsa"] }
