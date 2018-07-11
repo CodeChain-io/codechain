@@ -77,7 +77,7 @@ pub fn parcel_error_message(error: &ParcelError) -> String {
     match error {
         AlreadyImported => "Already imported".into(),
         Old => "No longer valid".into(),
-        TooCheapToReplace => "Gas price too low to replace".into(),
+        TooCheapToReplace => "Fee too low to replace".into(),
         InvalidNetworkId => "Parcel of this network ID is not allowed on this chain.".into(),
         MetadataTooBig => "Metadata size is too big.".into(),
         LimitReached => "Parcel limit reached".into(),
