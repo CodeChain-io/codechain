@@ -18,6 +18,7 @@ parking_lot = "0.5"
 patricia-trie = { path = "../util/patricia_trie" }
 rand = "0.5.3"
 rlp = { path = "../util/rlp" }
+snap = "0.2"
 time = "0.1"
 triehash = { path = "../util/triehash" }
 
