@@ -136,7 +136,11 @@ Request Example
 
 Response Example
 ```
-{"jsonrpc":"2.0","result":"pong","id":null}
+{
+  "jsonrpc":"2.0",
+  "result":"pong",
+  "id":null
+}
 ```
 
 ## version
@@ -156,7 +160,11 @@ Request Example
 
 Response Example
 ```
-{"jsonrpc":"2.0","result":"0.1.0","id":null}
+{
+  "jsonrpc":"2.0",
+  "result":"0.1.0",
+  "id":null
+}
 ```
 
 ## chain_getBestBlockNumber
@@ -176,7 +184,11 @@ Request Example
 
 Response Example
 ```
-{"jsonrpc":"2.0","result":1,"id":null}
+{
+  "jsonrpc":"2.0",
+  "result":1,
+  "id":null
+}
 ```
 
 ## chain_getBestBlockId
@@ -196,7 +208,14 @@ Request Example
 
 Response Example
 ```
-{"jsonrpc":"2.0","result":{"hash":"0x56642f04d519ae3262c7ba6facf1c5b11450ebaeb7955337cfbc45420d573077","number":1},"id":null}
+{
+  "jsonrpc":"2.0",
+  "result":{
+    "hash":"0x56642f04d519ae3262c7ba6facf1c5b11450ebaeb7955337cfbc45420d573077",
+    "number":1
+  },
+  "id":null
+}
 ```
 
 ## chain_getBlockHash
@@ -217,7 +236,11 @@ Request Example:
 
 Response Example
 ```
-{"jsonrpc":"2.0","result":"0x56642f04d519ae3262c7ba6facf1c5b11450ebaeb7955337cfbc45420d573077","id":null}
+{
+  "jsonrpc":"2.0",
+  "result":"0x56642f04d519ae3262c7ba6facf1c5b11450ebaeb7955337cfbc45420d573077",
+  "id":null
+}
 ```
 
 ## chain_getBlockByHash
@@ -239,39 +262,45 @@ Request Example:
 Response Example
 ```
 {
-    "id": null,
-    "jsonrpc": "2.0",
-    "result": {
-        "author": "0x84137e7a75043bed32e4458a45da7549a8169b4d",
-        "extraData": [],
-        "hash": "0x49b5fda89dbfa92e9a744d3019790107757d189608e2cfe15e796825f4561959",
-        "invoicesRoot": "0x45b0cfc220ceec5b7c1c62c4d4193d38e4eba48e8815729ce75f9c0ab0e4c1c0",
-        "number": 1,
-        "parcels": [
-            {
-                "action": {
-                    "action": "changeShardState",
-                    "transactions": []
-                },
-                "blockHash": "0x49b5fda89dbfa92e9a744d3019790107757d189608e2cfe15e796825f4561959",
-                "blockNumber": 1,
-                "fee": "0xa",
-                "hash": "0x20dced7a95e82cf165bbb7ef111bfda24b664e3c3ffd5a255e970300eea5ec56",
-                "networkId": 17,
-                "nonce": "0x0",
-                "parcelIndex": 0,
-                "r": "0xab2f74e74344b0b24932c85e29a4039150ae0b9fab17398b7e138a70022fd09c",
-                "s": "0x364dd6aeee95f45cbd6773c3edc6507d07505f7fbfb5d85ce128d19fa104d2a6",
-                "v": 1
-            }
-        ],
-        "parcelsRoot": "0x934b77fa1ff7f405127de3c63efd44b92dad7ee4ff923c9b77f06abebd4844a4",
-        "parentHash": "0xc2338c8fd5a9b4ca5dd5dd12fc548e796bbb953ee6043afa14377037d0387e25",
-        "score": "0x20000",
-        "seal": [],
-        "stateRoot": "0x223ac1b388a6f3a2e001482d328c7f6f3b8f0b8686d3988224870a8fed99c8b1",
-        "timestamp": 1530694371
-    }
+  "id":null,
+  "jsonrpc":"2.0",
+  "result":{
+    "author":"0x84137e7a75043bed32e4458a45da7549a8169b4d",
+    "extraData":[
+
+    ],
+    "hash":"0x49b5fda89dbfa92e9a744d3019790107757d189608e2cfe15e796825f4561959",
+    "invoicesRoot":"0x45b0cfc220ceec5b7c1c62c4d4193d38e4eba48e8815729ce75f9c0ab0e4c1c0",
+    "number":1,
+    "parcels":[
+      {
+        "action":{
+          "action":"changeShardState",
+          "transactions":[
+
+          ]
+        },
+        "blockHash":"0x49b5fda89dbfa92e9a744d3019790107757d189608e2cfe15e796825f4561959",
+        "blockNumber":1,
+        "fee":"0xa",
+        "hash":"0x20dced7a95e82cf165bbb7ef111bfda24b664e3c3ffd5a255e970300eea5ec56",
+        "networkId":17,
+        "nonce":"0x0",
+        "parcelIndex":0,
+        "r":"0xab2f74e74344b0b24932c85e29a4039150ae0b9fab17398b7e138a70022fd09c",
+        "s":"0x364dd6aeee95f45cbd6773c3edc6507d07505f7fbfb5d85ce128d19fa104d2a6",
+        "v":1
+      }
+    ],
+    "parcelsRoot":"0x934b77fa1ff7f405127de3c63efd44b92dad7ee4ff923c9b77f06abebd4844a4",
+    "parentHash":"0xc2338c8fd5a9b4ca5dd5dd12fc548e796bbb953ee6043afa14377037d0387e25",
+    "score":"0x20000",
+    "seal":[
+
+    ],
+    "stateRoot":"0x223ac1b388a6f3a2e001482d328c7f6f3b8f0b8686d3988224870a8fed99c8b1",
+    "timestamp":1530694371
+  }
 }
 ```
 
@@ -293,7 +322,11 @@ Request Example:
 
 Response Example
 ```
-{"jsonrpc":"2.0","result":"0x20dced7a95e82cf165bbb7ef111bfda24b664e3c3ffd5a255e970300eea5ec56","id":null}
+{
+  "jsonrpc":"2.0",
+  "result":"0x20dced7a95e82cf165bbb7ef111bfda24b664e3c3ffd5a255e970300eea5ec56",
+  "id":null
+}
 ```
 
 ## chain_getParcel
@@ -354,7 +387,13 @@ Request Example
 
 Response Example
 ```
-{"jsonrpc":"2.0","result":["Success"],"id":null}
+{
+  "jsonrpc":"2.0",
+  "result":[
+    "Success"
+  ],
+  "id":null
+}
 ```
 
 ## chain_getTransactionInvoice
@@ -375,7 +414,11 @@ Request Example
 
 Response Example
 ```
-{"jsonrpc":"2.0","result":"Success","id":null}
+{
+  "jsonrpc":"2.0",
+  "result":"Success",
+  "id":null
+}
 ```
 
 ## chain_getAssetScheme
@@ -396,11 +439,15 @@ Request Example
 
 Response Example
 ```
-{"jsonrpc":"2.0","result":{
-  "amount":100,
-  "metadata":"",
-  "registrar":null
-},"id":null}
+{
+  "jsonrpc":"2.0",
+  "result":{
+    "amount":100,
+    "metadata":"",
+    "registrar":null
+  },
+  "id":null
+}
 ```
 
 ## chain_getAsset
@@ -422,12 +469,18 @@ Request Example
 
 Response Example
 ```
-{"jsonrpc":"2.0","result":{
-  "amount":100,
-  "asset_type":"0x53000000000000002ec1193ecd52e2833ffc10b45bea1fda49f857e34db67c68",
-  "lock_script_hash":"0x0000000000000000000000000000000000000000000000000000000000000000",
-  "parameters":[]
-},"id":null}
+{
+  "jsonrpc":"2.0",
+  "result":{
+    "amount":100,
+    "asset_type":"0x53000000000000002ec1193ecd52e2833ffc10b45bea1fda49f857e34db67c68",
+    "lock_script_hash":"0x0000000000000000000000000000000000000000000000000000000000000000",
+    "parameters":[
+
+    ]
+  },
+  "id":null
+}
 ```
 
 ## chain_getNonce
@@ -449,7 +502,11 @@ Request Example
 
 Response Example
 ```
-{"jsonrpc":"2.0","result":"0x54","id":null}
+{
+  "jsonrpc":"2.0",
+  "result":"0x54",
+  "id":null
+}
 ```
 
 ## chain_getBalance
@@ -471,7 +528,11 @@ Request Example
 
 Response Example
 ```
-{"jsonrpc":"2.0","result":"0xe8d4a50dd0","id":null}
+{
+  "jsonrpc":"2.0",
+  "result":"0xe8d4a50dd0",
+  "id":null
+}
 ```
 
 ## chain_getRegularKey
@@ -493,7 +554,11 @@ Request Example
 
 Response Example
 ```
-{"jsonrpc":"2.0","result":"0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000","id":null}
+{
+  "jsonrpc":"2.0",
+  "result":"0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+  "id":null
+}
 ```
 
 ## chain_getNumberOfShards
@@ -514,7 +579,11 @@ Request Example
 
 Response Example
 ```
-{"jsonrpc":"2.0","result":3,"id":null}
+{
+  "jsonrpc":"2.0",
+  "result":3,
+  "id":null
+}
 ```
 
 ## chain_getShardRoot
@@ -536,7 +605,11 @@ Request Example
 
 Response Example
 ```
-{"jsonrpc":"2.0","result":"0xf3841adc1615bfeabb801dda23585c1722b80d810df084a5f2198e92285d4bfd","id":null}
+{
+  "jsonrpc":"2.0",
+  "result":"0xf3841adc1615bfeabb801dda23585c1722b80d810df084a5f2198e92285d4bfd",
+  "id":null
+}
 ```
 
 
@@ -557,26 +630,34 @@ Request Example
 
 Response Example
 ```
-{"jsonrpc":"2.0","result":[{
-  "blockHash":null,
-  "blockNumber":null,
-  "fee":"0xa",
-  "hash":"0x8ae3363ccdcc02d8d662d384deee34fb89d1202124e8065f0d6c84ab31e68d8a",
-  "networkId":17,
-  "nonce":"0x0",
-  "parcelIndex":null,
-  "r":"0x22605d6b9fb713d3a415e02eeed8b4a630e0d867c91bf7d9b7721f94159c0fe1",
-  "s":"0x772f19f1c27f1db8b28289caa9e99ad756878fd56b2415c25cd47cc737f7e0c2",
-  "transactions":[{
-    "payment":{
-      "nonce":"0x1",
-      "receiver":"0xa6594b7196808d161b6fb137e781abbc251385d9",
-      "sender":"0xa6594b7196808d161b6fb137e781abbc251385d9",
-      "value":"0x0"
+{
+  "jsonrpc":"2.0",
+  "result":[
+    {
+      "blockHash":null,
+      "blockNumber":null,
+      "fee":"0xa",
+      "hash":"0x8ae3363ccdcc02d8d662d384deee34fb89d1202124e8065f0d6c84ab31e68d8a",
+      "networkId":17,
+      "nonce":"0x0",
+      "parcelIndex":null,
+      "r":"0x22605d6b9fb713d3a415e02eeed8b4a630e0d867c91bf7d9b7721f94159c0fe1",
+      "s":"0x772f19f1c27f1db8b28289caa9e99ad756878fd56b2415c25cd47cc737f7e0c2",
+      "transactions":[
+        {
+          "payment":{
+            "nonce":"0x1",
+            "receiver":"0xa6594b7196808d161b6fb137e781abbc251385d9",
+            "sender":"0xa6594b7196808d161b6fb137e781abbc251385d9",
+            "value":"0x0"
+          }
+        }
+      ],
+      "v":0
     }
-  }],
-  "v":0
-}],"id":null}
+  ],
+  "id":null
+}
 ```
 
 ## chain_getCoinbase
@@ -596,7 +677,11 @@ Request Example
 
 Response Example
 ```
-{"jsonrpc":"2.0","result":"0xa6594b7196808d161b6fb137e781abbc251385d9","id":null}
+{
+  "jsonrpc":"2.0",
+  "result":"0xa6594b7196808d161b6fb137e781abbc251385d9",
+  "id":null
+}
 ```
 
 ## miner_getWork
@@ -616,10 +701,14 @@ Request Example
 
 Response Example
 ```
-{"jsonrpc":"2.0","result":{
-  "powHash": "0x56642f04d519ae3262c7ba6facf1c5b11450ebaeb7955337cfbc45420d573077",
-  "target": 100
-},"id":null}
+{
+  "jsonrpc":"2.0",
+  "result":{
+    "powHash":"0x56642f04d519ae3262c7ba6facf1c5b11450ebaeb7955337cfbc45420d573077",
+    "target":100
+  },
+  "id":null
+}
 ```
 
 ## miner_submitWork
@@ -641,7 +730,11 @@ Request Example
 
 Response Example
 ```
-{"jsonrpc":"2.0","result":true,"id":6}
+{
+  "jsonrpc":"2.0",
+  "result":true,
+  "id":6
+}
 ```
 
 ## net_shareSecret
@@ -664,7 +757,11 @@ Request Example
 
 Response Example
 ```
-{"jsonrpc":"2.0","result":null,"id":5}
+{
+  "jsonrpc":"2.0",
+  "result":null,
+  "id":5
+}
 ```
 
 ## net_connect
@@ -686,7 +783,11 @@ Request Example
 
 Response Example
 ```
-{"jsonrpc":"2.0","result":null,"id":5}
+{
+  "jsonrpc":"2.0",
+  "result":null,
+  "id":5
+}
 ```
 
 ## net_isConnected
@@ -708,7 +809,11 @@ Request Example
 
 Response Example
 ```
-{"jsonrpc":"2.0","result":true,"id":6}
+{
+  "jsonrpc":"2.0",
+  "result":true,
+  "id":6
+}
 ```
 
 ## net_disconnect
@@ -730,7 +835,11 @@ Request Example
 
 Response Example
 ```
-{"jsonrpc":"2.0","result":true,"id":6}
+{
+  "jsonrpc":"2.0",
+  "result":true,
+  "id":6
+}
 ```
 
 ## devel_getStateTrieKeys
@@ -752,7 +861,13 @@ Request Example
 
 Response Example
 ```
-{"jsonrpc":"2.0","result":["0x00acf5cba5c53e11f1512b8b480521cb546e7a17a96235a9282f6253b90de043"],"id":null}
+{
+  "jsonrpc":"2.0",
+  "result":[
+    "0x00acf5cba5c53e11f1512b8b480521cb546e7a17a96235a9282f6253b90de043"
+  ],
+  "id":null
+}
 ```
 
 ## devel_getStateTrieValue
@@ -773,5 +888,12 @@ Request Example
 
 Response Example
 ```
-{"jsonrpc":"2.0","result":["0x20d560025f3a1c6675cb32384355ae05b224a3473ae17d3d15b6aa164af7d717","0xf84541a053000000000000002ab33f741ba153ff1ffdf1107845828637c864d5360e4932a00000000000000000000000000000000000000000000000000000000000000000c06f"],"id":null}
+{
+  "jsonrpc":"2.0",
+  "result":[
+    "0x20d560025f3a1c6675cb32384355ae05b224a3473ae17d3d15b6aa164af7d717",
+    "0xf84541a053000000000000002ab33f741ba153ff1ffdf1107845828637c864d5360e4932a00000000000000000000000000000000000000000000000000000000000000000c06f"
+  ],
+  "id":null
+}
 ```
