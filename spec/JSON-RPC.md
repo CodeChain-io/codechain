@@ -11,68 +11,76 @@ In the current version, it's only supported through HTTP.
 
 # List of types
 
-## block object
+## H160, H256, H512, ...
 
- - author: `160 bit hexadecimal string`
- - extraData: Array of any
- - hash: `256 bit hexadecimal string`
- - invoicesRoot: `string`
+A XXX-bit hexadecimal string. (e.g. H160: 160-bit hexadecimal string)
+
+## U128, U256, U512, ...
+
+A hexadecimal string for XXX-bit unsigned integer
+
+## BlockObject
+
+ - author: `H160`
+ - extraData: `any[]`
+ - hash: `H256`
+ - invoicesRoot: `H256`
  - number: `number`
- - parcels: Array of `parcel object`
- - parcelsRoot: `256 bit hexadecimal string`
- - parentHash: `256 bit hexadecimal string`
+ - parcels: `ParcelObject[]`
+ - parcelsRoot: `H256`
+ - parentHash: `H256`
  - score: `number`
- - seal: Array of `string`
- - stateRoot: `256 bit hexadecimal string`
+ - seal: `string[]`
+ - stateRoot: `H256`
  - timestamp: `number`
 
-## parcel object
+## ParcelObject
 
- - blockHash: `256 bit hexadecimal string`
+ - blockHash: `H256`
  - blockNumber: `number`
- - fee: `hexadecimal string of 256 bit unsigned integer`
- - hash: `256 bit hexadecimal string`
+ - fee: `U256`
+ - hash: `H256`
  - networkId: `number`
- - nonce: `hexadecimal string of 256 bit unsigned integer`
+ - nonce: `U256`
  - parcelIndex: `number`
- - sig: `520 bit hexadecimal string` for ECDSA signature or `512 bit hexadecimal string` for Schnorr signature
- - action: `action object`
+ - sig: `H520` for ECDSA signature | `H512` for Schnorr signature
+ - action: `ActionObject`
 
-## action objects
+## ActionObjects
 
-### ChangeShardState action object
+### ChangeShardState ActionObject
 
  - action: "changeShardState"
- - transactions: Array of `transaction object`
+ - transactions: `TransactionObject[]`
 
-### Payment action object
+### Payment ActionObject
 
  - action: "payment"
- - receiver: `160 bit hexadecimal string`
- - amount: `hexadecimal string of 256 bit unsigned integer`
+ - receiver: `H160`
+ - amount: `U256`
 
-### SetRegularKey action object
+### SetRegularKey ActionObject
 
  - action: "setRegularKey"
- - key: `512 bit hexadecimal string`
+ - key: `H512`
 
-## transaction object
+## TransactionObject
 
- - type: `string` - "assetMint" | "assetTransfer"
- - data: `asset mint object` or `asset transfer object`
+ - type: "assetMint" | "assetTransfer"
+ - data: `AssetMintObject` | `AssetTransferObject`
 
-## asset scheme object
+## AssetSchemeObject
 
  - amount: `number`
  - metadata: `string`
- - registrar: `160 bit hexadecimal string` or `null`
+ - registrar: `H160` | `null`
 
-## asset object
+## AssetObject
 
  - amount: `number`
- - asset_type: `256 bit hexadecimal string`
- - lock_script_hash: `256 bit hexadecimal string`
- - parameters: Array of `hexadecimal string`
+ - asset_type: `H256`
+ - lock_script_hash: `H256`
+ - parameters: `hexadecimal string[]`
 
 # List of methods
 
@@ -176,7 +184,7 @@ Gets the number and the hash of the best block.
 
 Params: No parameters
 
-Return Type: { number: `number`, hash: `256 bit hexadecimal string` }
+Return Type: { number: `number`, hash: `H256` }
 
 Request Example
 ```
@@ -197,7 +205,7 @@ Gets the hash of the block with given number.
 Params:
  1. n - `number`
 
-Return Type: `null` or `256 bit hexadecimal string`
+Return Type: `null` | `H256`
 
 Request Example:
 ```
@@ -216,9 +224,9 @@ Response Example
 Gets block with given hash.
 
 Params:
- 1. hash: `256 bit hexadecimal string`
+ 1. hash: `H256`
 
-Return Type: `null` or `block object`
+Return Type: `null` | `BlockObject`
 
 Request Example:
 ```
@@ -273,7 +281,7 @@ Sends signed parcel, returning its hash.
 Params: 
  1. bytes: `hexadecimal string` - RLP encoded hex string of SignedParcel
 
-Return Type: `256 bit hexadecimal string` - parcel hash
+Return Type: `H256` - parcel hash
 
 Request Example:
 ```
@@ -292,9 +300,9 @@ Response Example
 Gets parcel with given hash.
 
 Params:
- 1. parcel hash - `256 bit hexadecimal string`
+ 1. parcel hash - `H256`
 
-Return Type: `null` or `parcel object`
+Return Type: `null` or `ParcelObject`
 
 Request Example
 ```
@@ -332,9 +340,9 @@ Response Example
 Gets a parcel invoice with given hash.
 
 Params:
- 1. parcel hash - `256 bit hexadecimal string`
+ 1. parcel hash - `H256`
 
-Return Type: `null` or Array of string. The string either `Success` or `Failed`
+Return Type: `null` | string[]. The string either "Success" or "Failed"
 
 Request Example
 ```
@@ -353,9 +361,9 @@ Response Example
 Gets transaction invoice with given hash
 
 Params:
- 1. transaction hash - `256 bit hexadecimal string`
+ 1. transaction hash - `H256`
 
-Return Type: `null` or string `Success` or `Failed`
+Return Type: `null` | "Success" | "Failed"
 
 Request Example
 ```
@@ -374,9 +382,9 @@ Response Example
 Gets asset scheme with given asset type.
 
 Params:
- 1. transaction hash of AssetMintTransaction - `256 bit hexadecimal string`
+ 1. transaction hash of AssetMintTransaction - `H256`
 
-Return Type: `null` or `asset scheme object`
+Return Type: `null` | `AssetSchemeObject`
 
 Request Example
 ```
@@ -399,10 +407,10 @@ Response Example
 Gets asset with given asset type.
 
 Params:
- 1. transaction hash of AssetMintTransaction or AssetTransferTransaction - `256 bit hexadecimal string`
+ 1. transaction hash - `H256`
  2. index - `number`
 
-Return Type: `null` or `asset object`
+Return Type: `null` | `AssetObject`
 
 Request Example
 ```
@@ -426,10 +434,10 @@ Response Example
 Gets nonce of an account of given address, at state of given blockNumber.
 
 Params:
- 1. address: `160 bit hexadecimal string`
- 2. block number: `number` or `null`
+ 1. address: `H160`
+ 2. block number: `number` | `null`
 
-Return Type: `hexadecimal string for 256 bit unsigned integer`
+Return Type: `U256`
 
 Request Example
 ```
@@ -448,10 +456,10 @@ Response Example
 Gets balance of an account of given address, at state of given blockNumber.
 
 Params:
- 1. address: `160 bit hexadecimal string`
- 2. block number: `number` or `null`
+ 1. address: `H160`
+ 2. block number: `number` | `null`
 
-Return Type: `hexadecimal string for 256 bit unsigned integer`
+Return Type: `U256`
 
 Request Example
 ```
@@ -470,10 +478,10 @@ Response Example
 Gets the regular key of an account of given address, at state of given blockNumber.
 
 Params:
- 1. address: `160 bit hexadecimal string`
- 2. block number: `number` or `null`
+ 1. address: `H160`
+ 2. block number: `number` | `null`
 
-Return Type: `512 bit hexadecimal string` - 512-bit public key
+Return Type: `H512` - 512-bit public key
 
 Request Example
 ```
@@ -492,7 +500,7 @@ Response Example
 Gets the number of shards, at state of given blockNumber.
 
 Param:
-1. block number: `number` or `null`
+1. block number: `number` | `null`
 
 Return Type: `number` - the number of shards
 
@@ -514,9 +522,9 @@ Gets the root of shard, at state of given blockNumber.
 
 Param:
 1. shard id: `number`
-1. block number: `number` or `null`
+1. block number: `number` | `null`
 
-Return Type: `null` or `256 bit hexadecimal string` - the root of shard
+Return Type: `null` | `H256` - the root of shard
 
 Request Example
 ```
@@ -537,7 +545,7 @@ Gets parcels in the current parcel queue.
 
 Params: No parameters
 
-Return Type: Array of `parcel object`
+Return Type: `ParcelObject[]`
 
 Request Example
 ```
@@ -576,7 +584,7 @@ Response Example
 
 Params: No parameters
 
-Return Type: `160 bit hexadecimal string` or `null`
+Return Type: `H160` | `null`
 
 Request Example
 ```
@@ -596,7 +604,7 @@ Returns the hash of the current block, the score and the block number.
 
 Params: No parameters
 
-Return Type: `work object`
+Return Type: `WorkObject`
 
 Request Example
 ```
@@ -619,7 +627,7 @@ Used for submitting a proof-of-work solution.
 
 Params:
  1. powHash: `string`
- 1. seal: Array of `string`
+ 1. seal: `string[]`
 
 Return Type: `bool`
 
@@ -732,7 +740,7 @@ Params:
  1. offset: `number`
  2. limit: `number`
 
-Return Type: Array of `string` with maximum length _limit_
+Return Type: `string[]` with maximum length _limit_
 
 Request Example
 ```
@@ -753,7 +761,7 @@ Gets the value of the state trie with given key.
 Params: 
  1. key: `string`
 
-Return Type: Array of `string` - each string is RLP encoded
+Return Type: `string[]` - each string is RLP encoded
 
 Request Example
 ```
