@@ -501,6 +501,7 @@ mod tests {
         let amount = 100;
         let registrar = Some(Address::random());
         let transaction = Transaction::AssetMint {
+            network_id: 200,
             metadata: metadata.clone(),
             lock_script_hash,
             parameters: parameters.clone(),
@@ -539,6 +540,7 @@ mod tests {
         let parameters = vec![];
         let registrar = Some(Address::random());
         let transaction = Transaction::AssetMint {
+            network_id: 200,
             metadata: metadata.clone(),
             lock_script_hash,
             parameters: parameters.clone(),
@@ -777,6 +779,7 @@ mod tests {
         let registrar = None;
         let amount = 30;
         let mint = Transaction::AssetMint {
+            network_id: 200,
             metadata: metadata.clone(),
             lock_script_hash,
             parameters: vec![],
@@ -876,6 +879,7 @@ mod tests {
         let registrar = None;
         let amount = 30;
         let mint = Transaction::AssetMint {
+            network_id: 200,
             metadata: metadata.clone(),
             lock_script_hash,
             parameters: vec![],

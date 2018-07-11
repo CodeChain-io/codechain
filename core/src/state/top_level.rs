@@ -1051,6 +1051,7 @@ mod tests_parcel {
         let registrar = Some(Address::random());
         let amount = 30;
         let transaction = Transaction::AssetMint {
+            network_id: 0xCA,
             metadata: metadata.clone(),
             lock_script_hash,
             parameters: parameters.clone(),
@@ -1103,6 +1104,7 @@ mod tests_parcel {
         let parameters = vec![];
         let registrar = Some(Address::random());
         let transaction = Transaction::AssetMint {
+            network_id: 0xCA,
             metadata: metadata.clone(),
             lock_script_hash,
             parameters: parameters.clone(),
@@ -1156,6 +1158,7 @@ mod tests_parcel {
         state.commit().unwrap();
 
         let shard_id = 0x00;
+        let network_id = 0xBeef;
 
         let metadata = "metadata".to_string();
         let lock_script_hash =
@@ -1163,6 +1166,7 @@ mod tests_parcel {
         let registrar = None;
         let amount = 30;
         let mint = Transaction::AssetMint {
+            network_id,
             metadata: metadata.clone(),
             lock_script_hash,
             parameters: vec![],
@@ -1171,8 +1175,6 @@ mod tests_parcel {
             nonce: 0,
         };
         let mint_hash = mint.hash();
-
-        let network_id = 0xBeef;
 
         let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id);
         let asset_type = asset_scheme_address.clone().into();
@@ -1272,12 +1274,15 @@ mod tests_parcel {
         state.create_shard_level_state().unwrap();
         state.commit().unwrap();
 
+        let network_id = 0xBeef;
+
         let metadata = "metadata".to_string();
         let lock_script_hash =
             H256::from_str("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050").unwrap();
         let registrar = None;
         let amount = 30;
         let mint = Transaction::AssetMint {
+            network_id,
             metadata: metadata.clone(),
             lock_script_hash,
             parameters: vec![],
@@ -1286,8 +1291,6 @@ mod tests_parcel {
             nonce: 0,
         };
         let mint_hash = mint.hash();
-
-        let network_id = 0xBeef;
 
         let mint_parcel = Parcel {
             fee: 20.into(),
@@ -1512,6 +1515,7 @@ mod tests_parcel {
         let registrar = Some(Address::random());
         let amount = 30;
         let transaction = Transaction::AssetMint {
+            network_id: 0xCA,
             metadata: metadata.clone(),
             lock_script_hash,
             parameters: parameters.clone(),
