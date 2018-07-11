@@ -1130,6 +1130,7 @@ pub mod test {
     fn mint_transaction_does_not_increase_cost() {
         let fee = U256::from(100);
         let transactions = vec![Transaction::AssetMint {
+            network_id: 200,
             metadata: "Metadata".to_string(),
             lock_script_hash: H256::zero(),
             parameters: vec![],
@@ -1157,6 +1158,7 @@ pub mod test {
         let fee = U256::from(100);
         let transactions = vec![
             Transaction::AssetMint {
+                network_id: 200,
                 metadata: "Metadata".to_string(),
                 lock_script_hash: H256::zero(),
                 parameters: vec![],

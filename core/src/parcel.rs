@@ -569,6 +569,7 @@ mod tests {
     #[test]
     fn encode_and_decode_asset_mint() {
         rlp_encode_and_decode_test!(Transaction::AssetMint {
+            network_id: 200,
             metadata: "mint test".to_string(),
             lock_script_hash: H256::random(),
             parameters: vec![],
@@ -581,6 +582,7 @@ mod tests {
     #[test]
     fn encode_and_decode_asset_mint_with_parameters() {
         rlp_encode_and_decode_test!(Transaction::AssetMint {
+            network_id: 200,
             metadata: "mint test".to_string(),
             lock_script_hash: H256::random(),
             parameters: vec![vec![1, 2, 3], vec![4, 5, 6], vec![0, 7]],
