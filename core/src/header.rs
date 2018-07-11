@@ -332,3 +332,12 @@ impl ::machine::Header for Header {
         Header::number(self)
     }
 }
+
+impl ::machine::ScoredHeader for Header {
+    fn score(&self) -> &U256 {
+        self.score()
+    }
+    fn set_score(&mut self, score: U256) {
+        self.set_score(score)
+    }
+}

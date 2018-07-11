@@ -35,6 +35,15 @@ pub trait Header {
     fn number(&self) -> u64;
 }
 
+/// A header with an associated score (difficulty in PoW terms)
+pub trait ScoredHeader: Header {
+    /// Get the score of this header.
+    fn score(&self) -> &U256;
+
+    /// Set the score of this header.
+    fn set_score(&mut self, score: U256);
+}
+
 /// A "live" block is one which is in the process of the transition.
 /// The state of this block can be mutated by arbitrary rules of the
 /// state transition function.
