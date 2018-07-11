@@ -25,6 +25,7 @@ use ctypes::H256;
 
 use kvdb::KeyValueDB;
 use rlp::{decode as rlp_decode, RlpStream};
+use snap;
 use trie::{Node, OwnedNode};
 
 use super::error::Error;
@@ -90,7 +91,8 @@ fn write_snapshot(db: Arc<KeyValueDB>, path: PathBuf, root: &H256) -> Result<(),
     }
 
     {
-        let mut file = File::create(path.join("head"))?;
+        let file = File::create(path.join("head"))?;
+        let mut snappy = snap::Writer::new(file);
 
         let mut stream = RlpStream::new();
         stream.begin_unbounded_list();
@@ -101,12 +103,14 @@ fn write_snapshot(db: Arc<KeyValueDB>, path: PathBuf, root: &H256) -> Result<(),
         }
         stream.complete_unbounded_list();
 
-        file.write(&stream.drain())?;
+        snappy.write(&stream.drain())?;
     }
 
     for (grandchild, _) in &grandchildren {
         let nodes = enumerate_subtree(&db, grandchild)?;
-        let mut file = File::create(path.join(format!("{:x}", grandchild)))?;
+        let file = File::create(path.join(format!("{:x}", grandchild)))?;
+        let mut snappy = snap::Writer::new(file);
+
         let mut stream = RlpStream::new();
         stream.begin_unbounded_list();
         for (key, value) in nodes {
@@ -115,7 +119,8 @@ fn write_snapshot(db: Arc<KeyValueDB>, path: PathBuf, root: &H256) -> Result<(),
             stream.append(&value);
         }
         stream.complete_unbounded_list();
-        file.write(&stream.drain())?;
+
+        snappy.write(&stream.drain())?;
     }
 
     Ok(())
