@@ -30,6 +30,8 @@ pub fn decode(bytes: &[u8]) -> Result<Vec<Instruction>, DecoderError> {
         match *b {
             opcode::NOP => result.push(Instruction::Nop),
             opcode::BURN => result.push(Instruction::Burn),
+            opcode::SUCCESS => result.push(Instruction::Success),
+            opcode::FAIL => result.push(Instruction::Fail),
             opcode::NOT => result.push(Instruction::Not),
             opcode::EQ => result.push(Instruction::Eq),
             opcode::JMP => {

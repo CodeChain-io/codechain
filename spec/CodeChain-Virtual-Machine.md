@@ -39,6 +39,8 @@ Leading zeros must be truncated. Note that it is allowed to decode value with le
 ## Special instructions
 * NOP(0x00): Do nothing
 * BURN(0x01): Stop script execution, and return `BURN` as result.
+* SUCCESS(0x02): Stop script execution, and return `SUCCESS` as result.
+* FAIL(0x03): Stop script execution, and return `FAIL` as result.
 
 ## Boolean computation
 * NOT(0x10): Pop one value from stack as boolean, and push negated value.
@@ -84,4 +86,4 @@ Leading zeros must be truncated. Note that it is allowed to decode value with le
 * KECCAK256(0x93): Pop one value from stack, and push keccak-256 hash of it.
 
 ## Environment
-* BLKNUM(0xa0): Push block number specified in parcel to stack as integer. If there's no specified block number, machine must fail immediately. 
+* BLKNUM(0xa0): Push block number specified in parcel to stack as integer. If there's no specified block number, machine must fail immediately.

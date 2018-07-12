@@ -161,6 +161,8 @@ pub fn execute(
         match &script[pc] {
             Instruction::Nop => {}
             Instruction::Burn => return Ok(ScriptResult::Burnt),
+            Instruction::Success => return Ok(ScriptResult::Unlocked),
+            Instruction::Fail => return Ok(ScriptResult::Fail),
             Instruction::Not => {
                 let value: bool = stack.pop()?.into();
                 stack.push(Item::from(!value))?;
