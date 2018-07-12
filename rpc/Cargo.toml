@@ -7,7 +7,7 @@ authors = ["CodeChain Team <codechain@kodebox.io>"]
 
 [dependencies]
 codechain-core = { path = "../core" }
-codechain-key = { path = "../key" }
+codechain-key = { path = "../key", features = ["ecdsa"] }
 codechain-logger = { path = "../util/logger" }
 codechain-network = { path = "../network" }
 codechain-types = { path = "../primitives/codechain-types" }
@@ -25,4 +25,3 @@ jsonrpc-core = { git = "https://github.com/paritytech/jsonrpc.git", branch = "pa
 jsonrpc-macros = { git = "https://github.com/paritytech/jsonrpc.git", branch = "parity-1.11" }
 jsonrpc-http-server = { git = "https://github.com/paritytech/jsonrpc.git", branch = "parity-1.11" }
 jsonrpc-ipc-server = { git = "https://github.com/paritytech/jsonrpc.git", branch = "parity-1.11" }
-
