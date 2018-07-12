@@ -18,8 +18,8 @@ extern crate hyper;
 
 use std::io::Write;
 
-use ctypes::{H256, U256};
 use parking_lot::Mutex;
+use primitives::{H256, U256};
 
 use self::hyper::client::{Client, Request, Response};
 use self::hyper::header::ContentType;

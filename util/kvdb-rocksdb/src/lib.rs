@@ -817,11 +817,12 @@ impl Drop for Database {
 
 #[cfg(test)]
 mod tests {
+    extern crate primitives;
     extern crate tempdir;
 
+    use self::primitives::H256;
     use self::tempdir::TempDir;
     use super::*;
-    use codechain_types::H256;
     use std::str::FromStr;
 
     fn test_db(config: &DatabaseConfig) {

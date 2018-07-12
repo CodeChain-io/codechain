@@ -18,8 +18,8 @@ use std::sync::Arc;
 
 use ccore::block::IsBlock;
 use ccore::{EngineClient, MinerService, MiningBlockChainClient};
-use ctypes::H256;
 use jsonrpc_core::Result;
+use primitives::H256;
 
 use super::super::errors;
 use super::super::traits::Miner;

@@ -16,7 +16,8 @@
 
 use ccrypto::{blake256, keccak256, ripemd160, sha256};
 use ckey::{verify, Signature, SignatureData, SIGNATURE_LENGTH};
-use ctypes::{H256, Public};
+use ctypes::Public;
+use primitives::H256;
 
 use instruction::{is_valid_unlock_script, Instruction};
 

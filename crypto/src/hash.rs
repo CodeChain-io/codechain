@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ctypes::{H160, H256};
+use primitives::{H160, H256};
 use rcrypto::digest::Digest;
 use rcrypto::ripemd160::Ripemd160;
 use rcrypto::sha1::Sha1;

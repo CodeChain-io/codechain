@@ -17,8 +17,8 @@
 use std::fmt::{Display, Formatter, Result as FormatResult};
 use std::io::{Error as FileError, ErrorKind};
 
-use ctypes::H256;
 use kvdb::Error as DBError;
+use primitives::H256;
 
 #[derive(Debug)]
 pub enum Error {

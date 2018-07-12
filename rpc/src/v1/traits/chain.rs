@@ -15,7 +15,8 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ccore::{Asset, AssetScheme, BlockNumber, Invoice, ParcelInvoice};
-use ctypes::{H160, H256, Public, U256};
+use ctypes::Public;
+use primitives::{H160, H256, U256};
 
 use jsonrpc_core::Result;
 

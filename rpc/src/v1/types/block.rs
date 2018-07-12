@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ccore::{Block as CoreBlock, BlockNumber};
-use ctypes::{H160, H256, U256};
+use primitives::{H160, H256, U256};
 
 use super::Parcel;
 

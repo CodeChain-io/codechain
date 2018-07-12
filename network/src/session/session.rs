@@ -17,7 +17,7 @@
 use ccrypto::aes::{self, SymmetricCipherError};
 use ccrypto::Blake;
 use ctypes::Secret;
-use ctypes::{H128, H256};
+use primitives::{H128, H256};
 
 use super::Nonce;
 

@@ -17,8 +17,8 @@
 use std::sync::Arc;
 
 use cnetwork::{NetworkControl, SocketAddr};
-use ctypes::H256;
 use jsonrpc_core::Result;
+use primitives::H256;
 
 use super::super::errors;
 use super::super::traits::Net;

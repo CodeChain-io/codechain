@@ -39,7 +39,8 @@ use std::sync::{Arc, Weak};
 
 use ckey::Signature;
 use cnetwork::NetworkExtension;
-use ctypes::{Address, Bytes, H256, U256};
+use ctypes::Address;
+use primitives::{Bytes, H256, U256};
 use unexpected::{Mismatch, OutOfBounds};
 
 use self::epoch::{EpochVerifier, NoOp, PendingTransition};

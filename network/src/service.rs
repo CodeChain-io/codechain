@@ -18,7 +18,7 @@
 use std::sync::Arc;
 
 use cio::{IoError, IoService};
-use ctypes::H256;
+use primitives::H256;
 
 use super::client::Client;
 use super::control::{Control, Error as ControlError};

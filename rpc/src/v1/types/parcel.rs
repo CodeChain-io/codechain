@@ -16,7 +16,7 @@
 
 use ccore::{Action, LocalizedParcel, SignedParcel};
 use ckey::SignatureData;
-use ctypes::{H256, U256};
+use primitives::{H256, U256};
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]

@@ -21,9 +21,9 @@ use std::sync::Arc;
 use std::thread::spawn;
 
 use ccore::{BlockChainClient, BlockId, BlockInfo, ChainInfo, ChainNotify, Client, DatabaseClient, COL_STATE};
-use ctypes::H256;
 
 use kvdb::KeyValueDB;
+use primitives::H256;
 use rlp::{decode as rlp_decode, RlpStream};
 use snap;
 use trie::{Node, OwnedNode};

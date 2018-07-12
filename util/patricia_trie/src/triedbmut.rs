@@ -21,15 +21,15 @@ use super::node::Node as RlpNode;
 use super::node::NodeKey;
 use super::{TrieError, TrieMut};
 
-use codechain_types::bytes::ToPretty;
 use hashdb::DBValue;
 use hashdb::HashDB;
 use nibbleslice::NibbleSlice;
+use primitives::bytes::ToPretty;
 use rlp::{Rlp, RlpStream};
 
 use codechain_crypto::BLAKE_NULL_RLP;
-use codechain_types::H256;
 use elastic_array::ElasticArray1024;
+use primitives::H256;
 use std::collections::{HashSet, VecDeque};
 use std::mem;
 use std::ops::Index;
@@ -279,13 +279,13 @@ impl<'a> Index<&'a StorageHandle> for NodeStorage {
 /// extern crate codechain_crypto;
 /// extern crate hashdb;
 /// extern crate memorydb;
-/// extern crate codechain_types;
+/// extern crate primitives;
 ///
 /// use codechain_crypto::BLAKE_NULL_RLP;
 /// use trie::*;
 /// use hashdb::*;
 /// use memorydb::*;
-/// use codechain_types::H256;
+/// use primitives::H256;
 ///
 /// fn main() {
 ///   let mut memdb = MemoryDB::new();
@@ -1012,8 +1012,8 @@ mod tests {
     use super::super::TrieMut;
     use super::*;
     use codechain_crypto::BLAKE_NULL_RLP;
-    use codechain_types::bytes::ToPretty;
     use memorydb::*;
+    use primitives::bytes::ToPretty;
     use standardmap::*;
 
     fn populate_trie<'db>(db: &'db mut HashDB, root: &'db mut H256, v: &[(Vec<u8>, Vec<u8>)]) -> TrieDBMut<'db> {

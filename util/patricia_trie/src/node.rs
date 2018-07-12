@@ -14,11 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
-use codechain_types::Bytes;
 use elastic_array::ElasticArray36;
 use hashdb::DBValue;
 use nibbleslice::NibbleSlice;
 use nibblevec::NibbleVec;
+use primitives::Bytes;
 use rlp::*;
 
 /// Partial node key type.

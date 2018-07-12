@@ -16,18 +16,18 @@
 
 //! Reference-counted memory-based `HashDB` implementation.
 extern crate codechain_crypto;
-extern crate codechain_types;
 extern crate elastic_array;
 extern crate hashdb;
 extern crate heapsize;
 extern crate plain_hasher;
+extern crate primitives;
 extern crate rlp;
 
 use codechain_crypto::{blake256, BLAKE_NULL_RLP};
-use codechain_types::H256;
 use hashdb::{DBValue, HashDB};
 use heapsize::HeapSizeOf;
 use plain_hasher::H256FastMap;
+use primitives::H256;
 use rlp::NULL_RLP;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;

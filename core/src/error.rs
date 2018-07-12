@@ -18,7 +18,8 @@ use std::fmt;
 
 use cio::IoError;
 use ckey::Error as KeyError;
-use ctypes::{Address, H256, U256};
+use ctypes::Address;
+use primitives::{H256, U256};
 use trie::TrieError;
 use unexpected::{Mismatch, OutOfBounds};
 use util_error::UtilError;

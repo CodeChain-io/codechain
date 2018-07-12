@@ -19,12 +19,13 @@
 use std::collections::{HashSet, VecDeque};
 use std::sync::Arc;
 
-use ctypes::{Address, H256};
+use ctypes::Address;
 use hashdb::HashDB;
 use journaldb::JournalDB;
 use kvdb::DBTransaction;
 use lru_cache::LruCache;
 use parking_lot::Mutex;
+use primitives::H256;
 use util_error::UtilError;
 
 use super::state::{
@@ -588,7 +589,7 @@ impl state::ShardBackend for StateDB {
 
 #[cfg(test)]
 mod tests {
-    use ctypes::U256;
+    use primitives::U256;
 
     use super::super::tests::helpers::get_temp_state_db;
     use super::state::{ShardBackend, TopBackend};

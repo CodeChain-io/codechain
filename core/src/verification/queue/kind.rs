@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ctypes::{H256, U256};
 use heapsize::HeapSizeOf;
+use primitives::{H256, U256};
 
 pub use self::blocks::Blocks;
 pub use self::headers::Headers;
@@ -72,7 +72,7 @@ pub trait Kind: 'static + Sized + Send + Sync {
 /// Verification for headers.
 pub mod headers {
 
-    use ctypes::{H256, U256};
+    use primitives::{H256, U256};
 
     use super::super::super::super::consensus::CodeChainEngine;
     use super::super::super::super::error::Error;
@@ -124,8 +124,8 @@ pub mod headers {
 
 /// The blocks verification module.
 pub mod blocks {
-    use ctypes::{Bytes, H256, U256};
     use heapsize::HeapSizeOf;
+    use primitives::{Bytes, H256, U256};
 
     use super::super::super::super::consensus::CodeChainEngine;
     use super::super::super::super::error::Error;

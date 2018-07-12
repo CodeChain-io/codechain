@@ -16,7 +16,8 @@
 
 use ccrypto::BLAKE_NULL_RLP;
 use cjson;
-use ctypes::{Address, Bytes, H256, U256};
+use ctypes::Address;
+use primitives::{Bytes, H256, U256};
 use spec::seal::Seal;
 
 /// Genesis components.

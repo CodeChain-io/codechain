@@ -19,6 +19,7 @@
 #[macro_use]
 extern crate log;
 extern crate parking_lot;
+extern crate primitives;
 extern crate rand;
 #[cfg_attr(test, macro_use)]
 extern crate rlp;
@@ -29,7 +30,6 @@ extern crate codechain_key as ckey;
 #[macro_use]
 extern crate codechain_logger as clogger;
 extern crate codechain_network as cnetwork;
-extern crate codechain_types as ctypes;
 
 mod kademlia;
 mod unstructured;

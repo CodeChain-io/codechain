@@ -19,8 +19,9 @@ use std::ops::Deref;
 
 use ccrypto::blake256;
 use ckey::{self, public_to_address, recover, sign, Private, Public, Signature, SignatureData};
-use ctypes::{Address, Bytes, H160, H256, U256};
+use ctypes::Address;
 use heapsize::HeapSizeOf;
+use primitives::{Bytes, H160, H256, U256};
 use rlp::{self, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::spec::CommonParams;
@@ -546,7 +547,8 @@ pub struct AssetTransferOutput {
 #[cfg(test)]
 mod tests {
     use ckey::SignatureData;
-    use ctypes::{Address, H256, Public};
+    use ctypes::{Address, Public};
+    use primitives::H256;
 
     use super::*;
 

@@ -16,11 +16,11 @@
 
 use std::sync::Arc;
 
-use ctypes::Bytes;
-use ctypes::{H256, U256};
 use header::Header;
 use kvdb::KeyValueDB;
 use parcel::SignedParcel;
+use primitives::Bytes;
+use primitives::{H256, U256};
 use rlp::{self, RlpStream};
 use spec::Spec;
 use state::TopLevelState;

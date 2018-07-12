@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use cjson;
-use ctypes::U256;
+use primitives::U256;
 use time::Duration;
 
 use super::super::validator_set::{new_validator_set, ValidatorSet};

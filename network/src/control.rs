@@ -16,7 +16,7 @@
 
 use std::result::Result;
 
-use ctypes::H256;
+use primitives::H256;
 
 use super::addr::SocketAddr;
 

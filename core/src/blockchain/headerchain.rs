@@ -18,9 +18,9 @@ use std::collections::HashMap;
 use std::mem;
 use std::sync::Arc;
 
-use ctypes::{Bytes, H256};
 use kvdb::{DBTransaction, KeyValueDB};
 use parking_lot::RwLock;
+use primitives::{Bytes, H256};
 use rlp_compress::{blocks_swapper, compress, decompress};
 
 use super::super::db::{self, CacheUpdatePolicy, Readable, Writable};

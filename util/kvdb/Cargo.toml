@@ -6,4 +6,4 @@ authors = ["Parity Technologies <admin@parity.io>"]
 [dependencies]
 elastic-array = "0.9"
 error-chain = { version = "0.11", default-features = false }
-codechain-types = { path = "../../primitives/codechain-types" }
+primitives = { path = "../primitives" }

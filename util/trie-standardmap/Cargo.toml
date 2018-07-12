@@ -6,6 +6,5 @@ description = "Standard test map for profiling tries"
 
 [dependencies]
 codechain-crypto = { path = "../../crypto" }
-codechain-types = { path = "../../primitives/codechain-types" }
+primitives = { path = "../primitives" }
 rlp = { path = "../rlp" }
-

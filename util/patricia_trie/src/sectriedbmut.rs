@@ -17,8 +17,8 @@
 use super::triedbmut::TrieDBMut;
 use super::TrieMut;
 use codechain_crypto::blake256;
-use codechain_types::H256;
 use hashdb::{DBValue, HashDB};
+use primitives::H256;
 
 /// A mutable `Trie` implementation which hashes keys and uses a generic `HashDB` backing database.
 ///

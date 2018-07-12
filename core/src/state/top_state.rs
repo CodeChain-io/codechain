@@ -14,8 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ctypes::{Address, H256, Public, U256};
+use ctypes::{Address, Public};
 use error::Error;
+use primitives::{H256, U256};
 use trie;
 
 use super::TopBackend;

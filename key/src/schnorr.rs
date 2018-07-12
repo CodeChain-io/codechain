@@ -20,7 +20,7 @@ use std::hash::{Hash, Hasher};
 use std::ops::{Deref, DerefMut};
 use std::str::FromStr;
 
-use codechain_types::H512;
+use primitives::H512;
 use rustc_hex::{FromHex, ToHex};
 use secp256k1::{key, schnorr, Error as SecpError, Message as SecpMessage};
 
