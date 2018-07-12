@@ -109,6 +109,7 @@ impl Client {
 
         let gb = spec.genesis_block();
         let chain = Arc::new(BlockChain::new(&gb, db.clone()));
+        spec.check_genesis_common_params(&*chain)?;
 
         let engine = spec.engine.clone();
 
