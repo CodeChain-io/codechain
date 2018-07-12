@@ -18,6 +18,8 @@
 pub enum Instruction {
     Nop,
     Burn,
+    Success,
+    Fail,
     Not,
     Eq,
     Jmp(u8),
