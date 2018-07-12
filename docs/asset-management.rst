@@ -24,7 +24,7 @@ Once you have installed codechain-sdk, go to the installed directory and create 
 For simplicity, we will call this sample script mint-and-transfer.js. To download the .js file, run:
 ::
 
-    wget https://raw.githubusercontent.com/CodeChain-io/codechain-sdk-js/gh-pages/examples/mint-and-transfer.js
+    wget https://raw.githubusercontent.com/CodeChain-io/codechain-sdk-js/master/examples/mint-and-transfer.js
 
 Then, run the following command:
 
