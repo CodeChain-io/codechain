@@ -37,7 +37,7 @@ use super::super::blockchain::{
 use super::super::consensus::epoch::Transition as EpochTransition;
 use super::super::consensus::CodeChainEngine;
 use super::super::encoded;
-use super::super::error::{BlockImportError, Error, ImportError};
+use super::super::error::{BlockImportError, Error, ImportError, SpecError};
 use super::super::header::Header;
 use super::super::miner::{Miner, MinerService};
 use super::super::parcel::{LocalizedParcel, SignedParcel, UnverifiedParcel};
@@ -99,6 +99,9 @@ impl Client {
 
         let journal_db = journaldb::new(db.clone(), journaldb::Algorithm::Archive, ::db::COL_STATE);
         let mut state_db = StateDB::new(journal_db, config.state_cache_size);
+        if !spec.check_genesis_root(state_db.as_hashdb()) {
+            return Err(SpecError::InvalidState.into())
+        }
         if state_db.journal_db().is_empty() {
             // Sets the correct state root.
             state_db = spec.ensure_genesis_state(state_db, &trie_factory)?;

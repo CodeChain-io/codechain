@@ -120,6 +120,7 @@ pub enum BlockError {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum SpecError {
     InvalidCommonParams,
+    InvalidState,
 }
 
 impl fmt::Display for SpecError {
@@ -127,6 +128,7 @@ impl fmt::Display for SpecError {
         use self::SpecError::*;
         let msg: String = match self {
             InvalidCommonParams => "Common params are not matched with gensis block".into(),
+            InvalidState => "Genesis state is not same with spec".into(),
         };
         f.write_fmt(format_args!("Spec file error ({})", msg))
     }

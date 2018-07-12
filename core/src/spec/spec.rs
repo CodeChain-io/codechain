@@ -21,6 +21,7 @@ use blockchain::HeaderProvider;
 use ccrypto::{blake256, BLAKE_NULL_RLP};
 use cjson;
 use ctypes::Address;
+use hashdb::HashDB;
 use memorydb::MemoryDB;
 use parking_lot::RwLock;
 use primitives::{Bytes, H256, U256};
@@ -222,8 +223,23 @@ impl Spec {
         Ok((db, root))
     }
 
+    pub fn check_genesis_root(&self, db: &HashDB) -> bool {
+        if db.keys().is_empty() {
+            return true
+        }
+        if db.contains(&self.state_root()) {
+            true
+        } else {
+            false
+        }
+    }
+
     /// Ensure that the given state DB has the trie nodes in for the genesis state.
     pub fn ensure_genesis_state<DB: Backend>(&self, db: DB, trie_factory: &TrieFactory) -> Result<DB, Error> {
+        if !self.check_genesis_root(db.as_hashdb()) {
+            return Err(SpecError::InvalidState.into())
+        }
+
         if db.as_hashdb().contains(&self.state_root()) {
             return Ok(db)
         }
