@@ -51,7 +51,7 @@ where
 mod tests {
     use std::vec::Vec;
 
-    use ctypes::H256;
+    use primitives::H256;
 
     use super::*;
 

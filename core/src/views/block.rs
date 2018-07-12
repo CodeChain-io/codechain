@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ccrypto::blake256;
-use ctypes::H256;
+use primitives::H256;
 use rlp::Rlp;
 
 use super::super::header::Header;

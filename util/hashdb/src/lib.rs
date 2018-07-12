@@ -15,11 +15,11 @@
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
 //! Database of byte-slices keyed to their Keccak hash.
-extern crate codechain_types;
 extern crate elastic_array;
+extern crate primitives;
 
-use codechain_types::H256;
 use elastic_array::ElasticArray128;
+use primitives::H256;
 use std::collections::HashMap;
 
 /// `HashDB` value type.

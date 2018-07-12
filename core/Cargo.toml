@@ -13,7 +13,7 @@ codechain-keystore = { path="../keystore" }
 codechain-logger = { path = "../util/logger" }
 codechain-merkle = { path = "../util/merkle" }
 codechain-network = { path = "../network" }
-codechain-types = { path = "../primitives/codechain-types" }
+codechain-types = { path = "../types" }
 codechain-vm = { path = "../vm" }
 cuckoo = { git = "https://github.com/CodeChain-io/rust-cuckoo.git", rev = "280cab9c" }
 hashdb = { path = "../util/hashdb" }
@@ -31,6 +31,7 @@ memorydb = { path = "../util/memorydb" }
 multimap = { path = "../util/multimap" }
 parking_lot = "0.5"
 patricia-trie = { path = "../util/patricia_trie" }
+primitives = { path = "../util/primitives" }
 rand = "0.5.3"
 rlp = { path = "../util/rlp" }
 rlp_compress = { path = "../util/rlp_compress" }

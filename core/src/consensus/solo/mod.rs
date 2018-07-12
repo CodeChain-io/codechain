@@ -72,7 +72,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use ctypes::H520;
+    use primitives::H520;
 
     use super::super::super::block::{IsBlock, OpenBlock};
     use super::super::super::header::Header;

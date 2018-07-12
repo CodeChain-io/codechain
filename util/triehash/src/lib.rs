@@ -19,14 +19,14 @@
 //! This module should be used to generate trie root hash.
 
 extern crate codechain_crypto as ccrypto;
-extern crate codechain_types as ctypes;
+extern crate primitives;
 extern crate rlp;
 
 use std::cmp;
 use std::collections::BTreeMap;
 
 use ccrypto::blake256;
-use ctypes::H256;
+use primitives::H256;
 use rlp::RlpStream;
 
 fn shared_prefix_len<T: Eq>(first: &[T], second: &[T]) -> usize {

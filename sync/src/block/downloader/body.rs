@@ -17,7 +17,7 @@
 use std::collections::{HashMap, HashSet};
 
 use ccore::UnverifiedParcel;
-use ctypes::H256;
+use primitives::H256;
 
 use super::super::message::RequestMessage;
 

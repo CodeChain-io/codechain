@@ -16,7 +16,7 @@
 
 use ccrypto::{blake256, BLAKE_EMPTY, BLAKE_NULL_RLP};
 use ckey::{sign, KeyPair, Private, SignatureData};
-use ctypes::{H160, H256};
+use primitives::{H160, H256};
 
 use secp256k1::key::{SecretKey, MINUS_ONE_KEY, ONE_KEY};
 

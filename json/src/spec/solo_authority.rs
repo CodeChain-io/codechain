@@ -35,7 +35,7 @@ pub struct SoloAuthority {
 
 #[cfg(test)]
 mod tests {
-    use ctypes::{H160, U256};
+    use primitives::{H160, U256};
     use serde_json;
 
     use super::super::super::hash::Address;

@@ -17,7 +17,8 @@
 use std::sync::Arc;
 
 use ckey::Signature;
-use ctypes::{Address, H256};
+use ctypes::Address;
+use primitives::H256;
 
 use super::super::account_provider::{AccountProvider, SignError};
 

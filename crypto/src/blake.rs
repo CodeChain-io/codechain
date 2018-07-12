@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ctypes::{H256, H512};
+use primitives::{H256, H512};
 use rcrypto::blake2b::Blake2b;
 use rcrypto::digest::Digest;
 

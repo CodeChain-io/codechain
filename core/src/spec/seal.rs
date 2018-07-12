@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use cjson;
-use ctypes::H520;
+use primitives::H520;
 use rlp::RlpStream;
 
 /// Tendermint seal.

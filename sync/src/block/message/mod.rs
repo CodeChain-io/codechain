@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ctypes::{H256, U256};
+use primitives::{H256, U256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 mod request;
@@ -116,7 +116,7 @@ impl Decodable for Message {
 
 #[cfg(test)]
 mod tests {
-    use ctypes::{H256, U256};
+    use primitives::{H256, U256};
 
     use super::Message;
 

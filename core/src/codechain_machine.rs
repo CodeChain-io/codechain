@@ -16,7 +16,7 @@
 // A state machine.
 
 use ckey::Address;
-use ctypes::U256;
+use primitives::U256;
 
 use super::block::{ExecutedBlock, IsBlock};
 use super::client::BlockInfo;

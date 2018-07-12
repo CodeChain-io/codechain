@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use cnetwork::NodeId;
-use ctypes::H256;
+use primitives::H256;
 
 /// Represents what has to be handled by actor listening to chain events
 pub trait ChainNotify: Send + Sync {

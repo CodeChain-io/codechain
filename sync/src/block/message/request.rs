@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ccore::BlockNumber;
-use ctypes::H256;
+use primitives::H256;
 use rlp::{DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -112,7 +112,7 @@ impl RequestMessage {
 
 #[cfg(test)]
 mod tests {
-    use ctypes::H256;
+    use primitives::H256;
     use rlp::{Encodable, UntrustedRlp};
 
     use super::RequestMessage;

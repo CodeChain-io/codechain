@@ -19,7 +19,7 @@ use std::fmt;
 use std::str::FromStr;
 
 use bech32::Bech32;
-use codechain_types::H160;
+use primitives::H160;
 
 use super::{Address, Error, Network};
 

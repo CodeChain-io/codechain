@@ -393,7 +393,7 @@ mod tests {
     use super::{KeyMultiStore, KeyStore};
     use accounts_dir::MemoryDirectory;
     use ckey::{Generator, KeyPair, Random};
-    use ctypes::H256;
+    use primitives::H256;
     use secret_store::{SecretStore, SimpleSecretStore};
 
     fn keypair() -> KeyPair {

@@ -19,9 +19,10 @@ use std::sync::Arc;
 
 use ccrypto::{blake256, BLAKE_NULL_RLP};
 use cjson;
-use ctypes::{Address, Bytes, H256, U256};
+use ctypes::Address;
 use memorydb::MemoryDB;
 use parking_lot::RwLock;
+use primitives::{Bytes, H256, U256};
 use rlp::{Encodable, Rlp, RlpStream};
 use trie::TrieFactory;
 

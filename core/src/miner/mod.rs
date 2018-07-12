@@ -20,7 +20,8 @@ mod miner;
 mod sealing_queue;
 mod work_notify;
 
-use ctypes::{Address, Bytes, H256, U256};
+use ctypes::Address;
+use primitives::{Bytes, H256, U256};
 
 pub use self::miner::{Miner, MinerOptions};
 use super::account_provider::SignError;

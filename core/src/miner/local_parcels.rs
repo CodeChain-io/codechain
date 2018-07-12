@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ctypes::{H256, U256};
 use linked_hash_map::LinkedHashMap;
+use primitives::{H256, U256};
 
 use super::super::parcel::{ParcelError, SignedParcel};
 
@@ -167,7 +167,7 @@ mod tests {
     use super::super::super::parcel;
     use super::*;
     use ckey::{Generator, Random};
-    use ctypes::U256;
+    use primitives::U256;
 
     #[test]
     fn should_add_parcel_as_pending() {

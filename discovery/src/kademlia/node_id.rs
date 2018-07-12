@@ -19,7 +19,7 @@ use std::net::IpAddr;
 use ccrypto::Blake;
 
 use cnetwork::{IntoSocketAddr, NodeId, SocketAddr};
-use ctypes::H256;
+use primitives::H256;
 
 use super::B;
 
