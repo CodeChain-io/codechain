@@ -26,7 +26,12 @@ use instruction::Instruction;
 #[test]
 fn simple_success() {
     assert_eq!(
-        execute(&[Instruction::Push(1)], &[], &[], H256::default(), Config::default()),
+        execute(&[], &[], &[Instruction::Push(1)], H256::default(), Config::default()),
+        Ok(ScriptResult::Unlocked)
+    );
+
+    assert_eq!(
+        execute(&[], &[], &[Instruction::Success], H256::default(), Config::default()),
         Ok(ScriptResult::Unlocked)
     );
 }
@@ -34,6 +39,7 @@ fn simple_success() {
 #[test]
 fn simple_failure() {
     assert_eq!(execute(&[Instruction::Push(0)], &[], &[], H256::default(), Config::default()), Ok(ScriptResult::Fail));
+    assert_eq!(execute(&[], &[], &[Instruction::Fail], H256::default(), Config::default()), Ok(ScriptResult::Fail));
 }
 
 #[test]

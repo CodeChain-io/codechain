@@ -16,6 +16,8 @@
 
 pub const NOP: u8 = 0x00;
 pub const BURN: u8 = 0x01;
+pub const SUCCESS: u8 = 0x02;
+pub const FAIL: u8 = 0x03;
 pub const NOT: u8 = 0x10;
 pub const EQ: u8 = 0x11;
 pub const JMP: u8 = 0x20;
