@@ -16,7 +16,7 @@
 
 use std::sync::Arc;
 
-use ccore::{Client, Miner};
+use ccore::{AccountProvider, Client, Miner};
 use cnetwork::NetworkControl;
 use crpc::{MetaIoHandler, Params, Value};
 
@@ -26,6 +26,7 @@ where
     pub client: Arc<Client>,
     pub miner: Arc<Miner>,
     pub network_control: Option<Arc<NC>>,
+    pub account_provider: Arc<AccountProvider>,
 }
 
 impl<NC> ApiDependencies<NC>
@@ -38,6 +39,7 @@ where
         handler.extend_with(DevelClient::new(&self.client).to_delegate());
         handler.extend_with(MinerClient::new(&self.client, &self.miner).to_delegate());
         handler.extend_with(NetClient::new(&self.network_control).to_delegate());
+        handler.extend_with(AccountClient::new(&self.account_provider).to_delegate());
     }
 }
 

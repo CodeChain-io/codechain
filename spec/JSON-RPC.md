@@ -116,6 +116,8 @@ A hexadecimal string for XXX-bit unsigned integer
   * [net_getPort](#net_getPort)
   * [net_getNetworkId](#net_getNetworkId)
 ***
+ * [account_getAccountList](#account_getaccountlist)
+***
  * [devel_getStateTrieKeys](#devel_getstatetriekeys)
  * [devel_getStateTrieValue](#devel_getstatetrievalue)
 
@@ -914,6 +916,30 @@ Response Example
 {
   "jsonrpc":"2.0",
   "result": 17,
+  "id":6
+}
+```
+
+## account_getAccountList
+Gets a list of accounts.
+
+Params: No parameters
+
+Return Type: `H160[]`
+
+Request Example
+```
+curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "account_getAccountList", "params": [], "id": 6}' \
+    localhost:8080
+```
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result":["0x318def87d8dc0f7cc21794daf2dd36762db22b67"],
   "id":6
 }
 ```

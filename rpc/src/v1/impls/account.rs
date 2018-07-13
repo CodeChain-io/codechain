@@ -14,14 +14,29 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod account;
-mod chain;
-mod devel;
-mod miner;
-mod net;
+use std::sync::Arc;
 
-pub use self::account::AccountClient;
-pub use self::chain::ChainClient;
-pub use self::devel::DevelClient;
-pub use self::miner::MinerClient;
-pub use self::net::NetClient;
+use ccore::AccountProvider;
+use ctypes::Address;
+use jsonrpc_core::Result;
+
+use super::super::errors::account_provider;
+use super::super::traits::Account;
+
+pub struct AccountClient {
+    account_provider: Arc<AccountProvider>,
+}
+
+impl AccountClient {
+    pub fn new(ap: &Arc<AccountProvider>) -> Self {
+        AccountClient {
+            account_provider: ap.clone(),
+        }
+    }
+}
+
+impl Account for AccountClient {
+    fn get_account_list(&self) -> Result<Vec<Address>> {
+        self.account_provider.get_list().map_err(account_provider)
+    }
+}

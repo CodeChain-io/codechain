@@ -14,14 +14,13 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod account;
-mod chain;
-mod devel;
-mod miner;
-mod net;
+use ctypes::Address;
+use jsonrpc_core::Result;
 
-pub use self::account::AccountClient;
-pub use self::chain::ChainClient;
-pub use self::devel::DevelClient;
-pub use self::miner::MinerClient;
-pub use self::net::NetClient;
+build_rpc_trait! {
+    pub trait Account {
+        /// Gets a list of accounts
+        # [rpc(name = "account_getAccountList")]
+        fn get_account_list(&self) -> Result<Vec<Address>>;
+    }
+}
