@@ -118,6 +118,7 @@ A hexadecimal string for XXX-bit unsigned integer
 ***
  * [account_getAccountList](#account_getaccountlist)
  * [account_createAccount](#account_createaccount)
+ * [account_createAccountFromSecret](#account_createaccountfromsecret)
 ***
  * [devel_getStateTrieKeys](#devel_getstatetriekeys)
  * [devel_getStateTrieValue](#devel_getstatetrievalue)
@@ -966,6 +967,32 @@ Response Example
 {
   "jsonrpc":"2.0",
   "result":"0x318def87d8dc0f7cc21794daf2dd36762db22b67",
+  "id":6
+}
+```
+
+## account_createAccountFromSecret
+Imports a secret key and add the corresponding account.
+
+Params:
+ 1. secret: `H256`
+ 2. passphrase: `string` | `null`
+
+Return Type: `H160`
+
+Request Example
+```
+curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "account_createAccountFromSecret", "params": ["a2b39d4aefecdb17f84ed4cf629e7c8817691cc4f444ac7522902b8fb4b7bd53"], "id": 6}' \
+    localhost:8080
+```
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result":"0xa22ae626d26923bdd9321e648de080c18e1049f2",
   "id":6
 }
 ```

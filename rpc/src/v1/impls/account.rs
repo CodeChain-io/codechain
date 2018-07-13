@@ -19,6 +19,7 @@ use std::sync::Arc;
 use ccore::AccountProvider;
 use ctypes::Address;
 use jsonrpc_core::Result;
+use primitives::H256;
 
 use super::super::errors::account_provider;
 use super::super::traits::Account;
@@ -45,5 +46,11 @@ impl Account for AccountClient {
             .new_account_and_public(passphrase.unwrap_or_default().as_ref())
             .map_err(account_provider)?;
         Ok(address)
+    }
+
+    fn create_account_from_secret(&self, secret: H256, passphrase: Option<String>) -> Result<Address> {
+        self.account_provider
+            .insert_account(secret.into(), passphrase.unwrap_or_default().as_ref())
+            .map_err(account_provider)
     }
 }
