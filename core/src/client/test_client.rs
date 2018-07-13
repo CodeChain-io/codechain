@@ -38,10 +38,11 @@ use std::sync::Arc;
 use ckey::{Generator, Public, Random};
 use cmerkle::skewed_merkle_root;
 use cnetwork::NodeId;
-use ctypes::{Address, Bytes, H256, U256};
+use ctypes::Address;
 use journaldb;
 use kvdb_memorydb;
 use parking_lot::RwLock;
+use primitives::{Bytes, H256, U256};
 use rlp::*;
 use trie;
 

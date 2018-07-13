@@ -6,10 +6,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate codechain_types as bigint;
+extern crate primitives;
 extern crate rlp;
 
-use bigint::{H160, U256};
+use primitives::{H160, U256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 use std::{cmp, fmt};
 

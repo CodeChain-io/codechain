@@ -17,7 +17,8 @@
 use std::fmt;
 
 use cjson;
-use ctypes::{Public, U256};
+use ctypes::Public;
+use primitives::U256;
 use rlp::{Encodable, RlpStream};
 
 use super::state::Account;

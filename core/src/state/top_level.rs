@@ -39,9 +39,10 @@ use std::cell::RefMut;
 use std::fmt;
 
 use ccrypto::BLAKE_NULL_RLP;
-use ctypes::{Address, H256, Public, U256};
+use ctypes::{Address, Public};
 use error::Error;
 use parcel::{Action, SignedParcel};
+use primitives::{H256, U256};
 use trie::{Result as TrieResult, Trie, TrieError, TrieFactory};
 
 use super::super::invoice::Invoice;
@@ -602,7 +603,8 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopState<B> for TopLevelSta
 #[cfg(test)]
 mod tests_state {
     use ccrypto::BLAKE_NULL_RLP;
-    use ctypes::{Address, U256};
+    use ctypes::Address;
+    use primitives::U256;
 
     use super::super::super::tests::helpers::{get_temp_state, get_temp_state_db};
     use super::*;
@@ -837,7 +839,8 @@ mod tests_parcel {
 
     use ccrypto::Blake;
     use ckey::{Generator, Random};
-    use ctypes::{Address, Secret, U256};
+    use ctypes::{Address, Secret};
+    use primitives::U256;
 
     use super::super::super::parcel::{AssetOutPoint, AssetTransferInput, AssetTransferOutput, Parcel};
     use super::super::super::tests::helpers::get_temp_state;

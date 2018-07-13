@@ -19,9 +19,10 @@ use std::collections::HashMap;
 use std::fmt;
 
 use ccrypto::{Blake, BLAKE_NULL_RLP};
-use ctypes::{Address, Bytes, H256, U128};
+use ctypes::Address;
 use cvm::{decode, execute, ScriptResult, VMConfig};
 use error::Error;
+use primitives::{Bytes, H256, U128};
 use rlp::Encodable;
 use trie::{self, Result as TrieResult, Trie, TrieError, TrieFactory};
 use unexpected::Mismatch;

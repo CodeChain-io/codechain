@@ -20,7 +20,8 @@ use ccore::{
     Asset, AssetClient, AssetScheme, BlockId, BlockNumber, Invoice, MinerService, MiningBlockChainClient,
     ParcelInvoice, RegularKey, Shard, SignedParcel,
 };
-use ctypes::{H160, H256, Public, U256};
+use ctypes::Public;
+use primitives::{H160, H256, U256};
 use rlp::UntrustedRlp;
 
 use jsonrpc_core::Result;

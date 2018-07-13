@@ -20,7 +20,7 @@ mod message;
 mod negotiation;
 mod signed_message;
 
-use ctypes::H256;
+use primitives::H256;
 
 pub use self::extension::Message as ExtensionMessage;
 pub use self::handshake::Message as HandshakeMessage;

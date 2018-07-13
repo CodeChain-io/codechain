@@ -19,10 +19,10 @@
 extern crate codechain_crypto;
 #[macro_use]
 extern crate codechain_logger as clogger;
-extern crate codechain_types;
 extern crate elastic_array;
 extern crate hashdb;
 extern crate memorydb;
+extern crate primitives;
 extern crate rand;
 extern crate rlp;
 
@@ -33,8 +33,8 @@ extern crate trie_standardmap as standardmap;
 extern crate log;
 
 use codechain_crypto::BLAKE_NULL_RLP;
-use codechain_types::H256;
 use hashdb::{DBValue, HashDB};
+use primitives::H256;
 use std::{error, fmt};
 
 pub mod node;

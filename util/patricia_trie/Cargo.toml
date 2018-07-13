@@ -11,8 +11,8 @@ log = "0.4.1"
 rand = "0.5.3"
 codechain-crypto = { path = "../../crypto" }
 codechain-logger = { path = "../logger" }
-codechain-types = { path = "../../primitives/codechain-types" }
 hashdb = { version = "0.1.1", path = "../hashdb" }
+primitives = { path = "../primitives" }
 rlp = { version = "0.2.1", path = "../rlp" }
 triehash = { version = "0.1.0", path = "../triehash" }
 memorydb = { version = "0.1.0", path = "../memorydb" }

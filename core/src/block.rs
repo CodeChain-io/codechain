@@ -18,7 +18,8 @@ use std::collections::HashSet;
 
 use ccrypto::BLAKE_NULL_RLP;
 use cmerkle::skewed_merkle_root;
-use ctypes::{Address, Bytes, H256};
+use ctypes::Address;
+use primitives::{Bytes, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 use trie::TrieFactory;
 use unexpected::Mismatch;

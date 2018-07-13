@@ -51,7 +51,7 @@ pub struct Genesis {
 mod tests {
     use std::str::FromStr;
 
-    use ctypes::{H160, H256 as Eth256, H520 as Eth520, U256};
+    use primitives::{H160, H256 as Eth256, H520 as Eth520, U256};
     use serde_json;
 
     use super::super::super::bytes::Bytes;

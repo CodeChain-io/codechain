@@ -19,9 +19,9 @@ use std::sync::Arc;
 use std::vec::Vec;
 
 use ccore::{DatabaseClient, COL_STATE};
-use ctypes::H256;
 use jsonrpc_core::Result;
 use kvdb::KeyValueDB;
+use primitives::H256;
 use rlp::UntrustedRlp;
 
 use super::super::errors;

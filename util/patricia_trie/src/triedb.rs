@@ -17,10 +17,10 @@
 use super::lookup::Lookup;
 use super::node::{Node, OwnedNode};
 use super::{Query, Trie, TrieError, TrieItem, TrieIterator};
-use codechain_types::bytes::ToPretty;
-use codechain_types::{Bytes, H256};
 use hashdb::*;
 use nibbleslice::NibbleSlice;
+use primitives::bytes::ToPretty;
+use primitives::{Bytes, H256};
 use rlp::*;
 use std::fmt;
 
@@ -34,12 +34,12 @@ use std::fmt;
 /// extern crate patricia_trie as trie;
 /// extern crate hashdb;
 /// extern crate memorydb;
-/// extern crate codechain_types;
+/// extern crate primitives;
 ///
 /// use trie::*;
 /// use hashdb::*;
 /// use memorydb::*;
-/// use codechain_types::H256;
+/// use primitives::H256;
 ///
 /// fn main() {
 ///   let mut memdb = MemoryDB::new();

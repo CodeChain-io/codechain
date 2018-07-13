@@ -55,6 +55,8 @@ extern crate serde_derive;
 #[cfg(test)]
 #[macro_use]
 extern crate matches;
+#[cfg(test)]
+extern crate primitives;
 
 pub mod accounts_dir;
 pub mod ckeys;

@@ -10,10 +10,11 @@ codechain-core = { path = "../core" }
 codechain-key = { path = "../key", features = ["ecdsa"] }
 codechain-logger = { path = "../util/logger" }
 codechain-network = { path = "../network" }
-codechain-types = { path = "../primitives/codechain-types" }
+codechain-types = { path = "../types" }
 kvdb = { path = "../util/kvdb" }
 kvdb-rocksdb = { path = "../util/kvdb-rocksdb" }
 log = "0.4.1"
+primitives = { path = "../util/primitives" }
 rlp = { path = "../util/rlp" }
 serde = "1.0"
 serde_json = "1.0"

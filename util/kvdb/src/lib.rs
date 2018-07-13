@@ -18,11 +18,11 @@
 
 #[macro_use]
 extern crate error_chain;
-extern crate codechain_types as ctypes;
 extern crate elastic_array;
+extern crate primitives;
 
-use ctypes::Bytes;
 use elastic_array::{ElasticArray128, ElasticArray32};
+use primitives::Bytes;
 use std::io;
 
 /// Required length of prefixes.

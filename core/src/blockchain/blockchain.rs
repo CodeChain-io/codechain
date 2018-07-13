@@ -17,9 +17,9 @@
 use std::mem;
 use std::sync::Arc;
 
-use ctypes::H256;
 use kvdb::{DBTransaction, KeyValueDB};
 use parking_lot::RwLock;
+use primitives::H256;
 use rlp::RlpStream;
 
 use super::super::blockchain_info::BlockChainInfo;

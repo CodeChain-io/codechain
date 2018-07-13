@@ -21,10 +21,11 @@ use std::time::Instant;
 
 use cio::IoChannel;
 use cnetwork::NodeId;
-use ctypes::{Address, Bytes, H256, Public, U256};
+use ctypes::{Address, Public};
 use journaldb;
 use kvdb::{DBTransaction, KeyValueDB};
 use parking_lot::{Mutex, RwLock};
+use primitives::{Bytes, H256, U256};
 use rlp::{Encodable, UntrustedRlp};
 use trie::{Result as TrieResult, TrieFactory, TrieSpec};
 

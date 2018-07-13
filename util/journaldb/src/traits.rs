@@ -16,10 +16,10 @@
 
 //! Disk-backed `HashDB` implementation.
 
-use codechain_types::{Bytes, H256};
 use error::UtilError;
 use hashdb::*;
 use kvdb::{self, DBTransaction};
+use primitives::{Bytes, H256};
 use std::sync::Arc;
 
 /// A `HashDB` which can manage a short-term journal potentially containing many forks of mutually

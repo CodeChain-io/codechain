@@ -42,7 +42,7 @@ pub enum Seal {
 
 #[cfg(test)]
 mod tests {
-    use ctypes::{H520 as Eth520, U256};
+    use primitives::{H520 as Eth520, U256};
     use serde_json;
 
     use super::super::super::bytes::Bytes;

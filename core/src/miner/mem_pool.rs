@@ -18,10 +18,11 @@ use std::cmp;
 use std::cmp::Ordering;
 use std::collections::{BTreeSet, HashMap};
 
-use ctypes::{Address, H256, U256};
+use ctypes::Address;
 use heapsize::HeapSizeOf;
 use linked_hash_map::LinkedHashMap;
 use multimap::MultiMap;
+use primitives::{H256, U256};
 use table::Table;
 
 use super::super::parcel::{Action, ParcelError, SignedParcel};

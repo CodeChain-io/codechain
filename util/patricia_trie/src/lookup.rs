@@ -16,9 +16,9 @@
 
 //! Trie lookup via HashDB.
 
-use codechain_types::H256;
 use hashdb::HashDB;
 use nibbleslice::NibbleSlice;
+use primitives::H256;
 use rlp::Rlp;
 
 use super::node::Node;

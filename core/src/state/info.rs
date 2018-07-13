@@ -14,7 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ctypes::{Address, H256, Public, U256};
+use ctypes::{Address, Public};
+use primitives::{H256, U256};
 use trie::Result as TrieResult;
 
 use super::{Asset, AssetAddress, AssetScheme, AssetSchemeAddress};

@@ -18,7 +18,7 @@ codechain-network = { path = "network" }
 codechain-reactor = { path = "util/reactor" }
 codechain-rpc = { path = "rpc" }
 codechain-sync = { path = "sync" }
-codechain-types = { path = "primitives/codechain-types" }
+codechain-types = { path = "types" }
 codechain-vm = { path = "vm" }
 ctrlc = { git = "https://github.com/paritytech/rust-ctrlc.git" }
 fdlimit = "0.1"
@@ -48,5 +48,6 @@ members = [
     "network",
     "rpc",
     "sync",
+    "types",
     "vm",
 ]

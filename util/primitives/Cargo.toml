@@ -1,0 +1,8 @@
+[package]
+name = "primitives"
+version = "0.1.0"
+authors = ["CodeChain Team <codechain@kodebox.io>"]
+
+[dependencies]
+ethcore-bytes = "0.1.1"
+ethereum-types = "0.3"

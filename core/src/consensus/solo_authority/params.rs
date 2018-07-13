@@ -15,7 +15,8 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use cjson;
-use ctypes::{Address, U256};
+use ctypes::Address;
+use primitives::U256;
 
 #[derive(Debug, PartialEq)]
 pub struct SoloAuthorityParams {
