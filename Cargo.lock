@@ -459,7 +459,13 @@ dependencies = [
 name = "codechain-types"
 version = "0.1.0"
 dependencies = [
+ "codechain-crypto 0.1.0",
  "primitives 0.1.0",
+ "rlp 0.2.1",
+ "rlp_derive 0.1.0",
+ "serde 1.0.53 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_derive 1.0.53 (registry+https://github.com/rust-lang/crates.io-index)",
+ "unexpected 0.1.0",
 ]
 
 [[package]]

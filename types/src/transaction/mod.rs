@@ -14,20 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-extern crate codechain_crypto as ccrypto;
-extern crate primitives;
-extern crate rlp;
-#[macro_use]
-extern crate rlp_derive;
-extern crate serde;
-#[macro_use]
-extern crate serde_derive;
-extern crate unexpected;
+mod error;
+mod transaction;
 
-pub mod transaction;
-
-use primitives::{H160, H256, H512};
-
-pub type Address = H160;
-pub type Secret = H256;
-pub type Public = H512;
+pub use self::error::Error;
+pub use self::transaction::{AssetMintOutput, AssetOutPoint, AssetTransferInput, AssetTransferOutput, Transaction};

@@ -4,4 +4,10 @@ version = "0.1.0"
 authors = ["CodeChain Team <codechain@kodebox.io>"]
 
 [dependencies]
+codechain-crypto = { path = "../crypto" }
 primitives = { path = "../util/primitives" }
+rlp = { path = "../util/rlp" }
+rlp_derive = { path = "../util/rlp_derive" }
+serde = "1.0"
+serde_derive = "1.0"
+unexpected = { path = "../util/unexpected" }

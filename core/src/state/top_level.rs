@@ -39,6 +39,7 @@ use std::cell::RefMut;
 use std::fmt;
 
 use ccrypto::BLAKE_NULL_RLP;
+use ctypes::transaction::Transaction;
 use ctypes::{Address, Public};
 use error::Error;
 use parcel::{Action, SignedParcel};
@@ -48,7 +49,6 @@ use trie::{Result as TrieResult, Trie, TrieError, TrieFactory};
 use super::super::invoice::Invoice;
 use super::super::parcel::ParcelError;
 use super::super::state_db::StateDB;
-use super::super::transaction::Transaction;
 use super::account::Account;
 use super::asset::{Asset, AssetAddress};
 use super::asset_scheme::{AssetScheme, AssetSchemeAddress};
@@ -837,12 +837,12 @@ mod tests_state {
 mod tests_parcel {
     use ccrypto::Blake;
     use ckey::{Generator, Random};
+    use ctypes::transaction::{AssetMintOutput, AssetOutPoint, AssetTransferInput, AssetTransferOutput, Transaction};
     use ctypes::{Address, Secret};
     use primitives::U256;
 
-    use super::super::super::parcel::{AssetOutPoint, AssetTransferInput, AssetTransferOutput, Parcel};
+    use super::super::super::parcel::Parcel;
     use super::super::super::tests::helpers::get_temp_state;
-    use super::super::super::transaction::{AssetMintOutput, Transaction};
     use super::*;
 
     fn secret() -> Secret {

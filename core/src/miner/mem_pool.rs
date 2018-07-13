@@ -1094,8 +1094,9 @@ pub mod test {
     use std::cmp::Ordering;
 
     use ckey::{Generator, Random};
+    use ctypes::transaction::{AssetMintOutput, Transaction};
 
-    use super::super::super::{AssetMintOutput, Parcel, Transaction};
+    use super::super::super::Parcel;
     use super::*;
 
     #[test]
