@@ -844,7 +844,7 @@ mod tests_parcel {
 
     use super::super::super::parcel::{AssetOutPoint, AssetTransferInput, AssetTransferOutput, Parcel};
     use super::super::super::tests::helpers::get_temp_state;
-    use super::super::super::transaction::Transaction;
+    use super::super::super::transaction::{AssetMintOutput, Transaction};
     use super::*;
 
     fn secret() -> Secret {
@@ -1056,9 +1056,11 @@ mod tests_parcel {
         let transaction = Transaction::AssetMint {
             network_id: 0xCA,
             metadata: metadata.clone(),
-            lock_script_hash,
-            parameters: parameters.clone(),
-            amount: Some(amount),
+            output: AssetMintOutput {
+                lock_script_hash,
+                parameters: parameters.clone(),
+                amount: Some(amount),
+            },
             registrar,
             nonce: 0,
         };
@@ -1109,9 +1111,11 @@ mod tests_parcel {
         let transaction = Transaction::AssetMint {
             network_id: 0xCA,
             metadata: metadata.clone(),
-            lock_script_hash,
-            parameters: parameters.clone(),
-            amount: None,
+            output: AssetMintOutput {
+                lock_script_hash,
+                parameters: parameters.clone(),
+                amount: None,
+            },
             registrar,
             nonce: 0,
         };
@@ -1171,9 +1175,11 @@ mod tests_parcel {
         let mint = Transaction::AssetMint {
             network_id,
             metadata: metadata.clone(),
-            lock_script_hash,
-            parameters: vec![],
-            amount: Some(amount),
+            output: AssetMintOutput {
+                lock_script_hash,
+                parameters: vec![],
+                amount: Some(amount),
+            },
             registrar,
             nonce: 0,
         };
@@ -1287,9 +1293,11 @@ mod tests_parcel {
         let mint = Transaction::AssetMint {
             network_id,
             metadata: metadata.clone(),
-            lock_script_hash,
-            parameters: vec![],
-            amount: Some(amount),
+            output: AssetMintOutput {
+                lock_script_hash,
+                parameters: vec![],
+                amount: Some(amount),
+            },
             registrar,
             nonce: 0,
         };
@@ -1520,9 +1528,11 @@ mod tests_parcel {
         let transaction = Transaction::AssetMint {
             network_id: 0xCA,
             metadata: metadata.clone(),
-            lock_script_hash,
-            parameters: parameters.clone(),
-            amount: Some(amount),
+            output: AssetMintOutput {
+                lock_script_hash,
+                parameters: parameters.clone(),
+                amount: Some(amount),
+            },
             registrar,
             nonce: 0,
         };

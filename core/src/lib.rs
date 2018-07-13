@@ -108,5 +108,5 @@ pub use parcel::{
 pub use service::ClientService;
 pub use spec::Spec;
 pub use state::{Asset, AssetAddress, AssetScheme, AssetSchemeAddress, ShardStateInfo, TopStateInfo};
-pub use transaction::{Error as TransactionError, Transaction};
+pub use transaction::{AssetMintOutput, Error as TransactionError, Transaction};
 pub use types::{BlockId, BlockNumber, ParcelId};

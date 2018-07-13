@@ -30,7 +30,7 @@ use unexpected::Mismatch;
 use super::super::invoice::Invoice;
 use super::super::parcel::{AssetTransferInput, AssetTransferOutput};
 use super::super::state_db::StateDB;
-use super::super::{Transaction, TransactionError};
+use super::super::{AssetMintOutput, Transaction, TransactionError};
 use super::cache::Cache;
 use super::traits::{CheckpointId, StateWithCache, StateWithCheckpoint};
 use super::{
@@ -107,10 +107,13 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         match transaction {
             Transaction::AssetMint {
                 metadata,
-                lock_script_hash,
-                amount,
-                parameters,
                 registrar,
+                output:
+                    AssetMintOutput {
+                        lock_script_hash,
+                        amount,
+                        parameters,
+                    },
                 ..
             } => Ok(self.mint_asset(transaction.hash(), metadata, lock_script_hash, parameters, amount, registrar)?),
             Transaction::AssetTransfer {
@@ -504,9 +507,11 @@ mod tests {
         let transaction = Transaction::AssetMint {
             network_id: 200,
             metadata: metadata.clone(),
-            lock_script_hash,
-            parameters: parameters.clone(),
-            amount: Some(amount),
+            output: AssetMintOutput {
+                lock_script_hash,
+                parameters: parameters.clone(),
+                amount: Some(amount),
+            },
             registrar,
             nonce: 0,
         };
@@ -543,9 +548,11 @@ mod tests {
         let transaction = Transaction::AssetMint {
             network_id: 200,
             metadata: metadata.clone(),
-            lock_script_hash,
-            parameters: parameters.clone(),
-            amount: None,
+            output: AssetMintOutput {
+                lock_script_hash,
+                parameters: parameters.clone(),
+                amount: None,
+            },
             registrar,
             nonce: 0,
         };
@@ -782,9 +789,11 @@ mod tests {
         let mint = Transaction::AssetMint {
             network_id: 200,
             metadata: metadata.clone(),
-            lock_script_hash,
-            parameters: vec![],
-            amount: Some(amount),
+            output: AssetMintOutput {
+                lock_script_hash,
+                parameters: vec![],
+                amount: Some(amount),
+            },
             registrar,
             nonce: 0,
         };
@@ -882,9 +891,11 @@ mod tests {
         let mint = Transaction::AssetMint {
             network_id: 200,
             metadata: metadata.clone(),
-            lock_script_hash,
-            parameters: vec![],
-            amount: Some(amount),
+            output: AssetMintOutput {
+                lock_script_hash,
+                parameters: vec![],
+                amount: Some(amount),
+            },
             registrar,
             nonce: 0,
         };
