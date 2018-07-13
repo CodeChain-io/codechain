@@ -14,9 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use ckey::SignatureData;
 use ctypes::Address;
 use jsonrpc_core::Result;
-use primitives::H256;
+use primitives::{H160, H256};
 
 build_rpc_trait! {
     pub trait Account {
@@ -31,5 +32,9 @@ build_rpc_trait! {
         /// Imports a private key
         # [rpc(name = "account_createAccountFromSecret")]
         fn create_account_from_secret(&self, H256, Option<String>) -> Result<Address>;
+
+        /// Calculates the account's signature for a given message
+        # [rpc(name = "account_sign")]
+        fn sign(&self, H256, H160, Option<String>) -> Result<SignatureData>;
     }
 }

@@ -119,6 +119,7 @@ A hexadecimal string for XXX-bit unsigned integer
  * [account_getAccountList](#account_getaccountlist)
  * [account_createAccount](#account_createaccount)
  * [account_createAccountFromSecret](#account_createaccountfromsecret)
+ * [account_sign](#account_sign)
 ***
  * [devel_getStateTrieKeys](#devel_getstatetriekeys)
  * [devel_getStateTrieValue](#devel_getstatetrievalue)
@@ -993,6 +994,33 @@ Response Example
 {
   "jsonrpc":"2.0",
   "result":"0xa22ae626d26923bdd9321e648de080c18e1049f2",
+  "id":6
+}
+```
+
+## account_sign
+Calculates the account's signature for a given message.
+
+Params:
+ 1. message: `H256`
+ 2. account: `H160`
+ 3. passphrase: `string` | `null`
+
+Return type: `H520` for ECDSA signature | `H512` for Schnorr signature
+
+Request Example
+```
+curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "account_sign", "params": ["0000000000000000000000000000000000000000000000000000000000000000", "1228c0de48fdc303b4b7f51049ae2887358f94b6"], "id": 6}' \
+    localhost:8080
+```
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result":"0xff7e8928f7758a64b9ea6c53f9945cdd223740675ac6ac6da625306d3966f8197523e00d56844ddb70631d44f045f4d83cc183a267c3182ab04c2f459c8289f501",
   "id":6
 }
 ```
