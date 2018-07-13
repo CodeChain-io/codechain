@@ -22,5 +22,9 @@ build_rpc_trait! {
         /// Gets a list of accounts
         # [rpc(name = "account_getAccountList")]
         fn get_account_list(&self) -> Result<Vec<Address>>;
+
+        /// Creates a new account
+        # [rpc(name = "account_createAccount")]
+        fn create_account(&self, Option<String>) -> Result<Address>;
     }
 }

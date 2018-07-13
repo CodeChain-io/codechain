@@ -39,4 +39,11 @@ impl Account for AccountClient {
     fn get_account_list(&self) -> Result<Vec<Address>> {
         self.account_provider.get_list().map_err(account_provider)
     }
+
+    fn create_account(&self, passphrase: Option<String>) -> Result<Address> {
+        let (address, _) = self.account_provider
+            .new_account_and_public(passphrase.unwrap_or_default().as_ref())
+            .map_err(account_provider)?;
+        Ok(address)
+    }
 }

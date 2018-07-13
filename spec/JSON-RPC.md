@@ -117,6 +117,7 @@ A hexadecimal string for XXX-bit unsigned integer
   * [net_getNetworkId](#net_getNetworkId)
 ***
  * [account_getAccountList](#account_getaccountlist)
+ * [account_createAccount](#account_createaccount)
 ***
  * [devel_getStateTrieKeys](#devel_getstatetriekeys)
  * [devel_getStateTrieValue](#devel_getstatetrievalue)
@@ -936,6 +937,31 @@ Response Example
 {
   "jsonrpc":"2.0",
   "result":["0x318def87d8dc0f7cc21794daf2dd36762db22b67"],
+  "id":6
+}
+```
+
+## account_createAccount
+Creates a new account.
+
+Params:
+ 1. passphrase: `string | null`
+
+Return Type: `H160`
+
+Request Example
+```
+curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "account_createAccount", "params": [], "id": 6}' \
+    localhost:8080
+```
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result":"0x318def87d8dc0f7cc21794daf2dd36762db22b67",
   "id":6
 }
 ```
