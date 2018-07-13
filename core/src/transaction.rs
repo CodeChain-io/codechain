@@ -32,11 +32,10 @@ pub enum Transaction {
     AssetMint {
         network_id: u64,
         metadata: String,
-        lock_script_hash: H256,
-        parameters: Vec<Bytes>,
-        amount: Option<u64>,
         registrar: Option<Address>,
         nonce: u64,
+
+        output: AssetMintOutput,
     },
     #[serde(rename_all = "camelCase")]
     AssetTransfer {
@@ -46,6 +45,14 @@ pub enum Transaction {
         outputs: Vec<AssetTransferOutput>,
         nonce: u64,
     },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AssetMintOutput {
+    pub lock_script_hash: H256,
+    pub parameters: Vec<Bytes>,
+    pub amount: Option<u64>,
 }
 
 impl Transaction {
@@ -109,9 +116,11 @@ impl Decodable for Transaction {
                 Ok(Transaction::AssetMint {
                     network_id: d.val_at(1)?,
                     metadata: d.val_at(2)?,
-                    lock_script_hash: d.val_at(3)?,
-                    parameters: d.val_at(4)?,
-                    amount: d.val_at(5)?,
+                    output: AssetMintOutput {
+                        lock_script_hash: d.val_at(3)?,
+                        parameters: d.val_at(4)?,
+                        amount: d.val_at(5)?,
+                    },
                     registrar: d.val_at(6)?,
                     nonce: d.val_at(7)?,
                 })
@@ -139,9 +148,12 @@ impl Encodable for Transaction {
             Transaction::AssetMint {
                 network_id,
                 metadata,
-                lock_script_hash,
-                parameters,
-                amount,
+                output:
+                    AssetMintOutput {
+                        lock_script_hash,
+                        parameters,
+                        amount,
+                    },
                 registrar,
                 nonce,
             } => s.begin_list(8)
