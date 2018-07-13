@@ -183,11 +183,7 @@ fn load_config(matches: &ArgMatches) -> Result<config::Config, String> {
     Ok(config)
 }
 
-fn new_miner(config: &config::Config, spec: &Spec) -> Result<Arc<Miner>, String> {
-    // FIXME: Handle IO error.
-    let dir = RootDiskDirectory::create(config.operating.keys_path.clone()).expect("Cannot read key path directory");
-    let keystore = KeyStore::open(Box::new(dir)).unwrap();
-
+fn new_miner(config: &config::Config, spec: &Spec, ap: Arc<AccountProvider>) -> Result<Arc<Miner>, String> {
     let miner_options = MinerOptions {
         mem_pool_size: config.mining.mem_pool_size,
         mem_pool_memory_limit: match config.mining.mem_pool_mem_limit {
@@ -202,7 +198,6 @@ fn new_miner(config: &config::Config, spec: &Spec) -> Result<Arc<Miner>, String>
         ..MinerOptions::default()
     };
 
-    let ap = AccountProvider::new(keystore);
     let addresses = ap.get_list().expect("Account provider should success to get address list");
     let address = if addresses.len() > 0 {
         addresses[0]
@@ -212,7 +207,7 @@ fn new_miner(config: &config::Config, spec: &Spec) -> Result<Arc<Miner>, String>
             .map_err(|e| format!("Invalid secret key: {:?}", e))?
     };
 
-    let miner = Miner::new(miner_options, spec, Some(ap.clone()));
+    let miner = Miner::new(miner_options, spec, Some(ap));
 
     let author = config.mining.author.unwrap_or(address);
     if miner.can_produce_work_package() {
@@ -240,7 +235,12 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
         .subsec_nanos() as usize);
     clogger::init(&LoggerConfig::new(instance_id)).expect("Logger must be successfully initialized");
 
-    let miner = new_miner(&config, &spec)?;
+    // FIXME: Handle IO error.
+    let keystore_dir =
+        RootDiskDirectory::create(config.operating.keys_path.clone()).expect("Cannot read key path directory");
+    let keystore = KeyStore::open(Box::new(keystore_dir)).unwrap();
+    let ap = AccountProvider::new(keystore);
+    let miner = new_miner(&config, &spec, ap.clone())?;
     let client = client_start(&config, &spec, miner.clone())?;
 
     let network_service = {
@@ -279,6 +279,7 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
         client: client.client(),
         miner: Arc::clone(&miner),
         network_control: network_service.as_ref().map(Arc::clone),
+        account_provider: ap,
     });
 
     let _rpc_server = {

@@ -89,7 +89,7 @@ mod views;
 #[cfg(test)]
 mod tests;
 
-pub use account_provider::AccountProvider;
+pub use account_provider::{AccountProvider, SignError as AccountProviderError};
 pub use block::Block;
 pub use blockchain::ParcelInvoice;
 pub use client::{
