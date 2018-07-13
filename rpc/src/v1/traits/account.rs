@@ -16,6 +16,7 @@
 
 use ctypes::Address;
 use jsonrpc_core::Result;
+use primitives::H256;
 
 build_rpc_trait! {
     pub trait Account {
@@ -26,5 +27,9 @@ build_rpc_trait! {
         /// Creates a new account
         # [rpc(name = "account_createAccount")]
         fn create_account(&self, Option<String>) -> Result<Address>;
+
+        /// Imports a private key
+        # [rpc(name = "account_createAccountFromSecret")]
+        fn create_account_from_secret(&self, H256, Option<String>) -> Result<Address>;
     }
 }
