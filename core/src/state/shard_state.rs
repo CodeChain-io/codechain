@@ -14,10 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use ctypes::transaction::{Error as TransactionError, Transaction};
+
 use error::Error;
 
 use super::super::invoice::Invoice;
-use super::super::{Transaction, TransactionError};
 use super::ShardBackend;
 
 pub trait ShardState<B>

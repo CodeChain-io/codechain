@@ -18,6 +18,7 @@ use std::fmt;
 
 use cio::IoError;
 use ckey::Error as KeyError;
+use ctypes::transaction::Error as TransactionError;
 use ctypes::Address;
 use primitives::{H256, U256};
 use trie::TrieError;
@@ -29,7 +30,6 @@ use super::client::Error as ClientError;
 use super::consensus::EngineError;
 use super::parcel::ParcelError;
 use super::types::BlockNumber;
-use super::TransactionError;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 /// Import to the block queue result

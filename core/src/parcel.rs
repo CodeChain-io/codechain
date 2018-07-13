@@ -19,14 +19,14 @@ use std::ops::Deref;
 
 use ccrypto::blake256;
 use ckey::{self, public_to_address, recover, sign, Private, Public, Signature, SignatureData};
+use ctypes::transaction::Transaction;
 use ctypes::Address;
 use heapsize::HeapSizeOf;
-use primitives::{Bytes, H160, H256, U256};
+use primitives::{H160, H256, U256};
 use rlp::{self, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::spec::CommonParams;
 use super::types::BlockNumber;
-use super::Transaction;
 
 #[derive(Debug, PartialEq, Clone)]
 /// Errors concerning parcel processing.
@@ -518,39 +518,13 @@ impl Deref for LocalizedParcel {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AssetOutPoint {
-    pub transaction_hash: H256,
-    pub index: usize,
-    pub asset_type: H256,
-    pub amount: u64,
-}
-
-#[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AssetTransferInput {
-    pub prev_out: AssetOutPoint,
-    pub lock_script: Bytes,
-    pub unlock_script: Bytes,
-}
-
-#[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AssetTransferOutput {
-    pub lock_script_hash: H256,
-    pub parameters: Vec<Bytes>,
-    pub asset_type: H256,
-    pub amount: u64,
-}
-
 #[cfg(test)]
 mod tests {
     use ckey::SignatureData;
+    use ctypes::transaction::AssetMintOutput;
     use ctypes::{Address, Public};
     use primitives::H256;
 
-    use super::super::AssetMintOutput;
     use super::*;
 
     #[test]
