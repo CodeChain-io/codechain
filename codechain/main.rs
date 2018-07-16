@@ -133,7 +133,7 @@ pub fn client_start(cfg: &config::Config, spec: &Spec, miner: Arc<Miner>) -> Res
     let client_path = Path::new(&cfg.operating.db_path);
     let client_config = Default::default();
     let service = ClientService::start(client_config, &spec, &client_path, miner)
-        .map_err(|e| format!("Client service error: {:?}", e))?;
+        .map_err(|e| format!("Client service error: {}", e))?;
 
     Ok(service)
 }

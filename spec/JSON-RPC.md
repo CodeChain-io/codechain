@@ -264,52 +264,49 @@ Request Example:
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "chain_getBlockByHash", "params": ["0x56642f04d519ae3262c7ba6facf1c5b11450ebaeb7955337cfbc45420d573077"], "id": null}' \
+    -d '{"jsonrpc": "2.0", "method": "chain_getBlockByHash", "params": ["0xfc196ede542b03b55aee9f106004e7e3d7ea6a9600692e964b4735a260356b50"], "id": null}' \
     localhost:8080
 ```
 
 Response Example
 ```
 {
-  "id":null,
   "jsonrpc":"2.0",
   "result":{
     "author":"0x84137e7a75043bed32e4458a45da7549a8169b4d",
     "extraData":[
 
     ],
-    "hash":"0x49b5fda89dbfa92e9a744d3019790107757d189608e2cfe15e796825f4561959",
-    "invoicesRoot":"0x45b0cfc220ceec5b7c1c62c4d4193d38e4eba48e8815729ce75f9c0ab0e4c1c0",
-    "number":1,
+    "hash":"0xfc196ede542b03b55aee9f106004e7e3d7ea6a9600692e964b4735a260356b50",
+    "invoicesRoot":"0x3a14d04383882243a684a6b0e779905f7883b12b5fb3ebf738facfcd2095b77a",
+    "number":5,
     "parcels":[
       {
         "action":{
-          "action":"changeShardState",
-          "transactions":[
-
-          ]
+          "action":"payment",
+          "amount":"0xa",
+          "receiver":0xa6594b7196808d161b6fb137e781abbc251385d9
         },
-        "blockHash":"0x49b5fda89dbfa92e9a744d3019790107757d189608e2cfe15e796825f4561959",
-        "blockNumber":1,
+        "blockHash":"0xfc196ede542b03b55aee9f106004e7e3d7ea6a9600692e964b4735a260356b50",
+        "blockNumber":5,
         "fee":"0xa",
-        "hash":"0x20dced7a95e82cf165bbb7ef111bfda24b664e3c3ffd5a255e970300eea5ec56",
+        "hash":"0xdb7c705d02e8961880783b4cb3dc051c41e551ade244bed5521901d8de190fc6",
         "networkId":17,
-        "nonce":"0x0",
+        "nonce":"0x4",
         "parcelIndex":0,
-        "r":"0xab2f74e74344b0b24932c85e29a4039150ae0b9fab17398b7e138a70022fd09c",
-        "s":"0x364dd6aeee95f45cbd6773c3edc6507d07505f7fbfb5d85ce128d19fa104d2a6",
-        "v":1
+        "sig":"0x291d932e55162407eb01915923d68cf78df4815a25fc6033488b644bda44b02251123feac3a3c56a399a2b32331599fd50b7a39ec2c1a2325e37f383c6aeedc301"
       }
     ],
-    "parcelsRoot":"0x934b77fa1ff7f405127de3c63efd44b92dad7ee4ff923c9b77f06abebd4844a4",
-    "parentHash":"0xc2338c8fd5a9b4ca5dd5dd12fc548e796bbb953ee6043afa14377037d0387e25",
+    "parcelsRoot":"0x0270d11d2bd21a0ec8e78d1c4e918103d7c4b02fdf734051231cb9eea90ae88e",
+    "parentHash":"0xddf9fece0c6dee067a409e73a299bca21cec2d8300dff45739a5b76c680f378d",
     "score":"0x20000",
     "seal":[
 
     ],
-    "stateRoot":"0x223ac1b388a6f3a2e001482d328c7f6f3b8f0b8686d3988224870a8fed99c8b1",
-    "timestamp":1530694371
+    "stateRoot":"0x898961f82629a47ade064f15d3902a455379cb082e62d3995f21050df3f553dc",
+    "timestamp":1531583888
   }
+  "id":null
 }
 ```
 
@@ -325,7 +322,7 @@ Request Example:
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "chain_sendSignedParcel", "params": ["0xf849800a11c201c001a0ab2f74e74344b0b24932c85e29a4039150ae0b9fab17398b7e138a70022fd09ca0364dd6aeee95f45cbd6773c3edc6507d07505f7fbfb5d85ce128d19fa104d2a6"], "id": null}' \
+    -d '{"jsonrpc": "2.0", "method": "chain_sendSignedParcel", "params": ["0xf85e040a11d70294a6594b7196808d161b6fb137e781abbc251385d90ab841291d932e55162407eb01915923d68cf78df4815a25fc6033488b644bda44b02251123feac3a3c56a399a2b32331599fd50b7a39ec2c1a2325e37f383c6aeedc301"], "id": null}' \
     localhost:8080
 ```
 
@@ -333,7 +330,7 @@ Response Example
 ```
 {
   "jsonrpc":"2.0",
-  "result":"0x20dced7a95e82cf165bbb7ef111bfda24b664e3c3ffd5a255e970300eea5ec56",
+  "result":"0xdb7c705d02e8961880783b4cb3dc051c41e551ade244bed5521901d8de190fc6",
   "id":null
 }
 ```
@@ -350,31 +347,30 @@ Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "chain_getParcel", "params": ["0x20dced7a95e82cf165bbb7ef111bfda24b664e3c3ffd5a255e970300eea5ec56"], "id": null}' \
+    -d '{"jsonrpc": "2.0", "method": "chain_getParcel", "params": ["0xdb7c705d02e8961880783b4cb3dc051c41e551ade244bed5521901d8de190fc6"], "id": null}' \
     localhost:8080
 ```
 
 Response Example
 ```
 {
-    "id": null,
     "jsonrpc": "2.0",
     "result": {
         "action": {
-            "action": "changeShardState",
-            "transactions": []
+          "action":"payment",
+          "amount":"0xa",
+          "receiver":0xa6594b7196808d161b6fb137e781abbc251385d9
         },
-        "blockHash": "0x49b5fda89dbfa92e9a744d3019790107757d189608e2cfe15e796825f4561959",
-        "blockNumber": 1,
+        "blockHash": "0xfc196ede542b03b55aee9f106004e7e3d7ea6a9600692e964b4735a260356b50",
+        "blockNumber": 5,
         "fee": "0xa",
-        "hash": "0x20dced7a95e82cf165bbb7ef111bfda24b664e3c3ffd5a255e970300eea5ec56",
+        "hash": "0xdb7c705d02e8961880783b4cb3dc051c41e551ade244bed5521901d8de190fc6",
         "networkId": 17,
-        "nonce": "0x0",
+        "nonce": "0x4",
         "parcelIndex": 0,
-        "r": "0xab2f74e74344b0b24932c85e29a4039150ae0b9fab17398b7e138a70022fd09c",
-        "s": "0x364dd6aeee95f45cbd6773c3edc6507d07505f7fbfb5d85ce128d19fa104d2a6",
-        "v": 1
+        "sig":"0x291d932e55162407eb01915923d68cf78df4815a25fc6033488b644bda44b02251123feac3a3c56a399a2b32331599fd50b7a39ec2c1a2325e37f383c6aeedc301"
     }
+    "id": null,
 }
 ```
 
