@@ -20,7 +20,7 @@ mod miner;
 mod sealing_queue;
 mod work_notify;
 
-use ctypes::Address;
+use ckey::Address;
 use primitives::{Bytes, H256, U256};
 
 pub use self::miner::{Miner, MinerOptions};

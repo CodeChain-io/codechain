@@ -19,10 +19,10 @@ use std::collections::HashMap;
 use std::fmt;
 
 use ccrypto::{Blake, BLAKE_NULL_RLP};
+use ckey::Address;
 use ctypes::transaction::{
     AssetMintOutput, AssetTransferInput, AssetTransferOutput, Error as TransactionError, Transaction,
 };
-use ctypes::Address;
 use cvm::{decode, execute, ScriptResult, VMConfig};
 use error::Error;
 use primitives::{Bytes, H256, U128};

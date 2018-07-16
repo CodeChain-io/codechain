@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 extern crate codechain_crypto as ccrypto;
+extern crate codechain_key as ckey;
 extern crate primitives;
 extern crate rlp;
 #[macro_use]
@@ -25,9 +26,3 @@ extern crate serde_derive;
 extern crate unexpected;
 
 pub mod transaction;
-
-use primitives::{H160, H256, H512};
-
-pub type Address = H160;
-pub type Secret = H256;
-pub type Public = H512;

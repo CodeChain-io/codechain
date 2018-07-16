@@ -19,7 +19,7 @@
 use std::collections::{HashSet, VecDeque};
 use std::sync::Arc;
 
-use ctypes::Address;
+use ckey::Address;
 use hashdb::HashDB;
 use journaldb::JournalDB;
 use kvdb::DBTransaction;

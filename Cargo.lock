@@ -324,7 +324,6 @@ version = "0.1.0"
 dependencies = [
  "bech32 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "codechain-crypto 0.1.0",
- "codechain-types 0.1.0",
  "heapsize 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 0.2.11 (registry+https://github.com/rust-lang/crates.io-index)",
  "primitives 0.1.0",
@@ -460,6 +459,7 @@ name = "codechain-types"
 version = "0.1.0"
 dependencies = [
  "codechain-crypto 0.1.0",
+ "codechain-key 0.1.0",
  "primitives 0.1.0",
  "rlp 0.2.1",
  "rlp_derive 0.1.0",

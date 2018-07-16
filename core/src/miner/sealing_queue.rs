@@ -72,7 +72,7 @@ impl SealingQueue {
 
 #[cfg(test)]
 mod tests {
-    use ctypes::Address;
+    use ckey::Address;
 
     use super::super::super::block::{ClosedBlock, OpenBlock};
     use super::super::super::spec::Spec;

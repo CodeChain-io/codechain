@@ -37,9 +37,8 @@ pub use self::validator_set::ValidatorSet;
 use std::fmt;
 use std::sync::{Arc, Weak};
 
-use ckey::Signature;
+use ckey::{Address, Signature};
 use cnetwork::NetworkExtension;
-use ctypes::Address;
 use primitives::{Bytes, H256, U256};
 use unexpected::{Mismatch, OutOfBounds};
 

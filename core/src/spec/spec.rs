@@ -20,7 +20,7 @@ use std::sync::Arc;
 use blockchain::HeaderProvider;
 use ccrypto::{blake256, BLAKE_NULL_RLP};
 use cjson;
-use ctypes::Address;
+use ckey::Address;
 use hashdb::HashDB;
 use memorydb::MemoryDB;
 use parking_lot::RwLock;

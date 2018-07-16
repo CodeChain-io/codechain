@@ -23,9 +23,8 @@ use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
 use std::sync::{Arc, Weak};
 
 use ccrypto::blake256;
-use ckey::{public_to_address, recover, Message, Signature, SignatureData};
+use ckey::{public_to_address, recover, Address, Message, Signature, SignatureData};
 use cnetwork::{Api, NetworkExtension, NodeId, TimerToken};
-use ctypes::Address;
 use parking_lot::{Mutex, RwLock};
 use primitives::{Bytes, H256, U128, U256};
 use rand::{thread_rng, Rng};

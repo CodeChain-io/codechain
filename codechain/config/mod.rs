@@ -19,9 +19,9 @@ mod chain_type;
 use std::fs;
 use std::str::FromStr;
 
+use ckey::Address;
 use clap;
 use cnetwork::{NetworkConfig, SocketAddr};
-use ctypes::Address;
 use rpc::{HttpConfiguration as RpcHttpConfig, IpcConfiguration as RpcIpcConfig};
 use toml;
 

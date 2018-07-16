@@ -17,8 +17,8 @@
 use std::collections::HashSet;
 
 use ccrypto::BLAKE_NULL_RLP;
+use ckey::Address;
 use cmerkle::skewed_merkle_root;
-use ctypes::Address;
 use primitives::{Bytes, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 use trie::TrieFactory;
@@ -446,7 +446,7 @@ pub fn enact(
 
 #[cfg(test)]
 mod tests {
-    use ctypes::Address;
+    use ckey::Address;
 
     use super::super::spec::Spec;
     use super::super::tests::helpers::get_temp_state_db;

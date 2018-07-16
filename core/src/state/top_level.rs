@@ -39,8 +39,8 @@ use std::cell::RefMut;
 use std::fmt;
 
 use ccrypto::BLAKE_NULL_RLP;
+use ckey::{Address, Public};
 use ctypes::transaction::Transaction;
-use ctypes::{Address, Public};
 use error::Error;
 use parcel::{Action, SignedParcel};
 use primitives::{H256, U256};
@@ -603,7 +603,7 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopState<B> for TopLevelSta
 #[cfg(test)]
 mod tests_state {
     use ccrypto::BLAKE_NULL_RLP;
-    use ctypes::Address;
+    use ckey::Address;
     use primitives::U256;
 
     use super::super::super::tests::helpers::{get_temp_state, get_temp_state_db};
@@ -836,9 +836,8 @@ mod tests_state {
 #[cfg(test)]
 mod tests_parcel {
     use ccrypto::Blake;
-    use ckey::{Generator, Random};
+    use ckey::{Address, Generator, Random, Secret};
     use ctypes::transaction::{AssetMintOutput, AssetOutPoint, AssetTransferInput, AssetTransferOutput, Transaction};
-    use ctypes::{Address, Secret};
     use primitives::U256;
 
     use super::super::super::parcel::Parcel;
