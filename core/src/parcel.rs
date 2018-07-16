@@ -14,255 +14,21 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::fmt;
 use std::ops::Deref;
 
 use ccrypto::blake256;
 use ckey::{self, public_to_address, recover, sign, Address, Private, Public, Signature, SignatureData};
+use ctypes::parcel::{Action, Error as ParcelError, Parcel};
 use ctypes::transaction::Transaction;
 use heapsize::HeapSizeOf;
-use primitives::{H160, H256, U256};
+use primitives::{H160, H256};
 use rlp::{self, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::spec::CommonParams;
 use super::types::BlockNumber;
 
-#[derive(Debug, PartialEq, Clone)]
-/// Errors concerning parcel processing.
-pub enum ParcelError {
-    /// Parcel is already imported to the queue
-    AlreadyImported,
-    /// Parcel is not valid anymore (state already has higher nonce)
-    Old,
-    /// Parcel has too low fee
-    /// (there is already a parcel with the same sender-nonce but higher gas price)
-    TooCheapToReplace,
-    /// Invalid chain ID given.
-    InvalidNetworkId,
-    /// Max metadata size is exceeded.
-    MetadataTooBig,
-    /// Parcel was not imported to the queue because limit has been reached.
-    LimitReached,
-    /// Parcel's fee is below currently set minimal fee requirement.
-    InsufficientFee {
-        /// Minimal expected fee
-        minimal: U256,
-        /// Parcel fee
-        got: U256,
-    },
-    /// Sender doesn't have enough funds to pay for this Parcel
-    InsufficientBalance {
-        address: Address,
-        /// Senders balance
-        balance: U256,
-        /// Parcel cost
-        cost: U256,
-    },
-    /// Returned when parcel nonce does not match state nonce.
-    InvalidNonce {
-        /// Nonce expected.
-        expected: U256,
-        /// Nonce found.
-        got: U256,
-    },
-    InvalidShardId(u32),
-    /// Not enough permissions given by permission contract.
-    NotAllowed,
-    /// Signature error
-    InvalidSignature(String),
-}
-
-pub fn parcel_error_message(error: &ParcelError) -> String {
-    use self::ParcelError::*;
-    match error {
-        AlreadyImported => "Already imported".into(),
-        Old => "No longer valid".into(),
-        TooCheapToReplace => "Fee too low to replace".into(),
-        InvalidNetworkId => "This network ID is not allowed on this chain".into(),
-        MetadataTooBig => "Metadata size is too big.".into(),
-        LimitReached => "Parcel limit reached".into(),
-        InsufficientFee {
-            minimal,
-            got,
-        } => format!("Insufficient fee. Min={}, Given={}", minimal, got),
-        InsufficientBalance {
-            address,
-            balance,
-            cost,
-        } => format!("{} has only {:?} but it must be larger than {:?}", address, balance, cost),
-        InvalidNonce {
-            expected,
-            got,
-        } => format!("Invalid parcel nonce: expected {}, found {}", expected, got),
-        InvalidShardId(shard_id) => format!("{} is an invalid shard id", shard_id),
-        NotAllowed => "Sender does not have permissions to execute this type of transaction".into(),
-        InvalidSignature(err) => format!("Parcel has invalid signature: {}.", err),
-    }
-}
-
-impl fmt::Display for ParcelError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let msg: String = parcel_error_message(self);
-
-        f.write_fmt(format_args!("Parcel error ({})", msg))
-    }
-}
-
-impl From<ckey::Error> for ParcelError {
-    fn from(err: ckey::Error) -> Self {
-        ParcelError::InvalidSignature(format!("{}", err))
-    }
-}
-
 /// Fake address for unsigned parcel as defined by EIP-86.
 pub const UNSIGNED_SENDER: Address = H160([0xff; 20]);
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Parcel {
-    /// Nonce.
-    pub nonce: U256,
-    /// Amount of CCC to be paid as a cost for distributing this parcel to the network.
-    pub fee: U256,
-    /// Mainnet or Testnet
-    pub network_id: u64,
-
-    pub action: Action,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase", tag = "action")]
-pub enum Action {
-    ChangeShardState {
-        /// Transaction, can be either asset mint or asset transfer
-        transactions: Vec<Transaction>,
-    },
-    Payment {
-        receiver: Address,
-        /// Transferred amount.
-        amount: U256,
-    },
-    SetRegularKey {
-        key: Public,
-    },
-    CreateShard,
-}
-
-const CHANGE_SHARD_STATE: u8 = 1;
-const PAYMENT: u8 = 2;
-const SET_REGULAR_KEY: u8 = 3;
-const CREATE_SHARD: u8 = 4;
-
-impl HeapSizeOf for Parcel {
-    fn heap_size_of_children(&self) -> usize {
-        0
-    }
-}
-
-impl rlp::Encodable for Action {
-    fn rlp_append(&self, s: &mut RlpStream) {
-        match self {
-            Action::ChangeShardState {
-                transactions,
-            } => {
-                s.begin_list(2);
-                s.append(&CHANGE_SHARD_STATE);
-                s.append_list(transactions);
-            }
-            Action::Payment {
-                receiver,
-                amount,
-            } => {
-                s.begin_list(3);
-                s.append(&PAYMENT);
-                s.append(receiver);
-                s.append(amount);
-            }
-            Action::SetRegularKey {
-                key,
-            } => {
-                s.begin_list(2);
-                s.append(&SET_REGULAR_KEY);
-                s.append(key);
-            }
-            Action::CreateShard => {
-                s.begin_list(1);
-                s.append(&CREATE_SHARD);
-            }
-        }
-    }
-}
-
-impl rlp::Decodable for Action {
-    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
-        match rlp.val_at(0)? {
-            CHANGE_SHARD_STATE => {
-                if rlp.item_count()? != 2 {
-                    return Err(DecoderError::RlpIncorrectListLen)
-                }
-                Ok(Action::ChangeShardState {
-                    transactions: rlp.list_at(1)?,
-                })
-            }
-            PAYMENT => {
-                if rlp.item_count()? != 3 {
-                    return Err(DecoderError::RlpIncorrectListLen)
-                }
-                Ok(Action::Payment {
-                    receiver: rlp.val_at(1)?,
-                    amount: rlp.val_at(2)?,
-                })
-            }
-            SET_REGULAR_KEY => {
-                if rlp.item_count()? != 2 {
-                    return Err(DecoderError::RlpIncorrectListLen)
-                }
-                Ok(Action::SetRegularKey {
-                    key: rlp.val_at(1)?,
-                })
-            }
-            CREATE_SHARD => {
-                if rlp.item_count()? != 1 {
-                    return Err(DecoderError::RlpIncorrectListLen)
-                }
-                Ok(Action::CreateShard)
-            }
-            _ => Err(DecoderError::Custom("Unexpected action prefix")),
-        }
-    }
-}
-
-impl Parcel {
-    /// Append object with a without signature into RLP stream
-    pub fn rlp_append_unsigned_parcel(&self, s: &mut RlpStream) {
-        s.begin_list(4);
-        s.append(&self.nonce);
-        s.append(&self.fee);
-        s.append(&self.network_id);
-        s.append(&self.action);
-    }
-
-    /// The message hash of the parcel.
-    pub fn hash(&self) -> H256 {
-        let mut stream = RlpStream::new();
-        self.rlp_append_unsigned_parcel(&mut stream);
-        blake256(stream.as_raw())
-    }
-
-    /// Signs the parcel as coming from `sender`.
-    pub fn sign(self, private: &Private) -> SignedParcel {
-        let sig = sign(&private, &self.hash()).expect("data is valid and context has signing capabilities; qed");
-        SignedParcel::new(self.with_signature(sig)).expect("secret is valid so it's recoverable")
-    }
-
-    /// Signs the parcel with signature.
-    pub fn with_signature(self, sig: Signature) -> UnverifiedParcel {
-        UnverifiedParcel {
-            unsigned: self,
-            sig: sig.into(),
-            hash: 0.into(),
-        }.compute_hash()
-    }
-}
 
 /// Signed parcel information without verified signature.
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -309,6 +75,14 @@ impl rlp::Encodable for UnverifiedParcel {
 }
 
 impl UnverifiedParcel {
+    pub fn new(parcel: Parcel, sig: Signature) -> Self {
+        UnverifiedParcel {
+            unsigned: parcel,
+            sig: sig.into(),
+            hash: 0.into(),
+        }.compute_hash()
+    }
+
     /// Used to compute hash of created parcels
     fn compute_hash(mut self) -> UnverifiedParcel {
         let hash = blake256(&*self.rlp_bytes());
@@ -454,6 +228,12 @@ impl SignedParcel {
                 public: Some(public),
             })
         }
+    }
+
+    /// Signs the parcel as coming from `sender`.
+    pub fn new_with_sign(parcel: Parcel, private: &Private) -> SignedParcel {
+        let sig = sign(&private, &parcel.hash()).expect("data is valid and context has signing capabilities; qed");
+        SignedParcel::new(UnverifiedParcel::new(parcel, sig)).expect("secret is valid so it's recoverable")
     }
 
     /// Returns parcel sender.

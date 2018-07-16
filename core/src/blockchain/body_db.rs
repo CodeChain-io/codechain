@@ -18,6 +18,7 @@ use std::collections::HashMap;
 use std::mem;
 use std::sync::Arc;
 
+use ctypes::parcel::Action;
 use kvdb::{DBTransaction, KeyValueDB};
 use parking_lot::RwLock;
 use primitives::{Bytes, H256};
@@ -26,7 +27,6 @@ use rlp_compress::{blocks_swapper, compress, decompress};
 
 use super::super::db::{self, CacheUpdatePolicy, Readable, Writable};
 use super::super::encoded;
-use super::super::parcel::Action;
 use super::super::views::BlockView;
 use super::block_info::BlockLocation;
 use super::extras::{ParcelAddress, TransactionAddress};
