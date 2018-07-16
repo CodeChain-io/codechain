@@ -418,8 +418,8 @@ impl<'a> BasicDecoder<'a> {
 
 #[cfg(test)]
 mod tests {
-    use {DecoderError, UntrustedRlp};
     use traits::Encodable;
+    use {DecoderError, UntrustedRlp};
 
     #[test]
     fn test_rlp_display() {
@@ -439,7 +439,7 @@ mod tests {
 
     #[test]
     fn at_overflow() {
-        let bs = vec![vec![1], vec![2,3,4], vec![3]].rlp_bytes();
+        let bs = vec![vec![1], vec![2, 3, 4], vec![3]].rlp_bytes();
         let rlp = UntrustedRlp::new(&*bs);
         let first_element: Result<Vec<u8>, _> = rlp.at(2).and_then(|elem| elem.as_val());
         assert_eq!(Ok(vec![3]), first_element);
