@@ -199,24 +199,34 @@ fn new_miner(config: &config::Config, spec: &Spec, ap: Arc<AccountProvider>) -> 
         ..MinerOptions::default()
     };
 
-    let addresses = ap.get_list().expect("Account provider should success to get address list");
-    let address = if addresses.len() > 0 {
-        addresses[0]
-    } else {
-        // FIXME: Don't hardcode password.
-        ap.insert_account("0000000000000000000000000000000000000000000000000000000000000001".into(), "password")
-            .expect("1 is a valid secret key")
-    };
+    let miner = Miner::new(miner_options, spec, Some(ap.clone()));
 
-    let miner = Miner::new(miner_options, spec, Some(ap));
-
-    let author = config.mining.author.unwrap_or(address);
     if miner.can_produce_work_package() {
-        miner.set_author(author);
+        let author = config.mining.author;
+        match author {
+            Some(author) => miner.set_author(author),
+            None => return Err("mining.author is not specified".to_string()),
+        }
     } else {
-        // FIXME: Don't hardcode password.
-        let engine_signer = config.mining.engine_signer.unwrap_or(address);
-        miner.set_engine_signer(engine_signer, "password".to_string()).map_err(|err| format!("{:?}", err))?;
+        match config.mining.engine_signer {
+            Some(engine_signer) => {
+                match ap.has_account(engine_signer) {
+                    Ok(has_account) if !has_account => {
+                        return Err("mining.engine_signer is not found in AccountProvider".to_string())
+                    }
+                    Ok(..) => {
+                        // FIXME: Don't hardcode password.
+                        miner
+                            .set_engine_signer(engine_signer, "password".to_string())
+                            .map_err(|err| format!("{:?}", err))?;
+                    }
+                    Err(e) => {
+                        return Err(format!("Error while checking whether engine_signer is in AccountProvider: {:?}", e))
+                    }
+                }
+            }
+            None => return Err("mining.engine_signer is not specified".to_string()),
+        }
     }
 
     Ok(miner)
