@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use rpassword;
+
 use ccore::AccountProvider;
 use ckey::KeyPair;
 use ckeystore::accounts_dir::RootDiskDirectory;
@@ -37,16 +39,22 @@ pub fn run_account_command(matches: ArgMatches) -> Result<(), String> {
 
     match subcommand.name.as_ref() {
         "create" => {
-            // FIXME: Input password.
-            let (address, _) = ap.new_account_and_public("password").expect("Cannot create account");
-            info!("Addresss {} is created", address);
+            if let Some(password) = read_password_and_confirm() {
+                let (address, _) = ap.new_account_and_public(password.as_ref()).expect("Cannot create account");
+                info!("Address {} is created", address);
+            } else {
+                println!("The password does not match");
+            }
             Ok(())
         }
         "import" => {
             let keystring = subcommand.matches.value_of("raw-key").unwrap();
             let keypair = KeyPair::from_private(keystring.parse().unwrap()).unwrap();
-            // FIXME: Don't hard password.
-            ap.insert_account(keypair.private().clone(), "password").expect("Cannot insert account");
+            if let Some(password) = read_password_and_confirm() {
+                ap.insert_account(keypair.private().clone(), password.as_ref()).expect("Cannot insert account");
+            } else {
+                println!("The password does not match");
+            }
             Ok(())
         }
         "list" => {
@@ -57,5 +65,15 @@ pub fn run_account_command(matches: ArgMatches) -> Result<(), String> {
             Ok(())
         }
         _ => Err("Invalid subcommand".to_string()),
+    }
+}
+
+fn read_password_and_confirm() -> Option<String> {
+    let first = rpassword::prompt_password_stdout("Password: ").unwrap();
+    let second = rpassword::prompt_password_stdout("Confirm Password: ").unwrap();
+    if first == second {
+        Some(first)
+    } else {
+        None
     }
 }

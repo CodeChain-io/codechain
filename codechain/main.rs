@@ -42,6 +42,7 @@ extern crate env_logger;
 extern crate fdlimit;
 extern crate panic_hook;
 extern crate parking_lot;
+extern crate rpassword;
 #[cfg(feature = "stratum")]
 extern crate stratum;
 extern crate toml;
