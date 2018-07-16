@@ -119,6 +119,7 @@ A hexadecimal string for XXX-bit unsigned integer
  * [account_getAccountList](#account_getaccountlist)
  * [account_createAccount](#account_createaccount)
  * [account_createAccountFromSecret](#account_createaccountfromsecret)
+ * [account_removeAccount](#account_removeaccount)
  * [account_sign](#account_sign)
 ***
  * [devel_getStateTrieKeys](#devel_getstatetriekeys)
@@ -990,6 +991,31 @@ Response Example
 {
   "jsonrpc":"2.0",
   "result":"0xa22ae626d26923bdd9321e648de080c18e1049f2",
+  "id":6
+}
+```
+
+## account_removeAccount
+Removes the account
+
+Params:
+ 1. account: `H160`
+ 2. passphrase: `string` | `null`
+
+Return type: `null`
+
+Request Example
+```
+curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "account_removeAccount", "params": ["1228c0de48fdc303b4b7f51049ae2887358f94b6"], "id": 6}' \
+```
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result":null,
   "id":6
 }
 ```
