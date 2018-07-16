@@ -104,7 +104,7 @@ CLI Options for CodeChain client
         Listen for rpc connections on PORT. (default: 8080)
 
     ``--no-ipc``
-        Do not run JSON-RPC over IPC service.    
+        Do not run JSON-RPC over IPC service.
 
     ``--ipc-path=[PATH]``
         Specify custom path for JSON-RPC over IPC service
@@ -116,11 +116,11 @@ CLI Options for CodeChain client
         Secret key used by node.
 
     ``--author=[ADDRESS]``
-        Specify the block's author (aka "coinbase") address for sending block rewards from 
+        Specify the block's author (aka "coinbase") address for sending block rewards from
         sealed blocks.
 
     ``--engine-signer=[ADDRESS]``
-        Specify the address which should be used to sign consensus messages and 
+        Specify the address which should be used to sign consensus messages and
         issue blocks.
 
     ``--mem-pool-mem-limit=[MB]``
