@@ -479,8 +479,6 @@ impl<B: Backend + ShardBackend> ShardState<B> for ShardLevelState<B> {
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
-
     use super::super::super::parcel::{AssetOutPoint, AssetTransferInput, AssetTransferOutput};
     use super::super::super::tests::helpers::get_temp_state_db;
     use super::*;
@@ -782,8 +780,7 @@ mod tests {
         let mut state = get_temp_shard_state(shard_id);
 
         let metadata = "metadata".to_string();
-        let lock_script_hash =
-            H256::from_str("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050").unwrap();
+        let lock_script_hash = H256::from("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050");
         let registrar = None;
         let amount = 30;
         let mint = Transaction::AssetMint {
@@ -884,8 +881,7 @@ mod tests {
         let mut state = get_temp_shard_state(shard_id);
 
         let metadata = "metadata".to_string();
-        let lock_script_hash =
-            H256::from_str("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050").unwrap();
+        let lock_script_hash = H256::from("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050");
         let registrar = None;
         let amount = 30;
         let mint = Transaction::AssetMint {

@@ -102,7 +102,6 @@ impl_hash!(H520, Hash520);
 mod test {
     use primitives;
     use serde_json;
-    use std::str::FromStr;
 
     use super::H256;
 
@@ -114,10 +113,7 @@ mod test {
             deserialized,
             vec![
                 H256(primitives::H256::from(0)),
-                H256(
-                    primitives::H256::from_str("5a39ed1020c04d4d84539975b893a4e7c53eab6c2965db8bc3468093a31bc5ae")
-                        .unwrap(),
-                ),
+                H256(primitives::H256::from("5a39ed1020c04d4d84539975b893a4e7c53eab6c2965db8bc3468093a31bc5ae")),
             ]
         );
     }

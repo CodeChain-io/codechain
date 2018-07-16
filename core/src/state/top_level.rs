@@ -835,8 +835,6 @@ mod tests_state {
 
 #[cfg(test)]
 mod tests_parcel {
-    use std::str::FromStr;
-
     use ccrypto::Blake;
     use ckey::{Generator, Random};
     use ctypes::{Address, Secret};
@@ -1168,8 +1166,7 @@ mod tests_parcel {
         let network_id = 0xBeef;
 
         let metadata = "metadata".to_string();
-        let lock_script_hash =
-            H256::from_str("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050").unwrap();
+        let lock_script_hash = H256::from("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050");
         let registrar = None;
         let amount = 30;
         let mint = Transaction::AssetMint {
@@ -1286,8 +1283,7 @@ mod tests_parcel {
         let network_id = 0xBeef;
 
         let metadata = "metadata".to_string();
-        let lock_script_hash =
-            H256::from_str("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050").unwrap();
+        let lock_script_hash = H256::from("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050");
         let registrar = None;
         let amount = 30;
         let mint = Transaction::AssetMint {
