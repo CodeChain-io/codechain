@@ -14,8 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ccore::{Action, LocalizedParcel, SignedParcel};
+use ccore::{LocalizedParcel, SignedParcel};
 use ckey::SignatureData;
+use ctypes::parcel::Action;
 use primitives::{H256, U256};
 
 #[derive(Debug, Serialize)]

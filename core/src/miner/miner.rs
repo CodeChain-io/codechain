@@ -19,6 +19,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use ckey::Address;
+use ctypes::parcel::Error as ParcelError;
 use parking_lot::{Mutex, RwLock};
 use primitives::{Bytes, H256, U256};
 
@@ -28,7 +29,7 @@ use super::super::client::{AccountData, BlockChain, BlockProducer, ImportSealedB
 use super::super::consensus::{CodeChainEngine, Seal};
 use super::super::error::Error;
 use super::super::header::Header;
-use super::super::parcel::{ParcelError, SignedParcel, UnverifiedParcel};
+use super::super::parcel::{SignedParcel, UnverifiedParcel};
 use super::super::spec::Spec;
 use super::super::state::TopLevelState;
 use super::super::types::{BlockId, BlockNumber, ParcelId};

@@ -14,10 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use ctypes::parcel::Error as ParcelError;
 use linked_hash_map::LinkedHashMap;
 use primitives::{H256, U256};
 
-use super::super::parcel::{ParcelError, SignedParcel};
+use super::super::parcel::SignedParcel;
 
 /// Status of local parcel.
 /// Can indicate that the parcel is currently part of the queue (`Pending/Future`)
@@ -164,9 +165,9 @@ impl LocalParcelsList {
 
 #[cfg(test)]
 mod tests {
-    use super::super::super::parcel;
     use super::*;
     use ckey::{Generator, Random};
+    use ctypes::parcel::{Action, Parcel};
     use primitives::U256;
 
     #[test]
@@ -212,13 +213,14 @@ mod tests {
     fn new_parcel(nonce: U256) -> SignedParcel {
         let keypair = Random.generate().unwrap();
         let transactions = vec![];
-        parcel::Parcel {
+        let parcel = Parcel {
             nonce,
             fee: U256::from(1245),
-            action: parcel::Action::ChangeShardState {
+            action: Action::ChangeShardState {
                 transactions,
             },
             network_id: 0u64,
-        }.sign(keypair.private())
+        };
+        SignedParcel::new_with_sign(parcel, keypair.private())
     }
 }

@@ -40,14 +40,14 @@ use std::fmt;
 
 use ccrypto::BLAKE_NULL_RLP;
 use ckey::{Address, Public};
+use ctypes::parcel::{Action, Error as ParcelError};
 use ctypes::transaction::Transaction;
 use error::Error;
-use parcel::{Action, SignedParcel};
+use parcel::SignedParcel;
 use primitives::{H256, U256};
 use trie::{Result as TrieResult, Trie, TrieError, TrieFactory};
 
 use super::super::invoice::Invoice;
-use super::super::parcel::ParcelError;
 use super::super::state_db::StateDB;
 use super::account::Account;
 use super::asset::{Asset, AssetAddress};
@@ -837,10 +837,10 @@ mod tests_state {
 mod tests_parcel {
     use ccrypto::Blake;
     use ckey::{Address, Generator, Random, Secret};
+    use ctypes::parcel::Parcel;
     use ctypes::transaction::{AssetMintOutput, AssetOutPoint, AssetTransferInput, AssetTransferOutput, Transaction};
     use primitives::U256;
 
-    use super::super::super::parcel::Parcel;
     use super::super::super::tests::helpers::get_temp_state;
     use super::*;
 
@@ -854,14 +854,15 @@ mod tests_parcel {
         state.create_shard_level_state().unwrap();
         state.commit().unwrap();
 
-        let signed_parcel = Parcel {
+        let parcel = Parcel {
             fee: 5.into(),
             nonce: 0.into(),
             network_id: 0xCA,
             action: Action::ChangeShardState {
                 transactions: vec![],
             },
-        }.sign(&secret().into());
+        };
+        let signed_parcel = SignedParcel::new_with_sign(parcel, &secret().into());
         let sender = signed_parcel.sender();
         state.add_balance(&sender, &20.into()).unwrap();
 
@@ -879,14 +880,15 @@ mod tests_parcel {
     fn should_apply_error_for_invalid_nonce() {
         let mut state = get_temp_state();
 
-        let signed_parcel = Parcel {
+        let parcel = Parcel {
             nonce: 2.into(),
             fee: 5.into(),
             network_id: 0xCA,
             action: Action::ChangeShardState {
                 transactions: vec![],
             },
-        }.sign(&secret().into());
+        };
+        let signed_parcel = SignedParcel::new_with_sign(parcel, &secret().into());
         let sender = signed_parcel.sender();
         state.add_balance(&sender, &20.into()).unwrap();
 
@@ -910,14 +912,15 @@ mod tests_parcel {
     #[test]
     fn should_apply_error_for_not_enough_cash() {
         let mut state = get_temp_state();
-        let signed_parcel = Parcel {
+        let parcel = Parcel {
             fee: 5.into(),
             nonce: 0.into(),
             network_id: 0xCA,
             action: Action::ChangeShardState {
                 transactions: vec![],
             },
-        }.sign(&secret().into());
+        };
+        let signed_parcel = SignedParcel::new_with_sign(parcel, &secret().into());
         let sender = signed_parcel.sender();
         state.add_balance(&sender, &4.into()).unwrap();
 
@@ -945,7 +948,7 @@ mod tests_parcel {
 
         let keypair = Random.generate().unwrap();
 
-        let signed_parcel = Parcel {
+        let parcel = Parcel {
             fee: 5.into(),
             action: Action::Payment {
                 receiver,
@@ -953,7 +956,8 @@ mod tests_parcel {
             },
             nonce: 0.into(),
             network_id: 0xCA,
-        }.sign(keypair.private());
+        };
+        let signed_parcel = SignedParcel::new_with_sign(parcel, keypair.private());
         let sender = signed_parcel.sender();
         assert_eq!(keypair.address(), sender);
         state.add_balance(&sender, &20.into()).unwrap();
@@ -978,14 +982,15 @@ mod tests_parcel {
 
         let keypair = Random.generate().unwrap();
 
-        let signed_parcel = Parcel {
+        let parcel = Parcel {
             fee: 5.into(),
             action: Action::SetRegularKey {
                 key,
             },
             nonce: 0.into(),
             network_id: 0xCA,
-        }.sign(keypair.private());
+        };
+        let signed_parcel = SignedParcel::new_with_sign(parcel, keypair.private());
         let sender = signed_parcel.sender();
         assert_eq!(sender, keypair.address());
         state.add_balance(&sender, &5.into()).unwrap();
@@ -1007,7 +1012,7 @@ mod tests_parcel {
         let receiver = 1u64.into();
         let keypair = Random.generate().unwrap();
 
-        let signed_parcel = Parcel {
+        let parcel = Parcel {
             fee: 5.into(),
             action: Action::Payment {
                 receiver,
@@ -1015,7 +1020,8 @@ mod tests_parcel {
             },
             nonce: 0.into(),
             network_id: 0xCA,
-        }.sign(keypair.private());
+        };
+        let signed_parcel = SignedParcel::new_with_sign(parcel, keypair.private());
         let sender = signed_parcel.sender();
         assert_eq!(keypair.address(), sender);
         state.add_balance(&sender, &20.into()).unwrap();
@@ -1063,14 +1069,15 @@ mod tests_parcel {
         };
         let transaction_hash = transaction.hash();
         let transactions = vec![transaction];
-        let signed_parcel = Parcel {
+        let parcel = Parcel {
             fee: 11.into(),
             action: Action::ChangeShardState {
                 transactions,
             },
             nonce: 0.into(),
             network_id: 0xCA,
-        }.sign(&secret().into());
+        };
+        let signed_parcel = SignedParcel::new_with_sign(parcel, &secret().into());
         let sender = signed_parcel.sender();
 
         state.add_balance(&sender, &U256::from(69u64)).unwrap();
@@ -1118,14 +1125,15 @@ mod tests_parcel {
         };
         let transaction_hash = transaction.hash();
         let transactions = vec![transaction];
-        let signed_parcel = Parcel {
+        let parcel = Parcel {
             fee: 5.into(),
             action: Action::ChangeShardState {
                 transactions,
             },
             nonce: 0.into(),
             network_id: 0xCA,
-        }.sign(&secret().into());
+        };
+        let signed_parcel = SignedParcel::new_with_sign(parcel, &secret().into());
         let sender = signed_parcel.sender();
 
         state.add_balance(&sender, &U256::from(69u64)).unwrap();
@@ -1225,14 +1233,15 @@ mod tests_parcel {
 
 
         let transactions = vec![mint, transfer];
-        let signed_parcel = Parcel {
+        let parcel = Parcel {
             fee: 20.into(),
             nonce: 0.into(),
             network_id,
             action: Action::ChangeShardState {
                 transactions,
             },
-        }.sign(&secret().into());
+        };
+        let signed_parcel = SignedParcel::new_with_sign(parcel, &secret().into());
         let sender = signed_parcel.sender();
 
         state.add_balance(&sender, &U256::from(120)).unwrap();
@@ -1298,14 +1307,15 @@ mod tests_parcel {
         };
         let mint_hash = mint.hash();
 
-        let mint_parcel = Parcel {
+        let parcel = Parcel {
             fee: 20.into(),
             network_id,
             nonce: 0.into(),
             action: Action::ChangeShardState {
                 transactions: vec![mint],
             },
-        }.sign(&secret().into());
+        };
+        let mint_parcel = SignedParcel::new_with_sign(parcel, &secret().into());
         let sender = mint_parcel.sender();
 
         state.add_balance(&sender, &U256::from(120)).unwrap();
@@ -1368,14 +1378,15 @@ mod tests_parcel {
         };
         let transfer_hash = transfer.hash();
 
-        let transfer_parcel = Parcel {
+        let parcel = Parcel {
             fee: 30.into(),
             network_id,
             nonce: 1.into(),
             action: Action::ChangeShardState {
                 transactions: vec![transfer],
             },
-        }.sign(&secret().into());
+        };
+        let transfer_parcel = SignedParcel::new_with_sign(parcel, &secret().into());
 
         assert_eq!(
             ParcelOutcome::Transactions(vec![TransactionOutcome {
@@ -1436,12 +1447,13 @@ mod tests_parcel {
     fn apply_create_shard() {
         let mut state = get_temp_state();
 
-        let signed_parcel = Parcel {
+        let parcel = Parcel {
             action: Action::CreateShard,
             fee: 5.into(),
             nonce: 0.into(),
             network_id: 0xCA,
-        }.sign(&secret().into());
+        };
+        let signed_parcel = SignedParcel::new_with_sign(parcel, &secret().into());
         let sender = signed_parcel.sender();
         state.add_balance(&sender, &20.into()).unwrap();
         let res = state.apply(&signed_parcel).unwrap();
@@ -1461,12 +1473,13 @@ mod tests_parcel {
     fn get_asset_in_invalid_shard2() {
         let mut state = get_temp_state();
 
-        let signed_parcel = Parcel {
+        let parcel = Parcel {
             action: Action::CreateShard,
             fee: 5.into(),
             nonce: 0.into(),
             network_id: 0xCA,
-        }.sign(&secret().into());
+        };
+        let signed_parcel = SignedParcel::new_with_sign(parcel, &secret().into());
         let sender = signed_parcel.sender();
         state.add_balance(&sender, &20.into()).unwrap();
         let res = state.apply(&signed_parcel).unwrap();
@@ -1488,12 +1501,13 @@ mod tests_parcel {
     fn get_asset_scheme_in_invalid_shard2() {
         let mut state = get_temp_state();
 
-        let signed_parcel = Parcel {
+        let parcel = Parcel {
             action: Action::CreateShard,
             fee: 5.into(),
             nonce: 0.into(),
             network_id: 0xCA,
-        }.sign(&secret().into());
+        };
+        let signed_parcel = SignedParcel::new_with_sign(parcel, &secret().into());
         let sender = signed_parcel.sender();
         state.add_balance(&sender, &20.into()).unwrap();
         let res = state.apply(&signed_parcel).unwrap();
@@ -1532,14 +1546,15 @@ mod tests_parcel {
             nonce: 0,
         };
         let transactions = vec![transaction];
-        let signed_parcel = Parcel {
+        let parcel = Parcel {
             fee: 11.into(),
             nonce: 0.into(),
             action: Action::ChangeShardState {
                 transactions,
             },
             network_id: 0xCA,
-        }.sign(&secret().into());
+        };
+        let signed_parcel = SignedParcel::new_with_sign(parcel, &secret().into());
         let sender = signed_parcel.sender();
 
         state.add_balance(&sender, &U256::from(69u64)).unwrap();
@@ -1593,14 +1608,15 @@ mod tests_parcel {
             nonce: 0,
         };
 
-        let signed_parcel = Parcel {
+        let parcel = Parcel {
             fee: 30.into(),
             network_id,
             nonce: 0.into(),
             action: Action::ChangeShardState {
                 transactions: vec![transfer],
             },
-        }.sign(&secret().into());
+        };
+        let signed_parcel = SignedParcel::new_with_sign(parcel, &secret().into());
 
         let sender = signed_parcel.sender();
         state.add_balance(&sender, &U256::from(120)).unwrap();
