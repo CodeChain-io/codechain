@@ -52,7 +52,7 @@ impl SocketAddr {
 
     pub fn is_global(&self) -> bool {
         match self.ip() {
-            net::IpAddr::V4(ip) => !ip.is_loopback() && ip.is_private(),
+            net::IpAddr::V4(ip) => !ip.is_loopback() && !ip.is_private(),
             net::IpAddr::V6(ip) => !ip.is_loopback(),
         }
     }
@@ -216,5 +216,15 @@ mod tests {
         let a1 = SocketAddr::v4(127, 0, 0, 1, 3485);
         let a2 = SocketAddr::v4(127, 0, 0, 1, 3484);
         assert_eq!(Ordering::Greater, a1.cmp(&a2));
+    }
+
+    #[test]
+    fn test_is_global_for_ipv4() {
+        let a1 = SocketAddr::v4(127, 0, 0, 1, 3485);
+        let a2 = SocketAddr::v4(192, 168, 0, 1, 3485);
+        let a3 = SocketAddr::v4(1, 1, 1, 1, 3485);
+        assert_eq!(false, a1.is_global());
+        assert_eq!(false, a2.is_global());
+        assert_eq!(true, a3.is_global());
     }
 }
