@@ -23,7 +23,6 @@ The following represents the default configuration values of ``config.dev.toml``
     db_path = "db"
     keys_path = "keys"
     chain = "solo"
-    secret_key = "0x0000000000000000000000000000000000000000000000000000000000000001"
 
     [mining]
 
