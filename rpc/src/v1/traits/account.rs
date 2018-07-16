@@ -33,6 +33,10 @@ build_rpc_trait! {
         # [rpc(name = "account_createAccountFromSecret")]
         fn create_account_from_secret(&self, H256, Option<String>) -> Result<Address>;
 
+        /// Removes the account
+        # [rpc(name = "account_removeAccount")]
+        fn remove_account(&self, H160, Option<String>) -> Result<()>;
+
         /// Calculates the account's signature for a given message
         # [rpc(name = "account_sign")]
         fn sign(&self, H256, H160, Option<String>) -> Result<SignatureData>;

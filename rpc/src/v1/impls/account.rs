@@ -55,6 +55,10 @@ impl Account for AccountClient {
             .map_err(account_provider)
     }
 
+    fn remove_account(&self, account: H160, passphrase: Option<String>) -> Result<()> {
+        self.account_provider.remove_account(account, passphrase.unwrap_or_default().as_ref()).map_err(account_provider)
+    }
+
     fn sign(&self, message_digest: H256, account: H160, passphrase: Option<String>) -> Result<SignatureData> {
         self.account_provider
             .sign(account, Some(passphrase.unwrap_or_default()), message_digest)
