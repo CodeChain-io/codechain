@@ -15,7 +15,7 @@ JSON-RPC, you can use Curl or `JavaScript SDK <https://api.codechain.io/>`_.
 
 Blockchain Configuration
 ========================
-When configuring CodeChain's blockchain type, you can set it to either ``Solo`` or ``Tendermint``. 
+When configuring CodeChain's blockchain type, you can set it to either ``Solo`` or ``Tendermint``.
 
 Solo Configuration
 ------------------
@@ -50,8 +50,8 @@ the node with a secret key of 1, use this command:
 
 Checking if CodeChain is Configured Properly
 ============================================
-JSON-RPC is a stateless, light-weight remote procedure call (RPC) protocol. Primarily this specification defines several data structures and the rules 
-around their processing. It is transport agnostic in that the concepts can be used within the same process, over sockets, over HTTP, or in many various 
+JSON-RPC is a stateless, light-weight remote procedure call (RPC) protocol. Primarily this specification defines several data structures and the rules
+around their processing. It is transport agnostic in that the concepts can be used within the same process, over sockets, over HTTP, or in many various
 message passing environments. It uses JSON (RFC 4627) as data format.
 
 Using Curl

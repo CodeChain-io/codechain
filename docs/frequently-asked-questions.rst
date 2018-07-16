@@ -11,7 +11,7 @@ Questions
 
 What is CodeChain?
 ------------------------------------------------------------------------------------------------------------------------------------------
-CodeChain is a programmable open source blockchain technology optimal for developing and customizing multi-asset management systems. 
+CodeChain is a programmable open source blockchain technology optimal for developing and customizing multi-asset management systems.
 
 How is CodeChain unique?
 ------------------------------------------------------------------------------------------------------------------------------------------

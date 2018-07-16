@@ -4,7 +4,7 @@
 Community
 ############################
 
-Please choose the appropriate forum when you wish to start a discussion or ask a question. The resources below serve as great starting points. We recommend 
+Please choose the appropriate forum when you wish to start a discussion or ask a question. The resources below serve as great starting points. We recommend
 using :ref:`gitter-rooms` for quick feedback from the devs.
 
 .. _gitter-rooms:
@@ -12,11 +12,11 @@ using :ref:`gitter-rooms` for quick feedback from the devs.
 Gitter Rooms
 ======================
 Gitter serves as the coworking space where devs share feedback, ask questions, or just hang out. Devs are usually online, so Gitter is probably the best
-place to get a quick hold of someone with something important. 
+place to get a quick hold of someone with something important.
 
 To go directly to CodeChain's Gitter rooms, click `here <https://gitter.im/CodeChain-io>`_. We currently have a room for each of the ongoing projects:
 
-* `codechain`_: CodeChain engine related 
+* `codechain`_: CodeChain engine related
 * `codechain-explorer`_: for looking up information, such as accounts or assets that belong in CodeChain.
 * `codechain-gateway`_: used for linking a certain service/server with CodeChain.
 * `codechain-sdk-js`_: JavaScript SDK for CodeChain

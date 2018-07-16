@@ -66,7 +66,7 @@ This should give you the following result:
         parameters: [],
         amount: 7000 }
 
-In this example, 10000 gold has been minted for Alice. Alice then basically sends 3000 gold to Bob. 
+In this example, 10000 gold has been minted for Alice. Alice then basically sends 3000 gold to Bob.
 Let’s see how all of this works specifically by inspecting parts of the code one by one.
 
 Setting Up Basic Properties
