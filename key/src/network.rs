@@ -41,6 +41,6 @@ impl Decodable for Network {
 
 impl Encodable for Network {
     fn rlp_append(&self, s: &mut RlpStream) {
-        s.append(&(*self as u8));
+        s.append_single_value(&(*self as u8));
     }
 }

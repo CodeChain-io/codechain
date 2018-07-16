@@ -218,7 +218,7 @@ impl Encodable for ParcelInvoice {
     fn rlp_append(&self, s: &mut RlpStream) {
         match self {
             ParcelInvoice::Single(invoice) => {
-                s.append(invoice);
+                s.append_single_value(invoice);
             }
             ParcelInvoice::Multiple(invoices) => {
                 s.append_list(invoices);

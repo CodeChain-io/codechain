@@ -83,7 +83,7 @@ pub struct PendingTransition {
 
 impl Encodable for PendingTransition {
     fn rlp_append(&self, s: &mut RlpStream) {
-        s.append(&self.proof);
+        s.append_single_value(&self.proof);
     }
 }
 

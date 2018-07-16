@@ -110,7 +110,7 @@ pub fn encode<E>(object: &E) -> ElasticArray1024<u8>
 where
     E: Encodable, {
     let mut stream = RlpStream::new();
-    stream.append(object);
+    stream.append_single_value(object);
     stream.drain()
 }
 
