@@ -19,7 +19,7 @@
 use std::fmt;
 use std::str::FromStr;
 
-use ctypes::{H160 as Hash160, H256 as Hash256, H520 as Hash520, H64 as Hash64};
+use primitives::{H160 as Hash160, H256 as Hash256, H520 as Hash520, H64 as Hash64};
 use rustc_hex::ToHex;
 use serde::de::{Error, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -100,9 +100,8 @@ impl_hash!(H520, Hash520);
 
 #[cfg(test)]
 mod test {
-    use ctypes;
+    use primitives;
     use serde_json;
-    use std::str::FromStr;
 
     use super::H256;
 
@@ -113,16 +112,14 @@ mod test {
         assert_eq!(
             deserialized,
             vec![
-                H256(ctypes::H256::from(0)),
-                H256(
-                    ctypes::H256::from_str("5a39ed1020c04d4d84539975b893a4e7c53eab6c2965db8bc3468093a31bc5ae").unwrap(),
-                ),
+                H256(primitives::H256::from(0)),
+                H256(primitives::H256::from("5a39ed1020c04d4d84539975b893a4e7c53eab6c2965db8bc3468093a31bc5ae")),
             ]
         );
     }
 
     #[test]
     fn hash_into() {
-        assert_eq!(ctypes::H256::from(0), H256(ctypes::H256::from(0)).into());
+        assert_eq!(primitives::H256::from(0), H256(primitives::H256::from(0)).into());
     }
 }

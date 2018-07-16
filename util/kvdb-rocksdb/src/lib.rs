@@ -817,19 +817,19 @@ impl Drop for Database {
 
 #[cfg(test)]
 mod tests {
+    extern crate primitives;
     extern crate tempdir;
 
+    use self::primitives::H256;
     use self::tempdir::TempDir;
     use super::*;
-    use codechain_types::H256;
-    use std::str::FromStr;
 
     fn test_db(config: &DatabaseConfig) {
         let tempdir = TempDir::new("").unwrap();
         let db = Database::open(config, tempdir.path().to_str().unwrap()).unwrap();
-        let key1 = H256::from_str("02c69be41d0b7e40352fc85be1cd65eb03d40ef8427a0ca4596b1ead9a00e9fc").unwrap();
-        let key2 = H256::from_str("03c69be41d0b7e40352fc85be1cd65eb03d40ef8427a0ca4596b1ead9a00e9fc").unwrap();
-        let key3 = H256::from_str("01c69be41d0b7e40352fc85be1cd65eb03d40ef8427a0ca4596b1ead9a00e9fc").unwrap();
+        let key1 = H256::from("02c69be41d0b7e40352fc85be1cd65eb03d40ef8427a0ca4596b1ead9a00e9fc");
+        let key2 = H256::from("03c69be41d0b7e40352fc85be1cd65eb03d40ef8427a0ca4596b1ead9a00e9fc");
+        let key3 = H256::from("01c69be41d0b7e40352fc85be1cd65eb03d40ef8427a0ca4596b1ead9a00e9fc");
 
         let mut batch = db.transaction();
         batch.put(None, &key1, b"cat");

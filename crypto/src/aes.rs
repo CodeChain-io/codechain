@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ctypes::{H128, H256};
 use error::SymmError;
+use primitives::{H128, H256};
 use rcrypto::aes::KeySize::KeySize256;
 use rcrypto::aes::{cbc_decryptor, cbc_encryptor};
 use rcrypto::aessafe::AesSafe128Encryptor;
@@ -92,7 +92,7 @@ pub fn decrypt_128_ctr(k: &[u8], iv: &[u8], encrypted: &[u8], dest: &mut [u8]) -
 mod tests {
     extern crate rand;
 
-    use ctypes::{H128, H256};
+    use primitives::{H128, H256};
 
     use self::rand::{OsRng, RngCore};
     use super::{decrypt, encrypt};

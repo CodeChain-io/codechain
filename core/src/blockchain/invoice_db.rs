@@ -17,9 +17,9 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use ctypes::H256;
 use kvdb::{DBTransaction, KeyValueDB};
 use parking_lot::RwLock;
+use primitives::H256;
 
 use super::super::db::{self, CacheUpdatePolicy, Readable, Writable};
 use super::extras::{BlockInvoices, ParcelAddress, ParcelInvoice};

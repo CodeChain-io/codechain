@@ -16,7 +16,8 @@
 
 use heapsize::HeapSizeOf;
 
-use ctypes::{Address, H256};
+use ctypes::Address;
+use primitives::H256;
 
 use super::super::super::codechain_machine::CodeChainMachine;
 use super::super::super::error::Error;

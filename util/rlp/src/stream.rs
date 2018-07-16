@@ -96,7 +96,7 @@ impl RlpStream {
 
     /// Appends value to the end of stream, but do not count it as an appended item.
     /// It's useful for wrapper types
-    pub fn append_internal<'a, E>(&'a mut self, value: &E) -> &'a mut Self
+    pub fn append_single_value<'a, E>(&'a mut self, value: &E) -> &'a mut Self
     where
         E: Encodable, {
         value.rlp_append(self);
@@ -385,5 +385,26 @@ impl<'a> BasicEncoder<'a> {
                 self.buffer.append_slice(value);
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    #[ignore]
+    fn append_more_than_expected() {
+        let s = {
+            let mut s = RlpStream::new_list(1);
+            s.append(&1);
+            s
+        };
+        let must_fail = ::std::panic::catch_unwind(|| {
+            (|mut s: RlpStream| {
+                s.append(&2);
+            })(s)
+        });
+        assert!(must_fail.is_err());
     }
 }

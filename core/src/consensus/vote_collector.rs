@@ -19,8 +19,9 @@ use std::fmt::Debug;
 use std::hash::Hash;
 
 use ckey::SignatureData;
-use ctypes::{Address, Bytes, H256};
+use ctypes::Address;
 use parking_lot::RwLock;
+use primitives::{Bytes, H256};
 use rlp::{Encodable, RlpStream};
 
 pub trait Message: Clone + PartialEq + Eq + Hash + Encodable + Debug {

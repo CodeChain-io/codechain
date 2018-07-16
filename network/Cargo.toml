@@ -9,7 +9,8 @@ codechain-finally = { path = "../util/finally" }
 codechain-io = { path = "../util/io" }
 codechain-key = { path = "../key", features = ["ecdsa"] }
 codechain-logger = { path = "../util/logger" }
-codechain-types = { path = "../primitives/codechain-types" }
+codechain-types = { path = "../types" }
+primitives = { path = "../util/primitives" }
 log = "0.4.1"
 mio = "0.6.8"
 parking_lot = "0.5"

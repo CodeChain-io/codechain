@@ -20,7 +20,7 @@ use std::time::Instant;
 
 use ccore::encoded::Header;
 use ccore::{BlockChainClient, BlockId};
-use ctypes::{H256, U256};
+use primitives::{H256, U256};
 
 use super::super::message::RequestMessage;
 

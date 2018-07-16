@@ -19,9 +19,10 @@ use std::collections::HashMap;
 use std::fmt;
 
 use ccrypto::{Blake, BLAKE_NULL_RLP};
-use ctypes::{Address, Bytes, H256, U128};
+use ctypes::Address;
 use cvm::{decode, execute, ScriptResult, VMConfig};
 use error::Error;
+use primitives::{Bytes, H256, U128};
 use rlp::Encodable;
 use trie::{self, Result as TrieResult, Trie, TrieError, TrieFactory};
 use unexpected::Mismatch;
@@ -29,7 +30,7 @@ use unexpected::Mismatch;
 use super::super::invoice::Invoice;
 use super::super::parcel::{AssetTransferInput, AssetTransferOutput};
 use super::super::state_db::StateDB;
-use super::super::{Transaction, TransactionError};
+use super::super::{AssetMintOutput, Transaction, TransactionError};
 use super::cache::Cache;
 use super::traits::{CheckpointId, StateWithCache, StateWithCheckpoint};
 use super::{
@@ -106,10 +107,13 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         match transaction {
             Transaction::AssetMint {
                 metadata,
-                lock_script_hash,
-                amount,
-                parameters,
                 registrar,
+                output:
+                    AssetMintOutput {
+                        lock_script_hash,
+                        amount,
+                        parameters,
+                    },
                 ..
             } => Ok(self.mint_asset(transaction.hash(), metadata, lock_script_hash, parameters, amount, registrar)?),
             Transaction::AssetTransfer {
@@ -475,8 +479,6 @@ impl<B: Backend + ShardBackend> ShardState<B> for ShardLevelState<B> {
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
-
     use super::super::super::parcel::{AssetOutPoint, AssetTransferInput, AssetTransferOutput};
     use super::super::super::tests::helpers::get_temp_state_db;
     use super::*;
@@ -503,9 +505,11 @@ mod tests {
         let transaction = Transaction::AssetMint {
             network_id: 200,
             metadata: metadata.clone(),
-            lock_script_hash,
-            parameters: parameters.clone(),
-            amount: Some(amount),
+            output: AssetMintOutput {
+                lock_script_hash,
+                parameters: parameters.clone(),
+                amount: Some(amount),
+            },
             registrar,
             nonce: 0,
         };
@@ -542,9 +546,11 @@ mod tests {
         let transaction = Transaction::AssetMint {
             network_id: 200,
             metadata: metadata.clone(),
-            lock_script_hash,
-            parameters: parameters.clone(),
-            amount: None,
+            output: AssetMintOutput {
+                lock_script_hash,
+                parameters: parameters.clone(),
+                amount: None,
+            },
             registrar,
             nonce: 0,
         };
@@ -774,16 +780,17 @@ mod tests {
         let mut state = get_temp_shard_state(shard_id);
 
         let metadata = "metadata".to_string();
-        let lock_script_hash =
-            H256::from_str("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050").unwrap();
+        let lock_script_hash = H256::from("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050");
         let registrar = None;
         let amount = 30;
         let mint = Transaction::AssetMint {
             network_id: 200,
             metadata: metadata.clone(),
-            lock_script_hash,
-            parameters: vec![],
-            amount: Some(amount),
+            output: AssetMintOutput {
+                lock_script_hash,
+                parameters: vec![],
+                amount: Some(amount),
+            },
             registrar,
             nonce: 0,
         };
@@ -874,16 +881,17 @@ mod tests {
         let mut state = get_temp_shard_state(shard_id);
 
         let metadata = "metadata".to_string();
-        let lock_script_hash =
-            H256::from_str("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050").unwrap();
+        let lock_script_hash = H256::from("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050");
         let registrar = None;
         let amount = 30;
         let mint = Transaction::AssetMint {
             network_id: 200,
             metadata: metadata.clone(),
-            lock_script_hash,
-            parameters: vec![],
-            amount: Some(amount),
+            output: AssetMintOutput {
+                lock_script_hash,
+                parameters: vec![],
+                amount: Some(amount),
+            },
             registrar,
             nonce: 0,
         };

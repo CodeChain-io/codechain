@@ -21,10 +21,11 @@ use std::time::Instant;
 
 use cio::IoChannel;
 use cnetwork::NodeId;
-use ctypes::{Address, Bytes, H256, Public, U256};
+use ctypes::{Address, Public};
 use journaldb;
 use kvdb::{DBTransaction, KeyValueDB};
 use parking_lot::{Mutex, RwLock};
+use primitives::{Bytes, H256, U256};
 use rlp::{Encodable, UntrustedRlp};
 use trie::{Result as TrieResult, TrieFactory, TrieSpec};
 
@@ -36,7 +37,7 @@ use super::super::blockchain::{
 use super::super::consensus::epoch::Transition as EpochTransition;
 use super::super::consensus::CodeChainEngine;
 use super::super::encoded;
-use super::super::error::{BlockImportError, Error, ImportError};
+use super::super::error::{BlockImportError, Error, ImportError, SpecError};
 use super::super::header::Header;
 use super::super::miner::{Miner, MinerService};
 use super::super::parcel::{LocalizedParcel, SignedParcel, UnverifiedParcel};
@@ -98,6 +99,9 @@ impl Client {
 
         let journal_db = journaldb::new(db.clone(), journaldb::Algorithm::Archive, ::db::COL_STATE);
         let mut state_db = StateDB::new(journal_db, config.state_cache_size);
+        if !spec.check_genesis_root(state_db.as_hashdb()) {
+            return Err(SpecError::InvalidState.into())
+        }
         if state_db.journal_db().is_empty() {
             // Sets the correct state root.
             state_db = spec.ensure_genesis_state(state_db, &trie_factory)?;
@@ -108,6 +112,7 @@ impl Client {
 
         let gb = spec.genesis_block();
         let chain = Arc::new(BlockChain::new(&gb, db.clone()));
+        spec.check_genesis_common_params(&*chain)?;
 
         let engine = spec.engine.clone();
 

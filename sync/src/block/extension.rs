@@ -25,7 +25,7 @@ use ccore::{
     UnverifiedParcel,
 };
 use cnetwork::{Api, NetworkExtension, NodeId, TimerToken};
-use ctypes::{H256, U256};
+use primitives::{H256, U256};
 use rlp::{Encodable, UntrustedRlp};
 use time::Duration;
 

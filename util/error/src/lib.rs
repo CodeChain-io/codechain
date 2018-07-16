@@ -22,12 +22,12 @@
 #[macro_use]
 extern crate error_chain;
 
-extern crate codechain_types;
 extern crate kvdb;
+extern crate primitives;
 extern crate rlp;
 extern crate rustc_hex;
 
-use codechain_types::H256;
+use primitives::H256;
 use rlp::DecoderError;
 use rustc_hex::FromHexError;
 use std::fmt;

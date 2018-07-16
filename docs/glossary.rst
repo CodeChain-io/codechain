@@ -10,7 +10,7 @@ Glossary
 **Byzantine Fault Tolerance (BFT)**
 
 Byzantine failure is when a system loses service due to a Byzantine Fault. Thus, BFT defines the level of immunity of a certain system from those
-Byzantine faults. 
+Byzantine faults.
 
 **C**
 

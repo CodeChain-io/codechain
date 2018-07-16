@@ -6,8 +6,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use bigint::{H128, H160, H256, H512, H520, H64, U128, U256};
 use byteorder::{BigEndian, ByteOrder};
+use primitives::{H128, H160, H256, H512, H520, H64, U128, U256};
 use std::{cmp, mem, str};
 use stream::RlpStream;
 use traits::{Decodable, Encodable};

@@ -19,8 +19,8 @@ use std::sync::Arc;
 
 use cio::{IoContext, IoHandler, IoHandlerResult, IoService};
 use cnetwork::NodeId;
-use ctypes::Bytes;
 use kvdb_rocksdb::{Database, DatabaseConfig};
+use primitives::Bytes;
 
 use super::client::{Client, ClientConfig};
 use super::error::Error;

@@ -7,7 +7,7 @@ authors = ["CodeChain Team <codechain@kodebox.io>"]
 ring = "0.12"
 quick-error = "1.2"
 rust-crypto = "0.2.36"
-codechain-types = { path = "../primitives/codechain-types" }
+primitives = { path = "../util/primitives" }
 
 [dev-dependencies]
 rand = "0.5.3"

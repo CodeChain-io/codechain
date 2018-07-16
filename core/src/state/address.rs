@@ -16,17 +16,21 @@
 
 macro_rules! define_address_constructor {
     (TOP, $name:ident, $prefix:expr) => {
-        fn from_transaction_hash(transaction_hash: ::ctypes::H256, index: u64) -> Self {
-            let mut hash: ::ctypes::H256 =
-                ::ccrypto::Blake::blake_with_key(&transaction_hash, &::ctypes::H128::from(index));
+        fn from_transaction_hash(transaction_hash: ::primitives::H256, index: u64) -> Self {
+            let mut hash: ::primitives::H256 =
+                ::ccrypto::Blake::blake_with_key(&transaction_hash, &::primitives::H128::from(index));
             hash[0..8].clone_from_slice(&[$prefix, 0, 0, 0, 0, 0, 0, 0]);
             $name(hash)
         }
     };
     (SHARD, $name:ident, $prefix:expr) => {
-        fn from_transaction_hash_with_shard_id(transaction_hash: ::ctypes::H256, index: u64, shard_id: u32) -> Self {
-            let mut hash: ::ctypes::H256 =
-                ::ccrypto::Blake::blake_with_key(&transaction_hash, &::ctypes::H128::from(index));
+        fn from_transaction_hash_with_shard_id(
+            transaction_hash: ::primitives::H256,
+            index: u64,
+            shard_id: u32,
+        ) -> Self {
+            let mut hash: ::primitives::H256 =
+                ::ccrypto::Blake::blake_with_key(&transaction_hash, &::primitives::H128::from(index));
             hash[0..4].clone_from_slice(&[$prefix, 0, 0, 0]);
 
             let mut shard_id_bytes = Vec::<u8>::new();
@@ -44,7 +48,7 @@ macro_rules! impl_address {
         impl $name {
             define_address_constructor!($type, $name, $prefix);
 
-            pub fn from_hash(hash: ::ctypes::H256) -> Option<Self> {
+            pub fn from_hash(hash: ::primitives::H256) -> Option<Self> {
                 if Self::is_valid_format(&hash) {
                     Some($name(hash))
                 } else {
@@ -52,7 +56,7 @@ macro_rules! impl_address {
                 }
             }
 
-            pub fn is_valid_format(hash: &::ctypes::H256) -> bool {
+            pub fn is_valid_format(hash: &::primitives::H256) -> bool {
                 if hash[0..4] != [$prefix, 0, 0, 0] {
                     return false // prefix
                 }
@@ -60,14 +64,14 @@ macro_rules! impl_address {
             }
         }
 
-        impl Into<::ctypes::H256> for $name {
-            fn into(self) -> ::ctypes::H256 {
+        impl Into<::primitives::H256> for $name {
+            fn into(self) -> ::primitives::H256 {
                 self.0
             }
         }
 
-        impl<'a> Into<&'a ::ctypes::H256> for &'a $name {
-            fn into(self) -> &'a ::ctypes::H256 {
+        impl<'a> Into<&'a ::primitives::H256> for &'a $name {
+            fn into(self) -> &'a ::primitives::H256 {
                 &self.0
             }
         }

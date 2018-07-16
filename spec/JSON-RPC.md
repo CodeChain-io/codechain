@@ -1,4 +1,4 @@
-[JSON-RPC](http://www.jsonrpc.org/specification) is a stateless, light-weight remote procedure call (RPC) protocol. Primarily this specification defines several data structures and the rules around their processing. It is transport agnostic in that the concepts can be used within the same process, over sockets, over HTTP, or in many various message passing environments. It uses JSON ([RFC 4627](https://www.ietf.org/rfc/rfc4627.txt)) as data format.
+[JSON-RPC](http://www.jsonrpc.org/specification) is a stateless, light-weight remote procedure call (RPC) protocol. Primarily this specification defines several data structures and the rules around their processing. It is transport agnostic, meaning that the concepts can be used within the same process, over sockets, over HTTP, or in many various message passing environments. It uses JSON ([RFC 4627](https://www.ietf.org/rfc/rfc4627.txt)) as data format.
 
 # CLI options for JSON-RPC
 
@@ -112,6 +112,15 @@ A hexadecimal string for XXX-bit unsigned integer
   * [net_connect](#net_connect)
   * [net_isConnected](#net_isconnected)
   * [net_disconnect](#net_disconnect)
+  * [net_getPeerCount](#net_getPeerCount)
+  * [net_getPort](#net_getPort)
+  * [net_getNetworkId](#net_getNetworkId)
+***
+ * [account_getAccountList](#account_getaccountlist)
+ * [account_createAccount](#account_createaccount)
+ * [account_createAccountFromSecret](#account_createaccountfromsecret)
+ * [account_removeAccount](#account_removeaccount)
+ * [account_sign](#account_sign)
 ***
  * [devel_getStateTrieKeys](#devel_getstatetriekeys)
  * [devel_getStateTrieValue](#devel_getstatetrievalue)
@@ -168,7 +177,7 @@ Response Example
 ```
 
 ## chain_getBestBlockNumber
-Gets number of the best block.
+Gets the number of the best block.
 
 Params: No parameters
 
@@ -244,7 +253,7 @@ Response Example
 ```
 
 ## chain_getBlockByHash
-Gets block with given hash.
+Gets the block with the given hash.
 
 Params:
  1. hash: `H256`
@@ -255,57 +264,54 @@ Request Example:
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "chain_getBlockByHash", "params": ["0x56642f04d519ae3262c7ba6facf1c5b11450ebaeb7955337cfbc45420d573077"], "id": null}' \
+    -d '{"jsonrpc": "2.0", "method": "chain_getBlockByHash", "params": ["0xfc196ede542b03b55aee9f106004e7e3d7ea6a9600692e964b4735a260356b50"], "id": null}' \
     localhost:8080
 ```
 
 Response Example
 ```
 {
-  "id":null,
   "jsonrpc":"2.0",
   "result":{
     "author":"0x84137e7a75043bed32e4458a45da7549a8169b4d",
     "extraData":[
 
     ],
-    "hash":"0x49b5fda89dbfa92e9a744d3019790107757d189608e2cfe15e796825f4561959",
-    "invoicesRoot":"0x45b0cfc220ceec5b7c1c62c4d4193d38e4eba48e8815729ce75f9c0ab0e4c1c0",
-    "number":1,
+    "hash":"0xfc196ede542b03b55aee9f106004e7e3d7ea6a9600692e964b4735a260356b50",
+    "invoicesRoot":"0x3a14d04383882243a684a6b0e779905f7883b12b5fb3ebf738facfcd2095b77a",
+    "number":5,
     "parcels":[
       {
         "action":{
-          "action":"changeShardState",
-          "transactions":[
-
-          ]
+          "action":"payment",
+          "amount":"0xa",
+          "receiver":0xa6594b7196808d161b6fb137e781abbc251385d9
         },
-        "blockHash":"0x49b5fda89dbfa92e9a744d3019790107757d189608e2cfe15e796825f4561959",
-        "blockNumber":1,
+        "blockHash":"0xfc196ede542b03b55aee9f106004e7e3d7ea6a9600692e964b4735a260356b50",
+        "blockNumber":5,
         "fee":"0xa",
-        "hash":"0x20dced7a95e82cf165bbb7ef111bfda24b664e3c3ffd5a255e970300eea5ec56",
+        "hash":"0xdb7c705d02e8961880783b4cb3dc051c41e551ade244bed5521901d8de190fc6",
         "networkId":17,
-        "nonce":"0x0",
+        "nonce":"0x4",
         "parcelIndex":0,
-        "r":"0xab2f74e74344b0b24932c85e29a4039150ae0b9fab17398b7e138a70022fd09c",
-        "s":"0x364dd6aeee95f45cbd6773c3edc6507d07505f7fbfb5d85ce128d19fa104d2a6",
-        "v":1
+        "sig":"0x291d932e55162407eb01915923d68cf78df4815a25fc6033488b644bda44b02251123feac3a3c56a399a2b32331599fd50b7a39ec2c1a2325e37f383c6aeedc301"
       }
     ],
-    "parcelsRoot":"0x934b77fa1ff7f405127de3c63efd44b92dad7ee4ff923c9b77f06abebd4844a4",
-    "parentHash":"0xc2338c8fd5a9b4ca5dd5dd12fc548e796bbb953ee6043afa14377037d0387e25",
+    "parcelsRoot":"0x0270d11d2bd21a0ec8e78d1c4e918103d7c4b02fdf734051231cb9eea90ae88e",
+    "parentHash":"0xddf9fece0c6dee067a409e73a299bca21cec2d8300dff45739a5b76c680f378d",
     "score":"0x20000",
     "seal":[
 
     ],
-    "stateRoot":"0x223ac1b388a6f3a2e001482d328c7f6f3b8f0b8686d3988224870a8fed99c8b1",
-    "timestamp":1530694371
+    "stateRoot":"0x898961f82629a47ade064f15d3902a455379cb082e62d3995f21050df3f553dc",
+    "timestamp":1531583888
   }
+  "id":null
 }
 ```
 
 ## chain_sendSignedParcel
-Sends signed parcel, returning its hash.
+Sends a signed parcel, returning its hash.
 
 Params: 
  1. bytes: `hexadecimal string` - RLP encoded hex string of SignedParcel
@@ -316,7 +322,7 @@ Request Example:
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "chain_sendSignedParcel", "params": ["0xf849800a11c201c001a0ab2f74e74344b0b24932c85e29a4039150ae0b9fab17398b7e138a70022fd09ca0364dd6aeee95f45cbd6773c3edc6507d07505f7fbfb5d85ce128d19fa104d2a6"], "id": null}' \
+    -d '{"jsonrpc": "2.0", "method": "chain_sendSignedParcel", "params": ["0xf85e040a11d70294a6594b7196808d161b6fb137e781abbc251385d90ab841291d932e55162407eb01915923d68cf78df4815a25fc6033488b644bda44b02251123feac3a3c56a399a2b32331599fd50b7a39ec2c1a2325e37f383c6aeedc301"], "id": null}' \
     localhost:8080
 ```
 
@@ -324,13 +330,13 @@ Response Example
 ```
 {
   "jsonrpc":"2.0",
-  "result":"0x20dced7a95e82cf165bbb7ef111bfda24b664e3c3ffd5a255e970300eea5ec56",
+  "result":"0xdb7c705d02e8961880783b4cb3dc051c41e551ade244bed5521901d8de190fc6",
   "id":null
 }
 ```
 
 ## chain_getParcel
-Gets parcel with given hash.
+Gets a parcel with the given hash.
 
 Params:
  1. parcel hash - `H256`
@@ -341,36 +347,35 @@ Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "chain_getParcel", "params": ["0x20dced7a95e82cf165bbb7ef111bfda24b664e3c3ffd5a255e970300eea5ec56"], "id": null}' \
+    -d '{"jsonrpc": "2.0", "method": "chain_getParcel", "params": ["0xdb7c705d02e8961880783b4cb3dc051c41e551ade244bed5521901d8de190fc6"], "id": null}' \
     localhost:8080
 ```
 
 Response Example
 ```
 {
-    "id": null,
     "jsonrpc": "2.0",
     "result": {
         "action": {
-            "action": "changeShardState",
-            "transactions": []
+          "action":"payment",
+          "amount":"0xa",
+          "receiver":0xa6594b7196808d161b6fb137e781abbc251385d9
         },
-        "blockHash": "0x49b5fda89dbfa92e9a744d3019790107757d189608e2cfe15e796825f4561959",
-        "blockNumber": 1,
+        "blockHash": "0xfc196ede542b03b55aee9f106004e7e3d7ea6a9600692e964b4735a260356b50",
+        "blockNumber": 5,
         "fee": "0xa",
-        "hash": "0x20dced7a95e82cf165bbb7ef111bfda24b664e3c3ffd5a255e970300eea5ec56",
+        "hash": "0xdb7c705d02e8961880783b4cb3dc051c41e551ade244bed5521901d8de190fc6",
         "networkId": 17,
-        "nonce": "0x0",
+        "nonce": "0x4",
         "parcelIndex": 0,
-        "r": "0xab2f74e74344b0b24932c85e29a4039150ae0b9fab17398b7e138a70022fd09c",
-        "s": "0x364dd6aeee95f45cbd6773c3edc6507d07505f7fbfb5d85ce128d19fa104d2a6",
-        "v": 1
+        "sig":"0x291d932e55162407eb01915923d68cf78df4815a25fc6033488b644bda44b02251123feac3a3c56a399a2b32331599fd50b7a39ec2c1a2325e37f383c6aeedc301"
     }
+    "id": null,
 }
 ```
 
 ## chain_getParcelInvoice
-Gets a parcel invoice with given hash.
+Gets a parcel invoice with the given hash.
 
 Params:
  1. parcel hash - `H256`
@@ -397,7 +402,7 @@ Response Example
 ```
 
 ## chain_getTransactionInvoice
-Gets transaction invoice with given hash
+Gets a transaction invoice with the given hash.
 
 Params:
  1. transaction hash - `H256`
@@ -422,7 +427,7 @@ Response Example
 ```
 
 ## chain_getAssetScheme
-Gets asset scheme with given asset type.
+Gets an asset scheme with the given asset type.
 
 Params:
  1. transaction hash of AssetMintTransaction - `H256`
@@ -451,7 +456,7 @@ Response Example
 ```
 
 ## chain_getAsset
-Gets asset with given asset type.
+Gets an asset with the given asset type.
 
 Params:
  1. transaction hash - `H256`
@@ -484,7 +489,7 @@ Response Example
 ```
 
 ## chain_getNonce
-Gets nonce of an account of given address, at state of given blockNumber.
+Gets a nonce of an account of the given address, at state of the given blockNumber.
 
 Params:
  1. address: `H160`
@@ -510,7 +515,7 @@ Response Example
 ```
 
 ## chain_getBalance
-Gets balance of an account of given address, at state of given blockNumber.
+Gets a balance of an account of the given address, at the state of the given blockNumber.
 
 Params:
  1. address: `H160`
@@ -536,7 +541,7 @@ Response Example
 ```
 
 ## chain_getRegularKey
-Gets the regular key of an account of given address, at state of given blockNumber.
+Gets the regular key of an account of the given address, at the state of the given blockNumber.
 
 Params:
  1. address: `H160`
@@ -562,7 +567,7 @@ Response Example
 ```
 
 ## chain_getNumberOfShards
-Gets the number of shards, at state of given blockNumber.
+Gets the number of shards, at the state of the given blockNumber.
 
 Param:
 1. block number: `number` | `null`
@@ -587,7 +592,7 @@ Response Example
 ```
 
 ## chain_getShardRoot
-Gets the root of shard, at state of given blockNumber.
+Gets the root of shard, at the state of the given blockNumber.
 
 Param:
 1. shard id: `number`
@@ -685,7 +690,7 @@ Response Example
 ```
 
 ## miner_getWork
-Returns the hash of the current block, the score and the block number.
+Returns the hash of the current block, score and block number.
 
 Params: No parameters
 
@@ -738,7 +743,7 @@ Response Example
 ```
 
 ## net_shareSecret
-Share secret to given address.
+Share secret to the given address.
 
 Params:
  1. secret: `string`
@@ -765,7 +770,7 @@ Response Example
 ```
 
 ## net_connect
-Connect to a given address.
+Connect to the given address.
 
 Params:
  1. address: `string`
@@ -791,7 +796,7 @@ Response Example
 ```
 
 ## net_isConnected
-Check whether the connection is established
+Check whether the connection is established.
 
 Params:
  1. address: `string`
@@ -817,7 +822,7 @@ Response Example
 ```
 
 ## net_disconnect
-Disconnect the connection to the given address
+Disconnect the connection from the given address.
 
 Params:
  1. address: `string`
@@ -842,8 +847,208 @@ Response Example
 }
 ```
 
+## net_getPeerCount
+(not implemented) Return the count of peers which the client is connected to.
+
+Params: No parameters
+
+Return Type: `number`
+
+Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "net_getPeerCount", "params": [], "id": 6}' \
+    localhost:8080
+```
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result": 34,
+  "id":6
+}
+```
+
+
+## net_getPort
+(not implemented) Return the port number on which the client is listening for peers.
+
+Params: No parameters
+
+Return Type: `number`
+
+Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "net_getPort", "params": [], "id": 6}' \
+    localhost:8080
+```
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result": 3485,
+  "id":6
+}
+```
+
+## net_getNetworkId
+(not implemented) Return the nework id that is used in this chain.
+
+Params: No parameters
+
+Return Type: `number`
+
+Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "net_getNetworkId", "params": [], "id": 6}' \
+    localhost:8080
+```
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result": 17,
+  "id":6
+}
+```
+
+## account_getAccountList
+Gets a list of accounts.
+
+Params: No parameters
+
+Return Type: `H160[]`
+
+Request Example
+```
+curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "account_getAccountList", "params": [], "id": 6}' \
+    localhost:8080
+```
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result":["0x318def87d8dc0f7cc21794daf2dd36762db22b67"],
+  "id":6
+}
+```
+
+## account_createAccount
+Creates a new account.
+
+Params:
+ 1. passphrase: `string | null`
+
+Return Type: `H160`
+
+Request Example
+```
+curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "account_createAccount", "params": [], "id": 6}' \
+    localhost:8080
+```
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result":"0x318def87d8dc0f7cc21794daf2dd36762db22b67",
+  "id":6
+}
+```
+
+## account_createAccountFromSecret
+Imports a secret key and add the corresponding account.
+
+Params:
+ 1. secret: `H256`
+ 2. passphrase: `string` | `null`
+
+Return Type: `H160`
+
+Request Example
+```
+curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "account_createAccountFromSecret", "params": ["a2b39d4aefecdb17f84ed4cf629e7c8817691cc4f444ac7522902b8fb4b7bd53"], "id": 6}' \
+    localhost:8080
+```
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result":"0xa22ae626d26923bdd9321e648de080c18e1049f2",
+  "id":6
+}
+```
+
+## account_removeAccount
+Removes the account
+
+Params:
+ 1. account: `H160`
+ 2. passphrase: `string` | `null`
+
+Return type: `null`
+
+Request Example
+```
+curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "account_removeAccount", "params": ["1228c0de48fdc303b4b7f51049ae2887358f94b6"], "id": 6}' \
+```
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result":null,
+  "id":6
+}
+```
+
+## account_sign
+Calculates the account's signature for a given message.
+
+Params:
+ 1. message: `H256`
+ 2. account: `H160`
+ 3. passphrase: `string` | `null`
+
+Return type: `H520` for ECDSA signature | `H512` for Schnorr signature
+
+Request Example
+```
+curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "account_sign", "params": ["0000000000000000000000000000000000000000000000000000000000000000", "1228c0de48fdc303b4b7f51049ae2887358f94b6"], "id": 6}' \
+    localhost:8080
+```
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result":"0xff7e8928f7758a64b9ea6c53f9945cdd223740675ac6ac6da625306d3966f8197523e00d56844ddb70631d44f045f4d83cc183a267c3182ab04c2f459c8289f501",
+  "id":6
+}
+```
+
 ## devel_getStateTrieKeys
-Gets keys of the state trie with given offset and limit.
+Gets keys of the state trie with the given offset and limit.
 
 Params:
  1. offset: `number`
@@ -871,7 +1076,7 @@ Response Example
 ```
 
 ## devel_getStateTrieValue
-Gets the value of the state trie with given key.
+Gets the value of the state trie with the given key.
 
 Params: 
  1. key: `string`

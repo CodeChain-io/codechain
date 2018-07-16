@@ -16,8 +16,8 @@
 
 use super::{Query, Trie, TrieDB, TrieDBIterator, TrieItem, TrieIterator};
 use codechain_crypto::blake256;
-use codechain_types::H256;
 use hashdb::HashDB;
+use primitives::H256;
 
 /// A `Trie` implementation which hashes keys and uses a generic `HashDB` backing database.
 /// Additionaly it stores inserted hash-key mappings for later retrieval.

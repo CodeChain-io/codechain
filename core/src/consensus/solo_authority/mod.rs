@@ -19,8 +19,9 @@ mod params;
 use std::sync::{Arc, Weak};
 
 use ckey::{public_to_address, recover, Signature, SignatureData};
-use ctypes::{Address, H256, U256};
+use ctypes::Address;
 use parking_lot::RwLock;
+use primitives::{H256, U256};
 
 use self::params::SoloAuthorityParams;
 use super::super::account_provider::AccountProvider;

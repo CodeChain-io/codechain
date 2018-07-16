@@ -17,8 +17,8 @@
 use std;
 use std::error::Error as StdError;
 
-use ctypes::H256;
 use jsonrpc_tcp_server::PushMessageError;
+use primitives::H256;
 
 #[derive(Debug, Clone)]
 pub enum Error {

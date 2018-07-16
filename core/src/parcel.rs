@@ -19,8 +19,9 @@ use std::ops::Deref;
 
 use ccrypto::blake256;
 use ckey::{self, public_to_address, recover, sign, Private, Public, Signature, SignatureData};
-use ctypes::{Address, Bytes, H160, H256, U256};
+use ctypes::Address;
 use heapsize::HeapSizeOf;
+use primitives::{Bytes, H160, H256, U256};
 use rlp::{self, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::spec::CommonParams;
@@ -546,8 +547,10 @@ pub struct AssetTransferOutput {
 #[cfg(test)]
 mod tests {
     use ckey::SignatureData;
-    use ctypes::{Address, H256, Public};
+    use ctypes::{Address, Public};
+    use primitives::H256;
 
+    use super::super::AssetMintOutput;
     use super::*;
 
     #[test]
@@ -571,9 +574,11 @@ mod tests {
         rlp_encode_and_decode_test!(Transaction::AssetMint {
             network_id: 200,
             metadata: "mint test".to_string(),
-            lock_script_hash: H256::random(),
-            parameters: vec![],
-            amount: Some(10000),
+            output: AssetMintOutput {
+                lock_script_hash: H256::random(),
+                parameters: vec![],
+                amount: Some(10000),
+            },
             registrar: None,
             nonce: 0,
         });
@@ -584,9 +589,11 @@ mod tests {
         rlp_encode_and_decode_test!(Transaction::AssetMint {
             network_id: 200,
             metadata: "mint test".to_string(),
-            lock_script_hash: H256::random(),
-            parameters: vec![vec![1, 2, 3], vec![4, 5, 6], vec![0, 7]],
-            amount: Some(10000),
+            output: AssetMintOutput {
+                lock_script_hash: H256::random(),
+                parameters: vec![vec![1, 2, 3], vec![4, 5, 6], vec![0, 7]],
+                amount: Some(10000),
+            },
             registrar: None,
             nonce: 0,
         });

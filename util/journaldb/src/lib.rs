@@ -16,10 +16,10 @@
 
 //! `JournalDB` interface and implementation.
 
-extern crate codechain_types;
 extern crate hashdb;
 extern crate kvdb;
 extern crate memorydb;
+extern crate primitives;
 extern crate rlp;
 extern crate util_error as error;
 

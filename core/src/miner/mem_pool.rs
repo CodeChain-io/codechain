@@ -18,10 +18,11 @@ use std::cmp;
 use std::cmp::Ordering;
 use std::collections::{BTreeSet, HashMap};
 
-use ctypes::{Address, H256, U256};
+use ctypes::Address;
 use heapsize::HeapSizeOf;
 use linked_hash_map::LinkedHashMap;
 use multimap::MultiMap;
+use primitives::{H256, U256};
 use table::Table;
 
 use super::super::parcel::{Action, ParcelError, SignedParcel};
@@ -1094,7 +1095,7 @@ pub mod test {
 
     use ckey::{Generator, Random};
 
-    use super::super::super::{Parcel, Transaction};
+    use super::super::super::{AssetMintOutput, Parcel, Transaction};
     use super::*;
 
     #[test]
@@ -1132,9 +1133,11 @@ pub mod test {
         let transactions = vec![Transaction::AssetMint {
             network_id: 200,
             metadata: "Metadata".to_string(),
-            lock_script_hash: H256::zero(),
-            parameters: vec![],
-            amount: None,
+            output: AssetMintOutput {
+                lock_script_hash: H256::zero(),
+                parameters: vec![],
+                amount: None,
+            },
             registrar: None,
             nonce: 0,
         }];
@@ -1160,9 +1163,11 @@ pub mod test {
             Transaction::AssetMint {
                 network_id: 200,
                 metadata: "Metadata".to_string(),
-                lock_script_hash: H256::zero(),
-                parameters: vec![],
-                amount: None,
+                output: AssetMintOutput {
+                    lock_script_hash: H256::zero(),
+                    parameters: vec![],
+                    amount: None,
+                },
                 registrar: None,
                 nonce: 0,
             },

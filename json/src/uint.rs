@@ -17,7 +17,7 @@
 use std::fmt;
 use std::str::FromStr;
 
-use ctypes::U256;
+use primitives::U256;
 use serde::de::{Error, Unexpected, Visitor};
 use serde::{Deserialize, Deserializer};
 
@@ -122,7 +122,7 @@ where
 
 #[cfg(test)]
 mod test {
-    use ctypes::U256;
+    use primitives::U256;
     use serde_json;
     use uint::Uint;
 

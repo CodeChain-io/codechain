@@ -39,9 +39,10 @@ use std::cell::RefMut;
 use std::fmt;
 
 use ccrypto::BLAKE_NULL_RLP;
-use ctypes::{Address, H256, Public, U256};
+use ctypes::{Address, Public};
 use error::Error;
 use parcel::{Action, SignedParcel};
+use primitives::{H256, U256};
 use trie::{Result as TrieResult, Trie, TrieError, TrieFactory};
 
 use super::super::invoice::Invoice;
@@ -602,7 +603,8 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopState<B> for TopLevelSta
 #[cfg(test)]
 mod tests_state {
     use ccrypto::BLAKE_NULL_RLP;
-    use ctypes::{Address, U256};
+    use ctypes::Address;
+    use primitives::U256;
 
     use super::super::super::tests::helpers::{get_temp_state, get_temp_state_db};
     use super::*;
@@ -833,15 +835,14 @@ mod tests_state {
 
 #[cfg(test)]
 mod tests_parcel {
-    use std::str::FromStr;
-
     use ccrypto::Blake;
     use ckey::{Generator, Random};
-    use ctypes::{Address, Secret, U256};
+    use ctypes::{Address, Secret};
+    use primitives::U256;
 
     use super::super::super::parcel::{AssetOutPoint, AssetTransferInput, AssetTransferOutput, Parcel};
     use super::super::super::tests::helpers::get_temp_state;
-    use super::super::super::transaction::Transaction;
+    use super::super::super::transaction::{AssetMintOutput, Transaction};
     use super::*;
 
     fn secret() -> Secret {
@@ -1053,9 +1054,11 @@ mod tests_parcel {
         let transaction = Transaction::AssetMint {
             network_id: 0xCA,
             metadata: metadata.clone(),
-            lock_script_hash,
-            parameters: parameters.clone(),
-            amount: Some(amount),
+            output: AssetMintOutput {
+                lock_script_hash,
+                parameters: parameters.clone(),
+                amount: Some(amount),
+            },
             registrar,
             nonce: 0,
         };
@@ -1106,9 +1109,11 @@ mod tests_parcel {
         let transaction = Transaction::AssetMint {
             network_id: 0xCA,
             metadata: metadata.clone(),
-            lock_script_hash,
-            parameters: parameters.clone(),
-            amount: None,
+            output: AssetMintOutput {
+                lock_script_hash,
+                parameters: parameters.clone(),
+                amount: None,
+            },
             registrar,
             nonce: 0,
         };
@@ -1161,16 +1166,17 @@ mod tests_parcel {
         let network_id = 0xBeef;
 
         let metadata = "metadata".to_string();
-        let lock_script_hash =
-            H256::from_str("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050").unwrap();
+        let lock_script_hash = H256::from("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050");
         let registrar = None;
         let amount = 30;
         let mint = Transaction::AssetMint {
             network_id,
             metadata: metadata.clone(),
-            lock_script_hash,
-            parameters: vec![],
-            amount: Some(amount),
+            output: AssetMintOutput {
+                lock_script_hash,
+                parameters: vec![],
+                amount: Some(amount),
+            },
             registrar,
             nonce: 0,
         };
@@ -1277,16 +1283,17 @@ mod tests_parcel {
         let network_id = 0xBeef;
 
         let metadata = "metadata".to_string();
-        let lock_script_hash =
-            H256::from_str("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050").unwrap();
+        let lock_script_hash = H256::from("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050");
         let registrar = None;
         let amount = 30;
         let mint = Transaction::AssetMint {
             network_id,
             metadata: metadata.clone(),
-            lock_script_hash,
-            parameters: vec![],
-            amount: Some(amount),
+            output: AssetMintOutput {
+                lock_script_hash,
+                parameters: vec![],
+                amount: Some(amount),
+            },
             registrar,
             nonce: 0,
         };
@@ -1517,9 +1524,11 @@ mod tests_parcel {
         let transaction = Transaction::AssetMint {
             network_id: 0xCA,
             metadata: metadata.clone(),
-            lock_script_hash,
-            parameters: parameters.clone(),
-            amount: Some(amount),
+            output: AssetMintOutput {
+                lock_script_hash,
+                parameters: parameters.clone(),
+                amount: Some(amount),
+            },
             registrar,
             nonce: 0,
         };

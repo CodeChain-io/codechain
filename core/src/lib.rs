@@ -39,6 +39,7 @@ extern crate memorydb;
 extern crate multimap;
 extern crate num_cpus;
 extern crate patricia_trie as trie;
+extern crate primitives;
 extern crate rand;
 #[cfg_attr(test, macro_use)]
 extern crate rlp;
@@ -88,7 +89,7 @@ mod views;
 #[cfg(test)]
 mod tests;
 
-pub use account_provider::AccountProvider;
+pub use account_provider::{AccountProvider, SignError as AccountProviderError};
 pub use block::Block;
 pub use blockchain::ParcelInvoice;
 pub use client::{
@@ -107,5 +108,5 @@ pub use parcel::{
 pub use service::ClientService;
 pub use spec::Spec;
 pub use state::{Asset, AssetAddress, AssetScheme, AssetSchemeAddress, ShardStateInfo, TopStateInfo};
-pub use transaction::{Error as TransactionError, Transaction};
+pub use transaction::{AssetMintOutput, Error as TransactionError, Transaction};
 pub use types::{BlockId, BlockNumber, ParcelId};

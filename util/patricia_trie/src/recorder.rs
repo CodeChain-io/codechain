@@ -17,7 +17,7 @@
 //! Trie query recorder.
 
 use codechain_crypto::blake256;
-use codechain_types::{Bytes, H256};
+use primitives::{Bytes, H256};
 
 /// A record of a visited node.
 #[derive(PartialEq, Eq, Debug, Clone)]
@@ -82,7 +82,7 @@ impl Recorder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use codechain_types::H256;
+    use primitives::H256;
 
     #[test]
     fn basic_recorder() {

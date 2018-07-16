@@ -47,7 +47,7 @@ pub struct Tendermint {
 
 #[cfg(test)]
 mod tests {
-    use ctypes::H160;
+    use primitives::H160;
     use serde_json;
 
     use super::super::super::hash::Address;

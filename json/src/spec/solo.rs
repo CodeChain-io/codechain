@@ -32,7 +32,7 @@ pub struct Solo {
 
 #[cfg(test)]
 mod tests {
-    use ctypes::U256;
+    use primitives::U256;
     use serde_json;
 
     use super::super::super::uint::Uint;

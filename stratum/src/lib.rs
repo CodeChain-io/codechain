@@ -19,11 +19,11 @@
 extern crate codechain_crypto as ccrypto;
 #[macro_use]
 extern crate codechain_logger as clogger;
-extern crate codechain_types as ctypes;
 extern crate jsonrpc_core;
 extern crate jsonrpc_macros;
 extern crate jsonrpc_tcp_server;
 extern crate parking_lot;
+extern crate primitives;
 
 #[macro_use]
 extern crate log;
@@ -42,7 +42,6 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 
 use ccrypto::blake256;
-use ctypes::H256;
 use jsonrpc_core::{to_value, Compatibility, MetaIoHandler, Metadata, Params, Value};
 use jsonrpc_macros::IoDelegate;
 use jsonrpc_tcp_server::{
@@ -50,6 +49,7 @@ use jsonrpc_tcp_server::{
     ServerBuilder as JsonRpcServerBuilder,
 };
 use parking_lot::RwLock;
+use primitives::H256;
 
 type RpcResult = Result<jsonrpc_core::Value, jsonrpc_core::Error>;
 

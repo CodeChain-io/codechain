@@ -23,10 +23,10 @@ use std::sync::{Arc, Condvar as SCondvar, Mutex as SMutex};
 use std::thread::{self, JoinHandle};
 
 use cio::IoChannel;
-use ctypes::{H256, U256};
 use heapsize::HeapSizeOf;
 use num_cpus;
 use parking_lot::{Mutex, RwLock};
+use primitives::{H256, U256};
 
 use self::kind::{BlockLike, Kind};
 use super::super::consensus::CodeChainEngine;

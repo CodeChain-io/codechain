@@ -23,7 +23,6 @@ The following represents the default configuration values of ``config.dev.toml``
     db_path = "db"
     keys_path = "keys"
     chain = "solo"
-    secret_key = "0x0000000000000000000000000000000000000000000000000000000000000001"
 
     [mining]
 
@@ -104,7 +103,7 @@ CLI Options for CodeChain client
         Listen for rpc connections on PORT. (default: 8080)
 
     ``--no-ipc``
-        Do not run JSON-RPC over IPC service.    
+        Do not run JSON-RPC over IPC service.
 
     ``--ipc-path=[PATH]``
         Specify custom path for JSON-RPC over IPC service
@@ -112,15 +111,12 @@ CLI Options for CodeChain client
     ``--no-jsonrpc``
         Do not run jsonrpc.
 
-    ``--secret-key=[KEY]``
-        Secret key used by node.
-
     ``--author=[ADDRESS]``
-        Specify the block's author (aka "coinbase") address for sending block rewards from 
+        Specify the block's author (aka "coinbase") address for sending block rewards from
         sealed blocks.
 
     ``--engine-signer=[ADDRESS]``
-        Specify the address which should be used to sign consensus messages and 
+        Specify the address which should be used to sign consensus messages and
         issue blocks.
 
     ``--mem-pool-mem-limit=[MB]``

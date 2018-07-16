@@ -15,7 +15,7 @@ JSON-RPC, you can use Curl or `JavaScript SDK <https://api.codechain.io/>`_.
 
 Blockchain Configuration
 ========================
-When configuring CodeChain's blockchain type, you can set it to either ``Solo`` or ``Tendermint``. 
+When configuring CodeChain's blockchain type, you can set it to either ``Solo`` or ``Tendermint``.
 
 Solo Configuration
 ------------------
@@ -29,29 +29,27 @@ Tendermint Configuration
 In order to properly get Tendermint to get going, you need to have 4 nodes up and running. To do this, first run a single node by running the following:
 ::
 
-    codechain --db-path db/db0 --port 3485 --jsonrpc-port 8080 --secret-key 0000000000000000000000000000000000000000000000000000000000000001 -c tendermint
+    codechain --db-path db/db0 --port 3485 --jsonrpc-port 8080 --engine-signer 0x84137e7a75043bed32e4458a45da7549a8169b4d -c tendermint
 
-This creates a node in db0 (database 0) at port 3485(used for nodes to communicate with each other) and jsonRPC port 8080(port used for external access) with a secret key of 1.
-By default, secret key values of 1,2,3,and 4 correspond to the public keys of the validator, which are located in the tendermint spec file. All the public keys must be satisfied by
-having a corresponding secret key amongst the nodes of the blockchain network. Only then will Tendermint function properly.
+This creates a node in db0 (database 0) at port 3485(used for nodes to communicate with each other) and jsonRPC port 8080(port used for external access) with engine signer of 0x84137e7a75043bed32e4458a45da7549a8169b4d(used to sign the block).
 
 Then create more nodes, and allocate each node with a secret key that corresponds to one of the four public keys listed in Tendermint's validator property.
 When creating new nodes, the db, port and jsonRPC port all must be configured as a different value. So for example, the next node should be set up like this:
 ::
 
-    codechain --db-path db/db1 --port 3486 --jsonrpc-port 8081 --secret-key 0000000000000000000000000000000000000000000000000000000000000002 -c tendermint
+    codechain --db-path db/db1 --port 3486 --jsonrpc-port 8081 --engine-signer 0x9f194cba03ecc7004646414e795957ceca32cd20 -c tendermint
 
 Once each public key has a corresponding node with a corresponding secret key, use the boostrap address command to interlink all the nodes together.
 The way each node is connected does not matter, as long as each node is connected to another node. For example, in order to make a certain node connect to
 the node with a secret key of 1, use this command:
 ::
 
-    codechain --db-path db/db1 --port 3486 --jsonrpc-port 8081 --secret-key 0000000000000000000000000000000000000000000000000000000000000002 -c tendermint --bootstrap-addresses 127.0.0.1:3485
+    codechain --db-path db/db1 --port 3486 --jsonrpc-port 8081 --engine-signer 0xcfd28c1279645febb7cf8802993291ef433a21f3 -c tendermint --bootstrap-addresses 127.0.0.1:3485
 
 Checking if CodeChain is Configured Properly
 ============================================
-JSON-RPC is a stateless, light-weight remote procedure call (RPC) protocol. Primarily this specification defines several data structures and the rules 
-around their processing. It is transport agnostic in that the concepts can be used within the same process, over sockets, over HTTP, or in many various 
+JSON-RPC is a stateless, light-weight remote procedure call (RPC) protocol. Primarily this specification defines several data structures and the rules
+around their processing. It is transport agnostic in that the concepts can be used within the same process, over sockets, over HTTP, or in many various
 message passing environments. It uses JSON (RFC 4627) as data format.
 
 Using Curl

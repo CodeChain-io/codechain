@@ -39,8 +39,8 @@
 //! * You don't want to decode whole rlp at once.
 
 extern crate byteorder;
-extern crate codechain_types as bigint;
 extern crate elastic_array;
+extern crate primitives;
 extern crate rustc_hex;
 
 #[macro_use]
@@ -110,7 +110,7 @@ pub fn encode<E>(object: &E) -> ElasticArray1024<u8>
 where
     E: Encodable, {
     let mut stream = RlpStream::new();
-    stream.append(object);
+    stream.append_single_value(object);
     stream.drain()
 }
 

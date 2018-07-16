@@ -25,8 +25,9 @@ use std::sync::{Arc, Weak};
 use ccrypto::blake256;
 use ckey::{public_to_address, recover, Message, Signature, SignatureData};
 use cnetwork::{Api, NetworkExtension, NodeId, TimerToken};
-use ctypes::{Address, Bytes, H256, U128, U256};
+use ctypes::Address;
 use parking_lot::{Mutex, RwLock};
+use primitives::{Bytes, H256, U128, U256};
 use rand::{thread_rng, Rng};
 use rlp::{self, Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 use time::Duration;
@@ -94,7 +95,7 @@ impl Decodable for Step {
 
 impl Encodable for Step {
     fn rlp_append(&self, s: &mut RlpStream) {
-        s.append_internal(&self.number());
+        s.append_single_value(&self.number());
     }
 }
 

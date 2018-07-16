@@ -25,7 +25,7 @@ CodeChain has a subcommand called ``account``. These commands are used to manage
 
 Creating an Account
 -------------------
-You can create a new account with the ``create`` command. You can add a password as well. For example, if you want to create an account with a password of '1234', 
+You can create a new account with the ``create`` command. You can add a password as well. For example, if you want to create an account with a password of '1234',
 run the following:
 ::
 

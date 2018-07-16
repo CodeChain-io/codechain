@@ -1,8 +1,8 @@
 #[macro_use]
 extern crate crunchy;
-extern crate codechain_types;
+extern crate primitives;
 
-use codechain_types::H256;
+use primitives::H256;
 use std::collections::{HashMap, HashSet};
 use std::{hash, mem};
 

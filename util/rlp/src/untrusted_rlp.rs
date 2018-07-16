@@ -201,6 +201,9 @@ where
             return Err(DecoderError::RlpExpectedToBeList)
         }
 
+        let payload_info = self.payload_info()?;
+        let offset_max = payload_info.header_len + payload_info.value_len - 1;
+
         // move to cached position if its index is less or equal to
         // current search index, otherwise move to beginning of list
         let c = self.offset_cache.get();
@@ -212,8 +215,16 @@ where
         // skip up to x items
         bytes = UntrustedRlp::consume_items(bytes, to_skip)?;
 
+        let new_offset = self.bytes.len() - bytes.len();
+
+        // self.data.len() can be greater than byte length from payload's length
+        // But you should not read the data which is lied after payload's length
+        if new_offset > offset_max {
+            return Err(DecoderError::RlpIsTooShort)
+        }
+
         // update the cache
-        self.offset_cache.set(OffsetCache::new(index, self.bytes.len() - bytes.len()));
+        self.offset_cache.set(OffsetCache::new(index, new_offset));
 
         // construct new rlp
         let found = BasicDecoder::payload_info(bytes)?;
@@ -407,6 +418,7 @@ impl<'a> BasicDecoder<'a> {
 
 #[cfg(test)]
 mod tests {
+    use traits::Encodable;
     use {DecoderError, UntrustedRlp};
 
     #[test]
@@ -423,5 +435,29 @@ mod tests {
         let rlp = UntrustedRlp::new(&bs);
         let res: Result<u8, DecoderError> = rlp.as_val();
         assert_eq!(Err(DecoderError::RlpInvalidLength), res);
+    }
+
+    #[test]
+    fn at_overflow() {
+        let bs = vec![vec![1], vec![2, 3, 4], vec![3]].rlp_bytes();
+        let rlp = UntrustedRlp::new(&*bs);
+        let first_element: Result<Vec<u8>, _> = rlp.at(2).and_then(|elem| elem.as_val());
+        assert_eq!(Ok(vec![3]), first_element);
+
+        let fourth_element: Result<Vec<u8>, _> = rlp.at(3).and_then(|elem| elem.as_val());
+        assert_eq!(Err(DecoderError::RlpIsTooShort), fourth_element);
+    }
+
+
+    #[test]
+    fn invalid_length_rlp_at_overflow() {
+        // [1,2,3,4] with invalid byte length 3
+        let bs = [0xc3, 0x01, 0x02, 0x03, 0x04];
+        let rlp = UntrustedRlp::new(&bs);
+        let first_element: Result<u8, _> = rlp.at(2).and_then(|elem| elem.as_val());
+        assert_eq!(Ok(3), first_element);
+
+        let fourth_element: Result<u8, _> = rlp.at(3).and_then(|elem| elem.as_val());
+        assert_eq!(Err(DecoderError::RlpIsTooShort), fourth_element);
     }
 }

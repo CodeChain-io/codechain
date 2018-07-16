@@ -20,7 +20,7 @@ use std::cmp::{max, min};
 
 use byteorder::{ByteOrder, LittleEndian};
 use ccrypto::blake256;
-use ctypes::U256;
+use primitives::U256;
 use rlp::UntrustedRlp;
 use unexpected::{Mismatch, OutOfBounds};
 

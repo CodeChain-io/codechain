@@ -17,7 +17,7 @@
 extern crate codechain_crypto as ccrypto;
 
 #[cfg(test)]
-extern crate codechain_types as ctypes;
+extern crate primitives;
 
 mod skewed;
 

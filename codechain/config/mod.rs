@@ -21,7 +21,7 @@ use std::str::FromStr;
 
 use clap;
 use cnetwork::{NetworkConfig, SocketAddr};
-use ctypes::{Address, Secret};
+use ctypes::Address;
 use rpc::{HttpConfiguration as RpcHttpConfig, IpcConfiguration as RpcIpcConfig};
 use toml;
 
@@ -55,7 +55,6 @@ pub struct Operating {
     pub db_path: String,
     pub keys_path: String,
     pub chain: ChainType,
-    pub secret_key: Secret,
 }
 
 #[derive(Deserialize)]
@@ -175,9 +174,6 @@ impl Operating {
         }
         if let Some(chain) = matches.value_of("chain") {
             self.chain = chain.parse()?;
-        }
-        if let Some(secret) = matches.value_of("secret-key") {
-            self.secret_key = Secret::from_str(secret).map_err(|_| "Invalid secret key")?;
         }
         Ok(())
     }

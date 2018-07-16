@@ -16,6 +16,7 @@
 
 use std::fmt;
 
+use ccore::AccountProviderError;
 use ccore::Error as CoreError;
 use cnetwork::control::Error as NetworkControlError;
 use kvdb::Error as KVDBError;
@@ -31,6 +32,7 @@ mod codes {
     pub const KVDB_ERROR: i64 = -32011;
     pub const NETWORK_DISABLED: i64 = -32014;
     pub const NETWORK_CANNOT_DISCONNECT_NOT_CONNECTED_ERROR: i64 = -32015;
+    pub const ACCOUNT_PROVIDER_ERROR: i64 = -32016;
 }
 
 pub fn parcel<T: Into<CoreError>>(error: T) -> Error {
@@ -62,6 +64,14 @@ pub fn rlp(error: DecoderError) -> Error {
     Error {
         code: ErrorCode::ServerError(codes::UNKNOWN_ERROR),
         message: "Invalid RLP.".into(),
+        data: Some(Value::String(format!("{:?}", error))),
+    }
+}
+
+pub fn account_provider(error: AccountProviderError) -> Error {
+    Error {
+        code: ErrorCode::ServerError(codes::ACCOUNT_PROVIDER_ERROR),
+        message: "AccountProvider error".into(),
         data: Some(Value::String(format!("{:?}", error))),
     }
 }

@@ -18,10 +18,10 @@
 
 use super::memorydb::*;
 use super::{DB_PREFIX_LEN, LATEST_ERA_KEY};
-use codechain_types::{Bytes, H256};
 use error::{BaseDataError, UtilError};
 use hashdb::*;
 use kvdb::{DBTransaction, KeyValueDB};
+use primitives::{Bytes, H256};
 use rlp::{decode, encode};
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;

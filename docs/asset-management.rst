@@ -66,7 +66,7 @@ This should give you the following result:
         parameters: [],
         amount: 7000 }
 
-In this example, 10000 gold has been minted for Alice. Alice then basically sends 3000 gold to Bob. 
+In this example, 10000 gold has been minted for Alice. Alice then basically sends 3000 gold to Bob.
 Let’s see how all of this works specifically by inspecting parts of the code one by one.
 
 Setting Up Basic Properties
@@ -74,13 +74,7 @@ Setting Up Basic Properties
 Make sure you are accessing the CodeChain port. In this example, it is assumed that you are using port 8080, since that is the default value.
 ::
 
-    const sdk = new SDK("http://localhost:8080");
-
-We create new instances of a keyStore and an assetAgent. keyStore is where all the public and private keys are managed.
-::
-
-    const keyStore = new MemoryKeyStore();
-    const assetAgent = new PubkeyAssetAgent({ keyStore });
+    const sdk = new SDK({ server: “http://localhost:8080” });
 
 In this example, it is assumed that there is something that created a parcel out of the transactions. sendTransaction has been declared for later use.
 ::
@@ -103,8 +97,8 @@ Each users need an address for them to receive/send assets to. Addresses are cre
     // Start of wrapping async function, we use async/await here because a lot of
     // Promises are there.
     (async () => {
-        const aliceAddress = await assetAgent.createAddress();
-        const bobAddress = await assetAgent.createAddress();
+        const aliceAddress = await sdk.key.createPubKeyAddress();
+        const bobAddress = await sdk.key.createPubKeyAddress();
 
 Minting/Creating New Assets
 ===========================
@@ -151,7 +145,7 @@ Next, we create an output which gives 3000 gold to Bob, and returns 7000 gold to
 ::
 
     // The sum of amount must equal to the amount of firstGold.
-    const transferTx = await firstGold.transfer(assetAgent, [{
+    const transferTx = firstGold.transfer([{
         address: bobAddress,
         amount: 3000
     }, {
@@ -162,24 +156,19 @@ Next, we create an output which gives 3000 gold to Bob, and returns 7000 gold to
 By using Alice's signature, the 10000 Gold that was first minted can now be transferred to other users like Bob.
 ::
 
+    // Unlock first input of the transaction. The key instance can unlock because the Alice's key is created by it.
+    await sdk.key.unlock(transferTx, 0);
     await sendTransaction(transferTx);
     const transferTxInvoice = await sdk.rpc.chain.getTransactionInvoice(transferTx.hash(), 5 * 60 * 1000);
     if (!transferTxInvoice.success) {
         throw "AssetTransferTransaction failed";
     }
 
-    // Spent asset will be null
-    console.log(await sdk.getAsset(mintTx.hash(), 0));
-
-    // Unspent Bob's 3000 golds
-    console.log(await sdk.getAsset(transferTx.hash(), 0));
-    // Unspent Alice's 7000 golds
-    console.log(await sdk.getAsset(transferTx.hash(), 1));
-
 In order to check if all the transactions were successful, we run the following:
 ::
 
-    console.log(await sdk.getAsset(mintGoldTx.hash(), 0));
+    // Spent asset will be null
+    console.log(await sdk.getAsset(mintTx.hash(), 0));
 
     // Unspent Bob's 3000 golds
     console.log(await sdk.getAsset(transferTx.hash(), 0));

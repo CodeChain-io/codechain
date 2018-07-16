@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ctypes::H256;
+use primitives::H256;
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::super::machine::Machine;
@@ -83,7 +83,7 @@ pub struct PendingTransition {
 
 impl Encodable for PendingTransition {
     fn rlp_append(&self, s: &mut RlpStream) {
-        s.append(&self.proof);
+        s.append_single_value(&self.proof);
     }
 }
 

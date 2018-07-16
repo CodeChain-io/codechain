@@ -5,7 +5,7 @@ authors = ["Parity Technologies <admin@parity.io>"]
 
 [dependencies]
 elastic-array = "0.9"
-codechain-types = { path = "../../primitives/codechain-types" }
+codechain-types = { path = "../../types" }
 kvdb = { path = "../kvdb" }
 log = "0.4.1"
 num_cpus = "1.0"
@@ -16,4 +16,5 @@ rocksdb = { git = "https://github.com/paritytech/rust-rocksdb" }
 interleaved-ordered = "0.1.0"
 
 [dev-dependencies]
+primitives = { path = "../primitives" }
 tempdir = "0.3"

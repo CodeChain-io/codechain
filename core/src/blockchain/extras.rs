@@ -17,9 +17,9 @@
 use std::io::Write;
 use std::ops::{self, Deref};
 
-use ctypes::{H256, H264, U256};
 use heapsize::HeapSizeOf;
 use kvdb::PREFIX_LEN as DB_PREFIX_LEN;
+use primitives::{H256, H264, U256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::super::consensus::epoch::{PendingTransition as PendingEpochTransition, Transition as EpochTransition};
@@ -218,7 +218,7 @@ impl Encodable for ParcelInvoice {
     fn rlp_append(&self, s: &mut RlpStream) {
         match self {
             ParcelInvoice::Single(invoice) => {
-                s.append(invoice);
+                s.append_single_value(invoice);
             }
             ParcelInvoice::Multiple(invoices) => {
                 s.append_list(invoices);

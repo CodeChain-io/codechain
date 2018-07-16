@@ -27,7 +27,7 @@ fn bench_stream_u64_value(b: &mut Bencher) {
     b.iter(|| {
         // u64
         let mut stream = RlpStream::new();
-        stream.append(&0x1023456789abcdefu64);
+        stream.append_single_value(&0x1023456789abcdefu64);
         let _ = stream.out();
     });
 }
@@ -48,7 +48,7 @@ fn bench_stream_u256_value(b: &mut Bencher) {
         // u256
         let mut stream = RlpStream::new();
         let uint: U256 = "8090a0b0c0d0e0f00910203040506077000000000000000100000000000012f0".into();
-        stream.append(&uint);
+        stream.append_single_value(&uint);
         let _ = stream.out();
     });
 }
