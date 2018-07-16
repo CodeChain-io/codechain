@@ -26,8 +26,8 @@ pub enum Invoice {
 impl Encodable for Invoice {
     fn rlp_append(&self, s: &mut RlpStream) {
         match self {
-            Invoice::Success => s.append(&1u8),
-            Invoice::Failed => s.append(&0u8),
+            Invoice::Success => s.append_single_value(&1u8),
+            Invoice::Failed => s.append_single_value(&0u8),
         };
     }
 }

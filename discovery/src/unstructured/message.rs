@@ -27,7 +27,7 @@ impl Encodable for Message {
     fn rlp_append(&self, s: &mut RlpStream) {
         match self {
             Message::Request(len) => {
-                s.append(len);
+                s.append_single_value(len);
             }
             Message::Response(addresses) => {
                 s.append_list(addresses);

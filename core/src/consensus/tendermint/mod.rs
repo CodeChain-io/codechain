@@ -95,7 +95,7 @@ impl Decodable for Step {
 
 impl Encodable for Step {
     fn rlp_append(&self, s: &mut RlpStream) {
-        s.append_internal(&self.number());
+        s.append_single_value(&self.number());
     }
 }
 
