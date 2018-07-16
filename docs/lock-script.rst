@@ -9,6 +9,11 @@ private key to use/spend the newly received asset. This is analagous to sending 
 account. Without knowing the reciever's bank account address, you cannot send money to the proper destination.
 Lock scripts are contain two parts: the lockScriptHash and parameter.
 
+.. image:: script-order.png
+    :width: 960px
+    :height: 540px
+    :scale: 75 %
+
 How are Lock Scripts Created?
 ==============================
 When the user wants to receive any asset, he/she must create a private and public key pair.
