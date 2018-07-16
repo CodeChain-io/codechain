@@ -1,4 +1,4 @@
-[JSON-RPC](http://www.jsonrpc.org/specification) is a stateless, light-weight remote procedure call (RPC) protocol. Primarily this specification defines several data structures and the rules around their processing. It is transport agnostic in that the concepts can be used within the same process, over sockets, over HTTP, or in many various message passing environments. It uses JSON ([RFC 4627](https://www.ietf.org/rfc/rfc4627.txt)) as data format.
+[JSON-RPC](http://www.jsonrpc.org/specification) is a stateless, light-weight remote procedure call (RPC) protocol. Primarily this specification defines several data structures and the rules around their processing. It is transport agnostic, meaning that the concepts can be used within the same process, over sockets, over HTTP, or in many various message passing environments. It uses JSON ([RFC 4627](https://www.ietf.org/rfc/rfc4627.txt)) as data format.
 
 # CLI options for JSON-RPC
 
@@ -171,7 +171,7 @@ Response Example
 ```
 
 ## chain_getBestBlockNumber
-Gets number of the best block.
+Gets the number of the best block.
 
 Params: No parameters
 
@@ -247,7 +247,7 @@ Response Example
 ```
 
 ## chain_getBlockByHash
-Gets block with given hash.
+Gets the block with the given hash.
 
 Params:
  1. hash: `H256`
@@ -308,7 +308,7 @@ Response Example
 ```
 
 ## chain_sendSignedParcel
-Sends signed parcel, returning its hash.
+Sends a signed parcel, returning its hash.
 
 Params: 
  1. bytes: `hexadecimal string` - RLP encoded hex string of SignedParcel
@@ -333,7 +333,7 @@ Response Example
 ```
 
 ## chain_getParcel
-Gets parcel with given hash.
+Gets a parcel with the given hash.
 
 Params:
  1. parcel hash - `H256`
@@ -373,7 +373,7 @@ Response Example
 ```
 
 ## chain_getParcelInvoice
-Gets a parcel invoice with given hash.
+Gets a parcel invoice with the given hash.
 
 Params:
  1. parcel hash - `H256`
@@ -400,7 +400,7 @@ Response Example
 ```
 
 ## chain_getTransactionInvoice
-Gets transaction invoice with given hash
+Gets a transaction invoice with the given hash.
 
 Params:
  1. transaction hash - `H256`
@@ -425,7 +425,7 @@ Response Example
 ```
 
 ## chain_getAssetScheme
-Gets asset scheme with given asset type.
+Gets an asset scheme with the given asset type.
 
 Params:
  1. transaction hash of AssetMintTransaction - `H256`
@@ -454,7 +454,7 @@ Response Example
 ```
 
 ## chain_getAsset
-Gets asset with given asset type.
+Gets an asset with the given asset type.
 
 Params:
  1. transaction hash - `H256`
@@ -487,7 +487,7 @@ Response Example
 ```
 
 ## chain_getNonce
-Gets nonce of an account of given address, at state of given blockNumber.
+Gets a nonce of an account of the given address, at state of the given blockNumber.
 
 Params:
  1. address: `H160`
@@ -513,7 +513,7 @@ Response Example
 ```
 
 ## chain_getBalance
-Gets balance of an account of given address, at state of given blockNumber.
+Gets a balance of an account of the given address, at the state of the given blockNumber.
 
 Params:
  1. address: `H160`
@@ -539,7 +539,7 @@ Response Example
 ```
 
 ## chain_getRegularKey
-Gets the regular key of an account of given address, at state of given blockNumber.
+Gets the regular key of an account of the given address, at the state of the given blockNumber.
 
 Params:
  1. address: `H160`
@@ -565,7 +565,7 @@ Response Example
 ```
 
 ## chain_getNumberOfShards
-Gets the number of shards, at state of given blockNumber.
+Gets the number of shards, at the state of the given blockNumber.
 
 Param:
 1. block number: `number` | `null`
@@ -590,7 +590,7 @@ Response Example
 ```
 
 ## chain_getShardRoot
-Gets the root of shard, at state of given blockNumber.
+Gets the root of shard, at the state of the given blockNumber.
 
 Param:
 1. shard id: `number`
@@ -688,7 +688,7 @@ Response Example
 ```
 
 ## miner_getWork
-Returns the hash of the current block, the score and the block number.
+Returns the hash of the current block, score and block number.
 
 Params: No parameters
 
@@ -741,7 +741,7 @@ Response Example
 ```
 
 ## net_shareSecret
-Share secret to given address.
+Share secret to the given address.
 
 Params:
  1. secret: `string`
@@ -768,7 +768,7 @@ Response Example
 ```
 
 ## net_connect
-Connect to a given address.
+Connect to the given address.
 
 Params:
  1. address: `string`
@@ -794,7 +794,7 @@ Response Example
 ```
 
 ## net_isConnected
-Check whether the connection is established
+Check whether the connection is established.
 
 Params:
  1. address: `string`
@@ -820,7 +820,7 @@ Response Example
 ```
 
 ## net_disconnect
-Disconnect the connection to the given address
+Disconnect the connection from the given address.
 
 Params:
  1. address: `string`
@@ -846,7 +846,7 @@ Response Example
 ```
 
 ## net_getPeerCount
-(not implemented) Return the count of peers which client is connected.
+(not implemented) Return the count of peers which the client is connected to.
 
 Params: No parameters
 
@@ -871,7 +871,7 @@ Response Example
 
 
 ## net_getPort
-(not implemented) Return the port number on which client is listening for peer
+(not implemented) Return the port number on which the client is listening for peers.
 
 Params: No parameters
 
@@ -895,7 +895,7 @@ Response Example
 ```
 
 ## net_getNetworkId
-(not implemented) Return the nework id which is used in this chain
+(not implemented) Return the nework id that is used in this chain.
 
 Params: No parameters
 
@@ -919,7 +919,7 @@ Response Example
 ```
 
 ## devel_getStateTrieKeys
-Gets keys of the state trie with given offset and limit.
+Gets keys of the state trie with the given offset and limit.
 
 Params:
  1. offset: `number`
@@ -947,7 +947,7 @@ Response Example
 ```
 
 ## devel_getStateTrieValue
-Gets the value of the state trie with given key.
+Gets the value of the state trie with the given key.
 
 Params: 
  1. key: `string`

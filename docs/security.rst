@@ -7,7 +7,7 @@ should be reported directly to us at codechain@kodebox.io. When reporting such s
 it would be of great help if you refer to the following guidelines:
 
 Security issues fall into one of three categories. These three categories are classified as 3 levels:
-**P1(high)**, **P2(medium)**, and **P3(low)**. 
+**P1(high)**, **P2(medium)**, and **P3(low)**.
 
 * **P1(high)**: a security vulnerability that will result in loss of value.
 
