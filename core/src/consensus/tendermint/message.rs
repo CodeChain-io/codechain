@@ -17,8 +17,7 @@
 use std::cmp;
 
 use ccrypto::blake256;
-use ckey::{public_to_address, recover, SignatureData};
-use ctypes::Address;
+use ckey::{public_to_address, recover, Address, SignatureData};
 use primitives::{Bytes, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 

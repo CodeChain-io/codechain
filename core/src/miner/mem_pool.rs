@@ -18,7 +18,7 @@ use std::cmp;
 use std::cmp::Ordering;
 use std::collections::{BTreeSet, HashMap};
 
-use ctypes::Address;
+use ckey::Address;
 use heapsize::HeapSizeOf;
 use linked_hash_map::LinkedHashMap;
 use multimap::MultiMap;

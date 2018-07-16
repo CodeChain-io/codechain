@@ -18,7 +18,7 @@
 
 use std::fmt;
 
-use ctypes::{self, Public};
+use ckey::{self, Public};
 use primitives::U256;
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
@@ -98,7 +98,7 @@ impl Account {
 }
 
 impl CacheableItem for Account {
-    type Address = ctypes::Address;
+    type Address = ckey::Address;
 
     /// Check if account has zero nonce, balance.
     fn is_null(&self) -> bool {

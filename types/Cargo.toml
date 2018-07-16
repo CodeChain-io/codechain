@@ -5,6 +5,7 @@ authors = ["CodeChain Team <codechain@kodebox.io>"]
 
 [dependencies]
 codechain-crypto = { path = "../crypto" }
+codechain-key = { path = "../key" }
 primitives = { path = "../util/primitives" }
 rlp = { path = "../util/rlp" }
 rlp_derive = { path = "../util/rlp_derive" }

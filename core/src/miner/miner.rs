@@ -18,7 +18,7 @@ use std::collections::HashSet;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use ctypes::Address;
+use ckey::Address;
 use parking_lot::{Mutex, RwLock};
 use primitives::{Bytes, H256, U256};
 

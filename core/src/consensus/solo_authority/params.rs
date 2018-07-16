@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use cjson;
-use ctypes::Address;
+use ckey::Address;
 use primitives::U256;
 
 #[derive(Debug, PartialEq)]

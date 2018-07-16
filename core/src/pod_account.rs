@@ -17,7 +17,7 @@
 use std::fmt;
 
 use cjson;
-use ctypes::Public;
+use ckey::Public;
 use primitives::U256;
 use rlp::{Encodable, RlpStream};
 

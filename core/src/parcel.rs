@@ -18,9 +18,8 @@ use std::fmt;
 use std::ops::Deref;
 
 use ccrypto::blake256;
-use ckey::{self, public_to_address, recover, sign, Private, Public, Signature, SignatureData};
+use ckey::{self, public_to_address, recover, sign, Address, Private, Public, Signature, SignatureData};
 use ctypes::transaction::Transaction;
-use ctypes::Address;
 use heapsize::HeapSizeOf;
 use primitives::{H160, H256, U256};
 use rlp::{self, DecoderError, Encodable, RlpStream, UntrustedRlp};
@@ -520,9 +519,8 @@ impl Deref for LocalizedParcel {
 
 #[cfg(test)]
 mod tests {
-    use ckey::SignatureData;
+    use ckey::{Address, Public, SignatureData};
     use ctypes::transaction::AssetMintOutput;
-    use ctypes::{Address, Public};
     use primitives::H256;
 
     use super::*;

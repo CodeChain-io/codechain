@@ -19,7 +19,7 @@ use std::cmp;
 use time::get_time;
 
 use ccrypto::{blake256, BLAKE_NULL_RLP};
-use ctypes::Address;
+use ckey::Address;
 use heapsize::HeapSizeOf;
 use primitives::{Bytes, H256, U256};
 use rlp::*;

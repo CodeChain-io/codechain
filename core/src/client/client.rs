@@ -20,8 +20,8 @@ use std::sync::{Arc, Weak};
 use std::time::Instant;
 
 use cio::IoChannel;
+use ckey::{Address, Public};
 use cnetwork::NodeId;
-use ctypes::{Address, Public};
 use journaldb;
 use kvdb::{DBTransaction, KeyValueDB};
 use parking_lot::{Mutex, RwLock};

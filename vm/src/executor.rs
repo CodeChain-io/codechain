@@ -15,8 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ccrypto::{blake256, keccak256, ripemd160, sha256};
-use ckey::{verify, Signature, SignatureData, SIGNATURE_LENGTH};
-use ctypes::Public;
+use ckey::{verify, Public, Signature, SignatureData, SIGNATURE_LENGTH};
 use primitives::H256;
 
 use instruction::{is_valid_unlock_script, Instruction};
