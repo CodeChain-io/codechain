@@ -3,7 +3,6 @@ quiet = false
 db_path = "db"
 keys_path = "keys"
 chain = "solo"
-secret_key = "0x0000000000000000000000000000000000000000000000000000000000000001"
 
 [mining]
 mem_pool_mem_limit = 4 # MB

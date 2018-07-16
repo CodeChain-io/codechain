@@ -112,9 +112,6 @@ CLI Options for CodeChain client
     ``--no-jsonrpc``
         Do not run jsonrpc.
 
-    ``--secret-key=[KEY]``
-        Secret key used by node.
-
     ``--author=[ADDRESS]``
         Specify the block's author (aka "coinbase") address for sending block rewards from
         sealed blocks.
