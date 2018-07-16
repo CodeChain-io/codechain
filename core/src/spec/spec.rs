@@ -17,9 +17,11 @@
 use std::io::Read;
 use std::sync::Arc;
 
+use blockchain::HeaderProvider;
 use ccrypto::{blake256, BLAKE_NULL_RLP};
 use cjson;
 use ctypes::Address;
+use hashdb::HashDB;
 use memorydb::MemoryDB;
 use parking_lot::RwLock;
 use primitives::{Bytes, H256, U256};
@@ -28,7 +30,7 @@ use trie::TrieFactory;
 
 use super::super::codechain_machine::CodeChainMachine;
 use super::super::consensus::{BlakePoW, CodeChainEngine, Cuckoo, NullEngine, Solo, SoloAuthority, Tendermint};
-use super::super::error::Error;
+use super::super::error::{Error, SpecError};
 use super::super::header::Header;
 use super::super::pod_state::{PodAccounts, PodShards};
 use super::super::state::{
@@ -221,13 +223,41 @@ impl Spec {
         Ok((db, root))
     }
 
+    pub fn check_genesis_root(&self, db: &HashDB) -> bool {
+        if db.keys().is_empty() {
+            return true
+        }
+        if db.contains(&self.state_root()) {
+            true
+        } else {
+            false
+        }
+    }
+
     /// Ensure that the given state DB has the trie nodes in for the genesis state.
     pub fn ensure_genesis_state<DB: Backend>(&self, db: DB, trie_factory: &TrieFactory) -> Result<DB, Error> {
+        if !self.check_genesis_root(db.as_hashdb()) {
+            return Err(SpecError::InvalidState.into())
+        }
+
         if db.as_hashdb().contains(&self.state_root()) {
             return Ok(db)
         }
 
         Ok(self.initialize_state(trie_factory, db)?)
+    }
+
+    pub fn check_genesis_common_params<HP: HeaderProvider>(&self, chain: &HP) -> Result<(), Error> {
+        let genesis_header = self.genesis_header();
+        let genesis_header_hash = genesis_header.hash();
+        let header =
+            chain.block_header(&genesis_header_hash).ok_or_else(|| Error::Spec(SpecError::InvalidCommonParams.into()))?;
+        let extra_data = header.extra_data();
+        let common_params_hash = blake256(&self.params().rlp_bytes()).to_vec();
+        if extra_data != &common_params_hash {
+            return Err(Error::Spec(SpecError::InvalidCommonParams.into()))
+        }
+        Ok(())
     }
 
     /// Return the state root for the genesis state, memoising accordingly.
