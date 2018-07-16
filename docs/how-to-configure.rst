@@ -23,7 +23,6 @@ The following represents the default configuration values of ``config.dev.toml``
     db_path = "db"
     keys_path = "keys"
     chain = "solo"
-    secret_key = "0x0000000000000000000000000000000000000000000000000000000000000001"
 
     [mining]
 
@@ -111,9 +110,6 @@ CLI Options for CodeChain client
 
     ``--no-jsonrpc``
         Do not run jsonrpc.
-
-    ``--secret-key=[KEY]``
-        Secret key used by node.
 
     ``--author=[ADDRESS]``
         Specify the block's author (aka "coinbase") address for sending block rewards from

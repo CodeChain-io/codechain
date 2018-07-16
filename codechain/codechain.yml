@@ -87,10 +87,6 @@ args:
         long: no-jsonrpc
         help: Do not run jsonrpc.
         takes_value: false
-    - secret-key:
-        long: secret-key
-        help: Secret key used by node
-        takes_value: true
     - author:
         long: author
         help: Specify the block author (aka "coinbase") address for sending block rewards from sealed blocks.
