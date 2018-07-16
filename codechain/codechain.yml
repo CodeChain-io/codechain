@@ -95,6 +95,10 @@ args:
         long: engine-signer
         help: Specify the address which should be used to sign consensus messages and issue blocks.
         takes_value: true
+    - password-path:
+        long: password-path
+        help: Specify the engine signer's password file path.
+        takes_value: true
     - mem-pool-mem-limit:
         long: mem-pool-mem-limit
         value_name: MB

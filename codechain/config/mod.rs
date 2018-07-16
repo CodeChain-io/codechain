@@ -62,6 +62,7 @@ pub struct Operating {
 pub struct Mining {
     pub author: Option<Address>,
     pub engine_signer: Option<Address>,
+    pub password_path: Option<String>,
     pub mem_pool_size: usize,
     pub mem_pool_mem_limit: usize,
     pub notify_work: Vec<String>,
@@ -186,6 +187,9 @@ impl Mining {
         }
         if let Some(engine_signer) = matches.value_of("engine-signer") {
             self.engine_signer = Some(Address::from_str(engine_signer).map_err(|_| "Invalid address")?);
+        }
+        if let Some(password_path) = matches.value_of("password-path") {
+            self.password_path = Some(password_path.to_string());
         }
         if let Some(mem_pool_mem_limit) = matches.value_of("mem-pool-mem-limit") {
             self.mem_pool_mem_limit = mem_pool_mem_limit.parse().map_err(|_| "Invalid mem limit")?;
