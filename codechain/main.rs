@@ -171,9 +171,7 @@ fn run_subcommand(matches: ArgMatches) -> Result<(), String> {
 }
 
 fn load_config(matches: &ArgMatches) -> Result<config::Config, String> {
-    const DEFAULT_CONFIG_PATH: &'static str = "codechain/config/presets/config.dev.toml";
-
-    let config_path = matches.value_of("config").unwrap_or(DEFAULT_CONFIG_PATH);
+    let config_path = matches.value_of("config").unwrap_or(constants::DEFAULT_CONFIG_PATH);
     let mut config = config::load(&config_path)?;
     config.ipc.overwrite_with(&matches)?;
     config.operating.overwrite_with(&matches)?;
