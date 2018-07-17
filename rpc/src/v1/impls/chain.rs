@@ -87,8 +87,9 @@ where
         self.client.get_asset_scheme(transaction_hash).map_err(errors::parcel)
     }
 
-    fn get_asset(&self, transaction_hash: H256, index: usize) -> Result<Option<Asset>> {
-        self.client.get_asset(transaction_hash, index).map_err(errors::parcel)
+    fn get_asset(&self, transaction_hash: H256, index: usize, block_number: Option<u64>) -> Result<Option<Asset>> {
+        let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
+        self.client.get_asset(transaction_hash, index, block_id).map_err(errors::parcel)
     }
 
     fn get_nonce(&self, address: H160, block_number: Option<u64>) -> Result<Option<U256>> {

@@ -461,6 +461,7 @@ Gets an asset with the given asset type.
 Params:
  1. transaction hash - `H256`
  2. index - `number`
+ 3. block number: `number` | `null`
 
 Return Type: `null` | `AssetObject`
 
