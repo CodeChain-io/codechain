@@ -17,10 +17,11 @@
 use std::fmt;
 use std::sync::Arc;
 
-use ckey::{public_to_address, Error as KeyError, Generator, KeyPair, Message, Private, Public, Random, Signature};
+use ckey::{
+    public_to_address, Address, Error as KeyError, Generator, KeyPair, Message, Private, Public, Random, Signature,
+};
 use ckeystore::accounts_dir::MemoryDirectory;
 use ckeystore::{Error as KeystoreError, KeyStore, SimpleSecretStore};
-use ctypes::Address;
 use parking_lot::RwLock;
 
 /// Signing error

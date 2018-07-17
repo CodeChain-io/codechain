@@ -20,7 +20,7 @@ use ccore::{
     Asset, AssetClient, AssetScheme, BlockId, BlockNumber, Invoice, MinerService, MiningBlockChainClient,
     ParcelInvoice, RegularKey, Shard, SignedParcel,
 };
-use ctypes::Public;
+use ckey::Public;
 use primitives::{H160, H256, U256};
 use rlp::UntrustedRlp;
 

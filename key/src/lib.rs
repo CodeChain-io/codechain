@@ -15,7 +15,6 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 extern crate codechain_crypto as crypto;
-extern crate codechain_types as ctypes;
 #[macro_use]
 extern crate lazy_static;
 extern crate bech32;
@@ -49,7 +48,7 @@ pub use error::Error;
 pub use exchange::exchange;
 pub use keypair::{public_to_address, KeyPair};
 pub use network::Network;
-use primitives::H256;
+use primitives::{H160, H256, H512};
 pub use private::Private;
 pub use random::Random;
 pub use rustc_serialize::hex;
@@ -63,7 +62,9 @@ pub use schnorr::{
 /// 32 bytes long signable message
 pub type Message = H256;
 
-pub use ctypes::{Address, Public, Secret};
+pub type Address = H160;
+pub type Secret = H256;
+pub type Public = H512;
 
 lazy_static! {
     pub static ref SECP256K1: secp256k1::Secp256k1 = secp256k1::Secp256k1::new();

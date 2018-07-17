@@ -29,8 +29,8 @@ pub use self::test_client::TestBlockChainClient;
 
 use std::sync::Arc;
 
+use ckey::{Address, Public};
 use cnetwork::NodeId;
-use ctypes::{Address, Public};
 use kvdb::KeyValueDB;
 use primitives::{Bytes, H256, U256};
 use trie::Result as TrieResult;

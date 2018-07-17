@@ -18,8 +18,7 @@ mod params;
 
 use std::sync::{Arc, Weak};
 
-use ckey::{public_to_address, recover, Signature, SignatureData};
-use ctypes::Address;
+use ckey::{public_to_address, recover, Address, Signature, SignatureData};
 use parking_lot::RwLock;
 use primitives::{H256, U256};
 

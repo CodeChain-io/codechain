@@ -19,7 +19,7 @@ use std::fmt;
 use std::ops::Deref;
 
 use cjson;
-use ctypes::Address;
+use ckey::Address;
 
 use super::pod_account::PodAccount;
 use super::pod_shard_metadata::PodShardMetadata;

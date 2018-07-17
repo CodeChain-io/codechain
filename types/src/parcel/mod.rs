@@ -14,17 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-extern crate codechain_crypto as ccrypto;
-extern crate codechain_key as ckey;
-extern crate heapsize;
-extern crate primitives;
-extern crate rlp;
-#[macro_use]
-extern crate rlp_derive;
-extern crate serde;
-#[macro_use]
-extern crate serde_derive;
-extern crate unexpected;
+mod action;
+mod error;
+mod parcel;
 
-pub mod parcel;
-pub mod transaction;
+pub use self::action::{Action, ChangeShard};
+pub use self::error::Error;
+pub use self::parcel::Parcel;

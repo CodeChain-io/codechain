@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ccrypto::blake256;
-use ctypes::Address;
+use ckey::Address;
 use primitives::{Bytes, H256, U256};
 use rlp::{self, Rlp};
 

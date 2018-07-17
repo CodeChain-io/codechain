@@ -24,7 +24,7 @@
 //! decoded object where parts like the hash can be saved.
 
 use ccrypto::blake256;
-use ctypes::Address;
+use ckey::Address;
 use heapsize::HeapSizeOf;
 use primitives::{H256, U256};
 use rlp::Rlp;

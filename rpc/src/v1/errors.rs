@@ -40,7 +40,7 @@ pub fn parcel<T: Into<CoreError>>(error: T) -> Error {
     if let CoreError::Parcel(e) = error {
         Error {
             code: ErrorCode::ServerError(codes::PARCEL_ERROR),
-            message: ::ccore::parcel_error_message(&e),
+            message: format!("{}", e),
             data: None,
         }
     } else {

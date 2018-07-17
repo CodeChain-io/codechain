@@ -16,7 +16,7 @@
 
 use std::sync::Weak;
 
-use ctypes::Address;
+use ckey::Address;
 use primitives::{Bytes, H256};
 
 use self::validator_list::ValidatorList;

@@ -18,8 +18,7 @@ use std::cell::Cell;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-use ckey::{exchange, Generator, KeyPair, Public, Random};
-use ctypes::Secret;
+use ckey::{exchange, Generator, KeyPair, Public, Random, Secret};
 use parking_lot::{Mutex, RwLock};
 use rand::{OsRng, Rng};
 use rlp::{Decodable, Encodable, UntrustedRlp};

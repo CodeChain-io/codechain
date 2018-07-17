@@ -690,7 +690,7 @@ Response Example
 ```
 
 ## miner_getWork
-Returns the hash of the current block, score and block number.
+Returns the hash of the current block and score.
 
 Params: No parameters
 

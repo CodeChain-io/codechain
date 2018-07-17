@@ -81,7 +81,6 @@ mod service;
 mod spec;
 mod state;
 mod state_db;
-mod transaction;
 mod types;
 mod verification;
 mod views;
@@ -101,12 +100,8 @@ pub use error::{BlockImportError, Error, ImportError};
 pub use header::{Header, Seal};
 pub use invoice::Invoice;
 pub use miner::{Miner, MinerOptions, MinerService};
-pub use parcel::{
-    parcel_error_message, Action, AssetOutPoint, AssetTransferInput, AssetTransferOutput, LocalizedParcel, Parcel,
-    SignedParcel, UnverifiedParcel,
-};
+pub use parcel::{LocalizedParcel, SignedParcel, UnverifiedParcel};
 pub use service::ClientService;
 pub use spec::Spec;
 pub use state::{Asset, AssetAddress, AssetScheme, AssetSchemeAddress, ShardStateInfo, TopStateInfo};
-pub use transaction::{AssetMintOutput, Error as TransactionError, Transaction};
 pub use types::{BlockId, BlockNumber, ParcelId};

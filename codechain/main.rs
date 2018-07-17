@@ -42,6 +42,7 @@ extern crate env_logger;
 extern crate fdlimit;
 extern crate panic_hook;
 extern crate parking_lot;
+extern crate rpassword;
 #[cfg(feature = "stratum")]
 extern crate stratum;
 extern crate toml;
@@ -51,6 +52,7 @@ mod config;
 mod rpc;
 mod rpc_apis;
 
+use std::fs;
 use std::path::Path;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -198,23 +200,38 @@ fn new_miner(config: &config::Config, spec: &Spec, ap: Arc<AccountProvider>) -> 
         ..MinerOptions::default()
     };
 
-    let addresses = ap.get_list().expect("Account provider should success to get address list");
-    let address = if addresses.len() > 0 {
-        addresses[0]
-    } else {
-        // FIXME: Don't hardcode password.
-        ap.insert_account("1".into(), "password").expect("1 is a valid secret key")
-    };
+    let miner = Miner::new(miner_options, spec, Some(ap.clone()));
 
-    let miner = Miner::new(miner_options, spec, Some(ap));
-
-    let author = config.mining.author.unwrap_or(address);
     if miner.can_produce_work_package() {
-        miner.set_author(author);
+        let author = config.mining.author;
+        match author {
+            Some(author) => miner.set_author(author),
+            None => return Err("mining.author is not specified".to_string()),
+        }
     } else {
-        // FIXME: Don't hardcode password.
-        let engine_signer = config.mining.engine_signer.unwrap_or(address);
-        miner.set_engine_signer(engine_signer, "password".to_string()).map_err(|err| format!("{:?}", err))?;
+        match config.mining.engine_signer {
+            Some(engine_signer) => match ap.has_account(engine_signer) {
+                Ok(has_account) if !has_account => {
+                    return Err("mining.engine_signer is not found in AccountProvider".to_string())
+                }
+                Ok(..) => {
+                    match config.mining.password_path {
+                        None => return Err("mining.password_path is not specified".to_string()),
+                        Some(ref password_path) => match fs::read_to_string(password_path) {
+                            Ok(password) => {
+                                miner.set_engine_signer(engine_signer, password).map_err(|err| format!("{:?}", err))?
+                            }
+                            Err(_) => return Err(format!("Failed to read the password file")),
+                        },
+                    }
+                    miner.set_engine_signer(engine_signer, "password".to_string()).map_err(|err| format!("{:?}", err))?;
+                }
+                Err(e) => {
+                    return Err(format!("Error while checking whether engine_signer is in AccountProvider: {:?}", e))
+                }
+            },
+            None => return Err("mining.engine_signer is not specified".to_string()),
+        }
     }
 
     Ok(miner)

@@ -14,15 +14,36 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::fmt;
-
 use ccrypto::blake256;
-use ctypes::Address;
-use primitives::{Bytes, H256, U256};
+use ckey::Address;
+use primitives::{Bytes, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
-use unexpected::Mismatch;
 
-use super::parcel::{AssetTransferInput, AssetTransferOutput};
+#[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AssetOutPoint {
+    pub transaction_hash: H256,
+    pub index: usize,
+    pub asset_type: H256,
+    pub amount: u64,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AssetTransferInput {
+    pub prev_out: AssetOutPoint,
+    pub lock_script: Bytes,
+    pub unlock_script: Bytes,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AssetTransferOutput {
+    pub lock_script_hash: H256,
+    pub parameters: Vec<Bytes>,
+    pub asset_type: H256,
+    pub amount: u64,
+}
 
 /// Parcel transaction type.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -179,65 +200,5 @@ impl Encodable for Transaction {
                 .append_list(outputs)
                 .append(nonce),
         };
-    }
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub enum Error {
-    InvalidPaymentSender(Mismatch<Address>),
-    InvalidAddressToSetKey(Mismatch<Address>),
-    InsufficientBalance {
-        address: Address,
-        required: U256,
-        got: U256,
-    },
-    InvalidAssetAmount {
-        address: H256,
-        expected: u64,
-        got: u64,
-    },
-    /// Desired input asset not found
-    AssetNotFound(H256),
-    /// Desired input asset scheme not found
-    AssetSchemeNotFound(H256),
-    InvalidAssetType(H256),
-    /// Script hash does not match with provided lock script
-    ScriptHashMismatch(Mismatch<H256>),
-    /// Failed to decode script
-    InvalidScript,
-    /// Script execution result is `Fail`
-    FailedToUnlock(H256),
-    InvalidNetworkId(Mismatch<u64>),
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Error::InvalidPaymentSender(mismatch) => write!(f, "Invalid payment sender {}", mismatch),
-            Error::InvalidAddressToSetKey(mismatch) => write!(f, "Invalid address to set key {}", mismatch),
-            Error::InsufficientBalance {
-                address,
-                required,
-                got,
-            } => write!(f, "{} has only {:?} but it must be larger than {:?}", address, required, got),
-            Error::InvalidAssetAmount {
-                address,
-                expected,
-                got,
-            } => write!(
-                f,
-                "AssetTransfer must consume input asset completely. The amount of asset({}) must be {}, but {}.",
-                address, expected, got
-            ),
-            Error::AssetNotFound(addr) => write!(f, "Asset not found: {}", addr),
-            Error::AssetSchemeNotFound(addr) => write!(f, "Asset scheme not found: {}", addr),
-            Error::InvalidAssetType(addr) => write!(f, "Asset type is invalid: {}", addr),
-            Error::ScriptHashMismatch(mismatch) => {
-                write!(f, "Expected script with hash {}, but got {}", mismatch.expected, mismatch.found)
-            }
-            Error::InvalidScript => write!(f, "Failed to decode script"),
-            Error::FailedToUnlock(hash) => write!(f, "Failed to unlock asset {}", hash),
-            Error::InvalidNetworkId(mismatch) => write!(f, "Invalid network id. {}", mismatch),
-        }
     }
 }
