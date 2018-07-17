@@ -31,14 +31,13 @@ pub fn run_account_command(matches: ArgMatches) -> Result<(), String> {
 
     clogger::init(&LoggerConfig::new(0)).expect("Logger must be successfully initialized");
 
-    let subcommand = matches.subcommand.unwrap();
     // FIXME : Add cli option.
     let dir = RootDiskDirectory::create("keystoreData").expect("Cannot read key path directory");
     let keystore = KeyStore::open(Box::new(dir)).unwrap();
     let ap = AccountProvider::new(keystore);
 
-    match subcommand.name.as_ref() {
-        "create" => {
+    match matches.subcommand() {
+        ("create", _) => {
             if let Some(password) = read_password_and_confirm() {
                 let (address, _) = ap.new_account_and_public(password.as_ref()).expect("Cannot create account");
                 println!("Address {} is created", address);
@@ -47,8 +46,8 @@ pub fn run_account_command(matches: ArgMatches) -> Result<(), String> {
             }
             Ok(())
         }
-        "import" => {
-            let keystring = subcommand.matches.value_of("raw-key").unwrap();
+        ("import", Some(matches)) => {
+            let keystring = matches.value_of("raw-key").unwrap();
             let keypair = KeyPair::from_private(keystring.parse().unwrap()).unwrap();
             if let Some(password) = read_password_and_confirm() {
                 ap.insert_account(keypair.private().clone(), password.as_ref()).expect("Cannot insert account");
@@ -57,7 +56,7 @@ pub fn run_account_command(matches: ArgMatches) -> Result<(), String> {
             }
             Ok(())
         }
-        "list" => {
+        ("list", _) => {
             let addresses = ap.get_list().expect("Cannot get account list");
             for address in addresses {
                 println!("{:?}", address)
