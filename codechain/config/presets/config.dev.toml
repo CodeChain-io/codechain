@@ -26,6 +26,7 @@ discovery = true
 discovery_type = "unstructured"
 discovery_refresh = 60000
 discovery_bucket_size = 10
+address = "127.0.0.1"
 
 [rpc]
 disable = false

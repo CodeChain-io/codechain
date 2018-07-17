@@ -95,9 +95,11 @@ where
 }
 
 pub fn network_start(cfg: &NetworkConfig) -> Result<Arc<NetworkService>, String> {
-    info!("Handshake Listening on {}", cfg.port);
-    let address = SocketAddr::v4(127, 0, 0, 1, cfg.port);
-    let service = NetworkService::start(address, cfg.min_peers, cfg.max_peers)
+    info!("Handshake Listening on {}:{}", cfg.address, cfg.port);
+ 
+    let addr = cfg.address.parse().map_err(|_| format!("Invalid NETWORK listen host given: {}", cfg.address))?;
+    let sockaddress = SocketAddr::new(addr, cfg.port);
+    let service = NetworkService::start(sockaddress, cfg.min_peers, cfg.max_peers)
         .map_err(|e| format!("Network service error: {:?}", e))?;
 
     Ok(service)
