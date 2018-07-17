@@ -19,10 +19,10 @@ When configuring CodeChain's blockchain type, you can set it to either ``Solo`` 
 
 Solo Configuration
 ------------------
-CodeChain uses this configuration as default. In order to change it into solo from another configuration, run:
+CodeChain uses this configuration as default. In order to change it into another configuration, such as tendermint, run:
 ::
 
-    --chain solo
+    --chain tendermint
 
 Tendermint Configuration
 ------------------------
