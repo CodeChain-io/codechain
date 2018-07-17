@@ -203,7 +203,8 @@ fn new_miner(config: &config::Config, spec: &Spec, ap: Arc<AccountProvider>) -> 
         addresses[0]
     } else {
         // FIXME: Don't hardcode password.
-        ap.insert_account("1".into(), "password").expect("1 is a valid secret key")
+        ap.insert_account("0000000000000000000000000000000000000000000000000000000000000001".into(), "password")
+            .expect("1 is a valid secret key")
     };
 
     let miner = Miner::new(miner_options, spec, Some(ap));
