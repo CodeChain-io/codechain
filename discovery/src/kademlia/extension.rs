@@ -94,7 +94,7 @@ impl NetworkExtension for Extension {
                     (Some(api), Some(routing_table)) => {
                         let datum = address_to_hash(&node.into_addr());
                         let mut addresses = routing_table
-                            .all_addresses()
+                            .reachable_addresses(&node.into_addr())
                             .into_iter()
                             .map(|address| KademliaId::new(address.clone(), &datum))
                             .collect::<Vec<_>>();

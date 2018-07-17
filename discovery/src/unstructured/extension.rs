@@ -17,7 +17,7 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
-use cnetwork::{Api, DiscoveryApi, NetworkExtension, NodeId, RoutingTable, TimerToken};
+use cnetwork::{Api, DiscoveryApi, IntoSocketAddr, NetworkExtension, NodeId, RoutingTable, TimerToken};
 use parking_lot::{Mutex, RwLock};
 use rand::{thread_rng, Rng};
 use rlp::{Decodable, Encodable, UntrustedRlp};
@@ -92,7 +92,8 @@ impl NetworkExtension for Extension {
                 let api = self.api.lock();
                 match (&*api, &*routing_table) {
                     (Some(api), Some(routing_table)) => {
-                        let mut addresses = routing_table.all_addresses().into_iter().collect::<Vec<_>>();
+                        let mut addresses =
+                            routing_table.reachable_addresses(&node.into_addr()).into_iter().collect::<Vec<_>>();
                         thread_rng().shuffle(&mut addresses);
                         let addresses = addresses
                             .into_iter()

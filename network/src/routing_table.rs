@@ -115,6 +115,11 @@ impl RoutingTable {
         entries.keys().map(|node_id| node_id.into_addr()).collect()
     }
 
+    pub fn reachable_addresses(&self, from: &SocketAddr) -> HashSet<SocketAddr> {
+        let entries = self.entries.read();
+        entries.keys().map(|node_id| node_id.into_addr()).filter(|addr| from.is_reachable(addr)).collect()
+    }
+
     pub fn is_connected(&self, addr: &SocketAddr) -> bool {
         let entries = self.entries.read();
         if let Some(entry) = entries.get(&addr.into()) {
