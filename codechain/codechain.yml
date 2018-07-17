@@ -191,18 +191,12 @@ subcommands:
                         help: account passphrase
                         takes_value: true
             - import:
-                about: import private key
+                about: import JSON key file
                 args:
-                    - passphrase:
-                        short: p
-                        long: passphrase
-                        help: account passphrase
-                        takes_value: true
-                    - raw-key:
-                        short: k
-                        long: raw-key
-                        help: key to import
-                        takes_value: true
+                    - JSON_PATH:
+                        help: The path of the JSON key file.
+                        required: true
+                        index: 1
             - list:
                 about: list managed accounts
             - lock:

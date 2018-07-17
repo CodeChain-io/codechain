@@ -14,10 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::fs;
+
 use rpassword;
 
 use ccore::AccountProvider;
-use ckey::KeyPair;
 use ckeystore::accounts_dir::RootDiskDirectory;
 use ckeystore::KeyStore;
 use clap::ArgMatches;
@@ -47,12 +48,18 @@ pub fn run_account_command(matches: ArgMatches) -> Result<(), String> {
             Ok(())
         }
         ("import", Some(matches)) => {
-            let keystring = matches.value_of("raw-key").unwrap();
-            let keypair = KeyPair::from_private(keystring.parse().unwrap()).unwrap();
-            if let Some(password) = read_password_and_confirm() {
-                ap.insert_account(keypair.private().clone(), password.as_ref()).expect("Cannot insert account");
-            } else {
-                println!("The password does not match");
+            let json_path = matches.value_of("JSON_PATH").expect("JSON_PATH arg is required and its index is 1");
+            match fs::read(json_path) {
+                Ok(json) => {
+                    let password = rpassword::prompt_password_stdout("Password: ").unwrap();
+                    match ap.import_wallet(json.as_slice(), password.as_ref()) {
+                        Ok(address) => {
+                            println!("{:?}", address);
+                        }
+                        Err(e) => return Err(format!("{}", e)),
+                    }
+                }
+                Err(e) => return Err(format!("{}", e)),
             }
             Ok(())
         }
