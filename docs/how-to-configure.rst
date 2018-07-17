@@ -90,7 +90,7 @@ CLI Options for CodeChain client
     ``--keys-path=[PATH]``
         Specify the path for JSON key files to be found.
 
-    ``snapshot-path=[PATH]``
+    ``--snapshot-path=[PATH]``
         Specify the snapshot directory path.
 
     ``--no-sync``
@@ -125,19 +125,19 @@ CLI Options for CodeChain client
     ``--mem-pool-size=[LIMIT]``
         Maximum amount of parcels in the queue (waiting to be included in next block).
 
-    ``notify-work=[URLS]``
+    ``--notify-work=[URLS]``
         URLs to which work package notifications are pushed.
 
-    ``force-sealing``
+    ``--force-sealing``
         Force the node to author new blocks as if it were always sealing/mining.
 
-    ``reseal-min-period=[MS]``
+    ``--reseal-min-period=[MS]``
         Specify the minimum time between reseals from incoming parcels. MS is time measured in milliseconds.
 
-    ``reseal-max-period=[MS]``
+    ``--reseal-max-period=[MS]``
         Specify the maximum time since last block to enable force-sealing. MS is time measured in milliseconds.
 
-    ``work-queue-size=[ITEMS]``
+    ``--work-queue-size=[ITEMS]``
         Specify the number of historical work packages which are kept cached lest a solution is found for them later. High values take more memory but result in fewer unusable solutions.
 
     ``--no-discovery``
