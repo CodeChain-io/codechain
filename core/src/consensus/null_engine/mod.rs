@@ -17,6 +17,7 @@
 mod params;
 
 use self::params::NullEngineParams;
+use super::super::consensus::EngineType;
 use super::super::machine::{Header, LiveBlock, WithBalances};
 use super::ConsensusEngine;
 
@@ -49,6 +50,10 @@ impl<M: WithBalances> ConsensusEngine<M> for NullEngine<M> {
 
     fn machine(&self) -> &M {
         &self.machine
+    }
+
+    fn engine_type(&self) -> EngineType {
+        EngineType::Solo
     }
 
     fn verify_local_seal(&self, _header: &M::Header) -> Result<(), M::Error> {
