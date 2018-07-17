@@ -56,6 +56,47 @@ impl SocketAddr {
             net::IpAddr::V6(_ip) => unimplemented!(),
         }
     }
+
+    pub fn is_reachable(&self, other: &SocketAddr) -> bool {
+        if self == other {
+            return false
+        }
+        match (self.ip(), other.ip()) {
+            (net::IpAddr::V4(self_ip), net::IpAddr::V4(other_ip)) => {
+                debug_assert_eq!(false, other_ip.is_link_local());
+                debug_assert_eq!(false, other_ip.is_broadcast());
+                debug_assert_eq!(false, other_ip.is_multicast());
+                debug_assert_eq!(false, other_ip.is_documentation());
+                debug_assert_eq!(false, other_ip.is_unspecified());
+                if self_ip.is_loopback() {
+                    return true
+                }
+                if other_ip.is_loopback() {
+                    return self_ip.is_loopback()
+                }
+                if other_ip.is_private() {
+                    if !self_ip.is_private() {
+                        return false
+                    }
+                    return is_same_private_subnet(&self_ip, &other_ip)
+                }
+                true
+            }
+            _ => unimplemented!(),
+        }
+    }
+}
+
+fn is_same_private_subnet(ip1: &Ipv4Addr, ip2: &Ipv4Addr) -> bool {
+    debug_assert_eq!(true, ip1.is_private());
+    debug_assert_eq!(true, ip2.is_private());
+
+    match ((ip1.octets()[0], ip1.octets()[1]), (ip2.octets()[0], ip2.octets()[1])) {
+        ((10, _), (10, _)) => true,
+        ((172, b1), (172, b2)) if b1 >= 16 && b1 <= 31 && b2 >= 16 && b2 <= 31 => true,
+        ((192, 168), (192, 168)) => true,
+        _ => false,
+    }
 }
 
 pub fn convert_to_node_id(ip: IpAddr, port: u16) -> NodeId {
@@ -214,5 +255,53 @@ mod tests {
         assert_eq!(false, a1.is_global());
         assert_eq!(false, a2.is_global());
         assert_eq!(true, a3.is_global());
+    }
+
+    #[test]
+    fn test_is_reachable() {
+        // Servers which have loopback addresses can connect to each other
+        let loopback_1 = SocketAddr::v4(127, 0, 0, 1, 3485);
+        let loopback_2 = SocketAddr::v4(127, 0, 0, 1, 3486);
+        assert_eq!(true, loopback_1.is_reachable(&loopback_2));
+        assert_eq!(true, loopback_2.is_reachable(&loopback_1));
+        assert_eq!(false, loopback_1.is_reachable(&loopback_1));
+
+        // Servers from same private subnet addresses can connect to each other
+        let private_1 = SocketAddr::v4(192, 168, 0, 1, 3485);
+        let private_2 = SocketAddr::v4(192, 168, 0, 2, 3485);
+        assert_eq!(true, private_1.is_reachable(&private_2));
+        assert_eq!(true, private_2.is_reachable(&private_1));
+        assert_eq!(false, private_1.is_reachable(&private_1));
+
+        // Servers from same private subnet addresses can connect to each other
+        let private_3 = SocketAddr::v4(172, 16, 0, 1, 3485);
+        let private_4 = SocketAddr::v4(172, 17, 0, 1, 3485);
+        assert_eq!(true, private_3.is_reachable(&private_4));
+        assert_eq!(true, private_4.is_reachable(&private_3));
+
+        // Servers from different private subnet addresses can not connect to each other
+        assert_eq!(false, private_1.is_reachable(&private_3));
+        assert_eq!(false, private_3.is_reachable(&private_1));
+
+        // Servers which have public addresses can connect to each other
+        let public_1 = SocketAddr::v4(1, 1, 1, 1, 3485);
+        let public_2 = SocketAddr::v4(2, 2, 2, 2, 3485);
+        assert_eq!(true, public_1.is_reachable(&public_2));
+        assert_eq!(true, public_2.is_reachable(&public_1));
+        assert_eq!(false, public_1.is_reachable(&public_1));
+
+        // Any server can connect to public address
+        assert_eq!(true, private_1.is_reachable(&public_1));
+        assert_eq!(true, loopback_1.is_reachable(&public_1));
+
+        // Servers from public network can not connect to private server
+        assert_eq!(false, public_1.is_reachable(&private_1));
+
+        // Servers from loopback network can connect to private server
+        assert_eq!(true, loopback_1.is_reachable(&private_1));
+
+        // Only servers from loopback network can connect to loopback server
+        assert_eq!(false, public_1.is_reachable(&loopback_1));
+        assert_eq!(false, private_1.is_reachable(&loopback_1));
     }
 }
