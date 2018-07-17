@@ -15,10 +15,12 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::fs;
+use std::str::FromStr;
 
 use rpassword;
 
 use ccore::AccountProvider;
+use ckey::Private;
 use ckeystore::accounts_dir::RootDiskDirectory;
 use ckeystore::KeyStore;
 use clap::ArgMatches;
@@ -60,6 +62,30 @@ pub fn run_account_command(matches: ArgMatches) -> Result<(), String> {
                     }
                 }
                 Err(e) => return Err(format!("{}", e)),
+            }
+            Ok(())
+        }
+        ("import-raw", Some(matches)) => {
+            let key = {
+                let val = matches.value_of("RAW_KEY").expect("RAW_KEY arg is required and its index is 1");
+                if val.starts_with("0x") {
+                    &val[2..]
+                } else {
+                    &val[..]
+                }
+            };
+            match Private::from_str(key) {
+                Ok(private) => {
+                    if let Some(password) = read_password_and_confirm() {
+                        match ap.insert_account(private, password.as_ref()) {
+                            Ok(address) => println!("{:?}", address),
+                            Err(e) => return Err(format!("{:?}", e)),
+                        }
+                    } else {
+                        return Err("The password does not match".to_string())
+                    }
+                }
+                Err(e) => return Err(format!("{:?}", e)),
             }
             Ok(())
         }

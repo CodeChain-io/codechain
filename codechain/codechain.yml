@@ -197,6 +197,13 @@ subcommands:
                         help: The path of the JSON key file.
                         required: true
                         index: 1
+            - import-raw:
+                about: import a raw private key
+                args:
+                    - RAW_KEY:
+                        help: A raw private key.
+                        required: true
+                        index: 1
             - list:
                 about: list managed accounts
             - lock:
