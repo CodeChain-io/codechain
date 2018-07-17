@@ -24,6 +24,8 @@ use ckeystore::KeyStore;
 use clap::ArgMatches;
 use clogger::{self, LoggerConfig};
 
+use super::constants::DEFAULT_KEYS_PATH;
+
 pub fn run_account_command(matches: ArgMatches) -> Result<(), String> {
     if matches.subcommand.is_none() {
         println!("{}", matches.usage());
@@ -32,7 +34,7 @@ pub fn run_account_command(matches: ArgMatches) -> Result<(), String> {
 
     clogger::init(&LoggerConfig::new(0)).expect("Logger must be successfully initialized");
 
-    let keys_path = matches.value_of("keys-path").unwrap_or("keys");
+    let keys_path = matches.value_of("keys-path").unwrap_or(DEFAULT_KEYS_PATH);
     let dir = RootDiskDirectory::create(keys_path).expect("Cannot read key path directory");
     let keystore = KeyStore::open(Box::new(dir)).unwrap();
     let ap = AccountProvider::new(keystore);

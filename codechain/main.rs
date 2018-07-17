@@ -49,6 +49,7 @@ extern crate toml;
 
 mod account_command;
 mod config;
+mod constants;
 mod rpc;
 mod rpc_apis;
 
@@ -255,8 +256,11 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
     clogger::init(&LoggerConfig::new(instance_id)).expect("Logger must be successfully initialized");
 
     // FIXME: Handle IO error.
-    let keystore_dir =
-        RootDiskDirectory::create(config.operating.keys_path.clone()).expect("Cannot read key path directory");
+    let keys_path = match config.operating.keys_path {
+        Some(ref keys_path) => keys_path.clone(),
+        None => constants::DEFAULT_KEYS_PATH.to_string(),
+    };
+    let keystore_dir = RootDiskDirectory::create(keys_path).expect("Cannot read key path directory");
     let keystore = KeyStore::open(Box::new(keystore_dir)).unwrap();
     let ap = AccountProvider::new(keystore);
     let miner = new_miner(&config, &spec, ap.clone())?;

@@ -53,7 +53,7 @@ pub struct Operating {
     pub quiet: bool,
     pub instance_id: Option<usize>,
     pub db_path: String,
-    pub keys_path: String,
+    pub keys_path: Option<String>,
     pub chain: ChainType,
 }
 
@@ -171,7 +171,7 @@ impl Operating {
             self.db_path = db_path.to_string();
         }
         if let Some(keys_path) = matches.value_of("keys-path") {
-            self.keys_path = keys_path.to_string();
+            self.keys_path = Some(keys_path.to_string());
         }
         if let Some(chain) = matches.value_of("chain") {
             self.chain = chain.parse()?;
