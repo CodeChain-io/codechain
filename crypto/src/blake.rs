@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use primitives::{H256, H512};
+use primitives::{H248, H256, H512};
 use rcrypto::blake2b::Blake2b;
 use rcrypto::digest::Digest;
 
@@ -59,6 +59,25 @@ pub fn blake512_with_key<T: AsRef<[u8]>>(s: T, key: &[u8]) -> H512 {
 pub trait Blake {
     fn blake<T: AsRef<[u8]>>(s: T) -> Self;
     fn blake_with_key<T: AsRef<[u8]>>(s: T, key: &[u8]) -> Self;
+}
+
+impl Blake for H248 {
+    fn blake<T: AsRef<[u8]>>(s: T) -> Self {
+        let input = s.as_ref();
+        let mut result = H248::default();
+        let mut hasher = Blake2b::new(31);
+        hasher.input(input);
+        hasher.result(&mut *result);
+        result
+    }
+    fn blake_with_key<T: AsRef<[u8]>>(s: T, key: &[u8]) -> Self {
+        let input = s.as_ref();
+        let mut result = H248::default();
+        let mut hasher = Blake2b::new_keyed(31, &key);
+        hasher.input(input);
+        hasher.result(&mut *result);
+        result
+    }
 }
 
 impl Blake for H256 {
@@ -108,6 +127,16 @@ mod tests {
         let expected = "324dcf027dd4a30a932c441f365a25e86b173defa4b8e58948253471b81b72cf".into();
         let result = blake256(b"hello");
         assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn blake248_generates_different_result_with_blake256() {
+        let h248 = H248::blake(b"hello");
+        let h256 = H256::blake(b"hello");
+        assert_eq!(h248[0..31].len(), h256[1..32].len());
+        assert_ne!(h248[0..31], h256[1..32]);
+        assert_eq!(h248[0..31].len(), h256[0..31].len());
+        assert_ne!(h248[0..31], h256[0..31]);
     }
 
     #[test]
