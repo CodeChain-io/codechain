@@ -26,7 +26,7 @@ use primitives::{Bytes, H256, U256};
 use super::super::account_provider::{AccountProvider, SignError};
 use super::super::block::{Block, ClosedBlock, IsBlock};
 use super::super::client::{AccountData, BlockChain, BlockProducer, ImportSealedBlock, MiningBlockChainClient};
-use super::super::consensus::{CodeChainEngine, Seal};
+use super::super::consensus::{CodeChainEngine, EngineType, Seal};
 use super::super::error::Error;
 use super::super::header::Header;
 use super::super::parcel::{SignedParcel, UnverifiedParcel};
@@ -599,6 +599,10 @@ impl MinerService for Miner {
 
     fn can_produce_work_package(&self) -> bool {
         self.engine.seals_internally().is_none()
+    }
+
+    fn engine_type(&self) -> EngineType {
+        self.engine.engine_type()
     }
 
     fn update_sealing<C>(&self, chain: &C)
