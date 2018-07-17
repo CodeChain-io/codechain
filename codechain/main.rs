@@ -58,7 +58,7 @@ use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use app_dirs::AppInfo;
-use ccore::{AccountProvider, ClientService, Miner, MinerOptions, MinerService, Spec};
+use ccore::{AccountProvider, ClientService, EngineType, Miner, MinerOptions, MinerService, Spec};
 use cdiscovery::{KademliaConfig, KademliaExtension, UnstructuredConfig, UnstructuredExtension};
 use ckeystore::accounts_dir::RootDiskDirectory;
 use ckeystore::KeyStore;
@@ -202,14 +202,16 @@ fn new_miner(config: &config::Config, spec: &Spec, ap: Arc<AccountProvider>) -> 
 
     let miner = Miner::new(miner_options, spec, Some(ap.clone()));
 
-    if miner.can_produce_work_package() {
-        let author = config.mining.author;
-        match author {
-            Some(author) => miner.set_author(author),
-            None => return Err("mining.author is not specified".to_string()),
+
+    match miner.engine_type() {
+        EngineType::PoW => {
+            let author = config.mining.author;
+            match author {
+                Some(author) => miner.set_author(author),
+                None => return Err("mining.author is not specified".to_string()),
+            }
         }
-    } else {
-        match config.mining.engine_signer {
+        EngineType::InternalSealing => match config.mining.engine_signer {
             Some(engine_signer) => match ap.has_account(engine_signer) {
                 Ok(has_account) if !has_account => {
                     return Err("mining.engine_signer is not found in AccountProvider".to_string())
@@ -231,7 +233,8 @@ fn new_miner(config: &config::Config, spec: &Spec, ap: Arc<AccountProvider>) -> 
                 }
             },
             None => return Err("mining.engine_signer is not specified".to_string()),
-        }
+        },
+        EngineType::Solo => (),
     }
 
     Ok(miner)
