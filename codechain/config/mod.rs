@@ -75,6 +75,7 @@ pub struct Mining {
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Network {
+    pub address: String,
     pub disable: bool,
     pub port: u16,
     pub bootstrap_addresses: Vec<String>,
@@ -121,12 +122,13 @@ impl<'a> Into<NetworkConfig> for &'a Network {
     fn into(self) -> NetworkConfig {
         let bootstrap_addresses =
             self.bootstrap_addresses.iter().map(|s| SocketAddr::from_str(s).unwrap()).collect::<Vec<_>>();
-        NetworkConfig {
-            port: self.port,
-            bootstrap_addresses,
-            min_peers: self.min_peers,
-            max_peers: self.max_peers,
-        }
+            NetworkConfig {
+                port: self.port,
+                bootstrap_addresses,
+                min_peers: self.min_peers,
+                max_peers: self.max_peers,
+                address: self.address.to_string(),
+            }
     }
 }
 
