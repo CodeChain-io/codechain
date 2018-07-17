@@ -41,7 +41,7 @@ pub fn run_account_command(matches: ArgMatches) -> Result<(), String> {
         "create" => {
             if let Some(password) = read_password_and_confirm() {
                 let (address, _) = ap.new_account_and_public(password.as_ref()).expect("Cannot create account");
-                info!("Address {} is created", address);
+                println!("Address {} is created", address);
             } else {
                 println!("The password does not match");
             }
