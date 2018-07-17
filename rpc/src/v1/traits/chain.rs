@@ -46,7 +46,7 @@ build_rpc_trait! {
 
         /// Gets asset with given asset type.
         # [rpc(name = "chain_getAsset")]
-        fn get_asset(&self, H256, usize) -> Result<Option<Asset>>;
+        fn get_asset(&self, H256, usize, Option<u64>) -> Result<Option<Asset>>;
 
         /// Gets nonce with given account.
         # [rpc(name = "chain_getNonce")]
