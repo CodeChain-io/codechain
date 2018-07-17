@@ -63,6 +63,14 @@ pub enum Seal {
     None,
 }
 
+/// Engine type.
+#[derive(Debug, PartialEq, Eq)]
+pub enum EngineType {
+    InternalSealing,
+    PoW,
+    Solo,
+}
+
 /// A consensus mechanism for the chain.
 pub trait ConsensusEngine<M: Machine>: Sync + Send {
     /// The name of this engine.
@@ -82,6 +90,9 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
     fn seals_internally(&self) -> Option<bool> {
         None
     }
+
+    /// The type of this engine.
+    fn engine_type(&self) -> EngineType;
 
     /// Attempt to seal the block internally.
     ///

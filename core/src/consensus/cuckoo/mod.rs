@@ -28,6 +28,7 @@ use unexpected::{Mismatch, OutOfBounds};
 use self::params::CuckooParams;
 use super::super::block::{ExecutedBlock, IsBlock};
 use super::super::codechain_machine::CodeChainMachine;
+use super::super::consensus::EngineType;
 use super::super::error::{BlockError, Error};
 use super::super::header::Header;
 use super::super::machine::WithBalances;
@@ -100,6 +101,10 @@ impl ConsensusEngine<CodeChainMachine> for Cuckoo {
 
     fn seal_fields(&self, _header: &Header) -> usize {
         2
+    }
+
+    fn engine_type(&self) -> EngineType {
+        EngineType::PoW
     }
 
     fn verify_local_seal(&self, header: &Header) -> Result<(), Error> {

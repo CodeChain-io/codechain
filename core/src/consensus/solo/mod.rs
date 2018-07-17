@@ -17,6 +17,7 @@
 mod params;
 
 use self::params::SoloParams;
+use super::super::consensus::EngineType;
 use super::super::machine::{Header, LiveBlock, Parcels, WithBalances};
 use super::{ConsensusEngine, Seal};
 
@@ -50,6 +51,10 @@ where
 
     fn seals_internally(&self) -> Option<bool> {
         Some(true)
+    }
+
+    fn engine_type(&self) -> EngineType {
+        EngineType::Solo
     }
 
     fn generate_seal(&self, block: &M::LiveBlock, _parent: &M::Header) -> Seal {
