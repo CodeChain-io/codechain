@@ -175,6 +175,12 @@ args:
 subcommands:
     - account:
         about: account managing commands
+        args:
+            - keys-path:
+                long: keys-path
+                value_name: PATH
+                help: Specify the path for JSON key files to be found
+                takes_value: true
         subcommands:
             - create:
                 about: create account

@@ -31,8 +31,8 @@ pub fn run_account_command(matches: ArgMatches) -> Result<(), String> {
 
     clogger::init(&LoggerConfig::new(0)).expect("Logger must be successfully initialized");
 
-    // FIXME : Add cli option.
-    let dir = RootDiskDirectory::create("keystoreData").expect("Cannot read key path directory");
+    let keys_path = matches.value_of("keys-path").unwrap_or("keys");
+    let dir = RootDiskDirectory::create(keys_path).expect("Cannot read key path directory");
     let keystore = KeyStore::open(Box::new(dir)).unwrap();
     let ap = AccountProvider::new(keystore);
 
