@@ -20,6 +20,7 @@ use std::sync::Arc;
 use ccrypto::{blake256, BLAKE_NULL_RLP};
 use cjson;
 use ckey::Address;
+use cstate::{Metadata, MetadataAddress};
 use hashdb::HashDB;
 use memorydb::MemoryDB;
 use parking_lot::RwLock;
@@ -34,9 +35,7 @@ use super::super::consensus::{BlakePoW, CodeChainEngine, Cuckoo, NullEngine, Sol
 use super::super::error::{Error, SpecError};
 use super::super::header::Header;
 use super::super::pod_state::{PodAccounts, PodShards};
-use super::super::state::{
-    Backend, BasicBackend, Metadata, MetadataAddress, Shard, ShardAddress, ShardMetadataAddress,
-};
+use super::super::state::{Backend, BasicBackend, Shard, ShardAddress, ShardMetadataAddress};
 use super::seal::Generic as GenericSeal;
 use super::Genesis;
 

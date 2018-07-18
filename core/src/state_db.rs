@@ -20,7 +20,7 @@ use std::collections::{HashSet, VecDeque};
 use std::sync::Arc;
 
 use ckey::Address;
-use cstate::{Account, Asset, AssetAddress, AssetScheme, AssetSchemeAddress, CacheableItem};
+use cstate::{Account, Asset, AssetAddress, AssetScheme, AssetSchemeAddress, CacheableItem, Metadata, MetadataAddress};
 use ctypes::BlockNumber;
 use hashdb::HashDB;
 use journaldb::JournalDB;
@@ -30,7 +30,7 @@ use parking_lot::Mutex;
 use primitives::H256;
 use util_error::UtilError;
 
-use super::state::{self, Metadata, MetadataAddress, Shard, ShardAddress};
+use super::state::{self, Shard, ShardAddress};
 
 const STATE_CACHE_BLOCKS: usize = 12;
 

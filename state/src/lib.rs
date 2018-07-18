@@ -36,3 +36,4 @@ pub use item::account::Account;
 pub use item::asset::{Asset, AssetAddress};
 pub use item::asset_scheme::{AssetScheme, AssetSchemeAddress};
 pub use item::cache::{Cache, CacheableItem};
+pub use item::metadata::{Metadata, MetadataAddress};
