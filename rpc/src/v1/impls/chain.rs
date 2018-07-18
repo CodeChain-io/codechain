@@ -17,10 +17,11 @@
 use std::sync::Arc;
 
 use ccore::{
-    Asset, AssetClient, AssetScheme, BlockId, BlockNumber, Invoice, MinerService, MiningBlockChainClient,
-    ParcelInvoice, RegularKey, Shard, SignedParcel,
+    Asset, AssetClient, AssetScheme, BlockId, BlockNumber, MinerService, MiningBlockChainClient, ParcelInvoice,
+    RegularKey, Shard, SignedParcel,
 };
 use ckey::Public;
+use ctypes::invoice::Invoice;
 use primitives::{H160, H256, U256};
 use rlp::UntrustedRlp;
 

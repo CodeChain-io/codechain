@@ -17,6 +17,7 @@
 use std::io::Write;
 use std::ops::{self, Deref};
 
+use ctypes::invoice::Invoice;
 use heapsize::HeapSizeOf;
 use kvdb::PREFIX_LEN as DB_PREFIX_LEN;
 use primitives::{H256, H264, U256};
@@ -24,7 +25,6 @@ use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::super::consensus::epoch::{PendingTransition as PendingEpochTransition, Transition as EpochTransition};
 use super::super::db::Key;
-use super::super::invoice::Invoice;
 use super::super::types::{BlockNumber, ParcelId};
 
 /// Represents index of extra data in database

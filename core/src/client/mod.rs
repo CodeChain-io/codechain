@@ -31,6 +31,7 @@ use std::sync::Arc;
 
 use ckey::{Address, Public};
 use cnetwork::NodeId;
+use ctypes::invoice::Invoice;
 use kvdb::KeyValueDB;
 use primitives::{Bytes, H256, U256};
 use trie::Result as TrieResult;
@@ -45,7 +46,6 @@ use super::state::{Asset, AssetScheme, TopStateInfo};
 use super::types::{
     BlockId, BlockNumber, BlockStatus, ParcelId, TransactionId, VerificationQueueInfo as BlockQueueInfo,
 };
-use super::Invoice;
 
 /// Provides `chain_info` method
 pub trait ChainInfo {
