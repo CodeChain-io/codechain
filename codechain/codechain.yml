@@ -184,12 +184,6 @@ subcommands:
         subcommands:
             - create:
                 about: create account
-                args:
-                    - passphrase:
-                        short: p
-                        long: passphrase
-                        help: account passphrase
-                        takes_value: true
             - import:
                 about: import JSON key file
                 args:
