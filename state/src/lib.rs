@@ -55,4 +55,4 @@ pub use item::cache::{Cache, CacheableItem};
 pub use item::metadata::{Metadata, MetadataAddress};
 pub use item::shard::{Shard, ShardAddress};
 pub use item::shard_metadata::{ShardMetadata, ShardMetadataAddress};
-pub use traits::{ShardState, ShardStateInfo, TopStateInfo};
+pub use traits::{ShardState, ShardStateInfo, TopState, TopStateInfo};

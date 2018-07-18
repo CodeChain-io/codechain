@@ -19,7 +19,7 @@ use ctypes::transaction::{Outcome as TransactionOutcome, Transaction};
 use primitives::{H256, U256};
 use trie::Result as TrieResult;
 
-use super::backend::ShardBackend;
+use super::backend::{ShardBackend, TopBackend};
 use super::{Asset, AssetAddress, AssetScheme, AssetSchemeAddress};
 
 
@@ -96,4 +96,32 @@ pub trait ShardState<B, Error>
 where
     B: ShardBackend, {
     fn apply(&mut self, transaction: &Transaction, parcel_network_id: &u64) -> Result<TransactionOutcome, Error>;
+}
+
+pub trait TopState<B, Error>
+where
+    B: TopBackend, {
+    /// Remove an existing account.
+    fn kill_account(&mut self, account: &Address);
+
+    fn account_exists(&self, a: &Address) -> TrieResult<bool>;
+
+    fn account_exists_and_not_null(&self, a: &Address) -> TrieResult<bool>;
+    fn account_exists_and_has_nonce(&self, a: &Address) -> TrieResult<bool>;
+
+    /// Add `incr` to the balance of account `a`.
+    fn add_balance(&mut self, a: &Address, incr: &U256) -> TrieResult<()>;
+    /// Subtract `decr` from the balance of account `a`.
+    fn sub_balance(&mut self, a: &Address, decr: &U256) -> TrieResult<()>;
+    /// Subtracts `by` from the balance of `from` and adds it to that of `to`.
+    fn transfer_balance(&mut self, from: &Address, to: &Address, by: &U256) -> Result<(), Error>;
+
+    /// Increment the nonce of account `a` by 1.
+    fn inc_nonce(&mut self, a: &Address) -> TrieResult<()>;
+
+    /// Set the regular key of account `a`
+    fn set_regular_key(&mut self, a: &Address, key: &Public) -> Result<(), Error>;
+
+    fn create_shard(&mut self, shard_creation_cost: &U256, fee_payer: &Address) -> Result<(), Error>;
+    fn set_shard_root(&mut self, shard_id: u32, old_root: &H256, new_root: &H256) -> Result<(), Error>;
 }

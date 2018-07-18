@@ -32,9 +32,7 @@
 
 mod shard_level;
 mod top_level;
-mod top_state;
 mod traits;
 
 pub use self::top_level::TopLevelState;
-pub use self::top_state::TopState;
 pub use self::traits::StateWithCache;
