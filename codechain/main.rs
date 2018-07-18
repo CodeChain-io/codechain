@@ -249,10 +249,12 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
     let config = load_config(&matches)?;
     let spec = config.operating.chain.spec()?;
 
-    let instance_id = config.operating.instance_id.unwrap_or(SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("Current time should be later than unix epoch")
-        .subsec_nanos() as usize);
+    let instance_id = config.operating.instance_id.unwrap_or(
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("Current time should be later than unix epoch")
+            .subsec_nanos() as usize,
+    );
     clogger::init(&LoggerConfig::new(instance_id)).expect("Logger must be successfully initialized");
 
     // FIXME: Handle IO error.

@@ -231,7 +231,8 @@ where
     fn remove(&self, account: &SafeAccount) -> Result<(), Error> {
         // enumerate all entries in keystore
         // and find entry with given address
-        let to_remove = self.files_content()?
+        let to_remove = self
+            .files_content()?
             .into_iter()
             .find(|&(_, ref acc)| acc.id == account.id && acc.address == account.address);
 

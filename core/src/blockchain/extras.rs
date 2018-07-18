@@ -264,7 +264,8 @@ impl BlockInvoices {
 
 impl Decodable for BlockInvoices {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
-        let invoices = rlp.as_list::<Vec<u8>>()?
+        let invoices = rlp
+            .as_list::<Vec<u8>>()?
             .iter()
             .map(|parcel_invoice| UntrustedRlp::new(&parcel_invoice).as_val::<ParcelInvoice>())
             .collect::<Result<Vec<_>, _>>()?;

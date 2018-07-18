@@ -177,7 +177,8 @@ impl Encodable for Transaction {
                     },
                 registrar,
                 nonce,
-            } => s.begin_list(8)
+            } => s
+                .begin_list(8)
                 .append(&ASSET_MINT_ID)
                 .append(network_id)
                 .append(metadata)
@@ -192,7 +193,8 @@ impl Encodable for Transaction {
                 inputs,
                 outputs,
                 nonce,
-            } => s.begin_list(6)
+            } => s
+                .begin_list(6)
                 .append(&ASSET_TRANSFER_ID)
                 .append(network_id)
                 .append_list(burns)

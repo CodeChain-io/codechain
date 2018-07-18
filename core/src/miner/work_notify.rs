@@ -42,7 +42,8 @@ pub struct WorkPoster {
 impl WorkPoster {
     /// Create new `WorkPoster`.
     pub fn new(urls: &[String]) -> Self {
-        let urls = urls.into_iter()
+        let urls = urls
+            .into_iter()
             .filter_map(|u| match Url::parse(u) {
                 Ok(url) => Some(url),
                 Err(e) => {
