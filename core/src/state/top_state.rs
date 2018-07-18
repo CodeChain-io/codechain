@@ -15,10 +15,10 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ckey::{Address, Public};
-use error::Error;
 use primitives::{H256, U256};
 use trie;
 
+use super::super::error::Error;
 use super::TopBackend;
 
 pub trait TopState<B>

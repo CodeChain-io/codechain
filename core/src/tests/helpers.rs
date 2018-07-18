@@ -16,15 +16,15 @@
 
 use std::sync::Arc;
 
-use header::Header;
 use kvdb::KeyValueDB;
-use parcel::SignedParcel;
-use primitives::Bytes;
-use primitives::{H256, U256};
+use primitives::{Bytes, H256, U256};
 use rlp::{self, RlpStream};
-use spec::Spec;
-use state::TopLevelState;
-use state_db::StateDB;
+
+use super::super::header::Header;
+use super::super::parcel::SignedParcel;
+use super::super::spec::Spec;
+use super::super::state::TopLevelState;
+use super::super::state_db::StateDB;
 
 pub fn create_test_block(header: &Header) -> Bytes {
     let mut rlp = RlpStream::new_list(2);

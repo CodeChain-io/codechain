@@ -17,7 +17,6 @@
 use std::io::Read;
 use std::sync::Arc;
 
-use blockchain::HeaderProvider;
 use ccrypto::{blake256, BLAKE_NULL_RLP};
 use cjson;
 use ckey::Address;
@@ -27,6 +26,8 @@ use parking_lot::RwLock;
 use primitives::{Bytes, H256, U256};
 use rlp::{Encodable, Rlp, RlpStream};
 use trie::TrieFactory;
+
+use super::super::blockchain::HeaderProvider;
 
 use super::super::codechain_machine::CodeChainMachine;
 use super::super::consensus::{BlakePoW, CodeChainEngine, Cuckoo, NullEngine, Solo, SoloAuthority, Tendermint};

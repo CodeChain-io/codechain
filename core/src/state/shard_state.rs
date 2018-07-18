@@ -16,8 +16,7 @@
 
 use ctypes::transaction::{Outcome as TransactionOutcome, Transaction};
 
-use error::Error;
-
+use super::super::error::Error;
 use super::ShardBackend;
 
 pub trait ShardState<B>

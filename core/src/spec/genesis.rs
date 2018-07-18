@@ -18,7 +18,8 @@ use ccrypto::BLAKE_NULL_RLP;
 use cjson;
 use ckey::Address;
 use primitives::{Bytes, H256, U256};
-use spec::seal::Seal;
+
+use super::seal::Seal;
 
 /// Genesis components.
 pub struct Genesis {

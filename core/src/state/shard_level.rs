@@ -26,12 +26,12 @@ use ctypes::transaction::{
     Transaction,
 };
 use cvm::{decode, execute, ScriptResult, VMConfig};
-use error::Error;
 use primitives::{Bytes, H256, U128};
 use rlp::Encodable;
 use trie::{self, Result as TrieResult, Trie, TrieError, TrieFactory};
 use unexpected::Mismatch;
 
+use super::super::error::Error;
 use super::super::state_db::StateDB;
 use super::cache::Cache;
 use super::traits::{CheckpointId, StateWithCache, StateWithCheckpoint};
