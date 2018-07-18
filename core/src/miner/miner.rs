@@ -634,19 +634,6 @@ impl MinerService for Miner {
         }
     }
 
-    fn map_sealing_work<C, F, T>(&self, client: &C, f: F) -> Option<T>
-    where
-        C: AccountData + BlockChain + BlockProducer,
-        F: FnOnce(&ClosedBlock) -> T, {
-        ctrace!(MINER, "map_sealing_work: entering");
-        self.prepare_work_sealing(client);
-        ctrace!(MINER, "map_sealing_work: sealing prepared");
-        let mut sealing_work = self.sealing_work.lock();
-        let ret = sealing_work.queue.use_last_ref();
-        ctrace!(MINER, "map_sealing_work: leaving use_last_ref={:?}", ret.as_ref().map(|b| b.block().header().hash()));
-        ret.map(f)
-    }
-
     fn submit_seal<C: ImportSealedBlock>(&self, chain: &C, block_hash: H256, seal: Vec<Bytes>) -> Result<(), Error> {
         let result = if let Some(b) = self.sealing_work.lock().queue.take_used_if(|b| &b.hash() == &block_hash) {
             ctrace!(
@@ -672,6 +659,19 @@ impl MinerService for Miner {
             cinfo!(MINER, "Submitted block imported OK. #{}: {}", n, h);
             Ok(())
         })
+    }
+
+    fn map_sealing_work<C, F, T>(&self, client: &C, f: F) -> Option<T>
+    where
+        C: AccountData + BlockChain + BlockProducer,
+        F: FnOnce(&ClosedBlock) -> T, {
+        ctrace!(MINER, "map_sealing_work: entering");
+        self.prepare_work_sealing(client);
+        ctrace!(MINER, "map_sealing_work: sealing prepared");
+        let mut sealing_work = self.sealing_work.lock();
+        let ret = sealing_work.queue.use_last_ref();
+        ctrace!(MINER, "map_sealing_work: leaving use_last_ref={:?}", ret.as_ref().map(|b| b.block().header().hash()));
+        ret.map(f)
     }
 
     fn import_external_parcels<C: MiningBlockChainClient>(
