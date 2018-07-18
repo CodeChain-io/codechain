@@ -111,6 +111,27 @@ pub fn run_account_command(matches: ArgMatches) -> Result<(), String> {
             }
             Ok(())
         }
+        ("change-password", Some(matches)) => {
+            let key = {
+                let val = matches.value_of("ADDRESS").expect("ADDRESS arg is required and its index is 1");
+                read_raw_key(val)
+            };
+            match Address::from_str(key) {
+                Ok(address) => {
+                    let old_password = rpassword::prompt_password_stdout("Old Password: ").unwrap();
+                    if let Some(new_password) = read_password_and_confirm() {
+                        match ap.change_password(address, old_password.as_ref(), new_password.as_ref()) {
+                            Ok(_) => println!("Password has changed"),
+                            Err(e) => return Err(format!("{:?}", e)),
+                        }
+                    } else {
+                        return Err("The password does not match".to_string())
+                    }
+                }
+                Err(e) => return Err(format!("{:?}", e)),
+            }
+            Ok(())
+        }
         _ => Err("Invalid subcommand".to_string()),
     }
 }
