@@ -17,9 +17,10 @@
 macro_rules! define_address_constructor {
     (TOP, $name:ident, $prefix:expr) => {
         fn from_transaction_hash(transaction_hash: ::primitives::H256, index: u64) -> Self {
-            let mut hash: ::primitives::H256 =
+            let h248: ::primitives::H248 =
                 ::ccrypto::Blake::blake_with_key(&transaction_hash, &::primitives::H128::from(index));
-            hash[0..8].clone_from_slice(&[$prefix, 0, 0, 0, 0, 0, 0, 0]);
+            let mut hash: H256 = h248.into();
+            hash[0..1].clone_from_slice(&[$prefix]);
             $name(hash)
         }
     };
@@ -57,10 +58,7 @@ macro_rules! impl_address {
             }
 
             pub fn is_valid_format(hash: &::primitives::H256) -> bool {
-                if hash[0..4] != [$prefix, 0, 0, 0] {
-                    return false // prefix
-                }
-                hash[4..8] == [0, 0, 0, 0] // world id
+                hash[0] == $prefix
             }
         }
 

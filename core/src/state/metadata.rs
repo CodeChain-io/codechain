@@ -98,11 +98,6 @@ mod tests {
                 if hash[0] == PREFIX {
                     continue
                 }
-                for i in 1..8 {
-                    if hash[i] == 0 {
-                        continue
-                    }
-                }
                 break
             }
             hash
@@ -115,10 +110,10 @@ mod tests {
     fn parse_return_some() {
         let hash = {
             let mut hash = H256::random();
-            hash[0..8].clone_from_slice(&[PREFIX, 0, 0, 0, 0, 0, 0, 0]);
+            hash[0] = PREFIX;
             hash
         };
-        let address = MetadataAddress::from_hash(hash.clone());
+        let address = MetadataAddress::from_hash(hash);
         assert_eq!(Some(MetadataAddress(hash)), address);
     }
 }
