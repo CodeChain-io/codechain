@@ -17,9 +17,8 @@
 use std::fmt;
 
 use cjson;
+use cstate::ShardMetadata;
 use rlp::{Encodable, RlpStream};
-
-use super::state::ShardMetadata;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct PodShardMetadata {

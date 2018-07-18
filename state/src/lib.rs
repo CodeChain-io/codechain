@@ -38,3 +38,4 @@ pub use item::asset_scheme::{AssetScheme, AssetSchemeAddress};
 pub use item::cache::{Cache, CacheableItem};
 pub use item::metadata::{Metadata, MetadataAddress};
 pub use item::shard::{Shard, ShardAddress};
+pub use item::shard_metadata::{ShardMetadata, ShardMetadataAddress};
