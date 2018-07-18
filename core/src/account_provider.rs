@@ -126,4 +126,8 @@ impl AccountProvider {
     pub fn import_wallet(&self, json: &[u8], password: &str) -> Result<Address, SignError> {
         Ok(self.keystore.write().import_wallet(json, password, false)?)
     }
+
+    pub fn change_password(&self, address: Address, old_password: &str, new_password: &str) -> Result<(), SignError> {
+        Ok(self.keystore.read().change_password(&address, &old_password, &new_password)?)
+    }
 }

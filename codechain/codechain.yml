@@ -207,3 +207,11 @@ subcommands:
                         help: Address to remove
                         required: true
                         index: 1
+            - change-password:
+                about: change the password of given address
+                args:
+                    - ADDRESS:
+                        help: Address of desired password change
+                        required: true
+                        index: 1
+
