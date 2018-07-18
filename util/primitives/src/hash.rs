@@ -14,19 +14,28 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-extern crate ethcore_bytes as ebytes;
-extern crate ethereum_types;
-#[macro_use]
-extern crate fixed_hash;
+pub use ethereum_types::{H1024, H128, H160, H256, H264, H32, H512, H520, H64};
 
-mod hash;
+construct_hash!(H248, 31);
 
-pub use self::hash::{H1024, H128, H160, H248, H256, H264, H32, H512, H520, H64};
-pub use ebytes::Bytes;
-pub use ethereum_types::{U128, U256, U512};
+impl From<H248> for H256 {
+    fn from(value: H248) -> H256 {
+        let mut ret = H256::zero();
+        ret.0[1..32].copy_from_slice(&value);
+        ret
+    }
+}
 
-use fixed_hash::core;
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-pub mod bytes {
-    pub use ebytes::ToPretty;
+    #[test]
+    fn h248_can_be_converted_to_h256() {
+        let h248 = H248::random();
+        let h256 = H256::from(h248);
+
+        assert_eq!(0u8, h256[0]);
+        assert_eq!(h248[0..31], h256[1..32]);
+    }
 }

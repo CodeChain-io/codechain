@@ -93,8 +93,8 @@ mod tests {
         let address1 = ShardAddress::new(0);
         let address2 = ShardAddress::new(1);
         assert_ne!(address1, address2);
-        assert_eq!(address1[0..8], [PREFIX, 0, 0, 0, 0, 0, 0, 0]);
-        assert_eq!(address2[0..8], [PREFIX, 0, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(address1[0], PREFIX);
+        assert_eq!(address2[0], PREFIX);
     }
 
     #[test]
@@ -105,11 +105,6 @@ mod tests {
                 hash = H256::random();
                 if hash[0] == PREFIX {
                     continue
-                }
-                for i in 1..8 {
-                    if hash[i] == 0 {
-                        continue
-                    }
                 }
                 break
             }
@@ -123,10 +118,10 @@ mod tests {
     fn parse_return_some() {
         let hash = {
             let mut hash = H256::random();
-            hash[0..8].clone_from_slice(&[PREFIX, 0, 0, 0, 0, 0, 0, 0]);
+            hash[0] = PREFIX;
             hash
         };
-        let address = ShardAddress::from_hash(hash.clone());
+        let address = ShardAddress::from_hash(hash);
         assert_eq!(Some(ShardAddress(hash)), address);
     }
 }

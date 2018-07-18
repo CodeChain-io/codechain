@@ -6,3 +6,4 @@ authors = ["CodeChain Team <codechain@kodebox.io>"]
 [dependencies]
 ethcore-bytes = "0.1.1"
 ethereum-types = "0.3"
+fixed-hash = "0.2"
