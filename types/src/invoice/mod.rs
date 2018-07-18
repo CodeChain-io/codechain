@@ -14,8 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+mod block_invoices;
 mod invoice;
 mod parcel_invoice;
 
+pub use self::block_invoices::BlockInvoices;
 pub use self::invoice::Invoice;
 pub use self::parcel_invoice::ParcelInvoice;
