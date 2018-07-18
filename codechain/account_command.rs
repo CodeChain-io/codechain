@@ -20,7 +20,7 @@ use std::str::FromStr;
 use rpassword;
 
 use ccore::AccountProvider;
-use ckey::Private;
+use ckey::{Address, Private};
 use ckeystore::accounts_dir::RootDiskDirectory;
 use ckeystore::KeyStore;
 use clap::ArgMatches;
@@ -70,11 +70,7 @@ pub fn run_account_command(matches: ArgMatches) -> Result<(), String> {
         ("import-raw", Some(matches)) => {
             let key = {
                 let val = matches.value_of("RAW_KEY").expect("RAW_KEY arg is required and its index is 1");
-                if val.starts_with("0x") {
-                    &val[2..]
-                } else {
-                    &val[..]
-                }
+                read_raw_key(val)
             };
             match Private::from_str(key) {
                 Ok(private) => {
@@ -98,6 +94,23 @@ pub fn run_account_command(matches: ArgMatches) -> Result<(), String> {
             }
             Ok(())
         }
+        ("remove", Some(matches)) => {
+            let key = {
+                let val = matches.value_of("ADDRESS").expect("ADDRESS arg is required and its index is 1");
+                read_raw_key(val)
+            };
+            match Address::from_str(key) {
+                Ok(address) => {
+                    let password = rpassword::prompt_password_stdout("Password: ").unwrap();
+                    match ap.remove_account(address, password.as_ref()) {
+                        Ok(_) => println!("{:?} is deleted", address),
+                        Err(e) => return Err(format!("{:?}", e)),
+                    }
+                }
+                Err(e) => return Err(format!("{:?}", e)),
+            }
+            Ok(())
+        }
         _ => Err("Invalid subcommand".to_string()),
     }
 }
@@ -109,5 +122,13 @@ fn read_password_and_confirm() -> Option<String> {
         Some(first)
     } else {
         None
+    }
+}
+
+fn read_raw_key(val: &str) -> &str {
+    if val.starts_with("0x") {
+        &val[2..]
+    } else {
+        &val[..]
     }
 }

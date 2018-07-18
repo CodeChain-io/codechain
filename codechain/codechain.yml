@@ -200,3 +200,10 @@ subcommands:
                         index: 1
             - list:
                 about: list managed accounts
+            - remove:
+                about: remove a account
+                args:
+                    - ADDRESS:
+                        help: Address to remove
+                        required: true
+                        index: 1
