@@ -15,7 +15,9 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 mod error;
+mod outcome;
 mod transaction;
 
 pub use self::error::Error;
+pub use self::outcome::Outcome;
 pub use self::transaction::{AssetMintOutput, AssetOutPoint, AssetTransferInput, AssetTransferOutput, Transaction};

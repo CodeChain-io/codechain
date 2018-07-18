@@ -57,7 +57,7 @@ pub use self::info::{ShardStateInfo, TopStateInfo};
 pub use self::metadata::{Metadata, MetadataAddress};
 pub use self::shard::{Shard, ShardAddress};
 pub use self::shard_metadata::{ShardMetadata, ShardMetadataAddress};
-pub use self::shard_state::{ShardState, TransactionOutcome};
+pub use self::shard_state::ShardState;
 pub use self::top_level::{ParcelOutcome, TopLevelState};
 pub use self::top_state::TopState;
 pub use self::traits::StateWithCache;

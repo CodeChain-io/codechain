@@ -22,7 +22,8 @@ use ccrypto::{Blake, BLAKE_NULL_RLP};
 use ckey::Address;
 use ctypes::invoice::Invoice;
 use ctypes::transaction::{
-    AssetMintOutput, AssetTransferInput, AssetTransferOutput, Error as TransactionError, Transaction,
+    AssetMintOutput, AssetTransferInput, AssetTransferOutput, Error as TransactionError, Outcome as TransactionOutcome,
+    Transaction,
 };
 use cvm::{decode, execute, ScriptResult, VMConfig};
 use error::Error;
@@ -36,7 +37,7 @@ use super::cache::Cache;
 use super::traits::{CheckpointId, StateWithCache, StateWithCheckpoint};
 use super::{
     Asset, AssetAddress, AssetScheme, AssetSchemeAddress, Backend, ShardBackend, ShardMetadata, ShardMetadataAddress,
-    ShardState, ShardStateInfo, TransactionOutcome,
+    ShardState, ShardStateInfo,
 };
 
 pub struct ShardLevelState<B> {

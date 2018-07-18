@@ -42,7 +42,7 @@ use ccrypto::BLAKE_NULL_RLP;
 use ckey::{Address, Public};
 use ctypes::invoice::Invoice;
 use ctypes::parcel::{Action, ChangeShard, Error as ParcelError};
-use ctypes::transaction::Transaction;
+use ctypes::transaction::{Outcome as TransactionOutcome, Transaction};
 use error::Error;
 use parcel::SignedParcel;
 use primitives::{H256, U256};
@@ -59,7 +59,7 @@ use super::info::{ShardStateInfo, TopStateInfo};
 use super::metadata::{Metadata, MetadataAddress};
 use super::shard::{Shard, ShardAddress};
 use super::shard_level::ShardLevelState;
-use super::shard_state::{ShardState, TransactionOutcome};
+use super::shard_state::ShardState;
 use super::top_state::TopState;
 use super::traits::{CheckpointId, StateWithCache, StateWithCheckpoint};
 

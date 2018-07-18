@@ -14,14 +14,13 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ctypes::transaction::{Outcome as TransactionOutcome, Transaction};
+use super::super::invoice::Invoice;
+use super::Error;
 
-use error::Error;
-
-use super::ShardBackend;
-
-pub trait ShardState<B>
-where
-    B: ShardBackend, {
-    fn apply(&mut self, transaction: &Transaction, parcel_network_id: &u64) -> Result<TransactionOutcome, Error>;
+#[derive(Debug, PartialEq)]
+pub struct Outcome {
+    /// The invoice for the applied parcel.
+    pub invoice: Invoice,
+    /// The output of the applied parcel.
+    pub error: Option<Error>,
 }
