@@ -21,8 +21,8 @@ use std::sync::Arc;
 
 use ckey::Address;
 use cstate::{
-    Account, Asset, AssetAddress, AssetScheme, AssetSchemeAddress, CacheableItem, Metadata, MetadataAddress, Shard,
-    ShardAddress,
+    Account, Asset, AssetAddress, AssetScheme, AssetSchemeAddress, Backend, CacheableItem, Metadata, MetadataAddress,
+    Shard, ShardAddress, ShardBackend, TopBackend,
 };
 use ctypes::BlockNumber;
 use hashdb::HashDB;
@@ -32,8 +32,6 @@ use lru_cache::LruCache;
 use parking_lot::Mutex;
 use primitives::H256;
 use util_error::UtilError;
-
-use super::state;
 
 const STATE_CACHE_BLOCKS: usize = 12;
 
@@ -512,7 +510,7 @@ impl Clone for StateDB {
     }
 }
 
-impl state::Backend for StateDB {
+impl Backend for StateDB {
     fn as_hashdb(&self) -> &HashDB {
         self.db.as_hashdb()
     }
@@ -522,7 +520,7 @@ impl state::Backend for StateDB {
     }
 }
 
-impl state::TopBackend for StateDB {
+impl TopBackend for StateDB {
     fn add_to_account_cache(&mut self, addr: Address, data: Option<Account>, modified: bool) {
         self.local_account_cache.push(CacheQueueItem {
             address: addr,
@@ -566,7 +564,7 @@ impl state::TopBackend for StateDB {
     }
 }
 
-impl state::ShardBackend for StateDB {
+impl ShardBackend for StateDB {
     fn add_to_asset_scheme_cache(&mut self, addr: AssetSchemeAddress, item: Option<AssetScheme>, modified: bool) {
         self.local_asset_scheme_cache.push(CacheQueueItem {
             address: addr,
@@ -597,7 +595,6 @@ mod tests {
     use primitives::U256;
 
     use super::super::tests::helpers::get_temp_state_db;
-    use super::state::{ShardBackend, TopBackend};
     use super::*;
 
     #[test]

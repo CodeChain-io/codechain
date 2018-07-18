@@ -38,10 +38,11 @@
 //! merkle trie is strictly necessary.
 
 use ckey::Address;
-use cstate::{
+use hashdb::{AsHashDB, HashDB};
+
+use super::{
     Account, Asset, AssetAddress, AssetScheme, AssetSchemeAddress, Metadata, MetadataAddress, Shard, ShardAddress,
 };
-use hashdb::{AsHashDB, HashDB};
 
 
 /// State backend. See module docs for more details.

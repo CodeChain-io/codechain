@@ -442,6 +442,7 @@ dependencies = [
  "codechain-key 0.1.0",
  "codechain-logger 0.1.0",
  "codechain-types 0.1.0",
+ "hashdb 0.1.1",
  "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "patricia-trie 0.1.0",
  "primitives 0.1.0",

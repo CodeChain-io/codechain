@@ -20,6 +20,7 @@ extern crate codechain_crypto as ccrypto;
 extern crate codechain_logger as clogger;
 extern crate codechain_key as ckey;
 extern crate codechain_types as ctypes;
+extern crate hashdb;
 #[macro_use]
 extern crate log;
 extern crate patricia_trie as trie;
@@ -30,9 +31,11 @@ extern crate rustc_hex;
 #[macro_use]
 extern crate serde_derive;
 
+mod backend;
 mod item;
 mod traits;
 
+pub use backend::{Backend, Basic as BasicBackend, ShardBackend, TopBackend};
 pub use item::account::Account;
 pub use item::asset::{Asset, AssetAddress};
 pub use item::asset_scheme::{AssetScheme, AssetSchemeAddress};

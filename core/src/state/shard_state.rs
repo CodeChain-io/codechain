@@ -14,10 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use cstate::ShardBackend;
 use ctypes::transaction::{Outcome as TransactionOutcome, Transaction};
 
 use super::super::error::Error;
-use super::ShardBackend;
 
 pub trait ShardState<B>
 where

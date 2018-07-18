@@ -9,6 +9,7 @@ codechain-crypto = { path = "../crypto" }
 codechain-logger = { path = "../util/logger" }
 codechain-key = { path = "../key", features = ["ecdsa"] }
 codechain-types = { path = "../types" }
+hashdb = { path = "../util/hashdb" }
 log = "0.4.1"
 patricia-trie = { path = "../util/patricia_trie" }
 primitives = { path = "../util/primitives" }
