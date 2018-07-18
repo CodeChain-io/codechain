@@ -6,16 +6,19 @@ Subcommands
 CodeChain has a subcommand called ``account``. These commands are used to manage accounts. It has subcommands of its own, which are the following:
 
     ``create``
-        create account
+        Creates a new account in the ``keys`` file directory. Upon creation, the user is asked to enter a passphrase.
 
     ``import <JSON_FILE_PATH>``
-        import JSON key file
+        Imports a key in the format of a JSON file. Enter the directory that holds the JSON file to import.
 
     ``import-raw <RAW_KEY>``
-        import private key
+        Imports a private key(64 hexadecimal characters) directly.
+
+    ``remove <ADDRESS>``
+        Removes an account from the ``keys`` file directory. Use ``list`` to get the ADDRESS.
 
     ``list``
-        list managed accounts
+        List the managed accounts.
 
 Creating an Account
 -------------------
