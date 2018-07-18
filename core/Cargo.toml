@@ -36,7 +36,6 @@ rand = "0.5.3"
 rlp = { path = "../util/rlp" }
 rlp_compress = { path = "../util/rlp_compress" }
 rlp_derive = { path = "../util/rlp_derive" }
-rustc-hex = "1.0"
 table = { path = "../util/table" }
 time = "0.1"
 triehash = { path = "../util/triehash" }

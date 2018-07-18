@@ -47,7 +47,6 @@ extern crate rlp_compress;
 #[macro_use]
 extern crate rlp_derive;
 extern crate parking_lot;
-extern crate rustc_hex;
 extern crate table;
 extern crate time;
 extern crate triehash;
