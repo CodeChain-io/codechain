@@ -16,6 +16,7 @@
 
 use std::sync::Arc;
 
+use cstate::StateDB;
 use kvdb::KeyValueDB;
 use primitives::{Bytes, H256, U256};
 use rlp::{self, RlpStream};
@@ -24,7 +25,6 @@ use super::super::header::Header;
 use super::super::parcel::SignedParcel;
 use super::super::spec::Spec;
 use super::super::state::TopLevelState;
-use super::super::state_db::StateDB;
 
 pub fn create_test_block(header: &Header) -> Bytes {
     let mut rlp = RlpStream::new_list(2);

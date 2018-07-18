@@ -42,7 +42,7 @@ use ccrypto::BLAKE_NULL_RLP;
 use ckey::{Address, Public};
 use cstate::{
     Account, Asset, AssetAddress, AssetScheme, AssetSchemeAddress, Backend, Cache, CacheableItem, Metadata,
-    MetadataAddress, Shard, ShardAddress, ShardBackend, ShardStateInfo, TopBackend, TopStateInfo,
+    MetadataAddress, Shard, ShardAddress, ShardBackend, ShardStateInfo, StateDB, TopBackend, TopStateInfo,
 };
 use ctypes::invoice::Invoice;
 use ctypes::parcel::{Action, ChangeShard, Error as ParcelError, Outcome as ParcelOutcome};
@@ -53,7 +53,6 @@ use unexpected::Mismatch;
 
 use super::super::error::Error;
 use super::super::parcel::SignedParcel;
-use super::super::state_db::StateDB;
 use super::shard_level::ShardLevelState;
 use super::shard_state::ShardState;
 use super::top_state::TopState;

@@ -38,6 +38,7 @@ use std::sync::Arc;
 use ckey::{Address, Generator, Random};
 use cmerkle::skewed_merkle_root;
 use cnetwork::NodeId;
+use cstate::StateDB;
 use ctypes::invoice::ParcelInvoice;
 use ctypes::parcel::{Action, Parcel};
 use ctypes::BlockNumber;
@@ -61,7 +62,6 @@ use super::super::header::Header as BlockHeader;
 use super::super::miner::{Miner, MinerService, ParcelImportResult};
 use super::super::parcel::{LocalizedParcel, SignedParcel};
 use super::super::spec::Spec;
-use super::super::state_db::StateDB;
 use super::super::types::{BlockId, ParcelId, TransactionId, VerificationQueueInfo as QueueInfo};
 
 /// Test client.

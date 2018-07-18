@@ -21,8 +21,14 @@ extern crate codechain_logger as clogger;
 extern crate codechain_key as ckey;
 extern crate codechain_types as ctypes;
 extern crate hashdb;
+extern crate journaldb;
+extern crate kvdb;
+#[cfg(test)]
+extern crate kvdb_memorydb;
 #[macro_use]
 extern crate log;
+extern crate lru_cache;
+extern crate parking_lot;
 extern crate patricia_trie as trie;
 extern crate primitives;
 extern crate rlp;
@@ -30,12 +36,18 @@ extern crate rlp;
 extern crate rustc_hex;
 #[macro_use]
 extern crate serde_derive;
+extern crate util_error;
 
 mod backend;
+mod db;
 mod item;
 mod traits;
 
+#[cfg(test)]
+pub mod tests;
+
 pub use backend::{Backend, Basic as BasicBackend, ShardBackend, TopBackend};
+pub use db::StateDB;
 pub use item::account::Account;
 pub use item::asset::{Asset, AssetAddress};
 pub use item::asset_scheme::{AssetScheme, AssetSchemeAddress};

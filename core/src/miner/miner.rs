@@ -19,6 +19,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use ckey::Address;
+use cstate::StateDB;
 use ctypes::parcel::Error as ParcelError;
 use ctypes::BlockNumber;
 use parking_lot::{Mutex, RwLock};
@@ -141,7 +142,7 @@ impl Miner {
     }
 
     /// Get `Some` `clone()` of the current pending block's state or `None` if we're not sealing.
-    pub fn pending_state(&self, latest_block_number: BlockNumber) -> Option<TopLevelState<::state_db::StateDB>> {
+    pub fn pending_state(&self, latest_block_number: BlockNumber) -> Option<TopLevelState<StateDB>> {
         self.map_pending_block(|b| b.state().clone(), latest_block_number)
     }
 
@@ -496,7 +497,7 @@ impl Miner {
 const SEALING_TIMEOUT_IN_BLOCKS: u64 = 5;
 
 impl MinerService for Miner {
-    type State = TopLevelState<::state_db::StateDB>;
+    type State = TopLevelState<StateDB>;
 
     fn status(&self) -> MinerStatus {
         let status = self.mem_pool.read().status();

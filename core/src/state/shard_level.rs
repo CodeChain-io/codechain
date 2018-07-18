@@ -23,7 +23,7 @@ use ckey::Address;
 use cstate::ShardStateInfo;
 use cstate::{
     Asset, AssetAddress, AssetScheme, AssetSchemeAddress, Backend, Cache, ShardBackend, ShardMetadata,
-    ShardMetadataAddress,
+    ShardMetadataAddress, StateDB,
 };
 use ctypes::invoice::Invoice;
 use ctypes::transaction::{
@@ -37,7 +37,6 @@ use trie::{self, Result as TrieResult, Trie, TrieError, TrieFactory};
 use unexpected::Mismatch;
 
 use super::super::error::Error;
-use super::super::state_db::StateDB;
 use super::traits::{CheckpointId, StateWithCache, StateWithCheckpoint};
 use super::ShardState;
 
@@ -484,8 +483,9 @@ impl<B: Backend + ShardBackend> ShardState<B> for ShardLevelState<B> {
 #[cfg(test)]
 mod tests {
     use super::super::super::tests::helpers::get_temp_state_db;
-    use super::*;
     use ctypes::transaction::{AssetOutPoint, AssetTransferInput, AssetTransferOutput};
+
+    use super::*;
 
     fn get_temp_shard_state(shard_id: u32) -> ShardLevelState<StateDB> {
         let state_db = get_temp_state_db();
