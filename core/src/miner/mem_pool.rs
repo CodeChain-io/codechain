@@ -18,14 +18,15 @@ use std::cmp;
 use std::cmp::Ordering;
 use std::collections::{BTreeSet, HashMap};
 
-use ctypes::Address;
+use ckey::Address;
+use ctypes::parcel::{Action, Error as ParcelError};
 use heapsize::HeapSizeOf;
 use linked_hash_map::LinkedHashMap;
 use multimap::MultiMap;
 use primitives::{H256, U256};
 use table::Table;
 
-use super::super::parcel::{Action, ParcelError, SignedParcel};
+use super::super::parcel::SignedParcel;
 use super::super::types::BlockNumber;
 use super::local_parcels::{LocalParcelsList, Status as LocalParcelStatus};
 use super::ParcelImportResult;
@@ -1094,8 +1095,9 @@ pub mod test {
     use std::cmp::Ordering;
 
     use ckey::{Generator, Random};
+    use ctypes::parcel::{ChangeShard, Parcel};
+    use ctypes::transaction::{AssetMintOutput, Transaction};
 
-    use super::super::super::{AssetMintOutput, Parcel, Transaction};
     use super::*;
 
     #[test]
@@ -1118,10 +1120,11 @@ pub mod test {
             network_id: 200,
             action: Action::ChangeShardState {
                 transactions: vec![],
+                changes: vec![],
             },
         };
         let keypair = Random.generate().unwrap();
-        let signed = parcel.sign(keypair.private());
+        let signed = SignedParcel::new_with_sign(parcel, keypair.private());
         let item = MemPoolItem::new(signed, ParcelOrigin::Local, 0, 0);
 
         assert_eq!(fee, item.cost());
@@ -1147,10 +1150,15 @@ pub mod test {
             network_id: 200,
             action: Action::ChangeShardState {
                 transactions,
+                changes: vec![ChangeShard {
+                    shard_id: 0,
+                    pre_root: H256::zero(),
+                    post_root: H256::zero(),
+                }],
             },
         };
         let keypair = Random.generate().unwrap();
-        let signed = parcel.sign(keypair.private());
+        let signed = SignedParcel::new_with_sign(parcel, keypair.private());
         let item = MemPoolItem::new(signed, ParcelOrigin::Local, 0, 0);
 
         assert_eq!(fee, item.cost());
@@ -1185,10 +1193,15 @@ pub mod test {
             network_id: 200,
             action: Action::ChangeShardState {
                 transactions,
+                changes: vec![ChangeShard {
+                    shard_id: 0,
+                    pre_root: H256::zero(),
+                    post_root: H256::zero(),
+                }],
             },
         };
         let keypair = Random.generate().unwrap();
-        let signed = parcel.sign(keypair.private());
+        let signed = SignedParcel::new_with_sign(parcel, keypair.private());
         let item = MemPoolItem::new(signed, ParcelOrigin::Local, 0, 0);
 
         assert_eq!(fee, item.cost());
@@ -1209,7 +1222,7 @@ pub mod test {
                 amount,
             },
         };
-        let signed = parcel.sign(keypair.private());
+        let signed = SignedParcel::new_with_sign(parcel, keypair.private());
         let item = MemPoolItem::new(signed, ParcelOrigin::Local, 0, 0);
 
         assert_eq!(fee + amount, item.cost());

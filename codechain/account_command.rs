@@ -14,12 +14,19 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::fs;
+use std::str::FromStr;
+
+use rpassword;
+
 use ccore::AccountProvider;
-use ckey::KeyPair;
+use ckey::Private;
 use ckeystore::accounts_dir::RootDiskDirectory;
 use ckeystore::KeyStore;
 use clap::ArgMatches;
 use clogger::{self, LoggerConfig};
+
+use super::constants::DEFAULT_KEYS_PATH;
 
 pub fn run_account_command(matches: ArgMatches) -> Result<(), String> {
     if matches.subcommand.is_none() {
@@ -29,27 +36,62 @@ pub fn run_account_command(matches: ArgMatches) -> Result<(), String> {
 
     clogger::init(&LoggerConfig::new(0)).expect("Logger must be successfully initialized");
 
-    let subcommand = matches.subcommand.unwrap();
-    // FIXME : Add cli option.
-    let dir = RootDiskDirectory::create("keystoreData").expect("Cannot read key path directory");
+    let keys_path = matches.value_of("keys-path").unwrap_or(DEFAULT_KEYS_PATH);
+    let dir = RootDiskDirectory::create(keys_path).expect("Cannot read key path directory");
     let keystore = KeyStore::open(Box::new(dir)).unwrap();
     let ap = AccountProvider::new(keystore);
 
-    match subcommand.name.as_ref() {
-        "create" => {
-            // FIXME: Input password.
-            let (address, _) = ap.new_account_and_public("password").expect("Cannot create account");
-            info!("Addresss {} is created", address);
+    match matches.subcommand() {
+        ("create", _) => {
+            if let Some(password) = read_password_and_confirm() {
+                let (address, _) = ap.new_account_and_public(password.as_ref()).expect("Cannot create account");
+                println!("{:?}", address);
+            } else {
+                return Err("The password does not match".to_string())
+            }
             Ok(())
         }
-        "import" => {
-            let keystring = subcommand.matches.value_of("raw-key").unwrap();
-            let keypair = KeyPair::from_private(keystring.parse().unwrap()).unwrap();
-            // FIXME: Don't hard password.
-            ap.insert_account(keypair.private().clone(), "password").expect("Cannot insert account");
+        ("import", Some(matches)) => {
+            let json_path = matches.value_of("JSON_PATH").expect("JSON_PATH arg is required and its index is 1");
+            match fs::read(json_path) {
+                Ok(json) => {
+                    let password = rpassword::prompt_password_stdout("Password: ").unwrap();
+                    match ap.import_wallet(json.as_slice(), password.as_ref()) {
+                        Ok(address) => {
+                            println!("{:?}", address);
+                        }
+                        Err(e) => return Err(format!("{}", e)),
+                    }
+                }
+                Err(e) => return Err(format!("{}", e)),
+            }
             Ok(())
         }
-        "list" => {
+        ("import-raw", Some(matches)) => {
+            let key = {
+                let val = matches.value_of("RAW_KEY").expect("RAW_KEY arg is required and its index is 1");
+                if val.starts_with("0x") {
+                    &val[2..]
+                } else {
+                    &val[..]
+                }
+            };
+            match Private::from_str(key) {
+                Ok(private) => {
+                    if let Some(password) = read_password_and_confirm() {
+                        match ap.insert_account(private, password.as_ref()) {
+                            Ok(address) => println!("{:?}", address),
+                            Err(e) => return Err(format!("{:?}", e)),
+                        }
+                    } else {
+                        return Err("The password does not match".to_string())
+                    }
+                }
+                Err(e) => return Err(format!("{:?}", e)),
+            }
+            Ok(())
+        }
+        ("list", _) => {
             let addresses = ap.get_list().expect("Cannot get account list");
             for address in addresses {
                 println!("{:?}", address)
@@ -57,5 +99,15 @@ pub fn run_account_command(matches: ArgMatches) -> Result<(), String> {
             Ok(())
         }
         _ => Err("Invalid subcommand".to_string()),
+    }
+}
+
+fn read_password_and_confirm() -> Option<String> {
+    let first = rpassword::prompt_password_stdout("Password: ").unwrap();
+    let second = rpassword::prompt_password_stdout("Confirm Password: ").unwrap();
+    if first == second {
+        Some(first)
+    } else {
+        None
     }
 }

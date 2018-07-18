@@ -23,9 +23,8 @@ use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
 use std::sync::{Arc, Weak};
 
 use ccrypto::blake256;
-use ckey::{public_to_address, recover, Message, Signature, SignatureData};
+use ckey::{public_to_address, recover, Address, Message, Signature, SignatureData};
 use cnetwork::{Api, NetworkExtension, NodeId, TimerToken};
-use ctypes::Address;
 use parking_lot::{Mutex, RwLock};
 use primitives::{Bytes, H256, U128, U256};
 use rand::{thread_rng, Rng};
@@ -39,6 +38,7 @@ use super::super::account_provider::AccountProvider;
 use super::super::block::*;
 use super::super::client::EngineClient;
 use super::super::codechain_machine::CodeChainMachine;
+use super::super::consensus::EngineType;
 use super::super::error::{BlockError, Error};
 use super::super::header::Header;
 use super::super::machine::WithBalances;
@@ -429,6 +429,10 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
     /// Should this node participate.
     fn seals_internally(&self) -> Option<bool> {
         Some(self.signer.read().is_some())
+    }
+
+    fn engine_type(&self) -> EngineType {
+        EngineType::InternalSealing
     }
 
     /// Attempt to seal generate a proposal seal.

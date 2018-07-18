@@ -19,9 +19,9 @@ mod chain_type;
 use std::fs;
 use std::str::FromStr;
 
+use ckey::Address;
 use clap;
 use cnetwork::{NetworkConfig, SocketAddr};
-use ctypes::Address;
 use rpc::{HttpConfiguration as RpcHttpConfig, IpcConfiguration as RpcIpcConfig};
 use toml;
 
@@ -53,7 +53,7 @@ pub struct Operating {
     pub quiet: bool,
     pub instance_id: Option<usize>,
     pub db_path: String,
-    pub keys_path: String,
+    pub keys_path: Option<String>,
     pub chain: ChainType,
 }
 
@@ -62,6 +62,7 @@ pub struct Operating {
 pub struct Mining {
     pub author: Option<Address>,
     pub engine_signer: Option<Address>,
+    pub password_path: Option<String>,
     pub mem_pool_size: usize,
     pub mem_pool_mem_limit: usize,
     pub notify_work: Vec<String>,
@@ -74,6 +75,7 @@ pub struct Mining {
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Network {
+    pub address: String,
     pub disable: bool,
     pub port: u16,
     pub bootstrap_addresses: Vec<String>,
@@ -120,12 +122,13 @@ impl<'a> Into<NetworkConfig> for &'a Network {
     fn into(self) -> NetworkConfig {
         let bootstrap_addresses =
             self.bootstrap_addresses.iter().map(|s| SocketAddr::from_str(s).unwrap()).collect::<Vec<_>>();
-        NetworkConfig {
-            port: self.port,
-            bootstrap_addresses,
-            min_peers: self.min_peers,
-            max_peers: self.max_peers,
-        }
+            NetworkConfig {
+                port: self.port,
+                bootstrap_addresses,
+                min_peers: self.min_peers,
+                max_peers: self.max_peers,
+                address: self.address.to_string(),
+            }
     }
 }
 
@@ -170,7 +173,7 @@ impl Operating {
             self.db_path = db_path.to_string();
         }
         if let Some(keys_path) = matches.value_of("keys-path") {
-            self.keys_path = keys_path.to_string();
+            self.keys_path = Some(keys_path.to_string());
         }
         if let Some(chain) = matches.value_of("chain") {
             self.chain = chain.parse()?;
@@ -186,6 +189,9 @@ impl Mining {
         }
         if let Some(engine_signer) = matches.value_of("engine-signer") {
             self.engine_signer = Some(Address::from_str(engine_signer).map_err(|_| "Invalid address")?);
+        }
+        if let Some(password_path) = matches.value_of("password-path") {
+            self.password_path = Some(password_path.to_string());
         }
         if let Some(mem_pool_mem_limit) = matches.value_of("mem-pool-mem-limit") {
             self.mem_pool_mem_limit = mem_pool_mem_limit.parse().map_err(|_| "Invalid mem limit")?;

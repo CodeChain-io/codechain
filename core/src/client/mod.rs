@@ -29,8 +29,8 @@ pub use self::test_client::TestBlockChainClient;
 
 use std::sync::Arc;
 
+use ckey::{Address, Public};
 use cnetwork::NodeId;
-use ctypes::{Address, Public};
 use kvdb::KeyValueDB;
 use primitives::{Bytes, H256, U256};
 use trie::Result as TrieResult;
@@ -239,5 +239,5 @@ pub trait DatabaseClient {
 pub trait AssetClient {
     fn get_asset_scheme(&self, transaction_hash: H256) -> TrieResult<Option<AssetScheme>>;
 
-    fn get_asset(&self, transaction_hash: H256, index: usize) -> TrieResult<Option<Asset>>;
+    fn get_asset(&self, transaction_hash: H256, index: usize, id: BlockId) -> TrieResult<Option<Asset>>;
 }

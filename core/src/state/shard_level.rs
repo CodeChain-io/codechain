@@ -19,7 +19,10 @@ use std::collections::HashMap;
 use std::fmt;
 
 use ccrypto::{Blake, BLAKE_NULL_RLP};
-use ctypes::Address;
+use ckey::Address;
+use ctypes::transaction::{
+    AssetMintOutput, AssetTransferInput, AssetTransferOutput, Error as TransactionError, Transaction,
+};
 use cvm::{decode, execute, ScriptResult, VMConfig};
 use error::Error;
 use primitives::{Bytes, H256, U128};
@@ -28,9 +31,7 @@ use trie::{self, Result as TrieResult, Trie, TrieError, TrieFactory};
 use unexpected::Mismatch;
 
 use super::super::invoice::Invoice;
-use super::super::parcel::{AssetTransferInput, AssetTransferOutput};
 use super::super::state_db::StateDB;
-use super::super::{AssetMintOutput, Transaction, TransactionError};
 use super::cache::Cache;
 use super::traits::{CheckpointId, StateWithCache, StateWithCheckpoint};
 use super::{
@@ -479,9 +480,9 @@ impl<B: Backend + ShardBackend> ShardState<B> for ShardLevelState<B> {
 
 #[cfg(test)]
 mod tests {
-    use super::super::super::parcel::{AssetOutPoint, AssetTransferInput, AssetTransferOutput};
     use super::super::super::tests::helpers::get_temp_state_db;
     use super::*;
+    use ctypes::transaction::{AssetOutPoint, AssetTransferInput, AssetTransferOutput};
 
     fn get_temp_shard_state(shard_id: u32) -> ShardLevelState<StateDB> {
         let state_db = get_temp_state_db();

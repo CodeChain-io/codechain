@@ -20,8 +20,8 @@ use std::sync::{Arc, Weak};
 use std::time::Instant;
 
 use cio::IoChannel;
+use ckey::{Address, Public};
 use cnetwork::NodeId;
-use ctypes::{Address, Public};
 use journaldb;
 use kvdb::{DBTransaction, KeyValueDB};
 use parking_lot::{Mutex, RwLock};
@@ -265,8 +265,8 @@ impl AssetClient for Client {
         }
     }
 
-    fn get_asset(&self, transaction_hash: H256, index: usize) -> TrieResult<Option<Asset>> {
-        if let Some(state) = Client::state_at(&self, BlockId::Latest) {
+    fn get_asset(&self, transaction_hash: H256, index: usize, id: BlockId) -> TrieResult<Option<Asset>> {
+        if let Some(state) = Client::state_at(&self, id) {
             let shard_id = 0; // FIXME
             let address = AssetAddress::new(transaction_hash, index, shard_id);
             Ok(state.asset(shard_id, &address)?)

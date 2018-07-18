@@ -350,7 +350,7 @@ macro_rules! rlp_encode_and_decode_test {
 
 #[cfg(test)]
 mod tests {
-    use super::RlpStream;
+    use super::*;
 
     #[test]
     fn vec_of_bytes() {
@@ -370,5 +370,12 @@ mod tests {
         assert_eq!(expected, encoded.to_vec());
 
         rlp_encode_and_decode_test!(origin);
+    }
+
+    #[test]
+    fn rlp_zero_h160() {
+        let h = H160::zero();
+        let encoded = h.rlp_bytes().to_vec();
+        assert_eq!(&[0x80 + 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], encoded.as_slice());
     }
 }

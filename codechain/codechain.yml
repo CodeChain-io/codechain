@@ -95,6 +95,10 @@ args:
         long: engine-signer
         help: Specify the address which should be used to sign consensus messages and issue blocks.
         takes_value: true
+    - password-path:
+        long: password-path
+        help: Specify the engine signer's password file path.
+        takes_value: true
     - mem-pool-mem-limit:
         long: mem-pool-mem-limit
         value_name: MB
@@ -171,6 +175,12 @@ args:
 subcommands:
     - account:
         about: account managing commands
+        args:
+            - keys-path:
+                long: keys-path
+                value_name: PATH
+                help: Specify the path for JSON key files to be found
+                takes_value: true
         subcommands:
             - create:
                 about: create account
@@ -181,18 +191,19 @@ subcommands:
                         help: account passphrase
                         takes_value: true
             - import:
-                about: import private key
+                about: import JSON key file
                 args:
-                    - passphrase:
-                        short: p
-                        long: passphrase
-                        help: account passphrase
-                        takes_value: true
-                    - raw-key:
-                        short: k
-                        long: raw-key
-                        help: key to import
-                        takes_value: true
+                    - JSON_PATH:
+                        help: The path of the JSON key file.
+                        required: true
+                        index: 1
+            - import-raw:
+                about: import a raw private key
+                args:
+                    - RAW_KEY:
+                        help: A raw private key.
+                        required: true
+                        index: 1
             - list:
                 about: list managed accounts
             - lock:

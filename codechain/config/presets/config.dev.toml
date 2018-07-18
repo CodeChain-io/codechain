@@ -5,6 +5,7 @@ keys_path = "keys"
 chain = "solo"
 
 [mining]
+password_path = "password.txt"
 mem_pool_mem_limit = 4 # MB
 mem_pool_size = 8192
 notify_work = []
@@ -25,6 +26,7 @@ discovery = true
 discovery_type = "unstructured"
 discovery_refresh = 60000
 discovery_bucket_size = 10
+address = "127.0.0.1"
 
 [rpc]
 disable = false

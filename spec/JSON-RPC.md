@@ -461,6 +461,7 @@ Gets an asset with the given asset type.
 Params:
  1. transaction hash - `H256`
  2. index - `number`
+ 3. block number: `number` | `null`
 
 Return Type: `null` | `AssetObject`
 
@@ -690,7 +691,7 @@ Response Example
 ```
 
 ## miner_getWork
-Returns the hash of the current block, score and block number.
+Returns the hash of the current block and score.
 
 Params: No parameters
 

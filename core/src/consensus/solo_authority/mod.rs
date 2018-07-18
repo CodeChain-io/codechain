@@ -18,8 +18,7 @@ mod params;
 
 use std::sync::{Arc, Weak};
 
-use ckey::{public_to_address, recover, Signature, SignatureData};
-use ctypes::Address;
+use ckey::{public_to_address, recover, Address, Signature, SignatureData};
 use parking_lot::RwLock;
 use primitives::{H256, U256};
 
@@ -28,6 +27,7 @@ use super::super::account_provider::AccountProvider;
 use super::super::block::{ExecutedBlock, IsBlock};
 use super::super::client::EngineClient;
 use super::super::codechain_machine::CodeChainMachine;
+use super::super::consensus::EngineType;
 use super::super::error::{BlockError, Error};
 use super::super::header::Header;
 use super::super::machine::WithBalances;
@@ -99,6 +99,10 @@ impl ConsensusEngine<CodeChainMachine> for SoloAuthority {
 
     fn seals_internally(&self) -> Option<bool> {
         Some(self.signer.read().is_some())
+    }
+
+    fn engine_type(&self) -> EngineType {
+        EngineType::InternalSealing
     }
 
     /// Attempt to seal the block internally.

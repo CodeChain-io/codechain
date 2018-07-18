@@ -17,10 +17,11 @@
 use std::fmt;
 use std::sync::Arc;
 
-use ckey::{public_to_address, Error as KeyError, Generator, KeyPair, Message, Private, Public, Random, Signature};
+use ckey::{
+    public_to_address, Address, Error as KeyError, Generator, KeyPair, Message, Private, Public, Random, Signature,
+};
 use ckeystore::accounts_dir::MemoryDirectory;
-use ckeystore::{Error as KeystoreError, KeyStore, SimpleSecretStore};
-use ctypes::Address;
+use ckeystore::{Error as KeystoreError, KeyStore, SecretStore, SimpleSecretStore};
 use parking_lot::RwLock;
 
 /// Signing error
@@ -120,5 +121,9 @@ impl AccountProvider {
     pub fn get_list(&self) -> Result<Vec<Address>, SignError> {
         let addresses = self.keystore.read().accounts()?;
         Ok(addresses)
+    }
+
+    pub fn import_wallet(&self, json: &[u8], password: &str) -> Result<Address, SignError> {
+        Ok(self.keystore.write().import_wallet(json, password, false)?)
     }
 }

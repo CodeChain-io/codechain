@@ -37,9 +37,8 @@ pub use self::validator_set::ValidatorSet;
 use std::fmt;
 use std::sync::{Arc, Weak};
 
-use ckey::Signature;
+use ckey::{Address, Signature};
 use cnetwork::NetworkExtension;
-use ctypes::Address;
 use primitives::{Bytes, H256, U256};
 use unexpected::{Mismatch, OutOfBounds};
 
@@ -64,6 +63,14 @@ pub enum Seal {
     None,
 }
 
+/// Engine type.
+#[derive(Debug, PartialEq, Eq)]
+pub enum EngineType {
+    InternalSealing,
+    PoW,
+    Solo,
+}
+
 /// A consensus mechanism for the chain.
 pub trait ConsensusEngine<M: Machine>: Sync + Send {
     /// The name of this engine.
@@ -83,6 +90,9 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
     fn seals_internally(&self) -> Option<bool> {
         None
     }
+
+    /// The type of this engine.
+    fn engine_type(&self) -> EngineType;
 
     /// Attempt to seal the block internally.
     ///

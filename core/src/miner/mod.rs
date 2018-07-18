@@ -20,13 +20,14 @@ mod miner;
 mod sealing_queue;
 mod work_notify;
 
-use ctypes::Address;
+use ckey::Address;
 use primitives::{Bytes, H256, U256};
 
 pub use self::miner::{Miner, MinerOptions};
 use super::account_provider::SignError;
 use super::block::ClosedBlock;
 use super::client::{AccountData, BlockChain, BlockProducer, ImportSealedBlock, MiningBlockChainClient};
+use super::consensus::EngineType;
 use super::error::Error;
 use super::parcel::{SignedParcel, UnverifiedParcel};
 use super::state::TopStateInfo;
@@ -73,6 +74,9 @@ pub trait MinerService: Send + Sync {
 
     /// PoW chain - can produce work package
     fn can_produce_work_package(&self) -> bool;
+
+    /// Get the type of consensus engine.
+    fn engine_type(&self) -> EngineType;
 
     /// New chain head event. Restart mining operation.
     fn update_sealing<C>(&self, chain: &C)

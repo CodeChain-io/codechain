@@ -18,8 +18,7 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::Debug;
 use std::hash::Hash;
 
-use ckey::SignatureData;
-use ctypes::Address;
+use ckey::{Address, SignatureData};
 use parking_lot::RwLock;
 use primitives::{Bytes, H256};
 use rlp::{Encodable, RlpStream};

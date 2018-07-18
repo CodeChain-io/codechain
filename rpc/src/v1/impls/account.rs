@@ -17,8 +17,7 @@
 use std::sync::Arc;
 
 use ccore::AccountProvider;
-use ckey::SignatureData;
-use ctypes::Address;
+use ckey::{Address, SignatureData};
 use jsonrpc_core::Result;
 use primitives::{H160, H256};
 

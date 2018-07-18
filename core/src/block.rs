@@ -17,8 +17,9 @@
 use std::collections::HashSet;
 
 use ccrypto::BLAKE_NULL_RLP;
+use ckey::Address;
 use cmerkle::skewed_merkle_root;
-use ctypes::Address;
+use ctypes::parcel::Error as ParcelError;
 use primitives::{Bytes, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 use trie::TrieFactory;
@@ -30,7 +31,7 @@ use super::error::{BlockError, Error};
 use super::header::{Header, Seal};
 use super::invoice::Invoice;
 use super::machine::{LiveBlock, Parcels};
-use super::parcel::{ParcelError, SignedParcel, UnverifiedParcel};
+use super::parcel::{SignedParcel, UnverifiedParcel};
 use super::state::{ParcelOutcome, StateWithCache, TopLevelState};
 use super::state_db::StateDB;
 
@@ -446,7 +447,7 @@ pub fn enact(
 
 #[cfg(test)]
 mod tests {
-    use ctypes::Address;
+    use ckey::Address;
 
     use super::super::spec::Spec;
     use super::super::tests::helpers::get_temp_state_db;

@@ -37,7 +37,7 @@
 //! should become general over time to the point where not even a
 //! merkle trie is strictly necessary.
 
-use ctypes::Address;
+use ckey::Address;
 use hashdb::{AsHashDB, HashDB};
 
 use super::{

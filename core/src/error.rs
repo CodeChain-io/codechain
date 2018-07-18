@@ -17,8 +17,9 @@
 use std::fmt;
 
 use cio::IoError;
-use ckey::Error as KeyError;
-use ctypes::Address;
+use ckey::{Address, Error as KeyError};
+use ctypes::parcel::Error as ParcelError;
+use ctypes::transaction::Error as TransactionError;
 use primitives::{H256, U256};
 use trie::TrieError;
 use unexpected::{Mismatch, OutOfBounds};
@@ -27,9 +28,7 @@ use util_error::UtilError;
 use super::account_provider::SignError as AccountsError;
 use super::client::Error as ClientError;
 use super::consensus::EngineError;
-use super::parcel::ParcelError;
 use super::types::BlockNumber;
-use super::TransactionError;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 /// Import to the block queue result

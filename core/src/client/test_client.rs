@@ -35,10 +35,10 @@ use std::mem;
 use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrder};
 use std::sync::Arc;
 
-use ckey::{Generator, Public, Random};
+use ckey::{Address, Generator, Public, Random};
 use cmerkle::skewed_merkle_root;
 use cnetwork::NodeId;
-use ctypes::Address;
+use ctypes::parcel::{Action, Parcel};
 use journaldb;
 use kvdb_memorydb;
 use parking_lot::RwLock;
@@ -59,7 +59,7 @@ use super::super::encoded;
 use super::super::error::BlockImportError;
 use super::super::header::Header as BlockHeader;
 use super::super::miner::{Miner, MinerService, ParcelImportResult};
-use super::super::parcel::{Action, LocalizedParcel, Parcel, SignedParcel};
+use super::super::parcel::{LocalizedParcel, SignedParcel};
 use super::super::spec::Spec;
 use super::super::state::{Asset, AssetAddress, AssetScheme, AssetSchemeAddress, ShardStateInfo, TopStateInfo};
 use super::super::state_db::StateDB;
@@ -199,9 +199,10 @@ impl TestBlockChainClient {
                     network_id: 0u64,
                     action: Action::ChangeShardState {
                         transactions: vec![],
+                        changes: vec![],
                     },
                 };
-                let signed_parcel = parcel.sign(keypair.private());
+                let signed_parcel = SignedParcel::new_with_sign(parcel, keypair.private());
                 parcels.push(signed_parcel);
             }
             header.set_parcels_root(skewed_merkle_root(
@@ -265,9 +266,10 @@ impl TestBlockChainClient {
             network_id: 0u64,
             action: Action::ChangeShardState {
                 transactions,
+                changes: vec![],
             },
         };
-        let signed_parcel = parcel.sign(keypair.private());
+        let signed_parcel = SignedParcel::new_with_sign(parcel, keypair.private());
         self.set_balance(signed_parcel.sender(), 10_000_000_000_000_000_000u64.into());
         let hash = signed_parcel.hash();
         let res = self.miner.import_external_parcels(self, vec![signed_parcel.into()]);
