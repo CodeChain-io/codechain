@@ -52,7 +52,12 @@ pub fn verify_block_basic(header: &Header, bytes: &[u8], engine: &CodeChainEngin
     verify_header_params(&header, engine)?;
     engine.verify_block_basic(&header)?;
 
-    for t in UntrustedRlp::new(bytes).at(1)?.iter().map(|rlp| rlp.as_val::<UnverifiedParcel>()) {
+    let body_rlp = UntrustedRlp::new(bytes).at(1)?;
+    if body_rlp.as_raw().len() > engine.params().max_body_size {
+        return Err(BlockError::BodySizeIsTooBig.into())
+    }
+
+    for t in body_rlp.iter().map(|rlp| rlp.as_val::<UnverifiedParcel>()) {
         engine.verify_parcel_basic(&t?, &header)?;
     }
     Ok(())

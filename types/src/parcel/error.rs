@@ -65,6 +65,7 @@ pub enum Error {
     /// Signature error
     InvalidSignature(String),
     InconsistentShardOutcomes,
+    ParcelsTooBig,
 }
 
 impl Display for Error {
@@ -94,6 +95,7 @@ impl Display for Error {
             Error::NotAllowed => "Sender does not have permissions to execute this type of transaction".into(),
             Error::InvalidSignature(err) => format!("Parcel has invalid signature: {}.", err),
             Error::InconsistentShardOutcomes => "Shard outcomes are inconsistent".to_string(),
+            Error::ParcelsTooBig => "Parcel size exceeded the body size limit".to_string(),
         };
 
         f.write_fmt(format_args!("Parcel error ({})", msg))

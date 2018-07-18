@@ -142,6 +142,10 @@ impl UnverifiedParcel {
         if self.network_id != params.network_id {
             return Err(ParcelError::InvalidNetworkId)
         }
+        let byte_size = rlp::encode(self).to_vec().len();
+        if byte_size >= params.max_body_size {
+            return Err(ParcelError::ParcelsTooBig)
+        }
         match &self.action {
             Action::ChangeShardState {
                 transactions,
