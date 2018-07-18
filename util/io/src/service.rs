@@ -306,7 +306,8 @@ where
             IoMessage::AddHandler {
                 handler,
             } => {
-                let handler_id = self.handlers
+                let handler_id = self
+                    .handlers
                     .write()
                     .insert(handler.clone())
                     .unwrap_or_else(|_| panic!("Too many handlers registered"));

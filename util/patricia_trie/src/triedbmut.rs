@@ -453,9 +453,10 @@ impl<'a> TrieDBMut<'a> {
             NodeHandle::Hash(h) => self.cache(h)?,
         };
         let stored = self.storage.destroy(h);
-        let (new_stored, changed) = self.inspect(stored, move |trie, stored| {
-            trie.insert_inspector(stored, partial, value, old_val).map(|a| a.into_action())
-        })?
+        let (new_stored, changed) = self
+            .inspect(stored, move |trie, stored| {
+                trie.insert_inspector(stored, partial, value, old_val).map(|a| a.into_action())
+            })?
             .expect("Insertion never deletes.");
 
         Ok((self.storage.alloc(new_stored), changed))

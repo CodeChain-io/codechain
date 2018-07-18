@@ -42,7 +42,8 @@ impl Account for AccountClient {
     }
 
     fn create_account(&self, passphrase: Option<String>) -> Result<Address> {
-        let (address, _) = self.account_provider
+        let (address, _) = self
+            .account_provider
             .new_account_and_public(passphrase.unwrap_or_default().as_ref())
             .map_err(account_provider)?;
         Ok(address)

@@ -150,7 +150,8 @@ impl LocalParcelsList {
             return
         }
 
-        let to_remove = self.parcels
+        let to_remove = self
+            .parcels
             .iter()
             .filter(|&(_, status)| !status.is_current())
             .map(|(hash, _)| *hash)

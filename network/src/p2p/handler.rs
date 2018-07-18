@@ -136,7 +136,8 @@ impl Manager {
 
                 let local_node_id =
                     self.routing_table.local_node_id(&remote_node_id).ok_or(Error::General("Not handshaked"))?;
-                let session = self.routing_table
+                let session = self
+                    .routing_table
                     .unestablished_session(&socket_address)
                     .ok_or(Error::General("Session doesn't exist"))?;
 
@@ -210,7 +211,8 @@ impl Manager {
                         node_id,
                         ..
                     }) => {
-                        let remote_addr = self.connections
+                        let remote_addr = self
+                            .connections
                             .remote_addr_of_waiting_sync(stream)
                             .ok_or(Error::General("Cannot find remote address"))?;
                         let remote_node_id = convert_to_node_id(remote_addr.ip(), port);
@@ -223,7 +225,8 @@ impl Manager {
                         }
 
                         let remote_addr = SocketAddr::new(remote_addr.ip(), port);
-                        let session = self.routing_table
+                        let session = self
+                            .routing_table
                             .unestablished_session(&remote_addr)
                             .ok_or(Error::General("Cannot find session"))?;
                         if !signed_message.is_valid(&session) {

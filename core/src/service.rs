@@ -48,10 +48,10 @@ impl ClientService {
         db_config.compaction = config.db_compaction.compaction_profile(client_path);
         db_config.wal = config.db_wal;
 
-        let db = Arc::new(Database::open(
-            &db_config,
-            &client_path.to_str().expect("DB path could not be converted to string."),
-        ).map_err(::client::Error::Database)?);
+        let db = Arc::new(
+            Database::open(&db_config, &client_path.to_str().expect("DB path could not be converted to string."))
+                .map_err(::client::Error::Database)?,
+        );
 
         let client = Client::new(config, &spec, db, miner, io_service.channel())?;
 
