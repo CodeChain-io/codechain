@@ -4,7 +4,11 @@ version = "0.1.0"
 authors = ["CodeChain Team <codechain@kodebox.io>"]
 
 [dependencies]
+codechain-logger = { path = "../util/logger" }
+codechain-key = { path = "../key", features = ["ecdsa"] }
 codechain-types = { path = "../types" }
 log = "0.4.1"
 patricia-trie = { path = "../util/patricia_trie" }
+primitives = { path = "../util/primitives" }
 rlp = { path = "../util/rlp" }
+rustc-hex = "1.0"

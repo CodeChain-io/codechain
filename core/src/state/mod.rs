@@ -33,7 +33,6 @@
 #[macro_use]
 mod address;
 
-mod account;
 mod asset;
 mod asset_scheme;
 mod backend;
@@ -47,7 +46,6 @@ mod top_level;
 mod top_state;
 mod traits;
 
-pub use self::account::Account;
 pub use self::asset::{Asset, AssetAddress};
 pub use self::asset_scheme::{AssetScheme, AssetSchemeAddress};
 pub use self::backend::{Backend, Basic as BasicBackend, ShardBackend, TopBackend};

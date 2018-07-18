@@ -18,10 +18,9 @@ use std::fmt;
 
 use cjson;
 use ckey::Public;
+use cstate::Account;
 use primitives::U256;
 use rlp::{Encodable, RlpStream};
-
-use super::state::Account;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 /// An account, expressed as Plain-Old-Data (hence the name).

@@ -14,12 +14,19 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+#[macro_use]
+extern crate codechain_logger as clogger;
+extern crate codechain_key as ckey;
 extern crate codechain_types as ctypes;
 #[macro_use]
 extern crate log;
 extern crate patricia_trie as trie;
+extern crate primitives;
 extern crate rlp;
+#[cfg(test)]
+extern crate rustc_hex;
 
 mod item;
 
+pub use item::account::Account;
 pub use item::cache::{Cache, CacheableItem};

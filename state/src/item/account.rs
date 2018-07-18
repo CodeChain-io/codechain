@@ -19,9 +19,10 @@
 use std::fmt;
 
 use ckey::{self, Public};
-use cstate::CacheableItem;
 use primitives::U256;
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
+
+use super::cache::CacheableItem;
 
 /// Single account in the system.
 // Don't forget to sync the field list with PodAccount.

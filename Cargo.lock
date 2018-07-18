@@ -438,10 +438,14 @@ dependencies = [
 name = "codechain-state"
 version = "0.1.0"
 dependencies = [
+ "codechain-key 0.1.0",
+ "codechain-logger 0.1.0",
  "codechain-types 0.1.0",
  "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "patricia-trie 0.1.0",
+ "primitives 0.1.0",
  "rlp 0.2.1",
+ "rustc-hex 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
