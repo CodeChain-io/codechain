@@ -31,21 +31,19 @@ use std::sync::Arc;
 
 use ckey::{Address, Public};
 use cnetwork::NodeId;
+use ctypes::invoice::{Invoice, ParcelInvoice};
+use ctypes::BlockNumber;
 use kvdb::KeyValueDB;
 use primitives::{Bytes, H256, U256};
 use trie::Result as TrieResult;
 
 use super::block::{ClosedBlock, OpenBlock, SealedBlock};
-use super::blockchain::ParcelInvoice;
 use super::blockchain_info::BlockChainInfo;
 use super::encoded;
 use super::error::BlockImportError;
 use super::parcel::{LocalizedParcel, SignedParcel};
 use super::state::{Asset, AssetScheme, TopStateInfo};
-use super::types::{
-    BlockId, BlockNumber, BlockStatus, ParcelId, TransactionId, VerificationQueueInfo as BlockQueueInfo,
-};
-use super::Invoice;
+use super::types::{BlockId, BlockStatus, ParcelId, TransactionId, VerificationQueueInfo as BlockQueueInfo};
 
 /// Provides `chain_info` method
 pub trait ChainInfo {

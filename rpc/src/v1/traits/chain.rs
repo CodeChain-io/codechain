@@ -14,8 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ccore::{Asset, AssetScheme, BlockNumber, Invoice, ParcelInvoice};
+use ccore::{Asset, AssetScheme};
 use ckey::Public;
+use ctypes::invoice::{Invoice, ParcelInvoice};
+use ctypes::BlockNumber;
 use primitives::{H160, H256, U256};
 
 use jsonrpc_core::Result;

@@ -70,7 +70,6 @@ mod db;
 pub mod encoded;
 mod error;
 mod header;
-mod invoice;
 mod machine;
 mod miner;
 mod parcel;
@@ -90,7 +89,6 @@ mod tests;
 
 pub use account_provider::{AccountProvider, SignError as AccountProviderError};
 pub use block::Block;
-pub use blockchain::ParcelInvoice;
 pub use client::{
     AssetClient, Balance, BlockChainClient, BlockInfo, ChainInfo, ChainNotify, Client, DatabaseClient, EngineClient,
     ImportBlock, MiningBlockChainClient, Nonce, RegularKey, Shard, TestBlockChainClient,
@@ -99,10 +97,9 @@ pub use consensus::EngineType;
 pub use db::COL_STATE;
 pub use error::{BlockImportError, Error, ImportError};
 pub use header::{Header, Seal};
-pub use invoice::Invoice;
 pub use miner::{Miner, MinerOptions, MinerService};
 pub use parcel::{LocalizedParcel, SignedParcel, UnverifiedParcel};
 pub use service::ClientService;
 pub use spec::Spec;
 pub use state::{Asset, AssetAddress, AssetScheme, AssetSchemeAddress, ShardStateInfo, TopStateInfo};
-pub use types::{BlockId, BlockNumber, ParcelId};
+pub use types::{BlockId, ParcelId};

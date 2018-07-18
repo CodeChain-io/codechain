@@ -38,7 +38,9 @@ use std::sync::Arc;
 use ckey::{Address, Generator, Public, Random};
 use cmerkle::skewed_merkle_root;
 use cnetwork::NodeId;
+use ctypes::invoice::ParcelInvoice;
 use ctypes::parcel::{Action, Parcel};
+use ctypes::BlockNumber;
 use journaldb;
 use kvdb_memorydb;
 use parking_lot::RwLock;
@@ -47,7 +49,6 @@ use rlp::*;
 use trie;
 
 use super::super::block::{ClosedBlock, OpenBlock, SealedBlock};
-use super::super::blockchain::ParcelInvoice;
 use super::super::blockchain_info::BlockChainInfo;
 use super::super::client::ImportResult;
 use super::super::client::{
@@ -63,7 +64,7 @@ use super::super::parcel::{LocalizedParcel, SignedParcel};
 use super::super::spec::Spec;
 use super::super::state::{Asset, AssetAddress, AssetScheme, AssetSchemeAddress, ShardStateInfo, TopStateInfo};
 use super::super::state_db::StateDB;
-use super::super::types::{BlockId, BlockNumber, ParcelId, TransactionId, VerificationQueueInfo as QueueInfo};
+use super::super::types::{BlockId, ParcelId, TransactionId, VerificationQueueInfo as QueueInfo};
 
 /// Test client.
 pub struct TestBlockChainClient {

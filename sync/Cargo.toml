@@ -11,6 +11,7 @@ codechain-key = { path = "../key", features = ["ecdsa"] }
 codechain-logger = { path = "../util/logger" }
 codechain-merkle = { path = "../util/merkle" }
 codechain-network = { path = "../network" }
+codechain-types = { path = "../types" }
 kvdb = { path = "../util/kvdb" }
 log = "0.4.1"
 parking_lot = "0.5"

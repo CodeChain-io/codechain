@@ -14,17 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod block_info;
-mod blockchain;
-mod body_db;
-mod extras;
-mod headerchain;
-mod invoice_db;
-mod route;
+mod block_invoices;
+mod invoice;
+mod parcel_invoice;
 
-pub use self::blockchain::{BlockChain, BlockProvider};
-pub use self::body_db::BodyProvider;
-pub use self::extras::{BlockDetails, ParcelAddress, TransactionAddress};
-pub use self::headerchain::HeaderProvider;
-pub use self::invoice_db::InvoiceProvider;
-pub use self::route::ImportRoute;
+pub use self::block_invoices::BlockInvoices;
+pub use self::invoice::Invoice;
+pub use self::parcel_invoice::ParcelInvoice;

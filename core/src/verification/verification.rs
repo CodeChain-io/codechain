@@ -17,6 +17,7 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use cmerkle::skewed_merkle_root;
+use ctypes::BlockNumber;
 use heapsize::HeapSizeOf;
 use primitives::{Bytes, H256};
 use rlp::UntrustedRlp;
@@ -28,7 +29,6 @@ use super::super::consensus::CodeChainEngine;
 use super::super::error::{BlockError, Error};
 use super::super::header::Header;
 use super::super::parcel::{SignedParcel, UnverifiedParcel};
-use super::super::types::BlockNumber;
 use super::super::views::BlockView;
 
 /// Preprocessed block data gathered in `verify_block_unordered` call

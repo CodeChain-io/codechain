@@ -40,6 +40,7 @@ use std::fmt;
 
 use ccrypto::BLAKE_NULL_RLP;
 use ckey::{Address, Public};
+use ctypes::invoice::Invoice;
 use ctypes::parcel::{Action, ChangeShard, Error as ParcelError};
 use ctypes::transaction::Transaction;
 use error::Error;
@@ -48,7 +49,6 @@ use primitives::{H256, U256};
 use trie::{Result as TrieResult, Trie, TrieError, TrieFactory};
 use unexpected::Mismatch;
 
-use super::super::invoice::Invoice;
 use super::super::state_db::StateDB;
 use super::account::Account;
 use super::asset::{Asset, AssetAddress};

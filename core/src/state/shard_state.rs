@@ -16,9 +16,9 @@
 
 use ctypes::transaction::{Error as TransactionError, Transaction};
 
+use ctypes::invoice::Invoice;
 use error::Error;
 
-use super::super::invoice::Invoice;
 use super::ShardBackend;
 
 pub trait ShardState<B>

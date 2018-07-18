@@ -19,17 +19,16 @@ use std::collections::HashSet;
 use ccrypto::BLAKE_NULL_RLP;
 use ckey::Address;
 use cmerkle::skewed_merkle_root;
+use ctypes::invoice::{Invoice, ParcelInvoice};
 use ctypes::parcel::Error as ParcelError;
 use primitives::{Bytes, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 use trie::TrieFactory;
 use unexpected::Mismatch;
 
-use super::blockchain::ParcelInvoice;
 use super::consensus::CodeChainEngine;
 use super::error::{BlockError, Error};
 use super::header::{Header, Seal};
-use super::invoice::Invoice;
 use super::machine::{LiveBlock, Parcels};
 use super::parcel::{SignedParcel, UnverifiedParcel};
 use super::state::{ParcelOutcome, StateWithCache, TopLevelState};
