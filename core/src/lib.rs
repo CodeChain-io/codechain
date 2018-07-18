@@ -100,5 +100,4 @@ pub use miner::{Miner, MinerOptions, MinerService};
 pub use parcel::{LocalizedParcel, SignedParcel, UnverifiedParcel};
 pub use service::ClientService;
 pub use spec::Spec;
-pub use state::{ShardStateInfo, TopStateInfo};
 pub use types::{BlockId, ParcelId};

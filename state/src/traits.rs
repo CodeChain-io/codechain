@@ -15,9 +15,10 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ckey::{Address, Public};
-use cstate::{Asset, AssetAddress, AssetScheme, AssetSchemeAddress};
 use primitives::{H256, U256};
 use trie::Result as TrieResult;
+
+use super::{Asset, AssetAddress, AssetScheme, AssetSchemeAddress};
 
 
 pub trait TopStateInfo {
@@ -46,4 +47,45 @@ pub trait ShardStateInfo {
     fn asset_scheme(&self, a: &AssetSchemeAddress) -> TrieResult<Option<AssetScheme>>;
     /// Get the asset.
     fn asset(&self, a: &AssetAddress) -> TrieResult<Option<Asset>>;
+}
+
+impl TopStateInfo for () {
+    fn nonce(&self, _address: &Address) -> TrieResult<U256> {
+        unimplemented!()
+    }
+    fn balance(&self, _address: &Address) -> TrieResult<U256> {
+        unimplemented!()
+    }
+    fn regular_key(&self, _address: &Address) -> TrieResult<Option<Public>> {
+        unimplemented!()
+    }
+
+    fn number_of_shards(&self) -> TrieResult<u32> {
+        unimplemented!()
+    }
+
+    fn shard_root(&self, _shard_id: u32) -> TrieResult<Option<H256>> {
+        unimplemented!()
+    }
+
+    fn asset_scheme(&self, _shard_id: u32, _: &AssetSchemeAddress) -> TrieResult<Option<AssetScheme>> {
+        unimplemented!()
+    }
+
+    fn asset(&self, _shard_id: u32, _: &AssetAddress) -> TrieResult<Option<Asset>> {
+        unimplemented!()
+    }
+}
+
+impl ShardStateInfo for () {
+    fn root(&self) -> &H256 {
+        unimplemented!()
+    }
+
+    fn asset_scheme(&self, _a: &AssetSchemeAddress) -> TrieResult<Option<AssetScheme>> {
+        unimplemented!()
+    }
+    fn asset(&self, _a: &AssetAddress) -> TrieResult<Option<Asset>> {
+        unimplemented!()
+    }
 }

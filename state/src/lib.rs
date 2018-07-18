@@ -31,6 +31,7 @@ extern crate rustc_hex;
 extern crate serde_derive;
 
 mod item;
+mod traits;
 
 pub use item::account::Account;
 pub use item::asset::{Asset, AssetAddress};
@@ -39,3 +40,4 @@ pub use item::cache::{Cache, CacheableItem};
 pub use item::metadata::{Metadata, MetadataAddress};
 pub use item::shard::{Shard, ShardAddress};
 pub use item::shard_metadata::{ShardMetadata, ShardMetadataAddress};
+pub use traits::{ShardStateInfo, TopStateInfo};

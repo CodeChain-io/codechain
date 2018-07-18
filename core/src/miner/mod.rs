@@ -21,6 +21,7 @@ mod sealing_queue;
 mod work_notify;
 
 use ckey::Address;
+use cstate::TopStateInfo;
 use primitives::{Bytes, H256, U256};
 
 pub use self::miner::{Miner, MinerOptions};
@@ -30,7 +31,6 @@ use super::client::{AccountData, BlockChain, BlockProducer, ImportSealedBlock, M
 use super::consensus::EngineType;
 use super::error::Error;
 use super::parcel::{SignedParcel, UnverifiedParcel};
-use super::state::TopStateInfo;
 
 /// Miner client API
 pub trait MinerService: Send + Sync {

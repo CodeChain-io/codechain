@@ -31,7 +31,6 @@
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
 mod backend;
-mod info;
 mod shard_level;
 mod shard_state;
 mod top_level;
@@ -39,7 +38,6 @@ mod top_state;
 mod traits;
 
 pub use self::backend::{Backend, Basic as BasicBackend, ShardBackend, TopBackend};
-pub use self::info::{ShardStateInfo, TopStateInfo};
 pub use self::shard_state::ShardState;
 pub use self::top_level::TopLevelState;
 pub use self::top_state::TopState;

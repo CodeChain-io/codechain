@@ -16,6 +16,7 @@
 // A state machine.
 
 use ckey::Address;
+use cstate::TopStateInfo;
 use ctypes::parcel::Error as ParcelError;
 use primitives::U256;
 
@@ -25,7 +26,7 @@ use super::error::Error;
 use super::header::Header;
 use super::parcel::{SignedParcel, UnverifiedParcel};
 use super::spec::CommonParams;
-use super::state::{TopState, TopStateInfo};
+use super::state::TopState;
 
 pub struct CodeChainMachine {
     params: CommonParams,
