@@ -17,7 +17,7 @@
 use std::cmp::Ordering;
 use std::convert::{From, Into};
 use std::fmt;
-use std::net::{self, AddrParseError, IpAddr, Ipv4Addr, Ipv6Addr};
+use std::net::{self, AddrParseError, IpAddr, Ipv4Addr};
 use std::str::FromStr;
 
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
@@ -38,8 +38,8 @@ impl SocketAddr {
         SocketAddr::new(IpAddr::V4(Ipv4Addr::new(a, b, c, d)), port)
     }
 
-    pub fn v6(a: u16, b: u16, c: u16, d: u16, e: u16, f: u16, g: u16, h: u16, port: u16) -> Self {
-        SocketAddr::new(IpAddr::V6(Ipv6Addr::new(a, b, c, d, e, f, g, h)), port)
+    pub fn v6(_a: u16, _b: u16, _c: u16, _d: u16, _e: u16, _f: u16, _g: u16, _h: u16, _port: u16) -> Self {
+        unimplemented!();
     }
 
     pub fn ip(&self) -> IpAddr {
@@ -53,7 +53,7 @@ impl SocketAddr {
     pub fn is_global(&self) -> bool {
         match self.ip() {
             net::IpAddr::V4(ip) => !ip.is_loopback() && !ip.is_private(),
-            net::IpAddr::V6(ip) => !ip.is_loopback(),
+            net::IpAddr::V6(_ip) => unimplemented!(),
         }
     }
 
@@ -119,8 +119,11 @@ impl<'a> Into<NodeId> for &'a SocketAddr {
 
 impl From<net::SocketAddr> for SocketAddr {
     fn from(addr: net::SocketAddr) -> Self {
-        Self {
-            addr,
+        match addr {
+            net::SocketAddr::V4(_) => Self {
+                addr,
+            },
+            net::SocketAddr::V6(_) => unimplemented!(),
         }
     }
 }
@@ -140,7 +143,8 @@ impl<'a> Into<&'a net::SocketAddr> for &'a SocketAddr {
 impl FromStr for SocketAddr {
     type Err = AddrParseError;
     fn from_str(addr: &str) -> Result<Self, Self::Err> {
-        Ok(Self::from(net::SocketAddr::from_str(addr)?))
+        let addr = net::SocketAddrV4::from_str(addr)?;
+        Ok(Self::from(net::SocketAddr::V4(addr)))
     }
 }
 
@@ -181,15 +185,7 @@ impl Encodable for SocketAddr {
                 }
                 s.append(&self.port());
             }
-            IpAddr::V6(ref addr) => {
-                let octets = addr.octets();
-                assert_eq!(16, octets.len());
-                s.begin_list(octets.len() + 1);
-                for octet in octets.iter() {
-                    s.append(octet);
-                }
-                s.append(&self.port());
-            }
+            IpAddr::V6(ref _addr) => unimplemented!(),
         }
     }
 }
@@ -205,15 +201,7 @@ impl Decodable for SocketAddr {
                 let port = rlp.val_at(4)?;
                 Ok(SocketAddr::v4(ip0, ip1, ip2, ip3, port))
             }
-            17 => {
-                let mut octets: [u8; 16] = [0; 16];
-                for i in 0..16 {
-                    octets[i] = rlp.val_at(i)?;
-                }
-                let port = rlp.val_at(16)?;
-                let ip = IpAddr::V6(Ipv6Addr::from(octets));
-                Ok(SocketAddr::new(ip, port))
-            }
+            17 => unimplemented!(),
             _ => Err(DecoderError::RlpIncorrectListLen),
         }
     }

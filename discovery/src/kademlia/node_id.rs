@@ -62,20 +62,7 @@ pub fn address_to_hash(addr: &SocketAddr) -> H256 {
             hash[15] ^= (port & 0xFF) as u8;
             hash
         }
-        IpAddr::V6(ip) => {
-            if ip.is_loopback() {
-                let mut octets = [0u8; 18];
-                octets.clone_from_slice(&ip.octets());
-                octets[16] = (port >> 8) as u8;
-                octets[17] = (port & 0xFF) as u8;
-                return Blake::blake(&octets)
-            }
-            let octets: [u8; 16] = ip.octets();
-            let mut hash = H256::blake(&octets);
-            hash[14] ^= (port >> 8) as u8;
-            hash[15] ^= (port & 0xFF) as u8;
-            hash
-        }
+        IpAddr::V6(_ip) => unimplemented!(),
     }
 }
 
