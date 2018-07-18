@@ -15,9 +15,11 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ckey::{Address, Public};
+use ctypes::transaction::{Outcome as TransactionOutcome, Transaction};
 use primitives::{H256, U256};
 use trie::Result as TrieResult;
 
+use super::backend::ShardBackend;
 use super::{Asset, AssetAddress, AssetScheme, AssetSchemeAddress};
 
 
@@ -88,4 +90,10 @@ impl ShardStateInfo for () {
     fn asset(&self, _a: &AssetAddress) -> TrieResult<Option<Asset>> {
         unimplemented!()
     }
+}
+
+pub trait ShardState<B, Error>
+where
+    B: ShardBackend, {
+    fn apply(&mut self, transaction: &Transaction, parcel_network_id: &u64) -> Result<TransactionOutcome, Error>;
 }

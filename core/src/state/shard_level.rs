@@ -20,10 +20,9 @@ use std::fmt;
 
 use ccrypto::{Blake, BLAKE_NULL_RLP};
 use ckey::Address;
-use cstate::ShardStateInfo;
 use cstate::{
     Asset, AssetAddress, AssetScheme, AssetSchemeAddress, Backend, Cache, ShardBackend, ShardMetadata,
-    ShardMetadataAddress, StateDB,
+    ShardMetadataAddress, ShardState, ShardStateInfo, StateDB,
 };
 use ctypes::invoice::Invoice;
 use ctypes::transaction::{
@@ -38,7 +37,6 @@ use unexpected::Mismatch;
 
 use super::super::error::Error;
 use super::traits::{CheckpointId, StateWithCache, StateWithCheckpoint};
-use super::ShardState;
 
 pub struct ShardLevelState<B> {
     db: B,
