@@ -22,6 +22,7 @@ use std::time::Instant;
 use cio::IoChannel;
 use ckey::{Address, Public};
 use cnetwork::NodeId;
+use ctypes::invoice::ParcelInvoice;
 use journaldb;
 use kvdb::{DBTransaction, KeyValueDB};
 use parking_lot::{Mutex, RwLock};
@@ -32,7 +33,7 @@ use trie::{Result as TrieResult, TrieFactory, TrieSpec};
 use super::super::block::{enact, ClosedBlock, Drain, IsBlock, LockedBlock, OpenBlock, SealedBlock};
 use super::super::blockchain::{
     BlockChain, BlockProvider, BodyProvider, HeaderProvider, ImportRoute, InvoiceProvider, ParcelAddress,
-    ParcelInvoice, TransactionAddress,
+    TransactionAddress,
 };
 use super::super::consensus::epoch::Transition as EpochTransition;
 use super::super::consensus::CodeChainEngine;

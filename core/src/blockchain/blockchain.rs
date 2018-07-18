@@ -17,6 +17,7 @@
 use std::mem;
 use std::sync::Arc;
 
+use ctypes::invoice::ParcelInvoice;
 use kvdb::{DBTransaction, KeyValueDB};
 use parking_lot::RwLock;
 use primitives::H256;
@@ -32,7 +33,7 @@ use super::super::views::{BlockView, HeaderView};
 use super::block_info::BlockLocation;
 use super::body_db::{BodyDB, BodyProvider};
 use super::extras::{
-    BlockDetails, BlockInvoices, EpochTransitions, ParcelAddress, ParcelInvoice, TransactionAddress, EPOCH_KEY_PREFIX,
+    BlockDetails, BlockInvoices, EpochTransitions, ParcelAddress, TransactionAddress, EPOCH_KEY_PREFIX,
 };
 use super::headerchain::{HeaderChain, HeaderProvider};
 use super::invoice_db::{InvoiceDB, InvoiceProvider};

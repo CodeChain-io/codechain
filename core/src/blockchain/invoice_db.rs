@@ -17,12 +17,13 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use ctypes::invoice::ParcelInvoice;
 use kvdb::{DBTransaction, KeyValueDB};
 use parking_lot::RwLock;
 use primitives::H256;
 
 use super::super::db::{self, CacheUpdatePolicy, Readable, Writable};
-use super::extras::{BlockInvoices, ParcelAddress, ParcelInvoice};
+use super::extras::{BlockInvoices, ParcelAddress};
 
 /// Structure providing fast access to blockchain data.
 ///

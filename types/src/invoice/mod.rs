@@ -15,5 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 mod invoice;
+mod parcel_invoice;
 
 pub use self::invoice::Invoice;
+pub use self::parcel_invoice::ParcelInvoice;

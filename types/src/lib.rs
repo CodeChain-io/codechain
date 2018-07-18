@@ -18,6 +18,7 @@ extern crate codechain_crypto as ccrypto;
 extern crate codechain_key as ckey;
 extern crate heapsize;
 extern crate primitives;
+#[cfg_attr(test, macro_use)]
 extern crate rlp;
 #[macro_use]
 extern crate rlp_derive;

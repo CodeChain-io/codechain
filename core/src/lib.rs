@@ -89,7 +89,6 @@ mod tests;
 
 pub use account_provider::{AccountProvider, SignError as AccountProviderError};
 pub use block::Block;
-pub use blockchain::ParcelInvoice;
 pub use client::{
     AssetClient, Balance, BlockChainClient, BlockInfo, ChainInfo, ChainNotify, Client, DatabaseClient, EngineClient,
     ImportBlock, MiningBlockChainClient, Nonce, RegularKey, Shard, TestBlockChainClient,
