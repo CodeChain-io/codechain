@@ -525,7 +525,7 @@ impl Clone for TopLevelState<StateDB> {
     }
 }
 
-impl<B: Backend + TopBackend + ShardBackend + Clone> TopState<B> for TopLevelState<B> {
+impl<B: Backend + TopBackend + ShardBackend + Clone> TopState<B, Error> for TopLevelState<B> {
     fn kill_account(&mut self, account: &Address) {
         self.account.remove(account);
     }

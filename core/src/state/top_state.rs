@@ -19,9 +19,7 @@ use cstate::TopBackend;
 use primitives::{H256, U256};
 use trie;
 
-use super::super::error::Error;
-
-pub trait TopState<B>
+pub trait TopState<B, Error>
 where
     B: TopBackend, {
     /// Remove an existing account.

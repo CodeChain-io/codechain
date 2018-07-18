@@ -17,9 +17,7 @@
 use cstate::ShardBackend;
 use ctypes::transaction::{Outcome as TransactionOutcome, Transaction};
 
-use super::super::error::Error;
-
-pub trait ShardState<B>
+pub trait ShardState<B, Error>
 where
     B: ShardBackend, {
     fn apply(&mut self, transaction: &Transaction, parcel_network_id: &u64) -> Result<TransactionOutcome, Error>;

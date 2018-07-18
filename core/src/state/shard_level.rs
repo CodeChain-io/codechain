@@ -448,7 +448,7 @@ fn is_input_and_output_consistent(inputs: &[AssetTransferInput], outputs: &[Asse
 
 const TRANSACTION_CHECKPOINT: CheckpointId = 456;
 
-impl<B: Backend + ShardBackend> ShardState<B> for ShardLevelState<B> {
+impl<B: Backend + ShardBackend> ShardState<B, Error> for ShardLevelState<B> {
     fn apply(&mut self, transaction: &Transaction, parcel_network_id: &u64) -> Result<TransactionOutcome, Error> {
         ctrace!(TX, "Execute {:?}(TxHash:{:?})", transaction, transaction.hash());
 
