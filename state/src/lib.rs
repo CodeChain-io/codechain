@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+extern crate byteorder;
+extern crate codechain_crypto as ccrypto;
 #[macro_use]
 extern crate codechain_logger as clogger;
 extern crate codechain_key as ckey;
@@ -25,8 +27,11 @@ extern crate primitives;
 extern crate rlp;
 #[cfg(test)]
 extern crate rustc_hex;
+#[macro_use]
+extern crate serde_derive;
 
 mod item;
 
 pub use item::account::Account;
+pub use item::asset::{Asset, AssetAddress};
 pub use item::cache::{Cache, CacheableItem};

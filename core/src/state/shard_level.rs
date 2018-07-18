@@ -20,7 +20,7 @@ use std::fmt;
 
 use ccrypto::{Blake, BLAKE_NULL_RLP};
 use ckey::Address;
-use cstate::Cache;
+use cstate::{Asset, AssetAddress, Cache};
 use ctypes::invoice::Invoice;
 use ctypes::transaction::{
     AssetMintOutput, AssetTransferInput, AssetTransferOutput, Error as TransactionError, Outcome as TransactionOutcome,
@@ -36,8 +36,8 @@ use super::super::error::Error;
 use super::super::state_db::StateDB;
 use super::traits::{CheckpointId, StateWithCache, StateWithCheckpoint};
 use super::{
-    Asset, AssetAddress, AssetScheme, AssetSchemeAddress, Backend, ShardBackend, ShardMetadata, ShardMetadataAddress,
-    ShardState, ShardStateInfo,
+    AssetScheme, AssetSchemeAddress, Backend, ShardBackend, ShardMetadata, ShardMetadataAddress, ShardState,
+    ShardStateInfo,
 };
 
 pub struct ShardLevelState<B> {

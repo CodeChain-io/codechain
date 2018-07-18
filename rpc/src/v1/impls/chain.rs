@@ -16,10 +16,9 @@
 
 use std::sync::Arc;
 
-use ccore::{
-    Asset, AssetClient, AssetScheme, BlockId, MinerService, MiningBlockChainClient, RegularKey, Shard, SignedParcel,
-};
+use ccore::{AssetClient, AssetScheme, BlockId, MinerService, MiningBlockChainClient, RegularKey, Shard, SignedParcel};
 use ckey::Public;
+use cstate::Asset;
 use ctypes::invoice::{Invoice, ParcelInvoice};
 use ctypes::BlockNumber;
 use primitives::{H160, H256, U256};

@@ -416,6 +416,7 @@ dependencies = [
  "codechain-key 0.1.0",
  "codechain-logger 0.1.0",
  "codechain-network 0.1.0",
+ "codechain-state 0.1.0",
  "codechain-types 0.1.0",
  "jsonrpc-core 8.0.1 (git+https://github.com/paritytech/jsonrpc.git?branch=parity-1.11)",
  "jsonrpc-http-server 8.0.0 (git+https://github.com/paritytech/jsonrpc.git?branch=parity-1.11)",
@@ -438,6 +439,8 @@ dependencies = [
 name = "codechain-state"
 version = "0.1.0"
 dependencies = [
+ "byteorder 1.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "codechain-crypto 0.1.0",
  "codechain-key 0.1.0",
  "codechain-logger 0.1.0",
  "codechain-types 0.1.0",
@@ -446,6 +449,8 @@ dependencies = [
  "primitives 0.1.0",
  "rlp 0.2.1",
  "rustc-hex 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde 1.0.53 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_derive 1.0.53 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
