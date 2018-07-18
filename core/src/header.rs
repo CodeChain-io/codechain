@@ -20,11 +20,10 @@ use time::get_time;
 
 use ccrypto::{blake256, BLAKE_NULL_RLP};
 use ckey::Address;
+use ctypes::BlockNumber;
 use heapsize::HeapSizeOf;
 use primitives::{Bytes, H256, U256};
 use rlp::*;
-
-use super::types::BlockNumber;
 
 /// Semantic boolean for when a seal/signature is included.
 pub enum Seal {

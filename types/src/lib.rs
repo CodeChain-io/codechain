@@ -30,3 +30,5 @@ extern crate unexpected;
 pub mod invoice;
 pub mod parcel;
 pub mod transaction;
+
+pub type BlockNumber = u64;

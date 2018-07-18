@@ -17,12 +17,12 @@
 use heapsize::HeapSizeOf;
 
 use ckey::Address;
+use ctypes::BlockNumber;
 use primitives::H256;
 
 use super::super::super::codechain_machine::CodeChainMachine;
 use super::super::super::error::Error;
 use super::super::super::header::Header;
-use super::super::super::types::BlockNumber;
 use super::super::EpochChange;
 use super::ValidatorSet;
 

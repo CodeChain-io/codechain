@@ -20,6 +20,7 @@ use std::collections::{HashSet, VecDeque};
 use std::sync::Arc;
 
 use ckey::Address;
+use ctypes::BlockNumber;
 use hashdb::HashDB;
 use journaldb::JournalDB;
 use kvdb::DBTransaction;
@@ -32,7 +33,6 @@ use super::state::{
     self, Account, Asset, AssetAddress, AssetScheme, AssetSchemeAddress, CacheableItem, Metadata, MetadataAddress,
     Shard, ShardAddress,
 };
-use super::types::BlockNumber;
 
 const STATE_CACHE_BLOCKS: usize = 12;
 

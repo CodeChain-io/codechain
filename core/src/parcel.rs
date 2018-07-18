@@ -20,12 +20,12 @@ use ccrypto::blake256;
 use ckey::{self, public_to_address, recover, sign, Address, Private, Public, Signature, SignatureData};
 use ctypes::parcel::{Action, Error as ParcelError, Parcel};
 use ctypes::transaction::Transaction;
+use ctypes::BlockNumber;
 use heapsize::HeapSizeOf;
 use primitives::{H160, H256};
 use rlp::{self, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::spec::CommonParams;
-use super::types::BlockNumber;
 
 /// Fake address for unsigned parcel as defined by EIP-86.
 pub const UNSIGNED_SENDER: Address = H160([0xff; 20]);

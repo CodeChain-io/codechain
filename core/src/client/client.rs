@@ -23,6 +23,7 @@ use cio::IoChannel;
 use ckey::{Address, Public};
 use cnetwork::NodeId;
 use ctypes::invoice::ParcelInvoice;
+use ctypes::BlockNumber;
 use journaldb;
 use kvdb::{DBTransaction, KeyValueDB};
 use parking_lot::{Mutex, RwLock};
@@ -46,9 +47,7 @@ use super::super::service::ClientIoMessage;
 use super::super::spec::Spec;
 use super::super::state::{Asset, AssetAddress, AssetScheme, AssetSchemeAddress, TopLevelState, TopStateInfo};
 use super::super::state_db::StateDB;
-use super::super::types::{
-    BlockId, BlockNumber, BlockStatus, ParcelId, TransactionId, VerificationQueueInfo as BlockQueueInfo,
-};
+use super::super::types::{BlockId, BlockStatus, ParcelId, TransactionId, VerificationQueueInfo as BlockQueueInfo};
 use super::super::verification::queue::{BlockQueue, HeaderQueue};
 use super::super::verification::{self, PreverifiedBlock, Verifier};
 use super::super::views::{BlockView, HeaderView};

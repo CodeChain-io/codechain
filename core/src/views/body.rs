@@ -15,11 +15,11 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ccrypto::blake256;
+use ctypes::BlockNumber;
 use primitives::H256;
 use rlp::Rlp;
 
 use super::super::parcel::{LocalizedParcel, UnverifiedParcel};
-use super::super::types::BlockNumber;
 use super::ParcelView;
 
 /// View onto block rlp.

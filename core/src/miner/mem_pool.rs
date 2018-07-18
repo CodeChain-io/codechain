@@ -20,6 +20,7 @@ use std::collections::{BTreeSet, HashMap};
 
 use ckey::Address;
 use ctypes::parcel::{Action, Error as ParcelError};
+use ctypes::BlockNumber;
 use heapsize::HeapSizeOf;
 use linked_hash_map::LinkedHashMap;
 use multimap::MultiMap;
@@ -27,7 +28,6 @@ use primitives::{H256, U256};
 use table::Table;
 
 use super::super::parcel::SignedParcel;
-use super::super::types::BlockNumber;
 use super::local_parcels::{LocalParcelsList, Status as LocalParcelStatus};
 use super::ParcelImportResult;
 

@@ -16,10 +16,9 @@
 
 use ccrypto::blake256;
 use ckey::Address;
+use ctypes::BlockNumber;
 use primitives::{Bytes, H256, U256};
 use rlp::{self, Rlp};
-
-use super::super::types::BlockNumber;
 
 /// View onto block header rlp.
 pub struct HeaderView<'a> {

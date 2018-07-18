@@ -102,4 +102,4 @@ pub use parcel::{LocalizedParcel, SignedParcel, UnverifiedParcel};
 pub use service::ClientService;
 pub use spec::Spec;
 pub use state::{Asset, AssetAddress, AssetScheme, AssetSchemeAddress, ShardStateInfo, TopStateInfo};
-pub use types::{BlockId, BlockNumber, ParcelId};
+pub use types::{BlockId, ParcelId};

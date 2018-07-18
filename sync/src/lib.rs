@@ -21,6 +21,7 @@ extern crate codechain_merkle as cmerkle;
 #[macro_use]
 extern crate codechain_logger as clogger;
 extern crate codechain_network as cnetwork;
+extern crate codechain_types as ctypes;
 
 extern crate kvdb;
 #[macro_use]

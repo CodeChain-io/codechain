@@ -20,6 +20,7 @@ use std::time::{Duration, Instant};
 
 use ckey::Address;
 use ctypes::parcel::Error as ParcelError;
+use ctypes::BlockNumber;
 use parking_lot::{Mutex, RwLock};
 use primitives::{Bytes, H256, U256};
 
@@ -32,7 +33,7 @@ use super::super::header::Header;
 use super::super::parcel::{SignedParcel, UnverifiedParcel};
 use super::super::spec::Spec;
 use super::super::state::TopLevelState;
-use super::super::types::{BlockId, BlockNumber, ParcelId};
+use super::super::types::{BlockId, ParcelId};
 use super::mem_pool::{AccountDetails, MemPool, ParcelOrigin, RemovalReason};
 use super::sealing_queue::SealingQueue;
 use super::work_notify::{NotifyWork, WorkPoster};

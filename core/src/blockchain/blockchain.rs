@@ -18,6 +18,7 @@ use std::mem;
 use std::sync::Arc;
 
 use ctypes::invoice::{BlockInvoices, ParcelInvoice};
+use ctypes::BlockNumber;
 use kvdb::{DBTransaction, KeyValueDB};
 use parking_lot::RwLock;
 use primitives::H256;
@@ -28,7 +29,6 @@ use super::super::consensus::epoch::{PendingTransition as PendingEpochTransition
 use super::super::db::{self, Readable, Writable};
 use super::super::encoded;
 use super::super::parcel::LocalizedParcel;
-use super::super::types::BlockNumber;
 use super::super::views::{BlockView, HeaderView};
 use super::block_info::BlockLocation;
 use super::body_db::{BodyDB, BodyProvider};

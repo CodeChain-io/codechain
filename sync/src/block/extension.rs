@@ -21,10 +21,10 @@ use std::sync::Arc;
 
 use ccore::encoded::Header as EncodedHeader;
 use ccore::{
-    Block, BlockChainClient, BlockId, BlockImportError, BlockNumber, ChainNotify, Header, ImportError, Seal,
-    UnverifiedParcel,
+    Block, BlockChainClient, BlockId, BlockImportError, ChainNotify, Header, ImportError, Seal, UnverifiedParcel,
 };
 use cnetwork::{Api, NetworkExtension, NodeId, TimerToken};
+use ctypes::BlockNumber;
 use primitives::{H256, U256};
 use rlp::{Encodable, UntrustedRlp};
 use time::Duration;

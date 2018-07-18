@@ -18,13 +18,14 @@ use std::io::Write;
 use std::ops::{self, Deref};
 
 use ctypes::invoice::BlockInvoices;
+use ctypes::BlockNumber;
 use heapsize::HeapSizeOf;
 use kvdb::PREFIX_LEN as DB_PREFIX_LEN;
 use primitives::{H256, H264, U256};
 
 use super::super::consensus::epoch::{PendingTransition as PendingEpochTransition, Transition as EpochTransition};
 use super::super::db::Key;
-use super::super::types::{BlockNumber, ParcelId};
+use super::super::types::ParcelId;
 
 /// Represents index of extra data in database
 #[derive(Copy, Debug, Hash, Eq, PartialEq, Clone)]
