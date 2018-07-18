@@ -122,13 +122,13 @@ impl<'a> Into<NetworkConfig> for &'a Network {
     fn into(self) -> NetworkConfig {
         let bootstrap_addresses =
             self.bootstrap_addresses.iter().map(|s| SocketAddr::from_str(s).unwrap()).collect::<Vec<_>>();
-            NetworkConfig {
-                port: self.port,
-                bootstrap_addresses,
-                min_peers: self.min_peers,
-                max_peers: self.max_peers,
-                address: self.address.to_string(),
-            }
+        NetworkConfig {
+            port: self.port,
+            bootstrap_addresses,
+            min_peers: self.min_peers,
+            max_peers: self.max_peers,
+            address: self.address.to_string(),
+        }
     }
 }
 
