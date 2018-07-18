@@ -14,12 +14,15 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod action;
-mod error;
-mod outcome;
-mod parcel;
+use super::super::invoice::Invoice;
+use super::super::transaction::Outcome as TransactionOutcome;
+use super::Error;
 
-pub use self::action::{Action, ChangeShard};
-pub use self::error::Error;
-pub use self::outcome::Outcome;
-pub use self::parcel::Parcel;
+#[derive(Debug, PartialEq)]
+pub enum Outcome {
+    Single {
+        invoice: Invoice,
+        error: Option<Error>,
+    },
+    Transactions(Vec<TransactionOutcome>),
+}

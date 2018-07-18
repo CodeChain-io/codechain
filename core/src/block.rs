@@ -20,7 +20,7 @@ use ccrypto::BLAKE_NULL_RLP;
 use ckey::Address;
 use cmerkle::skewed_merkle_root;
 use ctypes::invoice::{Invoice, ParcelInvoice};
-use ctypes::parcel::Error as ParcelError;
+use ctypes::parcel::{Error as ParcelError, Outcome as ParcelOutcome};
 use primitives::{Bytes, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 use trie::TrieFactory;
@@ -31,7 +31,7 @@ use super::error::{BlockError, Error};
 use super::header::{Header, Seal};
 use super::machine::{LiveBlock, Parcels};
 use super::parcel::{SignedParcel, UnverifiedParcel};
-use super::state::{ParcelOutcome, StateWithCache, TopLevelState};
+use super::state::{StateWithCache, TopLevelState};
 use super::state_db::StateDB;
 
 /// A block, encoded as it is on the block chain.

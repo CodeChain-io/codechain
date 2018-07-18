@@ -41,7 +41,7 @@ use std::fmt;
 use ccrypto::BLAKE_NULL_RLP;
 use ckey::{Address, Public};
 use ctypes::invoice::Invoice;
-use ctypes::parcel::{Action, ChangeShard, Error as ParcelError};
+use ctypes::parcel::{Action, ChangeShard, Error as ParcelError, Outcome as ParcelOutcome};
 use ctypes::transaction::{Outcome as TransactionOutcome, Transaction};
 use error::Error;
 use parcel::SignedParcel;
@@ -62,16 +62,6 @@ use super::shard_level::ShardLevelState;
 use super::shard_state::ShardState;
 use super::top_state::TopState;
 use super::traits::{CheckpointId, StateWithCache, StateWithCheckpoint};
-
-/// Used to return information about an `State::apply` operation.
-#[derive(Debug, PartialEq)]
-pub enum ParcelOutcome {
-    Single {
-        invoice: Invoice,
-        error: Option<ParcelError>,
-    },
-    Transactions(Vec<TransactionOutcome>),
-}
 
 /// Representation of the entire state of all accounts in the system.
 ///
