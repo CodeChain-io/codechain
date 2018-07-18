@@ -15,9 +15,10 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ckey::Address;
-use cstate::CacheableItem;
 use primitives::H256;
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
+
+use super::cache::CacheableItem;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct AssetScheme {

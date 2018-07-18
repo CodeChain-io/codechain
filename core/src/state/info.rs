@@ -15,11 +15,10 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ckey::{Address, Public};
-use cstate::{Asset, AssetAddress};
+use cstate::{Asset, AssetAddress, AssetScheme, AssetSchemeAddress};
 use primitives::{H256, U256};
 use trie::Result as TrieResult;
 
-use super::{AssetScheme, AssetSchemeAddress};
 
 pub trait TopStateInfo {
     /// Get the nonce of account `a`.

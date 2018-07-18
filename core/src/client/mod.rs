@@ -31,7 +31,7 @@ use std::sync::Arc;
 
 use ckey::{Address, Public};
 use cnetwork::NodeId;
-use cstate::Asset;
+use cstate::{Asset, AssetScheme};
 use ctypes::invoice::{Invoice, ParcelInvoice};
 use ctypes::BlockNumber;
 use kvdb::KeyValueDB;
@@ -43,7 +43,7 @@ use super::blockchain_info::BlockChainInfo;
 use super::encoded;
 use super::error::BlockImportError;
 use super::parcel::{LocalizedParcel, SignedParcel};
-use super::state::{AssetScheme, TopStateInfo};
+use super::state::TopStateInfo;
 use super::types::{BlockId, BlockStatus, ParcelId, TransactionId, VerificationQueueInfo as BlockQueueInfo};
 
 /// Provides `chain_info` method
