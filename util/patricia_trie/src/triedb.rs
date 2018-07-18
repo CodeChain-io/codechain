@@ -367,7 +367,8 @@ impl<'a> Iterator for TrieDBIterator<'a> {
                         match i {
                             0 => self.key_nibbles.push(0),
                             i => {
-                                *self.key_nibbles
+                                *self
+                                    .key_nibbles
                                     .last_mut()
                                     .expect("pushed as 0; moves sequentially; removed afterwards; qed") = i as u8
                             }

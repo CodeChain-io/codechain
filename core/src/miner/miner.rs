@@ -161,7 +161,8 @@ impl Miner {
         if sealing_work.enabled {
             ctrace!(MINER, "requires_reseal: sealing enabled");
             let last_request = *self.sealing_block_last_request.lock();
-            let should_disable_sealing = !self.options.force_sealing && !has_local_parcels
+            let should_disable_sealing = !self.options.force_sealing
+                && !has_local_parcels
                 && self.engine.seals_internally().is_none()
                 && best_block > last_request
                 && best_block - last_request > SEALING_TIMEOUT_IN_BLOCKS;
@@ -209,7 +210,8 @@ impl Miner {
                     cdebug!(MINER, "Rejected parcel {:?}: already in the blockchain", hash);
                     return Err(Error::Parcel(ParcelError::AlreadyImported))
                 }
-                match self.engine
+                match self
+                    .engine
                     .verify_parcel_basic(&parcel, &best_block_header)
                     .and_then(|_| self.engine.verify_parcel_unordered(parcel, &best_block_header))
                 {
@@ -221,7 +223,8 @@ impl Miner {
                         // This check goes here because verify_parcel takes SignedParcel parameter
                         self.engine.machine().verify_parcel(&parcel, &best_block_header, client)?;
 
-                        let origin = self.accounts
+                        let origin = self
+                            .accounts
                             .as_ref()
                             .and_then(|accounts| match accounts.has_account(parcel.sender()) {
                                 Ok(true) => Some(ParcelOrigin::Local),
@@ -419,7 +422,8 @@ impl Miner {
     fn seal_and_import_block_internally<C>(&self, chain: &C, block: ClosedBlock) -> bool
     where
         C: BlockChain + ImportSealedBlock, {
-        if block.parcels().is_empty() && !self.options.force_sealing
+        if block.parcels().is_empty()
+            && !self.options.force_sealing
             && Instant::now() <= *self.next_mandatory_reseal.read()
         {
             return false
@@ -701,7 +705,8 @@ impl MinerService for Miner {
             // Be sure to release the lock before we call prepare_work_sealing
             let mut mem_pool = self.mem_pool.write();
             // We need to re-validate parcels
-            let import = self.add_parcels_to_pool(chain, vec![parcel.into()], ParcelOrigin::Local, &mut mem_pool)
+            let import = self
+                .add_parcels_to_pool(chain, vec![parcel.into()], ParcelOrigin::Local, &mut mem_pool)
                 .pop()
                 .expect("one result returned per added parcel; one added => one result; qed");
 

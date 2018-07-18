@@ -267,7 +267,8 @@ impl SessionInitiator {
                     let message = message::Message::nonce_request(seq as u64, encrypted_nonce);
                     self.server.enqueue(message, from.clone())?;
                 } else {
-                    let requester_pub_key = self.routing_table
+                    let requester_pub_key = self
+                        .routing_table
                         .register_key_pair_for_secret(from)
                         .ok_or(Error::General("Cannot register key pair"))?;
 
@@ -303,7 +304,8 @@ impl SessionInitiator {
                     return Ok(())
                 }
 
-                let _secret = self.routing_table
+                let _secret = self
+                    .routing_table
                     .share_secret(from, responder_pub_key)
                     .ok_or(Error::General("Cannot share secret"))?;
                 let encrypted_nonce =

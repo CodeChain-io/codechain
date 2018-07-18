@@ -239,7 +239,8 @@ impl Tendermint {
 
     /// Broadcast all messages since last issued block to get the peers up to speed.
     fn broadcast_old_messages(&self) {
-        for m in self.votes
+        for m in self
+            .votes
             .get_up_to(&VoteStep::new(
                 self.height.load(AtomicOrdering::SeqCst),
                 self.view.load(AtomicOrdering::SeqCst),
@@ -359,7 +360,9 @@ impl Tendermint {
             Some(lock) => vote_step > &lock.vote_step,
             None => true,
         };
-        let lock_change = is_newer_than_lock && vote_step.step == Step::Prevote && message.block_hash.is_some()
+        let lock_change = is_newer_than_lock
+            && vote_step.step == Step::Prevote
+            && message.block_hash.is_some()
             && self.has_enough_aligned_votes(message);
         if lock_change {
             ctrace!(ENGINE, "handle_valid_message: Lock change.");

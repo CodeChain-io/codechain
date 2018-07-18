@@ -325,8 +325,4 @@ pub trait CodeChainEngine: ConsensusEngine<CodeChainMachine> {
 }
 
 // convenience wrappers for existing functions.
-impl<T> CodeChainEngine for T
-where
-    T: ConsensusEngine<CodeChainMachine>,
-{
-}
+impl<T> CodeChainEngine for T where T: ConsensusEngine<CodeChainMachine> {}

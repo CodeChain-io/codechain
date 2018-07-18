@@ -131,7 +131,10 @@ impl StateDB {
     pub fn new(db: Box<JournalDB>, cache_size: usize) -> StateDB {
         assert_eq!(
             100,
-            ACCOUNT_CACHE_RATIO + METADATA_CACHE_RATIO + SHARD_CACHE_RATIO + ASSET_SCHEME_CACHE_RATIO
+            ACCOUNT_CACHE_RATIO
+                + METADATA_CACHE_RATIO
+                + SHARD_CACHE_RATIO
+                + ASSET_SCHEME_CACHE_RATIO
                 + ASSET_CACHE_RATIO
         );
 
@@ -411,7 +414,8 @@ impl StateDB {
     /// Heap size used.
     pub fn mem_used(&self) -> usize {
         // TODO: account for LRU-cache overhead; this is a close approximation.
-        self.db.mem_used() + Self::mem_used_impl(&self.account_cache.lock())
+        self.db.mem_used()
+            + Self::mem_used_impl(&self.account_cache.lock())
             + Self::mem_used_impl(&self.shard_cache.lock())
             + Self::mem_used_impl(&self.asset_scheme_cache.lock())
             + Self::mem_used_impl(&self.asset_cache.lock())

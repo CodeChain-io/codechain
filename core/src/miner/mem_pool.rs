@@ -263,7 +263,8 @@ impl ParcelSet {
         };
 
         Some(to_drop.into_iter().fold(HashMap::new(), |mut removed, (sender, nonce)| {
-            let order = self.drop(&sender, &nonce)
+            let order = self
+                .drop(&sender, &nonce)
                 .expect("Parcel has just been found in `by_priority`; so it is in `by_address` also.");
             ctrace!(MEM_POOL, "Dropped out of limit parcel: {:?}", order.hash);
 
@@ -469,7 +470,8 @@ impl MemPool {
     pub fn remove_old<F>(&mut self, fetch_account: &F, current_time: PoolingInstant)
     where
         F: Fn(&Address) -> AccountDetails, {
-        let senders = self.current
+        let senders = self
+            .current
             .by_address
             .keys()
             .chain(self.future.by_address.keys())
@@ -483,7 +485,8 @@ impl MemPool {
         let max_time = self.max_time_in_pool;
         let balance_check = max_time >> 3;
         // Clear parcels occupying the pool too long
-        let invalid = self.by_hash
+        let invalid = self
+            .by_hash
             .iter()
             .filter(|&(_, ref parcel)| !parcel.origin.is_local())
             .map(|(hash, parcel)| (hash, parcel, current_time.saturating_sub(parcel.insertion_time)))
@@ -931,7 +934,8 @@ impl MemPool {
     fn mark_parcels_local(&mut self, sender: &Address) {
         fn mark_local<F: FnMut(H256)>(sender: &Address, set: &mut ParcelSet, mut mark: F) {
             // Mark all parcels from this sender as local
-            let nonces_from_sender = set.by_address
+            let nonces_from_sender = set
+                .by_address
                 .row(sender)
                 .map(|row_map| {
                     row_map

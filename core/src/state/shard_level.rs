@@ -334,7 +334,8 @@ impl<B: Backend + ShardBackend> ShardStateInternal for ShardLevelState<B> {
             let asset_type = input.prev_out.asset_type.clone();
             let asset_scheme_address = AssetSchemeAddress::from_hash(asset_type)
                 .ok_or(TransactionError::AssetSchemeNotFound(asset_type.into()))?;
-            let _asset_scheme = self.asset_scheme((&asset_scheme_address).into())?
+            let _asset_scheme = self
+                .asset_scheme((&asset_scheme_address).into())?
                 .ok_or(TransactionError::AssetSchemeNotFound(asset_scheme_address.into()))?;
 
             match self.asset(&address)? {
