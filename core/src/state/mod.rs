@@ -35,7 +35,6 @@ mod address;
 
 mod backend;
 mod info;
-mod shard;
 mod shard_level;
 mod shard_metadata;
 mod shard_state;
@@ -45,7 +44,6 @@ mod traits;
 
 pub use self::backend::{Backend, Basic as BasicBackend, ShardBackend, TopBackend};
 pub use self::info::{ShardStateInfo, TopStateInfo};
-pub use self::shard::{Shard, ShardAddress};
 pub use self::shard_metadata::{ShardMetadata, ShardMetadataAddress};
 pub use self::shard_state::ShardState;
 pub use self::top_level::TopLevelState;

@@ -38,10 +38,11 @@
 //! merkle trie is strictly necessary.
 
 use ckey::Address;
-use cstate::{Account, Asset, AssetAddress, AssetScheme, AssetSchemeAddress, Metadata, MetadataAddress};
+use cstate::{
+    Account, Asset, AssetAddress, AssetScheme, AssetSchemeAddress, Metadata, MetadataAddress, Shard, ShardAddress,
+};
 use hashdb::{AsHashDB, HashDB};
 
-use super::{Shard, ShardAddress};
 
 /// State backend. See module docs for more details.
 pub trait Backend: Send {
