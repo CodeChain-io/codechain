@@ -40,6 +40,7 @@ use std::fmt;
 
 use ccrypto::BLAKE_NULL_RLP;
 use ckey::{Address, Public};
+use cstate::{Cache, CacheableItem};
 use ctypes::invoice::Invoice;
 use ctypes::parcel::{Action, ChangeShard, Error as ParcelError, Outcome as ParcelOutcome};
 use ctypes::transaction::{Outcome as TransactionOutcome, Transaction};
@@ -54,7 +55,6 @@ use super::account::Account;
 use super::asset::{Asset, AssetAddress};
 use super::asset_scheme::{AssetScheme, AssetSchemeAddress};
 use super::backend::{Backend, ShardBackend, TopBackend};
-use super::cache::{Cache, CacheableItem};
 use super::info::{ShardStateInfo, TopStateInfo};
 use super::metadata::{Metadata, MetadataAddress};
 use super::shard::{Shard, ShardAddress};

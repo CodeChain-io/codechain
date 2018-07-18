@@ -5,3 +5,6 @@ authors = ["CodeChain Team <codechain@kodebox.io>"]
 
 [dependencies]
 codechain-types = { path = "../types" }
+log = "0.4.1"
+patricia-trie = { path = "../util/patricia_trie" }
+rlp = { path = "../util/rlp" }

@@ -14,12 +14,4 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-extern crate codechain_types as ctypes;
-#[macro_use]
-extern crate log;
-extern crate patricia_trie as trie;
-extern crate rlp;
-
-mod item;
-
-pub use item::cache::{Cache, CacheableItem};
+pub mod cache;

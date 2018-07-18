@@ -230,6 +230,7 @@ dependencies = [
  "codechain-logger 0.1.0",
  "codechain-merkle 0.1.0",
  "codechain-network 0.1.0",
+ "codechain-state 0.1.0",
  "codechain-types 0.1.0",
  "codechain-vm 0.1.0",
  "cuckoo 0.1.0 (git+https://github.com/CodeChain-io/rust-cuckoo.git?rev=280cab9c)",
@@ -431,6 +432,16 @@ dependencies = [
  "serde_derive 1.0.53 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 1.0.17 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio-core 0.1.17 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "codechain-state"
+version = "0.1.0"
+dependencies = [
+ "codechain-types 0.1.0",
+ "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "patricia-trie 0.1.0",
+ "rlp 0.2.1",
 ]
 
 [[package]]

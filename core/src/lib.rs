@@ -24,6 +24,7 @@ extern crate codechain_keystore as ckeystore;
 extern crate codechain_logger as clogger;
 extern crate codechain_merkle as cmerkle;
 extern crate codechain_network as cnetwork;
+extern crate codechain_state as cstate;
 extern crate codechain_types as ctypes;
 extern crate codechain_vm as cvm;
 extern crate cuckoo;
