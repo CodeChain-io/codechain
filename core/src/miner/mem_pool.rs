@@ -25,6 +25,7 @@ use heapsize::HeapSizeOf;
 use linked_hash_map::LinkedHashMap;
 use multimap::MultiMap;
 use primitives::{H256, U256};
+use rlp;
 use table::Table;
 
 use super::super::parcel::SignedParcel;
@@ -608,7 +609,8 @@ impl MemPool {
     }
 
     /// Returns top parcels from the pool ordered by priority.
-    pub fn top_parcels(&self) -> Vec<SignedParcel> {
+    pub fn top_parcels(&self, size_limit: usize) -> Vec<SignedParcel> {
+        let mut current_size: usize = 0;
         self.current
             .by_priority
             .iter()
@@ -616,6 +618,12 @@ impl MemPool {
                 self.by_hash
                     .get(&t.hash)
                     .expect("All parcels in `current` and `future` are always included in `by_hash`")
+            })
+            .take_while(|t| {
+                let encoded_byte_array: Vec<u8> = rlp::encode(&t.parcel).into_vec();
+                let size_in_byte = encoded_byte_array.len();
+                current_size += size_in_byte;
+                return current_size < size_limit
             })
             .map(|t| t.parcel.clone())
             .collect()

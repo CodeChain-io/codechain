@@ -347,7 +347,8 @@ impl Miner {
     /// Prepares new block for sealing including top parcels from queue.
     fn prepare_block<C: AccountData + BlockChain + BlockProducer>(&self, chain: &C) -> (ClosedBlock, Option<H256>) {
         let (parcels, mut open_block, original_work_hash) = {
-            let parcels = self.mem_pool.read().top_parcels();
+            let max_body_size = self.engine.params().max_body_size;
+            let parcels = self.mem_pool.read().top_parcels(max_body_size);
             let mut sealing_work = self.sealing_work.lock();
             let last_work_hash = sealing_work.queue.peek_last_ref().map(|pb| pb.block().header().hash());
 
@@ -742,7 +743,8 @@ impl MinerService for Miner {
     }
 
     fn ready_parcels(&self) -> Vec<SignedParcel> {
-        self.mem_pool.read().top_parcels()
+        let max_body_size = self.engine.params().max_body_size;
+        self.mem_pool.read().top_parcels(max_body_size)
     }
 
     /// Get a list of all future parcels.

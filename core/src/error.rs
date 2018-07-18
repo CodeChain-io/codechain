@@ -112,6 +112,8 @@ pub enum BlockError {
     TooManyParcels(Address),
     /// Parent given is unknown.
     UnknownParent(H256),
+    /// Body size limit is exceeded.
+    BodySizeIsTooBig,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -153,6 +155,7 @@ impl fmt::Display for BlockError {
             RidiculousNumber(oob) => format!("Implausible block number. {}", oob),
             UnknownParent(hash) => format!("Unknown parent: {}", hash),
             TooManyParcels(address) => format!("Too many parcels from: {}", address),
+            BodySizeIsTooBig => format!("Block's body size is too big"),
         };
 
         f.write_fmt(format_args!("Block error ({})", msg))
