@@ -8,17 +8,11 @@ CodeChain has a subcommand called ``account``. These commands are used to manage
     ``create``
         create account
 
-        ``--passphrase <PASSWORD>``
-            account passphrase
+    ``import <JSON_FILE_PATH>``
+        import JSON key file
 
-    ``import``
+    ``import-raw <RAW_KEY>``
         import private key
-
-        ``--passphrase <PASSWORD>``
-            set account passphrase
-
-        ``--raw-key <RAW-KEY>``
-            specify key to import
 
     ``list``
         list managed accounts
