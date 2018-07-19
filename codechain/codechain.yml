@@ -67,6 +67,11 @@ args:
     - no-parcel-relay:
         long: no-parcel-relay
         help: Do not relay parcels.
+    - jsonrpc-interface:
+        long: jsonrpc-interface
+        value_name: INTERFACE
+        help: Specify the interface address for rpc connections
+        takes_value: true
     - jsonrpc-port:
         long: jsonrpc-port
         value_name: PORT

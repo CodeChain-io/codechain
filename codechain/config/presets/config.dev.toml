@@ -30,6 +30,7 @@ address = "127.0.0.1"
 
 [rpc]
 disable = false
+interface = "127.0.0.1"
 port = 8080
 
 [ipc]
