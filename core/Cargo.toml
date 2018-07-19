@@ -15,7 +15,6 @@ codechain-merkle = { path = "../util/merkle" }
 codechain-network = { path = "../network" }
 codechain-state = { path = "../state" }
 codechain-types = { path = "../types" }
-codechain-vm = { path = "../vm" }
 cuckoo = { git = "https://github.com/CodeChain-io/rust-cuckoo.git", rev = "280cab9c" }
 hashdb = { path = "../util/hashdb" }
 heapsize = "0.4"

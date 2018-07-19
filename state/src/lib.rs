@@ -20,6 +20,7 @@ extern crate codechain_crypto as ccrypto;
 extern crate codechain_logger as clogger;
 extern crate codechain_key as ckey;
 extern crate codechain_types as ctypes;
+extern crate codechain_vm as cvm;
 extern crate hashdb;
 extern crate journaldb;
 extern crate kvdb;
@@ -36,12 +37,14 @@ extern crate rlp;
 extern crate rustc_hex;
 #[macro_use]
 extern crate serde_derive;
+extern crate unexpected;
 extern crate util_error;
 
 mod backend;
 mod checkpoint;
 mod db;
 mod error;
+mod impls;
 mod item;
 mod traits;
 
@@ -52,6 +55,7 @@ pub use backend::{Backend, Basic as BasicBackend, ShardBackend, TopBackend};
 pub use checkpoint::{CheckpointId, StateWithCheckpoint};
 pub use db::StateDB;
 pub use error::Error as StateError;
+pub use impls::ShardLevelState;
 pub use item::account::Account;
 pub use item::asset::{Asset, AssetAddress};
 pub use item::asset_scheme::{AssetScheme, AssetSchemeAddress};

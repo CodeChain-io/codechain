@@ -20,11 +20,6 @@ use std::fmt;
 
 use ccrypto::{Blake, BLAKE_NULL_RLP};
 use ckey::Address;
-use cstate::{
-    Asset, AssetAddress, AssetScheme, AssetSchemeAddress, Backend, Cache, CheckpointId, ShardBackend, ShardMetadata,
-    ShardMetadataAddress, ShardState, ShardStateInfo, StateDB, StateError, StateResult, StateWithCache,
-    StateWithCheckpoint,
-};
 use ctypes::invoice::Invoice;
 use ctypes::transaction::{
     AssetMintOutput, AssetTransferInput, AssetTransferOutput, Error as TransactionError, Outcome as TransactionOutcome,
@@ -35,6 +30,13 @@ use primitives::{Bytes, H256, U128};
 use rlp::Encodable;
 use trie::{self, Result as TrieResult, Trie, TrieError, TrieFactory};
 use unexpected::Mismatch;
+
+use super::super::backend::{Backend, ShardBackend};
+use super::super::checkpoint::{CheckpointId, StateWithCheckpoint};
+use super::super::item::cache::Cache;
+use super::super::traits::{ShardState, ShardStateInfo, StateWithCache};
+use super::super::{Asset, AssetAddress, AssetScheme, AssetSchemeAddress, ShardMetadata, ShardMetadataAddress};
+use super::super::{StateDB, StateError, StateResult};
 
 
 pub struct ShardLevelState<B> {
@@ -132,118 +134,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
             }
         }
     }
-}
 
-impl<B: Backend + ShardBackend> ShardStateInfo for ShardLevelState<B> {
-    fn root(&self) -> &H256 {
-        &self.root
-    }
-
-    fn asset_scheme(&self, a: &AssetSchemeAddress) -> trie::Result<Option<AssetScheme>> {
-        let cached_asset = self.db.get_cached_asset_scheme(&a).and_then(|asset_scheme| asset_scheme);
-        if cached_asset.is_some() {
-            return Ok(cached_asset)
-        }
-
-        let trie = self.trie_factory.readonly(self.db.as_hashdb(), &self.root)?;
-        Ok(trie.get_with(a.as_ref(), ::rlp::decode::<AssetScheme>)?)
-    }
-
-    fn asset(&self, a: &AssetAddress) -> trie::Result<Option<Asset>> {
-        let cached_asset = self.db.get_cached_asset(&a).and_then(|asset| asset);
-        if cached_asset.is_some() {
-            return Ok(cached_asset)
-        }
-
-        let trie = self.trie_factory.readonly(self.db.as_hashdb(), &self.root)?;
-        Ok(trie.get_with(a.as_ref(), ::rlp::decode::<Asset>)?)
-    }
-}
-
-impl<B> StateWithCheckpoint for ShardLevelState<B> {
-    fn create_checkpoint(&mut self, id: CheckpointId) {
-        self.id_of_checkpoints.push(id);
-        self.asset_scheme.checkpoint();
-        self.asset.checkpoint();
-    }
-
-    fn discard_checkpoint(&mut self, id: CheckpointId) {
-        let expected = self.id_of_checkpoints.pop().expect("The checkpoint must exist");
-        assert_eq!(expected, id);
-
-        self.asset_scheme.discard_checkpoint();
-        self.asset.discard_checkpoint();
-    }
-
-    fn revert_to_checkpoint(&mut self, id: CheckpointId) {
-        let expected = self.id_of_checkpoints.pop().expect("The checkpoint must exist");
-        assert_eq!(expected, id);
-
-        self.asset_scheme.revert_to_checkpoint();
-        self.asset.revert_to_checkpoint();
-    }
-}
-
-impl<B: Backend + ShardBackend> StateWithCache for ShardLevelState<B> {
-    fn commit(&mut self) -> TrieResult<()> {
-        let mut trie = self.trie_factory.from_existing(self.db.as_hashdb_mut(), &mut self.root)?;
-        self.asset_scheme.commit(&mut trie)?;
-        self.asset.commit(&mut trie)?;
-        Ok(())
-    }
-
-    fn propagate_to_global_cache(&mut self) {
-        let ref mut db = self.db;
-        self.asset_scheme.propagate_to_global_cache(|address, item, modified| {
-            db.add_to_asset_scheme_cache(address, item, modified);
-        });
-        self.asset.propagate_to_global_cache(|address, item, modified| {
-            db.add_to_asset_cache(address, item, modified);
-        });
-    }
-
-    fn clear(&mut self) {
-        self.asset_scheme.clear();
-        self.asset.clear();
-    }
-}
-
-trait ShardStateInternal {
-    fn mint_asset(
-        &mut self,
-        transaction_hash: H256,
-        metadata: &String,
-        lock_script_hash: &H256,
-        parameters: &Vec<Bytes>,
-        amount: &Option<u64>,
-        registrar: &Option<Address>,
-    ) -> StateResult<()>;
-
-    fn transfer_asset(
-        &mut self,
-        transaction: &Transaction,
-        burns: &[AssetTransferInput],
-        inputs: &[AssetTransferInput],
-        outputs: &[AssetTransferOutput],
-    ) -> StateResult<()>;
-
-    fn kill_asset(&mut self, account: &AssetAddress);
-
-
-    fn require_asset_scheme<'a, F>(
-        &'a self,
-        a: &AssetSchemeAddress,
-        default: F,
-    ) -> trie::Result<RefMut<'a, AssetScheme>>
-    where
-        F: FnOnce() -> AssetScheme;
-
-    fn require_asset<'a, F>(&'a self, a: &AssetAddress, default: F) -> trie::Result<RefMut<'a, Asset>>
-    where
-        F: FnOnce() -> Asset;
-}
-
-impl<B: Backend + ShardBackend> ShardStateInternal for ShardLevelState<B> {
     fn mint_asset(
         &mut self,
         transaction_hash: H256,
@@ -391,6 +282,80 @@ impl<B: Backend + ShardBackend> ShardStateInternal for ShardLevelState<B> {
         let db = self.trie_factory.readonly(self.db.as_hashdb(), &self.root)?;
         let from_db = || self.db.get_cached_asset(a);
         self.asset.require_item_or_from(a, default, db, from_db)
+    }
+}
+
+impl<B: Backend + ShardBackend> ShardStateInfo for ShardLevelState<B> {
+    fn root(&self) -> &H256 {
+        &self.root
+    }
+
+    fn asset_scheme(&self, a: &AssetSchemeAddress) -> trie::Result<Option<AssetScheme>> {
+        let cached_asset = self.db.get_cached_asset_scheme(&a).and_then(|asset_scheme| asset_scheme);
+        if cached_asset.is_some() {
+            return Ok(cached_asset)
+        }
+
+        let trie = self.trie_factory.readonly(self.db.as_hashdb(), &self.root)?;
+        Ok(trie.get_with(a.as_ref(), ::rlp::decode::<AssetScheme>)?)
+    }
+
+    fn asset(&self, a: &AssetAddress) -> trie::Result<Option<Asset>> {
+        let cached_asset = self.db.get_cached_asset(&a).and_then(|asset| asset);
+        if cached_asset.is_some() {
+            return Ok(cached_asset)
+        }
+
+        let trie = self.trie_factory.readonly(self.db.as_hashdb(), &self.root)?;
+        Ok(trie.get_with(a.as_ref(), ::rlp::decode::<Asset>)?)
+    }
+}
+
+impl<B> StateWithCheckpoint for ShardLevelState<B> {
+    fn create_checkpoint(&mut self, id: CheckpointId) {
+        self.id_of_checkpoints.push(id);
+        self.asset_scheme.checkpoint();
+        self.asset.checkpoint();
+    }
+
+    fn discard_checkpoint(&mut self, id: CheckpointId) {
+        let expected = self.id_of_checkpoints.pop().expect("The checkpoint must exist");
+        assert_eq!(expected, id);
+
+        self.asset_scheme.discard_checkpoint();
+        self.asset.discard_checkpoint();
+    }
+
+    fn revert_to_checkpoint(&mut self, id: CheckpointId) {
+        let expected = self.id_of_checkpoints.pop().expect("The checkpoint must exist");
+        assert_eq!(expected, id);
+
+        self.asset_scheme.revert_to_checkpoint();
+        self.asset.revert_to_checkpoint();
+    }
+}
+
+impl<B: Backend + ShardBackend> StateWithCache for ShardLevelState<B> {
+    fn commit(&mut self) -> TrieResult<()> {
+        let mut trie = self.trie_factory.from_existing(self.db.as_hashdb_mut(), &mut self.root)?;
+        self.asset_scheme.commit(&mut trie)?;
+        self.asset.commit(&mut trie)?;
+        Ok(())
+    }
+
+    fn propagate_to_global_cache(&mut self) {
+        let ref mut db = self.db;
+        self.asset_scheme.propagate_to_global_cache(|address, item, modified| {
+            db.add_to_asset_scheme_cache(address, item, modified);
+        });
+        self.asset.propagate_to_global_cache(|address, item, modified| {
+            db.add_to_asset_cache(address, item, modified);
+        });
+    }
+
+    fn clear(&mut self) {
+        self.asset_scheme.clear();
+        self.asset.clear();
     }
 }
 

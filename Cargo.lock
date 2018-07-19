@@ -232,7 +232,6 @@ dependencies = [
  "codechain-network 0.1.0",
  "codechain-state 0.1.0",
  "codechain-types 0.1.0",
- "codechain-vm 0.1.0",
  "cuckoo 0.1.0 (git+https://github.com/CodeChain-io/rust-cuckoo.git?rev=280cab9c)",
  "hashdb 0.1.1",
  "heapsize 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -440,6 +439,7 @@ dependencies = [
  "codechain-key 0.1.0",
  "codechain-logger 0.1.0",
  "codechain-types 0.1.0",
+ "codechain-vm 0.1.0",
  "hashdb 0.1.1",
  "journaldb 0.1.0",
  "kvdb 0.1.0",
@@ -453,6 +453,7 @@ dependencies = [
  "rustc-hex 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.53 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.53 (registry+https://github.com/rust-lang/crates.io-index)",
+ "unexpected 0.1.0",
  "util-error 0.1.0",
 ]
 

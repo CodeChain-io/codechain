@@ -9,6 +9,7 @@ codechain-crypto = { path = "../crypto" }
 codechain-logger = { path = "../util/logger" }
 codechain-key = { path = "../key", features = ["ecdsa"] }
 codechain-types = { path = "../types" }
+codechain-vm = { path = "../vm" }
 hashdb = { path = "../util/hashdb" }
 journaldb = { path = "../util/journaldb" }
 kvdb = { path = "../util/kvdb" }
@@ -22,4 +23,5 @@ rlp = { path = "../util/rlp" }
 rustc-hex = "1.0"
 serde = "1.0"
 serde_derive = "1.0"
+unexpected = { path = "../util/unexpected" }
 util-error = { path = "../util/error" }
