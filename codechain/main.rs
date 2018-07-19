@@ -213,7 +213,7 @@ fn new_miner(config: &config::Config, spec: &Spec, ap: Arc<AccountProvider>) -> 
             }
         }
         EngineType::InternalSealing => match config.mining.engine_signer {
-            Some(engine_signer) => match ap.has_account(engine_signer) {
+            Some(engine_signer) => match ap.has_account(&engine_signer) {
                 Ok(has_account) if !has_account => {
                     return Err("mining.engine_signer is not found in AccountProvider".to_string())
                 }

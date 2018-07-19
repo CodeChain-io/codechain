@@ -238,8 +238,8 @@ impl SignedParcel {
     }
 
     /// Returns parcel sender.
-    pub fn sender(&self) -> Address {
-        self.sender.clone()
+    pub fn sender(&self) -> &Address {
+        &self.sender
     }
 
     /// Returns a public key of the sender.

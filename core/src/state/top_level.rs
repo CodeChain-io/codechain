@@ -292,7 +292,7 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopLevelState<B> {
 
     fn apply_internal(&mut self, parcel: &SignedParcel) -> Result<ParcelOutcome, Error> {
         let fee_payer = parcel.sender();
-        let nonce = self.nonce(&fee_payer)?;
+        let nonce = self.nonce(fee_payer)?;
 
         if parcel.nonce != nonce {
             return Err(ParcelError::InvalidNonce {
@@ -302,22 +302,22 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopLevelState<B> {
         }
 
         let fee = parcel.as_unsigned().fee;
-        let balance = self.balance(&fee_payer)?;
+        let balance = self.balance(fee_payer)?;
         if fee > balance {
             return Err(ParcelError::InsufficientBalance {
-                address: fee_payer,
+                address: *fee_payer,
                 cost: fee,
                 balance,
             }.into())
         }
 
-        self.inc_nonce(&fee_payer)?;
-        self.sub_balance(&fee_payer, &fee)?;
+        self.inc_nonce(fee_payer)?;
+        self.sub_balance(fee_payer, &fee)?;
 
         // The failed parcel also must pay the fee and increase nonce.
         self.create_checkpoint(PARCEL_ACTION_CHECKPOINT);
 
-        match self.apply_action(&parcel.action, &parcel.network_id, &fee_payer) {
+        match self.apply_action(&parcel.action, &parcel.network_id, fee_payer) {
             Ok(outcome) => {
                 self.discard_checkpoint(PARCEL_ACTION_CHECKPOINT);
                 Ok(outcome)
@@ -933,13 +933,13 @@ mod tests_parcel {
         };
         let signed_parcel = SignedParcel::new_with_sign(parcel, &secret().into());
         let sender = signed_parcel.sender();
-        state.add_balance(&sender, &4.into()).unwrap();
+        state.add_balance(sender, &4.into()).unwrap();
 
         match state.apply(&signed_parcel) {
             Err(Error::Parcel(err)) => {
                 assert_eq!(
                     ParcelError::InsufficientBalance {
-                        address: sender,
+                        address: *sender,
                         balance: 4.into(),
                         cost: 5.into(),
                     },
@@ -948,8 +948,8 @@ mod tests_parcel {
             }
             other => panic!("{:?}", other),
         }
-        assert_eq!(Ok(4.into()), state.balance(&sender));
-        assert_eq!(Ok(0.into()), state.nonce(&sender));
+        assert_eq!(Ok(4.into()), state.balance(sender));
+        assert_eq!(Ok(0.into()), state.nonce(sender));
     }
 
     #[test]
@@ -970,8 +970,8 @@ mod tests_parcel {
         };
         let signed_parcel = SignedParcel::new_with_sign(parcel, keypair.private());
         let sender = signed_parcel.sender();
-        assert_eq!(keypair.address(), sender);
-        state.add_balance(&sender, &20.into()).unwrap();
+        assert_eq!(&keypair.address(), sender);
+        state.add_balance(sender, &20.into()).unwrap();
 
         assert_eq!(
             ParcelOutcome::Single {
@@ -982,8 +982,8 @@ mod tests_parcel {
         );
 
         assert_eq!(Ok(10.into()), state.balance(&receiver));
-        assert_eq!(Ok(5.into()), state.balance(&sender));
-        assert_eq!(Ok(1.into()), state.nonce(&sender));
+        assert_eq!(Ok(5.into()), state.balance(sender));
+        assert_eq!(Ok(1.into()), state.nonce(sender));
     }
 
     #[test]
@@ -1003,7 +1003,7 @@ mod tests_parcel {
         };
         let signed_parcel = SignedParcel::new_with_sign(parcel, keypair.private());
         let sender = signed_parcel.sender();
-        assert_eq!(sender, keypair.address());
+        assert_eq!(sender, &keypair.address());
         state.add_balance(&sender, &5.into()).unwrap();
 
         assert_eq!(state.regular_key(&sender), Ok(None));
@@ -1034,14 +1034,14 @@ mod tests_parcel {
         };
         let signed_parcel = SignedParcel::new_with_sign(parcel, keypair.private());
         let sender = signed_parcel.sender();
-        assert_eq!(keypair.address(), sender);
-        state.add_balance(&sender, &20.into()).unwrap();
+        assert_eq!(&keypair.address(), sender);
+        state.add_balance(sender, &20.into()).unwrap();
 
         assert_eq!(
             ParcelOutcome::Single {
                 invoice: Invoice::Failed,
                 error: Some(ParcelError::InsufficientBalance {
-                    address: sender,
+                    address: *sender,
                     balance: 15.into(),
                     cost: 30.into(),
                 })
@@ -1050,8 +1050,8 @@ mod tests_parcel {
         );
 
         assert_eq!(Ok(0.into()), state.balance(&receiver));
-        assert_eq!(Ok(15.into()), state.balance(&sender));
-        assert_eq!(Ok(1.into()), state.nonce(&sender));
+        assert_eq!(Ok(15.into()), state.balance(sender));
+        assert_eq!(Ok(1.into()), state.nonce(sender));
     }
 
     #[test]

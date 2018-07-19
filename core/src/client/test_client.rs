@@ -269,7 +269,7 @@ impl TestBlockChainClient {
             },
         };
         let signed_parcel = SignedParcel::new_with_sign(parcel, keypair.private());
-        self.set_balance(signed_parcel.sender(), 10_000_000_000_000_000_000u64.into());
+        self.set_balance(*signed_parcel.sender(), 10_000_000_000_000_000_000u64.into());
         let hash = signed_parcel.hash();
         let res = self.miner.import_external_parcels(self, vec![signed_parcel.into()]);
         let res = res.into_iter().next().unwrap().expect("Successful import");
