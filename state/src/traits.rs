@@ -125,3 +125,14 @@ where
     fn create_shard(&mut self, shard_creation_cost: &U256, fee_payer: &Address) -> StateResult<()>;
     fn set_shard_root(&mut self, shard_id: u32, old_root: &H256, new_root: &H256) -> StateResult<()>;
 }
+
+pub trait StateWithCache {
+    /// Commits our cached account changes into the trie.
+    fn commit(&mut self) -> TrieResult<()>;
+
+    /// Propagate local cache into shared canonical state cache.
+    fn propagate_to_global_cache(&mut self);
+
+    /// Clear state cache
+    fn clear(&mut self);
+}

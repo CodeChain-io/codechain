@@ -43,7 +43,7 @@ use ckey::{Address, Public};
 use cstate::{
     Account, Asset, AssetAddress, AssetScheme, AssetSchemeAddress, Backend, Cache, CacheableItem, Metadata,
     MetadataAddress, Shard, ShardAddress, ShardBackend, ShardState, ShardStateInfo, StateDB, StateError, StateResult,
-    TopBackend, TopState, TopStateInfo,
+    StateWithCache, TopBackend, TopState, TopStateInfo,
 };
 use ctypes::invoice::Invoice;
 use ctypes::parcel::{Action, ChangeShard, Error as ParcelError, Outcome as ParcelOutcome};
@@ -54,7 +54,7 @@ use unexpected::Mismatch;
 
 use super::super::parcel::SignedParcel;
 use super::shard_level::ShardLevelState;
-use super::traits::{CheckpointId, StateWithCache, StateWithCheckpoint};
+use super::traits::{CheckpointId, StateWithCheckpoint};
 
 /// Representation of the entire state of all accounts in the system.
 ///

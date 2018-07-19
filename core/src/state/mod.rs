@@ -35,4 +35,3 @@ mod top_level;
 mod traits;
 
 pub use self::top_level::TopLevelState;
-pub use self::traits::StateWithCache;

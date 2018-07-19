@@ -57,6 +57,6 @@ pub use item::cache::{Cache, CacheableItem};
 pub use item::metadata::{Metadata, MetadataAddress};
 pub use item::shard::{Shard, ShardAddress};
 pub use item::shard_metadata::{ShardMetadata, ShardMetadataAddress};
-pub use traits::{ShardState, ShardStateInfo, TopState, TopStateInfo};
+pub use traits::{ShardState, ShardStateInfo, StateWithCache, TopState, TopStateInfo};
 
 pub type StateResult<T> = Result<T, StateError>;
