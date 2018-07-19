@@ -125,6 +125,11 @@ pub fn network_control(error: NetworkControlError) -> Error {
             message: "Cannot disconnect not connected node".into(),
             data: None,
         },
+        NetworkControlError::Disabled => Error {
+            code: ErrorCode::ServerError(codes::NETWORK_DISABLED),
+            message: "Network is diabled.".into(),
+            data: None,
+        },
     }
 }
 

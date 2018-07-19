@@ -20,19 +20,14 @@ use ccore::{AccountProvider, Client, Miner};
 use cnetwork::NetworkControl;
 use crpc::{MetaIoHandler, Params, Value};
 
-pub struct ApiDependencies<NC>
-where
-    NC: 'static + NetworkControl + Send + Sync, {
+pub struct ApiDependencies {
     pub client: Arc<Client>,
     pub miner: Arc<Miner>,
-    pub network_control: Option<Arc<NC>>,
+    pub network_control: Arc<NetworkControl>,
     pub account_provider: Arc<AccountProvider>,
 }
 
-impl<NC> ApiDependencies<NC>
-where
-    NC: 'static + NetworkControl + Send + Sync,
-{
+impl ApiDependencies {
     pub fn extend_api(&self, handler: &mut MetaIoHandler<()>) {
         use crpc::v1::*;
         handler.extend_with(ChainClient::new(&self.client, &self.miner).to_delegate());
