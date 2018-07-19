@@ -17,6 +17,7 @@
 use ckey::{Address, Public};
 use cstate::{Asset, AssetScheme};
 use ctypes::invoice::{Invoice, ParcelInvoice};
+use ctypes::parcel::ChangeShard;
 use ctypes::{BlockNumber, ShardId};
 use primitives::{H160, H256, U256};
 
@@ -101,5 +102,9 @@ build_rpc_trait! {
         /// Gets coinbase's account id
         # [rpc(name = "chain_getCoinbase")]
         fn get_coinbase(&self) -> Result<Option<Address>>;
+
+        /// Execute Transactions
+        # [rpc(name = "chain_executeTransactions")]
+        fn execute_change_shard_state(&self, Bytes) -> Result<Vec<ChangeShard>>;
     }
 }

@@ -24,6 +24,8 @@ use ckey::{Address, Public};
 use cnetwork::NodeId;
 use cstate::{Asset, AssetAddress, AssetScheme, AssetSchemeAddress, StateDB, TopLevelState, TopStateInfo};
 use ctypes::invoice::ParcelInvoice;
+use ctypes::parcel::ChangeShard;
+use ctypes::transaction::Transaction;
 use ctypes::{BlockNumber, ShardId};
 use journaldb;
 use kvdb::{DBTransaction, KeyValueDB};
@@ -53,8 +55,8 @@ use super::super::views::{BlockView, HeaderView};
 use super::{
     AccountData, AssetClient, Balance, BlockChain as BlockChainTrait, BlockChainClient, BlockChainInfo, BlockInfo,
     BlockProducer, ChainInfo, ChainNotify, ClientConfig, DatabaseClient, EngineClient, Error as ClientError,
-    ImportBlock, ImportResult, ImportSealedBlock, Invoice, MiningBlockChainClient, Nonce, ParcelInfo, PrepareOpenBlock,
-    RegularKey, ReopenBlock, Shard, StateOrBlock, TransactionInfo,
+    ExecuteClient, ImportBlock, ImportResult, ImportSealedBlock, Invoice, MiningBlockChainClient, Nonce, ParcelInfo,
+    PrepareOpenBlock, RegularKey, ReopenBlock, Shard, StateOrBlock, TransactionInfo,
 };
 
 const MAX_MEM_POOL_SIZE: usize = 4096;
@@ -271,6 +273,17 @@ impl AssetClient for Client {
         } else {
             Ok(None)
         }
+    }
+}
+
+impl ExecuteClient for Client {
+    fn execute_transactions(&self, transactions: &[Transaction]) -> Result<Vec<ChangeShard>, Error> {
+        let state = Client::state_at(&self, BlockId::Latest).expect("Latest state MUST exist");
+        let mut shard_ids: Vec<u32> = transactions.iter().flat_map(Transaction::related_shards).collect();
+        shard_ids.sort_unstable();
+        shard_ids.dedup();
+
+        Ok(shard_ids.iter().flat_map(|shard_id| state.apply_transactions(transactions, *shard_id)).collect())
     }
 }
 
