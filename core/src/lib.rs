@@ -74,7 +74,6 @@ mod pod_shard_metadata;
 mod pod_state;
 mod service;
 mod spec;
-mod state;
 mod types;
 mod verification;
 mod views;

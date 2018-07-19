@@ -24,7 +24,6 @@ use rlp::{self, RlpStream};
 use super::super::header::Header;
 use super::super::parcel::SignedParcel;
 use super::super::spec::Spec;
-use super::super::state::TopLevelState;
 
 pub fn create_test_block(header: &Header) -> Bytes {
     let mut rlp = RlpStream::new_list(2);
@@ -69,9 +68,4 @@ pub fn get_temp_state_db() -> StateDB {
     let db = new_db();
     let journal_db = ::journaldb::new(db, ::journaldb::Algorithm::Archive, ::db::COL_STATE);
     StateDB::new(journal_db, 5 * 1024 * 1024)
-}
-
-pub fn get_temp_state() -> TopLevelState<StateDB> {
-    let journal_db = get_temp_state_db();
-    TopLevelState::new(journal_db, Default::default())
 }

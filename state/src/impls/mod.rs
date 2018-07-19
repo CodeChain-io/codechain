@@ -15,5 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 mod shard_level;
+mod top_level;
 
 pub use self::shard_level::ShardLevelState;
+pub use self::top_level::TopLevelState;

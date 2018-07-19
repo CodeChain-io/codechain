@@ -21,6 +21,7 @@ pub mod helpers {
     use kvdb::KeyValueDB;
     use kvdb_memorydb;
 
+    use super::super::impls::TopLevelState;
     use super::super::StateDB;
 
 
@@ -32,5 +33,10 @@ pub mod helpers {
         let db = new_db();
         let boxed_db = journaldb::new(db, Algorithm::Archive, None);
         StateDB::new(boxed_db, 5 * 1024 * 1024)
+    }
+
+    pub fn get_temp_state() -> TopLevelState<StateDB> {
+        let journal_db = get_temp_state_db();
+        TopLevelState::new(journal_db, Default::default())
     }
 }

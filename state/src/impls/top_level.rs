@@ -40,17 +40,22 @@ use std::fmt;
 
 use ccrypto::BLAKE_NULL_RLP;
 use ckey::{Address, Public};
-use cstate::{
-    Account, Asset, AssetAddress, AssetScheme, AssetSchemeAddress, Backend, Cache, CacheableItem, CheckpointId,
-    Metadata, MetadataAddress, Shard, ShardAddress, ShardBackend, ShardLevelState, ShardState, ShardStateInfo, StateDB,
-    StateError, StateResult, StateWithCache, StateWithCheckpoint, TopBackend, TopState, TopStateInfo,
-};
 use ctypes::invoice::Invoice;
 use ctypes::parcel::{Action, ChangeShard, Error as ParcelError, Outcome as ParcelOutcome, Parcel};
 use ctypes::transaction::{Outcome as TransactionOutcome, Transaction};
 use primitives::{H256, U256};
 use trie::{Result as TrieResult, Trie, TrieError, TrieFactory};
 use unexpected::Mismatch;
+
+use super::super::backend::{Backend, ShardBackend, TopBackend};
+use super::super::checkpoint::{CheckpointId, StateWithCheckpoint};
+use super::super::item::cache::{Cache, CacheableItem};
+use super::super::traits::{ShardState, ShardStateInfo, StateWithCache, TopState, TopStateInfo};
+use super::super::{
+    Account, Asset, AssetAddress, AssetScheme, AssetSchemeAddress, Metadata, MetadataAddress, Shard, ShardAddress,
+    ShardLevelState,
+};
+use super::super::{StateDB, StateError, StateResult};
 
 /// Representation of the entire state of all accounts in the system.
 ///
@@ -440,24 +445,7 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopLevelState<B> {
         self.set_shard_root(shard_id, &BLAKE_NULL_RLP, &shard_root)?;
         Ok(())
     }
-}
 
-trait TopStateInternal<B: Backend + TopBackend> {
-    fn ensure_account_cached<F, U>(&self, a: &Address, f: F) -> TrieResult<U>
-    where
-        F: Fn(Option<&Account>) -> U;
-
-    /// Check caches for required data
-    /// First searches for account in the local, then the shared cache.
-    /// Populates local cache if nothing found.
-    fn require_account<'a>(&'a self, a: &Address) -> TrieResult<RefMut<'a, Account>>;
-
-    fn require_metadata<'a>(&'a self) -> TrieResult<RefMut<'a, Metadata>>;
-
-    fn require_shard<'a>(&'a self, shard_id: u32) -> TrieResult<RefMut<'a, Shard>>;
-}
-
-impl<B: Backend + TopBackend> TopStateInternal<B> for TopLevelState<B> {
     /// Check caches for required data
     /// First searches for account in the local, then the shared cache.
     /// Populates local cache if nothing found.

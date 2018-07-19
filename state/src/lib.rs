@@ -55,7 +55,7 @@ pub use backend::{Backend, Basic as BasicBackend, ShardBackend, TopBackend};
 pub use checkpoint::{CheckpointId, StateWithCheckpoint};
 pub use db::StateDB;
 pub use error::Error as StateError;
-pub use impls::ShardLevelState;
+pub use impls::{ShardLevelState, TopLevelState};
 pub use item::account::Account;
 pub use item::asset::{Asset, AssetAddress};
 pub use item::asset_scheme::{AssetScheme, AssetSchemeAddress};

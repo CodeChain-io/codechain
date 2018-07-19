@@ -19,7 +19,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use ckey::Address;
-use cstate::{StateDB, StateError};
+use cstate::{StateDB, StateError, TopLevelState};
 use ctypes::parcel::Error as ParcelError;
 use ctypes::BlockNumber;
 use parking_lot::{Mutex, RwLock};
@@ -33,7 +33,6 @@ use super::super::error::Error;
 use super::super::header::Header;
 use super::super::parcel::{SignedParcel, UnverifiedParcel};
 use super::super::spec::Spec;
-use super::super::state::TopLevelState;
 use super::super::types::{BlockId, ParcelId};
 use super::mem_pool::{AccountDetails, MemPool, ParcelOrigin, RemovalReason};
 use super::sealing_queue::SealingQueue;
