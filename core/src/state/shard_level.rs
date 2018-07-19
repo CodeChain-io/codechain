@@ -21,8 +21,9 @@ use std::fmt;
 use ccrypto::{Blake, BLAKE_NULL_RLP};
 use ckey::Address;
 use cstate::{
-    Asset, AssetAddress, AssetScheme, AssetSchemeAddress, Backend, Cache, ShardBackend, ShardMetadata,
+    Asset, AssetAddress, AssetScheme, AssetSchemeAddress, Backend, Cache, CheckpointId, ShardBackend, ShardMetadata,
     ShardMetadataAddress, ShardState, ShardStateInfo, StateDB, StateError, StateResult, StateWithCache,
+    StateWithCheckpoint,
 };
 use ctypes::invoice::Invoice;
 use ctypes::transaction::{
@@ -35,7 +36,6 @@ use rlp::Encodable;
 use trie::{self, Result as TrieResult, Trie, TrieError, TrieFactory};
 use unexpected::Mismatch;
 
-use super::traits::{CheckpointId, StateWithCheckpoint};
 
 pub struct ShardLevelState<B> {
     db: B,

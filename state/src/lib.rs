@@ -39,6 +39,7 @@ extern crate serde_derive;
 extern crate util_error;
 
 mod backend;
+mod checkpoint;
 mod db;
 mod error;
 mod item;
@@ -48,6 +49,7 @@ mod traits;
 pub mod tests;
 
 pub use backend::{Backend, Basic as BasicBackend, ShardBackend, TopBackend};
+pub use checkpoint::{CheckpointId, StateWithCheckpoint};
 pub use db::StateDB;
 pub use error::Error as StateError;
 pub use item::account::Account;
