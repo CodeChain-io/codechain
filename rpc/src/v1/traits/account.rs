@@ -21,19 +21,19 @@ use primitives::{H160, H256};
 build_rpc_trait! {
     pub trait Account {
         /// Gets a list of accounts
-        # [rpc(name = "account_getAccountList")]
+        # [rpc(name = "account_getList")]
         fn get_account_list(&self) -> Result<Vec<Address>>;
 
         /// Creates a new account
-        # [rpc(name = "account_createAccount")]
+        # [rpc(name = "account_create")]
         fn create_account(&self, Option<String>) -> Result<Address>;
 
         /// Imports a private key
-        # [rpc(name = "account_createAccountFromSecret")]
+        # [rpc(name = "account_importRaw")]
         fn create_account_from_secret(&self, H256, Option<String>) -> Result<Address>;
 
         /// Removes the account
-        # [rpc(name = "account_removeAccount")]
+        # [rpc(name = "account_remove")]
         fn remove_account(&self, H160, Option<String>) -> Result<()>;
 
         /// Calculates the account's signature for a given message
