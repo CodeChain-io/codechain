@@ -40,6 +40,7 @@ extern crate util_error;
 
 mod backend;
 mod db;
+mod error;
 mod item;
 mod traits;
 
@@ -48,6 +49,7 @@ pub mod tests;
 
 pub use backend::{Backend, Basic as BasicBackend, ShardBackend, TopBackend};
 pub use db::StateDB;
+pub use error::Error as StateError;
 pub use item::account::Account;
 pub use item::asset::{Asset, AssetAddress};
 pub use item::asset_scheme::{AssetScheme, AssetSchemeAddress};
@@ -56,3 +58,5 @@ pub use item::metadata::{Metadata, MetadataAddress};
 pub use item::shard::{Shard, ShardAddress};
 pub use item::shard_metadata::{ShardMetadata, ShardMetadataAddress};
 pub use traits::{ShardState, ShardStateInfo, TopState, TopStateInfo};
+
+pub type StateResult<T> = Result<T, StateError>;

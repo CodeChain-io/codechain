@@ -20,7 +20,7 @@ use primitives::{H256, U256};
 use trie::Result as TrieResult;
 
 use super::backend::{ShardBackend, TopBackend};
-use super::{Asset, AssetAddress, AssetScheme, AssetSchemeAddress};
+use super::{Asset, AssetAddress, AssetScheme, AssetSchemeAddress, StateResult};
 
 
 pub trait TopStateInfo {
@@ -92,13 +92,13 @@ impl ShardStateInfo for () {
     }
 }
 
-pub trait ShardState<B, Error>
+pub trait ShardState<B>
 where
     B: ShardBackend, {
-    fn apply(&mut self, transaction: &Transaction, parcel_network_id: &u64) -> Result<TransactionOutcome, Error>;
+    fn apply(&mut self, transaction: &Transaction, parcel_network_id: &u64) -> StateResult<TransactionOutcome>;
 }
 
-pub trait TopState<B, Error>
+pub trait TopState<B>
 where
     B: TopBackend, {
     /// Remove an existing account.
@@ -114,14 +114,14 @@ where
     /// Subtract `decr` from the balance of account `a`.
     fn sub_balance(&mut self, a: &Address, decr: &U256) -> TrieResult<()>;
     /// Subtracts `by` from the balance of `from` and adds it to that of `to`.
-    fn transfer_balance(&mut self, from: &Address, to: &Address, by: &U256) -> Result<(), Error>;
+    fn transfer_balance(&mut self, from: &Address, to: &Address, by: &U256) -> StateResult<()>;
 
     /// Increment the nonce of account `a` by 1.
     fn inc_nonce(&mut self, a: &Address) -> TrieResult<()>;
 
     /// Set the regular key of account `a`
-    fn set_regular_key(&mut self, a: &Address, key: &Public) -> Result<(), Error>;
+    fn set_regular_key(&mut self, a: &Address, key: &Public) -> StateResult<()>;
 
-    fn create_shard(&mut self, shard_creation_cost: &U256, fee_payer: &Address) -> Result<(), Error>;
-    fn set_shard_root(&mut self, shard_id: u32, old_root: &H256, new_root: &H256) -> Result<(), Error>;
+    fn create_shard(&mut self, shard_creation_cost: &U256, fee_payer: &Address) -> StateResult<()>;
+    fn set_shard_root(&mut self, shard_id: u32, old_root: &H256, new_root: &H256) -> StateResult<()>;
 }

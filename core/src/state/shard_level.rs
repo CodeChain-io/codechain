@@ -22,7 +22,7 @@ use ccrypto::{Blake, BLAKE_NULL_RLP};
 use ckey::Address;
 use cstate::{
     Asset, AssetAddress, AssetScheme, AssetSchemeAddress, Backend, Cache, ShardBackend, ShardMetadata,
-    ShardMetadataAddress, ShardState, ShardStateInfo, StateDB,
+    ShardMetadataAddress, ShardState, ShardStateInfo, StateDB, StateError, StateResult,
 };
 use ctypes::invoice::Invoice;
 use ctypes::transaction::{
@@ -35,7 +35,6 @@ use rlp::Encodable;
 use trie::{self, Result as TrieResult, Trie, TrieError, TrieFactory};
 use unexpected::Mismatch;
 
-use super::super::error::Error;
 use super::traits::{CheckpointId, StateWithCache, StateWithCheckpoint};
 
 pub struct ShardLevelState<B> {
@@ -103,7 +102,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         (self.root, self.db)
     }
 
-    fn apply_internal(&mut self, transaction: &Transaction, parcel_network_id: &u64) -> Result<(), Error> {
+    fn apply_internal(&mut self, transaction: &Transaction, parcel_network_id: &u64) -> StateResult<()> {
         match transaction {
             Transaction::AssetMint {
                 metadata,
@@ -218,7 +217,7 @@ trait ShardStateInternal {
         parameters: &Vec<Bytes>,
         amount: &Option<u64>,
         registrar: &Option<Address>,
-    ) -> Result<(), Error>;
+    ) -> StateResult<()>;
 
     fn transfer_asset(
         &mut self,
@@ -226,7 +225,7 @@ trait ShardStateInternal {
         burns: &[AssetTransferInput],
         inputs: &[AssetTransferInput],
         outputs: &[AssetTransferOutput],
-    ) -> Result<(), Error>;
+    ) -> StateResult<()>;
 
     fn kill_asset(&mut self, account: &AssetAddress);
 
@@ -253,7 +252,7 @@ impl<B: Backend + ShardBackend> ShardStateInternal for ShardLevelState<B> {
         parameters: &Vec<Bytes>,
         amount: &Option<u64>,
         registrar: &Option<Address>,
-    ) -> Result<(), Error> {
+    ) -> StateResult<()> {
         let asset_scheme_address = AssetSchemeAddress::new(transaction_hash, self.shard_id);
         let amount = amount.unwrap_or(::std::u64::MAX);
         let asset_scheme = self.require_asset_scheme(&asset_scheme_address, || {
@@ -275,7 +274,7 @@ impl<B: Backend + ShardBackend> ShardStateInternal for ShardLevelState<B> {
         burns: &[AssetTransferInput],
         inputs: &[AssetTransferInput],
         outputs: &[AssetTransferOutput],
-    ) -> Result<(), Error> {
+    ) -> StateResult<()> {
         debug_assert!(is_input_and_output_consistent(inputs, outputs));
 
         for (input, burn) in inputs.iter().map(|input| (input, false)).chain(burns.iter().map(|input| (input, true))) {
@@ -446,8 +445,8 @@ fn is_input_and_output_consistent(inputs: &[AssetTransferInput], outputs: &[Asse
 
 const TRANSACTION_CHECKPOINT: CheckpointId = 456;
 
-impl<B: Backend + ShardBackend> ShardState<B, Error> for ShardLevelState<B> {
-    fn apply(&mut self, transaction: &Transaction, parcel_network_id: &u64) -> Result<TransactionOutcome, Error> {
+impl<B: Backend + ShardBackend> ShardState<B> for ShardLevelState<B> {
+    fn apply(&mut self, transaction: &Transaction, parcel_network_id: &u64) -> StateResult<TransactionOutcome> {
         ctrace!(TX, "Execute {:?}(TxHash:{:?})", transaction, transaction.hash());
 
         self.create_checkpoint(TRANSACTION_CHECKPOINT);
@@ -462,7 +461,7 @@ impl<B: Backend + ShardBackend> ShardState<B, Error> for ShardLevelState<B> {
                     error: None,
                 })
             }
-            Err(Error::Transaction(err)) => {
+            Err(StateError::Transaction(err)) => {
                 cinfo!(TX, "Cannot apply Tx({}): {:?}", transaction.hash(), err);
                 self.revert_to_checkpoint(TRANSACTION_CHECKPOINT);
                 Ok(TransactionOutcome {

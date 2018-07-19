@@ -19,6 +19,7 @@ use std::fmt;
 use ccore::AccountProviderError;
 use ccore::Error as CoreError;
 use cnetwork::control::Error as NetworkControlError;
+use cstate::StateError;
 use kvdb::Error as KVDBError;
 use rlp::DecoderError;
 
@@ -35,9 +36,26 @@ mod codes {
     pub const ACCOUNT_PROVIDER_ERROR: i64 = -32016;
 }
 
-pub fn parcel<T: Into<CoreError>>(error: T) -> Error {
+pub fn parcel_state<T: Into<StateError>>(error: T) -> Error {
     let error = error.into();
-    if let CoreError::Parcel(e) = error {
+    if let StateError::Parcel(e) = error {
+        Error {
+            code: ErrorCode::ServerError(codes::PARCEL_ERROR),
+            message: format!("{}", e),
+            data: None,
+        }
+    } else {
+        Error {
+            code: ErrorCode::ServerError(codes::UNKNOWN_ERROR),
+            message: "Unknown error when sending parcel.".into(),
+            data: Some(Value::String(format!("{:?}", error))),
+        }
+    }
+}
+
+pub fn parcel_core<T: Into<CoreError>>(error: T) -> Error {
+    let error = error.into();
+    if let CoreError::State(StateError::Parcel(e)) = error {
         Error {
             code: ErrorCode::ServerError(codes::PARCEL_ERROR),
             message: format!("{}", e),
