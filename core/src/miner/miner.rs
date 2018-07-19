@@ -19,7 +19,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use ckey::Address;
-use cstate::StateDB;
+use cstate::{StateDB, StateError};
 use ctypes::parcel::Error as ParcelError;
 use ctypes::BlockNumber;
 use parking_lot::{Mutex, RwLock};
@@ -210,7 +210,7 @@ impl Miner {
                 let hash = parcel.hash();
                 if client.parcel_block(ParcelId::Hash(hash)).is_some() {
                     cdebug!(MINER, "Rejected parcel {:?}: already in the blockchain", hash);
-                    return Err(Error::Parcel(ParcelError::AlreadyImported))
+                    return Err(StateError::from(ParcelError::AlreadyImported).into())
                 }
                 match self
                     .engine
@@ -242,7 +242,8 @@ impl Miner {
                             }
                         };
                         let hash = parcel.hash();
-                        let result = mem_pool.add(parcel, origin, insertion_time, &fetch_account)?;
+                        let result =
+                            mem_pool.add(parcel, origin, insertion_time, &fetch_account).map_err(StateError::from)?;
 
                         inserted.push(hash);
                         Ok(result)
@@ -368,7 +369,7 @@ impl Miner {
             let start = Instant::now();
             // Check whether parcel type is allowed for sender
             let result = match self.engine.machine().verify_parcel(&parcel, open_block.header(), chain) {
-                Err(Error::Parcel(ParcelError::NotAllowed)) => Err(ParcelError::NotAllowed.into()),
+                err @ Err(Error::State(StateError::Parcel(ParcelError::NotAllowed))) => err,
                 _ => open_block.push_parcel(parcel, None),
             };
             let took = start.elapsed();
@@ -376,8 +377,8 @@ impl Miner {
             ctrace!(MINER, "Adding parcel {:?} took {:?}", hash, took);
             match result {
                 // already have parcel - ignore
-                Err(Error::Parcel(ParcelError::AlreadyImported)) => {}
-                Err(Error::Parcel(ParcelError::NotAllowed)) => {
+                Err(Error::State(StateError::Parcel(ParcelError::AlreadyImported))) => {}
+                Err(Error::State(StateError::Parcel(ParcelError::NotAllowed))) => {
                     non_allowed_parcels.insert(hash);
                     cdebug!(MINER, "Skipping non-allowed parcel for sender {:?}", hash);
                 }

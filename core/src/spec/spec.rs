@@ -20,7 +20,9 @@ use std::sync::Arc;
 use ccrypto::{blake256, BLAKE_NULL_RLP};
 use cjson;
 use ckey::Address;
-use cstate::{Backend, BasicBackend, Metadata, MetadataAddress, Shard, ShardAddress, ShardMetadataAddress};
+use cstate::{
+    Backend, BasicBackend, Metadata, MetadataAddress, Shard, ShardAddress, ShardMetadataAddress, StateResult,
+};
 use hashdb::HashDB;
 use memorydb::MemoryDB;
 use parking_lot::RwLock;
@@ -137,7 +139,7 @@ impl Spec {
         }
     }
 
-    fn initialize_state<DB: Backend>(&self, trie_factory: &TrieFactory, db: DB) -> Result<DB, Error> {
+    fn initialize_state<DB: Backend>(&self, trie_factory: &TrieFactory, db: DB) -> StateResult<DB> {
         let root = BLAKE_NULL_RLP;
         let (db, root) = self.initialize_accounts(trie_factory, db, root)?;
         let (db, root) = self.initialize_shards(trie_factory, db, root)?;
@@ -151,7 +153,7 @@ impl Spec {
         trie_factory: &TrieFactory,
         mut db: DB,
         mut root: H256,
-    ) -> Result<(DB, H256), Error> {
+    ) -> StateResult<(DB, H256)> {
         // basic accounts in spec.
         {
             let mut t = trie_factory.create(db.as_hashdb_mut(), &mut root);
@@ -171,7 +173,7 @@ impl Spec {
         trie_factory: &TrieFactory,
         mut db: DB,
         mut root: H256,
-    ) -> Result<(DB, H256), Error> {
+    ) -> StateResult<(DB, H256)> {
         let mut shard_roots = Vec::<(u32, H256)>::with_capacity(self.genesis_shards.len());
 
         // Initialize shard-level tries

@@ -42,8 +42,8 @@ use ccrypto::BLAKE_NULL_RLP;
 use ckey::{Address, Public};
 use cstate::{
     Account, Asset, AssetAddress, AssetScheme, AssetSchemeAddress, Backend, Cache, CacheableItem, Metadata,
-    MetadataAddress, Shard, ShardAddress, ShardBackend, ShardState, ShardStateInfo, StateDB, TopBackend, TopState,
-    TopStateInfo,
+    MetadataAddress, Shard, ShardAddress, ShardBackend, ShardState, ShardStateInfo, StateDB, StateError, StateResult,
+    TopBackend, TopState, TopStateInfo,
 };
 use ctypes::invoice::Invoice;
 use ctypes::parcel::{Action, ChangeShard, Error as ParcelError, Outcome as ParcelOutcome};
@@ -52,7 +52,6 @@ use primitives::{H256, U256};
 use trie::{Result as TrieResult, Trie, TrieError, TrieFactory};
 use unexpected::Mismatch;
 
-use super::super::error::Error;
 use super::super::parcel::SignedParcel;
 use super::shard_level::ShardLevelState;
 use super::traits::{CheckpointId, StateWithCache, StateWithCheckpoint};
@@ -273,11 +272,11 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopLevelState<B> {
 
     /// Execute a given parcel, charging parcel fee.
     /// This will change the state accordingly.
-    pub fn apply(&mut self, parcel: &SignedParcel) -> Result<ParcelOutcome, Error> {
+    pub fn apply(&mut self, parcel: &SignedParcel) -> StateResult<ParcelOutcome> {
         self.create_checkpoint(PARCEL_FEE_CHECKPOINT);
 
         match self.apply_internal(parcel) {
-            Err(Error::Transaction(_)) => unreachable!(),
+            Err(StateError::Transaction(_)) => unreachable!(),
             Err(err) => {
                 self.revert_to_checkpoint(PARCEL_FEE_CHECKPOINT);
                 Err(err)
@@ -290,7 +289,7 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopLevelState<B> {
         }
     }
 
-    fn apply_internal(&mut self, parcel: &SignedParcel) -> Result<ParcelOutcome, Error> {
+    fn apply_internal(&mut self, parcel: &SignedParcel) -> StateResult<ParcelOutcome> {
         let fee_payer = parcel.sender();
         let nonce = self.nonce(&fee_payer)?;
 
@@ -329,7 +328,7 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopLevelState<B> {
         }
     }
 
-    fn apply_action(&mut self, action: &Action, network_id: &u64, fee_payer: &Address) -> Result<ParcelOutcome, Error> {
+    fn apply_action(&mut self, action: &Action, network_id: &u64, fee_payer: &Address) -> StateResult<ParcelOutcome> {
         match action {
             Action::ChangeShardState {
                 transactions,
@@ -355,7 +354,7 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopLevelState<B> {
                     invoice: Invoice::Success,
                     error: None,
                 }),
-                Err(Error::Parcel(
+                Err(StateError::Parcel(
                     err @ ParcelError::InsufficientBalance {
                         ..
                     },
@@ -390,7 +389,7 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopLevelState<B> {
         transactions: &[Transaction],
         network_id: &u64,
         change: &ChangeShard,
-    ) -> Result<Vec<TransactionOutcome>, Error> {
+    ) -> StateResult<Vec<TransactionOutcome>> {
         let shard_id = change.shard_id;
 
         let shard_root = self.shard_root(shard_id)?.ok_or_else(|| ParcelError::InvalidShardId(shard_id))?;
@@ -425,7 +424,7 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopLevelState<B> {
         Ok(results)
     }
 
-    fn create_shard_level_state(&mut self) -> Result<(), Error> {
+    fn create_shard_level_state(&mut self) -> StateResult<()> {
         let (shard_id, shard_root, db) = {
             let mut metadata = self.require_metadata()?;
             let shard_id = metadata.increase_number_of_shards();
@@ -524,7 +523,7 @@ impl Clone for TopLevelState<StateDB> {
     }
 }
 
-impl<B: Backend + TopBackend + ShardBackend + Clone> TopState<B, Error> for TopLevelState<B> {
+impl<B: Backend + TopBackend + ShardBackend + Clone> TopState<B> for TopLevelState<B> {
     fn kill_account(&mut self, account: &Address) {
         self.account.remove(account);
     }
@@ -560,7 +559,7 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopState<B, Error> for TopL
         Ok(())
     }
 
-    fn transfer_balance(&mut self, from: &Address, to: &Address, by: &U256) -> Result<(), Error> {
+    fn transfer_balance(&mut self, from: &Address, to: &Address, by: &U256) -> StateResult<()> {
         let balance = self.balance(from)?;
         if &balance < by {
             return Err(ParcelError::InsufficientBalance {
@@ -579,12 +578,12 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopState<B, Error> for TopL
         Ok(())
     }
 
-    fn set_regular_key(&mut self, a: &Address, key: &Public) -> Result<(), Error> {
+    fn set_regular_key(&mut self, a: &Address, key: &Public) -> StateResult<()> {
         self.require_account(a)?.set_regular_key(key);
         Ok(())
     }
 
-    fn create_shard(&mut self, shard_creation_cost: &U256, fee_payer: &Address) -> Result<(), Error> {
+    fn create_shard(&mut self, shard_creation_cost: &U256, fee_payer: &Address) -> StateResult<()> {
         let balance = self.balance(fee_payer)?;
         if &balance < shard_creation_cost {
             return Err(ParcelError::InsufficientBalance {
@@ -600,7 +599,7 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopState<B, Error> for TopL
         Ok(())
     }
 
-    fn set_shard_root(&mut self, shard_id: u32, old_root: &H256, new_root: &H256) -> Result<(), Error> {
+    fn set_shard_root(&mut self, shard_id: u32, old_root: &H256, new_root: &H256) -> StateResult<()> {
         let mut shard = self.require_shard(shard_id)?;
         assert_eq!(old_root, shard.root());
         shard.set_root(*new_root);
@@ -903,7 +902,7 @@ mod tests_parcel {
         state.add_balance(&sender, &20.into()).unwrap();
 
         match state.apply(&signed_parcel) {
-            Err(Error::Parcel(err)) => {
+            Err(StateError::Parcel(err)) => {
                 assert_eq!(
                     ParcelError::InvalidNonce {
                         expected: 0.into(),
@@ -936,7 +935,7 @@ mod tests_parcel {
         state.add_balance(&sender, &4.into()).unwrap();
 
         match state.apply(&signed_parcel) {
-            Err(Error::Parcel(err)) => {
+            Err(StateError::Parcel(err)) => {
                 assert_eq!(
                     ParcelError::InsufficientBalance {
                         address: sender,
@@ -1600,7 +1599,7 @@ mod tests_parcel {
         state.add_balance(&sender, &U256::from(69u64)).unwrap();
 
         match state.apply(&signed_parcel).unwrap_err() {
-            Error::Parcel(err) => assert_eq!(ParcelError::InvalidShardId(0), err),
+            StateError::Parcel(err) => assert_eq!(ParcelError::InvalidShardId(0), err),
             other => panic!("{:?}", other),
         }
     }
@@ -1668,7 +1667,7 @@ mod tests_parcel {
         state.add_balance(&sender, &U256::from(120)).unwrap();
 
         match state.apply(&signed_parcel).unwrap_err() {
-            Error::Parcel(err) => assert_eq!(ParcelError::InvalidShardId(100), err),
+            StateError::Parcel(err) => assert_eq!(ParcelError::InvalidShardId(100), err),
             other => panic!("{:?}", other),
         }
     }
