@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use ckey::Address;
 use std::sync::Arc;
 
 use ccore::{AssetClient, BlockId, MinerService, MiningBlockChainClient, RegularKey, Shard, SignedParcel};
@@ -143,5 +144,9 @@ where
 
     fn get_pending_parcels(&self) -> Result<Vec<Parcel>> {
         Ok(self.client.ready_parcels().into_iter().map(|signed| signed.into()).collect())
+    }
+
+    fn get_coinbase(&self) -> Result<Address> {
+        Ok(self.miner.author())
     }
 }
