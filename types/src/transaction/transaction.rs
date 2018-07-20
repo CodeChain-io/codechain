@@ -52,6 +52,7 @@ pub enum Transaction {
     #[serde(rename_all = "camelCase")]
     AssetMint {
         network_id: u64,
+        shard_id: u32,
         metadata: String,
         registrar: Option<Address>,
         nonce: u64,
@@ -144,19 +145,20 @@ impl Decodable for Transaction {
     fn decode(d: &UntrustedRlp) -> Result<Self, DecoderError> {
         match d.val_at(0)? {
             ASSET_MINT_ID => {
-                if d.item_count()? != 8 {
+                if d.item_count()? != 9 {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
                 Ok(Transaction::AssetMint {
                     network_id: d.val_at(1)?,
-                    metadata: d.val_at(2)?,
+                    shard_id: d.val_at(2)?,
+                    metadata: d.val_at(3)?,
                     output: AssetMintOutput {
-                        lock_script_hash: d.val_at(3)?,
-                        parameters: d.val_at(4)?,
-                        amount: d.val_at(5)?,
+                        lock_script_hash: d.val_at(4)?,
+                        parameters: d.val_at(5)?,
+                        amount: d.val_at(6)?,
                     },
-                    registrar: d.val_at(6)?,
-                    nonce: d.val_at(7)?,
+                    registrar: d.val_at(7)?,
+                    nonce: d.val_at(8)?,
                 })
             }
             ASSET_TRANSFER_ID => {
@@ -181,6 +183,7 @@ impl Encodable for Transaction {
         match self {
             Transaction::AssetMint {
                 network_id,
+                shard_id,
                 metadata,
                 output:
                     AssetMintOutput {
@@ -191,9 +194,10 @@ impl Encodable for Transaction {
                 registrar,
                 nonce,
             } => s
-                .begin_list(8)
+                .begin_list(9)
                 .append(&ASSET_MINT_ID)
                 .append(network_id)
+                .append(shard_id)
                 .append(metadata)
                 .append(lock_script_hash)
                 .append(parameters)
