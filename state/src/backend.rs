@@ -39,6 +39,7 @@
 
 use ckey::Address;
 use hashdb::HashDB;
+use primitives::{Bytes, H256};
 
 use super::{
     Account, Asset, AssetAddress, AssetScheme, AssetSchemeAddress, Metadata, MetadataAddress, Shard, ShardAddress,
@@ -59,12 +60,14 @@ pub trait TopBackend: Send {
     fn add_to_account_cache(&mut self, addr: Address, data: Option<Account>, modified: bool);
     fn add_to_metadata_cache(&mut self, address: MetadataAddress, item: Option<Metadata>, modified: bool);
     fn add_to_shard_cache(&mut self, address: ShardAddress, item: Option<Shard>, modified: bool);
+    fn add_to_action_data_cache(&mut self, address: H256, item: Option<Bytes>, modified: bool);
 
     /// Get basic copy of the cached account. Not required to include storage.
     /// Returns 'None' if cache is disabled or if the account is not cached.
     fn get_cached_account(&self, addr: &Address) -> Option<Option<Account>>;
     fn get_cached_metadata(&self, addr: &MetadataAddress) -> Option<Option<Metadata>>;
     fn get_cached_shard(&self, addr: &ShardAddress) -> Option<Option<Shard>>;
+    fn get_cached_action_data(&self, key: &H256) -> Option<Option<Bytes>>;
 
     /// Get value from a cached account.
     /// `None` is passed to the closure if the account entry cached

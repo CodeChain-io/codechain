@@ -17,7 +17,7 @@
 use ckey::{Address, Public};
 use ctypes::transaction::{Outcome as TransactionOutcome, Transaction};
 use ctypes::ShardId;
-use primitives::{H256, U256};
+use primitives::{Bytes, H256, U256};
 use trie::Result as TrieResult;
 
 use super::backend::{ShardBackend, TopBackend};
@@ -42,6 +42,8 @@ pub trait TopStateInfo {
     fn asset_scheme(&self, shard_id: ShardId, a: &AssetSchemeAddress) -> TrieResult<Option<AssetScheme>>;
     /// Get the asset.
     fn asset(&self, shard_id: ShardId, a: &AssetAddress) -> TrieResult<Option<Asset>>;
+
+    fn action_data(&self, key: &H256) -> TrieResult<Bytes>;
 }
 
 pub trait ShardStateInfo {
@@ -83,7 +85,10 @@ where
     fn set_regular_key(&mut self, a: &Address, key: &Public) -> StateResult<()>;
 
     fn create_shard(&mut self, shard_creation_cost: &U256, fee_payer: &Address) -> StateResult<()>;
+
     fn set_shard_root(&mut self, shard_id: ShardId, old_root: &H256, new_root: &H256) -> StateResult<()>;
+
+    fn update_action_data(&mut self, key: &H256, data: Bytes) -> StateResult<()>;
 }
 
 pub trait StateWithCache {
