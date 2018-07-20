@@ -110,14 +110,6 @@ pub fn no_work_required() -> Error {
     }
 }
 
-pub fn network_disabled() -> Error {
-    Error {
-        code: ErrorCode::ServerError(codes::NETWORK_DISABLED),
-        message: "Network is diabled.".into(),
-        data: None,
-    }
-}
-
 pub fn network_control(error: NetworkControlError) -> Error {
     match error {
         NetworkControlError::NotConnected => Error {
