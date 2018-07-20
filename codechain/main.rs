@@ -76,7 +76,7 @@ use parking_lot::{Condvar, Mutex};
 use primitives::H256;
 
 use self::account_command::run_account_command;
-use self::rpc::{HttpConfiguration as RpcHttpConfig, IpcConfiguration as RpcIpcConfig};
+use self::rpc::{RpcHttpConfig, RpcIpcConfig};
 
 pub const APP_INFO: AppInfo = AppInfo {
     name: "codechain",

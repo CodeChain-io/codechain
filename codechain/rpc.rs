@@ -23,16 +23,16 @@ use crpc::{Compatibility, MetaIoHandler};
 use rpc_apis;
 
 #[derive(Debug, PartialEq)]
-pub struct HttpConfiguration {
+pub struct RpcHttpConfig {
     pub interface: String,
     pub port: u16,
     pub cors: Option<Vec<String>>,
     pub hosts: Option<Vec<String>>,
 }
 
-impl HttpConfiguration {
+impl RpcHttpConfig {
     pub fn with_port(port: u16) -> Self {
-        HttpConfiguration {
+        RpcHttpConfig {
             interface: "127.0.0.1".into(),
             port,
             cors: None,
@@ -41,7 +41,7 @@ impl HttpConfiguration {
     }
 }
 
-pub fn new_http(cfg: HttpConfiguration, deps: Arc<rpc_apis::ApiDependencies>) -> Result<HttpServer, String> {
+pub fn new_http(cfg: RpcHttpConfig, deps: Arc<rpc_apis::ApiDependencies>) -> Result<HttpServer, String> {
     let url = format!("{}:{}", cfg.interface, cfg.port);
     let addr = url.parse().map_err(|_| format!("Invalid JSONRPC listen host/port given: {}", url))?;
     let server = setup_http_rpc_server(&addr, cfg.cors, cfg.hosts, deps)?;
@@ -66,11 +66,11 @@ pub fn setup_http_rpc_server(
 }
 
 #[derive(Debug, PartialEq)]
-pub struct IpcConfiguration {
+pub struct RpcIpcConfig {
     pub socket_addr: String,
 }
 
-pub fn new_ipc(cfg: IpcConfiguration, deps: Arc<rpc_apis::ApiDependencies>) -> Result<IpcServer, String> {
+pub fn new_ipc(cfg: RpcIpcConfig, deps: Arc<rpc_apis::ApiDependencies>) -> Result<IpcServer, String> {
     let server = setup_rpc_server(deps);
     let start_result = start_ipc(&cfg.socket_addr, server);
     match start_result {
