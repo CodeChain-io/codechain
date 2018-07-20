@@ -14,6 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::io::Cursor;
+
+use byteorder::{BigEndian, ReadBytesExt};
 use ccrypto::blake256;
 use ckey::Address;
 use primitives::{Bytes, H256};
@@ -219,5 +222,31 @@ impl Encodable for Transaction {
                 .append_list(outputs)
                 .append(nonce),
         };
+    }
+}
+
+impl AssetOutPoint {
+    pub fn related_shard(&self) -> u32 {
+        Cursor::new(&self.asset_type[4..8]).read_u32::<BigEndian>().unwrap()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn related_shard_of_asset_out_point() {
+        let mut asset_type = H256::new();
+        asset_type[4..8].clone_from_slice(&[0xBE, 0xEF, 0x12, 0x34]);
+
+        let p = AssetOutPoint {
+            transaction_hash: H256::random(),
+            index: 3,
+            asset_type,
+            amount: 34,
+        };
+
+        assert_eq!(0xBEEF1234, p.related_shard());
     }
 }
