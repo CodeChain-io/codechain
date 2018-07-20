@@ -199,6 +199,7 @@ dependencies = [
  "codechain-network 0.1.0",
  "codechain-reactor 0.1.0",
  "codechain-rpc 0.1.0",
+ "codechain-stratum 1.11.0",
  "codechain-sync 0.1.0",
  "codechain-types 0.1.0",
  "codechain-vm 0.1.0",
@@ -213,7 +214,6 @@ dependencies = [
  "rpassword 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.53 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.53 (registry+https://github.com/rust-lang/crates.io-index)",
- "stratum 1.11.0",
  "tokio-core 0.1.17 (registry+https://github.com/rust-lang/crates.io-index)",
  "toml 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -232,6 +232,7 @@ dependencies = [
  "codechain-merkle 0.1.0",
  "codechain-network 0.1.0",
  "codechain-state 0.1.0",
+ "codechain-stratum 1.11.0",
  "codechain-types 0.1.0",
  "cuckoo 0.1.0 (git+https://github.com/CodeChain-io/rust-cuckoo.git?rev=280cab9c)",
  "hashdb 0.1.1",
@@ -462,6 +463,23 @@ dependencies = [
  "serde_derive 1.0.53 (registry+https://github.com/rust-lang/crates.io-index)",
  "unexpected 0.1.0",
  "util-error 0.1.0",
+]
+
+[[package]]
+name = "codechain-stratum"
+version = "1.11.0"
+dependencies = [
+ "codechain-crypto 0.1.0",
+ "codechain-logger 0.1.0",
+ "env_logger 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "jsonrpc-core 8.0.1 (git+https://github.com/paritytech/jsonrpc.git?branch=parity-1.11)",
+ "jsonrpc-macros 8.0.0 (git+https://github.com/paritytech/jsonrpc.git?branch=parity-1.11)",
+ "jsonrpc-tcp-server 8.0.0 (git+https://github.com/paritytech/jsonrpc.git?branch=parity-1.11)",
+ "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "parking_lot 0.5.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "primitives 0.1.0",
+ "tokio-core 0.1.17 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tokio-io 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -1809,23 +1827,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "stable_deref_trait"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-
-[[package]]
-name = "stratum"
-version = "1.11.0"
-dependencies = [
- "codechain-crypto 0.1.0",
- "codechain-logger 0.1.0",
- "env_logger 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "jsonrpc-core 8.0.1 (git+https://github.com/paritytech/jsonrpc.git?branch=parity-1.11)",
- "jsonrpc-macros 8.0.0 (git+https://github.com/paritytech/jsonrpc.git?branch=parity-1.11)",
- "jsonrpc-tcp-server 8.0.0 (git+https://github.com/paritytech/jsonrpc.git?branch=parity-1.11)",
- "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "parking_lot 0.5.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "primitives 0.1.0",
- "tokio-core 0.1.17 (registry+https://github.com/rust-lang/crates.io-index)",
- "tokio-io 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
-]
 
 [[package]]
 name = "strsim"

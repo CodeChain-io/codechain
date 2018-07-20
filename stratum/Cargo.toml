@@ -1,6 +1,6 @@
 [package]
 description = "CodeChain stratum lib"
-name = "stratum"
+name = "codechain-stratum"
 version = "1.11.0"
 license = "GPL-3.0"
 authors = ["Parity Technologies <admin@parity.io>", "CodeChain Team <codechain@kodebox.io>"]

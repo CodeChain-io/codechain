@@ -19,6 +19,7 @@ mod chain_type;
 use std::fs;
 use std::str::FromStr;
 
+use ccore::StratumConfig;
 use ckey::Address;
 use clap;
 use cnetwork::{NetworkConfig, SocketAddr};
@@ -140,6 +141,17 @@ impl<'a> Into<RpcHttpConfig> for &'a Rpc {
             port: self.port,
             cors: None,
             hosts: None,
+        }
+    }
+}
+
+impl<'a> Into<StratumConfig> for &'a Stratum {
+    // FIXME: Add listen_addr and secret
+    fn into(self) -> StratumConfig {
+        StratumConfig {
+            listen_addr: "127.0.0.1".to_string(),
+            port: self.port,
+            secret: None,
         }
     }
 }

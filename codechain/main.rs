@@ -44,8 +44,6 @@ extern crate panic_hook;
 extern crate parking_lot;
 extern crate primitives;
 extern crate rpassword;
-#[cfg(feature = "stratum")]
-extern crate stratum;
 extern crate toml;
 
 mod account_command;
@@ -60,7 +58,10 @@ use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use app_dirs::AppInfo;
-use ccore::{AccountProvider, ClientService, EngineType, Miner, MinerOptions, MinerService, Spec};
+use ccore::{
+    AccountProvider, Client, ClientService, EngineType, Miner, MinerOptions, MinerService, Spec, Stratum,
+    StratumConfig, StratumError,
+};
 use cdiscovery::{KademliaConfig, KademliaExtension, UnstructuredConfig, UnstructuredExtension};
 use ckeystore::accounts_dir::RootDiskDirectory;
 use ckeystore::KeyStore;
@@ -139,6 +140,20 @@ pub fn client_start(cfg: &config::Config, spec: &Spec, miner: Arc<Miner>) -> Res
         .map_err(|e| format!("Client service error: {}", e))?;
 
     Ok(service)
+}
+
+pub fn stratum_start(cfg: &StratumConfig, miner: Arc<Miner>, client: Arc<Client>) -> Result<(), String> {
+    info!("STRATUM Listening on {}", cfg.port);
+    match Stratum::start(cfg, miner.clone(), client) {
+        // FIXME: Add specified condition like AddrInUse
+        Err(StratumError::Service(_)) =>
+            Err(format!("STRATUM address {} is already in use, make sure that another instance of a CodeChain node is not running or change the address using the --stratum-port option.", cfg.port)),
+        Err(e) => Err(format!("STRATUM start error: {:?}", e)),
+        Ok(stratum) => {
+            miner.add_work_listener(Box::new(stratum));
+            Ok(())
+        }
+    }
 }
 
 #[cfg(all(unix, target_arch = "x86_64"))]
@@ -348,6 +363,11 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
             None
         }
     };
+
+    if !config.stratum.disable {
+        let stratum_config = (&config.stratum).into();
+        stratum_start(&stratum_config, Arc::clone(&miner), client.client())?
+    }
 
     let _snapshot_service = {
         if !config.snapshot.disable {
