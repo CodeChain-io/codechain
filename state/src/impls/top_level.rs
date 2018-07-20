@@ -426,7 +426,7 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopLevelState<B> {
     }
 
     pub fn apply_transactions(
-        &mut self,
+        &self,
         transactions: &[Transaction],
         shard_id: u32,
         shard_root: H256,
