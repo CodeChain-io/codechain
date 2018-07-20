@@ -100,6 +100,11 @@ pub struct Miner {
 }
 
 impl Miner {
+    /// Push listener that will handle new jobs
+    pub fn add_work_listener(&self, notifier: Box<NotifyWork>) {
+        self.notifiers.write().push(notifier);
+    }
+
     pub fn new(options: MinerOptions, spec: &Spec, accounts: Option<Arc<AccountProvider>>) -> Arc<Self> {
         Arc::new(Self::new_raw(options, spec, accounts))
     }

@@ -18,7 +18,7 @@ use std;
 use std::error::Error as StdError;
 
 use jsonrpc_tcp_server::PushMessageError;
-use primitives::H256;
+use primitives::{Bytes, H256};
 
 #[derive(Debug, Clone)]
 pub enum Error {
@@ -56,7 +56,7 @@ pub trait JobDispatcher: Send + Sync {
         None
     }
     // miner job result
-    fn submit(&self, payload: Vec<String>) -> Result<(), Error>;
+    fn submit(&self, payload: (H256, Vec<Bytes>)) -> Result<(), Error>;
 }
 
 /// Interface that can handle requests to push job for workers
@@ -69,7 +69,6 @@ pub trait PushWorkHandler: Send + Sync {
 }
 
 pub struct ServiceConfiguration {
-    pub io_path: String,
     pub listen_addr: String,
     pub port: u16,
     pub secret: Option<H256>,
