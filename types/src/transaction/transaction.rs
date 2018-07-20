@@ -231,6 +231,12 @@ impl AssetOutPoint {
     }
 }
 
+impl AssetTransferInput {
+    pub fn related_shard(&self) -> u32 {
+        self.prev_out.related_shard()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -248,5 +254,26 @@ mod tests {
         };
 
         assert_eq!(0xBEEF1234, p.related_shard());
+    }
+
+    #[test]
+    fn related_shard_of_asset_transfer_input() {
+        let mut asset_type = H256::new();
+        asset_type[4..8].clone_from_slice(&[0xBE, 0xEF, 0x12, 0x34]);
+
+        let prev_out = AssetOutPoint {
+            transaction_hash: H256::random(),
+            index: 3,
+            asset_type,
+            amount: 34,
+        };
+
+        let input = AssetTransferInput {
+            prev_out,
+            lock_script: vec![],
+            unlock_script: vec![],
+        };
+
+        assert_eq!(0xBEEF1234, input.related_shard());
     }
 }
