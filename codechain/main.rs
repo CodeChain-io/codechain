@@ -83,7 +83,7 @@ pub const APP_INFO: AppInfo = AppInfo {
     author: "Kodebox",
 };
 
-pub fn rpc_start(cfg: RpcHttpConfig, deps: Arc<rpc_apis::ApiDependencies>) -> Result<HttpServer, String> {
+pub fn rpc_http_start(cfg: RpcHttpConfig, deps: Arc<rpc_apis::ApiDependencies>) -> Result<HttpServer, String> {
     info!("RPC Listening on {}", cfg.port);
     rpc::new_http(cfg, deps)
 }
@@ -334,7 +334,7 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
     let _rpc_server = {
         if !config.rpc.disable {
             let rpc_config = (&config.rpc).into();
-            Some(rpc_start(rpc_config, Arc::clone(&rpc_apis_deps))?)
+            Some(rpc_http_start(rpc_config, Arc::clone(&rpc_apis_deps))?)
         } else {
             None
         }
