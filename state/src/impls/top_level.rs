@@ -44,7 +44,8 @@ use ctypes::invoice::Invoice;
 use ctypes::parcel::{Action, ChangeShard, Error as ParcelError, Outcome as ParcelOutcome, Parcel};
 use ctypes::transaction::{Error as TransactionError, Outcome as TransactionOutcome, Transaction};
 use ctypes::ShardId;
-use primitives::{H256, U256};
+use primitives::{Bytes, H256, U256};
+use rlp::NULL_RLP;
 use trie::{Result as TrieResult, Trie, TrieError, TrieFactory};
 use unexpected::Mismatch;
 
@@ -108,6 +109,7 @@ pub struct TopLevelState {
     account: Cache<Account>,
     metadata: Cache<Metadata>,
     shard: Cache<Shard>,
+    action_data: Cache<Bytes>,
     id_of_checkpoints: Vec<CheckpointId>,
     trie_factory: TrieFactory,
 }
@@ -161,6 +163,11 @@ impl TopStateInfo for TopLevelState {
             ShardLevelState::from_existing(shard_id, self.db.clone(), shard_root, self.trie_factory)?;
         shard_level_state.asset(asset_address)
     }
+
+    fn action_data(&self, key: &H256) -> TrieResult<Bytes> {
+        let action_data = self.require_action_data(key)?;
+        Ok(action_data.clone())
+    }
 }
 
 const PARCEL_FEE_CHECKPOINT: CheckpointId = 123;
@@ -172,6 +179,7 @@ impl StateWithCheckpoint for TopLevelState {
         self.account.checkpoint();
         self.metadata.checkpoint();
         self.shard.checkpoint();
+        self.action_data.checkpoint();
     }
 
     fn discard_checkpoint(&mut self, id: CheckpointId) {
@@ -181,6 +189,7 @@ impl StateWithCheckpoint for TopLevelState {
         self.account.discard_checkpoint();
         self.metadata.discard_checkpoint();
         self.shard.discard_checkpoint();
+        self.action_data.discard_checkpoint();
     }
 
     fn revert_to_checkpoint(&mut self, id: CheckpointId) {
@@ -190,6 +199,7 @@ impl StateWithCheckpoint for TopLevelState {
         self.account.revert_to_checkpoint();
         self.metadata.revert_to_checkpoint();
         self.shard.revert_to_checkpoint();
+        self.action_data.revert_to_checkpoint();
     }
 }
 
@@ -199,6 +209,7 @@ impl StateWithCache for TopLevelState {
         self.account.commit(&mut trie)?;
         self.metadata.commit(&mut trie)?;
         self.shard.commit(&mut trie)?;
+        self.action_data.commit(&mut trie)?;
         Ok(())
     }
 
@@ -213,12 +224,16 @@ impl StateWithCache for TopLevelState {
         self.shard.propagate_to_global_cache(|address, item, modified| {
             db.add_to_shard_cache(address, item, modified);
         });
+        self.action_data.propagate_to_global_cache(|address, item, modified| {
+            db.add_to_action_data_cache(address, item, modified);
+        });
     }
 
     fn clear(&mut self) {
         self.account.clear();
         self.metadata.clear();
         self.shard.clear();
+        self.action_data.clear();
     }
 }
 
@@ -238,6 +253,7 @@ impl TopLevelState {
             account: Cache::new(),
             metadata: Cache::new(),
             shard: Cache::new(),
+            action_data: Cache::new(),
             id_of_checkpoints: Default::default(),
             trie_factory,
         }
@@ -255,6 +271,7 @@ impl TopLevelState {
             account: Cache::new(),
             metadata: Cache::new(),
             shard: Cache::new(),
+            action_data: Cache::new(),
             id_of_checkpoints: Default::default(),
             trie_factory,
         };
@@ -511,6 +528,13 @@ impl TopLevelState {
         let from_db = || self.db.get_cached_shard(&shard_address);
         self.shard.require_item_or_from(&shard_address, default, db, from_db)
     }
+
+    fn require_action_data<'a>(&'a self, key: &H256) -> TrieResult<RefMut<'a, Bytes>> {
+        let default = || NULL_RLP.to_vec();
+        let db = self.trie_factory.readonly(self.db.as_hashdb(), &self.root)?;
+        let from_db = || self.db.get_cached_action_data(key);
+        self.action_data.require_item_or_from(key, default, db, from_db)
+    }
 }
 
 impl fmt::Debug for TopLevelState {
@@ -518,6 +542,7 @@ impl fmt::Debug for TopLevelState {
         writeln!(f, "account: {:?}", self.account)?;
         writeln!(f, "metadata: {:?}", self.metadata)?;
         writeln!(f, "shard: {:?}", self.shard)?;
+        writeln!(f, "action_data: {:?}", self.action_data)?;
         Ok(())
     }
 }
@@ -533,6 +558,7 @@ impl Clone for TopLevelState {
             account: self.account.clone(),
             metadata: self.metadata.clone(),
             shard: self.shard.clone(),
+            action_data: self.action_data.clone(),
             trie_factory: self.trie_factory.clone(),
         }
     }
@@ -618,6 +644,12 @@ impl TopState<StateDB> for TopLevelState {
         let mut shard = self.require_shard(shard_id)?;
         assert_eq!(old_root, shard.root());
         shard.set_root(*new_root);
+        Ok(())
+    }
+
+    fn update_action_data(&mut self, key: &H256, data: Bytes) -> StateResult<()> {
+        let mut action_data = self.require_action_data(key)?;
+        *action_data = data;
         Ok(())
     }
 }

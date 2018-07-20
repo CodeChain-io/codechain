@@ -39,6 +39,7 @@ extern crate serde_derive;
 extern crate unexpected;
 extern crate util_error;
 
+mod action_handler;
 mod backend;
 mod checkpoint;
 mod db;

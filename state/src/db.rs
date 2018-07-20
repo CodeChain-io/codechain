@@ -27,7 +27,7 @@ use kvdb::DBTransaction;
 use kvdb_memorydb;
 use lru_cache::LruCache;
 use parking_lot::Mutex;
-use primitives::H256;
+use primitives::{Bytes, H256};
 use util_error::UtilError;
 
 use super::{
@@ -40,9 +40,10 @@ const STATE_CACHE_BLOCKS: usize = 12;
 // The percentage of supplied cache size to go to accounts.
 const ACCOUNT_CACHE_RATIO: usize = 40;
 const METADATA_CACHE_RATIO: usize = 1;
-const SHARD_CACHE_RATIO: usize = 9;
+const SHARD_CACHE_RATIO: usize = 8;
 const ASSET_SCHEME_CACHE_RATIO: usize = 10;
 const ASSET_CACHE_RATIO: usize = 40;
+const ACTION_DATA_CACHE_RATIO: usize = 1;
 
 /// Shared canonical state cache.
 struct Cache<Item>
@@ -108,6 +109,7 @@ pub struct StateDB {
     shard_cache: Arc<Mutex<Cache<Shard>>>,
     asset_scheme_cache: Arc<Mutex<Cache<AssetScheme>>>,
     asset_cache: Arc<Mutex<Cache<Asset>>>,
+    action_data_cache: Arc<Mutex<Cache<Bytes>>>,
 
     /// Local dirty cache.
     local_account_cache: Vec<CacheQueueItem<Account>>,
@@ -115,6 +117,7 @@ pub struct StateDB {
     local_shard_cache: Vec<CacheQueueItem<Shard>>,
     local_asset_scheme_cache: Vec<CacheQueueItem<AssetScheme>>,
     local_asset_cache: Vec<CacheQueueItem<Asset>>,
+    local_action_data_cache: Vec<CacheQueueItem<Bytes>>,
     /// Hash of the block on top of which this instance was created or
     /// `None` if cache is disabled
     parent_hash: Option<H256>,
@@ -137,6 +140,7 @@ impl StateDB {
                 + SHARD_CACHE_RATIO
                 + ASSET_SCHEME_CACHE_RATIO
                 + ASSET_CACHE_RATIO
+                + ACTION_DATA_CACHE_RATIO
         );
 
         let account_cache_size = cache_size * ACCOUNT_CACHE_RATIO / 100;
@@ -153,6 +157,9 @@ impl StateDB {
 
         let asset_cache_size = cache_size * ASSET_CACHE_RATIO / 100;
         let asset_cache_items = asset_cache_size / ::std::mem::size_of::<Option<Asset>>();
+
+        let action_data_cache_size = cache_size * ACTION_DATA_CACHE_RATIO / 100;
+        let action_data_cache_items = action_data_cache_size / ::std::mem::size_of::<Option<Bytes>>();
 
         StateDB {
             db,
@@ -176,12 +183,17 @@ impl StateDB {
                 cache: LruCache::new(asset_cache_items),
                 modifications: VecDeque::new(),
             })),
+            action_data_cache: Arc::new(Mutex::new(Cache {
+                cache: LruCache::new(action_data_cache_items),
+                modifications: VecDeque::new(),
+            })),
 
             local_account_cache: Vec::new(),
             local_metadata_cache: Vec::new(),
             local_shard_cache: Vec::new(),
             local_asset_scheme_cache: Vec::new(),
             local_asset_cache: Vec::new(),
+            local_action_data_cache: Vec::new(),
             parent_hash: None,
             commit_hash: None,
             commit_number: None,
@@ -267,6 +279,17 @@ impl StateDB {
             is_best,
             &mut self.asset_cache,
             &mut self.local_asset_cache,
+            &self.parent_hash,
+            &self.commit_hash,
+            &self.commit_number,
+        );
+
+        Self::sync_cache_impl(
+            enacted,
+            retracted,
+            is_best,
+            &mut self.action_data_cache,
+            &mut self.local_action_data_cache,
             &self.parent_hash,
             &self.commit_hash,
             &self.commit_number,
@@ -392,12 +415,14 @@ impl StateDB {
             shard_cache: self.shard_cache.clone(),
             asset_scheme_cache: self.asset_scheme_cache.clone(),
             asset_cache: self.asset_cache.clone(),
+            action_data_cache: self.action_data_cache.clone(),
 
             local_account_cache: Vec::new(),
             local_metadata_cache: Vec::new(),
             local_shard_cache: Vec::new(),
             local_asset_scheme_cache: Vec::new(),
             local_asset_cache: Vec::new(),
+            local_action_data_cache: Vec::new(),
 
             parent_hash: Some(parent.clone()),
             commit_hash: None,
@@ -425,6 +450,7 @@ impl StateDB {
             + Self::mem_used_impl(&self.shard_cache.lock())
             + Self::mem_used_impl(&self.asset_scheme_cache.lock())
             + Self::mem_used_impl(&self.asset_cache.lock())
+            + Self::mem_used_impl(&self.action_data_cache.lock())
     }
 
     /// Returns underlying `JournalDB`.
@@ -503,12 +529,14 @@ impl Clone for StateDB {
             shard_cache: self.shard_cache.clone(),
             asset_scheme_cache: self.asset_scheme_cache.clone(),
             asset_cache: self.asset_cache.clone(),
+            action_data_cache: self.action_data_cache.clone(),
 
             local_account_cache: Vec::new(),
             local_metadata_cache: Vec::new(),
             local_shard_cache: Vec::new(),
             local_asset_scheme_cache: Vec::new(),
             local_asset_cache: Vec::new(),
+            local_action_data_cache: Vec::new(),
 
             parent_hash: None,
             commit_hash: None,
@@ -552,6 +580,14 @@ impl TopBackend for StateDB {
         })
     }
 
+    fn add_to_action_data_cache(&mut self, address: H256, item: Option<Bytes>, modified: bool) {
+        self.local_action_data_cache.push(CacheQueueItem {
+            address,
+            item,
+            modified,
+        })
+    }
+
     fn get_cached_account(&self, addr: &Address) -> Option<Option<Account>> {
         self.get_cached(addr, &self.account_cache)
     }
@@ -562,6 +598,10 @@ impl TopBackend for StateDB {
 
     fn get_cached_shard(&self, addr: &ShardAddress) -> Option<Option<Shard>> {
         self.get_cached(addr, &self.shard_cache)
+    }
+
+    fn get_cached_action_data(&self, key: &H256) -> Option<Option<Bytes>> {
+        self.get_cached(key, &self.action_data_cache)
     }
 
     fn get_cached_account_with<F, U>(&self, a: &Address, f: F) -> Option<U>
