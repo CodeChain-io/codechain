@@ -121,6 +121,19 @@ impl Transaction {
     pub fn hash_without_script(&self) -> H256 {
         blake256(&*self.without_script().rlp_bytes())
     }
+
+    pub fn network_id(&self) -> u64 {
+        match self {
+            Transaction::AssetTransfer {
+                network_id,
+                ..
+            } => *network_id,
+            Transaction::AssetMint {
+                network_id,
+                ..
+            } => *network_id,
+        }
+    }
 }
 
 type TransactionId = u8;
