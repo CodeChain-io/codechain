@@ -42,7 +42,7 @@ use ccrypto::BLAKE_NULL_RLP;
 use ckey::{Address, Public};
 use ctypes::invoice::Invoice;
 use ctypes::parcel::{Action, ChangeShard, Error as ParcelError, Outcome as ParcelOutcome, Parcel};
-use ctypes::transaction::{Outcome as TransactionOutcome, Transaction};
+use ctypes::transaction::{Error as TransactionError, Outcome as TransactionOutcome, Transaction};
 use primitives::{H256, U256};
 use trie::{Result as TrieResult, Trie, TrieError, TrieFactory};
 use unexpected::Mismatch;
@@ -337,9 +337,20 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopLevelState<B> {
                 if changes.len() == 0 {
                     return Ok(ParcelOutcome::Transactions(vec![]))
                 }
-                let first_result = self.apply_transactions(&transactions, network_id, &changes[0])?;
+
+                for t in transactions {
+                    let transaction_network_id = t.network_id();
+                    if &transaction_network_id != network_id {
+                        return Err(TransactionError::InvalidNetworkId(Mismatch {
+                            expected: *network_id,
+                            found: transaction_network_id,
+                        }).into())
+                    }
+                }
+
+                let first_result = self.apply_transactions(&transactions, &changes[0])?;
                 for change in changes.iter().skip(1) {
-                    let result = self.apply_transactions(&transactions, network_id, change)?;
+                    let result = self.apply_transactions(&transactions, change)?;
                     if result != first_result {
                         return Err(ParcelError::InconsistentShardOutcomes.into())
                     }
@@ -387,7 +398,6 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopLevelState<B> {
     fn apply_transactions(
         &mut self,
         transactions: &[Transaction],
-        network_id: &u64,
         change: &ChangeShard,
     ) -> StateResult<Vec<TransactionOutcome>> {
         let shard_id = change.shard_id;
@@ -406,7 +416,7 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopLevelState<B> {
 
         let mut results = Vec::with_capacity(transactions.len());
         for t in transactions {
-            let result = shard_level_state.apply(t, network_id)?;
+            let result = shard_level_state.apply(t)?;
             results.push(result);
         }
         let (new_shard_root, db) = shard_level_state.drop();

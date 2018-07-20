@@ -104,7 +104,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         (self.root, self.db)
     }
 
-    fn apply_internal(&mut self, transaction: &Transaction, parcel_network_id: &u64) -> StateResult<()> {
+    fn apply_internal(&mut self, transaction: &Transaction) -> StateResult<()> {
         match transaction {
             Transaction::AssetMint {
                 metadata,
@@ -121,17 +121,8 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
                 burns,
                 inputs,
                 outputs,
-                network_id,
                 ..
-            } => {
-                if parcel_network_id != network_id {
-                    return Err(TransactionError::InvalidNetworkId(Mismatch {
-                        expected: *parcel_network_id,
-                        found: *network_id,
-                    }).into())
-                }
-                self.transfer_asset(&transaction, burns, inputs, outputs)
-            }
+            } => self.transfer_asset(&transaction, burns, inputs, outputs),
         }
     }
 
@@ -411,11 +402,11 @@ fn is_input_and_output_consistent(inputs: &[AssetTransferInput], outputs: &[Asse
 const TRANSACTION_CHECKPOINT: CheckpointId = 456;
 
 impl<B: Backend + ShardBackend> ShardState<B> for ShardLevelState<B> {
-    fn apply(&mut self, transaction: &Transaction, parcel_network_id: &u64) -> StateResult<TransactionOutcome> {
+    fn apply(&mut self, transaction: &Transaction) -> StateResult<TransactionOutcome> {
         ctrace!(TX, "Execute {:?}(TxHash:{:?})", transaction, transaction.hash());
 
         self.create_checkpoint(TRANSACTION_CHECKPOINT);
-        let result = self.apply_internal(transaction, parcel_network_id);
+        let result = self.apply_internal(transaction);
         match result {
             Ok(_) => {
                 cinfo!(TX, "Tx({}) is applied", transaction.hash());
@@ -460,7 +451,6 @@ mod tests {
     #[test]
     fn mint_permissioned_asset() {
         let shard_id = 0;
-        let parcel_network_id = 30;
         let mut state = get_temp_shard_state(shard_id);
 
         let metadata = "metadata".to_string();
@@ -480,7 +470,7 @@ mod tests {
             nonce: 0,
         };
 
-        let result = state.apply(&transaction, &parcel_network_id).unwrap();
+        let result = state.apply(&transaction).unwrap();
         assert_eq!(
             TransactionOutcome {
                 invoice: Invoice::Success,
@@ -501,7 +491,6 @@ mod tests {
 
     #[test]
     fn mint_infinite_asset() {
-        let parcel_network_id = 30;
         let shard_id = 0;
         let mut state = get_temp_shard_state(shard_id);
 
@@ -521,7 +510,7 @@ mod tests {
             nonce: 0,
         };
 
-        let result = state.apply(&transaction, &parcel_network_id).unwrap();
+        let result = state.apply(&transaction).unwrap();
         assert_eq!(
             TransactionOutcome {
                 invoice: Invoice::Success,
@@ -769,7 +758,7 @@ mod tests {
                 invoice: Invoice::Success,
                 error: None,
             },
-            state.apply(&mint, &network_id).unwrap()
+            state.apply(&mint).unwrap()
         );
 
         let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id);
@@ -825,7 +814,7 @@ mod tests {
                 invoice: Invoice::Success,
                 error: None,
             },
-            state.apply(&transfer, &network_id).unwrap()
+            state.apply(&transfer).unwrap()
         );
 
         let asset0_address = AssetAddress::new(transfer_hash, 0, shard_id);
@@ -870,7 +859,7 @@ mod tests {
                 invoice: Invoice::Success,
                 error: None,
             },
-            state.apply(&mint, &network_id).unwrap()
+            state.apply(&mint).unwrap()
         );
 
         let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id);
@@ -905,7 +894,7 @@ mod tests {
             nonce: 0,
         };
 
-        let failed_outcome = state.apply(&failed_transfer, &network_id).unwrap();
+        let failed_outcome = state.apply(&failed_transfer).unwrap();
         assert_eq!(Invoice::Failed, failed_outcome.invoice);
         assert_ne!(None, failed_outcome.error);
 
@@ -952,7 +941,7 @@ mod tests {
                 invoice: Invoice::Success,
                 error: None,
             },
-            state.apply(&successful_transfer, &network_id).unwrap()
+            state.apply(&successful_transfer).unwrap()
         );
 
         let asset0_address = AssetAddress::new(successful_transfer_hash, 0, shard_id);
