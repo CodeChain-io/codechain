@@ -138,6 +138,29 @@ impl Transaction {
             } => *network_id,
         }
     }
+
+    pub fn related_shards(&self) -> Vec<u32> {
+        match self {
+            Transaction::AssetTransfer {
+                burns,
+                inputs,
+                ..
+            } => {
+                let mut shards: Vec<u32> = burns
+                    .iter()
+                    .map(AssetTransferInput::related_shard)
+                    .chain(inputs.iter().map(AssetTransferInput::related_shard))
+                    .collect();
+                shards.sort_unstable();
+                shards.dedup();
+                shards
+            }
+            Transaction::AssetMint {
+                shard_id,
+                ..
+            } => vec![*shard_id],
+        }
+    }
 }
 
 type TransactionId = u8;
