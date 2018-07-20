@@ -17,7 +17,7 @@
 use std::sync::Arc;
 
 use ccore::{AssetClient, BlockId, MinerService, MiningBlockChainClient, RegularKey, Shard, SignedParcel};
-use ckey::Public;
+use ckey::{Address, Public};
 use cstate::{Asset, AssetScheme};
 use ctypes::invoice::{Invoice, ParcelInvoice};
 use ctypes::BlockNumber;
@@ -143,5 +143,13 @@ where
 
     fn get_pending_parcels(&self) -> Result<Vec<Parcel>> {
         Ok(self.client.ready_parcels().into_iter().map(|signed| signed.into()).collect())
+    }
+
+    fn get_coinbase(&self) -> Result<Option<Address>> {
+        if self.miner.author().is_zero() {
+            Ok(None)
+        } else {
+            Ok(Some(self.miner.author()))
+        }
     }
 }
