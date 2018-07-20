@@ -40,24 +40,22 @@ use std::fmt;
 
 use ccrypto::BLAKE_NULL_RLP;
 use ckey::{Address, Public};
-use cstate::{
-    Account, Asset, AssetAddress, AssetScheme, AssetSchemeAddress, Backend, Cache, CacheableItem, Metadata,
-    MetadataAddress, Shard, ShardAddress, ShardBackend, ShardStateInfo, TopBackend, TopStateInfo,
-};
 use ctypes::invoice::Invoice;
-use ctypes::parcel::{Action, ChangeShard, Error as ParcelError, Outcome as ParcelOutcome};
+use ctypes::parcel::{Action, ChangeShard, Error as ParcelError, Outcome as ParcelOutcome, Parcel};
 use ctypes::transaction::{Outcome as TransactionOutcome, Transaction};
 use primitives::{H256, U256};
 use trie::{Result as TrieResult, Trie, TrieError, TrieFactory};
 use unexpected::Mismatch;
 
-use super::super::error::Error;
-use super::super::parcel::SignedParcel;
-use super::super::state_db::StateDB;
-use super::shard_level::ShardLevelState;
-use super::shard_state::ShardState;
-use super::top_state::TopState;
-use super::traits::{CheckpointId, StateWithCache, StateWithCheckpoint};
+use super::super::backend::{Backend, ShardBackend, TopBackend};
+use super::super::checkpoint::{CheckpointId, StateWithCheckpoint};
+use super::super::item::cache::{Cache, CacheableItem};
+use super::super::traits::{ShardState, ShardStateInfo, StateWithCache, TopState, TopStateInfo};
+use super::super::{
+    Account, Asset, AssetAddress, AssetScheme, AssetSchemeAddress, Metadata, MetadataAddress, Shard, ShardAddress,
+    ShardLevelState,
+};
+use super::super::{StateDB, StateError, StateResult};
 
 /// Representation of the entire state of all accounts in the system.
 ///
@@ -275,11 +273,11 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopLevelState<B> {
 
     /// Execute a given parcel, charging parcel fee.
     /// This will change the state accordingly.
-    pub fn apply(&mut self, parcel: &SignedParcel) -> Result<ParcelOutcome, Error> {
+    pub fn apply(&mut self, parcel: &Parcel, fee_payer: &Address) -> StateResult<ParcelOutcome> {
         self.create_checkpoint(PARCEL_FEE_CHECKPOINT);
 
-        match self.apply_internal(parcel) {
-            Err(Error::Transaction(_)) => unreachable!(),
+        match self.apply_internal(parcel, fee_payer) {
+            Err(StateError::Transaction(_)) => unreachable!(),
             Err(err) => {
                 self.revert_to_checkpoint(PARCEL_FEE_CHECKPOINT);
                 Err(err)
@@ -292,9 +290,8 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopLevelState<B> {
         }
     }
 
-    fn apply_internal(&mut self, parcel: &SignedParcel) -> Result<ParcelOutcome, Error> {
-        let fee_payer = parcel.sender();
-        let nonce = self.nonce(&fee_payer)?;
+    fn apply_internal(&mut self, parcel: &Parcel, fee_payer: &Address) -> StateResult<ParcelOutcome> {
+        let nonce = self.nonce(fee_payer)?;
 
         if parcel.nonce != nonce {
             return Err(ParcelError::InvalidNonce {
@@ -303,23 +300,23 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopLevelState<B> {
             }.into())
         }
 
-        let fee = parcel.as_unsigned().fee;
-        let balance = self.balance(&fee_payer)?;
+        let fee = parcel.fee;
+        let balance = self.balance(fee_payer)?;
         if fee > balance {
             return Err(ParcelError::InsufficientBalance {
-                address: fee_payer,
+                address: *fee_payer,
                 cost: fee,
                 balance,
             }.into())
         }
 
-        self.inc_nonce(&fee_payer)?;
-        self.sub_balance(&fee_payer, &fee)?;
+        self.inc_nonce(fee_payer)?;
+        self.sub_balance(fee_payer, &fee)?;
 
         // The failed parcel also must pay the fee and increase nonce.
         self.create_checkpoint(PARCEL_ACTION_CHECKPOINT);
 
-        match self.apply_action(&parcel.action, &parcel.network_id, &fee_payer) {
+        match self.apply_action(&parcel.action, &parcel.network_id, fee_payer) {
             Ok(outcome) => {
                 self.discard_checkpoint(PARCEL_ACTION_CHECKPOINT);
                 Ok(outcome)
@@ -331,7 +328,7 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopLevelState<B> {
         }
     }
 
-    fn apply_action(&mut self, action: &Action, network_id: &u64, fee_payer: &Address) -> Result<ParcelOutcome, Error> {
+    fn apply_action(&mut self, action: &Action, network_id: &u64, fee_payer: &Address) -> StateResult<ParcelOutcome> {
         match action {
             Action::ChangeShardState {
                 transactions,
@@ -357,7 +354,7 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopLevelState<B> {
                     invoice: Invoice::Success,
                     error: None,
                 }),
-                Err(Error::Parcel(
+                Err(StateError::Parcel(
                     err @ ParcelError::InsufficientBalance {
                         ..
                     },
@@ -392,7 +389,7 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopLevelState<B> {
         transactions: &[Transaction],
         network_id: &u64,
         change: &ChangeShard,
-    ) -> Result<Vec<TransactionOutcome>, Error> {
+    ) -> StateResult<Vec<TransactionOutcome>> {
         let shard_id = change.shard_id;
 
         let shard_root = self.shard_root(shard_id)?.ok_or_else(|| ParcelError::InvalidShardId(shard_id))?;
@@ -427,7 +424,7 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopLevelState<B> {
         Ok(results)
     }
 
-    fn create_shard_level_state(&mut self) -> Result<(), Error> {
+    fn create_shard_level_state(&mut self) -> StateResult<()> {
         let (shard_id, shard_root, db) = {
             let mut metadata = self.require_metadata()?;
             let shard_id = metadata.increase_number_of_shards();
@@ -448,24 +445,7 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopLevelState<B> {
         self.set_shard_root(shard_id, &BLAKE_NULL_RLP, &shard_root)?;
         Ok(())
     }
-}
 
-trait TopStateInternal<B: Backend + TopBackend> {
-    fn ensure_account_cached<F, U>(&self, a: &Address, f: F) -> TrieResult<U>
-    where
-        F: Fn(Option<&Account>) -> U;
-
-    /// Check caches for required data
-    /// First searches for account in the local, then the shared cache.
-    /// Populates local cache if nothing found.
-    fn require_account<'a>(&'a self, a: &Address) -> TrieResult<RefMut<'a, Account>>;
-
-    fn require_metadata<'a>(&'a self) -> TrieResult<RefMut<'a, Metadata>>;
-
-    fn require_shard<'a>(&'a self, shard_id: u32) -> TrieResult<RefMut<'a, Shard>>;
-}
-
-impl<B: Backend + TopBackend> TopStateInternal<B> for TopLevelState<B> {
     /// Check caches for required data
     /// First searches for account in the local, then the shared cache.
     /// Populates local cache if nothing found.
@@ -562,7 +542,7 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopState<B> for TopLevelSta
         Ok(())
     }
 
-    fn transfer_balance(&mut self, from: &Address, to: &Address, by: &U256) -> Result<(), Error> {
+    fn transfer_balance(&mut self, from: &Address, to: &Address, by: &U256) -> StateResult<()> {
         let balance = self.balance(from)?;
         if &balance < by {
             return Err(ParcelError::InsufficientBalance {
@@ -581,12 +561,12 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopState<B> for TopLevelSta
         Ok(())
     }
 
-    fn set_regular_key(&mut self, a: &Address, key: &Public) -> Result<(), Error> {
+    fn set_regular_key(&mut self, a: &Address, key: &Public) -> StateResult<()> {
         self.require_account(a)?.set_regular_key(key);
         Ok(())
     }
 
-    fn create_shard(&mut self, shard_creation_cost: &U256, fee_payer: &Address) -> Result<(), Error> {
+    fn create_shard(&mut self, shard_creation_cost: &U256, fee_payer: &Address) -> StateResult<()> {
         let balance = self.balance(fee_payer)?;
         if &balance < shard_creation_cost {
             return Err(ParcelError::InsufficientBalance {
@@ -602,7 +582,7 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopState<B> for TopLevelSta
         Ok(())
     }
 
-    fn set_shard_root(&mut self, shard_id: u32, old_root: &H256, new_root: &H256) -> Result<(), Error> {
+    fn set_shard_root(&mut self, shard_id: u32, old_root: &H256, new_root: &H256) -> StateResult<()> {
         let mut shard = self.require_shard(shard_id)?;
         assert_eq!(old_root, shard.root());
         shard.set_root(*new_root);
@@ -845,8 +825,7 @@ mod tests_state {
 
 #[cfg(test)]
 mod tests_parcel {
-    use ccrypto::Blake;
-    use ckey::{Address, Generator, Random, Secret};
+    use ckey::{Address, Generator, Random};
     use ctypes::parcel::Parcel;
     use ctypes::transaction::{AssetMintOutput, AssetOutPoint, AssetTransferInput, AssetTransferOutput, Transaction};
     use primitives::U256;
@@ -854,8 +833,9 @@ mod tests_parcel {
     use super::super::super::tests::helpers::get_temp_state;
     use super::*;
 
-    fn secret() -> Secret {
-        Secret::blake("")
+    fn address() -> Address {
+        let keypair = Random.generate().unwrap();
+        keypair.address()
     }
 
     #[test]
@@ -873,11 +853,10 @@ mod tests_parcel {
                 changes: vec![],
             },
         };
-        let signed_parcel = SignedParcel::new_with_sign(parcel, &secret().into());
-        let sender = signed_parcel.sender();
+        let sender = address();
         state.add_balance(&sender, &20.into()).unwrap();
 
-        match state.apply(&signed_parcel).unwrap() {
+        match state.apply(&parcel, &sender).unwrap() {
             ParcelOutcome::Transactions(res) => {
                 assert!(res.is_empty());
             }
@@ -900,12 +879,11 @@ mod tests_parcel {
                 changes: vec![],
             },
         };
-        let signed_parcel = SignedParcel::new_with_sign(parcel, &secret().into());
-        let sender = signed_parcel.sender();
+        let sender = address();
         state.add_balance(&sender, &20.into()).unwrap();
 
-        match state.apply(&signed_parcel) {
-            Err(Error::Parcel(err)) => {
+        match state.apply(&parcel, &sender) {
+            Err(StateError::Parcel(err)) => {
                 assert_eq!(
                     ParcelError::InvalidNonce {
                         expected: 0.into(),
@@ -933,12 +911,11 @@ mod tests_parcel {
                 changes: vec![],
             },
         };
-        let signed_parcel = SignedParcel::new_with_sign(parcel, &secret().into());
-        let sender = signed_parcel.sender();
+        let sender = address();
         state.add_balance(&sender, &4.into()).unwrap();
 
-        match state.apply(&signed_parcel) {
-            Err(Error::Parcel(err)) => {
+        match state.apply(&parcel, &sender) {
+            Err(StateError::Parcel(err)) => {
                 assert_eq!(
                     ParcelError::InsufficientBalance {
                         address: sender,
@@ -959,8 +936,6 @@ mod tests_parcel {
         let mut state = get_temp_state();
         let receiver = 1u64.into();
 
-        let keypair = Random.generate().unwrap();
-
         let parcel = Parcel {
             fee: 5.into(),
             action: Action::Payment {
@@ -970,9 +945,7 @@ mod tests_parcel {
             nonce: 0.into(),
             network_id: 0xCA,
         };
-        let signed_parcel = SignedParcel::new_with_sign(parcel, keypair.private());
-        let sender = signed_parcel.sender();
-        assert_eq!(keypair.address(), sender);
+        let sender = address();
         state.add_balance(&sender, &20.into()).unwrap();
 
         assert_eq!(
@@ -980,7 +953,7 @@ mod tests_parcel {
                 invoice: Invoice::Success,
                 error: None,
             },
-            state.apply(&signed_parcel).unwrap()
+            state.apply(&parcel, &sender).unwrap()
         );
 
         assert_eq!(Ok(10.into()), state.balance(&receiver));
@@ -993,8 +966,6 @@ mod tests_parcel {
         let mut state = get_temp_state();
         let key = 1u64.into();
 
-        let keypair = Random.generate().unwrap();
-
         let parcel = Parcel {
             fee: 5.into(),
             action: Action::SetRegularKey {
@@ -1003,9 +974,7 @@ mod tests_parcel {
             nonce: 0.into(),
             network_id: 0xCA,
         };
-        let signed_parcel = SignedParcel::new_with_sign(parcel, keypair.private());
-        let sender = signed_parcel.sender();
-        assert_eq!(sender, keypair.address());
+        let sender = address();
         state.add_balance(&sender, &5.into()).unwrap();
 
         assert_eq!(state.regular_key(&sender), Ok(None));
@@ -1014,7 +983,7 @@ mod tests_parcel {
                 invoice: Invoice::Success,
                 error: None
             },
-            state.apply(&signed_parcel).unwrap()
+            state.apply(&parcel, &sender).unwrap()
         );
         assert_eq!(Ok(Some(key)), state.regular_key(&sender));
     }
@@ -1023,7 +992,6 @@ mod tests_parcel {
     fn should_apply_error_for_action_failure() {
         let mut state = get_temp_state();
         let receiver = 1u64.into();
-        let keypair = Random.generate().unwrap();
 
         let parcel = Parcel {
             fee: 5.into(),
@@ -1034,9 +1002,7 @@ mod tests_parcel {
             nonce: 0.into(),
             network_id: 0xCA,
         };
-        let signed_parcel = SignedParcel::new_with_sign(parcel, keypair.private());
-        let sender = signed_parcel.sender();
-        assert_eq!(keypair.address(), sender);
+        let sender = address();
         state.add_balance(&sender, &20.into()).unwrap();
 
         assert_eq!(
@@ -1048,7 +1014,7 @@ mod tests_parcel {
                     cost: 30.into(),
                 })
             },
-            state.apply(&signed_parcel).unwrap()
+            state.apply(&parcel, &sender).unwrap()
         );
 
         assert_eq!(Ok(0.into()), state.balance(&receiver));
@@ -1095,8 +1061,7 @@ mod tests_parcel {
             nonce: 0.into(),
             network_id: 0xCA,
         };
-        let signed_parcel = SignedParcel::new_with_sign(parcel, &secret().into());
-        let sender = signed_parcel.sender();
+        let sender = address();
 
         state.add_balance(&sender, &U256::from(69u64)).unwrap();
 
@@ -1105,7 +1070,7 @@ mod tests_parcel {
                 invoice: Invoice::Success,
                 error: None,
             }]),
-            state.apply(&signed_parcel).unwrap()
+            state.apply(&parcel, &sender).unwrap()
         );
 
         assert_eq!(state.balance(&sender), Ok(58.into()));
@@ -1156,8 +1121,7 @@ mod tests_parcel {
             nonce: 0.into(),
             network_id: 0xCA,
         };
-        let signed_parcel = SignedParcel::new_with_sign(parcel, &secret().into());
-        let sender = signed_parcel.sender();
+        let sender = address();
 
         state.add_balance(&sender, &U256::from(69u64)).unwrap();
 
@@ -1166,7 +1130,7 @@ mod tests_parcel {
                 invoice: Invoice::Success,
                 error: None,
             }]),
-            state.apply(&signed_parcel).unwrap()
+            state.apply(&parcel, &sender).unwrap()
         );
 
         assert_eq!(state.balance(&sender), Ok(64.into()));
@@ -1269,8 +1233,7 @@ mod tests_parcel {
                 }],
             },
         };
-        let signed_parcel = SignedParcel::new_with_sign(parcel, &secret().into());
-        let sender = signed_parcel.sender();
+        let sender = address();
 
         state.add_balance(&sender, &U256::from(120)).unwrap();
 
@@ -1285,7 +1248,7 @@ mod tests_parcel {
                     error: None,
                 },
             ]),
-            state.apply(&signed_parcel).unwrap()
+            state.apply(&parcel, &sender).unwrap()
         );
 
         assert_eq!(state.balance(&sender), Ok(100.into()));
@@ -1336,7 +1299,7 @@ mod tests_parcel {
         let mint_hash = mint.hash();
 
         let shard_id = 0x00;
-        let parcel = Parcel {
+        let mint_parcel = Parcel {
             fee: 20.into(),
             network_id,
             nonce: 0.into(),
@@ -1349,8 +1312,7 @@ mod tests_parcel {
                 }],
             },
         };
-        let mint_parcel = SignedParcel::new_with_sign(parcel, &secret().into());
-        let sender = mint_parcel.sender();
+        let sender = address();
 
         state.add_balance(&sender, &U256::from(120)).unwrap();
 
@@ -1359,7 +1321,7 @@ mod tests_parcel {
                 invoice: Invoice::Success,
                 error: None,
             }]),
-            state.apply(&mint_parcel).unwrap()
+            state.apply(&mint_parcel, &sender).unwrap()
         );
 
         assert_eq!(state.balance(&sender), Ok(100.into()));
@@ -1410,7 +1372,7 @@ mod tests_parcel {
         };
         let transfer_hash = transfer.hash();
 
-        let parcel = Parcel {
+        let transfer_parcel = Parcel {
             fee: 30.into(),
             network_id,
             nonce: 1.into(),
@@ -1423,14 +1385,13 @@ mod tests_parcel {
                 }],
             },
         };
-        let transfer_parcel = SignedParcel::new_with_sign(parcel, &secret().into());
 
         assert_eq!(
             ParcelOutcome::Transactions(vec![TransactionOutcome {
                 invoice: Invoice::Success,
                 error: None,
             }]),
-            state.apply(&transfer_parcel).unwrap()
+            state.apply(&transfer_parcel, &sender).unwrap()
         );
 
         assert_eq!(state.balance(&sender), Ok(70.into()));
@@ -1490,10 +1451,9 @@ mod tests_parcel {
             nonce: 0.into(),
             network_id: 0xCA,
         };
-        let signed_parcel = SignedParcel::new_with_sign(parcel, &secret().into());
-        let sender = signed_parcel.sender();
+        let sender = address();
         state.add_balance(&sender, &20.into()).unwrap();
-        let res = state.apply(&signed_parcel).unwrap();
+        let res = state.apply(&parcel, &sender).unwrap();
         assert_eq!(
             ParcelOutcome::Single {
                 invoice: Invoice::Success,
@@ -1516,10 +1476,9 @@ mod tests_parcel {
             nonce: 0.into(),
             network_id: 0xCA,
         };
-        let signed_parcel = SignedParcel::new_with_sign(parcel, &secret().into());
-        let sender = signed_parcel.sender();
+        let sender = address();
         state.add_balance(&sender, &20.into()).unwrap();
-        let res = state.apply(&signed_parcel).unwrap();
+        let res = state.apply(&parcel, &sender).unwrap();
         assert_eq!(
             ParcelOutcome::Single {
                 invoice: Invoice::Success,
@@ -1544,10 +1503,9 @@ mod tests_parcel {
             nonce: 0.into(),
             network_id: 0xCA,
         };
-        let signed_parcel = SignedParcel::new_with_sign(parcel, &secret().into());
-        let sender = signed_parcel.sender();
+        let sender = address();
         state.add_balance(&sender, &20.into()).unwrap();
-        let res = state.apply(&signed_parcel).unwrap();
+        let res = state.apply(&parcel, &sender).unwrap();
         assert_eq!(
             ParcelOutcome::Single {
                 invoice: Invoice::Success,
@@ -1596,13 +1554,12 @@ mod tests_parcel {
             },
             network_id: 0xCA,
         };
-        let signed_parcel = SignedParcel::new_with_sign(parcel, &secret().into());
-        let sender = signed_parcel.sender();
+        let sender = address();
 
         state.add_balance(&sender, &U256::from(69u64)).unwrap();
 
-        match state.apply(&signed_parcel).unwrap_err() {
-            Error::Parcel(err) => assert_eq!(ParcelError::InvalidShardId(0), err),
+        match state.apply(&parcel, &sender).unwrap_err() {
+            StateError::Parcel(err) => assert_eq!(ParcelError::InvalidShardId(0), err),
             other => panic!("{:?}", other),
         }
     }
@@ -1664,13 +1621,12 @@ mod tests_parcel {
                 }],
             },
         };
-        let signed_parcel = SignedParcel::new_with_sign(parcel, &secret().into());
 
-        let sender = signed_parcel.sender();
+        let sender = address();
         state.add_balance(&sender, &U256::from(120)).unwrap();
 
-        match state.apply(&signed_parcel).unwrap_err() {
-            Error::Parcel(err) => assert_eq!(ParcelError::InvalidShardId(100), err),
+        match state.apply(&parcel, &sender).unwrap_err() {
+            StateError::Parcel(err) => assert_eq!(ParcelError::InvalidShardId(100), err),
             other => panic!("{:?}", other),
         }
     }

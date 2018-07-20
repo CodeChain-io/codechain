@@ -19,6 +19,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use ckey::Address;
+use cstate::{StateDB, StateError, TopLevelState};
 use ctypes::parcel::Error as ParcelError;
 use ctypes::BlockNumber;
 use parking_lot::{Mutex, RwLock};
@@ -32,7 +33,6 @@ use super::super::error::Error;
 use super::super::header::Header;
 use super::super::parcel::{SignedParcel, UnverifiedParcel};
 use super::super::spec::Spec;
-use super::super::state::TopLevelState;
 use super::super::types::{BlockId, ParcelId};
 use super::mem_pool::{AccountDetails, MemPool, ParcelOrigin, RemovalReason};
 use super::sealing_queue::SealingQueue;
@@ -141,7 +141,7 @@ impl Miner {
     }
 
     /// Get `Some` `clone()` of the current pending block's state or `None` if we're not sealing.
-    pub fn pending_state(&self, latest_block_number: BlockNumber) -> Option<TopLevelState<::state_db::StateDB>> {
+    pub fn pending_state(&self, latest_block_number: BlockNumber) -> Option<TopLevelState<StateDB>> {
         self.map_pending_block(|b| b.state().clone(), latest_block_number)
     }
 
@@ -209,7 +209,7 @@ impl Miner {
                 let hash = parcel.hash();
                 if client.parcel_block(ParcelId::Hash(hash)).is_some() {
                     cdebug!(MINER, "Rejected parcel {:?}: already in the blockchain", hash);
-                    return Err(Error::Parcel(ParcelError::AlreadyImported))
+                    return Err(StateError::from(ParcelError::AlreadyImported).into())
                 }
                 match self
                     .engine
@@ -241,7 +241,8 @@ impl Miner {
                             }
                         };
                         let hash = parcel.hash();
-                        let result = mem_pool.add(parcel, origin, insertion_time, &fetch_account)?;
+                        let result =
+                            mem_pool.add(parcel, origin, insertion_time, &fetch_account).map_err(StateError::from)?;
 
                         inserted.push(hash);
                         Ok(result)
@@ -367,7 +368,7 @@ impl Miner {
             let start = Instant::now();
             // Check whether parcel type is allowed for sender
             let result = match self.engine.machine().verify_parcel(&parcel, open_block.header(), chain) {
-                Err(Error::Parcel(ParcelError::NotAllowed)) => Err(ParcelError::NotAllowed.into()),
+                err @ Err(Error::State(StateError::Parcel(ParcelError::NotAllowed))) => err,
                 _ => open_block.push_parcel(parcel, None),
             };
             let took = start.elapsed();
@@ -375,8 +376,8 @@ impl Miner {
             ctrace!(MINER, "Adding parcel {:?} took {:?}", hash, took);
             match result {
                 // already have parcel - ignore
-                Err(Error::Parcel(ParcelError::AlreadyImported)) => {}
-                Err(Error::Parcel(ParcelError::NotAllowed)) => {
+                Err(Error::State(StateError::Parcel(ParcelError::AlreadyImported))) => {}
+                Err(Error::State(StateError::Parcel(ParcelError::NotAllowed))) => {
                     non_allowed_parcels.insert(hash);
                     cdebug!(MINER, "Skipping non-allowed parcel for sender {:?}", hash);
                 }
@@ -496,7 +497,7 @@ impl Miner {
 const SEALING_TIMEOUT_IN_BLOCKS: u64 = 5;
 
 impl MinerService for Miner {
-    type State = TopLevelState<::state_db::StateDB>;
+    type State = TopLevelState<StateDB>;
 
     fn status(&self) -> MinerStatus {
         let status = self.mem_pool.read().status();

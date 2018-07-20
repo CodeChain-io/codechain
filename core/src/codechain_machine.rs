@@ -16,7 +16,7 @@
 // A state machine.
 
 use ckey::Address;
-use cstate::TopStateInfo;
+use cstate::{StateError, TopState, TopStateInfo};
 use ctypes::parcel::Error as ParcelError;
 use primitives::U256;
 
@@ -26,7 +26,6 @@ use super::error::Error;
 use super::header::Header;
 use super::parcel::{SignedParcel, UnverifiedParcel};
 use super::spec::CommonParams;
-use super::state::TopState;
 
 pub struct CodeChainMachine {
     params: CommonParams,
@@ -56,12 +55,12 @@ impl CodeChainMachine {
     /// Does basic verification of the parcel.
     pub fn verify_parcel_basic(&self, p: &UnverifiedParcel, _header: &Header) -> Result<(), Error> {
         if p.fee < self.params.min_parcel_cost {
-            return Err(ParcelError::InsufficientFee {
+            return Err(StateError::Parcel(ParcelError::InsufficientFee {
                 minimal: self.params.min_parcel_cost,
                 got: p.fee,
-            }.into())
+            }).into())
         }
-        p.verify_basic(self.params(), false)?;
+        p.verify_basic(self.params(), false).map_err(StateError::from)?;
 
         Ok(())
     }
@@ -94,10 +93,10 @@ impl ::machine::Machine for CodeChainMachine {
 
 impl ::machine::WithBalances for CodeChainMachine {
     fn balance(&self, live: &ExecutedBlock, address: &Address) -> Result<U256, Self::Error> {
-        live.state().balance(address).map_err(Into::into)
+        Ok(live.state().balance(address).map_err(StateError::from)?)
     }
 
     fn add_balance(&self, live: &mut ExecutedBlock, address: &Address, amount: &U256) -> Result<(), Self::Error> {
-        live.state_mut().add_balance(address, amount).map_err(Into::into)
+        Ok(live.state_mut().add_balance(address, amount).map_err(StateError::from)?)
     }
 }

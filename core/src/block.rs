@@ -19,6 +19,7 @@ use std::collections::HashSet;
 use ccrypto::BLAKE_NULL_RLP;
 use ckey::Address;
 use cmerkle::skewed_merkle_root;
+use cstate::{StateDB, StateError, StateWithCache, TopLevelState};
 use ctypes::invoice::{Invoice, ParcelInvoice};
 use ctypes::parcel::{Error as ParcelError, Outcome as ParcelOutcome};
 use primitives::{Bytes, H256};
@@ -31,8 +32,6 @@ use super::error::{BlockError, Error};
 use super::header::{Header, Seal};
 use super::machine::{LiveBlock, Parcels};
 use super::parcel::{SignedParcel, UnverifiedParcel};
-use super::state::{StateWithCache, TopLevelState};
-use super::state_db::StateDB;
 
 /// A block, encoded as it is on the block chain.
 #[derive(Debug, Clone, PartialEq)]
@@ -129,7 +128,7 @@ impl<'x> OpenBlock<'x> {
         is_epoch_begin: bool,
     ) -> Result<Self, Error> {
         let number = parent.number() + 1;
-        let state = TopLevelState::from_existing(db, *parent.state_root(), trie_factory)?;
+        let state = TopLevelState::from_existing(db, *parent.state_root(), trie_factory).map_err(StateError::from)?;
         let mut r = OpenBlock {
             block: ExecutedBlock::new(state),
             engine,
@@ -153,10 +152,10 @@ impl<'x> OpenBlock<'x> {
     /// Push a parcel into the block.
     pub fn push_parcel(&mut self, parcel: SignedParcel, h: Option<H256>) -> Result<(), Error> {
         if self.block.parcels_set.contains(&parcel.hash()) {
-            return Err(ParcelError::AlreadyImported.into())
+            return Err(StateError::Parcel(ParcelError::AlreadyImported).into())
         }
 
-        let outcomes = self.block.state.apply(&parcel)?;
+        let outcomes = self.block.state.apply(&parcel, parcel.sender())?;
 
         self.block.parcels_set.insert(h.unwrap_or_else(|| parcel.hash()));
         self.block.parcels.push(parcel.into());

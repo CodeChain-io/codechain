@@ -14,21 +14,29 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::result::Result;
+pub mod helpers {
+    use std::sync::Arc;
 
-use primitives::H256;
+    use journaldb::{self, Algorithm};
+    use kvdb::KeyValueDB;
+    use kvdb_memorydb;
 
-use super::addr::SocketAddr;
+    use super::super::impls::TopLevelState;
+    use super::super::StateDB;
 
-pub trait Control: Send + Sync {
-    fn register_secret(&self, secret: H256, addr: SocketAddr) -> Result<(), Error>;
-    fn connect(&self, addr: SocketAddr) -> Result<(), Error>;
-    fn disconnect(&self, addr: SocketAddr) -> Result<(), Error>;
-    fn is_connected(&self, addr: &SocketAddr) -> Result<bool, Error>;
-}
 
-#[derive(Clone, Debug)]
-pub enum Error {
-    Disabled,
-    NotConnected,
+    fn new_db() -> Arc<KeyValueDB> {
+        Arc::new(kvdb_memorydb::create(0))
+    }
+
+    pub fn get_temp_state_db() -> StateDB {
+        let db = new_db();
+        let boxed_db = journaldb::new(db, Algorithm::Archive, None);
+        StateDB::new(boxed_db, 5 * 1024 * 1024)
+    }
+
+    pub fn get_temp_state() -> TopLevelState<StateDB> {
+        let journal_db = get_temp_state_db();
+        TopLevelState::new(journal_db, Default::default())
+    }
 }

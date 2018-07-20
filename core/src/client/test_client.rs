@@ -38,6 +38,7 @@ use std::sync::Arc;
 use ckey::{Address, Generator, Random};
 use cmerkle::skewed_merkle_root;
 use cnetwork::NodeId;
+use cstate::StateDB;
 use ctypes::invoice::ParcelInvoice;
 use ctypes::parcel::{Action, Parcel};
 use ctypes::BlockNumber;
@@ -61,7 +62,6 @@ use super::super::header::Header as BlockHeader;
 use super::super::miner::{Miner, MinerService, ParcelImportResult};
 use super::super::parcel::{LocalizedParcel, SignedParcel};
 use super::super::spec::Spec;
-use super::super::state_db::StateDB;
 use super::super::types::{BlockId, ParcelId, TransactionId, VerificationQueueInfo as QueueInfo};
 
 /// Test client.
@@ -269,7 +269,7 @@ impl TestBlockChainClient {
             },
         };
         let signed_parcel = SignedParcel::new_with_sign(parcel, keypair.private());
-        self.set_balance(signed_parcel.sender(), 10_000_000_000_000_000_000u64.into());
+        self.set_balance(*signed_parcel.sender(), 10_000_000_000_000_000_000u64.into());
         let hash = signed_parcel.hash();
         let res = self.miner.import_external_parcels(self, vec![signed_parcel.into()]);
         let res = res.into_iter().next().unwrap().expect("Successful import");

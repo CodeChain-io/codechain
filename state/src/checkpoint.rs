@@ -14,13 +14,13 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use cstate::ShardBackend;
-use ctypes::transaction::{Outcome as TransactionOutcome, Transaction};
+pub type CheckpointId = usize;
 
-use super::super::error::Error;
-
-pub trait ShardState<B>
-where
-    B: ShardBackend, {
-    fn apply(&mut self, transaction: &Transaction, parcel_network_id: &u64) -> Result<TransactionOutcome, Error>;
+pub trait StateWithCheckpoint {
+    /// Create a recoverable checkpoint of this state.
+    fn create_checkpoint(&mut self, id: CheckpointId);
+    /// Merge last checkpoint with previous.
+    fn discard_checkpoint(&mut self, id: CheckpointId);
+    /// Revert to the last checkpoint and discard it.
+    fn revert_to_checkpoint(&mut self, id: CheckpointId);
 }

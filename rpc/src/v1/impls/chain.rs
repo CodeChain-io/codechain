@@ -60,10 +60,10 @@ where
         UntrustedRlp::new(&raw.into_vec())
             .as_val()
             .map_err(errors::rlp)
-            .and_then(|parcel| SignedParcel::new(parcel).map_err(errors::parcel))
+            .and_then(|parcel| SignedParcel::new(parcel).map_err(errors::parcel_core))
             .and_then(|signed| {
                 let hash = signed.hash();
-                self.miner.import_own_parcel(&*self.client, signed).map_err(errors::parcel).map(|_| hash)
+                self.miner.import_own_parcel(&*self.client, signed).map_err(errors::parcel_core).map(|_| hash)
             })
             .map(Into::into)
     }
@@ -84,12 +84,12 @@ where
     }
 
     fn get_asset_scheme(&self, transaction_hash: H256) -> Result<Option<AssetScheme>> {
-        self.client.get_asset_scheme(transaction_hash).map_err(errors::parcel)
+        self.client.get_asset_scheme(transaction_hash).map_err(errors::parcel_state)
     }
 
     fn get_asset(&self, transaction_hash: H256, index: usize, block_number: Option<u64>) -> Result<Option<Asset>> {
         let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
-        self.client.get_asset(transaction_hash, index, block_id).map_err(errors::parcel)
+        self.client.get_asset(transaction_hash, index, block_id).map_err(errors::parcel_state)
     }
 
     fn get_nonce(&self, address: H160, block_number: Option<u64>) -> Result<Option<U256>> {

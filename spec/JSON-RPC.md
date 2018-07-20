@@ -116,10 +116,10 @@ A hexadecimal string for XXX-bit unsigned integer
   * [net_getPort](#net_getPort)
   * [net_getNetworkId](#net_getNetworkId)
 ***
- * [account_getAccountList](#account_getaccountlist)
- * [account_createAccount](#account_createaccount)
- * [account_createAccountFromSecret](#account_createaccountfromsecret)
- * [account_removeAccount](#account_removeaccount)
+ * [account_getList](#account_getlist)
+ * [account_create](#account_create)
+ * [account_importRaw](#account_importraw)
+ * [account_remove](#account_remove)
  * [account_sign](#account_sign)
 ***
  * [devel_getStateTrieKeys](#devel_getstatetriekeys)
@@ -921,7 +921,7 @@ Response Example
 }
 ```
 
-## account_getAccountList
+## account_getList
 Gets a list of accounts.
 
 Params: No parameters
@@ -932,7 +932,7 @@ Request Example
 ```
 curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "account_getAccountList", "params": [], "id": 6}' \
+    -d '{"jsonrpc": "2.0", "method": "account_getList", "params": [], "id": 6}' \
     localhost:8080
 ```
 
@@ -945,7 +945,7 @@ Response Example
 }
 ```
 
-## account_createAccount
+## account_create
 Creates a new account.
 
 Params:
@@ -957,7 +957,7 @@ Request Example
 ```
 curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "account_createAccount", "params": [], "id": 6}' \
+    -d '{"jsonrpc": "2.0", "method": "account_create", "params": [], "id": 6}' \
     localhost:8080
 ```
 
@@ -970,7 +970,7 @@ Response Example
 }
 ```
 
-## account_createAccountFromSecret
+## account_importRaw
 Imports a secret key and add the corresponding account.
 
 Params:
@@ -983,7 +983,7 @@ Request Example
 ```
 curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "account_createAccountFromSecret", "params": ["a2b39d4aefecdb17f84ed4cf629e7c8817691cc4f444ac7522902b8fb4b7bd53"], "id": 6}' \
+    -d '{"jsonrpc": "2.0", "method": "account_importRaw", "params": ["a2b39d4aefecdb17f84ed4cf629e7c8817691cc4f444ac7522902b8fb4b7bd53"], "id": 6}' \
     localhost:8080
 ```
 
@@ -996,7 +996,7 @@ Response Example
 }
 ```
 
-## account_removeAccount
+## account_remove
 Removes the account
 
 Params:
@@ -1009,7 +1009,7 @@ Request Example
 ```
 curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "account_removeAccount", "params": ["1228c0de48fdc303b4b7f51049ae2887358f94b6"], "id": 6}' \
+    -d '{"jsonrpc": "2.0", "method": "account_remove", "params": ["1228c0de48fdc303b4b7f51049ae2887358f94b6"], "id": 6}' \
 ```
 
 Response Example

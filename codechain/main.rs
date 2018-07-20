@@ -42,6 +42,7 @@ extern crate env_logger;
 extern crate fdlimit;
 extern crate panic_hook;
 extern crate parking_lot;
+extern crate primitives;
 extern crate rpassword;
 #[cfg(feature = "stratum")]
 extern crate stratum;
@@ -65,13 +66,14 @@ use ckeystore::accounts_dir::RootDiskDirectory;
 use ckeystore::KeyStore;
 use clap::ArgMatches;
 use clogger::LoggerConfig;
-use cnetwork::{NetworkConfig, NetworkControl, NetworkService, SocketAddr};
+use cnetwork::{NetworkConfig, NetworkControl, NetworkControlError, NetworkService, SocketAddr};
 use creactor::EventLoop;
 use crpc::{HttpServer, IpcServer};
 use csync::{BlockSyncExtension, ParcelSyncExtension, SnapshotService};
 use ctrlc::CtrlC;
 use fdlimit::raise_fd_limit;
 use parking_lot::{Condvar, Mutex};
+use primitives::H256;
 
 use self::account_command::run_account_command;
 use self::rpc::{HttpConfiguration as RpcHttpConfig, IpcConfiguration as RpcIpcConfig};
@@ -81,16 +83,12 @@ pub const APP_INFO: AppInfo = AppInfo {
     author: "Kodebox",
 };
 
-pub fn rpc_start<NC>(cfg: RpcHttpConfig, deps: Arc<rpc_apis::ApiDependencies<NC>>) -> Result<HttpServer, String>
-where
-    NC: NetworkControl + Send + Sync, {
+pub fn rpc_start(cfg: RpcHttpConfig, deps: Arc<rpc_apis::ApiDependencies>) -> Result<HttpServer, String> {
     info!("RPC Listening on {}", cfg.port);
     rpc::new_http(cfg, deps)
 }
 
-pub fn rpc_ipc_start<NC>(cfg: RpcIpcConfig, deps: Arc<rpc_apis::ApiDependencies<NC>>) -> Result<IpcServer, String>
-where
-    NC: NetworkControl + Send + Sync, {
+pub fn rpc_ipc_start(cfg: RpcIpcConfig, deps: Arc<rpc_apis::ApiDependencies>) -> Result<IpcServer, String> {
     info!("IPC Listening on {}", cfg.socket_addr);
     rpc::new_ipc(cfg, deps)
 }
@@ -213,7 +211,7 @@ fn new_miner(config: &config::Config, spec: &Spec, ap: Arc<AccountProvider>) -> 
             }
         }
         EngineType::InternalSealing => match config.mining.engine_signer {
-            Some(engine_signer) => match ap.has_account(engine_signer) {
+            Some(engine_signer) => match ap.has_account(&engine_signer) {
                 Ok(has_account) if !has_account => {
                     return Err("mining.engine_signer is not found in AccountProvider".to_string())
                 }
@@ -239,6 +237,32 @@ fn new_miner(config: &config::Config, spec: &Spec, ap: Arc<AccountProvider>) -> 
     }
 
     Ok(miner)
+}
+
+struct DummyNetworkService {}
+
+impl DummyNetworkService {
+    fn new() -> Self {
+        DummyNetworkService {}
+    }
+}
+
+impl NetworkControl for DummyNetworkService {
+    fn register_secret(&self, _secret: H256, _addr: SocketAddr) -> Result<(), NetworkControlError> {
+        Err(NetworkControlError::Disabled)
+    }
+
+    fn connect(&self, _addr: SocketAddr) -> Result<(), NetworkControlError> {
+        Err(NetworkControlError::Disabled)
+    }
+
+    fn disconnect(&self, _addr: SocketAddr) -> Result<(), NetworkControlError> {
+        Err(NetworkControlError::Disabled)
+    }
+
+    fn is_connected(&self, _addr: &SocketAddr) -> Result<bool, NetworkControlError> {
+        Err(NetworkControlError::Disabled)
+    }
 }
 
 fn run_node(matches: ArgMatches) -> Result<(), String> {
@@ -268,7 +292,7 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
     let miner = new_miner(&config, &spec, ap.clone())?;
     let client = client_start(&config, &spec, miner.clone())?;
 
-    let network_service = {
+    let network_service: Arc<NetworkControl> = {
         if !config.network.disable {
             let network_config = (&config.network).into();
             let service = network_start(&network_config)?;
@@ -294,16 +318,16 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
             for address in network_config.bootstrap_addresses {
                 service.connect_to(address)?;
             }
-            Some(service)
+            service
         } else {
-            None
+            Arc::new(DummyNetworkService::new())
         }
     };
 
     let rpc_apis_deps = Arc::new(rpc_apis::ApiDependencies {
         client: client.client(),
         miner: Arc::clone(&miner),
-        network_control: network_service.as_ref().map(Arc::clone),
+        network_control: Arc::clone(&network_service),
         account_provider: ap,
     });
 

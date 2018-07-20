@@ -9,11 +9,19 @@ codechain-crypto = { path = "../crypto" }
 codechain-logger = { path = "../util/logger" }
 codechain-key = { path = "../key", features = ["ecdsa"] }
 codechain-types = { path = "../types" }
+codechain-vm = { path = "../vm" }
 hashdb = { path = "../util/hashdb" }
+journaldb = { path = "../util/journaldb" }
+kvdb = { path = "../util/kvdb" }
+kvdb-memorydb = { path = "../util/kvdb-memorydb" }
 log = "0.4.1"
+lru-cache = "0.1"
+parking_lot = "0.5"
 patricia-trie = { path = "../util/patricia_trie" }
 primitives = { path = "../util/primitives" }
 rlp = { path = "../util/rlp" }
 rustc-hex = "1.0"
 serde = "1.0"
 serde_derive = "1.0"
+unexpected = { path = "../util/unexpected" }
+util-error = { path = "../util/error" }

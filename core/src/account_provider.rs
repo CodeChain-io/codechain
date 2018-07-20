@@ -113,8 +113,8 @@ impl AccountProvider {
         }
     }
 
-    pub fn has_account(&self, address: Address) -> Result<bool, SignError> {
-        let has = self.keystore.read().has_account(&address)?;
+    pub fn has_account(&self, address: &Address) -> Result<bool, SignError> {
+        let has = self.keystore.read().has_account(address)?;
         Ok(has)
     }
 

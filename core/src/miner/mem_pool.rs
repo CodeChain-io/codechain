@@ -179,7 +179,7 @@ impl MemPoolItem {
         self.parcel.nonce
     }
 
-    fn sender(&self) -> Address {
+    fn sender(&self) -> &Address {
         self.parcel.sender()
     }
 
@@ -258,7 +258,7 @@ impl ParcelSet {
                         "All parcels in `self.by_priority` and `self.by_address` are kept in sync with `by_hash`.",
                     )
                 })
-                .map(|parcel| (parcel.sender(), parcel.nonce()))
+                .map(|parcel| (*parcel.sender(), parcel.nonce()))
                 .collect()
         };
 
@@ -528,7 +528,7 @@ impl MemPool {
         }
 
         let parcel = parcel.expect("None is tested in early-exit condition above; qed");
-        let sender = parcel.sender();
+        let sender = *parcel.sender();
         let nonce = parcel.nonce();
         let current_nonce = fetch_nonce(&sender);
 
@@ -698,7 +698,7 @@ impl MemPool {
             );
 
             return Err(ParcelError::InsufficientBalance {
-                address: parcel.sender(),
+                address: *parcel.sender(),
                 cost: parcel.fee,
                 balance: client_account.balance,
             })
@@ -730,7 +730,7 @@ impl MemPool {
             return Err(ParcelError::AlreadyImported)
         }
 
-        let address = parcel.sender();
+        let address = *parcel.sender();
         let nonce = parcel.nonce();
         let hash = parcel.hash();
 
@@ -980,7 +980,7 @@ impl MemPool {
     ) -> bool {
         let order = ParcelOrder::for_parcel(&parcel, base_nonce);
         let hash = parcel.hash();
-        let address = parcel.sender();
+        let address = *parcel.sender();
         let nonce = parcel.nonce();
 
         let old_hash = by_hash.insert(hash, parcel);
