@@ -668,7 +668,7 @@ Response Example
 ```
 
 ## chain_getCoinbase
-(not implemented) Gets coinbase's account id.
+Gets coinbase's account id.
 
 Params: No parameters
 

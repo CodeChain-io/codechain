@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ckey::Public;
+use ckey::{Address, Public};
 use cstate::{Asset, AssetScheme};
 use ctypes::invoice::{Invoice, ParcelInvoice};
 use ctypes::{BlockNumber, ShardId};
@@ -93,5 +93,9 @@ build_rpc_trait! {
         /// Gets parcels in the current mem pool.
         # [rpc(name = "chain_getPendingParcels")]
         fn get_pending_parcels(&self) -> Result<Vec<Parcel>>;
+
+        /// Gets coinbase's account id
+        # [rpc(name = "chain_getCoinbase")]
+        fn get_coinbase(&self) -> Result<Option<Address>>;
     }
 }
