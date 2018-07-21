@@ -19,6 +19,7 @@ use primitives::U256;
 
 pub struct CuckooParams {
     pub block_reward: U256,
+    pub block_interval: u64,
     pub min_score: U256,
     pub max_vertex: usize,
     pub max_edge: usize,
@@ -29,6 +30,7 @@ impl From<cjson::spec::CuckooParams> for CuckooParams {
     fn from(p: cjson::spec::CuckooParams) -> Self {
         CuckooParams {
             block_reward: p.block_reward.map_or(U256::from(0), Into::into),
+            block_interval: p.block_interval.map_or(120, Into::into),
             min_score: p.min_score.map_or(U256::from(0x020000), Into::into),
             max_vertex: p.max_vertex.map_or(1 << 30, Into::into),
             max_edge: p.max_edge.map_or(1 << 29, Into::into),
