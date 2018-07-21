@@ -20,6 +20,7 @@ use std::cmp::{max, min};
 
 use byteorder::{ByteOrder, LittleEndian};
 use ccrypto::blake256;
+use ctypes::machine::WithBalances;
 use primitives::U256;
 use rlp::UntrustedRlp;
 use unexpected::{Mismatch, OutOfBounds};
@@ -30,7 +31,6 @@ use super::super::codechain_machine::CodeChainMachine;
 use super::super::consensus::EngineType;
 use super::super::error::{BlockError, Error};
 use super::super::header::Header;
-use super::super::machine::WithBalances;
 use super::ConsensusEngine;
 
 /// BlakePoW specific seal

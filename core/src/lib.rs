@@ -66,7 +66,6 @@ mod db;
 pub mod encoded;
 mod error;
 mod header;
-mod machine;
 mod miner;
 mod parcel;
 mod pod_account;

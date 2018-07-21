@@ -28,6 +28,7 @@ extern crate serde_derive;
 extern crate unexpected;
 
 pub mod invoice;
+pub mod machine;
 pub mod parcel;
 pub mod transaction;
 
