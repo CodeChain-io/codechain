@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ckey::Address;
+use ctypes::ShardId;
 use primitives::H256;
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
@@ -82,7 +83,7 @@ pub struct AssetSchemeAddress(H256);
 impl_address!(SHARD, AssetSchemeAddress, PREFIX);
 
 impl AssetSchemeAddress {
-    pub fn new(transaction_hash: H256, shard_id: u32) -> Self {
+    pub fn new(transaction_hash: H256, shard_id: ShardId) -> Self {
         let index = ::std::u64::MAX;
 
         Self::from_transaction_hash_with_shard_id(transaction_hash, index, shard_id)

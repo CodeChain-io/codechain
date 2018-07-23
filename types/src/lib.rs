@@ -34,3 +34,4 @@ pub mod parcel;
 pub mod transaction;
 
 pub type BlockNumber = u64;
+pub type ShardId = u32;

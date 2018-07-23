@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use ctypes::ShardId;
 use primitives::H256;
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
@@ -21,26 +22,26 @@ use super::cache::CacheableItem;
 
 #[derive(Clone, Debug)]
 pub struct ShardMetadata {
-    number_of_worlds: u32,
+    number_of_worlds: ShardId,
     nonce: u64,
 }
 
 impl ShardMetadata {
-    pub fn new(number_of_worlds: u32) -> Self {
+    pub fn new(number_of_worlds: ShardId) -> Self {
         Self {
             number_of_worlds,
             nonce: 0,
         }
     }
 
-    pub fn new_with_nonce(number_of_worlds: u32, nonce: u64) -> Self {
+    pub fn new_with_nonce(number_of_worlds: ShardId, nonce: u64) -> Self {
         Self {
             number_of_worlds,
             nonce,
         }
     }
 
-    pub fn number_of_worlds(&self) -> &u32 {
+    pub fn number_of_worlds(&self) -> &ShardId {
         &self.number_of_worlds
     }
 
@@ -88,7 +89,7 @@ pub struct ShardMetadataAddress(H256);
 impl_address!(SHARD, ShardMetadataAddress, PREFIX);
 
 impl ShardMetadataAddress {
-    pub fn new(shard_id: u32) -> Self {
+    pub fn new(shard_id: ShardId) -> Self {
         Self::from_transaction_hash_with_shard_id(H256::from_slice(b"metadata address"), shard_id as u64, shard_id)
     }
 }

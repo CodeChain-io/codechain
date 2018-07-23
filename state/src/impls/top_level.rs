@@ -43,6 +43,7 @@ use ckey::{Address, Public};
 use ctypes::invoice::Invoice;
 use ctypes::parcel::{Action, ChangeShard, Error as ParcelError, Outcome as ParcelOutcome, Parcel};
 use ctypes::transaction::{Error as TransactionError, Outcome as TransactionOutcome, Transaction};
+use ctypes::ShardId;
 use primitives::{H256, U256};
 use trie::{Result as TrieResult, Trie, TrieError, TrieFactory};
 use unexpected::Mismatch;
@@ -122,12 +123,12 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopStateInfo for TopLevelSt
         self.ensure_account_cached(a, |a| a.as_ref().map_or(None, |account| account.regular_key()))
     }
 
-    fn number_of_shards(&self) -> TrieResult<u32> {
+    fn number_of_shards(&self) -> TrieResult<ShardId> {
         let metadata = self.require_metadata()?;
         Ok(*metadata.number_of_shards())
     }
 
-    fn shard_root(&self, shard_id: u32) -> TrieResult<Option<H256>> {
+    fn shard_root(&self, shard_id: ShardId) -> TrieResult<Option<H256>> {
         let shard_address = ShardAddress::new(shard_id);
         let shard = self.db.get_cached_shard(&shard_address).and_then(|s| s).map(|s| s.root().clone());
         if shard.is_some() {
@@ -141,7 +142,7 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopStateInfo for TopLevelSt
 
     fn asset_scheme(
         &self,
-        shard_id: u32,
+        shard_id: ShardId,
         asset_scheme_address: &AssetSchemeAddress,
     ) -> TrieResult<Option<AssetScheme>> {
         // FIXME: Handle the case that shard doesn't exist
@@ -152,7 +153,7 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopStateInfo for TopLevelSt
         shard_level_state.asset_scheme(asset_scheme_address)
     }
 
-    fn asset(&self, shard_id: u32, asset_address: &AssetAddress) -> TrieResult<Option<Asset>> {
+    fn asset(&self, shard_id: ShardId, asset_address: &AssetAddress) -> TrieResult<Option<Asset>> {
         // FIXME: Handle the case that shard doesn't exist
         let shard_root = self.shard_root(shard_id)?.unwrap_or(BLAKE_NULL_RLP);
         // FIXME: Make it mutable borrow db instead of cloning.
@@ -428,7 +429,7 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopLevelState<B> {
     pub fn apply_transactions(
         &self,
         transactions: &[Transaction],
-        shard_id: u32,
+        shard_id: ShardId,
         shard_root: H256,
     ) -> StateResult<(H256, B, Vec<TransactionOutcome>)> {
         // FIXME: Make it mutable borrow db instead of cloning.
@@ -493,7 +494,7 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopLevelState<B> {
         self.metadata.require_item_or_from(&address, default, db, from_db)
     }
 
-    fn require_shard<'a>(&'a self, shard_id: u32) -> TrieResult<RefMut<'a, Shard>> {
+    fn require_shard<'a>(&'a self, shard_id: ShardId) -> TrieResult<RefMut<'a, Shard>> {
         let default = || Shard::new(BLAKE_NULL_RLP);
         let db = self.trie_factory.readonly(self.db.as_hashdb(), &self.root)?;
         let shard_address = ShardAddress::new(shard_id);
@@ -603,7 +604,7 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopState<B> for TopLevelSta
         Ok(())
     }
 
-    fn set_shard_root(&mut self, shard_id: u32, old_root: &H256, new_root: &H256) -> StateResult<()> {
+    fn set_shard_root(&mut self, shard_id: ShardId, old_root: &H256, new_root: &H256) -> StateResult<()> {
         let mut shard = self.require_shard(shard_id)?;
         assert_eq!(old_root, shard.root());
         shard.set_root(*new_root);

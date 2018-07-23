@@ -22,6 +22,8 @@ use ckey::Address;
 use primitives::{Bytes, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
+use super::super::ShardId;
+
 #[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AssetOutPoint {
@@ -55,7 +57,7 @@ pub enum Transaction {
     #[serde(rename_all = "camelCase")]
     AssetMint {
         network_id: u64,
-        shard_id: u32,
+        shard_id: ShardId,
         metadata: String,
         registrar: Option<Address>,
         nonce: u64,
@@ -139,14 +141,14 @@ impl Transaction {
         }
     }
 
-    pub fn related_shards(&self) -> Vec<u32> {
+    pub fn related_shards(&self) -> Vec<ShardId> {
         match self {
             Transaction::AssetTransfer {
                 burns,
                 inputs,
                 ..
             } => {
-                let mut shards: Vec<u32> = burns
+                let mut shards: Vec<ShardId> = burns
                     .iter()
                     .map(AssetTransferInput::related_shard)
                     .chain(inputs.iter().map(AssetTransferInput::related_shard))
@@ -249,13 +251,14 @@ impl Encodable for Transaction {
 }
 
 impl AssetOutPoint {
-    pub fn related_shard(&self) -> u32 {
+    pub fn related_shard(&self) -> ShardId {
+        debug_assert_eq!(::std::mem::size_of::<u32>(), ::std::mem::size_of::<ShardId>());
         Cursor::new(&self.asset_type[4..8]).read_u32::<BigEndian>().unwrap()
     }
 }
 
 impl AssetTransferInput {
-    pub fn related_shard(&self) -> u32 {
+    pub fn related_shard(&self) -> ShardId {
         self.prev_out.related_shard()
     }
 }

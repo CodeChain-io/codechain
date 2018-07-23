@@ -20,7 +20,7 @@ use ccore::{AssetClient, BlockId, MinerService, MiningBlockChainClient, RegularK
 use ckey::Public;
 use cstate::{Asset, AssetScheme};
 use ctypes::invoice::{Invoice, ParcelInvoice};
-use ctypes::BlockNumber;
+use ctypes::{BlockNumber, ShardId};
 use primitives::{H160, H256, U256};
 use rlp::UntrustedRlp;
 
@@ -108,12 +108,12 @@ where
     }
 
 
-    fn get_number_of_shards(&self, block_number: Option<u64>) -> Result<Option<u32>> {
+    fn get_number_of_shards(&self, block_number: Option<u64>) -> Result<Option<ShardId>> {
         let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
         Ok(self.client.number_of_shards(block_id.into()))
     }
 
-    fn get_shard_root(&self, shard_id: u32, block_number: Option<u64>) -> Result<Option<H256>> {
+    fn get_shard_root(&self, shard_id: ShardId, block_number: Option<u64>) -> Result<Option<H256>> {
         let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
         Ok(self.client.shard_root(shard_id, block_id.into()))
     }

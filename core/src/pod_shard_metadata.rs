@@ -18,11 +18,12 @@ use std::fmt;
 
 use cjson;
 use cstate::ShardMetadata;
+use ctypes::ShardId;
 use rlp::{Encodable, RlpStream};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct PodShardMetadata {
-    pub number_of_worlds: u32,
+    pub number_of_worlds: ShardId,
     pub nonce: u64,
 }
 

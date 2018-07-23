@@ -23,6 +23,7 @@ use ckey::Address;
 use cstate::{
     Backend, BasicBackend, Metadata, MetadataAddress, Shard, ShardAddress, ShardMetadataAddress, StateResult,
 };
+use ctypes::ShardId;
 use hashdb::HashDB;
 use memorydb::MemoryDB;
 use parking_lot::RwLock;
@@ -177,7 +178,7 @@ impl Spec {
         mut db: DB,
         mut root: H256,
     ) -> StateResult<(DB, H256)> {
-        let mut shard_roots = Vec::<(u32, H256)>::with_capacity(self.genesis_shards.len());
+        let mut shard_roots = Vec::<(ShardId, H256)>::with_capacity(self.genesis_shards.len());
 
         // Initialize shard-level tries
         for (shard_id, shard) in &*self.genesis_shards {
@@ -194,13 +195,14 @@ impl Spec {
             shard_roots.push((*shard_id, shard_root));
         }
 
+        debug_assert_eq!(::std::mem::size_of::<u32>(), ::std::mem::size_of::<ShardId>());
         debug_assert!(
             shard_roots.len() <= ::std::u32::MAX as usize,
             "{} <= {}",
             shard_roots.len(),
             ::std::u32::MAX as usize
         );
-        let global_metadata = Metadata::new(shard_roots.len() as u32);
+        let global_metadata = Metadata::new(shard_roots.len() as ShardId);
 
         // Initialize shards
         for (shard_id, shard_root) in shard_roots.into_iter() {

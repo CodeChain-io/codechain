@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use ctypes::ShardId;
 use primitives::{Bytes, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
@@ -97,7 +98,7 @@ pub struct AssetAddress(H256);
 impl_address!(SHARD, AssetAddress, PREFIX);
 
 impl AssetAddress {
-    pub fn new(transaction_hash: H256, index: usize, shard_id: u32) -> Self {
+    pub fn new(transaction_hash: H256, index: usize, shard_id: ShardId) -> Self {
         debug_assert_eq!(::std::mem::size_of::<u64>(), ::std::mem::size_of::<usize>());
         let index = index as u64;
 
