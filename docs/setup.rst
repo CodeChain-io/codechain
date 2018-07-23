@@ -3,6 +3,36 @@
 Setup
 #####
 
+Using Docker
+===================
+CodeChain supports the use of Docker to provide an easy and seamless installation process by providing a single package that gives the user everything he/she
+needs to get CodeChain up and running. In order to get the installation package, run the following command after installing Docker:
+::
+
+    docker build -f docker/ubuntu/Dockerfile --tag codechain-io/codechain:branch_or_tag_name .
+
+WSL users may find difficulty in using Docker, and thus, it is highly recommended to use Ubuntu, or install Docker for Windows. When using Docker for Windows,
+it is necessary to enable Hyper-V in BIOS settings.
+
+To see the Docker images created, run the following:
+::
+
+    docker images
+
+It will result in something like this:
+::
+
+    REPOSITORY               TAG                  IMAGE ID            CREATED              SIZE
+    codechain-io/codechain   branch_or_tag_name   6f8474d9bc7a        About a minute ago   1.85GB
+    ubuntu                   14.04                971bb384a50a        6 days ago           188MB
+
+If you want to run the first image file, run the following command:
+::
+
+    docker run -it codechain-io/codechain:branch_or_tag_name
+
+This should result in CodeChain running.
+
 Build Dependencies
 ==================
 
