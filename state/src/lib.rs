@@ -51,7 +51,7 @@ mod traits;
 #[cfg(test)]
 pub mod tests;
 
-pub use action_handler::ActionHandler;
+pub use action_handler::{ActionHandler, HitHandler};
 pub use backend::{Backend, ShardBackend, TopBackend};
 pub use checkpoint::{CheckpointId, StateWithCheckpoint};
 pub use db::StateDB;

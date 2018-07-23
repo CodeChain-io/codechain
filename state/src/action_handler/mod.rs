@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+mod hit;
+
 use ctypes::parcel::Outcome;
 use primitives::Bytes;
 use trie::TrieMut;
@@ -25,3 +27,5 @@ pub trait ActionHandler: Send + Sync {
     fn is_target(&self, bytes: &Bytes) -> bool;
     fn execute(&self, bytes: &Bytes, state: &mut TopLevelState) -> Option<StateResult<Outcome>>;
 }
+
+pub use self::hit::HitHandler;
