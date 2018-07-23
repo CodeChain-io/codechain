@@ -112,14 +112,14 @@ mod tests {
     fn parse_fail_return_none() {
         let hash = {
             let mut hash;
-            loop {
+            'hash: loop {
                 hash = H256::random();
                 if hash[0] == PREFIX {
                     continue
                 }
                 for i in 1..8 {
                     if hash[i] == 0 {
-                        continue
+                        continue 'hash
                     }
                 }
                 break

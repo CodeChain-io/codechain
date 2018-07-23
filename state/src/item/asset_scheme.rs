@@ -105,14 +105,14 @@ mod tests {
     fn asset_from_address() {
         let origin = {
             let mut address;
-            loop {
+            'address: loop {
                 address = H256::random();
                 if address[0] == 'S' as u8 {
                     continue
                 }
                 for i in 1..8 {
                     if address[i] == 0 {
-                        continue
+                        continue 'address
                     }
                 }
                 break
