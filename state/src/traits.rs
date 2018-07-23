@@ -95,7 +95,7 @@ impl ShardStateInfo for () {
 pub trait ShardState<B>
 where
     B: ShardBackend, {
-    fn apply(&mut self, transaction: &Transaction, parcel_network_id: &u64) -> StateResult<TransactionOutcome>;
+    fn apply(&mut self, transaction: &Transaction) -> StateResult<TransactionOutcome>;
 }
 
 pub trait TopState<B>

@@ -31,6 +31,9 @@ pub struct Params {
     /// Minimum parcel cost.
     #[serde(rename = "minParcelCost")]
     pub min_parcel_cost: Uint,
+    /// Maximum size of block body.
+    #[serde(rename = "maxBodySize")]
+    pub max_body_size: Uint,
 }
 
 #[cfg(test)]
@@ -47,7 +50,8 @@ mod tests {
             "maxExtraDataSize": "0x20",
             "maxMetadataSize": "0x0400",
             "networkID" : "0x1",
-            "minParcelCost" : "10"
+            "minParcelCost" : "10",
+            "maxBodySize" : 4194304
         }"#;
 
         let deserialized: Params = serde_json::from_str(s).unwrap();
@@ -55,5 +59,6 @@ mod tests {
         assert_eq!(deserialized.max_metadata_size, Uint(U256::from(0x0400)));
         assert_eq!(deserialized.network_id, Uint(U256::from(0x1)));
         assert_eq!(deserialized.min_parcel_cost, Uint(U256::from(10)));
+        assert_eq!(deserialized.max_body_size, Uint(4194304.into()));
     }
 }

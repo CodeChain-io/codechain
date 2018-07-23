@@ -110,19 +110,16 @@ pub fn no_work_required() -> Error {
     }
 }
 
-pub fn network_disabled() -> Error {
-    Error {
-        code: ErrorCode::ServerError(codes::NETWORK_DISABLED),
-        message: "Network is diabled.".into(),
-        data: None,
-    }
-}
-
 pub fn network_control(error: NetworkControlError) -> Error {
     match error {
         NetworkControlError::NotConnected => Error {
             code: ErrorCode::ServerError(codes::NETWORK_CANNOT_DISCONNECT_NOT_CONNECTED_ERROR),
             message: "Cannot disconnect not connected node".into(),
+            data: None,
+        },
+        NetworkControlError::Disabled => Error {
+            code: ErrorCode::ServerError(codes::NETWORK_DISABLED),
+            message: "Network is diabled.".into(),
             data: None,
         },
     }

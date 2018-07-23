@@ -39,6 +39,7 @@ use std::sync::{Arc, Weak};
 
 use ckey::{Address, Signature};
 use cnetwork::NetworkExtension;
+use ctypes::machine::Machine;
 use primitives::{Bytes, H256, U256};
 use unexpected::{Mismatch, OutOfBounds};
 
@@ -48,7 +49,6 @@ use super::block::SealedBlock;
 use super::codechain_machine::CodeChainMachine;
 use super::error::Error;
 use super::header::Header;
-use super::machine::Machine;
 use super::parcel::{SignedParcel, UnverifiedParcel};
 use super::spec::CommonParams;
 

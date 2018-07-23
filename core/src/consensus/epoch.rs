@@ -14,10 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use ctypes::machine::Machine;
 use primitives::H256;
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
-
-use super::super::machine::Machine;
 
 /// Verifier for all blocks within an epoch with self-contained state.
 pub trait EpochVerifier<M: Machine>: Send + Sync {

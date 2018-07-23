@@ -25,6 +25,7 @@ use heapsize::HeapSizeOf;
 use linked_hash_map::LinkedHashMap;
 use multimap::MultiMap;
 use primitives::{H256, U256};
+use rlp;
 use table::Table;
 
 use super::super::parcel::SignedParcel;
@@ -86,6 +87,8 @@ struct ParcelOrder {
     nonce_height: U256,
     /// Fee of the parcel.
     fee: U256,
+    /// Fee per bytes(rlp serialized) of the parcel
+    fee_per_byte: U256,
     /// Heap usage of this parcel.
     mem_usage: usize,
     /// Hash to identify associated parcel
@@ -98,10 +101,13 @@ struct ParcelOrder {
 
 impl ParcelOrder {
     fn for_parcel(item: &MemPoolItem, base_nonce: U256) -> Self {
+        let rlp_bytes_len = rlp::encode(&item.parcel).to_vec().len();
+        let fee = item.parcel.fee;
         Self {
             nonce_height: item.nonce() - base_nonce,
-            fee: item.parcel.fee,
+            fee,
             mem_usage: item.parcel.heap_size_of_children(),
+            fee_per_byte: fee / rlp_bytes_len.into(),
             hash: item.hash(),
             insertion_id: item.insertion_id,
             origin: item.origin,
@@ -136,6 +142,10 @@ impl Ord for ParcelOrder {
         // Check nonce_height
         if self.nonce_height != b.nonce_height {
             return self.nonce_height.cmp(&b.nonce_height)
+        }
+
+        if self.fee_per_byte != b.fee_per_byte {
+            return self.fee_per_byte.cmp(&b.fee_per_byte)
         }
 
         // Then compare fee
@@ -608,7 +618,8 @@ impl MemPool {
     }
 
     /// Returns top parcels from the pool ordered by priority.
-    pub fn top_parcels(&self) -> Vec<SignedParcel> {
+    pub fn top_parcels(&self, size_limit: usize) -> Vec<SignedParcel> {
+        let mut current_size: usize = 0;
         self.current
             .by_priority
             .iter()
@@ -616,6 +627,12 @@ impl MemPool {
                 self.by_hash
                     .get(&t.hash)
                     .expect("All parcels in `current` and `future` are always included in `by_hash`")
+            })
+            .take_while(|t| {
+                let encoded_byte_array: Vec<u8> = rlp::encode(&t.parcel).into_vec();
+                let size_in_byte = encoded_byte_array.len();
+                current_size += size_in_byte;
+                return current_size < size_limit
             })
             .map(|t| t.parcel.clone())
             .collect()
@@ -1230,5 +1247,65 @@ pub mod test {
         let item = MemPoolItem::new(signed, ParcelOrigin::Local, 0, 0);
 
         assert_eq!(fee + amount, item.cost());
+    }
+
+    #[test]
+    fn test_fee_per_byte_order_simple() {
+        let order1 = create_parcel_order(U256::from(1000_000_000), 100);
+        let order2 = create_parcel_order(U256::from(1500_000_000), 200);
+        assert_eq!(true, order1.fee_per_byte > order2.fee_per_byte);
+        assert_eq!(Ordering::Greater, order1.cmp(&order2));
+    }
+
+    #[test]
+    fn test_fee_per_byte_order_sort() {
+        let factors: Vec<Vec<usize>> = vec![
+            vec![4, 9],   // 0.44
+            vec![2, 9],   // 0.22
+            vec![2, 6],   // 0.33
+            vec![10, 10], // 1
+            vec![2, 8],   // 0.25
+        ];
+        let mut orders: Vec<ParcelOrder> = Vec::new();
+        for factor in factors {
+            let fee: u64 = 1000_000 * (factor[0] as u64);
+            orders.push(create_parcel_order(U256::from(fee), 10 * factor[1]));
+        }
+
+        let prev_orders = orders.clone();
+        orders.sort_unstable();
+        let sorted_orders = orders;
+        assert_eq!(prev_orders[1], sorted_orders[0]);
+        assert_eq!(prev_orders[4], sorted_orders[1]);
+        assert_eq!(prev_orders[2], sorted_orders[2]);
+        assert_eq!(prev_orders[0], sorted_orders[3]);
+        assert_eq!(prev_orders[3], sorted_orders[4]);
+    }
+
+    fn create_parcel_order(fee: U256, transaction_count: usize) -> ParcelOrder {
+        let transaction = Transaction::AssetTransfer {
+            network_id: 0,
+            burns: vec![],
+            inputs: vec![],
+            outputs: vec![],
+            nonce: 0,
+        };
+        let keypair = Random.generate().unwrap();
+        let parcel = Parcel {
+            nonce: U256::zero(),
+            fee,
+            network_id: 200,
+            action: Action::ChangeShardState {
+                transactions: vec![transaction; transaction_count],
+                changes: vec![ChangeShard {
+                    shard_id: 0,
+                    pre_root: H256::zero(),
+                    post_root: H256::zero(),
+                }],
+            },
+        };
+        let signed = SignedParcel::new_with_sign(parcel, keypair.private());
+        let item = MemPoolItem::new(signed, ParcelOrigin::Local, 0, 0);
+        ParcelOrder::for_parcel(&item, 0.into())
     }
 }

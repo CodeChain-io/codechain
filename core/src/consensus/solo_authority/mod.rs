@@ -19,6 +19,7 @@ mod params;
 use std::sync::{Arc, Weak};
 
 use ckey::{public_to_address, recover, Address, Signature, SignatureData};
+use ctypes::machine::WithBalances;
 use parking_lot::RwLock;
 use primitives::{H256, U256};
 
@@ -30,7 +31,6 @@ use super::super::codechain_machine::CodeChainMachine;
 use super::super::consensus::EngineType;
 use super::super::error::{BlockError, Error};
 use super::super::header::Header;
-use super::super::machine::WithBalances;
 use super::signer::EngineSigner;
 use super::validator_set::validator_list::ValidatorList;
 use super::validator_set::ValidatorSet;

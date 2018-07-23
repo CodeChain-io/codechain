@@ -21,13 +21,14 @@ use primitives::H256;
 use super::addr::SocketAddr;
 
 pub trait Control: Send + Sync {
-    fn register_secret(&self, secret: H256, addr: SocketAddr);
-    fn connect(&self, addr: SocketAddr);
+    fn register_secret(&self, secret: H256, addr: SocketAddr) -> Result<(), Error>;
+    fn connect(&self, addr: SocketAddr) -> Result<(), Error>;
     fn disconnect(&self, addr: SocketAddr) -> Result<(), Error>;
-    fn is_connected(&self, addr: &SocketAddr) -> bool;
+    fn is_connected(&self, addr: &SocketAddr) -> Result<bool, Error>;
 }
 
 #[derive(Clone, Debug)]
 pub enum Error {
+    Disabled,
     NotConnected,
 }

@@ -311,7 +311,7 @@ impl Encodable for Header {
     }
 }
 
-impl ::machine::Header for Header {
+impl ::ctypes::machine::Header for Header {
     fn bare_hash(&self) -> H256 {
         Header::bare_hash(self)
     }
@@ -333,7 +333,7 @@ impl ::machine::Header for Header {
     }
 }
 
-impl ::machine::ScoredHeader for Header {
+impl ::ctypes::machine::ScoredHeader for Header {
     fn score(&self) -> &U256 {
         self.score()
     }

@@ -21,6 +21,7 @@ use ckey::Address;
 use cmerkle::skewed_merkle_root;
 use cstate::{StateDB, StateError, StateWithCache, TopLevelState};
 use ctypes::invoice::{Invoice, ParcelInvoice};
+use ctypes::machine::{LiveBlock, Parcels};
 use ctypes::parcel::{Error as ParcelError, Outcome as ParcelOutcome};
 use primitives::{Bytes, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
@@ -30,7 +31,6 @@ use unexpected::Mismatch;
 use super::consensus::CodeChainEngine;
 use super::error::{BlockError, Error};
 use super::header::{Header, Seal};
-use super::machine::{LiveBlock, Parcels};
 use super::parcel::{SignedParcel, UnverifiedParcel};
 
 /// A block, encoded as it is on the block chain.

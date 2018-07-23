@@ -17,6 +17,7 @@
 
 use ckey::Address;
 use cstate::{StateError, TopState, TopStateInfo};
+use ctypes::machine::{Machine, WithBalances};
 use ctypes::parcel::Error as ParcelError;
 use primitives::U256;
 
@@ -83,7 +84,7 @@ impl CodeChainMachine {
     }
 }
 
-impl ::machine::Machine for CodeChainMachine {
+impl Machine for CodeChainMachine {
     type Header = Header;
     type LiveBlock = ExecutedBlock;
     type EngineClient = super::client::EngineClient;
@@ -91,7 +92,7 @@ impl ::machine::Machine for CodeChainMachine {
     type Error = Error;
 }
 
-impl ::machine::WithBalances for CodeChainMachine {
+impl WithBalances for CodeChainMachine {
     fn balance(&self, live: &ExecutedBlock, address: &Address) -> Result<U256, Self::Error> {
         Ok(live.state().balance(address).map_err(StateError::from)?)
     }

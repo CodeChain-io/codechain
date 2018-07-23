@@ -22,7 +22,7 @@ use std::str::FromStr;
 use ckey::Address;
 use clap;
 use cnetwork::{NetworkConfig, SocketAddr};
-use rpc::{HttpConfiguration as RpcHttpConfig, IpcConfiguration as RpcIpcConfig};
+use rpc::{RpcHttpConfig, RpcIpcConfig};
 use toml;
 
 use self::chain_type::ChainType;
