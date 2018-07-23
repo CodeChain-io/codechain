@@ -68,6 +68,7 @@ enum Transaction {
 
 ```rust
 AssetMint {
+    network_id: u64,
     metadata: String,
     registrar: Option<Address>,
     nonce: u32,
