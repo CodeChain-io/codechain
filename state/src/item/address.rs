@@ -45,10 +45,24 @@ macro_rules! define_address_constructor {
     };
 }
 
+macro_rules! define_shard_id {
+    (TOP) => {
+    };
+    (SHARD) => {
+        pub fn shard_id(&self) -> ::ctypes::ShardId {
+            debug_assert_eq!(::std::mem::size_of::<u32>(), ::std::mem::size_of::<ShardId>());
+            use byteorder::ReadBytesExt;
+            ::std::io::Cursor::new(&self.0[4..8]).read_u32::<::byteorder::BigEndian>().unwrap()
+        }
+    };
+}
+
 macro_rules! impl_address {
     ($type:ident, $name:ident, $prefix:expr) => {
         impl $name {
             define_address_constructor!($type, $name, $prefix);
+
+            define_shard_id!($type);
 
             pub fn from_hash(hash: ::primitives::H256) -> Option<Self> {
                 if Self::is_valid_format(&hash) {

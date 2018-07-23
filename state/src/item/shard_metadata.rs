@@ -141,4 +141,27 @@ mod tests {
         let address = ShardMetadataAddress::from_hash(hash.clone());
         assert_eq!(Some(ShardMetadataAddress(hash)), address);
     }
+
+    #[test]
+    fn shard_id() {
+        let shard_id = 0xCAA;
+        let address = ShardMetadataAddress::new(shard_id);
+        assert_eq!(shard_id, address.shard_id());
+    }
+
+    #[test]
+    fn shard_id_from_hash() {
+        let hash = {
+            let mut hash = H256::random();
+            hash[0] = PREFIX;
+            hash[1] = 0;
+            hash
+        };
+        let shard_id = ((hash[4] as ShardId) << 24)
+            + ((hash[5] as ShardId) << 16)
+            + ((hash[6] as ShardId) << 8)
+            + (hash[7] as ShardId);
+        let address = ShardMetadataAddress::from_hash(hash).unwrap();
+        assert_eq!(shard_id, address.shard_id());
+    }
 }

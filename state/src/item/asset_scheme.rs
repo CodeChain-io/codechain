@@ -100,7 +100,7 @@ impl CacheableItem for AssetScheme {
 
 #[cfg(test)]
 mod tests {
-    use super::{AssetSchemeAddress, H256, PREFIX};
+    use super::*;
 
     #[test]
     fn asset_from_address() {
@@ -126,5 +126,29 @@ mod tests {
         assert_ne!(origin, hash);
         assert_eq!(hash[0..4], [PREFIX, 0, 0, 0]);
         assert_eq!(hash[4..8], [0, 0, 0x0B, 0xEE]); // shard id
+    }
+
+    #[test]
+    fn shard_id() {
+        let origin = H256::random();
+        let shard_id = 0xCAA;
+        let asset_scheme_address = AssetSchemeAddress::new(origin, shard_id);
+        assert_eq!(shard_id, asset_scheme_address.shard_id());
+    }
+
+    #[test]
+    fn shard_id_from_hash() {
+        let hash = {
+            let mut hash = H256::random();
+            hash[0] = PREFIX;
+            hash[1] = 0;
+            hash
+        };
+        let shard_id = ((hash[4] as ShardId) << 24)
+            + ((hash[5] as ShardId) << 16)
+            + ((hash[6] as ShardId) << 8)
+            + (hash[7] as ShardId);
+        let asset_scheme_address = AssetSchemeAddress::from_hash(hash).unwrap();
+        assert_eq!(shard_id, asset_scheme_address.shard_id());
     }
 }
