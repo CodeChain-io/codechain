@@ -65,4 +65,8 @@ impl Account for AccountClient {
             .map(|sig| sig.into())
             .map_err(account_provider)
     }
+
+    fn change_password(&self, account: H160, old_password: String, new_password: String) -> Result<()> {
+        self.account_provider.change_password(account, &old_password, &new_password).map_err(account_provider)
+    }
 }

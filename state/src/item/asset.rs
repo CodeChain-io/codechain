@@ -113,14 +113,14 @@ mod tests {
     fn asset_from_address() {
         let parcel_id = {
             let mut address;
-            loop {
+            'address: loop {
                 address = H256::random();
                 if address[0] == PREFIX {
                     continue
                 }
                 for i in 1..8 {
                     if address[i] == 0 {
-                        continue
+                        continue 'address
                     }
                 }
                 break

@@ -460,6 +460,7 @@ mod tests {
         let registrar = Some(Address::random());
         let transaction = Transaction::AssetMint {
             network_id: 200,
+            shard_id,
             metadata: metadata.clone(),
             output: AssetMintOutput {
                 lock_script_hash,
@@ -500,6 +501,7 @@ mod tests {
         let registrar = Some(Address::random());
         let transaction = Transaction::AssetMint {
             network_id: 200,
+            shard_id,
             metadata: metadata.clone(),
             output: AssetMintOutput {
                 lock_script_hash,
@@ -740,6 +742,7 @@ mod tests {
         let amount = 30;
         let mint = Transaction::AssetMint {
             network_id: 200,
+            shard_id,
             metadata: metadata.clone(),
             output: AssetMintOutput {
                 lock_script_hash,
@@ -841,6 +844,7 @@ mod tests {
         let amount = 30;
         let mint = Transaction::AssetMint {
             network_id: 200,
+            shard_id,
             metadata: metadata.clone(),
             output: AssetMintOutput {
                 lock_script_hash,

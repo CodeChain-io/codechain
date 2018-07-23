@@ -484,6 +484,7 @@ dependencies = [
 name = "codechain-types"
 version = "0.1.0"
 dependencies = [
+ "byteorder 1.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "codechain-crypto 0.1.0",
  "codechain-key 0.1.0",
  "heapsize 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",

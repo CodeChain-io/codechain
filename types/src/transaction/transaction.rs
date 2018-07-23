@@ -14,6 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::io::Cursor;
+
+use byteorder::{BigEndian, ReadBytesExt};
 use ccrypto::blake256;
 use ckey::Address;
 use primitives::{Bytes, H256};
@@ -52,6 +55,7 @@ pub enum Transaction {
     #[serde(rename_all = "camelCase")]
     AssetMint {
         network_id: u64,
+        shard_id: u32,
         metadata: String,
         registrar: Option<Address>,
         nonce: u64,
@@ -134,6 +138,29 @@ impl Transaction {
             } => *network_id,
         }
     }
+
+    pub fn related_shards(&self) -> Vec<u32> {
+        match self {
+            Transaction::AssetTransfer {
+                burns,
+                inputs,
+                ..
+            } => {
+                let mut shards: Vec<u32> = burns
+                    .iter()
+                    .map(AssetTransferInput::related_shard)
+                    .chain(inputs.iter().map(AssetTransferInput::related_shard))
+                    .collect();
+                shards.sort_unstable();
+                shards.dedup();
+                shards
+            }
+            Transaction::AssetMint {
+                shard_id,
+                ..
+            } => vec![*shard_id],
+        }
+    }
 }
 
 type TransactionId = u8;
@@ -144,19 +171,20 @@ impl Decodable for Transaction {
     fn decode(d: &UntrustedRlp) -> Result<Self, DecoderError> {
         match d.val_at(0)? {
             ASSET_MINT_ID => {
-                if d.item_count()? != 8 {
+                if d.item_count()? != 9 {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
                 Ok(Transaction::AssetMint {
                     network_id: d.val_at(1)?,
-                    metadata: d.val_at(2)?,
+                    shard_id: d.val_at(2)?,
+                    metadata: d.val_at(3)?,
                     output: AssetMintOutput {
-                        lock_script_hash: d.val_at(3)?,
-                        parameters: d.val_at(4)?,
-                        amount: d.val_at(5)?,
+                        lock_script_hash: d.val_at(4)?,
+                        parameters: d.val_at(5)?,
+                        amount: d.val_at(6)?,
                     },
-                    registrar: d.val_at(6)?,
-                    nonce: d.val_at(7)?,
+                    registrar: d.val_at(7)?,
+                    nonce: d.val_at(8)?,
                 })
             }
             ASSET_TRANSFER_ID => {
@@ -181,6 +209,7 @@ impl Encodable for Transaction {
         match self {
             Transaction::AssetMint {
                 network_id,
+                shard_id,
                 metadata,
                 output:
                     AssetMintOutput {
@@ -191,9 +220,10 @@ impl Encodable for Transaction {
                 registrar,
                 nonce,
             } => s
-                .begin_list(8)
+                .begin_list(9)
                 .append(&ASSET_MINT_ID)
                 .append(network_id)
+                .append(shard_id)
                 .append(metadata)
                 .append(lock_script_hash)
                 .append(parameters)
@@ -215,5 +245,58 @@ impl Encodable for Transaction {
                 .append_list(outputs)
                 .append(nonce),
         };
+    }
+}
+
+impl AssetOutPoint {
+    pub fn related_shard(&self) -> u32 {
+        Cursor::new(&self.asset_type[4..8]).read_u32::<BigEndian>().unwrap()
+    }
+}
+
+impl AssetTransferInput {
+    pub fn related_shard(&self) -> u32 {
+        self.prev_out.related_shard()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn related_shard_of_asset_out_point() {
+        let mut asset_type = H256::new();
+        asset_type[4..8].clone_from_slice(&[0xBE, 0xEF, 0x12, 0x34]);
+
+        let p = AssetOutPoint {
+            transaction_hash: H256::random(),
+            index: 3,
+            asset_type,
+            amount: 34,
+        };
+
+        assert_eq!(0xBEEF1234, p.related_shard());
+    }
+
+    #[test]
+    fn related_shard_of_asset_transfer_input() {
+        let mut asset_type = H256::new();
+        asset_type[4..8].clone_from_slice(&[0xBE, 0xEF, 0x12, 0x34]);
+
+        let prev_out = AssetOutPoint {
+            transaction_hash: H256::random(),
+            index: 3,
+            asset_type,
+            amount: 34,
+        };
+
+        let input = AssetTransferInput {
+            prev_out,
+            lock_script: vec![],
+            unlock_script: vec![],
+        };
+
+        assert_eq!(0xBEEF1234, input.related_shard());
     }
 }
