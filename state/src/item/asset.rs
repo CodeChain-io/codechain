@@ -128,14 +128,16 @@ mod tests {
             }
             address
         };
-        let shard_id = 0xBeefCafe;
+        let shard_id = 0xBeef;
         let address1 = AssetAddress::new(parcel_id, 0, shard_id);
         let address2 = AssetAddress::new(parcel_id, 1, shard_id);
         assert_ne!(address1, address2);
-        assert_eq!(address1[0..4], [PREFIX, 0, 0, 0]);
-        assert_eq!(address1[4..8], [0xBE, 0xEF, 0xCA, 0xFE]); // shard id
-        assert_eq!(address2[0..4], [PREFIX, 0, 0, 0]);
-        assert_eq!(address2[4..8], [0xBE, 0xEF, 0xCA, 0xFE]); // shard id
+        assert_eq!(address1[0..2], [PREFIX, 0]);
+        assert_eq!(address1[2..4], [0xBE, 0xEF]); // shard id
+        assert_eq!(address1[4..6], [0, 0]); // world id
+        assert_eq!(address2[0..2], [PREFIX, 0]);
+        assert_eq!(address2[2..4], [0xBE, 0xEF]); // shard id
+        assert_eq!(address2[4..6], [0, 0]); // world id
     }
 
     #[test]
@@ -147,7 +149,7 @@ mod tests {
                 if hash[0] == PREFIX {
                     continue
                 }
-                for i in 1..8 {
+                for i in 1..6 {
                     if hash[i] == 0 {
                         continue
                     }
@@ -164,7 +166,7 @@ mod tests {
     fn parse_return_some() {
         let hash = {
             let mut hash = H256::random();
-            hash[0..8].clone_from_slice(&[PREFIX, 0, 0, 0, 0, 0, 0, 0]);
+            hash[0..6].clone_from_slice(&[PREFIX, 0, 0, 0, 0, 0]);
             hash
         };
         let address = AssetAddress::from_hash(hash.clone());
@@ -187,10 +189,9 @@ mod tests {
             hash[1] = 0;
             hash
         };
-        let shard_id = ((hash[4] as ShardId) << 24)
-            + ((hash[5] as ShardId) << 16)
-            + ((hash[6] as ShardId) << 8)
-            + (hash[7] as ShardId);
+        assert_eq!(::std::mem::size_of::<u16>(), ::std::mem::size_of::<ShardId>());
+        let shard_id = ((hash[2] as ShardId) << 8)
+            + (hash[3] as ShardId);
         let asset_address = AssetAddress::from_hash(hash).unwrap();
         assert_eq!(shard_id, asset_address.shard_id());
     }

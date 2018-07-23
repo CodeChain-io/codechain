@@ -1128,7 +1128,7 @@ mod tests_parcel {
                 transactions,
                 changes: vec![ChangeShard {
                     shard_id,
-                    pre_root: H256::from("0x3521429ad738442ad7aee37324331e5395bbd0aac7465fba8df12985f6fc2e60"),
+                    pre_root: H256::from("0xdd99c22174c7c1f12523c51d2555803c06c2932085d66ad870a4f6b35ddc47e0"),
                     post_root: H256::zero(),
                 }],
             },
@@ -1191,7 +1191,7 @@ mod tests_parcel {
                 transactions,
                 changes: vec![ChangeShard {
                     shard_id,
-                    pre_root: H256::from("0x3521429ad738442ad7aee37324331e5395bbd0aac7465fba8df12985f6fc2e60"),
+                    pre_root: H256::from("0xdd99c22174c7c1f12523c51d2555803c06c2932085d66ad870a4f6b35ddc47e0"),
                     post_root: H256::zero(),
                 }],
             },
@@ -1304,7 +1304,7 @@ mod tests_parcel {
                 transactions,
                 changes: vec![ChangeShard {
                     shard_id,
-                    pre_root: H256::from("0x3521429ad738442ad7aee37324331e5395bbd0aac7465fba8df12985f6fc2e60"),
+                    pre_root: H256::from("0xdd99c22174c7c1f12523c51d2555803c06c2932085d66ad870a4f6b35ddc47e0"),
                     post_root: H256::zero(),
                 }],
             },
@@ -1384,7 +1384,7 @@ mod tests_parcel {
                 transactions: vec![mint],
                 changes: vec![ChangeShard {
                     shard_id,
-                    pre_root: H256::from("0x3521429ad738442ad7aee37324331e5395bbd0aac7465fba8df12985f6fc2e60"),
+                    pre_root: H256::from("0xdd99c22174c7c1f12523c51d2555803c06c2932085d66ad870a4f6b35ddc47e0"),
                     post_root: H256::zero(),
                 }],
             },
@@ -1457,7 +1457,7 @@ mod tests_parcel {
                 transactions: vec![transfer],
                 changes: vec![ChangeShard {
                     shard_id,
-                    pre_root: H256::from("0x4eab3f0517c29ae11201a0c7f2570d8d7f7feb7f463a871b7255c83be6c1449d"),
+                    pre_root: H256::from("0x0ff1490ead36267f025c0ac335b0749eb502c8f74393ec781c68b4d2dcf3d9fd"),
                     post_root: H256::zero(),
                 }],
             },
