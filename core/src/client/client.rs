@@ -254,11 +254,10 @@ impl DatabaseClient for Client {
 }
 
 impl AssetClient for Client {
-    fn get_asset_scheme(&self, transaction_hash: H256) -> TrieResult<Option<AssetScheme>> {
+    fn get_asset_scheme(&self, asset_type: AssetSchemeAddress) -> TrieResult<Option<AssetScheme>> {
         if let Some(state) = Client::state_at(&self, BlockId::Latest) {
-            let shard_id = 0; // FIXME
-            let address = AssetSchemeAddress::new(transaction_hash, shard_id);
-            Ok(state.asset_scheme(shard_id, &address)?)
+            let shard_id = asset_type.shard_id();
+            Ok(state.asset_scheme(shard_id, &asset_type)?)
         } else {
             Ok(None)
         }

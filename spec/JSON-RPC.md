@@ -95,7 +95,8 @@ A hexadecimal string for XXX-bit unsigned integer
  * [chain_getParcel](#chain_getparcel)
  * [chain_getParcelInvoice](#chain_getparcelinvoice)
  * [chain_getTransactionInvoice](#chain_gettransactioninvoice)
- * [chain_getAssetScheme](#chain_getassetscheme)
+ * [chain_getAssetSchemeByHash](#chain_getassetschemebyhash)
+ * [chain_getAssetSchemeByType](#chain_getassetschemebytype)
  * [chain_getAsset](#chain_getasset)
  * [chain_getNonce](#chain_getnonce)
  * [chain_getBalance](#chain_getbalance)
@@ -427,11 +428,12 @@ Response Example
 }
 ```
 
-## chain_getAssetScheme
+## chain_getAssetSchemeByHash
 Gets an asset scheme with the given asset type.
 
 Params:
  1. transaction hash of AssetMintTransaction - `H256`
+ 2. shard id - `number`
 
 Return Type: `null` | `AssetSchemeObject`
 
@@ -439,7 +441,36 @@ Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "chain_getAssetScheme", "params": ["0x24df02abcd4e984e90253dc344e89b8431bbb319c66643bfef566dfdf46ec6bc"], "id": null}' \
+    -d '{"jsonrpc": "2.0", "method": "chain_getAssetSchemeByHash", "params": ["0x24df02abcd4e984e90253dc344e89b8431bbb319c66643bfef566dfdf46ec6bc", 0], "id": null}' \
+    localhost:8080
+```
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result":{
+    "amount":100,
+    "metadata":"",
+    "registrar":null
+  },
+  "id":null
+}
+```
+
+## chain_getAssetSchemeByType
+Gets an asset scheme with the given asset type.
+
+Params:
+ 1. type of asset - `H256`
+
+Return Type: `null` | `AssetSchemeObject`
+
+Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "chain_getAssetSchemeByType", "params": ["0x24df02abcd4e984e90253dc344e89b8431bbb319c66643bfef566dfdf46ec6bc"], "id": null}' \
     localhost:8080
 ```
 

@@ -31,7 +31,7 @@ use std::sync::Arc;
 
 use ckey::{Address, Public};
 use cnetwork::NodeId;
-use cstate::{Asset, AssetScheme, TopStateInfo};
+use cstate::{Asset, AssetScheme, AssetSchemeAddress, TopStateInfo};
 use ctypes::invoice::{Invoice, ParcelInvoice};
 use ctypes::{BlockNumber, ShardId};
 use kvdb::KeyValueDB;
@@ -229,7 +229,7 @@ pub trait DatabaseClient {
 
 /// Provides methods to access asset
 pub trait AssetClient {
-    fn get_asset_scheme(&self, transaction_hash: H256) -> TrieResult<Option<AssetScheme>>;
+    fn get_asset_scheme(&self, asset_type: AssetSchemeAddress) -> TrieResult<Option<AssetScheme>>;
 
     fn get_asset(&self, transaction_hash: H256, index: usize, id: BlockId) -> TrieResult<Option<Asset>>;
 }
