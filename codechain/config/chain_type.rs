@@ -15,9 +15,11 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::str::FromStr;
+use std::sync::Arc;
 use std::{fmt, fs};
 
 use ccore::Spec;
+use cstate::ActionHandler;
 
 #[derive(Debug, PartialEq, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -66,17 +68,17 @@ impl fmt::Display for ChainType {
 }
 
 impl ChainType {
-    pub fn spec<'a>(&self) -> Result<Spec, String> {
+    pub fn spec<'a>(&self, handlers: Vec<Arc<ActionHandler>>) -> Result<Spec, String> {
         match self {
-            ChainType::Solo => Ok(Spec::new_test_solo()),
-            ChainType::SoloAuthority => Ok(Spec::new_test_solo_authority()),
-            ChainType::Tendermint => Ok(Spec::new_test_tendermint()),
-            ChainType::Cuckoo => Ok(Spec::new_test_cuckoo()),
-            ChainType::BlakePoW => Ok(Spec::new_test_blake_pow()),
+            ChainType::Solo => Ok(Spec::new_test_solo(handlers)),
+            ChainType::SoloAuthority => Ok(Spec::new_test_solo_authority(handlers)),
+            ChainType::Tendermint => Ok(Spec::new_test_tendermint(handlers)),
+            ChainType::Cuckoo => Ok(Spec::new_test_cuckoo(handlers)),
+            ChainType::BlakePoW => Ok(Spec::new_test_blake_pow(handlers)),
             ChainType::Custom(filename) => {
                 let file = fs::File::open(filename)
                     .map_err(|e| format!("Could not load specification file at {}: {}", filename, e))?;
-                Spec::load(file)
+                Spec::load(file, handlers)
             }
         }
     }

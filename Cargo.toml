@@ -17,6 +17,7 @@ codechain-merkle = { path = "util/merkle" }
 codechain-network = { path = "network" }
 codechain-reactor = { path = "util/reactor" }
 codechain-rpc = { path = "rpc" }
+codechain-state = { path = "state" }
 codechain-sync = { path = "sync" }
 codechain-types = { path = "types" }
 codechain-vm = { path = "vm" }
