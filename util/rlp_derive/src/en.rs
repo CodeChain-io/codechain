@@ -45,7 +45,7 @@ pub fn impl_encodable_wrapper(ast: &syn::DeriveInput) -> quote::Tokens {
         syn::VariantData::Struct(ref fields) | syn::VariantData::Tuple(ref fields) => {
             if fields.len() == 1 {
                 let field = fields.first().expect("fields.len() == 1; qed");
-                encodable_field(0, field)
+                encodable_single_field(0, field)
             } else {
                 panic!("#[derive(RlpEncodableWrapper)] is only defined for structs with one field.")
             }
@@ -105,6 +105,40 @@ fn encodable_field(index: usize, field: &syn::Field) -> quote::Tokens {
                 quote! { stream.append_list::<#inner_ident, _>(&#id); }
             } else {
                 quote! { stream.append(&#id); }
+            }
+        }
+        _ => panic!("rlp_derive not supported"),
+    }
+}
+
+fn encodable_single_field(index: usize, field: &syn::Field) -> quote::Tokens {
+    let ident = match field.ident {
+        Some(ref ident) => ident.to_string(),
+        None => index.to_string(),
+    };
+
+    let id = syn::Ident::new(format!("self.{}", ident));
+
+    match field.ty {
+        syn::Ty::Path(_, ref path) => {
+            let top_segment = path.segments.first().expect("there must be at least 1 segment");
+            let ident = &top_segment.ident;
+            if &ident.to_string() == "Vec" {
+                let inner_ident = match top_segment.parameters {
+                    syn::PathParameters::AngleBracketed(ref angle) => {
+                        let ty = angle.types.first().expect("Vec has only one angle bracketed type; qed");
+                        match *ty {
+                            syn::Ty::Path(_, ref path) => {
+                                &path.segments.first().expect("there must be at least 1 segment").ident
+                            }
+                            _ => panic!("rlp_derive not supported"),
+                        }
+                    }
+                    _ => unreachable!("Vec has only one angle bracketed type; qed"),
+                };
+                quote! { stream.append_list::<#inner_ident, _>(&#id); }
+            } else {
+                quote! { stream.append_single_value(&#id); }
             }
         }
         _ => panic!("rlp_derive not supported"),

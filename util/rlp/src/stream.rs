@@ -74,6 +74,10 @@ impl RlpStream {
     pub fn append<'a, E>(&'a mut self, value: &E) -> &'a mut Self
     where
         E: Encodable, {
+        if self.unfinished_lists.len() == 0 {
+            unreachable!()
+        }
+
         self.finished_list = false;
         value.rlp_append(self);
         if !self.finished_list {
@@ -226,10 +230,10 @@ impl RlpStream {
     /// use rlp::*;
     ///
     /// fn main () {
-    /// 	let mut stream = RlpStream::new_list(3);
-    /// 	stream.append(&"cat");
+    /// 	let mut stream = RlpStream::new();
+    /// 	stream.append_single_value(&"cat");
     /// 	stream.clear();
-    /// 	stream.append(&"dog");
+    /// 	stream.append_single_value(&"dog");
     /// 	let out = stream.out();
     /// 	assert_eq!(out, vec![0x83, b'd', b'o', b'g']);
     /// }
@@ -393,7 +397,6 @@ mod tests {
     use super::*;
 
     #[test]
-    #[ignore]
     fn append_more_than_expected() {
         let s = {
             let mut s = RlpStream::new_list(1);
