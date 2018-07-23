@@ -42,9 +42,13 @@ build_rpc_trait! {
         # [rpc(name = "chain_getTransactionInvoice")]
         fn get_transaction_invoice(&self, H256) -> Result<Option<Invoice>>;
 
+        /// Gets asset scheme with given transaction hash.
+        # [rpc(name = "chain_getAssetSchemeByHash")]
+        fn get_asset_scheme_by_hash(&self, H256, ShardId) -> Result<Option<AssetScheme>>;
+
         /// Gets asset scheme with given asset type.
-        # [rpc(name = "chain_getAssetScheme")]
-        fn get_asset_scheme(&self, H256) -> Result<Option<AssetScheme>>;
+        # [rpc(name = "chain_getAssetSchemeByType")]
+        fn get_asset_scheme_by_type(&self, H256) -> Result<Option<AssetScheme>>;
 
         /// Gets asset with given asset type.
         # [rpc(name = "chain_getAsset")]

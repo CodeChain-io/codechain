@@ -18,7 +18,7 @@ use std::sync::Arc;
 
 use ccore::{AssetClient, BlockId, MinerService, MiningBlockChainClient, RegularKey, Shard, SignedParcel};
 use ckey::{Address, Public};
-use cstate::{Asset, AssetScheme};
+use cstate::{Asset, AssetScheme, AssetSchemeAddress};
 use ctypes::invoice::{Invoice, ParcelInvoice};
 use ctypes::{BlockNumber, ShardId};
 use primitives::{H160, H256, U256};
@@ -83,8 +83,16 @@ where
         Ok(self.client.transaction_invoice(transaction_hash.into()))
     }
 
-    fn get_asset_scheme(&self, transaction_hash: H256) -> Result<Option<AssetScheme>> {
-        self.client.get_asset_scheme(transaction_hash).map_err(errors::parcel_state)
+    fn get_asset_scheme_by_hash(&self, transaction_hash: H256, shard_id: ShardId) -> Result<Option<AssetScheme>> {
+        let address = AssetSchemeAddress::new(transaction_hash, shard_id);
+        self.get_asset_scheme_by_type(address.into())
+    }
+
+    fn get_asset_scheme_by_type(&self, asset_type: H256) -> Result<Option<AssetScheme>> {
+        match AssetSchemeAddress::from_hash(asset_type) {
+            Some(address) => self.client.get_asset_scheme(address).map_err(errors::parcel_state),
+            None => Ok(None),
+        }
     }
 
     fn get_asset(&self, transaction_hash: H256, index: usize, block_number: Option<u64>) -> Result<Option<Asset>> {
