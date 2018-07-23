@@ -70,6 +70,7 @@ use clap::ArgMatches;
 use clogger::LoggerConfig;
 use cnetwork::{NetworkConfig, NetworkControl, NetworkControlError, NetworkService, SocketAddr};
 use creactor::EventLoop;
+use cstate::{ActionHandler, HitHandler};
 use csync::{BlockSyncExtension, ParcelSyncExtension, SnapshotService};
 use ctrlc::CtrlC;
 use fdlimit::raise_fd_limit;
@@ -266,7 +267,7 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
     let config = load_config(&matches)?;
 
     // Add handlers here to accept additional custom actions
-    let custom_action_handlers = vec![];
+    let custom_action_handlers: Vec<Arc<ActionHandler>> = vec![Arc::new(HitHandler::new())];
     let spec = config.operating.chain.spec(custom_action_handlers)?;
 
     let instance_id = config.operating.instance_id.unwrap_or(
