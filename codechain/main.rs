@@ -35,6 +35,7 @@ extern crate codechain_logger as clogger;
 extern crate codechain_network as cnetwork;
 extern crate codechain_reactor as creactor;
 extern crate codechain_rpc as crpc;
+extern crate codechain_state as cstate;
 extern crate codechain_sync as csync;
 extern crate codechain_types as ctypes;
 extern crate ctrlc;
@@ -263,7 +264,10 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
 
     let _event_loop = EventLoop::spawn();
     let config = load_config(&matches)?;
-    let spec = config.operating.chain.spec()?;
+
+    // Add handlers here to accept additional custom actions
+    let custom_action_handlers = vec![];
+    let spec = config.operating.chain.spec(custom_action_handlers)?;
 
     let instance_id = config.operating.instance_id.unwrap_or(
         SystemTime::now()

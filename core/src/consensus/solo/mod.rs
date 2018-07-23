@@ -88,7 +88,7 @@ mod tests {
 
     #[test]
     fn solo_can_seal() {
-        let spec = Spec::new_test_solo();
+        let spec = Spec::new_test_solo(Vec::new());
         let engine = &*spec.engine;
         let db = spec.ensure_genesis_state(get_temp_state_db(), &Default::default()).unwrap();
         let genesis_header = spec.genesis_header();
@@ -104,7 +104,7 @@ mod tests {
 
     #[test]
     fn solo_cant_verify() {
-        let engine = Spec::new_test_solo().engine;
+        let engine = Spec::new_test_solo(Vec::new()).engine;
         let mut header: Header = Header::default();
 
         assert!(engine.verify_block_basic(&header).is_ok());

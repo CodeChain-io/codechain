@@ -82,7 +82,7 @@ mod tests {
     const QUEUE_SIZE: usize = 2;
 
     fn create_closed_block(address: Address) -> ClosedBlock {
-        let spec = Spec::new_test();
+        let spec = Spec::new_test(Vec::new());
         let genesis_header = spec.genesis_header();
         let db = spec.ensure_genesis_state(get_temp_state_db(), &Default::default()).unwrap();
         let b = OpenBlock::new(&*spec.engine, Default::default(), db, &genesis_header, address, vec![], false).unwrap();

@@ -20,7 +20,9 @@ use std::sync::Arc;
 use ccrypto::{blake256, BLAKE_NULL_RLP};
 use cjson;
 use ckey::Address;
-use cstate::{Backend, Metadata, MetadataAddress, Shard, ShardAddress, ShardMetadataAddress, StateDB, StateResult};
+use cstate::{
+    ActionHandler, Backend, Metadata, MetadataAddress, Shard, ShardAddress, ShardMetadataAddress, StateDB, StateResult,
+};
 use ctypes::ShardId;
 use hashdb::HashDB;
 use parking_lot::RwLock;
@@ -103,6 +105,8 @@ pub struct Spec {
     /// Genesis state as plain old data.
     genesis_accounts: PodAccounts,
     genesis_shards: PodShards,
+
+    custom_handlers: Vec<Arc<ActionHandler>>,
 }
 
 // helper for formatting errors.
@@ -111,8 +115,8 @@ fn fmt_err<F: ::std::fmt::Display>(f: F) -> String {
 }
 
 macro_rules! load_bundled {
-    ($e:expr) => {
-        Spec::load(include_bytes!(concat!("../../res/", $e, ".json")) as &[u8]).expect(concat!(
+    ($e:expr, $h:expr) => {
+        Spec::load(include_bytes!(concat!("../../res/", $e, ".json")) as &[u8], $h).expect(concat!(
             "Chain spec ",
             $e,
             " is invalid."
@@ -147,6 +151,7 @@ impl Spec {
         let root = BLAKE_NULL_RLP;
         let (db, root) = self.initialize_accounts(trie_factory, db, root)?;
         let (db, root) = self.initialize_shards(trie_factory, db, root)?;
+        let (db, root) = self.initialize_custom_actions(trie_factory, db, root)?;
 
         *self.state_root_memo.write() = root;
         Ok(db)
@@ -229,6 +234,24 @@ impl Spec {
         Ok((db, root))
     }
 
+    fn initialize_custom_actions<DB: Backend>(
+        &self,
+        trie_factory: &TrieFactory,
+        mut db: DB,
+        mut root: H256,
+    ) -> StateResult<(DB, H256)> {
+        // basic accounts in spec.
+        {
+            let mut t = trie_factory.from_existing(db.as_hashdb_mut(), &mut root)?;
+
+            for handler in &self.custom_handlers {
+                handler.init(t.as_mut())?;
+            }
+        }
+
+        Ok((db, root))
+    }
+
     pub fn check_genesis_root(&self, db: &HashDB) -> bool {
         if db.keys().is_empty() {
             return true
@@ -273,43 +296,43 @@ impl Spec {
 
     /// Loads spec from json file. Provide factories for executing contracts and ensuring
     /// storage goes to the right place.
-    pub fn load<'a, R>(reader: R) -> Result<Self, String>
+    pub fn load<'a, R>(reader: R, handlers: Vec<Arc<ActionHandler>>) -> Result<Self, String>
     where
         R: Read, {
-        cjson::spec::Spec::load(reader).map_err(fmt_err).and_then(|x| load_from(x).map_err(fmt_err))
+        cjson::spec::Spec::load(reader).map_err(fmt_err).and_then(|x| load_from(x, handlers).map_err(fmt_err))
     }
 
     /// Create a new test Spec.
-    pub fn new_test() -> Self {
-        load_bundled!("null")
+    pub fn new_test(handlers: Vec<Arc<ActionHandler>>) -> Self {
+        load_bundled!("null", handlers)
     }
 
     /// Create a new Spec with Solo consensus which does internal sealing (not requiring
     /// work).
-    pub fn new_test_solo() -> Self {
-        load_bundled!("solo")
+    pub fn new_test_solo(handlers: Vec<Arc<ActionHandler>>) -> Self {
+        load_bundled!("solo", handlers)
     }
 
     /// Create a new Spec with SoloAuthority consensus which does internal sealing (not requiring
     /// work).
-    pub fn new_test_solo_authority() -> Self {
-        load_bundled!("solo_authority")
+    pub fn new_test_solo_authority(handlers: Vec<Arc<ActionHandler>>) -> Self {
+        load_bundled!("solo_authority", handlers)
     }
 
     /// Create a new Spec with Tendermint consensus which does internal sealing (not requiring
     /// work).
-    pub fn new_test_tendermint() -> Self {
-        load_bundled!("tendermint")
+    pub fn new_test_tendermint(handlers: Vec<Arc<ActionHandler>>) -> Self {
+        load_bundled!("tendermint", handlers)
     }
 
     /// Create a new Spec with Cuckoo PoW consensus.
-    pub fn new_test_cuckoo() -> Self {
-        load_bundled!("cuckoo")
+    pub fn new_test_cuckoo(handlers: Vec<Arc<ActionHandler>>) -> Self {
+        load_bundled!("cuckoo", handlers)
     }
 
     /// Create a new Spec with Blake PoW consensus.
-    pub fn new_test_blake_pow() -> Self {
-        load_bundled!("blake_pow")
+    pub fn new_test_blake_pow(handlers: Vec<Arc<ActionHandler>>) -> Self {
+        load_bundled!("blake_pow", handlers)
     }
 
     /// Get common blockchain parameters.
@@ -350,7 +373,7 @@ impl Spec {
 }
 
 /// Load from JSON object.
-fn load_from(s: cjson::spec::Spec) -> Result<Spec, Error> {
+fn load_from(s: cjson::spec::Spec, handlers: Vec<Arc<ActionHandler>>) -> Result<Spec, Error> {
     let g = Genesis::from(s.genesis);
     let GenericSeal(seal_rlp) = g.seal.into();
     let params = CommonParams::from(s.params);
@@ -371,6 +394,8 @@ fn load_from(s: cjson::spec::Spec) -> Result<Spec, Error> {
         state_root_memo: RwLock::new(Default::default()), // will be overwritten right after.
         genesis_accounts: s.accounts.into(),
         genesis_shards: s.shards.into(),
+
+        custom_handlers: handlers,
     };
 
     // use memoized state root if provided.
@@ -394,7 +419,7 @@ mod tests {
 
     #[test]
     fn extra_data_of_genesis_header_is_hash_of_common_params() {
-        let spec = Spec::new_test();
+        let spec = Spec::new_test(Vec::new());
         let common_params = spec.params();
         let hash_of_common_params = H256::blake(&common_params.rlp_bytes()).to_vec();
 

@@ -48,7 +48,7 @@ pub fn get_good_dummy_block() -> Bytes {
 
 pub fn get_good_dummy_block_hash() -> (H256, Bytes) {
     let mut block_header = Header::new();
-    let test_spec = Spec::new_test();
+    let test_spec = Spec::new_test(Vec::new());
     block_header.set_score(U256::from(0x20000));
     block_header.set_timestamp(40);
     block_header.set_number(1);

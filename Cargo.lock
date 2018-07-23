@@ -199,6 +199,7 @@ dependencies = [
  "codechain-network 0.1.0",
  "codechain-reactor 0.1.0",
  "codechain-rpc 0.1.0",
+ "codechain-state 0.1.0",
  "codechain-stratum 1.11.0",
  "codechain-sync 0.1.0",
  "codechain-types 0.1.0",
