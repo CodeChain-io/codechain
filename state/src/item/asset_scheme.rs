@@ -111,7 +111,7 @@ mod tests {
                 if address[0] == 'S' as u8 {
                     continue
                 }
-                for i in 1..8 {
+                for i in 1..6 {
                     if address[i] == 0 {
                         continue 'address
                     }
@@ -124,8 +124,9 @@ mod tests {
         let asset_address = AssetSchemeAddress::new(origin, shard_id);
         let hash: H256 = asset_address.into();
         assert_ne!(origin, hash);
-        assert_eq!(hash[0..4], [PREFIX, 0, 0, 0]);
-        assert_eq!(hash[4..8], [0, 0, 0x0B, 0xEE]); // shard id
+        assert_eq!(hash[0..2], [PREFIX, 0]);
+        assert_eq!(hash[2..4], [0x0B, 0xEE]); // shard id
+        assert_eq!(hash[4..6], [0, 0]); // world id
     }
 
     #[test]
@@ -144,10 +145,9 @@ mod tests {
             hash[1] = 0;
             hash
         };
-        let shard_id = ((hash[4] as ShardId) << 24)
-            + ((hash[5] as ShardId) << 16)
-            + ((hash[6] as ShardId) << 8)
-            + (hash[7] as ShardId);
+        assert_eq!(::std::mem::size_of::<u16>(), ::std::mem::size_of::<ShardId>());
+        let shard_id = ((hash[2] as ShardId) << 8)
+            + (hash[3] as ShardId);
         let asset_scheme_address = AssetSchemeAddress::from_hash(hash).unwrap();
         assert_eq!(shard_id, asset_scheme_address.shard_id());
     }

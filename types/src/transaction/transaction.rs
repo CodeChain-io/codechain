@@ -252,8 +252,8 @@ impl Encodable for Transaction {
 
 impl AssetOutPoint {
     pub fn related_shard(&self) -> ShardId {
-        debug_assert_eq!(::std::mem::size_of::<u32>(), ::std::mem::size_of::<ShardId>());
-        Cursor::new(&self.asset_type[4..8]).read_u32::<BigEndian>().unwrap()
+        debug_assert_eq!(::std::mem::size_of::<u16>(), ::std::mem::size_of::<ShardId>());
+        Cursor::new(&self.asset_type[2..4]).read_u16::<BigEndian>().unwrap()
     }
 }
 
@@ -270,7 +270,7 @@ mod tests {
     #[test]
     fn related_shard_of_asset_out_point() {
         let mut asset_type = H256::new();
-        asset_type[4..8].clone_from_slice(&[0xBE, 0xEF, 0x12, 0x34]);
+        asset_type[2..4].clone_from_slice(&[0xBE, 0xEF]);
 
         let p = AssetOutPoint {
             transaction_hash: H256::random(),
@@ -279,13 +279,13 @@ mod tests {
             amount: 34,
         };
 
-        assert_eq!(0xBEEF1234, p.related_shard());
+        assert_eq!(0xBEEF, p.related_shard());
     }
 
     #[test]
     fn related_shard_of_asset_transfer_input() {
         let mut asset_type = H256::new();
-        asset_type[4..8].clone_from_slice(&[0xBE, 0xEF, 0x12, 0x34]);
+        asset_type[2..4].clone_from_slice(&[0xBE, 0xEF]);
 
         let prev_out = AssetOutPoint {
             transaction_hash: H256::random(),
@@ -300,6 +300,6 @@ mod tests {
             unlock_script: vec![],
         };
 
-        assert_eq!(0xBEEF1234, input.related_shard());
+        assert_eq!(0xBEEF, input.related_shard());
     }
 }

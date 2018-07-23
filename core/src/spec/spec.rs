@@ -200,12 +200,12 @@ impl Spec {
             shard_roots.push((*shard_id, shard_root));
         }
 
-        debug_assert_eq!(::std::mem::size_of::<u32>(), ::std::mem::size_of::<ShardId>());
+        debug_assert_eq!(::std::mem::size_of::<u16>(), ::std::mem::size_of::<ShardId>());
         debug_assert!(
-            shard_roots.len() <= ::std::u32::MAX as usize,
+            shard_roots.len() <= ::std::u16::MAX as usize,
             "{} <= {}",
             shard_roots.len(),
-            ::std::u32::MAX as usize
+            ::std::u16::MAX as usize
         );
         let global_metadata = Metadata::new(shard_roots.len() as ShardId);
 

@@ -20,4 +20,4 @@ use super::super::hash::Address;
 use super::{Account, Shard};
 
 pub type Accounts = BTreeMap<Address, Account>;
-pub type Shards = BTreeMap<u32, Shard>;
+pub type Shards = BTreeMap<u16, Shard>;
