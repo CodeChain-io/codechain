@@ -54,7 +54,7 @@ use super::{
     AccountData, AssetClient, Balance, BlockChain as BlockChainTrait, BlockChainClient, BlockChainInfo, BlockInfo,
     BlockProducer, ChainInfo, ChainNotify, ClientConfig, DatabaseClient, EngineClient, Error as ClientError,
     ImportBlock, ImportResult, ImportSealedBlock, Invoice, MiningBlockChainClient, Nonce, ParcelInfo, PrepareOpenBlock,
-    RegularKey, ReopenBlock, Shard, StateOrBlock,
+    RegularKey, ReopenBlock, Shard, StateOrBlock, TransactionInfo,
 };
 
 const MAX_MEM_POOL_SIZE: usize = 4096;
@@ -322,6 +322,12 @@ impl BlockInfo for Client {
 impl ParcelInfo for Client {
     fn parcel_block(&self, id: ParcelId) -> Option<H256> {
         self.parcel_address(id).map(|addr| addr.block_hash)
+    }
+}
+
+impl TransactionInfo for Client {
+    fn transaction_parcel(&self, id: TransactionId) -> Option<ParcelAddress> {
+        self.transaction_address(id).map(|addr| addr.parcel_address)
     }
 }
 

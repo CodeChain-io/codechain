@@ -49,11 +49,13 @@ use primitives::{Bytes, H256, U256};
 use rlp::*;
 
 use super::super::block::{ClosedBlock, OpenBlock, SealedBlock};
+use super::super::blockchain::ParcelAddress;
 use super::super::blockchain_info::BlockChainInfo;
 use super::super::client::ImportResult;
 use super::super::client::{
     AccountData, Balance, BlockChain, BlockChainClient, BlockInfo, BlockProducer, BlockStatus, ChainInfo, ImportBlock,
     ImportSealedBlock, Invoice, MiningBlockChainClient, Nonce, ParcelInfo, PrepareOpenBlock, ReopenBlock, StateOrBlock,
+    TransactionInfo,
 };
 use super::super::db::{COL_STATE, NUM_COLUMNS};
 use super::super::encoded;
@@ -382,6 +384,12 @@ impl BlockInfo for TestBlockChainClient {
 impl ParcelInfo for TestBlockChainClient {
     fn parcel_block(&self, _id: ParcelId) -> Option<H256> {
         None // Simple default.
+    }
+}
+
+impl TransactionInfo for TestBlockChainClient {
+    fn transaction_parcel(&self, _id: TransactionId) -> Option<ParcelAddress> {
+        None
     }
 }
 

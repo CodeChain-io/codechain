@@ -39,6 +39,7 @@ use primitives::{Bytes, H256, U256};
 use trie::Result as TrieResult;
 
 use super::block::{ClosedBlock, OpenBlock, SealedBlock};
+use super::blockchain::ParcelAddress;
 use super::blockchain_info::BlockChainInfo;
 use super::encoded;
 use super::error::BlockImportError;
@@ -67,6 +68,19 @@ pub trait BlockInfo {
 pub trait ParcelInfo {
     /// Get the hash of block that contains the parcel, if any.
     fn parcel_block(&self, id: ParcelId) -> Option<H256>;
+}
+
+pub trait TransactionInfo {
+    fn transaction_parcel(&self, id: TransactionId) -> Option<ParcelAddress>;
+
+    fn is_any_transaction_included<'a>(&self, transactions: &'a mut Iterator<Item = H256>) -> bool {
+        for hash in transactions {
+            if self.transaction_parcel(TransactionId::Hash(hash)).is_some() {
+                return true
+            }
+        }
+        false
+    }
 }
 
 /// Client facilities used by internally sealing Engines.
@@ -157,7 +171,7 @@ pub trait ImportBlock {
 }
 
 /// Provides various blockchain information, like block header, chain state etc.
-pub trait BlockChain: ChainInfo + BlockInfo + ParcelInfo {}
+pub trait BlockChain: ChainInfo + BlockInfo + ParcelInfo + TransactionInfo {}
 
 /// Blockchain database client. Owns and manages a blockchain and a block queue.
 pub trait BlockChainClient: Sync + Send + AccountData + BlockChain + ImportBlock {
