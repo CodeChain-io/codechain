@@ -76,6 +76,7 @@ use parking_lot::{Condvar, Mutex};
 use primitives::H256;
 
 use self::account_command::run_account_command;
+use self::config::load_config;
 use self::rpc::{rpc_http_start, rpc_ipc_start};
 
 pub const APP_INFO: AppInfo = AppInfo {
@@ -172,20 +173,6 @@ fn run_subcommand(matches: ArgMatches) -> Result<(), String> {
     } else {
         Err("Invalid subcommand".to_string())
     }
-}
-
-fn load_config(matches: &ArgMatches) -> Result<config::Config, String> {
-    let config_path = matches.value_of("config").unwrap_or(constants::DEFAULT_CONFIG_PATH);
-    let mut config = config::load(&config_path)?;
-    config.ipc.overwrite_with(&matches)?;
-    config.operating.overwrite_with(&matches)?;
-    config.mining.overwrite_with(&matches)?;
-    config.network.overwrite_with(&matches)?;
-    config.rpc.overwrite_with(&matches)?;
-    config.snapshot.overwrite_with(&matches)?;
-    config.stratum.overwrite_with(&matches)?;
-
-    Ok(config)
 }
 
 fn new_miner(config: &config::Config, spec: &Spec, ap: Arc<AccountProvider>) -> Result<Arc<Miner>, String> {

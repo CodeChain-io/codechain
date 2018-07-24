@@ -27,6 +27,7 @@ use rpc::{RpcHttpConfig, RpcIpcConfig};
 use toml;
 
 use self::chain_type::ChainType;
+use super::constants::DEFAULT_CONFIG_PATH;
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -155,11 +156,6 @@ impl<'a> Into<StratumConfig> for &'a Stratum {
             secret: None,
         }
     }
-}
-
-pub fn load(config_path: &str) -> Result<Config, String> {
-    let toml_string = fs::read_to_string(config_path).map_err(|e| format!("Fail to read file: {:?}", e))?;
-    toml::from_str(toml_string.as_ref()).map_err(|e| format!("Error while parse TOML: {:?}", e))
 }
 
 impl Ipc {
@@ -319,4 +315,21 @@ impl Stratum {
         }
         Ok(())
     }
+}
+
+pub fn load_config(matches: &clap::ArgMatches) -> Result<Config, String> {
+    let config_path = matches.value_of("config").unwrap_or(DEFAULT_CONFIG_PATH);
+    let toml_string = fs::read_to_string(config_path).map_err(|e| format!("Fail to read file: {:?}", e))?;
+
+    let mut config: Config =
+        toml::from_str(toml_string.as_ref()).map_err(|e| format!("Error while parsing TOML: {:?}", e))?;
+    config.ipc.overwrite_with(&matches)?;
+    config.operating.overwrite_with(&matches)?;
+    config.mining.overwrite_with(&matches)?;
+    config.network.overwrite_with(&matches)?;
+    config.rpc.overwrite_with(&matches)?;
+    config.snapshot.overwrite_with(&matches)?;
+    config.stratum.overwrite_with(&matches)?;
+
+    Ok(config)
 }
