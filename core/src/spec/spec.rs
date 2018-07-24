@@ -50,6 +50,8 @@ pub struct CommonParams {
     pub min_parcel_cost: U256,
     /// Maximum size of block body.
     pub max_body_size: usize,
+    /// Snapshot creation period in unit of block numbers.
+    pub snapshot_period: u64,
 }
 
 impl From<cjson::spec::Params> for CommonParams {
@@ -60,6 +62,7 @@ impl From<cjson::spec::Params> for CommonParams {
             network_id: p.network_id.into(),
             min_parcel_cost: p.min_parcel_cost.into(),
             max_body_size: p.max_body_size.into(),
+            snapshot_period: p.snapshot_period.into(),
         }
     }
 }
