@@ -53,7 +53,7 @@ pub trait Api: Send + Sync {
 pub trait Extension: Send + Sync {
     fn name(&self) -> &'static str;
     fn need_encryption(&self) -> bool;
-    fn versions(&self) -> Vec<u64>;
+    fn versions(&self) -> &[u64];
 
     fn on_initialize(&self, api: Arc<Api>);
 

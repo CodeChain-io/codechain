@@ -878,8 +878,9 @@ impl NetworkExtension for TendermintExtension {
         false
     }
 
-    fn versions(&self) -> Vec<u64> {
-        vec![0]
+    fn versions(&self) -> &[u64] {
+        const VERSIONS: &'static [u64] = &[0];
+        &VERSIONS
     }
 
     fn on_initialize(&self, api: Arc<Api>) {

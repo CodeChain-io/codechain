@@ -182,7 +182,7 @@ impl Client {
 
     pub fn extension_versions(&self) -> Vec<(String, Vec<u64>)> {
         let extensions = self.extensions.read();
-        extensions.iter().map(|(name, extension)| (name.to_string(), extension.versions())).collect()
+        extensions.iter().map(|(name, extension)| (name.to_string(), extension.versions().to_vec())).collect()
     }
 
     define_method!(on_node_added; id, &NodeId; version, u64);
@@ -266,8 +266,9 @@ mod tests {
             false
         }
 
-        fn versions(&self) -> Vec<u64> {
-            vec![0]
+        fn versions(&self) -> &[u64] {
+            const VERSIONS: &'static [u64] = &[0];
+            &VERSIONS
         }
 
         fn on_initialize(&self, _api: Arc<Api>) {
