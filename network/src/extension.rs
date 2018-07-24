@@ -51,7 +51,7 @@ pub trait Api: Send + Sync {
 }
 
 pub trait Extension: Send + Sync {
-    fn name(&self) -> String;
+    fn name(&self) -> &'static str;
     fn need_encryption(&self) -> bool;
     fn versions(&self) -> Vec<u64>;
 

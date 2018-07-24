@@ -49,8 +49,6 @@ use super::validator_set::ValidatorSet;
 use super::vote_collector::VoteCollector;
 use super::{ConsensusEngine, ConstructedVerifier, EngineError, EpochChange, Seal};
 
-const EXTENSION_NAME: &'static str = "tendermint";
-
 /// Timer token representing the consensus step timeouts.
 pub const ENGINE_TIMEOUT_TOKEN: TimerToken = 23;
 
@@ -872,8 +870,8 @@ impl TendermintExtension {
 }
 
 impl NetworkExtension for TendermintExtension {
-    fn name(&self) -> String {
-        String::from(EXTENSION_NAME)
+    fn name(&self) -> &'static str {
+        "tendermint"
     }
 
     fn need_encryption(&self) -> bool {
