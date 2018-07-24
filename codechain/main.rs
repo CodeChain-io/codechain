@@ -210,7 +210,7 @@ fn new_miner(config: &config::Config, spec: &Spec, ap: Arc<AccountProvider>) -> 
                     None => return Err("mining.password_path is not specified".to_string()),
                     Some(ref password_path) => match fs::read_to_string(password_path) {
                         Ok(password) => {
-                            miner.set_engine_signer(engine_signer, password).map_err(|err| format!("{:?}", err))?
+                            miner.set_engine_signer(engine_signer, password).map_err(|e| format!("{:?}", e))?
                         }
                         Err(_) => return Err(format!("Failed to read the password file")),
                     },
