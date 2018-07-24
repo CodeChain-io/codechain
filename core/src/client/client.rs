@@ -54,7 +54,7 @@ use super::{
     AccountData, AssetClient, Balance, BlockChain as BlockChainTrait, BlockChainClient, BlockChainInfo, BlockInfo,
     BlockProducer, ChainInfo, ChainNotify, ClientConfig, DatabaseClient, EngineClient, Error as ClientError,
     ImportBlock, ImportResult, ImportSealedBlock, Invoice, MiningBlockChainClient, Nonce, ParcelInfo, PrepareOpenBlock,
-    RegularKey, ReopenBlock, Shard, StateOrBlock,
+    RegularKey, ReopenBlock, Shard, StateOrBlock, TransactionInfo,
 };
 
 const MAX_MEM_POOL_SIZE: usize = 4096;
@@ -254,11 +254,10 @@ impl DatabaseClient for Client {
 }
 
 impl AssetClient for Client {
-    fn get_asset_scheme(&self, transaction_hash: H256) -> TrieResult<Option<AssetScheme>> {
+    fn get_asset_scheme(&self, asset_type: AssetSchemeAddress) -> TrieResult<Option<AssetScheme>> {
         if let Some(state) = Client::state_at(&self, BlockId::Latest) {
-            let shard_id = 0; // FIXME
-            let address = AssetSchemeAddress::new(transaction_hash, shard_id);
-            Ok(state.asset_scheme(shard_id, &address)?)
+            let shard_id = asset_type.shard_id();
+            Ok(state.asset_scheme(shard_id, &asset_type)?)
         } else {
             Ok(None)
         }
@@ -323,6 +322,12 @@ impl BlockInfo for Client {
 impl ParcelInfo for Client {
     fn parcel_block(&self, id: ParcelId) -> Option<H256> {
         self.parcel_address(id).map(|addr| addr.block_hash)
+    }
+}
+
+impl TransactionInfo for Client {
+    fn transaction_parcel(&self, id: TransactionId) -> Option<ParcelAddress> {
+        self.transaction_address(id).map(|addr| addr.parcel_address)
     }
 }
 

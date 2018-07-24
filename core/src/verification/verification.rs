@@ -24,7 +24,7 @@ use rlp::UntrustedRlp;
 use unexpected::{Mismatch, OutOfBounds};
 
 use super::super::blockchain::BlockProvider;
-use super::super::client::BlockInfo;
+use super::super::client::{BlockInfo, TransactionInfo};
 use super::super::consensus::CodeChainEngine;
 use super::super::error::{BlockError, Error};
 use super::super::header::Header;
@@ -157,7 +157,7 @@ pub fn verify_block_unordered(
 }
 
 /// Parameters for full verification of block family
-pub struct FullFamilyParams<'a, C: BlockInfo + 'a> {
+pub struct FullFamilyParams<'a, C: BlockInfo + TransactionInfo + 'a> {
     /// Serialized block bytes
     pub block_bytes: &'a [u8],
 
@@ -172,7 +172,7 @@ pub struct FullFamilyParams<'a, C: BlockInfo + 'a> {
 }
 
 /// Phase 3 verification. Check block information against parent and uncles.
-pub fn verify_block_family<C: BlockInfo>(
+pub fn verify_block_family<C: BlockInfo + TransactionInfo>(
     block: &[u8],
     header: &Header,
     parent: &Header,

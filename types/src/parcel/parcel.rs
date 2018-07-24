@@ -55,4 +55,14 @@ impl Parcel {
         self.rlp_append_unsigned_parcel(&mut stream);
         blake256(stream.as_raw())
     }
+
+    pub fn iter_transactions<'a>(&'a self) -> Box<Iterator<Item = H256> + 'a> {
+        match &self.action {
+            Action::ChangeShardState {
+                transactions,
+                ..
+            } => Box::new(transactions.iter().map(|t| t.hash())),
+            _ => Box::new(::std::iter::empty()),
+        }
+    }
 }

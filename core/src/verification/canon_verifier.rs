@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use super::super::client::BlockInfo;
+use super::super::client::{BlockInfo, TransactionInfo};
 use super::super::consensus::CodeChainEngine;
 use super::super::error::Error;
 use super::super::header::Header;
@@ -24,7 +24,7 @@ use super::Verifier;
 /// A canonial verifier -- this does full verification.
 pub struct CanonVerifier;
 
-impl<C: BlockInfo> Verifier<C> for CanonVerifier {
+impl<C: BlockInfo + TransactionInfo> Verifier<C> for CanonVerifier {
     fn verify_block_family(
         &self,
         block: &[u8],

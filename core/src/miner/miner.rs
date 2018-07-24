@@ -209,7 +209,10 @@ impl Miner {
                 let hash = parcel.hash();
                 if client.parcel_block(ParcelId::Hash(hash)).is_some() {
                     cdebug!(MINER, "Rejected parcel {:?}: already in the blockchain", hash);
-                    return Err(StateError::from(ParcelError::AlreadyImported).into())
+                    return Err(StateError::from(ParcelError::ParcelAlreadyImported).into())
+                }
+                if client.is_any_transaction_included(&mut parcel.iter_transactions()) {
+                    return Err(StateError::from(ParcelError::TransactionAlreadyImported).into())
                 }
                 match self
                     .engine
@@ -377,7 +380,7 @@ impl Miner {
             ctrace!(MINER, "Adding parcel {:?} took {:?}", hash, took);
             match result {
                 // already have parcel - ignore
-                Err(Error::State(StateError::Parcel(ParcelError::AlreadyImported))) => {}
+                Err(Error::State(StateError::Parcel(ParcelError::ParcelAlreadyImported))) => {}
                 Err(Error::State(StateError::Parcel(ParcelError::NotAllowed))) => {
                     non_allowed_parcels.insert(hash);
                     cdebug!(MINER, "Skipping non-allowed parcel for sender {:?}", hash);
