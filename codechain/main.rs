@@ -219,18 +219,15 @@ fn new_miner(config: &config::Config, spec: &Spec, ap: Arc<AccountProvider>) -> 
                 Ok(has_account) if !has_account => {
                     return Err("mining.engine_signer is not found in AccountProvider".to_string())
                 }
-                Ok(..) => {
-                    match config.mining.password_path {
-                        None => return Err("mining.password_path is not specified".to_string()),
-                        Some(ref password_path) => match fs::read_to_string(password_path) {
-                            Ok(password) => {
-                                miner.set_engine_signer(engine_signer, password).map_err(|err| format!("{:?}", err))?
-                            }
-                            Err(_) => return Err(format!("Failed to read the password file")),
-                        },
-                    }
-                    miner.set_engine_signer(engine_signer, "password".to_string()).map_err(|err| format!("{:?}", err))?;
-                }
+                Ok(..) => match config.mining.password_path {
+                    None => return Err("mining.password_path is not specified".to_string()),
+                    Some(ref password_path) => match fs::read_to_string(password_path) {
+                        Ok(password) => {
+                            miner.set_engine_signer(engine_signer, password).map_err(|err| format!("{:?}", err))?
+                        }
+                        Err(_) => return Err(format!("Failed to read the password file")),
+                    },
+                },
                 Err(e) => {
                     return Err(format!("Error while checking whether engine_signer is in AccountProvider: {:?}", e))
                 }
