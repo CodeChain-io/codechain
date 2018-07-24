@@ -20,9 +20,10 @@ use hashdb::DBValue;
 use hashdb::HashDB;
 use primitives::H256;
 
-use super::node::Node as RlpNode;
-use super::{TrieError, TrieMut};
+use super::{Trie, TrieError, TrieMut};
 use nibbleslice::NibbleSlice;
+use node::Node as RlpNode;
+use triedb::TrieDB;
 
 
 fn empty_children() -> [Option<H256>; 16] {
@@ -170,34 +171,6 @@ impl<'a> TrieDBMut<'a> {
         }
     }
 
-    /// Get auxiliary
-    fn get_aux(&self, path: NibbleSlice, cur_node_hash: Option<H256>) -> super::Result<Option<DBValue>> {
-        match cur_node_hash {
-            Some(hash) => {
-                let node_rlp = self.db.get(&hash).ok_or_else(|| Box::new(TrieError::IncompleteDatabase(hash)))?;
-
-                match RlpNode::decoded(&node_rlp) {
-                    Some(RlpNode::Leaf(partial, value)) => {
-                        if partial == path {
-                            Ok(Some(value))
-                        } else {
-                            Ok(None)
-                        }
-                    }
-                    Some(RlpNode::Branch(partial, children)) => {
-                        if path.starts_with(&partial) {
-                            self.get_aux(path.mid(partial.len() + 1), children[path.mid(partial.len()).at(0) as usize])
-                        } else {
-                            Ok(None)
-                        }
-                    }
-                    None => Ok(None),
-                }
-            }
-            None => Ok(None),
-        }
-    }
-
     /// Remove auxiliary
     fn remove_aux(
         &mut self,
@@ -334,10 +307,9 @@ impl<'a> TrieMut for TrieDBMut<'a> {
     }
 
     fn get(&self, key: &[u8]) -> super::Result<Option<DBValue>> {
-        let path = blake256(key);
-        let cur_hash = *self.root;
+        let t = TrieDB::new(self.db, self.root)?;
 
-        self.get_aux(NibbleSlice::new(&path), Some(cur_hash))
+        t.get(key)
     }
 
     fn insert(&mut self, key: &[u8], value: &[u8]) -> super::Result<Option<DBValue>> {
@@ -742,4 +714,3 @@ mod tests {
         }
     }
 }
-
