@@ -151,7 +151,7 @@ where
                     .and_then(|file| self.key_manager.read(filename, file))
                     .map_err(|e| {
                         warn!("Invalid key file: {:?} ({})", path, e);
-                        err
+                        e
                     })
                     .map(|account| (path, account))
                     .ok()
