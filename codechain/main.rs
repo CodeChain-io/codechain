@@ -60,8 +60,8 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use app_dirs::AppInfo;
 use ccore::{
-    AccountProvider, Client, ClientService, EngineType, Miner, MinerOptions, MinerService, Spec, Stratum,
-    StratumConfig, StratumError,
+    AccountProvider, Client, ClientService, EngineType, Miner, MinerOptions, MinerService, ShardValidator, Spec,
+    Stratum, StratumConfig, StratumError,
 };
 use cdiscovery::{KademliaConfig, KademliaExtension, UnstructuredConfig, UnstructuredExtension};
 use ckeystore::accounts_dir::RootDiskDirectory;
@@ -285,6 +285,8 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
     let miner = new_miner(&config, &spec, ap.clone())?;
     let client = client_start(&config, &spec, miner.clone())?;
 
+    let shard_validator = ShardValidator::new(None, Arc::clone(&ap));
+
     let network_service: Arc<NetworkControl> = {
         if !config.network.disable {
             let network_config = (&config.network).into();
@@ -307,6 +309,8 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
             if let Some(consensus_extension) = spec.engine.network_extension() {
                 service.register_extension(consensus_extension)?;
             }
+
+            service.register_extension(shard_validator.clone())?;
 
             for address in network_config.bootstrap_addresses {
                 service.connect_to(address)?;
