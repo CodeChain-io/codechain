@@ -26,7 +26,9 @@ use super::super::ShardId;
 /// Errors concerning parcel processing.
 pub enum Error {
     /// Parcel is already imported to the queue
-    AlreadyImported,
+    ParcelAlreadyImported,
+    /// Transaction is already imported in blockchain
+    TransactionAlreadyImported,
     /// Parcel is not valid anymore (state already has higher nonce)
     Old,
     /// Parcel has too low fee
@@ -73,7 +75,8 @@ pub enum Error {
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter) -> FormatResult {
         let msg: String = match self {
-            Error::AlreadyImported => "Already imported".into(),
+            Error::ParcelAlreadyImported => "The parcel is already imported".into(),
+            Error::TransactionAlreadyImported => "The transaction is already imported".into(),
             Error::Old => "No longer valid".into(),
             Error::TooCheapToReplace => "Fee too low to replace".into(),
             Error::InvalidNetworkId => "This network ID is not allowed on this chain".into(),

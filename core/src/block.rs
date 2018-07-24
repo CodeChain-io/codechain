@@ -152,7 +152,7 @@ impl<'x> OpenBlock<'x> {
     /// Push a parcel into the block.
     pub fn push_parcel(&mut self, parcel: SignedParcel, h: Option<H256>) -> Result<(), Error> {
         if self.block.parcels_set.contains(&parcel.hash()) {
-            return Err(StateError::Parcel(ParcelError::AlreadyImported).into())
+            return Err(StateError::Parcel(ParcelError::ParcelAlreadyImported).into())
         }
 
         let outcomes = self.block.state.apply(&parcel, parcel.sender())?;

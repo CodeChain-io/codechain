@@ -22,7 +22,7 @@ use ctypes::parcel::Error as ParcelError;
 use primitives::U256;
 
 use super::block::{ExecutedBlock, IsBlock};
-use super::client::BlockInfo;
+use super::client::{BlockInfo, TransactionInfo};
 use super::error::Error;
 use super::header::Header;
 use super::parcel::{SignedParcel, UnverifiedParcel};
@@ -72,7 +72,17 @@ impl CodeChainMachine {
     }
 
     /// Does verification of the parcel against the parent state.
-    pub fn verify_parcel<C: BlockInfo>(&self, _p: &SignedParcel, _header: &Header, _client: &C) -> Result<(), Error> {
+    pub fn verify_parcel<C: BlockInfo + TransactionInfo>(
+        &self,
+        parcel: &SignedParcel,
+        _header: &Header,
+        client: &C,
+    ) -> Result<(), Error> {
+        let mut transactions = parcel.iter_transactions();
+        if client.is_any_transaction_included(&mut transactions) {
+            return Err(StateError::from(ParcelError::TransactionAlreadyImported).into())
+        }
+
         // FIXME: Filter parcels.
         Ok(())
     }
