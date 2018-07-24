@@ -69,7 +69,6 @@ use clap::ArgMatches;
 use clogger::LoggerConfig;
 use cnetwork::{NetworkConfig, NetworkControl, NetworkControlError, NetworkService, SocketAddr};
 use creactor::EventLoop;
-use crpc::{HttpServer, IpcServer};
 use csync::{BlockSyncExtension, ParcelSyncExtension, SnapshotService};
 use ctrlc::CtrlC;
 use fdlimit::raise_fd_limit;
@@ -77,22 +76,12 @@ use parking_lot::{Condvar, Mutex};
 use primitives::H256;
 
 use self::account_command::run_account_command;
-use self::rpc::{RpcHttpConfig, RpcIpcConfig};
+use self::rpc::{rpc_http_start, rpc_ipc_start};
 
 pub const APP_INFO: AppInfo = AppInfo {
     name: "codechain",
     author: "Kodebox",
 };
-
-pub fn rpc_http_start(cfg: RpcHttpConfig, deps: Arc<rpc_apis::ApiDependencies>) -> Result<HttpServer, String> {
-    info!("RPC Listening on {}", cfg.port);
-    rpc::new_http(cfg, deps)
-}
-
-pub fn rpc_ipc_start(cfg: RpcIpcConfig, deps: Arc<rpc_apis::ApiDependencies>) -> Result<IpcServer, String> {
-    info!("IPC Listening on {}", cfg.socket_addr);
-    rpc::new_ipc(cfg, deps)
-}
 
 pub fn network_start(cfg: &NetworkConfig) -> Result<Arc<NetworkService>, String> {
     info!("Handshake Listening on {}:{}", cfg.address, cfg.port);
