@@ -15,27 +15,14 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 pub mod helpers {
-    use std::sync::Arc;
-
-    use journaldb::{self, Algorithm};
-    use kvdb::KeyValueDB;
-    use kvdb_memorydb;
-
     use super::super::impls::TopLevelState;
     use super::super::StateDB;
 
-
-    fn new_db() -> Arc<KeyValueDB> {
-        Arc::new(kvdb_memorydb::create(0))
-    }
-
     pub fn get_temp_state_db() -> StateDB {
-        let db = new_db();
-        let boxed_db = journaldb::new(db, Algorithm::Archive, None);
-        StateDB::new(boxed_db, 5 * 1024 * 1024)
+        StateDB::new_with_memorydb(5 * 1024 * 1024)
     }
 
-    pub fn get_temp_state() -> TopLevelState<StateDB> {
+    pub fn get_temp_state() -> TopLevelState {
         let journal_db = get_temp_state_db();
         TopLevelState::new(journal_db, Default::default())
     }

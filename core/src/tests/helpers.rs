@@ -60,12 +60,6 @@ pub fn get_good_dummy_block_hash() -> (H256, Bytes) {
     (block_header.hash(), create_test_block(&block_header))
 }
 
-fn new_db() -> Arc<KeyValueDB> {
-    Arc::new(::kvdb_memorydb::create(::db::NUM_COLUMNS.unwrap_or(0)))
-}
-
 pub fn get_temp_state_db() -> StateDB {
-    let db = new_db();
-    let journal_db = ::journaldb::new(db, ::journaldb::Algorithm::Archive, ::db::COL_STATE);
-    StateDB::new(journal_db, 5 * 1024 * 1024)
+    StateDB::new_with_memorydb(5 * 1024 * 1024)
 }
