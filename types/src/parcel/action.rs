@@ -16,7 +16,7 @@
 
 use ccrypto::Blake;
 use ckey::{Address, Public};
-use primitives::{H256, U256};
+use primitives::{Bytes, H256, U256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::super::transaction::Transaction;
@@ -26,6 +26,7 @@ const CHANGE_SHARD_STATE: u8 = 1;
 const PAYMENT: u8 = 2;
 const SET_REGULAR_KEY: u8 = 3;
 const CREATE_SHARD: u8 = 4;
+const CUSTOM: u8 = 5;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, RlpDecodable, RlpEncodable)]
 #[serde(rename_all = "camelCase")]
@@ -52,6 +53,7 @@ pub enum Action {
         key: Public,
     },
     CreateShard,
+    Custom(Bytes),
 }
 
 impl Action {
@@ -93,6 +95,11 @@ impl Encodable for Action {
                 s.begin_list(1);
                 s.append(&CREATE_SHARD);
             }
+            Action::Custom(bytes) => {
+                s.begin_list(2);
+                s.append(&CUSTOM);
+                s.append(bytes);
+            }
         }
     }
 }
@@ -131,6 +138,12 @@ impl Decodable for Action {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
                 Ok(Action::CreateShard)
+            }
+            CUSTOM => {
+                if rlp.item_count()? != 2 {
+                    return Err(DecoderError::RlpIncorrectListLen)
+                }
+                Ok(Action::Custom(rlp.val_at(1)?))
             }
             _ => Err(DecoderError::Custom("Unexpected action prefix")),
         }

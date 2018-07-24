@@ -106,7 +106,7 @@ pub struct Spec {
     genesis_accounts: PodAccounts,
     genesis_shards: PodShards,
 
-    custom_handlers: Vec<Arc<ActionHandler>>,
+    pub custom_handlers: Vec<Arc<ActionHandler>>,
 }
 
 // helper for formatting errors.
@@ -402,7 +402,7 @@ fn load_from(s: cjson::spec::Spec, handlers: Vec<Arc<ActionHandler>>) -> Result<
     match g.state_root {
         Some(root) => *s.state_root_memo.get_mut() = root,
         None => {
-            let db = StateDB::new_with_memorydb(0);
+            let db = StateDB::new_with_memorydb(0, s.custom_handlers.clone());
             let trie_factory = TrieFactory::new(Default::default());
             let _ = s.initialize_state(&trie_factory, db)?;
         }

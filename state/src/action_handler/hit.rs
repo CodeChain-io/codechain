@@ -44,6 +44,7 @@ impl Decodable for HitAction {
     }
 }
 
+#[derive(Clone)]
 pub struct HitHandler {}
 
 impl HitHandler {
@@ -60,7 +61,7 @@ impl HitHandler {
 
 impl ActionHandler for HitHandler {
     fn init(&self, state: &mut TrieMut) -> StateResult<()> {
-        let r = state.insert(&self.address(), &0u32.rlp_bytes());
+        let r = state.insert(&self.address(), &1u32.rlp_bytes());
         debug_assert_eq!(Ok(None), r);
         r?;
         Ok(())

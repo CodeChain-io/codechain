@@ -410,6 +410,15 @@ impl TopLevelState {
                     error: None,
                 })
             }
+            Action::Custom(bytes) => {
+                let handlers = self.db.custom_handlers().to_vec();
+                for h in handlers {
+                    if let Some(result) = h.execute(bytes, self) {
+                        return result
+                    }
+                }
+                panic!("Unknown custom parcel accepted!")
+            }
         }
     }
 

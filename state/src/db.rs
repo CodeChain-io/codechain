@@ -31,8 +31,8 @@ use primitives::{Bytes, H256};
 use util_error::UtilError;
 
 use super::{
-    Account, Asset, AssetAddress, AssetScheme, AssetSchemeAddress, Backend, CacheableItem, Metadata, MetadataAddress,
-    Shard, ShardAddress, ShardBackend, TopBackend,
+    Account, ActionHandler, Asset, AssetAddress, AssetScheme, AssetSchemeAddress, Backend, CacheableItem, Metadata,
+    MetadataAddress, Shard, ShardAddress, ShardBackend, TopBackend,
 };
 
 const STATE_CACHE_BLOCKS: usize = 12;
@@ -125,6 +125,8 @@ pub struct StateDB {
     commit_hash: Option<H256>,
     /// Number of the committing block or `None` if not committed yet.
     commit_number: Option<BlockNumber>,
+
+    custom_handlers: Vec<Arc<ActionHandler>>,
 }
 
 impl StateDB {
@@ -132,7 +134,7 @@ impl StateDB {
     /// of the LRU cache in bytes. Actual used memory may (read: will) be higher due to bookkeeping.
     // TODO: make the cache size actually accurate by moving the account storage cache
     // into the `AccountCache` structure as its own `LruCache<(Address, H256), H256>`.
-    pub fn new(db: Box<JournalDB>, cache_size: usize) -> StateDB {
+    pub fn new(db: Box<JournalDB>, cache_size: usize, custom_handlers: Vec<Arc<ActionHandler>>) -> StateDB {
         assert_eq!(
             100,
             ACCOUNT_CACHE_RATIO
@@ -197,12 +199,13 @@ impl StateDB {
             parent_hash: None,
             commit_hash: None,
             commit_number: None,
+            custom_handlers,
         }
     }
 
-    pub fn new_with_memorydb(cache_size: usize) -> Self {
+    pub fn new_with_memorydb(cache_size: usize, custom_handlers: Vec<Arc<ActionHandler>>) -> Self {
         let memorydb = Arc::new(kvdb_memorydb::create(0));
-        StateDB::new(journaldb::new(memorydb, Algorithm::Archive, None), cache_size)
+        StateDB::new(journaldb::new(memorydb, Algorithm::Archive, None), cache_size, custom_handlers)
     }
 
     /// Journal all recent operations under the given era and ID.
@@ -427,6 +430,7 @@ impl StateDB {
             parent_hash: Some(parent.clone()),
             commit_hash: None,
             commit_number: None,
+            custom_handlers: self.custom_handlers.clone(),
         }
     }
 
@@ -541,6 +545,8 @@ impl Clone for StateDB {
             parent_hash: None,
             commit_hash: None,
             commit_number: None,
+
+            custom_handlers: self.custom_handlers.clone(),
         }
     }
 }
@@ -608,6 +614,10 @@ impl TopBackend for StateDB {
     where
         F: FnOnce(Option<&mut Account>) -> U, {
         self.get_cached_with(a, f, &self.account_cache)
+    }
+
+    fn custom_handlers(&self) -> &[Arc<ActionHandler>] {
+        &self.custom_handlers
     }
 }
 

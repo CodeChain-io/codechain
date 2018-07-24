@@ -19,7 +19,7 @@ pub mod helpers {
     use super::super::StateDB;
 
     pub fn get_temp_state_db() -> StateDB {
-        StateDB::new_with_memorydb(5 * 1024 * 1024)
+        StateDB::new_with_memorydb(5 * 1024 * 1024, Vec::new())
     }
 
     pub fn get_temp_state() -> TopLevelState {
