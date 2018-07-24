@@ -26,7 +26,7 @@ pub use self::queue::{BlockQueue, Config as QueueConfig};
 pub use self::verification::*;
 pub use self::verifier::Verifier;
 
-use super::client::BlockInfo;
+use super::client::{BlockInfo, TransactionInfo};
 
 /// Verifier type.
 #[derive(Debug, PartialEq, Clone)]
@@ -57,7 +57,7 @@ impl Default for VerifierType {
 }
 
 /// Create a new verifier based on type.
-pub fn new<C: BlockInfo>(v: VerifierType) -> Box<Verifier<C>> {
+pub fn new<C: BlockInfo + TransactionInfo>(v: VerifierType) -> Box<Verifier<C>> {
     match v {
         VerifierType::Canon | VerifierType::CanonNoSeal => Box::new(CanonVerifier),
         VerifierType::Noop => Box::new(NoopVerifier),

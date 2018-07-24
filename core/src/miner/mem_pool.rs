@@ -744,7 +744,7 @@ impl MemPool {
         if self.by_hash.get(&parcel.hash()).is_some() {
             // Parcel is already imported.
             ctrace!(MEM_POOL, "Dropping already imported parcel: {:?}", parcel.hash());
-            return Err(ParcelError::AlreadyImported)
+            return Err(ParcelError::ParcelAlreadyImported)
         }
 
         let address = *parcel.sender();
