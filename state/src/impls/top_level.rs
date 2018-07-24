@@ -411,7 +411,7 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopLevelState<B> {
             }).into())
         }
 
-        let (new_shard_root, db, results) = self.apply_transactions(transactions, shard_id, shard_root)?;
+        let (new_shard_root, db, results) = self.apply_transactions_internal(transactions, shard_id, shard_root)?;
 
         if !change.post_root.is_zero() && change.post_root != new_shard_root {
             return Err(ParcelError::InvalidShardRoot(Mismatch {
@@ -426,7 +426,17 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopLevelState<B> {
         Ok(results)
     }
 
-    pub fn apply_transactions(
+    pub fn apply_transactions(&self, transactions: &[Transaction], shard_id: u32) -> StateResult<ChangeShard> {
+        let pre_root = self.shard_root(shard_id)?.ok_or_else(|| ParcelError::InvalidShardId(shard_id))?;
+        let (post_root, ..) = self.apply_transactions_internal(transactions, shard_id, pre_root)?;
+        Ok(ChangeShard {
+            shard_id,
+            pre_root,
+            post_root,
+        })
+    }
+
+    fn apply_transactions_internal(
         &self,
         transactions: &[Transaction],
         shard_id: ShardId,

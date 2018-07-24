@@ -29,11 +29,21 @@ mod codes {
     pub const NO_AUTHOR: i64 = -32002;
     pub const NO_WORK_REQUIRED: i64 = -32004;
     pub const UNKNOWN_ERROR: i64 = -32009;
-    pub const PARCEL_ERROR: i64 = -32010;
+    pub const CORE_ERROR: i64 = -32010;
     pub const KVDB_ERROR: i64 = -32011;
+    pub const PARCEL_ERROR: i64 = -32012;
     pub const NETWORK_DISABLED: i64 = -32014;
     pub const NETWORK_CANNOT_DISCONNECT_NOT_CONNECTED_ERROR: i64 = -32015;
     pub const ACCOUNT_PROVIDER_ERROR: i64 = -32016;
+}
+
+pub fn core<T: Into<CoreError>>(error: T) -> Error {
+    let error = error.into();
+    Error {
+        code: ErrorCode::ServerError(codes::CORE_ERROR),
+        message: format!("{}", error),
+        data: Some(Value::String(format!("{:?}", error))),
+    }
 }
 
 pub fn parcel_state<T: Into<StateError>>(error: T) -> Error {

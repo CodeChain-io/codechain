@@ -82,6 +82,11 @@ A hexadecimal string for XXX-bit unsigned integer
  - lock_script_hash: `H256`
  - parameters: `hexadecimal string[]`
 
+## ChangeShardObject
+- shard_id: `number`
+- pre_root: `H256`
+- post_root: `H256`
+
 # List of methods
 
  * [ping](#ping)
@@ -105,6 +110,7 @@ A hexadecimal string for XXX-bit unsigned integer
  * [chain_getShardRoot](#chain_getshardroot)
  * [chain_getPendingParcels](#chain_getpendingparcels)
  * [chain_getCoinbase](#chain_getcoinbase)
+ * [chain_executeTransactions](#chain_executetransactions)
 ***
   * [miner_getWork](#miner_getwork)
   * [miner_submitWork](#miner_submitwork)
@@ -719,6 +725,41 @@ Response Example
   "jsonrpc":"2.0",
   "result":"0xa6594b7196808d161b6fb137e781abbc251385d9",
   "id":null
+}
+```
+
+## chain_executeTransactions
+Executes the transactions and returns the current shard root and the changed shard root.
+
+Params:
+ 1. transactions: `hexadecimal string` - RLP encoded hex string of `TransactionObject[]`
+
+Return Type: `ChangeShardObject[]`
+
+Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "chain_executeTransactions", "params": ["0xf8c8f8630311809e6d65746164617461206f66207065726d697373696f6e6564206173736574a007feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050c0c7865af3107a4000d5943f4aa1fedf1f54eeb03b759deadb36676b18491180f861031101a26d65746164617461206f66206e6f6e2d7065726d697373696f6e6564206173736574a007feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050c0c164d5943f4aa1fedf1f54eeb03b759deadb36676b18491180"], "id": null}' \
+    localhost:8080
+```
+
+Response Example
+```
+{
+  "jsonrpc": "2.0",
+  "result": [
+    {
+      "postRoot": "0x16f176868ec7c8366af7e1210a98887437e1940c220d36e1264cec381bd8eae2",
+      "preRoot": "0x3521429ad738442ad7aee37324331e5395bbd0aac7465fba8df12985f6fc2e60",
+      "shardId": 0
+    }, {
+      "postRoot": "0x1d46e3dc3224ac963599c5350dd818b73f6b01efbeb3e19b7450b553d7c67cef",
+      "preRoot": "0x1c41fc1cc2382352ab1a3dd45af8df70d1f2e8c77fc60f6c8849101d20ee7b3f",
+      "shardId": 1
+    }
+  ],
+  "id": null
 }
 ```
 
