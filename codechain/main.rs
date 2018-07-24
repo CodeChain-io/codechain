@@ -133,7 +133,6 @@ pub fn client_start(cfg: &config::Config, spec: &Spec, miner: Arc<Miner>) -> Res
 }
 
 pub fn stratum_start(cfg: &StratumConfig, miner: Arc<Miner>, client: Arc<Client>) -> Result<(), String> {
-    info!("STRATUM Listening on {}", cfg.port);
     match Stratum::start(cfg, miner.clone(), client) {
         // FIXME: Add specified condition like AddrInUse
         Err(StratumError::Service(_)) =>
@@ -141,6 +140,7 @@ pub fn stratum_start(cfg: &StratumConfig, miner: Arc<Miner>, client: Arc<Client>
         Err(e) => Err(format!("STRATUM start error: {:?}", e)),
         Ok(stratum) => {
             miner.add_work_listener(Box::new(stratum));
+            info!("STRATUM Listening on {}", cfg.port);
             Ok(())
         }
     }
