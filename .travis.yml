@@ -31,7 +31,7 @@ jobs:
         - docker
       deploy:
         provider: script
-        script: bash docker_push
+        script: bash docker_push.sh
         on:
           branch: docker-build
 notifications:
