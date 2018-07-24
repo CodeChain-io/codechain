@@ -32,7 +32,7 @@ pub enum Error {
     /// Parcel has too low fee
     /// (there is already a parcel with the same sender-nonce but higher gas price)
     TooCheapToReplace,
-    /// Invalid chain ID given.
+    /// Invalid network ID given.
     InvalidNetworkId,
     /// Max metadata size is exceeded.
     MetadataTooBig,
