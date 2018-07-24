@@ -142,7 +142,6 @@ fn hash256rlp<A: AsRef<[u8]>, B: AsRef<[u8]>>(input: &[(A, B)], pre_len: usize, 
     stream.begin_list(17);
 
     // Append partial path as a first element of branch
-    println!("{} and {}", pre_len, shared_prefix);
     stream.append(&hex_prefix_encode(&key[pre_len..shared_prefix]));
 
     let mut begin: usize = 0;
