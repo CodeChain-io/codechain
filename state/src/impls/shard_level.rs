@@ -25,6 +25,7 @@ use ctypes::transaction::{
     AssetMintOutput, AssetTransferInput, AssetTransferOutput, Error as TransactionError, Outcome as TransactionOutcome,
     Transaction,
 };
+use ctypes::ShardId;
 use cvm::{decode, execute, ScriptResult, VMConfig};
 use primitives::{Bytes, H256, U128};
 use rlp::Encodable;
@@ -46,12 +47,12 @@ pub struct ShardLevelState<B> {
     asset: Cache<Asset>,
     id_of_checkpoints: Vec<CheckpointId>,
     trie_factory: TrieFactory,
-    shard_id: u32,
+    shard_id: ShardId,
 }
 
 impl<B: Backend + ShardBackend> ShardLevelState<B> {
     /// Creates new state with empty state root
-    pub fn try_new(shard_id: u32, mut db: B, trie_factory: TrieFactory) -> trie::Result<ShardLevelState<B>> {
+    pub fn try_new(shard_id: ShardId, mut db: B, trie_factory: TrieFactory) -> trie::Result<ShardLevelState<B>> {
         let mut root = BLAKE_NULL_RLP;
 
         {
@@ -78,7 +79,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
 
     /// Creates new state with existing state root
     pub fn from_existing(
-        shard_id: u32,
+        shard_id: ShardId,
         db: B,
         root: H256,
         trie_factory: TrieFactory,
@@ -440,7 +441,7 @@ mod tests {
 
     use super::*;
 
-    fn get_temp_shard_state(shard_id: u32) -> ShardLevelState<StateDB> {
+    fn get_temp_shard_state(shard_id: ShardId) -> ShardLevelState<StateDB> {
         let state_db = get_temp_state_db();
         let root_parent = H256::random();
 
@@ -460,6 +461,7 @@ mod tests {
         let registrar = Some(Address::random());
         let transaction = Transaction::AssetMint {
             network_id: 200,
+            shard_id,
             metadata: metadata.clone(),
             output: AssetMintOutput {
                 lock_script_hash,
@@ -500,6 +502,7 @@ mod tests {
         let registrar = Some(Address::random());
         let transaction = Transaction::AssetMint {
             network_id: 200,
+            shard_id,
             metadata: metadata.clone(),
             output: AssetMintOutput {
                 lock_script_hash,
@@ -740,6 +743,7 @@ mod tests {
         let amount = 30;
         let mint = Transaction::AssetMint {
             network_id: 200,
+            shard_id,
             metadata: metadata.clone(),
             output: AssetMintOutput {
                 lock_script_hash,
@@ -841,6 +845,7 @@ mod tests {
         let amount = 30;
         let mint = Transaction::AssetMint {
             network_id: 200,
+            shard_id,
             metadata: metadata.clone(),
             output: AssetMintOutput {
                 lock_script_hash,

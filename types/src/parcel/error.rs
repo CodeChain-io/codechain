@@ -20,6 +20,8 @@ use ckey::{Address, Error as KeyError};
 use primitives::{H256, U256};
 use unexpected::Mismatch;
 
+use super::super::ShardId;
+
 #[derive(Debug, PartialEq, Clone)]
 /// Errors concerning parcel processing.
 pub enum Error {
@@ -58,7 +60,7 @@ pub enum Error {
         /// Nonce found.
         got: U256,
     },
-    InvalidShardId(u32),
+    InvalidShardId(ShardId),
     InvalidShardRoot(Mismatch<H256>),
     /// Not enough permissions given by permission contract.
     NotAllowed,

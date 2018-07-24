@@ -14,10 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ckey::Public;
+use ckey::{Address, Public};
 use cstate::{Asset, AssetScheme};
 use ctypes::invoice::{Invoice, ParcelInvoice};
-use ctypes::BlockNumber;
+use ctypes::{BlockNumber, ShardId};
 use primitives::{H160, H256, U256};
 
 use jsonrpc_core::Result;
@@ -64,11 +64,11 @@ build_rpc_trait! {
 
         /// Gets the number of shards
         # [rpc(name = "chain_getNumberOfShards")]
-        fn get_number_of_shards(&self, Option<u64>) -> Result<Option<u32>>;
+        fn get_number_of_shards(&self, Option<u64>) -> Result<Option<ShardId>>;
 
         /// Gets shard root
         # [rpc(name = "chain_getShardRoot")]
-        fn get_shard_root(&self, u32, Option<u64>) -> Result<Option<H256>>;
+        fn get_shard_root(&self, ShardId, Option<u64>) -> Result<Option<H256>>;
 
         /// Gets number of best block.
         # [rpc(name = "chain_getBestBlockNumber")]
@@ -93,5 +93,9 @@ build_rpc_trait! {
         /// Gets parcels in the current mem pool.
         # [rpc(name = "chain_getPendingParcels")]
         fn get_pending_parcels(&self) -> Result<Vec<Parcel>>;
+
+        /// Gets coinbase's account id
+        # [rpc(name = "chain_getCoinbase")]
+        fn get_coinbase(&self) -> Result<Option<Address>>;
     }
 }

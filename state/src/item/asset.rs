@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use ctypes::ShardId;
 use primitives::{Bytes, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
@@ -97,7 +98,7 @@ pub struct AssetAddress(H256);
 impl_address!(SHARD, AssetAddress, PREFIX);
 
 impl AssetAddress {
-    pub fn new(transaction_hash: H256, index: usize, shard_id: u32) -> Self {
+    pub fn new(transaction_hash: H256, index: usize, shard_id: ShardId) -> Self {
         debug_assert_eq!(::std::mem::size_of::<u64>(), ::std::mem::size_of::<usize>());
         let index = index as u64;
 
@@ -107,20 +108,20 @@ impl AssetAddress {
 
 #[cfg(test)]
 mod tests {
-    use super::{AssetAddress, H256, PREFIX};
+    use super::*;
 
     #[test]
     fn asset_from_address() {
         let parcel_id = {
             let mut address;
-            loop {
+            'address: loop {
                 address = H256::random();
                 if address[0] == PREFIX {
                     continue
                 }
                 for i in 1..8 {
                     if address[i] == 0 {
-                        continue
+                        continue 'address
                     }
                 }
                 break
@@ -168,5 +169,29 @@ mod tests {
         };
         let address = AssetAddress::from_hash(hash.clone());
         assert_eq!(Some(AssetAddress(hash)), address);
+    }
+
+    #[test]
+    fn shard_id() {
+        let origin = H256::random();
+        let shard_id = 0xCAA;
+        let asset_address = AssetAddress::new(origin, 2, shard_id);
+        assert_eq!(shard_id, asset_address.shard_id());
+    }
+
+    #[test]
+    fn shard_id_from_hash() {
+        let hash = {
+            let mut hash = H256::random();
+            hash[0] = PREFIX;
+            hash[1] = 0;
+            hash
+        };
+        let shard_id = ((hash[4] as ShardId) << 24)
+            + ((hash[5] as ShardId) << 16)
+            + ((hash[6] as ShardId) << 8)
+            + (hash[7] as ShardId);
+        let asset_address = AssetAddress::from_hash(hash).unwrap();
+        assert_eq!(shard_id, asset_address.shard_id());
     }
 }

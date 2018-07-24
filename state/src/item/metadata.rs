@@ -17,25 +17,27 @@
 use primitives::H256;
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
+use ctypes::ShardId;
+
 use super::cache::CacheableItem;
 
 #[derive(Clone, Debug)]
 pub struct Metadata {
-    number_of_shards: u32,
+    number_of_shards: ShardId,
 }
 
 impl Metadata {
-    pub fn new(number_of_shards: u32) -> Self {
+    pub fn new(number_of_shards: ShardId) -> Self {
         Self {
             number_of_shards,
         }
     }
 
-    pub fn number_of_shards(&self) -> &u32 {
+    pub fn number_of_shards(&self) -> &ShardId {
         &self.number_of_shards
     }
 
-    pub fn increase_number_of_shards(&mut self) -> u32 {
+    pub fn increase_number_of_shards(&mut self) -> ShardId {
         let r = self.number_of_shards;
         self.number_of_shards += 1;
         r

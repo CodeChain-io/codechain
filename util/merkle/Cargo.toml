@@ -4,7 +4,13 @@ version = "0.1.0"
 authors = ["CodeChain Team <codechain@kodebox.io>"]
 
 [dependencies]
-codechain-crypto = { path="../../crypto" }
+elastic-array = "0.9"
+rand = "0.5.3"
+hashdb = {path = "../hashdb" }
+codechain-crypto = { path = "../../crypto" }
+primitives = { path = "../primitives" }
+rlp = {path = "../rlp" }
 
 [dev-dependencies]
-primitives = { path = "../primitives" }
+trie-standardmap = { path = "../trie-standardmap" }
+memorydb = {path = "../memorydb" }

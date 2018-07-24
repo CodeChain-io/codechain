@@ -121,6 +121,7 @@ A hexadecimal string for XXX-bit unsigned integer
  * [account_importRaw](#account_importraw)
  * [account_remove](#account_remove)
  * [account_sign](#account_sign)
+ * [account_changePassword](#account_changepassword)
 ***
  * [devel_getStateTrieKeys](#devel_getstatetriekeys)
  * [devel_getStateTrieValue](#devel_getstatetrievalue)
@@ -667,7 +668,7 @@ Response Example
 ```
 
 ## chain_getCoinbase
-(not implemented) Gets coinbase's account id.
+Gets coinbase's account id.
 
 Params: No parameters
 
@@ -1044,6 +1045,33 @@ Response Example
 {
   "jsonrpc":"2.0",
   "result":"0xff7e8928f7758a64b9ea6c53f9945cdd223740675ac6ac6da625306d3966f8197523e00d56844ddb70631d44f045f4d83cc183a267c3182ab04c2f459c8289f501",
+  "id":6
+}
+```
+
+## account_changePassword
+Changes the account's password
+
+Params:
+ 1. account: `H160`
+ 2. old_password: `String`
+ 3. new_password: `String`
+
+Return type: `null`
+
+Request Example
+```
+curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "account_changePassword", "params": ["0x318def87d8dc0f7cc21794daf2dd36762db22b67", "1234", "5678"], "id": 6}' \
+    localhost:8080
+```
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result":null,
   "id":6
 }
 ```

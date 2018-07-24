@@ -24,7 +24,7 @@ use ckey::{Address, Public};
 use cnetwork::NodeId;
 use cstate::{Asset, AssetAddress, AssetScheme, AssetSchemeAddress, StateDB, TopLevelState, TopStateInfo};
 use ctypes::invoice::ParcelInvoice;
-use ctypes::BlockNumber;
+use ctypes::{BlockNumber, ShardId};
 use journaldb;
 use kvdb::{DBTransaction, KeyValueDB};
 use parking_lot::{Mutex, RwLock};
@@ -892,7 +892,7 @@ impl RegularKey for Client {
 }
 
 impl Shard for Client {
-    fn number_of_shards(&self, state: StateOrBlock) -> Option<u32> {
+    fn number_of_shards(&self, state: StateOrBlock) -> Option<ShardId> {
         let state = match state {
             StateOrBlock::State(s) => s,
             StateOrBlock::Block(id) => Box::new(self.state_at(id)?),
@@ -900,7 +900,7 @@ impl Shard for Client {
         state.number_of_shards().ok()
     }
 
-    fn shard_root(&self, shard_id: u32, state: StateOrBlock) -> Option<H256> {
+    fn shard_root(&self, shard_id: ShardId, state: StateOrBlock) -> Option<H256> {
         let state = match state {
             StateOrBlock::State(s) => s,
             StateOrBlock::Block(id) => Box::new(self.state_at(id)?),

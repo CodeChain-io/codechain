@@ -291,6 +291,7 @@ mod test {
         // given
         let mut dir = env::temp_dir();
         dir.push("keystore_should_create_new_account");
+        let _ = fs::remove_dir_all(&dir);
         let keypair = Random.generate().unwrap();
         let password = "hello world";
         let directory = RootDiskDirectory::create(dir.clone()).unwrap();
@@ -312,6 +313,7 @@ mod test {
         // given
         let mut dir = env::temp_dir();
         dir.push("keystore_should_handle_duplicate_filenames");
+        let _ = fs::remove_dir_all(&dir);
         let keypair = Random.generate().unwrap();
         let password = "hello world";
         let directory = RootDiskDirectory::create(dir.clone()).unwrap();

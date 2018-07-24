@@ -33,7 +33,7 @@ use ckey::{Address, Public};
 use cnetwork::NodeId;
 use cstate::{Asset, AssetScheme, TopStateInfo};
 use ctypes::invoice::{Invoice, ParcelInvoice};
-use ctypes::BlockNumber;
+use ctypes::{BlockNumber, ShardId};
 use kvdb::KeyValueDB;
 use primitives::{Bytes, H256, U256};
 use trie::Result as TrieResult;
@@ -139,9 +139,9 @@ pub trait RegularKey {
 }
 
 pub trait Shard {
-    fn number_of_shards(&self, state: StateOrBlock) -> Option<u32>;
+    fn number_of_shards(&self, state: StateOrBlock) -> Option<ShardId>;
 
-    fn shard_root(&self, shard_id: u32, state: StateOrBlock) -> Option<H256>;
+    fn shard_root(&self, shard_id: ShardId, state: StateOrBlock) -> Option<H256>;
 }
 
 /// Provides methods to access account info

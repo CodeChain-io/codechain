@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ccrypto::BLAKE_NULL_RLP;
+use ctypes::ShardId;
 use primitives::H256;
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
@@ -79,7 +80,7 @@ pub struct ShardAddress(H256);
 impl_address!(TOP, ShardAddress, PREFIX);
 
 impl ShardAddress {
-    pub fn new(shard_id: u32) -> Self {
+    pub fn new(shard_id: ShardId) -> Self {
         Self::from_transaction_hash(H256::from_slice(b"shard"), shard_id.into())
     }
 }

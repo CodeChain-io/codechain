@@ -39,5 +39,9 @@ build_rpc_trait! {
         /// Calculates the account's signature for a given message
         # [rpc(name = "account_sign")]
         fn sign(&self, H256, H160, Option<String>) -> Result<SignatureData>;
+
+        /// Changes the account's password
+        # [rpc(name = "account_changePassword")]
+        fn change_password(&self, H160, String, String) -> Result<()>;
     }
 }

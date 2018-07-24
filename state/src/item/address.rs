@@ -28,13 +28,14 @@ macro_rules! define_address_constructor {
         fn from_transaction_hash_with_shard_id(
             transaction_hash: ::primitives::H256,
             index: u64,
-            shard_id: u32,
+            shard_id: ::ctypes::ShardId,
         ) -> Self {
             let mut hash: ::primitives::H256 =
                 ::ccrypto::Blake::blake_with_key(&transaction_hash, &::primitives::H128::from(index));
             hash[0..4].clone_from_slice(&[$prefix, 0, 0, 0]);
 
             let mut shard_id_bytes = Vec::<u8>::new();
+            debug_assert_eq!(::std::mem::size_of::<u32>(), ::std::mem::size_of::<::ctypes::ShardId>());
             ::byteorder::WriteBytesExt::write_u32::<::byteorder::BigEndian>(&mut shard_id_bytes, shard_id).unwrap();
             assert_eq!(4, shard_id_bytes.len());
             hash[4..8].clone_from_slice(&shard_id_bytes);
@@ -44,10 +45,24 @@ macro_rules! define_address_constructor {
     };
 }
 
+macro_rules! define_shard_id {
+    (TOP) => {
+    };
+    (SHARD) => {
+        pub fn shard_id(&self) -> ::ctypes::ShardId {
+            debug_assert_eq!(::std::mem::size_of::<u32>(), ::std::mem::size_of::<ShardId>());
+            use byteorder::ReadBytesExt;
+            ::std::io::Cursor::new(&self.0[4..8]).read_u32::<::byteorder::BigEndian>().unwrap()
+        }
+    };
+}
+
 macro_rules! impl_address {
     ($type:ident, $name:ident, $prefix:expr) => {
         impl $name {
             define_address_constructor!($type, $name, $prefix);
+
+            define_shard_id!($type);
 
             pub fn from_hash(hash: ::primitives::H256) -> Option<Self> {
                 if Self::is_valid_format(&hash) {

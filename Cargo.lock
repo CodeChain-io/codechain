@@ -370,7 +370,13 @@ name = "codechain-merkle"
 version = "0.1.0"
 dependencies = [
  "codechain-crypto 0.1.0",
+ "elastic-array 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "hashdb 0.1.1",
+ "memorydb 0.1.1",
  "primitives 0.1.0",
+ "rand 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rlp 0.2.1",
+ "trie-standardmap 0.1.0",
 ]
 
 [[package]]
@@ -484,6 +490,7 @@ dependencies = [
 name = "codechain-types"
 version = "0.1.0"
 dependencies = [
+ "byteorder 1.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "codechain-crypto 0.1.0",
  "codechain-key 0.1.0",
  "heapsize 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",

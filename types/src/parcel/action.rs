@@ -19,6 +19,7 @@ use primitives::{H256, U256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::super::transaction::Transaction;
+use super::super::ShardId;
 
 const CHANGE_SHARD_STATE: u8 = 1;
 const PAYMENT: u8 = 2;
@@ -28,7 +29,7 @@ const CREATE_SHARD: u8 = 4;
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, RlpDecodable, RlpEncodable)]
 #[serde(rename_all = "camelCase")]
 pub struct ChangeShard {
-    pub shard_id: u32,
+    pub shard_id: ShardId,
     pub pre_root: H256,
     pub post_root: H256,
 }

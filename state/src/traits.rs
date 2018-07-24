@@ -16,6 +16,7 @@
 
 use ckey::{Address, Public};
 use ctypes::transaction::{Outcome as TransactionOutcome, Transaction};
+use ctypes::ShardId;
 use primitives::{H256, U256};
 use trie::Result as TrieResult;
 
@@ -33,14 +34,14 @@ pub trait TopStateInfo {
     /// Get the regular key of account `a`.
     fn regular_key(&self, a: &Address) -> TrieResult<Option<Public>>;
 
-    fn number_of_shards(&self) -> TrieResult<u32>;
+    fn number_of_shards(&self) -> TrieResult<ShardId>;
 
-    fn shard_root(&self, shard_id: u32) -> TrieResult<Option<H256>>;
+    fn shard_root(&self, shard_id: ShardId) -> TrieResult<Option<H256>>;
 
     /// Get the asset scheme.
-    fn asset_scheme(&self, shard_id: u32, a: &AssetSchemeAddress) -> TrieResult<Option<AssetScheme>>;
+    fn asset_scheme(&self, shard_id: ShardId, a: &AssetSchemeAddress) -> TrieResult<Option<AssetScheme>>;
     /// Get the asset.
-    fn asset(&self, shard_id: u32, a: &AssetAddress) -> TrieResult<Option<Asset>>;
+    fn asset(&self, shard_id: ShardId, a: &AssetAddress) -> TrieResult<Option<Asset>>;
 }
 
 pub trait ShardStateInfo {
@@ -62,19 +63,19 @@ impl TopStateInfo for () {
         unimplemented!()
     }
 
-    fn number_of_shards(&self) -> TrieResult<u32> {
+    fn number_of_shards(&self) -> TrieResult<ShardId> {
         unimplemented!()
     }
 
-    fn shard_root(&self, _shard_id: u32) -> TrieResult<Option<H256>> {
+    fn shard_root(&self, _shard_id: ShardId) -> TrieResult<Option<H256>> {
         unimplemented!()
     }
 
-    fn asset_scheme(&self, _shard_id: u32, _: &AssetSchemeAddress) -> TrieResult<Option<AssetScheme>> {
+    fn asset_scheme(&self, _shard_id: ShardId, _: &AssetSchemeAddress) -> TrieResult<Option<AssetScheme>> {
         unimplemented!()
     }
 
-    fn asset(&self, _shard_id: u32, _: &AssetAddress) -> TrieResult<Option<Asset>> {
+    fn asset(&self, _shard_id: ShardId, _: &AssetAddress) -> TrieResult<Option<Asset>> {
         unimplemented!()
     }
 }
@@ -123,7 +124,7 @@ where
     fn set_regular_key(&mut self, a: &Address, key: &Public) -> StateResult<()>;
 
     fn create_shard(&mut self, shard_creation_cost: &U256, fee_payer: &Address) -> StateResult<()>;
-    fn set_shard_root(&mut self, shard_id: u32, old_root: &H256, new_root: &H256) -> StateResult<()>;
+    fn set_shard_root(&mut self, shard_id: ShardId, old_root: &H256, new_root: &H256) -> StateResult<()>;
 }
 
 pub trait StateWithCache {

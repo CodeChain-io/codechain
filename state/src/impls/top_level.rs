@@ -43,6 +43,7 @@ use ckey::{Address, Public};
 use ctypes::invoice::Invoice;
 use ctypes::parcel::{Action, ChangeShard, Error as ParcelError, Outcome as ParcelOutcome, Parcel};
 use ctypes::transaction::{Error as TransactionError, Outcome as TransactionOutcome, Transaction};
+use ctypes::ShardId;
 use primitives::{H256, U256};
 use trie::{Result as TrieResult, Trie, TrieError, TrieFactory};
 use unexpected::Mismatch;
@@ -122,12 +123,12 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopStateInfo for TopLevelSt
         self.ensure_account_cached(a, |a| a.as_ref().map_or(None, |account| account.regular_key()))
     }
 
-    fn number_of_shards(&self) -> TrieResult<u32> {
+    fn number_of_shards(&self) -> TrieResult<ShardId> {
         let metadata = self.require_metadata()?;
         Ok(*metadata.number_of_shards())
     }
 
-    fn shard_root(&self, shard_id: u32) -> TrieResult<Option<H256>> {
+    fn shard_root(&self, shard_id: ShardId) -> TrieResult<Option<H256>> {
         let shard_address = ShardAddress::new(shard_id);
         let shard = self.db.get_cached_shard(&shard_address).and_then(|s| s).map(|s| s.root().clone());
         if shard.is_some() {
@@ -141,7 +142,7 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopStateInfo for TopLevelSt
 
     fn asset_scheme(
         &self,
-        shard_id: u32,
+        shard_id: ShardId,
         asset_scheme_address: &AssetSchemeAddress,
     ) -> TrieResult<Option<AssetScheme>> {
         // FIXME: Handle the case that shard doesn't exist
@@ -152,7 +153,7 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopStateInfo for TopLevelSt
         shard_level_state.asset_scheme(asset_scheme_address)
     }
 
-    fn asset(&self, shard_id: u32, asset_address: &AssetAddress) -> TrieResult<Option<Asset>> {
+    fn asset(&self, shard_id: ShardId, asset_address: &AssetAddress) -> TrieResult<Option<Asset>> {
         // FIXME: Handle the case that shard doesn't exist
         let shard_root = self.shard_root(shard_id)?.unwrap_or(BLAKE_NULL_RLP);
         // FIXME: Make it mutable borrow db instead of cloning.
@@ -428,7 +429,7 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopLevelState<B> {
     pub fn apply_transactions(
         &self,
         transactions: &[Transaction],
-        shard_id: u32,
+        shard_id: ShardId,
         shard_root: H256,
     ) -> StateResult<(H256, B, Vec<TransactionOutcome>)> {
         // FIXME: Make it mutable borrow db instead of cloning.
@@ -493,7 +494,7 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopLevelState<B> {
         self.metadata.require_item_or_from(&address, default, db, from_db)
     }
 
-    fn require_shard<'a>(&'a self, shard_id: u32) -> TrieResult<RefMut<'a, Shard>> {
+    fn require_shard<'a>(&'a self, shard_id: ShardId) -> TrieResult<RefMut<'a, Shard>> {
         let default = || Shard::new(BLAKE_NULL_RLP);
         let db = self.trie_factory.readonly(self.db.as_hashdb(), &self.root)?;
         let shard_address = ShardAddress::new(shard_id);
@@ -603,7 +604,7 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopState<B> for TopLevelSta
         Ok(())
     }
 
-    fn set_shard_root(&mut self, shard_id: u32, old_root: &H256, new_root: &H256) -> StateResult<()> {
+    fn set_shard_root(&mut self, shard_id: ShardId, old_root: &H256, new_root: &H256) -> StateResult<()> {
         let mut shard = self.require_shard(shard_id)?;
         assert_eq!(old_root, shard.root());
         shard.set_root(*new_root);
@@ -1058,6 +1059,7 @@ mod tests_parcel {
         let amount = 30;
         let transaction = Transaction::AssetMint {
             network_id: 0xCA,
+            shard_id,
             metadata: metadata.clone(),
             output: AssetMintOutput {
                 lock_script_hash,
@@ -1112,12 +1114,15 @@ mod tests_parcel {
         state.create_shard_level_state().unwrap();
         state.commit().unwrap();
 
+        let shard_id = 0;
+
         let metadata = "metadata".to_string();
         let lock_script_hash = H256::random();
         let parameters = vec![];
         let registrar = Some(Address::random());
         let transaction = Transaction::AssetMint {
             network_id: 0xCA,
+            shard_id,
             metadata: metadata.clone(),
             output: AssetMintOutput {
                 lock_script_hash,
@@ -1134,7 +1139,7 @@ mod tests_parcel {
             action: Action::ChangeShardState {
                 transactions,
                 changes: vec![ChangeShard {
-                    shard_id: 0,
+                    shard_id,
                     pre_root: H256::from("0x3521429ad738442ad7aee37324331e5395bbd0aac7465fba8df12985f6fc2e60"),
                     post_root: H256::zero(),
                 }],
@@ -1156,8 +1161,6 @@ mod tests_parcel {
 
         assert_eq!(state.balance(&sender), Ok(64.into()));
         assert_eq!(state.nonce(&sender), Ok(1.into()));
-
-        let shard_id = 0;
 
         let asset_scheme_address = AssetSchemeAddress::new(transaction_hash, shard_id);
         let asset_scheme = state.asset_scheme(shard_id, &asset_scheme_address);
@@ -1186,6 +1189,7 @@ mod tests_parcel {
         let amount = 30;
         let mint = Transaction::AssetMint {
             network_id,
+            shard_id,
             metadata: metadata.clone(),
             output: AssetMintOutput {
                 lock_script_hash,
@@ -1301,6 +1305,7 @@ mod tests_parcel {
         state.commit().unwrap();
 
         let network_id = 0xBeef;
+        let shard_id = 0x00;
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H256::from("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050");
@@ -1308,6 +1313,7 @@ mod tests_parcel {
         let amount = 30;
         let mint = Transaction::AssetMint {
             network_id,
+            shard_id,
             metadata: metadata.clone(),
             output: AssetMintOutput {
                 lock_script_hash,
@@ -1319,7 +1325,6 @@ mod tests_parcel {
         };
         let mint_hash = mint.hash();
 
-        let shard_id = 0x00;
         let mint_parcel = Parcel {
             fee: 20.into(),
             network_id,
@@ -1401,7 +1406,7 @@ mod tests_parcel {
                 transactions: vec![transfer],
                 changes: vec![ChangeShard {
                     shard_id,
-                    pre_root: H256::from("0xb01287583f56524ffe6c39cb9ab4063eb4f0d1149e332fcee7a253a40cd3e8f6"),
+                    pre_root: H256::from("0x4eab3f0517c29ae11201a0c7f2570d8d7f7feb7f463a871b7255c83be6c1449d"),
                     post_root: H256::zero(),
                 }],
             },
@@ -1545,6 +1550,7 @@ mod tests_parcel {
     fn mint_asset_on_invalid_parcel_must_fail() {
         let mut state = get_temp_state();
 
+        let shard_id = 0;
         let metadata = "metadata".to_string();
         let lock_script_hash = H256::random();
         let parameters = vec![];
@@ -1552,6 +1558,7 @@ mod tests_parcel {
         let amount = 30;
         let transaction = Transaction::AssetMint {
             network_id: 0xCA,
+            shard_id,
             metadata: metadata.clone(),
             output: AssetMintOutput {
                 lock_script_hash,
@@ -1568,7 +1575,7 @@ mod tests_parcel {
             action: Action::ChangeShardState {
                 transactions,
                 changes: vec![ChangeShard {
-                    shard_id: 0,
+                    shard_id,
                     pre_root: H256::zero(),
                     post_root: H256::zero(),
                 }],
