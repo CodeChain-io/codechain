@@ -52,47 +52,6 @@ pub trait ShardStateInfo {
     fn asset(&self, a: &AssetAddress) -> TrieResult<Option<Asset>>;
 }
 
-impl TopStateInfo for () {
-    fn nonce(&self, _address: &Address) -> TrieResult<U256> {
-        unimplemented!()
-    }
-    fn balance(&self, _address: &Address) -> TrieResult<U256> {
-        unimplemented!()
-    }
-    fn regular_key(&self, _address: &Address) -> TrieResult<Option<Public>> {
-        unimplemented!()
-    }
-
-    fn number_of_shards(&self) -> TrieResult<ShardId> {
-        unimplemented!()
-    }
-
-    fn shard_root(&self, _shard_id: ShardId) -> TrieResult<Option<H256>> {
-        unimplemented!()
-    }
-
-    fn asset_scheme(&self, _shard_id: ShardId, _: &AssetSchemeAddress) -> TrieResult<Option<AssetScheme>> {
-        unimplemented!()
-    }
-
-    fn asset(&self, _shard_id: ShardId, _: &AssetAddress) -> TrieResult<Option<Asset>> {
-        unimplemented!()
-    }
-}
-
-impl ShardStateInfo for () {
-    fn root(&self) -> &H256 {
-        unimplemented!()
-    }
-
-    fn asset_scheme(&self, _a: &AssetSchemeAddress) -> TrieResult<Option<AssetScheme>> {
-        unimplemented!()
-    }
-    fn asset(&self, _a: &AssetAddress) -> TrieResult<Option<Asset>> {
-        unimplemented!()
-    }
-}
-
 pub trait ShardState<B>
 where
     B: ShardBackend, {
