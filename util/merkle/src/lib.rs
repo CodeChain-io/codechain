@@ -34,6 +34,7 @@ mod nibbleslice;
 pub mod node;
 mod skewed;
 pub mod triedbmut;
+pub mod triehash;
 
 pub use skewed::skewed_merkle_root;
 
