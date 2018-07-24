@@ -55,6 +55,9 @@ macro_rules! log_target {
     (ROUTING_TABLE) => {
         "routing_table"
     };
+    (SHARD_VALIDATOR) => {
+        "shard_validator"
+    };
     (SHUTDOWN) => {
         "shutdown"
     };
