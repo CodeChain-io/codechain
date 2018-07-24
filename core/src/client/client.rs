@@ -219,7 +219,7 @@ impl Client {
     }
 
     /// Get a copy of the best block's state.
-    pub fn latest_state(&self) -> TopLevelState<StateDB> {
+    pub fn latest_state(&self) -> TopLevelState {
         let header = self.best_block_header();
         TopLevelState::from_existing(
             self.state_db.read().clone_canon(&header.hash()),
@@ -233,7 +233,7 @@ impl Client {
     /// This will not fail if given BlockId::Latest.
     /// Otherwise, this can fail (but may not) if the DB prunes state or the block
     /// is unknown.
-    pub fn state_at(&self, id: BlockId) -> Option<TopLevelState<StateDB>> {
+    pub fn state_at(&self, id: BlockId) -> Option<TopLevelState> {
         // fast path for latest state.
         match id {
             BlockId::Latest => return Some(self.latest_state()),

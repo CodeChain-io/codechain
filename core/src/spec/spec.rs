@@ -20,12 +20,9 @@ use std::sync::Arc;
 use ccrypto::{blake256, BLAKE_NULL_RLP};
 use cjson;
 use ckey::Address;
-use cstate::{
-    Backend, BasicBackend, Metadata, MetadataAddress, Shard, ShardAddress, ShardMetadataAddress, StateResult,
-};
+use cstate::{Backend, Metadata, MetadataAddress, Shard, ShardAddress, ShardMetadataAddress, StateDB, StateResult};
 use ctypes::ShardId;
 use hashdb::HashDB;
-use memorydb::MemoryDB;
 use parking_lot::RwLock;
 use primitives::{Bytes, H256, U256};
 use rlp::{Encodable, Rlp, RlpStream};
@@ -377,7 +374,7 @@ fn load_from(s: cjson::spec::Spec) -> Result<Spec, Error> {
     match g.state_root {
         Some(root) => *s.state_root_memo.get_mut() = root,
         None => {
-            let db = BasicBackend(MemoryDB::new());
+            let db = StateDB::new_with_memorydb(0);
             let trie_factory = TrieFactory::new(Default::default());
             let _ = s.initialize_state(&trie_factory, db)?;
         }

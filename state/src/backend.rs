@@ -38,7 +38,7 @@
 //! merkle trie is strictly necessary.
 
 use ckey::Address;
-use hashdb::{AsHashDB, HashDB};
+use hashdb::HashDB;
 
 use super::{
     Account, Asset, AssetAddress, AssetScheme, AssetSchemeAddress, Metadata, MetadataAddress, Shard, ShardAddress,
@@ -86,58 +86,4 @@ pub trait ShardBackend: Send {
     fn get_cached_asset_scheme(&self, hash: &AssetSchemeAddress) -> Option<Option<AssetScheme>>;
 
     fn get_cached_asset(&self, hash: &AssetAddress) -> Option<Option<Asset>>;
-}
-
-/// A basic backend. Just wraps the given database, directly inserting into and deleting from
-/// it. Doesn't cache anything.
-pub struct Basic<H>(pub H);
-
-impl<H: AsHashDB + Send + Sync> Backend for Basic<H> {
-    fn as_hashdb(&self) -> &HashDB {
-        self.0.as_hashdb()
-    }
-
-    fn as_hashdb_mut(&mut self) -> &mut HashDB {
-        self.0.as_hashdb_mut()
-    }
-}
-
-impl<H: AsHashDB + Send + Sync> TopBackend for Basic<H> {
-    fn add_to_account_cache(&mut self, _: Address, _: Option<Account>, _: bool) {}
-
-    fn add_to_metadata_cache(&mut self, _: MetadataAddress, _: Option<Metadata>, _: bool) {}
-
-    fn add_to_shard_cache(&mut self, _: ShardAddress, _: Option<Shard>, _modified: bool) {}
-
-    fn get_cached_account(&self, _: &Address) -> Option<Option<Account>> {
-        None
-    }
-
-    fn get_cached_metadata(&self, _: &MetadataAddress) -> Option<Option<Metadata>> {
-        None
-    }
-
-    fn get_cached_shard(&self, _: &ShardAddress) -> Option<Option<Shard>> {
-        None
-    }
-
-    fn get_cached_account_with<F, U>(&self, _: &Address, _: F) -> Option<U>
-    where
-        F: FnOnce(Option<&mut Account>) -> U, {
-        None
-    }
-}
-
-impl<H: AsHashDB + Send + Sync> ShardBackend for Basic<H> {
-    fn add_to_asset_scheme_cache(&mut self, _addr: AssetSchemeAddress, _data: Option<AssetScheme>, _: bool) {}
-
-    fn add_to_asset_cache(&mut self, _addr: AssetAddress, _asset: Option<Asset>, _: bool) {}
-
-    fn get_cached_asset_scheme(&self, _addr: &AssetSchemeAddress) -> Option<Option<AssetScheme>> {
-        None
-    }
-
-    fn get_cached_asset(&self, _addr: &AssetAddress) -> Option<Option<Asset>> {
-        None
-    }
 }

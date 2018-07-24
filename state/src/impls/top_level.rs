@@ -48,7 +48,7 @@ use primitives::{H256, U256};
 use trie::{Result as TrieResult, Trie, TrieError, TrieFactory};
 use unexpected::Mismatch;
 
-use super::super::backend::{Backend, ShardBackend, TopBackend};
+use super::super::backend::TopBackend;
 use super::super::checkpoint::{CheckpointId, StateWithCheckpoint};
 use super::super::item::cache::{Cache, CacheableItem};
 use super::super::traits::{ShardState, ShardStateInfo, StateWithCache, TopState, TopStateInfo};
@@ -102,8 +102,8 @@ use super::super::{StateDB, StateError, StateResult};
 /// takes care not to overwrite cached storage while doing that.
 /// checkpoint can be discarded with `discard_checkpoint`. All of the orignal
 /// backed-up values are moved into a parent checkpoint (if any).
-pub struct TopLevelState<B> {
-    db: B,
+pub struct TopLevelState {
+    db: StateDB,
     root: H256,
     account: Cache<Account>,
     metadata: Cache<Metadata>,
@@ -112,7 +112,7 @@ pub struct TopLevelState<B> {
     trie_factory: TrieFactory,
 }
 
-impl<B: Backend + TopBackend + ShardBackend + Clone> TopStateInfo for TopLevelState<B> {
+impl TopStateInfo for TopLevelState {
     fn nonce(&self, a: &Address) -> TrieResult<U256> {
         self.ensure_account_cached(a, |a| a.as_ref().map_or_else(U256::zero, |account| *account.nonce()))
     }
@@ -166,7 +166,7 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopStateInfo for TopLevelSt
 const PARCEL_FEE_CHECKPOINT: CheckpointId = 123;
 const PARCEL_ACTION_CHECKPOINT: CheckpointId = 130;
 
-impl<B: Backend + TopBackend> StateWithCheckpoint for TopLevelState<B> {
+impl StateWithCheckpoint for TopLevelState {
     fn create_checkpoint(&mut self, id: CheckpointId) {
         self.id_of_checkpoints.push(id);
         self.account.checkpoint();
@@ -193,7 +193,7 @@ impl<B: Backend + TopBackend> StateWithCheckpoint for TopLevelState<B> {
     }
 }
 
-impl<B: Backend + TopBackend + ShardBackend> StateWithCache for TopLevelState<B> {
+impl StateWithCache for TopLevelState {
     fn commit(&mut self) -> TrieResult<()> {
         let mut trie = self.trie_factory.from_existing(self.db.as_hashdb_mut(), &mut self.root)?;
         self.account.commit(&mut trie)?;
@@ -222,11 +222,11 @@ impl<B: Backend + TopBackend + ShardBackend> StateWithCache for TopLevelState<B>
     }
 }
 
-impl<B: Backend + TopBackend + ShardBackend + Clone> TopLevelState<B> {
+impl TopLevelState {
     /// Creates new state with empty state root
     /// Used for tests.
     #[cfg(test)]
-    pub fn new(mut db: B, trie_factory: TrieFactory) -> TopLevelState<B> {
+    pub fn new(mut db: StateDB, trie_factory: TrieFactory) -> Self {
         let mut root = H256::new();
 
         // init trie and reset root too null
@@ -244,7 +244,7 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopLevelState<B> {
     }
 
     /// Creates new state with existing state root
-    pub fn from_existing(db: B, root: H256, trie_factory: TrieFactory) -> Result<TopLevelState<B>, TrieError> {
+    pub fn from_existing(db: StateDB, root: H256, trie_factory: TrieFactory) -> Result<Self, TrieError> {
         if !db.as_hashdb().contains(&root) {
             return Err(TrieError::InvalidStateRoot(root))
         }
@@ -267,7 +267,7 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopLevelState<B> {
     }
 
     /// Destroy the current object and return root and database.
-    pub fn drop(mut self) -> (H256, B) {
+    pub fn drop(mut self) -> (H256, StateDB) {
         self.propagate_to_global_cache();
         (self.root, self.db)
     }
@@ -441,7 +441,7 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopLevelState<B> {
         transactions: &[Transaction],
         shard_id: ShardId,
         shard_root: H256,
-    ) -> StateResult<(H256, B, Vec<TransactionOutcome>)> {
+    ) -> StateResult<(H256, StateDB, Vec<TransactionOutcome>)> {
         // FIXME: Make it mutable borrow db instead of cloning.
         let mut shard_level_state =
             ShardLevelState::from_existing(shard_id, self.db.clone(), shard_root, self.trie_factory)?;
@@ -513,7 +513,7 @@ impl<B: Backend + TopBackend + ShardBackend + Clone> TopLevelState<B> {
     }
 }
 
-impl<B: TopBackend + ShardBackend> fmt::Debug for TopLevelState<B> {
+impl fmt::Debug for TopLevelState {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "account: {:?}", self.account)?;
         writeln!(f, "metadata: {:?}", self.metadata)?;
@@ -524,8 +524,8 @@ impl<B: TopBackend + ShardBackend> fmt::Debug for TopLevelState<B> {
 
 // TODO: cloning for `State` shouldn't be possible in general; Remove this and use
 // checkpoints where possible.
-impl Clone for TopLevelState<StateDB> {
-    fn clone(&self) -> TopLevelState<StateDB> {
+impl Clone for TopLevelState {
+    fn clone(&self) -> TopLevelState {
         TopLevelState {
             db: self.db.clone(),
             root: self.root.clone(),
@@ -538,7 +538,7 @@ impl Clone for TopLevelState<StateDB> {
     }
 }
 
-impl<B: Backend + TopBackend + ShardBackend + Clone> TopState<B> for TopLevelState<B> {
+impl TopState<StateDB> for TopLevelState {
     fn kill_account(&mut self, account: &Address) {
         self.account.remove(account);
     }

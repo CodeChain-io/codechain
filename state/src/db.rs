@@ -22,8 +22,9 @@ use std::sync::Arc;
 use ckey::Address;
 use ctypes::BlockNumber;
 use hashdb::HashDB;
-use journaldb::JournalDB;
+use journaldb::{self, Algorithm, JournalDB};
 use kvdb::DBTransaction;
+use kvdb_memorydb;
 use lru_cache::LruCache;
 use parking_lot::Mutex;
 use primitives::H256;
@@ -185,6 +186,11 @@ impl StateDB {
             commit_hash: None,
             commit_number: None,
         }
+    }
+
+    pub fn new_with_memorydb(cache_size: usize) -> Self {
+        let memorydb = Arc::new(kvdb_memorydb::create(0));
+        StateDB::new(journaldb::new(memorydb, Algorithm::Archive, None), cache_size)
     }
 
     /// Journal all recent operations under the given era and ID.

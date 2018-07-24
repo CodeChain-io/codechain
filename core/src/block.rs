@@ -71,14 +71,14 @@ impl Decodable for Block {
 #[derive(Clone)]
 pub struct ExecutedBlock {
     header: Header,
-    state: TopLevelState<StateDB>,
+    state: TopLevelState,
     parcels: Vec<SignedParcel>,
     invoices: Vec<ParcelInvoice>,
     parcels_set: HashSet<H256>,
 }
 
 impl ExecutedBlock {
-    fn new(state: TopLevelState<StateDB>) -> ExecutedBlock {
+    fn new(state: TopLevelState) -> ExecutedBlock {
         ExecutedBlock {
             header: Default::default(),
             state,
@@ -89,7 +89,7 @@ impl ExecutedBlock {
     }
 
     /// Get mutable access to a state.
-    pub fn state_mut(&mut self) -> &mut TopLevelState<StateDB> {
+    pub fn state_mut(&mut self) -> &mut TopLevelState {
         &mut self.state
     }
 }
@@ -259,7 +259,7 @@ impl<'x> OpenBlock<'x> {
 #[derive(Clone)]
 pub struct ClosedBlock {
     block: ExecutedBlock,
-    unclosed_state: TopLevelState<StateDB>,
+    unclosed_state: TopLevelState,
 }
 
 impl ClosedBlock {
@@ -372,7 +372,7 @@ pub trait IsBlock {
     }
 
     /// Get the final state associated with this object's block.
-    fn state(&self) -> &TopLevelState<StateDB> {
+    fn state(&self) -> &TopLevelState {
         &self.block().state
     }
 }

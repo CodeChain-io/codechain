@@ -24,7 +24,6 @@ extern crate codechain_vm as cvm;
 extern crate hashdb;
 extern crate journaldb;
 extern crate kvdb;
-#[cfg(test)]
 extern crate kvdb_memorydb;
 #[macro_use]
 extern crate log;
@@ -51,7 +50,7 @@ mod traits;
 #[cfg(test)]
 pub mod tests;
 
-pub use backend::{Backend, Basic as BasicBackend, ShardBackend, TopBackend};
+pub use backend::{Backend, ShardBackend, TopBackend};
 pub use checkpoint::{CheckpointId, StateWithCheckpoint};
 pub use db::StateDB;
 pub use error::Error as StateError;
