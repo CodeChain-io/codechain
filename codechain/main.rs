@@ -356,8 +356,7 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
 
     let _snapshot_service = {
         if !config.snapshot.disable {
-            // FIXME: Get snapshot period from genesis block
-            let service = SnapshotService::new(client.client(), config.snapshot.path, 1 << 14);
+            let service = SnapshotService::new(client.client(), config.snapshot.path, spec.params().snapshot_period);
             client.client().add_notify(service.clone());
             Some(service)
         } else {
