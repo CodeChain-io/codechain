@@ -99,7 +99,7 @@ impl Client {
         let trie_factory = TrieFactory::new(trie_spec);
 
         let journal_db = journaldb::new(db.clone(), journaldb::Algorithm::Archive, ::db::COL_STATE);
-        let mut state_db = StateDB::new(journal_db, config.state_cache_size);
+        let mut state_db = StateDB::new(journal_db, config.state_cache_size, spec.custom_handlers.clone());
         if !spec.check_genesis_root(state_db.as_hashdb()) {
             return Err(SpecError::InvalidState.into())
         }

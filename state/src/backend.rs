@@ -37,12 +37,15 @@
 //! should become general over time to the point where not even a
 //! merkle trie is strictly necessary.
 
+use std::sync::Arc;
+
 use ckey::Address;
 use hashdb::HashDB;
 use primitives::{Bytes, H256};
 
 use super::{
-    Account, Asset, AssetAddress, AssetScheme, AssetSchemeAddress, Metadata, MetadataAddress, Shard, ShardAddress,
+    Account, ActionHandler, Asset, AssetAddress, AssetScheme, AssetSchemeAddress, Metadata, MetadataAddress, Shard,
+    ShardAddress,
 };
 
 
@@ -76,6 +79,8 @@ pub trait TopBackend: Send {
     fn get_cached_account_with<F, U>(&self, a: &Address, f: F) -> Option<U>
     where
         F: FnOnce(Option<&mut Account>) -> U;
+
+    fn custom_handlers(&self) -> &[Arc<ActionHandler>];
 }
 
 pub trait ShardBackend: Send {
