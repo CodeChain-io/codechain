@@ -43,7 +43,7 @@ A hexadecimal string for XXX-bit unsigned integer
  - networkId: `number`
  - nonce: `U256`
  - parcelIndex: `number`
- - sig: `H520` for ECDSA signature | `H512` for Schnorr signature
+ - sig: `Signature`
  - action: `ActionObject`
 
 ## ActionObjects
@@ -86,6 +86,9 @@ A hexadecimal string for XXX-bit unsigned integer
 - shard_id: `number`
 - pre_root: `H256`
 - post_root: `H256`
+
+## Signature
+`H520` for ECDSA signature | `H512` for Schnorr signature
 
 # List of methods
 
@@ -1102,7 +1105,7 @@ Params:
  2. account: `H160`
  3. passphrase: `string` | `null`
 
-Return type: `H520` for ECDSA signature | `H512` for Schnorr signature
+Return type: `Signature`
 
 Request Example
 ```
