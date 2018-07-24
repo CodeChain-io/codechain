@@ -94,6 +94,7 @@ pub struct Network {
 #[serde(deny_unknown_fields)]
 pub struct Rpc {
     pub disable: bool,
+    pub interface: String,
     pub port: u16,
 }
 
@@ -137,7 +138,7 @@ impl<'a> Into<RpcHttpConfig> for &'a Rpc {
     // FIXME: Add interface, cors and hosts options.
     fn into(self) -> RpcHttpConfig {
         RpcHttpConfig {
-            interface: "127.0.0.1".to_string(),
+            interface: self.interface.clone(),
             port: self.port,
             cors: None,
             hosts: None,
@@ -286,6 +287,9 @@ impl Rpc {
 
         if let Some(port) = matches.value_of("jsonrpc-port") {
             self.port = port.parse().map_err(|_| "Invalid port")?;
+        }
+        if let Some(interface) = matches.value_of("jsonrpc-interface") {
+            self.interface = interface.to_string();
         }
         Ok(())
     }

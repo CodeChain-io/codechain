@@ -16,10 +16,14 @@
 
 use std::sync::Arc;
 
-use ccore::{AssetClient, BlockId, MinerService, MiningBlockChainClient, RegularKey, Shard, SignedParcel};
+use ccore::{
+    AssetClient, BlockId, ExecuteClient, MinerService, MiningBlockChainClient, RegularKey, Shard, SignedParcel,
+};
 use ckey::{Address, Public};
 use cstate::{Asset, AssetScheme, AssetSchemeAddress};
 use ctypes::invoice::{Invoice, ParcelInvoice};
+use ctypes::parcel::ChangeShard;
+use ctypes::transaction::Transaction;
 use ctypes::{BlockNumber, ShardId};
 use primitives::{H160, H256, U256};
 use rlp::UntrustedRlp;
@@ -32,7 +36,7 @@ use super::super::types::{Block, BlockNumberAndHash, Bytes, Parcel};
 
 pub struct ChainClient<C, M>
 where
-    C: AssetClient + MiningBlockChainClient + Shard + RegularKey,
+    C: AssetClient + MiningBlockChainClient + Shard + RegularKey + ExecuteClient,
     M: MinerService, {
     client: Arc<C>,
     miner: Arc<M>,
@@ -40,7 +44,7 @@ where
 
 impl<C, M> ChainClient<C, M>
 where
-    C: AssetClient + MiningBlockChainClient + Shard + RegularKey,
+    C: AssetClient + MiningBlockChainClient + Shard + RegularKey + ExecuteClient,
     M: MinerService,
 {
     pub fn new(client: &Arc<C>, miner: &Arc<M>) -> Self {
@@ -53,7 +57,7 @@ where
 
 impl<C, M> Chain for ChainClient<C, M>
 where
-    C: AssetClient + MiningBlockChainClient + Shard + RegularKey + 'static,
+    C: AssetClient + MiningBlockChainClient + Shard + RegularKey + ExecuteClient + 'static,
     M: MinerService + 'static,
 {
     fn send_signed_parcel(&self, raw: Bytes) -> Result<H256> {
@@ -159,5 +163,12 @@ where
         } else {
             Ok(Some(self.miner.author()))
         }
+    }
+
+    fn execute_change_shard_state(&self, raw: Bytes) -> Result<Vec<ChangeShard>> {
+        let transactions: Vec<Transaction> =
+            UntrustedRlp::new(&raw.into_vec()).as_list().map_err(errors::rlp).map(Into::into)?;
+
+        Ok(self.client.execute_transactions(&transactions).map_err(errors::core)?)
     }
 }

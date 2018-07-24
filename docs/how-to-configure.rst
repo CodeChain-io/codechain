@@ -41,6 +41,7 @@ The following represents the default configuration values of ``config.dev.toml``
 
     [rpc]
     disable = false
+    interface = "127.0.0.1"
     port = 8080
 
     [ipc]
@@ -98,6 +99,9 @@ CLI Options for CodeChain client
 
     ``--no-parcel-relay``
         Do not relay parcels.
+
+    ``--jsonrpc-interface=[INTERFACE]``
+        Specify the interface address for rpc connections
 
     ``--jsonrpc-port=[PORT]``
         Listen for rpc connections on PORT. (default: 8080)

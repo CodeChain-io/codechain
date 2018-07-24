@@ -85,7 +85,7 @@ pub use account_provider::{AccountProvider, SignError as AccountProviderError};
 pub use block::Block;
 pub use client::{
     AssetClient, Balance, BlockChainClient, BlockInfo, ChainInfo, ChainNotify, Client, DatabaseClient, EngineClient,
-    ImportBlock, MiningBlockChainClient, Nonce, RegularKey, Shard, TestBlockChainClient,
+    ExecuteClient, ImportBlock, MiningBlockChainClient, Nonce, RegularKey, Shard, TestBlockChainClient,
 };
 pub use consensus::EngineType;
 pub use db::COL_STATE;

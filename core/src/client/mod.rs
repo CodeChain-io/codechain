@@ -33,6 +33,8 @@ use ckey::{Address, Public};
 use cnetwork::NodeId;
 use cstate::{Asset, AssetScheme, AssetSchemeAddress, TopStateInfo};
 use ctypes::invoice::{Invoice, ParcelInvoice};
+use ctypes::parcel::ChangeShard;
+use ctypes::transaction::Transaction;
 use ctypes::{BlockNumber, ShardId};
 use kvdb::KeyValueDB;
 use primitives::{Bytes, H256, U256};
@@ -42,7 +44,7 @@ use super::block::{ClosedBlock, OpenBlock, SealedBlock};
 use super::blockchain::ParcelAddress;
 use super::blockchain_info::BlockChainInfo;
 use super::encoded;
-use super::error::BlockImportError;
+use super::error::{BlockImportError, Error as CoreError};
 use super::parcel::{LocalizedParcel, SignedParcel};
 use super::types::{BlockId, BlockStatus, ParcelId, TransactionId, VerificationQueueInfo as BlockQueueInfo};
 
@@ -246,4 +248,8 @@ pub trait AssetClient {
     fn get_asset_scheme(&self, asset_type: AssetSchemeAddress) -> TrieResult<Option<AssetScheme>>;
 
     fn get_asset(&self, transaction_hash: H256, index: usize, id: BlockId) -> TrieResult<Option<Asset>>;
+}
+
+pub trait ExecuteClient {
+    fn execute_transactions(&self, transactions: &[Transaction]) -> Result<Vec<ChangeShard>, CoreError>;
 }
