@@ -47,8 +47,8 @@ impl Extension {
 const REFRESH_TOKEN: TimerToken = 0;
 
 impl NetworkExtension for Extension {
-    fn name(&self) -> String {
-        "unstructured-discovery".to_string()
+    fn name(&self) -> &'static str {
+        "unstructured-discovery"
     }
 
     fn need_encryption(&self) -> bool {
