@@ -38,7 +38,7 @@ use std::sync::Arc;
 use ckey::{Address, Generator, Random};
 use cmerkle::skewed_merkle_root;
 use cnetwork::NodeId;
-use cstate::StateDB;
+use cstate::{ActionHandler, StateDB};
 use ctypes::invoice::ParcelInvoice;
 use ctypes::parcel::{Action, Parcel};
 use ctypes::BlockNumber;
@@ -506,6 +506,10 @@ impl BlockChainClient for TestBlockChainClient {
     }
 
     fn transaction_invoice(&self, _id: TransactionId) -> Option<Invoice> {
+        unimplemented!()
+    }
+
+    fn custom_handlers(&self) -> Vec<Arc<ActionHandler>> {
         unimplemented!()
     }
 }

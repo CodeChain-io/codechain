@@ -22,7 +22,10 @@ use std::time::Instant;
 use cio::IoChannel;
 use ckey::{Address, Public};
 use cnetwork::NodeId;
-use cstate::{Asset, AssetAddress, AssetScheme, AssetSchemeAddress, StateDB, TopLevelState, TopStateInfo};
+use cstate::{
+    ActionHandler, Asset, AssetAddress, AssetScheme, AssetSchemeAddress, StateDB, TopBackend, TopLevelState,
+    TopStateInfo,
+};
 use ctypes::invoice::ParcelInvoice;
 use ctypes::parcel::ChangeShard;
 use ctypes::transaction::Transaction;
@@ -448,6 +451,10 @@ impl BlockChainClient for Client {
                 ParcelInvoice::Single(_) => None,
             })
         })
+    }
+
+    fn custom_handlers(&self) -> Vec<Arc<ActionHandler>> {
+        self.state_db.read().custom_handlers().to_vec()
     }
 }
 

@@ -21,9 +21,11 @@ use std::sync::Arc;
 
 use ccore::encoded::Header as EncodedHeader;
 use ccore::{
-    Block, BlockChainClient, BlockId, BlockImportError, ChainNotify, Header, ImportError, Seal, UnverifiedParcel,
+    Block, BlockChainClient, BlockId, BlockImportError, BlockInfo, ChainInfo, ChainNotify, Client, Header, ImportBlock,
+    ImportError, Seal, UnverifiedParcel,
 };
 use cnetwork::{Api, NetworkExtension, NodeId, TimerToken};
+use ctypes::parcel::Action;
 use ctypes::BlockNumber;
 use primitives::{H256, U256};
 use rlp::{Encodable, UntrustedRlp};
@@ -41,13 +43,13 @@ pub struct Extension {
     requests: RwLock<HashMap<NodeId, Vec<(u64, RequestMessage)>>>,
     header_downloaders: RwLock<HashMap<NodeId, HeaderDownloader>>,
     body_downloader: Mutex<BodyDownloader>,
-    client: Arc<BlockChainClient>,
+    client: Arc<Client>,
     api: Mutex<Option<Arc<Api>>>,
     last_request: AtomicUsize,
 }
 
 impl Extension {
-    pub fn new(client: Arc<BlockChainClient>) -> Arc<Self> {
+    pub fn new(client: Arc<Client>) -> Arc<Self> {
         Arc::new(Self {
             requests: RwLock::new(HashMap::new()),
             header_downloaders: RwLock::new(HashMap::new()),
@@ -394,7 +396,20 @@ impl Extension {
 
                 headers.first().map(|header| header.number()) == Some(*start_number)
             }
-            (RequestMessage::Bodies(..), ResponseMessage::Bodies(..)) => true,
+            (RequestMessage::Bodies(_), ResponseMessage::Bodies(bodies)) => {
+                for body in bodies {
+                    for parcel in body {
+                        let is_valid = match &parcel.as_unsigned().action {
+                            Action::Custom(bytes) => self.client.custom_handlers().iter().any(|c| c.is_target(bytes)),
+                            _ => true,
+                        };
+                        if !is_valid {
+                            return false
+                        }
+                    }
+                }
+                true
+            }
             (RequestMessage::StateHead(..), ResponseMessage::StateHead(..)) => unimplemented!(),
             (
                 RequestMessage::StateChunk {
