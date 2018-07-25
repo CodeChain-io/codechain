@@ -19,14 +19,14 @@ A XXX-bit hexadecimal string. (e.g. H160: 160-bit hexadecimal string)
 
 A hexadecimal string for XXX-bit unsigned integer
 
-## BlockObject
+## Block
 
  - author: `H160`
  - extraData: `any[]`
  - hash: `H256`
  - invoicesRoot: `H256`
  - number: `number`
- - parcels: `ParcelObject[]`
+ - parcels: `Parcel[]`
  - parcelsRoot: `H256`
  - parentHash: `H256`
  - score: `number`
@@ -34,7 +34,7 @@ A hexadecimal string for XXX-bit unsigned integer
  - stateRoot: `H256`
  - timestamp: `number`
 
-## ParcelObject
+## Parcel
 
  - blockHash: `H256`
  - blockNumber: `number`
@@ -44,45 +44,45 @@ A hexadecimal string for XXX-bit unsigned integer
  - nonce: `U256`
  - parcelIndex: `number`
  - sig: `Signature`
- - action: `ActionObject`
+ - action: `Action`
 
-## ActionObjects
+## Actions
 
-### ChangeShardState ActionObject
+### ChangeShardState Action
 
  - action: "changeShardState"
- - transactions: `TransactionObject[]`
+ - transactions: `Transaction[]`
 
-### Payment ActionObject
+### Payment Action
 
  - action: "payment"
  - receiver: `H160`
  - amount: `U256`
 
-### SetRegularKey ActionObject
+### SetRegularKey Action
 
  - action: "setRegularKey"
  - key: `H512`
 
-## TransactionObject
+## Transaction
 
  - type: "assetMint" | "assetTransfer"
- - data: `AssetMintObject` | `AssetTransferObject`
+ - data: `AssetMint` | `AssetTransfer`
 
-## AssetSchemeObject
+## AssetScheme
 
  - amount: `number`
  - metadata: `string`
  - registrar: `H160` | `null`
 
-## AssetObject
+## Asset
 
  - amount: `number`
  - asset_type: `H256`
  - lock_script_hash: `H256`
  - parameters: `hexadecimal string[]`
 
-## ChangeShardObject
+## ChangeShard
 - shard_id: `number`
 - pre_root: `H256`
 - post_root: `H256`
@@ -269,7 +269,7 @@ Gets the block with the given hash.
 Params:
  1. hash: `H256`
 
-Return Type: `null` | `BlockObject`
+Return Type: `null` | `Block`
 
 Request Example:
 ```
@@ -352,7 +352,7 @@ Gets a parcel with the given hash.
 Params:
  1. parcel hash - `H256`
 
-Return Type: `null` or `ParcelObject`
+Return Type: `null` or `Parcel`
 
 Request Example
 ```
@@ -444,7 +444,7 @@ Params:
  1. transaction hash of AssetMintTransaction - `H256`
  2. shard id - `number`
 
-Return Type: `null` | `AssetSchemeObject`
+Return Type: `null` | `AssetScheme`
 
 Request Example
 ```
@@ -473,7 +473,7 @@ Gets an asset scheme with the given asset type.
 Params:
  1. type of asset - `H256`
 
-Return Type: `null` | `AssetSchemeObject`
+Return Type: `null` | `AssetScheme`
 
 Request Example
 ```
@@ -504,7 +504,7 @@ Params:
  2. index - `number`
  3. block number: `number` | `null`
 
-Return Type: `null` | `AssetObject`
+Return Type: `null` | `Asset`
 
 Request Example
 ```
@@ -665,7 +665,7 @@ Gets parcels in the current parcel queue.
 
 Params: No parameters
 
-Return Type: `ParcelObject[]`
+Return Type: `Parcel[]`
 
 Request Example
 ```
@@ -735,9 +735,9 @@ Response Example
 Executes the transactions and returns the current shard root and the changed shard root.
 
 Params:
- 1. transactions: `hexadecimal string` - RLP encoded hex string of `TransactionObject[]`
+ 1. transactions: `hexadecimal string` - RLP encoded hex string of `Transaction[]`
 
-Return Type: `ChangeShardObject[]`
+Return Type: `ChangeShard[]`
 
 Request Example
 ```
@@ -771,7 +771,7 @@ Returns the hash of the current block and score.
 
 Params: No parameters
 
-Return Type: `WorkObject`
+Return Type: `Work`
 
 Request Example
 ```
