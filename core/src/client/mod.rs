@@ -31,7 +31,7 @@ use std::sync::Arc;
 
 use ckey::{Address, Public};
 use cnetwork::NodeId;
-use cstate::{Asset, AssetScheme, AssetSchemeAddress, TopStateInfo};
+use cstate::{ActionHandler, Asset, AssetScheme, AssetSchemeAddress, TopStateInfo};
 use ctypes::invoice::{Invoice, ParcelInvoice};
 use ctypes::parcel::ChangeShard;
 use ctypes::transaction::Transaction;
@@ -209,6 +209,8 @@ pub trait BlockChainClient: Sync + Send + AccountData + BlockChain + ImportBlock
     fn parcel_invoice(&self, id: ParcelId) -> Option<ParcelInvoice>;
 
     fn transaction_invoice(&self, id: TransactionId) -> Option<Invoice>;
+
+    fn custom_handlers(&self) -> Vec<Arc<ActionHandler>>;
 }
 
 /// Result of import block operation.

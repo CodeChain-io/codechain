@@ -18,15 +18,16 @@ use std::sync::Arc;
 
 use ccore::{
     AssetClient, BlockId, ExecuteClient, MinerService, MiningBlockChainClient, RegularKey, Shard, SignedParcel,
+    UnverifiedParcel,
 };
 use ckey::{Address, Public};
 use cstate::{Asset, AssetScheme, AssetSchemeAddress};
 use ctypes::invoice::{Invoice, ParcelInvoice};
-use ctypes::parcel::ChangeShard;
+use ctypes::parcel::{Action, ChangeShard};
 use ctypes::transaction::Transaction;
 use ctypes::{BlockNumber, ShardId};
 use primitives::{H160, H256, U256};
-use rlp::UntrustedRlp;
+use rlp::{DecoderError, UntrustedRlp};
 
 use jsonrpc_core::Result;
 
@@ -64,6 +65,17 @@ where
         UntrustedRlp::new(&raw.into_vec())
             .as_val()
             .map_err(errors::rlp)
+            .and_then(|parcel: UnverifiedParcel| {
+                match &parcel.as_unsigned().action {
+                    Action::Custom(bytes) => {
+                        if !self.client.custom_handlers().iter().any(|c| c.is_target(bytes)) {
+                            return Err(errors::rlp(DecoderError::Custom("Invalid custom action!")))
+                        }
+                    }
+                    _ => {}
+                }
+                Ok(parcel)
+            })
             .and_then(|parcel| SignedParcel::new(parcel).map_err(errors::parcel_core))
             .and_then(|signed| {
                 let hash = signed.hash();
