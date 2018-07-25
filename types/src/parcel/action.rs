@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use ccrypto::Blake;
 use ckey::{Address, Public};
 use primitives::{H256, U256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
@@ -51,6 +52,13 @@ pub enum Action {
         key: Public,
     },
     CreateShard,
+}
+
+impl Action {
+    pub fn hash(&self) -> H256 {
+        let rlp = self.rlp_bytes();
+        Blake::blake(rlp)
+    }
 }
 
 impl Encodable for Action {
