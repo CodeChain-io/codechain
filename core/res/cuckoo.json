@@ -16,7 +16,8 @@
     "maxExtraDataSize": "0x20",
     "networkID": "0x11",
     "minParcelCost": "10",
-    "maxBodySize": 4194304
+    "maxBodySize": 4194304,
+    "snapshotPeriod": 16384
   },
   "genesis": {
     "seal": {
