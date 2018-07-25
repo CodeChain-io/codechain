@@ -42,7 +42,7 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 
 use ccrypto::blake256;
-use jsonrpc_core::{to_value, Compatibility, MetaIoHandler, Metadata, Params, Value};
+use jsonrpc_core::{to_value, Compatibility, MetaIoHandler, Metadata, Params};
 use jsonrpc_macros::IoDelegate;
 use jsonrpc_tcp_server::{
     Dispatcher, MetaExtractor, PushMessageError, RequestContext, Server as JsonRpcServer,
@@ -136,7 +136,7 @@ struct StratumImpl {
     workers: Arc<RwLock<HashMap<SocketAddr, String>>>,
     /// Secret if any
     secret: Option<H256>,
-    /// Dispatch notify couinter
+    /// Dispatch notify counter
     notify_counter: RwLock<u32>,
 }
 
@@ -158,7 +158,7 @@ impl StratumImpl {
                 }
             },
             None => to_value(&[0u8; 0]),
-        }.expect("Empty slices are serializable; qed"))
+        }.expect("Empty slices are serializable"))
     }
 
     /// rpc method `mining.authorize`
@@ -176,38 +176,27 @@ impl StratumImpl {
                 self.workers.write().insert(meta.addr().clone(), worker_id);
                 to_value(true)
             })
-            .map(|v| v.expect("Only true/false is returned and it's always serializable; qed"))
+            .map(|v| v.expect("Only true/false is returned and it's always serializable"))
     }
 
     /// rpc method `mining.submit`
     fn submit(&self, params: Params, meta: SocketMetadata) -> RpcResult {
-        Ok(match params {
-            Params::Array(vals) => {
-                // first two elements are service messages (worker_id & job_id)
-                match self.dispatcher.submit(
-                    vals.iter()
-                        .skip(2)
-                        .filter_map(|val| match *val {
-                            Value::String(ref s) => Some(s.to_owned()),
-                            _ => None,
-                        })
-                        .collect::<Vec<String>>(),
-                ) {
+        params
+            .parse::<(H256, Vec<String>)>()
+            .map(|(pow_hash, seal)| {
+                let seal = seal.iter().cloned().map(Into::into).collect();
+                match self.dispatcher.submit((pow_hash, seal)) {
                     Ok(()) => {
-                        self.update_peers(&meta.tcp_dispatcher.expect("tcp_dispatcher is always initialized; qed"));
+                        self.update_peers(&meta.tcp_dispatcher.expect("tcp_dispatcher is always initialized"));
                         to_value(true)
                     }
                     Err(submit_err) => {
-                        warn!("Error while submitting share: {:?}", submit_err);
+                        cwarn!(STRATUM, "Error while submitting share: {:?}", submit_err);
                         to_value(false)
                     }
                 }
-            }
-            _ => {
-                ctrace!(STRATUM, "Invalid submit work format {:?}", params);
-                to_value(false)
-            }
-        }.expect("Only true/false is returned and it's always serializable; qed"))
+            })
+            .map(|v| v.expect("Only true/false is returned and it's always serializable"))
     }
 
     /// Helper method
@@ -341,6 +330,7 @@ mod tests {
     use std::sync::Arc;
 
     use jsonrpc_core::futures::{future, Future};
+    use primitives::{Bytes, H256};
     use tokio_core::net::TcpStream;
     use tokio_core::reactor::{Core, Timeout};
     use tokio_io::io;
@@ -348,7 +338,7 @@ mod tests {
     pub struct VoidManager;
 
     impl JobDispatcher for VoidManager {
-        fn submit(&self, _payload: Vec<String>) -> Result<(), Error> {
+        fn submit(&self, _payload: (H256, Vec<Bytes>)) -> Result<(), Error> {
             Ok(())
         }
     }
@@ -410,7 +400,7 @@ mod tests {
             Some(self.initial_payload.clone())
         }
 
-        fn submit(&self, _payload: Vec<String>) -> Result<(), Error> {
+        fn submit(&self, _payload: (H256, Vec<Bytes>)) -> Result<(), Error> {
             Ok(())
         }
     }
@@ -438,7 +428,7 @@ mod tests {
     fn can_authorize() {
         let addr = SocketAddr::from_str("127.0.0.1:19970").unwrap();
         let stratum =
-            Stratum::start(&addr, Arc::new(DummyManager::build().of_initial(r#"["dummy autorize payload"]"#)), None)
+            Stratum::start(&addr, Arc::new(DummyManager::build().of_initial(r#"["dummy authorize payload"]"#)), None)
                 .expect("There should be no error starting stratum");
 
         let request = r#"{"jsonrpc": "2.0", "method": "mining.authorize", "params": ["miner1", ""], "id": 1}"#;
@@ -452,7 +442,7 @@ mod tests {
     fn can_push_work() {
         let addr = SocketAddr::from_str("127.0.0.1:19995").unwrap();
         let stratum =
-            Stratum::start(&addr, Arc::new(DummyManager::build().of_initial(r#"["dummy autorize payload"]"#)), None)
+            Stratum::start(&addr, Arc::new(DummyManager::build().of_initial(r#"["dummy authorize payload"]"#)), None)
                 .expect("There should be no error starting stratum");
 
         let mut auth_request = r#"{"jsonrpc": "2.0", "method": "mining.authorize", "params": ["miner1", ""], "id": 1}"#.as_bytes()
@@ -495,5 +485,45 @@ mod tests {
             "{ \"id\": 17, \"method\": \"mining.notify\", \"params\": { \"00040008\", \"100500\" } }\n",
             response
         );
+    }
+
+    #[test]
+    fn can_respond_to_submition() {
+        let addr = SocketAddr::from_str("127.0.0.1:19990").unwrap();
+        let _stratum =
+            Stratum::start(&addr, Arc::new(DummyManager::build().of_initial(r#"["dummy authorize payload"]"#)), None)
+                .expect("There should be no error starting stratum");
+
+        let mut auth_request = r#"{"jsonrpc": "2.0", "method": "mining.authorize", "params": ["miner1", ""], "id": 1}"#.as_bytes()
+            .to_vec();
+        auth_request.extend(b"\n");
+
+        let mut submit_request =
+            r#"{"jsonrpc": "2.0", "method": "mining.submit", "params": ["0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef", ["0x56642f04d519ae3262c7ba6facf1c5b11450ebaeb7955337cfbc45420d573077"]], "id": 2}"#.as_bytes()
+                .to_vec();
+        submit_request.extend(b"\n");
+
+        let mut core = Core::new().expect("Tokio Core should be created with no errors");
+        let timeout1 = Timeout::new(::std::time::Duration::from_millis(100), &core.handle())
+            .expect("There should be a timeout produced in message test");
+        let mut buffer = vec![0u8; 2048];
+        let mut buffer2 = vec![0u8; 2048];
+        let stream = TcpStream::connect(&addr, &core.handle())
+            .and_then(|stream| io::write_all(stream, &auth_request))
+            .and_then(|(stream, _)| io::read(stream, &mut buffer))
+            .and_then(|(stream, ..)| {
+                ctrace!(STRATUM, "Received authorization confirmation");
+                timeout1.join(future::ok(stream))
+            })
+            .and_then(|(_, stream)| io::write_all(stream, &submit_request))
+            .and_then(|(stream, _)| io::read(stream, &mut buffer2))
+            .and_then(|(_, read_buf, len)| {
+                ctrace!(STRATUM, "Received work from server");
+                future::ok(read_buf[0..len].to_vec())
+            });
+
+        let response = String::from_utf8(core.run(stream).expect("Core should run with no errors"))
+            .expect("Response should be utf-8");
+        assert_eq!("{\"jsonrpc\":\"2.0\",\"result\":true,\"id\":2}\n", response);
     }
 }

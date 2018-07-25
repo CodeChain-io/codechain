@@ -41,14 +41,15 @@ impl RpcHttpConfig {
     }
 }
 
-pub fn new_http(cfg: RpcHttpConfig, deps: Arc<rpc_apis::ApiDependencies>) -> Result<HttpServer, String> {
+pub fn rpc_http_start(cfg: RpcHttpConfig, deps: Arc<rpc_apis::ApiDependencies>) -> Result<HttpServer, String> {
     let url = format!("{}:{}", cfg.interface, cfg.port);
     let addr = url.parse().map_err(|_| format!("Invalid JSONRPC listen host/port given: {}", url))?;
     let server = setup_http_rpc_server(&addr, cfg.cors, cfg.hosts, deps)?;
+    info!("RPC Listening on {}", url);
     Ok(server)
 }
 
-pub fn setup_http_rpc_server(
+fn setup_http_rpc_server(
     url: &SocketAddr,
     cors_domains: Option<Vec<String>>,
     allowed_hosts: Option<Vec<String>>,
@@ -70,7 +71,7 @@ pub struct RpcIpcConfig {
     pub socket_addr: String,
 }
 
-pub fn new_ipc(cfg: RpcIpcConfig, deps: Arc<rpc_apis::ApiDependencies>) -> Result<IpcServer, String> {
+pub fn rpc_ipc_start(cfg: RpcIpcConfig, deps: Arc<rpc_apis::ApiDependencies>) -> Result<IpcServer, String> {
     let server = setup_rpc_server(deps);
     let start_result = start_ipc(&cfg.socket_addr, server);
     match start_result {
@@ -78,7 +79,10 @@ pub fn new_ipc(cfg: RpcIpcConfig, deps: Arc<rpc_apis::ApiDependencies>) -> Resul
             Err(format!("IPC address {} is already in use, make sure that another instance of a Codechain node is not running or change the address using the --ipc-path options.", cfg.socket_addr))
             },
         Err(e) => Err(format!("IPC error: {:?}", e)),
-        Ok(server) => Ok(server),
+        Ok(server) =>  {
+            info!("IPC Listening on {}", cfg.socket_addr);
+            Ok(server)
+        },
     }
 }
 

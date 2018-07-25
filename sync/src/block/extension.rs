@@ -32,7 +32,6 @@ use time::Duration;
 use super::downloader::{BodyDownloader, HeaderDownloader};
 use super::message::{Message, RequestMessage, ResponseMessage};
 
-const EXTENSION_NAME: &'static str = "block-propagation";
 const SYNC_TIMER_TOKEN: usize = 0;
 const SYNC_TIMER_INTERVAL: i64 = 1000;
 
@@ -85,15 +84,16 @@ impl Extension {
 }
 
 impl NetworkExtension for Extension {
-    fn name(&self) -> String {
-        String::from(EXTENSION_NAME)
+    fn name(&self) -> &'static str {
+        "block-propagation"
     }
     fn need_encryption(&self) -> bool {
         false
     }
 
-    fn versions(&self) -> Vec<u64> {
-        vec![0]
+    fn versions(&self) -> &[u64] {
+        const VERSIONS: &'static [u64] = &[0];
+        &VERSIONS
     }
 
     fn on_initialize(&self, api: Arc<Api>) {

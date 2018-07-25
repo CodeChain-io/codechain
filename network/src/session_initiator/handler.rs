@@ -31,6 +31,7 @@ use rlp::DecoderError;
 
 use super::super::p2p;
 use super::super::token_generator::TokenGenerator;
+use super::super::IntoSocketAddr;
 use super::super::RoutingTable;
 use super::super::SocketAddr;
 use super::message;
@@ -248,6 +249,10 @@ impl SessionInitiator {
                 Ok(())
             }
             message::Body::NodeIdResponse(requester_node_id) => {
+                if &requester_node_id.into_addr() == from {
+                    return Ok(())
+                }
+
                 if self.requests.restore(message.seq() as usize, Some(from.clone())).is_err() {
                     ctrace!(NET, "Invalid message({:?}) from {:?}", message, from);
                     return Ok(())

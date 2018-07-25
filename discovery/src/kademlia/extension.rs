@@ -47,16 +47,17 @@ impl Extension {
 const REFRESH_TOKEN: TimerToken = 0;
 
 impl NetworkExtension for Extension {
-    fn name(&self) -> String {
-        "unstructured-discovery".to_string()
+    fn name(&self) -> &'static str {
+        "unstructured-discovery"
     }
 
     fn need_encryption(&self) -> bool {
         false
     }
 
-    fn versions(&self) -> Vec<u64> {
-        vec![0]
+    fn versions(&self) -> &[u64] {
+        const VERSIONS: &'static [u64] = &[0];
+        &VERSIONS
     }
 
     fn on_initialize(&self, api: Arc<Api>) {

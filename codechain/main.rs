@@ -44,8 +44,6 @@ extern crate panic_hook;
 extern crate parking_lot;
 extern crate primitives;
 extern crate rpassword;
-#[cfg(feature = "stratum")]
-extern crate stratum;
 extern crate toml;
 
 mod account_command;
@@ -60,7 +58,10 @@ use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use app_dirs::AppInfo;
-use ccore::{AccountProvider, ClientService, EngineType, Miner, MinerOptions, MinerService, Spec};
+use ccore::{
+    AccountProvider, Client, ClientService, EngineType, Miner, MinerOptions, MinerService, Spec, Stratum,
+    StratumConfig, StratumError,
+};
 use cdiscovery::{KademliaConfig, KademliaExtension, UnstructuredConfig, UnstructuredExtension};
 use ckeystore::accounts_dir::RootDiskDirectory;
 use ckeystore::KeyStore;
@@ -68,7 +69,6 @@ use clap::ArgMatches;
 use clogger::LoggerConfig;
 use cnetwork::{NetworkConfig, NetworkControl, NetworkControlError, NetworkService, SocketAddr};
 use creactor::EventLoop;
-use crpc::{HttpServer, IpcServer};
 use csync::{BlockSyncExtension, ParcelSyncExtension, SnapshotService};
 use ctrlc::CtrlC;
 use fdlimit::raise_fd_limit;
@@ -76,22 +76,13 @@ use parking_lot::{Condvar, Mutex};
 use primitives::H256;
 
 use self::account_command::run_account_command;
-use self::rpc::{RpcHttpConfig, RpcIpcConfig};
+use self::config::load_config;
+use self::rpc::{rpc_http_start, rpc_ipc_start};
 
 pub const APP_INFO: AppInfo = AppInfo {
     name: "codechain",
     author: "Kodebox",
 };
-
-pub fn rpc_http_start(cfg: RpcHttpConfig, deps: Arc<rpc_apis::ApiDependencies>) -> Result<HttpServer, String> {
-    info!("RPC Listening on {}", cfg.port);
-    rpc::new_http(cfg, deps)
-}
-
-pub fn rpc_ipc_start(cfg: RpcIpcConfig, deps: Arc<rpc_apis::ApiDependencies>) -> Result<IpcServer, String> {
-    info!("IPC Listening on {}", cfg.socket_addr);
-    rpc::new_ipc(cfg, deps)
-}
 
 pub fn network_start(cfg: &NetworkConfig) -> Result<Arc<NetworkService>, String> {
     info!("Handshake Listening on {}:{}", cfg.address, cfg.port);
@@ -141,6 +132,20 @@ pub fn client_start(cfg: &config::Config, spec: &Spec, miner: Arc<Miner>) -> Res
     Ok(service)
 }
 
+pub fn stratum_start(cfg: &StratumConfig, miner: Arc<Miner>, client: Arc<Client>) -> Result<(), String> {
+    match Stratum::start(cfg, miner.clone(), client) {
+        // FIXME: Add specified condition like AddrInUse
+        Err(StratumError::Service(_)) =>
+            Err(format!("STRATUM address {} is already in use, make sure that another instance of a CodeChain node is not running or change the address using the --stratum-port option.", cfg.port)),
+        Err(e) => Err(format!("STRATUM start error: {:?}", e)),
+        Ok(stratum) => {
+            miner.add_work_listener(Box::new(stratum));
+            info!("STRATUM Listening on {}", cfg.port);
+            Ok(())
+        }
+    }
+}
+
 #[cfg(all(unix, target_arch = "x86_64"))]
 fn main() -> Result<(), String> {
     panic_hook::set();
@@ -168,20 +173,6 @@ fn run_subcommand(matches: ArgMatches) -> Result<(), String> {
     } else {
         Err("Invalid subcommand".to_string())
     }
-}
-
-fn load_config(matches: &ArgMatches) -> Result<config::Config, String> {
-    let config_path = matches.value_of("config").unwrap_or(constants::DEFAULT_CONFIG_PATH);
-    let mut config = config::load(&config_path)?;
-    config.ipc.overwrite_with(&matches)?;
-    config.operating.overwrite_with(&matches)?;
-    config.mining.overwrite_with(&matches)?;
-    config.network.overwrite_with(&matches)?;
-    config.rpc.overwrite_with(&matches)?;
-    config.snapshot.overwrite_with(&matches)?;
-    config.stratum.overwrite_with(&matches)?;
-
-    Ok(config)
 }
 
 fn new_miner(config: &config::Config, spec: &Spec, ap: Arc<AccountProvider>) -> Result<Arc<Miner>, String> {
@@ -215,18 +206,15 @@ fn new_miner(config: &config::Config, spec: &Spec, ap: Arc<AccountProvider>) -> 
                 Ok(has_account) if !has_account => {
                     return Err("mining.engine_signer is not found in AccountProvider".to_string())
                 }
-                Ok(..) => {
-                    match config.mining.password_path {
-                        None => return Err("mining.password_path is not specified".to_string()),
-                        Some(ref password_path) => match fs::read_to_string(password_path) {
-                            Ok(password) => {
-                                miner.set_engine_signer(engine_signer, password).map_err(|err| format!("{:?}", err))?
-                            }
-                            Err(_) => return Err(format!("Failed to read the password file")),
-                        },
-                    }
-                    miner.set_engine_signer(engine_signer, "password".to_string()).map_err(|err| format!("{:?}", err))?;
-                }
+                Ok(..) => match config.mining.password_path {
+                    None => return Err("mining.password_path is not specified".to_string()),
+                    Some(ref password_path) => match fs::read_to_string(password_path) {
+                        Ok(password) => {
+                            miner.set_engine_signer(engine_signer, password).map_err(|e| format!("{:?}", e))?
+                        }
+                        Err(_) => return Err(format!("Failed to read the password file")),
+                    },
+                },
                 Err(e) => {
                     return Err(format!("Error while checking whether engine_signer is in AccountProvider: {:?}", e))
                 }
@@ -281,13 +269,12 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
     );
     clogger::init(&LoggerConfig::new(instance_id)).expect("Logger must be successfully initialized");
 
-    // FIXME: Handle IO error.
     let keys_path = match config.operating.keys_path {
         Some(ref keys_path) => keys_path.clone(),
         None => constants::DEFAULT_KEYS_PATH.to_string(),
     };
-    let keystore_dir = RootDiskDirectory::create(keys_path).expect("Cannot read key path directory");
-    let keystore = KeyStore::open(Box::new(keystore_dir)).unwrap();
+    let keystore_dir = RootDiskDirectory::create(keys_path).map_err(|_| "Cannot read key path directory")?;
+    let keystore = KeyStore::open(Box::new(keystore_dir)).map_err(|_| "Cannot open key store")?;
     let ap = AccountProvider::new(keystore);
     let miner = new_miner(&config, &spec, ap.clone())?;
     let client = client_start(&config, &spec, miner.clone())?;
@@ -348,6 +335,11 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
             None
         }
     };
+
+    if !config.stratum.disable {
+        let stratum_config = (&config.stratum).into();
+        stratum_start(&stratum_config, Arc::clone(&miner), client.client())?
+    }
 
     let _snapshot_service = {
         if !config.snapshot.disable {

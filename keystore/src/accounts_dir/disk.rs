@@ -149,9 +149,9 @@ where
                 fs::File::open(path.clone())
                     .map_err(Into::into)
                     .and_then(|file| self.key_manager.read(filename, file))
-                    .map_err(|err| {
-                        warn!("Invalid key file: {:?} ({})", path, err);
-                        err
+                    .map_err(|e| {
+                        warn!("Invalid key file: {:?} ({})", path, e);
+                        e
                     })
                     .map(|account| (path, account))
                     .ok()
