@@ -14,10 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::sync::Arc;
-
 use cstate::StateDB;
-use kvdb::KeyValueDB;
 use primitives::{Bytes, H256, U256};
 use rlp::{self, RlpStream};
 
