@@ -22,5 +22,6 @@ pub mod asset;
 pub mod asset_scheme;
 pub mod cache;
 pub mod metadata;
+pub mod regular_account;
 pub mod shard;
 pub mod shard_metadata;

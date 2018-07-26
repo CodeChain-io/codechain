@@ -62,6 +62,7 @@ pub use item::asset::{Asset, AssetAddress};
 pub use item::asset_scheme::{AssetScheme, AssetSchemeAddress};
 pub use item::cache::{Cache, CacheableItem};
 pub use item::metadata::{Metadata, MetadataAddress};
+pub use item::regular_account::{RegularAccount, RegularAccountAddress};
 pub use item::shard::{Shard, ShardAddress};
 pub use item::shard_metadata::{ShardMetadata, ShardMetadataAddress};
 pub use traits::{ShardState, ShardStateInfo, StateWithCache, TopState, TopStateInfo};

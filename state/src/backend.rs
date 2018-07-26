@@ -44,8 +44,8 @@ use hashdb::HashDB;
 use primitives::{Bytes, H256};
 
 use super::{
-    Account, ActionHandler, Asset, AssetAddress, AssetScheme, AssetSchemeAddress, Metadata, MetadataAddress, Shard,
-    ShardAddress,
+    Account, ActionHandler, Asset, AssetAddress, AssetScheme, AssetSchemeAddress, Metadata, MetadataAddress,
+    RegularAccount, RegularAccountAddress, Shard, ShardAddress,
 };
 
 
@@ -61,6 +61,12 @@ pub trait Backend: Send {
 pub trait TopBackend: Send {
     /// Add an account entry to the cache.
     fn add_to_account_cache(&mut self, addr: Address, data: Option<Account>, modified: bool);
+    fn add_to_regular_account_cache(
+        &mut self,
+        address: RegularAccountAddress,
+        data: Option<RegularAccount>,
+        modified: bool,
+    );
     fn add_to_metadata_cache(&mut self, address: MetadataAddress, item: Option<Metadata>, modified: bool);
     fn add_to_shard_cache(&mut self, address: ShardAddress, item: Option<Shard>, modified: bool);
     fn add_to_action_data_cache(&mut self, address: H256, item: Option<Bytes>, modified: bool);
@@ -68,6 +74,7 @@ pub trait TopBackend: Send {
     /// Get basic copy of the cached account. Not required to include storage.
     /// Returns 'None' if cache is disabled or if the account is not cached.
     fn get_cached_account(&self, addr: &Address) -> Option<Option<Account>>;
+    fn get_cached_regular_account(&self, addr: &RegularAccountAddress) -> Option<Option<RegularAccount>>;
     fn get_cached_metadata(&self, addr: &MetadataAddress) -> Option<Option<Metadata>>;
     fn get_cached_shard(&self, addr: &ShardAddress) -> Option<Option<Shard>>;
     fn get_cached_action_data(&self, key: &H256) -> Option<Option<Bytes>>;
@@ -79,6 +86,10 @@ pub trait TopBackend: Send {
     fn get_cached_account_with<F, U>(&self, a: &Address, f: F) -> Option<U>
     where
         F: FnOnce(Option<&mut Account>) -> U;
+
+    fn get_cached_regular_account_with<F, U>(&self, a: &RegularAccountAddress, f: F) -> Option<U>
+    where
+        F: FnOnce(Option<&mut RegularAccount>) -> U;
 
     fn custom_handlers(&self) -> &[Arc<ActionHandler>];
 }
