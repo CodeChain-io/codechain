@@ -36,6 +36,19 @@ pub struct FullAddress {
 }
 
 impl FullAddress {
+    pub fn create_version0(network_id: u64, address: Address) -> Result<Self, Error> {
+        let network = match network_id {
+            // FIXME: 0x11 is the network id for SOLO
+            0x11 => Network::Mainnet,
+            _ => return Err(Error::InvalidNetwork),
+        };
+        Ok(FullAddress {
+            network,
+            version: 0,
+            address,
+        })
+    }
+
     fn to_string(&self) -> String {
         let hrp = match self.network {
             Network::Mainnet => "ccc",

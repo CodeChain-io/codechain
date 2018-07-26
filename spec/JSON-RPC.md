@@ -19,6 +19,10 @@ A XXX-bit hexadecimal string. (e.g. H160: 160-bit hexadecimal string)
 
 A hexadecimal string for XXX-bit unsigned integer
 
+## PlatformAddress
+
+A base32 string that starts with "ccc" or "tcc". See [the specification](https://github.com/CodeChain-io/codechain/blob/master/spec/CodeChain-Address.md#1-platform-account-address-format).
+
 ## Block
 
  - author: `H160`
@@ -1002,7 +1006,7 @@ Gets a list of accounts.
 
 Params: No parameters
 
-Return Type: `H160[]`
+Return Type: `PlatformAddress[]`
 
 Request Example
 ```
@@ -1027,7 +1031,7 @@ Creates a new account.
 Params:
  1. passphrase: `string | null`
 
-Return Type: `H160`
+Return Type: `PlatformAddress`
 
 Request Example
 ```
@@ -1053,7 +1057,7 @@ Params:
  1. secret: `H256`
  2. passphrase: `string` | `null`
 
-Return Type: `H160`
+Return Type: `PlatformAddress`
 
 Request Example
 ```
@@ -1076,7 +1080,7 @@ Response Example
 Removes the account
 
 Params:
- 1. account: `H160`
+ 1. account: `PlatformAddress`
  2. passphrase: `string` | `null`
 
 Return type: `null`
@@ -1102,7 +1106,7 @@ Calculates the account's signature for a given message.
 
 Params:
  1. message: `H256`
- 2. account: `H160`
+ 2. account: `PlatformAddress`
  3. passphrase: `string` | `null`
 
 Return type: `Signature`
@@ -1128,7 +1132,7 @@ Response Example
 Changes the account's password
 
 Params:
- 1. account: `H160`
+ 1. account: `PlatformAddress`
  2. old_password: `String`
  3. new_password: `String`
 
