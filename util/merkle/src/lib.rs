@@ -27,15 +27,20 @@ extern crate trie_standardmap as standardmap;
 
 use std::fmt;
 
+use ccrypto::BLAKE_NULL_RLP;
 use hashdb::DBValue;
 use primitives::H256;
 
 mod nibbleslice;
 pub mod node;
 mod skewed;
+pub mod triedb;
 pub mod triedbmut;
+pub mod triehash;
 
 pub use skewed::skewed_merkle_root;
+pub use triedb::TrieDB;
+pub use triedbmut::TrieDBMut;
 
 /// Trie Errors.
 ///
@@ -61,6 +66,24 @@ impl fmt::Display for TrieError {
 /// Trie result type. Boxed to avoid copying around extra space for `H256`s on successful queries.
 pub type Result<T> = ::std::result::Result<T, Box<TrieError>>;
 
+/// A key-value datastore implemented as a database-backed modified Merkle tree.
+pub trait Trie {
+    /// Return the root of the trie.
+    fn root(&self) -> &H256;
+
+    /// Is the trie empty?
+    fn is_empty(&self) -> bool {
+        *self.root() == BLAKE_NULL_RLP
+    }
+
+    /// Does the trie contain a given key?
+    fn contains(&self, key: &[u8]) -> Result<bool> {
+        self.get(key).map(|x| x.is_some())
+    }
+
+    /// What is the value of the given key in this trie?
+    fn get(&self, key: &[u8]) -> Result<Option<DBValue>>;
+}
 
 /// A key-value datastore implemented as a database-backed modified Merkle tree.
 pub trait TrieMut {
