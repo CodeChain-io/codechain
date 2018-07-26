@@ -94,6 +94,29 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
 ## Signature
 `H520` for ECDSA signature | `H512` for Schnorr signature
 
+# Error codes
+
+| Code | Message | Description |
+|---|---|---|
+| -32002 | `No Author` | No author is configured |
+| -32004 | `No Work Required` | No work is required |
+| -32005 | `No Work Found` | No work is found |
+| -32009 | `Invalid RLP` | Failed to decode the RLP string |
+| -32011 | `KVDB Error` | Failed to access the state (Internal error of CodeChain) |
+| -32010 | `Execution Failed` | Failed to execute the transactions |
+| -32030 | `Verification Failed` | The signature is invalid or the network id does not match |
+| -32031 | `Already Imported` | The same parcel is already imported |
+| -32032 | `Not Enough Balance` | The signer's balance is insufficient |
+| -32033 | `Too Low Fee` | The fee is lower than the minimum required |
+| -32034 | `Too Cheap to Replace` | The fee is lower than the existing one in the queue |
+| -32035 | `Invalid Nonce` | The signer's nonce is invalid to import |
+| -32040 | `Keystore Error` | Failed to access the key store (Internal error of CodeChain) |
+| -32041 | `Key Error` | The key is invalid |
+| -32042 | `Already Exists` | The account already exists |
+| -32043 | `Wrong Password` | The password does not match |
+| -32044 | `No Such Account` | There is no such account in the key store |
+| -32602 | `Invalid Params` | At least one of the parameters is invalid |
+
 # List of methods
 
  * [ping](#ping)
@@ -251,6 +274,8 @@ Params:
 
 Return Type: `null` | `H256`
 
+Errors: `Invalid Params`
+
 Request Example:
 ```
   curl \
@@ -275,6 +300,8 @@ Params:
  1. hash: `H256`
 
 Return Type: `null` | `Block`
+
+Errors: `Invalid Params`
 
 Request Example:
 ```
@@ -334,6 +361,8 @@ Params:
 
 Return Type: `H256` - parcel hash
 
+Errors: `Invalid RLP`, `Verification Failed`, `Already Imported`, `Not Enough Balance`, `Too Low Fee`, `Too Cheap to Replace`, `Invalid Nonce`, `Invalid Params`
+
 Request Example:
 ```
   curl \
@@ -358,6 +387,8 @@ Params:
  1. parcel hash - `H256`
 
 Return Type: `null` or `Parcel`
+
+Errors: `Invalid Params`
 
 Request Example
 ```
@@ -398,6 +429,8 @@ Params:
 
 Return Type: `null` | string[]. The string either "Success" or "Failed"
 
+Errors: `Invalid Params`
+
 Request Example
 ```
   curl \
@@ -425,11 +458,7 @@ Params:
 
 Return Type: `null` | `Transaction`
 
-Errors:
-
-| Code | Message | Description |
-|---|---|---|
-| -32602 | Invalid Params | At least one of the parameters is invalid |
+Errors: `Invalid Params`
 
 Request Example
 ```
@@ -466,6 +495,8 @@ Params:
 
 Return Type: `null` | "Success" | "Failed"
 
+Errors: `Invalid Params`
+
 Request Example
 ```
   curl \
@@ -492,6 +523,8 @@ Params:
 
 Return Type: `null` | `AssetScheme`
 
+Errors: `KVDB Error`, `Invalid Params`
+
 Request Example
 ```
   curl \
@@ -517,9 +550,11 @@ Response Example
 Gets an asset scheme with the given asset type.
 
 Params:
- 1. type of asset - `H256`
+ 1. asset type - `H256`
 
 Return Type: `null` | `AssetScheme`
+
+Errors: `KVDB Error`, `Invalid Params`
 
 Request Example
 ```
@@ -551,6 +586,8 @@ Params:
  3. block number: `number` | `null`
 
 Return Type: `null` | `Asset`
+
+Errors: `KVDB Error`, `Invalid Params`
 
 Request Example
 ```
@@ -585,6 +622,8 @@ Params:
 
 Return Type: `U256`
 
+Errors: `KVDB Error`, `Invalid Params`
+
 Request Example
 ```
   curl \
@@ -610,6 +649,8 @@ Params:
  2. block number: `number` | `null`
 
 Return Type: `U256`
+
+Errors: `KVDB Error`, `Invalid Params`
 
 Request Example
 ```
@@ -637,6 +678,8 @@ Params:
 
 Return Type: `H512` - 512-bit public key
 
+Errors: `KVDB Error`, `Invalid Params`
+
 Request Example
 ```
   curl \
@@ -661,6 +704,8 @@ Param:
 1. block number: `number` | `null`
 
 Return Type: `number` - the number of shards
+
+Errors: `KVDB Error`, `Invalid Params`
 
 Request Example
 ```
@@ -687,6 +732,8 @@ Param:
 1. block number: `number` | `null`
 
 Return Type: `null` | `H256` - the root of shard
+
+Errors: `KVDB Error`, `Invalid Params`
 
 Request Example
 ```
@@ -785,6 +832,8 @@ Params:
 
 Return Type: `ChangeShard[]`
 
+Errors: `Invalid RLP`, `Execution Failed`, `Invalid Params`
+
 Request Example
 ```
   curl \
@@ -819,6 +868,8 @@ Params: No parameters
 
 Return Type: `Work`
 
+Errors: `No Author`, `No Work Required`, `No Work Found`
+
 Request Example
 ```
   curl \
@@ -848,6 +899,8 @@ Params:
 
 Return Type: `bool`
 
+Errors: `No Work Required`, `Invalid Params`
+
 Request Example
 ```
   curl \
@@ -875,6 +928,8 @@ Params:
 
 Return Type: null
 
+Errors: `Invalid Params`
+
 Request Example
 ```
   curl \
@@ -900,6 +955,8 @@ Params:
  1. port: `number`
 
 Return Type: null
+
+Errors: `Invalid Params`
 
 Request Example
 ```
@@ -927,6 +984,8 @@ Params:
 
 Return Type: bool
 
+Errors: `Invalid Params`
+
 Request Example
 ```
   curl \
@@ -952,6 +1011,8 @@ Params:
  1. port: `number`
 
 Return Type: `bool`
+
+Errors: `Not Conntected`, `Invalid Params`
 
 Request Example
 ```
@@ -1050,6 +1111,8 @@ Params: No parameters
 
 Return Type: `PlatformAddress[]`
 
+Errors: `Keystore Error`
+
 Request Example
 ```
 curl \
@@ -1071,9 +1134,11 @@ Response Example
 Creates a new account.
 
 Params:
- 1. passphrase: `string | null`
+ 1. password: `string` | `null`
 
 Return Type: `PlatformAddress`
+
+Errors: `Keystore Error`, `Invalid Params`
 
 Request Example
 ```
@@ -1097,9 +1162,11 @@ Imports a secret key and add the corresponding account.
 
 Params:
  1. secret: `H256`
- 2. passphrase: `string` | `null`
+ 2. password: `string` | `null`
 
 Return Type: `PlatformAddress`
+
+Errors: `Keystore Error`, `Key Error`, `Already Exists`, `Invalid Params`
 
 Request Example
 ```
@@ -1123,9 +1190,11 @@ Removes the account
 
 Params:
  1. account: `PlatformAddress`
- 2. passphrase: `string` | `null`
+ 2. password: `string` | `null`
 
 Return type: `null`
+
+Errors: `Keystore Error`, `Wrong Password`, `No Such Account`, `Invalid Params`
 
 Request Example
 ```
@@ -1149,9 +1218,11 @@ Calculates the account's signature for a given message.
 Params:
  1. message: `H256`
  2. account: `PlatformAddress`
- 3. passphrase: `string` | `null`
+ 3. password: `string` | `null`
 
 Return type: `Signature`
+
+Errors: `Keystore Error`, `Wrong Password`, `No Such Account`, `Invalid Params`
 
 Request Example
 ```
@@ -1179,6 +1250,8 @@ Params:
  3. new_password: `String`
 
 Return type: `null`
+
+Errors: `Keystore Error`, `Wrong Password`, `No Such Account`, `Invalid Params`
 
 Request Example
 ```
