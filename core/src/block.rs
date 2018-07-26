@@ -155,7 +155,7 @@ impl<'x> OpenBlock<'x> {
             return Err(StateError::Parcel(ParcelError::ParcelAlreadyImported).into())
         }
 
-        let outcomes = self.block.state.apply(&parcel, parcel.sender())?;
+        let outcomes = self.block.state.apply(&parcel, parcel.sender(), &parcel.public_key())?;
 
         self.block.parcels_set.insert(h.unwrap_or_else(|| parcel.hash()));
         self.block.parcels.push(parcel.into());

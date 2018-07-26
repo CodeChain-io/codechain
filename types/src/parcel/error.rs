@@ -70,6 +70,9 @@ pub enum Error {
     InvalidSignature(String),
     InconsistentShardOutcomes,
     ParcelsTooBig,
+    RegularKeyAlreadyInUse,
+    RegularKeyAlreadyInUseAsMaster,
+    InvalidTransferDestination,
 }
 
 impl Display for Error {
@@ -101,6 +104,9 @@ impl Display for Error {
             Error::InvalidSignature(err) => format!("Parcel has invalid signature: {}.", err),
             Error::InconsistentShardOutcomes => "Shard outcomes are inconsistent".to_string(),
             Error::ParcelsTooBig => "Parcel size exceeded the body size limit".to_string(),
+            Error::RegularKeyAlreadyInUse => "The regular key is already registered to another account".to_string(),
+            Error::RegularKeyAlreadyInUseAsMaster => "The regular key is already used as a master account".to_string(),
+            Error::InvalidTransferDestination => "Transfer receiver is not valid account".to_string(),
         };
 
         f.write_fmt(format_args!("Parcel error ({})", msg))

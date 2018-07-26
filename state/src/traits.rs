@@ -65,11 +65,15 @@ where
     B: TopBackend, {
     /// Remove an existing account.
     fn kill_account(&mut self, account: &Address);
+    fn kill_regular_account(&mut self, account: &Public);
 
     fn account_exists(&self, a: &Address) -> TrieResult<bool>;
 
     fn account_exists_and_not_null(&self, a: &Address) -> TrieResult<bool>;
     fn account_exists_and_has_nonce(&self, a: &Address) -> TrieResult<bool>;
+
+    fn master_account_exists_and_not_null(&self, a: &Address) -> TrieResult<bool>;
+    fn regular_account_exists_and_not_null(&self, a: &Address) -> TrieResult<bool>;
 
     /// Add `incr` to the balance of account `a`.
     fn add_balance(&mut self, a: &Address, incr: &U256) -> TrieResult<()>;
@@ -81,8 +85,8 @@ where
     /// Increment the nonce of account `a` by 1.
     fn inc_nonce(&mut self, a: &Address) -> TrieResult<()>;
 
-    /// Set the regular key of account `a`
-    fn set_regular_key(&mut self, a: &Address, key: &Public) -> StateResult<()>;
+    /// Set the regular key of account `master_public`
+    fn set_regular_key(&mut self, master_public: &Public, key: &Public) -> StateResult<()>;
 
     fn create_shard(&mut self, shard_creation_cost: &U256, fee_payer: &Address) -> StateResult<()>;
 
