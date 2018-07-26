@@ -378,4 +378,43 @@ mod tests {
         let encoded = h.rlp_bytes().to_vec();
         assert_eq!(&[0x80 + 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], encoded.as_slice());
     }
+
+    #[test]
+    fn vec_and_hash() {
+        let vec: Vec<u8> = {
+            let mut vec = Vec::with_capacity(32);
+            for i in 0..32 {
+                vec.push(i);
+            }
+            vec
+        };
+        let hash: H256 = {
+            let mut hash = H256::zero();
+            for i in 0..32 {
+                hash[i] = i as u8;
+            }
+            hash
+        };
+        assert_eq!(vec.rlp_bytes(), hash.rlp_bytes());
+    }
+
+    #[test]
+    fn slice_and_hash() {
+        let array: [u8; 32] = {
+            let mut array = [0 as u8; 32];
+            for i in 0..32 {
+                array[i] = i as u8;
+            }
+            array
+        };
+        let slice: &[u8] = &array;
+        let hash: H256 = {
+            let mut hash = H256::zero();
+            for i in 0..32 {
+                hash[i] = i as u8;
+            }
+            hash
+        };
+        assert_eq!(slice.rlp_bytes(), hash.rlp_bytes());
+    }
 }
