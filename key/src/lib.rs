@@ -25,6 +25,8 @@ extern crate rlp;
 extern crate rustc_hex;
 extern crate rustc_serialize;
 extern crate secp256k1;
+extern crate serde;
+extern crate serde_json;
 
 mod address;
 #[cfg(feature = "ecdsa")]
