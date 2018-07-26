@@ -70,17 +70,19 @@ fn rearrange_bits(data: &[u8], from: usize, into: usize) -> Vec<u8> {
 impl fmt::Display for FullAddress {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let hrp = match self.network {
-            Network::Mainnet => "cc",
-            Network::Testnet => "tc",
+            Network::Mainnet => "ccc",
+            Network::Testnet => "tcc",
         }.to_string();
         let mut data = Vec::new();
         data.push(self.version);
         data.extend(&self.address.to_vec());
-        let encode_result = Bech32 {
+        let mut encoded = Bech32 {
             hrp,
             data: rearrange_bits(&data, 8, 5),
-        }.to_string();
-        write!(f, "{}", encode_result.unwrap())
+        }.to_string()
+            .unwrap();
+        encoded.remove(3);
+        write!(f, "{}", encoded)
     }
 }
 
@@ -90,10 +92,15 @@ impl FromStr for FullAddress {
     fn from_str(s: &str) -> Result<Self, Error>
     where
         Self: Sized, {
-        let decoded = Bech32::from_string(s.to_string())?;
+        if s.len() < 7 {
+            return Err(Error::Bech32InvalidLength)
+        }
+        let mut encoded = s.to_string();
+        encoded.insert(3, '1');
+        let decoded = Bech32::from_string(encoded)?;
         let network = match decoded.hrp.as_str().as_ref() {
-            "cc" => Some(Network::Mainnet),
-            "tc" => Some(Network::Testnet),
+            "ccc" => Some(Network::Mainnet),
+            "tcc" => Some(Network::Testnet),
             _ => None,
         };
         match network {
@@ -135,7 +142,7 @@ mod tests {
             address: "3f4aa1fedf1f54eeb03b759deadb36676b184911".into(),
         };
 
-        assert_eq!("cc1qql54g07mu04fm4s8d6em6kmxenkkxzfzya9wyew".to_string(), address.to_string());
+        assert_eq!("cccqql54g07mu04fm4s8d6em6kmxenkkxzfzytqcve5".to_string(), address.to_string());
     }
 
     #[test]
@@ -146,7 +153,7 @@ mod tests {
             address: "3f4aa1fedf1f54eeb03b759deadb36676b184911".into(),
         };
 
-        assert_eq!(address, "cc1qql54g07mu04fm4s8d6em6kmxenkkxzfzya9wyew".into());
+        assert_eq!(address, "cccqql54g07mu04fm4s8d6em6kmxenkkxzfzytqcve5".into());
     }
 
     #[test]
