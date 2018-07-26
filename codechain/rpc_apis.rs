@@ -34,7 +34,9 @@ impl ApiDependencies {
         handler.extend_with(DevelClient::new(&self.client).to_delegate());
         handler.extend_with(MinerClient::new(&self.client, &self.miner).to_delegate());
         handler.extend_with(NetClient::new(&self.network_control).to_delegate());
-        handler.extend_with(AccountClient::new(&self.account_provider).to_delegate());
+        handler.extend_with(
+            AccountClient::new(&self.account_provider, self.client.engine().params().network_id).to_delegate(),
+        );
     }
 }
 
