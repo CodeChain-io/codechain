@@ -24,7 +24,7 @@ use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::super::ShardId;
 
-#[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable, Serialize)]
+#[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AssetOutPoint {
     pub transaction_hash: H256,
@@ -33,7 +33,7 @@ pub struct AssetOutPoint {
     pub amount: u64,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable, Serialize)]
+#[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AssetTransferInput {
     pub prev_out: AssetOutPoint,
@@ -41,7 +41,7 @@ pub struct AssetTransferInput {
     pub unlock_script: Bytes,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable, Serialize)]
+#[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AssetTransferOutput {
     pub lock_script_hash: H256,
@@ -51,7 +51,7 @@ pub struct AssetTransferOutput {
 }
 
 /// Parcel transaction type.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", tag = "type", content = "data")]
 pub enum Transaction {
     #[serde(rename_all = "camelCase")]
@@ -74,7 +74,7 @@ pub enum Transaction {
     },
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AssetMintOutput {
     pub lock_script_hash: H256,

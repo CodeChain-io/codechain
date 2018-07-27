@@ -347,6 +347,7 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
         miner: Arc::clone(&miner),
         network_control: Arc::clone(&network_service),
         account_provider: ap,
+        shard_validator,
     });
 
     let _rpc_server = {
