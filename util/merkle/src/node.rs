@@ -15,7 +15,6 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use elastic_array::ElasticArray1024;
-use hashdb::DBValue;
 use primitives::H256;
 use rlp::*;
 
@@ -24,7 +23,7 @@ use nibbleslice::NibbleSlice;
 
 #[derive(Eq, PartialEq, Debug)]
 pub enum Node<'a> {
-    Leaf(NibbleSlice<'a>, DBValue),
+    Leaf(NibbleSlice<'a>, &'a [u8]),
 
     Branch(NibbleSlice<'a>, [Option<H256>; 16]),
 }
@@ -40,7 +39,7 @@ impl<'a> Node<'a> {
             Prototype::List(2) => {
                 let slice = NibbleSlice::from_encoded(r.at(0).data());
 
-                return Some(Node::Leaf(slice, DBValue::from_slice(&r.at(1).data())))
+                return Some(Node::Leaf(slice, r.at(1).data()))
             }
             // branch node - first is nibbles (or empty), the rest 16 are nodes.
             Prototype::List(17) => {
@@ -67,7 +66,7 @@ impl<'a> Node<'a> {
             Node::Leaf(slice, value) => {
                 let mut stream = RlpStream::new_list(2);
                 stream.append(&&*slice.encoded());
-                stream.append(&&*value);
+                stream.append(&value);
                 stream.drain()
             }
             Node::Branch(slice, nodes) => {
