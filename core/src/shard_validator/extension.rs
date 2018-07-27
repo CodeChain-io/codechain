@@ -25,6 +25,7 @@ use primitives::H256;
 use rlp::{Decodable, Encodable, UntrustedRlp};
 
 use super::super::{AccountProvider, AccountProviderError};
+use super::client::ShardValidatorClient;
 use super::message::Message;
 
 pub struct ShardValidator {
@@ -75,6 +76,25 @@ fn register_action(
         }
     } else {
         Ok(RegisterActionOutcome::AlreadyExists)
+    }
+}
+
+impl ShardValidatorClient for ShardValidator {
+    fn register_action(&self, action: Action) -> bool {
+        let mut actions = self.actions.write();
+        match register_action(action, &mut actions, &self.account_provider, &self.account) {
+            Err(_) => false,
+            Ok(RegisterActionOutcome::AlreadyExists) => false,
+            _ => true,
+        }
+    }
+
+    fn signatures(&self, action_hash: &H256) -> Vec<Signature> {
+        let signatures = self.signatures.read();
+        match signatures.get(&action_hash) {
+            Some(signatures) => signatures.iter().map(|s| s.clone()).collect(),
+            None => vec![],
+        }
     }
 }
 
