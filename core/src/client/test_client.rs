@@ -41,6 +41,7 @@ use cnetwork::NodeId;
 use cstate::{ActionHandler, StateDB};
 use ctypes::invoice::ParcelInvoice;
 use ctypes::parcel::{Action, Parcel};
+use ctypes::transaction::Transaction;
 use ctypes::BlockNumber;
 use journaldb;
 use kvdb_memorydb;
@@ -502,6 +503,10 @@ impl BlockChainClient for TestBlockChainClient {
     }
 
     fn parcel_invoice(&self, _id: ParcelId) -> Option<ParcelInvoice> {
+        unimplemented!();
+    }
+
+    fn transaction(&self, _id: TransactionId) -> Option<Transaction> {
         unimplemented!();
     }
 

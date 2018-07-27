@@ -418,7 +418,7 @@ Response Example
 ```
 
 ## chain_getTransaction
-(not implemented) Gets a transaction with the given hash.
+Gets a transaction with the given hash.
 
 Params:
  1. transaction hash - `H256`

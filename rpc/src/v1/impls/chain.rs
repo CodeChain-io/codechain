@@ -95,6 +95,10 @@ where
         Ok(self.client.parcel_invoice(parcel_hash.into()))
     }
 
+    fn get_transaction(&self, transaction_hash: H256) -> Result<Option<Transaction>> {
+        Ok(self.client.transaction(transaction_hash.into()))
+    }
+
     fn get_transaction_invoice(&self, transaction_hash: H256) -> Result<Option<Invoice>> {
         Ok(self.client.transaction_invoice(transaction_hash.into()))
     }

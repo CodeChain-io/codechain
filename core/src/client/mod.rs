@@ -213,6 +213,9 @@ pub trait BlockChainClient: Sync + Send + AccountData + BlockChain + ImportBlock
     /// Get parcel invoice with given hash.
     fn parcel_invoice(&self, id: ParcelId) -> Option<ParcelInvoice>;
 
+    /// Get the transaction with given hash.
+    fn transaction(&self, id: TransactionId) -> Option<Transaction>;
+
     fn transaction_invoice(&self, id: TransactionId) -> Option<Invoice>;
 
     fn custom_handlers(&self) -> Vec<Arc<ActionHandler>>;
