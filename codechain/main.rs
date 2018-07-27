@@ -60,8 +60,8 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use app_dirs::AppInfo;
 use ccore::{
-    AccountProvider, Client, ClientService, EngineType, Miner, MinerOptions, MinerService, ShardValidator, Spec,
-    Stratum, StratumConfig, StratumError,
+    AccountProvider, Client, ClientService, EngineType, Miner, MinerOptions, MinerService, ShardValidator,
+    ShardValidatorConfig, Spec, Stratum, StratumConfig, StratumError,
 };
 use cdiscovery::{KademliaConfig, KademliaExtension, UnstructuredConfig, UnstructuredExtension};
 use ckeystore::accounts_dir::RootDiskDirectory;
@@ -145,6 +145,22 @@ pub fn stratum_start(cfg: &StratumConfig, miner: Arc<Miner>, client: Arc<Client>
             Ok(())
         }
     }
+}
+
+fn new_shard_validator(config: ShardValidatorConfig, ap: Arc<AccountProvider>) -> Result<Arc<ShardValidator>, String> {
+    let account = {
+        let password = match config.password_path {
+            None => None,
+            Some(password_path) => {
+                let content = fs::read_to_string(password_path).map_err(|e| format!("{:?}", e))?;
+                let password = content.lines().next().ok_or("Password file is empty")?;
+                Some(password.to_string())
+            }
+        };
+        Some((config.account, password))
+    };
+    let shard_validator = ShardValidator::new(account, Arc::clone(&ap));
+    Ok(shard_validator)
 }
 
 #[cfg(all(unix, target_arch = "x86_64"))]
@@ -285,7 +301,12 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
     let miner = new_miner(&config, &spec, ap.clone())?;
     let client = client_start(&config, &spec, miner.clone())?;
 
-    let shard_validator = ShardValidator::new(None, Arc::clone(&ap));
+    let shard_validator = if config.shard_validator.disable {
+        ShardValidator::new(None, Arc::clone(&ap))
+    } else {
+        let shard_validator_config = (&config.shard_validator).into();
+        new_shard_validator(shard_validator_config, Arc::clone(&ap))?
+    };
 
     let network_service: Arc<NetworkControl> = {
         if !config.network.disable {

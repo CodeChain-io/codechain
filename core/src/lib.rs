@@ -95,6 +95,6 @@ pub use header::{Header, Seal};
 pub use miner::{Miner, MinerOptions, MinerService, Stratum, StratumConfig, StratumError};
 pub use parcel::{LocalizedParcel, SignedParcel, UnverifiedParcel};
 pub use service::ClientService;
-pub use shard_validator::{ShardValidator, ShardValidatorClient};
+pub use shard_validator::{ShardValidator, ShardValidatorClient, ShardValidatorConfig};
 pub use spec::Spec;
 pub use types::{BlockId, ParcelId};
