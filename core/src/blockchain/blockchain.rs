@@ -18,6 +18,8 @@ use std::mem;
 use std::sync::Arc;
 
 use ctypes::invoice::{BlockInvoices, ParcelInvoice};
+use ctypes::parcel::Action;
+use ctypes::transaction::Transaction;
 use ctypes::BlockNumber;
 use kvdb::{DBTransaction, KeyValueDB};
 use parking_lot::RwLock;
@@ -363,6 +365,21 @@ pub trait BlockProvider: HeaderProvider + BodyProvider + InvoiceProvider {
         self.block_body(&address.block_hash).and_then(|body| {
             self.block_number(&address.block_hash)
                 .and_then(|n| body.view().localized_parcel_at(&address.block_hash, n, address.index))
+        })
+    }
+
+    /// Get the transaction with given transaction hash.
+    fn transaction(&self, transaction: &TransactionAddress) -> Option<Transaction> {
+        self.parcel(&transaction.parcel_address).and_then(|parcel| match &parcel.signed.as_unsigned().action {
+            Action::ChangeShardState {
+                transactions,
+                changes: _,
+            }
+                if transaction.index < transactions.len() =>
+            {
+                Some(transactions[transaction.index].clone())
+            }
+            _ => None,
         })
     }
 

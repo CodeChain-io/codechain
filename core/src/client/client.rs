@@ -447,6 +447,11 @@ impl BlockChainClient for Client {
         self.parcel_address(id).and_then(|address| chain.parcel_invoice(&address))
     }
 
+    fn transaction(&self, id: TransactionId) -> Option<Transaction> {
+        let chain = self.chain.read();
+        self.transaction_address(id).and_then(|address| chain.transaction(&address))
+    }
+
     fn transaction_invoice(&self, id: TransactionId) -> Option<Invoice> {
         self.transaction_address(id).and_then(|transaction_address| {
             let parcel_address = transaction_address.parcel_address.clone();
