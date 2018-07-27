@@ -20,13 +20,14 @@ use std::str::FromStr;
 use rpassword;
 
 use ccore::AccountProvider;
-use ckey::{Address, Private};
+use ckey::{FullAddress, Private};
 use ckeystore::accounts_dir::RootDiskDirectory;
 use ckeystore::KeyStore;
 use clap::ArgMatches;
 use clogger::{self, LoggerConfig};
 
 use super::constants::DEFAULT_KEYS_PATH;
+use super::constants::DEFAULT_NETWORK_ID;
 
 pub fn run_account_command(matches: ArgMatches) -> Result<(), String> {
     if matches.subcommand.is_none() {
@@ -37,6 +38,7 @@ pub fn run_account_command(matches: ArgMatches) -> Result<(), String> {
     clogger::init(&LoggerConfig::new(0)).expect("Logger must be successfully initialized");
 
     let keys_path = matches.value_of("keys-path").unwrap_or(DEFAULT_KEYS_PATH);
+    let network_id = DEFAULT_NETWORK_ID;
     let dir = RootDiskDirectory::create(keys_path).expect("Cannot read key path directory");
     let keystore = KeyStore::open(Box::new(dir)).unwrap();
     let ap = AccountProvider::new(keystore);
@@ -45,7 +47,10 @@ pub fn run_account_command(matches: ArgMatches) -> Result<(), String> {
         ("create", _) => {
             if let Some(password) = read_password_and_confirm() {
                 let (address, _) = ap.new_account_and_public(password.as_ref()).expect("Cannot create account");
-                println!("{:?}", address);
+                println!(
+                    "{}",
+                    FullAddress::create_version0(network_id, address).expect("The network id is hardcoded to 0x11")
+                );
             } else {
                 return Err("The password does not match".to_string())
             }
@@ -58,7 +63,11 @@ pub fn run_account_command(matches: ArgMatches) -> Result<(), String> {
                     let password = rpassword::prompt_password_stdout("Password: ").unwrap();
                     match ap.import_wallet(json.as_slice(), password.as_ref()) {
                         Ok(address) => {
-                            println!("{:?}", address);
+                            println!(
+                                "{}",
+                                FullAddress::create_version0(network_id, address)
+                                    .expect("The network id is hardcoded to 0x11")
+                            );
                         }
                         Err(e) => return Err(format!("{}", e)),
                     }
@@ -76,7 +85,11 @@ pub fn run_account_command(matches: ArgMatches) -> Result<(), String> {
                 Ok(private) => {
                     if let Some(password) = read_password_and_confirm() {
                         match ap.insert_account(private, password.as_ref()) {
-                            Ok(address) => println!("{:?}", address),
+                            Ok(address) => println!(
+                                "{}",
+                                FullAddress::create_version0(network_id, address)
+                                    .expect("The network id is hardcoded to 0x11")
+                            ),
                             Err(e) => return Err(format!("{:?}", e)),
                         }
                     } else {
@@ -90,20 +103,20 @@ pub fn run_account_command(matches: ArgMatches) -> Result<(), String> {
         ("list", _) => {
             let addresses = ap.get_list().expect("Cannot get account list");
             for address in addresses {
-                println!("{:?}", address)
+                println!(
+                    "{}",
+                    FullAddress::create_version0(network_id, address).expect("The network id is hardcoded to 0x11")
+                )
             }
             Ok(())
         }
         ("remove", Some(matches)) => {
-            let key = {
-                let val = matches.value_of("ADDRESS").expect("ADDRESS arg is required and its index is 1");
-                read_raw_key(val)
-            };
-            match Address::from_str(key) {
-                Ok(address) => {
+            let key = matches.value_of("ADDRESS").expect("ADDRESS arg is required and its index is 1");
+            match FullAddress::from_str(key) {
+                Ok(full_address) => {
                     let password = rpassword::prompt_password_stdout("Password: ").unwrap();
-                    match ap.remove_account(address, password.as_ref()) {
-                        Ok(_) => println!("{:?} is deleted", address),
+                    match ap.remove_account(full_address.address, password.as_ref()) {
+                        Ok(_) => println!("{} is deleted", full_address),
                         Err(e) => return Err(format!("{:?}", e)),
                     }
                 }
@@ -112,15 +125,12 @@ pub fn run_account_command(matches: ArgMatches) -> Result<(), String> {
             Ok(())
         }
         ("change-password", Some(matches)) => {
-            let key = {
-                let val = matches.value_of("ADDRESS").expect("ADDRESS arg is required and its index is 1");
-                read_raw_key(val)
-            };
-            match Address::from_str(key) {
-                Ok(address) => {
+            let key = matches.value_of("ADDRESS").expect("ADDRESS arg is required and its index is 1");
+            match FullAddress::from_str(key) {
+                Ok(full_address) => {
                     let old_password = rpassword::prompt_password_stdout("Old Password: ").unwrap();
                     if let Some(new_password) = read_password_and_confirm() {
-                        match ap.change_password(address, old_password.as_ref(), new_password.as_ref()) {
+                        match ap.change_password(full_address.address, old_password.as_ref(), new_password.as_ref()) {
                             Ok(_) => println!("Password has changed"),
                             Err(e) => return Err(format!("{:?}", e)),
                         }

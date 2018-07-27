@@ -49,11 +49,11 @@ Upon closer inspection, the created accounts contain the following contents:
 
 Changing the Password
 ---------------------
-You can change your password with the ``change-password`` command. For instance, if you wanted to change the password of 0x18fc95c823aac66204d43165d3c3aedaaf169eac, you
+You can change your password with the ``change-password`` command. For instance, if you wanted to change the password of cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7, you
 would run the following:
 ::
 
-    ./target/release/codechain account change-password 0x18fc95c823aac66204d43165d3c3aedaaf169eac
+    ./target/release/codechain account change-password cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7
 
 After entering the old password, a new password can be set. If the wrong password is entered, it will throw a KeystoreError.
 
