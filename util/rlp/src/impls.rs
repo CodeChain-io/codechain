@@ -417,4 +417,24 @@ mod tests {
         };
         assert_eq!(slice.rlp_bytes(), hash.rlp_bytes());
     }
+
+    #[test]
+    fn empty_bytes() {
+        let empty_bytes: Vec<u8> = vec![];
+        assert_eq!(&[0x80], &empty_bytes.rlp_bytes().to_vec().as_slice());
+        rlp_encode_and_decode_test!(empty_bytes);
+    }
+
+    #[test]
+    fn empty_slice_of_u8() {
+        let empty_slice: &[u8] = &[];
+        assert_eq!(&[0x80], &empty_slice.rlp_bytes().to_vec().as_slice());
+    }
+
+    #[test]
+    fn empty_list() {
+        let mut stream = RlpStream::new();
+        stream.begin_list(0);
+        assert_eq!(vec![0xC0], stream.out());
+    }
 }
