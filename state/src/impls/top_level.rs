@@ -452,7 +452,7 @@ impl TopLevelState {
         Ok(results)
     }
 
-    pub fn apply_transactions(&self, transactions: &[Transaction], shard_id: u32) -> StateResult<ChangeShard> {
+    pub fn apply_transactions(&self, transactions: &[Transaction], shard_id: ShardId) -> StateResult<ChangeShard> {
         let pre_root = self.shard_root(shard_id)?.ok_or_else(|| ParcelError::InvalidShardId(shard_id))?;
         let (post_root, ..) = self.apply_transactions_internal(transactions, shard_id, pre_root)?;
         Ok(ChangeShard {

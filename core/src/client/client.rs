@@ -282,7 +282,7 @@ impl AssetClient for Client {
 impl ExecuteClient for Client {
     fn execute_transactions(&self, transactions: &[Transaction]) -> Result<Vec<ChangeShard>, Error> {
         let state = Client::state_at(&self, BlockId::Latest).expect("Latest state MUST exist");
-        let mut shard_ids: Vec<u32> = transactions.iter().flat_map(Transaction::related_shards).collect();
+        let mut shard_ids: Vec<ShardId> = transactions.iter().flat_map(Transaction::related_shards).collect();
         shard_ids.sort_unstable();
         shard_ids.dedup();
 
