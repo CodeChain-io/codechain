@@ -14,11 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod client;
-mod config;
-mod extension;
-mod message;
+use ckey::Address;
 
-pub use self::client::ShardValidatorClient;
-pub use self::config::ShardValidatorConfig;
-pub use self::extension::ShardValidator;
+pub struct ShardValidatorConfig {
+    pub account: Address,
+    pub password_path: Option<String>,
+}
