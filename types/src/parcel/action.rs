@@ -28,7 +28,7 @@ const SET_REGULAR_KEY: u8 = 3;
 const CREATE_SHARD: u8 = 4;
 const CUSTOM: u8 = 5;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, RlpDecodable, RlpEncodable)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, RlpDecodable, RlpEncodable)]
 #[serde(rename_all = "camelCase")]
 pub struct ChangeShard {
     pub shard_id: ShardId,
@@ -36,7 +36,7 @@ pub struct ChangeShard {
     pub post_root: H256,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", tag = "action")]
 pub enum Action {
     ChangeShardState {
