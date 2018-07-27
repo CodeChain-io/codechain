@@ -115,6 +115,8 @@ pub struct Stratum {
 
 impl<'a> Into<RpcIpcConfig> for &'a Ipc {
     fn into(self) -> RpcIpcConfig {
+        debug_assert!(!self.disable);
+
         RpcIpcConfig {
             socket_addr: self.path.clone(),
         }
@@ -123,6 +125,8 @@ impl<'a> Into<RpcIpcConfig> for &'a Ipc {
 
 impl<'a> Into<NetworkConfig> for &'a Network {
     fn into(self) -> NetworkConfig {
+        debug_assert!(!self.disable);
+
         let bootstrap_addresses =
             self.bootstrap_addresses.iter().map(|s| SocketAddr::from_str(s).unwrap()).collect::<Vec<_>>();
         NetworkConfig {
@@ -138,6 +142,8 @@ impl<'a> Into<NetworkConfig> for &'a Network {
 impl<'a> Into<RpcHttpConfig> for &'a Rpc {
     // FIXME: Add interface, cors and hosts options.
     fn into(self) -> RpcHttpConfig {
+        debug_assert!(!self.disable);
+
         RpcHttpConfig {
             interface: self.interface.clone(),
             port: self.port,
@@ -150,6 +156,8 @@ impl<'a> Into<RpcHttpConfig> for &'a Rpc {
 impl<'a> Into<StratumConfig> for &'a Stratum {
     // FIXME: Add listen_addr and secret
     fn into(self) -> StratumConfig {
+        debug_assert!(!self.disable);
+
         StratumConfig {
             listen_addr: "127.0.0.1".to_string(),
             port: self.port,

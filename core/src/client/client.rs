@@ -50,16 +50,16 @@ use super::super::header::Header;
 use super::super::miner::{Miner, MinerService};
 use super::super::parcel::{LocalizedParcel, SignedParcel, UnverifiedParcel};
 use super::super::service::ClientIoMessage;
-use super::super::spec::Spec;
+use super::super::spec::{CommonParams, Spec};
 use super::super::types::{BlockId, BlockStatus, ParcelId, TransactionId, VerificationQueueInfo as BlockQueueInfo};
 use super::super::verification::queue::{BlockQueue, HeaderQueue};
 use super::super::verification::{self, PreverifiedBlock, Verifier};
 use super::super::views::{BlockView, HeaderView};
 use super::{
     AccountData, AssetClient, Balance, BlockChain as BlockChainTrait, BlockChainClient, BlockChainInfo, BlockInfo,
-    BlockProducer, ChainInfo, ChainNotify, ClientConfig, DatabaseClient, EngineClient, Error as ClientError,
-    ExecuteClient, ImportBlock, ImportResult, ImportSealedBlock, Invoice, MiningBlockChainClient, Nonce, ParcelInfo,
-    PrepareOpenBlock, RegularKey, ReopenBlock, Shard, StateOrBlock, TransactionInfo,
+    BlockProducer, ChainInfo, ChainNotify, ClientConfig, DatabaseClient, EngineClient, EngineInfo,
+    Error as ClientError, ExecuteClient, ImportBlock, ImportResult, ImportSealedBlock, Invoice, MiningBlockChainClient,
+    Nonce, ParcelInfo, PrepareOpenBlock, RegularKey, ReopenBlock, Shard, StateOrBlock, TransactionInfo,
 };
 
 const MAX_MEM_POOL_SIZE: usize = 4096;
@@ -282,7 +282,7 @@ impl AssetClient for Client {
 impl ExecuteClient for Client {
     fn execute_transactions(&self, transactions: &[Transaction]) -> Result<Vec<ChangeShard>, Error> {
         let state = Client::state_at(&self, BlockId::Latest).expect("Latest state MUST exist");
-        let mut shard_ids: Vec<u32> = transactions.iter().flat_map(Transaction::related_shards).collect();
+        let mut shard_ids: Vec<ShardId> = transactions.iter().flat_map(Transaction::related_shards).collect();
         shard_ids.sort_unstable();
         shard_ids.dedup();
 
@@ -295,6 +295,12 @@ impl ChainInfo for Client {
         let mut chain_info = self.chain.read().chain_info();
         chain_info.pending_total_score = chain_info.total_score + self.importer.block_queue.total_score();
         chain_info
+    }
+}
+
+impl EngineInfo for Client {
+    fn common_params(&self) -> &CommonParams {
+        self.engine().params()
     }
 }
 
