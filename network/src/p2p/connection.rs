@@ -560,6 +560,10 @@ impl Connection {
                 connection.reregister(reg, event_loop)?;
                 Ok(ConnectionType::Established)
             }
+            State::Disconnecting(_) => {
+                ctrace!(NET, "Packet received while disconnecting");
+                Ok(ConnectionType::Disconnecting)
+            }
             _ => unreachable!(),
         }
     }
