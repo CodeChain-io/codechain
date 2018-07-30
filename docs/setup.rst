@@ -43,7 +43,7 @@ CodeChain requires Rust version 1.26 to build. Using `rustup <https://rustup.rs/
     * Ubuntu
 
     .. note::
-        ``gcc`` and ``g++`` are required for installing packages.
+        ``gcc``, ``g++`` and ``make`` are required for installing packages.
 
     ::
 
