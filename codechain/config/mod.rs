@@ -202,10 +202,10 @@ impl Operating {
 impl Mining {
     pub fn overwrite_with(&mut self, matches: &clap::ArgMatches) -> Result<(), String> {
         if let Some(author) = matches.value_of("author") {
-            self.author = Some(Address::from_str(author).map_err(|_| "Invalid address")?);
+            self.author = Some(parse_address(author)?);
         }
         if let Some(engine_signer) = matches.value_of("engine-signer") {
-            self.engine_signer = Some(Address::from_str(engine_signer).map_err(|_| "Invalid address")?);
+            self.engine_signer = Some(parse_address(engine_signer)?);
         }
         if let Some(password_path) = matches.value_of("password-path") {
             self.password_path = Some(password_path.to_string());
@@ -340,4 +340,12 @@ pub fn load_config(matches: &clap::ArgMatches) -> Result<Config, String> {
     config.stratum.overwrite_with(&matches)?;
 
     Ok(config)
+}
+
+fn parse_address(value: &str) -> Result<Address, String> {
+    if value.starts_with("0x") {
+        Address::from_str(&value[2..])
+    } else {
+        Address::from_str(value)
+    }.map_err(|_| "Invalid address".to_string())
 }
