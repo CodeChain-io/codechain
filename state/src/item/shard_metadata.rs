@@ -159,8 +159,7 @@ mod tests {
             hash[1] = 0;
             hash
         };
-        let shard_id = ((hash[2] as ShardId) << 8)
-            + (hash[3] as ShardId);
+        let shard_id = ((hash[2] as ShardId) << 8) + (hash[3] as ShardId);
         let address = ShardMetadataAddress::from_hash(hash).unwrap();
         assert_eq!(shard_id, address.shard_id());
     }

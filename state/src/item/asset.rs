@@ -190,8 +190,7 @@ mod tests {
             hash
         };
         assert_eq!(::std::mem::size_of::<u16>(), ::std::mem::size_of::<ShardId>());
-        let shard_id = ((hash[2] as ShardId) << 8)
-            + (hash[3] as ShardId);
+        let shard_id = ((hash[2] as ShardId) << 8) + (hash[3] as ShardId);
         let asset_address = AssetAddress::from_hash(hash).unwrap();
         assert_eq!(shard_id, asset_address.shard_id());
     }
