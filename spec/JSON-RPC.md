@@ -134,6 +134,7 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
  * [chain_getAssetSchemeByHash](#chain_getassetschemebyhash)
  * [chain_getAssetSchemeByType](#chain_getassetschemebytype)
  * [chain_getAsset](#chain_getasset)
+ * [chain_isAssetSpent](#chain_isassetspent)
  * [chain_getNonce](#chain_getnonce)
  * [chain_getBalance](#chain_getbalance)
  * [chain_getRegularKey](#chain_getregularkey)
@@ -609,6 +610,33 @@ Response Example
 
     ]
   },
+  "id":null
+}
+```
+
+## chain_isAssetSpent
+(not implemented) Check whether an asset was spent or not.
+
+Params:
+ 1. transaction hash - `H256`
+ 2. index - `number`
+ 3. block number: `number` | `null`
+
+Return Type: `null` | `false` | `true` - It returns null when no such asset exists.
+
+Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "chain_isAssetSpent", "params": ["0x24df02abcd4e984e90253dc344e89b8431bbb319c66643bfef566dfdf46ec6bc", 0], "id": null}' \
+    localhost:8080
+```
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result":false,
   "id":null
 }
 ```
