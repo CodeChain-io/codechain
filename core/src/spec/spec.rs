@@ -115,8 +115,8 @@ fn fmt_err<F: ::std::fmt::Display>(f: F) -> String {
 }
 
 macro_rules! load_bundled {
-    ($e:expr, $h:expr) => {
-        Spec::load(include_bytes!(concat!("../../res/", $e, ".json")) as &[u8], $h).expect(concat!(
+    ($e:expr) => {
+        Spec::load(include_bytes!(concat!("../../res/", $e, ".json")) as &[u8]).expect(concat!(
             "Chain spec ",
             $e,
             " is invalid."
@@ -296,43 +296,43 @@ impl Spec {
 
     /// Loads spec from json file. Provide factories for executing contracts and ensuring
     /// storage goes to the right place.
-    pub fn load<'a, R>(reader: R, handlers: Vec<Arc<ActionHandler>>) -> Result<Self, String>
+    pub fn load<'a, R>(reader: R) -> Result<Self, String>
     where
         R: Read, {
-        cjson::spec::Spec::load(reader).map_err(fmt_err).and_then(|x| load_from(x, handlers).map_err(fmt_err))
+        cjson::spec::Spec::load(reader).map_err(fmt_err).and_then(|x| load_from(x).map_err(fmt_err))
     }
 
     /// Create a new test Spec.
-    pub fn new_test(handlers: Vec<Arc<ActionHandler>>) -> Self {
-        load_bundled!("null", handlers)
+    pub fn new_test() -> Self {
+        load_bundled!("null")
     }
 
     /// Create a new Spec with Solo consensus which does internal sealing (not requiring
     /// work).
-    pub fn new_test_solo(handlers: Vec<Arc<ActionHandler>>) -> Self {
-        load_bundled!("solo", handlers)
+    pub fn new_test_solo() -> Self {
+        load_bundled!("solo")
     }
 
     /// Create a new Spec with SoloAuthority consensus which does internal sealing (not requiring
     /// work).
-    pub fn new_test_solo_authority(handlers: Vec<Arc<ActionHandler>>) -> Self {
-        load_bundled!("solo_authority", handlers)
+    pub fn new_test_solo_authority() -> Self {
+        load_bundled!("solo_authority")
     }
 
     /// Create a new Spec with Tendermint consensus which does internal sealing (not requiring
     /// work).
-    pub fn new_test_tendermint(handlers: Vec<Arc<ActionHandler>>) -> Self {
-        load_bundled!("tendermint", handlers)
+    pub fn new_test_tendermint() -> Self {
+        load_bundled!("tendermint")
     }
 
     /// Create a new Spec with Cuckoo PoW consensus.
-    pub fn new_test_cuckoo(handlers: Vec<Arc<ActionHandler>>) -> Self {
-        load_bundled!("cuckoo", handlers)
+    pub fn new_test_cuckoo() -> Self {
+        load_bundled!("cuckoo")
     }
 
     /// Create a new Spec with Blake PoW consensus.
-    pub fn new_test_blake_pow(handlers: Vec<Arc<ActionHandler>>) -> Self {
-        load_bundled!("blake_pow", handlers)
+    pub fn new_test_blake_pow() -> Self {
+        load_bundled!("blake_pow")
     }
 
     /// Get common blockchain parameters.
@@ -373,14 +373,18 @@ impl Spec {
 }
 
 /// Load from JSON object.
-fn load_from(s: cjson::spec::Spec, handlers: Vec<Arc<ActionHandler>>) -> Result<Spec, Error> {
+fn load_from(s: cjson::spec::Spec) -> Result<Spec, Error> {
     let g = Genesis::from(s.genesis);
     let GenericSeal(seal_rlp) = g.seal.into();
     let params = CommonParams::from(s.params);
+    let engine = Spec::engine(s.engine, params);
+    let custom_handlers = match &engine {
+        _ => vec![],
+    };
 
     let mut s = Spec {
         name: s.name.clone().into(),
-        engine: Spec::engine(s.engine, params),
+        engine,
         data_dir: s.data_dir.unwrap_or(s.name).into(),
         nodes: s.nodes.unwrap_or_else(Vec::new),
         parent_hash: g.parent_hash,
@@ -395,7 +399,7 @@ fn load_from(s: cjson::spec::Spec, handlers: Vec<Arc<ActionHandler>>) -> Result<
         genesis_accounts: s.accounts.into(),
         genesis_shards: s.shards.into(),
 
-        custom_handlers: handlers,
+        custom_handlers,
     };
 
     // use memoized state root if provided.
@@ -419,7 +423,7 @@ mod tests {
 
     #[test]
     fn extra_data_of_genesis_header_is_hash_of_common_params() {
-        let spec = Spec::new_test(Vec::new());
+        let spec = Spec::new_test();
         let common_params = spec.params();
         let hash_of_common_params = H256::blake(&common_params.rlp_bytes()).to_vec();
 

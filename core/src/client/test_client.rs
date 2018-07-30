@@ -114,7 +114,7 @@ impl TestBlockChainClient {
 
     /// Creates new test client with specified extra data for each block
     pub fn new_with_extra_data(extra_data: Bytes) -> Self {
-        let spec = Spec::new_test(Vec::new());
+        let spec = Spec::new_test();
         TestBlockChainClient::new_with_spec_and_extra(spec, extra_data)
     }
 
