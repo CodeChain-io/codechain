@@ -442,12 +442,15 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
     /// `Seal::None` will be returned.
     fn generate_seal(&self, block: &ExecutedBlock, _parent: &Header) -> Seal {
         let header = block.header();
+        let height = header.number() as Height;
         // Only proposer can generate seal if None was generated.
-        if !self.is_signer_proposer(header.parent_hash()) || self.proposal.read().is_some() {
+        if !self.is_signer_proposer(header.parent_hash())
+            || self.proposal.read().is_some()
+            || height < self.height.load(AtomicOrdering::SeqCst)
+        {
             return Seal::None
         }
 
-        let height = header.number() as Height;
         let view = self.view.load(AtomicOrdering::SeqCst);
         let bh = Some(header.bare_hash());
         let vote_info = message_info_rlp(&VoteStep::new(height, view, Step::Propose), bh.clone());
