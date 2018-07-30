@@ -532,6 +532,7 @@ impl Importer {
 
             for block in blocks {
                 let header = &block.header;
+                ctrace!(CLIENT, "Importing block {}", header.number());
                 let is_invalid = invalid_blocks.contains(header.parent_hash());
                 if is_invalid {
                     invalid_blocks.insert(header.hash());
