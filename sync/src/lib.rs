@@ -26,14 +26,12 @@ extern crate codechain_types as ctypes;
 extern crate kvdb;
 #[macro_use]
 extern crate log;
-extern crate patricia_trie as trie;
 extern crate primitives;
 extern crate rand;
 #[cfg_attr(test, macro_use)]
 extern crate rlp;
 extern crate snap;
 extern crate time;
-extern crate triehash;
 
 mod block;
 mod parcel;
