@@ -277,6 +277,55 @@ impl AssetClient for Client {
             Ok(None)
         }
     }
+
+    /// Checks whether an asset is spent or not.
+    ///
+    /// It returns None if such an asset never existed in the shard at the given block.
+    fn is_asset_spent(
+        &self,
+        transaction_hash: H256,
+        index: usize,
+        shard_id: ShardId,
+        block_id: BlockId,
+    ) -> TrieResult<Option<bool>> {
+        match self.transaction_address(transaction_hash.into()) {
+            Some(ref transaction_address)
+                if self.block_number(block_id)
+                    >= self.block_number(transaction_address.parcel_address.block_hash.into()) =>
+            {
+                let is_output_valid = match self.transaction(transaction_hash.into()) {
+                    Some(Transaction::AssetMint {
+                        shard_id: asset_mint_shard_id,
+                        ..
+                    }) => index == 0 && shard_id == asset_mint_shard_id,
+                    Some(Transaction::AssetTransfer {
+                        outputs,
+                        ..
+                    }) => {
+                        index < outputs.len()
+                            && shard_id
+                                == AssetSchemeAddress::from_hash(outputs[index].asset_type)
+                                    .expect("An asset type must be able to create an AssetSchemeAddress")
+                                    .shard_id()
+                    }
+                    None => false,
+                };
+
+                if !is_output_valid {
+                    return Ok(None)
+                }
+
+                match Client::state_at(&self, block_id) {
+                    Some(state) => {
+                        let address = AssetAddress::new(transaction_hash, index, shard_id);
+                        Ok(Some(state.asset(shard_id, &address)?.is_none()))
+                    }
+                    None => Ok(None),
+                }
+            }
+            _ => Ok(None),
+        }
+    }
 }
 
 impl ExecuteClient for Client {

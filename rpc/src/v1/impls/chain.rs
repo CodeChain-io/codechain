@@ -120,6 +120,17 @@ where
         self.client.get_asset(transaction_hash, index, block_id).map_err(errors::parcel_state)
     }
 
+    fn is_asset_spent(
+        &self,
+        transaction_hash: H256,
+        index: usize,
+        shard_id: ShardId,
+        block_number: Option<u64>,
+    ) -> Result<Option<bool>> {
+        let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
+        self.client.is_asset_spent(transaction_hash, index, shard_id, block_id).map_err(errors::parcel_state)
+    }
+
     fn get_nonce(&self, address: H160, block_number: Option<u64>) -> Result<Option<U256>> {
         let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
         Ok(self.client.nonce(&address.into(), block_id))

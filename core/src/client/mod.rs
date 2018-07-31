@@ -258,6 +258,14 @@ pub trait AssetClient {
     fn get_asset_scheme(&self, asset_type: AssetSchemeAddress) -> TrieResult<Option<AssetScheme>>;
 
     fn get_asset(&self, transaction_hash: H256, index: usize, id: BlockId) -> TrieResult<Option<Asset>>;
+
+    fn is_asset_spent(
+        &self,
+        transaction_hash: H256,
+        index: usize,
+        shard_id: ShardId,
+        block_id: BlockId,
+    ) -> TrieResult<Option<bool>>;
 }
 
 pub trait ExecuteClient {
