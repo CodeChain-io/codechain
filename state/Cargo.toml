@@ -7,6 +7,7 @@ authors = ["CodeChain Team <codechain@kodebox.io>"]
 byteorder = "1.2.3"
 codechain-crypto = { path = "../crypto" }
 codechain-logger = { path = "../util/logger" }
+codechain-merkle = { path = "../util/merkle" }
 codechain-key = { path = "../key", features = ["ecdsa"] }
 codechain-types = { path = "../types" }
 codechain-vm = { path = "../vm" }
@@ -17,7 +18,6 @@ kvdb-memorydb = { path = "../util/kvdb-memorydb" }
 log = "0.4.1"
 lru-cache = "0.1"
 parking_lot = "0.5"
-patricia-trie = { path = "../util/patricia_trie" }
 primitives = { path = "../util/primitives" }
 rlp = { path = "../util/rlp" }
 rustc-hex = "1.0"
