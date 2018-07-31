@@ -106,6 +106,7 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
  * [chain_sendSignedParcel](#chain_sendsignedparcel)
  * [chain_getParcel](#chain_getparcel)
  * [chain_getParcelInvoice](#chain_getparcelinvoice)
+ * [chain_getTransaction](#chain_gettransaction)
  * [chain_getTransactionInvoice](#chain_gettransactioninvoice)
  * [chain_getAssetSchemeByHash](#chain_getassetschemebyhash)
  * [chain_getAssetSchemeByType](#chain_getassetschemebytype)
@@ -412,6 +413,47 @@ Response Example
   "result":[
     "Success"
   ],
+  "id":null
+}
+```
+
+## chain_getTransaction
+(not implemented) Gets a transaction with the given hash.
+
+Params:
+ 1. transaction hash - `H256`
+
+Return Type: `null` | `Transaction`
+
+Errors:
+
+| Code | Message | Description |
+|---|---|---|
+| -32602 | Invalid Params | At least one of the parameters is invalid |
+
+Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "chain_getTransaction", "params": ["0x24df02abcd4e984e90253dc344e89b8431bbb319c66643bfef566dfdf46ec6bc"], "id": null}' \
+    localhost:8080
+```
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result":{
+    "type":"assetMint",
+    "metadata":"...",
+    "output":{
+      "lockScriptHash":"0xf42a65ea518ba236c08b261c34af0521fa3cd1aa505e1c18980919cb8945f8f3",
+      "parameters":[],
+      "amount":10000
+    },
+    "registrar":null,
+    "nonce":0
+  },
   "id":null
 }
 ```

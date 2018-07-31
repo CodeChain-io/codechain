@@ -187,12 +187,16 @@ impl Tendermint {
         self.signer.read().is_address(&proposer)
     }
 
-    fn is_height(&self, message: &ConsensusMessage) -> bool {
-        message.vote_step.is_height(self.height.load(AtomicOrdering::SeqCst))
-    }
-
     fn is_view(&self, message: &ConsensusMessage) -> bool {
         message.vote_step.is_view(self.height.load(AtomicOrdering::SeqCst), self.view.load(AtomicOrdering::SeqCst))
+    }
+
+    fn is_step(&self, message: &ConsensusMessage) -> bool {
+        message.vote_step.is_step(
+            self.height.load(AtomicOrdering::SeqCst),
+            self.view.load(AtomicOrdering::SeqCst),
+            *self.step.read(),
+        )
     }
 
     fn is_authority(&self, address: &Address) -> bool {
@@ -219,15 +223,6 @@ impl Tendermint {
             *self.step.read(),
         ));
         self.check_above_threshold(step_votes).is_ok()
-    }
-
-    fn has_enough_future_step_votes(&self, vote_step: &VoteStep) -> bool {
-        if vote_step.view > self.view.load(AtomicOrdering::SeqCst) {
-            let step_votes = self.votes.count_round_votes(vote_step);
-            self.check_above_threshold(step_votes).is_ok()
-        } else {
-            false
-        }
     }
 
     fn has_enough_aligned_votes(&self, message: &ConsensusMessage) -> bool {
@@ -367,7 +362,7 @@ impl Tendermint {
             *self.lock_change.write() = Some(message.clone());
         }
         // Check if it can affect the step transition.
-        if self.is_height(message) {
+        if self.is_step(message) {
             let next_step = match *self.step.read() {
                 Step::Precommit if message.block_hash.is_none() && self.has_enough_aligned_votes(message) => {
                     self.increment_view(1);
@@ -391,17 +386,9 @@ impl Tendermint {
                     self.to_next_height(self.height.load(AtomicOrdering::SeqCst));
                     Some(Step::Commit)
                 }
-                Step::Precommit if self.has_enough_future_step_votes(&vote_step) => {
-                    self.increment_view(vote_step.view - self.view.load(AtomicOrdering::SeqCst));
-                    Some(Step::Precommit)
-                }
                 // Avoid counting votes twice.
                 Step::Prevote if lock_change => Some(Step::Precommit),
                 Step::Prevote if self.has_enough_aligned_votes(message) => Some(Step::Precommit),
-                Step::Prevote if self.has_enough_future_step_votes(&vote_step) => {
-                    self.increment_view(vote_step.view - self.view.load(AtomicOrdering::SeqCst));
-                    Some(Step::Prevote)
-                }
                 _ => None,
             };
 
@@ -442,12 +429,15 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
     /// `Seal::None` will be returned.
     fn generate_seal(&self, block: &ExecutedBlock, _parent: &Header) -> Seal {
         let header = block.header();
+        let height = header.number() as Height;
         // Only proposer can generate seal if None was generated.
-        if !self.is_signer_proposer(header.parent_hash()) || self.proposal.read().is_some() {
+        if !self.is_signer_proposer(header.parent_hash())
+            || self.proposal.read().is_some()
+            || height < self.height.load(AtomicOrdering::SeqCst)
+        {
             return Seal::None
         }
 
-        let height = header.number() as Height;
         let view = self.view.load(AtomicOrdering::SeqCst);
         let bh = Some(header.bare_hash());
         let vote_info = message_info_rlp(&VoteStep::new(height, view, Step::Propose), bh.clone());
@@ -953,13 +943,13 @@ mod tests {
 
     #[test]
     fn has_valid_metadata() {
-        let engine = Spec::new_test_tendermint(Vec::new()).engine;
+        let engine = Spec::new_test_tendermint().engine;
         assert!(!engine.name().is_empty());
     }
 
     #[test]
     fn verification_fails_on_short_seal() {
-        let engine = Spec::new_test_tendermint(Vec::new()).engine;
+        let engine = Spec::new_test_tendermint().engine;
         let header = Header::default();
 
         let verify_result = engine.verify_block_basic(&header);

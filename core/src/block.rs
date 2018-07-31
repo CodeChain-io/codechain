@@ -453,7 +453,7 @@ mod tests {
 
     #[test]
     fn open_block() {
-        let spec = Spec::new_test(Vec::new());
+        let spec = Spec::new_test();
         let genesis_header = spec.genesis_header();
         let db = spec.ensure_genesis_state(get_temp_state_db(), &Default::default()).unwrap();
         let b = OpenBlock::new(&*spec.engine, Default::default(), db, &genesis_header, Address::zero(), vec![], false)
