@@ -30,8 +30,10 @@ macro_rules! define_address_constructor {
             index: u64,
             shard_id: ::ctypes::ShardId,
         ) -> Self {
-            let mut hash: ::primitives::H256 =
+            let hash: ::primitives::H208 =
                 ::ccrypto::Blake::blake_with_key(&transaction_hash, &::primitives::H128::from(index));
+            let mut hash: ::primitives::H256 = hash.into();
+
             hash[0..2].clone_from_slice(&[$prefix, 0]);
 
             let mut shard_id_bytes = Vec::<u8>::new();

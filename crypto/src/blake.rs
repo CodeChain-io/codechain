@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use primitives::{H248, H256, H512};
+use primitives::{H208, H248, H256, H512};
 use rcrypto::blake2b::Blake2b;
 use rcrypto::digest::Digest;
 
@@ -64,6 +64,7 @@ macro_rules! implement_blake {
     };
 }
 
+implement_blake!(H208, 26);
 implement_blake!(H248, 31);
 implement_blake!(H256, 32);
 implement_blake!(H512, 64);
