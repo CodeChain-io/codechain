@@ -619,12 +619,13 @@ Response Example
 ```
 
 ## chain_isAssetSpent
-(not implemented) Check whether an asset was spent or not.
+Checks whether an asset is spent or not.
 
 Params:
- 1. transaction hash - `H256`
- 2. index - `number`
- 3. block number: `number` | `null`
+ 1. transaction hash: `H256`
+ 2. index: `number`
+ 3. shard id: `number`
+ 4. block number: `number` | `null`
 
 Return Type: `null` | `false` | `true` - It returns null when no such asset exists.
 
@@ -632,7 +633,7 @@ Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "chain_isAssetSpent", "params": ["0x24df02abcd4e984e90253dc344e89b8431bbb319c66643bfef566dfdf46ec6bc", 0], "id": null}' \
+    -d '{"jsonrpc": "2.0", "method": "chain_isAssetSpent", "params": ["0x24df02abcd4e984e90253dc344e89b8431bbb319c66643bfef566dfdf46ec6bc", 0, 0], "id": null}' \
     localhost:8080
 ```
 

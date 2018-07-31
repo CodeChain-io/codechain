@@ -60,6 +60,10 @@ build_rpc_trait! {
         # [rpc(name = "chain_getAsset")]
         fn get_asset(&self, H256, usize, Option<u64>) -> Result<Option<Asset>>;
 
+        /// Checks whether an asset is spent or not.
+        # [rpc(name = "chain_isAssetSpent")]
+        fn is_asset_spent(&self, H256, usize, ShardId, Option<u64>) -> Result<Option<bool>>;
+
         /// Gets nonce with given account.
         # [rpc(name = "chain_getNonce")]
         fn get_nonce(&self, H160, Option<u64>) -> Result<Option<U256>>;
