@@ -20,6 +20,7 @@ use std::sync::Arc;
 use ccrypto::{blake256, BLAKE_NULL_RLP};
 use cjson;
 use ckey::Address;
+use cmerkle::TrieFactory;
 use cstate::{
     ActionHandler, Backend, Metadata, MetadataAddress, Shard, ShardAddress, ShardMetadataAddress, StateDB, StateResult,
 };
@@ -28,7 +29,6 @@ use hashdb::HashDB;
 use parking_lot::RwLock;
 use primitives::{Bytes, H256, U256};
 use rlp::{Encodable, Rlp, RlpStream};
-use trie::TrieFactory;
 
 use super::super::blockchain::HeaderProvider;
 

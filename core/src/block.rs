@@ -19,13 +19,13 @@ use std::collections::HashSet;
 use ccrypto::BLAKE_NULL_RLP;
 use ckey::Address;
 use cmerkle::skewed_merkle_root;
+use cmerkle::TrieFactory;
 use cstate::{StateDB, StateError, StateWithCache, TopLevelState};
 use ctypes::invoice::{Invoice, ParcelInvoice};
 use ctypes::machine::{LiveBlock, Parcels};
 use ctypes::parcel::{Error as ParcelError, Outcome as ParcelOutcome};
 use primitives::{Bytes, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
-use trie::TrieFactory;
 use unexpected::Mismatch;
 
 use super::consensus::CodeChainEngine;

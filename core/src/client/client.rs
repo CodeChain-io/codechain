@@ -21,6 +21,7 @@ use std::time::Instant;
 
 use cio::IoChannel;
 use ckey::{Address, Public};
+use cmerkle::{Result as TrieResult, TrieFactory, TrieSpec};
 use cnetwork::NodeId;
 use cstate::{
     ActionHandler, Asset, AssetAddress, AssetScheme, AssetSchemeAddress, StateDB, TopBackend, TopLevelState,
@@ -35,7 +36,6 @@ use kvdb::{DBTransaction, KeyValueDB};
 use parking_lot::{Mutex, RwLock};
 use primitives::{Bytes, H256, U256};
 use rlp::{Encodable, UntrustedRlp};
-use trie::{Result as TrieResult, TrieFactory, TrieSpec};
 
 use super::super::block::{enact, ClosedBlock, Drain, IsBlock, LockedBlock, OpenBlock, SealedBlock};
 use super::super::blockchain::{
@@ -95,8 +95,8 @@ impl Client {
         message_channel: IoChannel<ClientIoMessage>,
     ) -> Result<Arc<Client>, Error> {
         let trie_spec = match config.fat_db {
-            true => TrieSpec::Fat,
-            false => TrieSpec::Secure,
+            true => unreachable!(),
+            false => TrieSpec::Generic,
         };
 
         let trie_factory = TrieFactory::new(trie_spec);

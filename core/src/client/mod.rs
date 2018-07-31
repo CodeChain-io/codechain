@@ -30,6 +30,7 @@ pub use self::test_client::TestBlockChainClient;
 use std::sync::Arc;
 
 use ckey::{Address, Public};
+use cmerkle::Result as TrieResult;
 use cnetwork::NodeId;
 use cstate::{ActionHandler, Asset, AssetScheme, AssetSchemeAddress, TopStateInfo};
 use ctypes::invoice::{Invoice, ParcelInvoice};
@@ -38,7 +39,6 @@ use ctypes::transaction::Transaction;
 use ctypes::{BlockNumber, ShardId};
 use kvdb::KeyValueDB;
 use primitives::{Bytes, H256, U256};
-use trie::Result as TrieResult;
 
 use super::block::{ClosedBlock, OpenBlock, SealedBlock};
 use super::blockchain::ParcelAddress;
