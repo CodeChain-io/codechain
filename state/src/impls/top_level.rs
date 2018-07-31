@@ -394,6 +394,7 @@ impl TopLevelState {
                 }
 
                 let first_result = self.apply_transactions_with_check(&transactions, &changes[0])?;
+
                 for change in changes.iter().skip(1) {
                     let result = self.apply_transactions_with_check(&transactions, change)?;
                     if result != first_result {
@@ -465,7 +466,6 @@ impl TopLevelState {
         }
 
         let (new_shard_root, db, results) = self.apply_transactions_internal(transactions, shard_id, shard_root)?;
-
         if !change.post_root.is_zero() && change.post_root != new_shard_root {
             return Err(ParcelError::InvalidShardRoot(Mismatch {
                 expected: new_shard_root,
@@ -959,7 +959,7 @@ mod tests_state {
         let a = Address::zero();
         state.require_account(&a).unwrap();
         state.commit().unwrap();
-        assert_eq!(*state.root(), "27a2e0676e24a2d55dd6bc3ad8ec876108a47e70534ea49718a1f76d5c05479e".into());
+        assert_eq!(*state.root(), "db4046bb91a12a37cbfb0f09631aad96a97248423163eca791e19b430cc7fe4a".into());
     }
 
     #[test]
@@ -1457,7 +1457,7 @@ mod tests_parcel {
                 transactions,
                 changes: vec![ChangeShard {
                     shard_id,
-                    pre_root: H256::from("0xdd99c22174c7c1f12523c51d2555803c06c2932085d66ad870a4f6b35ddc47e0"),
+                    pre_root: H256::from("0xa8ed01b49cd63c6a547ac3ce357539aa634fb44331a351e3e98b9f1c3a8e3edf"),
                     post_root: H256::zero(),
                 }],
             },
@@ -1520,7 +1520,7 @@ mod tests_parcel {
                 transactions,
                 changes: vec![ChangeShard {
                     shard_id,
-                    pre_root: H256::from("0xdd99c22174c7c1f12523c51d2555803c06c2932085d66ad870a4f6b35ddc47e0"),
+                    pre_root: H256::from("0xa8ed01b49cd63c6a547ac3ce357539aa634fb44331a351e3e98b9f1c3a8e3edf"),
                     post_root: H256::zero(),
                 }],
             },
@@ -1633,7 +1633,7 @@ mod tests_parcel {
                 transactions,
                 changes: vec![ChangeShard {
                     shard_id,
-                    pre_root: H256::from("0xdd99c22174c7c1f12523c51d2555803c06c2932085d66ad870a4f6b35ddc47e0"),
+                    pre_root: H256::from("0xa8ed01b49cd63c6a547ac3ce357539aa634fb44331a351e3e98b9f1c3a8e3edf"),
                     post_root: H256::zero(),
                 }],
             },
@@ -1713,7 +1713,7 @@ mod tests_parcel {
                 transactions: vec![mint],
                 changes: vec![ChangeShard {
                     shard_id,
-                    pre_root: H256::from("0xdd99c22174c7c1f12523c51d2555803c06c2932085d66ad870a4f6b35ddc47e0"),
+                    pre_root: H256::from("0xa8ed01b49cd63c6a547ac3ce357539aa634fb44331a351e3e98b9f1c3a8e3edf"),
                     post_root: H256::zero(),
                 }],
             },
@@ -1729,7 +1729,6 @@ mod tests_parcel {
             }]),
             state.apply(&mint_parcel, &sender, &sender_public).unwrap()
         );
-
         assert_eq!(state.balance(&sender), Ok(100.into()));
         assert_eq!(state.nonce(&sender), Ok(1.into()));
 
@@ -1786,7 +1785,7 @@ mod tests_parcel {
                 transactions: vec![transfer],
                 changes: vec![ChangeShard {
                     shard_id,
-                    pre_root: H256::from("0x0ff1490ead36267f025c0ac335b0749eb502c8f74393ec781c68b4d2dcf3d9fd"),
+                    pre_root: H256::from("0x3e56ec350ed779120d7b27472aef08fefa0e72165206275efa0b4c8419ba26db"),
                     post_root: H256::zero(),
                 }],
             },
