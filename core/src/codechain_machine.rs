@@ -61,7 +61,7 @@ impl CodeChainMachine {
                 got: p.fee,
             }).into())
         }
-        p.verify_basic(self.params(), false).map_err(StateError::from)?;
+        p.verify_basic(self.params()).map_err(StateError::from)?;
 
         Ok(())
     }
