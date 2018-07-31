@@ -17,12 +17,17 @@ jobs:
       before_script:
         - cargo fetch --verbose
       script:
-        - cargo +nightly-2018-07-17 fmt -- --check
-      script: RUST_BACKTRACE=1 cargo test --verbose --all
+        - cargo +nightly-2018-07-17 fmt -- --check && RUST_BACKTRACE=1 cargo test --verbose --all
     - name: linux
       os: linux
       sudo: required
-      script: RUST_BACKTRACE=1 cargo test --verbose --all
+      install:
+        - rustup toolchain install nightly-2018-07-17
+        - rustup component add rustfmt-preview --toolchain nightly-2018-07-17
+      before_script:
+        - cargo fetch --verbose
+      script:
+        - cargo +nightly-2018-07-17 fmt -- --check && RUST_BACKTRACE=1 cargo test --verbose --all
     - stage: deploy
       name: deploy
       sudo: required

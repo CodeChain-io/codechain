@@ -15,13 +15,12 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ccrypto::blake256;
-use hashdb::DBValue;
 use hashdb::HashDB;
 use primitives::H256;
 
 use super::nibbleslice::NibbleSlice;
 use super::node::Node as RlpNode;
-use super::{Trie, TrieError};
+use super::{Query, Trie, TrieError};
 /// A `Trie` implementation using a generic `HashDB` backing database.
 ///
 /// Use it as a `Trie` trait object. You can use `db()` to get the backing database object.
@@ -73,7 +72,12 @@ impl<'db> TrieDB<'db> {
     }
 
     /// Get auxiliary
-    fn get_aux(&self, path: NibbleSlice, cur_node_hash: Option<H256>) -> super::Result<Option<DBValue>> {
+    fn get_aux<Q: Query>(
+        &self,
+        path: NibbleSlice,
+        cur_node_hash: Option<H256>,
+        query: Q,
+    ) -> super::Result<Option<Q::Item>> {
         match cur_node_hash {
             Some(hash) => {
                 let node_rlp = self.db.get(&hash).ok_or_else(|| Box::new(TrieError::IncompleteDatabase(hash)))?;
@@ -81,14 +85,18 @@ impl<'db> TrieDB<'db> {
                 match RlpNode::decoded(&node_rlp) {
                     Some(RlpNode::Leaf(partial, value)) => {
                         if partial == path {
-                            Ok(Some(value))
+                            Ok(Some(query.decode(value)))
                         } else {
                             Ok(None)
                         }
                     }
                     Some(RlpNode::Branch(partial, children)) => {
                         if path.starts_with(&partial) {
-                            self.get_aux(path.mid(partial.len() + 1), children[path.mid(partial.len()).at(0) as usize])
+                            self.get_aux(
+                                path.mid(partial.len() + 1),
+                                children[path.mid(partial.len()).at(0) as usize],
+                                query,
+                            )
                         } else {
                             Ok(None)
                         }
@@ -106,11 +114,11 @@ impl<'db> Trie for TrieDB<'db> {
         self.root
     }
 
-    fn get(&self, key: &[u8]) -> super::Result<Option<DBValue>> {
+    fn get_with<Q: Query>(&self, key: &[u8], query: Q) -> super::Result<Option<Q::Item>> {
         let path = blake256(key);
         let root = *self.root;
 
-        self.get_aux(NibbleSlice::new(&path), Some(root))
+        self.get_aux(NibbleSlice::new(&path), Some(root), query)
     }
 }
 
