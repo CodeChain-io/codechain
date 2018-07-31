@@ -15,7 +15,7 @@
   "dependencies": {
     "@types/jest": "^23.1.2",
     "@types/node": "^10.3.6",
-    "codechain-sdk": "^0.1.0-alpha.7",
+    "codechain-sdk": "^0.1.0-alpha.14",
     "jest": "^23.1.0",
     "ts-jest": "^22.4.6",
     "ts-node": "^7.0.0",
