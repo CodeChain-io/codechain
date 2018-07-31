@@ -38,7 +38,6 @@ extern crate linked_hash_map;
 extern crate memorydb;
 extern crate multimap;
 extern crate num_cpus;
-extern crate patricia_trie as trie;
 extern crate primitives;
 extern crate rand;
 #[cfg_attr(test, macro_use)]
@@ -49,7 +48,6 @@ extern crate rlp_derive;
 extern crate parking_lot;
 extern crate table;
 extern crate time;
-extern crate triehash;
 extern crate unexpected;
 extern crate util_error;
 
