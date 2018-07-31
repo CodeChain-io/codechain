@@ -104,7 +104,7 @@ If you want to run the above example in the command line, first install ``nvm`` 
 Then run the following:
 ::
 
-    node -e 'var SDK = require("codechain-sdk"); var sdk = new SDK("{ server: http://localhost:8080 }");sdk.rpc.node.ping().then(function (response) {console.log("Ping response:", response); }).catch(console.error);'
+    node -e 'var SDK = require("codechain-sdk"); var sdk = new SDK({ server: "http://localhost:8080" });sdk.rpc.node.ping().then(function (response) {console.log("Ping response:", response); }).catch(console.error);'
 
 You should receive the following response:
 ::
