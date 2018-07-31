@@ -22,13 +22,10 @@ use ctypes::parcel::{Action, Error as ParcelError, Parcel};
 use ctypes::transaction::Transaction;
 use ctypes::BlockNumber;
 use heapsize::HeapSizeOf;
-use primitives::{H160, H256};
+use primitives::H256;
 use rlp::{self, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::spec::CommonParams;
-
-/// Fake address for unsigned parcel as defined by EIP-86.
-pub const UNSIGNED_SENDER: Address = H160([0xff; 20]);
 
 /// Signed parcel information without verified signature.
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -90,11 +87,6 @@ impl UnverifiedParcel {
         self
     }
 
-    /// Checks is signature is empty.
-    pub fn is_unsigned(&self) -> bool {
-        self.signature().is_unsigned()
-    }
-
     /// Append object with a signature into RLP stream
     fn rlp_append_sealed_parcel(&self, s: &mut RlpStream) {
         s.begin_list(5);
@@ -135,10 +127,7 @@ impl UnverifiedParcel {
     }
 
     /// Verify basic signature params. Does not attempt sender recovery.
-    pub fn verify_basic(&self, params: &CommonParams, allow_empty_signature: bool) -> Result<(), ParcelError> {
-        if !(allow_empty_signature && self.is_unsigned()) {
-            self.check_low_s()?;
-        }
+    pub fn verify_basic(&self, params: &CommonParams) -> Result<(), ParcelError> {
         if self.network_id != params.network_id {
             return Err(ParcelError::InvalidNetworkId)
         }
@@ -187,7 +176,7 @@ impl UnverifiedParcel {
 pub struct SignedParcel {
     parcel: UnverifiedParcel,
     sender: Address,
-    public: Option<Public>,
+    public: Public,
 }
 
 impl HeapSizeOf for SignedParcel {
@@ -218,21 +207,13 @@ impl From<SignedParcel> for UnverifiedParcel {
 impl SignedParcel {
     /// Try to verify parcel and recover sender.
     pub fn new(parcel: UnverifiedParcel) -> Result<Self, ckey::Error> {
-        if parcel.is_unsigned() {
-            Ok(SignedParcel {
-                parcel,
-                sender: UNSIGNED_SENDER,
-                public: None,
-            })
-        } else {
-            let public = parcel.recover_public()?;
-            let sender = public_to_address(&public);
-            Ok(SignedParcel {
-                parcel,
-                sender,
-                public: Some(public),
-            })
-        }
+        let public = parcel.recover_public()?;
+        let sender = public_to_address(&public);
+        Ok(SignedParcel {
+            parcel,
+            sender,
+            public,
+        })
     }
 
     /// Signs the parcel as coming from `sender`.
@@ -247,17 +228,12 @@ impl SignedParcel {
     }
 
     /// Returns a public key of the sender.
-    pub fn public_key(&self) -> Option<Public> {
+    pub fn public_key(&self) -> Public {
         self.public.clone()
     }
 
-    /// Checks is signature is empty.
-    pub fn is_unsigned(&self) -> bool {
-        self.parcel.is_unsigned()
-    }
-
     /// Deconstructs this parcel back into `UnverifiedParcel`
-    pub fn deconstruct(self) -> (UnverifiedParcel, Address, Option<Public>) {
+    pub fn deconstruct(self) -> (UnverifiedParcel, Address, Public) {
         (self.parcel, self.sender, self.public)
     }
 }
@@ -283,9 +259,6 @@ impl LocalizedParcel {
     pub fn sender(&mut self) -> Address {
         if let Some(sender) = self.cached_sender {
             return sender
-        }
-        if self.is_unsigned() {
-            return UNSIGNED_SENDER.clone()
         }
         let sender = public_to_address(&self.recover_public()
             .expect("LocalizedParcel is always constructed from parcel from blockchain; Blockchain only stores verified parcels; qed"));
