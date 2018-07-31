@@ -17,9 +17,8 @@
 macro_rules! define_address_constructor {
     (TOP, $name:ident, $prefix:expr) => {
         fn from_transaction_hash(transaction_hash: ::primitives::H256, index: u64) -> Self {
-            let h248: ::primitives::H248 =
+            let mut hash: ::primitives::H256 =
                 ::ccrypto::Blake::blake_with_key(&transaction_hash, &::primitives::H128::from(index));
-            let mut hash: H256 = h248.into();
             hash[0..1].clone_from_slice(&[$prefix]);
             $name(hash)
         }
