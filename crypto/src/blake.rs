@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use primitives::{H248, H256, H512};
+use primitives::{H256, H512};
 use rcrypto::blake2b::Blake2b;
 use rcrypto::digest::Digest;
 
@@ -64,7 +64,6 @@ macro_rules! implement_blake {
     };
 }
 
-implement_blake!(H248, 31);
 implement_blake!(H256, 32);
 implement_blake!(H512, 64);
 
@@ -97,16 +96,6 @@ mod tests {
         let expected = "324dcf027dd4a30a932c441f365a25e86b173defa4b8e58948253471b81b72cf".into();
         let result = blake256(b"hello");
         assert_eq!(result, expected);
-    }
-
-    #[test]
-    fn blake248_generates_different_result_with_blake256() {
-        let h248 = H248::blake(b"hello");
-        let h256 = H256::blake(b"hello");
-        assert_eq!(h248[0..31].len(), h256[1..32].len());
-        assert_ne!(h248[0..31], h256[1..32]);
-        assert_eq!(h248[0..31].len(), h256[0..31].len());
-        assert_ne!(h248[0..31], h256[0..31]);
     }
 
     #[test]

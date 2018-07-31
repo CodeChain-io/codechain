@@ -1373,7 +1373,6 @@ version = "0.1.0"
 dependencies = [
  "ethcore-bytes 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "ethereum-types 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "fixed-hash 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]

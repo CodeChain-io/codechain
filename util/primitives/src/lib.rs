@@ -16,16 +16,12 @@
 
 extern crate ethcore_bytes as ebytes;
 extern crate ethereum_types;
-#[macro_use]
-extern crate fixed_hash;
 
 mod hash;
 
-pub use self::hash::{H1024, H128, H160, H248, H256, H264, H32, H512, H520, H64};
+pub use self::hash::{H1024, H128, H160, H256, H264, H32, H512, H520, H64};
 pub use ebytes::Bytes;
 pub use ethereum_types::{U128, U256, U512};
-
-use fixed_hash::core;
 
 pub mod bytes {
     pub use ebytes::ToPretty;
