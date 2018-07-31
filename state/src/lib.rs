@@ -16,6 +16,7 @@
 
 extern crate byteorder;
 extern crate codechain_crypto as ccrypto;
+extern crate codechain_merkle as cmerkle;
 #[macro_use]
 extern crate codechain_logger as clogger;
 extern crate codechain_key as ckey;
@@ -29,7 +30,6 @@ extern crate kvdb_memorydb;
 extern crate log;
 extern crate lru_cache;
 extern crate parking_lot;
-extern crate patricia_trie as trie;
 extern crate primitives;
 extern crate rlp;
 #[cfg(test)]

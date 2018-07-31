@@ -40,13 +40,13 @@ use std::fmt;
 
 use ccrypto::BLAKE_NULL_RLP;
 use ckey::{public_to_address, Address, Public};
+use cmerkle::{Result as TrieResult, Trie, TrieError, TrieFactory};
 use ctypes::invoice::Invoice;
 use ctypes::parcel::{Action, ChangeShard, Error as ParcelError, Outcome as ParcelOutcome, Parcel};
 use ctypes::transaction::{Error as TransactionError, Outcome as TransactionOutcome, Transaction};
 use ctypes::ShardId;
 use primitives::{Bytes, H256, U256};
 use rlp::NULL_RLP;
-use trie::{Result as TrieResult, Trie, TrieError, TrieFactory};
 use unexpected::Mismatch;
 
 use super::super::backend::TopBackend;

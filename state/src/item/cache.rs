@@ -22,9 +22,9 @@ use std::fmt;
 use std::hash::Hash;
 use std::vec::Vec;
 
+use cmerkle::{self, Result as TrieResult, Trie, TrieKinds, TrieMut};
 use primitives::{Bytes, H256};
 use rlp::{Decodable, Encodable};
-use trie::{self, Result as TrieResult, Trie, TrieKinds, TrieMut};
 
 pub trait CacheableItem: Clone + fmt::Debug + Decodable + Encodable {
     type Address: AsRef<[u8]> + Clone + fmt::Debug + Eq + Hash;
@@ -235,7 +235,7 @@ where
         f: &F,
         db: TrieKinds<'db>,
         from_global_cache: G,
-    ) -> trie::Result<U>
+    ) -> cmerkle::Result<U>
     where
         F: Fn(Option<&Item>) -> U,
         G: FnOnce(&'a Item::Address) -> Option<U>, {
@@ -267,7 +267,7 @@ where
         default: F,
         db: TrieKinds<'db>,
         from_db: G,
-    ) -> trie::Result<RefMut<'a, Item>>
+    ) -> cmerkle::Result<RefMut<'a, Item>>
     where
         F: FnOnce() -> Item,
         G: FnOnce() -> Option<Option<Item>>, {

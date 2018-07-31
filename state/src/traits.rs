@@ -15,10 +15,10 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ckey::{Address, Public};
+use cmerkle::Result as TrieResult;
 use ctypes::transaction::{Outcome as TransactionOutcome, Transaction};
 use ctypes::ShardId;
 use primitives::{Bytes, H256, U256};
-use trie::Result as TrieResult;
 
 use super::backend::{ShardBackend, TopBackend};
 use super::{Asset, AssetAddress, AssetScheme, AssetSchemeAddress, StateResult};

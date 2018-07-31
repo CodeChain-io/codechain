@@ -16,9 +16,9 @@
 
 use std::fmt;
 
+use cmerkle::TrieError;
 use ctypes::parcel::Error as ParcelError;
 use ctypes::transaction::Error as TransactionError;
-use trie::TrieError;
 
 #[derive(Debug)]
 pub enum Error {

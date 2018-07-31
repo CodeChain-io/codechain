@@ -19,6 +19,7 @@ use std::fmt;
 
 use ccrypto::{Blake, BLAKE_NULL_RLP};
 use ckey::Address;
+use cmerkle::{self, Result as TrieResult, Trie, TrieError, TrieFactory};
 use ctypes::invoice::Invoice;
 use ctypes::transaction::{
     AssetMintOutput, AssetTransferInput, AssetTransferOutput, Error as TransactionError, Outcome as TransactionOutcome,
@@ -28,7 +29,6 @@ use ctypes::ShardId;
 use cvm::{decode, execute, ScriptResult, VMConfig};
 use primitives::{Bytes, H256};
 use rlp::Encodable;
-use trie::{self, Result as TrieResult, Trie, TrieError, TrieFactory};
 use unexpected::Mismatch;
 
 use super::super::backend::{Backend, ShardBackend};
@@ -51,7 +51,7 @@ pub struct ShardLevelState<B> {
 
 impl<B: Backend + ShardBackend> ShardLevelState<B> {
     /// Creates new state with empty state root
-    pub fn try_new(shard_id: ShardId, mut db: B, trie_factory: TrieFactory) -> trie::Result<ShardLevelState<B>> {
+    pub fn try_new(shard_id: ShardId, mut db: B, trie_factory: TrieFactory) -> cmerkle::Result<ShardLevelState<B>> {
         let mut root = BLAKE_NULL_RLP;
 
         {
@@ -82,7 +82,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         db: B,
         root: H256,
         trie_factory: TrieFactory,
-    ) -> trie::Result<ShardLevelState<B>> {
+    ) -> cmerkle::Result<ShardLevelState<B>> {
         if !db.as_hashdb().contains(&root) {
             return Err(TrieError::InvalidStateRoot(root).into())
         }
@@ -258,7 +258,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         &'a self,
         a: &AssetSchemeAddress,
         default: F,
-    ) -> trie::Result<RefMut<'a, AssetScheme>>
+    ) -> cmerkle::Result<RefMut<'a, AssetScheme>>
     where
         F: FnOnce() -> AssetScheme, {
         let db = self.trie_factory.readonly(self.db.as_hashdb(), &self.root)?;
@@ -266,7 +266,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         self.asset_scheme.require_item_or_from(a, default, db, from_db)
     }
 
-    fn require_asset<'a, F>(&'a self, a: &AssetAddress, default: F) -> trie::Result<RefMut<'a, Asset>>
+    fn require_asset<'a, F>(&'a self, a: &AssetAddress, default: F) -> cmerkle::Result<RefMut<'a, Asset>>
     where
         F: FnOnce() -> Asset, {
         let db = self.trie_factory.readonly(self.db.as_hashdb(), &self.root)?;
@@ -280,7 +280,7 @@ impl<B: Backend + ShardBackend> ShardStateInfo for ShardLevelState<B> {
         &self.root
     }
 
-    fn asset_scheme(&self, a: &AssetSchemeAddress) -> trie::Result<Option<AssetScheme>> {
+    fn asset_scheme(&self, a: &AssetSchemeAddress) -> cmerkle::Result<Option<AssetScheme>> {
         let cached_asset = self.db.get_cached_asset_scheme(&a).and_then(|asset_scheme| asset_scheme);
         if cached_asset.is_some() {
             return Ok(cached_asset)
@@ -290,7 +290,7 @@ impl<B: Backend + ShardBackend> ShardStateInfo for ShardLevelState<B> {
         Ok(trie.get_with(a.as_ref(), ::rlp::decode::<AssetScheme>)?)
     }
 
-    fn asset(&self, a: &AssetAddress) -> trie::Result<Option<Asset>> {
+    fn asset(&self, a: &AssetAddress) -> cmerkle::Result<Option<Asset>> {
         let cached_asset = self.db.get_cached_asset(&a).and_then(|asset| asset);
         if cached_asset.is_some() {
             return Ok(cached_asset)

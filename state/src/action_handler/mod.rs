@@ -16,9 +16,9 @@
 
 mod hit;
 
+use cmerkle::TrieMut;
 use ctypes::parcel::Outcome;
 use primitives::Bytes;
-use trie::TrieMut;
 
 use super::{StateResult, TopLevelState};
 

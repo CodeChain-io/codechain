@@ -15,11 +15,11 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ccrypto::blake256;
+use cmerkle::TrieMut;
 use ctypes::invoice::Invoice;
 use ctypes::parcel::Outcome;
 use primitives::{Bytes, H256};
 use rlp::{self, Decodable, DecoderError, Encodable, UntrustedRlp};
-use trie::TrieMut;
 
 use super::super::{StateResult, TopLevelState, TopState, TopStateInfo};
 use super::ActionHandler;
