@@ -64,7 +64,7 @@ impl<'a> TrieDBMut<'a> {
     fn insert_aux(
         &mut self,
         path: NibbleSlice,
-        insert_value: DBValue,
+        insert_value: &[u8],
         cur_node_hash: Option<H256>,
         old_val: &mut Option<DBValue>,
     ) -> super::Result<H256> {
@@ -80,7 +80,7 @@ impl<'a> TrieDBMut<'a> {
                             let node_rlp = RlpNode::encoded(node);
                             let hash = self.db.insert(&node_rlp);
 
-                            *old_val = Some(value);
+                            *old_val = Some(DBValue::from_slice(value));
 
                             Ok(hash)
                         } else {
@@ -185,7 +185,7 @@ impl<'a> TrieDBMut<'a> {
                 match RlpNode::decoded(&node_rlp) {
                     Some(RlpNode::Leaf(partial, value)) => {
                         if path == partial {
-                            *old_val = Some(value);
+                            *old_val = Some(DBValue::from_slice(&value));
 
                             Ok(None)
                         } else {
@@ -316,8 +316,7 @@ impl<'a> TrieMut for TrieDBMut<'a> {
         let path = blake256(key);
         let mut old_val = None;
         let cur_hash = *self.root;
-        *self.root =
-            self.insert_aux(NibbleSlice::new(&path), DBValue::from_slice(value), Some(cur_hash), &mut old_val)?;
+        *self.root = self.insert_aux(NibbleSlice::new(&path), value, Some(cur_hash), &mut old_val)?;
 
         Ok(old_val)
     }
