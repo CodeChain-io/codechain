@@ -15,13 +15,11 @@ codechain-types = { path = "../types" }
 kvdb = { path = "../util/kvdb" }
 log = "0.4.1"
 parking_lot = "0.5"
-patricia-trie = { path = "../util/patricia_trie" }
 primitives = { path = "../util/primitives" }
 rand = "0.5.3"
 rlp = { path = "../util/rlp" }
 snap = "0.2"
 time = "0.1"
-triehash = { path = "../util/triehash" }
 
 [dev-dependencies]
 codechain-key = { path = "../key", features = ["ecdsa"] }
