@@ -143,6 +143,7 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
  * [chain_getPendingParcels](#chain_getpendingparcels)
  * [chain_getCoinbase](#chain_getcoinbase)
  * [chain_executeTransactions](#chain_executetransactions)
+ * [chain_getNetworkId](#chain_getNetworkId)
 ***
   * [miner_getWork](#miner_getwork)
   * [miner_submitWork](#miner_submitwork)
@@ -153,7 +154,6 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
   * [net_disconnect](#net_disconnect)
   * [net_getPeerCount](#net_getPeerCount)
   * [net_getPort](#net_getPort)
-  * [net_getNetworkId](#net_getNetworkId)
 ***
  * [account_getList](#account_getlist)
  * [account_create](#account_create)
@@ -889,6 +889,30 @@ Response Example
 }
 ```
 
+## chain_getNetworkId
+(not implemented) Return the nework id that is used in this chain.
+
+Params: No parameters
+
+Return Type: `number`
+
+Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "chain_getNetworkId", "params": [], "id": 6}' \
+    localhost:8080
+```
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result": 17,
+  "id":6
+}
+```
+
 ## miner_getWork
 Returns the hash of the current block and score.
 
@@ -1104,30 +1128,6 @@ Response Example
 {
   "jsonrpc":"2.0",
   "result": 3485,
-  "id":6
-}
-```
-
-## net_getNetworkId
-(not implemented) Return the nework id that is used in this chain.
-
-Params: No parameters
-
-Return Type: `number`
-
-Request Example
-```
-  curl \
-    -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "net_getNetworkId", "params": [], "id": 6}' \
-    localhost:8080
-```
-
-Response Example
-```
-{
-  "jsonrpc":"2.0",
-  "result": 17,
   "id":6
 }
 ```
