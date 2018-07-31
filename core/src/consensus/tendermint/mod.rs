@@ -101,6 +101,50 @@ pub type Height = usize;
 pub type View = usize;
 pub type BlockHash = H256;
 
+struct ProposalSeal<'a> {
+    view: &'a View,
+    signature: &'a SignatureData,
+}
+
+impl<'a> ProposalSeal<'a> {
+    fn new(view: &'a View, signature: &'a SignatureData) -> Self {
+        Self {
+            view,
+            signature,
+        }
+    }
+
+    fn seal_fields(&self) -> Vec<Bytes> {
+        vec![
+            ::rlp::encode(&*self.view).into_vec(),
+            ::rlp::encode(&*self.signature).into_vec(),
+            ::rlp::EMPTY_LIST_RLP.to_vec(),
+        ]
+    }
+}
+
+struct RegularSeal<'a> {
+    view: &'a View,
+    signatures: &'a Vec<SignatureData>,
+}
+
+impl<'a> RegularSeal<'a> {
+    fn new(view: &'a View, signatures: &'a Vec<SignatureData>) -> Self {
+        Self {
+            view,
+            signatures,
+        }
+    }
+
+    fn seal_fields(&self) -> Vec<Bytes> {
+        vec![
+            ::rlp::encode(&*self.view).into_vec(),
+            ::rlp::NULL_RLP.to_vec(),
+            ::rlp::encode_list(&*self.signatures).into_vec(),
+        ]
+    }
+}
+
 /// ConsensusEngine using `Tendermint` consensus algorithm
 pub struct Tendermint {
     client: RwLock<Option<Weak<EngineClient>>>,
@@ -375,12 +419,8 @@ impl Tendermint {
                         // Generate seal and remove old votes.
                         let precommits = self.votes.round_signatures(vote_step, &bh);
                         ctrace!(ENGINE, "Collected seal: {:?}", precommits);
-                        let seal = vec![
-                            ::rlp::encode(&vote_step.view).into_vec(),
-                            ::rlp::NULL_RLP.to_vec(),
-                            ::rlp::encode_list(&precommits).into_vec(),
-                        ];
-                        self.submit_seal(bh, seal);
+                        let seal = RegularSeal::new(&vote_step.view, &precommits);
+                        self.submit_seal(bh, seal.seal_fields());
                         self.votes.throw_out_old(&vote_step);
                     }
                     self.to_next_height(self.height.load(AtomicOrdering::SeqCst));
@@ -451,11 +491,7 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
             // Remember proposal for later seal submission.
             *self.proposal.write() = bh;
             *self.proposal_parent.write() = header.parent_hash().clone();
-            Seal::Proposal(vec![
-                ::rlp::encode(&view).into_vec(),
-                ::rlp::encode(&signature).into_vec(),
-                ::rlp::EMPTY_LIST_RLP.to_vec(),
-            ])
+            Seal::Proposal(ProposalSeal::new(&view, &signature).seal_fields())
         } else {
             cwarn!(ENGINE, "generate_seal: FAIL: accounts secret key unavailable");
             Seal::None
