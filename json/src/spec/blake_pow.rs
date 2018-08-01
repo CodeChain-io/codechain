@@ -17,13 +17,11 @@
 use super::super::uint::Uint;
 
 #[derive(Debug, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct BlakePoWParams {
     /// Block reward.
-    #[serde(rename = "blockReward")]
     pub block_reward: Option<Uint>,
-    #[serde(rename = "minScore")]
     pub min_score: Option<Uint>,
-    #[serde(rename = "blockInterval")]
     pub block_interval: Option<Uint>,
 }
 

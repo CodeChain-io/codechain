@@ -18,19 +18,14 @@ use super::{BlakePoW, Cuckoo, NullEngine, Solo, SoloAuthority, Tendermint};
 
 /// Engine deserialization.
 #[derive(Debug, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum Engine {
     /// Null engine.
-    #[serde(rename = "null")]
     Null(NullEngine),
-    #[serde(rename = "solo")]
     Solo(Solo),
-    #[serde(rename = "soloAuthority")]
     SoloAuthority(SoloAuthority),
-    #[serde(rename = "tendermint")]
     Tendermint(Tendermint),
-    #[serde(rename = "cuckoo")]
     Cuckoo(Cuckoo),
-    #[serde(rename = "blakePoW")]
     BlakePoW(BlakePoW),
 }
 

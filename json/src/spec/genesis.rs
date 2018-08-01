@@ -21,6 +21,7 @@ use super::Seal;
 
 /// Spec genesis.
 #[derive(Debug, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Genesis {
     /// Seal.
     pub seal: Seal,
@@ -31,19 +32,14 @@ pub struct Genesis {
     /// Block timestamp, defaults to 0.
     pub timestamp: Option<Uint>,
     /// Parent hash, defaults to 0.
-    #[serde(rename = "parentHash")]
     pub parent_hash: Option<H256>,
     /// Parcels root.
-    #[serde(rename = "parcelsRoot")]
     pub parcels_root: Option<H256>,
     /// Invoices root.
-    #[serde(rename = "invoicesRoot")]
     pub invoices_root: Option<H256>,
     /// State root.
-    #[serde(rename = "stateRoot")]
     pub state_root: Option<H256>,
     /// Extra data.
-    #[serde(rename = "extraData")]
     pub extra_data: Option<Bytes>,
 }
 

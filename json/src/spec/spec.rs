@@ -21,11 +21,11 @@ use std::io::Read;
 
 /// Spec deserialization.
 #[derive(Debug, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Spec {
     /// Spec name.
     pub name: String,
     /// Special fork name.
-    #[serde(rename = "dataDir")]
     pub data_dir: Option<String>,
     /// Engine.
     pub engine: Engine,

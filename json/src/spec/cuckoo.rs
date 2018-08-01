@@ -17,19 +17,14 @@
 use super::super::uint::Uint;
 
 #[derive(Debug, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CuckooParams {
     /// Block reward.
-    #[serde(rename = "blockReward")]
     pub block_reward: Option<Uint>,
-    #[serde(rename = "blockInterval")]
     pub block_interval: Option<Uint>,
-    #[serde(rename = "minScore")]
     pub min_score: Option<Uint>,
-    #[serde(rename = "maxVertex")]
     pub max_vertex: Option<Uint>,
-    #[serde(rename = "maxEdge")]
     pub max_edge: Option<Uint>,
-    #[serde(rename = "cycleLength")]
     pub cycle_length: Option<Uint>,
 }
 

@@ -18,24 +18,20 @@ use super::super::uint::Uint;
 
 /// Spec params.
 #[derive(Debug, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Params {
     /// Maximum size of extra data.
-    #[serde(rename = "maxExtraDataSize")]
     pub max_extra_data_size: Uint,
     /// Maximum size of metadata.
-    #[serde(rename = "maxMetadataSize")]
     pub max_metadata_size: Uint,
     /// Network id.
     #[serde(rename = "networkID")]
     pub network_id: Uint,
     /// Minimum parcel cost.
-    #[serde(rename = "minParcelCost")]
     pub min_parcel_cost: Uint,
     /// Maximum size of block body.
-    #[serde(rename = "maxBodySize")]
     pub max_body_size: Uint,
     /// Snapshot creation period in unit of block numbers.
-    #[serde(rename = "snapshotPeriod")]
     pub snapshot_period: Uint,
 }
 
