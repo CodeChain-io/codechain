@@ -54,6 +54,8 @@ pub struct CommonParams {
     pub max_body_size: usize,
     /// Snapshot creation period in unit of block numbers.
     pub snapshot_period: u64,
+    /// Flag whether to use shard validator.
+    pub use_shard_validator: bool,
 }
 
 impl From<cjson::spec::Params> for CommonParams {
@@ -65,6 +67,7 @@ impl From<cjson::spec::Params> for CommonParams {
             min_parcel_cost: p.min_parcel_cost.into(),
             max_body_size: p.max_body_size.into(),
             snapshot_period: p.snapshot_period.into(),
+            use_shard_validator: p.use_shard_validator.into(),
         }
     }
 }

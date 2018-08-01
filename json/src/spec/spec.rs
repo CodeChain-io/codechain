@@ -79,7 +79,8 @@ mod tests {
                 "networkID" : "0x2",
                 "minParcelCost" : "10",
                 "maxBodySize": 4194304,
-                "snapshotPeriod": 16384
+                "snapshotPeriod": 16384,
+                "useShardValidator": true
             },
             "genesis": {
                 "seal": {
