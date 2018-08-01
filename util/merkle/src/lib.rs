@@ -38,6 +38,7 @@ pub mod triedb;
 pub mod triedbmut;
 pub mod triehash;
 
+pub use self::node::Node;
 pub use skewed::skewed_merkle_root;
 pub use triedb::TrieDB;
 pub use triedbmut::TrieDBMut;
