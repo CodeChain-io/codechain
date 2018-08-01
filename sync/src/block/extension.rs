@@ -68,7 +68,7 @@ impl Extension {
 
     fn dismiss_request(&self, token: &NodeId, id: u64) {
         if let Some(requests) = self.requests.write().get_mut(token) {
-            requests.retain(|(i, _)| *i == id);
+            requests.retain(|(i, _)| *i != id);
         }
     }
 
@@ -433,20 +433,34 @@ impl Extension {
 
         let mut exists = Vec::new();
         for header in completed {
-            let hash = header.hash();
             // FIXME: handle import errors
-            match self.client.import_header(header.into_inner()) {
-                Err(BlockImportError::Import(ImportError::AlreadyInChain)) => exists.push(hash),
+            match self.client.import_header(header.clone().into_inner()) {
+                Err(BlockImportError::Import(ImportError::AlreadyInChain)) => exists.push(header),
                 _ => {}
             }
         }
 
         if let Some(peer) = self.header_downloaders.write().get_mut(from) {
-            peer.mark_as_imported(exists);
+            peer.mark_as_imported(exists.iter().map(|h| h.hash()).collect());
             if let Some(request) = peer.create_request() {
                 self.send_request(from, request);
             }
         }
+
+        let body_targets = exists
+            .iter()
+            .filter(|header| self.client.block_body(BlockId::Hash(header.hash())).is_none())
+            .map(|header| {
+                let prev_root = if let Some(parent) = self.client.block_header(BlockId::Hash(header.parent_hash())) {
+                    parent.parcels_root()
+                } else {
+                    H256::zero()
+                };
+                (header.hash(), prev_root, header.parcels_root())
+            })
+            .collect();
+
+        self.body_downloader.lock().add_target(body_targets);
     }
 
     fn on_body_response(&self, from: &NodeId, hashes: Vec<H256>, bodies: Vec<Vec<UnverifiedParcel>>) {
