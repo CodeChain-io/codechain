@@ -141,6 +141,7 @@ impl UnverifiedParcel {
                 ..
             } => {
                 for t in transactions {
+                    t.verify()?;
                     match &t {
                         Transaction::AssetMint {
                             network_id,
