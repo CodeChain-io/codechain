@@ -1142,6 +1142,7 @@ pub mod test {
             action: Action::ChangeShardState {
                 transactions: vec![],
                 changes: vec![],
+                signatures: vec![],
             },
         };
         let keypair = Random.generate().unwrap();
@@ -1179,6 +1180,7 @@ pub mod test {
                     pre_root: H256::zero(),
                     post_root: H256::zero(),
                 }],
+                signatures: vec![],
             },
         };
         let keypair = Random.generate().unwrap();
@@ -1225,6 +1227,7 @@ pub mod test {
                     pre_root: H256::zero(),
                     post_root: H256::zero(),
                 }],
+                signatures: vec![],
             },
         };
         let keypair = Random.generate().unwrap();
@@ -1308,6 +1311,7 @@ pub mod test {
                     pre_root: H256::zero(),
                     post_root: H256::zero(),
                 }],
+                signatures: vec![],
             },
         };
         let signed = SignedParcel::new_with_sign(parcel, keypair.private());

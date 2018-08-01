@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ccrypto::Blake;
-use ckey::{Address, Public};
+use ckey::{Address, Public, SignatureData};
 use primitives::{Bytes, H256, U256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
@@ -43,6 +43,7 @@ pub enum Action {
         /// Transaction, can be either asset mint or asset transfer
         transactions: Vec<Transaction>,
         changes: Vec<ChangeShard>,
+        signatures: Vec<SignatureData>,
     },
     Payment {
         receiver: Address,
@@ -69,11 +70,13 @@ impl Encodable for Action {
             Action::ChangeShardState {
                 transactions,
                 changes,
+                signatures,
             } => {
-                s.begin_list(3);
+                s.begin_list(4);
                 s.append(&CHANGE_SHARD_STATE);
                 s.append_list(transactions);
                 s.append_list(changes);
+                s.append_list(signatures);
             }
             Action::Payment {
                 receiver,
@@ -108,12 +111,13 @@ impl Decodable for Action {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
         match rlp.val_at(0)? {
             CHANGE_SHARD_STATE => {
-                if rlp.item_count()? != 3 {
+                if rlp.item_count()? != 4 {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
                 Ok(Action::ChangeShardState {
                     transactions: rlp.list_at(1)?,
                     changes: rlp.list_at(2)?,
+                    signatures: rlp.list_at(3)?,
                 })
             }
             PAYMENT => {
