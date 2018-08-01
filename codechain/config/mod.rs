@@ -97,6 +97,12 @@ pub struct Rpc {
     pub disable: bool,
     pub interface: String,
     pub port: u16,
+    #[serde(default = "default_enable_devel_api")]
+    pub enable_devel_api: bool,
+}
+
+fn default_enable_devel_api() -> bool {
+    cfg!(debug_assertions)
 }
 
 #[derive(Deserialize)]
@@ -294,6 +300,9 @@ impl Rpc {
         }
         if let Some(interface) = matches.value_of("jsonrpc-interface") {
             self.interface = interface.to_string();
+        }
+        if matches.is_present("enable-devel-api") {
+            self.enable_devel_api = true;
         }
         Ok(())
     }
