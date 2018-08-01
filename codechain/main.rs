@@ -358,7 +358,7 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
     let _rpc_server = {
         if !config.rpc.disable {
             let rpc_config = (&config.rpc).into();
-            Some(rpc_http_start(rpc_config, Arc::clone(&rpc_apis_deps))?)
+            Some(rpc_http_start(rpc_config, config.rpc.enable_devel_api, Arc::clone(&rpc_apis_deps))?)
         } else {
             None
         }
@@ -367,7 +367,7 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
     let _ipc_server = {
         if !config.ipc.disable {
             let ipc_config = (&config.ipc).into();
-            Some(rpc_ipc_start(ipc_config, Arc::clone(&rpc_apis_deps))?)
+            Some(rpc_ipc_start(ipc_config, config.rpc.enable_devel_api, Arc::clone(&rpc_apis_deps))?)
         } else {
             None
         }

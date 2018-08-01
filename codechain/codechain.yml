@@ -92,6 +92,10 @@ args:
         long: no-jsonrpc
         help: Do not run jsonrpc.
         takes_value: false
+    - enable-devel-api:
+        long: enable-devel-api
+        help: Enable the RPC's devel APIs
+        takes_value: false
     - author:
         long: author
         help: Specify the block author (aka "coinbase") address for sending block rewards from sealed blocks.
