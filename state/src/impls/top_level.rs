@@ -378,6 +378,7 @@ impl TopLevelState {
             Action::ChangeShardState {
                 transactions,
                 changes,
+                signatures: _,
             } => {
                 if changes.len() == 0 {
                     return Ok(ParcelOutcome::Transactions(vec![]))
@@ -1048,6 +1049,7 @@ mod tests_parcel {
             action: Action::ChangeShardState {
                 transactions: vec![],
                 changes: vec![],
+                signatures: vec![],
             },
         };
         let (sender, sender_public) = address();
@@ -1074,6 +1076,7 @@ mod tests_parcel {
             action: Action::ChangeShardState {
                 transactions: vec![],
                 changes: vec![],
+                signatures: vec![],
             },
         };
         let (sender, sender_public) = address();
@@ -1106,6 +1109,7 @@ mod tests_parcel {
             action: Action::ChangeShardState {
                 transactions: vec![],
                 changes: vec![],
+                signatures: vec![],
             },
         };
         let (sender, sender_public) = address();
@@ -1460,6 +1464,7 @@ mod tests_parcel {
                     pre_root: H256::from("0xdd99c22174c7c1f12523c51d2555803c06c2932085d66ad870a4f6b35ddc47e0"),
                     post_root: H256::zero(),
                 }],
+                signatures: vec![],
             },
             nonce: 0.into(),
             network_id: 0xCA,
@@ -1523,6 +1528,7 @@ mod tests_parcel {
                     pre_root: H256::from("0xdd99c22174c7c1f12523c51d2555803c06c2932085d66ad870a4f6b35ddc47e0"),
                     post_root: H256::zero(),
                 }],
+                signatures: vec![],
             },
             nonce: 0.into(),
             network_id: 0xCA,
@@ -1636,6 +1642,7 @@ mod tests_parcel {
                     pre_root: H256::from("0xdd99c22174c7c1f12523c51d2555803c06c2932085d66ad870a4f6b35ddc47e0"),
                     post_root: H256::zero(),
                 }],
+                signatures: vec![],
             },
         };
         let (sender, sender_public) = address();
@@ -1716,6 +1723,7 @@ mod tests_parcel {
                     pre_root: H256::from("0xdd99c22174c7c1f12523c51d2555803c06c2932085d66ad870a4f6b35ddc47e0"),
                     post_root: H256::zero(),
                 }],
+                signatures: vec![],
             },
         };
         let (sender, sender_public) = address();
@@ -1789,6 +1797,7 @@ mod tests_parcel {
                     pre_root: H256::from("0x0ff1490ead36267f025c0ac335b0749eb502c8f74393ec781c68b4d2dcf3d9fd"),
                     post_root: H256::zero(),
                 }],
+                signatures: vec![],
             },
         };
 
@@ -1959,6 +1968,7 @@ mod tests_parcel {
                     pre_root: H256::zero(),
                     post_root: H256::zero(),
                 }],
+                signatures: vec![],
             },
             network_id: 0xCA,
         };
@@ -2027,6 +2037,7 @@ mod tests_parcel {
                     pre_root: H256::zero(),
                     post_root: H256::zero(),
                 }],
+                signatures: vec![],
             },
         };
 

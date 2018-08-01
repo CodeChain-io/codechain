@@ -374,6 +374,7 @@ pub trait BlockProvider: HeaderProvider + BodyProvider + InvoiceProvider {
             Action::ChangeShardState {
                 transactions,
                 changes: _,
+                signatures: _,
             }
                 if transaction.index < transactions.len() =>
             {

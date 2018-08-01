@@ -220,6 +220,7 @@ mod tests {
             action: Action::ChangeShardState {
                 transactions,
                 changes: vec![],
+                signatures: vec![],
             },
             network_id: 0u64,
         };

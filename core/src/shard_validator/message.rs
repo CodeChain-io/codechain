@@ -123,6 +123,7 @@ mod tests {
         rlp_encode_and_decode_test!(Message::Action(Action::ChangeShardState {
             transactions: vec![],
             changes: vec![],
+            signatures: vec![],
         }));
     }
 
