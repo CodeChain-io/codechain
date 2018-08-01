@@ -14,15 +14,17 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::collections::HashMap;
 use std::io::Cursor;
 
 use byteorder::{BigEndian, ReadBytesExt};
 use ccrypto::blake256;
 use ckey::Address;
-use primitives::{Bytes, H256};
+use primitives::{Bytes, H256, U128};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::super::ShardId;
+use super::error::Error;
 
 #[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -163,6 +165,52 @@ impl Transaction {
             } => vec![*shard_id],
         }
     }
+
+    pub fn verify(&self) -> Result<(), Error> {
+        match self {
+            Transaction::AssetTransfer {
+                inputs,
+                outputs,
+                ..
+            } => {
+                // FIXME: check burns
+                if !is_input_and_output_consistent(inputs, outputs) {
+                    return Err(Error::InconsistentTransactionInOut)
+                }
+                Ok(())
+            }
+            Transaction::AssetMint {
+                ..
+            } => Ok(()),
+        }
+    }
+}
+
+fn is_input_and_output_consistent(inputs: &[AssetTransferInput], outputs: &[AssetTransferOutput]) -> bool {
+    let mut sum: HashMap<H256, U128> = HashMap::new();
+
+    for input in inputs {
+        let ref asset_type = input.prev_out.asset_type;
+        let ref amount = input.prev_out.amount;
+        let current_amount = sum.get(&asset_type).cloned().unwrap_or(U128::zero());
+        sum.insert(asset_type.clone(), current_amount + U128::from(*amount));
+    }
+    for output in outputs {
+        let ref asset_type = output.asset_type;
+        let ref amount = output.amount;
+        let current_amount = if let Some(current_amount) = sum.get(&asset_type) {
+            if current_amount < &U128::from(*amount) {
+                return false
+            }
+            current_amount.clone()
+        } else {
+            return false
+        };
+        let t = sum.insert(asset_type.clone(), current_amount - From::from(*amount));
+        debug_assert!(t.is_some());
+    }
+
+    sum.iter().all(|(_, sum)| sum.is_zero())
 }
 
 type TransactionId = u8;
@@ -301,5 +349,228 @@ mod tests {
         };
 
         assert_eq!(0xBEEF, input.related_shard());
+    }
+
+    #[test]
+    fn test_is_input_and_output_consistent() {
+        let asset_type = H256::random();
+        let amount = 100;
+
+        assert!(is_input_and_output_consistent(
+            &[AssetTransferInput {
+                prev_out: AssetOutPoint {
+                    transaction_hash: H256::random(),
+                    index: 0,
+                    asset_type,
+                    amount,
+                },
+                lock_script: vec![],
+                unlock_script: vec![],
+            }],
+            &[AssetTransferOutput {
+                lock_script_hash: H256::random(),
+                parameters: vec![],
+                asset_type,
+                amount,
+            }]
+        ));
+    }
+
+    #[test]
+    fn multiple_asset_is_input_and_output_consistent() {
+        let asset_type1 = H256::random();
+        let asset_type2 = {
+            let mut asset_type = H256::random();
+            while asset_type == asset_type1 {
+                asset_type = H256::random();
+            }
+            asset_type
+        };
+        let amount1 = 100;
+        let amount2 = 200;
+
+        assert!(is_input_and_output_consistent(
+            &[
+                AssetTransferInput {
+                    prev_out: AssetOutPoint {
+                        transaction_hash: H256::random(),
+                        index: 0,
+                        asset_type: asset_type1,
+                        amount: amount1,
+                    },
+                    lock_script: vec![],
+                    unlock_script: vec![],
+                },
+                AssetTransferInput {
+                    prev_out: AssetOutPoint {
+                        transaction_hash: H256::random(),
+                        index: 0,
+                        asset_type: asset_type2,
+                        amount: amount2,
+                    },
+                    lock_script: vec![],
+                    unlock_script: vec![],
+                },
+            ],
+            &[
+                AssetTransferOutput {
+                    lock_script_hash: H256::random(),
+                    parameters: vec![],
+                    asset_type: asset_type1,
+                    amount: amount1,
+                },
+                AssetTransferOutput {
+                    lock_script_hash: H256::random(),
+                    parameters: vec![],
+                    asset_type: asset_type2,
+                    amount: amount2,
+                },
+            ]
+        ));
+    }
+
+    #[test]
+    fn multiple_asset_different_order_is_input_and_output_consistent() {
+        let asset_type1 = H256::random();
+        let asset_type2 = {
+            let mut asset_type = H256::random();
+            while asset_type == asset_type1 {
+                asset_type = H256::random();
+            }
+            asset_type
+        };
+        let amount1 = 100;
+        let amount2 = 200;
+
+        assert!(is_input_and_output_consistent(
+            &[
+                AssetTransferInput {
+                    prev_out: AssetOutPoint {
+                        transaction_hash: H256::random(),
+                        index: 0,
+                        asset_type: asset_type1,
+                        amount: amount1,
+                    },
+                    lock_script: vec![],
+                    unlock_script: vec![],
+                },
+                AssetTransferInput {
+                    prev_out: AssetOutPoint {
+                        transaction_hash: H256::random(),
+                        index: 0,
+                        asset_type: asset_type2,
+                        amount: amount2,
+                    },
+                    lock_script: vec![],
+                    unlock_script: vec![],
+                },
+            ],
+            &[
+                AssetTransferOutput {
+                    lock_script_hash: H256::random(),
+                    parameters: vec![],
+                    asset_type: asset_type2,
+                    amount: amount2,
+                },
+                AssetTransferOutput {
+                    lock_script_hash: H256::random(),
+                    parameters: vec![],
+                    asset_type: asset_type1,
+                    amount: amount1,
+                },
+            ]
+        ));
+    }
+
+    #[test]
+    fn empty_is_input_and_output_consistent() {
+        assert!(is_input_and_output_consistent(&[], &[]));
+    }
+
+    #[test]
+    fn fail_if_output_has_more_asset() {
+        let asset_type = H256::random();
+        let output_amount = 100;
+        assert!(!is_input_and_output_consistent(
+            &[],
+            &[AssetTransferOutput {
+                lock_script_hash: H256::random(),
+                parameters: vec![],
+                asset_type,
+                amount: output_amount,
+            }]
+        ));
+    }
+
+    #[test]
+    fn fail_if_input_has_more_asset() {
+        let asset_type = H256::random();
+        let input_amount = 100;
+
+        assert!(!is_input_and_output_consistent(
+            &[AssetTransferInput {
+                prev_out: AssetOutPoint {
+                    transaction_hash: H256::random(),
+                    index: 0,
+                    asset_type,
+                    amount: input_amount,
+                },
+                lock_script: vec![],
+                unlock_script: vec![],
+            }],
+            &[]
+        ));
+    }
+
+    #[test]
+    fn fail_if_input_is_larger_than_output() {
+        let asset_type = H256::random();
+        let input_amount = 100;
+        let output_amount = 80;
+
+        assert!(!is_input_and_output_consistent(
+            &[AssetTransferInput {
+                prev_out: AssetOutPoint {
+                    transaction_hash: H256::random(),
+                    index: 0,
+                    asset_type,
+                    amount: input_amount,
+                },
+                lock_script: vec![],
+                unlock_script: vec![],
+            }],
+            &[AssetTransferOutput {
+                lock_script_hash: H256::random(),
+                parameters: vec![],
+                asset_type,
+                amount: output_amount,
+            }]
+        ));
+    }
+
+    #[test]
+    fn fail_if_input_is_smaller_than_output() {
+        let asset_type = H256::random();
+        let input_amount = 80;
+        let output_amount = 100;
+
+        assert!(!is_input_and_output_consistent(
+            &[AssetTransferInput {
+                prev_out: AssetOutPoint {
+                    transaction_hash: H256::random(),
+                    index: 0,
+                    asset_type,
+                    amount: input_amount,
+                },
+                lock_script: vec![],
+                unlock_script: vec![],
+            }],
+            &[AssetTransferOutput {
+                lock_script_hash: H256::random(),
+                parameters: vec![],
+                asset_type,
+                amount: output_amount,
+            }]
+        ));
     }
 }
