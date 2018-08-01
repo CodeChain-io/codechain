@@ -14,16 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod account;
-mod chain;
-mod devel;
-mod miner;
-mod net;
-mod shard_validator;
+mod client;
+mod config;
+mod extension;
+mod message;
 
-pub use self::account::Account;
-pub use self::chain::Chain;
-pub use self::devel::Devel;
-pub use self::miner::Miner;
-pub use self::net::Net;
-pub use self::shard_validator::ShardValidator;
+pub use self::client::ShardValidatorClient;
+pub use self::config::ShardValidatorConfig;
+pub use self::extension::ShardValidator;

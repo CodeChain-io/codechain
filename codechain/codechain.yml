@@ -181,6 +181,23 @@ args:
         takes_value: true
         conflicts_with:
             - no-stratum
+    - no-shard-validator:
+        long: no-shard-validator
+        help: Do not run as a shard validator.
+    - shard-validator:
+        long: shard-validator
+        value_name: ACCOUNT
+        help: Specify the account for shard validator.
+        takes_value: true
+        conflicts_with:
+            - no-shard-validator
+    - shard-validator-password-path:
+        long: shard-validator-password-path
+        value_name: PATH
+        help: Specify the password path of account for shard validator.
+        takes_value: true
+        conflicts_with:
+            - no-shard-validator
 subcommands:
     - account:
         about: account managing commands

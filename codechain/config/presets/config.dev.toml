@@ -45,3 +45,5 @@ path = "snapshot"
 disable = false
 port = 8008
 
+[shard_validator]
+disable = true

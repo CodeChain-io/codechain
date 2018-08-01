@@ -19,7 +19,7 @@ mod chain_type;
 use std::fs;
 use std::str::FromStr;
 
-use ccore::StratumConfig;
+use ccore::{ShardValidatorConfig, StratumConfig};
 use ckey::Address;
 use clap;
 use cnetwork::{NetworkConfig, SocketAddr};
@@ -40,6 +40,7 @@ pub struct Config {
     pub rpc: Rpc,
     pub snapshot: Snapshot,
     pub stratum: Stratum,
+    pub shard_validator: ShardValidator,
 }
 
 #[derive(Deserialize)]
@@ -119,6 +120,14 @@ pub struct Stratum {
     pub port: u16,
 }
 
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ShardValidator {
+    pub disable: bool,
+    pub account: Option<Address>,
+    pub password_path: Option<String>,
+}
+
 impl<'a> Into<RpcIpcConfig> for &'a Ipc {
     fn into(self) -> RpcIpcConfig {
         debug_assert!(!self.disable);
@@ -168,6 +177,17 @@ impl<'a> Into<StratumConfig> for &'a Stratum {
             listen_addr: "127.0.0.1".to_string(),
             port: self.port,
             secret: None,
+        }
+    }
+}
+
+impl<'a> Into<ShardValidatorConfig> for &'a ShardValidator {
+    fn into(self) -> ShardValidatorConfig {
+        debug_assert!(self.disable);
+
+        ShardValidatorConfig {
+            account: self.account.unwrap(),
+            password_path: self.password_path.clone(),
         }
     }
 }
@@ -334,6 +354,23 @@ impl Stratum {
     }
 }
 
+impl ShardValidator {
+    pub fn overwrite_with(&mut self, matches: &clap::ArgMatches) -> Result<(), String> {
+        if matches.is_present("no-shard-validator") {
+            self.disable = true;
+        }
+
+        if let Some(account) = matches.value_of("shard-validator") {
+            self.account = Some(parse_address(account)?)
+        }
+        if let Some(password_path) = matches.value_of("shard-validator-password-path") {
+            self.password_path = Some(password_path.to_string());
+        }
+
+        Ok(())
+    }
+}
+
 pub fn load_config(matches: &clap::ArgMatches) -> Result<Config, String> {
     let config_path = matches.value_of("config").unwrap_or(DEFAULT_CONFIG_PATH);
     let toml_string = fs::read_to_string(config_path).map_err(|e| format!("Fail to read file: {:?}", e))?;
@@ -347,6 +384,7 @@ pub fn load_config(matches: &clap::ArgMatches) -> Result<Config, String> {
     config.rpc.overwrite_with(&matches)?;
     config.snapshot.overwrite_with(&matches)?;
     config.stratum.overwrite_with(&matches)?;
+    config.shard_validator.overwrite_with(&matches)?;
 
     Ok(config)
 }

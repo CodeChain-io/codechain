@@ -16,7 +16,7 @@
 
 use std::sync::Arc;
 
-use ccore::{AccountProvider, Client, Miner};
+use ccore::{AccountProvider, Client, Miner, ShardValidator};
 use cnetwork::NetworkControl;
 use crpc::{MetaIoHandler, Params, Value};
 
@@ -25,6 +25,7 @@ pub struct ApiDependencies {
     pub miner: Arc<Miner>,
     pub network_control: Arc<NetworkControl>,
     pub account_provider: Arc<AccountProvider>,
+    pub shard_validator: Arc<ShardValidator>,
 }
 
 impl ApiDependencies {
@@ -39,6 +40,7 @@ impl ApiDependencies {
         handler.extend_with(
             AccountClient::new(&self.account_provider, self.client.engine().params().network_id).to_delegate(),
         );
+        handler.extend_with(ShardValidatorClient::new(Arc::clone(&self.shard_validator)).to_delegate());
     }
 }
 
