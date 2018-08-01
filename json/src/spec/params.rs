@@ -33,6 +33,7 @@ pub struct Params {
     pub max_body_size: Uint,
     /// Snapshot creation period in unit of block numbers.
     pub snapshot_period: Uint,
+    pub use_shard_validator: bool,
 }
 
 #[cfg(test)]
@@ -51,7 +52,8 @@ mod tests {
             "networkID" : "0x1",
             "minParcelCost" : "10",
             "maxBodySize" : 4194304,
-            "snapshotPeriod": 16384
+            "snapshotPeriod": 16384,
+            "useShardValidator": true
         }"#;
 
         let deserialized: Params = serde_json::from_str(s).unwrap();
@@ -61,5 +63,6 @@ mod tests {
         assert_eq!(deserialized.min_parcel_cost, Uint(U256::from(10)));
         assert_eq!(deserialized.max_body_size, Uint(4194304.into()));
         assert_eq!(deserialized.snapshot_period, Uint(16384.into()));
+        assert_eq!(deserialized.use_shard_validator, true);
     }
 }
