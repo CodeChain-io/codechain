@@ -301,11 +301,14 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
     let miner = new_miner(&config, &spec, ap.clone())?;
     let client = client_start(&config, &spec, miner.clone())?;
 
-    let shard_validator = if config.shard_validator.disable {
-        ShardValidator::new(None, Arc::clone(&ap))
+
+    let shard_validator = if spec.params().use_shard_validator {
+        None
+    } else if config.shard_validator.disable {
+        Some(ShardValidator::new(None, Arc::clone(&ap)))
     } else {
         let shard_validator_config = (&config.shard_validator).into();
-        new_shard_validator(shard_validator_config, Arc::clone(&ap))?
+        Some(new_shard_validator(shard_validator_config, Arc::clone(&ap))?)
     };
 
     let network_service: Arc<NetworkControl> = {
@@ -331,7 +334,9 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
                 service.register_extension(consensus_extension)?;
             }
 
-            service.register_extension(shard_validator.clone())?;
+            if let Some(shard_validator) = &shard_validator {
+                service.register_extension(shard_validator.clone())?;
+            }
 
             for address in network_config.bootstrap_addresses {
                 service.connect_to(address)?;
