@@ -308,9 +308,17 @@ impl TopLevelState {
         fee_payer: &Address,
         fee_payer_public: &Public,
     ) -> StateResult<ParcelOutcome> {
+        // Change the address to a master address if it is a regular key.
+        let fee_payer = if self.regular_account_exists_and_not_null(fee_payer)? {
+            let regular_account = self.require_regular_account_from_address(fee_payer)?;
+            public_to_address(&regular_account.master_account())
+        } else {
+            fee_payer.clone()
+        };
+
         self.create_checkpoint(PARCEL_FEE_CHECKPOINT);
 
-        match self.apply_internal(parcel, fee_payer, fee_payer_public) {
+        match self.apply_internal(parcel, &fee_payer, fee_payer_public) {
             Err(StateError::Transaction(_)) => unreachable!(),
             Err(err) => {
                 self.revert_to_checkpoint(PARCEL_FEE_CHECKPOINT);
@@ -559,14 +567,7 @@ impl TopLevelState {
     }
 
     fn require_account<'a>(&'a self, a: &Address) -> TrieResult<RefMut<'a, Account>> {
-        // Change the address to a master address if a regular key exists.
-
-        let a = if self.regular_account_exists_and_not_null(a)? {
-            let regular_account = self.require_regular_account_from_address(a)?;
-            public_to_address(&regular_account.master_account())
-        } else {
-            a.clone()
-        };
+        debug_assert_eq!(Ok(false), self.regular_account_exists_and_not_null(a));
 
         let default = || Account::new(0u8.into(), 0.into());
         let db = self.trie_factory.readonly(self.db.as_hashdb(), &self.root)?;
