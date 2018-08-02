@@ -45,7 +45,7 @@ use primitives::{Bytes, H256};
 
 use super::{
     Account, ActionHandler, Asset, AssetAddress, AssetScheme, AssetSchemeAddress, Metadata, MetadataAddress,
-    RegularAccount, RegularAccountAddress, Shard, ShardAddress,
+    RegularAccount, RegularAccountAddress, Shard, ShardAddress, World, WorldAddress,
 };
 
 
@@ -95,10 +95,14 @@ pub trait TopBackend: Send {
 }
 
 pub trait ShardBackend: Send {
+    fn add_to_world_cache(&mut self, address: WorldAddress, item: Option<World>, modified: bool);
+
     /// Add an asset entry to the cache.
     fn add_to_asset_scheme_cache(&mut self, addr: AssetSchemeAddress, asset: Option<AssetScheme>, modified: bool);
     /// Add an asset entry to the cache.
     fn add_to_asset_cache(&mut self, addr: AssetAddress, asset: Option<Asset>, modified: bool);
+
+    fn get_cached_world(&self, hash: &WorldAddress) -> Option<Option<World>>;
 
     /// Get basic copy of the cached account. Not required to include storage.
     /// Returns 'None' if cache is disabled or if the the asset/asset scheme is not cached.
