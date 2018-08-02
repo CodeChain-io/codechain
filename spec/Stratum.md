@@ -101,7 +101,7 @@ Params:
  1. powHash: `string`
  2. seal: `string[]`
 
-Return Type: `bool`
+Return Type: `null`
 
 Request Example
 ```
@@ -118,27 +118,24 @@ Response Example
 {
     "jsonrpc": "2.0",
     "id": 4,
-    "result": true,
+    "result": null,
     "error": null
 }
 ```
 
-## Exception Handling (DRAFT)
+## Exception Handling
 Stratum defines simple exception handling. Example of a rejected share looks like:
 ```
 {
     "jsonrpc": "2.0",
     "id": 5,
-    "result": null,
-    "error": (21, "Job not found", null)
+    "error": {"code":21, "message":"Invalid Pow hash"}
 }
 ```
 
-Where the error field is defined as (error_code, human_readable_message, traceback). Traceback may contain additional information about debugging errors.
+Where the error field is defined as (error_code, human_readable_message).
 Proposed error codes for mining services are:
-* 20 - Other/Unknown
-* 21 - Job not found (=stale)
-* 22 - Duplicate share
-* 23 - Low target share
-* 24 - Unauthorized worker
-* 25 - Not subscribed
+* 20 - Internal Error
+* 21 - Invalid Pow hash (=stale)
+* 22 - Invalid the nonce
+* 23 - Unauthorized worker

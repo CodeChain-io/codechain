@@ -181,22 +181,24 @@ impl StratumImpl {
 
     /// rpc method `mining.submit`
     fn submit(&self, params: Params, meta: SocketMetadata) -> RpcResult {
-        params
-            .parse::<(H256, Vec<String>)>()
-            .map(|(pow_hash, seal)| {
-                let seal = seal.iter().cloned().map(Into::into).collect();
-                match self.dispatcher.submit((pow_hash, seal)) {
-                    Ok(()) => {
-                        self.update_peers(&meta.tcp_dispatcher.expect("tcp_dispatcher is always initialized"));
-                        to_value(true)
-                    }
-                    Err(submit_err) => {
-                        cwarn!(STRATUM, "Error while submitting share: {:?}", submit_err);
-                        to_value(false)
-                    }
+        let workers = self.workers.read();
+        if workers.contains_key(&meta.addr) == false {
+            return Err(Error::UnauthorizedWorker.into())
+        }
+
+        params.parse::<(H256, Vec<String>)>().and_then(|(pow_hash, seal)| {
+            let seal = seal.iter().cloned().map(Into::into).collect();
+            match self.dispatcher.submit((pow_hash, seal)) {
+                Ok(()) => {
+                    self.update_peers(&meta.tcp_dispatcher.expect("tcp_dispatcher is always initialized"));
+                    Ok(jsonrpc_core::Value::Null)
                 }
-            })
-            .map(|v| v.expect("Only true/false is returned and it's always serializable"))
+                Err(submit_err) => {
+                    cwarn!(STRATUM, "Error while submitting share: {:?}", submit_err);
+                    Err(submit_err.into())
+                }
+            }
+        })
     }
 
     /// Helper method
@@ -524,6 +526,36 @@ mod tests {
 
         let response = String::from_utf8(core.run(stream).expect("Core should run with no errors"))
             .expect("Response should be utf-8");
-        assert_eq!("{\"jsonrpc\":\"2.0\",\"result\":true,\"id\":2}\n", response);
+        assert_eq!("{\"jsonrpc\":\"2.0\",\"result\":null,\"id\":2}\n", response);
+    }
+
+    #[test]
+    fn should_return_error_when_unauthorized_worker_submits() {
+        let addr = SocketAddr::from_str("127.0.0.1:19991").unwrap();
+        let _stratum =
+            Stratum::start(&addr, Arc::new(DummyManager::build().of_initial(r#"["dummy authorize payload"]"#)), None)
+                .expect("There should be no error starting stratum");
+
+        let mut submit_request =
+            r#"{"jsonrpc": "2.0", "method": "mining.submit", "params": ["0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef", ["0x56642f04d519ae3262c7ba6facf1c5b11450ebaeb7955337cfbc45420d573077"]], "id": 2}"#.as_bytes()
+                .to_vec();
+        submit_request.extend(b"\n");
+
+        let mut core = Core::new().expect("Tokio Core should be created with no errors");
+        let mut buffer = vec![0u8; 2048];
+        let stream = TcpStream::connect(&addr, &core.handle())
+            .and_then(|stream| io::write_all(stream, &submit_request))
+            .and_then(|(stream, _)| io::read(stream, &mut buffer))
+            .and_then(|(_, read_buf, len)| {
+                ctrace!(STRATUM, "Received result from server");
+                future::ok(read_buf[0..len].to_vec())
+            });
+
+        let response = String::from_utf8(core.run(stream).expect("Core should run with no errors"))
+            .expect("Response should be utf-8");
+        assert_eq!(
+            "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":23,\"message\":\"Unauthorized worker\"},\"id\":2}\n",
+            response
+        );
     }
 }

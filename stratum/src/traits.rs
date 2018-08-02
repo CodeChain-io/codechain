@@ -17,16 +17,20 @@
 use std;
 use std::error::Error as StdError;
 
+use jsonrpc_core::{Error as JsonError, ErrorCode as JsonErrorCode};
 use jsonrpc_tcp_server::PushMessageError;
 use primitives::{Bytes, H256};
 
 #[derive(Debug, Clone)]
 pub enum Error {
+    InternalError,
+    PowHashInvalid,
+    PowInvalid,
+    UnauthorizedWorker,
     NoWork,
     NoWorkers,
     Io(String),
     Tcp(String),
-    Dispatch(String),
 }
 
 impl From<std::io::Error> for Error {
@@ -38,6 +42,23 @@ impl From<std::io::Error> for Error {
 impl From<PushMessageError> for Error {
     fn from(err: PushMessageError) -> Self {
         Error::Tcp(format!("Push message error: {:?}", err))
+    }
+}
+
+impl Into<JsonError> for Error {
+    fn into(self) -> JsonError {
+        let (code, message) = match self {
+            Error::PowHashInvalid => (21, format!("Invalid Pow hash")),
+            Error::PowInvalid => (22, format!("Invalid the nonce")),
+            Error::UnauthorizedWorker => (23, format!("Unauthorized worker")),
+            _ => (20, format!("Internal error")),
+        };
+
+        JsonError {
+            code: JsonErrorCode::ServerError(code),
+            message,
+            data: None,
+        }
     }
 }
 
