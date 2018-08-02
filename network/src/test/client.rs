@@ -158,7 +158,7 @@ impl TestApi {
 
 pub struct TestClient {
     nodes: HashSet<NodeId>,
-    extensions: HashMap<String, (Arc<Extension>, Arc<TestApi>)>,
+    extensions: HashMap<&'static str, (Arc<Extension>, Arc<TestApi>)>,
 }
 
 impl TestClient {

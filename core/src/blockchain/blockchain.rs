@@ -17,6 +17,10 @@
 use std::mem;
 use std::sync::Arc;
 
+use ctypes::invoice::{BlockInvoices, ParcelInvoice};
+use ctypes::parcel::Action;
+use ctypes::transaction::Transaction;
+use ctypes::BlockNumber;
 use kvdb::{DBTransaction, KeyValueDB};
 use parking_lot::RwLock;
 use primitives::H256;
@@ -27,13 +31,10 @@ use super::super::consensus::epoch::{PendingTransition as PendingEpochTransition
 use super::super::db::{self, Readable, Writable};
 use super::super::encoded;
 use super::super::parcel::LocalizedParcel;
-use super::super::types::BlockNumber;
 use super::super::views::{BlockView, HeaderView};
 use super::block_info::BlockLocation;
 use super::body_db::{BodyDB, BodyProvider};
-use super::extras::{
-    BlockDetails, BlockInvoices, EpochTransitions, ParcelAddress, ParcelInvoice, TransactionAddress, EPOCH_KEY_PREFIX,
-};
+use super::extras::{BlockDetails, EpochTransitions, ParcelAddress, TransactionAddress, EPOCH_KEY_PREFIX};
 use super::headerchain::{HeaderChain, HeaderProvider};
 use super::invoice_db::{InvoiceDB, InvoiceProvider};
 use super::route::{tree_route, ImportRoute};
@@ -364,6 +365,22 @@ pub trait BlockProvider: HeaderProvider + BodyProvider + InvoiceProvider {
         self.block_body(&address.block_hash).and_then(|body| {
             self.block_number(&address.block_hash)
                 .and_then(|n| body.view().localized_parcel_at(&address.block_hash, n, address.index))
+        })
+    }
+
+    /// Get the transaction with given transaction hash.
+    fn transaction(&self, transaction: &TransactionAddress) -> Option<Transaction> {
+        self.parcel(&transaction.parcel_address).and_then(|parcel| match &parcel.signed.as_unsigned().action {
+            Action::ChangeShardState {
+                transactions,
+                changes: _,
+                signatures: _,
+            }
+                if transaction.index < transactions.len() =>
+            {
+                Some(transactions[transaction.index].clone())
+            }
+            _ => None,
         })
     }
 

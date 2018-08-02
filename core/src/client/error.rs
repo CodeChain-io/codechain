@@ -14,8 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use kvdb;
 use std::fmt::{Display, Error as FmtError, Formatter};
+
+use kvdb;
 use util_error::UtilError;
 
 /// Client configuration errors.

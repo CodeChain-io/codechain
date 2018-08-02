@@ -18,17 +18,15 @@ use std::fmt;
 
 use cio::IoError;
 use ckey::{Address, Error as KeyError};
-use ctypes::parcel::Error as ParcelError;
-use ctypes::transaction::Error as TransactionError;
+use cstate::StateError;
+use ctypes::BlockNumber;
 use primitives::{H256, U256};
-use trie::TrieError;
 use unexpected::{Mismatch, OutOfBounds};
 use util_error::UtilError;
 
 use super::account_provider::SignError as AccountsError;
 use super::client::Error as ClientError;
 use super::consensus::EngineError;
-use super::types::BlockNumber;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 /// Import to the block queue result
@@ -114,6 +112,8 @@ pub enum BlockError {
     TooManyParcels(Address),
     /// Parent given is unknown.
     UnknownParent(H256),
+    /// Body size limit is exceeded.
+    BodySizeIsTooBig,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -155,6 +155,7 @@ impl fmt::Display for BlockError {
             RidiculousNumber(oob) => format!("Implausible block number. {}", oob),
             UnknownParent(hash) => format!("Unknown parent: {}", hash),
             TooManyParcels(address) => format!("Too many parcels from: {}", address),
+            BodySizeIsTooBig => format!("Block's body size is too big"),
         };
 
         f.write_fmt(format_args!("Block error ({})", msg))
@@ -170,8 +171,6 @@ pub enum Error {
     Util(UtilError),
     /// Error concerning block processing.
     Block(BlockError),
-    /// Error concerning parcel processing.
-    Parcel(ParcelError),
     /// Error concerning block import.
     Import(ImportError),
     /// Io crate error.
@@ -180,8 +179,6 @@ pub enum Error {
     Engine(EngineError),
     /// Key error.
     Key(KeyError),
-    /// TrieDB-related error.
-    Trie(TrieError),
     /// PoW hash is invalid or out of date.
     PowHashInvalid,
     /// The value of the nonce or mishash is invalid.
@@ -189,7 +186,7 @@ pub enum Error {
     Spec(SpecError),
     /// Account Provider error.
     AccountProvider(AccountsError),
-    Transaction(TransactionError),
+    State(StateError),
 }
 
 impl fmt::Display for Error {
@@ -199,16 +196,14 @@ impl fmt::Display for Error {
             Error::Util(err) => err.fmt(f),
             Error::Io(err) => err.fmt(f),
             Error::Block(err) => err.fmt(f),
-            Error::Parcel(err) => err.fmt(f),
             Error::Import(err) => err.fmt(f),
             Error::Engine(err) => err.fmt(f),
             Error::Key(err) => err.fmt(f),
-            Error::Trie(err) => err.fmt(f),
             Error::PowHashInvalid => f.write_str("Invalid or out of date PoW hash."),
             Error::PowInvalid => f.write_str("Invalid nonce or mishash"),
             Error::Spec(err) => err.fmt(f),
             Error::AccountProvider(err) => err.fmt(f),
-            Error::Transaction(err) => err.fmt(f),
+            Error::State(err) => err.fmt(f),
         }
     }
 }
@@ -216,12 +211,6 @@ impl fmt::Display for Error {
 impl From<ClientError> for Error {
     fn from(err: ClientError) -> Error {
         Error::Client(err)
-    }
-}
-
-impl From<ParcelError> for Error {
-    fn from(err: ParcelError) -> Error {
-        Error::Parcel(err)
     }
 }
 
@@ -283,12 +272,6 @@ impl From<BlockImportError> for Error {
     }
 }
 
-impl From<TrieError> for Error {
-    fn from(err: TrieError) -> Self {
-        Error::Trie(err)
-    }
-}
-
 impl<E> From<Box<E>> for Error
 where
     Error: From<E>,
@@ -304,8 +287,8 @@ impl From<AccountsError> for Error {
     }
 }
 
-impl From<TransactionError> for Error {
-    fn from(err: TransactionError) -> Self {
-        Error::Transaction(err)
+impl From<StateError> for Error {
+    fn from(err: StateError) -> Self {
+        Error::State(err)
     }
 }

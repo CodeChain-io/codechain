@@ -16,9 +16,10 @@
 
 mod params;
 
+use ctypes::machine::{Header, LiveBlock, Parcels, WithBalances};
+
 use self::params::SoloParams;
 use super::super::consensus::EngineType;
-use super::super::machine::{Header, LiveBlock, Parcels, WithBalances};
 use super::{ConsensusEngine, Seal};
 
 /// A consensus engine which does not provide any consensus mechanism.

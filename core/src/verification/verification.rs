@@ -17,18 +17,18 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use cmerkle::skewed_merkle_root;
+use ctypes::BlockNumber;
 use heapsize::HeapSizeOf;
 use primitives::{Bytes, H256};
 use rlp::UntrustedRlp;
 use unexpected::{Mismatch, OutOfBounds};
 
 use super::super::blockchain::BlockProvider;
-use super::super::client::BlockInfo;
+use super::super::client::{BlockInfo, TransactionInfo};
 use super::super::consensus::CodeChainEngine;
 use super::super::error::{BlockError, Error};
 use super::super::header::Header;
 use super::super::parcel::{SignedParcel, UnverifiedParcel};
-use super::super::types::BlockNumber;
 use super::super::views::BlockView;
 
 /// Preprocessed block data gathered in `verify_block_unordered` call
@@ -52,7 +52,12 @@ pub fn verify_block_basic(header: &Header, bytes: &[u8], engine: &CodeChainEngin
     verify_header_params(&header, engine)?;
     engine.verify_block_basic(&header)?;
 
-    for t in UntrustedRlp::new(bytes).at(1)?.iter().map(|rlp| rlp.as_val::<UnverifiedParcel>()) {
+    let body_rlp = UntrustedRlp::new(bytes).at(1)?;
+    if body_rlp.as_raw().len() > engine.params().max_body_size {
+        return Err(BlockError::BodySizeIsTooBig.into())
+    }
+
+    for t in body_rlp.iter().map(|rlp| rlp.as_val::<UnverifiedParcel>()) {
         engine.verify_parcel_basic(&t?, &header)?;
     }
     Ok(())
@@ -152,7 +157,7 @@ pub fn verify_block_unordered(
 }
 
 /// Parameters for full verification of block family
-pub struct FullFamilyParams<'a, C: BlockInfo + 'a> {
+pub struct FullFamilyParams<'a, C: BlockInfo + TransactionInfo + 'a> {
     /// Serialized block bytes
     pub block_bytes: &'a [u8],
 
@@ -167,7 +172,7 @@ pub struct FullFamilyParams<'a, C: BlockInfo + 'a> {
 }
 
 /// Phase 3 verification. Check block information against parent and uncles.
-pub fn verify_block_family<C: BlockInfo>(
+pub fn verify_block_family<C: BlockInfo + TransactionInfo>(
     block: &[u8],
     header: &Header,
     parent: &Header,

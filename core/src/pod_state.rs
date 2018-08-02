@@ -20,6 +20,7 @@ use std::ops::Deref;
 
 use cjson;
 use ckey::Address;
+use ctypes::ShardId;
 
 use super::pod_account::PodAccount;
 use super::pod_shard_metadata::PodShardMetadata;
@@ -56,10 +57,10 @@ impl fmt::Display for PodAccounts {
 
 /// State of all accounts in the system expressed in Plain Old Data.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct PodShards(BTreeMap<u32, PodShardMetadata>);
+pub struct PodShards(BTreeMap<ShardId, PodShardMetadata>);
 
 impl Deref for PodShards {
-    type Target = BTreeMap<u32, PodShardMetadata>;
+    type Target = BTreeMap<ShardId, PodShardMetadata>;
 
     fn deref(&self) -> &<Self as Deref>::Target {
         &self.0

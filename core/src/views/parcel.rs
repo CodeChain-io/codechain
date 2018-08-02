@@ -16,7 +16,6 @@
 
 use ccrypto::blake256;
 use primitives::{Bytes, H256, U256};
-
 use rlp::Rlp;
 
 /// View onto parcel rlp.

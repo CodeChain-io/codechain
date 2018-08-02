@@ -17,25 +17,26 @@
 use std::io::Read;
 use std::sync::Arc;
 
-use blockchain::HeaderProvider;
 use ccrypto::{blake256, BLAKE_NULL_RLP};
 use cjson;
 use ckey::Address;
+use cmerkle::TrieFactory;
+use cstate::{
+    ActionHandler, Backend, Metadata, MetadataAddress, Shard, ShardAddress, ShardMetadataAddress, StateDB, StateResult,
+};
+use ctypes::ShardId;
 use hashdb::HashDB;
-use memorydb::MemoryDB;
 use parking_lot::RwLock;
 use primitives::{Bytes, H256, U256};
 use rlp::{Encodable, Rlp, RlpStream};
-use trie::TrieFactory;
+
+use super::super::blockchain::HeaderProvider;
 
 use super::super::codechain_machine::CodeChainMachine;
 use super::super::consensus::{BlakePoW, CodeChainEngine, Cuckoo, NullEngine, Solo, SoloAuthority, Tendermint};
 use super::super::error::{Error, SpecError};
 use super::super::header::Header;
 use super::super::pod_state::{PodAccounts, PodShards};
-use super::super::state::{
-    Backend, BasicBackend, Metadata, MetadataAddress, Shard, ShardAddress, ShardMetadataAddress,
-};
 use super::seal::Generic as GenericSeal;
 use super::Genesis;
 
@@ -49,6 +50,12 @@ pub struct CommonParams {
     pub network_id: u64,
     /// Minimum parcel cost.
     pub min_parcel_cost: U256,
+    /// Maximum size of block body.
+    pub max_body_size: usize,
+    /// Snapshot creation period in unit of block numbers.
+    pub snapshot_period: u64,
+    /// Flag whether to use shard validator.
+    pub use_shard_validator: bool,
 }
 
 impl From<cjson::spec::Params> for CommonParams {
@@ -58,6 +65,9 @@ impl From<cjson::spec::Params> for CommonParams {
             max_metadata_size: p.max_metadata_size.into(),
             network_id: p.network_id.into(),
             min_parcel_cost: p.min_parcel_cost.into(),
+            max_body_size: p.max_body_size.into(),
+            snapshot_period: p.snapshot_period.into(),
+            use_shard_validator: p.use_shard_validator.into(),
         }
     }
 }
@@ -98,6 +108,8 @@ pub struct Spec {
     /// Genesis state as plain old data.
     genesis_accounts: PodAccounts,
     genesis_shards: PodShards,
+
+    pub custom_handlers: Vec<Arc<ActionHandler>>,
 }
 
 // helper for formatting errors.
@@ -138,10 +150,11 @@ impl Spec {
         }
     }
 
-    fn initialize_state<DB: Backend>(&self, trie_factory: &TrieFactory, db: DB) -> Result<DB, Error> {
+    fn initialize_state<DB: Backend>(&self, trie_factory: &TrieFactory, db: DB) -> StateResult<DB> {
         let root = BLAKE_NULL_RLP;
         let (db, root) = self.initialize_accounts(trie_factory, db, root)?;
         let (db, root) = self.initialize_shards(trie_factory, db, root)?;
+        let (db, root) = self.initialize_custom_actions(trie_factory, db, root)?;
 
         *self.state_root_memo.write() = root;
         Ok(db)
@@ -152,7 +165,7 @@ impl Spec {
         trie_factory: &TrieFactory,
         mut db: DB,
         mut root: H256,
-    ) -> Result<(DB, H256), Error> {
+    ) -> StateResult<(DB, H256)> {
         // basic accounts in spec.
         {
             let mut t = trie_factory.create(db.as_hashdb_mut(), &mut root);
@@ -172,8 +185,8 @@ impl Spec {
         trie_factory: &TrieFactory,
         mut db: DB,
         mut root: H256,
-    ) -> Result<(DB, H256), Error> {
-        let mut shard_roots = Vec::<(u32, H256)>::with_capacity(self.genesis_shards.len());
+    ) -> StateResult<(DB, H256)> {
+        let mut shard_roots = Vec::<(ShardId, H256, Address)>::with_capacity(self.genesis_shards.len());
 
         // Initialize shard-level tries
         for (shard_id, shard) in &*self.genesis_shards {
@@ -187,24 +200,26 @@ impl Spec {
                 debug_assert_eq!(Ok(None), r);
                 r?;
             }
-            shard_roots.push((*shard_id, shard_root));
+            let owner = shard.owner;
+            shard_roots.push((*shard_id, shard_root, owner));
         }
 
+        debug_assert_eq!(::std::mem::size_of::<u16>(), ::std::mem::size_of::<ShardId>());
         debug_assert!(
-            shard_roots.len() <= ::std::u32::MAX as usize,
+            shard_roots.len() <= ::std::u16::MAX as usize,
             "{} <= {}",
             shard_roots.len(),
-            ::std::u32::MAX as usize
+            ::std::u16::MAX as usize
         );
-        let global_metadata = Metadata::new(shard_roots.len() as u32);
+        let global_metadata = Metadata::new(shard_roots.len() as ShardId);
 
         // Initialize shards
-        for (shard_id, shard_root) in shard_roots.into_iter() {
+        for (shard_id, shard_root, owner) in shard_roots.into_iter() {
             {
                 let mut t = trie_factory.from_existing(db.as_hashdb_mut(), &mut root)?;
                 let address = ShardAddress::new(shard_id);
 
-                let shard = Shard::new(shard_root);
+                let shard = Shard::new(shard_root, owner);
                 let r = t.insert(&*address, &shard.rlp_bytes());
                 debug_assert_eq!(Ok(None), r);
                 r?;
@@ -218,6 +233,24 @@ impl Spec {
             let r = t.insert(&*address, &global_metadata.rlp_bytes());
             debug_assert_eq!(Ok(None), r);
             r?;
+        }
+
+        Ok((db, root))
+    }
+
+    fn initialize_custom_actions<DB: Backend>(
+        &self,
+        trie_factory: &TrieFactory,
+        mut db: DB,
+        mut root: H256,
+    ) -> StateResult<(DB, H256)> {
+        // basic accounts in spec.
+        {
+            let mut t = trie_factory.from_existing(db.as_hashdb_mut(), &mut root)?;
+
+            for handler in &self.custom_handlers {
+                handler.init(t.as_mut())?;
+            }
         }
 
         Ok((db, root))
@@ -348,10 +381,14 @@ fn load_from(s: cjson::spec::Spec) -> Result<Spec, Error> {
     let g = Genesis::from(s.genesis);
     let GenericSeal(seal_rlp) = g.seal.into();
     let params = CommonParams::from(s.params);
+    let engine = Spec::engine(s.engine, params);
+    let custom_handlers = match &engine {
+        _ => vec![],
+    };
 
     let mut s = Spec {
         name: s.name.clone().into(),
-        engine: Spec::engine(s.engine, params),
+        engine,
         data_dir: s.data_dir.unwrap_or(s.name).into(),
         nodes: s.nodes.unwrap_or_else(Vec::new),
         parent_hash: g.parent_hash,
@@ -365,13 +402,15 @@ fn load_from(s: cjson::spec::Spec) -> Result<Spec, Error> {
         state_root_memo: RwLock::new(Default::default()), // will be overwritten right after.
         genesis_accounts: s.accounts.into(),
         genesis_shards: s.shards.into(),
+
+        custom_handlers,
     };
 
     // use memoized state root if provided.
     match g.state_root {
         Some(root) => *s.state_root_memo.get_mut() = root,
         None => {
-            let db = BasicBackend(MemoryDB::new());
+            let db = StateDB::new_with_memorydb(0, s.custom_handlers.clone());
             let trie_factory = TrieFactory::new(Default::default());
             let _ = s.initialize_state(&trie_factory, db)?;
         }

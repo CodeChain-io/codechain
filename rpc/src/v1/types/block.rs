@@ -14,7 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ccore::{Block as CoreBlock, BlockNumber};
+use ccore::Block as CoreBlock;
+use ctypes::BlockNumber;
 use primitives::{H160, H256, U256};
 
 use super::Parcel;

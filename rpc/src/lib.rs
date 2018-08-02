@@ -19,6 +19,7 @@ extern crate codechain_core as ccore;
 extern crate codechain_logger as clogger;
 extern crate codechain_key as ckey;
 extern crate codechain_network as cnetwork;
+extern crate codechain_state as cstate;
 extern crate codechain_types as ctypes;
 extern crate jsonrpc_core;
 extern crate jsonrpc_http_server;

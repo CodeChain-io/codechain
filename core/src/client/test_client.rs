@@ -35,24 +35,28 @@ use std::mem;
 use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrder};
 use std::sync::Arc;
 
-use ckey::{Address, Generator, Public, Random};
+use ckey::{Address, Generator, Random};
 use cmerkle::skewed_merkle_root;
 use cnetwork::NodeId;
+use cstate::{ActionHandler, StateDB};
+use ctypes::invoice::ParcelInvoice;
 use ctypes::parcel::{Action, Parcel};
+use ctypes::transaction::Transaction;
+use ctypes::BlockNumber;
 use journaldb;
 use kvdb_memorydb;
 use parking_lot::RwLock;
 use primitives::{Bytes, H256, U256};
 use rlp::*;
-use trie;
 
 use super::super::block::{ClosedBlock, OpenBlock, SealedBlock};
-use super::super::blockchain::ParcelInvoice;
+use super::super::blockchain::ParcelAddress;
 use super::super::blockchain_info::BlockChainInfo;
 use super::super::client::ImportResult;
 use super::super::client::{
     AccountData, Balance, BlockChain, BlockChainClient, BlockInfo, BlockProducer, BlockStatus, ChainInfo, ImportBlock,
     ImportSealedBlock, Invoice, MiningBlockChainClient, Nonce, ParcelInfo, PrepareOpenBlock, ReopenBlock, StateOrBlock,
+    TransactionInfo,
 };
 use super::super::db::{COL_STATE, NUM_COLUMNS};
 use super::super::encoded;
@@ -61,9 +65,7 @@ use super::super::header::Header as BlockHeader;
 use super::super::miner::{Miner, MinerService, ParcelImportResult};
 use super::super::parcel::{LocalizedParcel, SignedParcel};
 use super::super::spec::Spec;
-use super::super::state::{Asset, AssetAddress, AssetScheme, AssetSchemeAddress, ShardStateInfo, TopStateInfo};
-use super::super::state_db::StateDB;
-use super::super::types::{BlockId, BlockNumber, ParcelId, TransactionId, VerificationQueueInfo as QueueInfo};
+use super::super::types::{BlockId, ParcelId, TransactionId, VerificationQueueInfo as QueueInfo};
 
 /// Test client.
 pub struct TestBlockChainClient {
@@ -200,6 +202,7 @@ impl TestBlockChainClient {
                     action: Action::ChangeShardState {
                         transactions: vec![],
                         changes: vec![],
+                        signatures: vec![],
                     },
                 };
                 let signed_parcel = SignedParcel::new_with_sign(parcel, keypair.private());
@@ -267,10 +270,11 @@ impl TestBlockChainClient {
             action: Action::ChangeShardState {
                 transactions,
                 changes: vec![],
+                signatures: vec![],
             },
         };
         let signed_parcel = SignedParcel::new_with_sign(parcel, keypair.private());
-        self.set_balance(signed_parcel.sender(), 10_000_000_000_000_000_000u64.into());
+        self.set_balance(*signed_parcel.sender(), 10_000_000_000_000_000_000u64.into());
         let hash = signed_parcel.hash();
         let res = self.miner.import_external_parcels(self, vec![signed_parcel.into()]);
         let res = res.into_iter().next().unwrap().expect("Successful import");
@@ -287,7 +291,7 @@ impl TestBlockChainClient {
 pub fn get_temp_state_db() -> StateDB {
     let db = kvdb_memorydb::create(NUM_COLUMNS.unwrap_or(0));
     let journal_db = journaldb::new(Arc::new(db), journaldb::Algorithm::Archive, COL_STATE);
-    StateDB::new(journal_db, 1024 * 1024)
+    StateDB::new(journal_db, 1024 * 1024, Vec::new())
 }
 
 impl ReopenBlock for TestBlockChainClient {
@@ -386,6 +390,12 @@ impl ParcelInfo for TestBlockChainClient {
     }
 }
 
+impl TransactionInfo for TestBlockChainClient {
+    fn transaction_parcel(&self, _id: TransactionId) -> Option<ParcelAddress> {
+        None
+    }
+}
+
 impl BlockChain for TestBlockChainClient {}
 
 impl ImportBlock for TestBlockChainClient {
@@ -433,47 +443,6 @@ impl ImportBlock for TestBlockChainClient {
     }
 
     fn import_header(&self, _bytes: Bytes) -> Result<H256, BlockImportError> {
-        unimplemented!()
-    }
-}
-
-impl TopStateInfo for () {
-    fn nonce(&self, _address: &Address) -> trie::Result<U256> {
-        unimplemented!()
-    }
-    fn balance(&self, _address: &Address) -> trie::Result<U256> {
-        unimplemented!()
-    }
-    fn regular_key(&self, _address: &Address) -> trie::Result<Option<Public>> {
-        unimplemented!()
-    }
-
-    fn number_of_shards(&self) -> trie::Result<u32> {
-        unimplemented!()
-    }
-
-    fn shard_root(&self, _shard_id: u32) -> trie::Result<Option<H256>> {
-        unimplemented!()
-    }
-
-    fn asset_scheme(&self, _shard_id: u32, _: &AssetSchemeAddress) -> trie::Result<Option<AssetScheme>> {
-        unimplemented!()
-    }
-
-    fn asset(&self, _shard_id: u32, _: &AssetAddress) -> trie::Result<Option<Asset>> {
-        unimplemented!()
-    }
-}
-
-impl ShardStateInfo for () {
-    fn root(&self) -> &H256 {
-        unimplemented!()
-    }
-
-    fn asset_scheme(&self, _a: &AssetSchemeAddress) -> trie::Result<Option<AssetScheme>> {
-        unimplemented!()
-    }
-    fn asset(&self, _a: &AssetAddress) -> trie::Result<Option<Asset>> {
         unimplemented!()
     }
 }
@@ -539,7 +508,15 @@ impl BlockChainClient for TestBlockChainClient {
         unimplemented!();
     }
 
+    fn transaction(&self, _id: TransactionId) -> Option<Transaction> {
+        unimplemented!();
+    }
+
     fn transaction_invoice(&self, _id: TransactionId) -> Option<Invoice> {
+        unimplemented!()
+    }
+
+    fn custom_handlers(&self) -> Vec<Arc<ActionHandler>> {
         unimplemented!()
     }
 }

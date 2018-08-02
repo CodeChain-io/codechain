@@ -17,12 +17,12 @@
 use super::super::uint::Uint;
 
 #[derive(Debug, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct BlakePoWParams {
     /// Block reward.
-    #[serde(rename = "blockReward")]
     pub block_reward: Option<Uint>,
-    #[serde(rename = "minScore")]
     pub min_score: Option<Uint>,
+    pub block_interval: Option<Uint>,
 }
 
 #[derive(Debug, PartialEq, Deserialize)]
@@ -43,12 +43,14 @@ mod tests {
         let s = r#"{
             "params": {
                 "blockReward": "0x0d",
-                "minScore" : "0x020000"
+                "minScore" : "0x020000",
+                "blockInterval" : "120"
             }
         }"#;
 
         let deserialized: BlakePoW = serde_json::from_str(s).unwrap();
         assert_eq!(deserialized.params.block_reward, Some(Uint(U256::from(0x0d))));
         assert_eq!(deserialized.params.min_score, Some(Uint(U256::from(0x020000))));
+        assert_eq!(deserialized.params.block_interval, Some(Uint(U256::from(120))));
     }
 }

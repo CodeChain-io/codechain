@@ -67,6 +67,11 @@ args:
     - no-parcel-relay:
         long: no-parcel-relay
         help: Do not relay parcels.
+    - jsonrpc-interface:
+        long: jsonrpc-interface
+        value_name: INTERFACE
+        help: Specify the interface address for rpc connections
+        takes_value: true
     - jsonrpc-port:
         long: jsonrpc-port
         value_name: PORT
@@ -86,6 +91,10 @@ args:
     - no-jsonrpc:
         long: no-jsonrpc
         help: Do not run jsonrpc.
+        takes_value: false
+    - enable-devel-api:
+        long: enable-devel-api
+        help: Enable the RPC's devel APIs
         takes_value: false
     - author:
         long: author
@@ -172,6 +181,23 @@ args:
         takes_value: true
         conflicts_with:
             - no-stratum
+    - no-shard-validator:
+        long: no-shard-validator
+        help: Do not run as a shard validator.
+    - shard-validator:
+        long: shard-validator
+        value_name: ACCOUNT
+        help: Specify the account for shard validator.
+        takes_value: true
+        conflicts_with:
+            - no-shard-validator
+    - shard-validator-password-path:
+        long: shard-validator-password-path
+        value_name: PATH
+        help: Specify the password path of account for shard validator.
+        takes_value: true
+        conflicts_with:
+            - no-shard-validator
 subcommands:
     - account:
         about: account managing commands
@@ -184,12 +210,6 @@ subcommands:
         subcommands:
             - create:
                 about: create account
-                args:
-                    - passphrase:
-                        short: p
-                        long: passphrase
-                        help: account passphrase
-                        takes_value: true
             - import:
                 about: import JSON key file
                 args:
@@ -206,13 +226,18 @@ subcommands:
                         index: 1
             - list:
                 about: list managed accounts
-            - lock:
-                about: lock account
+            - remove:
+                about: remove a account
                 args:
-                    - address:
-                        help: address to lock
-            - unlock:
-                about: unlock account
+                    - ADDRESS:
+                        help: Address to remove
+                        required: true
+                        index: 1
+            - change-password:
+                about: change the password of given address
                 args:
-                    - address:
-                        help: address to unlock
+                    - ADDRESS:
+                        help: Address of desired password change
+                        required: true
+                        index: 1
+

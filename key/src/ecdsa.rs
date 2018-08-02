@@ -36,7 +36,7 @@ use std::hash::{Hash, Hasher};
 use std::ops::{Deref, DerefMut};
 use std::str::FromStr;
 
-use primitives::{H256, H520, U256};
+use primitives::{H256, H520};
 use rustc_hex::{FromHex, ToHex};
 use secp256k1::{key, Error as SecpError, Message as SecpMessage, RecoverableSignature, RecoveryId};
 
@@ -87,12 +87,6 @@ impl ECDSASignature {
             && H256::from_slice(self.r()) >= 1.into()
             && H256::from_slice(self.s()) < "fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141".into()
             && H256::from_slice(self.s()) >= 1.into()
-    }
-
-    pub fn is_unsigned(&self) -> bool {
-        let r: U256 = self.r().into();
-        let s: U256 = self.s().into();
-        r.is_zero() && s.is_zero()
     }
 }
 

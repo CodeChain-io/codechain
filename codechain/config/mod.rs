@@ -19,13 +19,15 @@ mod chain_type;
 use std::fs;
 use std::str::FromStr;
 
+use ccore::{ShardValidatorConfig, StratumConfig};
 use ckey::Address;
 use clap;
 use cnetwork::{NetworkConfig, SocketAddr};
-use rpc::{HttpConfiguration as RpcHttpConfig, IpcConfiguration as RpcIpcConfig};
+use rpc::{RpcHttpConfig, RpcIpcConfig};
 use toml;
 
 use self::chain_type::ChainType;
+use super::constants::DEFAULT_CONFIG_PATH;
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -38,6 +40,7 @@ pub struct Config {
     pub rpc: Rpc,
     pub snapshot: Snapshot,
     pub stratum: Stratum,
+    pub shard_validator: ShardValidator,
 }
 
 #[derive(Deserialize)]
@@ -93,7 +96,14 @@ pub struct Network {
 #[serde(deny_unknown_fields)]
 pub struct Rpc {
     pub disable: bool,
+    pub interface: String,
     pub port: u16,
+    #[serde(default = "default_enable_devel_api")]
+    pub enable_devel_api: bool,
+}
+
+fn default_enable_devel_api() -> bool {
+    cfg!(debug_assertions)
 }
 
 #[derive(Deserialize)]
@@ -110,8 +120,18 @@ pub struct Stratum {
     pub port: u16,
 }
 
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ShardValidator {
+    pub disable: bool,
+    pub account: Option<Address>,
+    pub password_path: Option<String>,
+}
+
 impl<'a> Into<RpcIpcConfig> for &'a Ipc {
     fn into(self) -> RpcIpcConfig {
+        debug_assert!(!self.disable);
+
         RpcIpcConfig {
             socket_addr: self.path.clone(),
         }
@@ -120,6 +140,8 @@ impl<'a> Into<RpcIpcConfig> for &'a Ipc {
 
 impl<'a> Into<NetworkConfig> for &'a Network {
     fn into(self) -> NetworkConfig {
+        debug_assert!(!self.disable);
+
         let bootstrap_addresses =
             self.bootstrap_addresses.iter().map(|s| SocketAddr::from_str(s).unwrap()).collect::<Vec<_>>();
         NetworkConfig {
@@ -135,8 +157,10 @@ impl<'a> Into<NetworkConfig> for &'a Network {
 impl<'a> Into<RpcHttpConfig> for &'a Rpc {
     // FIXME: Add interface, cors and hosts options.
     fn into(self) -> RpcHttpConfig {
+        debug_assert!(!self.disable);
+
         RpcHttpConfig {
-            interface: "127.0.0.1".to_string(),
+            interface: self.interface.clone(),
             port: self.port,
             cors: None,
             hosts: None,
@@ -144,9 +168,28 @@ impl<'a> Into<RpcHttpConfig> for &'a Rpc {
     }
 }
 
-pub fn load(config_path: &str) -> Result<Config, String> {
-    let toml_string = fs::read_to_string(config_path).map_err(|e| format!("Fail to read file: {:?}", e))?;
-    toml::from_str(toml_string.as_ref()).map_err(|e| format!("Error while parse TOML: {:?}", e))
+impl<'a> Into<StratumConfig> for &'a Stratum {
+    // FIXME: Add listen_addr and secret
+    fn into(self) -> StratumConfig {
+        debug_assert!(!self.disable);
+
+        StratumConfig {
+            listen_addr: "127.0.0.1".to_string(),
+            port: self.port,
+            secret: None,
+        }
+    }
+}
+
+impl<'a> Into<ShardValidatorConfig> for &'a ShardValidator {
+    fn into(self) -> ShardValidatorConfig {
+        debug_assert!(self.disable);
+
+        ShardValidatorConfig {
+            account: self.account.unwrap(),
+            password_path: self.password_path.clone(),
+        }
+    }
 }
 
 impl Ipc {
@@ -185,10 +228,10 @@ impl Operating {
 impl Mining {
     pub fn overwrite_with(&mut self, matches: &clap::ArgMatches) -> Result<(), String> {
         if let Some(author) = matches.value_of("author") {
-            self.author = Some(Address::from_str(author).map_err(|_| "Invalid address")?);
+            self.author = Some(parse_address(author)?);
         }
         if let Some(engine_signer) = matches.value_of("engine-signer") {
-            self.engine_signer = Some(Address::from_str(engine_signer).map_err(|_| "Invalid address")?);
+            self.engine_signer = Some(parse_address(engine_signer)?);
         }
         if let Some(password_path) = matches.value_of("password-path") {
             self.password_path = Some(password_path.to_string());
@@ -275,6 +318,12 @@ impl Rpc {
         if let Some(port) = matches.value_of("jsonrpc-port") {
             self.port = port.parse().map_err(|_| "Invalid port")?;
         }
+        if let Some(interface) = matches.value_of("jsonrpc-interface") {
+            self.interface = interface.to_string();
+        }
+        if matches.is_present("enable-devel-api") {
+            self.enable_devel_api = true;
+        }
         Ok(())
     }
 }
@@ -303,4 +352,47 @@ impl Stratum {
         }
         Ok(())
     }
+}
+
+impl ShardValidator {
+    pub fn overwrite_with(&mut self, matches: &clap::ArgMatches) -> Result<(), String> {
+        if matches.is_present("no-shard-validator") {
+            self.disable = true;
+        }
+
+        if let Some(account) = matches.value_of("shard-validator") {
+            self.account = Some(parse_address(account)?)
+        }
+        if let Some(password_path) = matches.value_of("shard-validator-password-path") {
+            self.password_path = Some(password_path.to_string());
+        }
+
+        Ok(())
+    }
+}
+
+pub fn load_config(matches: &clap::ArgMatches) -> Result<Config, String> {
+    let config_path = matches.value_of("config").unwrap_or(DEFAULT_CONFIG_PATH);
+    let toml_string = fs::read_to_string(config_path).map_err(|e| format!("Fail to read file: {:?}", e))?;
+
+    let mut config: Config =
+        toml::from_str(toml_string.as_ref()).map_err(|e| format!("Error while parsing TOML: {:?}", e))?;
+    config.ipc.overwrite_with(&matches)?;
+    config.operating.overwrite_with(&matches)?;
+    config.mining.overwrite_with(&matches)?;
+    config.network.overwrite_with(&matches)?;
+    config.rpc.overwrite_with(&matches)?;
+    config.snapshot.overwrite_with(&matches)?;
+    config.stratum.overwrite_with(&matches)?;
+    config.shard_validator.overwrite_with(&matches)?;
+
+    Ok(config)
+}
+
+fn parse_address(value: &str) -> Result<Address, String> {
+    if value.starts_with("0x") {
+        Address::from_str(&value[2..])
+    } else {
+        Address::from_str(value)
+    }.map_err(|_| "Invalid address".to_string())
 }

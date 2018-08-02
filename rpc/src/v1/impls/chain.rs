@@ -17,12 +17,17 @@
 use std::sync::Arc;
 
 use ccore::{
-    Asset, AssetClient, AssetScheme, BlockId, BlockNumber, Invoice, MinerService, MiningBlockChainClient,
-    ParcelInvoice, RegularKey, Shard, SignedParcel,
+    AssetClient, BlockId, EngineInfo, ExecuteClient, MinerService, MiningBlockChainClient, RegularKey, Shard,
+    SignedParcel, UnverifiedParcel,
 };
-use ckey::Public;
+use ckey::{Address, Public};
+use cstate::{Asset, AssetScheme, AssetSchemeAddress};
+use ctypes::invoice::{Invoice, ParcelInvoice};
+use ctypes::parcel::{Action, ChangeShard};
+use ctypes::transaction::Transaction;
+use ctypes::{BlockNumber, ShardId};
 use primitives::{H160, H256, U256};
-use rlp::UntrustedRlp;
+use rlp::{DecoderError, UntrustedRlp};
 
 use jsonrpc_core::Result;
 
@@ -32,7 +37,7 @@ use super::super::types::{Block, BlockNumberAndHash, Bytes, Parcel};
 
 pub struct ChainClient<C, M>
 where
-    C: AssetClient + MiningBlockChainClient + Shard + RegularKey,
+    C: AssetClient + MiningBlockChainClient + Shard + RegularKey + ExecuteClient + EngineInfo,
     M: MinerService, {
     client: Arc<C>,
     miner: Arc<M>,
@@ -40,7 +45,7 @@ where
 
 impl<C, M> ChainClient<C, M>
 where
-    C: AssetClient + MiningBlockChainClient + Shard + RegularKey,
+    C: AssetClient + MiningBlockChainClient + Shard + RegularKey + ExecuteClient + EngineInfo,
     M: MinerService,
 {
     pub fn new(client: &Arc<C>, miner: &Arc<M>) -> Self {
@@ -53,17 +58,28 @@ where
 
 impl<C, M> Chain for ChainClient<C, M>
 where
-    C: AssetClient + MiningBlockChainClient + Shard + RegularKey + 'static,
+    C: AssetClient + MiningBlockChainClient + Shard + RegularKey + ExecuteClient + EngineInfo + 'static,
     M: MinerService + 'static,
 {
     fn send_signed_parcel(&self, raw: Bytes) -> Result<H256> {
         UntrustedRlp::new(&raw.into_vec())
             .as_val()
             .map_err(errors::rlp)
-            .and_then(|parcel| SignedParcel::new(parcel).map_err(errors::parcel))
+            .and_then(|parcel: UnverifiedParcel| {
+                match &parcel.as_unsigned().action {
+                    Action::Custom(bytes) => {
+                        if !self.client.custom_handlers().iter().any(|c| c.is_target(bytes)) {
+                            return Err(errors::rlp(DecoderError::Custom("Invalid custom action!")))
+                        }
+                    }
+                    _ => {}
+                }
+                Ok(parcel)
+            })
+            .and_then(|parcel| SignedParcel::new(parcel).map_err(errors::parcel_core))
             .and_then(|signed| {
                 let hash = signed.hash();
-                self.miner.import_own_parcel(&*self.client, signed).map_err(errors::parcel).map(|_| hash)
+                self.miner.import_own_parcel(&*self.client, signed).map_err(errors::parcel_core).map(|_| hash)
             })
             .map(Into::into)
     }
@@ -79,17 +95,40 @@ where
         Ok(self.client.parcel_invoice(parcel_hash.into()))
     }
 
+    fn get_transaction(&self, transaction_hash: H256) -> Result<Option<Transaction>> {
+        Ok(self.client.transaction(transaction_hash.into()))
+    }
+
     fn get_transaction_invoice(&self, transaction_hash: H256) -> Result<Option<Invoice>> {
         Ok(self.client.transaction_invoice(transaction_hash.into()))
     }
 
-    fn get_asset_scheme(&self, transaction_hash: H256) -> Result<Option<AssetScheme>> {
-        self.client.get_asset_scheme(transaction_hash).map_err(errors::parcel)
+    fn get_asset_scheme_by_hash(&self, transaction_hash: H256, shard_id: ShardId) -> Result<Option<AssetScheme>> {
+        let address = AssetSchemeAddress::new(transaction_hash, shard_id);
+        self.get_asset_scheme_by_type(address.into())
+    }
+
+    fn get_asset_scheme_by_type(&self, asset_type: H256) -> Result<Option<AssetScheme>> {
+        match AssetSchemeAddress::from_hash(asset_type) {
+            Some(address) => self.client.get_asset_scheme(address).map_err(errors::parcel_state),
+            None => Ok(None),
+        }
     }
 
     fn get_asset(&self, transaction_hash: H256, index: usize, block_number: Option<u64>) -> Result<Option<Asset>> {
         let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
-        self.client.get_asset(transaction_hash, index, block_id).map_err(errors::parcel)
+        self.client.get_asset(transaction_hash, index, block_id).map_err(errors::parcel_state)
+    }
+
+    fn is_asset_spent(
+        &self,
+        transaction_hash: H256,
+        index: usize,
+        shard_id: ShardId,
+        block_number: Option<u64>,
+    ) -> Result<Option<bool>> {
+        let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
+        self.client.is_asset_spent(transaction_hash, index, shard_id, block_id).map_err(errors::parcel_state)
     }
 
     fn get_nonce(&self, address: H160, block_number: Option<u64>) -> Result<Option<U256>> {
@@ -108,12 +147,12 @@ where
     }
 
 
-    fn get_number_of_shards(&self, block_number: Option<u64>) -> Result<Option<u32>> {
+    fn get_number_of_shards(&self, block_number: Option<u64>) -> Result<Option<ShardId>> {
         let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
         Ok(self.client.number_of_shards(block_id.into()))
     }
 
-    fn get_shard_root(&self, shard_id: u32, block_number: Option<u64>) -> Result<Option<H256>> {
+    fn get_shard_root(&self, shard_id: ShardId, block_number: Option<u64>) -> Result<Option<H256>> {
         let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
         Ok(self.client.shard_root(shard_id, block_id.into()))
     }
@@ -143,5 +182,24 @@ where
 
     fn get_pending_parcels(&self) -> Result<Vec<Parcel>> {
         Ok(self.client.ready_parcels().into_iter().map(|signed| signed.into()).collect())
+    }
+
+    fn get_coinbase(&self) -> Result<Option<Address>> {
+        if self.miner.author().is_zero() {
+            Ok(None)
+        } else {
+            Ok(Some(self.miner.author()))
+        }
+    }
+
+    fn get_network_id(&self) -> Result<u64> {
+        Ok(self.client.common_params().network_id)
+    }
+
+    fn execute_change_shard_state(&self, raw: Bytes) -> Result<Vec<ChangeShard>> {
+        let transactions: Vec<Transaction> =
+            UntrustedRlp::new(&raw.into_vec()).as_list().map_err(errors::rlp).map(Into::into)?;
+
+        Ok(self.client.execute_transactions(&transactions).map_err(errors::core)?)
     }
 }

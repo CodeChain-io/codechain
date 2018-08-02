@@ -19,21 +19,19 @@ use std::collections::HashSet;
 use ccrypto::BLAKE_NULL_RLP;
 use ckey::Address;
 use cmerkle::skewed_merkle_root;
-use ctypes::parcel::Error as ParcelError;
+use cmerkle::TrieFactory;
+use cstate::{StateDB, StateError, StateWithCache, TopLevelState};
+use ctypes::invoice::{Invoice, ParcelInvoice};
+use ctypes::machine::{LiveBlock, Parcels};
+use ctypes::parcel::{Error as ParcelError, Outcome as ParcelOutcome};
 use primitives::{Bytes, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
-use trie::TrieFactory;
 use unexpected::Mismatch;
 
-use super::blockchain::ParcelInvoice;
 use super::consensus::CodeChainEngine;
 use super::error::{BlockError, Error};
 use super::header::{Header, Seal};
-use super::invoice::Invoice;
-use super::machine::{LiveBlock, Parcels};
 use super::parcel::{SignedParcel, UnverifiedParcel};
-use super::state::{ParcelOutcome, StateWithCache, TopLevelState};
-use super::state_db::StateDB;
 
 /// A block, encoded as it is on the block chain.
 #[derive(Debug, Clone, PartialEq)]
@@ -73,14 +71,14 @@ impl Decodable for Block {
 #[derive(Clone)]
 pub struct ExecutedBlock {
     header: Header,
-    state: TopLevelState<StateDB>,
+    state: TopLevelState,
     parcels: Vec<SignedParcel>,
     invoices: Vec<ParcelInvoice>,
     parcels_set: HashSet<H256>,
 }
 
 impl ExecutedBlock {
-    fn new(state: TopLevelState<StateDB>) -> ExecutedBlock {
+    fn new(state: TopLevelState) -> ExecutedBlock {
         ExecutedBlock {
             header: Default::default(),
             state,
@@ -91,7 +89,7 @@ impl ExecutedBlock {
     }
 
     /// Get mutable access to a state.
-    pub fn state_mut(&mut self) -> &mut TopLevelState<StateDB> {
+    pub fn state_mut(&mut self) -> &mut TopLevelState {
         &mut self.state
     }
 }
@@ -130,7 +128,7 @@ impl<'x> OpenBlock<'x> {
         is_epoch_begin: bool,
     ) -> Result<Self, Error> {
         let number = parent.number() + 1;
-        let state = TopLevelState::from_existing(db, *parent.state_root(), trie_factory)?;
+        let state = TopLevelState::from_existing(db, *parent.state_root(), trie_factory).map_err(StateError::from)?;
         let mut r = OpenBlock {
             block: ExecutedBlock::new(state),
             engine,
@@ -154,10 +152,10 @@ impl<'x> OpenBlock<'x> {
     /// Push a parcel into the block.
     pub fn push_parcel(&mut self, parcel: SignedParcel, h: Option<H256>) -> Result<(), Error> {
         if self.block.parcels_set.contains(&parcel.hash()) {
-            return Err(ParcelError::AlreadyImported.into())
+            return Err(StateError::Parcel(ParcelError::ParcelAlreadyImported).into())
         }
 
-        let outcomes = self.block.state.apply(&parcel)?;
+        let outcomes = self.block.state.apply(&parcel, parcel.sender(), &parcel.public_key())?;
 
         self.block.parcels_set.insert(h.unwrap_or_else(|| parcel.hash()));
         self.block.parcels.push(parcel.into());
@@ -261,7 +259,7 @@ impl<'x> OpenBlock<'x> {
 #[derive(Clone)]
 pub struct ClosedBlock {
     block: ExecutedBlock,
-    unclosed_state: TopLevelState<StateDB>,
+    unclosed_state: TopLevelState,
 }
 
 impl ClosedBlock {
@@ -374,7 +372,7 @@ pub trait IsBlock {
     }
 
     /// Get the final state associated with this object's block.
-    fn state(&self) -> &TopLevelState<StateDB> {
+    fn state(&self) -> &TopLevelState {
         &self.block().state
     }
 }

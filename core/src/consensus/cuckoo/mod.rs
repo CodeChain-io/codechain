@@ -20,6 +20,7 @@ use std::cmp::{max, min};
 
 use byteorder::{ByteOrder, LittleEndian};
 use ccrypto::blake256;
+use ctypes::machine::WithBalances;
 use cuckoo::Cuckoo as CuckooVerifier;
 use primitives::U256;
 use rlp::UntrustedRlp;
@@ -31,7 +32,6 @@ use super::super::codechain_machine::CodeChainMachine;
 use super::super::consensus::EngineType;
 use super::super::error::{BlockError, Error};
 use super::super::header::Header;
-use super::super::machine::WithBalances;
 use super::ConsensusEngine;
 
 /// Cuckoo specific seal
@@ -79,8 +79,8 @@ impl Cuckoo {
             panic!("Can't calculate genesis block score");
         }
 
-        //score = parent_score + parent_score // 2048 * max(1 - (block_timestamp - parent_timestamp) // 10, -99)
-        let diff = (header.timestamp() - parent.timestamp()) / 10;
+        //score = parent_score + parent_score // 2048 * max(1 - (block_timestamp - parent_timestamp) // block_interval, -99)
+        let diff = (header.timestamp() - parent.timestamp()) / self.params.block_interval;
         let target = if diff <= 1 {
             parent.score().saturating_add(*parent.score() / 2048.into() * U256::from(1 - diff))
         } else {

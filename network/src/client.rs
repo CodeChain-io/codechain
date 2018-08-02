@@ -36,7 +36,7 @@ impl Api for ClientApi {
     fn send(&self, id: &NodeId, message: &[u8]) {
         if let Some(extension) = self.extension.upgrade() {
             let need_encryption = extension.need_encryption();
-            let extension_name = extension.name();
+            let extension_name = extension.name().to_string();
             let node_id = *id;
             if let Err(err) = self.p2p_channel.send(P2pMessage::SendExtensionMessage {
                 node_id,
@@ -55,7 +55,7 @@ impl Api for ClientApi {
 
     fn set_timer(&self, timer_id: usize, duration: Duration) -> NetworkExtensionResult<()> {
         if let Some(extension) = self.extension.upgrade() {
-            let extension_name = extension.name();
+            let extension_name = extension.name().to_string();
             Ok(self.timer_channel.send_sync(TimerMessage::SetTimer {
                 extension_name,
                 timer_id,
@@ -68,7 +68,7 @@ impl Api for ClientApi {
 
     fn set_timer_once(&self, timer_id: usize, duration: Duration) -> NetworkExtensionResult<()> {
         if let Some(extension) = self.extension.upgrade() {
-            let extension_name = extension.name();
+            let extension_name = extension.name().to_string();
             Ok(self.timer_channel.send_sync(TimerMessage::SetTimerOnce {
                 extension_name,
                 timer_id,
@@ -81,7 +81,7 @@ impl Api for ClientApi {
 
     fn clear_timer(&self, timer_id: usize) -> NetworkExtensionResult<()> {
         if let Some(extension) = self.extension.upgrade() {
-            let extension_name = extension.name();
+            let extension_name = extension.name().to_string();
             Ok(self.timer_channel.send_sync(TimerMessage::ClearTimer {
                 extension_name,
                 timer_id,
@@ -93,7 +93,7 @@ impl Api for ClientApi {
 
     fn send_local_message(&self, message: &Encodable) {
         if let Some(extension) = self.extension.upgrade() {
-            let extension_name = extension.name();
+            let extension_name = extension.name().to_string();
             let message = message.rlp_bytes().into_vec();
             if let Err(err) = self.timer_channel.send(TimerMessage::LocalMessage {
                 extension_name,
@@ -108,7 +108,7 @@ impl Api for ClientApi {
 }
 
 pub struct Client {
-    extensions: RwLock<HashMap<String, Arc<NetworkExtension>>>,
+    extensions: RwLock<HashMap<&'static str, Arc<NetworkExtension>>>,
     p2p_channel: IoChannel<P2pMessage>,
     timer_channel: IoChannel<TimerMessage>,
 }
@@ -136,7 +136,7 @@ macro_rules! define_method {
     ($method_name: ident; $($var: ident, $t: ty);*) => {
         pub fn $method_name (&self, name: &String, $($var: $t), *) {
             let extensions = self.extensions.read();
-            if let Some(ref extension) = extensions.get(name) {
+            if let Some(ref extension) = extensions.get(name.as_str()) {
                 extension.$method_name($($var),*);
             } else {
                 cdebug!(NETAPI, "{} doesn't exist.", name);
@@ -158,7 +158,7 @@ impl Client {
     pub fn initialize_extension(&self, extension_name: &String) {
         let extension = {
             let mut extensions = self.extensions.read();
-            extensions.get(extension_name).map(Arc::clone)
+            extensions.get(extension_name.as_str()).map(Arc::clone)
         };
         if let Some(extension) = extension {
             let p2p_channel = self.p2p_channel.clone();
@@ -182,7 +182,7 @@ impl Client {
 
     pub fn extension_versions(&self) -> Vec<(String, Vec<u64>)> {
         let extensions = self.extensions.read();
-        extensions.iter().map(|(name, extension)| (name.clone(), extension.versions())).collect()
+        extensions.iter().map(|(name, extension)| (name.to_string(), extension.versions().to_vec())).collect()
     }
 
     define_method!(on_node_added; id, &NodeId; version, u64);
@@ -244,12 +244,12 @@ mod tests {
     }
 
     struct TestExtension {
-        name: String,
+        name: &'static str,
         callbacks: Mutex<Vec<Callback>>,
     }
 
     impl TestExtension {
-        fn new(name: String) -> Self {
+        fn new(name: &'static str) -> Self {
             Self {
                 name,
                 callbacks: Mutex::new(vec![]),
@@ -258,16 +258,17 @@ mod tests {
     }
 
     impl NetworkExtension for TestExtension {
-        fn name(&self) -> String {
-            self.name.clone()
+        fn name(&self) -> &'static str {
+            self.name
         }
 
         fn need_encryption(&self) -> bool {
             false
         }
 
-        fn versions(&self) -> Vec<u64> {
-            vec![0]
+        fn versions(&self) -> &[u64] {
+            const VERSIONS: &'static [u64] = &[0];
+            &VERSIONS
         }
 
         fn on_initialize(&self, _api: Arc<Api>) {
@@ -306,10 +307,10 @@ mod tests {
         let node_id1 = SocketAddr::v4(127, 0, 0, 1, 8081).into();
         let node_id5 = SocketAddr::v4(127, 0, 0, 1, 8085).into();
 
-        let e1 = Arc::new(TestExtension::new("e1".to_string()));
+        let e1 = Arc::new(TestExtension::new("e1"));
         client.register_extension(Arc::clone(&e1) as Arc<NetworkExtension>);
         client.initialize_extension(&"e1".to_string());
-        let e2 = Arc::new(TestExtension::new("e2".to_string()));
+        let e2 = Arc::new(TestExtension::new("e2"));
         client.register_extension(Arc::clone(&e2) as Arc<NetworkExtension>);
         client.initialize_extension(&"e2".to_string());
 

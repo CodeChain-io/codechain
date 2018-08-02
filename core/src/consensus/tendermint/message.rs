@@ -43,12 +43,12 @@ impl VoteStep {
         }
     }
 
-    pub fn is_height(&self, height: Height) -> bool {
-        self.height == height
-    }
-
     pub fn is_view(&self, height: Height, view: View) -> bool {
         self.height == height && self.view == view
+    }
+
+    pub fn is_step(&self, height: Height, view: View, step: Step) -> bool {
+        self.height == height && self.view == view && self.step == step
     }
 }
 
@@ -79,7 +79,7 @@ impl Ord for VoteStep {
 const MESSAGE_ID_CONSENSUS_MESSAGE: u8 = 0x01;
 const MESSAGE_ID_PROPOSAL_BLOCK: u8 = 0x02;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum TendermintMessage {
     ConsensusMessage(Bytes),
     ProposalBlock(Bytes),
@@ -235,11 +235,55 @@ pub fn message_hash(vote_step: VoteStep, block_hash: H256) -> H256 {
 mod tests {
     use super::super::Step;
     use super::*;
+    use primitives::H520;
+    use rlp;
 
     #[test]
     fn step_ordering() {
         assert!(VoteStep::new(10, 123, Step::Precommit) < VoteStep::new(11, 123, Step::Precommit));
         assert!(VoteStep::new(10, 123, Step::Propose) < VoteStep::new(11, 123, Step::Precommit));
         assert!(VoteStep::new(10, 122, Step::Propose) < VoteStep::new(11, 123, Step::Propose));
+    }
+
+    #[test]
+    fn encode_and_decode_tendermint_message_1() {
+        rlp_encode_and_decode_test!(TendermintMessage::ConsensusMessage(vec![1u8, 2u8]));
+    }
+
+    #[test]
+    fn encode_and_decode_tendermint_message_2() {
+        rlp_encode_and_decode_test!(TendermintMessage::ProposalBlock(vec![1u8, 2u8]));
+    }
+
+    #[test]
+    fn encode_and_decode_consensus_message_1() {
+        let message = ConsensusMessage::default();
+        rlp_encode_and_decode_test!(message);
+    }
+
+    #[test]
+    fn encode_and_decode_consensus_message_2() {
+        let message = ConsensusMessage::new(
+            H520::from("0x3000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003"),
+            2usize,
+            3usize,
+            Step::Commit,
+            Some(H256::from("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050")),
+        );
+        rlp_encode_and_decode_test!(message);
+    }
+
+    #[test]
+    fn encode_and_decode_consensus_message_3() {
+        let height = 2usize;
+        let view = 3usize;
+        let step = Step::Commit;
+        let signature = H520::from("0x3000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003");
+        let block_hash = Some(H256::from("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050"));
+        let consensus_message = ConsensusMessage::new(signature, height, view, step, block_hash);
+        let vote_info = message_info_rlp(&VoteStep::new(height, view, step), block_hash);
+        let encoded = message_full_rlp(&signature, &vote_info);
+        let decoded = rlp::decode::<ConsensusMessage>(&encoded);
+        assert_eq!(consensus_message, decoded);
     }
 }

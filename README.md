@@ -1,4 +1,4 @@
-CodeChain [![Build Status](https://travis-ci.org/CodeChain-io/codechain.svg?branch=master)](https://travis-ci.org/CodeChain-io/codechain) [![Gitter: CodeChain](https://img.shields.io/badge/gitter-codechain-4AB495.svg)](https://gitter.im/CodeChain-io/codechain) [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0) [![Read the Docs](https://img.shields.io/readthedocs/pip.svg)](https://codechain.readthedocs.io/en/latest/)
+CodeChain [![Build Status](https://travis-ci.org/CodeChain-io/codechain.svg?branch=master)](https://travis-ci.org/CodeChain-io/codechain) [![Gitter: CodeChain](https://img.shields.io/badge/gitter-codechain-4AB495.svg)](https://gitter.im/CodeChain-io/codechain) [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0) [![Read the Docs](https://img.shields.io/readthedocs/codechain.svg)](https://codechain.readthedocs.io/en/latest/)
 ==============
 
 CodeChain is a programmable open source blockchain technology optimal for developing and customizing multi-asset management systems.
@@ -32,17 +32,17 @@ You can create a block by sending a parcel through [JSON-RPC](https://github.com
 ## Formatting
 
 
-Make sure you run `rustfmt` before creating a PR to the repo. You need to install the nightly-2018-05-07 version of `rustfmt`.
+Make sure you run `rustfmt` before creating a PR to the repo. You need to install the nightly-2018-07-17 version of `rustfmt`.
 
 ```
-rustup toolchain install nightly-2018-05-07
-rustup component add rustfmt-preview --toolchain nightly-2018-05-07
+rustup toolchain install nightly-2018-07-17
+rustup component add rustfmt-preview --toolchain nightly-2018-07-17
 ```
 
 To run `rustfmt`,
 
 ```
-cargo +nightly-2018-05-07 fmt
+cargo +nightly-2018-07-17 fmt
 ```
 
 ## Testing

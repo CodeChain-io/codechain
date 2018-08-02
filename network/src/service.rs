@@ -72,7 +72,7 @@ impl Service {
     }
 
     pub fn register_extension(&self, extension: Arc<NetworkExtension>) -> Result<(), String> {
-        let extension_name = extension.name();
+        let extension_name = extension.name().to_string();
         self.client.register_extension(extension);
         if let Err(err) = self.timer.send_message(timer::Message::InitializeExtension {
             extension_name,
@@ -97,18 +97,20 @@ impl Service {
 }
 
 impl Control for Service {
-    fn register_secret(&self, secret: H256, addr: SocketAddr) {
+    fn register_secret(&self, secret: H256, addr: SocketAddr) -> Result<(), ControlError> {
         let message = session_initiator::Message::PreimportSecret(secret, addr);
         if let Err(err) = self.session_initiator.send_message(message) {
             cerror!(NET, "Error occurred while sending message PreimportSecret : {:?}", err);
         }
+        Ok(())
     }
 
-    fn connect(&self, addr: SocketAddr) {
+    fn connect(&self, addr: SocketAddr) -> Result<(), ControlError> {
         let message = session_initiator::Message::ManuallyConnectTo(addr);
         if let Err(err) = self.session_initiator.send_message(message) {
             cerror!(NET, "Error occurred while sending message ManuallyConnectTo: {:?}", err);
         }
+        Ok(())
     }
 
     fn disconnect(&self, addr: SocketAddr) -> Result<(), ControlError> {
@@ -121,8 +123,8 @@ impl Control for Service {
         Ok(())
     }
 
-    fn is_connected(&self, addr: &SocketAddr) -> bool {
-        self.routing_table.is_connected(addr)
+    fn is_connected(&self, addr: &SocketAddr) -> Result<bool, ControlError> {
+        Ok(self.routing_table.is_connected(addr))
     }
 }
 

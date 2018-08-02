@@ -20,11 +20,10 @@ use time::get_time;
 
 use ccrypto::{blake256, BLAKE_NULL_RLP};
 use ckey::Address;
+use ctypes::BlockNumber;
 use heapsize::HeapSizeOf;
 use primitives::{Bytes, H256, U256};
 use rlp::*;
-
-use super::types::BlockNumber;
 
 /// Semantic boolean for when a seal/signature is included.
 pub enum Seal {
@@ -312,7 +311,7 @@ impl Encodable for Header {
     }
 }
 
-impl ::machine::Header for Header {
+impl ::ctypes::machine::Header for Header {
     fn bare_hash(&self) -> H256 {
         Header::bare_hash(self)
     }
@@ -334,7 +333,7 @@ impl ::machine::Header for Header {
     }
 }
 
-impl ::machine::ScoredHeader for Header {
+impl ::ctypes::machine::ScoredHeader for Header {
     fn score(&self) -> &U256 {
         self.score()
     }

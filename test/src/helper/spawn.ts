@@ -45,7 +45,7 @@ export default class CodeChain {
     idCounter += 1;
 
     this._dbPath = mkdtempSync(`${projectRoot}/db/`);
-    this._sdk = new SDK(`http://localhost:${this.rpcPort}`);
+    this._sdk = new SDK({ server: `http://localhost:${this.rpcPort}` });
   }
 
   public async start(bin: string, argv: string[]) {

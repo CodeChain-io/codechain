@@ -17,17 +17,14 @@
 use super::super::uint::Uint;
 
 #[derive(Debug, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CuckooParams {
     /// Block reward.
-    #[serde(rename = "blockReward")]
     pub block_reward: Option<Uint>,
-    #[serde(rename = "minScore")]
+    pub block_interval: Option<Uint>,
     pub min_score: Option<Uint>,
-    #[serde(rename = "maxVertex")]
     pub max_vertex: Option<Uint>,
-    #[serde(rename = "maxEdge")]
     pub max_edge: Option<Uint>,
-    #[serde(rename = "cycleLength")]
     pub cycle_length: Option<Uint>,
 }
 
@@ -49,6 +46,7 @@ mod tests {
         let s = r#"{
             "params": {
                 "blockReward": "0x0d",
+                "blockInterval" : "120",
                 "minScore" : "0x020000",
                 "maxVertex" : "16",
                 "maxEdge" : "8",
@@ -58,6 +56,7 @@ mod tests {
 
         let deserialized: Cuckoo = serde_json::from_str(s).unwrap();
         assert_eq!(deserialized.params.block_reward, Some(Uint(U256::from(0x0d))));
+        assert_eq!(deserialized.params.block_interval, Some(Uint(U256::from(120))));
         assert_eq!(deserialized.params.min_score, Some(Uint(U256::from(0x020000))));
         assert_eq!(deserialized.params.max_vertex, Some(Uint(U256::from(16))));
         assert_eq!(deserialized.params.max_edge, Some(Uint(U256::from(8))));

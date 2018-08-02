@@ -16,8 +16,10 @@
 
 mod action;
 mod error;
+mod outcome;
 mod parcel;
 
 pub use self::action::{Action, ChangeShard};
 pub use self::error::Error;
+pub use self::outcome::Outcome;
 pub use self::parcel::Parcel;

@@ -21,10 +21,12 @@ use std::sync::Arc;
 
 use ccore::encoded::Header as EncodedHeader;
 use ccore::{
-    Block, BlockChainClient, BlockId, BlockImportError, BlockNumber, ChainNotify, Header, ImportError, Seal,
-    UnverifiedParcel,
+    Block, BlockChainClient, BlockId, BlockImportError, BlockInfo, ChainInfo, ChainNotify, Client, Header, ImportBlock,
+    ImportError, Seal, UnverifiedParcel,
 };
 use cnetwork::{Api, NetworkExtension, NodeId, TimerToken};
+use ctypes::parcel::Action;
+use ctypes::BlockNumber;
 use primitives::{H256, U256};
 use rlp::{Encodable, UntrustedRlp};
 use time::Duration;
@@ -32,7 +34,6 @@ use time::Duration;
 use super::downloader::{BodyDownloader, HeaderDownloader};
 use super::message::{Message, RequestMessage, ResponseMessage};
 
-const EXTENSION_NAME: &'static str = "block-propagation";
 const SYNC_TIMER_TOKEN: usize = 0;
 const SYNC_TIMER_INTERVAL: i64 = 1000;
 
@@ -42,13 +43,13 @@ pub struct Extension {
     requests: RwLock<HashMap<NodeId, Vec<(u64, RequestMessage)>>>,
     header_downloaders: RwLock<HashMap<NodeId, HeaderDownloader>>,
     body_downloader: Mutex<BodyDownloader>,
-    client: Arc<BlockChainClient>,
+    client: Arc<Client>,
     api: Mutex<Option<Arc<Api>>>,
     last_request: AtomicUsize,
 }
 
 impl Extension {
-    pub fn new(client: Arc<BlockChainClient>) -> Arc<Self> {
+    pub fn new(client: Arc<Client>) -> Arc<Self> {
         Arc::new(Self {
             requests: RwLock::new(HashMap::new()),
             header_downloaders: RwLock::new(HashMap::new()),
@@ -67,7 +68,7 @@ impl Extension {
 
     fn dismiss_request(&self, token: &NodeId, id: u64) {
         if let Some(requests) = self.requests.write().get_mut(token) {
-            requests.retain(|(i, _)| *i == id);
+            requests.retain(|(i, _)| *i != id);
         }
     }
 
@@ -85,15 +86,16 @@ impl Extension {
 }
 
 impl NetworkExtension for Extension {
-    fn name(&self) -> String {
-        String::from(EXTENSION_NAME)
+    fn name(&self) -> &'static str {
+        "block-propagation"
     }
     fn need_encryption(&self) -> bool {
         false
     }
 
-    fn versions(&self) -> Vec<u64> {
-        vec![0]
+    fn versions(&self) -> &[u64] {
+        const VERSIONS: &'static [u64] = &[0];
+        &VERSIONS
     }
 
     fn on_initialize(&self, api: Arc<Api>) {
@@ -394,7 +396,20 @@ impl Extension {
 
                 headers.first().map(|header| header.number()) == Some(*start_number)
             }
-            (RequestMessage::Bodies(..), ResponseMessage::Bodies(..)) => true,
+            (RequestMessage::Bodies(_), ResponseMessage::Bodies(bodies)) => {
+                for body in bodies {
+                    for parcel in body {
+                        let is_valid = match &parcel.as_unsigned().action {
+                            Action::Custom(bytes) => self.client.custom_handlers().iter().any(|c| c.is_target(bytes)),
+                            _ => true,
+                        };
+                        if !is_valid {
+                            return false
+                        }
+                    }
+                }
+                true
+            }
             (RequestMessage::StateHead(..), ResponseMessage::StateHead(..)) => unimplemented!(),
             (
                 RequestMessage::StateChunk {
@@ -418,20 +433,34 @@ impl Extension {
 
         let mut exists = Vec::new();
         for header in completed {
-            let hash = header.hash();
             // FIXME: handle import errors
-            match self.client.import_header(header.into_inner()) {
-                Err(BlockImportError::Import(ImportError::AlreadyInChain)) => exists.push(hash),
+            match self.client.import_header(header.clone().into_inner()) {
+                Err(BlockImportError::Import(ImportError::AlreadyInChain)) => exists.push(header),
                 _ => {}
             }
         }
 
         if let Some(peer) = self.header_downloaders.write().get_mut(from) {
-            peer.mark_as_imported(exists);
+            peer.mark_as_imported(exists.iter().map(|h| h.hash()).collect());
             if let Some(request) = peer.create_request() {
                 self.send_request(from, request);
             }
         }
+
+        let body_targets = exists
+            .iter()
+            .filter(|header| self.client.block_body(BlockId::Hash(header.hash())).is_none())
+            .map(|header| {
+                let prev_root = if let Some(parent) = self.client.block_header(BlockId::Hash(header.parent_hash())) {
+                    parent.parcels_root()
+                } else {
+                    H256::zero()
+                };
+                (header.hash(), prev_root, header.parcels_root())
+            })
+            .collect();
+
+        self.body_downloader.lock().add_target(body_targets);
     }
 
     fn on_body_response(&self, from: &NodeId, hashes: Vec<H256>, bodies: Vec<Vec<UnverifiedParcel>>) {

@@ -14,17 +14,13 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::sync::Arc;
-
-use header::Header;
-use kvdb::KeyValueDB;
-use parcel::SignedParcel;
-use primitives::Bytes;
-use primitives::{H256, U256};
+use cstate::StateDB;
+use primitives::{Bytes, H256, U256};
 use rlp::{self, RlpStream};
-use spec::Spec;
-use state::TopLevelState;
-use state_db::StateDB;
+
+use super::super::header::Header;
+use super::super::parcel::SignedParcel;
+use super::super::spec::Spec;
 
 pub fn create_test_block(header: &Header) -> Bytes {
     let mut rlp = RlpStream::new_list(2);
@@ -61,17 +57,6 @@ pub fn get_good_dummy_block_hash() -> (H256, Bytes) {
     (block_header.hash(), create_test_block(&block_header))
 }
 
-fn new_db() -> Arc<KeyValueDB> {
-    Arc::new(::kvdb_memorydb::create(::db::NUM_COLUMNS.unwrap_or(0)))
-}
-
 pub fn get_temp_state_db() -> StateDB {
-    let db = new_db();
-    let journal_db = ::journaldb::new(db, ::journaldb::Algorithm::Archive, ::db::COL_STATE);
-    StateDB::new(journal_db, 5 * 1024 * 1024)
-}
-
-pub fn get_temp_state() -> TopLevelState<StateDB> {
-    let journal_db = get_temp_state_db();
-    TopLevelState::new(journal_db, Default::default())
+    StateDB::new_with_memorydb(5 * 1024 * 1024, Vec::new())
 }

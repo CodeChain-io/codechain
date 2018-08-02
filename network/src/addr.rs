@@ -17,7 +17,7 @@
 use std::cmp::Ordering;
 use std::convert::{From, Into};
 use std::fmt;
-use std::net::{self, AddrParseError, IpAddr, Ipv4Addr, Ipv6Addr};
+use std::net::{self, AddrParseError, IpAddr, Ipv4Addr};
 use std::str::FromStr;
 
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
@@ -38,8 +38,8 @@ impl SocketAddr {
         SocketAddr::new(IpAddr::V4(Ipv4Addr::new(a, b, c, d)), port)
     }
 
-    pub fn v6(a: u16, b: u16, c: u16, d: u16, e: u16, f: u16, g: u16, h: u16, port: u16) -> Self {
-        SocketAddr::new(IpAddr::V6(Ipv6Addr::new(a, b, c, d, e, f, g, h)), port)
+    pub fn v6(_a: u16, _b: u16, _c: u16, _d: u16, _e: u16, _f: u16, _g: u16, _h: u16, _port: u16) -> Self {
+        unimplemented!();
     }
 
     pub fn ip(&self) -> IpAddr {
@@ -53,8 +53,49 @@ impl SocketAddr {
     pub fn is_global(&self) -> bool {
         match self.ip() {
             net::IpAddr::V4(ip) => !ip.is_loopback() && !ip.is_private(),
-            net::IpAddr::V6(ip) => !ip.is_loopback(),
+            net::IpAddr::V6(_ip) => unimplemented!(),
         }
+    }
+
+    pub fn is_reachable(&self, other: &SocketAddr) -> bool {
+        if self == other {
+            return false
+        }
+        match (self.ip(), other.ip()) {
+            (net::IpAddr::V4(self_ip), net::IpAddr::V4(other_ip)) => {
+                debug_assert_eq!(false, other_ip.is_link_local());
+                debug_assert_eq!(false, other_ip.is_broadcast());
+                debug_assert_eq!(false, other_ip.is_multicast());
+                debug_assert_eq!(false, other_ip.is_documentation());
+                debug_assert_eq!(false, other_ip.is_unspecified());
+                if self_ip.is_loopback() {
+                    return true
+                }
+                if other_ip.is_loopback() {
+                    return self_ip.is_loopback()
+                }
+                if other_ip.is_private() {
+                    if !self_ip.is_private() {
+                        return false
+                    }
+                    return is_same_private_subnet(&self_ip, &other_ip)
+                }
+                true
+            }
+            _ => unimplemented!(),
+        }
+    }
+}
+
+fn is_same_private_subnet(ip1: &Ipv4Addr, ip2: &Ipv4Addr) -> bool {
+    debug_assert_eq!(true, ip1.is_private());
+    debug_assert_eq!(true, ip2.is_private());
+
+    match ((ip1.octets()[0], ip1.octets()[1]), (ip2.octets()[0], ip2.octets()[1])) {
+        ((10, _), (10, _)) => true,
+        ((172, b1), (172, b2)) if b1 >= 16 && b1 <= 31 && b2 >= 16 && b2 <= 31 => true,
+        ((192, 168), (192, 168)) => true,
+        _ => false,
     }
 }
 
@@ -78,8 +119,11 @@ impl<'a> Into<NodeId> for &'a SocketAddr {
 
 impl From<net::SocketAddr> for SocketAddr {
     fn from(addr: net::SocketAddr) -> Self {
-        Self {
-            addr,
+        match addr {
+            net::SocketAddr::V4(_) => Self {
+                addr,
+            },
+            net::SocketAddr::V6(_) => unimplemented!(),
         }
     }
 }
@@ -99,7 +143,8 @@ impl<'a> Into<&'a net::SocketAddr> for &'a SocketAddr {
 impl FromStr for SocketAddr {
     type Err = AddrParseError;
     fn from_str(addr: &str) -> Result<Self, Self::Err> {
-        Ok(Self::from(net::SocketAddr::from_str(addr)?))
+        let addr = net::SocketAddrV4::from_str(addr)?;
+        Ok(Self::from(net::SocketAddr::V4(addr)))
     }
 }
 
@@ -140,15 +185,7 @@ impl Encodable for SocketAddr {
                 }
                 s.append(&self.port());
             }
-            IpAddr::V6(ref addr) => {
-                let octets = addr.octets();
-                assert_eq!(16, octets.len());
-                s.begin_list(octets.len() + 1);
-                for octet in octets.iter() {
-                    s.append(octet);
-                }
-                s.append(&self.port());
-            }
+            IpAddr::V6(ref _addr) => unimplemented!(),
         }
     }
 }
@@ -164,15 +201,7 @@ impl Decodable for SocketAddr {
                 let port = rlp.val_at(4)?;
                 Ok(SocketAddr::v4(ip0, ip1, ip2, ip3, port))
             }
-            17 => {
-                let mut octets: [u8; 16] = [0; 16];
-                for i in 0..16 {
-                    octets[i] = rlp.val_at(i)?;
-                }
-                let port = rlp.val_at(16)?;
-                let ip = IpAddr::V6(Ipv6Addr::from(octets));
-                Ok(SocketAddr::new(ip, port))
-            }
+            17 => unimplemented!(),
             _ => Err(DecoderError::RlpIncorrectListLen),
         }
     }
@@ -226,5 +255,53 @@ mod tests {
         assert_eq!(false, a1.is_global());
         assert_eq!(false, a2.is_global());
         assert_eq!(true, a3.is_global());
+    }
+
+    #[test]
+    fn test_is_reachable() {
+        // Servers which have loopback addresses can connect to each other
+        let loopback_1 = SocketAddr::v4(127, 0, 0, 1, 3485);
+        let loopback_2 = SocketAddr::v4(127, 0, 0, 1, 3486);
+        assert_eq!(true, loopback_1.is_reachable(&loopback_2));
+        assert_eq!(true, loopback_2.is_reachable(&loopback_1));
+        assert_eq!(false, loopback_1.is_reachable(&loopback_1));
+
+        // Servers from same private subnet addresses can connect to each other
+        let private_1 = SocketAddr::v4(192, 168, 0, 1, 3485);
+        let private_2 = SocketAddr::v4(192, 168, 0, 2, 3485);
+        assert_eq!(true, private_1.is_reachable(&private_2));
+        assert_eq!(true, private_2.is_reachable(&private_1));
+        assert_eq!(false, private_1.is_reachable(&private_1));
+
+        // Servers from same private subnet addresses can connect to each other
+        let private_3 = SocketAddr::v4(172, 16, 0, 1, 3485);
+        let private_4 = SocketAddr::v4(172, 17, 0, 1, 3485);
+        assert_eq!(true, private_3.is_reachable(&private_4));
+        assert_eq!(true, private_4.is_reachable(&private_3));
+
+        // Servers from different private subnet addresses can not connect to each other
+        assert_eq!(false, private_1.is_reachable(&private_3));
+        assert_eq!(false, private_3.is_reachable(&private_1));
+
+        // Servers which have public addresses can connect to each other
+        let public_1 = SocketAddr::v4(1, 1, 1, 1, 3485);
+        let public_2 = SocketAddr::v4(2, 2, 2, 2, 3485);
+        assert_eq!(true, public_1.is_reachable(&public_2));
+        assert_eq!(true, public_2.is_reachable(&public_1));
+        assert_eq!(false, public_1.is_reachable(&public_1));
+
+        // Any server can connect to public address
+        assert_eq!(true, private_1.is_reachable(&public_1));
+        assert_eq!(true, loopback_1.is_reachable(&public_1));
+
+        // Servers from public network can not connect to private server
+        assert_eq!(false, public_1.is_reachable(&private_1));
+
+        // Servers from loopback network can connect to private server
+        assert_eq!(true, loopback_1.is_reachable(&private_1));
+
+        // Only servers from loopback network can connect to loopback server
+        assert_eq!(false, public_1.is_reachable(&loopback_1));
+        assert_eq!(false, private_1.is_reachable(&loopback_1));
     }
 }

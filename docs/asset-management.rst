@@ -18,6 +18,23 @@ First, install the package with the following command:
 
 Then, make sure that your CodeChain RPC server is up and running. You can read about how that is done in the `configure section <https://codechain.readthedocs.io/en/latest/configuration.html>`_.
 
+Setup the Test Account
+=====================================
+Before you begin to meet various examples, you need to setup an account. The given account (cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7) holds 100000 CCC at the genesis block. It's a sufficient
+amount to pay for the parcel fee. You can setup the account by using this:
+::
+
+    wget https://raw.githubusercontent.com/CodeChain-io/codechain-sdk-js/master/examples/import-test-account.js
+
+If successful, the command line will output the address of the account being used for the parcel fee. In this case, it will output cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7.
+
+Then run the downloaded .js file with the following command:
+
+``node import-test-account.js``
+
+.. note::
+    The initial 100000 CCC is only available in test mode.
+
 Running the Sample Assets Minting Code
 ======================================
 Once you have installed codechain-sdk, go to the installed directory and create a JavaScript file with the example code.
@@ -34,39 +51,117 @@ This should give you the following result:
 ::
 
     Asset {
-    assetType:
-    H256 {
-        value: '53000000000000009364bc7d89c5a424c1367e280cefc86461624fedb306fc59' },
-    lockScriptHash:
-    H256 {
-        value: '0597cf9ef3ab4c61274a31973fc46a3551f44600668efba67c4b754d9007e073' },
-        parameters: [],
-        amount: 10000 }
-    AssetScheme {
-    metadata: '{"name":"Gold","imageUrl":"https://gold.image/"}',
-    registrar: null,
-    amount: 10000 }
-    null
-    Asset {
-    assetType:
-    H256 {
-        value: '53000000000000009364bc7d89c5a424c1367e280cefc86461624fedb306fc59' },
-    lockScriptHash:
+        assetType:
         H256 {
-        value: '92e9b25eed924b5b17268934798c0c70f66de38bda64b480012de9be57ac4ec1' },
-        parameters: [],
-        amount: 3000 }
-    Asset {
-    assetType:
-    H256 {
-        value: '53000000000000009364bc7d89c5a424c1367e280cefc86461624fedb306fc59' },
-    lockScriptHash:
-    H256 {
-        value: '0597cf9ef3ab4c61274a31973fc46a3551f44600668efba67c4b754d9007e073' },
-        parameters: [],
-        amount: 7000 }
+            value: '5300000000000000179399be5182ae43b92acbb9de935000f5e33c23e6d4ceba' },
+        lockScriptHash:
+        H256 {
+            value: 'f42a65ea518ba236c08b261c34af0521fa3cd1aa505e1c18980919cb8945f8f3' },
+        parameters:
+        [ [ 208,
+            251,
+            253,
+            21,
+            232,
+            131,
+            214,
+            80,
+            73,
+            177,
+            128,
+            232,
+            250,
+            151,
+            108,
+            210,
+            60,
+            69,
+            101,
+            113,
+            113,
+            130,
+            172,
+            17,
+            195,
+            42,
+            207,
+            229,
+            248,
+            152,
+            159,
+            14 ] ],
+        amount: 3000,
+        outPoint:
+        AssetOutPoint {
+            transactionHash:
+            H256 {
+                value: '5724c9377508058a27b7fbff10d60255a429ef905792986c07571fcaf0fff980' },
+            index: 0,
+            assetType:
+            H256 {
+                value: '5300000000000000179399be5182ae43b92acbb9de935000f5e33c23e6d4ceba' },
+            amount: 3000,
+            lockScriptHash:
+            H256 {
+                value: 'f42a65ea518ba236c08b261c34af0521fa3cd1aa505e1c18980919cb8945f8f3' },
+            parameters: [ [Array] ] } }
+        Asset {
+        assetType:
+        H256 {
+            value: '5300000000000000179399be5182ae43b92acbb9de935000f5e33c23e6d4ceba' },
+        lockScriptHash:
+        H256 {
+            value: 'f42a65ea518ba236c08b261c34af0521fa3cd1aa505e1c18980919cb8945f8f3' },
+        parameters:
+        [ [ 174,
+            155,
+            53,
+            229,
+            89,
+            202,
+            36,
+            156,
+            33,
+            75,
+            16,
+            147,
+            201,
+            78,
+            224,
+            71,
+            48,
+            132,
+            174,
+            192,
+            113,
+            187,
+            89,
+            29,
+            225,
+            236,
+            112,
+            109,
+            204,
+            115,
+            84,
+            88 ] ],
+        amount: 7000,
+        outPoint:
+        AssetOutPoint {
+            transactionHash:
+            H256 {
+                value: '5724c9377508058a27b7fbff10d60255a429ef905792986c07571fcaf0fff980' },
+            index: 1,
+            assetType:
+            H256 {
+                value: '5300000000000000179399be5182ae43b92acbb9de935000f5e33c23e6d4ceba' },
+            amount: 7000,
+            lockScriptHash:
+            H256 {
+                value: 'f42a65ea518ba236c08b261c34af0521fa3cd1aa505e1c18980919cb8945f8f3' },
+            parameters: [ [Array] ] } }
 
-In this example, 10000 gold has been minted for Alice. Alice then basically sends 3000 gold to Bob.
+In this example, 10000 gold has been minted for Alice. Alice then sends 3000 gold to Bob.
 Let’s see how all of this works specifically by inspecting parts of the code one by one.
 
 Setting Up Basic Properties
@@ -76,43 +171,42 @@ Make sure you are accessing the CodeChain port. In this example, it is assumed t
 
     const sdk = new SDK({ server: “http://localhost:8080” });
 
-In this example, it is assumed that there is something that created a parcel out of the transactions. sendTransaction has been declared for later use.
+The MemoryKeyStore is created for testing purposes. In real applications, the MemoryKeyStore would be in the form of storage, such as hardware
+wallets or key store nodes, which would hold and manage the key pair(private and public keys). The P2PKH is responsible for locking and unlocking scripts.
 ::
 
-    // sendTransaction() is a function to make transaction to be processed.
-    async function sendTransaction(tx) {
-        const parcelSignerSecret = "ede1d4ccb4ec9a8bbbae9a13db3f4a7b56ea04189be86ac3a6a439d9a0a1addd";
-        const parcelSignerAddress = SDK.util.getAccountIdFromPrivate(parcelSignerSecret);
-        const parcel = sdk.core.createChangeShardStateParcel({
-            transactions: [tx],
-            nonce: await sdk.rpc.chain.getNonce(parcelSignerAddress),
-            fee: 10,
-        }).sign(parcelSignerSecret)
-        return await sdk.rpc.chain.sendSignedParcel(parcel);
-    }
+    const keyStore = await sdk.key.createMemoryKeyStore();
+    const p2pkh = await sdk.key.createP2PKH({ keyStore });
 
-Each users need an address for them to receive/send assets to. Addresses are created by the assetAgent.
+Each user needs an address for them to receive/send assets to. Addresses are created by p2pkh. In this example, Bob's address is introduced differently,
+since Bob's address is recieved from Bob. In real world applications, you would only know the address of the recipient and nothing more.
 ::
 
-    // Start of wrapping async function, we use async/await here because a lot of
-    // Promises are there.
-    (async () => {
-        const aliceAddress = await sdk.key.createPubKeyAddress();
-        const bobAddress = await sdk.key.createPubKeyAddress();
+    const aliceAddress = await p2pkh.createAddress();
+    const bobAddress = "ccaqqqap7lazh5g84jsfxccp686jakdy0z9v4chrq4vz8pj4nl9lzvf7rs2rnmc0";
+
+If you want to see Alice's address, run the following:
+::
+
+    console.log(aliceAddress.toString());
+
+This will result in showing you an address that is identical to the format of Bob's address shown above.
 
 Minting/Creating New Assets
 ===========================
 In order to create new assets, you must create a new instance of AssetScheme. In this example, we create 10000 gold with the following code:
 ::
 
-    const goldAssetScheme = new AssetScheme({
-            metadata: JSON.stringify({
-                name: "Gold",
-                imageUrl: "https://gold.image/",
-            }),
-            amount: 10000,
-            registrar: null,
-        });
+    const goldAssetScheme = sdk.core.createAssetScheme({
+        shardId: 0,
+        metadata: JSON.stringify({
+            name: "Gold",
+            description: "An asset example",
+            icon_url: "https://gold.image/",
+        }),
+        amount: 10000,
+        registrar: null,
+    });
 
 .. note::
     You should note that the registrar is kept as null. This value is only filled out when there should be an overseer amongst transactions.
@@ -123,18 +217,9 @@ In order to create new assets, you must create a new instance of AssetScheme. In
 After Gold has been defined in the scheme, the amount that is minted but belong to someone initially. In this example, we create 10000 gold for Alice.
 ::
 
-    const mintTx = goldAssetScheme.mint(aliceAddress);
-
-Then, the AssetMintTransaction is processed with the following code:
-::
-
-    await sendTransaction(mintTx);
-    // Wait up to 5 minutes for transaction processing
-    const mintTxInvoice = await sdk.rpc.chain.getTransactionInvoice(mintTx.hash(), 5 * 60 * 1000);
-    if (!mintTxInvoice.success) {
-        throw "AssetMintTransaction failed";
-    }
-    const firstGold = await sdk.rpc.chain.getAsset(mintTx.hash(), 0);
+    const mintTx = sdk.core.createAssetMintTransaction({
+        scheme: goldAssetScheme,
+        recipient: aliceAddress
 
 Sending/Transferring Assets
 ===========================
@@ -144,85 +229,53 @@ standard, and make a transaction that spends an entire UTXO balance, and receive
 Next, we create an output which gives 3000 gold to Bob, and returns 7000 gold to Alice.
 ::
 
-    // The sum of amount must equal to the amount of firstGold.
-    const transferTx = firstGold.transfer([{
-        address: bobAddress,
-        amount: 3000
-    }, {
-        address: aliceAddress,
-        amount: 7000
-    }]);
+    const firstGold = mintTx.getMintedAsset();
+    const transferTx = sdk.core.createAssetTransferTransaction()
+        .addInputs(firstGold)
+        .addOutputs({
+            recipient: bobAddress,
+            amount: 3000,
+            assetType: firstGold.assetType
+        }, {
+            recipient: aliceAddress,
+            amount: 7000,
+            assetType: firstGold.assetType
+        });
+
 
 By using Alice's signature, the 10000 Gold that was first minted can now be transferred to other users like Bob.
 ::
 
-    // Unlock first input of the transaction. The key instance can unlock because the Alice's key is created by it.
-    await sdk.key.unlock(transferTx, 0);
-    await sendTransaction(transferTx);
-    const transferTxInvoice = await sdk.rpc.chain.getTransactionInvoice(transferTx.hash(), 5 * 60 * 1000);
-    if (!transferTxInvoice.success) {
-        throw "AssetTransferTransaction failed";
-    }
+    await transferTx.sign(0, { signer: p2pkh });
+    transferTx.getTransferredAssets();
+
+The parcel containing the Gold asset is sent to the node. The parcel fee is paid for by the account known as
+``cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7`` with the passphrase ``satoshi``. 
+::
+
+    const parcel = sdk.core.createChangeShardStateParcel({
+        transactions: [mintTx, transferTx]
+    });
+    await sdk.rpc.chain.sendParcel(parcel, {
+        account: "cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7",
+        passphrase: "satoshi",
+    });
+
 
 In order to check if all the transactions were successful, we run the following:
 ::
 
-    // Spent asset will be null
-    console.log(await sdk.getAsset(mintTx.hash(), 0));
-
     // Unspent Bob's 3000 golds
-    console.log(await sdk.getAsset(transferTx.hash(), 0));
+    console.log(await sdk.rpc.chain.getAsset(transferTx.hash(), 0));
     // Unspent Alice's 7000 golds
-    console.log(await sdk.getAsset(transferTx.hash(), 1));
+    console.log(await sdk.rpc.chain.getAsset(transferTx.hash(), 1));
 
 This should return the following:
 ::
 
-    Alice's lock script hash:  0597cf9ef3ab4c61274a31973fc46a3551f44600668efba67c4b754d9007e073
-    Alice's address:  ccaqqqqt970nme6knrpya9rr9elc34r2505gcqxdrhm5e7yka2djqr7quczzktzj
-    Bob's lock script hash:  92e9b25eed924b5b17268934798c0c70f66de38bda64b480012de9be57ac4ec1
-    Bob's address:  ccaqqqf96djtmkeyj6mzungjdre3sx8panduw9a5e95sqqjm6d727kyasgznna6v
-    minted asset scheme:  AssetScheme {
-    metadata: '{"name":"Gold","imageUrl":"https://gold.image/"}',
-    registrar: null,
-    amount: 10000 }
-    alice's gold:  Asset {
-    assetType:
-    H256 {
-        value: '53000000000000009364bc7d89c5a424c1367e280cefc86461624fedb306fc59' },
-    lockScriptHash:
-    H256 {
-        value: '0597cf9ef3ab4c61274a31973fc46a3551f44600668efba67c4b754d9007e073' },
-    parameters: [],
-    amount: 10000,
-    outPoint:
-    AssetOutPoint {
-        data:
-        { transactionHash: [Object],
-            index: 0,
-            assetType: [Object],
-            amount: 10000 } } }
-    Asset {
-    assetType:
-    H256 {
-        value: '53000000000000009364bc7d89c5a424c1367e280cefc86461624fedb306fc59' },
-    lockScriptHash:
-    H256 {
-        value: '0597cf9ef3ab4c61274a31973fc46a3551f44600668efba67c4b754d9007e073' },
-    parameters: [],
-    amount: 10000,
-    outPoint:
-    AssetOutPoint {
-        data:
-        { transactionHash: [Object],
-            index: 0,
-            assetType: [Object],
-            amount: 10000 } } }
-    null
-    null
+    [RESULTS WILL BE FIXED AND REUPLOADED]
 
-The results show that 7000 gold went to ``0597cf9ef3ab4c61274a31973fc46a3551f44600668efba67c4b754d9007e073`` and
-that 3000 gold went to ``92e9b25eed924b5b17268934798c0c70f66de38bda64b480012de9be57ac4ec1``.
+[EXPLANATION WILL BE REVISED]
 
 These are the values of each individual’s LockScripts that went through the blake256 hash function.
 If you run each individual’s LockScript under blake256 yourself, you will find that it corresponds to the rightful owners of the assets.

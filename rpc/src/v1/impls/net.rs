@@ -23,47 +23,35 @@ use primitives::H256;
 use super::super::errors;
 use super::super::traits::Net;
 
-pub struct NetClient<NC>
-where
-    NC: NetworkControl + Send + Sync, {
-    network_control: Option<Arc<NC>>,
+pub struct NetClient {
+    network_control: Arc<NetworkControl>,
 }
 
-impl<NC> NetClient<NC>
-where
-    NC: NetworkControl + Send + Sync,
-{
-    pub fn new(network_control: &Option<Arc<NC>>) -> Self {
+impl NetClient {
+    pub fn new(network_control: &Arc<NetworkControl>) -> Self {
         Self {
-            network_control: network_control.as_ref().map(Arc::clone),
+            network_control: network_control.clone(),
         }
     }
 }
 
-impl<NC> Net for NetClient<NC>
-where
-    NC: 'static + NetworkControl + Send + Sync,
-{
+impl Net for NetClient {
     fn share_secret(&self, secret: H256, address: ::std::net::IpAddr, port: u16) -> Result<()> {
-        let network_control = self.network_control.as_ref().ok_or_else(|| errors::network_disabled())?;
-        network_control.register_secret(secret, SocketAddr::new(address, port));
+        self.network_control.register_secret(secret, SocketAddr::new(address, port)).map_err(errors::network_control)?;
         Ok(())
     }
 
     fn connect(&self, address: ::std::net::IpAddr, port: u16) -> Result<()> {
-        let network_control = self.network_control.as_ref().ok_or_else(|| errors::network_disabled())?;
-        network_control.connect(SocketAddr::new(address, port));
+        self.network_control.connect(SocketAddr::new(address, port)).map_err(errors::network_control)?;
         Ok(())
     }
 
     fn disconnect(&self, address: ::std::net::IpAddr, port: u16) -> Result<()> {
-        let network_control = self.network_control.as_ref().ok_or_else(|| errors::network_disabled())?;
-        network_control.disconnect(SocketAddr::new(address, port)).map_err(errors::network_control)?;
+        self.network_control.disconnect(SocketAddr::new(address, port)).map_err(errors::network_control)?;
         Ok(())
     }
 
     fn is_connected(&self, address: ::std::net::IpAddr, port: u16) -> Result<bool> {
-        let network_control = self.network_control.as_ref().ok_or_else(errors::network_disabled)?;
-        Ok(network_control.is_connected(&SocketAddr::new(address, port)))
+        Ok(self.network_control.is_connected(&SocketAddr::new(address, port)).map_err(errors::network_control)?)
     }
 }

@@ -19,11 +19,11 @@ use super::super::uint::Uint;
 
 /// Authority params deserialization.
 #[derive(Debug, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SoloAuthorityParams {
     /// Valid authorities
     pub validators: Vec<Address>,
     /// Block reward.
-    #[serde(rename = "blockReward")]
     pub block_reward: Option<Uint>,
 }
 

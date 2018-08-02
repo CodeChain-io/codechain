@@ -25,6 +25,7 @@
 
 use ccrypto::blake256;
 use ckey::Address;
+use ctypes::BlockNumber;
 use heapsize::HeapSizeOf;
 use primitives::{H256, U256};
 use rlp::Rlp;
@@ -32,7 +33,6 @@ use rlp::Rlp;
 use super::block::Block as FullBlock;
 use super::header::Header as FullHeader;
 use super::parcel::UnverifiedParcel;
-use super::types::BlockNumber;
 use super::views;
 
 /// Owning header view.

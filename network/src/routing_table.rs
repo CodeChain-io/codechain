@@ -115,6 +115,11 @@ impl RoutingTable {
         entries.keys().map(|node_id| node_id.into_addr()).collect()
     }
 
+    pub fn reachable_addresses(&self, from: &SocketAddr) -> HashSet<SocketAddr> {
+        let entries = self.entries.read();
+        entries.keys().map(|node_id| node_id.into_addr()).filter(|addr| from.is_reachable(addr)).collect()
+    }
+
     pub fn is_connected(&self, addr: &SocketAddr) -> bool {
         let entries = self.entries.read();
         if let Some(entry) = entries.get(&addr.into()) {
@@ -502,17 +507,17 @@ impl RoutingTable {
 fn decrypt_and_decode_nonce(session: &Session, encrypted_bytes: &[u8]) -> Option<Nonce> {
     session
         .decrypt(&encrypted_bytes)
-        .map_err(|err| {
-            ctrace!(ROUTING_TABLE, "Cannot decode nonce {:?}", err);
-            err
+        .map_err(|e| {
+            ctrace!(ROUTING_TABLE, "Cannot decode nonce {:?}", e);
+            e
         })
         .ok()
         .and_then(|unencrypted_bytes| {
             let rlp = UntrustedRlp::new(&unencrypted_bytes);
             Decodable::decode(&rlp)
-                .map_err(|err| {
-                    ctrace!(ROUTING_TABLE, "Cannot decrypt nonce {:?}", err);
-                    err
+                .map_err(|e| {
+                    ctrace!(ROUTING_TABLE, "Cannot decrypt nonce {:?}", e);
+                    e
                 })
                 .ok()
         })
@@ -522,9 +527,9 @@ fn encode_and_encrypt_nonce(session: &Session, nonce: &Nonce) -> Option<Vec<u8>>
     let encoded_nonce = nonce.rlp_bytes();
     session
         .encrypt(&encoded_nonce)
-        .map_err(|err| {
-            ctrace!(ROUTING_TABLE, "Cannot encrypt nonce {:?}", err);
-            err
+        .map_err(|e| {
+            ctrace!(ROUTING_TABLE, "Cannot encrypt nonce {:?}", e);
+            e
         })
         .ok()
 }

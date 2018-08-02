@@ -20,6 +20,8 @@ use std::str::FromStr;
 
 use bech32::Bech32;
 use primitives::H160;
+use serde::de::{Error as SerdeError, Visitor};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use super::{Address, Error, Network};
 
@@ -31,6 +33,38 @@ pub struct FullAddress {
     pub version: u8,
     /// Public key hash.
     pub address: Address,
+}
+
+impl FullAddress {
+    pub fn create_version0(network_id: u64, address: Address) -> Result<Self, Error> {
+        let network = match network_id {
+            // FIXME: 0x11 is the network id for SOLO
+            0x11 => Network::Mainnet,
+            _ => return Err(Error::InvalidNetwork),
+        };
+        Ok(FullAddress {
+            network,
+            version: 0,
+            address,
+        })
+    }
+
+    fn to_string(&self) -> String {
+        let hrp = match self.network {
+            Network::Mainnet => "ccc",
+            Network::Testnet => "tcc",
+        }.to_string();
+        let mut data = Vec::new();
+        data.push(self.version);
+        data.extend(&self.address.to_vec());
+        let mut encoded = Bech32 {
+            hrp,
+            data: rearrange_bits(&data, 8, 5),
+        }.to_string()
+            .unwrap();
+        encoded.remove(3);
+        encoded
+    }
 }
 
 fn rearrange_bits(data: &[u8], from: usize, into: usize) -> Vec<u8> {
@@ -69,18 +103,7 @@ fn rearrange_bits(data: &[u8], from: usize, into: usize) -> Vec<u8> {
 
 impl fmt::Display for FullAddress {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let hrp = match self.network {
-            Network::Mainnet => "cc",
-            Network::Testnet => "tc",
-        }.to_string();
-        let mut data = Vec::new();
-        data.push(self.version);
-        data.extend(&self.address.to_vec());
-        let encode_result = Bech32 {
-            hrp,
-            data: rearrange_bits(&data, 8, 5),
-        }.to_string();
-        write!(f, "{}", encode_result.unwrap())
+        write!(f, "{}", self.to_string())
     }
 }
 
@@ -90,10 +113,15 @@ impl FromStr for FullAddress {
     fn from_str(s: &str) -> Result<Self, Error>
     where
         Self: Sized, {
-        let decoded = Bech32::from_string(s.to_string())?;
+        if s.len() < 7 {
+            return Err(Error::Bech32InvalidLength)
+        }
+        let mut encoded = s.to_string();
+        encoded.insert(3, '1');
+        let decoded = Bech32::from_string(encoded)?;
         let network = match decoded.hrp.as_str().as_ref() {
-            "cc" => Some(Network::Mainnet),
-            "tc" => Some(Network::Testnet),
+            "ccc" => Some(Network::Mainnet),
+            "tcc" => Some(Network::Testnet),
             _ => None,
         };
         match network {
@@ -122,10 +150,67 @@ impl From<&'static str> for FullAddress {
     }
 }
 
+impl Serialize for FullAddress {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer, {
+        serializer.serialize_str(self.to_string().as_ref())
+    }
+}
+
+impl<'a> Deserialize<'a> for FullAddress {
+    fn deserialize<D>(deserializer: D) -> Result<FullAddress, D::Error>
+    where
+        D: Deserializer<'a>, {
+        deserializer.deserialize_any(FullAddressVisitor)
+    }
+}
+
+struct FullAddressVisitor;
+
+impl<'a> Visitor<'a> for FullAddressVisitor {
+    type Value = FullAddress;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        write!(formatter, "a bech32 encoded string")
+    }
+
+    fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+    where
+        E: SerdeError, {
+        FullAddress::from_str(value).map_err(|e| SerdeError::custom(format!("{}", e)))
+    }
+
+    fn visit_string<E>(self, value: String) -> Result<Self::Value, E>
+    where
+        E: SerdeError, {
+        FullAddress::from_str(value.as_ref()).map_err(|e| SerdeError::custom(format!("{}", e)))
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{rearrange_bits, FullAddress};
-    use Network;
+    use std::str::FromStr;
+
+    use serde_json;
+
+    use super::{rearrange_bits, FullAddress, Network};
+
+    #[test]
+    fn test_full_address_serialize() {
+        let address = FullAddress::from_str("cccqql54g07mu04fm4s8d6em6kmxenkkxzfzytqcve5").unwrap();
+        let serialized = serde_json::to_string(&address).unwrap();
+        assert_eq!(serialized, r#""cccqql54g07mu04fm4s8d6em6kmxenkkxzfzytqcve5""#);
+    }
+
+    #[test]
+    fn test_full_address_deserialize() {
+        let addr1: Result<FullAddress, _> = serde_json::from_str(r#""""#);
+        let addr2: Result<FullAddress, _> = serde_json::from_str(r#""cccqql54g07mu04fm4s8d6em6kmxenkkxzfzytqcve5""#);
+
+        assert!(addr1.is_err());
+        assert!(addr2.is_ok());
+    }
 
     #[test]
     fn test_full_address_to_string() {
@@ -135,7 +220,7 @@ mod tests {
             address: "3f4aa1fedf1f54eeb03b759deadb36676b184911".into(),
         };
 
-        assert_eq!("cc1qql54g07mu04fm4s8d6em6kmxenkkxzfzya9wyew".to_string(), address.to_string());
+        assert_eq!("cccqql54g07mu04fm4s8d6em6kmxenkkxzfzytqcve5".to_string(), address.to_string());
     }
 
     #[test]
@@ -146,7 +231,7 @@ mod tests {
             address: "3f4aa1fedf1f54eeb03b759deadb36676b184911".into(),
         };
 
-        assert_eq!(address, "cc1qql54g07mu04fm4s8d6em6kmxenkkxzfzya9wyew".into());
+        assert_eq!(address, "cccqql54g07mu04fm4s8d6em6kmxenkkxzfzytqcve5".into());
     }
 
     #[test]

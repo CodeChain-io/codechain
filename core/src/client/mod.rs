@@ -30,22 +30,24 @@ pub use self::test_client::TestBlockChainClient;
 use std::sync::Arc;
 
 use ckey::{Address, Public};
+use cmerkle::Result as TrieResult;
 use cnetwork::NodeId;
+use cstate::{ActionHandler, Asset, AssetScheme, AssetSchemeAddress, TopStateInfo};
+use ctypes::invoice::{Invoice, ParcelInvoice};
+use ctypes::parcel::ChangeShard;
+use ctypes::transaction::Transaction;
+use ctypes::{BlockNumber, ShardId};
 use kvdb::KeyValueDB;
 use primitives::{Bytes, H256, U256};
-use trie::Result as TrieResult;
 
 use super::block::{ClosedBlock, OpenBlock, SealedBlock};
-use super::blockchain::ParcelInvoice;
+use super::blockchain::ParcelAddress;
 use super::blockchain_info::BlockChainInfo;
 use super::encoded;
-use super::error::BlockImportError;
+use super::error::{BlockImportError, Error as CoreError};
 use super::parcel::{LocalizedParcel, SignedParcel};
-use super::state::{Asset, AssetScheme, TopStateInfo};
-use super::types::{
-    BlockId, BlockNumber, BlockStatus, ParcelId, TransactionId, VerificationQueueInfo as BlockQueueInfo,
-};
-use super::Invoice;
+use super::spec::CommonParams;
+use super::types::{BlockId, BlockStatus, ParcelId, TransactionId, VerificationQueueInfo as BlockQueueInfo};
 
 /// Provides `chain_info` method
 pub trait ChainInfo {
@@ -69,6 +71,23 @@ pub trait BlockInfo {
 pub trait ParcelInfo {
     /// Get the hash of block that contains the parcel, if any.
     fn parcel_block(&self, id: ParcelId) -> Option<H256>;
+}
+
+pub trait TransactionInfo {
+    fn transaction_parcel(&self, id: TransactionId) -> Option<ParcelAddress>;
+
+    fn is_any_transaction_included<'a>(&self, transactions: &'a mut Iterator<Item = H256>) -> bool {
+        for hash in transactions {
+            if self.transaction_parcel(TransactionId::Hash(hash)).is_some() {
+                return true
+            }
+        }
+        false
+    }
+}
+
+pub trait EngineInfo: Send + Sync {
+    fn common_params(&self) -> &CommonParams;
 }
 
 /// Client facilities used by internally sealing Engines.
@@ -107,12 +126,6 @@ pub enum StateOrBlock {
     Block(BlockId),
 }
 
-impl<S: TopStateInfo + 'static> From<S> for StateOrBlock {
-    fn from(info: S) -> StateOrBlock {
-        StateOrBlock::State(Box::new(info) as Box<_>)
-    }
-}
-
 impl From<Box<TopStateInfo>> for StateOrBlock {
     fn from(info: Box<TopStateInfo>) -> StateOrBlock {
         StateOrBlock::State(info)
@@ -147,9 +160,9 @@ pub trait RegularKey {
 }
 
 pub trait Shard {
-    fn number_of_shards(&self, state: StateOrBlock) -> Option<u32>;
+    fn number_of_shards(&self, state: StateOrBlock) -> Option<ShardId>;
 
-    fn shard_root(&self, shard_id: u32, state: StateOrBlock) -> Option<H256>;
+    fn shard_root(&self, shard_id: ShardId, state: StateOrBlock) -> Option<H256>;
 }
 
 /// Provides methods to access account info
@@ -165,7 +178,7 @@ pub trait ImportBlock {
 }
 
 /// Provides various blockchain information, like block header, chain state etc.
-pub trait BlockChain: ChainInfo + BlockInfo + ParcelInfo {}
+pub trait BlockChain: ChainInfo + BlockInfo + ParcelInfo + TransactionInfo {}
 
 /// Blockchain database client. Owns and manages a blockchain and a block queue.
 pub trait BlockChainClient: Sync + Send + AccountData + BlockChain + ImportBlock {
@@ -200,7 +213,12 @@ pub trait BlockChainClient: Sync + Send + AccountData + BlockChain + ImportBlock
     /// Get parcel invoice with given hash.
     fn parcel_invoice(&self, id: ParcelId) -> Option<ParcelInvoice>;
 
+    /// Get the transaction with given hash.
+    fn transaction(&self, id: TransactionId) -> Option<Transaction>;
+
     fn transaction_invoice(&self, id: TransactionId) -> Option<Invoice>;
+
+    fn custom_handlers(&self) -> Vec<Arc<ActionHandler>>;
 }
 
 /// Result of import block operation.
@@ -237,7 +255,19 @@ pub trait DatabaseClient {
 
 /// Provides methods to access asset
 pub trait AssetClient {
-    fn get_asset_scheme(&self, transaction_hash: H256) -> TrieResult<Option<AssetScheme>>;
+    fn get_asset_scheme(&self, asset_type: AssetSchemeAddress) -> TrieResult<Option<AssetScheme>>;
 
     fn get_asset(&self, transaction_hash: H256, index: usize, id: BlockId) -> TrieResult<Option<Asset>>;
+
+    fn is_asset_spent(
+        &self,
+        transaction_hash: H256,
+        index: usize,
+        shard_id: ShardId,
+        block_id: BlockId,
+    ) -> TrieResult<Option<bool>>;
+}
+
+pub trait ExecuteClient {
+    fn execute_transactions(&self, transactions: &[Transaction]) -> Result<Vec<ChangeShard>, CoreError>;
 }

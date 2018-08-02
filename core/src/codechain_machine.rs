@@ -16,16 +16,17 @@
 // A state machine.
 
 use ckey::Address;
+use cstate::{StateError, TopState, TopStateInfo};
+use ctypes::machine::{Machine, WithBalances};
 use ctypes::parcel::Error as ParcelError;
 use primitives::U256;
 
 use super::block::{ExecutedBlock, IsBlock};
-use super::client::BlockInfo;
+use super::client::{BlockInfo, TransactionInfo};
 use super::error::Error;
 use super::header::Header;
 use super::parcel::{SignedParcel, UnverifiedParcel};
 use super::spec::CommonParams;
-use super::state::{TopState, TopStateInfo};
 
 pub struct CodeChainMachine {
     params: CommonParams,
@@ -55,12 +56,12 @@ impl CodeChainMachine {
     /// Does basic verification of the parcel.
     pub fn verify_parcel_basic(&self, p: &UnverifiedParcel, _header: &Header) -> Result<(), Error> {
         if p.fee < self.params.min_parcel_cost {
-            return Err(ParcelError::InsufficientFee {
+            return Err(StateError::Parcel(ParcelError::InsufficientFee {
                 minimal: self.params.min_parcel_cost,
                 got: p.fee,
-            }.into())
+            }).into())
         }
-        p.verify_basic(self.params(), false)?;
+        p.verify_basic(self.params()).map_err(StateError::from)?;
 
         Ok(())
     }
@@ -71,7 +72,17 @@ impl CodeChainMachine {
     }
 
     /// Does verification of the parcel against the parent state.
-    pub fn verify_parcel<C: BlockInfo>(&self, _p: &SignedParcel, _header: &Header, _client: &C) -> Result<(), Error> {
+    pub fn verify_parcel<C: BlockInfo + TransactionInfo>(
+        &self,
+        parcel: &SignedParcel,
+        _header: &Header,
+        client: &C,
+    ) -> Result<(), Error> {
+        let mut transactions = parcel.iter_transactions();
+        if client.is_any_transaction_included(&mut transactions) {
+            return Err(StateError::from(ParcelError::TransactionAlreadyImported).into())
+        }
+
         // FIXME: Filter parcels.
         Ok(())
     }
@@ -83,7 +94,7 @@ impl CodeChainMachine {
     }
 }
 
-impl ::machine::Machine for CodeChainMachine {
+impl Machine for CodeChainMachine {
     type Header = Header;
     type LiveBlock = ExecutedBlock;
     type EngineClient = super::client::EngineClient;
@@ -91,12 +102,12 @@ impl ::machine::Machine for CodeChainMachine {
     type Error = Error;
 }
 
-impl ::machine::WithBalances for CodeChainMachine {
+impl WithBalances for CodeChainMachine {
     fn balance(&self, live: &ExecutedBlock, address: &Address) -> Result<U256, Self::Error> {
-        live.state().balance(address).map_err(Into::into)
+        Ok(live.state().balance(address).map_err(StateError::from)?)
     }
 
     fn add_balance(&self, live: &mut ExecutedBlock, address: &Address, amount: &U256) -> Result<(), Self::Error> {
-        live.state_mut().add_balance(address, amount).map_err(Into::into)
+        Ok(live.state_mut().add_balance(address, amount).map_err(StateError::from)?)
     }
 }

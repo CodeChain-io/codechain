@@ -19,7 +19,9 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use ckey::Address;
+use cstate::{StateError, TopLevelState};
 use ctypes::parcel::Error as ParcelError;
+use ctypes::BlockNumber;
 use parking_lot::{Mutex, RwLock};
 use primitives::{Bytes, H256, U256};
 
@@ -31,8 +33,7 @@ use super::super::error::Error;
 use super::super::header::Header;
 use super::super::parcel::{SignedParcel, UnverifiedParcel};
 use super::super::spec::Spec;
-use super::super::state::TopLevelState;
-use super::super::types::{BlockId, BlockNumber, ParcelId};
+use super::super::types::{BlockId, ParcelId};
 use super::mem_pool::{AccountDetails, MemPool, ParcelOrigin, RemovalReason};
 use super::sealing_queue::SealingQueue;
 use super::work_notify::{NotifyWork, WorkPoster};
@@ -99,6 +100,11 @@ pub struct Miner {
 }
 
 impl Miner {
+    /// Push listener that will handle new jobs
+    pub fn add_work_listener(&self, notifier: Box<NotifyWork>) {
+        self.notifiers.write().push(notifier);
+    }
+
     pub fn new(options: MinerOptions, spec: &Spec, accounts: Option<Arc<AccountProvider>>) -> Arc<Self> {
         Arc::new(Self::new_raw(options, spec, accounts))
     }
@@ -140,7 +146,7 @@ impl Miner {
     }
 
     /// Get `Some` `clone()` of the current pending block's state or `None` if we're not sealing.
-    pub fn pending_state(&self, latest_block_number: BlockNumber) -> Option<TopLevelState<::state_db::StateDB>> {
+    pub fn pending_state(&self, latest_block_number: BlockNumber) -> Option<TopLevelState> {
         self.map_pending_block(|b| b.state().clone(), latest_block_number)
     }
 
@@ -208,7 +214,10 @@ impl Miner {
                 let hash = parcel.hash();
                 if client.parcel_block(ParcelId::Hash(hash)).is_some() {
                     cdebug!(MINER, "Rejected parcel {:?}: already in the blockchain", hash);
-                    return Err(Error::Parcel(ParcelError::AlreadyImported))
+                    return Err(StateError::from(ParcelError::ParcelAlreadyImported).into())
+                }
+                if client.is_any_transaction_included(&mut parcel.iter_transactions()) {
+                    return Err(StateError::from(ParcelError::TransactionAlreadyImported).into())
                 }
                 match self
                     .engine
@@ -240,7 +249,8 @@ impl Miner {
                             }
                         };
                         let hash = parcel.hash();
-                        let result = mem_pool.add(parcel, origin, insertion_time, &fetch_account)?;
+                        let result =
+                            mem_pool.add(parcel, origin, insertion_time, &fetch_account).map_err(StateError::from)?;
 
                         inserted.push(hash);
                         Ok(result)
@@ -345,7 +355,8 @@ impl Miner {
     /// Prepares new block for sealing including top parcels from queue.
     fn prepare_block<C: AccountData + BlockChain + BlockProducer>(&self, chain: &C) -> (ClosedBlock, Option<H256>) {
         let (parcels, mut open_block, original_work_hash) = {
-            let parcels = self.mem_pool.read().top_parcels();
+            let max_body_size = self.engine.params().max_body_size;
+            let parcels = self.mem_pool.read().top_parcels(max_body_size);
             let mut sealing_work = self.sealing_work.lock();
             let last_work_hash = sealing_work.queue.peek_last_ref().map(|pb| pb.block().header().hash());
 
@@ -366,7 +377,7 @@ impl Miner {
             let start = Instant::now();
             // Check whether parcel type is allowed for sender
             let result = match self.engine.machine().verify_parcel(&parcel, open_block.header(), chain) {
-                Err(Error::Parcel(ParcelError::NotAllowed)) => Err(ParcelError::NotAllowed.into()),
+                err @ Err(Error::State(StateError::Parcel(ParcelError::NotAllowed))) => err,
                 _ => open_block.push_parcel(parcel, None),
             };
             let took = start.elapsed();
@@ -374,8 +385,8 @@ impl Miner {
             ctrace!(MINER, "Adding parcel {:?} took {:?}", hash, took);
             match result {
                 // already have parcel - ignore
-                Err(Error::Parcel(ParcelError::AlreadyImported)) => {}
-                Err(Error::Parcel(ParcelError::NotAllowed)) => {
+                Err(Error::State(StateError::Parcel(ParcelError::ParcelAlreadyImported))) => {}
+                Err(Error::State(StateError::Parcel(ParcelError::NotAllowed))) => {
                     non_allowed_parcels.insert(hash);
                     cdebug!(MINER, "Skipping non-allowed parcel for sender {:?}", hash);
                 }
@@ -426,6 +437,7 @@ impl Miner {
             && !self.options.force_sealing
             && Instant::now() <= *self.next_mandatory_reseal.read()
         {
+            ctrace!(MINER, "seal_block_internally: no sealing.");
             return false
         }
         ctrace!(MINER, "seal_block_internally: attempting internal seal.");
@@ -469,7 +481,10 @@ impl Miner {
                         false
                     })
             }
-            Seal::None => false,
+            Seal::None => {
+                ctrace!(MINER, "No seal is generated.");
+                false
+            }
         }
     }
 
@@ -495,7 +510,7 @@ impl Miner {
 const SEALING_TIMEOUT_IN_BLOCKS: u64 = 5;
 
 impl MinerService for Miner {
-    type State = TopLevelState<::state_db::StateDB>;
+    type State = TopLevelState;
 
     fn status(&self) -> MinerStatus {
         let status = self.mem_pool.read().status();
@@ -633,19 +648,6 @@ impl MinerService for Miner {
         }
     }
 
-    fn map_sealing_work<C, F, T>(&self, client: &C, f: F) -> Option<T>
-    where
-        C: AccountData + BlockChain + BlockProducer,
-        F: FnOnce(&ClosedBlock) -> T, {
-        ctrace!(MINER, "map_sealing_work: entering");
-        self.prepare_work_sealing(client);
-        ctrace!(MINER, "map_sealing_work: sealing prepared");
-        let mut sealing_work = self.sealing_work.lock();
-        let ret = sealing_work.queue.use_last_ref();
-        ctrace!(MINER, "map_sealing_work: leaving use_last_ref={:?}", ret.as_ref().map(|b| b.block().header().hash()));
-        ret.map(f)
-    }
-
     fn submit_seal<C: ImportSealedBlock>(&self, chain: &C, block_hash: H256, seal: Vec<Bytes>) -> Result<(), Error> {
         let result = if let Some(b) = self.sealing_work.lock().queue.take_used_if(|b| &b.hash() == &block_hash) {
             ctrace!(
@@ -671,6 +673,19 @@ impl MinerService for Miner {
             cinfo!(MINER, "Submitted block imported OK. #{}: {}", n, h);
             Ok(())
         })
+    }
+
+    fn map_sealing_work<C, F, T>(&self, client: &C, f: F) -> Option<T>
+    where
+        C: AccountData + BlockChain + BlockProducer,
+        F: FnOnce(&ClosedBlock) -> T, {
+        ctrace!(MINER, "map_sealing_work: entering");
+        self.prepare_work_sealing(client);
+        ctrace!(MINER, "map_sealing_work: sealing prepared");
+        let mut sealing_work = self.sealing_work.lock();
+        let ret = sealing_work.queue.use_last_ref();
+        ctrace!(MINER, "map_sealing_work: leaving use_last_ref={:?}", ret.as_ref().map(|b| b.block().header().hash()));
+        ret.map(f)
     }
 
     fn import_external_parcels<C: MiningBlockChainClient>(
@@ -740,7 +755,8 @@ impl MinerService for Miner {
     }
 
     fn ready_parcels(&self) -> Vec<SignedParcel> {
-        self.mem_pool.read().top_parcels()
+        let max_body_size = self.engine.params().max_body_size;
+        self.mem_pool.read().top_parcels(max_body_size)
     }
 
     /// Get a list of all future parcels.

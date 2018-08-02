@@ -14,32 +14,36 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ckey::{Address, Public};
-use primitives::{H256, U256};
+use ccrypto::Blake;
+use ckey::{Address, Public, SignatureData};
+use primitives::{Bytes, H256, U256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::super::transaction::Transaction;
+use super::super::ShardId;
 
 const CHANGE_SHARD_STATE: u8 = 1;
 const PAYMENT: u8 = 2;
 const SET_REGULAR_KEY: u8 = 3;
 const CREATE_SHARD: u8 = 4;
+const CUSTOM: u8 = 5;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, RlpDecodable, RlpEncodable)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, RlpDecodable, RlpEncodable)]
 #[serde(rename_all = "camelCase")]
 pub struct ChangeShard {
-    pub shard_id: u32,
+    pub shard_id: ShardId,
     pub pre_root: H256,
     pub post_root: H256,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", tag = "action")]
 pub enum Action {
     ChangeShardState {
         /// Transaction, can be either asset mint or asset transfer
         transactions: Vec<Transaction>,
         changes: Vec<ChangeShard>,
+        signatures: Vec<SignatureData>,
     },
     Payment {
         receiver: Address,
@@ -50,6 +54,14 @@ pub enum Action {
         key: Public,
     },
     CreateShard,
+    Custom(Bytes),
+}
+
+impl Action {
+    pub fn hash(&self) -> H256 {
+        let rlp = self.rlp_bytes();
+        Blake::blake(rlp)
+    }
 }
 
 impl Encodable for Action {
@@ -58,11 +70,13 @@ impl Encodable for Action {
             Action::ChangeShardState {
                 transactions,
                 changes,
+                signatures,
             } => {
-                s.begin_list(3);
+                s.begin_list(4);
                 s.append(&CHANGE_SHARD_STATE);
                 s.append_list(transactions);
                 s.append_list(changes);
+                s.append_list(signatures);
             }
             Action::Payment {
                 receiver,
@@ -84,6 +98,11 @@ impl Encodable for Action {
                 s.begin_list(1);
                 s.append(&CREATE_SHARD);
             }
+            Action::Custom(bytes) => {
+                s.begin_list(2);
+                s.append(&CUSTOM);
+                s.append(bytes);
+            }
         }
     }
 }
@@ -92,12 +111,13 @@ impl Decodable for Action {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
         match rlp.val_at(0)? {
             CHANGE_SHARD_STATE => {
-                if rlp.item_count()? != 3 {
+                if rlp.item_count()? != 4 {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
                 Ok(Action::ChangeShardState {
                     transactions: rlp.list_at(1)?,
                     changes: rlp.list_at(2)?,
+                    signatures: rlp.list_at(3)?,
                 })
             }
             PAYMENT => {
@@ -122,6 +142,12 @@ impl Decodable for Action {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
                 Ok(Action::CreateShard)
+            }
+            CUSTOM => {
+                if rlp.item_count()? != 2 {
+                    return Err(DecoderError::RlpIncorrectListLen)
+                }
+                Ok(Action::Custom(rlp.val_at(1)?))
             }
             _ => Err(DecoderError::Custom("Unexpected action prefix")),
         }

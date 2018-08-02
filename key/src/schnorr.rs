@@ -37,11 +37,6 @@ impl SchnorrSignature {
     pub fn is_low_s(&self) -> bool {
         true
     }
-
-    pub fn is_unsigned(&self) -> bool {
-        let signature_data: H512 = self.0.into();
-        signature_data.is_zero()
-    }
 }
 
 // manual implementation large arrays don't have trait impls by default.

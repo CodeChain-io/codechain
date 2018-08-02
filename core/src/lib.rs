@@ -24,8 +24,9 @@ extern crate codechain_keystore as ckeystore;
 extern crate codechain_logger as clogger;
 extern crate codechain_merkle as cmerkle;
 extern crate codechain_network as cnetwork;
+extern crate codechain_state as cstate;
+extern crate codechain_stratum as cstratum;
 extern crate codechain_types as ctypes;
-extern crate codechain_vm as cvm;
 extern crate cuckoo;
 extern crate hashdb;
 extern crate heapsize;
@@ -34,11 +35,9 @@ extern crate kvdb;
 extern crate kvdb_memorydb;
 extern crate kvdb_rocksdb;
 extern crate linked_hash_map;
-extern crate lru_cache;
 extern crate memorydb;
 extern crate multimap;
 extern crate num_cpus;
-extern crate patricia_trie as trie;
 extern crate primitives;
 extern crate rand;
 #[cfg_attr(test, macro_use)]
@@ -47,12 +46,8 @@ extern crate rlp_compress;
 #[macro_use]
 extern crate rlp_derive;
 extern crate parking_lot;
-extern crate rustc_hex;
-#[macro_use]
-extern crate serde_derive;
 extern crate table;
 extern crate time;
-extern crate triehash;
 extern crate unexpected;
 extern crate util_error;
 
@@ -70,17 +65,14 @@ mod db;
 pub mod encoded;
 mod error;
 mod header;
-mod invoice;
-mod machine;
 mod miner;
 mod parcel;
 mod pod_account;
 mod pod_shard_metadata;
 mod pod_state;
 mod service;
+mod shard_validator;
 mod spec;
-mod state;
-mod state_db;
 mod types;
 mod verification;
 mod views;
@@ -90,19 +82,17 @@ mod tests;
 
 pub use account_provider::{AccountProvider, SignError as AccountProviderError};
 pub use block::Block;
-pub use blockchain::ParcelInvoice;
 pub use client::{
     AssetClient, Balance, BlockChainClient, BlockInfo, ChainInfo, ChainNotify, Client, DatabaseClient, EngineClient,
-    ImportBlock, MiningBlockChainClient, Nonce, RegularKey, Shard, TestBlockChainClient,
+    EngineInfo, ExecuteClient, ImportBlock, MiningBlockChainClient, Nonce, RegularKey, Shard, TestBlockChainClient,
 };
 pub use consensus::EngineType;
 pub use db::COL_STATE;
 pub use error::{BlockImportError, Error, ImportError};
 pub use header::{Header, Seal};
-pub use invoice::Invoice;
-pub use miner::{Miner, MinerOptions, MinerService};
+pub use miner::{Miner, MinerOptions, MinerService, Stratum, StratumConfig, StratumError};
 pub use parcel::{LocalizedParcel, SignedParcel, UnverifiedParcel};
 pub use service::ClientService;
+pub use shard_validator::{ShardValidator, ShardValidatorClient, ShardValidatorConfig};
 pub use spec::Spec;
-pub use state::{Asset, AssetAddress, AssetScheme, AssetSchemeAddress, ShardStateInfo, TopStateInfo};
-pub use types::{BlockId, BlockNumber, ParcelId};
+pub use types::{BlockId, ParcelId};

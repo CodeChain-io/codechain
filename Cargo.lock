@@ -199,6 +199,8 @@ dependencies = [
  "codechain-network 0.1.0",
  "codechain-reactor 0.1.0",
  "codechain-rpc 0.1.0",
+ "codechain-state 0.1.0",
+ "codechain-stratum 1.11.0",
  "codechain-sync 0.1.0",
  "codechain-types 0.1.0",
  "codechain-vm 0.1.0",
@@ -209,10 +211,10 @@ dependencies = [
  "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "panic_hook 0.1.0",
  "parking_lot 0.5.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "primitives 0.1.0",
  "rpassword 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.53 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.53 (registry+https://github.com/rust-lang/crates.io-index)",
- "stratum 1.11.0",
  "tokio-core 0.1.17 (registry+https://github.com/rust-lang/crates.io-index)",
  "toml 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -230,8 +232,9 @@ dependencies = [
  "codechain-logger 0.1.0",
  "codechain-merkle 0.1.0",
  "codechain-network 0.1.0",
+ "codechain-state 0.1.0",
+ "codechain-stratum 1.11.0",
  "codechain-types 0.1.0",
- "codechain-vm 0.1.0",
  "cuckoo 0.1.0 (git+https://github.com/CodeChain-io/rust-cuckoo.git?rev=280cab9c)",
  "hashdb 0.1.1",
  "heapsize 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -242,23 +245,17 @@ dependencies = [
  "kvdb-rocksdb 0.1.0",
  "linked-hash-map 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "lru-cache 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "memorydb 0.1.1",
  "multimap 0.1.0",
  "num_cpus 1.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "parking_lot 0.5.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "patricia-trie 0.1.0",
  "primitives 0.1.0",
  "rand 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "rlp 0.2.1",
  "rlp_compress 0.1.0",
  "rlp_derive 0.1.0",
- "rustc-hex 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde 1.0.53 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde_derive 1.0.53 (registry+https://github.com/rust-lang/crates.io-index)",
  "table 0.1.0",
  "time 0.1.40 (registry+https://github.com/rust-lang/crates.io-index)",
- "triehash 0.1.0",
  "unexpected 0.1.0",
  "util-error 0.1.0",
 ]
@@ -332,6 +329,8 @@ dependencies = [
  "rustc-hex 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-serialize 0.3.24 (registry+https://github.com/rust-lang/crates.io-index)",
  "secp256k1 0.5.7",
+ "serde 1.0.53 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_json 1.0.17 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -373,7 +372,13 @@ name = "codechain-merkle"
 version = "0.1.0"
 dependencies = [
  "codechain-crypto 0.1.0",
+ "elastic-array 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "hashdb 0.1.1",
+ "memorydb 0.1.1",
  "primitives 0.1.0",
+ "rand 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rlp 0.2.1",
+ "trie-standardmap 0.1.0",
 ]
 
 [[package]]
@@ -415,6 +420,7 @@ dependencies = [
  "codechain-key 0.1.0",
  "codechain-logger 0.1.0",
  "codechain-network 0.1.0",
+ "codechain-state 0.1.0",
  "codechain-types 0.1.0",
  "jsonrpc-core 8.0.1 (git+https://github.com/paritytech/jsonrpc.git?branch=parity-1.11)",
  "jsonrpc-http-server 8.0.0 (git+https://github.com/paritytech/jsonrpc.git?branch=parity-1.11)",
@@ -434,6 +440,50 @@ dependencies = [
 ]
 
 [[package]]
+name = "codechain-state"
+version = "0.1.0"
+dependencies = [
+ "byteorder 1.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "codechain-crypto 0.1.0",
+ "codechain-key 0.1.0",
+ "codechain-logger 0.1.0",
+ "codechain-merkle 0.1.0",
+ "codechain-types 0.1.0",
+ "codechain-vm 0.1.0",
+ "hashdb 0.1.1",
+ "journaldb 0.1.0",
+ "kvdb 0.1.0",
+ "kvdb-memorydb 0.1.0",
+ "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "lru-cache 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "parking_lot 0.5.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "primitives 0.1.0",
+ "rlp 0.2.1",
+ "rustc-hex 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde 1.0.53 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_derive 1.0.53 (registry+https://github.com/rust-lang/crates.io-index)",
+ "unexpected 0.1.0",
+ "util-error 0.1.0",
+]
+
+[[package]]
+name = "codechain-stratum"
+version = "1.11.0"
+dependencies = [
+ "codechain-crypto 0.1.0",
+ "codechain-logger 0.1.0",
+ "env_logger 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "jsonrpc-core 8.0.1 (git+https://github.com/paritytech/jsonrpc.git?branch=parity-1.11)",
+ "jsonrpc-macros 8.0.0 (git+https://github.com/paritytech/jsonrpc.git?branch=parity-1.11)",
+ "jsonrpc-tcp-server 8.0.0 (git+https://github.com/paritytech/jsonrpc.git?branch=parity-1.11)",
+ "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "parking_lot 0.5.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "primitives 0.1.0",
+ "tokio-core 0.1.17 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tokio-io 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "codechain-sync"
 version = "0.1.0"
 dependencies = [
@@ -442,22 +492,22 @@ dependencies = [
  "codechain-logger 0.1.0",
  "codechain-merkle 0.1.0",
  "codechain-network 0.1.0",
+ "codechain-types 0.1.0",
  "kvdb 0.1.0",
  "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "parking_lot 0.5.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "patricia-trie 0.1.0",
  "primitives 0.1.0",
  "rand 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "rlp 0.2.1",
  "snap 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "time 0.1.40 (registry+https://github.com/rust-lang/crates.io-index)",
- "triehash 0.1.0",
 ]
 
 [[package]]
 name = "codechain-types"
 version = "0.1.0"
 dependencies = [
+ "byteorder 1.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "codechain-crypto 0.1.0",
  "codechain-key 0.1.0",
  "heapsize 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1007,7 +1057,6 @@ dependencies = [
 name = "kvdb-rocksdb"
 version = "0.1.0"
 dependencies = [
- "codechain-types 0.1.0",
  "elastic-array 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "interleaved-ordered 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "kvdb 0.1.0",
@@ -1282,23 +1331,6 @@ dependencies = [
  "rand 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "smallvec 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "winapi 0.3.4 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "patricia-trie"
-version = "0.1.0"
-dependencies = [
- "codechain-crypto 0.1.0",
- "codechain-logger 0.1.0",
- "elastic-array 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "hashdb 0.1.1",
- "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "memorydb 0.1.1",
- "primitives 0.1.0",
- "rand 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "rlp 0.2.1",
- "trie-standardmap 0.1.0",
- "triehash 0.1.0",
 ]
 
 [[package]]
@@ -1777,23 +1809,6 @@ version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
-name = "stratum"
-version = "1.11.0"
-dependencies = [
- "codechain-crypto 0.1.0",
- "codechain-logger 0.1.0",
- "env_logger 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "jsonrpc-core 8.0.1 (git+https://github.com/paritytech/jsonrpc.git?branch=parity-1.11)",
- "jsonrpc-macros 8.0.0 (git+https://github.com/paritytech/jsonrpc.git?branch=parity-1.11)",
- "jsonrpc-tcp-server 8.0.0 (git+https://github.com/paritytech/jsonrpc.git?branch=parity-1.11)",
- "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "parking_lot 0.5.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "primitives 0.1.0",
- "tokio-core 0.1.17 (registry+https://github.com/rust-lang/crates.io-index)",
- "tokio-io 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
 name = "strsim"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2084,15 +2099,6 @@ dependencies = [
 
 [[package]]
 name = "trie-standardmap"
-version = "0.1.0"
-dependencies = [
- "codechain-crypto 0.1.0",
- "primitives 0.1.0",
- "rlp 0.2.1",
-]
-
-[[package]]
-name = "triehash"
 version = "0.1.0"
 dependencies = [
  "codechain-crypto 0.1.0",

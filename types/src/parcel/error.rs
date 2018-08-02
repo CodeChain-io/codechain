@@ -20,17 +20,22 @@ use ckey::{Address, Error as KeyError};
 use primitives::{H256, U256};
 use unexpected::Mismatch;
 
+use super::super::transaction::Error as TransactionError;
+use super::super::ShardId;
+
 #[derive(Debug, PartialEq, Clone)]
 /// Errors concerning parcel processing.
 pub enum Error {
     /// Parcel is already imported to the queue
-    AlreadyImported,
+    ParcelAlreadyImported,
+    /// Transaction is already imported in blockchain
+    TransactionAlreadyImported,
     /// Parcel is not valid anymore (state already has higher nonce)
     Old,
     /// Parcel has too low fee
     /// (there is already a parcel with the same sender-nonce but higher gas price)
     TooCheapToReplace,
-    /// Invalid chain ID given.
+    /// Invalid network ID given.
     InvalidNetworkId,
     /// Max metadata size is exceeded.
     MetadataTooBig,
@@ -58,19 +63,26 @@ pub enum Error {
         /// Nonce found.
         got: U256,
     },
-    InvalidShardId(u32),
+    InvalidShardId(ShardId),
     InvalidShardRoot(Mismatch<H256>),
     /// Not enough permissions given by permission contract.
     NotAllowed,
     /// Signature error
     InvalidSignature(String),
     InconsistentShardOutcomes,
+    ParcelsTooBig,
+    RegularKeyAlreadyInUse,
+    RegularKeyAlreadyInUseAsMaster,
+    InvalidTransferDestination,
+    /// Transaction error
+    InvalidTransaction(TransactionError),
 }
 
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter) -> FormatResult {
         let msg: String = match self {
-            Error::AlreadyImported => "Already imported".into(),
+            Error::ParcelAlreadyImported => "The parcel is already imported".into(),
+            Error::TransactionAlreadyImported => "The transaction is already imported".into(),
             Error::Old => "No longer valid".into(),
             Error::TooCheapToReplace => "Fee too low to replace".into(),
             Error::InvalidNetworkId => "This network ID is not allowed on this chain".into(),
@@ -94,6 +106,11 @@ impl Display for Error {
             Error::NotAllowed => "Sender does not have permissions to execute this type of transaction".into(),
             Error::InvalidSignature(err) => format!("Parcel has invalid signature: {}.", err),
             Error::InconsistentShardOutcomes => "Shard outcomes are inconsistent".to_string(),
+            Error::ParcelsTooBig => "Parcel size exceeded the body size limit".to_string(),
+            Error::RegularKeyAlreadyInUse => "The regular key is already registered to another account".to_string(),
+            Error::RegularKeyAlreadyInUseAsMaster => "The regular key is already used as a master account".to_string(),
+            Error::InvalidTransferDestination => "Transfer receiver is not valid account".to_string(),
+            Error::InvalidTransaction(err) => format!("Parcel has an invalid transaction: {}", err).to_string(),
         };
 
         f.write_fmt(format_args!("Parcel error ({})", msg))
@@ -103,5 +120,11 @@ impl Display for Error {
 impl From<KeyError> for Error {
     fn from(err: KeyError) -> Self {
         Error::InvalidSignature(format!("{}", err))
+    }
+}
+
+impl From<TransactionError> for Error {
+    fn from(err: TransactionError) -> Self {
+        Error::InvalidTransaction(err)
     }
 }

@@ -31,12 +31,11 @@ pub struct TendermintSeal {
 
 /// Seal variants.
 #[derive(Debug, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum Seal {
     /// Tendermint seal.
-    #[serde(rename = "tendermint")]
     Tendermint(TendermintSeal),
     /// Generic seal.
-    #[serde(rename = "generic")]
     Generic(Bytes),
 }
 

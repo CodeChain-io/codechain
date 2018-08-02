@@ -20,40 +20,20 @@ use rcrypto::digest::Digest;
 
 /// BLAKE256
 pub fn blake256<T: AsRef<[u8]>>(s: T) -> H256 {
-    let input = s.as_ref();
-    let mut result = H256::default();
-    let mut hasher = Blake2b::new(32);
-    hasher.input(input);
-    hasher.result(&mut *result);
-    result
+    H256::blake(s)
 }
 
 pub fn blake256_with_key<T: AsRef<[u8]>>(s: T, key: &[u8]) -> H256 {
-    let input = s.as_ref();
-    let mut result = H256::default();
-    let mut hasher = Blake2b::new_keyed(32, &key);
-    hasher.input(input);
-    hasher.result(&mut *result);
-    result
+    H256::blake_with_key(s, key)
 }
 
 /// BLAKE512
 pub fn blake512<T: AsRef<[u8]>>(s: T) -> H512 {
-    let input = s.as_ref();
-    let mut result = H512::default();
-    let mut hasher = Blake2b::new(64);
-    hasher.input(input);
-    hasher.result(&mut *result);
-    result
+    H512::blake(s)
 }
 
 pub fn blake512_with_key<T: AsRef<[u8]>>(s: T, key: &[u8]) -> H512 {
-    let input = s.as_ref();
-    let mut result = H512::default();
-    let mut hasher = Blake2b::new_keyed(64, &key);
-    hasher.input(input);
-    hasher.result(&mut *result);
-    result
+    H512::blake_with_key(s, key)
 }
 
 pub trait Blake {
@@ -61,23 +41,31 @@ pub trait Blake {
     fn blake_with_key<T: AsRef<[u8]>>(s: T, key: &[u8]) -> Self;
 }
 
-impl Blake for H256 {
-    fn blake<T: AsRef<[u8]>>(s: T) -> Self {
-        blake256(s)
-    }
-    fn blake_with_key<T: AsRef<[u8]>>(s: T, key: &[u8]) -> Self {
-        blake256_with_key(s, key)
-    }
+macro_rules! implement_blake {
+    ($self:ident, $len:expr) => {
+        impl Blake for $self {
+            fn blake<T: AsRef<[u8]>>(s: T) -> Self {
+                let input = s.as_ref();
+                let mut result = Self::default();
+                let mut hasher = Blake2b::new($len);
+                hasher.input(input);
+                hasher.result(&mut *result);
+                result
+            }
+            fn blake_with_key<T: AsRef<[u8]>>(s: T, key: &[u8]) -> Self {
+                let input = s.as_ref();
+                let mut result = Self::default();
+                let mut hasher = Blake2b::new_keyed($len, &key);
+                hasher.input(input);
+                hasher.result(&mut *result);
+                result
+            }
+        }
+    };
 }
 
-impl Blake for H512 {
-    fn blake<T: AsRef<[u8]>>(s: T) -> Self {
-        blake512(s)
-    }
-    fn blake_with_key<T: AsRef<[u8]>>(s: T, key: &[u8]) -> Self {
-        blake512_with_key(s, key)
-    }
-}
+implement_blake!(H256, 32);
+implement_blake!(H512, 64);
 
 /// Get the 256-bits BLAKE2b hash of the empty bytes string.
 pub const BLAKE_EMPTY: H256 = H256([

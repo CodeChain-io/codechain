@@ -22,11 +22,11 @@ use std::thread::spawn;
 
 use ccore::{BlockChainClient, BlockId, BlockInfo, ChainInfo, ChainNotify, Client, DatabaseClient, COL_STATE};
 
+use cmerkle::Node;
 use kvdb::KeyValueDB;
 use primitives::H256;
-use rlp::{decode as rlp_decode, RlpStream};
+use rlp::RlpStream;
 use snap;
-use trie::{Node, OwnedNode};
 
 use super::error::Error;
 
@@ -135,22 +135,12 @@ fn get_node(db: &Arc<KeyValueDB>, key: &H256) -> Result<Vec<u8>, Error> {
 }
 
 fn children_of(db: &Arc<KeyValueDB>, node: &[u8]) -> Result<Vec<(H256, Vec<u8>)>, Error> {
-    let keys = match OwnedNode::from(Node::decoded(node)) {
-        OwnedNode::Empty => Vec::new(),
-        OwnedNode::Leaf(..) => Vec::new(),
-        OwnedNode::Extension(_, child) => vec![H256::from_slice(&child)],
-        OwnedNode::Branch(children, _) => children
-            .iter()
-            .filter_map(|child| {
-                let decoded: Vec<u8> = rlp_decode(child);
-                if decoded.len() != 0 {
-                    Some(H256::from_slice(&decoded))
-                } else {
-                    None
-                }
-            })
-            .collect(),
+    let keys = match Node::decoded(node) {
+        None => Vec::new(),
+        Some(Node::Leaf(..)) => Vec::new(),
+        Some(Node::Branch(_, children)) => children.iter().filter_map(|child| *child).collect(),
     };
+
     let mut result = Vec::new();
     for key in keys {
         result.push((key, get_node(db, &key)?));
@@ -160,21 +150,10 @@ fn children_of(db: &Arc<KeyValueDB>, node: &[u8]) -> Result<Vec<(H256, Vec<u8>)>
 
 fn enumerate_subtree(db: &Arc<KeyValueDB>, root: &H256) -> Result<Vec<(H256, Vec<u8>)>, Error> {
     let node = get_node(db, root)?;
-    let children = match OwnedNode::from(Node::decoded(&node)) {
-        OwnedNode::Empty => Vec::new(),
-        OwnedNode::Leaf(..) => Vec::new(),
-        OwnedNode::Extension(_, child) => vec![H256::from_slice(&child)],
-        OwnedNode::Branch(children, _) => children
-            .iter()
-            .filter_map(|child| {
-                let decoded: Vec<u8> = rlp_decode(child);
-                if decoded.len() != 0 {
-                    Some(H256::from_slice(&decoded))
-                } else {
-                    None
-                }
-            })
-            .collect(),
+    let children = match Node::decoded(&node) {
+        None => Vec::new(),
+        Some(Node::Leaf(..)) => Vec::new(),
+        Some(Node::Branch(_, children)) => children.iter().filter_map(|child| *child).collect(),
     };
     let mut result: Vec<_> = vec![(*root, node)];
     for child in children {

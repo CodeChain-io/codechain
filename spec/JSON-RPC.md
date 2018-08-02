@@ -19,14 +19,18 @@ A XXX-bit hexadecimal string. (e.g. H160: 160-bit hexadecimal string)
 
 A hexadecimal string for XXX-bit unsigned integer
 
-## BlockObject
+## PlatformAddress
+
+A base32 string that starts with "ccc" or "tcc". See [the specification](https://github.com/CodeChain-io/codechain/blob/master/spec/CodeChain-Address.md#1-platform-account-address-format).
+
+## Block
 
  - author: `H160`
  - extraData: `any[]`
  - hash: `H256`
  - invoicesRoot: `H256`
  - number: `number`
- - parcels: `ParcelObject[]`
+ - parcels: `Parcel[]`
  - parcelsRoot: `H256`
  - parentHash: `H256`
  - score: `number`
@@ -34,7 +38,7 @@ A hexadecimal string for XXX-bit unsigned integer
  - stateRoot: `H256`
  - timestamp: `number`
 
-## ParcelObject
+## Parcel
 
  - blockHash: `H256`
  - blockNumber: `number`
@@ -43,44 +47,76 @@ A hexadecimal string for XXX-bit unsigned integer
  - networkId: `number`
  - nonce: `U256`
  - parcelIndex: `number`
- - sig: `H520` for ECDSA signature | `H512` for Schnorr signature
- - action: `ActionObject`
+ - sig: `Signature`
+ - action: `Action`
 
-## ActionObjects
+## Actions
 
-### ChangeShardState ActionObject
+### ChangeShardState Action
 
  - action: "changeShardState"
- - transactions: `TransactionObject[]`
+ - transactions: `Transaction[]`
+ - changes: `ChangeShard[]`
 
-### Payment ActionObject
+### Payment Action
 
  - action: "payment"
  - receiver: `H160`
  - amount: `U256`
 
-### SetRegularKey ActionObject
+### SetRegularKey Action
 
  - action: "setRegularKey"
  - key: `H512`
 
-## TransactionObject
+## Transaction
 
  - type: "assetMint" | "assetTransfer"
- - data: `AssetMintObject` | `AssetTransferObject`
+ - data: `AssetMint` | `AssetTransfer`
 
-## AssetSchemeObject
+## AssetScheme
 
  - amount: `number`
  - metadata: `string`
  - registrar: `H160` | `null`
 
-## AssetObject
+## Asset
 
  - amount: `number`
  - asset_type: `H256`
  - lock_script_hash: `H256`
  - parameters: `hexadecimal string[]`
+
+## ChangeShard
+- shard_id: `number`
+- pre_root: `H256`
+- post_root: `H256`
+
+## Signature
+`H520` for ECDSA signature | `H512` for Schnorr signature
+
+# Error codes
+
+| Code | Message | Description |
+|---|---|---|
+| -32002 | `No Author` | No author is configured |
+| -32004 | `No Work Required` | No work is required |
+| -32005 | `No Work Found` | No work is found |
+| -32009 | `Invalid RLP` | Failed to decode the RLP string |
+| -32011 | `KVDB Error` | Failed to access the state (Internal error of CodeChain) |
+| -32010 | `Execution Failed` | Failed to execute the transactions |
+| -32030 | `Verification Failed` | The signature is invalid or the network id does not match |
+| -32031 | `Already Imported` | The same parcel is already imported |
+| -32032 | `Not Enough Balance` | The signer's balance is insufficient |
+| -32033 | `Too Low Fee` | The fee is lower than the minimum required |
+| -32034 | `Too Cheap to Replace` | The fee is lower than the existing one in the queue |
+| -32035 | `Invalid Nonce` | The signer's nonce is invalid to import |
+| -32040 | `Keystore Error` | Failed to access the key store (Internal error of CodeChain) |
+| -32041 | `Key Error` | The key is invalid |
+| -32042 | `Already Exists` | The account already exists |
+| -32043 | `Wrong Password` | The password does not match |
+| -32044 | `No Such Account` | There is no such account in the key store |
+| -32602 | `Invalid Params` | At least one of the parameters is invalid |
 
 # List of methods
 
@@ -94,9 +130,12 @@ A hexadecimal string for XXX-bit unsigned integer
  * [chain_sendSignedParcel](#chain_sendsignedparcel)
  * [chain_getParcel](#chain_getparcel)
  * [chain_getParcelInvoice](#chain_getparcelinvoice)
+ * [chain_getTransaction](#chain_gettransaction)
  * [chain_getTransactionInvoice](#chain_gettransactioninvoice)
- * [chain_getAssetScheme](#chain_getassetscheme)
+ * [chain_getAssetSchemeByHash](#chain_getassetschemebyhash)
+ * [chain_getAssetSchemeByType](#chain_getassetschemebytype)
  * [chain_getAsset](#chain_getasset)
+ * [chain_isAssetSpent](#chain_isassetspent)
  * [chain_getNonce](#chain_getnonce)
  * [chain_getBalance](#chain_getbalance)
  * [chain_getRegularKey](#chain_getregularkey)
@@ -104,6 +143,8 @@ A hexadecimal string for XXX-bit unsigned integer
  * [chain_getShardRoot](#chain_getshardroot)
  * [chain_getPendingParcels](#chain_getpendingparcels)
  * [chain_getCoinbase](#chain_getcoinbase)
+ * [chain_executeTransactions](#chain_executetransactions)
+ * [chain_getNetworkId](#chain_getNetworkId)
 ***
   * [miner_getWork](#miner_getwork)
   * [miner_submitWork](#miner_submitwork)
@@ -114,13 +155,16 @@ A hexadecimal string for XXX-bit unsigned integer
   * [net_disconnect](#net_disconnect)
   * [net_getPeerCount](#net_getPeerCount)
   * [net_getPort](#net_getPort)
-  * [net_getNetworkId](#net_getNetworkId)
 ***
- * [account_getAccountList](#account_getaccountlist)
- * [account_createAccount](#account_createaccount)
- * [account_createAccountFromSecret](#account_createaccountfromsecret)
- * [account_removeAccount](#account_removeaccount)
+ * [account_getList](#account_getlist)
+ * [account_create](#account_create)
+ * [account_importRaw](#account_importraw)
+ * [account_remove](#account_remove)
  * [account_sign](#account_sign)
+ * [account_changePassword](#account_changepassword)
+***
+ * [shardValidator_registerAction](#shardvalidator_registeraction)
+ * [shardValidator_getSignatures](#shardvalidator_getsignatures)
 ***
  * [devel_getStateTrieKeys](#devel_getstatetriekeys)
  * [devel_getStateTrieValue](#devel_getstatetrievalue)
@@ -235,6 +279,8 @@ Params:
 
 Return Type: `null` | `H256`
 
+Errors: `Invalid Params`
+
 Request Example:
 ```
   curl \
@@ -258,7 +304,9 @@ Gets the block with the given hash.
 Params:
  1. hash: `H256`
 
-Return Type: `null` | `BlockObject`
+Return Type: `null` | `Block`
+
+Errors: `Invalid Params`
 
 Request Example:
 ```
@@ -318,6 +366,8 @@ Params:
 
 Return Type: `H256` - parcel hash
 
+Errors: `Invalid RLP`, `Verification Failed`, `Already Imported`, `Not Enough Balance`, `Too Low Fee`, `Too Cheap to Replace`, `Invalid Nonce`, `Invalid Params`
+
 Request Example:
 ```
   curl \
@@ -341,7 +391,9 @@ Gets a parcel with the given hash.
 Params:
  1. parcel hash - `H256`
 
-Return Type: `null` or `ParcelObject`
+Return Type: `null` or `Parcel`
+
+Errors: `Invalid Params`
 
 Request Example
 ```
@@ -382,6 +434,8 @@ Params:
 
 Return Type: `null` | string[]. The string either "Success" or "Failed"
 
+Errors: `Invalid Params`
+
 Request Example
 ```
   curl \
@@ -401,6 +455,43 @@ Response Example
 }
 ```
 
+## chain_getTransaction
+Gets a transaction with the given hash.
+
+Params:
+ 1. transaction hash - `H256`
+
+Return Type: `null` | `Transaction`
+
+Errors: `Invalid Params`
+
+Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "chain_getTransaction", "params": ["0x24df02abcd4e984e90253dc344e89b8431bbb319c66643bfef566dfdf46ec6bc"], "id": null}' \
+    localhost:8080
+```
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result":{
+    "type":"assetMint",
+    "metadata":"...",
+    "output":{
+      "lockScriptHash":"0xf42a65ea518ba236c08b261c34af0521fa3cd1aa505e1c18980919cb8945f8f3",
+      "parameters":[],
+      "amount":10000
+    },
+    "registrar":null,
+    "nonce":0
+  },
+  "id":null
+}
+```
+
 ## chain_getTransactionInvoice
 Gets a transaction invoice with the given hash.
 
@@ -408,6 +499,8 @@ Params:
  1. transaction hash - `H256`
 
 Return Type: `null` | "Success" | "Failed"
+
+Errors: `Invalid Params`
 
 Request Example
 ```
@@ -426,19 +519,53 @@ Response Example
 }
 ```
 
-## chain_getAssetScheme
+## chain_getAssetSchemeByHash
 Gets an asset scheme with the given asset type.
 
 Params:
  1. transaction hash of AssetMintTransaction - `H256`
+ 2. shard id - `number`
 
-Return Type: `null` | `AssetSchemeObject`
+Return Type: `null` | `AssetScheme`
+
+Errors: `KVDB Error`, `Invalid Params`
 
 Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "chain_getAssetScheme", "params": ["0x24df02abcd4e984e90253dc344e89b8431bbb319c66643bfef566dfdf46ec6bc"], "id": null}' \
+    -d '{"jsonrpc": "2.0", "method": "chain_getAssetSchemeByHash", "params": ["0x24df02abcd4e984e90253dc344e89b8431bbb319c66643bfef566dfdf46ec6bc", 0], "id": null}' \
+    localhost:8080
+```
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result":{
+    "amount":100,
+    "metadata":"",
+    "registrar":null
+  },
+  "id":null
+}
+```
+
+## chain_getAssetSchemeByType
+Gets an asset scheme with the given asset type.
+
+Params:
+ 1. asset type - `H256`
+
+Return Type: `null` | `AssetScheme`
+
+Errors: `KVDB Error`, `Invalid Params`
+
+Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "chain_getAssetSchemeByType", "params": ["0x24df02abcd4e984e90253dc344e89b8431bbb319c66643bfef566dfdf46ec6bc"], "id": null}' \
     localhost:8080
 ```
 
@@ -463,7 +590,9 @@ Params:
  2. index - `number`
  3. block number: `number` | `null`
 
-Return Type: `null` | `AssetObject`
+Return Type: `null` | `Asset`
+
+Errors: `KVDB Error`, `Invalid Params`
 
 Request Example
 ```
@@ -489,6 +618,34 @@ Response Example
 }
 ```
 
+## chain_isAssetSpent
+Checks whether an asset is spent or not.
+
+Params:
+ 1. transaction hash: `H256`
+ 2. index: `number`
+ 3. shard id: `number`
+ 4. block number: `number` | `null`
+
+Return Type: `null` | `false` | `true` - It returns null when no such asset exists.
+
+Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "chain_isAssetSpent", "params": ["0x24df02abcd4e984e90253dc344e89b8431bbb319c66643bfef566dfdf46ec6bc", 0, 0], "id": null}' \
+    localhost:8080
+```
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result":false,
+  "id":null
+}
+```
+
 ## chain_getNonce
 Gets a nonce of an account of the given address, at state of the given blockNumber.
 
@@ -497,6 +654,8 @@ Params:
  2. block number: `number` | `null`
 
 Return Type: `U256`
+
+Errors: `KVDB Error`, `Invalid Params`
 
 Request Example
 ```
@@ -524,6 +683,8 @@ Params:
 
 Return Type: `U256`
 
+Errors: `KVDB Error`, `Invalid Params`
+
 Request Example
 ```
   curl \
@@ -550,6 +711,8 @@ Params:
 
 Return Type: `H512` - 512-bit public key
 
+Errors: `KVDB Error`, `Invalid Params`
+
 Request Example
 ```
   curl \
@@ -574,6 +737,8 @@ Param:
 1. block number: `number` | `null`
 
 Return Type: `number` - the number of shards
+
+Errors: `KVDB Error`, `Invalid Params`
 
 Request Example
 ```
@@ -601,6 +766,8 @@ Param:
 
 Return Type: `null` | `H256` - the root of shard
 
+Errors: `KVDB Error`, `Invalid Params`
+
 Request Example
 ```
   curl \
@@ -624,7 +791,7 @@ Gets parcels in the current parcel queue.
 
 Params: No parameters
 
-Return Type: `ParcelObject[]`
+Return Type: `Parcel[]`
 
 Request Example
 ```
@@ -667,7 +834,7 @@ Response Example
 ```
 
 ## chain_getCoinbase
-(not implemented) Gets coinbase's account id.
+Gets coinbase's account id.
 
 Params: No parameters
 
@@ -690,12 +857,75 @@ Response Example
 }
 ```
 
+## chain_executeTransactions
+Executes the transactions and returns the current shard root and the changed shard root.
+
+Params:
+ 1. transactions: `hexadecimal string` - RLP encoded hex string of `Transaction[]`
+
+Return Type: `ChangeShard[]`
+
+Errors: `Invalid RLP`, `Execution Failed`, `Invalid Params`
+
+Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "chain_executeTransactions", "params": ["0xf8c8f8630311809e6d65746164617461206f66207065726d697373696f6e6564206173736574a007feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050c0c7865af3107a4000d5943f4aa1fedf1f54eeb03b759deadb36676b18491180f861031101a26d65746164617461206f66206e6f6e2d7065726d697373696f6e6564206173736574a007feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050c0c164d5943f4aa1fedf1f54eeb03b759deadb36676b18491180"], "id": null}' \
+    localhost:8080
+```
+
+Response Example
+```
+{
+  "jsonrpc": "2.0",
+  "result": [
+    {
+      "postRoot": "0x16f176868ec7c8366af7e1210a98887437e1940c220d36e1264cec381bd8eae2",
+      "preRoot": "0x3521429ad738442ad7aee37324331e5395bbd0aac7465fba8df12985f6fc2e60",
+      "shardId": 0
+    }, {
+      "postRoot": "0x1d46e3dc3224ac963599c5350dd818b73f6b01efbeb3e19b7450b553d7c67cef",
+      "preRoot": "0x1c41fc1cc2382352ab1a3dd45af8df70d1f2e8c77fc60f6c8849101d20ee7b3f",
+      "shardId": 1
+    }
+  ],
+  "id": null
+}
+```
+
+## chain_getNetworkId
+(not implemented) Return the nework id that is used in this chain.
+
+Params: No parameters
+
+Return Type: `number`
+
+Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "chain_getNetworkId", "params": [], "id": 6}' \
+    localhost:8080
+```
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result": 17,
+  "id":6
+}
+```
+
 ## miner_getWork
 Returns the hash of the current block and score.
 
 Params: No parameters
 
-Return Type: `WorkObject`
+Return Type: `Work`
+
+Errors: `No Author`, `No Work Required`, `No Work Found`
 
 Request Example
 ```
@@ -726,6 +956,8 @@ Params:
 
 Return Type: `bool`
 
+Errors: `No Work Required`, `Invalid Params`
+
 Request Example
 ```
   curl \
@@ -753,6 +985,8 @@ Params:
 
 Return Type: null
 
+Errors: `Invalid Params`
+
 Request Example
 ```
   curl \
@@ -778,6 +1012,8 @@ Params:
  1. port: `number`
 
 Return Type: null
+
+Errors: `Invalid Params`
 
 Request Example
 ```
@@ -805,6 +1041,8 @@ Params:
 
 Return Type: bool
 
+Errors: `Invalid Params`
+
 Request Example
 ```
   curl \
@@ -830,6 +1068,8 @@ Params:
  1. port: `number`
 
 Return Type: `bool`
+
+Errors: `Not Conntected`, `Invalid Params`
 
 Request Example
 ```
@@ -897,42 +1137,20 @@ Response Example
 }
 ```
 
-## net_getNetworkId
-(not implemented) Return the nework id that is used in this chain.
-
-Params: No parameters
-
-Return Type: `number`
-
-Request Example
-```
-  curl \
-    -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "net_getNetworkId", "params": [], "id": 6}' \
-    localhost:8080
-```
-
-Response Example
-```
-{
-  "jsonrpc":"2.0",
-  "result": 17,
-  "id":6
-}
-```
-
-## account_getAccountList
+## account_getList
 Gets a list of accounts.
 
 Params: No parameters
 
-Return Type: `H160[]`
+Return Type: `PlatformAddress[]`
+
+Errors: `Keystore Error`
 
 Request Example
 ```
 curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "account_getAccountList", "params": [], "id": 6}' \
+    -d '{"jsonrpc": "2.0", "method": "account_getList", "params": [], "id": 6}' \
     localhost:8080
 ```
 
@@ -945,19 +1163,21 @@ Response Example
 }
 ```
 
-## account_createAccount
+## account_create
 Creates a new account.
 
 Params:
- 1. passphrase: `string | null`
+ 1. password: `string` | `null`
 
-Return Type: `H160`
+Return Type: `PlatformAddress`
+
+Errors: `Keystore Error`, `Invalid Params`
 
 Request Example
 ```
 curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "account_createAccount", "params": [], "id": 6}' \
+    -d '{"jsonrpc": "2.0", "method": "account_create", "params": [], "id": 6}' \
     localhost:8080
 ```
 
@@ -970,20 +1190,22 @@ Response Example
 }
 ```
 
-## account_createAccountFromSecret
+## account_importRaw
 Imports a secret key and add the corresponding account.
 
 Params:
  1. secret: `H256`
- 2. passphrase: `string` | `null`
+ 2. password: `string` | `null`
 
-Return Type: `H160`
+Return Type: `PlatformAddress`
+
+Errors: `Keystore Error`, `Key Error`, `Already Exists`, `Invalid Params`
 
 Request Example
 ```
 curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "account_createAccountFromSecret", "params": ["a2b39d4aefecdb17f84ed4cf629e7c8817691cc4f444ac7522902b8fb4b7bd53"], "id": 6}' \
+    -d '{"jsonrpc": "2.0", "method": "account_importRaw", "params": ["a2b39d4aefecdb17f84ed4cf629e7c8817691cc4f444ac7522902b8fb4b7bd53"], "id": 6}' \
     localhost:8080
 ```
 
@@ -996,20 +1218,22 @@ Response Example
 }
 ```
 
-## account_removeAccount
+## account_remove
 Removes the account
 
 Params:
- 1. account: `H160`
- 2. passphrase: `string` | `null`
+ 1. account: `PlatformAddress`
+ 2. password: `string` | `null`
 
 Return type: `null`
+
+Errors: `Keystore Error`, `Wrong Password`, `No Such Account`, `Invalid Params`
 
 Request Example
 ```
 curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "account_removeAccount", "params": ["1228c0de48fdc303b4b7f51049ae2887358f94b6"], "id": 6}' \
+    -d '{"jsonrpc": "2.0", "method": "account_remove", "params": ["1228c0de48fdc303b4b7f51049ae2887358f94b6"], "id": 6}' \
 ```
 
 Response Example
@@ -1026,10 +1250,12 @@ Calculates the account's signature for a given message.
 
 Params:
  1. message: `H256`
- 2. account: `H160`
- 3. passphrase: `string` | `null`
+ 2. account: `PlatformAddress`
+ 3. password: `string` | `null`
 
-Return type: `H520` for ECDSA signature | `H512` for Schnorr signature
+Return type: `Signature`
+
+Errors: `Keystore Error`, `Wrong Password`, `No Such Account`, `Invalid Params`
 
 Request Example
 ```
@@ -1044,6 +1270,91 @@ Response Example
 {
   "jsonrpc":"2.0",
   "result":"0xff7e8928f7758a64b9ea6c53f9945cdd223740675ac6ac6da625306d3966f8197523e00d56844ddb70631d44f045f4d83cc183a267c3182ab04c2f459c8289f501",
+  "id":6
+}
+```
+
+## account_changePassword
+Changes the account's password
+
+Params:
+ 1. account: `PlatformAddress`
+ 2. old_password: `String`
+ 3. new_password: `String`
+
+Return Type: `null`
+
+Errors: `Keystore Error`, `Wrong Password`, `No Such Account`, `Invalid Params`
+
+Request Example
+```
+curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "account_changePassword", "params": ["0x318def87d8dc0f7cc21794daf2dd36762db22b67", "1234", "5678"], "id": 6}' \
+    localhost:8080
+```
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result":null,
+  "id":6
+}
+```
+
+## shardValidator_registerAction
+Sends an action to get signatures. The action will be propagated and shard
+validators will send the signatures of the action if it is a valid action.
+
+Params:
+ 1. action: `Action`
+
+Return Type: `bool`
+
+Errors: `Invalid Params`
+
+Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "shardValidator_registerAction", "params": [{"action":"changeShardState","transactions":[{"type":"assetMint","data":{"networkId":17,"shardId":0,"metadata":"{\"name\":\"Gold\",\"description\":\"An asset example\",\"icon_url\":\"https://gold.image/\"}","output":{"lockScriptHash":"0xf42a65ea518ba236c08b261c34af0521fa3cd1aa505e1c18980919cb8945f8f3","parameters":[],"amount":10000},"registrar":null,"nonce":0}}],"changes":[{"shardId":0,"preRoot":"0x0000000000000000000000000000000000000000000000000000000000000000","postRoot":"0x0000000000000000000000000000000000000000000000000000000000000000"}]}
+], "id": null}' \
+    localhost:8080
+```
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result":true,
+  "id":6
+}
+```
+
+## shardValidator_getSignatures
+Gets the signatures signed by the shard validators for the given action.
+
+Params:
+ 1. action_hash: `H256`
+
+Return type: `Signature[]`
+
+Errors: `Invalid Params`
+
+Request Example
+```
+curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "shardValidator_getSignatures", "params": ["0xa2b39d16efe74b17f84ed4cf629e7c8817691cc4f444ac7522902b8fb4b7bd53"], "id": 6}' \
+    localhost:8080
+```
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result":["0xff7e8928f7758a64b9ea6c53f9945cdd223740675ac6ac6da625306d3966f8197523e00d56844ddb70631d44f045f4d83cc183a267c3182ab04c2f459c8289f501"],
   "id":6
 }
 ```

@@ -18,19 +18,21 @@ mod local_parcels;
 mod mem_pool;
 mod miner;
 mod sealing_queue;
+mod stratum;
 mod work_notify;
 
 use ckey::Address;
+use cstate::TopStateInfo;
 use primitives::{Bytes, H256, U256};
 
 pub use self::miner::{Miner, MinerOptions};
+pub use self::stratum::{Config as StratumConfig, Error as StratumError, Stratum};
 use super::account_provider::SignError;
 use super::block::ClosedBlock;
 use super::client::{AccountData, BlockChain, BlockProducer, ImportSealedBlock, MiningBlockChainClient};
 use super::consensus::EngineType;
 use super::error::Error;
 use super::parcel::{SignedParcel, UnverifiedParcel};
-use super::state::TopStateInfo;
 
 /// Miner client API
 pub trait MinerService: Send + Sync {

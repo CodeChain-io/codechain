@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ccore::BlockNumber;
+use ctypes::BlockNumber;
 use primitives::H256;
 use rlp::{DecoderError, Encodable, RlpStream, UntrustedRlp};
 

@@ -26,7 +26,6 @@ use time::Duration;
 
 use super::message::Message;
 
-const EXTENSION_NAME: &'static str = "parcel-propagation";
 const BROADCAST_TIMER_TOKEN: TimerToken = 0;
 const BROADCAST_TIMER_INTERVAL: i64 = 1000;
 const MAX_HISTORY_SIZE: usize = 100;
@@ -76,15 +75,16 @@ impl Extension {
 }
 
 impl NetworkExtension for Extension {
-    fn name(&self) -> String {
-        String::from(EXTENSION_NAME)
+    fn name(&self) -> &'static str {
+        "parcel-propagation"
     }
     fn need_encryption(&self) -> bool {
         false
     }
 
-    fn versions(&self) -> Vec<u64> {
-        vec![0]
+    fn versions(&self) -> &[u64] {
+        const VERSIONS: &'static [u64] = &[0];
+        &VERSIONS
     }
 
     fn on_initialize(&self, api: Arc<Api>) {

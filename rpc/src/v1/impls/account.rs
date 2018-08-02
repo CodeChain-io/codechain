@@ -17,52 +17,78 @@
 use std::sync::Arc;
 
 use ccore::AccountProvider;
-use ckey::{Address, SignatureData};
+use ckey::{FullAddress, SignatureData};
 use jsonrpc_core::Result;
-use primitives::{H160, H256};
+use primitives::H256;
 
 use super::super::errors::account_provider;
 use super::super::traits::Account;
 
 pub struct AccountClient {
     account_provider: Arc<AccountProvider>,
+    network_id: u64,
 }
 
 impl AccountClient {
-    pub fn new(ap: &Arc<AccountProvider>) -> Self {
+    pub fn new(ap: &Arc<AccountProvider>, network_id: u64) -> Self {
         AccountClient {
             account_provider: ap.clone(),
+            network_id,
         }
     }
 }
 
 impl Account for AccountClient {
-    fn get_account_list(&self) -> Result<Vec<Address>> {
-        self.account_provider.get_list().map_err(account_provider)
+    fn get_account_list(&self) -> Result<Vec<FullAddress>> {
+        self.account_provider
+            .get_list()
+            .map(|addresses| {
+                addresses
+                    .into_iter()
+                    .map(|address| {
+                        FullAddress::create_version0(self.network_id, address).expect("The network id is fixed")
+                    })
+                    .collect()
+            })
+            .map_err(account_provider)
     }
 
-    fn create_account(&self, passphrase: Option<String>) -> Result<Address> {
+    fn create_account(&self, passphrase: Option<String>) -> Result<FullAddress> {
         let (address, _) = self
             .account_provider
             .new_account_and_public(passphrase.unwrap_or_default().as_ref())
             .map_err(account_provider)?;
-        Ok(address)
+        Ok(FullAddress::create_version0(self.network_id, address).expect("The network id is fixed"))
     }
 
-    fn create_account_from_secret(&self, secret: H256, passphrase: Option<String>) -> Result<Address> {
+    fn create_account_from_secret(&self, secret: H256, passphrase: Option<String>) -> Result<FullAddress> {
         self.account_provider
             .insert_account(secret.into(), passphrase.unwrap_or_default().as_ref())
+            .map(|address| FullAddress::create_version0(self.network_id, address).expect("The network id is fixed"))
             .map_err(account_provider)
     }
 
-    fn remove_account(&self, account: H160, passphrase: Option<String>) -> Result<()> {
-        self.account_provider.remove_account(account, passphrase.unwrap_or_default().as_ref()).map_err(account_provider)
+    fn remove_account(&self, full_address: FullAddress, passphrase: Option<String>) -> Result<()> {
+        self.account_provider
+            .remove_account(full_address.address, passphrase.unwrap_or_default().as_ref())
+            .map_err(account_provider)
     }
 
-    fn sign(&self, message_digest: H256, account: H160, passphrase: Option<String>) -> Result<SignatureData> {
+    fn sign(
+        &self,
+        message_digest: H256,
+        full_address: FullAddress,
+        passphrase: Option<String>,
+    ) -> Result<SignatureData> {
         self.account_provider
-            .sign(account, Some(passphrase.unwrap_or_default()), message_digest)
+            .sign(full_address.address, Some(passphrase.unwrap_or_default()), message_digest)
             .map(|sig| sig.into())
+            .map_err(account_provider)
+    }
+
+    fn change_password(&self, full_address: FullAddress, old_password: String, new_password: String) -> Result<()> {
+        self.account_provider
+            .change_password(full_address.address, &old_password, &new_password)
             .map_err(account_provider)
     }
 }

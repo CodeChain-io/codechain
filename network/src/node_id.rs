@@ -40,8 +40,7 @@ impl fmt::Display for NodeId {
             IpAddr::V4(ip) if ip.is_loopback() => write!(f, "Local V4:{}", port),
             IpAddr::V4(ip) if ip.is_private() => write!(f, "Private {}:{}", ip, port),
             IpAddr::V4(ip) => write!(f, "Global {}:{}", ip, port),
-            IpAddr::V6(ip) if ip.is_loopback() => write!(f, "Local V6:{}", port),
-            IpAddr::V6(ip) => write!(f, "{}:{}", ip, port),
+            IpAddr::V6(_) => unimplemented!(),
         }
     }
 }

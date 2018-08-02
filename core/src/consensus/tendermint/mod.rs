@@ -25,6 +25,8 @@ use std::sync::{Arc, Weak};
 use ccrypto::blake256;
 use ckey::{public_to_address, recover, Address, Message, Signature, SignatureData};
 use cnetwork::{Api, NetworkExtension, NodeId, TimerToken};
+use ctypes::machine::WithBalances;
+use ctypes::BlockNumber;
 use parking_lot::{Mutex, RwLock};
 use primitives::{Bytes, H256, U128, U256};
 use rand::{thread_rng, Rng};
@@ -41,15 +43,11 @@ use super::super::codechain_machine::CodeChainMachine;
 use super::super::consensus::EngineType;
 use super::super::error::{BlockError, Error};
 use super::super::header::Header;
-use super::super::machine::WithBalances;
-use super::super::types::BlockNumber;
 use super::signer::EngineSigner;
 use super::validator_set::validator_list::ValidatorList;
 use super::validator_set::ValidatorSet;
 use super::vote_collector::VoteCollector;
 use super::{ConsensusEngine, ConstructedVerifier, EngineError, EpochChange, Seal};
-
-const EXTENSION_NAME: &'static str = "tendermint";
 
 /// Timer token representing the consensus step timeouts.
 pub const ENGINE_TIMEOUT_TOKEN: TimerToken = 23;
@@ -102,6 +100,50 @@ impl Encodable for Step {
 pub type Height = usize;
 pub type View = usize;
 pub type BlockHash = H256;
+
+struct ProposalSeal<'a> {
+    view: &'a View,
+    signature: &'a SignatureData,
+}
+
+impl<'a> ProposalSeal<'a> {
+    fn new(view: &'a View, signature: &'a SignatureData) -> Self {
+        Self {
+            view,
+            signature,
+        }
+    }
+
+    fn seal_fields(&self) -> Vec<Bytes> {
+        vec![
+            ::rlp::encode(&*self.view).into_vec(),
+            ::rlp::encode(&*self.signature).into_vec(),
+            ::rlp::EMPTY_LIST_RLP.to_vec(),
+        ]
+    }
+}
+
+struct RegularSeal<'a> {
+    view: &'a View,
+    signatures: &'a Vec<SignatureData>,
+}
+
+impl<'a> RegularSeal<'a> {
+    fn new(view: &'a View, signatures: &'a Vec<SignatureData>) -> Self {
+        Self {
+            view,
+            signatures,
+        }
+    }
+
+    fn seal_fields(&self) -> Vec<Bytes> {
+        vec![
+            ::rlp::encode(&*self.view).into_vec(),
+            ::rlp::NULL_RLP.to_vec(),
+            ::rlp::encode_list(&*self.signatures).into_vec(),
+        ]
+    }
+}
 
 /// ConsensusEngine using `Tendermint` consensus algorithm
 pub struct Tendermint {
@@ -189,12 +231,16 @@ impl Tendermint {
         self.signer.read().is_address(&proposer)
     }
 
-    fn is_height(&self, message: &ConsensusMessage) -> bool {
-        message.vote_step.is_height(self.height.load(AtomicOrdering::SeqCst))
-    }
-
     fn is_view(&self, message: &ConsensusMessage) -> bool {
         message.vote_step.is_view(self.height.load(AtomicOrdering::SeqCst), self.view.load(AtomicOrdering::SeqCst))
+    }
+
+    fn is_step(&self, message: &ConsensusMessage) -> bool {
+        message.vote_step.is_step(
+            self.height.load(AtomicOrdering::SeqCst),
+            self.view.load(AtomicOrdering::SeqCst),
+            *self.step.read(),
+        )
     }
 
     fn is_authority(&self, address: &Address) -> bool {
@@ -221,15 +267,6 @@ impl Tendermint {
             *self.step.read(),
         ));
         self.check_above_threshold(step_votes).is_ok()
-    }
-
-    fn has_enough_future_step_votes(&self, vote_step: &VoteStep) -> bool {
-        if vote_step.view > self.view.load(AtomicOrdering::SeqCst) {
-            let step_votes = self.votes.count_round_votes(vote_step);
-            self.check_above_threshold(step_votes).is_ok()
-        } else {
-            false
-        }
     }
 
     fn has_enough_aligned_votes(&self, message: &ConsensusMessage) -> bool {
@@ -369,7 +406,7 @@ impl Tendermint {
             *self.lock_change.write() = Some(message.clone());
         }
         // Check if it can affect the step transition.
-        if self.is_height(message) {
+        if self.is_step(message) {
             let next_step = match *self.step.read() {
                 Step::Precommit if message.block_hash.is_none() && self.has_enough_aligned_votes(message) => {
                     self.increment_view(1);
@@ -382,28 +419,16 @@ impl Tendermint {
                         // Generate seal and remove old votes.
                         let precommits = self.votes.round_signatures(vote_step, &bh);
                         ctrace!(ENGINE, "Collected seal: {:?}", precommits);
-                        let seal = vec![
-                            ::rlp::encode(&vote_step.view).into_vec(),
-                            ::rlp::NULL_RLP.to_vec(),
-                            ::rlp::encode_list(&precommits).into_vec(),
-                        ];
-                        self.submit_seal(bh, seal);
+                        let seal = RegularSeal::new(&vote_step.view, &precommits);
+                        self.submit_seal(bh, seal.seal_fields());
                         self.votes.throw_out_old(&vote_step);
                     }
                     self.to_next_height(self.height.load(AtomicOrdering::SeqCst));
                     Some(Step::Commit)
                 }
-                Step::Precommit if self.has_enough_future_step_votes(&vote_step) => {
-                    self.increment_view(vote_step.view - self.view.load(AtomicOrdering::SeqCst));
-                    Some(Step::Precommit)
-                }
                 // Avoid counting votes twice.
                 Step::Prevote if lock_change => Some(Step::Precommit),
                 Step::Prevote if self.has_enough_aligned_votes(message) => Some(Step::Precommit),
-                Step::Prevote if self.has_enough_future_step_votes(&vote_step) => {
-                    self.increment_view(vote_step.view - self.view.load(AtomicOrdering::SeqCst));
-                    Some(Step::Prevote)
-                }
                 _ => None,
             };
 
@@ -444,12 +469,15 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
     /// `Seal::None` will be returned.
     fn generate_seal(&self, block: &ExecutedBlock, _parent: &Header) -> Seal {
         let header = block.header();
+        let height = header.number() as Height;
         // Only proposer can generate seal if None was generated.
-        if !self.is_signer_proposer(header.parent_hash()) || self.proposal.read().is_some() {
+        if !self.is_signer_proposer(header.parent_hash())
+            || self.proposal.read().is_some()
+            || height < self.height.load(AtomicOrdering::SeqCst)
+        {
             return Seal::None
         }
 
-        let height = header.number() as Height;
         let view = self.view.load(AtomicOrdering::SeqCst);
         let bh = Some(header.bare_hash());
         let vote_info = message_info_rlp(&VoteStep::new(height, view, Step::Propose), bh.clone());
@@ -463,11 +491,7 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
             // Remember proposal for later seal submission.
             *self.proposal.write() = bh;
             *self.proposal_parent.write() = header.parent_hash().clone();
-            Seal::Proposal(vec![
-                ::rlp::encode(&view).into_vec(),
-                ::rlp::encode(&signature).into_vec(),
-                ::rlp::EMPTY_LIST_RLP.to_vec(),
-            ])
+            Seal::Proposal(ProposalSeal::new(&view, &signature).seal_fields())
         } else {
             cwarn!(ENGINE, "generate_seal: FAIL: accounts secret key unavailable");
             Seal::None
@@ -872,16 +896,17 @@ impl TendermintExtension {
 }
 
 impl NetworkExtension for TendermintExtension {
-    fn name(&self) -> String {
-        String::from(EXTENSION_NAME)
+    fn name(&self) -> &'static str {
+        "tendermint"
     }
 
     fn need_encryption(&self) -> bool {
         false
     }
 
-    fn versions(&self) -> Vec<u64> {
-        vec![0]
+    fn versions(&self) -> &[u64] {
+        const VERSIONS: &'static [u64] = &[0];
+        &VERSIONS
     }
 
     fn on_initialize(&self, api: Arc<Api>) {

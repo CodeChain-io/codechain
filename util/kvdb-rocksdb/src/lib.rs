@@ -24,7 +24,6 @@ extern crate parking_lot;
 extern crate regex;
 extern crate rocksdb;
 
-extern crate codechain_types;
 extern crate kvdb;
 extern crate rlp;
 

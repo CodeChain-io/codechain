@@ -35,6 +35,7 @@ extern crate codechain_logger as clogger;
 extern crate codechain_network as cnetwork;
 extern crate codechain_reactor as creactor;
 extern crate codechain_rpc as crpc;
+extern crate codechain_state as cstate;
 extern crate codechain_sync as csync;
 extern crate codechain_types as ctypes;
 extern crate ctrlc;
@@ -42,9 +43,8 @@ extern crate env_logger;
 extern crate fdlimit;
 extern crate panic_hook;
 extern crate parking_lot;
+extern crate primitives;
 extern crate rpassword;
-#[cfg(feature = "stratum")]
-extern crate stratum;
 extern crate toml;
 
 mod account_command;
@@ -59,41 +59,31 @@ use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use app_dirs::AppInfo;
-use ccore::{AccountProvider, ClientService, EngineType, Miner, MinerOptions, MinerService, Spec};
+use ccore::{
+    AccountProvider, Client, ClientService, EngineType, Miner, MinerOptions, MinerService, ShardValidator,
+    ShardValidatorConfig, Spec, Stratum, StratumConfig, StratumError,
+};
 use cdiscovery::{KademliaConfig, KademliaExtension, UnstructuredConfig, UnstructuredExtension};
 use ckeystore::accounts_dir::RootDiskDirectory;
 use ckeystore::KeyStore;
 use clap::ArgMatches;
 use clogger::LoggerConfig;
-use cnetwork::{NetworkConfig, NetworkControl, NetworkService, SocketAddr};
+use cnetwork::{NetworkConfig, NetworkControl, NetworkControlError, NetworkService, SocketAddr};
 use creactor::EventLoop;
-use crpc::{HttpServer, IpcServer};
 use csync::{BlockSyncExtension, ParcelSyncExtension, SnapshotService};
 use ctrlc::CtrlC;
 use fdlimit::raise_fd_limit;
 use parking_lot::{Condvar, Mutex};
+use primitives::H256;
 
 use self::account_command::run_account_command;
-use self::rpc::{HttpConfiguration as RpcHttpConfig, IpcConfiguration as RpcIpcConfig};
+use self::config::load_config;
+use self::rpc::{rpc_http_start, rpc_ipc_start};
 
 pub const APP_INFO: AppInfo = AppInfo {
     name: "codechain",
     author: "Kodebox",
 };
-
-pub fn rpc_start<NC>(cfg: RpcHttpConfig, deps: Arc<rpc_apis::ApiDependencies<NC>>) -> Result<HttpServer, String>
-where
-    NC: NetworkControl + Send + Sync, {
-    info!("RPC Listening on {}", cfg.port);
-    rpc::new_http(cfg, deps)
-}
-
-pub fn rpc_ipc_start<NC>(cfg: RpcIpcConfig, deps: Arc<rpc_apis::ApiDependencies<NC>>) -> Result<IpcServer, String>
-where
-    NC: NetworkControl + Send + Sync, {
-    info!("IPC Listening on {}", cfg.socket_addr);
-    rpc::new_ipc(cfg, deps)
-}
 
 pub fn network_start(cfg: &NetworkConfig) -> Result<Arc<NetworkService>, String> {
     info!("Handshake Listening on {}:{}", cfg.address, cfg.port);
@@ -143,6 +133,36 @@ pub fn client_start(cfg: &config::Config, spec: &Spec, miner: Arc<Miner>) -> Res
     Ok(service)
 }
 
+pub fn stratum_start(cfg: &StratumConfig, miner: Arc<Miner>, client: Arc<Client>) -> Result<(), String> {
+    match Stratum::start(cfg, miner.clone(), client) {
+        // FIXME: Add specified condition like AddrInUse
+        Err(StratumError::Service(_)) =>
+            Err(format!("STRATUM address {} is already in use, make sure that another instance of a CodeChain node is not running or change the address using the --stratum-port option.", cfg.port)),
+        Err(e) => Err(format!("STRATUM start error: {:?}", e)),
+        Ok(stratum) => {
+            miner.add_work_listener(Box::new(stratum));
+            info!("STRATUM Listening on {}", cfg.port);
+            Ok(())
+        }
+    }
+}
+
+fn new_shard_validator(config: ShardValidatorConfig, ap: Arc<AccountProvider>) -> Result<Arc<ShardValidator>, String> {
+    let account = {
+        let password = match config.password_path {
+            None => None,
+            Some(password_path) => {
+                let content = fs::read_to_string(password_path).map_err(|e| format!("{:?}", e))?;
+                let password = content.lines().next().ok_or("Password file is empty")?;
+                Some(password.to_string())
+            }
+        };
+        Some((config.account, password))
+    };
+    let shard_validator = ShardValidator::new(account, Arc::clone(&ap));
+    Ok(shard_validator)
+}
+
 #[cfg(all(unix, target_arch = "x86_64"))]
 fn main() -> Result<(), String> {
     panic_hook::set();
@@ -172,20 +192,6 @@ fn run_subcommand(matches: ArgMatches) -> Result<(), String> {
     }
 }
 
-fn load_config(matches: &ArgMatches) -> Result<config::Config, String> {
-    let config_path = matches.value_of("config").unwrap_or(constants::DEFAULT_CONFIG_PATH);
-    let mut config = config::load(&config_path)?;
-    config.ipc.overwrite_with(&matches)?;
-    config.operating.overwrite_with(&matches)?;
-    config.mining.overwrite_with(&matches)?;
-    config.network.overwrite_with(&matches)?;
-    config.rpc.overwrite_with(&matches)?;
-    config.snapshot.overwrite_with(&matches)?;
-    config.stratum.overwrite_with(&matches)?;
-
-    Ok(config)
-}
-
 fn new_miner(config: &config::Config, spec: &Spec, ap: Arc<AccountProvider>) -> Result<Arc<Miner>, String> {
     let miner_options = MinerOptions {
         mem_pool_size: config.mining.mem_pool_size,
@@ -213,22 +219,23 @@ fn new_miner(config: &config::Config, spec: &Spec, ap: Arc<AccountProvider>) -> 
             }
         }
         EngineType::InternalSealing => match config.mining.engine_signer {
-            Some(engine_signer) => match ap.has_account(engine_signer) {
+            Some(engine_signer) => match ap.has_account(&engine_signer) {
                 Ok(has_account) if !has_account => {
                     return Err("mining.engine_signer is not found in AccountProvider".to_string())
                 }
-                Ok(..) => {
-                    match config.mining.password_path {
-                        None => return Err("mining.password_path is not specified".to_string()),
-                        Some(ref password_path) => match fs::read_to_string(password_path) {
-                            Ok(password) => {
-                                miner.set_engine_signer(engine_signer, password).map_err(|err| format!("{:?}", err))?
-                            }
-                            Err(_) => return Err(format!("Failed to read the password file")),
-                        },
-                    }
-                    miner.set_engine_signer(engine_signer, "password".to_string()).map_err(|err| format!("{:?}", err))?;
-                }
+                Ok(..) => match config.mining.password_path {
+                    None => return Err("mining.password_path is not specified".to_string()),
+                    Some(ref password_path) => match fs::read_to_string(password_path) {
+                        Ok(content) => {
+                            // Read the first line as password.
+                            let password = content.lines().next().ok_or("Password file is empty")?;
+                            miner
+                                .set_engine_signer(engine_signer, password.to_string())
+                                .map_err(|e| format!("{:?}", e))?
+                        }
+                        Err(_) => return Err(format!("Failed to read the password file")),
+                    },
+                },
                 Err(e) => {
                     return Err(format!("Error while checking whether engine_signer is in AccountProvider: {:?}", e))
                 }
@@ -241,12 +248,39 @@ fn new_miner(config: &config::Config, spec: &Spec, ap: Arc<AccountProvider>) -> 
     Ok(miner)
 }
 
+struct DummyNetworkService {}
+
+impl DummyNetworkService {
+    fn new() -> Self {
+        DummyNetworkService {}
+    }
+}
+
+impl NetworkControl for DummyNetworkService {
+    fn register_secret(&self, _secret: H256, _addr: SocketAddr) -> Result<(), NetworkControlError> {
+        Err(NetworkControlError::Disabled)
+    }
+
+    fn connect(&self, _addr: SocketAddr) -> Result<(), NetworkControlError> {
+        Err(NetworkControlError::Disabled)
+    }
+
+    fn disconnect(&self, _addr: SocketAddr) -> Result<(), NetworkControlError> {
+        Err(NetworkControlError::Disabled)
+    }
+
+    fn is_connected(&self, _addr: &SocketAddr) -> Result<bool, NetworkControlError> {
+        Err(NetworkControlError::Disabled)
+    }
+}
+
 fn run_node(matches: ArgMatches) -> Result<(), String> {
     // increase max number of open files
     raise_fd_limit();
 
     let _event_loop = EventLoop::spawn();
     let config = load_config(&matches)?;
+
     let spec = config.operating.chain.spec()?;
 
     let instance_id = config.operating.instance_id.unwrap_or(
@@ -257,18 +291,27 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
     );
     clogger::init(&LoggerConfig::new(instance_id)).expect("Logger must be successfully initialized");
 
-    // FIXME: Handle IO error.
     let keys_path = match config.operating.keys_path {
         Some(ref keys_path) => keys_path.clone(),
         None => constants::DEFAULT_KEYS_PATH.to_string(),
     };
-    let keystore_dir = RootDiskDirectory::create(keys_path).expect("Cannot read key path directory");
-    let keystore = KeyStore::open(Box::new(keystore_dir)).unwrap();
+    let keystore_dir = RootDiskDirectory::create(keys_path).map_err(|_| "Cannot read key path directory")?;
+    let keystore = KeyStore::open(Box::new(keystore_dir)).map_err(|_| "Cannot open key store")?;
     let ap = AccountProvider::new(keystore);
     let miner = new_miner(&config, &spec, ap.clone())?;
     let client = client_start(&config, &spec, miner.clone())?;
 
-    let network_service = {
+
+    let shard_validator = if spec.params().use_shard_validator {
+        None
+    } else if config.shard_validator.disable {
+        Some(ShardValidator::new(None, Arc::clone(&ap)))
+    } else {
+        let shard_validator_config = (&config.shard_validator).into();
+        Some(new_shard_validator(shard_validator_config, Arc::clone(&ap))?)
+    };
+
+    let network_service: Arc<NetworkControl> = {
         if !config.network.disable {
             let network_config = (&config.network).into();
             let service = network_start(&network_config)?;
@@ -291,26 +334,31 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
                 service.register_extension(consensus_extension)?;
             }
 
+            if let Some(shard_validator) = &shard_validator {
+                service.register_extension(shard_validator.clone())?;
+            }
+
             for address in network_config.bootstrap_addresses {
                 service.connect_to(address)?;
             }
-            Some(service)
+            service
         } else {
-            None
+            Arc::new(DummyNetworkService::new())
         }
     };
 
     let rpc_apis_deps = Arc::new(rpc_apis::ApiDependencies {
         client: client.client(),
         miner: Arc::clone(&miner),
-        network_control: network_service.as_ref().map(Arc::clone),
+        network_control: Arc::clone(&network_service),
         account_provider: ap,
+        shard_validator,
     });
 
     let _rpc_server = {
         if !config.rpc.disable {
             let rpc_config = (&config.rpc).into();
-            Some(rpc_start(rpc_config, Arc::clone(&rpc_apis_deps))?)
+            Some(rpc_http_start(rpc_config, config.rpc.enable_devel_api, Arc::clone(&rpc_apis_deps))?)
         } else {
             None
         }
@@ -319,16 +367,20 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
     let _ipc_server = {
         if !config.ipc.disable {
             let ipc_config = (&config.ipc).into();
-            Some(rpc_ipc_start(ipc_config, Arc::clone(&rpc_apis_deps))?)
+            Some(rpc_ipc_start(ipc_config, config.rpc.enable_devel_api, Arc::clone(&rpc_apis_deps))?)
         } else {
             None
         }
     };
 
+    if !config.stratum.disable {
+        let stratum_config = (&config.stratum).into();
+        stratum_start(&stratum_config, Arc::clone(&miner), client.client())?
+    }
+
     let _snapshot_service = {
         if !config.snapshot.disable {
-            // FIXME: Get snapshot period from genesis block
-            let service = SnapshotService::new(client.client(), config.snapshot.path, 1 << 14);
+            let service = SnapshotService::new(client.client(), config.snapshot.path, spec.params().snapshot_period);
             client.client().add_notify(service.clone());
             Some(service)
         } else {

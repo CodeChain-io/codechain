@@ -14,8 +14,12 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ccore::{Asset, AssetScheme, BlockNumber, Invoice, ParcelInvoice};
-use ckey::Public;
+use ckey::{Address, Public};
+use cstate::{Asset, AssetScheme};
+use ctypes::invoice::{Invoice, ParcelInvoice};
+use ctypes::parcel::ChangeShard;
+use ctypes::transaction::Transaction;
+use ctypes::{BlockNumber, ShardId};
 use primitives::{H160, H256, U256};
 
 use jsonrpc_core::Result;
@@ -36,17 +40,29 @@ build_rpc_trait! {
         # [rpc(name = "chain_getParcelInvoice")]
         fn get_parcel_invoice(&self, H256) -> Result<Option<ParcelInvoice>>;
 
+        /// Gets transaction with given hash.
+        # [rpc(name = "chain_getTransaction")]
+        fn get_transaction(&self, H256) -> Result<Option<Transaction>>;
+
         /// Gets transaction invoice with given hash.
         # [rpc(name = "chain_getTransactionInvoice")]
         fn get_transaction_invoice(&self, H256) -> Result<Option<Invoice>>;
 
+        /// Gets asset scheme with given transaction hash.
+        # [rpc(name = "chain_getAssetSchemeByHash")]
+        fn get_asset_scheme_by_hash(&self, H256, ShardId) -> Result<Option<AssetScheme>>;
+
         /// Gets asset scheme with given asset type.
-        # [rpc(name = "chain_getAssetScheme")]
-        fn get_asset_scheme(&self, H256) -> Result<Option<AssetScheme>>;
+        # [rpc(name = "chain_getAssetSchemeByType")]
+        fn get_asset_scheme_by_type(&self, H256) -> Result<Option<AssetScheme>>;
 
         /// Gets asset with given asset type.
         # [rpc(name = "chain_getAsset")]
         fn get_asset(&self, H256, usize, Option<u64>) -> Result<Option<Asset>>;
+
+        /// Checks whether an asset is spent or not.
+        # [rpc(name = "chain_isAssetSpent")]
+        fn is_asset_spent(&self, H256, usize, ShardId, Option<u64>) -> Result<Option<bool>>;
 
         /// Gets nonce with given account.
         # [rpc(name = "chain_getNonce")]
@@ -62,11 +78,11 @@ build_rpc_trait! {
 
         /// Gets the number of shards
         # [rpc(name = "chain_getNumberOfShards")]
-        fn get_number_of_shards(&self, Option<u64>) -> Result<Option<u32>>;
+        fn get_number_of_shards(&self, Option<u64>) -> Result<Option<ShardId>>;
 
         /// Gets shard root
         # [rpc(name = "chain_getShardRoot")]
-        fn get_shard_root(&self, u32, Option<u64>) -> Result<Option<H256>>;
+        fn get_shard_root(&self, ShardId, Option<u64>) -> Result<Option<H256>>;
 
         /// Gets number of best block.
         # [rpc(name = "chain_getBestBlockNumber")]
@@ -91,5 +107,17 @@ build_rpc_trait! {
         /// Gets parcels in the current mem pool.
         # [rpc(name = "chain_getPendingParcels")]
         fn get_pending_parcels(&self) -> Result<Vec<Parcel>>;
+
+        /// Gets coinbase's account id
+        # [rpc(name = "chain_getCoinbase")]
+        fn get_coinbase(&self) -> Result<Option<Address>>;
+
+        /// Return the network id that is used in this chain.
+        # [rpc(name = "chain_getNetworkId")]
+        fn get_network_id(&self) -> Result<u64>;
+
+        /// Execute Transactions
+        # [rpc(name = "chain_executeTransactions")]
+        fn execute_change_shard_state(&self, Bytes) -> Result<Vec<ChangeShard>>;
     }
 }

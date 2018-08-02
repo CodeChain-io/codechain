@@ -60,7 +60,7 @@ pub mod session;
 
 pub use self::addr::SocketAddr;
 pub use self::config::Config as NetworkConfig;
-pub use self::control::Control as NetworkControl;
+pub use self::control::{Control as NetworkControl, Error as NetworkControlError};
 pub use self::discovery::Api as DiscoveryApi;
 pub use self::extension::{
     Api, Error as NetworkExtensionError, Extension as NetworkExtension, Result as NetworkExtensionResult, TimerToken,
