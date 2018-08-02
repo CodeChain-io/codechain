@@ -303,93 +303,20 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         outputs: &[AssetTransferOutput],
     ) -> StateResult<()> {
         for (input, burn) in inputs.iter().map(|input| (input, false)).chain(burns.iter().map(|input| (input, true))) {
-            let input: &AssetTransferInput = input;
-            let asset_type = input.prev_out.asset_type.clone();
-            let asset_scheme_address = AssetSchemeAddress::from_hash(asset_type)
-                .ok_or(TransactionError::AssetSchemeNotFound(asset_type.into()))?;
-            let asset_scheme = self
-                .asset_scheme((&asset_scheme_address).into())?
-                .ok_or(TransactionError::AssetSchemeNotFound(asset_scheme_address.into()))?;
-
-            if let Some(ref registrar) = asset_scheme.registrar() {
-                if registrar != sender {
-                    return Err(TransactionError::NotRegistrar(Mismatch {
-                        expected: *registrar,
-                        found: *sender,
-                    }).into())
-                }
-            }
-
-            let (address_hash, asset) = {
-                let index = input.prev_out.index;
-                let address = OwnedAssetAddress::new(input.prev_out.transaction_hash, index, self.shard_id);
-                match self.asset(&address)? {
-                    Some(asset) => (address.into(), asset),
-                    None => return Err(TransactionError::AssetNotFound(address.into()).into()),
-                }
-            };
-
-            if *asset.lock_script_hash() != Blake::blake(&input.lock_script) {
-                let mismatch = Mismatch {
-                    expected: *asset.lock_script_hash(),
-                    found: Blake::blake(&input.lock_script),
-                };
-                return Err(TransactionError::ScriptHashMismatch(mismatch).into())
-            }
-
-            let script_result = match (decode(&input.lock_script), decode(&input.unlock_script)) {
-                (Ok(lock_script), Ok(unlock_script)) => {
-                    // FIXME : apply parameters to vm
-                    execute(
-                        &unlock_script,
-                        &asset.parameters(),
-                        &lock_script,
-                        transaction.hash_without_script(),
-                        VMConfig::default(),
-                    )
-                }
-                // FIXME : Deliver full decode error
-                _ => return Err(TransactionError::InvalidScript.into()),
-            };
-
-            match script_result {
-                Ok(result) => match (result, burn) {
-                    (ScriptResult::Unlocked, false) => {}
-                    (ScriptResult::Burnt, true) => {}
-                    _ => return Err(TransactionError::FailedToUnlock(address_hash).into()),
-                },
-                Err(err) => {
-                    ctrace!(TX, "Cannot run unlock/lock script {:?}", err);
-                    return Err(TransactionError::FailedToUnlock(address_hash).into())
-                }
+            let address = OwnedAssetAddress::new(input.prev_out.transaction_hash, input.prev_out.index, self.shard_id);
+            let script_result = self.check_and_run_input_script(input, transaction.hash_without_script())?;
+            match (script_result, burn) {
+                (ScriptResult::Unlocked, false) => {}
+                (ScriptResult::Burnt, true) => {}
+                _ => return Err(TransactionError::FailedToUnlock(address.into()).into()),
             }
         }
 
         let mut deleted_asset = Vec::with_capacity(inputs.len());
         for input in inputs {
-            let index = input.prev_out.index;
-            let amount = input.prev_out.amount;
-            let address = OwnedAssetAddress::new(input.prev_out.transaction_hash, index, self.shard_id);
-
-            match self.asset(&address)? {
-                Some(asset) => {
-                    if asset.amount() != &amount {
-                        let address = address.into();
-                        let expected = *asset.amount();
-                        let got = amount;
-                        return Err(TransactionError::InvalidAssetAmount {
-                            address,
-                            expected,
-                            got,
-                        }.into())
-                    }
-                }
-                None => return Err(TransactionError::AssetNotFound(address.into()).into()),
-            }
-
-            self.kill_asset(&address);
-            let hash: H256 = address.into();
-            deleted_asset.push((hash, amount));
+            let (_, asset_address) = self.check_input_asset(input, sender)?;
+            self.kill_asset(&asset_address);
+            deleted_asset.push((asset_address, input.prev_out.amount));
         }
         let mut created_asset = Vec::with_capacity(outputs.len());
         for (index, output) in outputs.iter().enumerate() {
@@ -402,6 +329,78 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         ctrace!(TX, "Deleted assets {:?}", deleted_asset);
         ctrace!(TX, "Created assets {:?}", created_asset);
         Ok(())
+    }
+
+    fn check_input_asset(
+        &self,
+        input: &AssetTransferInput,
+        sender: &Address,
+    ) -> StateResult<(OwnedAsset, OwnedAssetAddress)> {
+        let asset_address =
+            OwnedAssetAddress::new(input.prev_out.transaction_hash, input.prev_out.index, self.shard_id);
+        let asset_scheme_address = AssetSchemeAddress::from_hash(input.prev_out.asset_type)
+            .ok_or(TransactionError::AssetSchemeNotFound(input.prev_out.asset_type.into()))?;
+
+        let asset_scheme = self
+            .asset_scheme((&asset_scheme_address).into())?
+            .ok_or(TransactionError::AssetSchemeNotFound(asset_scheme_address.into()))?;
+
+        if let Some(ref registrar) = asset_scheme.registrar() {
+            if registrar != sender {
+                return Err(TransactionError::NotRegistrar(Mismatch {
+                    expected: *registrar,
+                    found: *sender,
+                }).into())
+            }
+        }
+
+        match self.asset(&asset_address)? {
+            Some(asset) => {
+                if asset.amount() != &input.prev_out.amount {
+                    return Err(TransactionError::InvalidAssetAmount {
+                        address: asset_address.into(),
+                        expected: *asset.amount(),
+                        got: input.prev_out.amount,
+                    }.into())
+                }
+                Ok((asset, asset_address))
+            }
+            None => Err(TransactionError::AssetNotFound(asset_address.into()).into()),
+        }
+    }
+
+    fn check_and_run_input_script(
+        &self,
+        input: &AssetTransferInput,
+        transaction_hash: H256,
+    ) -> StateResult<ScriptResult> {
+        let (address_hash, asset) = {
+            let index = input.prev_out.index;
+            let address = OwnedAssetAddress::new(input.prev_out.transaction_hash, index, self.shard_id);
+            match self.asset(&address)? {
+                Some(asset) => (address.into(), asset),
+                None => return Err(TransactionError::AssetNotFound(address.into()).into()),
+            }
+        };
+
+        if *asset.lock_script_hash() != Blake::blake(&input.lock_script) {
+            return Err(TransactionError::ScriptHashMismatch(Mismatch {
+                expected: *asset.lock_script_hash(),
+                found: Blake::blake(&input.lock_script),
+            }).into())
+        }
+
+        let script_result = match (decode(&input.lock_script), decode(&input.unlock_script)) {
+            (Ok(lock_script), Ok(unlock_script)) => {
+                execute(&unlock_script, &asset.parameters(), &lock_script, transaction_hash, VMConfig::default())
+            }
+            // FIXME : Deliver full decode error
+            _ => return Err(TransactionError::InvalidScript.into()),
+        }.map_err(|err| {
+            ctrace!(TX, "Cannot run unlock/lock script {:?}", err);
+            return TransactionError::FailedToUnlock(address_hash)
+        })?;
+        Ok(script_result)
     }
 
     fn kill_asset(&mut self, account: &OwnedAssetAddress) {
