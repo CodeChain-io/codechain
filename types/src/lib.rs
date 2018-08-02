@@ -35,3 +35,4 @@ pub mod transaction;
 
 pub type BlockNumber = u64;
 pub type ShardId = u16;
+pub type WorldId = u16;
