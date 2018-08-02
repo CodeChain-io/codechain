@@ -65,6 +65,7 @@ pub use item::metadata::{Metadata, MetadataAddress};
 pub use item::regular_account::{RegularAccount, RegularAccountAddress};
 pub use item::shard::{Shard, ShardAddress};
 pub use item::shard_metadata::{ShardMetadata, ShardMetadataAddress};
+pub use item::world::{World, WorldAddress};
 pub use traits::{ShardState, ShardStateInfo, StateWithCache, TopState, TopStateInfo};
 
 pub type StateResult<T> = Result<T, StateError>;

@@ -44,9 +44,35 @@ macro_rules! define_address_constructor {
             $name(hash)
         }
     };
+    (WORLD, $name:ident, $prefix:expr) => {
+        fn from_transaction_hash_with_shard_and_world_id(
+            transaction_hash: ::primitives::H256,
+            index: u64,
+            shard_id: ::ctypes::ShardId,
+            world_id: ::ctypes::WorldId,
+        ) -> Self {
+            let mut hash: ::primitives::H256 =
+                ::ccrypto::Blake::blake_with_key(&transaction_hash, &::primitives::H128::from(index));
+            hash[0..2].clone_from_slice(&[$prefix, 0]);
+
+            let mut shard_id_bytes = Vec::<u8>::new();
+            debug_assert_eq!(::std::mem::size_of::<u16>(), ::std::mem::size_of::<::ctypes::ShardId>());
+            ::byteorder::WriteBytesExt::write_u16::<::byteorder::BigEndian>(&mut shard_id_bytes, shard_id).unwrap();
+            assert_eq!(2, shard_id_bytes.len());
+            hash[2..4].clone_from_slice(&shard_id_bytes);
+
+            let mut world_id_bytes = Vec::<u8>::new();
+            debug_assert_eq!(::std::mem::size_of::<u16>(), ::std::mem::size_of::<::ctypes::WorldId>());
+            ::byteorder::WriteBytesExt::write_u16::<::byteorder::BigEndian>(&mut world_id_bytes, world_id).unwrap();
+            assert_eq!(2, world_id_bytes.len());
+            hash[4..6].clone_from_slice(&world_id_bytes);
+
+            $name(hash)
+        }
+    };
 }
 
-macro_rules! define_shard_id {
+macro_rules! define_id_getter {
     (TOP) => {
     };
     (SHARD) => {
@@ -56,6 +82,15 @@ macro_rules! define_shard_id {
             ::std::io::Cursor::new(&self.0[2..4]).read_u16::<::byteorder::BigEndian>().unwrap()
         }
     };
+    (WORLD) => {
+        define_id_getter!(SHARD);
+
+        pub fn world_id(&self) -> ::ctypes::WorldId {
+            debug_assert_eq!(::std::mem::size_of::<u16>(), ::std::mem::size_of::<ShardId>());
+            use byteorder::ReadBytesExt;
+            ::std::io::Cursor::new(&self.0[4..6]).read_u16::<::byteorder::BigEndian>().unwrap()
+        }
+    };
 }
 
 macro_rules! impl_address {
@@ -63,7 +98,7 @@ macro_rules! impl_address {
         impl $name {
             define_address_constructor!($type, $name, $prefix);
 
-            define_shard_id!($type);
+            define_id_getter!($type);
 
             pub fn from_hash(hash: ::primitives::H256) -> Option<Self> {
                 if Self::is_valid_format(&hash) {
