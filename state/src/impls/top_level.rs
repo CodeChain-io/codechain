@@ -803,14 +803,14 @@ mod tests_state {
 
         let mut state = {
             let mut state = get_temp_state();
-            assert_eq!(state.account_exists(&a).unwrap(), false);
-            state.inc_nonce(&a).unwrap();
-            state.commit().unwrap();
+            assert_eq!(Ok(false), state.account_exists(&a));
+            assert_eq!(Ok(()), state.inc_nonce(&a));
+            assert_eq!(Ok(()), state.commit());
             state.clone()
         };
 
-        state.inc_nonce(&a).unwrap();
-        state.commit().unwrap();
+        assert_eq!(Ok(()), state.inc_nonce(&a));
+        assert_eq!(Ok(()), state.commit());
     }
 
 
@@ -820,12 +820,12 @@ mod tests_state {
 
         let original_state = get_temp_state();
 
-        assert_eq!(original_state.account_exists(&a).unwrap(), false);
+        assert_eq!(Ok(false), original_state.account_exists(&a));
 
         let mut cloned_state = original_state.clone();
 
-        cloned_state.inc_nonce(&a).unwrap();
-        cloned_state.commit().unwrap();
+        assert_eq!(Ok(()), cloned_state.inc_nonce(&a));
+        assert_eq!(Ok(()), cloned_state.commit());
 
         assert_ne!(original_state.nonce(&a), cloned_state.nonce(&a));
     }
@@ -835,32 +835,32 @@ mod tests_state {
         let a = Address::zero();
         let (root, db) = {
             let mut state = get_temp_state();
-            state.inc_nonce(&a).unwrap();
-            state.add_balance(&a, &U256::from(69u64)).unwrap();
-            state.commit().unwrap();
-            assert_eq!(state.balance(&a).unwrap(), U256::from(69u64));
+            assert_eq!(Ok(()), state.inc_nonce(&a));
+            assert_eq!(Ok(()), state.add_balance(&a, &U256::from(69u64)));
+            assert_eq!(Ok(()), state.commit());
+            assert_eq!(Ok(69.into()), state.balance(&a));
             state.drop()
         };
 
         let state = TopLevelState::from_existing(db, root, Default::default()).unwrap();
-        assert_eq!(state.balance(&a).unwrap(), U256::from(69u64));
-        assert_eq!(state.nonce(&a).unwrap(), U256::from(1u64));
+        assert_eq!(Ok(69.into()), state.balance(&a));
+        assert_eq!(Ok(1.into()), state.nonce(&a));
     }
 
     #[test]
     fn remove() {
         let a = Address::zero();
         let mut state = get_temp_state();
-        assert_eq!(state.account_exists(&a).unwrap(), false);
-        assert_eq!(state.account_exists_and_not_null(&a).unwrap(), false);
-        state.inc_nonce(&a).unwrap();
-        assert_eq!(state.account_exists(&a).unwrap(), true);
-        assert_eq!(state.account_exists_and_not_null(&a).unwrap(), true);
-        assert_eq!(state.nonce(&a).unwrap(), U256::from(1u64));
+        assert_eq!(Ok(false), state.account_exists(&a));
+        assert_eq!(Ok(false), state.account_exists_and_not_null(&a));
+        assert_eq!(Ok(()), state.inc_nonce(&a));
+        assert_eq!(Ok(true), state.account_exists(&a));
+        assert_eq!(Ok(true), state.account_exists_and_not_null(&a));
+        assert_eq!(Ok(1.into()), state.nonce(&a));
         state.kill_account(&a);
-        assert_eq!(state.account_exists(&a).unwrap(), false);
-        assert_eq!(state.account_exists_and_not_null(&a).unwrap(), false);
-        assert_eq!(state.nonce(&a).unwrap(), U256::from(0u64));
+        assert_eq!(Ok(false), state.account_exists(&a));
+        assert_eq!(Ok(false), state.account_exists_and_not_null(&a));
+        assert_eq!(Ok(0.into()), state.nonce(&a));
     }
 
     #[test]
@@ -869,13 +869,13 @@ mod tests_state {
         let db = get_temp_state_db();
         let (root, db) = {
             let mut state = TopLevelState::new(db, Default::default());
-            state.add_balance(&a, &U256::default()).unwrap(); // create an empty account
-            state.commit().unwrap();
+            assert_eq!(Ok(()), state.add_balance(&a, &U256::default())); // create an empty account
+            assert_eq!(Ok(()), state.commit());
             state.drop()
         };
         let state = TopLevelState::from_existing(db, root, Default::default()).unwrap();
-        assert!(!state.account_exists(&a).unwrap());
-        assert!(!state.account_exists_and_not_null(&a).unwrap());
+        assert_eq!(Ok(false), state.account_exists(&a));
+        assert_eq!(Ok(false), state.account_exists_and_not_null(&a));
     }
 
     #[test]
@@ -883,27 +883,27 @@ mod tests_state {
         let a = Address::zero();
         let (root, db) = {
             let mut state = get_temp_state();
-            state.inc_nonce(&a).unwrap();
-            state.commit().unwrap();
-            assert_eq!(state.account_exists(&a).unwrap(), true);
-            assert_eq!(state.nonce(&a).unwrap(), U256::from(1u64));
+            assert_eq!(Ok(()), state.inc_nonce(&a));
+            assert_eq!(Ok(()), state.commit());
+            assert_eq!(Ok(true), state.account_exists(&a));
+            assert_eq!(Ok(1.into()), state.nonce(&a));
             state.drop()
         };
 
         let (root, db) = {
             let mut state = TopLevelState::from_existing(db, root, Default::default()).unwrap();
-            assert_eq!(state.account_exists(&a).unwrap(), true);
-            assert_eq!(state.nonce(&a).unwrap(), U256::from(1u64));
+            assert_eq!(Ok(true), state.account_exists(&a));
+            assert_eq!(Ok(1.into()), state.nonce(&a));
             state.kill_account(&a);
-            state.commit().unwrap();
-            assert_eq!(state.account_exists(&a).unwrap(), false);
-            assert_eq!(state.nonce(&a).unwrap(), U256::from(0u64));
+            assert_eq!(Ok(()), state.commit());
+            assert_eq!(Ok(false), state.account_exists(&a));
+            assert_eq!(Ok(0.into()), state.nonce(&a));
             state.drop()
         };
 
         let state = TopLevelState::from_existing(db, root, Default::default()).unwrap();
-        assert_eq!(state.account_exists(&a).unwrap(), false);
-        assert_eq!(state.nonce(&a).unwrap(), U256::from(0u64));
+        assert_eq!(Ok(false), state.account_exists(&a));
+        assert_eq!(Ok(0.into()), state.nonce(&a));
     }
 
     #[test]
@@ -911,47 +911,47 @@ mod tests_state {
         let mut state = get_temp_state();
         let a = Address::zero();
         let b = 1u64.into();
-        state.add_balance(&a, &U256::from(69u64)).unwrap();
-        assert_eq!(state.balance(&a).unwrap(), U256::from(69u64));
-        state.commit().unwrap();
-        assert_eq!(state.balance(&a).unwrap(), U256::from(69u64));
-        state.sub_balance(&a, &U256::from(42u64)).unwrap();
-        assert_eq!(state.balance(&a).unwrap(), U256::from(27u64));
-        state.commit().unwrap();
-        assert_eq!(state.balance(&a).unwrap(), U256::from(27u64));
-        state.transfer_balance(&a, &b, &U256::from(18u64)).unwrap();
-        assert_eq!(state.balance(&a).unwrap(), U256::from(9u64));
-        assert_eq!(state.balance(&b).unwrap(), U256::from(18u64));
-        state.commit().unwrap();
-        assert_eq!(state.balance(&a).unwrap(), U256::from(9u64));
-        assert_eq!(state.balance(&b).unwrap(), U256::from(18u64));
+        assert_eq!(Ok(()), state.add_balance(&a, &U256::from(69u64)));
+        assert_eq!(Ok(69.into()), state.balance(&a));
+        assert_eq!(Ok(()), state.commit());
+        assert_eq!(Ok(69.into()), state.balance(&a));
+        assert_eq!(Ok(()), state.sub_balance(&a, &U256::from(42u64)));
+        assert_eq!(Ok(27.into()), state.balance(&a));
+        assert_eq!(Ok(()), state.commit());
+        assert_eq!(Ok(27.into()), state.balance(&a));
+        assert_eq!(Ok(()), state.transfer_balance(&a, &b, &U256::from(18u64)));
+        assert_eq!(Ok(9.into()), state.balance(&a));
+        assert_eq!(Ok(18.into()), state.balance(&b));
+        assert_eq!(Ok(()), state.commit());
+        assert_eq!(Ok(9.into()), state.balance(&a));
+        assert_eq!(Ok(18.into()), state.balance(&b));
     }
 
     #[test]
     fn alter_nonce() {
         let mut state = get_temp_state();
         let a = Address::zero();
-        state.inc_nonce(&a).unwrap();
-        assert_eq!(state.nonce(&a).unwrap(), U256::from(1u64));
-        state.inc_nonce(&a).unwrap();
-        assert_eq!(state.nonce(&a).unwrap(), U256::from(2u64));
-        state.commit().unwrap();
-        assert_eq!(state.nonce(&a).unwrap(), U256::from(2u64));
-        state.inc_nonce(&a).unwrap();
-        assert_eq!(state.nonce(&a).unwrap(), U256::from(3u64));
-        state.commit().unwrap();
-        assert_eq!(state.nonce(&a).unwrap(), U256::from(3u64));
+        assert_eq!(Ok(()), state.inc_nonce(&a));
+        assert_eq!(Ok(1.into()), state.nonce(&a));
+        assert_eq!(Ok(()), state.inc_nonce(&a));
+        assert_eq!(Ok(2.into()), state.nonce(&a));
+        assert_eq!(Ok(()), state.commit());
+        assert_eq!(Ok(2.into()), state.nonce(&a));
+        assert_eq!(Ok(()), state.inc_nonce(&a));
+        assert_eq!(Ok(3.into()), state.nonce(&a));
+        assert_eq!(Ok(()), state.commit());
+        assert_eq!(Ok(3.into()), state.nonce(&a));
     }
 
     #[test]
     fn balance_nonce() {
         let mut state = get_temp_state();
         let a = Address::zero();
-        assert_eq!(state.balance(&a).unwrap(), U256::from(0u64));
-        assert_eq!(state.nonce(&a).unwrap(), U256::from(0u64));
-        state.commit().unwrap();
-        assert_eq!(state.balance(&a).unwrap(), U256::from(0u64));
-        assert_eq!(state.nonce(&a).unwrap(), U256::from(0u64));
+        assert_eq!(Ok(0.into()), state.balance(&a));
+        assert_eq!(Ok(0.into()), state.nonce(&a));
+        assert_eq!(Ok(()), state.commit());
+        assert_eq!(Ok(0.into()), state.balance(&a));
+        assert_eq!(Ok(0.into()), state.nonce(&a));
     }
 
     #[test]
@@ -959,7 +959,7 @@ mod tests_state {
         let mut state = get_temp_state();
         let a = Address::zero();
         state.require_account(&a).unwrap();
-        state.commit().unwrap();
+        assert_eq!(Ok(()), state.commit());
         assert_eq!(*state.root(), "db4046bb91a12a37cbfb0f09631aad96a97248423163eca791e19b430cc7fe4a".into());
     }
 
@@ -968,15 +968,15 @@ mod tests_state {
         let mut state = get_temp_state();
         let a = Address::zero();
         state.create_checkpoint(0);
-        state.add_balance(&a, &U256::from(69u64)).unwrap();
-        assert_eq!(state.balance(&a).unwrap(), U256::from(69u64));
+        assert_eq!(Ok(()), state.add_balance(&a, &U256::from(69u64)));
+        assert_eq!(Ok(69.into()), state.balance(&a));
         state.discard_checkpoint(0);
-        assert_eq!(state.balance(&a).unwrap(), U256::from(69u64));
+        assert_eq!(Ok(69.into()), state.balance(&a));
         state.create_checkpoint(1);
-        state.add_balance(&a, &U256::from(1u64)).unwrap();
-        assert_eq!(state.balance(&a).unwrap(), U256::from(70u64));
+        assert_eq!(Ok(()), state.add_balance(&a, &U256::from(1u64)));
+        assert_eq!(Ok(70.into()), state.balance(&a));
         state.revert_to_checkpoint(1);
-        assert_eq!(state.balance(&a).unwrap(), U256::from(69u64));
+        assert_eq!(Ok(69.into()), state.balance(&a));
     }
 
     #[test]
@@ -984,14 +984,14 @@ mod tests_state {
         let mut state = get_temp_state();
         let a = Address::zero();
         state.create_checkpoint(0);
-        state.add_balance(&a, &U256::from(69u64)).unwrap();
+        assert_eq!(Ok(()), state.add_balance(&a, &U256::from(69u64)));
         state.create_checkpoint(1);
-        state.add_balance(&a, &U256::from(69u64)).unwrap();
-        assert_eq!(state.balance(&a).unwrap(), U256::from(69u64 + 69u64));
+        assert_eq!(Ok(()), state.add_balance(&a, &U256::from(69u64)));
+        assert_eq!(Ok((69 + 69).into()), state.balance(&a));
         state.revert_to_checkpoint(1);
-        assert_eq!(state.balance(&a).unwrap(), U256::from(69u64));
+        assert_eq!(Ok(69.into()), state.balance(&a));
         state.revert_to_checkpoint(0);
-        assert_eq!(state.balance(&a).unwrap(), U256::from(0));
+        assert_eq!(Ok(0.into()), state.balance(&a));
     }
 
     #[test]
@@ -999,18 +999,18 @@ mod tests_state {
         let mut state = get_temp_state();
         let a = Address::zero();
         state.create_checkpoint(0);
-        state.add_balance(&a, &U256::from(69u64)).unwrap();
+        assert_eq!(Ok(()), state.add_balance(&a, &U256::from(69u64)));
         state.create_checkpoint(1);
-        state.add_balance(&a, &U256::from(69u64)).unwrap();
-        state.inc_nonce(&a).unwrap();
-        assert_eq!(state.balance(&a).unwrap(), U256::from(69u64 + 69u64));
-        assert_eq!(state.nonce(&a).unwrap(), U256::from(1u64));
+        assert_eq!(Ok(()), state.add_balance(&a, &U256::from(69u64)));
+        assert_eq!(Ok(()), state.inc_nonce(&a));
+        assert_eq!(Ok((69 + 69).into()), state.balance(&a));
+        assert_eq!(Ok(1.into()), state.nonce(&a));
         state.discard_checkpoint(1);
-        assert_eq!(state.balance(&a).unwrap(), U256::from(69u64 + 69u64));
-        assert_eq!(state.nonce(&a).unwrap(), U256::from(1u64));
+        assert_eq!(Ok((69 + 69).into()), state.balance(&a));
+        assert_eq!(Ok(1.into()), state.nonce(&a));
         state.revert_to_checkpoint(0);
-        assert_eq!(state.balance(&a).unwrap(), U256::from(0u64));
-        assert_eq!(state.nonce(&a).unwrap(), U256::from(0u64));
+        assert_eq!(Ok(0.into()), state.balance(&a));
+        assert_eq!(Ok(0.into()), state.nonce(&a));
     }
 
     #[test]
@@ -1039,8 +1039,8 @@ mod tests_parcel {
     #[test]
     fn apply_empty_parcel() {
         let mut state = get_temp_state();
-        state.create_shard_level_state().unwrap();
-        state.commit().unwrap();
+        assert_eq!(Ok(()), state.create_shard_level_state());
+        assert_eq!(Ok(()), state.commit());
 
         let parcel = Parcel {
             fee: 5.into(),
@@ -1053,14 +1053,11 @@ mod tests_parcel {
             },
         };
         let (sender, sender_public) = address();
-        state.add_balance(&sender, &20.into()).unwrap();
+        assert_eq!(Ok(()), state.add_balance(&sender, &20.into()));
 
-        match state.apply(&parcel, &sender, &sender_public).unwrap() {
-            ParcelOutcome::Transactions(res) => {
-                assert!(res.is_empty());
-            }
-            _ => unreachable!(),
-        }
+        let result = state.apply(&parcel, &sender, &sender_public);
+
+        assert_eq!(Ok(ParcelOutcome::Transactions(vec![])), result);
         assert_eq!(Ok(15.into()), state.balance(&sender));
         assert_eq!(Ok(1.into()), state.nonce(&sender));
     }
@@ -1080,20 +1077,16 @@ mod tests_parcel {
             },
         };
         let (sender, sender_public) = address();
-        state.add_balance(&sender, &20.into()).unwrap();
+        assert_eq!(Ok(()), state.add_balance(&sender, &20.into()));
 
-        match state.apply(&parcel, &sender, &sender_public) {
-            Err(StateError::Parcel(err)) => {
-                assert_eq!(
-                    ParcelError::InvalidNonce {
-                        expected: 0.into(),
-                        got: 2.into()
-                    },
-                    err
-                );
-            }
-            other => panic!("{:?}", other),
-        }
+        let result = state.apply(&parcel, &sender, &sender_public);
+        assert_eq!(
+            Err(StateError::Parcel(ParcelError::InvalidNonce {
+                expected: 0.into(),
+                got: 2.into()
+            })),
+            result
+        );
 
         assert_eq!(Ok(20.into()), state.balance(&sender));
         assert_eq!(Ok(0.into()), state.nonce(&sender));
@@ -1113,21 +1106,17 @@ mod tests_parcel {
             },
         };
         let (sender, sender_public) = address();
-        state.add_balance(&sender, &4.into()).unwrap();
+        assert_eq!(Ok(()), state.add_balance(&sender, &4.into()));
 
-        match state.apply(&parcel, &sender, &sender_public) {
-            Err(StateError::Parcel(err)) => {
-                assert_eq!(
-                    ParcelError::InsufficientBalance {
-                        address: sender,
-                        balance: 4.into(),
-                        cost: 5.into(),
-                    },
-                    err
-                );
-            }
-            other => panic!("{:?}", other),
-        }
+        let result = state.apply(&parcel, &sender, &sender_public);
+        assert_eq!(
+            Err(StateError::Parcel(ParcelError::InsufficientBalance {
+                address: sender,
+                balance: 4.into(),
+                cost: 5.into(),
+            })),
+            result
+        );
         assert_eq!(Ok(4.into()), state.balance(&sender));
         assert_eq!(Ok(0.into()), state.nonce(&sender));
     }
@@ -1147,14 +1136,14 @@ mod tests_parcel {
             network_id: 0xCA,
         };
         let (sender, sender_public) = address();
-        state.add_balance(&sender, &20.into()).unwrap();
+        assert_eq!(Ok(()), state.add_balance(&sender, &20.into()));
 
         assert_eq!(
-            ParcelOutcome::Single {
+            Ok(ParcelOutcome::Single {
                 invoice: Invoice::Success,
                 error: None,
-            },
-            state.apply(&parcel, &sender, &sender_public).unwrap()
+            }),
+            state.apply(&parcel, &sender, &sender_public)
         );
 
         assert_eq!(Ok(10.into()), state.balance(&receiver));
@@ -1176,15 +1165,15 @@ mod tests_parcel {
             network_id: 0xCA,
         };
         let (sender, sender_public) = address();
-        state.add_balance(&sender, &5.into()).unwrap();
+        assert_eq!(Ok(()), state.add_balance(&sender, &5.into()));
 
         assert_eq!(state.regular_key(&sender), Ok(None));
         assert_eq!(
-            ParcelOutcome::Single {
+            Ok(ParcelOutcome::Single {
                 invoice: Invoice::Success,
                 error: None
-            },
-            state.apply(&parcel, &sender, &sender_public).unwrap()
+            }),
+            state.apply(&parcel, &sender, &sender_public)
         );
         assert_eq!(Ok(Some(key)), state.regular_key(&sender));
     }
@@ -1204,15 +1193,15 @@ mod tests_parcel {
             network_id: 0xCA,
         };
         let (sender, sender_public) = address();
-        state.add_balance(&sender, &15.into()).unwrap();
+        assert_eq!(Ok(()), state.add_balance(&sender, &15.into()));
 
         assert_eq!(state.regular_key(&sender), Ok(None));
         assert_eq!(
-            ParcelOutcome::Single {
+            Ok(ParcelOutcome::Single {
                 invoice: Invoice::Success,
                 error: None
-            },
-            state.apply(&parcel, &sender, &sender_public).unwrap()
+            }),
+            state.apply(&parcel, &sender, &sender_public)
         );
         assert_eq!(Ok(Some(*key)), state.regular_key(&sender));
 
@@ -1224,11 +1213,11 @@ mod tests_parcel {
         };
 
         assert_eq!(
-            ParcelOutcome::Single {
+            Ok(ParcelOutcome::Single {
                 invoice: Invoice::Success,
                 error: None
-            },
-            state.apply(&parcel, &regular_keypair.address(), regular_keypair.public()).unwrap()
+            }),
+            state.apply(&parcel, &regular_keypair.address(), regular_keypair.public())
         );
         assert_eq!(Ok(4.into()), state.balance(&sender));
     }
@@ -1248,15 +1237,15 @@ mod tests_parcel {
             network_id: 0xCA,
         };
         let (sender, sender_public) = address();
-        state.add_balance(&sender, &15.into()).unwrap();
+        assert_eq!(Ok(()), state.add_balance(&sender, &15.into()));
 
         assert_eq!(state.regular_key(&sender), Ok(None));
         assert_eq!(
-            ParcelOutcome::Single {
+            Ok(ParcelOutcome::Single {
                 invoice: Invoice::Success,
                 error: None
-            },
-            state.apply(&parcel, &sender, &sender_public).unwrap()
+            }),
+            state.apply(&parcel, &sender, &sender_public)
         );
         assert_eq!(Ok(Some(*key)), state.regular_key(&sender));
 
@@ -1269,12 +1258,10 @@ mod tests_parcel {
             network_id: 0xCA,
         };
         let (sender2, sender_public2) = address();
-        state.add_balance(&sender2, &15.into()).unwrap();
+        assert_eq!(Ok(()), state.add_balance(&sender2, &15.into()));
 
-        match state.apply(&parcel, &sender2, &sender_public2) {
-            Err(StateError::Parcel(err)) => assert_eq!(ParcelError::RegularKeyAlreadyInUse, err),
-            other => panic!("{:?}", other),
-        }
+        let result = state.apply(&parcel, &sender2, &sender_public2);
+        assert_eq!(Err(StateError::Parcel(ParcelError::RegularKeyAlreadyInUse)), result);
         assert_eq!(Ok(None), state.regular_key(&sender2));
     }
 
@@ -1285,8 +1272,8 @@ mod tests_parcel {
 
         let mut state = get_temp_state();
 
-        state.add_balance(&sender, &20.into()).unwrap();
-        state.add_balance(&sender2, &20.into()).unwrap();
+        assert_eq!(Ok(()), state.add_balance(&sender, &20.into()));
+        assert_eq!(Ok(()), state.add_balance(&sender2, &20.into()));
 
         let parcel = Parcel {
             fee: 5.into(),
@@ -1297,10 +1284,8 @@ mod tests_parcel {
             network_id: 0xCA,
         };
 
-        match state.apply(&parcel, &sender, &sender_public) {
-            Err(StateError::Parcel(err)) => assert_eq!(ParcelError::RegularKeyAlreadyInUseAsMaster, err),
-            other => panic!("{:?}", other),
-        }
+        let result = state.apply(&parcel, &sender, &sender_public);
+        assert_eq!(Err(StateError::Parcel(ParcelError::RegularKeyAlreadyInUseAsMaster)), result);
     }
 
     #[test]
@@ -1311,8 +1296,8 @@ mod tests_parcel {
 
         let mut state = get_temp_state();
 
-        state.add_balance(&sender, &20.into()).unwrap();
-        state.set_regular_key(&sender_public, &regular_public).unwrap();
+        assert_eq!(Ok(()), state.add_balance(&sender, &20.into()));
+        assert_eq!(Ok(()), state.set_regular_key(&sender_public, &regular_public));
 
         let parcel = Parcel {
             fee: 5.into(),
@@ -1326,11 +1311,11 @@ mod tests_parcel {
         assert_eq!(Some(regular_public), state.regular_key(&sender).unwrap());
         assert_eq!(Ok(true), state.regular_account_exists_and_not_null(&regular_address));
         assert_eq!(
-            ParcelOutcome::Single {
+            Ok(ParcelOutcome::Single {
                 invoice: Invoice::Success,
                 error: None
-            },
-            state.apply(&parcel, &regular_address, &regular_public).unwrap()
+            }),
+            state.apply(&parcel, &regular_address, &regular_public)
         );
         assert_eq!(Ok(false), state.regular_account_exists_and_not_null(&regular_address));
         assert_eq!(Some(regular_public2), state.regular_key(&sender).unwrap());
@@ -1344,12 +1329,12 @@ mod tests_parcel {
 
         let mut state = get_temp_state();
 
-        state.add_balance(&sender, &20.into()).unwrap();
-        state.set_regular_key(&sender_public, &regular_public).unwrap();
-        state.set_regular_key(&sender_public, &regular_public2).unwrap();
+        assert_eq!(Ok(()), state.add_balance(&sender, &20.into()));
+        assert_eq!(Ok(()), state.set_regular_key(&sender_public, &regular_public));
+        assert_eq!(Ok(()), state.set_regular_key(&sender_public, &regular_public2));
 
         assert_eq!(Ok(false), state.regular_account_exists_and_not_null(&regular_address));
-        state.add_balance(&regular_address, &20.into()).unwrap();
+        assert_eq!(Ok(()), state.add_balance(&regular_address, &20.into()));
 
         let parcel = Parcel {
             action: Action::CreateShard,
@@ -1358,11 +1343,11 @@ mod tests_parcel {
             network_id: 0xCA,
         };
         assert_eq!(
-            ParcelOutcome::Single {
+            Ok(ParcelOutcome::Single {
                 invoice: Invoice::Success,
                 error: None
-            },
-            state.apply(&parcel, &regular_address, &regular_public).unwrap()
+            }),
+            state.apply(&parcel, &regular_address, &regular_public)
         );
         assert_eq!(Ok(14.into()), state.balance(&regular_address));
         assert_eq!(Ok(20.into()), state.balance(&sender));
@@ -1375,8 +1360,8 @@ mod tests_parcel {
 
         let mut state = get_temp_state();
 
-        state.add_balance(&sender, &20.into()).unwrap();
-        state.set_regular_key(&sender_public, &regular_public).unwrap();
+        assert_eq!(Ok(()), state.add_balance(&sender, &20.into()));
+        assert_eq!(Ok(()), state.set_regular_key(&sender_public, &regular_public));
 
         let parcel = Parcel {
             action: Action::Payment {
@@ -1387,10 +1372,8 @@ mod tests_parcel {
             nonce: 0.into(),
             network_id: 0xCA,
         };
-        match state.apply(&parcel, &sender, &sender_public) {
-            Err(StateError::Parcel(err)) => assert_eq!(ParcelError::InvalidTransferDestination, err),
-            other => panic!("{:?}", other),
-        }
+        let result = state.apply(&parcel, &sender, &sender_public);
+        assert_eq!(Err(StateError::Parcel(ParcelError::InvalidTransferDestination)), result);
         assert_eq!(Ok(20.into()), state.balance(&sender));
     }
 
@@ -1409,18 +1392,18 @@ mod tests_parcel {
             network_id: 0xCA,
         };
         let (sender, sender_public) = address();
-        state.add_balance(&sender, &20.into()).unwrap();
+        assert_eq!(Ok(()), state.add_balance(&sender, &20.into()));
 
         assert_eq!(
-            ParcelOutcome::Single {
+            Ok(ParcelOutcome::Single {
                 invoice: Invoice::Failed,
                 error: Some(ParcelError::InsufficientBalance {
                     address: sender,
                     balance: 15.into(),
                     cost: 30.into(),
                 })
-            },
-            state.apply(&parcel, &sender, &sender_public).unwrap()
+            }),
+            state.apply(&parcel, &sender, &sender_public)
         );
 
         assert_eq!(Ok(0.into()), state.balance(&receiver));
@@ -1471,14 +1454,14 @@ mod tests_parcel {
         };
         let (sender, sender_public) = address();
 
-        state.add_balance(&sender, &U256::from(69u64)).unwrap();
+        assert_eq!(Ok(()), state.add_balance(&sender, &U256::from(69u64)));
 
         assert_eq!(
-            ParcelOutcome::Transactions(vec![TransactionOutcome {
+            Ok(ParcelOutcome::Transactions(vec![TransactionOutcome {
                 invoice: Invoice::Success,
                 error: None,
-            }]),
-            state.apply(&parcel, &sender, &sender_public).unwrap()
+            }])),
+            state.apply(&parcel, &sender, &sender_public)
         );
 
         assert_eq!(state.balance(&sender), Ok(58.into()));
@@ -1535,14 +1518,14 @@ mod tests_parcel {
         };
         let (sender, sender_public) = address();
 
-        state.add_balance(&sender, &U256::from(69u64)).unwrap();
+        assert_eq!(Ok(()), state.add_balance(&sender, &U256::from(69u64)));
 
         assert_eq!(
-            ParcelOutcome::Transactions(vec![TransactionOutcome {
+            Ok(ParcelOutcome::Transactions(vec![TransactionOutcome {
                 invoice: Invoice::Success,
                 error: None,
-            }]),
-            state.apply(&parcel, &sender, &sender_public).unwrap()
+            }])),
+            state.apply(&parcel, &sender, &sender_public)
         );
 
         assert_eq!(state.balance(&sender), Ok(64.into()));
@@ -1647,7 +1630,7 @@ mod tests_parcel {
         };
         let (sender, sender_public) = address();
 
-        state.add_balance(&sender, &U256::from(120)).unwrap();
+        assert_eq!(Ok(()), state.add_balance(&sender, &U256::from(120)));
 
         assert_eq!(
             ParcelOutcome::Transactions(vec![
@@ -1728,14 +1711,14 @@ mod tests_parcel {
         };
         let (sender, sender_public) = address();
 
-        state.add_balance(&sender, &U256::from(120)).unwrap();
+        assert_eq!(Ok(()), state.add_balance(&sender, &U256::from(120)));
 
         assert_eq!(
-            ParcelOutcome::Transactions(vec![TransactionOutcome {
+            Ok(ParcelOutcome::Transactions(vec![TransactionOutcome {
                 invoice: Invoice::Success,
                 error: None,
-            }]),
-            state.apply(&mint_parcel, &sender, &sender_public).unwrap()
+            }])),
+            state.apply(&mint_parcel, &sender, &sender_public)
         );
         assert_eq!(state.balance(&sender), Ok(100.into()));
         assert_eq!(state.nonce(&sender), Ok(1.into()));
@@ -1801,11 +1784,11 @@ mod tests_parcel {
         };
 
         assert_eq!(
-            ParcelOutcome::Transactions(vec![TransactionOutcome {
+            Ok(ParcelOutcome::Transactions(vec![TransactionOutcome {
                 invoice: Invoice::Success,
                 error: None,
-            }]),
-            state.apply(&transfer_parcel, &sender, &sender_public).unwrap()
+            }])),
+            state.apply(&transfer_parcel, &sender, &sender_public)
         );
 
         assert_eq!(state.balance(&sender), Ok(70.into()));
@@ -1866,18 +1849,18 @@ mod tests_parcel {
             network_id: 0xCA,
         };
         let (sender, sender_public) = address();
-        state.add_balance(&sender, &20.into()).unwrap();
-        let res = state.apply(&parcel, &sender, &sender_public).unwrap();
+        assert_eq!(Ok(()), state.add_balance(&sender, &20.into()));
+        let res = state.apply(&parcel, &sender, &sender_public);
         assert_eq!(
-            ParcelOutcome::Single {
+            Ok(ParcelOutcome::Single {
                 invoice: Invoice::Success,
                 error: None,
-            },
+            }),
             res
         );
         assert_eq!(Ok(14.into()), state.balance(&sender));
         assert_eq!(Ok(1.into()), state.nonce(&sender));
-        assert_ne!(None, state.shard_root(0).unwrap());
+        assert_ne!(Ok(None), state.shard_root(0));
     }
 
     #[test]
@@ -1891,13 +1874,13 @@ mod tests_parcel {
             network_id: 0xCA,
         };
         let (sender, sender_public) = address();
-        state.add_balance(&sender, &20.into()).unwrap();
-        let res = state.apply(&parcel, &sender, &sender_public).unwrap();
+        assert_eq!(Ok(()), state.add_balance(&sender, &20.into()));
+        let res = state.apply(&parcel, &sender, &sender_public);
         assert_eq!(
-            ParcelOutcome::Single {
+            Ok(ParcelOutcome::Single {
                 invoice: Invoice::Success,
                 error: None,
-            },
+            }),
             res
         );
         assert_eq!(Ok(14.into()), state.balance(&sender));
@@ -1918,13 +1901,13 @@ mod tests_parcel {
             network_id: 0xCA,
         };
         let (sender, sender_public) = address();
-        state.add_balance(&sender, &20.into()).unwrap();
-        let res = state.apply(&parcel, &sender, &sender_public).unwrap();
+        assert_eq!(Ok(()), state.add_balance(&sender, &20.into()));
+        let res = state.apply(&parcel, &sender, &sender_public);
         assert_eq!(
-            ParcelOutcome::Single {
+            Ok(ParcelOutcome::Single {
                 invoice: Invoice::Success,
                 error: None,
-            },
+            }),
             res
         );
         assert_eq!(Ok(14.into()), state.balance(&sender));
@@ -1973,12 +1956,10 @@ mod tests_parcel {
         };
         let (sender, sender_public) = address();
 
-        state.add_balance(&sender, &U256::from(69u64)).unwrap();
+        assert_eq!(Ok(()), state.add_balance(&sender, &U256::from(69u64)));
 
-        match state.apply(&parcel, &sender, &sender_public).unwrap_err() {
-            StateError::Parcel(err) => assert_eq!(ParcelError::InvalidShardId(0), err),
-            other => panic!("{:?}", other),
-        }
+        let res = state.apply(&parcel, &sender, &sender_public);
+        assert_eq!(Err(StateError::Parcel(ParcelError::InvalidShardId(0))), res);
     }
 
     #[test]
@@ -2041,11 +2022,9 @@ mod tests_parcel {
         };
 
         let (sender, sender_public) = address();
-        state.add_balance(&sender, &U256::from(120)).unwrap();
+        assert_eq!(Ok(()), state.add_balance(&sender, &U256::from(120)));
 
-        match state.apply(&parcel, &sender, &sender_public).unwrap_err() {
-            StateError::Parcel(err) => assert_eq!(ParcelError::InvalidShardId(100), err),
-            other => panic!("{:?}", other),
-        }
+        let res = state.apply(&parcel, &sender, &sender_public);
+        assert_eq!(Err(StateError::Parcel(ParcelError::InvalidShardId(100))), res);
     }
 }

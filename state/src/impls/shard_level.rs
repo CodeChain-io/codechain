@@ -443,12 +443,12 @@ mod tests {
             nonce: 0,
         };
 
-        let result = state.apply(&transaction).unwrap();
+        let result = state.apply(&transaction);
         assert_eq!(
-            TransactionOutcome {
+            Ok(TransactionOutcome {
                 invoice: Invoice::Success,
                 error: None,
-            },
+            }),
             result
         );
 
@@ -484,12 +484,12 @@ mod tests {
             nonce: 0,
         };
 
-        let result = state.apply(&transaction).unwrap();
+        let result = state.apply(&transaction);
         assert_eq!(
-            TransactionOutcome {
+            Ok(TransactionOutcome {
                 invoice: Invoice::Success,
                 error: None,
-            },
+            }),
             result
         );
 
@@ -532,11 +532,11 @@ mod tests {
         let network_id = 0xCafe;
 
         assert_eq!(
-            TransactionOutcome {
+            Ok(TransactionOutcome {
                 invoice: Invoice::Success,
                 error: None,
-            },
-            state.apply(&mint).unwrap()
+            }),
+            state.apply(&mint)
         );
 
         let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id);
@@ -588,11 +588,11 @@ mod tests {
         let transfer_hash = transfer.hash();
 
         assert_eq!(
-            TransactionOutcome {
+            Ok(TransactionOutcome {
                 invoice: Invoice::Success,
                 error: None,
-            },
-            state.apply(&transfer).unwrap()
+            }),
+            state.apply(&transfer)
         );
 
         let asset0_address = AssetAddress::new(transfer_hash, 0, shard_id);
@@ -634,11 +634,11 @@ mod tests {
         let network_id = 0xCafe;
 
         assert_eq!(
-            TransactionOutcome {
+            Ok(TransactionOutcome {
                 invoice: Invoice::Success,
                 error: None,
-            },
-            state.apply(&mint).unwrap()
+            }),
+            state.apply(&mint)
         );
 
         let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id);
@@ -716,11 +716,11 @@ mod tests {
         let successful_transfer_hash = successful_transfer.hash();
 
         assert_eq!(
-            TransactionOutcome {
+            Ok(TransactionOutcome {
                 invoice: Invoice::Success,
                 error: None,
-            },
-            state.apply(&successful_transfer).unwrap()
+            }),
+            state.apply(&successful_transfer)
         );
 
         let asset0_address = AssetAddress::new(successful_transfer_hash, 0, shard_id);

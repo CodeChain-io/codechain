@@ -20,7 +20,7 @@ use cmerkle::TrieError;
 use ctypes::parcel::Error as ParcelError;
 use ctypes::transaction::Error as TransactionError;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Error {
     Trie(TrieError),
     Parcel(ParcelError),
