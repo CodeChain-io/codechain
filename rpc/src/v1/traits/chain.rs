@@ -103,6 +103,10 @@ build_rpc_trait! {
         # [rpc(name = "chain_getCoinbase")]
         fn get_coinbase(&self) -> Result<Option<Address>>;
 
+        /// Return the network id that is used in this chain.
+        # [rpc(name = "chain_getNetworkId")]
+        fn get_network_id(&self) -> Result<u64>;
+
         /// Execute Transactions
         # [rpc(name = "chain_executeTransactions")]
         fn execute_change_shard_state(&self, Bytes) -> Result<Vec<ChangeShard>>;
