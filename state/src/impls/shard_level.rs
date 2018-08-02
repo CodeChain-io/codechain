@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::cell::RefMut;
+use std::collections::HashMap;
 use std::fmt;
 
 use ccrypto::{Blake, BLAKE_NULL_RLP};
@@ -165,6 +166,15 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
                 debug_assert!(outputs.len() <= 512);
                 self.transfer_asset(&transaction, sender, burns, inputs, outputs)
             }
+
+            Transaction::AssetCompose {
+                world_id,
+                metadata,
+                registrar,
+                inputs,
+                output,
+                ..
+            } => self.compose_asset(&transaction, *world_id, metadata, registrar, inputs, output, sender, shard_users),
         }
     }
 
@@ -415,6 +425,54 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
             TransactionError::FailedToUnlock(address_hash)
         })?;
         Ok(script_result)
+    }
+
+    fn compose_asset(
+        &mut self,
+        transaction: &Transaction,
+        world_id: WorldId,
+        metadata: &String,
+        registrar: &Option<Address>,
+        inputs: &[AssetTransferInput],
+        output: &AssetMintOutput,
+        sender: &Address,
+        shard_users: &[Address],
+    ) -> StateResult<()> {
+        let mut sum: HashMap<H256, u64> = HashMap::new();
+
+        let mut deleted_assets: Vec<(H256, _)> = Vec::with_capacity(inputs.len());
+        for input in inputs.iter() {
+            let (_, asset_address) = self.check_input_asset(input, sender)?;
+            let script_result = self.check_and_run_input_script(input, transaction, &input.prev_out, false)?;
+
+            match script_result {
+                ScriptResult::Unlocked => {}
+                _ => return Err(TransactionError::FailedToUnlock(asset_address.into()).into()),
+            }
+
+            self.kill_asset(&asset_address);
+            deleted_assets.push((asset_address.into(), input.prev_out.amount));
+
+            let asset_type = input.prev_out.asset_type;
+            let current_amount = sum.get(&asset_type).cloned().unwrap_or(0);
+            sum.insert(asset_type.clone(), current_amount + input.prev_out.amount);
+        }
+        ctrace!(TX, "Deleted assets {:?}", deleted_assets);
+
+        let pool = sum.into_iter().map(|(asset_type, amount)| Asset::new(asset_type, amount)).collect();
+
+        self.mint_asset(
+            transaction.hash(),
+            world_id,
+            metadata,
+            &output.lock_script_hash,
+            &output.parameters,
+            &output.amount,
+            registrar,
+            sender,
+            shard_users,
+            pool,
+        )
     }
 
     fn kill_asset(&mut self, account: &OwnedAssetAddress) {
@@ -1007,6 +1065,86 @@ mod tests {
         let asset2_address = OwnedAssetAddress::new(transfer_hash, 2, shard_id);
         let asset2 = state.asset(&asset2_address);
         assert_eq!(Ok(Some(OwnedAsset::new(asset_type, random_lock_script_hash, vec![], 15))), asset2);
+    }
+
+    #[test]
+    fn mint_and_compose() {
+        let network_id = "tc".into();
+        let shard_id = 0;
+        let world_id = 0;
+        let mut state = get_temp_shard_state(shard_id);
+        let sender = address();
+        let shard_owner = address();
+        assert_eq!(Ok(()), state.create_world(shard_id, &0, &[sender], &[], &shard_owner, &[shard_owner]));
+        assert_eq!(Ok(()), state.commit());
+
+        let metadata = "metadata".to_string();
+        let lock_script_hash = H160::from("0xb042ad154a3359d276835c903587ebafefea22af");
+        let registrar = None;
+        let amount = 30;
+        let mint = Transaction::AssetMint {
+            network_id,
+            shard_id,
+            world_id,
+            metadata: metadata.clone(),
+            output: AssetMintOutput {
+                lock_script_hash,
+                parameters: vec![],
+                amount: Some(amount),
+            },
+            registrar,
+            nonce: 0,
+        };
+        let mint_hash = mint.hash();
+        assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &mint, &sender, &[shard_owner]));
+        let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id, world_id);
+        let asset_type = asset_scheme_address.into();
+
+        let random_lock_script_hash = H160::random();
+        let compose = Transaction::AssetCompose {
+            network_id,
+            shard_id,
+            world_id,
+            nonce: 0,
+            metadata: "composed".to_string(),
+            registrar,
+            inputs: vec![AssetTransferInput {
+                prev_out: AssetOutPoint {
+                    transaction_hash: mint_hash,
+                    index: 0,
+                    asset_type,
+                    amount: 30,
+                },
+                lock_script: vec![0x30, 0x01],
+                unlock_script: vec![],
+            }],
+            output: AssetMintOutput {
+                lock_script_hash: random_lock_script_hash,
+                parameters: vec![],
+                amount: Some(1),
+            },
+        };
+        let compose_hash = compose.hash();
+
+        assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &compose, &sender, &[shard_owner]));
+
+        let composed_asset_scheme_address = AssetSchemeAddress::new(compose_hash, shard_id, world_id);
+        let composed_asset_scheme = state.asset_scheme(&composed_asset_scheme_address);
+        let composed_asset_type = composed_asset_scheme_address.into();
+
+        assert_eq!(
+            Ok(Some(AssetScheme::new_with_pool(
+                "composed".to_string(),
+                1,
+                registrar,
+                vec![Asset::new(asset_type, 30)]
+            ))),
+            composed_asset_scheme
+        );
+
+        let composed_asset_address = OwnedAssetAddress::new(compose_hash, 0, shard_id);
+        let composed_asset = state.asset(&composed_asset_address);
+        assert_eq!(Ok(Some(OwnedAsset::new(composed_asset_type, random_lock_script_hash, vec![], 1))), composed_asset);
     }
 
     #[test]
