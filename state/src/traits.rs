@@ -37,6 +37,7 @@ pub trait TopStateInfo {
     fn number_of_shards(&self) -> TrieResult<ShardId>;
 
     fn shard_root(&self, shard_id: ShardId) -> TrieResult<Option<H256>>;
+    fn shard_owner(&self, shard_id: ShardId) -> TrieResult<Option<Address>>;
 
     /// Get the asset scheme.
     fn asset_scheme(&self, shard_id: ShardId, a: &AssetSchemeAddress) -> TrieResult<Option<AssetScheme>>;
@@ -91,6 +92,7 @@ where
     fn create_shard(&mut self, shard_creation_cost: &U256, fee_payer: &Address) -> StateResult<()>;
 
     fn set_shard_root(&mut self, shard_id: ShardId, old_root: &H256, new_root: &H256) -> StateResult<()>;
+    fn set_shard_owner(&mut self, shard_id: ShardId, old_owner: &Address, new_owner: Address) -> StateResult<()>;
 
     fn update_action_data(&mut self, key: &H256, data: Bytes) -> StateResult<()>;
 }

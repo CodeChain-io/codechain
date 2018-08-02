@@ -17,12 +17,14 @@
 use std::fmt;
 
 use cjson;
+use ckey::Address;
 use cstate::ShardMetadata;
 use ctypes::ShardId;
 use rlp::{Encodable, RlpStream};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct PodShardMetadata {
+    pub owner: Address,
     pub number_of_worlds: ShardId,
     pub nonce: u64,
 }
@@ -45,12 +47,13 @@ impl From<cjson::spec::Shard> for PodShardMetadata {
         Self {
             number_of_worlds: 0,
             nonce: s.nonce.unwrap_or(0),
+            owner: s.owner,
         }
     }
 }
 
 impl fmt::Display for PodShardMetadata {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "(#wordls={}; nonce={})", self.number_of_worlds, self.nonce)
+        write!(f, "(#wordls={}; nonce={}; owner={})", self.number_of_worlds, self.nonce, self.owner)
     }
 }

@@ -143,6 +143,18 @@ impl TopStateInfo for TopLevelState {
         Ok(db.get_with(&shard_address, ::rlp::decode::<Shard>)?.map(|s| s.root().clone()))
     }
 
+    fn shard_owner(&self, shard_id: ShardId) -> TrieResult<Option<Address>> {
+        let shard_address = ShardAddress::new(shard_id);
+        let owner = self.db.get_cached_shard(&shard_address).and_then(|s| s).map(|s| s.owner().clone());
+        if owner.is_some() {
+            return Ok(owner)
+        }
+
+        // because of lexical borrow of self.db
+        let db = self.trie_factory.readonly(self.db.as_hashdb(), &self.root)?;
+        Ok(db.get_with(&shard_address, ::rlp::decode::<Shard>)?.map(|s| s.owner().clone()))
+    }
+
     fn asset_scheme(
         &self,
         shard_id: ShardId,
@@ -518,7 +530,7 @@ impl TopLevelState {
         Ok((new_root, db, results))
     }
 
-    fn create_shard_level_state(&mut self) -> StateResult<()> {
+    fn create_shard_level_state(&mut self, fee_payer: &Address) -> StateResult<()> {
         let (shard_id, shard_root, db) = {
             let mut metadata = self.require_metadata()?;
             let shard_id = metadata.increase_number_of_shards();
@@ -537,6 +549,7 @@ impl TopLevelState {
         ctrace!(STATE, "shard created({}, {:?})", shard_id, shard_root);
 
         self.set_shard_root(shard_id, &BLAKE_NULL_RLP, &shard_root)?;
+        self.set_shard_owner(shard_id, &Address::zero(), *fee_payer)?;
         Ok(())
     }
 
@@ -612,7 +625,7 @@ impl TopLevelState {
     }
 
     fn require_shard<'a>(&'a self, shard_id: ShardId) -> TrieResult<RefMut<'a, Shard>> {
-        let default = || Shard::new(BLAKE_NULL_RLP);
+        let default = || Shard::new(BLAKE_NULL_RLP, Address::zero());
         let db = self.trie_factory.readonly(self.db.as_hashdb(), &self.root)?;
         let shard_address = ShardAddress::new(shard_id);
         let from_db = || self.db.get_cached_shard(&shard_address);
@@ -770,7 +783,7 @@ impl TopState<StateDB> for TopLevelState {
         }
         self.sub_balance(fee_payer, shard_creation_cost)?;
 
-        self.create_shard_level_state()?;
+        self.create_shard_level_state(fee_payer)?;
 
         Ok(())
     }
@@ -779,6 +792,13 @@ impl TopState<StateDB> for TopLevelState {
         let mut shard = self.require_shard(shard_id)?;
         assert_eq!(old_root, shard.root());
         shard.set_root(*new_root);
+        Ok(())
+    }
+
+    fn set_shard_owner(&mut self, shard_id: ShardId, old_owner: &Address, new_owner: Address) -> StateResult<()> {
+        let mut shard = self.require_shard(shard_id)?;
+        assert_eq!(old_owner, shard.owner());
+        shard.set_owner(new_owner);
         Ok(())
     }
 
@@ -1039,8 +1059,10 @@ mod tests_parcel {
 
     #[test]
     fn apply_empty_parcel() {
+        let (sender, sender_public) = address();
+
         let mut state = get_temp_state();
-        assert_eq!(Ok(()), state.create_shard_level_state());
+        assert_eq!(Ok(()), state.create_shard_level_state(&sender));
         assert_eq!(Ok(()), state.commit());
 
         let parcel = Parcel {
@@ -1053,7 +1075,7 @@ mod tests_parcel {
                 signatures: vec![],
             },
         };
-        let (sender, sender_public) = address();
+
         assert_eq!(Ok(()), state.add_balance(&sender, &20.into()));
 
         let result = state.apply(&parcel, &sender, &sender_public);
@@ -1221,6 +1243,7 @@ mod tests_parcel {
             state.apply(&parcel, &regular_keypair.address(), regular_keypair.public())
         );
         assert_eq!(Ok(4.into()), state.balance(&sender));
+        assert_eq!(Ok(Some(sender)), state.shard_owner(0));
     }
 
     #[test]
@@ -1352,6 +1375,7 @@ mod tests_parcel {
         );
         assert_eq!(Ok(14.into()), state.balance(&regular_address));
         assert_eq!(Ok(20.into()), state.balance(&sender));
+        assert_eq!(Ok(Some(regular_address)), state.shard_owner(0));
     }
 
     #[test]
@@ -1414,9 +1438,11 @@ mod tests_parcel {
 
     #[test]
     fn mint_permissioned_asset() {
+        let (sender, sender_public) = address();
+
         let mut state = get_temp_state();
-        state.create_shard_level_state().unwrap();
-        state.commit().unwrap();
+        assert_eq!(Ok(()), state.create_shard_level_state(&sender));
+        assert_eq!(Ok(()), state.commit());
 
         let shard_id = 0x0;
 
@@ -1453,7 +1479,6 @@ mod tests_parcel {
             nonce: 0.into(),
             network_id: 0xCA,
         };
-        let (sender, sender_public) = address();
 
         assert_eq!(Ok(()), state.add_balance(&sender, &U256::from(69u64)));
 
@@ -1479,9 +1504,11 @@ mod tests_parcel {
 
     #[test]
     fn mint_infinite_permissioned_asset() {
+        let (sender, sender_public) = address();
+
         let mut state = get_temp_state();
-        state.create_shard_level_state().unwrap();
-        state.commit().unwrap();
+        assert_eq!(Ok(()), state.create_shard_level_state(&sender));
+        assert_eq!(Ok(()), state.commit());
 
         let shard_id = 0;
 
@@ -1517,7 +1544,6 @@ mod tests_parcel {
             nonce: 0.into(),
             network_id: 0xCA,
         };
-        let (sender, sender_public) = address();
 
         assert_eq!(Ok(()), state.add_balance(&sender, &U256::from(69u64)));
 
@@ -1546,9 +1572,11 @@ mod tests_parcel {
 
     #[test]
     fn mint_and_transfer_in_the_same_parcel() {
+        let (sender, sender_public) = address();
+
         let mut state = get_temp_state();
-        state.create_shard_level_state().unwrap();
-        state.commit().unwrap();
+        assert_eq!(Ok(()), state.create_shard_level_state(&sender));
+        assert_eq!(Ok(()), state.commit());
 
         let shard_id = 0x00;
         let network_id = 0xBeef;
@@ -1629,7 +1657,6 @@ mod tests_parcel {
                 signatures: vec![],
             },
         };
-        let (sender, sender_public) = address();
 
         assert_eq!(Ok(()), state.add_balance(&sender, &U256::from(120)));
 
@@ -1671,9 +1698,11 @@ mod tests_parcel {
 
     #[test]
     fn mint_and_transfer_in_different_parcel() {
+        let (sender, sender_public) = address();
+
         let mut state = get_temp_state();
-        state.create_shard_level_state().unwrap();
-        state.commit().unwrap();
+        assert_eq!(Ok(()), state.create_shard_level_state(&sender));
+        assert_eq!(Ok(()), state.commit());
 
         let network_id = 0xBeef;
         let shard_id = 0x00;
@@ -1710,7 +1739,6 @@ mod tests_parcel {
                 signatures: vec![],
             },
         };
-        let (sender, sender_public) = address();
 
         assert_eq!(Ok(()), state.add_balance(&sender, &U256::from(120)));
 
@@ -1862,6 +1890,8 @@ mod tests_parcel {
         assert_eq!(Ok(14.into()), state.balance(&sender));
         assert_eq!(Ok(1.into()), state.nonce(&sender));
         assert_ne!(Ok(None), state.shard_root(0));
+        assert_ne!(Ok(None), state.shard_root(0));
+        assert_eq!(Ok(Some(sender)), state.shard_owner(0));
     }
 
     #[test]
@@ -1886,6 +1916,7 @@ mod tests_parcel {
         );
         assert_eq!(Ok(14.into()), state.balance(&sender));
         assert_eq!(Ok(1.into()), state.nonce(&sender));
+        assert_eq!(Ok(Some(sender)), state.shard_owner(0));
 
         let shard_id = 3;
         assert_eq!(Ok(None), state.asset(shard_id, &AssetAddress::new(H256::random(), 0, shard_id)));
@@ -1913,6 +1944,7 @@ mod tests_parcel {
         );
         assert_eq!(Ok(14.into()), state.balance(&sender));
         assert_eq!(Ok(1.into()), state.nonce(&sender));
+        assert_eq!(Ok(Some(sender)), state.shard_owner(0));
 
         let shard_id = 3;
         assert_eq!(Ok(None), state.asset_scheme(shard_id, &AssetSchemeAddress::new(H256::random(), shard_id)));

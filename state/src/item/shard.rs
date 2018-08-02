@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ccrypto::BLAKE_NULL_RLP;
+use ckey::Address;
 use ctypes::ShardId;
 use primitives::H256;
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
@@ -24,12 +25,14 @@ use super::cache::CacheableItem;
 #[derive(Clone, Debug)]
 pub struct Shard {
     root: H256,
+    owner: Address,
 }
 
 impl Shard {
-    pub fn new(shard_root: H256) -> Self {
+    pub fn new(shard_root: H256, owner: Address) -> Self {
         Self {
             root: shard_root,
+            owner,
         }
     }
 
@@ -39,6 +42,14 @@ impl Shard {
 
     pub fn set_root(&mut self, root: H256) {
         self.root = root;
+    }
+
+    pub fn owner(&self) -> &Address {
+        &self.owner
+    }
+
+    pub fn set_owner(&mut self, owner: Address) {
+        self.owner = owner;
     }
 }
 
@@ -54,13 +65,13 @@ const PREFIX: u8 = 'H' as u8;
 
 impl Encodable for Shard {
     fn rlp_append(&self, s: &mut RlpStream) {
-        s.begin_list(2).append(&PREFIX).append(&self.root);
+        s.begin_list(3).append(&PREFIX).append(&self.root).append(&self.owner);
     }
 }
 
 impl Decodable for Shard {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
-        if rlp.item_count()? != 2 {
+        if rlp.item_count()? != 3 {
             return Err(DecoderError::RlpInvalidLength)
         }
         let prefix = rlp.val_at::<u8>(0)?;
@@ -70,6 +81,7 @@ impl Decodable for Shard {
         }
         Ok(Self {
             root: rlp.val_at(1)?,
+            owner: rlp.val_at(2)?,
         })
     }
 }

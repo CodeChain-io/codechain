@@ -186,7 +186,7 @@ impl Spec {
         mut db: DB,
         mut root: H256,
     ) -> StateResult<(DB, H256)> {
-        let mut shard_roots = Vec::<(ShardId, H256)>::with_capacity(self.genesis_shards.len());
+        let mut shard_roots = Vec::<(ShardId, H256, Address)>::with_capacity(self.genesis_shards.len());
 
         // Initialize shard-level tries
         for (shard_id, shard) in &*self.genesis_shards {
@@ -200,7 +200,8 @@ impl Spec {
                 debug_assert_eq!(Ok(None), r);
                 r?;
             }
-            shard_roots.push((*shard_id, shard_root));
+            let owner = shard.owner;
+            shard_roots.push((*shard_id, shard_root, owner));
         }
 
         debug_assert_eq!(::std::mem::size_of::<u16>(), ::std::mem::size_of::<ShardId>());
@@ -213,12 +214,12 @@ impl Spec {
         let global_metadata = Metadata::new(shard_roots.len() as ShardId);
 
         // Initialize shards
-        for (shard_id, shard_root) in shard_roots.into_iter() {
+        for (shard_id, shard_root, owner) in shard_roots.into_iter() {
             {
                 let mut t = trie_factory.from_existing(db.as_hashdb_mut(), &mut root)?;
                 let address = ShardAddress::new(shard_id);
 
-                let shard = Shard::new(shard_root);
+                let shard = Shard::new(shard_root, owner);
                 let r = t.insert(&*address, &shard.rlp_bytes());
                 debug_assert_eq!(Ok(None), r);
                 r?;
