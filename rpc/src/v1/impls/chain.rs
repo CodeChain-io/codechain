@@ -17,8 +17,8 @@
 use std::sync::Arc;
 
 use ccore::{
-    AssetClient, BlockId, ExecuteClient, MinerService, MiningBlockChainClient, RegularKey, Shard, SignedParcel,
-    UnverifiedParcel,
+    AssetClient, BlockId, EngineInfo, ExecuteClient, MinerService, MiningBlockChainClient, RegularKey, Shard,
+    SignedParcel, UnverifiedParcel,
 };
 use ckey::{Address, Public};
 use cstate::{Asset, AssetScheme, AssetSchemeAddress};
@@ -37,7 +37,7 @@ use super::super::types::{Block, BlockNumberAndHash, Bytes, Parcel};
 
 pub struct ChainClient<C, M>
 where
-    C: AssetClient + MiningBlockChainClient + Shard + RegularKey + ExecuteClient,
+    C: AssetClient + MiningBlockChainClient + Shard + RegularKey + ExecuteClient + EngineInfo,
     M: MinerService, {
     client: Arc<C>,
     miner: Arc<M>,
@@ -45,7 +45,7 @@ where
 
 impl<C, M> ChainClient<C, M>
 where
-    C: AssetClient + MiningBlockChainClient + Shard + RegularKey + ExecuteClient,
+    C: AssetClient + MiningBlockChainClient + Shard + RegularKey + ExecuteClient + EngineInfo,
     M: MinerService,
 {
     pub fn new(client: &Arc<C>, miner: &Arc<M>) -> Self {
@@ -58,7 +58,7 @@ where
 
 impl<C, M> Chain for ChainClient<C, M>
 where
-    C: AssetClient + MiningBlockChainClient + Shard + RegularKey + ExecuteClient + 'static,
+    C: AssetClient + MiningBlockChainClient + Shard + RegularKey + ExecuteClient + EngineInfo + 'static,
     M: MinerService + 'static,
 {
     fn send_signed_parcel(&self, raw: Bytes) -> Result<H256> {
@@ -179,6 +179,10 @@ where
         } else {
             Ok(Some(self.miner.author()))
         }
+    }
+
+    fn get_network_id(&self) -> Result<u64> {
+        Ok(self.client.common_params().network_id)
     }
 
     fn execute_change_shard_state(&self, raw: Bytes) -> Result<Vec<ChangeShard>> {
