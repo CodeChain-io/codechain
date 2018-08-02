@@ -19,6 +19,7 @@
 use std::net::{AddrParseError, SocketAddr};
 use std::sync::Arc;
 
+use super::super::error::Error as MinerError;
 use cstratum::{Error as StratumServiceError, JobDispatcher, PushWorkHandler, Stratum as StratumService};
 use primitives::{Bytes, H256, U256};
 
@@ -56,14 +57,14 @@ impl JobDispatcher for StratumJobDispatcher {
 
         if !self.miner.can_produce_work_package() {
             cwarn!(STRATUM, "Cannot get work package - engine seals internally.");
-            return Err(StratumServiceError::NoWork)
+            return Err(StratumServiceError::InternalError)
         }
 
         match self.miner.submit_seal(&*self.client, pow_hash, seal) {
             Ok(_) => Ok(()),
             Err(e) => {
                 cwarn!(STRATUM, "submit_seal error: {:?}", e);
-                Err(StratumServiceError::Dispatch(e.to_string()))
+                Err(StratumServiceError::from(e))
             }
         }
     }
@@ -96,6 +97,16 @@ pub enum Error {
     Service(StratumServiceError),
     /// Invalid network address
     Address(AddrParseError),
+}
+
+impl From<MinerError> for StratumServiceError {
+    fn from(err: MinerError) -> Self {
+        match err {
+            MinerError::PowHashInvalid => StratumServiceError::PowHashInvalid,
+            MinerError::PowInvalid => StratumServiceError::PowInvalid,
+            _ => StratumServiceError::InternalError,
+        }
+    }
 }
 
 impl From<StratumServiceError> for Error {
