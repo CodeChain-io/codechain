@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ccore::{LocalizedParcel, SignedParcel};
-use ckey::SignatureData;
+use ckey::Signature;
 use ctypes::parcel::Action;
 use primitives::{H256, U256};
 
@@ -30,7 +30,7 @@ pub struct Parcel {
     pub network_id: u64,
     pub action: Action,
     pub hash: H256,
-    pub sig: SignatureData,
+    pub sig: Signature,
 }
 
 impl From<LocalizedParcel> for Parcel {

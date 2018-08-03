@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ckey::SignatureData;
+use ckey::Signature;
 use ctypes::parcel::Action;
 use jsonrpc_core::Result;
 use primitives::H256;
@@ -22,7 +22,7 @@ use primitives::H256;
 build_rpc_trait! {
     pub trait ShardValidator {
         # [rpc(name = "shardValidator_getSignatures")]
-        fn get_signatures(&self, H256) -> Result<Vec<SignatureData>>;
+        fn get_signatures(&self, H256) -> Result<Vec<Signature>>;
 
         # [rpc(name = "shardValidator_registerAction")]
         fn register_action(&self, Action) -> Result<bool>;

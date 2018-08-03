@@ -17,7 +17,7 @@
 use std::sync::Arc;
 
 use ccore::AccountProvider;
-use ckey::{FullAddress, SignatureData};
+use ckey::{FullAddress, Signature};
 use jsonrpc_core::Result;
 use primitives::H256;
 
@@ -74,12 +74,7 @@ impl Account for AccountClient {
             .map_err(account_provider)
     }
 
-    fn sign(
-        &self,
-        message_digest: H256,
-        full_address: FullAddress,
-        passphrase: Option<String>,
-    ) -> Result<SignatureData> {
+    fn sign(&self, message_digest: H256, full_address: FullAddress, passphrase: Option<String>) -> Result<Signature> {
         self.account_provider
             .sign(full_address.address, Some(passphrase.unwrap_or_default()), message_digest)
             .map(|sig| sig.into())

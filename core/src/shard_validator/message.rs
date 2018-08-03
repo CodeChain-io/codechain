@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ckey::{Signature, SignatureData};
+use ckey::Signature;
 use ctypes::parcel::Action;
 use primitives::H256;
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
@@ -68,7 +68,7 @@ impl Decodable for Message {
                 Message::Action(action)
             }
             SIGNATURES_ID => {
-                let signatures: Vec<SignatureData> = rlp.list_at(2)?;
+                let signatures: Vec<Signature> = rlp.list_at(2)?;
                 Message::Signatures {
                     action_hash: rlp.val_at(1)?,
                     signatures: signatures.into_iter().map(From::from).collect(),
@@ -101,7 +101,7 @@ impl Encodable for Message {
                 s.append(action_hash);
                 s.begin_list(signatures.len());
                 for signature in signatures.iter() {
-                    s.append(&SignatureData::from(signature.clone()));
+                    s.append(&Signature::from(signature.clone()));
                 }
             }
             Message::RequestAction(action_hash) => {
@@ -116,7 +116,7 @@ impl Encodable for Message {
 mod tests {
     use super::*;
 
-    use ckey::SignatureData;
+    use ckey::Signature;
 
     #[test]
     fn encode_and_decode_action() {
@@ -137,7 +137,7 @@ mod tests {
 
     #[test]
     fn encode_and_decode_with_single_signatures() {
-        let signature = SignatureData::random();
+        let signature = Signature::random();
         rlp_encode_and_decode_test!(Message::Signatures {
             action_hash: H256::random(),
             signatures: vec![signature.into()],
@@ -146,8 +146,8 @@ mod tests {
 
     #[test]
     fn encode_and_decode_with_two_signatures() {
-        let signature1 = SignatureData::random();
-        let signature2 = SignatureData::random();
+        let signature1 = Signature::random();
+        let signature2 = Signature::random();
         rlp_encode_and_decode_test!(Message::Signatures {
             action_hash: H256::random(),
             signatures: vec![signature1.into(), signature2.into()],
@@ -156,13 +156,13 @@ mod tests {
 
     #[test]
     fn encode_and_decode_with_multiple_signatures() {
-        let signature1 = SignatureData::random();
-        let signature2 = SignatureData::random();
-        let signature3 = SignatureData::random();
-        let signature4 = SignatureData::random();
-        let signature5 = SignatureData::random();
-        let signature6 = SignatureData::random();
-        let signature7 = SignatureData::random();
+        let signature1 = Signature::random();
+        let signature2 = Signature::random();
+        let signature3 = Signature::random();
+        let signature4 = Signature::random();
+        let signature5 = Signature::random();
+        let signature6 = Signature::random();
+        let signature7 = Signature::random();
         rlp_encode_and_decode_test!(Message::Signatures {
             action_hash: H256::random(),
             signatures: vec![

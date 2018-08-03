@@ -17,7 +17,7 @@
 use std::sync::Arc;
 
 use ccore::ShardValidatorClient as CoreClient;
-use ckey::SignatureData;
+use ckey::Signature;
 use ctypes::parcel::Action;
 use jsonrpc_core::Result;
 use primitives::H256;
@@ -46,8 +46,8 @@ impl<C> ShardValidator for ShardValidatorClient<C>
 where
     C: CoreClient + 'static,
 {
-    fn get_signatures(&self, action_hash: H256) -> Result<Vec<SignatureData>> {
-        Ok(self.client.signatures(&action_hash).into_iter().map(SignatureData::from).collect())
+    fn get_signatures(&self, action_hash: H256) -> Result<Vec<Signature>> {
+        Ok(self.client.signatures(&action_hash).into_iter().map(Signature::from).collect())
     }
 
     fn register_action(&self, action: Action) -> Result<bool> {

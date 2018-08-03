@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ckey::{FullAddress, SignatureData};
+use ckey::{FullAddress, Signature};
 use jsonrpc_core::Result;
 use primitives::H256;
 
@@ -38,7 +38,7 @@ build_rpc_trait! {
 
         /// Calculates the account's signature for a given message
         # [rpc(name = "account_sign")]
-        fn sign(&self, H256, FullAddress, Option<String>) -> Result<SignatureData>;
+        fn sign(&self, H256, FullAddress, Option<String>) -> Result<Signature>;
 
         /// Changes the account's password
         # [rpc(name = "account_changePassword")]
