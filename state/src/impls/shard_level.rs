@@ -44,6 +44,7 @@ use super::super::{StateDB, StateError, StateResult};
 pub struct ShardLevelState<B> {
     db: B,
     root: H256,
+    metadata: Cache<ShardMetadata>,
     world: Cache<World>,
     asset_scheme: Cache<AssetScheme>,
     asset: Cache<Asset>,
@@ -70,6 +71,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         Ok(ShardLevelState {
             db,
             root,
+            metadata: Cache::new(),
             world: Cache::new(),
             asset_scheme: Cache::new(),
             asset: Cache::new(),
@@ -87,6 +89,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         Ok(ShardLevelState {
             db,
             root,
+            metadata: Cache::new(),
             world: Cache::new(),
             asset_scheme: Cache::new(),
             asset: Cache::new(),
@@ -277,6 +280,17 @@ impl<B: Backend + ShardBackend> ShardStateInfo for ShardLevelState<B> {
         &self.root
     }
 
+    fn metadata(&self) -> cmerkle::Result<Option<ShardMetadata>> {
+        let a = ShardMetadataAddress::new(self.shard_id);
+        let cached_metadata = self.db.get_cached_shard_metadata(&a).and_then(|metadata| metadata);
+        if cached_metadata.is_some() {
+            return Ok(cached_metadata)
+        }
+
+        let trie = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
+        Ok(trie.get_with(a.as_ref(), ::rlp::decode::<ShardMetadata>)?)
+    }
+
     fn world(&self, world_id: WorldId) -> cmerkle::Result<Option<World>> {
         let a = WorldAddress::new(self.shard_id, world_id);
         let cached_world = self.db.get_cached_world(&a).and_then(|world| world);
@@ -312,6 +326,7 @@ impl<B: Backend + ShardBackend> ShardStateInfo for ShardLevelState<B> {
 impl<B> StateWithCheckpoint for ShardLevelState<B> {
     fn create_checkpoint(&mut self, id: CheckpointId) {
         self.id_of_checkpoints.push(id);
+        self.metadata.checkpoint();
         self.world.checkpoint();
         self.asset_scheme.checkpoint();
         self.asset.checkpoint();
@@ -321,6 +336,7 @@ impl<B> StateWithCheckpoint for ShardLevelState<B> {
         let expected = self.id_of_checkpoints.pop().expect("The checkpoint must exist");
         assert_eq!(expected, id);
 
+        self.metadata.discard_checkpoint();
         self.world.discard_checkpoint();
         self.asset_scheme.discard_checkpoint();
         self.asset.discard_checkpoint();
@@ -330,6 +346,7 @@ impl<B> StateWithCheckpoint for ShardLevelState<B> {
         let expected = self.id_of_checkpoints.pop().expect("The checkpoint must exist");
         assert_eq!(expected, id);
 
+        self.metadata.revert_to_checkpoint();
         self.world.revert_to_checkpoint();
         self.asset_scheme.revert_to_checkpoint();
         self.asset.revert_to_checkpoint();
@@ -339,6 +356,7 @@ impl<B> StateWithCheckpoint for ShardLevelState<B> {
 impl<B: Backend + ShardBackend> StateWithCache for ShardLevelState<B> {
     fn commit(&mut self) -> TrieResult<()> {
         let mut trie = TrieFactory::from_existing(self.db.as_hashdb_mut(), &mut self.root)?;
+        self.metadata.commit(&mut trie)?;
         self.world.commit(&mut trie)?;
         self.asset_scheme.commit(&mut trie)?;
         self.asset.commit(&mut trie)?;
@@ -347,6 +365,9 @@ impl<B: Backend + ShardBackend> StateWithCache for ShardLevelState<B> {
 
     fn propagate_to_global_cache(&mut self) {
         let ref mut db = self.db;
+        self.metadata.propagate_to_global_cache(|address, item, modified| {
+            db.add_to_shard_metadata_cache(address, item, modified);
+        });
         self.world.propagate_to_global_cache(|address, item, modified| {
             db.add_to_world_cache(address, item, modified);
         });
@@ -359,6 +380,7 @@ impl<B: Backend + ShardBackend> StateWithCache for ShardLevelState<B> {
     }
 
     fn clear(&mut self) {
+        self.metadata.clear();
         self.world.clear();
         self.asset_scheme.clear();
         self.asset.clear();
@@ -367,7 +389,11 @@ impl<B: Backend + ShardBackend> StateWithCache for ShardLevelState<B> {
 
 impl<B: ShardBackend> fmt::Debug for ShardLevelState<B> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "world: {:?} asset_scheme: {:?} asset: {:?}", self.world, self.asset_scheme, self.asset)
+        write!(
+            f,
+            "metadata: {:?} world: {:?} asset_scheme: {:?} asset: {:?}",
+            self.metadata, self.world, self.asset_scheme, self.asset
+        )
     }
 }
 
@@ -379,6 +405,7 @@ impl Clone for ShardLevelState<StateDB> {
             db: self.db.clone(),
             root: self.root.clone(),
             id_of_checkpoints: self.id_of_checkpoints.clone(),
+            metadata: self.metadata.clone(),
             world: self.world.clone(),
             asset_scheme: self.asset_scheme.clone(),
             asset: self.asset.clone(),

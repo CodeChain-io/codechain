@@ -32,8 +32,8 @@ use util_error::UtilError;
 
 use super::{
     Account, ActionHandler, Asset, AssetAddress, AssetScheme, AssetSchemeAddress, Backend, CacheableItem, Metadata,
-    MetadataAddress, RegularAccount, RegularAccountAddress, Shard, ShardAddress, ShardBackend, TopBackend, World,
-    WorldAddress,
+    MetadataAddress, RegularAccount, RegularAccountAddress, Shard, ShardAddress, ShardBackend, ShardMetadata,
+    ShardMetadataAddress, TopBackend, World, WorldAddress,
 };
 
 const STATE_CACHE_BLOCKS: usize = 12;
@@ -42,7 +42,8 @@ const STATE_CACHE_BLOCKS: usize = 12;
 const ACCOUNT_CACHE_RATIO: usize = 35;
 const REGULAR_ACCOUNT_CACHE_RATIO: usize = 5;
 const METADATA_CACHE_RATIO: usize = 1;
-const SHARD_CACHE_RATIO: usize = 7;
+const SHARD_CACHE_RATIO: usize = 6;
+const SHARD_METADATA_CACHE_RATIO: usize = 1;
 const WORLD_CACHE_RATIO: usize = 1;
 const ASSET_SCHEME_CACHE_RATIO: usize = 10;
 const ASSET_CACHE_RATIO: usize = 40;
@@ -111,6 +112,7 @@ pub struct StateDB {
     regular_account_cache: Arc<Mutex<Cache<RegularAccount>>>,
     metadata_cache: Arc<Mutex<Cache<Metadata>>>,
     shard_cache: Arc<Mutex<Cache<Shard>>>,
+    shard_metadata_cache: Arc<Mutex<Cache<ShardMetadata>>>,
     world_cache: Arc<Mutex<Cache<World>>>,
     asset_scheme_cache: Arc<Mutex<Cache<AssetScheme>>>,
     asset_cache: Arc<Mutex<Cache<Asset>>>,
@@ -121,6 +123,7 @@ pub struct StateDB {
     local_regular_account_cache: Vec<CacheQueueItem<RegularAccount>>,
     local_metadata_cache: Vec<CacheQueueItem<Metadata>>,
     local_shard_cache: Vec<CacheQueueItem<Shard>>,
+    local_shard_metadata_cache: Vec<CacheQueueItem<ShardMetadata>>,
     local_world_cache: Vec<CacheQueueItem<World>>,
     local_asset_scheme_cache: Vec<CacheQueueItem<AssetScheme>>,
     local_asset_cache: Vec<CacheQueueItem<Asset>>,
@@ -147,6 +150,7 @@ impl StateDB {
             ACCOUNT_CACHE_RATIO
                 + METADATA_CACHE_RATIO
                 + SHARD_CACHE_RATIO
+                + SHARD_METADATA_CACHE_RATIO
                 + WORLD_CACHE_RATIO
                 + ASSET_SCHEME_CACHE_RATIO
                 + ASSET_CACHE_RATIO
@@ -165,6 +169,9 @@ impl StateDB {
 
         let shard_cache_size = cache_size * SHARD_CACHE_RATIO / 100;
         let shard_cache_items = shard_cache_size / ::std::mem::size_of::<Option<Shard>>();
+
+        let shard_metadata_cache_size = cache_size * SHARD_METADATA_CACHE_RATIO / 100;
+        let shard_metadata_cache_items = shard_metadata_cache_size / ::std::mem::size_of::<Option<ShardMetadata>>();
 
         let world_cache_size = cache_size * WORLD_CACHE_RATIO / 100;
         let world_cache_items = world_cache_size / ::std::mem::size_of::<Option<World>>();
@@ -196,6 +203,10 @@ impl StateDB {
                 cache: LruCache::new(shard_cache_items),
                 modifications: VecDeque::new(),
             })),
+            shard_metadata_cache: Arc::new(Mutex::new(Cache {
+                cache: LruCache::new(shard_metadata_cache_items),
+                modifications: VecDeque::new(),
+            })),
             world_cache: Arc::new(Mutex::new(Cache {
                 cache: LruCache::new(world_cache_items),
                 modifications: VecDeque::new(),
@@ -217,6 +228,7 @@ impl StateDB {
             local_regular_account_cache: Vec::new(),
             local_metadata_cache: Vec::new(),
             local_shard_cache: Vec::new(),
+            local_shard_metadata_cache: Vec::new(),
             local_world_cache: Vec::new(),
             local_asset_scheme_cache: Vec::new(),
             local_asset_cache: Vec::new(),
@@ -296,6 +308,17 @@ impl StateDB {
             is_best,
             &mut self.shard_cache,
             &mut self.local_shard_cache,
+            &self.parent_hash,
+            &self.commit_hash,
+            &self.commit_number,
+        );
+
+        Self::sync_cache_impl(
+            enacted,
+            retracted,
+            is_best,
+            &mut self.shard_metadata_cache,
+            &mut self.local_shard_metadata_cache,
             &self.parent_hash,
             &self.commit_hash,
             &self.commit_number,
@@ -464,6 +487,7 @@ impl StateDB {
             regular_account_cache: self.regular_account_cache.clone(),
             metadata_cache: self.metadata_cache.clone(),
             shard_cache: self.shard_cache.clone(),
+            shard_metadata_cache: self.shard_metadata_cache.clone(),
             world_cache: self.world_cache.clone(),
             asset_scheme_cache: self.asset_scheme_cache.clone(),
             asset_cache: self.asset_cache.clone(),
@@ -473,6 +497,7 @@ impl StateDB {
             local_regular_account_cache: Vec::new(),
             local_metadata_cache: Vec::new(),
             local_shard_cache: Vec::new(),
+            local_shard_metadata_cache: Vec::new(),
             local_world_cache: Vec::new(),
             local_asset_scheme_cache: Vec::new(),
             local_asset_cache: Vec::new(),
@@ -504,6 +529,7 @@ impl StateDB {
             + Self::mem_used_impl(&self.account_cache.lock())
             + Self::mem_used_impl(&self.regular_account_cache.lock())
             + Self::mem_used_impl(&self.shard_cache.lock())
+            + Self::mem_used_impl(&self.shard_metadata_cache.lock())
             + Self::mem_used_impl(&self.asset_scheme_cache.lock())
             + Self::mem_used_impl(&self.asset_cache.lock())
             + Self::mem_used_impl(&self.action_data_cache.lock())
@@ -584,6 +610,7 @@ impl Clone for StateDB {
             regular_account_cache: self.regular_account_cache.clone(),
             metadata_cache: self.metadata_cache.clone(),
             shard_cache: self.shard_cache.clone(),
+            shard_metadata_cache: self.shard_metadata_cache.clone(),
             world_cache: self.world_cache.clone(),
             asset_scheme_cache: self.asset_scheme_cache.clone(),
             asset_cache: self.asset_cache.clone(),
@@ -593,6 +620,7 @@ impl Clone for StateDB {
             local_regular_account_cache: Vec::new(),
             local_metadata_cache: Vec::new(),
             local_shard_cache: Vec::new(),
+            local_shard_metadata_cache: Vec::new(),
             local_world_cache: Vec::new(),
             local_asset_scheme_cache: Vec::new(),
             local_asset_cache: Vec::new(),
@@ -701,6 +729,19 @@ impl TopBackend for StateDB {
 }
 
 impl ShardBackend for StateDB {
+    fn add_to_shard_metadata_cache(
+        &mut self,
+        address: ShardMetadataAddress,
+        item: Option<ShardMetadata>,
+        modified: bool,
+    ) {
+        self.local_shard_metadata_cache.push(CacheQueueItem {
+            address,
+            item,
+            modified,
+        })
+    }
+
     fn add_to_world_cache(&mut self, address: WorldAddress, item: Option<World>, modified: bool) {
         self.local_world_cache.push(CacheQueueItem {
             address,
@@ -723,6 +764,10 @@ impl ShardBackend for StateDB {
             item,
             modified,
         })
+    }
+
+    fn get_cached_shard_metadata(&self, addr: &ShardMetadataAddress) -> Option<Option<ShardMetadata>> {
+        self.get_cached(addr, &self.shard_metadata_cache)
     }
 
     fn get_cached_world(&self, hash: &WorldAddress) -> Option<Option<World>> {
