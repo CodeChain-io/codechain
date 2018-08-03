@@ -40,7 +40,6 @@ use primitives::{H256, H520};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 use rustc_hex::{FromHex, ToHex};
 use secp256k1::{key, Error as SecpError, Message as SecpMessage, RecoverableSignature, RecoveryId};
-use serde::de::Error as SerdeError;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use super::{public_to_address, Address, Error, Message, Private, Public, SECP256K1};
@@ -199,7 +198,8 @@ impl Serialize for ECDSASignature {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer, {
-        serializer.serialize_str(&self.0.to_hex())
+        let data: H520 = self.0.into();
+        data.serialize(serializer)
     }
 }
 
@@ -207,31 +207,22 @@ impl<'a> Deserialize<'a> for ECDSASignature {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'a>, {
-        let s = String::deserialize(deserializer)?;
-        let data = s.from_hex().map_err(|e| SerdeError::custom(format!("Invalid signature {}", e)))?;
-        if data.len() != 65 {
-            return Err(SerdeError::custom(format!("Invalid signature")))
-        }
-        let bytes = {
-            let mut array = [0; 65];
-            array.copy_from_slice(&data);
-            array
-        };
-        Ok(ECDSASignature(bytes))
+        let data = H520::deserialize(deserializer)?;
+        Ok(Self::from(data))
     }
 }
 
 impl Encodable for ECDSASignature {
     fn rlp_append(&self, s: &mut RlpStream) {
         let data: H520 = self.0.into();
-        s.append_single_value(&data);
+        data.rlp_append(s);
     }
 }
 
 impl Decodable for ECDSASignature {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
-        let data: H520 = rlp.as_val()?;
-        Ok(ECDSASignature::from(data))
+        let data = H520::decode(rlp)?;
+        Ok(Self::from(data))
     }
 }
 
