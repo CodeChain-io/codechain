@@ -36,7 +36,7 @@ use super::super::codechain_machine::CodeChainMachine;
 use super::super::consensus::{BlakePoW, CodeChainEngine, Cuckoo, NullEngine, Solo, SoloAuthority, Tendermint};
 use super::super::error::{Error, SpecError};
 use super::super::header::Header;
-use super::super::pod_state::{PodAccounts, PodShards};
+use super::pod_state::{PodAccounts, PodShards};
 use super::seal::Generic as GenericSeal;
 use super::Genesis;
 
