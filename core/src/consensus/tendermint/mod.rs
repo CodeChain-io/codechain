@@ -23,7 +23,7 @@ use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
 use std::sync::{Arc, Weak};
 
 use ccrypto::blake256;
-use ckey::{public_to_address, recover, Address, Message, Signature};
+use ckey::{public_to_address, recover, Address, Message, Password, Signature};
 use cnetwork::{Api, NetworkExtension, NodeId, TimerToken};
 use ctypes::machine::WithBalances;
 use ctypes::BlockNumber;
@@ -720,7 +720,7 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
         header.set_score(new_score);
     }
 
-    fn set_signer(&self, ap: Arc<AccountProvider>, address: Address, password: String) {
+    fn set_signer(&self, ap: Arc<AccountProvider>, address: Address, password: Password) {
         {
             self.signer.write().set(ap, address, password);
         }

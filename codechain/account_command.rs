@@ -20,7 +20,7 @@ use std::str::FromStr;
 use rpassword;
 
 use ccore::AccountProvider;
-use ckey::{FullAddress, Private};
+use ckey::{FullAddress, Password, Private};
 use ckeystore::accounts_dir::RootDiskDirectory;
 use ckeystore::KeyStore;
 use clap::ArgMatches;
@@ -46,7 +46,7 @@ pub fn run_account_command(matches: ArgMatches) -> Result<(), String> {
     match matches.subcommand() {
         ("create", _) => {
             if let Some(password) = read_password_and_confirm() {
-                let (address, _) = ap.new_account_and_public(password.as_ref()).expect("Cannot create account");
+                let (address, _) = ap.new_account_and_public(&password).expect("Cannot create account");
                 println!(
                     "{}",
                     FullAddress::create_version0(network_id, address).expect("The network id is hardcoded to 0x11")
@@ -60,8 +60,8 @@ pub fn run_account_command(matches: ArgMatches) -> Result<(), String> {
             let json_path = matches.value_of("JSON_PATH").expect("JSON_PATH arg is required and its index is 1");
             match fs::read(json_path) {
                 Ok(json) => {
-                    let password = rpassword::prompt_password_stdout("Password: ").unwrap();
-                    match ap.import_wallet(json.as_slice(), password.as_ref()) {
+                    let password = prompt_password("Password: ");
+                    match ap.import_wallet(json.as_slice(), &password) {
                         Ok(address) => {
                             println!(
                                 "{}",
@@ -84,7 +84,7 @@ pub fn run_account_command(matches: ArgMatches) -> Result<(), String> {
             match Private::from_str(key) {
                 Ok(private) => {
                     if let Some(password) = read_password_and_confirm() {
-                        match ap.insert_account(private, password.as_ref()) {
+                        match ap.insert_account(private, &password) {
                             Ok(address) => println!(
                                 "{}",
                                 FullAddress::create_version0(network_id, address)
@@ -114,8 +114,8 @@ pub fn run_account_command(matches: ArgMatches) -> Result<(), String> {
             let key = matches.value_of("ADDRESS").expect("ADDRESS arg is required and its index is 1");
             match FullAddress::from_str(key) {
                 Ok(full_address) => {
-                    let password = rpassword::prompt_password_stdout("Password: ").unwrap();
-                    match ap.remove_account(full_address.address, password.as_ref()) {
+                    let password = prompt_password("Password: ");
+                    match ap.remove_account(full_address.address, &password) {
                         Ok(_) => println!("{} is deleted", full_address),
                         Err(e) => return Err(format!("{:?}", e)),
                     }
@@ -128,9 +128,9 @@ pub fn run_account_command(matches: ArgMatches) -> Result<(), String> {
             let key = matches.value_of("ADDRESS").expect("ADDRESS arg is required and its index is 1");
             match FullAddress::from_str(key) {
                 Ok(full_address) => {
-                    let old_password = rpassword::prompt_password_stdout("Old Password: ").unwrap();
+                    let old_password = prompt_password("Old Password: ");
                     if let Some(new_password) = read_password_and_confirm() {
-                        match ap.change_password(full_address.address, old_password.as_ref(), new_password.as_ref()) {
+                        match ap.change_password(full_address.address, &old_password, &new_password) {
                             Ok(_) => println!("Password has changed"),
                             Err(e) => return Err(format!("{:?}", e)),
                         }
@@ -146,11 +146,15 @@ pub fn run_account_command(matches: ArgMatches) -> Result<(), String> {
     }
 }
 
-fn read_password_and_confirm() -> Option<String> {
+fn prompt_password(prompt: &str) -> Password {
+    Password::from(rpassword::prompt_password_stdout(prompt).unwrap())
+}
+
+fn read_password_and_confirm() -> Option<Password> {
     let first = rpassword::prompt_password_stdout("Password: ").unwrap();
     let second = rpassword::prompt_password_stdout("Confirm Password: ").unwrap();
     if first == second {
-        Some(first)
+        Some(Password::from(first))
     } else {
         None
     }

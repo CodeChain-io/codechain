@@ -64,6 +64,7 @@ use ccore::{
     ShardValidatorConfig, Spec, Stratum, StratumConfig, StratumError,
 };
 use cdiscovery::{KademliaConfig, KademliaExtension, UnstructuredConfig, UnstructuredExtension};
+use ckey::Password;
 use ckeystore::accounts_dir::RootDiskDirectory;
 use ckeystore::KeyStore;
 use clap::ArgMatches;
@@ -154,7 +155,7 @@ fn new_shard_validator(config: ShardValidatorConfig, ap: Arc<AccountProvider>) -
             Some(password_path) => {
                 let content = fs::read_to_string(password_path).map_err(|e| format!("{:?}", e))?;
                 let password = content.lines().next().ok_or("Password file is empty")?;
-                Some(password.to_string())
+                Some(Password::from(password))
             }
         };
         Some((config.account, password))
@@ -230,7 +231,7 @@ fn new_miner(config: &config::Config, spec: &Spec, ap: Arc<AccountProvider>) -> 
                             // Read the first line as password.
                             let password = content.lines().next().ok_or("Password file is empty")?;
                             miner
-                                .set_engine_signer(engine_signer, password.to_string())
+                                .set_engine_signer(engine_signer, Password::from(password))
                                 .map_err(|e| format!("{:?}", e))?
                         }
                         Err(_) => return Err(format!("Failed to read the password file")),

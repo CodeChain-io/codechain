@@ -30,7 +30,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ckey::{Address, Message, Public, Secret, Signature};
+use ckey::{Address, Message, Password, Public, Secret, Signature};
 use json::{OpaqueKeyFile, Uuid};
 use std::path::PathBuf;
 use Error;
@@ -40,15 +40,16 @@ use OpaqueSecret;
 /// Simple Secret Store API
 pub trait SimpleSecretStore: Send + Sync {
     /// Inserts new accounts to the store with given password.
-    fn insert_account(&self, secret: Secret, password: &str) -> Result<Address, Error>;
+    fn insert_account(&self, secret: Secret, password: &Password) -> Result<Address, Error>;
     /// Changes accounts password.
-    fn change_password(&self, account: &Address, old_password: &str, new_password: &str) -> Result<(), Error>;
+    fn change_password(&self, account: &Address, old_password: &Password, new_password: &Password)
+        -> Result<(), Error>;
     /// Exports key details for account.
-    fn export_account(&self, account: &Address, password: &str) -> Result<OpaqueKeyFile, Error>;
+    fn export_account(&self, account: &Address, password: &Password) -> Result<OpaqueKeyFile, Error>;
     /// Entirely removes account from the store and underlying storage.
-    fn remove_account(&self, account: &Address, password: &str) -> Result<(), Error>;
+    fn remove_account(&self, account: &Address, password: &Password) -> Result<(), Error>;
     /// Sign a message with given account.
-    fn sign(&self, account: &Address, password: &str, message: &Message) -> Result<Signature, Error>;
+    fn sign(&self, account: &Address, password: &Password, message: &Message) -> Result<Signature, Error>;
     /// Returns all accounts in this secret store.
     fn accounts(&self) -> Result<Vec<Address>, Error>;
     ///  Check existance of account
@@ -58,7 +59,7 @@ pub trait SimpleSecretStore: Send + Sync {
 /// Secret Store API
 pub trait SecretStore: SimpleSecretStore {
     /// Returns a raw opaque Secret that can be later used to sign a message.
-    fn raw_secret(&self, account: &Address, password: &str) -> Result<OpaqueSecret, Error>;
+    fn raw_secret(&self, account: &Address, password: &Password) -> Result<OpaqueSecret, Error>;
 
     /// Signs a message with raw secret.
     fn sign_with_secret(&self, secret: &OpaqueSecret, message: &Message) -> Result<Signature, Error> {
@@ -66,20 +67,20 @@ pub trait SecretStore: SimpleSecretStore {
     }
 
     /// Imports existing JSON wallet
-    fn import_wallet(&self, json: &[u8], password: &str, gen_id: bool) -> Result<Address, Error>;
+    fn import_wallet(&self, json: &[u8], password: &Password, gen_id: bool) -> Result<Address, Error>;
     /// Copies account between stores.
     fn copy_account(
         &self,
         new_store: &SimpleSecretStore,
         account: &Address,
-        password: &str,
-        new_password: &str,
+        password: &Password,
+        new_password: &Password,
     ) -> Result<(), Error>;
     /// Checks if password matches given account.
-    fn test_password(&self, account: &Address, password: &str) -> Result<bool, Error>;
+    fn test_password(&self, account: &Address, password: &Password) -> Result<bool, Error>;
 
     /// Returns a public key for given account.
-    fn public(&self, account: &Address, password: &str) -> Result<Public, Error>;
+    fn public(&self, account: &Address, password: &Password) -> Result<Public, Error>;
 
     /// Returns uuid of an account.
     fn uuid(&self, account: &Address) -> Result<Uuid, Error>;

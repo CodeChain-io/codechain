@@ -18,7 +18,7 @@ use std::collections::HashSet;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use ckey::Address;
+use ckey::{Address, Password};
 use cstate::{StateError, TopLevelState};
 use ctypes::parcel::Error as ParcelError;
 use ctypes::BlockNumber;
@@ -543,7 +543,7 @@ impl MinerService for Miner {
         *self.extra_data.write() = extra_data;
     }
 
-    fn set_engine_signer(&self, address: Address, password: String) -> Result<(), SignError> {
+    fn set_engine_signer(&self, address: Address, password: Password) -> Result<(), SignError> {
         if self.engine.seals_internally().is_some() {
             if let Some(ref ap) = self.accounts {
                 ctrace!(MINER, "Set engine signer to {:?}", address);

@@ -18,7 +18,8 @@ use std::fmt;
 use std::sync::Arc;
 
 use ckey::{
-    public_to_address, Address, Error as KeyError, Generator, KeyPair, Message, Private, Public, Random, Signature,
+    public_to_address, Address, Error as KeyError, Generator, KeyPair, Message, Password, Private, Public, Random,
+    Signature,
 };
 use ckeystore::accounts_dir::MemoryDirectory;
 use ckeystore::{Error as KeystoreError, KeyStore, SecretStore, SimpleSecretStore};
@@ -81,7 +82,7 @@ impl AccountProvider {
         })
     }
 
-    pub fn new_account_and_public(&self, password: &str) -> Result<(Address, Public), SignError> {
+    pub fn new_account_and_public(&self, password: &Password) -> Result<(Address, Public), SignError> {
         let acc = Random.generate().expect("secp context has generation capabilities; qed");
         let private = acc.private().clone();
         let public = acc.public().clone();
@@ -90,7 +91,7 @@ impl AccountProvider {
         Ok((address, public))
     }
 
-    pub fn insert_account(&self, private: Private, password: &str) -> Result<Address, SignError> {
+    pub fn insert_account(&self, private: Private, password: &Password) -> Result<Address, SignError> {
         let acc = KeyPair::from_private(private)?;
         let private = acc.private().clone();
         let public = acc.public().clone();
@@ -99,11 +100,11 @@ impl AccountProvider {
         Ok(address)
     }
 
-    pub fn remove_account(&self, address: Address, password: &str) -> Result<(), SignError> {
+    pub fn remove_account(&self, address: Address, password: &Password) -> Result<(), SignError> {
         Ok(self.keystore.write().remove_account(&address, password)?)
     }
 
-    pub fn sign(&self, address: Address, password: Option<String>, message: Message) -> Result<Signature, SignError> {
+    pub fn sign(&self, address: Address, password: Option<Password>, message: Message) -> Result<Signature, SignError> {
         match password {
             Some(password) => {
                 let signature = self.keystore.read().sign(&address, &password, &message)?;
@@ -123,11 +124,16 @@ impl AccountProvider {
         Ok(addresses)
     }
 
-    pub fn import_wallet(&self, json: &[u8], password: &str) -> Result<Address, SignError> {
+    pub fn import_wallet(&self, json: &[u8], password: &Password) -> Result<Address, SignError> {
         Ok(self.keystore.write().import_wallet(json, password, false)?)
     }
 
-    pub fn change_password(&self, address: Address, old_password: &str, new_password: &str) -> Result<(), SignError> {
+    pub fn change_password(
+        &self,
+        address: Address,
+        old_password: &Password,
+        new_password: &Password,
+    ) -> Result<(), SignError> {
         Ok(self.keystore.read().change_password(&address, &old_password, &new_password)?)
     }
 }

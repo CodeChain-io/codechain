@@ -17,7 +17,7 @@
 use std::sync::Arc;
 
 use ccore::AccountProvider;
-use ckey::{FullAddress, Signature};
+use ckey::{FullAddress, Password, Signature};
 use jsonrpc_core::Result;
 use primitives::H256;
 
@@ -53,35 +53,33 @@ impl Account for AccountClient {
             .map_err(account_provider)
     }
 
-    fn create_account(&self, passphrase: Option<String>) -> Result<FullAddress> {
-        let (address, _) = self
-            .account_provider
-            .new_account_and_public(passphrase.unwrap_or_default().as_ref())
-            .map_err(account_provider)?;
+    fn create_account(&self, passphrase: Option<Password>) -> Result<FullAddress> {
+        let (address, _) =
+            self.account_provider.new_account_and_public(&passphrase.unwrap_or_default()).map_err(account_provider)?;
         Ok(FullAddress::create_version0(self.network_id, address).expect("The network id is fixed"))
     }
 
-    fn create_account_from_secret(&self, secret: H256, passphrase: Option<String>) -> Result<FullAddress> {
+    fn create_account_from_secret(&self, secret: H256, passphrase: Option<Password>) -> Result<FullAddress> {
         self.account_provider
-            .insert_account(secret.into(), passphrase.unwrap_or_default().as_ref())
+            .insert_account(secret.into(), &passphrase.unwrap_or_default())
             .map(|address| FullAddress::create_version0(self.network_id, address).expect("The network id is fixed"))
             .map_err(account_provider)
     }
 
-    fn remove_account(&self, full_address: FullAddress, passphrase: Option<String>) -> Result<()> {
+    fn remove_account(&self, full_address: FullAddress, passphrase: Option<Password>) -> Result<()> {
         self.account_provider
-            .remove_account(full_address.address, passphrase.unwrap_or_default().as_ref())
+            .remove_account(full_address.address, &passphrase.unwrap_or_default())
             .map_err(account_provider)
     }
 
-    fn sign(&self, message_digest: H256, full_address: FullAddress, passphrase: Option<String>) -> Result<Signature> {
+    fn sign(&self, message_digest: H256, full_address: FullAddress, passphrase: Option<Password>) -> Result<Signature> {
         self.account_provider
             .sign(full_address.address, Some(passphrase.unwrap_or_default()), message_digest)
             .map(|sig| sig.into())
             .map_err(account_provider)
     }
 
-    fn change_password(&self, full_address: FullAddress, old_password: String, new_password: String) -> Result<()> {
+    fn change_password(&self, full_address: FullAddress, old_password: Password, new_password: Password) -> Result<()> {
         self.account_provider
             .change_password(full_address.address, &old_password, &new_password)
             .map_err(account_provider)

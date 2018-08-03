@@ -21,7 +21,7 @@ mod sealing_queue;
 mod stratum;
 mod work_notify;
 
-use ckey::Address;
+use ckey::{Address, Password};
 use cstate::TopStateInfo;
 use primitives::{Bytes, H256, U256};
 
@@ -55,7 +55,7 @@ pub trait MinerService: Send + Sync {
     fn set_extra_data(&self, extra_data: Bytes);
 
     /// Set info necessary to sign consensus messages.
-    fn set_engine_signer(&self, address: Address, password: String) -> Result<(), SignError>;
+    fn set_engine_signer(&self, address: Address, password: Password) -> Result<(), SignError>;
 
     /// Get current minimal fee for parcels accepted to queue.
     fn minimal_fee(&self) -> U256;

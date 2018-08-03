@@ -17,7 +17,7 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-use ckey::{Address, Signature};
+use ckey::{Address, Password, Signature};
 use cnetwork::{Api, NetworkExtension, NodeId};
 use ctypes::parcel::Action;
 use parking_lot::RwLock;
@@ -29,7 +29,7 @@ use super::client::ShardValidatorClient;
 use super::message::Message;
 
 pub struct ShardValidator {
-    account: Option<(Address, Option<String>)>,
+    account: Option<(Address, Option<Password>)>,
     account_provider: Arc<AccountProvider>,
 
     api: RwLock<Option<Arc<Api>>>,
@@ -46,7 +46,7 @@ enum RegisterActionOutcome {
 }
 
 impl ShardValidator {
-    pub fn new(account: Option<(Address, Option<String>)>, account_provider: Arc<AccountProvider>) -> Arc<Self> {
+    pub fn new(account: Option<(Address, Option<Password>)>, account_provider: Arc<AccountProvider>) -> Arc<Self> {
         Arc::new(Self {
             account,
             account_provider,
@@ -62,7 +62,7 @@ fn register_action(
     action: Action,
     actions: &mut HashMap<H256, Action>,
     account_provider: &AccountProvider,
-    account: &Option<(Address, Option<String>)>,
+    account: &Option<(Address, Option<Password>)>,
 ) -> Result<RegisterActionOutcome, AccountProviderError> {
     let action_hash = action.hash();
 

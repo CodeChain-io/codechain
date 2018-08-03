@@ -18,7 +18,7 @@ mod params;
 
 use std::sync::{Arc, Weak};
 
-use ckey::{public_to_address, recover, Address, Signature};
+use ckey::{public_to_address, recover, Address, Password, Signature};
 use ctypes::machine::WithBalances;
 use parking_lot::RwLock;
 use primitives::{H256, U256};
@@ -186,7 +186,7 @@ impl ConsensusEngine<CodeChainMachine> for SoloAuthority {
     }
 
     /// Register an account which signs consensus messages.
-    fn set_signer(&self, ap: Arc<AccountProvider>, address: Address, password: String) {
+    fn set_signer(&self, ap: Arc<AccountProvider>, address: Address, password: Password) {
         self.signer.write().set(ap, address, password);
     }
 
