@@ -46,7 +46,7 @@ impl From<cjson::spec::Shard> for PodShardMetadata {
     fn from(s: cjson::spec::Shard) -> Self {
         Self {
             number_of_worlds: 0,
-            nonce: s.nonce.unwrap_or(0),
+            nonce: s.nonce.map(Into::into).unwrap_or(0),
             owner: s.owner,
         }
     }
