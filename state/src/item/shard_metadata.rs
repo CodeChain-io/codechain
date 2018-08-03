@@ -58,7 +58,7 @@ impl CacheableItem for ShardMetadata {
     }
 }
 
-const PREFIX: u8 = 'E' as u8;
+const PREFIX: u8 = super::SHARD_METADATA_PREFIX;
 
 impl Encodable for ShardMetadata {
     fn rlp_append(&self, s: &mut RlpStream) {

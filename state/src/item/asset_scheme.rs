@@ -54,7 +54,7 @@ impl AssetScheme {
     }
 }
 
-const PREFIX: u8 = 'S' as u8;
+const PREFIX: u8 = super::ASSET_SCHEME_PREFIX;
 
 impl Encodable for AssetScheme {
     fn rlp_append(&self, s: &mut RlpStream) {
