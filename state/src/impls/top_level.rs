@@ -44,7 +44,7 @@ use cmerkle::{Result as TrieResult, Trie, TrieError, TrieFactory};
 use ctypes::invoice::Invoice;
 use ctypes::parcel::{Action, ChangeShard, Error as ParcelError, Outcome as ParcelOutcome, Parcel};
 use ctypes::transaction::{Outcome as TransactionOutcome, Transaction};
-use ctypes::ShardId;
+use ctypes::{ShardId, WorldId};
 use primitives::{Bytes, H256, U256};
 use rlp::NULL_RLP;
 use unexpected::Mismatch;
@@ -55,7 +55,7 @@ use super::super::item::cache::{Cache, CacheableItem};
 use super::super::traits::{ShardState, ShardStateInfo, StateWithCache, TopState, TopStateInfo};
 use super::super::{
     Account, Asset, AssetAddress, AssetScheme, AssetSchemeAddress, Metadata, MetadataAddress, RegularAccount,
-    RegularAccountAddress, Shard, ShardAddress, ShardLevelState,
+    RegularAccountAddress, Shard, ShardAddress, ShardLevelState, ShardMetadata, World,
 };
 use super::super::{StateDB, StateError, StateResult};
 
@@ -152,6 +152,24 @@ impl TopStateInfo for TopLevelState {
         // because of lexical borrow of self.db
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
         Ok(db.get_with(&shard_address, ::rlp::decode::<Shard>)?.map(|s| s.owner().clone()))
+    }
+
+    fn shard_metadata(&self, shard_id: ShardId) -> TrieResult<Option<ShardMetadata>> {
+        // FIXME: Handle the case that shard doesn't exist
+        let shard_root = self.shard_root(shard_id)?.unwrap_or(BLAKE_NULL_RLP);
+
+        // FIXME: Make it mutable borrow db instead of cloning.
+        let shard_level_state = ShardLevelState::from_existing(shard_id, self.db.clone(), shard_root)?;
+        shard_level_state.metadata()
+    }
+
+    fn world(&self, shard_id: ShardId, world_id: WorldId) -> TrieResult<Option<World>> {
+        // FIXME: Handle the case that shard doesn't exist
+        let shard_root = self.shard_root(shard_id)?.unwrap_or(BLAKE_NULL_RLP);
+
+        // FIXME: Make it mutable borrow db instead of cloning.
+        let shard_level_state = ShardLevelState::from_existing(shard_id, self.db.clone(), shard_root)?;
+        shard_level_state.world(world_id)
     }
 
     fn asset_scheme(
@@ -508,7 +526,7 @@ impl TopLevelState {
 
         let mut results = Vec::with_capacity(transactions.len());
         for t in transactions {
-            let result = shard_level_state.apply(t)?;
+            let result = shard_level_state.apply(shard_id, t)?;
             results.push(result);
         }
 
@@ -1068,6 +1086,122 @@ mod tests_parcel {
         assert_eq!(Ok(ParcelOutcome::Transactions(vec![])), result);
         assert_eq!(Ok(15.into()), state.balance(&sender));
         assert_eq!(Ok(1.into()), state.nonce(&sender));
+    }
+
+    #[test]
+    fn create_world_without_owners() {
+        let (sender, sender_public) = address();
+
+        let network_id = 0xDEADBEEF;
+        let shard_id = 0;
+
+        let mut state = get_temp_state();
+        assert_eq!(Ok(()), state.create_shard_level_state(&sender));
+        assert_eq!(Ok(()), state.commit());
+
+        let nonce = 0;
+        let owners = vec![];
+
+        assert_eq!(Ok(()), state.add_balance(&sender, &20.into()));
+
+        let transaction = Transaction::CreateWorld {
+            network_id,
+            shard_id,
+            nonce,
+            owners: owners.clone(),
+        };
+
+        let parcel = Parcel {
+            fee: 5.into(),
+            nonce: 0.into(),
+            network_id,
+            action: Action::ChangeShardState {
+                transactions: vec![transaction],
+                changes: vec![ChangeShard {
+                    shard_id,
+                    pre_root: H256::zero(),
+                    post_root: H256::zero(),
+                }],
+                signatures: vec![],
+            },
+        };
+
+        let result = state.apply(&parcel, &sender, &sender_public);
+
+        assert_eq!(
+            Ok(ParcelOutcome::Transactions(vec![TransactionOutcome {
+                invoice: Invoice::Success,
+                error: None,
+            }])),
+            result
+        );
+        assert_eq!(Ok(15.into()), state.balance(&sender));
+        assert_eq!(Ok(1.into()), state.nonce(&sender));
+
+        let metadata = state.shard_metadata(shard_id);
+        assert_eq!(Ok(Some(ShardMetadata::new_with_nonce(1, 1))), metadata);
+
+        let world_id = 0;
+        let world = state.world(shard_id, world_id);
+        assert_eq!(Ok(Some(World::new(owners))), world);
+    }
+
+    #[test]
+    fn create_world_with_owners() {
+        let (sender, sender_public) = address();
+
+        let network_id = 0xDEADBEEF;
+        let shard_id = 0;
+
+        let mut state = get_temp_state();
+        assert_eq!(Ok(()), state.create_shard_level_state(&sender));
+        assert_eq!(Ok(()), state.commit());
+
+        let nonce = 0;
+        let owners = vec![Address::random(), Address::random()];
+
+        assert_eq!(Ok(()), state.add_balance(&sender, &20.into()));
+
+        let transaction = Transaction::CreateWorld {
+            network_id,
+            shard_id,
+            nonce,
+            owners: owners.clone(),
+        };
+
+        let parcel = Parcel {
+            fee: 5.into(),
+            nonce: 0.into(),
+            network_id,
+            action: Action::ChangeShardState {
+                transactions: vec![transaction],
+                changes: vec![ChangeShard {
+                    shard_id,
+                    pre_root: H256::zero(),
+                    post_root: H256::zero(),
+                }],
+                signatures: vec![],
+            },
+        };
+
+        let result = state.apply(&parcel, &sender, &sender_public);
+
+        assert_eq!(
+            Ok(ParcelOutcome::Transactions(vec![TransactionOutcome {
+                invoice: Invoice::Success,
+                error: None,
+            }])),
+            result
+        );
+        assert_eq!(Ok(15.into()), state.balance(&sender));
+        assert_eq!(Ok(1.into()), state.nonce(&sender));
+
+        let metadata = state.shard_metadata(shard_id);
+        assert_eq!(Ok(Some(ShardMetadata::new_with_nonce(1, 1))), metadata);
+
+        let world_id = 0;
+        let world = state.world(shard_id, world_id);
+        assert_eq!(Ok(Some(World::new(owners))), world);
     }
 
     #[test]

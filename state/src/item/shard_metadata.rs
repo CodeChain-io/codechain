@@ -20,7 +20,7 @@ use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::cache::CacheableItem;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct ShardMetadata {
     number_of_worlds: WorldId,
     nonce: u64,
@@ -41,8 +41,16 @@ impl ShardMetadata {
         }
     }
 
+    pub fn increase_number_of_worlds(&mut self) {
+        self.number_of_worlds += 1;
+    }
+
     pub fn number_of_worlds(&self) -> &WorldId {
         &self.number_of_worlds
+    }
+
+    pub fn increase_nonce(&mut self) {
+        self.nonce += 1;
     }
 
     pub fn nonce(&self) -> &u64 {

@@ -39,6 +39,9 @@ pub trait TopStateInfo {
     fn shard_root(&self, shard_id: ShardId) -> TrieResult<Option<H256>>;
     fn shard_owner(&self, shard_id: ShardId) -> TrieResult<Option<Address>>;
 
+    fn shard_metadata(&self, shard_id: ShardId) -> TrieResult<Option<ShardMetadata>>;
+    fn world(&self, shard_id: ShardId, world_id: WorldId) -> TrieResult<Option<World>>;
+
     /// Get the asset scheme.
     fn asset_scheme(&self, shard_id: ShardId, a: &AssetSchemeAddress) -> TrieResult<Option<AssetScheme>>;
     /// Get the asset.
@@ -62,7 +65,7 @@ pub trait ShardStateInfo {
 pub trait ShardState<B>
 where
     B: ShardBackend, {
-    fn apply(&mut self, transaction: &Transaction) -> StateResult<TransactionOutcome>;
+    fn apply(&mut self, shard_id: ShardId, transaction: &Transaction) -> StateResult<TransactionOutcome>;
 }
 
 pub trait TopState<B>

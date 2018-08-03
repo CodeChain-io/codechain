@@ -104,9 +104,14 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         (self.root, self.db)
     }
 
-    fn apply_internal(&mut self, transaction: &Transaction) -> StateResult<()> {
+    fn apply_internal(&mut self, shard_id: ShardId, transaction: &Transaction) -> StateResult<()> {
         debug_assert_eq!(Ok(()), transaction.verify());
         match transaction {
+            Transaction::CreateWorld {
+                nonce,
+                owners,
+                ..
+            } => Ok(self.create_world(shard_id, nonce, owners)?),
             Transaction::AssetMint {
                 metadata,
                 registrar,
@@ -125,6 +130,20 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
                 ..
             } => self.transfer_asset(&transaction, burns, inputs, outputs),
         }
+    }
+
+    fn create_world(&mut self, shard_id: ShardId, _nonce: &u64, owners: &Vec<Address>) -> StateResult<()> {
+        let metadata_address = ShardMetadataAddress::new(shard_id);
+        let mut metadata = self.require_metadata(&metadata_address, || unreachable!("Shard must have metadata"))?;
+
+        let world_id = *metadata.number_of_worlds();
+        let world_address = WorldAddress::new(shard_id, world_id);
+
+        metadata.increase_nonce();
+        metadata.increase_number_of_worlds();
+
+        self.require_world(&world_address, || World::new(owners.clone()))?;
+        Ok(())
     }
 
     fn mint_asset(
@@ -252,6 +271,26 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
 
     fn kill_asset(&mut self, account: &AssetAddress) {
         self.asset.remove(account);
+    }
+
+    fn require_metadata<'a, F>(
+        &'a self,
+        a: &ShardMetadataAddress,
+        default: F,
+    ) -> cmerkle::Result<RefMut<'a, ShardMetadata>>
+    where
+        F: FnOnce() -> ShardMetadata, {
+        let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
+        let from_db = || self.db.get_cached_shard_metadata(a);
+        self.metadata.require_item_or_from(a, default, db, from_db)
+    }
+
+    fn require_world<'a, F>(&'a self, a: &WorldAddress, default: F) -> cmerkle::Result<RefMut<'a, World>>
+    where
+        F: FnOnce() -> World, {
+        let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
+        let from_db = || self.db.get_cached_world(a);
+        self.world.require_item_or_from(a, default, db, from_db)
     }
 
     fn require_asset_scheme<'a, F>(
@@ -417,11 +456,11 @@ impl Clone for ShardLevelState<StateDB> {
 const TRANSACTION_CHECKPOINT: CheckpointId = 456;
 
 impl<B: Backend + ShardBackend> ShardState<B> for ShardLevelState<B> {
-    fn apply(&mut self, transaction: &Transaction) -> StateResult<TransactionOutcome> {
+    fn apply(&mut self, shard_id: ShardId, transaction: &Transaction) -> StateResult<TransactionOutcome> {
         ctrace!(TX, "Execute {:?}(TxHash:{:?})", transaction, transaction.hash());
 
         self.create_checkpoint(TRANSACTION_CHECKPOINT);
-        let result = self.apply_internal(transaction);
+        let result = self.apply_internal(shard_id, transaction);
         match result {
             Ok(_) => {
                 cinfo!(TX, "Tx({}) is applied", transaction.hash());
@@ -464,6 +503,72 @@ mod tests {
     }
 
     #[test]
+    fn create_world_without_owners() {
+        let network_id = 0xDEADBEEF;
+        let shard_id = 0xCAFE;
+        let mut state = get_temp_shard_state(shard_id);
+
+        let nonce = 0;
+        let owners = vec![];
+
+        let transaction = Transaction::CreateWorld {
+            network_id,
+            shard_id,
+            nonce,
+            owners: owners.clone(),
+        };
+
+        let result = state.apply(shard_id, &transaction);
+        assert_eq!(
+            Ok(TransactionOutcome {
+                invoice: Invoice::Success,
+                error: None,
+            }),
+            result
+        );
+
+        let metadata = state.metadata();
+        assert_eq!(Ok(Some(ShardMetadata::new_with_nonce(1, 1))), metadata);
+
+        let world_id = 0;
+        let world = state.world(world_id);
+        assert_eq!(Ok(Some(World::new(owners))), world);
+    }
+
+    #[test]
+    fn create_world_with_owners() {
+        let network_id = 0xDEADBEEF;
+        let shard_id = 0xCAFE;
+        let mut state = get_temp_shard_state(shard_id);
+
+        let nonce = 0;
+        let owners = vec![Address::random(), Address::random(), Address::random()];
+
+        let transaction = Transaction::CreateWorld {
+            network_id,
+            shard_id,
+            nonce,
+            owners: owners.clone(),
+        };
+
+        let result = state.apply(shard_id, &transaction);
+        assert_eq!(
+            Ok(TransactionOutcome {
+                invoice: Invoice::Success,
+                error: None,
+            }),
+            result
+        );
+
+        let metadata = state.metadata();
+        assert_eq!(Ok(Some(ShardMetadata::new_with_nonce(1, 1))), metadata);
+
+        let world_id = 0;
+        let world = state.world(world_id);
+        assert_eq!(Ok(Some(World::new(owners))), world);
+    }
+
+    #[test]
     fn mint_permissioned_asset() {
         let shard_id = 0;
         let mut state = get_temp_shard_state(shard_id);
@@ -486,7 +591,7 @@ mod tests {
             nonce: 0,
         };
 
-        let result = state.apply(&transaction);
+        let result = state.apply(shard_id, &transaction);
         assert_eq!(
             Ok(TransactionOutcome {
                 invoice: Invoice::Success,
@@ -527,7 +632,7 @@ mod tests {
             nonce: 0,
         };
 
-        let result = state.apply(&transaction);
+        let result = state.apply(shard_id, &transaction);
         assert_eq!(
             Ok(TransactionOutcome {
                 invoice: Invoice::Success,
@@ -579,7 +684,7 @@ mod tests {
                 invoice: Invoice::Success,
                 error: None,
             }),
-            state.apply(&mint)
+            state.apply(shard_id, &mint)
         );
 
         let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id);
@@ -635,7 +740,7 @@ mod tests {
                 invoice: Invoice::Success,
                 error: None,
             }),
-            state.apply(&transfer)
+            state.apply(shard_id, &transfer)
         );
 
         let asset0_address = AssetAddress::new(transfer_hash, 0, shard_id);
@@ -681,7 +786,7 @@ mod tests {
                 invoice: Invoice::Success,
                 error: None,
             }),
-            state.apply(&mint)
+            state.apply(shard_id, &mint)
         );
 
         let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id);
@@ -716,7 +821,7 @@ mod tests {
             nonce: 0,
         };
 
-        let failed_outcome = state.apply(&failed_transfer).unwrap();
+        let failed_outcome = state.apply(shard_id, &failed_transfer).unwrap();
         assert_eq!(Invoice::Failed, failed_outcome.invoice);
         assert_ne!(None, failed_outcome.error);
 
@@ -763,7 +868,7 @@ mod tests {
                 invoice: Invoice::Success,
                 error: None,
             }),
-            state.apply(&successful_transfer)
+            state.apply(shard_id, &successful_transfer)
         );
 
         let asset0_address = AssetAddress::new(successful_transfer_hash, 0, shard_id);

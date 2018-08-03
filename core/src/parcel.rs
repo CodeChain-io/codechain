@@ -143,6 +143,14 @@ impl UnverifiedParcel {
                 for t in transactions {
                     t.verify()?;
                     match &t {
+                        Transaction::CreateWorld {
+                            network_id,
+                            ..
+                        } => {
+                            if network_id != &self.network_id {
+                                return Err(ParcelError::InvalidNetworkId)
+                            }
+                        }
                         Transaction::AssetMint {
                             network_id,
                             metadata,
