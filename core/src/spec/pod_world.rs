@@ -1,0 +1,56 @@
+// Copyright 2018 Kodebox, Inc.
+// This file is part of CodeChain.
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as
+// published by the Free Software Foundation, either version 3 of the
+// License, or (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+use std::fmt;
+
+use cjson;
+use ckey::Address;
+use cstate::World;
+use rlp::{Encodable, RlpStream};
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PodWorld {
+    pub nonce: u64,
+    pub owners: Vec<Address>,
+}
+
+impl<'a> Into<World> for &'a PodWorld {
+    fn into(self) -> World {
+        World::new_with_nonce(self.owners.clone(), self.nonce)
+    }
+}
+
+impl Encodable for PodWorld {
+    fn rlp_append(&self, s: &mut RlpStream) {
+        let w: World = self.into();
+        w.rlp_append(s);
+    }
+}
+
+impl From<cjson::spec::World> for PodWorld {
+    fn from(s: cjson::spec::World) -> Self {
+        Self {
+            nonce: s.nonce.map(Into::into).unwrap_or(0),
+            owners: s.owners.unwrap_or_else(Vec::new),
+        }
+    }
+}
+
+impl fmt::Display for PodWorld {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "(#nonce={}; owners={:#?})", self.nonce, self.owners)
+    }
+}
