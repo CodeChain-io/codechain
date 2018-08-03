@@ -57,7 +57,7 @@ pub use rustc_serialize::hex;
 #[cfg(feature = "schnorr")]
 pub use schnorr::{
     recover_schnorr as recover, sign_schnorr as sign, verify_schnorr as verify,
-    verify_schnorr_address as verify_address, SchnorrSignature as Signature, SchnorrSignatureData as SignatureData,
+    verify_schnorr_address as verify_address, SchnorrSignature as Signature,
     SCHNORR_SIGNATURE_LENGTH as SIGNATURE_LENGTH,
 };
 

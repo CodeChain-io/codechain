@@ -229,7 +229,6 @@ pub fn message_hash(vote_step: VoteStep, block_hash: H256) -> H256 {
 mod tests {
     use super::super::Step;
     use super::*;
-    use primitives::H520;
     use rlp;
 
     #[test]
@@ -258,7 +257,7 @@ mod tests {
     #[test]
     fn encode_and_decode_consensus_message_2() {
         let message = ConsensusMessage::new(
-            Signature::from(H520::from("0x3000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003")),
+            Signature::random(),
             2usize,
             3usize,
             Step::Commit,
@@ -272,7 +271,7 @@ mod tests {
         let height = 2usize;
         let view = 3usize;
         let step = Step::Commit;
-        let signature = Signature::from(H520::from("0x3000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003"));
+        let signature = Signature::random();
         let block_hash = Some(H256::from("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050"));
         let consensus_message = ConsensusMessage::new(signature, height, view, step, block_hash);
         let vote_info = message_info_rlp(&VoteStep::new(height, view, step), block_hash);
