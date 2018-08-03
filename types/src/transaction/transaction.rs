@@ -57,6 +57,13 @@ pub struct AssetTransferOutput {
 #[serde(rename_all = "camelCase", tag = "type", content = "data")]
 pub enum Transaction {
     #[serde(rename_all = "camelCase")]
+    CreateWorld {
+        network_id: u64,
+        shard_id: ShardId,
+        nonce: u64,
+        owners: Vec<Address>,
+    },
+    #[serde(rename_all = "camelCase")]
     AssetMint {
         network_id: u64,
         shard_id: ShardId,
@@ -132,6 +139,10 @@ impl Transaction {
 
     pub fn network_id(&self) -> u64 {
         match self {
+            Transaction::CreateWorld {
+                network_id,
+                ..
+            } => *network_id,
             Transaction::AssetTransfer {
                 network_id,
                 ..
@@ -145,6 +156,10 @@ impl Transaction {
 
     pub fn related_shards(&self) -> Vec<ShardId> {
         match self {
+            Transaction::CreateWorld {
+                shard_id,
+                ..
+            } => vec![*shard_id],
             Transaction::AssetTransfer {
                 burns,
                 inputs,
@@ -168,6 +183,9 @@ impl Transaction {
 
     pub fn verify(&self) -> Result<(), Error> {
         match self {
+            Transaction::CreateWorld {
+                ..
+            } => Ok(()),
             Transaction::AssetTransfer {
                 inputs,
                 outputs,
@@ -214,12 +232,25 @@ fn is_input_and_output_consistent(inputs: &[AssetTransferInput], outputs: &[Asse
 }
 
 type TransactionId = u8;
+const CREATE_WORLD_ID: TransactionId = 0x01;
 const ASSET_MINT_ID: TransactionId = 0x03;
 const ASSET_TRANSFER_ID: TransactionId = 0x04;
 
 impl Decodable for Transaction {
     fn decode(d: &UntrustedRlp) -> Result<Self, DecoderError> {
         match d.val_at(0)? {
+            CREATE_WORLD_ID => {
+                if d.item_count()? != 5 {
+                    return Err(DecoderError::RlpIncorrectListLen)
+                }
+
+                Ok(Transaction::CreateWorld {
+                    network_id: d.val_at(1)?,
+                    shard_id: d.val_at(2)?,
+                    nonce: d.val_at(3)?,
+                    owners: d.list_at(4)?,
+                })
+            }
             ASSET_MINT_ID => {
                 if d.item_count()? != 9 {
                     return Err(DecoderError::RlpIncorrectListLen)
@@ -257,6 +288,18 @@ impl Decodable for Transaction {
 impl Encodable for Transaction {
     fn rlp_append(&self, s: &mut RlpStream) {
         match self {
+            Transaction::CreateWorld {
+                network_id,
+                shard_id,
+                nonce,
+                owners,
+            } => s
+                .begin_list(5)
+                .append(&CREATE_WORLD_ID)
+                .append(network_id)
+                .append(shard_id)
+                .append(nonce)
+                .append_list(&owners),
             Transaction::AssetMint {
                 network_id,
                 shard_id,
@@ -572,5 +615,27 @@ mod tests {
                 amount: output_amount,
             }]
         ));
+    }
+
+    #[test]
+    fn encode_and_decode_create_world_without_owners() {
+        let transaction = Transaction::CreateWorld {
+            network_id: 0xCA,
+            shard_id: 0xFE,
+            nonce: 0xFE,
+            owners: vec![],
+        };
+        rlp_encode_and_decode_test!(transaction);
+    }
+
+    #[test]
+    fn encode_and_decode_create_world_with_owners() {
+        let transaction = Transaction::CreateWorld {
+            network_id: 0xCA,
+            shard_id: 0xFE,
+            nonce: 0xFE,
+            owners: vec![Address::random(), Address::random(), Address::random()],
+        };
+        rlp_encode_and_decode_test!(transaction);
     }
 }

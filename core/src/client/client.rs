@@ -282,6 +282,9 @@ impl AssetClient for Client {
                     >= self.block_number(transaction_address.parcel_address.block_hash.into()) =>
             {
                 let is_output_valid = match self.transaction(transaction_hash.into()) {
+                    Some(Transaction::CreateWorld {
+                        ..
+                    }) => false,
                     Some(Transaction::AssetMint {
                         shard_id: asset_mint_shard_id,
                         ..
