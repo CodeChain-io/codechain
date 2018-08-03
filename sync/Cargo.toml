@@ -20,6 +20,3 @@ rand = "0.5.3"
 rlp = { path = "../util/rlp" }
 snap = "0.2"
 time = "0.1"
-
-[dev-dependencies]
-codechain-key = { path = "../key", features = ["ecdsa"] }
