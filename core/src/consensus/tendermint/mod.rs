@@ -23,7 +23,7 @@ use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
 use std::sync::{Arc, Weak};
 
 use ccrypto::blake256;
-use ckey::{public_to_address, recover, Address, Message, Signature, SignatureData};
+use ckey::{public_to_address, recover, Address, Message, Signature};
 use cnetwork::{Api, NetworkExtension, NodeId, TimerToken};
 use ctypes::machine::WithBalances;
 use ctypes::BlockNumber;
@@ -103,11 +103,11 @@ pub type BlockHash = H256;
 
 struct ProposalSeal<'a> {
     view: &'a View,
-    signature: &'a SignatureData,
+    signature: &'a Signature,
 }
 
 impl<'a> ProposalSeal<'a> {
-    fn new(view: &'a View, signature: &'a SignatureData) -> Self {
+    fn new(view: &'a View, signature: &'a Signature) -> Self {
         Self {
             view,
             signature,
@@ -125,11 +125,11 @@ impl<'a> ProposalSeal<'a> {
 
 struct RegularSeal<'a> {
     view: &'a View,
-    signatures: &'a Vec<SignatureData>,
+    signatures: &'a Vec<Signature>,
 }
 
 impl<'a> RegularSeal<'a> {
-    fn new(view: &'a View, signatures: &'a Vec<SignatureData>) -> Self {
+    fn new(view: &'a View, signatures: &'a Vec<Signature>) -> Self {
         Self {
             view,
             signatures,
@@ -781,7 +781,7 @@ where
         let mut addresses = HashSet::new();
         let ref header_signatures_field = header.seal().get(2).ok_or(BlockError::InvalidSeal)?;
         for rlp in UntrustedRlp::new(header_signatures_field).iter() {
-            let signature: SignatureData = rlp.as_val()?;
+            let signature: Signature = rlp.as_val()?;
             let address = (self.recover)(&signature.into(), &message)?;
 
             if !self.subchain_validators.contains(header.parent_hash(), &address) {

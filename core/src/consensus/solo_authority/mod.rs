@@ -18,7 +18,7 @@ mod params;
 
 use std::sync::{Arc, Weak};
 
-use ckey::{public_to_address, recover, Address, Signature, SignatureData};
+use ckey::{public_to_address, recover, Address, Signature};
 use ctypes::machine::WithBalances;
 use parking_lot::RwLock;
 use primitives::{H256, U256};
@@ -70,7 +70,7 @@ fn verify_external(header: &Header, validators: &ValidatorSet) -> Result<(), Err
     use rlp::UntrustedRlp;
 
     // Check if the signature belongs to a validator, can depend on parent state.
-    let sig = UntrustedRlp::new(&header.seal()[0]).as_val::<SignatureData>()?;
+    let sig = UntrustedRlp::new(&header.seal()[0]).as_val::<Signature>()?;
     let signer = public_to_address(&recover(&sig.into(), &header.bare_hash())?);
 
     if *header.author() != signer {
@@ -112,7 +112,7 @@ impl ConsensusEngine<CodeChainMachine> for SoloAuthority {
         if self.validators.contains(header.parent_hash(), author) {
             // account should be permanently unlocked, otherwise sealing will fail
             if let Ok(signature) = self.sign(header.bare_hash()) {
-                return Seal::Regular(vec![::rlp::encode(&(&SignatureData::from(signature) as &[u8])).into_vec()])
+                return Seal::Regular(vec![::rlp::encode(&signature).into_vec()])
             } else {
                 ctrace!(SOLO_AUTHORITY, "generate_seal: FAIL: accounts secret key unavailable");
             }
@@ -197,7 +197,7 @@ impl ConsensusEngine<CodeChainMachine> for SoloAuthority {
 
 #[cfg(test)]
 mod tests {
-    use ckey::SignatureData;
+    use ckey::Signature;
 
     use super::super::super::block::{IsBlock, OpenBlock};
     use super::super::super::header::Header;
@@ -215,7 +215,7 @@ mod tests {
     fn can_do_signature_verification_fail() {
         let engine = Spec::new_test_solo_authority().engine;
         let mut header: Header = Header::default();
-        header.set_seal(vec![::rlp::encode(&SignatureData::default()).into_vec()]);
+        header.set_seal(vec![::rlp::encode(&Signature::default()).into_vec()]);
 
         let verify_result = engine.verify_block_external(&header);
         assert!(verify_result.is_err());

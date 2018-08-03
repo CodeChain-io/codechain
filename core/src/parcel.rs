@@ -17,7 +17,7 @@
 use std::ops::Deref;
 
 use ccrypto::blake256;
-use ckey::{self, public_to_address, recover, sign, Address, Private, Public, Signature, SignatureData};
+use ckey::{self, public_to_address, recover, sign, Address, Private, Public, Signature};
 use ctypes::parcel::{Action, Error as ParcelError, Parcel};
 use ctypes::transaction::Transaction;
 use ctypes::BlockNumber;
@@ -33,7 +33,7 @@ pub struct UnverifiedParcel {
     /// Plain Parcel.
     unsigned: Parcel,
     /// Signature.
-    sig: SignatureData,
+    sig: Signature,
     /// Hash of the parcel
     hash: H256,
 }
@@ -278,7 +278,7 @@ impl Deref for LocalizedParcel {
 
 #[cfg(test)]
 mod tests {
-    use ckey::{Address, Public, SignatureData};
+    use ckey::{Address, Public, Signature};
     use ctypes::transaction::AssetMintOutput;
     use primitives::H256;
 
@@ -294,7 +294,7 @@ mod tests {
                     action: Action::CreateShard,
                     network_id: 0xBE,
                 },
-                sig: SignatureData::default(),
+                sig: Signature::default(),
                 hash: H256::default(),
             }.compute_hash()
         );
@@ -368,7 +368,7 @@ mod tests {
                         amount: 300.into(),
                     },
                 },
-                sig: SignatureData::default(),
+                sig: Signature::default(),
                 hash: H256::default(),
             }.compute_hash()
         );
@@ -386,7 +386,7 @@ mod tests {
                         key: Public::random(),
                     },
                 },
-                sig: SignatureData::default(),
+                sig: Signature::default(),
                 hash: H256::default(),
             }.compute_hash()
         );
@@ -402,7 +402,7 @@ mod tests {
                     network_id: 50,
                     action: Action::CreateShard,
                 },
-                sig: SignatureData::default(),
+                sig: Signature::default(),
                 hash: H256::default(),
             }.compute_hash()
         );
