@@ -15,6 +15,7 @@ heapsize = "0.4"
 rlp = { path = "../util/rlp" }
 secp256k1 = { path = "../util/secp256k1" }
 serde = "1.0"
+serde_derive = "1.0"
 serde_json = "1.0"
 
 [features]

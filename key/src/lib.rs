@@ -26,6 +26,8 @@ extern crate rustc_hex;
 extern crate rustc_serialize;
 extern crate secp256k1;
 extern crate serde;
+#[macro_use]
+extern crate serde_derive;
 extern crate serde_json;
 
 mod address;
@@ -35,6 +37,7 @@ mod error;
 mod exchange;
 mod keypair;
 mod network;
+mod password;
 mod private;
 mod random;
 #[cfg(feature = "schnorr")]
@@ -50,6 +53,7 @@ pub use error::Error;
 pub use exchange::exchange;
 pub use keypair::{public_to_address, KeyPair};
 pub use network::Network;
+pub use password::Password;
 use primitives::{H160, H256, H512};
 pub use private::Private;
 pub use random::Random;
