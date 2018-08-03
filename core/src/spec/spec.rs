@@ -23,6 +23,7 @@ use ckey::Address;
 use cmerkle::TrieFactory;
 use cstate::{
     ActionHandler, Backend, Metadata, MetadataAddress, Shard, ShardAddress, ShardMetadataAddress, StateDB, StateResult,
+    WorldAddress,
 };
 use ctypes::ShardId;
 use hashdb::HashDB;
@@ -199,6 +200,15 @@ impl Spec {
                 let r = t.insert(&*address, &shard.rlp_bytes());
                 debug_assert_eq!(Ok(None), r);
                 r?;
+
+                assert!(shard.worlds.len() <= ::std::u16::MAX as usize);
+                for (world_id, world) in shard.worlds.iter().enumerate() {
+                    let address = WorldAddress::new(*shard_id, world_id as u16);
+
+                    let r = t.insert(&*address, &world.rlp_bytes());
+                    debug_assert_eq!(Ok(None), r);
+                    r?;
+                }
             }
             let owner = shard.owner;
             shard_roots.push((*shard_id, shard_root, owner));
