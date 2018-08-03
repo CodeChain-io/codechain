@@ -25,7 +25,7 @@ use ctypes::transaction::{
     AssetMintOutput, AssetTransferInput, AssetTransferOutput, Error as TransactionError, Outcome as TransactionOutcome,
     Transaction,
 };
-use ctypes::ShardId;
+use ctypes::{ShardId, WorldId};
 use cvm::{decode, execute, ScriptResult, VMConfig};
 use primitives::{Bytes, H256};
 use rlp::Encodable;
@@ -35,13 +35,16 @@ use super::super::backend::{Backend, ShardBackend};
 use super::super::checkpoint::{CheckpointId, StateWithCheckpoint};
 use super::super::item::cache::Cache;
 use super::super::traits::{ShardState, ShardStateInfo, StateWithCache};
-use super::super::{Asset, AssetAddress, AssetScheme, AssetSchemeAddress, ShardMetadata, ShardMetadataAddress};
+use super::super::{
+    Asset, AssetAddress, AssetScheme, AssetSchemeAddress, ShardMetadata, ShardMetadataAddress, World, WorldAddress,
+};
 use super::super::{StateDB, StateError, StateResult};
 
 
 pub struct ShardLevelState<B> {
     db: B,
     root: H256,
+    world: Cache<World>,
     asset_scheme: Cache<AssetScheme>,
     asset: Cache<Asset>,
     id_of_checkpoints: Vec<CheckpointId>,
@@ -67,6 +70,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         Ok(ShardLevelState {
             db,
             root,
+            world: Cache::new(),
             asset_scheme: Cache::new(),
             asset: Cache::new(),
             id_of_checkpoints: Default::default(),
@@ -83,6 +87,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         Ok(ShardLevelState {
             db,
             root,
+            world: Cache::new(),
             asset_scheme: Cache::new(),
             asset: Cache::new(),
             id_of_checkpoints: Default::default(),
@@ -272,6 +277,17 @@ impl<B: Backend + ShardBackend> ShardStateInfo for ShardLevelState<B> {
         &self.root
     }
 
+    fn world(&self, world_id: WorldId) -> cmerkle::Result<Option<World>> {
+        let a = WorldAddress::new(self.shard_id, world_id);
+        let cached_world = self.db.get_cached_world(&a).and_then(|world| world);
+        if cached_world.is_some() {
+            return Ok(cached_world)
+        }
+
+        let trie = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
+        Ok(trie.get_with(a.as_ref(), ::rlp::decode::<World>)?)
+    }
+
     fn asset_scheme(&self, a: &AssetSchemeAddress) -> cmerkle::Result<Option<AssetScheme>> {
         let cached_asset = self.db.get_cached_asset_scheme(&a).and_then(|asset_scheme| asset_scheme);
         if cached_asset.is_some() {
@@ -296,6 +312,7 @@ impl<B: Backend + ShardBackend> ShardStateInfo for ShardLevelState<B> {
 impl<B> StateWithCheckpoint for ShardLevelState<B> {
     fn create_checkpoint(&mut self, id: CheckpointId) {
         self.id_of_checkpoints.push(id);
+        self.world.checkpoint();
         self.asset_scheme.checkpoint();
         self.asset.checkpoint();
     }
@@ -304,6 +321,7 @@ impl<B> StateWithCheckpoint for ShardLevelState<B> {
         let expected = self.id_of_checkpoints.pop().expect("The checkpoint must exist");
         assert_eq!(expected, id);
 
+        self.world.discard_checkpoint();
         self.asset_scheme.discard_checkpoint();
         self.asset.discard_checkpoint();
     }
@@ -312,6 +330,7 @@ impl<B> StateWithCheckpoint for ShardLevelState<B> {
         let expected = self.id_of_checkpoints.pop().expect("The checkpoint must exist");
         assert_eq!(expected, id);
 
+        self.world.revert_to_checkpoint();
         self.asset_scheme.revert_to_checkpoint();
         self.asset.revert_to_checkpoint();
     }
@@ -320,6 +339,7 @@ impl<B> StateWithCheckpoint for ShardLevelState<B> {
 impl<B: Backend + ShardBackend> StateWithCache for ShardLevelState<B> {
     fn commit(&mut self) -> TrieResult<()> {
         let mut trie = TrieFactory::from_existing(self.db.as_hashdb_mut(), &mut self.root)?;
+        self.world.commit(&mut trie)?;
         self.asset_scheme.commit(&mut trie)?;
         self.asset.commit(&mut trie)?;
         Ok(())
@@ -327,6 +347,9 @@ impl<B: Backend + ShardBackend> StateWithCache for ShardLevelState<B> {
 
     fn propagate_to_global_cache(&mut self) {
         let ref mut db = self.db;
+        self.world.propagate_to_global_cache(|address, item, modified| {
+            db.add_to_world_cache(address, item, modified);
+        });
         self.asset_scheme.propagate_to_global_cache(|address, item, modified| {
             db.add_to_asset_scheme_cache(address, item, modified);
         });
@@ -336,6 +359,7 @@ impl<B: Backend + ShardBackend> StateWithCache for ShardLevelState<B> {
     }
 
     fn clear(&mut self) {
+        self.world.clear();
         self.asset_scheme.clear();
         self.asset.clear();
     }
@@ -343,7 +367,7 @@ impl<B: Backend + ShardBackend> StateWithCache for ShardLevelState<B> {
 
 impl<B: ShardBackend> fmt::Debug for ShardLevelState<B> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "asset_scheme: {:?} asset: {:?}", self.asset_scheme, self.asset)
+        write!(f, "world: {:?} asset_scheme: {:?} asset: {:?}", self.world, self.asset_scheme, self.asset)
     }
 }
 
@@ -355,6 +379,7 @@ impl Clone for ShardLevelState<StateDB> {
             db: self.db.clone(),
             root: self.root.clone(),
             id_of_checkpoints: self.id_of_checkpoints.clone(),
+            world: self.world.clone(),
             asset_scheme: self.asset_scheme.clone(),
             asset: self.asset.clone(),
             shard_id: self.shard_id,

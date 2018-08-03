@@ -17,11 +17,11 @@
 use ckey::{Address, Public};
 use cmerkle::Result as TrieResult;
 use ctypes::transaction::{Outcome as TransactionOutcome, Transaction};
-use ctypes::ShardId;
+use ctypes::{ShardId, WorldId};
 use primitives::{Bytes, H256, U256};
 
 use super::backend::{ShardBackend, TopBackend};
-use super::{Asset, AssetAddress, AssetScheme, AssetSchemeAddress, StateResult};
+use super::{Asset, AssetAddress, AssetScheme, AssetSchemeAddress, StateResult, World};
 
 
 pub trait TopStateInfo {
@@ -49,6 +49,7 @@ pub trait TopStateInfo {
 
 pub trait ShardStateInfo {
     fn root(&self) -> &H256;
+    fn world(&self, world_id: WorldId) -> TrieResult<Option<World>>;
     /// Get the asset scheme.
     fn asset_scheme(&self, a: &AssetSchemeAddress) -> TrieResult<Option<AssetScheme>>;
     /// Get the asset.
