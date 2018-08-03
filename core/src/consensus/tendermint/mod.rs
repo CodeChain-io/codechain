@@ -370,7 +370,7 @@ impl Tendermint {
         let r = self.view.load(AtomicOrdering::SeqCst);
         let s = *self.step.read();
         let vote_info = message_info_rlp(&VoteStep::new(h, r, s), block_hash);
-        match (self.signer.read().address(), self.sign(blake256(&vote_info)).map(Into::into)) {
+        match (self.signer.read().address(), self.sign(blake256(&vote_info))) {
             (Some(validator), Ok(signature)) => {
                 let message_rlp = message_full_rlp(&signature, &vote_info);
                 let message = ConsensusMessage::new(signature, h, r, s, block_hash);
@@ -481,7 +481,7 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
         let view = self.view.load(AtomicOrdering::SeqCst);
         let bh = Some(header.bare_hash());
         let vote_info = message_info_rlp(&VoteStep::new(height, view, Step::Propose), bh.clone());
-        if let Ok(signature) = self.sign(blake256(&vote_info)).map(Into::into) {
+        if let Ok(signature) = self.sign(blake256(&vote_info)) {
             // Insert Propose vote.
             cdebug!(ENGINE, "Submitting proposal {} at height {} view {}.", header.bare_hash(), height, view);
             let sender = self.signer.read().address().expect("seals_internally already returned true");
