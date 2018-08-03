@@ -28,6 +28,7 @@ mod solo_authority;
 mod spec;
 mod state;
 mod tendermint;
+mod world;
 
 pub use self::account::Account;
 pub use self::blake_pow::{BlakePoW, BlakePoWParams};
@@ -43,3 +44,4 @@ pub use self::solo_authority::{SoloAuthority, SoloAuthorityParams};
 pub use self::spec::Spec;
 pub use self::state::{Accounts, Shards};
 pub use self::tendermint::{Tendermint, TendermintParams};
+pub use self::world::World;
