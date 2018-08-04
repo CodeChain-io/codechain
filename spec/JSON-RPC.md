@@ -1067,7 +1067,7 @@ Params:
  1. address: `string`
  1. port: `number`
 
-Return Type: `bool`
+Return Type: null
 
 Errors: `Not Conntected`, `Invalid Params`
 
@@ -1083,7 +1083,7 @@ Response Example
 ```
 {
   "jsonrpc":"2.0",
-  "result":true,
+  "result":null,
   "id":6
 }
 ```
