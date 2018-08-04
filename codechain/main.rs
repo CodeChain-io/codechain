@@ -273,6 +273,10 @@ impl NetworkControl for DummyNetworkService {
     fn is_connected(&self, _addr: &SocketAddr) -> Result<bool, NetworkControlError> {
         Err(NetworkControlError::Disabled)
     }
+
+    fn get_port(&self) -> Result<u16, NetworkControlError> {
+        Err(NetworkControlError::Disabled)
+    }
 }
 
 fn run_node(matches: ArgMatches) -> Result<(), String> {

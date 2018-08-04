@@ -35,6 +35,7 @@ pub struct Service {
     timer: IoService<timer::Message>,
     client: Arc<Client>,
     routing_table: Arc<RoutingTable>,
+    socket_address: SocketAddr,
 }
 
 impl Service {
@@ -68,6 +69,7 @@ impl Service {
             timer,
             client,
             routing_table,
+            socket_address: address,
         }))
     }
 
@@ -125,6 +127,10 @@ impl Control for Service {
 
     fn is_connected(&self, addr: &SocketAddr) -> Result<bool, ControlError> {
         Ok(self.routing_table.is_connected(addr))
+    }
+
+    fn get_port(&self) -> Result<u16, ControlError> {
+        Ok(self.socket_address.port())
     }
 }
 
