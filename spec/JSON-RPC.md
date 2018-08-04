@@ -1047,7 +1047,7 @@ Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "net_isConnected", "params": ["192.168.0.3", "3485"], "id": 6}' \
+    -d '{"jsonrpc": "2.0", "method": "net_isConnected", "params": ["192.168.0.3", 3485], "id": 6}' \
     localhost:8080
 ```
 
