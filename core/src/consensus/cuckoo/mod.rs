@@ -179,3 +179,90 @@ impl ConsensusEngine<CodeChainMachine> for Cuckoo {
         (U256::max_value() - *score) / *score
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use primitives::U256;
+
+    use ctypes::machine::WithBalances;
+
+    use super::super::super::block::{IsBlock, OpenBlock};
+    use super::super::super::header::Header;
+    use super::super::super::spec::Spec;
+    use super::super::super::tests::helpers::get_temp_state_db;
+    use super::EngineType;
+
+    #[test]
+    fn has_valid_metadata() {
+        let engine = Spec::new_test_cuckoo().engine;
+
+        assert_eq!(engine.name(), "Cuckoo");
+        assert_eq!(engine.engine_type(), EngineType::PoW);
+    }
+
+    #[test]
+    fn seal_fields() {
+        let engine = Spec::new_test_cuckoo().engine;
+        let header = Header::default();
+
+        assert_eq!(engine.seal_fields(&header), 2);
+    }
+
+    #[test]
+    fn verify_block_basic_err() {
+        let engine = Spec::new_test_cuckoo().engine;
+        let default_header = Header::default();
+
+        assert!(engine.verify_block_basic(&default_header).is_err());
+    }
+
+    #[test]
+    fn verify_block_basic_ok() {
+        let spec = Spec::new_test_cuckoo();
+        let engine = &*spec.engine;
+        let genesis_header = spec.genesis_header();
+
+        assert!(engine.verify_block_basic(&genesis_header).is_ok());
+    }
+
+    #[test]
+    fn verify_block_unordered_err() {
+        let engine = Spec::new_test_cuckoo().engine;
+        let default_header = Header::default();
+
+        assert!(engine.verify_block_unordered(&default_header).is_err());
+    }
+
+    #[test]
+    fn score_to_target() {
+        let engine = Spec::new_test_cuckoo().engine;
+
+        assert_eq!(engine.score_to_target(&U256::max_value()), U256::from(0));
+    }
+
+    #[test]
+    fn on_close_block() {
+        let spec = Spec::new_test_cuckoo();
+        let engine = &*spec.engine;
+        let db = spec.ensure_genesis_state(get_temp_state_db()).unwrap();
+        let header = Header::default();
+        let block = OpenBlock::new(engine, db, &header, Default::default(), vec![], false).unwrap();
+        let mut executed_block = block.block().clone();
+
+        assert!(engine.on_close_block(&mut executed_block).is_ok());
+        assert_eq!(engine.machine().balance(&executed_block, header.author()).unwrap(), U256::from(0xd));
+    }
+
+    #[test]
+    fn populate_from_parent() {
+        let spec = Spec::new_test_cuckoo();
+        let engine = &*spec.engine;
+        let mut header = Header::default();
+        let genesis_header = spec.genesis_header();
+        header.set_number(1);
+        header.set_parent_hash(genesis_header.hash());
+
+        engine.populate_from_parent(&mut header, &genesis_header);
+        assert_eq!(*header.score(), U256::from(0x20040));
+    }
+}
