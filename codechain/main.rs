@@ -374,7 +374,7 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
         }
     };
 
-    if !config.stratum.disable {
+    if (!config.stratum.disable) && (miner.engine_type() == EngineType::PoW) {
         let stratum_config = (&config.stratum).into();
         stratum_start(&stratum_config, Arc::clone(&miner), client.client())?
     }
