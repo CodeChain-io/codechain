@@ -339,6 +339,15 @@ impl Handler {
             max_peers,
         })
     }
+
+    pub fn get_port(&self) -> u16 {
+        self.socket_address.port()
+    }
+
+    pub fn get_peer_count(&self) -> usize {
+        let manager = self.manager.lock();
+        manager.connections.len()
+    }
 }
 
 impl IoHandler<Message> for Handler {

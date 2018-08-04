@@ -277,6 +277,10 @@ impl NetworkControl for DummyNetworkService {
     fn get_port(&self) -> Result<u16, NetworkControlError> {
         Err(NetworkControlError::Disabled)
     }
+
+    fn get_peer_count(&self) -> Result<usize, NetworkControlError> {
+        Err(NetworkControlError::Disabled)
+    }
 }
 
 fn run_node(matches: ArgMatches) -> Result<(), String> {

@@ -35,7 +35,7 @@ pub struct Service {
     timer: IoService<timer::Message>,
     client: Arc<Client>,
     routing_table: Arc<RoutingTable>,
-    socket_address: SocketAddr,
+    p2p_handler: Arc<p2p::Handler>,
 }
 
 impl Service {
@@ -55,7 +55,7 @@ impl Service {
             min_peers,
             max_peers,
         )?);
-        p2p.register_handler(p2p_handler)?;
+        p2p.register_handler(p2p_handler.clone())?;
 
         timer.register_handler(Arc::new(timer::Handler::new(Arc::clone(&client))))?;
 
@@ -69,7 +69,7 @@ impl Service {
             timer,
             client,
             routing_table,
-            socket_address: address,
+            p2p_handler,
         }))
     }
 
@@ -130,7 +130,11 @@ impl Control for Service {
     }
 
     fn get_port(&self) -> Result<u16, ControlError> {
-        Ok(self.socket_address.port())
+        Ok(self.p2p_handler.get_port())
+    }
+
+    fn get_peer_count(&self) -> Result<usize, ControlError> {
+        Ok(self.p2p_handler.get_peer_count())
     }
 }
 
