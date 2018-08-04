@@ -30,5 +30,8 @@ build_rpc_trait! {
 
         # [rpc(name = "net_isConnected")]
         fn is_connected(&self, ::std::net::IpAddr, u16) -> Result<bool>;
+
+        # [rpc(name = "net_getPort")]
+        fn get_port(&self) -> Result<u16>;
     }
 }

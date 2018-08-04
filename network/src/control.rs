@@ -25,6 +25,7 @@ pub trait Control: Send + Sync {
     fn connect(&self, addr: SocketAddr) -> Result<(), Error>;
     fn disconnect(&self, addr: SocketAddr) -> Result<(), Error>;
     fn is_connected(&self, addr: &SocketAddr) -> Result<bool, Error>;
+    fn get_port(&self) -> Result<u16, Error>;
 }
 
 #[derive(Clone, Debug)]

@@ -54,4 +54,8 @@ impl Net for NetClient {
     fn is_connected(&self, address: ::std::net::IpAddr, port: u16) -> Result<bool> {
         Ok(self.network_control.is_connected(&SocketAddr::new(address, port)).map_err(errors::network_control)?)
     }
+
+    fn get_port(&self) -> Result<u16> {
+        Ok(self.network_control.get_port().map_err(errors::network_control)?)
+    }
 }
