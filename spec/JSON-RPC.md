@@ -1114,7 +1114,7 @@ Response Example
 
 
 ## net_getPort
-(not implemented) Return the port number on which the client is listening for peers.
+Return the port number on which the client is listening for peers.
 
 Params: No parameters
 
