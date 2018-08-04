@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::sync::Arc;
+use std::sync::{Arc, Weak};
 
 use ccore::block::IsBlock;
 use ccore::{EngineClient, MinerService, MiningBlockChainClient};
@@ -29,8 +29,8 @@ pub struct MinerClient<C, M>
 where
     C: MiningBlockChainClient + EngineClient,
     M: MinerService, {
-    client: Arc<C>,
-    miner: Arc<M>,
+    client: Weak<C>,
+    miner: Weak<M>,
 }
 
 impl<C, M> MinerClient<C, M>
@@ -40,9 +40,17 @@ where
 {
     pub fn new(client: &Arc<C>, miner: &Arc<M>) -> Self {
         Self {
-            client: client.clone(),
-            miner: miner.clone(),
+            client: Arc::downgrade(client),
+            miner: Arc::downgrade(miner),
         }
+    }
+
+    fn client(&self) -> Result<Arc<C>> {
+        self.client.upgrade().ok_or_else(|| errors::internal("Cannot get client", ""))
+    }
+
+    fn miner(&self) -> Result<Arc<M>> {
+        self.miner.upgrade().ok_or_else(|| errors::internal("Cannot get miner", ""))
     }
 }
 
@@ -52,18 +60,18 @@ where
     M: MinerService + 'static,
 {
     fn get_work(&self) -> Result<Work> {
-        if !self.miner.can_produce_work_package() {
+        if !self.miner()?.can_produce_work_package() {
             cwarn!(MINER, "Cannot give work package - engine seals internally.");
             return Err(errors::no_work_required())
         }
-        if self.miner.author().is_zero() {
+        if self.miner()?.author().is_zero() {
             cwarn!(MINER, "Cannot give work package - no author is configured. Use --author to configure!");
             return Err(errors::no_author())
         }
-        self.miner
-            .map_sealing_work(&*self.client, |b| {
+        self.miner()?
+            .map_sealing_work(&*self.client()?, |b| {
                 let pow_hash = b.hash();
-                let target = self.client.score_to_target(b.block().header().score());
+                let target = self.client()?.score_to_target(b.block().header().score());
 
                 Ok(Work {
                     pow_hash,
@@ -74,11 +82,11 @@ where
     }
 
     fn submit_work(&self, pow_hash: H256, seal: Vec<Bytes>) -> Result<bool> {
-        if !self.miner.can_produce_work_package() {
+        if !self.miner()?.can_produce_work_package() {
             cwarn!(MINER, "Cannot give work package - engine seals internally.");
             return Err(errors::no_work_required())
         }
         let seal = seal.iter().cloned().map(Into::into).collect();
-        Ok(self.miner.submit_seal(&*self.client, pow_hash, seal).is_ok())
+        Ok(self.miner()?.submit_seal(&*self.client()?, pow_hash, seal).is_ok())
     }
 }

@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::ops::Deref;
-use std::sync::Arc;
+use std::sync::{Arc, Weak};
 use std::vec::Vec;
 
 use ccore::{DatabaseClient, COL_STATE};
@@ -29,7 +29,7 @@ use super::super::traits::Devel;
 use super::super::types::Bytes;
 
 pub struct DevelClient {
-    db: Arc<KeyValueDB>,
+    db: Weak<KeyValueDB>,
 }
 
 impl DevelClient {
@@ -37,19 +37,25 @@ impl DevelClient {
     where
         C: DatabaseClient, {
         Self {
-            db: client.database(),
+            db: Arc::downgrade(&client.database()),
         }
+    }
+
+    fn db(&self) -> Result<Arc<KeyValueDB>> {
+        self.db.upgrade().ok_or_else(|| errors::internal("Cannot get db", ""))
     }
 }
 
 impl Devel for DevelClient {
     fn get_state_trie_keys(&self, offset: usize, limit: usize) -> Result<Vec<H256>> {
-        let iter = self.db.iter(COL_STATE);
-        Ok(iter.skip(offset).take(limit).map(|val| H256::from(val.0.deref())).collect())
+        let db = self.db()?;
+        let iter = db.iter(COL_STATE);
+        let keys = iter.skip(offset).take(limit).map(|val| H256::from(val.0.deref())).collect();
+        Ok(keys)
     }
 
     fn get_state_trie_value(&self, key: H256) -> Result<Vec<Bytes>> {
-        match self.db.get(COL_STATE, &key) {
+        match self.db()?.get(COL_STATE, &key) {
             Ok(Some(value)) => {
                 let rlp = UntrustedRlp::new(&value);
                 Ok(rlp.as_list::<Vec<u8>>().map_err(errors::rlp)?.into_iter().map(Bytes::from).collect())
