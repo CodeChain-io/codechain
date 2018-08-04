@@ -153,8 +153,8 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
   * [net_connect](#net_connect)
   * [net_isConnected](#net_isconnected)
   * [net_disconnect](#net_disconnect)
-  * [net_getPeerCount](#net_getPeerCount)
-  * [net_getPort](#net_getPort)
+  * [net_getPeerCount](#net_getpeercount)
+  * [net_getPort](#net_getport)
 ***
  * [account_getList](#account_getlist)
  * [account_create](#account_create)
