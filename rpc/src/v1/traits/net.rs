@@ -33,5 +33,8 @@ build_rpc_trait! {
 
         # [rpc(name = "net_getPort")]
         fn get_port(&self) -> Result<u16>;
+
+        # [rpc(name = "net_getPeerCount")]
+        fn get_peer_count(&self) -> Result<usize>;
     }
 }

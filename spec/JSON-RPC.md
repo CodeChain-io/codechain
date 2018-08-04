@@ -1089,7 +1089,7 @@ Response Example
 ```
 
 ## net_getPeerCount
-(not implemented) Return the count of peers which the client is connected to.
+Return the count of peers which the client is connected to.
 
 Params: No parameters
 
