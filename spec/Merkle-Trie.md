@@ -4,6 +4,7 @@ It's a [Merkle tree](https://en.wikipedia.org/wiki/Merkle_tree), so the nodes ha
 ## Interface
 ### insert(key, value)
 ### get(key)
+### get_with(key, function)
 ### contains(key)
 ### remove(key)
 
