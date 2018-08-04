@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ccrypto::Blake;
-use ckey::{Address, Public, SignatureData};
+use ckey::{Address, Public, Signature};
 use primitives::{Bytes, H256, U256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
@@ -43,7 +43,7 @@ pub enum Action {
         /// Transaction, can be either asset mint or asset transfer
         transactions: Vec<Transaction>,
         changes: Vec<ChangeShard>,
-        signatures: Vec<SignatureData>,
+        signatures: Vec<Signature>,
     },
     Payment {
         receiver: Address,

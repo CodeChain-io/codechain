@@ -15,6 +15,10 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 mod genesis;
+mod pod_account;
+mod pod_shard_metadata;
+mod pod_state;
+mod pod_world;
 mod seal;
 mod spec;
 

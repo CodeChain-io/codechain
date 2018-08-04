@@ -17,7 +17,7 @@
 use super::crypto::Crypto;
 use account::Version;
 use ccrypto;
-use ckey::{sign, Address, KeyPair, Message, Public, Signature};
+use ckey::{sign, Address, KeyPair, Message, Password, Public, Signature};
 use {json, Error};
 
 /// Account representation.
@@ -57,7 +57,7 @@ impl SafeAccount {
     pub fn create(
         keypair: &KeyPair,
         id: [u8; 16],
-        password: &str,
+        password: &Password,
         iterations: u32,
         name: String,
         meta: String,
@@ -89,19 +89,24 @@ impl SafeAccount {
     }
 
     /// Sign a message.
-    pub fn sign(&self, password: &str, message: &Message) -> Result<Signature, Error> {
+    pub fn sign(&self, password: &Password, message: &Message) -> Result<Signature, Error> {
         let secret = self.crypto.secret(password)?;
         sign(&secret.into(), message).map_err(From::from)
     }
 
     /// Derive public key.
-    pub fn public(&self, password: &str) -> Result<Public, Error> {
+    pub fn public(&self, password: &Password) -> Result<Public, Error> {
         let secret = self.crypto.secret(password)?;
         Ok(KeyPair::from_private(secret.into())?.public().clone())
     }
 
     /// Change account's password.
-    pub fn change_password(&self, old_password: &str, new_password: &str, iterations: u32) -> Result<Self, Error> {
+    pub fn change_password(
+        &self,
+        old_password: &Password,
+        new_password: &Password,
+        iterations: u32,
+    ) -> Result<Self, Error> {
         let secret = self.crypto.secret(old_password)?;
         let result = SafeAccount {
             id: self.id.clone(),
@@ -116,7 +121,7 @@ impl SafeAccount {
     }
 
     /// Check if password matches the account.
-    pub fn check_password(&self, password: &str) -> bool {
+    pub fn check_password(&self, password: &Password) -> bool {
         self.crypto.secret(password).is_ok()
     }
 }
@@ -129,7 +134,7 @@ mod tests {
     #[test]
     fn sign_and_verify_public() {
         let keypair = Random.generate().unwrap();
-        let password = "hello world";
+        let password = &"hello world".into();
         let message = Message::default();
         let account = SafeAccount::create(&keypair, [0u8; 16], password, 10240, "Test".to_string(), "{}".to_string());
         let signature = account.unwrap().sign(password, &message).unwrap();
@@ -139,8 +144,8 @@ mod tests {
     #[test]
     fn change_password() {
         let keypair = Random.generate().unwrap();
-        let first_password = "hello world";
-        let sec_password = "this is sparta";
+        let first_password = &"hello world".into();
+        let sec_password = &"this is sparta".into();
         let i = 10240;
         let message = Message::default();
         let account =

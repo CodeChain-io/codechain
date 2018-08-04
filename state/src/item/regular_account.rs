@@ -49,7 +49,7 @@ impl CacheableItem for RegularAccount {
     }
 }
 
-const PREFIX: u8 = 'R' as u8;
+const PREFIX: u8 = super::REGULAR_ACCOUNT_PREFIX;
 
 impl Encodable for RegularAccount {
     fn rlp_append(&self, s: &mut RlpStream) {

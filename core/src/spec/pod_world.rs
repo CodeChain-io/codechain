@@ -18,42 +18,39 @@ use std::fmt;
 
 use cjson;
 use ckey::Address;
-use cstate::ShardMetadata;
-use ctypes::ShardId;
+use cstate::World;
 use rlp::{Encodable, RlpStream};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct PodShardMetadata {
-    pub owner: Address,
-    pub number_of_worlds: ShardId,
+pub struct PodWorld {
     pub nonce: u64,
+    pub owners: Vec<Address>,
 }
 
-impl<'a> Into<ShardMetadata> for &'a PodShardMetadata {
-    fn into(self) -> ShardMetadata {
-        ShardMetadata::new_with_nonce(self.number_of_worlds, self.nonce)
+impl<'a> Into<World> for &'a PodWorld {
+    fn into(self) -> World {
+        World::new_with_nonce(self.owners.clone(), self.nonce)
     }
 }
 
-impl Encodable for PodShardMetadata {
+impl Encodable for PodWorld {
     fn rlp_append(&self, s: &mut RlpStream) {
-        let m: ShardMetadata = self.into();
-        m.rlp_append(s);
+        let w: World = self.into();
+        w.rlp_append(s);
     }
 }
 
-impl From<cjson::spec::Shard> for PodShardMetadata {
-    fn from(s: cjson::spec::Shard) -> Self {
+impl From<cjson::spec::World> for PodWorld {
+    fn from(s: cjson::spec::World) -> Self {
         Self {
-            number_of_worlds: 0,
-            nonce: s.nonce.unwrap_or(0),
-            owner: s.owner,
+            nonce: s.nonce.map(Into::into).unwrap_or(0),
+            owners: s.owners.unwrap_or_else(Vec::new),
         }
     }
 }
 
-impl fmt::Display for PodShardMetadata {
+impl fmt::Display for PodWorld {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "(#wordls={}; nonce={}; owner={})", self.number_of_worlds, self.nonce, self.owner)
+        write!(f, "(#nonce={}; owners={:#?})", self.nonce, self.owners)
     }
 }

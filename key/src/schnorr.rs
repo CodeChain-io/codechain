@@ -21,21 +21,27 @@ use std::ops::{Deref, DerefMut};
 use std::str::FromStr;
 
 use primitives::H512;
+use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 use rustc_hex::{FromHex, ToHex};
 use secp256k1::{key, schnorr, Error as SecpError, Message as SecpMessage};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use super::{public_to_address, Address, Error, Message, Private, Public, SECP256K1};
 
 pub const SCHNORR_SIGNATURE_LENGTH: usize = 64;
 
-pub type SchnorrSignatureData = H512;
-
+#[derive(Copy)]
 pub struct SchnorrSignature([u8; 64]);
 
 impl SchnorrSignature {
     /// Check if this is a "low" signature.
     pub fn is_low_s(&self) -> bool {
         true
+    }
+
+    pub fn random() -> Self {
+        let r = H512::random();
+        SchnorrSignature::from(r)
     }
 }
 
@@ -108,6 +114,14 @@ impl Into<[u8; 64]> for SchnorrSignature {
     }
 }
 
+impl<'a> From<&'a [u8]> for SchnorrSignature {
+    fn from(s: &'a [u8]) -> Self {
+        let mut array = [0; 64];
+        array.copy_from_slice(s);
+        SchnorrSignature(array)
+    }
+}
+
 impl From<SchnorrSignature> for H512 {
     fn from(s: SchnorrSignature) -> Self {
         H512::from(s.0)
@@ -131,6 +145,38 @@ impl Deref for SchnorrSignature {
 impl DerefMut for SchnorrSignature {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
+    }
+}
+
+impl Serialize for SchnorrSignature {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer, {
+        let data: H512 = self.0.into();
+        data.serialize(serializer)
+    }
+}
+
+impl<'a> Deserialize<'a> for SchnorrSignature {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'a>, {
+        let data = H512::deserialize(deserializer)?;
+        Ok(Self::from(data))
+    }
+}
+
+impl Encodable for SchnorrSignature {
+    fn rlp_append(&self, s: &mut RlpStream) {
+        let data: H512 = self.0.into();
+        data.rlp_append(s);
+    }
+}
+
+impl Decodable for SchnorrSignature {
+    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+        let data = H512::decode(rlp)?;
+        Ok(SchnorrSignature::from(data))
     }
 }
 

@@ -16,15 +16,19 @@
 
 use primitives::H160;
 
+use super::super::uint::Uint;
+use super::World;
+
 #[derive(Debug, PartialEq, Deserialize)]
 pub struct Shard {
-    pub nonce: Option<u64>,
+    pub nonce: Option<Uint>,
     pub owner: H160,
-    // FIXME: Add worlds
+    pub worlds: Option<Vec<World>>,
 }
 
 #[cfg(test)]
 mod tests {
+    use primitives::U256;
     use serde_json;
 
     use super::*;
@@ -33,13 +37,21 @@ mod tests {
     fn shard_deserialization() {
         let s = r#"{
             "nonce": 0,
-            "owner": "0x01234567890abcdef0123456789abcdef0123456"
+            "owner": "0x01234567890abcdef0123456789abcdef0123456",
+            "worlds": [{
+                "nonce": 3,
+                "owners": ["0x01234567890abcdef0123456789abcdef0123457"]
+            }]
         }"#;
         let shard: Shard = serde_json::from_str(s).unwrap();
         assert_eq!(
             Shard {
-                nonce: Some(0),
+                nonce: Some(Uint(U256::from(0))),
                 owner: H160::from("01234567890abcdef0123456789abcdef0123456"),
+                worlds: Some(vec![World {
+                    nonce: Some(Uint(U256::from(3))),
+                    owners: Some(vec![H160::from("01234567890abcdef0123456789abcdef0123457")]),
+                }]),
             },
             shard
         );
@@ -54,8 +66,9 @@ mod tests {
         let shard: Shard = serde_json::from_str(s).unwrap();
         assert_eq!(
             Shard {
-                nonce: Some(100),
+                nonce: Some(Uint(U256::from(100))),
                 owner: H160::from("01234567890abcdef0123456789abcdef0123456"),
+                worlds: None,
             },
             shard
         );
@@ -80,6 +93,7 @@ mod tests {
             Shard {
                 nonce: None,
                 owner: H160::from("01234567890abcdef0123456789abcdef0123456"),
+                worlds: None,
             },
             shard
         );

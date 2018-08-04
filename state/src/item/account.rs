@@ -106,7 +106,7 @@ impl CacheableItem for Account {
     }
 }
 
-const PREFIX: u8 = 'C' as u8;
+const PREFIX: u8 = super::ADDRESS_PREFIX;
 
 impl Encodable for Account {
     fn rlp_append(&self, s: &mut RlpStream) {

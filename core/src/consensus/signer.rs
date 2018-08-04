@@ -16,7 +16,7 @@
 
 use std::sync::Arc;
 
-use ckey::{Address, Signature};
+use ckey::{Address, Password, Signature};
 use primitives::H256;
 
 use super::super::account_provider::{AccountProvider, SignError};
@@ -25,7 +25,7 @@ use super::super::account_provider::{AccountProvider, SignError};
 pub struct EngineSigner {
     account_provider: Arc<AccountProvider>,
     address: Option<Address>,
-    password: Option<String>,
+    password: Option<Password>,
 }
 
 impl Default for EngineSigner {
@@ -40,7 +40,7 @@ impl Default for EngineSigner {
 
 impl EngineSigner {
     /// Set up the signer to sign with given address and password.
-    pub fn set(&mut self, ap: Arc<AccountProvider>, address: Address, password: String) {
+    pub fn set(&mut self, ap: Arc<AccountProvider>, address: Address, password: Password) {
         self.account_provider = ap;
         self.address = Some(address);
         self.password = Some(password);

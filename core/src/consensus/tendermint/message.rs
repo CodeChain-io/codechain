@@ -17,7 +17,7 @@
 use std::cmp;
 
 use ccrypto::blake256;
-use ckey::{public_to_address, recover, Address, SignatureData};
+use ckey::{public_to_address, recover, Address, Signature};
 use primitives::{Bytes, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
@@ -123,17 +123,11 @@ impl Decodable for TendermintMessage {
 pub struct ConsensusMessage {
     pub vote_step: VoteStep,
     pub block_hash: Option<BlockHash>,
-    pub signature: SignatureData,
+    pub signature: Signature,
 }
 
 impl ConsensusMessage {
-    pub fn new(
-        signature: SignatureData,
-        height: Height,
-        view: View,
-        step: Step,
-        block_hash: Option<BlockHash>,
-    ) -> Self {
+    pub fn new(signature: Signature, height: Height, view: View, step: Step, block_hash: Option<BlockHash>) -> Self {
         ConsensusMessage {
             signature,
             block_hash,
@@ -164,7 +158,7 @@ pub fn consensus_view(header: &Header) -> Result<View, ::rlp::DecoderError> {
 }
 
 /// Proposal signature.
-pub fn proposal_signature(header: &Header) -> Result<SignatureData, ::rlp::DecoderError> {
+pub fn proposal_signature(header: &Header) -> Result<Signature, ::rlp::DecoderError> {
     UntrustedRlp::new(header.seal().get(1).expect("seal passed basic verification; seal has 3 fields; qed").as_slice())
         .as_val()
 }
@@ -172,7 +166,7 @@ pub fn proposal_signature(header: &Header) -> Result<SignatureData, ::rlp::Decod
 impl Message for ConsensusMessage {
     type Round = VoteStep;
 
-    fn signature(&self) -> SignatureData {
+    fn signature(&self) -> Signature {
         self.signature
     }
 
@@ -221,7 +215,7 @@ pub fn message_info_rlp(vote_step: &VoteStep, block_hash: Option<BlockHash>) -> 
     s.out()
 }
 
-pub fn message_full_rlp(signature: &SignatureData, vote_info: &Bytes) -> Bytes {
+pub fn message_full_rlp(signature: &Signature, vote_info: &Bytes) -> Bytes {
     let mut s = RlpStream::new_list(2);
     s.append(signature).append_raw(vote_info, 1);
     s.out()
@@ -235,7 +229,6 @@ pub fn message_hash(vote_step: VoteStep, block_hash: H256) -> H256 {
 mod tests {
     use super::super::Step;
     use super::*;
-    use primitives::H520;
     use rlp;
 
     #[test]
@@ -264,7 +257,7 @@ mod tests {
     #[test]
     fn encode_and_decode_consensus_message_2() {
         let message = ConsensusMessage::new(
-            H520::from("0x3000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003"),
+            Signature::random(),
             2usize,
             3usize,
             Step::Commit,
@@ -278,7 +271,7 @@ mod tests {
         let height = 2usize;
         let view = 3usize;
         let step = Step::Commit;
-        let signature = H520::from("0x3000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003");
+        let signature = Signature::random();
         let block_hash = Some(H256::from("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050"));
         let consensus_message = ConsensusMessage::new(signature, height, view, step, block_hash);
         let vote_info = message_info_rlp(&VoteStep::new(height, view, step), block_hash);

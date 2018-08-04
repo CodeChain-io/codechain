@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ccrypto::{blake256, BLAKE_EMPTY, BLAKE_NULL_RLP};
-use ckey::{sign, KeyPair, Private, SignatureData};
+use ckey::{sign, KeyPair, Private, Signature};
 use primitives::{H160, H256};
 
 use secp256k1::key::{SecretKey, MINUS_ONE_KEY, ONE_KEY};
@@ -76,7 +76,7 @@ fn valid_pay_to_public_key() {
     let keypair = KeyPair::from_private(Private::from(SecretKey::from(ONE_KEY))).unwrap();
     let pubkey = <&[u8]>::from(keypair.public()).to_vec();
     let message = blake256("asdf");
-    let signature = SignatureData::from(sign(keypair.private(), &message).unwrap()).to_vec();
+    let signature = Signature::from(sign(keypair.private(), &message).unwrap()).to_vec();
     let unlock_script = vec![Instruction::PushB(signature)];
     let lock_script = vec![Instruction::PushB(pubkey), Instruction::ChkSig];
 
@@ -91,7 +91,7 @@ fn invalid_pay_to_public_key() {
     let lock_script = vec![Instruction::PushB(pubkey), Instruction::ChkSig];
 
     let invalid_keypair = KeyPair::from_private(Private::from(SecretKey::from(MINUS_ONE_KEY))).unwrap();
-    let invalid_signature = SignatureData::from(sign(invalid_keypair.private(), &message).unwrap()).to_vec();
+    let invalid_signature = Signature::from(sign(invalid_keypair.private(), &message).unwrap()).to_vec();
     let unlock_script = vec![Instruction::PushB(invalid_signature)];
 
     assert_eq!(execute(&unlock_script[..], &[], &lock_script, message, Config::default()), Ok(ScriptResult::Fail));

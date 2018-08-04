@@ -37,7 +37,7 @@ pub use self::validator_set::ValidatorSet;
 use std::fmt;
 use std::sync::{Arc, Weak};
 
-use ckey::{Address, Signature};
+use ckey::{Address, Password, Signature};
 use cnetwork::NetworkExtension;
 use ctypes::machine::Machine;
 use primitives::{Bytes, H256, U256};
@@ -215,7 +215,7 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
     fn broadcast_proposal_block(&self, _block: SealedBlock) {}
 
     /// Register an account which signs consensus messages.
-    fn set_signer(&self, _ap: Arc<AccountProvider>, _address: Address, _password: String) {}
+    fn set_signer(&self, _ap: Arc<AccountProvider>, _address: Address, _password: Password) {}
 
     /// Sign using the EngineSigner, to be used for consensus parcel signing.
     fn sign(&self, _hash: H256) -> Result<Signature, Error> {

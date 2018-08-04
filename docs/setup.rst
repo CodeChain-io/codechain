@@ -83,3 +83,11 @@ Build as Release Version
     cargo build --release
 
 This will produce an executable in the ./target/release directory.
+
+Using CodeChain SDK
+=========================
+Before starting to use the CodeChain SDK, please install node.js by going to this `page <https://nodejs.org/en/>`_.
+
+Next, install the package with the following command:
+
+``npm install codechain-sdk`` or ``yarn add codechain-sdk``

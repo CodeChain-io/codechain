@@ -23,7 +23,7 @@ use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
 use std::sync::{Arc, Weak};
 
 use ccrypto::blake256;
-use ckey::{public_to_address, recover, Address, Message, Signature, SignatureData};
+use ckey::{public_to_address, recover, Address, Message, Password, Signature};
 use cnetwork::{Api, NetworkExtension, NodeId, TimerToken};
 use ctypes::machine::WithBalances;
 use ctypes::BlockNumber;
@@ -103,11 +103,11 @@ pub type BlockHash = H256;
 
 struct ProposalSeal<'a> {
     view: &'a View,
-    signature: &'a SignatureData,
+    signature: &'a Signature,
 }
 
 impl<'a> ProposalSeal<'a> {
-    fn new(view: &'a View, signature: &'a SignatureData) -> Self {
+    fn new(view: &'a View, signature: &'a Signature) -> Self {
         Self {
             view,
             signature,
@@ -125,11 +125,11 @@ impl<'a> ProposalSeal<'a> {
 
 struct RegularSeal<'a> {
     view: &'a View,
-    signatures: &'a Vec<SignatureData>,
+    signatures: &'a Vec<Signature>,
 }
 
 impl<'a> RegularSeal<'a> {
-    fn new(view: &'a View, signatures: &'a Vec<SignatureData>) -> Self {
+    fn new(view: &'a View, signatures: &'a Vec<Signature>) -> Self {
         Self {
             view,
             signatures,
@@ -370,7 +370,7 @@ impl Tendermint {
         let r = self.view.load(AtomicOrdering::SeqCst);
         let s = *self.step.read();
         let vote_info = message_info_rlp(&VoteStep::new(h, r, s), block_hash);
-        match (self.signer.read().address(), self.sign(blake256(&vote_info)).map(Into::into)) {
+        match (self.signer.read().address(), self.sign(blake256(&vote_info))) {
             (Some(validator), Ok(signature)) => {
                 let message_rlp = message_full_rlp(&signature, &vote_info);
                 let message = ConsensusMessage::new(signature, h, r, s, block_hash);
@@ -481,7 +481,7 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
         let view = self.view.load(AtomicOrdering::SeqCst);
         let bh = Some(header.bare_hash());
         let vote_info = message_info_rlp(&VoteStep::new(height, view, Step::Propose), bh.clone());
-        if let Ok(signature) = self.sign(blake256(&vote_info)).map(Into::into) {
+        if let Ok(signature) = self.sign(blake256(&vote_info)) {
             // Insert Propose vote.
             cdebug!(ENGINE, "Submitting proposal {} at height {} view {}.", header.bare_hash(), height, view);
             let sender = self.signer.read().address().expect("seals_internally already returned true");
@@ -720,7 +720,7 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
         header.set_score(new_score);
     }
 
-    fn set_signer(&self, ap: Arc<AccountProvider>, address: Address, password: String) {
+    fn set_signer(&self, ap: Arc<AccountProvider>, address: Address, password: Password) {
         {
             self.signer.write().set(ap, address, password);
         }
@@ -781,7 +781,7 @@ where
         let mut addresses = HashSet::new();
         let ref header_signatures_field = header.seal().get(2).ok_or(BlockError::InvalidSeal)?;
         for rlp in UntrustedRlp::new(header_signatures_field).iter() {
-            let signature: SignatureData = rlp.as_val()?;
+            let signature: Signature = rlp.as_val()?;
             let address = (self.recover)(&signature.into(), &message)?;
 
             if !self.subchain_validators.contains(header.parent_hash(), &address) {

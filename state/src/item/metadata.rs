@@ -52,7 +52,7 @@ impl CacheableItem for Metadata {
     }
 }
 
-const PREFIX: u8 = 'M' as u8;
+const PREFIX: u8 = super::METADATA_PREFIX;
 
 impl Encodable for Metadata {
     fn rlp_append(&self, s: &mut RlpStream) {

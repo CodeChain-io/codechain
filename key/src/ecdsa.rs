@@ -37,17 +37,18 @@ use std::ops::{Deref, DerefMut};
 use std::str::FromStr;
 
 use primitives::{H256, H520};
+use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 use rustc_hex::{FromHex, ToHex};
 use secp256k1::{key, Error as SecpError, Message as SecpMessage, RecoverableSignature, RecoveryId};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use super::{public_to_address, Address, Error, Message, Private, Public, SECP256K1};
 
 pub const ECDSA_SIGNATURE_LENGTH: usize = 65;
 
-pub type ECDSASignatureData = H520;
-
 /// Signature encoded as RSV components
 #[repr(C)]
+#[derive(Copy)]
 pub struct ECDSASignature([u8; 65]);
 
 impl ECDSASignature {
@@ -66,15 +67,6 @@ impl ECDSASignature {
         self.0[64]
     }
 
-    /// Create a signature object from the sig.
-    pub fn from_rsv(r: &H256, s: &H256, v: u8) -> Self {
-        let mut sig = [0u8; 65];
-        sig[0..32].copy_from_slice(&r);
-        sig[32..64].copy_from_slice(&s);
-        sig[64] = v;
-        ECDSASignature(sig)
-    }
-
     /// Check if this is a "low" signature.
     pub fn is_low_s(&self) -> bool {
         H256::from_slice(self.s()) <= "7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0".into()
@@ -87,6 +79,11 @@ impl ECDSASignature {
             && H256::from_slice(self.r()) >= 1.into()
             && H256::from_slice(self.s()) < "fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141".into()
             && H256::from_slice(self.s()) >= 1.into()
+    }
+
+    pub fn random() -> Self {
+        let r = H520::random();
+        ECDSASignature::from(r)
     }
 }
 
@@ -157,6 +154,14 @@ impl From<[u8; 65]> for ECDSASignature {
     }
 }
 
+impl<'a> From<&'a [u8]> for ECDSASignature {
+    fn from(s: &'a [u8]) -> Self {
+        let mut array = [0; 65];
+        array.copy_from_slice(s);
+        ECDSASignature(array)
+    }
+}
+
 impl Into<[u8; 65]> for ECDSASignature {
     fn into(self) -> [u8; 65] {
         self.0
@@ -189,6 +194,37 @@ impl DerefMut for ECDSASignature {
     }
 }
 
+impl Serialize for ECDSASignature {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer, {
+        let data: H520 = self.0.into();
+        data.serialize(serializer)
+    }
+}
+
+impl<'a> Deserialize<'a> for ECDSASignature {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'a>, {
+        let data = H520::deserialize(deserializer)?;
+        Ok(Self::from(data))
+    }
+}
+
+impl Encodable for ECDSASignature {
+    fn rlp_append(&self, s: &mut RlpStream) {
+        let data: H520 = self.0.into();
+        data.rlp_append(s);
+    }
+}
+
+impl Decodable for ECDSASignature {
+    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+        let data = H520::decode(rlp)?;
+        Ok(Self::from(data))
+    }
+}
 
 pub fn sign_ecdsa(private: &Private, message: &Message) -> Result<ECDSASignature, Error> {
     let context = &SECP256K1;

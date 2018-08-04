@@ -13,4 +13,3 @@ The transaction process on CodeChain involves many components. (To be completed)
 
     gateway
     parcel
-    validator

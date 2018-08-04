@@ -25,3 +25,13 @@ pub mod metadata;
 pub mod regular_account;
 pub mod shard;
 pub mod shard_metadata;
+pub mod world;
+
+const ASSET_PREFIX: u8 = 'A' as u8;
+const ADDRESS_PREFIX: u8 = 'C' as u8;
+const SHARD_METADATA_PREFIX: u8 = 'E' as u8;
+const SHARD_PREFIX: u8 = 'H' as u8;
+const METADATA_PREFIX: u8 = 'M' as u8;
+const REGULAR_ACCOUNT_PREFIX: u8 = 'R' as u8;
+const ASSET_SCHEME_PREFIX: u8 = 'S' as u8;
+const WORLD_PREFIX: u8 = 'W' as u8;

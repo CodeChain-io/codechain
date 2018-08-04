@@ -18,7 +18,7 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::Debug;
 use std::hash::Hash;
 
-use ckey::{Address, SignatureData};
+use ckey::{Address, Signature};
 use parking_lot::RwLock;
 use primitives::{Bytes, H256};
 use rlp::{Encodable, RlpStream};
@@ -26,7 +26,7 @@ use rlp::{Encodable, RlpStream};
 pub trait Message: Clone + PartialEq + Eq + Hash + Encodable + Debug {
     type Round: Clone + PartialEq + Eq + Hash + Default + Debug + Ord;
 
-    fn signature(&self) -> SignatureData;
+    fn signature(&self) -> Signature;
 
     fn block_hash(&self) -> Option<H256>;
 
@@ -44,7 +44,7 @@ pub struct VoteCollector<M: Message> {
 #[derive(Debug, Default)]
 struct StepCollector<M: Message> {
     voted: HashMap<Address, M>,
-    block_votes: HashMap<Option<H256>, HashMap<SignatureData, Address>>,
+    block_votes: HashMap<Option<H256>, HashMap<Signature, Address>>,
     messages: HashSet<M>,
 }
 
@@ -137,7 +137,7 @@ impl<M: Message + Default + Encodable + Debug> VoteCollector<M> {
     }
 
     /// Collects the signatures for a given round and hash.
-    pub fn round_signatures(&self, round: &M::Round, block_hash: &H256) -> Vec<SignatureData> {
+    pub fn round_signatures(&self, round: &M::Round, block_hash: &H256) -> Vec<Signature> {
         let guard = self.votes.read();
         guard
             .get(round)

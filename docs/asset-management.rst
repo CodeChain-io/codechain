@@ -10,13 +10,9 @@ If you visit this `link <https://api.codechain.io>`_, you can see an example Jav
 This page will guide you along on how to use codechain-sdk-js based on the example provided,
 called “Mint 10000 Gold and send 3000 Gold using AssetMintTransaction, AssetTransferTransaction”.
 
-Before starting, please install node.js by going to this `page <https://nodejs.org/en/>`_.
+Before following any examples, please make sure to carefully go through the `setup section <https://codechain.readthedocs.io/en/latest/setup.html>`_ before starting any examples.
 
-First, install the package with the following command:
-
-``npm install codechain-sdk`` or ``yarn add codechain-sdk``
-
-Then, make sure that your CodeChain RPC server is up and running. You can read about how that is done in the `configure section <https://codechain.readthedocs.io/en/latest/configuration.html>`_.
+Then, check whether your CodeChain RPC server is up and running. You can read about how that is done in the `configure section <https://codechain.readthedocs.io/en/latest/configuration.html>`_.
 
 Setup the Test Account
 =====================================
