@@ -58,4 +58,8 @@ impl Net for NetClient {
     fn get_port(&self) -> Result<u16> {
         Ok(self.network_control.get_port().map_err(errors::network_control)?)
     }
+
+    fn get_peer_count(&self) -> Result<usize> {
+        Ok(self.network_control.get_peer_count().map_err(errors::network_control)?)
+    }
 }
