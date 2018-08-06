@@ -326,7 +326,7 @@ impl TopLevelState {
         self.create_checkpoint(PARCEL_FEE_CHECKPOINT);
 
         match self.apply_internal(parcel, &fee_payer, fee_payer_public) {
-            Err(StateError::Transaction(_)) => unreachable!(),
+            Err(StateError::Transaction(err)) => unreachable!("{:?}", err),
             Err(err) => {
                 self.revert_to_checkpoint(PARCEL_FEE_CHECKPOINT);
                 Err(err)
