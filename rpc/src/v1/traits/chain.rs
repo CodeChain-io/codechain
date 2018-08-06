@@ -19,7 +19,7 @@ use cstate::{Asset, AssetScheme};
 use ctypes::invoice::{ParcelInvoice, TransactionInvoice};
 use ctypes::parcel::ChangeShard;
 use ctypes::transaction::Transaction;
-use ctypes::{BlockNumber, ShardId};
+use ctypes::{BlockNumber, ShardId, WorldId};
 use primitives::{H160, H256, U256};
 
 use jsonrpc_core::Result;
@@ -50,7 +50,7 @@ build_rpc_trait! {
 
         /// Gets asset scheme with given transaction hash.
         # [rpc(name = "chain_getAssetSchemeByHash")]
-        fn get_asset_scheme_by_hash(&self, H256, ShardId) -> Result<Option<AssetScheme>>;
+        fn get_asset_scheme_by_hash(&self, H256, ShardId, WorldId) -> Result<Option<AssetScheme>>;
 
         /// Gets asset scheme with given asset type.
         # [rpc(name = "chain_getAssetSchemeByType")]

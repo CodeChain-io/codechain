@@ -25,7 +25,7 @@ use cstate::{Asset, AssetScheme, AssetSchemeAddress};
 use ctypes::invoice::{ParcelInvoice, TransactionInvoice};
 use ctypes::parcel::{Action, ChangeShard};
 use ctypes::transaction::Transaction;
-use ctypes::{BlockNumber, ShardId};
+use ctypes::{BlockNumber, ShardId, WorldId};
 use primitives::{H160, H256, U256};
 use rlp::{DecoderError, UntrustedRlp};
 
@@ -103,8 +103,13 @@ where
         Ok(self.client.transaction_invoice(transaction_hash.into()))
     }
 
-    fn get_asset_scheme_by_hash(&self, transaction_hash: H256, shard_id: ShardId) -> Result<Option<AssetScheme>> {
-        let address = AssetSchemeAddress::new(transaction_hash, shard_id);
+    fn get_asset_scheme_by_hash(
+        &self,
+        transaction_hash: H256,
+        shard_id: ShardId,
+        world_id: WorldId,
+    ) -> Result<Option<AssetScheme>> {
+        let address = AssetSchemeAddress::new(transaction_hash, shard_id, world_id);
         self.get_asset_scheme_by_type(address.into())
     }
 
