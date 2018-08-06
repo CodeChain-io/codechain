@@ -137,7 +137,7 @@ pub trait TrieMut {
     fn remove(&mut self, key: &[u8]) -> Result<Option<DBValue>>;
 }
 
-pub struct TrieFactory {}
+pub enum TrieFactory {}
 
 impl TrieFactory {
     /// Create new immutable instance of Trie.
