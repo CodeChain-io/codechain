@@ -320,13 +320,13 @@ impl AssetClient for Client {
 }
 
 impl ExecuteClient for Client {
-    fn execute_transactions(&self, transactions: &[Transaction]) -> Result<Vec<ChangeShard>, Error> {
+    fn execute_transactions(&self, transactions: &[Transaction], sender: &Address) -> Result<Vec<ChangeShard>, Error> {
         let state = Client::state_at(&self, BlockId::Latest).expect("Latest state MUST exist");
         let mut shard_ids: Vec<ShardId> = transactions.iter().flat_map(Transaction::related_shards).collect();
         shard_ids.sort_unstable();
         shard_ids.dedup();
 
-        Ok(shard_ids.iter().flat_map(|shard_id| state.apply_transactions(transactions, *shard_id)).collect())
+        Ok(shard_ids.iter().flat_map(|shard_id| state.apply_transactions(transactions, *shard_id, sender)).collect())
     }
 }
 

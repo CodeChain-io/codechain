@@ -419,10 +419,10 @@ impl TopLevelState {
 
                 debug_assert!(transactions.iter().all(|t| &t.network_id() == network_id));
 
-                let first_result = self.apply_transactions_with_check(&transactions, &changes[0])?;
+                let first_result = self.apply_transactions_with_check(&transactions, &changes[0], fee_payer)?;
 
                 for change in changes.iter().skip(1) {
-                    let result = self.apply_transactions_with_check(&transactions, change)?;
+                    let result = self.apply_transactions_with_check(&transactions, change, fee_payer)?;
                     if result != first_result {
                         return Err(ParcelError::InconsistentShardOutcomes.into())
                     }
@@ -480,6 +480,7 @@ impl TopLevelState {
         &mut self,
         transactions: &[Transaction],
         change: &ChangeShard,
+        sender: &Address,
     ) -> StateResult<Vec<TransactionOutcome>> {
         let shard_id = change.shard_id;
 
@@ -491,7 +492,8 @@ impl TopLevelState {
             }).into())
         }
 
-        let (new_shard_root, db, results) = self.apply_transactions_internal(transactions, shard_id, shard_root)?;
+        let (new_shard_root, db, results) =
+            self.apply_transactions_internal(transactions, shard_id, shard_root, sender)?;
         if !change.post_root.is_zero() && change.post_root != new_shard_root {
             return Err(ParcelError::InvalidShardRoot(Mismatch {
                 expected: new_shard_root,
@@ -505,9 +507,14 @@ impl TopLevelState {
         Ok(results)
     }
 
-    pub fn apply_transactions(&self, transactions: &[Transaction], shard_id: ShardId) -> StateResult<ChangeShard> {
+    pub fn apply_transactions(
+        &self,
+        transactions: &[Transaction],
+        shard_id: ShardId,
+        sender: &Address,
+    ) -> StateResult<ChangeShard> {
         let pre_root = self.shard_root(shard_id)?.ok_or_else(|| ParcelError::InvalidShardId(shard_id))?;
-        let (post_root, ..) = self.apply_transactions_internal(transactions, shard_id, pre_root)?;
+        let (post_root, ..) = self.apply_transactions_internal(transactions, shard_id, pre_root, sender)?;
         Ok(ChangeShard {
             shard_id,
             pre_root,
@@ -520,13 +527,14 @@ impl TopLevelState {
         transactions: &[Transaction],
         shard_id: ShardId,
         shard_root: H256,
+        sender: &Address,
     ) -> StateResult<(H256, StateDB, Vec<TransactionOutcome>)> {
         // FIXME: Make it mutable borrow db instead of cloning.
         let mut shard_level_state = ShardLevelState::from_existing(shard_id, self.db.clone(), shard_root)?;
 
         let mut results = Vec::with_capacity(transactions.len());
         for t in transactions {
-            let result = shard_level_state.apply(shard_id, t)?;
+            let result = shard_level_state.apply(shard_id, t, sender)?;
             results.push(result);
         }
 
