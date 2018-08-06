@@ -1154,9 +1154,11 @@ pub mod test {
         let shard_id = 0xCCC;
 
         let fee = U256::from(100);
+        let world_id = 0;
         let transactions = vec![Transaction::AssetMint {
             network_id: 200,
             shard_id,
+            world_id,
             metadata: "Metadata".to_string(),
             output: AssetMintOutput {
                 lock_script_hash: H256::zero(),
@@ -1192,10 +1194,12 @@ pub mod test {
         let shard_id = 0;
 
         let fee = U256::from(100);
+        let world_id = 0;
         let transactions = vec![
             Transaction::AssetMint {
                 network_id: 200,
                 shard_id,
+                world_id,
                 metadata: "Metadata".to_string(),
                 output: AssetMintOutput {
                     lock_script_hash: H256::zero(),

@@ -75,6 +75,7 @@ pub enum Transaction {
     AssetMint {
         network_id: u32,
         shard_id: ShardId,
+        world_id: WorldId,
         metadata: String,
         registrar: Option<Address>,
         nonce: u64,
@@ -285,20 +286,21 @@ impl Decodable for Transaction {
                 })
             }
             ASSET_MINT_ID => {
-                if d.item_count()? != 9 {
+                if d.item_count()? != 10 {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
                 Ok(Transaction::AssetMint {
                     network_id: d.val_at(1)?,
                     shard_id: d.val_at(2)?,
-                    metadata: d.val_at(3)?,
+                    world_id: d.val_at(3)?,
+                    metadata: d.val_at(4)?,
                     output: AssetMintOutput {
-                        lock_script_hash: d.val_at(4)?,
-                        parameters: d.val_at(5)?,
-                        amount: d.val_at(6)?,
+                        lock_script_hash: d.val_at(5)?,
+                        parameters: d.val_at(6)?,
+                        amount: d.val_at(7)?,
                     },
-                    registrar: d.val_at(7)?,
-                    nonce: d.val_at(8)?,
+                    registrar: d.val_at(8)?,
+                    nonce: d.val_at(9)?,
                 })
             }
             ASSET_TRANSFER_ID => {
@@ -350,6 +352,7 @@ impl Encodable for Transaction {
             Transaction::AssetMint {
                 network_id,
                 shard_id,
+                world_id,
                 metadata,
                 output:
                     AssetMintOutput {
@@ -360,10 +363,11 @@ impl Encodable for Transaction {
                 registrar,
                 nonce,
             } => s
-                .begin_list(9)
+                .begin_list(10)
                 .append(&ASSET_MINT_ID)
                 .append(network_id)
                 .append(shard_id)
+                .append(world_id)
                 .append(metadata)
                 .append(lock_script_hash)
                 .append(parameters)

@@ -1527,6 +1527,7 @@ mod tests_parcel {
         assert_eq!(Ok(()), state.commit());
 
         let shard_id = 0x0;
+        let world_id = 0;
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H256::random();
@@ -1536,6 +1537,7 @@ mod tests_parcel {
         let transaction = Transaction::AssetMint {
             network_id: 0xCA,
             shard_id,
+            world_id,
             metadata: metadata.clone(),
             output: AssetMintOutput {
                 lock_script_hash,
@@ -1572,7 +1574,7 @@ mod tests_parcel {
         assert_eq!(state.balance(&sender), Ok(58.into()));
         assert_eq!(state.nonce(&sender), Ok(1.into()));
 
-        let asset_scheme_address = AssetSchemeAddress::new(transaction_hash, shard_id);
+        let asset_scheme_address = AssetSchemeAddress::new(transaction_hash, shard_id, world_id);
         let asset_scheme = state.asset_scheme(shard_id, &asset_scheme_address);
         assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), amount, registrar))), asset_scheme);
 
@@ -1590,6 +1592,7 @@ mod tests_parcel {
         assert_eq!(Ok(()), state.commit());
 
         let shard_id = 0;
+        let world_id = 0;
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H256::random();
@@ -1598,6 +1601,7 @@ mod tests_parcel {
         let transaction = Transaction::AssetMint {
             network_id: 0xCA,
             shard_id,
+            world_id,
             metadata: metadata.clone(),
             output: AssetMintOutput {
                 lock_script_hash,
@@ -1634,7 +1638,7 @@ mod tests_parcel {
         assert_eq!(state.balance(&sender), Ok(64.into()));
         assert_eq!(state.nonce(&sender), Ok(1.into()));
 
-        let asset_scheme_address = AssetSchemeAddress::new(transaction_hash, shard_id);
+        let asset_scheme_address = AssetSchemeAddress::new(transaction_hash, shard_id, world_id);
         let asset_scheme = state.asset_scheme(shard_id, &asset_scheme_address);
         assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), ::std::u64::MAX, registrar))), asset_scheme);
 
@@ -1656,6 +1660,7 @@ mod tests_parcel {
 
         let shard_id = 0x00;
         let network_id = 0xBeef;
+        let world_id = 0;
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H256::from("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050");
@@ -1664,6 +1669,7 @@ mod tests_parcel {
         let mint = Transaction::AssetMint {
             network_id,
             shard_id,
+            world_id,
             metadata: metadata.clone(),
             output: AssetMintOutput {
                 lock_script_hash,
@@ -1675,7 +1681,7 @@ mod tests_parcel {
         };
         let mint_hash = mint.hash();
 
-        let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id);
+        let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id, world_id);
         let asset_type = asset_scheme_address.clone().into();
         let asset_address = AssetAddress::new(mint_hash, 0, shard_id);
 
@@ -1773,6 +1779,7 @@ mod tests_parcel {
 
         let network_id = 0xBeef;
         let shard_id = 0x00;
+        let world_id = 0;
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H256::from("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050");
@@ -1781,6 +1788,7 @@ mod tests_parcel {
         let mint = Transaction::AssetMint {
             network_id,
             shard_id,
+            world_id,
             metadata: metadata.clone(),
             output: AssetMintOutput {
                 lock_script_hash,
@@ -1816,7 +1824,7 @@ mod tests_parcel {
         assert_eq!(state.balance(&sender), Ok(100.into()));
         assert_eq!(state.nonce(&sender), Ok(1.into()));
 
-        let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id);
+        let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id, world_id);
         let asset_type = asset_scheme_address.clone().into();
         let asset_address = AssetAddress::new(mint_hash, 0, shard_id);
 
@@ -1869,7 +1877,7 @@ mod tests_parcel {
                 transactions: vec![transfer],
                 changes: vec![ChangeShard {
                     shard_id,
-                    pre_root: H256::from("0x3e56ec350ed779120d7b27472aef08fefa0e72165206275efa0b4c8419ba26db"),
+                    pre_root: H256::from("0x0c9831e4a6ffc8771c5a53c130ecdd2ae9ebac8ee644e12c8ea371003e4c9a5a"),
                     post_root: H256::zero(),
                 }],
                 signatures: vec![],
@@ -1925,7 +1933,11 @@ mod tests_parcel {
         let state = get_temp_state();
 
         let shard_id = 3;
-        assert_eq!(Ok(None), state.asset_scheme(shard_id, &AssetSchemeAddress::new(H256::random(), shard_id)));
+        let world_id = 0;
+        assert_eq!(
+            Ok(None),
+            state.asset_scheme(shard_id, &AssetSchemeAddress::new(H256::random(), shard_id, world_id))
+        );
     }
 
     #[test]
@@ -1990,7 +2002,11 @@ mod tests_parcel {
         assert_eq!(Ok(Some(vec![sender])), state.shard_owners(0));
 
         let shard_id = 3;
-        assert_eq!(Ok(None), state.asset_scheme(shard_id, &AssetSchemeAddress::new(H256::random(), shard_id)));
+        let world_id = 0;
+        assert_eq!(
+            Ok(None),
+            state.asset_scheme(shard_id, &AssetSchemeAddress::new(H256::random(), shard_id, world_id))
+        );
     }
 
     #[test]
@@ -1998,6 +2014,7 @@ mod tests_parcel {
         let mut state = get_temp_state();
 
         let shard_id = 0;
+        let world_id = 0;
         let metadata = "metadata".to_string();
         let lock_script_hash = H256::random();
         let parameters = vec![];
@@ -2006,6 +2023,7 @@ mod tests_parcel {
         let transaction = Transaction::AssetMint {
             network_id: 0xCA,
             shard_id,
+            world_id,
             metadata: metadata.clone(),
             output: AssetMintOutput {
                 lock_script_hash,
@@ -2044,8 +2062,9 @@ mod tests_parcel {
 
         let network_id = 0xBeef;
         let shard_id = 100;
+        let world_id = 0;
 
-        let asset_type = AssetSchemeAddress::new(H256::zero(), shard_id).into();
+        let asset_type = AssetSchemeAddress::new(H256::zero(), shard_id, world_id).into();
         let transfer = Transaction::AssetTransfer {
             network_id,
             burns: vec![],

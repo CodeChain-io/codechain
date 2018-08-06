@@ -126,6 +126,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
             } => Ok(self.set_world_owners(*shard_id, *world_id, *nonce, &owners, sender, shard_owners)?),
             Transaction::AssetMint {
                 metadata,
+                world_id,
                 registrar,
                 output:
                     AssetMintOutput {
@@ -134,7 +135,15 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
                         parameters,
                     },
                 ..
-            } => Ok(self.mint_asset(transaction.hash(), metadata, lock_script_hash, parameters, amount, registrar)?),
+            } => Ok(self.mint_asset(
+                transaction.hash(),
+                *world_id,
+                metadata,
+                lock_script_hash,
+                parameters,
+                amount,
+                registrar,
+            )?),
             Transaction::AssetTransfer {
                 burns,
                 inputs,
@@ -209,13 +218,14 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
     fn mint_asset(
         &mut self,
         transaction_hash: H256,
+        world_id: WorldId,
         metadata: &String,
         lock_script_hash: &H256,
         parameters: &Vec<Bytes>,
         amount: &Option<u64>,
         registrar: &Option<Address>,
     ) -> StateResult<()> {
-        let asset_scheme_address = AssetSchemeAddress::new(transaction_hash, self.shard_id);
+        let asset_scheme_address = AssetSchemeAddress::new(transaction_hash, self.shard_id, world_id);
         let amount = amount.unwrap_or(::std::u64::MAX);
         let asset_scheme = self.require_asset_scheme(&asset_scheme_address, || {
             AssetScheme::new(metadata.clone(), amount, registrar.clone())
@@ -659,6 +669,7 @@ mod tests {
     #[test]
     fn mint_permissioned_asset() {
         let shard_id = 0;
+        let world_id = 0;
         let mut state = get_temp_shard_state(shard_id);
 
         let metadata = "metadata".to_string();
@@ -669,6 +680,7 @@ mod tests {
         let transaction = Transaction::AssetMint {
             network_id: 200,
             shard_id,
+            world_id,
             metadata: metadata.clone(),
             output: AssetMintOutput {
                 lock_script_hash,
@@ -685,7 +697,7 @@ mod tests {
         assert_eq!(Ok(TransactionInvoice::Success), result);
 
         let transaction_hash = transaction.hash();
-        let asset_scheme_address = AssetSchemeAddress::new(transaction_hash, shard_id);
+        let asset_scheme_address = AssetSchemeAddress::new(transaction_hash, shard_id, world_id);
         let asset_scheme = state.asset_scheme(&asset_scheme_address);
         assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), amount, registrar))), asset_scheme);
 
@@ -697,6 +709,7 @@ mod tests {
     #[test]
     fn mint_infinite_asset() {
         let shard_id = 0;
+        let world_id = 0;
         let mut state = get_temp_shard_state(shard_id);
 
         let metadata = "metadata".to_string();
@@ -706,6 +719,7 @@ mod tests {
         let transaction = Transaction::AssetMint {
             network_id: 200,
             shard_id,
+            world_id,
             metadata: metadata.clone(),
             output: AssetMintOutput {
                 lock_script_hash,
@@ -722,7 +736,7 @@ mod tests {
         assert_eq!(Ok(TransactionInvoice::Success), result);
 
         let transaction_hash = transaction.hash();
-        let asset_scheme_address = AssetSchemeAddress::new(transaction_hash, shard_id);
+        let asset_scheme_address = AssetSchemeAddress::new(transaction_hash, shard_id, world_id);
         let asset_scheme = state.asset_scheme(&asset_scheme_address);
         assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), ::std::u64::MAX, registrar))), asset_scheme);
 
@@ -736,7 +750,9 @@ mod tests {
 
     #[test]
     fn mint_and_transfer() {
+        let network_id = 0xCafe;
         let shard_id = 0;
+        let world_id = 0;
         let mut state = get_temp_shard_state(shard_id);
 
         let metadata = "metadata".to_string();
@@ -744,8 +760,9 @@ mod tests {
         let registrar = None;
         let amount = 30;
         let mint = Transaction::AssetMint {
-            network_id: 200,
+            network_id,
             shard_id,
+            world_id,
             metadata: metadata.clone(),
             output: AssetMintOutput {
                 lock_script_hash,
@@ -763,7 +780,7 @@ mod tests {
         let shard_owner = address();
         assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &mint, &sender, &[shard_owner]));
 
-        let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id);
+        let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id, world_id);
         let asset_scheme = state.asset_scheme(&asset_scheme_address);
         let asset_type = asset_scheme_address.into();
 
@@ -828,7 +845,10 @@ mod tests {
 
     #[test]
     fn mint_and_failed_transfer_and_successful_transfer() {
+        let network_id = 0xCafe;
         let shard_id = 0;
+        let world_id = 0;
+
         let mut state = get_temp_shard_state(shard_id);
 
         let metadata = "metadata".to_string();
@@ -836,8 +856,9 @@ mod tests {
         let registrar = None;
         let amount = 30;
         let mint = Transaction::AssetMint {
-            network_id: 200,
+            network_id,
             shard_id,
+            world_id,
             metadata: metadata.clone(),
             output: AssetMintOutput {
                 lock_script_hash,
@@ -855,7 +876,7 @@ mod tests {
         let shard_owner = address();
         assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &mint, &sender, &[shard_owner]));
 
-        let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id);
+        let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id, world_id);
         let asset_scheme = state.asset_scheme(&asset_scheme_address);
         let asset_type = asset_scheme_address.into();
 

@@ -312,6 +312,7 @@ mod tests {
         rlp_encode_and_decode_test!(Transaction::AssetMint {
             network_id: 200,
             shard_id: 0xc,
+            world_id: 0xA,
             metadata: "mint test".to_string(),
             output: AssetMintOutput {
                 lock_script_hash: H256::random(),
@@ -328,6 +329,7 @@ mod tests {
         rlp_encode_and_decode_test!(Transaction::AssetMint {
             network_id: 200,
             shard_id: 3,
+            world_id: 0xB,
             metadata: "mint test".to_string(),
             output: AssetMintOutput {
                 lock_script_hash: H256::random(),

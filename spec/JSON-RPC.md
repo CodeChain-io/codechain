@@ -525,6 +525,7 @@ Gets an asset scheme with the given asset type.
 Params:
  1. transaction hash of AssetMintTransaction - `H256`
  2. shard id - `number`
+ 3. world_id - `number`
 
 Return Type: `null` | `AssetScheme`
 
@@ -534,7 +535,7 @@ Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "chain_getAssetSchemeByHash", "params": ["0x24df02abcd4e984e90253dc344e89b8431bbb319c66643bfef566dfdf46ec6bc", 0], "id": null}' \
+    -d '{"jsonrpc": "2.0", "method": "chain_getAssetSchemeByHash", "params": ["0x24df02abcd4e984e90253dc344e89b8431bbb319c66643bfef566dfdf46ec6bc", 0, 0], "id": null}' \
     localhost:8080
 ```
 
