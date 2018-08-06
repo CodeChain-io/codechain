@@ -45,7 +45,6 @@ pub enum Error {
     InvalidScript,
     /// Script execution result is `Fail`
     FailedToUnlock(H256),
-    InvalidNetworkId(Mismatch<u64>),
     /// Returned when the sum of the transaction's inputs is different from the sum of outputs.
     InconsistentTransactionInOut,
 }
@@ -77,7 +76,6 @@ impl Display for Error {
             }
             Error::InvalidScript => write!(f, "Failed to decode script"),
             Error::FailedToUnlock(hash) => write!(f, "Failed to unlock asset {}", hash),
-            Error::InvalidNetworkId(mismatch) => write!(f, "Invalid network id. {}", mismatch),
             Error::InconsistentTransactionInOut => {
                 write!(f, "The sum of the transaction's inputs is different from the sum of the transaction's outputs")
             }

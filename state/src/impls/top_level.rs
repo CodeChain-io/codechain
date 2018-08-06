@@ -43,7 +43,7 @@ use ckey::{public_to_address, Address, Public};
 use cmerkle::{Result as TrieResult, Trie, TrieError, TrieFactory};
 use ctypes::invoice::Invoice;
 use ctypes::parcel::{Action, ChangeShard, Error as ParcelError, Outcome as ParcelOutcome, Parcel};
-use ctypes::transaction::{Error as TransactionError, Outcome as TransactionOutcome, Transaction};
+use ctypes::transaction::{Outcome as TransactionOutcome, Transaction};
 use ctypes::ShardId;
 use primitives::{Bytes, H256, U256};
 use rlp::NULL_RLP;
@@ -399,15 +399,7 @@ impl TopLevelState {
                     return Ok(ParcelOutcome::Transactions(vec![]))
                 }
 
-                for t in transactions {
-                    let transaction_network_id = t.network_id();
-                    if &transaction_network_id != network_id {
-                        return Err(TransactionError::InvalidNetworkId(Mismatch {
-                            expected: *network_id,
-                            found: transaction_network_id,
-                        }).into())
-                    }
-                }
+                debug_assert!(transactions.iter().all(|t| &t.network_id() == network_id));
 
                 let first_result = self.apply_transactions_with_check(&transactions, &changes[0])?;
 
