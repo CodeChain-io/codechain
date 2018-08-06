@@ -118,6 +118,6 @@ build_rpc_trait! {
 
         /// Execute Transactions
         # [rpc(name = "chain_executeTransactions")]
-        fn execute_change_shard_state(&self, Bytes) -> Result<Vec<ChangeShard>>;
+        fn execute_change_shard_state(&self, Bytes, Address) -> Result<Vec<ChangeShard>>;
     }
 }
