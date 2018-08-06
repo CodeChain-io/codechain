@@ -225,10 +225,9 @@ mod tests {
     fn can_generate_seal() {
         let spec = Spec::new_test_solo_authority();
         let engine = &*spec.engine;
-        let db = spec.ensure_genesis_state(get_temp_state_db(), &Default::default()).unwrap();
+        let db = spec.ensure_genesis_state(get_temp_state_db()).unwrap();
         let genesis_header = spec.genesis_header();
-        let b =
-            OpenBlock::new(engine, Default::default(), db, &genesis_header, Default::default(), vec![], false).unwrap();
+        let b = OpenBlock::new(engine, db, &genesis_header, Default::default(), vec![], false).unwrap();
         let parent_parcels_root = genesis_header.parcels_root().clone();
         let parent_invoices_root = genesis_header.invoices_root().clone();
         let b = b.close_and_lock(parent_parcels_root, parent_invoices_root);

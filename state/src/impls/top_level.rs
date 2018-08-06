@@ -112,7 +112,6 @@ pub struct TopLevelState {
     shard: Cache<Shard>,
     action_data: Cache<Bytes>,
     id_of_checkpoints: Vec<CheckpointId>,
-    trie_factory: TrieFactory,
 }
 
 impl TopStateInfo for TopLevelState {
@@ -139,7 +138,7 @@ impl TopStateInfo for TopLevelState {
         }
 
         // because of lexical borrow of self.db
-        let db = self.trie_factory.readonly(self.db.as_hashdb(), &self.root)?;
+        let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
         Ok(db.get_with(&shard_address, ::rlp::decode::<Shard>)?.map(|s| s.root().clone()))
     }
 
@@ -151,7 +150,7 @@ impl TopStateInfo for TopLevelState {
         }
 
         // because of lexical borrow of self.db
-        let db = self.trie_factory.readonly(self.db.as_hashdb(), &self.root)?;
+        let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
         Ok(db.get_with(&shard_address, ::rlp::decode::<Shard>)?.map(|s| s.owner().clone()))
     }
 
@@ -163,8 +162,7 @@ impl TopStateInfo for TopLevelState {
         // FIXME: Handle the case that shard doesn't exist
         let shard_root = self.shard_root(shard_id)?.unwrap_or(BLAKE_NULL_RLP);
         // FIXME: Make it mutable borrow db instead of cloning.
-        let shard_level_state =
-            ShardLevelState::from_existing(shard_id, self.db.clone(), shard_root, self.trie_factory)?;
+        let shard_level_state = ShardLevelState::from_existing(shard_id, self.db.clone(), shard_root)?;
         shard_level_state.asset_scheme(asset_scheme_address)
     }
 
@@ -172,8 +170,7 @@ impl TopStateInfo for TopLevelState {
         // FIXME: Handle the case that shard doesn't exist
         let shard_root = self.shard_root(shard_id)?.unwrap_or(BLAKE_NULL_RLP);
         // FIXME: Make it mutable borrow db instead of cloning.
-        let shard_level_state =
-            ShardLevelState::from_existing(shard_id, self.db.clone(), shard_root, self.trie_factory)?;
+        let shard_level_state = ShardLevelState::from_existing(shard_id, self.db.clone(), shard_root)?;
         shard_level_state.asset(asset_address)
     }
 
@@ -221,7 +218,7 @@ impl StateWithCheckpoint for TopLevelState {
 
 impl StateWithCache for TopLevelState {
     fn commit(&mut self) -> TrieResult<()> {
-        let mut trie = self.trie_factory.from_existing(self.db.as_hashdb_mut(), &mut self.root)?;
+        let mut trie = TrieFactory::from_existing(self.db.as_hashdb_mut(), &mut self.root)?;
         self.account.commit(&mut trie)?;
         self.regular_account.commit(&mut trie)?;
         self.metadata.commit(&mut trie)?;
@@ -262,11 +259,11 @@ impl TopLevelState {
     /// Creates new state with empty state root
     /// Used for tests.
     #[cfg(test)]
-    pub fn new(mut db: StateDB, trie_factory: TrieFactory) -> Self {
+    pub fn new(mut db: StateDB) -> Self {
         let mut root = H256::new();
 
         // init trie and reset root too null
-        let _ = trie_factory.create(db.as_hashdb_mut(), &mut root);
+        let _ = TrieFactory::create(db.as_hashdb_mut(), &mut root);
 
         TopLevelState {
             db,
@@ -277,12 +274,11 @@ impl TopLevelState {
             shard: Cache::new(),
             action_data: Cache::new(),
             id_of_checkpoints: Default::default(),
-            trie_factory,
         }
     }
 
     /// Creates new state with existing state root
-    pub fn from_existing(db: StateDB, root: H256, trie_factory: TrieFactory) -> Result<Self, TrieError> {
+    pub fn from_existing(db: StateDB, root: H256) -> Result<Self, TrieError> {
         if !db.as_hashdb().contains(&root) {
             return Err(TrieError::InvalidStateRoot(root))
         }
@@ -296,7 +292,6 @@ impl TopLevelState {
             shard: Cache::new(),
             action_data: Cache::new(),
             id_of_checkpoints: Default::default(),
-            trie_factory,
         };
 
         Ok(state)
@@ -517,8 +512,7 @@ impl TopLevelState {
         shard_root: H256,
     ) -> StateResult<(H256, StateDB, Vec<TransactionOutcome>)> {
         // FIXME: Make it mutable borrow db instead of cloning.
-        let mut shard_level_state =
-            ShardLevelState::from_existing(shard_id, self.db.clone(), shard_root, self.trie_factory)?;
+        let mut shard_level_state = ShardLevelState::from_existing(shard_id, self.db.clone(), shard_root)?;
 
         let mut results = Vec::with_capacity(transactions.len());
         for t in transactions {
@@ -535,7 +529,7 @@ impl TopLevelState {
             let mut metadata = self.require_metadata()?;
             let shard_id = metadata.increase_number_of_shards();
 
-            let mut shard_level_state = ShardLevelState::try_new(shard_id, self.db.clone(), self.trie_factory)?;
+            let mut shard_level_state = ShardLevelState::try_new(shard_id, self.db.clone())?;
 
             let (shard_root, db) = shard_level_state.drop();
 
@@ -574,7 +568,7 @@ impl TopLevelState {
     fn ensure_master_account_cached<F, U>(&self, a: &Address, f: F) -> TrieResult<U>
     where
         F: Fn(Option<&Account>) -> U, {
-        let db = self.trie_factory.readonly(self.db.as_hashdb(), &self.root)?;
+        let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
         let from_global_cache = |a| self.db.get_cached_account_with(a, |acc| f(acc.map(|a| &*a)));
         self.account.ensure_cached(&a, &f, db, from_global_cache)
     }
@@ -583,7 +577,7 @@ impl TopLevelState {
         debug_assert_eq!(Ok(false), self.regular_account_exists_and_not_null(a));
 
         let default = || Account::new(0u8.into(), 0.into());
-        let db = self.trie_factory.readonly(self.db.as_hashdb(), &self.root)?;
+        let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
         let from_db = || self.db.get_cached_account(&a);
         self.account.require_item_or_from(&a, default, db, from_db)
     }
@@ -595,7 +589,7 @@ impl TopLevelState {
     where
         F: Fn(Option<&RegularAccount>) -> U, {
         let a = RegularAccountAddress::from_address(a);
-        let db = self.trie_factory.readonly(self.db.as_hashdb(), &self.root)?;
+        let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
         let from_global_cache = |a| self.db.get_cached_regular_account_with(a, |acc| f(acc.map(|a| &*a)));
         self.regular_account.ensure_cached(&a, &f, db, from_global_cache)
     }
@@ -603,7 +597,7 @@ impl TopLevelState {
     fn require_regular_account<'a>(&'a self, public: &Public) -> TrieResult<RefMut<'a, RegularAccount>> {
         let regular_account_address = RegularAccountAddress::new(public);
         let default = || RegularAccount::new(Public::default());
-        let db = self.trie_factory.readonly(self.db.as_hashdb(), &self.root)?;
+        let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
         let from_db = || self.db.get_cached_regular_account(&regular_account_address);
         self.regular_account.require_item_or_from(&regular_account_address, default, db, from_db)
     }
@@ -611,14 +605,14 @@ impl TopLevelState {
     fn require_regular_account_from_address<'a>(&'a self, a: &Address) -> TrieResult<RefMut<'a, RegularAccount>> {
         let regular_account_address = RegularAccountAddress::from_address(a);
         let default = || RegularAccount::new(Public::default());
-        let db = self.trie_factory.readonly(self.db.as_hashdb(), &self.root)?;
+        let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
         let from_db = || self.db.get_cached_regular_account(&regular_account_address);
         self.regular_account.require_item_or_from(&regular_account_address, default, db, from_db)
     }
 
     fn require_metadata<'a>(&'a self) -> TrieResult<RefMut<'a, Metadata>> {
         let default = || Metadata::new(0);
-        let db = self.trie_factory.readonly(self.db.as_hashdb(), &self.root)?;
+        let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
         let address = MetadataAddress::new();
         let from_db = || self.db.get_cached_metadata(&address);
         self.metadata.require_item_or_from(&address, default, db, from_db)
@@ -626,7 +620,7 @@ impl TopLevelState {
 
     fn require_shard<'a>(&'a self, shard_id: ShardId) -> TrieResult<RefMut<'a, Shard>> {
         let default = || Shard::new(BLAKE_NULL_RLP, Address::zero());
-        let db = self.trie_factory.readonly(self.db.as_hashdb(), &self.root)?;
+        let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
         let shard_address = ShardAddress::new(shard_id);
         let from_db = || self.db.get_cached_shard(&shard_address);
         self.shard.require_item_or_from(&shard_address, default, db, from_db)
@@ -634,7 +628,7 @@ impl TopLevelState {
 
     fn require_action_data<'a>(&'a self, key: &H256) -> TrieResult<RefMut<'a, Bytes>> {
         let default = || NULL_RLP.to_vec();
-        let db = self.trie_factory.readonly(self.db.as_hashdb(), &self.root)?;
+        let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
         let from_db = || self.db.get_cached_action_data(key);
         self.action_data.require_item_or_from(key, default, db, from_db)
     }
@@ -664,7 +658,6 @@ impl Clone for TopLevelState {
             metadata: self.metadata.clone(),
             shard: self.shard.clone(),
             action_data: self.action_data.clone(),
-            trie_factory: self.trie_factory.clone(),
         }
     }
 }
@@ -863,7 +856,7 @@ mod tests_state {
             state.drop()
         };
 
-        let state = TopLevelState::from_existing(db, root, Default::default()).unwrap();
+        let state = TopLevelState::from_existing(db, root).unwrap();
         assert_eq!(Ok(69.into()), state.balance(&a));
         assert_eq!(Ok(1.into()), state.nonce(&a));
     }
@@ -889,12 +882,12 @@ mod tests_state {
         let a = Address::zero();
         let db = get_temp_state_db();
         let (root, db) = {
-            let mut state = TopLevelState::new(db, Default::default());
+            let mut state = TopLevelState::new(db);
             assert_eq!(Ok(()), state.add_balance(&a, &U256::default())); // create an empty account
             assert_eq!(Ok(()), state.commit());
             state.drop()
         };
-        let state = TopLevelState::from_existing(db, root, Default::default()).unwrap();
+        let state = TopLevelState::from_existing(db, root).unwrap();
         assert_eq!(Ok(false), state.account_exists(&a));
         assert_eq!(Ok(false), state.account_exists_and_not_null(&a));
     }
@@ -912,7 +905,7 @@ mod tests_state {
         };
 
         let (root, db) = {
-            let mut state = TopLevelState::from_existing(db, root, Default::default()).unwrap();
+            let mut state = TopLevelState::from_existing(db, root).unwrap();
             assert_eq!(Ok(true), state.account_exists(&a));
             assert_eq!(Ok(1.into()), state.nonce(&a));
             state.kill_account(&a);
@@ -922,7 +915,7 @@ mod tests_state {
             state.drop()
         };
 
-        let state = TopLevelState::from_existing(db, root, Default::default()).unwrap();
+        let state = TopLevelState::from_existing(db, root).unwrap();
         assert_eq!(Ok(false), state.account_exists(&a));
         assert_eq!(Ok(0.into()), state.nonce(&a));
     }

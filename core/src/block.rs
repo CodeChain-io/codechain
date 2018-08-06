@@ -19,7 +19,6 @@ use std::collections::HashSet;
 use ccrypto::BLAKE_NULL_RLP;
 use ckey::Address;
 use cmerkle::skewed_merkle_root;
-use cmerkle::TrieFactory;
 use cstate::{StateDB, StateError, StateWithCache, TopLevelState};
 use ctypes::invoice::{Invoice, ParcelInvoice};
 use ctypes::machine::{LiveBlock, Parcels};
@@ -120,7 +119,6 @@ impl<'x> OpenBlock<'x> {
     /// Create a new `OpenBlock` ready for parcel pushing.
     pub fn new(
         engine: &'x CodeChainEngine,
-        trie_factory: TrieFactory,
         db: StateDB,
         parent: &Header,
         author: Address,
@@ -128,7 +126,7 @@ impl<'x> OpenBlock<'x> {
         is_epoch_begin: bool,
     ) -> Result<Self, Error> {
         let number = parent.number() + 1;
-        let state = TopLevelState::from_existing(db, *parent.state_root(), trie_factory).map_err(StateError::from)?;
+        let state = TopLevelState::from_existing(db, *parent.state_root()).map_err(StateError::from)?;
         let mut r = OpenBlock {
             block: ExecutedBlock::new(state),
             engine,
@@ -432,10 +430,9 @@ pub fn enact(
     engine: &CodeChainEngine,
     db: StateDB,
     parent: &Header,
-    trie_factory: TrieFactory,
     is_epoch_begin: bool,
 ) -> Result<LockedBlock, Error> {
-    let mut b = OpenBlock::new(engine, trie_factory, db, parent, Address::new(), vec![], is_epoch_begin)?;
+    let mut b = OpenBlock::new(engine, db, parent, Address::new(), vec![], is_epoch_begin)?;
 
     b.populate_from(header);
     b.push_parcels(parcels)?;
@@ -455,9 +452,8 @@ mod tests {
     fn open_block() {
         let spec = Spec::new_test();
         let genesis_header = spec.genesis_header();
-        let db = spec.ensure_genesis_state(get_temp_state_db(), &Default::default()).unwrap();
-        let b = OpenBlock::new(&*spec.engine, Default::default(), db, &genesis_header, Address::zero(), vec![], false)
-            .unwrap();
+        let db = spec.ensure_genesis_state(get_temp_state_db()).unwrap();
+        let b = OpenBlock::new(&*spec.engine, db, &genesis_header, Address::zero(), vec![], false).unwrap();
         let parent_parcels_root = genesis_header.parcels_root().clone();
         let parent_invoices_root = genesis_header.invoices_root().clone();
         let b = b.close_and_lock(parent_parcels_root, parent_invoices_root);

@@ -151,25 +151,20 @@ impl Spec {
         }
     }
 
-    fn initialize_state<DB: Backend>(&self, trie_factory: &TrieFactory, db: DB) -> StateResult<DB> {
+    fn initialize_state<DB: Backend>(&self, db: DB) -> StateResult<DB> {
         let root = BLAKE_NULL_RLP;
-        let (db, root) = self.initialize_accounts(trie_factory, db, root)?;
-        let (db, root) = self.initialize_shards(trie_factory, db, root)?;
-        let (db, root) = self.initialize_custom_actions(trie_factory, db, root)?;
+        let (db, root) = self.initialize_accounts(db, root)?;
+        let (db, root) = self.initialize_shards(db, root)?;
+        let (db, root) = self.initialize_custom_actions(db, root)?;
 
         *self.state_root_memo.write() = root;
         Ok(db)
     }
 
-    fn initialize_accounts<DB: Backend>(
-        &self,
-        trie_factory: &TrieFactory,
-        mut db: DB,
-        mut root: H256,
-    ) -> StateResult<(DB, H256)> {
+    fn initialize_accounts<DB: Backend>(&self, mut db: DB, mut root: H256) -> StateResult<(DB, H256)> {
         // basic accounts in spec.
         {
-            let mut t = trie_factory.create(db.as_hashdb_mut(), &mut root);
+            let mut t = TrieFactory::create(db.as_hashdb_mut(), &mut root);
 
             for (address, account) in &*self.genesis_accounts {
                 let r = t.insert(&**address, &account.rlp_bytes());
@@ -181,12 +176,7 @@ impl Spec {
         Ok((db, root))
     }
 
-    fn initialize_shards<DB: Backend>(
-        &self,
-        trie_factory: &TrieFactory,
-        mut db: DB,
-        mut root: H256,
-    ) -> StateResult<(DB, H256)> {
+    fn initialize_shards<DB: Backend>(&self, mut db: DB, mut root: H256) -> StateResult<(DB, H256)> {
         let mut shard_roots = Vec::<(ShardId, H256, Address)>::with_capacity(self.genesis_shards.len());
 
         // Initialize shard-level tries
@@ -194,7 +184,7 @@ impl Spec {
             let mut shard_root = BLAKE_NULL_RLP;
 
             {
-                let mut t = trie_factory.from_existing(db.as_hashdb_mut(), &mut shard_root)?;
+                let mut t = TrieFactory::from_existing(db.as_hashdb_mut(), &mut shard_root)?;
                 let address = ShardMetadataAddress::new(*shard_id);
 
                 let r = t.insert(&*address, &shard.rlp_bytes());
@@ -226,7 +216,7 @@ impl Spec {
         // Initialize shards
         for (shard_id, shard_root, owner) in shard_roots.into_iter() {
             {
-                let mut t = trie_factory.from_existing(db.as_hashdb_mut(), &mut root)?;
+                let mut t = TrieFactory::from_existing(db.as_hashdb_mut(), &mut root)?;
                 let address = ShardAddress::new(shard_id);
 
                 let shard = Shard::new(shard_root, owner);
@@ -237,7 +227,7 @@ impl Spec {
         }
 
         {
-            let mut t = trie_factory.from_existing(db.as_hashdb_mut(), &mut root)?;
+            let mut t = TrieFactory::from_existing(db.as_hashdb_mut(), &mut root)?;
             let address = MetadataAddress::new();
 
             let r = t.insert(&*address, &global_metadata.rlp_bytes());
@@ -248,15 +238,10 @@ impl Spec {
         Ok((db, root))
     }
 
-    fn initialize_custom_actions<DB: Backend>(
-        &self,
-        trie_factory: &TrieFactory,
-        mut db: DB,
-        mut root: H256,
-    ) -> StateResult<(DB, H256)> {
+    fn initialize_custom_actions<DB: Backend>(&self, mut db: DB, mut root: H256) -> StateResult<(DB, H256)> {
         // basic accounts in spec.
         {
-            let mut t = trie_factory.from_existing(db.as_hashdb_mut(), &mut root)?;
+            let mut t = TrieFactory::from_existing(db.as_hashdb_mut(), &mut root)?;
 
             for handler in &self.custom_handlers {
                 handler.init(t.as_mut())?;
@@ -278,7 +263,7 @@ impl Spec {
     }
 
     /// Ensure that the given state DB has the trie nodes in for the genesis state.
-    pub fn ensure_genesis_state<DB: Backend>(&self, db: DB, trie_factory: &TrieFactory) -> Result<DB, Error> {
+    pub fn ensure_genesis_state<DB: Backend>(&self, db: DB) -> Result<DB, Error> {
         if !self.check_genesis_root(db.as_hashdb()) {
             return Err(SpecError::InvalidState.into())
         }
@@ -287,7 +272,7 @@ impl Spec {
             return Ok(db)
         }
 
-        Ok(self.initialize_state(trie_factory, db)?)
+        Ok(self.initialize_state(db)?)
     }
 
     pub fn check_genesis_common_params<HP: HeaderProvider>(&self, chain: &HP) -> Result<(), Error> {
@@ -421,8 +406,7 @@ fn load_from(s: cjson::spec::Spec) -> Result<Spec, Error> {
         Some(root) => *s.state_root_memo.get_mut() = root,
         None => {
             let db = StateDB::new_with_memorydb(0, s.custom_handlers.clone());
-            let trie_factory = TrieFactory::new();
-            let _ = s.initialize_state(&trie_factory, db)?;
+            let _ = s.initialize_state(db)?;
         }
     }
 

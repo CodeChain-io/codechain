@@ -45,17 +45,16 @@ pub struct ShardLevelState<B> {
     asset_scheme: Cache<AssetScheme>,
     asset: Cache<Asset>,
     id_of_checkpoints: Vec<CheckpointId>,
-    trie_factory: TrieFactory,
     shard_id: ShardId,
 }
 
 impl<B: Backend + ShardBackend> ShardLevelState<B> {
     /// Creates new state with empty state root
-    pub fn try_new(shard_id: ShardId, mut db: B, trie_factory: TrieFactory) -> cmerkle::Result<ShardLevelState<B>> {
+    pub fn try_new(shard_id: ShardId, mut db: B) -> cmerkle::Result<ShardLevelState<B>> {
         let mut root = BLAKE_NULL_RLP;
 
         {
-            let mut t = trie_factory.from_existing(db.as_hashdb_mut(), &mut root)?;
+            let mut t = TrieFactory::from_existing(db.as_hashdb_mut(), &mut root)?;
 
             let metadata = ShardMetadata::new(0);
             let address = ShardMetadataAddress::new(shard_id);
@@ -71,18 +70,12 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
             asset_scheme: Cache::new(),
             asset: Cache::new(),
             id_of_checkpoints: Default::default(),
-            trie_factory,
             shard_id,
         })
     }
 
     /// Creates new state with existing state root
-    pub fn from_existing(
-        shard_id: ShardId,
-        db: B,
-        root: H256,
-        trie_factory: TrieFactory,
-    ) -> cmerkle::Result<ShardLevelState<B>> {
+    pub fn from_existing(shard_id: ShardId, db: B, root: H256) -> cmerkle::Result<ShardLevelState<B>> {
         if !db.as_hashdb().contains(&root) {
             return Err(TrieError::InvalidStateRoot(root).into())
         }
@@ -93,7 +86,6 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
             asset_scheme: Cache::new(),
             asset: Cache::new(),
             id_of_checkpoints: Default::default(),
-            trie_factory,
             shard_id,
         })
     }
@@ -261,7 +253,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
     ) -> cmerkle::Result<RefMut<'a, AssetScheme>>
     where
         F: FnOnce() -> AssetScheme, {
-        let db = self.trie_factory.readonly(self.db.as_hashdb(), &self.root)?;
+        let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
         let from_db = || self.db.get_cached_asset_scheme(a);
         self.asset_scheme.require_item_or_from(a, default, db, from_db)
     }
@@ -269,7 +261,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
     fn require_asset<'a, F>(&'a self, a: &AssetAddress, default: F) -> cmerkle::Result<RefMut<'a, Asset>>
     where
         F: FnOnce() -> Asset, {
-        let db = self.trie_factory.readonly(self.db.as_hashdb(), &self.root)?;
+        let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
         let from_db = || self.db.get_cached_asset(a);
         self.asset.require_item_or_from(a, default, db, from_db)
     }
@@ -286,7 +278,7 @@ impl<B: Backend + ShardBackend> ShardStateInfo for ShardLevelState<B> {
             return Ok(cached_asset)
         }
 
-        let trie = self.trie_factory.readonly(self.db.as_hashdb(), &self.root)?;
+        let trie = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
         Ok(trie.get_with(a.as_ref(), ::rlp::decode::<AssetScheme>)?)
     }
 
@@ -296,7 +288,7 @@ impl<B: Backend + ShardBackend> ShardStateInfo for ShardLevelState<B> {
             return Ok(cached_asset)
         }
 
-        let trie = self.trie_factory.readonly(self.db.as_hashdb(), &self.root)?;
+        let trie = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
         Ok(trie.get_with(a.as_ref(), ::rlp::decode::<Asset>)?)
     }
 }
@@ -327,7 +319,7 @@ impl<B> StateWithCheckpoint for ShardLevelState<B> {
 
 impl<B: Backend + ShardBackend> StateWithCache for ShardLevelState<B> {
     fn commit(&mut self) -> TrieResult<()> {
-        let mut trie = self.trie_factory.from_existing(self.db.as_hashdb_mut(), &mut self.root)?;
+        let mut trie = TrieFactory::from_existing(self.db.as_hashdb_mut(), &mut self.root)?;
         self.asset_scheme.commit(&mut trie)?;
         self.asset.commit(&mut trie)?;
         Ok(())
@@ -365,7 +357,6 @@ impl Clone for ShardLevelState<StateDB> {
             id_of_checkpoints: self.id_of_checkpoints.clone(),
             asset_scheme: self.asset_scheme.clone(),
             asset: self.asset.clone(),
-            trie_factory: self.trie_factory.clone(),
             shard_id: self.shard_id,
         }
     }
@@ -417,7 +408,7 @@ mod tests {
         let root_parent = H256::random();
 
         let state_db = state_db.clone_canon(&root_parent);
-        ShardLevelState::try_new(shard_id, state_db, Default::default()).unwrap()
+        ShardLevelState::try_new(shard_id, state_db).unwrap()
     }
 
     #[test]

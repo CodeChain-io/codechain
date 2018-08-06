@@ -24,6 +24,6 @@ pub mod helpers {
 
     pub fn get_temp_state() -> TopLevelState {
         let journal_db = get_temp_state_db();
-        TopLevelState::new(journal_db, Default::default())
+        TopLevelState::new(journal_db)
     }
 }

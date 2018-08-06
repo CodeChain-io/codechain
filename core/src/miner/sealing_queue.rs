@@ -84,8 +84,8 @@ mod tests {
     fn create_closed_block(address: Address) -> ClosedBlock {
         let spec = Spec::new_test();
         let genesis_header = spec.genesis_header();
-        let db = spec.ensure_genesis_state(get_temp_state_db(), &Default::default()).unwrap();
-        let b = OpenBlock::new(&*spec.engine, Default::default(), db, &genesis_header, address, vec![], false).unwrap();
+        let db = spec.ensure_genesis_state(get_temp_state_db()).unwrap();
+        let b = OpenBlock::new(&*spec.engine, db, &genesis_header, address, vec![], false).unwrap();
         let parent_parcels_root = genesis_header.parcels_root().clone();
         let parent_invoices_root = genesis_header.invoices_root().clone();
         b.close(parent_parcels_root, parent_invoices_root)

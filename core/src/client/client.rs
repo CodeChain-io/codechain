@@ -21,7 +21,7 @@ use std::time::Instant;
 
 use cio::IoChannel;
 use ckey::{Address, Public};
-use cmerkle::{Result as TrieResult, TrieFactory};
+use cmerkle::Result as TrieResult;
 use cnetwork::NodeId;
 use cstate::{
     ActionHandler, Asset, AssetAddress, AssetScheme, AssetSchemeAddress, StateDB, TopBackend, TopLevelState,
@@ -81,7 +81,6 @@ pub struct Client {
 
     /// Count of pending parcels in the queue
     queue_parcels: AtomicUsize,
-    trie_factory: TrieFactory,
 
     importer: Importer,
 }
@@ -94,8 +93,6 @@ impl Client {
         miner: Arc<Miner>,
         message_channel: IoChannel<ClientIoMessage>,
     ) -> Result<Arc<Client>, Error> {
-        let trie_factory = TrieFactory::new();
-
         let journal_db = journaldb::new(db.clone(), journaldb::Algorithm::Archive, ::db::COL_STATE);
         let mut state_db = StateDB::new(journal_db, config.state_cache_size, spec.custom_handlers.clone());
         if !spec.check_genesis_root(state_db.as_hashdb()) {
@@ -103,7 +100,7 @@ impl Client {
         }
         if state_db.journal_db().is_empty() {
             // Sets the correct state root.
-            state_db = spec.ensure_genesis_state(state_db, &trie_factory)?;
+            state_db = spec.ensure_genesis_state(state_db)?;
             let mut batch = DBTransaction::new();
             state_db.journal_under(&mut batch, 0, &spec.genesis_header().hash())?;
             db.write(batch).map_err(ClientError::Database)?;
@@ -125,7 +122,6 @@ impl Client {
             state_db: RwLock::new(state_db),
             notify: RwLock::new(Vec::new()),
             queue_parcels: AtomicUsize::new(0),
-            trie_factory,
             importer,
         });
 
@@ -219,11 +215,8 @@ impl Client {
     /// Get a copy of the best block's state.
     pub fn latest_state(&self) -> TopLevelState {
         let header = self.best_block_header();
-        TopLevelState::from_existing(
-            self.state_db.read().clone_canon(&header.hash()),
-            header.state_root(),
-            self.trie_factory.clone(),
-        ).expect("State root of best block header always valid.")
+        TopLevelState::from_existing(self.state_db.read().clone_canon(&header.hash()), header.state_root())
+            .expect("State root of best block header always valid.")
     }
 
     /// Attempt to get a copy of a specific block's final state.
@@ -242,7 +235,7 @@ impl Client {
             let db = self.state_db.read().clone();
 
             let root = header.state_root();
-            TopLevelState::from_existing(db, root, self.trie_factory.clone()).ok()
+            TopLevelState::from_existing(db, root).ok()
         })
     }
 }
@@ -824,8 +817,7 @@ impl Importer {
         let db = client.state_db.read().clone_canon(header.parent_hash());
 
         let is_epoch_begin = chain.epoch_transition(parent.number(), *header.parent_hash()).is_some();
-        let enact_result =
-            enact(&block.header, &block.parcels, engine, db, &parent, client.trie_factory.clone(), is_epoch_begin);
+        let enact_result = enact(&block.header, &block.parcels, engine, db, &parent, is_epoch_begin);
         let locked_block = enact_result.map_err(|e| {
             cwarn!(CLIENT, "Block import failed for #{} ({})\nError: {:?}", header.number(), header.hash(), e);
         })?;
@@ -1007,7 +999,6 @@ impl PrepareOpenBlock for Client {
         let is_epoch_begin = chain.epoch_transition(best_header.number(), h).is_some();
         OpenBlock::new(
             engine,
-            self.trie_factory.clone(),
             self.state_db.read().clone_canon(&h),
             best_header,
             author,
