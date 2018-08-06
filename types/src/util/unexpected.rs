@@ -18,7 +18,9 @@
 
 use std::fmt;
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize)]
 /// Error indicating an expected value was not found.
 pub struct Mismatch<T> {
     /// Value expected.
@@ -30,6 +32,27 @@ pub struct Mismatch<T> {
 impl<T: fmt::Display> fmt::Display for Mismatch<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_fmt(format_args!("Expected {}, found {}", self.expected, self.found))
+    }
+}
+
+impl<T> Encodable for Mismatch<T>
+where
+    T: Encodable,
+{
+    fn rlp_append(&self, s: &mut RlpStream) {
+        s.begin_list(2).append(&self.expected).append(&self.found);
+    }
+}
+
+impl<T> Decodable for Mismatch<T>
+where
+    T: Decodable,
+{
+    fn decode(rlp: &UntrustedRlp) -> Result<Mismatch<T>, DecoderError> {
+        Ok(Mismatch {
+            expected: rlp.val_at(0)?,
+            found: rlp.val_at(1)?,
+        })
     }
 }
 
@@ -54,5 +77,18 @@ impl<T: fmt::Display> fmt::Display for OutOfBounds<T> {
         };
 
         f.write_fmt(format_args!("Value {} out of bounds. {}", self.found, msg))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn rlp_encode_and_decode_mismatch() {
+        rlp_encode_and_decode_test!(Mismatch::<u8> {
+            expected: 0,
+            found: 1,
+        });
     }
 }

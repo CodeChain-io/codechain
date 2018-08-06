@@ -57,13 +57,14 @@ impl Encodable for BlockInvoices {
 
 #[cfg(test)]
 mod tests {
-    use super::super::invoice::Invoice;
+    use super::super::super::transaction::Error as TransactionError;
+    use super::super::transaction_invoice::TransactionInvoice;
 
     use super::*;
 
     #[test]
     fn rlp_encode_and_decode_block_invoices() {
-        let invoices = vec![Invoice::Success, Invoice::Failed];
+        let invoices = vec![TransactionInvoice::Success, TransactionInvoice::Fail(TransactionError::InvalidScript)];
         let parcel_invoice = ParcelInvoice::new(invoices);
         rlp_encode_and_decode_test!(BlockInvoices {
             invoices: vec![

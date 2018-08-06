@@ -20,8 +20,9 @@ use ckey::Address;
 use primitives::{H256, U256};
 
 use super::super::util::unexpected::Mismatch;
+use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Eq, Serialize)]
 pub enum Error {
     InvalidPaymentSender(Mismatch<Address>),
     InvalidAddressToSetKey(Mismatch<Address>),
@@ -48,6 +49,78 @@ pub enum Error {
     FailedToUnlock(H256),
     /// Returned when the sum of the transaction's inputs is different from the sum of outputs.
     InconsistentTransactionInOut,
+}
+
+const ERROR_ID_INVALID_PAYMENT_SENDER: u8 = 1u8;
+const ERROR_ID_INVALID_ADDRESS_TO_SET_KEY: u8 = 2u8;
+const ERROR_ID_INSUFFICIENT_BALANCE: u8 = 3u8;
+const ERROR_ID_INVALID_ASSET_AMOUNT: u8 = 4u8;
+const ERROR_ID_ASSET_NOT_FOUND: u8 = 5u8;
+const ERROR_ID_ASSET_SCHEME_NOT_FOUND: u8 = 6u8;
+const ERROR_ID_INVALID_ASSET_TYPE: u8 = 7u8;
+const ERROR_ID_SCRIPT_HASH_MISMATCH: u8 = 8u8;
+const ERROR_ID_INVALID_SCRIPT: u8 = 9u8;
+const ERROR_ID_FAILED_TO_UNLOCK: u8 = 10u8;
+const ERROR_ID_INCONSISTENT_TRANSACTION_IN_OUT: u8 = 11u8;
+
+impl Encodable for Error {
+    fn rlp_append(&self, s: &mut RlpStream) {
+        match self {
+            Error::InvalidPaymentSender(mismatch) => {
+                s.begin_list(2).append(&ERROR_ID_INVALID_PAYMENT_SENDER).append(mismatch)
+            }
+            Error::InvalidAddressToSetKey(mismatch) => {
+                s.begin_list(2).append(&ERROR_ID_INVALID_ADDRESS_TO_SET_KEY).append(mismatch)
+            }
+            Error::InsufficientBalance {
+                address,
+                required,
+                got,
+            } => s.begin_list(4).append(&ERROR_ID_INSUFFICIENT_BALANCE).append(address).append(required).append(got),
+            Error::InvalidAssetAmount {
+                address,
+                expected,
+                got,
+            } => s.begin_list(4).append(&ERROR_ID_INVALID_ASSET_AMOUNT).append(address).append(expected).append(got),
+            Error::AssetNotFound(addr) => s.begin_list(2).append(&ERROR_ID_ASSET_NOT_FOUND).append(addr),
+            Error::AssetSchemeNotFound(addr) => s.begin_list(2).append(&ERROR_ID_ASSET_SCHEME_NOT_FOUND).append(addr),
+            Error::InvalidAssetType(addr) => s.begin_list(2).append(&ERROR_ID_INVALID_ASSET_TYPE).append(addr),
+            Error::ScriptHashMismatch(mismatch) => {
+                s.begin_list(2).append(&ERROR_ID_SCRIPT_HASH_MISMATCH).append(mismatch)
+            }
+            Error::InvalidScript => s.begin_list(1).append(&ERROR_ID_INVALID_SCRIPT),
+            Error::FailedToUnlock(hash) => s.begin_list(1).append(&ERROR_ID_FAILED_TO_UNLOCK).append(hash),
+            Error::InconsistentTransactionInOut => s.begin_list(1).append(&ERROR_ID_INCONSISTENT_TRANSACTION_IN_OUT),
+        };
+    }
+}
+
+impl Decodable for Error {
+    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+        let tag = rlp.val_at::<u8>(0)?;
+        Ok(match tag {
+            ERROR_ID_INVALID_PAYMENT_SENDER => Error::InvalidPaymentSender(rlp.val_at(1)?),
+            ERROR_ID_INVALID_ADDRESS_TO_SET_KEY => Error::InvalidAddressToSetKey(rlp.val_at(1)?),
+            ERROR_ID_INSUFFICIENT_BALANCE => Error::InsufficientBalance {
+                address: rlp.val_at(1)?,
+                required: rlp.val_at(2)?,
+                got: rlp.val_at(3)?,
+            },
+            ERROR_ID_INVALID_ASSET_AMOUNT => Error::InvalidAssetAmount {
+                address: rlp.val_at(1)?,
+                expected: rlp.val_at(2)?,
+                got: rlp.val_at(3)?,
+            },
+            ERROR_ID_ASSET_NOT_FOUND => Error::AssetNotFound(rlp.val_at(1)?),
+            ERROR_ID_ASSET_SCHEME_NOT_FOUND => Error::AssetSchemeNotFound(rlp.val_at(1)?),
+            ERROR_ID_INVALID_ASSET_TYPE => Error::InvalidAssetType(rlp.val_at(1)?),
+            ERROR_ID_SCRIPT_HASH_MISMATCH => Error::ScriptHashMismatch(rlp.val_at(1)?),
+            ERROR_ID_INVALID_SCRIPT => Error::InvalidScript,
+            ERROR_ID_FAILED_TO_UNLOCK => Error::FailedToUnlock(rlp.val_at(1)?),
+            ERROR_ID_INCONSISTENT_TRANSACTION_IN_OUT => Error::InconsistentTransactionInOut,
+            _ => return Err(DecoderError::Custom("Invalid transaction error")),
+        })
+    }
 }
 
 impl Display for Error {

@@ -33,7 +33,7 @@ use ckey::{Address, Public};
 use cmerkle::Result as TrieResult;
 use cnetwork::NodeId;
 use cstate::{ActionHandler, Asset, AssetScheme, AssetSchemeAddress, TopStateInfo};
-use ctypes::invoice::{Invoice, ParcelInvoice};
+use ctypes::invoice::{ParcelInvoice, TransactionInvoice};
 use ctypes::parcel::ChangeShard;
 use ctypes::transaction::Transaction;
 use ctypes::{BlockNumber, ShardId};
@@ -216,7 +216,7 @@ pub trait BlockChainClient: Sync + Send + AccountData + BlockChain + ImportBlock
     /// Get the transaction with given hash.
     fn transaction(&self, id: TransactionId) -> Option<Transaction>;
 
-    fn transaction_invoice(&self, id: TransactionId) -> Option<Invoice>;
+    fn transaction_invoice(&self, id: TransactionId) -> Option<TransactionInvoice>;
 
     fn custom_handlers(&self) -> Vec<Arc<ActionHandler>>;
 }

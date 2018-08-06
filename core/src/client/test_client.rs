@@ -39,7 +39,7 @@ use ckey::{Address, Generator, Random};
 use cmerkle::skewed_merkle_root;
 use cnetwork::NodeId;
 use cstate::{ActionHandler, StateDB};
-use ctypes::invoice::ParcelInvoice;
+use ctypes::invoice::{ParcelInvoice, TransactionInvoice};
 use ctypes::parcel::{Action, Parcel};
 use ctypes::transaction::Transaction;
 use ctypes::BlockNumber;
@@ -55,7 +55,7 @@ use super::super::blockchain_info::BlockChainInfo;
 use super::super::client::ImportResult;
 use super::super::client::{
     AccountData, Balance, BlockChain, BlockChainClient, BlockInfo, BlockProducer, BlockStatus, ChainInfo, ImportBlock,
-    ImportSealedBlock, Invoice, MiningBlockChainClient, Nonce, ParcelInfo, PrepareOpenBlock, ReopenBlock, StateOrBlock,
+    ImportSealedBlock, MiningBlockChainClient, Nonce, ParcelInfo, PrepareOpenBlock, ReopenBlock, StateOrBlock,
     TransactionInfo,
 };
 use super::super::db::{COL_STATE, NUM_COLUMNS};
@@ -512,7 +512,7 @@ impl BlockChainClient for TestBlockChainClient {
         unimplemented!();
     }
 
-    fn transaction_invoice(&self, _id: TransactionId) -> Option<Invoice> {
+    fn transaction_invoice(&self, _id: TransactionId) -> Option<TransactionInvoice> {
         unimplemented!()
     }
 

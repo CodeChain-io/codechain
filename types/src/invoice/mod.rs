@@ -15,9 +15,11 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 mod block_invoices;
-mod invoice;
+mod invoice_result;
 mod parcel_invoice;
+mod transaction_invoice;
 
 pub use self::block_invoices::BlockInvoices;
-pub use self::invoice::Invoice;
+pub use self::invoice_result::InvoiceResult;
 pub use self::parcel_invoice::ParcelInvoice;
+pub use self::transaction_invoice::TransactionInvoice;

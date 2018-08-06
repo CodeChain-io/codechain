@@ -22,7 +22,7 @@ use ccore::{
 };
 use ckey::{Address, Public};
 use cstate::{Asset, AssetScheme, AssetSchemeAddress};
-use ctypes::invoice::{Invoice, ParcelInvoice};
+use ctypes::invoice::{ParcelInvoice, TransactionInvoice};
 use ctypes::parcel::{Action, ChangeShard};
 use ctypes::transaction::Transaction;
 use ctypes::{BlockNumber, ShardId};
@@ -99,7 +99,7 @@ where
         Ok(self.client.transaction(transaction_hash.into()))
     }
 
-    fn get_transaction_invoice(&self, transaction_hash: H256) -> Result<Option<Invoice>> {
+    fn get_transaction_invoice(&self, transaction_hash: H256) -> Result<Option<TransactionInvoice>> {
         Ok(self.client.transaction_invoice(transaction_hash.into()))
     }
 
