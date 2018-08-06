@@ -196,10 +196,10 @@ where
         Ok(self.client.common_params().network_id)
     }
 
-    fn execute_change_shard_state(&self, raw: Bytes, _sender: Address) -> Result<Vec<ChangeShard>> {
+    fn execute_change_shard_state(&self, raw: Bytes, sender: Address) -> Result<Vec<ChangeShard>> {
         let transactions: Vec<Transaction> =
             UntrustedRlp::new(&raw.into_vec()).as_list().map_err(errors::rlp).map(Into::into)?;
 
-        Ok(self.client.execute_transactions(&transactions).map_err(errors::core)?)
+        Ok(self.client.execute_transactions(&transactions, &sender).map_err(errors::core)?)
     }
 }

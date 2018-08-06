@@ -269,5 +269,9 @@ pub trait AssetClient {
 }
 
 pub trait ExecuteClient {
-    fn execute_transactions(&self, transactions: &[Transaction]) -> Result<Vec<ChangeShard>, CoreError>;
+    fn execute_transactions(
+        &self,
+        transactions: &[Transaction],
+        sender: &Address,
+    ) -> Result<Vec<ChangeShard>, CoreError>;
 }
