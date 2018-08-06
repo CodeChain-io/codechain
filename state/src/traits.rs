@@ -16,7 +16,8 @@
 
 use ckey::{Address, Public};
 use cmerkle::Result as TrieResult;
-use ctypes::transaction::{Outcome as TransactionOutcome, Transaction};
+use ctypes::invoice::TransactionInvoice;
+use ctypes::transaction::Transaction;
 use ctypes::{ShardId, WorldId};
 use primitives::{Bytes, H256, U256};
 
@@ -71,7 +72,7 @@ where
         transaction: &Transaction,
         sender: &Address,
         shard_owner: &Address,
-    ) -> StateResult<TransactionOutcome>;
+    ) -> StateResult<TransactionInvoice>;
 }
 
 pub trait TopState<B>

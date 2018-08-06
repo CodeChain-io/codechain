@@ -14,13 +14,19 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use super::super::invoice::Invoice;
-use super::Error;
+use rlp::{Encodable, RlpStream};
 
-#[derive(Debug, PartialEq)]
-pub struct Outcome {
-    /// The invoice for the applied parcel.
-    pub invoice: Invoice,
-    /// The output of the applied parcel.
-    pub error: Option<Error>,
+// This struct is used to make merkle of a block
+pub enum InvoiceResult {
+    Success,
+    Failed,
+}
+
+impl Encodable for InvoiceResult {
+    fn rlp_append(&self, s: &mut RlpStream) {
+        match self {
+            InvoiceResult::Success => s.append_single_value(&1u8),
+            InvoiceResult::Failed => s.append_single_value(&0u8),
+        };
+    }
 }

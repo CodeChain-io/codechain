@@ -58,8 +58,8 @@ use super::super::views::{BlockView, HeaderView};
 use super::{
     AccountData, AssetClient, Balance, BlockChain as BlockChainTrait, BlockChainClient, BlockChainInfo, BlockInfo,
     BlockProducer, ChainInfo, ChainNotify, ClientConfig, DatabaseClient, EngineClient, EngineInfo,
-    Error as ClientError, ExecuteClient, ImportBlock, ImportResult, ImportSealedBlock, Invoice, MiningBlockChainClient,
-    Nonce, ParcelInfo, PrepareOpenBlock, RegularKey, ReopenBlock, Shard, StateOrBlock, TransactionInfo,
+    Error as ClientError, ExecuteClient, ImportBlock, ImportResult, ImportSealedBlock, MiningBlockChainClient, Nonce,
+    ParcelInfo, PrepareOpenBlock, RegularKey, ReopenBlock, Shard, StateOrBlock, TransactionInfo, TransactionInvoice,
 };
 
 const MAX_MEM_POOL_SIZE: usize = 4096;
@@ -492,14 +492,15 @@ impl BlockChainClient for Client {
         self.transaction_address(id).and_then(|address| chain.transaction(&address))
     }
 
-    fn transaction_invoice(&self, id: TransactionId) -> Option<Invoice> {
+    fn transaction_invoice(&self, id: TransactionId) -> Option<TransactionInvoice> {
         self.transaction_address(id).and_then(|transaction_address| {
             let parcel_address = transaction_address.parcel_address.clone();
             let parcel_id = parcel_address.into();
 
             self.parcel_invoice(parcel_id).and_then(|parcel_invoice| match parcel_invoice {
                 ParcelInvoice::Multiple(invoices) => invoices.get(transaction_address.index).cloned(),
-                ParcelInvoice::Single(_) => None,
+                ParcelInvoice::SingleSuccess => None,
+                ParcelInvoice::SingleFail(_) => None,
             })
         })
     }

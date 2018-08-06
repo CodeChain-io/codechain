@@ -20,9 +20,9 @@ use ccrypto::BLAKE_NULL_RLP;
 use ckey::Address;
 use cmerkle::skewed_merkle_root;
 use cstate::{StateDB, StateError, StateWithCache, TopLevelState};
-use ctypes::invoice::{Invoice, ParcelInvoice};
+use ctypes::invoice::ParcelInvoice;
 use ctypes::machine::{LiveBlock, Parcels};
-use ctypes::parcel::{Error as ParcelError, Outcome as ParcelOutcome};
+use ctypes::parcel::Error as ParcelError;
 use ctypes::util::unexpected::Mismatch;
 use primitives::{Bytes, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
@@ -153,23 +153,11 @@ impl<'x> OpenBlock<'x> {
             return Err(StateError::Parcel(ParcelError::ParcelAlreadyImported).into())
         }
 
-        let outcomes = self.block.state.apply(&parcel, parcel.sender(), &parcel.public_key())?;
+        let invoice = self.block.state.apply(&parcel, parcel.sender(), &parcel.public_key())?;
 
         self.block.parcels_set.insert(h.unwrap_or_else(|| parcel.hash()));
         self.block.parcels.push(parcel.into());
-        match outcomes {
-            ParcelOutcome::Single {
-                invoice,
-                ..
-            } => {
-                self.block.invoices.push(ParcelInvoice::Single(invoice));
-            }
-            ParcelOutcome::Transactions(invoices) => {
-                self.block
-                    .invoices
-                    .push(invoices.into_iter().map(|outcome| outcome.invoice).collect::<Vec<Invoice>>().into());
-            }
-        }
+        self.block.invoices.push(invoice);
         Ok(())
     }
 
@@ -208,7 +196,7 @@ impl<'x> OpenBlock<'x> {
         self.block.header.set_state_root(self.block.state.root().clone());
         self.block.header.set_invoices_root(skewed_merkle_root(
             parent_invoices_root,
-            self.block.invoices.iter().flat_map(|invoices| invoices.iter().map(|invoice| invoice.rlp_bytes())),
+            self.block.invoices.iter().flat_map(|invoices| invoices.iter_result().map(|invoice| invoice.rlp_bytes())),
         ));
 
         ClosedBlock {
@@ -235,7 +223,10 @@ impl<'x> OpenBlock<'x> {
         if self.block.header.invoices_root().is_zero() || self.block.header.invoices_root() == &BLAKE_NULL_RLP {
             self.block.header.set_invoices_root(skewed_merkle_root(
                 parent_invoices_root,
-                self.block.invoices.iter().flat_map(|invoices| invoices.iter().map(|invoice| invoice.rlp_bytes())),
+                self.block
+                    .invoices
+                    .iter()
+                    .flat_map(|invoices| invoices.iter_result().map(|invoice| invoice.rlp_bytes())),
             ));
         }
         self.block.header.set_state_root(self.block.state.root().clone());

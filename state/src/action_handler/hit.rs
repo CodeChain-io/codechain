@@ -16,8 +16,7 @@
 
 use ccrypto::blake256;
 use cmerkle::TrieMut;
-use ctypes::invoice::Invoice;
-use ctypes::parcel::Outcome;
+use ctypes::invoice::ParcelInvoice;
 use primitives::{Bytes, H256};
 use rlp::{self, Decodable, DecoderError, Encodable, UntrustedRlp};
 
@@ -72,15 +71,12 @@ impl ActionHandler for HitHandler {
     }
 
     /// `bytes` must be valid encoding of HitAction
-    fn execute(&self, bytes: &Bytes, state: &mut TopLevelState) -> Option<StateResult<Outcome>> {
+    fn execute(&self, bytes: &Bytes, state: &mut TopLevelState) -> Option<StateResult<ParcelInvoice>> {
         HitAction::decode(&UntrustedRlp::new(bytes)).ok().map(|action| {
             let prev_counter: u32 = rlp::decode(&state.action_data(&self.address())?);
             let increase = action.increase as u32;
             state.update_action_data(&self.address(), (prev_counter + increase).rlp_bytes().to_vec())?;
-            Ok(Outcome::Single {
-                invoice: Invoice::Success,
-                error: None,
-            })
+            Ok(ParcelInvoice::SingleSuccess)
         })
     }
 }
