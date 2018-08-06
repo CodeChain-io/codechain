@@ -67,8 +67,6 @@ impl FromStr for DatabaseCompactionProfile {
 pub struct ClientConfig {
     /// Block queue configuration.
     pub queue: QueueConfig,
-    /// Fat DB enabled?
-    pub fat_db: bool,
     /// RocksDB column cache-size if not default
     pub db_cache_size: Option<usize>,
     /// State db compaction profile
@@ -87,7 +85,6 @@ impl Default for ClientConfig {
         const DEFAULT_STATE_CACHE_SIZE: u32 = 25;
         Self {
             queue: Default::default(),
-            fat_db: false,
             db_cache_size: Default::default(),
             db_compaction: Default::default(),
             db_wal: true,

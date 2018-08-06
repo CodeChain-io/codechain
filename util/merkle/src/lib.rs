@@ -137,86 +137,28 @@ pub trait TrieMut {
     fn remove(&mut self, key: &[u8]) -> Result<Option<DBValue>>;
 }
 
-
-/// Trie types
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub enum TrieSpec {
-    /// Generic trie.
-    Generic,
-}
-
-impl Default for TrieSpec {
-    fn default() -> TrieSpec {
-        TrieSpec::Generic
-    }
-}
-
 /// Trie factory.
 #[derive(Default, Clone, Copy)]
-pub struct TrieFactory {
-    spec: TrieSpec,
-}
-
-/// All different kinds of tries.
-/// This is used to prevent a heap allocation for every created trie.
-pub enum TrieKinds<'db> {
-    /// A generic trie db.
-    Generic(TrieDB<'db>),
-}
-
-// wrapper macro for making the match easier to deal with.
-macro_rules! wrapper {
-	($me: ident, $f_name: ident, $($param: ident),*) => {
-		match $me {
-			TrieKinds::Generic(t) => t.$f_name($($param),*),
-		}
-	}
-}
-
-impl<'db> Trie for TrieKinds<'db> {
-    fn root(&self) -> &H256 {
-        wrapper!(self, root,)
-    }
-
-    fn is_empty(&self) -> bool {
-        wrapper!(self, is_empty,)
-    }
-
-    fn contains(&self, key: &[u8]) -> Result<bool> {
-        wrapper!(self, contains, key)
-    }
-
-    fn get_with<Q: Query>(&self, key: &[u8], query: Q) -> Result<Option<Q::Item>> {
-        wrapper!(self, get_with, key, query)
-    }
-}
+pub struct TrieFactory {}
 
 impl TrieFactory {
     /// Creates new factory.
-    pub fn new(spec: TrieSpec) -> Self {
-        TrieFactory {
-            spec,
-        }
+    pub fn new() -> Self {
+        Self {}
     }
 
     /// Create new immutable instance of Trie.
-    pub fn readonly<'db>(&self, db: &'db HashDB, root: &'db H256) -> Result<TrieKinds<'db>> {
-        match self.spec {
-            TrieSpec::Generic => Ok(TrieKinds::Generic(TrieDB::new(db, root)?)),
-        }
+    pub fn readonly<'db>(&self, db: &'db HashDB, root: &'db H256) -> Result<TrieDB<'db>> {
+        Ok(TrieDB::new(db, root)?)
     }
 
     /// Create new mutable instance of Trie.
     pub fn create<'db>(&self, db: &'db mut HashDB, root: &'db mut H256) -> Box<TrieMut + 'db> {
-        match self.spec {
-            TrieSpec::Generic => Box::new(TrieDBMut::new(db, root)),
-        }
+        Box::new(TrieDBMut::new(db, root))
     }
 
     /// Create new mutable instance of trie and check for errors.
     pub fn from_existing<'db>(&self, db: &'db mut HashDB, root: &'db mut H256) -> Result<Box<TrieMut + 'db>> {
-        match self.spec {
-            TrieSpec::Generic => Ok(Box::new(TrieDBMut::from_existing(db, root)?)),
-        }
+        Ok(Box::new(TrieDBMut::from_existing(db, root)?))
     }
 }

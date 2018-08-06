@@ -421,7 +421,7 @@ fn load_from(s: cjson::spec::Spec) -> Result<Spec, Error> {
         Some(root) => *s.state_root_memo.get_mut() = root,
         None => {
             let db = StateDB::new_with_memorydb(0, s.custom_handlers.clone());
-            let trie_factory = TrieFactory::new(Default::default());
+            let trie_factory = TrieFactory::new();
             let _ = s.initialize_state(&trie_factory, db)?;
         }
     }

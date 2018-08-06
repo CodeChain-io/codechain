@@ -21,7 +21,7 @@ use std::time::Instant;
 
 use cio::IoChannel;
 use ckey::{Address, Public};
-use cmerkle::{Result as TrieResult, TrieFactory, TrieSpec};
+use cmerkle::{Result as TrieResult, TrieFactory};
 use cnetwork::NodeId;
 use cstate::{
     ActionHandler, Asset, AssetAddress, AssetScheme, AssetSchemeAddress, StateDB, TopBackend, TopLevelState,
@@ -94,12 +94,7 @@ impl Client {
         miner: Arc<Miner>,
         message_channel: IoChannel<ClientIoMessage>,
     ) -> Result<Arc<Client>, Error> {
-        let trie_spec = match config.fat_db {
-            true => unreachable!(),
-            false => TrieSpec::Generic,
-        };
-
-        let trie_factory = TrieFactory::new(trie_spec);
+        let trie_factory = TrieFactory::new();
 
         let journal_db = journaldb::new(db.clone(), journaldb::Algorithm::Archive, ::db::COL_STATE);
         let mut state_db = StateDB::new(journal_db, config.state_cache_size, spec.custom_handlers.clone());

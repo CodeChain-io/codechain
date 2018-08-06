@@ -22,7 +22,7 @@ use std::fmt;
 use std::hash::Hash;
 use std::vec::Vec;
 
-use cmerkle::{self, Result as TrieResult, Trie, TrieKinds, TrieMut};
+use cmerkle::{self, Result as TrieResult, Trie, TrieDB, TrieMut};
 use primitives::{Bytes, H256};
 use rlp::{Decodable, Encodable};
 
@@ -233,7 +233,7 @@ where
         &self,
         a: &'a Item::Address,
         f: &F,
-        db: TrieKinds<'db>,
+        db: TrieDB<'db>,
         from_global_cache: G,
     ) -> cmerkle::Result<U>
     where
@@ -265,7 +265,7 @@ where
         &'a self,
         a: &Item::Address,
         default: F,
-        db: TrieKinds<'db>,
+        db: TrieDB<'db>,
         from_db: G,
     ) -> cmerkle::Result<RefMut<'a, Item>>
     where
