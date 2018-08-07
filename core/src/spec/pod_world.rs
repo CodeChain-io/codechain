@@ -44,7 +44,7 @@ impl From<cjson::spec::World> for PodWorld {
     fn from(s: cjson::spec::World) -> Self {
         Self {
             nonce: s.nonce.map(Into::into).unwrap_or(0),
-            owners: s.owners.unwrap_or_else(Vec::new),
+            owners: s.owners.map(|a| a.into_iter().map(Into::into).collect()).unwrap_or_else(Vec::new),
         }
     }
 }

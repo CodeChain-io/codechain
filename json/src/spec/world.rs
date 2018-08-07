@@ -14,18 +14,18 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use primitives::H160;
-
+use super::super::hash::Address;
 use super::super::uint::Uint;
 
 #[derive(Debug, PartialEq, Deserialize)]
 pub struct World {
     pub nonce: Option<Uint>,
-    pub owners: Option<Vec<H160>>,
+    pub owners: Option<Vec<Address>>,
 }
 
 #[cfg(test)]
 mod tests {
+    use primitives::H160;
     use serde_json;
 
     use super::*;
@@ -40,7 +40,7 @@ mod tests {
         assert_eq!(
             World {
                 nonce: Some(Uint(0.into())),
-                owners: Some(vec![H160::from("01234567890abcdef0123456789abcdef0123456")]),
+                owners: Some(vec![Address(H160::from("01234567890abcdef0123456789abcdef0123456"))]),
             },
             world
         );
@@ -56,7 +56,7 @@ mod tests {
         assert_eq!(
             World {
                 nonce: Some(Uint(100.into())),
-                owners: Some(vec![H160::from("01234567890abcdef0123456789abcdef0123456")]),
+                owners: Some(vec![Address(H160::from("01234567890abcdef0123456789abcdef0123456"))]),
             },
             world
         );
@@ -86,7 +86,7 @@ mod tests {
         assert_eq!(
             World {
                 nonce: None,
-                owners: Some(vec![H160::from("01234567890abcdef0123456789abcdef0123456")]),
+                owners: Some(vec![Address(H160::from("01234567890abcdef0123456789abcdef0123456"))]),
             },
             world
         );
