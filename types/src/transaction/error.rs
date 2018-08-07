@@ -22,6 +22,8 @@ use primitives::{H256, U256};
 use super::super::util::unexpected::Mismatch;
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
+use super::super::WorldId;
+
 #[derive(Debug, PartialEq, Clone, Eq, Serialize)]
 pub enum Error {
     InvalidPaymentSender(Mismatch<Address>),
@@ -50,6 +52,9 @@ pub enum Error {
     /// Returned when the sum of the transaction's inputs is different from the sum of outputs.
     InconsistentTransactionInOut,
     InvalidShardNonce(Mismatch<u64>),
+    InsufficientPermission,
+    InvalidWorldId(WorldId),
+    InvalidWorldNonce(Mismatch<u64>),
 }
 
 const ERROR_ID_INVALID_PAYMENT_SENDER: u8 = 1u8;
@@ -64,6 +69,9 @@ const ERROR_ID_INVALID_SCRIPT: u8 = 9u8;
 const ERROR_ID_FAILED_TO_UNLOCK: u8 = 10u8;
 const ERROR_ID_INCONSISTENT_TRANSACTION_IN_OUT: u8 = 11u8;
 const ERROR_ID_INVALID_SHARD_NONCE: u8 = 12u8;
+const ERROR_ID_INSUFFICIENT_PERMISSION: u8 = 13u8;
+const ERROR_ID_INVALID_WORLD_ID: u8 = 14u8;
+const ERROR_ID_INVALID_WORLD_NONCE: u8 = 15u8;
 
 impl Encodable for Error {
     fn rlp_append(&self, s: &mut RlpStream) {
@@ -95,6 +103,11 @@ impl Encodable for Error {
             Error::InconsistentTransactionInOut => s.begin_list(1).append(&ERROR_ID_INCONSISTENT_TRANSACTION_IN_OUT),
             Error::InvalidShardNonce(mismatch) => {
                 s.begin_list(2).append(&ERROR_ID_INVALID_SHARD_NONCE).append(mismatch)
+            }
+            Error::InsufficientPermission => s.begin_list(1).append(&ERROR_ID_INSUFFICIENT_PERMISSION),
+            Error::InvalidWorldId(world_id) => s.begin_list(2).append(&ERROR_ID_INVALID_WORLD_ID).append(world_id),
+            Error::InvalidWorldNonce(mismatch) => {
+                s.begin_list(2).append(&ERROR_ID_INVALID_WORLD_NONCE).append(mismatch)
             }
         };
     }
@@ -128,6 +141,24 @@ impl Decodable for Error {
                     return Err(DecoderError::RlpInvalidLength)
                 }
                 Error::InvalidShardNonce(rlp.val_at(1)?)
+            }
+            ERROR_ID_INSUFFICIENT_PERMISSION => {
+                if rlp.item_count()? != 1 {
+                    return Err(DecoderError::RlpInvalidLength)
+                }
+                Error::InsufficientPermission
+            }
+            ERROR_ID_INVALID_WORLD_ID => {
+                if rlp.item_count()? != 2 {
+                    return Err(DecoderError::RlpInvalidLength)
+                }
+                Error::InvalidWorldId(rlp.val_at(1)?)
+            }
+            ERROR_ID_INVALID_WORLD_NONCE => {
+                if rlp.item_count()? != 2 {
+                    return Err(DecoderError::RlpInvalidLength)
+                }
+                Error::InvalidWorldNonce(rlp.val_at(1)?)
             }
             _ => return Err(DecoderError::Custom("Invalid transaction error")),
         })
@@ -165,6 +196,32 @@ impl Display for Error {
                 write!(f, "The sum of the transaction's inputs is different from the sum of the transaction's outputs")
             }
             Error::InvalidShardNonce(mismatch) => write!(f, "The shard nonce {}", mismatch),
+            Error::InsufficientPermission => write!(f, "The current sender doesn't have the permission"),
+            Error::InvalidWorldId(_) => write!(f, "The world id is invalid"),
+            Error::InvalidWorldNonce(mismatch) => write!(f, "The world nonce {}", mismatch),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn encode_and_decode_insufficient_permission() {
+        rlp_encode_and_decode_test!(Error::InsufficientPermission);
+    }
+
+    #[test]
+    fn encode_and_decode_invalid_world_id() {
+        rlp_encode_and_decode_test!(Error::InvalidWorldId(3));
+    }
+
+    #[test]
+    fn encode_and_decode_invalid_world_nonce() {
+        rlp_encode_and_decode_test!(Error::InvalidWorldNonce(Mismatch {
+            expected: 1,
+            found: 2,
+        }));
     }
 }

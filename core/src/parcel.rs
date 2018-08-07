@@ -156,6 +156,9 @@ impl UnverifiedParcel {
                         Transaction::CreateWorld {
                             ..
                         } => {}
+                        Transaction::SetWorldOwners {
+                            ..
+                        } => {}
                         Transaction::AssetMint {
                             metadata,
                             ..

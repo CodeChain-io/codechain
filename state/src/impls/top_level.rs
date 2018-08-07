@@ -2085,4 +2085,144 @@ mod tests_parcel {
         let res = state.apply(&parcel, &sender, &sender_public);
         assert_eq!(Err(StateError::Parcel(ParcelError::InvalidShardId(100))), res);
     }
+
+    #[test]
+    fn create_world_and_set_owners_in_the_same_parcel() {
+        let (sender, sender_public) = address();
+
+        let mut state = get_temp_state();
+        assert_eq!(Ok(()), state.create_shard_level_state(&sender));
+        assert_eq!(Ok(()), state.commit());
+
+        let shard_id = 0x00;
+        let network_id = 0xBeef;
+        let world_id = 0;
+
+        let owners = vec![Address::random(), Address::random()];
+
+        let t0 = Transaction::CreateWorld {
+            network_id,
+            shard_id,
+            nonce: 0,
+            owners: vec![Address::random()],
+        };
+        let t1 = Transaction::SetWorldOwners {
+            network_id,
+            shard_id,
+            world_id,
+            nonce: 0,
+            owners: owners.clone(),
+        };
+
+        let transactions = vec![t0, t1];
+        let parcel = Parcel {
+            fee: 20.into(),
+            nonce: 0.into(),
+            network_id,
+            action: Action::ChangeShardState {
+                transactions,
+                changes: vec![ChangeShard {
+                    shard_id,
+                    pre_root: H256::from("0xa8ed01b49cd63c6a547ac3ce357539aa634fb44331a351e3e98b9f1c3a8e3edf"),
+                    post_root: H256::zero(),
+                }],
+                signatures: vec![],
+            },
+        };
+
+        assert_eq!(Ok(()), state.add_balance(&sender, &120.into()));
+        assert_eq!(Ok(120.into()), state.balance(&sender));
+
+        assert_eq!(
+            Ok(ParcelInvoice::Multiple(vec![TransactionInvoice::Success, TransactionInvoice::Success])),
+            state.apply(&parcel, &sender, &sender_public)
+        );
+
+        assert_eq!(Ok(100.into()), state.balance(&sender));
+        assert_eq!(Ok(1.into()), state.nonce(&sender));
+
+        assert_eq!(Ok(Some(World::new_with_nonce(owners, 1))), state.world(shard_id, world_id));
+    }
+
+    #[test]
+    fn create_world_and_set_owners_in_different_parcel() {
+        let (sender, sender_public) = address();
+
+        let mut state = get_temp_state();
+        assert_eq!(Ok(()), state.create_shard_level_state(&sender));
+        assert_eq!(Ok(()), state.commit());
+
+        let shard_id = 0x00;
+        let network_id = 0xBeef;
+        let world_id = 0;
+
+        assert_eq!(Ok(()), state.add_balance(&sender, &120.into()));
+        assert_eq!(Ok(120.into()), state.balance(&sender));
+
+        let old_owners = vec![Address::random(), Address::random(), Address::random()];
+        let new_owners = vec![Address::random(), Address::random()];
+
+        let t0 = Transaction::CreateWorld {
+            network_id,
+            shard_id,
+            nonce: 0,
+            owners: old_owners.clone(),
+        };
+
+        let parcel0 = Parcel {
+            fee: 20.into(),
+            nonce: 0.into(),
+            network_id,
+            action: Action::ChangeShardState {
+                transactions: vec![t0],
+                changes: vec![ChangeShard {
+                    shard_id,
+                    pre_root: H256::from("0xa8ed01b49cd63c6a547ac3ce357539aa634fb44331a351e3e98b9f1c3a8e3edf"),
+                    post_root: H256::zero(),
+                }],
+                signatures: vec![],
+            },
+        };
+
+        assert_eq!(
+            Ok(ParcelInvoice::Multiple(vec![TransactionInvoice::Success])),
+            state.apply(&parcel0, &sender, &sender_public)
+        );
+
+        assert_eq!(Ok(100.into()), state.balance(&sender));
+        assert_eq!(Ok(1.into()), state.nonce(&sender));
+        assert_eq!(Ok(Some(World::new_with_nonce(old_owners, 0))), state.world(shard_id, world_id));
+
+        let t1 = Transaction::SetWorldOwners {
+            network_id,
+            shard_id,
+            world_id,
+            nonce: 0,
+            owners: new_owners.clone(),
+        };
+
+        let parcel1 = Parcel {
+            fee: 30.into(),
+            nonce: 1.into(),
+            network_id,
+            action: Action::ChangeShardState {
+                transactions: vec![t1],
+                changes: vec![ChangeShard {
+                    shard_id,
+                    pre_root: H256::zero(),
+                    post_root: H256::zero(),
+                }],
+                signatures: vec![],
+            },
+        };
+
+        assert_eq!(
+            Ok(ParcelInvoice::Multiple(vec![TransactionInvoice::Success])),
+            state.apply(&parcel1, &sender, &sender_public)
+        );
+
+        assert_eq!(Ok(70.into()), state.balance(&sender));
+        assert_eq!(Ok(2.into()), state.nonce(&sender));
+        assert_eq!(Ok(Some(World::new_with_nonce(new_owners, 1))), state.world(shard_id, world_id));
+    }
 }

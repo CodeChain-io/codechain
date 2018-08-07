@@ -285,6 +285,9 @@ impl AssetClient for Client {
                     Some(Transaction::CreateWorld {
                         ..
                     }) => false,
+                    Some(Transaction::SetWorldOwners {
+                        ..
+                    }) => false,
                     Some(Transaction::AssetMint {
                         shard_id: asset_mint_shard_id,
                         ..

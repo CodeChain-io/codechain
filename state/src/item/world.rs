@@ -49,6 +49,16 @@ impl World {
     pub fn nonce(&self) -> &u64 {
         &self.nonce
     }
+
+    pub fn inc_nonce(&mut self) {
+        debug_assert_ne!(::std::u64::MAX, self.nonce);
+        self.nonce += 1;
+    }
+
+    pub fn set_owners(&mut self, owners: Vec<Address>) {
+        debug_assert_ne!(Vec::<Address>::new(), owners);
+        self.world_owners = owners;
+    }
 }
 
 impl CacheableItem for World {
