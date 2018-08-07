@@ -15,8 +15,9 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ccore::Block as CoreBlock;
+use ckey::Address;
 use ctypes::BlockNumber;
-use primitives::{H160, H256, U256};
+use primitives::{H256, U256};
 
 use super::Parcel;
 
@@ -26,7 +27,7 @@ pub struct Block {
     parent_hash: H256,
     timestamp: u64,
     number: u64,
-    author: H160,
+    author: Address,
 
     extra_data: Vec<u8>,
 
