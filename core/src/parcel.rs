@@ -138,12 +138,19 @@ impl UnverifiedParcel {
         match &self.action {
             Action::ChangeShardState {
                 transactions,
+                changes,
                 ..
             } => {
+                let shard_ids: Vec<_> = changes.iter().map(|c| c.shard_id).collect();
                 for t in transactions {
                     t.verify()?;
                     if t.network_id() != self.network_id {
                         return Err(ParcelError::InvalidNetworkId)
+                    }
+                    for shard_id in t.related_shards() {
+                        if !shard_ids.contains(&shard_id) {
+                            return Err(ParcelError::InvalidShardId(shard_id))
+                        }
                     }
                     match &t {
                         Transaction::CreateWorld {
