@@ -21,9 +21,9 @@ use std::cmp::{max, min};
 use byteorder::{ByteOrder, LittleEndian};
 use ccrypto::blake256;
 use ctypes::machine::WithBalances;
+use ctypes::util::unexpected::{Mismatch, OutOfBounds};
 use primitives::U256;
 use rlp::UntrustedRlp;
-use unexpected::{Mismatch, OutOfBounds};
 
 use self::params::BlakePoWParams;
 use super::super::block::{ExecutedBlock, IsBlock};

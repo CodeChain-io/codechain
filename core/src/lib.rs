@@ -48,7 +48,6 @@ extern crate rlp_derive;
 extern crate parking_lot;
 extern crate table;
 extern crate time;
-extern crate unexpected;
 extern crate util_error;
 
 #[macro_use]

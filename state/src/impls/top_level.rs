@@ -44,10 +44,10 @@ use cmerkle::{Result as TrieResult, Trie, TrieError, TrieFactory};
 use ctypes::invoice::Invoice;
 use ctypes::parcel::{Action, ChangeShard, Error as ParcelError, Outcome as ParcelOutcome, Parcel};
 use ctypes::transaction::{Outcome as TransactionOutcome, Transaction};
+use ctypes::util::unexpected::Mismatch;
 use ctypes::{ShardId, WorldId};
 use primitives::{Bytes, H256, U256};
 use rlp::NULL_RLP;
-use unexpected::Mismatch;
 
 use super::super::backend::TopBackend;
 use super::super::checkpoint::{CheckpointId, StateWithCheckpoint};

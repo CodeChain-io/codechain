@@ -40,8 +40,8 @@ use std::sync::{Arc, Weak};
 use ckey::{Address, Password, Signature};
 use cnetwork::NetworkExtension;
 use ctypes::machine::Machine;
+use ctypes::util::unexpected::{Mismatch, OutOfBounds};
 use primitives::{Bytes, H256, U256};
-use unexpected::{Mismatch, OutOfBounds};
 
 use self::epoch::{EpochVerifier, NoOp, PendingTransition};
 use super::account_provider::AccountProvider;

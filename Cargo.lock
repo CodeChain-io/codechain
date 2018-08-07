@@ -256,7 +256,6 @@ dependencies = [
  "rlp_derive 0.1.0",
  "table 0.1.0",
  "time 0.1.40 (registry+https://github.com/rust-lang/crates.io-index)",
- "unexpected 0.1.0",
  "util-error 0.1.0",
 ]
 
@@ -402,7 +401,6 @@ dependencies = [
  "slab 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "table 0.1.0",
  "time 0.1.40 (registry+https://github.com/rust-lang/crates.io-index)",
- "unexpected 0.1.0",
 ]
 
 [[package]]
@@ -463,7 +461,6 @@ dependencies = [
  "rustc-hex 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.53 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.53 (registry+https://github.com/rust-lang/crates.io-index)",
- "unexpected 0.1.0",
  "util-error 0.1.0",
 ]
 
@@ -517,7 +514,6 @@ dependencies = [
  "rlp_derive 0.1.0",
  "serde 1.0.53 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.53 (registry+https://github.com/rust-lang/crates.io-index)",
- "unexpected 0.1.0",
 ]
 
 [[package]]
@@ -2122,10 +2118,6 @@ dependencies = [
  "rustc-hex 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_version 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
-
-[[package]]
-name = "unexpected"
-version = "0.1.0"
 
 [[package]]
 name = "unicase"

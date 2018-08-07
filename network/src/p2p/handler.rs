@@ -21,11 +21,11 @@ use std::sync::Arc;
 use ccrypto::aes::SymmetricCipherError;
 use cfinally::finally;
 use cio::{IoContext, IoHandler, IoHandlerResult, IoManager, StreamToken, TimerToken};
+use ctypes::util::unexpected::Mismatch;
 use mio::deprecated::EventLoop;
 use mio::{PollOpt, Ready, Token};
 use parking_lot::Mutex;
 use rlp::UntrustedRlp;
-use unexpected::Mismatch;
 
 use super::super::addr::convert_to_node_id;
 use super::super::client::Client;

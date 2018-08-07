@@ -23,9 +23,9 @@ use cstate::{StateDB, StateError, StateWithCache, TopLevelState};
 use ctypes::invoice::{Invoice, ParcelInvoice};
 use ctypes::machine::{LiveBlock, Parcels};
 use ctypes::parcel::{Error as ParcelError, Outcome as ParcelOutcome};
+use ctypes::util::unexpected::Mismatch;
 use primitives::{Bytes, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
-use unexpected::Mismatch;
 
 use super::consensus::CodeChainEngine;
 use super::error::{BlockError, Error};
