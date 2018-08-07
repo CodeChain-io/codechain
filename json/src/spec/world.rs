@@ -25,7 +25,7 @@ pub struct World {
 
 #[cfg(test)]
 mod tests {
-    use primitives::H160;
+    use ckey::Address as CoreAddress;
     use serde_json;
 
     use super::*;
@@ -40,7 +40,7 @@ mod tests {
         assert_eq!(
             World {
                 nonce: Some(Uint(0.into())),
-                owners: Some(vec![Address(H160::from("01234567890abcdef0123456789abcdef0123456"))]),
+                owners: Some(vec![Address(CoreAddress::from("01234567890abcdef0123456789abcdef0123456"))]),
             },
             world
         );
@@ -56,7 +56,7 @@ mod tests {
         assert_eq!(
             World {
                 nonce: Some(Uint(100.into())),
-                owners: Some(vec![Address(H160::from("01234567890abcdef0123456789abcdef0123456"))]),
+                owners: Some(vec![Address(CoreAddress::from("01234567890abcdef0123456789abcdef0123456"))]),
             },
             world
         );
@@ -86,7 +86,7 @@ mod tests {
         assert_eq!(
             World {
                 nonce: None,
-                owners: Some(vec![Address(H160::from("01234567890abcdef0123456789abcdef0123456"))]),
+                owners: Some(vec![Address(CoreAddress::from("01234567890abcdef0123456789abcdef0123456"))]),
             },
             world
         );

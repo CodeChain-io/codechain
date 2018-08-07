@@ -307,6 +307,7 @@ dependencies = [
 name = "codechain-json"
 version = "0.1.0"
 dependencies = [
+ "codechain-key 0.1.0",
  "primitives 0.1.0",
  "rustc-hex 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.53 (registry+https://github.com/rust-lang/crates.io-index)",

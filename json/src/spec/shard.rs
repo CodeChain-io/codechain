@@ -27,7 +27,8 @@ pub struct Shard {
 
 #[cfg(test)]
 mod tests {
-    use primitives::{H160, U256};
+    use ckey::Address as CoreAddress;
+    use primitives::U256;
     use serde_json;
 
     use super::*;
@@ -46,10 +47,10 @@ mod tests {
         assert_eq!(
             Shard {
                 nonce: Some(Uint(U256::from(0))),
-                owner: Address(H160::from("01234567890abcdef0123456789abcdef0123456")),
+                owner: Address(CoreAddress::from("01234567890abcdef0123456789abcdef0123456")),
                 worlds: Some(vec![World {
                     nonce: Some(Uint(U256::from(3))),
-                    owners: Some(vec![Address(H160::from("01234567890abcdef0123456789abcdef0123457"))]),
+                    owners: Some(vec![Address(CoreAddress::from("01234567890abcdef0123456789abcdef0123457"))]),
                 }]),
             },
             shard
@@ -66,7 +67,7 @@ mod tests {
         assert_eq!(
             Shard {
                 nonce: Some(Uint(U256::from(100))),
-                owner: Address(H160::from("01234567890abcdef0123456789abcdef0123456")),
+                owner: Address(CoreAddress::from("01234567890abcdef0123456789abcdef0123456")),
                 worlds: None,
             },
             shard
@@ -91,7 +92,7 @@ mod tests {
         assert_eq!(
             Shard {
                 nonce: None,
-                owner: Address(H160::from("01234567890abcdef0123456789abcdef0123456")),
+                owner: Address(CoreAddress::from("01234567890abcdef0123456789abcdef0123456")),
                 worlds: None,
             },
             shard

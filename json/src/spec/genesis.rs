@@ -47,7 +47,8 @@ pub struct Genesis {
 mod tests {
     use std::str::FromStr;
 
-    use primitives::{H160, H256 as Eth256, H520 as Eth520, U256};
+    use ckey::Address as CoreAddress;
+    use primitives::{H256 as Eth256, H520 as Eth520, U256};
     use serde_json;
 
     use super::super::super::bytes::Bytes;
@@ -85,7 +86,7 @@ mod tests {
                 ]
             }),
             score: Uint(U256::from(0x400000000u64)),
-            author: Some(Address(H160::from("0x1000000000000000000000000000000000000001"))),
+            author: Some(Address(CoreAddress::from("0x1000000000000000000000000000000000000001"))),
             timestamp: Some(Uint(U256::from(0x07))),
             parent_hash: Some(H256(Eth256::from("0x9000000000000000000000000000000000000000000000000000000000000000"))),
             parcels_root: None,

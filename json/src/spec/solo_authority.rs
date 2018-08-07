@@ -35,7 +35,8 @@ pub struct SoloAuthority {
 
 #[cfg(test)]
 mod tests {
-    use primitives::{H160, U256};
+    use ckey::Address as CoreAddress;
+    use primitives::U256;
     use serde_json;
 
     use super::super::super::hash::Address;
@@ -53,7 +54,7 @@ mod tests {
 
         let deserialized: SoloAuthority = serde_json::from_str(s).unwrap();
 
-        let vs = vec![Address(H160::from("0xc6d9d2cd449a754c494264e1809c50e34d64562b"))];
+        let vs = vec![Address(CoreAddress::from("0xc6d9d2cd449a754c494264e1809c50e34d64562b"))];
         assert_eq!(deserialized.params.validators, vs);
         assert_eq!(deserialized.params.block_reward, Some(Uint(U256::from(0x0d))));
     }

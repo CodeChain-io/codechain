@@ -43,7 +43,7 @@ mod random;
 #[cfg(feature = "schnorr")]
 mod schnorr;
 
-pub use address::FullAddress;
+pub use address::{Address, FullAddress};
 #[cfg(feature = "ecdsa")]
 pub use ecdsa::{
     recover_ecdsa as recover, sign_ecdsa as sign, verify_ecdsa as verify, verify_ecdsa_address as verify_address,
@@ -54,7 +54,7 @@ pub use exchange::exchange;
 pub use keypair::{public_to_address, KeyPair};
 pub use network::Network;
 pub use password::Password;
-use primitives::{H160, H256, H512};
+use primitives::{H256, H512};
 pub use private::Private;
 pub use random::Random;
 pub use rustc_serialize::hex;
@@ -68,7 +68,6 @@ pub use schnorr::{
 /// 32 bytes long signable message
 pub type Message = H256;
 
-pub type Address = H160;
 pub type Secret = H256;
 pub type Public = H512;
 

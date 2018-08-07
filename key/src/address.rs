@@ -16,14 +16,144 @@
 
 use std::cmp;
 use std::fmt;
+use std::hash::{Hash, Hasher};
+use std::ops::{Deref, DerefMut};
 use std::str::FromStr;
 
 use bech32::Bech32;
+use heapsize::HeapSizeOf;
 use primitives::H160;
+use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
+use rustc_hex::FromHexError;
 use serde::de::{Error as SerdeError, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-use super::{Address, Error, Network};
+use super::{Error, Network};
+
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]
+pub struct Address(H160);
+
+impl Address {
+    pub fn zero() -> Self {
+        Address(H160::zero())
+    }
+
+    pub fn new() -> Self {
+        Address(H160::new())
+    }
+
+    pub fn random() -> Self {
+        Address(H160::random())
+    }
+}
+
+impl Deref for Address {
+    type Target = H160;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for Address {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl fmt::Display for Address {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl PartialOrd for Address {
+    fn partial_cmp(&self, m: &Address) -> Option<cmp::Ordering> {
+        self.0.partial_cmp(&m.0)
+    }
+}
+
+impl Ord for Address {
+    fn cmp(&self, m: &Address) -> cmp::Ordering {
+        self.0.cmp(&m.0)
+    }
+}
+
+impl Hash for Address {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.0.hash(state);
+    }
+}
+
+impl Default for Address {
+    fn default() -> Self {
+        Address(Default::default())
+    }
+}
+
+impl Encodable for Address {
+    fn rlp_append(&self, s: &mut RlpStream) {
+        let data: H160 = self.0.into();
+        data.rlp_append(s);
+    }
+}
+
+impl Decodable for Address {
+    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+        let data = H160::decode(rlp)?;
+        Ok(Address(data))
+    }
+}
+
+impl FromStr for Address {
+    type Err = FromHexError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Address(H160::from_str(s)?))
+    }
+}
+
+impl From<H160> for Address {
+    fn from(s: H160) -> Self {
+        Address(s)
+    }
+}
+
+impl From<u64> for Address {
+    fn from(s: u64) -> Self {
+        Address(H160::from(s))
+    }
+}
+
+impl From<[u8; 20]> for Address {
+    fn from(s: [u8; 20]) -> Self {
+        Address(H160::from(s))
+    }
+}
+
+impl From<&'static str> for Address {
+    fn from(s: &'static str) -> Self {
+        Address(H160::from(s))
+    }
+}
+
+impl Into<[u8; 20]> for Address {
+    fn into(self) -> [u8; 20] {
+        self.0.into()
+    }
+}
+
+impl AsRef<[u8]> for Address {
+    fn as_ref(&self) -> &[u8] {
+        &self.0.as_ref()
+    }
+}
+
+impl HeapSizeOf for Address {
+    fn heap_size_of_children(&self) -> usize {
+        self.0.heap_size_of_children()
+    }
+}
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct FullAddress {
@@ -135,7 +265,7 @@ impl FromStr for FullAddress {
                         for i in 0..20 {
                             arr[i] = data[1 + i];
                         }
-                        H160(arr)
+                        Address(H160(arr))
                     },
                 })
             }
