@@ -18,9 +18,9 @@ use std::fmt::{Display, Formatter, Result as FormatResult};
 
 use ckey::{Address, Error as KeyError};
 use primitives::{H256, U256};
-use unexpected::Mismatch;
 
 use super::super::transaction::Error as TransactionError;
+use super::super::util::unexpected::Mismatch;
 use super::super::ShardId;
 
 #[derive(Debug, PartialEq, Clone)]

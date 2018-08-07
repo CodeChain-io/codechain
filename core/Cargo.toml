@@ -37,5 +37,4 @@ rlp_compress = { path = "../util/rlp_compress" }
 rlp_derive = { path = "../util/rlp_derive" }
 table = { path = "../util/table" }
 time = "0.1"
-unexpected = { path = "../util/unexpected" }
 util-error = { path = "../util/error" }

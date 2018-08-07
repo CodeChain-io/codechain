@@ -36,7 +36,6 @@ extern crate rlp;
 extern crate rustc_hex;
 #[macro_use]
 extern crate serde_derive;
-extern crate unexpected;
 extern crate util_error;
 
 mod action_handler;

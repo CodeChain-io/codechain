@@ -18,7 +18,8 @@ use std::fmt::{Display, Formatter, Result as FormatResult};
 
 use ckey::Address;
 use primitives::{H256, U256};
-use unexpected::Mismatch;
+
+use super::super::util::unexpected::Mismatch;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Error {

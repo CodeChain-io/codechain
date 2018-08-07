@@ -27,7 +27,6 @@ extern crate rlp;
 #[macro_use]
 extern crate rlp_derive;
 extern crate slab;
-extern crate unexpected;
 
 extern crate codechain_crypto as ccrypto;
 extern crate codechain_finally as cfinally;
