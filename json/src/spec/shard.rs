@@ -14,21 +14,20 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use primitives::H160;
-
+use super::super::hash::Address;
 use super::super::uint::Uint;
 use super::World;
 
 #[derive(Debug, PartialEq, Deserialize)]
 pub struct Shard {
     pub nonce: Option<Uint>,
-    pub owner: H160,
+    pub owner: Address,
     pub worlds: Option<Vec<World>>,
 }
 
 #[cfg(test)]
 mod tests {
-    use primitives::U256;
+    use primitives::{H160, U256};
     use serde_json;
 
     use super::*;
@@ -47,10 +46,10 @@ mod tests {
         assert_eq!(
             Shard {
                 nonce: Some(Uint(U256::from(0))),
-                owner: H160::from("01234567890abcdef0123456789abcdef0123456"),
+                owner: Address(H160::from("01234567890abcdef0123456789abcdef0123456")),
                 worlds: Some(vec![World {
                     nonce: Some(Uint(U256::from(3))),
-                    owners: Some(vec![H160::from("01234567890abcdef0123456789abcdef0123457")]),
+                    owners: Some(vec![Address(H160::from("01234567890abcdef0123456789abcdef0123457"))]),
                 }]),
             },
             shard
@@ -67,7 +66,7 @@ mod tests {
         assert_eq!(
             Shard {
                 nonce: Some(Uint(U256::from(100))),
-                owner: H160::from("01234567890abcdef0123456789abcdef0123456"),
+                owner: Address(H160::from("01234567890abcdef0123456789abcdef0123456")),
                 worlds: None,
             },
             shard
@@ -92,7 +91,7 @@ mod tests {
         assert_eq!(
             Shard {
                 nonce: None,
-                owner: H160::from("01234567890abcdef0123456789abcdef0123456"),
+                owner: Address(H160::from("01234567890abcdef0123456789abcdef0123456")),
                 worlds: None,
             },
             shard
