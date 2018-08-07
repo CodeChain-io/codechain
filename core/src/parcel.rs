@@ -142,35 +142,24 @@ impl UnverifiedParcel {
             } => {
                 for t in transactions {
                     t.verify()?;
+                    if t.network_id() != self.network_id {
+                        return Err(ParcelError::InvalidNetworkId)
+                    }
                     match &t {
                         Transaction::CreateWorld {
-                            network_id,
                             ..
-                        } => {
-                            if network_id != &self.network_id {
-                                return Err(ParcelError::InvalidNetworkId)
-                            }
-                        }
+                        } => {}
                         Transaction::AssetMint {
-                            network_id,
                             metadata,
                             ..
                         } => {
                             if metadata.len() > params.max_metadata_size {
                                 return Err(ParcelError::MetadataTooBig)
                             }
-                            if network_id != &self.network_id {
-                                return Err(ParcelError::InvalidNetworkId)
-                            }
                         }
                         Transaction::AssetTransfer {
-                            network_id,
                             ..
-                        } => {
-                            if network_id != &self.network_id {
-                                return Err(ParcelError::InvalidNetworkId)
-                            }
-                        }
+                        } => {}
                     }
                 }
             }
