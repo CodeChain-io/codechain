@@ -48,7 +48,7 @@ mod tests {
     use std::str::FromStr;
 
     use ckey::Address as CoreAddress;
-    use primitives::{H256 as Eth256, H520 as Eth520, U256};
+    use primitives::{H256 as Core256, H520 as Core520, U256};
     use serde_json;
 
     use super::super::super::bytes::Bytes;
@@ -80,18 +80,18 @@ mod tests {
         assert_eq!(deserialized, Genesis {
             seal: Seal::Tendermint(TendermintSeal {
                 round: Uint(U256::from(0x0)),
-                proposal: H520(Eth520::from("0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")),
+                proposal: H520(Core520::from("0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")),
                 precommits: vec![
-                    H520(Eth520::from("0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")),
+                    H520(Core520::from("0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")),
                 ]
             }),
             score: Uint(U256::from(0x400000000u64)),
             author: Some(Address(CoreAddress::from("0x1000000000000000000000000000000000000001"))),
             timestamp: Some(Uint(U256::from(0x07))),
-            parent_hash: Some(H256(Eth256::from("0x9000000000000000000000000000000000000000000000000000000000000000"))),
+            parent_hash: Some(H256(Core256::from("0x9000000000000000000000000000000000000000000000000000000000000000"))),
             parcels_root: None,
             invoices_root: None,
-            state_root: Some(H256(Eth256::from("0xd7f8974fb5ac78d9ac099b9ad5018bedc2ce0a72dad1827a1709da30580f0544"))),
+            state_root: Some(H256(Core256::from("0xd7f8974fb5ac78d9ac099b9ad5018bedc2ce0a72dad1827a1709da30580f0544"))),
             extra_data: Some(Bytes::from_str("0x11bbe8db4e347b4e8c937c1c8370e4b5ed33adb3db69cbdb7a38e1e50b1b82fa").unwrap()),
         });
     }
