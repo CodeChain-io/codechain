@@ -14,15 +14,14 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use primitives::H160;
-
+use super::super::hash::Address;
 use super::super::uint::Uint;
 use super::World;
 
 #[derive(Debug, PartialEq, Deserialize)]
 pub struct Shard {
     pub nonce: Option<Uint>,
-    pub owner: H160,
+    pub owner: Address,
     pub worlds: Option<Vec<World>>,
 }
 
