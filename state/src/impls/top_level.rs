@@ -552,7 +552,7 @@ impl TopLevelState {
         ctrace!(STATE, "shard created({}, {:?})", shard_id, shard_root);
 
         self.set_shard_root(shard_id, &BLAKE_NULL_RLP, &shard_root)?;
-        self.set_shard_owner(shard_id, &Address::zero(), *fee_payer)?;
+        self.set_shard_owner(shard_id, &Address::default(), *fee_payer)?;
         Ok(())
     }
 
@@ -628,7 +628,7 @@ impl TopLevelState {
     }
 
     fn require_shard<'a>(&'a self, shard_id: ShardId) -> TrieResult<RefMut<'a, Shard>> {
-        let default = || Shard::new(BLAKE_NULL_RLP, Address::zero());
+        let default = || Shard::new(BLAKE_NULL_RLP, Address::default());
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
         let shard_address = ShardAddress::new(shard_id);
         let from_db = || self.db.get_cached_shard(&shard_address);
@@ -822,7 +822,7 @@ mod tests_state {
 
     #[test]
     fn should_work_when_cloned() {
-        let a = Address::zero();
+        let a = Address::default();
 
         let mut state = {
             let mut state = get_temp_state();
@@ -855,7 +855,7 @@ mod tests_state {
 
     #[test]
     fn get_from_database() {
-        let a = Address::zero();
+        let a = Address::default();
         let (root, db) = {
             let mut state = get_temp_state();
             assert_eq!(Ok(()), state.inc_nonce(&a));
@@ -872,7 +872,7 @@ mod tests_state {
 
     #[test]
     fn remove() {
-        let a = Address::zero();
+        let a = Address::default();
         let mut state = get_temp_state();
         assert_eq!(Ok(false), state.account_exists(&a));
         assert_eq!(Ok(false), state.account_exists_and_not_null(&a));
@@ -888,7 +888,7 @@ mod tests_state {
 
     #[test]
     fn empty_account_is_not_created() {
-        let a = Address::zero();
+        let a = Address::default();
         let db = get_temp_state_db();
         let (root, db) = {
             let mut state = TopLevelState::new(db);
@@ -903,7 +903,7 @@ mod tests_state {
 
     #[test]
     fn remove_from_database() {
-        let a = Address::zero();
+        let a = Address::default();
         let (root, db) = {
             let mut state = get_temp_state();
             assert_eq!(Ok(()), state.inc_nonce(&a));
@@ -932,7 +932,7 @@ mod tests_state {
     #[test]
     fn alter_balance() {
         let mut state = get_temp_state();
-        let a = Address::zero();
+        let a = Address::default();
         let b = 1u64.into();
         assert_eq!(Ok(()), state.add_balance(&a, &U256::from(69u64)));
         assert_eq!(Ok(69.into()), state.balance(&a));
@@ -953,7 +953,7 @@ mod tests_state {
     #[test]
     fn alter_nonce() {
         let mut state = get_temp_state();
-        let a = Address::zero();
+        let a = Address::default();
         assert_eq!(Ok(()), state.inc_nonce(&a));
         assert_eq!(Ok(1.into()), state.nonce(&a));
         assert_eq!(Ok(()), state.inc_nonce(&a));
@@ -969,7 +969,7 @@ mod tests_state {
     #[test]
     fn balance_nonce() {
         let mut state = get_temp_state();
-        let a = Address::zero();
+        let a = Address::default();
         assert_eq!(Ok(0.into()), state.balance(&a));
         assert_eq!(Ok(0.into()), state.nonce(&a));
         assert_eq!(Ok(()), state.commit());
@@ -980,7 +980,7 @@ mod tests_state {
     #[test]
     fn ensure_cached() {
         let mut state = get_temp_state();
-        let a = Address::zero();
+        let a = Address::default();
         state.require_account(&a).unwrap();
         assert_eq!(Ok(()), state.commit());
         assert_eq!(*state.root(), "db4046bb91a12a37cbfb0f09631aad96a97248423163eca791e19b430cc7fe4a".into());
@@ -989,7 +989,7 @@ mod tests_state {
     #[test]
     fn checkpoint_basic() {
         let mut state = get_temp_state();
-        let a = Address::zero();
+        let a = Address::default();
         state.create_checkpoint(0);
         assert_eq!(Ok(()), state.add_balance(&a, &U256::from(69u64)));
         assert_eq!(Ok(69.into()), state.balance(&a));
@@ -1005,7 +1005,7 @@ mod tests_state {
     #[test]
     fn checkpoint_nested() {
         let mut state = get_temp_state();
-        let a = Address::zero();
+        let a = Address::default();
         state.create_checkpoint(0);
         assert_eq!(Ok(()), state.add_balance(&a, &U256::from(69u64)));
         state.create_checkpoint(1);
@@ -1020,7 +1020,7 @@ mod tests_state {
     #[test]
     fn checkpoint_discard() {
         let mut state = get_temp_state();
-        let a = Address::zero();
+        let a = Address::default();
         state.create_checkpoint(0);
         assert_eq!(Ok(()), state.add_balance(&a, &U256::from(69u64)));
         state.create_checkpoint(1);

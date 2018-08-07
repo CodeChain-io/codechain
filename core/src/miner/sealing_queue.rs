@@ -94,7 +94,7 @@ mod tests {
     #[test]
     fn should_not_find_when_pushed() {
         let mut q = SealingQueue::new(QUEUE_SIZE);
-        let b = create_closed_block(Address::zero());
+        let b = create_closed_block(Address::default());
         let h = b.hash();
 
         q.push(b);
@@ -105,7 +105,7 @@ mod tests {
     #[test]
     fn should_find_when_pushed_and_used() {
         let mut q = SealingQueue::new(QUEUE_SIZE);
-        let b = create_closed_block(Address::zero());
+        let b = create_closed_block(Address::default());
         let h = b.hash();
 
         q.push(b);

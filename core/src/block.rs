@@ -423,7 +423,7 @@ pub fn enact(
     parent: &Header,
     is_epoch_begin: bool,
 ) -> Result<LockedBlock, Error> {
-    let mut b = OpenBlock::new(engine, db, parent, Address::new(), vec![], is_epoch_begin)?;
+    let mut b = OpenBlock::new(engine, db, parent, Address::default(), vec![], is_epoch_begin)?;
 
     b.populate_from(header);
     b.push_parcels(parcels)?;
@@ -444,7 +444,7 @@ mod tests {
         let spec = Spec::new_test();
         let genesis_header = spec.genesis_header();
         let db = spec.ensure_genesis_state(get_temp_state_db()).unwrap();
-        let b = OpenBlock::new(&*spec.engine, db, &genesis_header, Address::zero(), vec![], false).unwrap();
+        let b = OpenBlock::new(&*spec.engine, db, &genesis_header, Address::default(), vec![], false).unwrap();
         let parent_parcels_root = genesis_header.parcels_root().clone();
         let parent_invoices_root = genesis_header.invoices_root().clone();
         let b = b.close_and_lock(parent_parcels_root, parent_invoices_root);

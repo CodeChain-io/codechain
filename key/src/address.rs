@@ -34,14 +34,6 @@ use super::{Error, Network};
 pub struct Address(H160);
 
 impl Address {
-    pub fn zero() -> Self {
-        Address(H160::zero())
-    }
-
-    pub fn new() -> Self {
-        Address(H160::new())
-    }
-
     pub fn random() -> Self {
         Address(H160::random())
     }
