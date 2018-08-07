@@ -49,6 +49,7 @@ pub enum Error {
     FailedToUnlock(H256),
     /// Returned when the sum of the transaction's inputs is different from the sum of outputs.
     InconsistentTransactionInOut,
+    InvalidShardNonce(Mismatch<u64>),
 }
 
 const ERROR_ID_INVALID_PAYMENT_SENDER: u8 = 1u8;
@@ -62,6 +63,7 @@ const ERROR_ID_SCRIPT_HASH_MISMATCH: u8 = 8u8;
 const ERROR_ID_INVALID_SCRIPT: u8 = 9u8;
 const ERROR_ID_FAILED_TO_UNLOCK: u8 = 10u8;
 const ERROR_ID_INCONSISTENT_TRANSACTION_IN_OUT: u8 = 11u8;
+const ERROR_ID_INVALID_SHARD_NONCE: u8 = 12u8;
 
 impl Encodable for Error {
     fn rlp_append(&self, s: &mut RlpStream) {
@@ -91,6 +93,9 @@ impl Encodable for Error {
             Error::InvalidScript => s.begin_list(1).append(&ERROR_ID_INVALID_SCRIPT),
             Error::FailedToUnlock(hash) => s.begin_list(1).append(&ERROR_ID_FAILED_TO_UNLOCK).append(hash),
             Error::InconsistentTransactionInOut => s.begin_list(1).append(&ERROR_ID_INCONSISTENT_TRANSACTION_IN_OUT),
+            Error::InvalidShardNonce(mismatch) => {
+                s.begin_list(2).append(&ERROR_ID_INVALID_SHARD_NONCE).append(mismatch)
+            }
         };
     }
 }
@@ -118,6 +123,12 @@ impl Decodable for Error {
             ERROR_ID_INVALID_SCRIPT => Error::InvalidScript,
             ERROR_ID_FAILED_TO_UNLOCK => Error::FailedToUnlock(rlp.val_at(1)?),
             ERROR_ID_INCONSISTENT_TRANSACTION_IN_OUT => Error::InconsistentTransactionInOut,
+            ERROR_ID_INVALID_SHARD_NONCE => {
+                if rlp.item_count()? != 2 {
+                    return Err(DecoderError::RlpInvalidLength)
+                }
+                Error::InvalidShardNonce(rlp.val_at(1)?)
+            }
             _ => return Err(DecoderError::Custom("Invalid transaction error")),
         })
     }
@@ -153,6 +164,7 @@ impl Display for Error {
             Error::InconsistentTransactionInOut => {
                 write!(f, "The sum of the transaction's inputs is different from the sum of the transaction's outputs")
             }
+            Error::InvalidShardNonce(mismatch) => write!(f, "The shard nonce {}", mismatch),
         }
     }
 }

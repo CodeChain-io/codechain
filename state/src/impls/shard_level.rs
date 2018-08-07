@@ -137,9 +137,17 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         }
     }
 
-    fn create_world(&mut self, shard_id: ShardId, _nonce: &u64, owners: &Vec<Address>) -> StateResult<()> {
+    fn create_world(&mut self, shard_id: ShardId, nonce: &u64, owners: &Vec<Address>) -> StateResult<()> {
         let metadata_address = ShardMetadataAddress::new(shard_id);
         let mut metadata = self.require_metadata(&metadata_address, || unreachable!("Shard must have metadata"))?;
+
+        let current_nonce = *metadata.nonce();
+        if *nonce != current_nonce {
+            return Err(TransactionError::InvalidShardNonce(Mismatch {
+                expected: current_nonce,
+                found: *nonce,
+            }).into())
+        }
 
         let world_id = *metadata.number_of_worlds();
         let world_address = WorldAddress::new(shard_id, world_id);
@@ -567,6 +575,40 @@ mod tests {
         let world_id = 0;
         let world = state.world(world_id);
         assert_eq!(Ok(Some(World::new(owners))), world);
+    }
+
+    #[test]
+    fn create_world_fail_if_nonce_is_not_matched() {
+        let network_id = 0xDEADBEEF;
+        let shard_id = 0xCAFE;
+        let mut state = get_temp_shard_state(shard_id);
+
+        let nonce = 1;
+        let owners = vec![];
+
+        let transaction = Transaction::CreateWorld {
+            network_id,
+            shard_id,
+            nonce,
+            owners: owners.clone(),
+        };
+
+        let sender = address();
+        let shard_owner = address();
+        assert_eq!(
+            Ok(TransactionInvoice::Fail(TransactionError::InvalidShardNonce(Mismatch {
+                expected: 0,
+                found: 1
+            }))),
+            state.apply(shard_id, &transaction, &sender, &shard_owner)
+        );
+
+        let metadata = state.metadata();
+        assert_eq!(Ok(Some(ShardMetadata::new_with_nonce(0, 0))), metadata);
+
+        let world_id = 0;
+        let world = state.world(world_id);
+        assert_eq!(Ok(None), world);
     }
 
     #[test]
