@@ -70,6 +70,7 @@ where
         shard_id: ShardId,
         transaction: &Transaction,
         sender: &Address,
+        shard_owner: &Address,
     ) -> StateResult<TransactionOutcome>;
 }
 

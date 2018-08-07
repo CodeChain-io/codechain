@@ -104,7 +104,13 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         (self.root, self.db)
     }
 
-    fn apply_internal(&mut self, shard_id: ShardId, transaction: &Transaction, _sender: &Address) -> StateResult<()> {
+    fn apply_internal(
+        &mut self,
+        shard_id: ShardId,
+        transaction: &Transaction,
+        _sender: &Address,
+        _shard_owner: &Address,
+    ) -> StateResult<()> {
         debug_assert_eq!(Ok(()), transaction.verify());
         match transaction {
             Transaction::CreateWorld {
@@ -461,11 +467,12 @@ impl<B: Backend + ShardBackend> ShardState<B> for ShardLevelState<B> {
         shard_id: ShardId,
         transaction: &Transaction,
         sender: &Address,
+        shard_owner: &Address,
     ) -> StateResult<TransactionOutcome> {
         ctrace!(TX, "Execute {:?}(TxHash:{:?})", transaction, transaction.hash());
 
         self.create_checkpoint(TRANSACTION_CHECKPOINT);
-        let result = self.apply_internal(shard_id, transaction, sender);
+        let result = self.apply_internal(shard_id, transaction, sender, shard_owner);
         match result {
             Ok(_) => {
                 cinfo!(TX, "Tx({}) is applied", transaction.hash());
@@ -528,12 +535,13 @@ mod tests {
         };
 
         let sender = address();
+        let shard_owner = address();
         assert_eq!(
             Ok(TransactionOutcome {
                 invoice: Invoice::Success,
                 error: None,
             }),
-            state.apply(shard_id, &transaction, &sender)
+            state.apply(shard_id, &transaction, &sender, &shard_owner)
         );
 
         let metadata = state.metadata();
@@ -561,12 +569,13 @@ mod tests {
         };
 
         let sender = address();
+        let shard_owner = address();
         assert_eq!(
             Ok(TransactionOutcome {
                 invoice: Invoice::Success,
                 error: None,
             }),
-            state.apply(shard_id, &transaction, &sender)
+            state.apply(shard_id, &transaction, &sender, &shard_owner)
         );
 
         let metadata = state.metadata();
@@ -601,12 +610,13 @@ mod tests {
         };
 
         let sender = address();
+        let shard_owner = address();
         assert_eq!(
             Ok(TransactionOutcome {
                 invoice: Invoice::Success,
                 error: None,
             }),
-            state.apply(shard_id, &transaction, &sender)
+            state.apply(shard_id, &transaction, &sender, &shard_owner)
         );
 
         let transaction_hash = transaction.hash();
@@ -642,12 +652,13 @@ mod tests {
         };
 
         let sender = address();
+        let shard_owner = address();
         assert_eq!(
             Ok(TransactionOutcome {
                 invoice: Invoice::Success,
                 error: None,
             }),
-            state.apply(shard_id, &transaction, &sender)
+            state.apply(shard_id, &transaction, &sender, &shard_owner)
         );
 
         let transaction_hash = transaction.hash();
@@ -689,12 +700,13 @@ mod tests {
         let network_id = 0xCafe;
 
         let sender = address();
+        let shard_owner = address();
         assert_eq!(
             Ok(TransactionOutcome {
                 invoice: Invoice::Success,
                 error: None,
             }),
-            state.apply(shard_id, &mint, &sender)
+            state.apply(shard_id, &mint, &sender, &shard_owner)
         );
 
         let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id);
@@ -746,12 +758,13 @@ mod tests {
         let transfer_hash = transfer.hash();
 
         let sender = address();
+        let shard_owner = address();
         assert_eq!(
             Ok(TransactionOutcome {
                 invoice: Invoice::Success,
                 error: None,
             }),
-            state.apply(shard_id, &transfer, &sender)
+            state.apply(shard_id, &transfer, &sender, &shard_owner)
         );
 
         let asset0_address = AssetAddress::new(transfer_hash, 0, shard_id);
@@ -793,12 +806,13 @@ mod tests {
         let network_id = 0xCafe;
 
         let sender = address();
+        let shard_owner = address();
         assert_eq!(
             Ok(TransactionOutcome {
                 invoice: Invoice::Success,
                 error: None,
             }),
-            state.apply(shard_id, &mint, &sender)
+            state.apply(shard_id, &mint, &sender, &shard_owner)
         );
 
         let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id);
@@ -834,7 +848,8 @@ mod tests {
         };
 
         let sender = address();
-        let failed_outcome = state.apply(shard_id, &failed_transfer, &sender).unwrap();
+        let shard_owner = address();
+        let failed_outcome = state.apply(shard_id, &failed_transfer, &sender, &shard_owner).unwrap();
         assert_eq!(Invoice::Failed, failed_outcome.invoice);
         assert_ne!(None, failed_outcome.error);
 
@@ -877,12 +892,13 @@ mod tests {
         let successful_transfer_hash = successful_transfer.hash();
 
         let sender = address();
+        let shard_owner = address();
         assert_eq!(
             Ok(TransactionOutcome {
                 invoice: Invoice::Success,
                 error: None,
             }),
-            state.apply(shard_id, &successful_transfer, &sender)
+            state.apply(shard_id, &successful_transfer, &sender, &shard_owner)
         );
 
         let asset0_address = AssetAddress::new(successful_transfer_hash, 0, shard_id);

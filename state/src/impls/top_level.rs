@@ -485,6 +485,7 @@ impl TopLevelState {
         let shard_id = change.shard_id;
 
         let shard_root = self.shard_root(shard_id)?.ok_or_else(|| ParcelError::InvalidShardId(shard_id))?;
+
         if !change.pre_root.is_zero() && shard_root != change.pre_root {
             return Err(ParcelError::InvalidShardRoot(Mismatch {
                 expected: shard_root,
@@ -529,12 +530,14 @@ impl TopLevelState {
         shard_root: H256,
         sender: &Address,
     ) -> StateResult<(H256, StateDB, Vec<TransactionOutcome>)> {
+        let shard_owner = self.shard_owner(shard_id)?.expect("Shard must have the owner");
+
         // FIXME: Make it mutable borrow db instead of cloning.
         let mut shard_level_state = ShardLevelState::from_existing(shard_id, self.db.clone(), shard_root)?;
 
         let mut results = Vec::with_capacity(transactions.len());
         for t in transactions {
-            let result = shard_level_state.apply(shard_id, t, sender)?;
+            let result = shard_level_state.apply(shard_id, t, sender, &shard_owner)?;
             results.push(result);
         }
 
