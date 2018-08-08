@@ -108,7 +108,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         shard_id: ShardId,
         transaction: &Transaction,
         sender: &Address,
-        shard_owner: &Address,
+        shard_owners: &[Address],
     ) -> StateResult<()> {
         debug_assert_eq!(Ok(()), transaction.verify());
         match transaction {
@@ -123,7 +123,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
                 nonce,
                 owners,
                 ..
-            } => Ok(self.set_world_owners(*shard_id, *world_id, *nonce, &owners, sender, shard_owner)?),
+            } => Ok(self.set_world_owners(*shard_id, *world_id, *nonce, &owners, sender, shard_owners)?),
             Transaction::AssetMint {
                 metadata,
                 registrar,
@@ -173,11 +173,11 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         nonce: u64,
         owners: &[Address],
         sender: &Address,
-        shard_owner: &Address,
+        shard_owners: &[Address],
     ) -> StateResult<()> {
         let world: World = self.world(world_id)?.ok_or_else(|| TransactionError::InvalidWorldId(world_id))?;
 
-        if shard_owner != sender && !world.world_owners().contains(sender) {
+        if !shard_owners.contains(sender) && !world.world_owners().contains(sender) {
             return Err(TransactionError::InsufficientPermission.into())
         }
 
@@ -510,12 +510,12 @@ impl<B: Backend + ShardBackend> ShardState<B> for ShardLevelState<B> {
         shard_id: ShardId,
         transaction: &Transaction,
         sender: &Address,
-        shard_owner: &Address,
+        shard_owners: &[Address],
     ) -> StateResult<TransactionInvoice> {
         ctrace!(TX, "Execute {:?}(TxHash:{:?})", transaction, transaction.hash());
 
         self.create_checkpoint(TRANSACTION_CHECKPOINT);
-        let result = self.apply_internal(shard_id, transaction, sender, shard_owner);
+        let result = self.apply_internal(shard_id, transaction, sender, shard_owners);
         match result {
             Ok(_) => {
                 cinfo!(TX, "Tx({}) is applied", transaction.hash());
@@ -573,7 +573,7 @@ mod tests {
 
         let sender = address();
         let shard_owner = address();
-        let result = state.apply(shard_id, &transaction, &sender, &shard_owner);
+        let result = state.apply(shard_id, &transaction, &sender, &[shard_owner]);
         assert_eq!(Ok(TransactionInvoice::Success), result);
 
         let metadata = state.metadata();
@@ -602,7 +602,7 @@ mod tests {
 
         let sender = address();
         let shard_owner = address();
-        let result = state.apply(shard_id, &transaction, &sender, &shard_owner);
+        let result = state.apply(shard_id, &transaction, &sender, &[shard_owner]);
         assert_eq!(Ok(TransactionInvoice::Success), result);
 
         let metadata = state.metadata();
@@ -636,7 +636,7 @@ mod tests {
                 expected: 0,
                 found: 1
             }))),
-            state.apply(shard_id, &transaction, &sender, &shard_owner)
+            state.apply(shard_id, &transaction, &sender, &[shard_owner])
         );
 
         let metadata = state.metadata();
@@ -672,7 +672,7 @@ mod tests {
 
         let sender = address();
         let shard_owner = address();
-        let result = state.apply(shard_id, &transaction, &sender, &shard_owner);
+        let result = state.apply(shard_id, &transaction, &sender, &[shard_owner]);
         assert_eq!(Ok(TransactionInvoice::Success), result);
 
         let transaction_hash = transaction.hash();
@@ -709,7 +709,7 @@ mod tests {
 
         let sender = address();
         let shard_owner = address();
-        let result = state.apply(shard_id, &transaction, &sender, &shard_owner);
+        let result = state.apply(shard_id, &transaction, &sender, &[shard_owner]);
         assert_eq!(Ok(TransactionInvoice::Success), result);
 
         let transaction_hash = transaction.hash();
@@ -752,7 +752,7 @@ mod tests {
 
         let sender = address();
         let shard_owner = address();
-        assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &mint, &sender, &shard_owner));
+        assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &mint, &sender, &[shard_owner]));
 
         let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id);
         let asset_scheme = state.asset_scheme(&asset_scheme_address);
@@ -802,7 +802,7 @@ mod tests {
         };
         let transfer_hash = transfer.hash();
 
-        assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &transfer, &sender, &shard_owner));
+        assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &transfer, &sender, &[shard_owner]));
 
         let asset0_address = AssetAddress::new(transfer_hash, 0, shard_id);
         let asset0 = state.asset(&asset0_address);
@@ -844,7 +844,7 @@ mod tests {
 
         let sender = address();
         let shard_owner = address();
-        assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &mint, &sender, &shard_owner));
+        assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &mint, &sender, &[shard_owner]));
 
         let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id);
         let asset_scheme = state.asset_scheme(&asset_scheme_address);
@@ -881,7 +881,7 @@ mod tests {
 
         let sender = address();
         let shard_owner = address();
-        let failed_invoice = state.apply(shard_id, &failed_transfer, &sender, &shard_owner).unwrap();
+        let failed_invoice = state.apply(shard_id, &failed_transfer, &sender, &[shard_owner]).unwrap();
         assert_eq!(
             TransactionInvoice::Fail(TransactionError::ScriptHashMismatch(Mismatch {
                 expected: lock_script_hash,
@@ -928,7 +928,10 @@ mod tests {
         };
         let successful_transfer_hash = successful_transfer.hash();
 
-        assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &successful_transfer, &sender, &shard_owner));
+        assert_eq!(
+            Ok(TransactionInvoice::Success),
+            state.apply(shard_id, &successful_transfer, &sender, &[shard_owner])
+        );
 
         let asset0_address = AssetAddress::new(successful_transfer_hash, 0, shard_id);
         let asset0 = state.asset(&asset0_address);
@@ -979,7 +982,7 @@ mod tests {
                 }
             }
         };
-        assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &transaction, &shard_owner, &shard_owner));
+        assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &transaction, &shard_owner, &[shard_owner]));
 
         let world = state.world(world_id);
         assert_eq!(Ok(Some(World::new_with_nonce(new_owners, 1))), world);
@@ -1015,7 +1018,7 @@ mod tests {
         };
 
         let shard_owner = Address::random();
-        assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &transaction, &sender, &shard_owner));
+        assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &transaction, &sender, &[shard_owner]));
 
         let world = state.world(world_id);
         assert_eq!(Ok(Some(World::new_with_nonce(owners, 1))), world);
@@ -1061,7 +1064,7 @@ mod tests {
         let shard_owner = address();
         assert_eq!(
             Ok(TransactionInvoice::Fail(TransactionError::InsufficientPermission)),
-            state.apply(shard_id, &transaction, &sender, &shard_owner)
+            state.apply(shard_id, &transaction, &sender, &[shard_owner])
         );
         let world = state.world(world_id);
         assert_eq!(Ok(Some(World::new_with_nonce(owners, 0))), world);

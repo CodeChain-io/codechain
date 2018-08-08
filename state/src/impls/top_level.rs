@@ -142,16 +142,16 @@ impl TopStateInfo for TopLevelState {
         Ok(db.get_with(&shard_address, ::rlp::decode::<Shard>)?.map(|s| s.root().clone()))
     }
 
-    fn shard_owner(&self, shard_id: ShardId) -> TrieResult<Option<Address>> {
+    fn shard_owners(&self, shard_id: ShardId) -> TrieResult<Option<Vec<Address>>> {
         let shard_address = ShardAddress::new(shard_id);
-        let owner = self.db.get_cached_shard(&shard_address).and_then(|s| s).map(|s| s.owner().clone());
-        if owner.is_some() {
-            return Ok(owner)
+        let owners = self.db.get_cached_shard(&shard_address).and_then(|s| s).map(|s| s.owners().to_vec());
+        if owners.is_some() {
+            return Ok(owners)
         }
 
         // because of lexical borrow of self.db
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        Ok(db.get_with(&shard_address, ::rlp::decode::<Shard>)?.map(|s| s.owner().clone()))
+        Ok(db.get_with(&shard_address, ::rlp::decode::<Shard>)?.map(|s| s.owners().to_vec()))
     }
 
     fn shard_metadata(&self, shard_id: ShardId) -> TrieResult<Option<ShardMetadata>> {
@@ -518,14 +518,14 @@ impl TopLevelState {
         shard_root: H256,
         sender: &Address,
     ) -> StateResult<(H256, StateDB, Vec<TransactionInvoice>)> {
-        let shard_owner = self.shard_owner(shard_id)?.expect("Shard must have the owner");
+        let shard_owners = self.shard_owners(shard_id)?.expect("Shard must have the owner");
 
         // FIXME: Make it mutable borrow db instead of cloning.
         let mut shard_level_state = ShardLevelState::from_existing(shard_id, self.db.clone(), shard_root)?;
 
         let mut results = Vec::with_capacity(transactions.len());
         for t in transactions {
-            let result = shard_level_state.apply(shard_id, t, sender, &shard_owner)?;
+            let result = shard_level_state.apply(shard_id, t, sender, &shard_owners)?;
             results.push(result);
         }
 
@@ -552,7 +552,7 @@ impl TopLevelState {
         ctrace!(STATE, "shard created({}, {:?})", shard_id, shard_root);
 
         self.set_shard_root(shard_id, &BLAKE_NULL_RLP, &shard_root)?;
-        self.set_shard_owner(shard_id, &Address::default(), *fee_payer)?;
+        self.set_shard_owners(shard_id, vec![*fee_payer])?;
         Ok(())
     }
 
@@ -628,7 +628,7 @@ impl TopLevelState {
     }
 
     fn require_shard<'a>(&'a self, shard_id: ShardId) -> TrieResult<RefMut<'a, Shard>> {
-        let default = || Shard::new(BLAKE_NULL_RLP, Address::default());
+        let default = || Shard::new(BLAKE_NULL_RLP, vec![]);
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
         let shard_address = ShardAddress::new(shard_id);
         let from_db = || self.db.get_cached_shard(&shard_address);
@@ -797,10 +797,9 @@ impl TopState<StateDB> for TopLevelState {
         Ok(())
     }
 
-    fn set_shard_owner(&mut self, shard_id: ShardId, old_owner: &Address, new_owner: Address) -> StateResult<()> {
+    fn set_shard_owners(&mut self, shard_id: ShardId, new_owners: Vec<Address>) -> StateResult<()> {
         let mut shard = self.require_shard(shard_id)?;
-        assert_eq!(old_owner, shard.owner());
-        shard.set_owner(new_owner);
+        shard.set_owners(new_owners);
         Ok(())
     }
 
@@ -1328,7 +1327,7 @@ mod tests_parcel {
             state.apply(&parcel, &regular_keypair.address(), regular_keypair.public())
         );
         assert_eq!(Ok(4.into()), state.balance(&sender));
-        assert_eq!(Ok(Some(sender)), state.shard_owner(0));
+        assert_eq!(Ok(Some(vec![sender])), state.shard_owners(0));
     }
 
     #[test]
@@ -1442,7 +1441,7 @@ mod tests_parcel {
         assert_eq!(Ok(ParcelInvoice::SingleSuccess), state.apply(&parcel, &regular_address, &regular_public));
         assert_eq!(Ok(14.into()), state.balance(&regular_address));
         assert_eq!(Ok(20.into()), state.balance(&sender));
-        assert_eq!(Ok(Some(regular_address)), state.shard_owner(0));
+        assert_eq!(Ok(Some(vec![regular_address])), state.shard_owners(0));
     }
 
     #[test]
@@ -1928,7 +1927,7 @@ mod tests_parcel {
         assert_eq!(Ok(1.into()), state.nonce(&sender));
         assert_ne!(Ok(None), state.shard_root(0));
         assert_ne!(Ok(None), state.shard_root(0));
-        assert_eq!(Ok(Some(sender)), state.shard_owner(0));
+        assert_eq!(Ok(Some(vec![sender])), state.shard_owners(0));
     }
 
     #[test]
@@ -1947,7 +1946,7 @@ mod tests_parcel {
         assert_eq!(Ok(ParcelInvoice::SingleSuccess), res);
         assert_eq!(Ok(14.into()), state.balance(&sender));
         assert_eq!(Ok(1.into()), state.nonce(&sender));
-        assert_eq!(Ok(Some(sender)), state.shard_owner(0));
+        assert_eq!(Ok(Some(vec![sender])), state.shard_owners(0));
 
         let shard_id = 3;
         assert_eq!(Ok(None), state.asset(shard_id, &AssetAddress::new(H256::random(), 0, shard_id)));
@@ -1969,7 +1968,7 @@ mod tests_parcel {
         assert_eq!(Ok(ParcelInvoice::SingleSuccess), res);
         assert_eq!(Ok(14.into()), state.balance(&sender));
         assert_eq!(Ok(1.into()), state.nonce(&sender));
-        assert_eq!(Ok(Some(sender)), state.shard_owner(0));
+        assert_eq!(Ok(Some(vec![sender])), state.shard_owners(0));
 
         let shard_id = 3;
         assert_eq!(Ok(None), state.asset_scheme(shard_id, &AssetSchemeAddress::new(H256::random(), shard_id)));

@@ -39,7 +39,7 @@
   "shards": {
     "0": {
       "nonce": 0,
-      "owner": "0x9cce34f7ab185c7aba1b7c8140d620b4bda941d6",
+      "owners": ["0x9cce34f7ab185c7aba1b7c8140d620b4bda941d6"],
       "worlds": [{
         "nonce": 0,
         "owners": [

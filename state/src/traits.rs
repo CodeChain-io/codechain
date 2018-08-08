@@ -38,7 +38,7 @@ pub trait TopStateInfo {
     fn number_of_shards(&self) -> TrieResult<ShardId>;
 
     fn shard_root(&self, shard_id: ShardId) -> TrieResult<Option<H256>>;
-    fn shard_owner(&self, shard_id: ShardId) -> TrieResult<Option<Address>>;
+    fn shard_owners(&self, shard_id: ShardId) -> TrieResult<Option<Vec<Address>>>;
 
     fn shard_metadata(&self, shard_id: ShardId) -> TrieResult<Option<ShardMetadata>>;
     fn world(&self, shard_id: ShardId, world_id: WorldId) -> TrieResult<Option<World>>;
@@ -71,7 +71,7 @@ where
         shard_id: ShardId,
         transaction: &Transaction,
         sender: &Address,
-        shard_owner: &Address,
+        shard_owners: &[Address],
     ) -> StateResult<TransactionInvoice>;
 }
 
@@ -106,7 +106,7 @@ where
     fn create_shard(&mut self, shard_creation_cost: &U256, fee_payer: &Address) -> StateResult<()>;
 
     fn set_shard_root(&mut self, shard_id: ShardId, old_root: &H256, new_root: &H256) -> StateResult<()>;
-    fn set_shard_owner(&mut self, shard_id: ShardId, old_owner: &Address, new_owner: Address) -> StateResult<()>;
+    fn set_shard_owners(&mut self, shard_id: ShardId, new_owners: Vec<Address>) -> StateResult<()>;
 
     fn update_action_data(&mut self, key: &H256, data: Bytes) -> StateResult<()>;
 }

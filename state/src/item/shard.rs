@@ -25,14 +25,14 @@ use super::cache::CacheableItem;
 #[derive(Clone, Debug)]
 pub struct Shard {
     root: H256,
-    owner: Address,
+    owners: Vec<Address>,
 }
 
 impl Shard {
-    pub fn new(shard_root: H256, owner: Address) -> Self {
+    pub fn new(shard_root: H256, owners: Vec<Address>) -> Self {
         Self {
             root: shard_root,
-            owner,
+            owners,
         }
     }
 
@@ -44,12 +44,14 @@ impl Shard {
         self.root = root;
     }
 
-    pub fn owner(&self) -> &Address {
-        &self.owner
+    pub fn owners(&self) -> &[Address] {
+        debug_assert_ne!(Vec::<Address>::new(), self.owners);
+        &self.owners
     }
 
-    pub fn set_owner(&mut self, owner: Address) {
-        self.owner = owner;
+    pub fn set_owners(&mut self, owners: Vec<Address>) {
+        debug_assert_ne!(Vec::<Address>::new(), owners);
+        self.owners = owners;
     }
 }
 
@@ -65,7 +67,7 @@ const PREFIX: u8 = super::SHARD_PREFIX;
 
 impl Encodable for Shard {
     fn rlp_append(&self, s: &mut RlpStream) {
-        s.begin_list(3).append(&PREFIX).append(&self.root).append(&self.owner);
+        s.begin_list(3).append(&PREFIX).append(&self.root).append_list(&self.owners);
     }
 }
 
@@ -81,7 +83,7 @@ impl Decodable for Shard {
         }
         Ok(Self {
             root: rlp.val_at(1)?,
-            owner: rlp.val_at(2)?,
+            owners: rlp.list_at(2)?,
         })
     }
 }

@@ -21,7 +21,7 @@ use super::World;
 #[derive(Debug, PartialEq, Deserialize)]
 pub struct Shard {
     pub nonce: Option<Uint>,
-    pub owner: Address,
+    pub owners: Vec<Address>,
     pub worlds: Option<Vec<World>>,
 }
 
@@ -37,7 +37,7 @@ mod tests {
     fn shard_deserialization() {
         let s = r#"{
             "nonce": 0,
-            "owner": "0x01234567890abcdef0123456789abcdef0123456",
+            "owners": ["0x01234567890abcdef0123456789abcdef0123456"],
             "worlds": [{
                 "nonce": 3,
                 "owners": ["0x01234567890abcdef0123456789abcdef0123457"]
@@ -47,7 +47,7 @@ mod tests {
         assert_eq!(
             Shard {
                 nonce: Some(Uint(U256::from(0))),
-                owner: Address(CoreAddress::from("01234567890abcdef0123456789abcdef0123456")),
+                owners: vec![Address(CoreAddress::from("01234567890abcdef0123456789abcdef0123456"))],
                 worlds: Some(vec![World {
                     nonce: Some(Uint(U256::from(3))),
                     owners: Some(vec![Address(CoreAddress::from("01234567890abcdef0123456789abcdef0123457"))]),
@@ -61,13 +61,13 @@ mod tests {
     fn shard_with_non_zero_nonce_deserialization() {
         let s = r#"{
             "nonce": 100,
-            "owner": "0x01234567890abcdef0123456789abcdef0123456"
+            "owners": ["0x01234567890abcdef0123456789abcdef0123456"]
         }"#;
         let shard: Shard = serde_json::from_str(s).unwrap();
         assert_eq!(
             Shard {
                 nonce: Some(Uint(U256::from(100))),
-                owner: Address(CoreAddress::from("01234567890abcdef0123456789abcdef0123456")),
+                owners: vec![Address(CoreAddress::from("01234567890abcdef0123456789abcdef0123456"))],
                 worlds: None,
             },
             shard
@@ -86,13 +86,13 @@ mod tests {
     #[test]
     fn shard_without_nonce_deserialization() {
         let s = r#"{
-            "owner": "0x01234567890abcdef0123456789abcdef0123456"
+            "owners": ["0x01234567890abcdef0123456789abcdef0123456"]
         }"#;
         let shard: Shard = serde_json::from_str(s).unwrap();
         assert_eq!(
             Shard {
                 nonce: None,
-                owner: Address(CoreAddress::from("01234567890abcdef0123456789abcdef0123456")),
+                owners: vec![Address(CoreAddress::from("01234567890abcdef0123456789abcdef0123456"))],
                 worlds: None,
             },
             shard
