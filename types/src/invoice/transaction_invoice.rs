@@ -15,7 +15,6 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
-use serde::ser::SerializeStruct;
 use serde::{Serialize, Serializer};
 
 use super::super::transaction::Error;
@@ -36,17 +35,8 @@ impl Serialize for TransactionInvoice {
     where
         S: Serializer, {
         match self {
-            TransactionInvoice::Success => {
-                let mut s = serializer.serialize_struct("TransactionInvoice", 1)?;
-                s.serialize_field("success", &true)?;
-                s.end()
-            }
-            TransactionInvoice::Fail(err) => {
-                let mut s = serializer.serialize_struct("TransactionInvoice", 2)?;
-                s.serialize_field("success", &false)?;
-                s.serialize_field("error", err)?;
-                s.end()
-            }
+            TransactionInvoice::Success => serializer.serialize_str("Success"),
+            TransactionInvoice::Fail(_err) => serializer.serialize_str("Failed"),
         }
     }
 }
