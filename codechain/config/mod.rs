@@ -228,10 +228,10 @@ impl Operating {
 impl Mining {
     pub fn overwrite_with(&mut self, matches: &clap::ArgMatches) -> Result<(), String> {
         if let Some(author) = matches.value_of("author") {
-            self.author = Some(parse_address(author)?);
+            self.author = Some(author.parse()?);
         }
         if let Some(engine_signer) = matches.value_of("engine-signer") {
-            self.engine_signer = Some(parse_address(engine_signer)?);
+            self.engine_signer = Some(engine_signer.parse()?);
         }
         if let Some(password_path) = matches.value_of("password-path") {
             self.password_path = Some(password_path.to_string());
@@ -361,7 +361,7 @@ impl ShardValidator {
         }
 
         if let Some(account) = matches.value_of("shard-validator") {
-            self.account = Some(parse_address(account)?)
+            self.account = Some(account.parse()?)
         }
         if let Some(password_path) = matches.value_of("shard-validator-password-path") {
             self.password_path = Some(password_path.to_string());
@@ -387,12 +387,4 @@ pub fn load_config(matches: &clap::ArgMatches) -> Result<Config, String> {
     config.shard_validator.overwrite_with(&matches)?;
 
     Ok(config)
-}
-
-fn parse_address(value: &str) -> Result<Address, String> {
-    if value.starts_with("0x") {
-        Address::from_str(&value[2..])
-    } else {
-        Address::from_str(value)
-    }.map_err(|_| "Invalid address".to_string())
 }
