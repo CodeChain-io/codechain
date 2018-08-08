@@ -352,7 +352,7 @@ mod test {
     }
 
     #[test]
-    fn test_pubkey_from_slice_bad_context() {
+    fn pubkey_from_slice_bad_context() {
         let s = Secp256k1::without_caps();
         let sk = SecretKey::new(&s, &mut thread_rng());
         assert_eq!(PublicKey::from_secret_key(&s, &sk), Err(IncapableContext));
@@ -368,7 +368,7 @@ mod test {
     }
 
     #[test]
-    fn test_add_exp_bad_context() {
+    fn add_exp_bad_context() {
         let s = Secp256k1::with_caps(ContextFlag::Full);
         let (sk, mut pk) = s.generate_keypair(&mut thread_rng()).unwrap();
 
@@ -385,7 +385,7 @@ mod test {
     }
 
     #[test]
-    fn test_out_of_range() {
+    fn out_of_range() {
         struct BadRng(u8);
         impl RngCore for BadRng {
             fn next_u32(&mut self) -> u32 {
@@ -419,7 +419,7 @@ mod test {
     }
 
     #[test]
-    fn test_pubkey_from_bad_slice() {
+    fn pubkey_from_bad_slice() {
         let s = Secp256k1::new();
         // Bad sizes
         assert_eq!(PublicKey::from_slice(&s, &[0; constants::COMPRESSED_PUBLIC_KEY_SIZE - 1]), Err(InvalidPublicKey));
@@ -433,7 +433,7 @@ mod test {
     }
 
     #[test]
-    fn test_debug_output() {
+    fn debug_output() {
         struct DumbRng(u32);
         impl RngCore for DumbRng {
             fn next_u32(&mut self) -> u32 {
@@ -478,7 +478,7 @@ mod test {
     }
 
     #[test]
-    fn test_pubkey_serialize() {
+    fn pubkey_serialize() {
         struct DumbRng(u32);
         impl RngCore for DumbRng {
             fn next_u32(&mut self) -> u32 {
@@ -536,7 +536,7 @@ mod test {
     }
 
     #[test]
-    fn test_addition() {
+    fn addition() {
         let s = Secp256k1::new();
 
         let (mut sk1, mut pk1) = s.generate_keypair(&mut thread_rng()).unwrap();
@@ -554,7 +554,7 @@ mod test {
     }
 
     #[test]
-    fn test_multiplication() {
+    fn multiplication() {
         let s = Secp256k1::new();
 
         let (mut sk1, mut pk1) = s.generate_keypair(&mut thread_rng()).unwrap();

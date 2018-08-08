@@ -112,27 +112,27 @@ mod tests {
     use super::Algorithm;
 
     #[test]
-    fn test_journal_algorithm_parsing() {
+    fn journal_algorithm_parsing() {
         assert_eq!(Algorithm::Archive, "archive".parse().unwrap());
     }
 
     #[test]
-    fn test_journal_algorithm_printing() {
+    fn journal_algorithm_printing() {
         assert_eq!(Algorithm::Archive.to_string(), "archive".to_string());
     }
 
     #[test]
-    fn test_journal_algorithm_is_stable() {
+    fn journal_algorithm_is_stable() {
         assert!(Algorithm::Archive.is_stable());
     }
 
     #[test]
-    fn test_journal_algorithm_default() {
+    fn journal_algorithm_default() {
         assert_eq!(Algorithm::default(), Algorithm::Archive);
     }
 
     #[test]
-    fn test_journal_algorithm_all_types() {
+    fn journal_algorithm_all_types() {
         // compiling should fail if some cases are not covered
         let mut archive = 0;
 

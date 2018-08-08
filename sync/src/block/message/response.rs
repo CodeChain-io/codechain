@@ -105,7 +105,7 @@ mod tests {
     }
 
     #[test]
-    fn test_headers_message_rlp() {
+    fn headers_message_rlp() {
         let headers = vec![Header::default()];
         headers.iter().for_each(|header| {
             header.hash();
@@ -116,19 +116,19 @@ mod tests {
     }
 
     #[test]
-    fn test_bodies_message_rlp() {
+    fn bodies_message_rlp() {
         let message = ResponseMessage::Bodies(vec![vec![]]);
         assert_eq!(message, decode_bytes(message.message_id(), message.rlp_bytes().as_ref()));
     }
 
     #[test]
-    fn test_state_head_message_rlp() {
+    fn state_head_message_rlp() {
         let message = ResponseMessage::StateHead(vec![]);
         assert_eq!(message, decode_bytes(message.message_id(), message.rlp_bytes().as_ref()));
     }
 
     #[test]
-    fn test_state_chunk_message_rlp() {
+    fn state_chunk_message_rlp() {
         let message = ResponseMessage::StateChunk(vec![]);
         assert_eq!(message, decode_bytes(message.message_id(), message.rlp_bytes().as_ref()));
     }

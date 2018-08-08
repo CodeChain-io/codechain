@@ -41,7 +41,7 @@ mod tests {
     use super::Message;
 
     #[test]
-    fn test_parcels_message_rlp() {
+    fn parcels_message_rlp() {
         rlp_encode_and_decode_test!(Message::Parcels(Vec::new()));
     }
 }

@@ -555,7 +555,7 @@ mod tests {
     }
 
     #[test]
-    fn test_at_empty() {
+    fn empty() {
         let mut memdb = MemoryDB::new();
         let mut root = H256::new();
         let t = TrieDBMut::new(&mut memdb, &mut root);
@@ -563,7 +563,7 @@ mod tests {
     }
 
     #[test]
-    fn test_at_one() {
+    fn one() {
         let mut memdb = MemoryDB::new();
         let mut root = H256::new();
         let mut t = TrieDBMut::new(&mut memdb, &mut root);
@@ -574,7 +574,7 @@ mod tests {
     }
 
     #[test]
-    fn test_at_three() {
+    fn three() {
         let mut memdb = MemoryDB::new();
         let mut root = H256::new();
         let mut t = TrieDBMut::new(&mut memdb, &mut root);
@@ -631,7 +631,7 @@ mod tests {
     }
 
     #[test]
-    fn test_trie_existing() {
+    fn trie_existing() {
         let mut root = H256::new();
         let mut db = MemoryDB::new();
         {

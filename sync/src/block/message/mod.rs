@@ -121,7 +121,7 @@ mod tests {
     use super::Message;
 
     #[test]
-    fn test_status_message_rlp() {
+    fn status_message_rlp() {
         rlp_encode_and_decode_test!(Message::Status {
             total_score: U256::default(),
             best_hash: H256::default(),

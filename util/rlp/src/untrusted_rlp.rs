@@ -422,7 +422,7 @@ mod tests {
     use {DecoderError, UntrustedRlp};
 
     #[test]
-    fn test_rlp_display() {
+    fn rlp_display() {
         use rustc_hex::FromHex;
         let data = "f84d0589010efbef67941f79b2a056e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421a0c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470".from_hex().unwrap();
         let rlp = UntrustedRlp::new(&data);

@@ -90,7 +90,7 @@ mod tests {
     struct TestItem;
 
     #[test]
-    fn test_limit() {
+    fn limit() {
         let begin = 11;
         let limit = 54;
         let table: LimitedTable<TestItem> = LimitedTable::new(begin, limit);
@@ -106,7 +106,7 @@ mod tests {
     }
 
     #[test]
-    fn test_len_of_inserted_table() {
+    fn len_of_inserted_table() {
         let begin: Key = 11;
         let limit: usize = 54;
         let mut table: LimitedTable<TestItem> = LimitedTable::new(begin, limit);

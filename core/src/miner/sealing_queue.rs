@@ -92,7 +92,7 @@ mod tests {
     }
 
     #[test]
-    fn should_not_find_when_pushed() {
+    fn fail_to_find_when_pushed() {
         let mut q = SealingQueue::new(QUEUE_SIZE);
         let b = create_closed_block(Address::default());
         let h = b.hash();
@@ -103,7 +103,7 @@ mod tests {
     }
 
     #[test]
-    fn should_find_when_pushed_and_used() {
+    fn find_when_pushed_and_used() {
         let mut q = SealingQueue::new(QUEUE_SIZE);
         let b = create_closed_block(Address::default());
         let h = b.hash();
@@ -115,7 +115,7 @@ mod tests {
     }
 
     #[test]
-    fn should_find_when_others_used() {
+    fn find_when_others_used() {
         let mut q = SealingQueue::new(QUEUE_SIZE);
         let b1 = create_closed_block(Address::from(1));
         let b2 = create_closed_block(Address::from(2));
@@ -130,7 +130,7 @@ mod tests {
     }
 
     #[test]
-    fn should_not_find_when_too_many_used() {
+    fn fail_to_find_when_too_many_used() {
         let mut q = SealingQueue::new(1);
         let b1 = create_closed_block(Address::from(1));
         let b2 = create_closed_block(Address::from(2));
@@ -145,7 +145,7 @@ mod tests {
     }
 
     #[test]
-    fn should_not_find_when_not_used_and_then_pushed() {
+    fn fail_to_find_when_not_used_and_then_pushed() {
         let mut q = SealingQueue::new(QUEUE_SIZE);
         let b1 = create_closed_block(Address::from(1));
         let b2 = create_closed_block(Address::from(2));
@@ -159,7 +159,7 @@ mod tests {
     }
 
     #[test]
-    fn should_peek_correctly_after_push() {
+    fn peek_correctly_after_push() {
         let mut q = SealingQueue::new(QUEUE_SIZE);
         let b1 = create_closed_block(Address::from(1));
         let b2 = create_closed_block(Address::from(2));
@@ -174,7 +174,7 @@ mod tests {
     }
 
     #[test]
-    fn should_inspect_correctly() {
+    fn inspect_correctly() {
         let mut q = SealingQueue::new(QUEUE_SIZE);
         let b1 = create_closed_block(Address::from(1));
         let b2 = create_closed_block(Address::from(2));
@@ -191,7 +191,7 @@ mod tests {
     }
 
     #[test]
-    fn should_not_find_when_not_used_peeked_and_then_pushed() {
+    fn fail_to_find_when_not_used_peeked_and_then_pushed() {
         let mut q = SealingQueue::new(QUEUE_SIZE);
         let b1 = create_closed_block(Address::from(1));
         let b2 = create_closed_block(Address::from(2));
@@ -204,5 +204,4 @@ mod tests {
 
         assert!(q.take_used_if(|b| b.hash() == h).is_none());
     }
-
 }

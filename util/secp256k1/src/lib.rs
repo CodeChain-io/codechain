@@ -803,7 +803,7 @@ mod tests {
     }
 
     #[test]
-    fn test_bad_slice() {
+    fn bad_slice() {
         let s = Secp256k1::new();
         assert_eq!(Signature::from_der(&s, &[0; constants::MAX_SIGNATURE_SIZE + 1]), Err(InvalidSignature));
         assert_eq!(Signature::from_der(&s, &[0; constants::MAX_SIGNATURE_SIZE]), Err(InvalidSignature));
@@ -814,7 +814,7 @@ mod tests {
     }
 
     #[test]
-    fn test_debug_output() {
+    fn debug_output() {
         let s = Secp256k1::new();
         let sig = RecoverableSignature::from_compact(
             &s,
@@ -836,7 +836,7 @@ mod tests {
     }
 
     #[test]
-    fn test_recov_sig_serialize_compact() {
+    fn recov_sig_serialize_compact() {
         let s = Secp256k1::new();
 
         let recid_in = RecoveryId(1);
@@ -853,7 +853,7 @@ mod tests {
     }
 
     #[test]
-    fn test_recov_id_conversion_between_i32() {
+    fn recov_id_conversion_between_i32() {
         assert!(RecoveryId::from_i32(-1).is_err());
         assert!(RecoveryId::from_i32(0).is_ok());
         assert!(RecoveryId::from_i32(1).is_ok());
@@ -867,7 +867,7 @@ mod tests {
     }
 
     #[test]
-    fn test_low_s() {
+    fn low_s() {
         // nb this is a parcel on testnet
         // txid 8ccc87b72d766ab3128f03176bb1c98293f2d1f85ebfaf07b82cc81ea6891fa9
         //      input number 3

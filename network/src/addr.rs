@@ -213,42 +213,42 @@ mod tests {
     use std::cmp::Ordering;
 
     #[test]
-    fn test_addresss_are_equal_if_they_have_same_id_and_port() {
+    fn addresss_are_equal_if_they_have_same_id_and_port() {
         let a1 = SocketAddr::v4(127, 0, 0, 1, 3485);
         let a2 = SocketAddr::v4(127, 0, 0, 1, 3485);
         assert_eq!(a1, a2);
     }
 
     #[test]
-    fn test_addresss_are_not_equal_if_their_ip_is_different() {
+    fn addresss_are_not_equal_if_their_ip_is_different() {
         let a1 = SocketAddr::v4(127, 0, 0, 1, 3485);
         let a2 = SocketAddr::v4(192, 168, 0, 1, 3485);
         assert_ne!(a1, a2);
     }
 
     #[test]
-    fn test_addresss_are_not_equal_if_their_port_is_different() {
+    fn addresss_are_not_equal_if_their_port_is_different() {
         let a1 = SocketAddr::v4(127, 0, 0, 1, 3485);
         let a2 = SocketAddr::v4(127, 0, 0, 1, 3486);
         assert_ne!(a1, a2);
     }
 
     #[test]
-    fn test_address_is_less_than_if_port_is_less() {
+    fn address_is_less_than_if_port_is_less() {
         let a1 = SocketAddr::v4(127, 0, 0, 1, 3485);
         let a2 = SocketAddr::v4(127, 0, 0, 1, 3486);
         assert_eq!(Ordering::Less, a1.cmp(&a2));
     }
 
     #[test]
-    fn test_address_is_greater_than_if_port_is_greater() {
+    fn address_is_greater_than_if_port_is_greater() {
         let a1 = SocketAddr::v4(127, 0, 0, 1, 3485);
         let a2 = SocketAddr::v4(127, 0, 0, 1, 3484);
         assert_eq!(Ordering::Greater, a1.cmp(&a2));
     }
 
     #[test]
-    fn test_is_global_for_ipv4() {
+    fn is_global_for_ipv4() {
         let a1 = SocketAddr::v4(127, 0, 0, 1, 3485);
         let a2 = SocketAddr::v4(192, 168, 0, 1, 3485);
         let a3 = SocketAddr::v4(1, 1, 1, 1, 3485);
@@ -258,7 +258,7 @@ mod tests {
     }
 
     #[test]
-    fn test_is_reachable() {
+    fn is_reachable() {
         // Servers which have loopback addresses can connect to each other
         let loopback_1 = SocketAddr::v4(127, 0, 0, 1, 3485);
         let loopback_2 = SocketAddr::v4(127, 0, 0, 1, 3486);

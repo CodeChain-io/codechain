@@ -100,14 +100,14 @@ mod tests {
     use serde_json;
 
     #[test]
-    fn test_bytes_serialize() {
+    fn bytes_serialize() {
         let bytes = Bytes("0123456789abcdef".from_hex().unwrap());
         let serialized = serde_json::to_string(&bytes).unwrap();
         assert_eq!(serialized, r#""0x0123456789abcdef""#);
     }
 
     #[test]
-    fn test_bytes_deserialize() {
+    fn bytes_deserialize() {
         let bytes1: Result<Bytes, serde_json::Error> = serde_json::from_str(r#""""#);
         let bytes2: Result<Bytes, serde_json::Error> = serde_json::from_str(r#""0x123""#);
         let bytes3: Result<Bytes, serde_json::Error> = serde_json::from_str(r#""0xgg""#);

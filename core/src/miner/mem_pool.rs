@@ -1119,7 +1119,7 @@ pub mod test {
     use super::*;
 
     #[test]
-    fn test_ordering() {
+    fn ordering() {
         assert_eq!(ParcelOrigin::Local.cmp(&ParcelOrigin::External), Ordering::Less);
         assert_eq!(ParcelOrigin::RetractedBlock.cmp(&ParcelOrigin::Local), Ordering::Less);
         assert_eq!(ParcelOrigin::RetractedBlock.cmp(&ParcelOrigin::External), Ordering::Less);
@@ -1256,7 +1256,7 @@ pub mod test {
     }
 
     #[test]
-    fn test_fee_per_byte_order_simple() {
+    fn fee_per_byte_order_simple() {
         let order1 = create_parcel_order(U256::from(1000_000_000), 100);
         let order2 = create_parcel_order(U256::from(1500_000_000), 200);
         assert_eq!(true, order1.fee_per_byte > order2.fee_per_byte);
@@ -1264,7 +1264,7 @@ pub mod test {
     }
 
     #[test]
-    fn test_fee_per_byte_order_sort() {
+    fn fee_per_byte_order_sort() {
         let factors: Vec<Vec<usize>> = vec![
             vec![4, 9],   // 0.44
             vec![2, 9],   // 0.22

@@ -39,7 +39,7 @@ mod tests {
     use super::{random, Rng};
 
     #[test]
-    fn returns_deterministic_values_in_test_cfg() {
+    fn return_deterministic_values_in_test_cfg() {
         let mut rng = random::new();
         let vs = rng.gen_iter::<u8>().take(6).collect::<Vec<u8>>();
         assert_eq!(vs, vec![3u8, 10, 24, 3, 24, 74]);

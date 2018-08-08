@@ -839,7 +839,7 @@ mod tests_state {
     use super::*;
 
     #[test]
-    fn should_work_when_cloned() {
+    fn work_when_cloned() {
         let a = Address::default();
 
         let mut state = {
@@ -1210,7 +1210,7 @@ mod tests_parcel {
     }
 
     #[test]
-    fn should_apply_error_for_invalid_nonce() {
+    fn apply_error_for_invalid_nonce() {
         let mut state = get_temp_state();
 
         let parcel = Parcel {
@@ -1240,7 +1240,7 @@ mod tests_parcel {
     }
 
     #[test]
-    fn should_apply_error_for_not_enough_cash() {
+    fn apply_error_for_not_enough_cash() {
         let mut state = get_temp_state();
         let parcel = Parcel {
             fee: 5.into(),
@@ -1269,7 +1269,7 @@ mod tests_parcel {
     }
 
     #[test]
-    fn should_apply_payment() {
+    fn apply_payment() {
         let mut state = get_temp_state();
         let receiver = 1u64.into();
 
@@ -1293,7 +1293,7 @@ mod tests_parcel {
     }
 
     #[test]
-    fn should_apply_set_regular_key() {
+    fn apply_set_regular_key() {
         let mut state = get_temp_state();
         let key = 1u64.into();
 
@@ -1314,7 +1314,7 @@ mod tests_parcel {
     }
 
     #[test]
-    fn should_use_master_balance_when_signed_with_regular_key() {
+    fn use_master_balance_when_signed_with_regular_key() {
         let mut state = get_temp_state();
         let regular_keypair = Random.generate().unwrap();
         let key = regular_keypair.public();
@@ -1350,7 +1350,7 @@ mod tests_parcel {
     }
 
     #[test]
-    fn should_fail_when_two_accounts_used_the_same_regular_key() {
+    fn fail_when_two_accounts_used_the_same_regular_key() {
         let mut state = get_temp_state();
         let regular_keypair = Random.generate().unwrap();
         let key = regular_keypair.public();
@@ -1387,7 +1387,7 @@ mod tests_parcel {
     }
 
     #[test]
-    fn should_fail_when_regular_key_is_already_registered_as_master_key() {
+    fn fail_when_regular_key_is_already_registered_as_master_key() {
         let (sender, sender_public) = address();
         let (sender2, sender_public2) = address();
 
@@ -1410,7 +1410,7 @@ mod tests_parcel {
     }
 
     #[test]
-    fn should_be_able_to_change_regular_key() {
+    fn change_regular_key() {
         let (sender, sender_public) = address();
         let (regular_address, regular_public) = address();
         let (_, regular_public2) = address();
@@ -1437,7 +1437,7 @@ mod tests_parcel {
     }
 
     #[test]
-    fn should_be_able_to_use_deleted_regular_key_as_master_key() {
+    fn use_deleted_regular_key_as_master_key() {
         let (sender, sender_public) = address();
         let (regular_address, regular_public) = address();
         let (_, regular_public2) = address();
@@ -1464,7 +1464,7 @@ mod tests_parcel {
     }
 
     #[test]
-    fn should_fail_when_someone_sends_some_ccc_to_an_address_which_used_as_a_regular_key() {
+    fn fail_when_someone_sends_some_ccc_to_an_address_which_used_as_a_regular_key() {
         let (sender, sender_public) = address();
         let (regular_address, regular_public) = address();
 
@@ -1488,7 +1488,7 @@ mod tests_parcel {
     }
 
     #[test]
-    fn should_apply_error_for_action_failure() {
+    fn apply_error_for_action_failure() {
         let mut state = get_temp_state();
         let receiver = 1u64.into();
 

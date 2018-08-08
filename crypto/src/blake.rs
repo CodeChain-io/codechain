@@ -92,42 +92,42 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_blake256() {
+    fn _blake256() {
         let expected = "324dcf027dd4a30a932c441f365a25e86b173defa4b8e58948253471b81b72cf".into();
         let result = blake256(b"hello");
         assert_eq!(result, expected);
     }
 
     #[test]
-    fn test_blake512() {
+    fn _blake512() {
         let expected = "e4cfa39a3d37be31c59609e807970799caa68a19bfaa15135f165085e01d41a65ba1e1b146aeb6bd0092b49eac214c103ccfa3a365954bbbe52f74a2b3620c94".into();
         let result = blake512(b"hello");
         assert_eq!(result, expected);
     }
 
     #[test]
-    fn test_blake_empty() {
+    fn blake_empty() {
         let expected = BLAKE_EMPTY;
         let result = blake256([0u8; 0]);
         assert_eq!(result, expected);
     }
 
     #[test]
-    fn test_blake_null_rlp() {
+    fn blake_null_rlp() {
         let expected = BLAKE_NULL_RLP;
         let result = blake256([0x80]);
         assert_eq!(result, expected);
     }
 
     #[test]
-    fn test_blake_empty_list_rlp() {
+    fn blake_empty_list_rlp() {
         let expected = BLAKE_EMPTY_LIST_RLP;
         let result = blake256([0xc0]);
         assert_eq!(result, expected);
     }
 
     #[test]
-    fn test_maximum_length_of_blake256_key_is_512() {
+    fn maximum_length_of_blake256_key_is_512() {
         let _ = blake256_with_key([0u8; 0], &[0; 64]);
         let must_not_fail = catch_unwind(|| blake256_with_key([0u8; 0], &[0; 64]));
         assert!(must_not_fail.is_ok());
@@ -136,7 +136,7 @@ mod tests {
     }
 
     #[test]
-    fn test_maximum_length_of_blake512_key_is_512() {
+    fn maximum_length_of_blake512_key_is_512() {
         let _ = blake256_with_key([0u8; 0], &[0; 64]);
         let must_not_fail = catch_unwind(|| blake512_with_key([0u8; 0], &[0; 64]));
         assert!(must_not_fail.is_ok());
@@ -145,14 +145,14 @@ mod tests {
     }
 
     #[test]
-    fn test_blake256_output_changes_when_key_changes() {
+    fn blake256_output_changes_when_key_changes() {
         let r1 = blake256_with_key([0u8; 0], &[0; 64]);
         let r2 = blake256_with_key([0u8; 0], &[1; 64]);
         assert_ne!(r1, r2);
     }
 
     #[test]
-    fn test_blake_trait_with_h256() {
+    fn blake_trait_with_h256() {
         let input = b"hello world";
         let hash_result = blake256(&input);
         let trait_result = H256::blake(&input);
@@ -160,7 +160,7 @@ mod tests {
     }
 
     #[test]
-    fn test_blake_trait_with_h512() {
+    fn blake_trait_with_h512() {
         let input = b"hello world";
         let hash_result = blake512(&input);
         let trait_result = H512::blake(&input);

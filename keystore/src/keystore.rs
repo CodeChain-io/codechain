@@ -419,7 +419,7 @@ mod tests {
     }
 
     #[test]
-    fn should_insert_account_successfully() {
+    fn insert_account_successfully() {
         // given
         let store = store();
         let keypair = keypair();
@@ -435,7 +435,7 @@ mod tests {
     }
 
     #[test]
-    fn should_update_meta_and_name() {
+    fn update_meta_and_name() {
         // given
         let store = store();
         let keypair = keypair();
@@ -455,7 +455,7 @@ mod tests {
     }
 
     #[test]
-    fn should_remove_account() {
+    fn remove_account() {
         // given
         let store = store();
         let keypair = keypair();
@@ -470,7 +470,7 @@ mod tests {
     }
 
     #[test]
-    fn should_return_true_if_password_is_correct() {
+    fn return_true_if_password_is_correct() {
         // given
         let store = store();
         let keypair = keypair();
@@ -486,7 +486,7 @@ mod tests {
     }
 
     #[test]
-    fn multistore_should_be_able_to_have_the_same_account_twice() {
+    fn multistore_can_have_the_same_account_twice() {
         // given
         let store = multi_store();
         let keypair = keypair();
@@ -504,7 +504,7 @@ mod tests {
     }
 
     #[test]
-    fn should_copy_account() {
+    fn copy_account() {
         // given
         let store = store();
         let multi_store = multi_store();
@@ -526,7 +526,7 @@ mod tests {
     }
 
     #[test]
-    fn should_export_account() {
+    fn export_account() {
         // given
         let store = store();
         let keypair = keypair();

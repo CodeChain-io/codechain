@@ -292,7 +292,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_unverified_parcel_rlp() {
+    fn unverified_parcel_rlp() {
         rlp_encode_and_decode_test!(
             UnverifiedParcel {
                 unsigned: Parcel {

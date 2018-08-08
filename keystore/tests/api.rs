@@ -116,7 +116,7 @@ fn secret_store_load_pat_files() {
 }
 
 #[test]
-fn test_decrypting_files_with_short_ciphertext() {
+fn decrypting_files_with_short_ciphertext() {
     // 0x3fc74504d2b491d73079975e302279540bf6e44e
     let kp1 = KeyPair::from_private(
         "000081c29e8142bb6a81bef5a92bda7a8328a5c85bb2f9542e76f9b0f94fc018".parse().unwrap(),

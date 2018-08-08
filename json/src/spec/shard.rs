@@ -76,7 +76,7 @@ mod tests {
 
 
     #[test]
-    fn deserialization_of_empty_shard_must_fail() {
+    fn deserialization_of_empty_shard_fails() {
         let s = r#"{
         }"#;
         let result: Result<Shard, _> = serde_json::from_str(s);

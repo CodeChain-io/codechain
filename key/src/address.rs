@@ -329,14 +329,14 @@ mod tests {
     use super::{rearrange_bits, FullAddress, Network};
 
     #[test]
-    fn test_full_address_serialize() {
+    fn full_address_serialization() {
         let address = FullAddress::from_str("cccqql54g07mu04fm4s8d6em6kmxenkkxzfzytqcve5").unwrap();
         let serialized = serde_json::to_string(&address).unwrap();
         assert_eq!(serialized, r#""cccqql54g07mu04fm4s8d6em6kmxenkkxzfzytqcve5""#);
     }
 
     #[test]
-    fn test_full_address_deserialize() {
+    fn full_address_deserialization() {
         let addr1: Result<FullAddress, _> = serde_json::from_str(r#""""#);
         let addr2: Result<FullAddress, _> = serde_json::from_str(r#""cccqql54g07mu04fm4s8d6em6kmxenkkxzfzytqcve5""#);
 
@@ -345,7 +345,7 @@ mod tests {
     }
 
     #[test]
-    fn test_full_address_to_string() {
+    fn full_address_to_string() {
         let address = FullAddress {
             network: Network::Mainnet,
             version: 0,
@@ -356,7 +356,7 @@ mod tests {
     }
 
     #[test]
-    fn test_address_from_str() {
+    fn address_from_str() {
         let address = FullAddress {
             network: Network::Mainnet,
             version: 0,
@@ -367,28 +367,28 @@ mod tests {
     }
 
     #[test]
-    fn test_rearrange_bits_from_8_into_5() {
+    fn rearrange_bits_from_8_into_5() {
         let vec = vec![0b11101110, 0b11101110, 0b11101110, 0b11101110, 0b11101110];
         let rearranged = rearrange_bits(&vec, 8, 5);
         assert_eq!(rearranged, vec![0b11101, 0b11011, 0b10111, 0b01110, 0b11101, 0b11011, 0b10111, 0b01110]);
     }
 
     #[test]
-    fn test_rearrange_bits_from_5_into_8() {
+    fn rearrange_bits_from_5_into_8() {
         let vec = vec![0b11101, 0b11011, 0b10111, 0b01110, 0b11101, 0b11011, 0b10111, 0b01110];
         let rearranged = rearrange_bits(&vec, 5, 8);
         assert_eq!(rearranged, vec![0b11101110, 0b11101110, 0b11101110, 0b11101110, 0b11101110]);
     }
 
     #[test]
-    fn test_rearrange_bits_from_8_into_5_padded() {
+    fn rearrange_bits_from_8_into_5_padded() {
         let vec = vec![0b11101110, 0b11101110, 0b11101110];
         let rearranged = rearrange_bits(&vec, 8, 5);
         assert_eq!(rearranged, vec![0b11101, 0b11011, 0b10111, 0b01110, 0b11100]);
     }
 
     #[test]
-    fn test_rearrange_bits_from_5_into_8_padded() {
+    fn rearrange_bits_from_5_into_8_padded() {
         let vec = vec![0b11101, 0b11011, 0b10111, 0b01110, 0b11101];
         let rearranged = rearrange_bits(&vec, 5, 8);
         assert_eq!(rearranged, vec![0b11101110, 0b11101110, 0b11101110, 0b10000000]);

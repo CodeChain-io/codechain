@@ -180,7 +180,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_nibbles() {
+    fn nibbles() {
         let v = vec![0x31, 0x23, 0x45];
         let e = vec![3, 1, 2, 3, 4, 5];
         assert_eq!(as_nibbles(&v), e);
@@ -192,7 +192,7 @@ mod tests {
     }
 
     #[test]
-    fn test_hex_prefix_encode() {
+    fn _hex_prefix_encode() {
         let v = vec![0, 0, 1, 2, 3, 4, 5];
         let e = vec![0x10, 0x01, 0x23, 0x45];
         let h = hex_prefix_encode(&v);
@@ -210,7 +210,7 @@ mod tests {
     }
 
     #[test]
-    fn test_triehash_out_of_order() {
+    fn triehash_out_of_order() {
         assert_eq!(
             trie_root(vec![
                 (vec![0x01u8, 0x23], vec![0x01u8, 0x23]),
@@ -226,21 +226,21 @@ mod tests {
     }
 
     #[test]
-    fn test_shared_prefix() {
+    fn shared_prefix() {
         let a = vec![1, 2, 3, 4, 5, 6];
         let b = vec![4, 2, 3, 4, 5, 6];
         assert_eq!(shared_prefix_len(&a, &b), 0);
     }
 
     #[test]
-    fn test_shared_prefix2() {
+    fn shared_prefix2() {
         let a = vec![1, 2, 3, 3, 5];
         let b = vec![1, 2, 3];
         assert_eq!(shared_prefix_len(&a, &b), 3);
     }
 
     #[test]
-    fn test_shared_prefix3() {
+    fn shared_prefix3() {
         let a = vec![1, 2, 3, 4, 5, 6];
         let b = vec![1, 2, 3, 4, 5, 6];
         assert_eq!(shared_prefix_len(&a, &b), 6);

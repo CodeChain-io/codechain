@@ -204,7 +204,6 @@ impl JournalDB for ArchiveDB {
 
 #[cfg(test)]
 mod tests {
-
     use super::*;
     use crypto::blake256;
     use hashdb::{DBValue, HashDB};
@@ -441,7 +440,7 @@ mod tests {
     }
 
     #[test]
-    fn returns_state() {
+    fn return_state() {
         let shared_db = Arc::new(kvdb_memorydb::create(0));
 
         let key = {

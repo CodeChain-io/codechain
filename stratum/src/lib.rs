@@ -362,7 +362,7 @@ mod tests {
     }
 
     #[test]
-    fn can_be_started() {
+    fn start() {
         let stratum = Stratum::start(&SocketAddr::from_str("127.0.0.1:19980").unwrap(), Arc::new(VoidManager), None);
         assert!(stratum.is_ok());
     }
@@ -427,7 +427,7 @@ mod tests {
     }
 
     #[test]
-    fn can_authorize() {
+    fn authorize() {
         let addr = SocketAddr::from_str("127.0.0.1:19970").unwrap();
         let stratum =
             Stratum::start(&addr, Arc::new(DummyManager::build().of_initial(r#"["dummy authorize payload"]"#)), None)
@@ -441,7 +441,7 @@ mod tests {
     }
 
     #[test]
-    fn can_push_work() {
+    fn push_work() {
         let addr = SocketAddr::from_str("127.0.0.1:19995").unwrap();
         let stratum =
             Stratum::start(&addr, Arc::new(DummyManager::build().of_initial(r#"["dummy authorize payload"]"#)), None)
@@ -490,7 +490,7 @@ mod tests {
     }
 
     #[test]
-    fn can_respond_to_submition() {
+    fn respond_to_submition() {
         let addr = SocketAddr::from_str("127.0.0.1:19990").unwrap();
         let _stratum =
             Stratum::start(&addr, Arc::new(DummyManager::build().of_initial(r#"["dummy authorize payload"]"#)), None)
@@ -530,7 +530,7 @@ mod tests {
     }
 
     #[test]
-    fn should_return_error_when_unauthorized_worker_submits() {
+    fn return_error_when_unauthorized_worker_submits() {
         let addr = SocketAddr::from_str("127.0.0.1:19991").unwrap();
         let _stratum =
             Stratum::start(&addr, Arc::new(DummyManager::build().of_initial(r#"["dummy authorize payload"]"#)), None)

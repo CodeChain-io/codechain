@@ -123,7 +123,7 @@ mod tests {
     }
 
     #[test]
-    fn test_request_headers_message_rlp() {
+    fn request_headers_message_rlp() {
         let message = RequestMessage::Headers {
             start_number: 100,
             max_count: 100,
@@ -132,19 +132,19 @@ mod tests {
     }
 
     #[test]
-    fn test_request_bodies_message_rlp() {
+    fn request_bodies_message_rlp() {
         let message = RequestMessage::Bodies(vec![H256::default()]);
         assert_eq!(message, decode_bytes(message.message_id(), message.rlp_bytes().as_ref()));
     }
 
     #[test]
-    fn test_request_state_head_message_rlp() {
+    fn request_state_head_message_rlp() {
         let message = RequestMessage::StateHead(H256::default());
         assert_eq!(message, decode_bytes(message.message_id(), message.rlp_bytes().as_ref()));
     }
 
     #[test]
-    fn test_request_state_chunk_message_rlp() {
+    fn request_state_chunk_message_rlp() {
         let message = RequestMessage::StateChunk {
             block_hash: H256::default(),
             tree_root: H256::default(),

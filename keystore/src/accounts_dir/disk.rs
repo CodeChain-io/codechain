@@ -287,7 +287,7 @@ mod test {
     use std::{env, fs};
 
     #[test]
-    fn should_create_new_account() {
+    fn create_new_account() {
         // given
         let mut dir = env::temp_dir();
         dir.push("keystore_should_create_new_account");
@@ -309,7 +309,7 @@ mod test {
     }
 
     #[test]
-    fn should_handle_duplicate_filenames() {
+    fn handle_duplicate_filenames() {
         // given
         let mut dir = env::temp_dir();
         dir.push("keystore_should_handle_duplicate_filenames");

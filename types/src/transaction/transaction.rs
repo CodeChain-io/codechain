@@ -442,7 +442,7 @@ mod tests {
     }
 
     #[test]
-    fn test_is_input_and_output_consistent() {
+    fn _is_input_and_output_consistent() {
         let asset_type = H256::random();
         let amount = 100;
 

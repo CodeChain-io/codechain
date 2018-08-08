@@ -87,7 +87,7 @@ mod tests {
     use super::super::Seal;
 
     #[test]
-    fn solo_can_seal() {
+    fn seal() {
         let spec = Spec::new_test_solo();
         let engine = &*spec.engine;
         let db = spec.ensure_genesis_state(get_temp_state_db()).unwrap();
@@ -102,7 +102,7 @@ mod tests {
     }
 
     #[test]
-    fn solo_cant_verify() {
+    fn fail_to_verify() {
         let engine = Spec::new_test_solo().engine;
         let mut header: Header = Header::default();
 

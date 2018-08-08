@@ -53,7 +53,7 @@ pub fn has_expensive_opcodes(instrs: &[Instruction]) -> bool {
 }
 
 #[test]
-fn should_true_when_script_has_more_than_six_chksig_opcodes() {
+fn script_with_more_than_six_chksig_opcodes() {
     let expensive_script = vec![
         Instruction::ChkSig,
         Instruction::ChkSig,
@@ -66,7 +66,7 @@ fn should_true_when_script_has_more_than_six_chksig_opcodes() {
 }
 
 #[test]
-fn should_false_when_script_has_lower_than_five_chksig_opcodes() {
+fn script_with_less_than_six_chksig_opcodes() {
     let unexpensive_script =
         vec![Instruction::ChkSig, Instruction::ChkSig, Instruction::ChkSig, Instruction::ChkSig, Instruction::ChkSig];
     assert_eq!(has_expensive_opcodes(&unexpensive_script), false);

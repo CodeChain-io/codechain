@@ -43,8 +43,9 @@ where
 mod tests {
     use super::finally;
     use std::sync::atomic::{AtomicUsize, Ordering};
+
     #[test]
-    fn test_finally() {
+    fn _finally() {
         let a = AtomicUsize::new(0);
         {
             let _f = finally(|| {

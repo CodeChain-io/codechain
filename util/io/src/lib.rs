@@ -198,7 +198,6 @@ pub use service::TOKENS_PER_HANDLER;
 
 #[cfg(test)]
 mod tests {
-
     use super::*;
     use std::sync::Arc;
 
@@ -227,7 +226,7 @@ mod tests {
     }
 
     #[test]
-    fn test_service_register_handler() {
+    fn service_register_handler() {
         let service = IoService::<MyMessage>::start().expect("Error creating network service");
         service.register_handler(Arc::new(MyHandler)).unwrap();
     }

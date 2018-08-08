@@ -98,7 +98,7 @@ mod tests {
     use super::{decrypt, encrypt};
 
     #[test]
-    fn test_aes256_with_random_key_and_iv() {
+    fn aes256_with_random_key_and_iv() {
         let message = "0123456789abcdefghijklmnopqrstubewxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\
                        0123456789abcdefghijklmnopqrstubewxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\
                        0123456789abcdefghijklmnopqrstubewxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\
@@ -134,7 +134,7 @@ mod tests {
     }
 
     #[test]
-    fn test_short_input() {
+    fn short_input() {
         let input = vec![130, 39, 16];
 
         let mut key = H256([0; 32]);

@@ -212,7 +212,7 @@ mod tests {
     }
 
     #[test]
-    fn can_do_signature_verification_fail() {
+    fn fail_to_verify_signature_when_seal_is_invalid() {
         let engine = Spec::new_test_solo_authority().engine;
         let mut header: Header = Header::default();
         header.set_seal(vec![::rlp::encode(&Signature::default()).into_vec()]);
@@ -222,7 +222,7 @@ mod tests {
     }
 
     #[test]
-    fn can_generate_seal() {
+    fn generate_seal() {
         let spec = Spec::new_test_solo_authority();
         let engine = &*spec.engine;
         let db = spec.ensure_genesis_state(get_temp_state_db()).unwrap();

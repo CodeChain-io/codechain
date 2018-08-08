@@ -130,7 +130,7 @@ mod test {
     use super::*;
 
     #[test]
-    fn should_create_empty_table() {
+    fn create_empty_table() {
         // when
         let table: Table<usize, usize, bool> = Table::new();
 
@@ -140,7 +140,7 @@ mod test {
     }
 
     #[test]
-    fn should_insert_elements_and_return_previous_if_any() {
+    fn insert_elements_and_return_previous_if_any() {
         // given
         let mut table = Table::new();
 
@@ -161,7 +161,7 @@ mod test {
     }
 
     #[test]
-    fn should_remove_element() {
+    fn remove_element() {
         // given
         let mut table = Table::new();
         table.insert(5, 4, true);
@@ -178,7 +178,7 @@ mod test {
     }
 
     #[test]
-    fn should_return_none_if_trying_to_remove_non_existing_element() {
+    fn return_none_if_trying_to_remove_non_existing_element() {
         // given
         let mut table: Table<usize, usize, usize> = Table::new();
         assert!(table.is_empty());
@@ -191,7 +191,7 @@ mod test {
     }
 
     #[test]
-    fn should_clear_row_if_removing_last_element() {
+    fn clear_row_if_removing_last_element() {
         // given
         let mut table = Table::new();
         table.insert(5, 4, true);
@@ -206,7 +206,7 @@ mod test {
     }
 
     #[test]
-    fn should_return_element_given_row_and_col() {
+    fn return_element_given_row_and_col() {
         // given
         let mut table = Table::new();
         table.insert(1551, 1234, 123);
@@ -222,7 +222,7 @@ mod test {
     }
 
     #[test]
-    fn should_clear_table() {
+    fn clear_table() {
         // given
         let mut table = Table::new();
         table.insert(1, 1, true);
@@ -241,7 +241,7 @@ mod test {
     }
 
     #[test]
-    fn should_return_mutable_row() {
+    fn return_mutable_row() {
         // given
         let mut table = Table::new();
         table.insert(1, 1, true);

@@ -15,7 +15,7 @@ struct FooWrapper {
 }
 
 #[test]
-fn test_encode_foo() {
+fn encode_foo() {
     let foo = Foo {
         a: "cat".into(),
     };
@@ -29,7 +29,7 @@ fn test_encode_foo() {
 }
 
 #[test]
-fn test_encode_foo_wrapper() {
+fn encode_foo_wrapper() {
     let foo = FooWrapper {
         a: "cat".into(),
     };

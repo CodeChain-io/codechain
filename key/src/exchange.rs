@@ -40,7 +40,7 @@ mod tests {
     use super::exchange;
 
     #[test]
-    fn test_exchange_makes_same_private_key() {
+    fn exchange_makes_same_private_key() {
         let k1: KeyPair = Random.generate().unwrap();
         let k2 = {
             let mut k2: KeyPair = Random.generate().unwrap();
