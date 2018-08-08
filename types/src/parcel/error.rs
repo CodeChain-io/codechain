@@ -66,8 +66,6 @@ pub enum Error {
     },
     InvalidShardId(ShardId),
     InvalidShardRoot(Mismatch<H256>),
-    /// Not enough permissions given by permission contract.
-    NotAllowed,
     /// Signature error
     InvalidSignature(String),
     InconsistentShardOutcomes,
@@ -91,7 +89,6 @@ const ERROR_ID_INSUFFICIENT_BALANCE: u8 = 9u8;
 const ERROR_ID_INVALID_NONCE: u8 = 10u8;
 const ERROR_ID_INVALID_SHARD_ID: u8 = 11u8;
 const ERROR_ID_INVALID_SHARD_ROOT: u8 = 12u8;
-const ERROR_ID_NOT_ALLOWED: u8 = 13u8;
 const ERROR_ID_INVALID_SIGNATURE: u8 = 14u8;
 const ERROR_ID_INCONSISTENT_SHARD_OUTCOMES: u8 = 15u8;
 const ERROR_ID_PARCELS_TOO_BIG: u8 = 16u8;
@@ -125,7 +122,6 @@ impl Encodable for Error {
             } => s.begin_list(3).append(&ERROR_ID_INVALID_NONCE).append(expected).append(got),
             Error::InvalidShardId(shard_id) => s.begin_list(2).append(&ERROR_ID_INVALID_SHARD_ID).append(shard_id),
             Error::InvalidShardRoot(mismatch) => s.begin_list(2).append(&ERROR_ID_INVALID_SHARD_ROOT).append(mismatch),
-            Error::NotAllowed => s.begin_list(1).append(&ERROR_ID_NOT_ALLOWED),
             Error::InvalidSignature(err) => s.begin_list(2).append(&ERROR_ID_INVALID_SIGNATURE).append(err),
             Error::InconsistentShardOutcomes => s.begin_list(1).append(&ERROR_ID_INCONSISTENT_SHARD_OUTCOMES),
             Error::ParcelsTooBig => s.begin_list(1).append(&ERROR_ID_PARCELS_TOO_BIG),
@@ -165,7 +161,6 @@ impl Decodable for Error {
             },
             ERROR_ID_INVALID_SHARD_ID => Error::InvalidShardId(rlp.val_at(1)?),
             ERROR_ID_INVALID_SHARD_ROOT => Error::InvalidShardRoot(rlp.val_at(1)?),
-            ERROR_ID_NOT_ALLOWED => Error::NotAllowed,
             ERROR_ID_INVALID_SIGNATURE => Error::InvalidSignature(rlp.val_at(1)?),
             ERROR_ID_INCONSISTENT_SHARD_OUTCOMES => Error::InconsistentShardOutcomes,
             ERROR_ID_PARCELS_TOO_BIG => Error::ParcelsTooBig,
@@ -203,7 +198,6 @@ impl Display for Error {
             } => format!("Invalid parcel nonce: expected {}, found {}", expected, got),
             Error::InvalidShardId(shard_id) => format!("{} is an invalid shard id", shard_id),
             Error::InvalidShardRoot(mismatch) => format!("Invalid shard root {}", mismatch),
-            Error::NotAllowed => "Sender does not have permissions to execute this type of transaction".into(),
             Error::InvalidSignature(err) => format!("Parcel has invalid signature: {}.", err),
             Error::InconsistentShardOutcomes => "Shard outcomes are inconsistent".to_string(),
             Error::ParcelsTooBig => "Parcel size exceeded the body size limit".to_string(),

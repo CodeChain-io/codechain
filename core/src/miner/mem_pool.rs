@@ -548,7 +548,6 @@ impl MemPool {
         if self.local_parcels.contains(parcel_hash) {
             match reason {
                 RemovalReason::Invalid => self.local_parcels.mark_invalid(parcel.parcel.into()),
-                RemovalReason::NotAllowed => self.local_parcels.mark_invalid(parcel.parcel.into()),
                 RemovalReason::Canceled => self.local_parcels.mark_canceled(parcel.parcel.into()),
             }
         }
@@ -1085,8 +1084,6 @@ pub enum RemovalReason {
     /// Parcel was canceled
     #[allow(dead_code)]
     Canceled,
-    /// Parcel is not allowed,
-    NotAllowed,
 }
 
 fn check_too_cheap(is_in: bool) -> Result<(), ParcelError> {

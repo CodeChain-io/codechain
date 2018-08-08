@@ -367,7 +367,6 @@ impl Miner {
         };
 
         let mut invalid_parcels = HashSet::new();
-        let mut non_allowed_parcels = HashSet::new();
         let block_number = open_block.block().header().number();
 
         let mut parcel_count: usize = 0;
@@ -377,7 +376,6 @@ impl Miner {
             let start = Instant::now();
             // Check whether parcel type is allowed for sender
             let result = match self.engine.machine().verify_parcel(&parcel, open_block.header(), chain) {
-                err @ Err(Error::State(StateError::Parcel(ParcelError::NotAllowed))) => err,
                 _ => open_block.push_parcel(parcel, None),
             };
             let took = start.elapsed();
@@ -386,10 +384,6 @@ impl Miner {
             match result {
                 // already have parcel - ignore
                 Err(Error::State(StateError::Parcel(ParcelError::ParcelAlreadyImported))) => {}
-                Err(Error::State(StateError::Parcel(ParcelError::NotAllowed))) => {
-                    non_allowed_parcels.insert(hash);
-                    cdebug!(MINER, "Skipping non-allowed parcel for sender {:?}", hash);
-                }
                 Err(e) => {
                     invalid_parcels.insert(hash);
                     cdebug!(
@@ -421,9 +415,6 @@ impl Miner {
             let mut queue = self.mem_pool.write();
             for hash in invalid_parcels {
                 queue.remove(&hash, &fetch_nonce, RemovalReason::Invalid);
-            }
-            for hash in non_allowed_parcels {
-                queue.remove(&hash, &fetch_nonce, RemovalReason::NotAllowed);
             }
         }
         (block, original_work_hash)
