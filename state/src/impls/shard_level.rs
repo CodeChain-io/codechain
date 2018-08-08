@@ -116,7 +116,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
                 nonce,
                 owners,
                 ..
-            } => Ok(self.create_world(shard_id, nonce, owners)?),
+            } => Ok(self.create_world(shard_id, nonce, owners, sender, shard_owners)?),
             Transaction::SetWorldOwners {
                 shard_id,
                 world_id,
@@ -144,7 +144,18 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         }
     }
 
-    fn create_world(&mut self, shard_id: ShardId, nonce: &u64, owners: &Vec<Address>) -> StateResult<()> {
+    fn create_world(
+        &mut self,
+        shard_id: ShardId,
+        nonce: &u64,
+        owners: &Vec<Address>,
+        sender: &Address,
+        shard_owners: &[Address],
+    ) -> StateResult<()> {
+        if !shard_owners.contains(sender) {
+            return Err(TransactionError::InsufficientPermission.into())
+        }
+
         let metadata_address = ShardMetadataAddress::new(shard_id);
         let mut metadata = self.require_metadata(&metadata_address, || unreachable!("Shard must have metadata"))?;
 
@@ -572,9 +583,8 @@ mod tests {
         };
 
         let sender = address();
-        let shard_owner = address();
-        let result = state.apply(shard_id, &transaction, &sender, &[shard_owner]);
-        assert_eq!(Ok(TransactionInvoice::Success), result);
+        let shard_owner = sender;
+        assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &transaction, &sender, &[shard_owner]));
 
         let metadata = state.metadata();
         assert_eq!(Ok(Some(ShardMetadata::new_with_nonce(1, 1))), metadata);
@@ -601,9 +611,8 @@ mod tests {
         };
 
         let sender = address();
-        let shard_owner = address();
-        let result = state.apply(shard_id, &transaction, &sender, &[shard_owner]);
-        assert_eq!(Ok(TransactionInvoice::Success), result);
+        let shard_owner = sender;
+        assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &transaction, &sender, &[shard_owner]));
 
         let metadata = state.metadata();
         assert_eq!(Ok(Some(ShardMetadata::new_with_nonce(1, 1))), metadata);
@@ -630,7 +639,7 @@ mod tests {
         };
 
         let sender = address();
-        let shard_owner = address();
+        let shard_owner = sender;
         assert_eq!(
             Ok(TransactionInvoice::Fail(TransactionError::InvalidShardNonce(Mismatch {
                 expected: 0,
@@ -953,7 +962,7 @@ mod tests {
         let mut state = get_temp_shard_state(shard_id);
 
         let owners = vec![Address::random(), Address::random()];
-        assert_eq!(Ok(()), state.create_world(shard_id, &0, &owners));
+        assert_eq!(Ok(()), state.create_world(shard_id, &0, &owners, &owners[0], &owners));
         assert_eq!(Ok(()), state.commit());
 
         let metadata = state.metadata();
@@ -996,7 +1005,7 @@ mod tests {
 
         let sender = Address::random();
         let old_owners = vec![sender, Address::random()];
-        assert_eq!(Ok(()), state.create_world(shard_id, &0, &old_owners));
+        assert_eq!(Ok(()), state.create_world(shard_id, &0, &old_owners, &sender, &old_owners));
         assert_eq!(Ok(()), state.commit());
 
         let metadata = state.metadata();
@@ -1032,7 +1041,7 @@ mod tests {
         let mut state = get_temp_shard_state(shard_id);
 
         let owners = vec![Address::random(), Address::random()];
-        assert_eq!(Ok(()), state.create_world(shard_id, &0, &owners));
+        assert_eq!(Ok(()), state.create_world(shard_id, &0, &owners, &owners[0], &owners));
         assert_eq!(Ok(()), state.commit());
 
         let metadata = state.metadata();
