@@ -143,6 +143,8 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
                 parameters,
                 amount,
                 registrar,
+                sender,
+                shard_owners,
             )?),
             Transaction::AssetTransfer {
                 burns,
@@ -224,7 +226,15 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         parameters: &Vec<Bytes>,
         amount: &Option<u64>,
         registrar: &Option<Address>,
+        sender: &Address,
+        shard_owners: &[Address],
     ) -> StateResult<()> {
+        let world: World = self.world(world_id)?.ok_or_else(|| TransactionError::InvalidWorldId(world_id))?;
+
+        if !shard_owners.contains(sender) && !world.world_owners().contains(sender) {
+            return Err(TransactionError::InsufficientPermission.into())
+        }
+
         let asset_scheme_address = AssetSchemeAddress::new(transaction_hash, self.shard_id, world_id);
         let amount = amount.unwrap_or(::std::u64::MAX);
         let asset_scheme = self.require_asset_scheme(&asset_scheme_address, || {
@@ -671,6 +681,10 @@ mod tests {
         let shard_id = 0;
         let world_id = 0;
         let mut state = get_temp_shard_state(shard_id);
+        let sender = address();
+        let shard_owner = address();
+        assert_eq!(Ok(()), state.create_world(shard_id, &0, &vec![sender], &shard_owner, &[shard_owner]));
+        assert_eq!(Ok(()), state.commit());
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H256::random();
@@ -691,8 +705,6 @@ mod tests {
             nonce: 0,
         };
 
-        let sender = address();
-        let shard_owner = address();
         let result = state.apply(shard_id, &transaction, &sender, &[shard_owner]);
         assert_eq!(Ok(TransactionInvoice::Success), result);
 
@@ -711,6 +723,10 @@ mod tests {
         let shard_id = 0;
         let world_id = 0;
         let mut state = get_temp_shard_state(shard_id);
+        let sender = address();
+        let shard_owner = address();
+        assert_eq!(Ok(()), state.create_world(shard_id, &0, &vec![sender], &shard_owner, &[shard_owner]));
+        assert_eq!(Ok(()), state.commit());
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H256::random();
@@ -730,8 +746,6 @@ mod tests {
             nonce: 0,
         };
 
-        let sender = address();
-        let shard_owner = address();
         let result = state.apply(shard_id, &transaction, &sender, &[shard_owner]);
         assert_eq!(Ok(TransactionInvoice::Success), result);
 
@@ -754,6 +768,10 @@ mod tests {
         let shard_id = 0;
         let world_id = 0;
         let mut state = get_temp_shard_state(shard_id);
+        let sender = address();
+        let shard_owner = address();
+        assert_eq!(Ok(()), state.create_world(shard_id, &0, &vec![sender], &shard_owner, &[shard_owner]));
+        assert_eq!(Ok(()), state.commit());
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H256::from("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050");
@@ -776,8 +794,6 @@ mod tests {
 
         let network_id = 0xCafe;
 
-        let sender = address();
-        let shard_owner = address();
         assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &mint, &sender, &[shard_owner]));
 
         let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id, world_id);
@@ -850,6 +866,10 @@ mod tests {
         let world_id = 0;
 
         let mut state = get_temp_shard_state(shard_id);
+        let sender = address();
+        let shard_owner = address();
+        assert_eq!(Ok(()), state.create_world(shard_id, &0, &vec![sender], &shard_owner, &[shard_owner]));
+        assert_eq!(Ok(()), state.commit());
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H256::from("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050");
@@ -872,8 +892,6 @@ mod tests {
 
         let network_id = 0xCafe;
 
-        let sender = address();
-        let shard_owner = address();
         assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &mint, &sender, &[shard_owner]));
 
         let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id, world_id);

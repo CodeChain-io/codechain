@@ -1526,8 +1526,16 @@ mod tests_parcel {
         assert_eq!(Ok(()), state.create_shard_level_state(&sender));
         assert_eq!(Ok(()), state.commit());
 
+        let network_id = 0xCa;
         let shard_id = 0x0;
         let world_id = 0;
+
+        let create_world = Transaction::CreateWorld {
+            network_id,
+            shard_id,
+            nonce: 0,
+            owners: vec![sender],
+        };
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H256::random();
@@ -1535,7 +1543,7 @@ mod tests_parcel {
         let registrar = Some(Address::random());
         let amount = 30;
         let transaction = Transaction::AssetMint {
-            network_id: 0xCA,
+            network_id,
             shard_id,
             world_id,
             metadata: metadata.clone(),
@@ -1548,11 +1556,10 @@ mod tests_parcel {
             nonce: 0,
         };
         let transaction_hash = transaction.hash();
-        let transactions = vec![transaction];
         let parcel = Parcel {
             fee: 11.into(),
             action: Action::ChangeShardState {
-                transactions,
+                transactions: vec![create_world, transaction],
                 changes: vec![ChangeShard {
                     shard_id,
                     pre_root: H256::from("0xa8ed01b49cd63c6a547ac3ce357539aa634fb44331a351e3e98b9f1c3a8e3edf"),
@@ -1561,13 +1568,13 @@ mod tests_parcel {
                 signatures: vec![],
             },
             nonce: 0.into(),
-            network_id: 0xCA,
+            network_id,
         };
 
         assert_eq!(Ok(()), state.add_balance(&sender, &U256::from(69u64)));
 
         assert_eq!(
-            Ok(ParcelInvoice::Multiple(vec![TransactionInvoice::Success])),
+            Ok(ParcelInvoice::Multiple(vec![TransactionInvoice::Success, TransactionInvoice::Success])),
             state.apply(&parcel, &sender, &sender_public)
         );
 
@@ -1593,13 +1600,21 @@ mod tests_parcel {
 
         let shard_id = 0;
         let world_id = 0;
+        let network_id = 0xCA;
+
+        let create_world = Transaction::CreateWorld {
+            network_id,
+            shard_id,
+            nonce: 0,
+            owners: vec![sender],
+        };
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H256::random();
         let parameters = vec![];
         let registrar = Some(Address::random());
         let transaction = Transaction::AssetMint {
-            network_id: 0xCA,
+            network_id,
             shard_id,
             world_id,
             metadata: metadata.clone(),
@@ -1612,11 +1627,10 @@ mod tests_parcel {
             nonce: 0,
         };
         let transaction_hash = transaction.hash();
-        let transactions = vec![transaction];
         let parcel = Parcel {
             fee: 5.into(),
             action: Action::ChangeShardState {
-                transactions,
+                transactions: vec![create_world, transaction],
                 changes: vec![ChangeShard {
                     shard_id,
                     pre_root: H256::from("0xa8ed01b49cd63c6a547ac3ce357539aa634fb44331a351e3e98b9f1c3a8e3edf"),
@@ -1625,13 +1639,13 @@ mod tests_parcel {
                 signatures: vec![],
             },
             nonce: 0.into(),
-            network_id: 0xCA,
+            network_id,
         };
 
         assert_eq!(Ok(()), state.add_balance(&sender, &U256::from(69u64)));
 
         assert_eq!(
-            Ok(ParcelInvoice::Multiple(vec![TransactionInvoice::Success])),
+            Ok(ParcelInvoice::Multiple(vec![TransactionInvoice::Success, TransactionInvoice::Success])),
             state.apply(&parcel, &sender, &sender_public)
         );
 
@@ -1662,10 +1676,18 @@ mod tests_parcel {
         let network_id = 0xBeef;
         let world_id = 0;
 
+        let create_world = Transaction::CreateWorld {
+            network_id,
+            shard_id,
+            nonce: 0,
+            owners: vec![sender],
+        };
+
         let metadata = "metadata".to_string();
         let lock_script_hash = H256::from("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050");
         let registrar = None;
         let amount = 30;
+
         let mint = Transaction::AssetMint {
             network_id,
             shard_id,
@@ -1723,14 +1745,12 @@ mod tests_parcel {
         };
         let transfer_hash = transfer.hash();
 
-
-        let transactions = vec![mint, transfer];
         let parcel = Parcel {
             fee: 20.into(),
             nonce: 0.into(),
             network_id,
             action: Action::ChangeShardState {
-                transactions,
+                transactions: vec![create_world, mint, transfer],
                 changes: vec![ChangeShard {
                     shard_id,
                     pre_root: H256::from("0xa8ed01b49cd63c6a547ac3ce357539aa634fb44331a351e3e98b9f1c3a8e3edf"),
@@ -1743,7 +1763,11 @@ mod tests_parcel {
         assert_eq!(Ok(()), state.add_balance(&sender, &U256::from(120)));
 
         assert_eq!(
-            ParcelInvoice::Multiple(vec![TransactionInvoice::Success, TransactionInvoice::Success]),
+            ParcelInvoice::Multiple(vec![
+                TransactionInvoice::Success,
+                TransactionInvoice::Success,
+                TransactionInvoice::Success,
+            ]),
             state.apply(&parcel, &sender, &sender_public).unwrap()
         );
 
@@ -1781,6 +1805,13 @@ mod tests_parcel {
         let shard_id = 0x00;
         let world_id = 0;
 
+        let create_world = Transaction::CreateWorld {
+            network_id,
+            shard_id,
+            nonce: 0,
+            owners: vec![sender],
+        };
+
         let metadata = "metadata".to_string();
         let lock_script_hash = H256::from("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050");
         let registrar = None;
@@ -1805,7 +1836,7 @@ mod tests_parcel {
             network_id,
             nonce: 0.into(),
             action: Action::ChangeShardState {
-                transactions: vec![mint],
+                transactions: vec![create_world, mint],
                 changes: vec![ChangeShard {
                     shard_id,
                     pre_root: H256::from("0xa8ed01b49cd63c6a547ac3ce357539aa634fb44331a351e3e98b9f1c3a8e3edf"),
@@ -1818,7 +1849,7 @@ mod tests_parcel {
         assert_eq!(Ok(()), state.add_balance(&sender, &U256::from(120)));
 
         assert_eq!(
-            Ok(ParcelInvoice::Multiple(vec![TransactionInvoice::Success])),
+            Ok(ParcelInvoice::Multiple(vec![TransactionInvoice::Success, TransactionInvoice::Success])),
             state.apply(&mint_parcel, &sender, &sender_public)
         );
         assert_eq!(state.balance(&sender), Ok(100.into()));
@@ -1869,6 +1900,8 @@ mod tests_parcel {
         };
         let transfer_hash = transfer.hash();
 
+        let current_shard_root = state.shard_root(shard_id).unwrap().unwrap();
+
         let transfer_parcel = Parcel {
             fee: 30.into(),
             network_id,
@@ -1877,7 +1910,7 @@ mod tests_parcel {
                 transactions: vec![transfer],
                 changes: vec![ChangeShard {
                     shard_id,
-                    pre_root: H256::from("0x0c9831e4a6ffc8771c5a53c130ecdd2ae9ebac8ee644e12c8ea371003e4c9a5a"),
+                    pre_root: current_shard_root,
                     post_root: H256::zero(),
                 }],
                 signatures: vec![],
