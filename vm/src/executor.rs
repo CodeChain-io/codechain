@@ -18,7 +18,7 @@ use ccrypto::{blake256, keccak256, ripemd160, sha256};
 use ckey::{verify, Public, Signature, SIGNATURE_LENGTH};
 use primitives::H256;
 
-use instruction::{is_valid_unlock_script, Instruction};
+use instruction::{has_expensive_opcodes, is_valid_unlock_script, Instruction};
 
 const DEFAULT_MAX_MEMORY: usize = 1024;
 
@@ -149,6 +149,10 @@ pub fn execute(
     // FIXME: don't merge scripts
 
     if !is_valid_unlock_script(unlock) {
+        return Ok(ScriptResult::Fail)
+    }
+
+    if has_expensive_opcodes(unlock) {
         return Ok(ScriptResult::Fail)
     }
 
