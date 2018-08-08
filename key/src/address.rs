@@ -24,7 +24,6 @@ use bech32::Bech32;
 use heapsize::HeapSizeOf;
 use primitives::H160;
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
-use rustc_hex::FromHexError;
 use serde::de::{Error as SerdeError, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
@@ -97,11 +96,22 @@ impl Decodable for Address {
     }
 }
 
+/// Return `s` without the `0x` at the beginning of it, if any.
+pub fn clean_0x(s: &str) -> &str {
+    if s.starts_with("0x") {
+        &s[2..]
+    } else {
+        s
+    }
+}
+
 impl FromStr for Address {
-    type Err = FromHexError;
+    type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Address(H160::from_str(s)?))
+        let s = clean_0x(s);
+        let a = H160::from_str(s).map_err(|_| format!("Invalid address {}", s))?;
+        Ok(Address(a))
     }
 }
 
