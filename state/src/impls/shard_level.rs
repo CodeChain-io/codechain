@@ -151,7 +151,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
                 inputs,
                 outputs,
                 ..
-            } => self.transfer_asset(&transaction, burns, inputs, outputs),
+            } => self.transfer_asset(&transaction, sender, burns, inputs, outputs),
         }
     }
 
@@ -254,11 +254,29 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
     fn transfer_asset(
         &mut self,
         transaction: &Transaction,
+        sender: &Address,
         burns: &[AssetTransferInput],
         inputs: &[AssetTransferInput],
         outputs: &[AssetTransferOutput],
     ) -> StateResult<()> {
         for (input, burn) in inputs.iter().map(|input| (input, false)).chain(burns.iter().map(|input| (input, true))) {
+            let input: &AssetTransferInput = input;
+            let asset_type = input.prev_out.asset_type.clone();
+            let asset_scheme_address = AssetSchemeAddress::from_hash(asset_type)
+                .ok_or(TransactionError::AssetSchemeNotFound(asset_type.into()))?;
+            let asset_scheme = self
+                .asset_scheme((&asset_scheme_address).into())?
+                .ok_or(TransactionError::AssetSchemeNotFound(asset_scheme_address.into()))?;
+
+            if let Some(ref registrar) = asset_scheme.registrar() {
+                if registrar != sender {
+                    return Err(TransactionError::NotRegistrar(Mismatch {
+                        expected: *registrar,
+                        found: *sender,
+                    }).into())
+                }
+            }
+
             let (address_hash, asset) = {
                 let index = input.prev_out.index;
                 let address = AssetAddress::new(input.prev_out.transaction_hash, index, self.shard_id);
@@ -309,13 +327,6 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
             let index = input.prev_out.index;
             let amount = input.prev_out.amount;
             let address = AssetAddress::new(input.prev_out.transaction_hash, index, self.shard_id);
-
-            let asset_type = input.prev_out.asset_type.clone();
-            let asset_scheme_address = AssetSchemeAddress::from_hash(asset_type)
-                .ok_or(TransactionError::AssetSchemeNotFound(asset_type.into()))?;
-            let _asset_scheme = self
-                .asset_scheme((&asset_scheme_address).into())?
-                .ok_or(TransactionError::AssetSchemeNotFound(asset_scheme_address.into()))?;
 
             match self.asset(&address)? {
                 Some(asset) => {
@@ -760,6 +771,80 @@ mod tests {
         assert_eq!(
             Ok(Some(Asset::new(asset_scheme_address.into(), lock_script_hash, parameters, ::std::u64::MAX))),
             asset
+        );
+    }
+
+    #[test]
+    fn invalid_registrar() {
+        let shard_id = 0;
+        let mut state = get_temp_shard_state(shard_id);
+        let network_id = "tc".into();
+        let world_id = 0;
+
+        let sender = address();
+        let shard_owner = address();
+        assert_eq!(Ok(()), state.create_world(shard_id, &0, &vec![sender], &shard_owner, &[shard_owner]));
+        assert_eq!(Ok(()), state.commit());
+
+        let metadata = "metadata".to_string();
+        let lock_script_hash = H256::from("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050");
+        let registrar = Some(Address::random());
+        let amount = 30;
+        let mint = Transaction::AssetMint {
+            world_id,
+            network_id,
+            shard_id,
+            metadata: metadata.clone(),
+            output: AssetMintOutput {
+                lock_script_hash,
+                parameters: vec![],
+                amount: Some(amount),
+            },
+            registrar,
+            nonce: 0,
+        };
+        let mint_hash = mint.hash();
+
+        assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &mint, &sender, &[shard_owner]));
+
+        let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id, world_id);
+        let asset_scheme = state.asset_scheme(&asset_scheme_address);
+        let asset_type = asset_scheme_address.into();
+
+        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), amount, registrar))), asset_scheme);
+
+        let asset_address = AssetAddress::new(mint_hash, 0, shard_id);
+        let asset = state.asset(&asset_address);
+        assert_eq!(Ok(Some(Asset::new(asset_type, lock_script_hash, vec![], amount))), asset);
+
+        let transfer = Transaction::AssetTransfer {
+            network_id,
+            burns: vec![],
+            inputs: vec![AssetTransferInput {
+                prev_out: AssetOutPoint {
+                    transaction_hash: mint_hash,
+                    index: 0,
+                    asset_type,
+                    amount: 30,
+                },
+                lock_script: vec![0x30, 0x01],
+                unlock_script: vec![],
+            }],
+            outputs: vec![AssetTransferOutput {
+                lock_script_hash,
+                parameters: vec![],
+                asset_type,
+                amount: 30,
+            }],
+            nonce: 0,
+        };
+
+        assert_eq!(
+            Ok(TransactionInvoice::Fail(TransactionError::NotRegistrar(Mismatch {
+                expected: registrar.unwrap(),
+                found: sender,
+            }))),
+            state.apply(shard_id, &transfer, &sender, &[shard_owner])
         );
     }
 

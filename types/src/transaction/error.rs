@@ -48,6 +48,7 @@ pub enum Error {
     InvalidWorldId(WorldId),
     InvalidWorldNonce(Mismatch<u64>),
     EmptyShardOwners(ShardId),
+    NotRegistrar(Mismatch<Address>),
 }
 
 const ERROR_ID_INVALID_ASSET_AMOUNT: u8 = 4u8;
@@ -63,6 +64,7 @@ const ERROR_ID_INSUFFICIENT_PERMISSION: u8 = 13u8;
 const ERROR_ID_INVALID_WORLD_ID: u8 = 14u8;
 const ERROR_ID_INVALID_WORLD_NONCE: u8 = 15u8;
 const ERROR_ID_EMPTY_SHARD_OWNERS: u8 = 16u8;
+const ERROR_ID_NOT_REGISTRAR: u8 = 17u8;
 
 impl Encodable for Error {
     fn rlp_append(&self, s: &mut RlpStream) {
@@ -90,6 +92,7 @@ impl Encodable for Error {
                 s.begin_list(2).append(&ERROR_ID_INVALID_WORLD_NONCE).append(mismatch)
             }
             Error::EmptyShardOwners(shard_id) => s.begin_list(2).append(&ERROR_ID_EMPTY_SHARD_OWNERS).append(shard_id),
+            Error::NotRegistrar(mismatch) => s.begin_list(2).append(&ERROR_ID_NOT_REGISTRAR).append(mismatch),
         };
     }
 }
@@ -140,6 +143,12 @@ impl Decodable for Error {
                 }
                 Error::EmptyShardOwners(rlp.val_at(1)?)
             }
+            ERROR_ID_NOT_REGISTRAR => {
+                if rlp.item_count()? != 2 {
+                    return Err(DecoderError::RlpInvalidLength)
+                }
+                Error::NotRegistrar(rlp.val_at(1)?)
+            }
             _ => return Err(DecoderError::Custom("Invalid transaction error")),
         })
     }
@@ -173,6 +182,11 @@ impl Display for Error {
             Error::InvalidWorldId(_) => write!(f, "The world id is invalid"),
             Error::InvalidWorldNonce(mismatch) => write!(f, "The world nonce {}", mismatch),
             Error::EmptyShardOwners(shard_id) => write!(f, "Shard({}) must have at least one owner", shard_id),
+            Error::NotRegistrar(mismatch) => write!(
+                f,
+                "The signer of the parcel({}) does not match the asset's registrar({})",
+                mismatch.found, mismatch.expected
+            ),
         }
     }
 }
