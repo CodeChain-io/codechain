@@ -1437,6 +1437,95 @@ mod tests_parcel {
     }
 
     #[test]
+    fn pass_registrar_check_using_a_regular_key() {
+        let (sender, sender_public) = address();
+        let (regular_address, regular_public) = address();
+
+        let network_id = "tc".into();
+        let world_id = 0;
+        let shard_id = 0x0;
+        let mut state = get_temp_state();
+        assert_eq!(Ok(()), state.create_shard_level_state(&sender));
+        assert_eq!(Ok(()), state.commit());
+        assert_eq!(Ok(()), state.add_balance(&sender, &20.into()));
+        assert_eq!(Ok(()), state.set_regular_key(&sender_public, &regular_public));
+
+        let create_world = Transaction::CreateWorld {
+            network_id,
+            shard_id,
+            nonce: 0,
+            owners: vec![sender],
+        };
+
+        let metadata = "metadata".to_string();
+        let lock_script_hash = H256::from("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050");
+        let registrar = Some(sender);
+        let amount = 30;
+        let mint = Transaction::AssetMint {
+            world_id,
+            network_id,
+            shard_id,
+            metadata: metadata.clone(),
+            output: AssetMintOutput {
+                lock_script_hash,
+                parameters: vec![],
+                amount: Some(amount),
+            },
+            registrar,
+            nonce: 0,
+        };
+        let mint_hash = mint.hash();
+        let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id, world_id);
+        let asset_type = asset_scheme_address.clone().into();
+
+        let transfer = Transaction::AssetTransfer {
+            network_id,
+            burns: vec![],
+            inputs: vec![AssetTransferInput {
+                prev_out: AssetOutPoint {
+                    transaction_hash: mint_hash,
+                    index: 0,
+                    asset_type,
+                    amount: 30,
+                },
+                lock_script: vec![0x30, 0x01],
+                unlock_script: vec![],
+            }],
+            outputs: vec![AssetTransferOutput {
+                lock_script_hash,
+                parameters: vec![vec![1]],
+                asset_type,
+                amount: 30,
+            }],
+            nonce: 0,
+        };
+        let transactions = vec![create_world, mint, transfer];
+        let parcel = Parcel {
+            fee: 11.into(),
+            action: Action::ChangeShardState {
+                transactions,
+                changes: vec![ChangeShard {
+                    shard_id,
+                    pre_root: H256::from("0xa8ed01b49cd63c6a547ac3ce357539aa634fb44331a351e3e98b9f1c3a8e3edf"),
+                    post_root: H256::zero(),
+                }],
+                signatures: vec![],
+            },
+            nonce: 0.into(),
+            network_id,
+        };
+
+        assert_eq!(
+            Ok(ParcelInvoice::Multiple(vec![
+                TransactionInvoice::Success,
+                TransactionInvoice::Success,
+                TransactionInvoice::Success,
+            ])),
+            state.apply(&parcel, &regular_address, &regular_public)
+        );
+    }
+
+    #[test]
     fn use_deleted_regular_key_as_master_key() {
         let (sender, sender_public) = address();
         let (regular_address, regular_public) = address();
