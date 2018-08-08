@@ -16,8 +16,7 @@
 
 use std::fmt::{Display, Formatter, Result as FormatResult};
 
-use ckey::Address;
-use primitives::{H256, U256};
+use primitives::H256;
 
 use super::super::util::unexpected::Mismatch;
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
@@ -26,13 +25,6 @@ use super::super::{ShardId, WorldId};
 
 #[derive(Debug, PartialEq, Clone, Eq, Serialize)]
 pub enum Error {
-    InvalidPaymentSender(Mismatch<Address>),
-    InvalidAddressToSetKey(Mismatch<Address>),
-    InsufficientBalance {
-        address: Address,
-        required: U256,
-        got: U256,
-    },
     InvalidAssetAmount {
         address: H256,
         expected: u64,
@@ -58,9 +50,6 @@ pub enum Error {
     EmptyShardOwners(ShardId),
 }
 
-const ERROR_ID_INVALID_PAYMENT_SENDER: u8 = 1u8;
-const ERROR_ID_INVALID_ADDRESS_TO_SET_KEY: u8 = 2u8;
-const ERROR_ID_INSUFFICIENT_BALANCE: u8 = 3u8;
 const ERROR_ID_INVALID_ASSET_AMOUNT: u8 = 4u8;
 const ERROR_ID_ASSET_NOT_FOUND: u8 = 5u8;
 const ERROR_ID_ASSET_SCHEME_NOT_FOUND: u8 = 6u8;
@@ -78,17 +67,6 @@ const ERROR_ID_EMPTY_SHARD_OWNERS: u8 = 16u8;
 impl Encodable for Error {
     fn rlp_append(&self, s: &mut RlpStream) {
         match self {
-            Error::InvalidPaymentSender(mismatch) => {
-                s.begin_list(2).append(&ERROR_ID_INVALID_PAYMENT_SENDER).append(mismatch)
-            }
-            Error::InvalidAddressToSetKey(mismatch) => {
-                s.begin_list(2).append(&ERROR_ID_INVALID_ADDRESS_TO_SET_KEY).append(mismatch)
-            }
-            Error::InsufficientBalance {
-                address,
-                required,
-                got,
-            } => s.begin_list(4).append(&ERROR_ID_INSUFFICIENT_BALANCE).append(address).append(required).append(got),
             Error::InvalidAssetAmount {
                 address,
                 expected,
@@ -120,13 +98,6 @@ impl Decodable for Error {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
         let tag = rlp.val_at::<u8>(0)?;
         Ok(match tag {
-            ERROR_ID_INVALID_PAYMENT_SENDER => Error::InvalidPaymentSender(rlp.val_at(1)?),
-            ERROR_ID_INVALID_ADDRESS_TO_SET_KEY => Error::InvalidAddressToSetKey(rlp.val_at(1)?),
-            ERROR_ID_INSUFFICIENT_BALANCE => Error::InsufficientBalance {
-                address: rlp.val_at(1)?,
-                required: rlp.val_at(2)?,
-                got: rlp.val_at(3)?,
-            },
             ERROR_ID_INVALID_ASSET_AMOUNT => Error::InvalidAssetAmount {
                 address: rlp.val_at(1)?,
                 expected: rlp.val_at(2)?,
@@ -177,13 +148,6 @@ impl Decodable for Error {
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter) -> FormatResult {
         match self {
-            Error::InvalidPaymentSender(mismatch) => write!(f, "Invalid payment sender {}", mismatch),
-            Error::InvalidAddressToSetKey(mismatch) => write!(f, "Invalid address to set key {}", mismatch),
-            Error::InsufficientBalance {
-                address,
-                required,
-                got,
-            } => write!(f, "{} has only {:?} but it must be larger than {:?}", address, required, got),
             Error::InvalidAssetAmount {
                 address,
                 expected,
