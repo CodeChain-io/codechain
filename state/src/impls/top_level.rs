@@ -452,6 +452,13 @@ impl TopLevelState {
                 self.create_shard(&shard_creation_cost, fee_payer)?;
                 Ok(ParcelInvoice::SingleSuccess)
             }
+            Action::ChangeShardOwners {
+                shard_id,
+                owners,
+            } => {
+                self.change_shard_owners(*shard_id, owners, fee_payer)?;
+                Ok(ParcelInvoice::SingleSuccess)
+            }
             Action::Custom(bytes) => {
                 let handlers = self.db.custom_handlers().to_vec();
                 for h in handlers {
@@ -788,6 +795,18 @@ impl TopState<StateDB> for TopLevelState {
         self.create_shard_level_state(fee_payer)?;
 
         Ok(())
+    }
+
+    fn change_shard_owners(&mut self, shard_id: ShardId, owners: &[Address], sender: &Address) -> StateResult<()> {
+        let old_owners = self.shard_owners(shard_id)?.ok_or_else(|| ParcelError::InvalidShardId(shard_id))?;
+        if !old_owners.contains(sender) {
+            return Err(ParcelError::InsufficientPermission.into())
+        }
+        if !owners.contains(sender) {
+            return Err(ParcelError::NewOwnersMustContainSender.into())
+        }
+
+        self.set_shard_owners(shard_id, owners.to_vec())
     }
 
     fn set_shard_root(&mut self, shard_id: ShardId, old_root: &H256, new_root: &H256) -> StateResult<()> {
@@ -2223,5 +2242,167 @@ mod tests_parcel {
         assert_eq!(Ok(70.into()), state.balance(&sender));
         assert_eq!(Ok(2.into()), state.nonce(&sender));
         assert_eq!(Ok(Some(World::new_with_nonce(new_owners, 1))), state.world(shard_id, world_id));
+    }
+
+    #[test]
+    fn change_shard_owners() {
+        let (sender, sender_public) = address();
+
+        let mut state = get_temp_state();
+        assert_eq!(Ok(()), state.create_shard_level_state(&sender));
+        assert_eq!(Ok(()), state.add_balance(&sender, &U256::from(69u64)));
+        assert_eq!(Ok(()), state.commit());
+
+        let network_id = 0xCA;
+        let shard_id = 0;
+        let owners = vec![Address::random(), Address::random(), sender];
+
+        let parcel = Parcel {
+            fee: 5.into(),
+            action: Action::ChangeShardOwners {
+                shard_id,
+                owners: owners.clone(),
+            },
+            nonce: 0.into(),
+            network_id,
+        };
+
+        assert_eq!(Ok(Some(vec![sender])), state.shard_owners(shard_id));
+
+        assert_eq!(Ok(ParcelInvoice::SingleSuccess), state.apply(&parcel, &sender, &sender_public));
+
+        assert_eq!(Ok(64.into()), state.balance(&sender));
+        assert_eq!(Ok(1.into()), state.nonce(&sender));
+        assert_eq!(Ok(Some(owners)), state.shard_owners(shard_id));
+    }
+
+    #[test]
+    fn new_owners_must_contain_sender() {
+        let (sender, sender_public) = address();
+
+        let mut state = get_temp_state();
+        assert_eq!(Ok(()), state.create_shard_level_state(&sender));
+        assert_eq!(Ok(()), state.add_balance(&sender, &U256::from(69u64)));
+        assert_eq!(Ok(()), state.commit());
+
+        let network_id = 0xCA;
+        let shard_id = 0;
+        let owners = {
+            let a1 = loop {
+                let a = Address::random();
+                if a != sender {
+                    break a
+                }
+            };
+            let a2 = loop {
+                let a = Address::random();
+                if a != sender {
+                    break a
+                }
+            };
+            vec![a1, a2]
+        };
+
+        let parcel = Parcel {
+            fee: 5.into(),
+            action: Action::ChangeShardOwners {
+                shard_id,
+                owners,
+            },
+            nonce: 0.into(),
+            network_id,
+        };
+
+        assert_eq!(Ok(Some(vec![sender])), state.shard_owners(shard_id));
+
+        assert_eq!(Err(ParcelError::NewOwnersMustContainSender.into()), state.apply(&parcel, &sender, &sender_public));
+
+        assert_eq!(Ok(69.into()), state.balance(&sender));
+        assert_eq!(Ok(0.into()), state.nonce(&sender));
+        assert_eq!(Ok(Some(vec![sender])), state.shard_owners(shard_id));
+    }
+
+    #[test]
+    fn only_owner_can_change_owners() {
+        let (original_owner, _) = address();
+
+        let mut state = get_temp_state();
+        assert_eq!(Ok(()), state.create_shard_level_state(&original_owner));
+        let (sender, sender_public) = address();
+        assert_eq!(Ok(()), state.add_balance(&sender, &U256::from(69u64)));
+        assert_eq!(Ok(()), state.commit());
+
+        let network_id = 0xCA;
+        let shard_id = 0;
+
+        let owners = {
+            let a1 = loop {
+                let a = Address::random();
+                if a != original_owner {
+                    break a
+                }
+            };
+            let a2 = loop {
+                let a = Address::random();
+                if a != original_owner {
+                    break a
+                }
+            };
+            vec![a1, a2, sender]
+        };
+
+        let parcel = Parcel {
+            fee: 5.into(),
+            action: Action::ChangeShardOwners {
+                shard_id,
+                owners,
+            },
+            nonce: 0.into(),
+            network_id,
+        };
+
+        assert_eq!(Ok(Some(vec![original_owner])), state.shard_owners(shard_id));
+
+        assert_eq!(Err(ParcelError::InsufficientPermission.into()), state.apply(&parcel, &sender, &sender_public));
+
+        assert_eq!(Ok(69.into()), state.balance(&sender));
+        assert_eq!(Ok(0.into()), state.nonce(&sender));
+        assert_eq!(Ok(Some(vec![original_owner])), state.shard_owners(shard_id));
+    }
+
+    #[test]
+    fn change_shard_owners_fail_on_invalid_shard_id() {
+        let (sender, sender_public) = address();
+
+        let mut state = get_temp_state();
+        assert_eq!(Ok(()), state.create_shard_level_state(&sender));
+        assert_eq!(Ok(()), state.add_balance(&sender, &U256::from(69u64)));
+        assert_eq!(Ok(()), state.commit());
+
+        let network_id = 0xCA;
+        let real_shard_id = 0;
+        let shard_id = 0xF;
+
+        let owners = vec![Address::random(), Address::random(), sender];
+
+        let parcel = Parcel {
+            fee: 5.into(),
+            action: Action::ChangeShardOwners {
+                shard_id,
+                owners: owners.clone(),
+            },
+            nonce: 0.into(),
+            network_id,
+        };
+
+        assert_eq!(Ok(Some(vec![sender])), state.shard_owners(real_shard_id));
+        assert_eq!(Ok(None), state.shard_owners(shard_id));
+
+        assert_eq!(Err(ParcelError::InvalidShardId(shard_id).into()), state.apply(&parcel, &sender, &sender_public));
+
+        assert_eq!(Ok(69.into()), state.balance(&sender));
+        assert_eq!(Ok(0.into()), state.nonce(&sender));
+        assert_eq!(Ok(Some(vec![sender])), state.shard_owners(real_shard_id));
+        assert_eq!(Ok(None), state.shard_owners(shard_id));
     }
 }

@@ -77,6 +77,8 @@ pub enum Error {
     InvalidTransferDestination,
     /// Transaction error
     InvalidTransaction(TransactionError),
+    InsufficientPermission,
+    NewOwnersMustContainSender,
 }
 
 const ERROR_ID_PARCEL_ALREADY_IMPORTED: u8 = 1u8;
@@ -99,6 +101,8 @@ const ERROR_ID_REGULAR_KEY_ALREADY_IN_USE: u8 = 17u8;
 const ERROR_ID_REGULAR_KEY_ALREADY_IN_USE_AS_MASTER: u8 = 18u8;
 const ERROR_ID_INVALID_TRANSFER_DESTINATION: u8 = 19u8;
 const ERROR_ID_INVALID_TRANSACTION: u8 = 20u8;
+const ERROR_ID_INSUFFICIENT_PERMISSION: u8 = 21u8;
+const ERROR_ID_NEW_OWNERS_MUST_CONTAIN_SENDER: u8 = 22u8;
 
 impl Encodable for Error {
     fn rlp_append(&self, s: &mut RlpStream) {
@@ -135,6 +139,8 @@ impl Encodable for Error {
             }
             Error::InvalidTransferDestination => s.begin_list(1).append(&ERROR_ID_INVALID_TRANSFER_DESTINATION),
             Error::InvalidTransaction(err) => s.begin_list(2).append(&ERROR_ID_INVALID_TRANSACTION).append(err),
+            Error::InsufficientPermission => s.begin_list(1).append(&ERROR_ID_INSUFFICIENT_PERMISSION),
+            Error::NewOwnersMustContainSender => s.begin_list(1).append(&ERROR_ID_NEW_OWNERS_MUST_CONTAIN_SENDER),
         };
     }
 }
@@ -173,6 +179,8 @@ impl Decodable for Error {
             ERROR_ID_REGULAR_KEY_ALREADY_IN_USE_AS_MASTER => Error::RegularKeyAlreadyInUseAsMaster,
             ERROR_ID_INVALID_TRANSFER_DESTINATION => Error::InvalidTransferDestination,
             ERROR_ID_INVALID_TRANSACTION => Error::InvalidTransaction(rlp.val_at(1)?),
+            ERROR_ID_INSUFFICIENT_PERMISSION => Error::InsufficientPermission,
+            ERROR_ID_NEW_OWNERS_MUST_CONTAIN_SENDER => Error::NewOwnersMustContainSender,
             _ => return Err(DecoderError::Custom("Invalid parcel error")),
         })
     }
@@ -211,6 +219,8 @@ impl Display for Error {
             Error::RegularKeyAlreadyInUseAsMaster => "The regular key is already used as a master account".to_string(),
             Error::InvalidTransferDestination => "Transfer receiver is not valid account".to_string(),
             Error::InvalidTransaction(err) => format!("Parcel has an invalid transaction: {}", err).to_string(),
+            Error::InsufficientPermission => "Sender doesn't have a permission".to_string(),
+            Error::NewOwnersMustContainSender => "New owners must contain the sender".to_string(),
         };
 
         f.write_fmt(format_args!("Parcel error ({})", msg))

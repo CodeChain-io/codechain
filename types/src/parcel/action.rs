@@ -26,6 +26,7 @@ const CHANGE_SHARD_STATE: u8 = 1;
 const PAYMENT: u8 = 2;
 const SET_REGULAR_KEY: u8 = 3;
 const CREATE_SHARD: u8 = 4;
+const CHANGE_SHARD_OWNERS: u8 = 5;
 const CUSTOM: u8 = 0xFF;
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, RlpDecodable, RlpEncodable)]
@@ -54,6 +55,10 @@ pub enum Action {
         key: Public,
     },
     CreateShard,
+    ChangeShardOwners {
+        shard_id: ShardId,
+        owners: Vec<Address>,
+    },
     Custom(Bytes),
 }
 
@@ -97,6 +102,15 @@ impl Encodable for Action {
             Action::CreateShard => {
                 s.begin_list(1);
                 s.append(&CREATE_SHARD);
+            }
+            Action::ChangeShardOwners {
+                shard_id,
+                owners,
+            } => {
+                s.begin_list(3);
+                s.append(&CHANGE_SHARD_OWNERS);
+                s.append(shard_id);
+                s.append_list(owners);
             }
             Action::Custom(bytes) => {
                 s.begin_list(2);
@@ -143,6 +157,15 @@ impl Decodable for Action {
                 }
                 Ok(Action::CreateShard)
             }
+            CHANGE_SHARD_OWNERS => {
+                if rlp.item_count()? != 3 {
+                    return Err(DecoderError::RlpIncorrectListLen)
+                }
+                Ok(Action::ChangeShardOwners {
+                    shard_id: rlp.val_at(1)?,
+                    owners: rlp.list_at(2)?,
+                })
+            }
             CUSTOM => {
                 if rlp.item_count()? != 2 {
                     return Err(DecoderError::RlpIncorrectListLen)
@@ -151,5 +174,18 @@ impl Decodable for Action {
             }
             _ => Err(DecoderError::Custom("Unexpected action prefix")),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn encode_and_decode_change_shard_owners() {
+        rlp_encode_and_decode_test!(Action::ChangeShardOwners {
+            shard_id: 1,
+            owners: vec![Address::random(), Address::random()],
+        });
     }
 }
