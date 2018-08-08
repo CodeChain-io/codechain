@@ -26,7 +26,7 @@ const CHANGE_SHARD_STATE: u8 = 1;
 const PAYMENT: u8 = 2;
 const SET_REGULAR_KEY: u8 = 3;
 const CREATE_SHARD: u8 = 4;
-const CUSTOM: u8 = 5;
+const CUSTOM: u8 = 0xFF;
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, RlpDecodable, RlpEncodable)]
 #[serde(rename_all = "camelCase")]
