@@ -192,7 +192,7 @@ where
         }
     }
 
-    fn get_network_id(&self) -> Result<u64> {
+    fn get_network_id(&self) -> Result<u32> {
         Ok(self.client.common_params().network_id)
     }
 

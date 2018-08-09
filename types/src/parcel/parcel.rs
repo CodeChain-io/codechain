@@ -28,7 +28,7 @@ pub struct Parcel {
     /// Amount of CCC to be paid as a cost for distributing this parcel to the network.
     pub fee: U256,
     /// Mainnet or Testnet
-    pub network_id: u64,
+    pub network_id: u32,
 
     pub action: Action,
 }

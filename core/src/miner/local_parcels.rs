@@ -222,7 +222,7 @@ mod tests {
                 changes: vec![],
                 signatures: vec![],
             },
-            network_id: 0u64,
+            network_id: 0,
         };
         SignedParcel::new_with_sign(parcel, keypair.private())
     }

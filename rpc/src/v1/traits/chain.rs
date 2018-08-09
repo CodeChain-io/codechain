@@ -114,7 +114,7 @@ build_rpc_trait! {
 
         /// Return the network id that is used in this chain.
         # [rpc(name = "chain_getNetworkId")]
-        fn get_network_id(&self) -> Result<u64>;
+        fn get_network_id(&self) -> Result<u32>;
 
         /// Execute Transactions
         # [rpc(name = "chain_executeTransactions")]

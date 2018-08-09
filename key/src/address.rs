@@ -168,7 +168,7 @@ pub struct FullAddress {
 }
 
 impl FullAddress {
-    pub fn create_version0(network_id: u64, address: Address) -> Result<Self, Error> {
+    pub fn create_version0(network_id: u32, address: Address) -> Result<Self, Error> {
         let network = match network_id {
             // FIXME: 0x11 is the network id for SOLO
             0x11 => Network::Mainnet,

@@ -12,7 +12,7 @@ struct Parcel {
     expiration_time: Option<Timestamp>,
     nonce: U256,
     fee: U256,
-    network_id: u64,
+    network_id: u32,
     action: Action,
 }
 
@@ -68,7 +68,7 @@ enum Transaction {
 
 ```rust
 AssetMint {
-    network_id: u64,
+    network_id: u32,
     shard_id: u32,
     metadata: String,
     registrar: Option<Address>,
