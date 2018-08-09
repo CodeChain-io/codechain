@@ -96,21 +96,24 @@ impl Decodable for Address {
     }
 }
 
-/// Return `s` without the `0x` at the beginning of it, if any.
-pub fn clean_0x(s: &str) -> &str {
+pub fn clean_0x_or_ccc(s: &str) -> String {
+    let mut addr = String::new();
     if s.starts_with("0x") {
-        &s[2..]
+        addr.push_str(&s[2..]);
+    } else if s.starts_with("ccc") {
+        addr.push_str(&FullAddress::from_str(s).unwrap().address.to_string());
     } else {
-        s
+        addr.push_str(s);
     }
+    addr
 }
 
 impl FromStr for Address {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let s = clean_0x(s);
-        let a = H160::from_str(s).map_err(|_| format!("Invalid address {}", s))?;
+        let addr = clean_0x_or_ccc(s);
+        let a = H160::from_str(&addr).map_err(|_| format!("Invalid address {}", addr))?;
         Ok(Address(a))
     }
 }
