@@ -16,4 +16,4 @@
 
 pub const DEFAULT_CONFIG_PATH: &'static str = "codechain/config/presets/config.dev.toml";
 pub const DEFAULT_KEYS_PATH: &'static str = "keys";
-pub const DEFAULT_NETWORK_ID: u64 = 0x11;
+pub const DEFAULT_NETWORK_ID: u32 = 0x11;

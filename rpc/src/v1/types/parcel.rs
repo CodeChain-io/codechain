@@ -27,7 +27,7 @@ pub struct Parcel {
     pub parcel_index: Option<usize>,
     pub nonce: U256,
     pub fee: U256,
-    pub network_id: u64,
+    pub network_id: u32,
     pub action: Action,
     pub hash: H256,
     pub sig: Signature,

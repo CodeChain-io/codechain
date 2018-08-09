@@ -26,11 +26,11 @@ use super::super::traits::Account;
 
 pub struct AccountClient {
     account_provider: Arc<AccountProvider>,
-    network_id: u64,
+    network_id: u32,
 }
 
 impl AccountClient {
-    pub fn new(ap: &Arc<AccountProvider>, network_id: u64) -> Self {
+    pub fn new(ap: &Arc<AccountProvider>, network_id: u32) -> Self {
         AccountClient {
             account_provider: ap.clone(),
             network_id,

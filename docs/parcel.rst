@@ -28,7 +28,7 @@ A parcel would look something like this:
     pub struct Parcel {
         pub nonce: U256,
         pub fee: U256,
-        pub network_id: u64,
+        pub network_id: u32,
         pub action: Action,
     }
 
