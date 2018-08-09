@@ -58,14 +58,14 @@ pub struct AssetTransferOutput {
 pub enum Transaction {
     #[serde(rename_all = "camelCase")]
     CreateWorld {
-        network_id: u64,
+        network_id: u32,
         shard_id: ShardId,
         nonce: u64,
         owners: Vec<Address>,
     },
     #[serde(rename_all = "camelCase")]
     SetWorldOwners {
-        network_id: u64,
+        network_id: u32,
         shard_id: ShardId,
         world_id: WorldId,
         nonce: u64,
@@ -73,7 +73,7 @@ pub enum Transaction {
     },
     #[serde(rename_all = "camelCase")]
     AssetMint {
-        network_id: u64,
+        network_id: u32,
         shard_id: ShardId,
         metadata: String,
         registrar: Option<Address>,
@@ -83,7 +83,7 @@ pub enum Transaction {
     },
     #[serde(rename_all = "camelCase")]
     AssetTransfer {
-        network_id: u64,
+        network_id: u32,
         burns: Vec<AssetTransferInput>,
         inputs: Vec<AssetTransferInput>,
         outputs: Vec<AssetTransferOutput>,
@@ -145,7 +145,7 @@ impl Transaction {
         blake256(&*self.without_script().rlp_bytes())
     }
 
-    pub fn network_id(&self) -> u64 {
+    pub fn network_id(&self) -> u32 {
         match self {
             Transaction::CreateWorld {
                 network_id,

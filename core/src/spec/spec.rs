@@ -49,7 +49,7 @@ pub struct CommonParams {
     /// Maximum size of metadata.
     pub max_metadata_size: usize,
     /// Network id.
-    pub network_id: u64,
+    pub network_id: u32,
     /// Minimum parcel cost.
     pub min_parcel_cost: U256,
     /// Maximum size of block body.
@@ -62,10 +62,11 @@ pub struct CommonParams {
 
 impl From<cjson::spec::Params> for CommonParams {
     fn from(p: cjson::spec::Params) -> Self {
+        let network_id: u64 = p.network_id.into();
         Self {
             max_extra_data_size: p.max_extra_data_size.into(),
             max_metadata_size: p.max_metadata_size.into(),
-            network_id: p.network_id.into(),
+            network_id: network_id as u32,
             min_parcel_cost: p.min_parcel_cost.into(),
             max_body_size: p.max_body_size.into(),
             snapshot_period: p.snapshot_period.into(),

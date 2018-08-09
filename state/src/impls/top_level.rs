@@ -403,7 +403,7 @@ impl TopLevelState {
     fn apply_action(
         &mut self,
         action: &Action,
-        network_id: &u64,
+        network_id: &u32,
         fee_payer: &Address,
         fee_payer_public: &Public,
     ) -> StateResult<ParcelInvoice> {

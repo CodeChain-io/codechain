@@ -198,7 +198,7 @@ impl TestBlockChainClient {
                 let parcel = Parcel {
                     nonce: U256::zero(),
                     fee: U256::from(10),
-                    network_id: 0u64,
+                    network_id: 0,
                     action: Action::ChangeShardState {
                         transactions: vec![],
                         changes: vec![],
@@ -266,7 +266,7 @@ impl TestBlockChainClient {
         let parcel = Parcel {
             nonce: U256::zero(),
             fee: U256::from(10),
-            network_id: 0u64,
+            network_id: 0,
             action: Action::ChangeShardState {
                 transactions,
                 changes: vec![],
