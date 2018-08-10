@@ -71,8 +71,8 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
 
 ## Transaction
 
- - type: "createWorld" | "setWorldOwners" | "assetMint" | "assetTransfer"
- - data: `CreateWorld` | `SetWorldOwners` | `AssetMint` | `AssetTransfer`
+ - type: "createWorld" | "setWorldOwners" | "setWorldUsers"| "assetMint" | "assetTransfer"
+ - data: `CreateWorld` | `SetWorldOwners` | `SetWorldUsers`| `AssetMint` | `AssetTransfer`
 
 ## AssetScheme
 

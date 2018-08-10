@@ -125,6 +125,13 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
                 owners,
                 ..
             } => Ok(self.set_world_owners(*shard_id, *world_id, *nonce, &owners, sender, shard_users)?),
+            Transaction::SetWorldUsers {
+                shard_id,
+                world_id,
+                nonce,
+                users,
+                ..
+            } => Ok(self.set_world_users(*shard_id, *world_id, *nonce, &users, sender, shard_users)?),
             Transaction::AssetMint {
                 metadata,
                 world_id,
@@ -217,6 +224,35 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         let mut world = self.require_world(&WorldAddress::new(shard_id, world_id), || unreachable!())?;
         world.inc_nonce();
         world.set_owners(owners.to_vec());
+        Ok(())
+    }
+
+    fn set_world_users(
+        &mut self,
+        shard_id: ShardId,
+        world_id: WorldId,
+        nonce: u64,
+        users: &[Address],
+        sender: &Address,
+        shard_users: &[Address],
+    ) -> StateResult<()> {
+        let world: World = self.world(world_id)?.ok_or_else(|| TransactionError::InvalidWorldId(world_id))?;
+
+        if !shard_users.contains(sender) && !world.owners().contains(sender) {
+            return Err(TransactionError::InsufficientPermission.into())
+        }
+
+        let current_nonce = world.nonce();
+        if current_nonce != &nonce {
+            return Err(TransactionError::InvalidWorldNonce(Mismatch {
+                expected: *current_nonce,
+                found: nonce,
+            }).into())
+        }
+
+        let mut world = self.require_world(&WorldAddress::new(shard_id, world_id), || unreachable!())?;
+        world.inc_nonce();
+        world.set_users(users.to_vec());
         Ok(())
     }
 
@@ -1290,6 +1326,52 @@ mod tests {
             world_id,
             nonce,
             owners: new_owners.clone(),
+        };
+
+        let shard_owner = address();
+        assert_eq!(
+            Ok(TransactionInvoice::Fail(TransactionError::InsufficientPermission)),
+            state.apply(shard_id, &transaction, &user, &[shard_owner])
+        );
+        let world = state.world(world_id);
+        assert_eq!(Ok(Some(World::new_with_nonce(owners, users, 0))), world);
+    }
+
+    #[test]
+    fn user_cannot_set_users() {
+        let network_id = "tc".into();
+        let shard_id = 0xCAFE;
+        let mut state = get_temp_shard_state(shard_id);
+
+        let owners = vec![Address::random(), Address::random()];
+        let user = {
+            loop {
+                let owner = address();
+                if !owners.contains(&owner) {
+                    break owner
+                }
+            }
+        };
+        let users = vec![user, Address::random()];
+        assert_eq!(Ok(()), state.create_world(shard_id, &0, &owners, &users, &owners[0], &owners));
+        assert_eq!(Ok(()), state.commit());
+
+        let metadata = state.metadata();
+        assert_eq!(Ok(Some(ShardMetadata::new_with_nonce(1, 1))), metadata);
+
+        let world_id = 0;
+        let world = state.world(world_id);
+        assert_eq!(Ok(Some(World::new(owners.clone(), users.clone()))), world);
+
+        let nonce = 0;
+
+        let new_users = vec![Address::random(), Address::random(), Address::random()];
+        let transaction = Transaction::SetWorldUsers {
+            network_id,
+            shard_id,
+            world_id,
+            nonce,
+            users: new_users.clone(),
         };
 
         let shard_owner = address();

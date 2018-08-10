@@ -72,6 +72,14 @@ pub enum Transaction {
         owners: Vec<Address>,
     },
     #[serde(rename_all = "camelCase")]
+    SetWorldUsers {
+        network_id: NetworkId,
+        shard_id: ShardId,
+        world_id: WorldId,
+        nonce: u64,
+        users: Vec<Address>,
+    },
+    #[serde(rename_all = "camelCase")]
     AssetMint {
         network_id: NetworkId,
         shard_id: ShardId,
@@ -156,6 +164,10 @@ impl Transaction {
                 network_id,
                 ..
             } => *network_id,
+            Transaction::SetWorldUsers {
+                network_id,
+                ..
+            } => *network_id,
             Transaction::AssetTransfer {
                 network_id,
                 ..
@@ -174,6 +186,10 @@ impl Transaction {
                 ..
             } => vec![*shard_id],
             Transaction::SetWorldOwners {
+                shard_id,
+                ..
+            } => vec![*shard_id],
+            Transaction::SetWorldUsers {
                 shard_id,
                 ..
             } => vec![*shard_id],
@@ -204,6 +220,9 @@ impl Transaction {
                 ..
             } => Ok(()),
             Transaction::SetWorldOwners {
+                ..
+            } => Ok(()),
+            Transaction::SetWorldUsers {
                 ..
             } => Ok(()),
             Transaction::AssetTransfer {
@@ -256,6 +275,7 @@ const CREATE_WORLD_ID: TransactionId = 0x01;
 const SET_WORLD_OWNERS_ID: TransactionId = 0x02;
 const ASSET_MINT_ID: TransactionId = 0x03;
 const ASSET_TRANSFER_ID: TransactionId = 0x04;
+const SET_WORLD_USERS_ID: TransactionId = 0x05;
 
 impl Decodable for Transaction {
     fn decode(d: &UntrustedRlp) -> Result<Self, DecoderError> {
@@ -283,6 +303,19 @@ impl Decodable for Transaction {
                     world_id: d.val_at(3)?,
                     nonce: d.val_at(4)?,
                     owners: d.list_at(5)?,
+                })
+            }
+            SET_WORLD_USERS_ID => {
+                if d.item_count()? != 6 {
+                    return Err(DecoderError::RlpIncorrectListLen)
+                }
+
+                Ok(Transaction::SetWorldUsers {
+                    network_id: d.val_at(1)?,
+                    shard_id: d.val_at(2)?,
+                    world_id: d.val_at(3)?,
+                    nonce: d.val_at(4)?,
+                    users: d.list_at(5)?,
                 })
             }
             ASSET_MINT_ID => {
@@ -349,6 +382,20 @@ impl Encodable for Transaction {
                 .append(world_id)
                 .append(nonce)
                 .append_list(&owners),
+            Transaction::SetWorldUsers {
+                network_id,
+                shard_id,
+                world_id,
+                nonce,
+                users,
+            } => s
+                .begin_list(6)
+                .append(&SET_WORLD_OWNERS_ID)
+                .append(network_id)
+                .append(shard_id)
+                .append(world_id)
+                .append(nonce)
+                .append_list(&users),
             Transaction::AssetMint {
                 network_id,
                 shard_id,
