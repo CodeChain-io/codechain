@@ -135,8 +135,8 @@ pub fn client_start(cfg: &config::Config, spec: &Spec, miner: Arc<Miner>) -> Res
     Ok(service)
 }
 
-pub fn stratum_start(cfg: &StratumConfig, miner: Arc<Miner>, client: Arc<Client>) -> Result<(), String> {
-    match Stratum::start(cfg, miner.clone(), client) {
+pub fn stratum_start(cfg: StratumConfig, miner: Arc<Miner>, client: Arc<Client>) -> Result<(), String> {
+    match Stratum::start(&cfg, miner.clone(), client) {
         // FIXME: Add specified condition like AddrInUse
         Err(StratumError::Service(_)) =>
             Err(format!("STRATUM address {} is already in use, make sure that another instance of a CodeChain node is not running or change the address using the --stratum-port option.", cfg.port)),
@@ -277,19 +277,17 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
     let miner = new_miner(&config, &spec, ap.clone())?;
     let client = client_start(&config, &spec, miner.clone())?;
 
-
     let shard_validator = if spec.params().use_shard_validator {
         None
     } else if config.shard_validator.disable {
         Some(ShardValidator::new(None, Arc::clone(&ap)))
     } else {
-        let shard_validator_config = (&config.shard_validator).into();
-        Some(new_shard_validator(shard_validator_config, Arc::clone(&ap))?)
+        Some(new_shard_validator(config.shard_validator_config(), Arc::clone(&ap))?)
     };
 
     let network_service: Arc<NetworkControl> = {
         if !config.network.disable {
-            let network_config = (&config.network).into();
+            let network_config = config.network_config();
             let service = network_start(&network_config)?;
 
             if config.network.discovery {
@@ -333,8 +331,7 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
 
     let _rpc_server = {
         if !config.rpc.disable {
-            let rpc_config = (&config.rpc).into();
-            Some(rpc_http_start(rpc_config, config.rpc.enable_devel_api, Arc::clone(&rpc_apis_deps))?)
+            Some(rpc_http_start(config.rpc_http_config(), config.rpc.enable_devel_api, Arc::clone(&rpc_apis_deps))?)
         } else {
             None
         }
@@ -342,16 +339,14 @@ fn run_node(matches: ArgMatches) -> Result<(), String> {
 
     let _ipc_server = {
         if !config.ipc.disable {
-            let ipc_config = (&config.ipc).into();
-            Some(rpc_ipc_start(ipc_config, config.rpc.enable_devel_api, Arc::clone(&rpc_apis_deps))?)
+            Some(rpc_ipc_start(config.rpc_ipc_config(), config.rpc.enable_devel_api, Arc::clone(&rpc_apis_deps))?)
         } else {
             None
         }
     };
 
     if (!config.stratum.disable) && (miner.engine_type() == EngineType::PoW) {
-        let stratum_config = (&config.stratum).into();
-        stratum_start(&stratum_config, Arc::clone(&miner), client.client())?
+        stratum_start(config.stratum_config(), Arc::clone(&miner), client.client())?
     }
 
     let _snapshot_service = {

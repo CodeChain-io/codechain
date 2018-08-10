@@ -43,6 +43,62 @@ pub struct Config {
     pub shard_validator: ShardValidator,
 }
 
+impl Config {
+    pub fn rpc_http_config(&self) -> RpcHttpConfig {
+        debug_assert!(!self.rpc.disable);
+
+        // FIXME: Add interface, cors and hosts options.
+        RpcHttpConfig {
+            interface: self.rpc.interface.clone(),
+            port: self.rpc.port,
+            cors: None,
+            hosts: None,
+        }
+    }
+
+    pub fn rpc_ipc_config(&self) -> RpcIpcConfig {
+        debug_assert!(!self.ipc.disable);
+
+        RpcIpcConfig {
+            socket_addr: self.ipc.path.clone(),
+        }
+    }
+
+    pub fn network_config(&self) -> NetworkConfig {
+        debug_assert!(!self.network.disable);
+
+        let bootstrap_addresses =
+            self.network.bootstrap_addresses.iter().map(|s| SocketAddr::from_str(s).unwrap()).collect::<Vec<_>>();
+        NetworkConfig {
+            port: self.network.port,
+            bootstrap_addresses,
+            min_peers: self.network.min_peers,
+            max_peers: self.network.max_peers,
+            address: self.network.address.to_string(),
+        }
+    }
+
+    pub fn stratum_config(&self) -> StratumConfig {
+        debug_assert!(!self.stratum.disable);
+
+        // FIXME: Add listen_addr and secret
+        StratumConfig {
+            listen_addr: "127.0.0.1".to_string(),
+            port: self.stratum.port,
+            secret: None,
+        }
+    }
+
+    pub fn shard_validator_config(&self) -> ShardValidatorConfig {
+        debug_assert!(self.shard_validator.disable);
+
+        ShardValidatorConfig {
+            account: self.shard_validator.account.unwrap(),
+            password_path: self.shard_validator.password_path.clone(),
+        }
+    }
+}
+
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Ipc {
@@ -126,70 +182,6 @@ pub struct ShardValidator {
     pub disable: bool,
     pub account: Option<Address>,
     pub password_path: Option<String>,
-}
-
-impl<'a> Into<RpcIpcConfig> for &'a Ipc {
-    fn into(self) -> RpcIpcConfig {
-        debug_assert!(!self.disable);
-
-        RpcIpcConfig {
-            socket_addr: self.path.clone(),
-        }
-    }
-}
-
-impl<'a> Into<NetworkConfig> for &'a Network {
-    fn into(self) -> NetworkConfig {
-        debug_assert!(!self.disable);
-
-        let bootstrap_addresses =
-            self.bootstrap_addresses.iter().map(|s| SocketAddr::from_str(s).unwrap()).collect::<Vec<_>>();
-        NetworkConfig {
-            port: self.port,
-            bootstrap_addresses,
-            min_peers: self.min_peers,
-            max_peers: self.max_peers,
-            address: self.address.to_string(),
-        }
-    }
-}
-
-impl<'a> Into<RpcHttpConfig> for &'a Rpc {
-    // FIXME: Add interface, cors and hosts options.
-    fn into(self) -> RpcHttpConfig {
-        debug_assert!(!self.disable);
-
-        RpcHttpConfig {
-            interface: self.interface.clone(),
-            port: self.port,
-            cors: None,
-            hosts: None,
-        }
-    }
-}
-
-impl<'a> Into<StratumConfig> for &'a Stratum {
-    // FIXME: Add listen_addr and secret
-    fn into(self) -> StratumConfig {
-        debug_assert!(!self.disable);
-
-        StratumConfig {
-            listen_addr: "127.0.0.1".to_string(),
-            port: self.port,
-            secret: None,
-        }
-    }
-}
-
-impl<'a> Into<ShardValidatorConfig> for &'a ShardValidator {
-    fn into(self) -> ShardValidatorConfig {
-        debug_assert!(self.disable);
-
-        ShardValidatorConfig {
-            account: self.account.unwrap(),
-            password_path: self.password_path.clone(),
-        }
-    }
 }
 
 impl Ipc {
