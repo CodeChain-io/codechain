@@ -38,112 +38,131 @@ pub fn run_account_command(matches: ArgMatches) -> Result<(), String> {
     clogger::init(&LoggerConfig::new(0)).expect("Logger must be successfully initialized");
 
     let keys_path = matches.value_of("keys-path").unwrap_or(DEFAULT_KEYS_PATH);
-    let network_id = DEFAULT_NETWORK_ID;
     let dir = RootDiskDirectory::create(keys_path).expect("Cannot read key path directory");
     let keystore = KeyStore::open(Box::new(dir)).unwrap();
     let ap = AccountProvider::new(keystore);
 
     match matches.subcommand() {
-        ("create", _) => {
-            if let Some(password) = read_password_and_confirm() {
-                let (address, _) = ap.new_account_and_public(&password).expect("Cannot create account");
-                println!(
-                    "{}",
-                    FullAddress::create_version0(network_id, address).expect("The network id is hardcoded to 0x11")
-                );
-            } else {
-                return Err("The password does not match".to_string())
-            }
-            Ok(())
-        }
+        ("create", _) => create(&ap),
         ("import", Some(matches)) => {
             let json_path = matches.value_of("JSON_PATH").expect("JSON_PATH arg is required and its index is 1");
-            match fs::read(json_path) {
-                Ok(json) => {
-                    let password = prompt_password("Password: ");
-                    match ap.import_wallet(json.as_slice(), &password) {
-                        Ok(address) => {
-                            println!(
-                                "{}",
-                                FullAddress::create_version0(network_id, address)
-                                    .expect("The network id is hardcoded to 0x11")
-                            );
-                        }
-                        Err(e) => return Err(format!("{}", e)),
-                    }
-                }
-                Err(e) => return Err(format!("{}", e)),
-            }
-            Ok(())
+            import(&ap, json_path)
         }
         ("import-raw", Some(matches)) => {
-            let key = {
+            let raw_key = {
                 let val = matches.value_of("RAW_KEY").expect("RAW_KEY arg is required and its index is 1");
                 read_raw_key(val)
             };
-            match Private::from_str(key) {
-                Ok(private) => {
-                    if let Some(password) = read_password_and_confirm() {
-                        match ap.insert_account(private, &password) {
-                            Ok(address) => println!(
-                                "{}",
-                                FullAddress::create_version0(network_id, address)
-                                    .expect("The network id is hardcoded to 0x11")
-                            ),
-                            Err(e) => return Err(format!("{:?}", e)),
-                        }
-                    } else {
-                        return Err("The password does not match".to_string())
-                    }
-                }
-                Err(e) => return Err(format!("{:?}", e)),
-            }
-            Ok(())
+            import_raw(&ap, raw_key)
         }
-        ("list", _) => {
-            let addresses = ap.get_list().expect("Cannot get account list");
-            for address in addresses {
-                println!(
-                    "{}",
-                    FullAddress::create_version0(network_id, address).expect("The network id is hardcoded to 0x11")
-                )
-            }
-            Ok(())
-        }
+        ("list", _) => list(&ap),
         ("remove", Some(matches)) => {
-            let key = matches.value_of("ADDRESS").expect("ADDRESS arg is required and its index is 1");
-            match FullAddress::from_str(key) {
-                Ok(full_address) => {
-                    let password = prompt_password("Password: ");
-                    match ap.remove_account(full_address.address, &password) {
-                        Ok(_) => println!("{} is deleted", full_address),
-                        Err(e) => return Err(format!("{:?}", e)),
-                    }
-                }
-                Err(e) => return Err(format!("{:?}", e)),
-            }
-            Ok(())
+            let address = matches.value_of("ADDRESS").expect("ADDRESS arg is required and its index is 1");
+            remove(&ap, address)
         }
         ("change-password", Some(matches)) => {
-            let key = matches.value_of("ADDRESS").expect("ADDRESS arg is required and its index is 1");
-            match FullAddress::from_str(key) {
-                Ok(full_address) => {
-                    let old_password = prompt_password("Old Password: ");
-                    if let Some(new_password) = read_password_and_confirm() {
-                        match ap.change_password(full_address.address, &old_password, &new_password) {
-                            Ok(_) => println!("Password has changed"),
-                            Err(e) => return Err(format!("{:?}", e)),
-                        }
-                    } else {
-                        return Err("The password does not match".to_string())
-                    }
-                }
-                Err(e) => return Err(format!("{:?}", e)),
-            }
-            Ok(())
+            let address = matches.value_of("ADDRESS").expect("ADDRESS arg is required and its index is 1");
+            change_password(&ap, address)
         }
         _ => Err("Invalid subcommand".to_string()),
     }
+}
+
+fn create(ap: &AccountProvider) -> Result<(), String> {
+    let network_id = DEFAULT_NETWORK_ID;
+
+    if let Some(password) = read_password_and_confirm() {
+        let (address, _) = ap.new_account_and_public(&password).expect("Cannot create account");
+        println!("{}", FullAddress::create_version0(network_id, address).expect("The network id is hardcoded to 0x11"));
+    } else {
+        return Err("The password does not match".to_string())
+    }
+    Ok(())
+}
+
+fn import(ap: &AccountProvider, json_path: &str) -> Result<(), String> {
+    let network_id = DEFAULT_NETWORK_ID;
+
+    match fs::read(json_path) {
+        Ok(json) => {
+            let password = prompt_password("Password: ");
+            match ap.import_wallet(json.as_slice(), &password) {
+                Ok(address) => {
+                    println!(
+                        "{}",
+                        FullAddress::create_version0(network_id, address).expect("The network id is hardcoded to 0x11")
+                    );
+                }
+                Err(e) => return Err(format!("{}", e)),
+            }
+        }
+        Err(e) => return Err(format!("{}", e)),
+    }
+    Ok(())
+}
+
+fn import_raw(ap: &AccountProvider, raw_key: &str) -> Result<(), String> {
+    let network_id = DEFAULT_NETWORK_ID;
+
+    match Private::from_str(raw_key) {
+        Ok(private) => {
+            if let Some(password) = read_password_and_confirm() {
+                match ap.insert_account(private, &password) {
+                    Ok(address) => println!(
+                        "{}",
+                        FullAddress::create_version0(network_id, address).expect("The network id is hardcoded to 0x11")
+                    ),
+                    Err(e) => return Err(format!("{:?}", e)),
+                }
+            } else {
+                return Err("The password does not match".to_string())
+            }
+        }
+        Err(e) => return Err(format!("{:?}", e)),
+    }
+    Ok(())
+}
+
+fn remove(ap: &AccountProvider, address: &str) -> Result<(), String> {
+    match FullAddress::from_str(address) {
+        Ok(full_address) => {
+            let password = prompt_password("Password: ");
+            match ap.remove_account(full_address.address, &password) {
+                Ok(_) => println!("{} is deleted", full_address),
+                Err(e) => return Err(format!("{:?}", e)),
+            }
+        }
+        Err(e) => return Err(format!("{:?}", e)),
+    }
+    Ok(())
+}
+
+fn list(ap: &AccountProvider) -> Result<(), String> {
+    let network_id = DEFAULT_NETWORK_ID;
+
+    let addresses = ap.get_list().expect("Cannot get account list");
+    for address in addresses {
+        println!("{}", FullAddress::create_version0(network_id, address).expect("The network id is hardcoded to 0x11"))
+    }
+    Ok(())
+}
+
+fn change_password(ap: &AccountProvider, address: &str) -> Result<(), String> {
+    match FullAddress::from_str(address) {
+        Ok(full_address) => {
+            let old_password = prompt_password("Old Password: ");
+            if let Some(new_password) = read_password_and_confirm() {
+                match ap.change_password(full_address.address, &old_password, &new_password) {
+                    Ok(_) => println!("Password has changed"),
+                    Err(e) => return Err(format!("{:?}", e)),
+                }
+            } else {
+                return Err("The password does not match".to_string())
+            }
+        }
+        Err(e) => return Err(format!("{:?}", e)),
+    }
+    Ok(())
 }
 
 fn prompt_password(prompt: &str) -> Password {
