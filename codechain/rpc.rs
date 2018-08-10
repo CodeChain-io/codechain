@@ -30,17 +30,6 @@ pub struct RpcHttpConfig {
     pub hosts: Option<Vec<String>>,
 }
 
-impl RpcHttpConfig {
-    pub fn with_port(port: u16) -> Self {
-        RpcHttpConfig {
-            interface: "127.0.0.1".into(),
-            port,
-            cors: None,
-            hosts: Some(Vec::new()),
-        }
-    }
-}
-
 pub fn rpc_http_start(
     cfg: RpcHttpConfig,
     enable_devel_api: bool,
