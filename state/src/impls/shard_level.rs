@@ -814,9 +814,9 @@ mod tests {
 
         assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), amount, registrar))), asset_scheme);
 
-        let asset_address = AssetAddress::new(mint_hash, 0, shard_id);
+        let asset_address = OwnedAssetAddress::new(mint_hash, 0, shard_id);
         let asset = state.asset(&asset_address);
-        assert_eq!(Ok(Some(Asset::new(asset_type, lock_script_hash, vec![], amount))), asset);
+        assert_eq!(Ok(Some(OwnedAsset::new(asset_type, lock_script_hash, vec![], amount))), asset);
 
         let transfer = Transaction::AssetTransfer {
             network_id,

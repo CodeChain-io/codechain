@@ -1465,7 +1465,7 @@ mod tests_parcel {
         let world_id = 0;
         let shard_id = 0x0;
         let mut state = get_temp_state();
-        assert_eq!(Ok(()), state.create_shard_level_state(&sender));
+        assert_eq!(Ok(()), state.create_shard_level_state(vec![sender], vec![]));
         assert_eq!(Ok(()), state.commit());
         assert_eq!(Ok(()), state.add_balance(&sender, &20.into()));
         assert_eq!(Ok(()), state.set_regular_key(&sender_public, &regular_public));
@@ -2658,7 +2658,7 @@ mod tests_parcel {
         let mint_hash = mint.hash();
 
         let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id, world_id);
-        let asset_address = AssetAddress::new(mint_hash, 0, shard_id);
+        let asset_address = OwnedAssetAddress::new(mint_hash, 0, shard_id);
 
         let parcel = Parcel {
             fee: 20.into(),
@@ -2688,6 +2688,6 @@ mod tests_parcel {
 
         let asset_type = asset_scheme_address.into();
         let asset = state.asset(shard_id, &asset_address);
-        assert_eq!(Ok(Some(Asset::new(asset_type, lock_script_hash, parameters, amount))), asset);
+        assert_eq!(Ok(Some(OwnedAsset::new(asset_type, lock_script_hash, parameters, amount))), asset);
     }
 }
