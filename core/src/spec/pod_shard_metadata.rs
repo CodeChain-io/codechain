@@ -26,6 +26,7 @@ use super::pod_world::PodWorld;
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct PodShardMetadata {
     pub owners: Vec<Address>,
+    pub users: Vec<Address>,
     pub nonce: u64,
     pub worlds: Vec<PodWorld>,
 }
@@ -49,6 +50,7 @@ impl From<cjson::spec::Shard> for PodShardMetadata {
         Self {
             nonce: s.nonce.map(Into::into).unwrap_or(0),
             owners: s.owners.into_iter().map(Into::into).collect(),
+            users: s.users.unwrap_or_else(Vec::new).into_iter().map(Into::into).collect(),
             worlds: s.worlds.unwrap_or_else(Vec::new).into_iter().map(Into::into).collect(),
         }
     }
@@ -56,6 +58,10 @@ impl From<cjson::spec::Shard> for PodShardMetadata {
 
 impl fmt::Display for PodShardMetadata {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "(#nonce={}; owners={:#?}; worlds={:#?})", self.nonce, self.owners, self.worlds)
+        write!(
+            f,
+            "(#nonce={}; owners={:#?}; users={:#?} worlds={:#?})",
+            self.nonce, self.owners, self.users, self.worlds
+        )
     }
 }

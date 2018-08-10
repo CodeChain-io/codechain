@@ -108,7 +108,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         shard_id: ShardId,
         transaction: &Transaction,
         sender: &Address,
-        shard_owners: &[Address],
+        shard_users: &[Address],
     ) -> StateResult<()> {
         debug_assert_eq!(Ok(()), transaction.verify());
         match transaction {
@@ -116,14 +116,14 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
                 nonce,
                 owners,
                 ..
-            } => Ok(self.create_world(shard_id, nonce, owners, sender, shard_owners)?),
+            } => Ok(self.create_world(shard_id, nonce, owners, sender, shard_users)?),
             Transaction::SetWorldOwners {
                 shard_id,
                 world_id,
                 nonce,
                 owners,
                 ..
-            } => Ok(self.set_world_owners(*shard_id, *world_id, *nonce, &owners, sender, shard_owners)?),
+            } => Ok(self.set_world_owners(*shard_id, *world_id, *nonce, &owners, sender, shard_users)?),
             Transaction::AssetMint {
                 metadata,
                 world_id,
@@ -144,7 +144,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
                 amount,
                 registrar,
                 sender,
-                shard_owners,
+                shard_users,
             )?),
             Transaction::AssetTransfer {
                 burns,
@@ -161,9 +161,10 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         nonce: &u64,
         owners: &Vec<Address>,
         sender: &Address,
-        shard_owners: &[Address],
+        shard_users: &[Address],
     ) -> StateResult<()> {
-        if !shard_owners.contains(sender) {
+        println!("{:?}", shard_users);
+        if !shard_users.contains(sender) {
             return Err(TransactionError::InsufficientPermission.into())
         }
 
@@ -195,11 +196,11 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         nonce: u64,
         owners: &[Address],
         sender: &Address,
-        shard_owners: &[Address],
+        shard_users: &[Address],
     ) -> StateResult<()> {
         let world: World = self.world(world_id)?.ok_or_else(|| TransactionError::InvalidWorldId(world_id))?;
 
-        if !shard_owners.contains(sender) && !world.world_owners().contains(sender) {
+        if !shard_users.contains(sender) && !world.world_owners().contains(sender) {
             return Err(TransactionError::InsufficientPermission.into())
         }
 
@@ -227,11 +228,11 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         amount: &Option<u64>,
         registrar: &Option<Address>,
         sender: &Address,
-        shard_owners: &[Address],
+        shard_users: &[Address],
     ) -> StateResult<()> {
         let world: World = self.world(world_id)?.ok_or_else(|| TransactionError::InvalidWorldId(world_id))?;
 
-        if !shard_owners.contains(sender) && !world.world_owners().contains(sender) {
+        if !shard_users.contains(sender) && !world.world_owners().contains(sender) {
             return Err(TransactionError::InsufficientPermission.into())
         }
 
@@ -541,12 +542,12 @@ impl<B: Backend + ShardBackend> ShardState<B> for ShardLevelState<B> {
         shard_id: ShardId,
         transaction: &Transaction,
         sender: &Address,
-        shard_owners: &[Address],
+        shard_users: &[Address],
     ) -> StateResult<TransactionInvoice> {
         ctrace!(TX, "Execute {:?}(TxHash:{:?})", transaction, transaction.hash());
 
         self.create_checkpoint(TRANSACTION_CHECKPOINT);
-        let result = self.apply_internal(shard_id, transaction, sender, shard_owners);
+        let result = self.apply_internal(shard_id, transaction, sender, shard_users);
         match result {
             Ok(_) => {
                 cinfo!(TX, "Tx({}) is applied", transaction.hash());

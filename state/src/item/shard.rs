@@ -26,13 +26,15 @@ use super::cache::CacheableItem;
 pub struct Shard {
     root: H256,
     owners: Vec<Address>,
+    users: Vec<Address>,
 }
 
 impl Shard {
-    pub fn new(shard_root: H256, owners: Vec<Address>) -> Self {
+    pub fn new(shard_root: H256, owners: Vec<Address>, users: Vec<Address>) -> Self {
         Self {
             root: shard_root,
             owners,
+            users,
         }
     }
 
@@ -53,6 +55,14 @@ impl Shard {
         debug_assert_ne!(Vec::<Address>::new(), owners);
         self.owners = owners;
     }
+
+    pub fn users(&self) -> &[Address] {
+        &self.users
+    }
+
+    pub fn set_users(&mut self, users: Vec<Address>) {
+        self.users = users;
+    }
 }
 
 impl CacheableItem for Shard {
@@ -67,13 +77,13 @@ const PREFIX: u8 = super::SHARD_PREFIX;
 
 impl Encodable for Shard {
     fn rlp_append(&self, s: &mut RlpStream) {
-        s.begin_list(3).append(&PREFIX).append(&self.root).append_list(&self.owners);
+        s.begin_list(4).append(&PREFIX).append(&self.root).append_list(&self.owners).append_list(&self.users);
     }
 }
 
 impl Decodable for Shard {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
-        if rlp.item_count()? != 3 {
+        if rlp.item_count()? != 4 {
             return Err(DecoderError::RlpInvalidLength)
         }
         let prefix = rlp.val_at::<u8>(0)?;
@@ -84,6 +94,7 @@ impl Decodable for Shard {
         Ok(Self {
             root: rlp.val_at(1)?,
             owners: rlp.list_at(2)?,
+            users: rlp.list_at(3)?,
         })
     }
 }

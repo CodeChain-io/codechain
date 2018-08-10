@@ -39,6 +39,7 @@ pub trait TopStateInfo {
 
     fn shard_root(&self, shard_id: ShardId) -> TrieResult<Option<H256>>;
     fn shard_owners(&self, shard_id: ShardId) -> TrieResult<Option<Vec<Address>>>;
+    fn shard_users(&self, shard_id: ShardId) -> TrieResult<Option<Vec<Address>>>;
 
     fn shard_metadata(&self, shard_id: ShardId) -> TrieResult<Option<ShardMetadata>>;
     fn world(&self, shard_id: ShardId, world_id: WorldId) -> TrieResult<Option<World>>;
@@ -108,6 +109,7 @@ where
 
     fn set_shard_root(&mut self, shard_id: ShardId, old_root: &H256, new_root: &H256) -> StateResult<()>;
     fn set_shard_owners(&mut self, shard_id: ShardId, new_owners: Vec<Address>) -> StateResult<()>;
+    fn set_shard_users(&mut self, shard_id: ShardId, new_users: Vec<Address>) -> StateResult<()>;
 
     fn update_action_data(&mut self, key: &H256, data: Bytes) -> StateResult<()>;
 }
