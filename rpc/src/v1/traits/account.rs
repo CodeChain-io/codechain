@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ckey::{FullAddress, Password, Signature};
+use ckey::{Password, PlatformAddress, Signature};
 use jsonrpc_core::Result;
 use primitives::H256;
 
@@ -22,26 +22,26 @@ build_rpc_trait! {
     pub trait Account {
         /// Gets a list of accounts
         # [rpc(name = "account_getList")]
-        fn get_account_list(&self) -> Result<Vec<FullAddress>>;
+        fn get_account_list(&self) -> Result<Vec<PlatformAddress>>;
 
         /// Creates a new account
         # [rpc(name = "account_create")]
-        fn create_account(&self, Option<Password>) -> Result<FullAddress>;
+        fn create_account(&self, Option<Password>) -> Result<PlatformAddress>;
 
         /// Imports a private key
         # [rpc(name = "account_importRaw")]
-        fn create_account_from_secret(&self, H256, Option<Password>) -> Result<FullAddress>;
+        fn create_account_from_secret(&self, H256, Option<Password>) -> Result<PlatformAddress>;
 
         /// Removes the account
         # [rpc(name = "account_remove")]
-        fn remove_account(&self, FullAddress, Option<Password>) -> Result<()>;
+        fn remove_account(&self, PlatformAddress, Option<Password>) -> Result<()>;
 
         /// Calculates the account's signature for a given message
         # [rpc(name = "account_sign")]
-        fn sign(&self, H256, FullAddress, Option<Password>) -> Result<Signature>;
+        fn sign(&self, H256, PlatformAddress, Option<Password>) -> Result<Signature>;
 
         /// Changes the account's password
         # [rpc(name = "account_changePassword")]
-        fn change_password(&self, FullAddress, Password, Password) -> Result<()>;
+        fn change_password(&self, PlatformAddress, Password, Password) -> Result<()>;
     }
 }

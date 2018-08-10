@@ -35,10 +35,10 @@ mod address;
 mod ecdsa;
 mod error;
 mod exchange;
-mod full_address;
 mod keypair;
 mod network;
 mod password;
+mod platform_address;
 mod private;
 mod random;
 #[cfg(feature = "schnorr")]
@@ -52,10 +52,10 @@ pub use ecdsa::{
 };
 pub use error::Error;
 pub use exchange::exchange;
-pub use full_address::FullAddress;
 pub use keypair::{public_to_address, KeyPair};
 pub use network::NetworkId;
 pub use password::Password;
+pub use platform_address::PlatformAddress;
 use primitives::{H256, H512};
 pub use private::Private;
 pub use random::Random;

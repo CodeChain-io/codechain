@@ -26,7 +26,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use super::{Address, Error, NetworkId};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub struct FullAddress {
+pub struct PlatformAddress {
     /// The network id of the address.
     pub network_id: NetworkId,
     /// The version of the address.
@@ -35,9 +35,9 @@ pub struct FullAddress {
     pub address: Address,
 }
 
-impl FullAddress {
+impl PlatformAddress {
     pub fn create_version0(network_id: NetworkId, address: Address) -> Result<Self, Error> {
-        Ok(FullAddress {
+        Ok(Self {
             network_id,
             version: 0,
             address,
@@ -93,13 +93,13 @@ fn rearrange_bits(data: &[u8], from: usize, into: usize) -> Vec<u8> {
     vec
 }
 
-impl fmt::Display for FullAddress {
+impl fmt::Display for PlatformAddress {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.to_string())
     }
 }
 
-impl FromStr for FullAddress {
+impl FromStr for PlatformAddress {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Error>
@@ -121,7 +121,7 @@ impl FromStr for FullAddress {
             return Err(Error::Bech32UnknownHRP)
         }
         let data = rearrange_bits(&decoded.data, 5, 8);
-        Ok(FullAddress {
+        Ok(Self {
             network_id,
             version: data[0],
             address: {
@@ -135,13 +135,13 @@ impl FromStr for FullAddress {
     }
 }
 
-impl From<&'static str> for FullAddress {
+impl From<&'static str> for PlatformAddress {
     fn from(s: &'static str) -> Self {
         s.parse().unwrap()
     }
 }
 
-impl Serialize for FullAddress {
+impl Serialize for PlatformAddress {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer, {
@@ -149,18 +149,18 @@ impl Serialize for FullAddress {
     }
 }
 
-impl<'a> Deserialize<'a> for FullAddress {
-    fn deserialize<D>(deserializer: D) -> Result<FullAddress, D::Error>
+impl<'a> Deserialize<'a> for PlatformAddress {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'a>, {
-        deserializer.deserialize_any(FullAddressVisitor)
+        deserializer.deserialize_any(PlatformAddressVisitor)
     }
 }
 
-struct FullAddressVisitor;
+struct PlatformAddressVisitor;
 
-impl<'a> Visitor<'a> for FullAddressVisitor {
-    type Value = FullAddress;
+impl<'a> Visitor<'a> for PlatformAddressVisitor {
+    type Value = PlatformAddress;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         write!(formatter, "a bech32 encoded string")
@@ -169,13 +169,13 @@ impl<'a> Visitor<'a> for FullAddressVisitor {
     fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
     where
         E: SerdeError, {
-        FullAddress::from_str(value).map_err(|e| SerdeError::custom(format!("{}", e)))
+        PlatformAddress::from_str(value).map_err(|e| SerdeError::custom(format!("{}", e)))
     }
 
     fn visit_string<E>(self, value: String) -> Result<Self::Value, E>
     where
         E: SerdeError, {
-        FullAddress::from_str(value.as_ref()).map_err(|e| SerdeError::custom(format!("{}", e)))
+        PlatformAddress::from_str(value.as_ref()).map_err(|e| SerdeError::custom(format!("{}", e)))
     }
 }
 
@@ -185,27 +185,28 @@ mod tests {
 
     use serde_json;
 
-    use super::{rearrange_bits, FullAddress};
+    use super::{rearrange_bits, PlatformAddress};
 
     #[test]
-    fn full_address_serialization() {
-        let address = FullAddress::from_str("cccqql54g07mu04fm4s8d6em6kmxenkkxzfzytqcve5").unwrap();
+    fn serialization() {
+        let address = PlatformAddress::from_str("cccqql54g07mu04fm4s8d6em6kmxenkkxzfzytqcve5").unwrap();
         let serialized = serde_json::to_string(&address).unwrap();
         assert_eq!(serialized, r#""cccqql54g07mu04fm4s8d6em6kmxenkkxzfzytqcve5""#);
     }
 
     #[test]
-    fn full_address_deserialization() {
-        let addr1: Result<FullAddress, _> = serde_json::from_str(r#""""#);
-        let addr2: Result<FullAddress, _> = serde_json::from_str(r#""cccqql54g07mu04fm4s8d6em6kmxenkkxzfzytqcve5""#);
+    fn deserialization() {
+        let addr1: Result<PlatformAddress, _> = serde_json::from_str(r#""""#);
+        let addr2: Result<PlatformAddress, _> =
+            serde_json::from_str(r#""cccqql54g07mu04fm4s8d6em6kmxenkkxzfzytqcve5""#);
 
         assert!(addr1.is_err());
         assert!(addr2.is_ok());
     }
 
     #[test]
-    fn full_address_to_string() {
-        let address = FullAddress {
+    fn to_string() {
+        let address = PlatformAddress {
             network_id: "cc".into(),
             version: 0,
             address: "3f4aa1fedf1f54eeb03b759deadb36676b184911".into(),
@@ -215,8 +216,8 @@ mod tests {
     }
 
     #[test]
-    fn address_from_str() {
-        let address = FullAddress {
+    fn from_str() {
+        let address = PlatformAddress {
             network_id: "cc".into(),
             version: 0,
             address: "3f4aa1fedf1f54eeb03b759deadb36676b184911".into(),

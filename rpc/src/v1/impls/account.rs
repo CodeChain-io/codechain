@@ -17,7 +17,7 @@
 use std::sync::Arc;
 
 use ccore::AccountProvider;
-use ckey::{FullAddress, NetworkId, Password, Signature};
+use ckey::{NetworkId, Password, PlatformAddress, Signature};
 use jsonrpc_core::Result;
 use primitives::H256;
 
@@ -39,47 +39,57 @@ impl AccountClient {
 }
 
 impl Account for AccountClient {
-    fn get_account_list(&self) -> Result<Vec<FullAddress>> {
+    fn get_account_list(&self) -> Result<Vec<PlatformAddress>> {
         self.account_provider
             .get_list()
             .map(|addresses| {
                 addresses
                     .into_iter()
                     .map(|address| {
-                        FullAddress::create_version0(self.network_id, address).expect("The network id is fixed")
+                        PlatformAddress::create_version0(self.network_id, address).expect("The network id is fixed")
                     })
                     .collect()
             })
             .map_err(account_provider)
     }
 
-    fn create_account(&self, passphrase: Option<Password>) -> Result<FullAddress> {
+    fn create_account(&self, passphrase: Option<Password>) -> Result<PlatformAddress> {
         let (address, _) =
             self.account_provider.new_account_and_public(&passphrase.unwrap_or_default()).map_err(account_provider)?;
-        Ok(FullAddress::create_version0(self.network_id, address).expect("The network id is fixed"))
+        Ok(PlatformAddress::create_version0(self.network_id, address).expect("The network id is fixed"))
     }
 
-    fn create_account_from_secret(&self, secret: H256, passphrase: Option<Password>) -> Result<FullAddress> {
+    fn create_account_from_secret(&self, secret: H256, passphrase: Option<Password>) -> Result<PlatformAddress> {
         self.account_provider
             .insert_account(secret.into(), &passphrase.unwrap_or_default())
-            .map(|address| FullAddress::create_version0(self.network_id, address).expect("The network id is fixed"))
+            .map(|address| PlatformAddress::create_version0(self.network_id, address).expect("The network id is fixed"))
             .map_err(account_provider)
     }
 
-    fn remove_account(&self, full_address: FullAddress, passphrase: Option<Password>) -> Result<()> {
+    fn remove_account(&self, full_address: PlatformAddress, passphrase: Option<Password>) -> Result<()> {
         self.account_provider
             .remove_account(full_address.address, &passphrase.unwrap_or_default())
             .map_err(account_provider)
     }
 
-    fn sign(&self, message_digest: H256, full_address: FullAddress, passphrase: Option<Password>) -> Result<Signature> {
+    fn sign(
+        &self,
+        message_digest: H256,
+        full_address: PlatformAddress,
+        passphrase: Option<Password>,
+    ) -> Result<Signature> {
         self.account_provider
             .sign(full_address.address, Some(passphrase.unwrap_or_default()), message_digest)
             .map(|sig| sig.into())
             .map_err(account_provider)
     }
 
-    fn change_password(&self, full_address: FullAddress, old_password: Password, new_password: Password) -> Result<()> {
+    fn change_password(
+        &self,
+        full_address: PlatformAddress,
+        old_password: Password,
+        new_password: Password,
+    ) -> Result<()> {
         self.account_provider
             .change_password(full_address.address, &old_password, &new_password)
             .map_err(account_provider)

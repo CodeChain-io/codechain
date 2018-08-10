@@ -20,7 +20,7 @@ use std::str::FromStr;
 use rpassword;
 
 use ccore::AccountProvider;
-use ckey::{FullAddress, Password, Private};
+use ckey::{Password, PlatformAddress, Private};
 use ckeystore::accounts_dir::RootDiskDirectory;
 use ckeystore::KeyStore;
 use clap::ArgMatches;
@@ -71,7 +71,7 @@ fn create(ap: &AccountProvider) -> Result<(), String> {
         // FIXME: Don't hardcode network_id.
         println!(
             "{}",
-            FullAddress::create_version0("cc".into(), address).expect("The network id is hardcoded to 0x11")
+            PlatformAddress::create_version0("cc".into(), address).expect("The network id is hardcoded to 0x11")
         );
     } else {
         return Err("The password does not match".to_string())
@@ -88,7 +88,7 @@ fn import(ap: &AccountProvider, json_path: &str) -> Result<(), String> {
                     // FIXME: Don't hardcode network_id.
                     println!(
                         "{}",
-                        FullAddress::create_version0("cc".into(), address)
+                        PlatformAddress::create_version0("cc".into(), address)
                             .expect("The network id is hardcoded to 0x11")
                     );
                 }
@@ -108,7 +108,7 @@ fn import_raw(ap: &AccountProvider, raw_key: &str) -> Result<(), String> {
                 match ap.insert_account(private, &password) {
                     Ok(address) => println!(
                         "{}",
-                        FullAddress::create_version0("cc".into(), address)
+                        PlatformAddress::create_version0("cc".into(), address)
                             .expect("The network id is hardcoded to 0x11")
                     ),
                     Err(e) => return Err(format!("{:?}", e)),
@@ -123,7 +123,7 @@ fn import_raw(ap: &AccountProvider, raw_key: &str) -> Result<(), String> {
 }
 
 fn remove(ap: &AccountProvider, address: &str) -> Result<(), String> {
-    match FullAddress::from_str(address) {
+    match PlatformAddress::from_str(address) {
         Ok(full_address) => {
             let password = prompt_password("Password: ");
             match ap.remove_account(full_address.address, &password) {
@@ -140,13 +140,16 @@ fn list(ap: &AccountProvider) -> Result<(), String> {
     let addresses = ap.get_list().expect("Cannot get account list");
     for address in addresses {
         // FIXME: Don't hardcode network_id.
-        println!("{}", FullAddress::create_version0("tc".into(), address).expect("The network id is hardcoded to 0x11"))
+        println!(
+            "{}",
+            PlatformAddress::create_version0("tc".into(), address).expect("The network id is hardcoded to 0x11")
+        )
     }
     Ok(())
 }
 
 fn change_password(ap: &AccountProvider, address: &str) -> Result<(), String> {
-    match FullAddress::from_str(address) {
+    match PlatformAddress::from_str(address) {
         Ok(full_address) => {
             let old_password = prompt_password("Old Password: ");
             if let Some(new_password) = read_password_and_confirm() {
