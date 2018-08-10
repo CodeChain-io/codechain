@@ -35,6 +35,7 @@ mod address;
 mod ecdsa;
 mod error;
 mod exchange;
+mod full_address;
 mod keypair;
 mod network;
 mod password;
@@ -43,7 +44,7 @@ mod random;
 #[cfg(feature = "schnorr")]
 mod schnorr;
 
-pub use address::{Address, FullAddress};
+pub use address::Address;
 #[cfg(feature = "ecdsa")]
 pub use ecdsa::{
     recover_ecdsa as recover, sign_ecdsa as sign, verify_ecdsa as verify, verify_ecdsa_address as verify_address,
@@ -51,6 +52,7 @@ pub use ecdsa::{
 };
 pub use error::Error;
 pub use exchange::exchange;
+pub use full_address::FullAddress;
 pub use keypair::{public_to_address, KeyPair};
 pub use network::Network;
 pub use password::Password;
