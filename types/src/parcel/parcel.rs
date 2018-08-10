@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ccrypto::blake256;
+use ckey::NetworkId;
 use heapsize::HeapSizeOf;
 use primitives::{H256, U256};
 use rlp::RlpStream;
@@ -27,8 +28,8 @@ pub struct Parcel {
     pub nonce: U256,
     /// Amount of CCC to be paid as a cost for distributing this parcel to the network.
     pub fee: U256,
-    /// Mainnet or Testnet
-    pub network_id: u32,
+    /// Network Id
+    pub network_id: NetworkId,
 
     pub action: Action,
 }

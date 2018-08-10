@@ -28,7 +28,6 @@ use clogger::{self, LoggerConfig};
 use primitives::clean_0x;
 
 use super::constants::DEFAULT_KEYS_PATH;
-use super::constants::DEFAULT_NETWORK_ID;
 
 pub fn run_account_command(matches: ArgMatches) -> Result<(), String> {
     if matches.subcommand.is_none() {
@@ -67,11 +66,13 @@ pub fn run_account_command(matches: ArgMatches) -> Result<(), String> {
 }
 
 fn create(ap: &AccountProvider) -> Result<(), String> {
-    let network_id = DEFAULT_NETWORK_ID;
-
     if let Some(password) = read_password_and_confirm() {
         let (address, _) = ap.new_account_and_public(&password).expect("Cannot create account");
-        println!("{}", FullAddress::create_version0(network_id, address).expect("The network id is hardcoded to 0x11"));
+        // FIXME: Don't hardcode network_id.
+        println!(
+            "{}",
+            FullAddress::create_version0("cc".into(), address).expect("The network id is hardcoded to 0x11")
+        );
     } else {
         return Err("The password does not match".to_string())
     }
@@ -79,16 +80,16 @@ fn create(ap: &AccountProvider) -> Result<(), String> {
 }
 
 fn import(ap: &AccountProvider, json_path: &str) -> Result<(), String> {
-    let network_id = DEFAULT_NETWORK_ID;
-
     match fs::read(json_path) {
         Ok(json) => {
             let password = prompt_password("Password: ");
             match ap.import_wallet(json.as_slice(), &password) {
                 Ok(address) => {
+                    // FIXME: Don't hardcode network_id.
                     println!(
                         "{}",
-                        FullAddress::create_version0(network_id, address).expect("The network id is hardcoded to 0x11")
+                        FullAddress::create_version0("cc".into(), address)
+                            .expect("The network id is hardcoded to 0x11")
                     );
                 }
                 Err(e) => return Err(format!("{}", e)),
@@ -100,15 +101,15 @@ fn import(ap: &AccountProvider, json_path: &str) -> Result<(), String> {
 }
 
 fn import_raw(ap: &AccountProvider, raw_key: &str) -> Result<(), String> {
-    let network_id = DEFAULT_NETWORK_ID;
-
     match Private::from_str(clean_0x(raw_key)) {
         Ok(private) => {
             if let Some(password) = read_password_and_confirm() {
+                // FIXME: Don't hardcode network_id.
                 match ap.insert_account(private, &password) {
                     Ok(address) => println!(
                         "{}",
-                        FullAddress::create_version0(network_id, address).expect("The network id is hardcoded to 0x11")
+                        FullAddress::create_version0("cc".into(), address)
+                            .expect("The network id is hardcoded to 0x11")
                     ),
                     Err(e) => return Err(format!("{:?}", e)),
                 }
@@ -136,11 +137,10 @@ fn remove(ap: &AccountProvider, address: &str) -> Result<(), String> {
 }
 
 fn list(ap: &AccountProvider) -> Result<(), String> {
-    let network_id = DEFAULT_NETWORK_ID;
-
     let addresses = ap.get_list().expect("Cannot get account list");
     for address in addresses {
-        println!("{}", FullAddress::create_version0(network_id, address).expect("The network id is hardcoded to 0x11"))
+        // FIXME: Don't hardcode network_id.
+        println!("{}", FullAddress::create_version0("tc".into(), address).expect("The network id is hardcoded to 0x11"))
     }
     Ok(())
 }

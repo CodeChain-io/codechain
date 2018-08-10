@@ -299,7 +299,7 @@ mod tests {
                     nonce: 0.into(),
                     fee: 10.into(),
                     action: Action::CreateShard,
-                    network_id: 0xBE,
+                    network_id: "tc".into(),
                 },
                 sig: Signature::default(),
                 hash: H256::default(),
@@ -310,7 +310,7 @@ mod tests {
     #[test]
     fn encode_and_decode_asset_mint() {
         rlp_encode_and_decode_test!(Transaction::AssetMint {
-            network_id: 200,
+            network_id: "tc".into(),
             shard_id: 0xc,
             world_id: 0xA,
             metadata: "mint test".to_string(),
@@ -327,7 +327,7 @@ mod tests {
     #[test]
     fn encode_and_decode_asset_mint_with_parameters() {
         rlp_encode_and_decode_test!(Transaction::AssetMint {
-            network_id: 200,
+            network_id: "tc".into(),
             shard_id: 3,
             world_id: 0xB,
             metadata: "mint test".to_string(),
@@ -346,7 +346,7 @@ mod tests {
         let burns = vec![];
         let inputs = vec![];
         let outputs = vec![];
-        let network_id = 0;
+        let network_id = "tc".into();
         rlp_encode_and_decode_test!(Transaction::AssetTransfer {
             network_id,
             burns,
@@ -371,7 +371,7 @@ mod tests {
                 unsigned: Parcel {
                     nonce: 30.into(),
                     fee: 40.into(),
-                    network_id: 50,
+                    network_id: "tc".into(),
                     action: Action::Payment {
                         receiver: Address::random(),
                         amount: 300.into(),
@@ -390,7 +390,7 @@ mod tests {
                 unsigned: Parcel {
                     nonce: 30.into(),
                     fee: 40.into(),
-                    network_id: 50,
+                    network_id: "tc".into(),
                     action: Action::SetRegularKey {
                         key: Public::random(),
                     },
@@ -408,7 +408,7 @@ mod tests {
                 unsigned: Parcel {
                     nonce: 30.into(),
                     fee: 40.into(),
-                    network_id: 50,
+                    network_id: "tc".into(),
                     action: Action::CreateShard,
                 },
                 sig: Signature::default(),

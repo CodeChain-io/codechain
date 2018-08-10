@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ccore::{LocalizedParcel, SignedParcel};
-use ckey::Signature;
+use ckey::{NetworkId, Signature};
 use ctypes::parcel::Action;
 use primitives::{H256, U256};
 
@@ -27,7 +27,7 @@ pub struct Parcel {
     pub parcel_index: Option<usize>,
     pub nonce: U256,
     pub fee: U256,
-    pub network_id: u32,
+    pub network_id: NetworkId,
     pub action: Action,
     pub hash: H256,
     pub sig: Signature,

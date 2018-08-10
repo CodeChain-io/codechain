@@ -14,14 +14,90 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
-pub enum Network {
-    Mainnet,
-    Testnet,
+use std::fmt;
+use std::str::{self, FromStr};
+
+use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
+use serde::de::Error;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub struct NetworkId([u8; 2]);
+
+impl fmt::Display for NetworkId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        let s = str::from_utf8(&self.0).expect("network_id a valid utf8 string");
+        write!(f, "{}", s)
+    }
 }
 
-impl Default for Network {
-    fn default() -> Network {
-        Network::Mainnet
+impl FromStr for NetworkId {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s.len() != 2 {
+            return Err("Invalid network_id length".to_string())
+        }
+        let mut network_id = [0u8; 2];
+        network_id.copy_from_slice(s.as_bytes());
+        Ok(NetworkId(network_id))
+    }
+}
+
+impl From<&'static str> for NetworkId {
+    fn from(s: &'static str) -> Self {
+        s.parse().unwrap()
+    }
+}
+
+impl Default for NetworkId {
+    fn default() -> Self {
+        "tc".into()
+    }
+}
+
+impl Encodable for NetworkId {
+    fn rlp_append(&self, s: &mut RlpStream) {
+        let data: String = self.to_string();
+        data.rlp_append(s);
+    }
+}
+
+impl Decodable for NetworkId {
+    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+        let network_id = String::decode(rlp)?;
+        network_id.parse().map_err(|_| DecoderError::RlpInvalidLength)
+    }
+}
+
+impl Serialize for NetworkId {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer, {
+        let data: String = self.to_string();
+        data.serialize(serializer)
+    }
+}
+
+impl<'a> Deserialize<'a> for NetworkId {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'a>, {
+        let data = String::deserialize(deserializer)?;
+        data.parse().map_err(|_| Error::custom("Invalid network_id"))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json;
+
+    use super::*;
+
+    #[test]
+    fn deserialization() {
+        let s = r#""tc""#;
+        let network_id: NetworkId = serde_json::from_str(s).unwrap();
+        assert_eq!(NetworkId::from("tc"), network_id);
     }
 }

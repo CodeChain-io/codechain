@@ -1135,7 +1135,7 @@ pub mod test {
         let parcel = Parcel {
             nonce: U256::zero(),
             fee,
-            network_id: 200,
+            network_id: "tc".into(),
             action: Action::ChangeShardState {
                 transactions: vec![],
                 changes: vec![],
@@ -1156,7 +1156,7 @@ pub mod test {
         let fee = U256::from(100);
         let world_id = 0;
         let transactions = vec![Transaction::AssetMint {
-            network_id: 200,
+            network_id: "tc".into(),
             shard_id,
             world_id,
             metadata: "Metadata".to_string(),
@@ -1171,7 +1171,7 @@ pub mod test {
         let parcel = Parcel {
             nonce: U256::zero(),
             fee,
-            network_id: 200,
+            network_id: "tc".into(),
             action: Action::ChangeShardState {
                 transactions,
                 changes: vec![ChangeShard {
@@ -1197,7 +1197,7 @@ pub mod test {
         let world_id = 0;
         let transactions = vec![
             Transaction::AssetMint {
-                network_id: 200,
+                network_id: "tc".into(),
                 shard_id,
                 world_id,
                 metadata: "Metadata".to_string(),
@@ -1210,7 +1210,7 @@ pub mod test {
                 nonce: 0,
             },
             Transaction::AssetTransfer {
-                network_id: 0,
+                network_id: "tc".into(),
                 burns: vec![],
                 inputs: vec![],
                 outputs: vec![],
@@ -1220,7 +1220,7 @@ pub mod test {
         let parcel = Parcel {
             nonce: U256::zero(),
             fee,
-            network_id: 200,
+            network_id: "tc".into(),
             action: Action::ChangeShardState {
                 transactions,
                 changes: vec![ChangeShard {
@@ -1247,7 +1247,7 @@ pub mod test {
         let parcel = Parcel {
             nonce: U256::zero(),
             fee,
-            network_id: 200,
+            network_id: "tc".into(),
             action: Action::Payment {
                 receiver,
                 amount,
@@ -1294,7 +1294,7 @@ pub mod test {
 
     fn create_parcel_order(fee: U256, transaction_count: usize) -> ParcelOrder {
         let transaction = Transaction::AssetTransfer {
-            network_id: 0,
+            network_id: "tc".into(),
             burns: vec![],
             inputs: vec![],
             outputs: vec![],
@@ -1304,7 +1304,7 @@ pub mod test {
         let parcel = Parcel {
             nonce: U256::zero(),
             fee,
-            network_id: 200,
+            network_id: "tc".into(),
             action: Action::ChangeShardState {
                 transactions: vec![transaction; transaction_count],
                 changes: vec![ChangeShard {

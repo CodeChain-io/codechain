@@ -76,7 +76,7 @@ mod tests {
             "params": {
                 "maxExtraDataSize": "0x20",
                 "maxMetadataSize": "0x0400",
-                "networkID" : "0x2",
+                "networkID" : "tc",
                 "minParcelCost" : "10",
                 "maxBodySize": 4194304,
                 "snapshotPeriod": 16384,

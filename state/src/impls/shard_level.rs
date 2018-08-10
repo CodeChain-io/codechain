@@ -588,7 +588,7 @@ mod tests {
 
     #[test]
     fn create_world_without_owners() {
-        let network_id = 0xDEADBEEF;
+        let network_id = "tc".into();
         let shard_id = 0xCAFE;
         let mut state = get_temp_shard_state(shard_id);
 
@@ -616,7 +616,7 @@ mod tests {
 
     #[test]
     fn create_world_with_owners() {
-        let network_id = 0xDEADBEEF;
+        let network_id = "tc".into();
         let shard_id = 0xCAFE;
         let mut state = get_temp_shard_state(shard_id);
 
@@ -644,7 +644,7 @@ mod tests {
 
     #[test]
     fn create_world_fail_if_nonce_is_not_matched() {
-        let network_id = 0xDEADBEEF;
+        let network_id = "tc".into();
         let shard_id = 0xCAFE;
         let mut state = get_temp_shard_state(shard_id);
 
@@ -692,7 +692,7 @@ mod tests {
         let amount = 100;
         let registrar = Some(Address::random());
         let transaction = Transaction::AssetMint {
-            network_id: 200,
+            network_id: "tc".into(),
             shard_id,
             world_id,
             metadata: metadata.clone(),
@@ -733,7 +733,7 @@ mod tests {
         let parameters = vec![];
         let registrar = Some(Address::random());
         let transaction = Transaction::AssetMint {
-            network_id: 200,
+            network_id: "tc".into(),
             shard_id,
             world_id,
             metadata: metadata.clone(),
@@ -764,7 +764,7 @@ mod tests {
 
     #[test]
     fn mint_and_transfer() {
-        let network_id = 0xCafe;
+        let network_id = "tc".into();
         let shard_id = 0;
         let world_id = 0;
         let mut state = get_temp_shard_state(shard_id);
@@ -792,7 +792,7 @@ mod tests {
         };
         let mint_hash = mint.hash();
 
-        let network_id = 0xCafe;
+        let network_id = "tc".into();
 
         assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &mint, &sender, &[shard_owner]));
 
@@ -861,7 +861,7 @@ mod tests {
 
     #[test]
     fn mint_and_failed_transfer_and_successful_transfer() {
-        let network_id = 0xCafe;
+        let network_id = "tc".into();
         let shard_id = 0;
         let world_id = 0;
 
@@ -890,7 +890,7 @@ mod tests {
         };
         let mint_hash = mint.hash();
 
-        let network_id = 0xCafe;
+        let network_id = "tc".into();
 
         assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &mint, &sender, &[shard_owner]));
 
@@ -996,7 +996,7 @@ mod tests {
 
     #[test]
     fn shard_owner_can_set_world_owners() {
-        let network_id = 0xDEADBEEF;
+        let network_id = "tc".into();
         let shard_id = 0xCAFE;
         let mut state = get_temp_shard_state(shard_id);
 
@@ -1038,7 +1038,7 @@ mod tests {
 
     #[test]
     fn world_owner_can_set_world_owners() {
-        let network_id = 0xDEADBEEF;
+        let network_id = "tc".into();
         let shard_id = 0xCAFE;
         let mut state = get_temp_shard_state(shard_id);
 
@@ -1075,7 +1075,7 @@ mod tests {
 
     #[test]
     fn insufficient_permission_must_fail_to_set_world_owners() {
-        let network_id = 0xDEADBEEF;
+        let network_id = "tc".into();
         let shard_id = 0xCAFE;
         let mut state = get_temp_shard_state(shard_id);
 

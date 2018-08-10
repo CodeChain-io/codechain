@@ -20,7 +20,7 @@ use ccore::{
     AssetClient, BlockId, EngineInfo, ExecuteClient, MinerService, MiningBlockChainClient, RegularKey, Shard,
     SignedParcel, UnverifiedParcel,
 };
-use ckey::{Address, Public};
+use ckey::{Address, NetworkId, Public};
 use cstate::{Asset, AssetScheme, AssetSchemeAddress};
 use ctypes::invoice::{ParcelInvoice, TransactionInvoice};
 use ctypes::parcel::{Action, ChangeShard};
@@ -197,7 +197,7 @@ where
         }
     }
 
-    fn get_network_id(&self) -> Result<u32> {
+    fn get_network_id(&self) -> Result<NetworkId> {
         Ok(self.client.common_params().network_id)
     }
 

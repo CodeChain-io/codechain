@@ -54,7 +54,7 @@ pub use error::Error;
 pub use exchange::exchange;
 pub use full_address::FullAddress;
 pub use keypair::{public_to_address, KeyPair};
-pub use network::Network;
+pub use network::NetworkId;
 pub use password::Password;
 use primitives::{H256, H512};
 pub use private::Private;

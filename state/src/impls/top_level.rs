@@ -39,7 +39,7 @@ use std::cell::RefMut;
 use std::fmt;
 
 use ccrypto::BLAKE_NULL_RLP;
-use ckey::{public_to_address, Address, Public};
+use ckey::{public_to_address, Address, NetworkId, Public};
 use cmerkle::{Result as TrieResult, Trie, TrieError, TrieFactory};
 use ctypes::invoice::{ParcelInvoice, TransactionInvoice};
 use ctypes::parcel::{Action, ChangeShard, Error as ParcelError, Parcel};
@@ -403,7 +403,7 @@ impl TopLevelState {
     fn apply_action(
         &mut self,
         action: &Action,
-        network_id: &u32,
+        network_id: &NetworkId,
         fee_payer: &Address,
         fee_payer_public: &Public,
     ) -> StateResult<ParcelInvoice> {
@@ -1088,7 +1088,7 @@ mod tests_parcel {
         let parcel = Parcel {
             fee: 5.into(),
             nonce: 0.into(),
-            network_id: 0xCA,
+            network_id: "tc".into(),
             action: Action::ChangeShardState {
                 transactions: vec![],
                 changes: vec![],
@@ -1109,7 +1109,7 @@ mod tests_parcel {
     fn create_world_without_owners() {
         let (sender, sender_public) = address();
 
-        let network_id = 0xDEADBEEF;
+        let network_id = "tc".into();
         let shard_id = 0;
 
         let mut state = get_temp_state();
@@ -1161,7 +1161,7 @@ mod tests_parcel {
     fn create_world_with_owners() {
         let (sender, sender_public) = address();
 
-        let network_id = 0xDEADBEEF;
+        let network_id = "tc".into();
         let shard_id = 0;
 
         let mut state = get_temp_state();
@@ -1216,7 +1216,7 @@ mod tests_parcel {
         let parcel = Parcel {
             nonce: 2.into(),
             fee: 5.into(),
-            network_id: 0xCA,
+            network_id: "tc".into(),
             action: Action::ChangeShardState {
                 transactions: vec![],
                 changes: vec![],
@@ -1245,7 +1245,7 @@ mod tests_parcel {
         let parcel = Parcel {
             fee: 5.into(),
             nonce: 0.into(),
-            network_id: 0xCA,
+            network_id: "tc".into(),
             action: Action::ChangeShardState {
                 transactions: vec![],
                 changes: vec![],
@@ -1280,7 +1280,7 @@ mod tests_parcel {
                 amount: 10.into(),
             },
             nonce: 0.into(),
-            network_id: 0xCA,
+            network_id: "tc".into(),
         };
         let (sender, sender_public) = address();
         assert_eq!(Ok(()), state.add_balance(&sender, &20.into()));
@@ -1303,7 +1303,7 @@ mod tests_parcel {
                 key,
             },
             nonce: 0.into(),
-            network_id: 0xCA,
+            network_id: "tc".into(),
         };
         let (sender, sender_public) = address();
         assert_eq!(Ok(()), state.add_balance(&sender, &5.into()));
@@ -1325,7 +1325,7 @@ mod tests_parcel {
                 key: key.clone(),
             },
             nonce: 0.into(),
-            network_id: 0xCA,
+            network_id: "tc".into(),
         };
         let (sender, sender_public) = address();
         assert_eq!(Ok(()), state.add_balance(&sender, &15.into()));
@@ -1338,7 +1338,7 @@ mod tests_parcel {
             action: Action::CreateShard,
             fee: 5.into(),
             nonce: 1.into(),
-            network_id: 0xCA,
+            network_id: "tc".into(),
         };
 
         assert_eq!(
@@ -1361,7 +1361,7 @@ mod tests_parcel {
                 key: key.clone(),
             },
             nonce: 0.into(),
-            network_id: 0xCA,
+            network_id: "tc".into(),
         };
         let (sender, sender_public) = address();
         assert_eq!(Ok(()), state.add_balance(&sender, &15.into()));
@@ -1376,7 +1376,7 @@ mod tests_parcel {
                 key: key.clone(),
             },
             nonce: 0.into(),
-            network_id: 0xCA,
+            network_id: "tc".into(),
         };
         let (sender2, sender_public2) = address();
         assert_eq!(Ok(()), state.add_balance(&sender2, &15.into()));
@@ -1402,7 +1402,7 @@ mod tests_parcel {
                 key: sender_public2.clone(),
             },
             nonce: 0.into(),
-            network_id: 0xCA,
+            network_id: "tc".into(),
         };
 
         let result = state.apply(&parcel, &sender, &sender_public);
@@ -1426,7 +1426,7 @@ mod tests_parcel {
                 key: regular_public2,
             },
             nonce: 0.into(),
-            network_id: 0xCA,
+            network_id: "tc".into(),
         };
 
         assert_eq!(Some(regular_public), state.regular_key(&sender).unwrap());
@@ -1455,7 +1455,7 @@ mod tests_parcel {
             action: Action::CreateShard,
             fee: 5.into(),
             nonce: 0.into(),
-            network_id: 0xCA,
+            network_id: "tc".into(),
         };
         assert_eq!(Ok(ParcelInvoice::SingleSuccess), state.apply(&parcel, &regular_address, &regular_public));
         assert_eq!(Ok(14.into()), state.balance(&regular_address));
@@ -1480,7 +1480,7 @@ mod tests_parcel {
             },
             fee: 5.into(),
             nonce: 0.into(),
-            network_id: 0xCA,
+            network_id: "tc".into(),
         };
         let result = state.apply(&parcel, &sender, &sender_public);
         assert_eq!(Err(StateError::Parcel(ParcelError::InvalidTransferDestination)), result);
@@ -1499,7 +1499,7 @@ mod tests_parcel {
                 amount: 30.into(),
             },
             nonce: 0.into(),
-            network_id: 0xCA,
+            network_id: "tc".into(),
         };
         let (sender, sender_public) = address();
         assert_eq!(Ok(()), state.add_balance(&sender, &20.into()));
@@ -1526,7 +1526,7 @@ mod tests_parcel {
         assert_eq!(Ok(()), state.create_shard_level_state(&sender));
         assert_eq!(Ok(()), state.commit());
 
-        let network_id = 0xCa;
+        let network_id = "tc".into();
         let shard_id = 0x0;
         let world_id = 0;
 
@@ -1600,7 +1600,7 @@ mod tests_parcel {
 
         let shard_id = 0;
         let world_id = 0;
-        let network_id = 0xCA;
+        let network_id = "tc".into();
 
         let create_world = Transaction::CreateWorld {
             network_id,
@@ -1673,7 +1673,7 @@ mod tests_parcel {
         assert_eq!(Ok(()), state.commit());
 
         let shard_id = 0x00;
-        let network_id = 0xBeef;
+        let network_id = "tc".into();
         let world_id = 0;
 
         let create_world = Transaction::CreateWorld {
@@ -1801,7 +1801,7 @@ mod tests_parcel {
         assert_eq!(Ok(()), state.create_shard_level_state(&sender));
         assert_eq!(Ok(()), state.commit());
 
-        let network_id = 0xBeef;
+        let network_id = "tc".into();
         let shard_id = 0x00;
         let world_id = 0;
 
@@ -1981,7 +1981,7 @@ mod tests_parcel {
             action: Action::CreateShard,
             fee: 5.into(),
             nonce: 0.into(),
-            network_id: 0xCA,
+            network_id: "tc".into(),
         };
         let (sender, sender_public) = address();
         assert_eq!(Ok(()), state.add_balance(&sender, &20.into()));
@@ -2002,7 +2002,7 @@ mod tests_parcel {
             action: Action::CreateShard,
             fee: 5.into(),
             nonce: 0.into(),
-            network_id: 0xCA,
+            network_id: "tc".into(),
         };
         let (sender, sender_public) = address();
         assert_eq!(Ok(()), state.add_balance(&sender, &20.into()));
@@ -2024,7 +2024,7 @@ mod tests_parcel {
             action: Action::CreateShard,
             fee: 5.into(),
             nonce: 0.into(),
-            network_id: 0xCA,
+            network_id: "tc".into(),
         };
         let (sender, sender_public) = address();
         assert_eq!(Ok(()), state.add_balance(&sender, &20.into()));
@@ -2054,7 +2054,7 @@ mod tests_parcel {
         let registrar = Some(Address::random());
         let amount = 30;
         let transaction = Transaction::AssetMint {
-            network_id: 0xCA,
+            network_id: "tc".into(),
             shard_id,
             world_id,
             metadata: metadata.clone(),
@@ -2079,7 +2079,7 @@ mod tests_parcel {
                 }],
                 signatures: vec![],
             },
-            network_id: 0xCA,
+            network_id: "tc".into(),
         };
         let (sender, sender_public) = address();
 
@@ -2093,7 +2093,7 @@ mod tests_parcel {
     fn transfer_on_invalid_parcel_must_fail() {
         let mut state = get_temp_state();
 
-        let network_id = 0xBeef;
+        let network_id = "tc".into();
         let shard_id = 100;
         let world_id = 0;
 
@@ -2165,7 +2165,7 @@ mod tests_parcel {
         assert_eq!(Ok(()), state.commit());
 
         let shard_id = 0x00;
-        let network_id = 0xBeef;
+        let network_id = "tc".into();
         let world_id = 0;
 
         let owners = vec![Address::random(), Address::random()];
@@ -2223,7 +2223,7 @@ mod tests_parcel {
         assert_eq!(Ok(()), state.commit());
 
         let shard_id = 0x00;
-        let network_id = 0xBeef;
+        let network_id = "tc".into();
         let world_id = 0;
 
         assert_eq!(Ok(()), state.add_balance(&sender, &120.into()));
@@ -2305,7 +2305,7 @@ mod tests_parcel {
         assert_eq!(Ok(()), state.add_balance(&sender, &U256::from(69u64)));
         assert_eq!(Ok(()), state.commit());
 
-        let network_id = 0xCA;
+        let network_id = "tc".into();
         let shard_id = 0;
         let owners = vec![Address::random(), Address::random(), sender];
 
@@ -2337,7 +2337,7 @@ mod tests_parcel {
         assert_eq!(Ok(()), state.add_balance(&sender, &U256::from(69u64)));
         assert_eq!(Ok(()), state.commit());
 
-        let network_id = 0xCA;
+        let network_id = "tc".into();
         let shard_id = 0;
         let owners = {
             let a1 = loop {
@@ -2384,7 +2384,7 @@ mod tests_parcel {
         assert_eq!(Ok(()), state.add_balance(&sender, &U256::from(69u64)));
         assert_eq!(Ok(()), state.commit());
 
-        let network_id = 0xCA;
+        let network_id = "tc".into();
         let shard_id = 0;
 
         let owners = {
@@ -2431,7 +2431,7 @@ mod tests_parcel {
         assert_eq!(Ok(()), state.add_balance(&sender, &U256::from(69u64)));
         assert_eq!(Ok(()), state.commit());
 
-        let network_id = 0xCA;
+        let network_id = "tc".into();
         let real_shard_id = 0;
         let shard_id = 0xF;
 

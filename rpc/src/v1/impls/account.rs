@@ -17,7 +17,7 @@
 use std::sync::Arc;
 
 use ccore::AccountProvider;
-use ckey::{FullAddress, Password, Signature};
+use ckey::{FullAddress, NetworkId, Password, Signature};
 use jsonrpc_core::Result;
 use primitives::H256;
 
@@ -26,11 +26,11 @@ use super::super::traits::Account;
 
 pub struct AccountClient {
     account_provider: Arc<AccountProvider>,
-    network_id: u32,
+    network_id: NetworkId,
 }
 
 impl AccountClient {
-    pub fn new(ap: &Arc<AccountProvider>, network_id: u32) -> Self {
+    pub fn new(ap: &Arc<AccountProvider>, network_id: NetworkId) -> Self {
         AccountClient {
             account_provider: ap.clone(),
             network_id,

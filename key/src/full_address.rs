@@ -23,12 +23,12 @@ use primitives::H160;
 use serde::de::{Error as SerdeError, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-use super::{Address, Error, Network};
+use super::{Address, Error, NetworkId};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct FullAddress {
-    /// The network of the address.
-    pub network: Network,
+    /// The network id of the address.
+    pub network_id: NetworkId,
     /// The version of the address.
     pub version: u8,
     /// Public key hash.
@@ -36,24 +36,16 @@ pub struct FullAddress {
 }
 
 impl FullAddress {
-    pub fn create_version0(network_id: u32, address: Address) -> Result<Self, Error> {
-        let network = match network_id {
-            // FIXME: 0x11 is the network id for SOLO
-            0x11 => Network::Mainnet,
-            _ => return Err(Error::InvalidNetwork),
-        };
+    pub fn create_version0(network_id: NetworkId, address: Address) -> Result<Self, Error> {
         Ok(FullAddress {
-            network,
+            network_id,
             version: 0,
             address,
         })
     }
 
     fn to_string(&self) -> String {
-        let hrp = match self.network {
-            Network::Mainnet => "ccc",
-            Network::Testnet => "tcc",
-        }.to_string();
+        let hrp = format!("{}c", self.network_id.to_string());
         let mut data = Vec::new();
         data.push(self.version);
         data.extend(&self.address.to_vec());
@@ -119,28 +111,27 @@ impl FromStr for FullAddress {
         let mut encoded = s.to_string();
         encoded.insert(3, '1');
         let decoded = Bech32::from_string(encoded)?;
-        let network = match decoded.hrp.as_str().as_ref() {
-            "ccc" => Some(Network::Mainnet),
-            "tcc" => Some(Network::Testnet),
-            _ => None,
-        };
-        match network {
-            Some(network) => {
-                let data = rearrange_bits(&decoded.data, 5, 8);
-                Ok(FullAddress {
-                    network,
-                    version: data[0],
-                    address: {
-                        let mut arr = [0u8; 20];
-                        for i in 0..20 {
-                            arr[i] = data[1 + i];
-                        }
-                        H160(arr).into()
-                    },
-                })
-            }
-            None => Err(Error::Bech32UnknownHRP),
+        let network_id = decoded
+            .hrp
+            .get(0..2)
+            .expect("decoded.hrp.len() == 3")
+            .parse::<NetworkId>()
+            .map_err(|_| Error::Bech32UnknownHRP)?;
+        if Some("c") != decoded.hrp.get(2..3) {
+            return Err(Error::Bech32UnknownHRP)
         }
+        let data = rearrange_bits(&decoded.data, 5, 8);
+        Ok(FullAddress {
+            network_id,
+            version: data[0],
+            address: {
+                let mut arr = [0u8; 20];
+                for i in 0..20 {
+                    arr[i] = data[1 + i];
+                }
+                H160(arr).into()
+            },
+        })
     }
 }
 
@@ -194,7 +185,7 @@ mod tests {
 
     use serde_json;
 
-    use super::{rearrange_bits, FullAddress, Network};
+    use super::{rearrange_bits, FullAddress};
 
     #[test]
     fn full_address_serialization() {
@@ -215,7 +206,7 @@ mod tests {
     #[test]
     fn full_address_to_string() {
         let address = FullAddress {
-            network: Network::Mainnet,
+            network_id: "cc".into(),
             version: 0,
             address: "3f4aa1fedf1f54eeb03b759deadb36676b184911".into(),
         };
@@ -226,7 +217,7 @@ mod tests {
     #[test]
     fn address_from_str() {
         let address = FullAddress {
-            network: Network::Mainnet,
+            network_id: "cc".into(),
             version: 0,
             address: "3f4aa1fedf1f54eeb03b759deadb36676b184911".into(),
         };

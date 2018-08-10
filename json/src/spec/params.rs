@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use ckey::NetworkId;
+
 use super::super::uint::Uint;
 
 /// Spec params.
@@ -26,7 +28,7 @@ pub struct Params {
     pub max_metadata_size: Uint,
     /// Network id.
     #[serde(rename = "networkID")]
-    pub network_id: Uint,
+    pub network_id: NetworkId,
     /// Minimum parcel cost.
     pub min_parcel_cost: Uint,
     /// Maximum size of block body.
@@ -49,7 +51,7 @@ mod tests {
         let s = r#"{
             "maxExtraDataSize": "0x20",
             "maxMetadataSize": "0x0400",
-            "networkID" : "0x1",
+            "networkID" : "tc",
             "minParcelCost" : "10",
             "maxBodySize" : 4194304,
             "snapshotPeriod": 16384,
@@ -59,7 +61,7 @@ mod tests {
         let deserialized: Params = serde_json::from_str(s).unwrap();
         assert_eq!(deserialized.max_extra_data_size, Uint(U256::from(0x20)));
         assert_eq!(deserialized.max_metadata_size, Uint(U256::from(0x0400)));
-        assert_eq!(deserialized.network_id, Uint(U256::from(0x1)));
+        assert_eq!(deserialized.network_id, "tc".into());
         assert_eq!(deserialized.min_parcel_cost, Uint(U256::from(10)));
         assert_eq!(deserialized.max_body_size, Uint(4194304.into()));
         assert_eq!(deserialized.snapshot_period, Uint(16384.into()));

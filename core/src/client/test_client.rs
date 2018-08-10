@@ -35,7 +35,7 @@ use std::mem;
 use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrder};
 use std::sync::Arc;
 
-use ckey::{Address, Generator, Random};
+use ckey::{Address, Generator, NetworkId, Random};
 use cmerkle::skewed_merkle_root;
 use cnetwork::NodeId;
 use cstate::{ActionHandler, StateDB};
@@ -198,7 +198,7 @@ impl TestBlockChainClient {
                 let parcel = Parcel {
                     nonce: U256::zero(),
                     fee: U256::from(10),
-                    network_id: 0,
+                    network_id: NetworkId::default(),
                     action: Action::ChangeShardState {
                         transactions: vec![],
                         changes: vec![],
@@ -266,7 +266,7 @@ impl TestBlockChainClient {
         let parcel = Parcel {
             nonce: U256::zero(),
             fee: U256::from(10),
-            network_id: 0,
+            network_id: NetworkId::default(),
             action: Action::ChangeShardState {
                 transactions,
                 changes: vec![],

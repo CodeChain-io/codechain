@@ -19,7 +19,7 @@ use std::io::Cursor;
 
 use byteorder::{BigEndian, ReadBytesExt};
 use ccrypto::blake256;
-use ckey::Address;
+use ckey::{Address, NetworkId};
 use primitives::{Bytes, H256, U128};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
@@ -58,14 +58,14 @@ pub struct AssetTransferOutput {
 pub enum Transaction {
     #[serde(rename_all = "camelCase")]
     CreateWorld {
-        network_id: u32,
+        network_id: NetworkId,
         shard_id: ShardId,
         nonce: u64,
         owners: Vec<Address>,
     },
     #[serde(rename_all = "camelCase")]
     SetWorldOwners {
-        network_id: u32,
+        network_id: NetworkId,
         shard_id: ShardId,
         world_id: WorldId,
         nonce: u64,
@@ -73,7 +73,7 @@ pub enum Transaction {
     },
     #[serde(rename_all = "camelCase")]
     AssetMint {
-        network_id: u32,
+        network_id: NetworkId,
         shard_id: ShardId,
         world_id: WorldId,
         metadata: String,
@@ -84,7 +84,7 @@ pub enum Transaction {
     },
     #[serde(rename_all = "camelCase")]
     AssetTransfer {
-        network_id: u32,
+        network_id: NetworkId,
         burns: Vec<AssetTransferInput>,
         inputs: Vec<AssetTransferInput>,
         outputs: Vec<AssetTransferOutput>,
@@ -146,7 +146,7 @@ impl Transaction {
         blake256(&*self.without_script().rlp_bytes())
     }
 
-    pub fn network_id(&self) -> u32 {
+    pub fn network_id(&self) -> NetworkId {
         match self {
             Transaction::CreateWorld {
                 network_id,
@@ -671,7 +671,7 @@ mod tests {
     #[test]
     fn encode_and_decode_create_world_without_owners() {
         let transaction = Transaction::CreateWorld {
-            network_id: 0xCA,
+            network_id: "tc".into(),
             shard_id: 0xFE,
             nonce: 0xFE,
             owners: vec![],
@@ -682,7 +682,7 @@ mod tests {
     #[test]
     fn encode_and_decode_create_world_with_owners() {
         let transaction = Transaction::CreateWorld {
-            network_id: 0xCA,
+            network_id: "tc".into(),
             shard_id: 0xFE,
             nonce: 0xFE,
             owners: vec![Address::random(), Address::random(), Address::random()],
@@ -693,7 +693,7 @@ mod tests {
     #[test]
     fn encode_and_decode_set_world_owners_with_empty_owners() {
         let transaction = Transaction::SetWorldOwners {
-            network_id: 0xCA,
+            network_id: "tc".into(),
             shard_id: 0xFE,
             world_id: 0xB,
             nonce: 0xEE,
@@ -705,7 +705,7 @@ mod tests {
     #[test]
     fn encode_and_decode_set_world_owners() {
         let transaction = Transaction::SetWorldOwners {
-            network_id: 0xCA,
+            network_id: "tc".into(),
             shard_id: 0xFE,
             world_id: 0xB,
             nonce: 0xEE,
