@@ -18,8 +18,9 @@ mod chain_type;
 
 use std::fs;
 use std::str::FromStr;
+use std::time::Duration;
 
-use ccore::{ShardValidatorConfig, StratumConfig};
+use ccore::{MinerOptions, ShardValidatorConfig, StratumConfig};
 use ckey::Address;
 use clap;
 use cnetwork::{NetworkConfig, SocketAddr};
@@ -44,6 +45,22 @@ pub struct Config {
 }
 
 impl Config {
+    pub fn miner_options(&self) -> MinerOptions {
+        MinerOptions {
+            mem_pool_size: self.mining.mem_pool_size,
+            mem_pool_memory_limit: match self.mining.mem_pool_mem_limit {
+                0 => None,
+                mem_size => Some(mem_size * 1024 * 1024),
+            },
+            new_work_notify: self.mining.notify_work.clone(),
+            force_sealing: self.mining.force_sealing,
+            reseal_min_period: Duration::from_millis(self.mining.reseal_min_period),
+            reseal_max_period: Duration::from_millis(self.mining.reseal_max_period),
+            work_queue_size: self.mining.work_queue_size,
+            ..MinerOptions::default()
+        }
+    }
+
     pub fn rpc_http_config(&self) -> RpcHttpConfig {
         debug_assert!(!self.rpc.disable);
 

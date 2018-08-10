@@ -57,12 +57,12 @@ mod rpc_apis;
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use app_dirs::AppInfo;
 use ccore::{
-    AccountProvider, Client, ClientService, EngineType, Miner, MinerOptions, MinerService, ShardValidator,
-    ShardValidatorConfig, Spec, Stratum, StratumConfig, StratumError,
+    AccountProvider, Client, ClientService, EngineType, Miner, MinerService, ShardValidator, ShardValidatorConfig,
+    Spec, Stratum, StratumConfig, StratumError,
 };
 use cdiscovery::{KademliaConfig, KademliaExtension, UnstructuredConfig, UnstructuredExtension};
 use ckey::Password;
@@ -195,23 +195,7 @@ fn run_subcommand(matches: ArgMatches) -> Result<(), String> {
 }
 
 fn new_miner(config: &config::Config, spec: &Spec, ap: Arc<AccountProvider>) -> Result<Arc<Miner>, String> {
-    let miner_options = MinerOptions {
-        mem_pool_size: config.mining.mem_pool_size,
-        mem_pool_memory_limit: match config.mining.mem_pool_mem_limit {
-            0 => None,
-            mem_size => Some(mem_size * 1024 * 1024),
-        },
-        new_work_notify: config.mining.notify_work.clone(),
-        force_sealing: config.mining.force_sealing,
-        reseal_min_period: Duration::from_millis(config.mining.reseal_min_period),
-        reseal_max_period: Duration::from_millis(config.mining.reseal_max_period),
-        work_queue_size: config.mining.work_queue_size,
-        ..MinerOptions::default()
-    };
-
-    let miner = Miner::new(miner_options, spec, Some(ap.clone()));
-
-
+    let miner = Miner::new(config.miner_options(), spec, Some(ap.clone()));
     match miner.engine_type() {
         EngineType::PoW => {
             let author = config.mining.author;
