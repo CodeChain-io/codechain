@@ -179,7 +179,7 @@ impl Spec {
     }
 
     fn initialize_shards<DB: Backend>(&self, mut db: DB, mut root: H256) -> StateResult<(DB, H256)> {
-        let mut shard_roots = Vec::<(ShardId, H256, Vec<Address>)>::with_capacity(self.genesis_shards.len());
+        let mut shards = Vec::<(ShardAddress, Shard)>::with_capacity(self.genesis_shards.len());
 
         // Initialize shard-level tries
         for (shard_id, shard) in &*self.genesis_shards {
@@ -206,29 +206,19 @@ impl Spec {
             if owners.is_empty() {
                 return Err(TransactionError::EmptyShardOwners(*shard_id).into())
             }
-            shard_roots.push((*shard_id, shard_root, owners));
+            shards.push((ShardAddress::new(*shard_id), Shard::new(shard_root, owners)));
         }
 
         debug_assert_eq!(::std::mem::size_of::<u16>(), ::std::mem::size_of::<ShardId>());
-        debug_assert!(
-            shard_roots.len() <= ::std::u16::MAX as usize,
-            "{} <= {}",
-            shard_roots.len(),
-            ::std::u16::MAX as usize
-        );
-        let global_metadata = Metadata::new(shard_roots.len() as ShardId);
+        debug_assert!(shards.len() <= ::std::u16::MAX as usize, "{} <= {}", shards.len(), ::std::u16::MAX as usize);
+        let global_metadata = Metadata::new(shards.len() as ShardId);
 
         // Initialize shards
-        for (shard_id, shard_root, owners) in shard_roots.into_iter() {
-            {
-                let mut t = TrieFactory::from_existing(db.as_hashdb_mut(), &mut root)?;
-                let address = ShardAddress::new(shard_id);
-
-                let shard = Shard::new(shard_root, owners);
-                let r = t.insert(&*address, &shard.rlp_bytes());
-                debug_assert_eq!(Ok(None), r);
-                r?;
-            }
+        for (address, shard) in shards.into_iter() {
+            let mut t = TrieFactory::from_existing(db.as_hashdb_mut(), &mut root)?;
+            let r = t.insert(&*address, &shard.rlp_bytes());
+            debug_assert_eq!(Ok(None), r);
+            r?;
         }
 
         {
