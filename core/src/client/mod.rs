@@ -76,7 +76,7 @@ pub trait ParcelInfo {
 pub trait TransactionInfo {
     fn transaction_parcel(&self, id: TransactionId) -> Option<ParcelAddress>;
 
-    fn is_any_transaction_included<'a>(&self, transactions: &'a mut Iterator<Item = H256>) -> bool {
+    fn is_any_transaction_included(&self, transactions: &mut Iterator<Item = H256>) -> bool {
         for hash in transactions {
             if self.transaction_parcel(TransactionId::Hash(hash)).is_some() {
                 return true
