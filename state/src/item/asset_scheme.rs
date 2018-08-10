@@ -19,6 +19,7 @@ use ctypes::{ShardId, WorldId};
 use primitives::H256;
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
+use super::asset::Asset;
 use super::local_cache::CacheableItem;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -26,14 +27,16 @@ pub struct AssetScheme {
     metadata: String,
     amount: u64,
     registrar: Option<Address>,
+    pool: Vec<Asset>,
 }
 
 impl AssetScheme {
-    pub fn new(metadata: String, amount: u64, registrar: Option<Address>) -> Self {
+    pub fn new(metadata: String, amount: u64, registrar: Option<Address>, pool: Vec<Asset>) -> Self {
         Self {
             metadata,
             amount,
             registrar,
+            pool,
         }
     }
 
@@ -53,13 +56,18 @@ impl AssetScheme {
         self.registrar.is_some()
     }
 
-    pub fn init(&mut self, metadata: String, amount: u64, registrar: Option<Address>) {
+    pub fn init(&mut self, metadata: String, amount: u64, registrar: Option<Address>, pool: Vec<Asset>) {
         assert_eq!("", &self.metadata);
         assert_eq!(0, self.amount);
         assert_eq!(None, self.registrar);
         self.metadata = metadata;
         self.amount = amount;
         self.registrar = registrar;
+        self.pool = pool;
+    }
+
+    pub fn pool(&self) -> &Vec<Asset> {
+        &self.pool
     }
 }
 
@@ -67,19 +75,24 @@ const PREFIX: u8 = super::ASSET_SCHEME_PREFIX;
 
 impl Default for AssetScheme {
     fn default() -> Self {
-        Self::new("".to_string(), 0, None)
+        Self::new("".to_string(), 0, None, Vec::new())
     }
 }
 
 impl Encodable for AssetScheme {
     fn rlp_append(&self, s: &mut RlpStream) {
-        s.begin_list(4).append(&PREFIX).append(&self.metadata).append(&self.amount).append(&self.registrar);
+        s.begin_list(5)
+            .append(&PREFIX)
+            .append(&self.metadata)
+            .append(&self.amount)
+            .append(&self.registrar)
+            .append_list(&self.pool);
     }
 }
 
 impl Decodable for AssetScheme {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
-        if rlp.item_count()? != 4 {
+        if rlp.item_count()? != 5 {
             return Err(DecoderError::RlpInvalidLength)
         }
 
@@ -92,6 +105,7 @@ impl Decodable for AssetScheme {
             metadata: rlp.val_at(1)?,
             amount: rlp.val_at(2)?,
             registrar: rlp.val_at(3)?,
+            pool: rlp.list_at(4)?,
         })
     }
 }
