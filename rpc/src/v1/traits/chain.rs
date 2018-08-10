@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ckey::{Address, NetworkId, Public};
-use cstate::{Asset, AssetScheme};
+use cstate::{AssetScheme, OwnedAsset};
 use ctypes::invoice::{ParcelInvoice, TransactionInvoice};
 use ctypes::parcel::ChangeShard;
 use ctypes::transaction::Transaction;
@@ -58,7 +58,7 @@ build_rpc_trait! {
 
         /// Gets asset with given asset type.
         # [rpc(name = "chain_getAsset")]
-        fn get_asset(&self, H256, usize, Option<u64>) -> Result<Option<Asset>>;
+        fn get_asset(&self, H256, usize, Option<u64>) -> Result<Option<OwnedAsset>>;
 
         /// Checks whether an asset is spent or not.
         # [rpc(name = "chain_isAssetSpent")]

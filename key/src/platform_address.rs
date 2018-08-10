@@ -36,10 +36,10 @@ pub struct PlatformAddress {
 }
 
 impl PlatformAddress {
-    pub fn create_version0(network_id: NetworkId, address: Address) -> Self {
+    pub fn create(version: u8, network_id: NetworkId, address: Address) -> Self {
         Self {
             network_id,
-            version: 0,
+            version,
             address,
         }
     }

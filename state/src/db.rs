@@ -31,9 +31,9 @@ use primitives::{Bytes, H256};
 use util_error::UtilError;
 
 use super::{
-    Account, ActionHandler, Asset, AssetAddress, AssetScheme, AssetSchemeAddress, Backend, CacheableItem, Metadata,
-    MetadataAddress, RegularAccount, RegularAccountAddress, Shard, ShardAddress, ShardBackend, ShardMetadata,
-    ShardMetadataAddress, TopBackend, World, WorldAddress,
+    Account, ActionHandler, AssetScheme, AssetSchemeAddress, Backend, CacheableItem, Metadata, MetadataAddress,
+    OwnedAsset, OwnedAssetAddress, RegularAccount, RegularAccountAddress, Shard, ShardAddress, ShardBackend,
+    ShardMetadata, ShardMetadataAddress, TopBackend, World, WorldAddress,
 };
 
 const STATE_CACHE_BLOCKS: usize = 12;
@@ -115,7 +115,7 @@ pub struct StateDB {
     shard_metadata_cache: Arc<Mutex<Cache<ShardMetadata>>>,
     world_cache: Arc<Mutex<Cache<World>>>,
     asset_scheme_cache: Arc<Mutex<Cache<AssetScheme>>>,
-    asset_cache: Arc<Mutex<Cache<Asset>>>,
+    asset_cache: Arc<Mutex<Cache<OwnedAsset>>>,
     action_data_cache: Arc<Mutex<Cache<Bytes>>>,
 
     /// Local dirty cache.
@@ -126,7 +126,7 @@ pub struct StateDB {
     local_shard_metadata_cache: Vec<CacheQueueItem<ShardMetadata>>,
     local_world_cache: Vec<CacheQueueItem<World>>,
     local_asset_scheme_cache: Vec<CacheQueueItem<AssetScheme>>,
-    local_asset_cache: Vec<CacheQueueItem<Asset>>,
+    local_asset_cache: Vec<CacheQueueItem<OwnedAsset>>,
     local_action_data_cache: Vec<CacheQueueItem<Bytes>>,
     /// Hash of the block on top of which this instance was created or
     /// `None` if cache is disabled
@@ -180,7 +180,7 @@ impl StateDB {
         let asset_scheme_cache_items = asset_scheme_cache_size / ::std::mem::size_of::<Option<AssetScheme>>();
 
         let asset_cache_size = cache_size * ASSET_CACHE_RATIO / 100;
-        let asset_cache_items = asset_cache_size / ::std::mem::size_of::<Option<Asset>>();
+        let asset_cache_items = asset_cache_size / ::std::mem::size_of::<Option<OwnedAsset>>();
 
         let action_data_cache_size = cache_size * ACTION_DATA_CACHE_RATIO / 100;
         let action_data_cache_items = action_data_cache_size / ::std::mem::size_of::<Option<Bytes>>();
@@ -758,7 +758,7 @@ impl ShardBackend for StateDB {
         })
     }
 
-    fn add_to_asset_cache(&mut self, addr: AssetAddress, item: Option<Asset>, modified: bool) {
+    fn add_to_asset_cache(&mut self, addr: OwnedAssetAddress, item: Option<OwnedAsset>, modified: bool) {
         self.local_asset_cache.push(CacheQueueItem {
             address: addr,
             item,
@@ -778,7 +778,7 @@ impl ShardBackend for StateDB {
         self.get_cached(hash, &self.asset_scheme_cache)
     }
 
-    fn get_cached_asset(&self, hash: &AssetAddress) -> Option<Option<Asset>> {
+    fn get_cached_asset(&self, hash: &OwnedAssetAddress) -> Option<Option<OwnedAsset>> {
         self.get_cached(hash, &self.asset_cache)
     }
 }
@@ -941,8 +941,8 @@ mod tests {
         let parameters = vec![];
         let amount = 1000;
         let shard_id = 0;
-        let asset = Asset::new(asset_scheme_address, lock_script_hash, parameters, amount);
-        let asset_address = AssetAddress::new(parcel_hash, 0, shard_id);
+        let asset = OwnedAsset::new(asset_scheme_address, lock_script_hash, parameters, amount);
+        let asset_address = OwnedAssetAddress::new(parcel_hash, 0, shard_id);
 
         let mut s = state_db.clone_canon(&root_parent);
 

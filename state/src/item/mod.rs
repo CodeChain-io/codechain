@@ -27,7 +27,7 @@ pub mod shard;
 pub mod shard_metadata;
 pub mod world;
 
-const ASSET_PREFIX: u8 = 'A' as u8;
+const OWNED_ASSET_PREFIX: u8 = 'A' as u8;
 const ADDRESS_PREFIX: u8 = 'C' as u8;
 const SHARD_METADATA_PREFIX: u8 = 'E' as u8;
 const SHARD_PREFIX: u8 = 'H' as u8;

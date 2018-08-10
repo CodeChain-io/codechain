@@ -23,23 +23,41 @@ use super::cache::CacheableItem;
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Asset {
     asset_type: H256,
-    lock_script_hash: H256,
-    parameters: Vec<Bytes>,
     amount: u64,
 }
 
 impl Asset {
+    pub fn asset_type(&self) -> &H256 {
+        &self.asset_type
+    }
+
+    pub fn amount(&self) -> &u64 {
+        &self.amount
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct OwnedAsset {
+    #[serde(flatten)]
+    asset: Asset,
+    lock_script_hash: H256,
+    parameters: Vec<Bytes>,
+}
+
+impl OwnedAsset {
     pub fn new(asset_type: H256, lock_script_hash: H256, parameters: Vec<Bytes>, amount: u64) -> Self {
         Self {
-            asset_type,
+            asset: Asset {
+                asset_type,
+                amount,
+            },
             lock_script_hash,
             parameters,
-            amount,
         }
     }
 
     pub fn asset_type(&self) -> &H256 {
-        &self.asset_type
+        &self.asset.asset_type()
     }
 
     pub fn lock_script_hash(&self) -> &H256 {
@@ -51,32 +69,32 @@ impl Asset {
     }
 
     pub fn amount(&self) -> &u64 {
-        &self.amount
+        &self.asset.amount()
     }
 }
 
-impl CacheableItem for Asset {
-    type Address = AssetAddress;
+impl CacheableItem for OwnedAsset {
+    type Address = OwnedAssetAddress;
 
     fn is_null(&self) -> bool {
-        self.amount == 0
+        *self.asset.amount() == 0
     }
 }
 
-const PREFIX: u8 = super::ASSET_PREFIX;
+const PREFIX: u8 = super::OWNED_ASSET_PREFIX;
 
-impl Encodable for Asset {
+impl Encodable for OwnedAsset {
     fn rlp_append(&self, s: &mut RlpStream) {
         s.begin_list(5)
             .append(&PREFIX)
-            .append(&self.asset_type)
+            .append(self.asset.asset_type())
+            .append(self.asset.amount())
             .append(&self.lock_script_hash)
-            .append(&self.parameters)
-            .append(&self.amount);
+            .append(&self.parameters);
     }
 }
 
-impl Decodable for Asset {
+impl Decodable for OwnedAsset {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
         let prefix = rlp.val_at::<u8>(0)?;
         if PREFIX != prefix {
@@ -84,20 +102,22 @@ impl Decodable for Asset {
             return Err(DecoderError::Custom("Unexpected prefix"))
         }
         Ok(Self {
-            asset_type: rlp.val_at(1)?,
-            lock_script_hash: rlp.val_at(2)?,
-            parameters: rlp.val_at(3)?,
-            amount: rlp.val_at(4)?,
+            asset: Asset {
+                asset_type: rlp.val_at(1)?,
+                amount: rlp.val_at(2)?,
+            },
+            lock_script_hash: rlp.val_at(3)?,
+            parameters: rlp.val_at(4)?,
         })
     }
 }
 
 #[derive(Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct AssetAddress(H256);
+pub struct OwnedAssetAddress(H256);
 
-impl_address!(SHARD, AssetAddress, PREFIX);
+impl_address!(SHARD, OwnedAssetAddress, PREFIX);
 
-impl AssetAddress {
+impl OwnedAssetAddress {
     pub fn new(transaction_hash: H256, index: usize, shard_id: ShardId) -> Self {
         debug_assert_eq!(::std::mem::size_of::<u64>(), ::std::mem::size_of::<usize>());
         let index = index as u64;
@@ -129,8 +149,8 @@ mod tests {
             address
         };
         let shard_id = 0xBeef;
-        let address1 = AssetAddress::new(parcel_id, 0, shard_id);
-        let address2 = AssetAddress::new(parcel_id, 1, shard_id);
+        let address1 = OwnedAssetAddress::new(parcel_id, 0, shard_id);
+        let address2 = OwnedAssetAddress::new(parcel_id, 1, shard_id);
         assert_ne!(address1, address2);
         assert_eq!(address1[0..2], [PREFIX, 0]);
         assert_eq!(address1[2..4], [0xBE, 0xEF]); // shard id
@@ -158,7 +178,7 @@ mod tests {
             }
             hash
         };
-        let address = AssetAddress::from_hash(hash);
+        let address = OwnedAssetAddress::from_hash(hash);
         assert!(address.is_none());
     }
 
@@ -169,15 +189,15 @@ mod tests {
             hash[0..6].clone_from_slice(&[PREFIX, 0, 0, 0, 0, 0]);
             hash
         };
-        let address = AssetAddress::from_hash(hash.clone());
-        assert_eq!(Some(AssetAddress(hash)), address);
+        let address = OwnedAssetAddress::from_hash(hash.clone());
+        assert_eq!(Some(OwnedAssetAddress(hash)), address);
     }
 
     #[test]
     fn shard_id() {
         let origin = H256::random();
         let shard_id = 0xCAA;
-        let asset_address = AssetAddress::new(origin, 2, shard_id);
+        let asset_address = OwnedAssetAddress::new(origin, 2, shard_id);
         assert_eq!(shard_id, asset_address.shard_id());
     }
 
@@ -191,7 +211,7 @@ mod tests {
         };
         assert_eq!(::std::mem::size_of::<u16>(), ::std::mem::size_of::<ShardId>());
         let shard_id = ((hash[2] as ShardId) << 8) + (hash[3] as ShardId);
-        let asset_address = AssetAddress::from_hash(hash).unwrap();
+        let asset_address = OwnedAssetAddress::from_hash(hash).unwrap();
         assert_eq!(shard_id, asset_address.shard_id());
     }
 }
