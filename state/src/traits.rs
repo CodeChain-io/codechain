@@ -22,7 +22,7 @@ use ctypes::{ShardId, WorldId};
 use primitives::{Bytes, H256, U256};
 
 use super::backend::{ShardBackend, TopBackend};
-use super::{Asset, AssetAddress, AssetScheme, AssetSchemeAddress, ShardMetadata, StateResult, World};
+use super::{AssetScheme, AssetSchemeAddress, OwnedAsset, OwnedAssetAddress, ShardMetadata, StateResult, World};
 
 
 pub trait TopStateInfo {
@@ -47,7 +47,7 @@ pub trait TopStateInfo {
     /// Get the asset scheme.
     fn asset_scheme(&self, shard_id: ShardId, a: &AssetSchemeAddress) -> TrieResult<Option<AssetScheme>>;
     /// Get the asset.
-    fn asset(&self, shard_id: ShardId, a: &AssetAddress) -> TrieResult<Option<Asset>>;
+    fn asset(&self, shard_id: ShardId, a: &OwnedAssetAddress) -> TrieResult<Option<OwnedAsset>>;
 
     fn action_data(&self, key: &H256) -> TrieResult<Bytes>;
 }
@@ -61,7 +61,7 @@ pub trait ShardStateInfo {
     /// Get the asset scheme.
     fn asset_scheme(&self, a: &AssetSchemeAddress) -> TrieResult<Option<AssetScheme>>;
     /// Get the asset.
-    fn asset(&self, a: &AssetAddress) -> TrieResult<Option<Asset>>;
+    fn asset(&self, a: &OwnedAssetAddress) -> TrieResult<Option<OwnedAsset>>;
 }
 
 pub trait ShardState<B>

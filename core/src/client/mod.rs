@@ -32,7 +32,7 @@ use std::sync::Arc;
 use ckey::{Address, Public};
 use cmerkle::Result as TrieResult;
 use cnetwork::NodeId;
-use cstate::{ActionHandler, Asset, AssetScheme, AssetSchemeAddress, TopStateInfo};
+use cstate::{ActionHandler, AssetScheme, AssetSchemeAddress, OwnedAsset, TopStateInfo};
 use ctypes::invoice::{ParcelInvoice, TransactionInvoice};
 use ctypes::parcel::ChangeShard;
 use ctypes::transaction::Transaction;
@@ -257,7 +257,7 @@ pub trait DatabaseClient {
 pub trait AssetClient {
     fn get_asset_scheme(&self, asset_type: AssetSchemeAddress) -> TrieResult<Option<AssetScheme>>;
 
-    fn get_asset(&self, transaction_hash: H256, index: usize, id: BlockId) -> TrieResult<Option<Asset>>;
+    fn get_asset(&self, transaction_hash: H256, index: usize, id: BlockId) -> TrieResult<Option<OwnedAsset>>;
 
     fn is_asset_spent(
         &self,

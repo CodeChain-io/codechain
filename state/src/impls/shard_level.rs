@@ -35,7 +35,8 @@ use super::super::checkpoint::{CheckpointId, StateWithCheckpoint};
 use super::super::item::cache::Cache;
 use super::super::traits::{ShardState, ShardStateInfo, StateWithCache};
 use super::super::{
-    Asset, AssetAddress, AssetScheme, AssetSchemeAddress, ShardMetadata, ShardMetadataAddress, World, WorldAddress,
+    AssetScheme, AssetSchemeAddress, OwnedAsset, OwnedAssetAddress, ShardMetadata, ShardMetadataAddress, World,
+    WorldAddress,
 };
 use super::super::{StateDB, StateError, StateResult};
 
@@ -46,7 +47,7 @@ pub struct ShardLevelState<B> {
     metadata: Cache<ShardMetadata>,
     world: Cache<World>,
     asset_scheme: Cache<AssetScheme>,
-    asset: Cache<Asset>,
+    asset: Cache<OwnedAsset>,
     id_of_checkpoints: Vec<CheckpointId>,
     shard_id: ShardId,
 }
@@ -243,9 +244,9 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         })?;
         ctrace!(TX, "{:?} is minted on {:?}", asset_scheme, asset_scheme_address);
 
-        let asset_address = AssetAddress::new(transaction_hash, 0, self.shard_id);
+        let asset_address = OwnedAssetAddress::new(transaction_hash, 0, self.shard_id);
         let asset = self.require_asset(&asset_address, || {
-            Asset::new(asset_scheme_address.into(), *lock_script_hash, parameters.clone(), amount)
+            OwnedAsset::new(asset_scheme_address.into(), *lock_script_hash, parameters.clone(), amount)
         });
         ctrace!(TX, "{:?} is generated on {:?}", asset, asset_address);
         Ok(())
@@ -279,7 +280,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
 
             let (address_hash, asset) = {
                 let index = input.prev_out.index;
-                let address = AssetAddress::new(input.prev_out.transaction_hash, index, self.shard_id);
+                let address = OwnedAssetAddress::new(input.prev_out.transaction_hash, index, self.shard_id);
                 match self.asset(&address)? {
                     Some(asset) => (address.into(), asset),
                     None => return Err(TransactionError::AssetNotFound(address.into()).into()),
@@ -326,7 +327,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         for input in inputs {
             let index = input.prev_out.index;
             let amount = input.prev_out.amount;
-            let address = AssetAddress::new(input.prev_out.transaction_hash, index, self.shard_id);
+            let address = OwnedAssetAddress::new(input.prev_out.transaction_hash, index, self.shard_id);
 
             match self.asset(&address)? {
                 Some(asset) => {
@@ -350,9 +351,9 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         }
         let mut created_asset = Vec::with_capacity(outputs.len());
         for (index, output) in outputs.iter().enumerate() {
-            let asset_address = AssetAddress::new(transaction.hash(), index, self.shard_id);
+            let asset_address = OwnedAssetAddress::new(transaction.hash(), index, self.shard_id);
             let asset =
-                Asset::new(output.asset_type, output.lock_script_hash, output.parameters.clone(), output.amount);
+                OwnedAsset::new(output.asset_type, output.lock_script_hash, output.parameters.clone(), output.amount);
             self.require_asset(&asset_address, || asset)?;
             created_asset.push((asset_address, output.amount));
         }
@@ -361,7 +362,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         Ok(())
     }
 
-    fn kill_asset(&mut self, account: &AssetAddress) {
+    fn kill_asset(&mut self, account: &OwnedAssetAddress) {
         self.asset.remove(account);
     }
 
@@ -397,9 +398,9 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         self.asset_scheme.require_item_or_from(a, default, db, from_db)
     }
 
-    fn require_asset<'a, F>(&'a self, a: &AssetAddress, default: F) -> cmerkle::Result<RefMut<'a, Asset>>
+    fn require_asset<'a, F>(&'a self, a: &OwnedAssetAddress, default: F) -> cmerkle::Result<RefMut<'a, OwnedAsset>>
     where
-        F: FnOnce() -> Asset, {
+        F: FnOnce() -> OwnedAsset, {
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
         let from_db = || self.db.get_cached_asset(a);
         self.asset.require_item_or_from(a, default, db, from_db)
@@ -443,14 +444,14 @@ impl<B: Backend + ShardBackend> ShardStateInfo for ShardLevelState<B> {
         Ok(trie.get_with(a.as_ref(), ::rlp::decode::<AssetScheme>)?)
     }
 
-    fn asset(&self, a: &AssetAddress) -> cmerkle::Result<Option<Asset>> {
+    fn asset(&self, a: &OwnedAssetAddress) -> cmerkle::Result<Option<OwnedAsset>> {
         let cached_asset = self.db.get_cached_asset(&a).and_then(|asset| asset);
         if cached_asset.is_some() {
             return Ok(cached_asset)
         }
 
         let trie = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        Ok(trie.get_with(a.as_ref(), ::rlp::decode::<Asset>)?)
+        Ok(trie.get_with(a.as_ref(), ::rlp::decode::<OwnedAsset>)?)
     }
 }
 
@@ -725,9 +726,9 @@ mod tests {
         let asset_scheme = state.asset_scheme(&asset_scheme_address);
         assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), amount, registrar))), asset_scheme);
 
-        let asset_address = AssetAddress::new(transaction_hash, 0, shard_id);
+        let asset_address = OwnedAssetAddress::new(transaction_hash, 0, shard_id);
         let asset = state.asset(&asset_address);
-        assert_eq!(Ok(Some(Asset::new(asset_scheme_address.into(), lock_script_hash, parameters, amount))), asset);
+        assert_eq!(Ok(Some(OwnedAsset::new(asset_scheme_address.into(), lock_script_hash, parameters, amount))), asset);
     }
 
     #[test]
@@ -766,10 +767,10 @@ mod tests {
         let asset_scheme = state.asset_scheme(&asset_scheme_address);
         assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), ::std::u64::MAX, registrar))), asset_scheme);
 
-        let asset_address = AssetAddress::new(transaction_hash, 0, shard_id);
+        let asset_address = OwnedAssetAddress::new(transaction_hash, 0, shard_id);
         let asset = state.asset(&asset_address);
         assert_eq!(
-            Ok(Some(Asset::new(asset_scheme_address.into(), lock_script_hash, parameters, ::std::u64::MAX))),
+            Ok(Some(OwnedAsset::new(asset_scheme_address.into(), lock_script_hash, parameters, ::std::u64::MAX))),
             asset
         );
     }
@@ -888,9 +889,9 @@ mod tests {
 
         assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), amount, registrar))), asset_scheme);
 
-        let asset_address = AssetAddress::new(mint_hash, 0, shard_id);
+        let asset_address = OwnedAssetAddress::new(mint_hash, 0, shard_id);
         let asset = state.asset(&asset_address);
-        assert_eq!(Ok(Some(Asset::new(asset_type, lock_script_hash, vec![], amount))), asset);
+        assert_eq!(Ok(Some(OwnedAsset::new(asset_type, lock_script_hash, vec![], amount))), asset);
 
         let random_lock_script_hash = H256::random();
         let transfer = Transaction::AssetTransfer {
@@ -932,17 +933,17 @@ mod tests {
 
         assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &transfer, &sender, &[shard_owner]));
 
-        let asset0_address = AssetAddress::new(transfer_hash, 0, shard_id);
+        let asset0_address = OwnedAssetAddress::new(transfer_hash, 0, shard_id);
         let asset0 = state.asset(&asset0_address);
-        assert_eq!(Ok(Some(Asset::new(asset_type, lock_script_hash, vec![vec![1]], 10))), asset0);
+        assert_eq!(Ok(Some(OwnedAsset::new(asset_type, lock_script_hash, vec![vec![1]], 10))), asset0);
 
-        let asset1_address = AssetAddress::new(transfer_hash, 1, shard_id);
+        let asset1_address = OwnedAssetAddress::new(transfer_hash, 1, shard_id);
         let asset1 = state.asset(&asset1_address);
-        assert_eq!(Ok(Some(Asset::new(asset_type, lock_script_hash, vec![], 5))), asset1);
+        assert_eq!(Ok(Some(OwnedAsset::new(asset_type, lock_script_hash, vec![], 5))), asset1);
 
-        let asset2_address = AssetAddress::new(transfer_hash, 2, shard_id);
+        let asset2_address = OwnedAssetAddress::new(transfer_hash, 2, shard_id);
         let asset2 = state.asset(&asset2_address);
-        assert_eq!(Ok(Some(Asset::new(asset_type, random_lock_script_hash, vec![], 15))), asset2);
+        assert_eq!(Ok(Some(OwnedAsset::new(asset_type, random_lock_script_hash, vec![], 15))), asset2);
     }
 
     #[test]
@@ -986,9 +987,9 @@ mod tests {
 
         assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), amount, registrar))), asset_scheme);
 
-        let asset_address = AssetAddress::new(mint_hash, 0, shard_id);
+        let asset_address = OwnedAssetAddress::new(mint_hash, 0, shard_id);
         let asset = state.asset(&asset_address);
-        assert_eq!(Ok(Some(Asset::new(asset_type, lock_script_hash, vec![], amount))), asset);
+        assert_eq!(Ok(Some(OwnedAsset::new(asset_type, lock_script_hash, vec![], amount))), asset);
 
         let failed_lock_script = vec![0x30];
         let failed_transfer = Transaction::AssetTransfer {
@@ -1067,17 +1068,17 @@ mod tests {
             state.apply(shard_id, &successful_transfer, &sender, &[shard_owner])
         );
 
-        let asset0_address = AssetAddress::new(successful_transfer_hash, 0, shard_id);
+        let asset0_address = OwnedAssetAddress::new(successful_transfer_hash, 0, shard_id);
         let asset0 = state.asset(&asset0_address);
-        assert_eq!(Ok(Some(Asset::new(asset_type, lock_script_hash, vec![vec![1]], 10))), asset0);
+        assert_eq!(Ok(Some(OwnedAsset::new(asset_type, lock_script_hash, vec![vec![1]], 10))), asset0);
 
-        let asset1_address = AssetAddress::new(successful_transfer_hash, 1, shard_id);
+        let asset1_address = OwnedAssetAddress::new(successful_transfer_hash, 1, shard_id);
         let asset1 = state.asset(&asset1_address);
-        assert_eq!(Ok(Some(Asset::new(asset_type, lock_script_hash, vec![], 5))), asset1);
+        assert_eq!(Ok(Some(OwnedAsset::new(asset_type, lock_script_hash, vec![], 5))), asset1);
 
-        let asset2_address = AssetAddress::new(successful_transfer_hash, 2, shard_id);
+        let asset2_address = OwnedAssetAddress::new(successful_transfer_hash, 2, shard_id);
         let asset2 = state.asset(&asset2_address);
-        assert_eq!(Ok(Some(Asset::new(asset_type, random_lock_script_hash, vec![], 15))), asset2);
+        assert_eq!(Ok(Some(OwnedAsset::new(asset_type, random_lock_script_hash, vec![], 15))), asset2);
     }
 
     #[test]
