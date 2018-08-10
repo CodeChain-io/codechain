@@ -471,6 +471,13 @@ impl TopLevelState {
                 self.change_shard_owners(*shard_id, owners, fee_payer)?;
                 Ok(ParcelInvoice::SingleSuccess)
             }
+            Action::ChangeShardUsers {
+                shard_id,
+                users,
+            } => {
+                self.change_shard_users(*shard_id, users, fee_payer)?;
+                Ok(ParcelInvoice::SingleSuccess)
+            }
             Action::Custom(bytes) => {
                 let handlers = self.db.custom_handlers().to_vec();
                 for h in handlers {
@@ -822,6 +829,15 @@ impl TopState<StateDB> for TopLevelState {
         }
 
         self.set_shard_owners(shard_id, owners.to_vec())
+    }
+
+    fn change_shard_users(&mut self, shard_id: ShardId, users: &[Address], sender: &Address) -> StateResult<()> {
+        let owners = self.shard_owners(shard_id)?.ok_or_else(|| ParcelError::InvalidShardId(shard_id))?;
+        if !owners.contains(sender) {
+            return Err(ParcelError::InsufficientPermission.into())
+        }
+
+        self.set_shard_users(shard_id, users.to_vec())
     }
 
     fn set_shard_root(&mut self, shard_id: ShardId, old_root: &H256, new_root: &H256) -> StateResult<()> {
@@ -2693,5 +2709,79 @@ mod tests_parcel {
         let asset_type = asset_scheme_address.into();
         let asset = state.asset(shard_id, &asset_address);
         assert_eq!(Ok(Some(OwnedAsset::new(asset_type, lock_script_hash, parameters, amount))), asset);
+    }
+
+    #[test]
+    fn change_shard_users() {
+        let network_id = "a2".into();
+        let shard_id = 0;
+
+        let (sender, sender_public) = address();
+        let old_users = vec![Address::random(), Address::random(), Address::random()];
+
+        let mut state = get_temp_state();
+        assert_eq!(Ok(()), state.create_shard_level_state(vec![sender], old_users.clone()));
+        assert_eq!(Ok(()), state.add_balance(&sender, &U256::from(69u64)));
+        assert_eq!(Ok(()), state.commit());
+
+        assert_eq!(Ok(Some(vec![sender])), state.shard_owners(shard_id));
+        assert_eq!(Ok(Some(old_users.clone())), state.shard_users(shard_id));
+
+        let new_users = vec![Address::random(), Address::random(), sender];
+
+        let parcel = Parcel {
+            fee: 5.into(),
+            action: Action::ChangeShardUsers {
+                shard_id,
+                users: new_users.clone(),
+            },
+            nonce: 0.into(),
+            network_id,
+        };
+
+        assert_eq!(Ok(ParcelInvoice::SingleSuccess), state.apply(&parcel, &sender, &sender_public));
+
+        assert_eq!(Ok(64.into()), state.balance(&sender));
+        assert_eq!(Ok(1.into()), state.nonce(&sender));
+        assert_eq!(Ok(Some(vec![sender])), state.shard_owners(shard_id));
+        assert_eq!(Ok(Some(new_users)), state.shard_users(shard_id));
+    }
+
+
+    #[test]
+    fn user_cannot_change_shard_users() {
+        let network_id = "a2".into();
+        let shard_id = 0;
+
+        let (sender, sender_public) = address();
+        let owners = vec![Address::random(), Address::random(), Address::random()];
+        let old_users = vec![Address::random(), Address::random(), Address::random(), sender];
+
+        let mut state = get_temp_state();
+        assert_eq!(Ok(()), state.create_shard_level_state(owners.clone(), old_users.clone()));
+        assert_eq!(Ok(()), state.add_balance(&sender, &U256::from(69u64)));
+        assert_eq!(Ok(()), state.commit());
+
+        assert_eq!(Ok(Some(owners.clone())), state.shard_owners(shard_id));
+        assert_eq!(Ok(Some(old_users.clone())), state.shard_users(shard_id));
+
+        let new_users = vec![Address::random(), Address::random(), sender];
+
+        let parcel = Parcel {
+            fee: 5.into(),
+            action: Action::ChangeShardUsers {
+                shard_id,
+                users: new_users.clone(),
+            },
+            nonce: 0.into(),
+            network_id,
+        };
+
+        assert_eq!(Err(ParcelError::InsufficientPermission.into()), state.apply(&parcel, &sender, &sender_public));
+
+        assert_eq!(Ok(69.into()), state.balance(&sender));
+        assert_eq!(Ok(0.into()), state.nonce(&sender));
+        assert_eq!(Ok(Some(owners)), state.shard_owners(shard_id));
+        assert_eq!(Ok(Some(old_users)), state.shard_users(shard_id));
     }
 }

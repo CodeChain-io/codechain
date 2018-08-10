@@ -27,6 +27,7 @@ const PAYMENT: u8 = 2;
 const SET_REGULAR_KEY: u8 = 3;
 const CREATE_SHARD: u8 = 4;
 const CHANGE_SHARD_OWNERS: u8 = 5;
+const CHANGE_SHARD_USERS: u8 = 6;
 const CUSTOM: u8 = 0xFF;
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, RlpDecodable, RlpEncodable)]
@@ -58,6 +59,10 @@ pub enum Action {
     ChangeShardOwners {
         shard_id: ShardId,
         owners: Vec<Address>,
+    },
+    ChangeShardUsers {
+        shard_id: ShardId,
+        users: Vec<Address>,
     },
     Custom(Bytes),
 }
@@ -111,6 +116,15 @@ impl Encodable for Action {
                 s.append(&CHANGE_SHARD_OWNERS);
                 s.append(shard_id);
                 s.append_list(owners);
+            }
+            Action::ChangeShardUsers {
+                shard_id,
+                users,
+            } => {
+                s.begin_list(3);
+                s.append(&CHANGE_SHARD_USERS);
+                s.append(shard_id);
+                s.append_list(users);
             }
             Action::Custom(bytes) => {
                 s.begin_list(2);
@@ -166,6 +180,15 @@ impl Decodable for Action {
                     owners: rlp.list_at(2)?,
                 })
             }
+            CHANGE_SHARD_USERS => {
+                if rlp.item_count()? != 3 {
+                    return Err(DecoderError::RlpIncorrectListLen)
+                }
+                Ok(Action::ChangeShardUsers {
+                    shard_id: rlp.val_at(1)?,
+                    users: rlp.list_at(2)?,
+                })
+            }
             CUSTOM => {
                 if rlp.item_count()? != 2 {
                     return Err(DecoderError::RlpIncorrectListLen)
@@ -186,6 +209,14 @@ mod tests {
         rlp_encode_and_decode_test!(Action::ChangeShardOwners {
             shard_id: 1,
             owners: vec![Address::random(), Address::random()],
+        });
+    }
+
+    #[test]
+    fn encode_and_decode_change_shard_users() {
+        rlp_encode_and_decode_test!(Action::ChangeShardUsers {
+            shard_id: 1,
+            users: vec![Address::random(), Address::random()],
         });
     }
 }
