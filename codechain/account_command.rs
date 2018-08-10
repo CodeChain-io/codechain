@@ -25,6 +25,7 @@ use ckeystore::accounts_dir::RootDiskDirectory;
 use ckeystore::KeyStore;
 use clap::ArgMatches;
 use clogger::{self, LoggerConfig};
+use primitives::clean_0x;
 
 use super::constants::DEFAULT_KEYS_PATH;
 use super::constants::DEFAULT_NETWORK_ID;
@@ -49,10 +50,7 @@ pub fn run_account_command(matches: ArgMatches) -> Result<(), String> {
             import(&ap, json_path)
         }
         ("import-raw", Some(matches)) => {
-            let raw_key = {
-                let val = matches.value_of("RAW_KEY").expect("RAW_KEY arg is required and its index is 1");
-                read_raw_key(val)
-            };
+            let raw_key = matches.value_of("RAW_KEY").expect("RAW_KEY arg is required and its index is 1");
             import_raw(&ap, raw_key)
         }
         ("list", _) => list(&ap),
@@ -104,7 +102,7 @@ fn import(ap: &AccountProvider, json_path: &str) -> Result<(), String> {
 fn import_raw(ap: &AccountProvider, raw_key: &str) -> Result<(), String> {
     let network_id = DEFAULT_NETWORK_ID;
 
-    match Private::from_str(raw_key) {
+    match Private::from_str(clean_0x(raw_key)) {
         Ok(private) => {
             if let Some(password) = read_password_and_confirm() {
                 match ap.insert_account(private, &password) {
@@ -176,13 +174,5 @@ fn read_password_and_confirm() -> Option<Password> {
         Some(Password::from(first))
     } else {
         None
-    }
-}
-
-fn read_raw_key(val: &str) -> &str {
-    if val.starts_with("0x") {
-        &val[2..]
-    } else {
-        &val[..]
     }
 }

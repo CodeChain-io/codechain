@@ -22,7 +22,7 @@ use std::str::FromStr;
 
 use bech32::Bech32;
 use heapsize::HeapSizeOf;
-use primitives::H160;
+use primitives::{clean_0x, H160};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 use serde::de::{Error as SerdeError, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -93,15 +93,6 @@ impl Decodable for Address {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
         let data = H160::decode(rlp)?;
         Ok(Address(data))
-    }
-}
-
-/// Return `s` without the `0x` at the beginning of it, if any.
-pub fn clean_0x(s: &str) -> &str {
-    if s.starts_with("0x") {
-        &s[2..]
-    } else {
-        s
     }
 }
 
