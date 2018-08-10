@@ -1133,7 +1133,8 @@ mod tests_parcel {
         let shard_id = 0;
 
         let mut state = get_temp_state();
-        assert_eq!(Ok(()), state.create_shard_level_state(vec![sender], vec![]));
+        let users = vec![];
+        assert_eq!(Ok(()), state.create_shard_level_state(vec![sender], users.clone()));
         assert_eq!(Ok(()), state.commit());
 
         let nonce = 0;
@@ -1174,7 +1175,7 @@ mod tests_parcel {
 
         let world_id = 0;
         let world = state.world(shard_id, world_id);
-        assert_eq!(Ok(Some(World::new(owners))), world);
+        assert_eq!(Ok(Some(World::new(owners, users))), world);
     }
 
     #[test]
@@ -1185,7 +1186,8 @@ mod tests_parcel {
         let shard_id = 0;
 
         let mut state = get_temp_state();
-        assert_eq!(Ok(()), state.create_shard_level_state(vec![sender], vec![]));
+        let users = vec![];
+        assert_eq!(Ok(()), state.create_shard_level_state(vec![sender], users.clone()));
         assert_eq!(Ok(()), state.commit());
 
         let nonce = 0;
@@ -1226,7 +1228,7 @@ mod tests_parcel {
 
         let world_id = 0;
         let world = state.world(shard_id, world_id);
-        assert_eq!(Ok(Some(World::new(owners))), world);
+        assert_eq!(Ok(Some(World::new(owners, users))), world);
     }
 
     #[test]
@@ -2270,7 +2272,8 @@ mod tests_parcel {
         let (sender, sender_public) = address();
 
         let mut state = get_temp_state();
-        assert_eq!(Ok(()), state.create_shard_level_state(vec![sender], vec![]));
+        let users = vec![];
+        assert_eq!(Ok(()), state.create_shard_level_state(vec![sender], users.clone()));
         assert_eq!(Ok(()), state.commit());
 
         let shard_id = 0x00;
@@ -2320,7 +2323,7 @@ mod tests_parcel {
         assert_eq!(Ok(100.into()), state.balance(&sender));
         assert_eq!(Ok(1.into()), state.nonce(&sender));
 
-        assert_eq!(Ok(Some(World::new_with_nonce(owners, 1))), state.world(shard_id, world_id));
+        assert_eq!(Ok(Some(World::new_with_nonce(owners, users, 1))), state.world(shard_id, world_id));
     }
 
     #[test]
@@ -2328,7 +2331,8 @@ mod tests_parcel {
         let (sender, sender_public) = address();
 
         let mut state = get_temp_state();
-        assert_eq!(Ok(()), state.create_shard_level_state(vec![sender], vec![]));
+        let users = vec![];
+        assert_eq!(Ok(()), state.create_shard_level_state(vec![sender], users.clone()));
         assert_eq!(Ok(()), state.commit());
 
         let shard_id = 0x00;
@@ -2370,7 +2374,7 @@ mod tests_parcel {
 
         assert_eq!(Ok(100.into()), state.balance(&sender));
         assert_eq!(Ok(1.into()), state.nonce(&sender));
-        assert_eq!(Ok(Some(World::new_with_nonce(old_owners, 0))), state.world(shard_id, world_id));
+        assert_eq!(Ok(Some(World::new_with_nonce(old_owners, users.clone(), 0))), state.world(shard_id, world_id));
 
         let t1 = Transaction::SetWorldOwners {
             network_id,
@@ -2402,7 +2406,7 @@ mod tests_parcel {
 
         assert_eq!(Ok(70.into()), state.balance(&sender));
         assert_eq!(Ok(2.into()), state.nonce(&sender));
-        assert_eq!(Ok(Some(World::new_with_nonce(new_owners, 1))), state.world(shard_id, world_id));
+        assert_eq!(Ok(Some(World::new_with_nonce(new_owners, users, 1))), state.world(shard_id, world_id));
     }
 
     #[test]

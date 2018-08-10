@@ -117,7 +117,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
                 nonce,
                 owners,
                 ..
-            } => Ok(self.create_world(shard_id, nonce, owners, sender, shard_users)?),
+            } => Ok(self.create_world(shard_id, nonce, &owners, &[], sender, shard_users)?),
             Transaction::SetWorldOwners {
                 shard_id,
                 world_id,
@@ -160,7 +160,8 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         &mut self,
         shard_id: ShardId,
         nonce: &u64,
-        owners: &Vec<Address>,
+        owners: &[Address],
+        users: &[Address],
         sender: &Address,
         shard_users: &[Address],
     ) -> StateResult<()> {
@@ -186,7 +187,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         metadata.increase_nonce();
         metadata.increase_number_of_worlds();
 
-        self.require_world(&world_address, || World::new(owners.clone()))?;
+        self.require_world(&world_address, || World::new(owners.to_vec(), users.to_vec()))?;
         Ok(())
     }
 
@@ -233,7 +234,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
     ) -> StateResult<()> {
         let world: World = self.world(world_id)?.ok_or_else(|| TransactionError::InvalidWorldId(world_id))?;
 
-        if !shard_users.contains(sender) && !world.owners().contains(sender) {
+        if !shard_users.contains(sender) && !world.owners().contains(sender) && !world.users().contains(sender) {
             return Err(TransactionError::InsufficientPermission.into())
         }
 
@@ -624,7 +625,8 @@ mod tests {
 
         let world_id = 0;
         let world = state.world(world_id);
-        assert_eq!(Ok(Some(World::new(owners))), world);
+        let users = vec![];
+        assert_eq!(Ok(Some(World::new(owners, users))), world);
     }
 
     #[test]
@@ -652,7 +654,8 @@ mod tests {
 
         let world_id = 0;
         let world = state.world(world_id);
-        assert_eq!(Ok(Some(World::new(owners))), world);
+        let users = vec![];
+        assert_eq!(Ok(Some(World::new(owners, users))), world);
     }
 
     #[test]
@@ -696,7 +699,7 @@ mod tests {
         let mut state = get_temp_shard_state(shard_id);
         let sender = address();
         let shard_owner = address();
-        assert_eq!(Ok(()), state.create_world(shard_id, &0, &vec![sender], &shard_owner, &[shard_owner]));
+        assert_eq!(Ok(()), state.create_world(shard_id, &0, &[sender], &[], &shard_owner, &[shard_owner]));
         assert_eq!(Ok(()), state.commit());
 
         let metadata = "metadata".to_string();
@@ -738,7 +741,7 @@ mod tests {
         let mut state = get_temp_shard_state(shard_id);
         let sender = address();
         let shard_owner = address();
-        assert_eq!(Ok(()), state.create_world(shard_id, &0, &vec![sender], &shard_owner, &[shard_owner]));
+        assert_eq!(Ok(()), state.create_world(shard_id, &0, &[sender], &[], &shard_owner, &[shard_owner]));
         assert_eq!(Ok(()), state.commit());
 
         let metadata = "metadata".to_string();
@@ -784,7 +787,7 @@ mod tests {
 
         let sender = address();
         let shard_owner = address();
-        assert_eq!(Ok(()), state.create_world(shard_id, &0, &vec![sender], &shard_owner, &[shard_owner]));
+        assert_eq!(Ok(()), state.create_world(shard_id, &0, &[sender], &[], &shard_owner, &[shard_owner]));
         assert_eq!(Ok(()), state.commit());
 
         let metadata = "metadata".to_string();
@@ -857,7 +860,7 @@ mod tests {
         let mut state = get_temp_shard_state(shard_id);
         let sender = address();
         let shard_owner = address();
-        assert_eq!(Ok(()), state.create_world(shard_id, &0, &vec![sender], &shard_owner, &[shard_owner]));
+        assert_eq!(Ok(()), state.create_world(shard_id, &0, &[sender], &[], &shard_owner, &[shard_owner]));
         assert_eq!(Ok(()), state.commit());
 
         let metadata = "metadata".to_string();
@@ -955,7 +958,7 @@ mod tests {
         let mut state = get_temp_shard_state(shard_id);
         let sender = address();
         let shard_owner = address();
-        assert_eq!(Ok(()), state.create_world(shard_id, &0, &vec![sender], &shard_owner, &[shard_owner]));
+        assert_eq!(Ok(()), state.create_world(shard_id, &0, &[sender], &[], &shard_owner, &[shard_owner]));
         assert_eq!(Ok(()), state.commit());
 
         let metadata = "metadata".to_string();
@@ -1088,7 +1091,7 @@ mod tests {
         let mut state = get_temp_shard_state(shard_id);
 
         let owners = vec![Address::random(), Address::random()];
-        assert_eq!(Ok(()), state.create_world(shard_id, &0, &owners, &owners[0], &owners));
+        assert_eq!(Ok(()), state.create_world(shard_id, &0, &owners, &[], &owners[0], &owners));
         assert_eq!(Ok(()), state.commit());
 
         let metadata = state.metadata();
@@ -1096,7 +1099,8 @@ mod tests {
 
         let world_id = 0;
         let world = state.world(world_id);
-        assert_eq!(Ok(Some(World::new(owners))), world);
+        let users = vec![];
+        assert_eq!(Ok(Some(World::new(owners, users.clone()))), world);
 
         let nonce = 0;
 
@@ -1120,7 +1124,7 @@ mod tests {
         assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &transaction, &shard_owner, &[shard_owner]));
 
         let world = state.world(world_id);
-        assert_eq!(Ok(Some(World::new_with_nonce(new_owners, 1))), world);
+        assert_eq!(Ok(Some(World::new_with_nonce(new_owners, users, 1))), world);
     }
 
     #[test]
@@ -1131,7 +1135,7 @@ mod tests {
 
         let sender = Address::random();
         let old_owners = vec![sender, Address::random()];
-        assert_eq!(Ok(()), state.create_world(shard_id, &0, &old_owners, &sender, &old_owners));
+        assert_eq!(Ok(()), state.create_world(shard_id, &0, &old_owners, &[], &sender, &old_owners));
         assert_eq!(Ok(()), state.commit());
 
         let metadata = state.metadata();
@@ -1139,7 +1143,8 @@ mod tests {
 
         let world_id = 0;
         let world = state.world(world_id);
-        assert_eq!(Ok(Some(World::new(old_owners.clone()))), world);
+        let users = vec![];
+        assert_eq!(Ok(Some(World::new(old_owners.clone(), users.clone()))), world);
 
         let nonce = 0;
 
@@ -1156,7 +1161,7 @@ mod tests {
         assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &transaction, &sender, &[shard_owner]));
 
         let world = state.world(world_id);
-        assert_eq!(Ok(Some(World::new_with_nonce(owners, 1))), world);
+        assert_eq!(Ok(Some(World::new_with_nonce(owners, users, 1))), world);
     }
 
 
@@ -1167,7 +1172,7 @@ mod tests {
         let mut state = get_temp_shard_state(shard_id);
 
         let owners = vec![Address::random(), Address::random()];
-        assert_eq!(Ok(()), state.create_world(shard_id, &0, &owners, &owners[0], &owners));
+        assert_eq!(Ok(()), state.create_world(shard_id, &0, &owners, &[], &owners[0], &owners));
         assert_eq!(Ok(()), state.commit());
 
         let metadata = state.metadata();
@@ -1175,7 +1180,8 @@ mod tests {
 
         let world_id = 0;
         let world = state.world(world_id);
-        assert_eq!(Ok(Some(World::new(owners.clone()))), world);
+        let users = vec![];
+        assert_eq!(Ok(Some(World::new(owners.clone(), users.clone()))), world);
 
         let nonce = 0;
 
@@ -1202,6 +1208,96 @@ mod tests {
             state.apply(shard_id, &transaction, &sender, &[shard_owner])
         );
         let world = state.world(world_id);
-        assert_eq!(Ok(Some(World::new_with_nonce(owners, 0))), world);
+        assert_eq!(Ok(Some(World::new_with_nonce(owners, users, 0))), world);
+    }
+
+    #[test]
+    fn users_can_mint_asset() {
+        let shard_id = 0;
+        let world_id = 0;
+        let mut state = get_temp_shard_state(shard_id);
+        let sender = address();
+        let shard_owner = address();
+        assert_eq!(Ok(()), state.create_world(shard_id, &0, &[], &[sender], &shard_owner, &[shard_owner]));
+        assert_eq!(Ok(()), state.commit());
+
+        let metadata = "metadata".to_string();
+        let lock_script_hash = H256::random();
+        let parameters = vec![];
+        let registrar = Some(Address::random());
+        let transaction = Transaction::AssetMint {
+            network_id: "tc".into(),
+            shard_id,
+            world_id,
+            metadata: metadata.clone(),
+            output: AssetMintOutput {
+                lock_script_hash,
+                parameters: parameters.clone(),
+                amount: None,
+            },
+            registrar,
+            nonce: 0,
+        };
+
+        let result = state.apply(shard_id, &transaction, &sender, &[shard_owner]);
+        assert_eq!(Ok(TransactionInvoice::Success), result);
+
+        let transaction_hash = transaction.hash();
+        let asset_scheme_address = AssetSchemeAddress::new(transaction_hash, shard_id, world_id);
+        let asset_scheme = state.asset_scheme(&asset_scheme_address);
+        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), ::std::u64::MAX, registrar))), asset_scheme);
+
+        let asset_address = OwnedAssetAddress::new(transaction_hash, 0, shard_id);
+        let asset = state.asset(&asset_address);
+        assert_eq!(
+            Ok(Some(OwnedAsset::new(asset_scheme_address.into(), lock_script_hash, parameters, ::std::u64::MAX))),
+            asset
+        );
+    }
+
+    #[test]
+    fn user_cannot_set_owners() {
+        let network_id = "tc".into();
+        let shard_id = 0xCAFE;
+        let mut state = get_temp_shard_state(shard_id);
+
+        let owners = vec![Address::random(), Address::random()];
+        let user = {
+            loop {
+                let owner = address();
+                if !owners.contains(&owner) {
+                    break owner
+                }
+            }
+        };
+        let users = vec![user];
+        assert_eq!(Ok(()), state.create_world(shard_id, &0, &owners, &users, &owners[0], &owners));
+        assert_eq!(Ok(()), state.commit());
+
+        let metadata = state.metadata();
+        assert_eq!(Ok(Some(ShardMetadata::new_with_nonce(1, 1))), metadata);
+
+        let world_id = 0;
+        let world = state.world(world_id);
+        assert_eq!(Ok(Some(World::new(owners.clone(), users.clone()))), world);
+
+        let nonce = 0;
+
+        let new_owners = vec![Address::random(), Address::random(), Address::random()];
+        let transaction = Transaction::SetWorldOwners {
+            network_id,
+            shard_id,
+            world_id,
+            nonce,
+            owners: new_owners.clone(),
+        };
+
+        let shard_owner = address();
+        assert_eq!(
+            Ok(TransactionInvoice::Fail(TransactionError::InsufficientPermission)),
+            state.apply(shard_id, &transaction, &user, &[shard_owner])
+        );
+        let world = state.world(world_id);
+        assert_eq!(Ok(Some(World::new_with_nonce(owners, users, 0))), world);
     }
 }

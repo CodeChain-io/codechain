@@ -25,11 +25,12 @@ use rlp::{Encodable, RlpStream};
 pub struct PodWorld {
     pub nonce: u64,
     pub owners: Vec<Address>,
+    pub users: Vec<Address>,
 }
 
 impl<'a> Into<World> for &'a PodWorld {
     fn into(self) -> World {
-        World::new_with_nonce(self.owners.clone(), self.nonce)
+        World::new_with_nonce(self.owners.clone(), self.users.clone(), self.nonce)
     }
 }
 
@@ -45,12 +46,13 @@ impl From<cjson::spec::World> for PodWorld {
         Self {
             nonce: s.nonce.map(Into::into).unwrap_or(0),
             owners: s.owners.map(|a| a.into_iter().map(Into::into).collect()).unwrap_or_else(Vec::new),
+            users: s.users.map(|users| users.into_iter().map(Into::into).collect()).unwrap_or_else(Vec::new),
         }
     }
 }
 
 impl fmt::Display for PodWorld {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "(#nonce={}; owners={:#?})", self.nonce, self.owners)
+        write!(f, "(#nonce={}; owners={:#?}\n users ={:#?})", self.nonce, self.owners, self.users)
     }
 }

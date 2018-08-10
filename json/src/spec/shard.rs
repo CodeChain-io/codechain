@@ -53,6 +53,7 @@ mod tests {
                 worlds: Some(vec![World {
                     nonce: Some(Uint(U256::from(3))),
                     owners: Some(vec![Address(CoreAddress::from("01234567890abcdef0123456789abcdef0123457"))]),
+                    users: None,
                 }]),
             },
             shard

@@ -24,26 +24,33 @@ use super::cache::CacheableItem;
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct World {
     owners: Vec<Address>,
+    users: Vec<Address>,
     nonce: u64,
 }
 
 impl World {
-    pub fn new(owners: Vec<Address>) -> Self {
+    pub fn new(owners: Vec<Address>, users: Vec<Address>) -> Self {
         Self {
             owners,
+            users,
             nonce: 0,
         }
     }
 
-    pub fn new_with_nonce(owners: Vec<Address>, nonce: u64) -> Self {
+    pub fn new_with_nonce(owners: Vec<Address>, users: Vec<Address>, nonce: u64) -> Self {
         Self {
             owners,
+            users,
             nonce,
         }
     }
 
     pub fn owners(&self) -> &[Address] {
         &self.owners
+    }
+
+    pub fn users(&self) -> &[Address] {
+        &self.users
     }
 
     pub fn nonce(&self) -> &u64 {
@@ -59,6 +66,10 @@ impl World {
         debug_assert_ne!(Vec::<Address>::new(), owners);
         self.owners = owners;
     }
+
+    pub fn set_users(&mut self, users: Vec<Address>) {
+        self.users = users;
+    }
 }
 
 impl CacheableItem for World {
@@ -73,12 +84,15 @@ const PREFIX: u8 = super::WORLD_PREFIX;
 
 impl Encodable for World {
     fn rlp_append(&self, s: &mut RlpStream) {
-        s.begin_list(3).append(&PREFIX).append_list(self.owners()).append(self.nonce());
+        s.begin_list(4).append(&PREFIX).append_list(self.owners()).append_list(self.users()).append(self.nonce());
     }
 }
 
 impl Decodable for World {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+        if rlp.item_count()? != 4 {
+            return Err(DecoderError::RlpInvalidLength)
+        }
         let prefix = rlp.val_at::<u8>(0)?;
         if PREFIX != prefix {
             cdebug!(STATE, "{} is not an expected prefix for world", prefix);
@@ -86,7 +100,8 @@ impl Decodable for World {
         }
         Ok(Self {
             owners: rlp.list_at(1)?,
-            nonce: rlp.val_at(2)?,
+            users: rlp.list_at(2)?,
+            nonce: rlp.val_at(3)?,
         })
     }
 }

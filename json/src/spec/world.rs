@@ -21,6 +21,7 @@ use super::super::uint::Uint;
 pub struct World {
     pub nonce: Option<Uint>,
     pub owners: Option<Vec<Address>>,
+    pub users: Option<Vec<Address>>,
 }
 
 #[cfg(test)]
@@ -41,6 +42,7 @@ mod tests {
             World {
                 nonce: Some(Uint(0.into())),
                 owners: Some(vec![Address(CoreAddress::from("01234567890abcdef0123456789abcdef0123456"))]),
+                users: None,
             },
             world
         );
@@ -57,6 +59,7 @@ mod tests {
             World {
                 nonce: Some(Uint(100.into())),
                 owners: Some(vec![Address(CoreAddress::from("01234567890abcdef0123456789abcdef0123456"))]),
+                users: None,
             },
             world
         );
@@ -72,6 +75,7 @@ mod tests {
             World {
                 nonce: None,
                 owners: None,
+                users: None,
             },
             world
         );
@@ -87,6 +91,7 @@ mod tests {
             World {
                 nonce: None,
                 owners: Some(vec![Address(CoreAddress::from("01234567890abcdef0123456789abcdef0123456"))]),
+                users: None,
             },
             world
         );
