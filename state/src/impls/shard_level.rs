@@ -35,7 +35,7 @@ use super::super::checkpoint::{CheckpointId, StateWithCheckpoint};
 use super::super::item::local_cache::{CacheableItem, LocalCache};
 use super::super::traits::{ShardState, ShardStateInfo, StateWithCache};
 use super::super::{
-    AssetScheme, AssetSchemeAddress, OwnedAsset, OwnedAssetAddress, ShardMetadata, ShardMetadataAddress, World,
+    Asset, AssetScheme, AssetSchemeAddress, OwnedAsset, OwnedAssetAddress, ShardMetadata, ShardMetadataAddress, World,
     WorldAddress,
 };
 use super::super::{StateError, StateResult};
@@ -153,6 +153,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
                 registrar,
                 sender,
                 shard_users,
+                Vec::new(),
             )?),
             Transaction::AssetTransfer {
                 burns,
@@ -271,6 +272,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         registrar: &Option<Address>,
         sender: &Address,
         shard_users: &[Address],
+        pool: Vec<Asset>,
     ) -> StateResult<()> {
         let world: World = self.world(world_id)?.ok_or_else(|| TransactionError::InvalidWorldId(world_id))?;
 
@@ -287,7 +289,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         if !asset_scheme.is_null() {
             return Err(TransactionError::AssetSchemeDuplicated(transaction_hash).into())
         }
-        asset_scheme.init(metadata.clone(), amount, registrar.clone());
+        asset_scheme.init(metadata.clone(), amount, registrar.clone(), pool);
 
         ctrace!(TX, "{:?} is minted on {:?}", asset_scheme, asset_scheme_address);
 
