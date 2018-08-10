@@ -24,7 +24,7 @@ use ckey::{Address, Public};
 use cmerkle::Result as TrieResult;
 use cnetwork::NodeId;
 use cstate::{
-    ActionHandler, Asset, AssetAddress, AssetScheme, AssetSchemeAddress, StateDB, TopBackend, TopLevelState,
+    ActionHandler, AssetScheme, AssetSchemeAddress, OwnedAsset, OwnedAssetAddress, StateDB, TopBackend, TopLevelState,
     TopStateInfo,
 };
 use ctypes::invoice::ParcelInvoice;
@@ -256,10 +256,10 @@ impl AssetClient for Client {
         }
     }
 
-    fn get_asset(&self, transaction_hash: H256, index: usize, id: BlockId) -> TrieResult<Option<Asset>> {
+    fn get_asset(&self, transaction_hash: H256, index: usize, id: BlockId) -> TrieResult<Option<OwnedAsset>> {
         if let Some(state) = Client::state_at(&self, id) {
             let shard_id = 0; // FIXME
-            let address = AssetAddress::new(transaction_hash, index, shard_id);
+            let address = OwnedAssetAddress::new(transaction_hash, index, shard_id);
             Ok(state.asset(shard_id, &address)?)
         } else {
             Ok(None)
@@ -311,7 +311,7 @@ impl AssetClient for Client {
 
                 match Client::state_at(&self, block_id) {
                     Some(state) => {
-                        let address = AssetAddress::new(transaction_hash, index, shard_id);
+                        let address = OwnedAssetAddress::new(transaction_hash, index, shard_id);
                         Ok(Some(state.asset(shard_id, &address)?.is_none()))
                     }
                     None => Ok(None),

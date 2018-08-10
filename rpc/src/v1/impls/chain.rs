@@ -21,7 +21,7 @@ use ccore::{
     SignedParcel, UnverifiedParcel,
 };
 use ckey::{Address, NetworkId, Public};
-use cstate::{Asset, AssetScheme, AssetSchemeAddress};
+use cstate::{AssetScheme, AssetSchemeAddress, OwnedAsset};
 use ctypes::invoice::{ParcelInvoice, TransactionInvoice};
 use ctypes::parcel::{Action, ChangeShard};
 use ctypes::transaction::Transaction;
@@ -120,7 +120,7 @@ where
         }
     }
 
-    fn get_asset(&self, transaction_hash: H256, index: usize, block_number: Option<u64>) -> Result<Option<Asset>> {
+    fn get_asset(&self, transaction_hash: H256, index: usize, block_number: Option<u64>) -> Result<Option<OwnedAsset>> {
         let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
         self.client.get_asset(transaction_hash, index, block_id).map_err(errors::parcel_state)
     }

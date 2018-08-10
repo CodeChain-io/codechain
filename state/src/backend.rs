@@ -44,7 +44,7 @@ use hashdb::HashDB;
 use primitives::{Bytes, H256};
 
 use super::{
-    Account, ActionHandler, Asset, AssetAddress, AssetScheme, AssetSchemeAddress, Metadata, MetadataAddress,
+    Account, ActionHandler, AssetScheme, AssetSchemeAddress, Metadata, MetadataAddress, OwnedAsset, OwnedAssetAddress,
     RegularAccount, RegularAccountAddress, Shard, ShardAddress, ShardMetadata, ShardMetadataAddress, World,
     WorldAddress,
 };
@@ -107,7 +107,7 @@ pub trait ShardBackend: Send {
     /// Add an asset entry to the cache.
     fn add_to_asset_scheme_cache(&mut self, addr: AssetSchemeAddress, asset: Option<AssetScheme>, modified: bool);
     /// Add an asset entry to the cache.
-    fn add_to_asset_cache(&mut self, addr: AssetAddress, asset: Option<Asset>, modified: bool);
+    fn add_to_asset_cache(&mut self, addr: OwnedAssetAddress, asset: Option<OwnedAsset>, modified: bool);
 
     fn get_cached_shard_metadata(&self, addr: &ShardMetadataAddress) -> Option<Option<ShardMetadata>>;
     fn get_cached_world(&self, hash: &WorldAddress) -> Option<Option<World>>;
@@ -116,5 +116,5 @@ pub trait ShardBackend: Send {
     /// Returns 'None' if cache is disabled or if the the asset/asset scheme is not cached.
     fn get_cached_asset_scheme(&self, hash: &AssetSchemeAddress) -> Option<Option<AssetScheme>>;
 
-    fn get_cached_asset(&self, hash: &AssetAddress) -> Option<Option<Asset>>;
+    fn get_cached_asset(&self, hash: &OwnedAssetAddress) -> Option<Option<OwnedAsset>>;
 }
