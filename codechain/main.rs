@@ -50,6 +50,7 @@ extern crate toml;
 mod account_command;
 mod config;
 mod constants;
+mod dummy_network_service;
 mod rpc;
 mod rpc_apis;
 
@@ -69,16 +70,16 @@ use ckeystore::accounts_dir::RootDiskDirectory;
 use ckeystore::KeyStore;
 use clap::ArgMatches;
 use clogger::LoggerConfig;
-use cnetwork::{NetworkConfig, NetworkControl, NetworkControlError, NetworkService, SocketAddr};
+use cnetwork::{NetworkConfig, NetworkControl, NetworkService, SocketAddr};
 use creactor::EventLoop;
 use csync::{BlockSyncExtension, ParcelSyncExtension, SnapshotService};
 use ctrlc::CtrlC;
 use fdlimit::raise_fd_limit;
 use parking_lot::{Condvar, Mutex};
-use primitives::H256;
 
 use self::account_command::run_account_command;
 use self::config::load_config;
+use self::dummy_network_service::DummyNetworkService;
 use self::rpc::{rpc_http_start, rpc_ipc_start};
 
 pub const APP_INFO: AppInfo = AppInfo {
@@ -247,40 +248,6 @@ fn new_miner(config: &config::Config, spec: &Spec, ap: Arc<AccountProvider>) -> 
     }
 
     Ok(miner)
-}
-
-struct DummyNetworkService {}
-
-impl DummyNetworkService {
-    fn new() -> Self {
-        DummyNetworkService {}
-    }
-}
-
-impl NetworkControl for DummyNetworkService {
-    fn register_secret(&self, _secret: H256, _addr: SocketAddr) -> Result<(), NetworkControlError> {
-        Err(NetworkControlError::Disabled)
-    }
-
-    fn connect(&self, _addr: SocketAddr) -> Result<(), NetworkControlError> {
-        Err(NetworkControlError::Disabled)
-    }
-
-    fn disconnect(&self, _addr: SocketAddr) -> Result<(), NetworkControlError> {
-        Err(NetworkControlError::Disabled)
-    }
-
-    fn is_connected(&self, _addr: &SocketAddr) -> Result<bool, NetworkControlError> {
-        Err(NetworkControlError::Disabled)
-    }
-
-    fn get_port(&self) -> Result<u16, NetworkControlError> {
-        Err(NetworkControlError::Disabled)
-    }
-
-    fn get_peer_count(&self) -> Result<usize, NetworkControlError> {
-        Err(NetworkControlError::Disabled)
-    }
 }
 
 fn run_node(matches: ArgMatches) -> Result<(), String> {
