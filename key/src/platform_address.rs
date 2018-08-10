@@ -36,12 +36,12 @@ pub struct PlatformAddress {
 }
 
 impl PlatformAddress {
-    pub fn create_version0(network_id: NetworkId, address: Address) -> Result<Self, Error> {
-        Ok(Self {
+    pub fn create_version0(network_id: NetworkId, address: Address) -> Self {
+        Self {
             network_id,
             version: 0,
             address,
-        })
+        }
     }
 
     fn to_string(&self) -> String {

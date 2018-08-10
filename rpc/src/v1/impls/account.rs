@@ -45,9 +45,7 @@ impl Account for AccountClient {
             .map(|addresses| {
                 addresses
                     .into_iter()
-                    .map(|address| {
-                        PlatformAddress::create_version0(self.network_id, address).expect("The network id is fixed")
-                    })
+                    .map(|address| PlatformAddress::create_version0(self.network_id, address))
                     .collect()
             })
             .map_err(account_provider)
@@ -56,13 +54,13 @@ impl Account for AccountClient {
     fn create_account(&self, passphrase: Option<Password>) -> Result<PlatformAddress> {
         let (address, _) =
             self.account_provider.new_account_and_public(&passphrase.unwrap_or_default()).map_err(account_provider)?;
-        Ok(PlatformAddress::create_version0(self.network_id, address).expect("The network id is fixed"))
+        Ok(PlatformAddress::create_version0(self.network_id, address))
     }
 
     fn create_account_from_secret(&self, secret: H256, passphrase: Option<Password>) -> Result<PlatformAddress> {
         self.account_provider
             .insert_account(secret.into(), &passphrase.unwrap_or_default())
-            .map(|address| PlatformAddress::create_version0(self.network_id, address).expect("The network id is fixed"))
+            .map(|address| PlatformAddress::create_version0(self.network_id, address))
             .map_err(account_provider)
     }
 
