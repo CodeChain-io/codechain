@@ -8,7 +8,7 @@ byteorder = "1.2.3"
 codechain-crypto = { path = "../crypto" }
 codechain-logger = { path = "../util/logger" }
 codechain-merkle = { path = "../util/merkle" }
-codechain-key = { path = "../key", features = ["ecdsa"] }
+codechain-key = { path = "../key" }
 codechain-types = { path = "../types" }
 codechain-vm = { path = "../vm" }
 hashdb = { path = "../util/hashdb" }

@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = ["CodeChain Team <codechain@kodebox.io>"]
 
 [dependencies]
-codechain-key = { path = "../key", features = ["ecdsa"] }
+codechain-key = { path = "../key" }
 primitives = { path = "../util/primitives" }
 rustc-hex = "1.0"
 serde = "1.0"
