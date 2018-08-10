@@ -35,7 +35,7 @@ use super::super::checkpoint::{CheckpointId, StateWithCheckpoint};
 use super::super::item::cache::Cache;
 use super::super::traits::{ShardState, ShardStateInfo, StateWithCache};
 use super::super::{
-    AssetScheme, AssetSchemeAddress, OwnedAsset, OwnedAssetAddress, ShardMetadata, ShardMetadataAddress, World,
+    Asset, AssetScheme, AssetSchemeAddress, OwnedAsset, OwnedAssetAddress, ShardMetadata, ShardMetadataAddress, World,
     WorldAddress,
 };
 use super::super::{StateDB, StateError, StateResult};
@@ -153,6 +153,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
                 registrar,
                 sender,
                 shard_users,
+                Vec::new(),
             )?),
             Transaction::AssetTransfer {
                 burns,
@@ -267,6 +268,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         registrar: &Option<Address>,
         sender: &Address,
         shard_users: &[Address],
+        pool: Vec<Asset>,
     ) -> StateResult<()> {
         let world: World = self.world(world_id)?.ok_or_else(|| TransactionError::InvalidWorldId(world_id))?;
 
@@ -280,7 +282,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         let asset_scheme_address = AssetSchemeAddress::new(transaction_hash, self.shard_id, world_id);
         let amount = amount.unwrap_or(::std::u64::MAX);
         let asset_scheme = self.require_asset_scheme(&asset_scheme_address, || {
-            AssetScheme::new(metadata.clone(), amount, registrar.clone())
+            AssetScheme::new(metadata.clone(), amount, registrar.clone(), pool)
         })?;
         ctrace!(TX, "{:?} is minted on {:?}", asset_scheme, asset_scheme_address);
 
@@ -766,7 +768,7 @@ mod tests {
         let transaction_hash = transaction.hash();
         let asset_scheme_address = AssetSchemeAddress::new(transaction_hash, shard_id, world_id);
         let asset_scheme = state.asset_scheme(&asset_scheme_address);
-        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), amount, registrar))), asset_scheme);
+        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), amount, registrar, Vec::new()))), asset_scheme);
 
         let asset_address = OwnedAssetAddress::new(transaction_hash, 0, shard_id);
         let asset = state.asset(&asset_address);
@@ -807,7 +809,7 @@ mod tests {
         let transaction_hash = transaction.hash();
         let asset_scheme_address = AssetSchemeAddress::new(transaction_hash, shard_id, world_id);
         let asset_scheme = state.asset_scheme(&asset_scheme_address);
-        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), ::std::u64::MAX, registrar))), asset_scheme);
+        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), ::std::u64::MAX, registrar, Vec::new()))), asset_scheme);
 
         let asset_address = OwnedAssetAddress::new(transaction_hash, 0, shard_id);
         let asset = state.asset(&asset_address);
@@ -854,7 +856,7 @@ mod tests {
         let asset_scheme = state.asset_scheme(&asset_scheme_address);
         let asset_type = asset_scheme_address.into();
 
-        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), amount, registrar))), asset_scheme);
+        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), amount, registrar, Vec::new()))), asset_scheme);
 
         let asset_address = OwnedAssetAddress::new(mint_hash, 0, shard_id);
         let asset = state.asset(&asset_address);
@@ -929,7 +931,7 @@ mod tests {
         let asset_scheme = state.asset_scheme(&asset_scheme_address);
         let asset_type = asset_scheme_address.into();
 
-        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), amount, registrar))), asset_scheme);
+        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), amount, registrar, Vec::new()))), asset_scheme);
 
         let asset_address = OwnedAssetAddress::new(mint_hash, 0, shard_id);
         let asset = state.asset(&asset_address);
@@ -1027,7 +1029,7 @@ mod tests {
         let asset_scheme = state.asset_scheme(&asset_scheme_address);
         let asset_type = asset_scheme_address.into();
 
-        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), amount, registrar))), asset_scheme);
+        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), amount, registrar, Vec::new()))), asset_scheme);
 
         let asset_address = OwnedAssetAddress::new(mint_hash, 0, shard_id);
         let asset = state.asset(&asset_address);
@@ -1284,7 +1286,7 @@ mod tests {
         let transaction_hash = transaction.hash();
         let asset_scheme_address = AssetSchemeAddress::new(transaction_hash, shard_id, world_id);
         let asset_scheme = state.asset_scheme(&asset_scheme_address);
-        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), ::std::u64::MAX, registrar))), asset_scheme);
+        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), ::std::u64::MAX, registrar, Vec::new()))), asset_scheme);
 
         let asset_address = OwnedAssetAddress::new(transaction_hash, 0, shard_id);
         let asset = state.asset(&asset_address);
@@ -1369,7 +1371,7 @@ mod tests {
         let transaction_hash = transaction.hash();
         let asset_scheme_address = AssetSchemeAddress::new(transaction_hash, shard_id, world_id);
         let asset_scheme = state.asset_scheme(&asset_scheme_address);
-        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), ::std::u64::MAX, registrar))), asset_scheme);
+        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), ::std::u64::MAX, registrar, Vec::new()))), asset_scheme);
 
         let asset_address = OwnedAssetAddress::new(transaction_hash, 0, shard_id);
         let asset = state.asset(&asset_address);

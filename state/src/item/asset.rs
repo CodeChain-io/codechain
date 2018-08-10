@@ -26,7 +26,29 @@ pub struct Asset {
     amount: u64,
 }
 
+impl Encodable for Asset {
+    fn rlp_append(&self, s: &mut RlpStream) {
+        s.begin_list(2).append(&self.asset_type).append(&self.amount);
+    }
+}
+
+impl Decodable for Asset {
+    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+        Ok(Self {
+            asset_type: rlp.val_at(0)?,
+            amount: rlp.val_at(1)?,
+        })
+    }
+}
+
 impl Asset {
+    pub fn new(asset_type: H256, amount: u64) -> Self {
+        Self {
+            asset_type,
+            amount,
+        }
+    }
+
     pub fn asset_type(&self) -> &H256 {
         &self.asset_type
     }
