@@ -201,7 +201,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
     ) -> StateResult<()> {
         let world: World = self.world(world_id)?.ok_or_else(|| TransactionError::InvalidWorldId(world_id))?;
 
-        if !shard_users.contains(sender) && !world.world_owners().contains(sender) {
+        if !shard_users.contains(sender) && !world.owners().contains(sender) {
             return Err(TransactionError::InsufficientPermission.into())
         }
 
@@ -233,7 +233,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
     ) -> StateResult<()> {
         let world: World = self.world(world_id)?.ok_or_else(|| TransactionError::InvalidWorldId(world_id))?;
 
-        if !shard_users.contains(sender) && !world.world_owners().contains(sender) {
+        if !shard_users.contains(sender) && !world.owners().contains(sender) {
             return Err(TransactionError::InsufficientPermission.into())
         }
 

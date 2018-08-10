@@ -23,27 +23,27 @@ use super::cache::CacheableItem;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct World {
-    world_owners: Vec<Address>,
+    owners: Vec<Address>,
     nonce: u64,
 }
 
 impl World {
-    pub fn new(world_owners: Vec<Address>) -> Self {
+    pub fn new(owners: Vec<Address>) -> Self {
         Self {
-            world_owners,
+            owners,
             nonce: 0,
         }
     }
 
-    pub fn new_with_nonce(world_owners: Vec<Address>, nonce: u64) -> Self {
+    pub fn new_with_nonce(owners: Vec<Address>, nonce: u64) -> Self {
         Self {
-            world_owners,
+            owners,
             nonce,
         }
     }
 
-    pub fn world_owners(&self) -> &[Address] {
-        &self.world_owners
+    pub fn owners(&self) -> &[Address] {
+        &self.owners
     }
 
     pub fn nonce(&self) -> &u64 {
@@ -57,7 +57,7 @@ impl World {
 
     pub fn set_owners(&mut self, owners: Vec<Address>) {
         debug_assert_ne!(Vec::<Address>::new(), owners);
-        self.world_owners = owners;
+        self.owners = owners;
     }
 }
 
@@ -65,7 +65,7 @@ impl CacheableItem for World {
     type Address = WorldAddress;
 
     fn is_null(&self) -> bool {
-        self.world_owners.is_empty() && self.nonce == 0
+        self.owners.is_empty() && self.nonce == 0
     }
 }
 
@@ -73,7 +73,7 @@ const PREFIX: u8 = super::WORLD_PREFIX;
 
 impl Encodable for World {
     fn rlp_append(&self, s: &mut RlpStream) {
-        s.begin_list(3).append(&PREFIX).append_list(self.world_owners()).append(self.nonce());
+        s.begin_list(3).append(&PREFIX).append_list(self.owners()).append(self.nonce());
     }
 }
 
@@ -85,7 +85,7 @@ impl Decodable for World {
             return Err(DecoderError::Custom("Unexpected prefix"))
         }
         Ok(Self {
-            world_owners: rlp.list_at(1)?,
+            owners: rlp.list_at(1)?,
             nonce: rlp.val_at(2)?,
         })
     }
