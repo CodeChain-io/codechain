@@ -69,7 +69,7 @@ fn create(ap: &AccountProvider) -> Result<(), String> {
     if let Some(password) = read_password_and_confirm() {
         let (address, _) = ap.new_account_and_public(&password).expect("Cannot create account");
         // FIXME: Don't hardcode network_id.
-        println!("{}", PlatformAddress::create_version0("cc".into(), address));
+        println!("{}", PlatformAddress::create(0, "cc".into(), address));
     } else {
         return Err("The password does not match".to_string())
     }
@@ -83,7 +83,7 @@ fn import(ap: &AccountProvider, json_path: &str) -> Result<(), String> {
             match ap.import_wallet(json.as_slice(), &password) {
                 Ok(address) => {
                     // FIXME: Don't hardcode network_id.
-                    println!("{}", PlatformAddress::create_version0("cc".into(), address));
+                    println!("{}", PlatformAddress::create(0, "cc".into(), address));
                 }
                 Err(e) => return Err(format!("{}", e)),
             }
@@ -99,7 +99,7 @@ fn import_raw(ap: &AccountProvider, raw_key: &str) -> Result<(), String> {
             if let Some(password) = read_password_and_confirm() {
                 // FIXME: Don't hardcode network_id.
                 match ap.insert_account(private, &password) {
-                    Ok(address) => println!("{}", PlatformAddress::create_version0("cc".into(), address)),
+                    Ok(address) => println!("{}", PlatformAddress::create(0, "cc".into(), address)),
                     Err(e) => return Err(format!("{:?}", e)),
                 }
             } else {
@@ -129,7 +129,7 @@ fn list(ap: &AccountProvider) -> Result<(), String> {
     let addresses = ap.get_list().expect("Cannot get account list");
     for address in addresses {
         // FIXME: Don't hardcode network_id.
-        println!("{}", PlatformAddress::create_version0("tc".into(), address))
+        println!("{}", PlatformAddress::create(0, "tc".into(), address))
     }
     Ok(())
 }
