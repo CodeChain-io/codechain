@@ -36,7 +36,7 @@ This should result in CodeChain running.
 Build Dependencies
 ==================
 
-CodeChain requires Rust version 1.26 to build. Using `rustup <https://rustup.rs/>`_ is recommended.
+CodeChain requires Rust version 1.28.0 to build. Using `rustup <https://rustup.rs/>`_ is recommended.
 
 * For Linux Systems:
 
