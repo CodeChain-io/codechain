@@ -57,8 +57,6 @@ pub enum SignError {
     KeyError(KeyError),
     /// Keystore error.
     KeystoreError(KeystoreError),
-    /// Inappropriate chain
-    InappropriateChain,
 }
 
 impl From<KeyError> for SignError {
@@ -80,7 +78,6 @@ impl fmt::Display for SignError {
             SignError::NotFound => write!(f, "Account does not exist"),
             SignError::KeyError(e) => write!(f, "{}", e),
             SignError::KeystoreError(e) => write!(f, "{}", e),
-            SignError::InappropriateChain => write!(f, "Inappropriate chain"),
         }
     }
 }

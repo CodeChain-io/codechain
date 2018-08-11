@@ -517,32 +517,19 @@ impl MinerService for Miner {
         *self.author.read()
     }
 
-    fn set_author(&self, author: Address) {
-        ctrace!(MINER, "Set author to {:?}", author);
-        if self.engine.seals_internally().is_some() {
-            let mut sealing_work = self.sealing_work.lock();
-            sealing_work.enabled = true;
-        }
-        *self.author.write() = author;
-    }
+    fn set_author(&self, address: Address, password: Option<Password>) -> Result<(), SignError> {
+        *self.author.write() = address;
 
-    fn extra_data(&self) -> Bytes {
-        self.extra_data.read().clone()
-    }
-
-    fn set_extra_data(&self, extra_data: Bytes) {
-        *self.extra_data.write() = extra_data;
-    }
-
-    fn set_engine_signer(&self, address: Address, password: Password) -> Result<(), SignError> {
         if self.engine.seals_internally().is_some() {
             if let Some(ref ap) = self.accounts {
-                ctrace!(MINER, "Set engine signer to {:?}", address);
+                ctrace!(MINER, "Set author to {:?}", address);
+                let password = password.unwrap_or_else(|| Password::from(String::new()));
+                // Sign test message
+                ap.sign(address.clone(), Some(password.clone()), Default::default())?;
                 // Limit the scope of the locks.
                 {
                     let mut sealing_work = self.sealing_work.lock();
                     sealing_work.enabled = true;
-                    *self.author.write() = address;
                 }
                 self.engine.set_signer(ap.clone(), address, password);
                 Ok(())
@@ -551,9 +538,16 @@ impl MinerService for Miner {
                 Err(SignError::NotFound)
             }
         } else {
-            cwarn!(MINER, "Cannot set engine signer on a PoW chain.");
-            Err(SignError::InappropriateChain)
+            Ok(())
         }
+    }
+
+    fn extra_data(&self) -> Bytes {
+        self.extra_data.read().clone()
+    }
+
+    fn set_extra_data(&self, extra_data: Bytes) {
+        *self.extra_data.write() = extra_data;
     }
 
     fn minimal_fee(&self) -> U256 {

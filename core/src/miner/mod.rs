@@ -46,16 +46,13 @@ pub trait MinerService: Send + Sync {
     fn author(&self) -> Address;
 
     /// Set the author that we will seal blocks as.
-    fn set_author(&self, author: Address);
+    fn set_author(&self, author: Address, password: Option<Password>) -> Result<(), SignError>;
 
     /// Get the extra_data that we will seal blocks with.
     fn extra_data(&self) -> Bytes;
 
     /// Set the extra_data that we will seal blocks with.
     fn set_extra_data(&self, extra_data: Bytes);
-
-    /// Set info necessary to sign consensus messages.
-    fn set_engine_signer(&self, address: Address, password: Password) -> Result<(), SignError>;
 
     /// Get current minimal fee for parcels accepted to queue.
     fn minimal_fee(&self) -> U256;

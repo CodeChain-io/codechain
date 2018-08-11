@@ -126,7 +126,7 @@ fn new_miner(config: &config::Config, scheme: &Scheme, ap: Arc<AccountProvider>)
         EngineType::PoW => {
             let author = config.mining.author;
             match author {
-                Some(author) => miner.set_author(author),
+                Some(author) => miner.set_author(author, None).expect("set_author never fails"),
                 None => return Err("mining.author is not specified".to_string()),
             }
         }
@@ -142,7 +142,7 @@ fn new_miner(config: &config::Config, scheme: &Scheme, ap: Arc<AccountProvider>)
                             // Read the first line as password.
                             let password = content.lines().next().ok_or("Password file is empty")?;
                             miner
-                                .set_engine_signer(engine_signer, Password::from(password))
+                                .set_author(engine_signer, Some(Password::from(password)))
                                 .map_err(|e| format!("{:?}", e))?
                         }
                         Err(_) => return Err(format!("Failed to read the password file")),
