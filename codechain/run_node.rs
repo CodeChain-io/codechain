@@ -174,6 +174,12 @@ fn wait_for_exit() {
     let _ = exit.1.wait(&mut l);
 }
 
+fn prepare_account_provider(keys_path: &str) -> Result<Arc<AccountProvider>, String> {
+    let keystore_dir = RootDiskDirectory::create(keys_path).map_err(|_| "Cannot read key path directory")?;
+    let keystore = KeyStore::open(Box::new(keystore_dir)).map_err(|_| "Cannot open key store")?;
+    Ok(AccountProvider::new(keystore))
+}
+
 pub fn run_node(matches: ArgMatches) -> Result<(), String> {
     // increase max number of open files
     raise_fd_limit();
@@ -192,12 +198,10 @@ pub fn run_node(matches: ArgMatches) -> Result<(), String> {
     clogger::init(&LoggerConfig::new(instance_id)).expect("Logger must be successfully initialized");
 
     let keys_path = match config.operating.keys_path {
-        Some(ref keys_path) => keys_path.clone(),
-        None => DEFAULT_KEYS_PATH.to_string(),
+        Some(ref keys_path) => keys_path,
+        None => DEFAULT_KEYS_PATH,
     };
-    let keystore_dir = RootDiskDirectory::create(keys_path).map_err(|_| "Cannot read key path directory")?;
-    let keystore = KeyStore::open(Box::new(keystore_dir)).map_err(|_| "Cannot open key store")?;
-    let ap = AccountProvider::new(keystore);
+    let ap = prepare_account_provider(keys_path)?;
     let miner = new_miner(&config, &scheme, ap.clone())?;
     let client = client_start(&config, &scheme, miner.clone())?;
 
