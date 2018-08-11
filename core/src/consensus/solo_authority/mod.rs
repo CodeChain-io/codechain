@@ -201,19 +201,19 @@ mod tests {
 
     use super::super::super::block::{IsBlock, OpenBlock};
     use super::super::super::header::Header;
-    use super::super::super::spec::Spec;
+    use super::super::super::scheme::Scheme;
     use super::super::super::tests::helpers::get_temp_state_db;
     use super::super::Seal;
 
     #[test]
     fn has_valid_metadata() {
-        let engine = Spec::new_test_solo_authority().engine;
+        let engine = Scheme::new_test_solo_authority().engine;
         assert!(!engine.name().is_empty());
     }
 
     #[test]
     fn fail_to_verify_signature_when_seal_is_invalid() {
-        let engine = Spec::new_test_solo_authority().engine;
+        let engine = Scheme::new_test_solo_authority().engine;
         let mut header: Header = Header::default();
         header.set_seal(vec![::rlp::encode(&Signature::default()).into_vec()]);
 
@@ -223,10 +223,10 @@ mod tests {
 
     #[test]
     fn generate_seal() {
-        let spec = Spec::new_test_solo_authority();
-        let engine = &*spec.engine;
-        let db = spec.ensure_genesis_state(get_temp_state_db()).unwrap();
-        let genesis_header = spec.genesis_header();
+        let scheme = Scheme::new_test_solo_authority();
+        let engine = &*scheme.engine;
+        let db = scheme.ensure_genesis_state(get_temp_state_db()).unwrap();
+        let genesis_header = scheme.genesis_header();
         let b = OpenBlock::new(engine, db, &genesis_header, Default::default(), vec![], false).unwrap();
         let parent_parcels_root = genesis_header.parcels_root().clone();
         let parent_invoices_root = genesis_header.invoices_root().clone();
@@ -238,7 +238,7 @@ mod tests {
 
     #[test]
     fn seals_internally() {
-        let engine = Spec::new_test_solo_authority().engine;
+        let engine = Scheme::new_test_solo_authority().engine;
         assert!(!engine.seals_internally().unwrap());
     }
 }

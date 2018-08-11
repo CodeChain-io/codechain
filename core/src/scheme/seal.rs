@@ -46,15 +46,15 @@ pub enum Seal {
     Generic(Generic),
 }
 
-impl From<cjson::spec::Seal> for Seal {
-    fn from(s: cjson::spec::Seal) -> Self {
+impl From<cjson::scheme::Seal> for Seal {
+    fn from(s: cjson::scheme::Seal) -> Self {
         match s {
-            cjson::spec::Seal::Tendermint(tender) => Seal::Tendermint(Tendermint {
+            cjson::scheme::Seal::Tendermint(tender) => Seal::Tendermint(Tendermint {
                 round: tender.round.into(),
                 proposal: tender.proposal.into(),
                 precommits: tender.precommits.into_iter().map(Into::into).collect(),
             }),
-            cjson::spec::Seal::Generic(g) => Seal::Generic(Generic(g.into())),
+            cjson::scheme::Seal::Generic(g) => Seal::Generic(Generic(g.into())),
         }
     }
 }

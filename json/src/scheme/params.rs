@@ -18,7 +18,7 @@ use ckey::NetworkId;
 
 use super::super::uint::Uint;
 
-/// Spec params.
+/// Scheme params.
 #[derive(Debug, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Params {

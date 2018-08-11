@@ -20,8 +20,8 @@ use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use ccore::{
-    AccountProvider, Client, ClientService, EngineType, Miner, MinerService, ShardValidator, ShardValidatorConfig,
-    Spec, Stratum, StratumConfig, StratumError,
+    AccountProvider, Client, ClientService, EngineType, Miner, MinerService, Scheme, ShardValidator,
+    ShardValidatorConfig, Stratum, StratumConfig, StratumError,
 };
 use cdiscovery::{KademliaConfig, KademliaExtension, UnstructuredConfig, UnstructuredExtension};
 use ckey::Password;
@@ -80,11 +80,11 @@ fn discovery_start(service: &NetworkService, cfg: &config::Network) -> Result<()
     Ok(())
 }
 
-fn client_start(cfg: &config::Config, spec: &Spec, miner: Arc<Miner>) -> Result<ClientService, String> {
+fn client_start(cfg: &config::Config, scheme: &Scheme, miner: Arc<Miner>) -> Result<ClientService, String> {
     info!("Starting client");
     let client_path = Path::new(&cfg.operating.db_path);
     let client_config = Default::default();
-    let service = ClientService::start(client_config, &spec, &client_path, miner)
+    let service = ClientService::start(client_config, &scheme, &client_path, miner)
         .map_err(|e| format!("Client service error: {}", e))?;
 
     Ok(service)
@@ -120,8 +120,8 @@ fn new_shard_validator(config: ShardValidatorConfig, ap: Arc<AccountProvider>) -
     Ok(shard_validator)
 }
 
-fn new_miner(config: &config::Config, spec: &Spec, ap: Arc<AccountProvider>) -> Result<Arc<Miner>, String> {
-    let miner = Miner::new(config.miner_options(), spec, Some(ap.clone()));
+fn new_miner(config: &config::Config, scheme: &Scheme, ap: Arc<AccountProvider>) -> Result<Arc<Miner>, String> {
+    let miner = Miner::new(config.miner_options(), scheme, Some(ap.clone()));
     match miner.engine_type() {
         EngineType::PoW => {
             let author = config.mining.author;
@@ -181,7 +181,7 @@ pub fn run_node(matches: ArgMatches) -> Result<(), String> {
     let _event_loop = EventLoop::spawn();
     let config = load_config(&matches)?;
 
-    let spec = config.operating.chain.spec()?;
+    let scheme = config.operating.chain.scheme()?;
 
     let instance_id = config.operating.instance_id.unwrap_or(
         SystemTime::now()
@@ -198,10 +198,10 @@ pub fn run_node(matches: ArgMatches) -> Result<(), String> {
     let keystore_dir = RootDiskDirectory::create(keys_path).map_err(|_| "Cannot read key path directory")?;
     let keystore = KeyStore::open(Box::new(keystore_dir)).map_err(|_| "Cannot open key store")?;
     let ap = AccountProvider::new(keystore);
-    let miner = new_miner(&config, &spec, ap.clone())?;
-    let client = client_start(&config, &spec, miner.clone())?;
+    let miner = new_miner(&config, &scheme, ap.clone())?;
+    let client = client_start(&config, &scheme, miner.clone())?;
 
-    let shard_validator = if spec.params().use_shard_validator {
+    let shard_validator = if scheme.params().use_shard_validator {
         None
     } else if config.shard_validator.disable {
         Some(ShardValidator::new(None, Arc::clone(&ap)))
@@ -228,7 +228,7 @@ pub fn run_node(matches: ArgMatches) -> Result<(), String> {
             if config.network.parcel_relay {
                 service.register_extension(ParcelSyncExtension::new(client.client()))?;
             }
-            if let Some(consensus_extension) = spec.engine.network_extension() {
+            if let Some(consensus_extension) = scheme.engine.network_extension() {
                 service.register_extension(consensus_extension)?;
             }
 
@@ -275,7 +275,7 @@ pub fn run_node(matches: ArgMatches) -> Result<(), String> {
 
     let _snapshot_service = {
         if !config.snapshot.disable {
-            let service = SnapshotService::new(client.client(), config.snapshot.path, spec.params().snapshot_period);
+            let service = SnapshotService::new(client.client(), config.snapshot.path, scheme.params().snapshot_period);
             client.client().add_notify(service.clone());
             Some(service)
         } else {
@@ -283,8 +283,8 @@ pub fn run_node(matches: ArgMatches) -> Result<(), String> {
         }
     };
 
-    // drop the spec to free up genesis state.
-    drop(spec);
+    // drop the scheme to free up genesis state.
+    drop(scheme);
 
     cinfo!(TEST_SCRIPT, "Initialization complete");
 

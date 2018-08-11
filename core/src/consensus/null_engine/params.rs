@@ -24,8 +24,8 @@ pub struct NullEngineParams {
     pub block_reward: U256,
 }
 
-impl From<cjson::spec::NullEngineParams> for NullEngineParams {
-    fn from(p: cjson::spec::NullEngineParams) -> Self {
+impl From<cjson::scheme::NullEngineParams> for NullEngineParams {
+    fn from(p: cjson::scheme::NullEngineParams) -> Self {
         NullEngineParams {
             block_reward: p.block_reward.map_or_else(Default::default, Into::into),
         }

@@ -36,7 +36,7 @@ use super::super::blockchain::HeaderProvider;
 
 use super::super::codechain_machine::CodeChainMachine;
 use super::super::consensus::{BlakePoW, CodeChainEngine, Cuckoo, NullEngine, Solo, SoloAuthority, Tendermint};
-use super::super::error::{Error, SpecError};
+use super::super::error::{Error, SchemeError};
 use super::super::header::Header;
 use super::pod_state::{PodAccounts, PodShards};
 use super::seal::Generic as GenericSeal;
@@ -60,8 +60,8 @@ pub struct CommonParams {
     pub use_shard_validator: bool,
 }
 
-impl From<cjson::spec::Params> for CommonParams {
-    fn from(p: cjson::spec::Params) -> Self {
+impl From<cjson::scheme::Params> for CommonParams {
+    fn from(p: cjson::scheme::Params) -> Self {
         Self {
             max_extra_data_size: p.max_extra_data_size.into(),
             max_metadata_size: p.max_metadata_size.into(),
@@ -76,8 +76,8 @@ impl From<cjson::spec::Params> for CommonParams {
 
 /// Parameters for a block chain; includes both those intrinsic to the design of the
 /// chain and those to be interpreted by the active chain engine.
-pub struct Spec {
-    /// User friendly spec name
+pub struct Scheme {
+    /// User friendly scheme name
     pub name: String,
     /// What engine are we using for this?
     pub engine: Arc<CodeChainEngine>,
@@ -116,39 +116,39 @@ pub struct Spec {
 
 // helper for formatting errors.
 fn fmt_err<F: ::std::fmt::Display>(f: F) -> String {
-    format!("Spec json is invalid: {}", f)
+    format!("Scheme json is invalid: {}", f)
 }
 
 macro_rules! load_bundled {
     ($e:expr) => {
-        Spec::load(include_bytes!(concat!("../../res/", $e, ".json")) as &[u8]).expect(concat!(
-            "Chain spec ",
+        Scheme::load(include_bytes!(concat!("../../res/", $e, ".json")) as &[u8]).expect(concat!(
+            "Chain scheme ",
             $e,
             " is invalid."
         ))
     };
 }
 
-impl Spec {
+impl Scheme {
     // create an instance of an CodeChain state machine, minus consensus logic.
-    fn machine(_engine_spec: &cjson::spec::Engine, params: CommonParams) -> CodeChainMachine {
+    fn machine(_engine_scheme: &cjson::scheme::Engine, params: CommonParams) -> CodeChainMachine {
         CodeChainMachine::new(params)
     }
 
-    /// Convert engine spec into a arc'd Engine of the right underlying type.
+    /// Convert engine scheme into a arc'd Engine of the right underlying type.
     /// TODO avoid this hard-coded nastiness - use dynamic-linked plugin framework instead.
-    fn engine(engine_spec: cjson::spec::Engine, params: CommonParams) -> Arc<CodeChainEngine> {
-        let machine = Self::machine(&engine_spec, params);
+    fn engine(engine_scheme: cjson::scheme::Engine, params: CommonParams) -> Arc<CodeChainEngine> {
+        let machine = Self::machine(&engine_scheme, params);
 
-        match engine_spec {
-            cjson::spec::Engine::Null(null) => Arc::new(NullEngine::new(null.params.into(), machine)),
-            cjson::spec::Engine::Solo(solo) => Arc::new(Solo::new(solo.params.into(), machine)),
-            cjson::spec::Engine::SoloAuthority(solo_authority) => {
+        match engine_scheme {
+            cjson::scheme::Engine::Null(null) => Arc::new(NullEngine::new(null.params.into(), machine)),
+            cjson::scheme::Engine::Solo(solo) => Arc::new(Solo::new(solo.params.into(), machine)),
+            cjson::scheme::Engine::SoloAuthority(solo_authority) => {
                 Arc::new(SoloAuthority::new(solo_authority.params.into(), machine))
             }
-            cjson::spec::Engine::Tendermint(tendermint) => Tendermint::new(tendermint.params.into(), machine),
-            cjson::spec::Engine::Cuckoo(cuckoo) => Arc::new(Cuckoo::new(cuckoo.params.into(), machine)),
-            cjson::spec::Engine::BlakePoW(blake_pow) => Arc::new(BlakePoW::new(blake_pow.params.into(), machine)),
+            cjson::scheme::Engine::Tendermint(tendermint) => Tendermint::new(tendermint.params.into(), machine),
+            cjson::scheme::Engine::Cuckoo(cuckoo) => Arc::new(Cuckoo::new(cuckoo.params.into(), machine)),
+            cjson::scheme::Engine::BlakePoW(blake_pow) => Arc::new(BlakePoW::new(blake_pow.params.into(), machine)),
         }
     }
 
@@ -163,7 +163,7 @@ impl Spec {
     }
 
     fn initialize_accounts<DB: Backend>(&self, mut db: DB, mut root: H256) -> StateResult<(DB, H256)> {
-        // basic accounts in spec.
+        // basic accounts in scheme.
         {
             let mut t = TrieFactory::create(db.as_hashdb_mut(), &mut root);
 
@@ -234,7 +234,7 @@ impl Spec {
     }
 
     fn initialize_custom_actions<DB: Backend>(&self, mut db: DB, mut root: H256) -> StateResult<(DB, H256)> {
-        // basic accounts in spec.
+        // basic accounts in scheme.
         {
             let mut t = TrieFactory::from_existing(db.as_hashdb_mut(), &mut root)?;
 
@@ -260,7 +260,7 @@ impl Spec {
     /// Ensure that the given state DB has the trie nodes in for the genesis state.
     pub fn ensure_genesis_state<DB: Backend>(&self, db: DB) -> Result<DB, Error> {
         if !self.check_genesis_root(db.as_hashdb()) {
-            return Err(SpecError::InvalidState.into())
+            return Err(SchemeError::InvalidState.into())
         }
 
         if db.as_hashdb().contains(&self.state_root()) {
@@ -273,12 +273,13 @@ impl Spec {
     pub fn check_genesis_common_params<HP: HeaderProvider>(&self, chain: &HP) -> Result<(), Error> {
         let genesis_header = self.genesis_header();
         let genesis_header_hash = genesis_header.hash();
-        let header =
-            chain.block_header(&genesis_header_hash).ok_or_else(|| Error::Spec(SpecError::InvalidCommonParams.into()))?;
+        let header = chain
+            .block_header(&genesis_header_hash)
+            .ok_or_else(|| Error::Scheme(SchemeError::InvalidCommonParams.into()))?;
         let extra_data = header.extra_data();
         let common_params_hash = blake256(&self.params().rlp_bytes()).to_vec();
         if extra_data != &common_params_hash {
-            return Err(Error::Spec(SpecError::InvalidCommonParams.into()))
+            return Err(Error::Scheme(SchemeError::InvalidCommonParams.into()))
         }
         Ok(())
     }
@@ -288,43 +289,43 @@ impl Spec {
         self.state_root_memo.read().clone()
     }
 
-    /// Loads spec from json file. Provide factories for executing contracts and ensuring
+    /// Loads scheme from json file. Provide factories for executing contracts and ensuring
     /// storage goes to the right place.
     pub fn load<'a, R>(reader: R) -> Result<Self, String>
     where
         R: Read, {
-        cjson::spec::Spec::load(reader).map_err(fmt_err).and_then(|x| load_from(x).map_err(fmt_err))
+        cjson::scheme::Scheme::load(reader).map_err(fmt_err).and_then(|x| load_from(x).map_err(fmt_err))
     }
 
-    /// Create a new test Spec.
+    /// Create a new test Scheme.
     pub fn new_test() -> Self {
         load_bundled!("null")
     }
 
-    /// Create a new Spec with Solo consensus which does internal sealing (not requiring
+    /// Create a new Scheme with Solo consensus which does internal sealing (not requiring
     /// work).
     pub fn new_test_solo() -> Self {
         load_bundled!("solo")
     }
 
-    /// Create a new Spec with SoloAuthority consensus which does internal sealing (not requiring
+    /// Create a new Scheme with SoloAuthority consensus which does internal sealing (not requiring
     /// work).
     pub fn new_test_solo_authority() -> Self {
         load_bundled!("solo_authority")
     }
 
-    /// Create a new Spec with Tendermint consensus which does internal sealing (not requiring
+    /// Create a new Scheme with Tendermint consensus which does internal sealing (not requiring
     /// work).
     pub fn new_test_tendermint() -> Self {
         load_bundled!("tendermint")
     }
 
-    /// Create a new Spec with Cuckoo PoW consensus.
+    /// Create a new Scheme with Cuckoo PoW consensus.
     pub fn new_test_cuckoo() -> Self {
         load_bundled!("cuckoo")
     }
 
-    /// Create a new Spec with Blake PoW consensus.
+    /// Create a new Scheme with Blake PoW consensus.
     pub fn new_test_blake_pow() -> Self {
         load_bundled!("blake_pow")
     }
@@ -367,16 +368,16 @@ impl Spec {
 }
 
 /// Load from JSON object.
-fn load_from(s: cjson::spec::Spec) -> Result<Spec, Error> {
+fn load_from(s: cjson::scheme::Scheme) -> Result<Scheme, Error> {
     let g = Genesis::from(s.genesis);
     let GenericSeal(seal_rlp) = g.seal.into();
     let params = CommonParams::from(s.params);
-    let engine = Spec::engine(s.engine, params);
+    let engine = Scheme::engine(s.engine, params);
     let custom_handlers = match &engine {
         _ => vec![],
     };
 
-    let mut s = Spec {
+    let mut s = Scheme {
         name: s.name.clone().into(),
         engine,
         data_dir: s.data_dir.unwrap_or(s.name).into(),
@@ -416,11 +417,11 @@ mod tests {
 
     #[test]
     fn extra_data_of_genesis_header_is_hash_of_common_params() {
-        let spec = Spec::new_test();
-        let common_params = spec.params();
+        let scheme = Scheme::new_test();
+        let common_params = scheme.params();
         let hash_of_common_params = H256::blake(&common_params.rlp_bytes()).to_vec();
 
-        let genesis_header = spec.genesis_header();
+        let genesis_header = scheme.genesis_header();
         let result = genesis_header.extra_data();
         assert_eq!(&hash_of_common_params, result);
     }

@@ -19,7 +19,7 @@ use super::super::hash::{Address, H256};
 use super::super::uint::Uint;
 use super::Seal;
 
-/// Spec genesis.
+/// Scheme genesis.
 #[derive(Debug, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Genesis {

@@ -16,7 +16,7 @@
 
 use super::super::uint::Uint;
 
-/// Spec account.
+/// Scheme account.
 #[derive(Debug, PartialEq, Deserialize)]
 pub struct Account {
     /// Balance.

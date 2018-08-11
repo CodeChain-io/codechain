@@ -45,12 +45,12 @@ use super::super::blockchain::{
 use super::super::consensus::epoch::Transition as EpochTransition;
 use super::super::consensus::CodeChainEngine;
 use super::super::encoded;
-use super::super::error::{BlockImportError, Error, ImportError, SpecError};
+use super::super::error::{BlockImportError, Error, ImportError, SchemeError};
 use super::super::header::Header;
 use super::super::miner::{Miner, MinerService};
 use super::super::parcel::{LocalizedParcel, SignedParcel, UnverifiedParcel};
+use super::super::scheme::{CommonParams, Scheme};
 use super::super::service::ClientIoMessage;
-use super::super::spec::{CommonParams, Spec};
 use super::super::types::{BlockId, BlockStatus, ParcelId, TransactionId, VerificationQueueInfo as BlockQueueInfo};
 use super::super::verification::queue::{BlockQueue, HeaderQueue};
 use super::super::verification::{self, PreverifiedBlock, Verifier};
@@ -88,29 +88,29 @@ pub struct Client {
 impl Client {
     pub fn new(
         config: ClientConfig,
-        spec: &Spec,
+        scheme: &Scheme,
         db: Arc<KeyValueDB>,
         miner: Arc<Miner>,
         message_channel: IoChannel<ClientIoMessage>,
     ) -> Result<Arc<Client>, Error> {
         let journal_db = journaldb::new(db.clone(), journaldb::Algorithm::Archive, ::db::COL_STATE);
-        let mut state_db = StateDB::new(journal_db, config.state_cache_size, spec.custom_handlers.clone());
-        if !spec.check_genesis_root(state_db.as_hashdb()) {
-            return Err(SpecError::InvalidState.into())
+        let mut state_db = StateDB::new(journal_db, config.state_cache_size, scheme.custom_handlers.clone());
+        if !scheme.check_genesis_root(state_db.as_hashdb()) {
+            return Err(SchemeError::InvalidState.into())
         }
         if state_db.journal_db().is_empty() {
             // Sets the correct state root.
-            state_db = spec.ensure_genesis_state(state_db)?;
+            state_db = scheme.ensure_genesis_state(state_db)?;
             let mut batch = DBTransaction::new();
-            state_db.journal_under(&mut batch, 0, &spec.genesis_header().hash())?;
+            state_db.journal_under(&mut batch, 0, &scheme.genesis_header().hash())?;
             db.write(batch).map_err(ClientError::Database)?;
         }
 
-        let gb = spec.genesis_block();
+        let gb = scheme.genesis_block();
         let chain = Arc::new(BlockChain::new(&gb, db.clone()));
-        spec.check_genesis_common_params(&*chain)?;
+        scheme.check_genesis_common_params(&*chain)?;
 
-        let engine = spec.engine.clone();
+        let engine = scheme.engine.clone();
 
         let importer = Importer::new(&config, engine.clone(), message_channel.clone(), miner)?;
 

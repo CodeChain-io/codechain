@@ -23,8 +23,8 @@ pub struct BlakePoWParams {
     pub block_interval: u64,
 }
 
-impl From<cjson::spec::BlakePoWParams> for BlakePoWParams {
-    fn from(p: cjson::spec::BlakePoWParams) -> Self {
+impl From<cjson::scheme::BlakePoWParams> for BlakePoWParams {
+    fn from(p: cjson::scheme::BlakePoWParams) -> Self {
         BlakePoWParams {
             block_reward: p.block_reward.map_or(U256::from(0), Into::into),
             block_interval: p.block_interval.map_or(120, Into::into),

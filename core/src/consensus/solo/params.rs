@@ -24,8 +24,8 @@ pub struct SoloParams {
     pub block_reward: U256,
 }
 
-impl From<cjson::spec::SoloParams> for SoloParams {
-    fn from(p: cjson::spec::SoloParams) -> Self {
+impl From<cjson::scheme::SoloParams> for SoloParams {
+    fn from(p: cjson::scheme::SoloParams) -> Self {
         SoloParams {
             block_reward: p.block_reward.map_or_else(Default::default, Into::into),
         }

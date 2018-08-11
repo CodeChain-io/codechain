@@ -44,7 +44,7 @@ args:
     - chain:
         short: c
         long: chain
-        help: Set the blockchain type out of solo, solo_authority, tendermint, cuckoo, blake_pow or a path to chain spec file.
+        help: Set the blockchain type out of solo, solo_authority, tendermint, cuckoo, blake_pow or a path to chain scheme file.
         takes_value: true
     - db-path:
         long: db-path

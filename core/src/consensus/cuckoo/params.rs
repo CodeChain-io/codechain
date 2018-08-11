@@ -26,8 +26,8 @@ pub struct CuckooParams {
     pub cycle_length: usize,
 }
 
-impl From<cjson::spec::CuckooParams> for CuckooParams {
-    fn from(p: cjson::spec::CuckooParams) -> Self {
+impl From<cjson::scheme::CuckooParams> for CuckooParams {
+    fn from(p: cjson::scheme::CuckooParams) -> Self {
         CuckooParams {
             block_reward: p.block_reward.map_or(U256::from(0), Into::into),
             block_interval: p.block_interval.map_or(120, Into::into),

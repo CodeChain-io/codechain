@@ -37,8 +37,8 @@ impl Deref for PodAccounts {
     }
 }
 
-impl From<cjson::spec::Accounts> for PodAccounts {
-    fn from(s: cjson::spec::Accounts) -> PodAccounts {
+impl From<cjson::scheme::Accounts> for PodAccounts {
+    fn from(s: cjson::scheme::Accounts) -> PodAccounts {
         let accounts =
             s.into_iter().filter(|(_, acc)| !acc.is_empty()).map(|(addr, acc)| (addr.into(), acc.into())).collect();
         PodAccounts(accounts)
@@ -67,8 +67,8 @@ impl Deref for PodShards {
     }
 }
 
-impl From<cjson::spec::Shards> for PodShards {
-    fn from(s: cjson::spec::Shards) -> PodShards {
+impl From<cjson::scheme::Shards> for PodShards {
+    fn from(s: cjson::scheme::Shards) -> PodShards {
         let shards = s.into_iter().map(|(shard_id, shard)| (shard_id, shard.into())).collect();
         PodShards(shards)
     }

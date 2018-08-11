@@ -19,17 +19,17 @@ use serde_json;
 use serde_json::Error;
 use std::io::Read;
 
-/// Spec deserialization.
+/// Scheme deserialization.
 #[derive(Debug, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Spec {
-    /// Spec name.
+pub struct Scheme {
+    /// Scheme name.
     pub name: String,
     /// Special fork name.
     pub data_dir: Option<String>,
     /// Engine.
     pub engine: Engine,
-    /// Spec params.
+    /// Scheme params.
     pub params: Params,
     /// Genesis header.
     pub genesis: Genesis,
@@ -40,7 +40,7 @@ pub struct Spec {
     pub nodes: Option<Vec<String>>,
 }
 
-impl Spec {
+impl Scheme {
     /// Loads test from json.
     pub fn load<R>(reader: R) -> Result<Self, Error>
     where
@@ -51,7 +51,7 @@ impl Spec {
 
 #[cfg(test)]
 mod tests {
-    use super::Spec;
+    use super::Scheme;
     use serde_json;
 
     #[test]
@@ -110,7 +110,7 @@ mod tests {
             "shards": {
             }
         }"#;
-        let _deserialized: Spec = serde_json::from_str(s).unwrap();
+        let _deserialized: Scheme = serde_json::from_str(s).unwrap();
         // TODO: validate all fields
     }
 }

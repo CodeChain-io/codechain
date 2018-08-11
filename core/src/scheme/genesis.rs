@@ -43,8 +43,8 @@ pub struct Genesis {
     pub extra_data: Bytes,
 }
 
-impl From<cjson::spec::Genesis> for Genesis {
-    fn from(g: cjson::spec::Genesis) -> Self {
+impl From<cjson::scheme::Genesis> for Genesis {
+    fn from(g: cjson::scheme::Genesis) -> Self {
         Genesis {
             seal: From::from(g.seal),
             score: g.score.into(),

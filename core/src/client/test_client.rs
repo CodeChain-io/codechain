@@ -64,7 +64,7 @@ use super::super::error::BlockImportError;
 use super::super::header::Header as BlockHeader;
 use super::super::miner::{Miner, MinerService, ParcelImportResult};
 use super::super::parcel::{LocalizedParcel, SignedParcel};
-use super::super::spec::Spec;
+use super::super::scheme::Scheme;
 use super::super::types::{BlockId, ParcelId, TransactionId, VerificationQueueInfo as QueueInfo};
 
 /// Test client.
@@ -93,8 +93,8 @@ pub struct TestBlockChainClient {
     pub queue_size: AtomicUsize,
     /// Miner
     pub miner: Arc<Miner>,
-    /// Spec
-    pub spec: Spec,
+    /// Scheme
+    pub scheme: Scheme,
     /// Timestamp assigned to latest sealed block
     pub latest_block_timestamp: RwLock<u64>,
     /// Pruning history size to report.
@@ -115,19 +115,19 @@ impl TestBlockChainClient {
 
     /// Creates new test client with specified extra data for each block
     pub fn new_with_extra_data(extra_data: Bytes) -> Self {
-        let spec = Spec::new_test();
-        TestBlockChainClient::new_with_spec_and_extra(spec, extra_data)
+        let scheme = Scheme::new_test();
+        TestBlockChainClient::new_with_scheme_and_extra(scheme, extra_data)
     }
 
-    /// Create test client with custom spec.
-    pub fn new_with_spec(spec: Spec) -> Self {
-        TestBlockChainClient::new_with_spec_and_extra(spec, Bytes::new())
+    /// Create test client with custom scheme.
+    pub fn new_with_scheme(scheme: Scheme) -> Self {
+        TestBlockChainClient::new_with_scheme_and_extra(scheme, Bytes::new())
     }
 
-    /// Create test client with custom spec and extra data.
-    pub fn new_with_spec_and_extra(spec: Spec, extra_data: Bytes) -> Self {
-        let genesis_block = spec.genesis_block();
-        let genesis_header = spec.genesis_header();
+    /// Create test client with custom scheme and extra data.
+    pub fn new_with_scheme_and_extra(scheme: Scheme, extra_data: Bytes) -> Self {
+        let genesis_block = scheme.genesis_block();
+        let genesis_header = scheme.genesis_header();
         let genesis_hash = genesis_header.hash();
         let genesis_parcels_root = *genesis_header.parcels_root();
         let genesis_score = *genesis_header.score();
@@ -144,8 +144,8 @@ impl TestBlockChainClient {
             nonces: RwLock::new(HashMap::new()),
             storage: RwLock::new(HashMap::new()),
             queue_size: AtomicUsize::new(0),
-            miner: Arc::new(Miner::with_spec(&spec)),
-            spec,
+            miner: Arc::new(Miner::with_scheme(&scheme)),
+            scheme,
             latest_block_timestamp: RwLock::new(10_000_000),
             history: RwLock::new(None),
         };
@@ -296,14 +296,14 @@ pub fn get_temp_state_db() -> StateDB {
 
 impl ReopenBlock for TestBlockChainClient {
     fn reopen_block(&self, block: ClosedBlock) -> OpenBlock {
-        block.reopen(&*self.spec.engine)
+        block.reopen(&*self.scheme.engine)
     }
 }
 
 impl PrepareOpenBlock for TestBlockChainClient {
     fn prepare_open_block(&self, author: Address, extra_data: Bytes) -> OpenBlock {
-        let engine = &*self.spec.engine;
-        let genesis_header = self.spec.genesis_header();
+        let engine = &*self.scheme.engine;
+        let genesis_header = self.scheme.genesis_header();
         let db = get_temp_state_db();
 
         let mut open_block = OpenBlock::new(engine, db, &genesis_header, author, extra_data, false)

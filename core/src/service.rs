@@ -25,7 +25,7 @@ use primitives::Bytes;
 use super::client::{Client, ClientConfig};
 use super::error::Error;
 use super::miner::Miner;
-use super::spec::Spec;
+use super::scheme::Scheme;
 
 /// Client service setup.
 pub struct ClientService {
@@ -36,7 +36,7 @@ pub struct ClientService {
 impl ClientService {
     pub fn start(
         config: ClientConfig,
-        spec: &Spec,
+        scheme: &Scheme,
         client_path: &Path,
         miner: Arc<Miner>,
     ) -> Result<ClientService, Error> {
@@ -53,14 +53,14 @@ impl ClientService {
                 .map_err(::client::Error::Database)?,
         );
 
-        let client = Client::new(config, &spec, db, miner, io_service.channel())?;
+        let client = Client::new(config, &scheme, db, miner, io_service.channel())?;
 
         let client_io = Arc::new(ClientIoHandler {
             client: client.clone(),
         });
         io_service.register_handler(client_io)?;
 
-        spec.engine.register_client(Arc::downgrade(&client) as _);
+        scheme.engine.register_client(Arc::downgrade(&client) as _);
 
         Ok(ClientService {
             _io_service: io_service,

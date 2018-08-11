@@ -975,17 +975,17 @@ impl NetworkExtension for TendermintExtension {
 mod tests {
     use super::super::super::error::{BlockError, Error};
     use super::super::super::header::Header;
-    use super::super::super::spec::Spec;
+    use super::super::super::scheme::Scheme;
 
     #[test]
     fn has_valid_metadata() {
-        let engine = Spec::new_test_tendermint().engine;
+        let engine = Scheme::new_test_tendermint().engine;
         assert!(!engine.name().is_empty());
     }
 
     #[test]
     fn verification_fails_on_short_seal() {
-        let engine = Spec::new_test_tendermint().engine;
+        let engine = Scheme::new_test_tendermint().engine;
         let header = Header::default();
 
         let verify_result = engine.verify_block_basic(&header);

@@ -47,8 +47,8 @@ impl Encodable for PodAccount {
     }
 }
 
-impl From<cjson::spec::Account> for PodAccount {
-    fn from(a: cjson::spec::Account) -> Self {
+impl From<cjson::scheme::Account> for PodAccount {
+    fn from(a: cjson::scheme::Account) -> Self {
         PodAccount {
             balance: a.balance.map_or_else(U256::zero, Into::into),
             nonce: a.nonce.map_or_else(U256::zero, Into::into),

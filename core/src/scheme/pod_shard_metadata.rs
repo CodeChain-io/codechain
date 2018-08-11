@@ -18,41 +18,50 @@ use std::fmt;
 
 use cjson;
 use ckey::Address;
-use cstate::World;
+use cstate::ShardMetadata;
 use rlp::{Encodable, RlpStream};
 
+use super::pod_world::PodWorld;
+
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct PodWorld {
-    pub nonce: u64,
+pub struct PodShardMetadata {
     pub owners: Vec<Address>,
     pub users: Vec<Address>,
+    pub nonce: u64,
+    pub worlds: Vec<PodWorld>,
 }
 
-impl<'a> Into<World> for &'a PodWorld {
-    fn into(self) -> World {
-        World::new_with_nonce(self.owners.clone(), self.users.clone(), self.nonce)
+impl<'a> Into<ShardMetadata> for &'a PodShardMetadata {
+    fn into(self) -> ShardMetadata {
+        assert!(self.worlds.len() <= ::std::u16::MAX as usize);
+        ShardMetadata::new_with_nonce(self.worlds.len() as u16, self.nonce)
     }
 }
 
-impl Encodable for PodWorld {
+impl Encodable for PodShardMetadata {
     fn rlp_append(&self, s: &mut RlpStream) {
-        let w: World = self.into();
-        w.rlp_append(s);
+        let m: ShardMetadata = self.into();
+        m.rlp_append(s);
     }
 }
 
-impl From<cjson::spec::World> for PodWorld {
-    fn from(s: cjson::spec::World) -> Self {
+impl From<cjson::scheme::Shard> for PodShardMetadata {
+    fn from(s: cjson::scheme::Shard) -> Self {
         Self {
             nonce: s.nonce.map(Into::into).unwrap_or(0),
-            owners: s.owners.map(|a| a.into_iter().map(Into::into).collect()).unwrap_or_else(Vec::new),
-            users: s.users.map(|users| users.into_iter().map(Into::into).collect()).unwrap_or_else(Vec::new),
+            owners: s.owners.into_iter().map(Into::into).collect(),
+            users: s.users.unwrap_or_else(Vec::new).into_iter().map(Into::into).collect(),
+            worlds: s.worlds.unwrap_or_else(Vec::new).into_iter().map(Into::into).collect(),
         }
     }
 }
 
-impl fmt::Display for PodWorld {
+impl fmt::Display for PodShardMetadata {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "(#nonce={}; owners={:#?}\n users ={:#?})", self.nonce, self.owners, self.users)
+        write!(
+            f,
+            "(#nonce={}; owners={:#?}; users={:#?} worlds={:#?})",
+            self.nonce, self.owners, self.users, self.worlds
+        )
     }
 }

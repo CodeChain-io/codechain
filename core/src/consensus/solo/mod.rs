@@ -82,16 +82,16 @@ mod tests {
 
     use super::super::super::block::{IsBlock, OpenBlock};
     use super::super::super::header::Header;
-    use super::super::super::spec::Spec;
+    use super::super::super::scheme::Scheme;
     use super::super::super::tests::helpers::get_temp_state_db;
     use super::super::Seal;
 
     #[test]
     fn seal() {
-        let spec = Spec::new_test_solo();
-        let engine = &*spec.engine;
-        let db = spec.ensure_genesis_state(get_temp_state_db()).unwrap();
-        let genesis_header = spec.genesis_header();
+        let scheme = Scheme::new_test_solo();
+        let engine = &*scheme.engine;
+        let db = scheme.ensure_genesis_state(get_temp_state_db()).unwrap();
+        let genesis_header = scheme.genesis_header();
         let b = OpenBlock::new(engine, db, &genesis_header, Default::default(), vec![], false).unwrap();
         let parent_parcels_root = genesis_header.parcels_root().clone();
         let parent_invoices_root = genesis_header.invoices_root().clone();
@@ -103,7 +103,7 @@ mod tests {
 
     #[test]
     fn fail_to_verify() {
-        let engine = Spec::new_test_solo().engine;
+        let engine = Scheme::new_test_solo().engine;
         let mut header: Header = Header::default();
 
         assert!(engine.verify_block_basic(&header).is_ok());

@@ -32,7 +32,7 @@ use super::super::consensus::{CodeChainEngine, EngineType, Seal};
 use super::super::error::Error;
 use super::super::header::Header;
 use super::super::parcel::{SignedParcel, UnverifiedParcel};
-use super::super::spec::Spec;
+use super::super::scheme::Scheme;
 use super::super::types::{BlockId, ParcelId};
 use super::mem_pool::{AccountDetails, MemPool, ParcelOrigin, RemovalReason};
 use super::sealing_queue::SealingQueue;
@@ -105,15 +105,15 @@ impl Miner {
         self.notifiers.write().push(notifier);
     }
 
-    pub fn new(options: MinerOptions, spec: &Spec, accounts: Option<Arc<AccountProvider>>) -> Arc<Self> {
-        Arc::new(Self::new_raw(options, spec, accounts))
+    pub fn new(options: MinerOptions, scheme: &Scheme, accounts: Option<Arc<AccountProvider>>) -> Arc<Self> {
+        Arc::new(Self::new_raw(options, scheme, accounts))
     }
 
-    pub fn with_spec(spec: &Spec) -> Self {
-        Self::new_raw(Default::default(), spec, None)
+    pub fn with_scheme(scheme: &Scheme) -> Self {
+        Self::new_raw(Default::default(), scheme, None)
     }
 
-    fn new_raw(options: MinerOptions, spec: &Spec, accounts: Option<Arc<AccountProvider>>) -> Self {
+    fn new_raw(options: MinerOptions, scheme: &Scheme, accounts: Option<Arc<AccountProvider>>) -> Self {
         let mem_limit = options.mem_pool_memory_limit.unwrap_or_else(usize::max_value);
         let mem_pool = Arc::new(RwLock::new(MemPool::with_limits(options.mem_pool_size, mem_limit)));
         let notifiers: Vec<Box<NotifyWork>> = match options.new_work_notify.is_empty() {
@@ -131,9 +131,9 @@ impl Miner {
             sealing_block_last_request: Mutex::new(0),
             sealing_work: Mutex::new(SealingWork {
                 queue: SealingQueue::new(options.work_queue_size),
-                enabled: options.force_sealing || spec.engine.seals_internally().is_some(),
+                enabled: options.force_sealing || scheme.engine.seals_internally().is_some(),
             }),
-            engine: spec.engine.clone(),
+            engine: scheme.engine.clone(),
             options,
             accounts,
             notifiers: RwLock::new(notifiers),

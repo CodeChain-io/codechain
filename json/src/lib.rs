@@ -24,5 +24,5 @@ extern crate serde_derive;
 
 pub mod bytes;
 pub mod hash;
-pub mod spec;
+pub mod scheme;
 pub mod uint;

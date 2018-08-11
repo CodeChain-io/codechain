@@ -26,8 +26,8 @@ pub struct SoloAuthorityParams {
     pub block_reward: U256,
 }
 
-impl From<cjson::spec::SoloAuthorityParams> for SoloAuthorityParams {
-    fn from(p: cjson::spec::SoloAuthorityParams) -> Self {
+impl From<cjson::scheme::SoloAuthorityParams> for SoloAuthorityParams {
+    fn from(p: cjson::scheme::SoloAuthorityParams) -> Self {
         SoloAuthorityParams {
             validators: p.validators.into_iter().map(Into::into).collect(),
             block_reward: p.block_reward.map_or_else(Default::default, Into::into),

@@ -26,7 +26,7 @@ use super::client::{BlockInfo, TransactionInfo};
 use super::error::Error;
 use super::header::Header;
 use super::parcel::{SignedParcel, UnverifiedParcel};
-use super::spec::CommonParams;
+use super::scheme::CommonParams;
 
 pub struct CodeChainMachine {
     params: CommonParams,

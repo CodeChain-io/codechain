@@ -19,8 +19,8 @@ mod pod_account;
 mod pod_shard_metadata;
 mod pod_state;
 mod pod_world;
+mod scheme;
 mod seal;
-mod spec;
 
 pub use self::genesis::Genesis;
-pub use self::spec::{CommonParams, Spec};
+pub use self::scheme::{CommonParams, Scheme};

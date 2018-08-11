@@ -46,7 +46,7 @@ use super::blockchain_info::BlockChainInfo;
 use super::encoded;
 use super::error::{BlockImportError, Error as CoreError};
 use super::parcel::{LocalizedParcel, SignedParcel};
-use super::spec::CommonParams;
+use super::scheme::CommonParams;
 use super::types::{BlockId, BlockStatus, ParcelId, TransactionId, VerificationQueueInfo as BlockQueueInfo};
 
 /// Provides `chain_info` method

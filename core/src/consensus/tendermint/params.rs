@@ -31,8 +31,8 @@ pub struct TendermintParams {
     pub block_reward: U256,
 }
 
-impl From<cjson::spec::TendermintParams> for TendermintParams {
-    fn from(p: cjson::spec::TendermintParams) -> Self {
+impl From<cjson::scheme::TendermintParams> for TendermintParams {
+    fn from(p: cjson::scheme::TendermintParams) -> Self {
         let dt = TendermintTimeouts::default();
         TendermintParams {
             validators: new_validator_set(p.validators.into_iter().map(Into::into).collect()),

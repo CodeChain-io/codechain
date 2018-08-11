@@ -118,19 +118,19 @@ pub enum BlockError {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub enum SpecError {
+pub enum SchemeError {
     InvalidCommonParams,
     InvalidState,
 }
 
-impl fmt::Display for SpecError {
+impl fmt::Display for SchemeError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use self::SpecError::*;
+        use self::SchemeError::*;
         let msg: String = match self {
             InvalidCommonParams => "Common params are not matched with gensis block".into(),
             InvalidState => "Genesis state is not same with spec".into(),
         };
-        f.write_fmt(format_args!("Spec file error ({})", msg))
+        f.write_fmt(format_args!("Scheme file error ({})", msg))
     }
 }
 
@@ -184,7 +184,7 @@ pub enum Error {
     PowHashInvalid,
     /// The value of the nonce or mishash is invalid.
     PowInvalid,
-    Spec(SpecError),
+    Scheme(SchemeError),
     /// Account Provider error.
     AccountProvider(AccountsError),
     State(StateError),
@@ -202,7 +202,7 @@ impl fmt::Display for Error {
             Error::Key(err) => err.fmt(f),
             Error::PowHashInvalid => f.write_str("Invalid or out of date PoW hash."),
             Error::PowInvalid => f.write_str("Invalid nonce or mishash"),
-            Error::Spec(err) => err.fmt(f),
+            Error::Scheme(err) => err.fmt(f),
             Error::AccountProvider(err) => err.fmt(f),
             Error::State(err) => err.fmt(f),
         }
@@ -227,9 +227,9 @@ impl From<BlockError> for Error {
     }
 }
 
-impl From<SpecError> for Error {
-    fn from(err: SpecError) -> Error {
-        Error::Spec(err)
+impl From<SchemeError> for Error {
+    fn from(err: SchemeError) -> Error {
+        Error::Scheme(err)
     }
 }
 

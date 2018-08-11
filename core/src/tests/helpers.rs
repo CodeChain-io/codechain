@@ -20,7 +20,7 @@ use rlp::{self, RlpStream};
 
 use super::super::header::Header;
 use super::super::parcel::SignedParcel;
-use super::super::spec::Spec;
+use super::super::scheme::Scheme;
 
 pub fn create_test_block(header: &Header) -> Bytes {
     let mut rlp = RlpStream::new_list(2);
@@ -48,11 +48,11 @@ pub fn get_good_dummy_block() -> Bytes {
 
 pub fn get_good_dummy_block_hash() -> (H256, Bytes) {
     let mut block_header = Header::new();
-    let test_spec = Spec::new_test();
+    let test_scheme = Scheme::new_test();
     block_header.set_score(U256::from(0x20000));
     block_header.set_timestamp(40);
     block_header.set_number(1);
-    block_header.set_parent_hash(test_spec.genesis_header().hash());
+    block_header.set_parent_hash(test_scheme.genesis_header().hash());
 
     (block_header.hash(), create_test_block(&block_header))
 }
