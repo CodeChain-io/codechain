@@ -27,7 +27,7 @@ use clap::ArgMatches;
 use clogger::{self, LoggerConfig};
 use primitives::clean_0x;
 
-use super::constants::DEFAULT_KEYS_PATH;
+use super::super::constants::DEFAULT_KEYS_PATH;
 
 pub fn run_account_command(matches: ArgMatches) -> Result<(), String> {
     if matches.subcommand.is_none() {
