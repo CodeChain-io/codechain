@@ -973,9 +973,52 @@ impl NetworkExtension for TendermintExtension {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
+    use ccrypto::blake256;
+    use ckey::Address;
+    use primitives::Bytes;
+
+    use super::super::super::account_provider::AccountProvider;
+    use super::super::super::block::{ClosedBlock, IsBlock, OpenBlock};
+    use super::super::super::consensus::CodeChainEngine;
     use super::super::super::error::{BlockError, Error};
     use super::super::super::header::Header;
     use super::super::super::scheme::Scheme;
+    use super::super::super::tests::helpers::get_temp_state_db;
+    use super::Seal;
+
+    /// Accounts inserted with "0" and "1" are validators. First proposer is "0".
+    fn setup() -> (Scheme, Arc<AccountProvider>) {
+        let tap = AccountProvider::transient_provider();
+        let scheme = Scheme::new_test_tendermint();
+        (scheme, tap)
+    }
+
+    fn propose_default(scheme: &Scheme, proposer: Address) -> (ClosedBlock, Vec<Bytes>) {
+        let db = get_temp_state_db();
+        let db = scheme.ensure_genesis_state(db).unwrap();
+        let genesis_header = scheme.genesis_header();
+        let b = OpenBlock::new(scheme.engine.as_ref(), db.clone(), &genesis_header, proposer, vec![], false).unwrap();
+        let b = b.close(*genesis_header.parcels_root(), *genesis_header.invoices_root());
+        if let Seal::Proposal(seal) = scheme.engine.generate_seal(b.block(), &genesis_header) {
+            (b, seal)
+        } else {
+            panic!()
+        }
+    }
+
+    fn insert_and_unlock(tap: &Arc<AccountProvider>, acc: &str) -> Address {
+        let addr = tap.insert_account(blake256(acc).into(), &acc.into()).unwrap();
+        tap.unlock_account_permanently(addr, acc.into()).unwrap();
+        addr
+    }
+
+    fn insert_and_register(tap: &Arc<AccountProvider>, engine: &CodeChainEngine, acc: &str) -> Address {
+        let addr = insert_and_unlock(tap, acc);
+        engine.set_signer(tap.clone(), addr.clone(), acc.into());
+        addr
+    }
 
     #[test]
     fn has_valid_metadata() {
@@ -999,5 +1042,15 @@ mod tests {
                 panic!("Should be error, got Ok");
             }
         }
+    }
+
+    #[test]
+    fn generate_seal() {
+        let (scheme, tap) = setup();
+
+        let proposer = insert_and_register(&tap, scheme.engine.as_ref(), "1");
+
+        let (b, seal) = propose_default(&scheme, proposer);
+        assert!(b.lock().try_seal(scheme.engine.as_ref(), seal).is_ok());
     }
 }
