@@ -107,23 +107,12 @@ fn stratum_start(cfg: StratumConfig, miner: Arc<Miner>, client: Arc<Client>) -> 
 fn new_miner(config: &config::Config, scheme: &Scheme, ap: Arc<AccountProvider>) -> Result<Arc<Miner>, String> {
     let miner = Miner::new(config.miner_options(), scheme, Some(ap.clone()));
     match miner.engine_type() {
-        EngineType::PoW => {
-            let author = config.mining.author;
-            match author {
-                Some(author) => miner.set_author(author, None).expect("set_author never fails"),
-                None => return Err("mining.author is not specified".to_string()),
-            }
-        }
+        EngineType::PoW => match config.mining.author {
+            Some(author) => miner.set_author(author, None).expect("set_author never fails when PoW is used"),
+            None => return Err("mining.author is not specified".to_string()),
+        },
         EngineType::InternalSealing => match config.mining.engine_signer {
-            Some(engine_signer) => match ap.has_account(&engine_signer) {
-                Ok(has_account) if !has_account => {
-                    return Err("mining.engine_signer is not found in AccountProvider".to_string())
-                }
-                Ok(..) => miner.set_author(engine_signer, None).map_err(|e| format!("{:?}", e))?,
-                Err(e) => {
-                    return Err(format!("Error while checking whether engine_signer is in AccountProvider: {:?}", e))
-                }
-            },
+            Some(engine_signer) => miner.set_author(engine_signer, None).map_err(|e| format!("{:?}", e))?,
             None => return Err("mining.engine_signer is not specified".to_string()),
         },
         EngineType::Solo => (),
