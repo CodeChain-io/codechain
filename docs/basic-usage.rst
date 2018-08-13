@@ -29,22 +29,22 @@ Tendermint Configuration
 In order to properly get Tendermint to get going, you need to have 4 nodes up and running. To do this, first run a single node by running the following:
 ::
 
-    codechain --db-path db/db0 --port 3485 --jsonrpc-port 8080 --engine-signer 0x84137e7a75043bed32e4458a45da7549a8169b4d -c tendermint
+    codechain --db-path db/db0 --port 3485 --jsonrpc-port 8080 --engine-signer tccqzzpxln6w5zrhmfju3zc53w6w4y6s95mf5hw0n62 -c tendermint
 
-This creates a node in db0 (database 0) at port 3485(used for nodes to communicate with each other) and jsonRPC port 8080(port used for external access) with engine signer of 0x84137e7a75043bed32e4458a45da7549a8169b4d(used to sign the block).
+This creates a node in db0 (database 0) at port 3485(used for nodes to communicate with each other) and jsonRPC port 8080(port used for external access) with engine signer of tccqzzpxln6w5zrhmfju3zc53w6w4y6s95mf5hw0n62(used to sign the block).
 
 Then create more nodes, and allocate each node with a secret key that corresponds to one of the four public keys listed in Tendermint's validator property.
 When creating new nodes, the db, port and jsonRPC port all must be configured as a different value. So for example, the next node should be set up like this:
 ::
 
-    codechain --db-path db/db1 --port 3486 --jsonrpc-port 8081 --engine-signer 0x9f194cba03ecc7004646414e795957ceca32cd20 -c tendermint
+    codechain --db-path db/db1 --port 3486 --jsonrpc-port 8081 --engine-signer tccqz03jn96q0kvwqzxgeq5u72e2l8v5vkdyq4cll9x -c tendermint
 
 Once each public key has a corresponding node with a corresponding secret key, use the boostrap address command to interlink all the nodes together.
 The way each node is connected does not matter, as long as each node is connected to another node. For example, in order to make a certain node connect to
 the node with a secret key of 1, use this command:
 ::
 
-    codechain --db-path db/db1 --port 3486 --jsonrpc-port 8081 --engine-signer 0xcfd28c1279645febb7cf8802993291ef433a21f3 -c tendermint --bootstrap-addresses 127.0.0.1:3485
+    codechain --db-path db/db1 --port 3486 --jsonrpc-port 8081 --engine-signer tccqr8a9rqj09j9l6ahe7yq9xfjj8h5xw3p7vpcgner -c tendermint --bootstrap-addresses 127.0.0.1:3485
 
 Checking if CodeChain is Configured Properly
 ============================================

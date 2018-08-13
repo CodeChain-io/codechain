@@ -21,7 +21,7 @@ use std::str::FromStr;
 use std::time::Duration;
 
 use ccore::{MinerOptions, ShardValidatorConfig, StratumConfig};
-use ckey::Address;
+use ckey::PlatformAddress;
 use clap;
 use cnetwork::{NetworkConfig, SocketAddr};
 use rpc::{RpcHttpConfig, RpcIpcConfig};
@@ -110,7 +110,7 @@ impl Config {
         debug_assert!(self.shard_validator.disable);
 
         ShardValidatorConfig {
-            account: self.shard_validator.account.unwrap(),
+            account: self.shard_validator.account.clone().unwrap().address,
         }
     }
 }
@@ -136,8 +136,8 @@ pub struct Operating {
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Mining {
-    pub author: Option<Address>,
-    pub engine_signer: Option<Address>,
+    pub author: Option<PlatformAddress>,
+    pub engine_signer: Option<PlatformAddress>,
     pub mem_pool_size: usize,
     pub mem_pool_mem_limit: usize,
     pub notify_work: Vec<String>,
@@ -196,7 +196,7 @@ pub struct Stratum {
 #[serde(deny_unknown_fields)]
 pub struct ShardValidator {
     pub disable: bool,
-    pub account: Option<Address>,
+    pub account: Option<PlatformAddress>,
 }
 
 impl Ipc {
@@ -238,10 +238,10 @@ impl Operating {
 impl Mining {
     pub fn overwrite_with(&mut self, matches: &clap::ArgMatches) -> Result<(), String> {
         if let Some(author) = matches.value_of("author") {
-            self.author = Some(author.parse()?);
+            self.author = Some(author.parse().map_err(|_| "Invalid address format")?);
         }
         if let Some(engine_signer) = matches.value_of("engine-signer") {
-            self.engine_signer = Some(engine_signer.parse()?);
+            self.engine_signer = Some(engine_signer.parse().map_err(|_| "Invalid address format")?);
         }
         if let Some(mem_pool_mem_limit) = matches.value_of("mem-pool-mem-limit") {
             self.mem_pool_mem_limit = mem_pool_mem_limit.parse().map_err(|_| "Invalid mem limit")?;
@@ -368,7 +368,7 @@ impl ShardValidator {
         }
 
         if let Some(account) = matches.value_of("shard-validator") {
-            self.account = Some(account.parse()?)
+            self.account = Some(account.parse().map_err(|_| "Invalid address format")?)
         }
 
         Ok(())
