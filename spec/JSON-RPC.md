@@ -874,7 +874,7 @@ Response Example
 Executes the transactions and returns the current shard root and the changed shard root.
 
 Params:
- 1. transactions: `hexadecimal string` - RLP encoded hex string of `Transaction[]`
+ 1. transactions: `Transaction[]`
  2. sender: `H160`
 
 Return Type: `ChangeShard[]`
@@ -885,7 +885,7 @@ Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "chain_executeTransactions", "params": ["0xf8c8f8630311809e6d65746164617461206f66207065726d697373696f6e6564206173736574a007feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050c0c7865af3107a4000d5943f4aa1fedf1f54eeb03b759deadb36676b18491180f861031101a26d65746164617461206f66206e6f6e2d7065726d697373696f6e6564206173736574a007feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050c0c164d5943f4aa1fedf1f54eeb03b759deadb36676b18491180", "0xa6594b7196808d161b6fb137e781abbc251385d9"], "id": null}' \
+    -d '{"jsonrpc": "2.0", "method": "chain_executeTransactions", "params": [[{"type":"assetMint","data":{"networkId":"17","shardId":0,"worldId":0,"metadata":"{\"name\":\"Gold\",\"description\":\"An asset example\",\"icon_url\":\"https://gold.image/\"}","output":{"lockScriptHash":"0xf42a65ea518ba236c08b261c34af0521fa3cd1aa505e1c18980919cb8945f8f3","parameters":[],"amount":10000},"registrar":null,"nonce":0}}, {"type":"assetMint","data":{"networkId":"17","shardId":1,"worldId":0,"metadata":"{\"name\":\"Gold\",\"description\":\"An asset example\",\"icon_url\":\"https://gold.image/\"}","output":{"lockScriptHash":"0xf42a65ea518ba236c08b261c34af0521fa3cd1aa505e1c18980919cb8945f8f3","parameters":[],"amount":10000},"registrar":null,"nonce":0}}], "0xa6594b7196808d161b6fb137e781abbc251385d9"], "id": null}' \
     localhost:8080
 ```
 
