@@ -68,7 +68,7 @@ mod tests {
             "soloAuthority": {
                 "params": {
                     "durationLimit": "0x0d",
-                    "validators" : ["0xc6d9d2cd449a754c494264e1809c50e34d64562b"]
+                    "validators" : ["tccqqtk3q3rea46cq4cpa4h5tm43nw3supd6uxtltxv"]
                 }
             }
         }"#;

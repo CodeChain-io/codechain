@@ -14,7 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use super::super::hash::Address;
+use ckey::PlatformAddress;
+
 use super::super::uint::Uint;
 
 /// Authority params deserialization.
@@ -22,7 +23,7 @@ use super::super::uint::Uint;
 #[serde(rename_all = "camelCase")]
 pub struct SoloAuthorityParams {
     /// Valid authorities
-    pub validators: Vec<Address>,
+    pub validators: Vec<PlatformAddress>,
     /// Block reward.
     pub block_reward: Option<Uint>,
 }
@@ -35,11 +36,12 @@ pub struct SoloAuthority {
 
 #[cfg(test)]
 mod tests {
-    use ckey::Address as CoreAddress;
+    use std::str::FromStr;
+
+    use ckey::PlatformAddress;
     use primitives::U256;
     use serde_json;
 
-    use super::super::super::hash::Address;
     use super::super::super::uint::Uint;
     use super::SoloAuthority;
 
@@ -47,14 +49,14 @@ mod tests {
     fn basic_authority_deserialization() {
         let s = r#"{
             "params": {
-                "validators" : ["0xc6d9d2cd449a754c494264e1809c50e34d64562b"],
+                "validators" : ["tccqqtk3q3rea46cq4cpa4h5tm43nw3supd6uxtltxv"],
                 "blockReward": "0x0d"
             }
         }"#;
 
         let deserialized: SoloAuthority = serde_json::from_str(s).unwrap();
 
-        let vs = vec![Address(CoreAddress::from("0xc6d9d2cd449a754c494264e1809c50e34d64562b"))];
+        let vs = vec![PlatformAddress::from_str("tccqqtk3q3rea46cq4cpa4h5tm43nw3supd6uxtltxv").unwrap()];
         assert_eq!(deserialized.params.validators, vs);
         assert_eq!(deserialized.params.block_reward, Some(Uint(U256::from(0x0d))));
     }
