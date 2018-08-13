@@ -14,7 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use super::super::hash::Address;
+use ckey::PlatformAddress;
+
 use super::super::uint::Uint;
 
 /// Tendermint params deserialization.
@@ -22,7 +23,7 @@ use super::super::uint::Uint;
 #[serde(rename_all = "camelCase")]
 pub struct TendermintParams {
     /// Valid validators.
-    pub validators: Vec<Address>,
+    pub validators: Vec<PlatformAddress>,
     /// Propose step timeout in milliseconds.
     pub timeout_propose: Option<Uint>,
     /// Prevote step timeout in milliseconds.
@@ -43,22 +44,23 @@ pub struct Tendermint {
 
 #[cfg(test)]
 mod tests {
-    use ckey::Address as CoreAddress;
+    use std::str::FromStr;
+
+    use ckey::PlatformAddress;
     use serde_json;
 
-    use super::super::super::hash::Address;
     use super::Tendermint;
 
     #[test]
     fn tendermint_deserialization() {
         let s = r#"{
             "params": {
-                "validators": ["0xc6d9d2cd449a754c494264e1809c50e34d64562b"]
+                "validators": ["tccqzzpxln6w5zrhmfju3zc53w6w4y6s95mf5hw0n62"]
             }
         }"#;
 
         let deserialized: Tendermint = serde_json::from_str(s).unwrap();
-        let vs = vec![Address(CoreAddress::from("0xc6d9d2cd449a754c494264e1809c50e34d64562b"))];
+        let vs = vec![PlatformAddress::from_str("tccqzzpxln6w5zrhmfju3zc53w6w4y6s95mf5hw0n62").unwrap()];
         assert_eq!(deserialized.params.validators, vs);
     }
 }
