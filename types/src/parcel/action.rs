@@ -30,16 +30,14 @@ const CHANGE_SHARD_OWNERS: u8 = 5;
 const CHANGE_SHARD_USERS: u8 = 6;
 const CUSTOM: u8 = 0xFF;
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, RlpDecodable, RlpEncodable)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone, PartialEq, Eq, RlpDecodable, RlpEncodable)]
 pub struct ChangeShard {
     pub shard_id: ShardId,
     pub pre_root: H256,
     pub post_root: H256,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase", tag = "action")]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Action {
     ChangeShardState {
         /// Transaction, can be either asset mint or asset transfer

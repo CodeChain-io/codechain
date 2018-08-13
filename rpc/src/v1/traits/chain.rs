@@ -17,14 +17,13 @@
 use ckey::{Address, NetworkId, Public};
 use cstate::{AssetScheme, OwnedAsset};
 use ctypes::invoice::{ParcelInvoice, TransactionInvoice};
-use ctypes::parcel::ChangeShard;
 use ctypes::transaction::Transaction;
 use ctypes::{BlockNumber, ShardId, WorldId};
 use primitives::{H160, H256, U256};
 
 use jsonrpc_core::Result;
 
-use super::super::types::{Block, BlockNumberAndHash, Bytes, Parcel};
+use super::super::types::{Block, BlockNumberAndHash, Bytes, ChangeShard, Parcel};
 
 build_rpc_trait! {
     pub trait Chain {

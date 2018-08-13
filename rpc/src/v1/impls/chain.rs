@@ -23,7 +23,7 @@ use ccore::{
 use ckey::{Address, NetworkId, Public};
 use cstate::{AssetScheme, AssetSchemeAddress, OwnedAsset};
 use ctypes::invoice::{ParcelInvoice, TransactionInvoice};
-use ctypes::parcel::{Action, ChangeShard};
+use ctypes::parcel::Action;
 use ctypes::transaction::Transaction;
 use ctypes::{BlockNumber, ShardId, WorldId};
 use primitives::{H160, H256, U256};
@@ -33,7 +33,7 @@ use jsonrpc_core::Result;
 
 use super::super::errors;
 use super::super::traits::Chain;
-use super::super::types::{Block, BlockNumberAndHash, Bytes, Parcel};
+use super::super::types::{Block, BlockNumberAndHash, Bytes, ChangeShard, Parcel};
 
 pub struct ChainClient<C, M>
 where
@@ -205,6 +205,12 @@ where
         let transactions: Vec<Transaction> =
             UntrustedRlp::new(&raw.into_vec()).as_list().map_err(errors::rlp).map(Into::into)?;
 
-        Ok(self.client.execute_transactions(&transactions, &sender).map_err(errors::core)?)
+        Ok(self
+            .client
+            .execute_transactions(&transactions, &sender)
+            .map_err(errors::core)?
+            .into_iter()
+            .map(From::from)
+            .collect())
     }
 }

@@ -16,8 +16,9 @@
 
 use ccore::{LocalizedParcel, SignedParcel};
 use ckey::{NetworkId, Signature};
-use ctypes::parcel::Action;
 use primitives::{H256, U256};
+
+use super::Action;
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -43,7 +44,7 @@ impl From<LocalizedParcel> for Parcel {
             nonce: p.nonce,
             fee: p.fee,
             network_id: p.network_id,
-            action: p.action.clone(),
+            action: p.action.clone().into(),
             hash: p.hash(),
             sig: sig.into(),
         }
@@ -60,7 +61,7 @@ impl From<SignedParcel> for Parcel {
             nonce: p.nonce,
             fee: p.fee,
             network_id: p.network_id,
-            action: p.action.clone(),
+            action: p.action.clone().into(),
             hash: p.hash(),
             sig: sig.into(),
         }
