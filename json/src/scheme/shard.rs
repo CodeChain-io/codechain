@@ -14,21 +14,24 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use super::super::hash::Address;
+use ckey::PlatformAddress;
+
 use super::super::uint::Uint;
 use super::World;
 
 #[derive(Debug, PartialEq, Deserialize)]
 pub struct Shard {
     pub nonce: Option<Uint>,
-    pub owners: Vec<Address>,
-    pub users: Option<Vec<Address>>,
+    pub owners: Vec<PlatformAddress>,
+    pub users: Option<Vec<PlatformAddress>>,
     pub worlds: Option<Vec<World>>,
 }
 
 #[cfg(test)]
 mod tests {
-    use ckey::Address as CoreAddress;
+    use std::str::FromStr;
+
+    use ckey::PlatformAddress;
     use primitives::U256;
     use serde_json;
 
@@ -38,21 +41,23 @@ mod tests {
     fn shard_deserialization() {
         let s = r#"{
             "nonce": 0,
-            "owners": ["0x01234567890abcdef0123456789abcdef0123456"],
+            "owners": ["tccqqtk3q3rea46cq4cpa4h5tm43nw3supd6uxtltxv"],
             "worlds": [{
                 "nonce": 3,
-                "owners": ["0x01234567890abcdef0123456789abcdef0123457"]
+                "owners": ["tccqp9lfw377aaxwl2f9s34h5lpfru0y5tlrc5avutn"]
             }]
         }"#;
         let shard: Shard = serde_json::from_str(s).unwrap();
         assert_eq!(
             Shard {
                 nonce: Some(Uint(U256::from(0))),
-                owners: vec![Address(CoreAddress::from("01234567890abcdef0123456789abcdef0123456"))],
+                owners: vec![PlatformAddress::from_str("tccqqtk3q3rea46cq4cpa4h5tm43nw3supd6uxtltxv").unwrap()],
                 users: None,
                 worlds: Some(vec![World {
                     nonce: Some(Uint(U256::from(3))),
-                    owners: Some(vec![Address(CoreAddress::from("01234567890abcdef0123456789abcdef0123457"))]),
+                    owners: Some(vec![
+                        PlatformAddress::from_str("tccqp9lfw377aaxwl2f9s34h5lpfru0y5tlrc5avutn").unwrap(),
+                    ]),
                     users: None,
                 }]),
             },
@@ -64,15 +69,15 @@ mod tests {
     fn shard_with_non_zero_nonce_deserialization() {
         let s = r#"{
             "nonce": 100,
-            "owners": ["0x01234567890abcdef0123456789abcdef0123456"],
-            "users": ["0x01234567890abcdef0123456789abcdef0123457"]
+            "owners": ["tccqqtk3q3rea46cq4cpa4h5tm43nw3supd6uxtltxv"],
+            "users": ["tccqp9lfw377aaxwl2f9s34h5lpfru0y5tlrc5avutn"]
         }"#;
         let shard: Shard = serde_json::from_str(s).unwrap();
         assert_eq!(
             Shard {
                 nonce: Some(Uint(U256::from(100))),
-                owners: vec![Address(CoreAddress::from("01234567890abcdef0123456789abcdef0123456"))],
-                users: Some(vec![Address(CoreAddress::from("01234567890abcdef0123456789abcdef0123457"))]),
+                owners: vec![PlatformAddress::from_str("tccqqtk3q3rea46cq4cpa4h5tm43nw3supd6uxtltxv").unwrap()],
+                users: Some(vec![PlatformAddress::from_str("tccqp9lfw377aaxwl2f9s34h5lpfru0y5tlrc5avutn").unwrap()]),
                 worlds: None,
             },
             shard
@@ -91,13 +96,13 @@ mod tests {
     #[test]
     fn shard_without_nonce_deserialization() {
         let s = r#"{
-            "owners": ["0x01234567890abcdef0123456789abcdef0123456"]
+            "owners": ["tccqqtk3q3rea46cq4cpa4h5tm43nw3supd6uxtltxv"]
         }"#;
         let shard: Shard = serde_json::from_str(s).unwrap();
         assert_eq!(
             Shard {
                 nonce: None,
-                owners: vec![Address(CoreAddress::from("01234567890abcdef0123456789abcdef0123456"))],
+                owners: vec![PlatformAddress::from_str("tccqqtk3q3rea46cq4cpa4h5tm43nw3supd6uxtltxv").unwrap()],
                 users: None,
                 worlds: None,
             },
