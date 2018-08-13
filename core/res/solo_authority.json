@@ -44,12 +44,12 @@
   "shards": {
     "0": {
       "nonce": 0,
-      "owners": ["0x9cce34f7ab185c7aba1b7c8140d620b4bda941d6"],
+      "owners": ["tccqzwvud8h4vv9c746rd7gzsxkyz6tm22p6c9gekrh"],
       "worlds": [{
         "nonce": 0,
         "owners": [
-          "0x9cce34f7ab185c7aba1b7c8140d620b4bda941d6",
-          "0xa6594b7196808d161b6fb137e781abbc251385d9"
+          "tccqzwvud8h4vv9c746rd7gzsxkyz6tm22p6c9gekrh",
+          "tccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9my9a2k78"
         ]
       }]
     }

@@ -14,19 +14,22 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use super::super::hash::Address;
+use ckey::PlatformAddress;
+
 use super::super::uint::Uint;
 
 #[derive(Debug, PartialEq, Deserialize)]
 pub struct World {
     pub nonce: Option<Uint>,
-    pub owners: Option<Vec<Address>>,
-    pub users: Option<Vec<Address>>,
+    pub owners: Option<Vec<PlatformAddress>>,
+    pub users: Option<Vec<PlatformAddress>>,
 }
 
 #[cfg(test)]
 mod tests {
-    use ckey::Address as CoreAddress;
+    use std::str::FromStr;
+
+    use ckey::PlatformAddress;
     use serde_json;
 
     use super::*;
@@ -35,13 +38,13 @@ mod tests {
     fn deserialization() {
         let s = r#"{
             "nonce": 0,
-            "owners": ["0x01234567890abcdef0123456789abcdef0123456"]
+            "owners": ["tccqqtk3q3rea46cq4cpa4h5tm43nw3supd6uxtltxv"]
         }"#;
         let world: World = serde_json::from_str(s).unwrap();
         assert_eq!(
             World {
                 nonce: Some(Uint(0.into())),
-                owners: Some(vec![Address(CoreAddress::from("01234567890abcdef0123456789abcdef0123456"))]),
+                owners: Some(vec![PlatformAddress::from_str("tccqqtk3q3rea46cq4cpa4h5tm43nw3supd6uxtltxv").unwrap()]),
                 users: None,
             },
             world
@@ -52,13 +55,13 @@ mod tests {
     fn with_non_zero_nonce_deserialization() {
         let s = r#"{
             "nonce": 100,
-            "owners": ["0x01234567890abcdef0123456789abcdef0123456"]
+            "owners": ["tccqqtk3q3rea46cq4cpa4h5tm43nw3supd6uxtltxv"]
         }"#;
         let world: World = serde_json::from_str(s).unwrap();
         assert_eq!(
             World {
                 nonce: Some(Uint(100.into())),
-                owners: Some(vec![Address(CoreAddress::from("01234567890abcdef0123456789abcdef0123456"))]),
+                owners: Some(vec![PlatformAddress::from_str("tccqqtk3q3rea46cq4cpa4h5tm43nw3supd6uxtltxv").unwrap()]),
                 users: None,
             },
             world
@@ -84,13 +87,13 @@ mod tests {
     #[test]
     fn world_without_nonce_deserialization() {
         let s = r#"{
-            "owners": ["0x01234567890abcdef0123456789abcdef0123456"]
+            "owners": ["tccqqtk3q3rea46cq4cpa4h5tm43nw3supd6uxtltxv"]
         }"#;
         let world: World = serde_json::from_str(s).unwrap();
         assert_eq!(
             World {
                 nonce: None,
-                owners: Some(vec![Address(CoreAddress::from("01234567890abcdef0123456789abcdef0123456"))]),
+                owners: Some(vec![PlatformAddress::from_str("tccqqtk3q3rea46cq4cpa4h5tm43nw3supd6uxtltxv").unwrap()]),
                 users: None,
             },
             world
