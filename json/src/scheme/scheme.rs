@@ -93,7 +93,7 @@ mod tests {
                     }
                 },
                 "score": "0x20000",
-                "author": "0x0000000000000000000000000000000000000000",
+                "author": "tccqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqj5aqu5",
                 "timestamp": "0x00",
                 "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000"
             },

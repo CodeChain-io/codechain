@@ -14,8 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use ckey::PlatformAddress;
+
 use super::super::bytes::Bytes;
-use super::super::hash::{Address, H256};
+use super::super::hash::H256;
 use super::super::uint::Uint;
 use super::Seal;
 
@@ -28,7 +30,7 @@ pub struct Genesis {
     /// Score. Difficulty in PoW.
     pub score: Uint,
     /// Block author, defaults to 0.
-    pub author: Option<Address>,
+    pub author: Option<PlatformAddress>,
     /// Block timestamp, defaults to 0.
     pub timestamp: Option<Uint>,
     /// Parent hash, defaults to 0.
@@ -47,12 +49,13 @@ pub struct Genesis {
 mod tests {
     use std::str::FromStr;
 
-    use ckey::Address as CoreAddress;
+    use ckey::PlatformAddress;
+
     use primitives::{H256 as Core256, H520 as Core520, U256};
     use serde_json;
 
     use super::super::super::bytes::Bytes;
-    use super::super::super::hash::{Address, H256, H520};
+    use super::super::super::hash::{H256, H520};
     use super::super::super::uint::Uint;
     use super::super::{Seal, TendermintSeal};
     use super::Genesis;
@@ -70,7 +73,7 @@ mod tests {
                     ]
                 }
             },
-            "author": "0x1000000000000000000000000000000000000001",
+            "author": "tccqqgqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqynkzasl",
             "timestamp": "0x07",
             "parentHash": "0x9000000000000000000000000000000000000000000000000000000000000000",
             "extraData": "0x11bbe8db4e347b4e8c937c1c8370e4b5ed33adb3db69cbdb7a38e1e50b1b82fa",
@@ -86,7 +89,7 @@ mod tests {
                 ]
             }),
             score: Uint(U256::from(0x400000000u64)),
-            author: Some(Address(CoreAddress::from("0x1000000000000000000000000000000000000001"))),
+            author: Some(PlatformAddress::from_str("tccqqgqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqynkzasl").unwrap()),
             timestamp: Some(Uint(U256::from(0x07))),
             parent_hash: Some(H256(Core256::from("0x9000000000000000000000000000000000000000000000000000000000000000"))),
             parcels_root: None,
