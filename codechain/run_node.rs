@@ -24,7 +24,6 @@ use ccore::{
     ShardValidatorConfig, Stratum, StratumConfig, StratumError,
 };
 use cdiscovery::{KademliaConfig, KademliaExtension, UnstructuredConfig, UnstructuredExtension};
-use ckey::Password;
 use ckeystore::accounts_dir::RootDiskDirectory;
 use ckeystore::KeyStore;
 use clap::ArgMatches;
@@ -39,6 +38,7 @@ use parking_lot::{Condvar, Mutex};
 use super::config::{self, load_config};
 use super::constants::DEFAULT_KEYS_PATH;
 use super::dummy_network_service::DummyNetworkService;
+use super::json::PasswordFile;
 use super::rpc::{rpc_http_start, rpc_ipc_start};
 use super::rpc_apis::ApiDependencies;
 
@@ -104,23 +104,25 @@ fn stratum_start(cfg: StratumConfig, miner: Arc<Miner>, client: Arc<Client>) -> 
     }
 }
 
-fn new_shard_validator(config: ShardValidatorConfig, ap: Arc<AccountProvider>) -> Result<Arc<ShardValidator>, String> {
-    let account = {
-        let password = match config.password_path {
-            None => None,
-            Some(password_path) => {
-                let content = fs::read_to_string(password_path).map_err(|e| format!("{:?}", e))?;
-                let password = content.lines().next().ok_or("Password file is empty")?;
-                Some(Password::from(password))
-            }
-        };
-        Some((config.account, password))
+fn new_shard_validator(
+    config: ShardValidatorConfig,
+    ap: Arc<AccountProvider>,
+    pf: &PasswordFile,
+) -> Result<Arc<ShardValidator>, String> {
+    let account = match pf.password(&config.account) {
+        password @ Some(_) => Some((config.account, password)),
+        None => return Err(format!("Account {} does not exist the the password file", config.account)),
     };
     let shard_validator = ShardValidator::new(account, Arc::clone(&ap));
     Ok(shard_validator)
 }
 
-fn new_miner(config: &config::Config, scheme: &Scheme, ap: Arc<AccountProvider>) -> Result<Arc<Miner>, String> {
+fn new_miner(
+    config: &config::Config,
+    scheme: &Scheme,
+    ap: Arc<AccountProvider>,
+    pf: &PasswordFile,
+) -> Result<Arc<Miner>, String> {
     let miner = Miner::new(config.miner_options(), scheme, Some(ap.clone()));
     match miner.engine_type() {
         EngineType::PoW => {
@@ -135,18 +137,9 @@ fn new_miner(config: &config::Config, scheme: &Scheme, ap: Arc<AccountProvider>)
                 Ok(has_account) if !has_account => {
                     return Err("mining.engine_signer is not found in AccountProvider".to_string())
                 }
-                Ok(..) => match config.mining.password_path {
-                    None => return Err("mining.password_path is not specified".to_string()),
-                    Some(ref password_path) => match fs::read_to_string(password_path) {
-                        Ok(content) => {
-                            // Read the first line as password.
-                            let password = content.lines().next().ok_or("Password file is empty")?;
-                            miner
-                                .set_author(engine_signer, Some(Password::from(password)))
-                                .map_err(|e| format!("{:?}", e))?
-                        }
-                        Err(_) => return Err(format!("Failed to read the password file")),
-                    },
+                Ok(..) => match pf.password(&engine_signer) {
+                    password @ Some(_) => miner.set_author(engine_signer, password).map_err(|e| format!("{:?}", e))?,
+                    None => return Err(format!("Account {} does not exist in the password file", engine_signer)),
                 },
                 Err(e) => {
                     return Err(format!("Error while checking whether engine_signer is in AccountProvider: {:?}", e))
@@ -180,6 +173,17 @@ fn prepare_account_provider(keys_path: &str) -> Result<Arc<AccountProvider>, Str
     Ok(AccountProvider::new(keystore))
 }
 
+fn load_password_file(path: Option<String>) -> Result<PasswordFile, String> {
+    let pf = match path {
+        Some(ref path) => {
+            let file = fs::File::open(path).map_err(|e| format!("Could not read password file at {}: {}", path, e))?;
+            PasswordFile::load(file).map_err(|e| format!("Invalid password file {}: {}", path, e))?
+        }
+        None => PasswordFile::default(),
+    };
+    Ok(pf)
+}
+
 pub fn run_node(matches: ArgMatches) -> Result<(), String> {
     // increase max number of open files
     raise_fd_limit();
@@ -197,12 +201,13 @@ pub fn run_node(matches: ArgMatches) -> Result<(), String> {
     );
     clogger::init(&LoggerConfig::new(instance_id)).expect("Logger must be successfully initialized");
 
+    let pf = load_password_file(config.operating.password_path.clone())?;
     let keys_path = match config.operating.keys_path {
         Some(ref keys_path) => keys_path,
         None => DEFAULT_KEYS_PATH,
     };
     let ap = prepare_account_provider(keys_path)?;
-    let miner = new_miner(&config, &scheme, ap.clone())?;
+    let miner = new_miner(&config, &scheme, ap.clone(), &pf)?;
     let client = client_start(&config, &scheme, miner.clone())?;
 
     let shard_validator = if scheme.params().use_shard_validator {
@@ -210,7 +215,7 @@ pub fn run_node(matches: ArgMatches) -> Result<(), String> {
     } else if config.shard_validator.disable {
         Some(ShardValidator::new(None, Arc::clone(&ap)))
     } else {
-        Some(new_shard_validator(config.shard_validator_config(), Arc::clone(&ap))?)
+        Some(new_shard_validator(config.shard_validator_config(), Arc::clone(&ap), &pf)?)
     };
 
     let network_service: Arc<NetworkControl> = {

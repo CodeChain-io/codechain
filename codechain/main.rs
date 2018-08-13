@@ -22,8 +22,10 @@ extern crate futures;
 extern crate log;
 extern crate tokio_core;
 
+extern crate serde;
 #[macro_use]
 extern crate serde_derive;
+extern crate serde_json;
 
 extern crate app_dirs;
 extern crate codechain_core as ccore;
@@ -50,6 +52,7 @@ extern crate toml;
 mod config;
 mod constants;
 mod dummy_network_service;
+mod json;
 mod rpc;
 mod rpc_apis;
 mod run_node;

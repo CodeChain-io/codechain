@@ -14,8 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ckey::Address;
+use ckey::{Password, PlatformAddress};
 
-pub struct ShardValidatorConfig {
-    pub account: Address,
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+pub struct PasswordEntry {
+    pub address: PlatformAddress,
+    pub password: Password,
 }

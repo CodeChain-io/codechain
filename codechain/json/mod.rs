@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ckey::Address;
+mod password_entry;
+mod password_file;
 
-pub struct ShardValidatorConfig {
-    pub account: Address,
-}
+pub use self::password_entry::PasswordEntry;
+pub use self::password_file::PasswordFile;

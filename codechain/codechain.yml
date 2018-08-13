@@ -106,7 +106,7 @@ args:
         takes_value: true
     - password-path:
         long: password-path
-        help: Specify the engine signer's password file path.
+        help: Specify the password file path.
         takes_value: true
     - mem-pool-mem-limit:
         long: mem-pool-mem-limit
@@ -188,13 +188,6 @@ args:
         long: shard-validator
         value_name: ACCOUNT
         help: Specify the account for shard validator.
-        takes_value: true
-        conflicts_with:
-            - no-shard-validator
-    - shard-validator-password-path:
-        long: shard-validator-password-path
-        value_name: PATH
-        help: Specify the password path of account for shard validator.
         takes_value: true
         conflicts_with:
             - no-shard-validator
