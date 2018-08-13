@@ -20,8 +20,8 @@ use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use ccore::{
-    AccountProvider, Client, ClientService, EngineType, Miner, MinerService, Scheme, ShardValidator,
-    ShardValidatorConfig, Stratum, StratumConfig, StratumError,
+    AccountProvider, Client, ClientService, EngineType, Miner, MinerService, Scheme, ShardValidator, Stratum,
+    StratumConfig, StratumError,
 };
 use cdiscovery::{KademliaConfig, KademliaExtension, UnstructuredConfig, UnstructuredExtension};
 use ckeystore::accounts_dir::RootDiskDirectory;
@@ -102,12 +102,6 @@ fn stratum_start(cfg: StratumConfig, miner: Arc<Miner>, client: Arc<Client>) -> 
             Ok(())
         }
     }
-}
-
-fn new_shard_validator(config: ShardValidatorConfig, ap: Arc<AccountProvider>) -> Result<Arc<ShardValidator>, String> {
-    let account = Some((config.account, None));
-    let shard_validator = ShardValidator::new(account, Arc::clone(&ap));
-    Ok(shard_validator)
 }
 
 fn new_miner(config: &config::Config, scheme: &Scheme, ap: Arc<AccountProvider>) -> Result<Arc<Miner>, String> {
@@ -210,7 +204,7 @@ pub fn run_node(matches: ArgMatches) -> Result<(), String> {
     } else if config.shard_validator.disable {
         Some(ShardValidator::new(None, Arc::clone(&ap)))
     } else {
-        Some(new_shard_validator(config.shard_validator_config(), Arc::clone(&ap))?)
+        Some(ShardValidator::new(Some(config.shard_validator_config().account), Arc::clone(&ap)))
     };
 
     let network_service: Arc<NetworkControl> = {
