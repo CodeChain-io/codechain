@@ -44,7 +44,7 @@ impl From<LocalizedParcel> for Parcel {
             nonce: p.nonce,
             fee: p.fee,
             network_id: p.network_id,
-            action: p.action.clone().into(),
+            action: Action::from_core(p.as_unsigned().action.clone(), p.network_id),
             hash: p.hash(),
             sig: sig.into(),
         }
@@ -61,7 +61,7 @@ impl From<SignedParcel> for Parcel {
             nonce: p.nonce,
             fee: p.fee,
             network_id: p.network_id,
-            action: p.action.clone().into(),
+            action: Action::from_core(p.as_unsigned().action.clone(), p.network_id),
             hash: p.hash(),
             sig: sig.into(),
         }

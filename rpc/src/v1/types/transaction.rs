@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ckey::{Address, NetworkId};
+use ckey::{NetworkId, PlatformAddress};
 use ctypes::transaction::{AssetMintOutput, AssetTransferInput, AssetTransferOutput, Transaction as TransactionType};
 use ctypes::{ShardId, WorldId};
 
@@ -26,7 +26,7 @@ pub enum Transaction {
         network_id: NetworkId,
         shard_id: ShardId,
         nonce: u64,
-        owners: Vec<Address>,
+        owners: Vec<PlatformAddress>,
     },
     #[serde(rename_all = "camelCase")]
     SetWorldOwners {
@@ -34,7 +34,7 @@ pub enum Transaction {
         shard_id: ShardId,
         world_id: WorldId,
         nonce: u64,
-        owners: Vec<Address>,
+        owners: Vec<PlatformAddress>,
     },
     #[serde(rename_all = "camelCase")]
     SetWorldUsers {
@@ -42,7 +42,7 @@ pub enum Transaction {
         shard_id: ShardId,
         world_id: WorldId,
         nonce: u64,
-        users: Vec<Address>,
+        users: Vec<PlatformAddress>,
     },
     #[serde(rename_all = "camelCase")]
     AssetMint {
@@ -50,7 +50,7 @@ pub enum Transaction {
         shard_id: ShardId,
         world_id: WorldId,
         metadata: String,
-        registrar: Option<Address>,
+        registrar: Option<PlatformAddress>,
         nonce: u64,
 
         output: AssetMintOutput,
@@ -77,7 +77,7 @@ impl From<TransactionType> for Transaction {
                 network_id,
                 shard_id,
                 nonce,
-                owners,
+                owners: owners.into_iter().map(|owner| PlatformAddress::create(0, network_id, owner)).collect(),
             },
             TransactionType::SetWorldOwners {
                 network_id,
@@ -90,7 +90,7 @@ impl From<TransactionType> for Transaction {
                 shard_id,
                 world_id,
                 nonce,
-                owners,
+                owners: owners.into_iter().map(|owner| PlatformAddress::create(0, network_id, owner)).collect(),
             },
             TransactionType::SetWorldUsers {
                 network_id,
@@ -103,7 +103,7 @@ impl From<TransactionType> for Transaction {
                 shard_id,
                 world_id,
                 nonce,
-                users,
+                users: users.into_iter().map(|user| PlatformAddress::create(0, network_id, user)).collect(),
             },
             TransactionType::AssetMint {
                 network_id,
@@ -118,7 +118,7 @@ impl From<TransactionType> for Transaction {
                 shard_id,
                 world_id,
                 metadata,
-                registrar,
+                registrar: registrar.map(|registrar| PlatformAddress::create(0, network_id, registrar)),
                 nonce,
                 output,
             },
@@ -152,7 +152,7 @@ impl From<Transaction> for TransactionType {
                 network_id,
                 shard_id,
                 nonce,
-                owners,
+                owners: owners.into_iter().map(From::from).collect(),
             },
             Transaction::SetWorldOwners {
                 network_id,
@@ -165,7 +165,7 @@ impl From<Transaction> for TransactionType {
                 shard_id,
                 world_id,
                 nonce,
-                owners,
+                owners: owners.into_iter().map(From::from).collect(),
             },
             Transaction::SetWorldUsers {
                 network_id,
@@ -178,7 +178,7 @@ impl From<Transaction> for TransactionType {
                 shard_id,
                 world_id,
                 nonce,
-                users,
+                users: users.into_iter().map(From::from).collect(),
             },
             Transaction::AssetMint {
                 network_id,
@@ -193,7 +193,7 @@ impl From<Transaction> for TransactionType {
                 shard_id,
                 world_id,
                 metadata,
-                registrar,
+                registrar: registrar.map(|registrar| registrar.into()),
                 nonce,
                 output,
             },

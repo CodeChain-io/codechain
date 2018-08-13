@@ -157,6 +157,12 @@ impl<'a> Deserialize<'a> for PlatformAddress {
     }
 }
 
+impl From<PlatformAddress> for Address {
+    fn from(address: PlatformAddress) -> Self {
+        address.address
+    }
+}
+
 struct PlatformAddressVisitor;
 
 impl<'a> Visitor<'a> for PlatformAddressVisitor {
