@@ -16,9 +16,10 @@
 
 use ckey::{Address, Public, Signature};
 use ctypes::parcel::{Action as ActionType, ChangeShard as ChangeShardType};
-use ctypes::transaction::Transaction;
 use ctypes::ShardId;
 use primitives::{Bytes, H256, U256};
+
+use super::Transaction;
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -75,7 +76,7 @@ impl From<ActionType> for Action {
                 changes,
                 signatures,
             } => Action::ChangeShardState {
-                transactions,
+                transactions: transactions.into_iter().map(From::from).collect(),
                 changes: changes.into_iter().map(From::from).collect(),
                 signatures,
             },
@@ -129,7 +130,7 @@ impl From<Action> for ActionType {
                 changes,
                 signatures,
             } => ActionType::ChangeShardState {
-                transactions,
+                transactions: transactions.into_iter().map(From::from).collect(),
                 changes: changes.into_iter().map(From::from).collect(),
                 signatures,
             },

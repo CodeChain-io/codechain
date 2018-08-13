@@ -53,17 +53,14 @@ pub struct AssetTransferOutput {
 }
 
 /// Parcel transaction type.
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase", tag = "type", content = "data")]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Transaction {
-    #[serde(rename_all = "camelCase")]
     CreateWorld {
         network_id: NetworkId,
         shard_id: ShardId,
         nonce: u64,
         owners: Vec<Address>,
     },
-    #[serde(rename_all = "camelCase")]
     SetWorldOwners {
         network_id: NetworkId,
         shard_id: ShardId,
@@ -71,7 +68,6 @@ pub enum Transaction {
         nonce: u64,
         owners: Vec<Address>,
     },
-    #[serde(rename_all = "camelCase")]
     SetWorldUsers {
         network_id: NetworkId,
         shard_id: ShardId,
@@ -79,7 +75,6 @@ pub enum Transaction {
         nonce: u64,
         users: Vec<Address>,
     },
-    #[serde(rename_all = "camelCase")]
     AssetMint {
         network_id: NetworkId,
         shard_id: ShardId,
@@ -90,7 +85,6 @@ pub enum Transaction {
 
         output: AssetMintOutput,
     },
-    #[serde(rename_all = "camelCase")]
     AssetTransfer {
         network_id: NetworkId,
         burns: Vec<AssetTransferInput>,
