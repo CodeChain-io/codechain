@@ -24,7 +24,6 @@ use ckey::{Address, NetworkId, Public};
 use cstate::{AssetScheme, AssetSchemeAddress, OwnedAsset};
 use ctypes::invoice::{ParcelInvoice, TransactionInvoice};
 use ctypes::parcel::Action;
-use ctypes::transaction::Transaction;
 use ctypes::{BlockNumber, ShardId, WorldId};
 use primitives::{H160, H256, U256};
 use rlp::{DecoderError, UntrustedRlp};
@@ -33,7 +32,7 @@ use jsonrpc_core::Result;
 
 use super::super::errors;
 use super::super::traits::Chain;
-use super::super::types::{Block, BlockNumberAndHash, Bytes, ChangeShard, Parcel};
+use super::super::types::{Block, BlockNumberAndHash, Bytes, ChangeShard, Parcel, Transaction};
 
 pub struct ChainClient<C, M>
 where
@@ -96,7 +95,7 @@ where
     }
 
     fn get_transaction(&self, transaction_hash: H256) -> Result<Option<Transaction>> {
-        Ok(self.client.transaction(transaction_hash.into()))
+        Ok(self.client.transaction(transaction_hash.into()).map(Into::into))
     }
 
     fn get_transaction_invoice(&self, transaction_hash: H256) -> Result<Option<TransactionInvoice>> {
@@ -202,9 +201,10 @@ where
     }
 
     fn execute_change_shard_state(&self, transactions: Vec<Transaction>, sender: Address) -> Result<Vec<ChangeShard>> {
+        let transaction_types: Vec<_> = transactions.into_iter().map(From::from).collect();
         Ok(self
             .client
-            .execute_transactions(&transactions, &sender)
+            .execute_transactions(&transaction_types, &sender)
             .map_err(errors::core)?
             .into_iter()
             .map(From::from)
