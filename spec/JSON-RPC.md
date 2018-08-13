@@ -61,7 +61,7 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
 ### Payment Action
 
  - action: "payment"
- - receiver: `H160`
+ - receiver: `PlatformAddress`
  - amount: `U256`
 
 ### SetRegularKey Action
@@ -73,13 +73,13 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
 
  - action: "changeShardOwners"
  - shard_id: `number`
- - owners: `H160`[]
+ - owners: `PlatformAddress[]`
 
 ### ChangeShardUsers Action
 
  - action: "changeShardUsers"
  - shard_id: `number`
- - users: `H160`[]
+ - users: `PlatformAddress[]`
 
 ## Transaction
 
@@ -90,7 +90,7 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
 
  - amount: `number`
  - metadata: `string`
- - registrar: `H160` | `null`
+ - registrar: `PlatformAddress` | `null`
 
 ## Asset
 
@@ -345,7 +345,7 @@ Response Example
         "action":{
           "action":"payment",
           "amount":"0xa",
-          "receiver":0xa6594b7196808d161b6fb137e781abbc251385d9
+          "receiver": "cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7"
         },
         "blockHash":"0xfc196ede542b03b55aee9f106004e7e3d7ea6a9600692e964b4735a260356b50",
         "blockNumber":5,
@@ -423,7 +423,7 @@ Response Example
         "action": {
           "action":"payment",
           "amount":"0xa",
-          "receiver":0xa6594b7196808d161b6fb137e781abbc251385d9
+          "receiver": "cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7"
         },
         "blockHash": "0xfc196ede542b03b55aee9f106004e7e3d7ea6a9600692e964b4735a260356b50",
         "blockNumber": 5,
@@ -833,8 +833,7 @@ Response Example
         {
           "payment":{
             "nonce":"0x1",
-            "receiver":"0xa6594b7196808d161b6fb137e781abbc251385d9",
-            "sender":"0xa6594b7196808d161b6fb137e781abbc251385d9",
+            "receiver": "cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7",
             "value":"0x0"
           }
         }

@@ -19,7 +19,7 @@ use ckey::Address;
 use ctypes::BlockNumber;
 use primitives::{H256, U256};
 
-use super::Parcel;
+use super::{Action, Parcel};
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -68,14 +68,15 @@ impl From<CoreBlock> for Block {
                 .enumerate()
                 .map(|(i, unverified)| {
                     let sig = unverified.signature();
+                    let network_id = unverified.as_unsigned().network_id;
                     Parcel {
                         block_number: Some(block_number),
                         block_hash: Some(block_hash),
                         parcel_index: Some(i),
                         nonce: unverified.as_unsigned().nonce.clone(),
                         fee: unverified.as_unsigned().fee.clone(),
-                        network_id: unverified.as_unsigned().network_id,
-                        action: unverified.as_unsigned().action.clone().into(),
+                        network_id,
+                        action: Action::from_core(unverified.as_unsigned().action.clone(), network_id),
                         hash: unverified.hash(),
                         sig: sig.into(),
                     }
