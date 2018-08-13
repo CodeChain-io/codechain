@@ -111,7 +111,6 @@ impl Config {
 
         ShardValidatorConfig {
             account: self.shard_validator.account.unwrap(),
-            password_path: self.shard_validator.password_path.clone(),
         }
     }
 }
@@ -130,6 +129,7 @@ pub struct Operating {
     pub instance_id: Option<usize>,
     pub db_path: String,
     pub keys_path: Option<String>,
+    pub password_path: Option<String>,
     pub chain: ChainType,
 }
 
@@ -138,7 +138,6 @@ pub struct Operating {
 pub struct Mining {
     pub author: Option<Address>,
     pub engine_signer: Option<Address>,
-    pub password_path: Option<String>,
     pub mem_pool_size: usize,
     pub mem_pool_mem_limit: usize,
     pub notify_work: Vec<String>,
@@ -198,7 +197,6 @@ pub struct Stratum {
 pub struct ShardValidator {
     pub disable: bool,
     pub account: Option<Address>,
-    pub password_path: Option<String>,
 }
 
 impl Ipc {
@@ -227,6 +225,9 @@ impl Operating {
         if let Some(keys_path) = matches.value_of("keys-path") {
             self.keys_path = Some(keys_path.to_string());
         }
+        if let Some(password_path) = matches.value_of("password-path") {
+            self.password_path = Some(password_path.to_string());
+        }
         if let Some(chain) = matches.value_of("chain") {
             self.chain = chain.parse()?;
         }
@@ -241,9 +242,6 @@ impl Mining {
         }
         if let Some(engine_signer) = matches.value_of("engine-signer") {
             self.engine_signer = Some(engine_signer.parse()?);
-        }
-        if let Some(password_path) = matches.value_of("password-path") {
-            self.password_path = Some(password_path.to_string());
         }
         if let Some(mem_pool_mem_limit) = matches.value_of("mem-pool-mem-limit") {
             self.mem_pool_mem_limit = mem_pool_mem_limit.parse().map_err(|_| "Invalid mem limit")?;
@@ -371,9 +369,6 @@ impl ShardValidator {
 
         if let Some(account) = matches.value_of("shard-validator") {
             self.account = Some(account.parse()?)
-        }
-        if let Some(password_path) = matches.value_of("shard-validator-password-path") {
-            self.password_path = Some(password_path.to_string());
         }
 
         Ok(())
