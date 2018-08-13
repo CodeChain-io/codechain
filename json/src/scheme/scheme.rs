@@ -63,8 +63,8 @@ mod tests {
                 "tendermint": {
                     "params": {
                         "validators" : [
-                        "0x82a978b3f5962a5b0957d9ee9eef472ee55b42f1",
-                        "0x7d577a597b2742b498cb5cf0c26cdcd726d39e6e"
+                            "tccqzzpxln6w5zrhmfju3zc53w6w4y6s95mf5hw0n62",
+                            "tccqz03jn96q0kvwqzxgeq5u72e2l8v5vkdyq4cll9x"
                         ],
                         "timeoutPropose": 10000,
                         "timeoutPrevote": 10000,

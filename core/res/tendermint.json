@@ -4,10 +4,10 @@
     "tendermint": {
       "params": {
         "validators": [
-          "0x17688223cf6bac02b80f6b7a2f758cdd18702dd7",
-          "0x4bf4ba3ef77a677d492c235bd3e148f8f2517f1e",
-          "0x464f151a86babe5dd0d4c7d7ad48ea99cb86c516",
-          "0x741cfe493fd894b98310fc288f17d5ed9cdf8c00"
+          "tccqqtk3q3rea46cq4cpa4h5tm43nw3supd6uxtltxv",
+          "tccqp9lfw377aaxwl2f9s34h5lpfru0y5tlrc5avutn",
+          "tccqpry79g6s6atuhws6nra0t2ga2vuhpk9zcdphm2u",
+          "tccqp6peljf8lvffwvrzr7z3rch6hkeehuvqq24fa0c"
         ],
         "timeoutPropose": 10000,
         "timeoutPrevote": 10000,
