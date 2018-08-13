@@ -18,7 +18,7 @@ use std::collections::HashSet;
 use std::sync::Arc;
 
 use cnetwork::{Api, DiscoveryApi, IntoSocketAddr, NetworkExtension, NodeId, RoutingTable, TimerToken};
-use parking_lot::{Mutex, RwLock};
+use parking_lot::RwLock;
 use rlp::{Decodable, Encodable, UntrustedRlp};
 use time::Duration;
 
@@ -29,7 +29,7 @@ use super::Message;
 pub struct Extension {
     config: Config,
     routing_table: RwLock<Option<Arc<RoutingTable>>>,
-    api: Mutex<Option<Arc<Api>>>,
+    api: RwLock<Option<Arc<Api>>>,
     nodes: RwLock<HashSet<NodeId>>, // FIXME: Find the optimized data structure for it
 }
 
@@ -38,7 +38,7 @@ impl Extension {
         Arc::new(Self {
             config,
             routing_table: RwLock::new(None),
-            api: Mutex::new(None),
+            api: RwLock::new(None),
             nodes: RwLock::new(HashSet::new()),
         })
     }
@@ -61,7 +61,7 @@ impl NetworkExtension for Extension {
     }
 
     fn on_initialize(&self, api: Arc<Api>) {
-        let mut api_lock = self.api.lock();
+        let mut api_lock = self.api.write();
 
         api.set_timer(REFRESH_TOKEN, Duration::milliseconds(self.config.t_refresh as i64))
             .expect("Refresh msut be registered");
@@ -70,7 +70,7 @@ impl NetworkExtension for Extension {
     }
 
     fn on_node_added(&self, node: &NodeId, _version: u64) {
-        let api = self.api.lock();
+        let api = self.api.read();
         let mut nodes = self.nodes.write();
         nodes.insert(node.clone());
         api.as_ref().map(|api| api.send(&node, &Message::FindNode(self.config.bucket_size).rlp_bytes()));
@@ -92,7 +92,7 @@ impl NetworkExtension for Extension {
         match message {
             Message::FindNode(len) => {
                 let routing_table = self.routing_table.read();
-                let api = self.api.lock();
+                let api = self.api.read();
                 match (&*api, &*routing_table) {
                     (Some(api), Some(routing_table)) => {
                         let datum = address_to_hash(&node.into_addr());
@@ -132,7 +132,7 @@ impl NetworkExtension for Extension {
     fn on_timeout(&self, timer: TimerToken) {
         match timer {
             REFRESH_TOKEN => {
-                let mut api = self.api.lock();
+                let mut api = self.api.read();
                 let nodes = self.nodes.read();
 
                 api.as_ref().map(|api| {
