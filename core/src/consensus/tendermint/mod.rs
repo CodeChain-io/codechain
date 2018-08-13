@@ -986,7 +986,7 @@ mod tests {
     use super::super::super::header::Header;
     use super::super::super::scheme::Scheme;
     use super::super::super::tests::helpers::get_temp_state_db;
-    use super::Seal;
+    use super::{message_info_rlp, EngineError, Height, ProposalSeal, RegularSeal, Seal, Step, View, VoteStep};
 
     /// Accounts inserted with "0" and "1" are validators. First proposer is "0".
     fn setup() -> (Scheme, Arc<AccountProvider>) {
@@ -1006,6 +1006,14 @@ mod tests {
         } else {
             panic!()
         }
+    }
+
+    fn proposal_seal(tap: &Arc<AccountProvider>, header: &Header, view: View) -> Vec<Bytes> {
+        let author = header.author();
+        let vote_info =
+            message_info_rlp(&VoteStep::new(header.number() as Height, view, Step::Propose), Some(header.bare_hash()));
+        let signature = tap.sign(*author, None, blake256(vote_info)).unwrap();
+        ProposalSeal::new(&view, &signature).seal_fields()
     }
 
     fn insert_and_unlock(tap: &Arc<AccountProvider>, acc: &str) -> Address {
@@ -1052,5 +1060,95 @@ mod tests {
 
         let (b, seal) = propose_default(&scheme, proposer);
         assert!(b.lock().try_seal(scheme.engine.as_ref(), seal).is_ok());
+    }
+
+    #[test]
+    fn recognize_proposal() {
+        let (spec, tap) = setup();
+
+        let proposer = insert_and_register(&tap, spec.engine.as_ref(), "1");
+
+        let (b, seal) = propose_default(&spec, proposer);
+        let sealed = b.lock().seal(spec.engine.as_ref(), seal).unwrap();
+        assert!(spec.engine.is_proposal(sealed.header()));
+    }
+
+    #[test]
+    fn allows_correct_proposer() {
+        let (spec, tap) = setup();
+        let engine = spec.engine;
+
+        let mut header = Header::default();
+        header.set_number(1);
+        let validator = insert_and_unlock(&tap, "1");
+        header.set_author(validator);
+        let seal = proposal_seal(&tap, &header, 0);
+        header.set_seal(seal);
+        // Good proposer.
+        assert!(engine.verify_block_external(&header).is_ok());
+
+        let validator = insert_and_unlock(&tap, "0");
+        header.set_author(validator);
+        let seal = proposal_seal(&tap, &header, 0);
+        header.set_seal(seal);
+        // Bad proposer.
+        match engine.verify_block_external(&header) {
+            Err(Error::Engine(EngineError::NotProposer(_))) => {}
+            _ => panic!(),
+        }
+
+        let random = insert_and_unlock(&tap, "101");
+        header.set_author(random);
+        let seal = proposal_seal(&tap, &header, 0);
+        header.set_seal(seal);
+        // Not authority.
+        match engine.verify_block_external(&header) {
+            Err(Error::Engine(EngineError::NotAuthorized(_))) => {}
+            _ => panic!(),
+        };
+        engine.stop();
+    }
+
+    #[test]
+    fn seal_signatures_checking() {
+        let (spec, tap) = setup();
+        let engine = spec.engine;
+
+        let mut header = Header::default();
+        header.set_number(2);
+        let proposer = insert_and_unlock(&tap, "0");
+        header.set_author(proposer);
+
+        let vote_info = message_info_rlp(&VoteStep::new(2, 0, Step::Precommit), Some(header.bare_hash()));
+        let signature0 = tap.sign(proposer, None, blake256(&vote_info)).unwrap();
+
+        header.set_seal(RegularSeal::new(&0, &vec![signature0]).seal_fields());
+
+        // One good signature is not enough.
+        match engine.verify_block_external(&header) {
+            Err(Error::Engine(EngineError::BadSealFieldSize(_))) => {}
+            _ => panic!(),
+        }
+
+        let voter = insert_and_unlock(&tap, "1");
+        let signature1 = tap.sign(voter, None, blake256(&vote_info)).unwrap();
+        let voter = insert_and_unlock(&tap, "2");
+        let signature2 = tap.sign(voter, None, blake256(&vote_info)).unwrap();
+
+        header.set_seal(RegularSeal::new(&0, &vec![signature0, signature1, signature2]).seal_fields());
+
+        assert!(engine.verify_block_external(&header).is_ok());
+
+        let bad_voter = insert_and_unlock(&tap, "101");
+        let bad_signature = tap.sign(bad_voter, None, blake256(vote_info)).unwrap();
+
+        header.set_seal(RegularSeal::new(&0, &vec![signature0, signature1, bad_signature]).seal_fields());
+
+        // Two good and one bad signature.
+        match engine.verify_block_external(&header) {
+            Err(Error::Engine(EngineError::NotAuthorized(_))) => {}
+            _ => panic!(),
+        };
+        engine.stop();
     }
 }
