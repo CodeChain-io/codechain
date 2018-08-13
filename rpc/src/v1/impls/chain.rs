@@ -177,11 +177,17 @@ where
     }
 
     fn get_block_by_number(&self, block_number: u64) -> Result<Option<Block>> {
-        Ok(self.client.block(BlockId::Number(block_number)).map(|block| block.decode().into()))
+        Ok(self
+            .client
+            .block(BlockId::Number(block_number))
+            .map(|block| Block::from_core(block.decode(), self.client.common_params().network_id)))
     }
 
     fn get_block_by_hash(&self, block_hash: H256) -> Result<Option<Block>> {
-        Ok(self.client.block(BlockId::Hash(block_hash)).map(|block| block.decode().into()))
+        Ok(self
+            .client
+            .block(BlockId::Hash(block_hash))
+            .map(|block| Block::from_core(block.decode(), self.client.common_params().network_id)))
     }
 
     fn get_pending_parcels(&self) -> Result<Vec<Parcel>> {

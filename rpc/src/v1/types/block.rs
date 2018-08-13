@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ccore::Block as CoreBlock;
-use ckey::Address;
+use ckey::{NetworkId, PlatformAddress};
 use ctypes::BlockNumber;
 use primitives::{H256, U256};
 
@@ -27,7 +27,7 @@ pub struct Block {
     parent_hash: H256,
     timestamp: u64,
     number: u64,
-    author: Address,
+    author: PlatformAddress,
 
     extra_data: Vec<u8>,
 
@@ -42,15 +42,16 @@ pub struct Block {
     parcels: Vec<Parcel>,
 }
 
-impl From<CoreBlock> for Block {
-    fn from(block: CoreBlock) -> Self {
+impl Block {
+    pub fn from_core(block: CoreBlock, network_id: NetworkId) -> Self {
         let block_number = block.header.number();
         let block_hash = block.header.hash();
+        const VERSION: u8 = 0;
         Block {
             parent_hash: block.header.parent_hash().clone(),
             timestamp: block.header.timestamp(),
             number: block.header.number(),
-            author: block.header.author().clone(),
+            author: PlatformAddress::create(VERSION, network_id, block.header.author().clone()),
 
             extra_data: block.header.extra_data().clone(),
 

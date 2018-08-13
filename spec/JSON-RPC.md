@@ -25,7 +25,7 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
 
 ## Block
 
- - author: `H160`
+ - author: `PlatformAddress`
  - extraData: `any[]`
  - hash: `H256`
  - invoicesRoot: `H256`
@@ -333,7 +333,7 @@ Response Example
 {
   "jsonrpc":"2.0",
   "result":{
-    "author":"0x84137e7a75043bed32e4458a45da7549a8169b4d",
+    "author":"cccqzzpxln6w5zrhmfju3zc53w6w4y6s95mf5lfasfn",
     "extraData":[
 
     ],
