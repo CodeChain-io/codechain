@@ -20,7 +20,7 @@ use std::str::FromStr;
 use rpassword;
 
 use ccore::AccountProvider;
-use ckey::{Password, PlatformAddress, Private};
+use ckey::{NetworkId, Password, PlatformAddress, Private};
 use ckeystore::accounts_dir::RootDiskDirectory;
 use ckeystore::KeyStore;
 use clap::ArgMatches;
@@ -41,18 +41,20 @@ pub fn run_account_command(matches: ArgMatches) -> Result<(), String> {
     let dir = RootDiskDirectory::create(keys_path).expect("Cannot read key path directory");
     let keystore = KeyStore::open(Box::new(dir)).unwrap();
     let ap = AccountProvider::new(keystore);
+    // FIXME: Don't hardcode network_id.
+    let network_id: NetworkId = "tc".into();
 
     match matches.subcommand() {
-        ("create", _) => create(&ap),
+        ("create", _) => create(&ap, network_id),
         ("import", Some(matches)) => {
             let json_path = matches.value_of("JSON_PATH").expect("JSON_PATH arg is required and its index is 1");
-            import(&ap, json_path)
+            import(&ap, network_id, json_path)
         }
         ("import-raw", Some(matches)) => {
             let raw_key = matches.value_of("RAW_KEY").expect("RAW_KEY arg is required and its index is 1");
-            import_raw(&ap, raw_key)
+            import_raw(&ap, network_id, raw_key)
         }
-        ("list", _) => list(&ap),
+        ("list", _) => list(&ap, network_id),
         ("remove", Some(matches)) => {
             let address = matches.value_of("ADDRESS").expect("ADDRESS arg is required and its index is 1");
             remove(&ap, address)
@@ -65,25 +67,23 @@ pub fn run_account_command(matches: ArgMatches) -> Result<(), String> {
     }
 }
 
-fn create(ap: &AccountProvider) -> Result<(), String> {
+fn create(ap: &AccountProvider, network_id: NetworkId) -> Result<(), String> {
     if let Some(password) = read_password_and_confirm() {
         let (address, _) = ap.new_account_and_public(&password).expect("Cannot create account");
-        // FIXME: Don't hardcode network_id.
-        println!("{}", PlatformAddress::create(0, "cc".into(), address));
+        println!("{}", PlatformAddress::create(0, network_id, address));
     } else {
         return Err("The password does not match".to_string())
     }
     Ok(())
 }
 
-fn import(ap: &AccountProvider, json_path: &str) -> Result<(), String> {
+fn import(ap: &AccountProvider, network_id: NetworkId, json_path: &str) -> Result<(), String> {
     match fs::read(json_path) {
         Ok(json) => {
             let password = prompt_password("Password: ");
             match ap.import_wallet(json.as_slice(), &password) {
                 Ok(address) => {
-                    // FIXME: Don't hardcode network_id.
-                    println!("{}", PlatformAddress::create(0, "cc".into(), address));
+                    println!("{}", PlatformAddress::create(0, network_id, address));
                 }
                 Err(e) => return Err(format!("{}", e)),
             }
@@ -93,13 +93,12 @@ fn import(ap: &AccountProvider, json_path: &str) -> Result<(), String> {
     Ok(())
 }
 
-fn import_raw(ap: &AccountProvider, raw_key: &str) -> Result<(), String> {
+fn import_raw(ap: &AccountProvider, network_id: NetworkId, raw_key: &str) -> Result<(), String> {
     match Private::from_str(clean_0x(raw_key)) {
         Ok(private) => {
             if let Some(password) = read_password_and_confirm() {
-                // FIXME: Don't hardcode network_id.
                 match ap.insert_account(private, &password) {
-                    Ok(address) => println!("{}", PlatformAddress::create(0, "cc".into(), address)),
+                    Ok(address) => println!("{}", PlatformAddress::create(0, network_id, address)),
                     Err(e) => return Err(format!("{:?}", e)),
                 }
             } else {
@@ -125,11 +124,10 @@ fn remove(ap: &AccountProvider, address: &str) -> Result<(), String> {
     Ok(())
 }
 
-fn list(ap: &AccountProvider) -> Result<(), String> {
+fn list(ap: &AccountProvider, network_id: NetworkId) -> Result<(), String> {
     let addresses = ap.get_list().expect("Cannot get account list");
     for address in addresses {
-        // FIXME: Don't hardcode network_id.
-        println!("{}", PlatformAddress::create(0, "tc".into(), address))
+        println!("{}", PlatformAddress::create(0, network_id, address))
     }
     Ok(())
 }
