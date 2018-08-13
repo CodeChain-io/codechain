@@ -75,7 +75,7 @@ impl From<CoreBlock> for Block {
                         nonce: unverified.as_unsigned().nonce.clone(),
                         fee: unverified.as_unsigned().fee.clone(),
                         network_id: unverified.as_unsigned().network_id,
-                        action: unverified.as_unsigned().action.clone(),
+                        action: unverified.as_unsigned().action.clone().into(),
                         hash: unverified.hash(),
                         sig: sig.into(),
                     }

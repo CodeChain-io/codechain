@@ -14,11 +14,13 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+mod action;
 mod block;
 mod bytes;
 mod parcel;
 mod work;
 
+pub use self::action::{Action, ChangeShard};
 pub use self::block::Block;
 pub use self::block::BlockNumberAndHash;
 pub use self::bytes::Bytes;

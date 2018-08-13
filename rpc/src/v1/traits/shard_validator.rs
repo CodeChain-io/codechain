@@ -15,9 +15,10 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ckey::Signature;
-use ctypes::parcel::Action;
 use jsonrpc_core::Result;
 use primitives::H256;
+
+use super::super::types::Action;
 
 build_rpc_trait! {
     pub trait ShardValidator {

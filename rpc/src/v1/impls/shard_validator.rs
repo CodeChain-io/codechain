@@ -18,10 +18,10 @@ use std::sync::Arc;
 
 use ccore::ShardValidatorClient as CoreClient;
 use ckey::Signature;
-use ctypes::parcel::Action;
 use jsonrpc_core::Result;
 use primitives::H256;
 
+use super::super::types::Action;
 use super::super::ShardValidator;
 
 #[allow(dead_code)]
@@ -51,6 +51,6 @@ where
     }
 
     fn register_action(&self, action: Action) -> Result<bool> {
-        Ok(self.client.register_action(action))
+        Ok(self.client.register_action(action.into()))
     }
 }
