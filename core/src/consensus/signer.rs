@@ -40,10 +40,10 @@ impl Default for EngineSigner {
 
 impl EngineSigner {
     /// Set up the signer to sign with given address and password.
-    pub fn set(&mut self, ap: Arc<AccountProvider>, address: Address, password: Password) {
+    pub fn set(&mut self, ap: Arc<AccountProvider>, address: Address, password: Option<Password>) {
         self.account_provider = ap;
         self.address = Some(address);
-        self.password = Some(password);
+        self.password = password;
         cdebug!(POA, "Setting Engine signer to {}", address);
     }
 

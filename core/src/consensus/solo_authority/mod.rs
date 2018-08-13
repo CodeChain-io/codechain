@@ -186,7 +186,7 @@ impl ConsensusEngine<CodeChainMachine> for SoloAuthority {
     }
 
     /// Register an account which signs consensus messages.
-    fn set_signer(&self, ap: Arc<AccountProvider>, address: Address, password: Password) {
+    fn set_signer(&self, ap: Arc<AccountProvider>, address: Address, password: Option<Password>) {
         self.signer.write().set(ap, address, password);
     }
 

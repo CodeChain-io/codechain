@@ -523,9 +523,8 @@ impl MinerService for Miner {
         if self.engine.seals_internally().is_some() {
             if let Some(ref ap) = self.accounts {
                 ctrace!(MINER, "Set author to {:?}", address);
-                let password = password.unwrap_or_else(|| Password::from(String::new()));
                 // Sign test message
-                ap.sign(address.clone(), Some(password.clone()), Default::default())?;
+                ap.sign(address.clone(), password.clone(), Default::default())?;
                 // Limit the scope of the locks.
                 {
                     let mut sealing_work = self.sealing_work.lock();

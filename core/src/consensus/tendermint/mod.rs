@@ -720,7 +720,7 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
         header.set_score(new_score);
     }
 
-    fn set_signer(&self, ap: Arc<AccountProvider>, address: Address, password: Password) {
+    fn set_signer(&self, ap: Arc<AccountProvider>, address: Address, password: Option<Password>) {
         {
             self.signer.write().set(ap, address, password);
         }
@@ -1024,7 +1024,7 @@ mod tests {
 
     fn insert_and_register(tap: &Arc<AccountProvider>, engine: &CodeChainEngine, acc: &str) -> Address {
         let addr = insert_and_unlock(tap, acc);
-        engine.set_signer(tap.clone(), addr.clone(), acc.into());
+        engine.set_signer(tap.clone(), addr.clone(), Some(acc.into()));
         addr
     }
 
