@@ -14,11 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ckey::{Address, NetworkId, Public};
+use ckey::{NetworkId, PlatformAddress, Public};
 use cstate::{AssetScheme, OwnedAsset};
 use ctypes::invoice::{ParcelInvoice, TransactionInvoice};
 use ctypes::{BlockNumber, ShardId, WorldId};
-use primitives::{H160, H256, U256};
+use primitives::{H256, U256};
 
 use jsonrpc_core::Result;
 
@@ -64,15 +64,15 @@ build_rpc_trait! {
 
         /// Gets nonce with given account.
         # [rpc(name = "chain_getNonce")]
-        fn get_nonce(&self, H160, Option<u64>) -> Result<Option<U256>>;
+        fn get_nonce(&self, PlatformAddress, Option<u64>) -> Result<Option<U256>>;
 
         /// Gets balance with given account.
         # [rpc(name = "chain_getBalance")]
-        fn get_balance(&self, H160, Option<u64>) -> Result<Option<U256>>;
+        fn get_balance(&self, PlatformAddress, Option<u64>) -> Result<Option<U256>>;
 
         /// Gets regular key with given account
         # [rpc(name = "chain_getRegularKey")]
-        fn get_regular_key(&self, H160, Option<u64>) -> Result<Option<Public>>;
+        fn get_regular_key(&self, PlatformAddress, Option<u64>) -> Result<Option<Public>>;
 
         /// Gets the number of shards
         # [rpc(name = "chain_getNumberOfShards")]
@@ -108,7 +108,7 @@ build_rpc_trait! {
 
         /// Gets coinbase's account id
         # [rpc(name = "chain_getCoinbase")]
-        fn get_coinbase(&self) -> Result<Option<Address>>;
+        fn get_coinbase(&self) -> Result<Option<PlatformAddress>>;
 
         /// Return the network id that is used in this chain.
         # [rpc(name = "chain_getNetworkId")]
@@ -116,6 +116,6 @@ build_rpc_trait! {
 
         /// Execute Transactions
         # [rpc(name = "chain_executeTransactions")]
-        fn execute_change_shard_state(&self, Vec<Transaction>, Address) -> Result<Vec<ChangeShard>>;
+        fn execute_change_shard_state(&self, Vec<Transaction>, PlatformAddress) -> Result<Vec<ChangeShard>>;
     }
 }
