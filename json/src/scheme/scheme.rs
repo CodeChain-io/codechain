@@ -101,11 +101,11 @@ mod tests {
             "enode://b1217cbaa440e35ed471157123fe468e19e8b5ad5bedb4b1fdbcbdab6fb2f5ed3e95dd9c24a22a79fdb2352204cea207df27d92bfd21bfd41545e8b16f637499@104.44.138.37:30303"
             ],
             "accounts": {
-                "0000000000000000000000000000000000000001": { "balance": "1", "nonce": "1048576" },
-                "0000000000000000000000000000000000000002": { "balance": "1", "nonce": "1048576" },
-                "0000000000000000000000000000000000000003": { "balance": "1", "nonce": "1048576" },
-                "0000000000000000000000000000000000000004": { "balance": "1", "nonce": "1048576" },
-                "102e61f5d8f9bc71d0ad4a084df4e65e05ce0e1c": { "balance": "1606938044258990275541962092341162602522202993782792835301376", "nonce": "1048576" }
+                "tccqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqya7lxnw": { "balance": "1", "nonce": "1048576" },
+                "tccqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqgvqevzf": { "balance": "1", "nonce": "1048576" },
+                "tccqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqvr2m2dn": { "balance": "1", "nonce": "1048576" },
+                "tccqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqs844cf8": { "balance": "1", "nonce": "1048576" },
+                "tccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9my9a2k78": { "balance": "1606938044258990275541962092341162602522202993782792835301376", "nonce": "1048576" }
             },
             "shards": {
             }

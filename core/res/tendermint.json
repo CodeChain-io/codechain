@@ -42,16 +42,16 @@
     "extraData": "0x"
   },
   "accounts": {
-    "0000000000000000000000000000000000000001": { "balance": "1000000", "nonce": "0" },
-    "0000000000000000000000000000000000000002": { "balance": "1000000", "nonce": "0" },
-    "0000000000000000000000000000000000000003": { "balance": "1000000", "nonce": "0" },
-    "0000000000000000000000000000000000000004": { "balance": "1000000", "nonce": "0" },
-    "0000000000000000000000000000000000000005": { "balance": "1000000" },
-    "0000000000000000000000000000000000000006": { "balance": "1000000" },
-    "0000000000000000000000000000000000000007": { "balance": "1000000" },
-    "0000000000000000000000000000000000000008": { "balance": "1000000" },
-    "a6594b7196808d161b6fb137e781abbc251385d9": { "balance": "1000000" },
-    "9cce34f7ab185c7aba1b7c8140d620b4bda941d6": { "balance": "1606938044258990275541962092341162602522202993782792835301376", "nonce": "0" }
+    "tccqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqya7lxnw": { "balance": "1000000", "nonce": "0" },
+    "tccqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqgvqevzf": { "balance": "1000000", "nonce": "0" },
+    "tccqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqvr2m2dn": { "balance": "1000000", "nonce": "0" },
+    "tccqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqs844cf8": { "balance": "1000000", "nonce": "0" },
+    "tccqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq5glh7xa": { "balance": "1000000" },
+    "tccqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqcep35h6": { "balance": "1000000" },
+    "tccqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqquktnjcq": { "balance": "1000000" },
+    "tccqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqpqafj6hj": { "balance": "1000000" },
+    "tccqzwvud8h4vv9c746rd7gzsxkyz6tm22p6c9gekrh": { "balance": "1000000" },
+    "tccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9my9a2k78": { "balance": "1606938044258990275541962092341162602522202993782792835301376", "nonce": "0" }
   },
   "shards": {
     "0": {
