@@ -16,7 +16,6 @@
 
 use std::io::Read;
 
-use ckey::{Address, Password};
 use serde_json;
 
 use super::password_entry::PasswordEntry;
@@ -31,13 +30,8 @@ impl PasswordFile {
         serde_json::from_reader(reader)
     }
 
-    pub fn password(&self, address: &Address) -> Option<Password> {
-        for entry in &self.0 {
-            if address == &entry.address.address {
-                return Some(entry.password.clone())
-            }
-        }
-        None
+    pub fn entries(&self) -> &[PasswordEntry] {
+        self.0.as_slice()
     }
 }
 

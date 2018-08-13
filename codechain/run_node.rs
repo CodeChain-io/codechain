@@ -104,25 +104,13 @@ fn stratum_start(cfg: StratumConfig, miner: Arc<Miner>, client: Arc<Client>) -> 
     }
 }
 
-fn new_shard_validator(
-    config: ShardValidatorConfig,
-    ap: Arc<AccountProvider>,
-    pf: &PasswordFile,
-) -> Result<Arc<ShardValidator>, String> {
-    let account = match pf.password(&config.account) {
-        password @ Some(_) => Some((config.account, password)),
-        None => return Err(format!("Account {} does not exist the the password file", config.account)),
-    };
+fn new_shard_validator(config: ShardValidatorConfig, ap: Arc<AccountProvider>) -> Result<Arc<ShardValidator>, String> {
+    let account = Some((config.account, None));
     let shard_validator = ShardValidator::new(account, Arc::clone(&ap));
     Ok(shard_validator)
 }
 
-fn new_miner(
-    config: &config::Config,
-    scheme: &Scheme,
-    ap: Arc<AccountProvider>,
-    pf: &PasswordFile,
-) -> Result<Arc<Miner>, String> {
+fn new_miner(config: &config::Config, scheme: &Scheme, ap: Arc<AccountProvider>) -> Result<Arc<Miner>, String> {
     let miner = Miner::new(config.miner_options(), scheme, Some(ap.clone()));
     match miner.engine_type() {
         EngineType::PoW => {
@@ -137,10 +125,7 @@ fn new_miner(
                 Ok(has_account) if !has_account => {
                     return Err("mining.engine_signer is not found in AccountProvider".to_string())
                 }
-                Ok(..) => match pf.password(&engine_signer) {
-                    password @ Some(_) => miner.set_author(engine_signer, password).map_err(|e| format!("{:?}", e))?,
-                    None => return Err(format!("Account {} does not exist in the password file", engine_signer)),
-                },
+                Ok(..) => miner.set_author(engine_signer, None).map_err(|e| format!("{:?}", e))?,
                 Err(e) => {
                     return Err(format!("Error while checking whether engine_signer is in AccountProvider: {:?}", e))
                 }
@@ -184,6 +169,14 @@ fn load_password_file(path: Option<String>) -> Result<PasswordFile, String> {
     Ok(pf)
 }
 
+fn unlock_accounts(ap: Arc<AccountProvider>, pf: &PasswordFile) -> Result<(), String> {
+    for entry in pf.entries() {
+        ap.unlock_account_permanently(entry.address.address.clone(), entry.password.clone())
+            .map_err(|e| format!("Failed to unlock account {}: {}", entry.address.address, e))?;
+    }
+    Ok(())
+}
+
 pub fn run_node(matches: ArgMatches) -> Result<(), String> {
     // increase max number of open files
     raise_fd_limit();
@@ -207,7 +200,9 @@ pub fn run_node(matches: ArgMatches) -> Result<(), String> {
         None => DEFAULT_KEYS_PATH,
     };
     let ap = prepare_account_provider(keys_path)?;
-    let miner = new_miner(&config, &scheme, ap.clone(), &pf)?;
+    unlock_accounts(Arc::clone(&ap), &pf)?;
+
+    let miner = new_miner(&config, &scheme, ap.clone())?;
     let client = client_start(&config, &scheme, miner.clone())?;
 
     let shard_validator = if scheme.params().use_shard_validator {
@@ -215,7 +210,7 @@ pub fn run_node(matches: ArgMatches) -> Result<(), String> {
     } else if config.shard_validator.disable {
         Some(ShardValidator::new(None, Arc::clone(&ap)))
     } else {
-        Some(new_shard_validator(config.shard_validator_config(), Arc::clone(&ap), &pf)?)
+        Some(new_shard_validator(config.shard_validator_config(), Arc::clone(&ap))?)
     };
 
     let network_service: Arc<NetworkControl> = {
