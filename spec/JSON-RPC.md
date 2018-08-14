@@ -1171,7 +1171,7 @@ Response Example
 ```
 {
   "jsonrpc":"2.0",
-  "result":["0x318def87d8dc0f7cc21794daf2dd36762db22b67"],
+  "result":["cccqqccmmu8mrwq7lxzz72d4ukaxemzmv3tvues8uwy"],
   "id":6
 }
 ```
@@ -1198,7 +1198,7 @@ Response Example
 ```
 {
   "jsonrpc":"2.0",
-  "result":"0x318def87d8dc0f7cc21794daf2dd36762db22b67",
+  "result":"cccqqccmmu8mrwq7lxzz72d4ukaxemzmv3tvues8uwy",
   "id":6
 }
 ```
@@ -1226,7 +1226,7 @@ Response Example
 ```
 {
   "jsonrpc":"2.0",
-  "result":"0xa22ae626d26923bdd9321e648de080c18e1049f2",
+  "result":"cccqz3z4e3x6f5j80wexg0xfr0qsrqcuyzf7g4y0je6",
   "id":6
 }
 ```
@@ -1303,7 +1303,7 @@ Request Example
 ```
 curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "account_changePassword", "params": ["0x318def87d8dc0f7cc21794daf2dd36762db22b67", "1234", "5678"], "id": 6}' \
+    -d '{"jsonrpc": "2.0", "method": "account_changePassword", "params": ["cccqqccmmu8mrwq7lxzz72d4ukaxemzmv3tvues8uwy", "1234", "5678"], "id": 6}' \
     localhost:8080
 ```
 
