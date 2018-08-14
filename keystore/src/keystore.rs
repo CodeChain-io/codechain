@@ -345,10 +345,10 @@ impl SimpleSecretStore for KeyMultiStore {
     }
 
     fn has_account(&self, account: &Address) -> Result<bool, Error> {
-        let mut accounts = self.get_accounts(account)?.into_iter();
-        match accounts.next() {
-            Some(_) => Ok(true),
-            None => Ok(false),
+        match self.get_accounts(account) {
+            Ok(_) => Ok(true),
+            Err(Error::InvalidAccount) => Ok(false),
+            Err(e) => Err(e),
         }
     }
 
