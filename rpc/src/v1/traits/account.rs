@@ -36,6 +36,10 @@ build_rpc_trait! {
         # [rpc(name = "account_remove")]
         fn remove_account(&self, PlatformAddress, Option<Password>) -> Result<()>;
 
+        /// Unlocks the specified account for use.
+        # [rpc(name = "account_unlock")]
+        fn unlock(&self, PlatformAddress, Password, Option<u64>) -> Result<()>;
+
         /// Calculates the account's signature for a given message
         # [rpc(name = "account_sign")]
         fn sign(&self, H256, PlatformAddress, Option<Password>) -> Result<Signature>;

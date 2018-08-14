@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::sync::Arc;
+use std::time::Duration;
 
 use ccore::AccountProvider;
 use ckey::{NetworkId, Password, PlatformAddress, Signature};
@@ -88,5 +89,27 @@ impl Account for AccountClient {
         self.account_provider
             .change_password(full_address.address, &old_password, &new_password)
             .map_err(account_provider)
+    }
+
+    fn unlock(&self, address: PlatformAddress, password: Password, duration: Option<u64>) -> Result<()> {
+        const DEFAULT_DURATION: u64 = 300;
+        match duration {
+            Some(0) => self
+                .account_provider
+                .unlock_account_permanently(address.into(), password)
+                .map_err(Into::into)
+                .map_err(account_provider)?,
+            Some(secs) => self
+                .account_provider
+                .unlock_account_timed(address.into(), password, Duration::from_secs(secs))
+                .map_err(Into::into)
+                .map_err(account_provider)?,
+            None => self
+                .account_provider
+                .unlock_account_timed(address.into(), password, Duration::from_secs(DEFAULT_DURATION))
+                .map_err(Into::into)
+                .map_err(account_provider)?,
+        };
+        Ok(())
     }
 }
