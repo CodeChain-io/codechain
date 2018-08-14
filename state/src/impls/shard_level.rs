@@ -270,8 +270,11 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
     ) -> StateResult<()> {
         let world: World = self.world(world_id)?.ok_or_else(|| TransactionError::InvalidWorldId(world_id))?;
 
-        if !shard_users.contains(sender) && !world.owners().contains(sender) && !world.users().contains(sender) {
-            return Err(TransactionError::InsufficientPermission.into())
+        if !shard_users.contains(sender) && !world.owners().contains(sender) {
+            let world_users = world.users();
+            if !world_users.is_empty() && !world_users.contains(sender) {
+                return Err(TransactionError::InsufficientPermission.into())
+            }
         }
 
         let asset_scheme_address = AssetSchemeAddress::new(transaction_hash, self.shard_id, world_id);
@@ -1255,6 +1258,91 @@ mod tests {
         let sender = address();
         let shard_owner = address();
         assert_eq!(Ok(()), state.create_world(shard_id, &0, &[], &[sender], &shard_owner, &[shard_owner]));
+        assert_eq!(Ok(()), state.commit());
+
+        let metadata = "metadata".to_string();
+        let lock_script_hash = H256::random();
+        let parameters = vec![];
+        let registrar = Some(Address::random());
+        let transaction = Transaction::AssetMint {
+            network_id: "tc".into(),
+            shard_id,
+            world_id,
+            metadata: metadata.clone(),
+            output: AssetMintOutput {
+                lock_script_hash,
+                parameters: parameters.clone(),
+                amount: None,
+            },
+            registrar,
+            nonce: 0,
+        };
+
+        let result = state.apply(shard_id, &transaction, &sender, &[shard_owner]);
+        assert_eq!(Ok(TransactionInvoice::Success), result);
+
+        let transaction_hash = transaction.hash();
+        let asset_scheme_address = AssetSchemeAddress::new(transaction_hash, shard_id, world_id);
+        let asset_scheme = state.asset_scheme(&asset_scheme_address);
+        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), ::std::u64::MAX, registrar))), asset_scheme);
+
+        let asset_address = OwnedAssetAddress::new(transaction_hash, 0, shard_id);
+        let asset = state.asset(&asset_address);
+        assert_eq!(
+            Ok(Some(OwnedAsset::new(asset_scheme_address.into(), lock_script_hash, parameters, ::std::u64::MAX))),
+            asset
+        );
+    }
+
+    #[test]
+    fn mint_is_failed_when_the_sender_is_not_user() {
+        let shard_id = 0;
+        let world_id = 0;
+        let mut state = get_temp_shard_state(shard_id);
+        let sender = address();
+        let shard_owner = address();
+        assert_eq!(Ok(()), state.create_world(shard_id, &0, &[], &[shard_owner], &shard_owner, &[shard_owner]));
+        assert_eq!(Ok(()), state.commit());
+
+        let metadata = "metadata".to_string();
+        let lock_script_hash = H256::random();
+        let parameters = vec![];
+        let registrar = Some(Address::random());
+        let transaction = Transaction::AssetMint {
+            network_id: "tc".into(),
+            shard_id,
+            world_id,
+            metadata: metadata.clone(),
+            output: AssetMintOutput {
+                lock_script_hash,
+                parameters: parameters.clone(),
+                amount: None,
+            },
+            registrar,
+            nonce: 0,
+        };
+
+        let result = state.apply(shard_id, &transaction, &sender, &[shard_owner]);
+        assert_eq!(Ok(TransactionInvoice::Fail(TransactionError::InsufficientPermission)), result);
+
+        let transaction_hash = transaction.hash();
+        let asset_scheme_address = AssetSchemeAddress::new(transaction_hash, shard_id, world_id);
+        let asset_scheme = state.asset_scheme(&asset_scheme_address);
+        assert_eq!(Ok(None), asset_scheme);
+
+        let asset_address = OwnedAssetAddress::new(transaction_hash, 0, shard_id);
+        let asset = state.asset(&asset_address);
+        assert_eq!(Ok(None), asset);
+    }
+
+    #[test]
+    fn anyone_can_mint_if_no_users() {
+        let shard_id = 0;
+        let world_id = 0;
+        let mut state = get_temp_shard_state(shard_id);
+        let sender = address();
+        let shard_owner = address();
+        assert_eq!(Ok(()), state.create_world(shard_id, &0, &[], &[], &shard_owner, &[shard_owner]));
         assert_eq!(Ok(()), state.commit());
 
         let metadata = "metadata".to_string();
