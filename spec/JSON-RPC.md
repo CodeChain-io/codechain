@@ -1498,7 +1498,7 @@ Request Example
 ```
 curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "account_remove", "params": ["1228c0de48fdc303b4b7f51049ae2887358f94b6"], "id": 6}' \
+    -d '{"jsonrpc": "2.0", "method": "account_remove", "params": ["cccqqfz3sx7fr7uxqa5kl63qjdw9zrntru5kcdsjywj"], "id": 6}' \
 ```
 
 Response Example
@@ -1526,7 +1526,7 @@ Request Example
 ```
 curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "account_sign", "params": ["0000000000000000000000000000000000000000000000000000000000000000", "1228c0de48fdc303b4b7f51049ae2887358f94b6"], "id": 6}' \
+    -d '{"jsonrpc": "2.0", "method": "account_sign", "params": ["0000000000000000000000000000000000000000000000000000000000000000", "cccqqfz3sx7fr7uxqa5kl63qjdw9zrntru5kcdsjywj"], "id": 6}' \
     localhost:8080
 ```
 
