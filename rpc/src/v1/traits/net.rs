@@ -17,7 +17,7 @@
 use jsonrpc_core::Result;
 use primitives::H256;
 
-use super::super::types::ListStatus;
+use super::super::types::FilterStatus;
 
 build_rpc_trait! {
     pub trait Net {
@@ -40,16 +40,16 @@ build_rpc_trait! {
         fn get_peer_count(&self) -> Result<usize>;
 
         #[rpc(name = "net_addToWhitelist")]
-        fn add_to_whitelist(&self, ::std::net::IpAddr) -> Result<bool>;
+        fn add_to_whitelist(&self, ::std::net::IpAddr) -> Result<()>;
 
         #[rpc(name = "net_removeFromWhitelist")]
-        fn remove_from_whitelist(&self, ::std::net::IpAddr) -> Result<bool>;
+        fn remove_from_whitelist(&self, ::std::net::IpAddr) -> Result<()>;
 
         #[rpc(name = "net_addToBlacklist")]
-        fn add_to_blacklist(&self, ::std::net::IpAddr) -> Result<bool>;
+        fn add_to_blacklist(&self, ::std::net::IpAddr) -> Result<()>;
 
         #[rpc(name = "net_removeFromBlacklist")]
-        fn remove_from_blacklist(&self, ::std::net::IpAddr) -> Result<bool>;
+        fn remove_from_blacklist(&self, ::std::net::IpAddr) -> Result<()>;
 
         #[rpc(name = "net_enableWhitelist")]
         fn enable_whitelist(&self) -> Result<()>;
@@ -64,9 +64,9 @@ build_rpc_trait! {
         fn disable_blacklist(&self) -> Result<()>;
 
         #[rpc(name = "net_getWhitelist")]
-        fn get_whitelist(&self) -> Result<ListStatus>;
+        fn get_whitelist(&self) -> Result<FilterStatus>;
 
         #[rpc(name = "net_getBlacklist")]
-        fn get_blacklist(&self) -> Result<ListStatus>;
+        fn get_blacklist(&self) -> Result<FilterStatus>;
     }
 }

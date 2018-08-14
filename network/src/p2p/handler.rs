@@ -30,8 +30,7 @@ use rlp::UntrustedRlp;
 use super::super::addr::convert_to_node_id;
 use super::super::client::Client;
 use super::super::token_generator::TokenGenerator;
-use super::super::RoutingTable;
-use super::super::{IntoSocketAddr, NodeId, SocketAddr};
+use super::super::{FiltersControl, IntoSocketAddr, NodeId, RoutingTable, SocketAddr};
 use super::connections::{ConnectionType, Connections, ReceivedMessage};
 use super::listener::Listener;
 use super::message::{HandshakeMessage, Message as NetworkMessage, Version};
@@ -44,6 +43,7 @@ struct Manager {
     tokens: TokenGenerator,
 
     routing_table: Arc<RoutingTable>,
+    filters: Arc<FiltersControl>,
     connections: Connections,
 
     port: u16,
@@ -79,6 +79,7 @@ pub enum Message {
         data: Vec<u8>,
     },
     Disconnect(SocketAddr),
+    ApplyFilters,
 }
 
 #[derive(Debug)]
@@ -105,13 +106,18 @@ impl ::std::fmt::Display for Error {
 }
 
 impl Manager {
-    pub fn listen(socket_address: &SocketAddr, routing_table: Arc<RoutingTable>) -> io::Result<Self> {
+    pub fn listen(
+        socket_address: &SocketAddr,
+        routing_table: Arc<RoutingTable>,
+        filters: Arc<FiltersControl>,
+    ) -> io::Result<Self> {
         Ok(Manager {
             listener: Listener::bind(&socket_address)?,
 
             tokens: TokenGenerator::new(FIRST_CONNECTION_TOKEN, LAST_CONNECTION_TOKEN),
 
             routing_table,
+            filters,
             connections: Connections::new(),
 
             port: socket_address.port(),
@@ -120,16 +126,28 @@ impl Manager {
 
     pub fn accept(&mut self) -> IoHandlerResult<Option<(StreamToken)>> {
         match self.listener.accept()? {
-            Some((stream, _socket_address)) => {
-                let token = self.tokens.gen().ok_or(Error::General("TooManyConnections"))?;
-                self.connections.accept(token, stream);
-                Ok(Some(token))
+            Some((stream, socket_address)) => {
+                let ip = socket_address.ip();
+                if self.filters.is_allowed(&ip) {
+                    let token = self.tokens.gen().ok_or(Error::General("TooManyConnections"))?;
+                    self.connections.accept(token, stream);
+                    Ok(Some(token))
+                } else {
+                    cinfo!(NET, "P2P connection request from {:?} is received. But it's not allowed", ip);
+                    Ok(None)
+                }
             }
             None => Ok(None),
         }
     }
 
     pub fn connect(&mut self, socket_address: &SocketAddr) -> IoHandlerResult<Option<StreamToken>> {
+        let ip = socket_address.ip();
+        if !self.filters.is_allowed(&ip) {
+            cinfo!(NET, "P2P connection from {:?} is received. But it's not allowed", ip);
+            return Ok(None)
+        }
+
         Ok(match Stream::connect(socket_address)? {
             Some(stream) => {
                 let remote_node_id = socket_address.into();
@@ -322,13 +340,15 @@ impl Handler {
         socket_address: SocketAddr,
         client: Arc<Client>,
         routing_table: Arc<RoutingTable>,
+        filters: Arc<FiltersControl>,
         min_peers: usize,
         max_peers: usize,
     ) -> ::std::result::Result<Self, String> {
         if MAX_CONNECTIONS < max_peers {
             return Err(format!("Max peers must be less than {}", MAX_CONNECTIONS))
         }
-        let manager = Mutex::new(Manager::listen(&socket_address, routing_table).expect("Cannot listen TCP port"));
+        let manager =
+            Mutex::new(Manager::listen(&socket_address, routing_table, filters).expect("Cannot listen TCP port"));
         debug_assert!(max_peers < MAX_CONNECTIONS);
         Ok(Self {
             socket_address,
@@ -433,6 +453,17 @@ impl IoHandler<Message> for Handler {
                 let manager = self.manager.lock();
                 manager.connections.shutdown(&socket_address)?;
                 manager.routing_table.ban(&socket_address);
+                Ok(())
+            }
+            Message::ApplyFilters => {
+                let manager = self.manager.lock();
+                let addresses = manager.connections.get_filtered_address(&*manager.filters);
+                cinfo!(NET, "Connections to the following addresses will be closed: {:?}", addresses);
+                for address in addresses.iter() {
+                    let _ = manager.connections.shutdown(address).map_err(|err| {
+                        cwarn!(NET, "Cannot close the connection to {:?}: {:?}", address, err);
+                    });
+                }
                 Ok(())
             }
         }

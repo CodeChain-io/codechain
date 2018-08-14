@@ -14,23 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod action;
-mod block;
-mod bytes;
-mod parcel;
-mod transaction;
-mod work;
+mod control;
+mod filter;
+mod filters;
 
-pub use self::action::{Action, ChangeShard};
-pub use self::block::Block;
-pub use self::block::BlockNumberAndHash;
-pub use self::bytes::Bytes;
-pub use self::parcel::Parcel;
-pub use self::transaction::Transaction;
-pub use self::work::Work;
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct FilterStatus {
-    pub list: Vec<::std::net::IpAddr>,
-    pub enabled: bool,
-}
+pub use self::control::Control as FiltersControl;
+pub use self::filters::Filters;

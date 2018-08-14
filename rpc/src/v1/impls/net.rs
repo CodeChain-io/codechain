@@ -22,7 +22,7 @@ use primitives::H256;
 
 use super::super::errors;
 use super::super::traits::Net;
-use super::super::types::ListStatus;
+use super::super::types::FilterStatus;
 
 pub struct NetClient {
     network_control: Arc<NetworkControl>,
@@ -64,43 +64,51 @@ impl Net for NetClient {
         Ok(self.network_control.get_peer_count().map_err(errors::network_control)?)
     }
 
-    fn add_to_whitelist(&self, _addr: ::std::net::IpAddr) -> Result<bool> {
-        unimplemented!()
+    fn add_to_whitelist(&self, addr: ::std::net::IpAddr) -> Result<()> {
+        self.network_control.add_to_whitelist(addr).map_err(errors::network_control)
     }
 
-    fn remove_from_whitelist(&self, _addr: ::std::net::IpAddr) -> Result<bool> {
-        unimplemented!()
+    fn remove_from_whitelist(&self, addr: ::std::net::IpAddr) -> Result<()> {
+        self.network_control.remove_from_whitelist(&addr).map_err(errors::network_control)
     }
 
-    fn add_to_blacklist(&self, _addr: ::std::net::IpAddr) -> Result<bool> {
-        unimplemented!()
+    fn add_to_blacklist(&self, addr: ::std::net::IpAddr) -> Result<()> {
+        self.network_control.add_to_blacklist(addr).map_err(errors::network_control)
     }
 
-    fn remove_from_blacklist(&self, _addr: ::std::net::IpAddr) -> Result<bool> {
-        unimplemented!()
+    fn remove_from_blacklist(&self, addr: ::std::net::IpAddr) -> Result<()> {
+        self.network_control.remove_from_blacklist(&addr).map_err(errors::network_control)
     }
 
     fn enable_whitelist(&self) -> Result<()> {
-        unimplemented!()
+        self.network_control.enable_whitelist().map_err(errors::network_control)
     }
 
     fn disable_whitelist(&self) -> Result<()> {
-        unimplemented!()
+        self.network_control.disable_whitelist().map_err(errors::network_control)
     }
 
     fn enable_blacklist(&self) -> Result<()> {
-        unimplemented!()
+        self.network_control.enable_blacklist().map_err(errors::network_control)
     }
 
     fn disable_blacklist(&self) -> Result<()> {
-        unimplemented!()
+        self.network_control.disable_blacklist().map_err(errors::network_control)
     }
 
-    fn get_whitelist(&self) -> Result<ListStatus> {
-        unimplemented!()
+    fn get_whitelist(&self) -> Result<FilterStatus> {
+        let (list, enabled) = self.network_control.get_whitelist().map_err(errors::network_control)?;
+        Ok(FilterStatus {
+            list: list.into_iter().map(Into::into).collect(),
+            enabled,
+        })
     }
 
-    fn get_blacklist(&self) -> Result<ListStatus> {
-        unimplemented!()
+    fn get_blacklist(&self) -> Result<FilterStatus> {
+        let (list, enabled) = self.network_control.get_blacklist().map_err(errors::network_control)?;
+        Ok(FilterStatus {
+            list: list.into_iter().map(Into::into).collect(),
+            enabled,
+        })
     }
 }

@@ -22,8 +22,9 @@ use mio::deprecated::EventLoop;
 use mio::Token;
 use parking_lot::RwLock;
 
+use super::super::node_id::IntoSocketAddr;
 use super::super::session::Session;
-use super::super::{NodeId, SocketAddr};
+use super::super::{FiltersControl, NodeId, SocketAddr};
 use super::connection::{Connection, Result};
 use super::stream::Stream;
 
@@ -303,5 +304,14 @@ impl Connections {
     pub fn len(&self) -> usize {
         let connections = self.connections.read();
         connections.len()
+    }
+
+    pub fn get_filtered_address(&self, filters: &FiltersControl) -> Vec<SocketAddr> {
+        let connected_nodes = self.connected_nodes.read();
+        connected_nodes
+            .keys()
+            .map(|node_id| node_id.into_addr())
+            .filter(|addr| !filters.is_allowed(&addr.ip()))
+            .collect()
     }
 }

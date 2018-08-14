@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
+use std::net::IpAddr;
 use std::sync::Arc;
 
 use cio::{IoError, IoService};
@@ -22,6 +23,7 @@ use primitives::H256;
 
 use super::client::Client;
 use super::control::{Control, Error as ControlError};
+use super::filters::FiltersControl;
 use super::p2p;
 use super::routing_table::RoutingTable;
 use super::session_initiator;
@@ -36,10 +38,16 @@ pub struct Service {
     client: Arc<Client>,
     routing_table: Arc<RoutingTable>,
     p2p_handler: Arc<p2p::Handler>,
+    filters_control: Arc<FiltersControl>,
 }
 
 impl Service {
-    pub fn start(address: SocketAddr, min_peers: usize, max_peers: usize) -> Result<Arc<Self>, Error> {
+    pub fn start(
+        address: SocketAddr,
+        min_peers: usize,
+        max_peers: usize,
+        filters_control: Arc<FiltersControl>,
+    ) -> Result<Arc<Self>, Error> {
         let p2p = IoService::start()?;
         let timer = IoService::start()?;
         let session_initiator = IoService::start()?;
@@ -52,6 +60,7 @@ impl Service {
             address.clone(),
             Arc::clone(&client),
             Arc::clone(&routing_table),
+            Arc::clone(&filters_control),
             min_peers,
             max_peers,
         )?);
@@ -59,8 +68,12 @@ impl Service {
 
         timer.register_handler(Arc::new(timer::Handler::new(Arc::clone(&client))))?;
 
-        let session_initiator_handler =
-            Arc::new(session_initiator::Handler::new(address, Arc::clone(&routing_table), p2p.channel()));
+        let session_initiator_handler = Arc::new(session_initiator::Handler::new(
+            address,
+            Arc::clone(&routing_table),
+            p2p.channel(),
+            Arc::clone(&filters_control),
+        ));
         session_initiator.register_handler(session_initiator_handler)?;
 
         Ok(Arc::new(Self {
@@ -70,6 +83,7 @@ impl Service {
             client,
             routing_table,
             p2p_handler,
+            filters_control,
         }))
     }
 
@@ -135,6 +149,66 @@ impl Control for Service {
 
     fn get_peer_count(&self) -> Result<usize, ControlError> {
         Ok(self.p2p_handler.get_peer_count())
+    }
+
+    fn add_to_whitelist(&self, addr: IpAddr) -> Result<(), ControlError> {
+        self.filters_control.add_to_whitelist(addr);
+        Ok(())
+    }
+
+    fn remove_from_whitelist(&self, addr: &IpAddr) -> Result<(), ControlError> {
+        self.filters_control.remove_from_whitelist(addr);
+        if let Err(err) = self.p2p.send_message(p2p::Message::ApplyFilters) {
+            cerror!(NET, "Error occurred while apply filters: {:?}", err);
+        }
+        Ok(())
+    }
+
+    fn add_to_blacklist(&self, addr: IpAddr) -> Result<(), ControlError> {
+        self.filters_control.add_to_blacklist(addr);
+        if let Err(err) = self.p2p.send_message(p2p::Message::ApplyFilters) {
+            cerror!(NET, "Error occurred while apply filters: {:?}", err);
+        }
+        Ok(())
+    }
+
+    fn remove_from_blacklist(&self, addr: &IpAddr) -> Result<(), ControlError> {
+        self.filters_control.remove_from_blacklist(addr);
+        Ok(())
+    }
+
+    fn enable_whitelist(&self) -> Result<(), ControlError> {
+        self.filters_control.enable_whitelist();
+        if let Err(err) = self.p2p.send_message(p2p::Message::ApplyFilters) {
+            cerror!(NET, "Error occurred while apply filters: {:?}", err);
+        }
+        Ok(())
+    }
+
+    fn disable_whitelist(&self) -> Result<(), ControlError> {
+        self.filters_control.disable_whitelist();
+        Ok(())
+    }
+
+    fn enable_blacklist(&self) -> Result<(), ControlError> {
+        self.filters_control.enable_blacklist();
+        if let Err(err) = self.p2p.send_message(p2p::Message::ApplyFilters) {
+            cerror!(NET, "Error occurred while apply filters: {:?}", err);
+        }
+        Ok(())
+    }
+
+    fn disable_blacklist(&self) -> Result<(), ControlError> {
+        self.filters_control.disable_blacklist();
+        Ok(())
+    }
+
+    fn get_whitelist(&self) -> Result<(Vec<IpAddr>, bool), ControlError> {
+        Ok(self.filters_control.get_whitelist())
+    }
+
+    fn get_blacklist(&self) -> Result<(Vec<IpAddr>, bool), ControlError> {
+        Ok(self.filters_control.get_blacklist())
     }
 }
 

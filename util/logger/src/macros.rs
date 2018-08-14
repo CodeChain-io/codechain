@@ -46,6 +46,9 @@ macro_rules! log_target {
     (NETAPI) => {
         "netapi"
     };
+    (NETFILTER) => {
+        "netfilter"
+    };
     (OWN_PARCEL) => {
         "own_parcel"
     };

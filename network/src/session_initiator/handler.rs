@@ -29,11 +29,8 @@ use mio::Token;
 use parking_lot::Mutex;
 use rlp::DecoderError;
 
-use super::super::p2p;
 use super::super::token_generator::TokenGenerator;
-use super::super::IntoSocketAddr;
-use super::super::RoutingTable;
-use super::super::SocketAddr;
+use super::super::{p2p, FiltersControl, IntoSocketAddr, RoutingTable, SocketAddr};
 use super::message;
 use super::server::{Error as ServerError, Server};
 
@@ -92,6 +89,7 @@ struct SessionInitiator {
     routing_table: Arc<RoutingTable>,
     requests: Requests,
     channel_to_p2p: IoChannel<p2p::Message>,
+    filters: Arc<FiltersControl>,
 }
 
 #[derive(Debug)]
@@ -197,6 +195,7 @@ impl SessionInitiator {
         socket_address: &SocketAddr,
         routing_table: Arc<RoutingTable>,
         channel_to_p2p: IoChannel<p2p::Message>,
+        filters: Arc<FiltersControl>,
     ) -> Result<Self> {
         let server = Server::bind(socket_address)?;
         Ok(Self {
@@ -204,6 +203,7 @@ impl SessionInitiator {
             routing_table,
             requests: Requests::new(),
             channel_to_p2p,
+            filters,
         })
     }
 
@@ -216,7 +216,12 @@ impl SessionInitiator {
         match self.receive() {
             Ok(None) => Ok(false),
             Ok(Some((msg, socket_address))) => {
-                self.on_packet(&msg, &socket_address, io)?;
+                let ip = socket_address.ip();
+                if self.filters.is_allowed(&ip) {
+                    self.on_packet(&msg, &socket_address, io)?;
+                } else {
+                    cinfo!(NET, "Message from {:?} is received. But it's not allowed", ip);
+                }
                 Ok(true)
             }
             Err(err) => Err(From::from(err)),
@@ -396,9 +401,11 @@ impl Handler {
         socket_address: SocketAddr,
         routing_table: Arc<RoutingTable>,
         channel_to_p2p: IoChannel<p2p::Message>,
+        filters: Arc<FiltersControl>,
     ) -> Self {
         let session_initiator = Mutex::new(
-            SessionInitiator::bind(&socket_address, routing_table, channel_to_p2p).expect("Cannot bind UDP port"),
+            SessionInitiator::bind(&socket_address, routing_table, channel_to_p2p, filters)
+                .expect("Cannot bind UDP port"),
         );
         Self {
             session_initiator,
@@ -452,6 +459,7 @@ impl IoHandler<Message> for Handler {
             }
             Message::ManuallyConnectTo(socket_address) => {
                 let mut session_initiator = self.session_initiator.lock();
+                session_initiator.filters.add_to_whitelist(socket_address.ip());
                 session_initiator.routing_table.unban(&socket_address);
                 session_initiator.routing_table.add_candidate(socket_address.clone());
                 session_initiator.requests.manually_connected_address.insert(socket_address.clone());
