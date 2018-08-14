@@ -115,9 +115,7 @@ fn new_miner(config: &config::Config, scheme: &Scheme, ap: Arc<AccountProvider>)
             None => return Err("mining.author is not specified".to_string()),
         },
         EngineType::InternalSealing => match &config.mining.engine_signer {
-            Some(ref engine_signer) => {
-                miner.set_author(engine_signer.address, None).map_err(|e| format!("{:?}", e))?
-            }
+            Some(ref engine_signer) => miner.set_author(engine_signer.address, None).map_err(|e| format!("{:?}", e))?,
             None => return Err("mining.engine_signer is not specified".to_string()),
         },
         EngineType::Solo => (),
