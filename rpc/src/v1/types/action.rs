@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ckey::{Address, Public, Signature};
+use ckey::{NetworkId, PlatformAddress, Public, Signature};
 use ctypes::parcel::{Action as ActionType, ChangeShard as ChangeShardType};
 use ctypes::ShardId;
 use primitives::{Bytes, H256, U256};
@@ -39,7 +39,7 @@ pub enum Action {
         signatures: Vec<Signature>,
     },
     Payment {
-        receiver: Address,
+        receiver: PlatformAddress,
         /// Transferred amount.
         amount: U256,
     },
@@ -49,11 +49,11 @@ pub enum Action {
     CreateShard,
     ChangeShardOwners {
         shard_id: ShardId,
-        owners: Vec<Address>,
+        owners: Vec<PlatformAddress>,
     },
     ChangeShardUsers {
         shard_id: ShardId,
-        users: Vec<Address>,
+        users: Vec<PlatformAddress>,
     },
     Custom(Bytes),
 }
@@ -68,8 +68,9 @@ impl From<ChangeShardType> for ChangeShard {
     }
 }
 
-impl From<ActionType> for Action {
-    fn from(from: ActionType) -> Self {
+impl Action {
+    pub fn from_core(from: ActionType, network_id: NetworkId) -> Self {
+        const VERSION: u8 = 0;
         match from {
             ActionType::ChangeShardState {
                 transactions,
@@ -84,7 +85,7 @@ impl From<ActionType> for Action {
                 receiver,
                 amount,
             } => Action::Payment {
-                receiver,
+                receiver: PlatformAddress::create(VERSION, network_id, receiver),
                 amount,
             },
             ActionType::SetRegularKey {
@@ -98,14 +99,14 @@ impl From<ActionType> for Action {
                 owners,
             } => Action::ChangeShardOwners {
                 shard_id,
-                owners,
+                owners: owners.into_iter().map(|owner| PlatformAddress::create(VERSION, network_id, owner)).collect(),
             },
             ActionType::ChangeShardUsers {
                 shard_id,
                 users,
             } => Action::ChangeShardUsers {
                 shard_id,
-                users,
+                users: users.into_iter().map(|user| PlatformAddress::create(VERSION, network_id, user)).collect(),
             },
             ActionType::Custom(bytes) => Action::Custom(bytes),
         }
@@ -138,7 +139,7 @@ impl From<Action> for ActionType {
                 receiver,
                 amount,
             } => ActionType::Payment {
-                receiver,
+                receiver: receiver.into(),
                 amount,
             },
             Action::SetRegularKey {
@@ -152,14 +153,14 @@ impl From<Action> for ActionType {
                 owners,
             } => ActionType::ChangeShardOwners {
                 shard_id,
-                owners,
+                owners: owners.into_iter().map(Into::into).collect(),
             },
             Action::ChangeShardUsers {
                 shard_id,
                 users,
             } => ActionType::ChangeShardUsers {
                 shard_id,
-                users,
+                users: users.into_iter().map(Into::into).collect(),
             },
             Action::Custom(bytes) => ActionType::Custom(bytes),
         }

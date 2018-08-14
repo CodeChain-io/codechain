@@ -25,7 +25,7 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
 
 ## Block
 
- - author: `H160`
+ - author: `PlatformAddress`
  - extraData: `any[]`
  - hash: `H256`
  - invoicesRoot: `H256`
@@ -61,7 +61,7 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
 ### Payment Action
 
  - action: "payment"
- - receiver: `H160`
+ - receiver: `PlatformAddress`
  - amount: `U256`
 
 ### SetRegularKey Action
@@ -73,13 +73,13 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
 
  - action: "changeShardOwners"
  - shard_id: `number`
- - owners: `H160`[]
+ - owners: `PlatformAddress[]`
 
 ### ChangeShardUsers Action
 
  - action: "changeShardUsers"
  - shard_id: `number`
- - users: `H160`[]
+ - users: `PlatformAddress[]`
 
 ## Transaction
 
@@ -90,7 +90,7 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
 
  - amount: `number`
  - metadata: `string`
- - registrar: `H160` | `null`
+ - registrar: `PlatformAddress` | `null`
 
 ## Asset
 
@@ -286,7 +286,7 @@ Response Example
 {
   "jsonrpc":"2.0",
   "result":{
-    "hash":"0x56642f04d519ae3262c7ba6facf1c5b11450ebaeb7955337cfbc45420d573077",
+    "hash":"cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d70x56642f04d519ae3262c7ba6facf1c5b11450ebaeb7955337cfbc45420d573077",
     "number":1
   },
   "id":null
@@ -343,7 +343,7 @@ Response Example
 {
   "jsonrpc":"2.0",
   "result":{
-    "author":"0x84137e7a75043bed32e4458a45da7549a8169b4d",
+    "author":"cccqzzpxln6w5zrhmfju3zc53w6w4y6s95mf5lfasfn",
     "extraData":[
 
     ],
@@ -355,7 +355,7 @@ Response Example
         "action":{
           "action":"payment",
           "amount":"0xa",
-          "receiver":0xa6594b7196808d161b6fb137e781abbc251385d9
+          "receiver": "cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7"
         },
         "blockHash":"0xfc196ede542b03b55aee9f106004e7e3d7ea6a9600692e964b4735a260356b50",
         "blockNumber":5,
@@ -433,7 +433,7 @@ Response Example
         "action": {
           "action":"payment",
           "amount":"0xa",
-          "receiver":0xa6594b7196808d161b6fb137e781abbc251385d9
+          "receiver": "cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7"
         },
         "blockHash": "0xfc196ede542b03b55aee9f106004e7e3d7ea6a9600692e964b4735a260356b50",
         "blockNumber": 5,
@@ -673,7 +673,7 @@ Response Example
 Gets a nonce of an account of the given address, at state of the given blockNumber.
 
 Params:
- 1. address: `H160`
+ 1. address: `PlatformAddress`
  2. block number: `number` | `null`
 
 Return Type: `U256`
@@ -684,7 +684,7 @@ Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "chain_getNonce", "params": ["0xa6594b7196808d161b6fb137e781abbc251385d9", null], "id": null}' \
+    -d '{"jsonrpc": "2.0", "method": "chain_getNonce", "params": ["cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7", null], "id": null}' \
     localhost:8080
 ```
 
@@ -701,7 +701,7 @@ Response Example
 Gets a balance of an account of the given address, at the state of the given blockNumber.
 
 Params:
- 1. address: `H160`
+ 1. address: `PlatformAddress`
  2. block number: `number` | `null`
 
 Return Type: `U256`
@@ -712,7 +712,7 @@ Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "chain_getBalance", "params": ["0xa6594b7196808d161b6fb137e781abbc251385d9", null], "id": null}' \
+    -d '{"jsonrpc": "2.0", "method": "chain_getBalance", "params": ["cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7", null], "id": null}' \
     localhost:8080
 ```
 
@@ -729,7 +729,7 @@ Response Example
 Gets the regular key of an account of the given address, at the state of the given blockNumber.
 
 Params:
- 1. address: `H160`
+ 1. address: `PlatformAddress`
  2. block number: `number` | `null`
 
 Return Type: `H512` - 512-bit public key
@@ -740,7 +740,7 @@ Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "chain_getRegularKey", "params": ["0xa6594b7196808d161b6fb137e781abbc251385d9", null], "id": null}' \
+    -d '{"jsonrpc": "2.0", "method": "chain_getRegularKey", "params": ["cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7", null], "id": null}' \
     localhost:8080
 ```
 
@@ -843,8 +843,7 @@ Response Example
         {
           "payment":{
             "nonce":"0x1",
-            "receiver":"0xa6594b7196808d161b6fb137e781abbc251385d9",
-            "sender":"0xa6594b7196808d161b6fb137e781abbc251385d9",
+            "receiver": "cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7",
             "value":"0x0"
           }
         }
@@ -861,7 +860,7 @@ Gets coinbase's account id.
 
 Params: No parameters
 
-Return Type: `H160` | `null`
+Return Type: `PlatformAddress` | `null`
 
 Request Example
 ```
@@ -875,7 +874,7 @@ Response Example
 ```
 {
   "jsonrpc":"2.0",
-  "result":"0xa6594b7196808d161b6fb137e781abbc251385d9",
+  "result":"cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7",
   "id":null
 }
 ```
@@ -885,7 +884,7 @@ Executes the transactions and returns the current shard root and the changed sha
 
 Params:
  1. transactions: `Transaction[]`
- 2. sender: `H160`
+ 2. sender: `PlatformAddress`
 
 Return Type: `ChangeShard[]`
 
@@ -895,7 +894,7 @@ Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "chain_executeTransactions", "params": [[{"type":"assetMint","data":{"networkId":"17","shardId":0,"worldId":0,"metadata":"{\"name\":\"Gold\",\"description\":\"An asset example\",\"icon_url\":\"https://gold.image/\"}","output":{"lockScriptHash":"0xf42a65ea518ba236c08b261c34af0521fa3cd1aa505e1c18980919cb8945f8f3","parameters":[],"amount":10000},"registrar":null,"nonce":0}}, {"type":"assetMint","data":{"networkId":"17","shardId":1,"worldId":0,"metadata":"{\"name\":\"Gold\",\"description\":\"An asset example\",\"icon_url\":\"https://gold.image/\"}","output":{"lockScriptHash":"0xf42a65ea518ba236c08b261c34af0521fa3cd1aa505e1c18980919cb8945f8f3","parameters":[],"amount":10000},"registrar":null,"nonce":0}}], "0xa6594b7196808d161b6fb137e781abbc251385d9"], "id": null}' \
+    -d '{"jsonrpc": "2.0", "method": "chain_executeTransactions", "params": [[{"type":"assetMint","data":{"networkId":"17","shardId":0,"worldId":0,"metadata":"{\"name\":\"Gold\",\"description\":\"An asset example\",\"icon_url\":\"https://gold.image/\"}","output":{"lockScriptHash":"0xf42a65ea518ba236c08b261c34af0521fa3cd1aa505e1c18980919cb8945f8f3","parameters":[],"amount":10000},"registrar":null,"nonce":0}}, {"type":"assetMint","data":{"networkId":"17","shardId":1,"worldId":0,"metadata":"{\"name\":\"Gold\",\"description\":\"An asset example\",\"icon_url\":\"https://gold.image/\"}","output":{"lockScriptHash":"0xf42a65ea518ba236c08b261c34af0521fa3cd1aa505e1c18980919cb8945f8f3","parameters":[],"amount":10000},"registrar":null,"nonce":0}}], "cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7"], "id": null}' \
     localhost:8080
 ```
 
@@ -919,7 +918,7 @@ Response Example
 ```
 
 ## chain_getNetworkId
-(not implemented) Return the nework id that is used in this chain.
+Return the nework id that is used in this chain.
 
 Params: No parameters
 

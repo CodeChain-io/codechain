@@ -20,12 +20,12 @@ use ccore::{
     AssetClient, BlockId, EngineInfo, ExecuteClient, MinerService, MiningBlockChainClient, RegularKey, Shard,
     SignedParcel, UnverifiedParcel,
 };
-use ckey::{Address, NetworkId, Public};
+use ckey::{NetworkId, PlatformAddress, Public};
 use cstate::{AssetScheme, AssetSchemeAddress, OwnedAsset};
 use ctypes::invoice::{ParcelInvoice, TransactionInvoice};
 use ctypes::parcel::Action;
 use ctypes::{BlockNumber, ShardId, WorldId};
-use primitives::{H160, H256, U256};
+use primitives::{H256, U256};
 use rlp::{DecoderError, UntrustedRlp};
 
 use jsonrpc_core::Result;
@@ -135,17 +135,17 @@ where
         self.client.is_asset_spent(transaction_hash, index, shard_id, block_id).map_err(errors::parcel_state)
     }
 
-    fn get_nonce(&self, address: H160, block_number: Option<u64>) -> Result<Option<U256>> {
+    fn get_nonce(&self, address: PlatformAddress, block_number: Option<u64>) -> Result<Option<U256>> {
         let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
         Ok(self.client.nonce(&address.into(), block_id))
     }
 
-    fn get_balance(&self, address: H160, block_number: Option<u64>) -> Result<Option<U256>> {
+    fn get_balance(&self, address: PlatformAddress, block_number: Option<u64>) -> Result<Option<U256>> {
         let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
         Ok(self.client.balance(&address.into(), block_id.into()))
     }
 
-    fn get_regular_key(&self, address: H160, block_number: Option<u64>) -> Result<Option<Public>> {
+    fn get_regular_key(&self, address: PlatformAddress, block_number: Option<u64>) -> Result<Option<Public>> {
         let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
         Ok(self.client.regular_key(&address.into(), block_id.into()))
     }
@@ -177,22 +177,30 @@ where
     }
 
     fn get_block_by_number(&self, block_number: u64) -> Result<Option<Block>> {
-        Ok(self.client.block(BlockId::Number(block_number)).map(|block| block.decode().into()))
+        Ok(self
+            .client
+            .block(BlockId::Number(block_number))
+            .map(|block| Block::from_core(block.decode(), self.client.common_params().network_id)))
     }
 
     fn get_block_by_hash(&self, block_hash: H256) -> Result<Option<Block>> {
-        Ok(self.client.block(BlockId::Hash(block_hash)).map(|block| block.decode().into()))
+        Ok(self
+            .client
+            .block(BlockId::Hash(block_hash))
+            .map(|block| Block::from_core(block.decode(), self.client.common_params().network_id)))
     }
 
     fn get_pending_parcels(&self) -> Result<Vec<Parcel>> {
         Ok(self.client.ready_parcels().into_iter().map(|signed| signed.into()).collect())
     }
 
-    fn get_coinbase(&self) -> Result<Option<Address>> {
+    fn get_coinbase(&self) -> Result<Option<PlatformAddress>> {
         if self.miner.author().is_zero() {
             Ok(None)
         } else {
-            Ok(Some(self.miner.author()))
+            const VERSION: u8 = 0;
+            let network_id = self.client.common_params().network_id;
+            Ok(Some(PlatformAddress::create(VERSION, network_id, self.miner.author())))
         }
     }
 
@@ -200,11 +208,15 @@ where
         Ok(self.client.common_params().network_id)
     }
 
-    fn execute_change_shard_state(&self, transactions: Vec<Transaction>, sender: Address) -> Result<Vec<ChangeShard>> {
+    fn execute_change_shard_state(
+        &self,
+        transactions: Vec<Transaction>,
+        sender: PlatformAddress,
+    ) -> Result<Vec<ChangeShard>> {
         let transaction_types: Vec<_> = transactions.into_iter().map(From::from).collect();
         Ok(self
             .client
-            .execute_transactions(&transaction_types, &sender)
+            .execute_transactions(&transaction_types, &sender.into())
             .map_err(errors::core)?
             .into_iter()
             .map(From::from)
