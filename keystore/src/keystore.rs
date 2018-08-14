@@ -64,7 +64,11 @@ impl KeyStore {
 
 impl SimpleSecretStore for KeyStore {
     fn insert_account(&self, secret: Secret, password: &Password) -> Result<Address, Error> {
-        self.store.insert_account(secret, password)
+        let keypair = KeyPair::from_private(secret.into()).map_err(|_| Error::CreationFailed)?;
+        match self.has_account(&keypair.address())? {
+            true => Err(Error::AlreadyExists),
+            false => self.store.insert_account(secret, password),
+        }
     }
 
     fn accounts(&self) -> Result<Vec<Address>, Error> {
