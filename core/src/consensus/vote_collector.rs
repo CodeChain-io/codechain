@@ -66,10 +66,10 @@ impl<M: Message> StepCollector<M> {
     fn insert(&mut self, message: M, address: Address) -> Option<DoubleVote<M>> {
         // Do nothing when message was seen.
         if self.messages.insert(message.clone()) {
-            if let Some(previous) = self.voted.insert(address.clone(), message.clone()) {
+            if let Some(previous) = self.voted.insert(address, message.clone()) {
                 // Bad validator sent a different message.
                 return Some(DoubleVote {
-                    author: address.clone(),
+                    author: address,
                     vote_one: previous,
                     vote_two: message,
                 })

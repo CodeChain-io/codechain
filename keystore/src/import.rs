@@ -29,7 +29,7 @@ pub fn import_account(path: &Path, dst: &KeyDirectory) -> Result<Address, Error>
     let filename = path.file_name().and_then(|n| n.to_str()).map(|f| f.to_owned());
     let account = fs::File::open(&path).map_err(Into::into).and_then(|file| key_manager.read(filename, file))?;
 
-    let address = account.address.clone();
+    let address = account.address;
     if !existing_accounts.contains(&address) {
         dst.insert(account)?;
     }
@@ -45,7 +45,7 @@ pub fn import_accounts(src: &KeyDirectory, dst: &KeyDirectory) -> Result<Vec<Add
         .into_iter()
         .filter(|a| !existing_accounts.contains(&a.address))
         .map(|a| {
-            let address = a.address.clone();
+            let address = a.address;
             dst.insert(a)?;
             Ok(address)
         })

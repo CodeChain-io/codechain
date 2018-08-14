@@ -524,7 +524,7 @@ impl MinerService for Miner {
             if let Some(ref ap) = self.accounts {
                 ctrace!(MINER, "Set author to {:?}", address);
                 // Sign test message
-                ap.sign(address.clone(), password.clone(), Default::default())?;
+                ap.sign(address, password.clone(), Default::default())?;
                 // Limit the scope of the locks.
                 {
                     let mut sealing_work = self.sealing_work.lock();

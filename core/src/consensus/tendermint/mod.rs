@@ -219,7 +219,7 @@ impl Tendermint {
         } else {
             Err(EngineError::NotProposer(Mismatch {
                 expected: proposer,
-                found: address.clone(),
+                found: *address,
             }))
         }
     }

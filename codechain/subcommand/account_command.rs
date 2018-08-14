@@ -114,7 +114,7 @@ fn remove(ap: &AccountProvider, address: &str) -> Result<(), String> {
     match PlatformAddress::from_str(address) {
         Ok(address) => {
             let password = prompt_password("Password: ");
-            match ap.remove_account(address.clone().into(), &password) {
+            match ap.remove_account(address.into(), &password) {
                 Ok(_) => println!("{} is deleted", address),
                 Err(e) => return Err(format!("{:?}", e)),
             }

@@ -35,7 +35,7 @@ impl KeyDirectory for MemoryDirectory {
 
     fn update(&self, account: SafeAccount) -> Result<SafeAccount, Error> {
         let mut lock = self.accounts.write();
-        let accounts = lock.entry(account.address.clone()).or_insert_with(Vec::new);
+        let accounts = lock.entry(account.address).or_insert_with(Vec::new);
         // If the filename is the same we just need to replace the entry
         accounts.retain(|acc| acc.filename != account.filename);
         accounts.push(account.clone());
@@ -44,7 +44,7 @@ impl KeyDirectory for MemoryDirectory {
 
     fn insert(&self, account: SafeAccount) -> Result<SafeAccount, Error> {
         let mut lock = self.accounts.write();
-        let accounts = lock.entry(account.address.clone()).or_insert_with(Vec::new);
+        let accounts = lock.entry(account.address).or_insert_with(Vec::new);
         accounts.push(account.clone());
         Ok(account)
     }

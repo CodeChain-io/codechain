@@ -54,7 +54,7 @@ impl EngineSigner {
 
     /// Signing address.
     pub fn address(&self) -> Option<Address> {
-        self.address.clone()
+        self.address
     }
 
     /// Check if the given address is the signing address.

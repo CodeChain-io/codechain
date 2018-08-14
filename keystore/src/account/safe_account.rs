@@ -112,7 +112,7 @@ impl SafeAccount {
             id: self.id.clone(),
             version: self.version.clone(),
             crypto: Crypto::with_secret(&secret, new_password, iterations)?,
-            address: self.address.clone(),
+            address: self.address,
             filename: self.filename.clone(),
             name: self.name.clone(),
             meta: self.meta.clone(),
