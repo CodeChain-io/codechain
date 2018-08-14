@@ -62,33 +62,19 @@ impl Account for AccountClient {
             .map_err(account_provider)
     }
 
-    fn remove_account(&self, full_address: PlatformAddress, passphrase: Option<Password>) -> Result<()> {
-        self.account_provider
-            .remove_account(full_address.address, &passphrase.unwrap_or_default())
-            .map_err(account_provider)
+    fn remove_account(&self, address: PlatformAddress, passphrase: Option<Password>) -> Result<()> {
+        self.account_provider.remove_account(address.into(), &passphrase.unwrap_or_default()).map_err(account_provider)
     }
 
-    fn sign(
-        &self,
-        message_digest: H256,
-        full_address: PlatformAddress,
-        passphrase: Option<Password>,
-    ) -> Result<Signature> {
+    fn sign(&self, message_digest: H256, address: PlatformAddress, passphrase: Option<Password>) -> Result<Signature> {
         self.account_provider
-            .sign(full_address.address, Some(passphrase.unwrap_or_default()), message_digest)
+            .sign(address.into(), Some(passphrase.unwrap_or_default()), message_digest)
             .map(|sig| sig.into())
             .map_err(account_provider)
     }
 
-    fn change_password(
-        &self,
-        full_address: PlatformAddress,
-        old_password: Password,
-        new_password: Password,
-    ) -> Result<()> {
-        self.account_provider
-            .change_password(full_address.address, &old_password, &new_password)
-            .map_err(account_provider)
+    fn change_password(&self, address: PlatformAddress, old_password: Password, new_password: Password) -> Result<()> {
+        self.account_provider.change_password(address.into(), &old_password, &new_password).map_err(account_provider)
     }
 
     fn unlock(&self, address: PlatformAddress, password: Password, duration: Option<u64>) -> Result<()> {

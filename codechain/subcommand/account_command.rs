@@ -112,10 +112,10 @@ fn import_raw(ap: &AccountProvider, network_id: NetworkId, raw_key: &str) -> Res
 
 fn remove(ap: &AccountProvider, address: &str) -> Result<(), String> {
     match PlatformAddress::from_str(address) {
-        Ok(full_address) => {
+        Ok(address) => {
             let password = prompt_password("Password: ");
-            match ap.remove_account(full_address.address, &password) {
-                Ok(_) => println!("{} is deleted", full_address),
+            match ap.remove_account(address.clone().into(), &password) {
+                Ok(_) => println!("{} is deleted", address),
                 Err(e) => return Err(format!("{:?}", e)),
             }
         }
@@ -134,10 +134,10 @@ fn list(ap: &AccountProvider, network_id: NetworkId) -> Result<(), String> {
 
 fn change_password(ap: &AccountProvider, address: &str) -> Result<(), String> {
     match PlatformAddress::from_str(address) {
-        Ok(full_address) => {
+        Ok(address) => {
             let old_password = prompt_password("Old Password: ");
             if let Some(new_password) = read_password_and_confirm() {
-                match ap.change_password(full_address.address, &old_password, &new_password) {
+                match ap.change_password(address.into(), &old_password, &new_password) {
                     Ok(_) => println!("Password has changed"),
                     Err(e) => return Err(format!("{:?}", e)),
                 }
