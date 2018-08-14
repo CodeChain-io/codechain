@@ -19,6 +19,7 @@ use std::fmt;
 use ccore::AccountProviderError;
 use ccore::Error as CoreError;
 use ckey::Error as KeyError;
+use ckeystore::Error as KeystoreError;
 use cnetwork::control::Error as NetworkControlError;
 use cstate::StateError;
 use ctypes::parcel::Error as ParcelError;
@@ -43,6 +44,11 @@ mod codes {
     pub const TOO_LOW_FEE: i64 = -32033;
     pub const TOO_CHEAP_TO_REPLACE: i64 = -32034;
     pub const INVALID_NONCE: i64 = -32035;
+    pub const KEYSTORE_ERROR: i64 = -32040;
+    pub const KEY_ERROR: i64 = -32041;
+    pub const ALREADY_EXISTS: i64 = -32042;
+    pub const WRONG_PASSWORD: i64 = -32043;
+    pub const NO_SUCH_ACCOUNT: i64 = -32044;
     pub const UNKNOWN_ERROR: i64 = -32099;
 }
 
@@ -148,10 +154,39 @@ pub fn rlp(error: DecoderError) -> Error {
 }
 
 pub fn account_provider(error: AccountProviderError) -> Error {
-    Error {
-        code: ErrorCode::ServerError(codes::ACCOUNT_PROVIDER_ERROR),
-        message: "AccountProvider error".into(),
-        data: Some(Value::String(format!("{:?}", error))),
+    match error {
+        AccountProviderError::KeystoreError(error) => match error {
+            KeystoreError::InvalidAccount => Error {
+                code: ErrorCode::ServerError(codes::NO_SUCH_ACCOUNT),
+                message: "No Such Account".into(),
+                data: Some(Value::String(format!("{:?}", error))),
+            },
+            KeystoreError::InvalidPassword => Error {
+                code: ErrorCode::ServerError(codes::WRONG_PASSWORD),
+                message: "Wrong Password".into(),
+                data: Some(Value::String(format!("{:?}", error))),
+            },
+            KeystoreError::AlreadyExists => Error {
+                code: ErrorCode::ServerError(codes::ALREADY_EXISTS),
+                message: "Already Exists".into(),
+                data: Some(Value::String(format!("{:?}", error))),
+            },
+            _ => Error {
+                code: ErrorCode::ServerError(codes::KEYSTORE_ERROR),
+                message: "Keystore Error".into(),
+                data: Some(Value::String(format!("{:?}", error))),
+            },
+        },
+        AccountProviderError::KeyError(_) => Error {
+            code: ErrorCode::ServerError(codes::KEY_ERROR),
+            message: "Key Error".into(),
+            data: Some(Value::String(format!("{:?}", error))),
+        },
+        _ => Error {
+            code: ErrorCode::ServerError(codes::ACCOUNT_PROVIDER_ERROR),
+            message: "AccountProvider Error".into(),
+            data: Some(Value::String(format!("{:?}", error))),
+        },
     }
 }
 
