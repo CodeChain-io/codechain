@@ -908,7 +908,7 @@ Response Example
 ```
 
 ## chain_getNetworkId
-(not implemented) Return the nework id that is used in this chain.
+Return the nework id that is used in this chain.
 
 Params: No parameters
 
