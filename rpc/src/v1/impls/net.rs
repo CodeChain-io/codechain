@@ -22,6 +22,7 @@ use primitives::H256;
 
 use super::super::errors;
 use super::super::traits::Net;
+use super::super::types::ListStatus;
 
 pub struct NetClient {
     network_control: Arc<NetworkControl>,
@@ -61,5 +62,45 @@ impl Net for NetClient {
 
     fn get_peer_count(&self) -> Result<usize> {
         Ok(self.network_control.get_peer_count().map_err(errors::network_control)?)
+    }
+
+    fn add_to_whitelist(&self, _addr: ::std::net::IpAddr) -> Result<bool> {
+        unimplemented!()
+    }
+
+    fn remove_from_whitelist(&self, _addr: ::std::net::IpAddr) -> Result<bool> {
+        unimplemented!()
+    }
+
+    fn add_to_blacklist(&self, _addr: ::std::net::IpAddr) -> Result<bool> {
+        unimplemented!()
+    }
+
+    fn remove_from_blacklist(&self, _addr: ::std::net::IpAddr) -> Result<bool> {
+        unimplemented!()
+    }
+
+    fn enable_whitelist(&self) -> Result<()> {
+        unimplemented!()
+    }
+
+    fn disable_whitelist(&self) -> Result<()> {
+        unimplemented!()
+    }
+
+    fn enable_blacklist(&self) -> Result<()> {
+        unimplemented!()
+    }
+
+    fn disable_blacklist(&self) -> Result<()> {
+        unimplemented!()
+    }
+
+    fn get_whitelist(&self) -> Result<ListStatus> {
+        unimplemented!()
+    }
+
+    fn get_blacklist(&self) -> Result<ListStatus> {
+        unimplemented!()
     }
 }
