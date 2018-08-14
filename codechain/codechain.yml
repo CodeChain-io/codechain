@@ -200,6 +200,11 @@ subcommands:
                 value_name: PATH
                 help: Specify the path for JSON key files to be found
                 takes_value: true
+            - chain:
+                short: c
+                long: chain
+                help: Set the blockchain type out of solo, solo_authority, tendermint, cuckoo, blake_pow, husky or a path to chain scheme file.
+                takes_value: true
         subcommands:
             - create:
                 about: create account

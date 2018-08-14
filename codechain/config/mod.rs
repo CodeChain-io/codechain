@@ -27,7 +27,7 @@ use cnetwork::{NetworkConfig, SocketAddr};
 use rpc::{RpcHttpConfig, RpcIpcConfig};
 use toml;
 
-use self::chain_type::ChainType;
+pub use self::chain_type::ChainType;
 use super::constants::DEFAULT_CONFIG_PATH;
 
 #[derive(Deserialize)]

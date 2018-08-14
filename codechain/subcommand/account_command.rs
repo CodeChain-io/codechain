@@ -27,6 +27,7 @@ use clap::ArgMatches;
 use clogger::{self, LoggerConfig};
 use primitives::clean_0x;
 
+use super::super::config::ChainType;
 use super::super::constants::DEFAULT_KEYS_PATH;
 
 pub fn run_account_command(matches: ArgMatches) -> Result<(), String> {
@@ -41,8 +42,8 @@ pub fn run_account_command(matches: ArgMatches) -> Result<(), String> {
     let dir = RootDiskDirectory::create(keys_path).expect("Cannot read key path directory");
     let keystore = KeyStore::open(Box::new(dir)).unwrap();
     let ap = AccountProvider::new(keystore);
-    // FIXME: Don't hardcode network_id.
-    let network_id: NetworkId = "tc".into();
+    let chain = matches.value_of("chain").unwrap_or("solo");
+    let network_id: NetworkId = ChainType::from_str(chain)?.scheme().map(|scheme| scheme.params().network_id)?;
 
     match matches.subcommand() {
         ("create", _) => create(&ap, network_id),
