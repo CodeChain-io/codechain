@@ -182,6 +182,7 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
  * [account_create](#account_create)
  * [account_importRaw](#account_importraw)
  * [account_remove](#account_remove)
+ * [account_unlock](#account_unlock)
  * [account_sign](#account_sign)
  * [account_changePassword](#account_changepassword)
 ***
@@ -1506,6 +1507,37 @@ Response Example
 {
   "jsonrpc":"2.0",
   "result":null,
+  "id":6
+}
+```
+
+## account_unlock
+Unlocks the specified account for use.
+
+It will default to 300 seconds. Passing 0 unlocks the account indefinitely.
+
+Params:
+ 1. account: `PlatformAddress`
+ 2. password: `string`
+ 3. duration: `number`  | `null`
+
+Return type: `null`
+
+Errors: `Keystore Error`, `Wrong Password`, `No Such Account`, `Invalid Params`
+
+Request Example
+```
+curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "account_unlock", "params": ["cccqqccmmu8mrwq7lxzz72d4ukaxemzmv3tvues8uwy", "1234", 0], "id": 6}' \
+    localhost:8080
+```
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result": null,
   "id":6
 }
 ```
