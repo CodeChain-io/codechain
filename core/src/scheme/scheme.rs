@@ -330,6 +330,10 @@ impl Scheme {
         load_bundled!("blake_pow")
     }
 
+    pub fn new_husky() -> Self {
+        load_bundled!("husky")
+    }
+
     /// Get common blockchain parameters.
     pub fn params(&self) -> &CommonParams {
         &self.engine.params()
