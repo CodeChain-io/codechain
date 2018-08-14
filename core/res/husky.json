@@ -3,7 +3,7 @@
   "engine": {
     "cuckoo": {
       "params": {
-        "blockReward": "0x32",
+        "blockReward": "0xba43b7400",
         "minScore": "0x020000",
         "maxVertex": "0x40000000",
         "maxEdge": "0x20000000",
