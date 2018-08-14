@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::net::IpAddr;
+
 use cnetwork::{NetworkControl, NetworkControlError, SocketAddr};
 use primitives::H256;
 
@@ -47,6 +49,46 @@ impl NetworkControl for DummyNetworkService {
     }
 
     fn get_peer_count(&self) -> Result<usize, NetworkControlError> {
+        Err(NetworkControlError::Disabled)
+    }
+
+    fn add_to_whitelist(&self, _addr: IpAddr) -> Result<(), NetworkControlError> {
+        Err(NetworkControlError::Disabled)
+    }
+
+    fn remove_from_whitelist(&self, _addr: &IpAddr) -> Result<(), NetworkControlError> {
+        Err(NetworkControlError::Disabled)
+    }
+
+    fn add_to_blacklist(&self, _addr: IpAddr) -> Result<(), NetworkControlError> {
+        Err(NetworkControlError::Disabled)
+    }
+
+    fn remove_from_blacklist(&self, _addr: &IpAddr) -> Result<(), NetworkControlError> {
+        Err(NetworkControlError::Disabled)
+    }
+
+    fn enable_whitelist(&self) -> Result<(), NetworkControlError> {
+        Err(NetworkControlError::Disabled)
+    }
+
+    fn disable_whitelist(&self) -> Result<(), NetworkControlError> {
+        Err(NetworkControlError::Disabled)
+    }
+
+    fn enable_blacklist(&self) -> Result<(), NetworkControlError> {
+        Err(NetworkControlError::Disabled)
+    }
+
+    fn disable_blacklist(&self) -> Result<(), NetworkControlError> {
+        Err(NetworkControlError::Disabled)
+    }
+
+    fn get_whitelist(&self) -> Result<(Vec<IpAddr>, bool), NetworkControlError> {
+        Err(NetworkControlError::Disabled)
+    }
+
+    fn get_blacklist(&self) -> Result<(Vec<IpAddr>, bool), NetworkControlError> {
         Err(NetworkControlError::Disabled)
     }
 }

@@ -28,7 +28,7 @@ use ckeystore::accounts_dir::RootDiskDirectory;
 use ckeystore::KeyStore;
 use clap::ArgMatches;
 use clogger::{self, LoggerConfig};
-use cnetwork::{NetworkConfig, NetworkControl, NetworkService, SocketAddr};
+use cnetwork::{Filters, NetworkConfig, NetworkControl, NetworkService, SocketAddr};
 use creactor::EventLoop;
 use csync::{BlockSyncExtension, ParcelSyncExtension, SnapshotService};
 use ctrlc::CtrlC;
@@ -47,7 +47,8 @@ fn network_start(cfg: &NetworkConfig) -> Result<Arc<NetworkService>, String> {
 
     let addr = cfg.address.parse().map_err(|_| format!("Invalid NETWORK listen host given: {}", cfg.address))?;
     let sockaddress = SocketAddr::new(addr, cfg.port);
-    let service = NetworkService::start(sockaddress, cfg.min_peers, cfg.max_peers)
+    let filters = Filters::new();
+    let service = NetworkService::start(sockaddress, cfg.min_peers, cfg.max_peers, filters)
         .map_err(|e| format!("Network service error: {:?}", e))?;
 
     Ok(service)

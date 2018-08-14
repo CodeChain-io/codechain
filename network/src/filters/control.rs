@@ -14,23 +14,22 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod action;
-mod block;
-mod bytes;
-mod parcel;
-mod transaction;
-mod work;
+use std::net::IpAddr;
 
-pub use self::action::{Action, ChangeShard};
-pub use self::block::Block;
-pub use self::block::BlockNumberAndHash;
-pub use self::bytes::Bytes;
-pub use self::parcel::Parcel;
-pub use self::transaction::Transaction;
-pub use self::work::Work;
+pub trait Control: Send + Sync {
+    fn add_to_whitelist(&self, addr: IpAddr);
+    fn remove_from_whitelist(&self, addr: &IpAddr);
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct FilterStatus {
-    pub list: Vec<::std::net::IpAddr>,
-    pub enabled: bool,
+    fn add_to_blacklist(&self, addr: IpAddr);
+    fn remove_from_blacklist(&self, addr: &IpAddr);
+
+    fn enable_whitelist(&self);
+    fn disable_whitelist(&self);
+    fn enable_blacklist(&self);
+    fn disable_blacklist(&self);
+
+    fn get_whitelist(&self) -> (Vec<IpAddr>, bool);
+    fn get_blacklist(&self) -> (Vec<IpAddr>, bool);
+
+    fn is_allowed(&self, addr: &IpAddr) -> bool;
 }
