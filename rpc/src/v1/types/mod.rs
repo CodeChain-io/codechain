@@ -28,3 +28,9 @@ pub use self::bytes::Bytes;
 pub use self::parcel::Parcel;
 pub use self::transaction::Transaction;
 pub use self::work::Work;
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ListStatus {
+    pub list: Vec<::std::net::IpAddr>,
+    pub enabled: bool,
+}

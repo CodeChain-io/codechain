@@ -167,6 +167,16 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
   * [net_disconnect](#net_disconnect)
   * [net_getPeerCount](#net_getpeercount)
   * [net_getPort](#net_getport)
+  * [net_addToWhitelist](#net_addtowhitelist)
+  * [net_removeFromWhitelist](#net_removefromwhitelist)
+  * [net_addToBlacklist](#net_addtoblacklist)
+  * [net_removeFromBlacklist](#net_removefromblacklist)
+  * [net_enableWhitelist](#net_enablewhitelist)
+  * [net_disableWhitelist](#net_disablewhitelist)
+  * [net_enableBlacklist](#net_enableblacklist)
+  * [net_disableBlacklist](#net_disableblacklist)
+  * [net_getWhitelist](#net_getwhitelist)
+  * [net_getBlacklist](#net_getblacklist)
 ***
  * [account_getList](#account_getlist)
  * [account_create](#account_create)
@@ -1146,6 +1156,248 @@ Response Example
 {
   "jsonrpc":"2.0",
   "result": 3485,
+  "id":6
+}
+```
+
+## net_addToWhitelist
+(not implemented) Adds the address to the white list.
+
+Params:
+ 1. address: `string`
+
+Return Type: `null`
+
+Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "net_addToWhitelist", "params": ["1.2.3.4"], "id": 6}' \
+    localhost:8080
+```
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result": null,
+  "id":6
+}
+```
+
+## net_removeFromWhitelist
+(not implemented) Removes the address from the white list.
+
+Params:
+ 1. address: `string`
+
+Return Type: `null`
+
+Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "net_removeFromWhitelist", "params": ["1.2.3.4"], "id": 6}' \
+    localhost:8080
+```
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result": null,
+  "id":6
+}
+```
+
+## net_addToBlacklist
+(not implemented) Adds the address to the white list.
+
+Params:
+ 1. address: `string`
+
+Return Type: `null`
+
+Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "net_addToBlacklist", "params": ["1.2.3.4"], "id": 6}' \
+    localhost:8080
+```
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result": null,
+  "id":6
+}
+```
+
+## net_removeFromBlacklist
+(not implemented) Removes the address from the white list.
+
+Params:
+ 1. address: `string`
+
+Return Type: `null`
+
+Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "net_removeFromBlacklist", "params": ["1.2.3.4"], "id": 6}' \
+    localhost:8080
+```
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result": null,
+  "id":6
+}
+```
+
+## net_enableWhitelist
+(not implemented) Enables white list.
+
+Params: No parameters
+Return Type: `null`
+
+Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "net_enableWhitelist", "params": [], "id": 6}' \
+    localhost:8080
+```
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result": null,
+  "id":6
+}
+```
+
+## net_disableWhitelist
+(not implemented) Disables white list.
+
+Params: No parameters
+Return Type: `null`
+
+Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "net_disableWhitelist", "params": [], "id": 6}' \
+    localhost:8080
+```
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result": null,
+  "id":6
+}
+```
+
+## net_enableBlacklist
+(not implemented) Enables black list.
+
+Params: No parameters
+Return Type: `null`
+
+Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "net_enableBlacklist", "params": [], "id": 6}' \
+    localhost:8080
+```
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result": null,
+  "id":6
+}
+```
+
+## net_disableBlacklist
+(not implemented) Disables black list.
+
+Params: No parameters
+Return Type: `null`
+
+Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "net_disableBlacklist", "params": [], "id": 6}' \
+    localhost:8080
+```
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result": null,
+  "id":6
+}
+```
+
+## net_getWhitelist
+(not implemented) Gets the address in the white list.
+
+Params:
+ 1. address: `string`
+
+Return Type: { list: `string[]`, enabled: `bool` }
+
+Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "net_getWhitelist", "params": [], "id": 6}' \
+    localhost:8080
+```
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result": { "list": ["1.2.3.4", "1.2.3.5", "1.2.3.6"], "enabled": true },
+  "id":6
+}
+```
+
+## net_getBlacklist
+(not implemented) Gets the address in the white list.
+
+Params:
+ 1. address: `string`
+
+Return Type: { list: `string[]`, enabled: `bool` }
+
+Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "net_getBlacklist", "params": [], "id": 6}' \
+    localhost:8080
+```
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result": { "list": ["1.2.3.4", "1.2.3.5", "1.2.3.6"], "enabled": false },
   "id":6
 }
 ```
