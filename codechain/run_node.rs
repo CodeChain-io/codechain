@@ -110,12 +110,14 @@ fn new_miner(config: &config::Config, scheme: &Scheme, ap: Arc<AccountProvider>)
     match miner.engine_type() {
         EngineType::PoW => match &config.mining.author {
             Some(ref author) => {
-                miner.set_author(author.address, None).expect("set_author never fails when PoW is used")
+                miner.set_author((*author).into_address(), None).expect("set_author never fails when PoW is used")
             }
             None => return Err("mining.author is not specified".to_string()),
         },
         EngineType::InternalSealing => match &config.mining.engine_signer {
-            Some(ref engine_signer) => miner.set_author(engine_signer.address, None).map_err(|e| format!("{:?}", e))?,
+            Some(ref engine_signer) => {
+                miner.set_author((*engine_signer).into_address(), None).map_err(|e| format!("{:?}", e))?
+            }
             None => return Err("mining.engine_signer is not specified".to_string()),
         },
         EngineType::Solo => (),
@@ -157,8 +159,9 @@ fn load_password_file(path: Option<String>) -> Result<PasswordFile, String> {
 
 fn unlock_accounts(ap: Arc<AccountProvider>, pf: &PasswordFile) -> Result<(), String> {
     for entry in pf.entries() {
-        ap.unlock_account_permanently(entry.address.address, entry.password.clone())
-            .map_err(|e| format!("Failed to unlock account {}: {}", entry.address.address, e))?;
+        let entry_address = entry.address.into_address();
+        ap.unlock_account_permanently(entry_address, entry.password.clone())
+            .map_err(|e| format!("Failed to unlock account {}: {}", entry_address, e))?;
     }
     Ok(())
 }

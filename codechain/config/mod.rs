@@ -110,7 +110,7 @@ impl Config {
         debug_assert!(self.shard_validator.disable);
 
         ShardValidatorConfig {
-            account: self.shard_validator.account.clone().unwrap().address,
+            account: self.shard_validator.account.unwrap().into_address(),
         }
     }
 }

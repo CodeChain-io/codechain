@@ -17,7 +17,7 @@
 use std::fmt;
 
 use cjson;
-use ckey::Address;
+use ckey::{Address, PlatformAddress};
 use cstate::ShardMetadata;
 use rlp::{Encodable, RlpStream};
 
@@ -49,8 +49,8 @@ impl From<cjson::scheme::Shard> for PodShardMetadata {
     fn from(s: cjson::scheme::Shard) -> Self {
         Self {
             nonce: s.nonce.map(Into::into).unwrap_or(0),
-            owners: s.owners.into_iter().map(Into::into).collect(),
-            users: s.users.unwrap_or_else(Vec::new).into_iter().map(Into::into).collect(),
+            owners: s.owners.into_iter().map(PlatformAddress::into_address).collect(),
+            users: s.users.unwrap_or_else(Vec::new).into_iter().map(PlatformAddress::into_address).collect(),
             worlds: s.worlds.unwrap_or_else(Vec::new).into_iter().map(Into::into).collect(),
         }
     }
