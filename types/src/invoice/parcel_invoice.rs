@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
-use serde::ser::SerializeSeq;
+use serde::ser::{SerializeSeq, SerializeStruct};
 use serde::{Serialize, Serializer};
 
 use super::super::parcel::Error;
@@ -38,8 +38,17 @@ impl Serialize for ParcelInvoice {
     where
         S: Serializer, {
         match self {
-            ParcelInvoice::SingleSuccess => serializer.serialize_str("Success"),
-            ParcelInvoice::SingleFail(ref _err) => serializer.serialize_str("Failed"),
+            ParcelInvoice::SingleSuccess => {
+                let mut s = serializer.serialize_struct("ParcelInvoice", 1)?;
+                s.serialize_field("success", &true)?;
+                s.end()
+            }
+            ParcelInvoice::SingleFail(ref err) => {
+                let mut s = serializer.serialize_struct("ParcelInvoice", 2)?;
+                s.serialize_field("success", &false)?;
+                s.serialize_field("error", err)?;
+                s.end()
+            }
             ParcelInvoice::Multiple(transaction_invoices) => {
                 let mut s = serializer.serialize_seq(Some(transaction_invoices.len()))?;
                 for transaction_invoice in transaction_invoices {
