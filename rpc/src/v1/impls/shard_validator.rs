@@ -21,6 +21,7 @@ use ckey::Signature;
 use jsonrpc_core::Result;
 use primitives::H256;
 
+use super::super::errors;
 use super::super::types::Action;
 use super::super::ShardValidator;
 
@@ -51,6 +52,8 @@ where
     }
 
     fn register_action(&self, action: Action) -> Result<bool> {
-        Ok(self.client.register_action(action.into()))
+        let action: ::std::result::Result<_, _> = action.into();
+        let action = action.map_err(errors::core)?;
+        Ok(self.client.register_action(action))
     }
 }

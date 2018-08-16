@@ -19,6 +19,7 @@ extern crate codechain_crypto as crypto;
 extern crate lazy_static;
 extern crate bech32;
 extern crate heapsize;
+extern crate parking_lot;
 extern crate primitives;
 extern crate rand;
 extern crate rlp;

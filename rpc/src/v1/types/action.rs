@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ckey::{NetworkId, PlatformAddress, Public, Signature};
+use ckey::{Error as KeyError, NetworkId, PlatformAddress, Public, Signature};
 use ctypes::parcel::{Action as ActionType, ChangeShard as ChangeShardType};
 use ctypes::ShardId;
 use primitives::{Bytes, H256, U256};
@@ -123,23 +123,27 @@ impl From<ChangeShard> for ChangeShardType {
     }
 }
 
-impl From<Action> for ActionType {
+// FIXME: Use TryFrom.
+impl From<Action> for Result<ActionType, KeyError> {
     fn from(from: Action) -> Self {
-        match from {
+        Ok(match from {
             Action::ChangeShardState {
                 transactions,
                 changes,
                 signatures,
-            } => ActionType::ChangeShardState {
-                transactions: transactions.into_iter().map(From::from).collect(),
-                changes: changes.into_iter().map(From::from).collect(),
-                signatures,
-            },
+            } => {
+                let transactions: Result<_, _> = transactions.into_iter().map(From::from).collect();
+                ActionType::ChangeShardState {
+                    transactions: transactions?,
+                    changes: changes.into_iter().map(From::from).collect(),
+                    signatures,
+                }
+            }
             Action::Payment {
                 receiver,
                 amount,
             } => ActionType::Payment {
-                receiver: receiver.into_address(),
+                receiver: receiver.try_into_address()?,
                 amount,
             },
             Action::SetRegularKey {
@@ -151,18 +155,24 @@ impl From<Action> for ActionType {
             Action::SetShardOwners {
                 shard_id,
                 owners,
-            } => ActionType::SetShardOwners {
-                shard_id,
-                owners: owners.into_iter().map(PlatformAddress::into_address).collect(),
-            },
+            } => {
+                let owners: Result<_, _> = owners.into_iter().map(PlatformAddress::try_into_address).collect();
+                ActionType::SetShardOwners {
+                    shard_id,
+                    owners: owners?,
+                }
+            }
             Action::SetShardUsers {
                 shard_id,
                 users,
-            } => ActionType::SetShardUsers {
-                shard_id,
-                users: users.into_iter().map(PlatformAddress::into_address).collect(),
-            },
+            } => {
+                let users: Result<_, _> = users.into_iter().map(PlatformAddress::try_into_address).collect();
+                ActionType::SetShardUsers {
+                    shard_id,
+                    users: users?,
+                }
+            }
             Action::Custom(bytes) => ActionType::Custom(bytes),
-        }
+        })
     }
 }

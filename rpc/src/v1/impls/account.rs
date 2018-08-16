@@ -22,7 +22,7 @@ use ckey::{NetworkId, Password, PlatformAddress, Signature};
 use jsonrpc_core::Result;
 use primitives::H256;
 
-use super::super::errors::account_provider;
+use super::super::errors::{self, account_provider};
 use super::super::traits::Account;
 
 pub struct AccountClient {
@@ -63,14 +63,14 @@ impl Account for AccountClient {
     }
 
     fn remove_account(&self, address: PlatformAddress, passphrase: Option<Password>) -> Result<()> {
-        self.account_provider
-            .remove_account(address.into_address(), &passphrase.unwrap_or_default())
-            .map_err(account_provider)
+        let address = address.try_into_address().map_err(errors::core)?;
+        self.account_provider.remove_account(address, &passphrase.unwrap_or_default()).map_err(account_provider)
     }
 
     fn sign(&self, message_digest: H256, address: PlatformAddress, passphrase: Option<Password>) -> Result<Signature> {
+        let address = address.try_into_address().map_err(errors::core)?;
         self.account_provider
-            .sign(address.into_address(), Some(passphrase.unwrap_or_default()), message_digest)
+            .sign(address, Some(passphrase.unwrap_or_default()), message_digest)
             .map(|sig| sig.into())
             .map_err(account_provider)
     }
@@ -84,21 +84,27 @@ impl Account for AccountClient {
     fn unlock(&self, address: PlatformAddress, password: Password, duration: Option<u64>) -> Result<()> {
         const DEFAULT_DURATION: u64 = 300;
         match duration {
-            Some(0) => self
-                .account_provider
-                .unlock_account_permanently(address.into_address(), password)
-                .map_err(Into::into)
-                .map_err(account_provider)?,
-            Some(secs) => self
-                .account_provider
-                .unlock_account_timed(address.into_address(), password, Duration::from_secs(secs))
-                .map_err(Into::into)
-                .map_err(account_provider)?,
-            None => self
-                .account_provider
-                .unlock_account_timed(address.into_address(), password, Duration::from_secs(DEFAULT_DURATION))
-                .map_err(Into::into)
-                .map_err(account_provider)?,
+            Some(0) => {
+                let address = address.try_into_address().map_err(errors::core)?;
+                self.account_provider
+                    .unlock_account_permanently(address, password)
+                    .map_err(Into::into)
+                    .map_err(account_provider)?
+            }
+            Some(secs) => {
+                let address = address.try_into_address().map_err(errors::core)?;
+                self.account_provider
+                    .unlock_account_timed(address, password, Duration::from_secs(secs))
+                    .map_err(Into::into)
+                    .map_err(account_provider)?
+            }
+            None => {
+                let address = address.try_into_address().map_err(errors::core)?;
+                self.account_provider
+                    .unlock_account_timed(address, password, Duration::from_secs(DEFAULT_DURATION))
+                    .map_err(Into::into)
+                    .map_err(account_provider)?
+            }
         };
         Ok(())
     }

@@ -19,6 +19,7 @@ use std::fmt;
 use std::str::FromStr;
 
 use bech32::Bech32;
+use parking_lot::Mutex;
 use primitives::H160;
 use serde::de::{Error as SerdeError, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -37,6 +38,7 @@ pub struct PlatformAddress {
 
 impl PlatformAddress {
     pub fn create(version: u8, network_id: NetworkId, address: Address) -> Self {
+        assert!(check_network_id(&network_id));
         Self {
             network_id,
             version,
@@ -45,6 +47,7 @@ impl PlatformAddress {
     }
 
     fn to_string(&self) -> String {
+        assert!(check_network_id(&self.network_id));
         let hrp = format!("{}c", self.network_id.to_string());
         let mut data = Vec::new();
         data.push(self.version);
@@ -58,13 +61,26 @@ impl PlatformAddress {
         encoded
     }
 
-
     pub fn address(&self) -> &Address {
-        &self.address
+        self.try_address().unwrap()
     }
 
     pub fn into_address(self) -> Address {
-        self.address
+        self.try_into_address().unwrap()
+    }
+
+    pub fn try_address(&self) -> Result<&Address, Error> {
+        if !check_network_id(&self.network_id) {
+            return Err(Error::InvalidNetwork)
+        }
+        Ok(&self.address)
+    }
+
+    pub fn try_into_address(self) -> Result<Address, Error> {
+        if !check_network_id(&self.network_id) {
+            return Err(Error::InvalidNetwork)
+        }
+        Ok(self.address)
     }
 }
 
@@ -126,6 +142,9 @@ impl FromStr for PlatformAddress {
             .expect("decoded.hrp.len() == 3")
             .parse::<NetworkId>()
             .map_err(|_| Error::Bech32UnknownHRP)?;
+        if !check_network_id(&network_id) {
+            return Err(Error::InvalidNetwork)
+        }
         if Some("c") != decoded.hrp.get(2..3) {
             return Err(Error::Bech32UnknownHRP)
         }
@@ -186,6 +205,19 @@ impl<'a> Visitor<'a> for PlatformAddressVisitor {
         E: SerdeError, {
         PlatformAddress::from_str(value.as_ref()).map_err(|e| SerdeError::custom(format!("{}", e)))
     }
+}
+
+// FIXME: The below code can be simplified since Mutex::new is the const function.
+//        Clean up this function when a const function becomes stable.
+lazy_static! {
+    static ref NETWORK_ID: Mutex<Option<NetworkId>> = Mutex::new(None);
+}
+fn check_network_id(network_id: &NetworkId) -> bool {
+    let mut saved_network_id = NETWORK_ID.lock();
+    if saved_network_id.is_none() {
+        *saved_network_id = Some(*network_id);
+    }
+    saved_network_id.as_ref() == Some(network_id)
 }
 
 #[cfg(test)]

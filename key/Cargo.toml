@@ -10,6 +10,7 @@ rustc-serialize = "0.3"
 lazy_static = "0.2"
 bech32 = "0.2.2"
 codechain-crypto = { path = "../crypto" }
+parking_lot = "0.5"
 primitives = { path = "../util/primitives" }
 heapsize = "0.4"
 rlp = { path = "../util/rlp" }
