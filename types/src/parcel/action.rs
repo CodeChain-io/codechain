@@ -26,8 +26,8 @@ const CHANGE_SHARD_STATE: u8 = 1;
 const PAYMENT: u8 = 2;
 const SET_REGULAR_KEY: u8 = 3;
 const CREATE_SHARD: u8 = 4;
-const CHANGE_SHARD_OWNERS: u8 = 5;
-const CHANGE_SHARD_USERS: u8 = 6;
+const SET_SHARD_OWNERS: u8 = 5;
+const SET_SHARD_USERS: u8 = 6;
 const CUSTOM: u8 = 0xFF;
 
 #[derive(Debug, Clone, PartialEq, Eq, RlpDecodable, RlpEncodable)]
@@ -54,11 +54,11 @@ pub enum Action {
         key: Public,
     },
     CreateShard,
-    ChangeShardOwners {
+    SetShardOwners {
         shard_id: ShardId,
         owners: Vec<Address>,
     },
-    ChangeShardUsers {
+    SetShardUsers {
         shard_id: ShardId,
         users: Vec<Address>,
     },
@@ -106,21 +106,21 @@ impl Encodable for Action {
                 s.begin_list(1);
                 s.append(&CREATE_SHARD);
             }
-            Action::ChangeShardOwners {
+            Action::SetShardOwners {
                 shard_id,
                 owners,
             } => {
                 s.begin_list(3);
-                s.append(&CHANGE_SHARD_OWNERS);
+                s.append(&SET_SHARD_OWNERS);
                 s.append(shard_id);
                 s.append_list(owners);
             }
-            Action::ChangeShardUsers {
+            Action::SetShardUsers {
                 shard_id,
                 users,
             } => {
                 s.begin_list(3);
-                s.append(&CHANGE_SHARD_USERS);
+                s.append(&SET_SHARD_USERS);
                 s.append(shard_id);
                 s.append_list(users);
             }
@@ -169,20 +169,20 @@ impl Decodable for Action {
                 }
                 Ok(Action::CreateShard)
             }
-            CHANGE_SHARD_OWNERS => {
+            SET_SHARD_OWNERS => {
                 if rlp.item_count()? != 3 {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
-                Ok(Action::ChangeShardOwners {
+                Ok(Action::SetShardOwners {
                     shard_id: rlp.val_at(1)?,
                     owners: rlp.list_at(2)?,
                 })
             }
-            CHANGE_SHARD_USERS => {
+            SET_SHARD_USERS => {
                 if rlp.item_count()? != 3 {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
-                Ok(Action::ChangeShardUsers {
+                Ok(Action::SetShardUsers {
                     shard_id: rlp.val_at(1)?,
                     users: rlp.list_at(2)?,
                 })
@@ -203,16 +203,16 @@ mod tests {
     use super::*;
 
     #[test]
-    fn encode_and_decode_change_shard_owners() {
-        rlp_encode_and_decode_test!(Action::ChangeShardOwners {
+    fn encode_and_decode_set_shard_owners() {
+        rlp_encode_and_decode_test!(Action::SetShardOwners {
             shard_id: 1,
             owners: vec![Address::random(), Address::random()],
         });
     }
 
     #[test]
-    fn encode_and_decode_change_shard_users() {
-        rlp_encode_and_decode_test!(Action::ChangeShardUsers {
+    fn encode_and_decode_set_shard_users() {
+        rlp_encode_and_decode_test!(Action::SetShardUsers {
             shard_id: 1,
             users: vec![Address::random(), Address::random()],
         });
