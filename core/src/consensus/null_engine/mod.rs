@@ -16,10 +16,11 @@
 
 mod params;
 
-use ctypes::machine::{Header, LiveBlock, WithBalances};
+use ctypes::machine::{Header, LiveBlock, Parcels, WithBalances};
 
 use self::params::NullEngineParams;
 use super::super::consensus::EngineType;
+use super::super::SignedParcel;
 use super::ConsensusEngine;
 
 /// An engine which does not provide any consensus mechanism and does not seal blocks.
@@ -44,7 +45,10 @@ impl<M: Default> Default for NullEngine<M> {
     }
 }
 
-impl<M: WithBalances> ConsensusEngine<M> for NullEngine<M> {
+impl<M: WithBalances> ConsensusEngine<M> for NullEngine<M>
+where
+    M::LiveBlock: Parcels<Parcel = SignedParcel>,
+{
     fn name(&self) -> &str {
         "NullEngine"
     }
@@ -63,6 +67,7 @@ impl<M: WithBalances> ConsensusEngine<M> for NullEngine<M> {
 
     fn on_close_block(&self, block: &mut M::LiveBlock) -> Result<(), M::Error> {
         let author = *LiveBlock::header(&*block).author();
-        self.machine.add_balance(block, &author, &self.params.block_reward)
+        let total_reward = block.parcels().iter().fold(self.params.block_reward, |sum, parcel| sum + parcel.fee);
+        self.machine.add_balance(block, &author, &total_reward)
     }
 }
