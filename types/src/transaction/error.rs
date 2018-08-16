@@ -24,6 +24,7 @@ use super::super::util::unexpected::Mismatch;
 use super::super::{ShardId, WorldId};
 
 #[derive(Debug, PartialEq, Clone, Eq, Serialize)]
+#[serde(tag = "type", content = "content")]
 pub enum Error {
     InvalidAssetAmount {
         address: H256,
