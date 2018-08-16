@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ckey::{NetworkId, PlatformAddress};
+use ckey::{Error as KeyError, NetworkId, PlatformAddress};
 use ctypes::transaction::{AssetMintOutput, AssetTransferInput, AssetTransferOutput, Transaction as TransactionType};
 use ctypes::{ShardId, WorldId};
 
@@ -139,47 +139,56 @@ impl From<TransactionType> for Transaction {
     }
 }
 
-
-impl From<Transaction> for TransactionType {
+// FIXME: Use TryFrom.
+impl From<Transaction> for Result<TransactionType, KeyError> {
     fn from(from: Transaction) -> Self {
-        match from {
+        Ok(match from {
             Transaction::CreateWorld {
                 network_id,
                 shard_id,
                 nonce,
                 owners,
-            } => TransactionType::CreateWorld {
-                network_id,
-                shard_id,
-                nonce,
-                owners: owners.into_iter().map(PlatformAddress::into_address).collect(),
-            },
+            } => {
+                let owners: Result<_, _> = owners.into_iter().map(PlatformAddress::try_into_address).collect();
+                TransactionType::CreateWorld {
+                    network_id,
+                    shard_id,
+                    nonce,
+                    owners: owners?,
+                }
+            }
             Transaction::SetWorldOwners {
                 network_id,
                 shard_id,
                 world_id,
                 nonce,
                 owners,
-            } => TransactionType::SetWorldOwners {
-                network_id,
-                shard_id,
-                world_id,
-                nonce,
-                owners: owners.into_iter().map(PlatformAddress::into_address).collect(),
-            },
+            } => {
+                let owners: Result<_, _> = owners.into_iter().map(PlatformAddress::try_into_address).collect();
+                TransactionType::SetWorldOwners {
+                    network_id,
+                    shard_id,
+                    world_id,
+                    nonce,
+                    owners: owners?,
+                }
+            }
             Transaction::SetWorldUsers {
                 network_id,
                 shard_id,
                 world_id,
                 nonce,
                 users,
-            } => TransactionType::SetWorldUsers {
-                network_id,
-                shard_id,
-                world_id,
-                nonce,
-                users: users.into_iter().map(PlatformAddress::into_address).collect(),
-            },
+            } => {
+                let users: Result<_, _> = users.into_iter().map(PlatformAddress::try_into_address).collect();
+                TransactionType::SetWorldUsers {
+                    network_id,
+                    shard_id,
+                    world_id,
+                    nonce,
+                    users: users?,
+                }
+            }
             Transaction::AssetMint {
                 network_id,
                 shard_id,
@@ -188,15 +197,21 @@ impl From<Transaction> for TransactionType {
                 registrar,
                 nonce,
                 output,
-            } => TransactionType::AssetMint {
-                network_id,
-                shard_id,
-                world_id,
-                metadata,
-                registrar: registrar.map(|registrar| registrar.into_address()),
-                nonce,
-                output,
-            },
+            } => {
+                let registrar = match registrar {
+                    Some(registrar) => Some(registrar.try_into_address()?),
+                    None => None,
+                };
+                TransactionType::AssetMint {
+                    network_id,
+                    shard_id,
+                    world_id,
+                    metadata,
+                    registrar,
+                    nonce,
+                    output,
+                }
+            }
             Transaction::AssetTransfer {
                 network_id,
                 burns,
@@ -210,6 +225,6 @@ impl From<Transaction> for TransactionType {
                 outputs,
                 nonce,
             },
-        }
+        })
     }
 }
