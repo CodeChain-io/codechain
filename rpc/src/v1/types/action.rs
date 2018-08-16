@@ -47,11 +47,11 @@ pub enum Action {
         key: Public,
     },
     CreateShard,
-    ChangeShardOwners {
+    SetShardOwners {
         shard_id: ShardId,
         owners: Vec<PlatformAddress>,
     },
-    ChangeShardUsers {
+    SetShardUsers {
         shard_id: ShardId,
         users: Vec<PlatformAddress>,
     },
@@ -94,17 +94,17 @@ impl Action {
                 key,
             },
             ActionType::CreateShard => Action::CreateShard,
-            ActionType::ChangeShardOwners {
+            ActionType::SetShardOwners {
                 shard_id,
                 owners,
-            } => Action::ChangeShardOwners {
+            } => Action::SetShardOwners {
                 shard_id,
                 owners: owners.into_iter().map(|owner| PlatformAddress::create(VERSION, network_id, owner)).collect(),
             },
-            ActionType::ChangeShardUsers {
+            ActionType::SetShardUsers {
                 shard_id,
                 users,
-            } => Action::ChangeShardUsers {
+            } => Action::SetShardUsers {
                 shard_id,
                 users: users.into_iter().map(|user| PlatformAddress::create(VERSION, network_id, user)).collect(),
             },
@@ -148,17 +148,17 @@ impl From<Action> for ActionType {
                 key,
             },
             Action::CreateShard => ActionType::CreateShard,
-            Action::ChangeShardOwners {
+            Action::SetShardOwners {
                 shard_id,
                 owners,
-            } => ActionType::ChangeShardOwners {
+            } => ActionType::SetShardOwners {
                 shard_id,
                 owners: owners.into_iter().map(Into::into).collect(),
             },
-            Action::ChangeShardUsers {
+            Action::SetShardUsers {
                 shard_id,
                 users,
-            } => ActionType::ChangeShardUsers {
+            } => ActionType::SetShardUsers {
                 shard_id,
                 users: users.into_iter().map(Into::into).collect(),
             },

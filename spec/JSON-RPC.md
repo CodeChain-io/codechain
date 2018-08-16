@@ -69,15 +69,15 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
  - action: "setRegularKey"
  - key: `H512`
 
-### ChangeShardOwners Action
+### SetShardOwners Action
 
- - action: "changeShardOwners"
+ - action: "setShardOwners"
  - shard_id: `number`
  - owners: `PlatformAddress[]`
 
-### ChangeShardUsers Action
+### SetShardUsers Action
 
- - action: "changeShardUsers"
+ - action: "setShardUsers"
  - shard_id: `number`
  - users: `PlatformAddress[]`
 
