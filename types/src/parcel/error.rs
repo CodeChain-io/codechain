@@ -25,6 +25,7 @@ use super::super::util::unexpected::Mismatch;
 use super::super::ShardId;
 
 #[derive(Debug, PartialEq, Clone, Serialize)]
+#[serde(tag = "type", content = "content")]
 /// Errors concerning parcel processing.
 pub enum Error {
     /// Parcel is already imported to the queue
