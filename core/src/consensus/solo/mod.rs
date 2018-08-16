@@ -20,6 +20,7 @@ use ctypes::machine::{Header, LiveBlock, Parcels, WithBalances};
 
 use self::params::SoloParams;
 use super::super::consensus::EngineType;
+use super::super::SignedParcel;
 use super::{ConsensusEngine, Seal};
 
 /// A consensus engine which does not provide any consensus mechanism.
@@ -40,7 +41,7 @@ impl<M> Solo<M> {
 
 impl<M: WithBalances> ConsensusEngine<M> for Solo<M>
 where
-    M::LiveBlock: Parcels,
+    M::LiveBlock: Parcels<Parcel = SignedParcel>,
 {
     fn name(&self) -> &str {
         "Solo"
@@ -72,7 +73,8 @@ where
 
     fn on_close_block(&self, block: &mut M::LiveBlock) -> Result<(), M::Error> {
         let author = *LiveBlock::header(&*block).author();
-        self.machine.add_balance(block, &author, &self.params.block_reward)
+        let total_reward = block.parcels().iter().fold(self.params.block_reward, |sum, parcel| sum + parcel.fee);
+        self.machine.add_balance(block, &author, &total_reward)
     }
 }
 

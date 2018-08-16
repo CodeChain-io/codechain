@@ -579,7 +579,8 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
 
     fn on_close_block(&self, block: &mut ExecutedBlock) -> Result<(), Error> {
         let author = *block.header().author();
-        self.machine.add_balance(block, &author, &self.block_reward)
+        let total_reward = block.parcels().iter().fold(self.block_reward, |sum, parcel| sum + parcel.fee);
+        self.machine.add_balance(block, &author, &total_reward)
     }
 
     fn handle_message(&self, rlp: &[u8]) -> Result<(), EngineError> {

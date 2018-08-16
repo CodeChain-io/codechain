@@ -162,7 +162,8 @@ impl ConsensusEngine<CodeChainMachine> for BlakePoW {
 
     fn on_close_block(&self, block: &mut ExecutedBlock) -> Result<(), Error> {
         let author = *block.header().author();
-        self.machine.add_balance(block, &author, &self.params.block_reward)
+        let total_reward = block.parcels().iter().fold(self.params.block_reward, |sum, parcel| sum + parcel.fee);
+        self.machine.add_balance(block, &author, &total_reward)
     }
 
     fn score_to_target(&self, score: &U256) -> U256 {
