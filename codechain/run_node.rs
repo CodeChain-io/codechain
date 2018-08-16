@@ -14,16 +14,18 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::env;
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use ccore::{
     AccountProvider, Client, ClientService, EngineType, Miner, MinerService, Scheme, ShardValidator, Stratum,
     StratumConfig, StratumError,
 };
 use cdiscovery::{KademliaConfig, KademliaExtension, UnstructuredConfig, UnstructuredExtension};
+use cfinally::finally;
 use ckeystore::accounts_dir::RootDiskDirectory;
 use ckeystore::KeyStore;
 use clap::ArgMatches;
@@ -169,6 +171,17 @@ pub fn run_node(matches: ArgMatches) -> Result<(), String> {
 
     let _event_loop = EventLoop::spawn();
     let config = load_config(&matches)?;
+
+    // FIXME: It is the hotfix for #348.
+    // Remove the below code if you find the proper way to solve #348.
+    let _wait = finally(|| {
+        const DEFAULT: u64 = 1;
+        let wait_before_shutdown = env::var_os("WAIT_BEFORE_SHUTDOWN")
+            .and_then(|sec| sec.into_string().ok())
+            .and_then(|sec| sec.parse().ok())
+            .unwrap_or(DEFAULT);
+        ::std::thread::sleep(Duration::from_secs(wait_before_shutdown));
+    });
 
     let scheme = config.operating.chain.scheme()?;
 
