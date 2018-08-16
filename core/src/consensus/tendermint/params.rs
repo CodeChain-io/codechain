@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use cjson;
+use ckey::PlatformAddress;
 use primitives::U256;
 use time::Duration;
 
@@ -35,7 +36,7 @@ impl From<cjson::scheme::TendermintParams> for TendermintParams {
     fn from(p: cjson::scheme::TendermintParams) -> Self {
         let dt = TendermintTimeouts::default();
         TendermintParams {
-            validators: new_validator_set(p.validators.into_iter().map(Into::into).collect()),
+            validators: new_validator_set(p.validators.into_iter().map(PlatformAddress::into_address).collect()),
             timeouts: TendermintTimeouts {
                 propose: p.timeout_propose.map_or(dt.propose, to_duration),
                 prevote: p.timeout_prevote.map_or(dt.prevote, to_duration),

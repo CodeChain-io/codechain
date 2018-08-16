@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use cjson;
-use ckey::Address;
+use ckey::{Address, PlatformAddress};
 use primitives::U256;
 
 #[derive(Debug, PartialEq)]
@@ -29,7 +29,7 @@ pub struct SoloAuthorityParams {
 impl From<cjson::scheme::SoloAuthorityParams> for SoloAuthorityParams {
     fn from(p: cjson::scheme::SoloAuthorityParams) -> Self {
         SoloAuthorityParams {
-            validators: p.validators.into_iter().map(Into::into).collect(),
+            validators: p.validators.into_iter().map(PlatformAddress::into_address).collect(),
             block_reward: p.block_reward.map_or_else(Default::default, Into::into),
         }
     }

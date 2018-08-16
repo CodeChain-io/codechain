@@ -32,7 +32,7 @@ pub struct PlatformAddress {
     /// The version of the address.
     pub version: u8,
     /// Public key hash.
-    pub address: Address,
+    address: Address,
 }
 
 impl PlatformAddress {
@@ -56,6 +56,15 @@ impl PlatformAddress {
             .unwrap();
         encoded.remove(3);
         encoded
+    }
+
+
+    pub fn address(&self) -> &Address {
+        &self.address
+    }
+
+    pub fn into_address(self) -> Address {
+        self.address
     }
 }
 
@@ -154,12 +163,6 @@ impl<'a> Deserialize<'a> for PlatformAddress {
     where
         D: Deserializer<'a>, {
         deserializer.deserialize_any(PlatformAddressVisitor)
-    }
-}
-
-impl From<PlatformAddress> for Address {
-    fn from(address: PlatformAddress) -> Self {
-        address.address
     }
 }
 

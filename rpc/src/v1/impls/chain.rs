@@ -137,17 +137,17 @@ where
 
     fn get_nonce(&self, address: PlatformAddress, block_number: Option<u64>) -> Result<Option<U256>> {
         let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
-        Ok(self.client.nonce(&address.into(), block_id))
+        Ok(self.client.nonce(address.address(), block_id))
     }
 
     fn get_balance(&self, address: PlatformAddress, block_number: Option<u64>) -> Result<Option<U256>> {
         let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
-        Ok(self.client.balance(&address.into(), block_id.into()))
+        Ok(self.client.balance(address.address(), block_id.into()))
     }
 
     fn get_regular_key(&self, address: PlatformAddress, block_number: Option<u64>) -> Result<Option<Public>> {
         let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
-        Ok(self.client.regular_key(&address.into(), block_id.into()))
+        Ok(self.client.regular_key(address.address(), block_id.into()))
     }
 
 
@@ -216,7 +216,7 @@ where
         let transaction_types: Vec<_> = transactions.into_iter().map(From::from).collect();
         Ok(self
             .client
-            .execute_transactions(&transaction_types, &sender.into())
+            .execute_transactions(&transaction_types, sender.address())
             .map_err(errors::core)?
             .into_iter()
             .map(From::from)

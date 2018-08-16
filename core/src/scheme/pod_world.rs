@@ -17,7 +17,7 @@
 use std::fmt;
 
 use cjson;
-use ckey::Address;
+use ckey::{Address, PlatformAddress};
 use cstate::World;
 use rlp::{Encodable, RlpStream};
 
@@ -45,8 +45,14 @@ impl From<cjson::scheme::World> for PodWorld {
     fn from(s: cjson::scheme::World) -> Self {
         Self {
             nonce: s.nonce.map(Into::into).unwrap_or(0),
-            owners: s.owners.map(|a| a.into_iter().map(Into::into).collect()).unwrap_or_else(Vec::new),
-            users: s.users.map(|users| users.into_iter().map(Into::into).collect()).unwrap_or_else(Vec::new),
+            owners: s
+                .owners
+                .map(|a| a.into_iter().map(PlatformAddress::into_address).collect())
+                .unwrap_or_else(Vec::new),
+            users: s
+                .users
+                .map(|users| users.into_iter().map(PlatformAddress::into_address).collect())
+                .unwrap_or_else(Vec::new),
         }
     }
 }

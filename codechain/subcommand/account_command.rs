@@ -115,7 +115,7 @@ fn remove(ap: &AccountProvider, address: &str) -> Result<(), String> {
     match PlatformAddress::from_str(address) {
         Ok(address) => {
             let password = prompt_password("Password: ");
-            match ap.remove_account(address.into(), &password) {
+            match ap.remove_account(address.into_address(), &password) {
                 Ok(_) => println!("{} is deleted", address),
                 Err(e) => return Err(format!("{:?}", e)),
             }
@@ -138,7 +138,7 @@ fn change_password(ap: &AccountProvider, address: &str) -> Result<(), String> {
         Ok(address) => {
             let old_password = prompt_password("Old Password: ");
             if let Some(new_password) = read_password_and_confirm() {
-                match ap.change_password(address.into(), &old_password, &new_password) {
+                match ap.change_password(address.into_address(), &old_password, &new_password) {
                     Ok(_) => println!("Password has changed"),
                     Err(e) => return Err(format!("{:?}", e)),
                 }

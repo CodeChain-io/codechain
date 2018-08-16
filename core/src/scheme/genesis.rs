@@ -16,7 +16,7 @@
 
 use ccrypto::BLAKE_NULL_RLP;
 use cjson;
-use ckey::Address;
+use ckey::{Address, PlatformAddress};
 use primitives::{Bytes, H256, U256};
 
 use super::seal::Seal;
@@ -48,7 +48,7 @@ impl From<cjson::scheme::Genesis> for Genesis {
         Genesis {
             seal: From::from(g.seal),
             score: g.score.into(),
-            author: g.author.map_or_else(Address::default, Into::into),
+            author: g.author.map_or_else(Address::default, PlatformAddress::into_address),
             timestamp: g.timestamp.map_or(0, Into::into),
             parent_hash: g.parent_hash.map_or_else(H256::zero, Into::into),
             parcels_root: g.parcels_root.map_or_else(|| BLAKE_NULL_RLP.clone(), Into::into),

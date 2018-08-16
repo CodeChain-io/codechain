@@ -39,8 +39,11 @@ impl Deref for PodAccounts {
 
 impl From<cjson::scheme::Accounts> for PodAccounts {
     fn from(s: cjson::scheme::Accounts) -> PodAccounts {
-        let accounts =
-            s.into_iter().filter(|(_, acc)| !acc.is_empty()).map(|(addr, acc)| (addr.into(), acc.into())).collect();
+        let accounts = s
+            .into_iter()
+            .filter(|(_, acc)| !acc.is_empty())
+            .map(|(addr, acc)| (addr.into_address(), acc.into()))
+            .collect();
         PodAccounts(accounts)
     }
 }

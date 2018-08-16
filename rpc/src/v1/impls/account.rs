@@ -63,18 +63,22 @@ impl Account for AccountClient {
     }
 
     fn remove_account(&self, address: PlatformAddress, passphrase: Option<Password>) -> Result<()> {
-        self.account_provider.remove_account(address.into(), &passphrase.unwrap_or_default()).map_err(account_provider)
+        self.account_provider
+            .remove_account(address.into_address(), &passphrase.unwrap_or_default())
+            .map_err(account_provider)
     }
 
     fn sign(&self, message_digest: H256, address: PlatformAddress, passphrase: Option<Password>) -> Result<Signature> {
         self.account_provider
-            .sign(address.into(), Some(passphrase.unwrap_or_default()), message_digest)
+            .sign(address.into_address(), Some(passphrase.unwrap_or_default()), message_digest)
             .map(|sig| sig.into())
             .map_err(account_provider)
     }
 
     fn change_password(&self, address: PlatformAddress, old_password: Password, new_password: Password) -> Result<()> {
-        self.account_provider.change_password(address.into(), &old_password, &new_password).map_err(account_provider)
+        self.account_provider
+            .change_password(address.into_address(), &old_password, &new_password)
+            .map_err(account_provider)
     }
 
     fn unlock(&self, address: PlatformAddress, password: Password, duration: Option<u64>) -> Result<()> {
@@ -82,17 +86,17 @@ impl Account for AccountClient {
         match duration {
             Some(0) => self
                 .account_provider
-                .unlock_account_permanently(address.into(), password)
+                .unlock_account_permanently(address.into_address(), password)
                 .map_err(Into::into)
                 .map_err(account_provider)?,
             Some(secs) => self
                 .account_provider
-                .unlock_account_timed(address.into(), password, Duration::from_secs(secs))
+                .unlock_account_timed(address.into_address(), password, Duration::from_secs(secs))
                 .map_err(Into::into)
                 .map_err(account_provider)?,
             None => self
                 .account_provider
-                .unlock_account_timed(address.into(), password, Duration::from_secs(DEFAULT_DURATION))
+                .unlock_account_timed(address.into_address(), password, Duration::from_secs(DEFAULT_DURATION))
                 .map_err(Into::into)
                 .map_err(account_provider)?,
         };

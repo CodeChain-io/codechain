@@ -139,7 +139,7 @@ impl From<Action> for ActionType {
                 receiver,
                 amount,
             } => ActionType::Payment {
-                receiver: receiver.into(),
+                receiver: receiver.into_address(),
                 amount,
             },
             Action::SetRegularKey {
@@ -153,14 +153,14 @@ impl From<Action> for ActionType {
                 owners,
             } => ActionType::SetShardOwners {
                 shard_id,
-                owners: owners.into_iter().map(Into::into).collect(),
+                owners: owners.into_iter().map(PlatformAddress::into_address).collect(),
             },
             Action::SetShardUsers {
                 shard_id,
                 users,
             } => ActionType::SetShardUsers {
                 shard_id,
-                users: users.into_iter().map(Into::into).collect(),
+                users: users.into_iter().map(PlatformAddress::into_address).collect(),
             },
             Action::Custom(bytes) => ActionType::Custom(bytes),
         }
