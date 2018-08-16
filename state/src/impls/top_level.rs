@@ -460,18 +460,23 @@ impl TopLevelState {
                 Err(error) => Err(error.into()),
             },
             Action::CreateShard => {
-                let shard_creation_cost = 1.into(); // FIXME: Make shard creation cost configurable
+                // FIXME: Make shard creation cost configurable
+                #[cfg(test)]
+                let shard_creation_cost = 1.into();
+                #[cfg(not(test))]
+                let shard_creation_cost = U256::max_value();
+
                 self.create_shard(&shard_creation_cost, fee_payer)?;
                 Ok(ParcelInvoice::SingleSuccess)
             }
-            Action::ChangeShardOwners {
+            Action::SetShardOwners {
                 shard_id,
                 owners,
             } => {
                 self.change_shard_owners(*shard_id, owners, fee_payer)?;
                 Ok(ParcelInvoice::SingleSuccess)
             }
-            Action::ChangeShardUsers {
+            Action::SetShardUsers {
                 shard_id,
                 users,
             } => {
@@ -2426,7 +2431,7 @@ mod tests_parcel {
     }
 
     #[test]
-    fn change_shard_owners() {
+    fn set_shard_owners() {
         let (sender, sender_public) = address();
 
         let mut state = get_temp_state();
@@ -2440,7 +2445,7 @@ mod tests_parcel {
 
         let parcel = Parcel {
             fee: 5.into(),
-            action: Action::ChangeShardOwners {
+            action: Action::SetShardOwners {
                 shard_id,
                 owners: owners.clone(),
             },
@@ -2486,7 +2491,7 @@ mod tests_parcel {
 
         let parcel = Parcel {
             fee: 5.into(),
-            action: Action::ChangeShardOwners {
+            action: Action::SetShardOwners {
                 shard_id,
                 owners,
             },
@@ -2504,7 +2509,7 @@ mod tests_parcel {
     }
 
     #[test]
-    fn only_owner_can_change_owners() {
+    fn only_owner_can_set_owners() {
         let (original_owner, _) = address();
 
         let mut state = get_temp_state();
@@ -2534,7 +2539,7 @@ mod tests_parcel {
 
         let parcel = Parcel {
             fee: 5.into(),
-            action: Action::ChangeShardOwners {
+            action: Action::SetShardOwners {
                 shard_id,
                 owners,
             },
@@ -2552,7 +2557,7 @@ mod tests_parcel {
     }
 
     #[test]
-    fn change_shard_owners_fail_on_invalid_shard_id() {
+    fn set_shard_owners_fail_on_invalid_shard_id() {
         let (sender, sender_public) = address();
 
         let mut state = get_temp_state();
@@ -2568,7 +2573,7 @@ mod tests_parcel {
 
         let parcel = Parcel {
             fee: 5.into(),
-            action: Action::ChangeShardOwners {
+            action: Action::SetShardOwners {
                 shard_id,
                 owners: owners.clone(),
             },
@@ -2588,7 +2593,7 @@ mod tests_parcel {
     }
 
     #[test]
-    fn user_cannot_change_owners() {
+    fn user_cannot_set_owners() {
         let (original_owner, _) = address();
         let (sender, sender_public) = address();
 
@@ -2618,7 +2623,7 @@ mod tests_parcel {
 
         let parcel = Parcel {
             fee: 5.into(),
-            action: Action::ChangeShardOwners {
+            action: Action::SetShardOwners {
                 shard_id,
                 owners,
             },
@@ -2712,7 +2717,7 @@ mod tests_parcel {
     }
 
     #[test]
-    fn change_shard_users() {
+    fn set_shard_users() {
         let network_id = "a2".into();
         let shard_id = 0;
 
@@ -2731,7 +2736,7 @@ mod tests_parcel {
 
         let parcel = Parcel {
             fee: 5.into(),
-            action: Action::ChangeShardUsers {
+            action: Action::SetShardUsers {
                 shard_id,
                 users: new_users.clone(),
             },
@@ -2749,7 +2754,7 @@ mod tests_parcel {
 
 
     #[test]
-    fn user_cannot_change_shard_users() {
+    fn user_cannot_set_shard_users() {
         let network_id = "a2".into();
         let shard_id = 0;
 
@@ -2769,7 +2774,7 @@ mod tests_parcel {
 
         let parcel = Parcel {
             fee: 5.into(),
-            action: Action::ChangeShardUsers {
+            action: Action::SetShardUsers {
                 shard_id,
                 users: new_users.clone(),
             },

@@ -69,15 +69,15 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
  - action: "setRegularKey"
  - key: `H512`
 
-### ChangeShardOwners Action
+### SetShardOwners Action
 
- - action: "changeShardOwners"
+ - action: "setShardOwners"
  - shard_id: `number`
  - owners: `PlatformAddress[]`
 
-### ChangeShardUsers Action
+### SetShardUsers Action
 
- - action: "changeShardUsers"
+ - action: "setShardUsers"
  - shard_id: `number`
  - users: `PlatformAddress[]`
 
@@ -128,6 +128,7 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
 | -32042 | `Already Exists` | The account already exists |
 | -32043 | `Wrong Password` | The password does not match |
 | -32044 | `No Such Account` | There is no such account in the key store |
+| -32099 | `Unknown Error` | An unknown error occurred |
 | -32602 | `Invalid Params` | At least one of the parameters is invalid |
 
 # List of methods
