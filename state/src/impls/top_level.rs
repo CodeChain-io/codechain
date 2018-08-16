@@ -460,7 +460,12 @@ impl TopLevelState {
                 Err(error) => Err(error.into()),
             },
             Action::CreateShard => {
-                let shard_creation_cost = 1.into(); // FIXME: Make shard creation cost configurable
+                // FIXME: Make shard creation cost configurable
+                #[cfg(test)]
+                let shard_creation_cost = 1.into();
+                #[cfg(not(test))]
+                let shard_creation_cost = U256::max_value();
+
                 self.create_shard(&shard_creation_cost, fee_payer)?;
                 Ok(ParcelInvoice::SingleSuccess)
             }
