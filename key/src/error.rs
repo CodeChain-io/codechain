@@ -14,9 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::fmt;
+
 use bech32::Error as Bech32Error;
 use secp256k1::Error as SecpError;
-use std::fmt;
 
 #[derive(Debug, PartialEq)]
 pub enum Error {
