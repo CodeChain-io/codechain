@@ -71,14 +71,14 @@ impl PlatformAddress {
 
     pub fn try_address(&self) -> Result<&Address, Error> {
         if !check_network_id(&self.network_id) {
-            return Err(Error::InvalidNetwork)
+            return Err(Error::InvalidNetworkId(self.network_id))
         }
         Ok(&self.address)
     }
 
     pub fn try_into_address(self) -> Result<Address, Error> {
         if !check_network_id(&self.network_id) {
-            return Err(Error::InvalidNetwork)
+            return Err(Error::InvalidNetworkId(self.network_id))
         }
         Ok(self.address)
     }
@@ -143,7 +143,7 @@ impl FromStr for PlatformAddress {
             .parse::<NetworkId>()
             .map_err(|_| Error::Bech32UnknownHRP)?;
         if !check_network_id(&network_id) {
-            return Err(Error::InvalidNetwork)
+            return Err(Error::InvalidNetworkId(network_id))
         }
         if Some("c") != decoded.hrp.get(2..3) {
             return Err(Error::Bech32UnknownHRP)

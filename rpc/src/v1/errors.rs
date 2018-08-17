@@ -93,7 +93,7 @@ pub fn parcel_core<T: Into<CoreError>>(error: T) -> Error {
                 message: "Verification Failed".into(),
                 data: Some(Value::String(format!("{:?}", error))),
             },
-            KeyError::InvalidNetwork => Error {
+            KeyError::InvalidNetworkId(_) => Error {
                 code: ErrorCode::ServerError(codes::INVALID_NETWORK_ID),
                 message: "Invalid NetworkId".into(),
                 data: Some(Value::String(format!("{:?}", error))),
@@ -106,7 +106,7 @@ pub fn parcel_core<T: Into<CoreError>>(error: T) -> Error {
                 message: "Verification Failed".into(),
                 data: Some(Value::String(format!("{:?}", error))),
             },
-            ParcelError::InvalidNetworkId => Error {
+            ParcelError::InvalidNetworkId(_) => Error {
                 code: ErrorCode::ServerError(codes::INVALID_NETWORK_ID),
                 message: "Invalid NetworkId".into(),
                 data: Some(Value::String(format!("{:?}", error))),

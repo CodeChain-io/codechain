@@ -19,13 +19,15 @@ use std::fmt;
 use bech32::Error as Bech32Error;
 use secp256k1::Error as SecpError;
 
+use super::NetworkId;
+
 #[derive(Debug, PartialEq)]
 pub enum Error {
     InvalidPublic,
     InvalidSecret,
     InvalidMessage,
     InvalidSignature,
-    InvalidNetwork,
+    InvalidNetworkId(NetworkId),
     InvalidChecksum,
     InvalidPrivate,
     InvalidAddress,
@@ -47,7 +49,7 @@ impl fmt::Display for Error {
             Error::InvalidSecret => "Invalid Secret".into(),
             Error::InvalidMessage => "Invalid Message".into(),
             Error::InvalidSignature => "Invalid Signature".into(),
-            Error::InvalidNetwork => "Invalid Network".into(),
+            Error::InvalidNetworkId(network_id) => format!("{} is an invalid network id", network_id),
             Error::InvalidChecksum => "Invalid Checksum".into(),
             Error::InvalidPrivate => "Invalid Private".into(),
             Error::InvalidAddress => "Invalid Address".into(),
