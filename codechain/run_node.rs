@@ -106,7 +106,7 @@ fn stratum_start(cfg: StratumConfig, miner: Arc<Miner>, client: Arc<Client>) -> 
 }
 
 fn new_miner(config: &config::Config, scheme: &Scheme, ap: Arc<AccountProvider>) -> Result<Arc<Miner>, String> {
-    let miner = Miner::new(config.miner_options(), scheme, Some(ap.clone()));
+    let miner = Miner::new(config.miner_options()?, scheme, Some(ap.clone()));
     match miner.engine_type() {
         EngineType::PoW => match &config.mining.author {
             Some(ref author) => {
