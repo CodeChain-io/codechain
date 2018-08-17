@@ -129,7 +129,7 @@ impl UnverifiedParcel {
     /// Verify basic signature params. Does not attempt sender recovery.
     pub fn verify_basic(&self, params: &CommonParams) -> Result<(), ParcelError> {
         if self.network_id != params.network_id {
-            return Err(ParcelError::InvalidNetworkId)
+            return Err(ParcelError::InvalidNetworkId(self.network_id))
         }
         let byte_size = rlp::encode(self).to_vec().len();
         if byte_size >= params.max_body_size {
@@ -145,7 +145,7 @@ impl UnverifiedParcel {
                 for t in transactions {
                     t.verify()?;
                     if t.network_id() != self.network_id {
-                        return Err(ParcelError::InvalidNetworkId)
+                        return Err(ParcelError::InvalidNetworkId(t.network_id()))
                     }
                     for shard_id in t.related_shards() {
                         if !shard_ids.contains(&shard_id) {

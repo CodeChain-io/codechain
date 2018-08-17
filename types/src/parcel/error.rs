@@ -16,7 +16,7 @@
 
 use std::fmt::{Display, Formatter, Result as FormatResult};
 
-use ckey::{Address, Error as KeyError};
+use ckey::{Address, Error as KeyError, NetworkId};
 use primitives::{H256, U256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
@@ -38,7 +38,7 @@ pub enum Error {
     /// (there is already a parcel with the same sender-nonce but higher gas price)
     TooCheapToReplace,
     /// Invalid network ID given.
-    InvalidNetworkId,
+    InvalidNetworkId(NetworkId),
     /// Max metadata size is exceeded.
     MetadataTooBig,
     /// Parcel was not imported to the queue because limit has been reached.
@@ -109,7 +109,9 @@ impl Encodable for Error {
             Error::TransactionAlreadyImported => s.begin_list(1).append(&ERROR_ID_TRANSACTION_ALREADY_IMPORTED),
             Error::Old => s.begin_list(1).append(&ERROR_ID_OLD),
             Error::TooCheapToReplace => s.begin_list(1).append(&ERROR_ID_TOO_CHEAP_TO_REPLACE),
-            Error::InvalidNetworkId => s.begin_list(1).append(&ERROR_ID_INVALID_NETWORK_ID),
+            Error::InvalidNetworkId(network_id) => {
+                s.begin_list(2).append(&ERROR_ID_INVALID_NETWORK_ID).append(network_id)
+            }
             Error::MetadataTooBig => s.begin_list(1).append(&ERROR_ID_METADATA_TOO_BIG),
             Error::LimitReached => s.begin_list(1).append(&ERROR_ID_LIMIT_REACHED),
             Error::InsufficientFee {
@@ -150,7 +152,7 @@ impl Decodable for Error {
             ERROR_ID_TRANSACTION_ALREADY_IMPORTED => Error::TransactionAlreadyImported,
             ERROR_ID_OLD => Error::Old,
             ERROR_ID_TOO_CHEAP_TO_REPLACE => Error::TooCheapToReplace,
-            ERROR_ID_INVALID_NETWORK_ID => Error::InvalidNetworkId,
+            ERROR_ID_INVALID_NETWORK_ID => Error::InvalidNetworkId(rlp.val_at(1)?),
             ERROR_ID_METADATA_TOO_BIG => Error::MetadataTooBig,
             ERROR_ID_LIMIT_REACHED => Error::LimitReached,
             ERROR_ID_INSUFFICIENT_FEE => Error::InsufficientFee {
@@ -189,7 +191,7 @@ impl Display for Error {
             Error::TransactionAlreadyImported => "The transaction is already imported".into(),
             Error::Old => "No longer valid".into(),
             Error::TooCheapToReplace => "Fee too low to replace".into(),
-            Error::InvalidNetworkId => "This network ID is not allowed on this chain".into(),
+            Error::InvalidNetworkId(network_id) => format!("{} is an invalid network id", network_id),
             Error::MetadataTooBig => "Metadata size is too big.".into(),
             Error::LimitReached => "Parcel limit reached".into(),
             Error::InsufficientFee {
