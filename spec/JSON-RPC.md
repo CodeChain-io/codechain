@@ -117,12 +117,13 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
 | -32009 | `Invalid RLP` | Failed to decode the RLP string |
 | -32011 | `KVDB Error` | Failed to access the state (Internal error of CodeChain) |
 | -32010 | `Execution Failed` | Failed to execute the transactions |
-| -32030 | `Verification Failed` | The signature is invalid or the network id does not match |
+| -32030 | `Verification Failed` | The signature is invalid |
 | -32031 | `Already Imported` | The same parcel is already imported |
 | -32032 | `Not Enough Balance` | The signer's balance is insufficient |
 | -32033 | `Too Low Fee` | The fee is lower than the minimum required |
 | -32034 | `Too Cheap to Replace` | The fee is lower than the existing one in the queue |
 | -32035 | `Invalid Nonce` | The signer's nonce is invalid to import |
+| -32036 | `Invalid NetworkId` | The network id does not match |
 | -32040 | `Keystore Error` | Failed to access the key store (Internal error of CodeChain) |
 | -32041 | `Key Error` | The key is invalid |
 | -32042 | `Already Exists` | The account already exists |
@@ -390,7 +391,7 @@ Params:
 
 Return Type: `H256` - parcel hash
 
-Errors: `Invalid RLP`, `Verification Failed`, `Already Imported`, `Not Enough Balance`, `Too Low Fee`, `Too Cheap to Replace`, `Invalid Nonce`, `Invalid Params`
+Errors: `Invalid RLP`, `Verification Failed`, `Already Imported`, `Not Enough Balance`, `Too Low Fee`, `Too Cheap to Replace`, `Invalid Nonce`, `Invalid Params`, `Invalid NetworkId`
 
 Request Example:
 ```
@@ -680,7 +681,7 @@ Params:
 
 Return Type: `U256`
 
-Errors: `KVDB Error`, `Invalid Params`
+Errors: `KVDB Error`, `Invalid Params`, `Invalid NetworkId`
 
 Request Example
 ```
@@ -708,7 +709,7 @@ Params:
 
 Return Type: `U256`
 
-Errors: `KVDB Error`, `Invalid Params`
+Errors: `KVDB Error`, `Invalid Params`, `Invalid NetworkId`
 
 Request Example
 ```
@@ -736,7 +737,7 @@ Params:
 
 Return Type: `H512` - 512-bit public key
 
-Errors: `KVDB Error`, `Invalid Params`
+Errors: `KVDB Error`, `Invalid Params`, `Invalid NetworkId`
 
 Request Example
 ```
@@ -890,7 +891,7 @@ Params:
 
 Return Type: `ChangeShard[]`
 
-Errors: `Invalid RLP`, `Execution Failed`, `Invalid Params`
+Errors: `Invalid RLP`, `Execution Failed`, `Invalid Params`, `Invalid NetworkId`
 
 Request Example
 ```
@@ -1494,7 +1495,7 @@ Params:
 
 Return type: `null`
 
-Errors: `Keystore Error`, `Wrong Password`, `No Such Account`, `Invalid Params`
+Errors: `Keystore Error`, `Wrong Password`, `No Such Account`, `Invalid Params`, `Invalid NetworkId`
 
 Request Example
 ```
@@ -1524,7 +1525,7 @@ Params:
 
 Return type: `null`
 
-Errors: `Keystore Error`, `Wrong Password`, `No Such Account`, `Invalid Params`
+Errors: `Keystore Error`, `Wrong Password`, `No Such Account`, `Invalid Params`, `Invalid NetworkId`
 
 Request Example
 ```
@@ -1553,7 +1554,7 @@ Params:
 
 Return type: `Signature`
 
-Errors: `Keystore Error`, `Wrong Password`, `No Such Account`, `Invalid Params`
+Errors: `Keystore Error`, `Wrong Password`, `No Such Account`, `Invalid Params`, `Invalid NetworkId`
 
 Request Example
 ```
@@ -1582,7 +1583,7 @@ Params:
 
 Return Type: `null`
 
-Errors: `Keystore Error`, `Wrong Password`, `No Such Account`, `Invalid Params`
+Errors: `Keystore Error`, `Wrong Password`, `No Such Account`, `Invalid Params`, `Invalid NetworkId`
 
 Request Example
 ```
