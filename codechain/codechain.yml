@@ -207,11 +207,13 @@ subcommands:
             - keys-path:
                 long: keys-path
                 value_name: PATH
+                global: true
                 help: Specify the path for JSON key files to be found
                 takes_value: true
             - chain:
                 short: c
                 long: chain
+                global: true
                 help: Set the blockchain type out of solo, solo_authority, tendermint, cuckoo, blake_pow, husky or a path to chain scheme file.
                 takes_value: true
         subcommands:

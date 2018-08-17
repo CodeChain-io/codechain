@@ -38,12 +38,12 @@ pub fn run_account_command(matches: ArgMatches) -> Result<(), String> {
 
     clogger::init(&LoggerConfig::new(0)).expect("Logger must be successfully initialized");
 
-    let keys_path = matches.value_of("keys-path").unwrap_or(DEFAULT_KEYS_PATH);
+    let keys_path = get_global_argument(&matches, "keys-path").unwrap_or(DEFAULT_KEYS_PATH.into());
     let dir = RootDiskDirectory::create(keys_path).expect("Cannot read key path directory");
     let keystore = KeyStore::open(Box::new(dir)).unwrap();
     let ap = AccountProvider::new(keystore);
-    let chain = matches.value_of("chain").unwrap_or("solo");
-    let network_id: NetworkId = ChainType::from_str(chain)?.scheme().map(|scheme| scheme.params().network_id)?;
+    let chain = get_global_argument(&matches, "chain").unwrap_or("solo".into());
+    let network_id: NetworkId = ChainType::from_str(chain.as_ref())?.scheme().map(|scheme| scheme.params().network_id)?;
 
     match matches.subcommand() {
         ("create", _) => create(&ap, network_id),
@@ -162,5 +162,15 @@ fn read_password_and_confirm() -> Option<Password> {
         Some(Password::from(first))
     } else {
         None
+    }
+}
+
+fn get_global_argument(matches: &ArgMatches, arg_name: &str) -> Option<String> {
+    match matches.value_of(arg_name) {
+        Some(value) => Some(value.to_string()),
+        None => match matches.subcommand() {
+            (_, Some(matches)) => matches.value_of(arg_name).map(|s| s.to_string()),
+            _ => None,
+        },
     }
 }
