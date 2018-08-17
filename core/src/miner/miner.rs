@@ -67,7 +67,7 @@ impl Default for MinerOptions {
         MinerOptions {
             new_work_notify: vec![],
             force_sealing: false,
-            reseal_on_external_parcel: false,
+            reseal_on_external_parcel: true,
             reseal_on_own_parcel: true,
             reseal_min_period: Duration::from_secs(2),
             reseal_max_period: Duration::from_secs(120),
