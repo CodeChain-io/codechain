@@ -45,8 +45,21 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn miner_options(&self) -> MinerOptions {
-        MinerOptions {
+    pub fn miner_options(&self) -> Result<MinerOptions, String> {
+        let (reseal_on_own_parcel, reseal_on_external_parcel) = match self.mining.reseal_on_txs.as_ref() {
+            "all" => (true, true),
+            "own" => (true, false),
+            "ext" => (false, true),
+            "none" => (false, false),
+            x => {
+                return Err(format!(
+                    "{} isn't a valid value for reseal-on-txs. Possible values are all, own, ext, none",
+                    x
+                ))
+            }
+        };
+
+        Ok(MinerOptions {
             mem_pool_size: self.mining.mem_pool_size,
             mem_pool_memory_limit: match self.mining.mem_pool_mem_limit {
                 0 => None,
@@ -54,11 +67,13 @@ impl Config {
             },
             new_work_notify: self.mining.notify_work.clone(),
             force_sealing: self.mining.force_sealing,
+            reseal_on_own_parcel,
+            reseal_on_external_parcel,
             reseal_min_period: Duration::from_millis(self.mining.reseal_min_period),
             reseal_max_period: Duration::from_millis(self.mining.reseal_max_period),
             work_queue_size: self.mining.work_queue_size,
             ..MinerOptions::default()
-        }
+        })
     }
 
     pub fn rpc_http_config(&self) -> RpcHttpConfig {
@@ -142,6 +157,7 @@ pub struct Mining {
     pub mem_pool_mem_limit: usize,
     pub notify_work: Vec<String>,
     pub force_sealing: bool,
+    pub reseal_on_txs: String,
     pub reseal_min_period: u64,
     pub reseal_max_period: u64,
     pub work_queue_size: usize,
@@ -254,6 +270,9 @@ impl Mining {
         }
         if matches.is_present("force-sealing") {
             self.force_sealing = true;
+        }
+        if let Some(reseal_on_txs) = matches.value_of("reseal-on-txs") {
+            self.reseal_on_txs = reseal_on_txs.to_string();
         }
         if let Some(reseal_min_period) = matches.value_of("reseal-min-period") {
             self.reseal_min_period = reseal_min_period.parse().map_err(|_| "Invalid period")?;

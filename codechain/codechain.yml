@@ -128,6 +128,15 @@ args:
         long: force-sealing
         help: Force the node to author new blocks as if it were always sealing/mining.
         takes_value: false
+    - reseal-on-txs:
+        long: reseal-on-txs
+        help: Specify which transactions should force the node to reseal a block.
+        takes_value: true
+        possible_values:
+            - none
+            - own
+            - ext
+            - all
     - reseal-min-period:
         long: reseal-min-period
         value_name: MS
