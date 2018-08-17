@@ -44,6 +44,7 @@ mod codes {
     pub const TOO_LOW_FEE: i64 = -32033;
     pub const TOO_CHEAP_TO_REPLACE: i64 = -32034;
     pub const INVALID_NONCE: i64 = -32035;
+    pub const INVALID_NETWORK_ID: i64 = -32036;
     pub const KEYSTORE_ERROR: i64 = -32040;
     pub const KEY_ERROR: i64 = -32041;
     pub const ALREADY_EXISTS: i64 = -32042;
@@ -92,12 +93,22 @@ pub fn parcel_core<T: Into<CoreError>>(error: T) -> Error {
                 message: "Verification Failed".into(),
                 data: Some(Value::String(format!("{:?}", error))),
             },
+            KeyError::InvalidNetwork => Error {
+                code: ErrorCode::ServerError(codes::INVALID_NETWORK_ID),
+                message: "Invalid NetworkId".into(),
+                data: Some(Value::String(format!("{:?}", error))),
+            },
             _ => unknown_error,
         },
         CoreError::State(StateError::Parcel(error)) => match error {
-            ParcelError::InvalidSignature(_) | ParcelError::InvalidNetworkId => Error {
+            ParcelError::InvalidSignature(_) => Error {
                 code: ErrorCode::ServerError(codes::VERIFICATION_FAILED),
                 message: "Verification Failed".into(),
+                data: Some(Value::String(format!("{:?}", error))),
+            },
+            ParcelError::InvalidNetworkId => Error {
+                code: ErrorCode::ServerError(codes::INVALID_NETWORK_ID),
+                message: "Invalid NetworkId".into(),
                 data: Some(Value::String(format!("{:?}", error))),
             },
             ParcelError::ParcelAlreadyImported => Error {
