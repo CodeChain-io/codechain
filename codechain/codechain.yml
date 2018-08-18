@@ -247,4 +247,8 @@ subcommands:
                         help: Address of desired password change
                         required: true
                         index: 1
-
+    - snapshot:
+        about: snapshot managing commands
+        subcommands:
+            - generate:
+                about: take present state trie to snapshot

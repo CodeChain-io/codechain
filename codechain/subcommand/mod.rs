@@ -15,16 +15,18 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 mod account_command;
+mod snapshot_command;
 
 use clap::ArgMatches;
 
 use self::account_command::run_account_command;
+use self::snapshot_command::run_snapshot_command;
 
 pub fn run_subcommand(matches: ArgMatches) -> Result<(), String> {
     let subcommand = matches.subcommand.unwrap();
-    if subcommand.name == "account" {
-        run_account_command(subcommand.matches)
-    } else {
-        Err("Invalid subcommand".to_string())
+    match subcommand.name.as_ref() {
+        "account" => run_account_command(subcommand.matches),
+        "snapshot" => run_snapshot_command(subcommand.matches),
+        _ => Err("Invalid subcommand".to_string()),
     }
 }

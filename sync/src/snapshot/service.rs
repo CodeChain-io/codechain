@@ -20,6 +20,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::thread::spawn;
 
+use ccore::encoded;
 use ccore::{BlockChainClient, BlockId, BlockInfo, ChainInfo, ChainNotify, Client, DatabaseClient, COL_STATE};
 
 use cmerkle::Node;
@@ -45,6 +46,18 @@ impl Service {
             root_dir,
             period,
         })
+    }
+
+    pub fn write_snapshot(root_dir: String, header: encoded::Header, db: Arc<KeyValueDB>) -> Result<(), String> {
+        let path: PathBuf = [root_dir, format!("{:x}", header.hash())].iter().collect();
+        let root = header.state_root();
+
+        match write_snapshot(db, path, &root) {
+            Ok(()) => println!("{:?}", header.hash()),
+            Err(Error::FileError(ErrorKind::AlreadyExists)) => return Err("Snapshot exists aleady".to_string()),
+            Err(e) => return Err(format!("{:?}", e)),
+        }
+        Ok(())
     }
 }
 
