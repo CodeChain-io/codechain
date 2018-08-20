@@ -19,6 +19,7 @@
 extern crate codechain_crypto as ccrypto;
 #[macro_use]
 extern crate codechain_logger as clogger;
+extern crate codechain_json as cjson;
 extern crate jsonrpc_core;
 extern crate jsonrpc_macros;
 extern crate jsonrpc_tcp_server;
@@ -42,6 +43,7 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 
 use ccrypto::blake256;
+use cjson::bytes::Bytes;
 use jsonrpc_core::{to_value, Compatibility, MetaIoHandler, Metadata, Params};
 use jsonrpc_macros::IoDelegate;
 use jsonrpc_tcp_server::{
@@ -186,7 +188,7 @@ impl StratumImpl {
             return Err(Error::UnauthorizedWorker.into())
         }
 
-        params.parse::<(H256, Vec<String>)>().and_then(|(pow_hash, seal)| {
+        params.parse::<(H256, Vec<Bytes>)>().and_then(|(pow_hash, seal)| {
             let seal = seal.iter().cloned().map(Into::into).collect();
             match self.dispatcher.submit((pow_hash, seal)) {
                 Ok(()) => {
