@@ -49,5 +49,6 @@ impl ApiDependencies {
 pub fn setup_rpc(mut handler: MetaIoHandler<()>) -> MetaIoHandler<()> {
     handler.add_method("ping", |_params: Params| Ok(Value::String("pong".to_string())));
     handler.add_method("version", |_params: Params| Ok(Value::String(env!("CARGO_PKG_VERSION").to_string())));
+    handler.add_method("commitHash", |_params: Params| Ok(Value::String(env!("VERGEN_SHA").to_string())));
     handler
 }

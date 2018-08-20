@@ -136,6 +136,7 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
 
  * [ping](#ping)
  * [version](#version)
+ * [commitHash](#commithash)
 ***
  * [chain_getBestBlockNumber](#chain_getbestblocknumber)
  * [chain_getBestBlockId](#chain_getbestblockid)
@@ -241,6 +242,26 @@ Response Example
 {
   "jsonrpc":"2.0",
   "result":"0.1.0",
+  "id":null
+}
+```
+
+## commitHash
+Gets the commit hash of the repository upon which the CodeChain executable was built
+
+Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "commitHash", "params": [], "id": null}' \
+    localhost:8080
+```
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result": "0x20d560025f3a1c6675cb32384355ae05b224a3473ae17d3d15b6aa164af7d717",
   "id":null
 }
 ```
