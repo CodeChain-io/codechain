@@ -145,7 +145,7 @@ pub struct Operating {
     pub db_path: String,
     pub keys_path: Option<String>,
     pub password_path: Option<String>,
-    pub chain: ChainType,
+    pub chain: Option<ChainType>,
 }
 
 #[derive(Deserialize)]
@@ -245,7 +245,7 @@ impl Operating {
             self.password_path = Some(password_path.to_string());
         }
         if let Some(chain) = matches.value_of("chain") {
-            self.chain = chain.parse()?;
+            self.chain = Some(chain.parse()?);
         }
         Ok(())
     }

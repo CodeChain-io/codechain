@@ -186,7 +186,10 @@ pub fn run_node(matches: ArgMatches) -> Result<(), String> {
         ::std::thread::sleep(Duration::from_secs(wait_before_shutdown));
     });
 
-    let scheme = config.operating.chain.scheme()?;
+    let scheme = match &config.operating.chain {
+        Some(chain) => chain.scheme()?,
+        None => return Err("chain is not specified".to_string()),
+    };
 
     let instance_id = config.operating.instance_id.unwrap_or(
         SystemTime::now()
