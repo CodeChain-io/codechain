@@ -14,5 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+#[cfg(not(debug_assertions))]
+pub const DEFAULT_CONFIG_PATH: &'static str = "codechain/config/presets/config.prod.toml";
+#[cfg(debug_assertions)]
 pub const DEFAULT_CONFIG_PATH: &'static str = "codechain/config/presets/config.dev.toml";
+
 pub const DEFAULT_KEYS_PATH: &'static str = "keys";
