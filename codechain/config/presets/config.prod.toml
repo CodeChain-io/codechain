@@ -1,0 +1,48 @@
+[codechain]
+quiet = false
+db_path = "db"
+keys_path = "keys"
+
+[mining]
+mem_pool_mem_limit = 256 # MB
+mem_pool_size = 8192
+notify_work = []
+force_sealing = true
+reseal_on_txs = "all"
+reseal_min_period = 4000
+reseal_max_period = 120000
+work_queue_size = 20
+
+[network]
+disable = false
+port = 3485
+max_peers = 30
+min_peers = 10
+bootstrap_addresses = ["13.124.101.76:3485"]
+sync = true
+parcel_relay = true
+discovery = true
+discovery_type = "unstructured"
+discovery_refresh = 60000
+discovery_bucket_size = 10
+address = "0.0.0.0"
+
+[rpc]
+disable = false
+interface = "127.0.0.1"
+port = 8080
+
+[ipc]
+disable = true
+path = "/tmp/jsonrpc.ipc"
+
+[snapshot]
+disable = true
+path = "snapshot"
+
+[stratum]
+disable = true
+port = 8008
+
+[shard_validator]
+disable = true
