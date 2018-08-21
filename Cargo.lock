@@ -484,6 +484,7 @@ name = "codechain-stratum"
 version = "1.11.0"
 dependencies = [
  "codechain-crypto 0.1.0",
+ "codechain-json 0.1.0",
  "codechain-logger 0.1.0",
  "env_logger 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "jsonrpc-core 8.0.1 (git+https://github.com/paritytech/jsonrpc.git?branch=parity-1.11)",

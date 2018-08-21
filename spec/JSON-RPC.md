@@ -1185,7 +1185,7 @@ Response Example
 ```
 
 ## net_addToWhitelist
-(not implemented) Adds the address to the white list.
+Adds the address to the whitelist.
 
 Params:
  1. address: `string`
@@ -1210,7 +1210,7 @@ Response Example
 ```
 
 ## net_removeFromWhitelist
-(not implemented) Removes the address from the white list.
+Removes the address from the whitelist.
 
 Params:
  1. address: `string`
@@ -1235,7 +1235,7 @@ Response Example
 ```
 
 ## net_addToBlacklist
-(not implemented) Adds the address to the white list.
+Adds the address to the blacklist.
 
 Params:
  1. address: `string`
@@ -1260,7 +1260,7 @@ Response Example
 ```
 
 ## net_removeFromBlacklist
-(not implemented) Removes the address from the white list.
+Removes the address from the blacklist.
 
 Params:
  1. address: `string`
@@ -1285,7 +1285,7 @@ Response Example
 ```
 
 ## net_enableWhitelist
-(not implemented) Enables white list.
+Enables whitelist.
 
 Params: No parameters
 Return Type: `null`
@@ -1308,7 +1308,7 @@ Response Example
 ```
 
 ## net_disableWhitelist
-(not implemented) Disables white list.
+Disables whitelist.
 
 Params: No parameters
 Return Type: `null`
@@ -1331,7 +1331,7 @@ Response Example
 ```
 
 ## net_enableBlacklist
-(not implemented) Enables black list.
+Enables blacklist.
 
 Params: No parameters
 Return Type: `null`
@@ -1354,7 +1354,7 @@ Response Example
 ```
 
 ## net_disableBlacklist
-(not implemented) Disables black list.
+Disables blacklist.
 
 Params: No parameters
 Return Type: `null`
@@ -1377,7 +1377,7 @@ Response Example
 ```
 
 ## net_getWhitelist
-(not implemented) Gets the address in the white list.
+Gets the address in the whitelist.
 
 Params:
  1. address: `string`
@@ -1402,7 +1402,7 @@ Response Example
 ```
 
 ## net_getBlacklist
-(not implemented) Gets the address in the white list.
+Gets the address in the blacklist.
 
 Params:
  1. address: `string`
