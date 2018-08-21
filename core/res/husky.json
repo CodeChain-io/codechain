@@ -4,10 +4,10 @@
     "cuckoo": {
       "params": {
         "blockReward": "0xba43b7400",
-        "minScore": "0x020000",
-        "maxVertex": "0x40000000",
-        "maxEdge": "0x20000000",
-        "cycleLength": "42"
+        "minScore": "0x1050",
+        "maxVertex": "0x1000",
+        "maxEdge": "0x800",
+        "cycleLength": "8"
       }
     }
   },
@@ -24,7 +24,7 @@
     "seal": {
       "generic": "0x0"
     },
-    "score": "0x20000",
+    "score": "0x1050",
     "author": "tccqqdu5w93amf8xuv3yayzvpfph964a5s2j56hx5pa",
     "timestamp": "0x00",
     "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
