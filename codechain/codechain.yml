@@ -205,6 +205,18 @@ args:
         takes_value: true
         conflicts_with:
             - no-shard-validator
+    - whitelist:
+        long: whitelist
+        value_name: WHITELIST
+        help: Whitelisted IP addresses.
+        takes_value: true
+        multiple: true
+    - blacklist:
+        long: blacklist
+        value_name: BLACKLIST
+        help: Blacklisted IP addresses.
+        takes_value: true
+        multiple: true
 subcommands:
     - account:
         about: account managing commands

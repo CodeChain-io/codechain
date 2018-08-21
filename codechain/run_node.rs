@@ -49,7 +49,7 @@ fn network_start(cfg: &NetworkConfig) -> Result<Arc<NetworkService>, String> {
 
     let addr = cfg.address.parse().map_err(|_| format!("Invalid NETWORK listen host given: {}", cfg.address))?;
     let sockaddress = SocketAddr::new(addr, cfg.port);
-    let filters = Filters::new();
+    let filters = Filters::new(cfg.whitelist.clone(), cfg.blacklist.clone());
     let service = NetworkService::start(sockaddress, cfg.min_peers, cfg.max_peers, filters)
         .map_err(|e| format!("Network service error: {:?}", e))?;
 

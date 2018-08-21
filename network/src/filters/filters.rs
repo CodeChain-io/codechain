@@ -28,8 +28,14 @@ pub struct Filters {
 }
 
 impl Filters {
-    pub fn new() -> Arc<Self> {
-        Arc::new(Self::default())
+    pub fn new(whitelist_vector: Vec<IpAddr>, blacklist_vector: Vec<IpAddr>) -> Arc<Self> {
+        let whitelist = Filter::new(whitelist_vector);
+        let blacklist = Filter::new(blacklist_vector);
+
+        Arc::new(Self {
+            whitelist: RwLock::new(whitelist),
+            blacklist: RwLock::new(blacklist),
+        })
     }
 }
 

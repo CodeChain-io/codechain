@@ -32,6 +32,13 @@ impl Default for Filter {
 }
 
 impl Filter {
+    pub fn new(input_vector: Vec<IpAddr>) -> Self {
+        Self {
+            enabled: !input_vector.is_empty(),
+            list: input_vector.into_iter().collect(),
+        }
+    }
+
     pub fn add(&mut self, addr: IpAddr) {
         self.list.insert(addr);
     }

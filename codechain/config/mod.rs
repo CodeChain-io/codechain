@@ -101,12 +101,16 @@ impl Config {
 
         let bootstrap_addresses =
             self.network.bootstrap_addresses.iter().map(|s| SocketAddr::from_str(s).unwrap()).collect::<Vec<_>>();
+        let whitelist = self.network.whitelist.iter().map(|s| s.parse().unwrap()).collect::<Vec<_>>();
+        let blacklist = self.network.blacklist.iter().map(|s| s.parse().unwrap()).collect::<Vec<_>>();
         NetworkConfig {
             address: self.network.interface.clone(),
             port: self.network.port,
             bootstrap_addresses,
             min_peers: self.network.min_peers,
             max_peers: self.network.max_peers,
+            whitelist,
+            blacklist,
         }
     }
 
@@ -178,6 +182,8 @@ pub struct Network {
     pub discovery_type: String,
     pub discovery_refresh: u32,
     pub discovery_bucket_size: u8,
+    pub blacklist: Vec<String>,
+    pub whitelist: Vec<String>,
 }
 
 #[derive(Deserialize)]
@@ -332,6 +338,13 @@ impl Network {
         }
         if let Some(bucket_size) = matches.value_of("discovery-bucket-size") {
             self.discovery_bucket_size = bucket_size.parse().map_err(|_| "Invalid discovery-bucket-size")?;
+        }
+
+        if let Some(addresses) = matches.values_of("whitelist") {
+            self.whitelist = addresses.into_iter().map(|a| a.into()).collect();
+        }
+        if let Some(addresses) = matches.values_of("blacklist") {
+            self.blacklist = addresses.into_iter().map(|a| a.into()).collect();
         }
 
         Ok(())
