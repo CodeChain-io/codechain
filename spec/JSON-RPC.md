@@ -136,6 +136,7 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
 
  * [ping](#ping)
  * [version](#version)
+ * [commitHash](#commithash)
 ***
  * [chain_getBestBlockNumber](#chain_getbestblocknumber)
  * [chain_getBestBlockId](#chain_getbestblockid)
@@ -241,6 +242,26 @@ Response Example
 {
   "jsonrpc":"2.0",
   "result":"0.1.0",
+  "id":null
+}
+```
+
+## commitHash
+Gets the commit hash of the repository upon which the CodeChain executable was built
+
+Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "commitHash", "params": [], "id": null}' \
+    localhost:8080
+```
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result": "0x20d560025f3a1c6675cb32384355ae05b224a3473ae17d3d15b6aa164af7d717",
   "id":null
 }
 ```
@@ -1164,7 +1185,7 @@ Response Example
 ```
 
 ## net_addToWhitelist
-(not implemented) Adds the address to the white list.
+Adds the address to the whitelist.
 
 Params:
  1. address: `string`
@@ -1189,7 +1210,7 @@ Response Example
 ```
 
 ## net_removeFromWhitelist
-(not implemented) Removes the address from the white list.
+Removes the address from the whitelist.
 
 Params:
  1. address: `string`
@@ -1214,7 +1235,7 @@ Response Example
 ```
 
 ## net_addToBlacklist
-(not implemented) Adds the address to the white list.
+Adds the address to the blacklist.
 
 Params:
  1. address: `string`
@@ -1239,7 +1260,7 @@ Response Example
 ```
 
 ## net_removeFromBlacklist
-(not implemented) Removes the address from the white list.
+Removes the address from the blacklist.
 
 Params:
  1. address: `string`
@@ -1264,7 +1285,7 @@ Response Example
 ```
 
 ## net_enableWhitelist
-(not implemented) Enables white list.
+Enables whitelist.
 
 Params: No parameters
 Return Type: `null`
@@ -1287,7 +1308,7 @@ Response Example
 ```
 
 ## net_disableWhitelist
-(not implemented) Disables white list.
+Disables whitelist.
 
 Params: No parameters
 Return Type: `null`
@@ -1310,7 +1331,7 @@ Response Example
 ```
 
 ## net_enableBlacklist
-(not implemented) Enables black list.
+Enables blacklist.
 
 Params: No parameters
 Return Type: `null`
@@ -1333,7 +1354,7 @@ Response Example
 ```
 
 ## net_disableBlacklist
-(not implemented) Disables black list.
+Disables blacklist.
 
 Params: No parameters
 Return Type: `null`
@@ -1356,7 +1377,7 @@ Response Example
 ```
 
 ## net_getWhitelist
-(not implemented) Gets the address in the white list.
+Gets the address in the whitelist.
 
 Params:
  1. address: `string`
@@ -1381,7 +1402,7 @@ Response Example
 ```
 
 ## net_getBlacklist
-(not implemented) Gets the address in the white list.
+Gets the address in the blacklist.
 
 Params:
  1. address: `string`

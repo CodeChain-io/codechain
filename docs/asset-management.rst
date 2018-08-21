@@ -168,7 +168,8 @@ Make sure you are accessing the CodeChain port. In this example, it is assumed t
     const sdk = new SDK({ server: “http://localhost:8080” });
 
 The MemoryKeyStore is created for testing purposes. In real applications, the MemoryKeyStore would be in the form of storage, such as hardware
-wallets or key store nodes, which would hold and manage the key pair(private and public keys). The P2PKH is responsible for locking and unlocking scripts.
+wallets or the key store server, which would hold and manage the key pair (private and public keys). If you want to use the key store server see below `external key store`_.
+The P2PKH is responsible for locking and unlocking scripts.
 ::
 
     const keyStore = await sdk.key.createMemoryKeyStore();
@@ -318,3 +319,73 @@ Type 1 with given payload represents:
 
 Lock Script Hash: P2PKH Standard Script Hash
 Parameters: [<Public Key Hash>]
+
+.. _external key store:
+
+Use ExternalKeyStore to save Asset Address private key
+==========================================================
+
+You should use a key management server to use Asset Address private keys safely. You can use a standalone key management server from this `link <https://github.com/codechain-io/codechain-keystore>`_.
+In this section, we will install and run the key management server, and use the server in the SDK.
+
+Setup the server
+-------------------
+
+To run the key management server, nodejs and yarn should be installed.
+
+Clone CodeChain-Keystore repository from the below URL.
+::
+
+  git clone https://github.com/CodeChain-io/codechain-keystore.git
+
+Move to the directory
+::
+
+  cd codechain-keystore
+
+Install the dependencies
+::
+
+  yarn install
+  yarn pm2 install typescript
+  yarn pm2 install pm2-logrotate
+
+Run the server
+----------------
+
+You can run the server using pm2. pm2 is a program which restarts the key management server when the server stops unexpectedly.
+Below command will run the server
+::
+
+  yarn pm2 start ecosystem.config.js
+
+You can see status using ``yarn pm2 status`` or ``yarn pm2 monit``
+You can run the server without pm2 using the command ``yarn run start``
+
+Use the SDK's ExternalKeyStore
+--------------------------------
+
+The SDK can use the key management server through ``ExternalKeyStore`` class.
+::
+
+  const keyStore = await sdk.key.createExternalKeyStore("http://<key-management-server-address>");
+
+If you are running the keystore server in the same machine, you can use the ``keyStore`` object instead of the memory keystore. Refer to the example below:
+::
+
+  const keyStore = await sdk.key.createExternalKeyStore("http://127.0.0.1:7007");
+
+Example
+-----------
+
+Here is a sample which uses ``ExternalKeyStore`` to create and get accounts. If you run this example multiple times, the number of printed keys is increased every time.
+::
+
+  var { ExternalKeyStore } = require("codechain-sdk/lib/key/classes")
+  async function main() {
+    var keyStore = await ExternalKeyStore.create("http://<key-management-server-address>");
+    await keyStore.createKey({ passphrase: "mypassword" });
+    var keys = await keyStore.getKeyList();
+    console.dir(keys);
+  }
+  main().catch(err => console.error(err));

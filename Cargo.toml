@@ -37,6 +37,9 @@ serde_json = "1.0"
 tokio-core = "0.1.6"
 toml = "0.4"
 
+[build-dependencies]
+vergen = "2"
+
 [[bin]]
 path = "codechain/main.rs"
 name = "codechain"
