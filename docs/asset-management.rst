@@ -360,7 +360,7 @@ Below command will run the server
   yarn pm2 start ecosystem.config.js
 
 You can see status using ``yarn pm2 status`` or ``yarn pm2 monit``
-You can run the server without pm2 using the command ``yarn run start``
+You can run the server without pm2 using the command ``NODE_ENV=production yarn run start``
 
 Use the SDK's ExternalKeyStore
 --------------------------------
