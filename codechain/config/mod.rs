@@ -102,11 +102,11 @@ impl Config {
         let bootstrap_addresses =
             self.network.bootstrap_addresses.iter().map(|s| SocketAddr::from_str(s).unwrap()).collect::<Vec<_>>();
         NetworkConfig {
+            address: self.network.interface.clone(),
             port: self.network.port,
             bootstrap_addresses,
             min_peers: self.network.min_peers,
             max_peers: self.network.max_peers,
-            address: self.network.address.to_string(),
         }
     }
 
@@ -166,7 +166,7 @@ pub struct Mining {
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Network {
-    pub address: String,
+    pub interface: String,
     pub disable: bool,
     pub port: u16,
     pub bootstrap_addresses: Vec<String>,
@@ -297,6 +297,9 @@ impl Network {
             self.bootstrap_addresses = addresses.into_iter().map(|a| a.into()).collect();
         }
 
+        if let Some(interface) = matches.value_of("interface") {
+            self.interface = interface.to_string();
+        }
         if let Some(port) = matches.value_of("port") {
             self.port = port.parse().map_err(|_| "Invalid port")?;
         }

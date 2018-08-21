@@ -8,6 +8,11 @@ args:
         long: config
         help: Specify the certain config file path that you want to use to configure CodeChain to your needs.
         takes_value: true
+    - interface:
+        long: interface
+        value_name: IP
+        help: Network interface to listen to.
+        takes_value: true
     - port:
         long: port
         value_name: PORT

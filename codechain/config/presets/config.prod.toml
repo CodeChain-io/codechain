@@ -15,6 +15,7 @@ work_queue_size = 20
 
 [network]
 disable = false
+interface = "0.0.0.0"
 port = 3485
 max_peers = 30
 min_peers = 10
@@ -25,7 +26,6 @@ discovery = true
 discovery_type = "unstructured"
 discovery_refresh = 60000
 discovery_bucket_size = 10
-address = "0.0.0.0"
 
 [rpc]
 disable = false
