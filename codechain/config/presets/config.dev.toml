@@ -5,6 +5,7 @@ keys_path = "keys"
 chain = "solo"
 
 [mining]
+disable = false
 mem_pool_mem_limit = 4 # MB
 mem_pool_size = 8192
 notify_work = []

@@ -101,10 +101,15 @@ args:
         long: enable-devel-api
         help: Enable the RPC's devel APIs
         takes_value: false
+    - no-miner:
+        long: no-miner
+        help: Do not mine.
     - author:
         long: author
         help: Specify the block author (aka "coinbase") address for sending block rewards from sealed blocks.
         takes_value: true
+        conflicts_with:
+            - no-miner
     - engine-signer:
         long: engine-signer
         help: Specify the address which should be used to sign consensus messages and issue blocks.
@@ -129,10 +134,14 @@ args:
         help: URLs to which work package notifications are pushed.
         takes_value: true
         multiple: true
+        conflicts_with:
+            - no-miner
     - force-sealing:
         long: force-sealing
         help: Force the node to author new blocks as if it were always sealing/mining.
         takes_value: false
+        conflicts_with:
+            - no-miner
     - reseal-on-txs:
         long: reseal-on-txs
         help: Specify which transactions should force the node to reseal a block.
@@ -142,21 +151,29 @@ args:
             - own
             - ext
             - all
+        conflicts_with:
+            - no-miner
     - reseal-min-period:
         long: reseal-min-period
         value_name: MS
         help: Specify the minimum time between reseals from incoming parcels. MS is time measured in milliseconds.
         takes_value: true
+        conflicts_with:
+            - no-miner
     - reseal-max-period:
         long: reseal-max-period
         value_name: MS
         help: Specify the maximum time since last block to enable force-sealing. MS is time measured in milliseconds.
         takes_value: true
+        conflicts_with:
+            - no-miner
     - work-queue-size:
         long: work-queue-size
         value_name: ITEMS
         help: Specify the number of historical work packages which are kept cached lest a solution is found for them later. High values take more memory but result in fewer unusable solutions.
         takes_value: true
+        conflicts_with:
+            - no-miner
     - no-discovery:
         long: no-discovery
         help: Do not use discovery

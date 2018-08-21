@@ -155,6 +155,7 @@ pub struct Operating {
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Mining {
+    pub disable: bool,
     pub author: Option<PlatformAddress>,
     pub engine_signer: Option<PlatformAddress>,
     pub mem_pool_size: usize,
@@ -259,6 +260,10 @@ impl Operating {
 
 impl Mining {
     pub fn overwrite_with(&mut self, matches: &clap::ArgMatches) -> Result<(), String> {
+        if matches.is_present("no-miner") {
+            self.disable = true;
+        }
+
         if let Some(author) = matches.value_of("author") {
             self.author = Some(author.parse().map_err(|_| "Invalid address format")?);
         }

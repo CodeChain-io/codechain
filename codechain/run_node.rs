@@ -110,7 +110,7 @@ fn stratum_start(cfg: StratumConfig, miner: Arc<Miner>, client: Arc<Client>) -> 
 fn new_miner(config: &config::Config, scheme: &Scheme, ap: Arc<AccountProvider>) -> Result<Arc<Miner>, String> {
     let miner = Miner::new(config.miner_options()?, scheme, Some(ap.clone()));
     match miner.engine_type() {
-        EngineType::PoW => match &config.mining.author {
+        EngineType::PoW if !config.mining.disable => match &config.mining.author {
             Some(ref author) => {
                 miner.set_author((*author).into_address(), None).expect("set_author never fails when PoW is used")
             }
@@ -122,7 +122,7 @@ fn new_miner(config: &config::Config, scheme: &Scheme, ap: Arc<AccountProvider>)
             }
             None => return Err("mining.engine_signer is not specified".to_string()),
         },
-        EngineType::Solo => (),
+        _ => (),
     }
 
     Ok(miner)
