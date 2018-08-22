@@ -18,9 +18,9 @@ For example, the log level will be set to debug, if you run the following:
 
 * The **warn** level represents an event which can be potentially dangerous.
 
-* The **info** level represents an event which is not dangerous, but can be useful information for users.
+* The **info** level represents an event which is not dangerous, but can be useful information to the users.
 
-* The **debug** level represents an event that is useful for developers, but not for users.
+* The **debug** level represents an event that is useful for the developers, but not for the users.
 
 * The **trace** level is used for tracing.
 
