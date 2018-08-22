@@ -168,7 +168,7 @@ Make sure you are accessing the CodeChain port. In this example, it is assumed t
     const sdk = new SDK({ server: “http://localhost:8080” });
 
 The MemoryKeyStore is created for testing purposes. In real applications, the MemoryKeyStore would be in the form of storage, such as hardware
-wallets or the key store server, which would hold and manage the key pair (private and public keys). If you want to use the key store server see below `external key store`_.
+wallets or the key store server, which would hold and manage the key pair (private and public keys). If you want to use the key store server see below `remote key store`_.
 The P2PKH is responsible for locking and unlocking scripts.
 ::
 
@@ -320,9 +320,9 @@ Type 1 with given payload represents:
 Lock Script Hash: P2PKH Standard Script Hash
 Parameters: [<Public Key Hash>]
 
-.. _external key store:
+.. _remote key store:
 
-Use ExternalKeyStore to save Asset Address private key
+Use RemoteKeyStore to save Asset Address private key
 ==========================================================
 
 You should use a key management server to use Asset Address private keys safely. You can use a standalone key management server from this `link <https://github.com/codechain-io/codechain-keystore>`_.
@@ -356,28 +356,28 @@ Below command will run the server
 
   NODE_ENV=production yarn run start
 
-Use the SDK's ExternalKeyStore
+Use the SDK's RemoteKeyStore
 --------------------------------
 
-The SDK can use the key management server through ``ExternalKeyStore`` class.
+The SDK can use the key management server through ``RemoteKeyStore`` class.
 ::
 
-  const keyStore = await sdk.key.createExternalKeyStore("http://<key-management-server-address>");
+  const keyStore = await sdk.key.createRemoteKeyStore("http://<key-management-server-address>");
 
 If you are running the keystore server in the same machine, you can use the ``keyStore`` object instead of the memory keystore. Refer to the example below:
 ::
 
-  const keyStore = await sdk.key.createExternalKeyStore("http://127.0.0.1:7007");
+  const keyStore = await sdk.key.createRemoteKeyStore("http://127.0.0.1:7007");
 
 Example
 -----------
 
-Here is a sample which uses ``ExternalKeyStore`` to create and get accounts. If you run this example multiple times, the number of printed keys is increased every time.
+Here is a sample which uses ``RemoteKeyStore`` to create and get accounts. If you run this example multiple times, the number of printed keys is increased every time.
 ::
 
-  var { ExternalKeyStore } = require("codechain-sdk/lib/key/classes")
+  var { RemoteKeyStore } = require("codechain-sdk/lib/key/classes")
   async function main() {
-    var keyStore = await ExternalKeyStore.create("http://<key-management-server-address>");
+    var keyStore = await RemoteKeyStore.create("http://<key-management-server-address>");
     await keyStore.createKey({ passphrase: "mypassword" });
     var keys = await keyStore.getKeyList();
     console.dir(keys);
