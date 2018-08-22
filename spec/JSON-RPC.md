@@ -169,6 +169,7 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
   * [net_isConnected](#net_isconnected)
   * [net_disconnect](#net_disconnect)
   * [net_getPeerCount](#net_getpeercount)
+  * [net_getEstablishedPeers](#net_getestablishedpeers)
   * [net_getPort](#net_getport)
   * [net_addToWhitelist](#net_addtowhitelist)
   * [net_removeFromWhitelist](#net_removefromwhitelist)
@@ -1159,6 +1160,29 @@ Response Example
 }
 ```
 
+## net_getEstablishedPeers
+(not implemented) Return the socket addresses of established peers.
+
+Params: No Parameters
+
+Return Type: `string[]`
+
+Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "net_getEstablishedPeers", "params": [], "id": 3}' \
+    localhost:8080
+```
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result": ["1.2.3.4:3485", "1.2.3.5:3485"],
+  "id":3
+}
+```
 
 ## net_getPort
 Return the port number on which the client is listening for peers.
