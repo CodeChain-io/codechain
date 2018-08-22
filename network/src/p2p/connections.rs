@@ -306,6 +306,11 @@ impl Connections {
         connections.len()
     }
 
+    pub fn established_count(&self) -> usize {
+        let connections = self.connections.read();
+        connections.iter().filter(|(_, con)| con.is_established()).count()
+    }
+
     pub fn get_filtered_address(&self, filters: &FiltersControl) -> Vec<SocketAddr> {
         let connected_nodes = self.connected_nodes.read();
         connected_nodes
