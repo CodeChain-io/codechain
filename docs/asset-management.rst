@@ -16,7 +16,7 @@ Then, check whether your CodeChain RPC server is up and running. You can read ab
 
 Setup the Test Account
 =====================================
-Before you begin to meet various examples, you need to setup an account. The given account (cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7) holds 100000 CCC at the genesis block. It's a sufficient
+Before you begin with various examples, you need to setup an account. The given account (cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7) holds 100000 CCC at the genesis block. It's a sufficient
 amount to pay for the parcel fee. You can setup the account by using this:
 ::
 
@@ -175,7 +175,7 @@ The P2PKH is responsible for locking and unlocking scripts.
     const keyStore = await sdk.key.createMemoryKeyStore();
     const p2pkh = await sdk.key.createP2PKH({ keyStore });
 
-Each user needs an address for them to receive/send assets to. Addresses are created by p2pkh. In this example, Bob's address is introduced differently,
+Each user needs an address to receive/send assets. Addresses are created by p2pkh. In this example, Bob's address is introduced differently,
 since Bob's address is recieved from Bob. In real world applications, you would only know the address of the recipient and nothing more.
 ::
 
@@ -240,7 +240,7 @@ Next, we create an output which gives 3000 gold to Bob, and returns 7000 gold to
         });
 
 
-By using Alice's signature, the 10000 Gold that was first minted can now be transferred to other users like Bob.
+By using Alice's signature, the 10000 gold that was first minted can now be transferred to other users like Bob.
 ::
 
     await transferTx.sign(0, { signer: p2pkh });
@@ -294,7 +294,7 @@ Data Part: ``version`` . ``body``
 **Version 0 (0x00)**
 Data body: ``Account ID`` (20 bytes)
 
-Account ID is a result of ripemd160 of blake256 of a public key(64 bytes uncompressed form).
+Account ID is a result of ripemd160 of blake256 of a public key (64 bytes uncompressed form).
 
 Asset Transfer Address Format
 ------------------------------------
