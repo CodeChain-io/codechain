@@ -27,7 +27,7 @@ For example, the log level will be set to debug, if you run the following:
 Log Targets
 ==============
 
-Log levels can be set differently for each log targets. For example, you can run the following to set ``tx``'s log level as ``trace`` and ``parcel``'s
+Log levels can be set differently for each log targets. For example, you can set ``tx``'s log level as ``trace`` and ``parcel``'s
 log level as ``info`` with the following code:
 
 ``$ RUST_LOG="tx=trace,parcel=info" codechain``
