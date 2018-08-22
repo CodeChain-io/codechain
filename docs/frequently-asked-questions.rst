@@ -15,7 +15,7 @@ CodeChain is a programmable open source blockchain technology optimal for develo
 
 How is CodeChain unique?
 ------------------------------------------------------------------------------------------------------------------------------------------
-CodeChain offers modular features that allow it to be seamlessly incorporated into a variety of different blockchain systems.
+CodeChain offers a modular architecture that allows it to be seamlessly incorporated into a variety of different blockchain systems.
 
 
 How do I report bugs?
