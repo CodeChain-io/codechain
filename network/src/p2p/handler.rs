@@ -366,7 +366,7 @@ impl Handler {
 
     pub fn get_peer_count(&self) -> usize {
         let manager = self.manager.lock();
-        manager.connections.len()
+        manager.connections.established_count()
     }
 }
 

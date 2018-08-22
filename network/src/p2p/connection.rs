@@ -723,6 +723,15 @@ impl Connection {
             _ => unreachable!(),
         }
     }
+
+    pub fn is_established(&self) -> bool {
+        let mut state = self.state.lock();
+        match state.get_mut() {
+            State::Intermediate => unreachable!(),
+            State::Established(_) => true,
+            _ => false,
+        }
+    }
 }
 
 pub enum ReceivedMessage {
