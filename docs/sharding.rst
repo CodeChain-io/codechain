@@ -3,7 +3,7 @@
 #########################
 Sharding
 #########################
-When it comes to blockchain technology that utilize PoW consensus algorithms, there exists issues related to scalability. In order to scale out, CodeChain provides sharding.
+When it comes to blockchain technology that utilizes PoW consensus algorithms, there exists issues related to scalability. In order to scale out, CodeChain provides sharding.
 
 To provide sharding, we divide CodeChain’s state into two. The top-level state contains data necessary to operate CodeChain. For instance, these data could be a shard’s root,
 a platform account that holds CCC, or a dynamic validator set. The other state, known as the shard-level state, contains data that are related to the assets, such as the asset
