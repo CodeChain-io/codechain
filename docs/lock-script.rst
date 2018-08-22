@@ -6,8 +6,8 @@ Lock Script
 Lock scripts are required in CodeChain when making a transaction to a different user. When attempting to
 make a transaction, the sender must know the receiver's lock script so that the receiver can use his/her
 private key to use/spend the newly received asset. This is analogous to sending money to someone's bank
-account. Without knowing the reciever's bank account address, you cannot send money to the proper destination.
-Lock scripts are contain two parts: the lockScriptHash and parameter.
+account. Without knowing the receiver's bank account address, you cannot send money to the proper destination.
+Lock scripts contain two parts: the lockScriptHash and parameter.
 
 .. image:: script-order.png
     :width: 960px
