@@ -31,7 +31,7 @@ In order to properly get Tendermint to get going, you need to have 4 nodes up an
 
     codechain --db-path db/db0 --port 3485 --jsonrpc-port 8080 --engine-signer tccqzzpxln6w5zrhmfju3zc53w6w4y6s95mf5hw0n62 -c tendermint
 
-This creates a node in db0 (database 0) at port 3485(used for nodes to communicate with each other) and jsonRPC port 8080(port used for external access) with engine signer of tccqzzpxln6w5zrhmfju3zc53w6w4y6s95mf5hw0n62(used to sign the block).
+This creates a node in db0 (database 0) at port 3485 (used for nodes to communicate with each other) and jsonRPC port 8080 (port used for external access) with engine signer of tccqzzpxln6w5zrhmfju3zc53w6w4y6s95mf5hw0n62 (used to sign the block).
 
 Then create more nodes, and allocate each node with a secret key that corresponds to one of the four public keys listed in Tendermint's validator property.
 When creating new nodes, the db, port and jsonRPC port all must be configured as a different value. So for example, the next node should be set up like this:
