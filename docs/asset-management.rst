@@ -347,20 +347,14 @@ Install the dependencies
 ::
 
   yarn install
-  yarn pm2 install typescript
-  yarn pm2 install pm2-logrotate
 
 Run the server
 ----------------
 
-You can run the server using pm2. pm2 is a program which restarts the key management server when the server stops unexpectedly.
 Below command will run the server
 ::
 
-  yarn pm2 start ecosystem.config.js
-
-You can see status using ``yarn pm2 status`` or ``yarn pm2 monit``
-You can run the server without pm2 using the command ``NODE_ENV=production yarn run start``
+  NODE_ENV=production yarn run start
 
 Use the SDK's ExternalKeyStore
 --------------------------------
