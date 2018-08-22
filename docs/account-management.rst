@@ -3,25 +3,25 @@ Account Management
 
 Subcommands
 =============
-CodeChain has a subcommand called ``account``. These commands are used to manage accounts. It has subcommands of its own, which are the following:
+CodeChain has ``account`` subcommand. It is used to manage accounts and has subcommands of its own, which are the following:
 
     ``create``
-        Creates a new account in the ``keys`` file directory. Upon creation, the user is asked to enter a passphrase.
+        Create a new account in the ``keys`` file directory. Upon creation, the user is asked to enter a passphrase.
 
     ``import <JSON_FILE_PATH>``
-        Imports a key in the format of a JSON file. Enter the directory that holds the JSON file to import.
+        Import a key in the format of a JSON file. Enter the directory that holds the JSON file to import.
 
     ``import-raw <RAW_KEY>``
-        Imports a private key(64 hexadecimal characters) directly.
+        Import a private key(64 hexadecimal characters) directly.
 
     ``remove <ADDRESS>``
-        Removes an account from the ``keys`` file directory. Use ``list`` to get the ADDRESS.
+        Remove an account from the ``keys`` file directory. Use ``list`` to get the ADDRESS.
 
     ``list``
         List the managed accounts.
 
     ``change-password <ADDRESS>``
-        Changes the password of the account linked with the given ADDRESS.
+        Change the password of the account linked with the given ADDRESS.
 
 Creating an Account
 -------------------
@@ -49,8 +49,7 @@ Upon closer inspection, the created accounts contain the following contents:
 
 Changing the Password
 ---------------------
-You can change your password with the ``change-password`` command. For instance, if you wanted to change the password of cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7, you
-would run the following:
+You can change your password with the ``change-password`` command. For instance, if you want to change the password of cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7, run the following:
 ::
 
     ./target/release/codechain account change-password cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7
@@ -86,8 +85,7 @@ If you run the following, you should get a list of all the managed accounts' add
 Removing Accounts
 -----------------
 If you want to remove a certain account, you should first know the address of that account. To do this, simply use the ``list`` command. Once you found the address of the
-account you want to remove, simply use the ``remove`` command. If you wanted to delete an account with address ``0xc3bc9c4bd0020fcc9bd294c379b2eb7284c99de5``, then
-you would use the following command:
+account you want to remove, simply use the ``remove`` command. If you want to delete an account with address ``0xc3bc9c4bd0020fcc9bd294c379b2eb7284c99de5``, then use the following command:
 ::
 
     ./target/release/codechain account remove 0xc3bc9c4bd0020fcc9bd294c379b2eb7284c99de5
