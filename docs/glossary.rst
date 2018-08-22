@@ -52,7 +52,7 @@ An alternative to PoW, PoS puts dependency on the amount of resources that someo
 
 **Proof of Work (PoW)**
 
-A piece of data which difficult to produce but easy to verify. Producing PoW is a random process, and
+A piece of data which is difficult to produce but easy to verify. Producing PoW is a random process, and
 requires a lot of trial and error.
 
 
@@ -66,7 +66,7 @@ requires a lot of trial and error.
 
 **Tendermint**
 
-Software for recurely and consistently replicating an application on multiple machines. To learn more about
+Software for securely and consistently replicating an application on multiple machines. To learn more about
 Tendermint, click `here <https://tendermint.readthedocs.io/en/master/>`_.
 
 **U**
