@@ -179,7 +179,7 @@ args:
         help: Do not use discovery
     - discovery:
         long: discovery
-        help: Decides which p2p discovery extension to use. Options are kademlia and unstructured. In a testing environment, an unstructured p2p network is desirable because it is more than sufficient when there are a few users.
+        help: Decide which p2p discovery extension to use. Options are kademlia and unstructured. In a testing environment, an unstructured p2p network is desirable because it is more than sufficient when there are a few users.
         takes_value: true
         possible_values:
             - kademlia
