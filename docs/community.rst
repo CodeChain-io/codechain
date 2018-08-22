@@ -31,5 +31,5 @@ If you are not sure of which room is suitable for your topic, go to `codechain`_
 
 Stack Exchange
 =====================
-The `CodeChain Stack Exchange <http://area51.stackexchange.com/proposals/118960/codechain>`_ is where you can ask your questions. This is the best place
+The `CodeChain Stack Exchange <http://area51.stackexchange.com/proposals/119664/codechain>`_ is where you can ask your questions. This is the best place
 to ask technical questions. The questions here are preserved for future references.
