@@ -489,10 +489,13 @@ impl IoHandler<Message> for Handler {
                 if manager.connections.len() < self.min_peers {
                     register_new_timer.store(true, Ordering::SeqCst);
                 }
+                let was_established = manager.connections.is_established(&stream);
                 manager.connections.set_disconnecting(&stream);
                 let node_id = manager.connections.node_id(&stream).ok_or(Error::InvalidStream(stream))?;
                 manager.routing_table.remove_node(node_id.into_addr());
-                self.client.on_node_removed(&node_id);
+                if was_established {
+                    self.client.on_node_removed(&node_id);
+                }
                 io.deregister_stream(stream)?;
             }
             _ => unreachable!(),

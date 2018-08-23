@@ -114,6 +114,11 @@ impl Connections {
         }
     }
 
+    pub fn is_established(&self, token: &StreamToken) -> bool {
+        let connections = self.connections.read();
+        connections.get(token).map(Connection::is_established).unwrap_or(false)
+    }
+
     pub fn establish_wait_ack_connection(&self, token: &StreamToken) -> bool {
         let connections = self.connections.read();
 
