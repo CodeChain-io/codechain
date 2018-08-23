@@ -17,6 +17,7 @@
 mod chain_type;
 
 use std::fs;
+use std::net::IpAddr;
 use std::str::FromStr;
 use std::time::Duration;
 
@@ -96,14 +97,33 @@ impl Config {
         }
     }
 
-    pub fn network_config(&self) -> NetworkConfig {
+    pub fn network_config(&self) -> Result<NetworkConfig, String> {
         debug_assert!(!self.network.disable);
+
+        fn make_ipaddr_list(list_path: Option<&String>, list_name: &str) -> Result<Vec<IpAddr>, String> {
+            list_path
+                .map(|path| {
+                    fs::read_to_string(path)
+                        .map_err(|e| format!("Cannot open the {}list file {:?}: {:?}", list_name, path, e))
+                        .map(|rstr| {
+                            rstr.split_whitespace()
+                                .filter(|s| s.len() != 0)
+                                .map(|s| s.parse().map_err(|e| (s, e)))
+                                .collect::<Result<Vec<_>, _>>()
+                                .map_err(|(s, e)| format!("Cannot parse IP address {:?}: {:?}", s, e))
+                        })
+                        .unwrap_or_else(|e| Err(e))
+                })
+                .unwrap_or(Ok(Vec::new()))
+        }
 
         let bootstrap_addresses =
             self.network.bootstrap_addresses.iter().map(|s| SocketAddr::from_str(s).unwrap()).collect::<Vec<_>>();
-        let whitelist = self.network.whitelist.iter().map(|s| s.parse().unwrap()).collect::<Vec<_>>();
-        let blacklist = self.network.blacklist.iter().map(|s| s.parse().unwrap()).collect::<Vec<_>>();
-        NetworkConfig {
+
+        let whitelist = make_ipaddr_list(self.network.whitelist_path.as_ref(), "white")?;
+        let blacklist = make_ipaddr_list(self.network.blacklist_path.as_ref(), "black")?;
+
+        Ok(NetworkConfig {
             address: self.network.interface.clone(),
             port: self.network.port,
             bootstrap_addresses,
@@ -111,7 +131,7 @@ impl Config {
             max_peers: self.network.max_peers,
             whitelist,
             blacklist,
-        }
+        })
     }
 
     pub fn stratum_config(&self) -> StratumConfig {
@@ -183,8 +203,8 @@ pub struct Network {
     pub discovery_type: String,
     pub discovery_refresh: u32,
     pub discovery_bucket_size: u8,
-    pub blacklist: Vec<String>,
-    pub whitelist: Vec<String>,
+    pub blacklist_path: Option<String>,
+    pub whitelist_path: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -345,11 +365,11 @@ impl Network {
             self.discovery_bucket_size = bucket_size.parse().map_err(|_| "Invalid discovery-bucket-size")?;
         }
 
-        if let Some(addresses) = matches.values_of("whitelist") {
-            self.whitelist = addresses.into_iter().map(|a| a.into()).collect();
+        if let Some(file_path) = matches.value_of("whitelist-path") {
+            self.whitelist_path = Some(file_path.to_string());
         }
-        if let Some(addresses) = matches.values_of("blacklist") {
-            self.blacklist = addresses.into_iter().map(|a| a.into()).collect();
+        if let Some(file_path) = matches.value_of("blacklist-path") {
+            self.blacklist_path = Some(file_path.to_string());
         }
 
         Ok(())
