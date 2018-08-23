@@ -18,14 +18,10 @@ import { ChildProcess, spawn } from "child_process";
 import { SDK } from "codechain-sdk";
 import { mkdtempSync } from "fs";
 import { createInterface as createReadline } from "readline";
+import * as mkdirp from "mkdirp";
 
 const projectRoot = `${__dirname}/../../..`;
 let idCounter = 0;
-
-function zeroPad(val: string, totalLength: number): string {
-  const padded = `${"0".repeat(totalLength)}${val}`;
-  return padded.substr(padded.length - 64);
-}
 
 export default class CodeChain {
   private _id: number;
@@ -44,34 +40,42 @@ export default class CodeChain {
     this._id = idCounter;
     idCounter += 1;
 
+    mkdirp.sync(`${projectRoot}/db/`);
     this._dbPath = mkdtempSync(`${projectRoot}/db/`);
     this._sdk = new SDK({ server: `http://localhost:${this.rpcPort}` });
   }
 
-  public async start(bin: string, argv: string[]) {
-
+  public async start(argv: string[], options?: { useDebugBuild?: boolean }) {
     const params = [
       "--db-path", this.dbPath,
       "--jsonrpc-port", this.rpcPort.toString(),
       "--port", this.port.toString(),
-      "--secret-key", zeroPad(this.secretKey.toString(), 64),
       "--instance-id", this.id.toString(),
     ];
-    this.process = spawn(bin, [...argv, ...params], { cwd: projectRoot, env: process.env });
+    const { useDebugBuild = false } = options || {};
 
-    // wait until codechain is initialized
+    // Resolves when CodeChain initialization completed.
     return new Promise((resolve, reject) => {
-      const onError = (error: Error) => {
-        this.process!.off("error", onError);
-        reject(error);
-      };
-      this.process!.on("error", onError);
+      this.process = spawn(
+        `target/${useDebugBuild ? "debug" : "release"}/codechain`,
+        [...argv, ...params],
+        {
+          cwd: projectRoot,
+          env: process.env
+        });
+
+      this.process
+        .on("error", e => {
+          reject(e);
+        })
+        .on("close", (code, _signal) => {
+          reject(Error(`CodeChain exited with code ${code}`));
+        });
 
       const readline = createReadline({ input: this.process!.stderr });
       readline.on("line", (line: string) => {
         if (line.includes("Initialization complete")) {
           readline.close();
-          this.process!.off("error", onError);
           resolve();
         }
       });
@@ -79,18 +83,13 @@ export default class CodeChain {
   }
 
   public async clean() {
-    if (this.process !== undefined) {
-      // wait until process is killed
-      await new Promise((resolve) => {
-        this.process!.on("exit", () => resolve());
-        this.process!.kill();
-        this.process = undefined;
-      });
-    }
-  }
-
-  public async restart(bin: string, argv: string[]) {
-    await this.clean();
-    return this.start(bin, argv);
+    return new Promise(resolve => {
+      if (!this.process) {
+        return resolve();
+      }
+      this.process.on("exit", resolve);
+      this.process.kill();
+      this.process = undefined;
+    });
   }
 }
