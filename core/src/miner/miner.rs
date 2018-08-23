@@ -375,12 +375,12 @@ impl Miner {
             let hash = parcel.hash();
             let start = Instant::now();
             // Check whether parcel type is allowed for sender
-            let result = match self.engine.machine().verify_parcel(&parcel, open_block.header(), chain) {
-                _ => open_block.push_parcel(parcel, None),
-            };
-            let took = start.elapsed();
+            let result = self
+                .engine
+                .machine()
+                .verify_parcel(&parcel, open_block.header(), chain)
+                .and_then(|_| open_block.push_parcel(parcel, None));
 
-            ctrace!(MINER, "Adding parcel {:?} took {:?}", hash, took);
             match result {
                 // already have parcel - ignore
                 Err(Error::State(StateError::Parcel(ParcelError::ParcelAlreadyImported))) => {}
@@ -394,7 +394,9 @@ impl Miner {
                         e
                     );
                 }
-                _ => {
+                Ok(()) => {
+                    let took = start.elapsed();
+                    ctrace!(MINER, "Adding parcel {:?} took {:?}", hash, took);
                     parcel_count += 1;
                 } // imported ok
             }
