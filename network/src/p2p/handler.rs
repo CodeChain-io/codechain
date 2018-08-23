@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::io;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
@@ -36,18 +35,6 @@ use super::listener::Listener;
 use super::message::{HandshakeMessage, Message as NetworkMessage, Version};
 use super::stream::Stream;
 use super::NegotiationBody;
-
-struct Manager {
-    listener: Listener,
-
-    tokens: TokenGenerator,
-
-    routing_table: Arc<RoutingTable>,
-    filters: Arc<FiltersControl>,
-    connections: Connections,
-
-    port: u16,
-}
 
 pub const MAX_CONNECTIONS: usize = 200;
 
@@ -105,31 +92,71 @@ impl ::std::fmt::Display for Error {
     }
 }
 
-impl Manager {
-    pub fn listen(
-        socket_address: &SocketAddr,
+pub struct Handler {
+    socket_address: SocketAddr,
+
+    listener: Listener,
+
+    tokens: Mutex<TokenGenerator>,
+
+    routing_table: Arc<RoutingTable>,
+    filters: Arc<FiltersControl>,
+    connections: Connections,
+
+    client: Arc<Client>,
+
+    min_peers: usize,
+    max_peers: usize,
+}
+
+impl Handler {
+    pub fn try_new(
+        socket_address: SocketAddr,
+        client: Arc<Client>,
         routing_table: Arc<RoutingTable>,
         filters: Arc<FiltersControl>,
-    ) -> io::Result<Self> {
-        Ok(Manager {
-            listener: Listener::bind(&socket_address)?,
+        min_peers: usize,
+        max_peers: usize,
+    ) -> ::std::result::Result<Self, String> {
+        if MAX_CONNECTIONS < max_peers {
+            return Err(format!("Max peers must be less than {}", MAX_CONNECTIONS))
+        }
+        debug_assert!(max_peers < MAX_CONNECTIONS);
+        Ok(Self {
+            socket_address,
+            listener: Listener::bind(&socket_address).expect("Cannot listen TCP port"),
 
-            tokens: TokenGenerator::new(FIRST_CONNECTION_TOKEN, LAST_CONNECTION_TOKEN),
+            tokens: Mutex::new(TokenGenerator::new(FIRST_CONNECTION_TOKEN, LAST_CONNECTION_TOKEN)),
 
             routing_table,
             filters,
             connections: Connections::new(),
 
-            port: socket_address.port(),
+            client,
+
+            min_peers,
+            max_peers,
         })
     }
 
-    pub fn accept(&mut self) -> IoHandlerResult<Option<(StreamToken)>> {
+    pub fn get_port(&self) -> u16 {
+        self.socket_address.port()
+    }
+
+    pub fn get_peer_count(&self) -> usize {
+        self.connections.established_count()
+    }
+
+    pub fn established_peers(&self) -> Vec<SocketAddr> {
+        self.connections.established_peers()
+    }
+
+    fn accept(&self) -> IoHandlerResult<Option<(StreamToken)>> {
         match self.listener.accept()? {
             Some((stream, socket_address)) => {
                 let ip = socket_address.ip();
                 if self.filters.is_allowed(&ip) {
-                    let token = self.tokens.gen().ok_or(Error::General("TooManyConnections"))?;
+                    let token = self.tokens.lock().gen().ok_or(Error::General("TooManyConnections"))?;
                     self.connections.accept(token, stream);
                     Ok(Some(token))
                 } else {
@@ -141,7 +168,7 @@ impl Manager {
         }
     }
 
-    pub fn connect(&mut self, socket_address: &SocketAddr) -> IoHandlerResult<Option<StreamToken>> {
+    fn connect(&self, socket_address: &SocketAddr) -> IoHandlerResult<Option<StreamToken>> {
         let ip = socket_address.ip();
         if !self.filters.is_allowed(&ip) {
             cinfo!(NET, "P2P connection from {:?} is received. But it's not allowed", ip);
@@ -159,13 +186,14 @@ impl Manager {
                     .unestablished_session(&socket_address)
                     .ok_or(Error::General("Session doesn't exist"))?;
 
-                let token = self.tokens.gen().ok_or(Error::General("TooManyConnections"))?;
-                if self.connections.connect(token, stream, local_node_id, session, socket_address, self.port) {
+                let mut tokens = self.tokens.lock();
+                let token = tokens.gen().ok_or(Error::General("TooManyConnections"))?;
+                if self.connections.connect(token, stream, local_node_id, session, socket_address, self.get_port()) {
                     self.routing_table.establish(socket_address);
                     Some(token)
                 } else {
                     cwarn!(NET, "Cannot create connection to {:?}", socket_address);
-                    self.tokens.restore(token);
+                    tokens.restore(token);
                     None
                 }
             }
@@ -173,7 +201,7 @@ impl Manager {
         })
     }
 
-    pub fn register_stream(
+    fn register_stream(
         &self,
         token: StreamToken,
         reg: Token,
@@ -183,7 +211,7 @@ impl Manager {
         Ok(())
     }
 
-    pub fn reregister_stream(
+    fn reregister_stream(
         &self,
         token: StreamToken,
         reg: Token,
@@ -204,7 +232,7 @@ impl Manager {
     }
 
     // Return false if there is no message
-    fn receive(&mut self, stream: &StreamToken, client: &Client, io: &IoContext<Message>) -> IoHandlerResult<bool> {
+    fn receive(&self, stream: &StreamToken, client: &Client, io: &IoContext<Message>) -> IoHandlerResult<bool> {
         Ok(match self.connections.receive(stream)? {
             None => false,
             Some(ReceivedMessage::Ack {
@@ -305,7 +333,7 @@ impl Manager {
         })
     }
 
-    fn send(&mut self, stream: &StreamToken) -> IoHandlerResult<bool> {
+    fn send(&self, stream: &StreamToken) -> IoHandlerResult<bool> {
         let (connection_type, remain) = self.connections.send(stream)?;
         Ok(match connection_type {
             ConnectionType::None => return Err(Error::InvalidStream(stream.clone()).into()),
@@ -326,54 +354,6 @@ impl Manager {
     }
 }
 
-pub struct Handler {
-    socket_address: SocketAddr,
-    manager: Mutex<Manager>,
-    client: Arc<Client>,
-
-    min_peers: usize,
-    max_peers: usize,
-}
-
-impl Handler {
-    pub fn try_new(
-        socket_address: SocketAddr,
-        client: Arc<Client>,
-        routing_table: Arc<RoutingTable>,
-        filters: Arc<FiltersControl>,
-        min_peers: usize,
-        max_peers: usize,
-    ) -> ::std::result::Result<Self, String> {
-        if MAX_CONNECTIONS < max_peers {
-            return Err(format!("Max peers must be less than {}", MAX_CONNECTIONS))
-        }
-        let manager =
-            Mutex::new(Manager::listen(&socket_address, routing_table, filters).expect("Cannot listen TCP port"));
-        debug_assert!(max_peers < MAX_CONNECTIONS);
-        Ok(Self {
-            socket_address,
-            manager,
-            client,
-
-            min_peers,
-            max_peers,
-        })
-    }
-
-    pub fn get_port(&self) -> u16 {
-        self.socket_address.port()
-    }
-
-    pub fn get_peer_count(&self) -> usize {
-        let manager = self.manager.lock();
-        manager.connections.established_count()
-    }
-
-    pub fn established_peers(&self) -> Vec<SocketAddr> {
-        let manager = self.manager.lock();
-        manager.connections.established_peers()
-    }
-}
 
 impl IoHandler<Message> for Handler {
     fn initialize(&self, io: &IoContext<Message>) -> IoHandlerResult<()> {
@@ -393,12 +373,11 @@ impl IoHandler<Message> for Handler {
                             .expect("Pull connections must be registered");
                     }
                 });
-                let manager = self.manager.lock();
-                let number_of_connections = manager.connections.len();
-                if manager.connections.len() < self.min_peers {
+                let number_of_connections = self.connections.len();
+                if number_of_connections < self.min_peers {
                     register_new_timer.store(true, Ordering::SeqCst);
                     let count = (self.min_peers - number_of_connections + 1) / 2;
-                    let addresses = manager.routing_table.unestablished_addresses(count);
+                    let addresses = self.routing_table.unestablished_addresses(count);
                     for address in addresses {
                         io.message(Message::RequestConnection(address, IgnoreConnectionLimit::Not))?;
                     }
@@ -412,28 +391,26 @@ impl IoHandler<Message> for Handler {
     fn message(&self, io: &IoContext<Message>, message: &Message) -> IoHandlerResult<()> {
         match message {
             Message::RequestConnection(socket_address, ignore_connection_limit) => {
-                let mut manager = self.manager.lock();
                 if ignore_connection_limit == &IgnoreConnectionLimit::Not {
-                    let number_of_connections = manager.connections.len();
-                    if self.max_peers <= manager.connections.len() {
+                    let number_of_connections = self.connections.len();
+                    if self.max_peers <= number_of_connections {
                         ctrace!(NET, "Already has maximum peers({})", number_of_connections);
                         return Ok(())
                     }
                 }
 
                 ctrace!(NET, "Connecting to {:?}", socket_address);
-                let token = manager.connect(&socket_address)?.ok_or(Error::General("Cannot create connection"))?;
+                let token = self.connect(&socket_address)?.ok_or(Error::General("Cannot create connection"))?;
                 io.register_stream(token)?;
                 Ok(())
             }
             Message::RequestNegotiation {
                 node_id,
             } => {
-                let mut manager = self.manager.lock();
                 let versions = self.client.extension_versions();
                 for (extension_name, versions) in versions.into_iter() {
-                    let token = manager.connections.stream_token(&node_id).ok_or(Error::InvalidNode(*node_id))?;
-                    if !manager.connections.enqueue_negotiation_request(&token, extension_name, versions) {
+                    let token = self.connections.stream_token(&node_id).ok_or(Error::InvalidNode(*node_id))?;
+                    if !self.connections.enqueue_negotiation_request(&token, extension_name, versions) {
                         return Err(Error::InvalidStream(token).into())
                     }
                     io.update_registration(token)?;
@@ -446,26 +423,23 @@ impl IoHandler<Message> for Handler {
                 need_encryption,
                 data,
             } => {
-                let mut manager = self.manager.lock();
-                let token = manager.connections.stream_token(node_id).ok_or(Error::InvalidNode(*node_id))?;
-                if !manager.connections.enqueue_extension_message(&token, extension_name, *need_encryption, data) {
+                let token = self.connections.stream_token(node_id).ok_or(Error::InvalidNode(*node_id))?;
+                if !self.connections.enqueue_extension_message(&token, extension_name, *need_encryption, data) {
                     return Err(Error::InvalidStream(token).into())
                 }
                 io.update_registration(token)?;
                 Ok(())
             }
             Message::Disconnect(socket_address) => {
-                let manager = self.manager.lock();
-                manager.connections.shutdown(&socket_address)?;
-                manager.routing_table.ban(&socket_address);
+                self.connections.shutdown(&socket_address)?;
+                self.routing_table.ban(&socket_address);
                 Ok(())
             }
             Message::ApplyFilters => {
-                let manager = self.manager.lock();
-                let addresses = manager.connections.get_filtered_address(&*manager.filters);
+                let addresses = self.connections.get_filtered_address(&*self.filters);
                 cinfo!(NET, "Connections to the following addresses will be closed: {:?}", addresses);
                 for address in addresses.iter() {
-                    let _ = manager.connections.shutdown(address).map_err(|err| {
+                    let _ = self.connections.shutdown(address).map_err(|err| {
                         cwarn!(NET, "Cannot close the connection to {:?}: {:?}", address, err);
                     });
                 }
@@ -479,8 +453,7 @@ impl IoHandler<Message> for Handler {
             ACCEPT_TOKEN => unreachable!(),
             FIRST_CONNECTION_TOKEN...LAST_CONNECTION_TOKEN => {
                 ctrace!(NET, "Hup event for {}", stream);
-                let manager = self.manager.lock();
-                if !manager.connections.is_connected(&stream) {
+                if !self.connections.is_connected(&stream) {
                     ctrace!(NET, "stream's hup event called twice from {:?}", stream);
                     return Ok(())
                 }
@@ -491,13 +464,13 @@ impl IoHandler<Message> for Handler {
                             .expect("Pull connections must be registered");
                     }
                 });
-                if manager.connections.len() < self.min_peers {
+                if self.connections.len() < self.min_peers {
                     register_new_timer.store(true, Ordering::SeqCst);
                 }
-                let was_established = manager.connections.is_established(&stream);
-                manager.connections.set_disconnecting(&stream);
-                let node_id = manager.connections.node_id(&stream).ok_or(Error::InvalidStream(stream))?;
-                manager.routing_table.remove_node(node_id.into_addr());
+                let was_established = self.connections.is_established(&stream);
+                self.connections.set_disconnecting(&stream);
+                let node_id = self.connections.node_id(&stream).ok_or(Error::InvalidStream(stream))?;
+                self.routing_table.remove_node(node_id.into_addr());
                 if was_established {
                     self.client.on_node_removed(&node_id);
                 }
@@ -511,8 +484,7 @@ impl IoHandler<Message> for Handler {
     fn stream_readable(&self, io: &IoContext<Message>, stream: StreamToken) -> IoHandlerResult<()> {
         match stream {
             ACCEPT_TOKEN => {
-                let mut manager = self.manager.lock();
-                if let Some(token) = manager.accept()? {
+                if let Some(token) = self.accept()? {
                     io.register_stream(token)?;
                 }
             }
@@ -523,8 +495,7 @@ impl IoHandler<Message> for Handler {
                     }
                 });
                 loop {
-                    let mut manager = self.manager.lock();
-                    if !manager.receive(&stream, &self.client, io)? {
+                    if !self.receive(&stream, &self.client, io)? {
                         break
                     }
                 }
@@ -544,8 +515,7 @@ impl IoHandler<Message> for Handler {
                     }
                 });
                 loop {
-                    let mut manager = self.manager.lock();
-                    if !manager.send(&stream)? {
+                    if !self.send(&stream)? {
                         break
                     }
                 }
@@ -563,14 +533,12 @@ impl IoHandler<Message> for Handler {
     ) -> IoHandlerResult<()> {
         match stream {
             ACCEPT_TOKEN => {
-                let manager = self.manager.lock();
-                event_loop.register(&manager.listener, reg, Ready::readable(), PollOpt::edge())?;
+                event_loop.register(&self.listener, reg, Ready::readable(), PollOpt::edge())?;
                 ctrace!(NET, "TCP connection starts for {:?}", self.socket_address);
                 Ok(())
             }
             FIRST_CONNECTION_TOKEN...LAST_CONNECTION_TOKEN => {
-                let mut manager = self.manager.lock();
-                manager.register_stream(stream, reg, event_loop)?;
+                self.register_stream(stream, reg, event_loop)?;
                 Ok(())
             }
             _ => {
@@ -590,8 +558,7 @@ impl IoHandler<Message> for Handler {
                 unreachable!();
             }
             FIRST_CONNECTION_TOKEN...LAST_CONNECTION_TOKEN => {
-                let mut manager = self.manager.lock();
-                manager.reregister_stream(stream, reg, event_loop)?;
+                self.reregister_stream(stream, reg, event_loop)?;
                 Ok(())
             }
             _ => {
@@ -608,8 +575,7 @@ impl IoHandler<Message> for Handler {
         match stream {
             ACCEPT_TOKEN => unreachable!(),
             FIRST_CONNECTION_TOKEN...LAST_CONNECTION_TOKEN => {
-                let mut manager = self.manager.lock();
-                manager.deregister_stream(stream, event_loop)?;
+                self.deregister_stream(stream, event_loop)?;
             }
             _ => unreachable!(),
         }
