@@ -1161,7 +1161,7 @@ Response Example
 ```
 
 ## net_getEstablishedPeers
-(not implemented) Return the socket addresses of established peers.
+Return the socket addresses of established peers.
 
 Params: No Parameters
 

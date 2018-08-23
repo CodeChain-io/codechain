@@ -316,6 +316,15 @@ impl Connections {
         connections.iter().filter(|(_, con)| con.is_established()).count()
     }
 
+    pub fn established_peers(&self) -> Vec<SocketAddr> {
+        let connections = self.connections.read();
+        connections
+            .iter()
+            .filter(|(_, con)| con.is_established())
+            .map(|(_, con)| con.remote_node_id().expect("Established connection must have remote node id").into_addr())
+            .collect()
+    }
+
     pub fn get_filtered_address(&self, filters: &FiltersControl) -> Vec<SocketAddr> {
         let connected_nodes = self.connected_nodes.read();
         connected_nodes

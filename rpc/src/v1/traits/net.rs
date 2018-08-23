@@ -39,6 +39,9 @@ build_rpc_trait! {
         # [rpc(name = "net_getPeerCount")]
         fn get_peer_count(&self) -> Result<usize>;
 
+        # [rpc(name = "net_getEstablishedPeers")]
+        fn get_established_peers(&self) -> Result<Vec<::std::net::SocketAddr>>;
+
         #[rpc(name = "net_addToWhitelist")]
         fn add_to_whitelist(&self, ::std::net::IpAddr) -> Result<()>;
 

@@ -151,6 +151,10 @@ impl Control for Service {
         Ok(self.p2p_handler.get_peer_count())
     }
 
+    fn established_peers(&self) -> Result<Vec<SocketAddr>, ControlError> {
+        Ok(self.p2p_handler.established_peers())
+    }
+
     fn add_to_whitelist(&self, addr: IpAddr) -> Result<(), ControlError> {
         self.filters_control.add_to_whitelist(addr);
         Ok(())
