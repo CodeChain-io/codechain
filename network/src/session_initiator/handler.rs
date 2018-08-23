@@ -26,7 +26,7 @@ use cio::{IoChannel, IoContext, IoError as CIoError, IoHandler, IoHandlerResult,
 use ckey::{Error as KeyError, Secret};
 use mio::deprecated::EventLoop;
 use mio::Token;
-use parking_lot::Mutex;
+use parking_lot::RwLock;
 use rlp::DecoderError;
 
 use super::super::token_generator::TokenGenerator;
@@ -398,7 +398,7 @@ impl SessionInitiator {
 }
 
 pub struct Handler {
-    session_initiator: Mutex<SessionInitiator>,
+    session_initiator: RwLock<SessionInitiator>,
 }
 
 impl Handler {
@@ -408,7 +408,7 @@ impl Handler {
         channel_to_p2p: IoChannel<p2p::Message>,
         filters: Arc<FiltersControl>,
     ) -> Self {
-        let session_initiator = Mutex::new(
+        let session_initiator = RwLock::new(
             SessionInitiator::bind(&socket_address, routing_table, channel_to_p2p, filters)
                 .expect("Cannot bind UDP port"),
         );
@@ -434,7 +434,7 @@ impl IoHandler<Message> for Handler {
                 Ok(())
             }
             BEGIN_OF_REQUEST_TOKEN...END_OF_REQUEST_TOKEN => {
-                let mut session_initiator = self.session_initiator.lock();
+                let mut session_initiator = self.session_initiator.write();
                 match session_initiator
                     .requests
                     .restore(timer, None)
@@ -459,13 +459,13 @@ impl IoHandler<Message> for Handler {
     fn message(&self, io: &IoContext<Message>, message: &Message) -> IoHandlerResult<()> {
         match message {
             Message::ConnectTo(socket_address) => {
-                let mut session_initiator = self.session_initiator.lock();
+                let mut session_initiator = self.session_initiator.write();
                 session_initiator.routing_table.add_candidate(socket_address.clone());
                 session_initiator.create_new_connection(&socket_address, io)?;
                 io.update_registration(RECEIVE_TOKEN)?;
             }
             Message::ManuallyConnectTo(socket_address) => {
-                let mut session_initiator = self.session_initiator.lock();
+                let mut session_initiator = self.session_initiator.write();
                 session_initiator.filters.add_to_whitelist(socket_address.ip());
                 session_initiator.routing_table.unban(&socket_address);
                 session_initiator.routing_table.add_candidate(socket_address.clone());
@@ -474,7 +474,7 @@ impl IoHandler<Message> for Handler {
                 io.update_registration(RECEIVE_TOKEN)?;
             }
             Message::RequestSession(n) => {
-                let mut session_initiator = self.session_initiator.lock();
+                let mut session_initiator = self.session_initiator.write();
                 let addresses = session_initiator.routing_table.candidates(n);
                 if !addresses.is_empty() {
                     let _f = finally(|| {
@@ -488,7 +488,7 @@ impl IoHandler<Message> for Handler {
                 }
             }
             Message::PreimportSecret(secret, socket_address) => {
-                let mut session_initiator = self.session_initiator.lock();
+                let mut session_initiator = self.session_initiator.write();
                 if !session_initiator.routing_table.preimport_secret(*secret, &socket_address) {
                     cwarn!(NET, "Cannot import the secret key for already connected host");
                 }
@@ -511,7 +511,7 @@ impl IoHandler<Message> for Handler {
             }
         });
         loop {
-            let mut session_initiator = self.session_initiator.lock();
+            let mut session_initiator = self.session_initiator.write();
             if !session_initiator.read(io)? {
                 break
             }
@@ -530,7 +530,7 @@ impl IoHandler<Message> for Handler {
             }
         });
         loop {
-            let mut session_initiator = self.session_initiator.lock();
+            let mut session_initiator = self.session_initiator.write();
             if !session_initiator.send()? {
                 break
             }
@@ -547,7 +547,7 @@ impl IoHandler<Message> for Handler {
         if stream != RECEIVE_TOKEN {
             unreachable!()
         }
-        let session_initiator = self.session_initiator.lock();
+        let session_initiator = self.session_initiator.read();
         Ok(session_initiator.register(reg, event_loop)?)
     }
 
@@ -560,7 +560,7 @@ impl IoHandler<Message> for Handler {
         if stream != RECEIVE_TOKEN {
             unreachable!()
         }
-        let session_initiator = self.session_initiator.lock();
+        let session_initiator = self.session_initiator.read();
         Ok(session_initiator.reregister(reg, event_loop)?)
     }
 
