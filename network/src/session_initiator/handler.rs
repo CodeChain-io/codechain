@@ -438,7 +438,7 @@ impl IoHandler<Message> for Handler {
                     None => {}
                     Some(address) => {
                         if let Some(_) = session_initiator.requests.manually_connected_address.take(&address) {
-                            cinfo!(NET, "Timeout occured when connecting to {}", address);
+                            cinfo!(NET, "Timeout occurred when connecting to {}", address);
                         }
                         session_initiator.routing_table.remove_node(address);
                     }
