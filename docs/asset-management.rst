@@ -336,7 +336,7 @@ To run the key management server, nodejs and yarn should be installed.
 Clone CodeChain-Keystore repository from the below URL.
 ::
 
-  git clone https://github.com/CodeChain-io/codechain-keystore.git
+  git clone https://github.com/CodeChain-io/codechain-keystore-server.git
 
 Move to the directory
 ::
