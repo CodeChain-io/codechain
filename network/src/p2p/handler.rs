@@ -473,6 +473,7 @@ impl IoHandler<Message> for Handler {
         match stream {
             ACCEPT_TOKEN => unreachable!(),
             FIRST_CONNECTION_TOKEN...LAST_CONNECTION_TOKEN => {
+                ctrace!(NET, "Hup event for {}", stream);
                 let manager = self.manager.lock();
                 if !manager.connections.is_connected(&stream) {
                     ctrace!(NET, "stream's hup event called twice from {:?}", stream);
