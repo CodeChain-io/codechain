@@ -258,6 +258,7 @@ impl SessionInitiator {
                     return Ok(())
                 }
 
+                io.clear_timer(message.seq() as TimerToken)?;
                 if self.requests.restore(message.seq() as usize, Some(from.clone())).is_err() {
                     ctrace!(NET, "Invalid message({:?}) from {:?}", message, from);
                     return Ok(())
@@ -309,6 +310,7 @@ impl SessionInitiator {
                 Err(Error::General("Cannot response to secret request"))
             }
             message::Body::SecretAllowed(responder_pub_key) => {
+                io.clear_timer(message.seq() as TimerToken)?;
                 if self.requests.restore(message.seq() as usize, Some(from.clone())).is_err() {
                     ctrace!(NET, "Invalid message({:?}) from {:?}", message, from);
                     return Ok(())
@@ -330,6 +332,7 @@ impl SessionInitiator {
                 Ok(())
             }
             message::Body::SecretDenied(reason) => {
+                io.clear_timer(message.seq() as TimerToken)?;
                 if self.requests.restore(message.seq() as usize, Some(from.clone())).is_err() {
                     ctrace!(NET, "Invalid message({:?}) from {:?}", message, from);
                     return Ok(())
@@ -354,6 +357,7 @@ impl SessionInitiator {
                 Err(Error::General("Cannot create session"))
             }
             message::Body::NonceAllowed(encrypted_nonce) => {
+                io.clear_timer(message.seq() as TimerToken)?;
                 if self.requests.restore(message.seq() as usize, Some(from.clone())).is_err() {
                     ctrace!(NET, "Invalid message({:?}) from {:?}", message, from);
                     return Ok(())
@@ -370,6 +374,7 @@ impl SessionInitiator {
                 Ok(())
             }
             message::Body::NonceDenied(reason) => {
+                io.clear_timer(message.seq() as TimerToken)?;
                 if self.requests.restore(message.seq() as usize, Some(from.clone())).is_err() {
                     ctrace!(NET, "Invalid message({:?}) from {:?}", message, from);
                     return Ok(())
