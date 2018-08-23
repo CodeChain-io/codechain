@@ -52,6 +52,10 @@ impl NetworkControl for DummyNetworkService {
         Err(NetworkControlError::Disabled)
     }
 
+    fn established_peers(&self) -> Result<Vec<SocketAddr>, NetworkControlError> {
+        Err(NetworkControlError::Disabled)
+    }
+
     fn add_to_whitelist(&self, _addr: IpAddr) -> Result<(), NetworkControlError> {
         Err(NetworkControlError::Disabled)
     }

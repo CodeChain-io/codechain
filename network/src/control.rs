@@ -28,6 +28,7 @@ pub trait Control: Send + Sync {
     fn is_connected(&self, addr: &SocketAddr) -> Result<bool, Error>;
     fn get_port(&self) -> Result<u16, Error>;
     fn get_peer_count(&self) -> Result<usize, Error>;
+    fn established_peers(&self) -> Result<Vec<SocketAddr>, Error>;
 
     fn add_to_whitelist(&self, addr: IpAddr) -> Result<(), Error>;
     fn remove_from_whitelist(&self, addr: &IpAddr) -> Result<(), Error>;

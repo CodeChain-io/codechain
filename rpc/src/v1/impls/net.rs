@@ -64,6 +64,11 @@ impl Net for NetClient {
         Ok(self.network_control.get_peer_count().map_err(errors::network_control)?)
     }
 
+    fn get_established_peers(&self) -> Result<Vec<::std::net::SocketAddr>> {
+        let peers = self.network_control.established_peers().map_err(errors::network_control)?;
+        Ok(peers.into_iter().map(Into::into).collect())
+    }
+
     fn add_to_whitelist(&self, addr: ::std::net::IpAddr) -> Result<()> {
         self.network_control.add_to_whitelist(addr).map_err(errors::network_control)
     }

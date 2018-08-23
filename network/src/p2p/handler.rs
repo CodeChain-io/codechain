@@ -368,6 +368,11 @@ impl Handler {
         let manager = self.manager.lock();
         manager.connections.established_count()
     }
+
+    pub fn established_peers(&self) -> Vec<SocketAddr> {
+        let manager = self.manager.lock();
+        manager.connections.established_peers()
+    }
 }
 
 impl IoHandler<Message> for Handler {
