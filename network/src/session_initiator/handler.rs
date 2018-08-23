@@ -188,7 +188,7 @@ pub enum Message {
     RequestSession(usize),
 }
 
-const MESSAGE_TIMEOUT_MS: u64 = 10_000;
+const MESSAGE_TIMEOUT_MS: u64 = 3_000;
 
 impl SessionInitiator {
     fn bind(
