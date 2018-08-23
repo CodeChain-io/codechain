@@ -159,7 +159,7 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
  * [chain_getPendingParcels](#chain_getpendingparcels)
  * [chain_getCoinbase](#chain_getcoinbase)
  * [chain_executeTransactions](#chain_executetransactions)
- * [chain_getNetworkId](#chain_getNetworkId)
+ * [chain_getNetworkId](#chain_getnetworkid)
 ***
   * [miner_getWork](#miner_getwork)
   * [miner_submitWork](#miner_submitwork)
