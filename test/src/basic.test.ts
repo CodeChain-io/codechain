@@ -15,25 +15,39 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import { SDK } from "codechain-sdk";
+import { PlatformAddress } from "codechain-sdk/lib/key/PlatformAddress";
+
 import { wait } from "./helper/promise";
 import CodeChain from "./helper/spawn";
 
-const TIMEOUT = 10000;
+describe("solo - 1 instance", () => {
+  const secret = "ede1d4ccb4ec9a8bbbae9a13db3f4a7b56ea04189be86ac3a6a439d9a0a1addd";
+  const address = PlatformAddress.fromAccountId(SDK.util.getAccountIdFromPrivate(secret));
 
-const secret = "ede1d4ccb4ec9a8bbbae9a13db3f4a7b56ea04189be86ac3a6a439d9a0a1addd";
-const address = SDK.util.getAccountIdFromPrivate(secret);
-
-const instance = new CodeChain();
-
-test("basic scenario", async () => {
-  await instance.start("cargo", ["run", "--", "-c", "solo"]);
-  const nonce = await instance.sdk.rpc.chain.getNonce(address);
-  const parcel = await instance.sdk.core.createPaymentParcel({
-    recipient: "3f4aa1fedf1f54eeb03b759deadb36676b184911",
-    amount: 0,
+  let instance: CodeChain;
+  beforeAll(async () => {
+    instance = new CodeChain();
+    await instance.start(["-c", "solo"], { useDebugBuild: process.env.NODE_ENV !== "production" });
   });
-  const hash = await instance.sdk.rpc.chain.sendSignedParcel(parcel.sign({ secret, nonce, fee: 10 }));
-  const invoice = await instance.sdk.rpc.chain.getParcelInvoice(hash);
-  expect(invoice.success).toBe(true);
-  await instance.clean();
-}, TIMEOUT);
+
+  test("ping", async () => {
+    expect(await instance.sdk.rpc.node.ping()).toBe("pong");
+  });
+
+  test("sendSignedParcel", async () => {
+    const parcel = instance.sdk.core.createPaymentParcel({
+      recipient: "tccqruq09sfgax77nj4gukjcuq69uzeyv0jcs7vzngg",
+      amount: 0,
+    });
+    const nonce = await instance.sdk.rpc.chain.getNonce(address);
+    const parcelHash = await instance.sdk.rpc.chain.sendSignedParcel(parcel.sign({
+      secret, fee: 10, nonce
+    }));
+    const invoice = await instance.sdk.rpc.chain.getParcelInvoice(parcelHash);
+    expect(invoice).toEqual({ success: true });
+  });
+
+  afterAll(async () => {
+    await instance.clean();
+  });
+});
