@@ -251,7 +251,7 @@ impl Extension {
             return
         }
 
-        ctrace!(SYNC, "Peer #{} status update: total_score: {}, best_hash: {}", from, total_score, best_hash);
+        cinfo!(SYNC, "Peer #{} status update: total_score: {}, best_hash: {}", from, total_score, best_hash);
 
         let mut requests = self.requests.write();
         let mut peers = self.header_downloaders.write();

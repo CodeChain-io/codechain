@@ -68,10 +68,12 @@ impl BodyDownloader {
     }
 
     pub fn add_target(&mut self, targets: Vec<(H256, H256, H256)>) {
+        ctrace!(SYNC, "Add download targets: {:?}", targets);
         self.targets.extend(targets);
     }
 
     pub fn remove_target(&mut self, targets: Vec<H256>) {
+        ctrace!(SYNC, "Remove download targets: {:?}", targets);
         for hash in targets {
             if let Some(index) = self.targets.iter().position(|(h, ..)| *h == hash) {
                 self.targets.remove(index);
