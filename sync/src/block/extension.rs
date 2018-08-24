@@ -178,33 +178,6 @@ impl NetworkExtension for Extension {
 }
 
 impl ChainNotify for Extension {
-    fn new_blocks(
-        &self,
-        imported: Vec<H256>,
-        invalid: Vec<H256>,
-        _enacted: Vec<H256>,
-        _retracted: Vec<H256>,
-        _sealed: Vec<H256>,
-        _duration: u64,
-    ) {
-        self.body_downloader.lock().remove_target(imported);
-        self.body_downloader.lock().remove_target(invalid);
-
-
-        let chain_info = self.client.chain_info();
-        let peer_ids: Vec<_> = self.header_downloaders.read().keys().cloned().collect();
-        for id in peer_ids {
-            self.send_message(
-                &id,
-                Message::Status {
-                    total_score: chain_info.total_score,
-                    best_hash: chain_info.best_block_hash,
-                    genesis_hash: chain_info.genesis_hash,
-                },
-            );
-        }
-    }
-
     fn new_headers(
         &self,
         imported: Vec<H256>,
@@ -240,6 +213,33 @@ impl ChainNotify for Extension {
             .collect();
         self.body_downloader.lock().add_target(body_targets);
         self.body_downloader.lock().remove_target(retracted);
+    }
+
+    fn new_blocks(
+        &self,
+        imported: Vec<H256>,
+        invalid: Vec<H256>,
+        _enacted: Vec<H256>,
+        _retracted: Vec<H256>,
+        _sealed: Vec<H256>,
+        _duration: u64,
+    ) {
+        self.body_downloader.lock().remove_target(imported);
+        self.body_downloader.lock().remove_target(invalid);
+
+
+        let chain_info = self.client.chain_info();
+        let peer_ids: Vec<_> = self.header_downloaders.read().keys().cloned().collect();
+        for id in peer_ids {
+            self.send_message(
+                &id,
+                Message::Status {
+                    total_score: chain_info.total_score,
+                    best_hash: chain_info.best_block_hash,
+                    genesis_hash: chain_info.genesis_hash,
+                },
+            );
+        }
     }
 }
 
