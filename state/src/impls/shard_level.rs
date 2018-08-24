@@ -172,7 +172,6 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         sender: &Address,
         shard_users: &[Address],
     ) -> StateResult<()> {
-        println!("{:?}", shard_users);
         if !shard_users.contains(sender) {
             return Err(TransactionError::InsufficientPermission.into())
         }
@@ -497,6 +496,7 @@ impl<B: Backend + ShardBackend> ShardStateInfo for ShardLevelState<B> {
 
 impl<B> StateWithCheckpoint for ShardLevelState<B> {
     fn create_checkpoint(&mut self, id: CheckpointId) {
+        ctrace!(STATE, "Checkpoint({}) for shard({}) is created", id, self.shard_id);
         self.id_of_checkpoints.push(id);
         self.metadata.checkpoint();
         self.world.checkpoint();
@@ -508,6 +508,7 @@ impl<B> StateWithCheckpoint for ShardLevelState<B> {
         let expected = self.id_of_checkpoints.pop().expect("The checkpoint must exist");
         assert_eq!(expected, id);
 
+        ctrace!(STATE, "Checkpoint({}) for shard({}) is discarded", id, self.shard_id);
         self.metadata.discard_checkpoint();
         self.world.discard_checkpoint();
         self.asset_scheme.discard_checkpoint();
@@ -518,6 +519,7 @@ impl<B> StateWithCheckpoint for ShardLevelState<B> {
         let expected = self.id_of_checkpoints.pop().expect("The checkpoint must exist");
         assert_eq!(expected, id);
 
+        ctrace!(STATE, "Checkpoint({}) for shard({}) is reverted", id, self.shard_id);
         self.metadata.revert_to_checkpoint();
         self.world.revert_to_checkpoint();
         self.asset_scheme.revert_to_checkpoint();

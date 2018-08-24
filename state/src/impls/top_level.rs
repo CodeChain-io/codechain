@@ -215,6 +215,7 @@ const PARCEL_ACTION_CHECKPOINT: CheckpointId = 130;
 
 impl StateWithCheckpoint for TopLevelState {
     fn create_checkpoint(&mut self, id: CheckpointId) {
+        ctrace!(STATE, "Checkpoint({}) for top level is created", id);
         self.id_of_checkpoints.push(id);
         self.account.checkpoint();
         self.regular_account.checkpoint();
@@ -227,6 +228,7 @@ impl StateWithCheckpoint for TopLevelState {
         let expected = self.id_of_checkpoints.pop().expect("The checkpoint must exist");
         assert_eq!(expected, id);
 
+        ctrace!(STATE, "Checkpoint({}) for top level is discarded", id);
         self.account.discard_checkpoint();
         self.regular_account.discard_checkpoint();
         self.metadata.discard_checkpoint();
@@ -238,6 +240,7 @@ impl StateWithCheckpoint for TopLevelState {
         let expected = self.id_of_checkpoints.pop().expect("The checkpoint must exist");
         assert_eq!(expected, id);
 
+        ctrace!(STATE, "Checkpoint({}) for top level is reverted", id);
         self.account.revert_to_checkpoint();
         self.regular_account.revert_to_checkpoint();
         self.metadata.revert_to_checkpoint();
@@ -426,6 +429,7 @@ impl TopLevelState {
                 signatures: _,
             } => {
                 if changes.len() == 0 {
+                    cwarn!(STATE, "A parcel without transactions");
                     return Ok(ParcelInvoice::Multiple(vec![]))
                 }
 
