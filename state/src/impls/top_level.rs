@@ -429,6 +429,9 @@ impl TopLevelState {
                 signatures: _,
             } => {
                 if changes.len() == 0 {
+                    if !transactions.is_empty() {
+                        return Err(ParcelError::InconsistentShardOutcomes.into())
+                    }
                     cwarn!(STATE, "A parcel without transactions");
                     return Ok(ParcelInvoice::Multiple(vec![]))
                 }
