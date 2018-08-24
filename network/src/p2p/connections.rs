@@ -90,7 +90,7 @@ impl Connections {
 
         let remote_node_id = socket_address.into();
         if !connected_nodes.contains_key(&remote_node_id) {
-            cwarn!(NET, "The connection to disconnect is not exist");
+            cwarn!(NETWORK, "The connection to disconnect is not exist");
             return Ok(())
         }
 

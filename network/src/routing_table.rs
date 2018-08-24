@@ -97,7 +97,7 @@ impl RoutingTable {
             let old_state = entry.replace(State::Intermediate);
             match old_state {
                 State::TemporaryNonceShared(secret, _nonce, SecretOrigin::Preimported) => {
-                    cinfo!(NET, "{:?} does not load secret", addr);
+                    cinfo!(NETWORK, "{:?} does not load secret", addr);
                     entry.set(State::SecretPreimported(secret));
                     return true
                 }

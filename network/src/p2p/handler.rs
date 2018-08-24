@@ -160,7 +160,7 @@ impl Handler {
                     self.connections.accept(token, stream);
                     Ok(Some(token))
                 } else {
-                    cinfo!(NET, "P2P connection request from {:?} is received. But it's not allowed", ip);
+                    cinfo!(NETWORK, "P2P connection request from {:?} is received. But it's not allowed", ip);
                     Ok(None)
                 }
             }
@@ -171,7 +171,7 @@ impl Handler {
     fn connect(&self, socket_address: &SocketAddr) -> IoHandlerResult<Option<StreamToken>> {
         let ip = socket_address.ip();
         if !self.filters.is_allowed(&ip) {
-            cinfo!(NET, "P2P connection from {:?} is received. But it's not allowed", ip);
+            cinfo!(NETWORK, "P2P connection from {:?} is received. But it's not allowed", ip);
             return Ok(None)
         }
 
@@ -192,7 +192,7 @@ impl Handler {
                     self.routing_table.establish(socket_address);
                     Some(token)
                 } else {
-                    cwarn!(NET, "Cannot create connection to {:?}", socket_address);
+                    cwarn!(NETWORK, "Cannot create connection to {:?}", socket_address);
                     tokens.restore(token);
                     None
                 }
@@ -307,7 +307,7 @@ impl Handler {
                             let node_id = self.connections.node_id(&stream).ok_or(Error::InvalidStream(*stream))?;
                             client.on_node_added(&extension_name, &node_id, VERSION);
                         } else {
-                            cwarn!(NET, "Cannot enqueue negotiation message for {}", stream);
+                            cwarn!(NETWORK, "Cannot enqueue negotiation message for {}", stream);
                         }
                     }
                     NegotiationBody::Allowed(extension_version) => {
@@ -316,7 +316,7 @@ impl Handler {
                             let node_id = self.connections.node_id(&stream).ok_or(Error::InvalidStream(*stream))?;
                             client.on_node_added(&name, &node_id, *extension_version);
                         } else {
-                            ctrace!(NET, "Negotiation::Allowed message received from non requested seq");
+                            ctrace!(NETWORK, "Negotiation::Allowed message received from non requested seq");
                         }
                     }
                     NegotiationBody::Denied => {
@@ -324,7 +324,7 @@ impl Handler {
                         if let Some(_) = self.connections.remove_requested_negotiation(stream, &seq) {
                             self.connections.node_id(&stream).ok_or(Error::InvalidStream(*stream))?;
                         } else {
-                            ctrace!(NET, "Negotiation::Denied message received from non requested seq");
+                            ctrace!(NETWORK, "Negotiation::Denied message received from non requested seq");
                         }
                     }
                 };
@@ -394,12 +394,12 @@ impl IoHandler<Message> for Handler {
                 if ignore_connection_limit == &IgnoreConnectionLimit::Not {
                     let number_of_connections = self.connections.len();
                     if self.max_peers <= number_of_connections {
-                        ctrace!(NET, "Already has maximum peers({})", number_of_connections);
+                        ctrace!(NETWORK, "Already has maximum peers({})", number_of_connections);
                         return Ok(())
                     }
                 }
 
-                ctrace!(NET, "Connecting to {:?}", socket_address);
+                ctrace!(NETWORK, "Connecting to {:?}", socket_address);
                 let token = self.connect(&socket_address)?.ok_or(Error::General("Cannot create connection"))?;
                 io.register_stream(token)?;
                 Ok(())
@@ -437,10 +437,10 @@ impl IoHandler<Message> for Handler {
             }
             Message::ApplyFilters => {
                 let addresses = self.connections.get_filtered_address(&*self.filters);
-                cinfo!(NET, "Connections to the following addresses will be closed: {:?}", addresses);
+                cinfo!(NETWORK, "Connections to the following addresses will be closed: {:?}", addresses);
                 for address in addresses.iter() {
                     let _ = self.connections.shutdown(address).map_err(|err| {
-                        cwarn!(NET, "Cannot close the connection to {:?}: {:?}", address, err);
+                        cwarn!(NETWORK, "Cannot close the connection to {:?}: {:?}", address, err);
                     });
                 }
                 Ok(())
@@ -452,9 +452,9 @@ impl IoHandler<Message> for Handler {
         match stream {
             ACCEPT_TOKEN => unreachable!(),
             FIRST_CONNECTION_TOKEN...LAST_CONNECTION_TOKEN => {
-                ctrace!(NET, "Hup event for {}", stream);
+                ctrace!(NETWORK, "Hup event for {}", stream);
                 if !self.connections.is_connected(&stream) {
-                    ctrace!(NET, "stream's hup event called twice from {:?}", stream);
+                    ctrace!(NETWORK, "stream's hup event called twice from {:?}", stream);
                     return Ok(())
                 }
                 let register_new_timer = AtomicBool::new(false);
@@ -491,7 +491,7 @@ impl IoHandler<Message> for Handler {
             FIRST_CONNECTION_TOKEN...LAST_CONNECTION_TOKEN => {
                 let _f = finally(|| {
                     if let Err(err) = io.update_registration(stream) {
-                        cwarn!(NET, "Cannot update registration in stream_readable for {} {:?}", stream, err);
+                        cwarn!(NETWORK, "Cannot update registration in stream_readable for {} {:?}", stream, err);
                     }
                 });
                 loop {
@@ -511,7 +511,7 @@ impl IoHandler<Message> for Handler {
             FIRST_CONNECTION_TOKEN...LAST_CONNECTION_TOKEN => {
                 let _f = finally(|| {
                     if let Err(err) = io.update_registration(stream) {
-                        cwarn!(NET, "Cannot update registration in stream_writable for {} {:?}", stream, err);
+                        cwarn!(NETWORK, "Cannot update registration in stream_writable for {} {:?}", stream, err);
                     }
                 });
                 loop {
@@ -534,7 +534,7 @@ impl IoHandler<Message> for Handler {
         match stream {
             ACCEPT_TOKEN => {
                 event_loop.register(&self.listener, reg, Ready::readable(), PollOpt::edge())?;
-                ctrace!(NET, "TCP connection starts for {:?}", self.socket_address);
+                ctrace!(NETWORK, "TCP connection starts for {:?}", self.socket_address);
                 Ok(())
             }
             FIRST_CONNECTION_TOKEN...LAST_CONNECTION_TOKEN => {

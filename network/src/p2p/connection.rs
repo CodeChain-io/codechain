@@ -138,7 +138,7 @@ impl EstablishedConnection {
             ) {
                 Ok(message) => message,
                 Err(err) => {
-                    cdebug!(NET, "Cannot encrypt message : {:?}", err);
+                    cdebug!(NETWORK, "Cannot encrypt message : {:?}", err);
                     return
                 }
             }
@@ -561,7 +561,7 @@ impl Connection {
                 Ok(ConnectionType::Established)
             }
             State::Disconnecting(_) => {
-                ctrace!(NET, "Packet received while disconnecting");
+                ctrace!(NETWORK, "Packet received while disconnecting");
                 Ok(ConnectionType::Disconnecting)
             }
             _ => unreachable!(),

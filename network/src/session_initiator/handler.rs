@@ -220,7 +220,7 @@ impl SessionInitiator {
                 if self.filters.is_allowed(&ip) {
                     self.on_packet(&msg, &socket_address, io)?;
                 } else {
-                    cinfo!(NET, "Message from {:?} is received. But it's not allowed", ip);
+                    cinfo!(NETWORK, "Message from {:?} is received. But it's not allowed", ip);
                 }
                 Ok(true)
             }
@@ -245,7 +245,7 @@ impl SessionInitiator {
         match message.body() {
             message::Body::NodeIdRequest(responder_node_id) => {
                 if !self.routing_table.add_node(from, *responder_node_id) {
-                    ctrace!(NET, "{:?} is not a new candidate", from);
+                    ctrace!(NETWORK, "{:?} is not a new candidate", from);
                 }
 
                 let requester_node_id = from.into();
@@ -260,12 +260,12 @@ impl SessionInitiator {
 
                 io.clear_timer(message.seq() as TimerToken)?;
                 if self.requests.restore(message.seq() as usize, Some(from.clone())).is_err() {
-                    ctrace!(NET, "Invalid message({:?}) from {:?}", message, from);
+                    ctrace!(NETWORK, "Invalid message({:?}) from {:?}", message, from);
                     return Ok(())
                 }
 
                 if !self.routing_table.add_node(from, *requester_node_id) {
-                    ctrace!(NET, "{:?} is not a new candidate", from);
+                    ctrace!(NETWORK, "{:?} is not a new candidate", from);
                 }
 
                 if self.routing_table.is_secret_preimported(from) {
@@ -300,7 +300,7 @@ impl SessionInitiator {
                         return Ok(())
                     } else {
                         if !self.routing_table.remove_node(*from) {
-                            cwarn!(NET, "Cannot reset key pair to {:?}", from);
+                            cwarn!(NETWORK, "Cannot reset key pair to {:?}", from);
                         }
                     }
                 }
@@ -312,7 +312,7 @@ impl SessionInitiator {
             message::Body::SecretAllowed(responder_pub_key) => {
                 io.clear_timer(message.seq() as TimerToken)?;
                 if self.requests.restore(message.seq() as usize, Some(from.clone())).is_err() {
-                    ctrace!(NET, "Invalid message({:?}) from {:?}", message, from);
+                    ctrace!(NETWORK, "Invalid message({:?}) from {:?}", message, from);
                     return Ok(())
                 }
 
@@ -334,12 +334,12 @@ impl SessionInitiator {
             message::Body::SecretDenied(reason) => {
                 io.clear_timer(message.seq() as TimerToken)?;
                 if self.requests.restore(message.seq() as usize, Some(from.clone())).is_err() {
-                    ctrace!(NET, "Invalid message({:?}) from {:?}", message, from);
+                    ctrace!(NETWORK, "Invalid message({:?}) from {:?}", message, from);
                     return Ok(())
                 }
 
                 if self.routing_table.remove_node(*from) {
-                    cinfo!(NET, "Shared Secret to {:?} denied (reason: {})", from, reason);
+                    cinfo!(NETWORK, "Shared Secret to {:?} denied (reason: {})", from, reason);
                 }
                 Ok(())
             }
@@ -359,7 +359,7 @@ impl SessionInitiator {
             message::Body::NonceAllowed(encrypted_nonce) => {
                 io.clear_timer(message.seq() as TimerToken)?;
                 if self.requests.restore(message.seq() as usize, Some(from.clone())).is_err() {
-                    ctrace!(NET, "Invalid message({:?}) from {:?}", message, from);
+                    ctrace!(NETWORK, "Invalid message({:?}) from {:?}", message, from);
                     return Ok(())
                 }
 
@@ -369,20 +369,20 @@ impl SessionInitiator {
                 }
 
                 if !self.routing_table.create_allowed_session(from, &encrypted_nonce) {
-                    cwarn!(NET, "Cannot create session to {:?}", from);
+                    cwarn!(NETWORK, "Cannot create session to {:?}", from);
                 }
                 Ok(())
             }
             message::Body::NonceDenied(reason) => {
                 io.clear_timer(message.seq() as TimerToken)?;
                 if self.requests.restore(message.seq() as usize, Some(from.clone())).is_err() {
-                    ctrace!(NET, "Invalid message({:?}) from {:?}", message, from);
+                    ctrace!(NETWORK, "Invalid message({:?}) from {:?}", message, from);
                     return Ok(())
                 }
 
                 self.routing_table.reset_imported_secret(from);
 
-                cinfo!(NET, "Connection to {:?} refused(reason: {})", from, reason);
+                cinfo!(NETWORK, "Connection to {:?} refused(reason: {})", from, reason);
                 Ok(())
             }
         }
@@ -443,9 +443,9 @@ impl IoHandler<Message> for Handler {
                     None => {}
                     Some(address) => {
                         if let Some(_) = session_initiator.requests.manually_connected_address.take(&address) {
-                            cinfo!(NET, "Timeout occurred when connecting to {}", address);
+                            cinfo!(NETWORK, "Timeout occurred when connecting to {}", address);
                         } else {
-                            cinfo!(NET, "The message to {} is dropped because of timeout", address);
+                            cinfo!(NETWORK, "The message to {} is dropped because of timeout", address);
                         }
                         session_initiator.routing_table.remove_node(address);
                     }
@@ -479,7 +479,7 @@ impl IoHandler<Message> for Handler {
                 if !addresses.is_empty() {
                     let _f = finally(|| {
                         if let Err(err) = io.update_registration(RECEIVE_TOKEN) {
-                            cwarn!(NET, "Cannot update registration for session_initiator : {:?}", err);
+                            cwarn!(NETWORK, "Cannot update registration for session_initiator : {:?}", err);
                         }
                     });
                     for address in addresses {
@@ -490,7 +490,7 @@ impl IoHandler<Message> for Handler {
             Message::PreimportSecret(secret, socket_address) => {
                 let mut session_initiator = self.session_initiator.write();
                 if !session_initiator.routing_table.preimport_secret(*secret, &socket_address) {
-                    cwarn!(NET, "Cannot import the secret key for already connected host");
+                    cwarn!(NETWORK, "Cannot import the secret key for already connected host");
                 }
             }
         };
@@ -507,7 +507,7 @@ impl IoHandler<Message> for Handler {
         }
         let _f = finally(|| {
             if let Err(err) = io.update_registration(stream) {
-                cwarn!(NET, "Cannot update registration for session_initiator : {:?}", err);
+                cwarn!(NETWORK, "Cannot update registration for session_initiator : {:?}", err);
             }
         });
         loop {
@@ -526,7 +526,7 @@ impl IoHandler<Message> for Handler {
 
         let _f = finally(|| {
             if let Err(err) = io.update_registration(stream) {
-                cwarn!(NET, "Cannot update registration for session_initiator : {:?}", err);
+                cwarn!(NETWORK, "Cannot update registration for session_initiator : {:?}", err);
             }
         });
         loop {

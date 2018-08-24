@@ -116,7 +116,7 @@ impl Control for Service {
     fn register_secret(&self, secret: H256, addr: SocketAddr) -> Result<(), ControlError> {
         let message = session_initiator::Message::PreimportSecret(secret, addr);
         if let Err(err) = self.session_initiator.send_message(message) {
-            cerror!(NET, "Error occurred while sending message PreimportSecret : {:?}", err);
+            cerror!(NETWORK, "Error occurred while sending message PreimportSecret : {:?}", err);
         }
         Ok(())
     }
@@ -124,7 +124,7 @@ impl Control for Service {
     fn connect(&self, addr: SocketAddr) -> Result<(), ControlError> {
         let message = session_initiator::Message::ManuallyConnectTo(addr);
         if let Err(err) = self.session_initiator.send_message(message) {
-            cerror!(NET, "Error occurred while sending message ManuallyConnectTo: {:?}", err);
+            cerror!(NETWORK, "Error occurred while sending message ManuallyConnectTo: {:?}", err);
         }
         Ok(())
     }
@@ -134,7 +134,7 @@ impl Control for Service {
             return Err(ControlError::NotConnected)
         }
         if let Err(err) = self.p2p.send_message(p2p::Message::Disconnect(addr)) {
-            cerror!(NET, "Error occurred while sending message Disconnect: {:?}", err);
+            cerror!(NETWORK, "Error occurred while sending message Disconnect: {:?}", err);
         }
         Ok(())
     }
@@ -163,7 +163,7 @@ impl Control for Service {
     fn remove_from_whitelist(&self, addr: &IpAddr) -> Result<(), ControlError> {
         self.filters_control.remove_from_whitelist(addr);
         if let Err(err) = self.p2p.send_message(p2p::Message::ApplyFilters) {
-            cerror!(NET, "Error occurred while apply filters: {:?}", err);
+            cerror!(NETWORK, "Error occurred while apply filters: {:?}", err);
         }
         Ok(())
     }
@@ -171,7 +171,7 @@ impl Control for Service {
     fn add_to_blacklist(&self, addr: IpAddr) -> Result<(), ControlError> {
         self.filters_control.add_to_blacklist(addr);
         if let Err(err) = self.p2p.send_message(p2p::Message::ApplyFilters) {
-            cerror!(NET, "Error occurred while apply filters: {:?}", err);
+            cerror!(NETWORK, "Error occurred while apply filters: {:?}", err);
         }
         Ok(())
     }
@@ -184,7 +184,7 @@ impl Control for Service {
     fn enable_whitelist(&self) -> Result<(), ControlError> {
         self.filters_control.enable_whitelist();
         if let Err(err) = self.p2p.send_message(p2p::Message::ApplyFilters) {
-            cerror!(NET, "Error occurred while apply filters: {:?}", err);
+            cerror!(NETWORK, "Error occurred while apply filters: {:?}", err);
         }
         Ok(())
     }
@@ -197,7 +197,7 @@ impl Control for Service {
     fn enable_blacklist(&self) -> Result<(), ControlError> {
         self.filters_control.enable_blacklist();
         if let Err(err) = self.p2p.send_message(p2p::Message::ApplyFilters) {
-            cerror!(NET, "Error occurred while apply filters: {:?}", err);
+            cerror!(NETWORK, "Error occurred while apply filters: {:?}", err);
         }
         Ok(())
     }

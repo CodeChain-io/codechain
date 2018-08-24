@@ -40,8 +40,8 @@ macro_rules! log_target {
     (MINER) => {
         "miner"
     };
-    (NET) => {
-        "net"
+    (NETWORK) => {
+        "network"
     };
     (NETAPI) => {
         "netapi"
