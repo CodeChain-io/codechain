@@ -28,8 +28,8 @@ discovery = true
 discovery_type = "unstructured"
 discovery_refresh = 60000
 discovery_bucket_size = 10
-blacklist = []
-whitelist = []
+# whitelist_path = "whitelist.txt"
+# blacklist_path = "blacklist.txt"
 
 [rpc]
 disable = false

@@ -220,7 +220,7 @@ pub fn run_node(matches: ArgMatches) -> Result<(), String> {
 
     let network_service: Arc<NetworkControl> = {
         if !config.network.disable {
-            let network_config = config.network_config();
+            let network_config = config.network_config()?;
             let service = network_start(&network_config)?;
 
             if config.network.discovery {
