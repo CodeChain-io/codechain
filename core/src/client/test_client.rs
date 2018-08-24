@@ -448,12 +448,25 @@ impl ImportBlock for TestBlockChainClient {
 }
 
 impl BlockChainClient for TestBlockChainClient {
-    fn block_total_score(&self, _id: BlockId) -> Option<U256> {
-        Some(U256::zero())
+    fn queue_info(&self) -> QueueInfo {
+        QueueInfo {
+            verified_queue_size: self.queue_size.load(AtomicOrder::Relaxed),
+            unverified_queue_size: 0,
+            verifying_queue_size: 0,
+            max_queue_size: 0,
+            max_mem_use: 0,
+            mem_used: 0,
+        }
     }
 
-    fn block_hash(&self, id: BlockId) -> Option<H256> {
-        Self::block_hash(self, id)
+    fn queue_parcels(&self, parcels: Vec<Bytes>, _peer_id: NodeId) {
+        // import right here
+        let parcels = parcels.into_iter().filter_map(|bytes| UntrustedRlp::new(&bytes).as_val().ok()).collect();
+        self.miner.import_external_parcels(self, parcels);
+    }
+
+    fn ready_parcels(&self) -> Vec<SignedParcel> {
+        self.miner.ready_parcels()
     }
 
     fn block_number(&self, _id: BlockId) -> Option<BlockNumber> {
@@ -479,25 +492,12 @@ impl BlockChainClient for TestBlockChainClient {
         }
     }
 
-    fn queue_info(&self) -> QueueInfo {
-        QueueInfo {
-            verified_queue_size: self.queue_size.load(AtomicOrder::Relaxed),
-            unverified_queue_size: 0,
-            verifying_queue_size: 0,
-            max_queue_size: 0,
-            max_mem_use: 0,
-            mem_used: 0,
-        }
+    fn block_total_score(&self, _id: BlockId) -> Option<U256> {
+        Some(U256::zero())
     }
 
-    fn queue_parcels(&self, parcels: Vec<Bytes>, _peer_id: NodeId) {
-        // import right here
-        let parcels = parcels.into_iter().filter_map(|bytes| UntrustedRlp::new(&bytes).as_val().ok()).collect();
-        self.miner.import_external_parcels(self, parcels);
-    }
-
-    fn ready_parcels(&self) -> Vec<SignedParcel> {
-        self.miner.ready_parcels()
+    fn block_hash(&self, id: BlockId) -> Option<H256> {
+        Self::block_hash(self, id)
     }
 
     fn parcel(&self, _id: ParcelId) -> Option<LocalizedParcel> {
