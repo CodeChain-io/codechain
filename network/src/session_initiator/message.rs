@@ -230,8 +230,6 @@ impl Decodable for Message {
 
 #[cfg(test)]
 mod tests {
-    use rlp::{Decodable, Encodable, UntrustedRlp};
-
     use super::super::super::session::Nonce;
     use super::super::super::SocketAddr;
     use super::*;
@@ -240,26 +238,14 @@ mod tests {
     fn encode_and_decode_node_id_request() {
         let node_id: NodeId = SocketAddr::v4(80, 80, 80, 80, 8080).into();
         let request = Message::node_id_request(0x8a, node_id);
-
-        let encoded = request.rlp_bytes();
-        let rlp = UntrustedRlp::new(&encoded);
-        match Decodable::decode(&rlp) {
-            Ok(decoded) => assert_eq!(request, decoded),
-            Err(err) => assert!(false, "{:?}", err),
-        }
+        rlp_encode_and_decode_test!(request);
     }
 
     #[test]
     fn encode_and_decode_node_id_response() {
         let id: NodeId = SocketAddr::v4(80, 80, 80, 80, 8080).into();
         let response = Message::node_id_response(0x9a, id);
-
-        let encoded = response.rlp_bytes();
-        let rlp = UntrustedRlp::new(&encoded);
-        match Decodable::decode(&rlp) {
-            Ok(decoded) => assert_eq!(response, decoded),
-            Err(err) => assert!(false, "{:?}", err),
-        }
+        rlp_encode_and_decode_test!(response);
     }
 
     #[test]
@@ -270,13 +256,7 @@ mod tests {
         let nonce = nonce.rlp_bytes();
 
         let req = Message::nonce_request(SEQ, nonce.clone().into_vec());
-        let bytes = req.rlp_bytes();
-
-        let rlp = UntrustedRlp::new(&bytes);
-        match Decodable::decode(&rlp) {
-            Ok(message) => assert_eq!(req, message),
-            Err(err) => assert!(false, "{:?}", err),
-        }
+        rlp_encode_and_decode_test!(req);
     }
 
     #[test]
@@ -287,14 +267,7 @@ mod tests {
         let nonce = nonce.rlp_bytes();
 
         let allowed = Message::nonce_allowed(SEQ, nonce.clone().into_vec());
-
-        let bytes = allowed.rlp_bytes();
-
-        let rlp = UntrustedRlp::new(&bytes);
-        match Decodable::decode(&rlp) {
-            Ok(message) => assert_eq!(allowed, message),
-            Err(err) => assert!(false, "{:?}", err),
-        }
+        rlp_encode_and_decode_test!(allowed);
     }
 
     #[test]
@@ -304,14 +277,7 @@ mod tests {
         const REASON: &str = "connection denied";
 
         let denied = Message::nonce_denied(SEQ, REASON.to_string());
-
-        let bytes = denied.rlp_bytes();
-
-        let rlp = UntrustedRlp::new(&bytes);
-        match Decodable::decode(&rlp) {
-            Ok(message) => assert_eq!(denied, message),
-            Err(err) => assert!(false, "{:?}", err),
-        }
+        rlp_encode_and_decode_test!(denied);
     }
 
     #[test]
@@ -322,13 +288,7 @@ mod tests {
         const SEQ: Seq = 0;
 
         let req = Message::nonce_request(SEQ, nonce.clone().into_vec());
-        let bytes = req.rlp_bytes();
-
-        let rlp = UntrustedRlp::new(&bytes);
-        match Decodable::decode(&rlp) {
-            Ok(message) => assert_eq!(req, message),
-            Err(err) => assert!(false, "{:?}", err),
-        }
+        rlp_encode_and_decode_test!(req);
     }
 
     #[test]
@@ -339,12 +299,6 @@ mod tests {
         const SEQ: Seq = 0x4a;
 
         let allowed = Message::nonce_allowed(SEQ, nonce.clone().into_vec());
-        let bytes = allowed.rlp_bytes();
-
-        let rlp = UntrustedRlp::new(&bytes);
-        match Decodable::decode(&rlp) {
-            Ok(message) => assert_eq!(allowed, message),
-            Err(err) => assert!(false, "{:?}", err),
-        }
+        rlp_encode_and_decode_test!(allowed);
     }
 }
