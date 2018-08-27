@@ -209,8 +209,7 @@ impl Decodable for SocketAddr {
 
 #[cfg(test)]
 mod tests {
-    use super::SocketAddr;
-    use std::cmp::Ordering;
+    use super::*;
 
     #[test]
     fn addresss_are_equal_if_they_have_same_id_and_port() {
@@ -303,5 +302,10 @@ mod tests {
         // Only servers from loopback network can connect to loopback server
         assert_eq!(false, public_1.is_reachable(&loopback_1));
         assert_eq!(false, private_1.is_reachable(&loopback_1));
+    }
+
+    #[test]
+    fn encode_and_decode_nonce() {
+        rlp_encode_and_decode_test!(SocketAddr::v4(1, 2, 3, 4, 5678));
     }
 }

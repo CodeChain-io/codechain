@@ -19,7 +19,7 @@ use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 use super::super::super::session::Session;
 use super::Signature;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct SignedMessage {
     pub message: Vec<u8>,
     signature: Signature,
@@ -59,5 +59,21 @@ impl Decodable for SignedMessage {
             message,
             signature,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn rlp_of_signed_message() {
+        let message = vec![];
+        let signature = Signature::random();
+        let signed = SignedMessage {
+            message,
+            signature,
+        };
+        rlp_encode_and_decode_test!(signed);
     }
 }

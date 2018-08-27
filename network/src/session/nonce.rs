@@ -79,3 +79,13 @@ impl Hash for Nonce {
         self.0.hash(state)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn encode_and_decode_nonce() {
+        rlp_encode_and_decode_test!(Nonce::from(H128::random()));
+    }
+}

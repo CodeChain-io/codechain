@@ -116,9 +116,7 @@ impl Decodable for Message {
 
 #[cfg(test)]
 mod tests {
-    use primitives::{H256, U256};
-
-    use super::Message;
+    use super::*;
 
     #[test]
     fn status_message_rlp() {
@@ -127,5 +125,17 @@ mod tests {
             best_hash: H256::default(),
             genesis_hash: H256::default(),
         });
+    }
+
+    #[test]
+    fn request_bodies_message_rlp() {
+        let request_id = 10;
+        rlp_encode_and_decode_test!(Message::Request(request_id, RequestMessage::Bodies(vec![])));
+    }
+
+    #[test]
+    fn request_state_head_rlp() {
+        let request_id = 10;
+        rlp_encode_and_decode_test!(Message::Request(request_id, RequestMessage::StateHead(H256::random())));
     }
 }
