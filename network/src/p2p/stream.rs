@@ -159,7 +159,7 @@ impl Stream {
                 debug_assert!(total_length >= read_size);
                 total_length -= read_size;
             } else {
-                break
+                cdebug!(NETWORK, "Cannot read data from socket({:?}).", self.peer_addr().unwrap());
             }
         }
         Ok(result)
