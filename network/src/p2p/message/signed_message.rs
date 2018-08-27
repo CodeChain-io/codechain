@@ -51,7 +51,7 @@ impl Encodable for SignedMessage {
 impl Decodable for SignedMessage {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
         if rlp.item_count()? != 2 {
-            return Err(DecoderError::Custom("invalid message"))
+            return Err(DecoderError::Custom("Cannot decode a signed message"))
         }
         let message: Vec<u8> = rlp.val_at(0)?;
         let signature: Signature = rlp.val_at(1)?;
