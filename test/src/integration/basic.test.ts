@@ -17,7 +17,7 @@
 import { SDK } from "codechain-sdk";
 import { PlatformAddress } from "codechain-sdk/lib/key/PlatformAddress";
 
-import CodeChain from "./helper/spawn";
+import CodeChain from "../helper/spawn";
 
 describe("solo - 1 node", () => {
   const secret = "ede1d4ccb4ec9a8bbbae9a13db3f4a7b56ea04189be86ac3a6a439d9a0a1addd";

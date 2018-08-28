@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import { wait } from "./helper/promise";
-import CodeChain from "./helper/spawn";
+import { wait } from "../helper/promise";
+import CodeChain from "../helper/spawn";
 
 describe("2 nodes", () => {
   let nodeA: CodeChain;
