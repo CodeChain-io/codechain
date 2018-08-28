@@ -33,6 +33,14 @@ describe("solo - 1 node", () => {
     expect(await node.sdk.rpc.node.ping()).toBe("pong");
   });
 
+  test("getNodeVersion", async () => {
+    expect(await node.sdk.rpc.node.getNodeVersion()).toBe("0.1.0");
+  });
+
+  test("getCommitHash", async () => {
+    expect(await node.sdk.rpc.node.getCommitHash()).toMatch(/^[a-fA-F0-9]{40}$/);
+  });
+
   test("sendSignedParcel", async () => {
     const parcel = node.sdk.core.createPaymentParcel({
       recipient: "tccqruq09sfgax77nj4gukjcuq69uzeyv0jcs7vzngg",
