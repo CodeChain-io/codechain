@@ -38,7 +38,7 @@ NODE_ENV=production yarn start
 
 # Writing Test
 
-Simple integration test that sends a parcel and gets an invoice from CodeChain is implemented at `src/basic.test.ts`. It would be a good starting point for implementing new tests.
+Simple integration test that sends a parcel and gets an invoice from CodeChain is implemented at `src/integration/basic.test.ts`. It would be a good starting point for implementing new tests.
 
 Writing an integration test involves spawning a new CodeChain process and attaching SDK to it. Helper class for automating this process is defined under `src/helper/spawn.ts`, named `CodeChain`. Some important functions are described below:
 
