@@ -58,7 +58,7 @@ describe("2 nodes", () => {
 
       test("It should be synced when nodeA becomes ahead", async () => {
         await nodeA.sendSignedParcel();
-        await wait(2000);
+        await wait(4000);
         expect(await nodeA.getBestBlockHash()).toEqual(await nodeB.getBestBlockHash());
       });
     });
