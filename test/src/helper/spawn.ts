@@ -98,14 +98,14 @@ export default class CodeChain {
 
   public async connect(peer: CodeChain) {
     if (!this.process) {
-      return Promise.reject("process isn't available");
+      return Promise.reject(Error("process isn't available"));
     }
     return this.sdk.rpc.network.connect("127.0.0.1", peer.port);
   }
 
   public async disconnect(peer: CodeChain) {
     if (!this.process) {
-      return Promise.reject("process isn't available");
+      return Promise.reject(Error("process isn't available"));
     }
     return this.sdk.rpc.network.disconnect("127.0.0.1", peer.port);
   }
