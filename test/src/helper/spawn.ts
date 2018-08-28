@@ -26,11 +26,11 @@ import { wait } from "./promise";
 const faucetSecret = `ede1d4ccb4ec9a8bbbae9a13db3f4a7b56ea04189be86ac3a6a439d9a0a1addd`;
 const faucetAddress = PlatformAddress.fromAccountId(SDK.util.getAccountIdFromPrivate(`ede1d4ccb4ec9a8bbbae9a13db3f4a7b56ea04189be86ac3a6a439d9a0a1addd`));
 const projectRoot = `${__dirname}/../../..`;
-let idCounter = 0;
 
 export type ChainType = "solo" | "solo_authority" | "tendermint" | "cuckoo" | "blake_pow" | "husky";
 
 export default class CodeChain {
+  private static idCounter = 0;
   private _id: number;
   private _sdk: SDK;
   private _dbPath: string;
@@ -48,8 +48,7 @@ export default class CodeChain {
 
   constructor(options: { chain?: ChainType, argv?: string[] } = {}) {
     const { chain, argv } = options;
-    this._id = idCounter;
-    idCounter += 1;
+    this._id = CodeChain.idCounter++;
 
     mkdirp.sync(`${projectRoot}/db/`);
     this._dbPath = mkdtempSync(`${projectRoot}/db/`);
