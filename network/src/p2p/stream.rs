@@ -79,6 +79,7 @@ pub type Result<T> = ::std::result::Result<T, Error>;
 
 pub struct Stream {
     stream: TcpStream,
+    retry_job: Option<(usize, Vec<u8>)>,
 }
 
 impl Stream {
@@ -93,14 +94,14 @@ impl Stream {
     pub fn read<M>(&mut self) -> Result<Option<M>>
     where
         M: ?Sized + Decodable, {
-        let bytes = self.read_bytes()?;
-
-        if bytes.is_empty() {
-            return Ok(None)
+        match self.read_bytes()? {
+            None => Ok(None),
+            Some(ref bytes) if bytes.is_empty() => Ok(None),
+            Some(bytes) => {
+                let rlp = UntrustedRlp::new(&bytes);
+                Ok(Some(rlp.as_val::<M>()?))
+            }
         }
-
-        let rlp = UntrustedRlp::new(&bytes);
-        Ok(Some(rlp.as_val::<M>()?))
     }
 
     pub fn write<M>(&mut self, message: &M) -> Result<()>
@@ -145,24 +146,41 @@ impl Stream {
         return Ok((0, vec![]))
     }
 
-    fn read_bytes(&mut self) -> io::Result<Vec<u8>> {
-        let (mut total_length, mut result) = self.read_len()?;
+    fn read_bytes(&mut self) -> io::Result<Option<Vec<u8>>> {
+        let from_socket = self.peer_addr().unwrap();
+
+        let (mut total_length, mut result) = {
+            let mut retry_job = None;
+            ::std::mem::swap(&mut retry_job, &mut self.retry_job);
+            match retry_job {
+                None => self.read_len()?,
+                Some((total_length, result)) => {
+                    cdebug!(NETWORK, "Retry the previous job from {:?}. {} bytes remain.", from_socket, total_length);
+                    (total_length, result)
+                }
+            }
+        };
         let mut bytes: [u8; 1024] = [0; 1024];
 
-        loop {
-            if total_length == 0 {
-                break
-            }
+        if total_length == 0 {
+            return Ok(Some(result))
+        }
+
+        ctrace!(NETWORK, "Read {} bytes from {:?}", total_length, from_socket);
+        while total_length != 0 {
             let to_be_read = ::std::cmp::min(total_length, 1024);
             if let Some(read_size) = self.stream.try_read(&mut bytes[0..to_be_read])? {
                 result.extend_from_slice(&bytes[..read_size]);
                 debug_assert!(total_length >= read_size);
                 total_length -= read_size;
             } else {
-                cdebug!(NETWORK, "Cannot read data from socket({:?}).", self.peer_addr().unwrap());
+                debug_assert_eq!(None, self.retry_job);
+                self.retry_job = Some((total_length, result));
+                cdebug!(NETWORK, "Cannot read data from socket({:?}), {} bytes remain.", from_socket, total_length,);
+                return Ok(None)
             }
         }
-        Ok(result)
+        Ok(Some(result))
     }
 
     fn write_bytes(&mut self, bytes_to_send: &[u8]) -> io::Result<()> {
@@ -229,6 +247,7 @@ impl From<TcpStream> for Stream {
     fn from(stream: TcpStream) -> Self {
         Self {
             stream,
+            retry_job: None,
         }
     }
 }
