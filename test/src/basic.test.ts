@@ -17,37 +17,36 @@
 import { SDK } from "codechain-sdk";
 import { PlatformAddress } from "codechain-sdk/lib/key/PlatformAddress";
 
-import { wait } from "./helper/promise";
 import CodeChain from "./helper/spawn";
 
-describe("solo - 1 instance", () => {
+describe("solo - 1 node", () => {
   const secret = "ede1d4ccb4ec9a8bbbae9a13db3f4a7b56ea04189be86ac3a6a439d9a0a1addd";
   const address = PlatformAddress.fromAccountId(SDK.util.getAccountIdFromPrivate(secret));
 
-  let instance: CodeChain;
+  let node: CodeChain;
   beforeAll(async () => {
-    instance = new CodeChain();
-    await instance.start(["-c", "solo"], { useDebugBuild: process.env.NODE_ENV !== "production" });
+    node = new CodeChain();
+    await node.start();
   });
 
   test("ping", async () => {
-    expect(await instance.sdk.rpc.node.ping()).toBe("pong");
+    expect(await node.sdk.rpc.node.ping()).toBe("pong");
   });
 
   test("sendSignedParcel", async () => {
-    const parcel = instance.sdk.core.createPaymentParcel({
+    const parcel = node.sdk.core.createPaymentParcel({
       recipient: "tccqruq09sfgax77nj4gukjcuq69uzeyv0jcs7vzngg",
       amount: 0,
     });
-    const nonce = await instance.sdk.rpc.chain.getNonce(address);
-    const parcelHash = await instance.sdk.rpc.chain.sendSignedParcel(parcel.sign({
+    const nonce = await node.sdk.rpc.chain.getNonce(address);
+    const parcelHash = await node.sdk.rpc.chain.sendSignedParcel(parcel.sign({
       secret, fee: 10, nonce
     }));
-    const invoice = await instance.sdk.rpc.chain.getParcelInvoice(parcelHash);
+    const invoice = await node.sdk.rpc.chain.getParcelInvoice(parcelHash);
     expect(invoice).toEqual({ success: true });
   });
 
   afterAll(async () => {
-    await instance.clean();
+    await node.clean();
   });
 });
