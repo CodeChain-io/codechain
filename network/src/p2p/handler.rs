@@ -333,24 +333,27 @@ impl Handler {
         })
     }
 
-    fn send(&self, stream: &StreamToken) -> IoHandlerResult<bool> {
+    fn send(&self, stream: &StreamToken) -> IoHandlerResult<()> {
         let (connection_type, remain) = self.connections.send(stream)?;
-        Ok(match connection_type {
-            ConnectionType::None => return Err(Error::InvalidStream(*stream).into()),
+        match connection_type {
+            ConnectionType::None => Err(Error::InvalidStream(*stream).into()),
             ConnectionType::AckWaiting => {
                 debug_assert!(!remain);
-                false
+                Ok(())
             }
             ConnectionType::SyncWaiting => {
-                // Ack message was sent
-                debug_assert!(!remain);
-                self.connections.establish_wait_sync_connection(stream);
-                self.connections.node_id(&stream).ok_or(Error::InvalidStream(*stream))?;
-                false
+                if remain {
+                    cdebug!(NETWORK, "Cannot send ack message");
+                } else {
+                    // Ack message was sent
+                    self.connections.establish_wait_sync_connection(stream);
+                    self.connections.node_id(&stream).ok_or(Error::InvalidStream(*stream))?;
+                }
+                Ok(())
             }
-            ConnectionType::Established => remain,
-            ConnectionType::Disconnecting => return Err(Error::InvalidStream(*stream).into()),
-        })
+            ConnectionType::Established => Ok(()),
+            ConnectionType::Disconnecting => Err(Error::InvalidStream(*stream).into()),
+        }
     }
 }
 
@@ -514,15 +517,10 @@ impl IoHandler<Message> for Handler {
                         cwarn!(NETWORK, "Cannot update registration in stream_writable for {} {:?}", stream, err);
                     }
                 });
-                loop {
-                    if !self.send(&stream)? {
-                        break
-                    }
-                }
+                self.send(&stream)
             }
             _ => unreachable!(),
         }
-        Ok(())
     }
 
     fn register_stream(
