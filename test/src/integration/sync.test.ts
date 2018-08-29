@@ -44,9 +44,9 @@ describe("2 nodes", () => {
     test("It should be synced when nodeA created a block", async () => {
       expect(await nodeA.sdk.rpc.network.isConnected("127.0.0.1", nodeB.port)).toBe(true);
       const parcel = await nodeA.sendSignedParcel({ awaitInvoice: true });
-      await wait(2000);
+      await nodeB.waitBlockNumberSync(nodeA);
       expect(await nodeB.getBestBlockHash()).toEqual(parcel.blockHash);
-    });
+    }, 10000);
 
     describe("A-B diverged", () => {
       beforeEach(async () => {
@@ -56,12 +56,11 @@ describe("2 nodes", () => {
         expect(await nodeA.getBestBlockHash()).not.toEqual(await nodeB.getBestBlockHash());
       });
 
-      // FIXME: It fails on Travis.
-      test.skip("It should be synced when nodeA becomes ahead", async () => {
+      test("It should be synced when nodeA becomes ahead", async () => {
         await nodeA.sendSignedParcel();
-        await wait(4000);
+        await nodeB.waitBlockNumberSync(nodeA);
         expect(await nodeA.getBestBlockHash()).toEqual(await nodeB.getBestBlockHash());
-      });
+      }, 10000);
     });
   });
 
@@ -72,9 +71,9 @@ describe("2 nodes", () => {
 
     test("It should be synced when A-B connected", async () => {
       await nodeA.connect(nodeB);
-      await wait(2000);
+      await nodeB.waitBlockNumberSync(nodeA);
       expect(await nodeA.getBestBlockHash()).toEqual(await nodeB.getBestBlockHash());
-    });
+    }, 10000);
   });
 
   describe("A-B diverged", () => {
@@ -93,9 +92,9 @@ describe("2 nodes", () => {
 
       test("It should be synced when A-B connected", async () => {
         await nodeA.connect(nodeB);
-        await wait(2000);
+        await nodeB.waitBlockNumberSync(nodeA);
         expect(await nodeA.getBestBlockHash()).toEqual(await nodeB.getBestBlockHash());
-      });
+      }, 10000);
     });
   });
 
