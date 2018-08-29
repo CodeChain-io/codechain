@@ -83,9 +83,9 @@ fn discovery_start(service: &NetworkService, cfg: &config::Network) -> Result<()
     Ok(())
 }
 
-fn client_start(cfg: &config::Config, scheme: &Scheme, miner: Arc<Miner>) -> Result<ClientService, String> {
+fn client_start(cfg: &config::Operating, scheme: &Scheme, miner: Arc<Miner>) -> Result<ClientService, String> {
     info!("Starting client");
-    let client_path = Path::new(&cfg.operating.db_path);
+    let client_path = Path::new(&cfg.db_path);
     let client_config = Default::default();
     let service = ClientService::start(client_config, &scheme, &client_path, miner)
         .map_err(|e| format!("Client service error: {}", e))?;
@@ -208,7 +208,7 @@ pub fn run_node(matches: ArgMatches) -> Result<(), String> {
     unlock_accounts(Arc::clone(&ap), &pf)?;
 
     let miner = new_miner(&config, &scheme, ap.clone())?;
-    let client = client_start(&config, &scheme, miner.clone())?;
+    let client = client_start(&config.operating, &scheme, miner.clone())?;
 
     let shard_validator = if scheme.params().use_shard_validator {
         None
