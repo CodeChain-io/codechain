@@ -3,6 +3,7 @@ quiet = false
 db_path = "db"
 keys_path = "keys"
 chain = "solo"
+enable_state_cache = false
 
 [mining]
 disable = false
