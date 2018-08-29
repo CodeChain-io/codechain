@@ -27,5 +27,11 @@ build_rpc_trait! {
 
         # [rpc(name = "devel_getStateTrieValue")]
         fn get_state_trie_value(&self, H256) -> Result<Vec<Bytes>>;
+
+        # [rpc(name = "devel_startSealing")]
+        fn start_sealing(&self) -> Result<()>;
+
+        # [rpc(name = "devel_stopSealing")]
+        fn stop_sealing(&self) -> Result<()>;
     }
 }

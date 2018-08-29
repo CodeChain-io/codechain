@@ -59,12 +59,8 @@ where
         EngineType::Solo
     }
 
-    fn generate_seal(&self, block: &M::LiveBlock, _parent: &M::Header) -> Seal {
-        if block.parcels().is_empty() {
-            Seal::None
-        } else {
-            Seal::Regular(Vec::new())
-        }
+    fn generate_seal(&self, _block: &M::LiveBlock, _parent: &M::Header) -> Seal {
+        Seal::Regular(Vec::new())
     }
 
     fn verify_local_seal(&self, _header: &M::Header) -> Result<(), M::Error> {

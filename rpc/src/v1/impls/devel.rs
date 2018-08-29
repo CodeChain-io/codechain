@@ -18,7 +18,7 @@ use std::ops::Deref;
 use std::sync::Arc;
 use std::vec::Vec;
 
-use ccore::{DatabaseClient, COL_STATE};
+use ccore::{DatabaseClient, MinerService, MiningBlockChainClient, COL_STATE};
 use jsonrpc_core::Result;
 use kvdb::KeyValueDB;
 use primitives::H256;
@@ -28,21 +28,34 @@ use super::super::errors;
 use super::super::traits::Devel;
 use super::super::types::Bytes;
 
-pub struct DevelClient {
+pub struct DevelClient<C, M>
+where
+    C: DatabaseClient + MiningBlockChainClient,
+    M: MinerService, {
+    client: Arc<C>,
     db: Arc<KeyValueDB>,
+    miner: Arc<M>,
 }
 
-impl DevelClient {
-    pub fn new<C>(client: &Arc<C>) -> Self
-    where
-        C: DatabaseClient, {
+impl<C, M> DevelClient<C, M>
+where
+    C: DatabaseClient + MiningBlockChainClient,
+    M: MinerService,
+{
+    pub fn new(client: &Arc<C>, miner: &Arc<M>) -> Self {
         Self {
+            client: client.clone(),
             db: client.database(),
+            miner: miner.clone(),
         }
     }
 }
 
-impl Devel for DevelClient {
+impl<C, M> Devel for DevelClient<C, M>
+where
+    C: DatabaseClient + MiningBlockChainClient + 'static,
+    M: MinerService + 'static,
+{
     fn get_state_trie_keys(&self, offset: usize, limit: usize) -> Result<Vec<H256>> {
         let iter = self.db.iter(COL_STATE);
         Ok(iter.skip(offset).take(limit).map(|val| H256::from(val.0.deref())).collect())
@@ -57,5 +70,15 @@ impl Devel for DevelClient {
             Ok(None) => Ok(Vec::new()),
             Err(err) => Err(errors::kvdb(err)),
         }
+    }
+
+    fn start_sealing(&self) -> Result<()> {
+        self.miner.start_sealing(&*self.client);
+        Ok(())
+    }
+
+    fn stop_sealing(&self) -> Result<()> {
+        self.miner.stop_sealing();
+        Ok(())
     }
 }

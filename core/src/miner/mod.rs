@@ -112,6 +112,12 @@ pub trait MinerService: Send + Sync {
 
     /// Get a list of all future parcels.
     fn future_parcels(&self) -> Vec<SignedParcel>;
+
+    /// Start sealing.
+    fn start_sealing<C: MiningBlockChainClient>(&self, client: &C);
+
+    /// Stop sealing.
+    fn stop_sealing(&self);
 }
 
 /// Mining status
