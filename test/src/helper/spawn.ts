@@ -117,6 +117,12 @@ export default class CodeChain {
     return;
   }
 
+  public async waitBlockNumberSync(peer: CodeChain) {
+    while (await this.getBestBlockNumber() !== await peer.getBestBlockNumber()) {
+      wait(500);
+    }
+  }
+
   public async getBestBlockNumber() {
     return this.sdk.rpc.chain.getBestBlockNumber();
   }
