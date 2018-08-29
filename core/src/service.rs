@@ -39,6 +39,7 @@ impl ClientService {
         scheme: &Scheme,
         client_path: &Path,
         miner: Arc<Miner>,
+        enable_state_cache: bool,
     ) -> Result<ClientService, Error> {
         let io_service = IoService::<ClientIoMessage>::start()?;
 
@@ -53,7 +54,7 @@ impl ClientService {
                 .map_err(::client::Error::Database)?,
         );
 
-        let client = Client::new(config, &scheme, db, miner, io_service.channel())?;
+        let client = Client::new(config, &scheme, db, miner, io_service.channel(), enable_state_cache)?;
 
         let client_io = Arc::new(ClientIoHandler {
             client: client.clone(),

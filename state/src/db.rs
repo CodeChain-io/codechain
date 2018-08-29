@@ -137,6 +137,8 @@ pub struct StateDB {
     commit_number: Option<BlockNumber>,
 
     custom_handlers: Vec<Arc<ActionHandler>>,
+
+    enable_cache: bool,
 }
 
 impl StateDB {
@@ -144,7 +146,12 @@ impl StateDB {
     /// of the LRU cache in bytes. Actual used memory may (read: will) be higher due to bookkeeping.
     // TODO: make the cache size actually accurate by moving the account storage cache
     // into the `AccountCache` structure as its own `LruCache<(Address, H256), H256>`.
-    pub fn new(db: Box<JournalDB>, cache_size: usize, custom_handlers: Vec<Arc<ActionHandler>>) -> StateDB {
+    pub fn new(
+        db: Box<JournalDB>,
+        cache_size: usize,
+        custom_handlers: Vec<Arc<ActionHandler>>,
+        enable_cache: bool,
+    ) -> Self {
         assert_eq!(
             100,
             ACCOUNT_CACHE_RATIO
@@ -237,12 +244,13 @@ impl StateDB {
             commit_hash: None,
             commit_number: None,
             custom_handlers,
+            enable_cache,
         }
     }
 
     pub fn new_with_memorydb(cache_size: usize, custom_handlers: Vec<Arc<ActionHandler>>) -> Self {
         let memorydb = Arc::new(kvdb_memorydb::create(0));
-        StateDB::new(journaldb::new(memorydb, Algorithm::Archive, None), cache_size, custom_handlers)
+        StateDB::new(journaldb::new(memorydb, Algorithm::Archive, None), cache_size, custom_handlers, true)
     }
 
     /// Journal all recent operations under the given era and ID.
@@ -507,6 +515,7 @@ impl StateDB {
             commit_hash: None,
             commit_number: None,
             custom_handlers: self.custom_handlers.clone(),
+            enable_cache: self.enable_cache,
         }
     }
 
@@ -543,12 +552,16 @@ impl StateDB {
     /// Check if the account can be returned from cache by matching current block parent hash against canonical
     /// state and filtering out account modified in later blocks.
     fn is_allowed<Item>(
+        &self,
         addr: &Item::Address,
         parent_hash: &Option<H256>,
         modifications: &VecDeque<BlockChanges<Item>>,
     ) -> bool
     where
         Item: CacheableItem, {
+        if !self.enable_cache {
+            return false
+        }
         let mut parent = match parent_hash {
             None => {
                 ctrace!(STATE_DB, "Cache lookup skipped for {:?}: no parent hash", addr);
@@ -584,7 +597,7 @@ impl StateDB {
     where
         Item: CacheableItem, {
         let mut cache = cache.lock();
-        if !Self::is_allowed(addr, &self.parent_hash, &cache.modifications) {
+        if !self.is_allowed(addr, &self.parent_hash, &cache.modifications) {
             return None
         }
         cache.cache.get_mut(addr).cloned()
@@ -595,7 +608,7 @@ impl StateDB {
         Item: CacheableItem,
         F: FnOnce(Option<&mut Item>) -> U, {
         let mut cache = cache.lock();
-        if !Self::is_allowed(a, &self.parent_hash, &cache.modifications) {
+        if !self.is_allowed(a, &self.parent_hash, &cache.modifications) {
             return None
         }
         cache.cache.get_mut(a).map(|c| f(c.as_mut()))
@@ -631,6 +644,7 @@ impl Clone for StateDB {
             commit_number: None,
 
             custom_handlers: self.custom_handlers.clone(),
+            enable_cache: self.enable_cache,
         }
     }
 }
