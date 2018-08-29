@@ -21,7 +21,7 @@ use rand::distributions::{Distribution, Standard};
 use rand::Rng;
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
-#[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Ord, PartialOrd, Eq, PartialEq)]
 pub struct Nonce(H128);
 
 impl Nonce {

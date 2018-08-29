@@ -255,7 +255,7 @@ mod tests {
         let nonce = Nonce::from(32);
         let nonce = nonce.rlp_bytes();
 
-        let req = Message::nonce_request(SEQ, nonce.clone().into_vec());
+        let req = Message::nonce_request(SEQ, nonce.into_vec());
         rlp_encode_and_decode_test!(req);
     }
 
@@ -266,7 +266,7 @@ mod tests {
         let nonce = Nonce::from(4);
         let nonce = nonce.rlp_bytes();
 
-        let allowed = Message::nonce_allowed(SEQ, nonce.clone().into_vec());
+        let allowed = Message::nonce_allowed(SEQ, nonce.into_vec());
         rlp_encode_and_decode_test!(allowed);
     }
 
@@ -287,7 +287,7 @@ mod tests {
 
         const SEQ: Seq = 0;
 
-        let req = Message::nonce_request(SEQ, nonce.clone().into_vec());
+        let req = Message::nonce_request(SEQ, nonce.into_vec());
         rlp_encode_and_decode_test!(req);
     }
 
@@ -298,7 +298,7 @@ mod tests {
 
         const SEQ: Seq = 0x4a;
 
-        let allowed = Message::nonce_allowed(SEQ, nonce.clone().into_vec());
+        let allowed = Message::nonce_allowed(SEQ, nonce.into_vec());
         rlp_encode_and_decode_test!(allowed);
     }
 }

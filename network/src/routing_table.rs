@@ -253,7 +253,7 @@ impl RoutingTable {
                 return None
             }
             let ephemeral = Random.generate().unwrap();
-            let pub_key = ephemeral.public().clone();
+            let pub_key = *ephemeral.public();
             entry.set(State::KeyPairShared(ephemeral));
             ctrace!(ROUTING_TABLE, "Share pub-key({}) with {:?}", pub_key, remote_address);
             Some(pub_key)
@@ -271,8 +271,8 @@ impl RoutingTable {
             let entry = entry.lock();
             let old_state = entry.replace(State::Intermediate);
             if let State::KeyPairShared(local_key_pair) = &old_state {
-                if let Some(secret) = exchange(remote_public, local_key_pair.clone().private()).ok() {
-                    entry.set(State::SecretShared(secret.clone()));
+                if let Some(secret) = exchange(remote_public, local_key_pair.private()).ok() {
+                    entry.set(State::SecretShared(secret));
                     ctrace!(ROUTING_TABLE, "Secret shared with {:?}", remote_address);
                     return Some(secret)
                 }
@@ -307,8 +307,8 @@ impl RoutingTable {
                     _ => unreachable!(),
                 };
                 let temporary_nonce: Nonce = rng.gen();
-                entry.set(State::TemporaryNonceShared(shared_secret.clone(), temporary_nonce.clone(), secret_origin));
-                let temporary_session = Session::new_with_zero_nonce(shared_secret.clone());
+                entry.set(State::TemporaryNonceShared(shared_secret, temporary_nonce, secret_origin));
+                let temporary_session = Session::new_with_zero_nonce(shared_secret);
                 let result = encode_and_encrypt_nonce(&temporary_session, &temporary_nonce);
                 if result.is_some() {
                     ctrace!(ROUTING_TABLE, "Temporary nonce shared with {:?}", remote_address);
@@ -343,13 +343,13 @@ impl RoutingTable {
             };
             if let Some(shared_secret) = shared_secret {
                 let temporary_session = {
-                    let temporary_zero_session = Session::new_with_zero_nonce(shared_secret.clone());
+                    let temporary_zero_session = Session::new_with_zero_nonce(shared_secret);
                     let temporary_nonce = decrypt_and_decode_nonce(&temporary_zero_session, encrypted_temporary_nonce)?;
-                    Session::new(shared_secret.clone(), temporary_nonce)
+                    Session::new(shared_secret, temporary_nonce)
                 };
 
                 let nonce: Nonce = rng.gen();
-                entry.set(State::SessionShared(Session::new(shared_secret, nonce.clone())));
+                entry.set(State::SessionShared(Session::new(shared_secret, nonce)));
 
                 let encrypted_nonce = encode_and_encrypt_nonce(&temporary_session, &nonce);
                 if encrypted_nonce.is_some() {
@@ -373,7 +373,7 @@ impl RoutingTable {
             let entry = entry.lock();
             let old_state = entry.replace(State::Intermediate);
             if let State::TemporaryNonceShared(shared_secret, temporary_nonce, _secret_origin) = old_state.clone() {
-                let temporary_session = Session::new(shared_secret.clone(), temporary_nonce);
+                let temporary_session = Session::new(shared_secret, temporary_nonce);
                 let nonce = match decrypt_and_decode_nonce(&temporary_session, &received_nonce) {
                     Some(nonce) => nonce,
                     None => {
@@ -448,7 +448,7 @@ impl RoutingTable {
             let entry = entry.lock();
             let old_state = entry.replace(State::Intermediate);
             if let State::SessionShared(session) = old_state {
-                entry.set(State::SessionShared(session.clone()));
+                entry.set(State::SessionShared(session));
                 ctrace!(ROUTING_TABLE, "Unestablish connection to {:?}", remote_address);
                 return Some(session)
             }
