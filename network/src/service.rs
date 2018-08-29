@@ -57,7 +57,7 @@ impl Service {
         let client = Client::new(p2p.channel(), timer.channel());
 
         let p2p_handler = Arc::new(p2p::Handler::try_new(
-            address.clone(),
+            address,
             Arc::clone(&client),
             Arc::clone(&routing_table),
             Arc::clone(&filters_control),

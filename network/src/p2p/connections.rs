@@ -73,7 +73,7 @@ impl Connections {
             return false
         }
 
-        let connection = Connection::connect(stream, session, local_port, local_node_id, remote_node_id.clone());
+        let connection = Connection::connect(stream, session, local_port, local_node_id, remote_node_id);
         let t = connections.insert(token, connection);
         debug_assert!(t.is_none());
         let t = connected_nodes.insert(remote_node_id, token);

@@ -336,7 +336,7 @@ impl Handler {
     fn send(&self, stream: &StreamToken) -> IoHandlerResult<bool> {
         let (connection_type, remain) = self.connections.send(stream)?;
         Ok(match connection_type {
-            ConnectionType::None => return Err(Error::InvalidStream(stream.clone()).into()),
+            ConnectionType::None => return Err(Error::InvalidStream(*stream).into()),
             ConnectionType::AckWaiting => {
                 debug_assert!(!remain);
                 false
@@ -349,7 +349,7 @@ impl Handler {
                 false
             }
             ConnectionType::Established => remain,
-            ConnectionType::Disconnecting => return Err(Error::InvalidStream(stream.clone()).into()),
+            ConnectionType::Disconnecting => return Err(Error::InvalidStream(*stream).into()),
         })
     }
 }

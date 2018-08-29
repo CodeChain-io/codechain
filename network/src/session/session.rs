@@ -21,7 +21,7 @@ use primitives::{H128, H256};
 
 use super::Nonce;
 
-#[derive(Clone, Debug, Hash, Eq, PartialOrd, PartialEq)]
+#[derive(Clone, Copy, Debug, Hash, Eq, PartialOrd, PartialEq)]
 pub struct Session {
     secret: Secret,
     id: Nonce,
@@ -94,7 +94,7 @@ mod tests {
         let secret = Secret::random();
         let id = Nonce::from(1000);
 
-        let session1 = Session::new(secret, id.clone());
+        let session1 = Session::new(secret, id);
         let session2 = Session::new(secret, id);
 
         let data = Vec::from("some short data".as_bytes());
@@ -129,7 +129,7 @@ mod tests {
         debug_assert_ne!(secret1, secret2);
         let id = Nonce::from(1000);
 
-        let session1 = Session::new(secret1, id.clone());
+        let session1 = Session::new(secret1, id);
         let session2 = Session::new(secret2, id);
 
         let data = Vec::from("some short data".as_bytes());

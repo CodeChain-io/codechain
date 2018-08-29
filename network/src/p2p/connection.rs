@@ -174,11 +174,11 @@ impl EstablishedConnection {
     }
 
     fn remote_node_id(&self) -> Option<NodeId> {
-        Some(self.remote_node_id.clone())
+        Some(self.remote_node_id)
     }
 
     fn session(&self) -> Option<Session> {
-        Some(self.stream.session().clone())
+        Some(*self.stream.session())
     }
 
     fn register<Message>(&self, reg: Token, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()>
@@ -235,7 +235,7 @@ impl WaitSyncConnection {
         debug_assert_eq!(self.state, WaitState::Sent);
         let session = self.session.as_ref().expect("Session must exist");
         let remote_node_id = self.remote_node_id.expect("Sync message set peer node id");
-        EstablishedConnection::new(SignedStream::new(self.stream, session.clone()), remote_node_id)
+        EstablishedConnection::new(SignedStream::new(self.stream, *session), remote_node_id)
     }
 
     fn disconnect(self) -> DisconnectingConnection {
@@ -294,7 +294,7 @@ impl WaitSyncConnection {
     }
 
     fn remote_node_id(&self) -> Option<NodeId> {
-        self.remote_node_id.clone()
+        self.remote_node_id
     }
 
     fn register<Message>(&self, reg: Token, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()>
@@ -362,7 +362,7 @@ impl WaitAckConnection {
             return Ok(false)
         }
 
-        self.stream.write(&Message::Handshake(HandshakeMessage::sync(self.port, self.local_node_id.clone())))?;
+        self.stream.write(&Message::Handshake(HandshakeMessage::sync(self.port, self.local_node_id)))?;
         self.state = WaitState::Sent;
         Ok(false)
     }
@@ -385,7 +385,7 @@ impl WaitAckConnection {
     }
 
     fn remote_node_id(&self) -> Option<NodeId> {
-        Some(self.remote_node_id.clone())
+        Some(self.remote_node_id)
     }
 
     fn register<Message>(&self, reg: Token, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()>
