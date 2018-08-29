@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::collections::HashSet;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -95,6 +96,8 @@ pub struct Miner {
     engine: Arc<CodeChainEngine>,
     options: MinerOptions,
 
+    sealing_enabled: AtomicBool,
+
     accounts: Option<Arc<AccountProvider>>,
     notifiers: RwLock<Vec<Box<NotifyWork>>>,
 }
@@ -135,6 +138,7 @@ impl Miner {
             }),
             engine: scheme.engine.clone(),
             options,
+            sealing_enabled: AtomicBool::new(true),
             accounts,
             notifiers: RwLock::new(notifiers),
         }
@@ -483,7 +487,7 @@ impl Miner {
 
     /// Are we allowed to do a non-mandatory reseal?
     fn parcel_reseal_allowed(&self) -> bool {
-        Instant::now() > *self.next_allowed_reseal.lock()
+        self.sealing_enabled.load(Ordering::Relaxed) && (Instant::now() > *self.next_allowed_reseal.lock())
     }
 
     fn map_pending_block<F, T>(&self, f: F, latest_block_number: BlockNumber) -> Option<T>
@@ -748,5 +752,23 @@ impl MinerService for Miner {
     /// Get a list of all future parcels.
     fn future_parcels(&self) -> Vec<SignedParcel> {
         self.mem_pool.read().future_parcels()
+    }
+
+    fn start_sealing<C: MiningBlockChainClient>(&self, client: &C) {
+        cdebug!(MINER, "Start sealing");
+        self.sealing_enabled.store(true, Ordering::Relaxed);
+        // ------------------------------------------------------------------
+        // | NOTE Code below requires mem_pool and sealing_queue locks.     |
+        // | Make sure to release the locks before calling that method.     |
+        // ------------------------------------------------------------------
+        if self.parcel_reseal_allowed() {
+            cdebug!(MINER, "Update sealing");
+            self.update_sealing(client);
+        }
+    }
+
+    fn stop_sealing(&self) {
+        cdebug!(MINER, "Stop sealing");
+        self.sealing_enabled.store(false, Ordering::Relaxed);
     }
 }

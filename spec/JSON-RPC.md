@@ -195,6 +195,8 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
 ***
  * [devel_getStateTrieKeys](#devel_getstatetriekeys)
  * [devel_getStateTrieValue](#devel_getstatetrievalue)
+ * [devel_startSealing](#devel_startsealing)
+ * [devel_stopSealing](#devel_stopsealing)
 
 
 # Specification
@@ -1755,6 +1757,54 @@ Response Example
     "0x20d560025f3a1c6675cb32384355ae05b224a3473ae17d3d15b6aa164af7d717",
     "0xf84541a053000000000000002ab33f741ba153ff1ffdf1107845828637c864d5360e4932a00000000000000000000000000000000000000000000000000000000000000000c06f"
   ],
+  "id":null
+}
+```
+
+## devel_startSealing
+Starts and enables sealing blocks by the miner.
+
+Params: No parameters
+
+Return Type: `null`
+
+Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "devel_startSealing", "params": [], "id": null}' \
+    localhost:8080
+```
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result":null,
+  "id":null
+}
+```
+
+## devel_stopSealing
+Stops and disables sealing blocks by the miner.
+
+Params: No parameters
+
+Return Type: `null`
+
+Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "devel_stopSealing", "params": [], "id": null}' \
+    localhost:8080
+```
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result":null,
   "id":null
 }
 ```
