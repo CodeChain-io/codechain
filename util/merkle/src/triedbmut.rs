@@ -356,7 +356,7 @@ mod tests {
         t
     }
 
-    fn unpopulate_trie<'db>(t: &mut TrieDBMut<'db>, v: &[(Vec<u8>, Vec<u8>)]) {
+    fn unpopulate_trie(t: &mut TrieDBMut, v: &[(Vec<u8>, Vec<u8>)]) {
         for i in v {
             let key: &[u8] = &i.0;
             t.remove(key).unwrap();

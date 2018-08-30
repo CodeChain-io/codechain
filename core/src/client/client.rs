@@ -712,7 +712,7 @@ impl Importer {
     }
 
     // check for ending of epoch and write transition if it occurs.
-    fn check_epoch_end<'a>(&self, header: &'a Header, chain: &BlockChain, client: &Client) {
+    fn check_epoch_end(&self, header: &Header, chain: &BlockChain, client: &Client) {
         let is_epoch_end = self.engine.is_epoch_end(
             header,
             &(|hash| chain.block_header(&hash)),
