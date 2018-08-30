@@ -1,22 +1,36 @@
+// Copyright 2018 Kodebox, Inc.
+// This file is part of CodeChain.
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as
+// published by the Free Software Foundation, either version 3 of the
+// License, or (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 // Copyright 2015-2017 Parity Technologies (UK) Ltd.
 // This file is part of Parity.
-
+//
 // Parity is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
-
+//
 // Parity is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-
+//
 // You should have received a copy of the GNU General Public License
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
-//! State database abstraction. For more info, see the doc for `StateDB`
-
-use std::collections::{HashSet, VecDeque};
+use std::collections::HashSet;
 use std::sync::Arc;
 
 use ckey::Address;
@@ -25,18 +39,19 @@ use hashdb::HashDB;
 use journaldb::{self, Algorithm, JournalDB};
 use kvdb::DBTransaction;
 use kvdb_memorydb;
-use lru_cache::LruCache;
 use parking_lot::Mutex;
 use primitives::{Bytes, H256};
 use util_error::UtilError;
 
-use super::{
+use super::block_changes::BlockChanges;
+use super::cache::Cache;
+use super::cache_queue_item::CacheQueueItem;
+
+use super::super::{
     Account, ActionHandler, AssetScheme, AssetSchemeAddress, Backend, CacheableItem, Metadata, MetadataAddress,
     OwnedAsset, OwnedAssetAddress, RegularAccount, RegularAccountAddress, Shard, ShardAddress, ShardBackend,
     ShardMetadata, ShardMetadataAddress, TopBackend, World, WorldAddress,
 };
-
-const STATE_CACHE_BLOCKS: usize = 12;
 
 // The percentage of supplied cache size to go to accounts.
 const ACCOUNT_CACHE_RATIO: usize = 35;
@@ -48,47 +63,6 @@ const WORLD_CACHE_RATIO: usize = 1;
 const ASSET_SCHEME_CACHE_RATIO: usize = 10;
 const ASSET_CACHE_RATIO: usize = 40;
 const ACTION_DATA_CACHE_RATIO: usize = 1;
-
-/// Shared canonical state cache.
-struct Cache<Item>
-where
-    Item: CacheableItem, {
-    /// `None` indicates that item is known to be missing.
-    // When changing the type of the values here, be sure to update `mem_used` and
-    // `new`.
-    cache: LruCache<Item::Address, Option<Item>>,
-    /// Information on the modifications in recently committed blocks; specifically which addresses
-    /// changed in which block. Ordered by block number.
-    modifications: VecDeque<BlockChanges<Item>>,
-}
-
-/// Buffered cache item.
-struct CacheQueueItem<Item>
-where
-    Item: CacheableItem, {
-    address: Item::Address,
-    /// Item or `None` if item does not exist.
-    item: Option<Item>,
-    /// Indicates that the item was modified before being added to the cache.
-    modified: bool,
-}
-
-#[derive(Debug)]
-/// Accumulates a list of cacheable item changed in a block.
-struct BlockChanges<Item>
-where
-    Item: CacheableItem, {
-    /// Block number.
-    number: BlockNumber,
-    /// Block hash.
-    hash: H256,
-    /// Parent block hash.
-    parent: H256,
-    /// A set of modified addresses.
-    modified_addresses: HashSet<Item::Address>,
-    /// Block is part of the canonical chain.
-    is_canon: bool,
-}
 
 /// State database abstraction.
 /// Manages shared global state cache which reflects the canonical
@@ -194,42 +168,15 @@ impl StateDB {
 
         StateDB {
             db,
-            account_cache: Arc::new(Mutex::new(Cache {
-                cache: LruCache::new(account_cache_items),
-                modifications: VecDeque::new(),
-            })),
-            regular_account_cache: Arc::new(Mutex::new(Cache {
-                cache: LruCache::new(regular_account_cache_items),
-                modifications: VecDeque::new(),
-            })),
-            metadata_cache: Arc::new(Mutex::new(Cache {
-                cache: LruCache::new(metadata_cache_items),
-                modifications: VecDeque::new(),
-            })),
-            shard_cache: Arc::new(Mutex::new(Cache {
-                cache: LruCache::new(shard_cache_items),
-                modifications: VecDeque::new(),
-            })),
-            shard_metadata_cache: Arc::new(Mutex::new(Cache {
-                cache: LruCache::new(shard_metadata_cache_items),
-                modifications: VecDeque::new(),
-            })),
-            world_cache: Arc::new(Mutex::new(Cache {
-                cache: LruCache::new(world_cache_items),
-                modifications: VecDeque::new(),
-            })),
-            asset_scheme_cache: Arc::new(Mutex::new(Cache {
-                cache: LruCache::new(asset_scheme_cache_items),
-                modifications: VecDeque::new(),
-            })),
-            asset_cache: Arc::new(Mutex::new(Cache {
-                cache: LruCache::new(asset_cache_items),
-                modifications: VecDeque::new(),
-            })),
-            action_data_cache: Arc::new(Mutex::new(Cache {
-                cache: LruCache::new(action_data_cache_items),
-                modifications: VecDeque::new(),
-            })),
+            account_cache: Arc::new(Mutex::new(Cache::new(account_cache_items))),
+            regular_account_cache: Arc::new(Mutex::new(Cache::new(regular_account_cache_items))),
+            metadata_cache: Arc::new(Mutex::new(Cache::new(metadata_cache_items))),
+            shard_cache: Arc::new(Mutex::new(Cache::new(shard_cache_items))),
+            shard_metadata_cache: Arc::new(Mutex::new(Cache::new(shard_metadata_cache_items))),
+            world_cache: Arc::new(Mutex::new(Cache::new(world_cache_items))),
+            asset_scheme_cache: Arc::new(Mutex::new(Cache::new(asset_scheme_cache_items))),
+            asset_cache: Arc::new(Mutex::new(Cache::new(asset_cache_items))),
+            action_data_cache: Arc::new(Mutex::new(Cache::new(action_data_cache_items))),
 
             local_account_cache: Vec::new(),
             local_regular_account_cache: Vec::new(),
@@ -393,87 +340,44 @@ impl StateDB {
 
         // Purge changes from re-enacted and retracted blocks.
         // Filter out committing block if any.
-        let mut clear = false;
-        for block in enacted.iter().filter(|h| commit_hash.as_ref().map_or(true, |p| *h != p)) {
-            clear = clear || {
-                if let Some(ref mut m) = cache.modifications.iter_mut().find(|m| &m.hash == block) {
-                    ctrace!(STATE_DB, "Reverting enacted block {:?}", block);
-                    m.is_canon = true;
-                    for a in &m.modified_addresses {
-                        ctrace!(STATE_DB, "Reverting enacted address {:?}", a);
-                        cache.cache.remove(a);
-                    }
-                    false
-                } else {
-                    true
-                }
-            };
-        }
-
-        for block in retracted {
-            clear = clear || {
-                if let Some(ref mut m) = cache.modifications.iter_mut().find(|m| &m.hash == block) {
-                    ctrace!(STATE_DB, "Retracting block {:?}", block);
-                    m.is_canon = false;
-                    for a in &m.modified_addresses {
-                        ctrace!(STATE_DB, "Retracted address {:?}", a);
-                        cache.cache.remove(a);
-                    }
-                    false
-                } else {
-                    true
-                }
-            };
-        }
+        let clear =
+            !(enacted.iter().filter(|h| commit_hash.as_ref().map_or(true, |p| *h != p)).all(|block| cache.enact(block))
+                && retracted.iter().all(|block| cache.retract(block)));
         if clear {
             // We don't know anything about the block; clear everything
             ctrace!(STATE_DB, "Wiping cache");
-            cache.cache.clear();
-            cache.modifications.clear();
+            cache.clear();
         }
 
         // Propagate cache only if committing on top of the latest canonical state
         // blocks are ordered by number and only one block with a given number is marked as canonical
         // (contributed to canonical state cache)
         if let (Some(number), Some(hash), Some(parent)) = (commit_number, commit_hash, parent_hash) {
-            if cache.modifications.len() == STATE_CACHE_BLOCKS {
-                cache.modifications.pop_back();
-            }
+            cache.keep_size();
             let mut modified_addresses = HashSet::new();
             ctrace!(STATE_DB, "committing {} cache entries", local_cache.len());
             for local_item in local_cache.drain(..) {
-                if local_item.modified {
-                    modified_addresses.insert(local_item.address.clone());
+                let is_modified = local_item.is_modified();
+                let (address, item) = local_item.drain();
+                if is_modified {
+                    modified_addresses.insert(address.clone());
                 }
                 if is_best {
-                    let acc = local_item.item;
-                    if let Some(Some(existing)) = cache.cache.get_mut(&local_item.address) {
-                        if let Some(new) = acc {
-                            if local_item.modified {
+                    if let Some(Some(existing)) = cache.get_mut(&address) {
+                        if let Some(new) = item {
+                            if is_modified {
                                 *existing = new;
                             }
                             continue
                         }
                     }
-                    cache.cache.insert(local_item.address, acc);
+                    cache.insert(address, item);
                 }
             }
 
             // Save modified addresses. These are ordered by the block number.
-            let block_changes = BlockChanges {
-                modified_addresses,
-                number: *number,
-                hash: hash.clone(),
-                is_canon: is_best,
-                parent: parent.clone(),
-            };
-            let insert_at = cache.modifications.iter().enumerate().find(|&(_, m)| m.number < *number).map(|(i, _)| i);
-            ctrace!(STATE_DB, "inserting modifications at {:?}", insert_at);
-            if let Some(insert_at) = insert_at {
-                cache.modifications.insert(insert_at, block_changes);
-            } else {
-                cache.modifications.push_back(block_changes);
-            }
+            let block_changes = BlockChanges::new(*number, *hash, *parent, modified_addresses, is_best);
+            cache.save(number, block_changes);
         }
     }
 
@@ -527,8 +431,8 @@ impl StateDB {
     fn mem_used_impl<Item>(cache: &Cache<Item>) -> usize
     where
         Item: CacheableItem, {
-        let accounts = cache.cache.len();
-        accounts * ::std::mem::size_of::<Option<Item>>()
+        let items = cache.len();
+        items * ::std::mem::size_of::<Option<Item>>()
     }
 
     /// Heap size used.
@@ -551,56 +455,23 @@ impl StateDB {
 
     /// Check if the account can be returned from cache by matching current block parent hash against canonical
     /// state and filtering out account modified in later blocks.
-    fn is_allowed<Item>(
-        &self,
-        addr: &Item::Address,
-        parent_hash: &Option<H256>,
-        modifications: &VecDeque<BlockChanges<Item>>,
-    ) -> bool
+    fn is_allowed<Item>(&self, addr: &Item::Address, parent_hash: &Option<H256>, cache: &Cache<Item>) -> bool
     where
         Item: CacheableItem, {
         if !self.enable_cache {
             return false
         }
-        let mut parent = match parent_hash {
-            None => {
-                ctrace!(STATE_DB, "Cache lookup skipped for {:?}: no parent hash", addr);
-                return false
-            }
-            Some(parent) => parent,
-        };
-        if modifications.is_empty() {
-            return true
-        }
-        // Ignore all accounts modified in later blocks
-        // Modifications contains block ordered by the number
-        // We search for our parent in that list first and then for
-        // all its parent until we hit the canonical block,
-        // checking against all the intermediate modifications.
-        for m in modifications {
-            if &m.hash == parent {
-                if m.is_canon {
-                    return true
-                }
-                parent = &m.parent;
-            }
-            if m.modified_addresses.contains(addr) {
-                ctrace!(STATE_DB, "Cache lookup skipped for {:?}: modified in a later block", addr);
-                return false
-            }
-        }
-        ctrace!(STATE_DB, "Cache lookup skipped for {:?}: parent hash is unknown", addr);
-        false
+        cache.is_allowed(addr, parent_hash)
     }
 
     fn get_cached<Item>(&self, addr: &Item::Address, cache: &Mutex<Cache<Item>>) -> Option<Option<Item>>
     where
         Item: CacheableItem, {
         let mut cache = cache.lock();
-        if !self.is_allowed(addr, &self.parent_hash, &cache.modifications) {
+        if !self.is_allowed(addr, &self.parent_hash, &cache) {
             return None
         }
-        cache.cache.get_mut(addr).cloned()
+        cache.get(addr)
     }
 
     fn get_cached_with<Item, F, U>(&self, a: &Item::Address, f: F, cache: &Mutex<Cache<Item>>) -> Option<U>
@@ -608,10 +479,10 @@ impl StateDB {
         Item: CacheableItem,
         F: FnOnce(Option<&mut Item>) -> U, {
         let mut cache = cache.lock();
-        if !self.is_allowed(a, &self.parent_hash, &cache.modifications) {
+        if !self.is_allowed(a, &self.parent_hash, &cache) {
             return None
         }
-        cache.cache.get_mut(a).map(|c| f(c.as_mut()))
+        cache.get_mut(a).map(|c| f(c.as_mut()))
     }
 }
 
@@ -661,11 +532,7 @@ impl Backend for StateDB {
 
 impl TopBackend for StateDB {
     fn add_to_account_cache(&mut self, addr: Address, data: Option<Account>, modified: bool) {
-        self.local_account_cache.push(CacheQueueItem {
-            address: addr,
-            item: data,
-            modified,
-        })
+        self.local_account_cache.push(CacheQueueItem::new(addr, data, modified));
     }
 
     fn add_to_regular_account_cache(
@@ -674,35 +541,19 @@ impl TopBackend for StateDB {
         data: Option<RegularAccount>,
         modified: bool,
     ) {
-        self.local_regular_account_cache.push(CacheQueueItem {
-            address,
-            item: data,
-            modified,
-        })
+        self.local_regular_account_cache.push(CacheQueueItem::new(address, data, modified));
     }
 
     fn add_to_metadata_cache(&mut self, address: MetadataAddress, item: Option<Metadata>, modified: bool) {
-        self.local_metadata_cache.push(CacheQueueItem {
-            address,
-            item,
-            modified,
-        })
+        self.local_metadata_cache.push(CacheQueueItem::new(address, item, modified));
     }
 
     fn add_to_shard_cache(&mut self, address: ShardAddress, item: Option<Shard>, modified: bool) {
-        self.local_shard_cache.push(CacheQueueItem {
-            address,
-            item,
-            modified,
-        })
+        self.local_shard_cache.push(CacheQueueItem::new(address, item, modified));
     }
 
     fn add_to_action_data_cache(&mut self, address: H256, item: Option<Bytes>, modified: bool) {
-        self.local_action_data_cache.push(CacheQueueItem {
-            address,
-            item,
-            modified,
-        })
+        self.local_action_data_cache.push(CacheQueueItem::new(address, item, modified));
     }
 
     fn get_cached_account(&self, addr: &Address) -> Option<Option<Account>> {
@@ -749,35 +600,19 @@ impl ShardBackend for StateDB {
         item: Option<ShardMetadata>,
         modified: bool,
     ) {
-        self.local_shard_metadata_cache.push(CacheQueueItem {
-            address,
-            item,
-            modified,
-        })
+        self.local_shard_metadata_cache.push(CacheQueueItem::new(address, item, modified));
     }
 
     fn add_to_world_cache(&mut self, address: WorldAddress, item: Option<World>, modified: bool) {
-        self.local_world_cache.push(CacheQueueItem {
-            address,
-            item,
-            modified,
-        })
+        self.local_world_cache.push(CacheQueueItem::new(address, item, modified));
     }
 
     fn add_to_asset_scheme_cache(&mut self, addr: AssetSchemeAddress, item: Option<AssetScheme>, modified: bool) {
-        self.local_asset_scheme_cache.push(CacheQueueItem {
-            address: addr,
-            item,
-            modified,
-        })
+        self.local_asset_scheme_cache.push(CacheQueueItem::new(addr, item, modified));
     }
 
     fn add_to_asset_cache(&mut self, addr: OwnedAssetAddress, item: Option<OwnedAsset>, modified: bool) {
-        self.local_asset_cache.push(CacheQueueItem {
-            address: addr,
-            item,
-            modified,
-        })
+        self.local_asset_cache.push(CacheQueueItem::new(addr, item, modified));
     }
 
     fn get_cached_shard_metadata(&self, addr: &ShardMetadataAddress) -> Option<Option<ShardMetadata>> {
@@ -801,7 +636,7 @@ impl ShardBackend for StateDB {
 mod tests {
     use primitives::U256;
 
-    use super::super::tests::helpers::get_temp_state_db;
+    use super::super::super::tests::helpers::get_temp_state_db;
     use super::*;
 
     #[test]
