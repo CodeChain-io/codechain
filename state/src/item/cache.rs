@@ -261,13 +261,13 @@ where
 
     /// Pull item `a` in our cache from the trie DB.
     /// If it doesn't exist, make item equal the evaluation of `default`.
-    pub fn require_item_or_from<'a, 'db, F, G>(
-        &'a self,
+    pub fn require_item_or_from<'db, F, G>(
+        &self,
         a: &Item::Address,
         default: F,
         db: TrieDB<'db>,
         from_db: G,
-    ) -> cmerkle::Result<RefMut<'a, Item>>
+    ) -> cmerkle::Result<RefMut<Item>>
     where
         F: FnOnce() -> Item,
         G: FnOnce() -> Option<Option<Item>>, {

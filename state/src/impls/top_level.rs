@@ -623,7 +623,7 @@ impl TopLevelState {
         self.account.ensure_cached(&a, &f, db, from_global_cache)
     }
 
-    fn require_account<'a>(&'a self, a: &Address) -> TrieResult<RefMut<'a, Account>> {
+    fn require_account(&self, a: &Address) -> TrieResult<RefMut<Account>> {
         debug_assert_eq!(Ok(false), self.regular_account_exists_and_not_null(a));
 
         let default = || Account::new(0u8.into(), 0.into());
@@ -644,7 +644,7 @@ impl TopLevelState {
         self.regular_account.ensure_cached(&a, &f, db, from_global_cache)
     }
 
-    fn require_regular_account<'a>(&'a self, public: &Public) -> TrieResult<RefMut<'a, RegularAccount>> {
+    fn require_regular_account(&self, public: &Public) -> TrieResult<RefMut<RegularAccount>> {
         let regular_account_address = RegularAccountAddress::new(public);
         let default = || RegularAccount::new(Public::default());
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
@@ -652,7 +652,7 @@ impl TopLevelState {
         self.regular_account.require_item_or_from(&regular_account_address, default, db, from_db)
     }
 
-    fn require_regular_account_from_address<'a>(&'a self, a: &Address) -> TrieResult<RefMut<'a, RegularAccount>> {
+    fn require_regular_account_from_address(&self, a: &Address) -> TrieResult<RefMut<RegularAccount>> {
         let regular_account_address = RegularAccountAddress::from_address(a);
         let default = || RegularAccount::new(Public::default());
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
@@ -660,7 +660,7 @@ impl TopLevelState {
         self.regular_account.require_item_or_from(&regular_account_address, default, db, from_db)
     }
 
-    fn require_metadata<'a>(&'a self) -> TrieResult<RefMut<'a, Metadata>> {
+    fn require_metadata(&self) -> TrieResult<RefMut<Metadata>> {
         let default = || Metadata::new(0);
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
         let address = MetadataAddress::new();
@@ -668,7 +668,7 @@ impl TopLevelState {
         self.metadata.require_item_or_from(&address, default, db, from_db)
     }
 
-    fn require_shard<'a>(&'a self, shard_id: ShardId) -> TrieResult<RefMut<'a, Shard>> {
+    fn require_shard(&self, shard_id: ShardId) -> TrieResult<RefMut<Shard>> {
         let default = || Shard::new(BLAKE_NULL_RLP, vec![], vec![]);
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
         let shard_address = ShardAddress::new(shard_id);
@@ -676,7 +676,7 @@ impl TopLevelState {
         self.shard.require_item_or_from(&shard_address, default, db, from_db)
     }
 
-    fn require_action_data<'a>(&'a self, key: &H256) -> TrieResult<RefMut<'a, Bytes>> {
+    fn require_action_data(&self, key: &H256) -> TrieResult<RefMut<Bytes>> {
         let default = || NULL_RLP.to_vec();
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
         let from_db = || self.db.get_cached_action_data(key);

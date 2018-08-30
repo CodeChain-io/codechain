@@ -405,11 +405,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         self.asset.remove(account);
     }
 
-    fn require_metadata<'a, F>(
-        &'a self,
-        a: &ShardMetadataAddress,
-        default: F,
-    ) -> cmerkle::Result<RefMut<'a, ShardMetadata>>
+    fn require_metadata<F>(&self, a: &ShardMetadataAddress, default: F) -> cmerkle::Result<RefMut<ShardMetadata>>
     where
         F: FnOnce() -> ShardMetadata, {
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
@@ -417,7 +413,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         self.metadata.require_item_or_from(a, default, db, from_db)
     }
 
-    fn require_world<'a, F>(&'a self, a: &WorldAddress, default: F) -> cmerkle::Result<RefMut<'a, World>>
+    fn require_world<F>(&self, a: &WorldAddress, default: F) -> cmerkle::Result<RefMut<World>>
     where
         F: FnOnce() -> World, {
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
@@ -425,11 +421,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         self.world.require_item_or_from(a, default, db, from_db)
     }
 
-    fn require_asset_scheme<'a, F>(
-        &'a self,
-        a: &AssetSchemeAddress,
-        default: F,
-    ) -> cmerkle::Result<RefMut<'a, AssetScheme>>
+    fn require_asset_scheme<F>(&self, a: &AssetSchemeAddress, default: F) -> cmerkle::Result<RefMut<AssetScheme>>
     where
         F: FnOnce() -> AssetScheme, {
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
@@ -437,7 +429,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         self.asset_scheme.require_item_or_from(a, default, db, from_db)
     }
 
-    fn require_asset<'a, F>(&'a self, a: &OwnedAssetAddress, default: F) -> cmerkle::Result<RefMut<'a, OwnedAsset>>
+    fn require_asset<F>(&self, a: &OwnedAssetAddress, default: F) -> cmerkle::Result<RefMut<OwnedAsset>>
     where
         F: FnOnce() -> OwnedAsset, {
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
