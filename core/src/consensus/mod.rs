@@ -141,7 +141,7 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
     }
 
     /// Genesis epoch data.
-    fn genesis_epoch_data<'a>(&self, _header: &M::Header) -> Result<Vec<u8>, String> {
+    fn genesis_epoch_data(&self, _header: &M::Header) -> Result<Vec<u8>, String> {
         Ok(Vec::new())
     }
 
@@ -150,7 +150,7 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
     /// `Yes` from `is_epoch_end`.
     ///
     /// Return `Yes` or `No` when the answer is definitively known.
-    fn signals_epoch_end<'a>(&self, _header: &M::Header) -> EpochChange {
+    fn signals_epoch_end(&self, _header: &M::Header) -> EpochChange {
         EpochChange::No
     }
 
