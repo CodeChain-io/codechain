@@ -27,7 +27,7 @@ pub struct HeaderView<'a> {
 
 impl<'a> HeaderView<'a> {
     /// Creates new view onto header from raw bytes.
-    pub fn new(bytes: &'a [u8]) -> HeaderView<'a> {
+    pub fn new(bytes: &[u8]) -> HeaderView {
         HeaderView {
             rlp: Rlp::new(bytes),
         }
