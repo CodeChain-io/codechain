@@ -291,7 +291,7 @@ impl Scheme {
 
     /// Loads scheme from json file. Provide factories for executing contracts and ensuring
     /// storage goes to the right place.
-    pub fn load<'a, R>(reader: R) -> Result<Self, String>
+    pub fn load<R>(reader: R) -> Result<Self, String>
     where
         R: Read, {
         cjson::scheme::Scheme::load(reader).map_err(fmt_err).and_then(|x| load_from(x).map_err(fmt_err))

@@ -69,7 +69,7 @@ impl fmt::Display for ChainType {
 }
 
 impl ChainType {
-    pub fn scheme<'a>(&self) -> Result<Scheme, String> {
+    pub fn scheme(&self) -> Result<Scheme, String> {
         match self {
             ChainType::Solo => Ok(Scheme::new_test_solo()),
             ChainType::SoloAuthority => Ok(Scheme::new_test_solo_authority()),
