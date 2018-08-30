@@ -229,11 +229,11 @@ where
     /// Check caches for required data
     /// First searches for account in the local, then the shared cache.
     /// Populates local cache if nothing found.
-    pub fn ensure_cached<'a, 'db, F, G, U>(
+    pub fn ensure_cached<'a, F, G, U>(
         &self,
         a: &'a Item::Address,
         f: &F,
-        db: TrieDB<'db>,
+        db: TrieDB,
         from_global_cache: G,
     ) -> cmerkle::Result<U>
     where
