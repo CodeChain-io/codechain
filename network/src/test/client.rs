@@ -181,11 +181,11 @@ impl TestClient {
         self.extensions.insert(name, (extension, api));
     }
 
-    pub fn get_extension<'a>(&'a self, name: &str) -> &'a Extension {
+    pub fn get_extension(&self, name: &str) -> &Extension {
         self.extensions[name].0.deref()
     }
 
-    fn get_api<'a>(&'a self, name: &str) -> &'a TestApi {
+    fn get_api(&self, name: &str) -> &TestApi {
         &self.extensions[name].1
     }
 

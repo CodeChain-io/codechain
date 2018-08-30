@@ -67,7 +67,7 @@ impl<'db> TrieDB<'db> {
     }
 
     /// Get the backing database.
-    pub fn db(&'db self) -> &'db HashDB {
+    pub fn db(&self) -> &HashDB {
         self.db
     }
 

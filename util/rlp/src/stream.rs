@@ -71,7 +71,7 @@ impl RlpStream {
     /// 	assert_eq!(out, vec![0xc8, 0x83, b'c', b'a', b't', 0x83, b'd', b'o', b'g']);
     /// }
     /// ```
-    pub fn append<'a, E>(&'a mut self, value: &E) -> &'a mut Self
+    pub fn append<E>(&mut self, value: &E) -> &mut Self
     where
         E: Encodable, {
         self.finished_list = false;
@@ -83,7 +83,7 @@ impl RlpStream {
     }
 
     /// Appends list of values to the end of stream, chainable.
-    pub fn append_list<'a, E, K>(&'a mut self, values: &[K]) -> &'a mut Self
+    pub fn append_list<E, K>(&mut self, values: &[K]) -> &mut Self
     where
         E: Encodable,
         K: Borrow<E>, {
@@ -96,7 +96,7 @@ impl RlpStream {
 
     /// Appends value to the end of stream, but do not count it as an appended item.
     /// It's useful for wrapper types
-    pub fn append_single_value<'a, E>(&'a mut self, value: &E) -> &'a mut Self
+    pub fn append_single_value<E>(&mut self, value: &E) -> &mut Self
     where
         E: Encodable, {
         value.rlp_append(self);
@@ -178,7 +178,7 @@ impl RlpStream {
     }
 
     /// Appends raw (pre-serialised) RLP data. Use with caution. Chainable.
-    pub fn append_raw<'a>(&'a mut self, bytes: &[u8], item_count: usize) -> &'a mut RlpStream {
+    pub fn append_raw(&mut self, bytes: &[u8], item_count: usize) -> &mut RlpStream {
         // push raw items
         self.buffer.append_slice(bytes);
 
@@ -190,7 +190,7 @@ impl RlpStream {
     }
 
     /// Appends raw (pre-serialised) RLP data. Checks for size oveflow.
-    pub fn append_raw_checked<'a>(&'a mut self, bytes: &[u8], item_count: usize, max_size: usize) -> bool {
+    pub fn append_raw_checked(&mut self, bytes: &[u8], item_count: usize, max_size: usize) -> bool {
         if self.estimate_size(bytes.len()) > max_size {
             return false
         }
@@ -199,7 +199,7 @@ impl RlpStream {
     }
 
     /// Calculate total RLP size for appended payload.
-    pub fn estimate_size<'a>(&'a self, add: usize) -> usize {
+    pub fn estimate_size(&self, add: usize) -> usize {
         let total_size = self.buffer.len() + add;
         let mut base_size = total_size;
         for list in &self.unfinished_lists[..] {
@@ -215,7 +215,7 @@ impl RlpStream {
 
 
     /// Returns current RLP size in bytes for the data pushed into the list.
-    pub fn len<'a>(&'a self) -> usize {
+    pub fn len(&self) -> usize {
         self.estimate_size(0)
     }
 
