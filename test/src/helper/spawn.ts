@@ -35,6 +35,7 @@ export default class CodeChain {
   private _sdk: SDK;
   private _dbPath: string;
   private _ipcPath: string;
+  private _keysPath: string;
   private _chain: ChainType;
   private argv: string[];
   private process?: ChildProcess;
@@ -43,6 +44,7 @@ export default class CodeChain {
   public get sdk(): SDK { return this._sdk; }
   public get dbPath(): string { return this._dbPath; }
   public get ipcPath(): string { return this._ipcPath; }
+  public get keysPath(): string { return this._keysPath; }
   public get rpcPort(): number { return 8081 + this.id; }
   public get port(): number { return 3486 + this.id; }
   public get secretKey(): number { return 1 + this.id; }
@@ -53,8 +55,10 @@ export default class CodeChain {
     this._id = CodeChain.idCounter++;
 
     mkdirp.sync(`${projectRoot}/db/`);
+    mkdirp.sync(`${projectRoot}/keys/`);
     this._dbPath = mkdtempSync(`${projectRoot}/db/`);
     this._ipcPath = `/tmp/jsonrpc.${this.id}.ipc`;
+    this._keysPath = mkdtempSync(`${projectRoot}/keys/`);
     this._sdk = new SDK({ server: `http://localhost:${this.rpcPort}` });
     this._chain = chain || "solo";
     this.argv = argv || [];
@@ -73,6 +77,7 @@ export default class CodeChain {
           "--chain", this.chain,
           "--db-path", this.dbPath,
           "--ipc-path", this.ipcPath,
+          "--keys-path", this.keysPath,
           "--jsonrpc-port", this.rpcPort.toString(),
           "--port", this.port.toString(),
           "--instance-id", this.id.toString(),
