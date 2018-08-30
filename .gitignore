@@ -7,7 +7,7 @@
 **/*.rs.bk
 **/*.iml
 .idea/
-db/
+/db/
 /snapshot/
 /log/
 /keys/
