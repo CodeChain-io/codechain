@@ -38,18 +38,20 @@ impl Api for ClientApi {
             let need_encryption = extension.need_encryption();
             let extension_name = extension.name().to_string();
             let node_id = *id;
+            let data = message.to_vec();
+            let bytes = data.len();
             if let Err(err) = self.p2p_channel.send(P2pMessage::SendExtensionMessage {
                 node_id,
                 extension_name,
                 need_encryption,
-                data: message.to_vec(),
+                data,
             }) {
-                cwarn!(NETAPI, "Cannot send extension message to {:?} : {:?}", id, err);
+                cerror!(NETAPI, "`{}` cannot send {} bytes message to {:?} : {:?}", extension.name(), bytes, id, err);
             } else {
-                ctrace!(NETAPI, "Request send extension message to {:?}", id);
+                cdebug!(NETAPI, "`{}` sends {} bytes to {:?}", extension.name(), bytes, id);
             }
         } else {
-            cdebug!(NETAPI, "The extension already dropped");
+            cwarn!(NETAPI, "The extension already dropped");
         }
     }
 
@@ -188,7 +190,15 @@ impl Client {
     define_method!(on_node_added; id, &NodeId; version, u64);
     define_broadcast_method!(on_node_removed; id, &NodeId);
 
-    define_method!(on_message; id, &NodeId; data, &[u8]);
+    pub fn on_message(&self, name: &String, id: &NodeId, data: &[u8]) {
+        let extensions = self.extensions.read();
+        if let Some(ref extension) = extensions.get(name.as_str()) {
+            cdebug!(NETAPI, "`{}` receives {} bytes", name, data.len());
+            extension.on_message(id, data);
+        } else {
+            cwarn!(NETAPI, "{} doesn't exist.", name);
+        }
+    }
 
     define_method!(on_timeout; timer_id, TimerToken);
 
