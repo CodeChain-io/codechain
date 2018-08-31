@@ -163,8 +163,9 @@ impl EstablishedConnection {
     fn send(&mut self) -> Result<bool> {
         if let Some(message) = self.send_queue.pop_front() {
             self.stream.write(&message)?;
-            Ok(true)
+            Ok(false)
         } else {
+            self.stream.flush()?;
             Ok(false)
         }
     }

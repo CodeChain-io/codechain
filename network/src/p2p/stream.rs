@@ -14,12 +14,13 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::collections::VecDeque;
 use std::error::Error as StdError;
 use std::fmt;
-use std::io::{self, Write};
+use std::io;
 use std::net;
 
-use mio::deprecated::TryRead;
+use mio::deprecated::{TryRead, TryWrite};
 use mio::event::Evented;
 use mio::net::TcpStream;
 use mio::{Poll, PollOpt, Ready, Token};
@@ -91,6 +92,7 @@ enum ReadRetry {
 struct TryStream {
     stream: TcpStream,
     read: Option<ReadRetry>,
+    write: VecDeque<Vec<u8>>,
 }
 
 impl TryStream {
@@ -190,6 +192,51 @@ impl TryStream {
         Ok(Some(result))
     }
 
+    fn write(&mut self) -> io::Result<bool> {
+        debug_assert!(!self.write.is_empty());
+        let mut job = self.write.pop_front().unwrap();
+        let peer_socket = self.peer_addr().unwrap();
+        match self.stream.try_write(&job) {
+            Ok(Some(ref n)) if n == &job.len() => {
+                ctrace!(NETWORK, "{} bytes sent to {}", n, peer_socket);
+                Ok(true)
+            }
+            Ok(Some(n)) => {
+                debug_assert!(n < job.len());
+                let sent: Vec<_> = job.drain(..n).collect();
+                debug_assert_eq!(n, sent.len());
+                ctrace!(NETWORK, "{} bytes sent to {}, {} bytes remain", n, peer_socket, job.len());
+                self.write.push_front(job);
+                Ok(false)
+            }
+            Ok(None) => {
+                ctrace!(NETWORK, "Cannot send a message to {}, {} bytes remain", peer_socket, job.len());
+                self.write.push_front(job);
+                Ok(false)
+            }
+            Err(err) => {
+                cdebug!(NETWORK, "Cannot send a message to {}, {} bytes remain : {:?}", peer_socket, job.len(), err);
+                self.write.push_front(job);
+                Err(err)
+            }
+        }
+    }
+
+    fn write_bytes(&mut self, bytes_to_send: Vec<u8>) -> io::Result<()> {
+        self.write.push_back(bytes_to_send);
+        self.flush()?;
+        Ok(())
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        while !self.write.is_empty() {
+            if !self.write()? {
+                break
+            }
+        }
+        Ok(())
+    }
+
     fn stream(&self) -> &TcpStream {
         &self.stream
     }
@@ -233,15 +280,17 @@ impl Stream {
     where
         M: Encodable, {
         let bytes = message.rlp_bytes();
-        Ok(self.write_bytes(&bytes)?)
+        self.try_stream.write_bytes(bytes.to_vec())?;
+        Ok(())
+    }
+
+    pub fn flush(&mut self) -> Result<()> {
+        self.try_stream.flush()?;
+        Ok(())
     }
 
     fn read_bytes(&mut self) -> io::Result<Option<Vec<u8>>> {
         self.try_stream.read_bytes()
-    }
-
-    fn write_bytes(&mut self, bytes_to_send: &[u8]) -> io::Result<()> {
-        self.try_stream.stream.write_all(&bytes_to_send)
     }
 
     pub fn stream(&self) -> &TcpStream {
@@ -291,6 +340,11 @@ impl SignedStream {
         self.stream.write(&signed_message)
     }
 
+    pub fn flush(&mut self) -> Result<()> {
+        self.stream.flush()?;
+        Ok(())
+    }
+
     pub fn session(&self) -> &Session {
         &self.session
     }
@@ -306,6 +360,7 @@ impl From<TcpStream> for Stream {
             try_stream: TryStream {
                 stream,
                 read: None,
+                write: VecDeque::default(),
             },
         }
     }
@@ -330,11 +385,17 @@ impl Into<Stream> for SignedStream {
 }
 
 impl Evented for Stream {
-    fn register(&self, poll: &Poll, token: Token, interest: Ready, opts: PollOpt) -> io::Result<()> {
+    fn register(&self, poll: &Poll, token: Token, mut interest: Ready, opts: PollOpt) -> io::Result<()> {
+        if !self.try_stream.write.is_empty() {
+            interest |= Ready::writable();
+        }
         self.try_stream.stream.register(poll, token, interest, opts)
     }
 
-    fn reregister(&self, poll: &Poll, token: Token, interest: Ready, opts: PollOpt) -> io::Result<()> {
+    fn reregister(&self, poll: &Poll, token: Token, mut interest: Ready, opts: PollOpt) -> io::Result<()> {
+        if !self.try_stream.write.is_empty() {
+            interest |= Ready::writable();
+        }
         self.try_stream.stream.reregister(poll, token, interest, opts)
     }
 
