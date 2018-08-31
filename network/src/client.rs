@@ -24,7 +24,7 @@ use time::Duration;
 
 use super::p2p::Message as P2pMessage;
 use super::timer::Message as TimerMessage;
-use super::{Api, NetworkExtension, NetworkExtensionError, NetworkExtensionResult, NodeId, TimerToken};
+use super::{Api, IntoSocketAddr, NetworkExtension, NetworkExtensionError, NetworkExtensionResult, NodeId, TimerToken};
 
 struct ClientApi {
     extension: Weak<NetworkExtension>,
@@ -46,9 +46,16 @@ impl Api for ClientApi {
                 need_encryption,
                 data,
             }) {
-                cerror!(NETAPI, "`{}` cannot send {} bytes message to {:?} : {:?}", extension.name(), bytes, id, err);
+                cerror!(
+                    NETAPI,
+                    "`{}` cannot send {} bytes message to {} : {:?}",
+                    extension.name(),
+                    bytes,
+                    id.into_addr(),
+                    err
+                );
             } else {
-                cdebug!(NETAPI, "`{}` sends {} bytes to {:?}", extension.name(), bytes, id);
+                cdebug!(NETAPI, "`{}` sends {} bytes to {}", extension.name(), bytes, id.into_addr());
             }
         } else {
             cwarn!(NETAPI, "The extension already dropped");
@@ -193,7 +200,7 @@ impl Client {
     pub fn on_message(&self, name: &String, id: &NodeId, data: &[u8]) {
         let extensions = self.extensions.read();
         if let Some(ref extension) = extensions.get(name.as_str()) {
-            cdebug!(NETAPI, "`{}` receives {} bytes", name, data.len());
+            cdebug!(NETAPI, "`{}` receives {} bytes from {}", name, data.len(), id.into_addr());
             extension.on_message(id, data);
         } else {
             cwarn!(NETAPI, "{} doesn't exist.", name);

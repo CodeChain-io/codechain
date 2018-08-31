@@ -112,7 +112,7 @@ impl TryStream {
             Ok((total_length, bytes))
         } else {
             let from_socket = self.peer_addr().unwrap();
-            cdebug!(NETWORK, "Cannot read length from socket({:?}).", from_socket);
+            cdebug!(NETWORK, "Cannot read length from socket({}).", from_socket);
             self.read = Some(ReadRetry::ReadLenOfLen {
                 bytes,
             });
@@ -150,13 +150,13 @@ impl TryStream {
                     total_length,
                     result,
                 }) => {
-                    cdebug!(NETWORK, "Retry the previous job from {:?}. {} bytes remain.", from_socket, total_length);
+                    cdebug!(NETWORK, "Retry the previous job from {}. {} bytes remain.", from_socket, total_length);
                     (total_length, result)
                 }
                 Some(ReadRetry::ReadLenOfLen {
                     bytes,
                 }) => {
-                    cdebug!(NETWORK, "Retry the previous job from {:?}.", from_socket);
+                    cdebug!(NETWORK, "Retry the previous job from {}.", from_socket);
                     self.read_len_of_len(bytes)?
                 }
             }
@@ -167,7 +167,7 @@ impl TryStream {
         }
         let mut bytes: [u8; 1024] = [0; 1024];
 
-        ctrace!(NETWORK, "Read {} bytes from {:?}", total_length, from_socket);
+        ctrace!(NETWORK, "Read {} bytes from {}", total_length, from_socket);
         while total_length != 0 {
             let to_be_read = ::std::cmp::min(total_length, 1024);
             if let Some(read_size) = self.stream.try_read(&mut bytes[0..to_be_read])? {
@@ -180,7 +180,7 @@ impl TryStream {
                     total_length,
                     result,
                 });
-                cdebug!(NETWORK, "Cannot read data from socket({:?}), {} bytes remain.", from_socket, total_length);
+                cdebug!(NETWORK, "Cannot read data from {}, {} bytes remain.", from_socket, total_length);
                 return Ok(None)
             }
         }
