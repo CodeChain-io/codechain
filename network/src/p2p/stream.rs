@@ -132,6 +132,9 @@ impl TryStream {
             if bytes[0] >= 0xc0 {
                 return Ok(((bytes[0] - 0xc0) as usize, bytes))
             }
+            let from_socket = self.peer_addr().unwrap();
+            cerror!(NETWORK, "Invalid messages({:?}) from {}", bytes, from_socket);
+            self.shutdown()?;
             Ok((0, vec![]))
         } else {
             Ok((0, vec![]))
