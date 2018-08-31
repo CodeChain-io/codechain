@@ -343,7 +343,7 @@ impl Handler {
             }
             ConnectionType::SyncWaiting => {
                 if remain {
-                    cdebug!(NETWORK, "Cannot send ack message");
+                    cerror!(NETWORK, "Cannot send ack message");
                 } else {
                     // Ack message was sent
                     self.connections.establish_wait_sync_connection(stream);
