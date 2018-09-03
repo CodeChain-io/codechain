@@ -64,6 +64,7 @@ macro_rules! implement_blake {
     };
 }
 
+implement_blake!(H160, 20);
 implement_blake!(H256, 32);
 implement_blake!(H512, 64);
 
