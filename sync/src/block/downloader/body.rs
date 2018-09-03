@@ -28,9 +28,9 @@ pub struct BodyDownloader {
 }
 
 impl BodyDownloader {
-    pub fn new(targets: Vec<(H256, H256, H256)>) -> Self {
+    pub fn new() -> Self {
         Self {
-            targets,
+            targets: Vec::new(),
             downloading: HashSet::new(),
             downloaded: HashMap::new(),
         }

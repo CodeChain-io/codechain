@@ -63,7 +63,7 @@ impl Extension {
         Arc::new(Self {
             requests: RwLock::new(HashMap::new()),
             header_downloaders: RwLock::new(HashMap::new()),
-            body_downloader: Mutex::new(BodyDownloader::new(Vec::new())),
+            body_downloader: Mutex::new(BodyDownloader::new()),
             tokens: RwLock::new(HashMap::new()),
             tokens_info: RwLock::new(HashMap::new()),
             token_generator: Mutex::new(TokenGenerator::new(SYNC_EXPIRE_TOKEN_BEGIN, SYNC_EXPIRE_TOKEN_END)),
