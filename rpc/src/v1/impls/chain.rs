@@ -162,7 +162,7 @@ where
 
     fn get_regular_key_owner(&self, public: Public, block_number: Option<u64>) -> Result<Option<PlatformAddress>> {
         let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
-        const VERSION: u8 = 0;
+        const VERSION: u8 = 1;
         let network_id = self.client.common_params().network_id;
         Ok(self
             .client
@@ -218,7 +218,7 @@ where
         if self.miner.authoring_params().author.is_zero() {
             Ok(None)
         } else {
-            const VERSION: u8 = 0;
+            const VERSION: u8 = 1;
             let network_id = self.client.common_params().network_id;
             Ok(Some(PlatformAddress::create(VERSION, network_id, self.miner.authoring_params().author)))
         }

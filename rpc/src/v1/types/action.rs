@@ -70,7 +70,7 @@ impl From<ShardChangeType> for ShardChange {
 
 impl Action {
     pub fn from_core(from: ActionType, network_id: NetworkId) -> Self {
-        const VERSION: u8 = 0;
+        const VERSION: u8 = 1;
         match from {
             ActionType::AssetTransactionGroup {
                 transactions,

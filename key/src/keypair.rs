@@ -16,17 +16,15 @@
 
 use std::fmt;
 
-use crypto::{blake256, ripemd160};
+use crypto::Blake;
+use primitives::H160;
 use rustc_hex::ToHex;
 use secp256k1::key;
 
 use super::{Address, Error, Private, Public, SECP256K1};
 
 pub fn public_to_address(public: &Public) -> Address {
-    let hash = ripemd160(blake256(public));
-    let mut result = Address::default();
-    result.copy_from_slice(&hash);
-    result
+    H160::blake(public).into()
 }
 
 #[derive(Debug, Clone, PartialEq)]
