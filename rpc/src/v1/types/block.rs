@@ -46,7 +46,7 @@ impl Block {
     pub fn from_core(block: CoreBlock, network_id: NetworkId) -> Self {
         let block_number = block.header.number();
         let block_hash = block.header.hash();
-        const VERSION: u8 = 0;
+        const VERSION: u8 = 1;
         Block {
             parent_hash: block.header.parent_hash().clone(),
             timestamp: block.header.timestamp(),

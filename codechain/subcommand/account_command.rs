@@ -71,7 +71,7 @@ pub fn run_account_command(matches: ArgMatches) -> Result<(), String> {
 fn create(ap: &AccountProvider, network_id: NetworkId) -> Result<(), String> {
     if let Some(password) = read_password_and_confirm() {
         let (address, _) = ap.new_account_and_public(&password).expect("Cannot create account");
-        println!("{}", PlatformAddress::create(0, network_id, address));
+        println!("{}", PlatformAddress::create(1, network_id, address));
     } else {
         return Err("The password does not match".to_string())
     }
@@ -84,7 +84,7 @@ fn import(ap: &AccountProvider, network_id: NetworkId, json_path: &str) -> Resul
             let password = prompt_password("Password: ");
             match ap.import_wallet(json.as_slice(), &password) {
                 Ok(address) => {
-                    println!("{}", PlatformAddress::create(0, network_id, address));
+                    println!("{}", PlatformAddress::create(1, network_id, address));
                 }
                 Err(e) => return Err(format!("{}", e)),
             }
@@ -99,7 +99,7 @@ fn import_raw(ap: &AccountProvider, network_id: NetworkId, raw_key: &str) -> Res
         Ok(private) => {
             if let Some(password) = read_password_and_confirm() {
                 match ap.insert_account(private, &password) {
-                    Ok(address) => println!("{}", PlatformAddress::create(0, network_id, address)),
+                    Ok(address) => println!("{}", PlatformAddress::create(1, network_id, address)),
                     Err(e) => return Err(format!("{:?}", e)),
                 }
             } else {
@@ -128,7 +128,7 @@ fn remove(ap: &AccountProvider, address: &str) -> Result<(), String> {
 fn list(ap: &AccountProvider, network_id: NetworkId) -> Result<(), String> {
     let addresses = ap.get_list().expect("Cannot get account list");
     for address in addresses {
-        println!("{}", PlatformAddress::create(0, network_id, address))
+        println!("{}", PlatformAddress::create(1, network_id, address))
     }
     Ok(())
 }

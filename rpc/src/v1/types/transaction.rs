@@ -84,7 +84,7 @@ impl From<TransactionType> for Transaction {
                 network_id,
                 shard_id,
                 nonce,
-                owners: owners.into_iter().map(|owner| PlatformAddress::create(0, network_id, owner)).collect(),
+                owners: owners.into_iter().map(|owner| PlatformAddress::create(1, network_id, owner)).collect(),
                 hash,
             },
             TransactionType::SetWorldOwners {
@@ -98,7 +98,7 @@ impl From<TransactionType> for Transaction {
                 shard_id,
                 world_id,
                 nonce,
-                owners: owners.into_iter().map(|owner| PlatformAddress::create(0, network_id, owner)).collect(),
+                owners: owners.into_iter().map(|owner| PlatformAddress::create(1, network_id, owner)).collect(),
                 hash,
             },
             TransactionType::SetWorldUsers {
@@ -112,7 +112,7 @@ impl From<TransactionType> for Transaction {
                 shard_id,
                 world_id,
                 nonce,
-                users: users.into_iter().map(|user| PlatformAddress::create(0, network_id, user)).collect(),
+                users: users.into_iter().map(|user| PlatformAddress::create(1, network_id, user)).collect(),
                 hash,
             },
             TransactionType::AssetMint {
@@ -128,7 +128,7 @@ impl From<TransactionType> for Transaction {
                 shard_id,
                 world_id,
                 metadata,
-                registrar: registrar.map(|registrar| PlatformAddress::create(0, network_id, registrar)),
+                registrar: registrar.map(|registrar| PlatformAddress::create(1, network_id, registrar)),
                 nonce,
                 output,
                 hash,

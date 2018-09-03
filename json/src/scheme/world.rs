@@ -38,13 +38,13 @@ mod tests {
     fn deserialization() {
         let s = r#"{
             "nonce": 0,
-            "owners": ["tccqqtk3q3rea46cq4cpa4h5tm43nw3supd6uxtltxv"]
+            "owners": ["tccq8txq9uafdg8y2de9m2tdkhsfsj3m9nluq94hyan"]
         }"#;
         let world: World = serde_json::from_str(s).unwrap();
         assert_eq!(
             World {
                 nonce: Some(Uint(0.into())),
-                owners: Some(vec![PlatformAddress::from_str("tccqqtk3q3rea46cq4cpa4h5tm43nw3supd6uxtltxv").unwrap()]),
+                owners: Some(vec![PlatformAddress::from_str("tccq8txq9uafdg8y2de9m2tdkhsfsj3m9nluq94hyan").unwrap()]),
                 users: None,
             },
             world
@@ -55,13 +55,13 @@ mod tests {
     fn with_non_zero_nonce_deserialization() {
         let s = r#"{
             "nonce": 100,
-            "owners": ["tccqqtk3q3rea46cq4cpa4h5tm43nw3supd6uxtltxv"]
+            "owners": ["tccq8txq9uafdg8y2de9m2tdkhsfsj3m9nluq94hyan"]
         }"#;
         let world: World = serde_json::from_str(s).unwrap();
         assert_eq!(
             World {
                 nonce: Some(Uint(100.into())),
-                owners: Some(vec![PlatformAddress::from_str("tccqqtk3q3rea46cq4cpa4h5tm43nw3supd6uxtltxv").unwrap()]),
+                owners: Some(vec![PlatformAddress::from_str("tccq8txq9uafdg8y2de9m2tdkhsfsj3m9nluq94hyan").unwrap()]),
                 users: None,
             },
             world
@@ -87,13 +87,13 @@ mod tests {
     #[test]
     fn world_without_nonce_deserialization() {
         let s = r#"{
-            "owners": ["tccqqtk3q3rea46cq4cpa4h5tm43nw3supd6uxtltxv"]
+            "owners": ["tccq8txq9uafdg8y2de9m2tdkhsfsj3m9nluq94hyan"]
         }"#;
         let world: World = serde_json::from_str(s).unwrap();
         assert_eq!(
             World {
                 nonce: None,
-                owners: Some(vec![PlatformAddress::from_str("tccqqtk3q3rea46cq4cpa4h5tm43nw3supd6uxtltxv").unwrap()]),
+                owners: Some(vec![PlatformAddress::from_str("tccq8txq9uafdg8y2de9m2tdkhsfsj3m9nluq94hyan").unwrap()]),
                 users: None,
             },
             world

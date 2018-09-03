@@ -38,7 +38,7 @@ pub struct PlatformAddress {
 
 impl PlatformAddress {
     pub fn create(version: u8, network_id: NetworkId, address: Address) -> Self {
-        debug_assert_eq!(0, version);
+        debug_assert_eq!(1, version);
         assert!(check_network_id(&network_id));
         Self {
             network_id,
@@ -150,7 +150,7 @@ impl FromStr for PlatformAddress {
             return Err(Error::Bech32UnknownHRP)
         }
         let data = rearrange_bits(&decoded.data, 5, 8);
-        if data[0] != 0 {
+        if data[0] != 1 {
             return Err(Error::InvalidPlatformAddressVersion(data[0]))
         }
         Ok(Self {
@@ -234,16 +234,16 @@ mod tests {
 
     #[test]
     fn serialization() {
-        let address = PlatformAddress::from_str("cccqql54g07mu04fm4s8d6em6kmxenkkxzfzytqcve5").unwrap();
+        let address = PlatformAddress::from_str("tccq8txjnstz9h2uj2xw4jczejp57ew9zp7nqycg65e").unwrap();
         let serialized = serde_json::to_string(&address).unwrap();
-        assert_eq!(serialized, r#""cccqql54g07mu04fm4s8d6em6kmxenkkxzfzytqcve5""#);
+        assert_eq!(serialized, r#""tccq8txjnstz9h2uj2xw4jczejp57ew9zp7nqycg65e""#);
     }
 
     #[test]
     fn deserialization() {
         let addr1: Result<PlatformAddress, _> = serde_json::from_str(r#""""#);
         let addr2: Result<PlatformAddress, _> =
-            serde_json::from_str(r#""cccqql54g07mu04fm4s8d6em6kmxenkkxzfzytqcve5""#);
+            serde_json::from_str(r#""tccq8txjnstz9h2uj2xw4jczejp57ew9zp7nqycg65e""#);
 
         assert!(addr1.is_err());
         assert!(addr2.is_ok());
@@ -252,23 +252,23 @@ mod tests {
     #[test]
     fn to_string() {
         let address = PlatformAddress {
-            network_id: "cc".into(),
-            version: 0,
+            network_id: "tc".into(),
+            version: 1,
             address: "3f4aa1fedf1f54eeb03b759deadb36676b184911".into(),
         };
 
-        assert_eq!("cccqql54g07mu04fm4s8d6em6kmxenkkxzfzytqcve5".to_string(), address.to_string());
+        assert_eq!("tccqyl54g07mu04fm4s8d6em6kmxenkkxzfzyxyy2hg".to_string(), address.to_string());
     }
 
     #[test]
     fn from_str() {
         let address = PlatformAddress {
-            network_id: "cc".into(),
-            version: 0,
+            network_id: "tc".into(),
+            version: 1,
             address: "3f4aa1fedf1f54eeb03b759deadb36676b184911".into(),
         };
 
-        assert_eq!(address, "cccqql54g07mu04fm4s8d6em6kmxenkkxzfzytqcve5".into());
+        assert_eq!(address, "tccqyl54g07mu04fm4s8d6em6kmxenkkxzfzyxyy2hg".into());
     }
 
     #[test]
