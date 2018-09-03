@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use primitives::{H256, H512};
+use primitives::{H160, H256, H512};
 use rcrypto::blake2b::Blake2b;
 use rcrypto::digest::Digest;
 
@@ -47,6 +47,7 @@ macro_rules! implement_blake {
             fn blake<T: AsRef<[u8]>>(s: T) -> Self {
                 let input = s.as_ref();
                 let mut result = Self::default();
+                debug_assert_eq!($len, result.len());
                 let mut hasher = Blake2b::new($len);
                 hasher.input(input);
                 hasher.result(&mut *result);
@@ -55,6 +56,7 @@ macro_rules! implement_blake {
             fn blake_with_key<T: AsRef<[u8]>>(s: T, key: &[u8]) -> Self {
                 let input = s.as_ref();
                 let mut result = Self::default();
+                debug_assert_eq!($len, result.len());
                 let mut hasher = Blake2b::new_keyed($len, &key);
                 hasher.input(input);
                 hasher.result(&mut *result);
