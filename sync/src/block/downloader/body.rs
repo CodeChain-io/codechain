@@ -85,12 +85,16 @@ impl BodyDownloader {
 
     pub fn drain(&mut self) -> Vec<(H256, Vec<UnverifiedParcel>)> {
         let mut result = Vec::new();
-        for (target, ..) in &self.targets {
+        let mut new_targets = Vec::new();
+
+        for (target, prev_root, parcels_root) in &self.targets {
             if let Some(body) = self.downloaded.remove(target) {
                 result.push((*target, body));
+            } else {
+                new_targets.push((*target, *prev_root, *parcels_root));
             }
         }
-        self.targets.drain(0..result.len());
+        self.targets = new_targets;
         result
     }
 }
