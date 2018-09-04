@@ -28,6 +28,7 @@ use cnetwork::{Api, NetworkExtension, NodeId, TimerToken};
 use ctypes::parcel::Action;
 use ctypes::BlockNumber;
 use primitives::{H256, U256};
+use rand::{thread_rng, Rng};
 use rlp::{Encodable, UntrustedRlp};
 use time::Duration;
 
@@ -154,7 +155,9 @@ impl NetworkExtension for Extension {
         match token {
             SYNC_TIMER_TOKEN => {
                 let total_score = self.client.chain_info().total_score;
-                let peer_ids: Vec<_> = self.header_downloaders.read().keys().cloned().collect();
+                let mut peer_ids: Vec<_> = self.header_downloaders.read().keys().cloned().collect();
+                thread_rng().shuffle(&mut peer_ids);
+
                 for id in peer_ids {
                     if let Some(peer) = self.header_downloaders.write().get_mut(&id) {
                         if let Some(request) = peer.create_request() {
@@ -512,7 +515,9 @@ impl Extension {
         self.body_downloader.lock().remove_target(exists);
 
         let total_score = self.client.chain_info().total_score;
-        let peer_ids: Vec<_> = self.header_downloaders.read().keys().cloned().collect();
+        let mut peer_ids: Vec<_> = self.header_downloaders.read().keys().cloned().collect();
+        thread_rng().shuffle(&mut peer_ids);
+
         for id in peer_ids {
             let peer_score = if let Some(peer) = self.header_downloaders.read().get(&id) {
                 peer.total_score()
