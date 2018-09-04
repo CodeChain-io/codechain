@@ -37,10 +37,14 @@ impl BodyDownloader {
     }
 
     pub fn create_request(&mut self) -> Option<RequestMessage> {
+        const MAX_BODY_REQEUST_LENGTH: usize = 128;
         let mut hashes = Vec::new();
         for (hash, ..) in &self.targets {
             if !self.downloading.contains(hash) && !self.downloaded.contains_key(hash) {
                 hashes.push(*hash);
+            }
+            if hashes.len() >= MAX_BODY_REQEUST_LENGTH {
+                break
             }
         }
         if hashes.len() != 0 {
