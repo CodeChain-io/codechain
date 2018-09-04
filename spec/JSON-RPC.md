@@ -185,7 +185,6 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
  * [account_getList](#account_getlist)
  * [account_create](#account_create)
  * [account_importRaw](#account_importraw)
- * [account_remove](#account_remove)
  * [account_unlock](#account_unlock)
  * [account_sign](#account_sign)
  * [account_changePassword](#account_changepassword)
@@ -1529,33 +1528,6 @@ Response Example
 {
   "jsonrpc":"2.0",
   "result":"cccqz3z4e3x6f5j80wexg0xfr0qsrqcuyzf7g4y0je6",
-  "id":6
-}
-```
-
-## account_remove
-Removes the account
-
-Params:
- 1. account: `PlatformAddress`
- 2. password: `string` | `null`
-
-Return type: `null`
-
-Errors: `Keystore Error`, `Wrong Password`, `No Such Account`, `Invalid Params`, `Invalid NetworkId`
-
-Request Example
-```
-curl \
-    -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "account_remove", "params": ["cccqqfz3sx7fr7uxqa5kl63qjdw9zrntru5kcdsjywj"], "id": 6}' \
-```
-
-Response Example
-```
-{
-  "jsonrpc":"2.0",
-  "result":null,
   "id":6
 }
 ```

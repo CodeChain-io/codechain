@@ -32,10 +32,6 @@ build_rpc_trait! {
         # [rpc(name = "account_importRaw")]
         fn create_account_from_secret(&self, H256, Option<Password>) -> Result<PlatformAddress>;
 
-        /// Removes the account
-        # [rpc(name = "account_remove")]
-        fn remove_account(&self, PlatformAddress, Option<Password>) -> Result<()>;
-
         /// Unlocks the specified account for use.
         # [rpc(name = "account_unlock")]
         fn unlock(&self, PlatformAddress, Password, Option<u64>) -> Result<()>;

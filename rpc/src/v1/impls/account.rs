@@ -62,11 +62,6 @@ impl Account for AccountClient {
             .map_err(account_provider)
     }
 
-    fn remove_account(&self, address: PlatformAddress, passphrase: Option<Password>) -> Result<()> {
-        let address = address.try_into_address().map_err(errors::core)?;
-        self.account_provider.remove_account(address, &passphrase.unwrap_or_default()).map_err(account_provider)
-    }
-
     fn sign(&self, message_digest: H256, address: PlatformAddress, passphrase: Option<Password>) -> Result<Signature> {
         let address = address.try_into_address().map_err(errors::core)?;
         self.account_provider.sign(address, passphrase, message_digest).map(|sig| sig.into()).map_err(account_provider)
