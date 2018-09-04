@@ -69,10 +69,7 @@ impl Account for AccountClient {
 
     fn sign(&self, message_digest: H256, address: PlatformAddress, passphrase: Option<Password>) -> Result<Signature> {
         let address = address.try_into_address().map_err(errors::core)?;
-        self.account_provider
-            .sign(address, Some(passphrase.unwrap_or_default()), message_digest)
-            .map(|sig| sig.into())
-            .map_err(account_provider)
+        self.account_provider.sign(address, passphrase, message_digest).map(|sig| sig.into()).map_err(account_provider)
     }
 
     fn change_password(&self, address: PlatformAddress, old_password: Password, new_password: Password) -> Result<()> {
