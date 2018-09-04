@@ -83,6 +83,12 @@ impl BodyDownloader {
         }
     }
 
+    pub fn reset_downloading(&mut self, hashes: &[H256]) {
+        for hash in hashes {
+            self.downloading.remove(&hash);
+        }
+    }
+
     pub fn drain(&mut self) -> Vec<(H256, Vec<UnverifiedParcel>)> {
         let mut result = Vec::new();
         let mut new_targets = Vec::new();
