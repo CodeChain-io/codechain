@@ -14,37 +14,62 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import { SDK } from "codechain-sdk";
-import { PlatformAddress } from "codechain-sdk/lib/key/PlatformAddress";
-
-import { wait } from "../helper/promise";
 import CodeChain from "../helper/spawn";
 
-describe("2 nodes", () => {
-  const secret = "ede1d4ccb4ec9a8bbbae9a13db3f4a7b56ea04189be86ac3a6a439d9a0a1addd";
-  const address = PlatformAddress.fromAccountId(SDK.util.getAccountIdFromPrivate(secret));
+describe("sync", () => {
+  describe("2 nodes", () => {
+    const secret = "ede1d4ccb4ec9a8bbbae9a13db3f4a7b56ea04189be86ac3a6a439d9a0a1addd";
 
-  let nodeA: CodeChain;
-  let nodeB: CodeChain;
+    let nodeA: CodeChain;
+    let nodeB: CodeChain;
 
-  beforeEach(async () => {
-    nodeA = new CodeChain();
-    nodeB = new CodeChain();
-
-    await nodeA.start();
-    await nodeB.start();
-  });
-
-  describe("A-B connected", () => {
     beforeEach(async () => {
-      await nodeA.connect(nodeB);
+      nodeA = new CodeChain();
+      nodeB = new CodeChain();
+
+      await nodeA.start();
+      await nodeB.start();
     });
 
-    test("It should be synced when nodeA created a block", async () => {
-      const parcel = await nodeA.sendSignedParcel({ awaitInvoice: true });
-      await nodeB.waitBlockNumberSync(nodeA);
-      expect(await nodeB.getBestBlockHash()).toEqual(parcel.blockHash);
-    }, 10000);
+    describe("A-B connected", () => {
+      beforeEach(async () => {
+        await nodeA.connect(nodeB);
+      });
+
+      test("It should be synced when nodeA created a block", async () => {
+        expect(await nodeA.sdk.rpc.network.isConnected("127.0.0.1", nodeB.port)).toBe(true);
+        const parcel = await nodeA.sendSignedParcel({ awaitInvoice: true });
+        await nodeB.waitBlockNumberSync(nodeA);
+        expect(await nodeB.getBestBlockHash()).toEqual(parcel.blockHash);
+      }, 10000);
+
+      describe("A-B diverged", () => {
+        beforeEach(async () => {
+          await nodeA.sendSignedParcel();
+          await nodeB.sendSignedParcel();
+          expect(await nodeA.getBestBlockNumber()).toEqual(await nodeB.getBestBlockNumber());
+          expect(await nodeA.getBestBlockHash()).not.toEqual(await nodeB.getBestBlockHash());
+        });
+
+        test("It should be synced when nodeA becomes ahead", async () => {
+          await nodeA.sendSignedParcel();
+          await nodeB.waitBlockNumberSync(nodeA);
+          expect(await nodeA.getBestBlockHash()).toEqual(await nodeB.getBestBlockHash());
+        }, 10000);
+      });
+    });
+
+    describe("nodeA becomes ahead", () => {
+      beforeEach(async () => {
+        await nodeA.sendSignedParcel();
+      });
+
+      test("It should be synced when A-B connected", async () => {
+        await nodeA.connect(nodeB);
+        await nodeB.waitBlockNumberSync(nodeA);
+        expect(await nodeA.getBestBlockHash()).toEqual(await nodeB.getBestBlockHash());
+      }, 10000);
+    });
 
     describe("A-B diverged", () => {
       beforeEach(async () => {
@@ -54,50 +79,101 @@ describe("2 nodes", () => {
         expect(await nodeA.getBestBlockHash()).not.toEqual(await nodeB.getBestBlockHash());
       });
 
-      test("It should be synced when nodeA becomes ahead", async () => {
-        await nodeA.sendSignedParcel();
-        await nodeB.waitBlockNumberSync(nodeA);
-        expect(await nodeA.getBestBlockHash()).toEqual(await nodeB.getBestBlockHash());
-      }, 10000);
+      describe("nodeA becomes ahead", () => {
+        beforeEach(async () => {
+          await nodeA.sendSignedParcel();
+          expect(await nodeA.getBestBlockNumber()).toEqual(await nodeB.getBestBlockNumber() + 1);
+        });
+
+        test("It should be synced when A-B connected", async () => {
+          await nodeA.connect(nodeB);
+          await nodeB.waitBlockNumberSync(nodeA);
+          expect(await nodeA.getBestBlockHash()).toEqual(await nodeB.getBestBlockHash());
+        }, 10000);
+      });
+    });
+
+    afterEach(async () => {
+      await nodeA.clean();
+      await nodeB.clean();
     });
   });
 
-  describe("nodeA becomes ahead", () => {
+  describe.each([
+    [3],
+    [5]
+  ])(
+    `%p nodes`,
+    (numNodes) => {
+    let nodes: CodeChain[] = [];
+
     beforeEach(async () => {
-      await nodeA.sendSignedParcel();
-    });
+      for (let i = 0; i < numNodes; i++) {
+        const node = new CodeChain({ argv: ["--no-discovery"] });
+        nodes.push(node);
+        await node.start();
+      }
+    }, 5000 + 1500 * numNodes);
 
-    test("It should be synced when A-B connected", async () => {
-      await nodeA.connect(nodeB);
-      await nodeB.waitBlockNumberSync(nodeA);
-      expect(await nodeA.getBestBlockHash()).toEqual(await nodeB.getBestBlockHash());
-    }, 10000);
-  });
+    describe("Connected in a line", () => {
+      describe("All connected", () => {
+        beforeEach(async () => {
+          for (let i = 0; i < numNodes - 1; i++) {
+            await nodes[i].connect(nodes[i + 1]);
+          }
+        }, 5000 + 1500 * numNodes);
 
-  describe("A-B diverged", () => {
-    beforeEach(async () => {
-      await nodeA.sendSignedParcel();
-      await nodeB.sendSignedParcel();
-      expect(await nodeA.getBestBlockNumber()).toEqual(await nodeB.getBestBlockNumber());
-      expect(await nodeA.getBestBlockHash()).not.toEqual(await nodeB.getBestBlockHash());
-    });
+        test("It should be synced when the first node created a block", async () => {
+          const parcel = await nodes[0].sendSignedParcel({ awaitInvoice: true });
+          for (let i = 1; i < numNodes; i++) {
+            await nodes[i].waitBlockNumberSync(nodes[i - 1]);
+            expect(await nodes[i].getBestBlockHash()).toEqual(parcel.blockHash);
+          }
+        }, 5000 + 1500 * numNodes);
 
-    describe("nodeA becomes ahead", () => {
-      beforeEach(async () => {
-        await nodeA.sendSignedParcel();
-        expect(await nodeA.getBestBlockNumber()).toEqual(await nodeB.getBestBlockNumber() + 1);
+        describe("All diverged by both end nodes", () => {
+          beforeEach(async () => {
+            const nodeA = nodes[0], nodeB = nodes[numNodes - 1];
+            await nodeA.sendSignedParcel();
+            await nodeB.sendSignedParcel();
+            expect(await nodeA.getBestBlockNumber()).toEqual(await nodeB.getBestBlockNumber());
+            expect(await nodeA.getBestBlockHash()).not.toEqual(await nodeB.getBestBlockHash());
+          });
+
+          test("Every node should be synced to one", async () => {
+            for (let i = 1; i < numNodes; i++) {
+              await nodes[i].waitBlockNumberSync(nodes[0]);
+            }
+          }, 5000 + 1500 * numNodes);
+
+          test("It should be synced when the first node becomes ahead", async () => {
+            await nodes[0].sendSignedParcel();
+            for (let i = 1; i < numNodes; i++) {
+              await nodes[i].waitBlockNumberSync(nodes[i - 1]);
+              expect(await nodes[i].getBestBlockHash()).toEqual(await nodes[0].getBestBlockHash());
+            }
+          }, 5000 + 1500 * numNodes);
+        });
       });
 
-      test("It should be synced when A-B connected", async () => {
-        await nodeA.connect(nodeB);
-        await nodeB.waitBlockNumberSync(nodeA);
-        expect(await nodeA.getBestBlockHash()).toEqual(await nodeB.getBestBlockHash());
-      }, 10000);
-    });
-  });
+      describe("the first node becomes ahead", () => {
+        beforeEach(async () => {
+          await nodes[0].sendSignedParcel();
+        });
 
-  afterEach(async () => {
-    await nodeA.clean();
-    await nodeB.clean();
+        test("It should be synced when every node connected", async () => {
+          for (let i = 0; i < numNodes - 1; i++) {
+            await nodes[i].connect(nodes[i + 1]);
+            await nodes[i + 1].waitBlockNumberSync(nodes[i]);
+            expect(await nodes[i].getBestBlockHash()).toEqual(await nodes[i + 1].getBestBlockHash());
+          }
+        }, 5000 + 3000 * numNodes);
+      });
+    });
+
+    afterEach(async () => {
+      await Promise.all(nodes.map(n => n.clean()));
+      nodes = [];
+    }, 5000 + 1500 * numNodes);
   });
 });
