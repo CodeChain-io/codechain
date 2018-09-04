@@ -85,7 +85,7 @@ impl Connections {
 
     // Shutdown connection will cause hup event on stream
     pub fn shutdown(&self, socket_address: &SocketAddr) -> io::Result<()> {
-        let connections = self.connections.write();
+        let connections = self.connections.read();
         let connected_nodes = self.connected_nodes.write();
 
         let remote_node_id = socket_address.into();
@@ -100,13 +100,13 @@ impl Connections {
     }
 
     pub fn set_disconnecting(&self, token: &StreamToken) {
-        let connections = self.connections.write();
+        let connections = self.connections.read();
         let connection = connections.get(token).unwrap();
         connection.set_disconnecting();
     }
 
     pub fn is_connected(&self, token: &StreamToken) -> bool {
-        let connections = self.connections.write();
+        let connections = self.connections.read();
         if let Some(connection) = connections.get(token) {
             !connection.is_disconnecting()
         } else {
