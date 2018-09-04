@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use parking_lot::{Mutex, RwLock};
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
@@ -35,12 +35,15 @@ use super::downloader::{BodyDownloader, HeaderDownloader};
 use super::message::{Message, RequestMessage, ResponseMessage};
 
 const SYNC_TIMER_TOKEN: usize = 0;
+const SYNC_EXPIRE_REQUEST_TOKEN: usize = 1;
 const SYNC_TIMER_INTERVAL: i64 = 1000;
+const SYNC_EXPIRE_REQUEST_INTERVAL: i64 = 15000;
 
 const SNAPSHOT_PERIOD: u64 = (1 << 14);
 
 pub struct Extension {
     requests: RwLock<HashMap<NodeId, Vec<(u64, RequestMessage)>>>,
+    body_requests_to_expire: RwLock<VecDeque<(NodeId, u64)>>,
     header_downloaders: RwLock<HashMap<NodeId, HeaderDownloader>>,
     body_downloader: Mutex<BodyDownloader>,
     client: Arc<Client>,
@@ -52,6 +55,7 @@ impl Extension {
     pub fn new(client: Arc<Client>) -> Arc<Self> {
         Arc::new(Self {
             requests: RwLock::new(HashMap::new()),
+            body_requests_to_expire: RwLock::new(VecDeque::new()),
             header_downloaders: RwLock::new(HashMap::new()),
             body_downloader: Mutex::new(BodyDownloader::new(Vec::new())),
             client,
@@ -77,6 +81,12 @@ impl Extension {
             let id = self.last_request.fetch_add(1, Ordering::Relaxed) as u64;
             requests.push((id, request.clone()));
             self.send_message(token, Message::Request(id, request));
+
+            self.body_requests_to_expire.write().push_back((*token, id));
+            self.api.lock().as_ref().map(|api| {
+                api.set_timer_once(SYNC_EXPIRE_REQUEST_TOKEN, Duration::milliseconds(SYNC_EXPIRE_REQUEST_INTERVAL))
+                    .expect("Timer set succeeds");
+            });
         }
     }
 
@@ -140,39 +150,59 @@ impl NetworkExtension for Extension {
         }
     }
 
-    fn on_timeout(&self, timer: TimerToken) {
-        debug_assert_eq!(timer, SYNC_TIMER_TOKEN);
+    fn on_timeout(&self, token: TimerToken) {
+        match token {
+            SYNC_TIMER_TOKEN => {
+                let total_score = self.client.chain_info().total_score;
+                let peer_ids: Vec<_> = self.header_downloaders.read().keys().cloned().collect();
+                for id in peer_ids {
+                    if let Some(peer) = self.header_downloaders.write().get_mut(&id) {
+                        if let Some(request) = peer.create_request() {
+                            self.send_request(&id, request);
+                        }
+                    }
 
-        let total_score = self.client.chain_info().total_score;
-        let peer_ids: Vec<_> = self.header_downloaders.read().keys().cloned().collect();
-        for id in peer_ids {
-            if let Some(peer) = self.header_downloaders.write().get_mut(&id) {
-                if let Some(request) = peer.create_request() {
-                    self.send_request(&id, request);
+                    let peer_score = if let Some(peer) = self.header_downloaders.read().get(&id) {
+                        peer.total_score()
+                    } else {
+                        U256::zero()
+                    };
+                    let have_body_request = {
+                        if let Some(request_list) = self.requests.read().get(&id) {
+                            request_list.iter().any(|r| match r {
+                                (_, RequestMessage::Bodies(..)) => true,
+                                _ => false,
+                            })
+                        } else {
+                            false
+                        }
+                    };
+                    if !have_body_request && peer_score > total_score {
+                        if let Some(request) = self.body_downloader.lock().create_request() {
+                            self.send_request(&id, request);
+                        }
+                    }
                 }
             }
-
-            // FIXME: invalidate expired body requests
-            let peer_score = if let Some(peer) = self.header_downloaders.read().get(&id) {
-                peer.total_score()
-            } else {
-                U256::zero()
-            };
-            let have_body_request = {
-                if let Some(request_list) = self.requests.read().get(&id) {
-                    request_list.iter().any(|r| match r {
-                        (_, RequestMessage::Bodies(..)) => true,
-                        _ => false,
-                    })
-                } else {
-                    false
-                }
-            };
-            if !have_body_request && peer_score > total_score {
-                if let Some(request) = self.body_downloader.lock().create_request() {
-                    self.send_request(&id, request);
+            SYNC_EXPIRE_REQUEST_TOKEN => {
+                let requests = self.requests.read();
+                let mut body_requests_to_expire = self.body_requests_to_expire.write();
+                if let Some((id, request_id)) = body_requests_to_expire.pop_front() {
+                    if let Some(request_list) = requests.get(&id) {
+                        let expired_request = request_list.iter().find(|(r, _)| *r == request_id).cloned();
+                        if let Some((request_id, request)) = expired_request {
+                            match request {
+                                RequestMessage::Bodies(hashes) => {
+                                    self.body_downloader.lock().reset_downloading(&hashes);
+                                }
+                                _ => {}
+                            }
+                            self.dismiss_request(&id, request_id);
+                        }
+                    }
                 }
             }
+            _ => unreachable!(),
         }
     }
 }
