@@ -32,7 +32,6 @@
 
 use std::collections::VecDeque;
 
-use ctypes::BlockNumber;
 use lru_cache::LruCache;
 use primitives::H256;
 
@@ -100,8 +99,11 @@ impl<Item: CacheableItem> Cache<Item> {
     }
 
     // Save modified addresses. These are ordered by the block number.
-    pub fn save(&mut self, number: &BlockNumber, block_changes: BlockChanges<Item>) {
-        let insert_at = self.modifications.iter().enumerate().find(|&(_, m)| m.is_before(number)).map(|(i, _)| i);
+    pub fn save(&mut self, block_changes: BlockChanges<Item>) {
+        let insert_at = {
+            let number = block_changes.number();
+            self.modifications.iter().enumerate().find(|&(_, m)| m.is_before(number)).map(|(i, _)| i)
+        };
         ctrace!(STATE_DB, "inserting modifications at {:?}", insert_at);
         if let Some(insert_at) = insert_at {
             self.modifications.insert(insert_at, block_changes);

@@ -377,7 +377,7 @@ impl StateDB {
 
             // Save modified addresses. These are ordered by the block number.
             let block_changes = BlockChanges::new(*number, *hash, *parent, modified_addresses, is_best);
-            cache.save(number, block_changes);
+            cache.save(block_changes);
         }
     }
 

@@ -70,6 +70,10 @@ impl<Item: CacheableItem> BlockChanges<Item> {
         }
     }
 
+    pub fn number(&self) -> &BlockNumber {
+        &self.number
+    }
+
     pub fn is_before(&self, number: &BlockNumber) -> bool {
         &self.number < number
     }
