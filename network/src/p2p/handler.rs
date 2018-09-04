@@ -160,7 +160,7 @@ impl Handler {
                     self.connections.accept(token, stream);
                     Ok(Some(token))
                 } else {
-                    cinfo!(NETWORK, "P2P connection request from {:?} is received. But it's not allowed", ip);
+                    cinfo!(NETWORK, "P2P connection request from {} is received. But it's not allowed", ip);
                     Ok(None)
                 }
             }
@@ -171,7 +171,7 @@ impl Handler {
     fn connect(&self, socket_address: &SocketAddr) -> IoHandlerResult<Option<StreamToken>> {
         let ip = socket_address.ip();
         if !self.filters.is_allowed(&ip) {
-            cinfo!(NETWORK, "P2P connection from {:?} is received. But it's not allowed", ip);
+            cinfo!(NETWORK, "P2P connection from {} is received. But it's not allowed", ip);
             return Ok(None)
         }
 
@@ -192,7 +192,7 @@ impl Handler {
                     self.routing_table.establish(socket_address);
                     Some(token)
                 } else {
-                    cwarn!(NETWORK, "Cannot create connection to {:?}", socket_address);
+                    cwarn!(NETWORK, "Cannot create connection to {}", socket_address);
                     tokens.restore(token);
                     None
                 }
@@ -402,7 +402,7 @@ impl IoHandler<Message> for Handler {
                     }
                 }
 
-                ctrace!(NETWORK, "Connecting to {:?}", socket_address);
+                ctrace!(NETWORK, "Connecting to {}", socket_address);
                 let token = self.connect(&socket_address)?.ok_or(Error::General("Cannot create connection"))?;
                 io.register_stream(token)?;
                 Ok(())
@@ -443,7 +443,7 @@ impl IoHandler<Message> for Handler {
                 cinfo!(NETWORK, "Connections to the following addresses will be closed: {:?}", addresses);
                 for address in addresses.iter() {
                     let _ = self.connections.shutdown(address).map_err(|err| {
-                        cwarn!(NETWORK, "Cannot close the connection to {:?}: {:?}", address, err);
+                        cwarn!(NETWORK, "Cannot close the connection to {}: {:?}", address, err);
                     });
                 }
                 Ok(())
@@ -532,7 +532,7 @@ impl IoHandler<Message> for Handler {
         match stream {
             ACCEPT_TOKEN => {
                 event_loop.register(&self.listener, reg, Ready::readable(), PollOpt::edge())?;
-                ctrace!(NETWORK, "TCP connection starts for {:?}", self.socket_address);
+                ctrace!(NETWORK, "TCP connection starts for {}", self.socket_address);
                 Ok(())
             }
             FIRST_CONNECTION_TOKEN...LAST_CONNECTION_TOKEN => {
