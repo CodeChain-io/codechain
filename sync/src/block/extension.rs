@@ -399,7 +399,7 @@ impl Extension {
                         RequestMessage::Bodies(hashes) => hashes,
                         _ => unreachable!(),
                     };
-                    self.on_body_response(from, hashes, bodies)
+                    self.on_body_response(hashes, bodies)
                 }
                 _ => unimplemented!(),
             }
@@ -493,7 +493,7 @@ impl Extension {
         self.body_downloader.lock().add_target(body_targets);
     }
 
-    fn on_body_response(&self, from: &NodeId, hashes: Vec<H256>, bodies: Vec<Vec<UnverifiedParcel>>) {
+    fn on_body_response(&self, hashes: Vec<H256>, bodies: Vec<Vec<UnverifiedParcel>>) {
         self.body_downloader.lock().import_bodies(hashes, bodies);
         let completed = self.body_downloader.lock().drain();
         let mut exists = Vec::new();
@@ -512,15 +512,27 @@ impl Extension {
         self.body_downloader.lock().remove_target(exists);
 
         let total_score = self.client.chain_info().total_score;
-        let peer_score = if let Some(peer) = self.header_downloaders.read().get(from) {
-            peer.total_score()
-        } else {
-            U256::zero()
-        };
-
-        if peer_score > total_score {
-            if let Some(request) = self.body_downloader.lock().create_request() {
-                self.send_request(from, request);
+        let peer_ids: Vec<_> = self.header_downloaders.read().keys().cloned().collect();
+        for id in peer_ids {
+            let peer_score = if let Some(peer) = self.header_downloaders.read().get(&id) {
+                peer.total_score()
+            } else {
+                U256::zero()
+            };
+            let have_body_request = {
+                if let Some(request_list) = self.requests.read().get(&id) {
+                    request_list.iter().any(|r| match r {
+                        (_, RequestMessage::Bodies(..)) => true,
+                        _ => false,
+                    })
+                } else {
+                    false
+                }
+            };
+            if !have_body_request && peer_score > total_score {
+                if let Some(request) = self.body_downloader.lock().create_request() {
+                    self.send_request(&id, request);
+                }
             }
         }
     }
