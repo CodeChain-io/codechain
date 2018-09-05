@@ -18,10 +18,11 @@ import { ChildProcess, spawn } from "child_process";
 import { SDK } from "codechain-sdk";
 import { SignedParcel } from "codechain-sdk/lib/core/classes";
 import { PlatformAddress } from "codechain-sdk/lib/key/classes";
-import { mkdtempSync } from "fs";
+import { mkdtempSync, appendFileSync } from "fs";
 import { createInterface as createReadline } from "readline";
 import * as mkdirp from "mkdirp";
 import { wait } from "./promise";
+import { makeRandomFilename } from "./random";
 
 const faucetSecret = `ede1d4ccb4ec9a8bbbae9a13db3f4a7b56ea04189be86ac3a6a439d9a0a1addd`;
 const faucetAddress = PlatformAddress.fromAccountId(SDK.util.getAccountIdFromPrivate(`ede1d4ccb4ec9a8bbbae9a13db3f4a7b56ea04189be86ac3a6a439d9a0a1addd`));
@@ -36,6 +37,9 @@ export default class CodeChain {
   private _dbPath: string;
   private _ipcPath: string;
   private _keysPath: string;
+  private _logFile: string;
+  private _logPath: string;
+  private _logFlag: boolean;
   private _chain: ChainType;
   private argv: string[];
   private process?: ChildProcess;
@@ -45,27 +49,35 @@ export default class CodeChain {
   public get dbPath(): string { return this._dbPath; }
   public get ipcPath(): string { return this._ipcPath; }
   public get keysPath(): string { return this._keysPath; }
+  public get logFile(): string { return this._logFile; }
+  public get logPath(): string { return this._logPath; }
+  public get logFlag(): boolean { return this._logFlag; }
   public get rpcPort(): number { return 8081 + this.id; }
   public get port(): number { return 3486 + this.id; }
   public get secretKey(): number { return 1 + this.id; }
   public get chain(): ChainType { return this._chain; }
 
-  constructor(options: { chain?: ChainType, argv?: string[] } = {}) {
-    const { chain, argv } = options;
+  constructor(options: { chain?: ChainType, argv?: string[], logFlag?: boolean } = {}) {
+    const { chain, argv, logFlag } = options;
     this._id = CodeChain.idCounter++;
 
     mkdirp.sync(`${projectRoot}/db/`);
     mkdirp.sync(`${projectRoot}/keys/`);
+    mkdirp.sync(`${projectRoot}/test/log/`);
     this._dbPath = mkdtempSync(`${projectRoot}/db/`);
     this._ipcPath = `/tmp/jsonrpc.${this.id}.ipc`;
     this._keysPath = mkdtempSync(`${projectRoot}/keys/`);
+    this._logFlag = logFlag || false;
+    this._logFile = makeRandomFilename(".log");
+    this._logPath = `${projectRoot}/test/log/${this._logFile}`;
     this._sdk = new SDK({ server: `http://localhost:${this.rpcPort}` });
     this._chain = chain || "solo";
     this.argv = argv || [];
   }
 
-  public async start(argv: string[] = []) {
+  public async start(argv: string[] = [], log_level = "trace") {
     const useDebugBuild = process.env.NODE_ENV !== "production";
+    process.env.RUST_LOG = log_level;
 
     // Resolves when CodeChain initialization completed.
     return new Promise((resolve, reject) => {
@@ -96,10 +108,14 @@ export default class CodeChain {
         });
 
       const readline = createReadline({ input: this.process!.stderr });
+      let flag = false;
       readline.on("line", (line: string) => {
         if (line.includes("Initialization complete")) {
-          readline.close();
+          flag = true;
           resolve();
+        }
+        if (this.logFlag && flag) {
+          appendFileSync(this.logPath, line + "\n");
         }
       });
     });
