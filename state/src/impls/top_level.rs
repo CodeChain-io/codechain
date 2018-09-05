@@ -125,6 +125,14 @@ impl TopStateInfo for TopLevelState {
         self.ensure_account_cached(a, |a| a.as_ref().map_or(None, |account| account.regular_key()))
     }
 
+    fn regular_key_owner(&self, public: &Public) -> TrieResult<Option<Address>> {
+        self.ensure_regular_account_cached(&public_to_address(public), |regular_account| {
+            regular_account
+                .as_ref()
+                .map_or(None, |regular_account| Some(public_to_address(regular_account.owner_public())))
+        })
+    }
+
     fn number_of_shards(&self) -> TrieResult<ShardId> {
         let metadata = self.require_metadata()?;
         Ok(*metadata.number_of_shards())

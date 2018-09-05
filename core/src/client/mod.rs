@@ -159,6 +159,10 @@ pub trait RegularKey {
     fn regular_key(&self, address: &Address, state: StateOrBlock) -> Option<Public>;
 }
 
+pub trait RegularKeyOwner {
+    fn regular_key_owner(&self, public: &Public, state: StateOrBlock) -> Option<Address>;
+}
+
 pub trait Shard {
     fn number_of_shards(&self, state: StateOrBlock) -> Option<ShardId>;
 
