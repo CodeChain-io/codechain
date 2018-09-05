@@ -54,6 +54,7 @@ impl BodyDownloader {
     pub fn import_bodies(&mut self, hashes: Vec<H256>, bodies: Vec<Vec<UnverifiedParcel>>) {
         for (hash, body) in hashes.into_iter().zip(bodies) {
             if self.downloading.contains(&hash) {
+                self.downloading.remove(&hash);
                 if body.len() == 0 {
                     let (_, prev_root, parcels_root) =
                         self.targets.iter().find(|(h, ..)| *h == hash).expect("Downloading target must exist");
@@ -61,7 +62,6 @@ impl BodyDownloader {
                         continue
                     }
                 }
-                self.downloading.remove(&hash);
                 self.downloaded.insert(hash, body);
             }
         }
