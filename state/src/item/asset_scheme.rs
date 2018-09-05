@@ -52,9 +52,24 @@ impl AssetScheme {
     pub fn is_permissioned(&self) -> bool {
         self.registrar.is_some()
     }
+
+    pub fn init(&mut self, metadata: String, amount: u64, registrar: Option<Address>) {
+        assert_eq!("", &self.metadata);
+        assert_eq!(0, self.amount);
+        assert_eq!(None, self.registrar);
+        self.metadata = metadata;
+        self.amount = amount;
+        self.registrar = registrar;
+    }
 }
 
 const PREFIX: u8 = super::ASSET_SCHEME_PREFIX;
+
+impl Default for AssetScheme {
+    fn default() -> Self {
+        Self::new("".to_string(), 0, None)
+    }
+}
 
 impl Encodable for AssetScheme {
     fn rlp_append(&self, s: &mut RlpStream) {

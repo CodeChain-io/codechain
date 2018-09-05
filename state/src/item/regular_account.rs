@@ -41,6 +41,12 @@ impl RegularAccount {
     }
 }
 
+impl Default for RegularAccount {
+    fn default() -> Self {
+        Self::new(Public::default())
+    }
+}
+
 impl CacheableItem for RegularAccount {
     type Address = RegularAccountAddress;
 
