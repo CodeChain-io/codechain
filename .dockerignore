@@ -1,4 +1,6 @@
 /.git/
+/.idea/
 /target/
 /keys/
 /db/
+/docker/

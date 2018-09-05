@@ -1,4 +1,4 @@
-FROM ubuntu:14.04
+FROM ubuntu:14.04 as builder
 WORKDIR /build
 
 # install tools and dependencies
@@ -38,8 +38,14 @@ RUN cd codechain && \
 
 RUN file /build/codechain/target/release/codechain
 
-WORKDIR /build/codechain
+
+FROM ubuntu:14.04
+WORKDIR /app/codechain
+COPY --from=builder /build/codechain/target/release/codechain ./target/release/codechain
+COPY --from=builder /build/codechain/codechain/config/presets/ ./codechain/config/presets
+
+# show backtraces
+ENV RUST_BACKTRACE 1
 
 EXPOSE 3485 8080
 ENTRYPOINT ["target/release/codechain"]
-
