@@ -129,6 +129,7 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
 | -32042 | `Already Exists` | The account already exists |
 | -32043 | `Wrong Password` | The password does not match |
 | -32044 | `No Such Account` | There is no such account in the key store |
+| -32045 | `Not Unlocked` | The account is not unlocked |
 | -32099 | `Unknown Error` | An unknown error occurred |
 | -32602 | `Invalid Params` | At least one of the parameters is invalid |
 
@@ -1573,7 +1574,7 @@ Params:
 
 Return type: `Signature`
 
-Errors: `Keystore Error`, `Wrong Password`, `No Such Account`, `Invalid Params`, `Invalid NetworkId`
+Errors: `Keystore Error`, `Wrong Password`, `No Such Account`, `Not Unlocked`, `Invalid Params`, `Invalid NetworkId`
 
 Request Example
 ```

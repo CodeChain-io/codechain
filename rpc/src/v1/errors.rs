@@ -50,6 +50,7 @@ mod codes {
     pub const ALREADY_EXISTS: i64 = -32042;
     pub const WRONG_PASSWORD: i64 = -32043;
     pub const NO_SUCH_ACCOUNT: i64 = -32044;
+    pub const NOT_UNLOCKED: i64 = -32045;
     pub const UNKNOWN_ERROR: i64 = -32099;
 }
 
@@ -191,6 +192,11 @@ pub fn account_provider(error: AccountProviderError) -> Error {
         AccountProviderError::KeyError(_) => Error {
             code: ErrorCode::ServerError(codes::KEY_ERROR),
             message: "Key Error".into(),
+            data: Some(Value::String(format!("{:?}", error))),
+        },
+        AccountProviderError::NotUnlocked => Error {
+            code: ErrorCode::ServerError(codes::NOT_UNLOCKED),
+            message: "Not Unlocked".into(),
             data: Some(Value::String(format!("{:?}", error))),
         },
         _ => Error {
