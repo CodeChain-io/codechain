@@ -16,6 +16,7 @@
 
 import CodeChain from "../helper/spawn";
 import { wait } from "../helper/promise";
+import { makeRandomH256, makeRandomPassphrase, getRandomIndex } from "../helper/random";
 
 const ERROR = {
   KEY_ERROR: {
@@ -48,26 +49,6 @@ const ERROR = {
     message: expect.anything(),
   },
 };
-
-function makeRandomPassphrase() {
-  let text = "";
-  const possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 ";
-  for (let i = 0; i < 40; i++)
-    text += possible.charAt(Math.floor(Math.random() * possible.length));
-  return text;
-}
-
-function makeRandomH256() {
-  let text = "";
-  const possible = "0123456789abcdef";
-  for (let i = 0; i < 64; i++)
-    text += possible.charAt(Math.floor(Math.random() * possible.length));
-  return text;
-}
-
-function getRandomIndex(size: number) {
-  return Math.floor(Math.random() * size);
-}
 
 describe("account", () => {
   const noSuchAccount = "tccqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqj5aqu5";
