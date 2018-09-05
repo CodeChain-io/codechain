@@ -143,6 +143,9 @@ impl Extension {
                 .filter(|parcel| !peer.contains(&parcel.hash()))
                 .map(|signed| signed.clone().deconstruct().0)
                 .collect();
+            if unsent.is_empty() {
+                continue
+            }
             for unverified in unsent.iter() {
                 peer.push(&unverified.hash());
             }
