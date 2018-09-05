@@ -38,7 +38,7 @@ use super::super::{
     AssetScheme, AssetSchemeAddress, OwnedAsset, OwnedAssetAddress, ShardMetadata, ShardMetadataAddress, World,
     WorldAddress,
 };
-use super::super::{StateDB, StateError, StateResult};
+use super::super::{StateError, StateResult};
 
 
 pub struct ShardLevelState<B> {
@@ -563,23 +563,6 @@ impl<B: ShardBackend> fmt::Debug for ShardLevelState<B> {
     }
 }
 
-// TODO: cloning for `ShardLevelState` shouldn't be possible in general; Remove this and use
-// checkpoints where possible.
-impl Clone for ShardLevelState<StateDB> {
-    fn clone(&self) -> ShardLevelState<StateDB> {
-        ShardLevelState {
-            db: self.db.clone(),
-            root: self.root.clone(),
-            id_of_checkpoints: self.id_of_checkpoints.clone(),
-            metadata: self.metadata.clone(),
-            world: self.world.clone(),
-            asset_scheme: self.asset_scheme.clone(),
-            asset: self.asset.clone(),
-            shard_id: self.shard_id,
-        }
-    }
-}
-
 const TRANSACTION_CHECKPOINT: CheckpointId = 456;
 
 impl<B: Backend + ShardBackend> ShardState<B> for ShardLevelState<B> {
@@ -617,6 +600,7 @@ impl<B: Backend + ShardBackend> ShardState<B> for ShardLevelState<B> {
 #[cfg(test)]
 mod tests {
     use super::super::super::tests::helpers::get_temp_state_db;
+    use super::super::super::StateDB;
     use ctypes::transaction::{AssetOutPoint, AssetTransferInput, AssetTransferOutput, Error as TransactionError};
 
     use super::*;
