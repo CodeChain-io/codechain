@@ -16,7 +16,7 @@
 
 use std::convert::Into;
 
-use super::limited_table::{Key, LimitedTable};
+use climited_table::{Key, LimitedTable};
 
 pub type Token = Key;
 

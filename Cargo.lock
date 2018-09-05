@@ -371,6 +371,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "codechain-limited-table"
+version = "0.1.0"
+dependencies = [
+ "slab 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "codechain-logger"
 version = "0.1.0"
 dependencies = [
@@ -403,6 +410,7 @@ dependencies = [
  "codechain-finally 0.1.0",
  "codechain-io 1.9.0",
  "codechain-key 0.1.0",
+ "codechain-limited-table 0.1.0",
  "codechain-logger 0.1.0",
  "codechain-types 0.1.0",
  "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -412,7 +420,6 @@ dependencies = [
  "rand 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "rlp 0.2.1",
  "rlp_derive 0.1.0",
- "slab 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "table 0.1.0",
  "time 0.1.40 (registry+https://github.com/rust-lang/crates.io-index)",
 ]

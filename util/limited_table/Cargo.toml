@@ -1,0 +1,7 @@
+[package]
+name = "codechain-limited-table"
+version = "0.1.0"
+authors = ["CodeChain Team <codechain@kodebox.io>"]
+
+[dependencies]
+slab = "0.4"

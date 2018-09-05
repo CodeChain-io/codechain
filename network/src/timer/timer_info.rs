@@ -17,9 +17,8 @@
 use std::result;
 use std::string::ToString;
 
+use climited_table::{Key as TimerToken, LimitedTable};
 use ctable::Table;
-
-use super::super::limited_table::{Key as TimerToken, LimitedTable};
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum Error {
