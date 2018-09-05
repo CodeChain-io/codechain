@@ -7,6 +7,7 @@ authors = ["CodeChain Team <codechain@kodebox.io>"]
 codechain-crypto = { path = "../crypto" }
 codechain-finally = { path = "../util/finally" }
 codechain-limited-table = { path = "../util/limited_table" }
+codechain-token-generator = { path = "../util/token_generator" }
 codechain-io = { path = "../util/io" }
 codechain-key = { path = "../key" }
 codechain-logger = { path = "../util/logger" }

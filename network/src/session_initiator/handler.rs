@@ -24,12 +24,12 @@ use ccrypto::aes::SymmetricCipherError;
 use cfinally::finally;
 use cio::{IoChannel, IoContext, IoError as CIoError, IoHandler, IoHandlerResult, IoManager, StreamToken, TimerToken};
 use ckey::{Error as KeyError, Secret};
+use ctoken_generator::TokenGenerator;
 use mio::deprecated::EventLoop;
 use mio::Token;
 use parking_lot::RwLock;
 use rlp::DecoderError;
 
-use super::super::token_generator::TokenGenerator;
 use super::super::{p2p, FiltersControl, IntoSocketAddr, RoutingTable, SocketAddr};
 use super::message;
 use super::server::{Error as ServerError, Server};
