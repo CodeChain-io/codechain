@@ -69,14 +69,6 @@ function getRandomIndex(size: number) {
   return Math.floor(Math.random() * size);
 }
 
-function getRandomIndexExcept(size: number, exceptIdx: number) {
-  let randomIdx = getRandomIndex(size - 1);
-  if (randomIdx >= exceptIdx) {
-    randomIdx += 1;
-  }
-  return randomIdx;
-}
-
 describe("account", () => {
   const noSuchAccount = "tccqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqj5aqu5";
 
@@ -245,7 +237,6 @@ describe("account", () => {
     }, 200 * testSize + 5000);
 
     test(`Scenario #2: importRaw ${testSize} accounts`, async () => {
-      const accountList = [];
       for (let i = 0; i < testSize; i++) {
         const randomSecret = node.sdk.util.generatePrivateKey();
         const account = node.sdk.util.getAccountIdFromPrivate(randomSecret);
@@ -264,7 +255,6 @@ describe("account", () => {
       await node.sdk.rpc.account.importRaw(secret, passphrase);
 
       for (let i = 0; i < testSize; i++) {
-        console.log(i);
         const message = makeRandomH256();
         const { r, s, v } = node.sdk.util.signEcdsa(message, secret);
         await node.sdk.rpc.account.unlock(address, passphrase, 1);
