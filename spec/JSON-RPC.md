@@ -155,6 +155,7 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
  * [chain_getNonce](#chain_getnonce)
  * [chain_getBalance](#chain_getbalance)
  * [chain_getRegularKey](#chain_getregularkey)
+ * [chain_getRegularKeyOwner](#chain_getregularkeyowner)
  * [chain_getNumberOfShards](#chain_getnumberofshards)
  * [chain_getShardRoot](#chain_getshardroot)
  * [chain_getPendingParcels](#chain_getpendingparcels)
@@ -776,6 +777,34 @@ Response Example
 {
   "jsonrpc":"2.0",
   "result":"0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+  "id":null
+}
+```
+
+## chain_getRegularKeyOwner
+Gets the owner of a regular key, at the state of the given blockNumber.
+
+Params:
+ 1. public key: `H512`
+ 2. block number: `number` | `null`
+
+Return Type: `PlatformAddress`
+
+Errors: `KVDB Error`, `Invalid Params`
+
+Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "chain_getRegularKeyOwner", "params": ["0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000", null], "id": null}' \
+    localhost:8080
+```
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result":"cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7",
   "id":null
 }
 ```

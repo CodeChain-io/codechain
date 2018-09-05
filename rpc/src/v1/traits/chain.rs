@@ -74,6 +74,10 @@ build_rpc_trait! {
         # [rpc(name = "chain_getRegularKey")]
         fn get_regular_key(&self, PlatformAddress, Option<u64>) -> Result<Option<Public>>;
 
+        /// Gets the owner of given regular key.
+        # [rpc(name = "chain_getRegularKeyOwner")]
+        fn get_regular_key_owner(&self, Public, Option<u64>) -> Result<Option<PlatformAddress>>;
+
         /// Gets the number of shards
         # [rpc(name = "chain_getNumberOfShards")]
         fn get_number_of_shards(&self, Option<u64>) -> Result<Option<ShardId>>;

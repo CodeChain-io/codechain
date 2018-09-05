@@ -17,8 +17,8 @@
 use std::sync::Arc;
 
 use ccore::{
-    AssetClient, BlockId, EngineInfo, ExecuteClient, MinerService, MiningBlockChainClient, RegularKey, Shard,
-    SignedParcel, UnverifiedParcel,
+    AssetClient, BlockId, EngineInfo, ExecuteClient, MinerService, MiningBlockChainClient, RegularKey, RegularKeyOwner,
+    Shard, SignedParcel, UnverifiedParcel,
 };
 use ckey::{NetworkId, PlatformAddress, Public};
 use cstate::{AssetScheme, AssetSchemeAddress, OwnedAsset};
@@ -36,7 +36,7 @@ use super::super::types::{Block, BlockNumberAndHash, Bytes, ChangeShard, Parcel,
 
 pub struct ChainClient<C, M>
 where
-    C: AssetClient + MiningBlockChainClient + Shard + RegularKey + ExecuteClient + EngineInfo,
+    C: AssetClient + MiningBlockChainClient + Shard + RegularKey + RegularKeyOwner + ExecuteClient + EngineInfo,
     M: MinerService, {
     client: Arc<C>,
     miner: Arc<M>,
@@ -44,7 +44,7 @@ where
 
 impl<C, M> ChainClient<C, M>
 where
-    C: AssetClient + MiningBlockChainClient + Shard + RegularKey + ExecuteClient + EngineInfo,
+    C: AssetClient + MiningBlockChainClient + Shard + RegularKey + RegularKeyOwner + ExecuteClient + EngineInfo,
     M: MinerService,
 {
     pub fn new(client: &Arc<C>, miner: &Arc<M>) -> Self {
@@ -57,7 +57,14 @@ where
 
 impl<C, M> Chain for ChainClient<C, M>
 where
-    C: AssetClient + MiningBlockChainClient + Shard + RegularKey + ExecuteClient + EngineInfo + 'static,
+    C: AssetClient
+        + MiningBlockChainClient
+        + Shard
+        + RegularKey
+        + RegularKeyOwner
+        + ExecuteClient
+        + EngineInfo
+        + 'static,
     M: MinerService + 'static,
 {
     fn send_signed_parcel(&self, raw: Bytes) -> Result<H256> {
@@ -153,6 +160,15 @@ where
         Ok(self.client.regular_key(address, block_id.into()))
     }
 
+    fn get_regular_key_owner(&self, public: Public, block_number: Option<u64>) -> Result<Option<PlatformAddress>> {
+        let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
+        const VERSION: u8 = 0;
+        let network_id = self.client.common_params().network_id;
+        Ok(self
+            .client
+            .regular_key_owner(&public, block_id.into())
+            .and_then(|address| Some(PlatformAddress::create(VERSION, network_id, address))))
+    }
 
     fn get_number_of_shards(&self, block_number: Option<u64>) -> Result<Option<ShardId>> {
         let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
