@@ -11,12 +11,12 @@
     "lint": "tslint -c tslint.json -p tsconfig.json"
   },
   "devDependencies": {
+    "@types/jest": "^23.3.1",
     "@types/mkdirp": "^0.5.2",
+    "@types/node": "^10.9.4",
     "tslint": "^5.10.0"
   },
   "dependencies": {
-    "@types/jest": "^23.1.2",
-    "@types/node": "^10.3.6",
     "codechain-sdk": "^0.1.0",
     "jest": "^23.1.0",
     "mkdirp": "^0.5.1",
