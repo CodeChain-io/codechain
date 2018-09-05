@@ -39,16 +39,16 @@ use journaldb::{self, Algorithm, JournalDB};
 use kvdb::DBTransaction;
 use kvdb_memorydb;
 use parking_lot::Mutex;
-use primitives::{Bytes, H256};
+use primitives::H256;
 use util_error::UtilError;
 
 use super::global_cache::GlobalCache;
 use super::local_cache::LocalCache;
 
 use super::super::{
-    Account, ActionHandler, AssetScheme, AssetSchemeAddress, Backend, CacheableItem, Metadata, MetadataAddress,
-    OwnedAsset, OwnedAssetAddress, RegularAccount, RegularAccountAddress, Shard, ShardAddress, ShardBackend,
-    ShardMetadata, ShardMetadataAddress, TopBackend, World, WorldAddress,
+    Account, ActionData, ActionHandler, AssetScheme, AssetSchemeAddress, Backend, CacheableItem, Metadata,
+    MetadataAddress, OwnedAsset, OwnedAssetAddress, RegularAccount, RegularAccountAddress, Shard, ShardAddress,
+    ShardBackend, ShardMetadata, ShardMetadataAddress, TopBackend, World, WorldAddress,
 };
 
 // The percentage of supplied cache size to go to accounts.
@@ -88,7 +88,7 @@ pub struct StateDB {
     world_cache: Arc<Mutex<GlobalCache<World>>>,
     asset_scheme_cache: Arc<Mutex<GlobalCache<AssetScheme>>>,
     asset_cache: Arc<Mutex<GlobalCache<OwnedAsset>>>,
-    action_data_cache: Arc<Mutex<GlobalCache<Bytes>>>,
+    action_data_cache: Arc<Mutex<GlobalCache<ActionData>>>,
 
     /// Local dirty cache.
     local_account_cache: LocalCache<Account>,
@@ -99,7 +99,8 @@ pub struct StateDB {
     local_world_cache: LocalCache<World>,
     local_asset_scheme_cache: LocalCache<AssetScheme>,
     local_asset_cache: LocalCache<OwnedAsset>,
-    local_action_data_cache: LocalCache<Bytes>,
+    local_action_data_cache: LocalCache<ActionData>,
+
     /// Hash of the block on top of which this instance was created or
     /// `None` if cache is disabled
     parent_hash: Option<H256>,
@@ -162,7 +163,7 @@ impl StateDB {
         let asset_cache_items = asset_cache_size / ::std::mem::size_of::<Option<OwnedAsset>>();
 
         let action_data_cache_size = cache_size * ACTION_DATA_CACHE_RATIO / 100;
-        let action_data_cache_items = action_data_cache_size / ::std::mem::size_of::<Option<Bytes>>();
+        let action_data_cache_items = action_data_cache_size / ::std::mem::size_of::<Option<ActionData>>();
 
         StateDB {
             db,
@@ -526,7 +527,7 @@ impl TopBackend for StateDB {
         self.local_shard_cache.push(address, item, modified);
     }
 
-    fn add_to_action_data_cache(&mut self, address: H256, item: Option<Bytes>, modified: bool) {
+    fn add_to_action_data_cache(&mut self, address: H256, item: Option<ActionData>, modified: bool) {
         self.local_action_data_cache.push(address, item, modified);
     }
 
@@ -546,7 +547,7 @@ impl TopBackend for StateDB {
         self.get_cached(addr, &self.shard_cache)
     }
 
-    fn get_cached_action_data(&self, key: &H256) -> Option<Option<Bytes>> {
+    fn get_cached_action_data(&self, key: &H256) -> Option<Option<ActionData>> {
         self.get_cached(key, &self.action_data_cache)
     }
 

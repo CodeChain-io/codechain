@@ -57,6 +57,7 @@ pub use db::StateDB;
 pub use error::Error as StateError;
 pub use impls::{ShardLevelState, TopLevelState};
 pub use item::account::Account;
+pub use item::action_data::ActionData;
 pub use item::asset::{OwnedAsset, OwnedAssetAddress};
 pub use item::asset_scheme::{AssetScheme, AssetSchemeAddress};
 pub use item::cache::{Cache, CacheableItem};
