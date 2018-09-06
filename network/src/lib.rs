@@ -26,12 +26,13 @@ extern crate rand;
 extern crate rlp;
 #[macro_use]
 extern crate rlp_derive;
-extern crate slab;
 
 extern crate codechain_crypto as ccrypto;
 extern crate codechain_finally as cfinally;
 extern crate codechain_io as cio;
 extern crate codechain_key as ckey;
+extern crate codechain_limited_table as climited_table;
+extern crate codechain_token_generator as ctoken_generator;
 extern crate codechain_types as ctypes;
 extern crate table as ctable;
 extern crate time;
@@ -45,14 +46,12 @@ mod config;
 mod discovery;
 mod extension;
 mod filters;
-mod limited_table;
 mod node_id;
 mod routing_table;
 mod service;
 mod session_initiator;
 mod test;
 mod timer;
-mod token_generator;
 
 pub mod control;
 mod p2p;

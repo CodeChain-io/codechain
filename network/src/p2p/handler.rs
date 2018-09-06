@@ -20,6 +20,7 @@ use std::sync::Arc;
 use ccrypto::aes::SymmetricCipherError;
 use cfinally::finally;
 use cio::{IoContext, IoHandler, IoHandlerResult, IoManager, StreamToken, TimerToken};
+use ctoken_generator::TokenGenerator;
 use ctypes::util::unexpected::Mismatch;
 use mio::deprecated::EventLoop;
 use mio::{PollOpt, Ready, Token};
@@ -28,7 +29,6 @@ use rlp::UntrustedRlp;
 
 use super::super::addr::convert_to_node_id;
 use super::super::client::Client;
-use super::super::token_generator::TokenGenerator;
 use super::super::{FiltersControl, IntoSocketAddr, NodeId, RoutingTable, SocketAddr};
 use super::connections::{ConnectionType, Connections, ReceivedMessage};
 use super::listener::Listener;

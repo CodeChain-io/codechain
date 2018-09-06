@@ -14,9 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+extern crate codechain_limited_table as climited_table;
+
 use std::convert::Into;
 
-use super::limited_table::{Key, LimitedTable};
+use climited_table::{Key, LimitedTable};
 
 pub type Token = Key;
 

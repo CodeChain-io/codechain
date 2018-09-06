@@ -1,0 +1,7 @@
+[package]
+name = "codechain-token-generator"
+version = "0.1.0"
+authors = ["CodeChain Team <codechain@kodebox.io>"]
+
+[dependencies]
+codechain-limited-table = { path = "../limited_table" }

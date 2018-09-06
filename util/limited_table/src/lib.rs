@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+extern crate slab;
+
 use slab::Slab;
 
 pub type Key = usize;
@@ -85,8 +87,8 @@ impl<Item> LimitedTable<Item> {
 
 #[cfg(test)]
 mod tests {
-    use super::Key;
-    use super::LimitedTable;
+    use super::*;
+
     struct TestItem;
 
     #[test]
