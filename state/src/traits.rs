@@ -102,8 +102,8 @@ where
     /// Increment the nonce of account `a` by 1.
     fn inc_nonce(&mut self, a: &Address) -> TrieResult<()>;
 
-    /// Set the regular key of account `master_public`
-    fn set_regular_key(&mut self, master_public: &Public, key: &Public) -> StateResult<()>;
+    /// Set the regular key of account `owner_public`
+    fn set_regular_key(&mut self, owner_public: &Public, key: &Public) -> StateResult<()>;
 
     fn create_shard(&mut self, shard_creation_cost: &U256, fee_payer: &Address) -> StateResult<()>;
     fn change_shard_owners(&mut self, shard_id: ShardId, owners: &[Address], sender: &Address) -> StateResult<()>;

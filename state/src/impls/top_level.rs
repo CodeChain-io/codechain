@@ -355,7 +355,7 @@ impl TopLevelState {
         fee_payer: &Address,
         fee_payer_public: &Public,
     ) -> StateResult<ParcelInvoice> {
-        // Change the address to a master address if it is a regular key.
+        // Change the address to an owner address if it is a regular key.
         let fee_payer = if self.regular_account_exists_and_not_null(fee_payer)? {
             let regular_account = self.require_regular_account_from_address(fee_payer)?;
             public_to_address(&regular_account.owner_public())
@@ -764,16 +764,16 @@ impl TopState<StateDB> for TopLevelState {
         Ok(())
     }
 
-    fn set_regular_key(&mut self, master_public: &Public, regular_key: &Public) -> StateResult<()> {
-        let master_address = public_to_address(master_public);
+    fn set_regular_key(&mut self, owner_public: &Public, regular_key: &Public) -> StateResult<()> {
+        let owner_address = public_to_address(owner_public);
 
-        let (master_public, master_address) = if self.regular_account_exists_and_not_null(&master_address)? {
-            let regular_account = self.require_regular_account_from_address(&master_address)?;
-            let master_public = regular_account.owner_public().clone();
-            let master_address = public_to_address(&master_public);
-            (master_public, master_address)
+        let (owner_public, owner_address) = if self.regular_account_exists_and_not_null(&owner_address)? {
+            let regular_account = self.require_regular_account_from_address(&owner_address)?;
+            let owner_public = regular_account.owner_public().clone();
+            let owner_address = public_to_address(&owner_public);
+            (owner_public, owner_address)
         } else {
-            (*master_public, public_to_address(&master_public))
+            (*owner_public, public_to_address(&owner_public))
         };
 
         let regular_address = public_to_address(regular_key);
@@ -782,18 +782,18 @@ impl TopState<StateDB> for TopLevelState {
         }
 
         if self.account_exists_and_not_null(&regular_address)? {
-            return Err(ParcelError::RegularKeyAlreadyInUseAsMaster.into())
+            return Err(ParcelError::RegularKeyAlreadyInUseAsPlatformAccount.into())
         }
 
-        let prev_regular_key = self.require_account(&master_address)?.regular_key();
+        let prev_regular_key = self.require_account(&owner_address)?.regular_key();
 
         if let Some(prev_regular_key) = prev_regular_key {
             self.kill_regular_account(&prev_regular_key);
         }
 
-        let mut master_account = self.require_account(&master_address)?;
-        master_account.set_regular_key(regular_key);
-        self.require_regular_account(&regular_key)?.set_owner_public(&master_public);
+        let mut owner_account = self.require_account(&owner_address)?;
+        owner_account.set_regular_key(regular_key);
+        self.require_regular_account(&regular_key)?.set_owner_public(&owner_public);
         Ok(())
     }
 
@@ -1346,7 +1346,7 @@ mod tests_parcel {
     }
 
     #[test]
-    fn use_master_balance_when_signed_with_regular_key() {
+    fn use_owner_balance_when_signed_with_regular_key() {
         let mut state = get_temp_state();
         let regular_keypair = Random.generate().unwrap();
         let key = regular_keypair.public();
@@ -1419,7 +1419,7 @@ mod tests_parcel {
     }
 
     #[test]
-    fn fail_when_regular_key_is_already_registered_as_master_key() {
+    fn fail_when_regular_key_is_already_registered_as_owner_key() {
         let (sender, sender_public) = address();
         let (sender2, sender_public2) = address();
 
@@ -1438,7 +1438,7 @@ mod tests_parcel {
         };
 
         let result = state.apply(&parcel, &sender, &sender_public);
-        assert_eq!(Err(StateError::Parcel(ParcelError::RegularKeyAlreadyInUseAsMaster)), result);
+        assert_eq!(Err(StateError::Parcel(ParcelError::RegularKeyAlreadyInUseAsPlatformAccount)), result);
     }
 
     #[test]
@@ -1558,7 +1558,7 @@ mod tests_parcel {
     }
 
     #[test]
-    fn use_deleted_regular_key_as_master_key() {
+    fn use_deleted_regular_key_as_owner_key() {
         let (sender, sender_public) = address();
         let (regular_address, regular_public) = address();
         let (_, regular_public2) = address();

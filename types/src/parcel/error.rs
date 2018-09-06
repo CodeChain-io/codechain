@@ -72,7 +72,7 @@ pub enum Error {
     InconsistentShardOutcomes,
     ParcelsTooBig,
     RegularKeyAlreadyInUse,
-    RegularKeyAlreadyInUseAsMaster,
+    RegularKeyAlreadyInUseAsPlatformAccount,
     InvalidTransferDestination,
     /// Transaction error
     InvalidTransaction(TransactionError),
@@ -96,7 +96,7 @@ const ERROR_ID_INVALID_SIGNATURE: u8 = 14u8;
 const ERROR_ID_INCONSISTENT_SHARD_OUTCOMES: u8 = 15u8;
 const ERROR_ID_PARCELS_TOO_BIG: u8 = 16u8;
 const ERROR_ID_REGULAR_KEY_ALREADY_IN_USE: u8 = 17u8;
-const ERROR_ID_REGULAR_KEY_ALREADY_IN_USE_AS_MASTER: u8 = 18u8;
+const ERROR_ID_REGULAR_KEY_ALREADY_IN_USE_AS_PLATFORM: u8 = 18u8;
 const ERROR_ID_INVALID_TRANSFER_DESTINATION: u8 = 19u8;
 const ERROR_ID_INVALID_TRANSACTION: u8 = 20u8;
 const ERROR_ID_INSUFFICIENT_PERMISSION: u8 = 21u8;
@@ -133,8 +133,8 @@ impl Encodable for Error {
             Error::InconsistentShardOutcomes => s.begin_list(1).append(&ERROR_ID_INCONSISTENT_SHARD_OUTCOMES),
             Error::ParcelsTooBig => s.begin_list(1).append(&ERROR_ID_PARCELS_TOO_BIG),
             Error::RegularKeyAlreadyInUse => s.begin_list(1).append(&ERROR_ID_REGULAR_KEY_ALREADY_IN_USE),
-            Error::RegularKeyAlreadyInUseAsMaster => {
-                s.begin_list(1).append(&ERROR_ID_REGULAR_KEY_ALREADY_IN_USE_AS_MASTER)
+            Error::RegularKeyAlreadyInUseAsPlatformAccount => {
+                s.begin_list(1).append(&ERROR_ID_REGULAR_KEY_ALREADY_IN_USE_AS_PLATFORM)
             }
             Error::InvalidTransferDestination => s.begin_list(1).append(&ERROR_ID_INVALID_TRANSFER_DESTINATION),
             Error::InvalidTransaction(err) => s.begin_list(2).append(&ERROR_ID_INVALID_TRANSACTION).append(err),
@@ -174,7 +174,7 @@ impl Decodable for Error {
             ERROR_ID_INCONSISTENT_SHARD_OUTCOMES => Error::InconsistentShardOutcomes,
             ERROR_ID_PARCELS_TOO_BIG => Error::ParcelsTooBig,
             ERROR_ID_REGULAR_KEY_ALREADY_IN_USE => Error::RegularKeyAlreadyInUse,
-            ERROR_ID_REGULAR_KEY_ALREADY_IN_USE_AS_MASTER => Error::RegularKeyAlreadyInUseAsMaster,
+            ERROR_ID_REGULAR_KEY_ALREADY_IN_USE_AS_PLATFORM => Error::RegularKeyAlreadyInUseAsPlatformAccount,
             ERROR_ID_INVALID_TRANSFER_DESTINATION => Error::InvalidTransferDestination,
             ERROR_ID_INVALID_TRANSACTION => Error::InvalidTransaction(rlp.val_at(1)?),
             ERROR_ID_INSUFFICIENT_PERMISSION => Error::InsufficientPermission,
@@ -213,7 +213,9 @@ impl Display for Error {
             Error::InconsistentShardOutcomes => "Shard outcomes are inconsistent".to_string(),
             Error::ParcelsTooBig => "Parcel size exceeded the body size limit".to_string(),
             Error::RegularKeyAlreadyInUse => "The regular key is already registered to another account".to_string(),
-            Error::RegularKeyAlreadyInUseAsMaster => "The regular key is already used as a master account".to_string(),
+            Error::RegularKeyAlreadyInUseAsPlatformAccount => {
+                "The regular key is already used as a platform account".to_string()
+            }
             Error::InvalidTransferDestination => "Transfer receiver is not valid account".to_string(),
             Error::InvalidTransaction(err) => format!("Parcel has an invalid transaction: {}", err).to_string(),
             Error::InsufficientPermission => "Sender doesn't have a permission".to_string(),
