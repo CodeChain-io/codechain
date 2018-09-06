@@ -30,10 +30,68 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
+use std::collections::HashSet;
+
+use ctypes::BlockNumber;
+use primitives::H256;
+
 use super::super::CacheableItem;
+use super::block_changes::BlockChanges;
+use super::global_cache::GlobalCache;
+
+pub struct LocalCache<Item: CacheableItem> {
+    queue: Vec<LocalCacheQueueItem<Item>>,
+}
+
+impl<Item: CacheableItem> LocalCache<Item> {
+    pub fn new() -> Self {
+        Self {
+            queue: Vec::new(),
+        }
+    }
+
+    pub fn push(&mut self, addr: Item::Address, item: Option<Item>, modified: bool) {
+        self.queue.push(LocalCacheQueueItem::new(addr, item, modified));
+    }
+
+    pub fn propagate_to_global_cache(
+        &mut self,
+        cache: &mut GlobalCache<Item>,
+        number: BlockNumber,
+        hash: H256,
+        parent: H256,
+        is_best: bool,
+    ) {
+        cache.keep_size();
+        let mut modified_addresses = HashSet::new();
+        ctrace!(STATE_DB, "committing {} cache entries", self.queue.len());
+        for local_item in self.queue.drain(..) {
+            let is_modified = local_item.is_modified();
+            let (address, item) = local_item.drain();
+            if is_modified {
+                modified_addresses.insert(address.clone());
+            }
+            if is_best {
+                if let Some(Some(existing)) = cache.get_mut(&address) {
+                    if let Some(new) = item {
+                        if is_modified {
+                            *existing = new;
+                        }
+                        continue
+                    }
+                }
+                cache.insert(address, item);
+            }
+        }
+
+        // Save modified addresses. These are ordered by the block number.
+        let block_changes = BlockChanges::new(number, hash, parent, modified_addresses, is_best);
+        cache.save(block_changes);
+    }
+}
 
 /// Buffered cache item.
-pub struct LocalCacheQueueItem<Item: CacheableItem> {
+struct LocalCacheQueueItem<Item: CacheableItem> {
     address: Item::Address,
     /// Item or `None` if item does not exist.
     item: Option<Item>,

@@ -30,7 +30,6 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
-use std::collections::HashSet;
 use std::sync::Arc;
 
 use ckey::Address;
@@ -43,9 +42,8 @@ use parking_lot::Mutex;
 use primitives::{Bytes, H256};
 use util_error::UtilError;
 
-use super::block_changes::BlockChanges;
 use super::global_cache::GlobalCache;
-use super::local_cache_queue_item::LocalCacheQueueItem;
+use super::local_cache::LocalCache;
 
 use super::super::{
     Account, ActionHandler, AssetScheme, AssetSchemeAddress, Backend, CacheableItem, Metadata, MetadataAddress,
@@ -93,15 +91,15 @@ pub struct StateDB {
     action_data_cache: Arc<Mutex<GlobalCache<Bytes>>>,
 
     /// Local dirty cache.
-    local_account_cache: Vec<LocalCacheQueueItem<Account>>,
-    local_regular_account_cache: Vec<LocalCacheQueueItem<RegularAccount>>,
-    local_metadata_cache: Vec<LocalCacheQueueItem<Metadata>>,
-    local_shard_cache: Vec<LocalCacheQueueItem<Shard>>,
-    local_shard_metadata_cache: Vec<LocalCacheQueueItem<ShardMetadata>>,
-    local_world_cache: Vec<LocalCacheQueueItem<World>>,
-    local_asset_scheme_cache: Vec<LocalCacheQueueItem<AssetScheme>>,
-    local_asset_cache: Vec<LocalCacheQueueItem<OwnedAsset>>,
-    local_action_data_cache: Vec<LocalCacheQueueItem<Bytes>>,
+    local_account_cache: LocalCache<Account>,
+    local_regular_account_cache: LocalCache<RegularAccount>,
+    local_metadata_cache: LocalCache<Metadata>,
+    local_shard_cache: LocalCache<Shard>,
+    local_shard_metadata_cache: LocalCache<ShardMetadata>,
+    local_world_cache: LocalCache<World>,
+    local_asset_scheme_cache: LocalCache<AssetScheme>,
+    local_asset_cache: LocalCache<OwnedAsset>,
+    local_action_data_cache: LocalCache<Bytes>,
     /// Hash of the block on top of which this instance was created or
     /// `None` if cache is disabled
     parent_hash: Option<H256>,
@@ -178,15 +176,15 @@ impl StateDB {
             asset_cache: Arc::new(Mutex::new(GlobalCache::new(asset_cache_items))),
             action_data_cache: Arc::new(Mutex::new(GlobalCache::new(action_data_cache_items))),
 
-            local_account_cache: Vec::new(),
-            local_regular_account_cache: Vec::new(),
-            local_metadata_cache: Vec::new(),
-            local_shard_cache: Vec::new(),
-            local_shard_metadata_cache: Vec::new(),
-            local_world_cache: Vec::new(),
-            local_asset_scheme_cache: Vec::new(),
-            local_asset_cache: Vec::new(),
-            local_action_data_cache: Vec::new(),
+            local_account_cache: LocalCache::new(),
+            local_regular_account_cache: LocalCache::new(),
+            local_metadata_cache: LocalCache::new(),
+            local_shard_cache: LocalCache::new(),
+            local_shard_metadata_cache: LocalCache::new(),
+            local_world_cache: LocalCache::new(),
+            local_asset_scheme_cache: LocalCache::new(),
+            local_asset_cache: LocalCache::new(),
+            local_action_data_cache: LocalCache::new(),
             parent_hash: None,
             commit_hash: None,
             commit_number: None,
@@ -329,7 +327,7 @@ impl StateDB {
         retracted: &[H256],
         is_best: bool,
         cache: &Mutex<GlobalCache<Item>>,
-        local_cache: &mut Vec<LocalCacheQueueItem<Item>>,
+        local_cache: &mut LocalCache<Item>,
         parent_hash: &Option<H256>,
         commit_hash: &Option<H256>,
         commit_number: &Option<BlockNumber>,
@@ -353,31 +351,7 @@ impl StateDB {
         // blocks are ordered by number and only one block with a given number is marked as canonical
         // (contributed to canonical state cache)
         if let (Some(number), Some(hash), Some(parent)) = (commit_number, commit_hash, parent_hash) {
-            cache.keep_size();
-            let mut modified_addresses = HashSet::new();
-            ctrace!(STATE_DB, "committing {} cache entries", local_cache.len());
-            for local_item in local_cache.drain(..) {
-                let is_modified = local_item.is_modified();
-                let (address, item) = local_item.drain();
-                if is_modified {
-                    modified_addresses.insert(address.clone());
-                }
-                if is_best {
-                    if let Some(Some(existing)) = cache.get_mut(&address) {
-                        if let Some(new) = item {
-                            if is_modified {
-                                *existing = new;
-                            }
-                            continue
-                        }
-                    }
-                    cache.insert(address, item);
-                }
-            }
-
-            // Save modified addresses. These are ordered by the block number.
-            let block_changes = BlockChanges::new(*number, *hash, *parent, modified_addresses, is_best);
-            cache.save(block_changes);
+            local_cache.propagate_to_global_cache(cache, *number, *hash, *parent, is_best);
         }
     }
 
@@ -405,15 +379,15 @@ impl StateDB {
             asset_cache: self.asset_cache.clone(),
             action_data_cache: self.action_data_cache.clone(),
 
-            local_account_cache: Vec::new(),
-            local_regular_account_cache: Vec::new(),
-            local_metadata_cache: Vec::new(),
-            local_shard_cache: Vec::new(),
-            local_shard_metadata_cache: Vec::new(),
-            local_world_cache: Vec::new(),
-            local_asset_scheme_cache: Vec::new(),
-            local_asset_cache: Vec::new(),
-            local_action_data_cache: Vec::new(),
+            local_account_cache: LocalCache::new(),
+            local_regular_account_cache: LocalCache::new(),
+            local_metadata_cache: LocalCache::new(),
+            local_shard_cache: LocalCache::new(),
+            local_shard_metadata_cache: LocalCache::new(),
+            local_world_cache: LocalCache::new(),
+            local_asset_scheme_cache: LocalCache::new(),
+            local_asset_cache: LocalCache::new(),
+            local_action_data_cache: LocalCache::new(),
 
             parent_hash: Some(parent.clone()),
             commit_hash: None,
@@ -500,15 +474,15 @@ impl Clone for StateDB {
             asset_cache: self.asset_cache.clone(),
             action_data_cache: self.action_data_cache.clone(),
 
-            local_account_cache: Vec::new(),
-            local_regular_account_cache: Vec::new(),
-            local_metadata_cache: Vec::new(),
-            local_shard_cache: Vec::new(),
-            local_shard_metadata_cache: Vec::new(),
-            local_world_cache: Vec::new(),
-            local_asset_scheme_cache: Vec::new(),
-            local_asset_cache: Vec::new(),
-            local_action_data_cache: Vec::new(),
+            local_account_cache: LocalCache::new(),
+            local_regular_account_cache: LocalCache::new(),
+            local_metadata_cache: LocalCache::new(),
+            local_shard_cache: LocalCache::new(),
+            local_shard_metadata_cache: LocalCache::new(),
+            local_world_cache: LocalCache::new(),
+            local_asset_scheme_cache: LocalCache::new(),
+            local_asset_cache: LocalCache::new(),
+            local_action_data_cache: LocalCache::new(),
 
             parent_hash: None,
             commit_hash: None,
@@ -532,7 +506,7 @@ impl Backend for StateDB {
 
 impl TopBackend for StateDB {
     fn add_to_account_cache(&mut self, addr: Address, data: Option<Account>, modified: bool) {
-        self.local_account_cache.push(LocalCacheQueueItem::new(addr, data, modified));
+        self.local_account_cache.push(addr, data, modified);
     }
 
     fn add_to_regular_account_cache(
@@ -541,19 +515,19 @@ impl TopBackend for StateDB {
         data: Option<RegularAccount>,
         modified: bool,
     ) {
-        self.local_regular_account_cache.push(LocalCacheQueueItem::new(address, data, modified));
+        self.local_regular_account_cache.push(address, data, modified);
     }
 
     fn add_to_metadata_cache(&mut self, address: MetadataAddress, item: Option<Metadata>, modified: bool) {
-        self.local_metadata_cache.push(LocalCacheQueueItem::new(address, item, modified));
+        self.local_metadata_cache.push(address, item, modified);
     }
 
     fn add_to_shard_cache(&mut self, address: ShardAddress, item: Option<Shard>, modified: bool) {
-        self.local_shard_cache.push(LocalCacheQueueItem::new(address, item, modified));
+        self.local_shard_cache.push(address, item, modified);
     }
 
     fn add_to_action_data_cache(&mut self, address: H256, item: Option<Bytes>, modified: bool) {
-        self.local_action_data_cache.push(LocalCacheQueueItem::new(address, item, modified));
+        self.local_action_data_cache.push(address, item, modified);
     }
 
     fn get_cached_account(&self, addr: &Address) -> Option<Option<Account>> {
@@ -600,19 +574,19 @@ impl ShardBackend for StateDB {
         item: Option<ShardMetadata>,
         modified: bool,
     ) {
-        self.local_shard_metadata_cache.push(LocalCacheQueueItem::new(address, item, modified));
+        self.local_shard_metadata_cache.push(address, item, modified);
     }
 
     fn add_to_world_cache(&mut self, address: WorldAddress, item: Option<World>, modified: bool) {
-        self.local_world_cache.push(LocalCacheQueueItem::new(address, item, modified));
+        self.local_world_cache.push(address, item, modified);
     }
 
     fn add_to_asset_scheme_cache(&mut self, addr: AssetSchemeAddress, item: Option<AssetScheme>, modified: bool) {
-        self.local_asset_scheme_cache.push(LocalCacheQueueItem::new(addr, item, modified));
+        self.local_asset_scheme_cache.push(addr, item, modified);
     }
 
     fn add_to_asset_cache(&mut self, addr: OwnedAssetAddress, item: Option<OwnedAsset>, modified: bool) {
-        self.local_asset_cache.push(LocalCacheQueueItem::new(addr, item, modified));
+        self.local_asset_cache.push(addr, item, modified);
     }
 
     fn get_cached_shard_metadata(&self, addr: &ShardMetadataAddress) -> Option<Option<ShardMetadata>> {

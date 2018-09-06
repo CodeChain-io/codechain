@@ -16,7 +16,7 @@
 
 mod block_changes;
 mod global_cache;
-mod local_cache_queue_item;
+mod local_cache;
 mod state_db;
 
 pub use self::state_db::StateDB;
