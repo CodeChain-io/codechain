@@ -96,7 +96,7 @@ where
 }
 
 
-pub struct Cache<Item>
+pub struct LocalCache<Item>
 where
     Item: CacheableItem, {
     cache: RefCell<HashMap<Item::Address, Entry<Item>>>,
@@ -104,7 +104,7 @@ where
     checkpoints: RefCell<Vec<HashMap<Item::Address, Option<Entry<Item>>>>>,
 }
 
-impl<Item> Cache<Item>
+impl<Item> LocalCache<Item>
 where
     Item: CacheableItem,
 {
@@ -205,7 +205,7 @@ where
         Ok(())
     }
 
-    pub fn propagate_to_global_cache<F>(&self, mut f: F)
+    pub fn propagate_to_global_cache<F>(&self, mut add_to_global_cache: F)
     where
         F: FnMut(Item::Address, Option<Item>, bool), {
         let mut addresses = self.cache.borrow_mut();
@@ -214,7 +214,7 @@ where
             .drain()
             .filter(|&(_, ref a)| a.state == EntryState::Committed || a.state == EntryState::CleanFresh)
         {
-            f(address, a.item, a.state == EntryState::Committed);
+            add_to_global_cache(address, a.item, a.state == EntryState::Committed);
         }
     }
 
@@ -273,7 +273,7 @@ where
     }
 }
 
-impl<Item> fmt::Debug for Cache<Item>
+impl<Item> fmt::Debug for LocalCache<Item>
 where
     Item: CacheableItem,
 {
@@ -282,7 +282,7 @@ where
     }
 }
 
-impl<Item> Clone for Cache<Item>
+impl<Item> Clone for LocalCache<Item>
 where
     Item: CacheableItem,
 {

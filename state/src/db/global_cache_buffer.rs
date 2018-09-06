@@ -39,11 +39,11 @@ use super::super::CacheableItem;
 use super::block_changes::BlockChanges;
 use super::global_cache::GlobalCache;
 
-pub struct LocalCache<Item: CacheableItem> {
-    queue: Vec<LocalCacheQueueItem<Item>>,
+pub struct GlobalCacheBuffer<Item: CacheableItem> {
+    queue: Vec<QueuedItem<Item>>,
 }
 
-impl<Item: CacheableItem> LocalCache<Item> {
+impl<Item: CacheableItem> GlobalCacheBuffer<Item> {
     pub fn new() -> Self {
         Self {
             queue: Vec::new(),
@@ -51,10 +51,10 @@ impl<Item: CacheableItem> LocalCache<Item> {
     }
 
     pub fn push(&mut self, addr: Item::Address, item: Option<Item>, modified: bool) {
-        self.queue.push(LocalCacheQueueItem::new(addr, item, modified));
+        self.queue.push(QueuedItem::new(addr, item, modified));
     }
 
-    pub fn propagate_to_global_cache(
+    pub fn sync_cache(
         &mut self,
         cache: &mut GlobalCache<Item>,
         number: BlockNumber,
@@ -91,7 +91,7 @@ impl<Item: CacheableItem> LocalCache<Item> {
 }
 
 /// Buffered cache item.
-struct LocalCacheQueueItem<Item: CacheableItem> {
+struct QueuedItem<Item: CacheableItem> {
     address: Item::Address,
     /// Item or `None` if item does not exist.
     item: Option<Item>,
@@ -99,7 +99,7 @@ struct LocalCacheQueueItem<Item: CacheableItem> {
     modified: bool,
 }
 
-impl<Item: CacheableItem> LocalCacheQueueItem<Item> {
+impl<Item: CacheableItem> QueuedItem<Item> {
     pub fn new(address: Item::Address, item: Option<Item>, modified: bool) -> Self {
         Self {
             address,

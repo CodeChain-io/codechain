@@ -19,7 +19,7 @@ use std::ops::Deref;
 use primitives::{Bytes, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp, NULL_RLP};
 
-use super::cache::CacheableItem;
+use super::local_cache::CacheableItem;
 
 #[derive(Clone, Debug)]
 pub struct ActionData(Bytes);

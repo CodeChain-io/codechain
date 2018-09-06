@@ -19,7 +19,7 @@ use ctypes::{ShardId, WorldId};
 use primitives::H256;
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
-use super::cache::CacheableItem;
+use super::local_cache::CacheableItem;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct World {

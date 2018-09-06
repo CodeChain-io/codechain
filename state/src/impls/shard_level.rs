@@ -32,7 +32,7 @@ use rlp::Encodable;
 
 use super::super::backend::{Backend, ShardBackend};
 use super::super::checkpoint::{CheckpointId, StateWithCheckpoint};
-use super::super::item::cache::Cache;
+use super::super::item::local_cache::LocalCache;
 use super::super::traits::{ShardState, ShardStateInfo, StateWithCache};
 use super::super::{
     AssetScheme, AssetSchemeAddress, OwnedAsset, OwnedAssetAddress, ShardMetadata, ShardMetadataAddress, World,
@@ -44,10 +44,10 @@ use super::super::{StateError, StateResult};
 pub struct ShardLevelState<B> {
     db: B,
     root: H256,
-    metadata: Cache<ShardMetadata>,
-    world: Cache<World>,
-    asset_scheme: Cache<AssetScheme>,
-    asset: Cache<OwnedAsset>,
+    metadata: LocalCache<ShardMetadata>,
+    world: LocalCache<World>,
+    asset_scheme: LocalCache<AssetScheme>,
+    asset: LocalCache<OwnedAsset>,
     id_of_checkpoints: Vec<CheckpointId>,
     shard_id: ShardId,
 }
@@ -71,10 +71,10 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         Ok(ShardLevelState {
             db,
             root,
-            metadata: Cache::new(),
-            world: Cache::new(),
-            asset_scheme: Cache::new(),
-            asset: Cache::new(),
+            metadata: LocalCache::new(),
+            world: LocalCache::new(),
+            asset_scheme: LocalCache::new(),
+            asset: LocalCache::new(),
             id_of_checkpoints: Default::default(),
             shard_id,
         })
@@ -89,10 +89,10 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         Ok(ShardLevelState {
             db,
             root,
-            metadata: Cache::new(),
-            world: Cache::new(),
-            asset_scheme: Cache::new(),
-            asset: Cache::new(),
+            metadata: LocalCache::new(),
+            world: LocalCache::new(),
+            asset_scheme: LocalCache::new(),
+            asset: LocalCache::new(),
             id_of_checkpoints: Default::default(),
             shard_id,
         })

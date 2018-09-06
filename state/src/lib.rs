@@ -60,7 +60,7 @@ pub use item::account::Account;
 pub use item::action_data::ActionData;
 pub use item::asset::{OwnedAsset, OwnedAssetAddress};
 pub use item::asset_scheme::{AssetScheme, AssetSchemeAddress};
-pub use item::cache::{Cache, CacheableItem};
+pub use item::local_cache::{CacheableItem, LocalCache};
 pub use item::metadata::{Metadata, MetadataAddress};
 pub use item::regular_account::{RegularAccount, RegularAccountAddress};
 pub use item::shard::{Shard, ShardAddress};

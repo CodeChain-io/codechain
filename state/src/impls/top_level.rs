@@ -50,7 +50,7 @@ use primitives::{Bytes, H256, U256};
 
 use super::super::backend::TopBackend;
 use super::super::checkpoint::{CheckpointId, StateWithCheckpoint};
-use super::super::item::cache::{Cache, CacheableItem};
+use super::super::item::local_cache::{CacheableItem, LocalCache};
 use super::super::traits::{ShardState, ShardStateInfo, StateWithCache, TopState, TopStateInfo};
 use super::super::{
     Account, ActionData, AssetScheme, AssetSchemeAddress, Metadata, MetadataAddress, OwnedAsset, OwnedAssetAddress,
@@ -105,11 +105,11 @@ use super::super::{StateDB, StateError, StateResult};
 pub struct TopLevelState {
     db: StateDB,
     root: H256,
-    account: Cache<Account>,
-    regular_account: Cache<RegularAccount>,
-    metadata: Cache<Metadata>,
-    shard: Cache<Shard>,
-    action_data: Cache<ActionData>,
+    account: LocalCache<Account>,
+    regular_account: LocalCache<RegularAccount>,
+    metadata: LocalCache<Metadata>,
+    shard: LocalCache<Shard>,
+    action_data: LocalCache<ActionData>,
     id_of_checkpoints: Vec<CheckpointId>,
 }
 
@@ -284,11 +284,11 @@ impl TopLevelState {
         TopLevelState {
             db,
             root,
-            account: Cache::new(),
-            regular_account: Cache::new(),
-            metadata: Cache::new(),
-            shard: Cache::new(),
-            action_data: Cache::new(),
+            account: LocalCache::new(),
+            regular_account: LocalCache::new(),
+            metadata: LocalCache::new(),
+            shard: LocalCache::new(),
+            action_data: LocalCache::new(),
             id_of_checkpoints: Default::default(),
         }
     }
@@ -302,11 +302,11 @@ impl TopLevelState {
         let state = TopLevelState {
             db,
             root,
-            account: Cache::new(),
-            regular_account: Cache::new(),
-            metadata: Cache::new(),
-            shard: Cache::new(),
-            action_data: Cache::new(),
+            account: LocalCache::new(),
+            regular_account: LocalCache::new(),
+            metadata: LocalCache::new(),
+            shard: LocalCache::new(),
+            action_data: LocalCache::new(),
             id_of_checkpoints: Default::default(),
         };
 

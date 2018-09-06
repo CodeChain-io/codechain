@@ -43,7 +43,7 @@ use primitives::H256;
 use util_error::UtilError;
 
 use super::global_cache::GlobalCache;
-use super::local_cache::LocalCache;
+use super::global_cache_buffer::GlobalCacheBuffer;
 
 use super::super::{
     Account, ActionData, ActionHandler, AssetScheme, AssetSchemeAddress, Backend, CacheableItem, Metadata,
@@ -91,15 +91,15 @@ pub struct StateDB {
     action_data_cache: Arc<Mutex<GlobalCache<ActionData>>>,
 
     /// Local dirty cache.
-    local_account_cache: LocalCache<Account>,
-    local_regular_account_cache: LocalCache<RegularAccount>,
-    local_metadata_cache: LocalCache<Metadata>,
-    local_shard_cache: LocalCache<Shard>,
-    local_shard_metadata_cache: LocalCache<ShardMetadata>,
-    local_world_cache: LocalCache<World>,
-    local_asset_scheme_cache: LocalCache<AssetScheme>,
-    local_asset_cache: LocalCache<OwnedAsset>,
-    local_action_data_cache: LocalCache<ActionData>,
+    account_cache_buffer: GlobalCacheBuffer<Account>,
+    regular_account_cache_buffer: GlobalCacheBuffer<RegularAccount>,
+    metadata_cache_buffer: GlobalCacheBuffer<Metadata>,
+    shard_cache_buffer: GlobalCacheBuffer<Shard>,
+    shard_metadata_cache_buffer: GlobalCacheBuffer<ShardMetadata>,
+    world_cache_buffer: GlobalCacheBuffer<World>,
+    asset_scheme_cache_buffer: GlobalCacheBuffer<AssetScheme>,
+    asset_cache_buffer: GlobalCacheBuffer<OwnedAsset>,
+    action_data_cache_buffer: GlobalCacheBuffer<ActionData>,
 
     /// Hash of the block on top of which this instance was created or
     /// `None` if cache is disabled
@@ -177,15 +177,15 @@ impl StateDB {
             asset_cache: Arc::new(Mutex::new(GlobalCache::new(asset_cache_items))),
             action_data_cache: Arc::new(Mutex::new(GlobalCache::new(action_data_cache_items))),
 
-            local_account_cache: LocalCache::new(),
-            local_regular_account_cache: LocalCache::new(),
-            local_metadata_cache: LocalCache::new(),
-            local_shard_cache: LocalCache::new(),
-            local_shard_metadata_cache: LocalCache::new(),
-            local_world_cache: LocalCache::new(),
-            local_asset_scheme_cache: LocalCache::new(),
-            local_asset_cache: LocalCache::new(),
-            local_action_data_cache: LocalCache::new(),
+            account_cache_buffer: GlobalCacheBuffer::new(),
+            regular_account_cache_buffer: GlobalCacheBuffer::new(),
+            metadata_cache_buffer: GlobalCacheBuffer::new(),
+            shard_cache_buffer: GlobalCacheBuffer::new(),
+            shard_metadata_cache_buffer: GlobalCacheBuffer::new(),
+            world_cache_buffer: GlobalCacheBuffer::new(),
+            asset_scheme_cache_buffer: GlobalCacheBuffer::new(),
+            asset_cache_buffer: GlobalCacheBuffer::new(),
+            action_data_cache_buffer: GlobalCacheBuffer::new(),
             parent_hash: None,
             commit_hash: None,
             commit_number: None,
@@ -239,7 +239,7 @@ impl StateDB {
             retracted,
             is_best,
             &mut self.account_cache,
-            &mut self.local_account_cache,
+            &mut self.account_cache_buffer,
             &self.parent_hash,
             &self.commit_hash,
             &self.commit_number,
@@ -250,7 +250,7 @@ impl StateDB {
             retracted,
             is_best,
             &mut self.regular_account_cache,
-            &mut self.local_regular_account_cache,
+            &mut self.regular_account_cache_buffer,
             &self.parent_hash,
             &self.commit_hash,
             &self.commit_number,
@@ -261,7 +261,7 @@ impl StateDB {
             retracted,
             is_best,
             &mut self.shard_cache,
-            &mut self.local_shard_cache,
+            &mut self.shard_cache_buffer,
             &self.parent_hash,
             &self.commit_hash,
             &self.commit_number,
@@ -272,7 +272,7 @@ impl StateDB {
             retracted,
             is_best,
             &mut self.shard_metadata_cache,
-            &mut self.local_shard_metadata_cache,
+            &mut self.shard_metadata_cache_buffer,
             &self.parent_hash,
             &self.commit_hash,
             &self.commit_number,
@@ -283,7 +283,7 @@ impl StateDB {
             retracted,
             is_best,
             &mut self.world_cache,
-            &mut self.local_world_cache,
+            &mut self.world_cache_buffer,
             &self.parent_hash,
             &self.commit_hash,
             &self.commit_number,
@@ -294,7 +294,7 @@ impl StateDB {
             retracted,
             is_best,
             &mut self.asset_scheme_cache,
-            &mut self.local_asset_scheme_cache,
+            &mut self.asset_scheme_cache_buffer,
             &self.parent_hash,
             &self.commit_hash,
             &self.commit_number,
@@ -305,7 +305,7 @@ impl StateDB {
             retracted,
             is_best,
             &mut self.asset_cache,
-            &mut self.local_asset_cache,
+            &mut self.asset_cache_buffer,
             &self.parent_hash,
             &self.commit_hash,
             &self.commit_number,
@@ -316,7 +316,7 @@ impl StateDB {
             retracted,
             is_best,
             &mut self.action_data_cache,
-            &mut self.local_action_data_cache,
+            &mut self.action_data_cache_buffer,
             &self.parent_hash,
             &self.commit_hash,
             &self.commit_number,
@@ -328,7 +328,7 @@ impl StateDB {
         retracted: &[H256],
         is_best: bool,
         cache: &Mutex<GlobalCache<Item>>,
-        local_cache: &mut LocalCache<Item>,
+        cache_buffer: &mut GlobalCacheBuffer<Item>,
         parent_hash: &Option<H256>,
         commit_hash: &Option<H256>,
         commit_number: &Option<BlockNumber>,
@@ -352,7 +352,7 @@ impl StateDB {
         // blocks are ordered by number and only one block with a given number is marked as canonical
         // (contributed to canonical state cache)
         if let (Some(number), Some(hash), Some(parent)) = (commit_number, commit_hash, parent_hash) {
-            local_cache.propagate_to_global_cache(cache, *number, *hash, *parent, is_best);
+            cache_buffer.sync_cache(cache, *number, *hash, *parent, is_best);
         }
     }
 
@@ -380,15 +380,15 @@ impl StateDB {
             asset_cache: Arc::clone(&self.asset_cache),
             action_data_cache: Arc::clone(&self.action_data_cache),
 
-            local_account_cache: LocalCache::new(),
-            local_regular_account_cache: LocalCache::new(),
-            local_metadata_cache: LocalCache::new(),
-            local_shard_cache: LocalCache::new(),
-            local_shard_metadata_cache: LocalCache::new(),
-            local_world_cache: LocalCache::new(),
-            local_asset_scheme_cache: LocalCache::new(),
-            local_asset_cache: LocalCache::new(),
-            local_action_data_cache: LocalCache::new(),
+            account_cache_buffer: GlobalCacheBuffer::new(),
+            regular_account_cache_buffer: GlobalCacheBuffer::new(),
+            metadata_cache_buffer: GlobalCacheBuffer::new(),
+            shard_cache_buffer: GlobalCacheBuffer::new(),
+            shard_metadata_cache_buffer: GlobalCacheBuffer::new(),
+            world_cache_buffer: GlobalCacheBuffer::new(),
+            asset_scheme_cache_buffer: GlobalCacheBuffer::new(),
+            asset_cache_buffer: GlobalCacheBuffer::new(),
+            action_data_cache_buffer: GlobalCacheBuffer::new(),
 
             parent_hash: Some(parent.clone()),
             commit_hash: None,
@@ -464,15 +464,15 @@ impl Clone for StateDB {
             asset_cache: Arc::clone(&self.asset_cache),
             action_data_cache: Arc::clone(&self.action_data_cache),
 
-            local_account_cache: LocalCache::new(),
-            local_regular_account_cache: LocalCache::new(),
-            local_metadata_cache: LocalCache::new(),
-            local_shard_cache: LocalCache::new(),
-            local_shard_metadata_cache: LocalCache::new(),
-            local_world_cache: LocalCache::new(),
-            local_asset_scheme_cache: LocalCache::new(),
-            local_asset_cache: LocalCache::new(),
-            local_action_data_cache: LocalCache::new(),
+            account_cache_buffer: GlobalCacheBuffer::new(),
+            regular_account_cache_buffer: GlobalCacheBuffer::new(),
+            metadata_cache_buffer: GlobalCacheBuffer::new(),
+            shard_cache_buffer: GlobalCacheBuffer::new(),
+            shard_metadata_cache_buffer: GlobalCacheBuffer::new(),
+            world_cache_buffer: GlobalCacheBuffer::new(),
+            asset_scheme_cache_buffer: GlobalCacheBuffer::new(),
+            asset_cache_buffer: GlobalCacheBuffer::new(),
+            action_data_cache_buffer: GlobalCacheBuffer::new(),
 
             parent_hash: None,
             commit_hash: None,
@@ -496,7 +496,7 @@ impl Backend for StateDB {
 
 impl TopBackend for StateDB {
     fn add_to_account_cache(&mut self, addr: Address, data: Option<Account>, modified: bool) {
-        self.local_account_cache.push(addr, data, modified);
+        self.account_cache_buffer.push(addr, data, modified);
     }
 
     fn add_to_regular_account_cache(
@@ -505,19 +505,19 @@ impl TopBackend for StateDB {
         data: Option<RegularAccount>,
         modified: bool,
     ) {
-        self.local_regular_account_cache.push(address, data, modified);
+        self.regular_account_cache_buffer.push(address, data, modified);
     }
 
     fn add_to_metadata_cache(&mut self, address: MetadataAddress, item: Option<Metadata>, modified: bool) {
-        self.local_metadata_cache.push(address, item, modified);
+        self.metadata_cache_buffer.push(address, item, modified);
     }
 
     fn add_to_shard_cache(&mut self, address: ShardAddress, item: Option<Shard>, modified: bool) {
-        self.local_shard_cache.push(address, item, modified);
+        self.shard_cache_buffer.push(address, item, modified);
     }
 
     fn add_to_action_data_cache(&mut self, address: H256, item: Option<ActionData>, modified: bool) {
-        self.local_action_data_cache.push(address, item, modified);
+        self.action_data_cache_buffer.push(address, item, modified);
     }
 
     fn get_cached_account(&self, addr: &Address) -> Option<Option<Account>> {
@@ -552,19 +552,19 @@ impl ShardBackend for StateDB {
         item: Option<ShardMetadata>,
         modified: bool,
     ) {
-        self.local_shard_metadata_cache.push(address, item, modified);
+        self.shard_metadata_cache_buffer.push(address, item, modified);
     }
 
     fn add_to_world_cache(&mut self, address: WorldAddress, item: Option<World>, modified: bool) {
-        self.local_world_cache.push(address, item, modified);
+        self.world_cache_buffer.push(address, item, modified);
     }
 
     fn add_to_asset_scheme_cache(&mut self, addr: AssetSchemeAddress, item: Option<AssetScheme>, modified: bool) {
-        self.local_asset_scheme_cache.push(addr, item, modified);
+        self.asset_scheme_cache_buffer.push(addr, item, modified);
     }
 
     fn add_to_asset_cache(&mut self, addr: OwnedAssetAddress, item: Option<OwnedAsset>, modified: bool) {
-        self.local_asset_cache.push(addr, item, modified);
+        self.asset_cache_buffer.push(addr, item, modified);
     }
 
     fn get_cached_shard_metadata(&self, addr: &ShardMetadataAddress) -> Option<Option<ShardMetadata>> {
@@ -679,7 +679,7 @@ mod tests {
         // blocks  [ 3b(c) 3a 2a 2b(c) 1b 1a 0 ]
         let mut s = state_db.clone_canon(&h2b);
         s.journal_under(&mut batch, 3, &h3b).unwrap();
-        s.sync_cache(&[h1b.clone(), h2b.clone(), h3b.clone()], &[h1a.clone(), h2a.clone(), h3a.clone()], true);
+        s.sync_cache(&[h1b, h2b, h3b], &[h1a, h2a, h3a], true);
         let s = state_db.clone_canon(&h3a);
         assert!(s.get_cached_account(&address).is_none());
     }
