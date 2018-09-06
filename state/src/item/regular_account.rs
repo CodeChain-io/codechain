@@ -22,22 +22,22 @@ use super::cache::CacheableItem;
 
 #[derive(Clone, Debug)]
 pub struct RegularAccount {
-    master_account: Public,
+    owner_public: Public,
 }
 
 impl RegularAccount {
-    pub fn new(master_account: Public) -> Self {
+    pub fn new(owner_public: Public) -> Self {
         Self {
-            master_account,
+            owner_public,
         }
     }
 
-    pub fn master_account(&self) -> &Public {
-        &self.master_account
+    pub fn owner_public(&self) -> &Public {
+        &self.owner_public
     }
 
-    pub fn set_master_account(&mut self, master_public: &Public) {
-        self.master_account = *master_public;
+    pub fn set_owner_public(&mut self, master_public: &Public) {
+        self.owner_public = *master_public;
     }
 }
 
@@ -45,7 +45,7 @@ impl CacheableItem for RegularAccount {
     type Address = RegularAccountAddress;
 
     fn is_null(&self) -> bool {
-        self.master_account.is_zero()
+        self.owner_public.is_zero()
     }
 }
 
@@ -53,7 +53,7 @@ const PREFIX: u8 = super::REGULAR_ACCOUNT_PREFIX;
 
 impl Encodable for RegularAccount {
     fn rlp_append(&self, s: &mut RlpStream) {
-        s.begin_list(2).append(&PREFIX).append(&self.master_account);
+        s.begin_list(2).append(&PREFIX).append(&self.owner_public);
     }
 }
 
@@ -68,7 +68,7 @@ impl Decodable for RegularAccount {
             return Err(DecoderError::Custom("Unexpected prefix"))
         }
         Ok(Self {
-            master_account: rlp.val_at(1)?,
+            owner_public: rlp.val_at(1)?,
         })
     }
 }

@@ -350,7 +350,7 @@ impl TopLevelState {
         // Change the address to a master address if it is a regular key.
         let fee_payer = if self.regular_account_exists_and_not_null(fee_payer)? {
             let regular_account = self.require_regular_account_from_address(fee_payer)?;
-            public_to_address(&regular_account.master_account())
+            public_to_address(&regular_account.owner_public())
         } else {
             fee_payer.clone()
         };
@@ -604,7 +604,7 @@ impl TopLevelState {
         F: Fn(Option<&Account>) -> U, {
         let a = if self.regular_account_exists_and_not_null(a)? {
             let regular_account = self.require_regular_account_from_address(a)?;
-            public_to_address(&regular_account.master_account())
+            public_to_address(&regular_account.owner_public())
         } else {
             a.clone()
         };
@@ -786,7 +786,7 @@ impl TopState<StateDB> for TopLevelState {
 
         let (master_public, master_address) = if self.regular_account_exists_and_not_null(&master_address)? {
             let regular_account = self.require_regular_account_from_address(&master_address)?;
-            let master_public = regular_account.master_account().clone();
+            let master_public = regular_account.owner_public().clone();
             let master_address = public_to_address(&master_public);
             (master_public, master_address)
         } else {
@@ -810,7 +810,7 @@ impl TopState<StateDB> for TopLevelState {
 
         let mut master_account = self.require_account(&master_address)?;
         master_account.set_regular_key(regular_key);
-        self.require_regular_account(&regular_key)?.set_master_account(&master_public);
+        self.require_regular_account(&regular_key)?.set_owner_public(&master_public);
         Ok(())
     }
 
