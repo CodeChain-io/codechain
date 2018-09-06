@@ -221,20 +221,15 @@ where
     /// Check caches for required data
     /// First searches for account in the local, then the shared cache.
     /// Populates local cache if nothing found.
-    pub fn ensure_cached<'a, G>(
-        &self,
-        a: &'a Item::Address,
-        db: TrieDB,
-        from_global_cache: G,
-    ) -> cmerkle::Result<Option<Item>>
+    pub fn get<G>(&self, a: &Item::Address, db: TrieDB, from_global_cache: G) -> cmerkle::Result<Option<Item>>
     where
-        G: FnOnce(&'a Item::Address) -> Option<Option<Item>>, {
+        G: FnOnce() -> Option<Option<Item>>, {
         // check local cache first
         if let Some(cached_item) = self.cache.borrow().get(a) {
             return Ok(cached_item.item.clone())
         }
         // check global cache
-        match from_global_cache(a) {
+        match from_global_cache() {
             Some(r) => Ok(r),
             None => {
                 // not found in the global cache, get from the DB and insert into local
@@ -247,12 +242,7 @@ where
 
     /// Pull item `a` in our cache from the trie DB.
     /// If it doesn't exist, make item equal the evaluation of `default`.
-    pub fn require_item_or_from<'db, G>(
-        &self,
-        a: &Item::Address,
-        db: TrieDB<'db>,
-        from_global_cache: G,
-    ) -> cmerkle::Result<RefMut<Item>>
+    pub fn get_mut<G>(&self, a: &Item::Address, db: TrieDB, from_global_cache: G) -> cmerkle::Result<RefMut<Item>>
     where
         G: FnOnce() -> Option<Option<Item>>, {
         let contains_key = self.cache.borrow().contains_key(a);
@@ -260,8 +250,8 @@ where
             match from_global_cache() {
                 Some(item) => self.insert(a, Entry::<Item>::new_clean_cached(item)),
                 None => {
-                    let maybe_item = Entry::<Item>::new_clean(db.get_with(a.as_ref(), ::rlp::decode::<Item>)?);
-                    self.insert(a, maybe_item);
+                    let maybe_item = db.get_with(a.as_ref(), ::rlp::decode::<Item>)?;
+                    self.insert(a, Entry::<Item>::new_clean(maybe_item));
                 }
             }
         }

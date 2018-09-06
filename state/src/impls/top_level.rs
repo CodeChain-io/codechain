@@ -40,7 +40,7 @@ use std::fmt;
 
 use ccrypto::BLAKE_NULL_RLP;
 use ckey::{public_to_address, Address, NetworkId, Public};
-use cmerkle::{Result as TrieResult, Trie, TrieError, TrieFactory};
+use cmerkle::{Result as TrieResult, TrieError, TrieFactory};
 use ctypes::invoice::{ParcelInvoice, TransactionInvoice};
 use ctypes::parcel::{Action, ChangeShard, Error as ParcelError, Parcel};
 use ctypes::transaction::Transaction;
@@ -115,62 +115,38 @@ pub struct TopLevelState {
 
 impl TopStateInfo for TopLevelState {
     fn nonce(&self, a: &Address) -> TrieResult<U256> {
-        let account = self.ensure_account_cached(a)?;
+        let account = self.get_account(a)?;
         Ok(account.map_or_else(U256::zero, |account| *account.nonce()))
     }
     fn balance(&self, a: &Address) -> TrieResult<U256> {
-        let account = self.ensure_account_cached(a)?;
+        let account = self.get_account(a)?;
         Ok(account.map_or_else(U256::zero, |account| *account.balance()))
     }
     fn regular_key(&self, a: &Address) -> TrieResult<Option<Public>> {
-        let account = self.ensure_account_cached(a)?;
+        let account = self.get_account(a)?;
         Ok(account.map_or(None, |account| account.regular_key()))
     }
 
     fn regular_key_owner(&self, public: &Public) -> TrieResult<Option<Address>> {
-        let account = self.ensure_regular_account_cached(&public_to_address(public))?;
+        let account = self.get_regular_account(&public_to_address(public))?;
         Ok(account.map_or(None, |regular_account| Some(public_to_address(regular_account.owner_public()))))
     }
 
     fn number_of_shards(&self) -> TrieResult<ShardId> {
-        let metadata = self.require_metadata()?;
+        let metadata = self.get_metadata()?.expect("Metadata must exist");
         Ok(*metadata.number_of_shards())
     }
 
     fn shard_root(&self, shard_id: ShardId) -> TrieResult<Option<H256>> {
-        let shard_address = ShardAddress::new(shard_id);
-        let shard = self.db.get_cached_shard(&shard_address).and_then(|s| s).map(|s| s.root().clone());
-        if shard.is_some() {
-            return Ok(shard)
-        }
-
-        // because of lexical borrow of self.db
-        let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        Ok(db.get_with(&shard_address, ::rlp::decode::<Shard>)?.map(|s| s.root().clone()))
+        Ok(self.get_shard(shard_id)?.map(|shard| *shard.root()))
     }
 
     fn shard_owners(&self, shard_id: ShardId) -> TrieResult<Option<Vec<Address>>> {
-        let shard_address = ShardAddress::new(shard_id);
-        let owners = self.db.get_cached_shard(&shard_address).and_then(|s| s).map(|s| s.owners().to_vec());
-        if owners.is_some() {
-            return Ok(owners)
-        }
-
-        // because of lexical borrow of self.db
-        let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        Ok(db.get_with(&shard_address, ::rlp::decode::<Shard>)?.map(|s| s.owners().to_vec()))
+        Ok(self.get_shard(shard_id)?.map(|shard| shard.owners().to_vec()))
     }
 
     fn shard_users(&self, shard_id: ShardId) -> TrieResult<Option<Vec<Address>>> {
-        let shard_address = ShardAddress::new(shard_id);
-        let users = self.db.get_cached_shard(&shard_address).and_then(|s| s).map(|s| s.users().to_vec());
-        if users.is_some() {
-            return Ok(users)
-        }
-
-        // because of lexical borrow of self.db
-        let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        Ok(db.get_with(&shard_address, ::rlp::decode::<Shard>)?.map(|s| s.users().to_vec()))
+        Ok(self.get_shard(shard_id)?.map(|shard| shard.users().to_vec()))
     }
 
     fn shard_metadata(&self, shard_id: ShardId) -> TrieResult<Option<ShardMetadata>> {
@@ -212,7 +188,7 @@ impl TopStateInfo for TopLevelState {
     }
 
     fn action_data(&self, key: &H256) -> TrieResult<Bytes> {
-        let action_data = self.require_action_data(key)?;
+        let action_data = self.get_action_data_mut(key)?;
         Ok(action_data.clone().into())
     }
 }
@@ -357,7 +333,7 @@ impl TopLevelState {
     ) -> StateResult<ParcelInvoice> {
         // Change the address to an owner address if it is a regular key.
         let fee_payer = if self.regular_account_exists_and_not_null(fee_payer)? {
-            let regular_account = self.require_regular_account_from_address(fee_payer)?;
+            let regular_account = self.get_regular_account_mut_from_address(fee_payer)?;
             public_to_address(&regular_account.owner_public())
         } else {
             fee_payer.clone()
@@ -582,7 +558,7 @@ impl TopLevelState {
 
     fn create_shard_level_state(&mut self, owners: Vec<Address>, users: Vec<Address>) -> StateResult<()> {
         let (shard_id, shard_root, db) = {
-            let mut metadata = self.require_metadata()?;
+            let mut metadata = self.get_metadata_mut()?;
             let shard_id = metadata.increase_number_of_shards();
 
             let mut shard_level_state = ShardLevelState::try_new(shard_id, self.db.clone())?;
@@ -607,63 +583,84 @@ impl TopLevelState {
     /// Check caches for required data
     /// First searches for account in the local, then the shared cache.
     /// Populates local cache if nothing found.
-    fn ensure_account_cached(&self, a: &Address) -> TrieResult<Option<Account>> {
+    fn get_account(&self, a: &Address) -> TrieResult<Option<Account>> {
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        let from_global_cache = |a| self.db.get_cached_account(a);
-        let account = self.account.ensure_cached(&a, db, from_global_cache)?;
-        Ok(account)
+        let from_global_cache = || self.db.get_cached_account(a);
+        self.account.get(&a, db, from_global_cache)
     }
 
-    fn require_account(&self, a: &Address) -> TrieResult<RefMut<Account>> {
+    fn get_account_mut(&self, a: &Address) -> TrieResult<RefMut<Account>> {
         debug_assert_eq!(Ok(false), self.regular_account_exists_and_not_null(a));
 
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        let from_global_cache = || self.db.get_cached_account(&a);
-        self.account.require_item_or_from(&a, db, from_global_cache)
+        let from_global_cache = || self.db.get_cached_account(a);
+        self.account.get_mut(&a, db, from_global_cache)
     }
 
     /// Check caches for required data
     /// First searches for regular account in the local, then the shared cache.
     /// Populates local cache if nothing found.
-    fn ensure_regular_account_cached(&self, a: &Address) -> TrieResult<Option<RegularAccount>> {
+    fn get_regular_account(&self, a: &Address) -> TrieResult<Option<RegularAccount>> {
         let a = RegularAccountAddress::from_address(a);
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        let from_global_cache = |a| self.db.get_cached_regular_account(a);
-        Ok(self.regular_account.ensure_cached(&a, db, from_global_cache)?)
+        let from_global_cache = || self.db.get_cached_regular_account(&a);
+        Ok(self.regular_account.get(&a, db, from_global_cache)?)
     }
 
-    fn require_regular_account(&self, public: &Public) -> TrieResult<RefMut<RegularAccount>> {
+    fn get_regular_account_mut(&self, public: &Public) -> TrieResult<RefMut<RegularAccount>> {
         let regular_account_address = RegularAccountAddress::new(public);
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
         let from_global_cache = || self.db.get_cached_regular_account(&regular_account_address);
-        self.regular_account.require_item_or_from(&regular_account_address, db, from_global_cache)
+        self.regular_account.get_mut(&regular_account_address, db, from_global_cache)
     }
 
-    fn require_regular_account_from_address(&self, a: &Address) -> TrieResult<RefMut<RegularAccount>> {
+    fn get_regular_account_mut_from_address(&self, a: &Address) -> TrieResult<RefMut<RegularAccount>> {
         let regular_account_address = RegularAccountAddress::from_address(a);
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
         let from_global_cache = || self.db.get_cached_regular_account(&regular_account_address);
-        self.regular_account.require_item_or_from(&regular_account_address, db, from_global_cache)
+        self.regular_account.get_mut(&regular_account_address, db, from_global_cache)
     }
 
-    fn require_metadata(&self) -> TrieResult<RefMut<Metadata>> {
+    fn get_metadata(&self) -> TrieResult<Option<Metadata>> {
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
         let address = MetadataAddress::new();
         let from_global_cache = || self.db.get_cached_metadata(&address);
-        self.metadata.require_item_or_from(&address, db, from_global_cache)
+        self.metadata.get(&address, db, from_global_cache)
     }
 
-    fn require_shard(&self, shard_id: ShardId) -> TrieResult<RefMut<Shard>> {
+    fn get_metadata_mut(&self) -> TrieResult<RefMut<Metadata>> {
+        let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
+        let address = MetadataAddress::new();
+        let from_global_cache = || self.db.get_cached_metadata(&address);
+        self.metadata.get_mut(&address, db, from_global_cache)
+    }
+
+    #[allow(dead_code)]
+    fn get_shard(&self, shard_id: ShardId) -> TrieResult<Option<Shard>> {
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
         let shard_address = ShardAddress::new(shard_id);
         let from_global_cache = || self.db.get_cached_shard(&shard_address);
-        self.shard.require_item_or_from(&shard_address, db, from_global_cache)
+        self.shard.get(&shard_address, db, from_global_cache)
     }
 
-    fn require_action_data(&self, key: &H256) -> TrieResult<RefMut<ActionData>> {
+    fn get_shard_mut(&self, shard_id: ShardId) -> TrieResult<RefMut<Shard>> {
+        let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
+        let shard_address = ShardAddress::new(shard_id);
+        let from_global_cache = || self.db.get_cached_shard(&shard_address);
+        self.shard.get_mut(&shard_address, db, from_global_cache)
+    }
+
+    #[allow(dead_code)]
+    fn get_action_data(&self, key: &H256) -> TrieResult<Option<ActionData>> {
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
         let from_global_cache = || self.db.get_cached_action_data(key);
-        self.action_data.require_item_or_from(key, db, from_global_cache)
+        self.action_data.get(key, db, from_global_cache)
+    }
+
+    fn get_action_data_mut(&self, key: &H256) -> TrieResult<RefMut<ActionData>> {
+        let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
+        let from_global_cache = || self.db.get_cached_action_data(key);
+        self.action_data.get_mut(key, db, from_global_cache)
     }
 }
 
@@ -707,22 +704,22 @@ impl TopState<StateDB> for TopLevelState {
     fn account_exists(&self, a: &Address) -> TrieResult<bool> {
         // Bloom filter does not contain empty accounts, so it is important here to
         // check if account exists in the database directly before EIP-161 is in effect.
-        let a = self.ensure_account_cached(a)?;
+        let a = self.get_account(a)?;
         Ok(a.is_some())
     }
 
     fn account_exists_and_not_null(&self, a: &Address) -> TrieResult<bool> {
-        let a = self.ensure_account_cached(a)?;
+        let a = self.get_account(a)?;
         Ok(a.map_or(false, |a| !a.is_null()))
     }
 
     fn account_exists_and_has_nonce(&self, a: &Address) -> TrieResult<bool> {
-        let a = self.ensure_account_cached(a)?;
+        let a = self.get_account(a)?;
         Ok(a.map_or(false, |a| !a.nonce().is_zero()))
     }
 
     fn regular_account_exists_and_not_null(&self, a: &Address) -> TrieResult<bool> {
-        let a = self.ensure_regular_account_cached(a)?;
+        let a = self.get_regular_account(a)?;
         Ok(a.map_or(false, |a| !a.is_null()))
     }
 
@@ -730,7 +727,7 @@ impl TopState<StateDB> for TopLevelState {
         ctrace!(STATE, "add_balance({}, {}): {}", a, incr, self.balance(a)?);
         let is_value_transfer = !incr.is_zero();
         if is_value_transfer {
-            self.require_account(a)?.add_balance(incr);
+            self.get_account_mut(a)?.add_balance(incr);
         }
         Ok(())
     }
@@ -738,7 +735,7 @@ impl TopState<StateDB> for TopLevelState {
     fn sub_balance(&mut self, a: &Address, decr: &U256) -> TrieResult<()> {
         ctrace!(STATE, "sub_balance({}, {}): {}", a, decr, self.balance(a)?);
         if !decr.is_zero() || !self.account_exists(a)? {
-            self.require_account(a)?.sub_balance(decr);
+            self.get_account_mut(a)?.sub_balance(decr);
         }
         Ok(())
     }
@@ -761,7 +758,7 @@ impl TopState<StateDB> for TopLevelState {
     }
 
     fn inc_nonce(&mut self, a: &Address) -> TrieResult<()> {
-        self.require_account(a)?.inc_nonce();
+        self.get_account_mut(a)?.inc_nonce();
         Ok(())
     }
 
@@ -769,7 +766,7 @@ impl TopState<StateDB> for TopLevelState {
         let owner_address = public_to_address(owner_public);
 
         let (owner_public, owner_address) = if self.regular_account_exists_and_not_null(&owner_address)? {
-            let regular_account = self.require_regular_account_from_address(&owner_address)?;
+            let regular_account = self.get_regular_account_mut_from_address(&owner_address)?;
             let owner_public = regular_account.owner_public().clone();
             let owner_address = public_to_address(&owner_public);
             (owner_public, owner_address)
@@ -786,15 +783,15 @@ impl TopState<StateDB> for TopLevelState {
             return Err(ParcelError::RegularKeyAlreadyInUseAsPlatformAccount.into())
         }
 
-        let prev_regular_key = self.require_account(&owner_address)?.regular_key();
+        let prev_regular_key = self.get_account_mut(&owner_address)?.regular_key();
 
         if let Some(prev_regular_key) = prev_regular_key {
             self.kill_regular_account(&prev_regular_key);
         }
 
-        let mut owner_account = self.require_account(&owner_address)?;
+        let mut owner_account = self.get_account_mut(&owner_address)?;
         owner_account.set_regular_key(regular_key);
-        self.require_regular_account(&regular_key)?.set_owner_public(&owner_public);
+        self.get_regular_account_mut(&regular_key)?.set_owner_public(&owner_public);
         Ok(())
     }
 
@@ -836,25 +833,25 @@ impl TopState<StateDB> for TopLevelState {
     }
 
     fn set_shard_root(&mut self, shard_id: ShardId, old_root: &H256, new_root: &H256) -> StateResult<()> {
-        let mut shard = self.require_shard(shard_id)?;
+        let mut shard = self.get_shard_mut(shard_id)?;
         assert_eq!(old_root, shard.root());
         shard.set_root(*new_root);
         Ok(())
     }
 
     fn set_shard_owners(&mut self, shard_id: ShardId, new_owners: Vec<Address>) -> StateResult<()> {
-        let mut shard = self.require_shard(shard_id)?;
+        let mut shard = self.get_shard_mut(shard_id)?;
         shard.set_owners(new_owners);
         Ok(())
     }
 
     fn set_shard_users(&mut self, shard_id: ShardId, new_users: Vec<Address>) -> StateResult<()> {
-        let mut shard = self.require_shard(shard_id)?;
+        let mut shard = self.get_shard_mut(shard_id)?;
         shard.set_users(new_users);
         Ok(())
     }
     fn update_action_data(&mut self, key: &H256, data: Bytes) -> StateResult<()> {
-        let mut action_data = self.require_action_data(key)?;
+        let mut action_data = self.get_action_data_mut(key)?;
         *action_data = data.into();
         Ok(())
     }
@@ -1030,7 +1027,7 @@ mod tests_state {
     fn ensure_cached() {
         let mut state = get_temp_state();
         let a = Address::default();
-        state.require_account(&a).unwrap();
+        state.get_account_mut(&a).unwrap();
         assert_eq!(Ok(()), state.commit());
         assert_eq!(*state.root(), "db4046bb91a12a37cbfb0f09631aad96a97248423163eca791e19b430cc7fe4a".into());
     }

@@ -19,7 +19,7 @@ use std::fmt;
 
 use ccrypto::{Blake, BLAKE_NULL_RLP};
 use ckey::Address;
-use cmerkle::{self, Result as TrieResult, Trie, TrieError, TrieFactory};
+use cmerkle::{self, Result as TrieResult, TrieError, TrieFactory};
 use ctypes::invoice::TransactionInvoice;
 use ctypes::transaction::{
     AssetMintOutput, AssetTransferInput, AssetTransferOutput, Error as TransactionError, Transaction,
@@ -177,7 +177,8 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         }
 
         let metadata_address = ShardMetadataAddress::new(shard_id);
-        let mut metadata = self.require_metadata(&metadata_address)?;
+        assert_ne!(None, self.get_metadata(&metadata_address)?);
+        let mut metadata = self.get_metadata_mut(&metadata_address)?;
 
         let current_nonce = *metadata.nonce();
         if *nonce != current_nonce {
@@ -193,7 +194,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         metadata.increase_nonce();
         metadata.increase_number_of_worlds();
 
-        let mut world = self.require_world(&world_address)?;
+        let mut world = self.get_world_mut(&world_address)?;
         world.init(owners.to_vec(), users.to_vec());
         Ok(())
     }
@@ -221,7 +222,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
             }).into())
         }
 
-        let mut world = self.require_world(&WorldAddress::new(shard_id, world_id))?;
+        let mut world = self.get_world_mut(&WorldAddress::new(shard_id, world_id))?;
         world.inc_nonce();
         world.set_owners(owners.to_vec());
         Ok(())
@@ -250,7 +251,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
             }).into())
         }
 
-        let mut world = self.require_world(&WorldAddress::new(shard_id, world_id))?;
+        let mut world = self.get_world_mut(&WorldAddress::new(shard_id, world_id))?;
         world.inc_nonce();
         world.set_users(users.to_vec());
         Ok(())
@@ -279,13 +280,13 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
 
         let asset_scheme_address = AssetSchemeAddress::new(transaction_hash, self.shard_id, world_id);
         let amount = amount.unwrap_or(::std::u64::MAX);
-        let mut asset_scheme = self.require_asset_scheme(&asset_scheme_address)?;
+        let mut asset_scheme = self.get_asset_scheme_mut(&asset_scheme_address)?;
         asset_scheme.init(metadata.clone(), amount, registrar.clone());
 
         ctrace!(TX, "{:?} is minted on {:?}", asset_scheme, asset_scheme_address);
 
         let asset_address = OwnedAssetAddress::new(transaction_hash, 0, self.shard_id);
-        let mut asset = self.require_asset(&asset_address)?;
+        let mut asset = self.get_asset_mut(&asset_address)?;
         asset.init(asset_scheme_address.into(), *lock_script_hash, parameters.clone(), amount);
         ctrace!(TX, "{:?} is generated on {:?}", asset, asset_address);
         Ok(())
@@ -391,7 +392,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         let mut created_asset = Vec::with_capacity(outputs.len());
         for (index, output) in outputs.iter().enumerate() {
             let asset_address = OwnedAssetAddress::new(transaction.hash(), index, self.shard_id);
-            let mut asset = self.require_asset(&asset_address)?;
+            let mut asset = self.get_asset_mut(&asset_address)?;
             asset.init(output.asset_type, output.lock_script_hash, output.parameters.clone(), output.amount);
             created_asset.push((asset_address, output.amount));
         }
@@ -404,28 +405,52 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         self.asset.remove(account);
     }
 
-    fn require_metadata(&self, a: &ShardMetadataAddress) -> cmerkle::Result<RefMut<ShardMetadata>> {
+    fn get_metadata(&self, a: &ShardMetadataAddress) -> cmerkle::Result<Option<ShardMetadata>> {
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        let from_db = || self.db.get_cached_shard_metadata(a);
-        self.metadata.require_item_or_from(a, db, from_db)
+        let from_global_cache = || self.db.get_cached_shard_metadata(a);
+        self.metadata.get(a, db, from_global_cache)
     }
 
-    fn require_world(&self, a: &WorldAddress) -> cmerkle::Result<RefMut<World>> {
+    fn get_metadata_mut(&self, a: &ShardMetadataAddress) -> cmerkle::Result<RefMut<ShardMetadata>> {
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        let from_db = || self.db.get_cached_world(a);
-        self.world.require_item_or_from(a, db, from_db)
+        let from_global_cache = || self.db.get_cached_shard_metadata(a);
+        self.metadata.get_mut(a, db, from_global_cache)
     }
 
-    fn require_asset_scheme(&self, a: &AssetSchemeAddress) -> cmerkle::Result<RefMut<AssetScheme>> {
+    fn get_world(&self, a: &WorldAddress) -> cmerkle::Result<Option<World>> {
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        let from_db = || self.db.get_cached_asset_scheme(a);
-        self.asset_scheme.require_item_or_from(a, db, from_db)
+        let from_global_cache = || self.db.get_cached_world(a);
+        self.world.get(a, db, from_global_cache)
     }
 
-    fn require_asset(&self, a: &OwnedAssetAddress) -> cmerkle::Result<RefMut<OwnedAsset>> {
+    fn get_world_mut(&self, a: &WorldAddress) -> cmerkle::Result<RefMut<World>> {
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        let from_db = || self.db.get_cached_asset(a);
-        self.asset.require_item_or_from(a, db, from_db)
+        let from_global_cache = || self.db.get_cached_world(a);
+        self.world.get_mut(a, db, from_global_cache)
+    }
+
+    fn get_asset_scheme(&self, a: &AssetSchemeAddress) -> cmerkle::Result<Option<AssetScheme>> {
+        let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
+        let from_global_cache = || self.db.get_cached_asset_scheme(a);
+        self.asset_scheme.get(a, db, from_global_cache)
+    }
+
+    fn get_asset_scheme_mut(&self, a: &AssetSchemeAddress) -> cmerkle::Result<RefMut<AssetScheme>> {
+        let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
+        let from_global_cache = || self.db.get_cached_asset_scheme(a);
+        self.asset_scheme.get_mut(a, db, from_global_cache)
+    }
+
+    fn get_asset(&self, a: &OwnedAssetAddress) -> cmerkle::Result<Option<OwnedAsset>> {
+        let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
+        let from_global_cache = || self.db.get_cached_asset(a);
+        self.asset.get(a, db, from_global_cache)
+    }
+
+    fn get_asset_mut(&self, a: &OwnedAssetAddress) -> cmerkle::Result<RefMut<OwnedAsset>> {
+        let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
+        let from_global_cache = || self.db.get_cached_asset(a);
+        self.asset.get_mut(a, db, from_global_cache)
     }
 }
 
@@ -436,44 +461,20 @@ impl<B: Backend + ShardBackend> ShardStateInfo for ShardLevelState<B> {
 
     fn metadata(&self) -> cmerkle::Result<Option<ShardMetadata>> {
         let a = ShardMetadataAddress::new(self.shard_id);
-        let cached_metadata = self.db.get_cached_shard_metadata(&a).and_then(|metadata| metadata);
-        if cached_metadata.is_some() {
-            return Ok(cached_metadata)
-        }
-
-        let trie = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        Ok(trie.get_with(a.as_ref(), ::rlp::decode::<ShardMetadata>)?)
+        self.get_metadata(&a)
     }
 
     fn world(&self, world_id: WorldId) -> cmerkle::Result<Option<World>> {
         let a = WorldAddress::new(self.shard_id, world_id);
-        let cached_world = self.db.get_cached_world(&a).and_then(|world| world);
-        if cached_world.is_some() {
-            return Ok(cached_world)
-        }
-
-        let trie = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        Ok(trie.get_with(a.as_ref(), ::rlp::decode::<World>)?)
+        self.get_world(&a)
     }
 
     fn asset_scheme(&self, a: &AssetSchemeAddress) -> cmerkle::Result<Option<AssetScheme>> {
-        let cached_asset = self.db.get_cached_asset_scheme(&a).and_then(|asset_scheme| asset_scheme);
-        if cached_asset.is_some() {
-            return Ok(cached_asset)
-        }
-
-        let trie = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        Ok(trie.get_with(a.as_ref(), ::rlp::decode::<AssetScheme>)?)
+        self.get_asset_scheme(a)
     }
 
     fn asset(&self, a: &OwnedAssetAddress) -> cmerkle::Result<Option<OwnedAsset>> {
-        let cached_asset = self.db.get_cached_asset(&a).and_then(|asset| asset);
-        if cached_asset.is_some() {
-            return Ok(cached_asset)
-        }
-
-        let trie = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        Ok(trie.get_with(a.as_ref(), ::rlp::decode::<OwnedAsset>)?)
+        self.get_asset(a)
     }
 }
 
