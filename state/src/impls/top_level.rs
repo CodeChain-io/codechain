@@ -610,21 +610,6 @@ impl TopLevelState {
     fn ensure_account_cached<F, U>(&self, a: &Address, f: F) -> TrieResult<U>
     where
         F: Fn(Option<&Account>) -> U, {
-        let a = if self.regular_account_exists_and_not_null(a)? {
-            let regular_account = self.require_regular_account_from_address(a)?;
-            public_to_address(&regular_account.owner_public())
-        } else {
-            a.clone()
-        };
-
-        self.ensure_master_account_cached(&a, f)
-    }
-
-    /// Same with ensure_master_account.
-    /// But do not pass regular_account redirection
-    fn ensure_master_account_cached<F, U>(&self, a: &Address, f: F) -> TrieResult<U>
-    where
-        F: Fn(Option<&Account>) -> U, {
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
         let from_global_cache = |a| self.db.get_cached_account_with(a, |acc| f(acc.map(|a| &*a)));
         self.account.ensure_cached(&a, &f, db, from_global_cache)
@@ -736,10 +721,6 @@ impl TopState<StateDB> for TopLevelState {
         self.ensure_account_cached(a, |a| a.map_or(false, |a| !a.nonce().is_zero()))
     }
 
-    fn master_account_exists_and_not_null(&self, a: &Address) -> TrieResult<bool> {
-        self.ensure_master_account_cached(a, |a| a.map_or(false, |a| !a.is_null()))
-    }
-
     fn regular_account_exists_and_not_null(&self, a: &Address) -> TrieResult<bool> {
         self.ensure_regular_account_cached(a, |a| a.map_or(false, |a| !a.is_null()))
     }
@@ -800,7 +781,7 @@ impl TopState<StateDB> for TopLevelState {
             return Err(ParcelError::RegularKeyAlreadyInUse.into())
         }
 
-        if self.master_account_exists_and_not_null(&regular_address)? {
+        if self.account_exists_and_not_null(&regular_address)? {
             return Err(ParcelError::RegularKeyAlreadyInUseAsMaster.into())
         }
 
