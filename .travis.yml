@@ -9,29 +9,23 @@ stages:
 jobs:
   include:
     - stage: test
-      name: osx
+      name: test-osx
       os: osx
-      install:
-        - rustup toolchain install nightly-2018-07-17
-        - rustup component add rustfmt-preview --toolchain nightly-2018-07-17
-        - npm install -g yarn
-      before_script:
-        - cargo fetch --verbose
       script:
-        - cargo +nightly-2018-07-17 fmt -- --check && RUST_BACKTRACE=1 cargo test --verbose --all
-        - cargo build && cd test && yarn && yarn start
-    - name: linux
+        - echo "hi"
+    - name: test-linux
       os: linux
       sudo: required
-      install:
-        - rustup toolchain install nightly-2018-07-17
-        - rustup component add rustfmt-preview --toolchain nightly-2018-07-17
-        - npm install -g yarn
-      before_script:
-        - cargo fetch --verbose
       script:
-        - cargo +nightly-2018-07-17 fmt -- --check && RUST_BACKTRACE=1 cargo test --verbose --all
-        - cargo build && cd test && yarn && yarn start
+        - echo "HI"
+    - name: test-int-linux
+      os: linux
+      sript:
+        - echo "HI" && false
+    - name: test-int-osx
+      os: osx
+      sript:
+        - echo "HI" && false
     - stage: deploy
       name: deploy
       sudo: required
@@ -43,6 +37,9 @@ jobs:
         script: bash docker_push.sh
         on:
           branch: docker-build
+  allow_failures:
+  - name: test-int-linux
+  - name: test-int-osx
 notifications:
   webhooks: https://webhooks.gitter.im/e/71bb03cf9abce5b02c43
 cache: cargo
