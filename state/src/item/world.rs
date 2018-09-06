@@ -70,6 +70,24 @@ impl World {
     pub fn set_users(&mut self, users: Vec<Address>) {
         self.users = users;
     }
+
+    pub fn init(&mut self, owners: Vec<Address>, users: Vec<Address>) {
+        assert_eq!(0, self.owners.len());
+        assert_eq!(0, self.users.len());
+        assert_eq!(0, self.nonce);
+        self.owners = owners;
+        self.users = users;
+    }
+}
+
+impl Default for World {
+    fn default() -> Self {
+        Self {
+            owners: vec![],
+            users: vec![],
+            nonce: 0,
+        }
+    }
 }
 
 impl CacheableItem for World {
