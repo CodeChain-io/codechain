@@ -9,29 +9,45 @@ stages:
 jobs:
   include:
     - stage: test
-      name: osx
+      name: test-osx
       os: osx
       install:
         - rustup toolchain install nightly-2018-07-17
         - rustup component add rustfmt-preview --toolchain nightly-2018-07-17
-        - npm install -g yarn
       before_script:
         - cargo fetch --verbose
       script:
         - cargo +nightly-2018-07-17 fmt -- --check && RUST_BACKTRACE=1 cargo test --verbose --all
-        - cargo build && cd test && yarn && yarn start
-    - name: linux
+    - name: test-linux
       os: linux
       sudo: required
       install:
         - rustup toolchain install nightly-2018-07-17
         - rustup component add rustfmt-preview --toolchain nightly-2018-07-17
-        - npm install -g yarn
       before_script:
         - cargo fetch --verbose
       script:
         - cargo +nightly-2018-07-17 fmt -- --check && RUST_BACKTRACE=1 cargo test --verbose --all
+    - name: test-int-linux
+      os: linux
+      install:
+        - nvm install 8
+        - nvm use 8
+        - npm install -g yarn
+      script:
         - cargo build && cd test && yarn && yarn start
+      after_failure:
+        - "curl -X POST -H 'Content-type: application/json' --data '{\"text\":\"Fail integration test in linux https://travis-ci.org/'$TRAVIS_REPO_SLUG'/builds/'$TRAVIS_BUILD_ID'\"}' $SLACK_WEBHOOK_URL"
+    - name: test-int-osx
+      os: osx
+      install:
+        - nvm install 8
+        - nvm use 8
+        - npm install -g yarn
+      script:
+        - cargo build && cd test && yarn && yarn start
+      after_failure:
+        - "curl -X POST -H 'Content-type: application/json' --data '{\"text\":\"Fail integration test in osx https://travis-ci.org/'$TRAVIS_REPO_SLUG'/builds/'$TRAVIS_BUILD_ID'\"}' $SLACK_WEBHOOK_URL"
     - stage: deploy
       name: deploy
       sudo: required
@@ -43,6 +59,9 @@ jobs:
         script: bash docker_push.sh
         on:
           branch: docker-build
+  allow_failures:
+  - name: test-int-linux
+  - name: test-int-osx
 notifications:
   webhooks: https://webhooks.gitter.im/e/71bb03cf9abce5b02c43
 cache: cargo
