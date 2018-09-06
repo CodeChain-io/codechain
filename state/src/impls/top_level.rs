@@ -47,15 +47,14 @@ use ctypes::transaction::Transaction;
 use ctypes::util::unexpected::Mismatch;
 use ctypes::{ShardId, WorldId};
 use primitives::{Bytes, H256, U256};
-use rlp::NULL_RLP;
 
 use super::super::backend::TopBackend;
 use super::super::checkpoint::{CheckpointId, StateWithCheckpoint};
 use super::super::item::cache::{Cache, CacheableItem};
 use super::super::traits::{ShardState, ShardStateInfo, StateWithCache, TopState, TopStateInfo};
 use super::super::{
-    Account, AssetScheme, AssetSchemeAddress, Metadata, MetadataAddress, OwnedAsset, OwnedAssetAddress, RegularAccount,
-    RegularAccountAddress, Shard, ShardAddress, ShardLevelState, ShardMetadata, World,
+    Account, ActionData, AssetScheme, AssetSchemeAddress, Metadata, MetadataAddress, OwnedAsset, OwnedAssetAddress,
+    RegularAccount, RegularAccountAddress, Shard, ShardAddress, ShardLevelState, ShardMetadata, World,
 };
 use super::super::{StateDB, StateError, StateResult};
 
@@ -110,7 +109,7 @@ pub struct TopLevelState {
     regular_account: Cache<RegularAccount>,
     metadata: Cache<Metadata>,
     shard: Cache<Shard>,
-    action_data: Cache<Bytes>,
+    action_data: Cache<ActionData>,
     id_of_checkpoints: Vec<CheckpointId>,
 }
 
@@ -206,7 +205,7 @@ impl TopStateInfo for TopLevelState {
 
     fn action_data(&self, key: &H256) -> TrieResult<Bytes> {
         let action_data = self.require_action_data(key)?;
-        Ok(action_data.clone())
+        Ok(action_data.clone().into())
     }
 }
 
@@ -676,8 +675,8 @@ impl TopLevelState {
         self.shard.require_item_or_from(&shard_address, default, db, from_db)
     }
 
-    fn require_action_data(&self, key: &H256) -> TrieResult<RefMut<Bytes>> {
-        let default = || NULL_RLP.to_vec();
+    fn require_action_data(&self, key: &H256) -> TrieResult<RefMut<ActionData>> {
+        let default = ActionData::default;
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
         let from_db = || self.db.get_cached_action_data(key);
         self.action_data.require_item_or_from(key, default, db, from_db)
@@ -872,7 +871,7 @@ impl TopState<StateDB> for TopLevelState {
     }
     fn update_action_data(&mut self, key: &H256, data: Bytes) -> StateResult<()> {
         let mut action_data = self.require_action_data(key)?;
-        *action_data = data;
+        *action_data = data.into();
         Ok(())
     }
 }

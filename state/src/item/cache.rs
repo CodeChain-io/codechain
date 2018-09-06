@@ -23,19 +23,11 @@ use std::hash::Hash;
 use std::vec::Vec;
 
 use cmerkle::{self, Result as TrieResult, Trie, TrieDB, TrieMut};
-use primitives::{Bytes, H256};
 use rlp::{Decodable, Encodable};
 
 pub trait CacheableItem: Clone + fmt::Debug + Decodable + Encodable {
     type Address: AsRef<[u8]> + Clone + fmt::Debug + Eq + Hash;
     fn is_null(&self) -> bool;
-}
-
-impl CacheableItem for Bytes {
-    type Address = H256;
-    fn is_null(&self) -> bool {
-        self.is_empty()
-    }
 }
 
 #[derive(Eq, PartialEq, Clone, Copy, Debug)]
