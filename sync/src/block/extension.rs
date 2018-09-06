@@ -65,25 +65,25 @@ impl Extension {
         })
     }
 
-    fn send_message(&self, token: &NodeId, message: Message) {
+    fn send_message(&self, id: &NodeId, message: Message) {
         self.api.lock().as_ref().map(|api| {
-            api.send(token, &message.rlp_bytes().to_vec());
+            api.send(id, &message.rlp_bytes().to_vec());
         });
     }
 
-    fn dismiss_request(&self, token: &NodeId, id: u64) {
-        if let Some(requests) = self.requests.write().get_mut(token) {
-            requests.retain(|(i, _)| *i != id);
+    fn dismiss_request(&self, id: &NodeId, request_id: u64) {
+        if let Some(requests) = self.requests.write().get_mut(id) {
+            requests.retain(|(i, _)| *i != request_id);
         }
     }
 
-    fn send_request(&self, token: &NodeId, request: RequestMessage) {
-        if let Some(requests) = self.requests.write().get_mut(token) {
-            let id = self.last_request.fetch_add(1, Ordering::Relaxed) as u64;
-            requests.push((id, request.clone()));
-            self.send_message(token, Message::Request(id, request));
+    fn send_request(&self, id: &NodeId, request: RequestMessage) {
+        if let Some(requests) = self.requests.write().get_mut(id) {
+            let request_id = self.last_request.fetch_add(1, Ordering::Relaxed) as u64;
+            requests.push((request_id, request.clone()));
+            self.send_message(id, Message::Request(request_id, request));
 
-            self.body_requests_to_expire.write().push_back((*token, id));
+            self.body_requests_to_expire.write().push_back((*id, request_id));
             self.api.lock().as_ref().map(|api| {
                 api.set_timer_once(SYNC_EXPIRE_REQUEST_TOKEN, Duration::milliseconds(SYNC_EXPIRE_REQUEST_INTERVAL))
                     .expect("Timer set succeeds");
@@ -91,8 +91,8 @@ impl Extension {
         }
     }
 
-    fn send_response(&self, token: &NodeId, id: u64, response: ResponseMessage) {
-        self.send_message(token, Message::Response(id, response));
+    fn send_response(&self, id: &NodeId, request_id: u64, response: ResponseMessage) {
+        self.send_message(id, Message::Response(request_id, response));
     }
 }
 
@@ -115,11 +115,11 @@ impl NetworkExtension for Extension {
         cinfo!(SYNC, "Sync extension initialized");
     }
 
-    fn on_node_added(&self, token: &NodeId, _version: u64) {
-        cinfo!(SYNC, "New peer detected #{}", token);
+    fn on_node_added(&self, id: &NodeId, _version: u64) {
+        cinfo!(SYNC, "New peer detected #{}", id);
         let chain_info = self.client.chain_info();
         self.send_message(
-            token,
+            id,
             Message::Status {
                 total_score: chain_info.total_score,
                 best_hash: chain_info.best_block_hash,
@@ -128,12 +128,12 @@ impl NetworkExtension for Extension {
         );
     }
 
-    fn on_node_removed(&self, token: &NodeId) {
-        self.header_downloaders.write().remove(token);
-        cinfo!(SYNC, "Peer removed #{}", token);
+    fn on_node_removed(&self, id: &NodeId) {
+        self.header_downloaders.write().remove(id);
+        cinfo!(SYNC, "Peer removed #{}", id);
     }
 
-    fn on_message(&self, token: &NodeId, data: &[u8]) {
+    fn on_message(&self, id: &NodeId, data: &[u8]) {
         if let Ok(received_message) = UntrustedRlp::new(data).as_val() {
             match received_message {
                 Message::Status {
@@ -141,13 +141,13 @@ impl NetworkExtension for Extension {
                     best_hash,
                     genesis_hash,
                 } => {
-                    self.on_peer_status(token, total_score, best_hash, genesis_hash);
+                    self.on_peer_status(id, total_score, best_hash, genesis_hash);
                 }
-                Message::Request(id, request) => self.on_peer_request(token, id, request),
-                Message::Response(id, response) => self.on_peer_response(token, id, response),
+                Message::Request(request_id, request) => self.on_peer_request(id, request_id, request),
+                Message::Response(request_id, response) => self.on_peer_response(id, request_id, response),
             }
         } else {
-            cinfo!(SYNC, "Invalid message from peer {}", token);
+            cinfo!(SYNC, "Invalid message from peer {}", id);
         }
     }
 
