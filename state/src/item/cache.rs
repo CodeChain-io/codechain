@@ -279,15 +279,12 @@ where
 
             match &mut entry.item {
                 Some(_) => {}
-                slot => *slot = Some(Item::default()),
+                slot @ None => *slot = Some(Item::default()),
             }
 
             // set the dirty flag after changing data.
             entry.state = EntryState::Dirty;
-            match entry.item {
-                Some(ref mut item) => item,
-                _ => panic!("Required item must always exist; qed"),
-            }
+            entry.item.as_mut().expect("Required item must always exist; qed")
         }))
     }
 }
