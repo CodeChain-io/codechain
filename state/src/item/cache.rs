@@ -257,13 +257,13 @@ where
         &self,
         a: &Item::Address,
         db: TrieDB<'db>,
-        from_db: G,
+        from_global_cache: G,
     ) -> cmerkle::Result<RefMut<Item>>
     where
         G: FnOnce() -> Option<Option<Item>>, {
         let contains_key = self.cache.borrow().contains_key(a);
         if !contains_key {
-            match from_db() {
+            match from_global_cache() {
                 Some(item) => self.insert(a, Entry::<Item>::new_clean_cached(item)),
                 None => {
                     let maybe_item = Entry::<Item>::new_clean(db.get_with(a.as_ref(), ::rlp::decode::<Item>)?);

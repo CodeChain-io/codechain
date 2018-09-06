@@ -619,8 +619,8 @@ impl TopLevelState {
         debug_assert_eq!(Ok(false), self.regular_account_exists_and_not_null(a));
 
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        let from_db = || self.db.get_cached_account(&a);
-        self.account.require_item_or_from(&a, db, from_db)
+        let from_global_cache = || self.db.get_cached_account(&a);
+        self.account.require_item_or_from(&a, db, from_global_cache)
     }
 
     /// Check caches for required data
@@ -638,35 +638,35 @@ impl TopLevelState {
     fn require_regular_account(&self, public: &Public) -> TrieResult<RefMut<RegularAccount>> {
         let regular_account_address = RegularAccountAddress::new(public);
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        let from_db = || self.db.get_cached_regular_account(&regular_account_address);
-        self.regular_account.require_item_or_from(&regular_account_address, db, from_db)
+        let from_global_cache = || self.db.get_cached_regular_account(&regular_account_address);
+        self.regular_account.require_item_or_from(&regular_account_address, db, from_global_cache)
     }
 
     fn require_regular_account_from_address(&self, a: &Address) -> TrieResult<RefMut<RegularAccount>> {
         let regular_account_address = RegularAccountAddress::from_address(a);
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        let from_db = || self.db.get_cached_regular_account(&regular_account_address);
-        self.regular_account.require_item_or_from(&regular_account_address, db, from_db)
+        let from_global_cache = || self.db.get_cached_regular_account(&regular_account_address);
+        self.regular_account.require_item_or_from(&regular_account_address, db, from_global_cache)
     }
 
     fn require_metadata(&self) -> TrieResult<RefMut<Metadata>> {
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
         let address = MetadataAddress::new();
-        let from_db = || self.db.get_cached_metadata(&address);
-        self.metadata.require_item_or_from(&address, db, from_db)
+        let from_global_cache = || self.db.get_cached_metadata(&address);
+        self.metadata.require_item_or_from(&address, db, from_global_cache)
     }
 
     fn require_shard(&self, shard_id: ShardId) -> TrieResult<RefMut<Shard>> {
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
         let shard_address = ShardAddress::new(shard_id);
-        let from_db = || self.db.get_cached_shard(&shard_address);
-        self.shard.require_item_or_from(&shard_address, db, from_db)
+        let from_global_cache = || self.db.get_cached_shard(&shard_address);
+        self.shard.require_item_or_from(&shard_address, db, from_global_cache)
     }
 
     fn require_action_data(&self, key: &H256) -> TrieResult<RefMut<ActionData>> {
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        let from_db = || self.db.get_cached_action_data(key);
-        self.action_data.require_item_or_from(key, db, from_db)
+        let from_global_cache = || self.db.get_cached_action_data(key);
+        self.action_data.require_item_or_from(key, db, from_global_cache)
     }
 }
 
