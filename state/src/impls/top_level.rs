@@ -115,21 +115,21 @@ pub struct TopLevelState {
 
 impl TopStateInfo for TopLevelState {
     fn nonce(&self, a: &Address) -> TrieResult<U256> {
-        self.ensure_account_cached(a, |a| a.as_ref().map_or_else(U256::zero, |account| *account.nonce()))
+        let account = self.ensure_account_cached(a)?;
+        Ok(account.map_or_else(U256::zero, |account| *account.nonce()))
     }
     fn balance(&self, a: &Address) -> TrieResult<U256> {
-        self.ensure_account_cached(a, |a| a.as_ref().map_or_else(U256::zero, |account| *account.balance()))
+        let account = self.ensure_account_cached(a)?;
+        Ok(account.map_or_else(U256::zero, |account| *account.balance()))
     }
     fn regular_key(&self, a: &Address) -> TrieResult<Option<Public>> {
-        self.ensure_account_cached(a, |a| a.as_ref().map_or(None, |account| account.regular_key()))
+        let account = self.ensure_account_cached(a)?;
+        Ok(account.map_or(None, |account| account.regular_key()))
     }
 
     fn regular_key_owner(&self, public: &Public) -> TrieResult<Option<Address>> {
-        self.ensure_regular_account_cached(&public_to_address(public), |regular_account| {
-            regular_account
-                .as_ref()
-                .map_or(None, |regular_account| Some(public_to_address(regular_account.owner_public())))
-        })
+        let account = self.ensure_regular_account_cached(&public_to_address(public))?;
+        Ok(account.map_or(None, |regular_account| Some(public_to_address(regular_account.owner_public()))))
     }
 
     fn number_of_shards(&self) -> TrieResult<ShardId> {
@@ -607,12 +607,11 @@ impl TopLevelState {
     /// Check caches for required data
     /// First searches for account in the local, then the shared cache.
     /// Populates local cache if nothing found.
-    fn ensure_account_cached<F, U>(&self, a: &Address, f: F) -> TrieResult<U>
-    where
-        F: Fn(Option<&Account>) -> U, {
+    fn ensure_account_cached(&self, a: &Address) -> TrieResult<Option<Account>> {
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        let from_global_cache = |a| self.db.get_cached_account_with(a, |acc| f(acc.map(|a| &*a)));
-        self.account.ensure_cached(&a, &f, db, from_global_cache)
+        let from_global_cache = |a| self.db.get_cached_account(a);
+        let account = self.account.ensure_cached(&a, db, from_global_cache)?;
+        Ok(account)
     }
 
     fn require_account(&self, a: &Address) -> TrieResult<RefMut<Account>> {
@@ -626,13 +625,11 @@ impl TopLevelState {
     /// Check caches for required data
     /// First searches for regular account in the local, then the shared cache.
     /// Populates local cache if nothing found.
-    fn ensure_regular_account_cached<F, U>(&self, a: &Address, f: F) -> TrieResult<U>
-    where
-        F: Fn(Option<&RegularAccount>) -> U, {
+    fn ensure_regular_account_cached(&self, a: &Address) -> TrieResult<Option<RegularAccount>> {
         let a = RegularAccountAddress::from_address(a);
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        let from_global_cache = |a| self.db.get_cached_regular_account_with(a, |acc| f(acc.map(|a| &*a)));
-        self.regular_account.ensure_cached(&a, &f, db, from_global_cache)
+        let from_global_cache = |a| self.db.get_cached_regular_account(a);
+        Ok(self.regular_account.ensure_cached(&a, db, from_global_cache)?)
     }
 
     fn require_regular_account(&self, public: &Public) -> TrieResult<RefMut<RegularAccount>> {
@@ -710,19 +707,23 @@ impl TopState<StateDB> for TopLevelState {
     fn account_exists(&self, a: &Address) -> TrieResult<bool> {
         // Bloom filter does not contain empty accounts, so it is important here to
         // check if account exists in the database directly before EIP-161 is in effect.
-        self.ensure_account_cached(a, |a| a.is_some())
+        let a = self.ensure_account_cached(a)?;
+        Ok(a.is_some())
     }
 
     fn account_exists_and_not_null(&self, a: &Address) -> TrieResult<bool> {
-        self.ensure_account_cached(a, |a| a.map_or(false, |a| !a.is_null()))
+        let a = self.ensure_account_cached(a)?;
+        Ok(a.map_or(false, |a| !a.is_null()))
     }
 
     fn account_exists_and_has_nonce(&self, a: &Address) -> TrieResult<bool> {
-        self.ensure_account_cached(a, |a| a.map_or(false, |a| !a.nonce().is_zero()))
+        let a = self.ensure_account_cached(a)?;
+        Ok(a.map_or(false, |a| !a.nonce().is_zero()))
     }
 
     fn regular_account_exists_and_not_null(&self, a: &Address) -> TrieResult<bool> {
-        self.ensure_regular_account_cached(a, |a| a.map_or(false, |a| !a.is_null()))
+        let a = self.ensure_regular_account_cached(a)?;
+        Ok(a.map_or(false, |a| !a.is_null()))
     }
 
     fn add_balance(&mut self, a: &Address, incr: &U256) -> TrieResult<()> {

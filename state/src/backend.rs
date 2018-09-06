@@ -80,18 +80,6 @@ pub trait TopBackend: Send {
     fn get_cached_shard(&self, addr: &ShardAddress) -> Option<Option<Shard>>;
     fn get_cached_action_data(&self, key: &H256) -> Option<Option<ActionData>>;
 
-    /// Get value from a cached account.
-    /// `None` is passed to the closure if the account entry cached
-    /// is known not to exist.
-    /// `None` is returned if the entry is not cached.
-    fn get_cached_account_with<F, U>(&self, a: &Address, f: F) -> Option<U>
-    where
-        F: FnOnce(Option<&mut Account>) -> U;
-
-    fn get_cached_regular_account_with<F, U>(&self, a: &RegularAccountAddress, f: F) -> Option<U>
-    where
-        F: FnOnce(Option<&mut RegularAccount>) -> U;
-
     fn custom_handlers(&self) -> &[Arc<ActionHandler>];
 }
 

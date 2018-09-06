@@ -446,18 +446,7 @@ impl StateDB {
         if !self.is_allowed(addr, &self.parent_hash, &cache) {
             return None
         }
-        cache.get(addr)
-    }
-
-    fn get_cached_with<Item, F, U>(&self, a: &Item::Address, f: F, cache: &Mutex<GlobalCache<Item>>) -> Option<U>
-    where
-        Item: CacheableItem,
-        F: FnOnce(Option<&mut Item>) -> U, {
-        let mut cache = cache.lock();
-        if !self.is_allowed(a, &self.parent_hash, &cache) {
-            return None
-        }
-        cache.get_mut(a).map(|c| f(c.as_mut()))
+        cache.get_mut(addr).cloned()
     }
 }
 
@@ -549,18 +538,6 @@ impl TopBackend for StateDB {
 
     fn get_cached_action_data(&self, key: &H256) -> Option<Option<ActionData>> {
         self.get_cached(key, &self.action_data_cache)
-    }
-
-    fn get_cached_account_with<F, U>(&self, a: &Address, f: F) -> Option<U>
-    where
-        F: FnOnce(Option<&mut Account>) -> U, {
-        self.get_cached_with(a, f, &self.account_cache)
-    }
-
-    fn get_cached_regular_account_with<F, U>(&self, a: &RegularAccountAddress, f: F) -> Option<U>
-    where
-        F: FnOnce(Option<&mut RegularAccount>) -> U, {
-        self.get_cached_with(a, f, &self.regular_account_cache)
     }
 
     fn custom_handlers(&self) -> &[Arc<ActionHandler>] {

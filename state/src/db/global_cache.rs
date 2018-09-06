@@ -116,10 +116,6 @@ impl<Item: CacheableItem> GlobalCache<Item> {
         self.cache.insert(addr, item);
     }
 
-    pub fn get(&mut self, addr: &Item::Address) -> Option<Option<Item>> {
-        self.cache.get_mut(addr).cloned()
-    }
-
     pub fn get_mut(&mut self, addr: &Item::Address) -> Option<&mut Option<Item>> {
         self.cache.get_mut(addr)
     }

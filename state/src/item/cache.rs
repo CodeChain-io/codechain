@@ -221,32 +221,26 @@ where
     /// Check caches for required data
     /// First searches for account in the local, then the shared cache.
     /// Populates local cache if nothing found.
-    pub fn ensure_cached<'a, F, G, U>(
+    pub fn ensure_cached<'a, G>(
         &self,
         a: &'a Item::Address,
-        f: &F,
         db: TrieDB,
         from_global_cache: G,
-    ) -> cmerkle::Result<U>
+    ) -> cmerkle::Result<Option<Item>>
     where
-        F: Fn(Option<&Item>) -> U,
-        G: FnOnce(&'a Item::Address) -> Option<U>, {
+        G: FnOnce(&'a Item::Address) -> Option<Option<Item>>, {
         // check local cache first
-        if let Some(ref mut maybe_item) = self.cache.borrow_mut().get_mut(a) {
-            if let Some(ref mut item) = maybe_item.item {
-                return Ok(f(Some(item)))
-            }
-            return Ok(f(None))
+        if let Some(cached_item) = self.cache.borrow().get(a) {
+            return Ok(cached_item.item.clone())
         }
         // check global cache
         match from_global_cache(a) {
             Some(r) => Ok(r),
             None => {
                 // not found in the global cache, get from the DB and insert into local
-                let mut maybe_item = db.get_with(a.as_ref(), ::rlp::decode::<Item>)?;
-                let r = f(maybe_item.as_ref());
-                self.insert(a, Entry::<Item>::new_clean(maybe_item));
-                Ok(r)
+                let maybe_item = db.get_with(a.as_ref(), ::rlp::decode::<Item>)?;
+                self.insert(a, Entry::<Item>::new_clean(maybe_item.clone()));
+                Ok(maybe_item)
             }
         }
     }
