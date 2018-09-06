@@ -44,8 +44,8 @@ use primitives::{Bytes, H256};
 use util_error::UtilError;
 
 use super::block_changes::BlockChanges;
-use super::cache::Cache;
-use super::cache_queue_item::CacheQueueItem;
+use super::global_cache::GlobalCache;
+use super::local_cache_queue_item::LocalCacheQueueItem;
 
 use super::super::{
     Account, ActionHandler, AssetScheme, AssetSchemeAddress, Backend, CacheableItem, Metadata, MetadataAddress,
@@ -82,26 +82,26 @@ pub struct StateDB {
     /// Backing database.
     db: Box<JournalDB>,
     /// Shared canonical state cache.
-    account_cache: Arc<Mutex<Cache<Account>>>,
-    regular_account_cache: Arc<Mutex<Cache<RegularAccount>>>,
-    metadata_cache: Arc<Mutex<Cache<Metadata>>>,
-    shard_cache: Arc<Mutex<Cache<Shard>>>,
-    shard_metadata_cache: Arc<Mutex<Cache<ShardMetadata>>>,
-    world_cache: Arc<Mutex<Cache<World>>>,
-    asset_scheme_cache: Arc<Mutex<Cache<AssetScheme>>>,
-    asset_cache: Arc<Mutex<Cache<OwnedAsset>>>,
-    action_data_cache: Arc<Mutex<Cache<Bytes>>>,
+    account_cache: Arc<Mutex<GlobalCache<Account>>>,
+    regular_account_cache: Arc<Mutex<GlobalCache<RegularAccount>>>,
+    metadata_cache: Arc<Mutex<GlobalCache<Metadata>>>,
+    shard_cache: Arc<Mutex<GlobalCache<Shard>>>,
+    shard_metadata_cache: Arc<Mutex<GlobalCache<ShardMetadata>>>,
+    world_cache: Arc<Mutex<GlobalCache<World>>>,
+    asset_scheme_cache: Arc<Mutex<GlobalCache<AssetScheme>>>,
+    asset_cache: Arc<Mutex<GlobalCache<OwnedAsset>>>,
+    action_data_cache: Arc<Mutex<GlobalCache<Bytes>>>,
 
     /// Local dirty cache.
-    local_account_cache: Vec<CacheQueueItem<Account>>,
-    local_regular_account_cache: Vec<CacheQueueItem<RegularAccount>>,
-    local_metadata_cache: Vec<CacheQueueItem<Metadata>>,
-    local_shard_cache: Vec<CacheQueueItem<Shard>>,
-    local_shard_metadata_cache: Vec<CacheQueueItem<ShardMetadata>>,
-    local_world_cache: Vec<CacheQueueItem<World>>,
-    local_asset_scheme_cache: Vec<CacheQueueItem<AssetScheme>>,
-    local_asset_cache: Vec<CacheQueueItem<OwnedAsset>>,
-    local_action_data_cache: Vec<CacheQueueItem<Bytes>>,
+    local_account_cache: Vec<LocalCacheQueueItem<Account>>,
+    local_regular_account_cache: Vec<LocalCacheQueueItem<RegularAccount>>,
+    local_metadata_cache: Vec<LocalCacheQueueItem<Metadata>>,
+    local_shard_cache: Vec<LocalCacheQueueItem<Shard>>,
+    local_shard_metadata_cache: Vec<LocalCacheQueueItem<ShardMetadata>>,
+    local_world_cache: Vec<LocalCacheQueueItem<World>>,
+    local_asset_scheme_cache: Vec<LocalCacheQueueItem<AssetScheme>>,
+    local_asset_cache: Vec<LocalCacheQueueItem<OwnedAsset>>,
+    local_action_data_cache: Vec<LocalCacheQueueItem<Bytes>>,
     /// Hash of the block on top of which this instance was created or
     /// `None` if cache is disabled
     parent_hash: Option<H256>,
@@ -168,15 +168,15 @@ impl StateDB {
 
         StateDB {
             db,
-            account_cache: Arc::new(Mutex::new(Cache::new(account_cache_items))),
-            regular_account_cache: Arc::new(Mutex::new(Cache::new(regular_account_cache_items))),
-            metadata_cache: Arc::new(Mutex::new(Cache::new(metadata_cache_items))),
-            shard_cache: Arc::new(Mutex::new(Cache::new(shard_cache_items))),
-            shard_metadata_cache: Arc::new(Mutex::new(Cache::new(shard_metadata_cache_items))),
-            world_cache: Arc::new(Mutex::new(Cache::new(world_cache_items))),
-            asset_scheme_cache: Arc::new(Mutex::new(Cache::new(asset_scheme_cache_items))),
-            asset_cache: Arc::new(Mutex::new(Cache::new(asset_cache_items))),
-            action_data_cache: Arc::new(Mutex::new(Cache::new(action_data_cache_items))),
+            account_cache: Arc::new(Mutex::new(GlobalCache::new(account_cache_items))),
+            regular_account_cache: Arc::new(Mutex::new(GlobalCache::new(regular_account_cache_items))),
+            metadata_cache: Arc::new(Mutex::new(GlobalCache::new(metadata_cache_items))),
+            shard_cache: Arc::new(Mutex::new(GlobalCache::new(shard_cache_items))),
+            shard_metadata_cache: Arc::new(Mutex::new(GlobalCache::new(shard_metadata_cache_items))),
+            world_cache: Arc::new(Mutex::new(GlobalCache::new(world_cache_items))),
+            asset_scheme_cache: Arc::new(Mutex::new(GlobalCache::new(asset_scheme_cache_items))),
+            asset_cache: Arc::new(Mutex::new(GlobalCache::new(asset_cache_items))),
+            action_data_cache: Arc::new(Mutex::new(GlobalCache::new(action_data_cache_items))),
 
             local_account_cache: Vec::new(),
             local_regular_account_cache: Vec::new(),
@@ -328,8 +328,8 @@ impl StateDB {
         enacted: &[H256],
         retracted: &[H256],
         is_best: bool,
-        cache: &Mutex<Cache<Item>>,
-        local_cache: &mut Vec<CacheQueueItem<Item>>,
+        cache: &Mutex<GlobalCache<Item>>,
+        local_cache: &mut Vec<LocalCacheQueueItem<Item>>,
         parent_hash: &Option<H256>,
         commit_hash: &Option<H256>,
         commit_number: &Option<BlockNumber>,
@@ -428,7 +428,7 @@ impl StateDB {
         self.db.is_pruned()
     }
 
-    fn mem_used_impl<Item>(cache: &Cache<Item>) -> usize
+    fn mem_used_impl<Item>(cache: &GlobalCache<Item>) -> usize
     where
         Item: CacheableItem, {
         let items = cache.len();
@@ -455,7 +455,7 @@ impl StateDB {
 
     /// Check if the account can be returned from cache by matching current block parent hash against canonical
     /// state and filtering out account modified in later blocks.
-    fn is_allowed<Item>(&self, addr: &Item::Address, parent_hash: &Option<H256>, cache: &Cache<Item>) -> bool
+    fn is_allowed<Item>(&self, addr: &Item::Address, parent_hash: &Option<H256>, cache: &GlobalCache<Item>) -> bool
     where
         Item: CacheableItem, {
         if !self.enable_cache {
@@ -464,7 +464,7 @@ impl StateDB {
         cache.is_allowed(addr, parent_hash)
     }
 
-    fn get_cached<Item>(&self, addr: &Item::Address, cache: &Mutex<Cache<Item>>) -> Option<Option<Item>>
+    fn get_cached<Item>(&self, addr: &Item::Address, cache: &Mutex<GlobalCache<Item>>) -> Option<Option<Item>>
     where
         Item: CacheableItem, {
         let mut cache = cache.lock();
@@ -474,7 +474,7 @@ impl StateDB {
         cache.get(addr)
     }
 
-    fn get_cached_with<Item, F, U>(&self, a: &Item::Address, f: F, cache: &Mutex<Cache<Item>>) -> Option<U>
+    fn get_cached_with<Item, F, U>(&self, a: &Item::Address, f: F, cache: &Mutex<GlobalCache<Item>>) -> Option<U>
     where
         Item: CacheableItem,
         F: FnOnce(Option<&mut Item>) -> U, {
@@ -532,7 +532,7 @@ impl Backend for StateDB {
 
 impl TopBackend for StateDB {
     fn add_to_account_cache(&mut self, addr: Address, data: Option<Account>, modified: bool) {
-        self.local_account_cache.push(CacheQueueItem::new(addr, data, modified));
+        self.local_account_cache.push(LocalCacheQueueItem::new(addr, data, modified));
     }
 
     fn add_to_regular_account_cache(
@@ -541,19 +541,19 @@ impl TopBackend for StateDB {
         data: Option<RegularAccount>,
         modified: bool,
     ) {
-        self.local_regular_account_cache.push(CacheQueueItem::new(address, data, modified));
+        self.local_regular_account_cache.push(LocalCacheQueueItem::new(address, data, modified));
     }
 
     fn add_to_metadata_cache(&mut self, address: MetadataAddress, item: Option<Metadata>, modified: bool) {
-        self.local_metadata_cache.push(CacheQueueItem::new(address, item, modified));
+        self.local_metadata_cache.push(LocalCacheQueueItem::new(address, item, modified));
     }
 
     fn add_to_shard_cache(&mut self, address: ShardAddress, item: Option<Shard>, modified: bool) {
-        self.local_shard_cache.push(CacheQueueItem::new(address, item, modified));
+        self.local_shard_cache.push(LocalCacheQueueItem::new(address, item, modified));
     }
 
     fn add_to_action_data_cache(&mut self, address: H256, item: Option<Bytes>, modified: bool) {
-        self.local_action_data_cache.push(CacheQueueItem::new(address, item, modified));
+        self.local_action_data_cache.push(LocalCacheQueueItem::new(address, item, modified));
     }
 
     fn get_cached_account(&self, addr: &Address) -> Option<Option<Account>> {
@@ -600,19 +600,19 @@ impl ShardBackend for StateDB {
         item: Option<ShardMetadata>,
         modified: bool,
     ) {
-        self.local_shard_metadata_cache.push(CacheQueueItem::new(address, item, modified));
+        self.local_shard_metadata_cache.push(LocalCacheQueueItem::new(address, item, modified));
     }
 
     fn add_to_world_cache(&mut self, address: WorldAddress, item: Option<World>, modified: bool) {
-        self.local_world_cache.push(CacheQueueItem::new(address, item, modified));
+        self.local_world_cache.push(LocalCacheQueueItem::new(address, item, modified));
     }
 
     fn add_to_asset_scheme_cache(&mut self, addr: AssetSchemeAddress, item: Option<AssetScheme>, modified: bool) {
-        self.local_asset_scheme_cache.push(CacheQueueItem::new(addr, item, modified));
+        self.local_asset_scheme_cache.push(LocalCacheQueueItem::new(addr, item, modified));
     }
 
     fn add_to_asset_cache(&mut self, addr: OwnedAssetAddress, item: Option<OwnedAsset>, modified: bool) {
-        self.local_asset_cache.push(CacheQueueItem::new(addr, item, modified));
+        self.local_asset_cache.push(LocalCacheQueueItem::new(addr, item, modified));
     }
 
     fn get_cached_shard_metadata(&self, addr: &ShardMetadataAddress) -> Option<Option<ShardMetadata>> {

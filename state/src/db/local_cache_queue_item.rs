@@ -33,7 +33,7 @@
 use super::super::CacheableItem;
 
 /// Buffered cache item.
-pub struct CacheQueueItem<Item: CacheableItem> {
+pub struct LocalCacheQueueItem<Item: CacheableItem> {
     address: Item::Address,
     /// Item or `None` if item does not exist.
     item: Option<Item>,
@@ -41,7 +41,7 @@ pub struct CacheQueueItem<Item: CacheableItem> {
     modified: bool,
 }
 
-impl<Item: CacheableItem> CacheQueueItem<Item> {
+impl<Item: CacheableItem> LocalCacheQueueItem<Item> {
     pub fn new(address: Item::Address, item: Option<Item>, modified: bool) -> Self {
         Self {
             address,
