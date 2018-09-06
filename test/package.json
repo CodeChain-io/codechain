@@ -5,6 +5,9 @@
   "main": "index.js",
   "author": "CodeChain Team <codechain@kodebox.io>",
   "license": "AGPL-3.0",
+  "engines": {
+    "node": ">=8"
+  },
   "scripts": {
     "start": "jest --env node -i",
     "start-release": "NODE_ENV=production jest",
