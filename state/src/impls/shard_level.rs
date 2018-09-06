@@ -38,7 +38,7 @@ use super::super::{
     AssetScheme, AssetSchemeAddress, OwnedAsset, OwnedAssetAddress, ShardMetadata, ShardMetadataAddress, World,
     WorldAddress,
 };
-use super::super::{StateDB, StateError, StateResult};
+use super::super::{StateError, StateResult};
 
 
 pub struct ShardLevelState<B> {
@@ -177,7 +177,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         }
 
         let metadata_address = ShardMetadataAddress::new(shard_id);
-        let mut metadata = self.require_metadata(&metadata_address, || unreachable!("Shard must have metadata"))?;
+        let mut metadata = self.require_metadata(&metadata_address)?;
 
         let current_nonce = *metadata.nonce();
         if *nonce != current_nonce {
@@ -193,7 +193,8 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         metadata.increase_nonce();
         metadata.increase_number_of_worlds();
 
-        self.require_world(&world_address, || World::new(owners.to_vec(), users.to_vec()))?;
+        let mut world = self.require_world(&world_address)?;
+        world.init(owners.to_vec(), users.to_vec());
         Ok(())
     }
 
@@ -220,7 +221,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
             }).into())
         }
 
-        let mut world = self.require_world(&WorldAddress::new(shard_id, world_id), || unreachable!())?;
+        let mut world = self.require_world(&WorldAddress::new(shard_id, world_id))?;
         world.inc_nonce();
         world.set_owners(owners.to_vec());
         Ok(())
@@ -249,7 +250,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
             }).into())
         }
 
-        let mut world = self.require_world(&WorldAddress::new(shard_id, world_id), || unreachable!())?;
+        let mut world = self.require_world(&WorldAddress::new(shard_id, world_id))?;
         world.inc_nonce();
         world.set_users(users.to_vec());
         Ok(())
@@ -278,15 +279,14 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
 
         let asset_scheme_address = AssetSchemeAddress::new(transaction_hash, self.shard_id, world_id);
         let amount = amount.unwrap_or(::std::u64::MAX);
-        let asset_scheme = self.require_asset_scheme(&asset_scheme_address, || {
-            AssetScheme::new(metadata.clone(), amount, registrar.clone())
-        })?;
+        let mut asset_scheme = self.require_asset_scheme(&asset_scheme_address)?;
+        asset_scheme.init(metadata.clone(), amount, registrar.clone());
+
         ctrace!(TX, "{:?} is minted on {:?}", asset_scheme, asset_scheme_address);
 
         let asset_address = OwnedAssetAddress::new(transaction_hash, 0, self.shard_id);
-        let asset = self.require_asset(&asset_address, || {
-            OwnedAsset::new(asset_scheme_address.into(), *lock_script_hash, parameters.clone(), amount)
-        });
+        let mut asset = self.require_asset(&asset_address)?;
+        asset.init(asset_scheme_address.into(), *lock_script_hash, parameters.clone(), amount);
         ctrace!(TX, "{:?} is generated on {:?}", asset, asset_address);
         Ok(())
     }
@@ -391,9 +391,8 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         let mut created_asset = Vec::with_capacity(outputs.len());
         for (index, output) in outputs.iter().enumerate() {
             let asset_address = OwnedAssetAddress::new(transaction.hash(), index, self.shard_id);
-            let asset =
-                OwnedAsset::new(output.asset_type, output.lock_script_hash, output.parameters.clone(), output.amount);
-            self.require_asset(&asset_address, || asset)?;
+            let mut asset = self.require_asset(&asset_address)?;
+            asset.init(output.asset_type, output.lock_script_hash, output.parameters.clone(), output.amount);
             created_asset.push((asset_address, output.amount));
         }
         ctrace!(TX, "Deleted assets {:?}", deleted_asset);
@@ -405,36 +404,28 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         self.asset.remove(account);
     }
 
-    fn require_metadata<F>(&self, a: &ShardMetadataAddress, default: F) -> cmerkle::Result<RefMut<ShardMetadata>>
-    where
-        F: FnOnce() -> ShardMetadata, {
+    fn require_metadata(&self, a: &ShardMetadataAddress) -> cmerkle::Result<RefMut<ShardMetadata>> {
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
         let from_db = || self.db.get_cached_shard_metadata(a);
-        self.metadata.require_item_or_from(a, default, db, from_db)
+        self.metadata.require_item_or_from(a, db, from_db)
     }
 
-    fn require_world<F>(&self, a: &WorldAddress, default: F) -> cmerkle::Result<RefMut<World>>
-    where
-        F: FnOnce() -> World, {
+    fn require_world(&self, a: &WorldAddress) -> cmerkle::Result<RefMut<World>> {
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
         let from_db = || self.db.get_cached_world(a);
-        self.world.require_item_or_from(a, default, db, from_db)
+        self.world.require_item_or_from(a, db, from_db)
     }
 
-    fn require_asset_scheme<F>(&self, a: &AssetSchemeAddress, default: F) -> cmerkle::Result<RefMut<AssetScheme>>
-    where
-        F: FnOnce() -> AssetScheme, {
+    fn require_asset_scheme(&self, a: &AssetSchemeAddress) -> cmerkle::Result<RefMut<AssetScheme>> {
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
         let from_db = || self.db.get_cached_asset_scheme(a);
-        self.asset_scheme.require_item_or_from(a, default, db, from_db)
+        self.asset_scheme.require_item_or_from(a, db, from_db)
     }
 
-    fn require_asset<F>(&self, a: &OwnedAssetAddress, default: F) -> cmerkle::Result<RefMut<OwnedAsset>>
-    where
-        F: FnOnce() -> OwnedAsset, {
+    fn require_asset(&self, a: &OwnedAssetAddress) -> cmerkle::Result<RefMut<OwnedAsset>> {
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
         let from_db = || self.db.get_cached_asset(a);
-        self.asset.require_item_or_from(a, default, db, from_db)
+        self.asset.require_item_or_from(a, db, from_db)
     }
 }
 
@@ -563,23 +554,6 @@ impl<B: ShardBackend> fmt::Debug for ShardLevelState<B> {
     }
 }
 
-// TODO: cloning for `ShardLevelState` shouldn't be possible in general; Remove this and use
-// checkpoints where possible.
-impl Clone for ShardLevelState<StateDB> {
-    fn clone(&self) -> ShardLevelState<StateDB> {
-        ShardLevelState {
-            db: self.db.clone(),
-            root: self.root.clone(),
-            id_of_checkpoints: self.id_of_checkpoints.clone(),
-            metadata: self.metadata.clone(),
-            world: self.world.clone(),
-            asset_scheme: self.asset_scheme.clone(),
-            asset: self.asset.clone(),
-            shard_id: self.shard_id,
-        }
-    }
-}
-
 const TRANSACTION_CHECKPOINT: CheckpointId = 456;
 
 impl<B: Backend + ShardBackend> ShardState<B> for ShardLevelState<B> {
@@ -617,6 +591,7 @@ impl<B: Backend + ShardBackend> ShardState<B> for ShardLevelState<B> {
 #[cfg(test)]
 mod tests {
     use super::super::super::tests::helpers::get_temp_state_db;
+    use super::super::super::StateDB;
     use ctypes::transaction::{AssetOutPoint, AssetTransferInput, AssetTransferOutput, Error as TransactionError};
 
     use super::*;

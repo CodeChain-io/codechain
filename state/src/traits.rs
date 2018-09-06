@@ -35,6 +35,8 @@ pub trait TopStateInfo {
     /// Get the regular key of account `a`.
     fn regular_key(&self, a: &Address) -> TrieResult<Option<Public>>;
 
+    fn regular_key_owner(&self, public: &Public) -> TrieResult<Option<Address>>;
+
     fn number_of_shards(&self) -> TrieResult<ShardId>;
 
     fn shard_root(&self, shard_id: ShardId) -> TrieResult<Option<H256>>;

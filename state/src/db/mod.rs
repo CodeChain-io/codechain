@@ -15,8 +15,8 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 mod block_changes;
-mod cache;
-mod cache_queue_item;
+mod global_cache;
+mod local_cache;
 mod state_db;
 
 pub use self::state_db::StateDB;

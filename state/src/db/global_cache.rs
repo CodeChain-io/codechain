@@ -39,7 +39,7 @@ use super::super::CacheableItem;
 use super::block_changes::BlockChanges;
 
 /// Shared canonical state cache.
-pub struct Cache<Item: CacheableItem> {
+pub struct GlobalCache<Item: CacheableItem> {
     /// `None` indicates that item is known to be missing.
     // When changing the type of the values here, be sure to update `mem_used` and
     // `new`.
@@ -49,7 +49,7 @@ pub struct Cache<Item: CacheableItem> {
     modifications: VecDeque<BlockChanges<Item>>,
 }
 
-impl<Item: CacheableItem> Cache<Item> {
+impl<Item: CacheableItem> GlobalCache<Item> {
     pub fn new(capacity: usize) -> Self {
         Self {
             cache: LruCache::new(capacity),

@@ -97,6 +97,12 @@ impl Account {
     }
 }
 
+impl Default for Account {
+    fn default() -> Self {
+        Self::new(U256::zero(), U256::zero())
+    }
+}
+
 impl CacheableItem for Account {
     type Address = ckey::Address;
 

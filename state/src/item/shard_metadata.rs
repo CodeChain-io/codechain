@@ -58,6 +58,15 @@ impl ShardMetadata {
     }
 }
 
+impl Default for ShardMetadata {
+    fn default() -> Self {
+        Self {
+            number_of_worlds: 0,
+            nonce: 0,
+        }
+    }
+}
+
 impl CacheableItem for ShardMetadata {
     type Address = ShardMetadataAddress;
 

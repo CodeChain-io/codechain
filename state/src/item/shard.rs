@@ -65,6 +65,12 @@ impl Shard {
     }
 }
 
+impl Default for Shard {
+    fn default() -> Self {
+        Self::new(BLAKE_NULL_RLP, vec![], vec![])
+    }
+}
+
 impl CacheableItem for Shard {
     type Address = ShardAddress;
 

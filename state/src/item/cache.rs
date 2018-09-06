@@ -23,19 +23,11 @@ use std::hash::Hash;
 use std::vec::Vec;
 
 use cmerkle::{self, Result as TrieResult, Trie, TrieDB, TrieMut};
-use primitives::{Bytes, H256};
 use rlp::{Decodable, Encodable};
 
-pub trait CacheableItem: Clone + fmt::Debug + Decodable + Encodable {
+pub trait CacheableItem: Clone + Default + fmt::Debug + Decodable + Encodable {
     type Address: AsRef<[u8]> + Clone + fmt::Debug + Eq + Hash;
     fn is_null(&self) -> bool;
-}
-
-impl CacheableItem for Bytes {
-    type Address = H256;
-    fn is_null(&self) -> bool {
-        self.is_empty()
-    }
 }
 
 #[derive(Eq, PartialEq, Clone, Copy, Debug)]
@@ -261,15 +253,13 @@ where
 
     /// Pull item `a` in our cache from the trie DB.
     /// If it doesn't exist, make item equal the evaluation of `default`.
-    pub fn require_item_or_from<'db, F, G>(
+    pub fn require_item_or_from<'db, G>(
         &self,
         a: &Item::Address,
-        default: F,
         db: TrieDB<'db>,
         from_db: G,
     ) -> cmerkle::Result<RefMut<Item>>
     where
-        F: FnOnce() -> Item,
         G: FnOnce() -> Option<Option<Item>>, {
         let contains_key = self.cache.borrow().contains_key(a);
         if !contains_key {
@@ -289,7 +279,7 @@ where
 
             match &mut entry.item {
                 Some(_) => {}
-                slot => *slot = Some(default()),
+                slot => *slot = Some(Item::default()),
             }
 
             // set the dirty flag after changing data.

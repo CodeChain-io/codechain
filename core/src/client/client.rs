@@ -59,7 +59,8 @@ use super::{
     AccountData, AssetClient, Balance, BlockChain as BlockChainTrait, BlockChainClient, BlockChainInfo, BlockInfo,
     BlockProducer, ChainInfo, ChainNotify, ClientConfig, DatabaseClient, EngineClient, EngineInfo,
     Error as ClientError, ExecuteClient, ImportBlock, ImportResult, ImportSealedBlock, MiningBlockChainClient, Nonce,
-    ParcelInfo, PrepareOpenBlock, RegularKey, ReopenBlock, Shard, StateOrBlock, TransactionInfo, TransactionInvoice,
+    ParcelInfo, PrepareOpenBlock, RegularKey, RegularKeyOwner, ReopenBlock, Shard, StateOrBlock, TransactionInfo,
+    TransactionInvoice,
 };
 
 const MAX_MEM_POOL_SIZE: usize = 4096;
@@ -972,6 +973,15 @@ impl RegularKey for Client {
         match state {
             StateOrBlock::State(s) => s.regular_key(address).ok()?,
             StateOrBlock::Block(id) => self.state_at(id)?.regular_key(address).ok()?,
+        }
+    }
+}
+
+impl RegularKeyOwner for Client {
+    fn regular_key_owner(&self, public: &Public, state: StateOrBlock) -> Option<Address> {
+        match state {
+            StateOrBlock::State(s) => s.regular_key_owner(public).ok()?,
+            StateOrBlock::Block(id) => self.state_at(id)?.regular_key_owner(public).ok()?,
         }
     }
 }

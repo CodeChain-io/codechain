@@ -71,6 +71,37 @@ impl OwnedAsset {
     pub fn amount(&self) -> &u64 {
         &self.asset.amount()
     }
+
+    pub fn init(&mut self, asset_type: H256, lock_script_hash: H256, parameters: Vec<Bytes>, amount: u64) {
+        assert_eq!(
+            Asset {
+                asset_type: H256::zero(),
+                amount: 0
+            },
+            self.asset
+        );
+        assert_eq!(H256::zero(), self.lock_script_hash);
+        assert_eq!(0, self.parameters.len());
+        self.asset = Asset {
+            asset_type,
+            amount,
+        };
+        self.lock_script_hash = lock_script_hash;
+        self.parameters = parameters;
+    }
+}
+
+impl Default for OwnedAsset {
+    fn default() -> Self {
+        Self {
+            asset: Asset {
+                asset_type: H256::zero(),
+                amount: 0,
+            },
+            lock_script_hash: H256::zero(),
+            parameters: vec![],
+        }
+    }
 }
 
 impl CacheableItem for OwnedAsset {

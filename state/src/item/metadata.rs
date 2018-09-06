@@ -44,6 +44,12 @@ impl Metadata {
     }
 }
 
+impl Default for Metadata {
+    fn default() -> Self {
+        Self::new(0)
+    }
+}
+
 impl CacheableItem for Metadata {
     type Address = MetadataAddress;
 
