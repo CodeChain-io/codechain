@@ -36,8 +36,8 @@ impl RegularAccount {
         &self.owner_public
     }
 
-    pub fn set_owner_public(&mut self, master_public: &Public) {
-        self.owner_public = *master_public;
+    pub fn set_owner_public(&mut self, owner_public: &Public) {
+        self.owner_public = *owner_public;
     }
 }
 
