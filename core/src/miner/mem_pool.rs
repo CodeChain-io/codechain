@@ -103,6 +103,7 @@ impl ParcelOrder {
     fn for_parcel(item: &MemPoolItem, base_nonce: U256) -> Self {
         let rlp_bytes_len = rlp::encode(&item.parcel).to_vec().len();
         let fee = item.parcel.fee;
+        ctrace!(MEM_POOL, "New parcel with size {}", item.parcel.heap_size_of_children());
         Self {
             nonce_height: item.nonce() - base_nonce,
             fee,

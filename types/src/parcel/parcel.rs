@@ -36,7 +36,7 @@ pub struct Parcel {
 
 impl HeapSizeOf for Parcel {
     fn heap_size_of_children(&self) -> usize {
-        0
+        self.action.heap_size_of_children()
     }
 }
 
