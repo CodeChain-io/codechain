@@ -35,7 +35,7 @@ use std::mem;
 use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrder};
 use std::sync::Arc;
 
-use ckey::{public_to_address, Address, Generator, NetworkId, Random};
+use ckey::{public_to_address, Address, Generator, NetworkId, Public, Random};
 use cmerkle::skewed_merkle_root;
 use cnetwork::NodeId;
 use cstate::{ActionHandler, StateDB};
@@ -55,8 +55,8 @@ use super::super::blockchain_info::BlockChainInfo;
 use super::super::client::ImportResult;
 use super::super::client::{
     AccountData, Balance, BlockChain, BlockChainClient, BlockInfo, BlockProducer, BlockStatus, ChainInfo, ImportBlock,
-    ImportSealedBlock, MiningBlockChainClient, Nonce, ParcelInfo, PrepareOpenBlock, ReopenBlock, StateOrBlock,
-    TransactionInfo,
+    ImportSealedBlock, MiningBlockChainClient, Nonce, ParcelInfo, PrepareOpenBlock, RegularKeyOwner, ReopenBlock,
+    StateOrBlock, TransactionInfo,
 };
 use super::super::db::{COL_STATE, NUM_COLUMNS};
 use super::super::encoded;
@@ -354,6 +354,12 @@ impl Balance for TestBlockChainClient {
 }
 
 impl AccountData for TestBlockChainClient {}
+
+impl RegularKeyOwner for TestBlockChainClient {
+    fn regular_key_owner(&self, _public: &Public, _state: StateOrBlock) -> Option<Address> {
+        return None
+    }
+}
 
 impl ChainInfo for TestBlockChainClient {
     fn chain_info(&self) -> BlockChainInfo {

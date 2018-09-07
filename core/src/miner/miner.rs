@@ -28,7 +28,9 @@ use primitives::{Bytes, H256, U256};
 
 use super::super::account_provider::{AccountProvider, SignError};
 use super::super::block::{Block, ClosedBlock, IsBlock};
-use super::super::client::{AccountData, BlockChain, BlockProducer, ImportSealedBlock, MiningBlockChainClient};
+use super::super::client::{
+    AccountData, BlockChain, BlockProducer, ImportSealedBlock, MiningBlockChainClient, RegularKeyOwner,
+};
 use super::super::consensus::{CodeChainEngine, EngineType, Seal};
 use super::super::error::Error;
 use super::super::header::Header;
@@ -201,7 +203,7 @@ impl Miner {
         }
     }
 
-    fn add_parcels_to_pool<C: AccountData + BlockChain>(
+    fn add_parcels_to_pool<C: AccountData + BlockChain + RegularKeyOwner>(
         &self,
         client: &C,
         parcels: Vec<UnverifiedParcel>,
@@ -247,8 +249,9 @@ impl Miner {
                             .unwrap_or(default_origin);
 
                         let fetch_account = |p: &Public| -> AccountDetails {
-                            // FIXME: handle regular key
-                            let a = public_to_address(p);
+                            let a = client
+                                .regular_key_owner(p, BlockId::Latest.into())
+                                .unwrap_or_else(|| public_to_address(p));
                             AccountDetails {
                                 nonce: client.latest_nonce(&a),
                                 balance: client.latest_balance(&a),
@@ -273,7 +276,7 @@ impl Miner {
     }
 
     /// Returns true if we had to prepare new pending block.
-    fn prepare_work_sealing<C: AccountData + BlockChain + BlockProducer>(&self, client: &C) -> bool {
+    fn prepare_work_sealing<C: AccountData + BlockChain + BlockProducer + RegularKeyOwner>(&self, client: &C) -> bool {
         ctrace!(MINER, "prepare_work_sealing: entering");
         let prepare_new = {
             let mut sealing_work = self.sealing_work.lock();
@@ -359,7 +362,10 @@ impl Miner {
     }
 
     /// Prepares new block for sealing including top parcels from queue.
-    fn prepare_block<C: AccountData + BlockChain + BlockProducer>(&self, chain: &C) -> (ClosedBlock, Option<H256>) {
+    fn prepare_block<C: AccountData + BlockChain + BlockProducer + RegularKeyOwner>(
+        &self,
+        chain: &C,
+    ) -> (ClosedBlock, Option<H256>) {
         let (parcels, mut open_block, original_work_hash) = {
             let max_body_size = self.engine.params().max_body_size;
             let parcels = self.mem_pool.read().top_parcels(max_body_size);
@@ -418,7 +424,7 @@ impl Miner {
         let block = open_block.close(parcels_root, invoices_root);
 
         let fetch_nonce = |p: &Public| {
-            let a = public_to_address(p);
+            let a = chain.regular_key_owner(p, BlockId::Latest.into()).unwrap_or_else(|| public_to_address(p));
             chain.latest_nonce(&a)
         };
 
@@ -584,7 +590,7 @@ impl MinerService for Miner {
         _enacted: &[H256],
         retracted: &[H256],
     ) where
-        C: AccountData + BlockChain + BlockProducer + ImportSealedBlock, {
+        C: AccountData + BlockChain + BlockProducer + ImportSealedBlock + RegularKeyOwner, {
         ctrace!(MINER, "chain_new_blocks");
 
         // Then import all parcels...
@@ -602,7 +608,8 @@ impl MinerService for Miner {
         // ...and at the end remove the old ones
         {
             let fetch_account = |p: &Public| {
-                let a = public_to_address(p);
+                let a = chain.regular_key_owner(p, BlockId::Latest.into()).unwrap_or_else(|| public_to_address(p));
+
                 AccountDetails {
                     nonce: chain.latest_nonce(&a),
                     balance: chain.latest_balance(&a),
@@ -624,7 +631,7 @@ impl MinerService for Miner {
 
     fn update_sealing<C>(&self, chain: &C)
     where
-        C: AccountData + BlockChain + BlockProducer + ImportSealedBlock, {
+        C: AccountData + BlockChain + BlockProducer + ImportSealedBlock + RegularKeyOwner, {
         ctrace!(MINER, "update_sealing: preparing a block");
 
         if self.requires_reseal(chain.chain_info().best_block_number) {
@@ -675,7 +682,7 @@ impl MinerService for Miner {
 
     fn map_sealing_work<C, F, T>(&self, client: &C, f: F) -> Option<T>
     where
-        C: AccountData + BlockChain + BlockProducer,
+        C: AccountData + BlockChain + BlockProducer + RegularKeyOwner,
         F: FnOnce(&ClosedBlock) -> T, {
         ctrace!(MINER, "map_sealing_work: entering");
         self.prepare_work_sealing(client);

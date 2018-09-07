@@ -29,7 +29,9 @@ pub use self::miner::{Miner, MinerOptions};
 pub use self::stratum::{Config as StratumConfig, Error as StratumError, Stratum};
 use super::account_provider::SignError;
 use super::block::ClosedBlock;
-use super::client::{AccountData, BlockChain, BlockProducer, ImportSealedBlock, MiningBlockChainClient};
+use super::client::{
+    AccountData, BlockChain, BlockProducer, ImportSealedBlock, MiningBlockChainClient, RegularKeyOwner,
+};
 use super::consensus::EngineType;
 use super::error::Error;
 use super::parcel::{SignedParcel, UnverifiedParcel};
@@ -69,7 +71,7 @@ pub trait MinerService: Send + Sync {
     /// Called when blocks are imported to chain, updates parcels queue.
     fn chain_new_blocks<C>(&self, chain: &C, imported: &[H256], invalid: &[H256], enacted: &[H256], retracted: &[H256])
     where
-        C: AccountData + BlockChain + BlockProducer + ImportSealedBlock;
+        C: AccountData + BlockChain + BlockProducer + ImportSealedBlock + RegularKeyOwner;
 
     /// PoW chain - can produce work package
     fn can_produce_work_package(&self) -> bool;
@@ -80,7 +82,7 @@ pub trait MinerService: Send + Sync {
     /// New chain head event. Restart mining operation.
     fn update_sealing<C>(&self, chain: &C)
     where
-        C: AccountData + BlockChain + BlockProducer + ImportSealedBlock;
+        C: AccountData + BlockChain + BlockProducer + ImportSealedBlock + RegularKeyOwner;
 
     /// Submit `seal` as a valid solution for the header of `pow_hash`.
     /// Will check the seal, but not actually insert the block into the chain.
@@ -89,7 +91,7 @@ pub trait MinerService: Send + Sync {
     /// Get the sealing work package and if `Some`, apply some transform.
     fn map_sealing_work<C, F, T>(&self, client: &C, f: F) -> Option<T>
     where
-        C: AccountData + BlockChain + BlockProducer,
+        C: AccountData + BlockChain + BlockProducer + RegularKeyOwner,
         F: FnOnce(&ClosedBlock) -> T,
         Self: Sized;
 
