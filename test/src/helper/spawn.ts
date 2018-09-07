@@ -16,7 +16,7 @@
 
 import { ChildProcess, spawn } from "child_process";
 import { SDK } from "codechain-sdk";
-import { SignedParcel } from "codechain-sdk/lib/core/classes";
+import { SignedParcel, Transaction, AssetTransferTransaction } from "codechain-sdk/lib/core/classes";
 import { PlatformAddress } from "codechain-sdk/lib/key/classes";
 import { mkdtempSync, appendFileSync } from "fs";
 import { createInterface as createReadline } from "readline";
@@ -34,6 +34,7 @@ export default class CodeChain {
   private static idCounter = 0;
   private _id: number;
   private _sdk: SDK;
+  private _localKeyStorePath: string;
   private _dbPath: string;
   private _ipcPath: string;
   private _keysPath: string;
@@ -46,6 +47,7 @@ export default class CodeChain {
 
   public get id(): number { return this._id; }
   public get sdk(): SDK { return this._sdk; }
+  public get localKeyStorePath(): string { return this._localKeyStorePath; }
   public get dbPath(): string { return this._dbPath; }
   public get ipcPath(): string { return this._ipcPath; }
   public get keysPath(): string { return this._keysPath; }
@@ -67,6 +69,7 @@ export default class CodeChain {
     this._dbPath = mkdtempSync(`${projectRoot}/db/`);
     this._ipcPath = `/tmp/jsonrpc.${this.id}.ipc`;
     this._keysPath = mkdtempSync(`${projectRoot}/keys/`);
+    this._localKeyStorePath = `${this.keysPath}/keystore.db`;
     this._logFlag = logFlag || false;
     this._logFile = makeRandomFilename(".log");
     this._logPath = `${projectRoot}/test/log/${this._logFile}`;
@@ -154,6 +157,62 @@ export default class CodeChain {
 
   public async getBestBlockHash() {
     return this.sdk.rpc.chain.getBlockHash(await this.getBestBlockNumber());
+  }
+
+  public async createP2PKHAddress() {
+    const keyStore = await this.sdk.key.createLocalKeyStore(this.localKeyStorePath);
+    const p2pkh = this.sdk.key.createP2PKH({ keyStore });
+    return p2pkh.createAddress();
+  }
+
+  public async createP2PKHBurnAddress() {
+    const keyStore = await this.sdk.key.createLocalKeyStore(this.localKeyStorePath);
+    const p2pkhBurn = this.sdk.key.createP2PKHBurn({ keyStore });
+    return p2pkhBurn.createAddress();
+  }
+
+  public async sendTransaction(tx: Transaction) {
+    const parcel = this.sdk.core.createChangeShardStateParcel({
+      transactions: [ tx ]
+    }).sign({
+      secret: faucetSecret,
+      fee: 10,
+      nonce: await this.sdk.rpc.chain.getNonce(faucetAddress)
+    });
+    await this.sdk.rpc.chain.sendSignedParcel(parcel);
+    return this.sdk.rpc.chain.getTransactionInvoice(tx.hash(), { timeout: 300 * 1000 });
+  }
+
+  public async mintAsset(params: { amount: number }) {
+    const { amount } = params;
+    const recipient = await this.createP2PKHAddress();
+    const tx = this.sdk.core.createAssetMintTransaction({
+      scheme: {
+        shardId: 0,
+        worldId: 0,
+        metadata: "",
+        amount,
+      },
+      recipient
+    });
+    await this.sendTransaction(tx);
+    const asset = await this.sdk.rpc.chain.getAsset(tx.hash(), 0);
+    if (asset === null) {
+      throw Error(`Failed to mint asset`);
+    }
+    return { asset };
+  }
+
+  public async signTransferInput(tx: AssetTransferTransaction, index: number) {
+    const keyStore = await this.sdk.key.createLocalKeyStore(this.localKeyStorePath);
+    const p2pkh = this.sdk.key.createP2PKH({ keyStore });
+    await p2pkh.signInput(tx, index);
+  }
+
+  public async signTransferBurn(tx: AssetTransferTransaction, index: number) {
+    const keyStore = await this.sdk.key.createLocalKeyStore(this.localKeyStorePath);
+    const p2pkhBurn = this.sdk.key.createP2PKHBurn({ keyStore });
+    await p2pkhBurn.signBurn(tx, index);
   }
 
   public async sendSignedParcel(options?: { nonce?: number, awaitInvoice?: boolean }): Promise<SignedParcel> {
