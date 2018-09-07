@@ -16,6 +16,7 @@
 
 use ccrypto::Blake;
 use ckey::{Address, Public, Signature};
+use heapsize::HeapSizeOf;
 use primitives::{Bytes, H256, U256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
@@ -69,6 +70,31 @@ impl Action {
     pub fn hash(&self) -> H256 {
         let rlp = self.rlp_bytes();
         Blake::blake(rlp)
+    }
+}
+
+impl HeapSizeOf for Action {
+    fn heap_size_of_children(&self) -> usize {
+        match self {
+            Action::ChangeShardState {
+                transactions,
+                changes,
+                signatures,
+            } => {
+                transactions.heap_size_of_children()
+                    + changes.heap_size_of_children()
+                    + signatures.heap_size_of_children()
+            }
+            Action::SetShardOwners {
+                shard_id: _,
+                owners,
+            } => owners.heap_size_of_children(),
+            Action::SetShardUsers {
+                shard_id: _,
+                users,
+            } => users.heap_size_of_children(),
+            _ => 0,
+        }
     }
 }
 
