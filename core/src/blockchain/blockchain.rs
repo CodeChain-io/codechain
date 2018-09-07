@@ -371,7 +371,7 @@ pub trait BlockProvider: HeaderProvider + BodyProvider + InvoiceProvider {
     /// Get the transaction with given transaction hash.
     fn transaction(&self, transaction: &TransactionAddress) -> Option<Transaction> {
         self.parcel(&transaction.parcel_address).and_then(|parcel| match &parcel.signed.as_unsigned().action {
-            Action::ChangeShardState {
+            Action::AssetTransactionGroup {
                 transactions,
                 changes: _,
                 signatures: _,

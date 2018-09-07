@@ -34,7 +34,7 @@ use cmerkle::Result as TrieResult;
 use cnetwork::NodeId;
 use cstate::{ActionHandler, AssetScheme, AssetSchemeAddress, OwnedAsset, TopStateInfo};
 use ctypes::invoice::{ParcelInvoice, TransactionInvoice};
-use ctypes::parcel::ChangeShard;
+use ctypes::parcel::ShardChange;
 use ctypes::transaction::Transaction;
 use ctypes::{BlockNumber, ShardId};
 use kvdb::KeyValueDB;
@@ -277,5 +277,5 @@ pub trait ExecuteClient {
         &self,
         transactions: &[Transaction],
         sender: &Address,
-    ) -> Result<Vec<ChangeShard>, CoreError>;
+    ) -> Result<Vec<ShardChange>, CoreError>;
 }

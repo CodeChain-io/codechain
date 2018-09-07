@@ -210,7 +210,7 @@ impl BodyDB {
                 .enumerate()
                 .flat_map(|(parcel_index, parcel)| {
                     match &parcel.action {
-                        Action::ChangeShardState {
+                        Action::AssetTransactionGroup {
                             transactions,
                             ..
                         } => Some(transactions),
@@ -239,7 +239,7 @@ impl BodyDB {
                     let body = self.block_body(hash).expect("Enacted block must be in database.");
                     body.parcels().into_iter().enumerate().flat_map(|(parcel_index, parcel)| {
                         match &parcel.action {
-                            Action::ChangeShardState {
+                            Action::AssetTransactionGroup {
                                 transactions,
                                 ..
                             } => Some(transactions),
@@ -266,7 +266,7 @@ impl BodyDB {
 
                 let current_addresses = block.parcels().into_iter().enumerate().flat_map(|(parcel_index, parcel)| {
                     match &parcel.action {
-                        Action::ChangeShardState {
+                        Action::AssetTransactionGroup {
                             transactions,
                             ..
                         } => Some(transactions),
@@ -296,7 +296,7 @@ impl BodyDB {
                         .into_iter()
                         .map(|parcel| (*parcel).clone())
                         .filter_map(|parcel| match parcel.action {
-                            Action::ChangeShardState {
+                            Action::AssetTransactionGroup {
                                 transactions,
                                 ..
                             } => Some(transactions),

@@ -1113,7 +1113,7 @@ pub mod test {
     use std::cmp::Ordering;
 
     use ckey::{Generator, Random};
-    use ctypes::parcel::{ChangeShard, Parcel};
+    use ctypes::parcel::{ShardChange, Parcel};
     use ctypes::transaction::{AssetMintOutput, Transaction};
 
     use super::*;
@@ -1136,7 +1136,7 @@ pub mod test {
             nonce: U256::zero(),
             fee,
             network_id: "tc".into(),
-            action: Action::ChangeShardState {
+            action: Action::AssetTransactionGroup {
                 transactions: vec![],
                 changes: vec![],
                 signatures: vec![],
@@ -1172,9 +1172,9 @@ pub mod test {
             nonce: U256::zero(),
             fee,
             network_id: "tc".into(),
-            action: Action::ChangeShardState {
+            action: Action::AssetTransactionGroup {
                 transactions,
-                changes: vec![ChangeShard {
+                changes: vec![ShardChange {
                     shard_id,
                     pre_root: H256::zero(),
                     post_root: H256::zero(),
@@ -1221,9 +1221,9 @@ pub mod test {
             nonce: U256::zero(),
             fee,
             network_id: "tc".into(),
-            action: Action::ChangeShardState {
+            action: Action::AssetTransactionGroup {
                 transactions,
-                changes: vec![ChangeShard {
+                changes: vec![ShardChange {
                     shard_id,
                     pre_root: H256::zero(),
                     post_root: H256::zero(),
@@ -1305,9 +1305,9 @@ pub mod test {
             nonce: U256::zero(),
             fee,
             network_id: "tc".into(),
-            action: Action::ChangeShardState {
+            action: Action::AssetTransactionGroup {
                 transactions: vec![transaction; transaction_count],
-                changes: vec![ChangeShard {
+                changes: vec![ShardChange {
                     shard_id: 0,
                     pre_root: H256::zero(),
                     post_root: H256::zero(),

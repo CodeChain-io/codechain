@@ -59,7 +59,7 @@ impl Parcel {
 
     pub fn iter_transactions<'a>(&'a self) -> Box<Iterator<Item = H256> + 'a> {
         match &self.action {
-            Action::ChangeShardState {
+            Action::AssetTransactionGroup {
                 transactions,
                 ..
             } => Box::new(transactions.iter().map(|t| t.hash())),

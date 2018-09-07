@@ -18,6 +18,6 @@ mod action;
 mod error;
 mod parcel;
 
-pub use self::action::{Action, ChangeShard};
+pub use self::action::{Action, ShardChange};
 pub use self::error::Error;
 pub use self::parcel::Parcel;

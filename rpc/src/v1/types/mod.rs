@@ -21,7 +21,7 @@ mod parcel;
 mod transaction;
 mod work;
 
-pub use self::action::{Action, ChangeShard};
+pub use self::action::{Action, ShardChange};
 pub use self::block::Block;
 pub use self::block::BlockNumberAndHash;
 pub use self::bytes::Bytes;

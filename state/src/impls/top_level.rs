@@ -42,7 +42,7 @@ use ccrypto::BLAKE_NULL_RLP;
 use ckey::{public_to_address, Address, NetworkId, Public};
 use cmerkle::{Result as TrieResult, TrieError, TrieFactory};
 use ctypes::invoice::{ParcelInvoice, TransactionInvoice};
-use ctypes::parcel::{Action, ChangeShard, Error as ParcelError, Parcel};
+use ctypes::parcel::{Action, ShardChange, Error as ParcelError, Parcel};
 use ctypes::transaction::Transaction;
 use ctypes::util::unexpected::Mismatch;
 use ctypes::{ShardId, WorldId};
@@ -406,7 +406,7 @@ impl TopLevelState {
         fee_payer_public: &Public,
     ) -> StateResult<ParcelInvoice> {
         match action {
-            Action::ChangeShardState {
+            Action::AssetTransactionGroup {
                 transactions,
                 changes,
                 signatures: _,
@@ -488,7 +488,7 @@ impl TopLevelState {
     fn apply_transactions_with_check(
         &mut self,
         transactions: &[Transaction],
-        change: &ChangeShard,
+        change: &ShardChange,
         sender: &Address,
     ) -> StateResult<Vec<TransactionInvoice>> {
         let shard_id = change.shard_id;
@@ -522,10 +522,10 @@ impl TopLevelState {
         transactions: &[Transaction],
         shard_id: ShardId,
         sender: &Address,
-    ) -> StateResult<ChangeShard> {
+    ) -> StateResult<ShardChange> {
         let pre_root = self.shard_root(shard_id)?.ok_or_else(|| ParcelError::InvalidShardId(shard_id))?;
         let (post_root, ..) = self.apply_transactions_internal(transactions, shard_id, pre_root, sender)?;
-        Ok(ChangeShard {
+        Ok(ShardChange {
             shard_id,
             pre_root,
             post_root,
@@ -1117,7 +1117,7 @@ mod tests_parcel {
             fee: 5.into(),
             nonce: 0.into(),
             network_id: "tc".into(),
-            action: Action::ChangeShardState {
+            action: Action::AssetTransactionGroup {
                 transactions: vec![],
                 changes: vec![],
                 signatures: vec![],
@@ -1161,9 +1161,9 @@ mod tests_parcel {
             fee: 5.into(),
             nonce: 0.into(),
             network_id,
-            action: Action::ChangeShardState {
+            action: Action::AssetTransactionGroup {
                 transactions: vec![transaction],
-                changes: vec![ChangeShard {
+                changes: vec![ShardChange {
                     shard_id,
                     pre_root: H256::zero(),
                     post_root: H256::zero(),
@@ -1214,9 +1214,9 @@ mod tests_parcel {
             fee: 5.into(),
             nonce: 0.into(),
             network_id,
-            action: Action::ChangeShardState {
+            action: Action::AssetTransactionGroup {
                 transactions: vec![transaction],
-                changes: vec![ChangeShard {
+                changes: vec![ShardChange {
                     shard_id,
                     pre_root: H256::zero(),
                     post_root: H256::zero(),
@@ -1247,7 +1247,7 @@ mod tests_parcel {
             nonce: 2.into(),
             fee: 5.into(),
             network_id: "tc".into(),
-            action: Action::ChangeShardState {
+            action: Action::AssetTransactionGroup {
                 transactions: vec![],
                 changes: vec![],
                 signatures: vec![],
@@ -1276,7 +1276,7 @@ mod tests_parcel {
             fee: 5.into(),
             nonce: 0.into(),
             network_id: "tc".into(),
-            action: Action::ChangeShardState {
+            action: Action::AssetTransactionGroup {
                 transactions: vec![],
                 changes: vec![],
                 signatures: vec![],
@@ -1532,9 +1532,9 @@ mod tests_parcel {
         let transactions = vec![create_world, mint, transfer];
         let parcel = Parcel {
             fee: 11.into(),
-            action: Action::ChangeShardState {
+            action: Action::AssetTransactionGroup {
                 transactions,
-                changes: vec![ChangeShard {
+                changes: vec![ShardChange {
                     shard_id,
                     pre_root: H256::from("0xa8ed01b49cd63c6a547ac3ce357539aa634fb44331a351e3e98b9f1c3a8e3edf"),
                     post_root: H256::zero(),
@@ -1677,9 +1677,9 @@ mod tests_parcel {
         let transaction_hash = transaction.hash();
         let parcel = Parcel {
             fee: 11.into(),
-            action: Action::ChangeShardState {
+            action: Action::AssetTransactionGroup {
                 transactions: vec![create_world, transaction],
-                changes: vec![ChangeShard {
+                changes: vec![ShardChange {
                     shard_id,
                     pre_root: H256::from("0xa8ed01b49cd63c6a547ac3ce357539aa634fb44331a351e3e98b9f1c3a8e3edf"),
                     post_root: H256::zero(),
@@ -1748,9 +1748,9 @@ mod tests_parcel {
         let transaction_hash = transaction.hash();
         let parcel = Parcel {
             fee: 5.into(),
-            action: Action::ChangeShardState {
+            action: Action::AssetTransactionGroup {
                 transactions: vec![create_world, transaction],
-                changes: vec![ChangeShard {
+                changes: vec![ShardChange {
                     shard_id,
                     pre_root: H256::from("0xa8ed01b49cd63c6a547ac3ce357539aa634fb44331a351e3e98b9f1c3a8e3edf"),
                     post_root: H256::zero(),
@@ -1868,9 +1868,9 @@ mod tests_parcel {
             fee: 20.into(),
             nonce: 0.into(),
             network_id,
-            action: Action::ChangeShardState {
+            action: Action::AssetTransactionGroup {
                 transactions: vec![create_world, mint, transfer],
-                changes: vec![ChangeShard {
+                changes: vec![ShardChange {
                     shard_id,
                     pre_root: H256::from("0xa8ed01b49cd63c6a547ac3ce357539aa634fb44331a351e3e98b9f1c3a8e3edf"),
                     post_root: H256::zero(),
@@ -1954,9 +1954,9 @@ mod tests_parcel {
             fee: 20.into(),
             network_id,
             nonce: 0.into(),
-            action: Action::ChangeShardState {
+            action: Action::AssetTransactionGroup {
                 transactions: vec![create_world, mint],
-                changes: vec![ChangeShard {
+                changes: vec![ShardChange {
                     shard_id,
                     pre_root: H256::from("0xa8ed01b49cd63c6a547ac3ce357539aa634fb44331a351e3e98b9f1c3a8e3edf"),
                     post_root: H256::zero(),
@@ -2025,9 +2025,9 @@ mod tests_parcel {
             fee: 30.into(),
             network_id,
             nonce: 1.into(),
-            action: Action::ChangeShardState {
+            action: Action::AssetTransactionGroup {
                 transactions: vec![transfer],
-                changes: vec![ChangeShard {
+                changes: vec![ShardChange {
                     shard_id,
                     pre_root: current_shard_root,
                     post_root: H256::zero(),
@@ -2189,9 +2189,9 @@ mod tests_parcel {
         let parcel = Parcel {
             fee: 11.into(),
             nonce: 0.into(),
-            action: Action::ChangeShardState {
+            action: Action::AssetTransactionGroup {
                 transactions,
-                changes: vec![ChangeShard {
+                changes: vec![ShardChange {
                     shard_id,
                     pre_root: H256::zero(),
                     post_root: H256::zero(),
@@ -2257,9 +2257,9 @@ mod tests_parcel {
             fee: 30.into(),
             network_id,
             nonce: 0.into(),
-            action: Action::ChangeShardState {
+            action: Action::AssetTransactionGroup {
                 transactions: vec![transfer],
-                changes: vec![ChangeShard {
+                changes: vec![ShardChange {
                     shard_id,
                     pre_root: H256::zero(),
                     post_root: H256::zero(),
@@ -2309,9 +2309,9 @@ mod tests_parcel {
             fee: 20.into(),
             nonce: 0.into(),
             network_id,
-            action: Action::ChangeShardState {
+            action: Action::AssetTransactionGroup {
                 transactions,
-                changes: vec![ChangeShard {
+                changes: vec![ShardChange {
                     shard_id,
                     pre_root: H256::from("0xa8ed01b49cd63c6a547ac3ce357539aa634fb44331a351e3e98b9f1c3a8e3edf"),
                     post_root: H256::zero(),
@@ -2364,9 +2364,9 @@ mod tests_parcel {
             fee: 20.into(),
             nonce: 0.into(),
             network_id,
-            action: Action::ChangeShardState {
+            action: Action::AssetTransactionGroup {
                 transactions: vec![t0],
-                changes: vec![ChangeShard {
+                changes: vec![ShardChange {
                     shard_id,
                     pre_root: H256::from("0xa8ed01b49cd63c6a547ac3ce357539aa634fb44331a351e3e98b9f1c3a8e3edf"),
                     post_root: H256::zero(),
@@ -2396,9 +2396,9 @@ mod tests_parcel {
             fee: 30.into(),
             nonce: 1.into(),
             network_id,
-            action: Action::ChangeShardState {
+            action: Action::AssetTransactionGroup {
                 transactions: vec![t1],
-                changes: vec![ChangeShard {
+                changes: vec![ShardChange {
                     shard_id,
                     pre_root: H256::zero(),
                     post_root: H256::zero(),
@@ -2676,9 +2676,9 @@ mod tests_parcel {
             fee: 20.into(),
             nonce: 0.into(),
             network_id,
-            action: Action::ChangeShardState {
+            action: Action::AssetTransactionGroup {
                 transactions: vec![create_world, mint],
-                changes: vec![ChangeShard {
+                changes: vec![ShardChange {
                     shard_id,
                     pre_root: H256::from("0xa8ed01b49cd63c6a547ac3ce357539aa634fb44331a351e3e98b9f1c3a8e3edf"),
                     post_root: H256::zero(),

@@ -52,11 +52,11 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
 
 ## Actions
 
-### ChangeShardState Action
+### AssetTransactionGroup Action
 
  - action: "changeShardState"
  - transactions: `Transaction[]`
- - changes: `ChangeShard[]`
+ - changes: `ShardChange[]`
 
 ### Payment Action
 
@@ -99,7 +99,7 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
  - lock_script_hash: `H256`
  - parameters: `hexadecimal string[]`
 
-## ChangeShard
+## ShardChange
 - shard_id: `number`
 - pre_root: `H256`
 - post_root: `H256`
@@ -942,7 +942,7 @@ Params:
  1. transactions: `Transaction[]`
  2. sender: `PlatformAddress`
 
-Return Type: `ChangeShard[]`
+Return Type: `ShardChange[]`
 
 Errors: `Invalid RLP`, `Execution Failed`, `Invalid Params`, `Invalid NetworkId`
 
