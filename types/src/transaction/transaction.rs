@@ -20,6 +20,7 @@ use std::io::Cursor;
 use byteorder::{BigEndian, ReadBytesExt};
 use ccrypto::blake256;
 use ckey::{Address, NetworkId};
+use heapsize::HeapSizeOf;
 use primitives::{Bytes, H256, U128};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
@@ -233,6 +234,67 @@ impl Transaction {
             Transaction::AssetMint {
                 ..
             } => Ok(()),
+        }
+    }
+}
+
+impl HeapSizeOf for AssetTransferInput {
+    fn heap_size_of_children(&self) -> usize {
+        self.lock_script.heap_size_of_children() + self.unlock_script.heap_size_of_children()
+    }
+}
+
+impl HeapSizeOf for AssetTransferOutput {
+    fn heap_size_of_children(&self) -> usize {
+        self.parameters.heap_size_of_children()
+    }
+}
+
+impl HeapSizeOf for AssetMintOutput {
+    fn heap_size_of_children(&self) -> usize {
+        self.parameters.heap_size_of_children() + self.amount.heap_size_of_children()
+    }
+}
+
+impl HeapSizeOf for Transaction {
+    fn heap_size_of_children(&self) -> usize {
+        match self {
+            Transaction::CreateWorld {
+                network_id: _,
+                shard_id: _,
+                nonce: _,
+                owners,
+            } => owners.heap_size_of_children(),
+            Transaction::SetWorldOwners {
+                network_id: _,
+                shard_id: _,
+                world_id: _,
+                nonce: _,
+                owners,
+            } => owners.heap_size_of_children(),
+            Transaction::SetWorldUsers {
+                network_id: _,
+                shard_id: _,
+                world_id: _,
+                nonce: _,
+                users,
+            } => users.heap_size_of_children(),
+            Transaction::AssetMint {
+                network_id: _,
+                shard_id: _,
+                world_id: _,
+                metadata,
+                registrar,
+                nonce: _,
+                output,
+            } => metadata.heap_size_of_children() + registrar.heap_size_of_children() + output.heap_size_of_children(),
+            Transaction::AssetTransfer {
+                network_id: _,
+                burns,
+                inputs,
+                outputs,
+                nonce: _,
+            } => burns.heap_size_of_children() + inputs.heap_size_of_children() + outputs.heap_size_of_children(),
         }
     }
 }
