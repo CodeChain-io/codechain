@@ -35,7 +35,7 @@ use std::mem;
 use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrder};
 use std::sync::Arc;
 
-use ckey::{Address, Generator, NetworkId, Random};
+use ckey::{public_to_address, Address, Generator, NetworkId, Random};
 use cmerkle::skewed_merkle_root;
 use cnetwork::NodeId;
 use cstate::{ActionHandler, StateDB};
@@ -274,7 +274,8 @@ impl TestBlockChainClient {
             },
         };
         let signed_parcel = SignedParcel::new_with_sign(parcel, keypair.private());
-        self.set_balance(*signed_parcel.sender(), 10_000_000_000_000_000_000u64.into());
+        let sender_address = public_to_address(&signed_parcel.signer_public());
+        self.set_balance(sender_address, 10_000_000_000_000_000_000u64.into());
         let hash = signed_parcel.hash();
         let res = self.miner.import_external_parcels(self, vec![signed_parcel.into()]);
         let res = res.into_iter().next().unwrap().expect("Successful import");

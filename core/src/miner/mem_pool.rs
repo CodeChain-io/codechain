@@ -18,7 +18,7 @@ use std::cmp;
 use std::cmp::Ordering;
 use std::collections::{BTreeSet, HashMap};
 
-use ckey::Address;
+use ckey::{public_to_address, Public};
 use ctypes::parcel::{Action, Error as ParcelError};
 use ctypes::BlockNumber;
 use heapsize::HeapSizeOf;
@@ -189,8 +189,8 @@ impl MemPoolItem {
         self.parcel.nonce
     }
 
-    fn sender(&self) -> &Address {
-        self.parcel.sender()
+    fn signer_public(&self) -> Public {
+        self.parcel.signer_public()
     }
 
     fn cost(&self) -> U256 {
@@ -204,10 +204,10 @@ impl MemPoolItem {
     }
 }
 
-/// Holds parcels accessible by (address, nonce) and by priority
+/// Holds parcels accessible by (signer_public, nonce) and by priority
 struct ParcelSet {
     by_priority: BTreeSet<ParcelOrder>,
-    by_address: Table<Address, U256, ParcelOrder>,
+    by_signer_public: Table<Public, U256, ParcelOrder>,
     by_fee: MultiMap<U256, H256>,
     limit: usize,
     memory_limit: usize,
@@ -216,42 +216,42 @@ struct ParcelSet {
 impl ParcelSet {
     /// Inserts `ParcelOrder` to this set. Parcel does not need to be unique -
     /// the same parcel may be validly inserted twice. Any previous parcel that
-    /// it replaces (i.e. with the same `sender` and `nonce`) should be returned.
-    fn insert(&mut self, sender: Address, nonce: U256, order: ParcelOrder) -> Option<ParcelOrder> {
+    /// it replaces (i.e. with the same `signer_public` and `nonce`) should be returned.
+    fn insert(&mut self, signer_public: Public, nonce: U256, order: ParcelOrder) -> Option<ParcelOrder> {
         if !self.by_priority.insert(order.clone()) {
             return Some(order.clone())
         }
         let order_hash = order.hash.clone();
         let order_fee = order.fee.clone();
-        let by_address_replaced = self.by_address.insert(sender, nonce, order);
-        if let Some(ref old_order) = by_address_replaced {
+        let by_signer_public_replaced = self.by_signer_public.insert(signer_public, nonce, order);
+        if let Some(ref old_order) = by_signer_public_replaced {
             assert!(
                 self.by_priority.remove(old_order),
-                "hash is in `by_address`; all parcels in `by_address` must be in `by_priority`; qed"
+                "hash is in `by_signer_public`; all parcels in `by_signer_public` must be in `by_priority`; qed"
             );
             assert!(
                 self.by_fee.remove(&old_order.fee, &old_order.hash),
-                "hash is in `by_address`; all parcels' fee in `by_address` must be in `by_fee`; qed"
+                "hash is in `by_signer_public`; all parcels' fee in `by_signer_public` must be in `by_fee`; qed"
             );
         }
         self.by_fee.insert(order_fee, order_hash);
-        assert_eq!(self.by_priority.len(), self.by_address.len());
-        assert_eq!(self.by_fee.values().map(|v| v.len()).fold(0, |a, b| a + b), self.by_address.len());
-        by_address_replaced
+        assert_eq!(self.by_priority.len(), self.by_signer_public.len());
+        assert_eq!(self.by_fee.values().map(|v| v.len()).fold(0, |a, b| a + b), self.by_signer_public.len());
+        by_signer_public_replaced
     }
 
     /// Remove low priority parcels if there is more than specified by given `limit`.
     ///
     /// It drops parecls from this set but also removes associated `VerifiedParcel`.
-    /// Returns addresses and lowest nonces of parcels removed because of limit.
+    /// Returns public keys and lowest nonces of parcels removed because of limit.
     fn enforce_limit(
         &mut self,
         by_hash: &mut HashMap<H256, MemPoolItem>,
         local: &mut LocalParcelsList,
-    ) -> Option<HashMap<Address, U256>> {
+    ) -> Option<HashMap<Public, U256>> {
         let mut count = 0;
         let mut mem_usage = 0;
-        let to_drop: Vec<(Address, U256)> = {
+        let to_drop: Vec<(Public, U256)> = {
             self.by_priority
                 .iter()
                 .filter(|order| {
@@ -265,17 +265,17 @@ impl ParcelSet {
                 })
                 .map(|order| {
                     by_hash.get(&order.hash).expect(
-                        "All parcels in `self.by_priority` and `self.by_address` are kept in sync with `by_hash`.",
+                        "All parcels in `self.by_priority` and `self.by_signer_public` are kept in sync with `by_hash`.",
                     )
                 })
-                .map(|parcel| (*parcel.sender(), parcel.nonce()))
+                .map(|parcel| (parcel.signer_public(), parcel.nonce()))
                 .collect()
         };
 
         Some(to_drop.into_iter().fold(HashMap::new(), |mut removed, (sender, nonce)| {
             let order = self
                 .drop(&sender, &nonce)
-                .expect("Parcel has just been found in `by_priority`; so it is in `by_address` also.");
+                .expect("Parcel has just been found in `by_priority`; so it is in `by_signer_public` also.");
             ctrace!(MEM_POOL, "Dropped out of limit parcel: {:?}", order.hash);
 
             let order = by_hash
@@ -292,23 +292,23 @@ impl ParcelSet {
         }))
     }
 
-    /// Drop parcel from this set (remove from `by_priority` and `by_address`)
-    fn drop(&mut self, sender: &Address, nonce: &U256) -> Option<ParcelOrder> {
-        if let Some(parcel_order) = self.by_address.remove(sender, nonce) {
+    /// Drop parcel from this set (remove from `by_priority` and `by_signer_public`)
+    fn drop(&mut self, signer_public: &Public, nonce: &U256) -> Option<ParcelOrder> {
+        if let Some(parcel_order) = self.by_signer_public.remove(signer_public, nonce) {
             assert!(
                 self.by_fee.remove(&parcel_order.fee, &parcel_order.hash),
-                "hash is in `by_address`; all parcels' fee in `by_address` must be in `by_fee`; qed"
+                "hash is in `by_signer_public`; all parcels' fee in `by_signer_public` must be in `by_fee`; qed"
             );
             assert!(
                 self.by_priority.remove(&parcel_order),
-                "hash is in `by_address`; all parcels in `by_address` must be in `by_priority`; qed"
+                "hash is in `by_signer_public`; all parcels in `by_signer_public` must be in `by_priority`; qed"
             );
-            assert_eq!(self.by_priority.len(), self.by_address.len());
-            assert_eq!(self.by_fee.values().map(|v| v.len()).fold(0, |a, b| a + b), self.by_address.len());
+            assert_eq!(self.by_priority.len(), self.by_signer_public.len());
+            assert_eq!(self.by_fee.values().map(|v| v.len()).fold(0, |a, b| a + b), self.by_signer_public.len());
             return Some(parcel_order)
         }
-        assert_eq!(self.by_priority.len(), self.by_address.len());
-        assert_eq!(self.by_fee.values().map(|v| v.len()).fold(0, |a, b| a + b), self.by_address.len());
+        assert_eq!(self.by_priority.len(), self.by_signer_public.len());
+        assert_eq!(self.by_fee.values().map(|v| v.len()).fold(0, |a, b| a + b), self.by_signer_public.len());
         None
     }
 
@@ -316,7 +316,7 @@ impl ParcelSet {
     #[allow(dead_code)]
     fn clear(&mut self) {
         self.by_priority.clear();
-        self.by_address.clear();
+        self.by_signer_public.clear();
     }
 
     /// Sets new limit for number of parcels in this `ParcelSet`.
@@ -349,7 +349,7 @@ pub struct MemPool {
     /// All parcels managed by pool indexed by hash
     by_hash: HashMap<H256, MemPoolItem>,
     /// Last nonce of parcel in current (to quickly check next expected parcel)
-    last_nonces: HashMap<Address, U256>,
+    last_nonces: HashMap<Public, U256>,
     /// List of local parcels and their statuses.
     local_parcels: LocalParcelsList,
     /// Next id that should be assigned to a parcel imported to the pool.
@@ -372,7 +372,7 @@ impl MemPool {
     pub fn with_limits(limit: usize, memory_limit: usize) -> Self {
         let current = ParcelSet {
             by_priority: BTreeSet::new(),
-            by_address: Table::new(),
+            by_signer_public: Table::new(),
             by_fee: MultiMap::default(),
             limit,
             memory_limit,
@@ -380,7 +380,7 @@ impl MemPool {
 
         let future = ParcelSet {
             by_priority: BTreeSet::new(),
-            by_address: Table::new(),
+            by_signer_public: Table::new(),
             by_fee: MultiMap::default(),
             limit,
             memory_limit,
@@ -449,7 +449,7 @@ impl MemPool {
         fetch_account: &F,
     ) -> Result<ParcelImportResult, ParcelError>
     where
-        F: Fn(&Address) -> AccountDetails, {
+        F: Fn(&Public) -> AccountDetails, {
         if origin == ParcelOrigin::Local {
             let hash = parcel.hash();
             let closed_parcel = parcel.clone();
@@ -479,17 +479,17 @@ impl MemPool {
     /// Checks the current nonce for all parcels' senders in the pool and removes the old parcels.
     pub fn remove_old<F>(&mut self, fetch_account: &F, current_time: PoolingInstant)
     where
-        F: Fn(&Address) -> AccountDetails, {
-        let senders = self
+        F: Fn(&Public) -> AccountDetails, {
+        let signers = self
             .current
-            .by_address
+            .by_signer_public
             .keys()
-            .chain(self.future.by_address.keys())
+            .chain(self.future.by_signer_public.keys())
             .map(|sender| (*sender, fetch_account(sender)))
             .collect::<HashMap<_, _>>();
 
-        for (sender, details) in senders.iter() {
-            self.cull(*sender, details.nonce);
+        for (signer, details) in signers.iter() {
+            self.cull(*signer, details.nonce);
         }
 
         let max_time = self.max_time_in_pool;
@@ -506,7 +506,7 @@ impl MemPool {
                 }
 
                 if time_diff > balance_check {
-                    return match senders.get(&parcel.sender()) {
+                    return match signers.get(&parcel.signer_public()) {
                         Some(details) if parcel.cost() > details.balance => Some(*hash),
                         _ => None,
                     }
@@ -516,7 +516,7 @@ impl MemPool {
             })
             .collect::<Vec<_>>();
         let fetch_nonce =
-            |a: &Address| senders.get(a).expect("We fetch details for all senders from both current and future").nonce;
+            |a: &Public| signers.get(a).expect("We fetch details for all signers from both current and future").nonce;
         for hash in invalid {
             self.remove(&hash, &fetch_nonce, RemovalReason::Invalid);
         }
@@ -529,7 +529,7 @@ impl MemPool {
     /// If gap is introduced marks subsequent parcels as future
     pub fn remove<F>(&mut self, parcel_hash: &H256, fetch_nonce: &F, reason: RemovalReason)
     where
-        F: Fn(&Address) -> U256, {
+        F: Fn(&Public) -> U256, {
         assert_eq!(self.future.by_priority.len() + self.current.by_priority.len(), self.by_hash.len());
         let parcel = self.by_hash.remove(parcel_hash);
         if parcel.is_none() {
@@ -538,9 +538,9 @@ impl MemPool {
         }
 
         let parcel = parcel.expect("None is tested in early-exit condition above; qed");
-        let sender = *parcel.sender();
+        let signer_public = parcel.signer_public();
         let nonce = parcel.nonce();
-        let current_nonce = fetch_nonce(&sender);
+        let current_nonce = fetch_nonce(&signer_public);
 
         ctrace!(MEM_POOL, "Removing invalid parcel: {:?}", parcel.hash());
 
@@ -553,37 +553,37 @@ impl MemPool {
         }
 
         // Remove from future
-        let order = self.future.drop(&sender, &nonce);
+        let order = self.future.drop(&signer_public, &nonce);
         if order.is_some() {
-            self.update_future(&sender, current_nonce);
+            self.update_future(&signer_public, current_nonce);
             // And now lets check if there is some chain of parcels in future
             // that should be placed in current
-            self.move_matching_future_to_current(sender, current_nonce, current_nonce);
+            self.move_matching_future_to_current(signer_public, current_nonce, current_nonce);
             assert_eq!(self.future.by_priority.len() + self.current.by_priority.len(), self.by_hash.len());
             return
         }
 
         // Remove from current
-        let order = self.current.drop(&sender, &nonce);
+        let order = self.current.drop(&signer_public, &nonce);
         if order.is_some() {
             // This will keep consistency in pool
             // Moves all to future and then promotes a batch from current:
-            self.cull_internal(sender, current_nonce);
+            self.cull_internal(signer_public, current_nonce);
             assert_eq!(self.future.by_priority.len() + self.current.by_priority.len(), self.by_hash.len());
             return
         }
     }
 
-    /// Removes all parcels from particular sender up to (excluding) given client (state) nonce.
-    /// Client (State) Nonce = next valid nonce for this sender.
-    pub fn cull(&mut self, sender: Address, client_nonce: U256) {
+    /// Removes all parcels from particular signer up to (excluding) given client (state) nonce.
+    /// Client (State) Nonce = next valid nonce for this signer.
+    pub fn cull(&mut self, signer_public: Public, client_nonce: U256) {
         // Check if there is anything in current...
-        let should_check_in_current = self.current.by_address.row(&sender)
+        let should_check_in_current = self.current.by_signer_public.row(&signer_public)
             // If nonce == client_nonce nothing is changed
             .and_then(|by_nonce| by_nonce.keys().find(|nonce| *nonce < &client_nonce))
             .map(|_| ());
         // ... or future
-        let should_check_in_future = self.future.by_address.row(&sender)
+        let should_check_in_future = self.future.by_signer_public.row(&signer_public)
             // if nonce == client_nonce we need to promote to current
             .and_then(|by_nonce| by_nonce.keys().find(|nonce| *nonce <= &client_nonce))
             .map(|_| ());
@@ -592,7 +592,7 @@ impl MemPool {
             return
         }
 
-        self.cull_internal(sender, client_nonce);
+        self.cull_internal(signer_public, client_nonce);
     }
 
     /// Removes all elements (in any state) from the pool
@@ -610,10 +610,10 @@ impl MemPool {
         self.by_hash.get(hash).map(|parcel| parcel.parcel.clone())
     }
 
-    /// Returns highest parcel nonce for given address.
+    /// Returns highest parcel nonce for given signer.
     #[allow(dead_code)]
-    pub fn last_nonce(&self, address: &Address) -> Option<U256> {
-        self.last_nonces.get(address).cloned()
+    pub fn last_nonce(&self, signer_public: &Public) -> Option<U256> {
+        self.last_nonces.get(signer_public).cloned()
     }
 
     /// Returns top parcels from the pool ordered by priority.
@@ -671,7 +671,7 @@ impl MemPool {
         fetch_account: &F,
     ) -> Result<ParcelImportResult, ParcelError>
     where
-        F: Fn(&Address) -> AccountDetails, {
+        F: Fn(&Public) -> AccountDetails, {
         if origin != ParcelOrigin::Local && parcel.fee < self.minimal_fee {
             ctrace!(
                 MEM_POOL,
@@ -703,7 +703,7 @@ impl MemPool {
             })
         }
 
-        let client_account = fetch_account(&parcel.sender());
+        let client_account = fetch_account(&parcel.signer_public());
         if client_account.balance < parcel.fee {
             ctrace!(
                 MEM_POOL,
@@ -714,7 +714,7 @@ impl MemPool {
             );
 
             return Err(ParcelError::InsufficientBalance {
-                address: *parcel.sender(),
+                address: public_to_address(&parcel.signer_public()),
                 cost: parcel.fee,
                 balance: client_account.balance,
             })
@@ -746,7 +746,7 @@ impl MemPool {
             return Err(ParcelError::ParcelAlreadyImported)
         }
 
-        let address = *parcel.sender();
+        let signer_public = parcel.signer_public();
         let nonce = parcel.nonce();
         let hash = parcel.hash();
 
@@ -760,14 +760,14 @@ impl MemPool {
         }
 
         // Update nonces of parcels in future (remove old parcels)
-        self.update_future(&address, state_nonce);
+        self.update_future(&signer_public, state_nonce);
         // State nonce could be updated. Maybe there are some more items waiting in future?
-        self.move_matching_future_to_current(address, state_nonce, state_nonce);
+        self.move_matching_future_to_current(signer_public, state_nonce, state_nonce);
         // Check the next expected nonce (might be updated by move above)
-        let next_nonce = self.last_nonces.get(&address).cloned().map_or(state_nonce, |n| n + U256::one());
+        let next_nonce = self.last_nonces.get(&signer_public).cloned().map_or(state_nonce, |n| n + U256::one());
 
         if parcel.origin.is_local() {
-            self.mark_parcels_local(&address);
+            self.mark_parcels_local(&signer_public);
         }
 
         // Future parcel
@@ -784,7 +784,7 @@ impl MemPool {
             // Enforce limit in Future
             let removed = self.future.enforce_limit(&mut self.by_hash, &mut self.local_parcels);
             // Return an error if this parcel was not imported because of limit.
-            check_if_removed(&address, &nonce, removed)?;
+            check_if_removed(&signer_public, &nonce, removed)?;
 
             cdebug!(MEM_POOL, "Importing parcel to future: {:?}", hash);
             cdebug!(MEM_POOL, "status: {:?}", self.status());
@@ -792,8 +792,8 @@ impl MemPool {
         }
 
         // We might have filled a gap - move some more parcels from future
-        self.move_matching_future_to_current(address, nonce, state_nonce);
-        self.move_matching_future_to_current(address, nonce + U256::one(), state_nonce);
+        self.move_matching_future_to_current(signer_public, nonce, state_nonce);
+        self.move_matching_future_to_current(signer_public, nonce + U256::one(), state_nonce);
 
         // Replace parcel if any
         check_too_cheap(Self::replace_parcel(
@@ -804,15 +804,15 @@ impl MemPool {
             &mut self.local_parcels,
         ))?;
         // Keep track of highest nonce stored in current
-        let new_max = self.last_nonces.get(&address).map_or(nonce, |n| cmp::max(nonce, *n));
-        self.last_nonces.insert(address, new_max);
+        let new_max = self.last_nonces.get(&signer_public).map_or(nonce, |n| cmp::max(nonce, *n));
+        self.last_nonces.insert(signer_public, new_max);
 
         // Also enforce the limit
         let removed = self.current.enforce_limit(&mut self.by_hash, &mut self.local_parcels);
         // If some parcel were removed because of limit we need to update last_nonces also.
         self.update_last_nonces(&removed);
         // Trigger error if the parcel we are importing was removed.
-        check_if_removed(&address, &nonce, removed)?;
+        check_if_removed(&signer_public, &nonce, removed)?;
 
         cdebug!(MEM_POOL, "Imported parcel to current: {:?}", hash);
         cdebug!(MEM_POOL, "status: {:?}", self.status());
@@ -820,7 +820,7 @@ impl MemPool {
     }
 
     /// Always updates future and moves parcel from current to future.
-    fn cull_internal(&mut self, sender: Address, client_nonce: U256) {
+    fn cull_internal(&mut self, sender: Public, client_nonce: U256) {
         // We will either move parcel to future or remove it completely
         // so there will be no parcels from this sender in current
         self.last_nonces.remove(&sender);
@@ -834,7 +834,7 @@ impl MemPool {
         assert_eq!(self.future.by_priority.len() + self.current.by_priority.len(), self.by_hash.len());
     }
 
-    fn update_last_nonces(&mut self, removed_min_nonces: &Option<HashMap<Address, U256>>) {
+    fn update_last_nonces(&mut self, removed_min_nonces: &Option<HashMap<Public, U256>>) {
         if let Some(ref min_nonces) = *removed_min_nonces {
             for (sender, nonce) in min_nonces.iter() {
                 if *nonce == U256::zero() {
@@ -847,17 +847,19 @@ impl MemPool {
     }
 
     /// Update height of all parcels in future parcels set.
-    fn update_future(&mut self, sender: &Address, current_nonce: U256) {
-        // We need to drain all parcels for current sender from future and reinsert them with updated height
-        let all_nonces_from_sender = match self.future.by_address.row(sender) {
+    fn update_future(&mut self, signer_public: &Public, current_nonce: U256) {
+        // We need to drain all parcels for current signer from future and reinsert them with updated height
+        let all_nonces_from_sender = match self.future.by_signer_public.row(signer_public) {
             Some(row_map) => row_map.keys().cloned().collect::<Vec<U256>>(),
             None => vec![],
         };
         for k in all_nonces_from_sender {
-            let order =
-                self.future.drop(sender, &k).expect("iterating over a collection that has been retrieved above; qed");
+            let order = self
+                .future
+                .drop(signer_public, &k)
+                .expect("iterating over a collection that has been retrieved above; qed");
             if k >= current_nonce {
-                self.future.insert(*sender, k, order.update_height(k, current_nonce));
+                self.future.insert(*signer_public, k, order.update_height(k, current_nonce));
             } else {
                 ctrace!(MEM_POOL, "Removing old parcel: {:?} (nonce: {} < {})", order.hash, k, current_nonce);
                 // Remove the parcel completely
@@ -868,10 +870,10 @@ impl MemPool {
 
     /// Checks if there are any parcels in `future` that should actually be promoted to `current`
     /// (because nonce matches).
-    fn move_matching_future_to_current(&mut self, address: Address, mut current_nonce: U256, first_nonce: U256) {
+    fn move_matching_future_to_current(&mut self, public: Public, mut current_nonce: U256, first_nonce: U256) {
         let mut update_last_nonce_to = None;
         {
-            let by_nonce = self.future.by_address.row_mut(&address);
+            let by_nonce = self.future.by_signer_public.row_mut(&public);
             if by_nonce.is_none() {
                 return
             }
@@ -885,9 +887,9 @@ impl MemPool {
                 if order.origin.is_local() {
                     self.local_parcels.mark_pending(order.hash);
                 }
-                if let Some(old) = self.current.insert(address, current_nonce, order.clone()) {
+                if let Some(old) = self.current.insert(public, current_nonce, order.clone()) {
                     Self::replace_orders(
-                        address,
+                        public,
                         current_nonce,
                         old,
                         order,
@@ -900,33 +902,35 @@ impl MemPool {
                 current_nonce = current_nonce + U256::one();
             }
         }
-        self.future.by_address.clear_if_empty(&address);
+        self.future.by_signer_public.clear_if_empty(&public);
         if let Some(x) = update_last_nonce_to {
             // Update last inserted nonce
-            self.last_nonces.insert(address, x);
+            self.last_nonces.insert(public, x);
         }
     }
 
-    /// Drop all parcels from given sender from `current`.
+    /// Drop all parcels from given signer from `current`.
     /// Either moves them to `future` or removes them from pool completely.
-    fn move_all_to_future(&mut self, sender: &Address, current_nonce: U256) {
-        let all_nonces_from_sender = match self.current.by_address.row(sender) {
+    fn move_all_to_future(&mut self, signer_public: &Public, current_nonce: U256) {
+        let all_nonces_from_sender = match self.current.by_signer_public.row(signer_public) {
             Some(row_map) => row_map.keys().cloned().collect::<Vec<U256>>(),
             None => vec![],
         };
 
         for k in all_nonces_from_sender {
             // Goes to future or is removed
-            let order =
-                self.current.drop(sender, &k).expect("iterating over a collection that has been retrieved above; qed");
+            let order = self
+                .current
+                .drop(signer_public, &k)
+                .expect("iterating over a collection that has been retrieved above; qed");
             if k >= current_nonce {
                 let order = order.update_height(k, current_nonce);
                 if order.origin.is_local() {
                     self.local_parcels.mark_future(order.hash);
                 }
-                if let Some(old) = self.future.insert(*sender, k, order.clone()) {
+                if let Some(old) = self.future.insert(*signer_public, k, order.clone()) {
                     Self::replace_orders(
-                        *sender,
+                        *signer_public,
                         k,
                         old,
                         order,
@@ -947,12 +951,12 @@ impl MemPool {
     }
 
     /// Marks all parcels from particular sender as local parcels
-    fn mark_parcels_local(&mut self, sender: &Address) {
-        fn mark_local<F: FnMut(H256)>(sender: &Address, set: &mut ParcelSet, mut mark: F) {
-            // Mark all parcels from this sender as local
+    fn mark_parcels_local(&mut self, signer: &Public) {
+        fn mark_local<F: FnMut(H256)>(signer_public: &Public, set: &mut ParcelSet, mut mark: F) {
+            // Mark all parcels from this signer as local
             let nonces_from_sender = set
-                .by_address
-                .row(sender)
+                .by_signer_public
+                .row(signer_public)
                 .map(|row_map| {
                     row_map
                         .iter()
@@ -968,16 +972,17 @@ impl MemPool {
                 .unwrap_or_else(Vec::new);
 
             for k in nonces_from_sender {
-                let mut order = set.drop(sender, &k).expect("parcel known to be in self.current/self.future; qed");
+                let mut order =
+                    set.drop(signer_public, &k).expect("parcel known to be in self.current/self.future; qed");
                 order.origin = ParcelOrigin::Local;
                 mark(order.hash);
-                set.insert(*sender, k, order);
+                set.insert(*signer_public, k, order);
             }
         }
 
         let local = &mut self.local_parcels;
-        mark_local(sender, &mut self.current, |hash| local.mark_pending(hash));
-        mark_local(sender, &mut self.future, |hash| local.mark_future(hash));
+        mark_local(signer, &mut self.current, |hash| local.mark_pending(hash));
+        mark_local(signer, &mut self.future, |hash| local.mark_future(hash));
     }
 
     /// Replaces parcel in given set (could be `future` or `current`).
@@ -996,7 +1001,7 @@ impl MemPool {
     ) -> bool {
         let order = ParcelOrder::for_parcel(&parcel, base_nonce);
         let hash = parcel.hash();
-        let address = *parcel.sender();
+        let signer_public = parcel.signer_public();
         let nonce = parcel.nonce();
 
         let old_hash = by_hash.insert(hash, parcel);
@@ -1004,15 +1009,15 @@ impl MemPool {
 
         ctrace!(MEM_POOL, "Inserting: {:?}", order);
 
-        if let Some(old) = set.insert(address, nonce, order.clone()) {
-            Self::replace_orders(address, nonce, old, order, set, by_hash, local)
+        if let Some(old) = set.insert(signer_public, nonce, order.clone()) {
+            Self::replace_orders(signer_public, nonce, old, order, set, by_hash, local)
         } else {
             true
         }
     }
 
     fn replace_orders(
-        address: Address,
+        signer_public: Public,
         nonce: U256,
         old: ParcelOrder,
         order: ParcelOrder,
@@ -1036,7 +1041,7 @@ impl MemPool {
                 old.hash
             );
             // Put back old parcel since it has greater priority (higher fee)
-            set.insert(address, nonce, old);
+            set.insert(signer_public, nonce, old);
             // and remove new one
             let order = by_hash
                 .remove(&order.hash)
@@ -1094,11 +1099,7 @@ fn check_too_cheap(is_in: bool) -> Result<(), ParcelError> {
     }
 }
 
-fn check_if_removed(
-    sender: &Address,
-    nonce: &U256,
-    dropped: Option<HashMap<Address, U256>>,
-) -> Result<(), ParcelError> {
+fn check_if_removed(sender: &Public, nonce: &U256, dropped: Option<HashMap<Public, U256>>) -> Result<(), ParcelError> {
     match dropped {
         Some(dropped) => match dropped.get(sender) {
             Some(min) if nonce >= min => Err(ParcelError::LimitReached),

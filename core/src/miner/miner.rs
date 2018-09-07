@@ -19,7 +19,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use ckey::{Address, Password};
+use ckey::{public_to_address, Address, Password, Public};
 use cstate::{StateError, TopLevelState};
 use ctypes::parcel::Error as ParcelError;
 use ctypes::BlockNumber;
@@ -239,17 +239,19 @@ impl Miner {
                         let origin = self
                             .accounts
                             .as_ref()
-                            .and_then(|accounts| match accounts.has_account(parcel.sender()) {
+                            .and_then(|accounts| match accounts.has_public(&parcel.signer_public()) {
                                 Ok(true) => Some(ParcelOrigin::Local),
                                 Ok(false) => None,
                                 Err(_) => None,
                             })
                             .unwrap_or(default_origin);
 
-                        let fetch_account = |a: &Address| -> AccountDetails {
+                        let fetch_account = |p: &Public| -> AccountDetails {
+                            // FIXME: handle regular key
+                            let a = public_to_address(p);
                             AccountDetails {
-                                nonce: client.latest_nonce(a),
-                                balance: client.latest_balance(a),
+                                nonce: client.latest_nonce(&a),
+                                balance: client.latest_balance(&a),
                             }
                         };
                         let hash = parcel.hash();
@@ -415,7 +417,10 @@ impl Miner {
         };
         let block = open_block.close(parcels_root, invoices_root);
 
-        let fetch_nonce = |a: &Address| chain.latest_nonce(a);
+        let fetch_nonce = |p: &Public| {
+            let a = public_to_address(p);
+            chain.latest_nonce(&a)
+        };
 
         {
             let mut queue = self.mem_pool.write();
@@ -596,9 +601,12 @@ impl MinerService for Miner {
 
         // ...and at the end remove the old ones
         {
-            let fetch_account = |a: &Address| AccountDetails {
-                nonce: chain.latest_nonce(a),
-                balance: chain.latest_balance(a),
+            let fetch_account = |p: &Public| {
+                let a = public_to_address(p);
+                AccountDetails {
+                    nonce: chain.latest_nonce(&a),
+                    balance: chain.latest_balance(&a),
+                }
             };
             let time = chain.chain_info().best_block_number;
             let mut mem_pool = self.mem_pool.write();

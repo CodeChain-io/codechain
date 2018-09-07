@@ -17,7 +17,7 @@
 use std::ops::Deref;
 
 use ccrypto::blake256;
-use ckey::{self, public_to_address, recover, sign, Address, Private, Public, Signature};
+use ckey::{self, recover, sign, Private, Public, Signature};
 use ctypes::parcel::{Action, Error as ParcelError, Parcel};
 use ctypes::transaction::Transaction;
 use ctypes::BlockNumber;
@@ -112,7 +112,7 @@ impl UnverifiedParcel {
         Signature::from(self.sig)
     }
 
-    /// Recovers the public key of the sender.
+    /// Recovers the public key of the signature.
     pub fn recover_public(&self) -> Result<Public, ckey::Error> {
         Ok(recover(&self.signature(), &self.unsigned.hash())?)
     }
@@ -126,7 +126,7 @@ impl UnverifiedParcel {
         }
     }
 
-    /// Verify basic signature params. Does not attempt sender recovery.
+    /// Verify basic signature params. Does not attempt signer recovery.
     pub fn verify_basic(&self, params: &CommonParams) -> Result<(), ParcelError> {
         if self.network_id != params.network_id {
             return Err(ParcelError::InvalidNetworkId(self.network_id))
@@ -182,12 +182,11 @@ impl UnverifiedParcel {
     }
 }
 
-/// A `UnverifiedParcel` with successfully recovered `sender`.
+/// A `UnverifiedParcel` with successfully recovered `signer`.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct SignedParcel {
     parcel: UnverifiedParcel,
-    sender: Address,
-    public: Public,
+    signer_public: Public,
 }
 
 impl HeapSizeOf for SignedParcel {
@@ -216,36 +215,29 @@ impl From<SignedParcel> for UnverifiedParcel {
 }
 
 impl SignedParcel {
-    /// Try to verify parcel and recover sender.
+    /// Try to verify parcel and recover public.
     pub fn new(parcel: UnverifiedParcel) -> Result<Self, ckey::Error> {
         let public = parcel.recover_public()?;
-        let sender = public_to_address(&public);
         Ok(SignedParcel {
             parcel,
-            sender,
-            public,
+            signer_public: public,
         })
     }
 
-    /// Signs the parcel as coming from `sender`.
+    /// Signs the parcel as coming from `signer`.
     pub fn new_with_sign(parcel: Parcel, private: &Private) -> SignedParcel {
         let sig = sign(&private, &parcel.hash()).expect("data is valid and context has signing capabilities; qed");
         SignedParcel::new(UnverifiedParcel::new(parcel, sig)).expect("secret is valid so it's recoverable")
     }
 
-    /// Returns parcel sender.
-    pub fn sender(&self) -> &Address {
-        &self.sender
-    }
-
-    /// Returns a public key of the sender.
-    pub fn public_key(&self) -> Public {
-        self.public.clone()
+    /// Returns a public key of the signer.
+    pub fn signer_public(&self) -> Public {
+        self.signer_public.clone()
     }
 
     /// Deconstructs this parcel back into `UnverifiedParcel`
-    pub fn deconstruct(self) -> (UnverifiedParcel, Address, Public) {
-        (self.parcel, self.sender, self.public)
+    pub fn deconstruct(self) -> (UnverifiedParcel, Public) {
+        (self.parcel, self.signer_public)
     }
 }
 
@@ -260,21 +252,21 @@ pub struct LocalizedParcel {
     pub block_hash: H256,
     /// Parcel index within block.
     pub parcel_index: usize,
-    /// Cached sender
-    pub cached_sender: Option<Address>,
+    /// Cached public
+    pub cached_signer_public: Option<Public>,
 }
 
 impl LocalizedParcel {
-    /// Returns parcel sender.
+    /// Returns parcel signer.
     /// Panics if `LocalizedParcel` is constructed using invalid `UnverifiedParcel`.
-    pub fn sender(&mut self) -> Address {
-        if let Some(sender) = self.cached_sender {
-            return sender
+    pub fn signer(&mut self) -> Public {
+        if let Some(public) = self.cached_signer_public {
+            return public
         }
-        let sender = public_to_address(&self.recover_public()
-            .expect("LocalizedParcel is always constructed from parcel from blockchain; Blockchain only stores verified parcels; qed"));
-        self.cached_sender = Some(sender);
-        sender
+        let public = self.recover_public()
+            .expect("LocalizedParcel is always constructed from parcel from blockchain; Blockchain only stores verified parcels; qed");
+        self.cached_signer_public = Some(public);
+        public
     }
 }
 

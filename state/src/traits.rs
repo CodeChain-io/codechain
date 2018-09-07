@@ -90,7 +90,8 @@ where
     fn account_exists_and_not_null(&self, a: &Address) -> TrieResult<bool>;
     fn account_exists_and_has_nonce(&self, a: &Address) -> TrieResult<bool>;
 
-    fn regular_account_exists_and_not_null(&self, a: &Address) -> TrieResult<bool>;
+    fn regular_account_exists_and_not_null(&self, p: &Public) -> TrieResult<bool>;
+    fn regular_account_exists_and_not_null_by_address(&self, a: &Address) -> TrieResult<bool>;
 
     /// Add `incr` to the balance of account `a`.
     fn add_balance(&mut self, a: &Address, incr: &U256) -> TrieResult<()>;

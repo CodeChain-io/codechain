@@ -62,7 +62,7 @@ impl<'a> BodyView<'a> {
                 block_hash: block_hash.clone(),
                 block_number,
                 parcel_index,
-                cached_sender: None,
+                cached_signer_public: None,
             })
             .collect()
     }
@@ -99,7 +99,7 @@ impl<'a> BodyView<'a> {
             block_hash: block_hash.clone(),
             block_number,
             parcel_index,
-            cached_sender: None,
+            cached_signer_public: None,
         })
     }
 }
