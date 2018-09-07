@@ -28,7 +28,7 @@ use cstate::{
     TopStateInfo,
 };
 use ctypes::invoice::ParcelInvoice;
-use ctypes::parcel::ChangeShard;
+use ctypes::parcel::ShardChange;
 use ctypes::transaction::Transaction;
 use ctypes::{BlockNumber, ShardId};
 use journaldb;
@@ -329,7 +329,7 @@ impl AssetClient for Client {
 }
 
 impl ExecuteClient for Client {
-    fn execute_transactions(&self, transactions: &[Transaction], sender: &Address) -> Result<Vec<ChangeShard>, Error> {
+    fn execute_transactions(&self, transactions: &[Transaction], sender: &Address) -> Result<Vec<ShardChange>, Error> {
         let state = Client::state_at(&self, BlockId::Latest).expect("Latest state MUST exist");
         let mut shard_ids: Vec<ShardId> = transactions.iter().flat_map(Transaction::related_shards).collect();
         shard_ids.sort_unstable();

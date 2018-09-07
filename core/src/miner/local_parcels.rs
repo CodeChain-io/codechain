@@ -217,7 +217,7 @@ mod tests {
         let parcel = Parcel {
             nonce,
             fee: U256::from(1245),
-            action: Action::ChangeShardState {
+            action: Action::AssetTransactionGroup {
                 transactions,
                 changes: vec![],
                 signatures: vec![],

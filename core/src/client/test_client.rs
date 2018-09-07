@@ -199,7 +199,7 @@ impl TestBlockChainClient {
                     nonce: U256::zero(),
                     fee: U256::from(10),
                     network_id: NetworkId::default(),
-                    action: Action::ChangeShardState {
+                    action: Action::AssetTransactionGroup {
                         transactions: vec![],
                         changes: vec![],
                         signatures: vec![],
@@ -267,7 +267,7 @@ impl TestBlockChainClient {
             nonce: U256::zero(),
             fee: U256::from(10),
             network_id: NetworkId::default(),
-            action: Action::ChangeShardState {
+            action: Action::AssetTransactionGroup {
                 transactions,
                 changes: vec![],
                 signatures: vec![],

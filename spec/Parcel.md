@@ -17,18 +17,18 @@ struct Parcel {
 }
 
 enum Action {
-    ChangeShardState { ..., },
+    AssetTransactionGroup { ..., },
     Payment { ..., },
     SetRegularKey { ..., },
 }
 ```
 
-## ChangeShardState
+## AssetTransactionGroup
 
 Execute `transactions`. If `block_num` is specified, parcel is valid only in block whose number is in range of [block_num, block_num + margin).
 
 ```rust
-ChangeShardState {
+AssetTransactionGroup {
     block_num: Option<BlockNumber>
     transactions: Vec<Transaction>
 }

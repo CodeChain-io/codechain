@@ -136,7 +136,7 @@ impl UnverifiedParcel {
             return Err(ParcelError::ParcelsTooBig)
         }
         match &self.action {
-            Action::ChangeShardState {
+            Action::AssetTransactionGroup {
                 transactions,
                 changes,
                 ..

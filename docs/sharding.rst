@@ -17,12 +17,12 @@ However, this does not mean that sharding is always necessary. Sharding is a sol
 then sharding is not necessary. For these scenarios, you can configure the specific chain that you are using to utilize sharding. However, even if you do not use sharding, it does
 not mean that the two state levels will become one. If sharding is not used, then the beacons will behave as the top-level node, and will verify every transaction.
 
-In the case where sharding is used, it is sufficient for the beacon to be the top-level node. In this situation, the verification of ChangeShardState parcel is delegated to the
-shard validator, and beacon uses the verified ChangeShardState parcel to generate the block using only the top-level state.
+In the case where sharding is used, it is sufficient for the beacon to be the top-level node. In this situation, the verification of AssetTransactionGroup parcel is delegated to the
+shard validator, and beacon uses the verified AssetTransactionGroup parcel to generate the block using only the top-level state.
 
 Shard Validator
 ==========================
-When using a shard, the ChangeShardState action must be verified by the Shard Validator. The Shard Validator is randomly selected from the registered shard validator pool. 
+When using a shard, the AssetTransactionGroup action must be verified by the Shard Validator. The Shard Validator is randomly selected from the registered shard validator pool. 
 
 TBC
 ==========================
@@ -30,7 +30,7 @@ TBC
 
 RPC
 ==========================
-When using shards, ChangeShardState action can only take place once validator signatures are gathered. The RPCs that exist for this purpose are `shardValidator_registerAction
+When using shards, AssetTransactionGroup action can only take place once validator signatures are gathered. The RPCs that exist for this purpose are `shardValidator_registerAction
 <https://github.com/CodeChain-io/codechain/blob/master/spec/JSON-RPC.md#shardvalidator_registeraction>`_ and `shardValidator_getSignatures
 <https://github.com/CodeChain-io/codechain/blob/master/spec/JSON-RPC.md#shardvalidator_getsignatures>`_. shardValidator_registerAction propagates the surrounding nodes
 so that the shard validator can accept and sign an action. The shard validator that receives the action verifies the action and propagates its signature around it.

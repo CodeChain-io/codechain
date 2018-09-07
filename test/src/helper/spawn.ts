@@ -172,7 +172,7 @@ export default class CodeChain {
   }
 
   public async sendTransaction(tx: Transaction) {
-    const parcel = this.sdk.core.createChangeShardStateParcel({
+    const parcel = this.sdk.core.createAssetTransactionGroupParcel({
       transactions: [ tx ]
     }).sign({
       secret: faucetSecret,

@@ -33,7 +33,7 @@ A parcel would look something like this:
     }
 
     pub enum Action {
-        ChangeShardState {
+        AssetTransactionGroup {
             transactions: Vec<Transaction>,
         },
         Payment {

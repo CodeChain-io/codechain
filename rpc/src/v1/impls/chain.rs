@@ -32,7 +32,7 @@ use jsonrpc_core::Result;
 
 use super::super::errors;
 use super::super::traits::Chain;
-use super::super::types::{Block, BlockNumberAndHash, Bytes, ChangeShard, Parcel, Transaction};
+use super::super::types::{Block, BlockNumberAndHash, Bytes, Parcel, ShardChange, Transaction};
 
 pub struct ChainClient<C, M>
 where
@@ -231,7 +231,7 @@ where
         &self,
         transactions: Vec<Transaction>,
         sender: PlatformAddress,
-    ) -> Result<Vec<ChangeShard>> {
+    ) -> Result<Vec<ShardChange>> {
         let transaction_types: ::std::result::Result<Vec<_>, _> = transactions.into_iter().map(From::from).collect();
         let transaction_types = transaction_types.map_err(errors::core)?;
         let sender_address = sender.try_address().map_err(errors::core)?;

@@ -23,7 +23,7 @@ use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 use super::super::transaction::Transaction;
 use super::super::ShardId;
 
-const CHANGE_SHARD_STATE: u8 = 1;
+const ASSET_TRANSACTION_GROUP: u8 = 1;
 const PAYMENT: u8 = 2;
 const SET_REGULAR_KEY: u8 = 3;
 const CREATE_SHARD: u8 = 4;
@@ -32,7 +32,7 @@ const SET_SHARD_USERS: u8 = 6;
 const CUSTOM: u8 = 0xFF;
 
 #[derive(Debug, Clone, PartialEq, Eq, RlpDecodable, RlpEncodable)]
-pub struct ChangeShard {
+pub struct ShardChange {
     pub shard_id: ShardId,
     pub pre_root: H256,
     pub post_root: H256,
@@ -40,10 +40,10 @@ pub struct ChangeShard {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Action {
-    ChangeShardState {
+    AssetTransactionGroup {
         /// Transaction, can be either asset mint or asset transfer
         transactions: Vec<Transaction>,
-        changes: Vec<ChangeShard>,
+        changes: Vec<ShardChange>,
         signatures: Vec<Signature>,
     },
     Payment {
@@ -101,13 +101,13 @@ impl HeapSizeOf for Action {
 impl Encodable for Action {
     fn rlp_append(&self, s: &mut RlpStream) {
         match self {
-            Action::ChangeShardState {
+            Action::AssetTransactionGroup {
                 transactions,
                 changes,
                 signatures,
             } => {
                 s.begin_list(4);
-                s.append(&CHANGE_SHARD_STATE);
+                s.append(&ASSET_TRANSACTION_GROUP);
                 s.append_list(transactions);
                 s.append_list(changes);
                 s.append_list(signatures);
@@ -162,11 +162,11 @@ impl Encodable for Action {
 impl Decodable for Action {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
         match rlp.val_at(0)? {
-            CHANGE_SHARD_STATE => {
+            ASSET_TRANSACTION_GROUP => {
                 if rlp.item_count()? != 4 {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
-                Ok(Action::ChangeShardState {
+                Ok(Action::AssetTransactionGroup {
                     transactions: rlp.list_at(1)?,
                     changes: rlp.list_at(2)?,
                     signatures: rlp.list_at(3)?,

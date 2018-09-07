@@ -45,9 +45,9 @@ const ACTION_ID: u8 = 1;
 const SIGNATURES_ID: u8 = 2;
 const REQUEST_ACTION_ID: u8 = 3;
 
-fn is_change_shard_state(action: &Action) -> bool {
+fn is_asset_transaction_group(action: &Action) -> bool {
     match action {
-        Action::ChangeShardState {
+        Action::AssetTransactionGroup {
             ..
         } => true,
         _ => false,
@@ -61,7 +61,7 @@ impl Decodable for Message {
             ACTION_ID => {
                 let action: Action = rlp.val_at(1)?;
 
-                if !is_change_shard_state(&action) {
+                if !is_asset_transaction_group(&action) {
                     return Err(DecoderError::Custom("Invalid action"))
                 }
 
@@ -89,7 +89,7 @@ impl Encodable for Message {
         s.begin_list(1 + self.num_of_items());
         match self {
             Message::Action(action) => {
-                debug_assert!(is_change_shard_state(action), "{:?} is not ChangeShardState action", action);
+                debug_assert!(is_asset_transaction_group(action), "{:?} is not AssetTransactionGroup action", action);
                 s.append(&ACTION_ID);
                 s.append(action);
             }
@@ -120,7 +120,7 @@ mod tests {
 
     #[test]
     fn encode_and_decode_action() {
-        rlp_encode_and_decode_test!(Message::Action(Action::ChangeShardState {
+        rlp_encode_and_decode_test!(Message::Action(Action::AssetTransactionGroup {
             transactions: vec![],
             changes: vec![],
             signatures: vec![],

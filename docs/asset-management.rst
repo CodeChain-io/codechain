@@ -250,7 +250,7 @@ The parcel containing the Gold asset is sent to the node. The parcel fee is paid
 ``cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7`` with the passphrase ``satoshi``. 
 ::
 
-    const parcel = sdk.core.createChangeShardStateParcel({
+    const parcel = sdk.core.createAssetTransactionGroupParcel({
         transactions: [mintTx, transferTx]
     });
     await sdk.rpc.chain.sendParcel(parcel, {

@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ckey::{Error as KeyError, NetworkId, PlatformAddress, Public, Signature};
-use ctypes::parcel::{Action as ActionType, ChangeShard as ChangeShardType};
+use ctypes::parcel::{Action as ActionType, ShardChange as ShardChangeType};
 use ctypes::ShardId;
 use primitives::{Bytes, H256, U256};
 
@@ -23,7 +23,7 @@ use super::Transaction;
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ChangeShard {
+pub struct ShardChange {
     pub shard_id: ShardId,
     pub pre_root: H256,
     pub post_root: H256,
@@ -32,10 +32,10 @@ pub struct ChangeShard {
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", tag = "action")]
 pub enum Action {
-    ChangeShardState {
+    AssetTransactionGroup {
         /// Transaction, can be either asset mint or asset transfer
         transactions: Vec<Transaction>,
-        changes: Vec<ChangeShard>,
+        changes: Vec<ShardChange>,
         signatures: Vec<Signature>,
     },
     Payment {
@@ -58,8 +58,8 @@ pub enum Action {
     Custom(Bytes),
 }
 
-impl From<ChangeShardType> for ChangeShard {
-    fn from(from: ChangeShardType) -> Self {
+impl From<ShardChangeType> for ShardChange {
+    fn from(from: ShardChangeType) -> Self {
         Self {
             shard_id: from.shard_id,
             pre_root: from.pre_root,
@@ -72,11 +72,11 @@ impl Action {
     pub fn from_core(from: ActionType, network_id: NetworkId) -> Self {
         const VERSION: u8 = 0;
         match from {
-            ActionType::ChangeShardState {
+            ActionType::AssetTransactionGroup {
                 transactions,
                 changes,
                 signatures,
-            } => Action::ChangeShardState {
+            } => Action::AssetTransactionGroup {
                 transactions: transactions.into_iter().map(From::from).collect(),
                 changes: changes.into_iter().map(From::from).collect(),
                 signatures,
@@ -113,8 +113,8 @@ impl Action {
     }
 }
 
-impl From<ChangeShard> for ChangeShardType {
-    fn from(from: ChangeShard) -> Self {
+impl From<ShardChange> for ShardChangeType {
+    fn from(from: ShardChange) -> Self {
         Self {
             shard_id: from.shard_id,
             pre_root: from.pre_root,
@@ -127,13 +127,13 @@ impl From<ChangeShard> for ChangeShardType {
 impl From<Action> for Result<ActionType, KeyError> {
     fn from(from: Action) -> Self {
         Ok(match from {
-            Action::ChangeShardState {
+            Action::AssetTransactionGroup {
                 transactions,
                 changes,
                 signatures,
             } => {
                 let transactions: Result<_, _> = transactions.into_iter().map(From::from).collect();
-                ActionType::ChangeShardState {
+                ActionType::AssetTransactionGroup {
                     transactions: transactions?,
                     changes: changes.into_iter().map(From::from).collect(),
                     signatures,

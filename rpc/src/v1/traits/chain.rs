@@ -22,7 +22,7 @@ use primitives::{H256, U256};
 
 use jsonrpc_core::Result;
 
-use super::super::types::{Block, BlockNumberAndHash, Bytes, ChangeShard, Parcel, Transaction};
+use super::super::types::{Block, BlockNumberAndHash, Bytes, Parcel, ShardChange, Transaction};
 
 build_rpc_trait! {
     pub trait Chain {
@@ -120,6 +120,6 @@ build_rpc_trait! {
 
         /// Execute Transactions
         # [rpc(name = "chain_executeTransactions")]
-        fn execute_change_shard_state(&self, Vec<Transaction>, PlatformAddress) -> Result<Vec<ChangeShard>>;
+        fn execute_change_shard_state(&self, Vec<Transaction>, PlatformAddress) -> Result<Vec<ShardChange>>;
     }
 }
