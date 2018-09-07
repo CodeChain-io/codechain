@@ -151,15 +151,6 @@ describe("account", () => {
         await node.sdk.rpc.account.unlock(address, "123", 300);
       });
 
-      test("InvalidParams", async (done) => {
-        node.sdk.rpc.account.unlock(address, "123", -1)
-          .then(() => done.fail())
-          .catch(e => {
-            expect(e).toEqual(ERROR.INVALID_PARAMS);
-            done();
-          });
-      });
-
       test("WrongPassword", async (done) => {
         node.sdk.rpc.account.unlock(address, "456")
           .then(() => done.fail())
