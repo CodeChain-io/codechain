@@ -174,16 +174,19 @@ export default class CodeChain {
     return p2pkhBurn.createAddress();
   }
 
-  public async sendTransaction(tx: Transaction) {
+  public async sendTransaction(tx: Transaction, options?: { nonce?: number, awaitInvoice?: boolean }) {
+    const { nonce = await this.sdk.rpc.chain.getNonce(faucetAddress) || 0, awaitInvoice = true } = options || {};
     const parcel = this.sdk.core.createAssetTransactionGroupParcel({
       transactions: [ tx ]
     }).sign({
       secret: faucetSecret,
       fee: 10,
-      nonce: await this.sdk.rpc.chain.getNonce(faucetAddress)
+      nonce
     });
     await this.sdk.rpc.chain.sendSignedParcel(parcel);
-    return this.sdk.rpc.chain.getTransactionInvoice(tx.hash(), { timeout: 300 * 1000 });
+    if (awaitInvoice) {
+      return this.sdk.rpc.chain.getTransactionInvoice(tx.hash(), { timeout: 300 * 1000 });
+    }
   }
 
   public async mintAsset(params: { amount: number }) {
@@ -204,6 +207,37 @@ export default class CodeChain {
       throw Error(`Failed to mint asset`);
     }
     return { asset };
+  }
+
+  public async sendTransactions(txs: Transaction [], options?: { nonce?: number}) {
+    const { nonce = await this.sdk.rpc.chain.getNonce(faucetAddress) || 0} = options || {};
+    const parcel = this.sdk.core.createAssetTransactionGroupParcel({
+      transactions: txs
+    }).sign({
+      secret: faucetSecret,
+      fee: 10,
+      nonce
+    });
+    await this.sdk.rpc.chain.sendSignedParcel(parcel);
+  }
+
+  public async mintAssets(params: { count: number, nonce?: number}) {
+    const { count, nonce } = params;
+    let txs: Transaction [] = [];
+    const recipient = await this.createP2PKHAddress();
+    for (let i = 0; i < count; i++) {
+      const tx = this.sdk.core.createAssetMintTransaction({
+        scheme: {
+          shardId: 0,
+          worldId: 0,
+          metadata: "",
+          amount: 1,
+        },
+        recipient
+      });
+      txs.push(tx)
+    }
+    await this.sendTransactions(txs, {nonce});
   }
 
   public async signTransferInput(tx: AssetTransferTransaction, index: number) {
