@@ -61,9 +61,7 @@ describe("account", () => {
     });
 
     test("getList", async () => {
-      expect(async () => {
-        await node.sdk.rpc.account.getList();
-      }).not.toThrow();
+      await expect(node.sdk.rpc.account.getList()).resolves.toEqual(expect.anything());
     });
 
     test("create", async () => {

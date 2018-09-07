@@ -643,22 +643,22 @@ code-point-at@^1.0.0:
   version "1.1.0"
   resolved "https://registry.yarnpkg.com/code-point-at/-/code-point-at-1.1.0.tgz#0d070b4d043a5bea33a2f1a40e2edb3d9a4ccf77"
 
-codechain-keystore@^0.1.0:
+"codechain-keystore@git://github.com/CodeChain-io/codechain-keystore.git#1483361b94c79e468e055188df0583046d4c9540":
   version "0.1.0"
-  resolved "https://registry.yarnpkg.com/codechain-keystore/-/codechain-keystore-0.1.0.tgz#f985df3ddebb264f1066678db82fe6cbbd68f079"
+  resolved "git://github.com/CodeChain-io/codechain-keystore.git#1483361b94c79e468e055188df0583046d4c9540"
   dependencies:
     codechain-sdk "^0.1.0-alpha.18"
     config "^2.0.1"
     lowdb "^1.0.0"
+    uuid "^3.3.2"
 
-codechain-sdk@^0.1.0:
-  version "0.1.0"
-  resolved "https://registry.yarnpkg.com/codechain-sdk/-/codechain-sdk-0.1.0.tgz#ff04c55af076b994514d6e42bc7816c89edfad84"
+codechain-sdk@^0.1.0-alpha.18:
+  version "0.1.0-alpha.21.rc1"
+  resolved "https://registry.yarnpkg.com/codechain-sdk/-/codechain-sdk-0.1.0-alpha.21.rc1.tgz#441214ccf54714bfe8e26f0f9befffb54d6bf0d1"
   dependencies:
     bignumber.js "^6.0.0"
     blakejs "^1.1.0"
     buffer "5.1.0"
-    codechain-keystore "^0.1.0"
     elliptic "^6.4.0"
     jayson "^2.0.6"
     lodash "^4.17.10"
@@ -668,13 +668,14 @@ codechain-sdk@^0.1.0:
     ripemd160 "^2.0.2"
     rlp "^2.0.0"
 
-codechain-sdk@^0.1.0-alpha.18:
-  version "0.1.0-alpha.21.rc1"
-  resolved "https://registry.yarnpkg.com/codechain-sdk/-/codechain-sdk-0.1.0-alpha.21.rc1.tgz#441214ccf54714bfe8e26f0f9befffb54d6bf0d1"
+codechain-sdk@^0.1.1-alpha.1:
+  version "0.1.1-alpha.1"
+  resolved "https://registry.yarnpkg.com/codechain-sdk/-/codechain-sdk-0.1.1-alpha.1.tgz#30994a7e57a43aa6f34900109a489a426f7693b6"
   dependencies:
     bignumber.js "^6.0.0"
     blakejs "^1.1.0"
     buffer "5.1.0"
+    codechain-keystore "git://github.com/CodeChain-io/codechain-keystore.git#1483361b94c79e468e055188df0583046d4c9540"
     elliptic "^6.4.0"
     jayson "^2.0.6"
     lodash "^4.17.10"
