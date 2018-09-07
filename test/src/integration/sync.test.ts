@@ -37,12 +37,10 @@ describe("2 nodes", () => {
 
   describe("A-B connected", () => {
     beforeEach(async () => {
-      await nodeA.sdk.rpc.network.connect("127.0.0.1", nodeB.port);
-      await wait(250);
+      await nodeA.connect(nodeB);
     });
 
     test("It should be synced when nodeA created a block", async () => {
-      expect(await nodeA.sdk.rpc.network.isConnected("127.0.0.1", nodeB.port)).toBe(true);
       const parcel = await nodeA.sendSignedParcel({ awaitInvoice: true });
       await nodeB.waitBlockNumberSync(nodeA);
       expect(await nodeB.getBestBlockHash()).toEqual(parcel.blockHash);

@@ -30,8 +30,6 @@ describe("2 nodes", () => {
 
   test("should be able to connect", async () => {
     await nodeA.connect(nodeB);
-    await wait(250);
-    expect(await nodeA.sdk.rpc.network.isConnected("127.0.0.1", nodeB.port)).toBe(true);
   });
 
   afterEach(async () => {
