@@ -146,6 +146,12 @@ impl AccountProvider {
         Ok(has)
     }
 
+    pub fn has_public(&self, public: &Public) -> Result<bool, SignError> {
+        let address = public_to_address(public);
+        let has = self.keystore.read().has_account(&address)?;
+        Ok(has)
+    }
+
     pub fn get_list(&self) -> Result<Vec<Address>, SignError> {
         let addresses = self.keystore.read().accounts()?;
         Ok(addresses)
