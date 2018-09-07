@@ -76,7 +76,7 @@ impl Action {
 impl HeapSizeOf for Action {
     fn heap_size_of_children(&self) -> usize {
         match self {
-            Action::ChangeShardState {
+            Action::AssetTransactionGroup {
                 transactions,
                 changes,
                 signatures,
