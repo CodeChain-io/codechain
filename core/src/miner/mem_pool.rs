@@ -1113,7 +1113,7 @@ pub mod test {
     use std::cmp::Ordering;
 
     use ckey::{Generator, Random};
-    use ctypes::parcel::{ShardChange, Parcel};
+    use ctypes::parcel::{Parcel, ShardChange};
     use ctypes::transaction::{AssetMintOutput, Transaction};
 
     use super::*;

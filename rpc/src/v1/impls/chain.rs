@@ -32,7 +32,7 @@ use jsonrpc_core::Result;
 
 use super::super::errors;
 use super::super::traits::Chain;
-use super::super::types::{Block, BlockNumberAndHash, Bytes, ShardChange, Parcel, Transaction};
+use super::super::types::{Block, BlockNumberAndHash, Bytes, Parcel, ShardChange, Transaction};
 
 pub struct ChainClient<C, M>
 where

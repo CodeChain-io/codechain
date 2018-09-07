@@ -22,7 +22,7 @@ use primitives::{H256, U256};
 
 use jsonrpc_core::Result;
 
-use super::super::types::{Block, BlockNumberAndHash, Bytes, ShardChange, Parcel, Transaction};
+use super::super::types::{Block, BlockNumberAndHash, Bytes, Parcel, ShardChange, Transaction};
 
 build_rpc_trait! {
     pub trait Chain {

@@ -42,7 +42,7 @@ use ccrypto::BLAKE_NULL_RLP;
 use ckey::{public_to_address, Address, NetworkId, Public};
 use cmerkle::{Result as TrieResult, TrieError, TrieFactory};
 use ctypes::invoice::{ParcelInvoice, TransactionInvoice};
-use ctypes::parcel::{Action, ShardChange, Error as ParcelError, Parcel};
+use ctypes::parcel::{Action, Error as ParcelError, Parcel, ShardChange};
 use ctypes::transaction::Transaction;
 use ctypes::util::unexpected::Mismatch;
 use ctypes::{ShardId, WorldId};
