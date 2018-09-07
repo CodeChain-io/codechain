@@ -129,8 +129,7 @@ impl TopStateInfo for TopLevelState {
 
     fn regular_key_owner(&self, public: &Public) -> TrieResult<Option<Address>> {
         let account = self.get_regular_account(public)?;
-        Ok(account.map_or(None, |regular_account|
-          Some(public_to_address(regular_account.owner_public()))))
+        Ok(account.map_or(None, |regular_account| Some(public_to_address(regular_account.owner_public()))))
     }
 
     fn number_of_shards(&self) -> TrieResult<ShardId> {
@@ -326,11 +325,7 @@ impl TopLevelState {
 
     /// Execute a given parcel, charging parcel fee.
     /// This will change the state accordingly.
-    pub fn apply(
-        &mut self,
-        parcel: &Parcel,
-        signer_public: &Public,
-    ) -> StateResult<ParcelInvoice> {
+    pub fn apply(&mut self, parcel: &Parcel, signer_public: &Public) -> StateResult<ParcelInvoice> {
         // Change the public to an owner address if it is a regular key.
         let fee_payer = if self.regular_account_exists_and_not_null(signer_public)? {
             let regular_account = self.get_regular_account_mut(signer_public)?;
@@ -1439,7 +1434,7 @@ mod tests_parcel {
     #[test]
     fn change_regular_key() {
         let (sender, sender_public) = address();
-        let (regular_address, regular_public) = address();
+        let (_, regular_public) = address();
         let (_, regular_public2) = address();
 
         let mut state = get_temp_state();
@@ -1466,7 +1461,7 @@ mod tests_parcel {
     #[test]
     fn pass_registrar_check_using_a_regular_key() {
         let (sender, sender_public) = address();
-        let (regular_address, regular_public) = address();
+        let (_, regular_public) = address();
 
         let network_id = "tc".into();
         let world_id = 0;
