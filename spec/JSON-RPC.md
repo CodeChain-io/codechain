@@ -299,7 +299,7 @@ Gets the number and the hash of the best block.
 
 Params: No parameters
 
-Return Type: { number: `number`, hash: `H256` }
+Return Type: { hash: `H256`, number: `number` }
 
 Request Example
 ```
@@ -314,7 +314,7 @@ Response Example
 {
   "jsonrpc":"2.0",
   "result":{
-    "hash":"cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d70x56642f04d519ae3262c7ba6facf1c5b11450ebaeb7955337cfbc45420d573077",
+    "hash":"0x7f7104b580f9418d444560009e5a92a4573d42d2c51cd0c6045afdc761826249",
     "number":1
   },
   "id":null
