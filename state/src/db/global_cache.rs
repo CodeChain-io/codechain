@@ -31,6 +31,7 @@
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
 use std::collections::VecDeque;
+use std::env;
 
 use lru_cache::LruCache;
 use primitives::H256;
@@ -117,6 +118,9 @@ impl<Item: CacheableItem> GlobalCache<Item> {
     }
 
     pub fn get_mut(&mut self, addr: &Item::Address) -> Option<&mut Option<Item>> {
+        if !is_global_cache_enabled() {
+            return None
+        }
         self.cache.get_mut(addr)
     }
 
@@ -160,4 +164,21 @@ impl<Item: CacheableItem> GlobalCache<Item> {
     pub fn len(&self) -> usize {
         self.cache.len()
     }
+}
+
+fn is_global_cache_enabled() -> bool {
+    lazy_static! {
+        static ref CACHE_ENABLED: bool = {
+            #[cfg(not(test))]
+            const DEFAULT: bool = false;
+            #[cfg(test)]
+            const DEFAULT: bool = true;
+
+            let enabled = env::var_os("ENABLE_GLOBAL_CACHE")
+                .and_then(|enable| enable.to_str().map(|enable| enable != "0"))
+                .unwrap_or(DEFAULT);
+            enabled
+        };
+    }
+    *CACHE_ENABLED
 }

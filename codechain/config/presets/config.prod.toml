@@ -2,7 +2,6 @@
 quiet = false
 db_path = "db"
 keys_path = "keys"
-enable_state_cache = false
 
 [mining]
 disable = false

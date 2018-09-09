@@ -87,7 +87,7 @@ fn client_start(cfg: &config::Operating, scheme: &Scheme, miner: Arc<Miner>) -> 
     info!("Starting client");
     let client_path = Path::new(&cfg.db_path);
     let client_config = Default::default();
-    let service = ClientService::start(client_config, &scheme, &client_path, miner, cfg.enable_state_cache)
+    let service = ClientService::start(client_config, &scheme, &client_path, miner)
         .map_err(|e| format!("Client service error: {}", e))?;
 
     Ok(service)

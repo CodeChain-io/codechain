@@ -292,7 +292,7 @@ impl TestBlockChainClient {
 pub fn get_temp_state_db() -> StateDB {
     let db = kvdb_memorydb::create(NUM_COLUMNS.unwrap_or(0));
     let journal_db = journaldb::new(Arc::new(db), journaldb::Algorithm::Archive, COL_STATE);
-    StateDB::new(journal_db, 1024 * 1024, Vec::new(), true)
+    StateDB::new(journal_db, 1024 * 1024, Vec::new())
 }
 
 impl ReopenBlock for TestBlockChainClient {

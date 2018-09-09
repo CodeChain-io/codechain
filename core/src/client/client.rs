@@ -93,11 +93,9 @@ impl Client {
         db: Arc<KeyValueDB>,
         miner: Arc<Miner>,
         message_channel: IoChannel<ClientIoMessage>,
-        enable_state_cache: bool,
     ) -> Result<Arc<Client>, Error> {
         let journal_db = journaldb::new(db.clone(), journaldb::Algorithm::Archive, ::db::COL_STATE);
-        let mut state_db =
-            StateDB::new(journal_db, config.state_cache_size, scheme.custom_handlers.clone(), enable_state_cache);
+        let mut state_db = StateDB::new(journal_db, config.state_cache_size, scheme.custom_handlers.clone());
         if !scheme.check_genesis_root(state_db.as_hashdb()) {
             return Err(SchemeError::InvalidState.into())
         }

@@ -170,7 +170,6 @@ pub struct Operating {
     pub keys_path: Option<String>,
     pub password_path: Option<String>,
     pub chain: Option<ChainType>,
-    pub enable_state_cache: bool,
 }
 
 #[derive(Deserialize)]
