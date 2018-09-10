@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use parking_lot::{Mutex, RwLock};
-use std::collections::{HashMap, VecDeque};
+use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
@@ -25,6 +25,7 @@ use ccore::{
     ImportError, Seal, UnverifiedParcel,
 };
 use cnetwork::{Api, NetworkExtension, NodeId, TimerToken};
+use ctoken_generator::TokenGenerator;
 use ctypes::parcel::Action;
 use ctypes::BlockNumber;
 use primitives::{H256, U256};
@@ -35,8 +36,11 @@ use time::Duration;
 use super::downloader::{BodyDownloader, HeaderDownloader};
 use super::message::{Message, RequestMessage, ResponseMessage};
 
-const SYNC_TIMER_TOKEN: usize = 0;
-const SYNC_EXPIRE_REQUEST_TOKEN: usize = 1;
+const SYNC_TIMER_TOKEN: TimerToken = 0;
+const SYNC_EXPIRE_TOKEN_BEGIN: TimerToken = SYNC_TIMER_TOKEN + 1;
+const SYNC_EXPIRE_TOKEN_LIMIT: usize = 1000;
+const SYNC_EXPIRE_TOKEN_END: TimerToken = SYNC_EXPIRE_TOKEN_BEGIN + SYNC_EXPIRE_TOKEN_LIMIT;
+
 const SYNC_TIMER_INTERVAL: i64 = 1000;
 const SYNC_EXPIRE_REQUEST_INTERVAL: i64 = 15000;
 
@@ -44,9 +48,11 @@ const SNAPSHOT_PERIOD: u64 = (1 << 14);
 
 pub struct Extension {
     requests: RwLock<HashMap<NodeId, Vec<(u64, RequestMessage)>>>,
-    body_requests_to_expire: RwLock<VecDeque<(NodeId, u64)>>,
     header_downloaders: RwLock<HashMap<NodeId, HeaderDownloader>>,
     body_downloader: Mutex<BodyDownloader>,
+    tokens: RwLock<HashMap<NodeId, TimerToken>>,
+    tokens_info: RwLock<HashMap<TimerToken, (NodeId, Option<u64>)>>,
+    token_generator: Mutex<TokenGenerator>,
     client: Arc<Client>,
     api: Mutex<Option<Arc<Api>>>,
     last_request: AtomicUsize,
@@ -56,43 +62,71 @@ impl Extension {
     pub fn new(client: Arc<Client>) -> Arc<Self> {
         Arc::new(Self {
             requests: RwLock::new(HashMap::new()),
-            body_requests_to_expire: RwLock::new(VecDeque::new()),
             header_downloaders: RwLock::new(HashMap::new()),
             body_downloader: Mutex::new(BodyDownloader::new(Vec::new())),
+            tokens: RwLock::new(HashMap::new()),
+            tokens_info: RwLock::new(HashMap::new()),
+            token_generator: Mutex::new(TokenGenerator::new(SYNC_EXPIRE_TOKEN_BEGIN, SYNC_EXPIRE_TOKEN_END)),
             client,
             api: Mutex::new(None),
             last_request: AtomicUsize::new(0),
         })
     }
 
-    fn send_message(&self, token: &NodeId, message: Message) {
+    fn send_message(&self, id: &NodeId, message: Message) {
         self.api.lock().as_ref().map(|api| {
-            api.send(token, &message.rlp_bytes().to_vec());
+            api.send(id, &message.rlp_bytes().to_vec());
         });
     }
 
-    fn dismiss_request(&self, token: &NodeId, id: u64) {
-        if let Some(requests) = self.requests.write().get_mut(token) {
-            requests.retain(|(i, _)| *i != id);
+    fn dismiss_request(&self, id: &NodeId, request_id: u64) {
+        if let Some(requests) = self.requests.write().get_mut(id) {
+            requests.retain(|(i, _)| *i != request_id);
         }
     }
 
-    fn send_request(&self, token: &NodeId, request: RequestMessage) {
-        if let Some(requests) = self.requests.write().get_mut(token) {
-            let id = self.last_request.fetch_add(1, Ordering::Relaxed) as u64;
-            requests.push((id, request.clone()));
-            self.send_message(token, Message::Request(id, request));
-
-            self.body_requests_to_expire.write().push_back((*token, id));
-            self.api.lock().as_ref().map(|api| {
-                api.set_timer_once(SYNC_EXPIRE_REQUEST_TOKEN, Duration::milliseconds(SYNC_EXPIRE_REQUEST_INTERVAL))
-                    .expect("Timer set succeeds");
-            });
+    fn send_header_request(&self, id: &NodeId, request: RequestMessage) {
+        if let Some(requests) = self.requests.write().get_mut(id) {
+            let request_id = self.last_request.fetch_add(1, Ordering::Relaxed) as u64;
+            requests.push((request_id, request.clone()));
+            self.send_message(id, Message::Request(request_id, request));
         }
     }
 
-    fn send_response(&self, token: &NodeId, id: u64, response: ResponseMessage) {
-        self.send_message(token, Message::Response(id, response));
+    fn send_body_request(&self, id: &NodeId) {
+        if let Some(requests) = self.requests.write().get_mut(id) {
+            let have_body_request = {
+                requests.iter().any(|r| match r {
+                    (_, RequestMessage::Bodies(..)) => true,
+                    _ => false,
+                })
+            };
+            if have_body_request {
+                return
+            }
+
+            if let Some(request) = self.body_downloader.lock().create_request() {
+                let request_id = self.last_request.fetch_add(1, Ordering::Relaxed) as u64;
+                requests.push((request_id, request.clone()));
+                self.send_message(id, Message::Request(request_id, request));
+
+                let tokens = self.tokens.read();
+                let mut tokens_info = self.tokens_info.write();
+
+                let token = tokens.get(id).unwrap();
+                let token_info = tokens_info.get_mut(token).unwrap();
+
+                self.api.lock().as_ref().map(|api| {
+                    api.set_timer_once(*token, Duration::milliseconds(SYNC_EXPIRE_REQUEST_INTERVAL))
+                        .expect("Timer set succeeds");
+                });
+                token_info.1 = Some(request_id);
+            }
+        }
+    }
+
+    fn send_response(&self, id: &NodeId, request_id: u64, response: ResponseMessage) {
+        self.send_message(id, Message::Response(request_id, response));
     }
 }
 
@@ -115,11 +149,11 @@ impl NetworkExtension for Extension {
         cinfo!(SYNC, "Sync extension initialized");
     }
 
-    fn on_node_added(&self, token: &NodeId, _version: u64) {
-        cinfo!(SYNC, "New peer detected #{}", token);
+    fn on_node_added(&self, id: &NodeId, _version: u64) {
+        cinfo!(SYNC, "New peer detected #{}", id);
         let chain_info = self.client.chain_info();
         self.send_message(
-            token,
+            id,
             Message::Status {
                 total_score: chain_info.total_score,
                 best_hash: chain_info.best_block_hash,
@@ -128,12 +162,12 @@ impl NetworkExtension for Extension {
         );
     }
 
-    fn on_node_removed(&self, token: &NodeId) {
-        self.header_downloaders.write().remove(token);
-        cinfo!(SYNC, "Peer removed #{}", token);
+    fn on_node_removed(&self, id: &NodeId) {
+        self.header_downloaders.write().remove(id);
+        cinfo!(SYNC, "Peer removed #{}", id);
     }
 
-    fn on_message(&self, token: &NodeId, data: &[u8]) {
+    fn on_message(&self, id: &NodeId, data: &[u8]) {
         if let Ok(received_message) = UntrustedRlp::new(data).as_val() {
             match received_message {
                 Message::Status {
@@ -141,13 +175,13 @@ impl NetworkExtension for Extension {
                     best_hash,
                     genesis_hash,
                 } => {
-                    self.on_peer_status(token, total_score, best_hash, genesis_hash);
+                    self.on_peer_status(id, total_score, best_hash, genesis_hash);
                 }
-                Message::Request(id, request) => self.on_peer_request(token, id, request),
-                Message::Response(id, response) => self.on_peer_response(token, id, response),
+                Message::Request(request_id, request) => self.on_peer_request(id, request_id, request),
+                Message::Response(request_id, response) => self.on_peer_response(id, request_id, response),
             }
         } else {
-            cinfo!(SYNC, "Invalid message from peer {}", token);
+            cinfo!(SYNC, "Invalid message from peer {}", id);
         }
     }
 
@@ -161,7 +195,7 @@ impl NetworkExtension for Extension {
                 for id in peer_ids {
                     if let Some(peer) = self.header_downloaders.write().get_mut(&id) {
                         if let Some(request) = peer.create_request() {
-                            self.send_request(&id, request);
+                            self.send_header_request(&id, request);
                         }
                     }
 
@@ -170,40 +204,35 @@ impl NetworkExtension for Extension {
                     } else {
                         U256::zero()
                     };
-                    let have_body_request = {
-                        if let Some(request_list) = self.requests.read().get(&id) {
-                            request_list.iter().any(|r| match r {
-                                (_, RequestMessage::Bodies(..)) => true,
-                                _ => false,
-                            })
-                        } else {
-                            false
-                        }
-                    };
-                    if !have_body_request && peer_score > total_score {
-                        if let Some(request) = self.body_downloader.lock().create_request() {
-                            self.send_request(&id, request);
-                        }
+
+                    if peer_score > total_score {
+                        self.send_body_request(&id);
                     }
                 }
             }
-            SYNC_EXPIRE_REQUEST_TOKEN => {
+            SYNC_EXPIRE_TOKEN_BEGIN...SYNC_EXPIRE_TOKEN_END => {
                 let requests = self.requests.read();
-                let mut body_requests_to_expire = self.body_requests_to_expire.write();
-                if let Some((id, request_id)) = body_requests_to_expire.pop_front() {
-                    if let Some(request_list) = requests.get(&id) {
-                        let expired_request = request_list.iter().find(|(r, _)| *r == request_id).cloned();
-                        if let Some((request_id, request)) = expired_request {
-                            match request {
-                                RequestMessage::Bodies(hashes) => {
-                                    self.body_downloader.lock().reset_downloading(&hashes);
-                                }
-                                _ => {}
-                            }
-                            self.dismiss_request(&id, request_id);
-                        }
-                    }
+                let mut tokens_info = self.tokens_info.write();
+                let token_info = tokens_info.get_mut(&token).unwrap();
+                if token_info.1.is_none() {
+                    return
                 }
+
+                let id = token_info.0;
+                let request_id = token_info.1.unwrap();
+                let request_list = requests.get(&id).unwrap();
+
+                let expired_request = request_list.iter().find(|(r, _)| *r == request_id).cloned();
+                if let Some((request_id, request)) = expired_request {
+                    match request {
+                        RequestMessage::Bodies(hashes) => {
+                            self.body_downloader.lock().reset_downloading(&hashes);
+                        }
+                        _ => {}
+                    }
+                    self.dismiss_request(&id, request_id);
+                }
+                token_info.1 = None;
             }
             _ => unreachable!(),
         }
@@ -288,10 +317,15 @@ impl Extension {
 
         let mut requests = self.requests.write();
         let mut peers = self.header_downloaders.write();
+        let mut tokens = self.tokens.write();
+        let mut tokens_info = self.tokens_info.write();
         if peers.contains_key(from) {
             peers.get_mut(from).unwrap().update(total_score, best_hash);
         } else {
             requests.insert(*from, Vec::new());
+            let token = self.token_generator.lock().gen().expect("Token generator is full");
+            tokens_info.insert(token, (*from, None));
+            tokens.insert(*from, token);
             peers.insert(*from, HeaderDownloader::new(self.client.clone(), total_score, best_hash));
         }
     }
@@ -393,16 +427,31 @@ impl Extension {
             if !self.is_valid_response(&request, &response) {
                 return
             }
-            self.dismiss_request(from, id);
 
             match response {
-                ResponseMessage::Headers(headers) => self.on_header_response(from, headers),
+                ResponseMessage::Headers(headers) => {
+                    self.dismiss_request(from, id);
+                    self.on_header_response(from, headers)
+                }
                 ResponseMessage::Bodies(bodies) => {
                     let hashes = match request {
                         RequestMessage::Bodies(hashes) => hashes,
                         _ => unreachable!(),
                     };
-                    self.on_body_response(hashes, bodies)
+                    if let Some(token) = self.tokens.read().get(from) {
+                        if let Some(token_info) = self.tokens_info.write().get_mut(token) {
+                            if token_info.1.is_none() {
+                                ctrace!(SYNC, "Expired before handling response");
+                                return
+                            }
+                            self.api.lock().as_ref().map(|api| {
+                                api.clear_timer(*token).expect("Timer clear succeed");
+                            });
+                            token_info.1 = None;
+                            self.dismiss_request(from, id);
+                        }
+                    }
+                    self.on_body_response(hashes, bodies);
                 }
                 _ => unimplemented!(),
             }
@@ -476,7 +525,7 @@ impl Extension {
         if let Some(peer) = self.header_downloaders.write().get_mut(from) {
             peer.mark_as_imported(exists.iter().map(|h| h.hash()).collect());
             if let Some(request) = peer.create_request() {
-                self.send_request(from, request);
+                self.send_header_request(from, request);
             }
         }
 
@@ -524,20 +573,9 @@ impl Extension {
             } else {
                 U256::zero()
             };
-            let have_body_request = {
-                if let Some(request_list) = self.requests.read().get(&id) {
-                    request_list.iter().any(|r| match r {
-                        (_, RequestMessage::Bodies(..)) => true,
-                        _ => false,
-                    })
-                } else {
-                    false
-                }
-            };
-            if !have_body_request && peer_score > total_score {
-                if let Some(request) = self.body_downloader.lock().create_request() {
-                    self.send_request(&id, request);
-                }
+
+            if peer_score > total_score {
+                self.send_body_request(&id);
             }
         }
     }
