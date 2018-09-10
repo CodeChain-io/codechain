@@ -15,7 +15,11 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import * as _ from "lodash";
-import { Asset } from "codechain-sdk/lib/core/classes";
+import {
+    Asset,
+    AssetTransferTransaction
+} from "codechain-sdk/lib/core/classes";
+import { PlatformAddress } from "codechain-sdk/lib/key/classes";
 
 import CodeChain from "../helper/spawn";
 
@@ -185,6 +189,82 @@ describe("transactions", () => {
         expect(invoices[1].success).toBe(true);
 
         expect(await node.sdk.rpc.chain.getAsset(tx2.hash(), 0)).toBe(null);
+    });
+
+    describe("registrar", () => {
+        let registrar: PlatformAddress;
+        let nonRegistrar: PlatformAddress;
+        let transferTx: AssetTransferTransaction;
+        beforeAll(async () => {
+            registrar = await node.createPlatformAddress();
+            nonRegistrar = await node.createPlatformAddress();
+            await node.payment(registrar, 10000);
+            await node.payment(nonRegistrar, 10000);
+        });
+
+        beforeEach(async () => {
+            const recipient = await node.createP2PKHAddress();
+            const tx = node.sdk.core.createAssetMintTransaction({
+                scheme: {
+                    shardId: 0,
+                    worldId: 0,
+                    metadata: "",
+                    amount: 10000,
+                    registrar
+                },
+                recipient
+            });
+            await node.sendTransaction(tx);
+            const asset = await node.sdk.rpc.chain.getAsset(tx.hash(), 0);
+            if (asset === null) {
+                throw Error(`Failed to mint an asset`);
+            }
+            transferTx = node.sdk.core.createAssetTransferTransaction();
+            transferTx.addInputs(asset);
+            transferTx.addOutputs({
+                assetType: asset.assetType,
+                amount: 10000,
+                recipient: await node.createP2PKHAddress()
+            });
+            await node.signTransferInput(transferTx, 0);
+        });
+
+        test("registrar sends a parcel", async () => {
+            const invoice = await node
+                .sendParcel(
+                    node.sdk.core.createAssetTransactionGroupParcel({
+                        transactions: [transferTx]
+                    }),
+                    {
+                        account: registrar
+                    }
+                )
+                .then(hash => {
+                    return node.sdk.rpc.chain.getParcelInvoice(hash, {
+                        timeout: 300 * 1000
+                    });
+                });
+            expect(invoice[0].success).toBe(true);
+        });
+
+        test("nonRegistrar sends a parcel", async () => {
+            const invoice = await node
+                .sendParcel(
+                    node.sdk.core.createAssetTransactionGroupParcel({
+                        transactions: [transferTx]
+                    }),
+                    {
+                        account: nonRegistrar
+                    }
+                )
+                .then(hash => {
+                    return node.sdk.rpc.chain.getParcelInvoice(hash, {
+                        timeout: 300 * 1000
+                    });
+                });
+            expect(invoice[0].success).toBe(false);
+            expect(invoice[0].error.type).toContain("NotRegistrar");
+        });
     });
 
     test.skip("CreateWorld", done => done.fail("not implemented"));
