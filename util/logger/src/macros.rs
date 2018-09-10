@@ -85,6 +85,9 @@ macro_rules! log_target {
     (SYNC) => {
         "sync"
     };
+    (SYNC_PARCEL) => {
+        "sync_parcel"
+    };
     (TEST_SCRIPT) => {
         "test_script"
     };

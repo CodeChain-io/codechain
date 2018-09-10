@@ -112,14 +112,18 @@ impl NetworkExtension for Extension {
                     let peers = self.peers.read();
                     if let Some(peer) = peers.get(token) {
                         let mut peer = peer.write();
-                        for unverified in parcels {
+                        for unverified in parcels.iter() {
                             peer.push(unverified.hash());
                         }
+                        cdebug!(SYNC_PARCEL, "Receive {} parcels to {}", parcels.len(), token);
+                        ctrace!(SYNC_PARCEL, "Receive {:?}", parcels.into_iter().map(|p| p.hash()).collect::<Vec<_>>());
+                    } else {
+                        cwarn!(SYNC_PARCEL, "Message from {} but it's already removed", token);
                     }
                 }
             }
         } else {
-            cinfo!(SYNC, "Invalid message from peer {}", token);
+            cwarn!(SYNC_PARCEL, "Invalid message from peer {}", token);
         }
     }
 
@@ -140,6 +144,7 @@ impl Extension {
     fn random_broadcast(&self) {
         let parcels = self.client.ready_parcels();
         if parcels.is_empty() {
+            ctrace!(SYNC_PARCEL, "No parcels to propagate");
             return
         }
         for (token, peer) in self.peers.read().iter() {
@@ -152,9 +157,12 @@ impl Extension {
             if unsent.is_empty() {
                 continue
             }
-            for unverified in unsent.iter() {
-                peer.push(unverified.hash());
+            let unsent_hashes = unsent.iter().map(|p| p.hash()).collect::<Vec<_>>();
+            for h in unsent_hashes.iter() {
+                peer.push(*h);
             }
+            cdebug!(SYNC_PARCEL, "Send {} parcels to {}", unsent.len(), token);
+            ctrace!(SYNC_PARCEL, "Send {:?}", unsent_hashes);
             self.send_message(token, Message::Parcels(unsent));
         }
     }
