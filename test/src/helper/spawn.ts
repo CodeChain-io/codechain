@@ -287,10 +287,11 @@ export default class CodeChain {
 
     public async sendTransactions(
         txs: Transaction[],
-        options?: { nonce?: number }
+        options?: { nonce?: number, awaitInvoice?: boolean }
     ) {
         const {
-            nonce = (await this.sdk.rpc.chain.getNonce(faucetAddress)) || 0
+            nonce = (await this.sdk.rpc.chain.getNonce(faucetAddress)) || 0,
+            awaitInvoice = true,
         } = options || {};
         const parcel = this.sdk.core
             .createAssetTransactionGroupParcel({
@@ -301,7 +302,10 @@ export default class CodeChain {
                 fee: 10,
                 nonce
             });
-        await this.sdk.rpc.chain.sendSignedParcel(parcel);
+        const parcelHash = await this.sdk.rpc.chain.sendSignedParcel(parcel);
+        if (awaitInvoice) {
+            return this.sdk.rpc.chain.getParcelInvoice(parcelHash, { timeout: 300 * 1000 });
+        }
     }
 
     public async mintAssets(params: { count: number; nonce?: number }) {
@@ -320,7 +324,7 @@ export default class CodeChain {
             });
             txs.push(tx);
         }
-        await this.sendTransactions(txs, { nonce });
+        await this.sendTransactions(txs, { nonce, awaitInvoice: false });
     }
 
     public async signTransferInput(

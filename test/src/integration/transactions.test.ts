@@ -163,6 +163,30 @@ describe("transactions", () => {
         );
     });
 
+    test("Burn successful", async () => {
+        const { asset } = await node.mintAsset({ amount: 1 });
+        const tx1 = node.sdk.core.createAssetTransferTransaction();
+        tx1.addInputs(asset);
+        tx1.addOutputs({
+            assetType: asset.assetType,
+            recipient: await node.createP2PKHBurnAddress(),
+            amount: 1
+        });
+        await node.signTransferInput(tx1, 0);
+
+        const transferredAsset = tx1.getTransferredAsset(0);
+        const tx2 = node.sdk.core.createAssetTransferTransaction();
+        tx2.addBurns(transferredAsset);
+        await node.signTransferBurn(tx2, 0);
+
+        const invoices = await node.sendTransactions([tx1, tx2]);
+
+        expect(invoices[0].success).toBe(true);
+        expect(invoices[1].success).toBe(true);
+
+        expect(await node.sdk.rpc.chain.getAsset(tx2.hash(), 0)).toBe(null);
+    });
+
     test.skip("CreateWorld", done => done.fail("not implemented"));
     test.skip("SetWorldOwners", done => done.fail("not implemented"));
     test.skip("SetWorldUsers", done => done.fail("not implemented"));
