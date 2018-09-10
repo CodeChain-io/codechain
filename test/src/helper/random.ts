@@ -15,29 +15,30 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 export function makeRandomPassphrase() {
-  let text = "";
-  const possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 ";
-  for (let i = 0; i < 40; i++)
-    text += possible.charAt(Math.floor(Math.random() * possible.length));
-  return text;
+    let text = "";
+    const possible =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 ";
+    for (let i = 0; i < 40; i++)
+        text += possible.charAt(Math.floor(Math.random() * possible.length));
+    return text;
 }
 
 export function makeRandomH256() {
-  let text = "";
-  const possible = "0123456789abcdef";
-  for (let i = 0; i < 64; i++)
-    text += possible.charAt(Math.floor(Math.random() * possible.length));
-  return text;
+    let text = "";
+    const possible = "0123456789abcdef";
+    for (let i = 0; i < 64; i++)
+        text += possible.charAt(Math.floor(Math.random() * possible.length));
+    return text;
 }
 
 export function makeRandomFilename(suffix: string) {
-  let text = "";
-  const possible = "abcdefghijklmnopqrstuvwxyz0123456789";
-  for (let i = 0; i < 10; i++)
-    text += possible.charAt(Math.floor(Math.random() * possible.length));
-  return text + suffix;
+    let text = "";
+    const possible = "abcdefghijklmnopqrstuvwxyz0123456789";
+    for (let i = 0; i < 10; i++)
+        text += possible.charAt(Math.floor(Math.random() * possible.length));
+    return text + suffix;
 }
 
 export function getRandomIndex(size: number) {
-  return Math.floor(Math.random() * size);
+    return Math.floor(Math.random() * size);
 }

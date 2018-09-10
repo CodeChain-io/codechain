@@ -18,59 +18,79 @@ import { wait } from "../helper/promise";
 import CodeChain from "../helper/spawn";
 
 describe("2 nodes", () => {
-  let nodeA: CodeChain;
-  let nodeB: CodeChain;
+    let nodeA: CodeChain;
+    let nodeB: CodeChain;
 
-  beforeEach(async () => {
-    nodeA = new CodeChain();
-    nodeB = new CodeChain();
-    await nodeA.start();
-    await nodeB.start();
-  });
+    beforeEach(async () => {
+        nodeA = new CodeChain();
+        nodeB = new CodeChain();
+        await nodeA.start();
+        await nodeB.start();
+    });
 
-  test("should be able to connect", async () => {
-    await nodeA.connect(nodeB);
-  });
+    test("should be able to connect", async () => {
+        await nodeA.connect(nodeB);
+    });
 
-  afterEach(async () => {
-    await nodeA.clean();
-    await nodeB.clean();
-  });
+    afterEach(async () => {
+        await nodeA.clean();
+        await nodeB.clean();
+    });
 });
 
 describe("5 nodes", () => {
-  const numOfNodes = 5;
-  let nodes: CodeChain[];
-  let bootstrapNode: CodeChain;
+    const numOfNodes = 5;
+    let nodes: CodeChain[];
+    let bootstrapNode: CodeChain;
 
-  beforeEach(async () => {
-    nodes = [new CodeChain()];
-    bootstrapNode = nodes[0];
+    beforeEach(async () => {
+        nodes = [new CodeChain()];
+        bootstrapNode = nodes[0];
 
-    for (let i = 1; i < numOfNodes; i++) {
-      nodes.push(new CodeChain());
-    }
+        for (let i = 1; i < numOfNodes; i++) {
+            nodes.push(new CodeChain());
+        }
 
-    await Promise.all(nodes.map(node => node.start([
-        "--bootstrap-addresses", `127.0.0.1:${bootstrapNode.port}`,
-        "--discovery-refresh", "50",
-    ])));
-  });
+        await Promise.all(
+            nodes.map(node =>
+                node.start([
+                    "--bootstrap-addresses",
+                    `127.0.0.1:${bootstrapNode.port}`,
+                    "--discovery-refresh",
+                    "50"
+                ])
+            )
+        );
+    });
 
-  test.skip("number of peers", async () => {
-    await nodes[0].waitPeers(numOfNodes - 1);
-    await nodes[1].waitPeers(numOfNodes - 1);
-    await nodes[2].waitPeers(numOfNodes - 1);
-    await nodes[3].waitPeers(numOfNodes - 1);
-    await nodes[4].waitPeers(numOfNodes - 1);
-    expect(await nodes[0].sdk.rpc.network.getPeerCount()).toEqual(numOfNodes - 1);
-    expect(await nodes[1].sdk.rpc.network.getPeerCount()).toEqual(numOfNodes - 1);
-    expect(await nodes[2].sdk.rpc.network.getPeerCount()).toEqual(numOfNodes - 1);
-    expect(await nodes[3].sdk.rpc.network.getPeerCount()).toEqual(numOfNodes - 1);
-    expect(await nodes[4].sdk.rpc.network.getPeerCount()).toEqual(numOfNodes - 1);
-  }, 30 * 1000);
+    test.skip(
+        "number of peers",
+        async () => {
+            await nodes[0].waitPeers(numOfNodes - 1);
+            await nodes[1].waitPeers(numOfNodes - 1);
+            await nodes[2].waitPeers(numOfNodes - 1);
+            await nodes[3].waitPeers(numOfNodes - 1);
+            await nodes[4].waitPeers(numOfNodes - 1);
+            expect(await nodes[0].sdk.rpc.network.getPeerCount()).toEqual(
+                numOfNodes - 1
+            );
+            expect(await nodes[1].sdk.rpc.network.getPeerCount()).toEqual(
+                numOfNodes - 1
+            );
+            expect(await nodes[2].sdk.rpc.network.getPeerCount()).toEqual(
+                numOfNodes - 1
+            );
+            expect(await nodes[3].sdk.rpc.network.getPeerCount()).toEqual(
+                numOfNodes - 1
+            );
+            expect(await nodes[4].sdk.rpc.network.getPeerCount()).toEqual(
+                numOfNodes - 1
+            );
+        },
+        30 * 1000
+    );
 
-  afterEach(async () => {
-    await Promise.all(nodes.map(node => node.clean()));
-  });
+    afterEach(async () => {
+        await Promise.all(nodes.map(node => node.clean()));
+    });
 });
