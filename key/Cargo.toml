@@ -7,7 +7,7 @@ authors = ["debris <marek.kotewicz@gmail.com>", "CodeChain Team <codechain@kodeb
 rand = "0.5.3"
 rustc-hex = "1.0"
 rustc-serialize = "0.3"
-lazy_static = "0.2"
+lazy_static = "1.1.0"
 bech32 = "0.2.2"
 codechain-crypto = { path = "../crypto" }
 parking_lot = "0.5"

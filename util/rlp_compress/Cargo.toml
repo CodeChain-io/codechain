@@ -6,4 +6,4 @@ authors = ["Parity Technologies <admin@parity.io>"]
 [dependencies]
 rlp = { path = "../rlp" }
 elastic-array = "0.9"
-lazy_static = "1.0"
+lazy_static = "1.1.0"
