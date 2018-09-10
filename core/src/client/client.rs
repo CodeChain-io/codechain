@@ -233,7 +233,7 @@ impl Client {
         }
 
         self.block_header(id).and_then(|header| {
-            let db = self.state_db.read().clone();
+            let db = self.state_db.read().clone_with_immutable_global_cache();
 
             let root = header.state_root();
             TopLevelState::from_existing(db, root).ok()

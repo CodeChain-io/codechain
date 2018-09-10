@@ -358,6 +358,67 @@ impl StateDB {
         self.db.as_hashdb_mut()
     }
 
+    pub fn clone_with_immutable_global_cache(&self) -> Self {
+        Self {
+            db: self.db.boxed_clone(),
+            account_cache: Arc::clone(&self.account_cache),
+            regular_account_cache: Arc::clone(&self.regular_account_cache),
+            metadata_cache: Arc::clone(&self.metadata_cache),
+            shard_cache: Arc::clone(&self.shard_cache),
+            shard_metadata_cache: Arc::clone(&self.shard_metadata_cache),
+            world_cache: Arc::clone(&self.world_cache),
+            asset_scheme_cache: Arc::clone(&self.asset_scheme_cache),
+            asset_cache: Arc::clone(&self.asset_cache),
+            action_data_cache: Arc::clone(&self.action_data_cache),
+
+            account_cache_buffer: GlobalCacheBuffer::new(),
+            regular_account_cache_buffer: GlobalCacheBuffer::new(),
+            metadata_cache_buffer: GlobalCacheBuffer::new(),
+            shard_cache_buffer: GlobalCacheBuffer::new(),
+            shard_metadata_cache_buffer: GlobalCacheBuffer::new(),
+            world_cache_buffer: GlobalCacheBuffer::new(),
+            asset_scheme_cache_buffer: GlobalCacheBuffer::new(),
+            asset_cache_buffer: GlobalCacheBuffer::new(),
+            action_data_cache_buffer: GlobalCacheBuffer::new(),
+
+            parent_hash: None,
+            commit_hash: None,
+            commit_number: None,
+
+            custom_handlers: self.custom_handlers.clone(),
+        }
+    }
+
+    pub fn clone_with_mutable_global_cache(&self) -> StateDB {
+        StateDB {
+            db: self.db.boxed_clone(),
+            account_cache: Arc::clone(&self.account_cache),
+            regular_account_cache: Arc::clone(&self.regular_account_cache),
+            metadata_cache: Arc::clone(&self.metadata_cache),
+            shard_cache: Arc::clone(&self.shard_cache),
+            shard_metadata_cache: Arc::clone(&self.shard_metadata_cache),
+            world_cache: Arc::clone(&self.world_cache),
+            asset_scheme_cache: Arc::clone(&self.asset_scheme_cache),
+            asset_cache: Arc::clone(&self.asset_cache),
+            action_data_cache: Arc::clone(&self.action_data_cache),
+
+            account_cache_buffer: GlobalCacheBuffer::new(),
+            regular_account_cache_buffer: GlobalCacheBuffer::new(),
+            metadata_cache_buffer: GlobalCacheBuffer::new(),
+            shard_cache_buffer: GlobalCacheBuffer::new(),
+            shard_metadata_cache_buffer: GlobalCacheBuffer::new(),
+            world_cache_buffer: GlobalCacheBuffer::new(),
+            asset_scheme_cache_buffer: GlobalCacheBuffer::new(),
+            asset_cache_buffer: GlobalCacheBuffer::new(),
+            action_data_cache_buffer: GlobalCacheBuffer::new(),
+
+            parent_hash: self.parent_hash.clone(),
+            commit_hash: None,
+            commit_number: None,
+            custom_handlers: self.custom_handlers.clone(),
+        }
+    }
+
     /// Clone the database for a canonical state.
     pub fn clone_canon(&self, parent: &H256) -> StateDB {
         StateDB {
@@ -429,39 +490,6 @@ impl StateDB {
             return None
         }
         cache.get_mut(addr).cloned()
-    }
-}
-
-impl Clone for StateDB {
-    fn clone(&self) -> Self {
-        Self {
-            db: self.db.boxed_clone(),
-            account_cache: Arc::clone(&self.account_cache),
-            regular_account_cache: Arc::clone(&self.regular_account_cache),
-            metadata_cache: Arc::clone(&self.metadata_cache),
-            shard_cache: Arc::clone(&self.shard_cache),
-            shard_metadata_cache: Arc::clone(&self.shard_metadata_cache),
-            world_cache: Arc::clone(&self.world_cache),
-            asset_scheme_cache: Arc::clone(&self.asset_scheme_cache),
-            asset_cache: Arc::clone(&self.asset_cache),
-            action_data_cache: Arc::clone(&self.action_data_cache),
-
-            account_cache_buffer: GlobalCacheBuffer::new(),
-            regular_account_cache_buffer: GlobalCacheBuffer::new(),
-            metadata_cache_buffer: GlobalCacheBuffer::new(),
-            shard_cache_buffer: GlobalCacheBuffer::new(),
-            shard_metadata_cache_buffer: GlobalCacheBuffer::new(),
-            world_cache_buffer: GlobalCacheBuffer::new(),
-            asset_scheme_cache_buffer: GlobalCacheBuffer::new(),
-            asset_cache_buffer: GlobalCacheBuffer::new(),
-            action_data_cache_buffer: GlobalCacheBuffer::new(),
-
-            parent_hash: None,
-            commit_hash: None,
-            commit_number: None,
-
-            custom_handlers: self.custom_handlers.clone(),
-        }
     }
 }
 
