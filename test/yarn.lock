@@ -668,9 +668,9 @@ codechain-sdk@^0.1.0-alpha.18:
     ripemd160 "^2.0.2"
     rlp "^2.0.0"
 
-codechain-sdk@^0.1.1-alpha.2:
-  version "0.1.1-alpha.2"
-  resolved "https://registry.yarnpkg.com/codechain-sdk/-/codechain-sdk-0.1.1-alpha.2.tgz#670d89699de250735edb28986c12142e18d4e357"
+codechain-sdk@^0.1.1-alpha.3:
+  version "0.1.1-alpha.3"
+  resolved "https://registry.yarnpkg.com/codechain-sdk/-/codechain-sdk-0.1.1-alpha.3.tgz#222566e8739e5ee6745ea97e762e749cd0dd86e4"
   dependencies:
     bignumber.js "^6.0.0"
     blakejs "^1.1.0"
