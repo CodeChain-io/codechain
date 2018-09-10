@@ -25,7 +25,7 @@ This will produce an executable in the `./target/release` directory.
 To run CodeChain, just run
 
 ```
-./target/release/codechain
+./target/release/codechain -c solo
 ```
 You can create a block by sending a parcel through [JSON-RPC](https://github.com/CodeChain-io/codechain/blob/master/spec/JSON-RPC.md) or [JavaScript SDK](https://api.codechain.io/).
 
