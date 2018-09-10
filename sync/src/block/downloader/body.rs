@@ -47,19 +47,18 @@ impl BodyDownloader {
                 break
             }
         }
-        if hashes.len() != 0 {
+        if hashes.is_empty() {
+            None
+        } else {
             self.downloading.extend(&hashes);
             Some(RequestMessage::Bodies(hashes))
-        } else {
-            None
         }
     }
 
     pub fn import_bodies(&mut self, hashes: Vec<H256>, bodies: Vec<Vec<UnverifiedParcel>>) {
         for (hash, body) in hashes.into_iter().zip(bodies) {
-            if self.downloading.contains(&hash) {
-                self.downloading.remove(&hash);
-                if body.len() == 0 {
+            if self.downloading.remove(&hash) {
+                if body.is_empty() {
                     let (_, prev_root, parcels_root) =
                         self.targets.iter().find(|(h, ..)| *h == hash).expect("Downloading target must exist");
                     if prev_root != parcels_root {
@@ -72,14 +71,20 @@ impl BodyDownloader {
     }
 
     pub fn add_target(&mut self, targets: Vec<(H256, H256, H256)>) {
+        if targets.is_empty() {
+            return
+        }
         ctrace!(SYNC, "Add download targets: {:?}", targets);
         self.targets.extend(targets);
     }
 
-    pub fn remove_target(&mut self, targets: Vec<H256>) {
+    pub fn remove_target(&mut self, targets: &[H256]) {
+        if targets.is_empty() {
+            return
+        }
         ctrace!(SYNC, "Remove download targets: {:?}", targets);
         for hash in targets {
-            if let Some(index) = self.targets.iter().position(|(h, ..)| *h == hash) {
+            if let Some(index) = self.targets.iter().position(|(h, ..)| h == hash) {
                 self.targets.remove(index);
             }
             self.downloading.remove(&hash);

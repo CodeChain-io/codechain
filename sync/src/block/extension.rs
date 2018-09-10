@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use parking_lot::{Mutex, RwLock};
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
@@ -28,6 +27,7 @@ use cnetwork::{Api, NetworkExtension, NodeId, TimerToken};
 use ctoken_generator::TokenGenerator;
 use ctypes::parcel::Action;
 use ctypes::BlockNumber;
+use parking_lot::{Mutex, RwLock};
 use primitives::{H256, U256};
 use rand::{thread_rng, Rng};
 use rlp::{Encodable, UntrustedRlp};
@@ -175,9 +175,7 @@ impl NetworkExtension for Extension {
                     total_score,
                     best_hash,
                     genesis_hash,
-                } => {
-                    self.on_peer_status(id, total_score, best_hash, genesis_hash);
-                }
+                } => self.on_peer_status(id, total_score, best_hash, genesis_hash),
                 Message::Request(request_id, request) => self.on_peer_request(id, request_id, request),
                 Message::Response(request_id, response) => self.on_peer_response(id, request_id, response),
             }
@@ -275,7 +273,7 @@ impl ChainNotify for Extension {
             })
             .collect();
         self.body_downloader.lock().add_target(body_targets);
-        self.body_downloader.lock().remove_target(retracted);
+        self.body_downloader.lock().remove_target(&retracted);
     }
 
     fn new_blocks(
@@ -287,15 +285,15 @@ impl ChainNotify for Extension {
         _sealed: Vec<H256>,
         _duration: u64,
     ) {
-        self.body_downloader.lock().remove_target(imported);
-        self.body_downloader.lock().remove_target(invalid);
+        self.body_downloader.lock().remove_target(&imported);
+        self.body_downloader.lock().remove_target(&invalid);
 
 
         let chain_info = self.client.chain_info();
-        let peer_ids: Vec<_> = self.header_downloaders.read().keys().cloned().collect();
-        for id in peer_ids {
+        let peer_ids = self.header_downloaders.read();
+        for id in peer_ids.keys() {
             self.send_message(
-                &id,
+                id,
                 Message::Status {
                     total_score: chain_info.total_score,
                     best_hash: chain_info.best_block_hash,
@@ -330,9 +328,7 @@ impl Extension {
             peers.insert(*from, HeaderDownloader::new(self.client.clone(), total_score, best_hash));
         }
     }
-}
 
-impl Extension {
     fn on_peer_request(&self, from: &NodeId, id: u64, request: RequestMessage) {
         if !self.header_downloaders.read().contains_key(from) {
             cinfo!(SYNC, "Request from invalid peer #{} received", from);
@@ -365,14 +361,14 @@ impl Extension {
             RequestMessage::Headers {
                 ..
             } => true,
-            RequestMessage::Bodies(hashes) => hashes.len() != 0,
+            RequestMessage::Bodies(hashes) => !hashes.is_empty(),
             RequestMessage::StateHead(hash) => match self.client.block_number(BlockId::Hash(*hash)) {
                 Some(number) if number % SNAPSHOT_PERIOD == 0 => true,
                 _ => false,
             },
             RequestMessage::StateChunk {
                 block_hash,
-                tree_root: _tree_root,
+                ..
             } => {
                 let _is_checkpoint = match self.client.block_number(BlockId::Hash(*block_hash)) {
                     Some(number) if number % SNAPSHOT_PERIOD == 0 => true,
@@ -394,14 +390,10 @@ impl Extension {
     }
 
     fn create_bodies_response(&self, hashes: Vec<H256>) -> ResponseMessage {
-        let mut bodies = Vec::new();
-        for hash in hashes {
-            if let Some(body) = self.client.block_body(BlockId::Hash(hash)) {
-                bodies.push(body.parcels());
-            } else {
-                bodies.push(Vec::new());
-            }
-        }
+        let bodies = hashes
+            .into_iter()
+            .map(|hash| self.client.block_body(BlockId::Hash(hash)).map(|body| body.parcels()).unwrap_or_default())
+            .collect();
         ResponseMessage::Bodies(bodies)
     }
 
@@ -412,9 +404,7 @@ impl Extension {
     fn create_state_chunk_response(&self, _hash: H256, _tree_root: H256) -> ResponseMessage {
         unimplemented!()
     }
-}
 
-impl Extension {
     fn on_peer_response(&self, from: &NodeId, id: u64, mut response: ResponseMessage) {
         let last_request = self.requests.read()[from].iter().find(|(i, _)| *i == id).cloned();
         if let Some((_, request)) = last_request {
@@ -549,11 +539,12 @@ impl Extension {
         self.body_downloader.lock().import_bodies(hashes, bodies);
         let completed = self.body_downloader.lock().drain();
         let mut exists = Vec::new();
-        for (hash, body) in completed {
-            let header = self.client.block_header(BlockId::Hash(hash)).expect("Downloaded body's header must exist");
+        for (hash, parcels) in completed {
+            let header =
+                self.client.block_header(BlockId::Hash(hash)).expect("Downloaded body's header must exist").decode();
             let block = Block {
-                header: header.decode(),
-                parcels: body,
+                header,
+                parcels,
             };
             // FIXME: handle import errors
             match self.client.import_block(block.rlp_bytes(Seal::With)) {
@@ -561,7 +552,7 @@ impl Extension {
                 _ => {}
             }
         }
-        self.body_downloader.lock().remove_target(exists);
+        self.body_downloader.lock().remove_target(&exists);
 
         let total_score = self.client.chain_info().total_score;
         let mut peer_ids: Vec<_> = self.header_downloaders.read().keys().cloned().collect();
