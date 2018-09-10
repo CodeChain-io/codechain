@@ -390,6 +390,10 @@ impl TopLevelState {
                 self.discard_checkpoint(PARCEL_ACTION_CHECKPOINT);
                 Ok(invoice)
             }
+            Err(StateError::Parcel(err)) => {
+                self.revert_to_checkpoint(PARCEL_ACTION_CHECKPOINT);
+                Ok(ParcelInvoice::SingleFail(err))
+            }
             Err(err) => {
                 self.revert_to_checkpoint(PARCEL_ACTION_CHECKPOINT);
                 Err(err)
@@ -435,11 +439,6 @@ impl TopLevelState {
                 amount,
             } => match self.transfer_balance(fee_payer, receiver, amount) {
                 Ok(()) => Ok(ParcelInvoice::SingleSuccess),
-                Err(StateError::Parcel(
-                    err @ ParcelError::InsufficientBalance {
-                        ..
-                    },
-                )) => Ok(ParcelInvoice::SingleFail(err)),
                 Err(err) => Err(err.into()),
             },
             Action::SetRegularKey {
@@ -1409,7 +1408,9 @@ mod tests_parcel {
         assert_eq!(Ok(()), state.add_balance(&sender2, &15.into()));
 
         let result = state.apply(&parcel, &sender_public2);
-        assert_eq!(Err(StateError::Parcel(ParcelError::RegularKeyAlreadyInUse)), result);
+        assert_eq!(Ok(ParcelInvoice::SingleFail(ParcelError::RegularKeyAlreadyInUse)), result);
+        assert_eq!(Ok(10.into()), state.balance(&sender));
+        assert_eq!(Ok(1.into()), state.nonce(&sender));
         assert_eq!(Ok(None), state.regular_key(&sender2));
     }
 
@@ -1433,7 +1434,9 @@ mod tests_parcel {
         };
 
         let result = state.apply(&parcel, &sender_public);
-        assert_eq!(Err(StateError::Parcel(ParcelError::RegularKeyAlreadyInUseAsPlatformAccount)), result);
+        assert_eq!(Ok(ParcelInvoice::SingleFail(ParcelError::RegularKeyAlreadyInUseAsPlatformAccount)), result);
+        assert_eq!(Ok(15.into()), state.balance(&sender));
+        assert_eq!(Ok(1.into()), state.nonce(&sender));
     }
 
     #[test]
@@ -1599,8 +1602,9 @@ mod tests_parcel {
             network_id: "tc".into(),
         };
         let result = state.apply(&parcel, &sender_public);
-        assert_eq!(Err(StateError::Parcel(ParcelError::InvalidTransferDestination)), result);
-        assert_eq!(Ok(20.into()), state.balance(&sender));
+        assert_eq!(Ok(ParcelInvoice::SingleFail(ParcelError::InvalidTransferDestination)), result);
+        assert_eq!(Ok(15.into()), state.balance(&sender));
+        assert_eq!(Ok(1.into()), state.nonce(&sender));
     }
 
     #[test]
@@ -2202,7 +2206,9 @@ mod tests_parcel {
         assert_eq!(Ok(()), state.add_balance(&sender, &U256::from(69u64)));
 
         let res = state.apply(&parcel, &sender_public);
-        assert_eq!(Err(StateError::Parcel(ParcelError::InvalidShardId(0))), res);
+        assert_eq!(Ok(ParcelInvoice::SingleFail(ParcelError::InvalidShardId(0))), res);
+        assert_eq!(Ok(58.into()), state.balance(&sender));
+        assert_eq!(Ok(1.into()), state.nonce(&sender));
     }
 
     #[test]
@@ -2269,7 +2275,9 @@ mod tests_parcel {
         assert_eq!(Ok(()), state.add_balance(&sender, &U256::from(120)));
 
         let res = state.apply(&parcel, &sender_public);
-        assert_eq!(Err(StateError::Parcel(ParcelError::InvalidShardId(100))), res);
+        assert_eq!(Ok(ParcelInvoice::SingleFail(ParcelError::InvalidShardId(100))), res);
+        assert_eq!(Ok(90.into()), state.balance(&sender));
+        assert_eq!(Ok(1.into()), state.nonce(&sender));
     }
 
     #[test]
@@ -2485,10 +2493,13 @@ mod tests_parcel {
 
         assert_eq!(Ok(Some(vec![sender])), state.shard_owners(shard_id));
 
-        assert_eq!(Err(ParcelError::NewOwnersMustContainSender.into()), state.apply(&parcel, &sender_public));
+        assert_eq!(
+            Ok(ParcelInvoice::SingleFail(ParcelError::NewOwnersMustContainSender)),
+            state.apply(&parcel, &sender_public)
+        );
 
-        assert_eq!(Ok(69.into()), state.balance(&sender));
-        assert_eq!(Ok(0.into()), state.nonce(&sender));
+        assert_eq!(Ok(64.into()), state.balance(&sender));
+        assert_eq!(Ok(1.into()), state.nonce(&sender));
         assert_eq!(Ok(Some(vec![sender])), state.shard_owners(shard_id));
     }
 
@@ -2533,10 +2544,13 @@ mod tests_parcel {
 
         assert_eq!(Ok(Some(vec![original_owner])), state.shard_owners(shard_id));
 
-        assert_eq!(Err(ParcelError::InsufficientPermission.into()), state.apply(&parcel, &sender_public));
+        assert_eq!(
+            Ok(ParcelInvoice::SingleFail(ParcelError::InsufficientPermission)),
+            state.apply(&parcel, &sender_public)
+        );
 
-        assert_eq!(Ok(69.into()), state.balance(&sender));
-        assert_eq!(Ok(0.into()), state.nonce(&sender));
+        assert_eq!(Ok(64.into()), state.balance(&sender));
+        assert_eq!(Ok(1.into()), state.nonce(&sender));
         assert_eq!(Ok(Some(vec![original_owner])), state.shard_owners(shard_id));
     }
 
@@ -2568,10 +2582,13 @@ mod tests_parcel {
         assert_eq!(Ok(Some(vec![sender])), state.shard_owners(real_shard_id));
         assert_eq!(Ok(None), state.shard_owners(shard_id));
 
-        assert_eq!(Err(ParcelError::InvalidShardId(shard_id).into()), state.apply(&parcel, &sender_public));
+        assert_eq!(
+            Ok(ParcelInvoice::SingleFail(ParcelError::InvalidShardId(shard_id))),
+            state.apply(&parcel, &sender_public)
+        );
 
-        assert_eq!(Ok(69.into()), state.balance(&sender));
-        assert_eq!(Ok(0.into()), state.nonce(&sender));
+        assert_eq!(Ok(64.into()), state.balance(&sender));
+        assert_eq!(Ok(1.into()), state.nonce(&sender));
         assert_eq!(Ok(Some(vec![sender])), state.shard_owners(real_shard_id));
         assert_eq!(Ok(None), state.shard_owners(shard_id));
     }
@@ -2617,10 +2634,13 @@ mod tests_parcel {
 
         assert_eq!(Ok(Some(vec![original_owner])), state.shard_owners(shard_id));
 
-        assert_eq!(Err(ParcelError::InsufficientPermission.into()), state.apply(&parcel, &sender_public));
+        assert_eq!(
+            Ok(ParcelInvoice::SingleFail(ParcelError::InsufficientPermission)),
+            state.apply(&parcel, &sender_public)
+        );
 
-        assert_eq!(Ok(69.into()), state.balance(&sender));
-        assert_eq!(Ok(0.into()), state.nonce(&sender));
+        assert_eq!(Ok(64.into()), state.balance(&sender));
+        assert_eq!(Ok(1.into()), state.nonce(&sender));
         assert_eq!(Ok(Some(vec![original_owner])), state.shard_owners(shard_id));
     }
 
@@ -2766,10 +2786,13 @@ mod tests_parcel {
             network_id,
         };
 
-        assert_eq!(Err(ParcelError::InsufficientPermission.into()), state.apply(&parcel, &sender_public));
+        assert_eq!(
+            Ok(ParcelInvoice::SingleFail(ParcelError::InsufficientPermission)),
+            state.apply(&parcel, &sender_public)
+        );
 
-        assert_eq!(Ok(69.into()), state.balance(&sender));
-        assert_eq!(Ok(0.into()), state.nonce(&sender));
+        assert_eq!(Ok(64.into()), state.balance(&sender));
+        assert_eq!(Ok(1.into()), state.nonce(&sender));
         assert_eq!(Ok(Some(owners)), state.shard_owners(shard_id));
         assert_eq!(Ok(Some(old_users)), state.shard_users(shard_id));
     }
