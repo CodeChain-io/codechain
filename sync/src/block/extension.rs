@@ -151,6 +151,11 @@ impl NetworkExtension for Extension {
     }
 
     fn on_node_added(&self, id: &NodeId, _version: u64) {
+        let mut requests = self.requests.write();
+        let mut tokens = self.tokens.write();
+        let mut tokens_info = self.tokens_info.write();
+        let mut token_generator = self.token_generator.lock();
+
         cinfo!(SYNC, "New peer detected #{}", id);
         let chain_info = self.client.chain_info();
         self.send_message(
@@ -161,11 +166,38 @@ impl NetworkExtension for Extension {
                 genesis_hash: chain_info.genesis_hash,
             },
         );
+
+        let token = token_generator.gen().expect("Token generator is full");
+
+        let t = requests.insert(*id, Vec::new());
+        debug_assert_eq!(None, t);
+        let t = tokens_info.insert(token, (*id, None));
+        debug_assert_eq!(None, t);
+        let t = tokens.insert(*id, token);
+        debug_assert_eq!(None, t);
+        debug_assert!(t.is_none());
     }
 
     fn on_node_removed(&self, id: &NodeId) {
-        self.header_downloaders.write().remove(id);
+        let mut requests = self.requests.write();
+        let mut header_downloaders = self.header_downloaders.write();
+        let mut tokens = self.tokens.write();
+        let mut tokens_info = self.tokens_info.write();
+        let mut token_generator = self.token_generator.lock();
+
         cinfo!(SYNC, "Peer removed #{}", id);
+        let t = header_downloaders.remove(id);
+        debug_assert!(t.is_some());
+
+        let t = requests.remove(id);
+        debug_assert_ne!(None, t);
+        let token = tokens.remove(id);
+        debug_assert_ne!(None, token);
+        let token = token.unwrap();
+        let t = tokens_info.remove(&token);
+        debug_assert_ne!(None, t);
+        let t = token_generator.restore(token);
+        debug_assert!(t);
     }
 
     fn on_message(&self, id: &NodeId, data: &[u8]) {
@@ -314,17 +346,10 @@ impl Extension {
 
         cinfo!(SYNC, "Peer #{} status update: total_score: {}, best_hash: {}", from, total_score, best_hash);
 
-        let mut requests = self.requests.write();
         let mut peers = self.header_downloaders.write();
-        let mut tokens = self.tokens.write();
-        let mut tokens_info = self.tokens_info.write();
         if peers.contains_key(from) {
             peers.get_mut(from).unwrap().update(total_score, best_hash);
         } else {
-            requests.insert(*from, Vec::new());
-            let token = self.token_generator.lock().gen().expect("Token generator is full");
-            tokens_info.insert(token, (*from, None));
-            tokens.insert(*from, token);
             peers.insert(*from, HeaderDownloader::new(self.client.clone(), total_score, best_hash));
         }
     }
