@@ -171,6 +171,51 @@ describe("sync", () => {
       });
     });
 
+    describe("Connected in a circle", () => {
+      const numHalf: number = Math.floor(numNodes / 2);
+
+      beforeEach(async () => {
+        for (let i = 0; i < numNodes; i++) {
+          nodes[i].connect(nodes[(i + 1) % numNodes]);
+        }
+      }, 5000 + 1500 * numNodes);
+
+      test("It should be synced when the first node created a block", async () => {
+        const parcel = await nodes[0].sendSignedParcel();
+        for (let i = 1; i <= numHalf; i++) {
+          await nodes[0].waitBlockNumberSync(nodes[i]);
+          expect(await nodes[i].getBestBlockHash()).toEqual(parcel.blockHash);
+
+          await nodes[0].waitBlockNumberSync(nodes[numNodes - i - 1]);
+          expect(await nodes[numNodes - i - 1].getBestBlockHash()).toEqual(parcel.blockHash);
+        }
+      }, 5000 + 1500 * numNodes);
+
+      describe("All diverged by two nodes in the opposite", () => {
+        beforeEach(async () => {
+          const nodeA = nodes[0], nodeB = nodes[numHalf];
+          await nodeA.sendSignedParcel();
+          await nodeB.sendSignedParcel();
+          expect(await nodeA.getBestBlockNumber()).toEqual(await nodeB.getBestBlockNumber());
+          expect(await nodeA.getBestBlockHash()).not.toEqual(await nodeB.getBestBlockHash());
+        });
+
+        test("Every node should be synced", async () => {
+          for (let i = 1; i < numNodes; i++) { // Here is the problem
+            await nodes[i].waitBlockNumberSync(nodes[0]);
+          }
+        }, 5000 + 1500 * numNodes);
+
+        test("It should be synced when the first node becomes ahead", async () => {
+          await nodes[0].sendSignedParcel();
+          for (let i = 1; i < numNodes; i++) {
+            await nodes[i].waitBlockNumberSync(nodes[i - 1]);
+            expect(await nodes[i].getBestBlockHash()).toEqual(await nodes[0].getBestBlockHash());
+          }
+        }, 5000 + 1500 * numNodes);
+      });
+    });
+
     afterEach(async () => {
       await Promise.all(nodes.map(n => n.clean()));
       nodes = [];
