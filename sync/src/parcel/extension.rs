@@ -14,12 +14,12 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use parking_lot::{Mutex, RwLock};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::Arc;
 
 use ccore::BlockChainClient;
 use cnetwork::{Api, NetworkExtension, NodeId, TimerToken};
+use parking_lot::RwLock;
 use primitives::H256;
 use rlp::{Encodable, UntrustedRlp};
 use time::Duration;
@@ -43,13 +43,13 @@ impl Peer {
         }
     }
 
-    fn push(&mut self, hash: &H256) {
-        if !self.history_set.contains(hash) {
-            self.history_set.insert(*hash);
-            self.history_queue.push_back(*hash);
-            if self.history_queue.len() > MAX_HISTORY_SIZE {
-                self.history_queue.pop_front();
-            }
+    fn push(&mut self, hash: H256) {
+        debug_assert!(!self.history_set.contains(&hash));
+        debug_assert!(!self.history_queue.contains(&hash));
+        self.history_set.insert(hash);
+        self.history_queue.push_back(hash);
+        if self.history_queue.len() > MAX_HISTORY_SIZE {
+            self.history_queue.pop_front();
         }
     }
 
@@ -59,9 +59,9 @@ impl Peer {
 }
 
 pub struct Extension {
-    peers: RwLock<HashMap<NodeId, Peer>>,
+    peers: RwLock<HashMap<NodeId, RwLock<Peer>>>,
     client: Arc<BlockChainClient>,
-    api: Mutex<Option<Arc<Api>>>,
+    api: RwLock<Option<Arc<Api>>>,
 }
 
 impl Extension {
@@ -69,7 +69,7 @@ impl Extension {
         Arc::new(Self {
             peers: RwLock::new(HashMap::new()),
             client,
-            api: Mutex::new(None),
+            api: RwLock::new(None),
         })
     }
 }
@@ -88,13 +88,14 @@ impl NetworkExtension for Extension {
     }
 
     fn on_initialize(&self, api: Arc<Api>) {
+        let mut api_lock = self.api.write();
         api.set_timer(BROADCAST_TIMER_TOKEN, Duration::milliseconds(BROADCAST_TIMER_INTERVAL))
             .expect("Timer set succeeds");
-        *self.api.lock() = Some(api);
+        *api_lock = Some(api);
     }
 
     fn on_node_added(&self, token: &NodeId, _version: u64) {
-        self.peers.write().insert(*token, Peer::new());
+        self.peers.write().insert(*token, RwLock::new(Peer::new()));
     }
     fn on_node_removed(&self, token: &NodeId) {
         self.peers.write().remove(token);
@@ -108,10 +109,12 @@ impl NetworkExtension for Extension {
                         parcels.iter().map(|unverified| unverified.rlp_bytes().to_vec()).collect(),
                         *token,
                     );
-                    if let Some(peer) = self.peers.write().get_mut(token) {
-                        parcels.iter().for_each(|unverified| {
-                            peer.push(&unverified.hash());
-                        });
+                    let peers = self.peers.read();
+                    if let Some(peer) = peers.get(token) {
+                        let mut peer = peer.write();
+                        for unverified in parcels {
+                            peer.push(unverified.hash());
+                        }
                     }
                 }
             }
@@ -123,21 +126,24 @@ impl NetworkExtension for Extension {
     fn on_timeout(&self, timer: TimerToken) {
         match timer {
             BROADCAST_TIMER_TOKEN => self.random_broadcast(),
-            _ => debug_assert!(false),
+            _ => unreachable!(),
         }
     }
 }
 
 impl Extension {
     fn send_message(&self, token: &NodeId, message: Message) {
-        self.api.lock().as_ref().map(|api| {
-            api.send(token, &message.rlp_bytes().to_vec());
-        });
+        let api = self.api.read();
+        api.as_ref().expect("Api must exist").send(token, &message.rlp_bytes());
     }
 
     fn random_broadcast(&self) {
         let parcels = self.client.ready_parcels();
-        for (token, peer) in self.peers.write().iter_mut() {
+        if parcels.is_empty() {
+            return
+        }
+        for (token, peer) in self.peers.read().iter() {
+            let mut peer = peer.write();
             let unsent: Vec<_> = parcels
                 .iter()
                 .filter(|parcel| !peer.contains(&parcel.hash()))
@@ -147,7 +153,7 @@ impl Extension {
                 continue
             }
             for unverified in unsent.iter() {
-                peer.push(&unverified.hash());
+                peer.push(unverified.hash());
             }
             self.send_message(token, Message::Parcels(unsent));
         }
