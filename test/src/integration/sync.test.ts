@@ -216,6 +216,34 @@ describe("sync", () => {
       });
     });
 
+    if (numNodes > 3) {
+      describe("Connected in a star", () => {
+        describe("All connected", () => {
+          beforeEach(async () => {
+            for (let i = 1; i < numNodes; i++) {
+              nodes[0].connect(nodes[i]);
+            }
+          }, 5000 + 1500 * numNodes);
+    
+          test("It should be synced when the center node created a block", async () => {
+            const parcel = await nodes[0].sendSignedParcel();
+            for (let i = 1; i < numNodes; i++) {
+              await nodes[0].waitBlockNumberSync(nodes[i]);
+              expect(await nodes[i].getBestBlockHash()).toEqual(parcel.blockHash);
+            }
+          }, 5000 + 1500 * numNodes);
+
+          test("It should be synced when one of the outside node created a block", async () => {
+            const parcel = await nodes[numNodes - 1].sendSignedParcel();
+            for (let i = 0; i < numNodes - 1; i++) {
+              await nodes[numNodes - 1].waitBlockNumberSync(nodes[i]);
+              expect(await nodes[i].getBestBlockHash()).toEqual(parcel.blockHash);
+            }
+          }, 5000 + 1500 * numNodes);
+        });
+      });
+    }
+
     afterEach(async () => {
       await Promise.all(nodes.map(n => n.clean()));
       nodes = [];
