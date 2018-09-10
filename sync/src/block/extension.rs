@@ -54,7 +54,7 @@ pub struct Extension {
     tokens_info: RwLock<HashMap<TimerToken, (NodeId, Option<u64>)>>,
     token_generator: Mutex<TokenGenerator>,
     client: Arc<Client>,
-    api: Mutex<Option<Arc<Api>>>,
+    api: RwLock<Option<Arc<Api>>>,
     last_request: AtomicUsize,
 }
 
@@ -68,15 +68,14 @@ impl Extension {
             tokens_info: RwLock::new(HashMap::new()),
             token_generator: Mutex::new(TokenGenerator::new(SYNC_EXPIRE_TOKEN_BEGIN, SYNC_EXPIRE_TOKEN_END)),
             client,
-            api: Mutex::new(None),
+            api: RwLock::new(None),
             last_request: AtomicUsize::new(0),
         })
     }
 
     fn send_message(&self, id: &NodeId, message: Message) {
-        self.api.lock().as_ref().map(|api| {
-            api.send(id, &message.rlp_bytes().to_vec());
-        });
+        let api = self.api.read();
+        api.as_ref().expect("Api must exist").send(id, &message.rlp_bytes().to_vec());
     }
 
     fn dismiss_request(&self, id: &NodeId, request_id: u64) {
@@ -116,10 +115,11 @@ impl Extension {
                 let token = tokens.get(id).unwrap();
                 let token_info = tokens_info.get_mut(token).unwrap();
 
-                self.api.lock().as_ref().map(|api| {
-                    api.set_timer_once(*token, Duration::milliseconds(SYNC_EXPIRE_REQUEST_INTERVAL))
-                        .expect("Timer set succeeds");
-                });
+                let api = self.api.read();
+                api.as_ref()
+                    .expect("Api must exist")
+                    .set_timer_once(*token, Duration::milliseconds(SYNC_EXPIRE_REQUEST_INTERVAL))
+                    .expect("Timer set succeeds");
                 token_info.1 = Some(request_id);
             }
         }
@@ -144,8 +144,9 @@ impl NetworkExtension for Extension {
     }
 
     fn on_initialize(&self, api: Arc<Api>) {
+        let mut api_lock = self.api.write();
         api.set_timer(SYNC_TIMER_TOKEN, Duration::milliseconds(SYNC_TIMER_INTERVAL)).expect("Timer set succeeds");
-        *self.api.lock() = Some(api);
+        *api_lock = Some(api);
         cinfo!(SYNC, "Sync extension initialized");
     }
 
@@ -444,9 +445,8 @@ impl Extension {
                                 ctrace!(SYNC, "Expired before handling response");
                                 return
                             }
-                            self.api.lock().as_ref().map(|api| {
-                                api.clear_timer(*token).expect("Timer clear succeed");
-                            });
+                            let api = self.api.read();
+                            api.as_ref().expect("Api must exist").clear_timer(*token).expect("Timer clear succeed");
                             token_info.1 = None;
                             self.dismiss_request(from, id);
                         }
