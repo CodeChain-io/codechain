@@ -15,5 +15,5 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 export async function wait(duration: number) {
-  await new Promise(resolve => setTimeout(() => resolve(), duration));
+    await new Promise(resolve => setTimeout(() => resolve(), duration));
 }

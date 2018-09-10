@@ -17,17 +17,17 @@
 import CodeChain from "../helper/spawn";
 
 describe("solo - 1 node", () => {
-  let node: CodeChain;
-  beforeAll(async () => {
-    node = new CodeChain();
-    await node.start();
-  });
+    let node: CodeChain;
+    beforeAll(async () => {
+        node = new CodeChain();
+        await node.start();
+    });
 
-  test("chain_getNetworkId", async () => {
-    expect(await node.sdk.rpc.chain.getNetworkId()).toBe("tc");
-  });
+    test("chain_getNetworkId", async () => {
+        expect(await node.sdk.rpc.chain.getNetworkId()).toBe("tc");
+    });
 
-  afterAll(async () => {
-    await node.clean();
-  });
+    afterAll(async () => {
+        await node.clean();
+    });
 });
