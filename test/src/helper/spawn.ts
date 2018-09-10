@@ -342,7 +342,7 @@ export default class CodeChain {
 
     public async sendTransaction(
         tx: Transaction,
-        options?: { nonce?: number; awaitInvoice?: boolean }
+        options?: { nonce?: U256 | number; awaitInvoice?: boolean }
     ) {
         const {
             nonce = (await this.sdk.rpc.chain.getNonce(faucetAddress)) || 0,
@@ -387,7 +387,7 @@ export default class CodeChain {
 
     public async sendTransactions(
         txs: Transaction[],
-        options?: { nonce?: number; awaitInvoice?: boolean }
+        options?: { nonce?: U256 | number; awaitInvoice?: boolean }
     ) {
         const {
             nonce = (await this.sdk.rpc.chain.getNonce(faucetAddress)) || 0,
@@ -410,9 +410,9 @@ export default class CodeChain {
         }
     }
 
-    public async mintAssets(params: { count: number; nonce?: number }) {
+    public async mintAssets(params: { count: number; nonce?: U256 | number }) {
         const { count, nonce } = params;
-        const txs: Transaction[] = [];
+        let txs: Transaction[] = [];
         const recipient = await this.createP2PKHAddress();
         for (let i = 0; i < count; i++) {
             const tx = this.sdk.core.createAssetMintTransaction({
@@ -449,7 +449,7 @@ export default class CodeChain {
     }
 
     public async sendSignedParcel(options?: {
-        nonce?: number;
+        nonce?: U256 | number;
         awaitInvoice?: boolean;
     }): Promise<SignedParcel> {
         const {
