@@ -154,7 +154,8 @@ impl TopStateInfo for TopLevelState {
         let shard_root = self.shard_root(shard_id)?.unwrap_or(BLAKE_NULL_RLP);
 
         // FIXME: Make it mutable borrow db instead of cloning.
-        let shard_level_state = ShardLevelState::from_existing(shard_id, self.db.clone(), shard_root)?;
+        let shard_level_state =
+            ShardLevelState::from_existing(shard_id, self.db.clone_with_immutable_global_cache(), shard_root)?;
         shard_level_state.metadata()
     }
 
@@ -163,7 +164,8 @@ impl TopStateInfo for TopLevelState {
         let shard_root = self.shard_root(shard_id)?.unwrap_or(BLAKE_NULL_RLP);
 
         // FIXME: Make it mutable borrow db instead of cloning.
-        let shard_level_state = ShardLevelState::from_existing(shard_id, self.db.clone(), shard_root)?;
+        let shard_level_state =
+            ShardLevelState::from_existing(shard_id, self.db.clone_with_immutable_global_cache(), shard_root)?;
         shard_level_state.world(world_id)
     }
 
@@ -175,7 +177,8 @@ impl TopStateInfo for TopLevelState {
         // FIXME: Handle the case that shard doesn't exist
         let shard_root = self.shard_root(shard_id)?.unwrap_or(BLAKE_NULL_RLP);
         // FIXME: Make it mutable borrow db instead of cloning.
-        let shard_level_state = ShardLevelState::from_existing(shard_id, self.db.clone(), shard_root)?;
+        let shard_level_state =
+            ShardLevelState::from_existing(shard_id, self.db.clone_with_immutable_global_cache(), shard_root)?;
         shard_level_state.asset_scheme(asset_scheme_address)
     }
 
@@ -183,7 +186,8 @@ impl TopStateInfo for TopLevelState {
         // FIXME: Handle the case that shard doesn't exist
         let shard_root = self.shard_root(shard_id)?.unwrap_or(BLAKE_NULL_RLP);
         // FIXME: Make it mutable borrow db instead of cloning.
-        let shard_level_state = ShardLevelState::from_existing(shard_id, self.db.clone(), shard_root)?;
+        let shard_level_state =
+            ShardLevelState::from_existing(shard_id, self.db.clone_with_immutable_global_cache(), shard_root)?;
         shard_level_state.asset(asset_address)
     }
 
@@ -539,7 +543,8 @@ impl TopLevelState {
         shard_users.append(&mut shard_owners);
 
         // FIXME: Make it mutable borrow db instead of cloning.
-        let mut shard_level_state = ShardLevelState::from_existing(shard_id, self.db.clone(), shard_root)?;
+        let mut shard_level_state =
+            ShardLevelState::from_existing(shard_id, self.db.clone_with_mutable_global_cache(), shard_root)?;
 
         let mut results = Vec::with_capacity(transactions.len());
         for t in transactions {
@@ -556,7 +561,7 @@ impl TopLevelState {
             let mut metadata = self.get_metadata_mut()?;
             let shard_id = metadata.increase_number_of_shards();
 
-            let mut shard_level_state = ShardLevelState::try_new(shard_id, self.db.clone())?;
+            let mut shard_level_state = ShardLevelState::try_new(shard_id, self.db.clone_with_mutable_global_cache())?;
 
             let (shard_root, db) = shard_level_state.drop();
 
@@ -672,7 +677,7 @@ impl fmt::Debug for TopLevelState {
 impl Clone for TopLevelState {
     fn clone(&self) -> TopLevelState {
         TopLevelState {
-            db: self.db.clone(),
+            db: self.db.clone_with_mutable_global_cache(),
             root: self.root.clone(),
             id_of_checkpoints: self.id_of_checkpoints.clone(),
             account: self.account.clone(),
