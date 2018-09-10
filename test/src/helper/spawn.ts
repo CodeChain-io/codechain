@@ -20,7 +20,10 @@ import {
     SignedParcel,
     Transaction,
     AssetTransferTransaction,
-    H256
+    H256,
+    Invoice,
+    Parcel,
+    U256
 } from "codechain-sdk/lib/core/classes";
 import { PlatformAddress } from "codechain-sdk/lib/key/classes";
 import { mkdtempSync, appendFileSync } from "fs";
@@ -240,6 +243,60 @@ export default class CodeChain {
         return p2pkhBurn.createAddress();
     }
 
+    public async createPlatformAddress() {
+        const keyStore = await this.sdk.key.createLocalKeyStore(
+            this.localKeyStorePath
+        );
+        return this.sdk.key.createPlatformAddress({ keyStore });
+    }
+
+    public async payment(
+        recipient: string | PlatformAddress,
+        amount: U256 | string | number
+    ) {
+        const parcel = this.sdk.core
+            .createPaymentParcel({
+                recipient,
+                amount
+            })
+            .sign({
+                secret: faucetSecret,
+                nonce: await this.sdk.rpc.chain.getNonce(faucetAddress),
+                fee: 10
+            });
+        const hash = await this.sdk.rpc.chain.sendSignedParcel(parcel);
+        const invoice = (await this.sdk.rpc.chain.getParcelInvoice(hash, {
+            timeout: 300 * 1000
+        })) as Invoice | null;
+        if (invoice === null || !invoice.success) {
+            throw Error(
+                `An error occurred while payment: ${invoice && invoice.error}`
+            );
+        }
+    }
+
+    public async sendParcel(
+        parcel: Parcel,
+        params: {
+            account: string | PlatformAddress;
+            fee?: number | string | U256;
+            nonce?: number | string | U256;
+        }
+    ) {
+        const keyStore = await this.sdk.key.createLocalKeyStore(
+            this.localKeyStorePath
+        );
+        const { account, fee = 10 } = params;
+        const { nonce = await this.sdk.rpc.chain.getNonce(account) } = params;
+        const signedParcel = await this.sdk.key.signParcel(parcel, {
+            keyStore,
+            account,
+            fee,
+            nonce
+        });
+        return this.sdk.rpc.chain.sendSignedParcel(signedParcel);
+    }
+
     public async sendTransaction(
         tx: Transaction,
         options?: { nonce?: number; awaitInvoice?: boolean }
@@ -287,11 +344,11 @@ export default class CodeChain {
 
     public async sendTransactions(
         txs: Transaction[],
-        options?: { nonce?: number, awaitInvoice?: boolean }
+        options?: { nonce?: number; awaitInvoice?: boolean }
     ) {
         const {
             nonce = (await this.sdk.rpc.chain.getNonce(faucetAddress)) || 0,
-            awaitInvoice = true,
+            awaitInvoice = true
         } = options || {};
         const parcel = this.sdk.core
             .createAssetTransactionGroupParcel({
@@ -304,7 +361,9 @@ export default class CodeChain {
             });
         const parcelHash = await this.sdk.rpc.chain.sendSignedParcel(parcel);
         if (awaitInvoice) {
-            return this.sdk.rpc.chain.getParcelInvoice(parcelHash, { timeout: 300 * 1000 });
+            return this.sdk.rpc.chain.getParcelInvoice(parcelHash, {
+                timeout: 300 * 1000
+            });
         }
     }
 
