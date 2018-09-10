@@ -169,9 +169,6 @@ impl<Item: CacheableItem> GlobalCache<Item> {
 fn is_global_cache_enabled() -> bool {
     lazy_static! {
         static ref CACHE_ENABLED: bool = {
-            #[cfg(not(test))]
-            const DEFAULT: bool = false;
-            #[cfg(test)]
             const DEFAULT: bool = true;
 
             let enabled = env::var_os("ENABLE_GLOBAL_CACHE")
