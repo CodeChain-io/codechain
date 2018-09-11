@@ -760,7 +760,7 @@ Params:
  1. address: `PlatformAddress`
  2. block number: `number` | `null`
 
-Return Type: `H512` - 512-bit public key
+Return Type: `null` | `H512` - 512-bit public key. It returns null when the given address does not have a regular key.
 
 Errors: `KVDB Error`, `Invalid Params`, `Invalid NetworkId`
 
@@ -788,7 +788,7 @@ Params:
  1. public key: `H512`
  2. block number: `number` | `null`
 
-Return Type: `PlatformAddress`
+Return Type: `null` | `PlatformAddress` - It returns null when the given key has no owner.
 
 Errors: `KVDB Error`, `Invalid Params`
 
