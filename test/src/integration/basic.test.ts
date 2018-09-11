@@ -20,12 +20,6 @@ import { PlatformAddress } from "codechain-sdk/lib/key/PlatformAddress";
 import CodeChain from "../helper/spawn";
 
 describe("solo - 1 node", () => {
-    const secret =
-        "ede1d4ccb4ec9a8bbbae9a13db3f4a7b56ea04189be86ac3a6a439d9a0a1addd";
-    const address = PlatformAddress.fromAccountId(
-        SDK.util.getAccountIdFromPrivate(secret)
-    );
-
     let node: CodeChain;
     beforeAll(async () => {
         node = new CodeChain();
@@ -44,23 +38,6 @@ describe("solo - 1 node", () => {
         expect(await node.sdk.rpc.node.getCommitHash()).toMatch(
             /^[a-fA-F0-9]{40}$/
         );
-    });
-
-    test("sendSignedParcel", async () => {
-        const parcel = node.sdk.core.createPaymentParcel({
-            recipient: "tccqruq09sfgax77nj4gukjcuq69uzeyv0jcs7vzngg",
-            amount: 0
-        });
-        const nonce = await node.sdk.rpc.chain.getNonce(address);
-        const parcelHash = await node.sdk.rpc.chain.sendSignedParcel(
-            parcel.sign({
-                secret,
-                fee: 10,
-                nonce
-            })
-        );
-        const invoice = await node.sdk.rpc.chain.getParcelInvoice(parcelHash);
-        expect(invoice).toEqual({ success: true });
     });
 
     afterAll(async () => {
