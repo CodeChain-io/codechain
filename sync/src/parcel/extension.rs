@@ -111,11 +111,16 @@ impl NetworkExtension for Extension {
                     let peers = self.peers.read();
                     if let Some(peer) = peers.get(token) {
                         let mut peer = peer.write();
+                        let parcels: Vec<_> = parcels
+                            .iter()
+                            .map(|parcel| parcel.hash())
+                            .filter(|parcel| !peer.contains(parcel))
+                            .collect();
                         for unverified in parcels.iter() {
-                            peer.push(unverified.hash());
+                            peer.push(*unverified);
                         }
                         cdebug!(SYNC_PARCEL, "Receive {} parcels to {}", parcels.len(), token);
-                        ctrace!(SYNC_PARCEL, "Receive {:?}", parcels.into_iter().map(|p| p.hash()).collect::<Vec<_>>());
+                        ctrace!(SYNC_PARCEL, "Receive {:?}", parcels);
                     } else {
                         cwarn!(SYNC_PARCEL, "Message from {} but it's already removed", token);
                     }
