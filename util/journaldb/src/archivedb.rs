@@ -137,7 +137,7 @@ impl JournalDB for ArchiveDB {
                 inserts += 1;
             }
             if rc < 0 {
-                assert!(rc == -1);
+                assert_eq!(-1, rc);
                 deletes += 1;
             }
         }
@@ -173,7 +173,7 @@ impl JournalDB for ArchiveDB {
                 inserts += 1;
             }
             if rc < 0 {
-                assert!(rc == -1);
+                assert_eq!(-1, rc);
                 if self.backing.get(self.column, &key)?.is_none() {
                     return Err(BaseDataError::NegativelyReferencedHash(key).into())
                 }
@@ -453,7 +453,7 @@ mod tests {
         {
             let jdb = ArchiveDB::new(shared_db, None);
             let state = jdb.state(&key);
-            assert!(state.is_some());
+            assert_eq!(Some("foo".to_string().into_bytes()), state);
         }
     }
 
@@ -467,6 +467,6 @@ mod tests {
         jdb.remove(&key);
         jdb.inject_batch().unwrap();
 
-        assert!(jdb.get(&key).is_none());
+        assert_eq!(None, jdb.get(&key));
     }
 }
