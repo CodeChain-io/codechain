@@ -34,6 +34,7 @@ use super::{NetworkExtension, SocketAddr};
 pub struct Service {
     session_initiator: IoService<session_initiator::Message>,
     p2p: IoService<p2p::Message>,
+    #[allow(dead_code)]
     timer: IoService<timer::Message>,
     client: Arc<Client>,
     routing_table: Arc<RoutingTable>,
@@ -87,17 +88,10 @@ impl Service {
         }))
     }
 
-    pub fn register_extension(&self, extension: Arc<NetworkExtension>) -> Result<(), String> {
-        let extension_name = extension.name().to_string();
+    pub fn register_extension(&self, extension: Arc<NetworkExtension>) {
+        let extension_name = extension.name();
         self.client.register_extension(extension);
-
-        if let Err(err) = self.timer.channel().send_sync(timer::Message::InitializeExtension {
-            extension_name,
-        }) {
-            Err(format!("{:?}", err))
-        } else {
-            Ok(())
-        }
+        self.client.initialize_extension(extension_name);
     }
 
     pub fn connect_to(&self, address: SocketAddr) -> Result<(), String> {
