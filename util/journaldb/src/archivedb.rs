@@ -122,6 +122,10 @@ impl JournalDB for ArchiveDB {
         self.latest_era.is_none()
     }
 
+    fn latest_era(&self) -> Option<u64> {
+        self.latest_era
+    }
+
     fn journal_under(&mut self, batch: &mut DBTransaction, now: u64, _id: &H256) -> Result<u32, UtilError> {
         let mut inserts = 0usize;
         let mut deletes = 0usize;
@@ -179,10 +183,6 @@ impl JournalDB for ArchiveDB {
         }
 
         Ok((inserts + deletes) as u32)
-    }
-
-    fn latest_era(&self) -> Option<u64> {
-        self.latest_era
     }
 
     fn state(&self, id: &H256) -> Option<Bytes> {
