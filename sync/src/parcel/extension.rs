@@ -45,7 +45,6 @@ impl Peer {
 
     fn push(&mut self, hash: H256) {
         debug_assert!(!self.history_set.contains(&hash));
-        debug_assert!(!self.history_queue.contains(&hash));
         self.history_set.insert(hash);
         self.history_queue.push_back(hash);
         if self.history_queue.len() > MAX_HISTORY_SIZE {
