@@ -149,19 +149,11 @@ impl Decodable for Message {
                 seq,
                 body: Body::Allowed(rlp.val_at(COMMON)?),
             }),
-            DENIED_ID => {
-                let item_count = rlp.item_count()?;
-                let mut versions: Vec<Version> = Vec::with_capacity(item_count - COMMON);
-                for i in COMMON..item_count {
-                    let version: Version = rlp.val_at(i)?;
-                    versions.push(version);
-                }
-                Ok(Message {
-                    version,
-                    seq,
-                    body: Body::Denied,
-                })
-            }
+            DENIED_ID => Ok(Message {
+                version,
+                seq,
+                body: Body::Denied,
+            }),
             _ => Err(DecoderError::Custom("invalid protocol id")),
         }
     }
