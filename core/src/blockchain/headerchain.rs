@@ -167,8 +167,8 @@ impl HeaderChain {
                 let ancestor_number = self.block_number(&data.ancestor).expect("Ancestor always exist in DB");
                 let start_number = ancestor_number + 1;
 
-                for (index, hash) in data.enacted.iter().cloned().enumerate() {
-                    hashes.insert(start_number + index as BlockNumber, hash);
+                for (index, hash) in data.enacted.iter().enumerate() {
+                    hashes.insert(start_number + index as BlockNumber, *hash);
                 }
 
                 hashes.insert(number, header.hash());
