@@ -294,21 +294,31 @@ impl HeaderProvider for HeaderChain {
 
     /// Get block header data
     fn block_header_data(&self, hash: &H256) -> Option<encoded::Header> {
-        // Check cache first
-        {
-            let read = self.header_cache.read();
-            if let Some(v) = read.get(hash) {
-                return Some(encoded::Header::new(v.clone()))
-            }
-        }
-
-        // Read from DB and populate cache
-        let b = self.db.get(db::COL_HEADERS, hash).expect("Low level database error. Some issue with disk?")?;
-
-        let bytes = decompress(&b, blocks_swapper()).into_vec();
-        let mut write = self.header_cache.write();
-        write.insert(*hash, bytes.clone());
-
-        Some(encoded::Header::new(bytes))
+        block_header_data(hash, &self.header_cache, &*self.db).map(encoded::Header::new)
     }
+}
+
+/// Get block header data
+fn block_header_data(hash: &H256, header_cache: &RwLock<HashMap<H256, Bytes>>, db: &KeyValueDB) -> Option<Vec<u8>> {
+    // Check cache first
+    {
+        let read = header_cache.read();
+        if let Some(v) = read.get(hash) {
+            return Some(v.clone())
+        }
+    }
+    // Read from DB and populate cache
+    let b = db.get(db::COL_HEADERS, hash).expect("Low level database error. Some issue with disk?")?;
+
+    let bytes = decompress(&b, blocks_swapper()).into_vec();
+
+    let mut write = header_cache.write();
+    if let Some(v) = write.get(hash) {
+        assert_eq!(&bytes, v);
+        return Some(v.clone())
+    }
+
+    write.insert(*hash, bytes.clone());
+
+    Some(bytes)
 }
