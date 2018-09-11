@@ -359,4 +359,45 @@ describe("sync", () => {
             nodes = [];
         }, 5000 + 1500 * numNodes);
     });
+
+    // NOTE: To create empty blocks, enable --force-sealing option, and then,
+    // trigger it by calling devel_startSealing RPC API.
+    describe("empty block", () => {
+        let nodeA: CodeChain;
+        let nodeB: CodeChain;
+
+        beforeEach(async () => {
+            nodeA = new CodeChain({ argv: ["--force-sealing"] });
+            nodeB = new CodeChain({ argv: ["--force-sealing"] });
+            await Promise.all([nodeA.start(), nodeB.start()]);
+            await nodeA.connect(nodeB);
+        });
+
+        test("nodeA creates an empty block", async () => {
+            await nodeA.sdk.rpc.devel.startSealing();
+            expect(await nodeA.getBestBlockNumber()).toBe(1);
+            await nodeA.waitBlockNumberSync(nodeB);
+            expect(await nodeB.getBestBlockNumber()).toBe(1);
+            expect(await nodeA.getBestBlockHash()).toEqual(
+                await nodeB.getBestBlockHash()
+            );
+        });
+
+        test("nodeA creates 3 empty blocks", async () => {
+            await nodeA.sdk.rpc.devel.startSealing();
+            await nodeA.sdk.rpc.devel.startSealing();
+            await nodeA.sdk.rpc.devel.startSealing();
+
+            expect(await nodeA.getBestBlockNumber()).toBe(3);
+            await nodeA.waitBlockNumberSync(nodeB);
+            expect(await nodeB.getBestBlockNumber()).toBe(3);
+            expect(await nodeA.getBestBlockHash()).toEqual(
+                await nodeB.getBestBlockHash()
+            );
+        });
+
+        afterEach(async () => {
+            await Promise.all([nodeA.clean(), nodeB.clean()]);
+        });
+    });
 });
