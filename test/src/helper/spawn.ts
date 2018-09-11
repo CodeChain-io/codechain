@@ -19,7 +19,8 @@ import { SDK } from "codechain-sdk";
 import {
     SignedParcel,
     Transaction,
-    AssetTransferTransaction
+    AssetTransferTransaction,
+    H256
 } from "codechain-sdk/lib/core/classes";
 import { PlatformAddress } from "codechain-sdk/lib/key/classes";
 import { mkdtempSync, appendFileSync } from "fs";
@@ -365,6 +366,33 @@ export default class CodeChain {
             return (await this.sdk.rpc.chain.getParcel(hash)) as SignedParcel;
         }
         return parcel;
+    }
+
+    public sendSignedParcelWithRlpBytes(rlpBytes: Buffer): Promise<H256> {
+        return new Promise((resolve, reject) => {
+            const bytes = Array.from(rlpBytes)
+                .map(
+                    byte =>
+                        byte < 0x10
+                            ? `0${byte.toString(16)}`
+                            : byte.toString(16)
+                )
+                .join("");
+            this.sdk.rpc
+                .sendRpcRequest("chain_sendSignedParcel", [`0x${bytes}`])
+                .then(result => {
+                    try {
+                        resolve(new H256(result));
+                    } catch (e) {
+                        reject(
+                            Error(
+                                `Expected sendSignedParcel() to return a value of H256, but an error occurred: ${e.toString()}`
+                            )
+                        );
+                    }
+                })
+                .catch(reject);
+        });
     }
 
     public async clean() {
