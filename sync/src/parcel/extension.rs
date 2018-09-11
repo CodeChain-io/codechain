@@ -119,7 +119,7 @@ impl NetworkExtension for Extension {
                         for unverified in parcels.iter() {
                             peer.push(*unverified);
                         }
-                        cdebug!(SYNC_PARCEL, "Receive {} parcels to {}", parcels.len(), token);
+                        cdebug!(SYNC_PARCEL, "Receive {} parcels from {}", parcels.len(), token);
                         ctrace!(SYNC_PARCEL, "Receive {:?}", parcels);
                     } else {
                         cwarn!(SYNC_PARCEL, "Message from {} but it's already removed", token);
