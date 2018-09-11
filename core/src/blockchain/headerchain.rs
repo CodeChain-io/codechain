@@ -280,6 +280,18 @@ impl HeaderProvider for HeaderChain {
         self.db.exists_with_cache(db::COL_EXTRA, &self.detail_cache, hash)
     }
 
+    /// Get the familial details concerning a block.
+    fn block_details(&self, hash: &H256) -> Option<BlockDetails> {
+        let result = self.db.read_with_cache(db::COL_EXTRA, &self.detail_cache, hash)?;
+        Some(result)
+    }
+
+    /// Get the hash of given block's number.
+    fn block_hash(&self, index: BlockNumber) -> Option<H256> {
+        let result = self.db.read_with_cache(db::COL_EXTRA, &self.hash_cache, &index)?;
+        Some(result)
+    }
+
     /// Get block header data
     fn block_header_data(&self, hash: &H256) -> Option<encoded::Header> {
         // Check cache first
@@ -298,17 +310,5 @@ impl HeaderProvider for HeaderChain {
         write.insert(*hash, bytes.clone());
 
         Some(encoded::Header::new(bytes))
-    }
-
-    /// Get the familial details concerning a block.
-    fn block_details(&self, hash: &H256) -> Option<BlockDetails> {
-        let result = self.db.read_with_cache(db::COL_EXTRA, &self.detail_cache, hash)?;
-        Some(result)
-    }
-
-    /// Get the hash of given block's number.
-    fn block_hash(&self, index: BlockNumber) -> Option<H256> {
-        let result = self.db.read_with_cache(db::COL_EXTRA, &self.hash_cache, &index)?;
-        Some(result)
     }
 }
