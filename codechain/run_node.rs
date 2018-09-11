@@ -65,7 +65,7 @@ fn discovery_start(service: &NetworkService, cfg: &config::Network) -> Result<()
             };
             let unstructured = UnstructuredExtension::new(config);
             service.set_routing_table(&*unstructured);
-            service.register_extension(unstructured)?;
+            service.register_extension(unstructured);
             cinfo!(DISCOVERY, "Node runs with unstructured discovery");
         }
         "kademlia" => {
@@ -75,7 +75,7 @@ fn discovery_start(service: &NetworkService, cfg: &config::Network) -> Result<()
             };
             let kademlia = KademliaExtension::new(config);
             service.set_routing_table(&*kademlia);
-            service.register_extension(kademlia)?;
+            service.register_extension(kademlia);
             cinfo!(DISCOVERY, "Node runs with kademlia discovery");
         }
         discovery_type => return Err(format!("Unknown discovery {}", discovery_type)),
@@ -231,18 +231,18 @@ pub fn run_node(matches: ArgMatches) -> Result<(), String> {
 
             if config.network.sync {
                 let sync = BlockSyncExtension::new(client.client());
-                service.register_extension(sync.clone())?;
+                service.register_extension(sync.clone());
                 client.client().add_notify(sync.clone());
             }
             if config.network.parcel_relay {
-                service.register_extension(ParcelSyncExtension::new(client.client()))?;
+                service.register_extension(ParcelSyncExtension::new(client.client()));
             }
             if let Some(consensus_extension) = scheme.engine.network_extension() {
-                service.register_extension(consensus_extension)?;
+                service.register_extension(consensus_extension);
             }
 
             if let Some(shard_validator) = &shard_validator {
-                service.register_extension(shard_validator.clone())?;
+                service.register_extension(shard_validator.clone());
             }
 
             for address in network_config.bootstrap_addresses {

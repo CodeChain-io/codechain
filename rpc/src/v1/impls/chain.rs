@@ -185,9 +185,10 @@ where
     }
 
     fn get_best_block_id(&self) -> Result<BlockNumberAndHash> {
+        let chain_info = self.client.chain_info();
         Ok(BlockNumberAndHash {
-            number: self.client.chain_info().best_block_number,
-            hash: self.client.chain_info().best_block_hash,
+            number: chain_info.best_block_number,
+            hash: chain_info.best_block_hash,
         })
     }
 

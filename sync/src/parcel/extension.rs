@@ -45,7 +45,6 @@ impl Peer {
 
     fn push(&mut self, hash: H256) {
         debug_assert!(!self.history_set.contains(&hash));
-        debug_assert!(!self.history_queue.contains(&hash));
         self.history_set.insert(hash);
         self.history_queue.push_back(hash);
         if self.history_queue.len() > MAX_HISTORY_SIZE {
@@ -112,11 +111,16 @@ impl NetworkExtension for Extension {
                     let peers = self.peers.read();
                     if let Some(peer) = peers.get(token) {
                         let mut peer = peer.write();
+                        let parcels: Vec<_> = parcels
+                            .iter()
+                            .map(|parcel| parcel.hash())
+                            .filter(|parcel| !peer.contains(parcel))
+                            .collect();
                         for unverified in parcels.iter() {
-                            peer.push(unverified.hash());
+                            peer.push(*unverified);
                         }
-                        cdebug!(SYNC_PARCEL, "Receive {} parcels to {}", parcels.len(), token);
-                        ctrace!(SYNC_PARCEL, "Receive {:?}", parcels.into_iter().map(|p| p.hash()).collect::<Vec<_>>());
+                        cdebug!(SYNC_PARCEL, "Receive {} parcels from {}", parcels.len(), token);
+                        ctrace!(SYNC_PARCEL, "Receive {:?}", parcels);
                     } else {
                         cwarn!(SYNC_PARCEL, "Message from {} but it's already removed", token);
                     }

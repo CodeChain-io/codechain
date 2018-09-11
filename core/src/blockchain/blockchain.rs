@@ -160,8 +160,10 @@ impl BlockChain {
 
     /// Returns general blockchain information
     pub fn chain_info(&self) -> BlockChainInfo {
-        let best_block_header = self.best_block_header();
-        let best_block_detail = self.best_block_detail();
+        let best_block_hash = self.best_block_hash();
+
+        let best_block_detail = self.block_details(&best_block_hash).expect("Best block always exists");
+        let best_block_header = self.block_header_data(&best_block_hash).expect("Best block always exists");
 
         BlockChainInfo {
             total_score: best_block_detail.total_score.clone(),

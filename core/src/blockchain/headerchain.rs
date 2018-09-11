@@ -167,8 +167,8 @@ impl HeaderChain {
                 let ancestor_number = self.block_number(&data.ancestor).expect("Ancestor always exist in DB");
                 let start_number = ancestor_number + 1;
 
-                for (index, hash) in data.enacted.iter().cloned().enumerate() {
-                    hashes.insert(start_number + index as BlockNumber, hash);
+                for (index, hash) in data.enacted.iter().enumerate() {
+                    hashes.insert(start_number + index as BlockNumber, *hash);
                 }
 
                 hashes.insert(number, header.hash());
@@ -280,26 +280,6 @@ impl HeaderProvider for HeaderChain {
         self.db.exists_with_cache(db::COL_EXTRA, &self.detail_cache, hash)
     }
 
-    /// Get block header data
-    fn block_header_data(&self, hash: &H256) -> Option<encoded::Header> {
-        // Check cache first
-        {
-            let read = self.header_cache.read();
-            if let Some(v) = read.get(hash) {
-                return Some(encoded::Header::new(v.clone()))
-            }
-        }
-
-        // Read from DB and populate cache
-        let b = self.db.get(db::COL_HEADERS, hash).expect("Low level database error. Some issue with disk?")?;
-
-        let bytes = decompress(&b, blocks_swapper()).into_vec();
-        let mut write = self.header_cache.write();
-        write.insert(*hash, bytes.clone());
-
-        Some(encoded::Header::new(bytes))
-    }
-
     /// Get the familial details concerning a block.
     fn block_details(&self, hash: &H256) -> Option<BlockDetails> {
         let result = self.db.read_with_cache(db::COL_EXTRA, &self.detail_cache, hash)?;
@@ -311,4 +291,34 @@ impl HeaderProvider for HeaderChain {
         let result = self.db.read_with_cache(db::COL_EXTRA, &self.hash_cache, &index)?;
         Some(result)
     }
+
+    /// Get block header data
+    fn block_header_data(&self, hash: &H256) -> Option<encoded::Header> {
+        block_header_data(hash, &self.header_cache, &*self.db).map(encoded::Header::new)
+    }
+}
+
+/// Get block header data
+fn block_header_data(hash: &H256, header_cache: &RwLock<HashMap<H256, Bytes>>, db: &KeyValueDB) -> Option<Vec<u8>> {
+    // Check cache first
+    {
+        let read = header_cache.read();
+        if let Some(v) = read.get(hash) {
+            return Some(v.clone())
+        }
+    }
+    // Read from DB and populate cache
+    let b = db.get(db::COL_HEADERS, hash).expect("Low level database error. Some issue with disk?")?;
+
+    let bytes = decompress(&b, blocks_swapper()).into_vec();
+
+    let mut write = header_cache.write();
+    if let Some(v) = write.get(hash) {
+        assert_eq!(&bytes, v);
+        return Some(v.clone())
+    }
+
+    write.insert(*hash, bytes.clone());
+
+    Some(bytes)
 }

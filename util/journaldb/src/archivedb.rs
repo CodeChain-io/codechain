@@ -122,6 +122,10 @@ impl JournalDB for ArchiveDB {
         self.latest_era.is_none()
     }
 
+    fn latest_era(&self) -> Option<u64> {
+        self.latest_era
+    }
+
     fn journal_under(&mut self, batch: &mut DBTransaction, now: u64, _id: &H256) -> Result<u32, UtilError> {
         let mut inserts = 0usize;
         let mut deletes = 0usize;
@@ -133,7 +137,7 @@ impl JournalDB for ArchiveDB {
                 inserts += 1;
             }
             if rc < 0 {
-                assert!(rc == -1);
+                assert_eq!(-1, rc);
                 deletes += 1;
             }
         }
@@ -169,7 +173,7 @@ impl JournalDB for ArchiveDB {
                 inserts += 1;
             }
             if rc < 0 {
-                assert!(rc == -1);
+                assert_eq!(-1, rc);
                 if self.backing.get(self.column, &key)?.is_none() {
                     return Err(BaseDataError::NegativelyReferencedHash(key).into())
                 }
@@ -179,10 +183,6 @@ impl JournalDB for ArchiveDB {
         }
 
         Ok((inserts + deletes) as u32)
-    }
-
-    fn latest_era(&self) -> Option<u64> {
-        self.latest_era
     }
 
     fn state(&self, id: &H256) -> Option<Bytes> {
@@ -453,7 +453,7 @@ mod tests {
         {
             let jdb = ArchiveDB::new(shared_db, None);
             let state = jdb.state(&key);
-            assert!(state.is_some());
+            assert_eq!(Some("foo".to_string().into_bytes()), state);
         }
     }
 
@@ -467,6 +467,6 @@ mod tests {
         jdb.remove(&key);
         jdb.inject_batch().unwrap();
 
-        assert!(jdb.get(&key).is_none());
+        assert_eq!(None, jdb.get(&key));
     }
 }

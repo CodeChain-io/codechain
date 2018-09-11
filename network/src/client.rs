@@ -164,10 +164,10 @@ impl Client {
         }
     }
 
-    pub fn initialize_extension(&self, extension_name: &String) {
+    pub fn initialize_extension(&self, extension_name: &str) {
         let extension = {
             let mut extensions = self.extensions.read();
-            extensions.get(extension_name.as_str()).map(Arc::clone)
+            extensions.get(extension_name).map(Arc::clone)
         };
         if let Some(extension) = extension {
             let p2p_channel = self.p2p_channel.clone();
