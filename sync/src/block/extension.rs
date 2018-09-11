@@ -292,19 +292,16 @@ impl ChainNotify for Extension {
             .collect();
         enacted_headers.sort_unstable_by_key(|header| header.number());
 
-        let body_targets = enacted_headers
+        enacted_headers
             .into_iter()
             .filter(|header| self.client.block_body(BlockId::Hash(header.hash())).is_none())
-            .map(|header| {
-                let prev_root = if let Some(parent) = self.client.block_header(BlockId::Hash(header.parent_hash())) {
-                    parent.parcels_root()
-                } else {
-                    H256::zero()
-                };
-                (header.hash(), prev_root, header.parcels_root())
-            })
-            .collect();
-        self.body_downloader.lock().add_target(body_targets);
+            .for_each(|header| {
+                let parent = self
+                    .client
+                    .block_header(BlockId::Hash(header.parent_hash()))
+                    .expect("Enacted header must have parent");
+                self.body_downloader.lock().add_target(&header.decode(), &parent.decode());
+            });
         self.body_downloader.lock().remove_target(&retracted);
     }
 
@@ -544,20 +541,15 @@ impl Extension {
             }
         }
 
-        let body_targets = exists
-            .iter()
-            .filter(|header| self.client.block_body(BlockId::Hash(header.hash())).is_none())
-            .map(|header| {
-                let prev_root = if let Some(parent) = self.client.block_header(BlockId::Hash(header.parent_hash())) {
-                    parent.parcels_root()
-                } else {
-                    H256::zero()
-                };
-                (header.hash(), prev_root, header.parcels_root())
-            })
-            .collect();
-
-        self.body_downloader.lock().add_target(body_targets);
+        exists.iter().filter(|header| self.client.block_body(BlockId::Hash(header.hash())).is_none()).for_each(
+            |header| {
+                let parent = self
+                    .client
+                    .block_header(BlockId::Hash(header.parent_hash()))
+                    .expect("Existing header must have parent");
+                self.body_downloader.lock().add_target(&header.decode(), &parent.decode());
+            },
+        );
     }
 
     fn on_body_response(&self, hashes: Vec<H256>, bodies: Vec<Vec<UnverifiedParcel>>) {
