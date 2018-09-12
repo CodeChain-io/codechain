@@ -23,7 +23,8 @@ import {
     H256,
     Invoice,
     Parcel,
-    U256
+    U256,
+    AssetTransferInput
 } from "codechain-sdk/lib/core/classes";
 import { PlatformAddress } from "codechain-sdk/lib/key/classes";
 import { mkdtempSync, appendFileSync } from "fs";
@@ -31,6 +32,8 @@ import { createInterface as createReadline } from "readline";
 import * as mkdirp from "mkdirp";
 import { wait } from "./promise";
 import { makeRandomFilename } from "./random";
+import { P2PKHBurn } from "codechain-sdk/lib/key/P2PKHBurn";
+import { P2PKH } from "codechain-sdk/lib/key/P2PKH";
 
 const faucetSecret = `ede1d4ccb4ec9a8bbbae9a13db3f4a7b56ea04189be86ac3a6a439d9a0a1addd`;
 const faucetAddress = PlatformAddress.fromAccountId(
@@ -233,6 +236,46 @@ export default class CodeChain {
         );
         const p2pkh = this.sdk.key.createP2PKH({ keyStore });
         return p2pkh.createAddress();
+    }
+
+    public async signTransactionP2PKHBurn(
+        txInput: AssetTransferInput,
+        txhash: H256
+    ) {
+        const keyStore = await this.sdk.key.createLocalKeyStore(
+            this.localKeyStorePath
+        );
+        const p2pkhBurn = this.sdk.key.createP2PKHBurn({ keyStore });
+        if (txInput.prevOut.parameters === undefined) {
+            throw Error(`prevOut.parameters is undefined`);
+        }
+        const publicKeyHash = Buffer.from(
+            txInput.prevOut.parameters[0]
+        ).toString("hex");
+        txInput.setLockScript(P2PKHBurn.getLockScript());
+        txInput.setUnlockScript(
+            await p2pkhBurn.createUnlockScript(publicKeyHash, txhash)
+        );
+    }
+
+    public async signTransactionP2PKH(
+        txInput: AssetTransferInput,
+        txhash: H256
+    ) {
+        const keyStore = await this.sdk.key.createLocalKeyStore(
+            this.localKeyStorePath
+        );
+        const p2pkh = this.sdk.key.createP2PKH({ keyStore });
+        if (txInput.prevOut.parameters === undefined) {
+            throw Error(`prevOut.parameters is undefined`);
+        }
+        const publicKeyHash = Buffer.from(
+            txInput.prevOut.parameters[0]
+        ).toString("hex");
+        txInput.setLockScript(P2PKH.getLockScript());
+        txInput.setUnlockScript(
+            await p2pkh.createUnlockScript(publicKeyHash, txhash)
+        );
     }
 
     public async createP2PKHBurnAddress() {

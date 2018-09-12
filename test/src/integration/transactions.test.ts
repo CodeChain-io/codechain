@@ -191,6 +191,46 @@ describe("transactions", () => {
         expect(await node.sdk.rpc.chain.getAsset(tx2.hash(), 0)).toBe(null);
     });
 
+    test("Cannot transfer P2PKHBurn asset", async () => {
+        const { asset } = await node.mintAsset({ amount: 1 });
+        const tx1 = node.sdk.core.createAssetTransferTransaction();
+        tx1.addInputs(asset);
+        tx1.addOutputs({
+            assetType: asset.assetType,
+            recipient: await node.createP2PKHBurnAddress(),
+            amount: 1
+        });
+        await node.signTransferInput(tx1, 0);
+
+        const transferredAsset = tx1.getTransferredAsset(0);
+        const tx2 = node.sdk.core.createAssetTransferTransaction();
+        tx2.addInputs(transferredAsset);
+        tx2.addOutputs({
+            assetType: transferredAsset.assetType,
+            recipient: await node.createP2PKHBurnAddress(),
+            amount: 1
+        });
+        node.signTransactionP2PKHBurn(tx2.inputs[0], tx2.hashWithoutScript());
+
+        const invoices = await node.sendTransactions([tx1, tx2]);
+
+        expect(invoices[0].success).toBe(true);
+        expect(invoices[1].success).toBe(false);
+
+        expect(await node.sdk.rpc.chain.getAsset(tx1.hash(), 0)).not.toBe(null);
+    });
+
+    test("Cannot burn P2PKH asset", async () => {
+        const { asset } = await node.mintAsset({ amount: 1 });
+        const tx = node.sdk.core.createAssetTransferTransaction();
+        tx.addBurns(asset);
+        node.signTransactionP2PKH(tx.burns[0], tx.hashWithoutScript());
+
+        const invoice = await node.sendTransaction(tx);
+
+        expect(invoice.success).toBe(false);
+    });
+
     describe("registrar", () => {
         let registrar: PlatformAddress;
         let nonRegistrar: PlatformAddress;
