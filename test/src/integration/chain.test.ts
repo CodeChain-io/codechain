@@ -84,19 +84,25 @@ describe("solo - 1 node", () => {
     });
 
     test("getNonce", async () => {
-        // TODO: invalid address
         await node.sdk.rpc.chain.getNonce(address);
         expect(await node.sdk.rpc.chain.getNonce(noSuchAddress)).toEqual(
             new U256(0)
         );
+        const bestBlockNumber = await node.sdk.rpc.chain.getBestBlockNumber();
+        await node.sdk.rpc.chain.getNonce(address, 0);
+        await node.sdk.rpc.chain.getNonce(address, bestBlockNumber);
+        await node.sdk.rpc.chain.getNonce(address, bestBlockNumber + 1);
     });
 
     test("getBalance", async () => {
-        // TODO: invalid address
         await node.sdk.rpc.chain.getBalance(address);
         expect(await node.sdk.rpc.chain.getBalance(noSuchAddress)).toEqual(
             new U256(0)
         );
+        const bestBlockNumber = await node.sdk.rpc.chain.getBestBlockNumber();
+        await node.sdk.rpc.chain.getBalance(address, 0);
+        await node.sdk.rpc.chain.getBalance(address, bestBlockNumber);
+        await node.sdk.rpc.chain.getBalance(address, bestBlockNumber + 1);
     });
 
     test("getCoinbase", async () => {
@@ -154,6 +160,26 @@ describe("solo - 1 node", () => {
         expect(await node.sdk.rpc.chain.getRegularKeyOwner(key)).toEqual(
             address
         );
+
+        const bestBlockNumber = await node.sdk.rpc.chain.getBestBlockNumber();
+        expect(
+            await node.sdk.rpc.chain.getRegularKey(address, bestBlockNumber)
+        ).toEqual(new H512(key));
+        expect(await node.sdk.rpc.chain.getRegularKey(address, 0)).toBeNull();
+        expect(
+            await node.sdk.rpc.chain.getRegularKey(address, bestBlockNumber + 1)
+        ).toBeNull();
+
+        expect(
+            await node.sdk.rpc.chain.getRegularKeyOwner(key, bestBlockNumber)
+        ).toEqual(address);
+        expect(await node.sdk.rpc.chain.getRegularKeyOwner(key, 0)).toBeNull();
+        expect(
+            await node.sdk.rpc.chain.getRegularKeyOwner(
+                key,
+                bestBlockNumber + 1
+            )
+        ).toBeNull();
     });
 
     describe("Mint an asset", () => {
@@ -207,9 +233,24 @@ describe("solo - 1 node", () => {
                 await node.sdk.rpc.chain.getAsset(invalidHash, 0)
             ).toBeNull();
             expect(await node.sdk.rpc.chain.getAsset(tx.hash(), 1)).toBeNull();
+            expect(await node.sdk.rpc.chain.getAsset(tx.hash(), 0)).toEqual(
+                tx.getMintedAsset()
+            );
 
-            const asset = await node.sdk.rpc.chain.getAsset(tx.hash(), 0);
-            expect(asset).toEqual(tx.getMintedAsset());
+            const bestBlockNumber = await node.sdk.rpc.chain.getBestBlockNumber();
+            expect(
+                await node.sdk.rpc.chain.getAsset(tx.hash(), 0, bestBlockNumber)
+            ).toEqual(tx.getMintedAsset());
+            expect(
+                await node.sdk.rpc.chain.getAsset(tx.hash(), 0, 0)
+            ).toBeNull();
+            expect(
+                await node.sdk.rpc.chain.getAsset(
+                    tx.hash(),
+                    0,
+                    bestBlockNumber + 1
+                )
+            ).toBeNull();
         });
 
         test("getAssetSchemeByHash", async () => {
@@ -274,20 +315,37 @@ describe("solo - 1 node", () => {
                 0
             )
         ).toBe(true);
+
+        const bestBlockNumber = await node.sdk.rpc.chain.getBestBlockNumber();
+        expect(
+            await node.sdk.rpc.chain.isAssetSpent(
+                asset.outPoint.transactionHash,
+                asset.outPoint.index,
+                0,
+                bestBlockNumber
+            )
+        ).toBe(true);
+        expect(
+            await node.sdk.rpc.chain.isAssetSpent(
+                asset.outPoint.transactionHash,
+                asset.outPoint.index,
+                0,
+                bestBlockNumber - 1
+            )
+        ).toBe(false);
+        expect(
+            await node.sdk.rpc.chain.isAssetSpent(
+                asset.outPoint.transactionHash,
+                asset.outPoint.index,
+                0,
+                0
+            )
+        ).toBeNull();
     });
 
     test.skip("executeTransactions", done => done.fail("not implemented"));
     test.skip("getNumberOfShards", done => done.fail("not implemented"));
     test.skip("getShardRoot", done => done.fail("not implemented"));
-
-    // TODO:
-    // block number in
-    // * getAsset
-    // * isAssetSpent
-    // * getNonce
-    // * getBalance
-    // * getRegularKey
-    // * getRegularKeyOwner
 
     afterAll(async () => {
         await node.clean();
