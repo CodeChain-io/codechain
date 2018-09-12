@@ -669,8 +669,8 @@ codechain-sdk@^0.1.0-alpha.18:
     rlp "^2.0.0"
 
 codechain-sdk@^0.1.1-alpha.4:
-  version "0.1.1-alpha.4.rc1"
-  resolved "https://registry.yarnpkg.com/codechain-sdk/-/codechain-sdk-0.1.1-alpha.4.rc1.tgz#b1435a2ab820961f69e6b16bc28b35b4ac969473"
+  version "0.1.1-alpha.4.rc3"
+  resolved "https://registry.yarnpkg.com/codechain-sdk/-/codechain-sdk-0.1.1-alpha.4.rc3.tgz#ef945115d13150d25f32a0623a9020ba9e01e47d"
   dependencies:
     bignumber.js "^6.0.0"
     blakejs "^1.1.0"
