@@ -151,14 +151,14 @@ impl Handler {
         self.connections.established_peers()
     }
 
-    fn accept(&self) -> IoHandlerResult<Option<(StreamToken)>> {
+    fn accept(&self) -> IoHandlerResult<Option<(StreamToken, SocketAddr)>> {
         match self.listener.accept()? {
             Some((stream, socket_address)) => {
                 let ip = socket_address.ip();
                 if self.filters.is_allowed(&ip) {
                     let token = self.tokens.lock().gen().ok_or(Error::General("TooManyConnections"))?;
                     self.connections.accept(token, stream);
-                    Ok(Some(token))
+                    Ok(Some((token, socket_address)))
                 } else {
                     cinfo!(NETWORK, "P2P connection request from {} is received. But it's not allowed", ip);
                     Ok(None)
@@ -404,6 +404,7 @@ impl IoHandler<Message> for Handler {
 
                 ctrace!(NETWORK, "Connecting to {}", socket_address);
                 let token = self.connect(&socket_address)?.ok_or(Error::General("Cannot create connection"))?;
+                cinfo!(NETWORK, "New connection to {}({})", socket_address, token);
                 io.register_stream(token)?;
                 Ok(())
             }
@@ -487,7 +488,8 @@ impl IoHandler<Message> for Handler {
     fn stream_readable(&self, io: &IoContext<Message>, stream: StreamToken) -> IoHandlerResult<()> {
         match stream {
             ACCEPT_TOKEN => {
-                if let Some(token) = self.accept()? {
+                if let Some((token, address)) = self.accept()? {
+                    cinfo!(NETWORK, "New connection from {}({})", address, token);
                     io.register_stream(token)?;
                 }
             }

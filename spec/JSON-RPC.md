@@ -704,7 +704,7 @@ Params:
  1. address: `PlatformAddress`
  2. block number: `number` | `null`
 
-Return Type: `U256`
+Return Type: `null` | `U256` - It returns null when the given block number is invalid.
 
 Errors: `KVDB Error`, `Invalid Params`, `Invalid NetworkId`
 
@@ -732,7 +732,7 @@ Params:
  1. address: `PlatformAddress`
  2. block number: `number` | `null`
 
-Return Type: `U256`
+Return Type: `null` | `U256` - It returns null when the given block number is invalid.
 
 Errors: `KVDB Error`, `Invalid Params`, `Invalid NetworkId`
 

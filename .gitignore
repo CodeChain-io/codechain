@@ -11,6 +11,7 @@
 /snapshot/
 /log/
 /keys/
+/test/log/
 
 # macOS
 .DS_store
