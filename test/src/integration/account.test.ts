@@ -209,8 +209,9 @@ describe("account", () => {
 
     describe("account scenario test", () => {
         let node: CodeChain;
-        const testSize = 50;
-        const randomTestSize = 150;
+        const testSize = 30;
+        const unlockTestSize = 15;
+        const randomTestSize = 100;
 
         beforeEach(async () => {
             node = new CodeChain();
@@ -268,7 +269,7 @@ describe("account", () => {
         );
 
         test(
-            `Scenario #3: unlock 1 second ${testSize} times and check working well with sign`,
+            `Scenario #3: unlock 1 second ${unlockTestSize} times and check working well with sign`,
             async done => {
                 const secret = node.sdk.util.generatePrivateKey();
                 const account = node.sdk.util.getAccountIdFromPrivate(secret);
@@ -278,7 +279,7 @@ describe("account", () => {
                 const passphrase = makeRandomPassphrase();
                 await node.sdk.rpc.account.importRaw(secret, passphrase);
 
-                for (let i = 0; i < testSize; i++) {
+                for (let i = 0; i < unlockTestSize; i++) {
                     const message = makeRandomH256();
                     const { r, s, v } = node.sdk.util.signEcdsa(
                         message,
@@ -312,7 +313,7 @@ describe("account", () => {
                 }
                 done();
             },
-            1800 * testSize + 5000
+            1800 * unlockTestSize + 5000
         );
 
         test(
