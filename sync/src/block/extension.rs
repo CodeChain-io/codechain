@@ -257,7 +257,7 @@ impl NetworkExtension for Extension {
                 }
             }
             SYNC_EXPIRE_TOKEN_BEGIN...SYNC_EXPIRE_TOKEN_END => {
-                let requests = self.requests.read();
+                let mut requests = self.requests.write();
                 let mut tokens_info = self.tokens_info.write();
                 let token_info = tokens_info.get_mut(&token).unwrap();
                 if token_info.1.is_none() {
@@ -266,7 +266,7 @@ impl NetworkExtension for Extension {
 
                 let id = token_info.0;
                 let request_id = token_info.1.unwrap();
-                let request_list = requests.get(&id).unwrap();
+                let request_list = requests.get_mut(&id).unwrap();
 
                 let expired_request = request_list.iter().find(|(r, _)| *r == request_id).cloned();
                 if let Some((request_id, request)) = expired_request {
@@ -276,7 +276,7 @@ impl NetworkExtension for Extension {
                         }
                         _ => {}
                     }
-                    self.dismiss_request(&id, request_id);
+                    request_list.retain(|(i, _)| *i != request_id);
                 }
                 token_info.1 = None;
             }
@@ -475,9 +475,9 @@ impl Extension {
                             let api = self.api.read();
                             api.as_ref().expect("Api must exist").clear_timer(*token).expect("Timer clear succeed");
                             token_info.1 = None;
-                            self.dismiss_request(from, id);
                         }
                     }
+                    self.dismiss_request(from, id);
                     self.on_body_response(hashes, bodies);
                 }
                 _ => unimplemented!(),
