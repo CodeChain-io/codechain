@@ -82,7 +82,7 @@ impl Encodable for Error {
                 s.begin_list(2).append(&ERROR_ID_SCRIPT_HASH_MISMATCH).append(mismatch)
             }
             Error::InvalidScript => s.begin_list(1).append(&ERROR_ID_INVALID_SCRIPT),
-            Error::FailedToUnlock(hash) => s.begin_list(1).append(&ERROR_ID_FAILED_TO_UNLOCK).append(hash),
+            Error::FailedToUnlock(hash) => s.begin_list(2).append(&ERROR_ID_FAILED_TO_UNLOCK).append(hash),
             Error::InconsistentTransactionInOut => s.begin_list(1).append(&ERROR_ID_INCONSISTENT_TRANSACTION_IN_OUT),
             Error::InvalidShardNonce(mismatch) => {
                 s.begin_list(2).append(&ERROR_ID_INVALID_SHARD_NONCE).append(mismatch)

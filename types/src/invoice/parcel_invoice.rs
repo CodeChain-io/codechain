@@ -114,6 +114,8 @@ impl From<Vec<TransactionInvoice>> for ParcelInvoice {
 
 #[cfg(test)]
 mod tests {
+    use primitives::H256;
+
     use super::super::super::transaction::Error as TransactionError;
 
     use super::*;
@@ -155,6 +157,13 @@ mod tests {
     fn encode_and_decode_multiple_parcel_invoice_with_failed() {
         rlp_encode_and_decode_test!(ParcelInvoice::Multiple(vec![TransactionInvoice::Fail(
             TransactionError::InvalidScript,
+        )]));
+    }
+
+    #[test]
+    fn encode_and_decode_multiple_parcel_invoice_with_failed_to_unlock() {
+        rlp_encode_and_decode_test!(ParcelInvoice::Multiple(vec![TransactionInvoice::Fail(
+            TransactionError::FailedToUnlock(H256::random()),
         )]));
     }
 
