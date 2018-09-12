@@ -22,6 +22,10 @@ import {
     getRandomIndex
 } from "../helper/random";
 
+import {
+    PlatformAddress
+} from "codechain-sdk/lib/key/classes";
+
 const ERROR = {
     KEY_ERROR: {
         code: -32041,
@@ -202,6 +206,35 @@ describe("account", () => {
             });
         });
 
+        describe("changePassword", () => {
+            let address;
+            beforeEach(async () => {
+                address = await node.sdk.rpc.account.create("123");
+            });
+
+            test("Ok", async () => {
+                await node.sdk.rpc.sendRpcRequest("account_changePassword", [address, "123", "456"]);
+            });
+
+            test("WrongPassword", async done => {
+                await node.sdk.rpc.sendRpcRequest("account_changePassword", [address, "456", "123"])
+                    .then(() => done.fail())
+                    .catch(e => {
+                        expect(e).toEqual(ERROR.WRONG_PASSWORD);
+                        done();
+                    });
+            });
+
+            test("NoSuchAccount", async done => {
+                node.sdk.rpc.sendRpcRequest("account_changePassword", [noSuchAccount, "123", "456"])
+                    .then(() => done.fail())
+                    .catch(e => {
+                        expect(e).toEqual(ERROR.NO_SUCH_ACCOUNT);
+                        done();
+                    });
+            });
+        });
+
         afterAll(async () => {
             await node.clean();
         });
@@ -324,7 +357,8 @@ describe("account", () => {
                     ImportRaw,
                     GetList,
                     UnlockForever,
-                    Sign
+                    Sign,
+                    ChangePassword
                 }
                 const accountList = [];
                 const actionNumber = randomTestSize;
@@ -332,8 +366,8 @@ describe("account", () => {
                 for (let test = 0; test < actionNumber; test++) {
                     const randomAction =
                         accountList.length === 0
-                            ? getRandomIndex(2)
-                            : getRandomIndex(5);
+                            ? getRandomIndex(3)
+                            : getRandomIndex(6);
                     switch (randomAction) {
                         case Action.Create:
                             {
@@ -426,6 +460,22 @@ describe("account", () => {
                                 expect(signature).toContain(v);
                             }
                             break;
+                        case Action.ChangePassword:
+                        {
+                            const randomIdx = getRandomIndex(
+                                accountList.length
+                            );
+                            const { address, passphrase } = accountList[
+                                randomIdx
+                            ];
+                            if (passphrase === null)
+                                break;
+                            
+                            const nextPassphrase = makeRandomPassphrase();
+                            await node.sdk.rpc.sendRpcRequest("account_changePassword", [address, passphrase, nextPassphrase]);
+                            accountList[randomIdx].passphrase = nextPassphrase;
+                        }
+                        break;
                     }
                 }
                 done();
