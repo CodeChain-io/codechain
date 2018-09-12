@@ -109,16 +109,14 @@ impl BodyDownloader {
 
     pub fn drain(&mut self) -> Vec<(H256, Vec<UnverifiedParcel>)> {
         let mut result = Vec::new();
-        let mut new_targets = Vec::new();
-
         for t in &self.targets {
             if let Some(body) = self.downloaded.remove(&t.hash) {
                 result.push((t.hash, body));
             } else {
-                new_targets.push(t.clone());
+                break
             }
         }
-        self.targets = new_targets;
+        self.targets.drain(0..result.len());
         result
     }
 }
