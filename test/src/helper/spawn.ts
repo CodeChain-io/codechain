@@ -124,6 +124,8 @@ export default class CodeChain {
     public async start(argv: string[] = [], log_level = "trace") {
         const useDebugBuild = process.env.NODE_ENV !== "production";
         process.env.RUST_LOG = log_level;
+        // NOTE: https://github.com/CodeChain-io/codechain/issues/348
+        process.env.WAIT_BEFORE_SHUTDOWN = "0";
 
         // Resolves when CodeChain initialization completed.
         return new Promise((resolve, reject) => {
