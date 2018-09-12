@@ -558,23 +558,30 @@ impl Extension {
     }
 
     fn on_body_response(&self, hashes: Vec<H256>, bodies: Vec<Vec<UnverifiedParcel>>) {
-        self.body_downloader.lock().import_bodies(hashes, bodies);
-        let completed = self.body_downloader.lock().drain();
-        let mut exists = Vec::new();
-        for (hash, parcels) in completed {
-            let header =
-                self.client.block_header(BlockId::Hash(hash)).expect("Downloaded body's header must exist").decode();
-            let block = Block {
-                header,
-                parcels,
-            };
-            // FIXME: handle import errors
-            match self.client.import_block(block.rlp_bytes(Seal::With)) {
-                Err(BlockImportError::Import(ImportError::AlreadyInChain)) => exists.push(hash),
-                _ => {}
+        {
+            let mut body_downloader = self.body_downloader.lock();
+            body_downloader.import_bodies(hashes, bodies);
+            let completed = body_downloader.drain();
+            for (hash, parcels) in completed {
+                let header = self
+                    .client
+                    .block_header(BlockId::Hash(hash))
+                    .expect("Downloaded body's header must exist")
+                    .decode();
+                let block = Block {
+                    header,
+                    parcels,
+                };
+                cdebug!(SYNC, "Body download completed for #{}({})", block.header.number(), hash);
+                // FIXME: handle import errors
+                match self.client.import_block(block.rlp_bytes(Seal::With)) {
+                    Err(BlockImportError::Import(ImportError::AlreadyInChain)) => {
+                        cwarn!(SYNC, "Downloaded already existing block({})", hash)
+                    }
+                    _ => {}
+                }
             }
         }
-        self.body_downloader.lock().remove_target(&exists);
 
         let total_score = self.client.chain_info().total_score;
         let mut peer_ids: Vec<_> = self.header_downloaders.read().keys().cloned().collect();
