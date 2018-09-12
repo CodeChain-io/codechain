@@ -381,6 +381,10 @@ impl BlockInfo for Client {
         self.chain.read().best_block_header()
     }
 
+    fn best_header(&self) -> encoded::Header {
+        self.chain.read().best_header()
+    }
+
     fn block(&self, id: BlockId) -> Option<encoded::Block> {
         let chain = self.chain.read();
 

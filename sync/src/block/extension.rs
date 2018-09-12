@@ -147,6 +147,22 @@ impl NetworkExtension for Extension {
         let mut api_lock = self.api.write();
         api.set_timer(SYNC_TIMER_TOKEN, Duration::milliseconds(SYNC_TIMER_INTERVAL)).expect("Timer set succeeds");
         *api_lock = Some(api);
+
+        let mut header = self.client.best_header();
+        let mut hollow_headers = vec![header.decode()];
+        while self.client.block_body(BlockId::Hash(header.hash())).is_none() {
+            header = self
+                .client
+                .block_header(BlockId::Hash(header.parent_hash()))
+                .expect("Every imported header must have parent");
+            hollow_headers.push(header.decode());
+        }
+        for neighbors in hollow_headers.windows(2).rev() {
+            let child = &neighbors[0];
+            let parent = &neighbors[1];
+            cdebug!(SYNC, "Adding block #{} (hash: {}) for initial body download target", child.number(), child.hash());
+            self.body_downloader.lock().add_target(child, parent);
+        }
         cinfo!(SYNC, "Sync extension initialized");
     }
 
@@ -528,27 +544,17 @@ impl Extension {
         for header in completed {
             // FIXME: handle import errors
             match self.client.import_header(header.clone().into_inner()) {
-                Err(BlockImportError::Import(ImportError::AlreadyInChain)) => exists.push(header),
+                Err(BlockImportError::Import(ImportError::AlreadyInChain)) => exists.push(header.hash()),
                 _ => {}
             }
         }
 
         if let Some(peer) = self.header_downloaders.write().get_mut(from) {
-            peer.mark_as_imported(exists.iter().map(|h| h.hash()).collect());
+            peer.mark_as_imported(exists);
             if let Some(request) = peer.create_request() {
                 self.send_header_request(from, request);
             }
         }
-
-        exists.iter().filter(|header| self.client.block_body(BlockId::Hash(header.hash())).is_none()).for_each(
-            |header| {
-                let parent = self
-                    .client
-                    .block_header(BlockId::Hash(header.parent_hash()))
-                    .expect("Existing header must have parent");
-                self.body_downloader.lock().add_target(&header.decode(), &parent.decode());
-            },
-        );
     }
 
     fn on_body_response(&self, hashes: Vec<H256>, bodies: Vec<Vec<UnverifiedParcel>>) {

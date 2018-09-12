@@ -190,6 +190,11 @@ impl BlockChain {
         self.block_header_data(&self.best_block_hash()).expect("Best block always exists")
     }
 
+    /// Get the best header
+    pub fn best_header(&self) -> encoded::Header {
+        self.headerchain.best_header()
+    }
+
     /// Insert an epoch transition. Provide an epoch number being transitioned to
     /// and epoch transition object.
     ///
