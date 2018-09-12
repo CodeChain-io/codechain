@@ -402,7 +402,16 @@ export default class CodeChain {
             if (!this.process) {
                 return resolve();
             }
-            this.process.on("exit", resolve);
+            this.process.on("exit", (code, signal) => {
+                if (code !== 0) {
+                    console.error(
+                        `CodeChain(${
+                            this.id
+                        }) exited with code ${code}, ${signal}`
+                    );
+                }
+                resolve();
+            });
             this.process.kill();
             this.process = undefined;
         });
