@@ -22,7 +22,7 @@
     "tslint": "^5.10.0"
   },
   "dependencies": {
-    "codechain-sdk": "^0.1.1-alpha.4",
+    "codechain-sdk": "^0.1.1-alpha.4.rc3",
     "jest": "^23.1.0",
     "mkdirp": "^0.5.1",
     "rlp": "^2.0.0",
