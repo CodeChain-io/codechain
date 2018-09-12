@@ -186,8 +186,7 @@ impl NetworkExtension for Extension {
         let mut token_generator = self.token_generator.lock();
 
         cinfo!(SYNC, "Peer removed #{}", id);
-        let t = header_downloaders.remove(id);
-        debug_assert!(t.is_some());
+        header_downloaders.remove(id);
 
         let t = requests.remove(id);
         debug_assert_ne!(None, t);
