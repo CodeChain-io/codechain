@@ -1,0 +1,42 @@
+{
+  "name": "Saluki",
+  "engine": {
+    "solo": {
+      "params": {
+      }
+    }
+  },
+  "params": {
+    "maxExtraDataSize": "0x20",
+    "maxMetadataSize": "0x0400",
+    "networkID": "sc",
+    "minParcelCost": "10",
+    "maxBodySize": 4194304,
+    "snapshotPeriod": 16384,
+    "useShardValidator": false
+  },
+  "genesis": {
+    "seal": {
+      "generic": "0x0"
+    },
+    "score": "0x20000",
+    "author": "sccqpacwudq9pntwd9vt5ddhrhemr9q2ny5qy6a795m",
+    "timestamp": "0x00",
+    "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+    "extraData": "0x"
+  },
+  "accounts": {
+    "sccqpacwudq9pntwd9vt5ddhrhemr9q2ny5qy6a795m":  { "balance": "2100000000000000000", "nonce": "0" }
+  },
+  "shards": {
+    "0": {
+      "nonce": 0,
+      "owners": ["sccqpacwudq9pntwd9vt5ddhrhemr9q2ny5qy6a795m"],
+      "worlds": [{
+        "nonce": 0,
+        "owners": [
+        ]
+      }]
+    }
+  }
+}
