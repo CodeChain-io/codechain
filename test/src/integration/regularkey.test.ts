@@ -55,8 +55,8 @@ const INVOICE = {
         error: {
             type: "RegularKeyAlreadyInUse"
         }
-    },
-}
+    }
+};
 
 describe("solo - 1 node", () => {
     let node: CodeChain;
@@ -113,7 +113,9 @@ describe("solo - 1 node", () => {
 
             await node.sendSignedParcel({ amount: 5, recipient: address });
             const invoice = await node.setRegularKey(pubKey);
-            expect(invoice).toEqual(INVOICE.REGULARKEY_ALREADY_IN_USE_AS_PLATFORM_ACCOUNT);
+            expect(invoice).toEqual(
+                INVOICE.REGULARKEY_ALREADY_IN_USE_AS_PLATFORM_ACCOUNT
+            );
         },
         10000
     );
@@ -128,7 +130,10 @@ describe("solo - 1 node", () => {
 
         await node.sendSignedParcel({ amount: 100, recipient: address });
         const nonce = await node.sdk.rpc.chain.getNonce(address);
-        let invoice = await node.setRegularKey(pubKey, { nonce, secret: newPrivKey });
+        let invoice = await node.setRegularKey(pubKey, {
+            nonce,
+            secret: newPrivKey
+        });
         expect(invoice).toEqual(INVOICE.SUCCESS);
         invoice = await node.setRegularKey(pubKey);
         expect(invoice).toEqual(INVOICE.REGULARKEY_ALREADY_IN_USE);

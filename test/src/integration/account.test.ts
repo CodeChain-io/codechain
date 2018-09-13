@@ -22,9 +22,7 @@ import {
     getRandomIndex
 } from "../helper/random";
 
-import {
-    PlatformAddress
-} from "codechain-sdk/lib/key/classes";
+import { PlatformAddress } from "codechain-sdk/lib/key/classes";
 
 const ERROR = {
     KEY_ERROR: {
@@ -213,11 +211,20 @@ describe("account", () => {
             });
 
             test("Ok", async () => {
-                await node.sdk.rpc.sendRpcRequest("account_changePassword", [address, "123", "456"]);
+                await node.sdk.rpc.sendRpcRequest("account_changePassword", [
+                    address,
+                    "123",
+                    "456"
+                ]);
             });
 
             test("WrongPassword", async done => {
-                await node.sdk.rpc.sendRpcRequest("account_changePassword", [address, "456", "123"])
+                await node.sdk.rpc
+                    .sendRpcRequest("account_changePassword", [
+                        address,
+                        "456",
+                        "123"
+                    ])
                     .then(() => done.fail())
                     .catch(e => {
                         expect(e).toEqual(ERROR.WRONG_PASSWORD);
@@ -226,7 +233,12 @@ describe("account", () => {
             });
 
             test("NoSuchAccount", async done => {
-                node.sdk.rpc.sendRpcRequest("account_changePassword", [noSuchAccount, "123", "456"])
+                node.sdk.rpc
+                    .sendRpcRequest("account_changePassword", [
+                        noSuchAccount,
+                        "123",
+                        "456"
+                    ])
                     .then(() => done.fail())
                     .catch(e => {
                         expect(e).toEqual(ERROR.NO_SUCH_ACCOUNT);
@@ -461,21 +473,25 @@ describe("account", () => {
                             }
                             break;
                         case Action.ChangePassword:
-                        {
-                            const randomIdx = getRandomIndex(
-                                accountList.length
-                            );
-                            const { address, passphrase } = accountList[
-                                randomIdx
-                            ];
-                            if (passphrase === null)
-                                break;
-                            
-                            const nextPassphrase = makeRandomPassphrase();
-                            await node.sdk.rpc.sendRpcRequest("account_changePassword", [address, passphrase, nextPassphrase]);
-                            accountList[randomIdx].passphrase = nextPassphrase;
-                        }
-                        break;
+                            {
+                                const randomIdx = getRandomIndex(
+                                    accountList.length
+                                );
+                                const { address, passphrase } = accountList[
+                                    randomIdx
+                                ];
+                                if (passphrase === null) break;
+
+                                const nextPassphrase = makeRandomPassphrase();
+                                await node.sdk.rpc.sendRpcRequest(
+                                    "account_changePassword",
+                                    [address, passphrase, nextPassphrase]
+                                );
+                                accountList[
+                                    randomIdx
+                                ].passphrase = nextPassphrase;
+                            }
+                            break;
                     }
                 }
                 done();

@@ -211,9 +211,12 @@ describe("solo - 1 node", () => {
         });
     });
 
-    test.skip("Sending invalid parcels over the limits (in action 1: AssetTransactionGroup)", done => done.fail("not implemented"));
-    test.skip("Sending invalid parcels over the limits (in action 5: SetShardOwners)", done => done.fail("not implemented"));
-    test.skip("Sending invalid parcels over the limits (in action 6: SetShardUsers)", done => done.fail("not implemented"));
+    test.skip("Sending invalid parcels over the limits (in action 1: AssetTransactionGroup)", done =>
+        done.fail("not implemented"));
+    test.skip("Sending invalid parcels over the limits (in action 5: SetShardOwners)", done =>
+        done.fail("not implemented"));
+    test.skip("Sending invalid parcels over the limits (in action 6: SetShardUsers)", done =>
+        done.fail("not implemented"));
 
     describe("Sending invalid parcels over the limits (in action 2: Payment)", () => {
         let parcelEncoded: any[];
