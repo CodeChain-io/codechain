@@ -8,7 +8,7 @@ authors = ["Parity Technologies <admin@parity.io>", "CodeChain Team <codechain@k
 
 [dependencies]
 codechain-logger = { path = "../logger" }
-mio = "0.6.8"
+mio = "0.6.16"
 crossbeam = "0.3"
 parking_lot = "0.5"
 log = "0.4.1"
