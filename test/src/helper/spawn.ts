@@ -128,7 +128,7 @@ export default class CodeChain {
         this.argv = argv || [];
     }
 
-    public async start(argv: string[] = [], log_level = "trace") {
+    public async start(argv: string[] = [], log_level = "trace,mio=error,tokio=error,hyper=error,netapi=error,sync=trace,sync_=info,mio::timer=trace") {
         const useDebugBuild = process.env.NODE_ENV !== "production";
         process.env.RUST_LOG = log_level;
         // NOTE: https://github.com/CodeChain-io/codechain/issues/348
@@ -177,7 +177,7 @@ export default class CodeChain {
                     flag = true;
                     resolve();
                 }
-                if (this.logFlag && flag) {
+                if (this.logFlag) {
                     appendFileSync(this.logPath, line + "\n");
                 }
             });

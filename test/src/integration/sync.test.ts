@@ -25,8 +25,8 @@ describe("sync", () => {
         let nodeB: CodeChain;
 
         beforeEach(async () => {
-            nodeA = new CodeChain();
-            nodeB = new CodeChain();
+            nodeA = new CodeChain({logFlag: true});
+            nodeB = new CodeChain({logFlag: true});
 
             await nodeA.start();
             await nodeB.start();
@@ -40,6 +40,8 @@ describe("sync", () => {
             test(
                 "It should be synced when nodeA created a block",
                 async () => {
+                    console.log("nodeA: ", nodeA.logFile);
+                    console.log("nodeB: ", nodeB.logFile);
                     expect(
                         await nodeA.sdk.rpc.network.isConnected(
                             "127.0.0.1",
@@ -72,6 +74,8 @@ describe("sync", () => {
                 test(
                     "It should be synced when nodeA becomes ahead",
                     async () => {
+                        console.log("nodeA: ", nodeA.logFile);
+                        console.log("nodeB: ", nodeB.logFile);
                         await nodeA.sendSignedParcel();
                         await nodeB.waitBlockNumberSync(nodeA);
                         expect(await nodeA.getBestBlockHash()).toEqual(
@@ -91,6 +95,8 @@ describe("sync", () => {
             test(
                 "It should be synced when A-B connected",
                 async () => {
+                    console.log("nodeA: ", nodeA.logFile);
+                    console.log("nodeB: ", nodeB.logFile);
                     await nodeA.connect(nodeB);
                     await nodeB.waitBlockNumberSync(nodeA);
                     expect(await nodeA.getBestBlockHash()).toEqual(
@@ -124,6 +130,8 @@ describe("sync", () => {
                 test(
                     "It should be synced when A-B connected",
                     async () => {
+                        console.log("nodeA: ", nodeA.logFile);
+                        console.log("nodeB: ", nodeB.logFile);
                         await nodeA.connect(nodeB);
                         await nodeB.waitBlockNumberSync(nodeA);
                         expect(await nodeA.getBestBlockHash()).toEqual(
@@ -141,7 +149,7 @@ describe("sync", () => {
         });
     });
 
-    describe.each([[3], [5]])(`%p nodes`, numNodes => {
+    describe.skip.each([[3], [5]])(`%p nodes`, numNodes => {
         let nodes: CodeChain[] = [];
 
         beforeEach(async () => {
@@ -362,7 +370,7 @@ describe("sync", () => {
 
     // NOTE: To create empty blocks, enable --force-sealing option, and then,
     // trigger it by calling devel_startSealing RPC API.
-    describe("empty block", () => {
+    describe.skip("empty block", () => {
         let nodeA: CodeChain;
         let nodeB: CodeChain;
 

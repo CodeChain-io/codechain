@@ -64,6 +64,7 @@ impl Api for ClientApi {
 
     fn set_timer(&self, timer_id: usize, duration: Duration) -> NetworkExtensionResult<()> {
         if let Some(extension) = self.extension.upgrade() {
+            ctrace!(TIMER, "set_timer called, timer_id: {}", timer_id);
             let extension_name = extension.name().to_string();
             Ok(self.timer_channel.send_sync(TimerMessage::SetTimer {
                 extension_name,

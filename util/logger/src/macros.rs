@@ -94,6 +94,9 @@ macro_rules! log_target {
     (TRIE) => {
         "trie"
     };
+    (TIMER) => {
+        "timer"
+    };
     (TX) => {
         "tx"
     };

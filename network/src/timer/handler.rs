@@ -105,6 +105,7 @@ impl IoHandler<Message> for Handler {
                 timer_id,
                 duration,
             } => {
+                ctrace!(TIMER, "network handler message called, extension_name {} timer_id {}", extension_name, timer_id);
                 let mut timer = self.timer.lock();
                 let token = timer.insert(extension_name.clone(), *timer_id, false)?;
                 io.register_timer(token, duration.num_milliseconds() as u64)?;
