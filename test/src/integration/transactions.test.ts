@@ -31,7 +31,7 @@ describe("transactions", () => {
     });
 
     describe("AssetMint", async () => {
-        test.each([[1], [100]])("mint amount %i", async amount => {
+        test.each([[1], [100]])("Mint successful - amount %i", async amount => {
             const recipient = await node.createP2PKHAddress();
             const scheme = node.sdk.core.createAssetScheme({
                 shardId: 0,
@@ -47,7 +47,22 @@ describe("transactions", () => {
             expect(invoice.success).toBe(true);
         });
 
-        test.skip("mint amount 0", done => done.fail("not implemented"));
+        test("Mint unsuccessful - mint amount 0", async () => {
+            const scheme = node.sdk.core.createAssetScheme({
+                shardId: 0,
+                worldId: 0,
+                metadata: "",
+                amount: 0
+            });
+            const tx = node.sdk.core.createAssetMintTransaction({
+                scheme,
+                recipient: await node.createP2PKHAddress()
+            });
+            await expect(node.sendTransaction(tx)).rejects.toMatchObject({
+                data: expect.stringContaining("ZeroAmount")
+            });
+        });
+
         test.skip("mint amount U64 max", done => done.fail("not implemented"));
         test.skip("mint amount exceeds U64", done =>
             done.fail("not implemented"));
@@ -82,7 +97,7 @@ describe("transactions", () => {
         );
 
         test.each([[[0]], [[99]], [[101]], [[100, 100]]])(
-            "Transfer unsuccessful - output amount list: %p",
+            "Transfer unsuccessful(InconsistentTransactionInOut) - output amount list: %p",
             async amounts => {
                 const recipient = await node.createP2PKHAddress();
                 const tx = node.sdk.core.createAssetTransferTransaction();
@@ -102,8 +117,23 @@ describe("transactions", () => {
                 });
             }
         );
-        test.skip("Transfer unsuccessful - output amount list: [100, 0]", done =>
-            done.fail());
+        test("Transfer unsuccessful(ZeroAmount) - output amount list: [100, 0]", async () => {
+            const amounts = [100, 0];
+            const recipient = await node.createP2PKHAddress();
+            const tx = node.sdk.core.createAssetTransferTransaction();
+            tx.addInputs(input);
+            tx.addOutputs(
+                ...amounts.map(amount => ({
+                    assetType: input.assetType,
+                    recipient,
+                    amount
+                }))
+            );
+            await node.signTransferInput(tx, 0);
+            await expect(node.sendTransaction(tx)).rejects.toMatchObject({
+                data: expect.stringContaining("ZeroAmount")
+            });
+        });
 
         test("wrong asset type", async () => {
             const recipient = await node.createP2PKHAddress();
@@ -189,6 +219,43 @@ describe("transactions", () => {
         expect(invoices[1].success).toBe(true);
 
         expect(await node.sdk.rpc.chain.getAsset(tx2.hash(), 0)).toBe(null);
+    });
+
+    test("Burn unsuccessful(ZeroAmount)", async () => {
+        const { asset } = await node.mintAsset({ amount: 1 });
+        const tx1 = node.sdk.core.createAssetTransferTransaction();
+        tx1.addInputs(asset);
+        tx1.addOutputs({
+            assetType: asset.assetType,
+            recipient: await node.createP2PKHBurnAddress(),
+            amount: 1
+        });
+        await node.signTransferInput(tx1, 0);
+        const invoice = await node.sendTransaction(tx1);
+        expect(invoice.success).toBe(true);
+
+        const tx2 = node.sdk.core.createAssetTransferTransaction();
+        const {
+            assetType,
+            lockScriptHash,
+            parameters
+        } = tx1.getTransferredAsset(0);
+        tx2.addBurns(
+            node.sdk.core.createAssetTransferInput({
+                assetOutPoint: {
+                    assetType,
+                    transactionHash: tx1.hash(),
+                    index: 0,
+                    lockScriptHash,
+                    parameters,
+                    amount: 0
+                }
+            })
+        );
+        await node.signTransferBurn(tx2, 0);
+        await expect(node.sendTransaction(tx2)).rejects.toMatchObject({
+            data: expect.stringContaining("ZeroAmount")
+        });
     });
 
     test("Cannot transfer P2PKHBurn asset", async () => {
