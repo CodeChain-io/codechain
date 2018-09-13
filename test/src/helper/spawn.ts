@@ -31,7 +31,6 @@ import { mkdtempSync, appendFileSync } from "fs";
 import { createInterface as createReadline } from "readline";
 import * as mkdirp from "mkdirp";
 import { wait } from "./promise";
-import { makeRandomFilename } from "./random";
 import { P2PKHBurn } from "codechain-sdk/lib/key/P2PKHBurn";
 import { P2PKH } from "codechain-sdk/lib/key/P2PKH";
 
@@ -120,7 +119,9 @@ export default class CodeChain {
         this._keysPath = mkdtempSync(`${projectRoot}/keys/`);
         this._localKeyStorePath = `${this.keysPath}/keystore.db`;
         this._logFlag = logFlag || false;
-        this._logFile = makeRandomFilename(".log");
+        this._logFile = `${new Date().toISOString().replace(/[-:.]/g, "_")}.${
+            this.id
+        }.log`;
         this._logPath = `${projectRoot}/test/log/${this._logFile}`;
         this._sdk = new SDK({ server: `http://localhost:${this.rpcPort}` });
         this._chain = chain || "solo";
