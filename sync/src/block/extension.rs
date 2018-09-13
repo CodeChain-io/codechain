@@ -46,12 +46,18 @@ const SYNC_EXPIRE_REQUEST_INTERVAL: i64 = 15000;
 
 const SNAPSHOT_PERIOD: u64 = (1 << 14);
 
+#[derive(Debug, PartialEq)]
+pub struct TokenInfo {
+    node_id: NodeId,
+    request_id: Option<u64>,
+}
+
 pub struct Extension {
     requests: RwLock<HashMap<NodeId, Vec<(u64, RequestMessage)>>>,
     header_downloaders: RwLock<HashMap<NodeId, HeaderDownloader>>,
     body_downloader: Mutex<BodyDownloader>,
     tokens: RwLock<HashMap<NodeId, TimerToken>>,
-    tokens_info: RwLock<HashMap<TimerToken, (NodeId, Option<u64>)>>,
+    tokens_info: RwLock<HashMap<TimerToken, TokenInfo>>,
     token_generator: Mutex<TokenGenerator>,
     client: Arc<Client>,
     api: RwLock<Option<Arc<Api>>>,
@@ -120,7 +126,7 @@ impl Extension {
                     .expect("Api must exist")
                     .set_timer_once(*token, Duration::milliseconds(SYNC_EXPIRE_REQUEST_INTERVAL))
                     .expect("Timer set succeeds");
-                token_info.1 = Some(request_id);
+                token_info.request_id = Some(request_id);
             }
         }
     }
@@ -184,10 +190,14 @@ impl NetworkExtension for Extension {
         );
 
         let token = token_generator.gen().expect("Token generator is full");
+        let token_info = TokenInfo {
+            node_id: *id,
+            request_id: None,
+        };
 
         let t = requests.insert(*id, Vec::new());
         debug_assert_eq!(None, t);
-        let t = tokens_info.insert(token, (*id, None));
+        let t = tokens_info.insert(token, token_info);
         debug_assert_eq!(None, t);
         let t = tokens.insert(*id, token);
         debug_assert_eq!(None, t);
@@ -260,12 +270,12 @@ impl NetworkExtension for Extension {
                 let mut requests = self.requests.write();
                 let mut tokens_info = self.tokens_info.write();
                 let token_info = tokens_info.get_mut(&token).unwrap();
-                if token_info.1.is_none() {
+                if token_info.request_id.is_none() {
                     return
                 }
 
-                let id = token_info.0;
-                let request_id = token_info.1.unwrap();
+                let id = token_info.node_id;
+                let request_id = token_info.request_id.unwrap();
                 let request_list = requests.get_mut(&id).unwrap();
 
                 let expired_request = request_list.iter().find(|(r, _)| *r == request_id).cloned();
@@ -278,7 +288,7 @@ impl NetworkExtension for Extension {
                     }
                     request_list.retain(|(i, _)| *i != request_id);
                 }
-                token_info.1 = None;
+                token_info.request_id = None;
             }
             _ => unreachable!(),
         }
@@ -468,13 +478,13 @@ impl Extension {
                     };
                     if let Some(token) = self.tokens.read().get(from) {
                         if let Some(token_info) = self.tokens_info.write().get_mut(token) {
-                            if token_info.1.is_none() {
+                            if token_info.request_id.is_none() {
                                 ctrace!(SYNC, "Expired before handling response");
                                 return
                             }
                             let api = self.api.read();
                             api.as_ref().expect("Api must exist").clear_timer(*token).expect("Timer clear succeed");
-                            token_info.1 = None;
+                            token_info.request_id = None;
                         }
                     }
                     self.dismiss_request(from, id);
