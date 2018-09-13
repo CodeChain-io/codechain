@@ -221,6 +221,7 @@ impl Transaction {
                 ..
             } => Ok(()),
             Transaction::AssetTransfer {
+                burns,
                 inputs,
                 outputs,
                 ..
@@ -229,11 +230,30 @@ impl Transaction {
                 if !is_input_and_output_consistent(inputs, outputs) {
                     return Err(Error::InconsistentTransactionInOut)
                 }
+                for burn in burns {
+                    if burn.prev_out.amount == 0 {
+                        return Err(Error::ZeroAmount)
+                    }
+                }
+                for input in inputs {
+                    if input.prev_out.amount == 0 {
+                        return Err(Error::ZeroAmount)
+                    }
+                }
+                for output in outputs {
+                    if output.amount == 0 {
+                        return Err(Error::ZeroAmount)
+                    }
+                }
                 Ok(())
             }
             Transaction::AssetMint {
+                output,
                 ..
-            } => Ok(()),
+            } => match output.amount {
+                Some(amount) if amount == 0 => Err(Error::ZeroAmount),
+                _ => Ok(()),
+            },
         }
     }
 }
