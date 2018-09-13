@@ -121,21 +121,21 @@ impl TryStream {
                     cdebug!(NETWORK, "Cannot read length from socket({}).", from_socket);
                 }
                 Err(err) => {
-                    ctrace!(NETWORK, "Cannot read length from closed socket.");
+                    ctrace!(NETWORK, "Cannot read length: {:?}", err);
                 }
             }
             Ok((0, vec![]))
         }
     }
 
-    fn read_len(&mut self) -> io::Result<(usize, Vec<u8>)> {
+    fn read_len(&mut self) -> Result<(usize, Vec<u8>)> {
         debug_assert_eq!(None, self.read);
         let mut bytes: Vec<u8> = vec![0];
 
         if let Some(read_size) = self.stream.try_read(&mut bytes)? {
             debug_assert_eq!(1, read_size);
             if bytes[0] >= 0xf7 {
-                return self.read_len_of_len(bytes)
+                return Ok(self.read_len_of_len(bytes)?)
             }
             if bytes[0] >= 0xc0 {
                 return Ok(((bytes[0] - 0xc0) as usize, bytes))
@@ -149,7 +149,7 @@ impl TryStream {
         }
     }
 
-    fn read_bytes(&mut self) -> io::Result<Option<Vec<u8>>> {
+    fn read_bytes(&mut self) -> Result<Option<Vec<u8>>> {
         let from_socket = self.peer_addr()?;
 
         let (mut total_length, mut result) = {
@@ -198,7 +198,7 @@ impl TryStream {
         Ok(Some(result))
     }
 
-    fn write(&mut self) -> io::Result<bool> {
+    fn write(&mut self) -> Result<bool> {
         debug_assert!(!self.write.is_empty());
         let peer_socket = self.peer_addr()?;
         let mut job = self.write.pop_front().unwrap();
@@ -223,18 +223,18 @@ impl TryStream {
             Err(err) => {
                 cdebug!(NETWORK, "Cannot send a message to {}, {} bytes remain : {:?}", peer_socket, job.len(), err);
                 self.write.push_front(job);
-                Err(err)
+                Err(err.into())
             }
         }
     }
 
-    fn write_bytes(&mut self, bytes_to_send: Vec<u8>) -> io::Result<()> {
+    fn write_bytes(&mut self, bytes_to_send: Vec<u8>) -> Result<()> {
         self.write.push_back(bytes_to_send);
         self.flush()?;
         Ok(())
     }
 
-    fn flush(&mut self) -> io::Result<()> {
+    fn flush(&mut self) -> Result<()> {
         while !self.write.is_empty() {
             if !self.write()? {
                 break
@@ -295,7 +295,7 @@ impl Stream {
         Ok(())
     }
 
-    fn read_bytes(&mut self) -> io::Result<Option<Vec<u8>>> {
+    fn read_bytes(&mut self) -> Result<Option<Vec<u8>>> {
         self.try_stream.read_bytes()
     }
 
