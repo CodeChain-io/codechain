@@ -267,28 +267,35 @@ impl NetworkExtension for Extension {
                 }
             }
             SYNC_EXPIRE_TOKEN_BEGIN...SYNC_EXPIRE_TOKEN_END => {
-                let mut requests = self.requests.write();
-                let mut tokens_info = self.tokens_info.write();
-                let token_info = tokens_info.get_mut(&token).unwrap();
-                if token_info.request_id.is_none() {
-                    return
-                }
+                let (id, request_id) = {
+                    let mut tokens_info = self.tokens_info.write();
+                    let token_info = match tokens_info.get_mut(&token) {
+                        Some(info) => info,
+                        None => return,
+                    };
 
-                let id = token_info.node_id;
-                let request_id = token_info.request_id.unwrap();
-                let request_list = requests.get_mut(&id).unwrap();
-
-                let expired_request = request_list.iter().find(|(r, _)| *r == request_id).cloned();
-                if let Some((request_id, request)) = expired_request {
-                    match request {
-                        RequestMessage::Bodies(hashes) => {
-                            self.body_downloader.lock().reset_downloading(&hashes);
+                    match token_info.request_id {
+                        Some(request_id) => {
+                            token_info.request_id = None;
+                            (token_info.node_id, request_id)
                         }
-                        _ => {}
+                        None => return,
                     }
-                    request_list.retain(|(i, _)| *i != request_id);
+                };
+
+                if let Some(requests) = self.requests.write().get_mut(&id) {
+                    let expired_request = requests.iter().find(|(r, _)| *r == request_id);
+                    if let Some((_, request)) = expired_request {
+                        match request {
+                            RequestMessage::Bodies(hashes) => {
+                                self.body_downloader.lock().reset_downloading(&hashes);
+                            }
+                            _ => unreachable!(),
+                        }
+                    }
                 }
-                token_info.request_id = None;
+
+                self.dismiss_request(&id, request_id);
             }
             _ => unreachable!(),
         }
