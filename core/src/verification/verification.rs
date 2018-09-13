@@ -121,8 +121,8 @@ fn verify_parcels_root(block: &[u8], parcels_root: &H256, parent_parcels_root: H
     let expected_root = skewed_merkle_root(parent_parcels_root, parcel.iter().map(|r| r.as_raw()));
     if &expected_root != parcels_root {
         return Err(From::from(BlockError::InvalidParcelsRoot(Mismatch {
-            expected: expected_root.clone(),
-            found: parcels_root.clone(),
+            expected: expected_root,
+            found: *parcels_root,
         })))
     }
     Ok(())
@@ -181,7 +181,7 @@ pub fn verify_block_family<C: BlockInfo + TransactionInfo>(
 ) -> Result<(), Error> {
     // TODO: verify timestamp
     verify_parent(&header, &parent)?;
-    verify_parcels_root(block, header.parcels_root(), parent.parcels_root().clone())?;
+    verify_parcels_root(block, header.parcels_root(), *parent.parcels_root())?;
     engine.verify_block_family(&header, &parent)?;
 
     let params = match do_full {
@@ -201,7 +201,7 @@ fn verify_parent(header: &Header, parent: &Header) -> Result<(), Error> {
     if !header.parent_hash().is_zero() && &parent.hash() != header.parent_hash() {
         return Err(From::from(BlockError::InvalidParentHash(Mismatch {
             expected: parent.hash(),
-            found: header.parent_hash().clone(),
+            found: *header.parent_hash(),
         })))
     }
     if header.timestamp() <= parent.timestamp() {
@@ -233,14 +233,14 @@ fn verify_parent(header: &Header, parent: &Header) -> Result<(), Error> {
 pub fn verify_block_final(expected: &Header, got: &Header) -> Result<(), Error> {
     if expected.state_root() != got.state_root() {
         return Err(From::from(BlockError::InvalidStateRoot(Mismatch {
-            expected: expected.state_root().clone(),
-            found: got.state_root().clone(),
+            expected: *expected.state_root(),
+            found: *got.state_root(),
         })))
     }
     if expected.invoices_root() != got.invoices_root() {
         return Err(From::from(BlockError::InvalidInvoicesRoot(Mismatch {
-            expected: expected.invoices_root().clone(),
-            found: got.invoices_root().clone(),
+            expected: *expected.invoices_root(),
+            found: *got.invoices_root(),
         })))
     }
     Ok(())
