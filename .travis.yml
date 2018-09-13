@@ -35,7 +35,7 @@ jobs:
         - nvm use 8
         - npm install -g yarn
       script:
-        - cargo build && cd test && yarn && yarn start
+        - cd test && yarn && yarn start
       after_failure:
         - "curl -X POST -H 'Content-type: application/json' --data '{\"text\":\"Fail integration test in linux https://travis-ci.org/'$TRAVIS_REPO_SLUG'/builds/'$TRAVIS_BUILD_ID'\"}' $SLACK_WEBHOOK_URL"
     - name: test-int-osx
@@ -45,7 +45,7 @@ jobs:
         - nvm use 8
         - npm install -g yarn
       script:
-        - cargo build && cd test && yarn && yarn start
+        - cd test && yarn && yarn start
       after_failure:
         - "curl -X POST -H 'Content-type: application/json' --data '{\"text\":\"Fail integration test in osx https://travis-ci.org/'$TRAVIS_REPO_SLUG'/builds/'$TRAVIS_BUILD_ID'\"}' $SLACK_WEBHOOK_URL"
     - stage: deploy

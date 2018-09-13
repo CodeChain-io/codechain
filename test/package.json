@@ -9,8 +9,8 @@
     "node": ">=8"
   },
   "scripts": {
-    "start": "jest --env node -i",
-    "start-release": "NODE_ENV=production jest",
+    "start": "cargo build && jest --env node -i",
+    "start-release": "cargo build --release && NODE_ENV=production jest --env node -i",
     "lint": "prettier src/*/*.ts -l",
     "fmt": "prettier src/*/*.ts --write"
   },
