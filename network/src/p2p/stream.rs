@@ -113,11 +113,17 @@ impl TryStream {
             }
             Ok((total_length, bytes))
         } else {
-            let from_socket = self.peer_addr().unwrap();
-            cdebug!(NETWORK, "Cannot read length from socket({}).", from_socket);
             self.read = Some(ReadRetry::ReadLenOfLen {
                 bytes,
             });
+            match self.peer_addr() {
+                Ok(from_socket) => {
+                    cdebug!(NETWORK, "Cannot read length from socket({}).", from_socket);
+                }
+                Err(err) => {
+                    ctrace!(NETWORK, "Cannot read length from closed socket.");
+                }
+            }
             Ok((0, vec![]))
         }
     }
@@ -134,7 +140,7 @@ impl TryStream {
             if bytes[0] >= 0xc0 {
                 return Ok(((bytes[0] - 0xc0) as usize, bytes))
             }
-            let from_socket = self.peer_addr().unwrap();
+            let from_socket = self.peer_addr()?;
             cerror!(NETWORK, "Invalid messages({:?}) from {}", bytes, from_socket);
             self.shutdown()?;
             Ok((0, vec![]))
@@ -144,7 +150,7 @@ impl TryStream {
     }
 
     fn read_bytes(&mut self) -> io::Result<Option<Vec<u8>>> {
-        let from_socket = self.peer_addr().unwrap();
+        let from_socket = self.peer_addr()?;
 
         let (mut total_length, mut result) = {
             let mut retry_job = None;
@@ -194,8 +200,8 @@ impl TryStream {
 
     fn write(&mut self) -> io::Result<bool> {
         debug_assert!(!self.write.is_empty());
+        let peer_socket = self.peer_addr()?;
         let mut job = self.write.pop_front().unwrap();
-        let peer_socket = self.peer_addr().unwrap();
         match self.stream.try_write(&job) {
             Ok(Some(ref n)) if n == &job.len() => {
                 ctrace!(NETWORK, "{} bytes sent to {}", n, peer_socket);
