@@ -101,6 +101,7 @@ where
 
     /// Register a new recurring IO timer. 'IoHandler::timeout' will be called with the token.
     pub fn register_timer(&self, token: TimerToken, ms: u64) -> Result<(), IoError> {
+        ctrace!(TIMER, "io service register_timer called, token: {}", token);
         self.channel.send_io(IoMessage::AddTimer {
             token,
             delay: ms,
@@ -338,6 +339,7 @@ where
                 delay,
                 once,
             } => {
+                ctrace!(TIMER, "IoMessage::AddTimer Called, token {}", token);
                 let timer_id = token + handler_id * TOKENS_PER_HANDLER;
                 let timeout = event_loop
                     .timeout(Token(timer_id), Duration::from_millis(delay))

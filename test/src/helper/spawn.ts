@@ -176,7 +176,7 @@ export default class CodeChain {
                     flag = true;
                     resolve();
                 }
-                if (this.logFlag && flag) {
+                if (this.logFlag) {
                     appendFileSync(this.logPath, line + "\n");
                 }
             });
