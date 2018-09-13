@@ -54,7 +54,7 @@ describe("sync", () => {
                         parcel.blockHash
                     );
                 },
-                10000
+                100000
             );
 
             describe("A-B diverged", () => {
@@ -67,7 +67,7 @@ describe("sync", () => {
                     expect(await nodeA.getBestBlockHash()).not.toEqual(
                         await nodeB.getBestBlockHash()
                     );
-                });
+                }, 100000);
 
                 test(
                     "It should be synced when nodeA becomes ahead",
@@ -78,7 +78,7 @@ describe("sync", () => {
                             await nodeB.getBestBlockHash()
                         );
                     },
-                    10000
+                    100000
                 );
             });
         });
@@ -97,7 +97,7 @@ describe("sync", () => {
                         await nodeB.getBestBlockHash()
                     );
                 },
-                10000
+                100000
             );
         });
 
@@ -111,7 +111,7 @@ describe("sync", () => {
                 expect(await nodeA.getBestBlockHash()).not.toEqual(
                     await nodeB.getBestBlockHash()
                 );
-            });
+            }, 100000);
 
             describe("nodeA becomes ahead", () => {
                 beforeEach(async () => {
@@ -119,7 +119,7 @@ describe("sync", () => {
                     expect(await nodeA.getBestBlockNumber()).toEqual(
                         (await nodeB.getBestBlockNumber()) + 1
                     );
-                });
+                }, 100000);
 
                 test(
                     "It should be synced when A-B connected",
@@ -130,7 +130,7 @@ describe("sync", () => {
                             await nodeB.getBestBlockHash()
                         );
                     },
-                    10000
+                    100000
                 );
             });
         });
@@ -150,7 +150,7 @@ describe("sync", () => {
                 nodes.push(node);
                 await node.start();
             }
-        }, 5000 + 1500 * numNodes);
+        }, 50000 + 15000 * numNodes);
 
         describe("Connected in a line", () => {
             describe("All connected", () => {
@@ -158,7 +158,7 @@ describe("sync", () => {
                     for (let i = 0; i < numNodes - 1; i++) {
                         await nodes[i].connect(nodes[i + 1]);
                     }
-                }, 5000 + 1500 * numNodes);
+                }, 50000 + 15000 * numNodes);
 
                 test(
                     "It should be synced when the first node created a block",
@@ -173,7 +173,7 @@ describe("sync", () => {
                             );
                         }
                     },
-                    5000 + 1500 * numNodes
+                    50000 + 15000 * numNodes
                 );
 
                 describe("All diverged by both end nodes", () => {
@@ -188,7 +188,7 @@ describe("sync", () => {
                         expect(await nodeA.getBestBlockHash()).not.toEqual(
                             await nodeB.getBestBlockHash()
                         );
-                    });
+                    }, 100000);
 
                     test(
                         "Every node should be synced to one",
@@ -197,7 +197,7 @@ describe("sync", () => {
                                 await nodes[i].waitBlockNumberSync(nodes[0]);
                             }
                         },
-                        5000 + 1500 * numNodes
+                        50000 + 15000 * numNodes
                     );
 
                     test(
@@ -213,7 +213,7 @@ describe("sync", () => {
                                 ).toEqual(await nodes[0].getBestBlockHash());
                             }
                         },
-                        5000 + 1500 * numNodes
+                        50000 + 15000 * numNodes
                     );
                 });
             });
@@ -234,7 +234,7 @@ describe("sync", () => {
                             );
                         }
                     },
-                    5000 + 3000 * numNodes
+                    50000 + 30000 * numNodes
                 );
             });
         });
@@ -246,7 +246,7 @@ describe("sync", () => {
                 for (let i = 0; i < numNodes; i++) {
                     nodes[i].connect(nodes[(i + 1) % numNodes]);
                 }
-            }, 5000 + 1500 * numNodes);
+            }, 50000 + 15000 * numNodes);
 
             test(
                 "It should be synced when the first node created a block",
@@ -266,7 +266,7 @@ describe("sync", () => {
                         ).toEqual(parcel.blockHash);
                     }
                 },
-                5000 + 1500 * numNodes
+                50000 + 15000 * numNodes
             );
 
             describe("All diverged by two nodes in the opposite", () => {
@@ -281,7 +281,7 @@ describe("sync", () => {
                     expect(await nodeA.getBestBlockHash()).not.toEqual(
                         await nodeB.getBestBlockHash()
                     );
-                });
+                }, 100000);
 
                 test(
                     "Every node should be synced",
@@ -291,7 +291,7 @@ describe("sync", () => {
                             await nodes[i].waitBlockNumberSync(nodes[0]);
                         }
                     },
-                    5000 + 1500 * numNodes
+                    50000 + 15000 * numNodes
                 );
 
                 test(
@@ -305,7 +305,7 @@ describe("sync", () => {
                             );
                         }
                     },
-                    5000 + 1500 * numNodes
+                    50000 + 15000 * numNodes
                 );
             });
         });
@@ -317,7 +317,7 @@ describe("sync", () => {
                         for (let i = 1; i < numNodes; i++) {
                             nodes[0].connect(nodes[i]);
                         }
-                    }, 5000 + 1500 * numNodes);
+                    }, 50000 + 15000 * numNodes);
 
                     test(
                         "It should be synced when the center node created a block",
@@ -330,7 +330,7 @@ describe("sync", () => {
                                 ).toEqual(parcel.blockHash);
                             }
                         },
-                        5000 + 1500 * numNodes
+                        50000 + 15000 * numNodes
                     );
 
                     test(
@@ -348,7 +348,7 @@ describe("sync", () => {
                                 ).toEqual(parcel.blockHash);
                             }
                         },
-                        5000 + 1500 * numNodes
+                        50000 + 15000 * numNodes
                     );
                 });
             });
@@ -357,7 +357,7 @@ describe("sync", () => {
         afterEach(async () => {
             await Promise.all(nodes.map(n => n.clean()));
             nodes = [];
-        }, 5000 + 1500 * numNodes);
+        }, 50000 + 15000 * numNodes);
     });
 
     // NOTE: To create empty blocks, enable --force-sealing option, and then,
@@ -371,30 +371,38 @@ describe("sync", () => {
             nodeB = new CodeChain({ argv: ["--force-sealing"] });
             await Promise.all([nodeA.start(), nodeB.start()]);
             await nodeA.connect(nodeB);
-        });
+        }, 100000);
 
-        test("nodeA creates an empty block", async () => {
-            await nodeA.sdk.rpc.devel.startSealing();
-            expect(await nodeA.getBestBlockNumber()).toBe(1);
-            await nodeA.waitBlockNumberSync(nodeB);
-            expect(await nodeB.getBestBlockNumber()).toBe(1);
-            expect(await nodeA.getBestBlockHash()).toEqual(
-                await nodeB.getBestBlockHash()
-            );
-        });
+        test(
+            "nodeA creates an empty block",
+            async () => {
+                await nodeA.sdk.rpc.devel.startSealing();
+                expect(await nodeA.getBestBlockNumber()).toBe(1);
+                await nodeA.waitBlockNumberSync(nodeB);
+                expect(await nodeB.getBestBlockNumber()).toBe(1);
+                expect(await nodeA.getBestBlockHash()).toEqual(
+                    await nodeB.getBestBlockHash()
+                );
+            },
+            100000
+        );
 
-        test("nodeA creates 3 empty blocks", async () => {
-            await nodeA.sdk.rpc.devel.startSealing();
-            await nodeA.sdk.rpc.devel.startSealing();
-            await nodeA.sdk.rpc.devel.startSealing();
+        test(
+            "nodeA creates 3 empty blocks",
+            async () => {
+                await nodeA.sdk.rpc.devel.startSealing();
+                await nodeA.sdk.rpc.devel.startSealing();
+                await nodeA.sdk.rpc.devel.startSealing();
 
-            expect(await nodeA.getBestBlockNumber()).toBe(3);
-            await nodeA.waitBlockNumberSync(nodeB);
-            expect(await nodeB.getBestBlockNumber()).toBe(3);
-            expect(await nodeA.getBestBlockHash()).toEqual(
-                await nodeB.getBestBlockHash()
-            );
-        });
+                expect(await nodeA.getBestBlockNumber()).toBe(3);
+                await nodeA.waitBlockNumberSync(nodeB);
+                expect(await nodeB.getBestBlockNumber()).toBe(3);
+                expect(await nodeA.getBestBlockHash()).toEqual(
+                    await nodeB.getBestBlockHash()
+                );
+            },
+            100000
+        );
 
         afterEach(async () => {
             await Promise.all([nodeA.clean(), nodeB.clean()]);
