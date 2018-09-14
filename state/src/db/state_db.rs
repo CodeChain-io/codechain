@@ -226,11 +226,20 @@ impl StateDB {
             is_best
         );
 
+        let mut account_cache = self.account_cache.lock();
+        let mut regular_account_cache = self.regular_account_cache.lock();
+        let mut shard_cache = self.shard_cache.lock();
+        let mut shard_metadata_cache = self.shard_metadata_cache.lock();
+        let mut world_cache = self.world_cache.lock();
+        let mut asset_scheme_cache = self.asset_scheme_cache.lock();
+        let mut asset_cache = self.asset_cache.lock();
+        let mut action_data_cache = self.action_data_cache.lock();
+
         Self::sync_cache_impl(
             enacted,
             retracted,
             is_best,
-            &mut self.account_cache,
+            &mut account_cache,
             &mut self.account_cache_buffer,
             &self.parent_hash,
             &self.commit_hash,
@@ -241,7 +250,7 @@ impl StateDB {
             enacted,
             retracted,
             is_best,
-            &mut self.regular_account_cache,
+            &mut regular_account_cache,
             &mut self.regular_account_cache_buffer,
             &self.parent_hash,
             &self.commit_hash,
@@ -252,7 +261,7 @@ impl StateDB {
             enacted,
             retracted,
             is_best,
-            &mut self.shard_cache,
+            &mut shard_cache,
             &mut self.shard_cache_buffer,
             &self.parent_hash,
             &self.commit_hash,
@@ -263,7 +272,7 @@ impl StateDB {
             enacted,
             retracted,
             is_best,
-            &mut self.shard_metadata_cache,
+            &mut shard_metadata_cache,
             &mut self.shard_metadata_cache_buffer,
             &self.parent_hash,
             &self.commit_hash,
@@ -274,7 +283,7 @@ impl StateDB {
             enacted,
             retracted,
             is_best,
-            &mut self.world_cache,
+            &mut world_cache,
             &mut self.world_cache_buffer,
             &self.parent_hash,
             &self.commit_hash,
@@ -285,7 +294,7 @@ impl StateDB {
             enacted,
             retracted,
             is_best,
-            &mut self.asset_scheme_cache,
+            &mut asset_scheme_cache,
             &mut self.asset_scheme_cache_buffer,
             &self.parent_hash,
             &self.commit_hash,
@@ -296,7 +305,7 @@ impl StateDB {
             enacted,
             retracted,
             is_best,
-            &mut self.asset_cache,
+            &mut asset_cache,
             &mut self.asset_cache_buffer,
             &self.parent_hash,
             &self.commit_hash,
@@ -307,7 +316,7 @@ impl StateDB {
             enacted,
             retracted,
             is_best,
-            &mut self.action_data_cache,
+            &mut action_data_cache,
             &mut self.action_data_cache_buffer,
             &self.parent_hash,
             &self.commit_hash,
@@ -319,16 +328,13 @@ impl StateDB {
         enacted: &[H256],
         retracted: &[H256],
         is_best: bool,
-        cache: &Mutex<GlobalCache<Item>>,
+        cache: &mut GlobalCache<Item>,
         cache_buffer: &mut GlobalCacheBuffer<Item>,
         parent_hash: &Option<H256>,
         commit_hash: &Option<H256>,
         commit_number: &Option<BlockNumber>,
     ) where
         Item: CacheableItem, {
-        let mut cache = cache.lock();
-        let cache = &mut *cache;
-
         // Purge changes from re-enacted and retracted blocks.
         // Filter out committing block if any.
         let clear =
