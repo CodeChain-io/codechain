@@ -590,10 +590,14 @@ impl Extension {
                     parcels,
                 };
                 cdebug!(SYNC, "Body download completed for #{}({})", block.header.number(), hash);
-                // FIXME: handle import errors
                 match self.client.import_block(block.rlp_bytes(Seal::With)) {
                     Err(BlockImportError::Import(ImportError::AlreadyInChain)) => {
                         cwarn!(SYNC, "Downloaded already existing block({})", hash)
+                    }
+                    Err(err) => {
+                        // FIXME: handle import errors
+                        cwarn!(SYNC, "Cannot import block({}): {:?}", hash, err);
+                        break
                     }
                     _ => {}
                 }
