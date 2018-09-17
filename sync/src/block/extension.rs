@@ -483,6 +483,7 @@ impl Extension {
                         RequestMessage::Bodies(hashes) => hashes,
                         _ => unreachable!(),
                     };
+                    assert_eq!(bodies.len(), hashes.len());
                     if let Some(token) = self.tokens.read().get(from) {
                         if let Some(token_info) = self.tokens_info.write().get_mut(token) {
                             if token_info.request_id.is_none() {
@@ -522,7 +523,10 @@ impl Extension {
 
                 headers.first().map(|header| header.number()) == Some(*start_number)
             }
-            (RequestMessage::Bodies(_), ResponseMessage::Bodies(bodies)) => {
+            (RequestMessage::Bodies(hashes), ResponseMessage::Bodies(bodies)) => {
+                if hashes.len() != bodies.len() {
+                    return false
+                }
                 for body in bodies {
                     for parcel in body {
                         let is_valid = match &parcel.as_unsigned().action {
