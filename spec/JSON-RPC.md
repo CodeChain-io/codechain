@@ -142,6 +142,7 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
  * [chain_getBestBlockNumber](#chain_getbestblocknumber)
  * [chain_getBestBlockId](#chain_getbestblockid)
  * [chain_getBlockHash](#chain_getblockhash)
+ * [chain_getBlockByNumber](#chain_getblockbynumber)
  * [chain_getBlockByHash](#chain_getblockbyhash)
  * [chain_sendSignedParcel](#chain_sendsignedparcel)
  * [chain_getParcel](#chain_getparcel)
@@ -344,6 +345,66 @@ Response Example
 {
   "jsonrpc":"2.0",
   "result":"0x56642f04d519ae3262c7ba6facf1c5b11450ebaeb7955337cfbc45420d573077",
+  "id":null
+}
+```
+
+## chain_getBlockByNumber
+Gets the block with the given number.
+
+Params:
+ 1. number: `number`
+
+Return Type: `null` | `Block`
+
+Errors: `Invalid Params`
+
+Request Example:
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "chain_getBlockByNumber", "params": [5], "id": null}' \
+    http://localhost:8080
+```
+
+Response Example:
+```
+{
+  "jsonrpc":"2.0",
+  "result":{
+    "author":"sccqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqz6sxn0",
+    "extraData":[
+
+    ],
+    "hash":"0x0e9cbbe0ecc774de3b5d05827ffb5c541bc7b7ff63de253d17272cf0fea1b7af",
+    "invoicesRoot":"0x6db236c944eda064237e88be9cddf7766ce877fe0c4414ac5999f4f5429750fd",
+    "number":5,
+    "parcels":[
+      {
+        "action":{
+          "action":"payment",
+          "amount":"0x3b9aca00",
+          "receiver":"sccqra5felweesff3epv9wfu05a47sxh89yuvzw7mqd"
+        },
+        "blockHash":"0x0e9cbbe0ecc774de3b5d05827ffb5c541bc7b7ff63de253d17272cf0fea1b7af",
+        "blockNumber":5,
+        "fee":"0x5f5e100",
+        "hash":"0x3ff9b02427ac04c06260928168775bca5a3da96ae6995041e197d42e71ab68b6",
+        "networkId":"sc",
+        "nonce":"0x4",
+        "parcelIndex":0,
+        "sig":"0x4621da0344d8888c5076cc0a3cc7fd7a7e3a761ba812c95f807c050a4e5ec6b7120fa99fdf502ed088ed61eb6d5fe44f44c280e97c7702d5127640d7a8a6d7e401"
+      }
+    ],
+    "parcelsRoot":"0xa4a8229a90d91e9a38b17f95c9ac2d01f46b10553e62c68df5bbfe1cc5b3e164",
+    "parentHash":"0xbc4f7e7b1dded863c500147243d78436ca297bfae64e1ec2d17396286cf14b6e",
+    "score":"0x20000",
+    "seal":[
+
+    ],
+    "stateRoot":"0x4cdbde0340558aa7116975a170f004af3b6343f5bf0354dadd1815d22ed12da7",
+    "timestamp":1536924583
+  },
   "id":null
 }
 ```
