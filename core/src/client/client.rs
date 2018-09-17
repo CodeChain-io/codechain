@@ -791,6 +791,17 @@ impl Importer {
             }
         };
 
+        if chain.block_body(header.parent_hash()).is_none() {
+            cerror!(
+                CLIENT,
+                "Block import failed for #{} ({}): Parent block not found ({}) ",
+                header.number(),
+                header.hash(),
+                parent.hash()
+            );
+            return Err(())
+        }
+
         // Verify Block Family
         let verify_family_result = self.verifier.verify_block_family(
             &block.bytes,
