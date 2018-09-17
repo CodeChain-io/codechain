@@ -559,9 +559,13 @@ impl Extension {
 
         let mut exists = Vec::new();
         for header in completed {
-            // FIXME: handle import errors
             match self.client.import_header(header.clone().into_inner()) {
                 Err(BlockImportError::Import(ImportError::AlreadyInChain)) => exists.push(header.hash()),
+                // FIXME: handle import errors
+                Err(err) => {
+                    cwarn!(SYNC, "Cannot import header({}): {:?}", header.hash(), err);
+                    break
+                }
                 _ => {}
             }
         }
