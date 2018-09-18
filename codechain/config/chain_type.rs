@@ -19,7 +19,7 @@ use std::{fmt, fs};
 
 use ccore::Scheme;
 
-#[derive(Debug, PartialEq, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ChainType {
     Solo,

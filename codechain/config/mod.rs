@@ -45,6 +45,17 @@ pub struct Config {
 }
 
 impl Config {
+    pub fn merge(&mut self, other: &Config) {
+        self.ipc.merge(&other.ipc);
+        self.operating.merge(&other.operating);
+        self.mining.merge(&other.mining);
+        self.network.merge(&other.network);
+        self.rpc.merge(&other.rpc);
+        self.snapshot.merge(&other.snapshot);
+        self.stratum.merge(&other.stratum);
+        self.shard_validator.merge(&other.shard_validator);
+    }
+
     pub fn miner_options(&self) -> Result<MinerOptions, String> {
         let (reseal_on_own_parcel, reseal_on_external_parcel) =
             match self.mining.reseal_on_txs.as_ref().map(|s| s.as_str()) {
@@ -250,6 +261,15 @@ pub struct ShardValidator {
 }
 
 impl Ipc {
+    pub fn merge(&mut self, other: &Ipc) {
+        if other.disable.is_some() {
+            self.disable = other.disable;
+        }
+        if other.path.is_some() {
+            self.path = other.path.clone();
+        }
+    }
+
     pub fn overwrite_with(&mut self, matches: &clap::ArgMatches) -> Result<(), String> {
         if matches.is_present("no-ipc") {
             self.disable = Some(true);
@@ -262,6 +282,27 @@ impl Ipc {
 }
 
 impl Operating {
+    pub fn merge(&mut self, other: &Operating) {
+        if other.quiet.is_some() {
+            self.quiet = other.quiet;
+        }
+        if other.instance_id.is_some() {
+            self.instance_id = other.instance_id;
+        }
+        if other.db_path.is_some() {
+            self.db_path = other.db_path.clone();
+        }
+        if other.keys_path.is_some() {
+            self.keys_path = other.keys_path.clone();
+        }
+        if other.password_path.is_some() {
+            self.password_path = other.password_path.clone();
+        }
+        if other.chain.is_some() {
+            self.chain = other.chain.clone();
+        }
+    }
+
     pub fn overwrite_with(&mut self, matches: &clap::ArgMatches) -> Result<(), String> {
         if matches.is_present("quiet") {
             self.quiet = Some(true);
@@ -286,6 +327,42 @@ impl Operating {
 }
 
 impl Mining {
+    pub fn merge(&mut self, other: &Mining) {
+        if other.disable.is_some() {
+            self.disable = other.disable;
+        }
+        if other.author.is_some() {
+            self.author = other.author.clone();
+        }
+        if other.engine_signer.is_some() {
+            self.engine_signer = other.engine_signer.clone();
+        }
+        if other.mem_pool_size.is_some() {
+            self.mem_pool_size = other.mem_pool_size;
+        }
+        if other.mem_pool_mem_limit.is_some() {
+            self.mem_pool_mem_limit = other.mem_pool_mem_limit;
+        }
+        if other.notify_work.is_some() {
+            self.notify_work = other.notify_work.clone();
+        }
+        if other.force_sealing.is_some() {
+            self.force_sealing = other.force_sealing;
+        }
+        if other.reseal_on_txs.is_some() {
+            self.reseal_on_txs = other.reseal_on_txs.clone();
+        }
+        if other.reseal_min_period.is_some() {
+            self.reseal_min_period = other.reseal_min_period;
+        }
+        if other.reseal_max_period.is_some() {
+            self.reseal_max_period = other.reseal_max_period;
+        }
+        if other.work_queue_size.is_some() {
+            self.work_queue_size = other.work_queue_size;
+        }
+    }
+
     pub fn overwrite_with(&mut self, matches: &clap::ArgMatches) -> Result<(), String> {
         if matches.is_present("no-miner") {
             self.disable = Some(true);
@@ -326,6 +403,51 @@ impl Mining {
 }
 
 impl Network {
+    pub fn merge(&mut self, other: &Network) {
+        if other.interface.is_some() {
+            self.interface = other.interface.clone();
+        }
+        if other.disable.is_some() {
+            self.disable = other.disable;
+        }
+        if other.port.is_some() {
+            self.port = other.port;
+        }
+        if other.bootstrap_addresses.is_some() {
+            self.bootstrap_addresses = other.bootstrap_addresses.clone();
+        }
+        if other.min_peers.is_some() {
+            self.min_peers = other.min_peers;
+        }
+        if other.max_peers.is_some() {
+            self.max_peers = other.max_peers;
+        }
+        if other.sync.is_some() {
+            self.sync = other.sync;
+        }
+        if other.parcel_relay.is_some() {
+            self.parcel_relay = other.parcel_relay;
+        }
+        if other.discovery.is_some() {
+            self.discovery = other.discovery;
+        }
+        if other.discovery_type.is_some() {
+            self.discovery_type = other.discovery_type.clone();
+        }
+        if other.discovery_refresh.is_some() {
+            self.discovery_refresh = other.discovery_refresh;
+        }
+        if other.discovery_bucket_size.is_some() {
+            self.discovery_bucket_size = other.discovery_bucket_size;
+        }
+        if other.blacklist_path.is_some() {
+            self.blacklist_path = other.blacklist_path.clone();
+        }
+        if other.whitelist_path.is_some() {
+            self.whitelist_path = other.whitelist_path.clone();
+        }
+    }
+
     pub fn overwrite_with(&mut self, matches: &clap::ArgMatches) -> Result<(), String> {
         if matches.is_present("no-network") {
             self.disable = Some(true);
@@ -384,6 +506,18 @@ impl Network {
 }
 
 impl Rpc {
+    pub fn merge(&mut self, other: &Rpc) {
+        if other.disable.is_some() {
+            self.disable = other.disable;
+        }
+        if other.interface.is_some() {
+            self.interface = other.interface.clone();
+        }
+        if other.port.is_some() {
+            self.port = other.port;
+        }
+    }
+
     pub fn overwrite_with(&mut self, matches: &clap::ArgMatches) -> Result<(), String> {
         if matches.is_present("no-jsonrpc") {
             self.disable = Some(true);
@@ -403,6 +537,15 @@ impl Rpc {
 }
 
 impl Snapshot {
+    pub fn merge(&mut self, other: &Snapshot) {
+        if other.disable.is_some() {
+            self.disable = other.disable;
+        }
+        if other.path.is_some() {
+            self.path = other.path.clone();
+        }
+    }
+
     pub fn overwrite_with(&mut self, matches: &clap::ArgMatches) -> Result<(), String> {
         if matches.is_present("no-snapshot") {
             self.disable = Some(true);
@@ -416,6 +559,15 @@ impl Snapshot {
 }
 
 impl Stratum {
+    pub fn merge(&mut self, other: &Stratum) {
+        if other.disable.is_some() {
+            self.disable = other.disable;
+        }
+        if other.port.is_some() {
+            self.port = other.port;
+        }
+    }
+
     pub fn overwrite_with(&mut self, matches: &clap::ArgMatches) -> Result<(), String> {
         if matches.is_present("no-stratum") {
             self.disable = Some(true);
@@ -429,6 +581,15 @@ impl Stratum {
 }
 
 impl ShardValidator {
+    pub fn merge(&mut self, other: &ShardValidator) {
+        if other.disable.is_some() {
+            self.disable = other.disable;
+        }
+        if other.account.is_some() {
+            self.account = other.account.clone();
+        }
+    }
+
     pub fn overwrite_with(&mut self, matches: &clap::ArgMatches) -> Result<(), String> {
         if matches.is_present("no-shard-validator") {
             self.disable = Some(true);
@@ -455,13 +616,17 @@ pub fn read_preset_config() -> &'static str {
 }
 
 pub fn load_config(matches: &clap::ArgMatches) -> Result<Config, String> {
-    let toml_string = match matches.value_of("config") {
-        Some(config_path) => fs::read_to_string(config_path).map_err(|e| format!("Fail to read file: {:?}", e))?,
-        None => read_preset_config().to_string(),
+    let mut config: Config = {
+        let toml_string = read_preset_config().to_string();
+        toml::from_str(toml_string.as_ref()).expect("The preset config file must be valid")
     };
 
-    let mut config: Config =
-        toml::from_str(toml_string.as_ref()).map_err(|e| format!("Error while parsing TOML: {:?}", e))?;
+    if let Some(config_path) = matches.value_of("config") {
+        let toml_string = fs::read_to_string(config_path).map_err(|e| format!("Fail to read file: {:?}", e))?;
+        let extra_config: Config =
+            toml::from_str(toml_string.as_ref()).map_err(|e| format!("Error while parsing TOML: {:?}", e))?;
+        config.merge(&extra_config);
+    };
 
     config.ipc.overwrite_with(&matches)?;
     config.operating.overwrite_with(&matches)?;
