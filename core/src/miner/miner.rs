@@ -537,7 +537,7 @@ impl MinerService for Miner {
     fn set_author(&self, address: Address, password: Option<Password>) -> Result<(), SignError> {
         *self.author.write() = address;
 
-        if self.engine.seals_internally().is_some() {
+        if self.engine_type() == EngineType::InternalSealing && self.engine.seals_internally().is_some() {
             if let Some(ref ap) = self.accounts {
                 ctrace!(MINER, "Set author to {:?}", address);
                 // Sign test message
