@@ -114,7 +114,7 @@ impl ConsensusEngine<CodeChainMachine> for SimplePoA {
             if let Ok(signature) = self.sign(header.bare_hash()) {
                 return Seal::Regular(vec![::rlp::encode(&signature).into_vec()])
             } else {
-                ctrace!(SOLO_AUTHORITY, "generate_seal: FAIL: accounts secret key unavailable");
+                ctrace!(ENGINE, "generate_seal: FAIL: accounts secret key unavailable");
             }
         }
         Seal::None

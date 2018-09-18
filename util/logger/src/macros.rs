@@ -67,9 +67,6 @@ macro_rules! log_target {
     (SNAPSHOT) => {
         "snapshot"
     };
-    (SOLO_AUTHORITY) => {
-        "solo_authoirty"
-    };
     (SPEC) => {
         "spec"
     };
