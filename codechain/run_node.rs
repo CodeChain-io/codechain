@@ -117,7 +117,7 @@ fn new_miner(config: &config::Config, scheme: &Scheme, ap: Arc<AccountProvider>)
                 Some(ref author) => {
                     miner.set_author((*author).into_address(), None).expect("set_author never fails when PoW is used")
                 }
-                None => return Err("mining.author is not specified".to_string()),
+                None => return Err("The author is missing. Specify the author using --author option.".to_string()),
             },
             EngineType::InternalSealing => match &config.mining.engine_signer {
                 Some(ref engine_signer) => match miner.set_author((*engine_signer).into_address(), None) {
@@ -130,7 +130,10 @@ fn new_miner(config: &config::Config, scheme: &Scheme, ap: Arc<AccountProvider>)
                     Err(e) => return Err(format!("{}", e)),
                     _ => (),
                 },
-                None => return Err("mining.engine_signer is not specified".to_string()),
+                None => {
+                    return Err("The engine signer is missing. Specify the engine signer using --engine-signer option."
+                        .to_string())
+                }
             },
             EngineType::Solo => miner
                 .set_author(config.mining.author.map_or(Address::default(), |a| a.into_address()), None)
