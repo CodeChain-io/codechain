@@ -19,13 +19,15 @@ use std::{fmt, fs};
 
 use ccore::Scheme;
 
-#[derive(Debug, PartialEq, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ChainType {
     Solo,
+    #[serde(rename = "simple_poa")]
     SimplePoA,
     Tendermint,
     Cuckoo,
+    #[serde(rename = "blake_pow")]
     BlakePoW,
     Husky,
     Saluki,
