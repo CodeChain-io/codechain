@@ -21,8 +21,8 @@ use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use ccore::{
-    AccountProvider, Client, ClientService, EngineType, Miner, MinerService, Scheme, ShardValidator, Stratum,
-    StratumConfig, StratumError,
+    AccountProvider, AccountProviderError, Client, ClientService, EngineType, Miner, MinerService, Scheme,
+    ShardValidator, Stratum, StratumConfig, StratumError,
 };
 use cdiscovery::{KademliaConfig, KademliaExtension, UnstructuredConfig, UnstructuredExtension};
 use cfinally::finally;
@@ -120,9 +120,16 @@ fn new_miner(config: &config::Config, scheme: &Scheme, ap: Arc<AccountProvider>)
                 None => return Err("mining.author is not specified".to_string()),
             },
             EngineType::InternalSealing => match &config.mining.engine_signer {
-                Some(ref engine_signer) => {
-                    miner.set_author((*engine_signer).into_address(), None).map_err(|e| format!("{:?}", e))?
-                }
+                Some(ref engine_signer) => match miner.set_author((*engine_signer).into_address(), None) {
+                    Err(AccountProviderError::NotUnlocked) => {
+                        return Err(
+                            "The account is not unlocked. Specify the password path using --password-path option."
+                                .to_string(),
+                        )
+                    }
+                    Err(e) => return Err(format!("{}", e)),
+                    _ => (),
+                },
                 None => return Err("mining.engine_signer is not specified".to_string()),
             },
             EngineType::Solo => miner
