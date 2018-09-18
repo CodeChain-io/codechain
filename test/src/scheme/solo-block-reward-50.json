@@ -1,0 +1,48 @@
+{
+    "name": "Solo",
+    "engine": {
+        "solo": {
+            "params": {
+                "blockReward": "0x32"
+            }
+        }
+    },
+    "params": {
+        "maxExtraDataSize": "0x20",
+        "maxMetadataSize": "0x0400",
+        "networkID": "tc",
+        "minParcelCost": "10",
+        "maxBodySize": 4194304,
+        "snapshotPeriod": 16384,
+        "useShardValidator": false
+    },
+    "genesis": {
+        "seal": {
+            "generic": "0x0"
+        },
+        "score": "0x20000",
+        "author": "tccqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqj5aqu5",
+        "timestamp": "0x00",
+        "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "extraData": "0x"
+    },
+    "accounts": {
+        "tccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9my9a2k78": {
+            "balance": "1606938044258990275541962092341162602522202993782792835301376",
+            "nonce": "0"
+        }
+    },
+    "shards": {
+        "0": {
+            "nonce": 0,
+            "owners": ["tccqzwvud8h4vv9c746rd7gzsxkyz6tm22p6c9gekrh"],
+            "worlds": [{
+                "nonce": 0,
+                "owners": [
+                    "tccqzwvud8h4vv9c746rd7gzsxkyz6tm22p6c9gekrh",
+                    "tccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9my9a2k78"
+                ]
+            }]
+        }
+    }
+}
