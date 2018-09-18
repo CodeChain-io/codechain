@@ -110,23 +110,25 @@ fn stratum_start(cfg: StratumConfig, miner: Arc<Miner>, client: Arc<Client>) -> 
 
 fn new_miner(config: &config::Config, scheme: &Scheme, ap: Arc<AccountProvider>) -> Result<Arc<Miner>, String> {
     let miner = Miner::new(config.miner_options()?, scheme, Some(ap.clone()));
-    match miner.engine_type() {
-        EngineType::PoW if !config.mining.disable => match &config.mining.author {
-            Some(ref author) => {
-                miner.set_author((*author).into_address(), None).expect("set_author never fails when PoW is used")
-            }
-            None => return Err("mining.author is not specified".to_string()),
-        },
-        EngineType::InternalSealing => match &config.mining.engine_signer {
-            Some(ref engine_signer) => {
-                miner.set_author((*engine_signer).into_address(), None).map_err(|e| format!("{:?}", e))?
-            }
-            None => return Err("mining.engine_signer is not specified".to_string()),
-        },
-        EngineType::Solo if !config.mining.disable => miner
-            .set_author(config.mining.author.map_or(Address::default(), |a| a.into_address()), None)
-            .expect("set_author never fails when Solo is used"),
-        _ => (),
+
+    if !config.mining.disable {
+        match miner.engine_type() {
+            EngineType::PoW => match &config.mining.author {
+                Some(ref author) => {
+                    miner.set_author((*author).into_address(), None).expect("set_author never fails when PoW is used")
+                }
+                None => return Err("mining.author is not specified".to_string()),
+            },
+            EngineType::InternalSealing => match &config.mining.engine_signer {
+                Some(ref engine_signer) => {
+                    miner.set_author((*engine_signer).into_address(), None).map_err(|e| format!("{:?}", e))?
+                }
+                None => return Err("mining.engine_signer is not specified".to_string()),
+            },
+            EngineType::Solo => miner
+                .set_author(config.mining.author.map_or(Address::default(), |a| a.into_address()), None)
+                .expect("set_author never fails when Solo is used"),
+        }
     }
 
     Ok(miner)
