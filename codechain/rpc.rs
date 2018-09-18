@@ -38,7 +38,7 @@ pub fn rpc_http_start(
     let url = format!("{}:{}", cfg.interface, cfg.port);
     let addr = url.parse().map_err(|_| format!("Invalid JSONRPC listen host/port given: {}", url))?;
     let server = setup_http_rpc_server(&addr, cfg.cors, cfg.hosts, enable_devel_api, deps)?;
-    info!("RPC Listening on {}", url);
+    cinfo!(RPC, "RPC Listening on {}", url);
     Ok(server)
 }
 
@@ -78,7 +78,7 @@ pub fn rpc_ipc_start(
             },
         Err(e) => Err(format!("IPC error: {:?}", e)),
         Ok(server) =>  {
-            info!("IPC Listening on {}", cfg.socket_addr);
+            cinfo!(RPC, "IPC Listening on {}", cfg.socket_addr);
             Ok(server)
         },
     }

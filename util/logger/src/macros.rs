@@ -58,6 +58,9 @@ macro_rules! log_target {
     (ROUTING_TABLE) => {
         "routing_table"
     };
+    (RPC) => {
+        "rpc"
+    };
     (SHARD_VALIDATOR) => {
         "shard_validator"
     };
