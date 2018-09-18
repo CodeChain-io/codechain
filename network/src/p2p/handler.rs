@@ -97,6 +97,7 @@ pub struct Handler {
 
     listener: Listener,
 
+    establish_lock: Mutex<()>,
     tokens: Mutex<TokenGenerator>,
 
     routing_table: Arc<RoutingTable>,
@@ -126,6 +127,7 @@ impl Handler {
             socket_address,
             listener: Listener::bind(&socket_address).expect("Cannot listen TCP port"),
 
+            establish_lock: Mutex::new(()),
             tokens: Mutex::new(TokenGenerator::new(FIRST_CONNECTION_TOKEN, LAST_CONNECTION_TOKEN)),
 
             routing_table,
@@ -168,7 +170,7 @@ impl Handler {
         }
     }
 
-    fn connect(&self, socket_address: &SocketAddr) -> IoHandlerResult<Option<StreamToken>> {
+    fn connect(&self, io: &IoContext<Message>, socket_address: &SocketAddr) -> IoHandlerResult<Option<StreamToken>> {
         let ip = socket_address.ip();
         if !self.filters.is_allowed(&ip) {
             cinfo!(NETWORK, "P2P connection from {} is received. But it's not allowed", ip);
@@ -179,6 +181,7 @@ impl Handler {
             Some(stream) => {
                 let remote_node_id = socket_address.into();
 
+                let _establish_lock = self.establish_lock.lock();
                 let local_node_id =
                     self.routing_table.local_node_id(&remote_node_id).ok_or(Error::General("Not handshaked"))?;
                 let session = self
@@ -189,7 +192,9 @@ impl Handler {
                 let mut tokens = self.tokens.lock();
                 let token = tokens.gen().ok_or(Error::General("TooManyConnections"))?;
                 if self.connections.connect(token, stream, local_node_id, session, socket_address, self.get_port()) {
-                    self.routing_table.establish(socket_address);
+                    const CONNECTION_TIMEOUT_MS: u64 = 3_000;
+                    io.register_timer_once(token as TimerToken, CONNECTION_TIMEOUT_MS)?;
+                    self.routing_table.set_establishing(socket_address);
                     Some(token)
                 } else {
                     cwarn!(NETWORK, "Cannot create connection to {}", socket_address);
@@ -238,10 +243,14 @@ impl Handler {
             Some(ReceivedMessage::Ack {
                 ..
             }) => {
+                let _establish_lock = self.establish_lock.lock();
                 if !self.connections.establish_wait_ack_connection(stream) {
                     return Err(Error::InvalidStream(*stream).into())
                 }
+
                 let node_id = self.connections.node_id(&stream).ok_or(Error::InvalidStream(*stream))?;
+                self.routing_table.establish(&node_id.into_addr());
+                io.clear_timer(*stream as TimerToken)?;
                 io.message(Message::RequestNegotiation {
                     node_id,
                 })?;
@@ -271,6 +280,8 @@ impl Handler {
                         }
 
                         let remote_addr = SocketAddr::new(remote_addr.ip(), port);
+
+                        let _establish_lock = self.establish_lock.lock();
                         let session = self
                             .routing_table
                             .unestablished_session(&remote_addr)
@@ -387,6 +398,16 @@ impl IoHandler<Message> for Handler {
                 }
                 Ok(())
             }
+            FIRST_CONNECTION_TOKEN...LAST_CONNECTION_TOKEN => {
+                let node_id = self.connections.node_id(&token).ok_or(Error::InvalidStream(token))?;
+                let address = node_id.into_addr();
+
+                if !self.routing_table.reset_session(&address) {
+                    return Err(Error::General("Failed to find session").into())
+                }
+                self.connections.shutdown(&address)?;
+                Ok(())
+            }
             _ => unreachable!(),
         }
     }
@@ -403,7 +424,7 @@ impl IoHandler<Message> for Handler {
                 }
 
                 ctrace!(NETWORK, "Connecting to {}", socket_address);
-                let token = self.connect(&socket_address)?.ok_or(Error::General("Cannot create connection"))?;
+                let token = self.connect(io, &socket_address)?.ok_or(Error::General("Cannot create connection"))?;
                 cinfo!(NETWORK, "New connection to {}({})", socket_address, token);
                 io.register_stream(token)?;
                 Ok(())
@@ -474,7 +495,7 @@ impl IoHandler<Message> for Handler {
                 let was_established = self.connections.is_established(&stream);
                 self.connections.set_disconnecting(&stream);
                 let node_id = self.connections.node_id(&stream).ok_or(Error::InvalidStream(stream))?;
-                self.routing_table.remove_node(node_id.into_addr());
+                self.routing_table.remove_node_on_shutdown(node_id.into_addr());
                 if was_established {
                     self.client.on_node_removed(&node_id);
                 }
