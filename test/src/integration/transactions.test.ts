@@ -17,9 +17,9 @@
 import * as _ from "lodash";
 import {
     Asset,
-    AssetTransferTransaction
+    AssetTransferTransaction,
+    PlatformAddress
 } from "codechain-sdk/lib/core/classes";
-import { PlatformAddress } from "codechain-sdk/lib/key/classes";
 
 import CodeChain from "../helper/spawn";
 

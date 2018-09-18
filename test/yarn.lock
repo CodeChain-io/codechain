@@ -441,6 +441,10 @@ bignumber.js@^6.0.0:
   version "6.0.0"
   resolved "https://registry.yarnpkg.com/bignumber.js/-/bignumber.js-6.0.0.tgz#bbfa047644609a5af093e9cbd83b0461fa3f6002"
 
+bignumber.js@^7.2.1:
+  version "7.2.1"
+  resolved "https://registry.yarnpkg.com/bignumber.js/-/bignumber.js-7.2.1.tgz#80c048759d826800807c4bfd521e50edbba57a5f"
+
 binary-extensions@^1.0.0:
   version "1.11.0"
   resolved "https://registry.yarnpkg.com/binary-extensions/-/binary-extensions-1.11.0.tgz#46aa1751fb6a2f93ee5e689bb1087d4b14c6c205"
@@ -514,6 +518,13 @@ buffer-from@^1.0.0, buffer-from@^1.1.0:
 buffer@5.1.0:
   version "5.1.0"
   resolved "https://registry.yarnpkg.com/buffer/-/buffer-5.1.0.tgz#c913e43678c7cb7c8bd16afbcddb6c5505e8f9fe"
+  dependencies:
+    base64-js "^1.0.2"
+    ieee754 "^1.1.4"
+
+buffer@^5.2.1:
+  version "5.2.1"
+  resolved "https://registry.yarnpkg.com/buffer/-/buffer-5.2.1.tgz#dd57fa0f109ac59c602479044dca7b8b3d0b71d6"
   dependencies:
     base64-js "^1.0.2"
     ieee754 "^1.1.4"
@@ -643,39 +654,37 @@ code-point-at@^1.0.0:
   version "1.1.0"
   resolved "https://registry.yarnpkg.com/code-point-at/-/code-point-at-1.1.0.tgz#0d070b4d043a5bea33a2f1a40e2edb3d9a4ccf77"
 
-"codechain-keystore@git://github.com/CodeChain-io/codechain-keystore.git#7c2f06b7a8885d385e6bb92ff6406a4537977a7a":
-  version "0.1.0"
-  resolved "git://github.com/CodeChain-io/codechain-keystore.git#7c2f06b7a8885d385e6bb92ff6406a4537977a7a"
+codechain-keystore@~0.2.1:
+  version "0.2.2"
+  resolved "https://registry.yarnpkg.com/codechain-keystore/-/codechain-keystore-0.2.2.tgz#22cb1f79a4a35441d9ad28de6fd09a826a070f04"
   dependencies:
-    codechain-sdk "^0.1.0-alpha.18"
+    codechain-primitives "^0.1.0-rc2"
     config "^2.0.1"
+    lodash "^4.17.10"
     lowdb "^1.0.0"
     uuid "^3.3.2"
 
-codechain-sdk@^0.1.0-alpha.18:
-  version "0.1.0-alpha.21.rc1"
-  resolved "https://registry.yarnpkg.com/codechain-sdk/-/codechain-sdk-0.1.0-alpha.21.rc1.tgz#441214ccf54714bfe8e26f0f9befffb54d6bf0d1"
+codechain-primitives@^0.1.0-rc2:
+  version "0.1.0-rc2"
+  resolved "https://registry.yarnpkg.com/codechain-primitives/-/codechain-primitives-0.1.0-rc2.tgz#ac9033c610f9fc280e86fc88405d097084418c71"
   dependencies:
-    bignumber.js "^6.0.0"
+    bignumber.js "^7.2.1"
     blakejs "^1.1.0"
-    buffer "5.1.0"
-    elliptic "^6.4.0"
-    jayson "^2.0.6"
-    lodash "^4.17.10"
-    node-fetch "^2.1.2"
-    request "^2.88.0"
-    request-promise "^4.2.2"
+    buffer "^5.2.1"
+    elliptic "^6.4.1"
+    lodash "^4.17.11"
     ripemd160 "^2.0.2"
-    rlp "^2.0.0"
+    rlp "^2.1.0"
 
-codechain-sdk@^0.1.1-alpha.4.rc5:
-  version "0.1.1-alpha.4.rc5"
-  resolved "https://registry.yarnpkg.com/codechain-sdk/-/codechain-sdk-0.1.1-alpha.4.rc5.tgz#85ad49b758f43f56f4e112427a722e6ddd01a4f2"
+codechain-sdk@^0.2.0-alpha.1:
+  version "0.2.0-alpha.1"
+  resolved "https://registry.yarnpkg.com/codechain-sdk/-/codechain-sdk-0.2.0-alpha.1.tgz#c3f819a47efe04c911f6483576b0c63c82c5e20c"
   dependencies:
     bignumber.js "^6.0.0"
     blakejs "^1.1.0"
     buffer "5.1.0"
-    codechain-keystore "git://github.com/CodeChain-io/codechain-keystore.git#7c2f06b7a8885d385e6bb92ff6406a4537977a7a"
+    codechain-keystore "~0.2.1"
+    codechain-primitives "^0.1.0-rc2"
     elliptic "^6.4.0"
     jayson "^2.0.6"
     lodash "^4.17.10"
@@ -903,6 +912,18 @@ ecc-jsbn@~0.1.1:
 elliptic@^6.4.0:
   version "6.4.0"
   resolved "https://registry.yarnpkg.com/elliptic/-/elliptic-6.4.0.tgz#cac9af8762c85836187003c8dfe193e5e2eae5df"
+  dependencies:
+    bn.js "^4.4.0"
+    brorand "^1.0.1"
+    hash.js "^1.0.0"
+    hmac-drbg "^1.0.0"
+    inherits "^2.0.1"
+    minimalistic-assert "^1.0.0"
+    minimalistic-crypto-utils "^1.0.0"
+
+elliptic@^6.4.1:
+  version "6.4.1"
+  resolved "https://registry.yarnpkg.com/elliptic/-/elliptic-6.4.1.tgz#c2d0b7776911b86722c632c3c06c60f2f819939a"
   dependencies:
     bn.js "^4.4.0"
     brorand "^1.0.1"
@@ -2336,6 +2357,10 @@ lodash@4, lodash@^4.13.1, lodash@^4.17.10, lodash@^4.17.4:
   version "4.17.10"
   resolved "https://registry.yarnpkg.com/lodash/-/lodash-4.17.10.tgz#1b7793cf7259ea38fb3661d4d38b3260af8ae4e7"
 
+lodash@^4.17.11:
+  version "4.17.11"
+  resolved "https://registry.yarnpkg.com/lodash/-/lodash-4.17.11.tgz#b39ea6229ef607ecd89e2c8df12536891cac9b8d"
+
 longest@^1.0.1:
   version "1.0.1"
   resolved "https://registry.yarnpkg.com/longest/-/longest-1.0.1.tgz#30a0b2da38f73770e8294a0d22e6625ed77d0097"
@@ -3132,6 +3157,12 @@ ripemd160@^2.0.2:
 rlp@^2.0.0:
   version "2.0.0"
   resolved "https://registry.yarnpkg.com/rlp/-/rlp-2.0.0.tgz#9db384ff4b89a8f61563d92395d8625b18f3afb0"
+
+rlp@^2.1.0:
+  version "2.1.0"
+  resolved "https://registry.yarnpkg.com/rlp/-/rlp-2.1.0.tgz#e4f9886d5a982174f314543831e36e1a658460f9"
+  dependencies:
+    safe-buffer "^5.1.1"
 
 rsvp@^3.3.3:
   version "3.6.2"

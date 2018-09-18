@@ -18,7 +18,6 @@ import CodeChain from "../helper/spawn";
 import { wait } from "../helper/promise";
 
 import { SDK } from "codechain-sdk";
-import { PlatformAddress } from "codechain-sdk/lib/key/classes";
 import {
     makeRandomH256,
     makeRandomPassphrase,
@@ -26,7 +25,7 @@ import {
 } from "../helper/random";
 
 const faucetSecret = `ede1d4ccb4ec9a8bbbae9a13db3f4a7b56ea04189be86ac3a6a439d9a0a1addd`;
-const faucetAddress = PlatformAddress.fromAccountId(
+const faucetAddress = SDK.Core.classes.PlatformAddress.fromAccountId(
     SDK.util.getAccountIdFromPrivate(
         `ede1d4ccb4ec9a8bbbae9a13db3f4a7b56ea04189be86ac3a6a439d9a0a1addd`
     )
@@ -106,7 +105,7 @@ describe("solo - 1 node", () => {
         "Try to use the key of another account as its regular key",
         async () => {
             const account = node.sdk.util.getAccountIdFromPrivate(privKey);
-            const address = node.sdk.key.classes.PlatformAddress.fromAccountId(
+            const address = node.sdk.core.classes.PlatformAddress.fromAccountId(
                 account,
                 { networkId: "tc" }
             ).toString();
@@ -123,7 +122,7 @@ describe("solo - 1 node", () => {
     test("Try to use the regulary key already used in another account", async () => {
         const newPrivKey = node.sdk.util.generatePrivateKey();
         const account = node.sdk.util.getAccountIdFromPrivate(newPrivKey);
-        const address = node.sdk.key.classes.PlatformAddress.fromAccountId(
+        const address = node.sdk.core.classes.PlatformAddress.fromAccountId(
             account,
             { networkId: "tc" }
         ).toString();

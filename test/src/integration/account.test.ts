@@ -22,8 +22,6 @@ import {
     getRandomIndex
 } from "../helper/random";
 
-import { PlatformAddress } from "codechain-sdk/lib/key/classes";
-
 const ERROR = {
     KEY_ERROR: {
         code: -32041,
@@ -91,7 +89,7 @@ describe("account", () => {
                 const account = node.sdk.util.getAccountIdFromPrivate(
                     randomSecret
                 );
-                const address = node.sdk.key.classes.PlatformAddress.fromAccountId(
+                const address = node.sdk.core.classes.PlatformAddress.fromAccountId(
                     account,
                     { networkId: "tc" }
                 );
@@ -297,7 +295,7 @@ describe("account", () => {
                     const account = node.sdk.util.getAccountIdFromPrivate(
                         randomSecret
                     );
-                    const address = node.sdk.key.classes.PlatformAddress.fromAccountId(
+                    const address = node.sdk.core.classes.PlatformAddress.fromAccountId(
                         account
                     );
                     const randomPassphrase = makeRandomPassphrase();
@@ -318,7 +316,7 @@ describe("account", () => {
             async done => {
                 const secret = node.sdk.util.generatePrivateKey();
                 const account = node.sdk.util.getAccountIdFromPrivate(secret);
-                const address = node.sdk.key.classes.PlatformAddress.fromAccountId(
+                const address = node.sdk.core.classes.PlatformAddress.fromAccountId(
                     account
                 );
                 const passphrase = makeRandomPassphrase();
@@ -396,7 +394,7 @@ describe("account", () => {
                                 const account = node.sdk.util.getAccountIdFromPrivate(
                                     secret
                                 );
-                                const address = node.sdk.key.classes.PlatformAddress.fromAccountId(
+                                const address = node.sdk.core.classes.PlatformAddress.fromAccountId(
                                     account,
                                     { networkId: "tc" }
                                 ).toString();

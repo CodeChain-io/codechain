@@ -24,9 +24,9 @@ import {
     Invoice,
     Parcel,
     U256,
-    AssetTransferInput
+    AssetTransferInput,
+    PlatformAddress
 } from "codechain-sdk/lib/core/classes";
-import { PlatformAddress } from "codechain-sdk/lib/key/classes";
 import { mkdtempSync, appendFileSync } from "fs";
 import { createInterface as createReadline } from "readline";
 import * as mkdirp from "mkdirp";
