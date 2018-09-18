@@ -26,6 +26,7 @@ use ccore::{
 };
 use cdiscovery::{KademliaConfig, KademliaExtension, UnstructuredConfig, UnstructuredExtension};
 use cfinally::finally;
+use ckey::Address;
 use ckeystore::accounts_dir::RootDiskDirectory;
 use ckeystore::KeyStore;
 use clap::ArgMatches;
@@ -122,6 +123,9 @@ fn new_miner(config: &config::Config, scheme: &Scheme, ap: Arc<AccountProvider>)
             }
             None => return Err("mining.engine_signer is not specified".to_string()),
         },
+        EngineType::Solo if !config.mining.disable => miner
+            .set_author(config.mining.author.map_or(Address::default(), |a| a.into_address()), None)
+            .expect("set_author never fails when Solo is used"),
         _ => (),
     }
 
