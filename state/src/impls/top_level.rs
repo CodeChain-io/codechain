@@ -390,6 +390,24 @@ impl TopLevelState {
                 self.discard_checkpoint(PARCEL_ACTION_CHECKPOINT);
                 Ok(invoice)
             }
+            Err(StateError::Parcel(ParcelError::ParcelAlreadyImported)) => {
+                unreachable!();
+            }
+            Err(StateError::Parcel(ParcelError::TransactionAlreadyImported)) => {
+                unreachable!();
+            }
+            Err(StateError::Parcel(ParcelError::Old)) => {
+                unreachable!();
+            }
+            Err(StateError::Parcel(ParcelError::TooCheapToReplace)) => {
+                unreachable!();
+            }
+            Err(StateError::Parcel(ParcelError::InvalidNetworkId(_))) => {
+                unreachable!();
+            }
+            Err(StateError::Parcel(ParcelError::LimitReached)) => {
+                unreachable!();
+            }
             Err(StateError::Parcel(err)) => {
                 self.revert_to_checkpoint(PARCEL_ACTION_CHECKPOINT);
                 Ok(ParcelInvoice::SingleFail(err))
