@@ -18,7 +18,7 @@ mod chain_type;
 
 use std::fs;
 use std::net::IpAddr;
-use std::str::FromStr;
+use std::str::{self, FromStr};
 use std::time::Duration;
 
 use ccore::{MinerOptions, ShardValidatorConfig, StratumConfig};
@@ -29,7 +29,6 @@ use rpc::{RpcHttpConfig, RpcIpcConfig};
 use toml;
 
 pub use self::chain_type::ChainType;
-use super::constants::DEFAULT_CONFIG_PATH;
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -435,12 +434,27 @@ impl ShardValidator {
     }
 }
 
+#[cfg(not(debug_assertions))]
+pub fn read_preset_config() -> &'static str {
+    let bytes = include_bytes!("presets/config.prod.toml");
+    str::from_utf8(bytes).expect("The preset config file must be valid")
+}
+
+#[cfg(debug_assertions)]
+pub fn read_preset_config() -> &'static str {
+    let bytes = include_bytes!("presets/config.dev.toml");
+    str::from_utf8(bytes).expect("The preset config file must be valid")
+}
+
 pub fn load_config(matches: &clap::ArgMatches) -> Result<Config, String> {
-    let config_path = matches.value_of("config").unwrap_or(DEFAULT_CONFIG_PATH);
-    let toml_string = fs::read_to_string(config_path).map_err(|e| format!("Fail to read file: {:?}", e))?;
+    let toml_string = match matches.value_of("config") {
+        Some(config_path) => fs::read_to_string(config_path).map_err(|e| format!("Fail to read file: {:?}", e))?,
+        None => read_preset_config().to_string(),
+    };
 
     let mut config: Config =
         toml::from_str(toml_string.as_ref()).map_err(|e| format!("Error while parsing TOML: {:?}", e))?;
+
     config.ipc.overwrite_with(&matches)?;
     config.operating.overwrite_with(&matches)?;
     config.mining.overwrite_with(&matches)?;
