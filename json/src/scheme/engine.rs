@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use super::{BlakePoW, Cuckoo, NullEngine, Solo, SimplePoA, Tendermint};
+use super::{BlakePoW, Cuckoo, NullEngine, SimplePoA, Solo, Tendermint};
 
 /// Engine deserialization.
 #[derive(Debug, PartialEq, Deserialize)]

@@ -35,7 +35,7 @@ use rlp::{Encodable, Rlp, RlpStream};
 use super::super::blockchain::HeaderProvider;
 
 use super::super::codechain_machine::CodeChainMachine;
-use super::super::consensus::{BlakePoW, CodeChainEngine, Cuckoo, NullEngine, Solo, SimplePoA, Tendermint};
+use super::super::consensus::{BlakePoW, CodeChainEngine, Cuckoo, NullEngine, SimplePoA, Solo, Tendermint};
 use super::super::error::{Error, SchemeError};
 use super::super::header::Header;
 use super::pod_state::{PodAccounts, PodShards};
@@ -143,9 +143,7 @@ impl Scheme {
         match engine_scheme {
             cjson::scheme::Engine::Null(null) => Arc::new(NullEngine::new(null.params.into(), machine)),
             cjson::scheme::Engine::Solo(solo) => Arc::new(Solo::new(solo.params.into(), machine)),
-            cjson::scheme::Engine::SimplePoA(simple_poa) => {
-                Arc::new(SimplePoA::new(simple_poa.params.into(), machine))
-            }
+            cjson::scheme::Engine::SimplePoA(simple_poa) => Arc::new(SimplePoA::new(simple_poa.params.into(), machine)),
             cjson::scheme::Engine::Tendermint(tendermint) => Tendermint::new(tendermint.params.into(), machine),
             cjson::scheme::Engine::Cuckoo(cuckoo) => Arc::new(Cuckoo::new(cuckoo.params.into(), machine)),
             cjson::scheme::Engine::BlakePoW(blake_pow) => Arc::new(BlakePoW::new(blake_pow.params.into(), machine)),
