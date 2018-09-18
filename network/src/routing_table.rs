@@ -33,7 +33,7 @@ enum SecretOrigin {
 }
 
 // Intermediate : Middle state in changing state, ex) A state -> Intermediate -> B state
-// Discovery flow : Candidate -> Alive -> KeyPairShared -> SecretShared -> TemporaryNonceShared -> SessionShared -> Established
+// Discovery flow : Candidate -> Alive -> KeyPairShared -> SecretShared -> TemporaryNonceShared -> SessionShared -> (Establishing) -> Established
 // Offline secret exchange flow : SecretpreImported -> TemporaryNonceShared -> SessionShared -> Established
 #[derive(Clone, Debug, PartialEq)]
 enum State {
@@ -45,6 +45,7 @@ enum State {
     SecretShared(Secret),
     TemporaryNonceShared(Secret, Nonce, SecretOrigin),
     SessionShared(Session),
+    Establishing(Session),
     Established(NodeId),
     Banned,
 }
@@ -153,6 +154,14 @@ impl RoutingTable {
     }
 
     pub fn remove_node(&self, addr: SocketAddr) -> bool {
+        self.remove_node_internal(addr, false)
+    }
+
+    pub fn remove_node_on_shutdown(&self, addr: SocketAddr) -> bool {
+        self.remove_node_internal(addr, true)
+    }
+
+    fn remove_node_internal(&self, addr: SocketAddr, on_shutdown: bool) -> bool {
         let mut entries = self.entries.write();
         let mut remote_to_local_node_ids = self.remote_to_local_node_ids.write();
 
@@ -165,6 +174,12 @@ impl RoutingTable {
                     entry.set(old_state);
                     remote_to_local_node_ids.remove(&remote_node_id);
                     return false
+                }
+                State::SessionShared(_) => {
+                    entry.set(old_state);
+                    if on_shutdown {
+                        return false
+                    }
                 }
                 _ => {
                     entry.set(old_state);
@@ -393,20 +408,57 @@ impl RoutingTable {
         false
     }
 
+    pub fn set_establishing(&self, remote_address: &SocketAddr) -> bool {
+        let entries = self.entries.read();
+        let remote_node_id = remote_address.into();
+        if let Some(entry) = entries.get(&remote_node_id) {
+            let entry = entry.lock();
+            let old_state = entry.replace(State::Intermediate);
+            if let State::SessionShared(session) = old_state {
+                entry.set(State::Establishing(session));
+                ctrace!(ROUTING_TABLE, "Connection to {} set establishing", remote_address);
+                return true
+            }
+            entry.set(old_state);
+        }
+        ctrace!(ROUTING_TABLE, "Cannot set connection to {} as establishing", remote_address);
+        false
+    }
+
     pub fn establish(&self, remote_address: &SocketAddr) -> bool {
         let entries = self.entries.read();
         let remote_node_id = remote_address.into();
         if let Some(entry) = entries.get(&remote_node_id) {
             let entry = entry.lock();
             let old_state = entry.replace(State::Intermediate);
-            if let State::SessionShared(_) = old_state {
-                entry.set(State::Established(remote_node_id));
-                ctrace!(ROUTING_TABLE, "Connection to {} established", remote_address);
+            match old_state {
+                State::SessionShared(_) | State::Establishing(_) => {
+                    entry.set(State::Established(remote_node_id));
+                    ctrace!(ROUTING_TABLE, "Connection to {} is established", remote_address);
+                    return true
+                }
+                _ => {}
+            }
+            entry.set(old_state);
+        }
+        ctrace!(ROUTING_TABLE, "Cannot establish connection to {}", remote_address);
+        false
+    }
+
+    pub fn reset_session(&self, remote_address: &SocketAddr) -> bool {
+        let entries = self.entries.read();
+        let remote_node_id = remote_address.into();
+        if let Some(entry) = entries.get(&remote_node_id) {
+            let entry = entry.lock();
+            let old_state = entry.replace(State::Intermediate);
+            if let State::Establishing(session) = old_state {
+                entry.set(State::SessionShared(session));
+                ctrace!(ROUTING_TABLE, "Connection to {} is ready to reconnect", remote_address);
                 return true
             }
             entry.set(old_state);
         }
-        ctrace!(ROUTING_TABLE, "Cannot establish connection to {} established", remote_address);
+        ctrace!(ROUTING_TABLE, "Cannot reset connection to {}, because it's not establishing", remote_address);
         false
     }
 
