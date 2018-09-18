@@ -360,7 +360,7 @@ impl EngineClient for Client {
     /// Submit a seal for a block in the mining queue.
     fn submit_seal(&self, block_hash: H256, seal: Vec<Bytes>) {
         if self.importer.miner.submit_seal(self, block_hash, seal).is_err() {
-            cwarn!(POA, "Wrong internal seal submission!")
+            cwarn!(CLIENT, "Wrong internal seal submission!")
         }
     }
 

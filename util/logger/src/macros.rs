@@ -52,9 +52,6 @@ macro_rules! log_target {
     (OWN_PARCEL) => {
         "own_parcel"
     };
-    (POA) => {
-        "poa"
-    };
     (ROUTING_TABLE) => {
         "routing_table"
     };
