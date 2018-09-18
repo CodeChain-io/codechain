@@ -46,7 +46,7 @@ use super::rpc::{rpc_http_start, rpc_ipc_start};
 use super::rpc_apis::ApiDependencies;
 
 fn network_start(cfg: &NetworkConfig) -> Result<Arc<NetworkService>, String> {
-    info!("Handshake Listening on {}:{}", cfg.address, cfg.port);
+    cinfo!(NETWORK, "Handshake Listening on {}:{}", cfg.address, cfg.port);
 
     let addr = cfg.address.parse().map_err(|_| format!("Invalid NETWORK listen host given: {}", cfg.address))?;
     let sockaddress = SocketAddr::new(addr, cfg.port);
@@ -85,7 +85,7 @@ fn discovery_start(service: &NetworkService, cfg: &config::Network) -> Result<()
 }
 
 fn client_start(cfg: &config::Operating, scheme: &Scheme, miner: Arc<Miner>) -> Result<ClientService, String> {
-    info!("Starting client");
+    cinfo!(CLIENT, "Starting client");
     let client_path = Path::new(&cfg.db_path);
     let client_config = Default::default();
     let service = ClientService::start(client_config, &scheme, &client_path, miner)
