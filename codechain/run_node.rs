@@ -102,7 +102,7 @@ fn stratum_start(cfg: StratumConfig, miner: Arc<Miner>, client: Arc<Client>) -> 
         Err(e) => Err(format!("STRATUM start error: {:?}", e)),
         Ok(stratum) => {
             miner.add_work_listener(Box::new(stratum));
-            info!("STRATUM Listening on {}", cfg.port);
+            cinfo!(STRATUM, "Listening on {}", cfg.port);
             Ok(())
         }
     }
