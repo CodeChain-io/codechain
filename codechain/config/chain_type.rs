@@ -23,9 +23,11 @@ use ccore::Scheme;
 #[serde(rename_all = "snake_case")]
 pub enum ChainType {
     Solo,
+    #[serde(rename = "simple_poa")]
     SimplePoA,
     Tendermint,
     Cuckoo,
+    #[serde(rename = "blake_pow")]
     BlakePoW,
     Husky,
     Saluki,
