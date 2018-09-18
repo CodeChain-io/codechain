@@ -23,7 +23,7 @@ use ccore::Scheme;
 #[serde(rename_all = "snake_case")]
 pub enum ChainType {
     Solo,
-    SoloAuthority,
+    SimplePoA,
     Tendermint,
     Cuckoo,
     BlakePoW,
@@ -43,7 +43,7 @@ impl FromStr for ChainType {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let scheme = match s {
             "solo" => ChainType::Solo,
-            "solo_authority" => ChainType::SoloAuthority,
+            "simple_poa" => ChainType::SimplePoA,
             "tendermint" => ChainType::Tendermint,
             "cuckoo" => ChainType::Cuckoo,
             "blake_pow" => ChainType::BlakePoW,
@@ -58,7 +58,7 @@ impl fmt::Display for ChainType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str(match self {
             ChainType::Solo => "solo",
-            ChainType::SoloAuthority => "solo_authority",
+            ChainType::SimplePoA => "simple_poa",
             ChainType::Tendermint => "tendermint",
             ChainType::Cuckoo => "cuckoo",
             ChainType::BlakePoW => "blake_pow",
@@ -72,7 +72,7 @@ impl ChainType {
     pub fn scheme(&self) -> Result<Scheme, String> {
         match self {
             ChainType::Solo => Ok(Scheme::new_test_solo()),
-            ChainType::SoloAuthority => Ok(Scheme::new_test_solo_authority()),
+            ChainType::SimplePoA => Ok(Scheme::new_test_simple_poa()),
             ChainType::Tendermint => Ok(Scheme::new_test_tendermint()),
             ChainType::Cuckoo => Ok(Scheme::new_test_cuckoo()),
             ChainType::BlakePoW => Ok(Scheme::new_test_blake_pow()),

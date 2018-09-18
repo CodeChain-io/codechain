@@ -21,7 +21,7 @@ use super::super::uint::Uint;
 /// Authority params deserialization.
 #[derive(Debug, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct SoloAuthorityParams {
+pub struct SimplePoAParams {
     /// Valid authorities
     pub validators: Vec<PlatformAddress>,
     /// Block reward.
@@ -30,8 +30,8 @@ pub struct SoloAuthorityParams {
 
 /// Authority engine deserialization.
 #[derive(Debug, PartialEq, Deserialize)]
-pub struct SoloAuthority {
-    pub params: SoloAuthorityParams,
+pub struct SimplePoA {
+    pub params: SimplePoAParams,
 }
 
 #[cfg(test)]
@@ -43,7 +43,7 @@ mod tests {
     use serde_json;
 
     use super::super::super::uint::Uint;
-    use super::SoloAuthority;
+    use super::SimplePoA;
 
     #[test]
     fn basic_authority_deserialization() {
@@ -54,7 +54,7 @@ mod tests {
             }
         }"#;
 
-        let deserialized: SoloAuthority = serde_json::from_str(s).unwrap();
+        let deserialized: SimplePoA = serde_json::from_str(s).unwrap();
 
         let vs = vec![PlatformAddress::from_str("tccqqtk3q3rea46cq4cpa4h5tm43nw3supd6uxtltxv").unwrap()];
         assert_eq!(deserialized.params.validators, vs);

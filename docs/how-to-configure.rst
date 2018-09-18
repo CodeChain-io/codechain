@@ -83,7 +83,7 @@ CLI Options for CodeChain client
         Do not show any synchronization information in the console.
 
     ``--chain=[CHAIN]``
-        Set the blockchain type out of solo, solo_authority, tendermint or a path to chain scheme file. (default: solo)
+        Set the blockchain type out of solo, simple_poa, tendermint or a path to chain scheme file. (default: solo)
 
     ``--db-path=[PATH]``
         Specify the database directory path.

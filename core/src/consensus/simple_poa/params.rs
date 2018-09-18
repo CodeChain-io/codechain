@@ -19,16 +19,16 @@ use ckey::{Address, PlatformAddress};
 use primitives::U256;
 
 #[derive(Debug, PartialEq)]
-pub struct SoloAuthorityParams {
+pub struct SimplePoAParams {
     /// Valid signatories.
     pub validators: Vec<Address>,
     /// base reward for a block.
     pub block_reward: U256,
 }
 
-impl From<cjson::scheme::SoloAuthorityParams> for SoloAuthorityParams {
-    fn from(p: cjson::scheme::SoloAuthorityParams) -> Self {
-        SoloAuthorityParams {
+impl From<cjson::scheme::SimplePoAParams> for SimplePoAParams {
+    fn from(p: cjson::scheme::SimplePoAParams) -> Self {
+        SimplePoAParams {
             validators: p.validators.into_iter().map(PlatformAddress::into_address).collect(),
             block_reward: p.block_reward.map_or_else(Default::default, Into::into),
         }

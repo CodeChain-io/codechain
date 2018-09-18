@@ -1,7 +1,7 @@
 {
-  "name": "SoloAuthority",
+  "name": "SimplePoA",
   "engine": {
-    "soloAuthority": {
+    "simplePoA": {
       "params": {
         "durationLimit": "0x0d",
         "validators": [

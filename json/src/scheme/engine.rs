@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use super::{BlakePoW, Cuckoo, NullEngine, Solo, SoloAuthority, Tendermint};
+use super::{BlakePoW, Cuckoo, NullEngine, Solo, SimplePoA, Tendermint};
 
 /// Engine deserialization.
 #[derive(Debug, PartialEq, Deserialize)]
@@ -23,7 +23,7 @@ pub enum Engine {
     /// Null engine.
     Null(NullEngine),
     Solo(Solo),
-    SoloAuthority(SoloAuthority),
+    SimplePoA(SimplePoA),
     Tendermint(Tendermint),
     Cuckoo(Cuckoo),
     BlakePoW(BlakePoW),
@@ -65,7 +65,7 @@ mod tests {
         };
 
         let s = r#"{
-            "soloAuthority": {
+            "simplePoA": {
                 "params": {
                     "durationLimit": "0x0d",
                     "validators" : ["tccqqtk3q3rea46cq4cpa4h5tm43nw3supd6uxtltxv"]
@@ -74,7 +74,7 @@ mod tests {
         }"#;
         let deserialized: Engine = serde_json::from_str(s).unwrap();
         match deserialized {
-            Engine::SoloAuthority(_) => {} // solo authority is unit tested in its own file.
+            Engine::SimplePoA(_) => {} // simple poa is unit tested in its own file.
             _ => panic!(),
         };
 

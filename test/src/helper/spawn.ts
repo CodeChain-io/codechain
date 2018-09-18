@@ -44,7 +44,7 @@ const projectRoot = `${__dirname}/../../..`;
 
 export type ChainType =
     | "solo"
-    | "solo_authority"
+    | "simple_poa"
     | "tendermint"
     | "cuckoo"
     | "blake_pow"

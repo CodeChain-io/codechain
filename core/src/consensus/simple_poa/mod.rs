@@ -23,7 +23,7 @@ use ctypes::machine::WithBalances;
 use parking_lot::RwLock;
 use primitives::{H256, U256};
 
-use self::params::SoloAuthorityParams;
+use self::params::SimplePoAParams;
 use super::super::account_provider::AccountProvider;
 use super::super::block::{ExecutedBlock, IsBlock};
 use super::super::client::EngineClient;
@@ -36,7 +36,7 @@ use super::validator_set::validator_list::ValidatorList;
 use super::validator_set::ValidatorSet;
 use super::{ConsensusEngine, ConstructedVerifier, EngineError, Seal};
 
-pub struct SoloAuthority {
+pub struct SimplePoA {
     machine: CodeChainMachine,
     signer: RwLock<EngineSigner>,
     validators: Box<ValidatorSet>,
@@ -44,10 +44,10 @@ pub struct SoloAuthority {
     block_reward: U256,
 }
 
-impl SoloAuthority {
-    /// Create a new instance of SoloAuthority engine
-    pub fn new(params: SoloAuthorityParams, machine: CodeChainMachine) -> Self {
-        SoloAuthority {
+impl SimplePoA {
+    /// Create a new instance of SimplePoA engine
+    pub fn new(params: SimplePoAParams, machine: CodeChainMachine) -> Self {
+        SimplePoA {
             machine,
             signer: Default::default(),
             validators: Box::new(ValidatorList::new(params.validators)),
@@ -83,9 +83,9 @@ fn verify_external(header: &Header, validators: &ValidatorSet) -> Result<(), Err
     }
 }
 
-impl ConsensusEngine<CodeChainMachine> for SoloAuthority {
+impl ConsensusEngine<CodeChainMachine> for SimplePoA {
     fn name(&self) -> &str {
-        "SoloAuthority"
+        "SimplePoA"
     }
 
     fn machine(&self) -> &CodeChainMachine {
@@ -208,13 +208,13 @@ mod tests {
 
     #[test]
     fn has_valid_metadata() {
-        let engine = Scheme::new_test_solo_authority().engine;
+        let engine = Scheme::new_test_simple_poa().engine;
         assert!(!engine.name().is_empty());
     }
 
     #[test]
     fn fail_to_verify_signature_when_seal_is_invalid() {
-        let engine = Scheme::new_test_solo_authority().engine;
+        let engine = Scheme::new_test_simple_poa().engine;
         let mut header: Header = Header::default();
         header.set_seal(vec![::rlp::encode(&Signature::default()).into_vec()]);
 
@@ -224,7 +224,7 @@ mod tests {
 
     #[test]
     fn generate_seal() {
-        let scheme = Scheme::new_test_solo_authority();
+        let scheme = Scheme::new_test_simple_poa();
         let engine = &*scheme.engine;
         let db = scheme.ensure_genesis_state(get_temp_state_db()).unwrap();
         let genesis_header = scheme.genesis_header();
@@ -239,7 +239,7 @@ mod tests {
 
     #[test]
     fn seals_internally() {
-        let engine = Scheme::new_test_solo_authority().engine;
+        let engine = Scheme::new_test_simple_poa().engine;
         assert!(!engine.seals_internally().unwrap());
     }
 }
