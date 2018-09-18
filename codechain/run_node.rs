@@ -58,35 +58,37 @@ fn network_start(cfg: &NetworkConfig) -> Result<Arc<NetworkService>, String> {
 }
 
 fn discovery_start(service: &NetworkService, cfg: &config::Network) -> Result<(), String> {
-    match cfg.discovery_type.as_ref() {
-        "unstructured" => {
+    match cfg.discovery_type.as_ref().map(|s| s.as_str()) {
+        Some("unstructured") => {
             let config = UnstructuredConfig {
-                bucket_size: cfg.discovery_bucket_size,
-                t_refresh: cfg.discovery_refresh,
+                bucket_size: cfg.discovery_bucket_size.unwrap(),
+                t_refresh: cfg.discovery_refresh.unwrap(),
             };
             let unstructured = UnstructuredExtension::new(config);
             service.set_routing_table(&*unstructured);
             service.register_extension(unstructured);
             cinfo!(DISCOVERY, "Node runs with unstructured discovery");
         }
-        "kademlia" => {
+        Some("kademlia") => {
             let config = KademliaConfig {
-                bucket_size: cfg.discovery_bucket_size,
-                t_refresh: cfg.discovery_refresh,
+                bucket_size: cfg.discovery_bucket_size.unwrap(),
+                t_refresh: cfg.discovery_refresh.unwrap(),
             };
             let kademlia = KademliaExtension::new(config);
             service.set_routing_table(&*kademlia);
             service.register_extension(kademlia);
             cinfo!(DISCOVERY, "Node runs with kademlia discovery");
         }
-        discovery_type => return Err(format!("Unknown discovery {}", discovery_type)),
+        Some(discovery_type) => return Err(format!("Unknown discovery {}", discovery_type)),
+        None => {}
     }
     Ok(())
 }
 
 fn client_start(cfg: &config::Operating, scheme: &Scheme, miner: Arc<Miner>) -> Result<ClientService, String> {
     cinfo!(CLIENT, "Starting client");
-    let client_path = Path::new(&cfg.db_path);
+    let db_path = cfg.db_path.as_ref().map(|s| s.as_str()).unwrap();
+    let client_path = Path::new(db_path);
     let client_config = Default::default();
     let service = ClientService::start(client_config, &scheme, &client_path, miner)
         .map_err(|e| format!("Client service error: {}", e))?;
@@ -111,7 +113,7 @@ fn stratum_start(cfg: StratumConfig, miner: Arc<Miner>, client: Arc<Client>) -> 
 fn new_miner(config: &config::Config, scheme: &Scheme, ap: Arc<AccountProvider>) -> Result<Arc<Miner>, String> {
     let miner = Miner::new(config.miner_options()?, scheme, Some(ap.clone()));
 
-    if !config.mining.disable {
+    if !config.mining.disable.unwrap() {
         match miner.engine_type() {
             EngineType::PoW => match &config.mining.author {
                 Some(ref author) => {
@@ -228,29 +230,29 @@ pub fn run_node(matches: ArgMatches) -> Result<(), String> {
 
     let shard_validator = if scheme.params().use_shard_validator {
         None
-    } else if config.shard_validator.disable {
+    } else if config.shard_validator.disable.unwrap() {
         Some(ShardValidator::new(None, Arc::clone(&ap)))
     } else {
         Some(ShardValidator::new(Some(config.shard_validator_config().account), Arc::clone(&ap)))
     };
 
     let network_service: Arc<NetworkControl> = {
-        if !config.network.disable {
+        if !config.network.disable.unwrap() {
             let network_config = config.network_config()?;
             let service = network_start(&network_config)?;
 
-            if config.network.discovery {
+            if config.network.discovery.unwrap() {
                 discovery_start(&service, &config.network)?;
             } else {
                 cwarn!(DISCOVERY, "Node runs without discovery extension");
             }
 
-            if config.network.sync {
+            if config.network.sync.unwrap() {
                 let sync = BlockSyncExtension::new(client.client());
                 service.register_extension(sync.clone());
                 client.client().add_notify(sync.clone());
             }
-            if config.network.parcel_relay {
+            if config.network.parcel_relay.unwrap() {
                 service.register_extension(ParcelSyncExtension::new(client.client()));
             }
             if let Some(consensus_extension) = scheme.engine.network_extension() {
@@ -279,7 +281,7 @@ pub fn run_node(matches: ArgMatches) -> Result<(), String> {
     });
 
     let _rpc_server = {
-        if !config.rpc.disable {
+        if !config.rpc.disable.unwrap() {
             Some(rpc_http_start(config.rpc_http_config(), config.rpc.enable_devel_api, Arc::clone(&rpc_apis_deps))?)
         } else {
             None
@@ -287,20 +289,21 @@ pub fn run_node(matches: ArgMatches) -> Result<(), String> {
     };
 
     let _ipc_server = {
-        if !config.ipc.disable {
+        if !config.ipc.disable.unwrap() {
             Some(rpc_ipc_start(config.rpc_ipc_config(), config.rpc.enable_devel_api, Arc::clone(&rpc_apis_deps))?)
         } else {
             None
         }
     };
 
-    if (!config.stratum.disable) && (miner.engine_type() == EngineType::PoW) {
+    if (!config.stratum.disable.unwrap()) && (miner.engine_type() == EngineType::PoW) {
         stratum_start(config.stratum_config(), Arc::clone(&miner), client.client())?
     }
 
     let _snapshot_service = {
-        if !config.snapshot.disable {
-            let service = SnapshotService::new(client.client(), config.snapshot.path, scheme.params().snapshot_period);
+        if !config.snapshot.disable.unwrap() {
+            let service =
+                SnapshotService::new(client.client(), config.snapshot.path.unwrap(), scheme.params().snapshot_period);
             client.client().add_notify(service.clone());
             Some(service)
         } else {
