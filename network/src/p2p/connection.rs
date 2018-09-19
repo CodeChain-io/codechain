@@ -16,7 +16,6 @@
 
 use std::cell::Cell;
 use std::collections::{HashMap, VecDeque};
-use std::error;
 use std::fmt;
 use std::io;
 use std::result;
@@ -55,24 +54,6 @@ impl fmt::Display for Error {
             Error::StreamError(err) => err.fmt(f),
             Error::DecoderError(err) => err.fmt(f),
             Error::UnreadySession => fmt::Debug::fmt(self, f),
-        }
-    }
-}
-
-impl error::Error for Error {
-    fn description(&self) -> &str {
-        match self {
-            Error::StreamError(err) => err.description(),
-            Error::DecoderError(err) => err.description(),
-            Error::UnreadySession => "Session is not ready",
-        }
-    }
-
-    fn cause(&self) -> Option<&error::Error> {
-        match self {
-            Error::StreamError(err) => Some(err),
-            Error::DecoderError(err) => Some(err),
-            Error::UnreadySession => None,
         }
     }
 }

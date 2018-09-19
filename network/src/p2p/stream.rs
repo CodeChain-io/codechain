@@ -15,7 +15,6 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::collections::VecDeque;
-use std::error::Error as StdError;
 use std::fmt;
 use std::io;
 use std::net;
@@ -43,23 +42,6 @@ impl fmt::Display for Error {
             Error::IoError(err) => err.fmt(f),
             Error::DecoderError(err) => err.fmt(f),
             Error::InvalidSign => fmt::Debug::fmt(&self, f),
-        }
-    }
-}
-
-impl StdError for Error {
-    fn description(&self) -> &str {
-        match self {
-            Error::IoError(err) => err.description(),
-            Error::DecoderError(err) => err.description(),
-            Error::InvalidSign => "invalid sign",
-        }
-    }
-    fn cause(&self) -> Option<&StdError> {
-        match self {
-            Error::IoError(err) => Some(err),
-            Error::DecoderError(err) => Some(err),
-            Error::InvalidSign => None,
         }
     }
 }
