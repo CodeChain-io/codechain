@@ -1,0 +1,10 @@
+[codechain]
+chain = "simple_poa"
+
+[ipc]
+[rpc]
+[mining]
+[network]
+[snapshot]
+[stratum]
+[shard_validator]
