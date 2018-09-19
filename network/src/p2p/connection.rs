@@ -413,10 +413,17 @@ struct DisconnectingConnection {
 }
 
 impl DisconnectingConnection {
-    fn new(stream: Stream) -> Self {
+    fn new(mut stream: Stream) -> Self {
+        stream.clear();
         Self {
             stream,
         }
+    }
+
+    fn reregister<Message>(&self, reg: Token, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()>
+    where
+        Message: Send + Sync + Clone + 'static, {
+        event_loop.reregister(&self.stream, reg, Ready::empty(), PollOpt::edge())
     }
 
     fn deregister<Message>(&self, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()>
@@ -561,8 +568,9 @@ impl Connection {
                 connection.reregister(reg, event_loop)?;
                 Ok(ConnectionType::Established)
             }
-            State::Disconnecting(_) => {
+            State::Disconnecting(connection) => {
                 ctrace!(NETWORK, "Packet received while disconnecting");
+                connection.reregister(reg, event_loop)?;
                 Ok(ConnectionType::Disconnecting)
             }
             _ => unreachable!(),

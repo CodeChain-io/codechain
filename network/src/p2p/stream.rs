@@ -295,6 +295,10 @@ impl Stream {
         Ok(())
     }
 
+    pub fn clear(&mut self) {
+        self.try_stream.write.clear();
+    }
+
     fn read_bytes(&mut self) -> Result<Option<Vec<u8>>> {
         self.try_stream.read_bytes()
     }
