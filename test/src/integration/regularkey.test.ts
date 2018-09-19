@@ -15,7 +15,6 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import CodeChain from "../helper/spawn";
-import { wait } from "../helper/promise";
 
 import { SDK } from "codechain-sdk";
 import {

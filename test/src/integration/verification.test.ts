@@ -16,7 +16,6 @@
 
 import { SDK } from "codechain-sdk";
 import { PlatformAddress } from "codechain-sdk/lib/key/PlatformAddress";
-import { SignedParcel, U256 } from "codechain-sdk/lib/core/classes";
 
 import CodeChain from "../helper/spawn";
 

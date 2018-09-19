@@ -16,7 +16,6 @@
 
 import CodeChain from "../helper/spawn";
 import { wait } from "../helper/promise";
-import { AssertionError } from "assert";
 
 // FIXME: It fails due to timeout when the block sync extension is stuck. See
 // https://github.com/CodeChain-io/codechain/issues/662
