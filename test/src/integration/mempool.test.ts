@@ -14,9 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import { SDK } from "codechain-sdk";
-import { PlatformAddress } from "codechain-sdk/lib/key/PlatformAddress";
-
 import { wait } from "../helper/promise";
 import CodeChain from "../helper/spawn";
 
