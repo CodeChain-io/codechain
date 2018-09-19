@@ -25,7 +25,8 @@ import {
     Parcel,
     U256,
     AssetTransferInput,
-    PlatformAddress
+    PlatformAddress,
+    AssetTransferAddress
 } from "codechain-sdk/lib/core/classes";
 import { mkdtempSync, appendFileSync } from "fs";
 import { createInterface as createReadline } from "readline";
@@ -343,19 +344,24 @@ export default class CodeChain {
 
     public async sendTransaction(
         tx: Transaction,
-        options?: { nonce?: U256 | number; awaitInvoice?: boolean }
+        options?: {
+            nonce?: U256 | number;
+            awaitInvoice?: boolean;
+            secret?: string;
+        }
     ) {
         const {
             nonce = (await this.sdk.rpc.chain.getNonce(faucetAddress)) || 0,
-            awaitInvoice = true
+            awaitInvoice = true,
+            secret = faucetSecret
         } = options || {};
         const parcel = this.sdk.core
             .createAssetTransactionGroupParcel({
                 transactions: [tx]
             })
             .sign({
-                secret: faucetSecret,
-                fee: 10,
+                secret,
+                fee: 10 + this.id,
                 nonce
             });
         await this.sdk.rpc.chain.sendSignedParcel(parcel);
@@ -366,9 +372,16 @@ export default class CodeChain {
         }
     }
 
-    public async mintAsset(params: { amount: number }) {
-        const { amount } = params;
-        const recipient = await this.createP2PKHAddress();
+    public async mintAsset(params: {
+        amount: number;
+        recipient?: string | AssetTransferAddress;
+        secret?: string;
+    }) {
+        const {
+            amount,
+            recipient = await this.createP2PKHAddress(),
+            secret
+        } = params;
         const tx = this.sdk.core.createAssetMintTransaction({
             scheme: {
                 shardId: 0,
@@ -378,7 +391,7 @@ export default class CodeChain {
             },
             recipient
         });
-        await this.sendTransaction(tx);
+        await this.sendTransaction(tx, { secret });
         const asset = await this.sdk.rpc.chain.getAsset(tx.hash(), 0);
         if (asset === null) {
             throw Error(`Failed to mint asset`);
@@ -400,7 +413,7 @@ export default class CodeChain {
             })
             .sign({
                 secret: faucetSecret,
-                fee: 10,
+                fee: 10 + this.id,
                 nonce
             });
         const parcelHash = await this.sdk.rpc.chain.sendSignedParcel(parcel);
@@ -483,16 +496,18 @@ export default class CodeChain {
     public async sendSignedParcel(options?: {
         nonce?: U256 | number;
         awaitInvoice?: boolean;
-        recipient?: string;
+        recipient?: PlatformAddress | string;
         amount?: number;
         secret?: any;
+        fee?: number;
     }): Promise<SignedParcel> {
         const {
             nonce = (await this.sdk.rpc.chain.getNonce(faucetAddress)) || 0,
             awaitInvoice = true,
             recipient = "tccqruq09sfgax77nj4gukjcuq69uzeyv0jcs7vzngg",
             amount = 0,
-            secret = faucetSecret
+            secret = faucetSecret,
+            fee = 10 + this.id
         } = options || {};
         const parcel = this.sdk.core
             .createPaymentParcel({
@@ -501,7 +516,7 @@ export default class CodeChain {
             })
             .sign({
                 secret,
-                fee: 10 + this.id,
+                fee,
                 nonce
             });
         const hash = await this.sdk.rpc.chain.sendSignedParcel(parcel);

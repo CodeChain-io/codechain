@@ -15,14 +15,13 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import CodeChain from "../helper/spawn";
+import { wait } from "../helper/promise";
+import { AssertionError } from "assert";
 
 // FIXME: It fails due to timeout when the block sync extension is stuck. See
 // https://github.com/CodeChain-io/codechain/issues/662
 describe.skip("sync", () => {
     describe("2 nodes", () => {
-        const secret =
-            "ede1d4ccb4ec9a8bbbae9a13db3f4a7b56ea04189be86ac3a6a439d9a0a1addd";
-
         let nodeA: CodeChain;
         let nodeB: CodeChain;
 
@@ -134,6 +133,197 @@ describe.skip("sync", () => {
                     },
                     10000
                 );
+            });
+        });
+
+        describe("A-B diverged with the same parcel", () => {
+            beforeEach(async () => {
+                const parcelA = await nodeA.sendSignedParcel({ fee: 10 });
+                await wait(1000);
+                const parcelB = await nodeB.sendSignedParcel({ fee: 10 });
+                expect(parcelA.unsigned).toEqual(parcelB.unsigned);
+                expect(await nodeA.getBestBlockNumber()).toEqual(
+                    await nodeB.getBestBlockNumber()
+                );
+                expect(await nodeA.getBestBlockHash()).not.toEqual(
+                    await nodeB.getBestBlockHash()
+                );
+            }, 3000);
+
+            describe("nodeA becomes ahead", () => {
+                beforeEach(async () => {
+                    await nodeA.sendSignedParcel();
+                    expect(await nodeA.getBestBlockNumber()).toEqual(
+                        (await nodeB.getBestBlockNumber()) + 1
+                    );
+                });
+
+                test(
+                    "It should be synced when A-B connected",
+                    async () => {
+                        await nodeA.connect(nodeB);
+                        await nodeB.waitBlockNumberSync(nodeA);
+                        expect(await nodeA.getBestBlockHash()).toEqual(
+                            await nodeB.getBestBlockHash()
+                        );
+                    },
+                    10000
+                );
+            });
+        });
+
+        describe("A-B diverged with the same transaction", () => {
+            describe("Both transaction success", () => {
+                beforeEach(async () => {
+                    const recipient = await nodeA.createP2PKHAddress();
+                    await nodeA.mintAsset({ amount: 10, recipient });
+                    await nodeB.mintAsset({ amount: 10, recipient });
+                    expect(await nodeA.getBestBlockNumber()).toEqual(
+                        await nodeB.getBestBlockNumber()
+                    );
+                    expect(await nodeA.getBestBlockHash()).not.toEqual(
+                        await nodeB.getBestBlockHash()
+                    );
+                });
+
+                describe("nodeA becomes ahead", () => {
+                    beforeEach(async () => {
+                        await nodeA.sendSignedParcel();
+                        expect(await nodeA.getBestBlockNumber()).toEqual(
+                            (await nodeB.getBestBlockNumber()) + 1
+                        );
+                    });
+
+                    test(
+                        "It should be synced when A-B connected",
+                        async () => {
+                            await nodeA.connect(nodeB);
+                            await nodeB.waitBlockNumberSync(nodeA);
+                            expect(await nodeA.getBestBlockHash()).toEqual(
+                                await nodeB.getBestBlockHash()
+                            );
+                        },
+                        10000
+                    );
+                });
+            });
+
+            describe("One fails", () => {
+                let tx1: any;
+                let tx2: any;
+                beforeEach(async () => {
+                    const recipient1 = await nodeA.createP2PKHAddress();
+                    const recipient2 = await nodeA.createP2PKHAddress();
+                    const { asset: assetA } = await nodeA.mintAsset({
+                        amount: 100,
+                        recipient: recipient1
+                    });
+                    const { asset: assetB } = await nodeB.mintAsset({
+                        amount: 100,
+                        recipient: recipient1
+                    });
+
+                    expect(assetA).toEqual(assetB);
+                    const asset = assetA;
+
+                    tx1 = nodeA.sdk.core.createAssetTransferTransaction();
+                    tx1.addInputs(asset);
+                    tx1.addOutputs(
+                        {
+                            assetType: asset.assetType,
+                            recipient: recipient2,
+                            amount: 10
+                        },
+                        {
+                            assetType: asset.assetType,
+                            recipient: recipient1,
+                            amount: 90
+                        }
+                    );
+
+                    await nodeA.signTransferInput(tx1, 0);
+                    expect((await nodeA.sendTransaction(tx1)).success).toBe(
+                        true
+                    );
+
+                    tx2 = nodeA.sdk.core.createAssetTransferTransaction();
+                    tx2.addInputs(asset);
+                    tx2.addOutputs({
+                        assetType: asset.assetType,
+                        recipient: recipient2,
+                        amount: 100
+                    });
+
+                    await nodeA.signTransferInput(tx2, 0);
+                    expect((await nodeA.sendTransaction(tx2)).success).toBe(
+                        false
+                    );
+                    expect((await nodeB.sendTransaction(tx2)).success).toBe(
+                        true
+                    );
+
+                    expect(await nodeA.getBestBlockNumber()).toEqual(
+                        (await nodeB.getBestBlockNumber()) + 1
+                    );
+                });
+
+                describe("nodeA becomes ahead", () => {
+                    test(
+                        "It should be synced when A-B connected",
+                        async () => {
+                            await nodeA.connect(nodeB);
+                            await nodeB.waitBlockNumberSync(nodeA);
+                            expect(await nodeA.getBestBlockHash()).toEqual(
+                                await nodeB.getBestBlockHash()
+                            );
+                            expect(
+                                (await nodeA.sdk.rpc.chain.getTransactionInvoice(
+                                    tx2.hash()
+                                )).success
+                            ).toBe(false);
+                            expect(
+                                (await nodeB.sdk.rpc.chain.getTransactionInvoice(
+                                    tx2.hash()
+                                )).success
+                            ).toBe(false);
+                        },
+                        30000
+                    );
+                });
+
+                // FIXME: Not passing
+                describe.skip("nodeB becomes ahead", () => {
+                    beforeEach(async () => {
+                        await nodeB.sendSignedParcel();
+                        await nodeB.sendSignedParcel();
+                        expect(await nodeB.getBestBlockNumber()).toEqual(
+                            (await nodeA.getBestBlockNumber()) + 1
+                        );
+                    });
+
+                    test(
+                        "It should be synced when A-B connected",
+                        async () => {
+                            await nodeA.connect(nodeB);
+                            await nodeB.waitBlockNumberSync(nodeA);
+                            expect(await nodeA.getBestBlockHash()).toEqual(
+                                await nodeB.getBestBlockHash()
+                            );
+
+                            expect(
+                                (await nodeA.sdk.rpc.chain.getTransactionInvoice(
+                                    tx2.hash()
+                                )).success
+                            ).toBe(true);
+                            expect(
+                                (await nodeB.sdk.rpc.chain.getTransactionInvoice(
+                                    tx2.hash()
+                                )).success
+                            ).toBe(true);
+                        },
+                        30000
+                    );
+                });
             });
         });
 
