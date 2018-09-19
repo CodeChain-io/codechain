@@ -225,10 +225,6 @@ impl TryStream {
         Ok(())
     }
 
-    fn stream(&self) -> &TcpStream {
-        &self.stream
-    }
-
     fn peer_addr(&self) -> Result<SocketAddr> {
         Ok(self.stream.peer_addr()?.into())
     }
@@ -283,10 +279,6 @@ impl Stream {
 
     fn read_bytes(&mut self) -> Result<Option<Vec<u8>>> {
         self.try_stream.read_bytes()
-    }
-
-    pub fn stream(&self) -> &TcpStream {
-        &self.try_stream.stream()
     }
 
     pub fn peer_addr(&self) -> Result<SocketAddr> {
@@ -361,12 +353,6 @@ impl From<TcpStream> for Stream {
 impl Into<TcpStream> for Stream {
     fn into(self) -> TcpStream {
         self.try_stream.stream
-    }
-}
-
-impl<'a> Into<&'a TcpStream> for &'a Stream {
-    fn into(self) -> &'a TcpStream {
-        &self.try_stream.stream()
     }
 }
 
