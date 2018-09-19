@@ -25,7 +25,7 @@ use ccore::{MinerOptions, ShardValidatorConfig, StratumConfig};
 use ckey::PlatformAddress;
 use clap;
 use cnetwork::{NetworkConfig, SocketAddr};
-use rpc::{RpcHttpConfig, RpcIpcConfig};
+use rpc::{RpcHttpConfig, RpcIpcConfig, RpcWsConfig};
 use toml;
 
 pub use self::chain_type::ChainType;
@@ -39,6 +39,7 @@ pub struct Config {
     pub mining: Mining,
     pub network: Network,
     pub rpc: Rpc,
+    pub ws: Ws,
     pub snapshot: Snapshot,
     pub stratum: Stratum,
     pub shard_validator: ShardValidator,
@@ -106,6 +107,17 @@ impl Config {
 
         RpcIpcConfig {
             socket_addr: self.ipc.path.clone().unwrap(),
+        }
+    }
+
+    pub fn rpc_ws_config(&self) -> RpcWsConfig {
+        debug_assert!(!self.ws.disable.unwrap());
+
+        // FIXME: Add hosts and origins options.
+        RpcWsConfig {
+            interface: self.ws.interface.clone().unwrap(),
+            port: self.ws.port.unwrap(),
+            max_connections: self.ws.max_connections.unwrap(),
         }
     }
 
@@ -233,6 +245,15 @@ pub struct Rpc {
     pub port: Option<u16>,
     #[serde(default = "default_enable_devel_api")]
     pub enable_devel_api: bool,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Ws {
+    pub disable: Option<bool>,
+    pub interface: Option<String>,
+    pub port: Option<u16>,
+    pub max_connections: Option<usize>,
 }
 
 fn default_enable_devel_api() -> bool {
@@ -536,6 +557,25 @@ impl Rpc {
     }
 }
 
+impl Ws {
+    pub fn overwrite_with(&mut self, matches: &clap::ArgMatches) -> Result<(), String> {
+        if matches.is_present("no-ws") {
+            self.disable = Some(true);
+        }
+
+        if let Some(interface) = matches.value_of("ws-interface") {
+            self.interface = Some(interface.to_string());
+        }
+        if let Some(port) = matches.value_of("ws-port") {
+            self.port = Some(port.parse().map_err(|_| "Invalid port")?);
+        }
+        if let Some(max_connections) = matches.value_of("ws-max-connections") {
+            self.max_connections = Some(max_connections.parse().map_err(|_| "Invalid max connections")?);
+        }
+        Ok(())
+    }
+}
+
 impl Snapshot {
     pub fn merge(&mut self, other: &Snapshot) {
         if other.disable.is_some() {
@@ -633,6 +673,7 @@ pub fn load_config(matches: &clap::ArgMatches) -> Result<Config, String> {
     config.mining.overwrite_with(&matches)?;
     config.network.overwrite_with(&matches)?;
     config.rpc.overwrite_with(&matches)?;
+    config.ws.overwrite_with(&matches)?;
     config.snapshot.overwrite_with(&matches)?;
     config.stratum.overwrite_with(&matches)?;
     config.shard_validator.overwrite_with(&matches)?;

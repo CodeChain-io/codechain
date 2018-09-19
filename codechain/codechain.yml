@@ -93,6 +93,31 @@ args:
         takes_value: true
         conflicts_with:
             - no-ipc
+    - ws-interface:
+        long: ws-interface
+        value_name: INTERFACE
+        help: Specify the interface address for the WebSockets JSON-RPC server.
+        takes_value: true
+        conflicts_with:
+            - no-ws
+    - ws-port:
+        long: ws-port
+        value_name: PORT
+        help: Specify the port portion of the WebSockets JSON-RPC server.
+        takes_value: true
+        conflicts_with:
+            - no-ws
+    - ws-max-connections:
+        long: ws-max-connections
+        value_name: CONN
+        help: Maximum number of allowed concurrent WebSockets JSON-RPC connections.
+        takes_value: true
+        conflicts_with:
+            - no-ws
+    - no-ws:
+        long: no-ws
+        help: Do not run the WebSockets JSON-RPC server.
+        takes_value: false
     - no-jsonrpc:
         long: no-jsonrpc
         help: Do not run jsonrpc.
