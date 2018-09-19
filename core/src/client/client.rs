@@ -70,7 +70,7 @@ pub struct Client {
 
     io_channel: Mutex<IoChannel<ClientIoMessage>>,
 
-    chain: RwLock<Arc<BlockChain>>,
+    chain: RwLock<BlockChain>,
 
     /// Client uses this to store blocks, traces, etc.
     db: RwLock<Arc<KeyValueDB>>,
@@ -108,8 +108,8 @@ impl Client {
         }
 
         let gb = scheme.genesis_block();
-        let chain = Arc::new(BlockChain::new(&gb, db.clone()));
-        scheme.check_genesis_common_params(&*chain)?;
+        let chain = BlockChain::new(&gb, db.clone());
+        scheme.check_genesis_common_params(&chain)?;
 
         let engine = scheme.engine.clone();
 
@@ -811,7 +811,7 @@ impl Importer {
             Some(verification::FullFamilyParams {
                 block_bytes: &block.bytes,
                 parcels: &block.parcels,
-                block_provider: &**chain,
+                block_provider: &*chain,
                 client,
             }),
         );
