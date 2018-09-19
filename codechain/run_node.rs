@@ -42,7 +42,7 @@ use super::config::{self, load_config};
 use super::constants::DEFAULT_KEYS_PATH;
 use super::dummy_network_service::DummyNetworkService;
 use super::json::PasswordFile;
-use super::rpc::{rpc_http_start, rpc_ipc_start};
+use super::rpc::{rpc_http_start, rpc_ipc_start, rpc_ws_start};
 use super::rpc_apis::ApiDependencies;
 
 fn network_start(cfg: &NetworkConfig) -> Result<Arc<NetworkService>, String> {
@@ -291,6 +291,14 @@ pub fn run_node(matches: ArgMatches) -> Result<(), String> {
     let _ipc_server = {
         if !config.ipc.disable.unwrap() {
             Some(rpc_ipc_start(config.rpc_ipc_config(), config.rpc.enable_devel_api, Arc::clone(&rpc_apis_deps))?)
+        } else {
+            None
+        }
+    };
+
+    let _ws_server = {
+        if !config.ws.disable.unwrap() {
+            Some(rpc_ws_start(config.rpc_ws_config(), config.rpc.enable_devel_api, Arc::clone(&rpc_apis_deps))?)
         } else {
             None
         }

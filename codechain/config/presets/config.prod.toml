@@ -39,6 +39,12 @@ port = 8080
 disable = true
 path = "/tmp/jsonrpc.ipc"
 
+[ws]
+disable = true
+interface = "127.0.0.1"
+port = 8081
+max_connections = 100
+
 [snapshot]
 disable = true
 path = "snapshot"
