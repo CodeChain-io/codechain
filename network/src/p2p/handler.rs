@@ -206,36 +206,6 @@ impl Handler {
         })
     }
 
-    fn register_stream(
-        &self,
-        token: StreamToken,
-        reg: Token,
-        event_loop: &mut EventLoop<IoManager<Message>>,
-    ) -> IoHandlerResult<()> {
-        self.connections.register(&token, reg, event_loop)?;
-        Ok(())
-    }
-
-    fn reregister_stream(
-        &self,
-        token: StreamToken,
-        reg: Token,
-        event_loop: &mut EventLoop<IoManager<Message>>,
-    ) -> IoHandlerResult<()> {
-        self.connections.reregister(&token, reg, event_loop)?;
-        Ok(())
-    }
-
-    fn deregister_stream(
-        &self,
-        token: StreamToken,
-        event_loop: &mut EventLoop<IoManager<Message>>,
-    ) -> IoHandlerResult<()> {
-        self.connections.deregister(&token, event_loop)?;
-        self.connections.remove(&token);
-        Ok(())
-    }
-
     // Return false if there is no message
     fn receive(&self, stream: &StreamToken, client: &Client, io: &IoContext<Message>) -> IoHandlerResult<bool> {
         Ok(match self.connections.receive(stream)? {
@@ -559,7 +529,7 @@ impl IoHandler<Message> for Handler {
                 Ok(())
             }
             FIRST_CONNECTION_TOKEN...LAST_CONNECTION_TOKEN => {
-                self.register_stream(stream, reg, event_loop)?;
+                self.connections.register(&stream, reg, event_loop)?;
                 Ok(())
             }
             _ => {
@@ -579,7 +549,7 @@ impl IoHandler<Message> for Handler {
                 unreachable!();
             }
             FIRST_CONNECTION_TOKEN...LAST_CONNECTION_TOKEN => {
-                self.reregister_stream(stream, reg, event_loop)?;
+                self.connections.reregister(&stream, reg, event_loop)?;
                 Ok(())
             }
             _ => {
@@ -596,7 +566,8 @@ impl IoHandler<Message> for Handler {
         match stream {
             ACCEPT_TOKEN => unreachable!(),
             FIRST_CONNECTION_TOKEN...LAST_CONNECTION_TOKEN => {
-                self.deregister_stream(stream, event_loop)?;
+                self.connections.remove(&stream);
+                self.connections.deregister(&stream, event_loop)?;
             }
             _ => unreachable!(),
         }
