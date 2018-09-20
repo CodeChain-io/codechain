@@ -199,7 +199,7 @@ export default class CodeChain {
             (await this.sdk.rpc.network.isConnected("127.0.0.1", peer.port)) ===
             false
         ) {
-            wait(250);
+            await wait(250);
         }
     }
 
@@ -212,7 +212,7 @@ export default class CodeChain {
 
     public async waitPeers(n: number) {
         while (n > (await this.sdk.rpc.network.getPeerCount())) {
-            wait(500);
+            await wait(500);
         }
         return;
     }
@@ -222,7 +222,7 @@ export default class CodeChain {
             (await this.getBestBlockNumber()) !==
             (await peer.getBestBlockNumber())
         ) {
-            wait(500);
+            await wait(500);
         }
     }
 

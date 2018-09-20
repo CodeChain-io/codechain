@@ -30,17 +30,29 @@ describe("Network RPC", () => {
     describe("Not connected", () => {
         beforeEach(async () => {
             // ensure disconnected
-            if (!await nodeA.sdk.rpc.network.isConnected(address, nodeB.port)) {
+            if (
+                !(await nodeA.sdk.rpc.network.isConnected(address, nodeB.port))
+            ) {
                 return;
             }
             await nodeA.sdk.rpc.network.disconnect(address, nodeB.port);
-            while (await nodeA.sdk.rpc.network.isConnected(address, nodeB.port) === true) {
-                wait(100);
+            while (
+                (await nodeA.sdk.rpc.network.isConnected(
+                    address,
+                    nodeB.port
+                )) === true
+            ) {
+                await wait(100);
             }
         });
 
         test("connect", async () => {
-            expect(await nodeA.sdk.rpc.network.connect(address, nodeB.port)).toBe(null);
+            expect(
+                await nodeA.sdk.rpc.network.connect(
+                    address,
+                    nodeB.port
+                )
+            ).toBe(null);
         });
 
         test("getPeerCount", async () => {
@@ -58,18 +70,30 @@ describe("Network RPC", () => {
             if (await nodeA.sdk.rpc.network.isConnected(address, nodeB.port)) {
                 return;
             }
-            await nodeA.sdk.rpc.network.connect(address, nodeB.port);
-            while (await nodeA.sdk.rpc.network.isConnected(address, nodeB.port) === false) {
-                wait(100);
+            await nodeA.sdk.rpc.network.connect(
+                address,
+                nodeB.port
+            );
+            while (
+                (await nodeA.sdk.rpc.network.isConnected(
+                    address,
+                    nodeB.port
+                )) === false
+            ) {
+                await wait(100);
             }
         });
 
         test("isConnected", async () => {
-            expect(await nodeA.sdk.rpc.network.isConnected(address, nodeB.port)).toBe(true);
+            expect(
+                await nodeA.sdk.rpc.network.isConnected(address, nodeB.port)
+            ).toBe(true);
         });
 
         test("disconnect", async () => {
-            expect(await nodeA.sdk.rpc.network.disconnect(address, nodeB.port)).toBe(null);
+            expect(
+                await nodeA.sdk.rpc.network.disconnect(address, nodeB.port)
+            ).toBe(null);
         });
 
         test("getPeerCount", async () => {
@@ -78,8 +102,12 @@ describe("Network RPC", () => {
         });
 
         test("getPeers", async () => {
-            expect(await nodeA.sdk.rpc.network.getPeers()).toEqual([`${address}:${nodeB.port}`]);
-            expect(await nodeB.sdk.rpc.network.getPeers()).toEqual([`${address}:${nodeA.port}`]);
+            expect(await nodeA.sdk.rpc.network.getPeers()).toEqual([
+                `${address}:${nodeB.port}`
+            ]);
+            expect(await nodeB.sdk.rpc.network.getPeers()).toEqual([
+                `${address}:${nodeA.port}`
+            ]);
         });
     });
 
