@@ -237,31 +237,35 @@ impl BodyDB {
             BlockLocation::BranchBecomingCanonChain(ref data) => {
                 let addresses = data.enacted.iter().flat_map(|hash| {
                     let body = self.block_body(hash).expect("Enacted block must be in database.");
-                    body.parcels().into_iter().enumerate().flat_map(|(parcel_index, parcel)| {
-                        match &parcel.action {
-                            Action::AssetTransactionGroup {
-                                transactions,
-                                ..
-                            } => Some(transactions),
-                            _ => None,
-                        }.iter()
-                            .flat_map(|transactions| transactions.iter())
-                            .enumerate()
-                            .map(|(index, transaction)| {
-                                let parcel_address = ParcelAddress {
-                                    block_hash: block.hash(),
-                                    index: parcel_index,
-                                };
-                                (
-                                    transaction.hash(),
-                                    Some(TransactionAddress {
-                                        parcel_address,
-                                        index,
-                                    }),
-                                )
-                            })
-                            .collect::<Vec<_>>() // FIXME: Find a way to remove collect
-                    })
+                    body.parcels()
+                        .into_iter()
+                        .enumerate()
+                        .flat_map(|(parcel_index, parcel)| {
+                            match &parcel.action {
+                                Action::AssetTransactionGroup {
+                                    transactions,
+                                    ..
+                                } => Some(transactions),
+                                _ => None,
+                            }.iter()
+                                .flat_map(|transactions| transactions.iter())
+                                .enumerate()
+                                .map(|(index, transaction)| {
+                                    let parcel_address = ParcelAddress {
+                                        block_hash: *hash,
+                                        index: parcel_index,
+                                    };
+                                    (
+                                        transaction.hash(),
+                                        Some(TransactionAddress {
+                                            parcel_address,
+                                            index,
+                                        }),
+                                    )
+                                })
+                                .collect::<Vec<_>>() // FIXME: Find a way to remove collect
+                        })
+                        .collect::<Vec<_>>()
                 });
 
                 let current_addresses = block.parcels().into_iter().enumerate().flat_map(|(parcel_index, parcel)| {

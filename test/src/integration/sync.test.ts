@@ -290,8 +290,7 @@ describe.skip("sync", () => {
                     );
                 });
 
-                // FIXME: Not passing
-                describe.skip("nodeB becomes ahead", () => {
+                describe("nodeB becomes ahead", () => {
                     beforeEach(async () => {
                         await nodeB.sendSignedParcel();
                         await nodeB.sendSignedParcel();
