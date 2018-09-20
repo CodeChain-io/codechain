@@ -80,6 +80,13 @@ Leading zeros must be truncated. Note that it is allowed to decode value with le
  1. Pop two values, first one as signature, second one as public key
  1. Verify signature via full transaction message, excluding script parameter
  1. Push true on success, false otherwise.
+* CHKMULTISIG(0x81)
+ 1. Pop one value, the value is the n in the m-of-n Multisig.
+ 1. Pop n values, which are distinct public keys.
+ 1. Pop one value, the value is the m in the m-of-n Multisig. The value must be less than or equal to the value n.
+ 1. Pop m values, which are distinct signatures. The signature scheme is the same to CHKSIG.
+ 1. Verify signatures. The signatures must be ordered the same way as public keys.
+ 1. Push true on success, false otherwise.
 * BLAKE256(0x90): Pop one value from stack, and push blake-256 hash of it. Blake-256 here refers to blake2b with 32 byte output.
 * SHA256(0x91): Pop one value from stack, and push sha-256 hash of it.
 * RIPEMD160(0x92): Pop one value from stack, and push ripemd160 hash of it.
