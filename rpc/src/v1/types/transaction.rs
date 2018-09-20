@@ -17,6 +17,7 @@
 use ckey::{Error as KeyError, NetworkId, PlatformAddress};
 use ctypes::transaction::{AssetMintOutput, AssetTransferInput, AssetTransferOutput, Transaction as TransactionType};
 use ctypes::{ShardId, WorldId};
+use primitives::H256;
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", tag = "type", content = "data")]
@@ -27,6 +28,7 @@ pub enum Transaction {
         shard_id: ShardId,
         nonce: u64,
         owners: Vec<PlatformAddress>,
+        hash: H256,
     },
     #[serde(rename_all = "camelCase")]
     SetWorldOwners {
@@ -35,6 +37,7 @@ pub enum Transaction {
         world_id: WorldId,
         nonce: u64,
         owners: Vec<PlatformAddress>,
+        hash: H256,
     },
     #[serde(rename_all = "camelCase")]
     SetWorldUsers {
@@ -43,6 +46,7 @@ pub enum Transaction {
         world_id: WorldId,
         nonce: u64,
         users: Vec<PlatformAddress>,
+        hash: H256,
     },
     #[serde(rename_all = "camelCase")]
     AssetMint {
@@ -54,6 +58,7 @@ pub enum Transaction {
         nonce: u64,
 
         output: AssetMintOutput,
+        hash: H256,
     },
     #[serde(rename_all = "camelCase")]
     AssetTransfer {
@@ -62,11 +67,13 @@ pub enum Transaction {
         inputs: Vec<AssetTransferInput>,
         outputs: Vec<AssetTransferOutput>,
         nonce: u64,
+        hash: H256,
     },
 }
 
 impl From<TransactionType> for Transaction {
     fn from(from: TransactionType) -> Self {
+        let hash = from.hash();
         match from {
             TransactionType::CreateWorld {
                 network_id,
@@ -78,6 +85,7 @@ impl From<TransactionType> for Transaction {
                 shard_id,
                 nonce,
                 owners: owners.into_iter().map(|owner| PlatformAddress::create(0, network_id, owner)).collect(),
+                hash,
             },
             TransactionType::SetWorldOwners {
                 network_id,
@@ -91,6 +99,7 @@ impl From<TransactionType> for Transaction {
                 world_id,
                 nonce,
                 owners: owners.into_iter().map(|owner| PlatformAddress::create(0, network_id, owner)).collect(),
+                hash,
             },
             TransactionType::SetWorldUsers {
                 network_id,
@@ -104,6 +113,7 @@ impl From<TransactionType> for Transaction {
                 world_id,
                 nonce,
                 users: users.into_iter().map(|user| PlatformAddress::create(0, network_id, user)).collect(),
+                hash,
             },
             TransactionType::AssetMint {
                 network_id,
@@ -121,6 +131,7 @@ impl From<TransactionType> for Transaction {
                 registrar: registrar.map(|registrar| PlatformAddress::create(0, network_id, registrar)),
                 nonce,
                 output,
+                hash,
             },
             TransactionType::AssetTransfer {
                 network_id,
@@ -134,6 +145,7 @@ impl From<TransactionType> for Transaction {
                 inputs,
                 outputs,
                 nonce,
+                hash,
             },
         }
     }
@@ -148,6 +160,7 @@ impl From<Transaction> for Result<TransactionType, KeyError> {
                 shard_id,
                 nonce,
                 owners,
+                ..
             } => {
                 let owners: Result<_, _> = owners.into_iter().map(PlatformAddress::try_into_address).collect();
                 TransactionType::CreateWorld {
@@ -163,6 +176,7 @@ impl From<Transaction> for Result<TransactionType, KeyError> {
                 world_id,
                 nonce,
                 owners,
+                ..
             } => {
                 let owners: Result<_, _> = owners.into_iter().map(PlatformAddress::try_into_address).collect();
                 TransactionType::SetWorldOwners {
@@ -179,6 +193,7 @@ impl From<Transaction> for Result<TransactionType, KeyError> {
                 world_id,
                 nonce,
                 users,
+                ..
             } => {
                 let users: Result<_, _> = users.into_iter().map(PlatformAddress::try_into_address).collect();
                 TransactionType::SetWorldUsers {
@@ -197,6 +212,7 @@ impl From<Transaction> for Result<TransactionType, KeyError> {
                 registrar,
                 nonce,
                 output,
+                ..
             } => {
                 let registrar = match registrar {
                     Some(registrar) => Some(registrar.try_into_address()?),
@@ -218,6 +234,7 @@ impl From<Transaction> for Result<TransactionType, KeyError> {
                 inputs,
                 outputs,
                 nonce,
+                ..
             } => TransactionType::AssetTransfer {
                 network_id,
                 burns,
