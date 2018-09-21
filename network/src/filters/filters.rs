@@ -20,7 +20,7 @@ use std::sync::Arc;
 use parking_lot::RwLock;
 
 use super::control::Control;
-use super::filter::Filter;
+use super::filter::{Filter, FilterEntry};
 
 pub struct Filters {
     whitelist: RwLock<Filter>,
@@ -28,7 +28,7 @@ pub struct Filters {
 }
 
 impl Filters {
-    pub fn new(whitelist_vector: Vec<IpAddr>, blacklist_vector: Vec<IpAddr>) -> Arc<Self> {
+    pub fn new(whitelist_vector: Vec<FilterEntry>, blacklist_vector: Vec<FilterEntry>) -> Arc<Self> {
         let whitelist = Filter::new(whitelist_vector);
         let blacklist = Filter::new(blacklist_vector);
 
@@ -49,9 +49,9 @@ impl Default for Filters {
 }
 
 impl Control for Filters {
-    fn add_to_whitelist(&self, addr: IpAddr) {
+    fn add_to_whitelist(&self, addr: IpAddr, tag: Option<String>) {
         let mut whitelist = self.whitelist.write();
-        whitelist.add(addr);
+        whitelist.add(addr, tag);
         cinfo!(NETFILTER, "{:?} is added to the whitelist", addr);
     }
 
@@ -61,9 +61,9 @@ impl Control for Filters {
         cinfo!(NETFILTER, "{:?} is removed from the whitelist", addr);
     }
 
-    fn add_to_blacklist(&self, addr: IpAddr) {
+    fn add_to_blacklist(&self, addr: IpAddr, tag: Option<String>) {
         let mut blacklist = self.blacklist.write();
-        blacklist.add(addr);
+        blacklist.add(addr, tag);
         cinfo!(NETFILTER, "{:?} is added to the blacklist", addr);
     }
 
@@ -97,12 +97,12 @@ impl Control for Filters {
         cinfo!(NETFILTER, "The blacklist is disabled");
     }
 
-    fn get_whitelist(&self) -> (Vec<IpAddr>, bool) {
+    fn get_whitelist(&self) -> (Vec<FilterEntry>, bool) {
         let whitelist = self.whitelist.read();
         whitelist.status()
     }
 
-    fn get_blacklist(&self) -> (Vec<IpAddr>, bool) {
+    fn get_blacklist(&self) -> (Vec<FilterEntry>, bool) {
         let blacklist = self.blacklist.read();
         blacklist.status()
     }

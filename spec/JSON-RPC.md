@@ -1305,6 +1305,7 @@ Adds the address to the whitelist.
 
 Params:
  1. address: `string`
+ 2. tag: `null` | `string`
 
 Return Type: `null`
 
@@ -1312,7 +1313,7 @@ Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "net_addToWhitelist", "params": ["1.2.3.4"], "id": 6}' \
+    -d '{"jsonrpc": "2.0", "method": "net_addToWhitelist", "params": ["1.2.3.4", "tag"], "id": 6}' \
     localhost:8080
 ```
 
@@ -1355,6 +1356,7 @@ Adds the address to the blacklist.
 
 Params:
  1. address: `string`
+ 2. tag: `null` | `string`
 
 Return Type: `null`
 
@@ -1362,7 +1364,7 @@ Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "net_addToBlacklist", "params": ["1.2.3.4"], "id": 6}' \
+    -d '{"jsonrpc": "2.0", "method": "net_addToBlacklist", "params": ["1.2.3.4", "tag"], "id": 6}' \
     localhost:8080
 ```
 
@@ -1495,10 +1497,9 @@ Response Example
 ## net_getWhitelist
 Gets the address in the whitelist.
 
-Params:
- 1. address: `string`
+Params: No parameters
 
-Return Type: { list: `string[]`, enabled: `bool` }
+Return Type: { list: `string[][]`, enabled: `bool` }
 
 Request Example
 ```
@@ -1512,7 +1513,7 @@ Response Example
 ```
 {
   "jsonrpc":"2.0",
-  "result": { "list": ["1.2.3.4", "1.2.3.5", "1.2.3.6"], "enabled": true },
+  "result": { "list": [["1.2.3.4", "tag1"], ["1.2.3.5", "tag2"], ["1.2.3.6", "tag3"]], "enabled": true },
   "id":6
 }
 ```
@@ -1520,10 +1521,9 @@ Response Example
 ## net_getBlacklist
 Gets the address in the blacklist.
 
-Params:
- 1. address: `string`
+Params: No parameters
 
-Return Type: { list: `string[]`, enabled: `bool` }
+Return Type: { list: `string[][]`, enabled: `bool` }
 
 Request Example
 ```
@@ -1537,7 +1537,7 @@ Response Example
 ```
 {
   "jsonrpc":"2.0",
-  "result": { "list": ["1.2.3.4", "1.2.3.5", "1.2.3.6"], "enabled": false },
+  "result": { "list": [["1.2.3.4", "tag1"], ["1.2.3.5", "tag2"], ["1.2.3.6", "tag3"]], "enabled": false },
   "id":6
 }
 ```

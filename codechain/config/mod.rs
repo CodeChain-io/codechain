@@ -17,14 +17,13 @@
 mod chain_type;
 
 use std::fs;
-use std::net::IpAddr;
 use std::str::{self, FromStr};
 use std::time::Duration;
 
 use ccore::{MinerOptions, ShardValidatorConfig, StratumConfig};
 use ckey::PlatformAddress;
 use clap;
-use cnetwork::{NetworkConfig, SocketAddr};
+use cnetwork::{FilterEntry, NetworkConfig, SocketAddr};
 use rpc::{RpcHttpConfig, RpcIpcConfig, RpcWsConfig};
 use toml;
 
@@ -124,7 +123,7 @@ impl Config {
     pub fn network_config(&self) -> Result<NetworkConfig, String> {
         debug_assert!(!self.network.disable.unwrap());
 
-        fn make_ipaddr_list(list_path: Option<&String>, list_name: &str) -> Result<Vec<IpAddr>, String> {
+        fn make_ipaddr_list(list_path: Option<&String>, list_name: &str) -> Result<Vec<FilterEntry>, String> {
             if let Some(path) = list_path {
                 fs::read_to_string(path)
                     .map_err(|e| format!("Cannot open the {}list file {:?}: {:?}", list_name, path, e))
@@ -132,16 +131,22 @@ impl Config {
                         rstr.lines()
                             .map(|s| {
                                 const COMMENT_CHAR: &str = "#";
-                                let (ip_str, _tag_str) = if let Some(index) = s.find(COMMENT_CHAR) {
+                                if let Some(index) = s.find(COMMENT_CHAR) {
                                     let (ip_str, tag_str_with_sign) = s.split_at(index);
-                                    (ip_str.trim(), (&tag_str_with_sign[1..]).trim())
+                                    (ip_str.trim(), (&tag_str_with_sign[1..]).trim().to_string())
                                 } else {
-                                    (s.trim(), "")
-                                };
-                                ip_str
+                                    (s.trim(), String::new())
+                                }
                             })
-                            .filter(|s| s.len() != 0)
-                            .map(|s| s.parse().map_err(|e| format!("Cannot parse IP address {}: {:?}", s, e)))
+                            .filter(|(s, _)| s.len() != 0)
+                            .map(|(addr, tag)| {
+                                Ok(FilterEntry {
+                                    addr: addr
+                                        .parse()
+                                        .map_err(|e| format!("Cannot parse IP address {}: {:?}", addr, e))?,
+                                    tag,
+                                })
+                            })
                             .collect::<Result<Vec<_>, _>>()
                     })?
             } else {

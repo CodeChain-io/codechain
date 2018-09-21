@@ -414,7 +414,7 @@ impl IoHandler<Message> for Handler {
             }
             Message::ManuallyConnectTo(socket_address) => {
                 let mut session_initiator = self.session_initiator.write();
-                session_initiator.filters.add_to_whitelist(socket_address.ip());
+                session_initiator.filters.add_to_whitelist(socket_address.ip(), None);
                 session_initiator.routing_table.unban(&socket_address);
                 session_initiator.routing_table.add_candidate(*socket_address);
                 session_initiator.requests.manually_connected_address.insert(*socket_address);
