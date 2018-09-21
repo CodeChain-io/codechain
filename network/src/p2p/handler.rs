@@ -76,7 +76,6 @@ enum Error {
     InvalidSign,
     UnexpectedNodeId(Mismatch<NodeId>),
     SymmetricCipherError(SymmetricCipherError),
-    General(&'static str),
 }
 
 impl ::std::fmt::Display for Error {
@@ -87,7 +86,6 @@ impl ::std::fmt::Display for Error {
             Error::InvalidSign => ::std::fmt::Debug::fmt(&self, f),
             Error::UnexpectedNodeId(_) => ::std::fmt::Debug::fmt(&self, f),
             Error::SymmetricCipherError(err) => ::std::fmt::Debug::fmt(&err, f),
-            Error::General(_) => ::std::fmt::Debug::fmt(self, f),
         }
     }
 }
@@ -159,7 +157,7 @@ impl Handler {
                 if !self.filters.is_allowed(&ip) {
                     return Err(format!("P2P connection request from {} is received. But it's not allowed", ip).into())
                 }
-                let token = self.tokens.lock().gen().ok_or(Error::General("TooManyConnections"))?;
+                let token = self.tokens.lock().gen().ok_or("TooManyConnections")?;
                 self.connections.accept(token, stream);
                 Ok(Some((token, socket_address)))
             }
@@ -178,15 +176,11 @@ impl Handler {
                 let remote_node_id = socket_address.into();
 
                 let _establish_lock = self.establish_lock.lock();
-                let local_node_id =
-                    self.routing_table.local_node_id(&remote_node_id).ok_or(Error::General("Not handshaked"))?;
-                let session = self
-                    .routing_table
-                    .unestablished_session(&socket_address)
-                    .ok_or(Error::General("Session doesn't exist"))?;
+                let local_node_id = self.routing_table.local_node_id(&remote_node_id).ok_or("Not handshaked")?;
+                let session = self.routing_table.unestablished_session(&socket_address).ok_or("Session doesn't exist")?;
 
                 let mut tokens = self.tokens.lock();
-                let token = tokens.gen().ok_or(Error::General("TooManyConnections"))?;
+                let token = tokens.gen().ok_or("TooManyConnections")?;
                 if !self.connections.connect(token, stream, local_node_id, session, socket_address, self.get_port()) {
                     tokens.restore(token);
                     return Err(format!("Cannot create connection to {}", socket_address).into())
@@ -230,10 +224,8 @@ impl Handler {
                         node_id,
                         ..
                     }) => {
-                        let remote_addr = self
-                            .connections
-                            .remote_addr_of_waiting_sync(stream)
-                            .ok_or(Error::General("Cannot find remote address"))?;
+                        let remote_addr =
+                            self.connections.remote_addr_of_waiting_sync(stream).ok_or("Cannot find remote address")?;
                         let remote_node_id = convert_to_node_id(remote_addr.ip(), port);
 
                         if remote_node_id != node_id {
@@ -246,10 +238,8 @@ impl Handler {
                         let remote_addr = SocketAddr::new(remote_addr.ip(), port);
 
                         let _establish_lock = self.establish_lock.lock();
-                        let session = self
-                            .routing_table
-                            .unestablished_session(&remote_addr)
-                            .ok_or(Error::General("Cannot find session"))?;
+                        let session =
+                            self.routing_table.unestablished_session(&remote_addr).ok_or("Cannot find session")?;
                         if !signed_message.is_valid(&session) {
                             return Err(Error::InvalidSign.into())
                         }
@@ -262,7 +252,7 @@ impl Handler {
                 }
             }
             Some(ReceivedMessage::Extension(msg)) => {
-                let session = self.connections.established_session(stream).ok_or(Error::General("Invalid stream"))?;
+                let session = self.connections.established_session(stream).ok_or("Invalid stream")?;
                 // FIXME: check version of extension
                 let message = msg.unencrypted_data(&session).map_err(Error::from)?;
                 let node_id = self.connections.node_id(&stream).ok_or(Error::InvalidStream(*stream))?;
@@ -366,7 +356,7 @@ impl IoHandler<Message> for Handler {
                 let address = node_id.into_addr();
 
                 if !self.routing_table.reset_session(&address) {
-                    return Err(Error::General("Failed to find session").into())
+                    return Err("Failed to find session".into())
                 }
                 self.connections.shutdown(&address)?;
                 Ok(())
@@ -390,7 +380,7 @@ impl IoHandler<Message> for Handler {
                 }
 
                 ctrace!(NETWORK, "Connecting to {}", socket_address);
-                let token = self.connect(io, &socket_address)?.ok_or(Error::General("Cannot create connection"))?;
+                let token = self.connect(io, &socket_address)?.ok_or("Cannot create connection")?;
                 cinfo!(NETWORK, "New connection to {}({})", socket_address, token);
                 io.register_stream(token)?;
                 Ok(())
