@@ -156,14 +156,12 @@ impl Handler {
         match self.listener.accept()? {
             Some((stream, socket_address)) => {
                 let ip = socket_address.ip();
-                if self.filters.is_allowed(&ip) {
-                    let token = self.tokens.lock().gen().ok_or(Error::General("TooManyConnections"))?;
-                    self.connections.accept(token, stream);
-                    Ok(Some((token, socket_address)))
-                } else {
-                    cinfo!(NETWORK, "P2P connection request from {} is received. But it's not allowed", ip);
-                    Ok(None)
+                if !self.filters.is_allowed(&ip) {
+                    return Err(format!("P2P connection request from {} is received. But it's not allowed", ip).into())
                 }
+                let token = self.tokens.lock().gen().ok_or(Error::General("TooManyConnections"))?;
+                self.connections.accept(token, stream);
+                Ok(Some((token, socket_address)))
             }
             None => Ok(None),
         }
@@ -172,8 +170,7 @@ impl Handler {
     fn connect(&self, io: &IoContext<Message>, socket_address: &SocketAddr) -> IoHandlerResult<Option<StreamToken>> {
         let ip = socket_address.ip();
         if !self.filters.is_allowed(&ip) {
-            cinfo!(NETWORK, "P2P connection from {} is received. But it's not allowed", ip);
-            return Ok(None)
+            return Err(format!("P2P connection to {} is requested. But it's not allowed", ip).into())
         }
 
         Ok(match Stream::connect(socket_address)? {
@@ -190,16 +187,14 @@ impl Handler {
 
                 let mut tokens = self.tokens.lock();
                 let token = tokens.gen().ok_or(Error::General("TooManyConnections"))?;
-                if self.connections.connect(token, stream, local_node_id, session, socket_address, self.get_port()) {
-                    const CONNECTION_TIMEOUT_MS: u64 = 3_000;
-                    io.register_timer_once(token as TimerToken, CONNECTION_TIMEOUT_MS)?;
-                    self.routing_table.set_establishing(socket_address);
-                    Some(token)
-                } else {
-                    cwarn!(NETWORK, "Cannot create connection to {}", socket_address);
+                if !self.connections.connect(token, stream, local_node_id, session, socket_address, self.get_port()) {
                     tokens.restore(token);
-                    None
+                    return Err(format!("Cannot create connection to {}", socket_address).into())
                 }
+                const CONNECTION_TIMEOUT_MS: u64 = 3_000;
+                io.register_timer_once(token as TimerToken, CONNECTION_TIMEOUT_MS)?;
+                self.routing_table.set_establishing(socket_address);
+                Some(token)
             }
             None => None,
         })
@@ -287,7 +282,7 @@ impl Handler {
                             let node_id = self.connections.node_id(&stream).ok_or(Error::InvalidStream(*stream))?;
                             client.on_node_added(&extension_name, &node_id, VERSION);
                         } else {
-                            cwarn!(NETWORK, "Cannot enqueue negotiation message for {}", stream);
+                            return Err(format!("Cannot enqueue negotiation message for {}", stream).into())
                         }
                     }
                     NegotiationBody::Allowed(extension_version) => {
@@ -296,7 +291,7 @@ impl Handler {
                             let node_id = self.connections.node_id(&stream).ok_or(Error::InvalidStream(*stream))?;
                             client.on_node_added(&name, &node_id, *extension_version);
                         } else {
-                            ctrace!(NETWORK, "Negotiation::Allowed message received from non requested seq");
+                            return Err("Negotiation::Allowed message received from non requested seq".into())
                         }
                     }
                     NegotiationBody::Denied => {
@@ -304,7 +299,7 @@ impl Handler {
                         if let Some(_) = self.connections.remove_requested_negotiation(stream, &seq) {
                             self.connections.node_id(&stream).ok_or(Error::InvalidStream(*stream))?;
                         } else {
-                            ctrace!(NETWORK, "Negotiation::Denied message received from non requested seq");
+                            return Err("Negotiation::Denied message received from non requested seq".into())
                         }
                     }
                 };
@@ -323,12 +318,11 @@ impl Handler {
             }
             ConnectionType::SyncWaiting => {
                 if remain {
-                    cerror!(NETWORK, "Cannot send ack message");
-                } else {
-                    // Ack message was sent
-                    self.connections.establish_wait_sync_connection(stream);
-                    self.connections.node_id(&stream).ok_or(Error::InvalidStream(*stream))?;
+                    return Err("Cannot send ack message".into())
                 }
+                // Ack message was sent
+                self.connections.establish_wait_sync_connection(stream);
+                self.connections.node_id(&stream).ok_or(Error::InvalidStream(*stream))?;
                 Ok(())
             }
             ConnectionType::Established => Ok(()),
@@ -391,8 +385,7 @@ impl IoHandler<Message> for Handler {
                 if ignore_connection_limit == &IgnoreConnectionLimit::Not {
                     let number_of_connections = self.connections.len();
                     if self.max_peers <= number_of_connections {
-                        ctrace!(NETWORK, "Already has maximum peers({})", number_of_connections);
-                        return Ok(())
+                        return Err(format!("Already has maximum peers({})", number_of_connections).into())
                     }
                 }
 
@@ -452,8 +445,7 @@ impl IoHandler<Message> for Handler {
             FIRST_CONNECTION_TOKEN...LAST_CONNECTION_TOKEN => {
                 ctrace!(NETWORK, "Hup event for {}", stream);
                 if !self.connections.is_connected(&stream) {
-                    ctrace!(NETWORK, "stream's hup event called twice from {:?}", stream);
-                    return Ok(())
+                    return Err(format!("stream's hup event called twice from {:?}", stream).into())
                 }
                 let register_new_timer = AtomicBool::new(false);
                 let _f = finally(|| {
