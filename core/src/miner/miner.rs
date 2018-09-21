@@ -42,15 +42,6 @@ use super::sealing_queue::SealingQueue;
 use super::work_notify::{NotifyWork, WorkPoster};
 use super::{MinerService, MinerStatus, ParcelImportResult};
 
-/// Pending block preparation status.
-#[derive(Debug, PartialEq)]
-pub enum BlockPreparationStatus {
-    /// We had to prepare new pending block and the preparation succeeded.
-    Succeeded,
-    /// We didn't have to prepare a new block.
-    NotPrepared,
-}
-
 /// Configures the behaviour of the miner.
 #[derive(Debug, PartialEq)]
 pub struct MinerOptions {
@@ -99,22 +90,15 @@ pub struct AuthoringParams {
 struct SealingWork {
     queue: SealingQueue,
     enabled: bool,
-    next_allowed_reseal: Instant,
-    next_mandatory_reseal: Instant,
-    // block number when sealing work was last requested
-    last_request: Option<u64>,
-}
-
-impl SealingWork {
-    fn reseal_allowed(&self) -> bool {
-        Instant::now() > self.next_allowed_reseal
-    }
 }
 
 pub struct Miner {
     mem_pool: Arc<RwLock<MemPool>>,
     parcel_listener: RwLock<Vec<Box<Fn(&[H256]) + Send + Sync>>>,
-    sealing: Mutex<SealingWork>,
+    next_allowed_reseal: Mutex<Instant>,
+    next_mandatory_reseal: RwLock<Instant>,
+    sealing_block_last_request: Mutex<u64>,
+    sealing_work: Mutex<SealingWork>,
     params: RwLock<AuthoringParams>,
     engine: Arc<CodeChainEngine>,
     options: MinerOptions,
@@ -150,13 +134,13 @@ impl Miner {
         Self {
             mem_pool,
             parcel_listener: RwLock::new(vec![]),
+            next_allowed_reseal: Mutex::new(Instant::now()),
+            next_mandatory_reseal: RwLock::new(Instant::now() + options.reseal_max_period),
             params: RwLock::new(AuthoringParams::default()),
-            sealing: Mutex::new(SealingWork {
+            sealing_block_last_request: Mutex::new(0),
+            sealing_work: Mutex::new(SealingWork {
                 queue: SealingQueue::new(options.work_queue_size),
                 enabled: options.force_sealing || scheme.engine.seals_internally().is_some(),
-                next_allowed_reseal: Instant::now(),
-                next_mandatory_reseal: Instant::now() + options.reseal_max_period,
-                last_request: None,
             }),
             engine: scheme.engine.clone(),
             options,
@@ -188,49 +172,38 @@ impl Miner {
 
     /// Check is reseal is allowed and necessary.
     fn requires_reseal(&self, best_block: BlockNumber) -> bool {
-        let mut sealing = self.sealing.lock();
-        if !sealing.enabled {
-            ctrace!(MINER, "requires_reseal: sealing is disabled");
-            return false
-        }
+        let has_local_parcels = self.mem_pool.read().has_local_pending_parcels();
+        let mut sealing_work = self.sealing_work.lock();
+        if sealing_work.enabled {
+            ctrace!(MINER, "requires_reseal: sealing enabled");
+            let last_request = *self.sealing_block_last_request.lock();
+            let should_disable_sealing = !self.options.force_sealing
+                && !has_local_parcels
+                && self.engine.seals_internally().is_none()
+                && best_block > last_request
+                && best_block - last_request > SEALING_TIMEOUT_IN_BLOCKS;
 
-        if !sealing.reseal_allowed() {
-            ctrace!(MINER, "requires_reseal: reseal too early");
-            return false
-        }
+            ctrace!(
+                MINER,
+                "requires_reseal: should_disable_sealing={}; best_block={}, last_request={}",
+                should_disable_sealing,
+                best_block,
+                last_request
+            );
 
-        ctrace!(MINER, "requires_reseal: sealing enabled");
-
-        // Disable sealing if there were no requests for SEALING_TIMEOUT_IN_BLOCKS
-        let had_requests = sealing
-            .last_request
-            .map(|last_request| best_block > last_request && best_block - last_request <= SEALING_TIMEOUT_IN_BLOCKS)
-            .unwrap_or(false);
-
-        // keep sealing enabled if any of the conditions is met
-        let sealing_enabled = self.options.force_sealing
-            || self.mem_pool.read().has_local_pending_parcels()
-            || self.engine.seals_internally() == Some(true)
-            || had_requests;
-
-        let should_disable_sealing = !sealing_enabled;
-
-        ctrace!(
-            MINER,
-            "requires_reseal: should_disable_sealing={}; had_requests={:?}",
-            should_disable_sealing,
-            had_requests
-        );
-
-        if should_disable_sealing {
-            ctrace!(MINER, "Miner sleeping (current {}, last {}", best_block, sealing.last_request.unwrap_or(0));
-            sealing.enabled = false;
-            sealing.queue.reset();
-            false
+            if should_disable_sealing {
+                ctrace!(MINER, "Miner sleeping");
+                sealing_work.enabled = false;
+                sealing_work.queue.reset();
+                false
+            } else {
+                // sealing enabled and we don't want to sleep.
+                *self.next_allowed_reseal.lock() = Instant::now() + self.options.reseal_min_period;
+                true
+            }
         } else {
-            // sealing enabled and we don't want to sleep.
-            sealing.next_allowed_reseal = Instant::now() + self.options.reseal_min_period;
-            true
+            ctrace!(MINER, "requires_reseal: sealing is disabled");
+            false
         }
     }
 
@@ -306,55 +279,49 @@ impl Miner {
         results
     }
 
-    /// Prepare a pending block. Returns the preparation status.
-    fn prepare_pending_block<C>(&self, client: &C) -> BlockPreparationStatus
-    where
-        C: AccountData + BlockChain + BlockProducer + RegularKeyOwner, {
-        ctrace!(MINER, "prepare_pending_block: entering");
+    /// Returns true if we had to prepare new pending block.
+    fn prepare_work_sealing<C: AccountData + BlockChain + BlockProducer + RegularKeyOwner>(&self, client: &C) -> bool {
+        ctrace!(MINER, "prepare_work_sealing: entering");
         let prepare_new = {
-            let mut sealing = self.sealing.lock();
-            let have_work = sealing.queue.peek_last_ref().is_some();
-            ctrace!(MINER, "prepare_pending_block: have_work={}", have_work);
+            let mut sealing_work = self.sealing_work.lock();
+            let have_work = sealing_work.queue.peek_last_ref().is_some();
+            ctrace!(MINER, "prepare_work_sealing: have_work={}", have_work);
             if !have_work {
-                sealing.enabled = true;
+                sealing_work.enabled = true;
                 true
             } else {
                 false
             }
         };
-
-        let preparation_status = if prepare_new {
+        if prepare_new {
             // --------------------------------------------------------------------------
-            // | NOTE Code below requires transaction_queue and sealing locks.          |
+            // | NOTE Code below requires transaction_queue and sealing_work locks.     |
             // | Make sure to release the locks before calling that method.             |
             // --------------------------------------------------------------------------
             let (block, original_work_hash) = self.prepare_block(client);
             self.prepare_work(block, original_work_hash);
-            BlockPreparationStatus::Succeeded
-        } else {
-            BlockPreparationStatus::NotPrepared
-        };
-
+        }
+        let mut sealing_block_last_request = self.sealing_block_last_request.lock();
         let best_number = client.chain_info().best_block_number;
-        let mut sealing = self.sealing.lock();
-        if sealing.last_request != Some(best_number) {
+        if *sealing_block_last_request != best_number {
             ctrace!(
                 MINER,
-                "prepare_pending_block: Miner received request (was {}, now {}) - waking up.",
-                sealing.last_request.unwrap_or(0),
+                "prepare_work_sealing: Miner received request (was {}, now {}) - waking up.",
+                *sealing_block_last_request,
                 best_number
             );
-            sealing.last_request = Some(best_number);
+            *sealing_block_last_request = best_number;
         }
 
-        preparation_status
+        // Return if we restarted
+        prepare_new
     }
 
     /// Prepares work which has to be done to seal.
     fn prepare_work(&self, block: ClosedBlock, original_work_hash: Option<H256>) {
         let (work, is_new) = {
-            let mut sealing = self.sealing.lock();
-            let last_work_hash = sealing.queue.peek_last_ref().map(|pb| pb.block().header().hash());
+            let mut sealing_work = self.sealing_work.lock();
+            let last_work_hash = sealing_work.queue.peek_last_ref().map(|pb| pb.block().header().hash());
             ctrace!(
                 MINER,
                 "prepare_work: Checking whether we need to reseal: orig={:?} last={:?}, this={:?}",
@@ -372,10 +339,10 @@ impl Miner {
                 let number = block.block().header().number();
                 let score = *block.block().header().score();
                 let is_new = original_work_hash.map_or(true, |h| block.block().header().hash() != h);
-                sealing.queue.push(block);
+                sealing_work.queue.push(block);
                 // If push notifications are enabled we assume all work items are used.
                 if !self.notifiers.read().is_empty() && is_new {
-                    sealing.queue.use_last_ref();
+                    sealing_work.queue.use_last_ref();
                 }
                 (Some((pow_hash, score, number)), is_new)
             } else {
@@ -384,7 +351,7 @@ impl Miner {
             ctrace!(
                 MINER,
                 "prepare_work: leaving (last={:?})",
-                sealing.queue.peek_last_ref().map(|b| b.block().header().hash())
+                sealing_work.queue.peek_last_ref().map(|b| b.block().header().hash())
             );
             (work, is_new)
         };
@@ -403,22 +370,21 @@ impl Miner {
         &self,
         chain: &C,
     ) -> (ClosedBlock, Option<H256>) {
-        let (mut open_block, original_work_hash) = {
-            let mut sealing = self.sealing.lock();
-            let last_work_hash = sealing.queue.peek_last_ref().map(|pb| pb.block().header().hash());
+        let (parcels, mut open_block, original_work_hash) = {
+            let max_body_size = self.engine.params().max_body_size;
+            let parcels = self.mem_pool.read().top_parcels(max_body_size);
+            let mut sealing_work = self.sealing_work.lock();
+            let last_work_hash = sealing_work.queue.peek_last_ref().map(|pb| pb.block().header().hash());
 
             ctrace!(MINER, "prepare_block: No existing work - making new block");
             let params = self.params.read().clone();
-
             let open_block = chain.prepare_open_block(params.author, params.extra_data);
-            (open_block, last_work_hash)
+
+            (parcels, open_block, last_work_hash)
         };
 
         let mut invalid_parcels = HashSet::new();
         let block_number = open_block.block().header().number();
-
-        let max_body_size = self.engine.params().max_body_size;
-        let parcels = self.mem_pool.read().top_parcels(max_body_size);
 
         let mut parcel_count: usize = 0;
         let parcel_total = parcels.len();
@@ -480,8 +446,9 @@ impl Miner {
     fn seal_and_import_block_internally<C>(&self, chain: &C, block: ClosedBlock) -> bool
     where
         C: BlockChain + ImportSealedBlock, {
-        let sealing = self.sealing.lock();
-        if block.parcels().is_empty() && !self.options.force_sealing && Instant::now() <= sealing.next_mandatory_reseal
+        if block.parcels().is_empty()
+            && !self.options.force_sealing
+            && Instant::now() <= *self.next_mandatory_reseal.read()
         {
             ctrace!(MINER, "seal_block_internally: no sealing.");
             return false
@@ -497,11 +464,11 @@ impl Miner {
             // Save proposal for later seal submission and broadcast it.
             Seal::Proposal(seal) => {
                 ctrace!(MINER, "Received a Proposal seal.");
+                *self.next_mandatory_reseal.write() = Instant::now() + self.options.reseal_max_period;
                 {
-                    let mut sealing = self.sealing.lock();
-                    sealing.next_mandatory_reseal = Instant::now() + self.options.reseal_max_period;
-                    sealing.queue.push(block.clone());
-                    sealing.queue.use_last_ref();
+                    let mut sealing_work = self.sealing_work.lock();
+                    sealing_work.queue.push(block.clone());
+                    sealing_work.queue.use_last_ref();
                 }
                 block
                     .lock()
@@ -517,10 +484,7 @@ impl Miner {
             }
             // Directly import a regular sealed block.
             Seal::Regular(seal) => {
-                {
-                    let mut sealing = self.sealing.lock();
-                    sealing.next_mandatory_reseal = Instant::now() + self.options.reseal_max_period;
-                }
+                *self.next_mandatory_reseal.write() = Instant::now() + self.options.reseal_max_period;
                 block
                     .lock()
                     .seal(&*self.engine, seal)
@@ -537,35 +501,22 @@ impl Miner {
         }
     }
 
+    /// Are we allowed to do a non-mandatory reseal?
+    fn parcel_reseal_allowed(&self) -> bool {
+        self.sealing_enabled.load(Ordering::Relaxed) && (Instant::now() > *self.next_allowed_reseal.lock())
+    }
+
     fn map_pending_block<F, T>(&self, f: F, latest_block_number: BlockNumber) -> Option<T>
     where
         F: FnOnce(&ClosedBlock) -> T, {
-        let sealing = self.sealing.lock();
-        sealing.queue.peek_last_ref().and_then(|b| {
+        let sealing_work = self.sealing_work.lock();
+        sealing_work.queue.peek_last_ref().and_then(|b| {
             if b.block().header().number() > latest_block_number {
                 Some(f(b))
             } else {
                 None
             }
         })
-    }
-
-    /// Prepare pending block, check whether sealing is needed, and then update sealing.
-    fn prepare_and_update_sealing<C>(&self, chain: &C)
-    where
-        C: AccountData + BlockChain + BlockProducer + ImportSealedBlock + RegularKeyOwner, {
-        use MinerService;
-
-        // Make sure to do it after transaction is imported and lock is dropped.
-        // We need to create pending block and enable sealing.
-        if self.engine.seals_internally().unwrap_or(false)
-            || self.prepare_pending_block(chain) == BlockPreparationStatus::NotPrepared
-        {
-            // If new block has not been prepared (means we already had one)
-            // or Engine might be able to seal internally,
-            // we need to update sealing.
-            self.update_sealing(chain);
-        }
     }
 }
 
@@ -576,11 +527,11 @@ impl MinerService for Miner {
 
     fn status(&self) -> MinerStatus {
         let status = self.mem_pool.read().status();
-        let sealing = self.sealing.lock();
+        let sealing_work = self.sealing_work.lock();
         MinerStatus {
             parcels_in_pending_queue: status.pending,
             parcels_in_future_queue: status.future,
-            parcels_in_pending_block: sealing.queue.peek_last_ref().map_or(0, |b| b.parcels().len()),
+            parcels_in_pending_block: sealing_work.queue.peek_last_ref().map_or(0, |b| b.parcels().len()),
         }
     }
 
@@ -598,8 +549,8 @@ impl MinerService for Miner {
                 ap.sign(address, password.clone(), Default::default())?;
                 // Limit the scope of the locks.
                 {
-                    let mut sealing = self.sealing.lock();
-                    sealing.enabled = true;
+                    let mut sealing_work = self.sealing_work.lock();
+                    sealing_work.enabled = true;
                 }
                 self.engine.set_signer(ap.clone(), address, password);
                 Ok(())
@@ -704,7 +655,7 @@ impl MinerService for Miner {
     }
 
     fn submit_seal<C: ImportSealedBlock>(&self, chain: &C, block_hash: H256, seal: Vec<Bytes>) -> Result<(), Error> {
-        let result = if let Some(b) = self.sealing.lock().queue.take_used_if(|b| &b.hash() == &block_hash) {
+        let result = if let Some(b) = self.sealing_work.lock().queue.take_used_if(|b| &b.hash() == &block_hash) {
             ctrace!(
                 MINER,
                 "Submitted block {}={}={} with seal {:?}",
@@ -735,31 +686,31 @@ impl MinerService for Miner {
         C: AccountData + BlockChain + BlockProducer + RegularKeyOwner,
         F: FnOnce(&ClosedBlock) -> T, {
         ctrace!(MINER, "map_sealing_work: entering");
-        self.prepare_pending_block(client);
+        self.prepare_work_sealing(client);
         ctrace!(MINER, "map_sealing_work: sealing prepared");
-        let mut sealing = self.sealing.lock();
-        let ret = sealing.queue.use_last_ref();
+        let mut sealing_work = self.sealing_work.lock();
+        let ret = sealing_work.queue.use_last_ref();
         ctrace!(MINER, "map_sealing_work: leaving use_last_ref={:?}", ret.as_ref().map(|b| b.block().header().hash()));
         ret.map(f)
     }
 
     fn import_external_parcels<C: MiningBlockChainClient>(
         &self,
-        chain: &C,
+        client: &C,
         parcels: Vec<UnverifiedParcel>,
     ) -> Vec<Result<ParcelImportResult, Error>> {
         ctrace!(EXTERNAL_PARCEL, "Importing external parcels");
         let results = {
             let mut mem_pool = self.mem_pool.write();
-            self.add_parcels_to_pool(chain, parcels, ParcelOrigin::External, &mut mem_pool)
+            self.add_parcels_to_pool(client, parcels, ParcelOrigin::External, &mut mem_pool)
         };
 
-        // ------------------------------------------------------------------
-        // | NOTE Code below requires mem_pool and sealing_queue locks.     |
-        // | Make sure to release the locks before calling that method.     |
-        // ------------------------------------------------------------------
-        if !results.is_empty() && self.options.reseal_on_external_parcel && self.sealing.lock().reseal_allowed() {
-            self.prepare_and_update_sealing(chain);
+        if !results.is_empty() && self.options.reseal_on_external_parcel && self.parcel_reseal_allowed() {
+            // ------------------------------------------------------------------
+            // | NOTE Code below requires mem_pool and sealing_queue locks.     |
+            // | Make sure to release the locks before calling that method.     |
+            // ------------------------------------------------------------------
+            self.update_sealing(client);
         }
         results
     }
@@ -796,8 +747,15 @@ impl MinerService for Miner {
         // | NOTE Code below requires mem_pool and sealing_queue locks.     |
         // | Make sure to release the locks before calling that method.     |
         // ------------------------------------------------------------------
-        if imported.is_ok() && self.options.reseal_on_own_parcel && self.sealing.lock().reseal_allowed() {
-            self.prepare_and_update_sealing(chain);
+        if imported.is_ok() && self.options.reseal_on_own_parcel && self.parcel_reseal_allowed() {
+            // Make sure to do it after parcel is imported and lock is dropped.
+            // We need to create pending block and enable sealing.
+            if self.engine.seals_internally().unwrap_or(false) || !self.prepare_work_sealing(chain) {
+                // If new block has not been prepared (means we already had one)
+                // or Engine might be able to seal internally,
+                // we need to update sealing.
+                self.update_sealing(chain);
+            }
         }
         imported
     }
@@ -819,7 +777,7 @@ impl MinerService for Miner {
         // | NOTE Code below requires mem_pool and sealing_queue locks.     |
         // | Make sure to release the locks before calling that method.     |
         // ------------------------------------------------------------------
-        if self.sealing.lock().reseal_allowed() {
+        if self.parcel_reseal_allowed() {
             cdebug!(MINER, "Update sealing");
             self.update_sealing(client);
         }
