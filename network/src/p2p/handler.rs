@@ -384,6 +384,10 @@ impl IoHandler<Message> for Handler {
     fn message(&self, io: &IoContext<Message>, message: &Message) -> IoHandlerResult<()> {
         match message {
             Message::RequestConnection(socket_address, ignore_connection_limit) => {
+                if self.routing_table.is_connected(socket_address) {
+                    return Ok(())
+                }
+
                 if ignore_connection_limit == &IgnoreConnectionLimit::Not {
                     let number_of_connections = self.connections.len();
                     if self.max_peers <= number_of_connections {
