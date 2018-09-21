@@ -122,7 +122,6 @@ impl Handler {
         if MAX_CONNECTIONS < max_peers {
             return Err(format!("Max peers must be less than {}", MAX_CONNECTIONS))
         }
-        debug_assert!(max_peers < MAX_CONNECTIONS);
         Ok(Self {
             socket_address,
             listener: Listener::bind(&socket_address).expect("Cannot listen TCP port"),
