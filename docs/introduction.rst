@@ -18,7 +18,7 @@ What features does CodeChain offer?
 Key features include a built-in multi-asset management solution, which enable users to issue, transfer and manage currencies,
 tokens and/or digital items on a blockchain network, all without the need of smart contracts. CodeChain also offers a pluggable
 consensus model, which provides flexibility for anyone's business. Users can now choose the consensus model(PoW, Tendermint, Hot-stuff, PoA)
-that bext suit their needs. Hybrid schemes also combine aspects of existing consensus models to offer the best of
+that best suit their needs. Hybrid schemes also combine aspects of existing consensus models to offer the best of
 both worlds, such as increasing throughput, decreasing latency to finality, promoting fairness, etc.
 
 CodeChain also offers programmability. More specifically, transactions are programmable. Things such as random item generation, asset evolution,
