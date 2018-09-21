@@ -32,7 +32,7 @@
 //!
 //! impl IoHandler<MyMessage> for MyHandler {
 //! 	fn initialize(&self, io: &IoContext<MyMessage>) -> IoHandlerResult<()> {
-//!			io.register_timer(0, 1000).unwrap();
+//!			io.register_timer(0, 1000);
 //!			Ok(())
 //!		}
 //!
@@ -210,7 +210,7 @@ mod tests {
 
     impl IoHandler<MyMessage> for MyHandler {
         fn initialize(&self, io: &IoContext<MyMessage>) -> IoHandlerResult<()> {
-            io.register_timer(0, 1000).unwrap();
+            io.register_timer(0, 1000);
             Ok(())
         }
 
