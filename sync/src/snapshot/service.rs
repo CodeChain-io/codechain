@@ -71,7 +71,7 @@ impl ChainNotify for Service {
             let db = self.client.database();
             let path: PathBuf = [self.root_dir.clone(), format!("{:x}", header.hash())].iter().collect();
             let root = header.state_root();
-            spawn(move || match write_snapshot(db, path, &root) {
+            spawn(move || match write_snapshot(db.as_ref(), path, &root) {
                 Ok(_) => {}
                 Err(Error::FileError(ErrorKind::AlreadyExists)) => {}
                 Err(e) => cerror!(SNAPSHOT, "{}", e),
@@ -80,14 +80,14 @@ impl ChainNotify for Service {
     }
 }
 
-fn write_snapshot(db: Arc<KeyValueDB>, path: PathBuf, root: &H256) -> Result<(), Error> {
+fn write_snapshot(db: &KeyValueDB, path: PathBuf, root: &H256) -> Result<(), Error> {
     create_dir_all(&path)?;
 
-    let root_val = get_node(&db, root)?;
-    let children = children_of(&db, &root_val)?;
+    let root_val = get_node(db, root)?;
+    let children = children_of(db, &root_val)?;
     let mut grandchildren = Vec::new();
     for (_, value) in &children {
-        grandchildren.extend(children_of(&db, value)?);
+        grandchildren.extend(children_of(db, value)?);
     }
 
     {
@@ -107,7 +107,7 @@ fn write_snapshot(db: Arc<KeyValueDB>, path: PathBuf, root: &H256) -> Result<(),
     }
 
     for (grandchild, _) in &grandchildren {
-        let nodes = enumerate_subtree(&db, grandchild)?;
+        let nodes = enumerate_subtree(db, grandchild)?;
         let file = File::create(path.join(format!("{:x}", grandchild)))?;
         let mut snappy = snap::Writer::new(file);
 
@@ -126,7 +126,7 @@ fn write_snapshot(db: Arc<KeyValueDB>, path: PathBuf, root: &H256) -> Result<(),
     Ok(())
 }
 
-fn get_node(db: &Arc<KeyValueDB>, key: &H256) -> Result<Vec<u8>, Error> {
+fn get_node(db: &KeyValueDB, key: &H256) -> Result<Vec<u8>, Error> {
     match db.get(COL_STATE, key) {
         Ok(Some(value)) => Ok(value.to_vec()),
         Ok(None) => Err(Error::NodeNotFound(*key)),
@@ -134,7 +134,7 @@ fn get_node(db: &Arc<KeyValueDB>, key: &H256) -> Result<Vec<u8>, Error> {
     }
 }
 
-fn children_of(db: &Arc<KeyValueDB>, node: &[u8]) -> Result<Vec<(H256, Vec<u8>)>, Error> {
+fn children_of(db: &KeyValueDB, node: &[u8]) -> Result<Vec<(H256, Vec<u8>)>, Error> {
     let keys = match Node::decoded(node) {
         None => Vec::new(),
         Some(Node::Leaf(..)) => Vec::new(),
@@ -148,7 +148,7 @@ fn children_of(db: &Arc<KeyValueDB>, node: &[u8]) -> Result<Vec<(H256, Vec<u8>)>
     Ok(result)
 }
 
-fn enumerate_subtree(db: &Arc<KeyValueDB>, root: &H256) -> Result<Vec<(H256, Vec<u8>)>, Error> {
+fn enumerate_subtree(db: &KeyValueDB, root: &H256) -> Result<Vec<(H256, Vec<u8>)>, Error> {
     let node = get_node(db, root)?;
     let children = match Node::decoded(&node) {
         None => Vec::new(),
