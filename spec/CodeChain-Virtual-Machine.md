@@ -87,3 +87,9 @@ Leading zeros must be truncated. Note that it is allowed to decode value with le
 
 ## Environment
 * BLKNUM(0xa0): Push block number specified in parcel to stack as integer. If there's no specified block number, machine must fail immediately.
+
+## Timelock
+* CHKTIMELOCK(0xb0)
+ 1. Pop two items from stack. The first one indicates the type of timelock. The second one is an integer value which is either timestamp value or block number value.
+ 2. Verify `timelock` field in AssetTransferInput is valid. Stop script execution if the type does not match. See `Timelock` section in [Parcel](Parcel.md) for the details.
+ 3. Push true on success, false otherwise
