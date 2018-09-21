@@ -89,8 +89,11 @@ When an asset is marked as permissioned, `AssetTransfer` transactions must inclu
 
 ```rust
 AssetTransfer {
+    network_id: NetworkId,
+    burns: Vec<AssetTransferInput>,
     inputs: Vec<AssetTransferInput>,
     outputs: Vec<AssetTransferOutput>
+    nonce: u32,
 }
 
 struct AssetTransferInput {
