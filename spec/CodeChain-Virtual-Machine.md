@@ -95,3 +95,14 @@ Leading zeros must be truncated. Note that it is allowed to decode value with le
 
 ## Environment
 * BLKNUM(0xa0): Push block number specified in parcel to stack as integer. If there's no specified block number, machine must fail immediately.
+
+## Timelock
+* CHKTIMELOCK(0xb0)
+ 1. Pop one item from stack, encoded number for the 4 types of timelock. It must be between 1 and 4. Script will fail otherwise.
+   - 1: Block
+   - 2: BlockAge
+   - 3: Time
+   - 4: TimeAge
+ 2. Pop one more item from stack, the value of timelock. It must be big-endian encoded 64-bit unsigned integer. Script will fail if the length of the item exceeds 8.
+ 2. Check the condition given type and value referring block number and timestamp of the best block. See `Timelock` section in [Parcel](Parcel.md) for the details.
+ 3. Push true if condition is met, false otherwise.
