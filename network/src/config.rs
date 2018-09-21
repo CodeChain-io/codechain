@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use super::filters::FilterEntry;
 use super::SocketAddr;
-use std::net::IpAddr;
 
 pub struct Config {
     pub address: String,
@@ -23,6 +23,6 @@ pub struct Config {
     pub bootstrap_addresses: Vec<SocketAddr>,
     pub min_peers: usize,
     pub max_peers: usize,
-    pub whitelist: Vec<IpAddr>,
-    pub blacklist: Vec<IpAddr>,
+    pub whitelist: Vec<FilterEntry>,
+    pub blacklist: Vec<FilterEntry>,
 }

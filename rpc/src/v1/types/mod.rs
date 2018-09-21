@@ -31,6 +31,6 @@ pub use self::work::Work;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FilterStatus {
-    pub list: Vec<::std::net::IpAddr>,
+    pub list: Vec<(::std::net::IpAddr, String)>,
     pub enabled: bool,
 }

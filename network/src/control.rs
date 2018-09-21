@@ -20,6 +20,7 @@ use std::result::Result;
 use primitives::H256;
 
 use super::addr::SocketAddr;
+use super::filters::FilterEntry;
 
 pub trait Control: Send + Sync {
     fn register_secret(&self, secret: H256, addr: SocketAddr) -> Result<(), Error>;
@@ -30,10 +31,10 @@ pub trait Control: Send + Sync {
     fn get_peer_count(&self) -> Result<usize, Error>;
     fn established_peers(&self) -> Result<Vec<SocketAddr>, Error>;
 
-    fn add_to_whitelist(&self, addr: IpAddr) -> Result<(), Error>;
+    fn add_to_whitelist(&self, addr: IpAddr, tag: Option<String>) -> Result<(), Error>;
     fn remove_from_whitelist(&self, addr: &IpAddr) -> Result<(), Error>;
 
-    fn add_to_blacklist(&self, addr: IpAddr) -> Result<(), Error>;
+    fn add_to_blacklist(&self, addr: IpAddr, tag: Option<String>) -> Result<(), Error>;
     fn remove_from_blacklist(&self, addr: &IpAddr) -> Result<(), Error>;
 
     fn enable_whitelist(&self) -> Result<(), Error>;
@@ -42,8 +43,8 @@ pub trait Control: Send + Sync {
     fn enable_blacklist(&self) -> Result<(), Error>;
     fn disable_blacklist(&self) -> Result<(), Error>;
 
-    fn get_whitelist(&self) -> Result<(Vec<IpAddr>, bool), Error>;
-    fn get_blacklist(&self) -> Result<(Vec<IpAddr>, bool), Error>;
+    fn get_whitelist(&self) -> Result<(Vec<FilterEntry>, bool), Error>;
+    fn get_blacklist(&self) -> Result<(Vec<FilterEntry>, bool), Error>;
 }
 
 #[derive(Clone, Debug)]
