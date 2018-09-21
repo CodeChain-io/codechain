@@ -43,7 +43,7 @@ enum State {
     TemporaryNonceShared(Secret, Nonce, SecretOrigin),
     SessionShared(Session),
     Establishing(Session),
-    Established(NodeId),
+    Established,
     Banned,
 }
 
@@ -112,7 +112,7 @@ impl RoutingTable {
         if let Some(entry) = entries.get(&addr.into()) {
             let state = entry.read();
             match *state {
-                State::Established(_) => return true,
+                State::Established => return true,
                 _ => return false,
             }
         }
@@ -211,7 +211,7 @@ impl RoutingTable {
             let mut state = entry.write();
 
             match *state {
-                State::Established(_) => return false,
+                State::Established => return false,
                 _ => {
                     *state = State::SecretPreimported(secret);
                     return true
@@ -375,7 +375,7 @@ impl RoutingTable {
             let mut state = entry.write();
             match *state {
                 State::SessionShared(_) | State::Establishing(_) => {
-                    *state = State::Established(remote_node_id);
+                    *state = State::Established;
                     ctrace!(ROUTING_TABLE, "Connection to {} is established", remote_address);
                     return true
                 }
