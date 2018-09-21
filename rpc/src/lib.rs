@@ -25,6 +25,7 @@ extern crate codechain_types as ctypes;
 extern crate jsonrpc_core;
 extern crate jsonrpc_http_server;
 extern crate jsonrpc_ipc_server;
+extern crate jsonrpc_ws_server;
 extern crate kvdb;
 extern crate kvdb_rocksdb as rocksdb;
 #[macro_use]
@@ -55,3 +56,6 @@ pub use rpc_server::start_http;
 
 pub use jsonrpc_ipc_server::Server as IpcServer;
 pub use rpc_server::start_ipc;
+
+pub use jsonrpc_ws_server::{Error as WsError, ErrorKind as WsErrorKind, Server as WsServer};
+pub use rpc_server::start_ws;
