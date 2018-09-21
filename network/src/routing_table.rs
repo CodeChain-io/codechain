@@ -25,21 +25,21 @@ use rlp::{Decodable, Encodable, UntrustedRlp};
 use super::session::{Nonce, Session};
 use super::{IntoSocketAddr, NodeId, SocketAddr};
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 enum SecretOrigin {
     Shared,
     Preimported,
 }
 
 // Discovery flow : Candidate -> Alive -> KeyPairShared -> SecretShared -> TemporaryNonceShared -> SessionShared -> (Establishing) -> Established
-// Offline secret exchange flow : SecretpreImported -> TemporaryNonceShared -> SessionShared -> Established
+// Offline secret exchange flow :     SecretPreimported ->
 #[derive(Clone, Debug, PartialEq)]
 enum State {
     Candidate,
     Alive,
     SecretPreimported(Secret),
     KeyPairShared(KeyPair),
-    SecretShared(Secret),
+    SecretShared(Secret, SecretOrigin),
     TemporaryNonceShared(Secret, Nonce, SecretOrigin),
     SessionShared(Session),
     Establishing(Session),
@@ -184,7 +184,9 @@ impl RoutingTable {
                     ctrace!(ROUTING_TABLE, "Mark {} alive", addr);
                     return true
                 }
-                State::SecretPreimported(_secret) => {
+                State::SecretPreimported(secret) => {
+                    ctrace!(ROUTING_TABLE, "Preimported secret shared with {}", addr);
+                    *state = State::SecretShared(secret, SecretOrigin::Preimported);
                     remote_to_local_node_ids.insert(remote_node_id, local_node_id);
                     return true
                 }
@@ -251,7 +253,7 @@ impl RoutingTable {
             let mut state = entry.write();
             if let State::KeyPairShared(local_key_pair) = state.clone() {
                 if let Some(secret) = exchange(remote_public, local_key_pair.private()).ok() {
-                    *state = State::SecretShared(secret);
+                    *state = State::SecretShared(secret, SecretOrigin::Shared);
                     ctrace!(ROUTING_TABLE, "Secret shared with {}", remote_address);
                     return Some(secret)
                 }
@@ -272,8 +274,7 @@ impl RoutingTable {
         let result = entries.get(&remote_node_id).and_then(|entry| {
             let mut state = entry.write();
             let (shared_secret, secret_origin) = match *state {
-                State::SecretShared(shared_secret) => (shared_secret, SecretOrigin::Shared),
-                State::SecretPreimported(secret) => (secret, SecretOrigin::Preimported),
+                State::SecretShared(shared_secret, secret_origin) => (shared_secret, secret_origin),
                 _ => return None,
             };
 
@@ -304,8 +305,7 @@ impl RoutingTable {
         let result = entries.get(&remote_node_id).and_then(|entry| {
             let mut state = entry.write();
             let shared_secret = match *state {
-                State::SecretShared(shared_secret) => shared_secret,
-                State::SecretPreimported(secret) => secret,
+                State::SecretShared(shared_secret, _) => shared_secret,
                 _ => return None,
             };
             let temporary_session = {
