@@ -25,7 +25,7 @@ use ckey::{Address, Password};
 use cstate::TopStateInfo;
 use primitives::{Bytes, H256, U256};
 
-pub use self::miner::{Miner, MinerOptions};
+pub use self::miner::{AuthoringParams, Miner, MinerOptions};
 pub use self::stratum::{Config as StratumConfig, Error as StratumError, Stratum};
 use super::account_provider::SignError;
 use super::block::ClosedBlock;
@@ -44,14 +44,11 @@ pub trait MinerService: Send + Sync {
     /// Returns miner's status.
     fn status(&self) -> MinerStatus;
 
-    /// Get the author that we will seal blocks as.
-    fn author(&self) -> Address;
+    /// Get current authoring parameters.
+    fn authoring_params(&self) -> AuthoringParams;
 
     /// Set the author that we will seal blocks as.
     fn set_author(&self, author: Address, password: Option<Password>) -> Result<(), SignError>;
-
-    /// Get the extra_data that we will seal blocks with.
-    fn extra_data(&self) -> Bytes;
 
     /// Set the extra_data that we will seal blocks with.
     fn set_extra_data(&self, extra_data: Bytes);

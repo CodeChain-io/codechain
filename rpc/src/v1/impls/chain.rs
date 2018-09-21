@@ -215,12 +215,12 @@ where
     }
 
     fn get_coinbase(&self) -> Result<Option<PlatformAddress>> {
-        if self.miner.author().is_zero() {
+        if self.miner.authoring_params().author.is_zero() {
             Ok(None)
         } else {
             const VERSION: u8 = 0;
             let network_id = self.client.common_params().network_id;
-            Ok(Some(PlatformAddress::create(VERSION, network_id, self.miner.author())))
+            Ok(Some(PlatformAddress::create(VERSION, network_id, self.miner.authoring_params().author)))
         }
     }
 

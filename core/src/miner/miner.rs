@@ -81,6 +81,12 @@ impl Default for MinerOptions {
     }
 }
 
+#[derive(Debug, Default, Clone)]
+pub struct AuthoringParams {
+    pub author: Address,
+    pub extra_data: Bytes,
+}
+
 struct SealingWork {
     queue: SealingQueue,
     enabled: bool,
@@ -91,10 +97,9 @@ pub struct Miner {
     parcel_listener: RwLock<Vec<Box<Fn(&[H256]) + Send + Sync>>>,
     next_allowed_reseal: Mutex<Instant>,
     next_mandatory_reseal: RwLock<Instant>,
-    author: RwLock<Address>,
-    extra_data: RwLock<Bytes>,
     sealing_block_last_request: Mutex<u64>,
     sealing_work: Mutex<SealingWork>,
+    params: RwLock<AuthoringParams>,
     engine: Arc<CodeChainEngine>,
     options: MinerOptions,
 
@@ -131,8 +136,7 @@ impl Miner {
             parcel_listener: RwLock::new(vec![]),
             next_allowed_reseal: Mutex::new(Instant::now()),
             next_mandatory_reseal: RwLock::new(Instant::now() + options.reseal_max_period),
-            author: RwLock::new(Address::default()),
-            extra_data: RwLock::new(Vec::new()),
+            params: RwLock::new(AuthoringParams::default()),
             sealing_block_last_request: Mutex::new(0),
             sealing_work: Mutex::new(SealingWork {
                 queue: SealingQueue::new(options.work_queue_size),
@@ -373,7 +377,8 @@ impl Miner {
             let last_work_hash = sealing_work.queue.peek_last_ref().map(|pb| pb.block().header().hash());
 
             ctrace!(MINER, "prepare_block: No existing work - making new block");
-            let open_block = chain.prepare_open_block(self.author(), self.extra_data());
+            let params = self.params.read().clone();
+            let open_block = chain.prepare_open_block(params.author, params.extra_data);
 
             (parcels, open_block, last_work_hash)
         };
@@ -530,12 +535,12 @@ impl MinerService for Miner {
         }
     }
 
-    fn author(&self) -> Address {
-        *self.author.read()
+    fn authoring_params(&self) -> AuthoringParams {
+        self.params.read().clone()
     }
 
     fn set_author(&self, address: Address, password: Option<Password>) -> Result<(), SignError> {
-        *self.author.write() = address;
+        self.params.write().author = address;
 
         if self.engine_type() == EngineType::InternalSealing && self.engine.seals_internally().is_some() {
             if let Some(ref ap) = self.accounts {
@@ -558,12 +563,8 @@ impl MinerService for Miner {
         }
     }
 
-    fn extra_data(&self) -> Bytes {
-        self.extra_data.read().clone()
-    }
-
     fn set_extra_data(&self, extra_data: Bytes) {
-        *self.extra_data.write() = extra_data;
+        self.params.write().extra_data = extra_data;
     }
 
     fn minimal_fee(&self) -> U256 {
