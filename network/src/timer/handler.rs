@@ -107,7 +107,7 @@ impl IoHandler<Message> for Handler {
             } => {
                 let mut timer = self.timer.lock();
                 let token = timer.insert(extension_name.clone(), *timer_id, false)?;
-                io.register_timer(token, duration.num_milliseconds() as u64)?;
+                io.register_timer(token, duration.num_milliseconds() as u64);
                 Ok(())
             }
             Message::SetTimerOnce {
@@ -117,7 +117,7 @@ impl IoHandler<Message> for Handler {
             } => {
                 let mut timer = self.timer.lock();
                 let token = timer.insert(extension_name.clone(), *timer_id, true)?;
-                io.register_timer_once(token, duration.num_milliseconds() as u64)?;
+                io.register_timer_once(token, duration.num_milliseconds() as u64);
                 Ok(())
             }
             Message::ClearTimer {
@@ -126,7 +126,7 @@ impl IoHandler<Message> for Handler {
             } => {
                 let mut timer = self.timer.lock();
                 if let Some(token) = timer.remove_by_info(extension_name.clone(), *timer_id) {
-                    io.clear_timer(token)?;
+                    io.clear_timer(token);
                 }
                 Ok(())
             }

@@ -100,67 +100,72 @@ where
     }
 
     /// Register a new recurring IO timer. 'IoHandler::timeout' will be called with the token.
-    pub fn register_timer(&self, token: TimerToken, ms: u64) -> Result<(), IoError> {
-        self.channel.send_io(IoMessage::AddTimer {
-            token,
-            delay: ms,
-            handler_id: self.handler,
-            once: false,
-        })?;
-        Ok(())
+    pub fn register_timer(&self, token: TimerToken, ms: u64) {
+        self.channel
+            .send_io(IoMessage::AddTimer {
+                token,
+                delay: ms,
+                handler_id: self.handler,
+                once: false,
+            })
+            .unwrap();
     }
 
     /// Register a new IO timer once. 'IoHandler::timeout' will be called with the token.
-    pub fn register_timer_once(&self, token: TimerToken, ms: u64) -> Result<(), IoError> {
-        self.channel.send_io(IoMessage::AddTimer {
-            token,
-            delay: ms,
-            handler_id: self.handler,
-            once: true,
-        })?;
-        Ok(())
+    pub fn register_timer_once(&self, token: TimerToken, ms: u64) {
+        self.channel
+            .send_io(IoMessage::AddTimer {
+                token,
+                delay: ms,
+                handler_id: self.handler,
+                once: true,
+            })
+            .unwrap();
     }
 
     /// Delete a timer.
-    pub fn clear_timer(&self, token: TimerToken) -> Result<(), IoError> {
-        self.channel.send_io(IoMessage::RemoveTimer {
-            token,
-            handler_id: self.handler,
-        })?;
-        Ok(())
+    pub fn clear_timer(&self, token: TimerToken) {
+        self.channel
+            .send_io(IoMessage::RemoveTimer {
+                token,
+                handler_id: self.handler,
+            })
+            .unwrap();
     }
 
     /// Register a new IO stream.
-    pub fn register_stream(&self, token: StreamToken) -> Result<(), IoError> {
-        self.channel.send_io(IoMessage::RegisterStream {
-            token,
-            handler_id: self.handler,
-        })?;
-        Ok(())
+    pub fn register_stream(&self, token: StreamToken) {
+        self.channel
+            .send_io(IoMessage::RegisterStream {
+                token,
+                handler_id: self.handler,
+            })
+            .unwrap();
     }
 
     /// Deregister an IO stream.
-    pub fn deregister_stream(&self, token: StreamToken) -> Result<(), IoError> {
-        self.channel.send_io(IoMessage::DeregisterStream {
-            token,
-            handler_id: self.handler,
-        })?;
-        Ok(())
+    pub fn deregister_stream(&self, token: StreamToken) {
+        self.channel
+            .send_io(IoMessage::DeregisterStream {
+                token,
+                handler_id: self.handler,
+            })
+            .unwrap();
     }
 
     /// Reregister an IO stream.
-    pub fn update_registration(&self, token: StreamToken) -> Result<(), IoError> {
-        self.channel.send_io(IoMessage::UpdateStreamRegistration {
-            token,
-            handler_id: self.handler,
-        })?;
-        Ok(())
+    pub fn update_registration(&self, token: StreamToken) {
+        self.channel
+            .send_io(IoMessage::UpdateStreamRegistration {
+                token,
+                handler_id: self.handler,
+            })
+            .unwrap();
     }
 
     /// Broadcast a message to other IO clients
-    pub fn message(&self, message: Message) -> Result<(), IoError> {
-        self.channel.send(message)?;
-        Ok(())
+    pub fn message(&self, message: Message) {
+        self.channel.send(message).unwrap();
     }
 
     /// Get message channel
@@ -169,11 +174,12 @@ where
     }
 
     /// Unregister current IO handler.
-    pub fn unregister_handler(&self) -> Result<(), IoError> {
-        self.channel.send_io(IoMessage::RemoveHandler {
-            handler_id: self.handler,
-        })?;
-        Ok(())
+    pub fn unregister_handler(&self) {
+        self.channel
+            .send_io(IoMessage::RemoveHandler {
+                handler_id: self.handler,
+            })
+            .unwrap();
     }
 }
 

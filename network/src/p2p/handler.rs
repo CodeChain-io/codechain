@@ -186,7 +186,7 @@ impl Handler {
                     return Err(format!("Cannot create connection to {}", socket_address).into())
                 }
                 const CONNECTION_TIMEOUT_MS: u64 = 3_000;
-                io.register_timer_once(token as TimerToken, CONNECTION_TIMEOUT_MS)?;
+                io.register_timer_once(token as TimerToken, CONNECTION_TIMEOUT_MS);
                 self.routing_table.set_establishing(socket_address);
                 Some(token)
             }
@@ -208,10 +208,10 @@ impl Handler {
 
                 let node_id = self.connections.node_id(&stream).ok_or(Error::InvalidStream(*stream))?;
                 self.routing_table.establish(&node_id.into_addr());
-                io.clear_timer(*stream as TimerToken)?;
+                io.clear_timer(*stream as TimerToken);
                 io.message(Message::RequestNegotiation {
                     node_id,
-                })?;
+                });
                 true
             }
             Some(ReceivedMessage::Sync(signed_message)) => {
@@ -324,9 +324,8 @@ impl Handler {
 
 impl IoHandler<Message> for Handler {
     fn initialize(&self, io: &IoContext<Message>) -> IoHandlerResult<()> {
-        io.register_stream(ACCEPT_TOKEN)?;
-        io.register_timer_once(CREATE_CONNECTIONS_TOKEN, PULL_CONNECTIONS_MS)
-            .expect("Pull connections must be registered");
+        io.register_stream(ACCEPT_TOKEN);
+        io.register_timer_once(CREATE_CONNECTIONS_TOKEN, PULL_CONNECTIONS_MS);
         Ok(())
     }
 
@@ -336,8 +335,7 @@ impl IoHandler<Message> for Handler {
                 let register_new_timer = AtomicBool::new(false);
                 let _f = finally(|| {
                     if register_new_timer.load(Ordering::SeqCst) {
-                        io.register_timer_once(CREATE_CONNECTIONS_TOKEN, PULL_CONNECTIONS_MS)
-                            .expect("Pull connections must be registered");
+                        io.register_timer_once(CREATE_CONNECTIONS_TOKEN, PULL_CONNECTIONS_MS);
                     }
                 });
                 let number_of_connections = self.connections.len();
@@ -346,7 +344,7 @@ impl IoHandler<Message> for Handler {
                     let count = (self.min_peers - number_of_connections + 1) / 2;
                     let addresses = self.routing_table.unestablished_addresses(count);
                     for address in addresses {
-                        io.message(Message::RequestConnection(address, IgnoreConnectionLimit::Not))?;
+                        io.message(Message::RequestConnection(address, IgnoreConnectionLimit::Not));
                     }
                 }
                 Ok(())
@@ -382,7 +380,7 @@ impl IoHandler<Message> for Handler {
                 ctrace!(NETWORK, "Connecting to {}", socket_address);
                 let token = self.connect(io, &socket_address)?.ok_or("Cannot create connection")?;
                 cinfo!(NETWORK, "New connection to {}({})", socket_address, token);
-                io.register_stream(token)?;
+                io.register_stream(token);
                 Ok(())
             }
             Message::RequestNegotiation {
@@ -394,7 +392,7 @@ impl IoHandler<Message> for Handler {
                     if !self.connections.enqueue_negotiation_request(&token, extension_name, versions) {
                         return Err(Error::InvalidStream(token).into())
                     }
-                    io.update_registration(token)?;
+                    io.update_registration(token);
                 }
                 Ok(())
             }
@@ -408,7 +406,7 @@ impl IoHandler<Message> for Handler {
                 if !self.connections.enqueue_extension_message(&token, extension_name, *need_encryption, data) {
                     return Err(Error::InvalidStream(token).into())
                 }
-                io.update_registration(token)?;
+                io.update_registration(token);
                 Ok(())
             }
             Message::Disconnect(socket_address) => {
@@ -440,8 +438,7 @@ impl IoHandler<Message> for Handler {
                 let register_new_timer = AtomicBool::new(false);
                 let _f = finally(|| {
                     if register_new_timer.load(Ordering::SeqCst) {
-                        io.register_timer_once(CREATE_CONNECTIONS_TOKEN, PULL_CONNECTIONS_MS)
-                            .expect("Pull connections must be registered");
+                        io.register_timer_once(CREATE_CONNECTIONS_TOKEN, PULL_CONNECTIONS_MS);
                     }
                 });
                 if self.connections.len() < self.min_peers {
@@ -454,7 +451,7 @@ impl IoHandler<Message> for Handler {
                 if was_established {
                     self.client.on_node_removed(&node_id);
                 }
-                io.deregister_stream(stream)?;
+                io.deregister_stream(stream);
             }
             _ => unreachable!(),
         }
@@ -466,14 +463,12 @@ impl IoHandler<Message> for Handler {
             ACCEPT_TOKEN => {
                 if let Some((token, address)) = self.accept()? {
                     cinfo!(NETWORK, "New connection from {}({})", address, token);
-                    io.register_stream(token)?;
+                    io.register_stream(token);
                 }
             }
             FIRST_CONNECTION_TOKEN...LAST_CONNECTION_TOKEN => {
                 let _f = finally(|| {
-                    if let Err(err) = io.update_registration(stream) {
-                        cwarn!(NETWORK, "Cannot update registration in stream_readable for {} {:?}", stream, err);
-                    }
+                    io.update_registration(stream);
                 });
                 loop {
                     if !self.receive(&stream, &self.client, io)? {
@@ -491,9 +486,7 @@ impl IoHandler<Message> for Handler {
             ACCEPT_TOKEN => unreachable!(),
             FIRST_CONNECTION_TOKEN...LAST_CONNECTION_TOKEN => {
                 let _f = finally(|| {
-                    if let Err(err) = io.update_registration(stream) {
-                        cwarn!(NETWORK, "Cannot update registration in stream_writable for {} {:?}", stream, err);
-                    }
+                    io.update_registration(stream);
                 });
                 self.send(&stream)
             }
