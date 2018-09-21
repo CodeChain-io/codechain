@@ -125,20 +125,28 @@ impl Config {
         debug_assert!(!self.network.disable.unwrap());
 
         fn make_ipaddr_list(list_path: Option<&String>, list_name: &str) -> Result<Vec<IpAddr>, String> {
-            list_path
-                .map(|path| {
-                    fs::read_to_string(path)
-                        .map_err(|e| format!("Cannot open the {}list file {:?}: {:?}", list_name, path, e))
-                        .map(|rstr| {
-                            rstr.split_whitespace()
-                                .filter(|s| s.len() != 0)
-                                .map(|s| s.parse().map_err(|e| (s, e)))
-                                .collect::<Result<Vec<_>, _>>()
-                                .map_err(|(s, e)| format!("Cannot parse IP address {:?}: {:?}", s, e))
-                        })
-                        .unwrap_or_else(|e| Err(e))
-                })
-                .unwrap_or(Ok(Vec::new()))
+            if let Some(path) = list_path {
+                fs::read_to_string(path)
+                    .map_err(|e| format!("Cannot open the {}list file {:?}: {:?}", list_name, path, e))
+                    .map(|rstr| {
+                        rstr.lines()
+                            .map(|s| {
+                                const COMMENT_CHAR: &str = "#";
+                                let (ip_str, _tag_str) = if let Some(index) = s.find(COMMENT_CHAR) {
+                                    let (ip_str, tag_str_with_sign) = s.split_at(index);
+                                    (ip_str.trim(), (&tag_str_with_sign[1..]).trim())
+                                } else {
+                                    (s.trim(), "")
+                                };
+                                ip_str
+                            })
+                            .filter(|s| s.len() != 0)
+                            .map(|s| s.parse().map_err(|e| format!("Cannot parse IP address {}: {:?}", s, e)))
+                            .collect::<Result<Vec<_>, _>>()
+                    })?
+            } else {
+                Ok(Vec::new())
+            }
         }
 
         let bootstrap_addresses = self
