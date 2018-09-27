@@ -14,14 +14,13 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ccore::SignedParcel;
-use ckey::{NetworkId, Private};
+use ckey::{Error as KeyError, NetworkId};
 use ctypes::parcel::{Action as ActionType, Parcel};
 use primitives::U256;
 
 use super::Action;
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UnsignedParcel {
     pub nonce: Option<U256>,
@@ -30,21 +29,13 @@ pub struct UnsignedParcel {
     pub action: Action,
 }
 
-impl UnsignedParcel {
-    pub fn sign(unsigned: Self, private: &Private) -> Result<SignedParcel, ()> {
-        let parcel = Result::from(unsigned)?;
-        let signed = SignedParcel::new_with_sign(parcel, private);
-        Ok(signed)
-    }
-}
-
 // FIXME: Use TryFrom.
-impl From<UnsignedParcel> for Result<Parcel, ()> {
+impl From<UnsignedParcel> for Result<Parcel, KeyError> {
     fn from(value: UnsignedParcel) -> Self {
-        let nonce = value.nonce.ok_or(())?;
+        let nonce = value.nonce.expect("Nonce must exist");
         let fee = value.fee;
         let network_id = value.network_id;
-        let action: ActionType = Result::from(value.action).map_err(|_| ())?;
+        let action: ActionType = Result::from(value.action)?;
 
         Ok(Parcel {
             nonce,
