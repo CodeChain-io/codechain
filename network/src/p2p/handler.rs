@@ -544,6 +544,8 @@ impl IoHandler<Message> for Handler {
         match stream {
             ACCEPT_TOKEN => unreachable!(),
             FIRST_CONNECTION_TOKEN...LAST_CONNECTION_TOKEN => {
+                let mut tokens = self.tokens.lock();
+                tokens.restore(stream);
                 self.connections.remove(&stream);
                 self.connections.deregister(&stream, event_loop)?;
             }
