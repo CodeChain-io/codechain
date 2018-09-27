@@ -27,7 +27,9 @@ describe("2 nodes", () => {
         await nodeB.start();
     });
 
-    test("should be able to connect", async () => {
+    // FIXME: Connection establishment is too slow.
+    // See https://github.com/CodeChain-io/codechain/issues/760
+    test.skip("should be able to connect", async () => {
         await nodeA.connect(nodeB);
     });
 
