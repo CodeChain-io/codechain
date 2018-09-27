@@ -111,9 +111,9 @@ describe("Network RPC", () => {
         });
     });
 
-    test(`default whitelist ["127.0.0.1"], disabled`, async () => {
+    test(`default whitelist [["127.0.0.1", ""]], disabled`, async () => {
         const { list, enabled } = await nodeA.sdk.rpc.network.getWhitelist();
-        expect(list).toEqual(["127.0.0.1"]);
+        expect(list).toEqual([["127.0.0.1", ""]]);
         expect(enabled).toBe(false);
     });
 
@@ -126,9 +126,12 @@ describe("Network RPC", () => {
     test("addToWhiteList and removeFromWhitelist", async () => {
         const target = "2.2.2.2";
 
-        await nodeA.sdk.rpc.network.addToWhitelist(target);
+        await nodeA.sdk.rpc.network.addToWhitelist(
+            target,
+            "tag string for the target"
+        );
         let { list } = await nodeA.sdk.rpc.network.getWhitelist();
-        expect(list).toContain(target);
+        expect(list).toContainEqual([target, "tag string for the target"]);
 
         await nodeA.sdk.rpc.network.removeFromWhitelist(target);
         ({ list } = await nodeA.sdk.rpc.network.getWhitelist());
@@ -138,9 +141,12 @@ describe("Network RPC", () => {
     test("addToBlacklist and removeFromBlacklist", async () => {
         const target = "1.1.1.1";
 
-        await nodeA.sdk.rpc.network.addToBlacklist(target);
+        await nodeA.sdk.rpc.network.addToBlacklist(
+            target,
+            "tag string for the target"
+        );
         let { list } = await nodeA.sdk.rpc.network.getBlacklist();
-        expect(list).toContain(target);
+        expect(list).toContainEqual([target, "tag string for the target"]);
 
         await nodeA.sdk.rpc.network.removeFromBlacklist(target);
         ({ list } = await nodeA.sdk.rpc.network.getBlacklist());
