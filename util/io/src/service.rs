@@ -209,6 +209,7 @@ where
     pub fn start(
         event_loop: &mut EventLoop<IoManager<Message>>,
         handlers: Arc<RwLock<Slab<Arc<IoHandler<Message>>, HandlerId>>>,
+        name: &str,
     ) -> Result<(), IoError> {
         let (worker, stealer) = chase_lev::deque();
         let num_workers = 4;
@@ -222,6 +223,7 @@ where
                     IoChannel::new(event_loop.channel(), Arc::downgrade(&handlers)),
                     work_ready.clone(),
                     work_ready_mutex.clone(),
+                    name,
                 )
             })
             .collect();
@@ -540,7 +542,7 @@ where
     Message: Send + Sync + Clone + 'static,
 {
     /// Starts IO event loop
-    pub fn start() -> Result<IoService<Message>, IoError> {
+    pub fn start(name: &'static str) -> Result<IoService<Message>, IoError> {
         let mut config = EventLoopBuilder::new();
         config.messages_per_tick(1024);
         let mut event_loop = config.build().expect("Error creating event loop");
@@ -548,7 +550,7 @@ where
         let handlers = Arc::new(RwLock::new(Slab::new(MAX_HANDLERS)));
         let h = handlers.clone();
         let thread = thread::spawn(move || {
-            IoManager::<Message>::start(&mut event_loop, h).expect("Error starting IO service");
+            IoManager::<Message>::start(&mut event_loop, h, name).expect("Error starting IO service");
         });
         Ok(IoService {
             thread: Mutex::new(Some(thread)),

@@ -40,7 +40,7 @@ impl ClientService {
         client_path: &Path,
         miner: Arc<Miner>,
     ) -> Result<ClientService, Error> {
-        let io_service = IoService::<ClientIoMessage>::start()?;
+        let io_service = IoService::<ClientIoMessage>::start("Client")?;
 
         let mut db_config = DatabaseConfig::with_columns(super::db::NUM_COLUMNS);
 
