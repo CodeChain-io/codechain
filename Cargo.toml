@@ -58,3 +58,6 @@ members = [
     "types",
     "vm",
 ]
+
+[profile.dev]
+panic = "abort"
