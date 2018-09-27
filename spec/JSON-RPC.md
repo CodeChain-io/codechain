@@ -1692,7 +1692,7 @@ Response Example
 ```
 
 ## account_sendParcel
-(not implemented) Sends a parcel by signing it with the account’s private key.
+Sends a parcel by signing it with the account’s private key.
 It automatically fills the nonce if the nonce is not given
 
 Params:

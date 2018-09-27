@@ -29,7 +29,10 @@ extern crate jsonrpc_ws_server;
 extern crate kvdb;
 extern crate kvdb_rocksdb as rocksdb;
 #[macro_use]
+extern crate lazy_static;
+#[macro_use]
 extern crate log;
+extern crate parking_lot;
 extern crate primitives;
 extern crate rlp;
 extern crate rustc_hex;

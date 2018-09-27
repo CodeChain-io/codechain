@@ -38,7 +38,12 @@ impl ApiDependencies {
         handler.extend_with(MinerClient::new(&self.client, &self.miner).to_delegate());
         handler.extend_with(NetClient::new(&self.network_control).to_delegate());
         handler.extend_with(
-            AccountClient::new(&self.account_provider, self.client.engine().params().network_id).to_delegate(),
+            AccountClient::new(
+                &self.account_provider,
+                Arc::clone(&self.client),
+                Arc::clone(&self.miner),
+                self.client.engine().params().network_id,
+            ).to_delegate(),
         );
         self.shard_validator.as_ref().map(|shard_validator| {
             handler.extend_with(ShardValidatorClient::new(Arc::clone(&shard_validator)).to_delegate());

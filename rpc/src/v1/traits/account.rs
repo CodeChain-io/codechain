@@ -18,6 +18,8 @@ use ckey::{Password, PlatformAddress, Signature};
 use jsonrpc_core::Result;
 use primitives::H256;
 
+use super::super::types::{SendParcelResult, UnsignedParcel};
+
 build_rpc_trait! {
     pub trait Account {
         /// Gets a list of accounts
@@ -39,6 +41,10 @@ build_rpc_trait! {
         /// Calculates the account's signature for a given message
         # [rpc(name = "account_sign")]
         fn sign(&self, H256, PlatformAddress, Option<Password>) -> Result<Signature>;
+
+        /// Sends a parcel with a signature of the account
+        # [rpc(name = "account_sendParcel")]
+        fn send_parcel(&self, UnsignedParcel, PlatformAddress, Option<Password>) -> Result<SendParcelResult>;
 
         /// Changes the account's password
         # [rpc(name = "account_changePassword")]
