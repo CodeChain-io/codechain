@@ -27,7 +27,9 @@ describe("Network RPC", () => {
         await Promise.all([nodeA.start(), nodeB.start()]);
     });
 
-    describe("Not connected", () => {
+    // FIXME: Connection establishment is too slow.
+    // See https://github.com/CodeChain-io/codechain/issues/760
+    describe.skip("Not connected", () => {
         beforeEach(async () => {
             // ensure disconnected
             if (
@@ -64,7 +66,9 @@ describe("Network RPC", () => {
         });
     });
 
-    describe("1 connected", () => {
+    // FIXME: Connection establishment is too slow.
+    // See https://github.com/CodeChain-io/codechain/issues/760
+    describe.skip("1 connected", () => {
         beforeEach(async () => {
             // ensure connected
             if (await nodeA.sdk.rpc.network.isConnected(address, nodeB.port)) {
