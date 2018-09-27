@@ -461,7 +461,8 @@ impl Connection {
             State::WaitAck(connection) => connection.stream.shutdown(),
             State::WaitSync(connection) => connection.stream.shutdown(),
             State::Established(connection) => connection.stream.shutdown(),
-            _ => unreachable!(),
+            State::Disconnecting(_) => Ok(()),
+            State::Intermediate => unreachable!(),
         }
     }
 
@@ -473,7 +474,8 @@ impl Connection {
             State::WaitAck(connection) => connection.disconnect(),
             State::WaitSync(connection) => connection.disconnect(),
             State::Established(connection) => connection.disconnect(),
-            _ => unreachable!(),
+            State::Disconnecting(_) => unreachable!(),
+            State::Intermediate => unreachable!(),
         };
         *state = State::Disconnecting(connection);
     }
@@ -482,6 +484,7 @@ impl Connection {
         let state = self.state.read();
         match *state {
             State::Disconnecting(_) => true,
+            State::Intermediate => unreachable!(),
             _ => false,
         }
     }
@@ -494,7 +497,8 @@ impl Connection {
             State::WaitAck(connection) => connection.establish(),
             State::WaitSync(connection) => connection.establish(),
             State::Established(_) => return false,
-            _ => unreachable!(),
+            State::Disconnecting(_) => unreachable!("Cannot establish a disconnecting connection"),
+            State::Intermediate => unreachable!(),
         };
         *state = State::Established(connection);
         true
@@ -521,7 +525,8 @@ impl Connection {
                 connection.register(reg, event_loop)?;
                 Ok(ConnectionType::Established)
             }
-            _ => unreachable!(),
+            State::Disconnecting(_) => unreachable!("Cannot register a disconnecting connection"),
+            State::Intermediate => unreachable!(),
         }
     }
 
@@ -551,7 +556,7 @@ impl Connection {
                 connection.reregister(reg, event_loop)?;
                 Ok(ConnectionType::Disconnecting)
             }
-            _ => unreachable!(),
+            State::Intermediate => unreachable!(),
         }
     }
 
@@ -576,7 +581,7 @@ impl Connection {
                 connection.deregister(event_loop)?;
                 Ok(ConnectionType::Disconnecting)
             }
-            _ => unreachable!(),
+            State::Intermediate => unreachable!(),
         }
     }
 
@@ -595,7 +600,8 @@ impl Connection {
                 let remain = connection.send()?;
                 Ok((ConnectionType::Established, remain))
             }
-            _ => unreachable!(),
+            State::Disconnecting(_) => Ok((ConnectionType::Disconnecting, false)),
+            State::Intermediate => unreachable!(),
         }
     }
 
@@ -615,7 +621,7 @@ impl Connection {
                 _ => unreachable!(),
             })),
             State::Disconnecting(_) => Ok(None),
-            _ => unreachable!(),
+            State::Intermediate => unreachable!(),
         }
     }
 
@@ -628,7 +634,8 @@ impl Connection {
                 true
             }
             State::Established(_) => false,
-            _ => unreachable!(),
+            State::Disconnecting(_) => false,
+            State::Intermediate => unreachable!(),
         }
     }
 
@@ -641,7 +648,8 @@ impl Connection {
                 connection.enqueue_negotiation_request(name, versions);
                 true
             }
-            _ => unreachable!(),
+            State::Disconnecting(_) => false,
+            State::Intermediate => unreachable!(),
         }
     }
 
@@ -654,7 +662,8 @@ impl Connection {
                 connection.enqueue_negotiation_allowed(seq, version);
                 true
             }
-            _ => unreachable!(),
+            State::Disconnecting(_) => false,
+            State::Intermediate => unreachable!(),
         }
     }
 
@@ -667,7 +676,8 @@ impl Connection {
                 connection.enqueue_extension_message(extension_name.clone(), need_encryption, &data);
                 true
             }
-            _ => unreachable!(),
+            State::Disconnecting(_) => false,
+            State::Intermediate => unreachable!(),
         }
     }
 
@@ -677,7 +687,8 @@ impl Connection {
             State::WaitAck(_) => None,
             State::WaitSync(_) => None,
             State::Established(connection) => connection.remove_requested_negotiation(seq),
-            _ => unreachable!(),
+            State::Disconnecting(_) => None,
+            State::Intermediate => unreachable!(),
         }
     }
 
@@ -687,7 +698,8 @@ impl Connection {
             State::WaitAck(_) => None,
             State::WaitSync(connection) => connection.remote_addr().ok(),
             State::Established(_) => None,
-            _ => unreachable!(),
+            State::Disconnecting(_) => None,
+            State::Intermediate => unreachable!(),
         }
     }
 
@@ -697,7 +709,8 @@ impl Connection {
             State::WaitAck(connection) => connection.remote_node_id(),
             State::WaitSync(connection) => connection.remote_node_id(),
             State::Established(connection) => connection.remote_node_id(),
-            _ => unreachable!(),
+            State::Disconnecting(_) => None,
+            State::Intermediate => unreachable!(),
         }
     }
 
@@ -707,7 +720,8 @@ impl Connection {
             State::WaitAck(_) => None,
             State::WaitSync(_) => None,
             State::Established(connection) => connection.session(),
-            _ => unreachable!(),
+            State::Disconnecting(_) => None,
+            State::Intermediate => unreachable!(),
         }
     }
 
@@ -715,6 +729,7 @@ impl Connection {
         let state = self.state.read();
         match *state {
             State::Established(_) => true,
+            State::Intermediate => unreachable!(),
             _ => false,
         }
     }
