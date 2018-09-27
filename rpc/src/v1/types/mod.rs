@@ -19,6 +19,7 @@ mod block;
 mod bytes;
 mod parcel;
 mod transaction;
+mod unsigned_parcel;
 mod work;
 
 pub use self::action::{Action, ShardChange};
@@ -27,6 +28,7 @@ pub use self::block::BlockNumberAndHash;
 pub use self::bytes::Bytes;
 pub use self::parcel::Parcel;
 pub use self::transaction::Transaction;
+pub use self::unsigned_parcel::UnsignedParcel;
 pub use self::work::Work;
 
 #[derive(Debug, Serialize, Deserialize)]
