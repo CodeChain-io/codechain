@@ -68,5 +68,5 @@ pub use self::node_id::{IntoSocketAddr, NodeId};
 pub use self::service::{Error as NetworkServiceError, Service as NetworkService};
 pub use self::test::{Call as TestNetworkCall, TestClient as TestNetworkClient};
 
-pub use self::filters::{Filters, FiltersControl};
+pub use self::filters::{FilterEntry, Filters, FiltersControl};
 pub use self::routing_table::RoutingTable;

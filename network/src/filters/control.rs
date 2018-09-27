@@ -16,11 +16,13 @@
 
 use std::net::IpAddr;
 
+use super::filter::FilterEntry;
+
 pub trait Control: Send + Sync {
-    fn add_to_whitelist(&self, addr: IpAddr);
+    fn add_to_whitelist(&self, addr: IpAddr, tag: Option<String>);
     fn remove_from_whitelist(&self, addr: &IpAddr);
 
-    fn add_to_blacklist(&self, addr: IpAddr);
+    fn add_to_blacklist(&self, addr: IpAddr, tag: Option<String>);
     fn remove_from_blacklist(&self, addr: &IpAddr);
 
     fn enable_whitelist(&self);
@@ -28,8 +30,8 @@ pub trait Control: Send + Sync {
     fn enable_blacklist(&self);
     fn disable_blacklist(&self);
 
-    fn get_whitelist(&self) -> (Vec<IpAddr>, bool);
-    fn get_blacklist(&self) -> (Vec<IpAddr>, bool);
+    fn get_whitelist(&self) -> (Vec<FilterEntry>, bool);
+    fn get_blacklist(&self) -> (Vec<FilterEntry>, bool);
 
     fn is_allowed(&self, addr: &IpAddr) -> bool;
 }

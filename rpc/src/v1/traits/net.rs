@@ -43,13 +43,13 @@ build_rpc_trait! {
         fn get_established_peers(&self) -> Result<Vec<::std::net::SocketAddr>>;
 
         #[rpc(name = "net_addToWhitelist")]
-        fn add_to_whitelist(&self, ::std::net::IpAddr) -> Result<()>;
+        fn add_to_whitelist(&self, ::std::net::IpAddr, Option<String>) -> Result<()>;
 
         #[rpc(name = "net_removeFromWhitelist")]
         fn remove_from_whitelist(&self, ::std::net::IpAddr) -> Result<()>;
 
         #[rpc(name = "net_addToBlacklist")]
-        fn add_to_blacklist(&self, ::std::net::IpAddr) -> Result<()>;
+        fn add_to_blacklist(&self, ::std::net::IpAddr, Option<String>) -> Result<()>;
 
         #[rpc(name = "net_removeFromBlacklist")]
         fn remove_from_blacklist(&self, ::std::net::IpAddr) -> Result<()>;

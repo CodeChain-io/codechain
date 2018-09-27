@@ -14,12 +14,18 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::HashSet;
+use std::collections::HashMap;
 use std::net::IpAddr;
 
 pub struct Filter {
     enabled: bool,
-    list: HashSet<IpAddr>,
+    list: HashMap<IpAddr, String>,
+}
+
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
+pub struct FilterEntry {
+    pub addr: IpAddr,
+    pub tag: String,
 }
 
 impl Default for Filter {
@@ -32,15 +38,22 @@ impl Default for Filter {
 }
 
 impl Filter {
-    pub fn new(input_vector: Vec<IpAddr>) -> Self {
+    pub fn new(input_vector: Vec<FilterEntry>) -> Self {
         Self {
             enabled: !input_vector.is_empty(),
-            list: input_vector.into_iter().collect(),
+            list: input_vector.into_iter().map(|x| (x.addr, x.tag)).collect(),
         }
     }
 
-    pub fn add(&mut self, addr: IpAddr) {
-        self.list.insert(addr);
+    pub fn add(&mut self, addr: IpAddr, tag: Option<String>) {
+        match tag {
+            Some(tag) => {
+                self.list.insert(addr, tag);
+            }
+            None => {
+                self.list.entry(addr).or_insert(String::new());
+            }
+        };
     }
 
     pub fn remove(&mut self, addr: &IpAddr) {
@@ -55,8 +68,15 @@ impl Filter {
         self.enabled = false;
     }
 
-    pub fn status(&self) -> (Vec<IpAddr>, bool) {
-        let mut list: Vec<_> = self.list.iter().map(|a| *a).collect();
+    pub fn status(&self) -> (Vec<FilterEntry>, bool) {
+        let mut list: Vec<_> = self
+            .list
+            .iter()
+            .map(|(a, b)| FilterEntry {
+                addr: *a,
+                tag: b.clone(),
+            })
+            .collect();
         list.sort();
         (list, self.enabled)
     }
@@ -68,7 +88,7 @@ impl Filter {
     pub fn contains(&self, addr: &IpAddr) -> bool {
         debug_assert!(self.enabled);
         debug_assert!(!addr.is_unspecified(), "{:?}", addr);
-        self.list.iter().any(|filter| is_filtered(addr, filter))
+        self.list.iter().any(|(filter, _)| is_filtered(addr, filter))
     }
 }
 
@@ -147,7 +167,7 @@ mod tests {
         filter.enable();
         assert!(filter.is_enabled());
 
-        filter.add(IpAddr::from_str("100.2.7.4").unwrap());
+        filter.add(IpAddr::from_str("100.2.7.4").unwrap(), None);
 
         assert!(filter.contains(&IpAddr::from_str("100.2.7.4").unwrap()));
         assert!(!filter.contains(&IpAddr::from_str("100.2.7.3").unwrap()));
@@ -160,7 +180,8 @@ mod tests {
         filter.enable();
         assert!(filter.is_enabled());
 
-        filter.add(IpAddr::from_str("100.2.7.4").unwrap());
+        filter.add(IpAddr::from_str("100.2.7.4").unwrap(), None);
+        filter.add(IpAddr::from_str("100.2.7.4").unwrap(), Some("ABC".to_string()));
 
         assert!(filter.contains(&IpAddr::from_str("100.2.7.4").unwrap()));
 
