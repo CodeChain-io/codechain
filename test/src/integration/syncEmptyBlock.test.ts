@@ -15,7 +15,6 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import CodeChain from "../helper/spawn";
-import { wait } from "../helper/promise";
 
 // FIXME: It fails due to timeout when the block sync extension is stuck. See
 // https://github.com/CodeChain-io/codechain/issues/662

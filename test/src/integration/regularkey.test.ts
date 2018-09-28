@@ -16,20 +16,6 @@
 
 import CodeChain from "../helper/spawn";
 
-import { SDK } from "codechain-sdk";
-import {
-    makeRandomH256,
-    makeRandomPassphrase,
-    getRandomIndex
-} from "../helper/random";
-
-const faucetSecret = `ede1d4ccb4ec9a8bbbae9a13db3f4a7b56ea04189be86ac3a6a439d9a0a1addd`;
-const faucetAddress = SDK.Core.classes.PlatformAddress.fromAccountId(
-    SDK.util.getAccountIdFromPrivate(
-        `ede1d4ccb4ec9a8bbbae9a13db3f4a7b56ea04189be86ac3a6a439d9a0a1addd`
-    )
-);
-
 const ERROR = {
     NOT_ENOUGH_BALANCE: {
         code: -32032,
