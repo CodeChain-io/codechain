@@ -122,14 +122,15 @@ impl TopStateInfo for TopLevelState {
         let account = self.get_account(a)?;
         Ok(account.map_or_else(U256::zero, |account| *account.balance()))
     }
+
     fn regular_key(&self, a: &Address) -> TrieResult<Option<Public>> {
         let account = self.get_account(a)?;
         Ok(account.map_or(None, |account| account.regular_key()))
     }
 
-    fn regular_key_owner(&self, public: &Public) -> TrieResult<Option<Address>> {
-        let account = self.get_regular_account(public)?;
-        Ok(account.map_or(None, |regular_account| Some(public_to_address(regular_account.owner_public()))))
+    fn regular_key_owner(&self, address: &Address) -> TrieResult<Option<Address>> {
+        let account = self.get_regular_account_by_address(&address)?;
+        Ok(account.map(|regular_account| public_to_address(regular_account.owner_public())))
     }
 
     fn number_of_shards(&self) -> TrieResult<ShardId> {

@@ -35,7 +35,7 @@ use std::mem;
 use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrder};
 use std::sync::Arc;
 
-use ckey::{public_to_address, Address, Generator, NetworkId, Public, Random};
+use ckey::{public_to_address, Address, Generator, NetworkId, Random};
 use cmerkle::skewed_merkle_root;
 use cnetwork::NodeId;
 use cstate::{ActionHandler, StateDB};
@@ -356,8 +356,8 @@ impl Balance for TestBlockChainClient {
 impl AccountData for TestBlockChainClient {}
 
 impl RegularKeyOwner for TestBlockChainClient {
-    fn regular_key_owner(&self, _public: &Public, _state: StateOrBlock) -> Option<Address> {
-        return None
+    fn regular_key_owner(&self, _address: &Address, _state: StateOrBlock) -> Option<Address> {
+        unimplemented!()
     }
 }
 
