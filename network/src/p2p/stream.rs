@@ -115,6 +115,9 @@ impl TryStream {
         let mut bytes: Vec<u8> = vec![0];
 
         if let Some(read_size) = self.stream.try_read(&mut bytes)? {
+            if read_size == 0 {
+                return Ok((0, vec![]))
+            }
             debug_assert_eq!(1, read_size);
             if bytes[0] >= 0xf7 {
                 return Ok(self.read_len_of_len(bytes)?)
