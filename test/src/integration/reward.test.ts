@@ -17,6 +17,8 @@
 import CodeChain from "../helper/spawn";
 import { U256 } from "codechain-sdk/lib/core/U256";
 
+const describeSkippedInTravis = process.env.TRAVIS ? describe.skip : describe;
+
 describe("Block Reward", () => {
     describe("Reward = 50, 1 miner", () => {
         let node: CodeChain;
@@ -101,7 +103,7 @@ describe("Block Reward", () => {
 
     // FIXME: It fails due to timeout when the block sync extension is stuck.
     // See https://github.com/CodeChain-io/codechain/issues/662
-    describe.skip("Reward = 50, 2 miners", () => {
+    describeSkippedInTravis("Reward = 50, 2 miners", () => {
         let nodeA: CodeChain;
         let nodeB: CodeChain;
 
