@@ -214,15 +214,11 @@ impl NetworkExtension for Extension {
         cinfo!(SYNC, "Peer removed #{}", id);
         header_downloaders.remove(id);
 
-        let t = requests.remove(id);
-        debug_assert_ne!(None, t);
-        let token = tokens.remove(id);
-        debug_assert_ne!(None, token);
-        let token = token.unwrap();
-        let t = tokens_info.remove(&token);
-        debug_assert_ne!(None, t);
-        let t = token_generator.restore(token);
-        debug_assert!(t);
+        requests.remove(id);
+        if let Some(token) = tokens.remove(id) {
+            tokens_info.remove(&token);
+            token_generator.restore(token);
+        }
     }
 
     fn on_message(&self, id: &NodeId, data: &[u8]) {
