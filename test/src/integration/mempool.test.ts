@@ -56,7 +56,7 @@ describe("Memory pool size test", () => {
         }
         const pendingParcels = await nodeA.sdk.rpc.chain.getPendingParcels();
         expect(pendingParcels.length).toEqual(sizeLimit * 2);
-    });
+    }, 10000);
 
     // FIXME: It fails due to timeout when the block sync extension is stuck.
     // See https://github.com/CodeChain-io/codechain/issues/662
@@ -98,7 +98,7 @@ describe("Memory pool size test", () => {
                     (await nodeB.sdk.rpc.chain.getPendingParcels()).length
                 ).toBe(sizeLimit);
             },
-            10000
+            20000
         );
 
         afterEach(async () => {
@@ -134,7 +134,7 @@ describe("Memory pool memory limit test", () => {
             const pendingParcels = await nodeA.sdk.rpc.chain.getPendingParcels();
             expect(pendingParcels.length).toEqual(sizeLimit);
         },
-        40000
+        50000
     );
 
     // FIXME: It fails due to timeout when the block sync extension is stuck.
