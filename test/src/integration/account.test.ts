@@ -16,11 +16,9 @@
 
 import CodeChain from "../helper/spawn";
 import { wait } from "../helper/promise";
-import {
-    makeRandomH256,
-    makeRandomPassphrase,
-    getRandomIndex
-} from "../helper/random";
+import { makeRandomH256, makeRandomPassphrase } from "../helper/random";
+
+import { xor128 } from "seedrandom";
 
 const ERROR = {
     KEY_ERROR: {
@@ -372,6 +370,12 @@ describe("account", () => {
                 }
                 const accountList = [];
                 const actionNumber = randomTestSize;
+                const rng = xor128("Random account test");
+
+                function getRandomIndex(size: number) {
+                    const randomValue = rng.int32();
+                    return Math.abs(randomValue) % size;
+                }
 
                 for (let test = 0; test < actionNumber; test++) {
                     const randomAction =
