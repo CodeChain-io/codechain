@@ -477,7 +477,6 @@ describe.skip("sync", () => {
                     "Every node should be synced",
                     async () => {
                         for (let i = 1; i < numNodes; i++) {
-                            // Here is the problem
                             await nodes[i].waitBlockNumberSync(nodes[0]);
                         }
                     },
