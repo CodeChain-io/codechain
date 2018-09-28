@@ -131,7 +131,10 @@ export default class CodeChain {
         this.argv = argv || [];
     }
 
-    public async start(argv: string[] = [], log_level = "trace,mio=warn,tokio=warn,hyper=warn") {
+    public async start(
+        argv: string[] = [],
+        log_level = "trace,mio=warn,tokio=warn,hyper=warn"
+    ) {
         const useDebugBuild = process.env.NODE_ENV !== "production";
         process.env.RUST_LOG = log_level;
         // NOTE: https://github.com/CodeChain-io/codechain/issues/348
