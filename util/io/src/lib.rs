@@ -86,15 +86,17 @@ pub enum IoError {
     Mio(::std::io::Error),
     /// Error concerning the Rust standard library's IO subsystem.
     StdIo(::std::io::Error),
+    Handler(IoHandlerError),
 }
 
 impl fmt::Display for IoError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // just defer to the std implementation for now.
         // we can refine the formatting when more variants are added.
-        match *self {
-            IoError::Mio(ref std_err) => std_err.fmt(f),
-            IoError::StdIo(ref std_err) => std_err.fmt(f),
+        match self {
+            IoError::Mio(err) => err.fmt(f),
+            IoError::StdIo(err) => err.fmt(f),
+            IoError::Handler(err) => err.0.fmt(f),
         }
     }
 }
@@ -102,6 +104,12 @@ impl fmt::Display for IoError {
 impl From<::std::io::Error> for IoError {
     fn from(err: ::std::io::Error) -> IoError {
         IoError::StdIo(err)
+    }
+}
+
+impl From<IoHandlerError> for IoError {
+    fn from(err: IoHandlerError) -> Self {
+        IoError::Handler(err)
     }
 }
 
