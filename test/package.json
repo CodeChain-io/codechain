@@ -18,6 +18,7 @@
     "@types/jest": "^23.3.1",
     "@types/mkdirp": "^0.5.2",
     "@types/node": "^10.9.4",
+    "@types/seedrandom": "^2.4.2",
     "prettier": "^1.14.2",
     "tslint": "^5.10.0"
   },
@@ -26,6 +27,7 @@
     "jest": "^23.1.0",
     "mkdirp": "^0.5.1",
     "rlp": "^2.0.0",
+    "seedrandom": "^2.4.4",
     "ts-jest": "^22.4.6",
     "ts-node": "^7.0.0",
     "typescript": "^2.9.2"
