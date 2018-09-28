@@ -254,7 +254,7 @@ impl Miner {
 
                         let fetch_account = |p: &Public| -> AccountDetails {
                             let address = public_to_address(p);
-                            let a = client.regular_key_owner(&address, BlockId::Latest.into()).unwrap_or(address);
+                            let a = client.latest_regular_key_owner(&address).unwrap_or(address);
                             AccountDetails {
                                 nonce: client.latest_nonce(&a),
                                 balance: client.latest_balance(&a),
@@ -429,7 +429,7 @@ impl Miner {
 
         let fetch_nonce = |p: &Public| {
             let address = public_to_address(p);
-            let a = chain.regular_key_owner(&address, BlockId::Latest.into()).unwrap_or(address);
+            let a = chain.latest_regular_key_owner(&address).unwrap_or(address);
             chain.latest_nonce(&a)
         };
 
@@ -610,7 +610,7 @@ impl MinerService for Miner {
         {
             let fetch_account = |p: &Public| {
                 let address = public_to_address(p);
-                let a = chain.regular_key_owner(&address, BlockId::Latest.into()).unwrap_or(address);
+                let a = chain.latest_regular_key_owner(&address).unwrap_or(address);
 
                 AccountDetails {
                     nonce: chain.latest_nonce(&a),

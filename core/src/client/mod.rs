@@ -164,6 +164,9 @@ pub trait RegularKey {
 
 pub trait RegularKeyOwner {
     fn regular_key_owner(&self, address: &Address, state: StateOrBlock) -> Option<Address>;
+    fn latest_regular_key_owner(&self, address: &Address) -> Option<Address> {
+        self.regular_key_owner(address, BlockId::Latest.into())
+    }
 }
 
 pub trait Shard {
