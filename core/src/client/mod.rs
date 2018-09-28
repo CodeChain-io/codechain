@@ -160,6 +160,9 @@ pub trait Balance {
 
 pub trait RegularKey {
     fn regular_key(&self, address: &Address, state: StateOrBlock) -> Option<Public>;
+    fn latest_regular_key(&self, address: &Address) -> Option<Public> {
+        self.regular_key(address, BlockId::Latest.into())
+    }
 }
 
 pub trait RegularKeyOwner {
