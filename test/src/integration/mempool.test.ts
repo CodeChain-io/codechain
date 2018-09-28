@@ -17,6 +17,8 @@
 import { wait } from "../helper/promise";
 import CodeChain from "../helper/spawn";
 
+const describeSkippedInTravis = process.env.TRAVIS ? describe.skip : describe;
+
 describe("Sealing test", () => {
     let node: CodeChain;
 
@@ -60,7 +62,7 @@ describe("Memory pool size test", () => {
 
     // FIXME: It fails due to timeout when the block sync extension is stuck.
     // See https://github.com/CodeChain-io/codechain/issues/662
-    describe.skip("To others", async () => {
+    describeSkippedInTravis("To others", async () => {
         let nodeB: CodeChain;
 
         beforeEach(async () => {
@@ -139,7 +141,7 @@ describe("Memory pool memory limit test", () => {
 
     // FIXME: It fails due to timeout when the block sync extension is stuck.
     // See https://github.com/CodeChain-io/codechain/issues/662
-    describe.skip("To others", async () => {
+    describeSkippedInTravis("To others", async () => {
         let nodeB: CodeChain;
 
         beforeEach(async () => {

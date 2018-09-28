@@ -17,9 +17,11 @@
 import CodeChain from "../helper/spawn";
 import { wait } from "../helper/promise";
 
+const describeSkippedInTravis = process.env.TRAVIS ? describe.skip : describe;
+
 // FIXME: It fails due to timeout when the block sync extension is stuck. See
 // https://github.com/CodeChain-io/codechain/issues/662
-describe.skip("sync", () => {
+describeSkippedInTravis("sync", () => {
     describe("2 nodes", () => {
         let nodeA: CodeChain;
         let nodeB: CodeChain;
