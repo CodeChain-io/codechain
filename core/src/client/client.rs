@@ -991,11 +991,12 @@ impl RegularKey for Client {
 }
 
 impl RegularKeyOwner for Client {
-    fn regular_key_owner(&self, public: &Public, state: StateOrBlock) -> Option<Address> {
-        match state {
-            StateOrBlock::State(s) => s.regular_key_owner(public).ok()?,
-            StateOrBlock::Block(id) => self.state_at(id)?.regular_key_owner(public).ok()?,
-        }
+    fn regular_key_owner(&self, address: &Address, state: StateOrBlock) -> Option<Address> {
+        let state = match state {
+            StateOrBlock::State(s) => s,
+            StateOrBlock::Block(id) => Box::new(self.state_at(id)?),
+        };
+        state.regular_key_owner(address).ok()?
     }
 }
 
