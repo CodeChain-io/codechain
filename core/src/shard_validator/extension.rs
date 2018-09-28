@@ -123,8 +123,7 @@ impl NetworkExtension for ShardValidator {
 
     fn on_node_removed(&self, node: &NodeId) {
         let mut nodes = self.nodes.write();
-        let t = nodes.remove(node);
-        debug_assert!(t);
+        nodes.remove(node);
     }
 
     fn on_message(&self, from: &NodeId, message: &[u8]) {
