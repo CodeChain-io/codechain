@@ -163,7 +163,7 @@ pub trait RegularKey {
 }
 
 pub trait RegularKeyOwner {
-    fn regular_key_owner(&self, public: &Public, state: StateOrBlock) -> Option<Address>;
+    fn regular_key_owner(&self, address: &Address, state: StateOrBlock) -> Option<Address>;
 }
 
 pub trait Shard {

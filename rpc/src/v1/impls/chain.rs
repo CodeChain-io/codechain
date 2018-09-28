@@ -20,7 +20,7 @@ use ccore::{
     AssetClient, BlockId, EngineInfo, ExecuteClient, MinerService, MiningBlockChainClient, RegularKey, RegularKeyOwner,
     Shard, SignedParcel, UnverifiedParcel,
 };
-use ckey::{NetworkId, PlatformAddress, Public};
+use ckey::{public_to_address, NetworkId, PlatformAddress, Public};
 use cstate::{AssetScheme, AssetSchemeAddress, OwnedAsset};
 use ctypes::invoice::{ParcelInvoice, TransactionInvoice};
 use ctypes::parcel::Action;
@@ -166,7 +166,7 @@ where
         let network_id = self.client.common_params().network_id;
         Ok(self
             .client
-            .regular_key_owner(&public, block_id.into())
+            .regular_key_owner(&public_to_address(&public), block_id.into())
             .and_then(|address| Some(PlatformAddress::create(VERSION, network_id, address))))
     }
 
