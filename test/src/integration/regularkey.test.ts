@@ -48,7 +48,7 @@ describe("solo - 1 node", () => {
     let pubKey: string;
 
     beforeEach(async () => {
-        node = new CodeChain({ logFlag: true });
+        node = new CodeChain();
         await node.start();
 
         privKey = node.sdk.util.generatePrivateKey();

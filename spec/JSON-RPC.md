@@ -50,6 +50,13 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
  - sig: `Signature`
  - action: `Action`
 
+## UnsignedParcel
+
+ - fee: `U256`
+ - networkId: `number`
+ - nonce: `U256` | `null`
+ - action: `Action`
+
 ## Actions
 
 ### AssetTransactionGroup Action
@@ -190,6 +197,7 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
  * [account_importRaw](#account_importraw)
  * [account_unlock](#account_unlock)
  * [account_sign](#account_sign)
+ * [account_sendParcel](#account_sendparcel)
  * [account_changePassword](#account_changepassword)
 ***
  * [shardValidator_registerAction](#shardvalidator_registeraction)
@@ -1679,6 +1687,37 @@ Response Example
 {
   "jsonrpc":"2.0",
   "result":"0xff7e8928f7758a64b9ea6c53f9945cdd223740675ac6ac6da625306d3966f8197523e00d56844ddb70631d44f045f4d83cc183a267c3182ab04c2f459c8289f501",
+  "id":6
+}
+```
+
+## account_sendParcel
+(not implemented) Sends a parcel by signing it with the account’s private key.
+It automatically fills the nonce if the nonce is not given
+
+Params:
+ 1. parcel: `UnsignedParcel`
+ 2. account: `PlatformAddress`
+ 3. passphrase: `string` | `null`
+
+Return type: { hash: `H256`, nonce: `U256` } - the hash and nonce of the parcel
+
+Errors: `Keystore Error`, `Wrong Password`, `No Such Account`, `Not Unlocked`, `Invalid Params`, `Invalid NetworkId`
+
+Request Example
+```
+curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "account_sendParcel", "params": [{"action":{ "action":"payment", "amount":"0x3b9aca00", "receiver":"sccqra5felweesff3epv9wfu05a47sxh89yuvzw7mqd" }, "fee":"0x5f5e100", "networkId":"sc", "nonce": null}, "cccqqfz3sx7fr7uxqa5kl63qjdw9zrntru5kcdsjywj", null], "id": 6}' \
+    localhost:8080
+```
+
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result": {"nonce":"0xe8d4a50dd0", "hash":"0x8ae3363ccdcc02d8d662d384deee34fb89d1202124e8065f0d6c84ab31e68d8a"},
   "id":6
 }
 ```

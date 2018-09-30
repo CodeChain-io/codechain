@@ -284,7 +284,7 @@ describe("account", () => {
 
                 done();
             },
-            200 * testSize + 5000
+            500 * testSize + 5000
         );
 
         test(
@@ -308,7 +308,7 @@ describe("account", () => {
                     ).toEqual(address.toString());
                 }
             },
-            200 * testSize + 5000
+            500 * testSize + 5000
         );
 
         test(
@@ -356,7 +356,7 @@ describe("account", () => {
                 }
                 done();
             },
-            1800 * unlockTestSize + 5000
+            2000 * unlockTestSize + 5000
         );
 
         test(
@@ -494,7 +494,7 @@ describe("account", () => {
                 }
                 done();
             },
-            200 * randomTestSize + 5000
+            500 * randomTestSize + 5000
         );
 
         afterEach(async () => {
