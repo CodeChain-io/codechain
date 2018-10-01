@@ -52,13 +52,17 @@ describe("Memory pool size test", () => {
         await nodeA.sdk.rpc.devel.stopSealing();
     });
 
-    test("To self", async () => {
-        for (let i = 0; i < sizeLimit * 2; i++) {
-            await nodeA.sendSignedParcel({ nonce: i, awaitInvoice: false });
-        }
-        const pendingParcels = await nodeA.sdk.rpc.chain.getPendingParcels();
-        expect(pendingParcels.length).toEqual(sizeLimit * 2);
-    }, 10000);
+    test(
+        "To self",
+        async () => {
+            for (let i = 0; i < sizeLimit * 2; i++) {
+                await nodeA.sendSignedParcel({ nonce: i, awaitInvoice: false });
+            }
+            const pendingParcels = await nodeA.sdk.rpc.chain.getPendingParcels();
+            expect(pendingParcels.length).toEqual(sizeLimit * 2);
+        },
+        10000
+    );
 
     // FIXME: It fails due to timeout when the block sync extension is stuck.
     // See https://github.com/CodeChain-io/codechain/issues/662
