@@ -35,7 +35,7 @@ jobs:
         - nvm use 8
         - npm install -g yarn
       script:
-        - cd test && yarn && yarn start
+        - cd test && yarn && yarn lint && yarn start
     - name: test-int-osx
       os: osx
       install:
@@ -43,7 +43,7 @@ jobs:
         - nvm use 8
         - npm install -g yarn
       script:
-        - cd test && yarn && yarn start
+        - cd test && yarn && yarn lint && yarn start
     - stage: deploy
       name: deploy
       sudo: required
