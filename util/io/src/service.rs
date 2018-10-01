@@ -26,7 +26,8 @@ use std::sync::{Condvar as SCondvar, Mutex as SMutex};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
 use worker::{Work, WorkType, Worker};
-use {IoError, IoHandler};
+
+use super::{IoError, IoHandler};
 
 /// Timer ID
 pub type TimerToken = usize;
@@ -46,10 +47,6 @@ where
     Message: Send + Clone + Sized, {
     /// Shutdown the event loop
     Shutdown,
-    /// Register a new protocol handler.
-    AddHandler {
-        handler: Arc<IoHandler<Message> + Send>,
-    },
     RemoveHandler {
         handler_id: HandlerId,
     },
@@ -193,7 +190,7 @@ struct UserTimer {
 /// Root IO handler. Manages user handlers, messages and IO timers.
 pub struct IoManager<Message>
 where
-    Message: Send + Sync, {
+    Message: Clone + Send + Sync, {
     timers: Arc<RwLock<HashMap<HandlerId, UserTimer>>>,
     handlers: Arc<RwLock<Slab<Arc<IoHandler<Message>>, HandlerId>>>,
     workers: Vec<Worker>,
@@ -215,6 +212,7 @@ where
         let num_workers = 4;
         let work_ready_mutex = Arc::new(SMutex::new(()));
         let work_ready = Arc::new(SCondvar::new());
+
         let workers = (0..num_workers)
             .map(|i| {
                 Worker::new(
@@ -310,21 +308,6 @@ where
             IoMessage::Shutdown => {
                 self.workers.clear();
                 event_loop.shutdown();
-            }
-            IoMessage::AddHandler {
-                handler,
-            } => {
-                let handler_id = self
-                    .handlers
-                    .write()
-                    .insert(handler.clone())
-                    .unwrap_or_else(|_| panic!("Too many handlers registered"));
-                if let Err(err) = handler.initialize(&IoContext::new(
-                    IoChannel::new(event_loop.channel(), Arc::downgrade(&self.handlers)),
-                    handler_id,
-                )) {
-                    cerror!(IO, "Error in initialize {:?}", err);
-                }
             }
             IoMessage::RemoveHandler {
                 handler_id,
@@ -535,6 +518,7 @@ where
     thread: Mutex<Option<JoinHandle<()>>>,
     host_channel: Mutex<Sender<IoMessage<Message>>>,
     handlers: Arc<RwLock<Slab<Arc<IoHandler<Message>>, HandlerId>>>,
+    event_loop_channel: Sender<IoMessage<Message>>,
 }
 
 impl<Message> IoService<Message>
@@ -554,8 +538,9 @@ where
         });
         Ok(IoService {
             thread: Mutex::new(Some(thread)),
-            host_channel: Mutex::new(channel),
+            host_channel: Mutex::new(channel.clone()),
             handlers,
+            event_loop_channel: channel,
         })
     }
 
@@ -578,9 +563,12 @@ where
 
     /// Regiter an IO handler with the event loop.
     pub fn register_handler(&self, handler: Arc<IoHandler<Message> + Send>) -> Result<(), IoError> {
-        self.host_channel.lock().send(IoMessage::AddHandler {
-            handler,
-        })?;
+        let handler_id =
+            self.handlers.write().insert(handler.clone()).unwrap_or_else(|_| panic!("Too many handlers registered"));
+        handler.initialize(&IoContext::new(
+            IoChannel::new(self.event_loop_channel.clone(), Arc::downgrade(&self.handlers)),
+            handler_id,
+        ))?;
         Ok(())
     }
 
