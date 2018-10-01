@@ -38,6 +38,7 @@ pub struct PlatformAddress {
 
 impl PlatformAddress {
     pub fn create(version: u8, network_id: NetworkId, address: Address) -> Self {
+        debug_assert_eq!(0, version);
         assert!(check_network_id(&network_id));
         Self {
             network_id,
@@ -149,6 +150,9 @@ impl FromStr for PlatformAddress {
             return Err(Error::Bech32UnknownHRP)
         }
         let data = rearrange_bits(&decoded.data, 5, 8);
+        if data[0] != 0 {
+            return Err(Error::InvalidPlatformAddressVersion(data[0]))
+        }
         Ok(Self {
             network_id,
             version: data[0],
