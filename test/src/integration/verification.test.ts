@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import { SDK } from "codechain-sdk";
-import { PlatformAddress } from "codechain-sdk/lib/key/PlatformAddress";
+import { PlatformAddress } from "codechain-sdk/lib/core/classes";
 
 import CodeChain from "../helper/spawn";
 
