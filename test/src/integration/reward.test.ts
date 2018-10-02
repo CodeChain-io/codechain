@@ -16,15 +16,19 @@
 
 import CodeChain from "../helper/spawn";
 import { U256 } from "codechain-sdk/lib/core/U256";
+import { PlatformAddress } from "codechain-sdk/lib/core/classes";
+import { getAccountIdFromPrivate } from "codechain-sdk/lib/utils";
 
 const describeSkippedInTravis = process.env.TRAVIS ? describe.skip : describe;
 
 describe("Block Reward", () => {
     describe("Reward = 50, 1 miner", () => {
         let node: CodeChain;
-        const author = "tccqz8mtc5gr9jx92jwxf95gc3yhpv92du2mq3x4zhq";
         const authorSecret =
             "4aa026c5fecb70923a1ee2bb10bbfadb63d228f39c39fe1da2b1dee63364aff1";
+        const author = PlatformAddress.fromAccountId(
+            getAccountIdFromPrivate(authorSecret)
+        ).toString();
 
         beforeEach(async () => {
             node = new CodeChain({
@@ -86,7 +90,7 @@ describe("Block Reward", () => {
 
             const parcel = await node.sdk.core
                 .createPaymentParcel({
-                    recipient: "tccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9my9a2k78",
+                    recipient: "tccq9h7vnl68frvqapzv3tujrxtxtwqdnxw6yamrrgd",
                     amount: 50
                 })
                 .sign({ secret: authorSecret, nonce: 0, fee: 10 }); // -60
@@ -107,13 +111,17 @@ describe("Block Reward", () => {
         let nodeA: CodeChain;
         let nodeB: CodeChain;
 
-        const authorA = "tccqz8mtc5gr9jx92jwxf95gc3yhpv92du2mq3x4zhq";
         const authorASecret =
             "4aa026c5fecb70923a1ee2bb10bbfadb63d228f39c39fe1da2b1dee63364aff1";
+        const authorA = PlatformAddress.fromAccountId(
+            getAccountIdFromPrivate(authorASecret)
+        ).toString();
 
-        const authorB = "tccqzw22ugf6lkxs2enrm2tfqfc24ltk7lk2c7tw9j4";
         const authorBSecret =
             "91580d24073185b91904514c23663b1180090cbeefc24b3d2e2ab1ba229e2620";
+        const authorB = PlatformAddress.fromAccountId(
+            getAccountIdFromPrivate(authorBSecret)
+        ).toString();
 
         beforeEach(async () => {
             nodeA = new CodeChain({

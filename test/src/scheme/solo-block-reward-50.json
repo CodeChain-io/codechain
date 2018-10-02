@@ -21,13 +21,13 @@
             "generic": "0x0"
         },
         "score": "0x20000",
-        "author": "tccqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqj5aqu5",
+        "author": "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqhhn9p3",
         "timestamp": "0x00",
         "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
         "extraData": "0x"
     },
     "accounts": {
-        "tccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9my9a2k78": {
+        "tccq9h7vnl68frvqapzv3tujrxtxtwqdnxw6yamrrgd": {
             "balance": "1606938044258990275541962092341162602522202993782792835301376",
             "nonce": "0"
         }
@@ -35,12 +35,12 @@
     "shards": {
         "0": {
             "nonce": 0,
-            "owners": ["tccqzwvud8h4vv9c746rd7gzsxkyz6tm22p6c9gekrh"],
+            "owners": ["tccq8vapdlstar6ghmqgczp6j2e83njsqq0tsvaxm9u"],
             "worlds": [{
                 "nonce": 0,
                 "owners": [
-                    "tccqzwvud8h4vv9c746rd7gzsxkyz6tm22p6c9gekrh",
-                    "tccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9my9a2k78"
+                    "tccq8vapdlstar6ghmqgczp6j2e83njsqq0tsvaxm9u",
+                    "tccq9h7vnl68frvqapzv3tujrxtxtwqdnxw6yamrrgd"
                 ]
             }]
         }
