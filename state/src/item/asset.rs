@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ctypes::ShardId;
-use primitives::{Bytes, H256};
+use primitives::{Bytes, H160, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::local_cache::CacheableItem;
@@ -40,12 +40,12 @@ impl Asset {
 pub struct OwnedAsset {
     #[serde(flatten)]
     asset: Asset,
-    lock_script_hash: H256,
+    lock_script_hash: H160,
     parameters: Vec<Bytes>,
 }
 
 impl OwnedAsset {
-    pub fn new(asset_type: H256, lock_script_hash: H256, parameters: Vec<Bytes>, amount: u64) -> Self {
+    pub fn new(asset_type: H256, lock_script_hash: H160, parameters: Vec<Bytes>, amount: u64) -> Self {
         Self {
             asset: Asset {
                 asset_type,
@@ -60,7 +60,7 @@ impl OwnedAsset {
         &self.asset.asset_type()
     }
 
-    pub fn lock_script_hash(&self) -> &H256 {
+    pub fn lock_script_hash(&self) -> &H160 {
         &self.lock_script_hash
     }
 
@@ -72,7 +72,7 @@ impl OwnedAsset {
         &self.asset.amount()
     }
 
-    pub fn init(&mut self, asset_type: H256, lock_script_hash: H256, parameters: Vec<Bytes>, amount: u64) {
+    pub fn init(&mut self, asset_type: H256, lock_script_hash: H160, parameters: Vec<Bytes>, amount: u64) {
         assert_eq!(
             Asset {
                 asset_type: H256::zero(),
@@ -80,7 +80,7 @@ impl OwnedAsset {
             },
             self.asset
         );
-        assert_eq!(H256::zero(), self.lock_script_hash);
+        assert_eq!(H160::zero(), self.lock_script_hash);
         assert_eq!(0, self.parameters.len());
         self.asset = Asset {
             asset_type,
@@ -98,7 +98,7 @@ impl Default for OwnedAsset {
                 asset_type: H256::zero(),
                 amount: 0,
             },
-            lock_script_hash: H256::zero(),
+            lock_script_hash: H160::zero(),
             parameters: vec![],
         }
     }
