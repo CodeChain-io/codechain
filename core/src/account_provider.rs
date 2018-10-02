@@ -129,16 +129,8 @@ impl AccountProvider {
     }
 
     pub fn sign(&self, address: Address, password: Option<Password>, message: Message) -> Result<Signature, SignError> {
-        match password {
-            Some(password) => {
-                let signature = self.keystore.read().sign(&address, &password, &message)?;
-                Ok(signature)
-            }
-            None => {
-                let password = password.map(Ok).unwrap_or_else(|| self.password(&address))?;
-                Ok(self.keystore.read().sign(&address, &password, &message)?)
-            }
-        }
+        let password = password.map(Ok).unwrap_or_else(|| self.password(&address))?;
+        Ok(self.keystore.read().sign(&address, &password, &message)?)
     }
 
     pub fn has_account(&self, address: &Address) -> Result<bool, SignError> {
