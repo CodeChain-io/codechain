@@ -37,6 +37,7 @@ pub enum Instruction {
     Sha256,
     Ripemd160,
     Keccak256,
+    Blake160,
 }
 
 pub fn is_valid_unlock_script(instrs: &[Instruction]) -> bool {
