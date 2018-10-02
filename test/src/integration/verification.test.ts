@@ -70,7 +70,7 @@ describe("solo - 1 node", () => {
     const address = PlatformAddress.fromAccountId(
         SDK.util.getAccountIdFromPrivate(secret)
     );
-    const recipient = "tccqruq09sfgax77nj4gukjcuq69uzeyv0jcs7vzngg";
+    const recipient = "tccqxv9y4cw0jwphhu65tn4605wadyd2sxu5yezqghw";
 
     let node: CodeChain;
     beforeAll(async () => {
