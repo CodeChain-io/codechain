@@ -1117,6 +1117,7 @@ pub mod test {
     use ckey::{Generator, Random};
     use ctypes::parcel::{Parcel, ShardChange};
     use ctypes::transaction::{AssetMintOutput, Transaction};
+    use primitives::H160;
 
     use super::*;
 
@@ -1163,7 +1164,7 @@ pub mod test {
             world_id,
             metadata: "Metadata".to_string(),
             output: AssetMintOutput {
-                lock_script_hash: H256::zero(),
+                lock_script_hash: H160::zero(),
                 parameters: vec![],
                 amount: None,
             },
@@ -1204,7 +1205,7 @@ pub mod test {
                 world_id,
                 metadata: "Metadata".to_string(),
                 output: AssetMintOutput {
-                    lock_script_hash: H256::zero(),
+                    lock_script_hash: H160::zero(),
                     parameters: vec![],
                     amount: None,
                 },

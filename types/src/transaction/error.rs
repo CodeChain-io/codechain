@@ -17,7 +17,7 @@
 use std::fmt::{Display, Formatter, Result as FormatResult};
 
 use ckey::Address;
-use primitives::H256;
+use primitives::{H160, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::super::util::unexpected::Mismatch;
@@ -37,7 +37,7 @@ pub enum Error {
     AssetSchemeNotFound(H256),
     InvalidAssetType(H256),
     /// Script hash does not match with provided lock script
-    ScriptHashMismatch(Mismatch<H256>),
+    ScriptHashMismatch(Mismatch<H160>),
     /// Failed to decode script
     InvalidScript,
     /// Script execution result is `Fail`

@@ -601,7 +601,7 @@ impl ShardBackend for StateDB {
 
 #[cfg(test)]
 mod tests {
-    use primitives::U256;
+    use primitives::{H160, U256};
 
     use super::super::super::tests::helpers::get_temp_state_db;
     use super::*;
@@ -753,7 +753,7 @@ mod tests {
 
         let parcel_hash = H256::random();
         let asset_scheme_address = H256::random();
-        let lock_script_hash = H256::random();
+        let lock_script_hash = H160::random();
         let parameters = vec![];
         let amount = 1000;
         let shard_id = 0;

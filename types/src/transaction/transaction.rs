@@ -21,7 +21,7 @@ use byteorder::{BigEndian, ReadBytesExt};
 use ccrypto::blake256;
 use ckey::{Address, NetworkId};
 use heapsize::HeapSizeOf;
-use primitives::{Bytes, H256, U128};
+use primitives::{Bytes, H160, H256, U128};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::super::{ShardId, WorldId};
@@ -47,7 +47,7 @@ pub struct AssetTransferInput {
 #[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AssetTransferOutput {
-    pub lock_script_hash: H256,
+    pub lock_script_hash: H160,
     pub parameters: Vec<Bytes>,
     pub asset_type: H256,
     pub amount: u64,
@@ -98,7 +98,7 @@ pub enum Transaction {
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AssetMintOutput {
-    pub lock_script_hash: H256,
+    pub lock_script_hash: H160,
     pub parameters: Vec<Bytes>,
     pub amount: Option<u64>,
 }
@@ -585,7 +585,7 @@ mod tests {
                 unlock_script: vec![],
             }],
             &[AssetTransferOutput {
-                lock_script_hash: H256::random(),
+                lock_script_hash: H160::random(),
                 parameters: vec![],
                 asset_type,
                 amount,
@@ -631,13 +631,13 @@ mod tests {
             ],
             &[
                 AssetTransferOutput {
-                    lock_script_hash: H256::random(),
+                    lock_script_hash: H160::random(),
                     parameters: vec![],
                     asset_type: asset_type1,
                     amount: amount1,
                 },
                 AssetTransferOutput {
-                    lock_script_hash: H256::random(),
+                    lock_script_hash: H160::random(),
                     parameters: vec![],
                     asset_type: asset_type2,
                     amount: amount2,
@@ -684,13 +684,13 @@ mod tests {
             ],
             &[
                 AssetTransferOutput {
-                    lock_script_hash: H256::random(),
+                    lock_script_hash: H160::random(),
                     parameters: vec![],
                     asset_type: asset_type2,
                     amount: amount2,
                 },
                 AssetTransferOutput {
-                    lock_script_hash: H256::random(),
+                    lock_script_hash: H160::random(),
                     parameters: vec![],
                     asset_type: asset_type1,
                     amount: amount1,
@@ -711,7 +711,7 @@ mod tests {
         assert!(!is_input_and_output_consistent(
             &[],
             &[AssetTransferOutput {
-                lock_script_hash: H256::random(),
+                lock_script_hash: H160::random(),
                 parameters: vec![],
                 asset_type,
                 amount: output_amount,
@@ -757,7 +757,7 @@ mod tests {
                 unlock_script: vec![],
             }],
             &[AssetTransferOutput {
-                lock_script_hash: H256::random(),
+                lock_script_hash: H160::random(),
                 parameters: vec![],
                 asset_type,
                 amount: output_amount,
@@ -783,7 +783,7 @@ mod tests {
                 unlock_script: vec![],
             }],
             &[AssetTransferOutput {
-                lock_script_hash: H256::random(),
+                lock_script_hash: H160::random(),
                 parameters: vec![],
                 asset_type,
                 amount: output_amount,

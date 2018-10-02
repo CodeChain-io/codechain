@@ -1113,7 +1113,7 @@ mod tests_parcel {
     use ckey::{Address, Generator, Random};
     use ctypes::parcel::Parcel;
     use ctypes::transaction::{AssetMintOutput, AssetOutPoint, AssetTransferInput, AssetTransferOutput, Transaction};
-    use primitives::U256;
+    use primitives::{H160, U256};
 
     use super::super::super::tests::helpers::get_temp_state;
     use super::*;
@@ -1507,7 +1507,7 @@ mod tests_parcel {
         };
 
         let metadata = "metadata".to_string();
-        let lock_script_hash = H256::from("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050");
+        let lock_script_hash = H160::from("0xb042ad154a3359d276835c903587ebafefea22af");
         let registrar = Some(sender);
         let amount = 30;
         let mint = Transaction::AssetMint {
@@ -1677,7 +1677,7 @@ mod tests_parcel {
         };
 
         let metadata = "metadata".to_string();
-        let lock_script_hash = H256::random();
+        let lock_script_hash = H160::random();
         let parameters = vec![];
         let registrar = Some(Address::random());
         let amount = 30;
@@ -1749,7 +1749,7 @@ mod tests_parcel {
         };
 
         let metadata = "metadata".to_string();
-        let lock_script_hash = H256::random();
+        let lock_script_hash = H160::random();
         let parameters = vec![];
         let registrar = Some(Address::random());
         let transaction = Transaction::AssetMint {
@@ -1823,7 +1823,7 @@ mod tests_parcel {
         };
 
         let metadata = "metadata".to_string();
-        let lock_script_hash = H256::from("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050");
+        let lock_script_hash = H160::from("b042ad154a3359d276835c903587ebafefea22af");
         let registrar = None;
         let amount = 30;
 
@@ -1846,7 +1846,7 @@ mod tests_parcel {
         let asset_type = asset_scheme_address.clone().into();
         let asset_address = OwnedAssetAddress::new(mint_hash, 0, shard_id);
 
-        let random_lock_script_hash = H256::random();
+        let random_lock_script_hash = H160::random();
         let transfer = Transaction::AssetTransfer {
             network_id,
             burns: vec![],
@@ -1952,7 +1952,7 @@ mod tests_parcel {
         };
 
         let metadata = "metadata".to_string();
-        let lock_script_hash = H256::from("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050");
+        let lock_script_hash = H160::from("b042ad154a3359d276835c903587ebafefea22af");
         let registrar = None;
         let amount = 30;
         let mint = Transaction::AssetMint {
@@ -2001,7 +2001,7 @@ mod tests_parcel {
         let asset = state.asset(shard_id, &asset_address);
         assert_eq!(Ok(Some(OwnedAsset::new(asset_type, lock_script_hash, vec![], 30))), asset);
 
-        let random_lock_script_hash = H256::random();
+        let random_lock_script_hash = H160::random();
         let transfer = Transaction::AssetTransfer {
             network_id,
             burns: vec![],
@@ -2188,7 +2188,7 @@ mod tests_parcel {
         let shard_id = 0;
         let world_id = 0;
         let metadata = "metadata".to_string();
-        let lock_script_hash = H256::random();
+        let lock_script_hash = H160::random();
         let parameters = vec![];
         let registrar = Some(Address::random());
         let amount = 30;
@@ -2254,19 +2254,19 @@ mod tests_parcel {
             }],
             outputs: vec![
                 AssetTransferOutput {
-                    lock_script_hash: H256::random(),
+                    lock_script_hash: H160::random(),
                     parameters: vec![vec![1]],
                     asset_type,
                     amount: 10,
                 },
                 AssetTransferOutput {
-                    lock_script_hash: H256::random(),
+                    lock_script_hash: H160::random(),
                     parameters: vec![],
                     asset_type,
                     amount: 5,
                 },
                 AssetTransferOutput {
-                    lock_script_hash: H256::random(),
+                    lock_script_hash: H160::random(),
                     parameters: vec![],
                     asset_type,
                     amount: 15,
@@ -2679,7 +2679,7 @@ mod tests_parcel {
         let world_id = 0;
 
         let metadata = "metadata".to_string();
-        let lock_script_hash = H256::from("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050");
+        let lock_script_hash = H160::from("b042ad154a3359d276835c903587ebafefea22af");
         let registrar = None;
         let amount = 30;
         let parameters = vec![];

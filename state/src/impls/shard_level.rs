@@ -27,7 +27,7 @@ use ctypes::transaction::{
 use ctypes::util::unexpected::Mismatch;
 use ctypes::{ShardId, WorldId};
 use cvm::{decode, execute, ScriptResult, VMConfig};
-use primitives::{Bytes, H256};
+use primitives::{Bytes, H160, H256};
 use rlp::Encodable;
 
 use super::super::backend::{Backend, ShardBackend};
@@ -262,7 +262,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         transaction_hash: H256,
         world_id: WorldId,
         metadata: &String,
-        lock_script_hash: &H256,
+        lock_script_hash: &H160,
         parameters: &Vec<Bytes>,
         amount: &Option<u64>,
         registrar: &Option<Address>,
@@ -712,7 +712,7 @@ mod tests {
         assert_eq!(Ok(()), state.commit());
 
         let metadata = "metadata".to_string();
-        let lock_script_hash = H256::random();
+        let lock_script_hash = H160::random();
         let parameters = vec![];
         let amount = 100;
         let registrar = Some(Address::random());
@@ -754,7 +754,7 @@ mod tests {
         assert_eq!(Ok(()), state.commit());
 
         let metadata = "metadata".to_string();
-        let lock_script_hash = H256::random();
+        let lock_script_hash = H160::random();
         let parameters = vec![];
         let registrar = Some(Address::random());
         let transaction = Transaction::AssetMint {
@@ -800,7 +800,7 @@ mod tests {
         assert_eq!(Ok(()), state.commit());
 
         let metadata = "metadata".to_string();
-        let lock_script_hash = H256::from("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050");
+        let lock_script_hash = H160::from("b042ad154a3359d276835c903587ebafefea22af");
         let registrar = Some(Address::random());
         let amount = 30;
         let mint = Transaction::AssetMint {
@@ -873,7 +873,7 @@ mod tests {
         assert_eq!(Ok(()), state.commit());
 
         let metadata = "metadata".to_string();
-        let lock_script_hash = H256::from("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050");
+        let lock_script_hash = H160::from("b042ad154a3359d276835c903587ebafefea22af");
         let registrar = None;
         let amount = 30;
         let mint = Transaction::AssetMint {
@@ -905,7 +905,7 @@ mod tests {
         let asset = state.asset(&asset_address);
         assert_eq!(Ok(Some(OwnedAsset::new(asset_type, lock_script_hash, vec![], amount))), asset);
 
-        let random_lock_script_hash = H256::random();
+        let random_lock_script_hash = H160::random();
         let transfer = Transaction::AssetTransfer {
             network_id,
             burns: vec![],
@@ -971,7 +971,7 @@ mod tests {
         assert_eq!(Ok(()), state.commit());
 
         let metadata = "metadata".to_string();
-        let lock_script_hash = H256::from("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050");
+        let lock_script_hash = H160::from("b042ad154a3359d276835c903587ebafefea22af");
         let registrar = None;
         let amount = 30;
         let mint = Transaction::AssetMint {
@@ -1037,7 +1037,7 @@ mod tests {
             failed_invoice
         );
 
-        let random_lock_script_hash = H256::random();
+        let random_lock_script_hash = H160::random();
         let successful_transfer = Transaction::AssetTransfer {
             network_id,
             burns: vec![],
@@ -1231,7 +1231,7 @@ mod tests {
         assert_eq!(Ok(()), state.commit());
 
         let metadata = "metadata".to_string();
-        let lock_script_hash = H256::random();
+        let lock_script_hash = H160::random();
         let parameters = vec![];
         let registrar = Some(Address::random());
         let transaction = Transaction::AssetMint {
@@ -1275,7 +1275,7 @@ mod tests {
         assert_eq!(Ok(()), state.commit());
 
         let metadata = "metadata".to_string();
-        let lock_script_hash = H256::random();
+        let lock_script_hash = H160::random();
         let parameters = vec![];
         let registrar = Some(Address::random());
         let transaction = Transaction::AssetMint {
@@ -1316,7 +1316,7 @@ mod tests {
         assert_eq!(Ok(()), state.commit());
 
         let metadata = "metadata".to_string();
-        let lock_script_hash = H256::random();
+        let lock_script_hash = H160::random();
         let parameters = vec![];
         let registrar = Some(Address::random());
         let transaction = Transaction::AssetMint {
