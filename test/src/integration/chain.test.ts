@@ -15,7 +15,6 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import { SDK } from "codechain-sdk";
-import { PlatformAddress } from "codechain-sdk/lib/key/PlatformAddress";
 
 import {
     H256,
@@ -24,6 +23,7 @@ import {
     AssetMintTransaction,
     AssetScheme
 } from "codechain-sdk/lib/core/classes";
+import { PlatformAddress } from "codechain-sdk/lib/core/classes";
 
 import CodeChain from "../helper/spawn";
 
@@ -33,7 +33,7 @@ describe("solo - 1 node", () => {
     const address = PlatformAddress.fromAccountId(
         SDK.util.getAccountIdFromPrivate(secret)
     );
-    const noSuchAddress = "tccqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqj5aqu5";
+    const noSuchAddress = "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqhhn9p3";
     const invalidHash = new H256("0".repeat(64));
 
     let node: CodeChain;
@@ -119,7 +119,7 @@ describe("solo - 1 node", () => {
 
     test("sendSignedParcel, getParcelInvoice, getParcel", async () => {
         const parcel = node.sdk.core.createPaymentParcel({
-            recipient: "tccqruq09sfgax77nj4gukjcuq69uzeyv0jcs7vzngg",
+            recipient: "tccqxv9y4cw0jwphhu65tn4605wadyd2sxu5yezqghw",
             amount: 0
         });
         const nonce = await node.sdk.rpc.chain.getNonce(address);

@@ -509,7 +509,7 @@ export default class CodeChain {
         const {
             nonce = (await this.sdk.rpc.chain.getNonce(faucetAddress)) || 0,
             awaitInvoice = true,
-            recipient = "tccqruq09sfgax77nj4gukjcuq69uzeyv0jcs7vzngg",
+            recipient = "tccqxv9y4cw0jwphhu65tn4605wadyd2sxu5yezqghw",
             amount = 0,
             secret = faucetSecret,
             fee = 10 + this.id

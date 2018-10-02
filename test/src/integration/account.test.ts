@@ -53,7 +53,7 @@ const ERROR = {
 };
 
 describe("account", () => {
-    const noSuchAccount = "tccqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqj5aqu5";
+    const noSuchAccount = "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqhhn9p3";
 
     describe("account base test", () => {
         let node: CodeChain;
