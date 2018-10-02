@@ -757,21 +757,21 @@ code-point-at@^1.0.0:
   resolved "https://registry.yarnpkg.com/code-point-at/-/code-point-at-1.1.0.tgz#0d070b4d043a5bea33a2f1a40e2edb3d9a4ccf77"
   integrity sha1-DQcLTQQ6W+ozovGkDi7bPZpMz3c=
 
-codechain-keystore@~0.2.1:
-  version "0.2.2"
-  resolved "https://registry.yarnpkg.com/codechain-keystore/-/codechain-keystore-0.2.2.tgz#22cb1f79a4a35441d9ad28de6fd09a826a070f04"
-  integrity sha512-PMcKxw9ADtfsyLGSir2FF9WD9ILoFhFVXx3hJdCIqaXkAo6PXpVdf+VAcqyUyn/l8Qxvi6LoObKKfhgcIzqIKg==
+codechain-keystore@~0.2.2:
+  version "0.2.3"
+  resolved "https://registry.yarnpkg.com/codechain-keystore/-/codechain-keystore-0.2.3.tgz#7534f583771d16503aa8c02acd7a4d53d9ae20ea"
+  integrity sha512-+j9Xg+EbWmnGo8u5Itb+fGTMXOMQaxHpe8ux7MUTTNYu3lLYMlNwAopNjfrtBGp5xbb23ewqMkU56FBMRr9mvw==
   dependencies:
-    codechain-primitives "^0.1.0-rc2"
+    codechain-primitives "^0.2.0"
     config "^2.0.1"
     lodash "^4.17.10"
     lowdb "^1.0.0"
     uuid "^3.3.2"
 
-codechain-primitives@^0.1.0-rc2:
-  version "0.1.0-rc2"
-  resolved "https://registry.yarnpkg.com/codechain-primitives/-/codechain-primitives-0.1.0-rc2.tgz#ac9033c610f9fc280e86fc88405d097084418c71"
-  integrity sha512-rPhQE2Q3jf8kRbiarUMLNX/XsaASnJfPQPzsVl/bLydPlvLQajKG7cT6P+4jn6TOAkEAVIUFJldRga0g+jiWUw==
+codechain-primitives@^0.2.0:
+  version "0.2.0"
+  resolved "https://registry.yarnpkg.com/codechain-primitives/-/codechain-primitives-0.2.0.tgz#1e86b8adb1466606d478f95f25aa4eb5d6dc0e75"
+  integrity sha512-NFrBkJozIl0NNvVhCdhBem7DslUDOgO/KbeSCApkQuIlvUb6SQQsjEqvPad7SYFRIzxcKWRuDmTlTHMGoiLhzQ==
   dependencies:
     bignumber.js "^7.2.1"
     blakejs "^1.1.0"
@@ -781,14 +781,14 @@ codechain-primitives@^0.1.0-rc2:
     ripemd160 "^2.0.2"
     rlp "^2.1.0"
 
-codechain-sdk@^0.2.0-alpha.2:
-  version "0.2.0-alpha.2"
-  resolved "https://registry.yarnpkg.com/codechain-sdk/-/codechain-sdk-0.2.0-alpha.2.tgz#494f8db85693f662a5df453ff9d0d08f94af1210"
-  integrity sha512-cryYUuMCnOmz/WyR/q5REqnEhCKKZF4whYpzwIxXiY+ZYiVfJQ5sJsgH+kXYGhXXxR2s8db2ohp9XFy2+Wo0jA==
+codechain-sdk@^0.3.0-alpha.1:
+  version "0.3.0-alpha.1"
+  resolved "https://registry.yarnpkg.com/codechain-sdk/-/codechain-sdk-0.3.0-alpha.1.tgz#5a91d183072d7d09f071523cfed07420b529c691"
+  integrity sha512-NO7wGghzr/96zEpOYX43uORJJS5msF9a8f5Z0evxlVGYTw3+ayTJyr79EwUepTCab637FyIMV5Y+Jvxp/mlwPA==
   dependencies:
     buffer "5.1.0"
-    codechain-keystore "~0.2.1"
-    codechain-primitives "^0.1.0-rc2"
+    codechain-keystore "~0.2.2"
+    codechain-primitives "^0.2.0"
     jayson "^2.0.6"
     lodash "^4.17.10"
     node-fetch "^2.1.2"
