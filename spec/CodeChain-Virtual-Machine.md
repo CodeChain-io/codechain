@@ -84,6 +84,7 @@ Leading zeros must be truncated. Note that it is allowed to decode value with le
 * SHA256(0x91): Pop one value from stack, and push sha-256 hash of it.
 * RIPEMD160(0x92): Pop one value from stack, and push ripemd160 hash of it.
 * KECCAK256(0x93): Pop one value from stack, and push keccak-256 hash of it.
+* BLAKE160(0x94): Pop one value from stack, and push blake-160 hash of it. Blake-160 here refers to blake2b with 20 byte output.
 
 ## Environment
 * BLKNUM(0xa0): Push block number specified in parcel to stack as integer. If there's no specified block number, machine must fail immediately.

@@ -14,9 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ccrypto::{blake256, keccak256, ripemd160, sha256};
+use ccrypto::{blake256, keccak256, ripemd160, sha256, Blake};
 use ckey::{verify, Public, Signature, SIGNATURE_LENGTH};
-use primitives::H256;
+use primitives::{H160, H256};
 
 use instruction::{has_expensive_opcodes, is_valid_unlock_script, Instruction};
 
@@ -237,6 +237,10 @@ pub fn execute(
             Instruction::Keccak256 => {
                 let value = stack.pop()?;
                 stack.push(Item(keccak256(value).to_vec()))?;
+            }
+            Instruction::Blake160 => {
+                let value = stack.pop()?;
+                stack.push(Item(H160::blake(value).to_vec()))?;
             }
         }
         pc += 1;
