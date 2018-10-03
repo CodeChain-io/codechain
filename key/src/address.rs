@@ -121,7 +121,7 @@ impl From<[u8; 20]> for Address {
 
 impl From<&'static str> for Address {
     fn from(s: &'static str) -> Self {
-        Address(H160::from(s))
+        s.parse().expect(&format!("invalid string literal for {}: '{}'", stringify!(Self), s))
     }
 }
 

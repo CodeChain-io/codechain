@@ -153,14 +153,14 @@ fn change_password(ap: &AccountProvider, address: &str) -> Result<(), String> {
 }
 
 fn prompt_password(prompt: &str) -> Password {
-    Password::from(rpassword::prompt_password_stdout(prompt).unwrap())
+    rpassword::prompt_password_stdout(prompt).map(Password::from).unwrap()
 }
 
 fn read_password_and_confirm() -> Option<Password> {
     let first = rpassword::prompt_password_stdout("Password: ").unwrap();
     let second = rpassword::prompt_password_stdout("Confirm Password: ").unwrap();
     if first == second {
-        Some(Password::from(first))
+        Some(first.into())
     } else {
         None
     }

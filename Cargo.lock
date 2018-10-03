@@ -337,6 +337,7 @@ dependencies = [
  "codechain-crypto 0.1.0",
  "heapsize 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "never 0.1.0",
  "parking_lot 0.5.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "primitives 0.1.0",
  "rand 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)",
