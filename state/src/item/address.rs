@@ -113,15 +113,15 @@ macro_rules! impl_address {
             }
         }
 
-        impl Into<::primitives::H256> for $name {
-            fn into(self) -> ::primitives::H256 {
-                self.0
+        impl From<$name> for ::primitives::H256 {
+            fn from(a: $name) -> Self {
+                a.0
             }
         }
 
-        impl<'a> Into<&'a ::primitives::H256> for &'a $name {
-            fn into(self) -> &'a ::primitives::H256 {
-                &self.0
+        impl<'a> From<&'a $name> for &'a ::primitives::H256 {
+            fn from(a: &'a $name) -> Self {
+                &a.0
             }
         }
 

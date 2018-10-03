@@ -353,15 +353,15 @@ impl From<TcpStream> for Stream {
     }
 }
 
-impl Into<TcpStream> for Stream {
-    fn into(self) -> TcpStream {
-        self.try_stream.stream
+impl From<Stream> for TcpStream {
+    fn from(stream: Stream) -> Self {
+        stream.try_stream.stream
     }
 }
 
-impl Into<Stream> for SignedStream {
-    fn into(self) -> Stream {
-        self.stream
+impl From<SignedStream> for Stream {
+    fn from(stream: SignedStream) -> Self {
+        stream.stream
     }
 }
 

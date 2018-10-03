@@ -155,9 +155,9 @@ impl From<UdpSocket> for Socket {
     }
 }
 
-impl Into<UdpSocket> for Socket {
-    fn into(self) -> UdpSocket {
-        self.socket
+impl From<Socket> for UdpSocket {
+    fn from(socket: Socket) -> Self {
+        socket.socket
     }
 }
 

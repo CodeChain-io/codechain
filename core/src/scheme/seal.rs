@@ -28,10 +28,10 @@ pub struct Tendermint {
     pub precommits: Vec<H520>,
 }
 
-impl Into<Generic> for Tendermint {
-    fn into(self) -> Generic {
+impl From<Tendermint> for Generic {
+    fn from(tendermint: Tendermint) -> Self {
         let mut stream = RlpStream::new_list(3);
-        stream.append(&self.round).append(&self.proposal).append_list(&self.precommits);
+        stream.append(&tendermint.round).append(&tendermint.proposal).append_list(&tendermint.precommits);
         Generic(stream.out())
     }
 }
@@ -59,9 +59,9 @@ impl From<cjson::scheme::Seal> for Seal {
     }
 }
 
-impl Into<Generic> for Seal {
-    fn into(self) -> Generic {
-        match self {
+impl From<Seal> for Generic {
+    fn from(seal: Seal) -> Self {
+        match seal {
             Seal::Generic(generic) => generic,
             Seal::Tendermint(tender) => tender.into(),
         }

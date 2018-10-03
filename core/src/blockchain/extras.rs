@@ -178,9 +178,9 @@ pub struct ParcelAddress {
     pub index: usize,
 }
 
-impl Into<ParcelId> for ParcelAddress {
-    fn into(self) -> ParcelId {
-        ParcelId::Location(self.block_hash.into(), self.index)
+impl From<ParcelAddress> for ParcelId {
+    fn from(addr: ParcelAddress) -> Self {
+        ParcelId::Location(addr.block_hash.into(), addr.index)
     }
 }
 

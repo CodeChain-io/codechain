@@ -32,9 +32,9 @@ impl From<[u8; 16]> for Uuid {
     }
 }
 
-impl Into<[u8; 16]> for Uuid {
-    fn into(self) -> [u8; 16] {
-        self.0
+impl From<Uuid> for [u8; 16] {
+    fn from(uuid: Uuid) -> Self {
+        uuid.0
     }
 }
 

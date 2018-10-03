@@ -34,9 +34,9 @@ pub struct PodAccount {
     pub regular_key: Option<Public>,
 }
 
-impl<'a> Into<Account> for &'a PodAccount {
-    fn into(self) -> Account {
-        Account::new_with_key(self.balance, self.nonce, self.regular_key)
+impl<'a> From<&'a PodAccount> for Account {
+    fn from(pod: &'a PodAccount) -> Self {
+        Account::new_with_key(pod.balance, pod.nonce, pod.regular_key)
     }
 }
 

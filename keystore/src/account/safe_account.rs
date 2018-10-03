@@ -40,15 +40,15 @@ pub struct SafeAccount {
     pub meta: String,
 }
 
-impl Into<json::KeyFile> for SafeAccount {
-    fn into(self) -> json::KeyFile {
-        json::KeyFile {
-            id: From::from(self.id),
-            version: self.version.into(),
-            address: Some(self.address.into()),
-            crypto: self.crypto.into(),
-            name: Some(self.name.into()),
-            meta: Some(self.meta.into()),
+impl From<SafeAccount> for json::KeyFile {
+    fn from(account: SafeAccount) -> Self {
+        Self {
+            id: From::from(account.id),
+            version: account.version.into(),
+            address: Some(account.address.into()),
+            crypto: account.crypto.into(),
+            name: Some(account.name.into()),
+            meta: Some(account.meta.into()),
         }
     }
 }

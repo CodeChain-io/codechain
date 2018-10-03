@@ -94,9 +94,9 @@ impl From<bool> for Item {
     }
 }
 
-impl Into<bool> for Item {
-    fn into(self) -> bool {
-        self.as_ref().iter().any(|b| b != &0)
+impl From<Item> for bool {
+    fn from(item: Item) -> Self {
+        item.as_ref().iter().any(|b| b != &0)
     }
 }
 

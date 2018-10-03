@@ -42,15 +42,15 @@ impl From<u64> for Nonce {
     }
 }
 
-impl Into<H128> for Nonce {
-    fn into(self) -> H128 {
-        self.0
+impl From<Nonce> for H128 {
+    fn from(nonce: Nonce) -> Self {
+        nonce.0
     }
 }
 
-impl<'a> Into<&'a H128> for &'a Nonce {
-    fn into(self) -> &'a H128 {
-        &self.0
+impl<'a> From<&'a Nonce> for &'a H128 {
+    fn from(nonce: &'a Nonce) -> Self {
+        &nonce.0
     }
 }
 

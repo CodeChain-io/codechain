@@ -114,9 +114,9 @@ macro_rules! impl_hash {
             }
         }
 
-        impl Into<[u8; $size]> for $name {
-            fn into(self) -> [u8; $size] {
-                self.0
+        impl From<$name> for [u8; $size] {
+            fn from(f: $name) -> Self {
+                f.0
             }
         }
     };

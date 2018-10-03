@@ -31,10 +31,10 @@ pub struct PodShardMetadata {
     pub worlds: Vec<PodWorld>,
 }
 
-impl<'a> Into<ShardMetadata> for &'a PodShardMetadata {
-    fn into(self) -> ShardMetadata {
-        assert!(self.worlds.len() <= ::std::u16::MAX as usize);
-        ShardMetadata::new_with_nonce(self.worlds.len() as u16, self.nonce)
+impl<'a> From<&'a PodShardMetadata> for ShardMetadata {
+    fn from(pod: &'a PodShardMetadata) -> Self {
+        assert!(pod.worlds.len() <= ::std::u16::MAX as usize);
+        ShardMetadata::new_with_nonce(pod.worlds.len() as u16, pod.nonce)
     }
 }
 
