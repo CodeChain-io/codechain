@@ -72,12 +72,6 @@ impl fmt::Display for Error {
     }
 }
 
-impl Into<String> for Error {
-    fn into(self) -> String {
-        format!("{}", self)
-    }
-}
-
 impl From<SecpError> for Error {
     fn from(e: SecpError) -> Self {
         match e {
