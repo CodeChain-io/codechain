@@ -179,7 +179,7 @@ impl BodyDB {
                     transaction_address_entries(*hash, body.parcels())
                 });
 
-                let current_addresses = { transaction_address_entries(block.hash(), block.parcels()) };
+                let current_addresses = transaction_address_entries(block.hash(), block.parcels());
 
                 let retracted = data.retracted.iter().flat_map(|hash| {
                     let body = self.block_body(hash).expect("Retracted block must be in database.");
