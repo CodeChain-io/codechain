@@ -37,12 +37,11 @@ pub struct PlatformAddress {
 }
 
 impl PlatformAddress {
-    pub fn create(version: u8, network_id: NetworkId, address: Address) -> Self {
-        debug_assert_eq!(1, version);
+    pub fn new_v1(network_id: NetworkId, address: Address) -> Self {
         assert!(check_network_id(&network_id));
         Self {
             network_id,
-            version,
+            version: 1,
             address,
         }
     }
