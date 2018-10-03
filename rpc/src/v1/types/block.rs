@@ -46,12 +46,11 @@ impl Block {
     pub fn from_core(block: CoreBlock, network_id: NetworkId) -> Self {
         let block_number = block.header.number();
         let block_hash = block.header.hash();
-        const VERSION: u8 = 1;
         Block {
             parent_hash: block.header.parent_hash().clone(),
             timestamp: block.header.timestamp(),
             number: block.header.number(),
-            author: PlatformAddress::create(VERSION, network_id, block.header.author().clone()),
+            author: PlatformAddress::new_v1(network_id, block.header.author().clone()),
 
             extra_data: block.header.extra_data().clone(),
 
