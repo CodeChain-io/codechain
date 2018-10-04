@@ -259,7 +259,7 @@ impl KeyFileManager for DiskKeyFileManager {
     where
         T: io::Read, {
         let key_file = json::KeyFile::load(reader).map_err(|e| Error::Custom(format!("{:?}", e)))?;
-        Ok(SafeAccount::from_file(key_file, filename))
+        SafeAccount::from_file(key_file, filename, None)
     }
 
     fn write<T>(&self, account: SafeAccount, writer: &mut T) -> Result<(), Error>

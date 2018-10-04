@@ -15,7 +15,7 @@
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
 use ccrypto;
-use ckey::{sign, Address, KeyPair, Message, Password, Public, Signature};
+use ckey::{public_to_address, sign, Address, KeyPair, Message, Password, Public, Signature};
 
 use super::super::account::Version;
 use super::super::{json, Error};
@@ -77,16 +77,33 @@ impl SafeAccount {
     /// Create a new `SafeAccount` from the given `json`; if it was read from a
     /// file, the `filename` should be `Some` name. If it is as yet anonymous, then it
     /// can be left `None`.
-    pub fn from_file(json: json::KeyFile, filename: Option<String>) -> Self {
-        SafeAccount {
+    pub fn from_file(
+        json: json::KeyFile,
+        filename: Option<String>,
+        password: Option<&Password>,
+    ) -> Result<Self, Error> {
+        let crypto = Crypto::from(json.crypto);
+        let address = match password {
+            Some(password) => {
+                let address = json.address.into();
+                let private = crypto.secret(password)?;
+                let decrypted_address = public_to_address(KeyPair::from_private(private.into())?.public());
+                if decrypted_address != address {
+                    return Err(Error::InvalidKeyFile("Address field is invalid".to_string()))
+                }
+                address
+            }
+            None => json.address.into(),
+        };
+        Ok(SafeAccount {
             id: json.id.into(),
             version: json.version.into(),
-            address: json.address.into(),
-            crypto: json.crypto.into(),
+            address,
+            crypto,
             filename,
             name: json.name.unwrap_or(String::new()),
             meta: json.meta.unwrap_or("{}".to_string()),
-        }
+        })
     }
 
     /// Sign a message.
