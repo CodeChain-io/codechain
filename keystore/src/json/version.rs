@@ -23,7 +23,7 @@ use super::Error;
 
 #[derive(Debug, PartialEq)]
 pub enum Version {
-    V1,
+    V3,
 }
 
 impl Serialize for Version {
@@ -31,7 +31,7 @@ impl Serialize for Version {
     where
         S: Serializer, {
         match *self {
-            Version::V1 => serializer.serialize_u64(1),
+            Version::V3 => serializer.serialize_u64(3),
         }
     }
 }
@@ -57,7 +57,7 @@ impl<'a> Visitor<'a> for VersionVisitor {
     where
         E: SerdeError, {
         match value {
-            1 => Ok(Version::V1),
+            3 => Ok(Version::V3),
             _ => Err(SerdeError::custom(Error::UnsupportedVersion)),
         }
     }

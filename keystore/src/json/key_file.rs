@@ -100,14 +100,14 @@ mod tests {
 				"mac": "46325c5d4e8c991ad2683d525c7854da387138b6ca45068985aa4959fa2b8c8f"
 			},
 			"id": "8777d9f6-7860-4b9b-88b7-0b57ee6b3a73",
-			"version": 1,
+			"version": 3,
 			"name": "Test",
 			"meta": "{}"
 		}"#;
 
         let expected = KeyFile {
             id: Uuid::from_str("8777d9f6-7860-4b9b-88b7-0b57ee6b3a73").unwrap(),
-            version: Version::V1,
+            version: Version::V3,
             address: Some("6edddfc6349aff20bc6467ccf276c5b52487f7a8".into()),
             crypto: Crypto {
                 cipher: Cipher::Aes128Ctr(Aes128Ctr {
@@ -152,14 +152,14 @@ mod tests {
                 "mac": "46325c5d4e8c991ad2683d525c7854da387138b6ca45068985aa4959fa2b8c8f"
             },
             "id": "8777d9f6-7860-4b9b-88b7-0b57ee6b3a73",
-            "version": 1,
+            "version": 3,
             "name": "Test",
             "meta": "{}"
         }"#;
 
         let expected = KeyFile {
             id: Uuid::from_str("8777d9f6-7860-4b9b-88b7-0b57ee6b3a73").unwrap(),
-            version: Version::V1,
+            version: Version::V3,
             address: None,
             crypto: Crypto {
                 cipher: Cipher::Aes128Ctr(Aes128Ctr {
@@ -205,7 +205,7 @@ mod tests {
 				"mac": "46325c5d4e8c991ad2683d525c7854da387138b6ca45068985aa4959fa2b8c8f"
 			},
 			"id": "8777d9f6-7860-4b9b-88b7-0b57ee6b3a73",
-			"version": 1
+			"version": 3
 		}"#;
 
         let must_fail = ::std::panic::catch_unwind(|| {
@@ -218,7 +218,7 @@ mod tests {
     fn to_and_from_json() {
         let file = KeyFile {
             id: "8777d9f6-7860-4b9b-88b7-0b57ee6b3a73".into(),
-            version: Version::V1,
+            version: Version::V3,
             address: Some("6edddfc6349aff20bc6467ccf276c5b52487f7a8".into()),
             crypto: Crypto {
                 cipher: Cipher::Aes128Ctr(Aes128Ctr {
