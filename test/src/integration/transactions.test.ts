@@ -374,6 +374,245 @@ describe("transactions", () => {
         });
     });
 
+    describe("Partial signature", () => {
+        let assets, assetType;
+        let address1, address2, burnAddress1, burnAddress2;
+        beforeEach(async () => {
+            address1 = await node.sdk.key.createAssetTransferAddress({
+                type: "P2PKH"
+            });
+            address2 = await node.sdk.key.createAssetTransferAddress({
+                type: "P2PKH"
+            });
+            burnAddress1 = await node.sdk.key.createAssetTransferAddress({
+                type: "P2PKHBurn"
+            });
+            burnAddress2 = await node.sdk.key.createAssetTransferAddress({
+                type: "P2PKHBurn"
+            });
+            const mintTx = node.sdk.core.createAssetMintTransaction({
+                scheme: {
+                    shardId: 0,
+                    worldId: 0,
+                    metadata: "",
+                    amount: 4000
+                },
+                recipient: address1
+            });
+            const asset = mintTx.getMintedAsset();
+            ({ assetType } = asset);
+            const transferTx = node.sdk.core
+                .createAssetTransferTransaction()
+                .addInputs(asset)
+                .addOutputs(
+                    {
+                        assetType,
+                        amount: 1000,
+                        recipient: address1
+                    },
+                    {
+                        assetType,
+                        amount: 1000,
+                        recipient: address2
+                    },
+                    {
+                        assetType,
+                        amount: 1000,
+                        recipient: burnAddress1
+                    },
+                    {
+                        assetType,
+                        amount: 1000,
+                        recipient: burnAddress2
+                    }
+                );
+            await node.sdk.key.signTransactionInput(transferTx, 0);
+            assets = transferTx.getTransferredAssets();
+            await node.sendTransactions([mintTx, transferTx]);
+        });
+
+        test("Can't add burns after signing with the signature tag of all inputs", async () => {
+            const tx = node.sdk.core
+                .createAssetTransferTransaction()
+                .addInputs(assets[0])
+                .addOutputs({
+                    assetType,
+                    amount: 1000,
+                    recipient: address1
+                });
+            await node.sdk.key.signTransactionInput(tx, 0);
+            tx.addBurns(assets[2]);
+            await node.sdk.key.signTransactionBurn(tx, 0);
+            const invoice = await node.sendTransaction(tx);
+            expect(invoice.success).toBe(false);
+            expect(invoice.error!.type).toBe("FailedToUnlock");
+        });
+
+        test("Can add burns after signing with the signature tag of single input", async () => {
+            const tx = node.sdk.core
+                .createAssetTransferTransaction()
+                .addInputs(assets[0])
+                .addOutputs({
+                    assetType,
+                    amount: 1000,
+                    recipient: address1
+                });
+            await node.sdk.key.signTransactionInput(tx, 0, {
+                signatureTag: { input: "single", output: "all" }
+            });
+            tx.addBurns(assets[2]);
+            await node.sdk.key.signTransactionBurn(tx, 0);
+            const invoice = await node.sendTransaction(tx);
+            expect(invoice.success).toBe(true);
+        });
+
+        // FIXME: (WIP) It fails
+        test("Can't add inputs after signing with the signature tag of all inputs", async () => {
+            const tx = node.sdk.core
+                .createAssetTransferTransaction()
+                .addInputs(assets[0])
+                .addOutputs({
+                    assetType,
+                    amount: 2000,
+                    recipient: address1
+                });
+            await node.sdk.key.signTransactionInput(tx, 0);
+            tx.addInputs(assets[1]);
+            await node.sdk.key.signTransactionInput(tx, 1);
+            const invoice = await node.sendTransaction(tx);
+            expect(invoice.success).toBe(false);
+            expect(invoice.error!.type).toBe("FailedToUnlock");
+        });
+
+        test("Can add inputs after signing with the signature tag of single input", async () => {
+            const tx = node.sdk.core
+                .createAssetTransferTransaction()
+                .addInputs(assets[0])
+                .addOutputs({
+                    assetType,
+                    amount: 2000,
+                    recipient: address1
+                });
+            await node.sdk.key.signTransactionInput(tx, 0, {
+                signatureTag: { input: "single", output: "all" }
+            });
+            tx.addInputs(assets[1]);
+            await node.sdk.key.signTransactionInput(tx, 1);
+            const invoice = await node.sendTransaction(tx);
+            expect(invoice.success).toBe(true);
+        });
+
+        test("Can't add outputs after signing the signature tag of all outputs", async () => {
+            const tx = node.sdk.core
+                .createAssetTransferTransaction()
+                .addInputs(assets[0])
+                .addOutputs({
+                    assetType,
+                    amount: 500,
+                    recipient: address1
+                });
+            await node.sdk.key.signTransactionInput(tx, 0);
+            tx.addOutputs({ assetType, amount: 500, recipient: address2 });
+            const invoice = await node.sendTransaction(tx);
+            expect(invoice.success).toBe(false);
+            expect(invoice.error!.type).toBe("FailedToUnlock");
+        });
+
+        test("Can add outputs after signing the signature tag of some outputs", async () => {
+            const tx = node.sdk.core
+                .createAssetTransferTransaction()
+                .addInputs(assets[0])
+                .addOutputs({
+                    assetType,
+                    amount: 500,
+                    recipient: address1
+                });
+            await node.sdk.key.signTransactionInput(tx, 0, {
+                signatureTag: {
+                    input: "all",
+                    output: [0]
+                }
+            });
+            tx.addOutputs({ assetType, amount: 500, recipient: address2 });
+            const invoice = await node.sendTransaction(tx);
+            expect(invoice.success).toBe(true);
+        });
+
+        test("Can only change the output protected by signature", async () => {
+            const tx = node.sdk.core
+                .createAssetTransferTransaction()
+                .addInputs(assets[0])
+                .addOutputs(
+                    {
+                        assetType,
+                        amount: 500,
+                        recipient: address1
+                    },
+                    {
+                        assetType,
+                        amount: 500,
+                        recipient: address2
+                    }
+                );
+            await node.sdk.key.signTransactionInput(tx, 0, {
+                signatureTag: {
+                    input: "all",
+                    output: [0]
+                }
+            });
+            const address1Param = tx.outputs[0].parameters;
+            const address2Param = tx.outputs[1].parameters;
+            (tx.outputs[0].parameters as any) = address2Param;
+            const invoice = await node.sendTransaction(tx);
+            expect(invoice.success).toBe(false);
+
+            (tx.outputs[0].parameters as any) = address1Param;
+            (tx.nonce as any) = 1;
+            await node.sdk.key.signTransactionInput(tx, 0, {
+                signatureTag: {
+                    input: "all",
+                    output: [0]
+                }
+            });
+
+            (tx.outputs[1].parameters as any) = address1Param;
+            const invoice2 = await node.sendTransaction(tx);
+            expect(invoice2.success).toBe(true);
+        });
+
+        describe("many outputs", () => {
+            test.each([[5], [10], [100], [504]])(
+                "%p + 1 outputs",
+                async length => {
+                    const tx = node.sdk.core
+                        .createAssetTransferTransaction()
+                        .addInputs(assets[0])
+                        .addOutputs(
+                            ..._.times(length, () => ({
+                                assetType,
+                                amount: 1,
+                                recipient: address1
+                            }))
+                        );
+
+                    await node.sdk.key.signTransactionInput(tx, 0, {
+                        signatureTag: {
+                            input: "all",
+                            output: _.range(length)
+                        }
+                    });
+                    tx.addOutputs({
+                        assetType,
+                        amount: 1000 - length,
+                        recipient: address1
+                    });
+                    const invoice = await node.sendTransaction(tx);
+                    expect(invoice.success).toBe(true);
+                }
+            );
+        });
+    });
+
     test.skip("CreateWorld", done => done.fail("not implemented"));
     test.skip("SetWorldOwners", done => done.fail("not implemented"));
     test.skip("SetWorldUsers", done => done.fail("not implemented"));
