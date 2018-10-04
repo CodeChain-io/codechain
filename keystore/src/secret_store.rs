@@ -41,19 +41,19 @@ use OpaqueSecret;
 pub trait SimpleSecretStore: Send + Sync {
     /// Inserts new accounts to the store with given password.
     fn insert_account(&self, secret: Secret, password: &Password) -> Result<Address, Error>;
+    /// Returns all accounts in this secret store.
+    fn accounts(&self) -> Result<Vec<Address>, Error>;
+    ///  Check existance of account
+    fn has_account(&self, account: &Address) -> Result<bool, Error>;
+    /// Entirely removes account from the store and underlying storage.
+    fn remove_account(&self, account: &Address, password: &Password) -> Result<(), Error>;
     /// Changes accounts password.
     fn change_password(&self, account: &Address, old_password: &Password, new_password: &Password)
         -> Result<(), Error>;
     /// Exports key details for account.
     fn export_account(&self, account: &Address, password: &Password) -> Result<OpaqueKeyFile, Error>;
-    /// Entirely removes account from the store and underlying storage.
-    fn remove_account(&self, account: &Address, password: &Password) -> Result<(), Error>;
     /// Sign a message with given account.
     fn sign(&self, account: &Address, password: &Password, message: &Message) -> Result<Signature, Error>;
-    /// Returns all accounts in this secret store.
-    fn accounts(&self) -> Result<Vec<Address>, Error>;
-    ///  Check existance of account
-    fn has_account(&self, account: &Address) -> Result<bool, Error>;
 }
 
 /// Secret Store API
