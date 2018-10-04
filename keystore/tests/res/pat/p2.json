@@ -1,6 +1,6 @@
 {
   "id": "1b18d902-b0cc-7582-e4dc-e9bd755983ea",
-  "version": 1,
+  "version": 3,
   "crypto": {
     "cipher": "aes-128-ctr",
     "cipherparams": {
