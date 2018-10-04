@@ -52,6 +52,7 @@ pub enum Error {
     NotRegistrar(Mismatch<Address>),
     /// Returned when the amount of either input or output is 0.
     ZeroAmount,
+    TooManyOutputs(usize),
 }
 
 const ERROR_ID_INVALID_ASSET_AMOUNT: u8 = 4u8;
@@ -69,6 +70,7 @@ const ERROR_ID_INVALID_WORLD_NONCE: u8 = 15u8;
 const ERROR_ID_EMPTY_SHARD_OWNERS: u8 = 16u8;
 const ERROR_ID_NOT_REGISTRAR: u8 = 17u8;
 const ERROR_ID_ZERO_AMOUNT: u8 = 18u8;
+const ERROR_ID_TOO_MANY_OUTPUTS: u8 = 19u8;
 
 impl Encodable for Error {
     fn rlp_append(&self, s: &mut RlpStream) {
@@ -98,6 +100,7 @@ impl Encodable for Error {
             Error::EmptyShardOwners(shard_id) => s.begin_list(2).append(&ERROR_ID_EMPTY_SHARD_OWNERS).append(shard_id),
             Error::NotRegistrar(mismatch) => s.begin_list(2).append(&ERROR_ID_NOT_REGISTRAR).append(mismatch),
             Error::ZeroAmount => s.begin_list(1).append(&ERROR_ID_ZERO_AMOUNT),
+            Error::TooManyOutputs(num) => s.begin_list(2).append(&ERROR_ID_TOO_MANY_OUTPUTS).append(num),
         };
     }
 }
@@ -160,6 +163,12 @@ impl Decodable for Error {
                 }
                 Error::ZeroAmount
             }
+            ERROR_ID_TOO_MANY_OUTPUTS => {
+                if rlp.item_count()? != 2 {
+                    return Err(DecoderError::RlpInvalidLength)
+                }
+                Error::TooManyOutputs(rlp.val_at(1)?)
+            }
             _ => return Err(DecoderError::Custom("Invalid transaction error")),
         })
     }
@@ -199,6 +208,7 @@ impl Display for Error {
                 mismatch.found, mismatch.expected
             ),
             Error::ZeroAmount => write!(f, "An amount cannot be 0"),
+            Error::TooManyOutputs(num) => write!(f, "The number of outputs is {}. It should be 126 or less.", num),
         }
     }
 }
@@ -223,5 +233,10 @@ mod tests {
             expected: 1,
             found: 2,
         }));
+    }
+
+    #[test]
+    fn encode_and_decode_too_many_outpus() {
+        rlp_encode_and_decode_test!(Error::TooManyOutputs(127));
     }
 }
