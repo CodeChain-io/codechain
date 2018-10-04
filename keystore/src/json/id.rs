@@ -22,7 +22,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use super::Error;
 
-/// Universaly unique identifier.
+/// Universally unique identifier.
 #[derive(Debug, PartialEq)]
 pub struct Uuid([u8; 16]);
 
