@@ -14,11 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
-use super::Error;
+use std::{fmt, ops, str};
+
 use rustc_hex::{FromHex, ToHex};
 use serde::de::{Error as SerdeError, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::{fmt, ops, str};
+
+use super::Error;
 
 macro_rules! impl_hash {
     ($name:ident, $size:expr) => {

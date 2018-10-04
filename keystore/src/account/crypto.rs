@@ -14,12 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
-use account::{Aes128Ctr, Cipher, Kdf, Pbkdf2, Prf};
-use ckey::{Password, Private, Secret};
-use random::Random;
-use smallvec::SmallVec;
 use std::str;
-use {ccrypto, json, Error};
+
+use ccrypto;
+use ckey::{Password, Private, Secret};
+use smallvec::SmallVec;
+
+use super::super::account::{Aes128Ctr, Cipher, Kdf, Pbkdf2, Prf};
+use super::super::random::Random;
+use super::super::{json, Error};
 
 /// Encrypted data
 #[derive(Debug, PartialEq, Clone)]

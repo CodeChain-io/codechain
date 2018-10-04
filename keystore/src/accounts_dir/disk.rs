@@ -14,14 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
-use super::KeyDirectory;
-use json::Uuid;
 use std::collections::HashMap;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::{fs, io};
+
 use time;
-use {json, Error, SafeAccount};
+
+use super::super::json::Uuid;
+use super::super::{json, Error, SafeAccount};
+use super::KeyDirectory;
 
 const IGNORED_FILES: &'static [&'static str] = &["thumbs.db"];
 
@@ -280,11 +282,12 @@ fn account_filename(account: &SafeAccount) -> String {
 mod test {
     extern crate tempdir;
 
-    use self::tempdir::TempDir;
-    use super::{KeyDirectory, RootDiskDirectory};
-    use account::SafeAccount;
-    use ckey::{Generator, Random};
     use std::{env, fs};
+
+    use ckey::{Generator, Random};
+
+    use self::tempdir::TempDir;
+    use super::*;
 
     #[test]
     fn create_new_account() {

@@ -14,12 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
-//! Universaly unique identifier.
-use super::Error;
+use std::{fmt, str};
+
 use rustc_hex::{FromHex, ToHex};
 use serde::de::{Error as SerdeError, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::{fmt, str};
+
+use super::Error;
 
 /// Universaly unique identifier.
 #[derive(Debug, PartialEq)]

@@ -14,11 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
-use super::crypto::Crypto;
-use account::Version;
 use ccrypto;
 use ckey::{sign, Address, KeyPair, Message, Password, Public, Signature};
-use {json, Error};
+
+use super::super::account::Version;
+use super::super::{json, Error};
+use super::crypto::Crypto;
 
 /// Account representation.
 #[derive(Debug, PartialEq, Clone)]
@@ -128,8 +129,8 @@ impl SafeAccount {
 
 #[cfg(test)]
 mod tests {
-    use super::SafeAccount;
-    use ckey::{verify, Generator, Message, Random};
+    use super::*;
+    use ckey::{verify, Generator, Random};
 
     #[test]
     fn sign_and_verify_public() {

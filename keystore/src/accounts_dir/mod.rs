@@ -17,7 +17,8 @@
 //! Accounts Directory
 
 use std::path::PathBuf;
-use {Error, SafeAccount};
+
+use super::{Error, SafeAccount};
 
 mod disk;
 mod memory;

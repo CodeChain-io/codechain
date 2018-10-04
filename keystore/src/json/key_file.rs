@@ -14,12 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
-use super::{Crypto, H160, Uuid, Version};
+use std::fmt;
+use std::io::{Read, Write};
+
 use serde::de::{DeserializeOwned, Error, MapAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json;
-use std::fmt;
-use std::io::{Read, Write};
+
+use super::{Crypto, H160, Uuid, Version};
 
 /// Public opaque type representing serializable `KeyFile`.
 #[derive(Debug, PartialEq)]
@@ -207,9 +209,11 @@ impl KeyFile {
 
 #[cfg(test)]
 mod tests {
-    use json::{Aes128Ctr, Cipher, Crypto, Kdf, KeyFile, Scrypt, Uuid, Version};
-    use serde_json;
     use std::str::FromStr;
+
+    use serde_json;
+
+    use super::super::super::json::{Aes128Ctr, Cipher, Crypto, Kdf, KeyFile, Scrypt, Uuid, Version};
 
     #[test]
     fn basic_keyfile() {

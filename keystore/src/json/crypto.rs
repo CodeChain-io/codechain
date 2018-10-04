@@ -14,12 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
-use super::{Bytes, Cipher, CipherSer, CipherSerParams, H256, Kdf, KdfSer, KdfSerParams};
+use std::{fmt, str};
+
 use serde::de::{Error, MapAccess, Visitor};
 use serde::ser::SerializeStruct;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json;
-use std::{fmt, str};
+
+use super::{Bytes, Cipher, CipherSer, CipherSerParams, H256, Kdf, KdfSer, KdfSerParams};
 
 pub type CipherText = Bytes;
 

@@ -30,11 +30,12 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ckey::{Address, Message, Password, Public, Secret, Signature};
-use json::{OpaqueKeyFile, Uuid};
 use std::path::PathBuf;
-use Error;
-use OpaqueSecret;
+
+use ckey::{Address, Message, Password, Public, Secret, Signature};
+
+use super::json::{OpaqueKeyFile, Uuid};
+use super::{Error, OpaqueSecret};
 
 
 /// Simple Secret Store API

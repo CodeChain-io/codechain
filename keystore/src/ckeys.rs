@@ -15,7 +15,8 @@
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
 pub use ckey::*;
-use json;
+
+use super::json;
 
 impl Into<json::H160> for Address {
     fn into(self) -> json::H160 {

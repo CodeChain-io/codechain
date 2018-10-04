@@ -14,19 +14,20 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
-use parking_lot::{Mutex, RwLock};
 use std::collections::BTreeMap;
 use std::mem;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
-use account::SafeAccount;
-use accounts_dir::KeyDirectory;
 use ccrypto::KEY_ITERATIONS;
 use ckey::{Address, KeyPair, Message, Password, Public, Secret, Signature};
-use json::{self, OpaqueKeyFile, Uuid};
-use random::Random;
-use {Error, OpaqueSecret, SecretStore, SimpleSecretStore};
+use parking_lot::{Mutex, RwLock};
+
+use super::account::SafeAccount;
+use super::accounts_dir::KeyDirectory;
+use super::json::{self, OpaqueKeyFile, Uuid};
+use super::random::Random;
+use super::{Error, OpaqueSecret, SecretStore, SimpleSecretStore};
 
 /// Accounts store.
 pub struct KeyStore {
@@ -404,11 +405,11 @@ impl SimpleSecretStore for KeyMultiStore {
 mod tests {
     extern crate tempdir;
 
-    use super::{KeyMultiStore, KeyStore};
-    use accounts_dir::MemoryDirectory;
-    use ckey::{Generator, KeyPair, Random};
+    use ckey::{Generator, Random};
     use primitives::H256;
-    use secret_store::{SecretStore, SimpleSecretStore};
+
+    use super::super::accounts_dir::MemoryDirectory;
+    use super::*;
 
     fn keypair() -> KeyPair {
         Random.generate().unwrap()
