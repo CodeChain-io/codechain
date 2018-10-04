@@ -17,7 +17,7 @@
 use std::str;
 
 use ccrypto;
-use ckey::{Password, Private, Secret};
+use ckey::{public_to_address, Address, KeyPair, Password, Private, Secret};
 use smallvec::SmallVec;
 
 use super::super::account::{Aes128Ctr, Cipher, Kdf, Pbkdf2, Prf};
@@ -122,6 +122,11 @@ impl Crypto {
 
         let secret = self.do_decrypt(password, 32)?;
         Ok(*Private::from_slice(&secret))
+    }
+
+    pub fn address(&self, password: &Password) -> Result<Address, Error> {
+        let private = self.secret(password)?;
+        Ok(public_to_address(KeyPair::from_private(private.into())?.public()))
     }
 
     /// Try to decrypt and return result as is

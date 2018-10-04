@@ -15,7 +15,7 @@
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
 use ccrypto;
-use ckey::{public_to_address, sign, Address, KeyPair, Message, Password, Public, Signature};
+use ckey::{sign, Address, KeyPair, Message, Password, Public, Signature};
 
 use super::super::account::Version;
 use super::super::{json, Error};
@@ -45,7 +45,7 @@ impl Into<json::KeyFile> for SafeAccount {
         json::KeyFile {
             id: From::from(self.id),
             version: self.version.into(),
-            address: self.address.into(),
+            address: Some(self.address.into()),
             crypto: self.crypto.into(),
             name: Some(self.name.into()),
             meta: Some(self.meta.into()),
@@ -83,18 +83,20 @@ impl SafeAccount {
         password: Option<&Password>,
     ) -> Result<Self, Error> {
         let crypto = Crypto::from(json.crypto);
-        let address = match password {
-            Some(password) => {
-                let address = json.address.into();
-                let private = crypto.secret(password)?;
-                let decrypted_address = public_to_address(KeyPair::from_private(private.into())?.public());
+        let address = match (json.address, password) {
+            (Some(address), Some(password)) => {
+                let address = address.into();
+                let decrypted_address = crypto.address(password)?;
                 if decrypted_address != address {
-                    return Err(Error::InvalidKeyFile("Address field is invalid".to_string()))
+                    Err(Error::InvalidKeyFile("Address field is invalid".to_string()))
+                } else {
+                    Ok(address)
                 }
-                address
             }
-            None => json.address.into(),
-        };
+            (None, Some(password)) => crypto.address(password),
+            (Some(address), None) => Ok(address.into()),
+            (None, None) => Err(Error::InvalidKeyFile("Cannot create account if address is not given".to_string())),
+        }?;
         Ok(SafeAccount {
             id: json.id.into(),
             version: json.version.into(),
