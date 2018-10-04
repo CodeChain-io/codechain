@@ -14,9 +14,18 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use primitives::{H160, H256, H512};
+use primitives::{H128, H160, H256, H512};
 use rcrypto::blake2b::Blake2b;
 use rcrypto::digest::Digest;
+
+/// BLAKE128
+pub fn blake128<T: AsRef<[u8]>>(s: T) -> H128 {
+    H128::blake(s)
+}
+
+pub fn blake128_with_key<T: AsRef<[u8]>>(s: T, key: &[u8]) -> H128 {
+    H128::blake_with_key(s, key)
+}
 
 /// BLAKE256
 pub fn blake256<T: AsRef<[u8]>>(s: T) -> H256 {
@@ -66,6 +75,7 @@ macro_rules! implement_blake {
     };
 }
 
+implement_blake!(H128, 16);
 implement_blake!(H160, 20);
 implement_blake!(H256, 32);
 implement_blake!(H512, 64);
@@ -93,6 +103,12 @@ mod tests {
     use std::panic::catch_unwind;
 
     use super::*;
+
+    #[test]
+    fn _blake128() {
+        let result = H128::blake(b"hello");
+        assert_eq!(H128::from("46fb7408d4f285228f4af516ea25851b"), result);
+    }
 
     #[test]
     fn _blake256() {
