@@ -69,6 +69,10 @@ pub trait SecretStore: SimpleSecretStore {
 
     /// Imports existing JSON wallet
     fn import_wallet(&self, json: &[u8], password: &Password, gen_id: bool) -> Result<Address, Error>;
+
+    /// Checks if password matches given account.
+    fn test_password(&self, account: &Address, password: &Password) -> Result<bool, Error>;
+
     /// Copies account between stores.
     fn copy_account(
         &self,
@@ -77,8 +81,6 @@ pub trait SecretStore: SimpleSecretStore {
         password: &Password,
         new_password: &Password,
     ) -> Result<(), Error>;
-    /// Checks if password matches given account.
-    fn test_password(&self, account: &Address, password: &Password) -> Result<bool, Error>;
 
     /// Returns a public key for given account.
     fn public(&self, account: &Address, password: &Password) -> Result<Public, Error>;

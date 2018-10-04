@@ -80,6 +80,10 @@ impl SimpleSecretStore for KeyStore {
         self.store.has_account(account)
     }
 
+    fn remove_account(&self, account: &Address, password: &Password) -> Result<(), Error> {
+        self.store.remove_account(account, password)
+    }
+
     fn change_password(
         &self,
         account: &Address,
@@ -91,10 +95,6 @@ impl SimpleSecretStore for KeyStore {
 
     fn export_account(&self, account: &Address, password: &Password) -> Result<OpaqueKeyFile, Error> {
         self.store.export_account(account, password)
-    }
-
-    fn remove_account(&self, account: &Address, password: &Password) -> Result<(), Error> {
-        self.store.remove_account(account, password)
     }
 
     fn sign(&self, account: &Address, password: &Password, message: &Message) -> Result<Signature, Error> {
