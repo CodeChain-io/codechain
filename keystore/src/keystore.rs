@@ -109,7 +109,7 @@ impl SecretStore for KeyStore {
 
     fn import_wallet(&self, json: &[u8], password: &Password, gen_id: bool) -> Result<Address, Error> {
         let json_keyfile =
-            json::KeyFile::load(json).map_err(|_| Error::InvalidKeyFile("Invalid JSON format".to_string()))?;
+            json::KeyFile::load(json).map_err(|err| Error::InvalidKeyFile(format!("Invalid JSON format: {}", err)))?;
         let mut safe_account = SafeAccount::from_file(json_keyfile, None);
 
         if gen_id {
