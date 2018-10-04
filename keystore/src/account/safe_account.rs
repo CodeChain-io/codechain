@@ -65,7 +65,7 @@ impl SafeAccount {
     ) -> Result<Self, ccrypto::Error> {
         Ok(SafeAccount {
             id,
-            version: Version::V1,
+            version: Version::V3,
             crypto: Crypto::with_secret(keypair.private(), password, iterations)?,
             address: keypair.address(),
             filename: None,
