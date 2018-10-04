@@ -207,7 +207,7 @@ pub fn execute(
                 stack.push(second)?;
             }
             Instruction::Copy(index) => {
-                let item = stack.get(*index as usize)?;
+                let item = stack.get((stack.len() - 1) - *index as usize)?;
                 stack.push(item)?
             }
             Instruction::Drop(index) => {
