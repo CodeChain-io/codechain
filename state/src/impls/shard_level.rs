@@ -159,7 +159,10 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
                 inputs,
                 outputs,
                 ..
-            } => self.transfer_asset(&transaction, sender, burns, inputs, outputs),
+            } => {
+                debug_assert!(outputs.len() <= 512);
+                self.transfer_asset(&transaction, sender, burns, inputs, outputs)
+            }
         }
     }
 
@@ -342,8 +345,10 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
                         &unlock_script,
                         &asset.parameters(),
                         &lock_script,
-                        transaction.hash_without_script(),
+                        transaction,
                         VMConfig::default(),
+                        &input.prev_out,
+                        burn,
                     )
                 }
                 // FIXME : Deliver full decode error
