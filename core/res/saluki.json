@@ -5,7 +5,7 @@
       "params": {
         "blockReward": "0x3b9aca00",
         "validators": [
-          "sccqytqv2vl2yutskhgrj4vrn4p4p2qfutfjgwtjzfj"
+          "sccqx74ftz8ct6yks4mq3u06g2wt07zxfqrss777pj2"
         ]
       }
     }
@@ -24,18 +24,18 @@
       "generic": "0xc180"
     },
     "score": "0x20000",
-    "author": "sccqytqv2vl2yutskhgrj4vrn4p4p2qfutfjgwtjzfj",
+    "author": "sccqx74ftz8ct6yks4mq3u06g2wt07zxfqrss777pj2",
     "timestamp": "0x00",
     "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
     "extraData": "0x"
   },
   "accounts": {
-    "sccqytqv2vl2yutskhgrj4vrn4p4p2qfutfjgwtjzfj":  { "balance": "2100000000000000000", "nonce": "0" }
+    "sccqx74ftz8ct6yks4mq3u06g2wt07zxfqrss777pj2":  { "balance": "2100000000000000000", "nonce": "0" }
   },
   "shards": {
     "0": {
       "nonce": 0,
-      "owners": ["sccqytqv2vl2yutskhgrj4vrn4p4p2qfutfjgwtjzfj"],
+      "owners": ["sccqx74ftz8ct6yks4mq3u06g2wt07zxfqrss777pj2"],
       "worlds": [{
         "nonce": 0,
         "owners": [
