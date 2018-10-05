@@ -560,6 +560,7 @@ dependencies = [
  "codechain-key 0.1.0",
  "codechain-types 0.1.0",
  "primitives 0.1.0",
+ "rlp 0.2.1",
  "secp256k1 0.5.7",
 ]
 

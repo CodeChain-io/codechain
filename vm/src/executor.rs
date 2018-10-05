@@ -16,7 +16,10 @@
 
 use ccrypto::{blake256, keccak256, ripemd160, sha256, Blake};
 use ckey::{verify, Public, Signature, SIGNATURE_LENGTH};
-use primitives::{H160, H256};
+use ctypes::transaction::{AssetOutPoint, HashingError, PartialHashing};
+
+use primitives::H160;
+
 
 use instruction::{has_expensive_opcodes, is_valid_unlock_script, Instruction};
 
@@ -47,6 +50,15 @@ pub enum RuntimeError {
     IndexOutOfBound,
     StackUnderflow,
     TypeMismatch,
+    InvalidFilter,
+}
+
+impl From<HashingError> for RuntimeError {
+    fn from(error: HashingError) -> Self {
+        match error {
+            HashingError::InvalidFilter => RuntimeError::InvalidFilter,
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -143,8 +155,10 @@ pub fn execute(
     unlock: &[Instruction],
     params: &[Vec<u8>],
     lock: &[Instruction],
-    tx_hash: H256,
+    tx: &PartialHashing,
     config: Config,
+    cur: &AssetOutPoint,
+    burn: bool,
 ) -> Result<ScriptResult, RuntimeError> {
     // FIXME: don't merge scripts
 
@@ -215,6 +229,8 @@ pub fn execute(
             }
             Instruction::ChkSig => {
                 let pubkey = Public::from_slice(stack.pop()?.assert_len(64)?.as_ref());
+                let tx_hash = tx.hash_partially(stack.pop()?.as_ref().to_vec(), cur, burn)?;
+                println!("{:?}", tx_hash);
                 let signature = Signature::from(Signature::from(stack.pop()?.assert_len(SIGNATURE_LENGTH)?.as_ref()));
                 let result = match verify(&pubkey, &signature, &tx_hash) {
                     Ok(true) => 1,
