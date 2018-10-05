@@ -62,4 +62,14 @@ fn panic_hook(info: &PanicInfo) {
     let _ = writeln!(stderr, "Thread '{}' panicked at '{}', {}:{}", name, msg, file, line);
 
     let _ = writeln!(stderr, "{}", ABOUT_PANIC);
+
+    exit_on_debug_mode();
 }
+
+#[cfg(debug_assertions)]
+fn exit_on_debug_mode() {
+    std::process::exit(-1);
+}
+
+#[cfg(not(debug_assertions))]
+fn exit_on_debug_mode() {}
