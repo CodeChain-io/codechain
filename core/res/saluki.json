@@ -3,7 +3,7 @@
   "engine": {
     "simplePoA": {
       "params": {
-        "blockReward": "0xba43b7400",
+        "blockReward": "0x3b9aca00",
         "validators": [
           "sccqytqv2vl2yutskhgrj4vrn4p4p2qfutfjgwtjzfj"
         ]
