@@ -81,7 +81,7 @@ impl TryStream {
     fn read_len_of_len(&mut self, mut bytes: Vec<u8>) -> io::Result<(usize, Vec<u8>)> {
         debug_assert_eq!(None, self.read);
         debug_assert_eq!(1, bytes.len());
-        debug_assert!(bytes[0] >= 0xf7);
+        debug_assert!(bytes[0] > 0xf7);
         let len_of_len = (bytes[0] - 0xf7) as usize;
         debug_assert!(len_of_len <= 8);
         bytes.resize(1 + len_of_len, 0);
@@ -119,7 +119,7 @@ impl TryStream {
                 return Ok((0, vec![]))
             }
             debug_assert_eq!(1, read_size);
-            if bytes[0] >= 0xf7 {
+            if bytes[0] >= 0xf8 {
                 return Ok(self.read_len_of_len(bytes)?)
             }
             if bytes[0] >= 0xc0 {
