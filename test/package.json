@@ -30,6 +30,7 @@
     "seedrandom": "^2.4.4",
     "ts-jest": "^22.4.6",
     "ts-node": "^7.0.0",
-    "typescript": "^2.9.2"
+    "typescript": "^2.9.2",
+    "codechain-test-helper": "https://github.com/CodeChain-io/codechain-test-helper-js.git#a4a9c26635a52395dfd17733eef66b18a144fd00"
   }
 }
