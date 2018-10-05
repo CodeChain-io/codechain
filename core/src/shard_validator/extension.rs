@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::collections::{HashMap, HashSet};
+use std::ops::Deref;
 use std::sync::Arc;
 
 use ckey::{Address, Signature};
@@ -35,7 +36,7 @@ pub struct ShardValidator {
     api: RwLock<Option<Arc<Api>>>,
     nodes: RwLock<HashSet<NodeId>>,
 
-    actions: RwLock<HashMap<H256, Action>>,
+    actions: RwLock<HashMap<H256, RegisteredAction>>,
     signatures: RwLock<HashMap<H256, HashSet<Signature>>>,
 }
 
@@ -59,8 +60,8 @@ impl ShardValidator {
 }
 
 fn register_action(
-    action: Action,
-    actions: &mut HashMap<H256, Action>,
+    action: RegisteredAction,
+    actions: &mut HashMap<H256, RegisteredAction>,
     account_provider: &AccountProvider,
     account: &Option<Address>,
 ) -> Result<RegisterActionOutcome, AccountProviderError> {
@@ -82,7 +83,7 @@ fn register_action(
 impl ShardValidatorClient for ShardValidator {
     fn register_action(&self, action: Action) -> bool {
         let mut actions = self.actions.write();
-        match register_action(action, &mut actions, &self.account_provider, &self.account) {
+        match register_action(RegisteredAction::Local(action), &mut actions, &self.account_provider, &self.account) {
             Err(_) => false,
             Ok(RegisterActionOutcome::AlreadyExists) => false,
             _ => true,
@@ -143,7 +144,12 @@ impl NetworkExtension for ShardValidator {
 
                 let action_hash = action.hash();
 
-                match register_action(action.clone(), &mut actions, &self.account_provider, &self.account) {
+                match register_action(
+                    RegisteredAction::External(action.clone()),
+                    &mut actions,
+                    &self.account_provider,
+                    &self.account,
+                ) {
                     Err(err) => {
                         cerror!(SHARD_VALIDATOR, "Cannot sign new action {:?}", err);
                     }
@@ -200,7 +206,7 @@ impl NetworkExtension for ShardValidator {
 
                 if let Some(action) = actions.get(&action_hash) {
                     let api = api.as_ref().expect("The extension must be initialized first");
-                    api.send(from, &Message::Action(action.clone()).rlp_bytes());
+                    api.send(from, &Message::Action((*action).clone()).rlp_bytes());
                 }
             }
         }
@@ -226,4 +232,20 @@ fn insert_signatures(
         }
     }
     new_signatures
+}
+
+enum RegisteredAction {
+    Local(Action),
+    External(Action),
+}
+
+impl Deref for RegisteredAction {
+    type Target = Action;
+
+    fn deref(&self) -> &<Self as Deref>::Target {
+        match self {
+            RegisteredAction::Local(action) => action,
+            RegisteredAction::External(action) => action,
+        }
+    }
 }
