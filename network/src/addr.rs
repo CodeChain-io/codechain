@@ -18,6 +18,7 @@ use std::cmp::Ordering;
 use std::convert::{From, Into};
 use std::fmt;
 use std::net::{self, AddrParseError, IpAddr, Ipv4Addr};
+use std::ops::Deref;
 use std::str::FromStr;
 
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
@@ -134,9 +135,11 @@ impl From<SocketAddr> for net::SocketAddr {
     }
 }
 
-impl<'a> From<&'a SocketAddr> for &'a net::SocketAddr {
-    fn from(socket: &'a SocketAddr) -> Self {
-        &socket.addr
+impl Deref for SocketAddr {
+    type Target = net::SocketAddr;
+
+    fn deref(&self) -> &<Self as Deref>::Target {
+        &self.addr
     }
 }
 

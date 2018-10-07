@@ -56,7 +56,7 @@ impl Message {
         unencrypted_data: &[u8],
         session: &Session,
     ) -> Result<Self, SymmetricCipherError> {
-        let data = Data::Encrypted(aes::encrypt(unencrypted_data, session.secret(), session.id().into())?);
+        let data = Data::Encrypted(aes::encrypt(unencrypted_data, session.secret(), session.id())?);
         Ok(Self {
             version: 0,
             extension_name,
@@ -82,7 +82,7 @@ impl Message {
 
     pub fn unencrypted_data(&self, session: &Session) -> Result<Vec<u8>, SymmetricCipherError> {
         match self.data {
-            Data::Encrypted(ref data) => aes::decrypt(&data, session.secret(), session.id().into()),
+            Data::Encrypted(ref data) => aes::decrypt(&data, session.secret(), session.id()),
             Data::Unencrypted(ref data) => Ok(data.clone()),
         }
     }
