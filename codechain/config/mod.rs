@@ -354,7 +354,7 @@ impl Operating {
             self.password_path = Some(password_path.to_string());
         }
         if let Some(chain) = matches.value_of("chain") {
-            self.chain = Some(chain.parse()?);
+            self.chain = Some(chain.parse().unwrap());
         }
         Ok(())
     }

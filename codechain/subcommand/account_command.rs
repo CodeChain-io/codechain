@@ -43,7 +43,8 @@ pub fn run_account_command(matches: ArgMatches) -> Result<(), String> {
     let keystore = KeyStore::open(Box::new(dir)).unwrap();
     let ap = AccountProvider::new(keystore);
     let chain = get_global_argument(&matches, "chain").unwrap_or("solo".into());
-    let network_id: NetworkId = ChainType::from_str(chain.as_ref())?.scheme().map(|scheme| scheme.params().network_id)?;
+    let chain_type: ChainType = chain.parse().unwrap();
+    let network_id: NetworkId = chain_type.scheme().map(|scheme| scheme.params().network_id)?;
 
     match matches.subcommand() {
         ("create", _) => create(&ap, network_id),
