@@ -51,10 +51,10 @@ impl ShardValidator {
         Arc::new(Self {
             account,
             account_provider,
-            api: RwLock::new(None),
-            nodes: RwLock::new(HashSet::new()),
-            actions: RwLock::new(HashMap::new()),
-            signatures: RwLock::new(HashMap::new()),
+            api: RwLock::default(),
+            nodes: RwLock::default(),
+            actions: RwLock::default(),
+            signatures: RwLock::default(),
         })
     }
 }
@@ -93,7 +93,7 @@ impl ShardValidatorClient for ShardValidator {
     fn signatures(&self, action_hash: &H256) -> Vec<Signature> {
         let signatures = self.signatures.read();
         match signatures.get(&action_hash) {
-            Some(signatures) => signatures.iter().map(|s| s.clone()).collect(),
+            Some(signatures) => signatures.iter().map(Clone::clone).collect(),
             None => vec![],
         }
     }
@@ -156,12 +156,13 @@ impl NetworkExtension for ShardValidator {
                     Ok(RegisterActionOutcome::AlreadyExists) => return,
                     Ok(RegisterActionOutcome::Registered) => {}
                     Ok(RegisterActionOutcome::Signed(signature)) => {
-                        let new_signatures = insert_signatures(&mut signatures_map, &action_hash, &[signature.clone()]);
+                        let signatures = vec![signature];
+                        let new_signatures = insert_signatures(&mut signatures_map, action_hash, &signatures);
                         debug_assert_eq!(1, new_signatures.len());
 
                         let message = Message::Signatures {
                             action_hash,
-                            signatures: vec![signature],
+                            signatures,
                         }.rlp_bytes();
 
                         let api = api.as_ref().expect("The extension must be initialized first");
@@ -187,7 +188,7 @@ impl NetworkExtension for ShardValidator {
                 let nodes = self.nodes.read();
                 let mut signatures_map = self.signatures.write();
 
-                let new_signatures = insert_signatures(&mut signatures_map, &action_hash, &signatures);
+                let new_signatures = insert_signatures(&mut signatures_map, action_hash, &signatures);
                 if !new_signatures.is_empty() {
                     cinfo!(SHARD_VALIDATOR, "New signatures({:?}) is received from {:?}", new_signatures, from);
                     let message = Message::Signatures {
@@ -216,17 +217,13 @@ impl NetworkExtension for ShardValidator {
 
 fn insert_signatures(
     signatures_map: &mut HashMap<H256, HashSet<Signature>>,
-    action_hash: &H256,
+    action_hash: H256,
     signatures: &[Signature],
 ) -> Vec<Signature> {
-    if !signatures_map.contains_key(action_hash) {
-        let t = signatures_map.insert(*action_hash, HashSet::new());
-        debug_assert_eq!(None, t);
-    }
-    let signatures_set = signatures_map.get_mut(action_hash).unwrap();
+    let signatures_set = signatures_map.entry(action_hash).or_insert_with(HashSet::new);
     let mut new_signatures = Vec::with_capacity(signatures.len());
     for signature in signatures.into_iter() {
-        let t = signatures_set.insert(signature.clone());
+        let t = signatures_set.insert(*signature);
         if t {
             new_signatures.push(signature.clone());
         }
