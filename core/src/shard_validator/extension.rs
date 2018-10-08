@@ -18,7 +18,7 @@ use std::collections::{HashMap, HashSet};
 use std::ops::Deref;
 use std::sync::Arc;
 
-use ckey::{Address, Signature};
+use ckey::{recover, Address, Error as KeyError, Public, Signature};
 use cnetwork::{Api, NetworkExtension, NodeId};
 use ctypes::parcel::Action;
 use parking_lot::RwLock;
@@ -42,7 +42,7 @@ pub struct ShardValidator<C: Shard, M: MinerService> {
     nodes: RwLock<HashSet<NodeId>>,
 
     actions: RwLock<HashMap<H256, RegisteredAction>>,
-    signatures: RwLock<HashMap<H256, HashSet<Signature>>>,
+    signatures: RwLock<HashMap<H256, HashSet<RecoveredSignature>>>,
 }
 
 enum RegisterActionOutcome {
@@ -106,7 +106,7 @@ impl<C: Shard + Send + Sync, M: MinerService> ShardValidatorClient for ShardVali
     fn signatures(&self, action_hash: &H256) -> Vec<Signature> {
         let signatures = self.signatures.read();
         match signatures.get(&action_hash) {
-            Some(signatures) => signatures.iter().map(Clone::clone).collect(),
+            Some(signatures) => signatures.iter().map(|signature| **signature).collect(),
             None => vec![],
         }
     }
@@ -170,8 +170,15 @@ impl<C: Shard + Send + Sync, M: MinerService> NetworkExtension for ShardValidato
                     Ok(RegisterActionOutcome::Registered) => {}
                     Ok(RegisterActionOutcome::Signed(signature)) => {
                         let signatures = vec![signature];
-                        let new_signatures = insert_signatures(&mut signatures_map, action_hash, &signatures);
-                        debug_assert_eq!(1, new_signatures.len());
+                        match insert_signatures(&mut signatures_map, action_hash, &signatures) {
+                            Ok(new_signatures) => {
+                                debug_assert_eq!(signatures, new_signatures);
+                            }
+                            Err(err) => {
+                                cwarn!(SHARD_VALIDATOR, "Invalid signature: {}", err);
+                                return
+                            }
+                        };
 
                         let message = Message::Signatures {
                             action_hash,
@@ -201,7 +208,13 @@ impl<C: Shard + Send + Sync, M: MinerService> NetworkExtension for ShardValidato
                 let nodes = self.nodes.read();
                 let mut signatures_map = self.signatures.write();
 
-                let new_signatures = insert_signatures(&mut signatures_map, action_hash, &signatures);
+                let new_signatures = match insert_signatures(&mut signatures_map, action_hash, &signatures) {
+                    Ok(new_signatures) => new_signatures,
+                    Err(err) => {
+                        cwarn!(SHARD_VALIDATOR, "Invalid signature: {}", err);
+                        return
+                    }
+                };
                 if !new_signatures.is_empty() {
                     cinfo!(SHARD_VALIDATOR, "New signatures({:?}) is received from {:?}", new_signatures, from);
                     let message = Message::Signatures {
@@ -229,19 +242,19 @@ impl<C: Shard + Send + Sync, M: MinerService> NetworkExtension for ShardValidato
 
 
 fn insert_signatures(
-    signatures_map: &mut HashMap<H256, HashSet<Signature>>,
+    signatures_map: &mut HashMap<H256, HashSet<RecoveredSignature>>,
     action_hash: H256,
     signatures: &[Signature],
-) -> Vec<Signature> {
+) -> Result<Vec<Signature>, KeyError> {
     let signatures_set = signatures_map.entry(action_hash).or_insert_with(HashSet::new);
     let mut new_signatures = Vec::with_capacity(signatures.len());
     for signature in signatures.into_iter() {
-        let t = signatures_set.insert(*signature);
+        let t = signatures_set.insert(RecoveredSignature::try_new(*signature, &action_hash)?);
         if t {
-            new_signatures.push(signature.clone());
+            new_signatures.push(*signature);
         }
     }
-    new_signatures
+    Ok(new_signatures)
 }
 
 enum RegisteredAction {
@@ -257,5 +270,29 @@ impl Deref for RegisteredAction {
             RegisteredAction::Local(action) => action,
             RegisteredAction::External(action) => action,
         }
+    }
+}
+
+#[derive(Debug, Eq, PartialEq, Hash)]
+struct RecoveredSignature {
+    signature: Signature,
+    public: Public,
+}
+
+impl Deref for RecoveredSignature {
+    type Target = Signature;
+
+    fn deref(&self) -> &<Self as Deref>::Target {
+        &self.signature
+    }
+}
+
+impl RecoveredSignature {
+    fn try_new(signature: Signature, message: &H256) -> Result<Self, KeyError> {
+        let public = recover(&signature, message)?;
+        Ok(Self {
+            signature,
+            public,
+        })
     }
 }
