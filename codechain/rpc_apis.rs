@@ -25,7 +25,7 @@ pub struct ApiDependencies {
     pub miner: Arc<Miner>,
     pub network_control: Arc<NetworkControl>,
     pub account_provider: Arc<AccountProvider>,
-    pub shard_validator: Option<Arc<ShardValidator>>,
+    pub shard_validator: Option<Arc<ShardValidator<Miner>>>,
 }
 
 impl ApiDependencies {
