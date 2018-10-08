@@ -1,18 +1,12 @@
 {
   "compilerOptions": {
     "target": "es2015",
-    "types": [
-      "node"
-    ],
+    "types": ["ts-jest", "node"],
     "module": "commonjs",
     "declaration": true,
     "outDir": "lib",
     "strict": true
   },
-  "include": [
-    "./src/**/*",
-  ],
-  "exclude": [
-    "./src/**/*.test.ts"
-  ]
+  "include": ["./src/**/*"],
+  "exclude": ["./src/**/*.test.ts"]
 }
