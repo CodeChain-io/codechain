@@ -20,9 +20,13 @@ Data Part: `version` . `body`
 
 ### Version 0 (0x00)
 
+No longer available. Any version 0 address will be rejected in the latest clients.
+
+### Version 1 (0x01)
+
 Data body: `Account ID` (20 bytes)
 
-Account ID is a result of ripemd160 of blake256 of a public key(64 bytes uncompressed form).
+Account ID is the result of blake160 over a public key(64 bytes uncompressed form).
 
 ## 2. Asset Transfer Address Format
 
@@ -32,11 +36,15 @@ Data: `version` . `body`
 
 ### Version 0 (0x00)
 
+No longer available. Any version 0 address will be rejected in the latest clients.
+
+### Version 1 (0x01)
+
 Data body: `type` . `payload`
 
 #### Type 0 (0x00)
 
-Payload: \<LockScriptHash> (32 bytes)
+Payload: \<LockScriptHash> (20 bytes)
 
 Type 0 with given payload represents:
  * Lock Script Hash: \<LockScriptHash>
@@ -44,29 +52,29 @@ Type 0 with given payload represents:
 
 #### Type 1 (0x01)
 
-Payload: \<Public Key Hash> (32 bytes)
+Payload: \<Public Key Hash> (20 bytes)
 
 Type 1 with the given payload represents:
- * Lock Script Hash: P2PKH Standard Script Hash (f42a65ea518ba236c08b261c34af0521fa3cd1aa505e1c18980919cb8945f8f3)
+ * Lock Script Hash: P2PKH Standard Script Hash (5f5960a7bca6ceeeb0c97bc717562914e7a1de04)
  * Parameters: [\<Public Key Hash>]
 
 #### Type 2 (0x02)
 
-Payload: \<Public Key Hash> (32 bytes)
+Payload: \<Public Key Hash> (20 bytes)
 
 Type 2 with the given payload represents:
- * Lock Script Hash: P2PKHBurn Standard Script Hash (41a872156efc1dbd45a85b49896e9349a4e8f3fb1b8f3ed38d5e13ef675bcd5a)
+ * Lock Script Hash: P2PKHBurn Standard Script Hash (37572bdcc22d39a59c0d12d301f6271ba3fdd451)
  * Parameters: [\<Public Key Hash>]
 
 ---
 
 ## Address examples
 
-* Platform Account Address: `cccqr00re3uxwyqzhekvv7xvl89gy6xqqvkgumle84m`
-  * version = `0`
-  * payload(Account ID) = `def1e63c3388015f36633c667ce5413460019647`
+* Platform Account Address: `cccqx37a03l3axrz3qmtdywgjuyuvr099dueuqvjxp3`
+  * version = `1`
+  * payload(Account ID) = `a3eebe3f8f4c31441b5b48e44b84e306f295bccf`
 
-* Asset Transfer Address: `ccaqqpt5grt3heha7tzmg7yd0qay6fy7ljp9ht65qnf6zkqecs3khtup6q927zxd`
-  * version = `0`
+* Asset Transfer Address: `ccaqypf8czlf67sds30ylddl4hxzcr7lml73wqqypt3ua`
+  * version = `1`
   * type = `2`
-  * payload(Public key hash) = `ba206b8df37ef962da3c46bc1d26924f7e412dd7aa0269d0ac0ce211b5d7c0e8`
+  * payload(blake160 of public key) = `93e05f4ebd06c22f27dadfd6e61607efeffe8b80`
