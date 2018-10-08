@@ -25,11 +25,14 @@ use parking_lot::RwLock;
 use primitives::H256;
 use rlp::{Decodable, Encodable, UntrustedRlp};
 
-use super::super::{AccountProvider, AccountProviderError};
+use super::super::{AccountProvider, AccountProviderError, Client};
 use super::client::ShardValidatorClient;
 use super::message::Message;
 
 pub struct ShardValidator {
+    #[allow(dead_code)]
+    client: Arc<Client>,
+
     account: Option<Address>,
     account_provider: Arc<AccountProvider>,
 
@@ -47,8 +50,10 @@ enum RegisterActionOutcome {
 }
 
 impl ShardValidator {
-    pub fn new(account: Option<Address>, account_provider: Arc<AccountProvider>) -> Arc<Self> {
+    pub fn new(client: Arc<Client>, account: Option<Address>, account_provider: Arc<AccountProvider>) -> Arc<Self> {
         Arc::new(Self {
+            client,
+
             account,
             account_provider,
             api: RwLock::default(),
