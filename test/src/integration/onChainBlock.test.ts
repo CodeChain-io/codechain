@@ -26,7 +26,7 @@ describe("Test onChain block communication", async () => {
     let soloBlock1: Header;
     let soloBlock2: Header;
 
-    const VALID_PARENT = new H256(
+    let VALID_PARENT = new H256(
         "ff8324bd3b0232e4fd1799496ae422ee0896cc7a8a64a2885052e320b4ba9535"
     );
     const INVALID_PARENT = new H256(
@@ -36,25 +36,25 @@ describe("Test onChain block communication", async () => {
     const INVALID_TIMESTAMP = new U256(1537509962);
     const VALID_NUMBER = new U256(1);
     const INVALID_NUMBER = new U256(2);
-    const VALID_AUTHOR = new H160("7777777777777777777777777777777777777777");
+    let VALID_AUTHOR = new H160("7777777777777777777777777777777777777777");
     const INVALID_AUTHOR = new H160(
         "0xffffffffffffffffffffffffffffffffffffffff"
     );
     const VALID_EXTRADATA = Buffer.alloc(0);
     const INVALID_EXTRADATA = new Buffer("DEADBEEF");
-    const VALID_PARCELROOT = new H256(
+    let VALID_PARCELROOT = new H256(
         "45b0cfc220ceec5b7c1c62c4d4193d38e4eba48e8815729ce75f9c0ab0e4c1c0"
     );
     const INVALID_PARCELROOT = new H256(
         "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
     );
-    const VALID_STATEROOT = new H256(
+    let VALID_STATEROOT = new H256(
         "2f6b19afc38f6f1464af20dde08d8bebd6a6aec0a95aaf7ef2fb729c3b88dc5b"
     );
     const INVALID_STATEROOT = new H256(
         "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
     );
-    const VALID_INVOICEROOT = new H256(
+    let VALID_INVOICEROOT = new H256(
         "45b0cfc220ceec5b7c1c62c4d4193d38e4eba48e8815729ce75f9c0ab0e4c1c0"
     );
     const INVALID_INVOICEROOT = new H256(
@@ -62,7 +62,7 @@ describe("Test onChain block communication", async () => {
     );
     const VALID_SCORE = new U256(999999999999999);
     const INVALID_SCORE = new U256(9999999999999999999999999999999999999999);
-    const VALID_SEAL = [];
+    let VALID_SEAL = [];
     const INVALID_SEAL = [new Buffer("DEADBEEF")];
 
     const testArray = [
@@ -252,6 +252,13 @@ describe("Test onChain block communication", async () => {
             new U256(33333333333333),
             block2.seal
         );
+
+        VALID_PARENT = block1.parentHash;
+        VALID_AUTHOR = block1.author.accountId;
+        VALID_PARCELROOT = block1.parcelsRoot;
+        VALID_STATEROOT = block1.stateRoot;
+        VALID_INVOICEROOT = block1.invoicesRoot;
+        VALID_SEAL = block1.seal;
     });
 
     beforeEach(async () => {
@@ -319,6 +326,13 @@ describe("Test onChain block communication", async () => {
                 tscore,
                 tseal
             ) => {
+                tparent = VALID_PARENT;
+                tauthor = VALID_AUTHOR;
+                tparcelRoot = VALID_PARCELROOT;
+                tstateRoot = VALID_STATEROOT;
+                tinvoiceRoot = VALID_INVOICEROOT;
+                tseal = VALID_SEAL;
+
                 jest.setTimeout(30000);
 
                 // Genesis block
