@@ -18,6 +18,7 @@ use std::str::FromStr;
 use std::{fmt, fs};
 
 use ccore::Scheme;
+use never::Never;
 
 #[derive(Clone, Debug, PartialEq, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -41,7 +42,7 @@ impl Default for ChainType {
 }
 
 impl FromStr for ChainType {
-    type Err = String;
+    type Err = Never;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let scheme = match s {

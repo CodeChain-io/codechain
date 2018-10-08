@@ -41,12 +41,6 @@ impl str::FromStr for Crypto {
     }
 }
 
-impl From<Crypto> for String {
-    fn from(c: Crypto) -> Self {
-        serde_json::to_string(&c).expect("serialization cannot fail, cause all crypto keys are strings")
-    }
-}
-
 enum CryptoField {
     Cipher,
     CipherParams,

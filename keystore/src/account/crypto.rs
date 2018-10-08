@@ -67,12 +67,6 @@ impl str::FromStr for Crypto {
     }
 }
 
-impl From<Crypto> for String {
-    fn from(c: Crypto) -> Self {
-        json::Crypto::from(c).into()
-    }
-}
-
 impl Crypto {
     /// Encrypt account secret
     pub fn with_secret(secret: &Secret, password: &Password, iterations: u32) -> Result<Self, ccrypto::Error> {

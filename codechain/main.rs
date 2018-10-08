@@ -44,6 +44,7 @@ extern crate codechain_types as ctypes;
 extern crate ctrlc;
 extern crate env_logger;
 extern crate fdlimit;
+extern crate never;
 extern crate panic_hook;
 extern crate parking_lot;
 extern crate primitives;

@@ -46,21 +46,6 @@ impl PlatformAddress {
         }
     }
 
-    fn to_string(&self) -> String {
-        assert!(check_network_id(&self.network_id));
-        let hrp = format!("{}c", self.network_id.to_string());
-        let mut data = Vec::new();
-        data.push(self.version);
-        data.extend(&self.address.to_vec());
-        let mut encoded = Bech32 {
-            hrp,
-            data: rearrange_bits(&data, 8, 5),
-        }.to_string()
-            .unwrap();
-        encoded.remove(3);
-        encoded
-    }
-
     pub fn address(&self) -> &Address {
         self.try_address().unwrap()
     }
@@ -120,7 +105,18 @@ fn rearrange_bits(data: &[u8], from: usize, into: usize) -> Vec<u8> {
 
 impl fmt::Display for PlatformAddress {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.to_string())
+        assert!(check_network_id(&self.network_id));
+        let hrp = format!("{}c", self.network_id.to_string());
+        let mut data = Vec::new();
+        data.push(self.version);
+        data.extend(&self.address.to_vec());
+        let mut encoded = Bech32 {
+            hrp,
+            data: rearrange_bits(&data, 8, 5),
+        }.to_string()
+            .unwrap();
+        encoded.remove(3);
+        write!(f, "{}", encoded)
     }
 }
 
@@ -168,7 +164,7 @@ impl FromStr for PlatformAddress {
 
 impl From<&'static str> for PlatformAddress {
     fn from(s: &'static str) -> Self {
-        s.parse().unwrap()
+        s.parse().expect(&format!("invalid string literal for {}: '{}'", stringify!(Self), s))
     }
 }
 

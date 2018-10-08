@@ -94,9 +94,9 @@ impl From<bool> for Item {
     }
 }
 
-impl Into<bool> for Item {
-    fn into(self) -> bool {
-        self.as_ref().iter().find(|b| **b != 0).is_some()
+impl From<Item> for bool {
+    fn from(item: Item) -> Self {
+        item.as_ref().iter().any(|b| b != &0)
     }
 }
 
@@ -267,5 +267,40 @@ pub fn execute(
         Ok(ScriptResult::Unlocked)
     } else {
         Ok(ScriptResult::Fail)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn convert_true() {
+        let item: Item = true.into();
+        assert_eq!(vec![1], item.as_ref());
+        let result: bool = item.into();
+        assert!(result);
+    }
+
+    #[test]
+    fn convert_false() {
+        let item: Item = false.into();
+        assert_eq!(Vec::<u8>::new(), item.as_ref());
+        let result: bool = item.into();
+        assert!(!result);
+    }
+
+    #[test]
+    fn false_if_all_bit_is_zero() {
+        let item = Item(vec![0, 0, 0, 0, 0, 0, 0]);
+        let result: bool = item.into();
+        assert!(!result);
+    }
+
+    #[test]
+    fn true_if_at_least_one_bit_is_not_zero() {
+        let item = Item(vec![0, 0, 0, 1, 0, 0, 0]);
+        let result: bool = item.into();
+        assert!(result);
     }
 }

@@ -42,9 +42,9 @@ impl From<Vec<u8>> for Bytes {
     }
 }
 
-impl Into<Vec<u8>> for Bytes {
-    fn into(self) -> Vec<u8> {
-        self.0
+impl From<Bytes> for Vec<u8> {
+    fn from(b: Bytes) -> Self {
+        b.0
     }
 }
 

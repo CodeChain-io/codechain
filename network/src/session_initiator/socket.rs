@@ -88,14 +88,14 @@ impl From<DecoderError> for Error {
 const MAX_PACKET_SIZE: usize = 1024;
 impl Socket {
     pub fn bind(socket_address: &SocketAddr) -> Result<Self> {
-        let socket = UdpSocket::bind(socket_address.into())?;
+        let socket = UdpSocket::bind(socket_address)?;
         Ok(Self {
             socket,
         })
     }
 
     fn write_bytes(&self, message: &[u8], target: &SocketAddr) -> Result<usize> {
-        Ok(self.socket.send_to(&message, target.into())?)
+        Ok(self.socket.send_to(&message, target)?)
     }
 
     fn read_bytes(&self) -> Result<Option<(Vec<u8>, SocketAddr)>> {
@@ -155,9 +155,9 @@ impl From<UdpSocket> for Socket {
     }
 }
 
-impl Into<UdpSocket> for Socket {
-    fn into(self) -> UdpSocket {
-        self.socket
+impl From<Socket> for UdpSocket {
+    fn from(socket: Socket) -> Self {
+        socket.socket
     }
 }
 

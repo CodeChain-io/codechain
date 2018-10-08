@@ -28,9 +28,9 @@ pub struct PodWorld {
     pub users: Vec<Address>,
 }
 
-impl<'a> Into<World> for &'a PodWorld {
-    fn into(self) -> World {
-        World::new_with_nonce(self.owners.clone(), self.users.clone(), self.nonce)
+impl<'a> From<&'a PodWorld> for World {
+    fn from(pod: &'a PodWorld) -> Self {
+        World::new_with_nonce(pod.owners.clone(), pod.users.clone(), pod.nonce)
     }
 }
 

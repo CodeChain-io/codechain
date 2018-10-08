@@ -46,7 +46,7 @@ impl FromStr for NetworkId {
 
 impl From<&'static str> for NetworkId {
     fn from(s: &'static str) -> Self {
-        s.parse().unwrap()
+        s.parse().expect(&format!("invalid string literal for {}: '{}'", stringify!(Self), s))
     }
 }
 

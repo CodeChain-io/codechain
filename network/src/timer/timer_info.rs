@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::fmt;
 use std::result;
-use std::string::ToString;
 
 use climited_table::{Key as TimerToken, LimitedTable};
 use ctable::Table;
@@ -26,11 +26,11 @@ pub enum Error {
     NoSpace,
 }
 
-impl ToString for Error {
-    fn to_string(&self) -> String {
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Error::DuplicatedTimerId => "Duplicated timer id".to_string(),
-            Error::NoSpace => "No space".to_string(),
+            Error::DuplicatedTimerId => write!(f, "Duplicated timer id"),
+            Error::NoSpace => write!(f, "No space"),
         }
     }
 }

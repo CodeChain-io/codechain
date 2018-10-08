@@ -16,6 +16,7 @@
 
 //! Lenient bytes json deserialization for test json files.
 
+use never::Never;
 use rustc_hex::FromHex;
 use serde::de::{Error, Visitor};
 use serde::{Deserialize, Deserializer};
@@ -34,9 +35,9 @@ impl Bytes {
     }
 }
 
-impl Into<Vec<u8>> for Bytes {
-    fn into(self) -> Vec<u8> {
-        self.0
+impl From<Bytes> for Vec<u8> {
+    fn from(b: Bytes) -> Self {
+        b.0
     }
 }
 
@@ -49,7 +50,7 @@ impl Deref for Bytes {
 }
 
 impl FromStr for Bytes {
-    type Err = String;
+    type Err = Never;
 
     fn from_str(value: &str) -> Result<Self, Self::Err> {
         let v = match value.len() {
@@ -87,7 +88,7 @@ impl<'a> Visitor<'a> for BytesVisitor {
     fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
     where
         E: Error, {
-        Bytes::from_str(value).map_err(Error::custom)
+        Ok(Bytes::from_str(value).unwrap())
     }
 
     fn visit_string<E>(self, value: String) -> Result<Self::Value, E>

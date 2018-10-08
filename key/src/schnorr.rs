@@ -108,9 +108,9 @@ impl From<[u8; 64]> for SchnorrSignature {
     }
 }
 
-impl Into<[u8; 64]> for SchnorrSignature {
-    fn into(self) -> [u8; 64] {
-        self.0
+impl From<SchnorrSignature> for [u8; 64] {
+    fn from(s: SchnorrSignature) -> Self {
+        s.0
     }
 }
 

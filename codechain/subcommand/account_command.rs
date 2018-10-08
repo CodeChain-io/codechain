@@ -43,7 +43,8 @@ pub fn run_account_command(matches: ArgMatches) -> Result<(), String> {
     let keystore = KeyStore::open(Box::new(dir)).unwrap();
     let ap = AccountProvider::new(keystore);
     let chain = get_global_argument(&matches, "chain").unwrap_or("solo".into());
-    let network_id: NetworkId = ChainType::from_str(chain.as_ref())?.scheme().map(|scheme| scheme.params().network_id)?;
+    let chain_type: ChainType = chain.parse().unwrap();
+    let network_id: NetworkId = chain_type.scheme().map(|scheme| scheme.params().network_id)?;
 
     match matches.subcommand() {
         ("create", _) => create(&ap, network_id),
@@ -152,14 +153,14 @@ fn change_password(ap: &AccountProvider, address: &str) -> Result<(), String> {
 }
 
 fn prompt_password(prompt: &str) -> Password {
-    Password::from(rpassword::prompt_password_stdout(prompt).unwrap())
+    rpassword::prompt_password_stdout(prompt).map(Password::from).unwrap()
 }
 
 fn read_password_and_confirm() -> Option<Password> {
     let first = rpassword::prompt_password_stdout("Password: ").unwrap();
     let second = rpassword::prompt_password_stdout("Confirm Password: ").unwrap();
     if first == second {
-        Some(Password::from(first))
+        Some(first.into())
     } else {
         None
     }

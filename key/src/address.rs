@@ -121,13 +121,13 @@ impl From<[u8; 20]> for Address {
 
 impl From<&'static str> for Address {
     fn from(s: &'static str) -> Self {
-        Address(H160::from(s))
+        s.parse().expect(&format!("invalid string literal for {}: '{}'", stringify!(Self), s))
     }
 }
 
-impl Into<[u8; 20]> for Address {
-    fn into(self) -> [u8; 20] {
-        self.0.into()
+impl From<Address> for [u8; 20] {
+    fn from(a: Address) -> Self {
+        a.0.into()
     }
 }
 

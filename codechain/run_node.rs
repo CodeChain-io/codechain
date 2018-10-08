@@ -230,10 +230,13 @@ pub fn run_node(matches: ArgMatches) -> Result<(), String> {
 
     let shard_validator = if scheme.params().use_shard_validator {
         None
-    } else if config.shard_validator.disable.unwrap() {
-        Some(ShardValidator::new(None, Arc::clone(&ap)))
     } else {
-        Some(ShardValidator::new(Some(config.shard_validator_config().account), Arc::clone(&ap)))
+        let account = if config.shard_validator.disable.unwrap() {
+            None
+        } else {
+            Some(config.shard_validator_config().account)
+        };
+        Some(ShardValidator::new(client.client(), account, Arc::clone(&ap)))
     };
 
     let network_service: Arc<NetworkControl> = {
