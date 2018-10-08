@@ -25,13 +25,13 @@ use parking_lot::RwLock;
 use primitives::H256;
 use rlp::{Decodable, Encodable, UntrustedRlp};
 
-use super::super::{AccountProvider, AccountProviderError, Client, MinerService};
+use super::super::{AccountProvider, AccountProviderError, MinerService, Shard};
 use super::client::ShardValidatorClient;
 use super::message::Message;
 
-pub struct ShardValidator<M: MinerService> {
+pub struct ShardValidator<C: Shard, M: MinerService> {
     #[allow(dead_code)]
-    client: Arc<Client>,
+    client: Arc<C>,
     #[allow(dead_code)]
     miner: Arc<M>,
 
@@ -51,9 +51,9 @@ enum RegisterActionOutcome {
     AlreadyExists,
 }
 
-impl<M: MinerService> ShardValidator<M> {
+impl<C: Shard, M: MinerService> ShardValidator<C, M> {
     pub fn new(
-        client: Arc<Client>,
+        client: Arc<C>,
         miner: Arc<M>,
         account: Option<Address>,
         account_provider: Arc<AccountProvider>,
@@ -93,7 +93,7 @@ fn register_action(
     }
 }
 
-impl<M: MinerService> ShardValidatorClient for ShardValidator<M> {
+impl<C: Shard + Send + Sync, M: MinerService> ShardValidatorClient for ShardValidator<C, M> {
     fn register_action(&self, action: Action) -> bool {
         let mut actions = self.actions.write();
         match register_action(RegisteredAction::Local(action), &mut actions, &self.account_provider, &self.account) {
@@ -112,7 +112,7 @@ impl<M: MinerService> ShardValidatorClient for ShardValidator<M> {
     }
 }
 
-impl<M: MinerService> NetworkExtension for ShardValidator<M> {
+impl<C: Shard + Send + Sync, M: MinerService> NetworkExtension for ShardValidator<C, M> {
     fn name(&self) -> &'static str {
         "shard-validator"
     }
