@@ -14,21 +14,17 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::fs::{create_dir_all, File};
-use std::io::{ErrorKind, Write};
+use std::io::ErrorKind;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::thread::spawn;
 
-use ccore::{BlockChainClient, BlockId, BlockInfo, ChainInfo, ChainNotify, Client, DatabaseClient, COL_STATE};
+use ccore::{BlockChainClient, BlockId, BlockInfo, ChainInfo, ChainNotify, Client, DatabaseClient};
 
-use cmerkle::Node;
-use kvdb::KeyValueDB;
 use primitives::H256;
-use rlp::RlpStream;
-use snap;
 
 use super::error::Error;
+use super::snapshot::{Snapshot, WriteSnapshot};
 
 pub struct Service {
     client: Arc<Client>,
@@ -71,93 +67,11 @@ impl ChainNotify for Service {
             let db = self.client.database();
             let path: PathBuf = [self.root_dir.clone(), format!("{:x}", header.hash())].iter().collect();
             let root = header.state_root();
-            spawn(move || match write_snapshot(db.as_ref(), path, &root) {
+            spawn(move || match Snapshot::try_new(path).map(|s| s.write_snapshot(db.as_ref(), &root)) {
                 Ok(_) => {}
                 Err(Error::FileError(ErrorKind::AlreadyExists)) => {}
                 Err(e) => cerror!(SNAPSHOT, "{}", e),
             });
         }
     }
-}
-
-fn write_snapshot(db: &KeyValueDB, path: PathBuf, root: &H256) -> Result<(), Error> {
-    create_dir_all(&path)?;
-
-    let root_val = get_node(db, root)?;
-    let children = children_of(db, &root_val)?;
-    let mut grandchildren = Vec::new();
-    for (_, value) in &children {
-        grandchildren.extend(children_of(db, value)?);
-    }
-
-    {
-        let file = File::create(path.join("head"))?;
-        let mut snappy = snap::Writer::new(file);
-
-        let mut stream = RlpStream::new();
-        stream.begin_unbounded_list();
-        for (key, value) in vec![(*root, root_val)].iter().chain(&grandchildren).chain(&children) {
-            stream.begin_list(2);
-            stream.append(key);
-            stream.append(value);
-        }
-        stream.complete_unbounded_list();
-
-        snappy.write(&stream.drain())?;
-    }
-
-    for (grandchild, _) in &grandchildren {
-        let nodes = enumerate_subtree(db, grandchild)?;
-        let file = File::create(path.join(format!("{:x}", grandchild)))?;
-        let mut snappy = snap::Writer::new(file);
-
-        let mut stream = RlpStream::new();
-        stream.begin_unbounded_list();
-        for (key, value) in nodes {
-            stream.begin_list(2);
-            stream.append(&key);
-            stream.append(&value);
-        }
-        stream.complete_unbounded_list();
-
-        snappy.write(&stream.drain())?;
-    }
-
-    Ok(())
-}
-
-fn get_node(db: &KeyValueDB, key: &H256) -> Result<Vec<u8>, Error> {
-    match db.get(COL_STATE, key) {
-        Ok(Some(value)) => Ok(value.to_vec()),
-        Ok(None) => Err(Error::NodeNotFound(*key)),
-        Err(e) => Err(Error::DBError(e)),
-    }
-}
-
-fn children_of(db: &KeyValueDB, node: &[u8]) -> Result<Vec<(H256, Vec<u8>)>, Error> {
-    let keys = match Node::decoded(node) {
-        None => Vec::new(),
-        Some(Node::Leaf(..)) => Vec::new(),
-        Some(Node::Branch(_, children)) => children.iter().filter_map(|child| *child).collect(),
-    };
-
-    let mut result = Vec::new();
-    for key in keys {
-        result.push((key, get_node(db, &key)?));
-    }
-    Ok(result)
-}
-
-fn enumerate_subtree(db: &KeyValueDB, root: &H256) -> Result<Vec<(H256, Vec<u8>)>, Error> {
-    let node = get_node(db, root)?;
-    let children = match Node::decoded(&node) {
-        None => Vec::new(),
-        Some(Node::Leaf(..)) => Vec::new(),
-        Some(Node::Branch(_, children)) => children.iter().filter_map(|child| *child).collect(),
-    };
-    let mut result: Vec<_> = vec![(*root, node)];
-    for child in children {
-        result.extend(enumerate_subtree(db, &child)?);
-    }
-    Ok(result)
 }

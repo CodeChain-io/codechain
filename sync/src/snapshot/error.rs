@@ -23,6 +23,7 @@ use primitives::H256;
 #[derive(Debug)]
 pub enum Error {
     NodeNotFound(H256),
+    SyncError(String),
     DBError(DBError),
     FileError(ErrorKind),
 }
@@ -43,6 +44,7 @@ impl Display for Error {
     fn fmt(&self, f: &mut Formatter) -> FormatResult {
         match self {
             Error::NodeNotFound(key) => write!(f, "State node not found: {:x}", key),
+            Error::SyncError(reason) => write!(f, "Sync error: {}", reason),
             Error::DBError(error) => write!(f, "DB Error: {:?}", error),
             Error::FileError(kind) => write!(f, "File system error: {:?}", kind),
         }
