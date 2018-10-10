@@ -23,7 +23,7 @@
     "tslint": "^5.10.0"
   },
   "dependencies": {
-    "codechain-sdk": "^0.4.0-rc3",
+    "codechain-sdk": "CodeChain-io/codechain-sdk-js#schnorr",
     "jest": "^23.1.0",
     "mkdirp": "^0.5.1",
     "rlp": "^2.0.0",

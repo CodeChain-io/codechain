@@ -30,7 +30,7 @@ describe("transactions", () => {
         await node.start();
     });
 
-    describe("AssetMint", async () => {
+    describe.skip("AssetMint", async () => {
         test.each([[1], [100]])("Mint successful - amount %i", async amount => {
             const recipient = await node.createP2PKHAddress();
             const scheme = node.sdk.core.createAssetScheme({
@@ -68,7 +68,7 @@ describe("transactions", () => {
             done.fail("not implemented"));
     });
 
-    describe("AssetTransfer - 1 input (100 amount)", async () => {
+    describe.skip("AssetTransfer - 1 input (100 amount)", async () => {
         let input: Asset;
         const amount = 100;
 
@@ -152,7 +152,7 @@ describe("transactions", () => {
         });
     });
 
-    describe("AssetTransfer - 2 different types of input (10 amount, 20 amount)", async () => {
+    describe.skip("AssetTransfer - 2 different types of input (10 amount, 20 amount)", async () => {
         let input1: Asset;
         let input2: Asset;
         const amount1 = 10;
@@ -221,7 +221,7 @@ describe("transactions", () => {
         expect(await node.sdk.rpc.chain.getAsset(tx2.hash(), 0)).toBe(null);
     });
 
-    test("Burn unsuccessful(ZeroAmount)", async () => {
+    test.skip("Burn unsuccessful(ZeroAmount)", async () => {
         const { asset } = await node.mintAsset({ amount: 1 });
         const tx1 = node.sdk.core.createAssetTransferTransaction();
         tx1.addInputs(asset);
@@ -258,7 +258,7 @@ describe("transactions", () => {
         });
     });
 
-    test("Cannot transfer P2PKHBurn asset", async () => {
+    test.skip("Cannot transfer P2PKHBurn asset", async () => {
         const { asset } = await node.mintAsset({ amount: 1 });
         const tx1 = node.sdk.core.createAssetTransferTransaction();
         tx1.addInputs(asset);
@@ -287,7 +287,7 @@ describe("transactions", () => {
         expect(await node.sdk.rpc.chain.getAsset(tx1.hash(), 0)).not.toBe(null);
     });
 
-    test("Cannot burn P2PKH asset", async () => {
+    test.skip("Cannot burn P2PKH asset", async () => {
         const { asset } = await node.mintAsset({ amount: 1 });
         const tx = node.sdk.core.createAssetTransferTransaction();
         tx.addBurns(asset);
@@ -298,7 +298,7 @@ describe("transactions", () => {
         expect(invoice.success).toBe(false);
     });
 
-    describe("registrar", () => {
+    describe.skip("registrar", () => {
         let registrar: PlatformAddress;
         let nonRegistrar: PlatformAddress;
         let transferTx: AssetTransferTransaction;

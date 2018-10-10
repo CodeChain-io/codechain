@@ -191,9 +191,9 @@ describe("solo - 1 node", () => {
 
         test.each([
             "0x00",
-            "0x1" + "0".repeat(127),
-            "0x1" + "0".repeat(130),
-            "0x" + "f".repeat(131)
+            "0x1" + "0".repeat(125),
+            "0x1" + "0".repeat(128),
+            "0x" + "f".repeat(129)
         ])("signature: %p", async (sig, done) => {
             parcelEncoded[4] = sig;
             try {
@@ -202,7 +202,7 @@ describe("solo - 1 node", () => {
                 );
                 done.fail();
             } catch (e) {
-                if (sig.length < 132)
+                if (sig.length < 130)
                     expect(e).toEqual(ERROR.INVALID_RLP_TOO_SHORT);
                 else expect(e).toEqual(ERROR.INVALID_RLP_TOO_BIG);
                 done();

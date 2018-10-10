@@ -135,7 +135,7 @@ describe("account", () => {
             });
 
             test("Ok", async () => {
-                const { r, s, v } = node.sdk.util.signEcdsa(message, secret);
+                const { r, s } = node.sdk.util.signSchnorr(message, secret);
                 const signature = await node.sdk.rpc.account.sign(
                     message,
                     address,
@@ -143,7 +143,6 @@ describe("account", () => {
                 );
                 expect(signature).toContain(r);
                 expect(signature).toContain(s);
-                expect(signature).toContain(v);
             });
 
             test("WrongPassword", async done => {
@@ -322,10 +321,7 @@ describe("account", () => {
 
                 for (let i = 0; i < unlockTestSize; i++) {
                     const message = makeRandomH256();
-                    const { r, s, v } = node.sdk.util.signEcdsa(
-                        message,
-                        secret
-                    );
+                    const { r, s } = node.sdk.util.signSchnorr(message, secret);
                     await node.sdk.rpc.account.unlock(address, passphrase, 1);
 
                     for (let j = 0; j <= 2; j++) {
@@ -337,7 +333,6 @@ describe("account", () => {
                             );
                             expect(signature).toContain(r);
                             expect(signature).toContain(s);
-                            expect(signature).toContain(v);
                         } catch (e) {
                             done.fail();
                         }
@@ -460,7 +455,7 @@ describe("account", () => {
                                 } = accountListWithSecret[randomIdx];
                                 const message = makeRandomH256();
 
-                                const { r, s, v } = node.sdk.util.signEcdsa(
+                                const { r, s } = node.sdk.util.signSchnorr(
                                     message,
                                     secret
                                 );
@@ -471,7 +466,6 @@ describe("account", () => {
                                 );
                                 expect(signature).toContain(r);
                                 expect(signature).toContain(s);
-                                expect(signature).toContain(v);
                             }
                             break;
                         case Action.ChangePassword:
