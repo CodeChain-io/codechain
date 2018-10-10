@@ -31,6 +31,7 @@ pub const SWAP: u8 = 0x34;
 pub const COPY: u8 = 0x35;
 pub const DROP: u8 = 0x36;
 pub const CHKSIG: u8 = 0x80;
+pub const CHKMULTISIG: u8 = 0x81;
 pub const BLAKE256: u8 = 0x90;
 pub const SHA256: u8 = 0x91;
 pub const RIPEMD160: u8 = 0x92;

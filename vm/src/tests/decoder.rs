@@ -64,6 +64,7 @@ test_no_argument_opcode!(SWAP, Swap);
 test_one_argument_opcode!(COPY, Copy);
 test_one_argument_opcode!(DROP, Drop);
 test_no_argument_opcode!(CHKSIG, ChkSig);
+test_no_argument_opcode!(CHKMULTISIG, ChkMultiSig);
 test_no_argument_opcode!(BLAKE256, Blake256);
 test_no_argument_opcode!(SHA256, Sha256);
 test_no_argument_opcode!(RIPEMD160, Ripemd160);
