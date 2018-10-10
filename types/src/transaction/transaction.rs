@@ -24,8 +24,10 @@ use heapsize::HeapSizeOf;
 use primitives::{Bytes, H160, H256, U128};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
+use super::super::util::tag::Tag;
 use super::super::{ShardId, WorldId};
 use super::error::Error;
+
 
 pub trait PartialHashing {
     fn hash_partially(&self, bitvec: Vec<u8>, cur: &AssetOutPoint, burn: bool) -> Result<H256, HashingError>;
@@ -335,7 +337,6 @@ fn apply_bitmask_to_output(
             if (filter & 0x1) == 1 {
                 result.push(outputs[8 * index + i].clone());
             }
-            println!("{}", 8 * index + i);
 
             filter = filter >> 1;
         }
@@ -373,11 +374,8 @@ fn apply_input_scheme(
 }
 
 impl PartialHashing for Transaction {
-    fn hash_partially(&self, mut bitvec: Vec<u8>, cur: &AssetOutPoint, is_burn: bool) -> Result<H256, HashingError> {
-        let tag = bitvec.pop().unwrap();
-        let sign_all_inputs = (tag & 0x1) == 1;
-        let sign_all_outputs = (tag >> 1 & 0x1) == 1;
-        let filter_len = (tag >> 2) & 0x3f;
+    fn hash_partially(&self, bitvec: Vec<u8>, cur: &AssetOutPoint, is_burn: bool) -> Result<H256, HashingError> {
+        let tag = Tag::try_new(bitvec)?;
 
         match self {
             Transaction::AssetTransfer {
@@ -387,19 +385,15 @@ impl PartialHashing for Transaction {
                 outputs,
                 nonce,
             } => {
-                let new_burns = apply_input_scheme(burns, sign_all_inputs, is_burn, cur);
-                let new_inputs = apply_input_scheme(inputs, sign_all_inputs, !is_burn, cur);
+                let new_burns = apply_input_scheme(burns, tag.sign_all_inputs, is_burn, cur);
+                let new_inputs = apply_input_scheme(inputs, tag.sign_all_inputs, !is_burn, cur);
 
-                let new_outputs = if sign_all_outputs {
+                let new_outputs = if tag.sign_all_outputs {
                     outputs.clone()
                 } else {
-                    if bitvec.len() != filter_len as usize {
-                        return Err(HashingError::InvalidFilter)
-                    }
-                    apply_bitmask_to_output(bitvec.clone(), outputs.to_vec(), Vec::new())?
+                    apply_bitmask_to_output(tag.filter.clone(), outputs.to_vec(), Vec::new())?
                 };
 
-                bitvec.push(tag);
                 Ok(blake256_with_key(
                     &Transaction::AssetTransfer {
                         network_id: *network_id,
@@ -408,7 +402,7 @@ impl PartialHashing for Transaction {
                         outputs: new_outputs,
                         nonce: *nonce,
                     }.rlp_bytes(),
-                    &blake128(&bitvec),
+                    &blake128(tag.get_tag()),
                 ))
             }
             _ => unreachable!(),
