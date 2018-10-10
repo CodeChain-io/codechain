@@ -49,3 +49,22 @@ impl Tag {
         &self.bitvec
     }
 }
+#[cfg(test)]
+mod tests {
+    use util::tag::Tag;
+    #[test]
+    fn make_partial_signing_tag() {
+        let bitvec = vec![
+            0b10000000, 0b01000000, 0b00100000, 0b00010000, 0b00001000, 0b00000100, 0b00000010, 0b00000001, 0b00100001,
+        ];
+        let tag = Tag::try_new(bitvec).unwrap();
+
+        assert_eq!(tag.sign_all_inputs, true);
+        assert_eq!(tag.sign_all_outputs, false);
+        assert_eq!(tag.filter_len, 8);
+        assert_eq!(
+            tag.filter.clone(),
+            vec![0b10000000, 0b01000000, 0b00100000, 0b00010000, 0b00001000, 0b00000100, 0b00000010, 0b00000001]
+        );
+    }
+}
