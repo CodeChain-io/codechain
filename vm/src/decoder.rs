@@ -71,6 +71,7 @@ pub fn decode(bytes: &[u8]) -> Result<Vec<Instruction>, DecoderError> {
                 result.push(Instruction::Drop(val));
             }
             opcode::CHKSIG => result.push(Instruction::ChkSig),
+            opcode::CHKMULTISIG => result.push(Instruction::ChkMultiSig),
             opcode::BLAKE256 => result.push(Instruction::Blake256),
             opcode::SHA256 => result.push(Instruction::Sha256),
             opcode::RIPEMD160 => result.push(Instruction::Ripemd160),

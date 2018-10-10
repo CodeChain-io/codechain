@@ -30,7 +30,7 @@ use super::error::Error;
 
 
 pub trait PartialHashing {
-    fn hash_partially(&self, bitvec: Vec<u8>, cur: &AssetOutPoint, burn: bool) -> Result<H256, HashingError>;
+    fn hash_partially(&self, tag: Tag, cur: &AssetOutPoint, burn: bool) -> Result<H256, HashingError>;
 }
 
 #[derive(Debug, PartialEq)]
@@ -374,9 +374,7 @@ fn apply_input_scheme(
 }
 
 impl PartialHashing for Transaction {
-    fn hash_partially(&self, bitvec: Vec<u8>, cur: &AssetOutPoint, is_burn: bool) -> Result<H256, HashingError> {
-        let tag = Tag::try_new(bitvec)?;
-
+    fn hash_partially(&self, tag: Tag, cur: &AssetOutPoint, is_burn: bool) -> Result<H256, HashingError> {
         match self {
             Transaction::AssetTransfer {
                 network_id,
@@ -902,31 +900,6 @@ mod tests {
     }
 
     #[test]
-    fn fail_if_filter_is_illegal() {
-        let transaction = Transaction::AssetTransfer {
-            network_id: NetworkId::default(),
-            burns: Vec::new(),
-            inputs: Vec::new(),
-            outputs: Vec::new(),
-            nonce: 0,
-        };
-        let outpoint = AssetOutPoint {
-            transaction_hash: H256::default(),
-            index: 0,
-            asset_type: H256::default(),
-            amount: 0,
-        };
-        assert_eq!(
-            transaction.hash_partially(
-                vec![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0b00111101 as u8],
-                &outpoint,
-                false
-            ),
-            Err(HashingError::InvalidFilter)
-        );
-    }
-
-    #[test]
     fn apply_long_filter() {
         let out = AssetOutPoint {
             transaction_hash: H256::default(),
@@ -968,7 +941,7 @@ mod tests {
         }
         tag.push(0b00110101);
         assert_eq!(
-            transaction.hash_partially(tag.clone(), &out, false),
+            transaction.hash_partially(Tag::try_new(tag.clone()).unwrap(), &out, false),
             Ok(blake256_with_key(&transaction.rlp_bytes(), &blake128(&tag)))
         );
 
@@ -987,7 +960,7 @@ mod tests {
         }
         tag.push(0b00110101);
         assert_eq!(
-            transaction.hash_partially(tag.clone(), &out, false),
+            transaction.hash_partially(Tag::try_new(tag.clone()).unwrap(), &out, false),
             Ok(blake256_with_key(&transaction_aux.rlp_bytes(), &blake128(&tag)))
         );
 
@@ -1006,7 +979,7 @@ mod tests {
         }
         tag.push(0b00110101);
         assert_eq!(
-            transaction.hash_partially(tag.clone(), &out, false),
+            transaction.hash_partially(Tag::try_new(tag.clone()).unwrap(), &out, false),
             Ok(blake256_with_key(&transaction_aux.rlp_bytes(), &blake128(&tag)))
         );
     }
