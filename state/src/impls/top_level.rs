@@ -1112,7 +1112,9 @@ mod tests_state {
 mod tests_parcel {
     use ckey::{Address, Generator, Random};
     use ctypes::parcel::Parcel;
-    use ctypes::transaction::{AssetMintOutput, AssetOutPoint, AssetTransferInput, AssetTransferOutput, Transaction};
+    use ctypes::transaction::{
+        AssetMintOutput, AssetOutPoint, AssetTransferInput, AssetTransferOutput, Error as TransactionError,
+    };
     use primitives::{H160, U256};
 
     use super::super::super::tests::helpers::get_temp_state;
@@ -2081,6 +2083,155 @@ mod tests_parcel {
         let asset2_address = OwnedAssetAddress::new(transfer_hash, 2, shard_id);
         let asset2 = state.asset(shard_id, &asset2_address);
         assert_eq!(Ok(Some(OwnedAsset::new(asset_type, random_lock_script_hash, vec![], 15))), asset2);
+    }
+
+    #[test]
+    fn cannot_mint_twice_in_the_same_parcel() {
+        let (sender, sender_public) = address();
+
+        let mut state = get_temp_state();
+        assert_eq!(Ok(()), state.create_shard_level_state(vec![sender], vec![]));
+        assert_eq!(Ok(()), state.commit());
+
+        let network_id = "tc".into();
+        let shard_id = 0x0;
+        let world_id = 0;
+
+        let create_world = Transaction::CreateWorld {
+            network_id,
+            shard_id,
+            nonce: 0,
+            owners: vec![sender],
+        };
+
+        let metadata = "metadata".to_string();
+        let lock_script_hash = H160::random();
+        let parameters = vec![];
+        let registrar = Some(Address::random());
+        let amount = 30;
+        let transaction = Transaction::AssetMint {
+            network_id,
+            shard_id,
+            world_id,
+            metadata: metadata.clone(),
+            output: AssetMintOutput {
+                lock_script_hash,
+                parameters: parameters.clone(),
+                amount: Some(amount),
+            },
+            registrar,
+            nonce: 0,
+        };
+        let transaction_hash = transaction.hash();
+        let parcel = Parcel {
+            fee: 11.into(),
+            action: Action::AssetTransactionGroup {
+                transactions: vec![create_world, transaction.clone(), transaction],
+                changes: vec![ShardChange {
+                    shard_id,
+                    pre_root: H256::from("0xa8ed01b49cd63c6a547ac3ce357539aa634fb44331a351e3e98b9f1c3a8e3edf"),
+                    post_root: H256::zero(),
+                }],
+                signatures: vec![],
+            },
+            nonce: 0.into(),
+            network_id,
+        };
+
+        assert_eq!(Ok(()), state.add_balance(&sender, &U256::from(69u64)));
+
+        assert_eq!(
+            Ok(ParcelInvoice::Multiple(vec![
+                TransactionInvoice::Success,
+                TransactionInvoice::Success,
+                TransactionInvoice::Fail(TransactionError::AssetSchemeDuplicated(transaction_hash)),
+            ])),
+            state.apply(&parcel, &sender_public)
+        );
+    }
+
+    #[test]
+    fn cannot_mint_twice_in_different_parcel() {
+        let (sender, sender_public) = address();
+
+        let mut state = get_temp_state();
+        assert_eq!(Ok(()), state.create_shard_level_state(vec![sender], vec![]));
+        assert_eq!(Ok(()), state.commit());
+
+        let network_id = "tc".into();
+        let shard_id = 0x0;
+        let world_id = 0;
+
+        let create_world = Transaction::CreateWorld {
+            network_id,
+            shard_id,
+            nonce: 0,
+            owners: vec![sender],
+        };
+
+        let metadata = "metadata".to_string();
+        let lock_script_hash = H160::random();
+        let parameters = vec![];
+        let registrar = Some(Address::random());
+        let amount = 30;
+        let transaction = Transaction::AssetMint {
+            network_id,
+            shard_id,
+            world_id,
+            metadata: metadata.clone(),
+            output: AssetMintOutput {
+                lock_script_hash,
+                parameters: parameters.clone(),
+                amount: Some(amount),
+            },
+            registrar,
+            nonce: 0,
+        };
+        let parcel = Parcel {
+            fee: 11.into(),
+            action: Action::AssetTransactionGroup {
+                transactions: vec![create_world, transaction.clone()],
+                changes: vec![ShardChange {
+                    shard_id,
+                    pre_root: H256::from("0xa8ed01b49cd63c6a547ac3ce357539aa634fb44331a351e3e98b9f1c3a8e3edf"),
+                    post_root: H256::zero(),
+                }],
+                signatures: vec![],
+            },
+            nonce: 0.into(),
+            network_id,
+        };
+
+        assert_eq!(Ok(()), state.add_balance(&sender, &U256::from(69u64)));
+
+        assert_eq!(
+            Ok(ParcelInvoice::Multiple(vec![TransactionInvoice::Success, TransactionInvoice::Success])),
+            state.apply(&parcel, &sender_public)
+        );
+
+        let shard_root = state.shard_root(shard_id).expect("Shard must exist").expect("Shard root must exist");
+
+        let transaction_hash = transaction.hash();
+        let parcel = Parcel {
+            fee: 11.into(),
+            action: Action::AssetTransactionGroup {
+                transactions: vec![transaction],
+                changes: vec![ShardChange {
+                    shard_id,
+                    pre_root: shard_root,
+                    post_root: H256::zero(),
+                }],
+                signatures: vec![],
+            },
+            nonce: 1.into(),
+            network_id,
+        };
+        assert_eq!(
+            Ok(ParcelInvoice::Multiple(vec![TransactionInvoice::Fail(TransactionError::AssetSchemeDuplicated(
+                transaction_hash,
+            ))])),
+            state.apply(&parcel, &sender_public)
+        );
     }
 
     #[test]
