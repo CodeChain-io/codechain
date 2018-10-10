@@ -19,6 +19,7 @@ use std::io::{Error as FileError, ErrorKind};
 
 use kvdb::Error as DBError;
 use primitives::H256;
+use util_error::UtilError;
 
 #[derive(Debug)]
 pub enum Error {
@@ -26,6 +27,7 @@ pub enum Error {
     SyncError(String),
     DBError(DBError),
     FileError(ErrorKind),
+    UtilError(UtilError),
 }
 
 impl From<DBError> for Error {
@@ -40,6 +42,12 @@ impl From<FileError> for Error {
     }
 }
 
+impl From<UtilError> for Error {
+    fn from(error: UtilError) -> Self {
+        Error::UtilError(error)
+    }
+}
+
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter) -> FormatResult {
         match self {
@@ -47,6 +55,7 @@ impl Display for Error {
             Error::SyncError(reason) => write!(f, "Sync error: {}", reason),
             Error::DBError(error) => write!(f, "DB Error: {:?}", error),
             Error::FileError(kind) => write!(f, "File system error: {:?}", kind),
+            Error::UtilError(error) => write!(f, "Util error: {:?}", error),
         }
     }
 }
