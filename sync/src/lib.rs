@@ -24,7 +24,12 @@ extern crate codechain_network as cnetwork;
 extern crate codechain_token_generator as ctoken_generator;
 extern crate codechain_types as ctypes;
 
+#[cfg(test)]
+extern crate hashdb;
+extern crate journaldb;
 extern crate kvdb;
+#[cfg(test)]
+extern crate kvdb_memorydb;
 #[macro_use]
 extern crate log;
 extern crate primitives;
@@ -32,7 +37,12 @@ extern crate rand;
 #[cfg_attr(test, macro_use)]
 extern crate rlp;
 extern crate snap;
+#[cfg(test)]
+extern crate tempfile;
 extern crate time;
+#[cfg(test)]
+extern crate trie_standardmap;
+extern crate util_error;
 
 mod block;
 mod parcel;
