@@ -5,7 +5,7 @@ stages:
   - name: test
     if: branch != docker-build
   - name: deploy
-    if: branch = docker-build
+    if: branch IN (docker-build, schnorr)
 jobs:
   include:
     - stage: test
@@ -47,14 +47,13 @@ jobs:
     - stage: deploy
       name: deploy
       sudo: required
-      script: skip
       services:
         - docker
       deploy:
         provider: script
         script: bash docker_push.sh
         on:
-          branch: docker-build
+          all_branches: true
 notifications:
   webhooks: https://webhooks.gitter.im/e/71bb03cf9abce5b02c43
 cache: cargo
