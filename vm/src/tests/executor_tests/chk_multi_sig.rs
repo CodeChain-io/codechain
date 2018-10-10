@@ -56,7 +56,7 @@ fn valid_multi_sig_0_of_2() {
 
     assert_eq!(
         execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &outpoint, false),
-        Ok(ScriptResult::Unlocked)
+        Err(RuntimeError::InvalidSigCount)
     );
 }
 
