@@ -87,10 +87,10 @@ fn import(ap: &AccountProvider, network_id: NetworkId, json_path: &str) -> Resul
                 Ok(address) => {
                     println!("{}", PlatformAddress::new_v1(network_id, address));
                 }
-                Err(e) => return Err(format!("{}", e)),
+                Err(e) => return Err(e.to_string()),
             }
         }
-        Err(e) => return Err(format!("{}", e)),
+        Err(e) => return Err(e.to_string()),
     }
     Ok(())
 }
@@ -101,13 +101,13 @@ fn import_raw(ap: &AccountProvider, network_id: NetworkId, raw_key: &str) -> Res
             if let Some(password) = read_password_and_confirm() {
                 match ap.insert_account(private, &password) {
                     Ok(address) => println!("{}", PlatformAddress::new_v1(network_id, address)),
-                    Err(e) => return Err(format!("{:?}", e)),
+                    Err(e) => return Err(e.to_string()),
                 }
             } else {
                 return Err("The password does not match".to_string())
             }
         }
-        Err(e) => return Err(format!("{:?}", e)),
+        Err(e) => return Err(e.to_string()),
     }
     Ok(())
 }
@@ -118,10 +118,10 @@ fn remove(ap: &AccountProvider, address: &str) -> Result<(), String> {
             let password = prompt_password("Password: ");
             match ap.remove_account(address.into_address(), &password) {
                 Ok(_) => println!("{} is deleted", address),
-                Err(e) => return Err(format!("{:?}", e)),
+                Err(e) => return Err(e.to_string()),
             }
         }
-        Err(e) => return Err(format!("{:?}", e)),
+        Err(e) => return Err(e.to_string()),
     }
     Ok(())
 }
@@ -141,13 +141,13 @@ fn change_password(ap: &AccountProvider, address: &str) -> Result<(), String> {
             if let Some(new_password) = read_password_and_confirm() {
                 match ap.change_password(address.into_address(), &old_password, &new_password) {
                     Ok(_) => println!("Password has changed"),
-                    Err(e) => return Err(format!("{:?}", e)),
+                    Err(e) => return Err(e.to_string()),
                 }
             } else {
                 return Err("The password does not match".to_string())
             }
         }
-        Err(e) => return Err(format!("{:?}", e)),
+        Err(e) => return Err(e.to_string()),
     }
     Ok(())
 }
