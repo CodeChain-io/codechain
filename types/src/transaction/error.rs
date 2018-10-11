@@ -35,6 +35,7 @@ pub enum Error {
     AssetNotFound(H256),
     /// Desired input asset scheme not found
     AssetSchemeNotFound(H256),
+    AssetSchemeDuplicated(H256),
     InvalidAssetType(H256),
     /// Script hash does not match with provided lock script
     ScriptHashMismatch(Mismatch<H160>),
@@ -71,6 +72,7 @@ const ERROR_ID_EMPTY_SHARD_OWNERS: u8 = 16u8;
 const ERROR_ID_NOT_REGISTRAR: u8 = 17u8;
 const ERROR_ID_ZERO_AMOUNT: u8 = 18u8;
 const ERROR_ID_TOO_MANY_OUTPUTS: u8 = 19u8;
+const ERROR_ID_ASSET_SCHEME_DUPLICATED: u8 = 20u8;
 
 impl Encodable for Error {
     fn rlp_append(&self, s: &mut RlpStream) {
@@ -82,6 +84,9 @@ impl Encodable for Error {
             } => s.begin_list(4).append(&ERROR_ID_INVALID_ASSET_AMOUNT).append(address).append(expected).append(got),
             Error::AssetNotFound(addr) => s.begin_list(2).append(&ERROR_ID_ASSET_NOT_FOUND).append(addr),
             Error::AssetSchemeNotFound(addr) => s.begin_list(2).append(&ERROR_ID_ASSET_SCHEME_NOT_FOUND).append(addr),
+            Error::AssetSchemeDuplicated(addr) => {
+                s.begin_list(2).append(&ERROR_ID_ASSET_SCHEME_DUPLICATED).append(addr)
+            }
             Error::InvalidAssetType(addr) => s.begin_list(2).append(&ERROR_ID_INVALID_ASSET_TYPE).append(addr),
             Error::ScriptHashMismatch(mismatch) => {
                 s.begin_list(2).append(&ERROR_ID_SCRIPT_HASH_MISMATCH).append(mismatch)
@@ -116,6 +121,7 @@ impl Decodable for Error {
             },
             ERROR_ID_ASSET_NOT_FOUND => Error::AssetNotFound(rlp.val_at(1)?),
             ERROR_ID_ASSET_SCHEME_NOT_FOUND => Error::AssetSchemeNotFound(rlp.val_at(1)?),
+            ERROR_ID_ASSET_SCHEME_DUPLICATED => Error::AssetSchemeDuplicated(rlp.val_at(1)?),
             ERROR_ID_INVALID_ASSET_TYPE => Error::InvalidAssetType(rlp.val_at(1)?),
             ERROR_ID_SCRIPT_HASH_MISMATCH => Error::ScriptHashMismatch(rlp.val_at(1)?),
             ERROR_ID_INVALID_SCRIPT => Error::InvalidScript,
@@ -188,6 +194,7 @@ impl Display for Error {
             ),
             Error::AssetNotFound(addr) => write!(f, "Asset not found: {}", addr),
             Error::AssetSchemeNotFound(addr) => write!(f, "Asset scheme not found: {}", addr),
+            Error::AssetSchemeDuplicated(addr) => write!(f, "Asset scheme already exists: {}", addr),
             Error::InvalidAssetType(addr) => write!(f, "Asset type is invalid: {}", addr),
             Error::ScriptHashMismatch(mismatch) => {
                 write!(f, "Expected script with hash {}, but got {}", mismatch.expected, mismatch.found)
