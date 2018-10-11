@@ -32,7 +32,7 @@ use rlp::Encodable;
 
 use super::super::backend::{Backend, ShardBackend};
 use super::super::checkpoint::{CheckpointId, StateWithCheckpoint};
-use super::super::item::local_cache::LocalCache;
+use super::super::item::local_cache::{CacheableItem, LocalCache};
 use super::super::traits::{ShardState, ShardStateInfo, StateWithCache};
 use super::super::{
     AssetScheme, AssetSchemeAddress, OwnedAsset, OwnedAssetAddress, ShardMetadata, ShardMetadataAddress, World,
@@ -284,6 +284,9 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         let asset_scheme_address = AssetSchemeAddress::new(transaction_hash, self.shard_id, world_id);
         let amount = amount.unwrap_or(::std::u64::MAX);
         let mut asset_scheme = self.get_asset_scheme_mut(&asset_scheme_address)?;
+        if !asset_scheme.is_null() {
+            return Err(TransactionError::AssetSchemeDuplicated(transaction_hash).into())
+        }
         asset_scheme.init(metadata.clone(), amount, registrar.clone());
 
         ctrace!(TX, "{:?} is minted on {:?}", asset_scheme, asset_scheme_address);
@@ -790,6 +793,41 @@ mod tests {
             Ok(Some(OwnedAsset::new(asset_scheme_address.into(), lock_script_hash, parameters, ::std::u64::MAX))),
             asset
         );
+    }
+
+    #[test]
+    fn cannot_mint_twice() {
+        let shard_id = 0;
+        let world_id = 0;
+        let mut state = get_temp_shard_state(shard_id);
+        let sender = address();
+        let shard_owner = address();
+        assert_eq!(Ok(()), state.create_world(shard_id, &0, &[sender], &[], &shard_owner, &[shard_owner]));
+        assert_eq!(Ok(()), state.commit());
+
+        let metadata = "metadata".to_string();
+        let lock_script_hash = H160::random();
+        let parameters = vec![];
+        let registrar = Some(Address::random());
+        let transaction = Transaction::AssetMint {
+            network_id: "tc".into(),
+            shard_id,
+            world_id,
+            metadata: metadata.clone(),
+            output: AssetMintOutput {
+                lock_script_hash,
+                parameters: parameters.clone(),
+                amount: None,
+            },
+            registrar,
+            nonce: 0,
+        };
+
+        let result = state.apply(shard_id, &transaction, &sender, &[shard_owner]);
+        assert_eq!(Ok(TransactionInvoice::Success), result);
+
+        let result = state.apply(shard_id, &transaction, &sender, &[shard_owner]);
+        assert_eq!(Ok(TransactionInvoice::Fail(TransactionError::AssetSchemeDuplicated(transaction.hash()))), result);
     }
 
     #[test]

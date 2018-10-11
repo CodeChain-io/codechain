@@ -762,17 +762,12 @@ code-point-at@^1.0.0:
   resolved "https://registry.yarnpkg.com/code-point-at/-/code-point-at-1.1.0.tgz#0d070b4d043a5bea33a2f1a40e2edb3d9a4ccf77"
   integrity sha1-DQcLTQQ6W+ozovGkDi7bPZpMz3c=
 
-<<<<<<< 999188667c38800e04109596187cf97b141ff39a
 codechain-keystore@^0.4.0:
   version "0.4.0"
   resolved "https://registry.yarnpkg.com/codechain-keystore/-/codechain-keystore-0.4.0.tgz#a8a35b1555b07c49d6456e7e2430c721e13d3a0f"
-=======
-codechain-keystore@^0.3.0:
-  version "0.3.0"
-  resolved "https://registry.yarnpkg.com/codechain-keystore/-/codechain-keystore-0.3.0.tgz#2a8c0862fa5011eb3467dae6ce14d41d12ede2de"
-  integrity sha512-WhrLwlTdGMy8bi1FZLm+BaXBcqwsezSFrlD5XBtz9d4+g0MhGt/ovz6iWzN2kAGEFj512A9lGT+LKsrXaNd2qw==
+  integrity sha512-ia85fm9k2C9BxUrPUol4J9ODcR5xNOUa+KGZ8odw3Dw3Z8TYh9n43nPyFZsVuXx+aVTf0YPxJ9ECtyT6goNQ6g==
   dependencies:
-    codechain-primitives "^0.2.0"
+    codechain-primitives "^0.3.0"
     config "^2.0.1"
     lodash "^4.17.10"
     lowdb "^1.0.0"
@@ -782,17 +777,13 @@ codechain-keystore@~0.2.1:
   version "0.2.3"
   resolved "https://registry.yarnpkg.com/codechain-keystore/-/codechain-keystore-0.2.3.tgz#7534f583771d16503aa8c02acd7a4d53d9ae20ea"
   integrity sha512-+j9Xg+EbWmnGo8u5Itb+fGTMXOMQaxHpe8ux7MUTTNYu3lLYMlNwAopNjfrtBGp5xbb23ewqMkU56FBMRr9mvw==
->>>>>>> tmp
   dependencies:
-    codechain-primitives "^0.3.0"
+    codechain-primitives "^0.2.0"
     config "^2.0.1"
     lodash "^4.17.10"
     lowdb "^1.0.0"
     uuid "^3.3.2"
 
-<<<<<<< 999188667c38800e04109596187cf97b141ff39a
-codechain-primitives@^0.3.0, codechain-primitives@^0.3.1:
-=======
 codechain-primitives@^0.1.0-rc2:
   version "0.1.0"
   resolved "https://registry.yarnpkg.com/codechain-primitives/-/codechain-primitives-0.1.0.tgz#1324596a0d91c15736cc6ea96379d84bcb80f476"
@@ -819,8 +810,7 @@ codechain-primitives@^0.2.0:
     ripemd160 "^2.0.2"
     rlp "^2.1.0"
 
-codechain-primitives@^0.3.1:
->>>>>>> tmp
+codechain-primitives@^0.3.0, codechain-primitives@^0.3.1:
   version "0.3.1"
   resolved "https://registry.yarnpkg.com/codechain-primitives/-/codechain-primitives-0.3.1.tgz#b3a86fdbdf6e95aa5b0313091eff8b65080da9c2"
   integrity sha512-iJ238QionRlXfWs+E5pSsMdBdBEDMMVw9xjFm7GSAyeCRTiaJlt9VvTXmRzX/Oob//IlnXkFXkpBidtYU3GL6A==
@@ -833,11 +823,6 @@ codechain-primitives@^0.3.1:
     ripemd160 "^2.0.2"
     rlp "^2.1.0"
 
-<<<<<<< 999188667c38800e04109596187cf97b141ff39a
-codechain-sdk@^0.4.0-rc3:
-  version "0.4.0-rc3"
-  resolved "https://registry.yarnpkg.com/codechain-sdk/-/codechain-sdk-0.4.0-rc3.tgz#8eba4a74297b176d0aecb090005364c854393a44"
-=======
 codechain-sdk@^0.2.0-alpha.2:
   version "0.2.0-alpha.2"
   resolved "https://registry.yarnpkg.com/codechain-sdk/-/codechain-sdk-0.2.0-alpha.2.tgz#494f8db85693f662a5df453ff9d0d08f94af1210"
@@ -852,11 +837,10 @@ codechain-sdk@^0.2.0-alpha.2:
     request-promise "^4.2.2"
     rlp "^2.0.0"
 
-codechain-sdk@^0.4.0-rc0:
-  version "0.4.0-rc0"
-  resolved "https://registry.yarnpkg.com/codechain-sdk/-/codechain-sdk-0.4.0-rc0.tgz#5042a2d00234d3a045e450b204035953fe1fe25b"
-  integrity sha512-SkXpTeBh0ug2oNL/Xzywvegd6S+UeDexc5e+1TRH1KbTB/Uxlye1wGVxkZYIZ+xZ7/HzIh9aya1hzlNbuj62Ig==
->>>>>>> tmp
+codechain-sdk@^0.4.0-rc3:
+  version "0.4.0-rc3"
+  resolved "https://registry.yarnpkg.com/codechain-sdk/-/codechain-sdk-0.4.0-rc3.tgz#8eba4a74297b176d0aecb090005364c854393a44"
+  integrity sha512-U7FXXyBdng182UbQDUaWJUYyBxid5OwX0BYX4f2JNV8B2Qy7SrjY/MB8fKAo0Bsy7ZTT3haUctpcxNVlNPCS3g==
   dependencies:
     buffer "5.1.0"
     codechain-keystore "^0.4.0"
