@@ -34,8 +34,6 @@ pub struct SafeAccount {
     pub crypto: Crypto,
     /// Account filename
     pub filename: Option<String>,
-    /// Account name
-    pub name: String,
     /// Account metadata
     pub meta: String,
 }
@@ -47,7 +45,6 @@ impl From<SafeAccount> for json::KeyFile {
             version: account.version.into(),
             address: Some(account.address.into()),
             crypto: account.crypto.into(),
-            name: Some(account.name.into()),
             meta: Some(account.meta.into()),
         }
     }
@@ -60,7 +57,6 @@ impl SafeAccount {
         id: [u8; 16],
         password: &Password,
         iterations: u32,
-        name: String,
         meta: String,
     ) -> Result<Self, ccrypto::Error> {
         Ok(SafeAccount {
@@ -69,7 +65,6 @@ impl SafeAccount {
             crypto: Crypto::with_secret(keypair.private(), password, iterations)?,
             address: keypair.address(),
             filename: None,
-            name,
             meta,
         })
     }
@@ -97,14 +92,14 @@ impl SafeAccount {
             (Some(address), None) => Ok(address.into()),
             (None, None) => Err(Error::InvalidKeyFile("Cannot create account if address is not given".to_string())),
         }?;
+
         Ok(SafeAccount {
             id: json.id.into(),
             version: json.version.into(),
             address,
             crypto,
             filename,
-            name: json.name.unwrap_or(String::new()),
-            meta: json.meta.unwrap_or("{}".to_string()),
+            meta: "{}".to_string(),
         })
     }
 
@@ -134,7 +129,6 @@ impl SafeAccount {
             crypto: Crypto::with_secret(&secret, new_password, iterations)?,
             address: self.address,
             filename: self.filename.clone(),
-            name: self.name.clone(),
             meta: self.meta.clone(),
         };
         Ok(result)
@@ -156,7 +150,7 @@ mod tests {
         let keypair = Random.generate().unwrap();
         let password = &"hello world".into();
         let message = Message::default();
-        let account = SafeAccount::create(&keypair, [0u8; 16], password, 10240, "Test".to_string(), "{}".to_string());
+        let account = SafeAccount::create(&keypair, [0u8; 16], password, 10240, "{\"name\":\"Test\"}".to_string());
         let signature = account.unwrap().sign(password, &message).unwrap();
         assert!(verify(keypair.public(), &signature, &message).unwrap());
     }
@@ -169,7 +163,7 @@ mod tests {
         let i = 10240;
         let message = Message::default();
         let account =
-            SafeAccount::create(&keypair, [0u8; 16], first_password, i, "Test".to_string(), "{}".to_string()).unwrap();
+            SafeAccount::create(&keypair, [0u8; 16], first_password, i, "{\"name\":\"Test\"}".to_string()).unwrap();
         let new_account = account.change_password(first_password, sec_password, i).unwrap();
         assert!(account.sign(first_password, &message).is_ok());
         assert!(account.sign(sec_password, &message).is_err());
