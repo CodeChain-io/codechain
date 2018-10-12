@@ -87,13 +87,9 @@ pub trait SecretStore: SimpleSecretStore {
 
     /// Returns uuid of an account.
     fn uuid(&self, account: &Address) -> Result<Uuid, Error>;
-    /// Returns account's name.
-    fn name(&self, account: &Address) -> Result<String, Error>;
     /// Returns account's metadata.
     fn meta(&self, account: &Address) -> Result<String, Error>;
 
-    /// Modifies account metadata.
-    fn set_name(&self, account: &Address, name: String) -> Result<(), Error>;
     /// Modifies account name.
     fn set_meta(&self, account: &Address, meta: String) -> Result<(), Error>;
 

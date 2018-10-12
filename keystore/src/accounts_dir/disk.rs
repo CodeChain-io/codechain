@@ -300,7 +300,7 @@ mod test {
         let directory = RootDiskDirectory::create(dir.clone()).unwrap();
 
         // when
-        let account = SafeAccount::create(&keypair, [0u8; 16], password, 1024, "Test".to_string(), "{}".to_string());
+        let account = SafeAccount::create(&keypair, [0u8; 16], password, 1024, "{\"name\":\"Test\"}".to_string());
         let res = directory.insert(account.unwrap());
 
         // then
@@ -323,7 +323,7 @@ mod test {
 
         // when
         let account =
-            SafeAccount::create(&keypair, [0u8; 16], password, 1024, "Test".to_string(), "{}".to_string()).unwrap();
+            SafeAccount::create(&keypair, [0u8; 16], password, 1024, "{\"name\":\"Test\"}".to_string()).unwrap();
         let filename = "test".to_string();
         let dedup = true;
 
@@ -355,7 +355,7 @@ mod test {
 
         let keypair = Random.generate().unwrap();
         let password = &"test pass".into();
-        let account = SafeAccount::create(&keypair, [0u8; 16], password, 1024, "Test".to_string(), "{}".to_string());
+        let account = SafeAccount::create(&keypair, [0u8; 16], password, 1024, "{\"name\":\"Test\"}".to_string());
         directory.insert(account.unwrap()).expect("Account should be inserted ok");
 
         let new_hash = directory.files_hash().expect("New files hash should be calculated ok");
