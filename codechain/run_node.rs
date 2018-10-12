@@ -236,7 +236,7 @@ pub fn run_node(matches: ArgMatches) -> Result<(), String> {
         } else {
             Some(config.shard_validator_config().account)
         };
-        Some(ShardValidator::new(client.client(), account, Arc::clone(&ap)))
+        Some(ShardValidator::new(client.client(), Arc::clone(&miner), account, Arc::clone(&ap)))
     };
 
     let network_service: Arc<NetworkControl> = {
