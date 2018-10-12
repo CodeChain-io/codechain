@@ -33,6 +33,7 @@ pub enum Instruction {
     Copy(u8),
     Drop(u8),
     ChkSig,
+    ChkMultiSig,
     Blake256,
     Sha256,
     Ripemd160,
@@ -49,7 +50,8 @@ pub fn is_valid_unlock_script(instrs: &[Instruction]) -> bool {
 }
 
 pub fn has_expensive_opcodes(instrs: &[Instruction]) -> bool {
-    let count = instrs.iter().filter(|instr| instr == &&Instruction::ChkSig).count();
+    let count =
+        instrs.iter().filter(|instr| instr == &&Instruction::ChkSig || instr == &&Instruction::ChkMultiSig).count();
     count >= 6
 }
 
@@ -59,16 +61,21 @@ fn script_with_more_than_six_chksig_opcodes() {
         Instruction::ChkSig,
         Instruction::ChkSig,
         Instruction::ChkSig,
-        Instruction::ChkSig,
-        Instruction::ChkSig,
-        Instruction::ChkSig,
+        Instruction::ChkMultiSig,
+        Instruction::ChkMultiSig,
+        Instruction::ChkMultiSig,
     ];
     assert_eq!(has_expensive_opcodes(&expensive_script), true);
 }
 
 #[test]
 fn script_with_less_than_six_chksig_opcodes() {
-    let unexpensive_script =
-        vec![Instruction::ChkSig, Instruction::ChkSig, Instruction::ChkSig, Instruction::ChkSig, Instruction::ChkSig];
+    let unexpensive_script = vec![
+        Instruction::ChkSig,
+        Instruction::ChkSig,
+        Instruction::ChkSig,
+        Instruction::ChkMultiSig,
+        Instruction::ChkMultiSig,
+    ];
     assert_eq!(has_expensive_opcodes(&unexpensive_script), false);
 }

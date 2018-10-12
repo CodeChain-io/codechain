@@ -17,6 +17,7 @@
 use ccrypto::{blake256, keccak256, ripemd160, sha256, Blake};
 use ckey::{verify, Public, Signature, SIGNATURE_LENGTH};
 use ctypes::transaction::{AssetOutPoint, HashingError, PartialHashing};
+use ctypes::util::tag::Tag;
 
 use primitives::H160;
 
@@ -51,6 +52,7 @@ pub enum RuntimeError {
     StackUnderflow,
     TypeMismatch,
     InvalidFilter,
+    InvalidSigCount,
 }
 
 impl From<HashingError> for RuntimeError {
@@ -229,13 +231,44 @@ pub fn execute(
             }
             Instruction::ChkSig => {
                 let pubkey = Public::from_slice(stack.pop()?.assert_len(64)?.as_ref());
-                let tx_hash = tx.hash_partially(stack.pop()?.as_ref().to_vec(), cur, burn)?;
-                println!("{:?}", tx_hash);
+                let tag = Tag::try_new(stack.pop()?.as_ref().to_vec())?;
+                let tx_hash = tx.hash_partially(tag, cur, burn)?;
                 let signature = Signature::from(Signature::from(stack.pop()?.assert_len(SIGNATURE_LENGTH)?.as_ref()));
                 let result = match verify(&pubkey, &signature, &tx_hash) {
                     Ok(true) => 1,
                     _ => 0,
                 };
+                stack.push(Item(vec![result]))?;
+            }
+            Instruction::ChkMultiSig => {
+                // Get n pubkey. If there are more than six pubkeys, return error.
+                let n = stack.pop()?.assert_len(1)?.as_ref()[0] as usize;
+                let mut pubkey: Vec<Public> = Vec::new();
+                for _ in 0..n {
+                    pubkey.push(Public::from_slice(stack.pop()?.assert_len(64)?.as_ref()));
+                }
+
+                // Get m signature. If signatures are more than pubkeys, return error.
+                let m = stack.pop()?.assert_len(1)?.as_ref()[0] as usize;
+                if m > n || m == 0 || m > 6 {
+                    return Err(RuntimeError::InvalidSigCount)
+                }
+                let mut signatures: Vec<Signature> = Vec::new();
+                for _ in 0..m {
+                    signatures.push(Signature::from(stack.pop()?.assert_len(SIGNATURE_LENGTH)?.as_ref()));
+                }
+
+                let tag = Tag::try_new(stack.pop()?.as_ref().to_vec())?;
+                let tx_hash = tx.hash_partially(tag, cur, burn)?;
+
+                let mut result = 1;
+                while let Some(sig) = signatures.pop() {
+                    let public = pubkey.pop().unwrap();
+                    if let Ok(false) = verify(&public, &sig, &tx_hash) {
+                        result = 0;
+                        break
+                    }
+                }
                 stack.push(Item(vec![result]))?;
             }
             Instruction::Blake256 => {
