@@ -55,12 +55,12 @@ mod tests {
     fn tendermint_deserialization() {
         let s = r#"{
             "params": {
-                "validators": ["tccqzzpxln6w5zrhmfju3zc53w6w4y6s95mf5hw0n62"]
+                "validators": ["tccq8qlwpt7xcs9lec3c8tyt3kqxlgsus8q4qp3m6ft"]
             }
         }"#;
 
         let deserialized: Tendermint = serde_json::from_str(s).unwrap();
-        let vs = vec![PlatformAddress::from_str("tccqzzpxln6w5zrhmfju3zc53w6w4y6s95mf5hw0n62").unwrap()];
+        let vs = vec![PlatformAddress::from_str("tccq8qlwpt7xcs9lec3c8tyt3kqxlgsus8q4qp3m6ft").unwrap()];
         assert_eq!(deserialized.params.validators, vs);
     }
 }

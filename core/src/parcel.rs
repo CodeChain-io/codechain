@@ -282,7 +282,7 @@ impl Deref for LocalizedParcel {
 mod tests {
     use ckey::{Address, Public, Signature};
     use ctypes::transaction::AssetMintOutput;
-    use primitives::H256;
+    use primitives::{H160, H256};
 
     use super::*;
 
@@ -310,7 +310,7 @@ mod tests {
             world_id: 0xA,
             metadata: "mint test".to_string(),
             output: AssetMintOutput {
-                lock_script_hash: H256::random(),
+                lock_script_hash: H160::random(),
                 parameters: vec![],
                 amount: Some(10000),
             },
@@ -327,7 +327,7 @@ mod tests {
             world_id: 0xB,
             metadata: "mint test".to_string(),
             output: AssetMintOutput {
-                lock_script_hash: H256::random(),
+                lock_script_hash: H160::random(),
                 parameters: vec![vec![1, 2, 3], vec![4, 5, 6], vec![0, 7]],
                 amount: Some(10000),
             },

@@ -10,6 +10,7 @@ rustc-serialize = "0.3"
 lazy_static = "1.1.0"
 bech32 = "0.2.2"
 codechain-crypto = { path = "../crypto" }
+never = { path = "../util/never" }
 parking_lot = "0.5"
 primitives = { path = "../util/primitives" }
 heapsize = "0.4"

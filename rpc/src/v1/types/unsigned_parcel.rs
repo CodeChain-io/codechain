@@ -14,23 +14,34 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use cjson;
-use ckey::{Address, PlatformAddress};
+use ckey::{Error as KeyError, NetworkId};
+use ctypes::parcel::{Action as ActionType, Parcel};
 use primitives::U256;
 
-#[derive(Debug, PartialEq)]
-pub struct SoloAuthorityParams {
-    /// Valid signatories.
-    pub validators: Vec<Address>,
-    /// base reward for a block.
-    pub block_reward: U256,
+use super::Action;
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UnsignedParcel {
+    pub nonce: Option<U256>,
+    pub fee: U256,
+    pub network_id: NetworkId,
+    pub action: Action,
 }
 
-impl From<cjson::scheme::SoloAuthorityParams> for SoloAuthorityParams {
-    fn from(p: cjson::scheme::SoloAuthorityParams) -> Self {
-        SoloAuthorityParams {
-            validators: p.validators.into_iter().map(PlatformAddress::into_address).collect(),
-            block_reward: p.block_reward.map_or_else(Default::default, Into::into),
-        }
+// FIXME: Use TryFrom.
+impl From<UnsignedParcel> for Result<Parcel, KeyError> {
+    fn from(value: UnsignedParcel) -> Self {
+        let nonce = value.nonce.expect("Nonce must exist");
+        let fee = value.fee;
+        let network_id = value.network_id;
+        let action: ActionType = Result::from(value.action)?;
+
+        Ok(Parcel {
+            nonce,
+            fee,
+            network_id,
+            action,
+        })
     }
 }

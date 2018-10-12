@@ -18,16 +18,21 @@ use std::str::FromStr;
 use std::{fmt, fs};
 
 use ccore::Scheme;
+use never::Never;
 
-#[derive(Debug, PartialEq, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ChainType {
     Solo,
-    SoloAuthority,
+    #[serde(rename = "simple_poa")]
+    SimplePoA,
     Tendermint,
     Cuckoo,
+    #[serde(rename = "blake_pow")]
     BlakePoW,
     Husky,
+    Saluki,
+    Corgi,
     Custom(String),
 }
 
@@ -38,16 +43,18 @@ impl Default for ChainType {
 }
 
 impl FromStr for ChainType {
-    type Err = String;
+    type Err = Never;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let scheme = match s {
             "solo" => ChainType::Solo,
-            "solo_authority" => ChainType::SoloAuthority,
+            "simple_poa" => ChainType::SimplePoA,
             "tendermint" => ChainType::Tendermint,
             "cuckoo" => ChainType::Cuckoo,
             "blake_pow" => ChainType::BlakePoW,
             "husky" => ChainType::Husky,
+            "saluki" => ChainType::Saluki,
+            "corgi" => ChainType::Corgi,
             other => ChainType::Custom(other.into()),
         };
         Ok(scheme)
@@ -58,11 +65,13 @@ impl fmt::Display for ChainType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str(match self {
             ChainType::Solo => "solo",
-            ChainType::SoloAuthority => "solo_authority",
+            ChainType::SimplePoA => "simple_poa",
             ChainType::Tendermint => "tendermint",
             ChainType::Cuckoo => "cuckoo",
             ChainType::BlakePoW => "blake_pow",
             ChainType::Husky => "husky",
+            ChainType::Saluki => "saluki",
+            ChainType::Corgi => "corgi",
             ChainType::Custom(custom) => custom,
         })
     }
@@ -72,11 +81,13 @@ impl ChainType {
     pub fn scheme(&self) -> Result<Scheme, String> {
         match self {
             ChainType::Solo => Ok(Scheme::new_test_solo()),
-            ChainType::SoloAuthority => Ok(Scheme::new_test_solo_authority()),
+            ChainType::SimplePoA => Ok(Scheme::new_test_simple_poa()),
             ChainType::Tendermint => Ok(Scheme::new_test_tendermint()),
             ChainType::Cuckoo => Ok(Scheme::new_test_cuckoo()),
             ChainType::BlakePoW => Ok(Scheme::new_test_blake_pow()),
             ChainType::Husky => Ok(Scheme::new_husky()),
+            ChainType::Saluki => Ok(Scheme::new_saluki()),
+            ChainType::Corgi => Ok(Scheme::new_corgi()),
             ChainType::Custom(filename) => {
                 let file = fs::File::open(filename)
                     .map_err(|e| format!("Could not load specification file at {}: {}", filename, e))?;

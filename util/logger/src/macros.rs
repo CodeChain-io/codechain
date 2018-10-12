@@ -52,11 +52,11 @@ macro_rules! log_target {
     (OWN_PARCEL) => {
         "own_parcel"
     };
-    (POA) => {
-        "poa"
-    };
     (ROUTING_TABLE) => {
         "routing_table"
+    };
+    (RPC) => {
+        "rpc"
     };
     (SHARD_VALIDATOR) => {
         "shard_validator"
@@ -66,9 +66,6 @@ macro_rules! log_target {
     };
     (SNAPSHOT) => {
         "snapshot"
-    };
-    (SOLO_AUTHORITY) => {
-        "solo_authoirty"
     };
     (SPEC) => {
         "spec"

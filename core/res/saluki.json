@@ -1,8 +1,12 @@
 {
   "name": "Saluki",
   "engine": {
-    "solo": {
+    "simplePoA": {
       "params": {
+        "blockReward": "0x3b9aca00",
+        "validators": [
+          "sccqx74ftz8ct6yks4mq3u06g2wt07zxfqrss777pj2"
+        ]
       }
     }
   },
@@ -17,21 +21,21 @@
   },
   "genesis": {
     "seal": {
-      "generic": "0x0"
+      "generic": "0xc180"
     },
     "score": "0x20000",
-    "author": "sccqpacwudq9pntwd9vt5ddhrhemr9q2ny5qy6a795m",
+    "author": "sccqx74ftz8ct6yks4mq3u06g2wt07zxfqrss777pj2",
     "timestamp": "0x00",
     "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
     "extraData": "0x"
   },
   "accounts": {
-    "sccqpacwudq9pntwd9vt5ddhrhemr9q2ny5qy6a795m":  { "balance": "2100000000000000000", "nonce": "0" }
+    "sccqx74ftz8ct6yks4mq3u06g2wt07zxfqrss777pj2":  { "balance": "2100000000000000000", "nonce": "0" }
   },
   "shards": {
     "0": {
       "nonce": 0,
-      "owners": ["sccqpacwudq9pntwd9vt5ddhrhemr9q2ny5qy6a795m"],
+      "owners": ["sccqx74ftz8ct6yks4mq3u06g2wt07zxfqrss777pj2"],
       "worlds": [{
         "nonce": 0,
         "owners": [

@@ -19,7 +19,10 @@ mod block;
 mod bytes;
 mod parcel;
 mod transaction;
+mod unsigned_parcel;
 mod work;
+
+use primitives::{H256, U256};
 
 pub use self::action::{Action, ShardChange};
 pub use self::block::Block;
@@ -27,10 +30,17 @@ pub use self::block::BlockNumberAndHash;
 pub use self::bytes::Bytes;
 pub use self::parcel::Parcel;
 pub use self::transaction::Transaction;
+pub use self::unsigned_parcel::UnsignedParcel;
 pub use self::work::Work;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FilterStatus {
-    pub list: Vec<::std::net::IpAddr>,
+    pub list: Vec<(::std::net::IpAddr, String)>,
     pub enabled: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SendParcelResult {
+    pub hash: H256,
+    pub nonce: U256,
 }

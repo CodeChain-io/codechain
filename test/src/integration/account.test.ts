@@ -16,13 +16,9 @@
 
 import CodeChain from "../helper/spawn";
 import { wait } from "../helper/promise";
-import {
-    makeRandomH256,
-    makeRandomPassphrase,
-    getRandomIndex
-} from "../helper/random";
+import { makeRandomH256, makeRandomPassphrase } from "../helper/random";
 
-import { PlatformAddress } from "codechain-sdk/lib/key/classes";
+import { xor128 } from "seedrandom";
 
 const ERROR = {
     KEY_ERROR: {
@@ -57,7 +53,7 @@ const ERROR = {
 };
 
 describe("account", () => {
-    const noSuchAccount = "tccqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqj5aqu5";
+    const noSuchAccount = "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqhhn9p3";
 
     describe("account base test", () => {
         let node: CodeChain;
@@ -91,7 +87,7 @@ describe("account", () => {
                 const account = node.sdk.util.getAccountIdFromPrivate(
                     randomSecret
                 );
-                const address = node.sdk.key.classes.PlatformAddress.fromAccountId(
+                const address = node.sdk.core.classes.PlatformAddress.fromAccountId(
                     account,
                     { networkId: "tc" }
                 );
@@ -286,7 +282,7 @@ describe("account", () => {
 
                 done();
             },
-            200 * testSize + 5000
+            500 * testSize + 5000
         );
 
         test(
@@ -297,7 +293,7 @@ describe("account", () => {
                     const account = node.sdk.util.getAccountIdFromPrivate(
                         randomSecret
                     );
-                    const address = node.sdk.key.classes.PlatformAddress.fromAccountId(
+                    const address = node.sdk.core.classes.PlatformAddress.fromAccountId(
                         account
                     );
                     const randomPassphrase = makeRandomPassphrase();
@@ -310,7 +306,7 @@ describe("account", () => {
                     ).toEqual(address.toString());
                 }
             },
-            200 * testSize + 5000
+            500 * testSize + 5000
         );
 
         test(
@@ -318,7 +314,7 @@ describe("account", () => {
             async done => {
                 const secret = node.sdk.util.generatePrivateKey();
                 const account = node.sdk.util.getAccountIdFromPrivate(secret);
-                const address = node.sdk.key.classes.PlatformAddress.fromAccountId(
+                const address = node.sdk.core.classes.PlatformAddress.fromAccountId(
                     account
                 );
                 const passphrase = makeRandomPassphrase();
@@ -358,7 +354,7 @@ describe("account", () => {
                 }
                 done();
             },
-            1800 * unlockTestSize + 5000
+            2000 * unlockTestSize + 5000
         );
 
         test(
@@ -374,6 +370,12 @@ describe("account", () => {
                 }
                 const accountList = [];
                 const actionNumber = randomTestSize;
+                const rng = xor128("Random account test");
+
+                function getRandomIndex(size: number) {
+                    const randomValue = rng.int32();
+                    return Math.abs(randomValue) % size;
+                }
 
                 for (let test = 0; test < actionNumber; test++) {
                     const randomAction =
@@ -396,7 +398,7 @@ describe("account", () => {
                                 const account = node.sdk.util.getAccountIdFromPrivate(
                                     secret
                                 );
-                                const address = node.sdk.key.classes.PlatformAddress.fromAccountId(
+                                const address = node.sdk.core.classes.PlatformAddress.fromAccountId(
                                     account,
                                     { networkId: "tc" }
                                 ).toString();
@@ -496,7 +498,7 @@ describe("account", () => {
                 }
                 done();
             },
-            200 * randomTestSize + 5000
+            500 * randomTestSize + 5000
         );
 
         afterEach(async () => {

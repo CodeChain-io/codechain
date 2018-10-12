@@ -14,9 +14,12 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ccrypto::{blake256, keccak256, ripemd160, sha256};
+use ccrypto::{blake256, keccak256, ripemd160, sha256, Blake};
 use ckey::{verify, Public, Signature, SIGNATURE_LENGTH};
-use primitives::H256;
+use ctypes::transaction::{AssetOutPoint, HashingError, PartialHashing};
+
+use primitives::H160;
+
 
 use instruction::{has_expensive_opcodes, is_valid_unlock_script, Instruction};
 
@@ -47,6 +50,15 @@ pub enum RuntimeError {
     IndexOutOfBound,
     StackUnderflow,
     TypeMismatch,
+    InvalidFilter,
+}
+
+impl From<HashingError> for RuntimeError {
+    fn from(error: HashingError) -> Self {
+        match error {
+            HashingError::InvalidFilter => RuntimeError::InvalidFilter,
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -82,9 +94,9 @@ impl From<bool> for Item {
     }
 }
 
-impl Into<bool> for Item {
-    fn into(self) -> bool {
-        self.as_ref().iter().find(|b| **b != 0).is_some()
+impl From<Item> for bool {
+    fn from(item: Item) -> Self {
+        item.as_ref().iter().any(|b| b != &0)
     }
 }
 
@@ -143,8 +155,10 @@ pub fn execute(
     unlock: &[Instruction],
     params: &[Vec<u8>],
     lock: &[Instruction],
-    tx_hash: H256,
+    tx: &PartialHashing,
     config: Config,
+    cur: &AssetOutPoint,
+    burn: bool,
 ) -> Result<ScriptResult, RuntimeError> {
     // FIXME: don't merge scripts
 
@@ -207,7 +221,7 @@ pub fn execute(
                 stack.push(second)?;
             }
             Instruction::Copy(index) => {
-                let item = stack.get(*index as usize)?;
+                let item = stack.get((stack.len() - 1) - *index as usize)?;
                 stack.push(item)?
             }
             Instruction::Drop(index) => {
@@ -215,6 +229,8 @@ pub fn execute(
             }
             Instruction::ChkSig => {
                 let pubkey = Public::from_slice(stack.pop()?.assert_len(64)?.as_ref());
+                let tx_hash = tx.hash_partially(stack.pop()?.as_ref().to_vec(), cur, burn)?;
+                println!("{:?}", tx_hash);
                 let signature = Signature::from(Signature::from(stack.pop()?.assert_len(SIGNATURE_LENGTH)?.as_ref()));
                 let result = match verify(&pubkey, &signature, &tx_hash) {
                     Ok(true) => 1,
@@ -238,6 +254,10 @@ pub fn execute(
                 let value = stack.pop()?;
                 stack.push(Item(keccak256(value).to_vec()))?;
             }
+            Instruction::Blake160 => {
+                let value = stack.pop()?;
+                stack.push(Item(H160::blake(value).to_vec()))?;
+            }
         }
         pc += 1;
     }
@@ -247,5 +267,40 @@ pub fn execute(
         Ok(ScriptResult::Unlocked)
     } else {
         Ok(ScriptResult::Fail)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn convert_true() {
+        let item: Item = true.into();
+        assert_eq!(vec![1], item.as_ref());
+        let result: bool = item.into();
+        assert!(result);
+    }
+
+    #[test]
+    fn convert_false() {
+        let item: Item = false.into();
+        assert_eq!(Vec::<u8>::new(), item.as_ref());
+        let result: bool = item.into();
+        assert!(!result);
+    }
+
+    #[test]
+    fn false_if_all_bit_is_zero() {
+        let item = Item(vec![0, 0, 0, 0, 0, 0, 0]);
+        let result: bool = item.into();
+        assert!(!result);
+    }
+
+    #[test]
+    fn true_if_at_least_one_bit_is_not_zero() {
+        let item = Item(vec![0, 0, 0, 1, 0, 0, 0]);
+        let result: bool = item.into();
+        assert!(result);
     }
 }

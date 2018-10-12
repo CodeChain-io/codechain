@@ -63,8 +63,8 @@ mod tests {
                 "tendermint": {
                     "params": {
                         "validators" : [
-                            "tccqzzpxln6w5zrhmfju3zc53w6w4y6s95mf5hw0n62",
-                            "tccqz03jn96q0kvwqzxgeq5u72e2l8v5vkdyq4cll9x"
+                            "tccq8qlwpt7xcs9lec3c8tyt3kqxlgsus8q4qp3m6ft",
+                            "tccqx6l27p92t5g86jmyz366rxy7tmqhkru8y37utys"
                         ],
                         "timeoutPropose": 10000,
                         "timeoutPrevote": 10000,
@@ -93,7 +93,7 @@ mod tests {
                     }
                 },
                 "score": "0x20000",
-                "author": "tccqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqj5aqu5",
+                "author": "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqhhn9p3",
                 "timestamp": "0x00",
                 "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000"
             },
@@ -101,11 +101,11 @@ mod tests {
             "enode://b1217cbaa440e35ed471157123fe468e19e8b5ad5bedb4b1fdbcbdab6fb2f5ed3e95dd9c24a22a79fdb2352204cea207df27d92bfd21bfd41545e8b16f637499@104.44.138.37:30303"
             ],
             "accounts": {
-                "tccqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqya7lxnw": { "balance": "1", "nonce": "1048576" },
-                "tccqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqgvqevzf": { "balance": "1", "nonce": "1048576" },
-                "tccqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqvr2m2dn": { "balance": "1", "nonce": "1048576" },
-                "tccqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqs844cf8": { "balance": "1", "nonce": "1048576" },
-                "tccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9my9a2k78": { "balance": "1606938044258990275541962092341162602522202993782792835301376", "nonce": "1048576" }
+                "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqyca3rwt": { "balance": "1", "nonce": "1048576" },
+                "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqgfrhflv": { "balance": "1", "nonce": "1048576" },
+                "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqvxf40sk": { "balance": "1", "nonce": "1048576" },
+                "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqszkma5z": { "balance": "1", "nonce": "1048576" },
+                "tccq8txq9uafdg8y2de9m2tdkhsfsj3m9nluq94hyan": { "balance": "1606938044258990275541962092341162602522202993782792835301376", "nonce": "1048576" }
             },
             "shards": {
             }

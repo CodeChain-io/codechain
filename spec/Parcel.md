@@ -77,7 +77,7 @@ AssetMint {
 }
 
 struct AssetMintOutput {
-    lock_script_hash: H256,
+    lock_script_hash: H160,
     parameters: Vec<Bytes>,
     amount: u64,
 }
@@ -105,7 +105,7 @@ struct AssetOutPoint {
     amount: u64,
 }
 struct AssetTransferOutput {
-    lock_script_hash: H256,
+    lock_script_hash: H160,
     parameters: Vec<Bytes>,
     asset_type: H256,
     amount: u64,

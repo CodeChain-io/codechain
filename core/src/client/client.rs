@@ -70,7 +70,7 @@ pub struct Client {
 
     io_channel: Mutex<IoChannel<ClientIoMessage>>,
 
-    chain: RwLock<Arc<BlockChain>>,
+    chain: RwLock<BlockChain>,
 
     /// Client uses this to store blocks, traces, etc.
     db: RwLock<Arc<KeyValueDB>>,
@@ -108,8 +108,8 @@ impl Client {
         }
 
         let gb = scheme.genesis_block();
-        let chain = Arc::new(BlockChain::new(&gb, db.clone()));
-        scheme.check_genesis_common_params(&*chain)?;
+        let chain = BlockChain::new(&gb, db.clone());
+        scheme.check_genesis_common_params(&chain)?;
 
         let engine = scheme.engine.clone();
 
@@ -360,7 +360,7 @@ impl EngineClient for Client {
     /// Submit a seal for a block in the mining queue.
     fn submit_seal(&self, block_hash: H256, seal: Vec<Bytes>) {
         if self.importer.miner.submit_seal(self, block_hash, seal).is_err() {
-            cwarn!(POA, "Wrong internal seal submission!")
+            cwarn!(CLIENT, "Wrong internal seal submission!")
         }
     }
 
@@ -791,6 +791,17 @@ impl Importer {
             }
         };
 
+        if chain.block_body(header.parent_hash()).is_none() {
+            cerror!(
+                CLIENT,
+                "Block import failed for #{} ({}): Parent block not found ({}) ",
+                header.number(),
+                header.hash(),
+                parent.hash()
+            );
+            return Err(())
+        }
+
         // Verify Block Family
         let verify_family_result = self.verifier.verify_block_family(
             &block.bytes,
@@ -800,7 +811,7 @@ impl Importer {
             Some(verification::FullFamilyParams {
                 block_bytes: &block.bytes,
                 parcels: &block.parcels,
-                block_provider: &**chain,
+                block_provider: &*chain,
                 client,
             }),
         );
@@ -980,11 +991,12 @@ impl RegularKey for Client {
 }
 
 impl RegularKeyOwner for Client {
-    fn regular_key_owner(&self, public: &Public, state: StateOrBlock) -> Option<Address> {
-        match state {
-            StateOrBlock::State(s) => s.regular_key_owner(public).ok()?,
-            StateOrBlock::Block(id) => self.state_at(id)?.regular_key_owner(public).ok()?,
-        }
+    fn regular_key_owner(&self, address: &Address, state: StateOrBlock) -> Option<Address> {
+        let state = match state {
+            StateOrBlock::State(s) => s,
+            StateOrBlock::Block(id) => Box::new(self.state_at(id)?),
+        };
+        state.regular_key_owner(address).ok()?
     }
 }
 

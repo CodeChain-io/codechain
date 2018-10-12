@@ -14,7 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::str::FromStr;
 use std::{fmt, ptr};
+
+use never::Never;
 
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Password(String);
@@ -46,20 +49,28 @@ impl Drop for Password {
     }
 }
 
+impl FromStr for Password {
+    type Err = Never;
+
+    fn from_str(s: &str) -> Result<Self, <Self as FromStr>::Err> {
+        Ok(Password(s.to_string()))
+    }
+}
+
 impl From<String> for Password {
-    fn from(s: String) -> Password {
-        Password(s)
+    fn from(s: String) -> Self {
+        s.parse().unwrap()
     }
 }
 
 impl<'a> From<&'a str> for Password {
-    fn from(s: &'a str) -> Password {
-        Password::from(String::from(s))
+    fn from(s: &'a str) -> Self {
+        s.parse().unwrap()
     }
 }
 
 impl Default for Password {
     fn default() -> Self {
-        Password::from(String::default())
+        Password(String::default())
     }
 }

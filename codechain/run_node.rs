@@ -21,11 +21,12 @@ use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use ccore::{
-    AccountProvider, Client, ClientService, EngineType, Miner, MinerService, Scheme, ShardValidator, Stratum,
-    StratumConfig, StratumError,
+    AccountProvider, AccountProviderError, Client, ClientService, EngineType, Miner, MinerService, Scheme,
+    ShardValidator, Stratum, StratumConfig, StratumError,
 };
 use cdiscovery::{KademliaConfig, KademliaExtension, UnstructuredConfig, UnstructuredExtension};
 use cfinally::finally;
+use ckey::Address;
 use ckeystore::accounts_dir::RootDiskDirectory;
 use ckeystore::KeyStore;
 use clap::ArgMatches;
@@ -41,11 +42,11 @@ use super::config::{self, load_config};
 use super::constants::DEFAULT_KEYS_PATH;
 use super::dummy_network_service::DummyNetworkService;
 use super::json::PasswordFile;
-use super::rpc::{rpc_http_start, rpc_ipc_start};
+use super::rpc::{rpc_http_start, rpc_ipc_start, rpc_ws_start};
 use super::rpc_apis::ApiDependencies;
 
 fn network_start(cfg: &NetworkConfig) -> Result<Arc<NetworkService>, String> {
-    info!("Handshake Listening on {}:{}", cfg.address, cfg.port);
+    cinfo!(NETWORK, "Handshake Listening on {}:{}", cfg.address, cfg.port);
 
     let addr = cfg.address.parse().map_err(|_| format!("Invalid NETWORK listen host given: {}", cfg.address))?;
     let sockaddress = SocketAddr::new(addr, cfg.port);
@@ -57,35 +58,37 @@ fn network_start(cfg: &NetworkConfig) -> Result<Arc<NetworkService>, String> {
 }
 
 fn discovery_start(service: &NetworkService, cfg: &config::Network) -> Result<(), String> {
-    match cfg.discovery_type.as_ref() {
-        "unstructured" => {
+    match cfg.discovery_type.as_ref().map(|s| s.as_str()) {
+        Some("unstructured") => {
             let config = UnstructuredConfig {
-                bucket_size: cfg.discovery_bucket_size,
-                t_refresh: cfg.discovery_refresh,
+                bucket_size: cfg.discovery_bucket_size.unwrap(),
+                t_refresh: cfg.discovery_refresh.unwrap(),
             };
             let unstructured = UnstructuredExtension::new(config);
             service.set_routing_table(&*unstructured);
             service.register_extension(unstructured);
             cinfo!(DISCOVERY, "Node runs with unstructured discovery");
         }
-        "kademlia" => {
+        Some("kademlia") => {
             let config = KademliaConfig {
-                bucket_size: cfg.discovery_bucket_size,
-                t_refresh: cfg.discovery_refresh,
+                bucket_size: cfg.discovery_bucket_size.unwrap(),
+                t_refresh: cfg.discovery_refresh.unwrap(),
             };
             let kademlia = KademliaExtension::new(config);
             service.set_routing_table(&*kademlia);
             service.register_extension(kademlia);
             cinfo!(DISCOVERY, "Node runs with kademlia discovery");
         }
-        discovery_type => return Err(format!("Unknown discovery {}", discovery_type)),
+        Some(discovery_type) => return Err(format!("Unknown discovery {}", discovery_type)),
+        None => {}
     }
     Ok(())
 }
 
 fn client_start(cfg: &config::Operating, scheme: &Scheme, miner: Arc<Miner>) -> Result<ClientService, String> {
-    info!("Starting client");
-    let client_path = Path::new(&cfg.db_path);
+    cinfo!(CLIENT, "Starting client");
+    let db_path = cfg.db_path.as_ref().map(|s| s.as_str()).unwrap();
+    let client_path = Path::new(db_path);
     let client_config = Default::default();
     let service = ClientService::start(client_config, &scheme, &client_path, miner)
         .map_err(|e| format!("Client service error: {}", e))?;
@@ -101,7 +104,7 @@ fn stratum_start(cfg: StratumConfig, miner: Arc<Miner>, client: Arc<Client>) -> 
         Err(e) => Err(format!("STRATUM start error: {:?}", e)),
         Ok(stratum) => {
             miner.add_work_listener(Box::new(stratum));
-            info!("STRATUM Listening on {}", cfg.port);
+            cinfo!(STRATUM, "Listening on {}", cfg.port);
             Ok(())
         }
     }
@@ -109,20 +112,35 @@ fn stratum_start(cfg: StratumConfig, miner: Arc<Miner>, client: Arc<Client>) -> 
 
 fn new_miner(config: &config::Config, scheme: &Scheme, ap: Arc<AccountProvider>) -> Result<Arc<Miner>, String> {
     let miner = Miner::new(config.miner_options()?, scheme, Some(ap.clone()));
-    match miner.engine_type() {
-        EngineType::PoW if !config.mining.disable => match &config.mining.author {
-            Some(ref author) => {
-                miner.set_author((*author).into_address(), None).expect("set_author never fails when PoW is used")
-            }
-            None => return Err("mining.author is not specified".to_string()),
-        },
-        EngineType::InternalSealing => match &config.mining.engine_signer {
-            Some(ref engine_signer) => {
-                miner.set_author((*engine_signer).into_address(), None).map_err(|e| format!("{:?}", e))?
-            }
-            None => return Err("mining.engine_signer is not specified".to_string()),
-        },
-        _ => (),
+
+    if !config.mining.disable.unwrap() {
+        match miner.engine_type() {
+            EngineType::PoW => match &config.mining.author {
+                Some(ref author) => {
+                    miner.set_author((*author).into_address(), None).expect("set_author never fails when PoW is used")
+                }
+                None => return Err("The author is missing. Specify the author using --author option.".to_string()),
+            },
+            EngineType::InternalSealing => match &config.mining.engine_signer {
+                Some(ref engine_signer) => match miner.set_author((*engine_signer).into_address(), None) {
+                    Err(AccountProviderError::NotUnlocked) => {
+                        return Err(
+                            "The account is not unlocked. Specify the password path using --password-path option."
+                                .to_string(),
+                        )
+                    }
+                    Err(e) => return Err(format!("{}", e)),
+                    _ => (),
+                },
+                None => {
+                    return Err("The engine signer is missing. Specify the engine signer using --engine-signer option."
+                        .to_string())
+                }
+            },
+            EngineType::Solo => miner
+                .set_author(config.mining.author.map_or(Address::default(), |a| a.into_address()), None)
+                .expect("set_author never fails when Solo is used"),
+        }
     }
 
     Ok(miner)
@@ -212,29 +230,32 @@ pub fn run_node(matches: ArgMatches) -> Result<(), String> {
 
     let shard_validator = if scheme.params().use_shard_validator {
         None
-    } else if config.shard_validator.disable {
-        Some(ShardValidator::new(None, Arc::clone(&ap)))
     } else {
-        Some(ShardValidator::new(Some(config.shard_validator_config().account), Arc::clone(&ap)))
+        let account = if config.shard_validator.disable.unwrap() {
+            None
+        } else {
+            Some(config.shard_validator_config().account)
+        };
+        Some(ShardValidator::new(client.client(), account, Arc::clone(&ap)))
     };
 
     let network_service: Arc<NetworkControl> = {
-        if !config.network.disable {
+        if !config.network.disable.unwrap() {
             let network_config = config.network_config()?;
             let service = network_start(&network_config)?;
 
-            if config.network.discovery {
+            if config.network.discovery.unwrap() {
                 discovery_start(&service, &config.network)?;
             } else {
                 cwarn!(DISCOVERY, "Node runs without discovery extension");
             }
 
-            if config.network.sync {
+            if config.network.sync.unwrap() {
                 let sync = BlockSyncExtension::new(client.client());
                 service.register_extension(sync.clone());
                 client.client().add_notify(sync.clone());
             }
-            if config.network.parcel_relay {
+            if config.network.parcel_relay.unwrap() {
                 service.register_extension(ParcelSyncExtension::new(client.client()));
             }
             if let Some(consensus_extension) = scheme.engine.network_extension() {
@@ -263,7 +284,7 @@ pub fn run_node(matches: ArgMatches) -> Result<(), String> {
     });
 
     let _rpc_server = {
-        if !config.rpc.disable {
+        if !config.rpc.disable.unwrap() {
             Some(rpc_http_start(config.rpc_http_config(), config.rpc.enable_devel_api, Arc::clone(&rpc_apis_deps))?)
         } else {
             None
@@ -271,20 +292,29 @@ pub fn run_node(matches: ArgMatches) -> Result<(), String> {
     };
 
     let _ipc_server = {
-        if !config.ipc.disable {
+        if !config.ipc.disable.unwrap() {
             Some(rpc_ipc_start(config.rpc_ipc_config(), config.rpc.enable_devel_api, Arc::clone(&rpc_apis_deps))?)
         } else {
             None
         }
     };
 
-    if (!config.stratum.disable) && (miner.engine_type() == EngineType::PoW) {
+    let _ws_server = {
+        if !config.ws.disable.unwrap() {
+            Some(rpc_ws_start(config.rpc_ws_config(), config.rpc.enable_devel_api, Arc::clone(&rpc_apis_deps))?)
+        } else {
+            None
+        }
+    };
+
+    if (!config.stratum.disable.unwrap()) && (miner.engine_type() == EngineType::PoW) {
         stratum_start(config.stratum_config(), Arc::clone(&miner), client.client())?
     }
 
     let _snapshot_service = {
-        if !config.snapshot.disable {
-            let service = SnapshotService::new(client.client(), config.snapshot.path, scheme.params().snapshot_period);
+        if !config.snapshot.disable.unwrap() {
+            let service =
+                SnapshotService::new(client.client(), config.snapshot.path.unwrap(), scheme.params().snapshot_period);
             client.client().add_notify(service.clone());
             Some(service)
         } else {

@@ -18,14 +18,23 @@ use std::collections::HashMap;
 use std::io::Cursor;
 
 use byteorder::{BigEndian, ReadBytesExt};
-use ccrypto::blake256;
+use ccrypto::{blake128, blake256, blake256_with_key};
 use ckey::{Address, NetworkId};
 use heapsize::HeapSizeOf;
-use primitives::{Bytes, H256, U128};
+use primitives::{Bytes, H160, H256, U128};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::super::{ShardId, WorldId};
 use super::error::Error;
+
+pub trait PartialHashing {
+    fn hash_partially(&self, bitvec: Vec<u8>, cur: &AssetOutPoint, burn: bool) -> Result<H256, HashingError>;
+}
+
+#[derive(Debug, PartialEq)]
+pub enum HashingError {
+    InvalidFilter,
+}
 
 #[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -47,7 +56,7 @@ pub struct AssetTransferInput {
 #[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AssetTransferOutput {
-    pub lock_script_hash: H256,
+    pub lock_script_hash: H160,
     pub parameters: Vec<Bytes>,
     pub asset_type: H256,
     pub amount: u64,
@@ -98,55 +107,14 @@ pub enum Transaction {
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AssetMintOutput {
-    pub lock_script_hash: H256,
+    pub lock_script_hash: H160,
     pub parameters: Vec<Bytes>,
     pub amount: Option<u64>,
 }
 
 impl Transaction {
-    pub fn without_script(&self) -> Self {
-        match self {
-            Transaction::AssetTransfer {
-                network_id,
-                burns,
-                inputs,
-                outputs,
-                nonce,
-            } => {
-                let new_burns: Vec<_> = burns
-                    .iter()
-                    .map(|input| AssetTransferInput {
-                        prev_out: input.prev_out.clone(),
-                        lock_script: Vec::new(),
-                        unlock_script: Vec::new(),
-                    })
-                    .collect();
-                let new_inputs: Vec<_> = inputs
-                    .iter()
-                    .map(|input| AssetTransferInput {
-                        prev_out: input.prev_out.clone(),
-                        lock_script: Vec::new(),
-                        unlock_script: Vec::new(),
-                    })
-                    .collect();
-                Transaction::AssetTransfer {
-                    network_id: *network_id,
-                    burns: new_burns,
-                    inputs: new_inputs,
-                    outputs: outputs.clone(),
-                    nonce: *nonce,
-                }
-            }
-            _ => unreachable!(),
-        }
-    }
-
     pub fn hash(&self) -> H256 {
         blake256(&*self.rlp_bytes())
-    }
-
-    pub fn hash_without_script(&self) -> H256 {
-        blake256(&*self.without_script().rlp_bytes())
     }
 
     pub fn network_id(&self) -> NetworkId {
@@ -226,6 +194,9 @@ impl Transaction {
                 outputs,
                 ..
             } => {
+                if outputs.len() > 512 {
+                    return Err(Error::TooManyOutputs(outputs.len()))
+                }
                 // FIXME: check burns
                 if !is_input_and_output_consistent(inputs, outputs) {
                     return Err(Error::InconsistentTransactionInOut)
@@ -344,6 +315,105 @@ fn is_input_and_output_consistent(inputs: &[AssetTransferInput], outputs: &[Asse
     }
 
     sum.iter().all(|(_, sum)| sum.is_zero())
+}
+
+fn apply_bitmask_to_output(
+    mut bitmask: Vec<u8>,
+    outputs: Vec<AssetTransferOutput>,
+    mut result: Vec<AssetTransferOutput>,
+) -> Result<Vec<AssetTransferOutput>, HashingError> {
+    let mut index = 0;
+    let output_len = outputs.len();
+
+    while let Some(e) = bitmask.pop() {
+        let mut filter = e;
+        for i in 0..8 {
+            if (8 * index + i) == output_len as usize {
+                return Ok(result)
+            }
+
+            if (filter & 0x1) == 1 {
+                result.push(outputs[8 * index + i].clone());
+            }
+            println!("{}", 8 * index + i);
+
+            filter = filter >> 1;
+        }
+        index += 1;
+    }
+    return Ok(result)
+}
+
+fn apply_input_scheme(
+    inputs: &Vec<AssetTransferInput>,
+    is_sign_all: bool,
+    is_sign_single: bool,
+    cur: &AssetOutPoint,
+) -> Vec<AssetTransferInput> {
+    if is_sign_all {
+        return inputs
+            .iter()
+            .map(|input| AssetTransferInput {
+                prev_out: input.prev_out.clone(),
+                lock_script: Vec::new(),
+                unlock_script: Vec::new(),
+            })
+            .collect()
+    }
+
+    if is_sign_single {
+        return vec![AssetTransferInput {
+            prev_out: cur.clone(),
+            lock_script: Vec::new(),
+            unlock_script: Vec::new(),
+        }]
+    }
+
+    Vec::new()
+}
+
+impl PartialHashing for Transaction {
+    fn hash_partially(&self, mut bitvec: Vec<u8>, cur: &AssetOutPoint, is_burn: bool) -> Result<H256, HashingError> {
+        let tag = bitvec.pop().unwrap();
+        let sign_all_inputs = (tag & 0x1) == 1;
+        let sign_all_outputs = (tag >> 1 & 0x1) == 1;
+        let filter_len = (tag >> 2) & 0x3f;
+
+        match self {
+            Transaction::AssetTransfer {
+                network_id,
+                burns,
+                inputs,
+                outputs,
+                nonce,
+            } => {
+                let new_burns = apply_input_scheme(burns, sign_all_inputs, is_burn, cur);
+                let new_inputs = apply_input_scheme(inputs, sign_all_inputs, !is_burn, cur);
+
+                let new_outputs = if sign_all_outputs {
+                    outputs.clone()
+                } else {
+                    if bitvec.len() != filter_len as usize {
+                        return Err(HashingError::InvalidFilter)
+                    }
+                    apply_bitmask_to_output(bitvec.clone(), outputs.to_vec(), Vec::new())?
+                };
+
+                bitvec.push(tag);
+                Ok(blake256_with_key(
+                    &Transaction::AssetTransfer {
+                        network_id: *network_id,
+                        burns: new_burns,
+                        inputs: new_inputs,
+                        outputs: new_outputs,
+                        nonce: *nonce,
+                    }.rlp_bytes(),
+                    &blake128(&bitvec),
+                ))
+            }
+            _ => unreachable!(),
+        }
+    }
 }
 
 type TransactionId = u8;
@@ -585,7 +655,7 @@ mod tests {
                 unlock_script: vec![],
             }],
             &[AssetTransferOutput {
-                lock_script_hash: H256::random(),
+                lock_script_hash: H160::random(),
                 parameters: vec![],
                 asset_type,
                 amount,
@@ -631,13 +701,13 @@ mod tests {
             ],
             &[
                 AssetTransferOutput {
-                    lock_script_hash: H256::random(),
+                    lock_script_hash: H160::random(),
                     parameters: vec![],
                     asset_type: asset_type1,
                     amount: amount1,
                 },
                 AssetTransferOutput {
-                    lock_script_hash: H256::random(),
+                    lock_script_hash: H160::random(),
                     parameters: vec![],
                     asset_type: asset_type2,
                     amount: amount2,
@@ -684,13 +754,13 @@ mod tests {
             ],
             &[
                 AssetTransferOutput {
-                    lock_script_hash: H256::random(),
+                    lock_script_hash: H160::random(),
                     parameters: vec![],
                     asset_type: asset_type2,
                     amount: amount2,
                 },
                 AssetTransferOutput {
-                    lock_script_hash: H256::random(),
+                    lock_script_hash: H160::random(),
                     parameters: vec![],
                     asset_type: asset_type1,
                     amount: amount1,
@@ -711,7 +781,7 @@ mod tests {
         assert!(!is_input_and_output_consistent(
             &[],
             &[AssetTransferOutput {
-                lock_script_hash: H256::random(),
+                lock_script_hash: H160::random(),
                 parameters: vec![],
                 asset_type,
                 amount: output_amount,
@@ -757,7 +827,7 @@ mod tests {
                 unlock_script: vec![],
             }],
             &[AssetTransferOutput {
-                lock_script_hash: H256::random(),
+                lock_script_hash: H160::random(),
                 parameters: vec![],
                 asset_type,
                 amount: output_amount,
@@ -783,7 +853,7 @@ mod tests {
                 unlock_script: vec![],
             }],
             &[AssetTransferOutput {
-                lock_script_hash: H256::random(),
+                lock_script_hash: H160::random(),
                 parameters: vec![],
                 asset_type,
                 amount: output_amount,
@@ -835,5 +905,115 @@ mod tests {
             owners: vec![Address::random(), Address::random(), Address::random()],
         };
         rlp_encode_and_decode_test!(transaction);
+    }
+
+    #[test]
+    fn fail_if_filter_is_illegal() {
+        let transaction = Transaction::AssetTransfer {
+            network_id: NetworkId::default(),
+            burns: Vec::new(),
+            inputs: Vec::new(),
+            outputs: Vec::new(),
+            nonce: 0,
+        };
+        let outpoint = AssetOutPoint {
+            transaction_hash: H256::default(),
+            index: 0,
+            asset_type: H256::default(),
+            amount: 0,
+        };
+        assert_eq!(
+            transaction.hash_partially(
+                vec![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0b00111101 as u8],
+                &outpoint,
+                false
+            ),
+            Err(HashingError::InvalidFilter)
+        );
+    }
+
+    #[test]
+    fn apply_long_filter() {
+        let out = AssetOutPoint {
+            transaction_hash: H256::default(),
+            index: 0,
+            asset_type: H256::default(),
+            amount: 0,
+        };
+        let inputs: Vec<AssetTransferInput> = (0..100)
+            .map(|_| AssetTransferInput {
+                prev_out: AssetOutPoint {
+                    transaction_hash: H256::default(),
+                    index: 0,
+                    asset_type: H256::default(),
+                    amount: 0,
+                },
+                lock_script: Vec::new(),
+                unlock_script: Vec::new(),
+            })
+            .collect();
+        let mut outputs: Vec<AssetTransferOutput> = (0..100)
+            .map(|_| AssetTransferOutput {
+                lock_script_hash: H160::default(),
+                parameters: Vec::new(),
+                asset_type: H256::default(),
+                amount: 0,
+            })
+            .collect();
+
+        let transaction = Transaction::AssetTransfer {
+            network_id: NetworkId::default(),
+            burns: Vec::new(),
+            inputs: inputs.clone(),
+            outputs: outputs.clone(),
+            nonce: 0,
+        };
+        let mut tag: Vec<u8> = vec![0b00001111 as u8];
+        for _i in 0..12 {
+            tag.push(0b11111111 as u8);
+        }
+        tag.push(0b00110101);
+        assert_eq!(
+            transaction.hash_partially(tag.clone(), &out, false),
+            Ok(blake256_with_key(&transaction.rlp_bytes(), &blake128(&tag)))
+        );
+
+        // Sign except for last element
+        outputs.pop();
+        let transaction_aux = Transaction::AssetTransfer {
+            network_id: NetworkId::default(),
+            burns: Vec::new(),
+            inputs: inputs.clone(),
+            outputs: outputs.clone(),
+            nonce: 0,
+        };
+        tag = vec![0b00000111 as u8];
+        for _i in 0..12 {
+            tag.push(0b11111111 as u8);
+        }
+        tag.push(0b00110101);
+        assert_eq!(
+            transaction.hash_partially(tag.clone(), &out, false),
+            Ok(blake256_with_key(&transaction_aux.rlp_bytes(), &blake128(&tag)))
+        );
+
+        // Sign except for last two elements
+        outputs.pop();
+        let transaction_aux = Transaction::AssetTransfer {
+            network_id: NetworkId::default(),
+            burns: Vec::new(),
+            inputs,
+            outputs,
+            nonce: 0,
+        };
+        tag = vec![0b00000011 as u8];
+        for _i in 0..12 {
+            tag.push(0b11111111 as u8);
+        }
+        tag.push(0b00110101);
+        assert_eq!(
+            transaction.hash_partially(tag.clone(), &out, false),
+            Ok(blake256_with_key(&transaction_aux.rlp_bytes(), &blake128(&tag)))
+        );
     }
 }

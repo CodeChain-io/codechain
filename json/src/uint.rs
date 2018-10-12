@@ -25,27 +25,28 @@ use serde::{Deserialize, Deserializer};
 #[derive(Default, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy)]
 pub struct Uint(pub U256);
 
-impl Into<U256> for Uint {
-    fn into(self) -> U256 {
-        self.0
+impl From<Uint> for U256 {
+    fn from(f: Uint) -> Self {
+        f.0
     }
 }
 
-impl Into<u64> for Uint {
-    fn into(self) -> u64 {
-        u64::from(self.0)
+impl From<Uint> for u64 {
+    fn from(f: Uint) -> Self {
+        Self::from(f.0)
     }
 }
 
-impl Into<usize> for Uint {
-    fn into(self) -> usize {
+impl From<Uint> for usize {
+    fn from(f: Uint) -> Self {
         // TODO: clean it after util conversions refactored.
-        u64::from(self.0) as usize
+        u64::from(f.0) as usize
     }
 }
-impl Into<u8> for Uint {
-    fn into(self) -> u8 {
-        u64::from(self.0) as u8
+
+impl From<Uint> for u8 {
+    fn from(f: Uint) -> Self {
+        u64::from(f.0) as u8
     }
 }
 

@@ -214,15 +214,11 @@ impl NetworkExtension for Extension {
         cinfo!(SYNC, "Peer removed #{}", id);
         header_downloaders.remove(id);
 
-        let t = requests.remove(id);
-        debug_assert_ne!(None, t);
-        let token = tokens.remove(id);
-        debug_assert_ne!(None, token);
-        let token = token.unwrap();
-        let t = tokens_info.remove(&token);
-        debug_assert_ne!(None, t);
-        let t = token_generator.restore(token);
-        debug_assert!(t);
+        requests.remove(id);
+        if let Some(token) = tokens.remove(id) {
+            tokens_info.remove(&token);
+            token_generator.restore(token);
+        }
     }
 
     fn on_message(&self, id: &NodeId, data: &[u8]) {
@@ -483,6 +479,7 @@ impl Extension {
                         RequestMessage::Bodies(hashes) => hashes,
                         _ => unreachable!(),
                     };
+                    assert_eq!(bodies.len(), hashes.len());
                     if let Some(token) = self.tokens.read().get(from) {
                         if let Some(token_info) = self.tokens_info.write().get_mut(token) {
                             if token_info.request_id.is_none() {
@@ -522,7 +519,10 @@ impl Extension {
 
                 headers.first().map(|header| header.number()) == Some(*start_number)
             }
-            (RequestMessage::Bodies(_), ResponseMessage::Bodies(bodies)) => {
+            (RequestMessage::Bodies(hashes), ResponseMessage::Bodies(bodies)) => {
+                if hashes.len() != bodies.len() {
+                    return false
+                }
                 for body in bodies {
                     for parcel in body {
                         let is_valid = match &parcel.as_unsigned().action {
@@ -559,9 +559,13 @@ impl Extension {
 
         let mut exists = Vec::new();
         for header in completed {
-            // FIXME: handle import errors
             match self.client.import_header(header.clone().into_inner()) {
                 Err(BlockImportError::Import(ImportError::AlreadyInChain)) => exists.push(header.hash()),
+                // FIXME: handle import errors
+                Err(err) => {
+                    cwarn!(SYNC, "Cannot import header({}): {:?}", header.hash(), err);
+                    break
+                }
                 _ => {}
             }
         }

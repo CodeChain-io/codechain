@@ -122,14 +122,15 @@ impl TopStateInfo for TopLevelState {
         let account = self.get_account(a)?;
         Ok(account.map_or_else(U256::zero, |account| *account.balance()))
     }
+
     fn regular_key(&self, a: &Address) -> TrieResult<Option<Public>> {
         let account = self.get_account(a)?;
         Ok(account.map_or(None, |account| account.regular_key()))
     }
 
-    fn regular_key_owner(&self, public: &Public) -> TrieResult<Option<Address>> {
-        let account = self.get_regular_account(public)?;
-        Ok(account.map_or(None, |regular_account| Some(public_to_address(regular_account.owner_public()))))
+    fn regular_key_owner(&self, address: &Address) -> TrieResult<Option<Address>> {
+        let account = self.get_regular_account_by_address(&address)?;
+        Ok(account.map(|regular_account| public_to_address(regular_account.owner_public())))
     }
 
     fn number_of_shards(&self) -> TrieResult<ShardId> {
@@ -389,6 +390,24 @@ impl TopLevelState {
             Ok(invoice) => {
                 self.discard_checkpoint(PARCEL_ACTION_CHECKPOINT);
                 Ok(invoice)
+            }
+            Err(StateError::Parcel(ParcelError::ParcelAlreadyImported)) => {
+                unreachable!();
+            }
+            Err(StateError::Parcel(ParcelError::TransactionAlreadyImported)) => {
+                unreachable!();
+            }
+            Err(StateError::Parcel(ParcelError::Old)) => {
+                unreachable!();
+            }
+            Err(StateError::Parcel(ParcelError::TooCheapToReplace)) => {
+                unreachable!();
+            }
+            Err(StateError::Parcel(ParcelError::InvalidNetworkId(_))) => {
+                unreachable!();
+            }
+            Err(StateError::Parcel(ParcelError::LimitReached)) => {
+                unreachable!();
             }
             Err(StateError::Parcel(err)) => {
                 self.revert_to_checkpoint(PARCEL_ACTION_CHECKPOINT);
@@ -1093,8 +1112,10 @@ mod tests_state {
 mod tests_parcel {
     use ckey::{Address, Generator, Random};
     use ctypes::parcel::Parcel;
-    use ctypes::transaction::{AssetMintOutput, AssetOutPoint, AssetTransferInput, AssetTransferOutput, Transaction};
-    use primitives::U256;
+    use ctypes::transaction::{
+        AssetMintOutput, AssetOutPoint, AssetTransferInput, AssetTransferOutput, Error as TransactionError,
+    };
+    use primitives::{H160, U256};
 
     use super::super::super::tests::helpers::get_temp_state;
     use super::*;
@@ -1488,7 +1509,7 @@ mod tests_parcel {
         };
 
         let metadata = "metadata".to_string();
-        let lock_script_hash = H256::from("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050");
+        let lock_script_hash = H160::from("0xb042ad154a3359d276835c903587ebafefea22af");
         let registrar = Some(sender);
         let amount = 30;
         let mint = Transaction::AssetMint {
@@ -1658,7 +1679,7 @@ mod tests_parcel {
         };
 
         let metadata = "metadata".to_string();
-        let lock_script_hash = H256::random();
+        let lock_script_hash = H160::random();
         let parameters = vec![];
         let registrar = Some(Address::random());
         let amount = 30;
@@ -1730,7 +1751,7 @@ mod tests_parcel {
         };
 
         let metadata = "metadata".to_string();
-        let lock_script_hash = H256::random();
+        let lock_script_hash = H160::random();
         let parameters = vec![];
         let registrar = Some(Address::random());
         let transaction = Transaction::AssetMint {
@@ -1804,7 +1825,7 @@ mod tests_parcel {
         };
 
         let metadata = "metadata".to_string();
-        let lock_script_hash = H256::from("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050");
+        let lock_script_hash = H160::from("b042ad154a3359d276835c903587ebafefea22af");
         let registrar = None;
         let amount = 30;
 
@@ -1827,7 +1848,7 @@ mod tests_parcel {
         let asset_type = asset_scheme_address.clone().into();
         let asset_address = OwnedAssetAddress::new(mint_hash, 0, shard_id);
 
-        let random_lock_script_hash = H256::random();
+        let random_lock_script_hash = H160::random();
         let transfer = Transaction::AssetTransfer {
             network_id,
             burns: vec![],
@@ -1933,7 +1954,7 @@ mod tests_parcel {
         };
 
         let metadata = "metadata".to_string();
-        let lock_script_hash = H256::from("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050");
+        let lock_script_hash = H160::from("b042ad154a3359d276835c903587ebafefea22af");
         let registrar = None;
         let amount = 30;
         let mint = Transaction::AssetMint {
@@ -1982,7 +2003,7 @@ mod tests_parcel {
         let asset = state.asset(shard_id, &asset_address);
         assert_eq!(Ok(Some(OwnedAsset::new(asset_type, lock_script_hash, vec![], 30))), asset);
 
-        let random_lock_script_hash = H256::random();
+        let random_lock_script_hash = H160::random();
         let transfer = Transaction::AssetTransfer {
             network_id,
             burns: vec![],
@@ -2062,6 +2083,155 @@ mod tests_parcel {
         let asset2_address = OwnedAssetAddress::new(transfer_hash, 2, shard_id);
         let asset2 = state.asset(shard_id, &asset2_address);
         assert_eq!(Ok(Some(OwnedAsset::new(asset_type, random_lock_script_hash, vec![], 15))), asset2);
+    }
+
+    #[test]
+    fn cannot_mint_twice_in_the_same_parcel() {
+        let (sender, sender_public) = address();
+
+        let mut state = get_temp_state();
+        assert_eq!(Ok(()), state.create_shard_level_state(vec![sender], vec![]));
+        assert_eq!(Ok(()), state.commit());
+
+        let network_id = "tc".into();
+        let shard_id = 0x0;
+        let world_id = 0;
+
+        let create_world = Transaction::CreateWorld {
+            network_id,
+            shard_id,
+            nonce: 0,
+            owners: vec![sender],
+        };
+
+        let metadata = "metadata".to_string();
+        let lock_script_hash = H160::random();
+        let parameters = vec![];
+        let registrar = Some(Address::random());
+        let amount = 30;
+        let transaction = Transaction::AssetMint {
+            network_id,
+            shard_id,
+            world_id,
+            metadata: metadata.clone(),
+            output: AssetMintOutput {
+                lock_script_hash,
+                parameters: parameters.clone(),
+                amount: Some(amount),
+            },
+            registrar,
+            nonce: 0,
+        };
+        let transaction_hash = transaction.hash();
+        let parcel = Parcel {
+            fee: 11.into(),
+            action: Action::AssetTransactionGroup {
+                transactions: vec![create_world, transaction.clone(), transaction],
+                changes: vec![ShardChange {
+                    shard_id,
+                    pre_root: H256::from("0xa8ed01b49cd63c6a547ac3ce357539aa634fb44331a351e3e98b9f1c3a8e3edf"),
+                    post_root: H256::zero(),
+                }],
+                signatures: vec![],
+            },
+            nonce: 0.into(),
+            network_id,
+        };
+
+        assert_eq!(Ok(()), state.add_balance(&sender, &U256::from(69u64)));
+
+        assert_eq!(
+            Ok(ParcelInvoice::Multiple(vec![
+                TransactionInvoice::Success,
+                TransactionInvoice::Success,
+                TransactionInvoice::Fail(TransactionError::AssetSchemeDuplicated(transaction_hash)),
+            ])),
+            state.apply(&parcel, &sender_public)
+        );
+    }
+
+    #[test]
+    fn cannot_mint_twice_in_different_parcel() {
+        let (sender, sender_public) = address();
+
+        let mut state = get_temp_state();
+        assert_eq!(Ok(()), state.create_shard_level_state(vec![sender], vec![]));
+        assert_eq!(Ok(()), state.commit());
+
+        let network_id = "tc".into();
+        let shard_id = 0x0;
+        let world_id = 0;
+
+        let create_world = Transaction::CreateWorld {
+            network_id,
+            shard_id,
+            nonce: 0,
+            owners: vec![sender],
+        };
+
+        let metadata = "metadata".to_string();
+        let lock_script_hash = H160::random();
+        let parameters = vec![];
+        let registrar = Some(Address::random());
+        let amount = 30;
+        let transaction = Transaction::AssetMint {
+            network_id,
+            shard_id,
+            world_id,
+            metadata: metadata.clone(),
+            output: AssetMintOutput {
+                lock_script_hash,
+                parameters: parameters.clone(),
+                amount: Some(amount),
+            },
+            registrar,
+            nonce: 0,
+        };
+        let parcel = Parcel {
+            fee: 11.into(),
+            action: Action::AssetTransactionGroup {
+                transactions: vec![create_world, transaction.clone()],
+                changes: vec![ShardChange {
+                    shard_id,
+                    pre_root: H256::from("0xa8ed01b49cd63c6a547ac3ce357539aa634fb44331a351e3e98b9f1c3a8e3edf"),
+                    post_root: H256::zero(),
+                }],
+                signatures: vec![],
+            },
+            nonce: 0.into(),
+            network_id,
+        };
+
+        assert_eq!(Ok(()), state.add_balance(&sender, &U256::from(69u64)));
+
+        assert_eq!(
+            Ok(ParcelInvoice::Multiple(vec![TransactionInvoice::Success, TransactionInvoice::Success])),
+            state.apply(&parcel, &sender_public)
+        );
+
+        let shard_root = state.shard_root(shard_id).expect("Shard must exist").expect("Shard root must exist");
+
+        let transaction_hash = transaction.hash();
+        let parcel = Parcel {
+            fee: 11.into(),
+            action: Action::AssetTransactionGroup {
+                transactions: vec![transaction],
+                changes: vec![ShardChange {
+                    shard_id,
+                    pre_root: shard_root,
+                    post_root: H256::zero(),
+                }],
+                signatures: vec![],
+            },
+            nonce: 1.into(),
+            network_id,
+        };
+        assert_eq!(
+            Ok(ParcelInvoice::Multiple(vec![TransactionInvoice::Fail(TransactionError::AssetSchemeDuplicated(
+                transaction_hash,
+            ))])),
+            state.apply(&parcel, &sender_public)
+        );
     }
 
     #[test]
@@ -2169,7 +2339,7 @@ mod tests_parcel {
         let shard_id = 0;
         let world_id = 0;
         let metadata = "metadata".to_string();
-        let lock_script_hash = H256::random();
+        let lock_script_hash = H160::random();
         let parameters = vec![];
         let registrar = Some(Address::random());
         let amount = 30;
@@ -2235,19 +2405,19 @@ mod tests_parcel {
             }],
             outputs: vec![
                 AssetTransferOutput {
-                    lock_script_hash: H256::random(),
+                    lock_script_hash: H160::random(),
                     parameters: vec![vec![1]],
                     asset_type,
                     amount: 10,
                 },
                 AssetTransferOutput {
-                    lock_script_hash: H256::random(),
+                    lock_script_hash: H160::random(),
                     parameters: vec![],
                     asset_type,
                     amount: 5,
                 },
                 AssetTransferOutput {
-                    lock_script_hash: H256::random(),
+                    lock_script_hash: H160::random(),
                     parameters: vec![],
                     asset_type,
                     amount: 15,
@@ -2660,7 +2830,7 @@ mod tests_parcel {
         let world_id = 0;
 
         let metadata = "metadata".to_string();
-        let lock_script_hash = H256::from("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050");
+        let lock_script_hash = H160::from("b042ad154a3359d276835c903587ebafefea22af");
         let registrar = None;
         let amount = 30;
         let parameters = vec![];

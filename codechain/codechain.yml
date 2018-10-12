@@ -49,7 +49,7 @@ args:
     - chain:
         short: c
         long: chain
-        help: Set the blockchain type out of solo, solo_authority, tendermint, cuckoo, blake_pow, husky or a path to chain scheme file.
+        help: Set the blockchain type out of solo, simple_poa, tendermint, cuckoo, blake_pow, husky, saluki or a path to chain scheme file.
         takes_value: true
     - db-path:
         long: db-path
@@ -93,6 +93,31 @@ args:
         takes_value: true
         conflicts_with:
             - no-ipc
+    - ws-interface:
+        long: ws-interface
+        value_name: INTERFACE
+        help: Specify the interface address for the WebSockets JSON-RPC server.
+        takes_value: true
+        conflicts_with:
+            - no-ws
+    - ws-port:
+        long: ws-port
+        value_name: PORT
+        help: Specify the port portion of the WebSockets JSON-RPC server.
+        takes_value: true
+        conflicts_with:
+            - no-ws
+    - ws-max-connections:
+        long: ws-max-connections
+        value_name: CONN
+        help: Maximum number of allowed concurrent WebSockets JSON-RPC connections.
+        takes_value: true
+        conflicts_with:
+            - no-ws
+    - no-ws:
+        long: no-ws
+        help: Do not run the WebSockets JSON-RPC server.
+        takes_value: false
     - no-jsonrpc:
         long: no-jsonrpc
         help: Do not run jsonrpc.
@@ -246,7 +271,7 @@ subcommands:
                 short: c
                 long: chain
                 global: true
-                help: Set the blockchain type out of solo, solo_authority, tendermint, cuckoo, blake_pow, husky or a path to chain scheme file.
+                help: Set the blockchain type out of solo, simple_poa, tendermint, cuckoo, blake_pow, husky, saluki or a path to chain scheme file.
                 takes_value: true
         subcommands:
             - create:

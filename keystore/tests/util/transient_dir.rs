@@ -14,11 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
+use std::path::PathBuf;
+use std::{env, fs};
+
 use ckeystore::accounts_dir::{KeyDirectory, RootDiskDirectory};
 use ckeystore::{Error, SafeAccount};
 use rand::{OsRng, RngCore};
-use std::path::PathBuf;
-use std::{env, fs};
 
 pub fn random_dir() -> PathBuf {
     let mut rng = OsRng::new().unwrap();

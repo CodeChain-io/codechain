@@ -108,20 +108,20 @@ impl AccountProvider {
 
     pub fn new_account_and_public(&self, password: &Password) -> Result<(Address, Public), SignError> {
         let acc = Random.generate().expect("secp context has generation capabilities; qed");
-        let private = acc.private().clone();
-        let public = acc.public().clone();
-        let address = public_to_address(&public);
-        self.keystore.write().insert_account(*private, password)?;
-        Ok((address, public))
+        self.insert_account_internal(acc, password)
     }
 
     pub fn insert_account(&self, private: Private, password: &Password) -> Result<Address, SignError> {
         let acc = KeyPair::from_private(private)?;
-        let private = acc.private().clone();
-        let public = acc.public().clone();
+        self.insert_account_internal(acc, password).map(|(addr, _)| addr)
+    }
+
+    fn insert_account_internal(&self, acc: KeyPair, password: &Password) -> Result<(Address, Public), SignError> {
+        let private = *acc.private();
+        let public = *acc.public();
         let address = public_to_address(&public);
         self.keystore.write().insert_account(*private, password)?;
-        Ok(address)
+        Ok((address, public))
     }
 
     pub fn remove_account(&self, address: Address, password: &Password) -> Result<(), SignError> {
@@ -129,16 +129,8 @@ impl AccountProvider {
     }
 
     pub fn sign(&self, address: Address, password: Option<Password>, message: Message) -> Result<Signature, SignError> {
-        match password {
-            Some(password) => {
-                let signature = self.keystore.read().sign(&address, &password, &message)?;
-                Ok(signature)
-            }
-            None => {
-                let password = password.map(Ok).unwrap_or_else(|| self.password(&address))?;
-                Ok(self.keystore.read().sign(&address, &password, &message)?)
-            }
-        }
+        let password = password.map(Ok).unwrap_or_else(|| self.password(&address))?;
+        Ok(self.keystore.read().sign(&address, &password, &message)?)
     }
 
     pub fn has_account(&self, address: &Address) -> Result<bool, SignError> {

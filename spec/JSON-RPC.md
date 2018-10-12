@@ -50,6 +50,13 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
  - sig: `Signature`
  - action: `Action`
 
+## UnsignedParcel
+
+ - fee: `U256`
+ - networkId: `number`
+ - nonce: `U256` | `null`
+ - action: `Action`
+
 ## Actions
 
 ### AssetTransactionGroup Action
@@ -96,7 +103,7 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
 
  - amount: `number`
  - asset_type: `H256`
- - lock_script_hash: `H256`
+ - lock_script_hash: `H160`
  - parameters: `hexadecimal string[]`
 
 ## ShardChange
@@ -190,6 +197,7 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
  * [account_importRaw](#account_importraw)
  * [account_unlock](#account_unlock)
  * [account_sign](#account_sign)
+ * [account_sendParcel](#account_sendparcel)
  * [account_changePassword](#account_changepassword)
 ***
  * [shardValidator_registerAction](#shardvalidator_registeraction)
@@ -721,7 +729,7 @@ Response Example
   "result":{
     "amount":100,
     "asset_type":"0x53000000000000002ec1193ecd52e2833ffc10b45bea1fda49f857e34db67c68",
-    "lock_script_hash":"0x0000000000000000000000000000000000000000000000000000000000000000",
+    "lock_script_hash":"0x0000000000000000000000000000000000000000",
     "parameters":[
 
     ]
@@ -1305,6 +1313,7 @@ Adds the address to the whitelist.
 
 Params:
  1. address: `string`
+ 2. tag: `null` | `string`
 
 Return Type: `null`
 
@@ -1312,7 +1321,7 @@ Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "net_addToWhitelist", "params": ["1.2.3.4"], "id": 6}' \
+    -d '{"jsonrpc": "2.0", "method": "net_addToWhitelist", "params": ["1.2.3.4", "tag"], "id": 6}' \
     localhost:8080
 ```
 
@@ -1355,6 +1364,7 @@ Adds the address to the blacklist.
 
 Params:
  1. address: `string`
+ 2. tag: `null` | `string`
 
 Return Type: `null`
 
@@ -1362,7 +1372,7 @@ Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "net_addToBlacklist", "params": ["1.2.3.4"], "id": 6}' \
+    -d '{"jsonrpc": "2.0", "method": "net_addToBlacklist", "params": ["1.2.3.4", "tag"], "id": 6}' \
     localhost:8080
 ```
 
@@ -1495,10 +1505,9 @@ Response Example
 ## net_getWhitelist
 Gets the address in the whitelist.
 
-Params:
- 1. address: `string`
+Params: No parameters
 
-Return Type: { list: `string[]`, enabled: `bool` }
+Return Type: { list: `string[][]`, enabled: `bool` }
 
 Request Example
 ```
@@ -1512,7 +1521,7 @@ Response Example
 ```
 {
   "jsonrpc":"2.0",
-  "result": { "list": ["1.2.3.4", "1.2.3.5", "1.2.3.6"], "enabled": true },
+  "result": { "list": [["1.2.3.4", "tag1"], ["1.2.3.5", "tag2"], ["1.2.3.6", "tag3"]], "enabled": true },
   "id":6
 }
 ```
@@ -1520,10 +1529,9 @@ Response Example
 ## net_getBlacklist
 Gets the address in the blacklist.
 
-Params:
- 1. address: `string`
+Params: No parameters
 
-Return Type: { list: `string[]`, enabled: `bool` }
+Return Type: { list: `string[][]`, enabled: `bool` }
 
 Request Example
 ```
@@ -1537,7 +1545,7 @@ Response Example
 ```
 {
   "jsonrpc":"2.0",
-  "result": { "list": ["1.2.3.4", "1.2.3.5", "1.2.3.6"], "enabled": false },
+  "result": { "list": [["1.2.3.4", "tag1"], ["1.2.3.5", "tag2"], ["1.2.3.6", "tag3"]], "enabled": false },
   "id":6
 }
 ```
@@ -1679,6 +1687,37 @@ Response Example
 {
   "jsonrpc":"2.0",
   "result":"0xff7e8928f7758a64b9ea6c53f9945cdd223740675ac6ac6da625306d3966f8197523e00d56844ddb70631d44f045f4d83cc183a267c3182ab04c2f459c8289f501",
+  "id":6
+}
+```
+
+## account_sendParcel
+Sends a parcel by signing it with the account’s private key.
+It automatically fills the nonce if the nonce is not given
+
+Params:
+ 1. parcel: `UnsignedParcel`
+ 2. account: `PlatformAddress`
+ 3. passphrase: `string` | `null`
+
+Return type: { hash: `H256`, nonce: `U256` } - the hash and nonce of the parcel
+
+Errors: `Keystore Error`, `Wrong Password`, `No Such Account`, `Not Unlocked`, `Invalid Params`, `Invalid NetworkId`
+
+Request Example
+```
+curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "account_sendParcel", "params": [{"action":{ "action":"payment", "amount":"0x3b9aca00", "receiver":"sccqra5felweesff3epv9wfu05a47sxh89yuvzw7mqd" }, "fee":"0x5f5e100", "networkId":"sc", "nonce": null}, "cccqqfz3sx7fr7uxqa5kl63qjdw9zrntru5kcdsjywj", null], "id": 6}' \
+    localhost:8080
+```
+
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result": {"nonce":"0xe8d4a50dd0", "hash":"0x8ae3363ccdcc02d8d662d384deee34fb89d1202124e8065f0d6c84ab31e68d8a"},
   "id":6
 }
 ```

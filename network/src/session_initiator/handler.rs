@@ -15,8 +15,6 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::collections::{HashMap, HashSet};
-use std::error;
-use std::fmt;
 use std::io;
 use std::sync::Arc;
 
@@ -54,14 +52,14 @@ impl Requests {
         }
     }
 
-    fn gen(&mut self, socket_address: SocketAddr) -> Result<usize> {
-        let seq = self.request_tokens.gen().ok_or(Error::General("Too many connections"))?;
+    fn gen(&mut self, socket_address: SocketAddr) -> IoHandlerResult<usize> {
+        let seq = self.request_tokens.gen().ok_or("Too many connections")?;
         let t = self.requests.insert(seq, socket_address);
         debug_assert!(t.is_none());
         Ok(seq)
     }
 
-    fn restore(&mut self, seq: usize, address: Option<SocketAddr>) -> Result<Option<SocketAddr>> {
+    fn restore(&mut self, seq: usize, address: Option<SocketAddr>) -> IoHandlerResult<Option<SocketAddr>> {
         match address {
             Some(address) => match self.requests.get(&seq) {
                 None => {
@@ -70,7 +68,7 @@ impl Requests {
                 }
                 Some(sent_address) => {
                     if sent_address != &address {
-                        return Err(Error::General("Invalid address"))
+                        return Err("Invalid address".into())
                     }
                 }
             },
@@ -100,47 +98,6 @@ enum Error {
     Decoder(DecoderError),
     SymmetricCipher(SymmetricCipherError),
     Key(KeyError),
-    General(&'static str),
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Error::Server(err) => err.fmt(f),
-            Error::Io(err) => err.fmt(f),
-            Error::CIo(err) => err.fmt(f),
-            Error::Decoder(err) => err.fmt(f),
-            Error::SymmetricCipher(_) => fmt::Debug::fmt(&self, f),
-            Error::Key(err) => err.fmt(f),
-            Error::General(_) => fmt::Debug::fmt(&self, f),
-        }
-    }
-}
-
-impl error::Error for Error {
-    fn description(&self) -> &str {
-        match self {
-            Error::Server(err) => err.description(),
-            Error::Io(err) => err.description(),
-            Error::CIo(err) => err.description(),
-            Error::Decoder(err) => err.description(),
-            Error::SymmetricCipher(_) => "SymmetricCipherError",
-            Error::Key(_) => "KeyError",
-            Error::General(str) => str,
-        }
-    }
-
-    fn cause(&self) -> Option<&error::Error> {
-        match self {
-            Error::Server(err) => Some(err),
-            Error::Io(err) => Some(err),
-            Error::CIo(_) => None,
-            Error::Decoder(err) => Some(err),
-            Error::SymmetricCipher(_) => None,
-            Error::Key(_) => None,
-            Error::General(_) => None,
-        }
-    }
 }
 
 impl From<ServerError> for Error {
@@ -207,41 +164,44 @@ impl SessionInitiator {
         })
     }
 
-    fn receive(&self) -> Result<Option<(message::Message, SocketAddr)>> {
+    fn receive(&self) -> IoHandlerResult<Option<(message::Message, SocketAddr)>> {
         Ok(self.server.receive()?)
     }
 
     // return false if there is no message to be sent
-    fn read(&mut self, io: &IoContext<Message>) -> Result<bool> {
-        match self.receive() {
-            Ok(None) => Ok(false),
-            Ok(Some((msg, socket_address))) => {
+    fn read(&mut self, io: &IoContext<Message>) -> IoHandlerResult<bool> {
+        match self.receive()? {
+            None => Ok(false),
+            Some((msg, socket_address)) => {
                 let ip = socket_address.ip();
-                if self.filters.is_allowed(&ip) {
-                    self.on_packet(&msg, &socket_address, io)?;
-                } else {
-                    cinfo!(NETWORK, "Message from {} is received. But it's not allowed", ip);
+                if !self.filters.is_allowed(&ip) {
+                    return Err(format!("Message from {} is received. But it's not allowed", ip).into())
                 }
+                self.on_packet(&msg, &socket_address, io)?;
                 Ok(true)
             }
-            Err(err) => Err(From::from(err)),
         }
     }
 
     // return false if there is no message to be sent
-    fn send(&mut self) -> Result<bool> {
+    fn send(&mut self) -> IoHandlerResult<bool> {
         Ok(self.server.send()?)
     }
 
-    fn create_new_connection(&mut self, target: &SocketAddr, io: &IoContext<Message>) -> Result<()> {
+    fn create_new_connection(&mut self, target: &SocketAddr, io: &IoContext<Message>) -> IoHandlerResult<()> {
         let seq = self.requests.gen(*target)?;
-        io.register_timer_once(seq, MESSAGE_TIMEOUT_MS)?;
+        io.register_timer_once(seq, MESSAGE_TIMEOUT_MS);
         let message = message::Message::node_id_request(seq as u64, target.into());
         self.server.enqueue(message, *target)?;
         Ok(())
     }
 
-    fn on_packet(&mut self, message: &message::Message, from: &SocketAddr, io: &IoContext<Message>) -> Result<()> {
+    fn on_packet(
+        &mut self,
+        message: &message::Message,
+        from: &SocketAddr,
+        io: &IoContext<Message>,
+    ) -> IoHandlerResult<()> {
         match message.body() {
             message::Body::NodeIdRequest(responder_node_id) => {
                 if !self.routing_table.add_node(from, *responder_node_id) {
@@ -258,11 +218,10 @@ impl SessionInitiator {
                     return Ok(())
                 }
 
-                io.clear_timer(message.seq() as TimerToken)?;
-                if self.requests.restore(message.seq() as usize, Some(*from)).is_err() {
-                    ctrace!(NETWORK, "Invalid message({:?}) from {}", message, from);
-                    return Ok(())
-                }
+                io.clear_timer(message.seq() as TimerToken);
+                self.requests
+                    .restore(message.seq() as usize, Some(*from))
+                    .map_err(|err| format!("Invalid message({:?}) from {}: {:?}", message, from, err))?;
 
                 if !self.routing_table.add_node(from, *requester_node_id) {
                     ctrace!(NETWORK, "{} is not a new candidate", from);
@@ -270,21 +229,18 @@ impl SessionInitiator {
 
                 if self.routing_table.is_secret_preimported(from) {
                     let seq = self.requests.gen(*from)?;
-                    io.register_timer_once(seq, MESSAGE_TIMEOUT_MS)?;
+                    io.register_timer_once(seq, MESSAGE_TIMEOUT_MS);
 
-                    let encrypted_nonce =
-                        self.routing_table.request_session(from).ok_or(Error::General("Cannot generate nonce"))?;
+                    let encrypted_nonce = self.routing_table.request_session(from).ok_or("Cannot generate nonce")?;
 
                     let message = message::Message::nonce_request(seq as u64, encrypted_nonce);
                     self.server.enqueue(message, *from)?;
                 } else {
-                    let requester_pub_key = self
-                        .routing_table
-                        .register_key_pair_for_secret(from)
-                        .ok_or(Error::General("Cannot register key pair"))?;
+                    let requester_pub_key =
+                        self.routing_table.register_key_pair_for_secret(from).ok_or("Cannot register key pair")?;
 
                     let seq = self.requests.gen(*from)?;
-                    io.register_timer_once(seq, MESSAGE_TIMEOUT_MS)?;
+                    io.register_timer_once(seq, MESSAGE_TIMEOUT_MS);
 
                     let message = message::Message::secret_request(seq as u64, requester_pub_key);
                     self.server.enqueue(message, *from)?;
@@ -307,24 +263,19 @@ impl SessionInitiator {
 
                 let message = message::Message::secret_denied(message.seq(), "ECDH Already requested".to_string());
                 self.server.enqueue(message, *from)?;
-                Err(Error::General("Cannot response to secret request"))
+                Err("Cannot response to secret request".into())
             }
             message::Body::SecretAllowed(responder_pub_key) => {
-                io.clear_timer(message.seq() as TimerToken)?;
-                if self.requests.restore(message.seq() as usize, Some(*from)).is_err() {
-                    ctrace!(NETWORK, "Invalid message({:?}) from {}", message, from);
-                    return Ok(())
-                }
+                io.clear_timer(message.seq() as TimerToken);
+                self.requests
+                    .restore(message.seq() as usize, Some(*from))
+                    .map_err(|err| format!("Invalid message({:?}) from {}: {:?}", message, from, err))?;
 
-                let _secret = self
-                    .routing_table
-                    .share_secret(from, responder_pub_key)
-                    .ok_or(Error::General("Cannot share secret"))?;
-                let encrypted_nonce =
-                    self.routing_table.request_session(from).ok_or(Error::General("Cannot generate nonce"))?;
+                let _secret = self.routing_table.share_secret(from, responder_pub_key).ok_or("Cannot share secret")?;
+                let encrypted_nonce = self.routing_table.request_session(from).ok_or("Cannot generate nonce")?;
 
                 let seq = self.requests.gen(*from)?;
-                io.register_timer_once(seq, MESSAGE_TIMEOUT_MS)?;
+                io.register_timer_once(seq, MESSAGE_TIMEOUT_MS);
 
                 let message = message::Message::nonce_request(seq as u64, encrypted_nonce);
                 self.server.enqueue(message, *from)?;
@@ -332,11 +283,10 @@ impl SessionInitiator {
                 Ok(())
             }
             message::Body::SecretDenied(reason) => {
-                io.clear_timer(message.seq() as TimerToken)?;
-                if self.requests.restore(message.seq() as usize, Some(*from)).is_err() {
-                    ctrace!(NETWORK, "Invalid message({:?}) from {}", message, from);
-                    return Ok(())
-                }
+                io.clear_timer(message.seq() as TimerToken);
+                self.requests
+                    .restore(message.seq() as usize, Some(*from))
+                    .map_err(|err| format!("Invalid message({:?}) from {}: {:?}", message, from, err))?;
 
                 if self.routing_table.remove_node(*from) {
                     cinfo!(NETWORK, "Shared Secret to {} denied (reason: {})", from, reason);
@@ -354,14 +304,13 @@ impl SessionInitiator {
 
                 let message = message::Message::nonce_denied(message.seq(), "Cannot create session".to_string());
                 self.server.enqueue(message, *from)?;
-                Err(Error::General("Cannot create session"))
+                Err("Cannot create session".into())
             }
             message::Body::NonceAllowed(encrypted_nonce) => {
-                io.clear_timer(message.seq() as TimerToken)?;
-                if self.requests.restore(message.seq() as usize, Some(*from)).is_err() {
-                    ctrace!(NETWORK, "Invalid message({:?}) from {}", message, from);
-                    return Ok(())
-                }
+                io.clear_timer(message.seq() as TimerToken);
+                self.requests
+                    .restore(message.seq() as usize, Some(*from))
+                    .map_err(|err| format!("Invalid message({:?}) from {}: {:?}", message, from, err))?;
 
                 if self.requests.manually_connected_address.take(from).is_some() {
                     self.channel_to_p2p
@@ -369,16 +318,15 @@ impl SessionInitiator {
                 }
 
                 if !self.routing_table.create_allowed_session(from, &encrypted_nonce) {
-                    cwarn!(NETWORK, "Cannot create session to {}", from);
+                    return Err(format!("Cannot create session to {}", from).into())
                 }
                 Ok(())
             }
             message::Body::NonceDenied(reason) => {
-                io.clear_timer(message.seq() as TimerToken)?;
-                if self.requests.restore(message.seq() as usize, Some(*from)).is_err() {
-                    ctrace!(NETWORK, "Invalid message({:?}) from {}", message, from);
-                    return Ok(())
-                }
+                io.clear_timer(message.seq() as TimerToken);
+                self.requests
+                    .restore(message.seq() as usize, Some(*from))
+                    .map_err(|err| format!("Invalid message({:?}) from {}: {:?}", message, from, err))?;
 
                 self.routing_table.reset_imported_secret(from);
 
@@ -422,15 +370,15 @@ const RECEIVE_TOKEN: usize = 0;
 
 impl IoHandler<Message> for Handler {
     fn initialize(&self, io: &IoContext<Message>) -> IoHandlerResult<()> {
-        io.register_stream(RECEIVE_TOKEN)?;
-        io.register_timer(REFRESH_TIMER_TOKEN, 10_000)?;
+        io.register_stream(RECEIVE_TOKEN);
+        io.register_timer(REFRESH_TIMER_TOKEN, 10_000);
         Ok(())
     }
 
     fn timeout(&self, io: &IoContext<Message>, timer: TimerToken) -> IoHandlerResult<()> {
         match timer {
             REFRESH_TIMER_TOKEN => {
-                io.message(Message::RequestSession(10))?;
+                io.message(Message::RequestSession(10));
                 Ok(())
             }
             BEGIN_OF_REQUEST_TOKEN...END_OF_REQUEST_TOKEN => {
@@ -462,25 +410,23 @@ impl IoHandler<Message> for Handler {
                 let mut session_initiator = self.session_initiator.write();
                 session_initiator.routing_table.add_candidate(*socket_address);
                 session_initiator.create_new_connection(&socket_address, io)?;
-                io.update_registration(RECEIVE_TOKEN)?;
+                io.update_registration(RECEIVE_TOKEN);
             }
             Message::ManuallyConnectTo(socket_address) => {
                 let mut session_initiator = self.session_initiator.write();
-                session_initiator.filters.add_to_whitelist(socket_address.ip());
+                session_initiator.filters.add_to_whitelist(socket_address.ip(), None);
                 session_initiator.routing_table.unban(&socket_address);
                 session_initiator.routing_table.add_candidate(*socket_address);
                 session_initiator.requests.manually_connected_address.insert(*socket_address);
                 session_initiator.create_new_connection(&socket_address, io)?;
-                io.update_registration(RECEIVE_TOKEN)?;
+                io.update_registration(RECEIVE_TOKEN);
             }
             Message::RequestSession(n) => {
                 let mut session_initiator = self.session_initiator.write();
                 let addresses = session_initiator.routing_table.candidates(n);
                 if !addresses.is_empty() {
                     let _f = finally(|| {
-                        if let Err(err) = io.update_registration(RECEIVE_TOKEN) {
-                            cwarn!(NETWORK, "Cannot update registration for session_initiator : {:?}", err);
-                        }
+                        io.update_registration(RECEIVE_TOKEN);
                     });
                     for address in addresses {
                         session_initiator.create_new_connection(&address, io)?;
@@ -506,9 +452,7 @@ impl IoHandler<Message> for Handler {
             unreachable!()
         }
         let _f = finally(|| {
-            if let Err(err) = io.update_registration(stream) {
-                cwarn!(NETWORK, "Cannot update registration for session_initiator : {:?}", err);
-            }
+            io.update_registration(stream);
         });
         loop {
             let mut session_initiator = self.session_initiator.write();
@@ -525,9 +469,7 @@ impl IoHandler<Message> for Handler {
         }
 
         let _f = finally(|| {
-            if let Err(err) = io.update_registration(stream) {
-                cwarn!(NETWORK, "Cannot update registration for session_initiator : {:?}", err);
-            }
+            io.update_registration(stream);
         });
         loop {
             let mut session_initiator = self.session_initiator.write();

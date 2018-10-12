@@ -15,7 +15,6 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::collections::VecDeque;
-use std::error::Error as StdError;
 use std::fmt;
 use std::io;
 use std::net;
@@ -43,23 +42,6 @@ impl fmt::Display for Error {
             Error::IoError(err) => err.fmt(f),
             Error::DecoderError(err) => err.fmt(f),
             Error::InvalidSign => fmt::Debug::fmt(&self, f),
-        }
-    }
-}
-
-impl StdError for Error {
-    fn description(&self) -> &str {
-        match self {
-            Error::IoError(err) => err.description(),
-            Error::DecoderError(err) => err.description(),
-            Error::InvalidSign => "invalid sign",
-        }
-    }
-    fn cause(&self) -> Option<&StdError> {
-        match self {
-            Error::IoError(err) => Some(err),
-            Error::DecoderError(err) => Some(err),
-            Error::InvalidSign => None,
         }
     }
 }
@@ -99,7 +81,7 @@ impl TryStream {
     fn read_len_of_len(&mut self, mut bytes: Vec<u8>) -> io::Result<(usize, Vec<u8>)> {
         debug_assert_eq!(None, self.read);
         debug_assert_eq!(1, bytes.len());
-        debug_assert!(bytes[0] >= 0xf7);
+        debug_assert!(bytes[0] > 0xf7);
         let len_of_len = (bytes[0] - 0xf7) as usize;
         debug_assert!(len_of_len <= 8);
         bytes.resize(1 + len_of_len, 0);
@@ -133,8 +115,11 @@ impl TryStream {
         let mut bytes: Vec<u8> = vec![0];
 
         if let Some(read_size) = self.stream.try_read(&mut bytes)? {
+            if read_size == 0 {
+                return Ok((0, vec![]))
+            }
             debug_assert_eq!(1, read_size);
-            if bytes[0] >= 0xf7 {
+            if bytes[0] >= 0xf8 {
                 return Ok(self.read_len_of_len(bytes)?)
             }
             if bytes[0] >= 0xc0 {
@@ -243,10 +228,6 @@ impl TryStream {
         Ok(())
     }
 
-    fn stream(&self) -> &TcpStream {
-        &self.stream
-    }
-
     fn peer_addr(&self) -> Result<SocketAddr> {
         Ok(self.stream.peer_addr()?.into())
     }
@@ -261,8 +242,8 @@ pub struct Stream {
 }
 
 impl Stream {
-    pub fn connect<'a, S: Into<&'a net::SocketAddr>>(socket_address: S) -> Result<Option<Self>> {
-        Ok(match TcpStream::connect(socket_address.into()) {
+    pub fn connect<'a>(socket_address: &net::SocketAddr) -> Result<Option<Self>> {
+        Ok(match TcpStream::connect(socket_address) {
             Ok(stream) => Some(Self::from(stream)),
             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => None,
             Err(e) => Err(e)?,
@@ -295,12 +276,12 @@ impl Stream {
         Ok(())
     }
 
-    fn read_bytes(&mut self) -> Result<Option<Vec<u8>>> {
-        self.try_stream.read_bytes()
+    pub fn clear(&mut self) {
+        self.try_stream.write.clear();
     }
 
-    pub fn stream(&self) -> &TcpStream {
-        &self.try_stream.stream()
+    fn read_bytes(&mut self) -> Result<Option<Vec<u8>>> {
+        self.try_stream.read_bytes()
     }
 
     pub fn peer_addr(&self) -> Result<SocketAddr> {
@@ -372,21 +353,15 @@ impl From<TcpStream> for Stream {
     }
 }
 
-impl Into<TcpStream> for Stream {
-    fn into(self) -> TcpStream {
-        self.try_stream.stream
+impl From<Stream> for TcpStream {
+    fn from(stream: Stream) -> Self {
+        stream.try_stream.stream
     }
 }
 
-impl<'a> Into<&'a TcpStream> for &'a Stream {
-    fn into(self) -> &'a TcpStream {
-        &self.try_stream.stream()
-    }
-}
-
-impl Into<Stream> for SignedStream {
-    fn into(self) -> Stream {
-        self.stream
+impl From<SignedStream> for Stream {
+    fn from(stream: SignedStream) -> Self {
+        stream.stream
     }
 }
 

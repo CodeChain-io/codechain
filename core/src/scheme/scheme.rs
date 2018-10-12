@@ -35,7 +35,7 @@ use rlp::{Encodable, Rlp, RlpStream};
 use super::super::blockchain::HeaderProvider;
 
 use super::super::codechain_machine::CodeChainMachine;
-use super::super::consensus::{BlakePoW, CodeChainEngine, Cuckoo, NullEngine, Solo, SoloAuthority, Tendermint};
+use super::super::consensus::{BlakePoW, CodeChainEngine, Cuckoo, NullEngine, SimplePoA, Solo, Tendermint};
 use super::super::error::{Error, SchemeError};
 use super::super::header::Header;
 use super::pod_state::{PodAccounts, PodShards};
@@ -143,9 +143,7 @@ impl Scheme {
         match engine_scheme {
             cjson::scheme::Engine::Null(null) => Arc::new(NullEngine::new(null.params.into(), machine)),
             cjson::scheme::Engine::Solo(solo) => Arc::new(Solo::new(solo.params.into(), machine)),
-            cjson::scheme::Engine::SoloAuthority(solo_authority) => {
-                Arc::new(SoloAuthority::new(solo_authority.params.into(), machine))
-            }
+            cjson::scheme::Engine::SimplePoA(simple_poa) => Arc::new(SimplePoA::new(simple_poa.params.into(), machine)),
             cjson::scheme::Engine::Tendermint(tendermint) => Tendermint::new(tendermint.params.into(), machine),
             cjson::scheme::Engine::Cuckoo(cuckoo) => Arc::new(Cuckoo::new(cuckoo.params.into(), machine)),
             cjson::scheme::Engine::BlakePoW(blake_pow) => Arc::new(BlakePoW::new(blake_pow.params.into(), machine)),
@@ -308,10 +306,10 @@ impl Scheme {
         load_bundled!("solo")
     }
 
-    /// Create a new Scheme with SoloAuthority consensus which does internal sealing (not requiring
+    /// Create a new Scheme with SimplePoA consensus which does internal sealing (not requiring
     /// work).
-    pub fn new_test_solo_authority() -> Self {
-        load_bundled!("solo_authority")
+    pub fn new_test_simple_poa() -> Self {
+        load_bundled!("simple_poa")
     }
 
     /// Create a new Scheme with Tendermint consensus which does internal sealing (not requiring
@@ -332,6 +330,14 @@ impl Scheme {
 
     pub fn new_husky() -> Self {
         load_bundled!("husky")
+    }
+
+    pub fn new_saluki() -> Self {
+        load_bundled!("saluki")
+    }
+
+    pub fn new_corgi() -> Self {
+        load_bundled!("corgi")
     }
 
     /// Get common blockchain parameters.

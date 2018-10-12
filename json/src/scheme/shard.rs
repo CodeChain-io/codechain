@@ -41,22 +41,22 @@ mod tests {
     fn shard_deserialization() {
         let s = r#"{
             "nonce": 0,
-            "owners": ["tccqqtk3q3rea46cq4cpa4h5tm43nw3supd6uxtltxv"],
+            "owners": ["tccq8vapdlstar6ghmqgczp6j2e83njsqq0tsvaxm9u"],
             "worlds": [{
                 "nonce": 3,
-                "owners": ["tccqp9lfw377aaxwl2f9s34h5lpfru0y5tlrc5avutn"]
+                "owners": ["tccq8txq9uafdg8y2de9m2tdkhsfsj3m9nluq94hyan"]
             }]
         }"#;
         let shard: Shard = serde_json::from_str(s).unwrap();
         assert_eq!(
             Shard {
                 nonce: Some(Uint(U256::from(0))),
-                owners: vec![PlatformAddress::from_str("tccqqtk3q3rea46cq4cpa4h5tm43nw3supd6uxtltxv").unwrap()],
+                owners: vec![PlatformAddress::from_str("tccq8vapdlstar6ghmqgczp6j2e83njsqq0tsvaxm9u").unwrap()],
                 users: None,
                 worlds: Some(vec![World {
                     nonce: Some(Uint(U256::from(3))),
                     owners: Some(vec![
-                        PlatformAddress::from_str("tccqp9lfw377aaxwl2f9s34h5lpfru0y5tlrc5avutn").unwrap(),
+                        PlatformAddress::from_str("tccq8txq9uafdg8y2de9m2tdkhsfsj3m9nluq94hyan").unwrap(),
                     ]),
                     users: None,
                 }]),
@@ -69,15 +69,15 @@ mod tests {
     fn shard_with_non_zero_nonce_deserialization() {
         let s = r#"{
             "nonce": 100,
-            "owners": ["tccqqtk3q3rea46cq4cpa4h5tm43nw3supd6uxtltxv"],
-            "users": ["tccqp9lfw377aaxwl2f9s34h5lpfru0y5tlrc5avutn"]
+            "owners": ["tccq8vapdlstar6ghmqgczp6j2e83njsqq0tsvaxm9u"],
+            "users": ["tccq8txq9uafdg8y2de9m2tdkhsfsj3m9nluq94hyan"]
         }"#;
         let shard: Shard = serde_json::from_str(s).unwrap();
         assert_eq!(
             Shard {
                 nonce: Some(Uint(U256::from(100))),
-                owners: vec![PlatformAddress::from_str("tccqqtk3q3rea46cq4cpa4h5tm43nw3supd6uxtltxv").unwrap()],
-                users: Some(vec![PlatformAddress::from_str("tccqp9lfw377aaxwl2f9s34h5lpfru0y5tlrc5avutn").unwrap()]),
+                owners: vec![PlatformAddress::from_str("tccq8vapdlstar6ghmqgczp6j2e83njsqq0tsvaxm9u").unwrap()],
+                users: Some(vec![PlatformAddress::from_str("tccq8txq9uafdg8y2de9m2tdkhsfsj3m9nluq94hyan").unwrap()]),
                 worlds: None,
             },
             shard
@@ -96,13 +96,13 @@ mod tests {
     #[test]
     fn shard_without_nonce_deserialization() {
         let s = r#"{
-            "owners": ["tccqqtk3q3rea46cq4cpa4h5tm43nw3supd6uxtltxv"]
+            "owners": ["tccq8vapdlstar6ghmqgczp6j2e83njsqq0tsvaxm9u"]
         }"#;
         let shard: Shard = serde_json::from_str(s).unwrap();
         assert_eq!(
             Shard {
                 nonce: None,
-                owners: vec![PlatformAddress::from_str("tccqqtk3q3rea46cq4cpa4h5tm43nw3supd6uxtltxv").unwrap()],
+                owners: vec![PlatformAddress::from_str("tccq8vapdlstar6ghmqgczp6j2e83njsqq0tsvaxm9u").unwrap()],
                 users: None,
                 worlds: None,
             },

@@ -44,7 +44,7 @@ impl EngineSigner {
         self.account_provider = ap;
         self.address = Some(address);
         self.password = password;
-        cdebug!(POA, "Setting Engine signer to {}", address);
+        cdebug!(ENGINE, "Setting Engine signer to {}", address);
     }
 
     /// Sign a consensus message hash.

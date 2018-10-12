@@ -14,12 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
-use account::{Aes128Ctr, Cipher, Kdf, Pbkdf2, Prf};
-use ckey::{Password, Private, Secret};
-use random::Random;
-use smallvec::SmallVec;
 use std::str;
-use {ccrypto, json, Error};
+
+use ccrypto;
+use ckey::{public_to_address, Address, KeyPair, Password, Private, Secret};
+use smallvec::SmallVec;
+
+use super::super::account::{Aes128Ctr, Cipher, Kdf, Pbkdf2, Prf};
+use super::super::random::Random;
+use super::super::{json, Error};
 
 /// Encrypted data
 #[derive(Debug, PartialEq, Clone)]
@@ -61,12 +64,6 @@ impl str::FromStr for Crypto {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         s.parse::<json::Crypto>().map(Into::into)
-    }
-}
-
-impl From<Crypto> for String {
-    fn from(c: Crypto) -> Self {
-        json::Crypto::from(c).into()
     }
 }
 
@@ -119,6 +116,11 @@ impl Crypto {
 
         let secret = self.do_decrypt(password, 32)?;
         Ok(*Private::from_slice(&secret))
+    }
+
+    pub fn address(&self, password: &Password) -> Result<Address, Error> {
+        let private = self.secret(password)?;
+        Ok(public_to_address(KeyPair::from_private(private.into())?.public()))
     }
 
     /// Try to decrypt and return result as is

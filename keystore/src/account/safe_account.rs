@@ -14,11 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
-use super::crypto::Crypto;
-use account::Version;
 use ccrypto;
 use ckey::{sign, Address, KeyPair, Message, Password, Public, Signature};
-use {json, Error};
+
+use super::super::account::Version;
+use super::super::{json, Error};
+use super::crypto::Crypto;
 
 /// Account representation.
 #[derive(Debug, PartialEq, Clone)]
@@ -33,21 +34,18 @@ pub struct SafeAccount {
     pub crypto: Crypto,
     /// Account filename
     pub filename: Option<String>,
-    /// Account name
-    pub name: String,
     /// Account metadata
     pub meta: String,
 }
 
-impl Into<json::KeyFile> for SafeAccount {
-    fn into(self) -> json::KeyFile {
-        json::KeyFile {
-            id: From::from(self.id),
-            version: self.version.into(),
-            address: self.address.into(),
-            crypto: self.crypto.into(),
-            name: Some(self.name.into()),
-            meta: Some(self.meta.into()),
+impl From<SafeAccount> for json::KeyFile {
+    fn from(account: SafeAccount) -> Self {
+        Self {
+            id: From::from(account.id),
+            version: account.version.into(),
+            address: Some(account.address.into()),
+            crypto: account.crypto.into(),
+            meta: Some(account.meta.into()),
         }
     }
 }
@@ -59,16 +57,14 @@ impl SafeAccount {
         id: [u8; 16],
         password: &Password,
         iterations: u32,
-        name: String,
         meta: String,
     ) -> Result<Self, ccrypto::Error> {
         Ok(SafeAccount {
             id,
-            version: Version::V1,
+            version: Version::V3,
             crypto: Crypto::with_secret(keypair.private(), password, iterations)?,
             address: keypair.address(),
             filename: None,
-            name,
             meta,
         })
     }
@@ -76,16 +72,35 @@ impl SafeAccount {
     /// Create a new `SafeAccount` from the given `json`; if it was read from a
     /// file, the `filename` should be `Some` name. If it is as yet anonymous, then it
     /// can be left `None`.
-    pub fn from_file(json: json::KeyFile, filename: Option<String>) -> Self {
-        SafeAccount {
+    pub fn from_file(
+        json: json::KeyFile,
+        filename: Option<String>,
+        password: Option<&Password>,
+    ) -> Result<Self, Error> {
+        let crypto = Crypto::from(json.crypto);
+        let address = match (json.address, password) {
+            (Some(address), Some(password)) => {
+                let address = address.into();
+                let decrypted_address = crypto.address(password)?;
+                if decrypted_address != address {
+                    Err(Error::InvalidKeyFile("Address field is invalid".to_string()))
+                } else {
+                    Ok(address)
+                }
+            }
+            (None, Some(password)) => crypto.address(password),
+            (Some(address), None) => Ok(address.into()),
+            (None, None) => Err(Error::InvalidKeyFile("Cannot create account if address is not given".to_string())),
+        }?;
+
+        Ok(SafeAccount {
             id: json.id.into(),
             version: json.version.into(),
-            address: json.address.into(),
-            crypto: json.crypto.into(),
+            address,
+            crypto,
             filename,
-            name: json.name.unwrap_or(String::new()),
-            meta: json.meta.unwrap_or("{}".to_string()),
-        }
+            meta: "{}".to_string(),
+        })
     }
 
     /// Sign a message.
@@ -114,7 +129,6 @@ impl SafeAccount {
             crypto: Crypto::with_secret(&secret, new_password, iterations)?,
             address: self.address,
             filename: self.filename.clone(),
-            name: self.name.clone(),
             meta: self.meta.clone(),
         };
         Ok(result)
@@ -128,15 +142,15 @@ impl SafeAccount {
 
 #[cfg(test)]
 mod tests {
-    use super::SafeAccount;
-    use ckey::{verify, Generator, Message, Random};
+    use super::*;
+    use ckey::{verify, Generator, Random};
 
     #[test]
     fn sign_and_verify_public() {
         let keypair = Random.generate().unwrap();
         let password = &"hello world".into();
         let message = Message::default();
-        let account = SafeAccount::create(&keypair, [0u8; 16], password, 10240, "Test".to_string(), "{}".to_string());
+        let account = SafeAccount::create(&keypair, [0u8; 16], password, 10240, "{\"name\":\"Test\"}".to_string());
         let signature = account.unwrap().sign(password, &message).unwrap();
         assert!(verify(keypair.public(), &signature, &message).unwrap());
     }
@@ -149,7 +163,7 @@ mod tests {
         let i = 10240;
         let message = Message::default();
         let account =
-            SafeAccount::create(&keypair, [0u8; 16], first_password, i, "Test".to_string(), "{}".to_string()).unwrap();
+            SafeAccount::create(&keypair, [0u8; 16], first_password, i, "{\"name\":\"Test\"}".to_string()).unwrap();
         let new_account = account.change_password(first_password, sec_password, i).unwrap();
         assert!(account.sign(first_password, &message).is_ok());
         assert!(account.sign(sec_password, &message).is_err());

@@ -17,7 +17,8 @@
 //! Accounts Directory
 
 use std::path::PathBuf;
-use {Error, SafeAccount};
+
+use super::{Error, SafeAccount};
 
 mod disk;
 mod memory;
@@ -37,10 +38,10 @@ pub enum SetKeyError {
 pub trait KeyDirectory: Send + Sync {
     /// Read keys from directory
     fn load(&self) -> Result<Vec<SafeAccount>, Error>;
-    /// Insert new key to directory
-    fn insert(&self, account: SafeAccount) -> Result<SafeAccount, Error>;
     /// Update key in the directory
     fn update(&self, account: SafeAccount) -> Result<SafeAccount, Error>;
+    /// Insert new key to directory
+    fn insert(&self, account: SafeAccount) -> Result<SafeAccount, Error>;
     /// Remove key from directory
     fn remove(&self, account: &SafeAccount) -> Result<(), Error>;
     /// Get directory filesystem path, if available

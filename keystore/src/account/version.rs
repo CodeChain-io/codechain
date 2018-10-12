@@ -14,25 +14,25 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
-use json;
+use super::super::json;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Version {
-    V1,
+    V3,
 }
 
 impl From<json::Version> for Version {
     fn from(json: json::Version) -> Self {
         match json {
-            json::Version::V1 => Version::V1,
+            json::Version::V3 => Version::V3,
         }
     }
 }
 
-impl Into<json::Version> for Version {
-    fn into(self) -> json::Version {
-        match self {
-            Version::V1 => json::Version::V1,
+impl From<Version> for json::Version {
+    fn from(version: Version) -> Self {
+        match version {
+            Version::V3 => json::Version::V3,
         }
     }
 }

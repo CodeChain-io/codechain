@@ -14,11 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
-use ccrypto;
-use ccrypto::Error as CCryptoError;
-use ckey::Error as CKeyError;
 use std::fmt;
 use std::io::Error as IoError;
+
+use ccrypto::{self, Error as CCryptoError};
+use ckey::Error as CKeyError;
 
 /// Account-related errors.
 #[derive(Debug)]

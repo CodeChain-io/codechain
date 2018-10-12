@@ -74,15 +74,10 @@ impl CodeChainMachine {
     /// Does verification of the parcel against the parent state.
     pub fn verify_parcel<C: BlockInfo + TransactionInfo>(
         &self,
-        parcel: &SignedParcel,
+        _parcel: &SignedParcel,
         _header: &Header,
-        client: &C,
+        _client: &C,
     ) -> Result<(), Error> {
-        let mut transactions = parcel.iter_transactions();
-        if client.is_any_transaction_included(&mut transactions) {
-            return Err(StateError::from(ParcelError::TransactionAlreadyImported).into())
-        }
-
         // FIXME: Filter parcels.
         Ok(())
     }

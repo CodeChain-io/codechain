@@ -14,14 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
-use super::KeyDirectory;
-use json::Uuid;
 use std::collections::HashMap;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::{fs, io};
+
 use time;
-use {json, Error, SafeAccount};
+
+use super::super::json::Uuid;
+use super::super::{json, Error, SafeAccount};
+use super::KeyDirectory;
 
 const IGNORED_FILES: &'static [&'static str] = &["thumbs.db"];
 
@@ -257,7 +259,7 @@ impl KeyFileManager for DiskKeyFileManager {
     where
         T: io::Read, {
         let key_file = json::KeyFile::load(reader).map_err(|e| Error::Custom(format!("{:?}", e)))?;
-        Ok(SafeAccount::from_file(key_file, filename))
+        SafeAccount::from_file(key_file, filename, None)
     }
 
     fn write<T>(&self, account: SafeAccount, writer: &mut T) -> Result<(), Error>
@@ -280,11 +282,12 @@ fn account_filename(account: &SafeAccount) -> String {
 mod test {
     extern crate tempdir;
 
-    use self::tempdir::TempDir;
-    use super::{KeyDirectory, RootDiskDirectory};
-    use account::SafeAccount;
-    use ckey::{Generator, Random};
     use std::{env, fs};
+
+    use ckey::{Generator, Random};
+
+    use self::tempdir::TempDir;
+    use super::*;
 
     #[test]
     fn create_new_account() {
@@ -297,7 +300,7 @@ mod test {
         let directory = RootDiskDirectory::create(dir.clone()).unwrap();
 
         // when
-        let account = SafeAccount::create(&keypair, [0u8; 16], password, 1024, "Test".to_string(), "{}".to_string());
+        let account = SafeAccount::create(&keypair, [0u8; 16], password, 1024, "{\"name\":\"Test\"}".to_string());
         let res = directory.insert(account.unwrap());
 
         // then
@@ -320,7 +323,7 @@ mod test {
 
         // when
         let account =
-            SafeAccount::create(&keypair, [0u8; 16], password, 1024, "Test".to_string(), "{}".to_string()).unwrap();
+            SafeAccount::create(&keypair, [0u8; 16], password, 1024, "{\"name\":\"Test\"}".to_string()).unwrap();
         let filename = "test".to_string();
         let dedup = true;
 
@@ -352,7 +355,7 @@ mod test {
 
         let keypair = Random.generate().unwrap();
         let password = &"test pass".into();
-        let account = SafeAccount::create(&keypair, [0u8; 16], password, 1024, "Test".to_string(), "{}".to_string());
+        let account = SafeAccount::create(&keypair, [0u8; 16], password, 1024, "{\"name\":\"Test\"}".to_string());
         directory.insert(account.unwrap()).expect("Account should be inserted ok");
 
         let new_hash = directory.files_hash().expect("New files hash should be calculated ok");

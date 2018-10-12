@@ -1,6 +1,6 @@
 {
   "id": "e72a7999-abbe-7341-9970-577eb835c147",
-  "version": 1,
+  "version": 3,
   "crypto": {
     "cipher": "aes-128-ctr",
     "cipherparams": {
@@ -16,7 +16,7 @@
     },
     "mac": "4e96e9d0f81ac5e7136bbf232f1b1fcc9e0c5f59bf056a1af3716c27347692b5"
   },
-  "address": "3fc74504d2b491d73079975e302279540bf6e44e",
+  "address": "8267cb8df20e1dc57fef31322e16bddd83d4cc3d",
   "name": "",
   "meta": "{}"
 }

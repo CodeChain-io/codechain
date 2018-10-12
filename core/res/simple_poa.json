@@ -1,0 +1,57 @@
+{
+  "name": "SimplePoA",
+  "engine": {
+    "simplePoA": {
+      "params": {
+        "blockReward": "0xba43b7400",
+        "validators": [
+          "tccq8qlwpt7xcs9lec3c8tyt3kqxlgsus8q4qp3m6ft"
+        ]
+      }
+    }
+  },
+  "params": {
+    "maxExtraDataSize": "0x20",
+    "maxMetadataSize": "0x0400",
+    "networkID": "tc",
+    "minParcelCost": "10",
+    "maxBodySize": 4194304,
+    "snapshotPeriod": 16384,
+    "useShardValidator": false
+  },
+  "genesis": {
+    "seal": {
+      "generic": "0xc180"
+    },
+    "score": "0x20000",
+    "author": "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqhhn9p3",
+    "timestamp": "0x00",
+    "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+    "extraData": "0x"
+  },
+  "accounts": {
+    "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqyca3rwt": { "balance": "1000000", "nonce": "0" },
+    "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqgfrhflv": { "balance": "1000000", "nonce": "0" },
+    "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqvxf40sk": { "balance": "1000000", "nonce": "0" },
+    "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqszkma5z": { "balance": "1000000", "nonce": "0" },
+    "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq5duemmc": { "balance": "1000000" },
+    "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqcuzl32l": { "balance": "1000000" },
+    "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqungah99": { "balance": "1000000" },
+    "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqpqc2ul2h": { "balance": "1000000" },
+    "tccq8vapdlstar6ghmqgczp6j2e83njsqq0tsvaxm9u": { "balance": "1000000" },
+    "tccq9h7vnl68frvqapzv3tujrxtxtwqdnxw6yamrrgd": { "balance": "1606938044258990275541962092341162602522202993782792835301376", "nonce": "0" }
+  },
+  "shards": {
+    "0": {
+      "nonce": 0,
+      "owners": ["tccq8vapdlstar6ghmqgczp6j2e83njsqq0tsvaxm9u"],
+      "worlds": [{
+        "nonce": 0,
+        "owners": [
+          "tccq8vapdlstar6ghmqgczp6j2e83njsqq0tsvaxm9u",
+          "tccq9h7vnl68frvqapzv3tujrxtxtwqdnxw6yamrrgd"
+        ]
+      }]
+    }
+  }
+}

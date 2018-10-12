@@ -38,9 +38,9 @@ impl KademliaId {
     }
 }
 
-impl Into<SocketAddr> for KademliaId {
-    fn into(self) -> SocketAddr {
-        self.node_id.into_addr()
+impl From<KademliaId> for SocketAddr {
+    fn from(id: KademliaId) -> Self {
+        id.node_id.into_addr()
     }
 }
 

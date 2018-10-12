@@ -27,12 +27,12 @@ use ctypes::transaction::{
 use ctypes::util::unexpected::Mismatch;
 use ctypes::{ShardId, WorldId};
 use cvm::{decode, execute, ScriptResult, VMConfig};
-use primitives::{Bytes, H256};
+use primitives::{Bytes, H160, H256};
 use rlp::Encodable;
 
 use super::super::backend::{Backend, ShardBackend};
 use super::super::checkpoint::{CheckpointId, StateWithCheckpoint};
-use super::super::item::local_cache::LocalCache;
+use super::super::item::local_cache::{CacheableItem, LocalCache};
 use super::super::traits::{ShardState, ShardStateInfo, StateWithCache};
 use super::super::{
     AssetScheme, AssetSchemeAddress, OwnedAsset, OwnedAssetAddress, ShardMetadata, ShardMetadataAddress, World,
@@ -159,7 +159,10 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
                 inputs,
                 outputs,
                 ..
-            } => self.transfer_asset(&transaction, sender, burns, inputs, outputs),
+            } => {
+                debug_assert!(outputs.len() <= 512);
+                self.transfer_asset(&transaction, sender, burns, inputs, outputs)
+            }
         }
     }
 
@@ -262,7 +265,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         transaction_hash: H256,
         world_id: WorldId,
         metadata: &String,
-        lock_script_hash: &H256,
+        lock_script_hash: &H160,
         parameters: &Vec<Bytes>,
         amount: &Option<u64>,
         registrar: &Option<Address>,
@@ -281,6 +284,9 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         let asset_scheme_address = AssetSchemeAddress::new(transaction_hash, self.shard_id, world_id);
         let amount = amount.unwrap_or(::std::u64::MAX);
         let mut asset_scheme = self.get_asset_scheme_mut(&asset_scheme_address)?;
+        if !asset_scheme.is_null() {
+            return Err(TransactionError::AssetSchemeDuplicated(transaction_hash).into())
+        }
         asset_scheme.init(metadata.clone(), amount, registrar.clone());
 
         ctrace!(TX, "{:?} is minted on {:?}", asset_scheme, asset_scheme_address);
@@ -342,8 +348,10 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
                         &unlock_script,
                         &asset.parameters(),
                         &lock_script,
-                        transaction.hash_without_script(),
+                        transaction,
                         VMConfig::default(),
+                        &input.prev_out,
+                        burn,
                     )
                 }
                 // FIXME : Deliver full decode error
@@ -712,7 +720,7 @@ mod tests {
         assert_eq!(Ok(()), state.commit());
 
         let metadata = "metadata".to_string();
-        let lock_script_hash = H256::random();
+        let lock_script_hash = H160::random();
         let parameters = vec![];
         let amount = 100;
         let registrar = Some(Address::random());
@@ -754,7 +762,7 @@ mod tests {
         assert_eq!(Ok(()), state.commit());
 
         let metadata = "metadata".to_string();
-        let lock_script_hash = H256::random();
+        let lock_script_hash = H160::random();
         let parameters = vec![];
         let registrar = Some(Address::random());
         let transaction = Transaction::AssetMint {
@@ -788,6 +796,41 @@ mod tests {
     }
 
     #[test]
+    fn cannot_mint_twice() {
+        let shard_id = 0;
+        let world_id = 0;
+        let mut state = get_temp_shard_state(shard_id);
+        let sender = address();
+        let shard_owner = address();
+        assert_eq!(Ok(()), state.create_world(shard_id, &0, &[sender], &[], &shard_owner, &[shard_owner]));
+        assert_eq!(Ok(()), state.commit());
+
+        let metadata = "metadata".to_string();
+        let lock_script_hash = H160::random();
+        let parameters = vec![];
+        let registrar = Some(Address::random());
+        let transaction = Transaction::AssetMint {
+            network_id: "tc".into(),
+            shard_id,
+            world_id,
+            metadata: metadata.clone(),
+            output: AssetMintOutput {
+                lock_script_hash,
+                parameters: parameters.clone(),
+                amount: None,
+            },
+            registrar,
+            nonce: 0,
+        };
+
+        let result = state.apply(shard_id, &transaction, &sender, &[shard_owner]);
+        assert_eq!(Ok(TransactionInvoice::Success), result);
+
+        let result = state.apply(shard_id, &transaction, &sender, &[shard_owner]);
+        assert_eq!(Ok(TransactionInvoice::Fail(TransactionError::AssetSchemeDuplicated(transaction.hash()))), result);
+    }
+
+    #[test]
     fn invalid_registrar() {
         let shard_id = 0;
         let mut state = get_temp_shard_state(shard_id);
@@ -800,7 +843,7 @@ mod tests {
         assert_eq!(Ok(()), state.commit());
 
         let metadata = "metadata".to_string();
-        let lock_script_hash = H256::from("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050");
+        let lock_script_hash = H160::from("b042ad154a3359d276835c903587ebafefea22af");
         let registrar = Some(Address::random());
         let amount = 30;
         let mint = Transaction::AssetMint {
@@ -873,7 +916,7 @@ mod tests {
         assert_eq!(Ok(()), state.commit());
 
         let metadata = "metadata".to_string();
-        let lock_script_hash = H256::from("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050");
+        let lock_script_hash = H160::from("b042ad154a3359d276835c903587ebafefea22af");
         let registrar = None;
         let amount = 30;
         let mint = Transaction::AssetMint {
@@ -905,7 +948,7 @@ mod tests {
         let asset = state.asset(&asset_address);
         assert_eq!(Ok(Some(OwnedAsset::new(asset_type, lock_script_hash, vec![], amount))), asset);
 
-        let random_lock_script_hash = H256::random();
+        let random_lock_script_hash = H160::random();
         let transfer = Transaction::AssetTransfer {
             network_id,
             burns: vec![],
@@ -971,7 +1014,7 @@ mod tests {
         assert_eq!(Ok(()), state.commit());
 
         let metadata = "metadata".to_string();
-        let lock_script_hash = H256::from("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050");
+        let lock_script_hash = H160::from("b042ad154a3359d276835c903587ebafefea22af");
         let registrar = None;
         let amount = 30;
         let mint = Transaction::AssetMint {
@@ -1037,7 +1080,7 @@ mod tests {
             failed_invoice
         );
 
-        let random_lock_script_hash = H256::random();
+        let random_lock_script_hash = H160::random();
         let successful_transfer = Transaction::AssetTransfer {
             network_id,
             burns: vec![],
@@ -1231,7 +1274,7 @@ mod tests {
         assert_eq!(Ok(()), state.commit());
 
         let metadata = "metadata".to_string();
-        let lock_script_hash = H256::random();
+        let lock_script_hash = H160::random();
         let parameters = vec![];
         let registrar = Some(Address::random());
         let transaction = Transaction::AssetMint {
@@ -1275,7 +1318,7 @@ mod tests {
         assert_eq!(Ok(()), state.commit());
 
         let metadata = "metadata".to_string();
-        let lock_script_hash = H256::random();
+        let lock_script_hash = H160::random();
         let parameters = vec![];
         let registrar = Some(Address::random());
         let transaction = Transaction::AssetMint {
@@ -1316,7 +1359,7 @@ mod tests {
         assert_eq!(Ok(()), state.commit());
 
         let metadata = "metadata".to_string();
-        let lock_script_hash = H256::random();
+        let lock_script_hash = H160::random();
         let parameters = vec![];
         let registrar = Some(Address::random());
         let transaction = Transaction::AssetMint {

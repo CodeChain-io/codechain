@@ -17,7 +17,7 @@
 use ccrypto::aes::{self, SymmetricCipherError};
 use ccrypto::Blake;
 use ckey::Secret;
-use primitives::{H128, H256};
+use primitives::H256;
 
 use super::Nonce;
 
@@ -54,17 +54,17 @@ impl Session {
     }
 
     pub fn encrypt(&self, data: &[u8]) -> Result<Vec<u8>, Error> {
-        let iv: &H128 = self.id().into();
+        let iv = self.id();
         Ok(aes::encrypt(&data, &self.secret, iv)?)
     }
 
     pub fn decrypt(&self, data: &[u8]) -> Result<Vec<u8>, Error> {
-        let iv: &H128 = self.id().into();
+        let iv = self.id();
         Ok(aes::decrypt(&data, &self.secret, &iv)?)
     }
 
     pub fn sign(&self, data: &[u8]) -> H256 {
-        let iv: &H128 = self.id().into();
+        let iv = self.id();
         Blake::blake_with_key(data, iv)
     }
 }

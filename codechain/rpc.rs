@@ -18,7 +18,7 @@ use std::io;
 use std::net::SocketAddr;
 use std::sync::Arc;
 
-use crpc::{start_http, start_ipc, HttpServer, IpcServer};
+use crpc::{start_http, start_ipc, start_ws, HttpServer, IpcServer, WsError, WsErrorKind, WsServer};
 use crpc::{Compatibility, MetaIoHandler};
 use rpc_apis;
 
@@ -38,7 +38,7 @@ pub fn rpc_http_start(
     let url = format!("{}:{}", cfg.interface, cfg.port);
     let addr = url.parse().map_err(|_| format!("Invalid JSONRPC listen host/port given: {}", url))?;
     let server = setup_http_rpc_server(&addr, cfg.cors, cfg.hosts, enable_devel_api, deps)?;
-    info!("RPC Listening on {}", url);
+    cinfo!(RPC, "RPC Listening on {}", url);
     Ok(server)
 }
 
@@ -78,7 +78,35 @@ pub fn rpc_ipc_start(
             },
         Err(e) => Err(format!("IPC error: {:?}", e)),
         Ok(server) =>  {
-            info!("IPC Listening on {}", cfg.socket_addr);
+            cinfo!(RPC, "IPC Listening on {}", cfg.socket_addr);
+            Ok(server)
+        },
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub struct RpcWsConfig {
+    pub interface: String,
+    pub port: u16,
+    pub max_connections: usize,
+}
+
+pub fn rpc_ws_start(
+    cfg: RpcWsConfig,
+    enable_devel_api: bool,
+    deps: Arc<rpc_apis::ApiDependencies>,
+) -> Result<WsServer, String> {
+    let server = setup_rpc_server(enable_devel_api, deps);
+    let url = format!("{}:{}", cfg.interface, cfg.port);
+    let addr = url.parse().map_err(|_| format!("Invalid WebSockets listen host/port given: {}", url))?;
+    let start_result = start_ws(&addr, server, cfg.max_connections);
+    match start_result {
+        Err(WsError(WsErrorKind::Io(ref err), _)) if err.kind() == io::ErrorKind::AddrInUse => {
+            Err(format!("WebSockets address {} is already in use, make sure that another instance of a Codechain node is not running or change the address using the --ws-port options.", addr))
+        },
+        Err(e) => Err(format!("WebSockets error: {:?}", e)),
+        Ok(server) => {
+            cinfo!(RPC, "WebSockets Listening on {}", addr);
             Ok(server)
         },
     }

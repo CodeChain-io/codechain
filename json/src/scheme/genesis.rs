@@ -73,7 +73,7 @@ mod tests {
                     ]
                 }
             },
-            "author": "tccqqgqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqynkzasl",
+            "author": "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqhhn9p3",
             "timestamp": "0x07",
             "parentHash": "0x9000000000000000000000000000000000000000000000000000000000000000",
             "extraData": "0x11bbe8db4e347b4e8c937c1c8370e4b5ed33adb3db69cbdb7a38e1e50b1b82fa",
@@ -89,7 +89,7 @@ mod tests {
                 ]
             }),
             score: Uint(U256::from(0x400000000u64)),
-            author: Some(PlatformAddress::from_str("tccqqgqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqynkzasl").unwrap()),
+            author: Some(PlatformAddress::from_str("tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqhhn9p3").unwrap()),
             timestamp: Some(Uint(U256::from(0x07))),
             parent_hash: Some(H256(Core256::from("0x9000000000000000000000000000000000000000000000000000000000000000"))),
             parcels_root: None,
