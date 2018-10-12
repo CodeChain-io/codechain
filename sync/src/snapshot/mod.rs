@@ -16,5 +16,6 @@
 
 mod error;
 mod service;
+mod snapshot;
 
 pub use self::service::Service as SnapshotService;
