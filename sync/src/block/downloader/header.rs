@@ -133,9 +133,11 @@ impl HeaderDownloader {
             }
         } else {
             let pivot_header = self.pivot_header();
-            self.pivot = Pivot {
-                hash: pivot_header.parent_hash(),
-                total_score: self.pivot.total_score - pivot_header.score(),
+            if pivot_header.number() != 0 {
+                self.pivot = Pivot {
+                    hash: pivot_header.parent_hash(),
+                    total_score: self.pivot.total_score - pivot_header.score(),
+                }
             }
         }
 
