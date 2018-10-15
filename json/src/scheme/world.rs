@@ -20,7 +20,7 @@ use super::super::uint::Uint;
 
 #[derive(Debug, PartialEq, Deserialize)]
 pub struct World {
-    pub nonce: Option<Uint>,
+    pub seq: Option<Uint>,
     pub owners: Option<Vec<PlatformAddress>>,
     pub users: Option<Vec<PlatformAddress>>,
 }
@@ -37,13 +37,13 @@ mod tests {
     #[test]
     fn deserialization() {
         let s = r#"{
-            "nonce": 0,
+            "seq": 0,
             "owners": ["tccq8txq9uafdg8y2de9m2tdkhsfsj3m9nluq94hyan"]
         }"#;
         let world: World = serde_json::from_str(s).unwrap();
         assert_eq!(
             World {
-                nonce: Some(Uint(0.into())),
+                seq: Some(Uint(0.into())),
                 owners: Some(vec![PlatformAddress::from_str("tccq8txq9uafdg8y2de9m2tdkhsfsj3m9nluq94hyan").unwrap()]),
                 users: None,
             },
@@ -52,15 +52,15 @@ mod tests {
     }
 
     #[test]
-    fn with_non_zero_nonce_deserialization() {
+    fn with_non_zero_seq_deserialization() {
         let s = r#"{
-            "nonce": 100,
+            "seq": 100,
             "owners": ["tccq8txq9uafdg8y2de9m2tdkhsfsj3m9nluq94hyan"]
         }"#;
         let world: World = serde_json::from_str(s).unwrap();
         assert_eq!(
             World {
-                nonce: Some(Uint(100.into())),
+                seq: Some(Uint(100.into())),
                 owners: Some(vec![PlatformAddress::from_str("tccq8txq9uafdg8y2de9m2tdkhsfsj3m9nluq94hyan").unwrap()]),
                 users: None,
             },
@@ -76,7 +76,7 @@ mod tests {
         let world: World = serde_json::from_str(s).unwrap();
         assert_eq!(
             World {
-                nonce: None,
+                seq: None,
                 owners: None,
                 users: None,
             },
@@ -85,14 +85,14 @@ mod tests {
     }
 
     #[test]
-    fn world_without_nonce_deserialization() {
+    fn world_without_seq_deserialization() {
         let s = r#"{
             "owners": ["tccq8txq9uafdg8y2de9m2tdkhsfsj3m9nluq94hyan"]
         }"#;
         let world: World = serde_json::from_str(s).unwrap();
         assert_eq!(
             World {
-                nonce: None,
+                seq: None,
                 owners: Some(vec![PlatformAddress::from_str("tccq8txq9uafdg8y2de9m2tdkhsfsj3m9nluq94hyan").unwrap()]),
                 users: None,
             },
