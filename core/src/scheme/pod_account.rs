@@ -51,7 +51,7 @@ impl From<cjson::scheme::Account> for PodAccount {
     fn from(a: cjson::scheme::Account) -> Self {
         PodAccount {
             balance: a.balance.map_or_else(U256::zero, Into::into),
-            seq: a.nonce.map_or_else(U256::zero, Into::into),
+            seq: a.seq.map_or_else(U256::zero, Into::into),
             regular_key: None,
         }
     }

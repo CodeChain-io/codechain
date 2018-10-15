@@ -48,7 +48,7 @@ impl Encodable for PodShardMetadata {
 impl From<cjson::scheme::Shard> for PodShardMetadata {
     fn from(s: cjson::scheme::Shard) -> Self {
         Self {
-            seq: s.nonce.map(Into::into).unwrap_or(0),
+            seq: s.seq.map(Into::into).unwrap_or(0),
             owners: s.owners.into_iter().map(PlatformAddress::into_address).collect(),
             users: s.users.unwrap_or_else(Vec::new).into_iter().map(PlatformAddress::into_address).collect(),
             worlds: s.worlds.unwrap_or_else(Vec::new).into_iter().map(Into::into).collect(),
