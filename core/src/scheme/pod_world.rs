@@ -44,7 +44,7 @@ impl Encodable for PodWorld {
 impl From<cjson::scheme::World> for PodWorld {
     fn from(s: cjson::scheme::World) -> Self {
         Self {
-            seq: s.nonce.map(Into::into).unwrap_or(0),
+            seq: s.seq.map(Into::into).unwrap_or(0),
             owners: s
                 .owners
                 .map(|a| a.into_iter().map(PlatformAddress::into_address).collect())

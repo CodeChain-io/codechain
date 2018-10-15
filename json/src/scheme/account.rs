@@ -21,14 +21,14 @@ use super::super::uint::Uint;
 pub struct Account {
     /// Balance.
     pub balance: Option<Uint>,
-    /// Nonce.
-    pub nonce: Option<Uint>,
+    /// Seq.
+    pub seq: Option<Uint>,
 }
 
 impl Account {
-    /// Returns true if account does not have nonce and balance
+    /// Returns true if account does not have seq and balance
     pub fn is_empty(&self) -> bool {
-        self.balance.is_none() && self.nonce.is_none()
+        self.balance.is_none() && self.seq.is_none()
     }
 }
 
@@ -44,11 +44,11 @@ mod tests {
     fn account_deserialization() {
         let s = r#"{
             "balance": "1",
-            "nonce": "0"
+            "seq": "0"
         }"#;
         let deserialized: Account = serde_json::from_str(s).unwrap();
         assert!(!deserialized.is_empty());
         assert_eq!(deserialized.balance.unwrap(), Uint(U256::from(1)));
-        assert_eq!(deserialized.nonce.unwrap(), Uint(U256::from(0)));
+        assert_eq!(deserialized.seq.unwrap(), Uint(U256::from(0)));
     }
 }
