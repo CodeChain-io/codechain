@@ -26,7 +26,7 @@ pub enum Transaction {
     CreateWorld {
         network_id: NetworkId,
         shard_id: ShardId,
-        nonce: u64,
+        seq: u64,
         owners: Vec<PlatformAddress>,
         hash: H256,
     },
@@ -35,7 +35,7 @@ pub enum Transaction {
         network_id: NetworkId,
         shard_id: ShardId,
         world_id: WorldId,
-        nonce: u64,
+        seq: u64,
         owners: Vec<PlatformAddress>,
         hash: H256,
     },
@@ -44,7 +44,7 @@ pub enum Transaction {
         network_id: NetworkId,
         shard_id: ShardId,
         world_id: WorldId,
-        nonce: u64,
+        seq: u64,
         users: Vec<PlatformAddress>,
         hash: H256,
     },
@@ -83,7 +83,7 @@ impl From<TransactionType> for Transaction {
             } => Transaction::CreateWorld {
                 network_id,
                 shard_id,
-                nonce: seq,
+                seq,
                 owners: owners.into_iter().map(|owner| PlatformAddress::new_v1(network_id, owner)).collect(),
                 hash,
             },
@@ -97,7 +97,7 @@ impl From<TransactionType> for Transaction {
                 network_id,
                 shard_id,
                 world_id,
-                nonce: seq,
+                seq,
                 owners: owners.into_iter().map(|owner| PlatformAddress::new_v1(network_id, owner)).collect(),
                 hash,
             },
@@ -111,7 +111,7 @@ impl From<TransactionType> for Transaction {
                 network_id,
                 shard_id,
                 world_id,
-                nonce: seq,
+                seq,
                 users: users.into_iter().map(|user| PlatformAddress::new_v1(network_id, user)).collect(),
                 hash,
             },
@@ -158,7 +158,7 @@ impl From<Transaction> for Result<TransactionType, KeyError> {
             Transaction::CreateWorld {
                 network_id,
                 shard_id,
-                nonce,
+                seq,
                 owners,
                 ..
             } => {
@@ -166,7 +166,7 @@ impl From<Transaction> for Result<TransactionType, KeyError> {
                 TransactionType::CreateWorld {
                     network_id,
                     shard_id,
-                    seq: nonce,
+                    seq,
                     owners: owners?,
                 }
             }
@@ -174,7 +174,7 @@ impl From<Transaction> for Result<TransactionType, KeyError> {
                 network_id,
                 shard_id,
                 world_id,
-                nonce,
+                seq,
                 owners,
                 ..
             } => {
@@ -183,7 +183,7 @@ impl From<Transaction> for Result<TransactionType, KeyError> {
                     network_id,
                     shard_id,
                     world_id,
-                    seq: nonce,
+                    seq,
                     owners: owners?,
                 }
             }
@@ -191,7 +191,7 @@ impl From<Transaction> for Result<TransactionType, KeyError> {
                 network_id,
                 shard_id,
                 world_id,
-                nonce,
+                seq,
                 users,
                 ..
             } => {
@@ -200,7 +200,7 @@ impl From<Transaction> for Result<TransactionType, KeyError> {
                     network_id,
                     shard_id,
                     world_id,
-                    seq: nonce,
+                    seq,
                     users: users?,
                 }
             }
