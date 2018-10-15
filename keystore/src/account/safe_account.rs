@@ -99,7 +99,7 @@ impl SafeAccount {
             address,
             crypto,
             filename,
-            meta: "{}".to_string(),
+            meta: json.meta.unwrap_or("{}".to_string()),
         })
     }
 
@@ -142,8 +142,13 @@ impl SafeAccount {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use std::str::FromStr;
+
     use ckey::{verify, Generator, Random};
+    use json;
+    use json::{Aes128Ctr, Cipher, Crypto, Kdf, KeyFile, Scrypt, Uuid};
+
+    use super::*;
 
     #[test]
     fn sign_and_verify_public() {
@@ -169,5 +174,35 @@ mod tests {
         assert!(account.sign(sec_password, &message).is_err());
         assert!(new_account.sign(first_password, &message).is_err());
         assert!(new_account.sign(sec_password, &message).is_ok());
+    }
+
+    #[test]
+    fn from_file() {
+        let address = "6edddfc6349aff20bc6467ccf276c5b52487f7a8";
+        let meta = "{\"a\": \"b\"}";
+        let expected = KeyFile {
+            id: Uuid::from_str("8777d9f6-7860-4b9b-88b7-0b57ee6b3a73").unwrap(),
+            version: json::Version::V3,
+            address: Some(address.into()),
+            crypto: Crypto {
+                cipher: Cipher::Aes128Ctr(Aes128Ctr {
+                    iv: "b5a7ec855ec9e2c405371356855fec83".into(),
+                }),
+                ciphertext: "7203da0676d141b138cd7f8e1a4365f59cc1aa6978dc5443f364ca943d7cb4bc".into(),
+                kdf: Kdf::Scrypt(Scrypt {
+                    n: 262144,
+                    dklen: 32,
+                    p: 1,
+                    r: 8,
+                    salt: "1e8642fdf1f87172492c1412fc62f8db75d796cdfa9c53c3f2b11e44a2a1b209".into(),
+                }),
+                mac: "46325c5d4e8c991ad2683d525c7854da387138b6ca45068985aa4959fa2b8c8f".into(),
+            },
+            meta: Some(meta.to_string()),
+        };
+
+        let safe_account = SafeAccount::from_file(expected, None, None).unwrap();
+        assert_eq!(Address::from_str(address), Ok(safe_account.address));
+        assert_eq!(meta, safe_account.meta);
     }
 }
