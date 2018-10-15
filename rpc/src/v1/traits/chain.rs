@@ -62,9 +62,9 @@ build_rpc_trait! {
         # [rpc(name = "chain_isAssetSpent")]
         fn is_asset_spent(&self, H256, usize, ShardId, Option<u64>) -> Result<Option<bool>>;
 
-        /// Gets nonce with given account.
-        # [rpc(name = "chain_getNonce")]
-        fn get_nonce(&self, PlatformAddress, Option<u64>) -> Result<Option<U256>>;
+        /// Gets seq with given account.
+        # [rpc(name = "chain_getSeq")]
+        fn get_seq(&self, PlatformAddress, Option<u64>) -> Result<Option<U256>>;
 
         /// Gets balance with given account.
         # [rpc(name = "chain_getBalance")]

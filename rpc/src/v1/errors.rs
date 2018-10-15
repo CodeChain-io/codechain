@@ -43,7 +43,7 @@ mod codes {
     pub const NOT_ENOUGH_BALANCE: i64 = -32032;
     pub const TOO_LOW_FEE: i64 = -32033;
     pub const TOO_CHEAP_TO_REPLACE: i64 = -32034;
-    pub const INVALID_NONCE: i64 = -32035;
+    pub const INVALID_SEQ: i64 = -32035;
     pub const INVALID_NETWORK_ID: i64 = -32036;
     pub const KEYSTORE_ERROR: i64 = -32040;
     pub const KEY_ERROR: i64 = -32041;
@@ -139,8 +139,8 @@ pub fn parcel_core<T: Into<CoreError>>(error: T) -> Error {
             ParcelError::Old {
                 ..
             } => Error {
-                code: ErrorCode::ServerError(codes::INVALID_NONCE),
-                message: "Invalid Nonce".into(),
+                code: ErrorCode::ServerError(codes::INVALID_SEQ),
+                message: "Invalid Seq".into(),
                 data: Some(Value::String(format!("{:?}", error))),
             },
             _ => unknown_error,
