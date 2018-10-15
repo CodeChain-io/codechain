@@ -115,7 +115,7 @@ pub trait MinerService: Send + Sync {
         parcel: IncompleteParcel,
         platform_address: PlatformAddress,
         passphrase: Option<Password>,
-        nonce: Option<U256>,
+        seq: Option<U256>,
     ) -> Result<(H256, U256), Error>;
 
     /// Get a list of all pending parcels in the mem pool.

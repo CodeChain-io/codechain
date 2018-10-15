@@ -30,9 +30,9 @@ pub struct IncompleteParcel {
 }
 
 impl IncompleteParcel {
-    pub fn complete(self, nonce: U256) -> Parcel {
+    pub fn complete(self, seq: U256) -> Parcel {
         Parcel {
-            nonce,
+            seq,
             fee: self.fee,
             network_id: self.network_id,
             action: self.action,

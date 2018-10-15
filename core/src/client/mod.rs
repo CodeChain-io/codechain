@@ -105,17 +105,17 @@ pub trait EngineClient: Sync + Send + ChainInfo + ImportBlock {
     fn score_to_target(&self, score: &U256) -> U256;
 }
 
-/// Provides `nonce` and `latest_nonce` methods
-pub trait Nonce {
-    /// Attempt to get address nonce at given block.
+/// Provides `seq` and `latest_seq` methods
+pub trait Seq {
+    /// Attempt to get address seq at given block.
     /// May not fail on BlockId::Latest.
-    fn nonce(&self, address: &Address, id: BlockId) -> Option<U256>;
+    fn seq(&self, address: &Address, id: BlockId) -> Option<U256>;
 
-    /// Get address nonce at the latest block's state.
-    fn latest_nonce(&self, address: &Address) -> U256 {
-        self.nonce(address, BlockId::Latest).expect(
-            "nonce will return Some when given BlockId::Latest. nonce was given BlockId::Latest. \
-             Therefore nonce has returned Some; qed",
+    /// Get address seq at the latest block's state.
+    fn latest_seq(&self, address: &Address) -> U256 {
+        self.seq(address, BlockId::Latest).expect(
+            "seq will return Some when given BlockId::Latest. seq was given BlockId::Latest. \
+             Therefore seq has returned Some; qed",
         )
     }
 }
@@ -179,7 +179,7 @@ pub trait Shard {
 }
 
 /// Provides methods to access account info
-pub trait AccountData: Nonce + Balance {}
+pub trait AccountData: Seq + Balance {}
 
 /// Provides methods to import block into blockchain
 pub trait ImportBlock {

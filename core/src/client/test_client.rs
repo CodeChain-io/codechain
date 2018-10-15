@@ -55,7 +55,7 @@ use super::super::blockchain_info::BlockChainInfo;
 use super::super::client::ImportResult;
 use super::super::client::{
     AccountData, Balance, BlockChain, BlockChainClient, BlockInfo, BlockProducer, BlockStatus, ChainInfo, ImportBlock,
-    ImportSealedBlock, MiningBlockChainClient, Nonce, ParcelInfo, PrepareOpenBlock, RegularKeyOwner, ReopenBlock,
+    ImportSealedBlock, MiningBlockChainClient, ParcelInfo, PrepareOpenBlock, RegularKeyOwner, ReopenBlock, Seq,
     StateOrBlock, TransactionInfo,
 };
 use super::super::db::{COL_STATE, NUM_COLUMNS};
@@ -85,8 +85,8 @@ pub struct TestBlockChainClient {
     pub score: RwLock<U256>,
     /// Balances.
     pub balances: RwLock<HashMap<Address, U256>>,
-    /// Nonces.
-    pub nonces: RwLock<HashMap<Address, U256>>,
+    /// Seqs.
+    pub seqs: RwLock<HashMap<Address, U256>>,
     /// Storage.
     pub storage: RwLock<HashMap<(Address, H256), H256>>,
     /// Block queue size.
@@ -141,7 +141,7 @@ impl TestBlockChainClient {
             last_parcels_root: RwLock::new(genesis_parcels_root),
             score: RwLock::new(genesis_score),
             balances: RwLock::new(HashMap::new()),
-            nonces: RwLock::new(HashMap::new()),
+            seqs: RwLock::new(HashMap::new()),
             storage: RwLock::new(HashMap::new()),
             queue_size: AtomicUsize::new(0),
             miner: Arc::new(Miner::with_scheme(&scheme)),
@@ -161,9 +161,9 @@ impl TestBlockChainClient {
         self.balances.write().insert(address, balance);
     }
 
-    /// Set nonce of account `address` to `nonce`.
-    pub fn set_nonce(&self, address: Address, nonce: U256) {
-        self.nonces.write().insert(address, nonce);
+    /// Set seq of account `address` to `seq`.
+    pub fn set_seq(&self, address: Address, seq: U256) {
+        self.seqs.write().insert(address, seq);
     }
 
     /// Set storage `position` to `value` for account `address`.
@@ -193,10 +193,10 @@ impl TestBlockChainClient {
             let mut parcels = Vec::new();
             for _ in 0..parcel_length {
                 let keypair = Random.generate().unwrap();
-                // Update nonces value
-                self.nonces.write().insert(keypair.address(), U256::zero());
+                // Update seqs value
+                self.seqs.write().insert(keypair.address(), 0.into());
                 let parcel = Parcel {
-                    nonce: U256::zero(),
+                    seq: 0.into(),
                     fee: U256::from(10),
                     network_id: NetworkId::default(),
                     action: Action::AssetTransactionGroup {
@@ -264,7 +264,7 @@ impl TestBlockChainClient {
         let keypair = Random.generate().unwrap();
         let transactions = vec![];
         let parcel = Parcel {
-            nonce: U256::zero(),
+            seq: 0.into(),
             fee: U256::from(10),
             network_id: NetworkId::default(),
             action: Action::AssetTransactionGroup {
@@ -325,16 +325,12 @@ impl BlockProducer for TestBlockChainClient {}
 
 impl MiningBlockChainClient for TestBlockChainClient {}
 
-impl Nonce for TestBlockChainClient {
-    fn nonce(&self, address: &Address, id: BlockId) -> Option<U256> {
+impl Seq for TestBlockChainClient {
+    fn seq(&self, address: &Address, id: BlockId) -> Option<U256> {
         match id {
-            BlockId::Latest => Some(self.nonces.read().get(address).cloned().unwrap_or_else(U256::zero)),
+            BlockId::Latest => Some(self.seqs.read().get(address).cloned().unwrap_or_else(U256::zero)),
             _ => None,
         }
-    }
-
-    fn latest_nonce(&self, address: &Address) -> U256 {
-        self.nonce(address, BlockId::Latest).unwrap()
     }
 }
 

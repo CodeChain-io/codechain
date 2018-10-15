@@ -28,15 +28,15 @@ use rlp::{Encodable, RlpStream};
 pub struct PodAccount {
     /// The balance of the account.
     pub balance: U256,
-    /// The nonce of the account.
-    pub nonce: U256,
+    /// The seq of the account.
+    pub seq: U256,
     /// Regular key of the account.
     pub regular_key: Option<Public>,
 }
 
 impl<'a> From<&'a PodAccount> for Account {
     fn from(pod: &'a PodAccount) -> Self {
-        Account::new_with_key(pod.balance, pod.nonce, pod.regular_key)
+        Account::new_with_key(pod.balance, pod.seq, pod.regular_key)
     }
 }
 
@@ -51,7 +51,7 @@ impl From<cjson::scheme::Account> for PodAccount {
     fn from(a: cjson::scheme::Account) -> Self {
         PodAccount {
             balance: a.balance.map_or_else(U256::zero, Into::into),
-            nonce: a.nonce.map_or_else(U256::zero, Into::into),
+            seq: a.nonce.map_or_else(U256::zero, Into::into),
             regular_key: None,
         }
     }
@@ -59,6 +59,6 @@ impl From<cjson::scheme::Account> for PodAccount {
 
 impl fmt::Display for PodAccount {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "(bal={}; nonce={})", self.balance, self.nonce,)
+        write!(f, "(bal={}; seq={})", self.balance, self.seq,)
     }
 }

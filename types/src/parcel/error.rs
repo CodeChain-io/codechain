@@ -32,10 +32,10 @@ pub enum Error {
     ParcelAlreadyImported,
     /// Transaction is already imported in blockchain
     TransactionAlreadyImported,
-    /// Parcel is not valid anymore (state already has higher nonce)
+    /// Parcel is not valid anymore (state already has higher seq)
     Old,
     /// Parcel has too low fee
-    /// (there is already a parcel with the same sender-nonce but higher gas price)
+    /// (there is already a parcel with the same sender-seq but higher gas price)
     TooCheapToReplace,
     /// Invalid network ID given.
     InvalidNetworkId(NetworkId),
@@ -58,11 +58,11 @@ pub enum Error {
         /// Parcel cost
         cost: U256,
     },
-    /// Returned when parcel nonce does not match state nonce.
-    InvalidNonce {
-        /// Nonce expected.
+    /// Returned when parcel seq does not match state seq
+    InvalidSeq {
+        /// Seq expected.
         expected: U256,
-        /// Nonce found.
+        /// Seq found.
         got: U256,
     },
     InvalidShardId(ShardId),
@@ -89,7 +89,7 @@ const ERROR_ID_METADATA_TOO_BIG: u8 = 6u8;
 const ERROR_ID_LIMIT_REACHED: u8 = 7u8;
 const ERROR_ID_INSUFFICIENT_FEE: u8 = 8u8;
 const ERROR_ID_INSUFFICIENT_BALANCE: u8 = 9u8;
-const ERROR_ID_INVALID_NONCE: u8 = 10u8;
+const ERROR_ID_INVALID_SEQ: u8 = 10u8;
 const ERROR_ID_INVALID_SHARD_ID: u8 = 11u8;
 const ERROR_ID_INVALID_SHARD_ROOT: u8 = 12u8;
 const ERROR_ID_INVALID_SIGNATURE: u8 = 14u8;
@@ -118,7 +118,7 @@ impl Error {
             Error::InsufficientBalance {
                 ..
             } => 4,
-            Error::InvalidNonce {
+            Error::InvalidSeq {
                 ..
             } => 3,
             Error::InvalidShardId(_) => 2,
@@ -155,10 +155,10 @@ impl Encodable for Error {
                 balance,
                 cost,
             } => s.append(&ERROR_ID_INSUFFICIENT_BALANCE).append(address).append(balance).append(cost),
-            Error::InvalidNonce {
+            Error::InvalidSeq {
                 expected,
                 got,
-            } => s.append(&ERROR_ID_INVALID_NONCE).append(expected).append(got),
+            } => s.append(&ERROR_ID_INVALID_SEQ).append(expected).append(got),
             Error::InvalidShardId(shard_id) => s.append(&ERROR_ID_INVALID_SHARD_ID).append(shard_id),
             Error::InvalidShardRoot(mismatch) => s.append(&ERROR_ID_INVALID_SHARD_ROOT).append(mismatch),
             Error::InvalidSignature(err) => s.append(&ERROR_ID_INVALID_SIGNATURE).append(err),
@@ -196,7 +196,7 @@ impl Decodable for Error {
                 balance: rlp.val_at(2)?,
                 cost: rlp.val_at(2)?,
             },
-            ERROR_ID_INVALID_NONCE => Error::InvalidNonce {
+            ERROR_ID_INVALID_SEQ => Error::InvalidSeq {
                 expected: rlp.val_at(1)?,
                 got: rlp.val_at(2)?,
             },
@@ -239,10 +239,10 @@ impl Display for Error {
                 balance,
                 cost,
             } => format!("{} has only {:?} but it must be larger than {:?}", address, balance, cost),
-            Error::InvalidNonce {
+            Error::InvalidSeq {
                 expected,
                 got,
-            } => format!("Invalid parcel nonce: expected {}, found {}", expected, got),
+            } => format!("Invalid parcel seq: expected {}, found {}", expected, got),
             Error::InvalidShardId(shard_id) => format!("{} is an invalid shard id", shard_id),
             Error::InvalidShardRoot(mismatch) => format!("Invalid shard root {}", mismatch),
             Error::InvalidSignature(err) => format!("Parcel has invalid signature: {}.", err),

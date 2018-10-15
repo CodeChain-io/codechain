@@ -26,7 +26,7 @@ A parcel would look something like this:
 ::
 
     pub struct Parcel {
-        pub nonce: U256,
+        pub seq: U256,
         pub fee: U256,
         pub network_id: NetworkId,
         pub action: Action,
@@ -46,4 +46,4 @@ A parcel would look something like this:
     }
 
 The fee of the parcel would determine its priority, meaning, how quickly it gets processed. In addition, there is
-also a minimum fee that can be set. The nonce property exists for the purpose of preventing replay attacks.
+also a minimum fee that can be set. The seq property exists for the purpose of preventing replay attacks.

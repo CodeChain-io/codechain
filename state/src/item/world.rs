@@ -25,7 +25,7 @@ use super::local_cache::CacheableItem;
 pub struct World {
     owners: Vec<Address>,
     users: Vec<Address>,
-    nonce: u64,
+    seq: u64,
 }
 
 impl World {
@@ -33,15 +33,15 @@ impl World {
         Self {
             owners,
             users,
-            nonce: 0,
+            seq: 0,
         }
     }
 
-    pub fn new_with_nonce(owners: Vec<Address>, users: Vec<Address>, nonce: u64) -> Self {
+    pub fn new_with_seq(owners: Vec<Address>, users: Vec<Address>, seq: u64) -> Self {
         Self {
             owners,
             users,
-            nonce,
+            seq,
         }
     }
 
@@ -53,13 +53,13 @@ impl World {
         &self.users
     }
 
-    pub fn nonce(&self) -> &u64 {
-        &self.nonce
+    pub fn seq(&self) -> &u64 {
+        &self.seq
     }
 
-    pub fn inc_nonce(&mut self) {
-        debug_assert_ne!(::std::u64::MAX, self.nonce);
-        self.nonce += 1;
+    pub fn inc_seq(&mut self) {
+        debug_assert_ne!(::std::u64::MAX, self.seq);
+        self.seq += 1;
     }
 
     pub fn set_owners(&mut self, owners: Vec<Address>) {
@@ -74,7 +74,7 @@ impl World {
     pub fn init(&mut self, owners: Vec<Address>, users: Vec<Address>) {
         assert_eq!(0, self.owners.len());
         assert_eq!(0, self.users.len());
-        assert_eq!(0, self.nonce);
+        assert_eq!(0, self.seq);
         self.owners = owners;
         self.users = users;
     }
@@ -85,7 +85,7 @@ impl Default for World {
         Self {
             owners: vec![],
             users: vec![],
-            nonce: 0,
+            seq: 0,
         }
     }
 }
@@ -94,7 +94,7 @@ impl CacheableItem for World {
     type Address = WorldAddress;
 
     fn is_null(&self) -> bool {
-        self.owners.is_empty() && self.nonce == 0
+        self.owners.is_empty() && self.seq == 0
     }
 }
 
@@ -102,7 +102,7 @@ const PREFIX: u8 = super::WORLD_PREFIX;
 
 impl Encodable for World {
     fn rlp_append(&self, s: &mut RlpStream) {
-        s.begin_list(4).append(&PREFIX).append_list(self.owners()).append_list(self.users()).append(self.nonce());
+        s.begin_list(4).append(&PREFIX).append_list(self.owners()).append_list(self.users()).append(self.seq());
     }
 }
 
@@ -119,7 +119,7 @@ impl Decodable for World {
         Ok(Self {
             owners: rlp.list_at(1)?,
             users: rlp.list_at(2)?,
-            nonce: rlp.val_at(3)?,
+            seq: rlp.val_at(3)?,
         })
     }
 }
