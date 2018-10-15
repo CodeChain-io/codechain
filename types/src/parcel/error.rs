@@ -217,7 +217,7 @@ impl Display for Error {
                 "The regular key is already used as a platform account".to_string()
             }
             Error::InvalidTransferDestination => "Transfer receiver is not valid account".to_string(),
-            Error::InvalidTransaction(err) => format!("Parcel has an invalid transaction: {}", err).to_string(),
+            Error::InvalidTransaction(err) => format!("Parcel has an invalid transaction: {}", err),
             Error::InsufficientPermission => "Sender doesn't have a permission".to_string(),
             Error::NewOwnersMustContainSender => "New owners must contain the sender".to_string(),
         };

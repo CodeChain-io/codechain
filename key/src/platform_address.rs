@@ -106,7 +106,7 @@ fn rearrange_bits(data: &[u8], from: usize, into: usize) -> Vec<u8> {
 impl fmt::Display for PlatformAddress {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         assert!(check_network_id(&self.network_id));
-        let hrp = format!("{}c", self.network_id.to_string());
+        let hrp = format!("{}c", self.network_id);
         let mut data = Vec::new();
         data.push(self.version);
         data.extend(&self.address.to_vec());
