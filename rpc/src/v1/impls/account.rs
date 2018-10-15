@@ -23,6 +23,7 @@ use ccore::{
     SignedParcel, UnverifiedParcel,
 };
 use ckey::{public_to_address, Address, NetworkId, Password, PlatformAddress, Signature};
+use ctypes::parcel::IncompleteParcel;
 use jsonrpc_core::Result;
 use parking_lot::Mutex;
 use primitives::{H256, U256};
@@ -90,7 +91,7 @@ where
 
     fn send_parcel(
         &self,
-        mut parcel: UnsignedParcel,
+        parcel: UnsignedParcel,
         platform_address: PlatformAddress,
         passphrase: Option<Password>,
     ) -> Result<SendParcelResult> {
@@ -98,8 +99,11 @@ where
             static ref LOCK: Mutex<()> = Mutex::new(());
         }
         let _guard = LOCK.lock();
-        let nonce = match parcel.nonce {
-            ref mut parcel_nonce @ None => {
+        let (parcel, nonce): (IncompleteParcel, Option<U256>) =
+            ::std::result::Result::from(parcel).map_err(AccountProviderError::KeyError).map_err(account_provider)?;
+        let nonce = match nonce {
+            Some(nonce) => nonce,
+            None => {
                 let address = platform_address.try_into_address().map_err(errors::core)?;
                 let addresses: Vec<_> = {
                     let owner_address = self.client.latest_regular_key_owner(&address);
@@ -107,7 +111,7 @@ where
                         self.client.latest_regular_key(&address).map(|key| public_to_address(&key));
                     once(address).chain(owner_address.into_iter()).chain(regular_key_address.into_iter()).collect()
                 };
-                let next_nonce = get_next_nonce(self.miner.future_parcels().into_iter(), &addresses)
+                get_next_nonce(self.miner.future_parcels().into_iter(), &addresses)
                     .map(|nonce| {
                         cerror!(RPC, "There are future parcels for {}", platform_address);
                         nonce
@@ -119,15 +123,10 @@ where
                                 nonce
                             })
                             .unwrap_or_else(|| self.client.latest_nonce(&address))
-                    });
-                *parcel_nonce = Some(next_nonce);
-                next_nonce
+                    })
             }
-            Some(nonce) => nonce,
         };
-        let parcel = ::std::result::Result::from(parcel)
-            .map_err(|err| AccountProviderError::KeyError(err))
-            .map_err(account_provider)?;
+        let parcel = parcel.complete(nonce);
         let parcel_hash = parcel.hash();
         let sig = self.sign(parcel_hash, platform_address, passphrase)?;
         let unverified = UnverifiedParcel::new(parcel, sig);

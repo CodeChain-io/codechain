@@ -14,31 +14,28 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ckey::{Error as KeyError, NetworkId};
-use ctypes::parcel::IncompleteParcel;
+use ckey::NetworkId;
 use primitives::U256;
 
-use super::Action;
+use super::{Action, Parcel};
 
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct UnsignedParcel {
-    pub nonce: Option<U256>,
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct IncompleteParcel {
+    /// Amount of CCC to be paid as a cost for distributing this parcel to the network.
     pub fee: U256,
+    /// Network Id
     pub network_id: NetworkId,
+
     pub action: Action,
 }
 
-// FIXME: Use TryFrom.
-impl From<UnsignedParcel> for Result<(IncompleteParcel, Option<U256>), KeyError> {
-    fn from(parcel: UnsignedParcel) -> Self {
-        Ok((
-            IncompleteParcel {
-                fee: parcel.fee,
-                network_id: parcel.network_id,
-                action: Result::from(parcel.action)?,
-            },
-            parcel.nonce,
-        ))
+impl IncompleteParcel {
+    pub fn complete(self, nonce: U256) -> Parcel {
+        Parcel {
+            nonce,
+            fee: self.fee,
+            network_id: self.network_id,
+            action: self.action,
+        }
     }
 }
