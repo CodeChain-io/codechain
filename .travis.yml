@@ -58,5 +58,7 @@ notifications:
 cache:
   timeout: 1000
   cargo: true
+  directories:
+    - "$HOME/.rustup"
 git:
   depth: 1
