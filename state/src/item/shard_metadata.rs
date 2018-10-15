@@ -23,21 +23,21 @@ use super::local_cache::CacheableItem;
 #[derive(Clone, Debug, PartialEq)]
 pub struct ShardMetadata {
     number_of_worlds: WorldId,
-    nonce: u64,
+    seq: u64,
 }
 
 impl ShardMetadata {
     pub fn new(number_of_worlds: WorldId) -> Self {
         Self {
             number_of_worlds,
-            nonce: 0,
+            seq: 0,
         }
     }
 
-    pub fn new_with_nonce(number_of_worlds: WorldId, nonce: u64) -> Self {
+    pub fn new_with_seq(number_of_worlds: WorldId, seq: u64) -> Self {
         Self {
             number_of_worlds,
-            nonce,
+            seq,
         }
     }
 
@@ -49,12 +49,12 @@ impl ShardMetadata {
         &self.number_of_worlds
     }
 
-    pub fn increase_nonce(&mut self) {
-        self.nonce += 1;
+    pub fn inc_seq(&mut self) {
+        self.seq += 1;
     }
 
-    pub fn nonce(&self) -> &u64 {
-        &self.nonce
+    pub fn seq(&self) -> &u64 {
+        &self.seq
     }
 }
 
@@ -62,7 +62,7 @@ impl Default for ShardMetadata {
     fn default() -> Self {
         Self {
             number_of_worlds: 0,
-            nonce: 0,
+            seq: 0,
         }
     }
 }
@@ -71,7 +71,7 @@ impl CacheableItem for ShardMetadata {
     type Address = ShardMetadataAddress;
 
     fn is_null(&self) -> bool {
-        self.nonce == 0
+        self.seq == 0
     }
 }
 
@@ -79,7 +79,7 @@ const PREFIX: u8 = super::SHARD_METADATA_PREFIX;
 
 impl Encodable for ShardMetadata {
     fn rlp_append(&self, s: &mut RlpStream) {
-        s.begin_list(3).append(&PREFIX).append(&self.number_of_worlds).append(&self.nonce);
+        s.begin_list(3).append(&PREFIX).append(&self.number_of_worlds).append(&self.seq);
     }
 }
 
@@ -95,7 +95,7 @@ impl Decodable for ShardMetadata {
         }
         Ok(Self {
             number_of_worlds: rlp.val_at(1)?,
-            nonce: rlp.val_at(2)?,
+            seq: rlp.val_at(2)?,
         })
     }
 }

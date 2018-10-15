@@ -18,7 +18,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use ccore::{
-    AccountProvider, AccountProviderError, MinerService, MiningBlockChainClient, Nonce, RegularKey, RegularKeyOwner,
+    AccountProvider, AccountProviderError, MinerService, MiningBlockChainClient, RegularKey, RegularKeyOwner, Seq,
 };
 use ckey::{NetworkId, Password, PlatformAddress, Signature};
 use ctypes::parcel::IncompleteParcel;
@@ -32,7 +32,7 @@ use super::super::types::{SendParcelResult, UnsignedParcel};
 
 pub struct AccountClient<C, M>
 where
-    C: MiningBlockChainClient + Nonce + RegularKey + RegularKeyOwner,
+    C: MiningBlockChainClient + Seq + RegularKey + RegularKeyOwner,
     M: MinerService, {
     account_provider: Arc<AccountProvider>,
     network_id: NetworkId,
@@ -42,7 +42,7 @@ where
 
 impl<C, M> AccountClient<C, M>
 where
-    C: MiningBlockChainClient + Nonce + RegularKey + RegularKeyOwner,
+    C: MiningBlockChainClient + Seq + RegularKey + RegularKeyOwner,
     M: MinerService,
 {
     pub fn new(ap: &Arc<AccountProvider>, client: Arc<C>, miner: Arc<M>, network_id: NetworkId) -> Self {
@@ -57,7 +57,7 @@ where
 
 impl<C, M> Account for AccountClient<C, M>
 where
-    C: MiningBlockChainClient + Nonce + RegularKey + RegularKeyOwner + 'static,
+    C: MiningBlockChainClient + Seq + RegularKey + RegularKeyOwner + 'static,
     M: MinerService + 'static,
 {
     fn get_account_list(&self) -> Result<Vec<PlatformAddress>> {
@@ -97,10 +97,10 @@ where
             static ref LOCK: Mutex<()> = Mutex::new(());
         }
         let _guard = LOCK.lock();
-        let (parcel, nonce): (IncompleteParcel, Option<U256>) =
+        let (parcel, seq): (IncompleteParcel, Option<U256>) =
             ::std::result::Result::from(parcel).map_err(AccountProviderError::KeyError).map_err(account_provider)?;
 
-        let (hash, nonce) = self
+        let (hash, seq) = self
             .miner
             .import_incomplete_parcel(
                 self.client.as_ref(),
@@ -108,13 +108,13 @@ where
                 parcel,
                 platform_address,
                 passphrase,
-                nonce,
+                seq,
             )
             .map_err(errors::core)?;
 
         Ok(SendParcelResult {
             hash,
-            nonce,
+            seq,
         })
     }
 

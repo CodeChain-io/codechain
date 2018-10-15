@@ -78,12 +78,12 @@ impl From<TransactionType> for Transaction {
             TransactionType::CreateWorld {
                 network_id,
                 shard_id,
-                nonce,
+                seq,
                 owners,
             } => Transaction::CreateWorld {
                 network_id,
                 shard_id,
-                nonce,
+                nonce: seq,
                 owners: owners.into_iter().map(|owner| PlatformAddress::new_v1(network_id, owner)).collect(),
                 hash,
             },
@@ -91,13 +91,13 @@ impl From<TransactionType> for Transaction {
                 network_id,
                 shard_id,
                 world_id,
-                nonce,
+                seq,
                 owners,
             } => Transaction::SetWorldOwners {
                 network_id,
                 shard_id,
                 world_id,
-                nonce,
+                nonce: seq,
                 owners: owners.into_iter().map(|owner| PlatformAddress::new_v1(network_id, owner)).collect(),
                 hash,
             },
@@ -105,13 +105,13 @@ impl From<TransactionType> for Transaction {
                 network_id,
                 shard_id,
                 world_id,
-                nonce,
+                seq,
                 users,
             } => Transaction::SetWorldUsers {
                 network_id,
                 shard_id,
                 world_id,
-                nonce,
+                nonce: seq,
                 users: users.into_iter().map(|user| PlatformAddress::new_v1(network_id, user)).collect(),
                 hash,
             },
@@ -166,7 +166,7 @@ impl From<Transaction> for Result<TransactionType, KeyError> {
                 TransactionType::CreateWorld {
                     network_id,
                     shard_id,
-                    nonce,
+                    seq: nonce,
                     owners: owners?,
                 }
             }
@@ -183,7 +183,7 @@ impl From<Transaction> for Result<TransactionType, KeyError> {
                     network_id,
                     shard_id,
                     world_id,
-                    nonce,
+                    seq: nonce,
                     owners: owners?,
                 }
             }
@@ -200,7 +200,7 @@ impl From<Transaction> for Result<TransactionType, KeyError> {
                     network_id,
                     shard_id,
                     world_id,
-                    nonce,
+                    seq: nonce,
                     users: users?,
                 }
             }

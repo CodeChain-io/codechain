@@ -24,8 +24,8 @@ use super::Action;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Parcel {
-    /// Nonce.
-    pub nonce: U256,
+    /// Seq.
+    pub seq: U256,
     /// Amount of CCC to be paid as a cost for distributing this parcel to the network.
     pub fee: U256,
     /// Network Id
@@ -44,7 +44,7 @@ impl Parcel {
     /// Append object with a without signature into RLP stream
     pub fn rlp_append_unsigned_parcel(&self, s: &mut RlpStream) {
         s.begin_list(4);
-        s.append(&self.nonce);
+        s.append(&self.seq);
         s.append(&self.fee);
         s.append(&self.network_id);
         s.append(&self.action);

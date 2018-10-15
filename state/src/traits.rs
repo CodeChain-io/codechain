@@ -26,8 +26,8 @@ use super::{AssetScheme, AssetSchemeAddress, OwnedAsset, OwnedAssetAddress, Shar
 
 
 pub trait TopStateInfo {
-    /// Get the nonce of account `a`.
-    fn nonce(&self, a: &Address) -> TrieResult<U256>;
+    /// Get the seq of account `a`.
+    fn seq(&self, a: &Address) -> TrieResult<U256>;
 
     /// Get the balance of account `a`.
     fn balance(&self, a: &Address) -> TrieResult<U256>;
@@ -88,7 +88,7 @@ where
     fn account_exists(&self, a: &Address) -> TrieResult<bool>;
 
     fn account_exists_and_not_null(&self, a: &Address) -> TrieResult<bool>;
-    fn account_exists_and_has_nonce(&self, a: &Address) -> TrieResult<bool>;
+    fn account_exists_and_has_seq(&self, a: &Address) -> TrieResult<bool>;
 
     fn regular_account_exists_and_not_null(&self, p: &Public) -> TrieResult<bool>;
     fn regular_account_exists_and_not_null_by_address(&self, a: &Address) -> TrieResult<bool>;
@@ -100,8 +100,8 @@ where
     /// Subtracts `by` from the balance of `from` and adds it to that of `to`.
     fn transfer_balance(&mut self, from: &Address, to: &Address, by: &U256) -> StateResult<()>;
 
-    /// Increment the nonce of account `a` by 1.
-    fn inc_nonce(&mut self, a: &Address) -> TrieResult<()>;
+    /// Increment the seq of account `a` by 1.
+    fn inc_seq(&mut self, a: &Address) -> TrieResult<()>;
 
     /// Set the regular key of account `owner_public`
     fn set_regular_key(&mut self, owner_public: &Public, key: &Public) -> StateResult<()>;

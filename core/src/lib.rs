@@ -80,7 +80,7 @@ pub use account_provider::{AccountProvider, SignError as AccountProviderError};
 pub use block::Block;
 pub use client::{
     AssetClient, Balance, BlockChainClient, BlockInfo, ChainInfo, ChainNotify, Client, DatabaseClient, EngineClient,
-    EngineInfo, ExecuteClient, ImportBlock, MiningBlockChainClient, Nonce, RegularKey, RegularKeyOwner, Shard,
+    EngineInfo, ExecuteClient, ImportBlock, MiningBlockChainClient, RegularKey, RegularKeyOwner, Seq, Shard,
     TestBlockChainClient,
 };
 pub use consensus::EngineType;

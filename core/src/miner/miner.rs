@@ -257,7 +257,7 @@ impl Miner {
                             let address = public_to_address(p);
                             let a = client.latest_regular_key_owner(&address).unwrap_or(address);
                             AccountDetails {
-                                nonce: client.latest_nonce(&a),
+                                seq: client.latest_seq(&a),
                                 balance: client.latest_balance(&a),
                             }
                         };
@@ -428,16 +428,16 @@ impl Miner {
         };
         let block = open_block.close(parcels_root, invoices_root);
 
-        let fetch_nonce = |p: &Public| {
+        let fetch_seq = |p: &Public| {
             let address = public_to_address(p);
             let a = chain.latest_regular_key_owner(&address).unwrap_or(address);
-            chain.latest_nonce(&a)
+            chain.latest_seq(&a)
         };
 
         {
             let mut queue = self.mem_pool.write();
             for hash in invalid_parcels {
-                queue.remove(&hash, &fetch_nonce, RemovalReason::Invalid);
+                queue.remove(&hash, &fetch_seq, RemovalReason::Invalid);
             }
         }
         (block, original_work_hash)
@@ -614,7 +614,7 @@ impl MinerService for Miner {
                 let a = chain.latest_regular_key_owner(&address).unwrap_or(address);
 
                 AccountDetails {
-                    nonce: chain.latest_nonce(&a),
+                    seq: chain.latest_seq(&a),
                     balance: chain.latest_balance(&a),
                 }
             };
@@ -769,33 +769,33 @@ impl MinerService for Miner {
         parcel: IncompleteParcel,
         platform_address: PlatformAddress,
         passphrase: Option<Password>,
-        nonce: Option<U256>,
+        seq: Option<U256>,
     ) -> Result<(H256, U256), Error> {
         let address = platform_address.try_into_address()?;
-        let nonce = match nonce {
-            Some(nonce) => nonce,
+        let seq = match seq {
+            Some(seq) => seq,
             None => {
                 let addresses: Vec<_> = {
                     let owner_address = client.latest_regular_key_owner(&address);
                     let regular_key_address = client.latest_regular_key(&address).map(|key| public_to_address(&key));
                     once(address).chain(owner_address.into_iter()).chain(regular_key_address.into_iter()).collect()
                 };
-                get_next_nonce(self.future_parcels().into_iter(), &addresses)
-                    .map(|nonce| {
+                get_next_seq(self.future_parcels().into_iter(), &addresses)
+                    .map(|seq| {
                         cerror!(RPC, "There are future parcels for {}", platform_address);
-                        nonce
+                        seq
                     })
                     .unwrap_or_else(|| {
-                        get_next_nonce(self.ready_parcels().into_iter(), &addresses)
-                            .map(|nonce| {
+                        get_next_seq(self.ready_parcels().into_iter(), &addresses)
+                            .map(|seq| {
                                 cdebug!(RPC, "There are ready parcels for {}", platform_address);
-                                nonce
+                                seq
                             })
-                            .unwrap_or_else(|| client.latest_nonce(&address))
+                            .unwrap_or_else(|| client.latest_seq(&address))
                     })
             }
         };
-        let parcel = parcel.complete(nonce);
+        let parcel = parcel.complete(seq);
         let parcel_hash = parcel.hash();
         let sig = account_provider.sign(address, passphrase, parcel_hash)?;
         let unverified = UnverifiedParcel::new(parcel, sig);
@@ -803,7 +803,7 @@ impl MinerService for Miner {
         let hash = signed.hash();
         self.import_own_parcel(client, signed)?;
 
-        Ok((hash, nonce))
+        Ok((hash, seq))
     }
 
     fn ready_parcels(&self) -> Vec<SignedParcel> {
@@ -835,11 +835,11 @@ impl MinerService for Miner {
     }
 }
 
-fn get_next_nonce(parcels: impl Iterator<Item = SignedParcel>, addresses: &[Address]) -> Option<U256> {
-    let mut nonces: Vec<_> = parcels
+fn get_next_seq(parcels: impl Iterator<Item = SignedParcel>, addresses: &[Address]) -> Option<U256> {
+    let mut seqs: Vec<_> = parcels
         .filter(|parcel| addresses.contains(&public_to_address(&parcel.signer_public())))
-        .map(|parcel| parcel.nonce)
+        .map(|parcel| parcel.seq)
         .collect();
-    nonces.sort();
-    nonces.last().map(|nonce| *nonce + 1.into())
+    seqs.sort();
+    seqs.last().map(|seq| *seq + 1.into())
 }

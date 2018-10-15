@@ -42,5 +42,5 @@ pub struct FilterStatus {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SendParcelResult {
     pub hash: H256,
-    pub nonce: U256,
+    pub seq: U256,
 }

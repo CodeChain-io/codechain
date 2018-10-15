@@ -114,24 +114,24 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         debug_assert_eq!(Ok(()), transaction.verify());
         match transaction {
             Transaction::CreateWorld {
-                nonce,
+                seq,
                 owners,
                 ..
-            } => Ok(self.create_world(shard_id, nonce, &owners, &[], sender, shard_users)?),
+            } => Ok(self.create_world(shard_id, seq, &owners, &[], sender, shard_users)?),
             Transaction::SetWorldOwners {
                 shard_id,
                 world_id,
-                nonce,
+                seq,
                 owners,
                 ..
-            } => Ok(self.set_world_owners(*shard_id, *world_id, *nonce, &owners, sender, shard_users)?),
+            } => Ok(self.set_world_owners(*shard_id, *world_id, *seq, &owners, sender, shard_users)?),
             Transaction::SetWorldUsers {
                 shard_id,
                 world_id,
-                nonce,
+                seq,
                 users,
                 ..
-            } => Ok(self.set_world_users(*shard_id, *world_id, *nonce, &users, sender, shard_users)?),
+            } => Ok(self.set_world_users(*shard_id, *world_id, *seq, &users, sender, shard_users)?),
             Transaction::AssetMint {
                 metadata,
                 world_id,
@@ -169,7 +169,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
     fn create_world(
         &mut self,
         shard_id: ShardId,
-        nonce: &u64,
+        seq: &u64,
         owners: &[Address],
         users: &[Address],
         sender: &Address,
@@ -183,18 +183,18 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         assert_ne!(None, self.get_metadata(&metadata_address)?);
         let mut metadata = self.get_metadata_mut(&metadata_address)?;
 
-        let current_nonce = *metadata.nonce();
-        if *nonce != current_nonce {
-            return Err(TransactionError::InvalidShardNonce(Mismatch {
-                expected: current_nonce,
-                found: *nonce,
+        let current_seq = *metadata.seq();
+        if *seq != current_seq {
+            return Err(TransactionError::InvalidShardSeq(Mismatch {
+                expected: current_seq,
+                found: *seq,
             }).into())
         }
 
         let world_id = *metadata.number_of_worlds();
         let world_address = WorldAddress::new(shard_id, world_id);
 
-        metadata.increase_nonce();
+        metadata.inc_seq();
         metadata.increase_number_of_worlds();
 
         let mut world = self.get_world_mut(&world_address)?;
@@ -206,7 +206,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         &mut self,
         shard_id: ShardId,
         world_id: WorldId,
-        nonce: u64,
+        seq: u64,
         owners: &[Address],
         sender: &Address,
         shard_users: &[Address],
@@ -217,16 +217,16 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
             return Err(TransactionError::InsufficientPermission.into())
         }
 
-        let current_nonce = world.nonce();
-        if current_nonce != &nonce {
-            return Err(TransactionError::InvalidWorldNonce(Mismatch {
-                expected: *current_nonce,
-                found: nonce,
+        let current_seq = world.seq();
+        if current_seq != &seq {
+            return Err(TransactionError::InvalidWorldSeq(Mismatch {
+                expected: *current_seq,
+                found: seq,
             }).into())
         }
 
         let mut world = self.get_world_mut(&WorldAddress::new(shard_id, world_id))?;
-        world.inc_nonce();
+        world.inc_seq();
         world.set_owners(owners.to_vec());
         Ok(())
     }
@@ -235,7 +235,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         &mut self,
         shard_id: ShardId,
         world_id: WorldId,
-        nonce: u64,
+        seq: u64,
         users: &[Address],
         sender: &Address,
         shard_users: &[Address],
@@ -246,16 +246,16 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
             return Err(TransactionError::InsufficientPermission.into())
         }
 
-        let current_nonce = world.nonce();
-        if current_nonce != &nonce {
-            return Err(TransactionError::InvalidWorldNonce(Mismatch {
-                expected: *current_nonce,
-                found: nonce,
+        let current_seq = world.seq();
+        if current_seq != &seq {
+            return Err(TransactionError::InvalidWorldSeq(Mismatch {
+                expected: *current_seq,
+                found: seq,
             }).into())
         }
 
         let mut world = self.get_world_mut(&WorldAddress::new(shard_id, world_id))?;
-        world.inc_nonce();
+        world.inc_seq();
         world.set_users(users.to_vec());
         Ok(())
     }
@@ -623,13 +623,13 @@ mod tests {
         let shard_id = 0xCAFE;
         let mut state = get_temp_shard_state(shard_id);
 
-        let nonce = 0;
+        let seq = 0;
         let owners = vec![];
 
         let transaction = Transaction::CreateWorld {
             network_id,
             shard_id,
-            nonce,
+            seq,
             owners: owners.clone(),
         };
 
@@ -638,7 +638,7 @@ mod tests {
         assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &transaction, &sender, &[shard_owner]));
 
         let metadata = state.metadata();
-        assert_eq!(Ok(Some(ShardMetadata::new_with_nonce(1, 1))), metadata);
+        assert_eq!(Ok(Some(ShardMetadata::new_with_seq(1, 1))), metadata);
 
         let world_id = 0;
         let world = state.world(world_id);
@@ -652,13 +652,13 @@ mod tests {
         let shard_id = 0xCAFE;
         let mut state = get_temp_shard_state(shard_id);
 
-        let nonce = 0;
+        let seq = 0;
         let owners = vec![Address::random(), Address::random(), Address::random()];
 
         let transaction = Transaction::CreateWorld {
             network_id,
             shard_id,
-            nonce,
+            seq,
             owners: owners.clone(),
         };
 
@@ -667,7 +667,7 @@ mod tests {
         assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &transaction, &sender, &[shard_owner]));
 
         let metadata = state.metadata();
-        assert_eq!(Ok(Some(ShardMetadata::new_with_nonce(1, 1))), metadata);
+        assert_eq!(Ok(Some(ShardMetadata::new_with_seq(1, 1))), metadata);
 
         let world_id = 0;
         let world = state.world(world_id);
@@ -676,25 +676,25 @@ mod tests {
     }
 
     #[test]
-    fn create_world_fail_if_nonce_is_not_matched() {
+    fn create_world_fail_if_seq_is_not_matched() {
         let network_id = "tc".into();
         let shard_id = 0xCAFE;
         let mut state = get_temp_shard_state(shard_id);
 
-        let nonce = 1;
+        let seq = 1;
         let owners = vec![];
 
         let transaction = Transaction::CreateWorld {
             network_id,
             shard_id,
-            nonce,
+            seq,
             owners: owners.clone(),
         };
 
         let sender = address();
         let shard_owner = sender;
         assert_eq!(
-            Ok(TransactionInvoice::Fail(TransactionError::InvalidShardNonce(Mismatch {
+            Ok(TransactionInvoice::Fail(TransactionError::InvalidShardSeq(Mismatch {
                 expected: 0,
                 found: 1
             }))),
@@ -702,7 +702,7 @@ mod tests {
         );
 
         let metadata = state.metadata();
-        assert_eq!(Ok(Some(ShardMetadata::new_with_nonce(0, 0))), metadata);
+        assert_eq!(Ok(Some(ShardMetadata::new_with_seq(0, 0))), metadata);
 
         let world_id = 0;
         let world = state.world(world_id);
@@ -1147,21 +1147,21 @@ mod tests {
         assert_eq!(Ok(()), state.commit());
 
         let metadata = state.metadata();
-        assert_eq!(Ok(Some(ShardMetadata::new_with_nonce(1, 1))), metadata);
+        assert_eq!(Ok(Some(ShardMetadata::new_with_seq(1, 1))), metadata);
 
         let world_id = 0;
         let world = state.world(world_id);
         let users = vec![];
         assert_eq!(Ok(Some(World::new(owners, users.clone()))), world);
 
-        let nonce = 0;
+        let seq = 0;
 
         let new_owners = vec![Address::random(), Address::random(), Address::random()];
         let transaction = Transaction::SetWorldOwners {
             network_id,
             shard_id,
             world_id,
-            nonce,
+            seq,
             owners: new_owners.clone(),
         };
 
@@ -1176,7 +1176,7 @@ mod tests {
         assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &transaction, &shard_owner, &[shard_owner]));
 
         let world = state.world(world_id);
-        assert_eq!(Ok(Some(World::new_with_nonce(new_owners, users, 1))), world);
+        assert_eq!(Ok(Some(World::new_with_seq(new_owners, users, 1))), world);
     }
 
     #[test]
@@ -1191,21 +1191,21 @@ mod tests {
         assert_eq!(Ok(()), state.commit());
 
         let metadata = state.metadata();
-        assert_eq!(Ok(Some(ShardMetadata::new_with_nonce(1, 1))), metadata);
+        assert_eq!(Ok(Some(ShardMetadata::new_with_seq(1, 1))), metadata);
 
         let world_id = 0;
         let world = state.world(world_id);
         let users = vec![];
         assert_eq!(Ok(Some(World::new(old_owners.clone(), users.clone()))), world);
 
-        let nonce = 0;
+        let seq = 0;
 
         let owners = vec![Address::random(), Address::random(), Address::random()];
         let transaction = Transaction::SetWorldOwners {
             network_id,
             shard_id,
             world_id,
-            nonce,
+            seq,
             owners: owners.clone(),
         };
 
@@ -1213,7 +1213,7 @@ mod tests {
         assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &transaction, &sender, &[shard_owner]));
 
         let world = state.world(world_id);
-        assert_eq!(Ok(Some(World::new_with_nonce(owners, users, 1))), world);
+        assert_eq!(Ok(Some(World::new_with_seq(owners, users, 1))), world);
     }
 
 
@@ -1228,21 +1228,21 @@ mod tests {
         assert_eq!(Ok(()), state.commit());
 
         let metadata = state.metadata();
-        assert_eq!(Ok(Some(ShardMetadata::new_with_nonce(1, 1))), metadata);
+        assert_eq!(Ok(Some(ShardMetadata::new_with_seq(1, 1))), metadata);
 
         let world_id = 0;
         let world = state.world(world_id);
         let users = vec![];
         assert_eq!(Ok(Some(World::new(owners.clone(), users.clone()))), world);
 
-        let nonce = 0;
+        let seq = 0;
 
         let new_owners = vec![Address::random(), Address::random(), Address::random()];
         let transaction = Transaction::SetWorldOwners {
             network_id,
             shard_id,
             world_id,
-            nonce,
+            seq,
             owners: new_owners.clone(),
         };
 
@@ -1260,7 +1260,7 @@ mod tests {
             state.apply(shard_id, &transaction, &sender, &[shard_owner])
         );
         let world = state.world(world_id);
-        assert_eq!(Ok(Some(World::new_with_nonce(owners, users, 0))), world);
+        assert_eq!(Ok(Some(World::new_with_seq(owners, users, 0))), world);
     }
 
     #[test]
@@ -1412,20 +1412,20 @@ mod tests {
         assert_eq!(Ok(()), state.commit());
 
         let metadata = state.metadata();
-        assert_eq!(Ok(Some(ShardMetadata::new_with_nonce(1, 1))), metadata);
+        assert_eq!(Ok(Some(ShardMetadata::new_with_seq(1, 1))), metadata);
 
         let world_id = 0;
         let world = state.world(world_id);
         assert_eq!(Ok(Some(World::new(owners.clone(), users.clone()))), world);
 
-        let nonce = 0;
+        let seq = 0;
 
         let new_owners = vec![Address::random(), Address::random(), Address::random()];
         let transaction = Transaction::SetWorldOwners {
             network_id,
             shard_id,
             world_id,
-            nonce,
+            seq,
             owners: new_owners.clone(),
         };
 
@@ -1435,7 +1435,7 @@ mod tests {
             state.apply(shard_id, &transaction, &user, &[shard_owner])
         );
         let world = state.world(world_id);
-        assert_eq!(Ok(Some(World::new_with_nonce(owners, users, 0))), world);
+        assert_eq!(Ok(Some(World::new_with_seq(owners, users, 0))), world);
     }
 
     #[test]
@@ -1458,20 +1458,20 @@ mod tests {
         assert_eq!(Ok(()), state.commit());
 
         let metadata = state.metadata();
-        assert_eq!(Ok(Some(ShardMetadata::new_with_nonce(1, 1))), metadata);
+        assert_eq!(Ok(Some(ShardMetadata::new_with_seq(1, 1))), metadata);
 
         let world_id = 0;
         let world = state.world(world_id);
         assert_eq!(Ok(Some(World::new(owners.clone(), users.clone()))), world);
 
-        let nonce = 0;
+        let seq = 0;
 
         let new_users = vec![Address::random(), Address::random(), Address::random()];
         let transaction = Transaction::SetWorldUsers {
             network_id,
             shard_id,
             world_id,
-            nonce,
+            seq,
             users: new_users.clone(),
         };
 
@@ -1481,6 +1481,6 @@ mod tests {
             state.apply(shard_id, &transaction, &user, &[shard_owner])
         );
         let world = state.world(world_id);
-        assert_eq!(Ok(Some(World::new_with_nonce(owners, users, 0))), world);
+        assert_eq!(Ok(Some(World::new_with_seq(owners, users, 0))), world);
     }
 }

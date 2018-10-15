@@ -27,14 +27,14 @@ use super::pod_world::PodWorld;
 pub struct PodShardMetadata {
     pub owners: Vec<Address>,
     pub users: Vec<Address>,
-    pub nonce: u64,
+    pub seq: u64,
     pub worlds: Vec<PodWorld>,
 }
 
 impl<'a> From<&'a PodShardMetadata> for ShardMetadata {
     fn from(pod: &'a PodShardMetadata) -> Self {
         assert!(pod.worlds.len() <= ::std::u16::MAX as usize);
-        ShardMetadata::new_with_nonce(pod.worlds.len() as u16, pod.nonce)
+        ShardMetadata::new_with_seq(pod.worlds.len() as u16, pod.seq)
     }
 }
 
@@ -48,7 +48,7 @@ impl Encodable for PodShardMetadata {
 impl From<cjson::scheme::Shard> for PodShardMetadata {
     fn from(s: cjson::scheme::Shard) -> Self {
         Self {
-            nonce: s.nonce.map(Into::into).unwrap_or(0),
+            seq: s.nonce.map(Into::into).unwrap_or(0),
             owners: s.owners.into_iter().map(PlatformAddress::into_address).collect(),
             users: s.users.unwrap_or_else(Vec::new).into_iter().map(PlatformAddress::into_address).collect(),
             worlds: s.worlds.unwrap_or_else(Vec::new).into_iter().map(Into::into).collect(),
@@ -58,10 +58,6 @@ impl From<cjson::scheme::Shard> for PodShardMetadata {
 
 impl fmt::Display for PodShardMetadata {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "(#nonce={}; owners={:#?}; users={:#?} worlds={:#?})",
-            self.nonce, self.owners, self.users, self.worlds
-        )
+        write!(f, "(#seq={}; owners={:#?}; users={:#?} worlds={:#?})", self.seq, self.owners, self.users, self.worlds)
     }
 }
