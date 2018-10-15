@@ -14,15 +14,13 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::iter::once;
 use std::sync::Arc;
 use std::time::Duration;
 
 use ccore::{
     AccountProvider, AccountProviderError, MinerService, MiningBlockChainClient, Nonce, RegularKey, RegularKeyOwner,
-    SignedParcel, UnverifiedParcel,
 };
-use ckey::{public_to_address, Address, NetworkId, Password, PlatformAddress, Signature};
+use ckey::{NetworkId, Password, PlatformAddress, Signature};
 use ctypes::parcel::IncompleteParcel;
 use jsonrpc_core::Result;
 use parking_lot::Mutex;
@@ -101,38 +99,18 @@ where
         let _guard = LOCK.lock();
         let (parcel, nonce): (IncompleteParcel, Option<U256>) =
             ::std::result::Result::from(parcel).map_err(AccountProviderError::KeyError).map_err(account_provider)?;
-        let nonce = match nonce {
-            Some(nonce) => nonce,
-            None => {
-                let address = platform_address.try_into_address().map_err(errors::core)?;
-                let addresses: Vec<_> = {
-                    let owner_address = self.client.latest_regular_key_owner(&address);
-                    let regular_key_address =
-                        self.client.latest_regular_key(&address).map(|key| public_to_address(&key));
-                    once(address).chain(owner_address.into_iter()).chain(regular_key_address.into_iter()).collect()
-                };
-                get_next_nonce(self.miner.future_parcels().into_iter(), &addresses)
-                    .map(|nonce| {
-                        cerror!(RPC, "There are future parcels for {}", platform_address);
-                        nonce
-                    })
-                    .unwrap_or_else(|| {
-                        get_next_nonce(self.miner.ready_parcels().into_iter(), &addresses)
-                            .map(|nonce| {
-                                cdebug!(RPC, "There are ready parcels for {}", platform_address);
-                                nonce
-                            })
-                            .unwrap_or_else(|| self.client.latest_nonce(&address))
-                    })
-            }
-        };
-        let parcel = parcel.complete(nonce);
-        let parcel_hash = parcel.hash();
-        let sig = self.sign(parcel_hash, platform_address, passphrase)?;
-        let unverified = UnverifiedParcel::new(parcel, sig);
-        let signed = SignedParcel::new(unverified).map_err(errors::parcel_core)?;
-        let hash = signed.hash();
-        self.miner.import_own_parcel(&*self.client, signed).map_err(errors::parcel_core)?;
+
+        let (hash, nonce) = self
+            .miner
+            .import_incomplete_parcel(
+                self.client.as_ref(),
+                self.account_provider.as_ref(),
+                parcel,
+                platform_address,
+                passphrase,
+                nonce,
+            )
+            .map_err(errors::core)?;
 
         Ok(SendParcelResult {
             hash,
@@ -173,13 +151,4 @@ where
         };
         Ok(())
     }
-}
-
-fn get_next_nonce(parcels: impl Iterator<Item = SignedParcel>, addresses: &[Address]) -> Option<U256> {
-    let mut nonces: Vec<_> = parcels
-        .filter(|parcel| addresses.contains(&public_to_address(&parcel.signer_public())))
-        .map(|parcel| parcel.nonce)
-        .collect();
-    nonces.sort();
-    nonces.last().map(|nonce| *nonce + 1.into())
 }
