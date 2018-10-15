@@ -142,7 +142,7 @@ where
         self.client.is_asset_spent(transaction_hash, index, shard_id, block_id).map_err(errors::parcel_state)
     }
 
-    fn get_nonce(&self, address: PlatformAddress, block_number: Option<u64>) -> Result<Option<U256>> {
+    fn get_seq(&self, address: PlatformAddress, block_number: Option<u64>) -> Result<Option<U256>> {
         let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
         let address = address.try_address().map_err(errors::core)?;
         Ok(self.client.seq(address, block_id))
