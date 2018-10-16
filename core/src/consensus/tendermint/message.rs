@@ -188,6 +188,9 @@ impl Decodable for ConsensusMessage {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
         let m = rlp.at(1)?;
         let block_message: H256 = m.val_at(3)?;
+        if rlp.item_count()? != 2 {
+            return Err(DecoderError::RlpInvalidLength)
+        }
         Ok(ConsensusMessage {
             vote_step: VoteStep::new(m.val_at(0)?, m.val_at(1)?, m.val_at(2)?),
             block_hash: match block_message.is_zero() {

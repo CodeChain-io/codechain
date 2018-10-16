@@ -126,6 +126,10 @@ impl Encodable for Account {
 
 impl Decodable for Account {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+        if rlp.item_count()? != 4 {
+            return Err(DecoderError::RlpInvalidLength)
+        }
+
         let prefix = rlp.val_at::<u8>(0)?;
         if PREFIX != prefix {
             cdebug!(STATE, "{} is not an expected prefix for account", prefix);

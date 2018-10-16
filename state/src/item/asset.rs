@@ -127,6 +127,10 @@ impl Encodable for OwnedAsset {
 
 impl Decodable for OwnedAsset {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+        if rlp.item_count()? != 5 {
+            return Err(DecoderError::RlpInvalidLength)
+        }
+
         let prefix = rlp.val_at::<u8>(0)?;
         if PREFIX != prefix {
             cdebug!(STATE, "{} is not an expected prefix for asset", prefix);

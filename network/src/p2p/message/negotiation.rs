@@ -131,31 +131,35 @@ impl Decodable for Message {
         let version: Version = rlp.val_at(0)?;
         let protocol_id: ProtocolId = rlp.val_at(1)?;
         let seq: Seq = rlp.val_at(2)?;
-        match protocol_id {
+        let message = match protocol_id {
             REQUEST_ID => {
                 let extension_name: String = rlp.val_at(COMMON)?;
                 let extension_versions: Vec<Version> = rlp.list_at(COMMON + 1)?;
-                Ok(Message {
+                Message {
                     version,
                     seq,
                     body: Body::Request {
                         extension_name,
                         extension_versions,
                     },
-                })
+                }
             }
-            ALLOWED_ID => Ok(Message {
+            ALLOWED_ID => Message {
                 version,
                 seq,
                 body: Body::Allowed(rlp.val_at(COMMON)?),
-            }),
-            DENIED_ID => Ok(Message {
+            },
+            DENIED_ID => Message {
                 version,
                 seq,
                 body: Body::Denied,
-            }),
-            _ => Err(DecoderError::Custom("invalid protocol id")),
+            },
+            _ => return Err(DecoderError::Custom("invalid protocol id")),
+        };
+        if rlp.item_count()? != message.item_count() {
+            return Err(DecoderError::RlpInvalidLength)
         }
+        Ok(message)
     }
 }
 

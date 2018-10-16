@@ -79,8 +79,18 @@ impl Encodable for TransactionInvoice {
 impl Decodable for TransactionInvoice {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
         Ok(match rlp.val_at::<u8>(0)? {
-            INVOICE_ID_SUCCESS => TransactionInvoice::Success,
-            INVOICE_ID_FAIL => TransactionInvoice::Fail(rlp.val_at::<Error>(1)?),
+            INVOICE_ID_SUCCESS => {
+                if rlp.item_count()? != 1 {
+                    return Err(DecoderError::RlpInvalidLength)
+                }
+                TransactionInvoice::Success
+            }
+            INVOICE_ID_FAIL => {
+                if rlp.item_count()? != 2 {
+                    return Err(DecoderError::RlpInvalidLength)
+                }
+                TransactionInvoice::Fail(rlp.val_at::<Error>(1)?)
+            }
             _ => return Err(DecoderError::Custom("Invalid parcel outcome")),
         })
     }
