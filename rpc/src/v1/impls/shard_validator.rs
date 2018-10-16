@@ -25,7 +25,6 @@ use super::super::errors;
 use super::super::types::Action;
 use super::super::ShardValidator;
 
-#[allow(dead_code)]
 pub struct ShardValidatorClient<C>
 where
     C: CoreClient, {

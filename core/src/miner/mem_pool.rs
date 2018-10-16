@@ -314,7 +314,6 @@ impl ParcelSet {
     }
 
     /// Drop all parcels.
-    #[allow(dead_code)]
     fn clear(&mut self) {
         self.by_priority.clear();
         self.by_signer_public.clear();

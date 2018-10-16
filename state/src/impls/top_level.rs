@@ -650,7 +650,6 @@ impl TopLevelState {
         self.metadata.get_mut(&address, db, from_global_cache)
     }
 
-    #[allow(dead_code)]
     fn get_shard(&self, shard_id: ShardId) -> TrieResult<Option<Shard>> {
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
         let shard_address = ShardAddress::new(shard_id);
