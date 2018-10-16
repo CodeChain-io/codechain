@@ -80,6 +80,13 @@ pub enum Transaction {
         inputs: Vec<AssetTransferInput>,
         output: AssetMintOutput,
     },
+    #[serde(rename_all = "camelCase")]
+    AssetDecompose {
+        network_id: NetworkId,
+        nonce: u64,
+        input: AssetTransferInput,
+        outputs: Vec<AssetTransferOutput>,
+    },
 }
 
 impl From<TransactionType> for Transaction {
@@ -176,6 +183,17 @@ impl From<TransactionType> for Transaction {
                 registrar: registrar.map(|registrar| PlatformAddress::new_v1(network_id, registrar)),
                 inputs,
                 output,
+            },
+            TransactionType::AssetDecompose {
+                network_id,
+                nonce,
+                input,
+                outputs,
+            } => Transaction::AssetDecompose {
+                network_id,
+                nonce,
+                input,
+                outputs,
             },
         }
     }
@@ -297,6 +315,17 @@ impl From<Transaction> for Result<TransactionType, KeyError> {
                     output,
                 }
             }
+            Transaction::AssetDecompose {
+                network_id,
+                nonce,
+                input,
+                outputs,
+            } => TransactionType::AssetDecompose {
+                network_id,
+                nonce,
+                input,
+                outputs,
+            },
         })
     }
 }
