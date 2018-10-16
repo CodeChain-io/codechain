@@ -142,3 +142,23 @@ impl HeapSizeOf for Address {
         self.0.heap_size_of_children()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn rlp_default() {
+        rlp_encode_and_decode_test!(Address::default());
+    }
+
+    #[test]
+    fn rlp() {
+        rlp_encode_and_decode_test!(Address::from("abcdef124567890abcdef124567890abcdef1245"));
+    }
+
+    #[test]
+    fn rlp_random() {
+        rlp_encode_and_decode_test!(Address::random());
+    }
+}
