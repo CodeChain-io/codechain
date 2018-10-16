@@ -175,6 +175,11 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
                 output,
                 ..
             } => self.compose_asset(&transaction, *world_id, metadata, registrar, inputs, output, sender, shard_users),
+            Transaction::AssetDecompose {
+                input,
+                outputs,
+                ..
+            } => self.decompose_asset(&transaction, input, outputs, sender),
         }
     }
 
@@ -475,8 +480,95 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         )
     }
 
+    fn decompose_asset(
+        &mut self,
+        transaction: &Transaction,
+        input: &AssetTransferInput,
+        outputs: &[AssetTransferOutput],
+        sender: &Address,
+    ) -> StateResult<()> {
+        let asset_type = input.prev_out.asset_type;
+        let asset_scheme_address =
+            AssetSchemeAddress::from_hash(asset_type).ok_or(TransactionError::AssetSchemeNotFound(asset_type.into()))?;
+        let asset_scheme = self
+            .asset_scheme((&asset_scheme_address).into())?
+            .ok_or(TransactionError::AssetSchemeNotFound(asset_scheme_address.clone().into()))?;
+        // The input asset should be composed asset
+        if asset_scheme.pool().is_empty() {
+            return Err(TransactionError::InvalidDecomposedInput {
+                address: asset_type.clone(),
+                got: 0,
+            }.into())
+        }
+
+        // Check that the outputs are match with pool
+        let mut sum: HashMap<H256, u64> = HashMap::new();
+        for output in outputs {
+            let output_type = output.asset_type;
+            let current_amount = sum.get(&output_type).cloned().unwrap_or(0);
+            sum.insert(output_type.clone(), current_amount + output.amount);
+        }
+        for asset in asset_scheme.pool() {
+            match sum.remove(asset.asset_type()) {
+                None => {
+                    return Err(TransactionError::InvalidDecomposedOutput {
+                        address: asset.asset_type().clone(),
+                        expected: *asset.amount(),
+                        got: 0,
+                    }.into())
+                }
+                Some(value) => {
+                    if value != *asset.amount() {
+                        return Err(TransactionError::InvalidDecomposedOutput {
+                            address: asset.asset_type().clone(),
+                            expected: *asset.amount(),
+                            got: value,
+                        }.into())
+                    }
+                }
+            }
+        }
+        if sum.len() != 0 {
+            let mut invalid_assets: Vec<Asset> =
+                sum.into_iter().map(|(asset_type, amount)| Asset::new(asset_type, amount)).collect();
+            let invalid_asset = invalid_assets.pop().unwrap();
+            return Err(TransactionError::InvalidDecomposedOutput {
+                address: invalid_asset.asset_type().clone(),
+                expected: 0,
+                got: *invalid_asset.amount(),
+            }.into())
+        }
+
+
+        let (_, asset_address) = self.check_input_asset(input, sender)?;
+        let script_result = self.check_and_run_input_script(input, transaction, &input.prev_out, false)?;
+
+        match script_result {
+            ScriptResult::Unlocked => {}
+            _ => return Err(TransactionError::FailedToUnlock(asset_address.into()).into()),
+        }
+
+        self.kill_asset(&asset_address);
+        self.kill_asset_scheme(&asset_scheme_address);
+
+        ctrace!(TX, "Deleted assets {:?} {:?}", asset_type.clone(), input.prev_out.amount);
+
+        // Put asset into DB
+        for (index, output) in outputs.iter().enumerate() {
+            let asset_address = OwnedAssetAddress::new(transaction.hash(), index, self.shard_id);
+            let mut asset = self.get_asset_mut(&asset_address)?;
+            asset.init(output.asset_type, output.lock_script_hash, output.parameters.clone(), output.amount);
+        }
+
+        Ok(())
+    }
+
     fn kill_asset(&mut self, account: &OwnedAssetAddress) {
         self.asset.remove(account);
+    }
+
+    fn kill_asset_scheme(&mut self, account: &AssetSchemeAddress) {
+        self.asset_scheme.remove(account);
     }
 
     fn get_metadata(&self, a: &ShardMetadataAddress) -> cmerkle::Result<Option<ShardMetadata>> {

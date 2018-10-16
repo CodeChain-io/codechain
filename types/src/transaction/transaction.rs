@@ -114,6 +114,12 @@ pub enum Transaction {
         inputs: Vec<AssetTransferInput>,
         output: AssetMintOutput,
     },
+    AssetDecompose {
+        network_id: NetworkId,
+        input: AssetTransferInput,
+        outputs: Vec<AssetTransferOutput>,
+        nonce: u64,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
@@ -152,6 +158,10 @@ impl Transaction {
                 ..
             } => *network_id,
             Transaction::AssetCompose {
+                network_id,
+                ..
+            } => *network_id,
+            Transaction::AssetDecompose {
                 network_id,
                 ..
             } => *network_id,
@@ -197,6 +207,15 @@ impl Transaction {
             } => {
                 let mut shards: Vec<ShardId> = inputs.iter().map(AssetTransferInput::related_shard).collect();
                 shards.push(shard_id.clone());
+                shards.sort_unstable();
+                shards.dedup();
+                shards
+            }
+            Transaction::AssetDecompose {
+                outputs,
+                ..
+            } => {
+                let mut shards: Vec<ShardId> = outputs.iter().map(AssetTransferOutput::related_shard).collect();
                 shards.sort_unstable();
                 shards.dedup();
                 shards
@@ -271,6 +290,27 @@ impl Transaction {
                         got: output.amount.unwrap_or(0),
                     }),
                 }
+            }
+            Transaction::AssetDecompose {
+                input,
+                outputs,
+                ..
+            } => {
+                if input.prev_out.amount != 1 {
+                    return Err(Error::InvalidDecomposedInput {
+                        address: input.prev_out.asset_type,
+                        got: input.prev_out.amount,
+                    })
+                }
+                if outputs.is_empty() {
+                    return Err(Error::EmptyOutput)
+                }
+                for output in outputs {
+                    if output.amount == 0 {
+                        return Err(Error::ZeroAmount)
+                    }
+                }
+                Ok(())
             }
         }
     }
@@ -348,6 +388,11 @@ impl HeapSizeOf for Transaction {
                     + inputs.heap_size_of_children()
                     + output.heap_size_of_children()
             }
+            Transaction::AssetDecompose {
+                input,
+                outputs,
+                ..
+            } => input.heap_size_of_children() + outputs.heap_size_of_children(),
         }
     }
 }
@@ -503,6 +548,32 @@ impl PartialHashing for Transaction {
                     &blake128(tag.get_tag()),
                 ))
             }
+            Transaction::AssetDecompose {
+                network_id,
+                nonce,
+                input,
+                outputs,
+            } => {
+                let new_outputs = if tag.sign_all_outputs {
+                    outputs.clone()
+                } else {
+                    apply_bitmask_to_output(tag.filter.clone(), outputs.to_vec(), Vec::new())?
+                };
+
+                Ok(blake256_with_key(
+                    &Transaction::AssetDecompose {
+                        network_id: *network_id,
+                        nonce: *nonce,
+                        input: AssetTransferInput {
+                            prev_out: input.prev_out.clone(),
+                            lock_script: Vec::new(),
+                            unlock_script: Vec::new(),
+                        },
+                        outputs: new_outputs,
+                    }.rlp_bytes(),
+                    &blake128(tag.get_tag()),
+                ))
+            }
             _ => unreachable!(),
         }
     }
@@ -515,6 +586,7 @@ const ASSET_MINT_ID: TransactionId = 0x03;
 const ASSET_TRANSFER_ID: TransactionId = 0x04;
 const SET_WORLD_USERS_ID: TransactionId = 0x05;
 const ASSET_COMPOSE_ID: TransactionId = 0x06;
+const ASSET_DECOMPOSE_ID: TransactionId = 0x07;
 
 impl Decodable for Transaction {
     fn decode(d: &UntrustedRlp) -> Result<Self, DecoderError> {
@@ -604,6 +676,17 @@ impl Decodable for Transaction {
                         amount: d.val_at(9)?,
                     },
                     nonce: d.val_at(10)?,
+                })
+            }
+            ASSET_DECOMPOSE_ID => {
+                if d.item_count()? != 5 {
+                    return Err(DecoderError::RlpIncorrectListLen)
+                }
+                Ok(Transaction::AssetDecompose {
+                    network_id: d.val_at(1)?,
+                    input: d.val_at(2)?,
+                    outputs: d.list_at(3)?,
+                    nonce: d.val_at(4)?,
                 })
             }
             _ => Err(DecoderError::Custom("Unexpected transaction")),
@@ -720,7 +803,26 @@ impl Encodable for Transaction {
                 .append(parameters)
                 .append(amount)
                 .append(nonce),
+            Transaction::AssetDecompose {
+                network_id,
+                nonce,
+                input,
+                outputs,
+            } => s
+                .begin_list(5)
+                .append(&ASSET_DECOMPOSE_ID)
+                .append(network_id)
+                .append(input)
+                .append_list(outputs)
+                .append(nonce),
         };
+    }
+}
+
+impl AssetTransferOutput {
+    pub fn related_shard(&self) -> ShardId {
+        debug_assert_eq!(::std::mem::size_of::<u16>(), ::std::mem::size_of::<ShardId>());
+        Cursor::new(&self.asset_type[2..4]).read_u16::<BigEndian>().unwrap()
     }
 }
 
@@ -1044,6 +1146,26 @@ mod tests {
             owners: vec![Address::random(), Address::random(), Address::random()],
         };
         rlp_encode_and_decode_test!(transaction);
+    }
+
+    #[test]
+    fn encode_and_decode_decompose_transaction() {
+        let tx = Transaction::AssetDecompose {
+            network_id: NetworkId::default(),
+            nonce: 0,
+            input: AssetTransferInput {
+                prev_out: AssetOutPoint {
+                    transaction_hash: H256::default(),
+                    index: 0,
+                    asset_type: H256::default(),
+                    amount: 30,
+                },
+                lock_script: vec![0x30, 0x01],
+                unlock_script: vec![],
+            },
+            outputs: Vec::new(),
+        };
+        rlp_encode_and_decode_test!(tx);
     }
 
     #[test]

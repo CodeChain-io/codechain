@@ -181,6 +181,9 @@ impl UnverifiedParcel {
                                 return Err(ParcelError::MetadataTooBig)
                             }
                         }
+                        Transaction::AssetDecompose {
+                            ..
+                        } => {}
                     }
                 }
             }
