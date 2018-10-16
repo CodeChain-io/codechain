@@ -78,11 +78,6 @@ impl<Item> LimitedTable<Item> {
     pub fn get(&self, key: Key) -> Option<&Item> {
         self.slab.get(key - self.begin)
     }
-
-    #[allow(dead_code)]
-    pub fn get_mut(&mut self, key: Key) -> Option<&mut Item> {
-        self.slab.get_mut(key - self.begin)
-    }
 }
 
 #[cfg(test)]
