@@ -239,6 +239,13 @@ impl Client {
             TopLevelState::from_existing(db, root).ok()
         })
     }
+
+    fn state_info(&self, state: StateOrBlock) -> Option<Box<TopStateInfo>> {
+        Some(match state {
+            StateOrBlock::State(state) => state,
+            StateOrBlock::Block(id) => Box::new(self.state_at(id)?),
+        })
+    }
 }
 
 impl DatabaseClient for Client {
@@ -974,46 +981,33 @@ impl Nonce for Client {
 
 impl Balance for Client {
     fn balance(&self, address: &Address, state: StateOrBlock) -> Option<U256> {
-        match state {
-            StateOrBlock::State(s) => s.balance(address).ok(),
-            StateOrBlock::Block(id) => self.state_at(id).and_then(|s| s.balance(address).ok()),
-        }
+        let state = self.state_info(state)?;
+        state.balance(address).ok()
     }
 }
 
 impl RegularKey for Client {
     fn regular_key(&self, address: &Address, state: StateOrBlock) -> Option<Public> {
-        match state {
-            StateOrBlock::State(s) => s.regular_key(address).ok()?,
-            StateOrBlock::Block(id) => self.state_at(id)?.regular_key(address).ok()?,
-        }
+        let state = self.state_info(state)?;
+        state.regular_key(address).ok()?
     }
 }
 
 impl RegularKeyOwner for Client {
     fn regular_key_owner(&self, address: &Address, state: StateOrBlock) -> Option<Address> {
-        let state = match state {
-            StateOrBlock::State(s) => s,
-            StateOrBlock::Block(id) => Box::new(self.state_at(id)?),
-        };
+        let state = self.state_info(state)?;
         state.regular_key_owner(address).ok()?
     }
 }
 
 impl Shard for Client {
     fn number_of_shards(&self, state: StateOrBlock) -> Option<ShardId> {
-        let state = match state {
-            StateOrBlock::State(s) => s,
-            StateOrBlock::Block(id) => Box::new(self.state_at(id)?),
-        };
+        let state = self.state_info(state)?;
         state.number_of_shards().ok()
     }
 
     fn shard_root(&self, shard_id: ShardId, state: StateOrBlock) -> Option<H256> {
-        let state = match state {
-            StateOrBlock::State(s) => s,
-            StateOrBlock::Block(id) => Box::new(self.state_at(id)?),
-        };
+        let state = self.state_info(state)?;
         state.shard_root(shard_id).ok()?
     }
 }
