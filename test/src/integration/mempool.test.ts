@@ -16,6 +16,8 @@
 
 import { wait } from "../helper/promise";
 import CodeChain from "../helper/spawn";
+import { U256 } from "codechain-sdk/lib/core/classes";
+import { faucetAddress } from "../helper/constants";
 
 const describeSkippedInTravis = process.env.TRAVIS ? describe.skip : describe;
 
@@ -184,5 +186,35 @@ describe("Memory pool memory limit test", () => {
 
     afterEach(async () => {
         await nodeA.clean();
+    });
+});
+
+describe("Future queue", () => {
+    let node: CodeChain;
+
+    beforeEach(async () => {
+        node = new CodeChain();
+        await node.start();
+    });
+
+    test("all pending parcel must be mined", async () => {
+        const nonce = (await node.sdk.rpc.chain.getNonce(faucetAddress)) || U256.ensure(0);
+        const nonceP1 = nonce.increase();
+        const nonceP2 = nonceP1.increase();
+        const nonceP3 = nonceP2.increase();
+        const nonceP4 = nonceP3.increase();
+
+        await node.sendSignedParcel({ awaitInvoice: false, nonce: nonceP3 });
+        expect(await node.sdk.rpc.chain.getNonce(faucetAddress)).toEqual(nonce);
+        await node.sendSignedParcel({ awaitInvoice: false, nonce: nonceP2 });
+        expect(await node.sdk.rpc.chain.getNonce(faucetAddress)).toEqual(nonce);
+        await node.sendSignedParcel({ awaitInvoice: false, nonce: nonceP1 });
+        expect(await node.sdk.rpc.chain.getNonce(faucetAddress)).toEqual(nonce);
+        await node.sendSignedParcel({ awaitInvoice: false, nonce });
+        expect(await node.sdk.rpc.chain.getNonce(faucetAddress)).toEqual(nonceP4);
+    });
+
+    afterEach(async () => {
+        await node.clean();
     });
 });
