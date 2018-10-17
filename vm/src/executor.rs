@@ -16,7 +16,7 @@
 
 use ccrypto::{blake256, keccak256, ripemd160, sha256, Blake};
 use ckey::{verify, Public, Signature, SIGNATURE_LENGTH};
-use ctypes::transaction::{AssetOutPoint, HashingError, PartialHashing};
+use ctypes::transaction::{AssetTransferInput, HashingError, PartialHashing};
 use ctypes::util::tag::Tag;
 
 use primitives::H160;
@@ -159,7 +159,7 @@ pub fn execute(
     lock: &[Instruction],
     tx: &PartialHashing,
     config: Config,
-    cur: &AssetOutPoint,
+    cur: &AssetTransferInput,
     burn: bool,
 ) -> Result<ScriptResult, RuntimeError> {
     // FIXME: don't merge scripts

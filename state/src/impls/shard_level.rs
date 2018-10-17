@@ -23,8 +23,7 @@ use ckey::Address;
 use cmerkle::{self, Result as TrieResult, TrieError, TrieFactory};
 use ctypes::invoice::TransactionInvoice;
 use ctypes::transaction::{
-    AssetMintOutput, AssetOutPoint, AssetTransferInput, AssetTransferOutput, Error as TransactionError, PartialHashing,
-    Transaction,
+    AssetMintOutput, AssetTransferInput, AssetTransferOutput, Error as TransactionError, PartialHashing, Transaction,
 };
 use ctypes::util::unexpected::Mismatch;
 use ctypes::ShardId;
@@ -181,7 +180,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
     ) -> StateResult<()> {
         for (input, burn) in inputs.iter().map(|input| (input, false)).chain(burns.iter().map(|input| (input, true))) {
             let address = OwnedAssetAddress::new(input.prev_out.transaction_hash, input.prev_out.index, self.shard_id);
-            let script_result = self.check_and_run_input_script(input, transaction, &input.prev_out, burn)?;
+            let script_result = self.check_and_run_input_script(input, transaction, burn)?;
             match (script_result, burn) {
                 (ScriptResult::Unlocked, false) => {}
                 (ScriptResult::Burnt, true) => {}
@@ -249,7 +248,6 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         &self,
         input: &AssetTransferInput,
         transaction_hash: &PartialHashing,
-        cur: &AssetOutPoint,
         burn: bool,
     ) -> StateResult<ScriptResult> {
         let (address_hash, asset) = {
@@ -275,7 +273,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
                 &lock_script,
                 transaction_hash,
                 VMConfig::default(),
-                cur,
+                input,
                 burn,
             ),
             // FIXME : Deliver full decode error
@@ -302,7 +300,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         let mut deleted_assets: Vec<(H256, _)> = Vec::with_capacity(inputs.len());
         for input in inputs.iter() {
             let (_, asset_address) = self.check_input_asset(input, sender)?;
-            let script_result = self.check_and_run_input_script(input, transaction, &input.prev_out, false)?;
+            let script_result = self.check_and_run_input_script(input, transaction, false)?;
 
             match script_result {
                 ScriptResult::Unlocked => {}
@@ -394,7 +392,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
 
 
         let (_, asset_address) = self.check_input_asset(input, sender)?;
-        let script_result = self.check_and_run_input_script(input, transaction, &input.prev_out, false)?;
+        let script_result = self.check_and_run_input_script(input, transaction, false)?;
 
         match script_result {
             ScriptResult::Unlocked => {}
