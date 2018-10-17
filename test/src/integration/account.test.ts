@@ -17,6 +17,11 @@
 import CodeChain from "../helper/spawn";
 import { wait } from "../helper/promise";
 import { makeRandomH256, makeRandomPassphrase } from "../helper/random";
+import {
+    invalidAccointId,
+    invalidAddress,
+    invalidSecret
+} from "../helper/constants";
 
 import { xor128 } from "seedrandom";
 
@@ -53,8 +58,6 @@ const ERROR = {
 };
 
 describe("account", () => {
-    const noSuchAccount = "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqhhn9p3";
-
     describe("account base test", () => {
         let node: CodeChain;
         beforeAll(async () => {
@@ -97,8 +100,6 @@ describe("account", () => {
             });
 
             test("KeyError", done => {
-                const invalidSecret =
-                    "0000000000000000000000000000000000000000000000000000000000000000";
                 node.sdk.rpc.account
                     .importRaw(invalidSecret)
                     .then(done.fail)
@@ -158,7 +159,7 @@ describe("account", () => {
 
             test("NoSuchAccount", async done => {
                 node.sdk.rpc.account
-                    .sign(message, noSuchAccount, "my-password")
+                    .sign(message, invalidAddress, "my-password")
                     .then(() => done.fail())
                     .catch(e => {
                         expect(e).toEqual(ERROR.NO_SUCH_ACCOUNT);
@@ -191,7 +192,7 @@ describe("account", () => {
 
             test("NoSuchAccount", async done => {
                 node.sdk.rpc.account
-                    .unlock(noSuchAccount)
+                    .unlock(invalidAddress)
                     .then(() => done.fail())
                     .catch(e => {
                         expect(e).toEqual(ERROR.NO_SUCH_ACCOUNT);
@@ -231,7 +232,7 @@ describe("account", () => {
             test("NoSuchAccount", async done => {
                 node.sdk.rpc
                     .sendRpcRequest("account_changePassword", [
-                        noSuchAccount,
+                        invalidAddress,
                         "123",
                         "456"
                     ])

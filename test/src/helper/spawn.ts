@@ -34,13 +34,8 @@ import * as mkdirp from "mkdirp";
 import { wait } from "./promise";
 import { P2PKHBurn } from "codechain-sdk/lib/key/P2PKHBurn";
 import { P2PKH } from "codechain-sdk/lib/key/P2PKH";
+import { faucetAddress, faucetSecret } from "./constants";
 
-const faucetSecret = `ede1d4ccb4ec9a8bbbae9a13db3f4a7b56ea04189be86ac3a6a439d9a0a1addd`;
-const faucetAddress = PlatformAddress.fromAccountId(
-    SDK.util.getAccountIdFromPrivate(
-        `ede1d4ccb4ec9a8bbbae9a13db3f4a7b56ea04189be86ac3a6a439d9a0a1addd`
-    )
-);
 const projectRoot = `${__dirname}/../../..`;
 
 export type SchemeFilepath = string;

@@ -16,6 +16,7 @@
 
 import { TestHelper } from "codechain-test-helper/lib/testHelper";
 import CodeChain from "../helper/spawn";
+import { faucetSecret } from "../helper/constants";
 
 describe("Test onChain parcel communication", () => {
     let nodeA: CodeChain;
@@ -77,9 +78,7 @@ describe("Test onChain parcel communication", () => {
 
             const sdk = nodeA.sdk;
 
-            const ACCOUNT_SECRET =
-                process.env.ACCOUNT_SECRET ||
-                "ede1d4ccb4ec9a8bbbae9a13db3f4a7b56ea04189be86ac3a6a439d9a0a1addd";
+            const ACCOUNT_SECRET = process.env.ACCOUNT_SECRET || faucetSecret;
             const parcel = sdk.core.createPaymentParcel({
                 recipient: "tccqxv9y4cw0jwphhu65tn4605wadyd2sxu5yezqghw",
                 amount: 10000
@@ -110,8 +109,7 @@ describe("Test onChain parcel communication", () => {
                 const sdk = nodeA.sdk;
 
                 const ACCOUNT_SECRET =
-                    process.env.ACCOUNT_SECRET ||
-                    "ede1d4ccb4ec9a8bbbae9a13db3f4a7b56ea04189be86ac3a6a439d9a0a1addd";
+                    process.env.ACCOUNT_SECRET || faucetSecret;
                 const parcel = sdk.core.createPaymentParcel({
                     recipient: "tccqxv9y4cw0jwphhu65tn4605wadyd2sxu5yezqghw",
                     amount: 10000
