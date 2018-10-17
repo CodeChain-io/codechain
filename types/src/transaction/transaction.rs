@@ -461,6 +461,46 @@ impl PartialHashing for Transaction {
                     &blake128(tag.get_tag()),
                 ))
             }
+            Transaction::AssetCompose {
+                network_id,
+                shard_id,
+                world_id,
+                nonce,
+                metadata,
+                registrar,
+                inputs,
+                output,
+            } => {
+                if tag.filter_len != 0 {
+                    return Err(HashingError::InvalidFilter)
+                }
+
+                let new_inputs = apply_input_scheme(inputs, tag.sign_all_inputs, !is_burn, cur);
+
+                let new_output = if tag.sign_all_outputs {
+                    output.clone()
+                } else {
+                    AssetMintOutput {
+                        lock_script_hash: H160::default(),
+                        parameters: Vec::new(),
+                        amount: None,
+                    }
+                };
+
+                Ok(blake256_with_key(
+                    &Transaction::AssetCompose {
+                        network_id: *network_id,
+                        shard_id: *shard_id,
+                        world_id: *world_id,
+                        nonce: *nonce,
+                        metadata: metadata.to_string(),
+                        registrar: *registrar,
+                        inputs: new_inputs,
+                        output: new_output,
+                    }.rlp_bytes(),
+                    &blake128(tag.get_tag()),
+                ))
+            }
             _ => unreachable!(),
         }
     }
