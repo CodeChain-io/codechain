@@ -14,10 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import { SDK } from "codechain-sdk";
 import { PlatformAddress } from "codechain-sdk/lib/core/classes";
 
 import CodeChain from "../helper/spawn";
+import { faucetAddress, faucetSecret } from "../helper/constants";
 
 const RLP = require("rlp");
 
@@ -65,11 +65,6 @@ const ERROR = {
 };
 
 describe("solo - 1 node", () => {
-    const secret =
-        "ede1d4ccb4ec9a8bbbae9a13db3f4a7b56ea04189be86ac3a6a439d9a0a1addd";
-    const address = PlatformAddress.fromAccountId(
-        SDK.util.getAccountIdFromPrivate(secret)
-    );
     const recipient = "tccqxv9y4cw0jwphhu65tn4605wadyd2sxu5yezqghw";
 
     let node: CodeChain;
@@ -81,14 +76,14 @@ describe("solo - 1 node", () => {
     describe("Sending invalid parcels over the limits (general)", () => {
         let parcelEncoded: any[];
         beforeEach(async () => {
-            const nonce = await node.sdk.rpc.chain.getNonce(address);
+            const nonce = await node.sdk.rpc.chain.getNonce(faucetAddress);
             const parcel = node.sdk.core
                 .createPaymentParcel({
                     recipient,
                     amount: 0
                 })
                 .sign({
-                    secret,
+                    secret: faucetSecret,
                     fee: 10,
                     nonce
                 });
@@ -220,14 +215,14 @@ describe("solo - 1 node", () => {
     describe("Sending invalid parcels over the limits (in action 2: Payment)", () => {
         let parcelEncoded: any[];
         beforeEach(async () => {
-            const nonce = await node.sdk.rpc.chain.getNonce(address);
+            const nonce = await node.sdk.rpc.chain.getNonce(faucetAddress);
             const parcel = node.sdk.core
                 .createPaymentParcel({
                     recipient,
                     amount: 0
                 })
                 .sign({
-                    secret,
+                    secret: faucetSecret,
                     fee: 10,
                     nonce
                 });
@@ -274,13 +269,13 @@ describe("solo - 1 node", () => {
         beforeEach(async () => {
             const privKey = node.sdk.util.generatePrivateKey();
             const key = node.sdk.util.getPublicFromPrivate(privKey);
-            const nonce = await node.sdk.rpc.chain.getNonce(address);
+            const nonce = await node.sdk.rpc.chain.getNonce(faucetAddress);
             const parcel = node.sdk.core
                 .createSetRegularKeyParcel({
                     key
                 })
                 .sign({
-                    secret,
+                    secret: faucetSecret,
                     fee: 10,
                     nonce
                 });
@@ -309,14 +304,14 @@ describe("solo - 1 node", () => {
     test.each([0, 9])(
         "Sending invalid parcels (low fee): %p",
         async (fee, done) => {
-            const nonce = await node.sdk.rpc.chain.getNonce(address);
+            const nonce = await node.sdk.rpc.chain.getNonce(faucetAddress);
             const parcel = node.sdk.core
                 .createPaymentParcel({
                     recipient,
                     amount: 0
                 })
                 .sign({
-                    secret,
+                    secret: faucetSecret,
                     fee,
                     nonce
                 });

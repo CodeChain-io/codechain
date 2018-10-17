@@ -14,8 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import { SDK } from "codechain-sdk";
-
 import {
     H256,
     H512,
@@ -24,16 +22,15 @@ import {
     AssetScheme
 } from "codechain-sdk/lib/core/classes";
 import { PlatformAddress } from "codechain-sdk/lib/core/classes";
+import {
+    faucetAddress,
+    faucetSecret,
+    invalidAddress
+} from "../helper/constants";
 
 import CodeChain from "../helper/spawn";
 
 describe("solo - 1 node", () => {
-    const secret =
-        "ede1d4ccb4ec9a8bbbae9a13db3f4a7b56ea04189be86ac3a6a439d9a0a1addd";
-    const address = PlatformAddress.fromAccountId(
-        SDK.util.getAccountIdFromPrivate(secret)
-    );
-    const noSuchAddress = "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqhhn9p3";
     const invalidHash = new H256("0".repeat(64));
 
     let node: CodeChain;
@@ -84,25 +81,25 @@ describe("solo - 1 node", () => {
     });
 
     test("getNonce", async () => {
-        await node.sdk.rpc.chain.getNonce(address);
-        expect(await node.sdk.rpc.chain.getNonce(noSuchAddress)).toEqual(
+        await node.sdk.rpc.chain.getNonce(faucetAddress);
+        expect(await node.sdk.rpc.chain.getNonce(invalidAddress)).toEqual(
             new U256(0)
         );
         const bestBlockNumber = await node.sdk.rpc.chain.getBestBlockNumber();
-        await node.sdk.rpc.chain.getNonce(address, 0);
-        await node.sdk.rpc.chain.getNonce(address, bestBlockNumber);
-        await node.sdk.rpc.chain.getNonce(address, bestBlockNumber + 1);
+        await node.sdk.rpc.chain.getNonce(faucetAddress, 0);
+        await node.sdk.rpc.chain.getNonce(faucetAddress, bestBlockNumber);
+        await node.sdk.rpc.chain.getNonce(faucetAddress, bestBlockNumber + 1);
     });
 
     test("getBalance", async () => {
-        await node.sdk.rpc.chain.getBalance(address);
-        expect(await node.sdk.rpc.chain.getBalance(noSuchAddress)).toEqual(
+        await node.sdk.rpc.chain.getBalance(faucetAddress);
+        expect(await node.sdk.rpc.chain.getBalance(invalidAddress)).toEqual(
             new U256(0)
         );
         const bestBlockNumber = await node.sdk.rpc.chain.getBestBlockNumber();
-        await node.sdk.rpc.chain.getBalance(address, 0);
-        await node.sdk.rpc.chain.getBalance(address, bestBlockNumber);
-        await node.sdk.rpc.chain.getBalance(address, bestBlockNumber + 1);
+        await node.sdk.rpc.chain.getBalance(faucetAddress, 0);
+        await node.sdk.rpc.chain.getBalance(faucetAddress, bestBlockNumber);
+        await node.sdk.rpc.chain.getBalance(faucetAddress, bestBlockNumber + 1);
     });
 
     test("getCoinbase", async () => {
@@ -122,10 +119,10 @@ describe("solo - 1 node", () => {
             recipient: "tccqxv9y4cw0jwphhu65tn4605wadyd2sxu5yezqghw",
             amount: 0
         });
-        const nonce = await node.sdk.rpc.chain.getNonce(address);
+        const nonce = await node.sdk.rpc.chain.getNonce(faucetAddress);
         const parcelHash = await node.sdk.rpc.chain.sendSignedParcel(
             parcel.sign({
-                secret,
+                secret: faucetSecret,
                 fee: 10,
                 nonce
             })
@@ -140,7 +137,9 @@ describe("solo - 1 node", () => {
         const key = node.sdk.util.getPublicFromPrivate(
             node.sdk.util.generatePrivateKey()
         );
-        expect(await node.sdk.rpc.chain.getRegularKey(address)).toBeNull();
+        expect(
+            await node.sdk.rpc.chain.getRegularKey(faucetAddress)
+        ).toBeNull();
         expect(await node.sdk.rpc.chain.getRegularKeyOwner(key)).toBeNull();
 
         const parcel = node.sdk.core
@@ -148,31 +147,39 @@ describe("solo - 1 node", () => {
                 key
             })
             .sign({
-                secret,
+                secret: faucetSecret,
                 fee: 10,
-                nonce: await node.sdk.rpc.chain.getNonce(address)
+                nonce: await node.sdk.rpc.chain.getNonce(faucetAddress)
             });
         await node.sdk.rpc.chain.sendSignedParcel(parcel);
 
-        expect(await node.sdk.rpc.chain.getRegularKey(address)).toEqual(
+        expect(await node.sdk.rpc.chain.getRegularKey(faucetAddress)).toEqual(
             new H512(key)
         );
         expect(await node.sdk.rpc.chain.getRegularKeyOwner(key)).toEqual(
-            address
+            faucetAddress
         );
 
         const bestBlockNumber = await node.sdk.rpc.chain.getBestBlockNumber();
         expect(
-            await node.sdk.rpc.chain.getRegularKey(address, bestBlockNumber)
+            await node.sdk.rpc.chain.getRegularKey(
+                faucetAddress,
+                bestBlockNumber
+            )
         ).toEqual(new H512(key));
-        expect(await node.sdk.rpc.chain.getRegularKey(address, 0)).toBeNull();
         expect(
-            await node.sdk.rpc.chain.getRegularKey(address, bestBlockNumber + 1)
+            await node.sdk.rpc.chain.getRegularKey(faucetAddress, 0)
+        ).toBeNull();
+        expect(
+            await node.sdk.rpc.chain.getRegularKey(
+                faucetAddress,
+                bestBlockNumber + 1
+            )
         ).toBeNull();
 
         expect(
             await node.sdk.rpc.chain.getRegularKeyOwner(key, bestBlockNumber)
-        ).toEqual(address);
+        ).toEqual(faucetAddress);
         expect(await node.sdk.rpc.chain.getRegularKeyOwner(key, 0)).toBeNull();
         expect(
             await node.sdk.rpc.chain.getRegularKeyOwner(
@@ -204,9 +211,9 @@ describe("solo - 1 node", () => {
                     transactions: [tx]
                 })
                 .sign({
-                    secret,
+                    secret: faucetSecret,
                     fee: 10,
-                    nonce: await node.sdk.rpc.chain.getNonce(address)
+                    nonce: await node.sdk.rpc.chain.getNonce(faucetAddress)
                 });
 
             await node.sdk.rpc.chain.sendSignedParcel(parcel);
