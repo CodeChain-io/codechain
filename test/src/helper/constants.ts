@@ -25,6 +25,8 @@ export const faucetAddress = SDK.Core.classes.PlatformAddress.fromAccountId(
 
 export const aliceSecret =
     "4aa026c5fecb70923a1ee2bb10bbfadb63d228f39c39fe1da2b1dee63364aff1";
+export const alicePublic = SDK.util.getPublicFromPrivate(aliceSecret);
+// 2a8a69439f2396c9a328289fdc3905d9736da9e14eb1a282cfd2c036cc21a17a5d05595160b7924e5ecf3f2628b440e601f3a531e92fa81571a70e6c695b2d08
 export const aliceAccountId = SDK.util.getAccountIdFromPrivate(aliceSecret); // 40c1f3a9da4acca257b7de3e7276705edaff074a
 export const aliceAddress = SDK.Core.classes.PlatformAddress.fromAccountId(
     aliceAccountId
@@ -32,6 +34,8 @@ export const aliceAddress = SDK.Core.classes.PlatformAddress.fromAccountId(
 
 export const bobSecret =
     "91580d24073185b91904514c23663b1180090cbeefc24b3d2e2ab1ba229e2620";
+export const bobPublic = SDK.util.getPublicFromPrivate(bobSecret);
+// 545ebdc0b8fb2d0be77a27d843945950db6dbddc60477c0cf001751a797df8a41fc51fe5b76e371c8875ad1d0585a60af2eef2b5d631f7bfba86e7988c25088d
 export const bobAccountId = SDK.util.getAccountIdFromPrivate(bobSecret); // e1361974625cbbcbbe178e77b510d44d59c9ca9d
 export const bobAddress = SDK.Core.classes.PlatformAddress.fromAccountId(
     bobAccountId
