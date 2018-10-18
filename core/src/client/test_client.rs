@@ -401,6 +401,14 @@ impl TransactionInfo for TestBlockChainClient {
     fn transaction_parcel(&self, _id: TransactionId) -> Option<ParcelAddress> {
         None
     }
+
+    fn transaction_block_number(&self, _id: TransactionId) -> Option<BlockNumber> {
+        None
+    }
+
+    fn transaction_block_timestamp(&self, _id: TransactionId) -> Option<u64> {
+        None
+    }
 }
 
 impl BlockChain for TestBlockChainClient {}

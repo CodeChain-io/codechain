@@ -79,6 +79,10 @@ pub trait ParcelInfo {
 pub trait TransactionInfo {
     fn transaction_parcel(&self, id: TransactionId) -> Option<ParcelAddress>;
 
+    fn transaction_block_number(&self, id: TransactionId) -> Option<BlockNumber>;
+
+    fn transaction_block_timestamp(&self, id: TransactionId) -> Option<u64>;
+
     fn is_any_transaction_included(&self, transactions: &mut Iterator<Item = H256>) -> bool {
         for hash in transactions {
             if self.transaction_parcel(TransactionId::Hash(hash)).is_some() {
