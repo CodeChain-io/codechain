@@ -414,6 +414,20 @@ impl TransactionInfo for Client {
     fn transaction_parcel(&self, id: TransactionId) -> Option<ParcelAddress> {
         self.transaction_address(id).map(|addr| addr.parcel_address)
     }
+
+    fn transaction_block_number(&self, id: TransactionId) -> Option<BlockNumber> {
+        self.transaction_address(id)
+            .map(|addr| addr.parcel_address.block_hash)
+            .and_then(|hash| self.block_header(hash.into()))
+            .map(|h| h.number())
+    }
+
+    fn transaction_block_timestamp(&self, id: TransactionId) -> Option<u64> {
+        self.transaction_address(id)
+            .map(|addr| addr.parcel_address.block_hash)
+            .and_then(|hash| self.block_header(hash.into()))
+            .map(|h| h.timestamp())
+    }
 }
 
 impl ImportBlock for Client {
