@@ -35,11 +35,16 @@ fn valid_pay_to_public_key() {
         outputs: Vec::new(),
         nonce: 0,
     };
-    let outpoint = AssetOutPoint {
-        transaction_hash: H256::default(),
-        index: 0,
-        asset_type: H256::default(),
-        amount: 0,
+    let input = AssetTransferInput {
+        prev_out: AssetOutPoint {
+            transaction_hash: H256::default(),
+            index: 0,
+            asset_type: H256::default(),
+            amount: 0,
+        },
+        timelock: None,
+        lock_script: Vec::new(),
+        unlock_script: Vec::new(),
     };
     let keypair = KeyPair::from_private(Private::from(SecretKey::from(ONE_KEY))).unwrap();
     let pubkey = <&[u8]>::from(keypair.public()).to_vec();
@@ -58,7 +63,7 @@ fn valid_pay_to_public_key() {
     let lock_script = vec![Instruction::PushB(pubkey), Instruction::ChkSig];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &outpoint, false),
+        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &input, false),
         Ok(ScriptResult::Unlocked)
     );
 }
@@ -72,11 +77,16 @@ fn invalid_pay_to_public_key() {
         outputs: Vec::new(),
         nonce: 0,
     };
-    let outpoint = AssetOutPoint {
-        transaction_hash: H256::default(),
-        index: 0,
-        asset_type: H256::default(),
-        amount: 0,
+    let input = AssetTransferInput {
+        prev_out: AssetOutPoint {
+            transaction_hash: H256::default(),
+            index: 0,
+            asset_type: H256::default(),
+            amount: 0,
+        },
+        timelock: None,
+        lock_script: Vec::new(),
+        unlock_script: Vec::new(),
     };
     let keypair = KeyPair::from_private(Private::from(SecretKey::from(ONE_KEY))).unwrap();
     let pubkey = <&[u8]>::from(keypair.public()).to_vec();
@@ -97,7 +107,7 @@ fn invalid_pay_to_public_key() {
     let lock_script = vec![Instruction::PushB(pubkey), Instruction::ChkSig];
 
     assert_eq!(
-        execute(&unlock_script[..], &[], &lock_script, &transaction, Config::default(), &outpoint, false),
+        execute(&unlock_script[..], &[], &lock_script, &transaction, Config::default(), &input, false),
         Ok(ScriptResult::Fail)
     );
 }
@@ -113,6 +123,7 @@ fn sign_all_input_all_output() {
     };
     let input0 = AssetTransferInput {
         prev_out: out0.clone(),
+        timelock: None,
         lock_script: Vec::new(),
         unlock_script: Vec::new(),
     };
@@ -125,6 +136,7 @@ fn sign_all_input_all_output() {
     };
     let input1 = AssetTransferInput {
         prev_out: out1,
+        timelock: None,
         lock_script: Vec::new(),
         unlock_script: Vec::new(),
     };
@@ -157,7 +169,7 @@ fn sign_all_input_all_output() {
         &Transaction::AssetTransfer {
             network_id: NetworkId::default(),
             burns: Vec::new(),
-            inputs: vec![input0, input1],
+            inputs: vec![input0.clone(), input1],
             outputs: vec![output0, output1],
             nonce: 0,
         }.rlp_bytes(),
@@ -169,7 +181,7 @@ fn sign_all_input_all_output() {
     let lock_script = vec![Instruction::PushB(pubkey), Instruction::ChkSig];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &out0, false),
+        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &input0, false),
         Ok(ScriptResult::Unlocked)
     );
 }
@@ -185,6 +197,7 @@ fn sign_single_input_all_output() {
     };
     let input0 = AssetTransferInput {
         prev_out: out0.clone(),
+        timelock: None,
         lock_script: Vec::new(),
         unlock_script: Vec::new(),
     };
@@ -197,6 +210,7 @@ fn sign_single_input_all_output() {
     };
     let input1 = AssetTransferInput {
         prev_out: out1,
+        timelock: None,
         lock_script: Vec::new(),
         unlock_script: Vec::new(),
     };
@@ -229,7 +243,7 @@ fn sign_single_input_all_output() {
         &Transaction::AssetTransfer {
             network_id: NetworkId::default(),
             burns: Vec::new(),
-            inputs: vec![input0],
+            inputs: vec![input0.clone()],
             outputs: vec![output0, output1],
             nonce: 0,
         }.rlp_bytes(),
@@ -240,7 +254,7 @@ fn sign_single_input_all_output() {
     let lock_script = vec![Instruction::PushB(pubkey), Instruction::ChkSig];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &out0, false),
+        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &input0, false),
         Ok(ScriptResult::Unlocked)
     );
 }
@@ -256,6 +270,7 @@ fn sign_all_input_partial_output() {
     };
     let input0 = AssetTransferInput {
         prev_out: out0.clone(),
+        timelock: None,
         lock_script: Vec::new(),
         unlock_script: Vec::new(),
     };
@@ -268,6 +283,7 @@ fn sign_all_input_partial_output() {
     };
     let input1 = AssetTransferInput {
         prev_out: out1,
+        timelock: None,
         lock_script: Vec::new(),
         unlock_script: Vec::new(),
     };
@@ -300,7 +316,7 @@ fn sign_all_input_partial_output() {
         &Transaction::AssetTransfer {
             network_id: NetworkId::default(),
             burns: Vec::new(),
-            inputs: vec![input0, input1],
+            inputs: vec![input0.clone(), input1],
             outputs: vec![output0],
             nonce: 0,
         }.rlp_bytes(),
@@ -314,7 +330,7 @@ fn sign_all_input_partial_output() {
     let lock_script = vec![Instruction::PushB(pubkey), Instruction::ChkSig];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &out0, false),
+        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &input0, false),
         Ok(ScriptResult::Unlocked)
     );
 }
@@ -330,6 +346,7 @@ fn sign_single_input_partial_output() {
     };
     let input0 = AssetTransferInput {
         prev_out: out0.clone(),
+        timelock: None,
         lock_script: Vec::new(),
         unlock_script: Vec::new(),
     };
@@ -342,6 +359,7 @@ fn sign_single_input_partial_output() {
     };
     let input1 = AssetTransferInput {
         prev_out: out1,
+        timelock: None,
         lock_script: Vec::new(),
         unlock_script: Vec::new(),
     };
@@ -374,7 +392,7 @@ fn sign_single_input_partial_output() {
         &Transaction::AssetTransfer {
             network_id: NetworkId::default(),
             burns: Vec::new(),
-            inputs: vec![input0],
+            inputs: vec![input0.clone()],
             outputs: vec![output0],
             nonce: 0,
         }.rlp_bytes(),
@@ -388,7 +406,7 @@ fn sign_single_input_partial_output() {
     let lock_script = vec![Instruction::PushB(pubkey), Instruction::ChkSig];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &out0, false),
+        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &input0, false),
         Ok(ScriptResult::Unlocked)
     );
 }
@@ -404,6 +422,7 @@ fn distinguish_sign_single_input_with_sign_all() {
     };
     let input0 = AssetTransferInput {
         prev_out: out0.clone(),
+        timelock: None,
         lock_script: Vec::new(),
         unlock_script: Vec::new(),
     };
@@ -429,7 +448,7 @@ fn distinguish_sign_single_input_with_sign_all() {
         &Transaction::AssetTransfer {
             network_id: NetworkId::default(),
             burns: Vec::new(),
-            inputs: vec![input0],
+            inputs: vec![input0.clone()],
             outputs: vec![output0],
             nonce: 0,
         }.rlp_bytes(),
@@ -440,7 +459,7 @@ fn distinguish_sign_single_input_with_sign_all() {
     let lock_script = vec![Instruction::PushB(pubkey), Instruction::ChkSig];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &out0, false),
+        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &input0, false),
         Ok(ScriptResult::Fail)
     );
 }
@@ -457,6 +476,7 @@ fn distinguish_sign_single_output_with_sign_all() {
     };
     let input0 = AssetTransferInput {
         prev_out: out0.clone(),
+        timelock: None,
         lock_script: Vec::new(),
         unlock_script: Vec::new(),
     };
@@ -482,7 +502,7 @@ fn distinguish_sign_single_output_with_sign_all() {
         &Transaction::AssetTransfer {
             network_id: NetworkId::default(),
             burns: Vec::new(),
-            inputs: vec![input0],
+            inputs: vec![input0.clone()],
             outputs: vec![output0],
             nonce: 0,
         }.rlp_bytes(),
@@ -496,7 +516,7 @@ fn distinguish_sign_single_output_with_sign_all() {
     let lock_script = vec![Instruction::PushB(pubkey), Instruction::ChkSig];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &out0, false),
+        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &input0, false),
         Ok(ScriptResult::Fail)
     );
 }

@@ -751,6 +751,7 @@ mod tests {
 
         let input = AssetTransferInput {
             prev_out,
+            timelock: None,
             lock_script: vec![],
             unlock_script: vec![],
         };
@@ -771,6 +772,7 @@ mod tests {
                     asset_type,
                     amount,
                 },
+                timelock: None,
                 lock_script: vec![],
                 unlock_script: vec![],
             }],
@@ -805,6 +807,7 @@ mod tests {
                         asset_type: asset_type1,
                         amount: amount1,
                     },
+                    timelock: None,
                     lock_script: vec![],
                     unlock_script: vec![],
                 },
@@ -815,6 +818,7 @@ mod tests {
                         asset_type: asset_type2,
                         amount: amount2,
                     },
+                    timelock: None,
                     lock_script: vec![],
                     unlock_script: vec![],
                 },
@@ -858,6 +862,7 @@ mod tests {
                         asset_type: asset_type1,
                         amount: amount1,
                     },
+                    timelock: None,
                     lock_script: vec![],
                     unlock_script: vec![],
                 },
@@ -868,6 +873,7 @@ mod tests {
                         asset_type: asset_type2,
                         amount: amount2,
                     },
+                    timelock: None,
                     lock_script: vec![],
                     unlock_script: vec![],
                 },
@@ -922,6 +928,7 @@ mod tests {
                     asset_type,
                     amount: input_amount,
                 },
+                timelock: None,
                 lock_script: vec![],
                 unlock_script: vec![],
             }],
@@ -943,6 +950,7 @@ mod tests {
                     asset_type,
                     amount: input_amount,
                 },
+                timelock: None,
                 lock_script: vec![],
                 unlock_script: vec![],
             }],
@@ -969,6 +977,7 @@ mod tests {
                     asset_type,
                     amount: input_amount,
                 },
+                timelock: None,
                 lock_script: vec![],
                 unlock_script: vec![],
             }],
@@ -994,6 +1003,7 @@ mod tests {
                     asset_type: H256::default(),
                     amount: 30,
                 },
+                timelock: None,
                 lock_script: vec![0x30, 0x01],
                 unlock_script: vec![],
             },
@@ -1004,11 +1014,16 @@ mod tests {
 
     #[test]
     fn apply_long_filter() {
-        let out = AssetOutPoint {
-            transaction_hash: H256::default(),
-            index: 0,
-            asset_type: H256::default(),
-            amount: 0,
+        let input = AssetTransferInput {
+            prev_out: AssetOutPoint {
+                transaction_hash: H256::default(),
+                index: 0,
+                asset_type: H256::default(),
+                amount: 0,
+            },
+            timelock: None,
+            lock_script: Vec::new(),
+            unlock_script: Vec::new(),
         };
         let inputs: Vec<AssetTransferInput> = (0..100)
             .map(|_| AssetTransferInput {
@@ -1045,7 +1060,7 @@ mod tests {
         }
         tag.push(0b00110101);
         assert_eq!(
-            transaction.hash_partially(Tag::try_new(tag.clone()).unwrap(), &out, false),
+            transaction.hash_partially(Tag::try_new(tag.clone()).unwrap(), &input, false),
             Ok(blake256_with_key(&transaction.rlp_bytes(), &blake128(&tag)))
         );
 
@@ -1064,7 +1079,7 @@ mod tests {
         }
         tag.push(0b00110101);
         assert_eq!(
-            transaction.hash_partially(Tag::try_new(tag.clone()).unwrap(), &out, false),
+            transaction.hash_partially(Tag::try_new(tag.clone()).unwrap(), &input, false),
             Ok(blake256_with_key(&transaction_aux.rlp_bytes(), &blake128(&tag)))
         );
 
@@ -1083,7 +1098,7 @@ mod tests {
         }
         tag.push(0b00110101);
         assert_eq!(
-            transaction.hash_partially(Tag::try_new(tag.clone()).unwrap(), &out, false),
+            transaction.hash_partially(Tag::try_new(tag.clone()).unwrap(), &input, false),
             Ok(blake256_with_key(&transaction_aux.rlp_bytes(), &blake128(&tag)))
         );
     }

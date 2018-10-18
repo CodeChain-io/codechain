@@ -16,7 +16,7 @@
 
 use ccrypto::{blake128, blake256_with_key};
 use ckey::{sign, KeyPair, NetworkId, Private, Signature};
-use ctypes::transaction::{AssetOutPoint, Transaction};
+use ctypes::transaction::{AssetOutPoint, AssetTransferInput, Transaction};
 use primitives::H256;
 use rlp::Encodable;
 
@@ -34,11 +34,16 @@ fn valid_multi_sig_0_of_2() {
         outputs: Vec::new(),
         nonce: 0,
     };
-    let outpoint = AssetOutPoint {
-        transaction_hash: H256::default(),
-        index: 0,
-        asset_type: H256::default(),
-        amount: 0,
+    let outpoint = AssetTransferInput {
+        prev_out: AssetOutPoint {
+            transaction_hash: H256::default(),
+            index: 0,
+            asset_type: H256::default(),
+            amount: 0,
+        },
+        timelock: None,
+        lock_script: Vec::new(),
+        unlock_script: Vec::new(),
     };
     let keypair1 = KeyPair::from_private(Private::from(SecretKey::from(ONE_KEY))).unwrap();
     let keypair2 = KeyPair::from_private(Private::from(SecretKey::from(MINUS_ONE_KEY))).unwrap();
@@ -69,11 +74,16 @@ fn valid_multi_sig_1_of_2() {
         outputs: Vec::new(),
         nonce: 0,
     };
-    let outpoint = AssetOutPoint {
-        transaction_hash: H256::default(),
-        index: 0,
-        asset_type: H256::default(),
-        amount: 0,
+    let outpoint = AssetTransferInput {
+        prev_out: AssetOutPoint {
+            transaction_hash: H256::default(),
+            index: 0,
+            asset_type: H256::default(),
+            amount: 0,
+        },
+        timelock: None,
+        lock_script: Vec::new(),
+        unlock_script: Vec::new(),
     };
     let keypair1 = KeyPair::from_private(Private::from(SecretKey::from(ONE_KEY))).unwrap();
     let keypair2 = KeyPair::from_private(Private::from(SecretKey::from(MINUS_ONE_KEY))).unwrap();
@@ -115,11 +125,16 @@ fn valid_multi_sig_2_of_2() {
         outputs: Vec::new(),
         nonce: 0,
     };
-    let outpoint = AssetOutPoint {
-        transaction_hash: H256::default(),
-        index: 0,
-        asset_type: H256::default(),
-        amount: 0,
+    let outpoint = AssetTransferInput {
+        prev_out: AssetOutPoint {
+            transaction_hash: H256::default(),
+            index: 0,
+            asset_type: H256::default(),
+            amount: 0,
+        },
+        timelock: None,
+        lock_script: Vec::new(),
+        unlock_script: Vec::new(),
     };
     let keypair1 = KeyPair::from_private(Private::from(SecretKey::from(ONE_KEY))).unwrap();
     let keypair2 = KeyPair::from_private(Private::from(SecretKey::from(MINUS_ONE_KEY))).unwrap();
@@ -163,11 +178,16 @@ fn invalid_multi_sig_1_of_2() {
         outputs: Vec::new(),
         nonce: 0,
     };
-    let outpoint = AssetOutPoint {
-        transaction_hash: H256::default(),
-        index: 0,
-        asset_type: H256::default(),
-        amount: 0,
+    let outpoint = AssetTransferInput {
+        prev_out: AssetOutPoint {
+            transaction_hash: H256::default(),
+            index: 0,
+            asset_type: H256::default(),
+            amount: 0,
+        },
+        timelock: None,
+        lock_script: Vec::new(),
+        unlock_script: Vec::new(),
     };
     let keypair1 = KeyPair::from_private(Private::from(SecretKey::from(ONE_KEY))).unwrap();
     let keypair2 = KeyPair::from_private(Private::from(SecretKey::from(MINUS_ONE_KEY))).unwrap();
@@ -210,11 +230,16 @@ fn invalid_multi_sig_2_of_2() {
         outputs: Vec::new(),
         nonce: 0,
     };
-    let outpoint = AssetOutPoint {
-        transaction_hash: H256::default(),
-        index: 0,
-        asset_type: H256::default(),
-        amount: 0,
+    let outpoint = AssetTransferInput {
+        prev_out: AssetOutPoint {
+            transaction_hash: H256::default(),
+            index: 0,
+            asset_type: H256::default(),
+            amount: 0,
+        },
+        timelock: None,
+        lock_script: Vec::new(),
+        unlock_script: Vec::new(),
     };
     let keypair1 = KeyPair::from_private(Private::from(SecretKey::from(ONE_KEY))).unwrap();
     let keypair2 = KeyPair::from_private(Private::from(SecretKey::from(MINUS_ONE_KEY))).unwrap();
@@ -258,11 +283,16 @@ fn invalid_multi_sig_2_of_2_with_1_invalid_sig() {
         outputs: Vec::new(),
         nonce: 0,
     };
-    let outpoint = AssetOutPoint {
-        transaction_hash: H256::default(),
-        index: 0,
-        asset_type: H256::default(),
-        amount: 0,
+    let outpoint = AssetTransferInput {
+        prev_out: AssetOutPoint {
+            transaction_hash: H256::default(),
+            index: 0,
+            asset_type: H256::default(),
+            amount: 0,
+        },
+        timelock: None,
+        lock_script: Vec::new(),
+        unlock_script: Vec::new(),
     };
     let keypair1 = KeyPair::from_private(Private::from(SecretKey::from(ONE_KEY))).unwrap();
     let keypair2 = KeyPair::from_private(Private::from(SecretKey::from(MINUS_ONE_KEY))).unwrap();
@@ -316,11 +346,16 @@ fn invalid_multi_sig_2_of_2_with_changed_order_sig() {
         outputs: Vec::new(),
         nonce: 0,
     };
-    let outpoint = AssetOutPoint {
-        transaction_hash: H256::default(),
-        index: 0,
-        asset_type: H256::default(),
-        amount: 0,
+    let outpoint = AssetTransferInput {
+        prev_out: AssetOutPoint {
+            transaction_hash: H256::default(),
+            index: 0,
+            asset_type: H256::default(),
+            amount: 0,
+        },
+        timelock: None,
+        lock_script: Vec::new(),
+        unlock_script: Vec::new(),
     };
     let keypair1 = KeyPair::from_private(Private::from(SecretKey::from(ONE_KEY))).unwrap();
     let keypair2 = KeyPair::from_private(Private::from(SecretKey::from(MINUS_ONE_KEY))).unwrap();
@@ -364,11 +399,16 @@ fn invalid_multi_sig_with_less_sig_than_m() {
         outputs: Vec::new(),
         nonce: 0,
     };
-    let outpoint = AssetOutPoint {
-        transaction_hash: H256::default(),
-        index: 0,
-        asset_type: H256::default(),
-        amount: 0,
+    let outpoint = AssetTransferInput {
+        prev_out: AssetOutPoint {
+            transaction_hash: H256::default(),
+            index: 0,
+            asset_type: H256::default(),
+            amount: 0,
+        },
+        timelock: None,
+        lock_script: Vec::new(),
+        unlock_script: Vec::new(),
     };
     let keypair1 = KeyPair::from_private(Private::from(SecretKey::from(ONE_KEY))).unwrap();
     let keypair2 = KeyPair::from_private(Private::from(SecretKey::from(MINUS_ONE_KEY))).unwrap();
@@ -410,11 +450,16 @@ fn invalid_multi_sig_with_more_sig_than_m() {
         outputs: Vec::new(),
         nonce: 0,
     };
-    let outpoint = AssetOutPoint {
-        transaction_hash: H256::default(),
-        index: 0,
-        asset_type: H256::default(),
-        amount: 0,
+    let outpoint = AssetTransferInput {
+        prev_out: AssetOutPoint {
+            transaction_hash: H256::default(),
+            index: 0,
+            asset_type: H256::default(),
+            amount: 0,
+        },
+        timelock: None,
+        lock_script: Vec::new(),
+        unlock_script: Vec::new(),
     };
     let keypair1 = KeyPair::from_private(Private::from(SecretKey::from(ONE_KEY))).unwrap();
     let keypair2 = KeyPair::from_private(Private::from(SecretKey::from(MINUS_ONE_KEY))).unwrap();
@@ -458,11 +503,16 @@ fn invalid_multi_sig_with_too_many_arg() {
         outputs: Vec::new(),
         nonce: 0,
     };
-    let outpoint = AssetOutPoint {
-        transaction_hash: H256::default(),
-        index: 0,
-        asset_type: H256::default(),
-        amount: 0,
+    let outpoint = AssetTransferInput {
+        prev_out: AssetOutPoint {
+            transaction_hash: H256::default(),
+            index: 0,
+            asset_type: H256::default(),
+            amount: 0,
+        },
+        timelock: None,
+        lock_script: Vec::new(),
+        unlock_script: Vec::new(),
     };
     let keypair1 = KeyPair::from_private(Private::from(SecretKey::from(ONE_KEY))).unwrap();
     let pubkey1 = <&[u8]>::from(keypair1.public()).to_vec();
