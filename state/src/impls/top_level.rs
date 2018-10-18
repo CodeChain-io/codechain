@@ -1723,7 +1723,7 @@ mod tests_parcel {
 
         let asset_scheme_address = AssetSchemeAddress::new(transaction_hash, shard_id, world_id);
         let asset_scheme = state.asset_scheme(shard_id, &asset_scheme_address);
-        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), amount, registrar))), asset_scheme);
+        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), amount, registrar, Vec::new()))), asset_scheme);
 
         let asset_address = OwnedAssetAddress::new(transaction_hash, 0, shard_id);
         let asset = state.asset(shard_id, &asset_address);
@@ -1794,7 +1794,7 @@ mod tests_parcel {
 
         let asset_scheme_address = AssetSchemeAddress::new(transaction_hash, shard_id, world_id);
         let asset_scheme = state.asset_scheme(shard_id, &asset_scheme_address);
-        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), ::std::u64::MAX, registrar))), asset_scheme);
+        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), ::std::u64::MAX, registrar, Vec::new()))), asset_scheme);
 
         let asset_address = OwnedAssetAddress::new(transaction_hash, 0, shard_id);
         let asset = state.asset(shard_id, &asset_address);
@@ -1915,7 +1915,7 @@ mod tests_parcel {
         assert_eq!(state.nonce(&sender), Ok(1.into()));
 
         let asset_scheme = state.asset_scheme(shard_id, &asset_scheme_address);
-        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), amount, registrar))), asset_scheme);
+        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), amount, registrar, Vec::new()))), asset_scheme);
 
         let asset = state.asset(shard_id, &asset_address);
         assert_eq!(Ok(None), asset);
@@ -2066,7 +2066,7 @@ mod tests_parcel {
         assert_eq!(state.nonce(&sender), Ok(2.into()));
 
         let asset_scheme = state.asset_scheme(shard_id, &asset_scheme_address);
-        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), amount, registrar))), asset_scheme);
+        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), amount, registrar, Vec::new()))), asset_scheme);
 
         let asset = state.asset(shard_id, &asset_address);
         assert_eq!(Ok(None), asset);
@@ -2882,7 +2882,7 @@ mod tests_parcel {
         assert_eq!(Ok(1.into()), state.nonce(&sender));
 
         let asset_scheme = state.asset_scheme(shard_id, &asset_scheme_address);
-        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), amount, registrar))), asset_scheme);
+        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), amount, registrar, Vec::new()))), asset_scheme);
 
         let asset_type = asset_scheme_address.into();
         let asset = state.asset(shard_id, &asset_address);

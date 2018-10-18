@@ -54,6 +54,8 @@ pub enum Error {
     /// Returned when the amount of either input or output is 0.
     ZeroAmount,
     TooManyOutputs(usize),
+    /// AssetCompose requires at least 1 input.
+    EmptyInput,
 }
 
 const ERROR_ID_INVALID_ASSET_AMOUNT: u8 = 4u8;
@@ -73,6 +75,7 @@ const ERROR_ID_NOT_REGISTRAR: u8 = 17u8;
 const ERROR_ID_ZERO_AMOUNT: u8 = 18u8;
 const ERROR_ID_TOO_MANY_OUTPUTS: u8 = 19u8;
 const ERROR_ID_ASSET_SCHEME_DUPLICATED: u8 = 20u8;
+const ERROR_ID_EMPTY_INPUT: u8 = 21u8;
 
 impl Encodable for Error {
     fn rlp_append(&self, s: &mut RlpStream) {
@@ -106,6 +109,7 @@ impl Encodable for Error {
             Error::NotRegistrar(mismatch) => s.begin_list(2).append(&ERROR_ID_NOT_REGISTRAR).append(mismatch),
             Error::ZeroAmount => s.begin_list(1).append(&ERROR_ID_ZERO_AMOUNT),
             Error::TooManyOutputs(num) => s.begin_list(2).append(&ERROR_ID_TOO_MANY_OUTPUTS).append(num),
+            Error::EmptyInput => s.begin_list(1).append(&ERROR_ID_EMPTY_INPUT),
         };
     }
 }
@@ -175,6 +179,7 @@ impl Decodable for Error {
                 }
                 Error::TooManyOutputs(rlp.val_at(1)?)
             }
+            ERROR_ID_EMPTY_INPUT => Error::EmptyInput,
             _ => return Err(DecoderError::Custom("Invalid transaction error")),
         })
     }
@@ -216,6 +221,7 @@ impl Display for Error {
             ),
             Error::ZeroAmount => write!(f, "An amount cannot be 0"),
             Error::TooManyOutputs(num) => write!(f, "The number of outputs is {}. It should be 126 or less.", num),
+            Error::EmptyInput => write!(f, "AssetCompose must have at least one input."),
         }
     }
 }

@@ -69,6 +69,17 @@ pub enum Transaction {
         nonce: u64,
         hash: H256,
     },
+    #[serde(rename_all = "camelCase")]
+    AssetCompose {
+        network_id: NetworkId,
+        shard_id: ShardId,
+        world_id: WorldId,
+        nonce: u64,
+        metadata: String,
+        registrar: Option<PlatformAddress>,
+        inputs: Vec<AssetTransferInput>,
+        output: AssetMintOutput,
+    },
 }
 
 impl From<TransactionType> for Transaction {
@@ -146,6 +157,25 @@ impl From<TransactionType> for Transaction {
                 outputs,
                 nonce,
                 hash,
+            },
+            TransactionType::AssetCompose {
+                network_id,
+                shard_id,
+                world_id,
+                nonce,
+                metadata,
+                registrar,
+                inputs,
+                output,
+            } => Transaction::AssetCompose {
+                network_id,
+                shard_id,
+                world_id,
+                nonce,
+                metadata,
+                registrar: registrar.map(|registrar| PlatformAddress::new_v1(network_id, registrar)),
+                inputs,
+                output,
             },
         }
     }
@@ -242,6 +272,31 @@ impl From<Transaction> for Result<TransactionType, KeyError> {
                 outputs,
                 nonce,
             },
+            Transaction::AssetCompose {
+                network_id,
+                shard_id,
+                world_id,
+                nonce,
+                metadata,
+                registrar,
+                inputs,
+                output,
+            } => {
+                let registrar = match registrar {
+                    Some(registrar) => Some(registrar.try_into_address()?),
+                    None => None,
+                };
+                TransactionType::AssetCompose {
+                    network_id,
+                    shard_id,
+                    world_id,
+                    nonce,
+                    metadata,
+                    registrar,
+                    inputs,
+                    output,
+                }
+            }
         })
     }
 }

@@ -104,6 +104,16 @@ pub enum Transaction {
         outputs: Vec<AssetTransferOutput>,
         nonce: u64,
     },
+    AssetCompose {
+        network_id: NetworkId,
+        shard_id: ShardId,
+        world_id: WorldId,
+        nonce: u64,
+        metadata: String,
+        registrar: Option<Address>,
+        inputs: Vec<AssetTransferInput>,
+        output: AssetMintOutput,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
@@ -138,6 +148,10 @@ impl Transaction {
                 ..
             } => *network_id,
             Transaction::AssetMint {
+                network_id,
+                ..
+            } => *network_id,
+            Transaction::AssetCompose {
                 network_id,
                 ..
             } => *network_id,
@@ -176,6 +190,17 @@ impl Transaction {
                 shard_id,
                 ..
             } => vec![*shard_id],
+            Transaction::AssetCompose {
+                inputs,
+                shard_id,
+                ..
+            } => {
+                let mut shards: Vec<ShardId> = inputs.iter().map(AssetTransferInput::related_shard).collect();
+                shards.push(shard_id.clone());
+                shards.sort_unstable();
+                shards.dedup();
+                shards
+            }
         }
     }
 
@@ -227,6 +252,24 @@ impl Transaction {
                 Some(amount) if amount == 0 => Err(Error::ZeroAmount),
                 _ => Ok(()),
             },
+            Transaction::AssetCompose {
+                inputs,
+                output,
+                ..
+            } => {
+                if inputs.is_empty() {
+                    return Err(Error::EmptyInput)
+                }
+                for input in inputs {
+                    if input.prev_out.amount == 0 {
+                        return Err(Error::ZeroAmount)
+                    }
+                }
+                match output.amount {
+                    Some(amount) if amount == 0 => Err(Error::ZeroAmount),
+                    _ => Ok(()),
+                }
+            }
         }
     }
 }
@@ -288,6 +331,21 @@ impl HeapSizeOf for Transaction {
                 outputs,
                 nonce: _,
             } => burns.heap_size_of_children() + inputs.heap_size_of_children() + outputs.heap_size_of_children(),
+            Transaction::AssetCompose {
+                network_id: _,
+                shard_id: _,
+                world_id: _,
+                nonce: _,
+                metadata,
+                registrar,
+                inputs,
+                output,
+            } => {
+                metadata.heap_size_of_children()
+                    + registrar.heap_size_of_children()
+                    + inputs.heap_size_of_children()
+                    + output.heap_size_of_children()
+            }
         }
     }
 }
@@ -403,6 +461,46 @@ impl PartialHashing for Transaction {
                     &blake128(tag.get_tag()),
                 ))
             }
+            Transaction::AssetCompose {
+                network_id,
+                shard_id,
+                world_id,
+                nonce,
+                metadata,
+                registrar,
+                inputs,
+                output,
+            } => {
+                if tag.filter_len != 0 {
+                    return Err(HashingError::InvalidFilter)
+                }
+
+                let new_inputs = apply_input_scheme(inputs, tag.sign_all_inputs, !is_burn, cur);
+
+                let new_output = if tag.sign_all_outputs {
+                    output.clone()
+                } else {
+                    AssetMintOutput {
+                        lock_script_hash: H160::default(),
+                        parameters: Vec::new(),
+                        amount: None,
+                    }
+                };
+
+                Ok(blake256_with_key(
+                    &Transaction::AssetCompose {
+                        network_id: *network_id,
+                        shard_id: *shard_id,
+                        world_id: *world_id,
+                        nonce: *nonce,
+                        metadata: metadata.to_string(),
+                        registrar: *registrar,
+                        inputs: new_inputs,
+                        output: new_output,
+                    }.rlp_bytes(),
+                    &blake128(tag.get_tag()),
+                ))
+            }
             _ => unreachable!(),
         }
     }
@@ -414,6 +512,7 @@ const SET_WORLD_OWNERS_ID: TransactionId = 0x02;
 const ASSET_MINT_ID: TransactionId = 0x03;
 const ASSET_TRANSFER_ID: TransactionId = 0x04;
 const SET_WORLD_USERS_ID: TransactionId = 0x05;
+const ASSET_COMPOSE_ID: TransactionId = 0x06;
 
 impl Decodable for Transaction {
     fn decode(d: &UntrustedRlp) -> Result<Self, DecoderError> {
@@ -484,6 +583,25 @@ impl Decodable for Transaction {
                     inputs: d.list_at(3)?,
                     outputs: d.list_at(4)?,
                     nonce: d.val_at(5)?,
+                })
+            }
+            ASSET_COMPOSE_ID => {
+                if d.item_count()? != 11 {
+                    return Err(DecoderError::RlpIncorrectListLen)
+                }
+                Ok(Transaction::AssetCompose {
+                    network_id: d.val_at(1)?,
+                    shard_id: d.val_at(2)?,
+                    world_id: d.val_at(3)?,
+                    metadata: d.val_at(4)?,
+                    registrar: d.val_at(5)?,
+                    inputs: d.list_at(6)?,
+                    output: AssetMintOutput {
+                        lock_script_hash: d.val_at(7)?,
+                        parameters: d.val_at(8)?,
+                        amount: d.val_at(9)?,
+                    },
+                    nonce: d.val_at(10)?,
                 })
             }
             _ => Err(DecoderError::Custom("Unexpected transaction")),
@@ -572,6 +690,33 @@ impl Encodable for Transaction {
                 .append_list(burns)
                 .append_list(inputs)
                 .append_list(outputs)
+                .append(nonce),
+            Transaction::AssetCompose {
+                network_id,
+                shard_id,
+                world_id,
+                nonce,
+                metadata,
+                registrar,
+                inputs,
+                output:
+                    AssetMintOutput {
+                        lock_script_hash,
+                        parameters,
+                        amount,
+                    },
+            } => s
+                .begin_list(11)
+                .append(&ASSET_COMPOSE_ID)
+                .append(network_id)
+                .append(shard_id)
+                .append(world_id)
+                .append(metadata)
+                .append(registrar)
+                .append_list(inputs)
+                .append(lock_script_hash)
+                .append(parameters)
+                .append(amount)
                 .append(nonce),
         };
     }
