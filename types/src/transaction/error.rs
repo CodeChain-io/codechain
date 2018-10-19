@@ -22,6 +22,7 @@ use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::super::util::unexpected::Mismatch;
 use super::super::ShardId;
+use super::Timelock;
 
 #[derive(Debug, PartialEq, Clone, Eq, Serialize)]
 #[serde(tag = "type", content = "content")]
@@ -66,6 +67,10 @@ pub enum Error {
         got: u64,
     },
     EmptyOutput,
+    Timelocked {
+        timelock: Timelock,
+        remaining_time: u64,
+    },
 }
 
 const ERROR_ID_INVALID_ASSET_AMOUNT: u8 = 4u8;
@@ -87,6 +92,7 @@ const ERROR_ID_INVALID_DECOMPOSED_INPUT: u8 = 22u8;
 const ERROR_ID_INVALID_COMPOSED_OUTPUT: u8 = 23u8;
 const ERROR_ID_INVALID_DECOMPOSED_OUTPUT: u8 = 24u8;
 const ERROR_ID_EMPTY_OUTPUT: u8 = 25u8;
+const ERROR_ID_TIMELOCKED: u8 = 26u8;
 
 impl Encodable for Error {
     fn rlp_append(&self, s: &mut RlpStream) {
@@ -129,6 +135,10 @@ impl Encodable for Error {
                 s.begin_list(4).append(&ERROR_ID_INVALID_DECOMPOSED_OUTPUT).append(address).append(expected).append(got)
             }
             Error::EmptyOutput => s.begin_list(1).append(&ERROR_ID_EMPTY_OUTPUT),
+            Error::Timelocked {
+                timelock,
+                remaining_time,
+            } => s.begin_list(3).append(&ERROR_ID_TIMELOCKED).append(timelock).append(remaining_time),
         };
     }
 }
@@ -219,6 +229,10 @@ impl Decodable for Error {
                 }
                 Error::EmptyOutput
             }
+            ERROR_ID_TIMELOCKED => Error::Timelocked {
+                timelock: rlp.val_at(1)?,
+                remaining_time: rlp.val_at(2)?,
+            },
             _ => return Err(DecoderError::Custom("Invalid transaction error")),
         })
     }
@@ -275,6 +289,14 @@ impl Display for Error {
                 address, expected, got
             ),
             Error::EmptyOutput => writeln!(f, "The output is empty"),
+            Error::Timelocked {
+                timelock,
+                remaining_time,
+            } => write!(
+                f,
+                "The transaction cannot be executed because of the timelock({:?}). The remaining time is {}",
+                timelock, remaining_time
+            ),
         }
     }
 }
