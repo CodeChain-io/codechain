@@ -450,16 +450,14 @@ export default class CodeChain {
         const keyStore = await this.sdk.key.createLocalKeyStore(
             this.localKeyStorePath
         );
-        const p2pkh = this.sdk.key.createP2PKH({ keyStore });
-        await p2pkh.signInput(tx, index);
+        await this.sdk.key.signTransactionInput(tx, index, { keyStore });
     }
 
     public async signTransferBurn(tx: AssetTransferTransaction, index: number) {
         const keyStore = await this.sdk.key.createLocalKeyStore(
             this.localKeyStorePath
         );
-        const p2pkhBurn = this.sdk.key.createP2PKHBurn({ keyStore });
-        await p2pkhBurn.signBurn(tx, index);
+        await this.sdk.key.signTransactionBurn(tx, index, { keyStore });
     }
 
     public async setRegularKey(
