@@ -346,12 +346,14 @@ export default class CodeChain {
         tx: Transaction,
         options?: {
             seq?: U256 | number;
+            fee?: number;
             awaitInvoice?: boolean;
             secret?: string;
         }
     ) {
         const {
             seq = (await this.sdk.rpc.chain.getSeq(faucetAddress)) || 0,
+            fee = 10,
             awaitInvoice = true,
             secret = faucetSecret
         } = options || {};
@@ -361,7 +363,7 @@ export default class CodeChain {
             })
             .sign({
                 secret,
-                fee: 10 + this.id,
+                fee: fee + this.id,
                 seq
             });
         await this.sdk.rpc.chain.sendSignedParcel(parcel);
