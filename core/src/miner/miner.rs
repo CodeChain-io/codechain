@@ -22,7 +22,8 @@ use std::time::{Duration, Instant};
 
 use ckey::{public_to_address, Address, Password, PlatformAddress, Public};
 use cstate::{StateError, TopLevelState};
-use ctypes::parcel::{Error as ParcelError, IncompleteParcel};
+use ctypes::parcel::{Action, Error as ParcelError, IncompleteParcel};
+use ctypes::transaction::{Error as TransactionError, Timelock, Transaction};
 use ctypes::BlockNumber;
 use parking_lot::{Mutex, RwLock};
 use primitives::{Bytes, H256, U256};
@@ -38,7 +39,7 @@ use super::super::header::Header;
 use super::super::parcel::{SignedParcel, UnverifiedParcel};
 use super::super::scheme::Scheme;
 use super::super::types::{BlockId, ParcelId};
-use super::mem_pool::{AccountDetails, MemPool, ParcelOrigin, RemovalReason};
+use super::mem_pool::{AccountDetails, MemPool, ParcelOrigin, ParcelTimelock, RemovalReason};
 use super::sealing_queue::SealingQueue;
 use super::work_notify::{NotifyWork, WorkPoster};
 use super::{MinerService, MinerStatus, ParcelImportResult};
@@ -261,9 +262,13 @@ impl Miner {
                                 balance: client.latest_balance(&a),
                             }
                         };
+
                         let hash = parcel.hash();
-                        let result =
-                            mem_pool.add(parcel, origin, insertion_time, &fetch_account).map_err(StateError::from)?;
+                        let timestamp = client.chain_info().best_block_timestamp;
+                        let timelock = self.calculate_timelock(&parcel, client)?;
+                        let result = mem_pool
+                            .add(parcel, origin, insertion_time, timestamp, timelock, &fetch_account)
+                            .map_err(StateError::from)?;
 
                         inserted.push(hash);
                         Ok(result)
@@ -277,6 +282,68 @@ impl Miner {
         }
 
         results
+    }
+
+    fn calculate_timelock<C: BlockChain>(&self, parcel: &SignedParcel, client: &C) -> Result<ParcelTimelock, Error> {
+        let mut max_block = None;
+        let mut max_timestamp = None;
+        match parcel.as_unsigned().action {
+            Action::AssetTransactionGroup {
+                ref transactions,
+                ..
+            } => {
+                for transaction in transactions {
+                    let inputs = match transaction {
+                        Transaction::AssetTransfer {
+                            inputs,
+                            ..
+                        } => inputs,
+                        _ => continue,
+                    };
+                    for input in inputs {
+                        if let Some(timelock) = input.timelock {
+                            let (is_block_number, value) = match timelock {
+                                Timelock::Block(value) => (true, value),
+                                Timelock::BlockAge(value) => (
+                                    true,
+                                    client.transaction_block_number(input.prev_out.transaction_hash.into()).ok_or(
+                                        Error::State(StateError::Transaction(TransactionError::Timelocked {
+                                            timelock,
+                                            remaining_time: u64::max_value(),
+                                        })),
+                                    )? + value,
+                                ),
+                                Timelock::Time(value) => (false, value),
+                                Timelock::TimeAge(value) => (
+                                    false,
+                                    client.transaction_block_timestamp(input.prev_out.transaction_hash.into()).ok_or(
+                                        Error::State(StateError::Transaction(TransactionError::Timelocked {
+                                            timelock,
+                                            remaining_time: u64::max_value(),
+                                        })),
+                                    )? + value,
+                                ),
+                            };
+                            if is_block_number {
+                                if max_block.is_none() || max_block.expect("The previous guard ensures") < value {
+                                    max_block = Some(value);
+                                }
+                            } else {
+                                if max_timestamp.is_none() || max_timestamp.expect("The previous guard ensures") < value
+                                {
+                                    max_timestamp = Some(value);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            _ => (),
+        }
+        Ok(ParcelTimelock {
+            block: max_block,
+            timestamp: max_timestamp,
+        })
     }
 
     /// Returns true if we had to prepare new pending block.
@@ -437,7 +504,13 @@ impl Miner {
         {
             let mut queue = self.mem_pool.write();
             for hash in invalid_parcels {
-                queue.remove(&hash, &fetch_seq, RemovalReason::Invalid);
+                queue.remove(
+                    &hash,
+                    &fetch_seq,
+                    RemovalReason::Invalid,
+                    &chain.chain_info().best_block_number,
+                    chain.chain_info().best_block_timestamp,
+                );
             }
         }
         (block, original_work_hash)
@@ -619,8 +692,9 @@ impl MinerService for Miner {
                 }
             };
             let time = chain.chain_info().best_block_number;
+            let timestamp = chain.chain_info().best_block_timestamp;
             let mut mem_pool = self.mem_pool.write();
-            mem_pool.remove_old(&fetch_account, time);
+            mem_pool.remove_old(&fetch_account, time, timestamp);
         }
     }
 
