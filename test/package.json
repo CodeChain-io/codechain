@@ -23,7 +23,7 @@
     "tslint": "^5.10.0"
   },
   "dependencies": {
-    "codechain-sdk": "https://github.com/CodeChain-io/codechain-sdk-js.git#world",
+    "codechain-sdk": "https://github.com/CodeChain-io/codechain-sdk-js.git#timelock",
     "jest": "^23.1.0",
     "mkdirp": "^0.5.1",
     "rlp": "^2.0.0",
