@@ -190,7 +190,7 @@ pub fn verify_block_family<C: BlockInfo + TransactionInfo>(
     };
 
     for parcel in params.parcels {
-        engine.machine().verify_parcel(parcel, header, params.client)?;
+        engine.machine().verify_parcel(parcel, header, params.client, true)?;
     }
 
     Ok(())

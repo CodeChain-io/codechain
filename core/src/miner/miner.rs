@@ -242,7 +242,7 @@ impl Miner {
                     }
                     Ok(parcel) => {
                         // This check goes here because verify_parcel takes SignedParcel parameter
-                        self.engine.machine().verify_parcel(&parcel, &best_block_header, client)?;
+                        self.engine.machine().verify_parcel(&parcel, &best_block_header, client, false)?;
 
                         let origin = self
                             .accounts
@@ -462,7 +462,7 @@ impl Miner {
             let result = self
                 .engine
                 .machine()
-                .verify_parcel(&parcel, open_block.header(), chain)
+                .verify_parcel(&parcel, open_block.header(), chain, true)
                 .and_then(|_| open_block.push_parcel(parcel, None));
 
             match result {

@@ -18,7 +18,8 @@
 use ckey::Address;
 use cstate::{StateError, TopState, TopStateInfo};
 use ctypes::machine::{Machine, WithBalances};
-use ctypes::parcel::Error as ParcelError;
+use ctypes::parcel::{Action, Error as ParcelError};
+use ctypes::transaction::{Error as TransactionError, Timelock, Transaction};
 use primitives::U256;
 
 use super::block::{ExecutedBlock, IsBlock};
@@ -74,10 +75,24 @@ impl CodeChainMachine {
     /// Does verification of the parcel against the parent state.
     pub fn verify_parcel<C: BlockInfo + TransactionInfo>(
         &self,
-        _parcel: &SignedParcel,
-        _header: &Header,
-        _client: &C,
+        parcel: &SignedParcel,
+        header: &Header,
+        client: &C,
+        verify_timelock: bool,
     ) -> Result<(), Error> {
+        if verify_timelock {
+            match parcel.action {
+                Action::AssetTransactionGroup {
+                    ref transactions,
+                    ..
+                } => {
+                    for transaction in transactions {
+                        Self::verify_transaction_timelock(transaction, header, client)?;
+                    }
+                }
+                _ => (),
+            }
+        }
         // FIXME: Filter parcels.
         Ok(())
     }
@@ -86,6 +101,68 @@ impl CodeChainMachine {
     /// Usually implements the chain scoring rule based on weight.
     pub fn populate_from_parent(&self, header: &mut Header, parent: &Header) {
         header.set_score(parent.score().clone());
+    }
+
+    fn verify_transaction_timelock<C: BlockInfo + TransactionInfo>(
+        transaction: &Transaction,
+        header: &Header,
+        client: &C,
+    ) -> Result<(), Error> {
+        let inputs = match transaction {
+            Transaction::AssetTransfer {
+                inputs,
+                ..
+            } => inputs,
+            _ => return Ok(()),
+        };
+        for input in inputs {
+            if let Some(timelock) = input.timelock {
+                match timelock {
+                    Timelock::Block(value) if value > header.number() => {
+                        return Err(StateError::Transaction(TransactionError::Timelocked {
+                            timelock,
+                            remaining_time: value - header.number(),
+                        }).into())
+                    }
+                    Timelock::BlockAge(value) => {
+                        let absolute = client.transaction_block_number(input.prev_out.transaction_hash.into()).ok_or(
+                            Error::State(StateError::Transaction(TransactionError::Timelocked {
+                                timelock,
+                                remaining_time: u64::max_value(),
+                            })),
+                        )? + value;
+                        if absolute > header.number() {
+                            return Err(StateError::Transaction(TransactionError::Timelocked {
+                                timelock,
+                                remaining_time: absolute - header.number(),
+                            }).into())
+                        }
+                    }
+                    Timelock::Time(value) if value > header.timestamp() => {
+                        return Err(StateError::Transaction(TransactionError::Timelocked {
+                            timelock,
+                            remaining_time: value - header.timestamp(),
+                        }).into())
+                    }
+                    Timelock::TimeAge(value) => {
+                        let absolute = client
+                            .transaction_block_timestamp(input.prev_out.transaction_hash.into())
+                            .ok_or(Error::State(StateError::Transaction(TransactionError::Timelocked {
+                                timelock,
+                                remaining_time: u64::max_value(),
+                            })))? + value;
+                        if absolute > header.timestamp() {
+                            return Err(StateError::Transaction(TransactionError::Timelocked {
+                                timelock,
+                                remaining_time: absolute - header.timestamp(),
+                            }).into())
+                        }
+                    }
+                    _ => (),
+                }
+            }
+        }
+        Ok(())
     }
 }
 
