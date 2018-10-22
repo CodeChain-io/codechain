@@ -27,7 +27,7 @@ use cstate::{
     ActionHandler, AssetScheme, AssetSchemeAddress, OwnedAsset, OwnedAssetAddress, StateDB, TopBackend, TopLevelState,
     TopStateInfo,
 };
-use ctypes::invoice::ParcelInvoice;
+use ctypes::invoice::Invoice;
 use ctypes::parcel::ShardChange;
 use ctypes::transaction::Transaction;
 use ctypes::{BlockNumber, ShardId};
@@ -61,7 +61,6 @@ use super::{
     BlockProducer, ChainInfo, ChainNotify, ClientConfig, DatabaseClient, EngineClient, EngineInfo,
     Error as ClientError, ExecuteClient, ImportBlock, ImportResult, ImportSealedBlock, MiningBlockChainClient,
     ParcelInfo, PrepareOpenBlock, RegularKey, RegularKeyOwner, ReopenBlock, Seq, Shard, StateOrBlock, TransactionInfo,
-    TransactionInvoice,
 };
 
 const MAX_MEM_POOL_SIZE: usize = 4096;
@@ -184,9 +183,8 @@ impl Client {
     fn transaction_address(&self, id: TransactionId) -> Option<TransactionAddress> {
         match id {
             TransactionId::Hash(ref hash) => self.chain.read().transaction_address(hash),
-            TransactionId::Location(id, index) => self.parcel_address(id).map(|parcel_address| TransactionAddress {
+            TransactionId::Location(id) => self.parcel_address(id).map(|parcel_address| TransactionAddress {
                 parcel_address,
-                index,
             }),
         }
     }
@@ -519,7 +517,7 @@ impl BlockChainClient for Client {
         self.parcel_address(id).and_then(|address| chain.parcel(&address))
     }
 
-    fn parcel_invoice(&self, id: ParcelId) -> Option<ParcelInvoice> {
+    fn parcel_invoice(&self, id: ParcelId) -> Option<Invoice> {
         let chain = self.chain.read();
         self.parcel_address(id).and_then(|address| chain.parcel_invoice(&address))
     }
@@ -529,16 +527,12 @@ impl BlockChainClient for Client {
         self.transaction_address(id).and_then(|address| chain.transaction(&address))
     }
 
-    fn transaction_invoice(&self, id: TransactionId) -> Option<TransactionInvoice> {
+    fn transaction_invoice(&self, id: TransactionId) -> Option<Invoice> {
         self.transaction_address(id).and_then(|transaction_address| {
             let parcel_address = transaction_address.parcel_address.clone();
             let parcel_id = parcel_address.into();
 
-            self.parcel_invoice(parcel_id).and_then(|parcel_invoice| match parcel_invoice {
-                ParcelInvoice::Multiple(invoices) => invoices.get(transaction_address.index).cloned(),
-                ParcelInvoice::SingleSuccess => None,
-                ParcelInvoice::SingleFail(_) => None,
-            })
+            self.parcel_invoice(parcel_id)
         })
     }
 

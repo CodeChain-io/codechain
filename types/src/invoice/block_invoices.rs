@@ -16,15 +16,15 @@
 
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
-use super::parcel_invoice::ParcelInvoice;
+use super::parcel_invoice::Invoice;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct BlockInvoices {
-    pub invoices: Vec<ParcelInvoice>,
+    pub invoices: Vec<Invoice>,
 }
 
 impl BlockInvoices {
-    pub fn new(invoices: Vec<ParcelInvoice>) -> Self {
+    pub fn new(invoices: Vec<Invoice>) -> Self {
         Self {
             invoices,
         }
@@ -36,7 +36,7 @@ impl Decodable for BlockInvoices {
         let invoices = rlp
             .as_list::<Vec<u8>>()?
             .iter()
-            .map(|parcel_invoice| UntrustedRlp::new(&parcel_invoice).as_val::<ParcelInvoice>())
+            .map(|parcel_invoice| UntrustedRlp::new(&parcel_invoice).as_val::<Invoice>())
             .collect::<Result<Vec<_>, _>>()?;
         Ok(Self {
             invoices,
@@ -59,21 +59,17 @@ impl Encodable for BlockInvoices {
 mod tests {
     use rlp::rlp_encode_and_decode_test;
 
+    use super::super::super::parcel::Error;
     use super::super::super::transaction::Error as TransactionError;
-    use super::super::transaction_invoice::TransactionInvoice;
-
     use super::*;
 
     #[test]
     fn rlp_encode_and_decode_block_invoices() {
-        let invoices = vec![TransactionInvoice::Success, TransactionInvoice::Fail(TransactionError::InvalidScript)];
-        let parcel_invoice = ParcelInvoice::new(invoices);
         rlp_encode_and_decode_test!(BlockInvoices {
             invoices: vec![
-                parcel_invoice.clone(),
-                parcel_invoice.clone(),
-                parcel_invoice.clone(),
-                parcel_invoice.clone(),
+                Invoice::Success,
+                Invoice::Failure(Error::InvalidTransaction(TransactionError::InvalidScript)),
+                Invoice::Success,
             ],
         });
     }

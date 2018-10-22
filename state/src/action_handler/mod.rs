@@ -17,7 +17,7 @@
 mod hit;
 
 use cmerkle::TrieMut;
-use ctypes::invoice::ParcelInvoice;
+use ctypes::invoice::Invoice;
 use primitives::Bytes;
 
 use super::{StateResult, TopLevelState};
@@ -25,7 +25,7 @@ use super::{StateResult, TopLevelState};
 pub trait ActionHandler: Send + Sync {
     fn init(&self, state: &mut TrieMut) -> StateResult<()>;
     fn is_target(&self, bytes: &Bytes) -> bool;
-    fn execute(&self, bytes: &Bytes, state: &mut TopLevelState) -> Option<StateResult<ParcelInvoice>>;
+    fn execute(&self, bytes: &Bytes, state: &mut TopLevelState) -> Option<StateResult<Invoice>>;
 }
 
 pub use self::hit::HitHandler;

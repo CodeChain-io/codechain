@@ -1221,7 +1221,7 @@ pub mod test {
     use std::cmp::Ordering;
 
     use ckey::{Generator, Random};
-    use ctypes::parcel::{Parcel, ShardChange};
+    use ctypes::parcel::Parcel;
     use ctypes::transaction::{AssetMintOutput, Transaction};
     use primitives::H160;
 
@@ -1467,35 +1467,11 @@ pub mod test {
     }
 
     #[test]
-    fn cost_of_empty_parcel_is_fee() {
-        let fee = U256::from(100);
-        let parcel = Parcel {
-            seq: 0.into(),
-            fee,
-            network_id: "tc".into(),
-            action: Action::AssetTransactionGroup {
-                transactions: vec![],
-                changes: vec![],
-                signatures: vec![],
-            },
-        };
-        let timelock = ParcelTimelock {
-            block: None,
-            timestamp: None,
-        };
-        let keypair = Random.generate().unwrap();
-        let signed = SignedParcel::new_with_sign(parcel, keypair.private());
-        let item = MemPoolItem::new(signed, ParcelOrigin::Local, 0, 0, timelock);
-
-        assert_eq!(fee, item.cost());
-    }
-
-    #[test]
     fn mint_transaction_does_not_increase_cost() {
         let shard_id = 0xCCC;
 
         let fee = U256::from(100);
-        let transactions = vec![Transaction::AssetMint {
+        let transaction = Transaction::AssetMint {
             network_id: "tc".into(),
             shard_id,
             metadata: "Metadata".to_string(),
@@ -1506,20 +1482,12 @@ pub mod test {
             },
             registrar: None,
             nonce: 0,
-        }];
+        };
         let parcel = Parcel {
             seq: 0.into(),
             fee,
             network_id: "tc".into(),
-            action: Action::AssetTransactionGroup {
-                transactions,
-                changes: vec![ShardChange {
-                    shard_id,
-                    pre_root: H256::zero(),
-                    post_root: H256::zero(),
-                }],
-                signatures: vec![],
-            },
+            action: Action::AssetTransaction(transaction),
         };
         let timelock = ParcelTimelock {
             block: None,
@@ -1534,43 +1502,19 @@ pub mod test {
 
     #[test]
     fn transfer_transaction_does_not_increase_cost() {
-        let shard_id = 0;
-
         let fee = U256::from(100);
-        let transactions = vec![
-            Transaction::AssetMint {
-                network_id: "tc".into(),
-                shard_id,
-                metadata: "Metadata".to_string(),
-                output: AssetMintOutput {
-                    lock_script_hash: H160::zero(),
-                    parameters: vec![],
-                    amount: None,
-                },
-                registrar: None,
-                nonce: 0,
-            },
-            Transaction::AssetTransfer {
-                network_id: "tc".into(),
-                burns: vec![],
-                inputs: vec![],
-                outputs: vec![],
-                nonce: 0,
-            },
-        ];
+        let transaction = Transaction::AssetTransfer {
+            network_id: "tc".into(),
+            burns: vec![],
+            inputs: vec![],
+            outputs: vec![],
+            nonce: 0,
+        };
         let parcel = Parcel {
             seq: 0.into(),
             fee,
             network_id: "tc".into(),
-            action: Action::AssetTransactionGroup {
-                transactions,
-                changes: vec![ShardChange {
-                    shard_id,
-                    pre_root: H256::zero(),
-                    post_root: H256::zero(),
-                }],
-                signatures: vec![],
-            },
+            action: Action::AssetTransaction(transaction),
         };
         let timelock = ParcelTimelock {
             block: None,
@@ -1611,19 +1555,24 @@ pub mod test {
     #[test]
     fn fee_per_byte_order_simple() {
         let order1 = create_parcel_order(U256::from(1000_000_000), 100);
-        let order2 = create_parcel_order(U256::from(1500_000_000), 200);
-        assert_eq!(true, order1.fee_per_byte > order2.fee_per_byte);
+        let order2 = create_parcel_order(U256::from(1500_000_000), 300);
+        assert!(
+            order1.fee_per_byte > order2.fee_per_byte,
+            "{} must be larger than {}",
+            order1.fee_per_byte,
+            order2.fee_per_byte
+        );
         assert_eq!(Ordering::Greater, order1.cmp(&order2));
     }
 
     #[test]
     fn fee_per_byte_order_sort() {
         let factors: Vec<Vec<usize>> = vec![
-            vec![4, 9],   // 0.44
-            vec![2, 9],   // 0.22
-            vec![2, 6],   // 0.33
-            vec![10, 10], // 1
-            vec![2, 8],   // 0.25
+            vec![4, 9],   // 19607
+            vec![2, 9],   // 9803
+            vec![2, 6],   // 11494
+            vec![10, 10], // 46728
+            vec![2, 8],   // 10309
         ];
         let mut orders: Vec<ParcelOrder> = Vec::new();
         for factor in factors {
@@ -1642,27 +1591,24 @@ pub mod test {
     }
 
     fn create_parcel_order(fee: U256, transaction_count: usize) -> ParcelOrder {
-        let transaction = Transaction::AssetTransfer {
+        let transaction = Transaction::AssetMint {
             network_id: "tc".into(),
-            burns: vec![],
-            inputs: vec![],
-            outputs: vec![],
             nonce: 0,
+            shard_id: 0,
+            metadata: String::from_utf8(vec!['a' as u8; transaction_count]).unwrap(),
+            registrar: None,
+            output: AssetMintOutput {
+                lock_script_hash: H160::zero(),
+                parameters: vec![],
+                amount: None,
+            },
         };
         let keypair = Random.generate().unwrap();
         let parcel = Parcel {
             seq: 0.into(),
             fee,
             network_id: "tc".into(),
-            action: Action::AssetTransactionGroup {
-                transactions: vec![transaction; transaction_count],
-                changes: vec![ShardChange {
-                    shard_id: 0,
-                    pre_root: H256::zero(),
-                    post_root: H256::zero(),
-                }],
-                signatures: vec![],
-            },
+            action: Action::AssetTransaction(transaction),
         };
         let timelock = ParcelTimelock {
             block: None,

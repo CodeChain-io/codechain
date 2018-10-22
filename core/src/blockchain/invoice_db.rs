@@ -17,7 +17,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use ctypes::invoice::{BlockInvoices, ParcelInvoice};
+use ctypes::invoice::{BlockInvoices, Invoice};
 use kvdb::{DBTransaction, KeyValueDB};
 use parking_lot::RwLock;
 use primitives::H256;
@@ -47,7 +47,7 @@ impl InvoiceDB {
     /// Inserts the block into backing cache database.
     /// Expects the block to be valid and already verified.
     /// If the block is already known, does nothing.
-    pub fn insert_invoice(&self, batch: &mut DBTransaction, hash: &H256, invoices: Vec<ParcelInvoice>) {
+    pub fn insert_invoice(&self, batch: &mut DBTransaction, hash: &H256, invoices: Vec<Invoice>) {
         if self.is_known_invoice(hash) {
             return
         }
@@ -69,7 +69,7 @@ pub trait InvoiceProvider {
     fn block_invoices(&self, hash: &H256) -> Option<BlockInvoices>;
 
     /// Get parcel invoice.
-    fn parcel_invoice(&self, address: &ParcelAddress) -> Option<ParcelInvoice>;
+    fn parcel_invoice(&self, address: &ParcelAddress) -> Option<Invoice>;
 }
 
 impl InvoiceProvider for InvoiceDB {
@@ -84,7 +84,7 @@ impl InvoiceProvider for InvoiceDB {
     }
 
     /// Get parcel invoice.
-    fn parcel_invoice(&self, address: &ParcelAddress) -> Option<ParcelInvoice> {
+    fn parcel_invoice(&self, address: &ParcelAddress) -> Option<Invoice> {
         self.block_invoices(&address.block_hash)
             .and_then(|bi| bi.invoices.into_iter().nth(address.index))
             .map(Into::into)

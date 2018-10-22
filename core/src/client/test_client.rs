@@ -39,7 +39,7 @@ use ckey::{public_to_address, Address, Generator, NetworkId, Random};
 use cmerkle::skewed_merkle_root;
 use cnetwork::NodeId;
 use cstate::{ActionHandler, StateDB};
-use ctypes::invoice::{ParcelInvoice, TransactionInvoice};
+use ctypes::invoice::Invoice;
 use ctypes::parcel::{Action, Parcel};
 use ctypes::transaction::Transaction;
 use ctypes::BlockNumber;
@@ -200,10 +200,9 @@ impl TestBlockChainClient {
                     seq: 0.into(),
                     fee: U256::from(10),
                     network_id: NetworkId::default(),
-                    action: Action::AssetTransactionGroup {
-                        transactions: vec![],
-                        changes: vec![],
-                        signatures: vec![],
+                    action: Action::Payment {
+                        receiver: Address::random(),
+                        amount: 0.into(),
                     },
                 };
                 let signed_parcel = SignedParcel::new_with_sign(parcel, keypair.private());
@@ -263,15 +262,13 @@ impl TestBlockChainClient {
     /// Inserts a parcel to miners mem pool.
     pub fn insert_parcel_to_pool(&self) -> H256 {
         let keypair = Random.generate().unwrap();
-        let transactions = vec![];
         let parcel = Parcel {
             seq: 0.into(),
             fee: U256::from(10),
             network_id: NetworkId::default(),
-            action: Action::AssetTransactionGroup {
-                transactions,
-                changes: vec![],
-                signatures: vec![],
+            action: Action::Payment {
+                receiver: Address::random(),
+                amount: 0.into(),
             },
         };
         let signed_parcel = SignedParcel::new_with_sign(parcel, keypair.private());
@@ -520,7 +517,7 @@ impl BlockChainClient for TestBlockChainClient {
         unimplemented!();
     }
 
-    fn parcel_invoice(&self, _id: ParcelId) -> Option<ParcelInvoice> {
+    fn parcel_invoice(&self, _id: ParcelId) -> Option<Invoice> {
         unimplemented!();
     }
 
@@ -528,8 +525,8 @@ impl BlockChainClient for TestBlockChainClient {
         unimplemented!();
     }
 
-    fn transaction_invoice(&self, _id: TransactionId) -> Option<TransactionInvoice> {
-        unimplemented!()
+    fn transaction_invoice(&self, _id: TransactionId) -> Option<Invoice> {
+        unimplemented!();
     }
 
     fn custom_handlers(&self) -> Vec<Arc<ActionHandler>> {

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ckey::{Error as KeyError, NetworkId, PlatformAddress, Public, Signature};
+use ckey::{Error as KeyError, NetworkId, PlatformAddress, Public};
 use ctypes::parcel::{Action as ActionType, ShardChange as ShardChangeType};
 use ctypes::ShardId;
 use primitives::{Bytes, H256, U256};
@@ -32,11 +32,9 @@ pub struct ShardChange {
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", tag = "action")]
 pub enum Action {
-    AssetTransactionGroup {
-        /// Transaction, can be either asset mint or asset transfer
-        transactions: Vec<Transaction>,
-        changes: Vec<ShardChange>,
-        signatures: Vec<Signature>,
+    /// Transaction, can be either asset mint or asset transfer
+    AssetTransaction {
+        transaction: Transaction,
     },
     Payment {
         receiver: PlatformAddress,
@@ -71,14 +69,8 @@ impl From<ShardChangeType> for ShardChange {
 impl Action {
     pub fn from_core(from: ActionType, network_id: NetworkId) -> Self {
         match from {
-            ActionType::AssetTransactionGroup {
-                transactions,
-                changes,
-                signatures,
-            } => Action::AssetTransactionGroup {
-                transactions: transactions.into_iter().map(From::from).collect(),
-                changes: changes.into_iter().map(From::from).collect(),
-                signatures,
+            ActionType::AssetTransaction(transaction) => Action::AssetTransaction {
+                transaction: transaction.into(),
             },
             ActionType::Payment {
                 receiver,
@@ -126,18 +118,9 @@ impl From<ShardChange> for ShardChangeType {
 impl From<Action> for Result<ActionType, KeyError> {
     fn from(from: Action) -> Self {
         Ok(match from {
-            Action::AssetTransactionGroup {
-                transactions,
-                changes,
-                signatures,
-            } => {
-                let transactions: Result<_, _> = transactions.into_iter().map(From::from).collect();
-                ActionType::AssetTransactionGroup {
-                    transactions: transactions?,
-                    changes: changes.into_iter().map(From::from).collect(),
-                    signatures,
-                }
-            }
+            Action::AssetTransaction {
+                transaction,
+            } => ActionType::AssetTransaction(Result::from(transaction)?),
             Action::Payment {
                 receiver,
                 amount,

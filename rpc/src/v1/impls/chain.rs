@@ -22,7 +22,7 @@ use ccore::{
 };
 use ckey::{public_to_address, NetworkId, PlatformAddress, Public};
 use cstate::{AssetScheme, AssetSchemeAddress, OwnedAsset};
-use ctypes::invoice::{ParcelInvoice, TransactionInvoice};
+use ctypes::invoice::Invoice;
 use ctypes::parcel::Action;
 use ctypes::{BlockNumber, ShardId};
 use primitives::{H256, U256};
@@ -97,7 +97,7 @@ where
         }
     }
 
-    fn get_parcel_invoice(&self, parcel_hash: H256) -> Result<Option<ParcelInvoice>> {
+    fn get_parcel_invoice(&self, parcel_hash: H256) -> Result<Option<Invoice>> {
         Ok(self.client.parcel_invoice(parcel_hash.into()))
     }
 
@@ -105,7 +105,7 @@ where
         Ok(self.client.transaction(transaction_hash.into()).map(Into::into))
     }
 
-    fn get_transaction_invoice(&self, transaction_hash: H256) -> Result<Option<TransactionInvoice>> {
+    fn get_transaction_invoice(&self, transaction_hash: H256) -> Result<Option<Invoice>> {
         Ok(self.client.transaction_invoice(transaction_hash.into()))
     }
 

@@ -358,8 +358,8 @@ export default class CodeChain {
             secret = faucetSecret
         } = options || {};
         const parcel = this.sdk.core
-            .createAssetTransactionGroupParcel({
-                transactions: [tx]
+            .createAssetTransactionParcel({
+                transaction: tx
             })
             .sign({
                 secret,
@@ -378,11 +378,15 @@ export default class CodeChain {
         amount: number;
         recipient?: string | AssetTransferAddress;
         secret?: string;
+        seq?: U256 | number;
+        awaitMint?: boolean;
     }) {
         const {
             amount,
+            seq,
             recipient = await this.createP2PKHAddress(),
-            secret
+            secret,
+            awaitMint = true
         } = params;
         const tx = this.sdk.core.createAssetMintTransaction({
             scheme: {
@@ -392,55 +396,19 @@ export default class CodeChain {
             },
             recipient
         });
-        await this.sendTransaction(tx, { secret });
+        await this.sendTransaction(tx, {
+            secret,
+            seq,
+            awaitInvoice: awaitMint
+        });
+        if (!awaitMint) {
+            return null;
+        }
         const asset = await this.sdk.rpc.chain.getAsset(tx.hash(), 0);
         if (asset === null) {
             throw Error(`Failed to mint asset`);
         }
         return { asset };
-    }
-
-    public async sendTransactions(
-        txs: Transaction[],
-        options?: { seq?: U256 | number; awaitInvoice?: boolean }
-    ) {
-        const {
-            seq = (await this.sdk.rpc.chain.getSeq(faucetAddress)) || 0,
-            awaitInvoice = true
-        } = options || {};
-        const parcel = this.sdk.core
-            .createAssetTransactionGroupParcel({
-                transactions: txs
-            })
-            .sign({
-                secret: faucetSecret,
-                fee: 10 + this.id,
-                seq
-            });
-        const parcelHash = await this.sdk.rpc.chain.sendSignedParcel(parcel);
-        if (awaitInvoice) {
-            return this.sdk.rpc.chain.getParcelInvoice(parcelHash, {
-                timeout: 300 * 1000
-            });
-        }
-    }
-
-    public async mintAssets(params: { count: number; seq?: U256 | number }) {
-        const { count, seq } = params;
-        let txs: Transaction[] = [];
-        const recipient = await this.createP2PKHAddress();
-        for (let i = 0; i < count; i++) {
-            const tx = this.sdk.core.createAssetMintTransaction({
-                scheme: {
-                    shardId: 0,
-                    metadata: "",
-                    amount: 1
-                },
-                recipient
-            });
-            txs.push(tx);
-        }
-        await this.sendTransactions(txs, { seq, awaitInvoice: false });
     }
 
     public async signTransferInput(
