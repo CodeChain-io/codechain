@@ -138,7 +138,7 @@ describe("Memory pool memory limit test", () => {
         "To self",
         async () => {
             for (let i = 0; i < sizeLimit; i++) {
-                await nodeA.mintAssets({ count: mintSize, seq: i });
+                await nodeA.mintAsset({ amount: 1, seq: i, awaitMint: false });
             }
             const pendingParcels = await nodeA.sdk.rpc.chain.getPendingParcels();
             expect(pendingParcels.length).toEqual(sizeLimit);
@@ -166,7 +166,11 @@ describe("Memory pool memory limit test", () => {
             "More than limit",
             async () => {
                 for (let i = 0; i < sizeLimit; i++) {
-                    await nodeA.mintAssets({ count: mintSize, seq: i });
+                    await nodeA.mintAsset({
+                        amount: mintSize,
+                        seq: i,
+                        awaitMint: false
+                    });
                 }
 
                 for (let i = 0; i < 10; i++) {
@@ -305,8 +309,11 @@ describe("Timelock", () => {
             assetType: asset.assetType,
             recipient: await node.createP2PKHAddress()
         });
-        const invoice = await node.sendTransaction(failedTx);
-        expect(invoice.success).toBe(false);
+        const invoice1 = await node.sendTransaction(failedTx);
+        if (invoice1 == null) {
+            throw Error("Cannot get the first invoice");
+        }
+        expect(invoice1.success).toBe(false);
 
         const output0 = failedTx.getTransferredAsset(0);
         const tx = node.sdk.core.createAssetTransferTransaction();
@@ -327,10 +334,15 @@ describe("Timelock", () => {
         await node.sendTransaction(tx, { awaitInvoice: false });
         await checkTx(tx.hash(), false);
         await node.sdk.rpc.devel.startSealing();
-        expect(
-            (await node.sdk.rpc.chain.getTransactionInvoice(tx.hash())).error
-                .type
-        ).toEqual("AssetNotFound");
+        const invoice2 = await node.sdk.rpc.chain.getTransactionInvoice(
+            tx.hash()
+        );
+        if (invoice2 == null) {
+            throw Error("Cannot get the second invoice");
+        }
+        expect(invoice2.success).toBe(false);
+        expect(invoice2.error!.type).toBe("InvalidTransaction");
+        expect(invoice2.error!.content.type).toBe("AssetNotFound");
     });
 
     describe("Parcels should go into the future queue and then move to current", async () => {

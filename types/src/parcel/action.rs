@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ccrypto::Blake;
-use ckey::{Address, Public, Signature};
+use ckey::{Address, Public};
 use heapsize::HeapSizeOf;
 use primitives::{Bytes, H256, U256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
@@ -23,7 +23,7 @@ use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 use super::super::transaction::Transaction;
 use super::super::ShardId;
 
-const ASSET_TRANSACTION_GROUP: u8 = 1;
+const ASSET_TRANSACTION: u8 = 1;
 const PAYMENT: u8 = 2;
 const SET_REGULAR_KEY: u8 = 3;
 const CREATE_SHARD: u8 = 4;
@@ -40,12 +40,7 @@ pub struct ShardChange {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Action {
-    AssetTransactionGroup {
-        /// Transaction, can be either asset mint or asset transfer
-        transactions: Vec<Transaction>,
-        changes: Vec<ShardChange>,
-        signatures: Vec<Signature>,
-    },
+    AssetTransaction(Transaction),
     Payment {
         receiver: Address,
         /// Transferred amount.
@@ -76,15 +71,7 @@ impl Action {
 impl HeapSizeOf for Action {
     fn heap_size_of_children(&self) -> usize {
         match self {
-            Action::AssetTransactionGroup {
-                transactions,
-                changes,
-                signatures,
-            } => {
-                transactions.heap_size_of_children()
-                    + changes.heap_size_of_children()
-                    + signatures.heap_size_of_children()
-            }
+            Action::AssetTransaction(transaction) => transaction.heap_size_of_children(),
             Action::SetShardOwners {
                 shard_id: _,
                 owners,
@@ -101,16 +88,10 @@ impl HeapSizeOf for Action {
 impl Encodable for Action {
     fn rlp_append(&self, s: &mut RlpStream) {
         match self {
-            Action::AssetTransactionGroup {
-                transactions,
-                changes,
-                signatures,
-            } => {
-                s.begin_list(4);
-                s.append(&ASSET_TRANSACTION_GROUP);
-                s.append_list(transactions);
-                s.append_list(changes);
-                s.append_list(signatures);
+            Action::AssetTransaction(transaction) => {
+                s.begin_list(2);
+                s.append(&ASSET_TRANSACTION);
+                s.append(transaction);
             }
             Action::Payment {
                 receiver,
@@ -162,15 +143,11 @@ impl Encodable for Action {
 impl Decodable for Action {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
         match rlp.val_at(0)? {
-            ASSET_TRANSACTION_GROUP => {
-                if rlp.item_count()? != 4 {
+            ASSET_TRANSACTION => {
+                if rlp.item_count()? != 2 {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
-                Ok(Action::AssetTransactionGroup {
-                    transactions: rlp.list_at(1)?,
-                    changes: rlp.list_at(2)?,
-                    signatures: rlp.list_at(3)?,
-                })
+                Ok(Action::AssetTransaction(rlp.val_at(1)?))
             }
             PAYMENT => {
                 if rlp.item_count()? != 3 {

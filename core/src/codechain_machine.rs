@@ -82,14 +82,9 @@ impl CodeChainMachine {
         verify_timelock: bool,
     ) -> Result<(), Error> {
         if verify_timelock {
-            match parcel.action {
-                Action::AssetTransactionGroup {
-                    ref transactions,
-                    ..
-                } => {
-                    for transaction in transactions {
-                        Self::verify_transaction_timelock(transaction, header, client)?;
-                    }
+            match &parcel.action {
+                Action::AssetTransaction(transaction) => {
+                    Self::verify_transaction_timelock(transaction, header, client)?;
                 }
                 _ => (),
             }

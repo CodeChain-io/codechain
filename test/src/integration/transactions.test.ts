@@ -209,16 +209,21 @@ describe("transactions", () => {
             amount: 1
         });
         await node.signTransferInput(tx1, 0);
+        const invoice1 = await node.sendTransaction(tx1);
+        if (invoice1 == null) {
+            throw Error("Cannot send a transaction");
+        }
+        expect(invoice1.success).toBe(true);
 
         const transferredAsset = tx1.getTransferredAsset(0);
         const tx2 = node.sdk.core.createAssetTransferTransaction();
         tx2.addBurns(transferredAsset);
         await node.signTransferBurn(tx2, 0);
-
-        const invoices = await node.sendTransactions([tx1, tx2]);
-
-        expect(invoices[0].success).toBe(true);
-        expect(invoices[1].success).toBe(true);
+        const invoice2 = await node.sendTransaction(tx2);
+        if (invoice2 == null) {
+            throw Error("Cannot send a transaction");
+        }
+        expect(invoice2.success).toBe(true);
 
         expect(await node.sdk.rpc.chain.getAsset(tx2.hash(), 0)).toBe(null);
     });
@@ -273,6 +278,11 @@ describe("transactions", () => {
             amount: 1
         });
         await node.signTransferInput(tx1, 0);
+        const invoice1 = await node.sendTransaction(tx1);
+        if (invoice1 == null) {
+            throw Error("Cannot send a transaction");
+        }
+        expect(invoice1.success).toBe(true);
 
         const transferredAsset = tx1.getTransferredAsset(0);
         const tx2 = node.sdk.core.createAssetTransferTransaction();
@@ -286,10 +296,11 @@ describe("transactions", () => {
             tx2.inputs[0],
             tx2.hashWithoutScript()
         );
-        const invoices = await node.sendTransactions([tx1, tx2]);
-
-        expect(invoices[0].success).toBe(true);
-        expect(invoices[1].success).toBe(false);
+        const invoice2 = await node.sendTransaction(tx2);
+        if (invoice2 == null) {
+            throw Error("Cannot send a transaction");
+        }
+        expect(invoice2.success).toBe(false);
 
         expect(await node.sdk.rpc.chain.getAsset(tx1.hash(), 0)).not.toBe(null);
     });
@@ -348,8 +359,8 @@ describe("transactions", () => {
         test("registrar sends a parcel", async () => {
             const invoice = await node
                 .sendParcel(
-                    node.sdk.core.createAssetTransactionGroupParcel({
-                        transactions: [transferTx]
+                    node.sdk.core.createAssetTransactionParcel({
+                        transaction: transferTx
                     }),
                     {
                         account: registrar
@@ -360,14 +371,17 @@ describe("transactions", () => {
                         timeout: 300 * 1000
                     });
                 });
-            expect(invoice[0].success).toBe(true);
+            if (invoice == null) {
+                throw Error("Cannot get the invoice");
+            }
+            expect(invoice.success).toBe(true);
         });
 
         test("nonRegistrar sends a parcel", async () => {
             const invoice = await node
                 .sendParcel(
-                    node.sdk.core.createAssetTransactionGroupParcel({
-                        transactions: [transferTx]
+                    node.sdk.core.createAssetTransactionParcel({
+                        transaction: transferTx
                     }),
                     {
                         account: nonRegistrar
@@ -378,8 +392,12 @@ describe("transactions", () => {
                         timeout: 300 * 1000
                     });
                 });
-            expect(invoice[0].success).toBe(false);
-            expect(invoice[0].error.type).toContain("NotRegistrar");
+            if (invoice == null) {
+                throw Error("Cannot get the invoice");
+            }
+            expect(invoice.success).toBe(false);
+            expect(invoice.error!.type).toBe("InvalidTransaction");
+            expect(invoice.error.content.type).toBe("NotRegistrar");
         });
     });
 
@@ -436,7 +454,8 @@ describe("transactions", () => {
                 );
             await node.sdk.key.signTransactionInput(transferTx, 0);
             assets = transferTx.getTransferredAssets();
-            await node.sendTransactions([mintTx, transferTx]);
+            await node.sendTransaction(mintTx);
+            await node.sendTransaction(transferTx);
         });
 
         test("Can't add burns after signing with the signature tag of all inputs", async () => {
@@ -453,7 +472,8 @@ describe("transactions", () => {
             await node.sdk.key.signTransactionBurn(tx, 0);
             const invoice = await node.sendTransaction(tx);
             expect(invoice.success).toBe(false);
-            expect(invoice.error!.type).toBe("FailedToUnlock");
+            expect(invoice.error!.type).toBe("InvalidTransaction");
+            expect(invoice.error!.content.type).toBe("FailedToUnlock");
         });
 
         test("Can add burns after signing with the signature tag of single input", async () => {
@@ -495,7 +515,8 @@ describe("transactions", () => {
                 throw Error("Cannot send a transaction");
             }
             expect(invoice.success).toBe(false);
-            expect(invoice.error!.type).toBe("FailedToUnlock");
+            expect(invoice.error!.type).toBe("InvalidTransaction");
+            expect(invoice.error!.content.type).toBe("FailedToUnlock");
         });
 
         test("Can add inputs after signing with the signature tag of single input", async () => {
@@ -535,7 +556,8 @@ describe("transactions", () => {
                 throw Error("Cannot send a transaction");
             }
             expect(invoice.success).toBe(false);
-            expect(invoice.error!.type).toBe("FailedToUnlock");
+            expect(invoice.error!.type).toBe("InvalidTransaction");
+            expect(invoice.error!.content.type).toBe("FailedToUnlock");
         });
 
         test("Can add outputs after signing the signature tag of some outputs", async () => {
@@ -675,26 +697,50 @@ describe("transactions", () => {
             });
             await node.sdk.key.signTransactionInput(composeTx, 0);
 
-            const parcel = node.sdk.core
-                .createAssetTransactionGroupParcel({
-                    transactions: [mintTx, composeTx]
+            const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
+            const parcel0 = node.sdk.core
+                .createAssetTransactionParcel({
+                    transaction: mintTx
                 })
                 .sign({
                     secret: faucetSecret,
                     fee: 10,
-                    seq: await node.sdk.rpc.chain.getSeq(faucetAddress)
+                    seq
                 });
+            await node.sdk.rpc.chain.sendSignedParcel(parcel0);
 
-            await node.sdk.rpc.chain.sendSignedParcel(parcel);
+            const parcel1 = node.sdk.core
+                .createAssetTransactionParcel({
+                    transaction: composeTx
+                })
+                .sign({
+                    secret: faucetSecret,
+                    fee: 10,
+                    seq: seq.increase()
+                });
+            await node.sdk.rpc.chain.sendSignedParcel(parcel1);
 
-            const invoice = await node.sdk.rpc.chain.getParcelInvoice(
-                parcel.hash(),
+            const invoice0 = await node.sdk.rpc.chain.getParcelInvoice(
+                parcel0.hash(),
                 {
                     timeout: 300 * 1000
                 }
             );
-            expect(invoice[0].success).toBe(true);
-            expect(invoice[1].success).toBe(true);
+            if (invoice0 == null) {
+                throw Error("Cannot get the invoice of mint transaction");
+            }
+            expect(invoice0.success).toBe(true);
+
+            const invoice1 = await node.sdk.rpc.chain.getParcelInvoice(
+                parcel1.hash(),
+                {
+                    timeout: 300 * 1000
+                }
+            );
+            if (invoice1 == null) {
+                throw Error("Cannot get the invoice of compose transaction");
+            }
+            expect(invoice1.success).toBe(true);
         });
 
         test("AssetDecompose", async () => {
@@ -735,27 +781,72 @@ describe("transactions", () => {
             });
             await node.sdk.key.signTransactionInput(decomposeTx, 0);
 
-            const parcel = node.sdk.core
-                .createAssetTransactionGroupParcel({
-                    transactions: [mintTx, composeTx, decomposeTx]
+            const seq0 = await node.sdk.rpc.chain.getSeq(faucetAddress);
+            const seq1 = seq0.increase();
+            const seq2 = seq1.increase();
+
+            const parcel0 = node.sdk.core
+                .createAssetTransactionParcel({
+                    transaction: mintTx
                 })
                 .sign({
                     secret: faucetSecret,
                     fee: 10,
-                    seq: await node.sdk.rpc.chain.getSeq(faucetAddress)
+                    seq: seq0
+                });
+            const parcel1 = node.sdk.core
+                .createAssetTransactionParcel({
+                    transaction: composeTx
+                })
+                .sign({
+                    secret: faucetSecret,
+                    fee: 10,
+                    seq: seq1
+                });
+            const parcel2 = node.sdk.core
+                .createAssetTransactionParcel({
+                    transaction: decomposeTx
+                })
+                .sign({
+                    secret: faucetSecret,
+                    fee: 10,
+                    seq: seq2
                 });
 
-            await node.sdk.rpc.chain.sendSignedParcel(parcel);
+            await node.sdk.rpc.chain.sendSignedParcel(parcel0);
+            await node.sdk.rpc.chain.sendSignedParcel(parcel1);
+            await node.sdk.rpc.chain.sendSignedParcel(parcel2);
 
-            const invoice = await node.sdk.rpc.chain.getParcelInvoice(
-                parcel.hash(),
+            const invoice0 = await node.sdk.rpc.chain.getParcelInvoice(
+                parcel0.hash(),
                 {
                     timeout: 300 * 1000
                 }
             );
-            expect(invoice[0].success).toBe(true);
-            expect(invoice[1].success).toBe(true);
-            expect(invoice[2].success).toBe(true);
+            if (invoice0 == null) {
+                throw Error("Cannot get the invoice of mint");
+            }
+            expect(invoice0.success).toBe(true);
+            const invoice1 = await node.sdk.rpc.chain.getParcelInvoice(
+                parcel1.hash(),
+                {
+                    timeout: 300 * 1000
+                }
+            );
+            if (invoice1 == null) {
+                throw Error("Cannot get the invoice of compose");
+            }
+            expect(invoice1.success).toBe(true);
+            const invoice2 = await node.sdk.rpc.chain.getParcelInvoice(
+                parcel2.hash(),
+                {
+                    timeout: 300 * 1000
+                }
+            );
+            if (invoice2 == null) {
+                throw Error("Cannot get the invoice of decompose");
+            }
+            expect(invoice2.success).toBe(true);
         });
     });
 

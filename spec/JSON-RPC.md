@@ -59,11 +59,9 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
 
 ## Actions
 
-### AssetTransactionGroup Action
+### AssetTransaction Action
 
- - action: "changeShardState"
- - transactions: `Transaction[]`
- - changes: `ShardChange[]`
+ - transaction: `Transaction`
 
 ### Payment Action
 

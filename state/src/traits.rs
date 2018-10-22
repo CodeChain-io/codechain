@@ -16,7 +16,7 @@
 
 use ckey::{Address, Public};
 use cmerkle::Result as TrieResult;
-use ctypes::invoice::TransactionInvoice;
+use ctypes::invoice::Invoice;
 use ctypes::transaction::Transaction;
 use ctypes::ShardId;
 use cvm::ChainTimeInfo;
@@ -70,7 +70,7 @@ where
         sender: &Address,
         shard_owners: &[Address],
         client: &C,
-    ) -> StateResult<TransactionInvoice>;
+    ) -> StateResult<Invoice>;
 }
 
 pub trait TopState<B>

@@ -205,7 +205,7 @@ describe("solo - 1 node", () => {
         });
     });
 
-    test.skip("Sending invalid parcels over the limits (in action 1: AssetTransactionGroup)", done =>
+    test.skip("Sending invalid parcels over the limits (in action 1: AssetTransaction)", done =>
         done.fail("not implemented"));
     test.skip("Sending invalid parcels over the limits (in action 5: SetShardOwners)", done =>
         done.fail("not implemented"));

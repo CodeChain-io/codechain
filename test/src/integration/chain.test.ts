@@ -209,8 +209,8 @@ describe("solo - 1 node", () => {
             txAssetScheme = tx.getAssetScheme();
 
             const parcel = node.sdk.core
-                .createAssetTransactionGroupParcel({
-                    transactions: [tx]
+                .createAssetTransactionParcel({
+                    transaction: tx
                 })
                 .sign({
                     secret: faucetSecret,

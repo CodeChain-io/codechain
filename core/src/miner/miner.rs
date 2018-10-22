@@ -229,7 +229,7 @@ impl Miner {
                     cdebug!(MINER, "Rejected parcel {:?}: already in the blockchain", hash);
                     return Err(StateError::from(ParcelError::ParcelAlreadyImported).into())
                 }
-                if client.is_any_transaction_included(&mut parcel.iter_transactions()) {
+                if client.is_transaction_included(&parcel.asset_transaction_hash()) {
                     return Err(StateError::from(ParcelError::TransactionAlreadyImported).into())
                 }
                 match self
@@ -288,56 +288,56 @@ impl Miner {
     fn calculate_timelock<C: BlockChain>(&self, parcel: &SignedParcel, client: &C) -> Result<ParcelTimelock, Error> {
         let mut max_block = None;
         let mut max_timestamp = None;
-        match parcel.as_unsigned().action {
-            Action::AssetTransactionGroup {
-                ref transactions,
-                ..
-            } => {
-                for transaction in transactions {
-                    let inputs = match transaction {
-                        Transaction::AssetTransfer {
-                            inputs,
-                            ..
-                        } => inputs,
-                        _ => continue,
-                    };
-                    for input in inputs {
-                        if let Some(timelock) = input.timelock {
-                            let (is_block_number, value) = match timelock {
-                                Timelock::Block(value) => (true, value),
-                                Timelock::BlockAge(value) => (
-                                    true,
-                                    client.transaction_block_number(input.prev_out.transaction_hash.into()).ok_or(
-                                        Error::State(StateError::Transaction(TransactionError::Timelocked {
-                                            timelock,
-                                            remaining_time: u64::max_value(),
-                                        })),
-                                    )? + value,
-                                ),
-                                Timelock::Time(value) => (false, value),
-                                Timelock::TimeAge(value) => (
-                                    false,
-                                    client.transaction_block_timestamp(input.prev_out.transaction_hash.into()).ok_or(
-                                        Error::State(StateError::Transaction(TransactionError::Timelocked {
-                                            timelock,
-                                            remaining_time: u64::max_value(),
-                                        })),
-                                    )? + value,
-                                ),
-                            };
-                            if is_block_number {
-                                if max_block.is_none() || max_block.expect("The previous guard ensures") < value {
-                                    max_block = Some(value);
-                                }
-                            } else {
-                                if max_timestamp.is_none() || max_timestamp.expect("The previous guard ensures") < value
-                                {
-                                    max_timestamp = Some(value);
+        match &parcel.as_unsigned().action {
+            Action::AssetTransaction(transaction) => {
+                match transaction {
+                    Transaction::AssetTransfer {
+                        inputs,
+                        ..
+                    } => {
+                        for input in inputs {
+                            if let Some(timelock) = input.timelock {
+                                let (is_block_number, value) = match timelock {
+                                    Timelock::Block(value) => (true, value),
+                                    Timelock::BlockAge(value) => (
+                                        true,
+                                        client.transaction_block_number(input.prev_out.transaction_hash.into()).ok_or(
+                                            Error::State(StateError::Transaction(TransactionError::Timelocked {
+                                                timelock,
+                                                remaining_time: u64::max_value(),
+                                            })),
+                                        )? + value,
+                                    ),
+                                    Timelock::Time(value) => (false, value),
+                                    Timelock::TimeAge(value) => (
+                                        false,
+                                        client
+                                            .transaction_block_timestamp(input.prev_out.transaction_hash.into())
+                                            .ok_or(Error::State(StateError::Transaction(
+                                                TransactionError::Timelocked {
+                                                    timelock,
+                                                    remaining_time: u64::max_value(),
+                                                },
+                                            )))?
+                                            + value,
+                                    ),
+                                };
+                                if is_block_number {
+                                    if max_block.is_none() || max_block.expect("The previous guard ensures") < value {
+                                        max_block = Some(value);
+                                    }
+                                } else {
+                                    if max_timestamp.is_none()
+                                        || max_timestamp.expect("The previous guard ensures") < value
+                                    {
+                                        max_timestamp = Some(value);
+                                    }
                                 }
                             }
                         }
                     }
-                }
+                    _ => {}
+                };
             }
             _ => (),
         }

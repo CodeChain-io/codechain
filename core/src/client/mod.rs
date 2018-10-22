@@ -33,7 +33,7 @@ use ckey::{Address, Public};
 use cmerkle::Result as TrieResult;
 use cnetwork::NodeId;
 use cstate::{ActionHandler, AssetScheme, AssetSchemeAddress, OwnedAsset, TopStateInfo};
-use ctypes::invoice::{ParcelInvoice, TransactionInvoice};
+use ctypes::invoice::Invoice;
 use ctypes::parcel::ShardChange;
 use ctypes::transaction::Transaction;
 use ctypes::{BlockNumber, ShardId};
@@ -84,13 +84,8 @@ pub trait TransactionInfo {
 
     fn transaction_block_timestamp(&self, id: TransactionId) -> Option<u64>;
 
-    fn is_any_transaction_included(&self, transactions: &mut Iterator<Item = H256>) -> bool {
-        for hash in transactions {
-            if self.transaction_parcel(TransactionId::Hash(hash)).is_some() {
-                return true
-            }
-        }
-        false
+    fn is_transaction_included(&self, transaction: &Option<H256>) -> bool {
+        transaction.as_ref().map(|hash| self.transaction_parcel(TransactionId::Hash(*hash)).is_some()).unwrap_or(false)
     }
 }
 
@@ -230,12 +225,12 @@ pub trait BlockChainClient:
     fn parcel(&self, id: ParcelId) -> Option<LocalizedParcel>;
 
     /// Get parcel invoice with given hash.
-    fn parcel_invoice(&self, id: ParcelId) -> Option<ParcelInvoice>;
+    fn parcel_invoice(&self, id: ParcelId) -> Option<Invoice>;
 
     /// Get the transaction with given hash.
     fn transaction(&self, id: TransactionId) -> Option<Transaction>;
 
-    fn transaction_invoice(&self, id: TransactionId) -> Option<TransactionInvoice>;
+    fn transaction_invoice(&self, id: TransactionId) -> Option<Invoice>;
 
     fn custom_handlers(&self) -> Vec<Arc<ActionHandler>>;
 }
