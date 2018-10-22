@@ -1240,6 +1240,512 @@ mod tests {
     }
 
     #[test]
+    fn mint_and_compose_and_decompose() {
+        let network_id = "tc".into();
+        let shard_id = 0;
+        let world_id = 0;
+        let mut state = get_temp_shard_state(shard_id);
+        let sender = address();
+        let shard_owner = address();
+        assert_eq!(Ok(()), state.create_world(shard_id, &0, &[sender], &[], &shard_owner, &[shard_owner]));
+        assert_eq!(Ok(()), state.commit());
+
+        let metadata = "metadata".to_string();
+        let lock_script_hash = H160::from("0xb042ad154a3359d276835c903587ebafefea22af");
+        let registrar = None;
+        let amount = 30;
+        let mint = Transaction::AssetMint {
+            network_id,
+            shard_id,
+            world_id,
+            metadata: metadata.clone(),
+            output: AssetMintOutput {
+                lock_script_hash,
+                parameters: vec![],
+                amount: Some(amount),
+            },
+            registrar,
+            nonce: 0,
+        };
+        let mint_hash = mint.hash();
+        assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &mint, &sender, &[shard_owner]));
+        let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id, world_id);
+        let asset_type = asset_scheme_address.clone().into();
+
+        let compose = Transaction::AssetCompose {
+            network_id,
+            shard_id,
+            world_id,
+            nonce: 0,
+            metadata: "composed".to_string(),
+            registrar,
+            inputs: vec![AssetTransferInput {
+                prev_out: AssetOutPoint {
+                    transaction_hash: mint_hash,
+                    index: 0,
+                    asset_type,
+                    amount,
+                },
+                lock_script: vec![0x30, 0x01],
+                unlock_script: vec![],
+            }],
+            output: AssetMintOutput {
+                lock_script_hash,
+                parameters: vec![],
+                amount: Some(1),
+            },
+        };
+        let compose_hash = compose.hash();
+
+        assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &compose, &sender, &[shard_owner]));
+
+        let composed_asset_scheme_address = AssetSchemeAddress::new(compose_hash, shard_id, world_id);
+        let composed_asset_scheme = state.asset_scheme(&composed_asset_scheme_address);
+        let composed_asset_type = composed_asset_scheme_address.into();
+
+        assert_eq!(
+            Ok(Some(AssetScheme::new_with_pool(
+                "composed".to_string(),
+                1,
+                registrar,
+                vec![Asset::new(asset_type, 30)]
+            ))),
+            composed_asset_scheme
+        );
+
+        let composed_asset_address = OwnedAssetAddress::new(compose_hash, 0, shard_id);
+        let composed_asset = state.asset(&composed_asset_address);
+        assert_eq!(Ok(Some(OwnedAsset::new(composed_asset_type, lock_script_hash, vec![], 1))), composed_asset);
+
+        let random_lock_script_hash = H160::random();
+        let decompose = Transaction::AssetDecompose {
+            network_id,
+            nonce: 0,
+            input: AssetTransferInput {
+                prev_out: AssetOutPoint {
+                    transaction_hash: compose_hash,
+                    index: 0,
+                    asset_type: composed_asset_type,
+                    amount: 1,
+                },
+                lock_script: vec![0x30, 0x01],
+                unlock_script: vec![],
+            },
+            outputs: vec![AssetTransferOutput {
+                lock_script_hash: random_lock_script_hash,
+                parameters: vec![],
+                asset_type,
+                amount,
+            }],
+        };
+        let decompose_hash = decompose.hash();
+
+        assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &decompose, &sender, &[shard_owner]));
+
+        let asset_scheme = state.asset_scheme(&asset_scheme_address);
+
+        assert_eq!(Ok(Some(AssetScheme::new("metadata".to_string(), 30, registrar))), asset_scheme);
+
+        let decomposed_asset_address = OwnedAssetAddress::new(decompose_hash, 0, shard_id);
+        let decomposed_asset = state.asset(&decomposed_asset_address);
+        assert_eq!(Ok(Some(OwnedAsset::new(asset_type, random_lock_script_hash, vec![], 30))), decomposed_asset);
+    }
+
+    #[test]
+    fn decompose_fail_invalid_input_different_asset_type() {
+        let network_id = "tc".into();
+        let shard_id = 0;
+        let world_id = 0;
+        let mut state = get_temp_shard_state(shard_id);
+        let sender = address();
+        let shard_owner = address();
+        assert_eq!(Ok(()), state.create_world(shard_id, &0, &[sender], &[], &shard_owner, &[shard_owner]));
+        assert_eq!(Ok(()), state.commit());
+
+        let metadata = "metadata".to_string();
+        let lock_script_hash = H160::from("0xb042ad154a3359d276835c903587ebafefea22af");
+        let registrar = None;
+        let amount = 30;
+        let mint = Transaction::AssetMint {
+            network_id,
+            shard_id,
+            world_id,
+            metadata: metadata.clone(),
+            output: AssetMintOutput {
+                lock_script_hash,
+                parameters: vec![],
+                amount: Some(amount),
+            },
+            registrar,
+            nonce: 0,
+        };
+        let mint_hash = mint.hash();
+        assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &mint, &sender, &[shard_owner]));
+        let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id, world_id);
+        let asset_type = asset_scheme_address.clone().into();
+
+        let mint2 = Transaction::AssetMint {
+            network_id,
+            shard_id,
+            world_id,
+            metadata: "invalid_asset".to_string(),
+            output: AssetMintOutput {
+                lock_script_hash,
+                parameters: vec![],
+                amount: Some(1),
+            },
+            registrar,
+            nonce: 0,
+        };
+        let mint2_hash = mint2.hash();
+        let asset_scheme_address2 = AssetSchemeAddress::new(mint_hash, shard_id, world_id);
+        let asset_type2 = asset_scheme_address2.clone().into();
+        assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &mint2, &sender, &[shard_owner]));
+
+        let compose = Transaction::AssetCompose {
+            network_id,
+            shard_id,
+            world_id,
+            nonce: 0,
+            metadata: "composed".to_string(),
+            registrar,
+            inputs: vec![AssetTransferInput {
+                prev_out: AssetOutPoint {
+                    transaction_hash: mint_hash,
+                    index: 0,
+                    asset_type,
+                    amount,
+                },
+                lock_script: vec![0x30, 0x01],
+                unlock_script: vec![],
+            }],
+            output: AssetMintOutput {
+                lock_script_hash,
+                parameters: vec![],
+                amount: Some(1),
+            },
+        };
+        let compose_hash = compose.hash();
+
+        assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &compose, &sender, &[shard_owner]));
+
+        let composed_asset_scheme_address = AssetSchemeAddress::new(compose_hash, shard_id, world_id);
+        let composed_asset_scheme = state.asset_scheme(&composed_asset_scheme_address);
+        let composed_asset_type = composed_asset_scheme_address.into();
+
+        assert_eq!(
+            Ok(Some(AssetScheme::new_with_pool(
+                "composed".to_string(),
+                1,
+                registrar,
+                vec![Asset::new(asset_type, 30)]
+            ))),
+            composed_asset_scheme
+        );
+
+        let composed_asset_address = OwnedAssetAddress::new(compose_hash, 0, shard_id);
+        let composed_asset = state.asset(&composed_asset_address);
+        assert_eq!(Ok(Some(OwnedAsset::new(composed_asset_type, lock_script_hash, vec![], 1))), composed_asset);
+
+        let random_lock_script_hash = H160::random();
+        let decompose = Transaction::AssetDecompose {
+            network_id,
+            nonce: 0,
+            input: AssetTransferInput {
+                prev_out: AssetOutPoint {
+                    transaction_hash: mint2_hash,
+                    index: 0,
+                    asset_type: asset_type2,
+                    amount: 1,
+                },
+                lock_script: vec![0x30, 0x01],
+                unlock_script: vec![],
+            },
+            outputs: vec![AssetTransferOutput {
+                lock_script_hash: random_lock_script_hash,
+                parameters: vec![],
+                asset_type,
+                amount,
+            }],
+        };
+
+        assert_eq!(
+            Ok(TransactionInvoice::Fail(TransactionError::InvalidDecomposedInput {
+                address: asset_type,
+                got: 0
+            })),
+            state.apply(shard_id, &decompose, &sender, &[shard_owner])
+        );
+    }
+
+    #[test]
+    fn decompose_fail_invalid_output_insufficient_output() {
+        let network_id = "tc".into();
+        let shard_id = 0;
+        let world_id = 0;
+        let mut state = get_temp_shard_state(shard_id);
+        let sender = address();
+        let shard_owner = address();
+        assert_eq!(Ok(()), state.create_world(shard_id, &0, &[sender], &[], &shard_owner, &[shard_owner]));
+        assert_eq!(Ok(()), state.commit());
+
+        let metadata = "metadata".to_string();
+        let lock_script_hash = H160::from("0xb042ad154a3359d276835c903587ebafefea22af");
+        let registrar = None;
+        let amount = 30;
+        let mint = Transaction::AssetMint {
+            network_id,
+            shard_id,
+            world_id,
+            metadata: metadata.clone(),
+            output: AssetMintOutput {
+                lock_script_hash,
+                parameters: vec![],
+                amount: Some(amount),
+            },
+            registrar,
+            nonce: 0,
+        };
+        let mint_hash = mint.hash();
+        assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &mint, &sender, &[shard_owner]));
+        let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id, world_id);
+        let asset_type = asset_scheme_address.clone().into();
+
+        let mint2 = Transaction::AssetMint {
+            network_id,
+            shard_id,
+            world_id,
+            metadata: "invalid_asset".to_string(),
+            output: AssetMintOutput {
+                lock_script_hash,
+                parameters: vec![],
+                amount: Some(1),
+            },
+            registrar,
+            nonce: 0,
+        };
+        let mint2_hash = mint2.hash();
+        let asset_scheme_address2 = AssetSchemeAddress::new(mint2_hash, shard_id, world_id);
+        let asset_type2 = asset_scheme_address2.clone().into();
+        assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &mint2, &sender, &[shard_owner]));
+
+        let compose = Transaction::AssetCompose {
+            network_id,
+            shard_id,
+            world_id,
+            nonce: 0,
+            metadata: "composed".to_string(),
+            registrar,
+            inputs: vec![
+                AssetTransferInput {
+                    prev_out: AssetOutPoint {
+                        transaction_hash: mint_hash,
+                        index: 0,
+                        asset_type,
+                        amount,
+                    },
+                    lock_script: vec![0x30, 0x01],
+                    unlock_script: vec![],
+                },
+                AssetTransferInput {
+                    prev_out: AssetOutPoint {
+                        transaction_hash: mint2_hash,
+                        index: 0,
+                        asset_type: asset_type2,
+                        amount: 1,
+                    },
+                    lock_script: vec![0x30, 0x01],
+                    unlock_script: vec![],
+                },
+            ],
+            output: AssetMintOutput {
+                lock_script_hash,
+                parameters: vec![],
+                amount: Some(1),
+            },
+        };
+        let compose_hash = compose.hash();
+
+        assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &compose, &sender, &[shard_owner]));
+
+        let composed_asset_scheme_address = AssetSchemeAddress::new(compose_hash, shard_id, world_id);
+        let composed_asset_type = composed_asset_scheme_address.into();
+
+        let composed_asset_address = OwnedAssetAddress::new(compose_hash, 0, shard_id);
+        let composed_asset = state.asset(&composed_asset_address);
+        assert_eq!(Ok(Some(OwnedAsset::new(composed_asset_type, lock_script_hash, vec![], 1))), composed_asset);
+
+        let random_lock_script_hash = H160::random();
+        let decompose = Transaction::AssetDecompose {
+            network_id,
+            nonce: 0,
+            input: AssetTransferInput {
+                prev_out: AssetOutPoint {
+                    transaction_hash: compose_hash,
+                    index: 0,
+                    asset_type: composed_asset_type,
+                    amount: 1,
+                },
+                lock_script: vec![0x30, 0x01],
+                unlock_script: vec![],
+            },
+            outputs: vec![AssetTransferOutput {
+                lock_script_hash: random_lock_script_hash,
+                parameters: vec![],
+                asset_type,
+                amount,
+            }],
+        };
+
+        assert_eq!(
+            Ok(TransactionInvoice::Fail(TransactionError::InvalidDecomposedOutput {
+                address: asset_type2,
+                expected: 1,
+                got: 0
+            })),
+            state.apply(shard_id, &decompose, &sender, &[shard_owner])
+        );
+    }
+
+
+    #[test]
+    fn decompose_fail_invalid_output_insufficient_amount() {
+        let network_id = "tc".into();
+        let shard_id = 0;
+        let world_id = 0;
+        let mut state = get_temp_shard_state(shard_id);
+        let sender = address();
+        let shard_owner = address();
+        assert_eq!(Ok(()), state.create_world(shard_id, &0, &[sender], &[], &shard_owner, &[shard_owner]));
+        assert_eq!(Ok(()), state.commit());
+
+        let metadata = "metadata".to_string();
+        let lock_script_hash = H160::from("0xb042ad154a3359d276835c903587ebafefea22af");
+        let registrar = None;
+        let amount = 30;
+        let mint = Transaction::AssetMint {
+            network_id,
+            shard_id,
+            world_id,
+            metadata: metadata.clone(),
+            output: AssetMintOutput {
+                lock_script_hash,
+                parameters: vec![],
+                amount: Some(amount),
+            },
+            registrar,
+            nonce: 0,
+        };
+        let mint_hash = mint.hash();
+        assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &mint, &sender, &[shard_owner]));
+        let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id, world_id);
+        let asset_type = asset_scheme_address.clone().into();
+
+        let mint2 = Transaction::AssetMint {
+            network_id,
+            shard_id,
+            world_id,
+            metadata: "invalid_asset".to_string(),
+            output: AssetMintOutput {
+                lock_script_hash,
+                parameters: vec![],
+                amount: Some(1),
+            },
+            registrar,
+            nonce: 0,
+        };
+        let mint2_hash = mint2.hash();
+        let asset_scheme_address2 = AssetSchemeAddress::new(mint2_hash, shard_id, world_id);
+        let asset_type2 = asset_scheme_address2.clone().into();
+        assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &mint2, &sender, &[shard_owner]));
+
+        let compose = Transaction::AssetCompose {
+            network_id,
+            shard_id,
+            world_id,
+            nonce: 0,
+            metadata: "composed".to_string(),
+            registrar,
+            inputs: vec![
+                AssetTransferInput {
+                    prev_out: AssetOutPoint {
+                        transaction_hash: mint_hash,
+                        index: 0,
+                        asset_type,
+                        amount,
+                    },
+                    lock_script: vec![0x30, 0x01],
+                    unlock_script: vec![],
+                },
+                AssetTransferInput {
+                    prev_out: AssetOutPoint {
+                        transaction_hash: mint2_hash,
+                        index: 0,
+                        asset_type: asset_type2,
+                        amount: 1,
+                    },
+                    lock_script: vec![0x30, 0x01],
+                    unlock_script: vec![],
+                },
+            ],
+            output: AssetMintOutput {
+                lock_script_hash,
+                parameters: vec![],
+                amount: Some(1),
+            },
+        };
+        let compose_hash = compose.hash();
+
+        assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &compose, &sender, &[shard_owner]));
+
+        let composed_asset_scheme_address = AssetSchemeAddress::new(compose_hash, shard_id, world_id);
+        let composed_asset_type = composed_asset_scheme_address.into();
+
+        let composed_asset_address = OwnedAssetAddress::new(compose_hash, 0, shard_id);
+        let composed_asset = state.asset(&composed_asset_address);
+        assert_eq!(Ok(Some(OwnedAsset::new(composed_asset_type, lock_script_hash, vec![], 1))), composed_asset);
+
+        let random_lock_script_hash = H160::random();
+        let decompose = Transaction::AssetDecompose {
+            network_id,
+            nonce: 0,
+            input: AssetTransferInput {
+                prev_out: AssetOutPoint {
+                    transaction_hash: compose_hash,
+                    index: 0,
+                    asset_type: composed_asset_type,
+                    amount: 1,
+                },
+                lock_script: vec![0x30, 0x01],
+                unlock_script: vec![],
+            },
+            outputs: vec![
+                AssetTransferOutput {
+                    lock_script_hash: random_lock_script_hash,
+                    parameters: vec![],
+                    asset_type,
+                    amount: 10,
+                },
+                AssetTransferOutput {
+                    lock_script_hash: random_lock_script_hash,
+                    parameters: vec![],
+                    asset_type: asset_type2,
+                    amount: 1,
+                },
+            ],
+        };
+
+        assert_eq!(
+            Ok(TransactionInvoice::Fail(TransactionError::InvalidDecomposedOutput {
+                address: asset_type,
+                expected: 30,
+                got: 10
+            })),
+            state.apply(shard_id, &decompose, &sender, &[shard_owner])
+        );
+    }
+
+    #[test]
     fn mint_and_failed_transfer_and_successful_transfer() {
         let network_id = "tc".into();
         let shard_id = 0;
@@ -1721,4 +2227,5 @@ mod tests {
         let world = state.world(world_id);
         assert_eq!(Ok(Some(World::new_with_nonce(owners, users, 0))), world);
     }
+
 }
