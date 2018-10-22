@@ -90,8 +90,8 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
 
 ## Transaction
 
- - type: "createWorld" | "setWorldOwners" | "setWorldUsers"| "assetMint" | "assetTransfer"
- - data: `CreateWorld` | `SetWorldOwners` | `SetWorldUsers`| `AssetMint` | `AssetTransfer`
+ - type: "assetMint" | "assetTransfer"
+ - data: `AssetMint` | `AssetTransfer`
 
 ## AssetScheme
 
@@ -641,7 +641,6 @@ Gets an asset scheme with the given asset type.
 Params:
  1. transaction hash of AssetMintTransaction - `H256`
  2. shard id - `number`
- 3. world_id - `number`
 
 Return Type: `null` | `AssetScheme`
 
@@ -651,7 +650,7 @@ Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "chain_getAssetSchemeByHash", "params": ["0x24df02abcd4e984e90253dc344e89b8431bbb319c66643bfef566dfdf46ec6bc", 0, 0], "id": null}' \
+    -d '{"jsonrpc": "2.0", "method": "chain_getAssetSchemeByHash", "params": ["0x24df02abcd4e984e90253dc344e89b8431bbb319c66643bfef566dfdf46ec6bc", 0], "id": null}' \
     localhost:8080
 ```
 
@@ -1016,7 +1015,7 @@ Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "chain_executeTransactions", "params": [[{"type":"assetMint","data":{"networkId":"17","shardId":0,"worldId":0,"metadata":"{\"name\":\"Gold\",\"description\":\"An asset example\",\"icon_url\":\"https://gold.image/\"}","output":{"lockScriptHash":"0xf42a65ea518ba236c08b261c34af0521fa3cd1aa505e1c18980919cb8945f8f3","parameters":[],"amount":10000},"registrar":null,"nonce":0}}, {"type":"assetMint","data":{"networkId":"17","shardId":1,"worldId":0,"metadata":"{\"name\":\"Gold\",\"description\":\"An asset example\",\"icon_url\":\"https://gold.image/\"}","output":{"lockScriptHash":"0xf42a65ea518ba236c08b261c34af0521fa3cd1aa505e1c18980919cb8945f8f3","parameters":[],"amount":10000},"registrar":null,"nonce":0}}], "cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7"], "id": null}' \
+    -d '{"jsonrpc": "2.0", "method": "chain_executeTransactions", "params": [[{"type":"assetMint","data":{"networkId":"17","shardId":0,"metadata":"{\"name\":\"Gold\",\"description\":\"An asset example\",\"icon_url\":\"https://gold.image/\"}","output":{"lockScriptHash":"0xf42a65ea518ba236c08b261c34af0521fa3cd1aa505e1c18980919cb8945f8f3","parameters":[],"amount":10000},"registrar":null,"nonce":0}}, {"type":"assetMint","data":{"networkId":"17","shardId":1,"metadata":"{\"name\":\"Gold\",\"description\":\"An asset example\",\"icon_url\":\"https://gold.image/\"}","output":{"lockScriptHash":"0xf42a65ea518ba236c08b261c34af0521fa3cd1aa505e1c18980919cb8945f8f3","parameters":[],"amount":10000},"registrar":null,"nonce":0}}], "cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7"], "id": null}' \
     localhost:8080
 ```
 

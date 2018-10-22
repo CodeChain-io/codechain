@@ -48,16 +48,14 @@ use super::global_cache_buffer::GlobalCacheBuffer;
 use super::super::{
     Account, ActionData, ActionHandler, AssetScheme, AssetSchemeAddress, Backend, CacheableItem, Metadata,
     MetadataAddress, OwnedAsset, OwnedAssetAddress, RegularAccount, RegularAccountAddress, Shard, ShardAddress,
-    ShardBackend, ShardMetadata, ShardMetadataAddress, TopBackend, World, WorldAddress,
+    ShardBackend, TopBackend,
 };
 
 // The percentage of supplied cache size to go to accounts.
 const ACCOUNT_CACHE_RATIO: usize = 35;
 const REGULAR_ACCOUNT_CACHE_RATIO: usize = 5;
 const METADATA_CACHE_RATIO: usize = 1;
-const SHARD_CACHE_RATIO: usize = 6;
-const SHARD_METADATA_CACHE_RATIO: usize = 1;
-const WORLD_CACHE_RATIO: usize = 1;
+const SHARD_CACHE_RATIO: usize = 8;
 const ASSET_SCHEME_CACHE_RATIO: usize = 10;
 const ASSET_CACHE_RATIO: usize = 40;
 const ACTION_DATA_CACHE_RATIO: usize = 1;
@@ -84,8 +82,6 @@ pub struct StateDB {
     regular_account_cache: Arc<Mutex<GlobalCache<RegularAccount>>>,
     metadata_cache: Arc<Mutex<GlobalCache<Metadata>>>,
     shard_cache: Arc<Mutex<GlobalCache<Shard>>>,
-    shard_metadata_cache: Arc<Mutex<GlobalCache<ShardMetadata>>>,
-    world_cache: Arc<Mutex<GlobalCache<World>>>,
     asset_scheme_cache: Arc<Mutex<GlobalCache<AssetScheme>>>,
     asset_cache: Arc<Mutex<GlobalCache<OwnedAsset>>>,
     action_data_cache: Arc<Mutex<GlobalCache<ActionData>>>,
@@ -95,8 +91,6 @@ pub struct StateDB {
     regular_account_cache_buffer: GlobalCacheBuffer<RegularAccount>,
     metadata_cache_buffer: GlobalCacheBuffer<Metadata>,
     shard_cache_buffer: GlobalCacheBuffer<Shard>,
-    shard_metadata_cache_buffer: GlobalCacheBuffer<ShardMetadata>,
-    world_cache_buffer: GlobalCacheBuffer<World>,
     asset_scheme_cache_buffer: GlobalCacheBuffer<AssetScheme>,
     asset_cache_buffer: GlobalCacheBuffer<OwnedAsset>,
     action_data_cache_buffer: GlobalCacheBuffer<ActionData>,
@@ -123,8 +117,6 @@ impl StateDB {
             ACCOUNT_CACHE_RATIO
                 + METADATA_CACHE_RATIO
                 + SHARD_CACHE_RATIO
-                + SHARD_METADATA_CACHE_RATIO
-                + WORLD_CACHE_RATIO
                 + ASSET_SCHEME_CACHE_RATIO
                 + ASSET_CACHE_RATIO
                 + ACTION_DATA_CACHE_RATIO
@@ -143,12 +135,6 @@ impl StateDB {
         let shard_cache_size = cache_size * SHARD_CACHE_RATIO / 100;
         let shard_cache_items = shard_cache_size / ::std::mem::size_of::<Option<Shard>>();
 
-        let shard_metadata_cache_size = cache_size * SHARD_METADATA_CACHE_RATIO / 100;
-        let shard_metadata_cache_items = shard_metadata_cache_size / ::std::mem::size_of::<Option<ShardMetadata>>();
-
-        let world_cache_size = cache_size * WORLD_CACHE_RATIO / 100;
-        let world_cache_items = world_cache_size / ::std::mem::size_of::<Option<World>>();
-
         let asset_scheme_cache_size = cache_size * ASSET_SCHEME_CACHE_RATIO / 100;
         let asset_scheme_cache_items = asset_scheme_cache_size / ::std::mem::size_of::<Option<AssetScheme>>();
 
@@ -164,8 +150,6 @@ impl StateDB {
             regular_account_cache: Arc::new(Mutex::new(GlobalCache::new(regular_account_cache_items))),
             metadata_cache: Arc::new(Mutex::new(GlobalCache::new(metadata_cache_items))),
             shard_cache: Arc::new(Mutex::new(GlobalCache::new(shard_cache_items))),
-            shard_metadata_cache: Arc::new(Mutex::new(GlobalCache::new(shard_metadata_cache_items))),
-            world_cache: Arc::new(Mutex::new(GlobalCache::new(world_cache_items))),
             asset_scheme_cache: Arc::new(Mutex::new(GlobalCache::new(asset_scheme_cache_items))),
             asset_cache: Arc::new(Mutex::new(GlobalCache::new(asset_cache_items))),
             action_data_cache: Arc::new(Mutex::new(GlobalCache::new(action_data_cache_items))),
@@ -174,8 +158,6 @@ impl StateDB {
             regular_account_cache_buffer: GlobalCacheBuffer::new(),
             metadata_cache_buffer: GlobalCacheBuffer::new(),
             shard_cache_buffer: GlobalCacheBuffer::new(),
-            shard_metadata_cache_buffer: GlobalCacheBuffer::new(),
-            world_cache_buffer: GlobalCacheBuffer::new(),
             asset_scheme_cache_buffer: GlobalCacheBuffer::new(),
             asset_cache_buffer: GlobalCacheBuffer::new(),
             action_data_cache_buffer: GlobalCacheBuffer::new(),
@@ -229,8 +211,6 @@ impl StateDB {
         let mut account_cache = self.account_cache.lock();
         let mut regular_account_cache = self.regular_account_cache.lock();
         let mut shard_cache = self.shard_cache.lock();
-        let mut shard_metadata_cache = self.shard_metadata_cache.lock();
-        let mut world_cache = self.world_cache.lock();
         let mut asset_scheme_cache = self.asset_scheme_cache.lock();
         let mut asset_cache = self.asset_cache.lock();
         let mut action_data_cache = self.action_data_cache.lock();
@@ -263,28 +243,6 @@ impl StateDB {
             is_best,
             &mut shard_cache,
             &mut self.shard_cache_buffer,
-            &self.parent_hash,
-            &self.commit_hash,
-            &self.commit_number,
-        );
-
-        Self::sync_cache_impl(
-            enacted,
-            retracted,
-            is_best,
-            &mut shard_metadata_cache,
-            &mut self.shard_metadata_cache_buffer,
-            &self.parent_hash,
-            &self.commit_hash,
-            &self.commit_number,
-        );
-
-        Self::sync_cache_impl(
-            enacted,
-            retracted,
-            is_best,
-            &mut world_cache,
-            &mut self.world_cache_buffer,
             &self.parent_hash,
             &self.commit_hash,
             &self.commit_number,
@@ -371,8 +329,6 @@ impl StateDB {
             regular_account_cache: Arc::clone(&self.regular_account_cache),
             metadata_cache: Arc::clone(&self.metadata_cache),
             shard_cache: Arc::clone(&self.shard_cache),
-            shard_metadata_cache: Arc::clone(&self.shard_metadata_cache),
-            world_cache: Arc::clone(&self.world_cache),
             asset_scheme_cache: Arc::clone(&self.asset_scheme_cache),
             asset_cache: Arc::clone(&self.asset_cache),
             action_data_cache: Arc::clone(&self.action_data_cache),
@@ -381,8 +337,6 @@ impl StateDB {
             regular_account_cache_buffer: GlobalCacheBuffer::new(),
             metadata_cache_buffer: GlobalCacheBuffer::new(),
             shard_cache_buffer: GlobalCacheBuffer::new(),
-            shard_metadata_cache_buffer: GlobalCacheBuffer::new(),
-            world_cache_buffer: GlobalCacheBuffer::new(),
             asset_scheme_cache_buffer: GlobalCacheBuffer::new(),
             asset_cache_buffer: GlobalCacheBuffer::new(),
             action_data_cache_buffer: GlobalCacheBuffer::new(),
@@ -402,8 +356,6 @@ impl StateDB {
             regular_account_cache: Arc::clone(&self.regular_account_cache),
             metadata_cache: Arc::clone(&self.metadata_cache),
             shard_cache: Arc::clone(&self.shard_cache),
-            shard_metadata_cache: Arc::clone(&self.shard_metadata_cache),
-            world_cache: Arc::clone(&self.world_cache),
             asset_scheme_cache: Arc::clone(&self.asset_scheme_cache),
             asset_cache: Arc::clone(&self.asset_cache),
             action_data_cache: Arc::clone(&self.action_data_cache),
@@ -412,8 +364,6 @@ impl StateDB {
             regular_account_cache_buffer: GlobalCacheBuffer::new(),
             metadata_cache_buffer: GlobalCacheBuffer::new(),
             shard_cache_buffer: GlobalCacheBuffer::new(),
-            shard_metadata_cache_buffer: GlobalCacheBuffer::new(),
-            world_cache_buffer: GlobalCacheBuffer::new(),
             asset_scheme_cache_buffer: GlobalCacheBuffer::new(),
             asset_cache_buffer: GlobalCacheBuffer::new(),
             action_data_cache_buffer: GlobalCacheBuffer::new(),
@@ -433,8 +383,6 @@ impl StateDB {
             regular_account_cache: Arc::clone(&self.regular_account_cache),
             metadata_cache: Arc::clone(&self.metadata_cache),
             shard_cache: Arc::clone(&self.shard_cache),
-            shard_metadata_cache: Arc::clone(&self.shard_metadata_cache),
-            world_cache: Arc::clone(&self.world_cache),
             asset_scheme_cache: Arc::clone(&self.asset_scheme_cache),
             asset_cache: Arc::clone(&self.asset_cache),
             action_data_cache: Arc::clone(&self.action_data_cache),
@@ -443,8 +391,6 @@ impl StateDB {
             regular_account_cache_buffer: GlobalCacheBuffer::new(),
             metadata_cache_buffer: GlobalCacheBuffer::new(),
             shard_cache_buffer: GlobalCacheBuffer::new(),
-            shard_metadata_cache_buffer: GlobalCacheBuffer::new(),
-            world_cache_buffer: GlobalCacheBuffer::new(),
             asset_scheme_cache_buffer: GlobalCacheBuffer::new(),
             asset_cache_buffer: GlobalCacheBuffer::new(),
             action_data_cache_buffer: GlobalCacheBuffer::new(),
@@ -475,7 +421,6 @@ impl StateDB {
             + Self::mem_used_impl(&self.account_cache.lock())
             + Self::mem_used_impl(&self.regular_account_cache.lock())
             + Self::mem_used_impl(&self.shard_cache.lock())
-            + Self::mem_used_impl(&self.shard_metadata_cache.lock())
             + Self::mem_used_impl(&self.asset_scheme_cache.lock())
             + Self::mem_used_impl(&self.asset_cache.lock())
             + Self::mem_used_impl(&self.action_data_cache.lock())
@@ -561,33 +506,12 @@ impl TopBackend for StateDB {
 }
 
 impl ShardBackend for StateDB {
-    fn add_to_shard_metadata_cache(
-        &mut self,
-        address: ShardMetadataAddress,
-        item: Option<ShardMetadata>,
-        modified: bool,
-    ) {
-        self.shard_metadata_cache_buffer.push(address, item, modified);
-    }
-
-    fn add_to_world_cache(&mut self, address: WorldAddress, item: Option<World>, modified: bool) {
-        self.world_cache_buffer.push(address, item, modified);
-    }
-
     fn add_to_asset_scheme_cache(&mut self, addr: AssetSchemeAddress, item: Option<AssetScheme>, modified: bool) {
         self.asset_scheme_cache_buffer.push(addr, item, modified);
     }
 
     fn add_to_asset_cache(&mut self, addr: OwnedAssetAddress, item: Option<OwnedAsset>, modified: bool) {
         self.asset_cache_buffer.push(addr, item, modified);
-    }
-
-    fn get_cached_shard_metadata(&self, addr: &ShardMetadataAddress) -> Option<Option<ShardMetadata>> {
-        self.get_cached(addr, &self.shard_metadata_cache)
-    }
-
-    fn get_cached_world(&self, hash: &WorldAddress) -> Option<Option<World>> {
-        self.get_cached(hash, &self.world_cache)
     }
 
     fn get_cached_asset_scheme(&self, hash: &AssetSchemeAddress) -> Option<Option<AssetScheme>> {
@@ -706,12 +630,11 @@ mod tests {
         let h0 = H256::random();
         let mut batch = DBTransaction::new();
         let shard_id = 0;
-        let world_id = 0;
 
         let amount = 1234;
         let registrar = Some(Address::random());
         let asset_scheme = AssetScheme::new("A metadata for test asset_scheme".to_string(), amount, registrar);
-        let asset_scheme_address = AssetSchemeAddress::new(h0, shard_id, world_id);
+        let asset_scheme_address = AssetSchemeAddress::new(h0, shard_id);
 
         let mut s = state_db.clone_canon(&root_parent);
 

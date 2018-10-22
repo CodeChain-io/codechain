@@ -886,9 +886,9 @@ codechain-sdk@^0.2.0-alpha.2:
     request-promise "^4.2.2"
     rlp "^2.0.0"
 
-"codechain-sdk@https://github.com/CodeChain-io/codechain-sdk-js.git#seq":
+"codechain-sdk@https://github.com/CodeChain-io/codechain-sdk-js.git#world":
   version "0.5.1"
-  resolved "https://github.com/CodeChain-io/codechain-sdk-js.git#1a12b5eed6f6983645ae92023b88d82274d7e661"
+  resolved "https://github.com/CodeChain-io/codechain-sdk-js.git#ce4e55e16bb343570f5bf1186098369847a8dcd8"
   dependencies:
     buffer "5.1.0"
     codechain-keystore "^0.5.4"

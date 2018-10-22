@@ -27,27 +27,21 @@ use ctypes::transaction::{
     Transaction,
 };
 use ctypes::util::unexpected::Mismatch;
-use ctypes::{ShardId, WorldId};
+use ctypes::ShardId;
 use cvm::{decode, execute, ScriptResult, VMConfig};
 use primitives::{Bytes, H160, H256};
-use rlp::Encodable;
 
 use super::super::backend::{Backend, ShardBackend};
 use super::super::checkpoint::{CheckpointId, StateWithCheckpoint};
 use super::super::item::local_cache::{CacheableItem, LocalCache};
 use super::super::traits::{ShardState, ShardStateInfo, StateWithCache};
-use super::super::{
-    Asset, AssetScheme, AssetSchemeAddress, OwnedAsset, OwnedAssetAddress, ShardMetadata, ShardMetadataAddress, World,
-    WorldAddress,
-};
+use super::super::{Asset, AssetScheme, AssetSchemeAddress, OwnedAsset, OwnedAssetAddress};
 use super::super::{StateError, StateResult};
 
 
 pub struct ShardLevelState<B> {
     db: B,
     root: H256,
-    metadata: LocalCache<ShardMetadata>,
-    world: LocalCache<World>,
     asset_scheme: LocalCache<AssetScheme>,
     asset: LocalCache<OwnedAsset>,
     id_of_checkpoints: Vec<CheckpointId>,
@@ -56,25 +50,11 @@ pub struct ShardLevelState<B> {
 
 impl<B: Backend + ShardBackend> ShardLevelState<B> {
     /// Creates new state with empty state root
-    pub fn try_new(shard_id: ShardId, mut db: B) -> cmerkle::Result<ShardLevelState<B>> {
-        let mut root = BLAKE_NULL_RLP;
-
-        {
-            let mut t = TrieFactory::from_existing(db.as_hashdb_mut(), &mut root)?;
-
-            let metadata = ShardMetadata::new(0);
-            let address = ShardMetadataAddress::new(shard_id);
-
-            let r = t.insert(&*address, &metadata.rlp_bytes());
-            debug_assert_eq!(Ok(None), r);
-            r?;
-        }
-
+    pub fn try_new(shard_id: ShardId, db: B) -> StateResult<ShardLevelState<B>> {
+        let root = BLAKE_NULL_RLP;
         Ok(ShardLevelState {
             db,
             root,
-            metadata: LocalCache::new(),
-            world: LocalCache::new(),
             asset_scheme: LocalCache::new(),
             asset: LocalCache::new(),
             id_of_checkpoints: Default::default(),
@@ -91,8 +71,6 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         Ok(ShardLevelState {
             db,
             root,
-            metadata: LocalCache::new(),
-            world: LocalCache::new(),
             asset_scheme: LocalCache::new(),
             asset: LocalCache::new(),
             id_of_checkpoints: Default::default(),
@@ -108,35 +86,14 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
 
     fn apply_internal(
         &mut self,
-        shard_id: ShardId,
         transaction: &Transaction,
         sender: &Address,
         shard_users: &[Address],
     ) -> StateResult<()> {
         debug_assert_eq!(Ok(()), transaction.verify());
         match transaction {
-            Transaction::CreateWorld {
-                seq,
-                owners,
-                ..
-            } => Ok(self.create_world(shard_id, seq, &owners, &[], sender, shard_users)?),
-            Transaction::SetWorldOwners {
-                shard_id,
-                world_id,
-                seq,
-                owners,
-                ..
-            } => Ok(self.set_world_owners(*shard_id, *world_id, *seq, &owners, sender, shard_users)?),
-            Transaction::SetWorldUsers {
-                shard_id,
-                world_id,
-                seq,
-                users,
-                ..
-            } => Ok(self.set_world_users(*shard_id, *world_id, *seq, &users, sender, shard_users)?),
             Transaction::AssetMint {
                 metadata,
-                world_id,
                 registrar,
                 output:
                     AssetMintOutput {
@@ -147,7 +104,6 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
                 ..
             } => Ok(self.mint_asset(
                 transaction.hash(),
-                *world_id,
                 metadata,
                 lock_script_hash,
                 parameters,
@@ -168,13 +124,12 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
             }
 
             Transaction::AssetCompose {
-                world_id,
                 metadata,
                 registrar,
                 inputs,
                 output,
                 ..
-            } => self.compose_asset(&transaction, *world_id, metadata, registrar, inputs, output, sender, shard_users),
+            } => self.compose_asset(&transaction, metadata, registrar, inputs, output, sender, shard_users),
             Transaction::AssetDecompose {
                 input,
                 outputs,
@@ -183,104 +138,9 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         }
     }
 
-    fn create_world(
-        &mut self,
-        shard_id: ShardId,
-        seq: &u64,
-        owners: &[Address],
-        users: &[Address],
-        sender: &Address,
-        shard_users: &[Address],
-    ) -> StateResult<()> {
-        if !shard_users.contains(sender) {
-            return Err(TransactionError::InsufficientPermission.into())
-        }
-
-        let metadata_address = ShardMetadataAddress::new(shard_id);
-        assert_ne!(None, self.get_metadata(&metadata_address)?);
-        let mut metadata = self.get_metadata_mut(&metadata_address)?;
-
-        let current_seq = *metadata.seq();
-        if *seq != current_seq {
-            return Err(TransactionError::InvalidShardSeq(Mismatch {
-                expected: current_seq,
-                found: *seq,
-            }).into())
-        }
-
-        let world_id = *metadata.number_of_worlds();
-        let world_address = WorldAddress::new(shard_id, world_id);
-
-        metadata.inc_seq();
-        metadata.increase_number_of_worlds();
-
-        let mut world = self.get_world_mut(&world_address)?;
-        world.init(owners.to_vec(), users.to_vec());
-        Ok(())
-    }
-
-    fn set_world_owners(
-        &mut self,
-        shard_id: ShardId,
-        world_id: WorldId,
-        seq: u64,
-        owners: &[Address],
-        sender: &Address,
-        shard_users: &[Address],
-    ) -> StateResult<()> {
-        let world: World = self.world(world_id)?.ok_or_else(|| TransactionError::InvalidWorldId(world_id))?;
-
-        if !shard_users.contains(sender) && !world.owners().contains(sender) {
-            return Err(TransactionError::InsufficientPermission.into())
-        }
-
-        let current_seq = world.seq();
-        if current_seq != &seq {
-            return Err(TransactionError::InvalidWorldSeq(Mismatch {
-                expected: *current_seq,
-                found: seq,
-            }).into())
-        }
-
-        let mut world = self.get_world_mut(&WorldAddress::new(shard_id, world_id))?;
-        world.inc_seq();
-        world.set_owners(owners.to_vec());
-        Ok(())
-    }
-
-    fn set_world_users(
-        &mut self,
-        shard_id: ShardId,
-        world_id: WorldId,
-        seq: u64,
-        users: &[Address],
-        sender: &Address,
-        shard_users: &[Address],
-    ) -> StateResult<()> {
-        let world: World = self.world(world_id)?.ok_or_else(|| TransactionError::InvalidWorldId(world_id))?;
-
-        if !shard_users.contains(sender) && !world.owners().contains(sender) {
-            return Err(TransactionError::InsufficientPermission.into())
-        }
-
-        let current_seq = world.seq();
-        if current_seq != &seq {
-            return Err(TransactionError::InvalidWorldSeq(Mismatch {
-                expected: *current_seq,
-                found: seq,
-            }).into())
-        }
-
-        let mut world = self.get_world_mut(&WorldAddress::new(shard_id, world_id))?;
-        world.inc_seq();
-        world.set_users(users.to_vec());
-        Ok(())
-    }
-
     fn mint_asset(
         &mut self,
         transaction_hash: H256,
-        world_id: WorldId,
         metadata: &String,
         lock_script_hash: &H160,
         parameters: &Vec<Bytes>,
@@ -290,16 +150,11 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         shard_users: &[Address],
         pool: Vec<Asset>,
     ) -> StateResult<()> {
-        let world: World = self.world(world_id)?.ok_or_else(|| TransactionError::InvalidWorldId(world_id))?;
-
-        if !shard_users.contains(sender) && !world.owners().contains(sender) {
-            let world_users = world.users();
-            if !world_users.is_empty() && !world_users.contains(sender) {
-                return Err(TransactionError::InsufficientPermission.into())
-            }
+        if !shard_users.is_empty() && !shard_users.contains(sender) {
+            return Err(TransactionError::InsufficientPermission.into())
         }
 
-        let asset_scheme_address = AssetSchemeAddress::new(transaction_hash, self.shard_id, world_id);
+        let asset_scheme_address = AssetSchemeAddress::new(transaction_hash, self.shard_id);
         let amount = amount.unwrap_or(::std::u64::MAX);
         let mut asset_scheme = self.get_asset_scheme_mut(&asset_scheme_address)?;
         if !asset_scheme.is_null() {
@@ -435,7 +290,6 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
     fn compose_asset(
         &mut self,
         transaction: &Transaction,
-        world_id: WorldId,
         metadata: &String,
         registrar: &Option<Address>,
         inputs: &[AssetTransferInput],
@@ -468,7 +322,6 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
 
         self.mint_asset(
             transaction.hash(),
-            world_id,
             metadata,
             &output.lock_script_hash,
             &output.parameters,
@@ -571,30 +424,6 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         self.asset_scheme.remove(account);
     }
 
-    fn get_metadata(&self, a: &ShardMetadataAddress) -> cmerkle::Result<Option<ShardMetadata>> {
-        let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        let from_global_cache = || self.db.get_cached_shard_metadata(a);
-        self.metadata.get(a, db, from_global_cache)
-    }
-
-    fn get_metadata_mut(&self, a: &ShardMetadataAddress) -> cmerkle::Result<RefMut<ShardMetadata>> {
-        let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        let from_global_cache = || self.db.get_cached_shard_metadata(a);
-        self.metadata.get_mut(a, db, from_global_cache)
-    }
-
-    fn get_world(&self, a: &WorldAddress) -> cmerkle::Result<Option<World>> {
-        let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        let from_global_cache = || self.db.get_cached_world(a);
-        self.world.get(a, db, from_global_cache)
-    }
-
-    fn get_world_mut(&self, a: &WorldAddress) -> cmerkle::Result<RefMut<World>> {
-        let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        let from_global_cache = || self.db.get_cached_world(a);
-        self.world.get_mut(a, db, from_global_cache)
-    }
-
     fn get_asset_scheme(&self, a: &AssetSchemeAddress) -> cmerkle::Result<Option<AssetScheme>> {
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
         let from_global_cache = || self.db.get_cached_asset_scheme(a);
@@ -625,16 +454,6 @@ impl<B: Backend + ShardBackend> ShardStateInfo for ShardLevelState<B> {
         &self.root
     }
 
-    fn metadata(&self) -> cmerkle::Result<Option<ShardMetadata>> {
-        let a = ShardMetadataAddress::new(self.shard_id);
-        self.get_metadata(&a)
-    }
-
-    fn world(&self, world_id: WorldId) -> cmerkle::Result<Option<World>> {
-        let a = WorldAddress::new(self.shard_id, world_id);
-        self.get_world(&a)
-    }
-
     fn asset_scheme(&self, a: &AssetSchemeAddress) -> cmerkle::Result<Option<AssetScheme>> {
         self.get_asset_scheme(a)
     }
@@ -648,8 +467,6 @@ impl<B> StateWithCheckpoint for ShardLevelState<B> {
     fn create_checkpoint(&mut self, id: CheckpointId) {
         ctrace!(STATE, "Checkpoint({}) for shard({}) is created", id, self.shard_id);
         self.id_of_checkpoints.push(id);
-        self.metadata.checkpoint();
-        self.world.checkpoint();
         self.asset_scheme.checkpoint();
         self.asset.checkpoint();
     }
@@ -659,8 +476,6 @@ impl<B> StateWithCheckpoint for ShardLevelState<B> {
         assert_eq!(expected, id);
 
         ctrace!(STATE, "Checkpoint({}) for shard({}) is discarded", id, self.shard_id);
-        self.metadata.discard_checkpoint();
-        self.world.discard_checkpoint();
         self.asset_scheme.discard_checkpoint();
         self.asset.discard_checkpoint();
     }
@@ -670,8 +485,6 @@ impl<B> StateWithCheckpoint for ShardLevelState<B> {
         assert_eq!(expected, id);
 
         ctrace!(STATE, "Checkpoint({}) for shard({}) is reverted", id, self.shard_id);
-        self.metadata.revert_to_checkpoint();
-        self.world.revert_to_checkpoint();
         self.asset_scheme.revert_to_checkpoint();
         self.asset.revert_to_checkpoint();
     }
@@ -680,8 +493,6 @@ impl<B> StateWithCheckpoint for ShardLevelState<B> {
 impl<B: Backend + ShardBackend> StateWithCache for ShardLevelState<B> {
     fn commit(&mut self) -> TrieResult<()> {
         let mut trie = TrieFactory::from_existing(self.db.as_hashdb_mut(), &mut self.root)?;
-        self.metadata.commit(&mut trie)?;
-        self.world.commit(&mut trie)?;
         self.asset_scheme.commit(&mut trie)?;
         self.asset.commit(&mut trie)?;
         Ok(())
@@ -689,12 +500,6 @@ impl<B: Backend + ShardBackend> StateWithCache for ShardLevelState<B> {
 
     fn propagate_to_global_cache(&mut self) {
         let ref mut db = self.db;
-        self.metadata.propagate_to_global_cache(|address, item, modified| {
-            db.add_to_shard_metadata_cache(address, item, modified);
-        });
-        self.world.propagate_to_global_cache(|address, item, modified| {
-            db.add_to_world_cache(address, item, modified);
-        });
         self.asset_scheme.propagate_to_global_cache(|address, item, modified| {
             db.add_to_asset_scheme_cache(address, item, modified);
         });
@@ -704,8 +509,6 @@ impl<B: Backend + ShardBackend> StateWithCache for ShardLevelState<B> {
     }
 
     fn clear(&mut self) {
-        self.metadata.clear();
-        self.world.clear();
         self.asset_scheme.clear();
         self.asset.clear();
     }
@@ -713,11 +516,7 @@ impl<B: Backend + ShardBackend> StateWithCache for ShardLevelState<B> {
 
 impl<B: ShardBackend> fmt::Debug for ShardLevelState<B> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "metadata: {:?} world: {:?} asset_scheme: {:?} asset: {:?}",
-            self.metadata, self.world, self.asset_scheme, self.asset
-        )
+        write!(f, "asset_scheme: {:?} asset: {:?}", self.asset_scheme, self.asset)
     }
 }
 
@@ -726,7 +525,6 @@ const TRANSACTION_CHECKPOINT: CheckpointId = 456;
 impl<B: Backend + ShardBackend> ShardState<B> for ShardLevelState<B> {
     fn apply(
         &mut self,
-        shard_id: ShardId,
         transaction: &Transaction,
         sender: &Address,
         shard_users: &[Address],
@@ -734,7 +532,7 @@ impl<B: Backend + ShardBackend> ShardState<B> for ShardLevelState<B> {
         ctrace!(TX, "Execute {:?}(TxHash:{:?})", transaction, transaction.hash());
 
         self.create_checkpoint(TRANSACTION_CHECKPOINT);
-        let result = self.apply_internal(shard_id, transaction, sender, shard_users);
+        let result = self.apply_internal(transaction, sender, shard_users);
         match result {
             Ok(_) => {
                 cinfo!(TX, "Tx({}) is applied", transaction.hash());
@@ -776,106 +574,10 @@ mod tests {
     }
 
     #[test]
-    fn create_world_without_owners() {
-        let network_id = "tc".into();
-        let shard_id = 0xCAFE;
-        let mut state = get_temp_shard_state(shard_id);
-
-        let seq = 0;
-        let owners = vec![];
-
-        let transaction = Transaction::CreateWorld {
-            network_id,
-            shard_id,
-            seq,
-            owners: owners.clone(),
-        };
-
-        let sender = address();
-        let shard_owner = sender;
-        assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &transaction, &sender, &[shard_owner]));
-
-        let metadata = state.metadata();
-        assert_eq!(Ok(Some(ShardMetadata::new_with_seq(1, 1))), metadata);
-
-        let world_id = 0;
-        let world = state.world(world_id);
-        let users = vec![];
-        assert_eq!(Ok(Some(World::new(owners, users))), world);
-    }
-
-    #[test]
-    fn create_world_with_owners() {
-        let network_id = "tc".into();
-        let shard_id = 0xCAFE;
-        let mut state = get_temp_shard_state(shard_id);
-
-        let seq = 0;
-        let owners = vec![Address::random(), Address::random(), Address::random()];
-
-        let transaction = Transaction::CreateWorld {
-            network_id,
-            shard_id,
-            seq,
-            owners: owners.clone(),
-        };
-
-        let sender = address();
-        let shard_owner = sender;
-        assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &transaction, &sender, &[shard_owner]));
-
-        let metadata = state.metadata();
-        assert_eq!(Ok(Some(ShardMetadata::new_with_seq(1, 1))), metadata);
-
-        let world_id = 0;
-        let world = state.world(world_id);
-        let users = vec![];
-        assert_eq!(Ok(Some(World::new(owners, users))), world);
-    }
-
-    #[test]
-    fn create_world_fail_if_seq_is_not_matched() {
-        let network_id = "tc".into();
-        let shard_id = 0xCAFE;
-        let mut state = get_temp_shard_state(shard_id);
-
-        let seq = 1;
-        let owners = vec![];
-
-        let transaction = Transaction::CreateWorld {
-            network_id,
-            shard_id,
-            seq,
-            owners: owners.clone(),
-        };
-
-        let sender = address();
-        let shard_owner = sender;
-        assert_eq!(
-            Ok(TransactionInvoice::Fail(TransactionError::InvalidShardSeq(Mismatch {
-                expected: 0,
-                found: 1
-            }))),
-            state.apply(shard_id, &transaction, &sender, &[shard_owner])
-        );
-
-        let metadata = state.metadata();
-        assert_eq!(Ok(Some(ShardMetadata::new_with_seq(0, 0))), metadata);
-
-        let world_id = 0;
-        let world = state.world(world_id);
-        assert_eq!(Ok(None), world);
-    }
-
-    #[test]
     fn mint_permissioned_asset() {
         let shard_id = 0;
-        let world_id = 0;
-        let mut state = get_temp_shard_state(shard_id);
         let sender = address();
-        let shard_owner = address();
-        assert_eq!(Ok(()), state.create_world(shard_id, &0, &[sender], &[], &shard_owner, &[shard_owner]));
-        assert_eq!(Ok(()), state.commit());
+        let mut state = get_temp_shard_state(shard_id);
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::random();
@@ -885,7 +587,6 @@ mod tests {
         let transaction = Transaction::AssetMint {
             network_id: "tc".into(),
             shard_id,
-            world_id,
             metadata: metadata.clone(),
             output: AssetMintOutput {
                 lock_script_hash,
@@ -896,11 +597,11 @@ mod tests {
             nonce: 0,
         };
 
-        let result = state.apply(shard_id, &transaction, &sender, &[shard_owner]);
+        let result = state.apply(&transaction, &sender, &[sender]);
         assert_eq!(Ok(TransactionInvoice::Success), result);
 
         let transaction_hash = transaction.hash();
-        let asset_scheme_address = AssetSchemeAddress::new(transaction_hash, shard_id, world_id);
+        let asset_scheme_address = AssetSchemeAddress::new(transaction_hash, shard_id);
         let asset_scheme = state.asset_scheme(&asset_scheme_address);
         assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), amount, registrar))), asset_scheme);
 
@@ -912,12 +613,8 @@ mod tests {
     #[test]
     fn mint_infinite_asset() {
         let shard_id = 0;
-        let world_id = 0;
-        let mut state = get_temp_shard_state(shard_id);
         let sender = address();
-        let shard_owner = address();
-        assert_eq!(Ok(()), state.create_world(shard_id, &0, &[sender], &[], &shard_owner, &[shard_owner]));
-        assert_eq!(Ok(()), state.commit());
+        let mut state = get_temp_shard_state(shard_id);
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::random();
@@ -926,7 +623,6 @@ mod tests {
         let transaction = Transaction::AssetMint {
             network_id: "tc".into(),
             shard_id,
-            world_id,
             metadata: metadata.clone(),
             output: AssetMintOutput {
                 lock_script_hash,
@@ -937,11 +633,11 @@ mod tests {
             nonce: 0,
         };
 
-        let result = state.apply(shard_id, &transaction, &sender, &[shard_owner]);
+        let result = state.apply(&transaction, &sender, &[sender]);
         assert_eq!(Ok(TransactionInvoice::Success), result);
 
         let transaction_hash = transaction.hash();
-        let asset_scheme_address = AssetSchemeAddress::new(transaction_hash, shard_id, world_id);
+        let asset_scheme_address = AssetSchemeAddress::new(transaction_hash, shard_id);
         let asset_scheme = state.asset_scheme(&asset_scheme_address);
         assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), ::std::u64::MAX, registrar))), asset_scheme);
 
@@ -956,12 +652,8 @@ mod tests {
     #[test]
     fn cannot_mint_twice() {
         let shard_id = 0;
-        let world_id = 0;
-        let mut state = get_temp_shard_state(shard_id);
         let sender = address();
-        let shard_owner = address();
-        assert_eq!(Ok(()), state.create_world(shard_id, &0, &[sender], &[], &shard_owner, &[shard_owner]));
-        assert_eq!(Ok(()), state.commit());
+        let mut state = get_temp_shard_state(shard_id);
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::random();
@@ -970,7 +662,6 @@ mod tests {
         let transaction = Transaction::AssetMint {
             network_id: "tc".into(),
             shard_id,
-            world_id,
             metadata: metadata.clone(),
             output: AssetMintOutput {
                 lock_script_hash,
@@ -981,31 +672,25 @@ mod tests {
             nonce: 0,
         };
 
-        let result = state.apply(shard_id, &transaction, &sender, &[shard_owner]);
+        let result = state.apply(&transaction, &sender, &[sender]);
         assert_eq!(Ok(TransactionInvoice::Success), result);
 
-        let result = state.apply(shard_id, &transaction, &sender, &[shard_owner]);
+        let result = state.apply(&transaction, &sender, &[sender]);
         assert_eq!(Ok(TransactionInvoice::Fail(TransactionError::AssetSchemeDuplicated(transaction.hash()))), result);
     }
 
     #[test]
     fn invalid_registrar() {
         let shard_id = 0;
-        let mut state = get_temp_shard_state(shard_id);
         let network_id = "tc".into();
-        let world_id = 0;
-
         let sender = address();
-        let shard_owner = address();
-        assert_eq!(Ok(()), state.create_world(shard_id, &0, &[sender], &[], &shard_owner, &[shard_owner]));
-        assert_eq!(Ok(()), state.commit());
+        let mut state = get_temp_shard_state(shard_id);
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::from("b042ad154a3359d276835c903587ebafefea22af");
         let registrar = Some(Address::random());
         let amount = 30;
         let mint = Transaction::AssetMint {
-            world_id,
             network_id,
             shard_id,
             metadata: metadata.clone(),
@@ -1019,9 +704,9 @@ mod tests {
         };
         let mint_hash = mint.hash();
 
-        assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &mint, &sender, &[shard_owner]));
+        assert_eq!(Ok(TransactionInvoice::Success), state.apply(&mint, &sender, &[sender]));
 
-        let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id, world_id);
+        let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id);
         let asset_scheme = state.asset_scheme(&asset_scheme_address);
         let asset_type = asset_scheme_address.into();
 
@@ -1058,7 +743,7 @@ mod tests {
                 expected: registrar.unwrap(),
                 found: sender,
             }))),
-            state.apply(shard_id, &transfer, &sender, &[shard_owner])
+            state.apply(&transfer, &sender, &[sender])
         );
     }
 
@@ -1066,12 +751,8 @@ mod tests {
     fn mint_and_transfer() {
         let network_id = "tc".into();
         let shard_id = 0;
-        let world_id = 0;
-        let mut state = get_temp_shard_state(shard_id);
         let sender = address();
-        let shard_owner = address();
-        assert_eq!(Ok(()), state.create_world(shard_id, &0, &[sender], &[], &shard_owner, &[shard_owner]));
-        assert_eq!(Ok(()), state.commit());
+        let mut state = get_temp_shard_state(shard_id);
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::from("b042ad154a3359d276835c903587ebafefea22af");
@@ -1080,7 +761,6 @@ mod tests {
         let mint = Transaction::AssetMint {
             network_id,
             shard_id,
-            world_id,
             metadata: metadata.clone(),
             output: AssetMintOutput {
                 lock_script_hash,
@@ -1094,9 +774,9 @@ mod tests {
 
         let network_id = "tc".into();
 
-        assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &mint, &sender, &[shard_owner]));
+        assert_eq!(Ok(TransactionInvoice::Success), state.apply(&mint, &sender, &[sender]));
 
-        let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id, world_id);
+        let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id);
         let asset_scheme = state.asset_scheme(&asset_scheme_address);
         let asset_type = asset_scheme_address.into();
 
@@ -1144,7 +824,7 @@ mod tests {
         };
         let transfer_hash = transfer.hash();
 
-        assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &transfer, &sender, &[shard_owner]));
+        assert_eq!(Ok(TransactionInvoice::Success), state.apply(&transfer, &sender, &[sender]));
 
         let asset0_address = OwnedAssetAddress::new(transfer_hash, 0, shard_id);
         let asset0 = state.asset(&asset0_address);
@@ -1163,12 +843,8 @@ mod tests {
     fn mint_and_compose() {
         let network_id = "tc".into();
         let shard_id = 0;
-        let world_id = 0;
         let mut state = get_temp_shard_state(shard_id);
         let sender = address();
-        let shard_owner = address();
-        assert_eq!(Ok(()), state.create_world(shard_id, &0, &[sender], &[], &shard_owner, &[shard_owner]));
-        assert_eq!(Ok(()), state.commit());
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::from("0xb042ad154a3359d276835c903587ebafefea22af");
@@ -1177,7 +853,6 @@ mod tests {
         let mint = Transaction::AssetMint {
             network_id,
             shard_id,
-            world_id,
             metadata: metadata.clone(),
             output: AssetMintOutput {
                 lock_script_hash,
@@ -1188,15 +863,14 @@ mod tests {
             nonce: 0,
         };
         let mint_hash = mint.hash();
-        assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &mint, &sender, &[shard_owner]));
-        let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id, world_id);
+        assert_eq!(Ok(TransactionInvoice::Success), state.apply(&mint, &sender, &[]));
+        let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id);
         let asset_type = asset_scheme_address.into();
 
         let random_lock_script_hash = H160::random();
         let compose = Transaction::AssetCompose {
             network_id,
             shard_id,
-            world_id,
             nonce: 0,
             metadata: "composed".to_string(),
             registrar,
@@ -1218,9 +892,9 @@ mod tests {
         };
         let compose_hash = compose.hash();
 
-        assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &compose, &sender, &[shard_owner]));
+        assert_eq!(Ok(TransactionInvoice::Success), state.apply(&compose, &sender, &[]));
 
-        let composed_asset_scheme_address = AssetSchemeAddress::new(compose_hash, shard_id, world_id);
+        let composed_asset_scheme_address = AssetSchemeAddress::new(compose_hash, shard_id);
         let composed_asset_scheme = state.asset_scheme(&composed_asset_scheme_address);
         let composed_asset_type = composed_asset_scheme_address.into();
 
@@ -1243,12 +917,8 @@ mod tests {
     fn mint_and_compose_and_decompose() {
         let network_id = "tc".into();
         let shard_id = 0;
-        let world_id = 0;
         let mut state = get_temp_shard_state(shard_id);
         let sender = address();
-        let shard_owner = address();
-        assert_eq!(Ok(()), state.create_world(shard_id, &0, &[sender], &[], &shard_owner, &[shard_owner]));
-        assert_eq!(Ok(()), state.commit());
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::from("0xb042ad154a3359d276835c903587ebafefea22af");
@@ -1257,7 +927,6 @@ mod tests {
         let mint = Transaction::AssetMint {
             network_id,
             shard_id,
-            world_id,
             metadata: metadata.clone(),
             output: AssetMintOutput {
                 lock_script_hash,
@@ -1268,14 +937,13 @@ mod tests {
             nonce: 0,
         };
         let mint_hash = mint.hash();
-        assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &mint, &sender, &[shard_owner]));
-        let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id, world_id);
+        assert_eq!(Ok(TransactionInvoice::Success), state.apply(&mint, &sender, &[]));
+        let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id);
         let asset_type = asset_scheme_address.clone().into();
 
         let compose = Transaction::AssetCompose {
             network_id,
             shard_id,
-            world_id,
             nonce: 0,
             metadata: "composed".to_string(),
             registrar,
@@ -1297,9 +965,9 @@ mod tests {
         };
         let compose_hash = compose.hash();
 
-        assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &compose, &sender, &[shard_owner]));
+        assert_eq!(Ok(TransactionInvoice::Success), state.apply(&compose, &sender, &[]));
 
-        let composed_asset_scheme_address = AssetSchemeAddress::new(compose_hash, shard_id, world_id);
+        let composed_asset_scheme_address = AssetSchemeAddress::new(compose_hash, shard_id);
         let composed_asset_scheme = state.asset_scheme(&composed_asset_scheme_address);
         let composed_asset_type = composed_asset_scheme_address.into();
 
@@ -1340,7 +1008,7 @@ mod tests {
         };
         let decompose_hash = decompose.hash();
 
-        assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &decompose, &sender, &[shard_owner]));
+        assert_eq!(Ok(TransactionInvoice::Success), state.apply(&decompose, &sender, &[]));
 
         let asset_scheme = state.asset_scheme(&asset_scheme_address);
 
@@ -1355,12 +1023,8 @@ mod tests {
     fn decompose_fail_invalid_input_different_asset_type() {
         let network_id = "tc".into();
         let shard_id = 0;
-        let world_id = 0;
         let mut state = get_temp_shard_state(shard_id);
         let sender = address();
-        let shard_owner = address();
-        assert_eq!(Ok(()), state.create_world(shard_id, &0, &[sender], &[], &shard_owner, &[shard_owner]));
-        assert_eq!(Ok(()), state.commit());
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::from("0xb042ad154a3359d276835c903587ebafefea22af");
@@ -1369,7 +1033,6 @@ mod tests {
         let mint = Transaction::AssetMint {
             network_id,
             shard_id,
-            world_id,
             metadata: metadata.clone(),
             output: AssetMintOutput {
                 lock_script_hash,
@@ -1380,14 +1043,13 @@ mod tests {
             nonce: 0,
         };
         let mint_hash = mint.hash();
-        assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &mint, &sender, &[shard_owner]));
-        let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id, world_id);
+        assert_eq!(Ok(TransactionInvoice::Success), state.apply(&mint, &sender, &[]));
+        let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id);
         let asset_type = asset_scheme_address.clone().into();
 
         let mint2 = Transaction::AssetMint {
             network_id,
             shard_id,
-            world_id,
             metadata: "invalid_asset".to_string(),
             output: AssetMintOutput {
                 lock_script_hash,
@@ -1398,14 +1060,13 @@ mod tests {
             nonce: 0,
         };
         let mint2_hash = mint2.hash();
-        let asset_scheme_address2 = AssetSchemeAddress::new(mint_hash, shard_id, world_id);
+        let asset_scheme_address2 = AssetSchemeAddress::new(mint_hash, shard_id);
         let asset_type2 = asset_scheme_address2.clone().into();
-        assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &mint2, &sender, &[shard_owner]));
+        assert_eq!(Ok(TransactionInvoice::Success), state.apply(&mint2, &sender, &[]));
 
         let compose = Transaction::AssetCompose {
             network_id,
             shard_id,
-            world_id,
             nonce: 0,
             metadata: "composed".to_string(),
             registrar,
@@ -1427,9 +1088,9 @@ mod tests {
         };
         let compose_hash = compose.hash();
 
-        assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &compose, &sender, &[shard_owner]));
+        assert_eq!(Ok(TransactionInvoice::Success), state.apply(&compose, &sender, &[]));
 
-        let composed_asset_scheme_address = AssetSchemeAddress::new(compose_hash, shard_id, world_id);
+        let composed_asset_scheme_address = AssetSchemeAddress::new(compose_hash, shard_id);
         let composed_asset_scheme = state.asset_scheme(&composed_asset_scheme_address);
         let composed_asset_type = composed_asset_scheme_address.into();
 
@@ -1474,7 +1135,7 @@ mod tests {
                 address: asset_type,
                 got: 0
             })),
-            state.apply(shard_id, &decompose, &sender, &[shard_owner])
+            state.apply(&decompose, &sender, &[])
         );
     }
 
@@ -1482,12 +1143,8 @@ mod tests {
     fn decompose_fail_invalid_output_insufficient_output() {
         let network_id = "tc".into();
         let shard_id = 0;
-        let world_id = 0;
         let mut state = get_temp_shard_state(shard_id);
         let sender = address();
-        let shard_owner = address();
-        assert_eq!(Ok(()), state.create_world(shard_id, &0, &[sender], &[], &shard_owner, &[shard_owner]));
-        assert_eq!(Ok(()), state.commit());
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::from("0xb042ad154a3359d276835c903587ebafefea22af");
@@ -1496,7 +1153,6 @@ mod tests {
         let mint = Transaction::AssetMint {
             network_id,
             shard_id,
-            world_id,
             metadata: metadata.clone(),
             output: AssetMintOutput {
                 lock_script_hash,
@@ -1507,14 +1163,13 @@ mod tests {
             nonce: 0,
         };
         let mint_hash = mint.hash();
-        assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &mint, &sender, &[shard_owner]));
-        let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id, world_id);
+        assert_eq!(Ok(TransactionInvoice::Success), state.apply(&mint, &sender, &[]));
+        let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id);
         let asset_type = asset_scheme_address.clone().into();
 
         let mint2 = Transaction::AssetMint {
             network_id,
             shard_id,
-            world_id,
             metadata: "invalid_asset".to_string(),
             output: AssetMintOutput {
                 lock_script_hash,
@@ -1525,14 +1180,13 @@ mod tests {
             nonce: 0,
         };
         let mint2_hash = mint2.hash();
-        let asset_scheme_address2 = AssetSchemeAddress::new(mint2_hash, shard_id, world_id);
+        let asset_scheme_address2 = AssetSchemeAddress::new(mint2_hash, shard_id);
         let asset_type2 = asset_scheme_address2.clone().into();
-        assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &mint2, &sender, &[shard_owner]));
+        assert_eq!(Ok(TransactionInvoice::Success), state.apply(&mint2, &sender, &[]));
 
         let compose = Transaction::AssetCompose {
             network_id,
             shard_id,
-            world_id,
             nonce: 0,
             metadata: "composed".to_string(),
             registrar,
@@ -1566,9 +1220,9 @@ mod tests {
         };
         let compose_hash = compose.hash();
 
-        assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &compose, &sender, &[shard_owner]));
+        assert_eq!(Ok(TransactionInvoice::Success), state.apply(&compose, &sender, &[]));
 
-        let composed_asset_scheme_address = AssetSchemeAddress::new(compose_hash, shard_id, world_id);
+        let composed_asset_scheme_address = AssetSchemeAddress::new(compose_hash, shard_id);
         let composed_asset_type = composed_asset_scheme_address.into();
 
         let composed_asset_address = OwnedAssetAddress::new(compose_hash, 0, shard_id);
@@ -1603,7 +1257,7 @@ mod tests {
                 expected: 1,
                 got: 0
             })),
-            state.apply(shard_id, &decompose, &sender, &[shard_owner])
+            state.apply(&decompose, &sender, &[])
         );
     }
 
@@ -1612,12 +1266,8 @@ mod tests {
     fn decompose_fail_invalid_output_insufficient_amount() {
         let network_id = "tc".into();
         let shard_id = 0;
-        let world_id = 0;
         let mut state = get_temp_shard_state(shard_id);
         let sender = address();
-        let shard_owner = address();
-        assert_eq!(Ok(()), state.create_world(shard_id, &0, &[sender], &[], &shard_owner, &[shard_owner]));
-        assert_eq!(Ok(()), state.commit());
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::from("0xb042ad154a3359d276835c903587ebafefea22af");
@@ -1626,7 +1276,6 @@ mod tests {
         let mint = Transaction::AssetMint {
             network_id,
             shard_id,
-            world_id,
             metadata: metadata.clone(),
             output: AssetMintOutput {
                 lock_script_hash,
@@ -1637,14 +1286,13 @@ mod tests {
             nonce: 0,
         };
         let mint_hash = mint.hash();
-        assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &mint, &sender, &[shard_owner]));
-        let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id, world_id);
+        assert_eq!(Ok(TransactionInvoice::Success), state.apply(&mint, &sender, &[]));
+        let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id);
         let asset_type = asset_scheme_address.clone().into();
 
         let mint2 = Transaction::AssetMint {
             network_id,
             shard_id,
-            world_id,
             metadata: "invalid_asset".to_string(),
             output: AssetMintOutput {
                 lock_script_hash,
@@ -1655,14 +1303,13 @@ mod tests {
             nonce: 0,
         };
         let mint2_hash = mint2.hash();
-        let asset_scheme_address2 = AssetSchemeAddress::new(mint2_hash, shard_id, world_id);
+        let asset_scheme_address2 = AssetSchemeAddress::new(mint2_hash, shard_id);
         let asset_type2 = asset_scheme_address2.clone().into();
-        assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &mint2, &sender, &[shard_owner]));
+        assert_eq!(Ok(TransactionInvoice::Success), state.apply(&mint2, &sender, &[]));
 
         let compose = Transaction::AssetCompose {
             network_id,
             shard_id,
-            world_id,
             nonce: 0,
             metadata: "composed".to_string(),
             registrar,
@@ -1696,9 +1343,9 @@ mod tests {
         };
         let compose_hash = compose.hash();
 
-        assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &compose, &sender, &[shard_owner]));
+        assert_eq!(Ok(TransactionInvoice::Success), state.apply(&compose, &sender, &[]));
 
-        let composed_asset_scheme_address = AssetSchemeAddress::new(compose_hash, shard_id, world_id);
+        let composed_asset_scheme_address = AssetSchemeAddress::new(compose_hash, shard_id);
         let composed_asset_type = composed_asset_scheme_address.into();
 
         let composed_asset_address = OwnedAssetAddress::new(compose_hash, 0, shard_id);
@@ -1741,7 +1388,7 @@ mod tests {
                 expected: 30,
                 got: 10
             })),
-            state.apply(shard_id, &decompose, &sender, &[shard_owner])
+            state.apply(&decompose, &sender, &[])
         );
     }
 
@@ -1749,13 +1396,9 @@ mod tests {
     fn mint_and_failed_transfer_and_successful_transfer() {
         let network_id = "tc".into();
         let shard_id = 0;
-        let world_id = 0;
 
-        let mut state = get_temp_shard_state(shard_id);
         let sender = address();
-        let shard_owner = address();
-        assert_eq!(Ok(()), state.create_world(shard_id, &0, &[sender], &[], &shard_owner, &[shard_owner]));
-        assert_eq!(Ok(()), state.commit());
+        let mut state = get_temp_shard_state(shard_id);
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::from("b042ad154a3359d276835c903587ebafefea22af");
@@ -1764,7 +1407,6 @@ mod tests {
         let mint = Transaction::AssetMint {
             network_id,
             shard_id,
-            world_id,
             metadata: metadata.clone(),
             output: AssetMintOutput {
                 lock_script_hash,
@@ -1778,9 +1420,9 @@ mod tests {
 
         let network_id = "tc".into();
 
-        assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &mint, &sender, &[shard_owner]));
+        assert_eq!(Ok(TransactionInvoice::Success), state.apply(&mint, &sender, &[sender]));
 
-        let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id, world_id);
+        let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id);
         let asset_scheme = state.asset_scheme(&asset_scheme_address);
         let asset_type = asset_scheme_address.into();
 
@@ -1814,8 +1456,7 @@ mod tests {
         };
 
         let sender = address();
-        let shard_owner = address();
-        let failed_invoice = state.apply(shard_id, &failed_transfer, &sender, &[shard_owner]).unwrap();
+        let failed_invoice = state.apply(&failed_transfer, &sender, &[sender]).unwrap();
         assert_eq!(
             TransactionInvoice::Fail(TransactionError::ScriptHashMismatch(Mismatch {
                 expected: lock_script_hash,
@@ -1862,10 +1503,7 @@ mod tests {
         };
         let successful_transfer_hash = successful_transfer.hash();
 
-        assert_eq!(
-            Ok(TransactionInvoice::Success),
-            state.apply(shard_id, &successful_transfer, &sender, &[shard_owner])
-        );
+        assert_eq!(Ok(TransactionInvoice::Success), state.apply(&successful_transfer, &sender, &[sender]));
 
         let asset0_address = OwnedAssetAddress::new(successful_transfer_hash, 0, shard_id);
         let asset0 = state.asset(&asset0_address);
@@ -1881,141 +1519,10 @@ mod tests {
     }
 
     #[test]
-    fn shard_owner_can_set_world_owners() {
-        let network_id = "tc".into();
-        let shard_id = 0xCAFE;
-        let mut state = get_temp_shard_state(shard_id);
-
-        let owners = vec![Address::random(), Address::random()];
-        assert_eq!(Ok(()), state.create_world(shard_id, &0, &owners, &[], &owners[0], &owners));
-        assert_eq!(Ok(()), state.commit());
-
-        let metadata = state.metadata();
-        assert_eq!(Ok(Some(ShardMetadata::new_with_seq(1, 1))), metadata);
-
-        let world_id = 0;
-        let world = state.world(world_id);
-        let users = vec![];
-        assert_eq!(Ok(Some(World::new(owners, users.clone()))), world);
-
-        let seq = 0;
-
-        let new_owners = vec![Address::random(), Address::random(), Address::random()];
-        let transaction = Transaction::SetWorldOwners {
-            network_id,
-            shard_id,
-            world_id,
-            seq,
-            owners: new_owners.clone(),
-        };
-
-        let shard_owner = {
-            loop {
-                let owner = address();
-                if !new_owners.contains(&owner) {
-                    break owner
-                }
-            }
-        };
-        assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &transaction, &shard_owner, &[shard_owner]));
-
-        let world = state.world(world_id);
-        assert_eq!(Ok(Some(World::new_with_seq(new_owners, users, 1))), world);
-    }
-
-    #[test]
-    fn world_owner_can_set_world_owners() {
-        let network_id = "tc".into();
-        let shard_id = 0xCAFE;
-        let mut state = get_temp_shard_state(shard_id);
-
-        let sender = Address::random();
-        let old_owners = vec![sender, Address::random()];
-        assert_eq!(Ok(()), state.create_world(shard_id, &0, &old_owners, &[], &sender, &old_owners));
-        assert_eq!(Ok(()), state.commit());
-
-        let metadata = state.metadata();
-        assert_eq!(Ok(Some(ShardMetadata::new_with_seq(1, 1))), metadata);
-
-        let world_id = 0;
-        let world = state.world(world_id);
-        let users = vec![];
-        assert_eq!(Ok(Some(World::new(old_owners.clone(), users.clone()))), world);
-
-        let seq = 0;
-
-        let owners = vec![Address::random(), Address::random(), Address::random()];
-        let transaction = Transaction::SetWorldOwners {
-            network_id,
-            shard_id,
-            world_id,
-            seq,
-            owners: owners.clone(),
-        };
-
-        let shard_owner = Address::random();
-        assert_eq!(Ok(TransactionInvoice::Success), state.apply(shard_id, &transaction, &sender, &[shard_owner]));
-
-        let world = state.world(world_id);
-        assert_eq!(Ok(Some(World::new_with_seq(owners, users, 1))), world);
-    }
-
-
-    #[test]
-    fn insufficient_permission_must_fail_to_set_world_owners() {
-        let network_id = "tc".into();
-        let shard_id = 0xCAFE;
-        let mut state = get_temp_shard_state(shard_id);
-
-        let owners = vec![Address::random(), Address::random()];
-        assert_eq!(Ok(()), state.create_world(shard_id, &0, &owners, &[], &owners[0], &owners));
-        assert_eq!(Ok(()), state.commit());
-
-        let metadata = state.metadata();
-        assert_eq!(Ok(Some(ShardMetadata::new_with_seq(1, 1))), metadata);
-
-        let world_id = 0;
-        let world = state.world(world_id);
-        let users = vec![];
-        assert_eq!(Ok(Some(World::new(owners.clone(), users.clone()))), world);
-
-        let seq = 0;
-
-        let new_owners = vec![Address::random(), Address::random(), Address::random()];
-        let transaction = Transaction::SetWorldOwners {
-            network_id,
-            shard_id,
-            world_id,
-            seq,
-            owners: new_owners.clone(),
-        };
-
-        let sender = {
-            loop {
-                let owner = address();
-                if !new_owners.contains(&owner) {
-                    break owner
-                }
-            }
-        };
-        let shard_owner = address();
-        assert_eq!(
-            Ok(TransactionInvoice::Fail(TransactionError::InsufficientPermission)),
-            state.apply(shard_id, &transaction, &sender, &[shard_owner])
-        );
-        let world = state.world(world_id);
-        assert_eq!(Ok(Some(World::new_with_seq(owners, users, 0))), world);
-    }
-
-    #[test]
     fn users_can_mint_asset() {
         let shard_id = 0;
-        let world_id = 0;
-        let mut state = get_temp_shard_state(shard_id);
         let sender = address();
-        let shard_owner = address();
-        assert_eq!(Ok(()), state.create_world(shard_id, &0, &[], &[sender], &shard_owner, &[shard_owner]));
-        assert_eq!(Ok(()), state.commit());
+        let mut state = get_temp_shard_state(shard_id);
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::random();
@@ -2024,7 +1531,6 @@ mod tests {
         let transaction = Transaction::AssetMint {
             network_id: "tc".into(),
             shard_id,
-            world_id,
             metadata: metadata.clone(),
             output: AssetMintOutput {
                 lock_script_hash,
@@ -2035,11 +1541,11 @@ mod tests {
             nonce: 0,
         };
 
-        let result = state.apply(shard_id, &transaction, &sender, &[shard_owner]);
+        let result = state.apply(&transaction, &sender, &[sender]);
         assert_eq!(Ok(TransactionInvoice::Success), result);
 
         let transaction_hash = transaction.hash();
-        let asset_scheme_address = AssetSchemeAddress::new(transaction_hash, shard_id, world_id);
+        let asset_scheme_address = AssetSchemeAddress::new(transaction_hash, shard_id);
         let asset_scheme = state.asset_scheme(&asset_scheme_address);
         assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), ::std::u64::MAX, registrar))), asset_scheme);
 
@@ -2054,12 +1560,8 @@ mod tests {
     #[test]
     fn mint_is_failed_when_the_sender_is_not_user() {
         let shard_id = 0;
-        let world_id = 0;
-        let mut state = get_temp_shard_state(shard_id);
         let sender = address();
-        let shard_owner = address();
-        assert_eq!(Ok(()), state.create_world(shard_id, &0, &[], &[shard_owner], &shard_owner, &[shard_owner]));
-        assert_eq!(Ok(()), state.commit());
+        let mut state = get_temp_shard_state(shard_id);
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::random();
@@ -2068,7 +1570,6 @@ mod tests {
         let transaction = Transaction::AssetMint {
             network_id: "tc".into(),
             shard_id,
-            world_id,
             metadata: metadata.clone(),
             output: AssetMintOutput {
                 lock_script_hash,
@@ -2079,11 +1580,12 @@ mod tests {
             nonce: 0,
         };
 
-        let result = state.apply(shard_id, &transaction, &sender, &[shard_owner]);
+        let shard_user = address();
+        let result = state.apply(&transaction, &sender, &[shard_user]);
         assert_eq!(Ok(TransactionInvoice::Fail(TransactionError::InsufficientPermission)), result);
 
         let transaction_hash = transaction.hash();
-        let asset_scheme_address = AssetSchemeAddress::new(transaction_hash, shard_id, world_id);
+        let asset_scheme_address = AssetSchemeAddress::new(transaction_hash, shard_id);
         let asset_scheme = state.asset_scheme(&asset_scheme_address);
         assert_eq!(Ok(None), asset_scheme);
 
@@ -2095,12 +1597,8 @@ mod tests {
     #[test]
     fn anyone_can_mint_if_no_users() {
         let shard_id = 0;
-        let world_id = 0;
-        let mut state = get_temp_shard_state(shard_id);
         let sender = address();
-        let shard_owner = address();
-        assert_eq!(Ok(()), state.create_world(shard_id, &0, &[], &[], &shard_owner, &[shard_owner]));
-        assert_eq!(Ok(()), state.commit());
+        let mut state = get_temp_shard_state(shard_id);
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::random();
@@ -2109,7 +1607,6 @@ mod tests {
         let transaction = Transaction::AssetMint {
             network_id: "tc".into(),
             shard_id,
-            world_id,
             metadata: metadata.clone(),
             output: AssetMintOutput {
                 lock_script_hash,
@@ -2120,11 +1617,11 @@ mod tests {
             nonce: 0,
         };
 
-        let result = state.apply(shard_id, &transaction, &sender, &[shard_owner]);
+        let result = state.apply(&transaction, &sender, &[]);
         assert_eq!(Ok(TransactionInvoice::Success), result);
 
         let transaction_hash = transaction.hash();
-        let asset_scheme_address = AssetSchemeAddress::new(transaction_hash, shard_id, world_id);
+        let asset_scheme_address = AssetSchemeAddress::new(transaction_hash, shard_id);
         let asset_scheme = state.asset_scheme(&asset_scheme_address);
         assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), ::std::u64::MAX, registrar))), asset_scheme);
 
@@ -2135,97 +1632,4 @@ mod tests {
             asset
         );
     }
-
-    #[test]
-    fn user_cannot_set_owners() {
-        let network_id = "tc".into();
-        let shard_id = 0xCAFE;
-        let mut state = get_temp_shard_state(shard_id);
-
-        let owners = vec![Address::random(), Address::random()];
-        let user = {
-            loop {
-                let owner = address();
-                if !owners.contains(&owner) {
-                    break owner
-                }
-            }
-        };
-        let users = vec![user];
-        assert_eq!(Ok(()), state.create_world(shard_id, &0, &owners, &users, &owners[0], &owners));
-        assert_eq!(Ok(()), state.commit());
-
-        let metadata = state.metadata();
-        assert_eq!(Ok(Some(ShardMetadata::new_with_seq(1, 1))), metadata);
-
-        let world_id = 0;
-        let world = state.world(world_id);
-        assert_eq!(Ok(Some(World::new(owners.clone(), users.clone()))), world);
-
-        let seq = 0;
-
-        let new_owners = vec![Address::random(), Address::random(), Address::random()];
-        let transaction = Transaction::SetWorldOwners {
-            network_id,
-            shard_id,
-            world_id,
-            seq,
-            owners: new_owners.clone(),
-        };
-
-        let shard_owner = address();
-        assert_eq!(
-            Ok(TransactionInvoice::Fail(TransactionError::InsufficientPermission)),
-            state.apply(shard_id, &transaction, &user, &[shard_owner])
-        );
-        let world = state.world(world_id);
-        assert_eq!(Ok(Some(World::new_with_seq(owners, users, 0))), world);
-    }
-
-    #[test]
-    fn user_cannot_set_users() {
-        let network_id = "tc".into();
-        let shard_id = 0xCAFE;
-        let mut state = get_temp_shard_state(shard_id);
-
-        let owners = vec![Address::random(), Address::random()];
-        let user = {
-            loop {
-                let owner = address();
-                if !owners.contains(&owner) {
-                    break owner
-                }
-            }
-        };
-        let users = vec![user, Address::random()];
-        assert_eq!(Ok(()), state.create_world(shard_id, &0, &owners, &users, &owners[0], &owners));
-        assert_eq!(Ok(()), state.commit());
-
-        let metadata = state.metadata();
-        assert_eq!(Ok(Some(ShardMetadata::new_with_seq(1, 1))), metadata);
-
-        let world_id = 0;
-        let world = state.world(world_id);
-        assert_eq!(Ok(Some(World::new(owners.clone(), users.clone()))), world);
-
-        let seq = 0;
-
-        let new_users = vec![Address::random(), Address::random(), Address::random()];
-        let transaction = Transaction::SetWorldUsers {
-            network_id,
-            shard_id,
-            world_id,
-            seq,
-            users: new_users.clone(),
-        };
-
-        let shard_owner = address();
-        assert_eq!(
-            Ok(TransactionInvoice::Fail(TransactionError::InsufficientPermission)),
-            state.apply(shard_id, &transaction, &user, &[shard_owner])
-        );
-        let world = state.world(world_id);
-        assert_eq!(Ok(Some(World::new_with_seq(owners, users, 0))), world);
-    }
-
 }

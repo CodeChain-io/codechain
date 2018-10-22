@@ -198,7 +198,6 @@ describe("solo - 1 node", () => {
             tx = node.sdk.core.createAssetMintTransaction({
                 scheme: {
                     shardId: 0,
-                    worldId: 0,
                     metadata: "",
                     amount: 10
                 },
@@ -261,20 +260,24 @@ describe("solo - 1 node", () => {
         });
 
         test("getAssetSchemeByHash", async () => {
+            const invalidShardId = 1;
+            const validShardId = 0;
             expect(
-                await node.sdk.rpc.chain.getAssetSchemeByHash(invalidHash, 0, 0)
+                await node.sdk.rpc.chain.getAssetSchemeByHash(
+                    invalidHash,
+                    validShardId
+                )
             ).toBeNull();
             expect(
-                await node.sdk.rpc.chain.getAssetSchemeByHash(tx.hash(), 1, 0)
-            ).toBeNull();
-            expect(
-                await node.sdk.rpc.chain.getAssetSchemeByHash(tx.hash(), 0, 1)
+                await node.sdk.rpc.chain.getAssetSchemeByHash(
+                    tx.hash(),
+                    invalidShardId
+                )
             ).toBeNull();
 
             const assetScheme = await node.sdk.rpc.chain.getAssetSchemeByHash(
                 tx.hash(),
-                0,
-                0
+                validShardId
             );
             expect(assetScheme.amount).toEqual(txAssetScheme.amount);
             expect(assetScheme.metadata).toEqual(txAssetScheme.metadata);

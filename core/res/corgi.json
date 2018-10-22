@@ -48,11 +48,7 @@
     "0": {
       "seq": 0,
       "owners": ["wccqx6n79wgvye8l8rx49xuqvm3vtwkffz28sff8axv"],
-      "worlds": [{
-        "seq": 0,
-        "owners": [
-        ]
-      }]
+      "users": []
     }
   }
 }

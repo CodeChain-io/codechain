@@ -36,7 +36,6 @@ describe("transactions", () => {
             const recipient = await node.createP2PKHAddress();
             const scheme = node.sdk.core.createAssetScheme({
                 shardId: 0,
-                worldId: 0,
                 metadata: "",
                 amount
             });
@@ -51,7 +50,6 @@ describe("transactions", () => {
         test("Mint unsuccessful - mint amount 0", async () => {
             const scheme = node.sdk.core.createAssetScheme({
                 shardId: 0,
-                worldId: 0,
                 metadata: "",
                 amount: 0
             });
@@ -317,7 +315,6 @@ describe("transactions", () => {
             const tx = node.sdk.core.createAssetMintTransaction({
                 scheme: {
                     shardId: 0,
-                    worldId: 0,
                     metadata: "",
                     amount: 10000,
                     registrar
@@ -396,7 +393,6 @@ describe("transactions", () => {
             const mintTx = node.sdk.core.createAssetMintTransaction({
                 scheme: {
                     shardId: 0,
-                    worldId: 0,
                     metadata: "",
                     amount: 4000
                 },
@@ -624,7 +620,6 @@ describe("transactions", () => {
             });
             const assetScheme = node.sdk.core.createAssetScheme({
                 shardId: 0,
-                worldId: 0,
                 metadata: JSON.stringify({
                     name: "An example asset"
                 }),
@@ -639,7 +634,6 @@ describe("transactions", () => {
             const composeTx = node.sdk.core.createAssetComposeTransaction({
                 scheme: {
                     shardId: 0,
-                    worldId: 0,
                     metadata: JSON.stringify({ name: "An unique asset" }),
                     amount: 1
                 },
@@ -676,7 +670,6 @@ describe("transactions", () => {
             });
             const assetScheme = node.sdk.core.createAssetScheme({
                 shardId: 0,
-                worldId: 0,
                 metadata: JSON.stringify({
                     name: "An example asset"
                 }),
@@ -691,7 +684,6 @@ describe("transactions", () => {
             const composeTx = node.sdk.core.createAssetComposeTransaction({
                 scheme: {
                     shardId: 0,
-                    worldId: 0,
                     metadata: JSON.stringify({ name: "An unique asset" }),
                     amount: 1
                 },
@@ -733,10 +725,6 @@ describe("transactions", () => {
             expect(invoice[2].success).toBe(true);
         });
     });
-
-    test.skip("CreateWorld", done => done.fail("not implemented"));
-    test.skip("SetWorldOwners", done => done.fail("not implemented"));
-    test.skip("SetWorldUsers", done => done.fail("not implemented"));
 
     afterAll(async () => {
         await node.clean();

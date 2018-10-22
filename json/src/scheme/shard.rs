@@ -17,14 +17,12 @@
 use ckey::PlatformAddress;
 
 use super::super::uint::Uint;
-use super::World;
 
 #[derive(Debug, PartialEq, Deserialize)]
 pub struct Shard {
     pub seq: Option<Uint>,
     pub owners: Vec<PlatformAddress>,
     pub users: Option<Vec<PlatformAddress>>,
-    pub worlds: Option<Vec<World>>,
 }
 
 #[cfg(test)]
@@ -41,11 +39,7 @@ mod tests {
     fn shard_deserialization() {
         let s = r#"{
             "seq": 0,
-            "owners": ["tccq8vapdlstar6ghmqgczp6j2e83njsqq0tsvaxm9u"],
-            "worlds": [{
-                "seq": 3,
-                "owners": ["tccq8txq9uafdg8y2de9m2tdkhsfsj3m9nluq94hyan"]
-            }]
+            "owners": ["tccq8vapdlstar6ghmqgczp6j2e83njsqq0tsvaxm9u"]
         }"#;
         let shard: Shard = serde_json::from_str(s).unwrap();
         assert_eq!(
@@ -53,13 +47,6 @@ mod tests {
                 seq: Some(Uint(U256::from(0))),
                 owners: vec![PlatformAddress::from_str("tccq8vapdlstar6ghmqgczp6j2e83njsqq0tsvaxm9u").unwrap()],
                 users: None,
-                worlds: Some(vec![World {
-                    seq: Some(Uint(U256::from(3))),
-                    owners: Some(vec![
-                        PlatformAddress::from_str("tccq8txq9uafdg8y2de9m2tdkhsfsj3m9nluq94hyan").unwrap(),
-                    ]),
-                    users: None,
-                }]),
             },
             shard
         );
@@ -78,7 +65,6 @@ mod tests {
                 seq: Some(Uint(U256::from(100))),
                 owners: vec![PlatformAddress::from_str("tccq8vapdlstar6ghmqgczp6j2e83njsqq0tsvaxm9u").unwrap()],
                 users: Some(vec![PlatformAddress::from_str("tccq8txq9uafdg8y2de9m2tdkhsfsj3m9nluq94hyan").unwrap()]),
-                worlds: None,
             },
             shard
         );
@@ -104,7 +90,6 @@ mod tests {
                 seq: None,
                 owners: vec![PlatformAddress::from_str("tccq8vapdlstar6ghmqgczp6j2e83njsqq0tsvaxm9u").unwrap()],
                 users: None,
-                worlds: None,
             },
             shard
         );

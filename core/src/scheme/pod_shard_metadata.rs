@@ -18,31 +18,12 @@ use std::fmt;
 
 use cjson;
 use ckey::{Address, PlatformAddress};
-use cstate::ShardMetadata;
-use rlp::{Encodable, RlpStream};
-
-use super::pod_world::PodWorld;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct PodShardMetadata {
     pub owners: Vec<Address>,
     pub users: Vec<Address>,
     pub seq: u64,
-    pub worlds: Vec<PodWorld>,
-}
-
-impl<'a> From<&'a PodShardMetadata> for ShardMetadata {
-    fn from(pod: &'a PodShardMetadata) -> Self {
-        assert!(pod.worlds.len() <= ::std::u16::MAX as usize);
-        ShardMetadata::new_with_seq(pod.worlds.len() as u16, pod.seq)
-    }
-}
-
-impl Encodable for PodShardMetadata {
-    fn rlp_append(&self, s: &mut RlpStream) {
-        let m: ShardMetadata = self.into();
-        m.rlp_append(s);
-    }
 }
 
 impl From<cjson::scheme::Shard> for PodShardMetadata {
@@ -51,13 +32,12 @@ impl From<cjson::scheme::Shard> for PodShardMetadata {
             seq: s.seq.map(Into::into).unwrap_or(0),
             owners: s.owners.into_iter().map(PlatformAddress::into_address).collect(),
             users: s.users.unwrap_or_else(Vec::new).into_iter().map(PlatformAddress::into_address).collect(),
-            worlds: s.worlds.unwrap_or_else(Vec::new).into_iter().map(Into::into).collect(),
         }
     }
 }
 
 impl fmt::Display for PodShardMetadata {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "(#seq={}; owners={:#?}; users={:#?} worlds={:#?})", self.seq, self.owners, self.users, self.worlds)
+        write!(f, "(#seq={}; owners={:#?}; users={:#?})", self.seq, self.owners, self.users)
     }
 }
