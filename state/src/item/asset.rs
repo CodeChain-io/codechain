@@ -196,10 +196,8 @@ mod tests {
         assert_ne!(address1, address2);
         assert_eq!(address1[0..2], [PREFIX, 0]);
         assert_eq!(address1[2..4], [0xBE, 0xEF]); // shard id
-        assert_eq!(address1[4..6], [0, 0]); // world id
         assert_eq!(address2[0..2], [PREFIX, 0]);
         assert_eq!(address2[2..4], [0xBE, 0xEF]); // shard id
-        assert_eq!(address2[4..6], [0, 0]); // world id
     }
 
     #[test]

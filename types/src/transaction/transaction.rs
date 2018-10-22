@@ -25,7 +25,7 @@ use primitives::{Bytes, H160, H256, U128};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::super::util::tag::Tag;
-use super::super::{ShardId, WorldId};
+use super::super::ShardId;
 use super::error::Error;
 
 
@@ -67,30 +67,9 @@ pub struct AssetTransferOutput {
 /// Parcel transaction type.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Transaction {
-    CreateWorld {
-        network_id: NetworkId,
-        shard_id: ShardId,
-        seq: u64,
-        owners: Vec<Address>,
-    },
-    SetWorldOwners {
-        network_id: NetworkId,
-        shard_id: ShardId,
-        world_id: WorldId,
-        seq: u64,
-        owners: Vec<Address>,
-    },
-    SetWorldUsers {
-        network_id: NetworkId,
-        shard_id: ShardId,
-        world_id: WorldId,
-        seq: u64,
-        users: Vec<Address>,
-    },
     AssetMint {
         network_id: NetworkId,
         shard_id: ShardId,
-        world_id: WorldId,
         metadata: String,
         registrar: Option<Address>,
         nonce: u64,
@@ -107,7 +86,6 @@ pub enum Transaction {
     AssetCompose {
         network_id: NetworkId,
         shard_id: ShardId,
-        world_id: WorldId,
         nonce: u64,
         metadata: String,
         registrar: Option<Address>,
@@ -137,18 +115,6 @@ impl Transaction {
 
     pub fn network_id(&self) -> NetworkId {
         match self {
-            Transaction::CreateWorld {
-                network_id,
-                ..
-            } => *network_id,
-            Transaction::SetWorldOwners {
-                network_id,
-                ..
-            } => *network_id,
-            Transaction::SetWorldUsers {
-                network_id,
-                ..
-            } => *network_id,
             Transaction::AssetTransfer {
                 network_id,
                 ..
@@ -170,18 +136,6 @@ impl Transaction {
 
     pub fn related_shards(&self) -> Vec<ShardId> {
         match self {
-            Transaction::CreateWorld {
-                shard_id,
-                ..
-            } => vec![*shard_id],
-            Transaction::SetWorldOwners {
-                shard_id,
-                ..
-            } => vec![*shard_id],
-            Transaction::SetWorldUsers {
-                shard_id,
-                ..
-            } => vec![*shard_id],
             Transaction::AssetTransfer {
                 burns,
                 inputs,
@@ -225,15 +179,6 @@ impl Transaction {
 
     pub fn verify(&self) -> Result<(), Error> {
         match self {
-            Transaction::CreateWorld {
-                ..
-            } => Ok(()),
-            Transaction::SetWorldOwners {
-                ..
-            } => Ok(()),
-            Transaction::SetWorldUsers {
-                ..
-            } => Ok(()),
             Transaction::AssetTransfer {
                 burns,
                 inputs,
@@ -337,30 +282,9 @@ impl HeapSizeOf for AssetMintOutput {
 impl HeapSizeOf for Transaction {
     fn heap_size_of_children(&self) -> usize {
         match self {
-            Transaction::CreateWorld {
-                network_id: _,
-                shard_id: _,
-                seq: _,
-                owners,
-            } => owners.heap_size_of_children(),
-            Transaction::SetWorldOwners {
-                network_id: _,
-                shard_id: _,
-                world_id: _,
-                seq: _,
-                owners,
-            } => owners.heap_size_of_children(),
-            Transaction::SetWorldUsers {
-                network_id: _,
-                shard_id: _,
-                world_id: _,
-                seq: _,
-                users,
-            } => users.heap_size_of_children(),
             Transaction::AssetMint {
                 network_id: _,
                 shard_id: _,
-                world_id: _,
                 metadata,
                 registrar,
                 nonce: _,
@@ -376,7 +300,6 @@ impl HeapSizeOf for Transaction {
             Transaction::AssetCompose {
                 network_id: _,
                 shard_id: _,
-                world_id: _,
                 nonce: _,
                 metadata,
                 registrar,
@@ -511,7 +434,6 @@ impl PartialHashing for Transaction {
             Transaction::AssetCompose {
                 network_id,
                 shard_id,
-                world_id,
                 nonce,
                 metadata,
                 registrar,
@@ -538,7 +460,6 @@ impl PartialHashing for Transaction {
                     &Transaction::AssetCompose {
                         network_id: *network_id,
                         shard_id: *shard_id,
-                        world_id: *world_id,
                         nonce: *nonce,
                         metadata: metadata.to_string(),
                         registrar: *registrar,
@@ -580,71 +501,29 @@ impl PartialHashing for Transaction {
 }
 
 type TransactionId = u8;
-const CREATE_WORLD_ID: TransactionId = 0x01;
-const SET_WORLD_OWNERS_ID: TransactionId = 0x02;
 const ASSET_MINT_ID: TransactionId = 0x03;
 const ASSET_TRANSFER_ID: TransactionId = 0x04;
-const SET_WORLD_USERS_ID: TransactionId = 0x05;
 const ASSET_COMPOSE_ID: TransactionId = 0x06;
 const ASSET_DECOMPOSE_ID: TransactionId = 0x07;
 
 impl Decodable for Transaction {
     fn decode(d: &UntrustedRlp) -> Result<Self, DecoderError> {
         match d.val_at(0)? {
-            CREATE_WORLD_ID => {
-                if d.item_count()? != 5 {
-                    return Err(DecoderError::RlpIncorrectListLen)
-                }
-
-                Ok(Transaction::CreateWorld {
-                    network_id: d.val_at(1)?,
-                    shard_id: d.val_at(2)?,
-                    seq: d.val_at(3)?,
-                    owners: d.list_at(4)?,
-                })
-            }
-            SET_WORLD_OWNERS_ID => {
-                if d.item_count()? != 6 {
-                    return Err(DecoderError::RlpIncorrectListLen)
-                }
-
-                Ok(Transaction::SetWorldOwners {
-                    network_id: d.val_at(1)?,
-                    shard_id: d.val_at(2)?,
-                    world_id: d.val_at(3)?,
-                    seq: d.val_at(4)?,
-                    owners: d.list_at(5)?,
-                })
-            }
-            SET_WORLD_USERS_ID => {
-                if d.item_count()? != 6 {
-                    return Err(DecoderError::RlpIncorrectListLen)
-                }
-
-                Ok(Transaction::SetWorldUsers {
-                    network_id: d.val_at(1)?,
-                    shard_id: d.val_at(2)?,
-                    world_id: d.val_at(3)?,
-                    seq: d.val_at(4)?,
-                    users: d.list_at(5)?,
-                })
-            }
             ASSET_MINT_ID => {
-                if d.item_count()? != 10 {
+                if d.item_count()? != 9 {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
                 Ok(Transaction::AssetMint {
                     network_id: d.val_at(1)?,
                     shard_id: d.val_at(2)?,
-                    world_id: d.val_at(3)?,
-                    metadata: d.val_at(4)?,
+                    metadata: d.val_at(3)?,
                     output: AssetMintOutput {
-                        lock_script_hash: d.val_at(5)?,
-                        parameters: d.val_at(6)?,
-                        amount: d.val_at(7)?,
+                        lock_script_hash: d.val_at(4)?,
+                        parameters: d.val_at(5)?,
+                        amount: d.val_at(6)?,
                     },
-                    registrar: d.val_at(8)?,
-                    nonce: d.val_at(9)?,
+                    registrar: d.val_at(7)?,
+                    nonce: d.val_at(8)?,
                 })
             }
             ASSET_TRANSFER_ID => {
@@ -660,22 +539,21 @@ impl Decodable for Transaction {
                 })
             }
             ASSET_COMPOSE_ID => {
-                if d.item_count()? != 11 {
+                if d.item_count()? != 10 {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
                 Ok(Transaction::AssetCompose {
                     network_id: d.val_at(1)?,
                     shard_id: d.val_at(2)?,
-                    world_id: d.val_at(3)?,
-                    metadata: d.val_at(4)?,
-                    registrar: d.val_at(5)?,
-                    inputs: d.list_at(6)?,
+                    metadata: d.val_at(3)?,
+                    registrar: d.val_at(4)?,
+                    inputs: d.list_at(5)?,
                     output: AssetMintOutput {
-                        lock_script_hash: d.val_at(7)?,
-                        parameters: d.val_at(8)?,
-                        amount: d.val_at(9)?,
+                        lock_script_hash: d.val_at(6)?,
+                        parameters: d.val_at(7)?,
+                        amount: d.val_at(8)?,
                     },
-                    nonce: d.val_at(10)?,
+                    nonce: d.val_at(9)?,
                 })
             }
             ASSET_DECOMPOSE_ID => {
@@ -697,50 +575,9 @@ impl Decodable for Transaction {
 impl Encodable for Transaction {
     fn rlp_append(&self, s: &mut RlpStream) {
         match self {
-            Transaction::CreateWorld {
-                network_id,
-                shard_id,
-                seq,
-                owners,
-            } => s
-                .begin_list(5)
-                .append(&CREATE_WORLD_ID)
-                .append(network_id)
-                .append(shard_id)
-                .append(seq)
-                .append_list(&owners),
-            Transaction::SetWorldOwners {
-                network_id,
-                shard_id,
-                world_id,
-                seq,
-                owners,
-            } => s
-                .begin_list(6)
-                .append(&SET_WORLD_OWNERS_ID)
-                .append(network_id)
-                .append(shard_id)
-                .append(world_id)
-                .append(seq)
-                .append_list(&owners),
-            Transaction::SetWorldUsers {
-                network_id,
-                shard_id,
-                world_id,
-                seq,
-                users,
-            } => s
-                .begin_list(6)
-                .append(&SET_WORLD_OWNERS_ID)
-                .append(network_id)
-                .append(shard_id)
-                .append(world_id)
-                .append(seq)
-                .append_list(&users),
             Transaction::AssetMint {
                 network_id,
                 shard_id,
-                world_id,
                 metadata,
                 output:
                     AssetMintOutput {
@@ -751,11 +588,10 @@ impl Encodable for Transaction {
                 registrar,
                 nonce,
             } => s
-                .begin_list(10)
+                .begin_list(9)
                 .append(&ASSET_MINT_ID)
                 .append(network_id)
                 .append(shard_id)
-                .append(world_id)
                 .append(metadata)
                 .append(lock_script_hash)
                 .append(parameters)
@@ -779,7 +615,6 @@ impl Encodable for Transaction {
             Transaction::AssetCompose {
                 network_id,
                 shard_id,
-                world_id,
                 nonce,
                 metadata,
                 registrar,
@@ -791,11 +626,10 @@ impl Encodable for Transaction {
                         amount,
                     },
             } => s
-                .begin_list(11)
+                .begin_list(10)
                 .append(&ASSET_COMPOSE_ID)
                 .append(network_id)
                 .append(shard_id)
-                .append(world_id)
                 .append(metadata)
                 .append(registrar)
                 .append_list(inputs)
@@ -1102,51 +936,6 @@ mod tests {
         ));
     }
 
-    #[test]
-    fn encode_and_decode_create_world_without_owners() {
-        let transaction = Transaction::CreateWorld {
-            network_id: "tc".into(),
-            shard_id: 0xFE,
-            seq: 0xFE,
-            owners: vec![],
-        };
-        rlp_encode_and_decode_test!(transaction);
-    }
-
-    #[test]
-    fn encode_and_decode_create_world_with_owners() {
-        let transaction = Transaction::CreateWorld {
-            network_id: "tc".into(),
-            shard_id: 0xFE,
-            seq: 0xFE,
-            owners: vec![Address::random(), Address::random(), Address::random()],
-        };
-        rlp_encode_and_decode_test!(transaction);
-    }
-
-    #[test]
-    fn encode_and_decode_set_world_owners_with_empty_owners() {
-        let transaction = Transaction::SetWorldOwners {
-            network_id: "tc".into(),
-            shard_id: 0xFE,
-            world_id: 0xB,
-            seq: 0xEE,
-            owners: vec![],
-        };
-        rlp_encode_and_decode_test!(transaction);
-    }
-
-    #[test]
-    fn encode_and_decode_set_world_owners() {
-        let transaction = Transaction::SetWorldOwners {
-            network_id: "tc".into(),
-            shard_id: 0xFE,
-            world_id: 0xB,
-            seq: 0xEE,
-            owners: vec![Address::random(), Address::random(), Address::random()],
-        };
-        rlp_encode_and_decode_test!(transaction);
-    }
 
     #[test]
     fn encode_and_decode_decompose_transaction() {

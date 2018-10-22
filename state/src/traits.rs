@@ -18,11 +18,11 @@ use ckey::{Address, Public};
 use cmerkle::Result as TrieResult;
 use ctypes::invoice::TransactionInvoice;
 use ctypes::transaction::Transaction;
-use ctypes::{ShardId, WorldId};
+use ctypes::ShardId;
 use primitives::{Bytes, H256, U256};
 
 use super::backend::{ShardBackend, TopBackend};
-use super::{AssetScheme, AssetSchemeAddress, OwnedAsset, OwnedAssetAddress, ShardMetadata, StateResult, World};
+use super::{AssetScheme, AssetSchemeAddress, OwnedAsset, OwnedAssetAddress, StateResult};
 
 
 pub trait TopStateInfo {
@@ -43,9 +43,6 @@ pub trait TopStateInfo {
     fn shard_owners(&self, shard_id: ShardId) -> TrieResult<Option<Vec<Address>>>;
     fn shard_users(&self, shard_id: ShardId) -> TrieResult<Option<Vec<Address>>>;
 
-    fn shard_metadata(&self, shard_id: ShardId) -> TrieResult<Option<ShardMetadata>>;
-    fn world(&self, shard_id: ShardId, world_id: WorldId) -> TrieResult<Option<World>>;
-
     /// Get the asset scheme.
     fn asset_scheme(&self, shard_id: ShardId, a: &AssetSchemeAddress) -> TrieResult<Option<AssetScheme>>;
     /// Get the asset.
@@ -56,9 +53,6 @@ pub trait TopStateInfo {
 
 pub trait ShardStateInfo {
     fn root(&self) -> &H256;
-
-    fn metadata(&self) -> TrieResult<Option<ShardMetadata>>;
-    fn world(&self, world_id: WorldId) -> TrieResult<Option<World>>;
 
     /// Get the asset scheme.
     fn asset_scheme(&self, a: &AssetSchemeAddress) -> TrieResult<Option<AssetScheme>>;
@@ -71,7 +65,6 @@ where
     B: ShardBackend, {
     fn apply(
         &mut self,
-        shard_id: ShardId,
         transaction: &Transaction,
         sender: &Address,
         shard_owners: &[Address],

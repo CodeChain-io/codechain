@@ -385,7 +385,6 @@ export default class CodeChain {
         const tx = this.sdk.core.createAssetMintTransaction({
             scheme: {
                 shardId: 0,
-                worldId: 0,
                 metadata: "",
                 amount
             },
@@ -432,7 +431,6 @@ export default class CodeChain {
             const tx = this.sdk.core.createAssetMintTransaction({
                 scheme: {
                     shardId: 0,
-                    worldId: 0,
                     metadata: "",
                     amount: 1
                 },

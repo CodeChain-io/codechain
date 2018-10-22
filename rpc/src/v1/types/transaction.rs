@@ -16,43 +16,16 @@
 
 use ckey::{Error as KeyError, NetworkId, PlatformAddress};
 use ctypes::transaction::{AssetMintOutput, AssetTransferInput, AssetTransferOutput, Transaction as TransactionType};
-use ctypes::{ShardId, WorldId};
+use ctypes::ShardId;
 use primitives::H256;
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", tag = "type", content = "data")]
 pub enum Transaction {
     #[serde(rename_all = "camelCase")]
-    CreateWorld {
-        network_id: NetworkId,
-        shard_id: ShardId,
-        seq: u64,
-        owners: Vec<PlatformAddress>,
-        hash: H256,
-    },
-    #[serde(rename_all = "camelCase")]
-    SetWorldOwners {
-        network_id: NetworkId,
-        shard_id: ShardId,
-        world_id: WorldId,
-        seq: u64,
-        owners: Vec<PlatformAddress>,
-        hash: H256,
-    },
-    #[serde(rename_all = "camelCase")]
-    SetWorldUsers {
-        network_id: NetworkId,
-        shard_id: ShardId,
-        world_id: WorldId,
-        seq: u64,
-        users: Vec<PlatformAddress>,
-        hash: H256,
-    },
-    #[serde(rename_all = "camelCase")]
     AssetMint {
         network_id: NetworkId,
         shard_id: ShardId,
-        world_id: WorldId,
         metadata: String,
         registrar: Option<PlatformAddress>,
         nonce: u64,
@@ -73,7 +46,6 @@ pub enum Transaction {
     AssetCompose {
         network_id: NetworkId,
         shard_id: ShardId,
-        world_id: WorldId,
         nonce: u64,
         metadata: String,
         registrar: Option<PlatformAddress>,
@@ -93,50 +65,9 @@ impl From<TransactionType> for Transaction {
     fn from(from: TransactionType) -> Self {
         let hash = from.hash();
         match from {
-            TransactionType::CreateWorld {
-                network_id,
-                shard_id,
-                seq,
-                owners,
-            } => Transaction::CreateWorld {
-                network_id,
-                shard_id,
-                seq,
-                owners: owners.into_iter().map(|owner| PlatformAddress::new_v1(network_id, owner)).collect(),
-                hash,
-            },
-            TransactionType::SetWorldOwners {
-                network_id,
-                shard_id,
-                world_id,
-                seq,
-                owners,
-            } => Transaction::SetWorldOwners {
-                network_id,
-                shard_id,
-                world_id,
-                seq,
-                owners: owners.into_iter().map(|owner| PlatformAddress::new_v1(network_id, owner)).collect(),
-                hash,
-            },
-            TransactionType::SetWorldUsers {
-                network_id,
-                shard_id,
-                world_id,
-                seq,
-                users,
-            } => Transaction::SetWorldUsers {
-                network_id,
-                shard_id,
-                world_id,
-                seq,
-                users: users.into_iter().map(|user| PlatformAddress::new_v1(network_id, user)).collect(),
-                hash,
-            },
             TransactionType::AssetMint {
                 network_id,
                 shard_id,
-                world_id,
                 metadata,
                 registrar,
                 nonce,
@@ -144,7 +75,6 @@ impl From<TransactionType> for Transaction {
             } => Transaction::AssetMint {
                 network_id,
                 shard_id,
-                world_id,
                 metadata,
                 registrar: registrar.map(|registrar| PlatformAddress::new_v1(network_id, registrar)),
                 nonce,
@@ -168,7 +98,6 @@ impl From<TransactionType> for Transaction {
             TransactionType::AssetCompose {
                 network_id,
                 shard_id,
-                world_id,
                 nonce,
                 metadata,
                 registrar,
@@ -177,7 +106,6 @@ impl From<TransactionType> for Transaction {
             } => Transaction::AssetCompose {
                 network_id,
                 shard_id,
-                world_id,
                 nonce,
                 metadata,
                 registrar: registrar.map(|registrar| PlatformAddress::new_v1(network_id, registrar)),
@@ -203,59 +131,9 @@ impl From<TransactionType> for Transaction {
 impl From<Transaction> for Result<TransactionType, KeyError> {
     fn from(from: Transaction) -> Self {
         Ok(match from {
-            Transaction::CreateWorld {
-                network_id,
-                shard_id,
-                seq,
-                owners,
-                ..
-            } => {
-                let owners: Result<_, _> = owners.into_iter().map(PlatformAddress::try_into_address).collect();
-                TransactionType::CreateWorld {
-                    network_id,
-                    shard_id,
-                    seq,
-                    owners: owners?,
-                }
-            }
-            Transaction::SetWorldOwners {
-                network_id,
-                shard_id,
-                world_id,
-                seq,
-                owners,
-                ..
-            } => {
-                let owners: Result<_, _> = owners.into_iter().map(PlatformAddress::try_into_address).collect();
-                TransactionType::SetWorldOwners {
-                    network_id,
-                    shard_id,
-                    world_id,
-                    seq,
-                    owners: owners?,
-                }
-            }
-            Transaction::SetWorldUsers {
-                network_id,
-                shard_id,
-                world_id,
-                seq,
-                users,
-                ..
-            } => {
-                let users: Result<_, _> = users.into_iter().map(PlatformAddress::try_into_address).collect();
-                TransactionType::SetWorldUsers {
-                    network_id,
-                    shard_id,
-                    world_id,
-                    seq,
-                    users: users?,
-                }
-            }
             Transaction::AssetMint {
                 network_id,
                 shard_id,
-                world_id,
                 metadata,
                 registrar,
                 nonce,
@@ -269,7 +147,6 @@ impl From<Transaction> for Result<TransactionType, KeyError> {
                 TransactionType::AssetMint {
                     network_id,
                     shard_id,
-                    world_id,
                     metadata,
                     registrar,
                     nonce,
@@ -293,7 +170,6 @@ impl From<Transaction> for Result<TransactionType, KeyError> {
             Transaction::AssetCompose {
                 network_id,
                 shard_id,
-                world_id,
                 nonce,
                 metadata,
                 registrar,
@@ -307,7 +183,6 @@ impl From<Transaction> for Result<TransactionType, KeyError> {
                 TransactionType::AssetCompose {
                     network_id,
                     shard_id,
-                    world_id,
                     nonce,
                     metadata,
                     registrar,

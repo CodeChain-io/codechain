@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ckey::Address;
-use ctypes::{ShardId, WorldId};
+use ctypes::ShardId;
 use primitives::H256;
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
@@ -122,13 +122,13 @@ impl Decodable for AssetScheme {
 #[derive(Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct AssetSchemeAddress(H256);
 
-impl_address!(WORLD, AssetSchemeAddress, PREFIX);
+impl_address!(SHARD, AssetSchemeAddress, PREFIX);
 
 impl AssetSchemeAddress {
-    pub fn new(transaction_hash: H256, shard_id: ShardId, world_id: WorldId) -> Self {
+    pub fn new(transaction_hash: H256, shard_id: ShardId) -> Self {
         let index = ::std::u64::MAX;
 
-        Self::from_transaction_hash_with_shard_and_world_id(transaction_hash, index, shard_id, world_id)
+        Self::from_transaction_hash_with_shard_id(transaction_hash, index, shard_id)
     }
 }
 
@@ -163,31 +163,19 @@ mod tests {
             address
         };
         let shard_id = 0xBEE;
-        let world_id = 0xD00;
-        let asset_address = AssetSchemeAddress::new(origin, shard_id, world_id);
+        let asset_address = AssetSchemeAddress::new(origin, shard_id);
         let hash: H256 = asset_address.into();
         assert_ne!(origin, hash);
         assert_eq!(hash[0..2], [PREFIX, 0]);
         assert_eq!(hash[2..4], [0x0B, 0xEE]); // shard id
-        assert_eq!(hash[4..6], [0x0D, 0x00]); // world id
     }
 
     #[test]
     fn shard_id() {
         let origin = H256::random();
         let shard_id = 0xCAA;
-        let world_id = 0xD0;
-        let asset_scheme_address = AssetSchemeAddress::new(origin, shard_id, world_id);
+        let asset_scheme_address = AssetSchemeAddress::new(origin, shard_id);
         assert_eq!(shard_id, asset_scheme_address.shard_id());
-    }
-
-    #[test]
-    fn world_id() {
-        let origin = H256::random();
-        let shard_id = 0xCAA;
-        let world_id = 0xD0;
-        let asset_scheme_address = AssetSchemeAddress::new(origin, shard_id, world_id);
-        assert_eq!(world_id, asset_scheme_address.world_id());
     }
 
     #[test]
@@ -202,20 +190,5 @@ mod tests {
         let shard_id = ((hash[2] as ShardId) << 8) + (hash[3] as ShardId);
         let asset_scheme_address = AssetSchemeAddress::from_hash(hash).unwrap();
         assert_eq!(shard_id, asset_scheme_address.shard_id());
-    }
-
-
-    #[test]
-    fn world_id_from_hash() {
-        let hash = {
-            let mut hash = H256::random();
-            hash[0] = PREFIX;
-            hash[1] = 0;
-            hash
-        };
-        assert_eq!(::std::mem::size_of::<u16>(), ::std::mem::size_of::<WorldId>());
-        let world_id = ((hash[4] as WorldId) << 8) + (hash[5] as WorldId);
-        let asset_scheme_address = AssetSchemeAddress::from_hash(hash).unwrap();
-        assert_eq!(world_id, asset_scheme_address.world_id());
     }
 }

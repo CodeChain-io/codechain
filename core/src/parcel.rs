@@ -153,15 +153,6 @@ impl UnverifiedParcel {
                         }
                     }
                     match &t {
-                        Transaction::CreateWorld {
-                            ..
-                        } => {}
-                        Transaction::SetWorldOwners {
-                            ..
-                        } => {}
-                        Transaction::SetWorldUsers {
-                            ..
-                        } => {}
                         Transaction::AssetMint {
                             metadata,
                             ..
@@ -318,7 +309,6 @@ mod tests {
         rlp_encode_and_decode_test!(Transaction::AssetMint {
             network_id: "tc".into(),
             shard_id: 0xc,
-            world_id: 0xA,
             metadata: "mint test".to_string(),
             output: AssetMintOutput {
                 lock_script_hash: H160::random(),
@@ -335,7 +325,6 @@ mod tests {
         rlp_encode_and_decode_test!(Transaction::AssetMint {
             network_id: "tc".into(),
             shard_id: 3,
-            world_id: 0xB,
             metadata: "mint test".to_string(),
             output: AssetMintOutput {
                 lock_script_hash: H160::random(),
