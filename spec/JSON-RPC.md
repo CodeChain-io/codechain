@@ -200,9 +200,6 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
  * [account_sendParcel](#account_sendparcel)
  * [account_changePassword](#account_changepassword)
 ***
- * [shardValidator_registerAction](#shardvalidator_registeraction)
- * [shardValidator_getSignatures](#shardvalidator_getsignatures)
-***
  * [devel_getStateTrieKeys](#devel_getstatetriekeys)
  * [devel_getStateTrieValue](#devel_getstatetrievalue)
  * [devel_startSealing](#devel_startsealing)
@@ -1747,62 +1744,6 @@ Response Example
 {
   "jsonrpc":"2.0",
   "result":null,
-  "id":6
-}
-```
-
-## shardValidator_registerAction
-Sends an action to get signatures. The action will be propagated and shard
-validators will send the signatures of the action if it is a valid action.
-
-Params:
- 1. action: `Action`
-
-Return Type: `bool`
-
-Errors: `Invalid Params`
-
-Request Example
-```
-  curl \
-    -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "shardValidator_registerAction", "params": [{"action":"changeShardState","transactions":[{"type":"assetMint","data":{"networkId":17,"shardId":0,"metadata":"{\"name\":\"Gold\",\"description\":\"An asset example\",\"icon_url\":\"https://gold.image/\"}","output":{"lockScriptHash":"0xf42a65ea518ba236c08b261c34af0521fa3cd1aa505e1c18980919cb8945f8f3","parameters":[],"amount":10000},"registrar":null,"nonce":0}}],"changes":[{"shardId":0,"preRoot":"0x0000000000000000000000000000000000000000000000000000000000000000","postRoot":"0x0000000000000000000000000000000000000000000000000000000000000000"}]}
-], "id": null}' \
-    localhost:8080
-```
-
-Response Example
-```
-{
-  "jsonrpc":"2.0",
-  "result":true,
-  "id":6
-}
-```
-
-## shardValidator_getSignatures
-Gets the signatures signed by the shard validators for the given action.
-
-Params:
- 1. action_hash: `H256`
-
-Return type: `Signature[]`
-
-Errors: `Invalid Params`
-
-Request Example
-```
-curl \
-    -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "shardValidator_getSignatures", "params": ["0xa2b39d16efe74b17f84ed4cf629e7c8817691cc4f444ac7522902b8fb4b7bd53"], "id": 6}' \
-    localhost:8080
-```
-
-Response Example
-```
-{
-  "jsonrpc":"2.0",
-  "result":["0xff7e8928f7758a64b9ea6c53f9945cdd223740675ac6ac6da625306d3966f8197523e00d56844ddb70631d44f045f4d83cc183a267c3182ab04c2f459c8289f501"],
   "id":6
 }
 ```
