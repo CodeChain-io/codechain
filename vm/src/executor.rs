@@ -14,17 +14,24 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use byteorder::{BigEndian, ByteOrder};
+
 use ccrypto::{blake256, keccak256, ripemd160, sha256, Blake};
 use ckey::{verify, Public, Signature, SIGNATURE_LENGTH};
 use ctypes::transaction::{AssetTransferInput, HashingError, PartialHashing};
 use ctypes::util::tag::Tag;
 
-use primitives::H160;
+use primitives::{H160, H256};
 
 
 use instruction::{has_expensive_opcodes, is_valid_unlock_script, Instruction};
 
 const DEFAULT_MAX_MEMORY: usize = 1024;
+
+const TIMELOCK_TYPE_BLOCK: u8 = 0x01;
+const TIMELOCK_TYPE_BLOCK_AGE: u8 = 0x02;
+const TIMELOCK_TYPE_TIME: u8 = 0x03;
+const TIMELOCK_TYPE_TIME_AGE: u8 = 0x04;
 
 pub struct Config {
     pub max_memory: usize,
@@ -53,6 +60,7 @@ pub enum RuntimeError {
     TypeMismatch,
     InvalidFilter,
     InvalidSigCount,
+    InvalidTimelockType,
 }
 
 impl From<HashingError> for RuntimeError {
@@ -153,7 +161,7 @@ impl Stack {
     }
 }
 
-pub fn execute(
+pub fn execute<C>(
     unlock: &[Instruction],
     params: &[Vec<u8>],
     lock: &[Instruction],
@@ -161,7 +169,10 @@ pub fn execute(
     config: Config,
     cur: &AssetTransferInput,
     burn: bool,
-) -> Result<ScriptResult, RuntimeError> {
+    client: &C,
+) -> Result<ScriptResult, RuntimeError>
+where
+    C: ChainTimeInfo, {
     // FIXME: don't merge scripts
 
     if !is_valid_unlock_script(unlock) {
@@ -294,6 +305,37 @@ pub fn execute(
                 let value = stack.pop()?;
                 stack.push(Item(H160::blake(value).to_vec()))?;
             }
+            Instruction::ChkTimelock => {
+                let timelock_type = stack.pop()?.assert_len(1)?.as_ref()[0] as u8;
+                let value_item = stack.pop()?;
+                if value_item.len() > 8 {
+                    return Err(RuntimeError::TypeMismatch)
+                }
+                let value = BigEndian::read_uint(value_item.as_ref(), value_item.len());
+                match timelock_type {
+                    TIMELOCK_TYPE_BLOCK => {
+                        stack.push(Item::from(client.best_block_number() >= value))?;
+                    }
+                    TIMELOCK_TYPE_BLOCK_AGE => {
+                        stack.push(Item::from(
+                            client
+                                .transaction_block_age(cur.prev_out.transaction_hash)
+                                .map_or(false, |age| age >= value),
+                        ))?;
+                    }
+                    TIMELOCK_TYPE_TIME => {
+                        stack.push(Item::from(client.best_block_timestamp() >= value))?;
+                    }
+                    TIMELOCK_TYPE_TIME_AGE => {
+                        stack.push(Item::from(
+                            client
+                                .transaction_time_age(cur.prev_out.transaction_hash)
+                                .map_or(false, |age| age >= value),
+                        ))?;
+                    }
+                    _ => return Err(RuntimeError::InvalidTimelockType),
+                }
+            }
         }
         pc += 1;
     }
@@ -304,6 +346,20 @@ pub fn execute(
     } else {
         Ok(ScriptResult::Fail)
     }
+}
+
+pub trait ChainTimeInfo {
+    /// Get the best block number.
+    fn best_block_number(&self) -> u64;
+
+    /// Get the best block timestamp.
+    fn best_block_timestamp(&self) -> u64;
+
+    /// Get the block height of the transaction.
+    fn transaction_block_age(&self, hash: H256) -> Option<u64>;
+
+    /// Get the how many seconds elapsed since transaction is confirmed, according to block timestamp.
+    fn transaction_time_age(&self, hash: H256) -> Option<u64>;
 }
 
 #[cfg(test)]

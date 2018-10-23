@@ -27,7 +27,7 @@ use ctypes::transaction::{
 };
 use ctypes::util::unexpected::Mismatch;
 use ctypes::ShardId;
-use cvm::{decode, execute, ScriptResult, VMConfig};
+use cvm::{decode, execute, ChainTimeInfo, ScriptResult, VMConfig};
 use primitives::{Bytes, H160, H256};
 
 use super::super::backend::{Backend, ShardBackend};
@@ -83,11 +83,12 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         (self.root, self.db)
     }
 
-    fn apply_internal(
+    fn apply_internal<C: ChainTimeInfo>(
         &mut self,
         transaction: &Transaction,
         sender: &Address,
         shard_users: &[Address],
+        client: &C,
     ) -> StateResult<()> {
         debug_assert_eq!(Ok(()), transaction.verify());
         match transaction {
@@ -119,7 +120,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
                 ..
             } => {
                 debug_assert!(outputs.len() <= 512);
-                self.transfer_asset(&transaction, sender, burns, inputs, outputs)
+                self.transfer_asset(&transaction, sender, burns, inputs, outputs, client)
             }
 
             Transaction::AssetCompose {
@@ -128,12 +129,12 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
                 inputs,
                 output,
                 ..
-            } => self.compose_asset(&transaction, metadata, registrar, inputs, output, sender, shard_users),
+            } => self.compose_asset(&transaction, metadata, registrar, inputs, output, sender, shard_users, client),
             Transaction::AssetDecompose {
                 input,
                 outputs,
                 ..
-            } => self.decompose_asset(&transaction, input, outputs, sender),
+            } => self.decompose_asset(&transaction, input, outputs, sender, client),
         }
     }
 
@@ -170,17 +171,18 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         Ok(())
     }
 
-    fn transfer_asset(
+    fn transfer_asset<C: ChainTimeInfo>(
         &mut self,
         transaction: &Transaction,
         sender: &Address,
         burns: &[AssetTransferInput],
         inputs: &[AssetTransferInput],
         outputs: &[AssetTransferOutput],
+        client: &C,
     ) -> StateResult<()> {
         for (input, burn) in inputs.iter().map(|input| (input, false)).chain(burns.iter().map(|input| (input, true))) {
             let address = OwnedAssetAddress::new(input.prev_out.transaction_hash, input.prev_out.index, self.shard_id);
-            let script_result = self.check_and_run_input_script(input, transaction, burn)?;
+            let script_result = self.check_and_run_input_script(input, transaction, burn, client)?;
             match (script_result, burn) {
                 (ScriptResult::Unlocked, false) => {}
                 (ScriptResult::Burnt, true) => {}
@@ -244,11 +246,12 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         }
     }
 
-    fn check_and_run_input_script(
+    fn check_and_run_input_script<C: ChainTimeInfo>(
         &self,
         input: &AssetTransferInput,
         transaction_hash: &PartialHashing,
         burn: bool,
+        client: &C,
     ) -> StateResult<ScriptResult> {
         let (address_hash, asset) = {
             let index = input.prev_out.index;
@@ -275,6 +278,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
                 VMConfig::default(),
                 input,
                 burn,
+                client,
             ),
             // FIXME : Deliver full decode error
             _ => return Err(TransactionError::InvalidScript.into()),
@@ -285,7 +289,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         Ok(script_result)
     }
 
-    fn compose_asset(
+    fn compose_asset<C: ChainTimeInfo>(
         &mut self,
         transaction: &Transaction,
         metadata: &String,
@@ -294,13 +298,14 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         output: &AssetMintOutput,
         sender: &Address,
         shard_users: &[Address],
+        client: &C,
     ) -> StateResult<()> {
         let mut sum: HashMap<H256, u64> = HashMap::new();
 
         let mut deleted_assets: Vec<(H256, _)> = Vec::with_capacity(inputs.len());
         for input in inputs.iter() {
             let (_, asset_address) = self.check_input_asset(input, sender)?;
-            let script_result = self.check_and_run_input_script(input, transaction, false)?;
+            let script_result = self.check_and_run_input_script(input, transaction, false, client)?;
 
             match script_result {
                 ScriptResult::Unlocked => {}
@@ -331,12 +336,13 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         )
     }
 
-    fn decompose_asset(
+    fn decompose_asset<C: ChainTimeInfo>(
         &mut self,
         transaction: &Transaction,
         input: &AssetTransferInput,
         outputs: &[AssetTransferOutput],
         sender: &Address,
+        client: &C,
     ) -> StateResult<()> {
         let asset_type = input.prev_out.asset_type;
         let asset_scheme_address =
@@ -392,7 +398,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
 
 
         let (_, asset_address) = self.check_input_asset(input, sender)?;
-        let script_result = self.check_and_run_input_script(input, transaction, false)?;
+        let script_result = self.check_and_run_input_script(input, transaction, false, client)?;
 
         match script_result {
             ScriptResult::Unlocked => {}
@@ -521,16 +527,17 @@ impl<B: ShardBackend> fmt::Debug for ShardLevelState<B> {
 const TRANSACTION_CHECKPOINT: CheckpointId = 456;
 
 impl<B: Backend + ShardBackend> ShardState<B> for ShardLevelState<B> {
-    fn apply(
+    fn apply<C: ChainTimeInfo>(
         &mut self,
         transaction: &Transaction,
         sender: &Address,
         shard_users: &[Address],
+        client: &C,
     ) -> StateResult<TransactionInvoice> {
         ctrace!(TX, "Execute {:?}(TxHash:{:?})", transaction, transaction.hash());
 
         self.create_checkpoint(TRANSACTION_CHECKPOINT);
-        let result = self.apply_internal(transaction, sender, shard_users);
+        let result = self.apply_internal(transaction, sender, shard_users, client);
         match result {
             Ok(_) => {
                 cinfo!(TX, "Tx({}) is applied", transaction.hash());

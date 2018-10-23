@@ -16,6 +16,7 @@ codechain-network = { path = "../network" }
 codechain-state = { path = "../state" }
 codechain-types = { path = "../types" }
 codechain-stratum = { path = "../stratum" }
+codechain-vm = { path = "../vm" }
 cuckoo = { git = "https://github.com/CodeChain-io/rust-cuckoo.git", rev = "280cab9c" }
 hashdb = { path = "../util/hashdb" }
 heapsize = "0.4"

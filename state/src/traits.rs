@@ -19,6 +19,7 @@ use cmerkle::Result as TrieResult;
 use ctypes::invoice::TransactionInvoice;
 use ctypes::transaction::Transaction;
 use ctypes::ShardId;
+use cvm::ChainTimeInfo;
 use primitives::{Bytes, H256, U256};
 
 use super::backend::{ShardBackend, TopBackend};
@@ -63,11 +64,12 @@ pub trait ShardStateInfo {
 pub trait ShardState<B>
 where
     B: ShardBackend, {
-    fn apply(
+    fn apply<C: ChainTimeInfo>(
         &mut self,
         transaction: &Transaction,
         sender: &Address,
         shard_owners: &[Address],
+        client: &C,
     ) -> StateResult<TransactionInvoice>;
 }
 
