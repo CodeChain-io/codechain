@@ -239,11 +239,11 @@ args:
             - no-stratum
     - no-shard-validator:
         long: no-shard-validator
-        help: Do not run as a shard validator.
+        help: Do nothing. This feature is deprecated.
     - shard-validator:
         long: shard-validator
         value_name: ACCOUNT
-        help: Specify the account for shard validator.
+        help: Do nothing. This feature is deprecated.
         takes_value: true
         conflicts_with:
             - no-shard-validator

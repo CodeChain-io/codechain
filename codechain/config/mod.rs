@@ -20,7 +20,7 @@ use std::fs;
 use std::str::{self, FromStr};
 use std::time::Duration;
 
-use ccore::{MinerOptions, ShardValidatorConfig, StratumConfig};
+use ccore::{MinerOptions, StratumConfig};
 use ckey::PlatformAddress;
 use clap;
 use cnetwork::{FilterEntry, NetworkConfig, SocketAddr};
@@ -185,14 +185,6 @@ impl Config {
             listen_addr: "127.0.0.1".to_string(),
             port: self.stratum.port.unwrap(),
             secret: None,
-        }
-    }
-
-    pub fn shard_validator_config(&self) -> ShardValidatorConfig {
-        debug_assert!(self.shard_validator.disable.unwrap());
-
-        ShardValidatorConfig {
-            account: self.shard_validator.account.unwrap().into_address(),
         }
     }
 }

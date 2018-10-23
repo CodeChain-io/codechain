@@ -21,8 +21,8 @@ use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use ccore::{
-    AccountProvider, AccountProviderError, Client, ClientService, EngineType, Miner, MinerService, Scheme,
-    ShardValidator, Stratum, StratumConfig, StratumError,
+    AccountProvider, AccountProviderError, Client, ClientService, EngineType, Miner, MinerService, Scheme, Stratum,
+    StratumConfig, StratumError,
 };
 use cdiscovery::{KademliaConfig, KademliaExtension, UnstructuredConfig, UnstructuredExtension};
 use cfinally::finally;
@@ -228,17 +228,6 @@ pub fn run_node(matches: ArgMatches) -> Result<(), String> {
     let miner = new_miner(&config, &scheme, ap.clone())?;
     let client = client_start(&config.operating, &scheme, miner.clone())?;
 
-    let shard_validator = if scheme.params().use_shard_validator {
-        None
-    } else {
-        let account = if config.shard_validator.disable.unwrap() {
-            None
-        } else {
-            Some(config.shard_validator_config().account)
-        };
-        Some(ShardValidator::new(client.client(), Arc::clone(&miner), account, Arc::clone(&ap)))
-    };
-
     let network_service: Arc<NetworkControl> = {
         if !config.network.disable.unwrap() {
             let network_config = config.network_config()?;
@@ -262,10 +251,6 @@ pub fn run_node(matches: ArgMatches) -> Result<(), String> {
                 service.register_extension(consensus_extension);
             }
 
-            if let Some(shard_validator) = &shard_validator {
-                service.register_extension(shard_validator.clone());
-            }
-
             for address in network_config.bootstrap_addresses {
                 service.connect_to(address)?;
             }
@@ -280,7 +265,6 @@ pub fn run_node(matches: ArgMatches) -> Result<(), String> {
         miner: Arc::clone(&miner),
         network_control: Arc::clone(&network_service),
         account_provider: ap,
-        shard_validator,
     });
 
     let _rpc_server = {
