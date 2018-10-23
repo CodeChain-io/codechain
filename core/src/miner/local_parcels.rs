@@ -211,11 +211,11 @@ mod tests {
         assert!(list.contains(&15.into()));
     }
 
-    fn new_parcel(nonce: U256) -> SignedParcel {
+    fn new_parcel(seq: U256) -> SignedParcel {
         let keypair = Random.generate().unwrap();
         let transactions = vec![];
         let parcel = Parcel {
-            nonce,
+            seq,
             fee: U256::from(1245),
             action: Action::AssetTransactionGroup {
                 transactions,

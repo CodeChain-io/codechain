@@ -30,25 +30,25 @@ use super::local_cache::CacheableItem;
 pub struct Account {
     // Balance of the account.
     balance: U256,
-    // Nonce of the account.
-    nonce: U256,
+    // Seq of the account.
+    seq: U256,
     // Regular key of the account.
     regular_key: Option<Public>,
 }
 
 impl Account {
-    pub fn new(balance: U256, nonce: U256) -> Account {
+    pub fn new(balance: U256, seq: U256) -> Account {
         Account {
             balance,
-            nonce,
+            seq,
             regular_key: None,
         }
     }
 
-    pub fn new_with_key(balance: U256, nonce: U256, regular_key: Option<Public>) -> Self {
+    pub fn new_with_key(balance: U256, seq: U256, regular_key: Option<Public>) -> Self {
         Self {
             balance,
-            nonce,
+            seq,
             regular_key,
         }
     }
@@ -58,9 +58,9 @@ impl Account {
         &self.balance
     }
 
-    /// return the nonce associated with this account.
-    pub fn nonce(&self) -> &U256 {
-        &self.nonce
+    /// return the seq associated with this account.
+    pub fn seq(&self) -> &U256 {
+        &self.seq
     }
 
     /// return the regular key associated with this account.
@@ -68,9 +68,9 @@ impl Account {
         self.regular_key
     }
 
-    /// Increment the nonce of the account by one.
-    pub fn inc_nonce(&mut self) {
-        self.nonce = self.nonce + U256::from(1u8);
+    /// Increment the seq of the account by one.
+    pub fn inc_seq(&mut self) {
+        self.seq = self.seq + U256::from(1u8);
     }
 
     /// Increase account balance.
@@ -106,9 +106,9 @@ impl Default for Account {
 impl CacheableItem for Account {
     type Address = ckey::Address;
 
-    /// Check if account has zero nonce, balance.
+    /// Check if account has zero seq, balance.
     fn is_null(&self) -> bool {
-        self.balance.is_zero() && self.nonce.is_zero()
+        self.balance.is_zero() && self.seq.is_zero()
     }
 }
 
@@ -119,7 +119,7 @@ impl Encodable for Account {
         s.begin_list(4);
         s.append(&PREFIX);
         s.append(&self.balance);
-        s.append(&self.nonce);
+        s.append(&self.seq);
         s.append(&self.regular_key);
     }
 }
@@ -137,7 +137,7 @@ impl Decodable for Account {
         }
         Ok(Self {
             balance: rlp.val_at(1)?,
-            nonce: rlp.val_at(2)?,
+            seq: rlp.val_at(2)?,
             regular_key: rlp.val_at(3)?,
         })
     }
@@ -145,7 +145,7 @@ impl Decodable for Account {
 
 impl fmt::Debug for Account {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("Account").field("balance", &self.balance).field("nonce", &self.nonce).finish()
+        f.debug_struct("Account").field("balance", &self.balance).field("seq", &self.seq).finish()
     }
 }
 
@@ -159,13 +159,13 @@ mod tests {
         let a = Account::new(69u8.into(), 0u8.into());
         let b = ::rlp::decode::<Account>(&a.rlp_bytes());
         assert_eq!(a.balance(), b.balance());
-        assert_eq!(a.nonce(), b.nonce());
+        assert_eq!(a.seq(), b.seq());
 
         let mut a = Account::new(69u8.into(), 0u8.into());
         a.set_regular_key(&Public::default());
         let b = ::rlp::decode::<Account>(&a.rlp_bytes());
         assert_eq!(a.balance(), b.balance());
-        assert_eq!(a.nonce(), b.nonce());
+        assert_eq!(a.seq(), b.seq());
         assert_eq!(a.regular_key(), b.regular_key());
     }
 
@@ -174,7 +174,7 @@ mod tests {
         let a = Account::new(69u8.into(), 0u8.into());
         assert_eq!(a.rlp_bytes().to_hex(), "c4434580c0");
         assert_eq!(*a.balance(), 69u8.into());
-        assert_eq!(*a.nonce(), 0u8.into());
+        assert_eq!(*a.seq(), 0u8.into());
         assert_eq!(a.regular_key(), None);
     }
 
@@ -195,12 +195,12 @@ mod tests {
     }
 
     #[test]
-    fn nonce() {
+    fn seq() {
         let mut a = Account::new(69u8.into(), 0u8.into());
-        a.inc_nonce();
-        assert_eq!(*a.nonce(), 1u8.into());
-        a.inc_nonce();
-        assert_eq!(*a.nonce(), 2u8.into());
+        a.inc_seq();
+        assert_eq!(*a.seq(), 1u8.into());
+        a.inc_seq();
+        assert_eq!(*a.seq(), 2u8.into());
     }
 
     #[test]
@@ -211,7 +211,7 @@ mod tests {
         b.set_regular_key(&Public::default());
         *a = b;
         assert_eq!(*a.balance(), 79u8.into());
-        assert_eq!(*a.nonce(), 1u8.into());
+        assert_eq!(*a.seq(), 1u8.into());
         assert_eq!(a.regular_key(), Some(Public::default()));
     }
 
@@ -221,7 +221,7 @@ mod tests {
         assert!(!a.is_null());
         a.sub_balance(&69u8.into());
         assert!(a.is_null());
-        a.inc_nonce();
+        a.inc_seq();
         assert!(!a.is_null());
     }
 

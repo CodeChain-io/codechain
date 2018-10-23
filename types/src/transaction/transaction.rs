@@ -70,21 +70,21 @@ pub enum Transaction {
     CreateWorld {
         network_id: NetworkId,
         shard_id: ShardId,
-        nonce: u64,
+        seq: u64,
         owners: Vec<Address>,
     },
     SetWorldOwners {
         network_id: NetworkId,
         shard_id: ShardId,
         world_id: WorldId,
-        nonce: u64,
+        seq: u64,
         owners: Vec<Address>,
     },
     SetWorldUsers {
         network_id: NetworkId,
         shard_id: ShardId,
         world_id: WorldId,
-        nonce: u64,
+        seq: u64,
         users: Vec<Address>,
     },
     AssetMint {
@@ -340,21 +340,21 @@ impl HeapSizeOf for Transaction {
             Transaction::CreateWorld {
                 network_id: _,
                 shard_id: _,
-                nonce: _,
+                seq: _,
                 owners,
             } => owners.heap_size_of_children(),
             Transaction::SetWorldOwners {
                 network_id: _,
                 shard_id: _,
                 world_id: _,
-                nonce: _,
+                seq: _,
                 owners,
             } => owners.heap_size_of_children(),
             Transaction::SetWorldUsers {
                 network_id: _,
                 shard_id: _,
                 world_id: _,
-                nonce: _,
+                seq: _,
                 users,
             } => users.heap_size_of_children(),
             Transaction::AssetMint {
@@ -599,7 +599,7 @@ impl Decodable for Transaction {
                 Ok(Transaction::CreateWorld {
                     network_id: d.val_at(1)?,
                     shard_id: d.val_at(2)?,
-                    nonce: d.val_at(3)?,
+                    seq: d.val_at(3)?,
                     owners: d.list_at(4)?,
                 })
             }
@@ -612,7 +612,7 @@ impl Decodable for Transaction {
                     network_id: d.val_at(1)?,
                     shard_id: d.val_at(2)?,
                     world_id: d.val_at(3)?,
-                    nonce: d.val_at(4)?,
+                    seq: d.val_at(4)?,
                     owners: d.list_at(5)?,
                 })
             }
@@ -625,7 +625,7 @@ impl Decodable for Transaction {
                     network_id: d.val_at(1)?,
                     shard_id: d.val_at(2)?,
                     world_id: d.val_at(3)?,
-                    nonce: d.val_at(4)?,
+                    seq: d.val_at(4)?,
                     users: d.list_at(5)?,
                 })
             }
@@ -700,20 +700,20 @@ impl Encodable for Transaction {
             Transaction::CreateWorld {
                 network_id,
                 shard_id,
-                nonce,
+                seq,
                 owners,
             } => s
                 .begin_list(5)
                 .append(&CREATE_WORLD_ID)
                 .append(network_id)
                 .append(shard_id)
-                .append(nonce)
+                .append(seq)
                 .append_list(&owners),
             Transaction::SetWorldOwners {
                 network_id,
                 shard_id,
                 world_id,
-                nonce,
+                seq,
                 owners,
             } => s
                 .begin_list(6)
@@ -721,13 +721,13 @@ impl Encodable for Transaction {
                 .append(network_id)
                 .append(shard_id)
                 .append(world_id)
-                .append(nonce)
+                .append(seq)
                 .append_list(&owners),
             Transaction::SetWorldUsers {
                 network_id,
                 shard_id,
                 world_id,
-                nonce,
+                seq,
                 users,
             } => s
                 .begin_list(6)
@@ -735,7 +735,7 @@ impl Encodable for Transaction {
                 .append(network_id)
                 .append(shard_id)
                 .append(world_id)
-                .append(nonce)
+                .append(seq)
                 .append_list(&users),
             Transaction::AssetMint {
                 network_id,
@@ -1107,7 +1107,7 @@ mod tests {
         let transaction = Transaction::CreateWorld {
             network_id: "tc".into(),
             shard_id: 0xFE,
-            nonce: 0xFE,
+            seq: 0xFE,
             owners: vec![],
         };
         rlp_encode_and_decode_test!(transaction);
@@ -1118,7 +1118,7 @@ mod tests {
         let transaction = Transaction::CreateWorld {
             network_id: "tc".into(),
             shard_id: 0xFE,
-            nonce: 0xFE,
+            seq: 0xFE,
             owners: vec![Address::random(), Address::random(), Address::random()],
         };
         rlp_encode_and_decode_test!(transaction);
@@ -1130,7 +1130,7 @@ mod tests {
             network_id: "tc".into(),
             shard_id: 0xFE,
             world_id: 0xB,
-            nonce: 0xEE,
+            seq: 0xEE,
             owners: vec![],
         };
         rlp_encode_and_decode_test!(transaction);
@@ -1142,7 +1142,7 @@ mod tests {
             network_id: "tc".into(),
             shard_id: 0xFE,
             world_id: 0xB,
-            nonce: 0xEE,
+            seq: 0xEE,
             owners: vec![Address::random(), Address::random(), Address::random()],
         };
         rlp_encode_and_decode_test!(transaction);

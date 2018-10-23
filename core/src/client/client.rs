@@ -58,8 +58,8 @@ use super::super::views::{BlockView, HeaderView};
 use super::{
     AccountData, AssetClient, Balance, BlockChain as BlockChainTrait, BlockChainClient, BlockChainInfo, BlockInfo,
     BlockProducer, ChainInfo, ChainNotify, ClientConfig, DatabaseClient, EngineClient, EngineInfo,
-    Error as ClientError, ExecuteClient, ImportBlock, ImportResult, ImportSealedBlock, MiningBlockChainClient, Nonce,
-    ParcelInfo, PrepareOpenBlock, RegularKey, RegularKeyOwner, ReopenBlock, Shard, StateOrBlock, TransactionInfo,
+    Error as ClientError, ExecuteClient, ImportBlock, ImportResult, ImportSealedBlock, MiningBlockChainClient,
+    ParcelInfo, PrepareOpenBlock, RegularKey, RegularKeyOwner, ReopenBlock, Seq, Shard, StateOrBlock, TransactionInfo,
     TransactionInvoice,
 };
 
@@ -987,9 +987,9 @@ impl Importer {
 
 impl AccountData for Client {}
 
-impl Nonce for Client {
-    fn nonce(&self, address: &Address, id: BlockId) -> Option<U256> {
-        self.state_at(id).and_then(|s| s.nonce(address).ok())
+impl Seq for Client {
+    fn seq(&self, address: &Address, id: BlockId) -> Option<U256> {
+        self.state_at(id).and_then(|s| s.seq(address).ok())
     }
 }
 

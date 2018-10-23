@@ -145,7 +145,7 @@ where
     fn get_nonce(&self, address: PlatformAddress, block_number: Option<u64>) -> Result<Option<U256>> {
         let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
         let address = address.try_address().map_err(errors::core)?;
-        Ok(self.client.nonce(address, block_id))
+        Ok(self.client.seq(address, block_id))
     }
 
     fn get_balance(&self, address: PlatformAddress, block_number: Option<u64>) -> Result<Option<U256>> {

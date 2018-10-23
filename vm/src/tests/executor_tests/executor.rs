@@ -465,3 +465,26 @@ fn _keccak256() {
         Ok(ScriptResult::Fail)
     );
 }
+
+
+#[test]
+#[ignore]
+fn copy_stack_underflow() {
+    let transaction = Transaction::AssetTransfer {
+        network_id: NetworkId::default(),
+        burns: Vec::new(),
+        inputs: Vec::new(),
+        outputs: Vec::new(),
+        nonce: 0,
+    };
+    let outpoint = AssetOutPoint {
+        transaction_hash: H256::default(),
+        index: 0,
+        asset_type: H256::default(),
+        amount: 0,
+    };
+    assert_eq!(
+        execute(&[], &[], &[Instruction::Copy(1)], &transaction, Config::default(), &outpoint, false),
+        Err(RuntimeError::StackUnderflow)
+    );
+}

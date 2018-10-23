@@ -45,10 +45,10 @@ pub enum Error {
     FailedToUnlock(H256),
     /// Returned when the sum of the transaction's inputs is different from the sum of outputs.
     InconsistentTransactionInOut,
-    InvalidShardNonce(Mismatch<u64>),
+    InvalidShardSeq(Mismatch<u64>),
     InsufficientPermission,
     InvalidWorldId(WorldId),
-    InvalidWorldNonce(Mismatch<u64>),
+    InvalidWorldSeq(Mismatch<u64>),
     EmptyShardOwners(ShardId),
     NotRegistrar(Mismatch<Address>),
     /// Returned when the amount of either input or output is 0.
@@ -79,10 +79,10 @@ const ERROR_ID_SCRIPT_HASH_MISMATCH: u8 = 8u8;
 const ERROR_ID_INVALID_SCRIPT: u8 = 9u8;
 const ERROR_ID_FAILED_TO_UNLOCK: u8 = 10u8;
 const ERROR_ID_INCONSISTENT_TRANSACTION_IN_OUT: u8 = 11u8;
-const ERROR_ID_INVALID_SHARD_NONCE: u8 = 12u8;
+const ERROR_ID_INVALID_SHARD_SEQ: u8 = 12u8;
 const ERROR_ID_INSUFFICIENT_PERMISSION: u8 = 13u8;
 const ERROR_ID_INVALID_WORLD_ID: u8 = 14u8;
-const ERROR_ID_INVALID_WORLD_NONCE: u8 = 15u8;
+const ERROR_ID_INVALID_WORLD_SEQ: u8 = 15u8;
 const ERROR_ID_EMPTY_SHARD_OWNERS: u8 = 16u8;
 const ERROR_ID_NOT_REGISTRAR: u8 = 17u8;
 const ERROR_ID_ZERO_AMOUNT: u8 = 18u8;
@@ -114,14 +114,10 @@ impl Encodable for Error {
             Error::InvalidScript => s.begin_list(1).append(&ERROR_ID_INVALID_SCRIPT),
             Error::FailedToUnlock(hash) => s.begin_list(2).append(&ERROR_ID_FAILED_TO_UNLOCK).append(hash),
             Error::InconsistentTransactionInOut => s.begin_list(1).append(&ERROR_ID_INCONSISTENT_TRANSACTION_IN_OUT),
-            Error::InvalidShardNonce(mismatch) => {
-                s.begin_list(2).append(&ERROR_ID_INVALID_SHARD_NONCE).append(mismatch)
-            }
+            Error::InvalidShardSeq(mismatch) => s.begin_list(2).append(&ERROR_ID_INVALID_SHARD_SEQ).append(mismatch),
             Error::InsufficientPermission => s.begin_list(1).append(&ERROR_ID_INSUFFICIENT_PERMISSION),
             Error::InvalidWorldId(world_id) => s.begin_list(2).append(&ERROR_ID_INVALID_WORLD_ID).append(world_id),
-            Error::InvalidWorldNonce(mismatch) => {
-                s.begin_list(2).append(&ERROR_ID_INVALID_WORLD_NONCE).append(mismatch)
-            }
+            Error::InvalidWorldSeq(mismatch) => s.begin_list(2).append(&ERROR_ID_INVALID_WORLD_SEQ).append(mismatch),
             Error::EmptyShardOwners(shard_id) => s.begin_list(2).append(&ERROR_ID_EMPTY_SHARD_OWNERS).append(shard_id),
             Error::NotRegistrar(mismatch) => s.begin_list(2).append(&ERROR_ID_NOT_REGISTRAR).append(mismatch),
             Error::ZeroAmount => s.begin_list(1).append(&ERROR_ID_ZERO_AMOUNT),
@@ -163,11 +159,11 @@ impl Decodable for Error {
             ERROR_ID_INVALID_SCRIPT => Error::InvalidScript,
             ERROR_ID_FAILED_TO_UNLOCK => Error::FailedToUnlock(rlp.val_at(1)?),
             ERROR_ID_INCONSISTENT_TRANSACTION_IN_OUT => Error::InconsistentTransactionInOut,
-            ERROR_ID_INVALID_SHARD_NONCE => {
+            ERROR_ID_INVALID_SHARD_SEQ => {
                 if rlp.item_count()? != 2 {
                     return Err(DecoderError::RlpInvalidLength)
                 }
-                Error::InvalidShardNonce(rlp.val_at(1)?)
+                Error::InvalidShardSeq(rlp.val_at(1)?)
             }
             ERROR_ID_INSUFFICIENT_PERMISSION => {
                 if rlp.item_count()? != 1 {
@@ -181,11 +177,11 @@ impl Decodable for Error {
                 }
                 Error::InvalidWorldId(rlp.val_at(1)?)
             }
-            ERROR_ID_INVALID_WORLD_NONCE => {
+            ERROR_ID_INVALID_WORLD_SEQ => {
                 if rlp.item_count()? != 2 {
                     return Err(DecoderError::RlpInvalidLength)
                 }
-                Error::InvalidWorldNonce(rlp.val_at(1)?)
+                Error::InvalidWorldSeq(rlp.val_at(1)?)
             }
             ERROR_ID_EMPTY_SHARD_OWNERS => {
                 if rlp.item_count()? != 2 {
@@ -279,10 +275,10 @@ impl Display for Error {
             Error::InconsistentTransactionInOut => {
                 write!(f, "The sum of the transaction's inputs is different from the sum of the transaction's outputs")
             }
-            Error::InvalidShardNonce(mismatch) => write!(f, "The shard nonce {}", mismatch),
+            Error::InvalidShardSeq(mismatch) => write!(f, "The shard seq {}", mismatch),
             Error::InsufficientPermission => write!(f, "The current sender doesn't have the permission"),
             Error::InvalidWorldId(_) => write!(f, "The world id is invalid"),
-            Error::InvalidWorldNonce(mismatch) => write!(f, "The world nonce {}", mismatch),
+            Error::InvalidWorldSeq(mismatch) => write!(f, "The world seq {}", mismatch),
             Error::EmptyShardOwners(shard_id) => write!(f, "Shard({}) must have at least one owner", shard_id),
             Error::NotRegistrar(mismatch) => write!(
                 f,
@@ -328,8 +324,8 @@ mod tests {
     }
 
     #[test]
-    fn encode_and_decode_invalid_world_nonce() {
-        rlp_encode_and_decode_test!(Error::InvalidWorldNonce(Mismatch {
+    fn encode_and_decode_invalid_world_seq() {
+        rlp_encode_and_decode_test!(Error::InvalidWorldSeq(Mismatch {
             expected: 1,
             found: 2,
         }));
