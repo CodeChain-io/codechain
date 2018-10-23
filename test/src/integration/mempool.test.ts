@@ -16,6 +16,10 @@
 
 import { wait } from "../helper/promise";
 import CodeChain from "../helper/spawn";
+import { U256 } from "codechain-sdk/lib/core/classes";
+import { faucetAddress } from "../helper/constants";
+
+const describeSkippedInTravis = process.env.TRAVIS ? describe.skip : describe;
 
 describe("Sealing test", () => {
     let node: CodeChain;
@@ -50,17 +54,21 @@ describe("Memory pool size test", () => {
         await nodeA.sdk.rpc.devel.stopSealing();
     });
 
-    test("To self", async () => {
-        for (let i = 0; i < sizeLimit * 2; i++) {
-            await nodeA.sendSignedParcel({ nonce: i, awaitInvoice: false });
-        }
-        const pendingParcels = await nodeA.sdk.rpc.chain.getPendingParcels();
-        expect(pendingParcels.length).toEqual(sizeLimit * 2);
-    });
+    test(
+        "To self",
+        async () => {
+            for (let i = 0; i < sizeLimit * 2; i++) {
+                await nodeA.sendSignedParcel({ nonce: i, awaitInvoice: false });
+            }
+            const pendingParcels = await nodeA.sdk.rpc.chain.getPendingParcels();
+            expect(pendingParcels.length).toEqual(sizeLimit * 2);
+        },
+        10000
+    );
 
     // FIXME: It fails due to timeout when the block sync extension is stuck.
     // See https://github.com/CodeChain-io/codechain/issues/662
-    describe.skip("To others", async () => {
+    describeSkippedInTravis("To others", async () => {
         let nodeB: CodeChain;
 
         beforeEach(async () => {
@@ -98,7 +106,7 @@ describe("Memory pool size test", () => {
                     (await nodeB.sdk.rpc.chain.getPendingParcels()).length
                 ).toBe(sizeLimit);
             },
-            10000
+            20000
         );
 
         afterEach(async () => {
@@ -134,12 +142,12 @@ describe("Memory pool memory limit test", () => {
             const pendingParcels = await nodeA.sdk.rpc.chain.getPendingParcels();
             expect(pendingParcels.length).toEqual(sizeLimit);
         },
-        40000
+        50000
     );
 
     // FIXME: It fails due to timeout when the block sync extension is stuck.
     // See https://github.com/CodeChain-io/codechain/issues/662
-    describe.skip("To others", async () => {
+    describeSkippedInTravis("To others", async () => {
         let nodeB: CodeChain;
 
         beforeEach(async () => {
@@ -178,5 +186,39 @@ describe("Memory pool memory limit test", () => {
 
     afterEach(async () => {
         await nodeA.clean();
+    });
+});
+
+describe("Future queue", () => {
+    let node: CodeChain;
+
+    beforeEach(async () => {
+        node = new CodeChain();
+        await node.start();
+    });
+
+    test("all pending parcel must be mined", async () => {
+        const nonce =
+            (await node.sdk.rpc.chain.getNonce(faucetAddress)) ||
+            U256.ensure(0);
+        const nonceP1 = nonce.increase();
+        const nonceP2 = nonceP1.increase();
+        const nonceP3 = nonceP2.increase();
+        const nonceP4 = nonceP3.increase();
+
+        await node.sendSignedParcel({ awaitInvoice: false, nonce: nonceP3 });
+        expect(await node.sdk.rpc.chain.getNonce(faucetAddress)).toEqual(nonce);
+        await node.sendSignedParcel({ awaitInvoice: false, nonce: nonceP2 });
+        expect(await node.sdk.rpc.chain.getNonce(faucetAddress)).toEqual(nonce);
+        await node.sendSignedParcel({ awaitInvoice: false, nonce: nonceP1 });
+        expect(await node.sdk.rpc.chain.getNonce(faucetAddress)).toEqual(nonce);
+        await node.sendSignedParcel({ awaitInvoice: false, nonce });
+        expect(await node.sdk.rpc.chain.getNonce(faucetAddress)).toEqual(
+            nonceP4
+        );
+    });
+
+    afterEach(async () => {
+        await node.clean();
     });
 });

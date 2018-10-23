@@ -28,6 +28,7 @@ pub enum Error {
     InvalidMessage,
     InvalidSignature,
     InvalidNetworkId(NetworkId),
+    InvalidPlatformAddressVersion(u8),
     InvalidChecksum,
     InvalidPrivate,
     InvalidAddress,
@@ -50,6 +51,9 @@ impl fmt::Display for Error {
             Error::InvalidMessage => "Invalid Message".into(),
             Error::InvalidSignature => "Invalid Signature".into(),
             Error::InvalidNetworkId(network_id) => format!("{} is an invalid network id", network_id),
+            Error::InvalidPlatformAddressVersion(version) => {
+                format!("{} is an invalid platform address version", version)
+            }
             Error::InvalidChecksum => "Invalid Checksum".into(),
             Error::InvalidPrivate => "Invalid Private".into(),
             Error::InvalidAddress => "Invalid Address".into(),
@@ -65,12 +69,6 @@ impl fmt::Display for Error {
         };
 
         msg.fmt(f)
-    }
-}
-
-impl Into<String> for Error {
-    fn into(self) -> String {
-        format!("{}", self)
     }
 }
 

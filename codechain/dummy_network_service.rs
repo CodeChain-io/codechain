@@ -16,7 +16,7 @@
 
 use std::net::IpAddr;
 
-use cnetwork::{NetworkControl, NetworkControlError, SocketAddr};
+use cnetwork::{FilterEntry, NetworkControl, NetworkControlError, SocketAddr};
 use primitives::H256;
 
 pub struct DummyNetworkService {}
@@ -56,7 +56,7 @@ impl NetworkControl for DummyNetworkService {
         Err(NetworkControlError::Disabled)
     }
 
-    fn add_to_whitelist(&self, _addr: IpAddr) -> Result<(), NetworkControlError> {
+    fn add_to_whitelist(&self, _addr: IpAddr, _tag: Option<String>) -> Result<(), NetworkControlError> {
         Err(NetworkControlError::Disabled)
     }
 
@@ -64,7 +64,7 @@ impl NetworkControl for DummyNetworkService {
         Err(NetworkControlError::Disabled)
     }
 
-    fn add_to_blacklist(&self, _addr: IpAddr) -> Result<(), NetworkControlError> {
+    fn add_to_blacklist(&self, _addr: IpAddr, _tag: Option<String>) -> Result<(), NetworkControlError> {
         Err(NetworkControlError::Disabled)
     }
 
@@ -88,11 +88,11 @@ impl NetworkControl for DummyNetworkService {
         Err(NetworkControlError::Disabled)
     }
 
-    fn get_whitelist(&self) -> Result<(Vec<IpAddr>, bool), NetworkControlError> {
+    fn get_whitelist(&self) -> Result<(Vec<FilterEntry>, bool), NetworkControlError> {
         Err(NetworkControlError::Disabled)
     }
 
-    fn get_blacklist(&self) -> Result<(Vec<IpAddr>, bool), NetworkControlError> {
+    fn get_blacklist(&self) -> Result<(Vec<FilterEntry>, bool), NetworkControlError> {
         Err(NetworkControlError::Disabled)
     }
 }

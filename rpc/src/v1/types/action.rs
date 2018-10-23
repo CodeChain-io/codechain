@@ -70,7 +70,6 @@ impl From<ShardChangeType> for ShardChange {
 
 impl Action {
     pub fn from_core(from: ActionType, network_id: NetworkId) -> Self {
-        const VERSION: u8 = 0;
         match from {
             ActionType::AssetTransactionGroup {
                 transactions,
@@ -85,7 +84,7 @@ impl Action {
                 receiver,
                 amount,
             } => Action::Payment {
-                receiver: PlatformAddress::create(VERSION, network_id, receiver),
+                receiver: PlatformAddress::new_v1(network_id, receiver),
                 amount,
             },
             ActionType::SetRegularKey {
@@ -99,14 +98,14 @@ impl Action {
                 owners,
             } => Action::SetShardOwners {
                 shard_id,
-                owners: owners.into_iter().map(|owner| PlatformAddress::create(VERSION, network_id, owner)).collect(),
+                owners: owners.into_iter().map(|owner| PlatformAddress::new_v1(network_id, owner)).collect(),
             },
             ActionType::SetShardUsers {
                 shard_id,
                 users,
             } => Action::SetShardUsers {
                 shard_id,
-                users: users.into_iter().map(|user| PlatformAddress::create(VERSION, network_id, user)).collect(),
+                users: users.into_iter().map(|user| PlatformAddress::new_v1(network_id, user)).collect(),
             },
             ActionType::Custom(bytes) => Action::Custom(bytes),
         }

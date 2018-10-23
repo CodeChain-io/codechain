@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::cell::Cell;
 use std::collections::{HashMap, VecDeque};
 use std::fmt;
 use std::io;
@@ -24,7 +23,7 @@ use cio::IoManager;
 use mio::deprecated::EventLoop;
 use mio::unix::UnixReady;
 use mio::{PollOpt, Ready, Token};
-use parking_lot::Mutex;
+use parking_lot::RwLock;
 use rlp::{DecoderError, UntrustedRlp};
 
 use super::super::session::Session;
@@ -432,7 +431,7 @@ enum State {
 }
 
 pub struct Connection {
-    state: Mutex<Cell<State>>,
+    state: RwLock<State>,
 }
 
 impl Connection {
@@ -445,62 +444,64 @@ impl Connection {
     ) -> Self {
         let connection = WaitAckConnection::new(stream, session, local_port, local_node_id, remote_node_id);
         Self {
-            state: Mutex::new(Cell::new(State::WaitAck(connection))),
+            state: RwLock::new(State::WaitAck(connection)),
         }
     }
 
     pub fn accept(stream: Stream) -> Self {
         let connection = WaitSyncConnection::new(stream);
         Self {
-            state: Mutex::new(Cell::new(State::WaitSync(connection))),
+            state: RwLock::new(State::WaitSync(connection)),
         }
     }
 
     pub fn shutdown(&self) -> io::Result<()> {
-        let mut state = self.state.lock();
-        match state.get_mut() {
+        let state = self.state.read();
+        match &*state {
             State::WaitAck(connection) => connection.stream.shutdown(),
             State::WaitSync(connection) => connection.stream.shutdown(),
             State::Established(connection) => connection.stream.shutdown(),
-            _ => unreachable!(),
+            State::Disconnecting(_) => Ok(()),
+            State::Intermediate => unreachable!(),
         }
     }
 
     pub fn set_disconnecting(&self) {
-        let state = self.state.lock();
-        let old_state = state.replace(State::Intermediate);
+        let mut state = self.state.write();
+        let mut old_state = State::Intermediate;
+        ::std::mem::swap(&mut old_state, &mut *state);
         let connection = match old_state {
             State::WaitAck(connection) => connection.disconnect(),
             State::WaitSync(connection) => connection.disconnect(),
             State::Established(connection) => connection.disconnect(),
-            _ => unreachable!(),
+            State::Disconnecting(_) => unreachable!(),
+            State::Intermediate => unreachable!(),
         };
-        state.set(State::Disconnecting(connection));
+        *state = State::Disconnecting(connection);
     }
 
     pub fn is_disconnecting(&self) -> bool {
-        let mut state = self.state.lock();
-        match state.get_mut() {
+        let state = self.state.read();
+        match *state {
             State::Disconnecting(_) => true,
+            State::Intermediate => unreachable!(),
             _ => false,
         }
     }
 
     pub fn establish(&self) -> bool {
-        let state = self.state.lock();
-        let old_state = state.replace(State::Intermediate);
-        match old_state {
-            State::WaitAck(connection) => {
-                state.replace(State::Established(connection.establish()));
-                true
-            }
-            State::WaitSync(connection) => {
-                state.replace(State::Established(connection.establish()));
-                true
-            }
-            State::Established(_) => false,
-            _ => unreachable!(),
-        }
+        let mut state = self.state.write();
+        let mut old_state = State::Intermediate;
+        ::std::mem::swap(&mut old_state, &mut *state);
+        let connection = match old_state {
+            State::WaitAck(connection) => connection.establish(),
+            State::WaitSync(connection) => connection.establish(),
+            State::Established(_) => return false,
+            State::Disconnecting(_) => unreachable!("Cannot establish a disconnecting connection"),
+            State::Intermediate => unreachable!(),
+        };
+        *state = State::Established(connection);
+        true
     }
 
     pub fn register<Message>(
@@ -510,8 +511,8 @@ impl Connection {
     ) -> io::Result<ConnectionType>
     where
         Message: Send + Sync + Clone + 'static, {
-        let mut state = self.state.lock();
-        match state.get_mut() {
+        let state = self.state.read();
+        match &*state {
             State::WaitAck(connection) => {
                 connection.register(reg, event_loop)?;
                 Ok(ConnectionType::AckWaiting)
@@ -524,7 +525,8 @@ impl Connection {
                 connection.register(reg, event_loop)?;
                 Ok(ConnectionType::Established)
             }
-            _ => unreachable!(),
+            State::Disconnecting(_) => unreachable!("Cannot register a disconnecting connection"),
+            State::Intermediate => unreachable!(),
         }
     }
 
@@ -535,8 +537,8 @@ impl Connection {
     ) -> io::Result<ConnectionType>
     where
         Message: Send + Sync + Clone + 'static, {
-        let mut state = self.state.lock();
-        match state.get_mut() {
+        let state = self.state.read();
+        match &*state {
             State::WaitAck(connection) => {
                 connection.reregister(reg, event_loop)?;
                 Ok(ConnectionType::AckWaiting)
@@ -554,15 +556,15 @@ impl Connection {
                 connection.reregister(reg, event_loop)?;
                 Ok(ConnectionType::Disconnecting)
             }
-            _ => unreachable!(),
+            State::Intermediate => unreachable!(),
         }
     }
 
     pub fn deregister<Message>(&self, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<ConnectionType>
     where
         Message: Send + Sync + Clone + 'static, {
-        let mut state = self.state.lock();
-        match state.get_mut() {
+        let state = self.state.read();
+        match &*state {
             State::WaitAck(connection) => {
                 connection.deregister(event_loop)?;
                 Ok(ConnectionType::AckWaiting)
@@ -579,13 +581,13 @@ impl Connection {
                 connection.deregister(event_loop)?;
                 Ok(ConnectionType::Disconnecting)
             }
-            _ => unreachable!(),
+            State::Intermediate => unreachable!(),
         }
     }
 
     pub fn send(&self) -> Result<(ConnectionType, bool)> {
-        let mut state = self.state.lock();
-        match state.get_mut() {
+        let mut state = self.state.write();
+        match &mut *state {
             State::WaitAck(connection) => {
                 let remain = connection.send()?;
                 Ok((ConnectionType::AckWaiting, remain))
@@ -598,13 +600,14 @@ impl Connection {
                 let remain = connection.send()?;
                 Ok((ConnectionType::Established, remain))
             }
-            _ => unreachable!(),
+            State::Disconnecting(_) => Ok((ConnectionType::Disconnecting, false)),
+            State::Intermediate => unreachable!(),
         }
     }
 
     pub fn receive(&self) -> Result<Option<ReceivedMessage>> {
-        let mut state = self.state.lock();
-        match state.get_mut() {
+        let mut state = self.state.write();
+        match &mut *state {
             State::WaitAck(connection) => Ok(connection.receive()?.map(|message| match message {
                 HandshakeMessage::Ack(version) => ReceivedMessage::Ack {
                     version,
@@ -618,107 +621,115 @@ impl Connection {
                 _ => unreachable!(),
             })),
             State::Disconnecting(_) => Ok(None),
-            _ => unreachable!(),
+            State::Intermediate => unreachable!(),
         }
     }
 
     pub fn ready_session(&self, remote_node_id: NodeId, session: Session) -> bool {
-        let mut state = self.state.lock();
-        match state.get_mut() {
+        let mut state = self.state.write();
+        match &mut *state {
             State::WaitAck(_) => false,
             State::WaitSync(connection) => {
                 connection.ready_session(remote_node_id, session);
                 true
             }
             State::Established(_) => false,
-            _ => unreachable!(),
+            State::Disconnecting(_) => false,
+            State::Intermediate => unreachable!(),
         }
     }
 
     pub fn enqueue_negotiation_request(&self, name: String, versions: Vec<Version>) -> bool {
-        let mut state = self.state.lock();
-        match state.get_mut() {
+        let mut state = self.state.write();
+        match &mut *state {
             State::WaitAck(_) => false,
             State::WaitSync(_) => false,
             State::Established(connection) => {
                 connection.enqueue_negotiation_request(name, versions);
                 true
             }
-            _ => unreachable!(),
+            State::Disconnecting(_) => false,
+            State::Intermediate => unreachable!(),
         }
     }
 
     pub fn enqueue_negotiation_allowed(&self, seq: u64, version: u64) -> bool {
-        let mut state = self.state.lock();
-        match state.get_mut() {
+        let mut state = self.state.write();
+        match &mut *state {
             State::WaitAck(_) => false,
             State::WaitSync(_) => false,
             State::Established(connection) => {
                 connection.enqueue_negotiation_allowed(seq, version);
                 true
             }
-            _ => unreachable!(),
+            State::Disconnecting(_) => false,
+            State::Intermediate => unreachable!(),
         }
     }
 
     pub fn enqueue_extension_message(&self, extension_name: &String, need_encryption: bool, data: &[u8]) -> bool {
-        let mut state = self.state.lock();
-        match state.get_mut() {
+        let mut state = self.state.write();
+        match &mut *state {
             State::WaitAck(_) => false,
             State::WaitSync(_) => false,
             State::Established(connection) => {
                 connection.enqueue_extension_message(extension_name.clone(), need_encryption, &data);
                 true
             }
-            _ => unreachable!(),
+            State::Disconnecting(_) => false,
+            State::Intermediate => unreachable!(),
         }
     }
 
     pub fn remove_requested_negotiation(&self, seq: &u64) -> Option<String> {
-        let mut state = self.state.lock();
-        match state.get_mut() {
+        let mut state = self.state.write();
+        match &mut *state {
             State::WaitAck(_) => None,
             State::WaitSync(_) => None,
             State::Established(connection) => connection.remove_requested_negotiation(seq),
-            _ => unreachable!(),
+            State::Disconnecting(_) => None,
+            State::Intermediate => unreachable!(),
         }
     }
 
     pub fn remote_addr_of_waiting_sync(&self) -> Option<SocketAddr> {
-        let mut state = self.state.lock();
-        match state.get_mut() {
+        let state = self.state.read();
+        match &*state {
             State::WaitAck(_) => None,
             State::WaitSync(connection) => connection.remote_addr().ok(),
             State::Established(_) => None,
-            _ => unreachable!(),
+            State::Disconnecting(_) => None,
+            State::Intermediate => unreachable!(),
         }
     }
 
     pub fn remote_node_id(&self) -> Option<NodeId> {
-        let mut state = self.state.lock();
-        match state.get_mut() {
+        let state = self.state.read();
+        match &*state {
             State::WaitAck(connection) => connection.remote_node_id(),
             State::WaitSync(connection) => connection.remote_node_id(),
             State::Established(connection) => connection.remote_node_id(),
-            _ => unreachable!(),
+            State::Disconnecting(_) => None,
+            State::Intermediate => unreachable!(),
         }
     }
 
     pub fn established_session(&self) -> Option<Session> {
-        let mut state = self.state.lock();
-        match state.get_mut() {
+        let state = self.state.read();
+        match &*state {
             State::WaitAck(_) => None,
             State::WaitSync(_) => None,
             State::Established(connection) => connection.session(),
-            _ => unreachable!(),
+            State::Disconnecting(_) => None,
+            State::Intermediate => unreachable!(),
         }
     }
 
     pub fn is_established(&self) -> bool {
-        let mut state = self.state.lock();
-        match state.get_mut() {
-            State::Intermediate => unreachable!(),
+        let state = self.state.read();
+        match *state {
             State::Established(_) => true,
+            State::Intermediate => unreachable!(),
             _ => false,
         }
     }

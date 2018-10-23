@@ -23,7 +23,7 @@ use primitives::H256;
 
 use super::client::Client;
 use super::control::{Control, Error as ControlError};
-use super::filters::FiltersControl;
+use super::filters::{FilterEntry, FiltersControl};
 use super::p2p;
 use super::routing_table::RoutingTable;
 use super::session_initiator;
@@ -49,9 +49,9 @@ impl Service {
         max_peers: usize,
         filters_control: Arc<FiltersControl>,
     ) -> Result<Arc<Self>, Error> {
-        let p2p = IoService::start()?;
-        let timer = IoService::start()?;
-        let session_initiator = IoService::start()?;
+        let p2p = IoService::start("P2P")?;
+        let timer = IoService::start("Timer")?;
+        let session_initiator = IoService::start("SessionInitiator")?;
 
         let routing_table = RoutingTable::new();
 
@@ -150,8 +150,8 @@ impl Control for Service {
         Ok(self.p2p_handler.established_peers())
     }
 
-    fn add_to_whitelist(&self, addr: IpAddr) -> Result<(), ControlError> {
-        self.filters_control.add_to_whitelist(addr);
+    fn add_to_whitelist(&self, addr: IpAddr, tag: Option<String>) -> Result<(), ControlError> {
+        self.filters_control.add_to_whitelist(addr, tag);
         Ok(())
     }
 
@@ -163,8 +163,8 @@ impl Control for Service {
         Ok(())
     }
 
-    fn add_to_blacklist(&self, addr: IpAddr) -> Result<(), ControlError> {
-        self.filters_control.add_to_blacklist(addr);
+    fn add_to_blacklist(&self, addr: IpAddr, tag: Option<String>) -> Result<(), ControlError> {
+        self.filters_control.add_to_blacklist(addr, tag);
         if let Err(err) = self.p2p.send_message(p2p::Message::ApplyFilters) {
             cerror!(NETWORK, "Error occurred while apply filters: {:?}", err);
         }
@@ -202,11 +202,11 @@ impl Control for Service {
         Ok(())
     }
 
-    fn get_whitelist(&self) -> Result<(Vec<IpAddr>, bool), ControlError> {
+    fn get_whitelist(&self) -> Result<(Vec<FilterEntry>, bool), ControlError> {
         Ok(self.filters_control.get_whitelist())
     }
 
-    fn get_blacklist(&self) -> Result<(Vec<IpAddr>, bool), ControlError> {
+    fn get_blacklist(&self) -> Result<(Vec<FilterEntry>, bool), ControlError> {
         Ok(self.filters_control.get_blacklist())
     }
 }

@@ -121,13 +121,13 @@ impl From<[u8; 20]> for Address {
 
 impl From<&'static str> for Address {
     fn from(s: &'static str) -> Self {
-        Address(H160::from(s))
+        s.parse().expect(&format!("invalid string literal for {}: '{}'", stringify!(Self), s))
     }
 }
 
-impl Into<[u8; 20]> for Address {
-    fn into(self) -> [u8; 20] {
-        self.0.into()
+impl From<Address> for [u8; 20] {
+    fn from(a: Address) -> Self {
+        a.0.into()
     }
 }
 
@@ -140,5 +140,25 @@ impl AsRef<[u8]> for Address {
 impl HeapSizeOf for Address {
     fn heap_size_of_children(&self) -> usize {
         self.0.heap_size_of_children()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn rlp_default() {
+        rlp_encode_and_decode_test!(Address::default());
+    }
+
+    #[test]
+    fn rlp() {
+        rlp_encode_and_decode_test!(Address::from("abcdef124567890abcdef124567890abcdef1245"));
+    }
+
+    #[test]
+    fn rlp_random() {
+        rlp_encode_and_decode_test!(Address::random());
     }
 }

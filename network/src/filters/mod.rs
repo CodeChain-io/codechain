@@ -19,4 +19,5 @@ mod filter;
 mod filters;
 
 pub use self::control::Control as FiltersControl;
+pub use self::filter::FilterEntry;
 pub use self::filters::Filters;

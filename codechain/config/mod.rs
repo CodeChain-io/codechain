@@ -17,15 +17,14 @@
 mod chain_type;
 
 use std::fs;
-use std::net::IpAddr;
 use std::str::{self, FromStr};
 use std::time::Duration;
 
-use ccore::{MinerOptions, ShardValidatorConfig, StratumConfig};
+use ccore::{MinerOptions, StratumConfig};
 use ckey::PlatformAddress;
 use clap;
-use cnetwork::{NetworkConfig, SocketAddr};
-use rpc::{RpcHttpConfig, RpcIpcConfig};
+use cnetwork::{FilterEntry, NetworkConfig, SocketAddr};
+use rpc::{RpcHttpConfig, RpcIpcConfig, RpcWsConfig};
 use toml;
 
 pub use self::chain_type::ChainType;
@@ -39,6 +38,7 @@ pub struct Config {
     pub mining: Mining,
     pub network: Network,
     pub rpc: Rpc,
+    pub ws: Ws,
     pub snapshot: Snapshot,
     pub stratum: Stratum,
     pub shard_validator: ShardValidator,
@@ -109,24 +109,49 @@ impl Config {
         }
     }
 
+    pub fn rpc_ws_config(&self) -> RpcWsConfig {
+        debug_assert!(!self.ws.disable.unwrap());
+
+        // FIXME: Add hosts and origins options.
+        RpcWsConfig {
+            interface: self.ws.interface.clone().unwrap(),
+            port: self.ws.port.unwrap(),
+            max_connections: self.ws.max_connections.unwrap(),
+        }
+    }
+
     pub fn network_config(&self) -> Result<NetworkConfig, String> {
         debug_assert!(!self.network.disable.unwrap());
 
-        fn make_ipaddr_list(list_path: Option<&String>, list_name: &str) -> Result<Vec<IpAddr>, String> {
-            list_path
-                .map(|path| {
-                    fs::read_to_string(path)
-                        .map_err(|e| format!("Cannot open the {}list file {:?}: {:?}", list_name, path, e))
-                        .map(|rstr| {
-                            rstr.split_whitespace()
-                                .filter(|s| s.len() != 0)
-                                .map(|s| s.parse().map_err(|e| (s, e)))
-                                .collect::<Result<Vec<_>, _>>()
-                                .map_err(|(s, e)| format!("Cannot parse IP address {:?}: {:?}", s, e))
-                        })
-                        .unwrap_or_else(|e| Err(e))
-                })
-                .unwrap_or(Ok(Vec::new()))
+        fn make_ipaddr_list(list_path: Option<&String>, list_name: &str) -> Result<Vec<FilterEntry>, String> {
+            if let Some(path) = list_path {
+                fs::read_to_string(path)
+                    .map_err(|e| format!("Cannot open the {}list file {:?}: {:?}", list_name, path, e))
+                    .map(|rstr| {
+                        rstr.lines()
+                            .map(|s| {
+                                const COMMENT_CHAR: &str = "#";
+                                if let Some(index) = s.find(COMMENT_CHAR) {
+                                    let (ip_str, tag_str_with_sign) = s.split_at(index);
+                                    (ip_str.trim(), (&tag_str_with_sign[1..]).trim().to_string())
+                                } else {
+                                    (s.trim(), String::new())
+                                }
+                            })
+                            .filter(|(s, _)| s.len() != 0)
+                            .map(|(addr, tag)| {
+                                Ok(FilterEntry {
+                                    addr: addr
+                                        .parse()
+                                        .map_err(|e| format!("Cannot parse IP address {}: {:?}", addr, e))?,
+                                    tag,
+                                })
+                            })
+                            .collect::<Result<Vec<_>, _>>()
+                    })?
+            } else {
+                Ok(Vec::new())
+            }
         }
 
         let bootstrap_addresses = self
@@ -160,14 +185,6 @@ impl Config {
             listen_addr: "127.0.0.1".to_string(),
             port: self.stratum.port.unwrap(),
             secret: None,
-        }
-    }
-
-    pub fn shard_validator_config(&self) -> ShardValidatorConfig {
-        debug_assert!(self.shard_validator.disable.unwrap());
-
-        ShardValidatorConfig {
-            account: self.shard_validator.account.unwrap().into_address(),
         }
     }
 }
@@ -233,6 +250,15 @@ pub struct Rpc {
     pub port: Option<u16>,
     #[serde(default = "default_enable_devel_api")]
     pub enable_devel_api: bool,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Ws {
+    pub disable: Option<bool>,
+    pub interface: Option<String>,
+    pub port: Option<u16>,
+    pub max_connections: Option<usize>,
 }
 
 fn default_enable_devel_api() -> bool {
@@ -320,7 +346,7 @@ impl Operating {
             self.password_path = Some(password_path.to_string());
         }
         if let Some(chain) = matches.value_of("chain") {
-            self.chain = Some(chain.parse()?);
+            self.chain = Some(chain.parse().unwrap());
         }
         Ok(())
     }
@@ -536,6 +562,25 @@ impl Rpc {
     }
 }
 
+impl Ws {
+    pub fn overwrite_with(&mut self, matches: &clap::ArgMatches) -> Result<(), String> {
+        if matches.is_present("no-ws") {
+            self.disable = Some(true);
+        }
+
+        if let Some(interface) = matches.value_of("ws-interface") {
+            self.interface = Some(interface.to_string());
+        }
+        if let Some(port) = matches.value_of("ws-port") {
+            self.port = Some(port.parse().map_err(|_| "Invalid port")?);
+        }
+        if let Some(max_connections) = matches.value_of("ws-max-connections") {
+            self.max_connections = Some(max_connections.parse().map_err(|_| "Invalid max connections")?);
+        }
+        Ok(())
+    }
+}
+
 impl Snapshot {
     pub fn merge(&mut self, other: &Snapshot) {
         if other.disable.is_some() {
@@ -633,6 +678,7 @@ pub fn load_config(matches: &clap::ArgMatches) -> Result<Config, String> {
     config.mining.overwrite_with(&matches)?;
     config.network.overwrite_with(&matches)?;
     config.rpc.overwrite_with(&matches)?;
+    config.ws.overwrite_with(&matches)?;
     config.snapshot.overwrite_with(&matches)?;
     config.stratum.overwrite_with(&matches)?;
     config.shard_validator.overwrite_with(&matches)?;

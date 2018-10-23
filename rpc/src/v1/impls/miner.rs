@@ -56,7 +56,7 @@ where
             cwarn!(MINER, "Cannot give work package - engine seals internally.");
             return Err(errors::no_work_required())
         }
-        if self.miner.author().is_zero() {
+        if self.miner.authoring_params().author.is_zero() {
             cwarn!(MINER, "Cannot give work package - no author is configured. Use --author to configure!");
             return Err(errors::no_author())
         }

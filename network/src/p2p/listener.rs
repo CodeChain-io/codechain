@@ -30,7 +30,7 @@ pub struct Listener {
 impl Listener {
     pub fn bind(socket_address: &SocketAddr) -> io::Result<Self> {
         Ok(Self {
-            listener: TcpListener::bind(socket_address.into())?,
+            listener: TcpListener::bind(socket_address)?,
         })
     }
 

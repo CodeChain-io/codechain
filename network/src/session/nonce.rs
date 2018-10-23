@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::hash::{Hash, Hasher};
+use std::ops::Deref;
 
 use primitives::{H128, U128};
 use rand::distributions::{Distribution, Standard};
@@ -42,14 +43,16 @@ impl From<u64> for Nonce {
     }
 }
 
-impl Into<H128> for Nonce {
-    fn into(self) -> H128 {
-        self.0
+impl From<Nonce> for H128 {
+    fn from(nonce: Nonce) -> Self {
+        nonce.0
     }
 }
 
-impl<'a> Into<&'a H128> for &'a Nonce {
-    fn into(self) -> &'a H128 {
+impl Deref for Nonce {
+    type Target = H128;
+
+    fn deref(&self) -> &<Self as Deref>::Target {
         &self.0
     }
 }

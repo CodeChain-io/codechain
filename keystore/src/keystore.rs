@@ -14,19 +14,20 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
-use parking_lot::{Mutex, RwLock};
 use std::collections::BTreeMap;
 use std::mem;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
-use account::SafeAccount;
-use accounts_dir::KeyDirectory;
 use ccrypto::KEY_ITERATIONS;
 use ckey::{Address, KeyPair, Message, Password, Public, Secret, Signature};
-use json::{self, OpaqueKeyFile, Uuid};
-use random::Random;
-use {Error, OpaqueSecret, SecretStore, SimpleSecretStore};
+use parking_lot::{Mutex, RwLock};
+
+use super::account::SafeAccount;
+use super::accounts_dir::KeyDirectory;
+use super::json::{self, OpaqueKeyFile, Uuid};
+use super::random::Random;
+use super::{Error, OpaqueSecret, SecretStore, SimpleSecretStore};
 
 /// Accounts store.
 pub struct KeyStore {
@@ -79,6 +80,10 @@ impl SimpleSecretStore for KeyStore {
         self.store.has_account(account)
     }
 
+    fn remove_account(&self, account: &Address, password: &Password) -> Result<(), Error> {
+        self.store.remove_account(account, password)
+    }
+
     fn change_password(
         &self,
         account: &Address,
@@ -90,10 +95,6 @@ impl SimpleSecretStore for KeyStore {
 
     fn export_account(&self, account: &Address, password: &Password) -> Result<OpaqueKeyFile, Error> {
         self.store.export_account(account, password)
-    }
-
-    fn remove_account(&self, account: &Address, password: &Password) -> Result<(), Error> {
-        self.store.remove_account(account, password)
     }
 
     fn sign(&self, account: &Address, password: &Password, message: &Message) -> Result<Signature, Error> {
@@ -108,8 +109,8 @@ impl SecretStore for KeyStore {
 
     fn import_wallet(&self, json: &[u8], password: &Password, gen_id: bool) -> Result<Address, Error> {
         let json_keyfile =
-            json::KeyFile::load(json).map_err(|_| Error::InvalidKeyFile("Invalid JSON format".to_string()))?;
-        let mut safe_account = SafeAccount::from_file(json_keyfile, None);
+            json::KeyFile::load(json).map_err(|err| Error::InvalidKeyFile(format!("Invalid JSON format: {}", err)))?;
+        let mut safe_account = SafeAccount::from_file(json_keyfile, None, Some(password))?;
 
         if gen_id {
             safe_account.id = Random::random();
@@ -148,23 +149,9 @@ impl SecretStore for KeyStore {
         Ok(account.id.into())
     }
 
-    fn name(&self, account: &Address) -> Result<String, Error> {
-        let account = self.get(account)?;
-        Ok(account.name.clone())
-    }
-
     fn meta(&self, account: &Address) -> Result<String, Error> {
         let account = self.get(account)?;
         Ok(account.meta.clone())
-    }
-
-    fn set_name(&self, account_ref: &Address, name: String) -> Result<(), Error> {
-        let old = self.get(account_ref)?;
-        let mut safe_account = old.clone();
-        safe_account.name = name;
-
-        // save to file
-        self.store.update(account_ref, old, safe_account)
     }
 
     fn set_meta(&self, account_ref: &Address, meta: String) -> Result<(), Error> {
@@ -339,7 +326,7 @@ impl SimpleSecretStore for KeyMultiStore {
     fn insert_account(&self, secret: Secret, password: &Password) -> Result<Address, Error> {
         let keypair = KeyPair::from_private(secret.into()).map_err(|_| Error::CreationFailed)?;
         let id: [u8; 16] = Random::random();
-        let account = SafeAccount::create(&keypair, id, password, self.iterations, "".to_string(), "{}".to_string())?;
+        let account = SafeAccount::create(&keypair, id, password, self.iterations, "{}".to_string())?;
         self.import(account)
     }
 
@@ -404,11 +391,11 @@ impl SimpleSecretStore for KeyMultiStore {
 mod tests {
     extern crate tempdir;
 
-    use super::{KeyMultiStore, KeyStore};
-    use accounts_dir::MemoryDirectory;
-    use ckey::{Generator, KeyPair, Random};
+    use ckey::{Generator, Random};
     use primitives::H256;
-    use secret_store::{SecretStore, SimpleSecretStore};
+
+    use super::super::accounts_dir::MemoryDirectory;
+    use super::*;
 
     fn keypair() -> KeyPair {
         Random.generate().unwrap()
@@ -439,22 +426,19 @@ mod tests {
     }
 
     #[test]
-    fn update_meta_and_name() {
+    fn update_meta() {
         // given
         let store = store();
         let keypair = keypair();
         let private_key: &H256 = keypair.private();
         let address = store.insert_account(private_key.clone(), &"test".into()).unwrap();
         assert_eq!(&store.meta(&address).unwrap(), "{}");
-        assert_eq!(&store.name(&address).unwrap(), "");
 
         // when
         store.set_meta(&address, "meta".into()).unwrap();
-        store.set_name(&address, "name".into()).unwrap();
 
         // then
         assert_eq!(&store.meta(&address).unwrap(), "meta");
-        assert_eq!(&store.name(&address).unwrap(), "name");
         assert_eq!(store.accounts().unwrap().len(), 1);
     }
 

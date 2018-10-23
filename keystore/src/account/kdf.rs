@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
-use json;
+use super::super::json;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Prf {
@@ -52,9 +52,9 @@ impl From<json::Prf> for Prf {
     }
 }
 
-impl Into<json::Prf> for Prf {
-    fn into(self) -> json::Prf {
-        match self {
+impl From<Prf> for json::Prf {
+    fn from(prf: Prf) -> Self {
+        match prf {
             Prf::HmacSha256 => json::Prf::HmacSha256,
         }
     }
@@ -71,13 +71,13 @@ impl From<json::Pbkdf2> for Pbkdf2 {
     }
 }
 
-impl Into<json::Pbkdf2> for Pbkdf2 {
-    fn into(self) -> json::Pbkdf2 {
+impl From<Pbkdf2> for json::Pbkdf2 {
+    fn from(p: Pbkdf2) -> Self {
         json::Pbkdf2 {
-            c: self.c,
-            dklen: self.dklen,
-            prf: self.prf.into(),
-            salt: From::from(self.salt),
+            c: p.c,
+            dklen: p.dklen,
+            prf: p.prf.into(),
+            salt: From::from(p.salt),
         }
     }
 }
@@ -94,14 +94,14 @@ impl From<json::Scrypt> for Scrypt {
     }
 }
 
-impl Into<json::Scrypt> for Scrypt {
-    fn into(self) -> json::Scrypt {
-        json::Scrypt {
-            dklen: self.dklen,
-            p: self.p,
-            n: self.n,
-            r: self.r,
-            salt: From::from(self.salt),
+impl From<Scrypt> for json::Scrypt {
+    fn from(s: Scrypt) -> Self {
+        Self {
+            dklen: s.dklen,
+            p: s.p,
+            n: s.n,
+            r: s.r,
+            salt: From::from(s.salt),
         }
     }
 }
@@ -115,9 +115,9 @@ impl From<json::Kdf> for Kdf {
     }
 }
 
-impl Into<json::Kdf> for Kdf {
-    fn into(self) -> json::Kdf {
-        match self {
+impl From<Kdf> for json::Kdf {
+    fn from(kdf: Kdf) -> Self {
+        match kdf {
             Kdf::Pbkdf2(params) => json::Kdf::Pbkdf2(params.into()),
             Kdf::Scrypt(params) => json::Kdf::Scrypt(params.into()),
         }

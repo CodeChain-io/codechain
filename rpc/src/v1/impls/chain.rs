@@ -20,7 +20,7 @@ use ccore::{
     AssetClient, BlockId, EngineInfo, ExecuteClient, MinerService, MiningBlockChainClient, RegularKey, RegularKeyOwner,
     Shard, SignedParcel, UnverifiedParcel,
 };
-use ckey::{NetworkId, PlatformAddress, Public};
+use ckey::{public_to_address, NetworkId, PlatformAddress, Public};
 use cstate::{AssetScheme, AssetSchemeAddress, OwnedAsset};
 use ctypes::invoice::{ParcelInvoice, TransactionInvoice};
 use ctypes::parcel::Action;
@@ -145,7 +145,7 @@ where
     fn get_nonce(&self, address: PlatformAddress, block_number: Option<u64>) -> Result<Option<U256>> {
         let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
         let address = address.try_address().map_err(errors::core)?;
-        Ok(self.client.nonce(address, block_id))
+        Ok(self.client.seq(address, block_id))
     }
 
     fn get_balance(&self, address: PlatformAddress, block_number: Option<u64>) -> Result<Option<U256>> {
@@ -162,12 +162,11 @@ where
 
     fn get_regular_key_owner(&self, public: Public, block_number: Option<u64>) -> Result<Option<PlatformAddress>> {
         let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
-        const VERSION: u8 = 0;
         let network_id = self.client.common_params().network_id;
         Ok(self
             .client
-            .regular_key_owner(&public, block_id.into())
-            .and_then(|address| Some(PlatformAddress::create(VERSION, network_id, address))))
+            .regular_key_owner(&public_to_address(&public), block_id.into())
+            .and_then(|address| Some(PlatformAddress::new_v1(network_id, address))))
     }
 
     fn get_number_of_shards(&self, block_number: Option<u64>) -> Result<Option<ShardId>> {
@@ -215,12 +214,11 @@ where
     }
 
     fn get_coinbase(&self) -> Result<Option<PlatformAddress>> {
-        if self.miner.author().is_zero() {
+        if self.miner.authoring_params().author.is_zero() {
             Ok(None)
         } else {
-            const VERSION: u8 = 0;
             let network_id = self.client.common_params().network_id;
-            Ok(Some(PlatformAddress::create(VERSION, network_id, self.miner.author())))
+            Ok(Some(PlatformAddress::new_v1(network_id, self.miner.authoring_params().author)))
         }
     }
 

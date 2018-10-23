@@ -26,7 +26,8 @@ use std::sync::{Condvar as SCondvar, Mutex as SMutex};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
 use worker::{Work, WorkType, Worker};
-use {IoError, IoHandler};
+
+use super::{IoError, IoHandler};
 
 /// Timer ID
 pub type TimerToken = usize;
@@ -46,10 +47,6 @@ where
     Message: Send + Clone + Sized, {
     /// Shutdown the event loop
     Shutdown,
-    /// Register a new protocol handler.
-    AddHandler {
-        handler: Arc<IoHandler<Message> + Send>,
-    },
     RemoveHandler {
         handler_id: HandlerId,
     },
@@ -100,67 +97,72 @@ where
     }
 
     /// Register a new recurring IO timer. 'IoHandler::timeout' will be called with the token.
-    pub fn register_timer(&self, token: TimerToken, ms: u64) -> Result<(), IoError> {
-        self.channel.send_io(IoMessage::AddTimer {
-            token,
-            delay: ms,
-            handler_id: self.handler,
-            once: false,
-        })?;
-        Ok(())
+    pub fn register_timer(&self, token: TimerToken, ms: u64) {
+        self.channel
+            .send_io(IoMessage::AddTimer {
+                token,
+                delay: ms,
+                handler_id: self.handler,
+                once: false,
+            })
+            .unwrap();
     }
 
     /// Register a new IO timer once. 'IoHandler::timeout' will be called with the token.
-    pub fn register_timer_once(&self, token: TimerToken, ms: u64) -> Result<(), IoError> {
-        self.channel.send_io(IoMessage::AddTimer {
-            token,
-            delay: ms,
-            handler_id: self.handler,
-            once: true,
-        })?;
-        Ok(())
+    pub fn register_timer_once(&self, token: TimerToken, ms: u64) {
+        self.channel
+            .send_io(IoMessage::AddTimer {
+                token,
+                delay: ms,
+                handler_id: self.handler,
+                once: true,
+            })
+            .unwrap();
     }
 
     /// Delete a timer.
-    pub fn clear_timer(&self, token: TimerToken) -> Result<(), IoError> {
-        self.channel.send_io(IoMessage::RemoveTimer {
-            token,
-            handler_id: self.handler,
-        })?;
-        Ok(())
+    pub fn clear_timer(&self, token: TimerToken) {
+        self.channel
+            .send_io(IoMessage::RemoveTimer {
+                token,
+                handler_id: self.handler,
+            })
+            .unwrap();
     }
 
     /// Register a new IO stream.
-    pub fn register_stream(&self, token: StreamToken) -> Result<(), IoError> {
-        self.channel.send_io(IoMessage::RegisterStream {
-            token,
-            handler_id: self.handler,
-        })?;
-        Ok(())
+    pub fn register_stream(&self, token: StreamToken) {
+        self.channel
+            .send_io(IoMessage::RegisterStream {
+                token,
+                handler_id: self.handler,
+            })
+            .unwrap();
     }
 
     /// Deregister an IO stream.
-    pub fn deregister_stream(&self, token: StreamToken) -> Result<(), IoError> {
-        self.channel.send_io(IoMessage::DeregisterStream {
-            token,
-            handler_id: self.handler,
-        })?;
-        Ok(())
+    pub fn deregister_stream(&self, token: StreamToken) {
+        self.channel
+            .send_io(IoMessage::DeregisterStream {
+                token,
+                handler_id: self.handler,
+            })
+            .unwrap();
     }
 
     /// Reregister an IO stream.
-    pub fn update_registration(&self, token: StreamToken) -> Result<(), IoError> {
-        self.channel.send_io(IoMessage::UpdateStreamRegistration {
-            token,
-            handler_id: self.handler,
-        })?;
-        Ok(())
+    pub fn update_registration(&self, token: StreamToken) {
+        self.channel
+            .send_io(IoMessage::UpdateStreamRegistration {
+                token,
+                handler_id: self.handler,
+            })
+            .unwrap();
     }
 
     /// Broadcast a message to other IO clients
-    pub fn message(&self, message: Message) -> Result<(), IoError> {
-        self.channel.send(message)?;
-        Ok(())
+    pub fn message(&self, message: Message) {
+        self.channel.send(message).unwrap();
     }
 
     /// Get message channel
@@ -169,11 +171,12 @@ where
     }
 
     /// Unregister current IO handler.
-    pub fn unregister_handler(&self) -> Result<(), IoError> {
-        self.channel.send_io(IoMessage::RemoveHandler {
-            handler_id: self.handler,
-        })?;
-        Ok(())
+    pub fn unregister_handler(&self) {
+        self.channel
+            .send_io(IoMessage::RemoveHandler {
+                handler_id: self.handler,
+            })
+            .unwrap();
     }
 }
 
@@ -187,7 +190,7 @@ struct UserTimer {
 /// Root IO handler. Manages user handlers, messages and IO timers.
 pub struct IoManager<Message>
 where
-    Message: Send + Sync, {
+    Message: Clone + Send + Sync, {
     timers: Arc<RwLock<HashMap<HandlerId, UserTimer>>>,
     handlers: Arc<RwLock<Slab<Arc<IoHandler<Message>>, HandlerId>>>,
     workers: Vec<Worker>,
@@ -203,11 +206,13 @@ where
     pub fn start(
         event_loop: &mut EventLoop<IoManager<Message>>,
         handlers: Arc<RwLock<Slab<Arc<IoHandler<Message>>, HandlerId>>>,
+        name: &str,
     ) -> Result<(), IoError> {
         let (worker, stealer) = chase_lev::deque();
         let num_workers = 4;
         let work_ready_mutex = Arc::new(SMutex::new(()));
         let work_ready = Arc::new(SCondvar::new());
+
         let workers = (0..num_workers)
             .map(|i| {
                 Worker::new(
@@ -216,6 +221,7 @@ where
                     IoChannel::new(event_loop.channel(), Arc::downgrade(&handlers)),
                     work_ready.clone(),
                     work_ready_mutex.clone(),
+                    name,
                 )
             })
             .collect();
@@ -302,21 +308,6 @@ where
             IoMessage::Shutdown => {
                 self.workers.clear();
                 event_loop.shutdown();
-            }
-            IoMessage::AddHandler {
-                handler,
-            } => {
-                let handler_id = self
-                    .handlers
-                    .write()
-                    .insert(handler.clone())
-                    .unwrap_or_else(|_| panic!("Too many handlers registered"));
-                if let Err(err) = handler.initialize(&IoContext::new(
-                    IoChannel::new(event_loop.channel(), Arc::downgrade(&self.handlers)),
-                    handler_id,
-                )) {
-                    cerror!(IO, "Error in initialize {:?}", err);
-                }
             }
             IoMessage::RemoveHandler {
                 handler_id,
@@ -527,6 +518,7 @@ where
     thread: Mutex<Option<JoinHandle<()>>>,
     host_channel: Mutex<Sender<IoMessage<Message>>>,
     handlers: Arc<RwLock<Slab<Arc<IoHandler<Message>>, HandlerId>>>,
+    event_loop_channel: Sender<IoMessage<Message>>,
 }
 
 impl<Message> IoService<Message>
@@ -534,7 +526,7 @@ where
     Message: Send + Sync + Clone + 'static,
 {
     /// Starts IO event loop
-    pub fn start() -> Result<IoService<Message>, IoError> {
+    pub fn start(name: &'static str) -> Result<IoService<Message>, IoError> {
         let mut config = EventLoopBuilder::new();
         config.messages_per_tick(1024);
         let mut event_loop = config.build().expect("Error creating event loop");
@@ -542,12 +534,13 @@ where
         let handlers = Arc::new(RwLock::new(Slab::new(MAX_HANDLERS)));
         let h = handlers.clone();
         let thread = thread::spawn(move || {
-            IoManager::<Message>::start(&mut event_loop, h).expect("Error starting IO service");
+            IoManager::<Message>::start(&mut event_loop, h, name).expect("Error starting IO service");
         });
         Ok(IoService {
             thread: Mutex::new(Some(thread)),
-            host_channel: Mutex::new(channel),
+            host_channel: Mutex::new(channel.clone()),
             handlers,
+            event_loop_channel: channel,
         })
     }
 
@@ -570,9 +563,12 @@ where
 
     /// Regiter an IO handler with the event loop.
     pub fn register_handler(&self, handler: Arc<IoHandler<Message> + Send>) -> Result<(), IoError> {
-        self.host_channel.lock().send(IoMessage::AddHandler {
-            handler,
-        })?;
+        let handler_id =
+            self.handlers.write().insert(handler.clone()).unwrap_or_else(|_| panic!("Too many handlers registered"));
+        handler.initialize(&IoContext::new(
+            IoChannel::new(self.event_loop_channel.clone(), Arc::downgrade(&self.handlers)),
+            handler_id,
+        ))?;
         Ok(())
     }
 

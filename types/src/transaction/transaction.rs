@@ -18,14 +18,25 @@ use std::collections::HashMap;
 use std::io::Cursor;
 
 use byteorder::{BigEndian, ReadBytesExt};
-use ccrypto::blake256;
+use ccrypto::{blake128, blake256, blake256_with_key};
 use ckey::{Address, NetworkId};
 use heapsize::HeapSizeOf;
-use primitives::{Bytes, H256, U128};
+use primitives::{Bytes, H160, H256, U128};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
+use super::super::util::tag::Tag;
 use super::super::{ShardId, WorldId};
 use super::error::Error;
+
+
+pub trait PartialHashing {
+    fn hash_partially(&self, tag: Tag, cur: &AssetOutPoint, burn: bool) -> Result<H256, HashingError>;
+}
+
+#[derive(Debug, PartialEq)]
+pub enum HashingError {
+    InvalidFilter,
+}
 
 #[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -47,7 +58,7 @@ pub struct AssetTransferInput {
 #[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AssetTransferOutput {
-    pub lock_script_hash: H256,
+    pub lock_script_hash: H160,
     pub parameters: Vec<Bytes>,
     pub asset_type: H256,
     pub amount: u64,
@@ -59,21 +70,21 @@ pub enum Transaction {
     CreateWorld {
         network_id: NetworkId,
         shard_id: ShardId,
-        nonce: u64,
+        seq: u64,
         owners: Vec<Address>,
     },
     SetWorldOwners {
         network_id: NetworkId,
         shard_id: ShardId,
         world_id: WorldId,
-        nonce: u64,
+        seq: u64,
         owners: Vec<Address>,
     },
     SetWorldUsers {
         network_id: NetworkId,
         shard_id: ShardId,
         world_id: WorldId,
-        nonce: u64,
+        seq: u64,
         users: Vec<Address>,
     },
     AssetMint {
@@ -98,55 +109,14 @@ pub enum Transaction {
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AssetMintOutput {
-    pub lock_script_hash: H256,
+    pub lock_script_hash: H160,
     pub parameters: Vec<Bytes>,
     pub amount: Option<u64>,
 }
 
 impl Transaction {
-    pub fn without_script(&self) -> Self {
-        match self {
-            Transaction::AssetTransfer {
-                network_id,
-                burns,
-                inputs,
-                outputs,
-                nonce,
-            } => {
-                let new_burns: Vec<_> = burns
-                    .iter()
-                    .map(|input| AssetTransferInput {
-                        prev_out: input.prev_out.clone(),
-                        lock_script: Vec::new(),
-                        unlock_script: Vec::new(),
-                    })
-                    .collect();
-                let new_inputs: Vec<_> = inputs
-                    .iter()
-                    .map(|input| AssetTransferInput {
-                        prev_out: input.prev_out.clone(),
-                        lock_script: Vec::new(),
-                        unlock_script: Vec::new(),
-                    })
-                    .collect();
-                Transaction::AssetTransfer {
-                    network_id: *network_id,
-                    burns: new_burns,
-                    inputs: new_inputs,
-                    outputs: outputs.clone(),
-                    nonce: *nonce,
-                }
-            }
-            _ => unreachable!(),
-        }
-    }
-
     pub fn hash(&self) -> H256 {
         blake256(&*self.rlp_bytes())
-    }
-
-    pub fn hash_without_script(&self) -> H256 {
-        blake256(&*self.without_script().rlp_bytes())
     }
 
     pub fn network_id(&self) -> NetworkId {
@@ -226,6 +196,9 @@ impl Transaction {
                 outputs,
                 ..
             } => {
+                if outputs.len() > 512 {
+                    return Err(Error::TooManyOutputs(outputs.len()))
+                }
                 // FIXME: check burns
                 if !is_input_and_output_consistent(inputs, outputs) {
                     return Err(Error::InconsistentTransactionInOut)
@@ -282,21 +255,21 @@ impl HeapSizeOf for Transaction {
             Transaction::CreateWorld {
                 network_id: _,
                 shard_id: _,
-                nonce: _,
+                seq: _,
                 owners,
             } => owners.heap_size_of_children(),
             Transaction::SetWorldOwners {
                 network_id: _,
                 shard_id: _,
                 world_id: _,
-                nonce: _,
+                seq: _,
                 owners,
             } => owners.heap_size_of_children(),
             Transaction::SetWorldUsers {
                 network_id: _,
                 shard_id: _,
                 world_id: _,
-                nonce: _,
+                seq: _,
                 users,
             } => users.heap_size_of_children(),
             Transaction::AssetMint {
@@ -346,6 +319,95 @@ fn is_input_and_output_consistent(inputs: &[AssetTransferInput], outputs: &[Asse
     sum.iter().all(|(_, sum)| sum.is_zero())
 }
 
+fn apply_bitmask_to_output(
+    mut bitmask: Vec<u8>,
+    outputs: Vec<AssetTransferOutput>,
+    mut result: Vec<AssetTransferOutput>,
+) -> Result<Vec<AssetTransferOutput>, HashingError> {
+    let mut index = 0;
+    let output_len = outputs.len();
+
+    while let Some(e) = bitmask.pop() {
+        let mut filter = e;
+        for i in 0..8 {
+            if (8 * index + i) == output_len as usize {
+                return Ok(result)
+            }
+
+            if (filter & 0x1) == 1 {
+                result.push(outputs[8 * index + i].clone());
+            }
+
+            filter = filter >> 1;
+        }
+        index += 1;
+    }
+    return Ok(result)
+}
+
+fn apply_input_scheme(
+    inputs: &Vec<AssetTransferInput>,
+    is_sign_all: bool,
+    is_sign_single: bool,
+    cur: &AssetOutPoint,
+) -> Vec<AssetTransferInput> {
+    if is_sign_all {
+        return inputs
+            .iter()
+            .map(|input| AssetTransferInput {
+                prev_out: input.prev_out.clone(),
+                lock_script: Vec::new(),
+                unlock_script: Vec::new(),
+            })
+            .collect()
+    }
+
+    if is_sign_single {
+        return vec![AssetTransferInput {
+            prev_out: cur.clone(),
+            lock_script: Vec::new(),
+            unlock_script: Vec::new(),
+        }]
+    }
+
+    Vec::new()
+}
+
+impl PartialHashing for Transaction {
+    fn hash_partially(&self, tag: Tag, cur: &AssetOutPoint, is_burn: bool) -> Result<H256, HashingError> {
+        match self {
+            Transaction::AssetTransfer {
+                network_id,
+                burns,
+                inputs,
+                outputs,
+                nonce,
+            } => {
+                let new_burns = apply_input_scheme(burns, tag.sign_all_inputs, is_burn, cur);
+                let new_inputs = apply_input_scheme(inputs, tag.sign_all_inputs, !is_burn, cur);
+
+                let new_outputs = if tag.sign_all_outputs {
+                    outputs.clone()
+                } else {
+                    apply_bitmask_to_output(tag.filter.clone(), outputs.to_vec(), Vec::new())?
+                };
+
+                Ok(blake256_with_key(
+                    &Transaction::AssetTransfer {
+                        network_id: *network_id,
+                        burns: new_burns,
+                        inputs: new_inputs,
+                        outputs: new_outputs,
+                        nonce: *nonce,
+                    }.rlp_bytes(),
+                    &blake128(tag.get_tag()),
+                ))
+            }
+            _ => unreachable!(),
+        }
+    }
+}
+
 type TransactionId = u8;
 const CREATE_WORLD_ID: TransactionId = 0x01;
 const SET_WORLD_OWNERS_ID: TransactionId = 0x02;
@@ -364,7 +426,7 @@ impl Decodable for Transaction {
                 Ok(Transaction::CreateWorld {
                     network_id: d.val_at(1)?,
                     shard_id: d.val_at(2)?,
-                    nonce: d.val_at(3)?,
+                    seq: d.val_at(3)?,
                     owners: d.list_at(4)?,
                 })
             }
@@ -377,7 +439,7 @@ impl Decodable for Transaction {
                     network_id: d.val_at(1)?,
                     shard_id: d.val_at(2)?,
                     world_id: d.val_at(3)?,
-                    nonce: d.val_at(4)?,
+                    seq: d.val_at(4)?,
                     owners: d.list_at(5)?,
                 })
             }
@@ -390,7 +452,7 @@ impl Decodable for Transaction {
                     network_id: d.val_at(1)?,
                     shard_id: d.val_at(2)?,
                     world_id: d.val_at(3)?,
-                    nonce: d.val_at(4)?,
+                    seq: d.val_at(4)?,
                     users: d.list_at(5)?,
                 })
             }
@@ -435,20 +497,20 @@ impl Encodable for Transaction {
             Transaction::CreateWorld {
                 network_id,
                 shard_id,
-                nonce,
+                seq,
                 owners,
             } => s
                 .begin_list(5)
                 .append(&CREATE_WORLD_ID)
                 .append(network_id)
                 .append(shard_id)
-                .append(nonce)
+                .append(seq)
                 .append_list(&owners),
             Transaction::SetWorldOwners {
                 network_id,
                 shard_id,
                 world_id,
-                nonce,
+                seq,
                 owners,
             } => s
                 .begin_list(6)
@@ -456,13 +518,13 @@ impl Encodable for Transaction {
                 .append(network_id)
                 .append(shard_id)
                 .append(world_id)
-                .append(nonce)
+                .append(seq)
                 .append_list(&owners),
             Transaction::SetWorldUsers {
                 network_id,
                 shard_id,
                 world_id,
-                nonce,
+                seq,
                 users,
             } => s
                 .begin_list(6)
@@ -470,7 +532,7 @@ impl Encodable for Transaction {
                 .append(network_id)
                 .append(shard_id)
                 .append(world_id)
-                .append(nonce)
+                .append(seq)
                 .append_list(&users),
             Transaction::AssetMint {
                 network_id,
@@ -585,7 +647,7 @@ mod tests {
                 unlock_script: vec![],
             }],
             &[AssetTransferOutput {
-                lock_script_hash: H256::random(),
+                lock_script_hash: H160::random(),
                 parameters: vec![],
                 asset_type,
                 amount,
@@ -631,13 +693,13 @@ mod tests {
             ],
             &[
                 AssetTransferOutput {
-                    lock_script_hash: H256::random(),
+                    lock_script_hash: H160::random(),
                     parameters: vec![],
                     asset_type: asset_type1,
                     amount: amount1,
                 },
                 AssetTransferOutput {
-                    lock_script_hash: H256::random(),
+                    lock_script_hash: H160::random(),
                     parameters: vec![],
                     asset_type: asset_type2,
                     amount: amount2,
@@ -684,13 +746,13 @@ mod tests {
             ],
             &[
                 AssetTransferOutput {
-                    lock_script_hash: H256::random(),
+                    lock_script_hash: H160::random(),
                     parameters: vec![],
                     asset_type: asset_type2,
                     amount: amount2,
                 },
                 AssetTransferOutput {
-                    lock_script_hash: H256::random(),
+                    lock_script_hash: H160::random(),
                     parameters: vec![],
                     asset_type: asset_type1,
                     amount: amount1,
@@ -711,7 +773,7 @@ mod tests {
         assert!(!is_input_and_output_consistent(
             &[],
             &[AssetTransferOutput {
-                lock_script_hash: H256::random(),
+                lock_script_hash: H160::random(),
                 parameters: vec![],
                 asset_type,
                 amount: output_amount,
@@ -757,7 +819,7 @@ mod tests {
                 unlock_script: vec![],
             }],
             &[AssetTransferOutput {
-                lock_script_hash: H256::random(),
+                lock_script_hash: H160::random(),
                 parameters: vec![],
                 asset_type,
                 amount: output_amount,
@@ -783,7 +845,7 @@ mod tests {
                 unlock_script: vec![],
             }],
             &[AssetTransferOutput {
-                lock_script_hash: H256::random(),
+                lock_script_hash: H160::random(),
                 parameters: vec![],
                 asset_type,
                 amount: output_amount,
@@ -796,7 +858,7 @@ mod tests {
         let transaction = Transaction::CreateWorld {
             network_id: "tc".into(),
             shard_id: 0xFE,
-            nonce: 0xFE,
+            seq: 0xFE,
             owners: vec![],
         };
         rlp_encode_and_decode_test!(transaction);
@@ -807,7 +869,7 @@ mod tests {
         let transaction = Transaction::CreateWorld {
             network_id: "tc".into(),
             shard_id: 0xFE,
-            nonce: 0xFE,
+            seq: 0xFE,
             owners: vec![Address::random(), Address::random(), Address::random()],
         };
         rlp_encode_and_decode_test!(transaction);
@@ -819,7 +881,7 @@ mod tests {
             network_id: "tc".into(),
             shard_id: 0xFE,
             world_id: 0xB,
-            nonce: 0xEE,
+            seq: 0xEE,
             owners: vec![],
         };
         rlp_encode_and_decode_test!(transaction);
@@ -831,9 +893,94 @@ mod tests {
             network_id: "tc".into(),
             shard_id: 0xFE,
             world_id: 0xB,
-            nonce: 0xEE,
+            seq: 0xEE,
             owners: vec![Address::random(), Address::random(), Address::random()],
         };
         rlp_encode_and_decode_test!(transaction);
+    }
+
+    #[test]
+    fn apply_long_filter() {
+        let out = AssetOutPoint {
+            transaction_hash: H256::default(),
+            index: 0,
+            asset_type: H256::default(),
+            amount: 0,
+        };
+        let inputs: Vec<AssetTransferInput> = (0..100)
+            .map(|_| AssetTransferInput {
+                prev_out: AssetOutPoint {
+                    transaction_hash: H256::default(),
+                    index: 0,
+                    asset_type: H256::default(),
+                    amount: 0,
+                },
+                lock_script: Vec::new(),
+                unlock_script: Vec::new(),
+            })
+            .collect();
+        let mut outputs: Vec<AssetTransferOutput> = (0..100)
+            .map(|_| AssetTransferOutput {
+                lock_script_hash: H160::default(),
+                parameters: Vec::new(),
+                asset_type: H256::default(),
+                amount: 0,
+            })
+            .collect();
+
+        let transaction = Transaction::AssetTransfer {
+            network_id: NetworkId::default(),
+            burns: Vec::new(),
+            inputs: inputs.clone(),
+            outputs: outputs.clone(),
+            nonce: 0,
+        };
+        let mut tag: Vec<u8> = vec![0b00001111 as u8];
+        for _i in 0..12 {
+            tag.push(0b11111111 as u8);
+        }
+        tag.push(0b00110101);
+        assert_eq!(
+            transaction.hash_partially(Tag::try_new(tag.clone()).unwrap(), &out, false),
+            Ok(blake256_with_key(&transaction.rlp_bytes(), &blake128(&tag)))
+        );
+
+        // Sign except for last element
+        outputs.pop();
+        let transaction_aux = Transaction::AssetTransfer {
+            network_id: NetworkId::default(),
+            burns: Vec::new(),
+            inputs: inputs.clone(),
+            outputs: outputs.clone(),
+            nonce: 0,
+        };
+        tag = vec![0b00000111 as u8];
+        for _i in 0..12 {
+            tag.push(0b11111111 as u8);
+        }
+        tag.push(0b00110101);
+        assert_eq!(
+            transaction.hash_partially(Tag::try_new(tag.clone()).unwrap(), &out, false),
+            Ok(blake256_with_key(&transaction_aux.rlp_bytes(), &blake128(&tag)))
+        );
+
+        // Sign except for last two elements
+        outputs.pop();
+        let transaction_aux = Transaction::AssetTransfer {
+            network_id: NetworkId::default(),
+            burns: Vec::new(),
+            inputs,
+            outputs,
+            nonce: 0,
+        };
+        tag = vec![0b00000011 as u8];
+        for _i in 0..12 {
+            tag.push(0b11111111 as u8);
+        }
+        tag.push(0b00110101);
+        assert_eq!(
+            transaction.hash_partially(Tag::try_new(tag.clone()).unwrap(), &out, false),
+            Ok(blake256_with_key(&transaction_aux.rlp_bytes(), &blake128(&tag)))
+        );
     }
 }

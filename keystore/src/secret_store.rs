@@ -30,30 +30,31 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ckey::{Address, Message, Password, Public, Secret, Signature};
-use json::{OpaqueKeyFile, Uuid};
 use std::path::PathBuf;
-use Error;
-use OpaqueSecret;
+
+use ckey::{Address, Message, Password, Public, Secret, Signature};
+
+use super::json::{OpaqueKeyFile, Uuid};
+use super::{Error, OpaqueSecret};
 
 
 /// Simple Secret Store API
 pub trait SimpleSecretStore: Send + Sync {
     /// Inserts new accounts to the store with given password.
     fn insert_account(&self, secret: Secret, password: &Password) -> Result<Address, Error>;
+    /// Returns all accounts in this secret store.
+    fn accounts(&self) -> Result<Vec<Address>, Error>;
+    ///  Check existance of account
+    fn has_account(&self, account: &Address) -> Result<bool, Error>;
+    /// Entirely removes account from the store and underlying storage.
+    fn remove_account(&self, account: &Address, password: &Password) -> Result<(), Error>;
     /// Changes accounts password.
     fn change_password(&self, account: &Address, old_password: &Password, new_password: &Password)
         -> Result<(), Error>;
     /// Exports key details for account.
     fn export_account(&self, account: &Address, password: &Password) -> Result<OpaqueKeyFile, Error>;
-    /// Entirely removes account from the store and underlying storage.
-    fn remove_account(&self, account: &Address, password: &Password) -> Result<(), Error>;
     /// Sign a message with given account.
     fn sign(&self, account: &Address, password: &Password, message: &Message) -> Result<Signature, Error>;
-    /// Returns all accounts in this secret store.
-    fn accounts(&self) -> Result<Vec<Address>, Error>;
-    ///  Check existance of account
-    fn has_account(&self, account: &Address) -> Result<bool, Error>;
 }
 
 /// Secret Store API
@@ -68,6 +69,10 @@ pub trait SecretStore: SimpleSecretStore {
 
     /// Imports existing JSON wallet
     fn import_wallet(&self, json: &[u8], password: &Password, gen_id: bool) -> Result<Address, Error>;
+
+    /// Checks if password matches given account.
+    fn test_password(&self, account: &Address, password: &Password) -> Result<bool, Error>;
+
     /// Copies account between stores.
     fn copy_account(
         &self,
@@ -76,21 +81,15 @@ pub trait SecretStore: SimpleSecretStore {
         password: &Password,
         new_password: &Password,
     ) -> Result<(), Error>;
-    /// Checks if password matches given account.
-    fn test_password(&self, account: &Address, password: &Password) -> Result<bool, Error>;
 
     /// Returns a public key for given account.
     fn public(&self, account: &Address, password: &Password) -> Result<Public, Error>;
 
     /// Returns uuid of an account.
     fn uuid(&self, account: &Address) -> Result<Uuid, Error>;
-    /// Returns account's name.
-    fn name(&self, account: &Address) -> Result<String, Error>;
     /// Returns account's metadata.
     fn meta(&self, account: &Address) -> Result<String, Error>;
 
-    /// Modifies account metadata.
-    fn set_name(&self, account: &Address, name: String) -> Result<(), Error>;
     /// Modifies account name.
     fn set_meta(&self, account: &Address, meta: String) -> Result<(), Error>;
 

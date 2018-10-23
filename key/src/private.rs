@@ -24,7 +24,7 @@ use secp256k1::key;
 
 use super::Error;
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Private(H256);
 
 impl Private {

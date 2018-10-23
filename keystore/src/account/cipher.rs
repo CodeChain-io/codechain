@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
-use json;
+use super::super::json;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Aes128Ctr {
@@ -34,10 +34,10 @@ impl From<json::Aes128Ctr> for Aes128Ctr {
     }
 }
 
-impl Into<json::Aes128Ctr> for Aes128Ctr {
-    fn into(self) -> json::Aes128Ctr {
-        json::Aes128Ctr {
-            iv: From::from(self.iv),
+impl From<Aes128Ctr> for json::Aes128Ctr {
+    fn from(aes: Aes128Ctr) -> Self {
+        Self {
+            iv: From::from(aes.iv),
         }
     }
 }
@@ -50,9 +50,9 @@ impl From<json::Cipher> for Cipher {
     }
 }
 
-impl Into<json::Cipher> for Cipher {
-    fn into(self) -> json::Cipher {
-        match self {
+impl From<Cipher> for json::Cipher {
+    fn from(cipher: Cipher) -> Self {
+        match cipher {
             Cipher::Aes128Ctr(params) => json::Cipher::Aes128Ctr(params.into()),
         }
     }

@@ -34,13 +34,8 @@ import * as mkdirp from "mkdirp";
 import { wait } from "./promise";
 import { P2PKHBurn } from "codechain-sdk/lib/key/P2PKHBurn";
 import { P2PKH } from "codechain-sdk/lib/key/P2PKH";
+import { faucetAddress, faucetSecret } from "./constants";
 
-const faucetSecret = `ede1d4ccb4ec9a8bbbae9a13db3f4a7b56ea04189be86ac3a6a439d9a0a1addd`;
-const faucetAddress = PlatformAddress.fromAccountId(
-    SDK.util.getAccountIdFromPrivate(
-        `ede1d4ccb4ec9a8bbbae9a13db3f4a7b56ea04189be86ac3a6a439d9a0a1addd`
-    )
-);
 const projectRoot = `${__dirname}/../../..`;
 
 export type SchemeFilepath = string;
@@ -131,7 +126,10 @@ export default class CodeChain {
         this.argv = argv || [];
     }
 
-    public async start(argv: string[] = [], log_level = "trace") {
+    public async start(
+        argv: string[] = [],
+        log_level = "trace,mio=warn,tokio=warn,hyper=warn"
+    ) {
         const useDebugBuild = process.env.NODE_ENV !== "production";
         process.env.RUST_LOG = log_level;
         // NOTE: https://github.com/CodeChain-io/codechain/issues/348
@@ -148,10 +146,10 @@ export default class CodeChain {
                     this.chain,
                     "--db-path",
                     this.dbPath,
-                    "--ipc-path",
-                    this.ipcPath,
+                    "--no-ipc",
                     "--keys-path",
                     this.keysPath,
+                    "--no-ws",
                     "--jsonrpc-port",
                     this.rpcPort.toString(),
                     "--port",
@@ -452,16 +450,14 @@ export default class CodeChain {
         const keyStore = await this.sdk.key.createLocalKeyStore(
             this.localKeyStorePath
         );
-        const p2pkh = this.sdk.key.createP2PKH({ keyStore });
-        await p2pkh.signInput(tx, index);
+        await this.sdk.key.signTransactionInput(tx, index, { keyStore });
     }
 
     public async signTransferBurn(tx: AssetTransferTransaction, index: number) {
         const keyStore = await this.sdk.key.createLocalKeyStore(
             this.localKeyStorePath
         );
-        const p2pkhBurn = this.sdk.key.createP2PKHBurn({ keyStore });
-        await p2pkhBurn.signBurn(tx, index);
+        await this.sdk.key.signTransactionBurn(tx, index, { keyStore });
     }
 
     public async setRegularKey(
@@ -506,7 +502,7 @@ export default class CodeChain {
         const {
             nonce = (await this.sdk.rpc.chain.getNonce(faucetAddress)) || 0,
             awaitInvoice = true,
-            recipient = "tccqruq09sfgax77nj4gukjcuq69uzeyv0jcs7vzngg",
+            recipient = "tccqxv9y4cw0jwphhu65tn4605wadyd2sxu5yezqghw",
             amount = 0,
             secret = faucetSecret,
             fee = 10 + this.id

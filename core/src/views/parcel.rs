@@ -48,8 +48,8 @@ impl<'a> ParcelView<'a> {
         blake256(self.rlp.as_raw())
     }
 
-    /// Get the nonce field of the parcel.
-    pub fn nonce(&self) -> U256 {
+    /// Get the seq field of the parcel.
+    pub fn seq(&self) -> U256 {
         self.rlp.val_at(0)
     }
 

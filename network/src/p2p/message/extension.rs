@@ -56,7 +56,7 @@ impl Message {
         unencrypted_data: &[u8],
         session: &Session,
     ) -> Result<Self, SymmetricCipherError> {
-        let data = Data::Encrypted(aes::encrypt(unencrypted_data, session.secret(), session.id().into())?);
+        let data = Data::Encrypted(aes::encrypt(unencrypted_data, session.secret(), session.id())?);
         Ok(Self {
             version: 0,
             extension_name,
@@ -82,7 +82,7 @@ impl Message {
 
     pub fn unencrypted_data(&self, session: &Session) -> Result<Vec<u8>, SymmetricCipherError> {
         match self.data {
-            Data::Encrypted(ref data) => aes::decrypt(&data, session.secret(), session.id().into()),
+            Data::Encrypted(ref data) => aes::decrypt(&data, session.secret(), session.id()),
             Data::Unencrypted(ref data) => Ok(data.clone()),
         }
     }
@@ -120,6 +120,9 @@ impl Encodable for Message {
 
 impl Decodable for Message {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+        if rlp.item_count()? != 5 {
+            return Err(DecoderError::RlpInvalidLength)
+        }
         let version: Version = rlp.val_at(0)?;
         let protocol_id: ProtocolId = rlp.val_at(1)?;
         let extension_name: String = rlp.val_at(2)?;

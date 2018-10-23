@@ -15,7 +15,9 @@ codechain-state = { path = "../state" }
 codechain-types = { path = "../types" }
 kvdb = { path = "../util/kvdb" }
 kvdb-rocksdb = { path = "../util/kvdb-rocksdb" }
+lazy_static = "1.1.0"
 log = "0.4.1"
+parking_lot = "0.5"
 primitives = { path = "../util/primitives" }
 rlp = { path = "../util/rlp" }
 serde = "1.0"
@@ -28,3 +30,4 @@ jsonrpc-core = { git = "https://github.com/paritytech/jsonrpc.git", branch = "pa
 jsonrpc-macros = { git = "https://github.com/paritytech/jsonrpc.git", branch = "parity-1.11" }
 jsonrpc-http-server = { git = "https://github.com/paritytech/jsonrpc.git", branch = "parity-1.11" }
 jsonrpc-ipc-server = { git = "https://github.com/paritytech/jsonrpc.git", branch = "parity-1.11" }
+jsonrpc-ws-server = { git = "https://github.com/paritytech/jsonrpc.git", branch = "parity-1.11" }

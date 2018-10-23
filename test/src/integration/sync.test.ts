@@ -17,9 +17,11 @@
 import CodeChain from "../helper/spawn";
 import { wait } from "../helper/promise";
 
+const describeSkippedInTravis = process.env.TRAVIS ? describe.skip : describe;
+
 // FIXME: It fails due to timeout when the block sync extension is stuck. See
 // https://github.com/CodeChain-io/codechain/issues/662
-describe.skip("sync", () => {
+describeSkippedInTravis("sync", () => {
     describe("2 nodes", () => {
         let nodeA: CodeChain;
         let nodeB: CodeChain;
@@ -331,6 +333,49 @@ describe.skip("sync", () => {
         });
     });
 
+    describe("2 nodes with no parcel relay", () => {
+        let nodeA: CodeChain;
+        let nodeB: CodeChain;
+        const testSize: number = 5;
+
+        beforeEach(async () => {
+            nodeA = new CodeChain();
+            nodeB = new CodeChain();
+
+            await nodeA.start(["--no-parcel-relay"]);
+            await nodeB.start(["--no-parcel-relay"]);
+            await nodeA.connect(nodeB);
+
+            await nodeA.sdk.rpc.devel.stopSealing();
+            await nodeB.sdk.rpc.devel.stopSealing();
+        });
+
+        test(
+            "parcels must not be propagated",
+            async () => {
+                for (let i = 0; i < testSize; i++) {
+                    await nodeA.sendSignedParcel({
+                        nonce: i,
+                        awaitInvoice: false
+                    });
+                    expect(
+                        (await nodeA.sdk.rpc.chain.getPendingParcels()).length
+                    ).toBe(i + 1);
+                }
+                await wait(2000);
+                expect(
+                    (await nodeB.sdk.rpc.chain.getPendingParcels()).length
+                ).toBe(0);
+            },
+            500 * testSize + 4000
+        );
+
+        afterEach(async () => {
+            await nodeA.clean();
+            await nodeB.clean();
+        });
+    });
+
     describe.each([[3], [5]])(`%p nodes`, numNodes => {
         let nodes: CodeChain[] = [];
 
@@ -477,7 +522,6 @@ describe.skip("sync", () => {
                     "Every node should be synced",
                     async () => {
                         for (let i = 1; i < numNodes; i++) {
-                            // Here is the problem
                             await nodes[i].waitBlockNumberSync(nodes[0]);
                         }
                     },

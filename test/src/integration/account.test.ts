@@ -16,11 +16,14 @@
 
 import CodeChain from "../helper/spawn";
 import { wait } from "../helper/promise";
+import { makeRandomH256, makeRandomPassphrase } from "../helper/random";
 import {
-    makeRandomH256,
-    makeRandomPassphrase,
-    getRandomIndex
-} from "../helper/random";
+    invalidAccointId,
+    invalidAddress,
+    invalidSecret
+} from "../helper/constants";
+
+import { xor128 } from "seedrandom";
 
 const ERROR = {
     KEY_ERROR: {
@@ -55,8 +58,6 @@ const ERROR = {
 };
 
 describe("account", () => {
-    const noSuchAccount = "tccqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqj5aqu5";
-
     describe("account base test", () => {
         let node: CodeChain;
         beforeAll(async () => {
@@ -99,8 +100,6 @@ describe("account", () => {
             });
 
             test("KeyError", done => {
-                const invalidSecret =
-                    "0000000000000000000000000000000000000000000000000000000000000000";
                 node.sdk.rpc.account
                     .importRaw(invalidSecret)
                     .then(done.fail)
@@ -160,7 +159,7 @@ describe("account", () => {
 
             test("NoSuchAccount", async done => {
                 node.sdk.rpc.account
-                    .sign(message, noSuchAccount, "my-password")
+                    .sign(message, invalidAddress, "my-password")
                     .then(() => done.fail())
                     .catch(e => {
                         expect(e).toEqual(ERROR.NO_SUCH_ACCOUNT);
@@ -193,7 +192,7 @@ describe("account", () => {
 
             test("NoSuchAccount", async done => {
                 node.sdk.rpc.account
-                    .unlock(noSuchAccount)
+                    .unlock(invalidAddress)
                     .then(() => done.fail())
                     .catch(e => {
                         expect(e).toEqual(ERROR.NO_SUCH_ACCOUNT);
@@ -233,7 +232,7 @@ describe("account", () => {
             test("NoSuchAccount", async done => {
                 node.sdk.rpc
                     .sendRpcRequest("account_changePassword", [
-                        noSuchAccount,
+                        invalidAddress,
                         "123",
                         "456"
                     ])
@@ -284,7 +283,7 @@ describe("account", () => {
 
                 done();
             },
-            200 * testSize + 5000
+            500 * testSize + 5000
         );
 
         test(
@@ -308,7 +307,7 @@ describe("account", () => {
                     ).toEqual(address.toString());
                 }
             },
-            200 * testSize + 5000
+            500 * testSize + 5000
         );
 
         test(
@@ -356,7 +355,7 @@ describe("account", () => {
                 }
                 done();
             },
-            1800 * unlockTestSize + 5000
+            2000 * unlockTestSize + 5000
         );
 
         test(
@@ -372,6 +371,12 @@ describe("account", () => {
                 }
                 const accountList = [];
                 const actionNumber = randomTestSize;
+                const rng = xor128("Random account test");
+
+                function getRandomIndex(size: number) {
+                    const randomValue = rng.int32();
+                    return Math.abs(randomValue) % size;
+                }
 
                 for (let test = 0; test < actionNumber; test++) {
                     const randomAction =
@@ -494,7 +499,7 @@ describe("account", () => {
                 }
                 done();
             },
-            200 * randomTestSize + 5000
+            500 * randomTestSize + 5000
         );
 
         afterEach(async () => {

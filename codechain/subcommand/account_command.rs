@@ -43,7 +43,8 @@ pub fn run_account_command(matches: ArgMatches) -> Result<(), String> {
     let keystore = KeyStore::open(Box::new(dir)).unwrap();
     let ap = AccountProvider::new(keystore);
     let chain = get_global_argument(&matches, "chain").unwrap_or("solo".into());
-    let network_id: NetworkId = ChainType::from_str(chain.as_ref())?.scheme().map(|scheme| scheme.params().network_id)?;
+    let chain_type: ChainType = chain.parse().unwrap();
+    let network_id: NetworkId = chain_type.scheme().map(|scheme| scheme.params().network_id)?;
 
     match matches.subcommand() {
         ("create", _) => create(&ap, network_id),
@@ -69,97 +70,62 @@ pub fn run_account_command(matches: ArgMatches) -> Result<(), String> {
 }
 
 fn create(ap: &AccountProvider, network_id: NetworkId) -> Result<(), String> {
-    if let Some(password) = read_password_and_confirm() {
-        let (address, _) = ap.new_account_and_public(&password).expect("Cannot create account");
-        println!("{}", PlatformAddress::create(0, network_id, address));
-    } else {
-        return Err("The password does not match".to_string())
-    }
+    let password = read_password_and_confirm().ok_or("The password does not match")?;
+    let (address, _) = ap.new_account_and_public(&password).expect("Cannot create account");
+    println!("{}", PlatformAddress::new_v1(network_id, address));
     Ok(())
 }
 
 fn import(ap: &AccountProvider, network_id: NetworkId, json_path: &str) -> Result<(), String> {
-    match fs::read(json_path) {
-        Ok(json) => {
-            let password = prompt_password("Password: ");
-            match ap.import_wallet(json.as_slice(), &password) {
-                Ok(address) => {
-                    println!("{}", PlatformAddress::create(0, network_id, address));
-                }
-                Err(e) => return Err(format!("{}", e)),
-            }
-        }
-        Err(e) => return Err(format!("{}", e)),
-    }
+    let json = fs::read(json_path).map_err(|err| err.to_string())?;
+    let password = prompt_password("Password: ");
+    let address = ap.import_wallet(json.as_slice(), &password).map_err(|err| err.to_string())?;
+    println!("{}", PlatformAddress::new_v1(network_id, address));
     Ok(())
 }
 
 fn import_raw(ap: &AccountProvider, network_id: NetworkId, raw_key: &str) -> Result<(), String> {
-    match Private::from_str(clean_0x(raw_key)) {
-        Ok(private) => {
-            if let Some(password) = read_password_and_confirm() {
-                match ap.insert_account(private, &password) {
-                    Ok(address) => println!("{}", PlatformAddress::create(0, network_id, address)),
-                    Err(e) => return Err(format!("{:?}", e)),
-                }
-            } else {
-                return Err("The password does not match".to_string())
-            }
-        }
-        Err(e) => return Err(format!("{:?}", e)),
-    }
+    let private = Private::from_str(clean_0x(raw_key)).map_err(|err| err.to_string())?;
+    let password = read_password_and_confirm().ok_or("The password does not match")?;
+    let address = ap.insert_account(private, &password).map_err(|err| err.to_string())?;
+    println!("{}", PlatformAddress::new_v1(network_id, address));
     Ok(())
 }
 
 fn remove(ap: &AccountProvider, address: &str) -> Result<(), String> {
-    match PlatformAddress::from_str(address) {
-        Ok(address) => {
-            let password = prompt_password("Password: ");
-            match ap.remove_account(address.into_address(), &password) {
-                Ok(_) => println!("{} is deleted", address),
-                Err(e) => return Err(format!("{:?}", e)),
-            }
-        }
-        Err(e) => return Err(format!("{:?}", e)),
-    }
+    let address = PlatformAddress::from_str(address).map_err(|err| err.to_string())?;
+    let password = prompt_password("Password: ");
+    let _ = ap.remove_account(address.into_address(), &password).map_err(|err| err.to_string())?;
+    println!("{} is deleted", address);
     Ok(())
 }
 
 fn list(ap: &AccountProvider, network_id: NetworkId) -> Result<(), String> {
     let addresses = ap.get_list().expect("Cannot get account list");
     for address in addresses {
-        println!("{}", PlatformAddress::create(0, network_id, address))
+        println!("{}", PlatformAddress::new_v1(network_id, address))
     }
     Ok(())
 }
 
 fn change_password(ap: &AccountProvider, address: &str) -> Result<(), String> {
-    match PlatformAddress::from_str(address) {
-        Ok(address) => {
-            let old_password = prompt_password("Old Password: ");
-            if let Some(new_password) = read_password_and_confirm() {
-                match ap.change_password(address.into_address(), &old_password, &new_password) {
-                    Ok(_) => println!("Password has changed"),
-                    Err(e) => return Err(format!("{:?}", e)),
-                }
-            } else {
-                return Err("The password does not match".to_string())
-            }
-        }
-        Err(e) => return Err(format!("{:?}", e)),
-    }
+    let address = PlatformAddress::from_str(address).map_err(|err| err.to_string())?;
+    let old_password = prompt_password("Old Password: ");
+    let new_password = read_password_and_confirm().ok_or("The password does not match")?;
+    let _ = ap.change_password(address.into_address(), &old_password, &new_password).map_err(|err| err.to_string())?;
+    println!("Password has changed");
     Ok(())
 }
 
 fn prompt_password(prompt: &str) -> Password {
-    Password::from(rpassword::prompt_password_stdout(prompt).unwrap())
+    rpassword::prompt_password_stdout(prompt).map(Password::from).unwrap()
 }
 
 fn read_password_and_confirm() -> Option<Password> {
     let first = rpassword::prompt_password_stdout("Password: ").unwrap();
     let second = rpassword::prompt_password_stdout("Confirm Password: ").unwrap();
     if first == second {
-        Some(Password::from(first))
+        Some(first.into())
     } else {
         None
     }
@@ -169,7 +135,7 @@ fn get_global_argument(matches: &ArgMatches, arg_name: &str) -> Option<String> {
     match matches.value_of(arg_name) {
         Some(value) => Some(value.to_string()),
         None => match matches.subcommand() {
-            (_, Some(matches)) => matches.value_of(arg_name).map(|s| s.to_string()),
+            (_, Some(matches)) => matches.value_of(arg_name).map(ToString::to_string),
             _ => None,
         },
     }

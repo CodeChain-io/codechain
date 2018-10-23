@@ -38,12 +38,6 @@ impl ValidatorList {
             validators,
         }
     }
-
-    /// Convert into inner representation.
-    #[allow(dead_code)]
-    pub fn into_inner(self) -> Vec<Address> {
-        self.validators
-    }
 }
 
 impl ::std::ops::Deref for ValidatorList {

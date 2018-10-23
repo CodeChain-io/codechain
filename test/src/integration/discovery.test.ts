@@ -16,6 +16,8 @@
 
 import CodeChain from "../helper/spawn";
 
+const testSkippedInTravis = process.env.TRAVIS ? test.skip : test;
+
 describe("2 nodes", () => {
     let nodeA: CodeChain;
     let nodeB: CodeChain;
@@ -27,7 +29,9 @@ describe("2 nodes", () => {
         await nodeB.start();
     });
 
-    test("should be able to connect", async () => {
+    // FIXME: Connection establishment is too slow.
+    // See https://github.com/CodeChain-io/codechain/issues/760
+    testSkippedInTravis("should be able to connect", async () => {
         await nodeA.connect(nodeB);
     });
 
@@ -62,7 +66,7 @@ describe("5 nodes", () => {
         );
     });
 
-    test.skip(
+    testSkippedInTravis(
         "number of peers",
         async () => {
             await nodes[0].waitPeers(numOfNodes - 1);

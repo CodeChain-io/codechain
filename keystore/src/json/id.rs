@@ -14,14 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
-//! Universaly unique identifier.
-use super::Error;
+use std::{fmt, str};
+
 use rustc_hex::{FromHex, ToHex};
 use serde::de::{Error as SerdeError, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::{fmt, str};
 
-/// Universaly unique identifier.
+use super::Error;
+
+/// Universally unique identifier.
 #[derive(Debug, PartialEq)]
 pub struct Uuid([u8; 16]);
 
@@ -31,33 +32,20 @@ impl From<[u8; 16]> for Uuid {
     }
 }
 
-impl<'a> Into<String> for &'a Uuid {
-    fn into(self) -> String {
-        let d1 = &self.0[0..4];
-        let d2 = &self.0[4..6];
-        let d3 = &self.0[6..8];
-        let d4 = &self.0[8..10];
-        let d5 = &self.0[10..16];
-        [d1, d2, d3, d4, d5].into_iter().map(|d| d.to_hex()).collect::<Vec<String>>().join("-")
-    }
-}
-
-impl Into<String> for Uuid {
-    fn into(self) -> String {
-        Into::into(&self)
-    }
-}
-
-impl Into<[u8; 16]> for Uuid {
-    fn into(self) -> [u8; 16] {
-        self.0
+impl From<Uuid> for [u8; 16] {
+    fn from(uuid: Uuid) -> Self {
+        uuid.0
     }
 }
 
 impl fmt::Display for Uuid {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        let s: String = (self as &Uuid).into();
-        write!(f, "{}", s)
+        let d1 = &self.0[0..4];
+        let d2 = &self.0[4..6];
+        let d3 = &self.0[6..8];
+        let d4 = &self.0[8..10];
+        let d5 = &self.0[10..16];
+        write!(f, "{}", [d1, d2, d3, d4, d5].into_iter().map(|d| d.to_hex()).collect::<Vec<String>>().join("-"))
     }
 }
 
@@ -104,8 +92,7 @@ impl Serialize for Uuid {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer, {
-        let s: String = self.into();
-        serializer.serialize_str(&s)
+        serializer.serialize_str(&self.to_string())
     }
 }
 
@@ -158,7 +145,7 @@ mod tests {
     fn uuid_from_and_to_str() {
         let from = "3198bc9c-6672-5ab3-d995-4942343ae5b6";
         let uuid: Uuid = from.into();
-        let to: String = uuid.into();
+        let to: String = uuid.to_string();
         assert_eq!(from, &to);
     }
 }

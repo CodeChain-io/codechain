@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import { prng } from "seedrandom";
+
 export function makeRandomPassphrase() {
     let text = "";
     const possible =
@@ -29,8 +31,4 @@ export function makeRandomH256() {
     for (let i = 0; i < 64; i++)
         text += possible.charAt(Math.floor(Math.random() * possible.length));
     return text;
-}
-
-export function getRandomIndex(size: number) {
-    return Math.floor(Math.random() * size);
 }

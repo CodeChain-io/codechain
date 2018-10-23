@@ -21,16 +21,17 @@ mod sealing_queue;
 mod stratum;
 mod work_notify;
 
-use ckey::{Address, Password};
+use ckey::{Address, Password, PlatformAddress};
 use cstate::TopStateInfo;
+use ctypes::parcel::IncompleteParcel;
 use primitives::{Bytes, H256, U256};
 
-pub use self::miner::{Miner, MinerOptions};
+pub use self::miner::{AuthoringParams, Miner, MinerOptions};
 pub use self::stratum::{Config as StratumConfig, Error as StratumError, Stratum};
-use super::account_provider::SignError;
+use super::account_provider::{AccountProvider, SignError};
 use super::block::ClosedBlock;
 use super::client::{
-    AccountData, BlockChain, BlockProducer, ImportSealedBlock, MiningBlockChainClient, RegularKeyOwner,
+    AccountData, BlockChain, BlockProducer, ImportSealedBlock, MiningBlockChainClient, RegularKey, RegularKeyOwner,
 };
 use super::consensus::EngineType;
 use super::error::Error;
@@ -44,14 +45,11 @@ pub trait MinerService: Send + Sync {
     /// Returns miner's status.
     fn status(&self) -> MinerStatus;
 
-    /// Get the author that we will seal blocks as.
-    fn author(&self) -> Address;
+    /// Get current authoring parameters.
+    fn authoring_params(&self) -> AuthoringParams;
 
     /// Set the author that we will seal blocks as.
     fn set_author(&self, author: Address, password: Option<Password>) -> Result<(), SignError>;
-
-    /// Get the extra_data that we will seal blocks with.
-    fn extra_data(&self) -> Bytes;
 
     /// Set the extra_data that we will seal blocks with.
     fn set_extra_data(&self, extra_data: Bytes);
@@ -108,6 +106,17 @@ pub trait MinerService: Send + Sync {
         chain: &C,
         parcel: SignedParcel,
     ) -> Result<ParcelImportResult, Error>;
+
+    /// Imports incomplete (node owner) parcel to mem pool.
+    fn import_incomplete_parcel<C: MiningBlockChainClient + RegularKey + RegularKeyOwner>(
+        &self,
+        chain: &C,
+        account_provider: &AccountProvider,
+        parcel: IncompleteParcel,
+        platform_address: PlatformAddress,
+        passphrase: Option<Password>,
+        seq: Option<U256>,
+    ) -> Result<(H256, U256), Error>;
 
     /// Get a list of all pending parcels in the mem pool.
     fn ready_parcels(&self) -> Vec<SignedParcel>;

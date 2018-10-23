@@ -229,7 +229,6 @@ impl HeaderChain {
         self.best_header_hash.read().clone()
     }
 
-    #[allow(dead_code)]
     pub fn best_header(&self) -> encoded::Header {
         self.block_header_data(&self.best_header_hash()).expect("Best header always exists")
     }

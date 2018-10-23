@@ -3,7 +3,8 @@
   "engine": {
     "cuckoo": {
       "params": {
-        "blockReward": "0xba43b7400",
+        "blockReward": "0x2540be400",
+        "blockInterval": "30",
         "minScore": "0x1050",
         "maxVertex": "0x1000",
         "maxEdge": "0x800",
@@ -25,18 +26,18 @@
       "generic": "0x0"
     },
     "score": "0x1050",
-    "author": "tccqqdu5w93amf8xuv3yayzvpfph964a5s2j56hx5pa",
+    "author": "tccqynz79luhx4cfakvcqe29rwaajnkzz6aev5deztu",
     "timestamp": "0x00",
     "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
     "extraData": "0x"
   },
   "accounts": {
-    "tccqqdu5w93amf8xuv3yayzvpfph964a5s2j56hx5pa": { "balance": "2100000000000000", "nonce": "0" }
+    "tccqynz79luhx4cfakvcqe29rwaajnkzz6aev5deztu": { "balance": "2100000000000000", "nonce": "0" }
   },
   "shards": {
     "0": {
       "nonce": 0,
-      "owners": ["tccqqdu5w93amf8xuv3yayzvpfph964a5s2j56hx5pa"],
+      "owners": ["tccqynz79luhx4cfakvcqe29rwaajnkzz6aev5deztu"],
       "worlds": [{
         "nonce": 0,
         "owners": [

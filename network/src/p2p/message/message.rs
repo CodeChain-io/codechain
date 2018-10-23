@@ -27,18 +27,6 @@ pub enum Message {
     Negotiation(NegotiationMessage),
 }
 
-impl Message {
-    #[allow(dead_code)]
-    pub fn is_sync(&self) -> bool {
-        match self {
-            Message::Handshake(HandshakeMessage::Sync {
-                ..
-            }) => true,
-            _ => false,
-        }
-    }
-}
-
 use super::ACK_ID;
 use super::ALLOWED_ID;
 use super::DENIED_ID;

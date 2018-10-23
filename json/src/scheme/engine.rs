@@ -68,7 +68,7 @@ mod tests {
             "simplePoA": {
                 "params": {
                     "durationLimit": "0x0d",
-                    "validators" : ["tccqqtk3q3rea46cq4cpa4h5tm43nw3supd6uxtltxv"]
+                    "validators" : ["tccq8qlwpt7xcs9lec3c8tyt3kqxlgsus8q4qp3m6ft"]
                 }
             }
         }"#;
@@ -81,7 +81,7 @@ mod tests {
         let s = r#"{
             "tendermint": {
                 "params": {
-                    "validators": ["tccqzzpxln6w5zrhmfju3zc53w6w4y6s95mf5hw0n62"]
+                    "validators": ["tccqx6l27p92t5g86jmyz366rxy7tmqhkru8y37utys"]
                 }
             }
         }"#;

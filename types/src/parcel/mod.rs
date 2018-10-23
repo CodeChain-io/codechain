@@ -16,8 +16,10 @@
 
 mod action;
 mod error;
+mod incomplete_parcel;
 mod parcel;
 
 pub use self::action::{Action, ShardChange};
 pub use self::error::Error;
+pub use self::incomplete_parcel::IncompleteParcel;
 pub use self::parcel::Parcel;

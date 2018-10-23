@@ -69,16 +69,16 @@ impl Net for NetClient {
         Ok(peers.into_iter().map(Into::into).collect())
     }
 
-    fn add_to_whitelist(&self, addr: ::std::net::IpAddr) -> Result<()> {
-        self.network_control.add_to_whitelist(addr).map_err(errors::network_control)
+    fn add_to_whitelist(&self, addr: ::std::net::IpAddr, tag: Option<String>) -> Result<()> {
+        self.network_control.add_to_whitelist(addr, tag).map_err(errors::network_control)
     }
 
     fn remove_from_whitelist(&self, addr: ::std::net::IpAddr) -> Result<()> {
         self.network_control.remove_from_whitelist(&addr).map_err(errors::network_control)
     }
 
-    fn add_to_blacklist(&self, addr: ::std::net::IpAddr) -> Result<()> {
-        self.network_control.add_to_blacklist(addr).map_err(errors::network_control)
+    fn add_to_blacklist(&self, addr: ::std::net::IpAddr, tag: Option<String>) -> Result<()> {
+        self.network_control.add_to_blacklist(addr, tag).map_err(errors::network_control)
     }
 
     fn remove_from_blacklist(&self, addr: ::std::net::IpAddr) -> Result<()> {
@@ -104,7 +104,7 @@ impl Net for NetClient {
     fn get_whitelist(&self) -> Result<FilterStatus> {
         let (list, enabled) = self.network_control.get_whitelist().map_err(errors::network_control)?;
         Ok(FilterStatus {
-            list: list.into_iter().map(Into::into).collect(),
+            list: list.into_iter().map(|x| (x.addr, x.tag)).collect(),
             enabled,
         })
     }
@@ -112,7 +112,7 @@ impl Net for NetClient {
     fn get_blacklist(&self) -> Result<FilterStatus> {
         let (list, enabled) = self.network_control.get_blacklist().map_err(errors::network_control)?;
         Ok(FilterStatus {
-            list: list.into_iter().map(Into::into).collect(),
+            list: list.into_iter().map(|x| (x.addr, x.tag)).collect(),
             enabled,
         })
     }

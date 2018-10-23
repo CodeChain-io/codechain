@@ -54,7 +54,7 @@ impl rlp::Decodable for UnverifiedParcel {
         let hash = blake256(d.as_raw());
         Ok(UnverifiedParcel {
             unsigned: Parcel {
-                nonce: d.val_at(0)?,
+                seq: d.val_at(0)?,
                 fee: d.val_at(1)?,
                 network_id: d.val_at(2)?,
                 action: d.val_at(3)?,
@@ -90,7 +90,7 @@ impl UnverifiedParcel {
     /// Append object with a signature into RLP stream
     fn rlp_append_sealed_parcel(&self, s: &mut RlpStream) {
         s.begin_list(5);
-        s.append(&self.nonce);
+        s.append(&self.seq);
         s.append(&self.fee);
         s.append(&self.network_id);
         s.append(&self.action);
@@ -282,7 +282,7 @@ impl Deref for LocalizedParcel {
 mod tests {
     use ckey::{Address, Public, Signature};
     use ctypes::transaction::AssetMintOutput;
-    use primitives::H256;
+    use primitives::{H160, H256};
 
     use super::*;
 
@@ -291,7 +291,7 @@ mod tests {
         rlp_encode_and_decode_test!(
             UnverifiedParcel {
                 unsigned: Parcel {
-                    nonce: 0.into(),
+                    seq: 0.into(),
                     fee: 10.into(),
                     action: Action::CreateShard,
                     network_id: "tc".into(),
@@ -310,7 +310,7 @@ mod tests {
             world_id: 0xA,
             metadata: "mint test".to_string(),
             output: AssetMintOutput {
-                lock_script_hash: H256::random(),
+                lock_script_hash: H160::random(),
                 parameters: vec![],
                 amount: Some(10000),
             },
@@ -327,7 +327,7 @@ mod tests {
             world_id: 0xB,
             metadata: "mint test".to_string(),
             output: AssetMintOutput {
-                lock_script_hash: H256::random(),
+                lock_script_hash: H160::random(),
                 parameters: vec![vec![1, 2, 3], vec![4, 5, 6], vec![0, 7]],
                 amount: Some(10000),
             },
@@ -364,7 +364,7 @@ mod tests {
         rlp_encode_and_decode_test!(
             UnverifiedParcel {
                 unsigned: Parcel {
-                    nonce: 30.into(),
+                    seq: 30.into(),
                     fee: 40.into(),
                     network_id: "tc".into(),
                     action: Action::Payment {
@@ -383,7 +383,7 @@ mod tests {
         rlp_encode_and_decode_test!(
             UnverifiedParcel {
                 unsigned: Parcel {
-                    nonce: 30.into(),
+                    seq: 30.into(),
                     fee: 40.into(),
                     network_id: "tc".into(),
                     action: Action::SetRegularKey {
@@ -401,7 +401,7 @@ mod tests {
         rlp_encode_and_decode_test!(
             UnverifiedParcel {
                 unsigned: Parcel {
-                    nonce: 30.into(),
+                    seq: 30.into(),
                     fee: 40.into(),
                     network_id: "tc".into(),
                     action: Action::CreateShard,

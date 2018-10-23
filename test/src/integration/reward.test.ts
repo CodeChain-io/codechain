@@ -15,19 +15,25 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import CodeChain from "../helper/spawn";
+import {
+    aliceAddress,
+    aliceSecret,
+    bobAddress,
+    faucetAddress
+} from "../helper/constants";
 import { U256 } from "codechain-sdk/lib/core/U256";
+import { PlatformAddress } from "codechain-sdk/lib/core/classes";
+
+const describeSkippedInTravis = process.env.TRAVIS ? describe.skip : describe;
 
 describe("Block Reward", () => {
     describe("Reward = 50, 1 miner", () => {
         let node: CodeChain;
-        const author = "tccqz8mtc5gr9jx92jwxf95gc3yhpv92du2mq3x4zhq";
-        const authorSecret =
-            "4aa026c5fecb70923a1ee2bb10bbfadb63d228f39c39fe1da2b1dee63364aff1";
 
         beforeEach(async () => {
             node = new CodeChain({
                 chain: `${__dirname}/../scheme/solo-block-reward-50.json`,
-                argv: ["--author", author, "--force-sealing"]
+                argv: ["--author", aliceAddress.toString(), "--force-sealing"]
             });
             await node.start();
         });
@@ -35,14 +41,14 @@ describe("Block Reward", () => {
         test("Mining an empty block", async () => {
             await node.sdk.rpc.devel.startSealing();
             await expect(
-                node.sdk.rpc.chain.getBalance(author)
+                node.sdk.rpc.chain.getBalance(aliceAddress)
             ).resolves.toEqual(new U256(50));
         });
 
         test("Mining a block with 1 parcel", async () => {
             await node.sendSignedParcel({ fee: 10 });
             await expect(
-                node.sdk.rpc.chain.getBalance(author)
+                node.sdk.rpc.chain.getBalance(aliceAddress)
             ).resolves.toEqual(new U256(50 + 10));
         });
 
@@ -65,32 +71,32 @@ describe("Block Reward", () => {
             });
             await node.sdk.rpc.devel.startSealing();
             await expect(
-                node.sdk.rpc.chain.getBalance(author)
+                node.sdk.rpc.chain.getBalance(aliceAddress)
             ).resolves.toEqual(new U256(50 + 35));
         });
 
         test("Mining a block with a parcel that pays the author", async () => {
-            await node.payment(author, 100);
+            await node.payment(aliceAddress, 100);
             await expect(
-                node.sdk.rpc.chain.getBalance(author)
+                node.sdk.rpc.chain.getBalance(aliceAddress)
             ).resolves.toEqual(new U256(50 + 10 + 100));
         });
 
         test("Mining a block with a parcel which author pays someone in", async () => {
             await node.sendSignedParcel({ fee: 10 }); // +60
             await expect(
-                node.sdk.rpc.chain.getBalance(author)
+                node.sdk.rpc.chain.getBalance(aliceAddress)
             ).resolves.toEqual(new U256(60));
 
             const parcel = await node.sdk.core
                 .createPaymentParcel({
-                    recipient: "tccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9my9a2k78",
+                    recipient: faucetAddress,
                     amount: 50
                 })
-                .sign({ secret: authorSecret, nonce: 0, fee: 10 }); // -60
+                .sign({ secret: aliceSecret, nonce: 0, fee: 10 }); // -60
             await node.sdk.rpc.chain.sendSignedParcel(parcel); // +60
             await expect(
-                node.sdk.rpc.chain.getBalance(author)
+                node.sdk.rpc.chain.getBalance(aliceAddress)
             ).resolves.toEqual(new U256(60));
         });
 
@@ -101,67 +107,59 @@ describe("Block Reward", () => {
 
     // FIXME: It fails due to timeout when the block sync extension is stuck.
     // See https://github.com/CodeChain-io/codechain/issues/662
-    describe.skip("Reward = 50, 2 miners", () => {
+    describeSkippedInTravis("Reward = 50, 2 miners", () => {
         let nodeA: CodeChain;
         let nodeB: CodeChain;
-
-        const authorA = "tccqz8mtc5gr9jx92jwxf95gc3yhpv92du2mq3x4zhq";
-        const authorASecret =
-            "4aa026c5fecb70923a1ee2bb10bbfadb63d228f39c39fe1da2b1dee63364aff1";
-
-        const authorB = "tccqzw22ugf6lkxs2enrm2tfqfc24ltk7lk2c7tw9j4";
-        const authorBSecret =
-            "91580d24073185b91904514c23663b1180090cbeefc24b3d2e2ab1ba229e2620";
 
         beforeEach(async () => {
             nodeA = new CodeChain({
                 chain: `${__dirname}/../scheme/solo-block-reward-50.json`,
-                argv: ["--author", authorA, "--force-sealing"],
+                argv: ["--author", aliceAddress.toString(), "--force-sealing"],
                 logFlag: true
             });
             nodeB = new CodeChain({
                 chain: `${__dirname}/../scheme/solo-block-reward-50.json`,
-                argv: ["--author", authorB, "--force-sealing"],
+                argv: ["--author", bobAddress.toString(), "--force-sealing"],
                 logFlag: true
             });
 
             await Promise.all([nodeA.start(), nodeB.start()]);
         });
 
-        test("authorA creates an empty block", async () => {
+        test("alice creates an empty block", async () => {
             await nodeA.sdk.rpc.devel.startSealing();
             await expect(
-                nodeA.sdk.rpc.chain.getBalance(authorA)
+                nodeA.sdk.rpc.chain.getBalance(aliceAddress)
             ).resolves.toEqual(new U256(50));
 
             await nodeB.connect(nodeA);
             await nodeB.waitBlockNumberSync(nodeA);
 
             await expect(
-                nodeB.sdk.rpc.chain.getBalance(authorA)
+                nodeB.sdk.rpc.chain.getBalance(aliceAddress)
             ).resolves.toEqual(new U256(50));
         });
 
-        test("authorA creates one block and authorB creates two blocks in parallel. And then, sync", async () => {
+        test("alice creates one block and bob creates two blocks in parallel. And then, sync", async () => {
             await nodeA.sdk.rpc.devel.startSealing();
             await expect(
-                nodeA.sdk.rpc.chain.getBalance(authorA)
+                nodeA.sdk.rpc.chain.getBalance(aliceAddress)
             ).resolves.toEqual(new U256(50));
 
             await nodeB.sdk.rpc.devel.startSealing();
             await nodeB.sdk.rpc.devel.startSealing();
             await expect(
-                nodeB.sdk.rpc.chain.getBalance(authorB)
+                nodeB.sdk.rpc.chain.getBalance(bobAddress)
             ).resolves.toEqual(new U256(100));
 
             await nodeA.connect(nodeB);
             await nodeA.waitBlockNumberSync(nodeB);
 
             await expect(
-                nodeA.sdk.rpc.chain.getBalance(authorA)
+                nodeA.sdk.rpc.chain.getBalance(aliceAddress)
             ).resolves.toEqual(new U256(0));
             await expect(
-                nodeA.sdk.rpc.chain.getBalance(authorB)
+                nodeA.sdk.rpc.chain.getBalance(bobAddress)
             ).resolves.toEqual(new U256(100));
         });
 
@@ -170,9 +168,9 @@ describe("Block Reward", () => {
             async () => {
                 // nodeA creates a block
                 {
-                    await nodeA.sdk.rpc.devel.startSealing(); // +50 for authorA
+                    await nodeA.sdk.rpc.devel.startSealing(); // +50 for alice
                     await expect(
-                        nodeA.sdk.rpc.chain.getBalance(authorA)
+                        nodeA.sdk.rpc.chain.getBalance(aliceAddress)
                     ).resolves.toEqual(new U256(50));
                 }
 
@@ -182,7 +180,7 @@ describe("Block Reward", () => {
                     await nodeB.waitBlockNumberSync(nodeA);
 
                     await expect(
-                        nodeB.sdk.rpc.chain.getBalance(authorA)
+                        nodeB.sdk.rpc.chain.getBalance(aliceAddress)
                     ).resolves.toEqual(new U256(50));
 
                     await nodeB.disconnect(nodeA);
@@ -190,48 +188,48 @@ describe("Block Reward", () => {
 
                 // nodeA creates 2 blocks
                 {
-                    await nodeA.payment(authorA, 100); // +160 for authorA in nodeA
+                    await nodeA.payment(aliceAddress, 100); // +160 for alice in nodeA
                     await nodeA.sdk.rpc.chain.sendSignedParcel(
                         nodeA.sdk.core
                             .createPaymentParcel({
-                                recipient: authorB,
+                                recipient: bobAddress,
                                 amount: 5
                             })
                             .sign({
-                                secret: authorASecret,
+                                secret: aliceSecret,
                                 fee: 10,
                                 nonce: 0
                             })
-                    ); // +45 for authorA, +5 for authorB in nodeA
+                    ); // +45 for alice, +5 for bob in nodeA
                     await expect(
-                        nodeA.sdk.rpc.chain.getBalance(authorA)
+                        nodeA.sdk.rpc.chain.getBalance(aliceAddress)
                     ).resolves.toEqual(new U256(255));
                     await expect(
-                        nodeA.sdk.rpc.chain.getBalance(authorB)
+                        nodeA.sdk.rpc.chain.getBalance(bobAddress)
                     ).resolves.toEqual(new U256(5));
                 }
 
                 // nodeB creates 3 blocks
                 {
-                    await nodeB.payment(authorA, 200); // +200 for authorA, +60 for authorB in nodeB
-                    await nodeB.payment(authorB, 300); // +360 for authorB in nodeB
+                    await nodeB.payment(aliceAddress, 200); // +200 for alice, +60 for bob in nodeB
+                    await nodeB.payment(bobAddress, 300); // +360 for bob in nodeB
                     await nodeB.sdk.rpc.chain.sendSignedParcel(
                         nodeB.sdk.core
                             .createPaymentParcel({
-                                recipient: authorB,
+                                recipient: bobAddress,
                                 amount: 15
                             })
                             .sign({
-                                secret: authorASecret,
+                                secret: aliceSecret,
                                 fee: 10,
                                 nonce: 0
                             })
-                    ); // -25 for authorA. +75 for authorB in nodeB
+                    ); // -25 for alice. +75 for bob in nodeB
                     await expect(
-                        nodeB.sdk.rpc.chain.getBalance(authorA)
+                        nodeB.sdk.rpc.chain.getBalance(aliceAddress)
                     ).resolves.toEqual(new U256(225));
                     await expect(
-                        nodeB.sdk.rpc.chain.getBalance(authorB)
+                        nodeB.sdk.rpc.chain.getBalance(bobAddress)
                     ).resolves.toEqual(new U256(495));
                 }
 
@@ -247,18 +245,18 @@ describe("Block Reward", () => {
                     );
 
                     await expect(
-                        nodeA.sdk.rpc.chain.getBalance(authorA)
+                        nodeA.sdk.rpc.chain.getBalance(aliceAddress)
                     ).resolves.toEqual(new U256(225));
                     await expect(
-                        nodeA.sdk.rpc.chain.getBalance(authorB)
+                        nodeA.sdk.rpc.chain.getBalance(bobAddress)
                     ).resolves.toEqual(new U256(495));
                 }
 
                 // nodeA creates a block
                 {
-                    await nodeA.payment(authorA, 1000); // +1060 for authorA
+                    await nodeA.payment(aliceAddress, 1000); // +1060 for alice
                     await expect(
-                        nodeA.sdk.rpc.chain.getBalance(authorA)
+                        nodeA.sdk.rpc.chain.getBalance(aliceAddress)
                     ).resolves.toEqual(new U256(225 + 1060));
                 }
             },

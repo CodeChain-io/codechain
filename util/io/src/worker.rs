@@ -65,6 +65,7 @@ impl Worker {
         channel: IoChannel<Message>,
         wait: Arc<SCondvar>,
         wait_mutex: Arc<SMutex<()>>,
+        name: &str,
     ) -> Worker
     where
         Message: Send + Sync + Clone + 'static, {
@@ -78,7 +79,7 @@ impl Worker {
         worker.thread = Some(
             thread::Builder::new()
                 .stack_size(STACK_SIZE)
-                .name(format!("IO Worker #{}", index))
+                .name(format!("{} Worker #{}", name, index))
                 .spawn(move || {
                     LOCAL_STACK_SIZE.with(|val| val.set(STACK_SIZE));
                     Worker::work_loop(stealer, channel.clone(), wait, wait_mutex.clone(), deleting)

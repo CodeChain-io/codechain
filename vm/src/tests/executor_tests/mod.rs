@@ -14,11 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ckey::Signature;
-use ctypes::parcel::Action;
-use primitives::H256;
-
-pub trait ShardValidatorClient: Send + Sync {
-    fn register_action(&self, action: Action) -> bool;
-    fn signatures(&self, action_hash: &H256) -> Vec<Signature>;
-}
+mod chk_multi_sig;
+mod chk_sig;
+mod executor;

@@ -18,16 +18,19 @@
     "@types/jest": "^23.3.1",
     "@types/mkdirp": "^0.5.2",
     "@types/node": "^10.9.4",
+    "@types/seedrandom": "^2.4.2",
     "prettier": "^1.14.2",
     "tslint": "^5.10.0"
   },
   "dependencies": {
-    "codechain-sdk": "^0.2.0-alpha.1",
+    "codechain-sdk": "^0.4.0-rc3",
     "jest": "^23.1.0",
     "mkdirp": "^0.5.1",
     "rlp": "^2.0.0",
+    "seedrandom": "^2.4.4",
     "ts-jest": "^22.4.6",
     "ts-node": "^7.0.0",
-    "typescript": "^2.9.2"
+    "typescript": "^2.9.2",
+    "codechain-test-helper": "https://github.com/CodeChain-io/codechain-test-helper-js.git#a4a9c26635a52395dfd17733eef66b18a144fd00"
   }
 }

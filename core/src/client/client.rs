@@ -58,8 +58,8 @@ use super::super::views::{BlockView, HeaderView};
 use super::{
     AccountData, AssetClient, Balance, BlockChain as BlockChainTrait, BlockChainClient, BlockChainInfo, BlockInfo,
     BlockProducer, ChainInfo, ChainNotify, ClientConfig, DatabaseClient, EngineClient, EngineInfo,
-    Error as ClientError, ExecuteClient, ImportBlock, ImportResult, ImportSealedBlock, MiningBlockChainClient, Nonce,
-    ParcelInfo, PrepareOpenBlock, RegularKey, RegularKeyOwner, ReopenBlock, Shard, StateOrBlock, TransactionInfo,
+    Error as ClientError, ExecuteClient, ImportBlock, ImportResult, ImportSealedBlock, MiningBlockChainClient,
+    ParcelInfo, PrepareOpenBlock, RegularKey, RegularKeyOwner, ReopenBlock, Seq, Shard, StateOrBlock, TransactionInfo,
     TransactionInvoice,
 };
 
@@ -214,7 +214,7 @@ impl Client {
     }
 
     /// Get a copy of the best block's state.
-    pub fn latest_state(&self) -> TopLevelState {
+    fn latest_state(&self) -> TopLevelState {
         let header = self.best_block_header();
         TopLevelState::from_existing(self.state_db.read().clone_canon(&header.hash()), header.state_root())
             .expect("State root of best block header always valid.")
@@ -225,7 +225,7 @@ impl Client {
     /// This will not fail if given BlockId::Latest.
     /// Otherwise, this can fail (but may not) if the DB prunes state or the block
     /// is unknown.
-    pub fn state_at(&self, id: BlockId) -> Option<TopLevelState> {
+    fn state_at(&self, id: BlockId) -> Option<TopLevelState> {
         // fast path for latest state.
         match id {
             BlockId::Latest => return Some(self.latest_state()),
@@ -237,6 +237,13 @@ impl Client {
 
             let root = header.state_root();
             TopLevelState::from_existing(db, root).ok()
+        })
+    }
+
+    fn state_info(&self, state: StateOrBlock) -> Option<Box<TopStateInfo>> {
+        Some(match state {
+            StateOrBlock::State(state) => state,
+            StateOrBlock::Block(id) => Box::new(self.state_at(id)?),
         })
     }
 }
@@ -966,53 +973,41 @@ impl Importer {
 
 impl AccountData for Client {}
 
-impl Nonce for Client {
-    fn nonce(&self, address: &Address, id: BlockId) -> Option<U256> {
-        self.state_at(id).and_then(|s| s.nonce(address).ok())
+impl Seq for Client {
+    fn seq(&self, address: &Address, id: BlockId) -> Option<U256> {
+        self.state_at(id).and_then(|s| s.seq(address).ok())
     }
 }
 
 impl Balance for Client {
     fn balance(&self, address: &Address, state: StateOrBlock) -> Option<U256> {
-        match state {
-            StateOrBlock::State(s) => s.balance(address).ok(),
-            StateOrBlock::Block(id) => self.state_at(id).and_then(|s| s.balance(address).ok()),
-        }
+        let state = self.state_info(state)?;
+        state.balance(address).ok()
     }
 }
 
 impl RegularKey for Client {
     fn regular_key(&self, address: &Address, state: StateOrBlock) -> Option<Public> {
-        match state {
-            StateOrBlock::State(s) => s.regular_key(address).ok()?,
-            StateOrBlock::Block(id) => self.state_at(id)?.regular_key(address).ok()?,
-        }
+        let state = self.state_info(state)?;
+        state.regular_key(address).ok()?
     }
 }
 
 impl RegularKeyOwner for Client {
-    fn regular_key_owner(&self, public: &Public, state: StateOrBlock) -> Option<Address> {
-        match state {
-            StateOrBlock::State(s) => s.regular_key_owner(public).ok()?,
-            StateOrBlock::Block(id) => self.state_at(id)?.regular_key_owner(public).ok()?,
-        }
+    fn regular_key_owner(&self, address: &Address, state: StateOrBlock) -> Option<Address> {
+        let state = self.state_info(state)?;
+        state.regular_key_owner(address).ok()?
     }
 }
 
 impl Shard for Client {
     fn number_of_shards(&self, state: StateOrBlock) -> Option<ShardId> {
-        let state = match state {
-            StateOrBlock::State(s) => s,
-            StateOrBlock::Block(id) => Box::new(self.state_at(id)?),
-        };
+        let state = self.state_info(state)?;
         state.number_of_shards().ok()
     }
 
     fn shard_root(&self, shard_id: ShardId, state: StateOrBlock) -> Option<H256> {
-        let state = match state {
-            StateOrBlock::State(s) => s,
-            StateOrBlock::Block(id) => Box::new(self.state_at(id)?),
-        };
+        let state = self.state_info(state)?;
         state.shard_root(shard_id).ok()?
     }
 }

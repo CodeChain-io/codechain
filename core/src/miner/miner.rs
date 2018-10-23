@@ -15,13 +15,14 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::collections::HashSet;
+use std::iter::once;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use ckey::{public_to_address, Address, Password, Public};
+use ckey::{public_to_address, Address, Password, PlatformAddress, Public};
 use cstate::{StateError, TopLevelState};
-use ctypes::parcel::Error as ParcelError;
+use ctypes::parcel::{Error as ParcelError, IncompleteParcel};
 use ctypes::BlockNumber;
 use parking_lot::{Mutex, RwLock};
 use primitives::{Bytes, H256, U256};
@@ -29,7 +30,7 @@ use primitives::{Bytes, H256, U256};
 use super::super::account_provider::{AccountProvider, SignError};
 use super::super::block::{Block, ClosedBlock, IsBlock};
 use super::super::client::{
-    AccountData, BlockChain, BlockProducer, ImportSealedBlock, MiningBlockChainClient, RegularKeyOwner,
+    AccountData, BlockChain, BlockProducer, ImportSealedBlock, MiningBlockChainClient, RegularKey, RegularKeyOwner,
 };
 use super::super::consensus::{CodeChainEngine, EngineType, Seal};
 use super::super::error::Error;
@@ -81,6 +82,12 @@ impl Default for MinerOptions {
     }
 }
 
+#[derive(Debug, Default, Clone)]
+pub struct AuthoringParams {
+    pub author: Address,
+    pub extra_data: Bytes,
+}
+
 struct SealingWork {
     queue: SealingQueue,
     enabled: bool,
@@ -91,10 +98,9 @@ pub struct Miner {
     parcel_listener: RwLock<Vec<Box<Fn(&[H256]) + Send + Sync>>>,
     next_allowed_reseal: Mutex<Instant>,
     next_mandatory_reseal: RwLock<Instant>,
-    author: RwLock<Address>,
-    extra_data: RwLock<Bytes>,
     sealing_block_last_request: Mutex<u64>,
     sealing_work: Mutex<SealingWork>,
+    params: RwLock<AuthoringParams>,
     engine: Arc<CodeChainEngine>,
     options: MinerOptions,
 
@@ -131,8 +137,7 @@ impl Miner {
             parcel_listener: RwLock::new(vec![]),
             next_allowed_reseal: Mutex::new(Instant::now()),
             next_mandatory_reseal: RwLock::new(Instant::now() + options.reseal_max_period),
-            author: RwLock::new(Address::default()),
-            extra_data: RwLock::new(Vec::new()),
+            params: RwLock::new(AuthoringParams::default()),
             sealing_block_last_request: Mutex::new(0),
             sealing_work: Mutex::new(SealingWork {
                 queue: SealingQueue::new(options.work_queue_size),
@@ -249,11 +254,10 @@ impl Miner {
                             .unwrap_or(default_origin);
 
                         let fetch_account = |p: &Public| -> AccountDetails {
-                            let a = client
-                                .regular_key_owner(p, BlockId::Latest.into())
-                                .unwrap_or_else(|| public_to_address(p));
+                            let address = public_to_address(p);
+                            let a = client.latest_regular_key_owner(&address).unwrap_or(address);
                             AccountDetails {
-                                nonce: client.latest_nonce(&a),
+                                seq: client.latest_seq(&a),
                                 balance: client.latest_balance(&a),
                             }
                         };
@@ -373,7 +377,8 @@ impl Miner {
             let last_work_hash = sealing_work.queue.peek_last_ref().map(|pb| pb.block().header().hash());
 
             ctrace!(MINER, "prepare_block: No existing work - making new block");
-            let open_block = chain.prepare_open_block(self.author(), self.extra_data());
+            let params = self.params.read().clone();
+            let open_block = chain.prepare_open_block(params.author, params.extra_data);
 
             (parcels, open_block, last_work_hash)
         };
@@ -423,15 +428,16 @@ impl Miner {
         };
         let block = open_block.close(parcels_root, invoices_root);
 
-        let fetch_nonce = |p: &Public| {
-            let a = chain.regular_key_owner(p, BlockId::Latest.into()).unwrap_or_else(|| public_to_address(p));
-            chain.latest_nonce(&a)
+        let fetch_seq = |p: &Public| {
+            let address = public_to_address(p);
+            let a = chain.latest_regular_key_owner(&address).unwrap_or(address);
+            chain.latest_seq(&a)
         };
 
         {
             let mut queue = self.mem_pool.write();
             for hash in invalid_parcels {
-                queue.remove(&hash, &fetch_nonce, RemovalReason::Invalid);
+                queue.remove(&hash, &fetch_seq, RemovalReason::Invalid);
             }
         }
         (block, original_work_hash)
@@ -530,12 +536,12 @@ impl MinerService for Miner {
         }
     }
 
-    fn author(&self) -> Address {
-        *self.author.read()
+    fn authoring_params(&self) -> AuthoringParams {
+        self.params.read().clone()
     }
 
     fn set_author(&self, address: Address, password: Option<Password>) -> Result<(), SignError> {
-        *self.author.write() = address;
+        self.params.write().author = address;
 
         if self.engine_type() == EngineType::InternalSealing && self.engine.seals_internally().is_some() {
             if let Some(ref ap) = self.accounts {
@@ -558,12 +564,8 @@ impl MinerService for Miner {
         }
     }
 
-    fn extra_data(&self) -> Bytes {
-        self.extra_data.read().clone()
-    }
-
     fn set_extra_data(&self, extra_data: Bytes) {
-        *self.extra_data.write() = extra_data;
+        self.params.write().extra_data = extra_data;
     }
 
     fn minimal_fee(&self) -> U256 {
@@ -608,10 +610,11 @@ impl MinerService for Miner {
         // ...and at the end remove the old ones
         {
             let fetch_account = |p: &Public| {
-                let a = chain.regular_key_owner(p, BlockId::Latest.into()).unwrap_or_else(|| public_to_address(p));
+                let address = public_to_address(p);
+                let a = chain.latest_regular_key_owner(&address).unwrap_or(address);
 
                 AccountDetails {
-                    nonce: chain.latest_nonce(&a),
+                    seq: chain.latest_seq(&a),
                     balance: chain.latest_balance(&a),
                 }
             };
@@ -759,6 +762,50 @@ impl MinerService for Miner {
         imported
     }
 
+    fn import_incomplete_parcel<C: MiningBlockChainClient + RegularKey + RegularKeyOwner>(
+        &self,
+        client: &C,
+        account_provider: &AccountProvider,
+        parcel: IncompleteParcel,
+        platform_address: PlatformAddress,
+        passphrase: Option<Password>,
+        seq: Option<U256>,
+    ) -> Result<(H256, U256), Error> {
+        let address = platform_address.try_into_address()?;
+        let seq = match seq {
+            Some(seq) => seq,
+            None => {
+                let addresses: Vec<_> = {
+                    let owner_address = client.latest_regular_key_owner(&address);
+                    let regular_key_address = client.latest_regular_key(&address).map(|key| public_to_address(&key));
+                    once(address).chain(owner_address.into_iter()).chain(regular_key_address.into_iter()).collect()
+                };
+                get_next_seq(self.future_parcels().into_iter(), &addresses)
+                    .map(|seq| {
+                        cerror!(RPC, "There are future parcels for {}", platform_address);
+                        seq
+                    })
+                    .unwrap_or_else(|| {
+                        get_next_seq(self.ready_parcels().into_iter(), &addresses)
+                            .map(|seq| {
+                                cdebug!(RPC, "There are ready parcels for {}", platform_address);
+                                seq
+                            })
+                            .unwrap_or_else(|| client.latest_seq(&address))
+                    })
+            }
+        };
+        let parcel = parcel.complete(seq);
+        let parcel_hash = parcel.hash();
+        let sig = account_provider.sign(address, passphrase, parcel_hash)?;
+        let unverified = UnverifiedParcel::new(parcel, sig);
+        let signed = SignedParcel::new(unverified)?;
+        let hash = signed.hash();
+        self.import_own_parcel(client, signed)?;
+
+        Ok((hash, seq))
+    }
+
     fn ready_parcels(&self) -> Vec<SignedParcel> {
         let max_body_size = self.engine.params().max_body_size;
         self.mem_pool.read().top_parcels(max_body_size)
@@ -786,4 +833,13 @@ impl MinerService for Miner {
         cdebug!(MINER, "Stop sealing");
         self.sealing_enabled.store(false, Ordering::Relaxed);
     }
+}
+
+fn get_next_seq(parcels: impl Iterator<Item = SignedParcel>, addresses: &[Address]) -> Option<U256> {
+    let mut seqs: Vec<_> = parcels
+        .filter(|parcel| addresses.contains(&public_to_address(&parcel.signer_public())))
+        .map(|parcel| parcel.seq)
+        .collect();
+    seqs.sort();
+    seqs.last().map(|seq| *seq + 1.into())
 }

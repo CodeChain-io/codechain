@@ -98,9 +98,24 @@ impl Encodable for ParcelInvoice {
 impl Decodable for ParcelInvoice {
     fn decode(rlp: &UntrustedRlp) -> Result<ParcelInvoice, DecoderError> {
         match rlp.val_at::<u8>(0)? {
-            INVOICE_ID_SINGLE_SUCCESS => Ok(ParcelInvoice::SingleSuccess),
-            INVOICE_ID_SINGLE_FAIL => Ok(ParcelInvoice::SingleFail(rlp.val_at(1)?)),
-            INVOICE_ID_MULTIPLE => Ok(ParcelInvoice::Multiple(rlp.at(1)?.as_list()?)),
+            INVOICE_ID_SINGLE_SUCCESS => {
+                if rlp.item_count()? != 1 {
+                    return Err(DecoderError::RlpInvalidLength)
+                }
+                Ok(ParcelInvoice::SingleSuccess)
+            }
+            INVOICE_ID_SINGLE_FAIL => {
+                if rlp.item_count()? != 2 {
+                    return Err(DecoderError::RlpInvalidLength)
+                }
+                Ok(ParcelInvoice::SingleFail(rlp.val_at(1)?))
+            }
+            INVOICE_ID_MULTIPLE => {
+                if rlp.item_count()? != 2 {
+                    return Err(DecoderError::RlpInvalidLength)
+                }
+                Ok(ParcelInvoice::Multiple(rlp.at(1)?.as_list()?))
+            }
             _ => Err(DecoderError::Custom("Unknown parcel invoice")),
         }
     }

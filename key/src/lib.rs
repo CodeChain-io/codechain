@@ -19,9 +19,11 @@ extern crate codechain_crypto as crypto;
 extern crate lazy_static;
 extern crate bech32;
 extern crate heapsize;
+extern crate never;
 extern crate parking_lot;
 extern crate primitives;
 extern crate rand;
+#[cfg_attr(test, macro_use)]
 extern crate rlp;
 extern crate rustc_hex;
 extern crate rustc_serialize;

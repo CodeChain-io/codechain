@@ -18,6 +18,7 @@ use std::cmp::Ordering;
 use std::convert::{From, Into};
 use std::fmt;
 use std::net::{self, AddrParseError, IpAddr, Ipv4Addr};
+use std::ops::Deref;
 use std::str::FromStr;
 
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
@@ -103,16 +104,16 @@ pub fn convert_to_node_id(ip: IpAddr, port: u16) -> NodeId {
     NodeId::new(ip, port)
 }
 
-impl Into<NodeId> for SocketAddr {
-    fn into(self) -> NodeId {
-        (&self).into()
+impl From<SocketAddr> for NodeId {
+    fn from(socket: SocketAddr) -> Self {
+        (&socket).into()
     }
 }
 
-impl<'a> Into<NodeId> for &'a SocketAddr {
-    fn into(self) -> NodeId {
-        let ip = self.addr.ip();
-        let port = self.addr.port();
+impl<'a> From<&'a SocketAddr> for NodeId {
+    fn from(socket: &'a SocketAddr) -> Self {
+        let ip = socket.addr.ip();
+        let port = socket.addr.port();
         convert_to_node_id(ip, port)
     }
 }
@@ -128,14 +129,16 @@ impl From<net::SocketAddr> for SocketAddr {
     }
 }
 
-impl Into<net::SocketAddr> for SocketAddr {
-    fn into(self) -> net::SocketAddr {
-        self.addr
+impl From<SocketAddr> for net::SocketAddr {
+    fn from(socket: SocketAddr) -> Self {
+        socket.addr
     }
 }
 
-impl<'a> Into<&'a net::SocketAddr> for &'a SocketAddr {
-    fn into(self) -> &'a net::SocketAddr {
+impl Deref for SocketAddr {
+    type Target = net::SocketAddr;
+
+    fn deref(&self) -> &<Self as Deref>::Target {
         &self.addr
     }
 }

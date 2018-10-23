@@ -21,8 +21,8 @@ use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use ccore::{
-    AccountProvider, AccountProviderError, Client, ClientService, EngineType, Miner, MinerService, Scheme,
-    ShardValidator, Stratum, StratumConfig, StratumError,
+    AccountProvider, AccountProviderError, Client, ClientService, EngineType, Miner, MinerService, Scheme, Stratum,
+    StratumConfig, StratumError,
 };
 use cdiscovery::{KademliaConfig, KademliaExtension, UnstructuredConfig, UnstructuredExtension};
 use cfinally::finally;
@@ -42,7 +42,7 @@ use super::config::{self, load_config};
 use super::constants::DEFAULT_KEYS_PATH;
 use super::dummy_network_service::DummyNetworkService;
 use super::json::PasswordFile;
-use super::rpc::{rpc_http_start, rpc_ipc_start};
+use super::rpc::{rpc_http_start, rpc_ipc_start, rpc_ws_start};
 use super::rpc_apis::ApiDependencies;
 
 fn network_start(cfg: &NetworkConfig) -> Result<Arc<NetworkService>, String> {
@@ -228,14 +228,6 @@ pub fn run_node(matches: ArgMatches) -> Result<(), String> {
     let miner = new_miner(&config, &scheme, ap.clone())?;
     let client = client_start(&config.operating, &scheme, miner.clone())?;
 
-    let shard_validator = if scheme.params().use_shard_validator {
-        None
-    } else if config.shard_validator.disable.unwrap() {
-        Some(ShardValidator::new(None, Arc::clone(&ap)))
-    } else {
-        Some(ShardValidator::new(Some(config.shard_validator_config().account), Arc::clone(&ap)))
-    };
-
     let network_service: Arc<NetworkControl> = {
         if !config.network.disable.unwrap() {
             let network_config = config.network_config()?;
@@ -259,10 +251,6 @@ pub fn run_node(matches: ArgMatches) -> Result<(), String> {
                 service.register_extension(consensus_extension);
             }
 
-            if let Some(shard_validator) = &shard_validator {
-                service.register_extension(shard_validator.clone());
-            }
-
             for address in network_config.bootstrap_addresses {
                 service.connect_to(address)?;
             }
@@ -277,7 +265,6 @@ pub fn run_node(matches: ArgMatches) -> Result<(), String> {
         miner: Arc::clone(&miner),
         network_control: Arc::clone(&network_service),
         account_provider: ap,
-        shard_validator,
     });
 
     let _rpc_server = {
@@ -291,6 +278,14 @@ pub fn run_node(matches: ArgMatches) -> Result<(), String> {
     let _ipc_server = {
         if !config.ipc.disable.unwrap() {
             Some(rpc_ipc_start(config.rpc_ipc_config(), config.rpc.enable_devel_api, Arc::clone(&rpc_apis_deps))?)
+        } else {
+            None
+        }
+    };
+
+    let _ws_server = {
+        if !config.ws.disable.unwrap() {
+            Some(rpc_ws_start(config.rpc_ws_config(), config.rpc.enable_devel_api, Arc::clone(&rpc_apis_deps))?)
         } else {
             None
         }

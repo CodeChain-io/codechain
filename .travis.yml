@@ -12,42 +12,36 @@ jobs:
       name: test-osx
       os: osx
       install:
+        - nvm install 8
+        - nvm use 8
+        - npm install -g yarn
         - rustup toolchain install nightly-2018-07-17
         - rustup component add rustfmt-preview --toolchain nightly-2018-07-17
       before_script:
         - cargo fetch --verbose
       script:
-        - cargo +nightly-2018-07-17 fmt -- --check && RUST_BACKTRACE=1 cargo test --verbose --all
+        - cargo +nightly-2018-07-17 fmt -- --check || TEST_FAILED=true
+        - test $TEST_FAILED || RUST_BACKTRACE=1 cargo test --verbose --all || TEST_FAILED=true
+        - test $TEST_FAILED || cd test && yarn && yarn lint || TEST_FAILED=true
+        - test $TEST_FAILED || yarn start || TEST_FAILED=true
+        - "! test $TEST_FAILED"
     - name: test-linux
       os: linux
       sudo: required
       install:
+        - nvm install 8
+        - nvm use 8
+        - npm install -g yarn
         - rustup toolchain install nightly-2018-07-17
         - rustup component add rustfmt-preview --toolchain nightly-2018-07-17
       before_script:
         - cargo fetch --verbose
       script:
-        - cargo +nightly-2018-07-17 fmt -- --check && RUST_BACKTRACE=1 cargo test --verbose --all
-    - name: test-int-linux
-      os: linux
-      install:
-        - nvm install 8
-        - nvm use 8
-        - npm install -g yarn
-      script:
-        - cd test && yarn && yarn start
-      after_failure:
-        - "curl -X POST -H 'Content-type: application/json' --data '{\"text\":\"Fail integration test in linux https://travis-ci.org/'$TRAVIS_REPO_SLUG'/builds/'$TRAVIS_BUILD_ID'\"}' $SLACK_WEBHOOK_URL"
-    - name: test-int-osx
-      os: osx
-      install:
-        - nvm install 8
-        - nvm use 8
-        - npm install -g yarn
-      script:
-        - cd test && yarn && yarn start
-      after_failure:
-        - "curl -X POST -H 'Content-type: application/json' --data '{\"text\":\"Fail integration test in osx https://travis-ci.org/'$TRAVIS_REPO_SLUG'/builds/'$TRAVIS_BUILD_ID'\"}' $SLACK_WEBHOOK_URL"
+        - cargo +nightly-2018-07-17 fmt -- --check || TEST_FAILED=true
+        - test $TEST_FAILED || RUST_BACKTRACE=1 cargo test --verbose --all || TEST_FAILED=true
+        - test $TEST_FAILED || cd test && yarn && yarn lint || TEST_FAILED=true
+        - test $TEST_FAILED || yarn start || TEST_FAILED=true
+        - "! test $TEST_FAILED"
     - stage: deploy
       name: deploy
       sudo: required
@@ -59,11 +53,12 @@ jobs:
         script: bash docker_push.sh
         on:
           branch: docker-build
-  allow_failures:
-  - name: test-int-linux
-  - name: test-int-osx
 notifications:
   webhooks: https://webhooks.gitter.im/e/71bb03cf9abce5b02c43
-cache: cargo
+cache:
+  timeout: 1000
+  cargo: true
+  directories:
+    - "$HOME/.rustup"
 git:
   depth: 1

@@ -14,8 +14,31 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ckey::Address;
+use ckey::{Error as KeyError, NetworkId};
+use ctypes::parcel::IncompleteParcel;
+use primitives::U256;
 
-pub struct ShardValidatorConfig {
-    pub account: Address,
+use super::Action;
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UnsignedParcel {
+    pub nonce: Option<U256>,
+    pub fee: U256,
+    pub network_id: NetworkId,
+    pub action: Action,
+}
+
+// FIXME: Use TryFrom.
+impl From<UnsignedParcel> for Result<(IncompleteParcel, Option<U256>), KeyError> {
+    fn from(parcel: UnsignedParcel) -> Self {
+        Ok((
+            IncompleteParcel {
+                fee: parcel.fee,
+                network_id: parcel.network_id,
+                action: Result::from(parcel.action)?,
+            },
+            parcel.nonce,
+        ))
+    }
 }

@@ -18,4 +18,6 @@ mod error;
 mod transaction;
 
 pub use self::error::Error;
-pub use self::transaction::{AssetMintOutput, AssetOutPoint, AssetTransferInput, AssetTransferOutput, Transaction};
+pub use self::transaction::{
+    AssetMintOutput, AssetOutPoint, AssetTransferInput, AssetTransferOutput, HashingError, PartialHashing, Transaction,
+};

@@ -78,41 +78,41 @@ impl From<TransactionType> for Transaction {
             TransactionType::CreateWorld {
                 network_id,
                 shard_id,
-                nonce,
+                seq,
                 owners,
             } => Transaction::CreateWorld {
                 network_id,
                 shard_id,
-                nonce,
-                owners: owners.into_iter().map(|owner| PlatformAddress::create(0, network_id, owner)).collect(),
+                nonce: seq,
+                owners: owners.into_iter().map(|owner| PlatformAddress::new_v1(network_id, owner)).collect(),
                 hash,
             },
             TransactionType::SetWorldOwners {
                 network_id,
                 shard_id,
                 world_id,
-                nonce,
+                seq,
                 owners,
             } => Transaction::SetWorldOwners {
                 network_id,
                 shard_id,
                 world_id,
-                nonce,
-                owners: owners.into_iter().map(|owner| PlatformAddress::create(0, network_id, owner)).collect(),
+                nonce: seq,
+                owners: owners.into_iter().map(|owner| PlatformAddress::new_v1(network_id, owner)).collect(),
                 hash,
             },
             TransactionType::SetWorldUsers {
                 network_id,
                 shard_id,
                 world_id,
-                nonce,
+                seq,
                 users,
             } => Transaction::SetWorldUsers {
                 network_id,
                 shard_id,
                 world_id,
-                nonce,
-                users: users.into_iter().map(|user| PlatformAddress::create(0, network_id, user)).collect(),
+                nonce: seq,
+                users: users.into_iter().map(|user| PlatformAddress::new_v1(network_id, user)).collect(),
                 hash,
             },
             TransactionType::AssetMint {
@@ -128,7 +128,7 @@ impl From<TransactionType> for Transaction {
                 shard_id,
                 world_id,
                 metadata,
-                registrar: registrar.map(|registrar| PlatformAddress::create(0, network_id, registrar)),
+                registrar: registrar.map(|registrar| PlatformAddress::new_v1(network_id, registrar)),
                 nonce,
                 output,
                 hash,
@@ -166,7 +166,7 @@ impl From<Transaction> for Result<TransactionType, KeyError> {
                 TransactionType::CreateWorld {
                     network_id,
                     shard_id,
-                    nonce,
+                    seq: nonce,
                     owners: owners?,
                 }
             }
@@ -183,7 +183,7 @@ impl From<Transaction> for Result<TransactionType, KeyError> {
                     network_id,
                     shard_id,
                     world_id,
-                    nonce,
+                    seq: nonce,
                     owners: owners?,
                 }
             }
@@ -200,7 +200,7 @@ impl From<Transaction> for Result<TransactionType, KeyError> {
                     network_id,
                     shard_id,
                     world_id,
-                    nonce,
+                    seq: nonce,
                     users: users?,
                 }
             }

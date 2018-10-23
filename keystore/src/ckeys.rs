@@ -15,11 +15,12 @@
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
 pub use ckey::*;
-use json;
 
-impl Into<json::H160> for Address {
-    fn into(self) -> json::H160 {
-        let a: [u8; 20] = self.into();
+use super::json;
+
+impl From<Address> for json::H160 {
+    fn from(addr: Address) -> Self {
+        let a: [u8; 20] = addr.into();
         From::from(a)
     }
 }

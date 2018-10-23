@@ -18,9 +18,10 @@ use std::collections::HashSet;
 use std::fs;
 use std::path::Path;
 
-use accounts_dir::{DiskKeyFileManager, KeyDirectory, KeyFileManager};
 use ckey::Address;
-use Error;
+
+use super::accounts_dir::{DiskKeyFileManager, KeyDirectory, KeyFileManager};
+use super::Error;
 
 /// Import an account from a file.
 pub fn import_account(path: &Path, dst: &KeyDirectory) -> Result<Address, Error> {

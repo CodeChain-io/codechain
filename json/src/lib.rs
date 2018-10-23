@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 extern crate codechain_key as ckey;
+extern crate never;
 extern crate primitives;
 extern crate rustc_hex;
 extern crate serde;

@@ -162,9 +162,9 @@ impl<'a> From<&'a [u8]> for ECDSASignature {
     }
 }
 
-impl Into<[u8; 65]> for ECDSASignature {
-    fn into(self) -> [u8; 65] {
-        self.0
+impl From<ECDSASignature> for [u8; 65] {
+    fn from(s: ECDSASignature) -> Self {
+        s.0
     }
 }
 

@@ -18,6 +18,7 @@
 use jsonrpc_core;
 use jsonrpc_http_server::{self, Host, Server as HttpServer, ServerBuilder as HttpServerBuilder};
 use jsonrpc_ipc_server::{Server as IpcServer, ServerBuilder as IpcServerBuilder};
+use jsonrpc_ws_server::{Error as WsError, Server as WsServer, ServerBuilder as WsServerBuilder};
 use std::default::Default;
 use std::io;
 use std::net::SocketAddr;
@@ -56,4 +57,16 @@ pub fn start_ipc<M: jsonrpc_core::Metadata>(
 where
     M: Default, {
     IpcServerBuilder::new(handler).start(addr)
+}
+
+/// Start WS server and return `Server` handle.
+pub fn start_ws<M: jsonrpc_core::Metadata>(
+    addr: &SocketAddr,
+    handler: jsonrpc_core::MetaIoHandler<M>,
+    max_connections: usize,
+) -> Result<WsServer, WsError>
+where
+    M: Default, {
+    // FIXME: Add Hosts, Origins and Session States
+    WsServerBuilder::new(handler).max_connections(max_connections).start(addr)
 }

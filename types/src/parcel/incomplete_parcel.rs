@@ -14,11 +14,28 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod client;
-mod config;
-mod extension;
-mod message;
+use ckey::NetworkId;
+use primitives::U256;
 
-pub use self::client::ShardValidatorClient;
-pub use self::config::ShardValidatorConfig;
-pub use self::extension::ShardValidator;
+use super::{Action, Parcel};
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct IncompleteParcel {
+    /// Amount of CCC to be paid as a cost for distributing this parcel to the network.
+    pub fee: U256,
+    /// Network Id
+    pub network_id: NetworkId,
+
+    pub action: Action,
+}
+
+impl IncompleteParcel {
+    pub fn complete(self, seq: U256) -> Parcel {
+        Parcel {
+            seq,
+            fee: self.fee,
+            network_id: self.network_id,
+            action: self.action,
+        }
+    }
+}

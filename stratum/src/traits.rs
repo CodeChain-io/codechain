@@ -45,9 +45,9 @@ impl From<PushMessageError> for Error {
     }
 }
 
-impl Into<JsonError> for Error {
-    fn into(self) -> JsonError {
-        let (code, message) = match self {
+impl From<Error> for JsonError {
+    fn from(err: Error) -> Self {
+        let (code, message) = match err {
             Error::PowHashInvalid => (21, format!("Invalid Pow hash")),
             Error::PowInvalid => (22, format!("Invalid the nonce")),
             Error::UnauthorizedWorker => (23, format!("Unauthorized worker")),
