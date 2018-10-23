@@ -25,6 +25,7 @@ use cstate::{StateError, TopLevelState};
 use ctypes::parcel::{Action, Error as ParcelError, IncompleteParcel};
 use ctypes::transaction::{Error as TransactionError, Timelock, Transaction};
 use ctypes::BlockNumber;
+use cvm::ChainTimeInfo;
 use parking_lot::{Mutex, RwLock};
 use primitives::{Bytes, H256, U256};
 
@@ -347,7 +348,10 @@ impl Miner {
     }
 
     /// Returns true if we had to prepare new pending block.
-    fn prepare_work_sealing<C: AccountData + BlockChain + BlockProducer + RegularKeyOwner>(&self, client: &C) -> bool {
+    fn prepare_work_sealing<C: AccountData + BlockChain + BlockProducer + RegularKeyOwner + ChainTimeInfo>(
+        &self,
+        client: &C,
+    ) -> bool {
         ctrace!(MINER, "prepare_work_sealing: entering");
         let prepare_new = {
             let mut sealing_work = self.sealing_work.lock();
@@ -433,7 +437,7 @@ impl Miner {
     }
 
     /// Prepares new block for sealing including top parcels from queue.
-    fn prepare_block<C: AccountData + BlockChain + BlockProducer + RegularKeyOwner>(
+    fn prepare_block<C: AccountData + BlockChain + BlockProducer + RegularKeyOwner + ChainTimeInfo>(
         &self,
         chain: &C,
     ) -> (ClosedBlock, Option<H256>) {
@@ -463,7 +467,7 @@ impl Miner {
                 .engine
                 .machine()
                 .verify_parcel(&parcel, open_block.header(), chain, true)
-                .and_then(|_| open_block.push_parcel(parcel, None));
+                .and_then(|_| open_block.push_parcel(parcel, None, chain));
 
             match result {
                 // already have parcel - ignore
@@ -708,7 +712,7 @@ impl MinerService for Miner {
 
     fn update_sealing<C>(&self, chain: &C)
     where
-        C: AccountData + BlockChain + BlockProducer + ImportSealedBlock + RegularKeyOwner, {
+        C: AccountData + BlockChain + BlockProducer + ImportSealedBlock + RegularKeyOwner + ChainTimeInfo, {
         ctrace!(MINER, "update_sealing: preparing a block");
 
         if self.requires_reseal(chain.chain_info().best_block_number) {
@@ -759,7 +763,7 @@ impl MinerService for Miner {
 
     fn map_sealing_work<C, F, T>(&self, client: &C, f: F) -> Option<T>
     where
-        C: AccountData + BlockChain + BlockProducer + RegularKeyOwner,
+        C: AccountData + BlockChain + BlockProducer + RegularKeyOwner + ChainTimeInfo,
         F: FnOnce(&ClosedBlock) -> T, {
         ctrace!(MINER, "map_sealing_work: entering");
         self.prepare_work_sealing(client);

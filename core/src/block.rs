@@ -24,6 +24,7 @@ use ctypes::invoice::ParcelInvoice;
 use ctypes::machine::{LiveBlock, Parcels};
 use ctypes::parcel::Error as ParcelError;
 use ctypes::util::unexpected::Mismatch;
+use cvm::ChainTimeInfo;
 use primitives::{Bytes, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
@@ -148,12 +149,17 @@ impl<'x> OpenBlock<'x> {
     }
 
     /// Push a parcel into the block.
-    pub fn push_parcel(&mut self, parcel: SignedParcel, h: Option<H256>) -> Result<(), Error> {
+    pub fn push_parcel<C: ChainTimeInfo>(
+        &mut self,
+        parcel: SignedParcel,
+        h: Option<H256>,
+        client: &C,
+    ) -> Result<(), Error> {
         if self.block.parcels_set.contains(&parcel.hash()) {
             return Err(StateError::Parcel(ParcelError::ParcelAlreadyImported).into())
         }
 
-        let invoice = self.block.state.apply(&parcel, &parcel.signer_public())?;
+        let invoice = self.block.state.apply(&parcel, &parcel.signer_public(), client)?;
 
         self.block.parcels_set.insert(h.unwrap_or_else(|| parcel.hash()));
         self.block.parcels.push(parcel.into());
@@ -162,9 +168,9 @@ impl<'x> OpenBlock<'x> {
     }
 
     /// Push parcels onto the block.
-    pub fn push_parcels(&mut self, parcels: &[SignedParcel]) -> Result<(), Error> {
+    pub fn push_parcels<C: ChainTimeInfo>(&mut self, parcels: &[SignedParcel], client: &C) -> Result<(), Error> {
         for parcel in parcels {
-            self.push_parcel(parcel.clone(), None)?;
+            self.push_parcel(parcel.clone(), None, client)?;
         }
         Ok(())
     }
@@ -415,10 +421,11 @@ impl Drain for SealedBlock {
 }
 
 /// Enact the block given by block header, parcels and uncles
-pub fn enact(
+pub fn enact<C: ChainTimeInfo>(
     header: &Header,
     parcels: &[SignedParcel],
     engine: &CodeChainEngine,
+    client: &C,
     db: StateDB,
     parent: &Header,
     is_epoch_begin: bool,
@@ -426,7 +433,7 @@ pub fn enact(
     let mut b = OpenBlock::new(engine, db, parent, Address::default(), vec![], is_epoch_begin)?;
 
     b.populate_from(header);
-    b.push_parcels(parcels)?;
+    b.push_parcels(parcels, client)?;
 
     Ok(b.close_and_lock(parent.parcels_root().clone(), parent.invoices_root().clone()))
 }

@@ -46,6 +46,7 @@ use ctypes::parcel::{Action, Error as ParcelError, Parcel, ShardChange};
 use ctypes::transaction::Transaction;
 use ctypes::util::unexpected::Mismatch;
 use ctypes::ShardId;
+use cvm::ChainTimeInfo;
 use primitives::{Bytes, H256, U256};
 
 use super::super::backend::TopBackend;
@@ -310,7 +311,12 @@ impl TopLevelState {
 
     /// Execute a given parcel, charging parcel fee.
     /// This will change the state accordingly.
-    pub fn apply(&mut self, parcel: &Parcel, signer_public: &Public) -> StateResult<ParcelInvoice> {
+    pub fn apply<C: ChainTimeInfo>(
+        &mut self,
+        parcel: &Parcel,
+        signer_public: &Public,
+        client: &C,
+    ) -> StateResult<ParcelInvoice> {
         // Change the public to an owner address if it is a regular key.
         let fee_payer = if self.regular_account_exists_and_not_null(signer_public)? {
             let regular_account = self.get_regular_account_mut(signer_public)?;
@@ -321,7 +327,7 @@ impl TopLevelState {
 
         self.create_checkpoint(PARCEL_FEE_CHECKPOINT);
 
-        match self.apply_internal(parcel, &fee_payer, signer_public) {
+        match self.apply_internal(parcel, &fee_payer, signer_public, client) {
             Err(StateError::Transaction(err)) => unreachable!("{:?}", err),
             Err(err) => {
                 self.revert_to_checkpoint(PARCEL_FEE_CHECKPOINT);
@@ -335,11 +341,12 @@ impl TopLevelState {
         }
     }
 
-    fn apply_internal(
+    fn apply_internal<C: ChainTimeInfo>(
         &mut self,
         parcel: &Parcel,
         fee_payer: &Address,
         signer_public: &Public,
+        client: &C,
     ) -> StateResult<ParcelInvoice> {
         let seq = self.seq(fee_payer)?;
 
@@ -366,7 +373,7 @@ impl TopLevelState {
         // The failed parcel also must pay the fee and increase seq.
         self.create_checkpoint(PARCEL_ACTION_CHECKPOINT);
 
-        match self.apply_action(&parcel.action, &parcel.network_id, fee_payer, signer_public) {
+        match self.apply_action(&parcel.action, &parcel.network_id, fee_payer, signer_public, client) {
             Ok(invoice) => {
                 self.discard_checkpoint(PARCEL_ACTION_CHECKPOINT);
                 Ok(invoice)
@@ -400,12 +407,13 @@ impl TopLevelState {
         }
     }
 
-    fn apply_action(
+    fn apply_action<C: ChainTimeInfo>(
         &mut self,
         action: &Action,
         network_id: &NetworkId,
         fee_payer: &Address,
         signer_public: &Public,
+        client: &C,
     ) -> StateResult<ParcelInvoice> {
         match action {
             Action::AssetTransactionGroup {
@@ -423,10 +431,10 @@ impl TopLevelState {
 
                 debug_assert!(transactions.iter().all(|t| &t.network_id() == network_id));
 
-                let first_result = self.apply_transactions_with_check(&transactions, &changes[0], fee_payer)?;
+                let first_result = self.apply_transactions_with_check(&transactions, &changes[0], fee_payer, client)?;
 
                 for change in changes.iter().skip(1) {
-                    let result = self.apply_transactions_with_check(&transactions, change, fee_payer)?;
+                    let result = self.apply_transactions_with_check(&transactions, change, fee_payer, client)?;
                     if result != first_result {
                         return Err(ParcelError::InconsistentShardOutcomes.into())
                     }
@@ -482,11 +490,12 @@ impl TopLevelState {
         }
     }
 
-    fn apply_transactions_with_check(
+    fn apply_transactions_with_check<C: ChainTimeInfo>(
         &mut self,
         transactions: &[Transaction],
         change: &ShardChange,
         sender: &Address,
+        client: &C,
     ) -> StateResult<Vec<TransactionInvoice>> {
         let shard_id = change.shard_id;
 
@@ -500,7 +509,7 @@ impl TopLevelState {
         }
 
         let (new_shard_root, db, results) =
-            self.apply_transactions_internal(transactions, shard_id, shard_root, sender)?;
+            self.apply_transactions_internal(transactions, shard_id, shard_root, sender, client)?;
         if !change.post_root.is_zero() && change.post_root != new_shard_root {
             return Err(ParcelError::InvalidShardRoot(Mismatch {
                 expected: new_shard_root,
@@ -514,14 +523,15 @@ impl TopLevelState {
         Ok(results)
     }
 
-    pub fn apply_transactions(
+    pub fn apply_transactions<C: ChainTimeInfo>(
         &self,
         transactions: &[Transaction],
         shard_id: ShardId,
         sender: &Address,
+        client: &C,
     ) -> StateResult<ShardChange> {
         let pre_root = self.shard_root(shard_id)?.ok_or_else(|| ParcelError::InvalidShardId(shard_id))?;
-        let (post_root, ..) = self.apply_transactions_internal(transactions, shard_id, pre_root, sender)?;
+        let (post_root, ..) = self.apply_transactions_internal(transactions, shard_id, pre_root, sender, client)?;
         Ok(ShardChange {
             shard_id,
             pre_root,
@@ -529,12 +539,13 @@ impl TopLevelState {
         })
     }
 
-    fn apply_transactions_internal(
+    fn apply_transactions_internal<C: ChainTimeInfo>(
         &self,
         transactions: &[Transaction],
         shard_id: ShardId,
         shard_root: H256,
         sender: &Address,
+        client: &C,
     ) -> StateResult<(H256, StateDB, Vec<TransactionInvoice>)> {
         let shard_users = self.shard_users(shard_id)?.expect("Shard must exist");
 
@@ -544,7 +555,7 @@ impl TopLevelState {
 
         let mut results = Vec::with_capacity(transactions.len());
         for t in transactions {
-            let result = shard_level_state.apply(t, sender, &shard_users)?;
+            let result = shard_level_state.apply(t, sender, &shard_users, client)?;
             results.push(result);
         }
 

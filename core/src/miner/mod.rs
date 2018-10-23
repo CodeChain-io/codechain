@@ -24,6 +24,7 @@ mod work_notify;
 use ckey::{Address, Password, PlatformAddress};
 use cstate::TopStateInfo;
 use ctypes::parcel::IncompleteParcel;
+use cvm::ChainTimeInfo;
 use primitives::{Bytes, H256, U256};
 
 pub use self::miner::{AuthoringParams, Miner, MinerOptions};
@@ -80,7 +81,7 @@ pub trait MinerService: Send + Sync {
     /// New chain head event. Restart mining operation.
     fn update_sealing<C>(&self, chain: &C)
     where
-        C: AccountData + BlockChain + BlockProducer + ImportSealedBlock + RegularKeyOwner;
+        C: AccountData + BlockChain + BlockProducer + ImportSealedBlock + RegularKeyOwner + ChainTimeInfo;
 
     /// Submit `seal` as a valid solution for the header of `pow_hash`.
     /// Will check the seal, but not actually insert the block into the chain.
@@ -89,7 +90,7 @@ pub trait MinerService: Send + Sync {
     /// Get the sealing work package and if `Some`, apply some transform.
     fn map_sealing_work<C, F, T>(&self, client: &C, f: F) -> Option<T>
     where
-        C: AccountData + BlockChain + BlockProducer + RegularKeyOwner,
+        C: AccountData + BlockChain + BlockProducer + RegularKeyOwner + ChainTimeInfo,
         F: FnOnce(&ClosedBlock) -> T,
         Self: Sized;
 
