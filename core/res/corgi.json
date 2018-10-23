@@ -23,8 +23,7 @@
     "networkID": "wc",
     "minParcelCost": "10",
     "maxBodySize": 4194304,
-    "snapshotPeriod": 16384,
-    "useShardValidator": false
+    "snapshotPeriod": 16384
   },
   "genesis": {
     "seal": {
