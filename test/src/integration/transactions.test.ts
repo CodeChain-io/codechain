@@ -570,7 +570,7 @@ describe("transactions", () => {
             expect(invoice.success).toBe(false);
 
             (tx.outputs[0].parameters as any) = address1Param;
-            (tx.nonce as any) = 1;
+            (tx.seq as any) = 1;
             await node.sdk.key.signTransactionInput(tx, 0, {
                 signatureTag: {
                     input: "all",
@@ -655,7 +655,7 @@ describe("transactions", () => {
                 .sign({
                     secret: faucetSecret,
                     fee: 10,
-                    nonce: await node.sdk.rpc.chain.getNonce(faucetAddress)
+                    seq: await node.sdk.rpc.chain.getSeq(faucetAddress)
                 });
 
             await node.sdk.rpc.chain.sendSignedParcel(parcel);
@@ -717,7 +717,7 @@ describe("transactions", () => {
                 .sign({
                     secret: faucetSecret,
                     fee: 10,
-                    nonce: await node.sdk.rpc.chain.getNonce(faucetAddress)
+                    seq: await node.sdk.rpc.chain.getSeq(faucetAddress)
                 });
 
             await node.sdk.rpc.chain.sendSignedParcel(parcel);

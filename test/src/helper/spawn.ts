@@ -306,7 +306,7 @@ export default class CodeChain {
             })
             .sign({
                 secret: faucetSecret,
-                nonce: await this.sdk.rpc.chain.getNonce(faucetAddress),
+                seq: await this.sdk.rpc.chain.getSeq(faucetAddress),
                 fee: 10
             });
         const hash = await this.sdk.rpc.chain.sendSignedParcel(parcel);
@@ -325,19 +325,19 @@ export default class CodeChain {
         params: {
             account: string | PlatformAddress;
             fee?: number | string | U256;
-            nonce?: number | string | U256;
+            seq?: number | string | U256;
         }
     ) {
         const keyStore = await this.sdk.key.createLocalKeyStore(
             this.localKeyStorePath
         );
         const { account, fee = 10 } = params;
-        const { nonce = await this.sdk.rpc.chain.getNonce(account) } = params;
+        const { seq = await this.sdk.rpc.chain.getSeq(account) } = params;
         const signedParcel = await this.sdk.key.signParcel(parcel, {
             keyStore,
             account,
             fee,
-            nonce
+            seq
         });
         return this.sdk.rpc.chain.sendSignedParcel(signedParcel);
     }
@@ -345,13 +345,13 @@ export default class CodeChain {
     public async sendTransaction(
         tx: Transaction,
         options?: {
-            nonce?: U256 | number;
+            seq?: U256 | number;
             awaitInvoice?: boolean;
             secret?: string;
         }
     ) {
         const {
-            nonce = (await this.sdk.rpc.chain.getNonce(faucetAddress)) || 0,
+            seq = (await this.sdk.rpc.chain.getSeq(faucetAddress)) || 0,
             awaitInvoice = true,
             secret = faucetSecret
         } = options || {};
@@ -362,7 +362,7 @@ export default class CodeChain {
             .sign({
                 secret,
                 fee: 10 + this.id,
-                nonce
+                seq
             });
         await this.sdk.rpc.chain.sendSignedParcel(parcel);
         if (awaitInvoice) {
@@ -401,10 +401,10 @@ export default class CodeChain {
 
     public async sendTransactions(
         txs: Transaction[],
-        options?: { nonce?: U256 | number; awaitInvoice?: boolean }
+        options?: { seq?: U256 | number; awaitInvoice?: boolean }
     ) {
         const {
-            nonce = (await this.sdk.rpc.chain.getNonce(faucetAddress)) || 0,
+            seq = (await this.sdk.rpc.chain.getSeq(faucetAddress)) || 0,
             awaitInvoice = true
         } = options || {};
         const parcel = this.sdk.core
@@ -414,7 +414,7 @@ export default class CodeChain {
             .sign({
                 secret: faucetSecret,
                 fee: 10 + this.id,
-                nonce
+                seq
             });
         const parcelHash = await this.sdk.rpc.chain.sendSignedParcel(parcel);
         if (awaitInvoice) {
@@ -424,8 +424,8 @@ export default class CodeChain {
         }
     }
 
-    public async mintAssets(params: { count: number; nonce?: U256 | number }) {
-        const { count, nonce } = params;
+    public async mintAssets(params: { count: number; seq?: U256 | number }) {
+        const { count, seq } = params;
         let txs: Transaction[] = [];
         const recipient = await this.createP2PKHAddress();
         for (let i = 0; i < count; i++) {
@@ -440,7 +440,7 @@ export default class CodeChain {
             });
             txs.push(tx);
         }
-        await this.sendTransactions(txs, { nonce, awaitInvoice: false });
+        await this.sendTransactions(txs, { seq, awaitInvoice: false });
     }
 
     public async signTransferInput(
@@ -463,13 +463,13 @@ export default class CodeChain {
     public async setRegularKey(
         key: any,
         options?: {
-            nonce?: U256 | number;
+            seq?: U256 | number;
             awaitInvoice?: boolean;
             secret?: any;
         }
     ) {
         const {
-            nonce = (await this.sdk.rpc.chain.getNonce(faucetAddress)) || 0,
+            seq = (await this.sdk.rpc.chain.getSeq(faucetAddress)) || 0,
             awaitInvoice = true,
             secret = faucetSecret
         } = options || {};
@@ -480,7 +480,7 @@ export default class CodeChain {
             .sign({
                 secret,
                 fee: 10,
-                nonce
+                seq
             });
 
         const hash = await this.sdk.rpc.chain.sendSignedParcel(parcel);
@@ -492,7 +492,7 @@ export default class CodeChain {
     }
 
     public async sendSignedParcel(options?: {
-        nonce?: U256 | number;
+        seq?: U256 | number;
         awaitInvoice?: boolean;
         recipient?: PlatformAddress | string;
         amount?: number;
@@ -500,7 +500,7 @@ export default class CodeChain {
         fee?: number;
     }): Promise<SignedParcel> {
         const {
-            nonce = (await this.sdk.rpc.chain.getNonce(faucetAddress)) || 0,
+            seq = (await this.sdk.rpc.chain.getSeq(faucetAddress)) || 0,
             awaitInvoice = true,
             recipient = "tccqxv9y4cw0jwphhu65tn4605wadyd2sxu5yezqghw",
             amount = 0,
@@ -515,7 +515,7 @@ export default class CodeChain {
             .sign({
                 secret,
                 fee,
-                nonce
+                seq
             });
         const hash = await this.sdk.rpc.chain.sendSignedParcel(parcel);
         if (awaitInvoice) {

@@ -56,17 +56,17 @@ describe("Block Reward", () => {
             await node.sdk.rpc.devel.stopSealing();
             await node.sendSignedParcel({
                 fee: 10,
-                nonce: 0,
+                seq: 0,
                 awaitInvoice: false
             });
             await node.sendSignedParcel({
                 fee: 10,
-                nonce: 1,
+                seq: 1,
                 awaitInvoice: false
             });
             await node.sendSignedParcel({
                 fee: 15,
-                nonce: 2,
+                seq: 2,
                 awaitInvoice: false
             });
             await node.sdk.rpc.devel.startSealing();
@@ -93,7 +93,7 @@ describe("Block Reward", () => {
                     recipient: faucetAddress,
                     amount: 50
                 })
-                .sign({ secret: aliceSecret, nonce: 0, fee: 10 }); // -60
+                .sign({ secret: aliceSecret, seq: 0, fee: 10 }); // -60
             await node.sdk.rpc.chain.sendSignedParcel(parcel); // +60
             await expect(
                 node.sdk.rpc.chain.getBalance(aliceAddress)
@@ -198,7 +198,7 @@ describe("Block Reward", () => {
                             .sign({
                                 secret: aliceSecret,
                                 fee: 10,
-                                nonce: 0
+                                seq: 0
                             })
                     ); // +45 for alice, +5 for bob in nodeA
                     await expect(
@@ -222,7 +222,7 @@ describe("Block Reward", () => {
                             .sign({
                                 secret: aliceSecret,
                                 fee: 10,
-                                nonce: 0
+                                seq: 0
                             })
                     ); // -25 for alice. +75 for bob in nodeB
                     await expect(

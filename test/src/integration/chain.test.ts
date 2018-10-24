@@ -80,15 +80,15 @@ describe("solo - 1 node", () => {
         expect(await node.sdk.rpc.chain.getBlock(invalidHash)).toBeNull();
     });
 
-    test("getNonce", async () => {
-        await node.sdk.rpc.chain.getNonce(faucetAddress);
-        expect(await node.sdk.rpc.chain.getNonce(invalidAddress)).toEqual(
+    test("getSeq", async () => {
+        await node.sdk.rpc.chain.getSeq(faucetAddress);
+        expect(await node.sdk.rpc.chain.getSeq(invalidAddress)).toEqual(
             new U256(0)
         );
         const bestBlockNumber = await node.sdk.rpc.chain.getBestBlockNumber();
-        await node.sdk.rpc.chain.getNonce(faucetAddress, 0);
-        await node.sdk.rpc.chain.getNonce(faucetAddress, bestBlockNumber);
-        await node.sdk.rpc.chain.getNonce(faucetAddress, bestBlockNumber + 1);
+        await node.sdk.rpc.chain.getSeq(faucetAddress, 0);
+        await node.sdk.rpc.chain.getSeq(faucetAddress, bestBlockNumber);
+        await node.sdk.rpc.chain.getSeq(faucetAddress, bestBlockNumber + 1);
     });
 
     test("getBalance", async () => {
@@ -119,12 +119,12 @@ describe("solo - 1 node", () => {
             recipient: "tccqxv9y4cw0jwphhu65tn4605wadyd2sxu5yezqghw",
             amount: 0
         });
-        const nonce = await node.sdk.rpc.chain.getNonce(faucetAddress);
+        const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
         const parcelHash = await node.sdk.rpc.chain.sendSignedParcel(
             parcel.sign({
                 secret: faucetSecret,
                 fee: 10,
-                nonce
+                seq
             })
         );
         const invoice = await node.sdk.rpc.chain.getParcelInvoice(parcelHash);
@@ -149,7 +149,7 @@ describe("solo - 1 node", () => {
             .sign({
                 secret: faucetSecret,
                 fee: 10,
-                nonce: await node.sdk.rpc.chain.getNonce(faucetAddress)
+                seq: await node.sdk.rpc.chain.getSeq(faucetAddress)
             });
         await node.sdk.rpc.chain.sendSignedParcel(parcel);
 
@@ -213,7 +213,7 @@ describe("solo - 1 node", () => {
                 .sign({
                     secret: faucetSecret,
                     fee: 10,
-                    nonce: await node.sdk.rpc.chain.getNonce(faucetAddress)
+                    seq: await node.sdk.rpc.chain.getSeq(faucetAddress)
                 });
 
             await node.sdk.rpc.chain.sendSignedParcel(parcel);
