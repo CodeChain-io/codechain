@@ -23,8 +23,8 @@ describe("Test onChain parcel communication", () => {
 
     const VALID_FEE = 10;
     const INVALID_FEE = 16069380442589902755419620923411626025222029937827928353013799;
-    const VALID_NONCE = 0;
-    const INVALID_NONCE = 1;
+    const VALID_SEQ = 0;
+    const INVALID_SEQ = 1;
     const VALID_NETWORKID = "tc";
     const INVALID_NETWORKID = "a";
     const VALID_SIG =
@@ -34,28 +34,28 @@ describe("Test onChain parcel communication", () => {
         [
             "OnChain invalid fee PaymentParcel propagation test",
             INVALID_FEE,
-            VALID_NONCE,
+            VALID_SEQ,
             VALID_NETWORKID,
             VALID_SIG
         ],
         [
-            "OnChain invalid nonce PaymentParcel propagation test",
+            "OnChain invalid seq PaymentParcel propagation test",
             VALID_FEE,
-            INVALID_NONCE,
+            INVALID_SEQ,
             VALID_NETWORKID,
             VALID_SIG
         ],
         [
             "OnChain invalid networkId PaymentParcel propagation test",
             VALID_FEE,
-            VALID_NONCE,
+            VALID_SEQ,
             INVALID_NETWORKID,
             VALID_SIG
         ],
         [
             "OnChain invalid signature PaymentParcel propagation test",
             VALID_FEE,
-            VALID_NONCE,
+            VALID_SEQ,
             VALID_NETWORKID,
             INVALID_SIG
         ]
@@ -86,7 +86,7 @@ describe("Test onChain parcel communication", () => {
             const signedparcel = parcel.sign({
                 secret: ACCOUNT_SECRET,
                 fee: 10,
-                nonce: 0
+                seq: 0
             });
             await sdk.rpc.devel.stopSealing();
             await TH.sendEncodedParcel([signedparcel.toEncodeObject()]);
@@ -102,7 +102,7 @@ describe("Test onChain parcel communication", () => {
     describe("OnChain invalid PaymentParcel test", async () => {
         test.each(testArray)(
             "%s",
-            async (_testName, tfee, tnonce, tnetworkId, tsig) => {
+            async (_testName, tfee, tseq, tnetworkId, tsig) => {
                 const TH = new TestHelper("0.0.0.0", nodeA.port);
                 await TH.establish();
 
@@ -117,7 +117,7 @@ describe("Test onChain parcel communication", () => {
                 const signedparcel = parcel.sign({
                     secret: ACCOUNT_SECRET,
                     fee: tfee,
-                    nonce: tnonce
+                    seq: tseq
                 });
                 await sdk.rpc.devel.stopSealing();
 
