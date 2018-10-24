@@ -15,8 +15,31 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 pub mod helpers {
+    use cvm::ChainTimeInfo;
+    use primitives::H256;
+
     use super::super::impls::TopLevelState;
     use super::super::StateDB;
+
+    pub struct TestChainTimeInfoClient {}
+
+    impl ChainTimeInfo for TestChainTimeInfoClient {
+        fn best_block_number(&self) -> u64 {
+            0
+        }
+
+        fn best_block_timestamp(&self) -> u64 {
+            0
+        }
+
+        fn transaction_block_age(&self, _: H256) -> Option<u64> {
+            Some(0)
+        }
+
+        fn transaction_time_age(&self, _: H256) -> Option<u64> {
+            Some(0)
+        }
+    }
 
     pub fn get_temp_state_db() -> StateDB {
         StateDB::new_with_memorydb(5 * 1024 * 1024, Vec::new())
@@ -25,5 +48,9 @@ pub mod helpers {
     pub fn get_temp_state() -> TopLevelState {
         let journal_db = get_temp_state_db();
         TopLevelState::new(journal_db)
+    }
+
+    pub fn get_test_client() -> TestChainTimeInfoClient {
+        TestChainTimeInfoClient {}
     }
 }
