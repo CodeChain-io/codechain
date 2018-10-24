@@ -25,8 +25,11 @@ use secp256k1::key::{SecretKey, MINUS_ONE_KEY, ONE_KEY};
 use executor::{execute, Config, RuntimeError, ScriptResult};
 use instruction::Instruction;
 
+use super::executor::get_test_client;
+
 #[test]
 fn valid_multi_sig_0_of_2() {
+    let client = get_test_client();
     let transaction = Transaction::AssetTransfer {
         network_id: NetworkId::default(),
         burns: Vec::new(),
@@ -60,13 +63,14 @@ fn valid_multi_sig_0_of_2() {
     ];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &outpoint, false),
+        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &outpoint, false, &client),
         Err(RuntimeError::InvalidSigCount)
     );
 }
 
 #[test]
 fn valid_multi_sig_1_of_2() {
+    let client = get_test_client();
     let transaction = Transaction::AssetTransfer {
         network_id: NetworkId::default(),
         burns: Vec::new(),
@@ -111,13 +115,14 @@ fn valid_multi_sig_1_of_2() {
     ];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &outpoint, false),
+        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &outpoint, false, &client),
         Ok(ScriptResult::Unlocked)
     );
 }
 
 #[test]
 fn valid_multi_sig_2_of_2() {
+    let client = get_test_client();
     let transaction = Transaction::AssetTransfer {
         network_id: NetworkId::default(),
         burns: Vec::new(),
@@ -164,13 +169,14 @@ fn valid_multi_sig_2_of_2() {
     ];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &outpoint, false),
+        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &outpoint, false, &client),
         Ok(ScriptResult::Unlocked)
     );
 }
 
 #[test]
 fn invalid_multi_sig_1_of_2() {
+    let client = get_test_client();
     let transaction = Transaction::AssetTransfer {
         network_id: NetworkId::default(),
         burns: Vec::new(),
@@ -215,7 +221,7 @@ fn invalid_multi_sig_1_of_2() {
     ];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &outpoint, false),
+        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &outpoint, false, &client),
         Ok(ScriptResult::Fail)
     );
 }
@@ -223,6 +229,7 @@ fn invalid_multi_sig_1_of_2() {
 
 #[test]
 fn invalid_multi_sig_2_of_2() {
+    let client = get_test_client();
     let transaction = Transaction::AssetTransfer {
         network_id: NetworkId::default(),
         burns: Vec::new(),
@@ -269,13 +276,14 @@ fn invalid_multi_sig_2_of_2() {
     ];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &outpoint, false),
+        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &outpoint, false, &client),
         Ok(ScriptResult::Fail)
     );
 }
 
 #[test]
 fn invalid_multi_sig_2_of_2_with_1_invalid_sig() {
+    let client = get_test_client();
     let transaction = Transaction::AssetTransfer {
         network_id: NetworkId::default(),
         burns: Vec::new(),
@@ -332,13 +340,14 @@ fn invalid_multi_sig_2_of_2_with_1_invalid_sig() {
     ];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &outpoint, false),
+        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &outpoint, false, &client),
         Ok(ScriptResult::Fail)
     );
 }
 
 #[test]
 fn invalid_multi_sig_2_of_2_with_changed_order_sig() {
+    let client = get_test_client();
     let transaction = Transaction::AssetTransfer {
         network_id: NetworkId::default(),
         burns: Vec::new(),
@@ -385,13 +394,14 @@ fn invalid_multi_sig_2_of_2_with_changed_order_sig() {
     ];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &outpoint, false),
+        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &outpoint, false, &client),
         Ok(ScriptResult::Fail)
     );
 }
 
 #[test]
 fn invalid_multi_sig_with_less_sig_than_m() {
+    let client = get_test_client();
     let transaction = Transaction::AssetTransfer {
         network_id: NetworkId::default(),
         burns: Vec::new(),
@@ -436,13 +446,14 @@ fn invalid_multi_sig_with_less_sig_than_m() {
     ];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &outpoint, false),
+        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &outpoint, false, &client),
         Err(RuntimeError::TypeMismatch)
     );
 }
 
 #[test]
 fn invalid_multi_sig_with_more_sig_than_m() {
+    let client = get_test_client();
     let transaction = Transaction::AssetTransfer {
         network_id: NetworkId::default(),
         burns: Vec::new(),
@@ -489,13 +500,14 @@ fn invalid_multi_sig_with_more_sig_than_m() {
     ];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &outpoint, false),
+        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &outpoint, false, &client),
         Err(RuntimeError::InvalidFilter)
     );
 }
 
 #[test]
 fn invalid_multi_sig_with_too_many_arg() {
+    let client = get_test_client();
     let transaction = Transaction::AssetTransfer {
         network_id: NetworkId::default(),
         burns: Vec::new(),
@@ -552,7 +564,7 @@ fn invalid_multi_sig_with_too_many_arg() {
     ];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &outpoint, false),
+        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &outpoint, false, &client),
         Err(RuntimeError::InvalidSigCount)
     );
 }

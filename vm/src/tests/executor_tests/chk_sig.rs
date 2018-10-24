@@ -25,9 +25,11 @@ use secp256k1::key::{SecretKey, MINUS_ONE_KEY, ONE_KEY};
 use executor::{execute, Config, ScriptResult};
 use instruction::Instruction;
 
+use super::executor::get_test_client;
 
 #[test]
 fn valid_pay_to_public_key() {
+    let client = get_test_client();
     let transaction = Transaction::AssetTransfer {
         network_id: NetworkId::default(),
         burns: Vec::new(),
@@ -63,13 +65,14 @@ fn valid_pay_to_public_key() {
     let lock_script = vec![Instruction::PushB(pubkey), Instruction::ChkSig];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &input, false),
+        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &input, false, &client),
         Ok(ScriptResult::Unlocked)
     );
 }
 
 #[test]
 fn invalid_pay_to_public_key() {
+    let client = get_test_client();
     let transaction = Transaction::AssetTransfer {
         network_id: NetworkId::default(),
         burns: Vec::new(),
@@ -107,13 +110,14 @@ fn invalid_pay_to_public_key() {
     let lock_script = vec![Instruction::PushB(pubkey), Instruction::ChkSig];
 
     assert_eq!(
-        execute(&unlock_script[..], &[], &lock_script, &transaction, Config::default(), &input, false),
+        execute(&unlock_script[..], &[], &lock_script, &transaction, Config::default(), &input, false, &client),
         Ok(ScriptResult::Fail)
     );
 }
 
 #[test]
 fn sign_all_input_all_output() {
+    let client = get_test_client();
     // Make input indexed 0
     let out0 = AssetOutPoint {
         transaction_hash: H256::default(),
@@ -181,13 +185,14 @@ fn sign_all_input_all_output() {
     let lock_script = vec![Instruction::PushB(pubkey), Instruction::ChkSig];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &input0, false),
+        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &input0, false, &client),
         Ok(ScriptResult::Unlocked)
     );
 }
 
 #[test]
 fn sign_single_input_all_output() {
+    let client = get_test_client();
     // Make input indexed 0
     let out0 = AssetOutPoint {
         transaction_hash: H256::default(),
@@ -254,13 +259,14 @@ fn sign_single_input_all_output() {
     let lock_script = vec![Instruction::PushB(pubkey), Instruction::ChkSig];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &input0, false),
+        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &input0, false, &client),
         Ok(ScriptResult::Unlocked)
     );
 }
 
 #[test]
 fn sign_all_input_partial_output() {
+    let client = get_test_client();
     // Make input indexed 0
     let out0 = AssetOutPoint {
         transaction_hash: H256::default(),
@@ -330,13 +336,14 @@ fn sign_all_input_partial_output() {
     let lock_script = vec![Instruction::PushB(pubkey), Instruction::ChkSig];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &input0, false),
+        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &input0, false, &client),
         Ok(ScriptResult::Unlocked)
     );
 }
 
 #[test]
 fn sign_single_input_partial_output() {
+    let client = get_test_client();
     // Make input indexed 0
     let out0 = AssetOutPoint {
         transaction_hash: H256::default(),
@@ -406,13 +413,14 @@ fn sign_single_input_partial_output() {
     let lock_script = vec![Instruction::PushB(pubkey), Instruction::ChkSig];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &input0, false),
+        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &input0, false, &client),
         Ok(ScriptResult::Unlocked)
     );
 }
 
 #[test]
 fn distinguish_sign_single_input_with_sign_all() {
+    let client = get_test_client();
     // Make input indexed 0
     let out0 = AssetOutPoint {
         transaction_hash: H256::default(),
@@ -459,7 +467,7 @@ fn distinguish_sign_single_input_with_sign_all() {
     let lock_script = vec![Instruction::PushB(pubkey), Instruction::ChkSig];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &input0, false),
+        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &input0, false, &client),
         Ok(ScriptResult::Fail)
     );
 }
@@ -467,6 +475,7 @@ fn distinguish_sign_single_input_with_sign_all() {
 
 #[test]
 fn distinguish_sign_single_output_with_sign_all() {
+    let client = get_test_client();
     // Make input indexed 0
     let out0 = AssetOutPoint {
         transaction_hash: H256::default(),
@@ -516,7 +525,7 @@ fn distinguish_sign_single_output_with_sign_all() {
     let lock_script = vec![Instruction::PushB(pubkey), Instruction::ChkSig];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &input0, false),
+        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &input0, false, &client),
         Ok(ScriptResult::Fail)
     );
 }
