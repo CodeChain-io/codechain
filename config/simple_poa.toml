@@ -7,4 +7,3 @@ chain = "simple_poa"
 [network]
 [snapshot]
 [stratum]
-[shard_validator]

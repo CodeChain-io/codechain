@@ -237,16 +237,6 @@ args:
         takes_value: true
         conflicts_with:
             - no-stratum
-    - no-shard-validator:
-        long: no-shard-validator
-        help: Do nothing. This feature is deprecated.
-    - shard-validator:
-        long: shard-validator
-        value_name: ACCOUNT
-        help: Do nothing. This feature is deprecated.
-        takes_value: true
-        conflicts_with:
-            - no-shard-validator
     - whitelist-path:
         long: whitelist-path
         value_name: PATH

@@ -41,7 +41,6 @@ pub struct Config {
     pub ws: Ws,
     pub snapshot: Snapshot,
     pub stratum: Stratum,
-    pub shard_validator: ShardValidator,
 }
 
 impl Config {
@@ -53,7 +52,6 @@ impl Config {
         self.rpc.merge(&other.rpc);
         self.snapshot.merge(&other.snapshot);
         self.stratum.merge(&other.stratum);
-        self.shard_validator.merge(&other.shard_validator);
     }
 
     pub fn miner_options(&self) -> Result<MinerOptions, String> {
@@ -277,13 +275,6 @@ pub struct Snapshot {
 pub struct Stratum {
     pub disable: Option<bool>,
     pub port: Option<u16>,
-}
-
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct ShardValidator {
-    pub disable: Option<bool>,
-    pub account: Option<PlatformAddress>,
 }
 
 impl Ipc {
@@ -625,29 +616,6 @@ impl Stratum {
     }
 }
 
-impl ShardValidator {
-    pub fn merge(&mut self, other: &ShardValidator) {
-        if other.disable.is_some() {
-            self.disable = other.disable;
-        }
-        if other.account.is_some() {
-            self.account = other.account.clone();
-        }
-    }
-
-    pub fn overwrite_with(&mut self, matches: &clap::ArgMatches) -> Result<(), String> {
-        if matches.is_present("no-shard-validator") {
-            self.disable = Some(true);
-        }
-
-        if let Some(account) = matches.value_of("shard-validator") {
-            self.account = Some(account.parse().map_err(|_| "Invalid address format")?)
-        }
-
-        Ok(())
-    }
-}
-
 #[cfg(not(debug_assertions))]
 pub fn read_preset_config() -> &'static str {
     let bytes = include_bytes!("presets/config.prod.toml");
@@ -681,7 +649,6 @@ pub fn load_config(matches: &clap::ArgMatches) -> Result<Config, String> {
     config.ws.overwrite_with(&matches)?;
     config.snapshot.overwrite_with(&matches)?;
     config.stratum.overwrite_with(&matches)?;
-    config.shard_validator.overwrite_with(&matches)?;
 
     Ok(config)
 }
