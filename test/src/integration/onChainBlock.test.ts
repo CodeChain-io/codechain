@@ -41,7 +41,7 @@ describe("Test onChain block communication", async () => {
         "0xffffffffffffffffffffffffffffffffffffffff"
     );
     const VALID_EXTRADATA = Buffer.alloc(0);
-    const INVALID_EXTRADATA = new Buffer("DEADBEEF");
+    const INVALID_EXTRADATA = Buffer.from("DEADBEEF");
     let VALID_PARCELROOT = new H256(
         "45b0cfc220ceec5b7c1c62c4d4193d38e4eba48e8815729ce75f9c0ab0e4c1c0"
     );
@@ -63,7 +63,7 @@ describe("Test onChain block communication", async () => {
     const VALID_SCORE = new U256(999999999999999);
     const INVALID_SCORE = new U256(9999999999999999999999999999999999999999);
     let VALID_SEAL = [];
-    const INVALID_SEAL = [new Buffer("DEADBEEF")];
+    const INVALID_SEAL = [Buffer.from("DEADBEEF")];
 
     const testArray = [
         [
