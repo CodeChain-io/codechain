@@ -113,9 +113,9 @@ describe("solo - 1 node", () => {
         ).toString();
 
         await node.sendSignedParcel({ amount: 100, recipient: address });
-        const nonce = await node.sdk.rpc.chain.getNonce(address);
+        const seq = await node.sdk.rpc.chain.getSeq(address);
         let invoice = await node.setRegularKey(pubKey, {
-            nonce,
+            seq,
             secret: newPrivKey
         });
         expect(invoice).toEqual(INVOICE.SUCCESS);

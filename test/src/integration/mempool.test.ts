@@ -58,7 +58,7 @@ describe("Memory pool size test", () => {
         "To self",
         async () => {
             for (let i = 0; i < sizeLimit * 2; i++) {
-                await nodeA.sendSignedParcel({ nonce: i, awaitInvoice: false });
+                await nodeA.sendSignedParcel({ seq: i, awaitInvoice: false });
             }
             const pendingParcels = await nodeA.sdk.rpc.chain.getPendingParcels();
             expect(pendingParcels.length).toEqual(sizeLimit * 2);
@@ -86,7 +86,7 @@ describe("Memory pool size test", () => {
             async () => {
                 for (let i = 0; i < sizeLimit * 2; i++) {
                     await nodeA.sendSignedParcel({
-                        nonce: i,
+                        seq: i,
                         awaitInvoice: false
                     });
                 }
@@ -137,7 +137,7 @@ describe("Memory pool memory limit test", () => {
         "To self",
         async () => {
             for (let i = 0; i < sizeLimit; i++) {
-                await nodeA.mintAssets({ count: mintSize, nonce: i });
+                await nodeA.mintAssets({ count: mintSize, seq: i });
             }
             const pendingParcels = await nodeA.sdk.rpc.chain.getPendingParcels();
             expect(pendingParcels.length).toEqual(sizeLimit);
@@ -165,7 +165,7 @@ describe("Memory pool memory limit test", () => {
             "More than limit",
             async () => {
                 for (let i = 0; i < sizeLimit; i++) {
-                    await nodeA.mintAssets({ count: mintSize, nonce: i });
+                    await nodeA.mintAssets({ count: mintSize, seq: i });
                 }
 
                 for (let i = 0; i < 10; i++) {
@@ -198,24 +198,21 @@ describe("Future queue", () => {
     });
 
     test("all pending parcel must be mined", async () => {
-        const nonce =
-            (await node.sdk.rpc.chain.getNonce(faucetAddress)) ||
-            U256.ensure(0);
-        const nonceP1 = nonce.increase();
-        const nonceP2 = nonceP1.increase();
-        const nonceP3 = nonceP2.increase();
-        const nonceP4 = nonceP3.increase();
+        const seq =
+            (await node.sdk.rpc.chain.getSeq(faucetAddress)) || U256.ensure(0);
+        const seq1 = seq.increase();
+        const seq2 = seq1.increase();
+        const seq3 = seq2.increase();
+        const seq4 = seq3.increase();
 
-        await node.sendSignedParcel({ awaitInvoice: false, nonce: nonceP3 });
-        expect(await node.sdk.rpc.chain.getNonce(faucetAddress)).toEqual(nonce);
-        await node.sendSignedParcel({ awaitInvoice: false, nonce: nonceP2 });
-        expect(await node.sdk.rpc.chain.getNonce(faucetAddress)).toEqual(nonce);
-        await node.sendSignedParcel({ awaitInvoice: false, nonce: nonceP1 });
-        expect(await node.sdk.rpc.chain.getNonce(faucetAddress)).toEqual(nonce);
-        await node.sendSignedParcel({ awaitInvoice: false, nonce });
-        expect(await node.sdk.rpc.chain.getNonce(faucetAddress)).toEqual(
-            nonceP4
-        );
+        await node.sendSignedParcel({ awaitInvoice: false, seq: seq3 });
+        expect(await node.sdk.rpc.chain.getSeq(faucetAddress)).toEqual(seq);
+        await node.sendSignedParcel({ awaitInvoice: false, seq: seq2 });
+        expect(await node.sdk.rpc.chain.getSeq(faucetAddress)).toEqual(seq);
+        await node.sendSignedParcel({ awaitInvoice: false, seq: seq1 });
+        expect(await node.sdk.rpc.chain.getSeq(faucetAddress)).toEqual(seq);
+        await node.sendSignedParcel({ awaitInvoice: false, seq: seq });
+        expect(await node.sdk.rpc.chain.getSeq(faucetAddress)).toEqual(seq4);
     });
 
     afterEach(async () => {

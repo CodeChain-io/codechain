@@ -21,7 +21,7 @@ use super::World;
 
 #[derive(Debug, PartialEq, Deserialize)]
 pub struct Shard {
-    pub nonce: Option<Uint>,
+    pub seq: Option<Uint>,
     pub owners: Vec<PlatformAddress>,
     pub users: Option<Vec<PlatformAddress>>,
     pub worlds: Option<Vec<World>>,
@@ -40,21 +40,21 @@ mod tests {
     #[test]
     fn shard_deserialization() {
         let s = r#"{
-            "nonce": 0,
+            "seq": 0,
             "owners": ["tccq8vapdlstar6ghmqgczp6j2e83njsqq0tsvaxm9u"],
             "worlds": [{
-                "nonce": 3,
+                "seq": 3,
                 "owners": ["tccq8txq9uafdg8y2de9m2tdkhsfsj3m9nluq94hyan"]
             }]
         }"#;
         let shard: Shard = serde_json::from_str(s).unwrap();
         assert_eq!(
             Shard {
-                nonce: Some(Uint(U256::from(0))),
+                seq: Some(Uint(U256::from(0))),
                 owners: vec![PlatformAddress::from_str("tccq8vapdlstar6ghmqgczp6j2e83njsqq0tsvaxm9u").unwrap()],
                 users: None,
                 worlds: Some(vec![World {
-                    nonce: Some(Uint(U256::from(3))),
+                    seq: Some(Uint(U256::from(3))),
                     owners: Some(vec![
                         PlatformAddress::from_str("tccq8txq9uafdg8y2de9m2tdkhsfsj3m9nluq94hyan").unwrap(),
                     ]),
@@ -66,16 +66,16 @@ mod tests {
     }
 
     #[test]
-    fn shard_with_non_zero_nonce_deserialization() {
+    fn shard_with_non_zero_seq_deserialization() {
         let s = r#"{
-            "nonce": 100,
+            "seq": 100,
             "owners": ["tccq8vapdlstar6ghmqgczp6j2e83njsqq0tsvaxm9u"],
             "users": ["tccq8txq9uafdg8y2de9m2tdkhsfsj3m9nluq94hyan"]
         }"#;
         let shard: Shard = serde_json::from_str(s).unwrap();
         assert_eq!(
             Shard {
-                nonce: Some(Uint(U256::from(100))),
+                seq: Some(Uint(U256::from(100))),
                 owners: vec![PlatformAddress::from_str("tccq8vapdlstar6ghmqgczp6j2e83njsqq0tsvaxm9u").unwrap()],
                 users: Some(vec![PlatformAddress::from_str("tccq8txq9uafdg8y2de9m2tdkhsfsj3m9nluq94hyan").unwrap()]),
                 worlds: None,
@@ -94,14 +94,14 @@ mod tests {
     }
 
     #[test]
-    fn shard_without_nonce_deserialization() {
+    fn shard_without_seq_deserialization() {
         let s = r#"{
             "owners": ["tccq8vapdlstar6ghmqgczp6j2e83njsqq0tsvaxm9u"]
         }"#;
         let shard: Shard = serde_json::from_str(s).unwrap();
         assert_eq!(
             Shard {
-                nonce: None,
+                seq: None,
                 owners: vec![PlatformAddress::from_str("tccq8vapdlstar6ghmqgczp6j2e83njsqq0tsvaxm9u").unwrap()],
                 users: None,
                 worlds: None,

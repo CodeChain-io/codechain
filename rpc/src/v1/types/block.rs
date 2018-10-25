@@ -73,7 +73,7 @@ impl Block {
                         block_number: Some(block_number),
                         block_hash: Some(block_hash),
                         parcel_index: Some(i),
-                        nonce: unverified.as_unsigned().seq.clone(),
+                        seq: unverified.as_unsigned().seq.clone(),
                         fee: unverified.as_unsigned().fee.clone(),
                         network_id,
                         action: Action::from_core(unverified.as_unsigned().action.clone(), network_id),

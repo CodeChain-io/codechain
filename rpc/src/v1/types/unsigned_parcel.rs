@@ -23,7 +23,7 @@ use super::Action;
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UnsignedParcel {
-    pub nonce: Option<U256>,
+    pub seq: Option<U256>,
     pub fee: U256,
     pub network_id: NetworkId,
     pub action: Action,
@@ -38,7 +38,7 @@ impl From<UnsignedParcel> for Result<(IncompleteParcel, Option<U256>), KeyError>
                 network_id: parcel.network_id,
                 action: Result::from(parcel.action)?,
             },
-            parcel.nonce,
+            parcel.seq,
         ))
     }
 }

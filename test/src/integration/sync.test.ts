@@ -355,7 +355,7 @@ describeSkippedInTravis("sync", () => {
             async () => {
                 for (let i = 0; i < testSize; i++) {
                     await nodeA.sendSignedParcel({
-                        nonce: i,
+                        seq: i,
                         awaitInvoice: false
                     });
                     expect(
