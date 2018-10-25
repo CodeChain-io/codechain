@@ -69,6 +69,24 @@ pub enum Transaction {
         nonce: u64,
         hash: H256,
     },
+    #[serde(rename_all = "camelCase")]
+    AssetCompose {
+        network_id: NetworkId,
+        shard_id: ShardId,
+        world_id: WorldId,
+        nonce: u64,
+        metadata: String,
+        registrar: Option<PlatformAddress>,
+        inputs: Vec<AssetTransferInput>,
+        output: AssetMintOutput,
+    },
+    #[serde(rename_all = "camelCase")]
+    AssetDecompose {
+        network_id: NetworkId,
+        nonce: u64,
+        input: AssetTransferInput,
+        outputs: Vec<AssetTransferOutput>,
+    },
 }
 
 impl From<TransactionType> for Transaction {
@@ -146,6 +164,36 @@ impl From<TransactionType> for Transaction {
                 outputs,
                 nonce,
                 hash,
+            },
+            TransactionType::AssetCompose {
+                network_id,
+                shard_id,
+                world_id,
+                nonce,
+                metadata,
+                registrar,
+                inputs,
+                output,
+            } => Transaction::AssetCompose {
+                network_id,
+                shard_id,
+                world_id,
+                nonce,
+                metadata,
+                registrar: registrar.map(|registrar| PlatformAddress::new_v1(network_id, registrar)),
+                inputs,
+                output,
+            },
+            TransactionType::AssetDecompose {
+                network_id,
+                nonce,
+                input,
+                outputs,
+            } => Transaction::AssetDecompose {
+                network_id,
+                nonce,
+                input,
+                outputs,
             },
         }
     }
@@ -241,6 +289,42 @@ impl From<Transaction> for Result<TransactionType, KeyError> {
                 inputs,
                 outputs,
                 nonce,
+            },
+            Transaction::AssetCompose {
+                network_id,
+                shard_id,
+                world_id,
+                nonce,
+                metadata,
+                registrar,
+                inputs,
+                output,
+            } => {
+                let registrar = match registrar {
+                    Some(registrar) => Some(registrar.try_into_address()?),
+                    None => None,
+                };
+                TransactionType::AssetCompose {
+                    network_id,
+                    shard_id,
+                    world_id,
+                    nonce,
+                    metadata,
+                    registrar,
+                    inputs,
+                    output,
+                }
+            }
+            Transaction::AssetDecompose {
+                network_id,
+                nonce,
+                input,
+                outputs,
+            } => TransactionType::AssetDecompose {
+                network_id,
+                nonce,
+                input,
+                outputs,
             },
         })
     }

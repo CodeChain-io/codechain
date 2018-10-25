@@ -54,6 +54,21 @@ pub enum Error {
     /// Returned when the amount of either input or output is 0.
     ZeroAmount,
     TooManyOutputs(usize),
+    /// AssetCompose requires at least 1 input.
+    EmptyInput,
+    InvalidDecomposedInput {
+        address: H256,
+        got: u64,
+    },
+    InvalidComposedOutput {
+        got: u64,
+    },
+    InvalidDecomposedOutput {
+        address: H256,
+        expected: u64,
+        got: u64,
+    },
+    EmptyOutput,
 }
 
 const ERROR_ID_INVALID_ASSET_AMOUNT: u8 = 4u8;
@@ -73,6 +88,11 @@ const ERROR_ID_NOT_REGISTRAR: u8 = 17u8;
 const ERROR_ID_ZERO_AMOUNT: u8 = 18u8;
 const ERROR_ID_TOO_MANY_OUTPUTS: u8 = 19u8;
 const ERROR_ID_ASSET_SCHEME_DUPLICATED: u8 = 20u8;
+const ERROR_ID_EMPTY_INPUT: u8 = 21u8;
+const ERROR_ID_INVALID_DECOMPOSED_INPUT: u8 = 22u8;
+const ERROR_ID_INVALID_COMPOSED_OUTPUT: u8 = 23u8;
+const ERROR_ID_INVALID_DECOMPOSED_OUTPUT: u8 = 24u8;
+const ERROR_ID_EMPTY_OUTPUT: u8 = 25u8;
 
 impl Encodable for Error {
     fn rlp_append(&self, s: &mut RlpStream) {
@@ -102,6 +122,22 @@ impl Encodable for Error {
             Error::NotRegistrar(mismatch) => s.begin_list(2).append(&ERROR_ID_NOT_REGISTRAR).append(mismatch),
             Error::ZeroAmount => s.begin_list(1).append(&ERROR_ID_ZERO_AMOUNT),
             Error::TooManyOutputs(num) => s.begin_list(2).append(&ERROR_ID_TOO_MANY_OUTPUTS).append(num),
+            Error::EmptyInput => s.begin_list(1).append(&ERROR_ID_EMPTY_INPUT),
+            Error::InvalidDecomposedInput {
+                address,
+                got,
+            } => s.begin_list(3).append(&ERROR_ID_INVALID_DECOMPOSED_INPUT).append(address).append(got),
+            Error::InvalidComposedOutput {
+                got,
+            } => s.begin_list(2).append(&ERROR_ID_INVALID_COMPOSED_OUTPUT).append(got),
+            Error::InvalidDecomposedOutput {
+                address,
+                expected,
+                got,
+            } => {
+                s.begin_list(4).append(&ERROR_ID_INVALID_DECOMPOSED_OUTPUT).append(address).append(expected).append(got)
+            }
+            Error::EmptyOutput => s.begin_list(1).append(&ERROR_ID_EMPTY_OUTPUT),
         };
     }
 }
@@ -171,6 +207,45 @@ impl Decodable for Error {
                 }
                 Error::TooManyOutputs(rlp.val_at(1)?)
             }
+            ERROR_ID_EMPTY_INPUT => {
+                if rlp.item_count()? != 1 {
+                    return Err(DecoderError::RlpInvalidLength)
+                }
+                Error::EmptyInput
+            }
+            ERROR_ID_INVALID_DECOMPOSED_INPUT => {
+                if rlp.item_count()? != 3 {
+                    return Err(DecoderError::RlpInvalidLength)
+                }
+                Error::InvalidDecomposedInput {
+                    address: rlp.val_at(1)?,
+                    got: rlp.val_at(2)?,
+                }
+            }
+            ERROR_ID_INVALID_COMPOSED_OUTPUT => {
+                if rlp.item_count()? != 2 {
+                    return Err(DecoderError::RlpInvalidLength)
+                }
+                Error::InvalidComposedOutput {
+                    got: rlp.val_at(1)?,
+                }
+            }
+            ERROR_ID_INVALID_DECOMPOSED_OUTPUT => {
+                if rlp.item_count()? != 4 {
+                    return Err(DecoderError::RlpInvalidLength)
+                }
+                Error::InvalidDecomposedOutput {
+                    address: rlp.val_at(1)?,
+                    expected: rlp.val_at(2)?,
+                    got: rlp.val_at(3)?,
+                }
+            }
+            ERROR_ID_EMPTY_OUTPUT => {
+                if rlp.item_count()? != 1 {
+                    return Err(DecoderError::RlpInvalidLength)
+                }
+                Error::EmptyOutput
+            }
             _ => return Err(DecoderError::Custom("Invalid transaction error")),
         })
     }
@@ -212,6 +287,24 @@ impl Display for Error {
             ),
             Error::ZeroAmount => write!(f, "An amount cannot be 0"),
             Error::TooManyOutputs(num) => write!(f, "The number of outputs is {}. It should be 126 or less.", num),
+            Error::EmptyInput => write!(f, "The input is empty"),
+            Error::InvalidDecomposedInput {
+                address,
+                got,
+            } => write!(f, "The inputs are not valid. The amount of asset({}) input must be 1, but {}.", address, got),
+            Error::InvalidComposedOutput {
+                got,
+            } => write!(f, "The composed output is note valid. The amount must be 1, but {}.", got),
+            Error::InvalidDecomposedOutput {
+                address,
+                expected,
+                got,
+            } => write!(
+                f,
+                "The decomposed output is not balid. The amount of asset({}) must be {}, but {}.",
+                address, expected, got
+            ),
+            Error::EmptyOutput => writeln!(f, "The output is empty"),
         }
     }
 }

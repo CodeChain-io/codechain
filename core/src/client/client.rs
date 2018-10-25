@@ -313,6 +313,20 @@ impl AssetClient for Client {
                                     .expect("An asset type must be able to create an AssetSchemeAddress")
                                     .shard_id()
                     }
+                    Some(Transaction::AssetCompose {
+                        shard_id: asset_compose_shard_id,
+                        ..
+                    }) => index == 0 && shard_id == asset_compose_shard_id,
+                    Some(Transaction::AssetDecompose {
+                        outputs,
+                        ..
+                    }) => {
+                        index < outputs.len()
+                            && shard_id
+                                == AssetSchemeAddress::from_hash(outputs[index].asset_type)
+                                    .expect("An asset type must be able to create an AssetSchemeAddress")
+                                    .shard_id()
+                    }
                     None => false,
                 };
 

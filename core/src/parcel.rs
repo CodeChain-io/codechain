@@ -173,6 +173,17 @@ impl UnverifiedParcel {
                         Transaction::AssetTransfer {
                             ..
                         } => {}
+                        Transaction::AssetCompose {
+                            metadata,
+                            ..
+                        } => {
+                            if metadata.len() > params.max_metadata_size {
+                                return Err(ParcelError::MetadataTooBig)
+                            }
+                        }
+                        Transaction::AssetDecompose {
+                            ..
+                        } => {}
                     }
                 }
             }

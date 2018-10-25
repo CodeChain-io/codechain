@@ -21,6 +21,7 @@ lru-cache = "0.1"
 parking_lot = "0.5"
 primitives = { path = "../util/primitives" }
 rlp = { path = "../util/rlp" }
+rlp_derive = { path = "../util/rlp_derive" }
 rustc-hex = "1.0"
 serde = "1.0"
 serde_derive = "1.0"

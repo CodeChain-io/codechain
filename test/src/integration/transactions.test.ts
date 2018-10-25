@@ -22,6 +22,7 @@ import {
 } from "codechain-sdk/lib/core/classes";
 
 import CodeChain from "../helper/spawn";
+import { faucetAddress, faucetSecret } from "../helper/constants";
 
 describe("transactions", () => {
     let node: CodeChain;
@@ -277,8 +278,10 @@ describe("transactions", () => {
             recipient: await node.createP2PKHBurnAddress(),
             amount: 1
         });
-        node.signTransactionP2PKHBurn(tx2.inputs[0], tx2.hashWithoutScript());
-
+        await node.signTransactionP2PKHBurn(
+            tx2.inputs[0],
+            tx2.hashWithoutScript()
+        );
         const invoices = await node.sendTransactions([tx1, tx2]);
 
         expect(invoices[0].success).toBe(true);
@@ -291,7 +294,7 @@ describe("transactions", () => {
         const { asset } = await node.mintAsset({ amount: 1 });
         const tx = node.sdk.core.createAssetTransferTransaction();
         tx.addBurns(asset);
-        node.signTransactionP2PKH(tx.burns[0], tx.hashWithoutScript());
+        await node.signTransactionP2PKH(tx.burns[0], tx.hashWithoutScript());
 
         const invoice = await node.sendTransaction(tx);
 
@@ -611,6 +614,123 @@ describe("transactions", () => {
                     expect(invoice.success).toBe(true);
                 }
             );
+        });
+    });
+
+    describe("Asset compose and decompose test", () => {
+        test("AssetCompose", async () => {
+            const aliceAddress = await node.sdk.key.createAssetTransferAddress({
+                type: "P2PKH"
+            });
+            const assetScheme = node.sdk.core.createAssetScheme({
+                shardId: 0,
+                worldId: 0,
+                metadata: JSON.stringify({
+                    name: "An example asset"
+                }),
+                amount: 10,
+                registrar: null
+            });
+            const mintTx = node.sdk.core.createAssetMintTransaction({
+                scheme: assetScheme,
+                recipient: aliceAddress
+            });
+            const firstAsset = mintTx.getMintedAsset();
+            const composeTx = node.sdk.core.createAssetComposeTransaction({
+                scheme: {
+                    shardId: 0,
+                    worldId: 0,
+                    metadata: JSON.stringify({ name: "An unique asset" }),
+                    amount: 1
+                },
+                inputs: [firstAsset.createTransferInput()],
+                recipient: aliceAddress
+            });
+            await node.sdk.key.signTransactionInput(composeTx, 0);
+
+            const parcel = node.sdk.core
+                .createAssetTransactionGroupParcel({
+                    transactions: [mintTx, composeTx]
+                })
+                .sign({
+                    secret: faucetSecret,
+                    fee: 10,
+                    nonce: await node.sdk.rpc.chain.getNonce(faucetAddress)
+                });
+
+            await node.sdk.rpc.chain.sendSignedParcel(parcel);
+
+            const invoice = await node.sdk.rpc.chain.getParcelInvoice(
+                parcel.hash(),
+                {
+                    timeout: 300 * 1000
+                }
+            );
+            expect(invoice[0].success).toBe(true);
+            expect(invoice[1].success).toBe(true);
+        });
+
+        test("AssetDecompose", async () => {
+            const aliceAddress = await node.sdk.key.createAssetTransferAddress({
+                type: "P2PKH"
+            });
+            const assetScheme = node.sdk.core.createAssetScheme({
+                shardId: 0,
+                worldId: 0,
+                metadata: JSON.stringify({
+                    name: "An example asset"
+                }),
+                amount: 10,
+                registrar: null
+            });
+            const mintTx = node.sdk.core.createAssetMintTransaction({
+                scheme: assetScheme,
+                recipient: aliceAddress
+            });
+            const firstAsset = mintTx.getMintedAsset();
+            const composeTx = node.sdk.core.createAssetComposeTransaction({
+                scheme: {
+                    shardId: 0,
+                    worldId: 0,
+                    metadata: JSON.stringify({ name: "An unique asset" }),
+                    amount: 1
+                },
+                inputs: [firstAsset.createTransferInput()],
+                recipient: aliceAddress
+            });
+            await node.sdk.key.signTransactionInput(composeTx, 0);
+
+            const decomposeTx = node.sdk.core.createAssetDecomposeTransaction({
+                input: composeTx.getComposedAsset().createTransferInput()
+            });
+            decomposeTx.addOutputs({
+                amount: 10,
+                assetType: firstAsset.assetType,
+                recipient: aliceAddress
+            });
+            await node.sdk.key.signTransactionInput(decomposeTx, 0);
+
+            const parcel = node.sdk.core
+                .createAssetTransactionGroupParcel({
+                    transactions: [mintTx, composeTx, decomposeTx]
+                })
+                .sign({
+                    secret: faucetSecret,
+                    fee: 10,
+                    nonce: await node.sdk.rpc.chain.getNonce(faucetAddress)
+                });
+
+            await node.sdk.rpc.chain.sendSignedParcel(parcel);
+
+            const invoice = await node.sdk.rpc.chain.getParcelInvoice(
+                parcel.hash(),
+                {
+                    timeout: 300 * 1000
+                }
+            );
+            expect(invoice[0].success).toBe(true);
+            expect(invoice[1].success).toBe(true);
+            expect(invoice[2].success).toBe(true);
         });
     });
 

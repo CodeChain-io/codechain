@@ -25,11 +25,10 @@ enum Action {
 
 ## AssetTransactionGroup
 
-Execute `transactions`. If `block_num` is specified, parcel is valid only in block whose number is in range of [block_num, block_num + margin).
+Execute `transactions`.
 
 ```rust
 AssetTransactionGroup {
-    block_num: Option<BlockNumber>
     transactions: Vec<Transaction>
 }
 ```
