@@ -21,10 +21,7 @@ use ccrypto::{blake256, BLAKE_NULL_RLP};
 use cjson;
 use ckey::{Address, NetworkId};
 use cmerkle::TrieFactory;
-use cstate::{
-    ActionHandler, Backend, Metadata, MetadataAddress, Shard, ShardAddress, ShardMetadataAddress, StateDB, StateResult,
-    WorldAddress,
-};
+use cstate::{ActionHandler, Backend, Metadata, MetadataAddress, Shard, ShardAddress, StateDB, StateResult};
 use ctypes::transaction::Error as TransactionError;
 use ctypes::ShardId;
 use hashdb::HashDB;
@@ -56,8 +53,6 @@ pub struct CommonParams {
     pub max_body_size: usize,
     /// Snapshot creation period in unit of block numbers.
     pub snapshot_period: u64,
-    /// Flag whether to use shard validator.
-    pub use_shard_validator: bool,
 }
 
 impl From<cjson::scheme::Params> for CommonParams {
@@ -69,7 +64,6 @@ impl From<cjson::scheme::Params> for CommonParams {
             min_parcel_cost: p.min_parcel_cost.into(),
             max_body_size: p.max_body_size.into(),
             snapshot_period: p.snapshot_period.into(),
-            use_shard_validator: p.use_shard_validator.into(),
         }
     }
 }
@@ -181,24 +175,6 @@ impl Scheme {
         // Initialize shard-level tries
         for (shard_id, shard) in &*self.genesis_shards {
             let mut shard_root = BLAKE_NULL_RLP;
-
-            {
-                let mut t = TrieFactory::from_existing(db.as_hashdb_mut(), &mut shard_root)?;
-                let address = ShardMetadataAddress::new(*shard_id);
-
-                let r = t.insert(&*address, &shard.rlp_bytes());
-                debug_assert_eq!(Ok(None), r);
-                r?;
-
-                assert!(shard.worlds.len() <= ::std::u16::MAX as usize);
-                for (world_id, world) in shard.worlds.iter().enumerate() {
-                    let address = WorldAddress::new(*shard_id, world_id as u16);
-
-                    let r = t.insert(&*address, &world.rlp_bytes());
-                    debug_assert_eq!(Ok(None), r);
-                    r?;
-                }
-            }
             let owners = shard.owners.clone();
             if owners.is_empty() {
                 return Err(TransactionError::EmptyShardOwners(*shard_id).into())

@@ -28,7 +28,6 @@ mod simple_poa;
 mod solo;
 mod state;
 mod tendermint;
-mod world;
 
 pub use self::account::Account;
 pub use self::blake_pow::{BlakePoW, BlakePoWParams};
@@ -44,4 +43,3 @@ pub use self::simple_poa::{SimplePoA, SimplePoAParams};
 pub use self::solo::{Solo, SoloParams};
 pub use self::state::{Accounts, Shards};
 pub use self::tendermint::{Tendermint, TendermintParams};
-pub use self::world::World;

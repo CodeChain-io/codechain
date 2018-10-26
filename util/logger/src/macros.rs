@@ -58,9 +58,6 @@ macro_rules! log_target {
     (RPC) => {
         "rpc"
     };
-    (SHARD_VALIDATOR) => {
-        "shard_validator"
-    };
     (SHUTDOWN) => {
         "shutdown"
     };

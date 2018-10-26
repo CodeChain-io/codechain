@@ -33,12 +33,15 @@ extern crate log;
 extern crate lru_cache;
 extern crate parking_lot;
 extern crate primitives;
+#[cfg_attr(test, macro_use)]
 extern crate rlp;
 #[cfg(test)]
 extern crate rustc_hex;
 #[macro_use]
 extern crate serde_derive;
 extern crate util_error;
+#[macro_use]
+extern crate rlp_derive;
 
 mod action_handler;
 mod backend;
@@ -60,14 +63,12 @@ pub use error::Error as StateError;
 pub use impls::{ShardLevelState, TopLevelState};
 pub use item::account::Account;
 pub use item::action_data::ActionData;
-pub use item::asset::{OwnedAsset, OwnedAssetAddress};
+pub use item::asset::{Asset, OwnedAsset, OwnedAssetAddress};
 pub use item::asset_scheme::{AssetScheme, AssetSchemeAddress};
 pub use item::local_cache::{CacheableItem, LocalCache};
 pub use item::metadata::{Metadata, MetadataAddress};
 pub use item::regular_account::{RegularAccount, RegularAccountAddress};
 pub use item::shard::{Shard, ShardAddress};
-pub use item::shard_metadata::{ShardMetadata, ShardMetadataAddress};
-pub use item::world::{World, WorldAddress};
 pub use traits::{ShardState, ShardStateInfo, StateWithCache, TopState, TopStateInfo};
 
 pub type StateResult<T> = Result<T, StateError>;

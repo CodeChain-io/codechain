@@ -290,20 +290,25 @@ impl AssetClient for Client {
                     >= self.block_number(transaction_address.parcel_address.block_hash.into()) =>
             {
                 let is_output_valid = match self.transaction(transaction_hash.into()) {
-                    Some(Transaction::CreateWorld {
-                        ..
-                    }) => false,
-                    Some(Transaction::SetWorldOwners {
-                        ..
-                    }) => false,
-                    Some(Transaction::SetWorldUsers {
-                        ..
-                    }) => false,
                     Some(Transaction::AssetMint {
                         shard_id: asset_mint_shard_id,
                         ..
                     }) => index == 0 && shard_id == asset_mint_shard_id,
                     Some(Transaction::AssetTransfer {
+                        outputs,
+                        ..
+                    }) => {
+                        index < outputs.len()
+                            && shard_id
+                                == AssetSchemeAddress::from_hash(outputs[index].asset_type)
+                                    .expect("An asset type must be able to create an AssetSchemeAddress")
+                                    .shard_id()
+                    }
+                    Some(Transaction::AssetCompose {
+                        shard_id: asset_compose_shard_id,
+                        ..
+                    }) => index == 0 && shard_id == asset_compose_shard_id,
+                    Some(Transaction::AssetDecompose {
                         outputs,
                         ..
                     }) => {

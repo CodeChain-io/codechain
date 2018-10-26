@@ -17,7 +17,7 @@
 use ckey::{NetworkId, PlatformAddress, Public};
 use cstate::{AssetScheme, OwnedAsset};
 use ctypes::invoice::{ParcelInvoice, TransactionInvoice};
-use ctypes::{BlockNumber, ShardId, WorldId};
+use ctypes::{BlockNumber, ShardId};
 use primitives::{H256, U256};
 
 use jsonrpc_core::Result;
@@ -48,7 +48,7 @@ build_rpc_trait! {
 
         /// Gets asset scheme with given transaction hash.
         # [rpc(name = "chain_getAssetSchemeByHash")]
-        fn get_asset_scheme_by_hash(&self, H256, ShardId, WorldId) -> Result<Option<AssetScheme>>;
+        fn get_asset_scheme_by_hash(&self, H256, ShardId) -> Result<Option<AssetScheme>>;
 
         /// Gets asset scheme with given asset type.
         # [rpc(name = "chain_getAssetSchemeByType")]
@@ -62,9 +62,9 @@ build_rpc_trait! {
         # [rpc(name = "chain_isAssetSpent")]
         fn is_asset_spent(&self, H256, usize, ShardId, Option<u64>) -> Result<Option<bool>>;
 
-        /// Gets nonce with given account.
-        # [rpc(name = "chain_getNonce")]
-        fn get_nonce(&self, PlatformAddress, Option<u64>) -> Result<Option<U256>>;
+        /// Gets seq with given account.
+        # [rpc(name = "chain_getSeq")]
+        fn get_seq(&self, PlatformAddress, Option<u64>) -> Result<Option<U256>>;
 
         /// Gets balance with given account.
         # [rpc(name = "chain_getBalance")]

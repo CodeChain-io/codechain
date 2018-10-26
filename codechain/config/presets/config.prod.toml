@@ -52,6 +52,3 @@ path = "snapshot"
 [stratum]
 disable = true
 port = 8008
-
-[shard_validator]
-disable = true

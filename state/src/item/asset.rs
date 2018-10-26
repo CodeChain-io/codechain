@@ -20,13 +20,20 @@ use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::local_cache::CacheableItem;
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, RlpEncodable, RlpDecodable)]
 pub struct Asset {
     asset_type: H256,
     amount: u64,
 }
 
 impl Asset {
+    pub fn new(asset_type: H256, amount: u64) -> Self {
+        Self {
+            asset_type,
+            amount,
+        }
+    }
+
     pub fn asset_type(&self) -> &H256 {
         &self.asset_type
     }
@@ -189,10 +196,8 @@ mod tests {
         assert_ne!(address1, address2);
         assert_eq!(address1[0..2], [PREFIX, 0]);
         assert_eq!(address1[2..4], [0xBE, 0xEF]); // shard id
-        assert_eq!(address1[4..6], [0, 0]); // world id
         assert_eq!(address2[0..2], [PREFIX, 0]);
         assert_eq!(address2[2..4], [0xBE, 0xEF]); // shard id
-        assert_eq!(address2[4..6], [0, 0]); // world id
     }
 
     #[test]
@@ -249,4 +254,13 @@ mod tests {
         let asset_address = OwnedAssetAddress::from_hash(hash).unwrap();
         assert_eq!(shard_id, asset_address.shard_id());
     }
+
+    #[test]
+    fn encode_and_decode_asset() {
+        rlp_encode_and_decode_test!(Asset {
+            asset_type: H256::random(),
+            amount: 0
+        });
+    }
+
 }

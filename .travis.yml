@@ -60,5 +60,7 @@ cache:
   cargo: true
   directories:
     - "$HOME/.rustup"
+before_cache:
+  - rm -rf $HOME/.cargo/registry
 git:
   depth: 1

@@ -16,8 +16,7 @@
     "networkID": "sc",
     "minParcelCost": "10",
     "maxBodySize": 4194304,
-    "snapshotPeriod": 16384,
-    "useShardValidator": false
+    "snapshotPeriod": 16384
   },
   "genesis": {
     "seal": {
@@ -30,17 +29,13 @@
     "extraData": "0x"
   },
   "accounts": {
-    "sccqx74ftz8ct6yks4mq3u06g2wt07zxfqrss777pj2":  { "balance": "2100000000000000000", "nonce": "0" }
+    "sccqx74ftz8ct6yks4mq3u06g2wt07zxfqrss777pj2":  { "balance": "2100000000000000000", "seq": "0" }
   },
   "shards": {
     "0": {
-      "nonce": 0,
+      "seq": 0,
       "owners": ["sccqx74ftz8ct6yks4mq3u06g2wt07zxfqrss777pj2"],
-      "worlds": [{
-        "nonce": 0,
-        "owners": [
-        ]
-      }]
+      "users": []
     }
   }
 }

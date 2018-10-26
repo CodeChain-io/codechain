@@ -24,7 +24,7 @@ use ckey::{public_to_address, NetworkId, PlatformAddress, Public};
 use cstate::{AssetScheme, AssetSchemeAddress, OwnedAsset};
 use ctypes::invoice::{ParcelInvoice, TransactionInvoice};
 use ctypes::parcel::Action;
-use ctypes::{BlockNumber, ShardId, WorldId};
+use ctypes::{BlockNumber, ShardId};
 use primitives::{H256, U256};
 use rlp::{DecoderError, UntrustedRlp};
 
@@ -109,13 +109,8 @@ where
         Ok(self.client.transaction_invoice(transaction_hash.into()))
     }
 
-    fn get_asset_scheme_by_hash(
-        &self,
-        transaction_hash: H256,
-        shard_id: ShardId,
-        world_id: WorldId,
-    ) -> Result<Option<AssetScheme>> {
-        let address = AssetSchemeAddress::new(transaction_hash, shard_id, world_id);
+    fn get_asset_scheme_by_hash(&self, transaction_hash: H256, shard_id: ShardId) -> Result<Option<AssetScheme>> {
+        let address = AssetSchemeAddress::new(transaction_hash, shard_id);
         self.get_asset_scheme_by_type(address.into())
     }
 
@@ -142,7 +137,7 @@ where
         self.client.is_asset_spent(transaction_hash, index, shard_id, block_id).map_err(errors::parcel_state)
     }
 
-    fn get_nonce(&self, address: PlatformAddress, block_number: Option<u64>) -> Result<Option<U256>> {
+    fn get_seq(&self, address: PlatformAddress, block_number: Option<u64>) -> Result<Option<U256>> {
         let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
         let address = address.try_address().map_err(errors::core)?;
         Ok(self.client.seq(address, block_id))

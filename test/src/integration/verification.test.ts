@@ -76,7 +76,7 @@ describe("solo - 1 node", () => {
     describe("Sending invalid parcels over the limits (general)", () => {
         let parcelEncoded: any[];
         beforeEach(async () => {
-            const nonce = await node.sdk.rpc.chain.getNonce(faucetAddress);
+            const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
             const parcel = node.sdk.core
                 .createPaymentParcel({
                     recipient,
@@ -85,15 +85,15 @@ describe("solo - 1 node", () => {
                 .sign({
                     secret: faucetSecret,
                     fee: 10,
-                    nonce
+                    seq
                 });
             parcelEncoded = parcel.toEncodeObject();
         });
 
         test.each(["0x01" + "0".repeat(64), "0x" + "f".repeat(128)])(
-            "nonce: %p",
-            async (nonce, done) => {
-                parcelEncoded[0] = nonce;
+            "seq: %p",
+            async (seq, done) => {
+                parcelEncoded[0] = seq;
                 try {
                     await node.sendSignedParcelWithRlpBytes(
                         RLP.encode(parcelEncoded)
@@ -215,7 +215,7 @@ describe("solo - 1 node", () => {
     describe("Sending invalid parcels over the limits (in action 2: Payment)", () => {
         let parcelEncoded: any[];
         beforeEach(async () => {
-            const nonce = await node.sdk.rpc.chain.getNonce(faucetAddress);
+            const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
             const parcel = node.sdk.core
                 .createPaymentParcel({
                     recipient,
@@ -224,7 +224,7 @@ describe("solo - 1 node", () => {
                 .sign({
                     secret: faucetSecret,
                     fee: 10,
-                    nonce
+                    seq
                 });
             parcelEncoded = parcel.toEncodeObject();
         });
@@ -269,7 +269,7 @@ describe("solo - 1 node", () => {
         beforeEach(async () => {
             const privKey = node.sdk.util.generatePrivateKey();
             const key = node.sdk.util.getPublicFromPrivate(privKey);
-            const nonce = await node.sdk.rpc.chain.getNonce(faucetAddress);
+            const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
             const parcel = node.sdk.core
                 .createSetRegularKeyParcel({
                     key
@@ -277,7 +277,7 @@ describe("solo - 1 node", () => {
                 .sign({
                     secret: faucetSecret,
                     fee: 10,
-                    nonce
+                    seq
                 });
             parcelEncoded = parcel.toEncodeObject();
         });
@@ -304,7 +304,7 @@ describe("solo - 1 node", () => {
     test.each([0, 9])(
         "Sending invalid parcels (low fee): %p",
         async (fee, done) => {
-            const nonce = await node.sdk.rpc.chain.getNonce(faucetAddress);
+            const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
             const parcel = node.sdk.core
                 .createPaymentParcel({
                     recipient,
@@ -313,7 +313,7 @@ describe("solo - 1 node", () => {
                 .sign({
                     secret: faucetSecret,
                     fee,
-                    nonce
+                    seq
                 });
             try {
                 await node.sdk.rpc.chain.sendSignedParcel(parcel);

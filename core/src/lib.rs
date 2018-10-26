@@ -68,7 +68,6 @@ mod miner;
 mod parcel;
 mod scheme;
 mod service;
-mod shard_validator;
 mod types;
 mod verification;
 mod views;
@@ -91,5 +90,4 @@ pub use miner::{Miner, MinerOptions, MinerService, Stratum, StratumConfig, Strat
 pub use parcel::{LocalizedParcel, SignedParcel, UnverifiedParcel};
 pub use scheme::Scheme;
 pub use service::ClientService;
-pub use shard_validator::{ShardValidator, ShardValidatorClient, ShardValidatorConfig};
 pub use types::{BlockId, ParcelId};

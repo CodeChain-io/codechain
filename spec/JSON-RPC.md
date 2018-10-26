@@ -45,7 +45,7 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
  - fee: `U256`
  - hash: `H256`
  - networkId: `number`
- - nonce: `U256`
+ - seq: `U256`
  - parcelIndex: `number`
  - sig: `Signature`
  - action: `Action`
@@ -54,7 +54,7 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
 
  - fee: `U256`
  - networkId: `number`
- - nonce: `U256` | `null`
+ - seq: `U256` | `null`
  - action: `Action`
 
 ## Actions
@@ -90,8 +90,8 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
 
 ## Transaction
 
- - type: "createWorld" | "setWorldOwners" | "setWorldUsers"| "assetMint" | "assetTransfer"
- - data: `CreateWorld` | `SetWorldOwners` | `SetWorldUsers`| `AssetMint` | `AssetTransfer`
+ - type: "assetMint" | "assetTransfer"
+ - data: `AssetMint` | `AssetTransfer`
 
 ## AssetScheme
 
@@ -129,7 +129,7 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
 | -32032 | `Not Enough Balance` | The signer's balance is insufficient |
 | -32033 | `Too Low Fee` | The fee is lower than the minimum required |
 | -32034 | `Too Cheap to Replace` | The fee is lower than the existing one in the queue |
-| -32035 | `Invalid Nonce` | The signer's nonce is invalid to import |
+| -32035 | `Invalid Seq` | The signer's seq is invalid to import |
 | -32036 | `Invalid NetworkId` | The network id does not match |
 | -32040 | `Keystore Error` | Failed to access the key store (Internal error of CodeChain) |
 | -32041 | `Key Error` | The key is invalid |
@@ -160,7 +160,7 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
  * [chain_getAssetSchemeByType](#chain_getassetschemebytype)
  * [chain_getAsset](#chain_getasset)
  * [chain_isAssetSpent](#chain_isassetspent)
- * [chain_getNonce](#chain_getnonce)
+ * [chain_getSeq](#chain_getseq)
  * [chain_getBalance](#chain_getbalance)
  * [chain_getRegularKey](#chain_getregularkey)
  * [chain_getRegularKeyOwner](#chain_getregularkeyowner)
@@ -199,9 +199,6 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
  * [account_sign](#account_sign)
  * [account_sendParcel](#account_sendparcel)
  * [account_changePassword](#account_changepassword)
-***
- * [shardValidator_registerAction](#shardvalidator_registeraction)
- * [shardValidator_getSignatures](#shardvalidator_getsignatures)
 ***
  * [devel_getStateTrieKeys](#devel_getstatetriekeys)
  * [devel_getStateTrieValue](#devel_getstatetrievalue)
@@ -399,7 +396,7 @@ Response Example:
         "fee":"0x5f5e100",
         "hash":"0x3ff9b02427ac04c06260928168775bca5a3da96ae6995041e197d42e71ab68b6",
         "networkId":"sc",
-        "nonce":"0x4",
+        "seq":"0x4",
         "parcelIndex":0,
         "sig":"0x4621da0344d8888c5076cc0a3cc7fd7a7e3a761ba812c95f807c050a4e5ec6b7120fa99fdf502ed088ed61eb6d5fe44f44c280e97c7702d5127640d7a8a6d7e401"
       }
@@ -459,7 +456,7 @@ Response Example
         "fee":"0xa",
         "hash":"0xdb7c705d02e8961880783b4cb3dc051c41e551ade244bed5521901d8de190fc6",
         "networkId":17,
-        "nonce":"0x4",
+        "seq":"0x4",
         "parcelIndex":0,
         "sig":"0x291d932e55162407eb01915923d68cf78df4815a25fc6033488b644bda44b02251123feac3a3c56a399a2b32331599fd50b7a39ec2c1a2325e37f383c6aeedc301"
       }
@@ -485,7 +482,7 @@ Params:
 
 Return Type: `H256` - parcel hash
 
-Errors: `Invalid RLP`, `Verification Failed`, `Already Imported`, `Not Enough Balance`, `Too Low Fee`, `Too Cheap to Replace`, `Invalid Nonce`, `Invalid Params`, `Invalid NetworkId`
+Errors: `Invalid RLP`, `Verification Failed`, `Already Imported`, `Not Enough Balance`, `Too Low Fee`, `Too Cheap to Replace`, `Invalid Seq`, `Invalid Params`, `Invalid NetworkId`
 
 Request Example:
 ```
@@ -537,7 +534,7 @@ Response Example
         "fee": "0xa",
         "hash": "0xdb7c705d02e8961880783b4cb3dc051c41e551ade244bed5521901d8de190fc6",
         "networkId": 17,
-        "nonce": "0x4",
+        "seq": "0x4",
         "parcelIndex": 0,
         "sig":"0x291d932e55162407eb01915923d68cf78df4815a25fc6033488b644bda44b02251123feac3a3c56a399a2b32331599fd50b7a39ec2c1a2325e37f383c6aeedc301"
     }
@@ -644,7 +641,6 @@ Gets an asset scheme with the given asset type.
 Params:
  1. transaction hash of AssetMintTransaction - `H256`
  2. shard id - `number`
- 3. world_id - `number`
 
 Return Type: `null` | `AssetScheme`
 
@@ -654,7 +650,7 @@ Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "chain_getAssetSchemeByHash", "params": ["0x24df02abcd4e984e90253dc344e89b8431bbb319c66643bfef566dfdf46ec6bc", 0, 0], "id": null}' \
+    -d '{"jsonrpc": "2.0", "method": "chain_getAssetSchemeByHash", "params": ["0x24df02abcd4e984e90253dc344e89b8431bbb319c66643bfef566dfdf46ec6bc", 0], "id": null}' \
     localhost:8080
 ```
 
@@ -766,8 +762,8 @@ Response Example
 }
 ```
 
-## chain_getNonce
-Gets a nonce of an account of the given address, at state of the given blockNumber.
+## chain_getSeq
+Gets a seq of an account of the given address, at state of the given blockNumber.
 
 Params:
  1. address: `PlatformAddress`
@@ -781,7 +777,7 @@ Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "chain_getNonce", "params": ["cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7", null], "id": null}' \
+    -d '{"jsonrpc": "2.0", "method": "chain_getSeq", "params": ["cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7", null], "id": null}' \
     localhost:8080
 ```
 
@@ -960,14 +956,14 @@ Response Example
       "fee":"0xa",
       "hash":"0x8ae3363ccdcc02d8d662d384deee34fb89d1202124e8065f0d6c84ab31e68d8a",
       "networkId":17,
-      "nonce":"0x0",
+      "seq":"0x0",
       "parcelIndex":null,
       "r":"0x22605d6b9fb713d3a415e02eeed8b4a630e0d867c91bf7d9b7721f94159c0fe1",
       "s":"0x772f19f1c27f1db8b28289caa9e99ad756878fd56b2415c25cd47cc737f7e0c2",
       "transactions":[
         {
           "payment":{
-            "nonce":"0x1",
+            "seq":"0x1",
             "receiver": "cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7",
             "value":"0x0"
           }
@@ -1019,7 +1015,7 @@ Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "chain_executeTransactions", "params": [[{"type":"assetMint","data":{"networkId":"17","shardId":0,"worldId":0,"metadata":"{\"name\":\"Gold\",\"description\":\"An asset example\",\"icon_url\":\"https://gold.image/\"}","output":{"lockScriptHash":"0xf42a65ea518ba236c08b261c34af0521fa3cd1aa505e1c18980919cb8945f8f3","parameters":[],"amount":10000},"registrar":null,"nonce":0}}, {"type":"assetMint","data":{"networkId":"17","shardId":1,"worldId":0,"metadata":"{\"name\":\"Gold\",\"description\":\"An asset example\",\"icon_url\":\"https://gold.image/\"}","output":{"lockScriptHash":"0xf42a65ea518ba236c08b261c34af0521fa3cd1aa505e1c18980919cb8945f8f3","parameters":[],"amount":10000},"registrar":null,"nonce":0}}], "cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7"], "id": null}' \
+    -d '{"jsonrpc": "2.0", "method": "chain_executeTransactions", "params": [[{"type":"assetMint","data":{"networkId":"17","shardId":0,"metadata":"{\"name\":\"Gold\",\"description\":\"An asset example\",\"icon_url\":\"https://gold.image/\"}","output":{"lockScriptHash":"0xf42a65ea518ba236c08b261c34af0521fa3cd1aa505e1c18980919cb8945f8f3","parameters":[],"amount":10000},"registrar":null,"nonce":0}}, {"type":"assetMint","data":{"networkId":"17","shardId":1,"metadata":"{\"name\":\"Gold\",\"description\":\"An asset example\",\"icon_url\":\"https://gold.image/\"}","output":{"lockScriptHash":"0xf42a65ea518ba236c08b261c34af0521fa3cd1aa505e1c18980919cb8945f8f3","parameters":[],"amount":10000},"registrar":null,"nonce":0}}], "cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7"], "id": null}' \
     localhost:8080
 ```
 
@@ -1693,14 +1689,14 @@ Response Example
 
 ## account_sendParcel
 Sends a parcel by signing it with the account’s private key.
-It automatically fills the nonce if the nonce is not given
+It automatically fills the seq if the seq is not given
 
 Params:
  1. parcel: `UnsignedParcel`
  2. account: `PlatformAddress`
  3. passphrase: `string` | `null`
 
-Return type: { hash: `H256`, nonce: `U256` } - the hash and nonce of the parcel
+Return type: { hash: `H256`, seq: `U256` } - the hash and seq of the parcel
 
 Errors: `Keystore Error`, `Wrong Password`, `No Such Account`, `Not Unlocked`, `Invalid Params`, `Invalid NetworkId`
 
@@ -1708,7 +1704,7 @@ Request Example
 ```
 curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "account_sendParcel", "params": [{"action":{ "action":"payment", "amount":"0x3b9aca00", "receiver":"sccqra5felweesff3epv9wfu05a47sxh89yuvzw7mqd" }, "fee":"0x5f5e100", "networkId":"sc", "nonce": null}, "cccqqfz3sx7fr7uxqa5kl63qjdw9zrntru5kcdsjywj", null], "id": 6}' \
+    -d '{"jsonrpc": "2.0", "method": "account_sendParcel", "params": [{"action":{ "action":"payment", "amount":"0x3b9aca00", "receiver":"sccqra5felweesff3epv9wfu05a47sxh89yuvzw7mqd" }, "fee":"0x5f5e100", "networkId":"sc", "seq": null}, "cccqqfz3sx7fr7uxqa5kl63qjdw9zrntru5kcdsjywj", null], "id": 6}' \
     localhost:8080
 ```
 
@@ -1717,7 +1713,7 @@ Response Example
 ```
 {
   "jsonrpc":"2.0",
-  "result": {"nonce":"0xe8d4a50dd0", "hash":"0x8ae3363ccdcc02d8d662d384deee34fb89d1202124e8065f0d6c84ab31e68d8a"},
+  "result": {"seq":"0xe8d4a50dd0", "hash":"0x8ae3363ccdcc02d8d662d384deee34fb89d1202124e8065f0d6c84ab31e68d8a"},
   "id":6
 }
 ```
@@ -1747,62 +1743,6 @@ Response Example
 {
   "jsonrpc":"2.0",
   "result":null,
-  "id":6
-}
-```
-
-## shardValidator_registerAction
-Sends an action to get signatures. The action will be propagated and shard
-validators will send the signatures of the action if it is a valid action.
-
-Params:
- 1. action: `Action`
-
-Return Type: `bool`
-
-Errors: `Invalid Params`
-
-Request Example
-```
-  curl \
-    -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "shardValidator_registerAction", "params": [{"action":"changeShardState","transactions":[{"type":"assetMint","data":{"networkId":17,"shardId":0,"metadata":"{\"name\":\"Gold\",\"description\":\"An asset example\",\"icon_url\":\"https://gold.image/\"}","output":{"lockScriptHash":"0xf42a65ea518ba236c08b261c34af0521fa3cd1aa505e1c18980919cb8945f8f3","parameters":[],"amount":10000},"registrar":null,"nonce":0}}],"changes":[{"shardId":0,"preRoot":"0x0000000000000000000000000000000000000000000000000000000000000000","postRoot":"0x0000000000000000000000000000000000000000000000000000000000000000"}]}
-], "id": null}' \
-    localhost:8080
-```
-
-Response Example
-```
-{
-  "jsonrpc":"2.0",
-  "result":true,
-  "id":6
-}
-```
-
-## shardValidator_getSignatures
-Gets the signatures signed by the shard validators for the given action.
-
-Params:
- 1. action_hash: `H256`
-
-Return type: `Signature[]`
-
-Errors: `Invalid Params`
-
-Request Example
-```
-curl \
-    -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "shardValidator_getSignatures", "params": ["0xa2b39d16efe74b17f84ed4cf629e7c8817691cc4f444ac7522902b8fb4b7bd53"], "id": 6}' \
-    localhost:8080
-```
-
-Response Example
-```
-{
-  "jsonrpc":"2.0",
-  "result":["0xff7e8928f7758a64b9ea6c53f9945cdd223740675ac6ac6da625306d3966f8197523e00d56844ddb70631d44f045f4d83cc183a267c3182ab04c2f459c8289f501"],
   "id":6
 }
 ```
