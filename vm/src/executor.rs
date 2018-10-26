@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ccrypto::{blake256, keccak256, ripemd160, sha256, Blake};
-use ckey::{verify, Public, Signature, SIGNATURE_LENGTH};
+use ccrypto::{blake160, blake256, keccak256, ripemd160, sha256, Blake};
+use ckey::{recover, verify, Public, Signature, SIGNATURE_LENGTH};
 use ctypes::transaction::{AssetOutPoint, HashingError, PartialHashing};
 use ctypes::util::tag::Tag;
 
@@ -289,7 +289,7 @@ pub fn execute(
             }
             Instruction::Blake160 => {
                 let value = stack.pop()?;
-                stack.push(Item(H160::blake(value).to_vec()))?;
+                stack.push(Item(blake160(value).to_vec()))?;
             }
         }
         pc += 1;

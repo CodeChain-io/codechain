@@ -27,6 +27,15 @@ pub fn blake128_with_key<T: AsRef<[u8]>>(s: T, key: &[u8]) -> H128 {
     H128::blake_with_key(s, key)
 }
 
+/// BLAKE160
+pub fn blake160<T: AsRef<[u8]>>(s: T) -> H160 {
+    H160::blake(s)
+}
+
+pub fn blake160_with_key<T: AsRef<[u8]>>(s: T, key: &[u8]) -> H160 {
+    H160::blake_with_key(s, key)
+}
+
 /// BLAKE256
 pub fn blake256<T: AsRef<[u8]>>(s: T) -> H256 {
     H256::blake(s)
