@@ -19,7 +19,7 @@ use std::io::{Read, Write};
 use serde::{Serialize, Serializer};
 use serde_json;
 
-use super::{Crypto, H160, Uuid, Version};
+use super::{Crypto, Uuid, Version, H160};
 
 /// Public opaque type representing serializable `KeyFile`.
 #[derive(Debug, PartialEq)]

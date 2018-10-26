@@ -571,15 +571,15 @@ impl Database {
                                 Ok(Some(value.clone()))
                             }
                             Some(&KeyState::Delete) => Ok(None),
-                            None => {
-                                col.map_or_else(
+                            None => col
+                                .map_or_else(
                                     || db.get_opt(key, &self.read_opts).map(|r| r.map(|v| DBValue::from_slice(&v))),
                                     |c| {
                                         db.get_cf_opt(cfs[c as usize], key, &self.read_opts)
                                             .map(|r| r.map(|v| DBValue::from_slice(&v)))
                                     },
-                                ).map_err(Into::into)
-                            }
+                                )
+                                .map_err(Into::into),
                         }
                     }
                 }
@@ -594,11 +594,13 @@ impl Database {
         self.iter_from_prefix(col, prefix).and_then(|mut iter| {
             match iter.next() {
                 // TODO: use prefix_same_as_start read option (not availabele in C API currently)
-                Some((k, v)) => if k[0..prefix.len()] == prefix[..] {
-                    Some(v)
-                } else {
-                    None
-                },
+                Some((k, v)) => {
+                    if k[0..prefix.len()] == prefix[..] {
+                        Some(v)
+                    } else {
+                        None
+                    }
+                }
                 _ => None,
             }
         })
@@ -653,7 +655,8 @@ impl Database {
                             cfs[c as usize],
                             IteratorMode::From(prefix, Direction::Forward),
                             &self.read_opts,
-                        ).expect("iterator params are valid; qed")
+                        )
+                        .expect("iterator params are valid; qed")
                     },
                 );
 
@@ -683,11 +686,13 @@ impl Database {
 
         let existed = match fs::rename(&self.path, &backup_db) {
             Ok(_) => true,
-            Err(e) => if let io::ErrorKind::NotFound = e.kind() {
-                false
-            } else {
-                return Err(e.into())
-            },
+            Err(e) => {
+                if let io::ErrorKind::NotFound = e.kind() {
+                    false
+                } else {
+                    return Err(e.into())
+                }
+            }
         };
 
         match fs::rename(&new_db, &self.path) {

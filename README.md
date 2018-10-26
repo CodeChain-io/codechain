@@ -32,17 +32,17 @@ You can create a block by sending a parcel through [JSON-RPC](https://github.com
 ## Formatting
 
 
-Make sure you run `rustfmt` before creating a PR to the repo. You need to install the nightly-2018-07-17 version of `rustfmt`.
+Make sure you run `rustfmt` before creating a PR to the repo. You need to install the nightly-2018-10-18 version of `rustfmt`.
 
 ```
-rustup toolchain install nightly-2018-07-17
-rustup component add rustfmt-preview --toolchain nightly-2018-07-17
+rustup toolchain install nightly-2018-10-18
+rustup component add rustfmt-preview --toolchain nightly-2018-10-18
 ```
 
 To run `rustfmt`,
 
 ```
-cargo +nightly-2018-07-17 fmt
+cargo +nightly-2018-10-18 fmt
 ```
 
 ## Testing

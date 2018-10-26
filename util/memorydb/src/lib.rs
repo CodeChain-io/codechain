@@ -145,12 +145,14 @@ impl MemoryDB {
             return None
         }
         match self.data.entry(key.clone()) {
-            Entry::Occupied(mut entry) => if entry.get().1 == 1 {
-                Some(entry.remove().0)
-            } else {
-                entry.get_mut().1 -= 1;
-                None
-            },
+            Entry::Occupied(mut entry) => {
+                if entry.get().1 == 1 {
+                    Some(entry.remove().0)
+                } else {
+                    entry.get_mut().1 -= 1;
+                    None
+                }
+            }
             Entry::Vacant(entry) => {
                 entry.insert((DBValue::new(), -1));
                 None

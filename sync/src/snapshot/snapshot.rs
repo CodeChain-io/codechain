@@ -332,7 +332,8 @@ mod tests {
             journal_key: 0,
             value_mode: ValueMode::Index,
             count,
-        }.make_with(&mut seed);
+        }
+        .make_with(&mut seed);
 
         let snapshot_dir = tempdir().unwrap();
         let snapshot = Snapshot::try_new(&snapshot_dir).unwrap();

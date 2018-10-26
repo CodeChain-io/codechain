@@ -60,7 +60,8 @@ impl CodeChainMachine {
             return Err(StateError::Parcel(ParcelError::InsufficientFee {
                 minimal: self.params.min_parcel_cost,
                 got: p.fee,
-            }).into())
+            })
+            .into())
         }
         p.verify_basic(self.params()).map_err(StateError::from)?;
 
@@ -122,7 +123,8 @@ impl CodeChainMachine {
                         return Err(StateError::Transaction(TransactionError::Timelocked {
                             timelock,
                             remaining_time: value - header.number(),
-                        }).into())
+                        })
+                        .into())
                     }
                     Timelock::BlockAge(value) => {
                         let absolute = client.transaction_block_number(input.prev_out.transaction_hash.into()).ok_or(
@@ -135,14 +137,16 @@ impl CodeChainMachine {
                             return Err(StateError::Transaction(TransactionError::Timelocked {
                                 timelock,
                                 remaining_time: absolute - header.number(),
-                            }).into())
+                            })
+                            .into())
                         }
                     }
                     Timelock::Time(value) if value > header.timestamp() => {
                         return Err(StateError::Transaction(TransactionError::Timelocked {
                             timelock,
                             remaining_time: value - header.timestamp(),
-                        }).into())
+                        })
+                        .into())
                     }
                     Timelock::TimeAge(value) => {
                         let absolute = client
@@ -150,12 +154,14 @@ impl CodeChainMachine {
                             .ok_or(Error::State(StateError::Transaction(TransactionError::Timelocked {
                                 timelock,
                                 remaining_time: u64::max_value(),
-                            })))? + value;
+                            })))?
+                            + value;
                         if absolute > header.timestamp() {
                             return Err(StateError::Transaction(TransactionError::Timelocked {
                                 timelock,
                                 remaining_time: absolute - header.timestamp(),
-                            }).into())
+                            })
+                            .into())
                         }
                     }
                     _ => (),

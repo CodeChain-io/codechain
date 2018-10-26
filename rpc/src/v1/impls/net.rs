@@ -38,7 +38,9 @@ impl NetClient {
 
 impl Net for NetClient {
     fn share_secret(&self, secret: H256, address: ::std::net::IpAddr, port: u16) -> Result<()> {
-        self.network_control.register_secret(secret, SocketAddr::new(address, port)).map_err(errors::network_control)?;
+        self.network_control
+            .register_secret(secret, SocketAddr::new(address, port))
+            .map_err(errors::network_control)?;
         Ok(())
     }
 

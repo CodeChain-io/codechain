@@ -376,7 +376,8 @@ mod tests {
                 journal_key: 0,
                 value_mode: ValueMode::Index,
                 count: 100,
-            }.make_with(&mut seed);
+            }
+            .make_with(&mut seed);
 
             let real = trie_root(x.clone());
             let mut memdb = MemoryDB::new();
@@ -602,7 +603,8 @@ mod tests {
                 journal_key: 0,
                 value_mode: ValueMode::Index,
                 count: 4,
-            }.make_with(&mut seed);
+            }
+            .make_with(&mut seed);
 
             let real = trie_root(x.clone());
             let mut memdb = MemoryDB::new();
@@ -669,7 +671,8 @@ mod tests {
             journal_key: 0,
             value_mode: ValueMode::Index,
             count: 4,
-        }.make_with(&mut seed);
+        }
+        .make_with(&mut seed);
 
         let mut db = MemoryDB::new();
         let mut root = H256::new();
@@ -697,7 +700,8 @@ mod tests {
             journal_key: 0,
             value_mode: ValueMode::Index,
             count: 4,
-        }.make_with(&mut seed);
+        }
+        .make_with(&mut seed);
 
         let mut db = MemoryDB::new();
         let mut root = H256::new();

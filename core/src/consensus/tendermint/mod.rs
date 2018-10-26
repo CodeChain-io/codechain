@@ -517,7 +517,8 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
             Err(BlockError::InvalidSealArity(Mismatch {
                 expected: expected_seal_fields,
                 found: seal_length,
-            }).into())
+            })
+            .into())
         }
     }
 
@@ -532,7 +533,8 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
                 proposal.vote_step.height,
                 proposal.vote_step.view,
                 &proposer,
-            ).map_err(Into::into)
+            )
+            .map_err(Into::into)
         } else {
             let vote_step = VoteStep::new(header.number() as usize, consensus_view(header)?, Step::Precommit);
             let precommit_hash = message_hash(vote_step.clone(), header.bare_hash());
@@ -800,7 +802,8 @@ where
                 min: Some(threshold),
                 max: None,
                 found: n,
-            }).into())
+            })
+            .into())
         }
     }
 
@@ -1007,7 +1010,8 @@ mod tests {
             proposer,
             vec![],
             false,
-        ).unwrap();
+        )
+        .unwrap();
         let b = b.close(*genesis_header.parcels_root(), *genesis_header.invoices_root());
         if let Seal::Proposal(seal) = scheme.engine.generate_seal(b.block(), &genesis_header) {
             (b, seal)

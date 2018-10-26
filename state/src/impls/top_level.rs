@@ -354,7 +354,8 @@ impl TopLevelState {
             return Err(ParcelError::InvalidSeq {
                 expected: seq,
                 got: parcel.seq,
-            }.into())
+            }
+            .into())
         }
 
         let fee = parcel.fee;
@@ -364,7 +365,8 @@ impl TopLevelState {
                 address: *fee_payer,
                 cost: fee,
                 balance,
-            }.into())
+            }
+            .into())
         }
 
         self.inc_seq(fee_payer)?;
@@ -505,7 +507,8 @@ impl TopLevelState {
             return Err(ParcelError::InvalidShardRoot(Mismatch {
                 expected: shard_root,
                 found: change.pre_root,
-            }).into())
+            })
+            .into())
         }
 
         let (new_shard_root, db, results) =
@@ -514,7 +517,8 @@ impl TopLevelState {
             return Err(ParcelError::InvalidShardRoot(Mismatch {
                 expected: new_shard_root,
                 found: change.post_root,
-            }).into())
+            })
+            .into())
         }
 
         self.db = db;
@@ -755,7 +759,8 @@ impl TopState<StateDB> for TopLevelState {
                 address: *from,
                 cost: *by,
                 balance,
-            }.into())
+            }
+            .into())
         }
         if self.regular_account_exists_and_not_null_by_address(to)? {
             return Err(ParcelError::InvalidTransferDestination.into())
@@ -808,7 +813,8 @@ impl TopState<StateDB> for TopLevelState {
                 address: *fee_payer,
                 cost: *shard_creation_cost,
                 balance,
-            }.into())
+            }
+            .into())
         }
         self.sub_balance(fee_payer, shard_creation_cost)?;
 
