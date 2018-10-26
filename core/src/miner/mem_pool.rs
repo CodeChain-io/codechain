@@ -1244,7 +1244,8 @@ pub mod test {
             ParcelTimelock {
                 block: None,
                 timestamp: None
-            }.cmp(&ParcelTimelock {
+            }
+            .cmp(&ParcelTimelock {
                 block: Some(10),
                 timestamp: None
             }),
@@ -1254,7 +1255,8 @@ pub mod test {
             ParcelTimelock {
                 block: None,
                 timestamp: None
-            }.cmp(&ParcelTimelock {
+            }
+            .cmp(&ParcelTimelock {
                 block: None,
                 timestamp: Some(100)
             }),
@@ -1266,7 +1268,8 @@ pub mod test {
             ParcelTimelock {
                 block: Some(9),
                 timestamp: None
-            }.cmp(&ParcelTimelock {
+            }
+            .cmp(&ParcelTimelock {
                 block: Some(10),
                 timestamp: None
             }),
@@ -1276,7 +1279,8 @@ pub mod test {
             ParcelTimelock {
                 block: Some(9),
                 timestamp: None
-            }.cmp(&ParcelTimelock {
+            }
+            .cmp(&ParcelTimelock {
                 block: Some(10),
                 timestamp: Some(100)
             }),
@@ -1286,7 +1290,8 @@ pub mod test {
             ParcelTimelock {
                 block: Some(9),
                 timestamp: Some(100)
-            }.cmp(&ParcelTimelock {
+            }
+            .cmp(&ParcelTimelock {
                 block: Some(10),
                 timestamp: None
             }),
@@ -1296,7 +1301,8 @@ pub mod test {
             ParcelTimelock {
                 block: Some(9),
                 timestamp: Some(99)
-            }.cmp(&ParcelTimelock {
+            }
+            .cmp(&ParcelTimelock {
                 block: Some(10),
                 timestamp: Some(100)
             }),
@@ -1306,7 +1312,8 @@ pub mod test {
             ParcelTimelock {
                 block: Some(9),
                 timestamp: Some(101)
-            }.cmp(&ParcelTimelock {
+            }
+            .cmp(&ParcelTimelock {
                 block: Some(10),
                 timestamp: Some(100)
             }),
@@ -1316,7 +1323,8 @@ pub mod test {
             ParcelTimelock {
                 block: Some(11),
                 timestamp: None
-            }.cmp(&ParcelTimelock {
+            }
+            .cmp(&ParcelTimelock {
                 block: Some(10),
                 timestamp: None
             }),
@@ -1326,7 +1334,8 @@ pub mod test {
             ParcelTimelock {
                 block: Some(11),
                 timestamp: None
-            }.cmp(&ParcelTimelock {
+            }
+            .cmp(&ParcelTimelock {
                 block: Some(10),
                 timestamp: Some(100)
             }),
@@ -1336,7 +1345,8 @@ pub mod test {
             ParcelTimelock {
                 block: Some(11),
                 timestamp: Some(100)
-            }.cmp(&ParcelTimelock {
+            }
+            .cmp(&ParcelTimelock {
                 block: Some(10),
                 timestamp: None
             }),
@@ -1346,7 +1356,8 @@ pub mod test {
             ParcelTimelock {
                 block: Some(11),
                 timestamp: Some(99)
-            }.cmp(&ParcelTimelock {
+            }
+            .cmp(&ParcelTimelock {
                 block: Some(10),
                 timestamp: Some(100)
             }),
@@ -1356,7 +1367,8 @@ pub mod test {
             ParcelTimelock {
                 block: Some(11),
                 timestamp: Some(101)
-            }.cmp(&ParcelTimelock {
+            }
+            .cmp(&ParcelTimelock {
                 block: Some(10),
                 timestamp: Some(100)
             }),
@@ -1368,7 +1380,8 @@ pub mod test {
             ParcelTimelock {
                 block: Some(10),
                 timestamp: None
-            }.cmp(&ParcelTimelock {
+            }
+            .cmp(&ParcelTimelock {
                 block: Some(10),
                 timestamp: Some(100)
             }),
@@ -1378,7 +1391,8 @@ pub mod test {
             ParcelTimelock {
                 block: Some(10),
                 timestamp: Some(99)
-            }.cmp(&ParcelTimelock {
+            }
+            .cmp(&ParcelTimelock {
                 block: Some(10),
                 timestamp: Some(100)
             }),
@@ -1388,7 +1402,8 @@ pub mod test {
             ParcelTimelock {
                 block: Some(10),
                 timestamp: Some(100)
-            }.cmp(&ParcelTimelock {
+            }
+            .cmp(&ParcelTimelock {
                 block: Some(10),
                 timestamp: Some(100)
             }),
@@ -1398,7 +1413,8 @@ pub mod test {
             ParcelTimelock {
                 block: Some(10),
                 timestamp: Some(101)
-            }.cmp(&ParcelTimelock {
+            }
+            .cmp(&ParcelTimelock {
                 block: Some(10),
                 timestamp: Some(100)
             }),
@@ -1408,7 +1424,8 @@ pub mod test {
             ParcelTimelock {
                 block: None,
                 timestamp: None
-            }.cmp(&ParcelTimelock {
+            }
+            .cmp(&ParcelTimelock {
                 block: None,
                 timestamp: Some(100)
             }),
@@ -1418,7 +1435,8 @@ pub mod test {
             ParcelTimelock {
                 block: None,
                 timestamp: Some(99)
-            }.cmp(&ParcelTimelock {
+            }
+            .cmp(&ParcelTimelock {
                 block: None,
                 timestamp: Some(100)
             }),
@@ -1428,7 +1446,8 @@ pub mod test {
             ParcelTimelock {
                 block: None,
                 timestamp: Some(100)
-            }.cmp(&ParcelTimelock {
+            }
+            .cmp(&ParcelTimelock {
                 block: None,
                 timestamp: Some(100)
             }),
@@ -1438,7 +1457,8 @@ pub mod test {
             ParcelTimelock {
                 block: None,
                 timestamp: Some(101)
-            }.cmp(&ParcelTimelock {
+            }
+            .cmp(&ParcelTimelock {
                 block: None,
                 timestamp: Some(100)
             }),

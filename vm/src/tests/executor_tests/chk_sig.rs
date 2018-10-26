@@ -57,7 +57,8 @@ fn valid_pay_to_public_key() {
             inputs: Vec::new(),
             outputs: Vec::new(),
             nonce: 0,
-        }.rlp_bytes(),
+        }
+        .rlp_bytes(),
         &blake128(&[0b11 as u8]),
     );
     let signature = Signature::from(sign(keypair.private(), &message).unwrap()).to_vec();
@@ -100,7 +101,8 @@ fn invalid_pay_to_public_key() {
             inputs: Vec::new(),
             outputs: Vec::new(),
             nonce: 0,
-        }.rlp_bytes(),
+        }
+        .rlp_bytes(),
         &blake128(&[0b11 as u8]),
     );
 
@@ -176,7 +178,8 @@ fn sign_all_input_all_output() {
             inputs: vec![input0.clone(), input1],
             outputs: vec![output0, output1],
             nonce: 0,
-        }.rlp_bytes(),
+        }
+        .rlp_bytes(),
         &blake128(&[0b11 as u8]),
     );
 
@@ -251,7 +254,8 @@ fn sign_single_input_all_output() {
             inputs: vec![input0.clone()],
             outputs: vec![output0, output1],
             nonce: 0,
-        }.rlp_bytes(),
+        }
+        .rlp_bytes(),
         &blake128(&[0b10 as u8]),
     );
     let signature = Signature::from(sign(keypair.private(), &message).unwrap()).to_vec();
@@ -325,7 +329,8 @@ fn sign_all_input_partial_output() {
             inputs: vec![input0.clone(), input1],
             outputs: vec![output0],
             nonce: 0,
-        }.rlp_bytes(),
+        }
+        .rlp_bytes(),
         &blake128(&[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0b1, 0b00111101 as u8]),
     );
     let signature = Signature::from(sign(keypair.private(), &message).unwrap()).to_vec();
@@ -402,7 +407,8 @@ fn sign_single_input_partial_output() {
             inputs: vec![input0.clone()],
             outputs: vec![output0],
             nonce: 0,
-        }.rlp_bytes(),
+        }
+        .rlp_bytes(),
         &blake128(&[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0b1, 0b00111100 as u8]),
     );
     let signature = Signature::from(sign(keypair.private(), &message).unwrap()).to_vec();
@@ -459,7 +465,8 @@ fn distinguish_sign_single_input_with_sign_all() {
             inputs: vec![input0.clone()],
             outputs: vec![output0],
             nonce: 0,
-        }.rlp_bytes(),
+        }
+        .rlp_bytes(),
         &blake128(&[0b11 as u8]),
     );
     let signature = Signature::from(sign(keypair.private(), &message).unwrap()).to_vec();
@@ -514,7 +521,8 @@ fn distinguish_sign_single_output_with_sign_all() {
             inputs: vec![input0.clone()],
             outputs: vec![output0],
             nonce: 0,
-        }.rlp_bytes(),
+        }
+        .rlp_bytes(),
         &blake128(&[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0b11 as u8]),
     );
     let signature = Signature::from(sign(keypair.private(), &message).unwrap()).to_vec();

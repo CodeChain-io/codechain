@@ -471,7 +471,8 @@ impl PartialHashing for Transaction {
                         inputs: new_inputs,
                         outputs: new_outputs,
                         nonce: *nonce,
-                    }.rlp_bytes(),
+                    }
+                    .rlp_bytes(),
                     &blake128(tag.get_tag()),
                 ))
             }
@@ -509,7 +510,8 @@ impl PartialHashing for Transaction {
                         registrar: *registrar,
                         inputs: new_inputs,
                         output: new_output,
-                    }.rlp_bytes(),
+                    }
+                    .rlp_bytes(),
                     &blake128(tag.get_tag()),
                 ))
             }
@@ -536,7 +538,8 @@ impl PartialHashing for Transaction {
                             unlock_script: Vec::new(),
                         },
                         outputs: new_outputs,
-                    }.rlp_bytes(),
+                    }
+                    .rlp_bytes(),
                     &blake128(tag.get_tag()),
                 ))
             }

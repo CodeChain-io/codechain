@@ -227,7 +227,8 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
                 return Err(TransactionError::NotRegistrar(Mismatch {
                     expected: *registrar,
                     found: *sender,
-                }).into())
+                })
+                .into())
             }
         }
 
@@ -238,7 +239,8 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
                         address: asset_address.into(),
                         expected: *asset.amount(),
                         got: input.prev_out.amount,
-                    }.into())
+                    }
+                    .into())
                 }
                 Ok((asset, asset_address))
             }
@@ -266,7 +268,8 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
             return Err(TransactionError::ScriptHashMismatch(Mismatch {
                 expected: *asset.lock_script_hash(),
                 found: Blake::blake(&input.lock_script),
-            }).into())
+            })
+            .into())
         }
 
         let script_result = match (decode(&input.lock_script), decode(&input.unlock_script)) {
@@ -282,7 +285,8 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
             ),
             // FIXME : Deliver full decode error
             _ => return Err(TransactionError::InvalidScript.into()),
-        }.map_err(|err| {
+        }
+        .map_err(|err| {
             ctrace!(TX, "Cannot run unlock/lock script {:?}", err);
             TransactionError::FailedToUnlock(address_hash)
         })?;
@@ -345,8 +349,8 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         client: &C,
     ) -> StateResult<()> {
         let asset_type = input.prev_out.asset_type;
-        let asset_scheme_address =
-            AssetSchemeAddress::from_hash(asset_type).ok_or(TransactionError::AssetSchemeNotFound(asset_type.into()))?;
+        let asset_scheme_address = AssetSchemeAddress::from_hash(asset_type)
+            .ok_or(TransactionError::AssetSchemeNotFound(asset_type.into()))?;
         let asset_scheme = self
             .asset_scheme((&asset_scheme_address).into())?
             .ok_or(TransactionError::AssetSchemeNotFound(asset_scheme_address.clone().into()))?;
@@ -355,7 +359,8 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
             return Err(TransactionError::InvalidDecomposedInput {
                 address: asset_type.clone(),
                 got: 0,
-            }.into())
+            }
+            .into())
         }
 
         // Check that the outputs are match with pool
@@ -372,7 +377,8 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
                         address: asset.asset_type().clone(),
                         expected: *asset.amount(),
                         got: 0,
-                    }.into())
+                    }
+                    .into())
                 }
                 Some(value) => {
                     if value != *asset.amount() {
@@ -380,7 +386,8 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
                             address: asset.asset_type().clone(),
                             expected: *asset.amount(),
                             got: value,
-                        }.into())
+                        }
+                        .into())
                     }
                 }
             }
@@ -393,7 +400,8 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
                 address: invalid_asset.asset_type().clone(),
                 expected: 0,
                 got: *invalid_asset.amount(),
-            }.into())
+            }
+            .into())
         }
 
 

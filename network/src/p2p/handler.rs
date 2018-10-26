@@ -177,7 +177,8 @@ impl Handler {
 
                 let _establish_lock = self.establish_lock.lock();
                 let local_node_id = self.routing_table.local_node_id(&remote_node_id).ok_or("Not handshaked")?;
-                let session = self.routing_table.unestablished_session(&socket_address).ok_or("Session doesn't exist")?;
+                let session =
+                    self.routing_table.unestablished_session(&socket_address).ok_or("Session doesn't exist")?;
 
                 let mut tokens = self.tokens.lock();
                 let token = tokens.gen().ok_or("TooManyConnections")?;
@@ -232,7 +233,8 @@ impl Handler {
                             return Err(Error::UnexpectedNodeId(Mismatch {
                                 expected: remote_node_id,
                                 found: node_id,
-                            }).into())
+                            })
+                            .into())
                         }
 
                         let remote_addr = SocketAddr::new(remote_addr.ip(), port);

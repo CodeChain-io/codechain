@@ -18,7 +18,7 @@ use std::result;
 
 use secp256k1::{ecdh, key};
 
-use super::{Error, Private, Public, SECP256K1, Secret};
+use super::{Error, Private, Public, Secret, SECP256K1};
 
 pub fn exchange(public: &Public, private: &Private) -> result::Result<Secret, Error> {
     let public = {

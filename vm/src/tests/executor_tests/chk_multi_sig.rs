@@ -100,7 +100,8 @@ fn valid_multi_sig_1_of_2() {
             inputs: Vec::new(),
             outputs: Vec::new(),
             nonce: 0,
-        }.rlp_bytes(),
+        }
+        .rlp_bytes(),
         &blake128(&[0b11 as u8]),
     );
     let signature1 = Signature::from(sign(keypair1.private(), &message).unwrap()).to_vec();
@@ -152,7 +153,8 @@ fn valid_multi_sig_2_of_2() {
             inputs: Vec::new(),
             outputs: Vec::new(),
             nonce: 0,
-        }.rlp_bytes(),
+        }
+        .rlp_bytes(),
         &blake128(&[0b11 as u8]),
     );
     let signature1 = Signature::from(sign(keypair1.private(), &message).unwrap()).to_vec();
@@ -206,7 +208,8 @@ fn invalid_multi_sig_1_of_2() {
             inputs: Vec::new(),
             outputs: Vec::new(),
             nonce: 0,
-        }.rlp_bytes(),
+        }
+        .rlp_bytes(),
         &blake128(&[0b11 as u8]),
     );
     let signature1 = Signature::from(sign(keypair1.private(), &message).unwrap()).to_vec();
@@ -259,7 +262,8 @@ fn invalid_multi_sig_2_of_2() {
             inputs: Vec::new(),
             outputs: Vec::new(),
             nonce: 0,
-        }.rlp_bytes(),
+        }
+        .rlp_bytes(),
         &blake128(&[0b11 as u8]),
     );
     let signature1 = Signature::from(sign(keypair1.private(), &message).unwrap()).to_vec();
@@ -313,7 +317,8 @@ fn invalid_multi_sig_2_of_2_with_1_invalid_sig() {
             inputs: Vec::new(),
             outputs: Vec::new(),
             nonce: 0,
-        }.rlp_bytes(),
+        }
+        .rlp_bytes(),
         &blake128(&[0b11 as u8]),
     );
     let message2 = blake256_with_key(
@@ -323,7 +328,8 @@ fn invalid_multi_sig_2_of_2_with_1_invalid_sig() {
             inputs: Vec::new(),
             outputs: Vec::new(),
             nonce: 0,
-        }.rlp_bytes(),
+        }
+        .rlp_bytes(),
         &blake128(&[0b11 as u8]),
     );
     let signature1 = Signature::from(sign(keypair1.private(), &message1).unwrap()).to_vec();
@@ -377,7 +383,8 @@ fn invalid_multi_sig_2_of_2_with_changed_order_sig() {
             inputs: Vec::new(),
             outputs: Vec::new(),
             nonce: 0,
-        }.rlp_bytes(),
+        }
+        .rlp_bytes(),
         &blake128(&[0b11 as u8]),
     );
     let signature1 = Signature::from(sign(keypair1.private(), &message).unwrap()).to_vec();
@@ -431,7 +438,8 @@ fn invalid_multi_sig_with_less_sig_than_m() {
             inputs: Vec::new(),
             outputs: Vec::new(),
             nonce: 0,
-        }.rlp_bytes(),
+        }
+        .rlp_bytes(),
         &blake128(&[0b11 as u8]),
     );
     let signature1 = Signature::from(sign(keypair1.private(), &message).unwrap()).to_vec();
@@ -483,7 +491,8 @@ fn invalid_multi_sig_with_more_sig_than_m() {
             inputs: Vec::new(),
             outputs: Vec::new(),
             nonce: 0,
-        }.rlp_bytes(),
+        }
+        .rlp_bytes(),
         &blake128(&[0b11 as u8]),
     );
     let signature1 = Signature::from(sign(keypair1.private(), &message).unwrap()).to_vec();
@@ -535,7 +544,8 @@ fn invalid_multi_sig_with_too_many_arg() {
             inputs: Vec::new(),
             outputs: Vec::new(),
             nonce: 0,
-        }.rlp_bytes(),
+        }
+        .rlp_bytes(),
         &blake128(&[0b11 as u8]),
     );
     let signature1 = Signature::from(sign(keypair1.private(), &message).unwrap()).to_vec();

@@ -223,7 +223,8 @@ fn verify_parent(header: &Header, parent: &Header) -> Result<(), Error> {
             min: Some(1),
             max: None,
             found: header.number(),
-        }).into())
+        })
+        .into())
     }
 
     Ok(())
