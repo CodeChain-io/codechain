@@ -223,6 +223,9 @@ pub fn execute(
                 stack.push(second)?;
             }
             Instruction::Copy(index) => {
+                if stack.len() <= *index as usize {
+                    return Err(RuntimeError::StackUnderflow)
+                }
                 let item = stack.get((stack.len() - 1) - *index as usize)?;
                 stack.push(item)?
             }
@@ -264,9 +267,9 @@ pub fn execute(
                 let mut result = 1;
                 while let Some(sig) = signatures.pop() {
                     let public = pubkey.pop().unwrap();
-                    if let Ok(false) = verify(&public, &sig, &tx_hash) {
-                        result = 0;
-                        break
+                    result = match verify(&public, &sig, &tx_hash) {
+                        Ok(true) => 1,
+                        _ => 0,
                     }
                 }
                 stack.push(Item(vec![result]))?;

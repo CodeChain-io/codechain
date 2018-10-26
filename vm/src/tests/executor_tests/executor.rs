@@ -466,9 +466,7 @@ fn _keccak256() {
     );
 }
 
-
 #[test]
-#[ignore]
 fn copy_stack_underflow() {
     let transaction = Transaction::AssetTransfer {
         network_id: NetworkId::default(),
