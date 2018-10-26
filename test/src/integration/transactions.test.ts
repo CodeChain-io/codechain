@@ -44,6 +44,9 @@ describe("transactions", () => {
                 recipient
             });
             const invoice = await node.sendTransaction(tx);
+            if (invoice == null) {
+                throw Error("Cannot send a transaction");
+            }
             expect(invoice.success).toBe(true);
         });
 
@@ -231,6 +234,9 @@ describe("transactions", () => {
         });
         await node.signTransferInput(tx1, 0);
         const invoice = await node.sendTransaction(tx1);
+        if (invoice == null) {
+            throw Error("Cannot send a transaction");
+        }
         expect(invoice.success).toBe(true);
 
         const tx2 = node.sdk.core.createAssetTransferTransaction();
@@ -295,6 +301,9 @@ describe("transactions", () => {
         await node.signTransactionP2PKH(tx.burns[0], tx.hashWithoutScript());
 
         const invoice = await node.sendTransaction(tx);
+        if (invoice == null) {
+            throw Error("Cannot send a transaction");
+        }
 
         expect(invoice.success).toBe(false);
     });
@@ -462,6 +471,9 @@ describe("transactions", () => {
             tx.addBurns(assets[2]);
             await node.sdk.key.signTransactionBurn(tx, 0);
             const invoice = await node.sendTransaction(tx);
+            if (invoice == null) {
+                throw Error("Cannot send a transaction");
+            }
             expect(invoice.success).toBe(true);
         });
 
@@ -479,6 +491,9 @@ describe("transactions", () => {
             tx.addInputs(assets[1]);
             await node.sdk.key.signTransactionInput(tx, 1);
             const invoice = await node.sendTransaction(tx);
+            if (invoice == null) {
+                throw Error("Cannot send a transaction");
+            }
             expect(invoice.success).toBe(false);
             expect(invoice.error!.type).toBe("FailedToUnlock");
         });
@@ -498,6 +513,9 @@ describe("transactions", () => {
             tx.addInputs(assets[1]);
             await node.sdk.key.signTransactionInput(tx, 1);
             const invoice = await node.sendTransaction(tx);
+            if (invoice == null) {
+                throw Error("Cannot send a transaction");
+            }
             expect(invoice.success).toBe(true);
         });
 
@@ -513,6 +531,9 @@ describe("transactions", () => {
             await node.sdk.key.signTransactionInput(tx, 0);
             tx.addOutputs({ assetType, amount: 500, recipient: address2 });
             const invoice = await node.sendTransaction(tx);
+            if (invoice == null) {
+                throw Error("Cannot send a transaction");
+            }
             expect(invoice.success).toBe(false);
             expect(invoice.error!.type).toBe("FailedToUnlock");
         });
@@ -534,6 +555,9 @@ describe("transactions", () => {
             });
             tx.addOutputs({ assetType, amount: 500, recipient: address2 });
             const invoice = await node.sendTransaction(tx);
+            if (invoice == null) {
+                throw Error("Cannot send a transaction");
+            }
             expect(invoice.success).toBe(true);
         });
 
@@ -563,6 +587,9 @@ describe("transactions", () => {
             const address2Param = tx.outputs[1].parameters;
             (tx.outputs[0].parameters as any) = address2Param;
             const invoice = await node.sendTransaction(tx);
+            if (invoice == null) {
+                throw Error("Cannot send a transaction");
+            }
             expect(invoice.success).toBe(false);
 
             (tx.outputs[0].parameters as any) = address1Param;
@@ -576,6 +603,9 @@ describe("transactions", () => {
 
             (tx.outputs[1].parameters as any) = address1Param;
             const invoice2 = await node.sendTransaction(tx);
+            if (invoice2 == null) {
+                throw Error("Cannot send a transaction");
+            }
             expect(invoice2.success).toBe(true);
         });
 
@@ -607,6 +637,9 @@ describe("transactions", () => {
                         recipient: address1
                     });
                     const invoice = await node.sendTransaction(tx);
+                    if (invoice == null) {
+                        throw Error("Cannot send a transaction");
+                    }
                     expect(invoice.success).toBe(true);
                 }
             );

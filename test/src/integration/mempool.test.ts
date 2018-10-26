@@ -171,9 +171,7 @@ describe("Memory pool memory limit test", () => {
 
                 for (let i = 0; i < 10; i++) {
                     const pendingParcels = await nodeB.sdk.rpc.chain.getPendingParcels();
-                    expect(
-                        (await nodeB.sdk.rpc.chain.getPendingParcels()).length
-                    ).toEqual(0);
+                    expect(pendingParcels.length).toEqual(0);
                     await wait(250);
                 }
             },
