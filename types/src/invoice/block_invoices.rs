@@ -57,6 +57,8 @@ impl Encodable for BlockInvoices {
 
 #[cfg(test)]
 mod tests {
+    use rlp::rlp_encode_and_decode_test;
+
     use super::super::super::transaction::Error as TransactionError;
     use super::super::transaction_invoice::TransactionInvoice;
 

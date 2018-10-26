@@ -41,7 +41,6 @@ extern crate multimap;
 extern crate num_cpus;
 extern crate primitives;
 extern crate rand;
-#[cfg_attr(test, macro_use)]
 extern crate rlp;
 extern crate rlp_compress;
 #[macro_use]

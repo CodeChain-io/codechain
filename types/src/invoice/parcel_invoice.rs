@@ -130,6 +130,7 @@ impl From<Vec<TransactionInvoice>> for ParcelInvoice {
 #[cfg(test)]
 mod tests {
     use primitives::H256;
+    use rlp::rlp_encode_and_decode_test;
 
     use super::super::super::transaction::Error as TransactionError;
 

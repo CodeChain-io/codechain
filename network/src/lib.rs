@@ -22,7 +22,6 @@ extern crate mio;
 extern crate parking_lot;
 extern crate primitives;
 extern crate rand;
-#[cfg_attr(test, macro_use)]
 extern crate rlp;
 #[macro_use]
 extern crate rlp_derive;

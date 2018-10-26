@@ -303,6 +303,8 @@ impl Display for Error {
 
 #[cfg(test)]
 mod tests {
+    use rlp::rlp_encode_and_decode_test;
+
     use super::*;
 
     #[test]

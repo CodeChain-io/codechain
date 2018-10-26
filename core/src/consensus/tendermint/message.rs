@@ -230,9 +230,10 @@ pub fn message_hash(vote_step: VoteStep, block_hash: H256) -> H256 {
 
 #[cfg(test)]
 mod tests {
+    use rlp::{self, rlp_encode_and_decode_test};
+
     use super::super::Step;
     use super::*;
-    use rlp;
 
     #[test]
     fn step_ordering() {

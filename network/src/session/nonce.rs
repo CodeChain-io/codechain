@@ -85,6 +85,8 @@ impl Hash for Nonce {
 
 #[cfg(test)]
 mod tests {
+    use rlp::rlp_encode_and_decode_test;
+
     use super::*;
 
     #[test]
