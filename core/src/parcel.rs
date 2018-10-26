@@ -286,6 +286,7 @@ mod tests {
     use ckey::{Address, Public, Signature};
     use ctypes::transaction::AssetMintOutput;
     use primitives::{H160, H256};
+    use rlp::rlp_encode_and_decode_test;
 
     use super::*;
 
