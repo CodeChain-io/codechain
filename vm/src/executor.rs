@@ -230,12 +230,15 @@ pub fn execute(
                 stack.remove(*index as usize)?;
             }
             Instruction::ChkSig => {
-                let pubkey = Public::from_slice(stack.pop()?.assert_len(64)?.as_ref());
+                let pubkeyhash = H160::from_slice(stack.pop()?.assert_len(20)?.as_ref());
                 let tag = Tag::try_new(stack.pop()?.as_ref().to_vec())?;
                 let tx_hash = tx.hash_partially(tag, cur, burn)?;
                 let signature = Signature::from(Signature::from(stack.pop()?.assert_len(SIGNATURE_LENGTH)?.as_ref()));
-                let result = match verify(&pubkey, &signature, &tx_hash) {
-                    Ok(true) => 1,
+                let result = match recover(&signature, &tx_hash) {
+                    Ok(pubkey) if H160::blake(pubkey) == pubkeyhash => match verify(&pubkey, &signature, &tx_hash) {
+                        Ok(true) => 1,
+                        _ => 0,
+                    },
                     _ => 0,
                 };
                 stack.push(Item(vec![result]))?;
