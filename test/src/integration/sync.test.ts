@@ -415,9 +415,11 @@ describeSkippedInTravis("sync", () => {
         describe("Connected in a line", () => {
             describe("All connected", () => {
                 beforeEach(async () => {
+                    const connects = [];
                     for (let i = 0; i < numNodes - 1; i++) {
-                        await nodes[i].connect(nodes[i + 1]);
+                        connects.push(nodes[i].connect(nodes[i + 1]));
                     }
+                    await Promise.all(connects);
                 }, 5000 + 1500 * numNodes);
 
                 test(
@@ -503,9 +505,11 @@ describeSkippedInTravis("sync", () => {
             const numHalf: number = Math.floor(numNodes / 2);
 
             beforeEach(async () => {
+                const connects = [];
                 for (let i = 0; i < numNodes; i++) {
-                    nodes[i].connect(nodes[(i + 1) % numNodes]);
+                    connects.push(nodes[i].connect(nodes[(i + 1) % numNodes]));
                 }
+                await Promise.all(connects);
             }, 5000 + 1500 * numNodes);
 
             test(
@@ -573,9 +577,11 @@ describeSkippedInTravis("sync", () => {
             describe("Connected in a star", () => {
                 describe("All connected", () => {
                     beforeEach(async () => {
+                        let connects = [];
                         for (let i = 1; i < numNodes; i++) {
-                            nodes[0].connect(nodes[i]);
+                            connects.push(nodes[0].connect(nodes[i]));
                         }
+                        await Promise.all(connects);
                     }, 5000 + 1500 * numNodes);
 
                     test(
