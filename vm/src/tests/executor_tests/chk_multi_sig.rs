@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ccrypto::{blake128, blake256_with_key};
+use ccrypto::{blake128, blake160, blake256_with_key};
 use ckey::{sign, KeyPair, NetworkId, Private, Signature};
 use ctypes::transaction::{AssetOutPoint, Transaction};
 use primitives::H256;
@@ -26,7 +26,7 @@ use executor::{execute, Config, RuntimeError, ScriptResult};
 use instruction::Instruction;
 
 #[test]
-fn valid_multi_sig_0_of_2() {
+fn invalid_multi_sig_0_of_2() {
     let transaction = Transaction::AssetTransfer {
         network_id: NetworkId::default(),
         burns: Vec::new(),
@@ -44,12 +44,14 @@ fn valid_multi_sig_0_of_2() {
     let keypair2 = KeyPair::from_private(Private::from(SecretKey::from(MINUS_ONE_KEY))).unwrap();
     let pubkey1 = <&[u8]>::from(keypair1.public()).to_vec();
     let pubkey2 = <&[u8]>::from(keypair2.public()).to_vec();
+    let pubkeyhash1 = blake160(pubkey1).to_vec();
+    let pubkeyhash2 = blake160(pubkey2).to_vec();
 
     let unlock_script = vec![Instruction::PushB(vec![0b11 as u8])];
     let lock_script = vec![
         Instruction::PushB(vec![0]),
-        Instruction::PushB(pubkey1),
-        Instruction::PushB(pubkey2),
+        Instruction::PushB(pubkeyhash1),
+        Instruction::PushB(pubkeyhash2),
         Instruction::PushB(vec![2]),
         Instruction::ChkMultiSig,
     ];
@@ -79,6 +81,8 @@ fn valid_multi_sig_1_of_2() {
     let keypair2 = KeyPair::from_private(Private::from(SecretKey::from(MINUS_ONE_KEY))).unwrap();
     let pubkey1 = <&[u8]>::from(keypair1.public()).to_vec();
     let pubkey2 = <&[u8]>::from(keypair2.public()).to_vec();
+    let pubkeyhash1 = blake160(pubkey1).to_vec();
+    let pubkeyhash2 = blake160(pubkey2).to_vec();
     let message = blake256_with_key(
         &Transaction::AssetTransfer {
             network_id: NetworkId::default(),
@@ -94,8 +98,8 @@ fn valid_multi_sig_1_of_2() {
     let unlock_script = vec![Instruction::PushB(vec![0b11 as u8]), Instruction::PushB(signature1)];
     let lock_script = vec![
         Instruction::PushB(vec![1]),
-        Instruction::PushB(pubkey1),
-        Instruction::PushB(pubkey2),
+        Instruction::PushB(pubkeyhash1),
+        Instruction::PushB(pubkeyhash2),
         Instruction::PushB(vec![2]),
         Instruction::ChkMultiSig,
     ];
@@ -125,6 +129,8 @@ fn valid_multi_sig_2_of_2() {
     let keypair2 = KeyPair::from_private(Private::from(SecretKey::from(MINUS_ONE_KEY))).unwrap();
     let pubkey1 = <&[u8]>::from(keypair1.public()).to_vec();
     let pubkey2 = <&[u8]>::from(keypair2.public()).to_vec();
+    let pubkeyhash1 = blake160(pubkey1).to_vec();
+    let pubkeyhash2 = blake160(pubkey2).to_vec();
     let message = blake256_with_key(
         &Transaction::AssetTransfer {
             network_id: NetworkId::default(),
@@ -142,8 +148,8 @@ fn valid_multi_sig_2_of_2() {
         vec![Instruction::PushB(vec![0b11 as u8]), Instruction::PushB(signature1), Instruction::PushB(signature2)];
     let lock_script = vec![
         Instruction::PushB(vec![2]),
-        Instruction::PushB(pubkey1),
-        Instruction::PushB(pubkey2),
+        Instruction::PushB(pubkeyhash1),
+        Instruction::PushB(pubkeyhash2),
         Instruction::PushB(vec![2]),
         Instruction::ChkMultiSig,
     ];
@@ -173,6 +179,8 @@ fn invalid_multi_sig_1_of_2() {
     let keypair2 = KeyPair::from_private(Private::from(SecretKey::from(MINUS_ONE_KEY))).unwrap();
     let pubkey1 = <&[u8]>::from(keypair1.public()).to_vec();
     let pubkey2 = <&[u8]>::from(keypair2.public()).to_vec();
+    let pubkeyhash1 = blake160(pubkey1).to_vec();
+    let pubkeyhash2 = blake160(pubkey2).to_vec();
     let message = blake256_with_key(
         &Transaction::AssetTransfer {
             network_id: "aa".into(),
@@ -188,8 +196,8 @@ fn invalid_multi_sig_1_of_2() {
     let unlock_script = vec![Instruction::PushB(vec![0b11 as u8]), Instruction::PushB(signature1)];
     let lock_script = vec![
         Instruction::PushB(vec![1]),
-        Instruction::PushB(pubkey1),
-        Instruction::PushB(pubkey2),
+        Instruction::PushB(pubkeyhash1),
+        Instruction::PushB(pubkeyhash2),
         Instruction::PushB(vec![2]),
         Instruction::ChkMultiSig,
     ];
@@ -220,6 +228,8 @@ fn invalid_multi_sig_2_of_2() {
     let keypair2 = KeyPair::from_private(Private::from(SecretKey::from(MINUS_ONE_KEY))).unwrap();
     let pubkey1 = <&[u8]>::from(keypair1.public()).to_vec();
     let pubkey2 = <&[u8]>::from(keypair2.public()).to_vec();
+    let pubkeyhash1 = blake160(pubkey1).to_vec();
+    let pubkeyhash2 = blake160(pubkey2).to_vec();
     let message = blake256_with_key(
         &Transaction::AssetTransfer {
             network_id: "aa".into(),
@@ -237,8 +247,8 @@ fn invalid_multi_sig_2_of_2() {
         vec![Instruction::PushB(vec![0b11 as u8]), Instruction::PushB(signature1), Instruction::PushB(signature2)];
     let lock_script = vec![
         Instruction::PushB(vec![2]),
-        Instruction::PushB(pubkey1),
-        Instruction::PushB(pubkey2),
+        Instruction::PushB(pubkeyhash1),
+        Instruction::PushB(pubkeyhash2),
         Instruction::PushB(vec![2]),
         Instruction::ChkMultiSig,
     ];
@@ -268,6 +278,8 @@ fn invalid_multi_sig_2_of_2_with_1_invalid_sig() {
     let keypair2 = KeyPair::from_private(Private::from(SecretKey::from(MINUS_ONE_KEY))).unwrap();
     let pubkey1 = <&[u8]>::from(keypair1.public()).to_vec();
     let pubkey2 = <&[u8]>::from(keypair2.public()).to_vec();
+    let pubkeyhash1 = blake160(pubkey1).to_vec();
+    let pubkeyhash2 = blake160(pubkey2).to_vec();
     let message1 = blake256_with_key(
         &Transaction::AssetTransfer {
             network_id: NetworkId::default(),
@@ -295,8 +307,8 @@ fn invalid_multi_sig_2_of_2_with_1_invalid_sig() {
         vec![Instruction::PushB(vec![0b11 as u8]), Instruction::PushB(signature1), Instruction::PushB(signature2)];
     let lock_script = vec![
         Instruction::PushB(vec![2]),
-        Instruction::PushB(pubkey1),
-        Instruction::PushB(pubkey2),
+        Instruction::PushB(pubkeyhash1),
+        Instruction::PushB(pubkeyhash2),
         Instruction::PushB(vec![2]),
         Instruction::ChkMultiSig,
     ];
@@ -326,6 +338,8 @@ fn invalid_multi_sig_2_of_2_with_changed_order_sig() {
     let keypair2 = KeyPair::from_private(Private::from(SecretKey::from(MINUS_ONE_KEY))).unwrap();
     let pubkey1 = <&[u8]>::from(keypair1.public()).to_vec();
     let pubkey2 = <&[u8]>::from(keypair2.public()).to_vec();
+    let pubkeyhash1 = blake160(pubkey1).to_vec();
+    let pubkeyhash2 = blake160(pubkey2).to_vec();
     let message = blake256_with_key(
         &Transaction::AssetTransfer {
             network_id: NetworkId::default(),
@@ -343,8 +357,8 @@ fn invalid_multi_sig_2_of_2_with_changed_order_sig() {
         vec![Instruction::PushB(vec![0b11 as u8]), Instruction::PushB(signature2), Instruction::PushB(signature1)];
     let lock_script = vec![
         Instruction::PushB(vec![2]),
-        Instruction::PushB(pubkey1),
-        Instruction::PushB(pubkey2),
+        Instruction::PushB(pubkeyhash1),
+        Instruction::PushB(pubkeyhash2),
         Instruction::PushB(vec![2]),
         Instruction::ChkMultiSig,
     ];
@@ -374,6 +388,8 @@ fn invalid_multi_sig_with_less_sig_than_m() {
     let keypair2 = KeyPair::from_private(Private::from(SecretKey::from(MINUS_ONE_KEY))).unwrap();
     let pubkey1 = <&[u8]>::from(keypair1.public()).to_vec();
     let pubkey2 = <&[u8]>::from(keypair2.public()).to_vec();
+    let pubkeyhash1 = blake160(pubkey1).to_vec();
+    let pubkeyhash2 = blake160(pubkey2).to_vec();
     let message = blake256_with_key(
         &Transaction::AssetTransfer {
             network_id: NetworkId::default(),
@@ -389,8 +405,8 @@ fn invalid_multi_sig_with_less_sig_than_m() {
     let unlock_script = vec![Instruction::PushB(vec![0b11 as u8]), Instruction::PushB(signature1)];
     let lock_script = vec![
         Instruction::PushB(vec![2]),
-        Instruction::PushB(pubkey1),
-        Instruction::PushB(pubkey2),
+        Instruction::PushB(pubkeyhash1),
+        Instruction::PushB(pubkeyhash2),
         Instruction::PushB(vec![2]),
         Instruction::ChkMultiSig,
     ];
@@ -420,6 +436,8 @@ fn invalid_multi_sig_with_more_sig_than_m() {
     let keypair2 = KeyPair::from_private(Private::from(SecretKey::from(MINUS_ONE_KEY))).unwrap();
     let pubkey1 = <&[u8]>::from(keypair1.public()).to_vec();
     let pubkey2 = <&[u8]>::from(keypair2.public()).to_vec();
+    let pubkeyhash1 = blake160(pubkey1).to_vec();
+    let pubkeyhash2 = blake160(pubkey2).to_vec();
     let message = blake256_with_key(
         &Transaction::AssetTransfer {
             network_id: NetworkId::default(),
@@ -437,8 +455,8 @@ fn invalid_multi_sig_with_more_sig_than_m() {
         vec![Instruction::PushB(vec![0b11 as u8]), Instruction::PushB(signature1), Instruction::PushB(signature2)];
     let lock_script = vec![
         Instruction::PushB(vec![1]),
-        Instruction::PushB(pubkey1),
-        Instruction::PushB(pubkey2),
+        Instruction::PushB(pubkeyhash1),
+        Instruction::PushB(pubkeyhash2),
         Instruction::PushB(vec![2]),
         Instruction::ChkMultiSig,
     ];
@@ -466,6 +484,7 @@ fn invalid_multi_sig_with_too_many_arg() {
     };
     let keypair1 = KeyPair::from_private(Private::from(SecretKey::from(ONE_KEY))).unwrap();
     let pubkey1 = <&[u8]>::from(keypair1.public()).to_vec();
+    let pubkeyhash1 = blake160(pubkey1).to_vec();
     let message = blake256_with_key(
         &Transaction::AssetTransfer {
             network_id: NetworkId::default(),
@@ -490,13 +509,13 @@ fn invalid_multi_sig_with_too_many_arg() {
     ];
     let lock_script = vec![
         Instruction::PushB(vec![7]),
-        Instruction::PushB(pubkey1.clone()),
-        Instruction::PushB(pubkey1.clone()),
-        Instruction::PushB(pubkey1.clone()),
-        Instruction::PushB(pubkey1.clone()),
-        Instruction::PushB(pubkey1.clone()),
-        Instruction::PushB(pubkey1.clone()),
-        Instruction::PushB(pubkey1),
+        Instruction::PushB(pubkeyhash1.clone()),
+        Instruction::PushB(pubkeyhash1.clone()),
+        Instruction::PushB(pubkeyhash1.clone()),
+        Instruction::PushB(pubkeyhash1.clone()),
+        Instruction::PushB(pubkeyhash1.clone()),
+        Instruction::PushB(pubkeyhash1.clone()),
+        Instruction::PushB(pubkeyhash1),
         Instruction::PushB(vec![7]),
         Instruction::ChkMultiSig,
     ];

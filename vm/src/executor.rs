@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ccrypto::{blake160, blake256, keccak256, ripemd160, sha256, Blake};
-use ckey::{recover, verify, Public, Signature, SIGNATURE_LENGTH};
+use ckey::{recover, verify, Signature, SIGNATURE_LENGTH};
 use ctypes::transaction::{AssetOutPoint, HashingError, PartialHashing};
 use ctypes::util::tag::Tag;
 
@@ -244,11 +244,11 @@ pub fn execute(
                 stack.push(Item(vec![result]))?;
             }
             Instruction::ChkMultiSig => {
-                // Get n pubkey. If there are more than six pubkeys, return error.
+                // Get n public key hashes. If there are more than six pubkeys, return error.
                 let n = stack.pop()?.assert_len(1)?.as_ref()[0] as usize;
-                let mut pubkey: Vec<Public> = Vec::new();
+                let mut pubkeyhashes: Vec<H160> = Vec::new();
                 for _ in 0..n {
-                    pubkey.push(Public::from_slice(stack.pop()?.assert_len(64)?.as_ref()));
+                    pubkeyhashes.push(H160::from_slice(stack.pop()?.assert_len(20)?.as_ref()));
                 }
 
                 // Get m signature. If signatures are more than pubkeys, return error.
@@ -266,10 +266,27 @@ pub fn execute(
 
                 let mut result = 1;
                 while let Some(sig) = signatures.pop() {
-                    let public = pubkey.pop().unwrap();
-                    if let Ok(false) = verify(&public, &sig, &tx_hash) {
-                        result = 0;
-                        break
+                    match recover(&sig, &tx_hash) {
+                        Ok(pubkey) => {
+                            let mut verified = false;
+                            while let Some(pubkeyhash) = pubkeyhashes.pop() {
+                                if pubkeyhash != blake160(pubkey) {
+                                    continue
+                                }
+                                if let Ok(true) = verify(&pubkey, &sig, &tx_hash) {
+                                    verified = true;
+                                    break
+                                }
+                            }
+                            if !verified {
+                                result = 0;
+                                break
+                            }
+                        }
+                        _ => {
+                            result = 0;
+                            break
+                        }
                     }
                 }
                 stack.push(Item(vec![result]))?;
