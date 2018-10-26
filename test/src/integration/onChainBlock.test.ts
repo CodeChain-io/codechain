@@ -212,8 +212,17 @@ describe("Test onChain block communication", async () => {
         await sdk.rpc.devel.startSealing();
 
         const genesisBlock = await sdk.rpc.chain.getBlock(0);
+        if (genesisBlock == null) {
+            throw Error("Cannot get the genesis block");
+        }
         const block1 = await sdk.rpc.chain.getBlock(1);
+        if (block1 == null) {
+            throw Error("Cannot get the first block");
+        }
         const block2 = await sdk.rpc.chain.getBlock(2);
+        if (block2 == null) {
+            throw Error("Cannot get the second block");
+        }
 
         await node.clean();
         soloGenesisBlock = new Header(

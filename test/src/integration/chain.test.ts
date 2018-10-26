@@ -130,6 +130,9 @@ describe("solo - 1 node", () => {
         const invoice = await node.sdk.rpc.chain.getParcelInvoice(parcelHash);
         expect(invoice).toEqual({ success: true });
         const signedParcel = await node.sdk.rpc.chain.getParcel(parcelHash);
+        if (signedParcel == null) {
+            throw Error("Cannot get the parcel");
+        }
         expect(signedParcel.unsigned).toEqual(parcel);
     });
 
@@ -228,10 +231,13 @@ describe("solo - 1 node", () => {
         });
 
         test("getTransactionInvoice", async () => {
-            expect(
-                (await node.sdk.rpc.chain.getTransactionInvoice(tx.hash()))
-                    .success
-            ).toBe(true);
+            const invoice = await node.sdk.rpc.chain.getTransactionInvoice(
+                tx.hash()
+            );
+            if (invoice == null) {
+                throw Error("Cannot get the invoice");
+            }
+            expect(invoice.success).toBe(true);
         });
 
         test("getAsset", async () => {
@@ -279,6 +285,9 @@ describe("solo - 1 node", () => {
                 tx.hash(),
                 validShardId
             );
+            if (assetScheme == null) {
+                throw Error("Cannot get asset scheme");
+            }
             expect(assetScheme.amount).toEqual(txAssetScheme.amount);
             expect(assetScheme.metadata).toEqual(txAssetScheme.metadata);
             expect(assetScheme.registrar).toEqual(txAssetScheme.registrar);
@@ -292,6 +301,9 @@ describe("solo - 1 node", () => {
             const assetScheme = await node.sdk.rpc.chain.getAssetSchemeByType(
                 tx.getAssetSchemeAddress()
             );
+            if (assetScheme == null) {
+                throw Error("Cannot get asset scheme");
+            }
             expect(assetScheme.amount).toEqual(txAssetScheme.amount);
             expect(assetScheme.metadata).toEqual(txAssetScheme.metadata);
             expect(assetScheme.registrar).toEqual(txAssetScheme.registrar);
@@ -317,7 +329,11 @@ describe("solo - 1 node", () => {
             amount: 10
         });
         await node.signTransferInput(tx, 0);
-        expect((await node.sendTransaction(tx)).success).toBe(true);
+        const invoice = await node.sendTransaction(tx);
+        if (invoice == null) {
+            throw Error("Cannot send a transaction");
+        }
+        expect(invoice.success).toBe(true);
         expect(
             await node.sdk.rpc.chain.isAssetSpent(
                 asset.outPoint.transactionHash,
