@@ -295,9 +295,11 @@ impl StateDB {
         Item: CacheableItem, {
         // Purge changes from re-enacted and retracted blocks.
         // Filter out committing block if any.
-        let clear =
-            !(enacted.iter().filter(|h| commit_hash.as_ref().map_or(true, |p| *h != p)).all(|block| cache.enact(block))
-                && retracted.iter().all(|block| cache.retract(block)));
+        let clear = !(enacted
+            .iter()
+            .filter(|h| commit_hash.as_ref().map_or(true, |p| *h != p))
+            .all(|block| cache.enact(block))
+            && retracted.iter().all(|block| cache.retract(block)));
         if clear {
             // We don't know anything about the block; clear everything
             ctrace!(STATE_DB, "Wiping cache");

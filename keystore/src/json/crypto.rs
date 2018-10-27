@@ -21,7 +21,7 @@ use serde::ser::SerializeStruct;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json;
 
-use super::{Bytes, Cipher, CipherSer, CipherSerParams, H256, Kdf, KdfSer, KdfSerParams};
+use super::{Bytes, Cipher, CipherSer, CipherSerParams, Kdf, KdfSer, KdfSerParams, H256};
 
 pub type CipherText = Bytes;
 

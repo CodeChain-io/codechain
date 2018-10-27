@@ -16,14 +16,68 @@
 
 use ccrypto::{BLAKE_EMPTY, BLAKE_NULL_RLP};
 use ckey::NetworkId;
-use ctypes::transaction::{AssetOutPoint, Transaction};
+use ctypes::transaction::{AssetOutPoint, AssetTransferInput, Transaction};
 use primitives::{H160, H256};
 
-use executor::{execute, Config, RuntimeError, ScriptResult};
+use executor::{execute, ChainTimeInfo, Config, RuntimeError, ScriptResult};
 use instruction::Instruction;
+
+#[cfg(test)]
+pub struct TestClient {
+    block_number: u64,
+    block_timestamp: u64,
+    block_age: Option<u64>,
+    time_age: Option<u64>,
+}
+
+#[cfg(test)]
+impl TestClient {
+    fn new(block_number: u64, block_timestamp: u64, block_age: Option<u64>, time_age: Option<u64>) -> Self {
+        TestClient {
+            block_number,
+            block_timestamp,
+            block_age,
+            time_age,
+        }
+    }
+
+    fn default() -> Self {
+        TestClient {
+            block_number: 0,
+            block_timestamp: 0,
+            block_age: Some(0),
+            time_age: Some(0),
+        }
+    }
+}
+
+#[cfg(test)]
+impl ChainTimeInfo for TestClient {
+    fn best_block_number(&self) -> u64 {
+        self.block_number
+    }
+
+    fn best_block_timestamp(&self) -> u64 {
+        self.block_timestamp
+    }
+
+    fn transaction_block_age(&self, _: H256) -> Option<u64> {
+        self.block_age
+    }
+
+    fn transaction_time_age(&self, _: H256) -> Option<u64> {
+        self.time_age
+    }
+}
+
+#[cfg(test)]
+pub fn get_test_client() -> TestClient {
+    TestClient::default()
+}
 
 #[test]
 fn simple_success() {
+    let client = get_test_client();
     let transaction = Transaction::AssetTransfer {
         network_id: NetworkId::default(),
         burns: Vec::new(),
@@ -31,25 +85,31 @@ fn simple_success() {
         outputs: Vec::new(),
         nonce: 0,
     };
-    let outpoint = AssetOutPoint {
-        transaction_hash: H256::default(),
-        index: 0,
-        asset_type: H256::default(),
-        amount: 0,
+    let input = AssetTransferInput {
+        prev_out: AssetOutPoint {
+            transaction_hash: H256::default(),
+            index: 0,
+            asset_type: H256::default(),
+            amount: 0,
+        },
+        timelock: None,
+        lock_script: Vec::new(),
+        unlock_script: Vec::new(),
     };
     assert_eq!(
-        execute(&[], &[], &[Instruction::Push(1)], &transaction, Config::default(), &outpoint, false),
+        execute(&[], &[], &[Instruction::Push(1)], &transaction, Config::default(), &input, false, &client),
         Ok(ScriptResult::Unlocked)
     );
 
     assert_eq!(
-        execute(&[], &[], &[Instruction::Success], &transaction, Config::default(), &outpoint, false),
+        execute(&[], &[], &[Instruction::Success], &transaction, Config::default(), &input, false, &client),
         Ok(ScriptResult::Unlocked)
     );
 }
 
 #[test]
 fn simple_failure() {
+    let client = get_test_client();
     let transaction = Transaction::AssetTransfer {
         network_id: NetworkId::default(),
         burns: Vec::new(),
@@ -57,24 +117,30 @@ fn simple_failure() {
         outputs: Vec::new(),
         nonce: 0,
     };
-    let outpoint = AssetOutPoint {
-        transaction_hash: H256::default(),
-        index: 0,
-        asset_type: H256::default(),
-        amount: 0,
+    let input = AssetTransferInput {
+        prev_out: AssetOutPoint {
+            transaction_hash: H256::default(),
+            index: 0,
+            asset_type: H256::default(),
+            amount: 0,
+        },
+        timelock: None,
+        lock_script: Vec::new(),
+        unlock_script: Vec::new(),
     };
     assert_eq!(
-        execute(&[Instruction::Push(0)], &[], &[], &transaction, Config::default(), &outpoint, false),
+        execute(&[Instruction::Push(0)], &[], &[], &transaction, Config::default(), &input, false, &client),
         Ok(ScriptResult::Fail)
     );
     assert_eq!(
-        execute(&[], &[], &[Instruction::Fail], &transaction, Config::default(), &outpoint, false),
+        execute(&[], &[], &[Instruction::Fail], &transaction, Config::default(), &input, false, &client),
         Ok(ScriptResult::Fail)
     );
 }
 
 #[test]
 fn simple_burn() {
+    let client = get_test_client();
     let transaction = Transaction::AssetTransfer {
         network_id: NetworkId::default(),
         burns: Vec::new(),
@@ -82,20 +148,26 @@ fn simple_burn() {
         outputs: Vec::new(),
         nonce: 0,
     };
-    let outpoint = AssetOutPoint {
-        transaction_hash: H256::default(),
-        index: 0,
-        asset_type: H256::default(),
-        amount: 0,
+    let input = AssetTransferInput {
+        prev_out: AssetOutPoint {
+            transaction_hash: H256::default(),
+            index: 0,
+            asset_type: H256::default(),
+            amount: 0,
+        },
+        timelock: None,
+        lock_script: Vec::new(),
+        unlock_script: Vec::new(),
     };
     assert_eq!(
-        execute(&[], &[], &[Instruction::Burn], &transaction, Config::default(), &outpoint, false),
+        execute(&[], &[], &[Instruction::Burn], &transaction, Config::default(), &input, false, &client),
         Ok(ScriptResult::Burnt)
     );
 }
 
 #[test]
 fn underflow() {
+    let client = get_test_client();
     let transaction = Transaction::AssetTransfer {
         network_id: NetworkId::default(),
         burns: Vec::new(),
@@ -103,20 +175,26 @@ fn underflow() {
         outputs: Vec::new(),
         nonce: 0,
     };
-    let outpoint = AssetOutPoint {
-        transaction_hash: H256::default(),
-        index: 0,
-        asset_type: H256::default(),
-        amount: 0,
+    let input = AssetTransferInput {
+        prev_out: AssetOutPoint {
+            transaction_hash: H256::default(),
+            index: 0,
+            asset_type: H256::default(),
+            amount: 0,
+        },
+        timelock: None,
+        lock_script: Vec::new(),
+        unlock_script: Vec::new(),
     };
     assert_eq!(
-        execute(&[], &[], &[Instruction::Pop], &transaction, Config::default(), &outpoint, false),
+        execute(&[], &[], &[Instruction::Pop], &transaction, Config::default(), &input, false, &client),
         Err(RuntimeError::StackUnderflow)
     );
 }
 
 #[test]
 fn out_of_memory() {
+    let client = get_test_client();
     let transaction = Transaction::AssetTransfer {
         network_id: NetworkId::default(),
         burns: Vec::new(),
@@ -124,11 +202,16 @@ fn out_of_memory() {
         outputs: Vec::new(),
         nonce: 0,
     };
-    let outpoint = AssetOutPoint {
-        transaction_hash: H256::default(),
-        index: 0,
-        asset_type: H256::default(),
-        amount: 0,
+    let input = AssetTransferInput {
+        prev_out: AssetOutPoint {
+            transaction_hash: H256::default(),
+            index: 0,
+            asset_type: H256::default(),
+            amount: 0,
+        },
+        timelock: None,
+        lock_script: Vec::new(),
+        unlock_script: Vec::new(),
     };
     let config = Config {
         max_memory: 2,
@@ -140,8 +223,9 @@ fn out_of_memory() {
             &[],
             &transaction,
             config,
-            &outpoint,
-            false
+            &input,
+            false,
+            &client
         ),
         Err(RuntimeError::OutOfMemory)
     );
@@ -149,6 +233,7 @@ fn out_of_memory() {
 
 #[test]
 fn invalid_unlock_script() {
+    let client = get_test_client();
     let transaction = Transaction::AssetTransfer {
         network_id: NetworkId::default(),
         burns: Vec::new(),
@@ -156,20 +241,26 @@ fn invalid_unlock_script() {
         outputs: Vec::new(),
         nonce: 0,
     };
-    let outpoint = AssetOutPoint {
-        transaction_hash: H256::default(),
-        index: 0,
-        asset_type: H256::default(),
-        amount: 0,
+    let input = AssetTransferInput {
+        prev_out: AssetOutPoint {
+            transaction_hash: H256::default(),
+            index: 0,
+            asset_type: H256::default(),
+            amount: 0,
+        },
+        timelock: None,
+        lock_script: Vec::new(),
+        unlock_script: Vec::new(),
     };
     assert_eq!(
-        execute(&[Instruction::Nop], &[], &[], &transaction, Config::default(), &outpoint, false),
+        execute(&[Instruction::Nop], &[], &[], &transaction, Config::default(), &input, false, &client),
         Ok(ScriptResult::Fail)
     );
 }
 
 #[test]
 fn conditional_burn() {
+    let client = get_test_client();
     let transaction = Transaction::AssetTransfer {
         network_id: NetworkId::default(),
         burns: Vec::new(),
@@ -177,25 +268,49 @@ fn conditional_burn() {
         outputs: Vec::new(),
         nonce: 0,
     };
-    let outpoint = AssetOutPoint {
-        transaction_hash: H256::default(),
-        index: 0,
-        asset_type: H256::default(),
-        amount: 0,
+    let input = AssetTransferInput {
+        prev_out: AssetOutPoint {
+            transaction_hash: H256::default(),
+            index: 0,
+            asset_type: H256::default(),
+            amount: 0,
+        },
+        timelock: None,
+        lock_script: Vec::new(),
+        unlock_script: Vec::new(),
     };
     let lock_script = vec![Instruction::Eq, Instruction::Dup, Instruction::Jnz(1), Instruction::Burn];
     assert_eq!(
-        execute(&[Instruction::Push(0)], &[vec![0]], &lock_script, &transaction, Config::default(), &outpoint, false),
+        execute(
+            &[Instruction::Push(0)],
+            &[vec![0]],
+            &lock_script,
+            &transaction,
+            Config::default(),
+            &input,
+            false,
+            &client
+        ),
         Ok(ScriptResult::Unlocked)
     );
     assert_eq!(
-        execute(&[Instruction::Push(0)], &[vec![1]], &lock_script, &transaction, Config::default(), &outpoint, false),
+        execute(
+            &[Instruction::Push(0)],
+            &[vec![1]],
+            &lock_script,
+            &transaction,
+            Config::default(),
+            &input,
+            false,
+            &client
+        ),
         Ok(ScriptResult::Burnt)
     );
 }
 
 #[test]
 fn _blake256() {
+    let client = get_test_client();
     let transaction = Transaction::AssetTransfer {
         network_id: NetworkId::default(),
         burns: Vec::new(),
@@ -203,15 +318,29 @@ fn _blake256() {
         outputs: Vec::new(),
         nonce: 0,
     };
-    let outpoint = AssetOutPoint {
-        transaction_hash: H256::default(),
-        index: 0,
-        asset_type: H256::default(),
-        amount: 0,
+    let input = AssetTransferInput {
+        prev_out: AssetOutPoint {
+            transaction_hash: H256::default(),
+            index: 0,
+            asset_type: H256::default(),
+            amount: 0,
+        },
+        timelock: None,
+        lock_script: Vec::new(),
+        unlock_script: Vec::new(),
     };
     let lock_script = vec![Instruction::Blake256, Instruction::Eq];
     assert_eq!(
-        execute(&[], &[vec![], BLAKE_EMPTY.to_vec()], &lock_script, &transaction, Config::default(), &outpoint, false),
+        execute(
+            &[],
+            &[vec![], BLAKE_EMPTY.to_vec()],
+            &lock_script,
+            &transaction,
+            Config::default(),
+            &input,
+            false,
+            &client
+        ),
         Ok(ScriptResult::Unlocked)
     );
     assert_eq!(
@@ -221,8 +350,9 @@ fn _blake256() {
             &lock_script,
             &transaction,
             Config::default(),
-            &outpoint,
-            false
+            &input,
+            false,
+            &client
         ),
         Ok(ScriptResult::Fail)
     );
@@ -233,8 +363,9 @@ fn _blake256() {
             &lock_script,
             &transaction,
             Config::default(),
-            &outpoint,
-            false
+            &input,
+            false,
+            &client
         ),
         Ok(ScriptResult::Unlocked)
     );
@@ -245,8 +376,9 @@ fn _blake256() {
             &lock_script,
             &transaction,
             Config::default(),
-            &outpoint,
-            false
+            &input,
+            false,
+            &client
         ),
         Ok(ScriptResult::Fail)
     );
@@ -254,6 +386,7 @@ fn _blake256() {
 
 #[test]
 fn _ripemd160() {
+    let client = get_test_client();
     let transaction = Transaction::AssetTransfer {
         network_id: NetworkId::default(),
         burns: Vec::new(),
@@ -261,11 +394,16 @@ fn _ripemd160() {
         outputs: Vec::new(),
         nonce: 0,
     };
-    let outpoint = AssetOutPoint {
-        transaction_hash: H256::default(),
-        index: 0,
-        asset_type: H256::default(),
-        amount: 0,
+    let input = AssetTransferInput {
+        prev_out: AssetOutPoint {
+            transaction_hash: H256::default(),
+            index: 0,
+            asset_type: H256::default(),
+            amount: 0,
+        },
+        timelock: None,
+        lock_script: Vec::new(),
+        unlock_script: Vec::new(),
     };
     const RIPEMD160_EMPTY: H160 = H160([
         0x9c, 0x11, 0x85, 0xa5, 0xc5, 0xe9, 0xfc, 0x54, 0x61, 0x28, 0x08, 0x97, 0x7e, 0xe8, 0xf5, 0x48, 0xb2, 0x25,
@@ -283,8 +421,9 @@ fn _ripemd160() {
             &lock_script,
             &transaction,
             Config::default(),
-            &outpoint,
-            false
+            &input,
+            false,
+            &client
         ),
         Ok(ScriptResult::Unlocked)
     );
@@ -295,8 +434,9 @@ fn _ripemd160() {
             &lock_script,
             &transaction,
             Config::default(),
-            &outpoint,
-            false
+            &input,
+            false,
+            &client
         ),
         Ok(ScriptResult::Fail)
     );
@@ -307,8 +447,9 @@ fn _ripemd160() {
             &lock_script,
             &transaction,
             Config::default(),
-            &outpoint,
-            false
+            &input,
+            false,
+            &client
         ),
         Ok(ScriptResult::Unlocked)
     );
@@ -319,8 +460,9 @@ fn _ripemd160() {
             &lock_script,
             &transaction,
             Config::default(),
-            &outpoint,
-            false
+            &input,
+            false,
+            &client
         ),
         Ok(ScriptResult::Fail)
     );
@@ -328,6 +470,7 @@ fn _ripemd160() {
 
 #[test]
 fn _sha256() {
+    let client = get_test_client();
     let transaction = Transaction::AssetTransfer {
         network_id: NetworkId::default(),
         burns: Vec::new(),
@@ -335,11 +478,16 @@ fn _sha256() {
         outputs: Vec::new(),
         nonce: 0,
     };
-    let outpoint = AssetOutPoint {
-        transaction_hash: H256::default(),
-        index: 0,
-        asset_type: H256::default(),
-        amount: 0,
+    let input = AssetTransferInput {
+        prev_out: AssetOutPoint {
+            transaction_hash: H256::default(),
+            index: 0,
+            asset_type: H256::default(),
+            amount: 0,
+        },
+        timelock: None,
+        lock_script: Vec::new(),
+        unlock_script: Vec::new(),
     };
     const SHA256_EMPTY: H256 = H256([
         0xe3, 0xb0, 0xc4, 0x42, 0x98, 0xfc, 0x1c, 0x14, 0x9a, 0xfb, 0xf4, 0xc8, 0x99, 0x6f, 0xb9, 0x24, 0x27, 0xae,
@@ -351,7 +499,16 @@ fn _sha256() {
     ]);
     let lock_script = vec![Instruction::Sha256, Instruction::Eq];
     assert_eq!(
-        execute(&[], &[vec![], SHA256_EMPTY.to_vec()], &lock_script, &transaction, Config::default(), &outpoint, false),
+        execute(
+            &[],
+            &[vec![], SHA256_EMPTY.to_vec()],
+            &lock_script,
+            &transaction,
+            Config::default(),
+            &input,
+            false,
+            &client
+        ),
         Ok(ScriptResult::Unlocked)
     );
     assert_eq!(
@@ -361,8 +518,9 @@ fn _sha256() {
             &lock_script,
             &transaction,
             Config::default(),
-            &outpoint,
-            false
+            &input,
+            false,
+            &client
         ),
         Ok(ScriptResult::Fail)
     );
@@ -373,8 +531,9 @@ fn _sha256() {
             &lock_script,
             &transaction,
             Config::default(),
-            &outpoint,
-            false
+            &input,
+            false,
+            &client
         ),
         Ok(ScriptResult::Unlocked)
     );
@@ -385,8 +544,9 @@ fn _sha256() {
             &lock_script,
             &transaction,
             Config::default(),
-            &outpoint,
-            false
+            &input,
+            false,
+            &client
         ),
         Ok(ScriptResult::Fail)
     );
@@ -394,6 +554,7 @@ fn _sha256() {
 
 #[test]
 fn _keccak256() {
+    let client = get_test_client();
     let transaction = Transaction::AssetTransfer {
         network_id: NetworkId::default(),
         burns: Vec::new(),
@@ -401,11 +562,16 @@ fn _keccak256() {
         outputs: Vec::new(),
         nonce: 0,
     };
-    let outpoint = AssetOutPoint {
-        transaction_hash: H256::default(),
-        index: 0,
-        asset_type: H256::default(),
-        amount: 0,
+    let input = AssetTransferInput {
+        prev_out: AssetOutPoint {
+            transaction_hash: H256::default(),
+            index: 0,
+            asset_type: H256::default(),
+            amount: 0,
+        },
+        timelock: None,
+        lock_script: Vec::new(),
+        unlock_script: Vec::new(),
     };
     const KECCAK256_EMPTY: H256 = H256([
         0xc5, 0xd2, 0x46, 0x01, 0x86, 0xf7, 0x23, 0x3c, 0x92, 0x7e, 0x7d, 0xb2, 0xdc, 0xc7, 0x03, 0xc0, 0xe5, 0x00,
@@ -423,8 +589,9 @@ fn _keccak256() {
             &lock_script,
             &transaction,
             Config::default(),
-            &outpoint,
-            false
+            &input,
+            false,
+            &client
         ),
         Ok(ScriptResult::Unlocked)
     );
@@ -435,8 +602,9 @@ fn _keccak256() {
             &lock_script,
             &transaction,
             Config::default(),
-            &outpoint,
-            false
+            &input,
+            false,
+            &client
         ),
         Ok(ScriptResult::Fail)
     );
@@ -447,8 +615,9 @@ fn _keccak256() {
             &lock_script,
             &transaction,
             Config::default(),
-            &outpoint,
-            false
+            &input,
+            false,
+            &client
         ),
         Ok(ScriptResult::Unlocked)
     );
@@ -459,15 +628,260 @@ fn _keccak256() {
             &lock_script,
             &transaction,
             Config::default(),
-            &outpoint,
-            false
+            &input,
+            false,
+            &client
         ),
         Ok(ScriptResult::Fail)
     );
 }
 
+#[cfg(test)]
+fn dummy_tx() -> Transaction {
+    Transaction::AssetTransfer {
+        network_id: NetworkId::default(),
+        burns: Vec::new(),
+        inputs: Vec::new(),
+        outputs: Vec::new(),
+        nonce: 0,
+    }
+}
+
+#[cfg(test)]
+fn dummy_input() -> AssetTransferInput {
+    AssetTransferInput {
+        prev_out: AssetOutPoint {
+            transaction_hash: H256::default(),
+            index: 0,
+            asset_type: H256::default(),
+            amount: 0,
+        },
+        timelock: None,
+        lock_script: Vec::new(),
+        unlock_script: Vec::new(),
+    }
+}
+
+#[test]
+fn timelock_invalid_type() {
+    assert_eq!(
+        execute(
+            &[],
+            &[],
+            &[Instruction::Push(0), Instruction::Push(5), Instruction::ChkTimelock],
+            &dummy_tx(),
+            Config::default(),
+            &dummy_input(),
+            false,
+            &get_test_client()
+        ),
+        Err(RuntimeError::InvalidTimelockType)
+    )
+}
+
+#[test]
+fn timelock_invalid_value() {
+    assert_eq!(
+        execute(
+            &[],
+            &[],
+            &[Instruction::PushB(vec![0, 0, 0, 0, 0, 0, 0, 0, 0]), Instruction::Push(1), Instruction::ChkTimelock],
+            &dummy_tx(),
+            Config::default(),
+            &dummy_input(),
+            false,
+            &get_test_client()
+        ),
+        Err(RuntimeError::TypeMismatch)
+    )
+}
+
+#[test]
+fn timelock_block_number_success() {
+    let client = TestClient::new(10, 0, None, None);
+    assert_eq!(
+        execute(
+            &[],
+            &[],
+            &[Instruction::PushB(vec![10]), Instruction::Push(1), Instruction::ChkTimelock],
+            &dummy_tx(),
+            Config::default(),
+            &dummy_input(),
+            false,
+            &client
+        ),
+        Ok(ScriptResult::Unlocked)
+    )
+}
+
+#[test]
+fn timelock_block_number_fail() {
+    let client = TestClient::new(9, 0, None, None);
+    assert_eq!(
+        execute(
+            &[],
+            &[],
+            &[Instruction::PushB(vec![10]), Instruction::Push(1), Instruction::ChkTimelock],
+            &dummy_tx(),
+            Config::default(),
+            &dummy_input(),
+            false,
+            &client
+        ),
+        Ok(ScriptResult::Fail)
+    )
+}
+
+#[test]
+fn timelock_block_timestamp_success() {
+    // 0x5BD02BF2, 2018-10-24T08:23:14+00:00
+    let client = TestClient::new(0, 1540369394, None, None);
+    assert_eq!(
+        execute(
+            &[],
+            &[],
+            &[Instruction::PushB(vec![0x00, 0x5B, 0xD0, 0x2B, 0xF2]), Instruction::Push(3), Instruction::ChkTimelock],
+            &dummy_tx(),
+            Config::default(),
+            &dummy_input(),
+            false,
+            &client
+        ),
+        Ok(ScriptResult::Unlocked)
+    )
+}
+
+#[test]
+fn timelock_block_timestamp_fail() {
+    // 0x5BD02BF1, 2018-10-24T08:23:13+00:00
+    let client = TestClient::new(0, 1540369393, None, None);
+    assert_eq!(
+        execute(
+            &[],
+            &[],
+            &[Instruction::PushB(vec![0x00, 0x5B, 0xD0, 0x2B, 0xF2]), Instruction::Push(3), Instruction::ChkTimelock],
+            &dummy_tx(),
+            Config::default(),
+            &dummy_input(),
+            false,
+            &client
+        ),
+        Ok(ScriptResult::Fail)
+    )
+}
+
+#[test]
+fn timelock_block_age_fail_due_to_none() {
+    let client = TestClient::new(0, 0, None, None);
+    assert_eq!(
+        execute(
+            &[],
+            &[],
+            &[Instruction::PushB(vec![1]), Instruction::Push(2), Instruction::ChkTimelock],
+            &dummy_tx(),
+            Config::default(),
+            &dummy_input(),
+            false,
+            &client
+        ),
+        Ok(ScriptResult::Fail)
+    )
+}
+
+#[test]
+fn timelock_block_age_fail() {
+    let client = TestClient::new(0, 0, Some(4), None);
+    assert_eq!(
+        execute(
+            &[],
+            &[],
+            &[Instruction::PushB(vec![5]), Instruction::Push(2), Instruction::ChkTimelock],
+            &dummy_tx(),
+            Config::default(),
+            &dummy_input(),
+            false,
+            &client
+        ),
+        Ok(ScriptResult::Fail)
+    )
+}
+
+#[test]
+fn timelock_block_age_success() {
+    let client = TestClient::new(0, 0, Some(5), None);
+    assert_eq!(
+        execute(
+            &[],
+            &[],
+            &[Instruction::PushB(vec![5]), Instruction::Push(2), Instruction::ChkTimelock],
+            &dummy_tx(),
+            Config::default(),
+            &dummy_input(),
+            false,
+            &client
+        ),
+        Ok(ScriptResult::Unlocked)
+    )
+}
+
+#[test]
+fn timelock_time_age_fail_due_to_none() {
+    let client = TestClient::new(0, 0, None, None);
+    assert_eq!(
+        execute(
+            &[],
+            &[],
+            &[Instruction::PushB(vec![0x27, 0x8D, 0x00]), Instruction::Push(4), Instruction::ChkTimelock],
+            &dummy_tx(),
+            Config::default(),
+            &dummy_input(),
+            false,
+            &client
+        ),
+        Ok(ScriptResult::Fail)
+    )
+}
+
+#[test]
+fn timelock_time_age_fail() {
+    // 0x278D00 seconds = 2592000 seconds = 30 days
+    let client = TestClient::new(0, 0, None, Some(2591999));
+    assert_eq!(
+        execute(
+            &[],
+            &[],
+            &[Instruction::PushB(vec![0x27, 0x8D, 0x00]), Instruction::Push(4), Instruction::ChkTimelock],
+            &dummy_tx(),
+            Config::default(),
+            &dummy_input(),
+            false,
+            &client
+        ),
+        Ok(ScriptResult::Fail)
+    )
+}
+
+#[test]
+fn timelock_time_age_success() {
+    let client = TestClient::new(0, 0, None, Some(2592000));
+    assert_eq!(
+        execute(
+            &[],
+            &[],
+            &[Instruction::PushB(vec![0x27, 0x8D, 0x00]), Instruction::Push(4), Instruction::ChkTimelock],
+            &dummy_tx(),
+            Config::default(),
+            &dummy_input(),
+            false,
+            &client
+        ),
+        Ok(ScriptResult::Unlocked)
+    )
+}
+
 #[test]
 fn copy_stack_underflow() {
+    let client = get_test_client();
     let transaction = Transaction::AssetTransfer {
         network_id: NetworkId::default(),
         burns: Vec::new(),
@@ -475,14 +889,19 @@ fn copy_stack_underflow() {
         outputs: Vec::new(),
         nonce: 0,
     };
-    let outpoint = AssetOutPoint {
-        transaction_hash: H256::default(),
-        index: 0,
-        asset_type: H256::default(),
-        amount: 0,
+    let input = AssetTransferInput {
+        prev_out: AssetOutPoint {
+            transaction_hash: H256::default(),
+            index: 0,
+            asset_type: H256::default(),
+            amount: 0,
+        },
+        timelock: None,
+        lock_script: Vec::new(),
+        unlock_script: Vec::new(),
     };
     assert_eq!(
-        execute(&[], &[], &[Instruction::Copy(1)], &transaction, Config::default(), &outpoint, false),
+        execute(&[], &[], &[Instruction::Copy(1)], &transaction, Config::default(), &input, false, &client),
         Err(RuntimeError::StackUnderflow)
     );
 }

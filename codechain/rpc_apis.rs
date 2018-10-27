@@ -42,7 +42,8 @@ impl ApiDependencies {
                 Arc::clone(&self.client),
                 Arc::clone(&self.miner),
                 self.client.engine().params().network_id,
-            ).to_delegate(),
+            )
+            .to_delegate(),
         );
     }
 }

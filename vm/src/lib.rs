@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+extern crate byteorder;
 extern crate codechain_crypto as ccrypto;
 extern crate codechain_key as ckey;
 extern crate codechain_types as ctypes;
@@ -32,4 +33,4 @@ mod opcode;
 mod tests;
 
 pub use decoder::{decode, DecoderError};
-pub use executor::{execute, Config as VMConfig, RuntimeError, ScriptResult};
+pub use executor::{execute, ChainTimeInfo, Config as VMConfig, RuntimeError, ScriptResult};

@@ -27,6 +27,7 @@ use multimap::MultiMap;
 use primitives::{H256, U256};
 use rlp;
 use table::Table;
+use time::get_time;
 
 use super::super::parcel::SignedParcel;
 use super::local_parcels::{LocalParcelsList, Status as LocalParcelStatus};
@@ -78,6 +79,12 @@ impl ParcelOrigin {
     }
 }
 
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+pub struct ParcelTimelock {
+    pub block: Option<BlockNumber>,
+    pub timestamp: Option<u64>,
+}
+
 #[derive(Clone, Debug)]
 /// Light structure used to identify parcel and its order
 struct ParcelOrder {
@@ -97,6 +104,8 @@ struct ParcelOrder {
     insertion_id: u64,
     /// Origin of the parcel
     origin: ParcelOrigin,
+    /// Timelock
+    timelock: ParcelTimelock,
 }
 
 impl ParcelOrder {
@@ -112,6 +121,7 @@ impl ParcelOrder {
             hash: item.hash(),
             insertion_id: item.insertion_id,
             origin: item.origin,
+            timelock: item.timelock,
         }
     }
 
@@ -154,6 +164,11 @@ impl Ord for ParcelOrder {
             return b.fee.cmp(&self.fee)
         }
 
+        // Compare timelock, prefer the nearer from the present.
+        if self.timelock != b.timelock {
+            return self.timelock.cmp(&b.timelock)
+        }
+
         // Lastly compare insertion_id
         self.insertion_id.cmp(&b.insertion_id)
     }
@@ -170,15 +185,24 @@ struct MemPoolItem {
     insertion_time: PoolingInstant,
     /// ID assigned upon insertion, should be unique.
     insertion_id: u64,
+    /// A timelock.
+    timelock: ParcelTimelock,
 }
 
 impl MemPoolItem {
-    fn new(parcel: SignedParcel, origin: ParcelOrigin, insertion_time: PoolingInstant, insertion_id: u64) -> Self {
+    fn new(
+        parcel: SignedParcel,
+        origin: ParcelOrigin,
+        insertion_time: PoolingInstant,
+        insertion_id: u64,
+        timelock: ParcelTimelock,
+    ) -> Self {
         MemPoolItem {
             parcel,
             origin,
             insertion_time,
             insertion_id,
+            timelock,
         }
     }
 
@@ -446,6 +470,8 @@ impl MemPool {
         parcel: SignedParcel,
         origin: ParcelOrigin,
         time: PoolingInstant,
+        timestamp: u64,
+        timelock: ParcelTimelock,
         fetch_account: &F,
     ) -> Result<ParcelImportResult, ParcelError>
     where
@@ -454,7 +480,7 @@ impl MemPool {
             let hash = parcel.hash();
             let closed_parcel = parcel.clone();
 
-            let result = self.add_internal(parcel, origin, time, fetch_account);
+            let result = self.add_internal(parcel, origin, time, timestamp, timelock, fetch_account);
             match result {
                 Ok(ParcelImportResult::Current) => {
                     self.local_parcels.mark_pending(hash);
@@ -472,12 +498,12 @@ impl MemPool {
             }
             result
         } else {
-            self.add_internal(parcel, origin, time, fetch_account)
+            self.add_internal(parcel, origin, time, timestamp, timelock, fetch_account)
         }
     }
 
     /// Checks the current seq for all parcels' senders in the pool and removes the old parcels.
-    pub fn remove_old<F>(&mut self, fetch_account: &F, current_time: PoolingInstant)
+    pub fn remove_old<F>(&mut self, fetch_account: &F, current_time: PoolingInstant, timestamp: u64)
     where
         F: Fn(&Public) -> AccountDetails, {
         let signers = self
@@ -489,7 +515,7 @@ impl MemPool {
             .collect::<HashMap<_, _>>();
 
         for (signer, details) in signers.iter() {
-            self.cull(*signer, details.seq);
+            self.cull(*signer, details.seq, &current_time, timestamp);
         }
 
         let max_time = self.max_time_in_pool;
@@ -518,7 +544,7 @@ impl MemPool {
         let fetch_seq =
             |a: &Public| signers.get(a).expect("We fetch details for all signers from both current and future").seq;
         for hash in invalid {
-            self.remove(&hash, &fetch_seq, RemovalReason::Invalid);
+            self.remove(&hash, &fetch_seq, RemovalReason::Invalid, &current_time, timestamp);
         }
     }
 
@@ -527,8 +553,14 @@ impl MemPool {
     /// so parcels left in pool are processed according to client seq.
     ///
     /// If gap is introduced marks subsequent parcels as future
-    pub fn remove<F>(&mut self, parcel_hash: &H256, fetch_seq: &F, reason: RemovalReason)
-    where
+    pub fn remove<F>(
+        &mut self,
+        parcel_hash: &H256,
+        fetch_seq: &F,
+        reason: RemovalReason,
+        current_time: &PoolingInstant,
+        timestamp: u64,
+    ) where
         F: Fn(&Public) -> U256, {
         assert_eq!(self.future.by_priority.len() + self.current.by_priority.len(), self.by_hash.len());
         let parcel = self.by_hash.remove(parcel_hash);
@@ -558,7 +590,7 @@ impl MemPool {
             self.update_future(&signer_public, current_seq);
             // And now lets check if there is some chain of parcels in future
             // that should be placed in current
-            self.move_matching_future_to_current(signer_public, current_seq, current_seq);
+            self.move_matching_future_to_current(signer_public, current_seq, current_seq, current_time, timestamp);
             assert_eq!(self.future.by_priority.len() + self.current.by_priority.len(), self.by_hash.len());
             return
         }
@@ -568,7 +600,7 @@ impl MemPool {
         if order.is_some() {
             // This will keep consistency in pool
             // Moves all to future and then promotes a batch from current:
-            self.cull_internal(signer_public, current_seq);
+            self.cull_internal(signer_public, current_seq, current_time, timestamp);
             assert_eq!(self.future.by_priority.len() + self.current.by_priority.len(), self.by_hash.len());
             return
         }
@@ -576,7 +608,7 @@ impl MemPool {
 
     /// Removes all parcels from particular signer up to (excluding) given client (state) seq.
     /// Client (State) seq = next valid seq for this signer.
-    pub fn cull(&mut self, signer_public: Public, client_seq: U256) {
+    pub fn cull(&mut self, signer_public: Public, client_seq: U256, current_time: &PoolingInstant, timestamp: u64) {
         // Check if there is anything in current...
         let should_check_in_current = self.current.by_signer_public.row(&signer_public)
             // If seq == client_seq nothing is changed
@@ -592,7 +624,7 @@ impl MemPool {
             return
         }
 
-        self.cull_internal(signer_public, client_seq);
+        self.cull_internal(signer_public, client_seq, current_time, timestamp);
     }
 
     /// Removes all elements (in any state) from the pool
@@ -668,6 +700,8 @@ impl MemPool {
         parcel: SignedParcel,
         origin: ParcelOrigin,
         time: PoolingInstant,
+        timestamp: u64,
+        timelock: ParcelTimelock,
         fetch_account: &F,
     ) -> Result<ParcelImportResult, ParcelError>
     where
@@ -723,8 +757,8 @@ impl MemPool {
         // No invalid parcels beyond this point.
         let id = self.next_parcel_id;
         self.next_parcel_id += 1;
-        let vparcel = MemPoolItem::new(parcel, origin, time, id);
-        let r = self.import_parcel(vparcel, client_account.seq);
+        let vparcel = MemPoolItem::new(parcel, origin, time, id, timelock);
+        let r = self.import_parcel(vparcel, client_account.seq, timestamp);
         assert_eq!(self.future.by_priority.len() + self.current.by_priority.len(), self.by_hash.len());
         r
     }
@@ -739,7 +773,12 @@ impl MemPool {
     /// iff `(address, seq)` is the same but `fee` is higher.
     ///
     /// Returns `true` when parcel was imported successfully
-    fn import_parcel(&mut self, parcel: MemPoolItem, state_seq: U256) -> Result<ParcelImportResult, ParcelError> {
+    fn import_parcel(
+        &mut self,
+        parcel: MemPoolItem,
+        state_seq: U256,
+        timestamp: u64,
+    ) -> Result<ParcelImportResult, ParcelError> {
         if self.by_hash.get(&parcel.hash()).is_some() {
             // Parcel is already imported.
             ctrace!(MEM_POOL, "Dropping already imported parcel: {:?}", parcel.hash());
@@ -762,7 +801,7 @@ impl MemPool {
         // Update seqs of parcels in future (remove old parcels)
         self.update_future(&signer_public, state_seq);
         // State seq could be updated. Maybe there are some more items waiting in future?
-        self.move_matching_future_to_current(signer_public, state_seq, state_seq);
+        self.move_matching_future_to_current(signer_public, state_seq, state_seq, &parcel.insertion_time, timestamp);
         // Check the next expected seq (might be updated by move above)
         let next_seq = self.last_seqs.get(&signer_public).cloned().map_or(state_seq, |n| n + U256::one());
 
@@ -792,8 +831,48 @@ impl MemPool {
         }
 
         // We might have filled a gap - move some more parcels from future
-        self.move_matching_future_to_current(signer_public, seq, state_seq);
-        self.move_matching_future_to_current(signer_public, seq + U256::one(), state_seq);
+        self.move_matching_future_to_current(signer_public, seq, state_seq, &parcel.insertion_time, timestamp);
+        self.move_matching_future_to_current(
+            signer_public,
+            seq + U256::one(),
+            state_seq,
+            &parcel.insertion_time,
+            timestamp,
+        );
+
+        if Self::should_wait_timelock(&parcel.timelock, parcel.insertion_time, timestamp) {
+            // Check same seq is in current. If it
+            // is than move the following current items to future.
+            let best_block_number = parcel.insertion_time;
+            let moved_to_future_flag = self.current.by_signer_public.get(&signer_public, &seq).is_some();
+            if moved_to_future_flag {
+                self.move_all_to_future(&signer_public, state_seq);
+            }
+
+            check_too_cheap(Self::replace_parcel(
+                parcel,
+                state_seq,
+                &mut self.future,
+                &mut self.by_hash,
+                &mut self.local_parcels,
+            ))?;
+
+            if moved_to_future_flag {
+                self.move_matching_future_to_current(
+                    signer_public,
+                    state_seq,
+                    state_seq,
+                    &best_block_number,
+                    timestamp,
+                );
+            }
+
+            let removed = self.future.enforce_limit(&mut self.by_hash, &mut self.local_parcels);
+            check_if_removed(&signer_public, &seq, removed)?;
+            cdebug!(MEM_POOL, "Imported parcel to future: {:?}", hash);
+            cdebug!(MEM_POOL, "status: {:?}", self.status());
+            return Ok(ParcelImportResult::Future)
+        }
 
         // Replace parcel if any
         check_too_cheap(Self::replace_parcel(
@@ -819,8 +898,26 @@ impl MemPool {
         Ok(ParcelImportResult::Current)
     }
 
+    fn should_wait_timelock(
+        timelock: &ParcelTimelock,
+        best_block_number: BlockNumber,
+        best_block_timestamp: u64,
+    ) -> bool {
+        if let Some(block_number) = timelock.block {
+            if block_number > best_block_number + 1 {
+                return true
+            }
+        }
+        if let Some(timestamp) = timelock.timestamp {
+            if timestamp > cmp::max(get_time().sec as u64, best_block_timestamp + 1) {
+                return true
+            }
+        }
+        return false
+    }
+
     /// Always updates future and moves parcel from current to future.
-    fn cull_internal(&mut self, sender: Public, client_seq: U256) {
+    fn cull_internal(&mut self, sender: Public, client_seq: U256, current_time: &PoolingInstant, timestamp: u64) {
         // We will either move parcel to future or remove it completely
         // so there will be no parcels from this sender in current
         self.last_seqs.remove(&sender);
@@ -830,7 +927,7 @@ impl MemPool {
         self.move_all_to_future(&sender, client_seq);
         // And now lets check if there is some batch of parcels in future
         // that should be placed in current. It should also update last_seqs.
-        self.move_matching_future_to_current(sender, client_seq, client_seq);
+        self.move_matching_future_to_current(sender, client_seq, client_seq, current_time, timestamp);
         assert_eq!(self.future.by_priority.len() + self.current.by_priority.len(), self.by_hash.len());
     }
 
@@ -870,7 +967,14 @@ impl MemPool {
 
     /// Checks if there are any parcels in `future` that should actually be promoted to `current`
     /// (because seq matches).
-    fn move_matching_future_to_current(&mut self, public: Public, mut current_seq: U256, first_seq: U256) {
+    fn move_matching_future_to_current(
+        &mut self,
+        public: Public,
+        mut current_seq: U256,
+        first_seq: U256,
+        best_block_number: &BlockNumber,
+        best_block_timestamp: u64,
+    ) {
         let mut update_last_seq_to = None;
         {
             let by_seq = self.future.by_signer_public.row_mut(&public);
@@ -878,8 +982,11 @@ impl MemPool {
                 return
             }
             let by_seq = by_seq.expect("None is tested in early-exit condition above; qed");
-            while let Some(order) = by_seq.remove(&current_seq) {
-                // remove also from priority and fee
+            while let Some(order) = by_seq.get(&current_seq).cloned() {
+                if Self::should_wait_timelock(&order.timelock, *best_block_number, best_block_timestamp) {
+                    break
+                }
+                let order = by_seq.remove(&current_seq).expect("None is tested in the while condition above.");
                 self.future.by_priority.remove(&order);
                 self.future.by_fee.remove(&order.fee, &order.hash);
                 // Put to current
@@ -1121,7 +1228,7 @@ pub mod test {
     use super::*;
 
     #[test]
-    fn ordering() {
+    fn parcel_origin_ordering() {
         assert_eq!(ParcelOrigin::Local.cmp(&ParcelOrigin::External), Ordering::Less);
         assert_eq!(ParcelOrigin::RetractedBlock.cmp(&ParcelOrigin::Local), Ordering::Less);
         assert_eq!(ParcelOrigin::RetractedBlock.cmp(&ParcelOrigin::External), Ordering::Less);
@@ -1129,6 +1236,234 @@ pub mod test {
         assert_eq!(ParcelOrigin::External.cmp(&ParcelOrigin::Local), Ordering::Greater);
         assert_eq!(ParcelOrigin::Local.cmp(&ParcelOrigin::RetractedBlock), Ordering::Greater);
         assert_eq!(ParcelOrigin::External.cmp(&ParcelOrigin::RetractedBlock), Ordering::Greater);
+    }
+
+    #[test]
+    fn parcel_timelock_ordering() {
+        assert_eq!(
+            ParcelTimelock {
+                block: None,
+                timestamp: None
+            }
+            .cmp(&ParcelTimelock {
+                block: Some(10),
+                timestamp: None
+            }),
+            Ordering::Less
+        );
+        assert_eq!(
+            ParcelTimelock {
+                block: None,
+                timestamp: None
+            }
+            .cmp(&ParcelTimelock {
+                block: None,
+                timestamp: Some(100)
+            }),
+            Ordering::Less
+        );
+
+        // Block is the prior condition.
+        assert_eq!(
+            ParcelTimelock {
+                block: Some(9),
+                timestamp: None
+            }
+            .cmp(&ParcelTimelock {
+                block: Some(10),
+                timestamp: None
+            }),
+            Ordering::Less
+        );
+        assert_eq!(
+            ParcelTimelock {
+                block: Some(9),
+                timestamp: None
+            }
+            .cmp(&ParcelTimelock {
+                block: Some(10),
+                timestamp: Some(100)
+            }),
+            Ordering::Less
+        );
+        assert_eq!(
+            ParcelTimelock {
+                block: Some(9),
+                timestamp: Some(100)
+            }
+            .cmp(&ParcelTimelock {
+                block: Some(10),
+                timestamp: None
+            }),
+            Ordering::Less
+        );
+        assert_eq!(
+            ParcelTimelock {
+                block: Some(9),
+                timestamp: Some(99)
+            }
+            .cmp(&ParcelTimelock {
+                block: Some(10),
+                timestamp: Some(100)
+            }),
+            Ordering::Less
+        );
+        assert_eq!(
+            ParcelTimelock {
+                block: Some(9),
+                timestamp: Some(101)
+            }
+            .cmp(&ParcelTimelock {
+                block: Some(10),
+                timestamp: Some(100)
+            }),
+            Ordering::Less
+        );
+        assert_eq!(
+            ParcelTimelock {
+                block: Some(11),
+                timestamp: None
+            }
+            .cmp(&ParcelTimelock {
+                block: Some(10),
+                timestamp: None
+            }),
+            Ordering::Greater
+        );
+        assert_eq!(
+            ParcelTimelock {
+                block: Some(11),
+                timestamp: None
+            }
+            .cmp(&ParcelTimelock {
+                block: Some(10),
+                timestamp: Some(100)
+            }),
+            Ordering::Greater
+        );
+        assert_eq!(
+            ParcelTimelock {
+                block: Some(11),
+                timestamp: Some(100)
+            }
+            .cmp(&ParcelTimelock {
+                block: Some(10),
+                timestamp: None
+            }),
+            Ordering::Greater
+        );
+        assert_eq!(
+            ParcelTimelock {
+                block: Some(11),
+                timestamp: Some(99)
+            }
+            .cmp(&ParcelTimelock {
+                block: Some(10),
+                timestamp: Some(100)
+            }),
+            Ordering::Greater
+        );
+        assert_eq!(
+            ParcelTimelock {
+                block: Some(11),
+                timestamp: Some(101)
+            }
+            .cmp(&ParcelTimelock {
+                block: Some(10),
+                timestamp: Some(100)
+            }),
+            Ordering::Greater
+        );
+
+        // Compare timestamp if blocks are equal.
+        assert_eq!(
+            ParcelTimelock {
+                block: Some(10),
+                timestamp: None
+            }
+            .cmp(&ParcelTimelock {
+                block: Some(10),
+                timestamp: Some(100)
+            }),
+            Ordering::Less
+        );
+        assert_eq!(
+            ParcelTimelock {
+                block: Some(10),
+                timestamp: Some(99)
+            }
+            .cmp(&ParcelTimelock {
+                block: Some(10),
+                timestamp: Some(100)
+            }),
+            Ordering::Less
+        );
+        assert_eq!(
+            ParcelTimelock {
+                block: Some(10),
+                timestamp: Some(100)
+            }
+            .cmp(&ParcelTimelock {
+                block: Some(10),
+                timestamp: Some(100)
+            }),
+            Ordering::Equal
+        );
+        assert_eq!(
+            ParcelTimelock {
+                block: Some(10),
+                timestamp: Some(101)
+            }
+            .cmp(&ParcelTimelock {
+                block: Some(10),
+                timestamp: Some(100)
+            }),
+            Ordering::Greater
+        );
+        assert_eq!(
+            ParcelTimelock {
+                block: None,
+                timestamp: None
+            }
+            .cmp(&ParcelTimelock {
+                block: None,
+                timestamp: Some(100)
+            }),
+            Ordering::Less
+        );
+        assert_eq!(
+            ParcelTimelock {
+                block: None,
+                timestamp: Some(99)
+            }
+            .cmp(&ParcelTimelock {
+                block: None,
+                timestamp: Some(100)
+            }),
+            Ordering::Less
+        );
+        assert_eq!(
+            ParcelTimelock {
+                block: None,
+                timestamp: Some(100)
+            }
+            .cmp(&ParcelTimelock {
+                block: None,
+                timestamp: Some(100)
+            }),
+            Ordering::Equal
+        );
+        assert_eq!(
+            ParcelTimelock {
+                block: None,
+                timestamp: Some(101)
+            }
+            .cmp(&ParcelTimelock {
+                block: None,
+                timestamp: Some(100)
+            }),
+            Ordering::Greater
+        );
     }
 
     #[test]
@@ -1144,9 +1479,13 @@ pub mod test {
                 signatures: vec![],
             },
         };
+        let timelock = ParcelTimelock {
+            block: None,
+            timestamp: None,
+        };
         let keypair = Random.generate().unwrap();
         let signed = SignedParcel::new_with_sign(parcel, keypair.private());
-        let item = MemPoolItem::new(signed, ParcelOrigin::Local, 0, 0);
+        let item = MemPoolItem::new(signed, ParcelOrigin::Local, 0, 0, timelock);
 
         assert_eq!(fee, item.cost());
     }
@@ -1182,9 +1521,13 @@ pub mod test {
                 signatures: vec![],
             },
         };
+        let timelock = ParcelTimelock {
+            block: None,
+            timestamp: None,
+        };
         let keypair = Random.generate().unwrap();
         let signed = SignedParcel::new_with_sign(parcel, keypair.private());
-        let item = MemPoolItem::new(signed, ParcelOrigin::Local, 0, 0);
+        let item = MemPoolItem::new(signed, ParcelOrigin::Local, 0, 0, timelock);
 
         assert_eq!(fee, item.cost());
     }
@@ -1229,9 +1572,13 @@ pub mod test {
                 signatures: vec![],
             },
         };
+        let timelock = ParcelTimelock {
+            block: None,
+            timestamp: None,
+        };
         let keypair = Random.generate().unwrap();
         let signed = SignedParcel::new_with_sign(parcel, keypair.private());
-        let item = MemPoolItem::new(signed, ParcelOrigin::Local, 0, 0);
+        let item = MemPoolItem::new(signed, ParcelOrigin::Local, 0, 0, timelock);
 
         assert_eq!(fee, item.cost());
     }
@@ -1251,8 +1598,12 @@ pub mod test {
                 amount,
             },
         };
+        let timelock = ParcelTimelock {
+            block: None,
+            timestamp: None,
+        };
         let signed = SignedParcel::new_with_sign(parcel, keypair.private());
-        let item = MemPoolItem::new(signed, ParcelOrigin::Local, 0, 0);
+        let item = MemPoolItem::new(signed, ParcelOrigin::Local, 0, 0, timelock);
 
         assert_eq!(fee + amount, item.cost());
     }
@@ -1313,8 +1664,12 @@ pub mod test {
                 signatures: vec![],
             },
         };
+        let timelock = ParcelTimelock {
+            block: None,
+            timestamp: None,
+        };
         let signed = SignedParcel::new_with_sign(parcel, keypair.private());
-        let item = MemPoolItem::new(signed, ParcelOrigin::Local, 0, 0);
+        let item = MemPoolItem::new(signed, ParcelOrigin::Local, 0, 0, timelock);
         ParcelOrder::for_parcel(&item, 0.into())
     }
 }

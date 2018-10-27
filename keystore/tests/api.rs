@@ -118,13 +118,13 @@ fn secret_store_load_pat_files() {
 #[test]
 fn decrypting_files_with_short_ciphertext() {
     // 0x77a477c745390977a72f44437ac1dac19b705571
-    let kp1 = KeyPair::from_private(
-        "00fa7b3db73dc7dfdf8c5fbdb796d741e4488628c41fc4febd9160a866ba0f35".parse().unwrap(),
-    ).unwrap();
+    let kp1 =
+        KeyPair::from_private("00fa7b3db73dc7dfdf8c5fbdb796d741e4488628c41fc4febd9160a866ba0f35".parse().unwrap())
+            .unwrap();
     // 0x8267cb8df20e1dc57fef31322e16bddd83d4cc3d
-    let kp2 = KeyPair::from_private(
-        "000081c29e8142bb6a81bef5a92bda7a8328a5c85bb2f9542e76f9b0f94fc018".parse().unwrap(),
-    ).unwrap();
+    let kp2 =
+        KeyPair::from_private("000081c29e8142bb6a81bef5a92bda7a8328a5c85bb2f9542e76f9b0f94fc018".parse().unwrap())
+            .unwrap();
     let dir = RootDiskDirectory::at(ciphertext_path());
     let store = KeyStore::open(Box::new(dir)).unwrap();
     let accounts = store.accounts().unwrap();

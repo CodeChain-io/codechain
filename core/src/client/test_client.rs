@@ -43,6 +43,7 @@ use ctypes::invoice::{ParcelInvoice, TransactionInvoice};
 use ctypes::parcel::{Action, Parcel};
 use ctypes::transaction::Transaction;
 use ctypes::BlockNumber;
+use cvm::ChainTimeInfo;
 use journaldb;
 use kvdb_memorydb;
 use parking_lot::RwLock;
@@ -401,6 +402,14 @@ impl TransactionInfo for TestBlockChainClient {
     fn transaction_parcel(&self, _id: TransactionId) -> Option<ParcelAddress> {
         None
     }
+
+    fn transaction_block_number(&self, _id: TransactionId) -> Option<BlockNumber> {
+        None
+    }
+
+    fn transaction_block_timestamp(&self, _id: TransactionId) -> Option<u64> {
+        None
+    }
 }
 
 impl BlockChain for TestBlockChainClient {}
@@ -525,6 +534,24 @@ impl BlockChainClient for TestBlockChainClient {
 
     fn custom_handlers(&self) -> Vec<Arc<ActionHandler>> {
         unimplemented!()
+    }
+}
+
+impl ChainTimeInfo for TestBlockChainClient {
+    fn best_block_number(&self) -> u64 {
+        0
+    }
+
+    fn best_block_timestamp(&self) -> u64 {
+        0
+    }
+
+    fn transaction_block_age(&self, _: H256) -> Option<u64> {
+        Some(0)
+    }
+
+    fn transaction_time_age(&self, _: H256) -> Option<u64> {
+        Some(0)
     }
 }
 

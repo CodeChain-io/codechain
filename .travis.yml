@@ -1,6 +1,6 @@
 language: rust
 rust:
-  - 1.28.0
+  - 1.30.0
 stages:
   - name: test
     if: branch != docker-build
@@ -15,12 +15,12 @@ jobs:
         - nvm install 8
         - nvm use 8
         - npm install -g yarn
-        - rustup toolchain install nightly-2018-07-17
-        - rustup component add rustfmt-preview --toolchain nightly-2018-07-17
+        - rustup toolchain install nightly-2018-10-18
+        - rustup component add rustfmt-preview --toolchain nightly-2018-10-18
       before_script:
         - cargo fetch --verbose
       script:
-        - cargo +nightly-2018-07-17 fmt -- --check || TEST_FAILED=true
+        - cargo +nightly-2018-10-18 fmt -- --check || TEST_FAILED=true
         - test $TEST_FAILED || RUST_BACKTRACE=1 cargo test --verbose --all || TEST_FAILED=true
         - test $TEST_FAILED || cd test && yarn && yarn lint || TEST_FAILED=true
         - test $TEST_FAILED || yarn start || TEST_FAILED=true
@@ -32,12 +32,12 @@ jobs:
         - nvm install 8
         - nvm use 8
         - npm install -g yarn
-        - rustup toolchain install nightly-2018-07-17
-        - rustup component add rustfmt-preview --toolchain nightly-2018-07-17
+        - rustup toolchain install nightly-2018-10-18
+        - rustup component add rustfmt-preview --toolchain nightly-2018-10-18
       before_script:
         - cargo fetch --verbose
       script:
-        - cargo +nightly-2018-07-17 fmt -- --check || TEST_FAILED=true
+        - cargo +nightly-2018-10-18 fmt -- --check || TEST_FAILED=true
         - test $TEST_FAILED || RUST_BACKTRACE=1 cargo test --verbose --all || TEST_FAILED=true
         - test $TEST_FAILED || cd test && yarn && yarn lint || TEST_FAILED=true
         - test $TEST_FAILED || yarn start || TEST_FAILED=true

@@ -77,7 +77,8 @@ impl UnverifiedParcel {
             unsigned: parcel,
             sig: sig.into(),
             hash: 0.into(),
-        }.compute_hash()
+        }
+        .compute_hash()
     }
 
     /// Used to compute hash of created parcels
@@ -300,7 +301,8 @@ mod tests {
                 },
                 sig: Signature::default(),
                 hash: H256::default(),
-            }.compute_hash()
+            }
+            .compute_hash()
         );
     }
 
@@ -374,7 +376,8 @@ mod tests {
                 },
                 sig: Signature::default(),
                 hash: H256::default(),
-            }.compute_hash()
+            }
+            .compute_hash()
         );
     }
 
@@ -392,7 +395,8 @@ mod tests {
                 },
                 sig: Signature::default(),
                 hash: H256::default(),
-            }.compute_hash()
+            }
+            .compute_hash()
         );
     }
 
@@ -408,7 +412,8 @@ mod tests {
                 },
                 sig: Signature::default(),
                 hash: H256::default(),
-            }.compute_hash()
+            }
+            .compute_hash()
         );
     }
 }

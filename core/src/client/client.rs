@@ -31,6 +31,7 @@ use ctypes::invoice::ParcelInvoice;
 use ctypes::parcel::ShardChange;
 use ctypes::transaction::Transaction;
 use ctypes::{BlockNumber, ShardId};
+use cvm::ChainTimeInfo;
 use journaldb;
 use kvdb::{DBTransaction, KeyValueDB};
 use parking_lot::{Mutex, RwLock};
@@ -298,11 +299,9 @@ impl AssetClient for Client {
                         outputs,
                         ..
                     }) => {
-                        index < outputs.len()
-                            && shard_id
-                                == AssetSchemeAddress::from_hash(outputs[index].asset_type)
-                                    .expect("An asset type must be able to create an AssetSchemeAddress")
-                                    .shard_id()
+                        index < outputs.len() && shard_id == AssetSchemeAddress::from_hash(outputs[index].asset_type)
+                            .expect("An asset type must be able to create an AssetSchemeAddress")
+                            .shard_id()
                     }
                     Some(Transaction::AssetCompose {
                         shard_id: asset_compose_shard_id,
@@ -312,11 +311,9 @@ impl AssetClient for Client {
                         outputs,
                         ..
                     }) => {
-                        index < outputs.len()
-                            && shard_id
-                                == AssetSchemeAddress::from_hash(outputs[index].asset_type)
-                                    .expect("An asset type must be able to create an AssetSchemeAddress")
-                                    .shard_id()
+                        index < outputs.len() && shard_id == AssetSchemeAddress::from_hash(outputs[index].asset_type)
+                            .expect("An asset type must be able to create an AssetSchemeAddress")
+                            .shard_id()
                     }
                     None => false,
                 };
@@ -345,7 +342,10 @@ impl ExecuteClient for Client {
         shard_ids.sort_unstable();
         shard_ids.dedup();
 
-        Ok(shard_ids.iter().flat_map(|shard_id| state.apply_transactions(transactions, *shard_id, sender)).collect())
+        Ok(shard_ids
+            .iter()
+            .flat_map(|shard_id| state.apply_transactions(transactions, *shard_id, sender, self))
+            .collect())
     }
 }
 
@@ -413,6 +413,20 @@ impl ParcelInfo for Client {
 impl TransactionInfo for Client {
     fn transaction_parcel(&self, id: TransactionId) -> Option<ParcelAddress> {
         self.transaction_address(id).map(|addr| addr.parcel_address)
+    }
+
+    fn transaction_block_number(&self, id: TransactionId) -> Option<BlockNumber> {
+        self.transaction_address(id)
+            .map(|addr| addr.parcel_address.block_hash)
+            .and_then(|hash| self.block_header(hash.into()))
+            .map(|h| h.number())
+    }
+
+    fn transaction_block_timestamp(&self, id: TransactionId) -> Option<u64> {
+        self.transaction_address(id)
+            .map(|addr| addr.parcel_address.block_hash)
+            .and_then(|hash| self.block_header(hash.into()))
+            .map(|h| h.timestamp())
     }
 }
 
@@ -855,7 +869,7 @@ impl Importer {
         let db = client.state_db.read().clone_canon(header.parent_hash());
 
         let is_epoch_begin = chain.epoch_transition(parent.number(), *header.parent_hash()).is_some();
-        let enact_result = enact(&block.header, &block.parcels, engine, db, &parent, is_epoch_begin);
+        let enact_result = enact(&block.header, &block.parcels, engine, client, db, &parent, is_epoch_begin);
         let locked_block = enact_result.map_err(|e| {
             cwarn!(CLIENT, "Block import failed for #{} ({})\nError: {:?}", header.number(), header.hash(), e);
         })?;
@@ -1076,3 +1090,23 @@ impl ImportSealedBlock for Client {
 }
 
 impl MiningBlockChainClient for Client {}
+
+impl ChainTimeInfo for Client {
+    fn best_block_number(&self) -> BlockNumber {
+        self.chain_info().best_block_number
+    }
+
+    fn best_block_timestamp(&self) -> u64 {
+        self.chain_info().best_block_timestamp
+    }
+
+    fn transaction_block_age(&self, hash: H256) -> Option<u64> {
+        self.transaction_block_number(TransactionId::Hash(hash))
+            .map(|block_number| self.chain_info().best_block_number - block_number)
+    }
+
+    fn transaction_time_age(&self, hash: H256) -> Option<u64> {
+        self.transaction_block_timestamp(TransactionId::Hash(hash))
+            .map(|block_timestamp| self.chain_info().best_block_timestamp - block_timestamp)
+    }
+}

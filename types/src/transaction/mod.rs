@@ -19,5 +19,6 @@ mod transaction;
 
 pub use self::error::Error;
 pub use self::transaction::{
-    AssetMintOutput, AssetOutPoint, AssetTransferInput, AssetTransferOutput, HashingError, PartialHashing, Transaction,
+    AssetMintOutput, AssetOutPoint, AssetTransferInput, AssetTransferOutput, HashingError, PartialHashing, Timelock,
+    Transaction,
 };

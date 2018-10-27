@@ -30,7 +30,7 @@ use super::error::Error;
 
 
 pub trait PartialHashing {
-    fn hash_partially(&self, tag: Tag, cur: &AssetOutPoint, burn: bool) -> Result<H256, HashingError>;
+    fn hash_partially(&self, tag: Tag, cur: &AssetTransferInput, burn: bool) -> Result<H256, HashingError>;
 }
 
 #[derive(Debug, PartialEq)]
@@ -51,8 +51,50 @@ pub struct AssetOutPoint {
 #[serde(rename_all = "camelCase")]
 pub struct AssetTransferInput {
     pub prev_out: AssetOutPoint,
+    pub timelock: Option<Timelock>,
     pub lock_script: Bytes,
     pub unlock_script: Bytes,
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", tag = "type", content = "value")]
+pub enum Timelock {
+    Block(u64),
+    BlockAge(u64),
+    Time(u64),
+    TimeAge(u64),
+}
+
+type TimelockType = u8;
+const BLOCK: TimelockType = 0x01;
+const BLOCK_AGE: TimelockType = 0x02;
+const TIME: TimelockType = 0x03;
+const TIME_AGE: TimelockType = 0x04;
+
+impl Encodable for Timelock {
+    fn rlp_append(&self, s: &mut RlpStream) {
+        match self {
+            Timelock::Block(val) => s.begin_list(2).append(&BLOCK).append(val),
+            Timelock::BlockAge(val) => s.begin_list(2).append(&BLOCK_AGE).append(val),
+            Timelock::Time(val) => s.begin_list(2).append(&TIME).append(val),
+            Timelock::TimeAge(val) => s.begin_list(2).append(&TIME_AGE).append(val),
+        };
+    }
+}
+
+impl Decodable for Timelock {
+    fn decode(d: &UntrustedRlp) -> Result<Self, DecoderError> {
+        if d.item_count()? != 2 {
+            return Err(DecoderError::RlpIncorrectListLen)
+        }
+        match d.val_at(0)? {
+            BLOCK => Ok(Timelock::Block(d.val_at(1)?)),
+            BLOCK_AGE => Ok(Timelock::BlockAge(d.val_at(1)?)),
+            TIME => Ok(Timelock::Time(d.val_at(1)?)),
+            TIME_AGE => Ok(Timelock::TimeAge(d.val_at(1)?)),
+            _ => Err(DecoderError::Custom("Unexpected timelock type")),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable, Deserialize, Serialize)]
@@ -377,13 +419,14 @@ fn apply_input_scheme(
     inputs: &Vec<AssetTransferInput>,
     is_sign_all: bool,
     is_sign_single: bool,
-    cur: &AssetOutPoint,
+    cur: &AssetTransferInput,
 ) -> Vec<AssetTransferInput> {
     if is_sign_all {
         return inputs
             .iter()
             .map(|input| AssetTransferInput {
                 prev_out: input.prev_out.clone(),
+                timelock: input.timelock,
                 lock_script: Vec::new(),
                 unlock_script: Vec::new(),
             })
@@ -392,7 +435,8 @@ fn apply_input_scheme(
 
     if is_sign_single {
         return vec![AssetTransferInput {
-            prev_out: cur.clone(),
+            prev_out: cur.prev_out.clone(),
+            timelock: cur.timelock,
             lock_script: Vec::new(),
             unlock_script: Vec::new(),
         }]
@@ -402,7 +446,7 @@ fn apply_input_scheme(
 }
 
 impl PartialHashing for Transaction {
-    fn hash_partially(&self, tag: Tag, cur: &AssetOutPoint, is_burn: bool) -> Result<H256, HashingError> {
+    fn hash_partially(&self, tag: Tag, cur: &AssetTransferInput, is_burn: bool) -> Result<H256, HashingError> {
         match self {
             Transaction::AssetTransfer {
                 network_id,
@@ -427,7 +471,8 @@ impl PartialHashing for Transaction {
                         inputs: new_inputs,
                         outputs: new_outputs,
                         nonce: *nonce,
-                    }.rlp_bytes(),
+                    }
+                    .rlp_bytes(),
                     &blake128(tag.get_tag()),
                 ))
             }
@@ -465,7 +510,8 @@ impl PartialHashing for Transaction {
                         registrar: *registrar,
                         inputs: new_inputs,
                         output: new_output,
-                    }.rlp_bytes(),
+                    }
+                    .rlp_bytes(),
                     &blake128(tag.get_tag()),
                 ))
             }
@@ -487,11 +533,13 @@ impl PartialHashing for Transaction {
                         nonce: *nonce,
                         input: AssetTransferInput {
                             prev_out: input.prev_out.clone(),
+                            timelock: input.timelock,
                             lock_script: Vec::new(),
                             unlock_script: Vec::new(),
                         },
                         outputs: new_outputs,
-                    }.rlp_bytes(),
+                    }
+                    .rlp_bytes(),
                     &blake128(tag.get_tag()),
                 ))
             }
@@ -706,6 +754,7 @@ mod tests {
 
         let input = AssetTransferInput {
             prev_out,
+            timelock: None,
             lock_script: vec![],
             unlock_script: vec![],
         };
@@ -726,6 +775,7 @@ mod tests {
                     asset_type,
                     amount,
                 },
+                timelock: None,
                 lock_script: vec![],
                 unlock_script: vec![],
             }],
@@ -760,6 +810,7 @@ mod tests {
                         asset_type: asset_type1,
                         amount: amount1,
                     },
+                    timelock: None,
                     lock_script: vec![],
                     unlock_script: vec![],
                 },
@@ -770,6 +821,7 @@ mod tests {
                         asset_type: asset_type2,
                         amount: amount2,
                     },
+                    timelock: None,
                     lock_script: vec![],
                     unlock_script: vec![],
                 },
@@ -813,6 +865,7 @@ mod tests {
                         asset_type: asset_type1,
                         amount: amount1,
                     },
+                    timelock: None,
                     lock_script: vec![],
                     unlock_script: vec![],
                 },
@@ -823,6 +876,7 @@ mod tests {
                         asset_type: asset_type2,
                         amount: amount2,
                     },
+                    timelock: None,
                     lock_script: vec![],
                     unlock_script: vec![],
                 },
@@ -877,6 +931,7 @@ mod tests {
                     asset_type,
                     amount: input_amount,
                 },
+                timelock: None,
                 lock_script: vec![],
                 unlock_script: vec![],
             }],
@@ -898,6 +953,7 @@ mod tests {
                     asset_type,
                     amount: input_amount,
                 },
+                timelock: None,
                 lock_script: vec![],
                 unlock_script: vec![],
             }],
@@ -924,6 +980,7 @@ mod tests {
                     asset_type,
                     amount: input_amount,
                 },
+                timelock: None,
                 lock_script: vec![],
                 unlock_script: vec![],
             }],
@@ -949,6 +1006,7 @@ mod tests {
                     asset_type: H256::default(),
                     amount: 30,
                 },
+                timelock: None,
                 lock_script: vec![0x30, 0x01],
                 unlock_script: vec![],
             },
@@ -959,11 +1017,16 @@ mod tests {
 
     #[test]
     fn apply_long_filter() {
-        let out = AssetOutPoint {
-            transaction_hash: H256::default(),
-            index: 0,
-            asset_type: H256::default(),
-            amount: 0,
+        let input = AssetTransferInput {
+            prev_out: AssetOutPoint {
+                transaction_hash: H256::default(),
+                index: 0,
+                asset_type: H256::default(),
+                amount: 0,
+            },
+            timelock: None,
+            lock_script: Vec::new(),
+            unlock_script: Vec::new(),
         };
         let inputs: Vec<AssetTransferInput> = (0..100)
             .map(|_| AssetTransferInput {
@@ -973,6 +1036,7 @@ mod tests {
                     asset_type: H256::default(),
                     amount: 0,
                 },
+                timelock: None,
                 lock_script: Vec::new(),
                 unlock_script: Vec::new(),
             })
@@ -999,7 +1063,7 @@ mod tests {
         }
         tag.push(0b00110101);
         assert_eq!(
-            transaction.hash_partially(Tag::try_new(tag.clone()).unwrap(), &out, false),
+            transaction.hash_partially(Tag::try_new(tag.clone()).unwrap(), &input, false),
             Ok(blake256_with_key(&transaction.rlp_bytes(), &blake128(&tag)))
         );
 
@@ -1018,7 +1082,7 @@ mod tests {
         }
         tag.push(0b00110101);
         assert_eq!(
-            transaction.hash_partially(Tag::try_new(tag.clone()).unwrap(), &out, false),
+            transaction.hash_partially(Tag::try_new(tag.clone()).unwrap(), &input, false),
             Ok(blake256_with_key(&transaction_aux.rlp_bytes(), &blake128(&tag)))
         );
 
@@ -1037,7 +1101,7 @@ mod tests {
         }
         tag.push(0b00110101);
         assert_eq!(
-            transaction.hash_partially(Tag::try_new(tag.clone()).unwrap(), &out, false),
+            transaction.hash_partially(Tag::try_new(tag.clone()).unwrap(), &input, false),
             Ok(blake256_with_key(&transaction_aux.rlp_bytes(), &blake128(&tag)))
         );
     }

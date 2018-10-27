@@ -94,6 +94,7 @@ AssetTransfer {
 
 struct AssetTransferInput {
     prev_out: AssetOutPoint,
+    timelock: Option<Timelock>,
     lock_script: Script,
     unlock_script: Script,
 }
@@ -111,5 +112,20 @@ struct AssetTransferOutput {
 }
 ```
 
+### Timelock
 
+Transaction fails if any `timelock` condition isn't met. There are 4 types for `timelock`. Basically, they keep the transaction from being executed until the specific point in time. `Block` and `Time` types indicate the absolute time. `BlockAge` and `TimeAge` types indicate relative time based on how long has the asset been created.
 
+- `Block(u64)`: The given value must be equal or less then the current block's number.
+- `BlockAge(u64)`: The given value must be equal or less then the value `X`, where `X` = `current block number` - `the block number that the asset of the AssetOutPoint was created at`.
+- `Time(u64)`: The given value must be equal or less then the current block's timestamp.
+- `TimeAge(u64)`: The given value must be equal or less then the value `X`, where `X` = `current block timestamp` - `the block timestamp that the asset of the AssetOutPoint was created at`.
+
+```rust
+enum Timelock {
+    Block(u64),
+    BlockAge(u64),
+    Time(u64),
+    TimeAge(u64),
+}
+```

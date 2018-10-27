@@ -248,6 +248,7 @@ dependencies = [
  "codechain-state 0.1.0",
  "codechain-stratum 1.11.0",
  "codechain-types 0.1.0",
+ "codechain-vm 0.1.0",
  "cuckoo 0.1.0 (git+https://github.com/CodeChain-io/rust-cuckoo.git?rev=280cab9c)",
  "hashdb 0.1.1",
  "heapsize 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -566,6 +567,7 @@ dependencies = [
 name = "codechain-vm"
 version = "0.1.0"
 dependencies = [
+ "byteorder 1.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "codechain-crypto 0.1.0",
  "codechain-key 0.1.0",
  "codechain-types 0.1.0",

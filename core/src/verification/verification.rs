@@ -190,7 +190,7 @@ pub fn verify_block_family<C: BlockInfo + TransactionInfo>(
     };
 
     for parcel in params.parcels {
-        engine.machine().verify_parcel(parcel, header, params.client)?;
+        engine.machine().verify_parcel(parcel, header, params.client, true)?;
     }
 
     Ok(())
@@ -223,7 +223,8 @@ fn verify_parent(header: &Header, parent: &Header) -> Result<(), Error> {
             min: Some(1),
             max: None,
             found: header.number(),
-        }).into())
+        })
+        .into())
     }
 
     Ok(())

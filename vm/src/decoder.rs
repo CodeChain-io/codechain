@@ -77,6 +77,7 @@ pub fn decode(bytes: &[u8]) -> Result<Vec<Instruction>, DecoderError> {
             opcode::RIPEMD160 => result.push(Instruction::Ripemd160),
             opcode::KECCAK256 => result.push(Instruction::Keccak256),
             opcode::BLAKE160 => result.push(Instruction::Blake160),
+            opcode::CHKTIMELOCK => result.push(Instruction::ChkTimelock),
             invalid_opcode => return Err(DecoderError::InvalidOpCode(invalid_opcode)),
         }
     }

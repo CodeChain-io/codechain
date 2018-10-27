@@ -160,7 +160,8 @@ impl StratumImpl {
                 }
             },
             None => to_value(&[0u8; 0]),
-        }.expect("Empty slices are serializable"))
+        }
+        .expect("Empty slices are serializable"))
     }
 
     /// rpc method `mining.authorize`
@@ -449,7 +450,8 @@ mod tests {
             Stratum::start(&addr, Arc::new(DummyManager::build().of_initial(r#"["dummy authorize payload"]"#)), None)
                 .expect("There should be no error starting stratum");
 
-        let mut auth_request = r#"{"jsonrpc": "2.0", "method": "mining.authorize", "params": ["miner1", ""], "id": 1}"#.as_bytes()
+        let mut auth_request = r#"{"jsonrpc": "2.0", "method": "mining.authorize", "params": ["miner1", ""], "id": 1}"#
+            .as_bytes()
             .to_vec();
         auth_request.extend(b"\n");
 
@@ -498,7 +500,8 @@ mod tests {
             Stratum::start(&addr, Arc::new(DummyManager::build().of_initial(r#"["dummy authorize payload"]"#)), None)
                 .expect("There should be no error starting stratum");
 
-        let mut auth_request = r#"{"jsonrpc": "2.0", "method": "mining.authorize", "params": ["miner1", ""], "id": 1}"#.as_bytes()
+        let mut auth_request = r#"{"jsonrpc": "2.0", "method": "mining.authorize", "params": ["miner1", ""], "id": 1}"#
+            .as_bytes()
             .to_vec();
         auth_request.extend(b"\n");
 

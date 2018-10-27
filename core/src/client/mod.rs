@@ -37,6 +37,7 @@ use ctypes::invoice::{ParcelInvoice, TransactionInvoice};
 use ctypes::parcel::ShardChange;
 use ctypes::transaction::Transaction;
 use ctypes::{BlockNumber, ShardId};
+use cvm::ChainTimeInfo;
 use kvdb::KeyValueDB;
 use primitives::{Bytes, H256, U256};
 
@@ -78,6 +79,10 @@ pub trait ParcelInfo {
 
 pub trait TransactionInfo {
     fn transaction_parcel(&self, id: TransactionId) -> Option<ParcelAddress>;
+
+    fn transaction_block_number(&self, id: TransactionId) -> Option<BlockNumber>;
+
+    fn transaction_block_timestamp(&self, id: TransactionId) -> Option<u64>;
 
     fn is_any_transaction_included(&self, transactions: &mut Iterator<Item = H256>) -> bool {
         for hash in transactions {
@@ -194,7 +199,8 @@ pub trait ImportBlock {
 pub trait BlockChain: ChainInfo + BlockInfo + ParcelInfo + TransactionInfo {}
 
 /// Blockchain database client. Owns and manages a blockchain and a block queue.
-pub trait BlockChainClient: Sync + Send + AccountData + BlockChain + ImportBlock + RegularKeyOwner {
+pub trait BlockChainClient:
+    Sync + Send + AccountData + BlockChain + ImportBlock + RegularKeyOwner + ChainTimeInfo {
     /// Get block queue information.
     fn queue_info(&self) -> BlockQueueInfo;
 

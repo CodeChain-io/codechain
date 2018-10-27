@@ -48,7 +48,8 @@ impl Seal {
             return Err(BlockError::InvalidSealArity(Mismatch {
                 expected: 2,
                 found: seal.len(),
-            }).into())
+            })
+            .into())
         }
 
         Ok(Seal {

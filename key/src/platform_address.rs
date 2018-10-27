@@ -113,8 +113,9 @@ impl fmt::Display for PlatformAddress {
         let mut encoded = Bech32 {
             hrp,
             data: rearrange_bits(&data, 8, 5),
-        }.to_string()
-            .unwrap();
+        }
+        .to_string()
+        .unwrap();
         encoded.remove(3);
         write!(f, "{}", encoded)
     }
