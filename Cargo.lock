@@ -212,6 +212,7 @@ dependencies = [
  "codechain-state 0.1.0",
  "codechain-stratum 1.11.0",
  "codechain-sync 0.1.0",
+ "codechain-timer 0.1.0",
  "codechain-types 0.1.0",
  "codechain-vm 0.1.0",
  "ctrlc 1.1.1 (git+https://github.com/paritytech/rust-ctrlc.git)",
@@ -539,6 +540,13 @@ dependencies = [
  "time 0.1.40 (registry+https://github.com/rust-lang/crates.io-index)",
  "trie-standardmap 0.1.0",
  "util-error 0.1.0",
+]
+
+[[package]]
+name = "codechain-timer"
+version = "0.1.0"
+dependencies = [
+ "parking_lot 0.5.5 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]

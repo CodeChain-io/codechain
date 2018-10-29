@@ -28,6 +28,7 @@ codechain-reactor = { path = "util/reactor" }
 codechain-rpc = { path = "rpc" }
 codechain-state = { path = "state" }
 codechain-sync = { path = "sync" }
+codechain-timer = { path = "util/timer" }
 codechain-types = { path = "types" }
 codechain-vm = { path = "vm" }
 codechain-stratum = { path = "stratum" }
