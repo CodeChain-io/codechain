@@ -331,13 +331,10 @@ fn sign_all_input_partial_output() {
             nonce: 0,
         }
         .rlp_bytes(),
-        &blake128(&[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0b1, 0b00111101 as u8]),
+        &blake128(&[0b1, 0b00000101 as u8]),
     );
     let signature = Signature::from(sign(keypair.private(), &message).unwrap()).to_vec();
-    let unlock_script = vec![
-        Instruction::PushB(signature),
-        Instruction::PushB(vec![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0b1, 0b00111101 as u8]),
-    ];
+    let unlock_script = vec![Instruction::PushB(signature), Instruction::PushB(vec![0b1, 0b00000101 as u8])];
     let lock_script = vec![Instruction::PushB(pubkey), Instruction::ChkSig];
 
     assert_eq!(
@@ -409,13 +406,10 @@ fn sign_single_input_partial_output() {
             nonce: 0,
         }
         .rlp_bytes(),
-        &blake128(&[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0b1, 0b00111100 as u8]),
+        &blake128(&[0b1, 0b00000100 as u8]),
     );
     let signature = Signature::from(sign(keypair.private(), &message).unwrap()).to_vec();
-    let unlock_script = vec![
-        Instruction::PushB(signature),
-        Instruction::PushB(vec![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0b1, 0b00111100 as u8]),
-    ];
+    let unlock_script = vec![Instruction::PushB(signature), Instruction::PushB(vec![0b1, 0b00000100 as u8])];
     let lock_script = vec![Instruction::PushB(pubkey), Instruction::ChkSig];
 
     assert_eq!(
@@ -523,13 +517,10 @@ fn distinguish_sign_single_output_with_sign_all() {
             nonce: 0,
         }
         .rlp_bytes(),
-        &blake128(&[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0b11 as u8]),
+        &blake128(&[0b11 as u8]),
     );
     let signature = Signature::from(sign(keypair.private(), &message).unwrap()).to_vec();
-    let unlock_script = vec![
-        Instruction::PushB(signature),
-        Instruction::PushB(vec![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0b1, 0b00111101 as u8]),
-    ];
+    let unlock_script = vec![Instruction::PushB(signature), Instruction::PushB(vec![0b1, 0b00000101 as u8])];
     let lock_script = vec![Instruction::PushB(pubkey), Instruction::ChkSig];
 
     assert_eq!(

@@ -16,6 +16,7 @@
 
 use super::super::transaction::HashingError;
 
+#[derive(Debug, PartialEq)]
 pub struct Tag {
     pub sign_all_inputs: bool,
     pub sign_all_outputs: bool,
@@ -32,8 +33,16 @@ impl Tag {
         let sign_all_outputs = (tag >> 1 & 0x1) == 1;
         let filter_len = (tag >> 2) as usize;
 
-        if bitvec.len() != filter_len {
+        let length = bitvec.len();
+        if length != filter_len {
             return Err(HashingError::InvalidFilter)
+        }
+
+        // Check if the filter has trailing zero
+        if length != 0 {
+            if bitvec[0] == 0 {
+                return Err(HashingError::InvalidFilter)
+            }
         }
 
         Ok(Tag {
@@ -51,6 +60,7 @@ impl Tag {
 }
 #[cfg(test)]
 mod tests {
+    use transaction::HashingError;
     use util::tag::Tag;
     #[test]
     fn make_partial_signing_tag() {
@@ -65,6 +75,34 @@ mod tests {
         assert_eq!(
             tag.filter.clone(),
             vec![0b10000000, 0b01000000, 0b00100000, 0b00010000, 0b00001000, 0b00000100, 0b00000010, 0b00000001]
+        );
+    }
+
+    #[test]
+    fn trailing_zero() {
+        let bitvec = vec![
+            0b00000000, 0b01000000, 0b00100000, 0b00010000, 0b00001000, 0b00000100, 0b00000010, 0b00000001, 0b00100001,
+        ];
+        assert_eq!(Tag::try_new(bitvec), Err(HashingError::InvalidFilter));
+
+        let bitvec = vec![
+            0b00000100, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00100001,
+        ];
+        assert_ne!(Tag::try_new(bitvec), Err(HashingError::InvalidFilter));
+    }
+
+    #[test]
+    fn zero_length_filter() {
+        let bitvec = vec![0b00000001];
+        assert_eq!(
+            Tag::try_new(bitvec),
+            Ok(Tag {
+                sign_all_inputs: true,
+                sign_all_outputs: false,
+                filter_len: 0,
+                filter: vec![],
+                bitvec: vec![0b00000001],
+            })
         );
     }
 }
