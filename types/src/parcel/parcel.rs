@@ -57,13 +57,10 @@ impl Parcel {
         blake256(stream.as_raw())
     }
 
-    pub fn iter_transactions<'a>(&'a self) -> Box<Iterator<Item = H256> + 'a> {
+    pub fn asset_transaction_hash(&self) -> Option<H256> {
         match &self.action {
-            Action::AssetTransactionGroup {
-                transactions,
-                ..
-            } => Box::new(transactions.iter().map(|t| t.hash())),
-            _ => Box::new(::std::iter::empty()),
+            Action::AssetTransaction(transaction) => Some(transaction.hash()),
+            _ => None,
         }
     }
 }

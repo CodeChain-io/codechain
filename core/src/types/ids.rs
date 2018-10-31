@@ -63,7 +63,7 @@ pub enum TransactionId {
     Hash(H256),
     /// Parcel id and transaction index within this parcel.
     /// Querying by parcel position is always faster.
-    Location(ParcelId, usize),
+    Location(ParcelId),
 }
 
 impl From<H256> for TransactionId {

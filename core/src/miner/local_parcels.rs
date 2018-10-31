@@ -213,14 +213,12 @@ mod tests {
 
     fn new_parcel(seq: U256) -> SignedParcel {
         let keypair = Random.generate().unwrap();
-        let transactions = vec![];
         let parcel = Parcel {
             seq,
             fee: U256::from(1245),
-            action: Action::AssetTransactionGroup {
-                transactions,
-                changes: vec![],
-                signatures: vec![],
+            action: Action::Payment {
+                receiver: keypair.address(),
+                amount: 0.into(),
             },
             network_id: "tc".into(),
         };

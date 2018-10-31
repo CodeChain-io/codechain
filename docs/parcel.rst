@@ -33,9 +33,7 @@ A parcel would look something like this:
     }
 
     pub enum Action {
-        AssetTransactionGroup {
-            transactions: Vec<Transaction>,
-        },
+        AssetTransaction(Transaction),
         Payment {
             receiver: Address,
             value: U256,

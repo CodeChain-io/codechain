@@ -16,7 +16,7 @@
 
 use ckey::{NetworkId, PlatformAddress, Public};
 use cstate::{AssetScheme, OwnedAsset};
-use ctypes::invoice::{ParcelInvoice, TransactionInvoice};
+use ctypes::invoice::Invoice;
 use ctypes::{BlockNumber, ShardId};
 use primitives::{H256, U256};
 
@@ -36,7 +36,7 @@ build_rpc_trait! {
 
         /// Gets parcel invoices with given hash.
         # [rpc(name = "chain_getParcelInvoice")]
-        fn get_parcel_invoice(&self, H256) -> Result<Option<ParcelInvoice>>;
+        fn get_parcel_invoice(&self, H256) -> Result<Option<Invoice>>;
 
         /// Gets transaction with given hash.
         # [rpc(name = "chain_getTransaction")]
@@ -44,7 +44,7 @@ build_rpc_trait! {
 
         /// Gets transaction invoice with given hash.
         # [rpc(name = "chain_getTransactionInvoice")]
-        fn get_transaction_invoice(&self, H256) -> Result<Option<TransactionInvoice>>;
+        fn get_transaction_invoice(&self, H256) -> Result<Option<Invoice>>;
 
         /// Gets asset scheme with given transaction hash.
         # [rpc(name = "chain_getAssetSchemeByHash")]

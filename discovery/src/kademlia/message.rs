@@ -48,6 +48,8 @@ impl Decodable for Message {
 
 #[cfg(test)]
 mod tests {
+    use rlp::rlp_encode_and_decode_test;
+
     use super::*;
 
     #[test]

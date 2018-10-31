@@ -34,7 +34,6 @@ extern crate kvdb_memorydb;
 extern crate log;
 extern crate primitives;
 extern crate rand;
-#[cfg_attr(test, macro_use)]
 extern crate rlp;
 extern crate snap;
 #[cfg(test)]

@@ -33,7 +33,6 @@ extern crate log;
 extern crate lru_cache;
 extern crate parking_lot;
 extern crate primitives;
-#[cfg_attr(test, macro_use)]
 extern crate rlp;
 #[cfg(test)]
 extern crate rustc_hex;

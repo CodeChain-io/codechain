@@ -189,8 +189,6 @@ impl From<ParcelAddress> for ParcelId {
 #[derive(Debug, PartialEq, Clone, RlpEncodable, RlpDecodable)]
 pub struct TransactionAddress {
     pub parcel_address: ParcelAddress,
-    /// Transaction index within the parcel
-    pub index: usize,
 }
 
 /// Candidate transitions to an epoch with specific number.

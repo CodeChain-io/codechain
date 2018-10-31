@@ -20,7 +20,7 @@ use ccrypto::BLAKE_NULL_RLP;
 use ckey::Address;
 use cmerkle::skewed_merkle_root;
 use cstate::{StateDB, StateError, StateWithCache, TopLevelState};
-use ctypes::invoice::ParcelInvoice;
+use ctypes::invoice::Invoice;
 use ctypes::machine::{LiveBlock, Parcels};
 use ctypes::parcel::Error as ParcelError;
 use ctypes::util::unexpected::Mismatch;
@@ -73,7 +73,7 @@ pub struct ExecutedBlock {
     header: Header,
     state: TopLevelState,
     parcels: Vec<SignedParcel>,
-    invoices: Vec<ParcelInvoice>,
+    invoices: Vec<Invoice>,
     parcels_set: HashSet<H256>,
 }
 
@@ -202,7 +202,7 @@ impl<'x> OpenBlock<'x> {
         self.block.header.set_state_root(self.block.state.root().clone());
         self.block.header.set_invoices_root(skewed_merkle_root(
             parent_invoices_root,
-            self.block.invoices.iter().flat_map(|invoices| invoices.iter_result().map(|invoice| invoice.rlp_bytes())),
+            self.block.invoices.iter().map(|invoice| invoice.rlp_bytes()),
         ));
 
         ClosedBlock {
@@ -223,16 +223,13 @@ impl<'x> OpenBlock<'x> {
         if self.block.header.parcels_root().is_zero() || self.block.header.parcels_root() == &BLAKE_NULL_RLP {
             self.block.header.set_parcels_root(skewed_merkle_root(
                 parent_parcels_root,
-                self.block.parcels.iter().map(|e| e.rlp_bytes()),
+                self.block.parcels.iter().map(Encodable::rlp_bytes),
             ));
         }
         if self.block.header.invoices_root().is_zero() || self.block.header.invoices_root() == &BLAKE_NULL_RLP {
             self.block.header.set_invoices_root(skewed_merkle_root(
                 parent_invoices_root,
-                self.block
-                    .invoices
-                    .iter()
-                    .flat_map(|invoices| invoices.iter_result().map(|invoice| invoice.rlp_bytes())),
+                self.block.invoices.iter().map(Encodable::rlp_bytes),
             ));
         }
         self.block.header.set_state_root(self.block.state.root().clone());
@@ -362,7 +359,7 @@ pub trait IsBlock {
     }
 
     /// Get all information on receipts in this block.
-    fn invoices(&self) -> &[ParcelInvoice] {
+    fn invoices(&self) -> &[Invoice] {
         &self.block().invoices
     }
 

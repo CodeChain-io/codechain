@@ -82,6 +82,8 @@ impl<T: fmt::Display> fmt::Display for OutOfBounds<T> {
 
 #[cfg(test)]
 mod tests {
+    use rlp::rlp_encode_and_decode_test;
+
     use super::*;
 
     #[test]

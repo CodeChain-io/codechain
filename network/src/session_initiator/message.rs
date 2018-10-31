@@ -230,6 +230,8 @@ impl Decodable for Message {
 
 #[cfg(test)]
 mod tests {
+    use rlp::rlp_encode_and_decode_test;
+
     use super::super::super::session::Nonce;
     use super::super::super::SocketAddr;
     use super::*;

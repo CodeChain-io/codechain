@@ -137,46 +137,34 @@ impl UnverifiedParcel {
             return Err(ParcelError::ParcelsTooBig)
         }
         match &self.action {
-            Action::AssetTransactionGroup {
-                transactions,
-                changes,
-                ..
-            } => {
-                let shard_ids: Vec<_> = changes.iter().map(|c| c.shard_id).collect();
-                for t in transactions {
-                    t.verify()?;
-                    if t.network_id() != self.network_id {
-                        return Err(ParcelError::InvalidNetworkId(t.network_id()))
-                    }
-                    for shard_id in t.related_shards() {
-                        if !shard_ids.contains(&shard_id) {
-                            return Err(ParcelError::InvalidShardId(shard_id))
+            Action::AssetTransaction(transaction) => {
+                transaction.verify()?;
+                if transaction.network_id() != self.network_id {
+                    return Err(ParcelError::InvalidNetworkId(transaction.network_id()))
+                }
+                match &transaction {
+                    Transaction::AssetMint {
+                        metadata,
+                        ..
+                    } => {
+                        if metadata.len() > params.max_metadata_size {
+                            return Err(ParcelError::MetadataTooBig)
                         }
                     }
-                    match &t {
-                        Transaction::AssetMint {
-                            metadata,
-                            ..
-                        } => {
-                            if metadata.len() > params.max_metadata_size {
-                                return Err(ParcelError::MetadataTooBig)
-                            }
+                    Transaction::AssetTransfer {
+                        ..
+                    } => {}
+                    Transaction::AssetCompose {
+                        metadata,
+                        ..
+                    } => {
+                        if metadata.len() > params.max_metadata_size {
+                            return Err(ParcelError::MetadataTooBig)
                         }
-                        Transaction::AssetTransfer {
-                            ..
-                        } => {}
-                        Transaction::AssetCompose {
-                            metadata,
-                            ..
-                        } => {
-                            if metadata.len() > params.max_metadata_size {
-                                return Err(ParcelError::MetadataTooBig)
-                            }
-                        }
-                        Transaction::AssetDecompose {
-                            ..
-                        } => {}
                     }
+                    Transaction::AssetDecompose {
+                        ..
+                    } => {}
                 }
             }
             _ => {}
@@ -286,6 +274,7 @@ mod tests {
     use ckey::{Address, Public, Signature};
     use ctypes::transaction::AssetMintOutput;
     use primitives::{H160, H256};
+    use rlp::rlp_encode_and_decode_test;
 
     use super::*;
 

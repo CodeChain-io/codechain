@@ -17,19 +17,19 @@ struct Parcel {
 }
 
 enum Action {
-    AssetTransactionGroup { ..., },
+    AssetTransaction { ..., },
     Payment { ..., },
     SetRegularKey { ..., },
 }
 ```
 
-## AssetTransactionGroup
+## AssetTransaction
 
-Execute `transactions`.
+Execute `transaction`.
 
 ```rust
-AssetTransactionGroup {
-    transactions: Vec<Transaction>
+AssetTransaction {
+    transaction: Transaction
 }
 ```
 

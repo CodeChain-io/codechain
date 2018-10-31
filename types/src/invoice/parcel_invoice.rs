@@ -15,181 +15,99 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
-use serde::ser::{SerializeSeq, SerializeStruct};
+use serde::ser::SerializeStruct;
 use serde::{Serialize, Serializer};
 
 use super::super::parcel::Error;
 use super::invoice_result::InvoiceResult;
-use super::transaction_invoice::TransactionInvoice;
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum ParcelInvoice {
-    SingleSuccess,
-    SingleFail(Error),
-    Multiple(Vec<TransactionInvoice>),
+pub enum Invoice {
+    Success,
+    Failure(Error),
 }
 
 const INVOICE_ID_SINGLE_SUCCESS: u8 = 1u8;
 const INVOICE_ID_SINGLE_FAIL: u8 = 2u8;
-const INVOICE_ID_MULTIPLE: u8 = 3u8;
 
-impl Serialize for ParcelInvoice {
+impl Serialize for Invoice {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer, {
         match self {
-            ParcelInvoice::SingleSuccess => {
+            Invoice::Success => {
                 let mut s = serializer.serialize_struct("ParcelInvoice", 1)?;
                 s.serialize_field("success", &true)?;
                 s.end()
             }
-            ParcelInvoice::SingleFail(ref err) => {
+            Invoice::Failure(ref err) => {
                 let mut s = serializer.serialize_struct("ParcelInvoice", 2)?;
                 s.serialize_field("success", &false)?;
                 s.serialize_field("error", err)?;
                 s.end()
             }
-            ParcelInvoice::Multiple(transaction_invoices) => {
-                let mut s = serializer.serialize_seq(Some(transaction_invoices.len()))?;
-                for transaction_invoice in transaction_invoices {
-                    s.serialize_element(transaction_invoice)?;
-                }
-                s.end()
-            }
         }
     }
 }
 
-impl ParcelInvoice {
-    pub fn new(invoices: Vec<TransactionInvoice>) -> Self {
-        ParcelInvoice::Multiple(invoices)
-    }
-
-    pub fn iter_result<'a>(&'a self) -> Box<::std::iter::Iterator<Item = InvoiceResult> + 'a> {
+impl Invoice {
+    pub fn result(&self) -> InvoiceResult {
         match self {
-            ParcelInvoice::SingleSuccess => Box::new(::std::iter::once(InvoiceResult::Success)),
-            ParcelInvoice::SingleFail(_) => Box::new(::std::iter::once(InvoiceResult::Failed)),
-            ParcelInvoice::Multiple(invoices) => Box::new(invoices.iter().map(|invoice| invoice.result())),
+            Invoice::Success => InvoiceResult::Success,
+            Invoice::Failure(_) => InvoiceResult::Failed,
         }
     }
 }
 
-impl Encodable for ParcelInvoice {
+impl Encodable for Invoice {
     fn rlp_append(&self, s: &mut RlpStream) {
         match self {
-            ParcelInvoice::SingleSuccess => {
+            Invoice::Success => {
                 s.begin_list(1);
                 s.append(&INVOICE_ID_SINGLE_SUCCESS);
             }
-            ParcelInvoice::SingleFail(err) => {
+            Invoice::Failure(err) => {
                 s.begin_list(2);
                 s.append(&INVOICE_ID_SINGLE_FAIL);
                 s.append(err);
             }
-            ParcelInvoice::Multiple(invoices) => {
-                s.begin_list(2);
-                s.append(&INVOICE_ID_MULTIPLE);
-                s.append_list(invoices);
-            }
         }
     }
 }
 
-impl Decodable for ParcelInvoice {
-    fn decode(rlp: &UntrustedRlp) -> Result<ParcelInvoice, DecoderError> {
+impl Decodable for Invoice {
+    fn decode(rlp: &UntrustedRlp) -> Result<Invoice, DecoderError> {
         match rlp.val_at::<u8>(0)? {
             INVOICE_ID_SINGLE_SUCCESS => {
                 if rlp.item_count()? != 1 {
                     return Err(DecoderError::RlpInvalidLength)
                 }
-                Ok(ParcelInvoice::SingleSuccess)
+                Ok(Invoice::Success)
             }
             INVOICE_ID_SINGLE_FAIL => {
                 if rlp.item_count()? != 2 {
                     return Err(DecoderError::RlpInvalidLength)
                 }
-                Ok(ParcelInvoice::SingleFail(rlp.val_at(1)?))
-            }
-            INVOICE_ID_MULTIPLE => {
-                if rlp.item_count()? != 2 {
-                    return Err(DecoderError::RlpInvalidLength)
-                }
-                Ok(ParcelInvoice::Multiple(rlp.at(1)?.as_list()?))
+                Ok(Invoice::Failure(rlp.val_at(1)?))
             }
             _ => Err(DecoderError::Custom("Unknown parcel invoice")),
         }
     }
 }
 
-impl From<Vec<TransactionInvoice>> for ParcelInvoice {
-    fn from(invoices: Vec<TransactionInvoice>) -> Self {
-        ParcelInvoice::Multiple(invoices)
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use primitives::H256;
-
-    use super::super::super::transaction::Error as TransactionError;
+    use rlp::rlp_encode_and_decode_test;
 
     use super::*;
 
     #[test]
-    fn rlp_encode_and_decode_parcel_invoice() {
-        let invoices = vec![
-            TransactionInvoice::Success,
-            TransactionInvoice::Success,
-            TransactionInvoice::Fail(TransactionError::InvalidScript),
-            TransactionInvoice::Success,
-            TransactionInvoice::Success,
-            TransactionInvoice::Success,
-        ];
-        rlp_encode_and_decode_test!(ParcelInvoice::new(invoices));
-    }
-
-    #[test]
     fn encode_and_decode_single_success_parcel_invoice() {
-        rlp_encode_and_decode_test!(ParcelInvoice::SingleSuccess);
+        rlp_encode_and_decode_test!(Invoice::Success);
     }
 
     #[test]
     fn encode_and_decode_single_failed_parcel_invoice() {
-        rlp_encode_and_decode_test!(ParcelInvoice::SingleFail(Error::Old));
-    }
-
-    #[test]
-    fn encode_and_decode_empty_multiple_parcel_invoice() {
-        rlp_encode_and_decode_test!(ParcelInvoice::Multiple(vec![]));
-    }
-
-    #[test]
-    fn encode_and_decode_multiple_parcel_invoice_with_success() {
-        rlp_encode_and_decode_test!(ParcelInvoice::Multiple(vec![TransactionInvoice::Success]));
-    }
-
-    #[test]
-    fn encode_and_decode_multiple_parcel_invoice_with_failed() {
-        rlp_encode_and_decode_test!(ParcelInvoice::Multiple(vec![TransactionInvoice::Fail(
-            TransactionError::InvalidScript,
-        )]));
-    }
-
-    #[test]
-    fn encode_and_decode_multiple_parcel_invoice_with_failed_to_unlock() {
-        rlp_encode_and_decode_test!(ParcelInvoice::Multiple(vec![TransactionInvoice::Fail(
-            TransactionError::FailedToUnlock(H256::random()),
-        )]));
-    }
-
-    #[test]
-    fn encode_and_decode_multiple_parcel_invoice() {
-        rlp_encode_and_decode_test!(ParcelInvoice::Multiple(vec![
-            TransactionInvoice::Fail(TransactionError::InvalidScript),
-            TransactionInvoice::Success,
-            TransactionInvoice::Success,
-            TransactionInvoice::Success,
-            TransactionInvoice::Success,
-        ]));
+        rlp_encode_and_decode_test!(Invoice::Failure(Error::Old));
     }
 }
