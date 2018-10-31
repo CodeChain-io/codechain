@@ -46,6 +46,12 @@ impl Deref for UnverifiedParcel {
     }
 }
 
+impl From<UnverifiedParcel> for Parcel {
+    fn from(parcel: UnverifiedParcel) -> Self {
+        parcel.unsigned
+    }
+}
+
 impl rlp::Decodable for UnverifiedParcel {
     fn decode(d: &UntrustedRlp) -> Result<Self, DecoderError> {
         if d.item_count()? != 5 {
@@ -96,11 +102,6 @@ impl UnverifiedParcel {
         s.append(&self.network_id);
         s.append(&self.action);
         s.append(&self.sig);
-    }
-
-    /// Reference to unsigned part of this parcel.
-    pub fn as_unsigned(&self) -> &Parcel {
-        &self.unsigned
     }
 
     /// Get the hash of this header (blake256 of the RLP).

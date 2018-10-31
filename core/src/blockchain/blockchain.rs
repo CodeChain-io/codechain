@@ -377,7 +377,7 @@ pub trait BlockProvider: HeaderProvider + BodyProvider + InvoiceProvider {
 
     /// Get the transaction with given transaction hash.
     fn transaction(&self, transaction: &TransactionAddress) -> Option<Transaction> {
-        self.parcel(&transaction.parcel_address).and_then(|parcel| match &parcel.signed.as_unsigned().action {
+        self.parcel(&transaction.parcel_address).and_then(|parcel| match &parcel.signed.action {
             Action::AssetTransaction(transaction) => Some(transaction.clone()),
             _ => None,
         })

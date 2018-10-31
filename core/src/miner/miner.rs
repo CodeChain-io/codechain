@@ -288,7 +288,7 @@ impl Miner {
     fn calculate_timelock<C: BlockChain>(&self, parcel: &SignedParcel, client: &C) -> Result<ParcelTimelock, Error> {
         let mut max_block = None;
         let mut max_timestamp = None;
-        match &parcel.as_unsigned().action {
+        match &parcel.action {
             Action::AssetTransaction(transaction) => {
                 match transaction {
                     Transaction::AssetTransfer {
