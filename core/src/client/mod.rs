@@ -48,7 +48,7 @@ use super::encoded;
 use super::error::{BlockImportError, Error as CoreError};
 use super::parcel::{LocalizedParcel, SignedParcel};
 use super::scheme::CommonParams;
-use super::types::{BlockId, BlockStatus, ParcelId, TransactionId, VerificationQueueInfo as BlockQueueInfo};
+use super::types::{BlockId, BlockStatus, ParcelId, VerificationQueueInfo as BlockQueueInfo};
 
 /// Provides `chain_info` method
 pub trait ChainInfo {
@@ -78,14 +78,14 @@ pub trait ParcelInfo {
 }
 
 pub trait TransactionInfo {
-    fn transaction_parcel(&self, id: TransactionId) -> Option<ParcelAddress>;
+    fn transaction_parcel(&self, hash: &H256) -> Option<ParcelAddress>;
 
-    fn transaction_block_number(&self, id: TransactionId) -> Option<BlockNumber>;
+    fn transaction_block_number(&self, hash: &H256) -> Option<BlockNumber>;
 
-    fn transaction_block_timestamp(&self, id: TransactionId) -> Option<u64>;
+    fn transaction_block_timestamp(&self, hash: &H256) -> Option<u64>;
 
     fn is_transaction_included(&self, transaction: &Option<H256>) -> bool {
-        transaction.as_ref().map(|hash| self.transaction_parcel(TransactionId::Hash(*hash)).is_some()).unwrap_or(false)
+        transaction.map(|hash| self.transaction_parcel(&hash).is_some()).unwrap_or(false)
     }
 }
 
@@ -228,9 +228,9 @@ pub trait BlockChainClient:
     fn parcel_invoice(&self, id: ParcelId) -> Option<Invoice>;
 
     /// Get the transaction with given hash.
-    fn transaction(&self, id: TransactionId) -> Option<Transaction>;
+    fn transaction(&self, hash: &H256) -> Option<Transaction>;
 
-    fn transaction_invoice(&self, id: TransactionId) -> Option<Invoice>;
+    fn transaction_invoice(&self, hash: &H256) -> Option<Invoice>;
 
     fn custom_handlers(&self) -> Vec<Arc<ActionHandler>>;
 }

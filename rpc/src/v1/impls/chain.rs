@@ -102,11 +102,11 @@ where
     }
 
     fn get_transaction(&self, transaction_hash: H256) -> Result<Option<Transaction>> {
-        Ok(self.client.transaction(transaction_hash.into()).map(Into::into))
+        Ok(self.client.transaction(&transaction_hash).map(Into::into))
     }
 
     fn get_transaction_invoice(&self, transaction_hash: H256) -> Result<Option<Invoice>> {
-        Ok(self.client.transaction_invoice(transaction_hash.into()))
+        Ok(self.client.transaction_invoice(&transaction_hash))
     }
 
     fn get_asset_scheme_by_hash(&self, transaction_hash: H256, shard_id: ShardId) -> Result<Option<AssetScheme>> {

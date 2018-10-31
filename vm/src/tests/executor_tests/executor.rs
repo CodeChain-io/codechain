@@ -61,11 +61,11 @@ impl ChainTimeInfo for TestClient {
         self.block_timestamp
     }
 
-    fn transaction_block_age(&self, _: H256) -> Option<u64> {
+    fn transaction_block_age(&self, _: &H256) -> Option<u64> {
         self.block_age
     }
 
-    fn transaction_time_age(&self, _: H256) -> Option<u64> {
+    fn transaction_time_age(&self, _: &H256) -> Option<u64> {
         self.time_age
     }
 }
