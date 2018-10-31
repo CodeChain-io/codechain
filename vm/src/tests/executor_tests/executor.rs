@@ -83,7 +83,6 @@ fn simple_success() {
         burns: Vec::new(),
         inputs: Vec::new(),
         outputs: Vec::new(),
-        nonce: 0,
     };
     let input = AssetTransferInput {
         prev_out: AssetOutPoint {
@@ -115,7 +114,6 @@ fn simple_failure() {
         burns: Vec::new(),
         inputs: Vec::new(),
         outputs: Vec::new(),
-        nonce: 0,
     };
     let input = AssetTransferInput {
         prev_out: AssetOutPoint {
@@ -146,7 +144,6 @@ fn simple_burn() {
         burns: Vec::new(),
         inputs: Vec::new(),
         outputs: Vec::new(),
-        nonce: 0,
     };
     let input = AssetTransferInput {
         prev_out: AssetOutPoint {
@@ -173,7 +170,6 @@ fn underflow() {
         burns: Vec::new(),
         inputs: Vec::new(),
         outputs: Vec::new(),
-        nonce: 0,
     };
     let input = AssetTransferInput {
         prev_out: AssetOutPoint {
@@ -200,7 +196,6 @@ fn out_of_memory() {
         burns: Vec::new(),
         inputs: Vec::new(),
         outputs: Vec::new(),
-        nonce: 0,
     };
     let input = AssetTransferInput {
         prev_out: AssetOutPoint {
@@ -239,7 +234,6 @@ fn invalid_unlock_script() {
         burns: Vec::new(),
         inputs: Vec::new(),
         outputs: Vec::new(),
-        nonce: 0,
     };
     let input = AssetTransferInput {
         prev_out: AssetOutPoint {
@@ -266,7 +260,6 @@ fn conditional_burn() {
         burns: Vec::new(),
         inputs: Vec::new(),
         outputs: Vec::new(),
-        nonce: 0,
     };
     let input = AssetTransferInput {
         prev_out: AssetOutPoint {
@@ -316,7 +309,6 @@ fn _blake256() {
         burns: Vec::new(),
         inputs: Vec::new(),
         outputs: Vec::new(),
-        nonce: 0,
     };
     let input = AssetTransferInput {
         prev_out: AssetOutPoint {
@@ -392,7 +384,6 @@ fn _ripemd160() {
         burns: Vec::new(),
         inputs: Vec::new(),
         outputs: Vec::new(),
-        nonce: 0,
     };
     let input = AssetTransferInput {
         prev_out: AssetOutPoint {
@@ -476,7 +467,6 @@ fn _sha256() {
         burns: Vec::new(),
         inputs: Vec::new(),
         outputs: Vec::new(),
-        nonce: 0,
     };
     let input = AssetTransferInput {
         prev_out: AssetOutPoint {
@@ -560,7 +550,6 @@ fn _keccak256() {
         burns: Vec::new(),
         inputs: Vec::new(),
         outputs: Vec::new(),
-        nonce: 0,
     };
     let input = AssetTransferInput {
         prev_out: AssetOutPoint {
@@ -643,7 +632,6 @@ fn dummy_tx() -> Transaction {
         burns: Vec::new(),
         inputs: Vec::new(),
         outputs: Vec::new(),
-        nonce: 0,
     }
 }
 
@@ -887,7 +875,6 @@ fn copy_stack_underflow() {
         burns: Vec::new(),
         inputs: Vec::new(),
         outputs: Vec::new(),
-        nonce: 0,
     };
     let input = AssetTransferInput {
         prev_out: AssetOutPoint {

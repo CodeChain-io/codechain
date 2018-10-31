@@ -42,7 +42,6 @@ use kvdb::KeyValueDB;
 use primitives::{Bytes, H256, U256};
 
 use super::block::{ClosedBlock, OpenBlock, SealedBlock};
-use super::blockchain::ParcelAddress;
 use super::blockchain_info::BlockChainInfo;
 use super::encoded;
 use super::error::{BlockImportError, Error as CoreError};
@@ -78,14 +77,14 @@ pub trait ParcelInfo {
 }
 
 pub trait TransactionInfo {
-    fn transaction_parcel(&self, hash: &H256) -> Option<ParcelAddress>;
+    fn transaction_header(&self, hash: &H256) -> Option<::encoded::Header>;
 
-    fn transaction_block_number(&self, hash: &H256) -> Option<BlockNumber>;
+    fn transaction_block_number(&self, hash: &H256) -> Option<BlockNumber> {
+        self.transaction_header(hash).map(|header| header.number())
+    }
 
-    fn transaction_block_timestamp(&self, hash: &H256) -> Option<u64>;
-
-    fn is_transaction_included(&self, transaction: &Option<H256>) -> bool {
-        transaction.map(|hash| self.transaction_parcel(&hash).is_some()).unwrap_or(false)
+    fn transaction_block_timestamp(&self, hash: &H256) -> Option<u64> {
+        self.transaction_header(hash).map(|header| header.timestamp())
     }
 }
 
@@ -230,7 +229,7 @@ pub trait BlockChainClient:
     /// Get the transaction with given hash.
     fn transaction(&self, hash: &H256) -> Option<Transaction>;
 
-    fn transaction_invoice(&self, hash: &H256) -> Option<Invoice>;
+    fn transaction_invoices(&self, hash: &H256) -> Vec<Invoice>;
 
     fn custom_handlers(&self) -> Vec<Arc<ActionHandler>>;
 }

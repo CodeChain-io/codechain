@@ -71,7 +71,6 @@ AssetMint {
     shard_id: u32,
     metadata: String,
     registrar: Option<Address>,
-    nonce: u32,
     output: AssetMintOutput
 }
 

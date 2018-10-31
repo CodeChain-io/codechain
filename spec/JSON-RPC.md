@@ -153,7 +153,7 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
  * [chain_getParcel](#chain_getparcel)
  * [chain_getParcelInvoice](#chain_getparcelinvoice)
  * [chain_getTransaction](#chain_gettransaction)
- * [chain_getTransactionInvoice](#chain_gettransactioninvoice)
+ * [chain_getTransactionInvoices](#chain_gettransactioninvoices)
  * [chain_getAssetSchemeByHash](#chain_getassetschemebyhash)
  * [chain_getAssetSchemeByType](#chain_getassetschemebytype)
  * [chain_getAsset](#chain_getasset)
@@ -606,13 +606,13 @@ Response Example
 }
 ```
 
-## chain_getTransactionInvoice
-Gets a transaction invoice with the given hash.
+## chain_getTransactionInvoices
+Gets transaction invoices with the given hash.
 
 Params:
  1. transaction hash - `H256`
 
-Return Type: `null` | "Success" | "Failed"
+Return Type: `("Success" | "Failed")[]`
 
 Errors: `Invalid Params`
 
@@ -628,7 +628,7 @@ Response Example
 ```
 {
   "jsonrpc":"2.0",
-  "result":"Success",
+  "result": ["Failed", "Success"],
   "id":null
 }
 ```

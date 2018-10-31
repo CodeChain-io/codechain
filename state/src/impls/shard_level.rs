@@ -607,7 +607,6 @@ mod tests {
                 amount: Some(amount),
             },
             registrar,
-            nonce: 0,
         };
 
         let result = state.apply(&transaction, &sender, &[sender], &get_test_client());
@@ -643,7 +642,6 @@ mod tests {
                 amount: None,
             },
             registrar,
-            nonce: 0,
         };
 
         let result = state.apply(&transaction, &sender, &[sender], &get_test_client());
@@ -682,7 +680,6 @@ mod tests {
                 amount: None,
             },
             registrar,
-            nonce: 0,
         };
 
         let result = state.apply(&transaction, &sender, &[sender], &get_test_client());
@@ -713,7 +710,6 @@ mod tests {
                 amount: Some(amount),
             },
             registrar,
-            nonce: 0,
         };
         let mint_hash = mint.hash();
 
@@ -749,7 +745,6 @@ mod tests {
                 asset_type,
                 amount: 30,
             }],
-            nonce: 0,
         };
 
         assert_eq!(
@@ -785,7 +780,6 @@ mod tests {
                 amount: Some(amount),
             },
             registrar,
-            nonce: 0,
         };
         let mint_hash = mint.hash();
 
@@ -838,7 +832,6 @@ mod tests {
                     amount: 15,
                 },
             ],
-            nonce: 0,
         };
         let transfer_hash = transfer.hash();
 
@@ -878,7 +871,6 @@ mod tests {
                 amount: Some(amount),
             },
             registrar,
-            nonce: 0,
         };
         let mint_hash = mint.hash();
         assert_eq!(Ok(Invoice::Success), state.apply(&mint, &sender, &[], &get_test_client()));
@@ -889,7 +881,6 @@ mod tests {
         let compose = Transaction::AssetCompose {
             network_id,
             shard_id,
-            nonce: 0,
             metadata: "composed".to_string(),
             registrar,
             inputs: vec![AssetTransferInput {
@@ -953,7 +944,6 @@ mod tests {
                 amount: Some(amount),
             },
             registrar,
-            nonce: 0,
         };
         let mint_hash = mint.hash();
         assert_eq!(Ok(Invoice::Success), state.apply(&mint, &sender, &[], &get_test_client()));
@@ -963,7 +953,6 @@ mod tests {
         let compose = Transaction::AssetCompose {
             network_id,
             shard_id,
-            nonce: 0,
             metadata: "composed".to_string(),
             registrar,
             inputs: vec![AssetTransferInput {
@@ -1008,7 +997,6 @@ mod tests {
         let random_lock_script_hash = H160::random();
         let decompose = Transaction::AssetDecompose {
             network_id,
-            nonce: 0,
             input: AssetTransferInput {
                 prev_out: AssetOutPoint {
                     transaction_hash: compose_hash,
@@ -1061,7 +1049,6 @@ mod tests {
                 amount: Some(amount),
             },
             registrar,
-            nonce: 0,
         };
         let mint_hash = mint.hash();
         assert_eq!(Ok(Invoice::Success), state.apply(&mint, &sender, &[], &get_test_client()));
@@ -1078,7 +1065,6 @@ mod tests {
                 amount: Some(1),
             },
             registrar,
-            nonce: 0,
         };
         let mint2_hash = mint2.hash();
         let asset_scheme_address2 = AssetSchemeAddress::new(mint_hash, shard_id);
@@ -1088,7 +1074,6 @@ mod tests {
         let compose = Transaction::AssetCompose {
             network_id,
             shard_id,
-            nonce: 0,
             metadata: "composed".to_string(),
             registrar,
             inputs: vec![AssetTransferInput {
@@ -1133,7 +1118,6 @@ mod tests {
         let random_lock_script_hash = H160::random();
         let decompose = Transaction::AssetDecompose {
             network_id,
-            nonce: 0,
             input: AssetTransferInput {
                 prev_out: AssetOutPoint {
                     transaction_hash: mint2_hash,
@@ -1186,7 +1170,6 @@ mod tests {
                 amount: Some(amount),
             },
             registrar,
-            nonce: 0,
         };
         let mint_hash = mint.hash();
         assert_eq!(Ok(Invoice::Success), state.apply(&mint, &sender, &[], &get_test_client()));
@@ -1203,7 +1186,6 @@ mod tests {
                 amount: Some(1),
             },
             registrar,
-            nonce: 0,
         };
         let mint2_hash = mint2.hash();
         let asset_scheme_address2 = AssetSchemeAddress::new(mint2_hash, shard_id);
@@ -1213,7 +1195,6 @@ mod tests {
         let compose = Transaction::AssetCompose {
             network_id,
             shard_id,
-            nonce: 0,
             metadata: "composed".to_string(),
             registrar,
             inputs: vec![
@@ -1260,7 +1241,6 @@ mod tests {
         let random_lock_script_hash = H160::random();
         let decompose = Transaction::AssetDecompose {
             network_id,
-            nonce: 0,
             input: AssetTransferInput {
                 prev_out: AssetOutPoint {
                     transaction_hash: compose_hash,
@@ -1315,7 +1295,6 @@ mod tests {
                 amount: Some(amount),
             },
             registrar,
-            nonce: 0,
         };
         let mint_hash = mint.hash();
         assert_eq!(Ok(Invoice::Success), state.apply(&mint, &sender, &[], &get_test_client()));
@@ -1332,7 +1311,6 @@ mod tests {
                 amount: Some(1),
             },
             registrar,
-            nonce: 0,
         };
         let mint2_hash = mint2.hash();
         let asset_scheme_address2 = AssetSchemeAddress::new(mint2_hash, shard_id);
@@ -1342,7 +1320,6 @@ mod tests {
         let compose = Transaction::AssetCompose {
             network_id,
             shard_id,
-            nonce: 0,
             metadata: "composed".to_string(),
             registrar,
             inputs: vec![
@@ -1389,7 +1366,6 @@ mod tests {
         let random_lock_script_hash = H160::random();
         let decompose = Transaction::AssetDecompose {
             network_id,
-            nonce: 0,
             input: AssetTransferInput {
                 prev_out: AssetOutPoint {
                     transaction_hash: compose_hash,
@@ -1452,7 +1428,6 @@ mod tests {
                 amount: Some(amount),
             },
             registrar,
-            nonce: 0,
         };
         let mint_hash = mint.hash();
 
@@ -1491,7 +1466,6 @@ mod tests {
                 asset_type,
                 amount: 30,
             }],
-            nonce: 0,
         };
 
         let sender = address();
@@ -1542,7 +1516,6 @@ mod tests {
                     amount: 15,
                 },
             ],
-            nonce: 0,
         };
         let successful_transfer_hash = successful_transfer.hash();
 
@@ -1581,7 +1554,6 @@ mod tests {
                 amount: None,
             },
             registrar,
-            nonce: 0,
         };
 
         let result = state.apply(&transaction, &sender, &[sender], &get_test_client());
@@ -1620,7 +1592,6 @@ mod tests {
                 amount: None,
             },
             registrar,
-            nonce: 0,
         };
 
         let shard_user = address();
@@ -1657,7 +1628,6 @@ mod tests {
                 amount: None,
             },
             registrar,
-            nonce: 0,
         };
 
         let result = state.apply(&transaction, &sender, &[], &get_test_client());

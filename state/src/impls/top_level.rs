@@ -382,9 +382,6 @@ impl TopLevelState {
             Err(StateError::Parcel(ParcelError::ParcelAlreadyImported)) => {
                 unreachable!();
             }
-            Err(StateError::Parcel(ParcelError::TransactionAlreadyImported)) => {
-                unreachable!();
-            }
             Err(StateError::Parcel(ParcelError::Old)) => {
                 unreachable!();
             }
@@ -1354,7 +1351,6 @@ mod tests_parcel {
                 amount: Some(amount),
             },
             registrar,
-            nonce: 0,
         };
         let mint_hash = mint.hash();
         let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id);
@@ -1380,7 +1376,6 @@ mod tests_parcel {
                 asset_type,
                 amount: 30,
             }],
-            nonce: 0,
         };
         let mint_parcel = Parcel {
             fee: 11.into(),
@@ -1510,7 +1505,6 @@ mod tests_parcel {
                 amount: Some(amount),
             },
             registrar,
-            nonce: 0,
         };
         let transaction_hash = transaction.hash();
         let parcel = Parcel {
@@ -1561,7 +1555,6 @@ mod tests_parcel {
                 amount: None,
             },
             registrar,
-            nonce: 0,
         };
         let transaction_hash = transaction.hash();
         let parcel = Parcel {
@@ -1615,7 +1608,6 @@ mod tests_parcel {
                 amount: Some(amount),
             },
             registrar,
-            nonce: 0,
         };
         let mint_hash = mint.hash();
 
@@ -1674,7 +1666,6 @@ mod tests_parcel {
                     amount: 15,
                 },
             ],
-            nonce: 0,
         };
         let transfer_hash = transfer.hash();
 
@@ -1737,7 +1728,6 @@ mod tests_parcel {
                 amount: Some(amount),
             },
             registrar,
-            nonce: 0,
         };
         let parcel = Parcel {
             fee: 11.into(),
@@ -1875,7 +1865,6 @@ mod tests_parcel {
                 amount: Some(amount),
             },
             registrar,
-            nonce: 0,
         };
         let parcel = Parcel {
             fee: 11.into(),
@@ -1935,7 +1924,6 @@ mod tests_parcel {
                     amount: 15,
                 },
             ],
-            nonce: 0,
         };
 
         let parcel = Parcel {
@@ -2206,7 +2194,6 @@ mod tests_parcel {
                 amount: Some(amount),
             },
             registrar,
-            nonce: 0,
         };
         let mint_hash = mint.hash();
 

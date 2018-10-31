@@ -51,7 +51,6 @@ use primitives::{Bytes, H256, U256};
 use rlp::*;
 
 use super::super::block::{ClosedBlock, OpenBlock, SealedBlock};
-use super::super::blockchain::ParcelAddress;
 use super::super::blockchain_info::BlockChainInfo;
 use super::super::client::ImportResult;
 use super::super::client::{
@@ -396,15 +395,7 @@ impl ParcelInfo for TestBlockChainClient {
 }
 
 impl TransactionInfo for TestBlockChainClient {
-    fn transaction_parcel(&self, _: &H256) -> Option<ParcelAddress> {
-        None
-    }
-
-    fn transaction_block_number(&self, _: &H256) -> Option<BlockNumber> {
-        None
-    }
-
-    fn transaction_block_timestamp(&self, _: &H256) -> Option<u64> {
+    fn transaction_header(&self, _hash: &H256) -> Option<::encoded::Header> {
         None
     }
 }
@@ -525,7 +516,7 @@ impl BlockChainClient for TestBlockChainClient {
         unimplemented!();
     }
 
-    fn transaction_invoice(&self, _: &H256) -> Option<Invoice> {
+    fn transaction_invoices(&self, _: &H256) -> Vec<Invoice> {
         unimplemented!();
     }
 

@@ -18,7 +18,7 @@ use std::mem;
 use std::sync::Arc;
 
 use ctypes::invoice::{BlockInvoices, Invoice};
-use ctypes::parcel::Action;
+use ctypes::parcel::{Action, Parcel};
 use ctypes::transaction::Transaction;
 use ctypes::BlockNumber;
 use kvdb::{DBTransaction, KeyValueDB};
@@ -377,10 +377,16 @@ pub trait BlockProvider: HeaderProvider + BodyProvider + InvoiceProvider {
 
     /// Get the transaction with given transaction hash.
     fn transaction(&self, transaction: &TransactionAddress) -> Option<Transaction> {
-        self.parcel(&transaction.parcel_address).and_then(|parcel| match &parcel.signed.action {
-            Action::AssetTransaction(transaction) => Some(transaction.clone()),
-            _ => None,
-        })
+        transaction
+            .iter()
+            .map(|addr| self.parcel(addr))
+            .filter_map(|parcel| {
+                parcel.and_then(|parcel| match Parcel::from(parcel).action {
+                    Action::AssetTransaction(transaction) => Some(transaction),
+                    _ => None,
+                })
+            })
+            .next() // FIXME: Add an assertion that all transactions are identical.
     }
 
     /// Get a list of parcels for a given block.

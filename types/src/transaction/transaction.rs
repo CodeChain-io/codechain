@@ -114,7 +114,6 @@ pub enum Transaction {
         shard_id: ShardId,
         metadata: String,
         registrar: Option<Address>,
-        nonce: u64,
 
         output: AssetMintOutput,
     },
@@ -123,12 +122,10 @@ pub enum Transaction {
         burns: Vec<AssetTransferInput>,
         inputs: Vec<AssetTransferInput>,
         outputs: Vec<AssetTransferOutput>,
-        nonce: u64,
     },
     AssetCompose {
         network_id: NetworkId,
         shard_id: ShardId,
-        nonce: u64,
         metadata: String,
         registrar: Option<Address>,
         inputs: Vec<AssetTransferInput>,
@@ -138,7 +135,6 @@ pub enum Transaction {
         network_id: NetworkId,
         input: AssetTransferInput,
         outputs: Vec<AssetTransferOutput>,
-        nonce: u64,
     },
 }
 
@@ -329,7 +325,6 @@ impl HeapSizeOf for Transaction {
                 shard_id: _,
                 metadata,
                 registrar,
-                nonce: _,
                 output,
             } => metadata.heap_size_of_children() + registrar.heap_size_of_children() + output.heap_size_of_children(),
             Transaction::AssetTransfer {
@@ -337,12 +332,10 @@ impl HeapSizeOf for Transaction {
                 burns,
                 inputs,
                 outputs,
-                nonce: _,
             } => burns.heap_size_of_children() + inputs.heap_size_of_children() + outputs.heap_size_of_children(),
             Transaction::AssetCompose {
                 network_id: _,
                 shard_id: _,
-                nonce: _,
                 metadata,
                 registrar,
                 inputs,
@@ -453,7 +446,6 @@ impl PartialHashing for Transaction {
                 burns,
                 inputs,
                 outputs,
-                nonce,
             } => {
                 let new_burns = apply_input_scheme(burns, tag.sign_all_inputs, is_burn, cur);
                 let new_inputs = apply_input_scheme(inputs, tag.sign_all_inputs, !is_burn, cur);
@@ -470,7 +462,6 @@ impl PartialHashing for Transaction {
                         burns: new_burns,
                         inputs: new_inputs,
                         outputs: new_outputs,
-                        nonce: *nonce,
                     }
                     .rlp_bytes(),
                     &blake128(tag.get_tag()),
@@ -479,7 +470,6 @@ impl PartialHashing for Transaction {
             Transaction::AssetCompose {
                 network_id,
                 shard_id,
-                nonce,
                 metadata,
                 registrar,
                 inputs,
@@ -505,7 +495,6 @@ impl PartialHashing for Transaction {
                     &Transaction::AssetCompose {
                         network_id: *network_id,
                         shard_id: *shard_id,
-                        nonce: *nonce,
                         metadata: metadata.to_string(),
                         registrar: *registrar,
                         inputs: new_inputs,
@@ -517,7 +506,6 @@ impl PartialHashing for Transaction {
             }
             Transaction::AssetDecompose {
                 network_id,
-                nonce,
                 input,
                 outputs,
             } => {
@@ -530,7 +518,6 @@ impl PartialHashing for Transaction {
                 Ok(blake256_with_key(
                     &Transaction::AssetDecompose {
                         network_id: *network_id,
-                        nonce: *nonce,
                         input: AssetTransferInput {
                             prev_out: input.prev_out.clone(),
                             timelock: input.timelock,
@@ -558,7 +545,7 @@ impl Decodable for Transaction {
     fn decode(d: &UntrustedRlp) -> Result<Self, DecoderError> {
         match d.val_at(0)? {
             ASSET_MINT_ID => {
-                if d.item_count()? != 9 {
+                if d.item_count()? != 8 {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
                 Ok(Transaction::AssetMint {
@@ -571,11 +558,10 @@ impl Decodable for Transaction {
                         amount: d.val_at(6)?,
                     },
                     registrar: d.val_at(7)?,
-                    nonce: d.val_at(8)?,
                 })
             }
             ASSET_TRANSFER_ID => {
-                if d.item_count()? != 6 {
+                if d.item_count()? != 5 {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
                 Ok(Transaction::AssetTransfer {
@@ -583,11 +569,10 @@ impl Decodable for Transaction {
                     burns: d.list_at(2)?,
                     inputs: d.list_at(3)?,
                     outputs: d.list_at(4)?,
-                    nonce: d.val_at(5)?,
                 })
             }
             ASSET_COMPOSE_ID => {
-                if d.item_count()? != 10 {
+                if d.item_count()? != 9 {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
                 Ok(Transaction::AssetCompose {
@@ -601,18 +586,16 @@ impl Decodable for Transaction {
                         parameters: d.val_at(7)?,
                         amount: d.val_at(8)?,
                     },
-                    nonce: d.val_at(9)?,
                 })
             }
             ASSET_DECOMPOSE_ID => {
-                if d.item_count()? != 5 {
+                if d.item_count()? != 4 {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
                 Ok(Transaction::AssetDecompose {
                     network_id: d.val_at(1)?,
                     input: d.val_at(2)?,
                     outputs: d.list_at(3)?,
-                    nonce: d.val_at(4)?,
                 })
             }
             _ => Err(DecoderError::Custom("Unexpected transaction")),
@@ -634,9 +617,8 @@ impl Encodable for Transaction {
                         amount,
                     },
                 registrar,
-                nonce,
             } => s
-                .begin_list(9)
+                .begin_list(8)
                 .append(&ASSET_MINT_ID)
                 .append(network_id)
                 .append(shard_id)
@@ -644,26 +626,22 @@ impl Encodable for Transaction {
                 .append(lock_script_hash)
                 .append(parameters)
                 .append(amount)
-                .append(registrar)
-                .append(nonce),
+                .append(registrar),
             Transaction::AssetTransfer {
                 network_id,
                 burns,
                 inputs,
                 outputs,
-                nonce,
             } => s
-                .begin_list(6)
+                .begin_list(5)
                 .append(&ASSET_TRANSFER_ID)
                 .append(network_id)
                 .append_list(burns)
                 .append_list(inputs)
-                .append_list(outputs)
-                .append(nonce),
+                .append_list(outputs),
             Transaction::AssetCompose {
                 network_id,
                 shard_id,
-                nonce,
                 metadata,
                 registrar,
                 inputs,
@@ -674,7 +652,7 @@ impl Encodable for Transaction {
                         amount,
                     },
             } => s
-                .begin_list(10)
+                .begin_list(9)
                 .append(&ASSET_COMPOSE_ID)
                 .append(network_id)
                 .append(shard_id)
@@ -683,20 +661,12 @@ impl Encodable for Transaction {
                 .append_list(inputs)
                 .append(lock_script_hash)
                 .append(parameters)
-                .append(amount)
-                .append(nonce),
+                .append(amount),
             Transaction::AssetDecompose {
                 network_id,
-                nonce,
                 input,
                 outputs,
-            } => s
-                .begin_list(5)
-                .append(&ASSET_DECOMPOSE_ID)
-                .append(network_id)
-                .append(input)
-                .append_list(outputs)
-                .append(nonce),
+            } => s.begin_list(4).append(&ASSET_DECOMPOSE_ID).append(network_id).append(input).append_list(outputs),
         };
     }
 }
@@ -1000,7 +970,6 @@ mod tests {
     fn encode_and_decode_decompose_transaction() {
         let tx = Transaction::AssetDecompose {
             network_id: NetworkId::default(),
-            nonce: 0,
             input: AssetTransferInput {
                 prev_out: AssetOutPoint {
                     transaction_hash: H256::default(),
@@ -1057,7 +1026,6 @@ mod tests {
             burns: Vec::new(),
             inputs: inputs.clone(),
             outputs: outputs.clone(),
-            nonce: 0,
         };
         let mut tag: Vec<u8> = vec![0b00001111 as u8];
         for _i in 0..12 {
@@ -1076,7 +1044,6 @@ mod tests {
             burns: Vec::new(),
             inputs: inputs.clone(),
             outputs: outputs.clone(),
-            nonce: 0,
         };
         tag = vec![0b00000111 as u8];
         for _i in 0..12 {
@@ -1095,7 +1062,6 @@ mod tests {
             burns: Vec::new(),
             inputs,
             outputs,
-            nonce: 0,
         };
         tag = vec![0b00000011 as u8];
         for _i in 0..12 {

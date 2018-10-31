@@ -1481,7 +1481,6 @@ pub mod test {
                 amount: None,
             },
             registrar: None,
-            nonce: 0,
         };
         let parcel = Parcel {
             seq: 0.into(),
@@ -1508,7 +1507,6 @@ pub mod test {
             burns: vec![],
             inputs: vec![],
             outputs: vec![],
-            nonce: 0,
         };
         let parcel = Parcel {
             seq: 0.into(),
@@ -1593,7 +1591,6 @@ pub mod test {
     fn create_parcel_order(fee: U256, transaction_count: usize) -> ParcelOrder {
         let transaction = Transaction::AssetMint {
             network_id: "tc".into(),
-            nonce: 0,
             shard_id: 0,
             metadata: String::from_utf8(vec!['a' as u8; transaction_count]).unwrap(),
             registrar: None,
