@@ -368,7 +368,7 @@ export default class CodeChain {
             });
         await this.sdk.rpc.chain.sendSignedParcel(parcel);
         if (awaitInvoice) {
-            return this.sdk.rpc.chain.getTransactionInvoice(tx.hash(), {
+            return this.sdk.rpc.chain.getTransactionInvoices(tx.hash(), {
                 timeout: 300 * 1000
             });
         }

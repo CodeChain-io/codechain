@@ -230,14 +230,12 @@ describe("solo - 1 node", () => {
             ).toBeNull();
         });
 
-        test("getTransactionInvoice", async () => {
-            const invoice = await node.sdk.rpc.chain.getTransactionInvoice(
+        test("getTransactionInvoices", async () => {
+            const invoices = await node.sdk.rpc.chain.getTransactionInvoices(
                 tx.hash()
             );
-            if (invoice == null) {
-                throw Error("Cannot get the invoice");
-            }
-            expect(invoice.success).toBe(true);
+            expect(invoices!.length).toBe(1);
+            expect(invoices[0].success).toBe(true);
         });
 
         test("getAsset", async () => {
@@ -329,11 +327,9 @@ describe("solo - 1 node", () => {
             amount: 10
         });
         await node.signTransferInput(tx, 0);
-        const invoice = await node.sendTransaction(tx);
-        if (invoice == null) {
-            throw Error("Cannot send a transaction");
-        }
-        expect(invoice.success).toBe(true);
+        const invoices = await node.sendTransaction(tx);
+        expect(invoices!.length).toBe(1);
+        expect(invoices![0].success).toBe(true);
         expect(
             await node.sdk.rpc.chain.isAssetSpent(
                 asset.outPoint.transactionHash,

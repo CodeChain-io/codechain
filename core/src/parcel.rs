@@ -270,6 +270,12 @@ impl Deref for LocalizedParcel {
     }
 }
 
+impl From<LocalizedParcel> for Parcel {
+    fn from(parcel: LocalizedParcel) -> Self {
+        parcel.signed.into()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use ckey::{Address, Public, Signature};
@@ -308,7 +314,6 @@ mod tests {
                 amount: Some(10000),
             },
             registrar: None,
-            nonce: 0,
         });
     }
 
@@ -324,7 +329,6 @@ mod tests {
                 amount: Some(10000),
             },
             registrar: None,
-            nonce: 0,
         });
     }
 
@@ -339,7 +343,6 @@ mod tests {
             burns,
             inputs,
             outputs,
-            nonce: 0,
         });
     }
 

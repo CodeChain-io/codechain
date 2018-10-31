@@ -252,11 +252,13 @@ describe("Timelock", () => {
     }
 
     async function checkTx(txhash: H256, shouldBeConfirmed: boolean) {
-        const invoice = await node.sdk.rpc.chain.getTransactionInvoice(txhash);
+        const invoices = await node.sdk.rpc.chain.getTransactionInvoices(
+            txhash
+        );
         if (shouldBeConfirmed) {
-            expect(invoice).toEqual({ success: true });
+            expect(invoices).toEqual([{ success: true }]);
         } else {
-            expect(invoice).toBe(null);
+            expect(invoices.length).toBe(0);
         }
     }
 
@@ -300,7 +302,7 @@ describe("Timelock", () => {
         });
     });
 
-    test("A relative timelock for failed transaction's output", async () => {
+    test("A relative timelock for failed transaction's output", async done => {
         const { asset } = await node.mintAsset({ amount: 1 });
         const failedTx = node.sdk.core.createAssetTransferTransaction();
         failedTx.addInputs(asset);
@@ -309,11 +311,9 @@ describe("Timelock", () => {
             assetType: asset.assetType,
             recipient: await node.createP2PKHAddress()
         });
-        const invoice1 = await node.sendTransaction(failedTx);
-        if (invoice1 == null) {
-            throw Error("Cannot get the first invoice");
-        }
-        expect(invoice1.success).toBe(false);
+        const invoices1 = await node.sendTransaction(failedTx);
+        expect(invoices1!.length).toBe(1);
+        expect(invoices1![0].success).toBe(false);
 
         const output0 = failedTx.getTransferredAsset(0);
         const tx = node.sdk.core.createAssetTransferTransaction();
@@ -331,18 +331,17 @@ describe("Timelock", () => {
             recipient: await node.createP2PKHAddress()
         });
         await node.signTransferInput(tx, 0);
-        await node.sendTransaction(tx, { awaitInvoice: false });
+        try {
+            await node.sendTransaction(tx, { awaitInvoice: false });
+            done.fail();
+        } catch (e) {
+            expect(e.data).toContain("Timelocked");
+            expect(e.data).toContain("BlockAge(2)");
+            expect(e.data).toContain("18446744073709551615");
+        }
         await checkTx(tx.hash(), false);
         await node.sdk.rpc.devel.startSealing();
-        const invoice2 = await node.sdk.rpc.chain.getTransactionInvoice(
-            tx.hash()
-        );
-        if (invoice2 == null) {
-            throw Error("Cannot get the second invoice");
-        }
-        expect(invoice2.success).toBe(false);
-        expect(invoice2.error!.type).toBe("InvalidTransaction");
-        expect(invoice2.error!.content.type).toBe("AssetNotFound");
+        done();
     });
 
     describe("Parcels should go into the future queue and then move to current", async () => {
@@ -385,7 +384,6 @@ describe("Timelock", () => {
         asset: Asset,
         timelock: Timelock,
         options: {
-            nonce?: number;
             fee?: number;
         } = {}
     ): Promise<H256> {
@@ -401,8 +399,8 @@ describe("Timelock", () => {
             recipient: await node.createP2PKHAddress()
         });
         await node.signTransferInput(tx, 0);
-        const { nonce, fee } = options;
-        await node.sendTransaction(tx, { awaitInvoice: false, nonce, fee });
+        const { fee } = options;
+        await node.sendTransaction(tx, { awaitInvoice: false, fee });
         return tx.hash();
     }
 
@@ -418,7 +416,6 @@ describe("Timelock", () => {
                     value: 3
                 },
                 {
-                    nonce: 1,
                     fee: 20
                 }
             );
@@ -444,7 +441,6 @@ describe("Timelock", () => {
                 value: 10
             });
             const txhash2 = await sendTransferTx(asset, undefined, {
-                nonce: 1,
                 fee: 20
             });
             await checkTx(txhash1, false);

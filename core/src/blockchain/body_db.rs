@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::mem;
 use std::sync::Arc;
 
@@ -123,13 +123,13 @@ impl BodyDB {
         }
 
         let new_transactions = mem::replace(&mut *pending_transaction_addresses, HashMap::new());
-        let (retracted_transactions, enacted_transactions) =
+        let (removed_transactions, added_transactions) =
             new_transactions.into_iter().partition::<HashMap<_, _>, _>(|&(_, ref value)| value.is_none());
 
         transaction_address_cache
-            .extend(enacted_transactions.into_iter().map(|(k, v)| (k, v.expect("Parcels were partitioned; qed"))));
+            .extend(added_transactions.into_iter().map(|(k, v)| (k, v.expect("Parcels were partitioned; qed"))));
 
-        for hash in retracted_transactions.keys() {
+        for hash in removed_transactions.keys() {
             transaction_address_cache.remove(hash);
         }
     }
@@ -171,29 +171,71 @@ impl BodyDB {
         block: &BlockView,
         location: &BlockLocation,
     ) -> HashMap<H256, Option<TransactionAddress>> {
-        match location {
-            BlockLocation::CanonChain => transaction_address_entries(block.hash(), block.parcels()).collect(),
+        let (removed, added): (
+            Box<Iterator<Item = (H256, TransactionAddress)>>,
+            Box<Iterator<Item = (H256, TransactionAddress)>>,
+        ) = match location {
+            BlockLocation::CanonChain => {
+                (Box::new(::std::iter::empty()), Box::new(transaction_address_entries(block.hash(), block.parcels())))
+            }
             BlockLocation::BranchBecomingCanonChain(ref data) => {
-                let enacted = data.enacted.iter().flat_map(|hash| {
-                    let body = self.block_body(hash).expect("Enacted block must be in database.");
-                    transaction_address_entries(*hash, body.parcels())
-                });
-
-                let current_addresses = transaction_address_entries(block.hash(), block.parcels());
+                let enacted = data
+                    .enacted
+                    .iter()
+                    .flat_map(|hash| {
+                        let body = self.block_body(hash).expect("Enacted block must be in database.");
+                        transaction_address_entries(*hash, body.parcels())
+                    })
+                    .chain(transaction_address_entries(block.hash(), block.parcels()));
 
                 let retracted = data.retracted.iter().flat_map(|hash| {
                     let body = self.block_body(hash).expect("Retracted block must be in database.");
-                    body.parcels().into_iter().filter_map(|parcel| match &parcel.action {
-                        Action::AssetTransaction(transaction) => Some((transaction.hash(), None)),
-                        _ => None,
-                    })
+                    transaction_address_entries(*hash, body.parcels())
                 });
 
-                // The order here is important! Don't remove parcel if it was part of enacted blocks as well.
-                retracted.chain(enacted).chain(current_addresses).collect()
+                (Box::new(retracted), Box::new(enacted))
             }
-            BlockLocation::Branch => HashMap::new(),
+            BlockLocation::Branch => return Default::default(),
+        };
+
+        let mut added_addresses: HashMap<H256, TransactionAddress> = Default::default();
+        let mut removed_addresses: HashMap<H256, TransactionAddress> = Default::default();
+        let mut hashes: HashSet<H256> = Default::default();
+        for (hash, address) in added {
+            hashes.insert(hash);
+            *added_addresses.entry(hash).or_insert_with(Default::default) += address;
         }
+        for (hash, address) in removed {
+            hashes.insert(hash);
+            *removed_addresses.entry(hash).or_insert_with(Default::default) += address;
+        }
+        let mut inserted_address: HashMap<H256, TransactionAddress> = Default::default();
+        for hash in hashes.into_iter() {
+            let address: TransactionAddress = self.db.read(db::COL_EXTRA, &hash).unwrap_or_default();
+            inserted_address.insert(hash, address);
+        }
+
+        for (hash, removed_address) in removed_addresses.into_iter() {
+            *inserted_address
+                .get_mut(&hash)
+                .expect("inserted addresses are sum of added_addresses and removed_addresses") -= removed_address;
+        }
+        for (hash, added_address) in added_addresses.into_iter() {
+            *inserted_address
+                .get_mut(&hash)
+                .expect("inserted addresses are sum of added_addresses and removed_addresses") += added_address;
+        }
+
+        inserted_address
+            .into_iter()
+            .map(|(hash, address)| {
+                if address.is_empty() {
+                    (hash, None)
+                } else {
+                    (hash, Some(address))
+                }
+            })
+            .collect()
     }
 
     /// Create a block body from a block.
@@ -274,15 +316,13 @@ fn parcel_address_entries(
 fn transaction_address_entries(
     block_hash: H256,
     parcel_hashes: impl IntoIterator<Item = UnverifiedParcel>,
-) -> impl Iterator<Item = (H256, Option<TransactionAddress>)> {
+) -> impl Iterator<Item = (H256, TransactionAddress)> {
     parcel_hashes.into_iter().enumerate().filter_map(move |(parcel_index, parcel)| match &parcel.action {
         Action::AssetTransaction(transaction) => Some((
             transaction.hash(),
-            Some(TransactionAddress {
-                parcel_address: ParcelAddress {
-                    block_hash,
-                    index: parcel_index,
-                },
+            TransactionAddress::new(ParcelAddress {
+                block_hash,
+                index: parcel_index,
             }),
         )),
         _ => None,

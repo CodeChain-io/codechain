@@ -105,8 +105,8 @@ where
         Ok(self.client.transaction(&transaction_hash).map(Into::into))
     }
 
-    fn get_transaction_invoice(&self, transaction_hash: H256) -> Result<Option<Invoice>> {
-        Ok(self.client.transaction_invoice(&transaction_hash))
+    fn get_transaction_invoices(&self, transaction_hash: H256) -> Result<Vec<Invoice>> {
+        Ok(self.client.transaction_invoices(&transaction_hash))
     }
 
     fn get_asset_scheme_by_hash(&self, transaction_hash: H256, shard_id: ShardId) -> Result<Option<AssetScheme>> {

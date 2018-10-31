@@ -28,7 +28,6 @@ pub enum Transaction {
         shard_id: ShardId,
         metadata: String,
         registrar: Option<PlatformAddress>,
-        nonce: u64,
 
         output: AssetMintOutput,
         hash: H256,
@@ -39,14 +38,12 @@ pub enum Transaction {
         burns: Vec<AssetTransferInput>,
         inputs: Vec<AssetTransferInput>,
         outputs: Vec<AssetTransferOutput>,
-        nonce: u64,
         hash: H256,
     },
     #[serde(rename_all = "camelCase")]
     AssetCompose {
         network_id: NetworkId,
         shard_id: ShardId,
-        nonce: u64,
         metadata: String,
         registrar: Option<PlatformAddress>,
         inputs: Vec<AssetTransferInput>,
@@ -55,7 +52,6 @@ pub enum Transaction {
     #[serde(rename_all = "camelCase")]
     AssetDecompose {
         network_id: NetworkId,
-        nonce: u64,
         input: AssetTransferInput,
         outputs: Vec<AssetTransferOutput>,
     },
@@ -70,14 +66,12 @@ impl From<TransactionType> for Transaction {
                 shard_id,
                 metadata,
                 registrar,
-                nonce,
                 output,
             } => Transaction::AssetMint {
                 network_id,
                 shard_id,
                 metadata,
                 registrar: registrar.map(|registrar| PlatformAddress::new_v1(network_id, registrar)),
-                nonce,
                 output,
                 hash,
             },
@@ -86,19 +80,16 @@ impl From<TransactionType> for Transaction {
                 burns,
                 inputs,
                 outputs,
-                nonce,
             } => Transaction::AssetTransfer {
                 network_id,
                 burns,
                 inputs,
                 outputs,
-                nonce,
                 hash,
             },
             TransactionType::AssetCompose {
                 network_id,
                 shard_id,
-                nonce,
                 metadata,
                 registrar,
                 inputs,
@@ -106,7 +97,6 @@ impl From<TransactionType> for Transaction {
             } => Transaction::AssetCompose {
                 network_id,
                 shard_id,
-                nonce,
                 metadata,
                 registrar: registrar.map(|registrar| PlatformAddress::new_v1(network_id, registrar)),
                 inputs,
@@ -114,12 +104,10 @@ impl From<TransactionType> for Transaction {
             },
             TransactionType::AssetDecompose {
                 network_id,
-                nonce,
                 input,
                 outputs,
             } => Transaction::AssetDecompose {
                 network_id,
-                nonce,
                 input,
                 outputs,
             },
@@ -136,7 +124,6 @@ impl From<Transaction> for Result<TransactionType, KeyError> {
                 shard_id,
                 metadata,
                 registrar,
-                nonce,
                 output,
                 ..
             } => {
@@ -149,7 +136,6 @@ impl From<Transaction> for Result<TransactionType, KeyError> {
                     shard_id,
                     metadata,
                     registrar,
-                    nonce,
                     output,
                 }
             }
@@ -158,19 +144,16 @@ impl From<Transaction> for Result<TransactionType, KeyError> {
                 burns,
                 inputs,
                 outputs,
-                nonce,
                 ..
             } => TransactionType::AssetTransfer {
                 network_id,
                 burns,
                 inputs,
                 outputs,
-                nonce,
             },
             Transaction::AssetCompose {
                 network_id,
                 shard_id,
-                nonce,
                 metadata,
                 registrar,
                 inputs,
@@ -183,7 +166,6 @@ impl From<Transaction> for Result<TransactionType, KeyError> {
                 TransactionType::AssetCompose {
                     network_id,
                     shard_id,
-                    nonce,
                     metadata,
                     registrar,
                     inputs,
@@ -192,12 +174,10 @@ impl From<Transaction> for Result<TransactionType, KeyError> {
             }
             Transaction::AssetDecompose {
                 network_id,
-                nonce,
                 input,
                 outputs,
             } => TransactionType::AssetDecompose {
                 network_id,
-                nonce,
                 input,
                 outputs,
             },

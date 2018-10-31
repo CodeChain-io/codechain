@@ -30,8 +30,6 @@ use super::super::ShardId;
 pub enum Error {
     /// Parcel is already imported to the queue
     ParcelAlreadyImported,
-    /// Transaction is already imported in blockchain
-    TransactionAlreadyImported,
     /// Parcel is not valid anymore (state already has higher seq)
     Old,
     /// Parcel has too low fee
@@ -81,7 +79,6 @@ pub enum Error {
 }
 
 const ERROR_ID_PARCEL_ALREADY_IMPORTED: u8 = 1u8;
-const ERROR_ID_TRANSACTION_ALREADY_IMPORTED: u8 = 2u8;
 const ERROR_ID_OLD: u8 = 3u8;
 const ERROR_ID_TOO_CHEAP_TO_REPLACE: u8 = 4u8;
 const ERROR_ID_INVALID_NETWORK_ID: u8 = 5u8;
@@ -106,7 +103,6 @@ impl Error {
     fn item_count(&self) -> usize {
         match self {
             Error::ParcelAlreadyImported => 1,
-            Error::TransactionAlreadyImported => 1,
             Error::Old => 1,
             Error::TooCheapToReplace => 1,
             Error::InvalidNetworkId(_) => 2,
@@ -140,7 +136,6 @@ impl Encodable for Error {
         s.begin_list(self.item_count());
         match self {
             Error::ParcelAlreadyImported => s.append(&ERROR_ID_PARCEL_ALREADY_IMPORTED),
-            Error::TransactionAlreadyImported => s.append(&ERROR_ID_TRANSACTION_ALREADY_IMPORTED),
             Error::Old => s.append(&ERROR_ID_OLD),
             Error::TooCheapToReplace => s.append(&ERROR_ID_TOO_CHEAP_TO_REPLACE),
             Error::InvalidNetworkId(network_id) => s.append(&ERROR_ID_INVALID_NETWORK_ID).append(network_id),
@@ -181,7 +176,6 @@ impl Decodable for Error {
         let tag = rlp.val_at::<u8>(0)?;
         let error = match tag {
             ERROR_ID_PARCEL_ALREADY_IMPORTED => Error::ParcelAlreadyImported,
-            ERROR_ID_TRANSACTION_ALREADY_IMPORTED => Error::TransactionAlreadyImported,
             ERROR_ID_OLD => Error::Old,
             ERROR_ID_TOO_CHEAP_TO_REPLACE => Error::TooCheapToReplace,
             ERROR_ID_INVALID_NETWORK_ID => Error::InvalidNetworkId(rlp.val_at(1)?),
@@ -224,7 +218,6 @@ impl Display for Error {
     fn fmt(&self, f: &mut Formatter) -> FormatResult {
         let msg: String = match self {
             Error::ParcelAlreadyImported => "The parcel is already imported".into(),
-            Error::TransactionAlreadyImported => "The transaction is already imported".into(),
             Error::Old => "No longer valid".into(),
             Error::TooCheapToReplace => "Fee too low to replace".into(),
             Error::InvalidNetworkId(network_id) => format!("{} is an invalid network id", network_id),

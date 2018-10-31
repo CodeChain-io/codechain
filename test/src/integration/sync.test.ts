@@ -243,11 +243,9 @@ describeSkippedInTravis("sync", () => {
                     );
 
                     await nodeA.signTransferInput(tx1, 0);
-                    const invoice1 = await nodeA.sendTransaction(tx1);
-                    if (invoice1 == null) {
-                        throw Error("Cannot send a transaction to node A");
-                    }
-                    expect(invoice1.success).toBe(true);
+                    const invoices1 = await nodeA.sendTransaction(tx1);
+                    expect(invoices1!.length).toBe(1);
+                    expect(invoices1![0].success).toBe(true);
 
                     tx2 = nodeA.sdk.core.createAssetTransferTransaction();
                     tx2.addInputs(asset);
@@ -258,16 +256,12 @@ describeSkippedInTravis("sync", () => {
                     });
 
                     await nodeA.signTransferInput(tx2, 0);
-                    const invoiceA = await nodeA.sendTransaction(tx2);
-                    if (invoiceA == null) {
-                        throw Error("Cannot get the invoice from node A");
-                    }
-                    expect(invoiceA.success).toBe(false);
-                    const invoiceB = await nodeB.sendTransaction(tx2);
-                    if (invoiceB == null) {
-                        throw Error("Cannot get the invoice from node B");
-                    }
-                    expect(invoiceB.success).toBe(true);
+                    const invoicesA = await nodeA.sendTransaction(tx2);
+                    expect(invoicesA!.length).toBe(1);
+                    expect(invoicesA![0].success).toBe(false);
+                    const invoicesB = await nodeB.sendTransaction(tx2);
+                    expect(invoicesB!.length).toBe(1);
+                    expect(invoicesB![0].success).toBe(true);
 
                     expect(await nodeA.getBestBlockNumber()).toEqual(
                         (await nodeB.getBestBlockNumber()) + 1
@@ -284,25 +278,17 @@ describeSkippedInTravis("sync", () => {
                             expect(await nodeA.getBestBlockHash()).toEqual(
                                 await nodeB.getBestBlockHash()
                             );
-                            const invoiceA = await nodeA.sdk.rpc.chain.getTransactionInvoice(
+                            const invoicesA = await nodeA.sdk.rpc.chain.getTransactionInvoices(
                                 tx2.hash()
                             );
-                            if (invoiceA == null) {
-                                throw Error(
-                                    "Cannot get the invoice from node A"
-                                );
-                            }
-                            expect(invoiceA.success).toBe(false);
+                            expect(invoicesA!.length).toBe(1);
+                            expect(invoicesA![0].success).toBe(false);
 
-                            const invoiceB = await nodeB.sdk.rpc.chain.getTransactionInvoice(
+                            const invoicesB = await nodeB.sdk.rpc.chain.getTransactionInvoices(
                                 tx2.hash()
                             );
-                            if (invoiceB == null) {
-                                throw Error(
-                                    "Cannot get the invoice from node A"
-                                );
-                            }
-                            expect(invoiceB.success).toBe(false);
+                            expect(invoicesB!.length).toBe(1);
+                            expect(invoicesB![0].success).toBe(false);
                         },
                         30000
                     );
@@ -326,25 +312,17 @@ describeSkippedInTravis("sync", () => {
                                 await nodeB.getBestBlockHash()
                             );
 
-                            const invoiceA = await nodeA.sdk.rpc.chain.getTransactionInvoice(
+                            const invoicesA = await nodeA.sdk.rpc.chain.getTransactionInvoices(
                                 tx2.hash()
                             );
-                            if (invoiceA == null) {
-                                throw Error(
-                                    "Cannot get the invoice from node A"
-                                );
-                            }
-                            expect(invoiceA.success).toBe(true);
+                            expect(invoicesA!.length).toBe(1);
+                            expect(invoicesA![0].success).toBe(true);
 
-                            const invoiceB = await nodeB.sdk.rpc.chain.getTransactionInvoice(
+                            const invoicesB = await nodeB.sdk.rpc.chain.getTransactionInvoices(
                                 tx2.hash()
                             );
-                            if (invoiceB == null) {
-                                throw Error(
-                                    "Cannot get the invoice from node A"
-                                );
-                            }
-                            expect(invoiceB.success).toBe(true);
+                            expect(invoicesB!.length).toBe(1);
+                            expect(invoicesB![0].success).toBe(true);
                         },
                         30000
                     );

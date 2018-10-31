@@ -229,9 +229,6 @@ impl Miner {
                     cdebug!(MINER, "Rejected parcel {:?}: already in the blockchain", hash);
                     return Err(StateError::from(ParcelError::ParcelAlreadyImported).into())
                 }
-                if client.is_transaction_included(&parcel.asset_transaction_hash()) {
-                    return Err(StateError::from(ParcelError::TransactionAlreadyImported).into())
-                }
                 match self
                     .engine
                     .verify_parcel_basic(&parcel, &best_block_header)

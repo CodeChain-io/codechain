@@ -279,10 +279,14 @@ impl AssetClient for Client {
         block_id: BlockId,
     ) -> TrieResult<Option<bool>> {
         match self.transaction_address(&transaction_hash) {
-            Some(ref transaction_address)
-                if self.block_number(block_id)
-                    >= self.block_number(transaction_address.parcel_address.block_hash.into()) =>
-            {
+            Some(transaction_address) => {
+                if let Some(transaction_block) =
+                    transaction_address.into_iter().take(1).map(|addr| addr.block_hash.into()).next()
+                {
+                    if self.block_number(block_id) < self.block_number(transaction_block) {
+                        return Ok(None)
+                    }
+                }
                 let is_output_valid = match self.transaction(&transaction_hash) {
                     Some(Transaction::AssetMint {
                         shard_id: asset_mint_shard_id,
@@ -404,22 +408,17 @@ impl ParcelInfo for Client {
 }
 
 impl TransactionInfo for Client {
-    fn transaction_parcel(&self, hash: &H256) -> Option<ParcelAddress> {
-        self.transaction_address(hash).map(|addr| addr.parcel_address)
-    }
-
-    fn transaction_block_number(&self, hash: &H256) -> Option<BlockNumber> {
+    fn transaction_header(&self, hash: &H256) -> Option<::encoded::Header> {
         self.transaction_address(hash)
-            .map(|addr| addr.parcel_address.block_hash)
+            .and_then(|addr| {
+                addr.into_iter()
+                    .find(|addr| {
+                        let invoice = self.parcel_invoice(ParcelId::from(*addr)).expect("Parcel must exist");
+                        invoice == Invoice::Success
+                    })
+                    .map(|hash| hash.block_hash)
+            })
             .and_then(|hash| self.block_header(hash.into()))
-            .map(|h| h.number())
-    }
-
-    fn transaction_block_timestamp(&self, hash: &H256) -> Option<u64> {
-        self.transaction_address(hash)
-            .map(|addr| addr.parcel_address.block_hash)
-            .and_then(|hash| self.block_header(hash.into()))
-            .map(|h| h.timestamp())
     }
 }
 
@@ -522,13 +521,16 @@ impl BlockChainClient for Client {
         self.transaction_address(hash).and_then(|address| chain.transaction(&address))
     }
 
-    fn transaction_invoice(&self, hash: &H256) -> Option<Invoice> {
-        self.transaction_address(hash).and_then(|transaction_address| {
-            let parcel_address = transaction_address.parcel_address.clone();
-            let parcel_id = parcel_address.into();
-
-            self.parcel_invoice(parcel_id)
-        })
+    fn transaction_invoices(&self, hash: &H256) -> Vec<Invoice> {
+        self.transaction_address(hash)
+            .map(|address| {
+                address
+                    .into_iter()
+                    .map(Into::into)
+                    .map(|address| self.parcel_invoice(address).expect("The invoice must exist"))
+                    .collect()
+            })
+            .unwrap_or_default()
     }
 
     fn custom_handlers(&self) -> Vec<Arc<ActionHandler>> {
