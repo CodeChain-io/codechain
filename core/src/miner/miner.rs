@@ -288,7 +288,7 @@ impl Miner {
     fn calculate_timelock<C: BlockChain>(&self, parcel: &SignedParcel, client: &C) -> Result<ParcelTimelock, Error> {
         let mut max_block = None;
         let mut max_timestamp = None;
-        match &parcel.as_unsigned().action {
+        match &parcel.action {
             Action::AssetTransaction(transaction) => {
                 match transaction {
                     Transaction::AssetTransfer {
@@ -301,7 +301,7 @@ impl Miner {
                                     Timelock::Block(value) => (true, value),
                                     Timelock::BlockAge(value) => (
                                         true,
-                                        client.transaction_block_number(input.prev_out.transaction_hash.into()).ok_or(
+                                        client.transaction_block_number(&input.prev_out.transaction_hash).ok_or(
                                             Error::State(StateError::Transaction(TransactionError::Timelocked {
                                                 timelock,
                                                 remaining_time: u64::max_value(),
@@ -311,15 +311,12 @@ impl Miner {
                                     Timelock::Time(value) => (false, value),
                                     Timelock::TimeAge(value) => (
                                         false,
-                                        client
-                                            .transaction_block_timestamp(input.prev_out.transaction_hash.into())
-                                            .ok_or(Error::State(StateError::Transaction(
-                                                TransactionError::Timelocked {
-                                                    timelock,
-                                                    remaining_time: u64::max_value(),
-                                                },
-                                            )))?
-                                            + value,
+                                        client.transaction_block_timestamp(&input.prev_out.transaction_hash).ok_or(
+                                            Error::State(StateError::Transaction(TransactionError::Timelocked {
+                                                timelock,
+                                                remaining_time: u64::max_value(),
+                                            })),
+                                        )? + value,
                                     ),
                                 };
                                 if is_block_number {

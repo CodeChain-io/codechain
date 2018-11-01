@@ -72,7 +72,7 @@ where
             .as_val()
             .map_err(errors::rlp)
             .and_then(|parcel: UnverifiedParcel| {
-                match &parcel.as_unsigned().action {
+                match &parcel.action {
                     Action::Custom(bytes) => {
                         if !self.client.custom_handlers().iter().any(|c| c.is_target(bytes)) {
                             return Err(errors::rlp(DecoderError::Custom("Invalid custom action!")))
@@ -102,11 +102,11 @@ where
     }
 
     fn get_transaction(&self, transaction_hash: H256) -> Result<Option<Transaction>> {
-        Ok(self.client.transaction(transaction_hash.into()).map(Into::into))
+        Ok(self.client.transaction(&transaction_hash).map(Into::into))
     }
 
     fn get_transaction_invoice(&self, transaction_hash: H256) -> Result<Option<Invoice>> {
-        Ok(self.client.transaction_invoice(transaction_hash.into()))
+        Ok(self.client.transaction_invoice(&transaction_hash))
     }
 
     fn get_asset_scheme_by_hash(&self, transaction_hash: H256, shard_id: ShardId) -> Result<Option<AssetScheme>> {

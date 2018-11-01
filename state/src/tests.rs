@@ -32,11 +32,11 @@ pub mod helpers {
             0
         }
 
-        fn transaction_block_age(&self, _: H256) -> Option<u64> {
+        fn transaction_block_age(&self, _: &H256) -> Option<u64> {
             Some(0)
         }
 
-        fn transaction_time_age(&self, _: H256) -> Option<u64> {
+        fn transaction_time_age(&self, _: &H256) -> Option<u64> {
             Some(0)
         }
     }

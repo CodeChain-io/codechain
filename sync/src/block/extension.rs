@@ -525,7 +525,7 @@ impl Extension {
                 }
                 for body in bodies {
                     for parcel in body {
-                        let is_valid = match &parcel.as_unsigned().action {
+                        let is_valid = match &parcel.action {
                             Action::Custom(bytes) => self.client.custom_handlers().iter().any(|c| c.is_target(bytes)),
                             _ => true,
                         };

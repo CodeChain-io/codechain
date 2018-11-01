@@ -68,15 +68,15 @@ impl Block {
                 .enumerate()
                 .map(|(i, unverified)| {
                     let sig = unverified.signature();
-                    let network_id = unverified.as_unsigned().network_id;
+                    let network_id = unverified.network_id;
                     Parcel {
                         block_number: Some(block_number),
                         block_hash: Some(block_hash),
                         parcel_index: Some(i),
-                        seq: unverified.as_unsigned().seq.clone(),
-                        fee: unverified.as_unsigned().fee.clone(),
+                        seq: unverified.seq.clone(),
+                        fee: unverified.fee.clone(),
                         network_id,
-                        action: Action::from_core(unverified.as_unsigned().action.clone(), network_id),
+                        action: Action::from_core(unverified.action.clone(), network_id),
                         hash: unverified.hash(),
                         sig: sig.into(),
                     }

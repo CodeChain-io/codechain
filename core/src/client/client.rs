@@ -52,7 +52,7 @@ use super::super::miner::{Miner, MinerService};
 use super::super::parcel::{LocalizedParcel, SignedParcel, UnverifiedParcel};
 use super::super::scheme::{CommonParams, Scheme};
 use super::super::service::ClientIoMessage;
-use super::super::types::{BlockId, BlockStatus, ParcelId, TransactionId, VerificationQueueInfo as BlockQueueInfo};
+use super::super::types::{BlockId, BlockStatus, ParcelId, VerificationQueueInfo as BlockQueueInfo};
 use super::super::verification::queue::{BlockQueue, HeaderQueue};
 use super::super::verification::{self, PreverifiedBlock, Verifier};
 use super::super::views::{BlockView, HeaderView};
@@ -180,13 +180,8 @@ impl Client {
         }
     }
 
-    fn transaction_address(&self, id: TransactionId) -> Option<TransactionAddress> {
-        match id {
-            TransactionId::Hash(ref hash) => self.chain.read().transaction_address(hash),
-            TransactionId::Location(id) => self.parcel_address(id).map(|parcel_address| TransactionAddress {
-                parcel_address,
-            }),
-        }
+    fn transaction_address(&self, hash: &H256) -> Option<TransactionAddress> {
+        self.chain.read().transaction_address(hash)
     }
 
     /// Import parcels from the IO queue
@@ -283,12 +278,12 @@ impl AssetClient for Client {
         shard_id: ShardId,
         block_id: BlockId,
     ) -> TrieResult<Option<bool>> {
-        match self.transaction_address(transaction_hash.into()) {
+        match self.transaction_address(&transaction_hash) {
             Some(ref transaction_address)
                 if self.block_number(block_id)
                     >= self.block_number(transaction_address.parcel_address.block_hash.into()) =>
             {
-                let is_output_valid = match self.transaction(transaction_hash.into()) {
+                let is_output_valid = match self.transaction(&transaction_hash) {
                     Some(Transaction::AssetMint {
                         shard_id: asset_mint_shard_id,
                         ..
@@ -409,19 +404,19 @@ impl ParcelInfo for Client {
 }
 
 impl TransactionInfo for Client {
-    fn transaction_parcel(&self, id: TransactionId) -> Option<ParcelAddress> {
-        self.transaction_address(id).map(|addr| addr.parcel_address)
+    fn transaction_parcel(&self, hash: &H256) -> Option<ParcelAddress> {
+        self.transaction_address(hash).map(|addr| addr.parcel_address)
     }
 
-    fn transaction_block_number(&self, id: TransactionId) -> Option<BlockNumber> {
-        self.transaction_address(id)
+    fn transaction_block_number(&self, hash: &H256) -> Option<BlockNumber> {
+        self.transaction_address(hash)
             .map(|addr| addr.parcel_address.block_hash)
             .and_then(|hash| self.block_header(hash.into()))
             .map(|h| h.number())
     }
 
-    fn transaction_block_timestamp(&self, id: TransactionId) -> Option<u64> {
-        self.transaction_address(id)
+    fn transaction_block_timestamp(&self, hash: &H256) -> Option<u64> {
+        self.transaction_address(hash)
             .map(|addr| addr.parcel_address.block_hash)
             .and_then(|hash| self.block_header(hash.into()))
             .map(|h| h.timestamp())
@@ -522,13 +517,13 @@ impl BlockChainClient for Client {
         self.parcel_address(id).and_then(|address| chain.parcel_invoice(&address))
     }
 
-    fn transaction(&self, id: TransactionId) -> Option<Transaction> {
+    fn transaction(&self, hash: &H256) -> Option<Transaction> {
         let chain = self.chain.read();
-        self.transaction_address(id).and_then(|address| chain.transaction(&address))
+        self.transaction_address(hash).and_then(|address| chain.transaction(&address))
     }
 
-    fn transaction_invoice(&self, id: TransactionId) -> Option<Invoice> {
-        self.transaction_address(id).and_then(|transaction_address| {
+    fn transaction_invoice(&self, hash: &H256) -> Option<Invoice> {
+        self.transaction_address(hash).and_then(|transaction_address| {
             let parcel_address = transaction_address.parcel_address.clone();
             let parcel_id = parcel_address.into();
 
@@ -1094,13 +1089,12 @@ impl ChainTimeInfo for Client {
         self.chain_info().best_block_timestamp
     }
 
-    fn transaction_block_age(&self, hash: H256) -> Option<u64> {
-        self.transaction_block_number(TransactionId::Hash(hash))
-            .map(|block_number| self.chain_info().best_block_number - block_number)
+    fn transaction_block_age(&self, hash: &H256) -> Option<u64> {
+        self.transaction_block_number(hash).map(|block_number| self.chain_info().best_block_number - block_number)
     }
 
-    fn transaction_time_age(&self, hash: H256) -> Option<u64> {
-        self.transaction_block_timestamp(TransactionId::Hash(hash))
+    fn transaction_time_age(&self, hash: &H256) -> Option<u64> {
+        self.transaction_block_timestamp(hash)
             .map(|block_timestamp| self.chain_info().best_block_timestamp - block_timestamp)
     }
 }

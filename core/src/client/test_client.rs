@@ -66,7 +66,7 @@ use super::super::header::Header as BlockHeader;
 use super::super::miner::{Miner, MinerService, ParcelImportResult};
 use super::super::parcel::{LocalizedParcel, SignedParcel};
 use super::super::scheme::Scheme;
-use super::super::types::{BlockId, ParcelId, TransactionId, VerificationQueueInfo as QueueInfo};
+use super::super::types::{BlockId, ParcelId, VerificationQueueInfo as QueueInfo};
 
 /// Test client.
 pub struct TestBlockChainClient {
@@ -396,15 +396,15 @@ impl ParcelInfo for TestBlockChainClient {
 }
 
 impl TransactionInfo for TestBlockChainClient {
-    fn transaction_parcel(&self, _id: TransactionId) -> Option<ParcelAddress> {
+    fn transaction_parcel(&self, _: &H256) -> Option<ParcelAddress> {
         None
     }
 
-    fn transaction_block_number(&self, _id: TransactionId) -> Option<BlockNumber> {
+    fn transaction_block_number(&self, _: &H256) -> Option<BlockNumber> {
         None
     }
 
-    fn transaction_block_timestamp(&self, _id: TransactionId) -> Option<u64> {
+    fn transaction_block_timestamp(&self, _: &H256) -> Option<u64> {
         None
     }
 }
@@ -521,11 +521,11 @@ impl BlockChainClient for TestBlockChainClient {
         unimplemented!();
     }
 
-    fn transaction(&self, _id: TransactionId) -> Option<Transaction> {
+    fn transaction(&self, _: &H256) -> Option<Transaction> {
         unimplemented!();
     }
 
-    fn transaction_invoice(&self, _id: TransactionId) -> Option<Invoice> {
+    fn transaction_invoice(&self, _: &H256) -> Option<Invoice> {
         unimplemented!();
     }
 
@@ -543,11 +543,11 @@ impl ChainTimeInfo for TestBlockChainClient {
         0
     }
 
-    fn transaction_block_age(&self, _: H256) -> Option<u64> {
+    fn transaction_block_age(&self, _: &H256) -> Option<u64> {
         Some(0)
     }
 
-    fn transaction_time_age(&self, _: H256) -> Option<u64> {
+    fn transaction_time_age(&self, _: &H256) -> Option<u64> {
         Some(0)
     }
 }
