@@ -18,30 +18,7 @@ import CodeChain from "../helper/spawn";
 
 const testSkippedInTravis = process.env.TRAVIS ? test.skip : test;
 
-describe("2 nodes", () => {
-    let nodeA: CodeChain;
-    let nodeB: CodeChain;
-
-    beforeEach(async () => {
-        nodeA = new CodeChain();
-        nodeB = new CodeChain();
-        await nodeA.start();
-        await nodeB.start();
-    });
-
-    // FIXME: Connection establishment is too slow.
-    // See https://github.com/CodeChain-io/codechain/issues/760
-    testSkippedInTravis("should be able to connect", async () => {
-        await nodeA.connect(nodeB);
-    });
-
-    afterEach(async () => {
-        await nodeA.clean();
-        await nodeB.clean();
-    });
-});
-
-describe("5 nodes", () => {
+describe("discovery5 nodes", () => {
     const numOfNodes = 5;
     let nodes: CodeChain[];
     let bootstrapNode: CodeChain;
@@ -69,11 +46,14 @@ describe("5 nodes", () => {
     testSkippedInTravis(
         "number of peers",
         async () => {
-            await nodes[0].waitPeers(numOfNodes - 1);
-            await nodes[1].waitPeers(numOfNodes - 1);
-            await nodes[2].waitPeers(numOfNodes - 1);
-            await nodes[3].waitPeers(numOfNodes - 1);
-            await nodes[4].waitPeers(numOfNodes - 1);
+            await Promise.all([
+                nodes[0].waitPeers(numOfNodes - 1),
+                nodes[1].waitPeers(numOfNodes - 1),
+                nodes[2].waitPeers(numOfNodes - 1),
+                nodes[3].waitPeers(numOfNodes - 1),
+                nodes[4].waitPeers(numOfNodes - 1)
+            ]);
+
             expect(await nodes[0].sdk.rpc.network.getPeerCount()).toEqual(
                 numOfNodes - 1
             );
