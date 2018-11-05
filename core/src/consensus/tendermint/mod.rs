@@ -1012,7 +1012,7 @@ mod tests {
             false,
         )
         .unwrap();
-        let b = b.close(*genesis_header.parcels_root(), *genesis_header.invoices_root());
+        let b = b.close(*genesis_header.parcels_root(), *genesis_header.invoices_root()).unwrap();
         if let Seal::Proposal(seal) = scheme.engine.generate_seal(b.block(), &genesis_header) {
             (b, seal)
         } else {

@@ -363,8 +363,14 @@ impl Miner {
             // | NOTE Code below requires transaction_queue and sealing_work locks.     |
             // | Make sure to release the locks before calling that method.             |
             // --------------------------------------------------------------------------
-            let (block, original_work_hash) = self.prepare_block(client);
-            self.prepare_work(block, original_work_hash);
+            match self.prepare_block(client) {
+                Ok((block, original_work_hash)) => {
+                    self.prepare_work(block, original_work_hash);
+                }
+                Err(err) => {
+                    ctrace!(MINER, "prepare_work_sealing: cannot prepare block: {:?}", err);
+                }
+            }
         }
         let mut sealing_block_last_request = self.sealing_block_last_request.lock();
         let best_number = client.chain_info().best_block_number;
@@ -434,7 +440,7 @@ impl Miner {
     fn prepare_block<C: AccountData + BlockChain + BlockProducer + RegularKeyOwner + ChainTimeInfo>(
         &self,
         chain: &C,
-    ) -> (ClosedBlock, Option<H256>) {
+    ) -> Result<(ClosedBlock, Option<H256>), Error> {
         let (parcels, mut open_block, original_work_hash) = {
             let max_body_size = self.engine.params().max_body_size;
             let parcels = self.mem_pool.read().top_parcels(max_body_size);
@@ -491,7 +497,7 @@ impl Miner {
             let parent_view = parent_header.view();
             (parent_view.parcels_root(), parent_view.invoices_root())
         };
-        let block = open_block.close(parcels_root, invoices_root);
+        let block = open_block.close(parcels_root, invoices_root)?;
 
         let fetch_seq = |p: &Public| {
             let address = public_to_address(p);
@@ -511,7 +517,7 @@ impl Miner {
                 );
             }
         }
-        (block, original_work_hash)
+        Ok((block, original_work_hash))
     }
 
     /// Attempts to perform internal sealing (one that does not require work) and handles the result depending on the type of Seal.
@@ -710,7 +716,13 @@ impl MinerService for Miner {
         ctrace!(MINER, "update_sealing: preparing a block");
 
         if self.requires_reseal(chain.chain_info().best_block_number) {
-            let (block, original_work_hash) = self.prepare_block(chain);
+            let (block, original_work_hash) = match self.prepare_block(chain) {
+                Ok((block, original_work_hash)) => (block, original_work_hash),
+                Err(err) => {
+                    ctrace!(MINER, "update_sealing: cannot prepare block: {:?}", err);
+                    return
+                }
+            };
 
             match self.engine.seals_internally() {
                 Some(true) => {

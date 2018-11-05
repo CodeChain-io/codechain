@@ -88,7 +88,7 @@ mod tests {
         let b = OpenBlock::new(&*scheme.engine, db, &genesis_header, address, vec![], false).unwrap();
         let parent_parcels_root = genesis_header.parcels_root().clone();
         let parent_invoices_root = genesis_header.invoices_root().clone();
-        b.close(parent_parcels_root, parent_invoices_root)
+        b.close(parent_parcels_root, parent_invoices_root).unwrap()
     }
 
     #[test]

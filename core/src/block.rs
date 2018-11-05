@@ -185,15 +185,17 @@ impl<'x> OpenBlock<'x> {
     }
 
     /// Turn this into a `ClosedBlock`.
-    pub fn close(mut self, parent_parcels_root: H256, parent_invoices_root: H256) -> ClosedBlock {
+    pub fn close(mut self, parent_parcels_root: H256, parent_invoices_root: H256) -> Result<ClosedBlock, Error> {
         let unclosed_state = self.block.state.clone();
 
         if let Err(e) = self.engine.on_close_block(&mut self.block) {
             warn!("Encountered error on closing the block: {}", e);
+            return Err(e)
         }
 
         if let Err(e) = self.block.state.commit() {
             warn!("Encountered error on state commit: {}", e);
+            return Err(StateError::from(e).into())
         }
         self.block.header.set_parcels_root(skewed_merkle_root(
             parent_parcels_root,
@@ -205,20 +207,26 @@ impl<'x> OpenBlock<'x> {
             self.block.invoices.iter().map(|invoice| invoice.rlp_bytes()),
         ));
 
-        ClosedBlock {
+        Ok(ClosedBlock {
             block: self.block,
             unclosed_state,
-        }
+        })
     }
 
     /// Turn this into a `LockedBlock`.
-    pub fn close_and_lock(mut self, parent_parcels_root: H256, parent_invoices_root: H256) -> LockedBlock {
+    pub fn close_and_lock(
+        mut self,
+        parent_parcels_root: H256,
+        parent_invoices_root: H256,
+    ) -> Result<LockedBlock, Error> {
         if let Err(e) = self.engine.on_close_block(&mut self.block) {
             warn!("Encountered error on closing the block: {}", e);
+            return Err(e)
         }
 
         if let Err(e) = self.block.state.commit() {
             warn!("Encountered error on state commit: {}", e);
+            return Err(StateError::from(e).into())
         }
         if self.block.header.parcels_root().is_zero() || self.block.header.parcels_root() == &BLAKE_NULL_RLP {
             self.block.header.set_parcels_root(skewed_merkle_root(
@@ -226,17 +234,25 @@ impl<'x> OpenBlock<'x> {
                 self.block.parcels.iter().map(Encodable::rlp_bytes),
             ));
         }
+        debug_assert_eq!(
+            self.block.header.parcels_root(),
+            &skewed_merkle_root(parent_parcels_root, self.block.parcels.iter().map(Encodable::rlp_bytes),)
+        );
         if self.block.header.invoices_root().is_zero() || self.block.header.invoices_root() == &BLAKE_NULL_RLP {
             self.block.header.set_invoices_root(skewed_merkle_root(
                 parent_invoices_root,
                 self.block.invoices.iter().map(Encodable::rlp_bytes),
             ));
         }
+        debug_assert_eq!(
+            self.block.header.invoices_root(),
+            &skewed_merkle_root(parent_invoices_root, self.block.invoices.iter().map(Encodable::rlp_bytes),)
+        );
         self.block.header.set_state_root(self.block.state.root().clone());
 
-        LockedBlock {
+        Ok(LockedBlock {
             block: self.block,
-        }
+        })
     }
 
     /// Alter the timestamp of the block.
@@ -432,7 +448,7 @@ pub fn enact<C: ChainTimeInfo>(
     b.populate_from(header);
     b.push_parcels(parcels, client)?;
 
-    Ok(b.close_and_lock(parent.parcels_root().clone(), parent.invoices_root().clone()))
+    b.close_and_lock(parent.parcels_root().clone(), parent.invoices_root().clone())
 }
 
 #[cfg(test)]
@@ -451,7 +467,7 @@ mod tests {
         let b = OpenBlock::new(&*scheme.engine, db, &genesis_header, Address::default(), vec![], false).unwrap();
         let parent_parcels_root = genesis_header.parcels_root().clone();
         let parent_invoices_root = genesis_header.invoices_root().clone();
-        let b = b.close_and_lock(parent_parcels_root, parent_invoices_root);
+        let b = b.close_and_lock(parent_parcels_root, parent_invoices_root).unwrap();
         let _ = b.seal(&*scheme.engine, vec![]);
     }
 }
