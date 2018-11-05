@@ -202,7 +202,7 @@ describe("solo - 1 node", () => {
                 scheme: {
                     shardId: 0,
                     metadata: "",
-                    amount: 10
+                    amount: "0xa"
                 },
                 recipient
             });
@@ -324,7 +324,7 @@ describe("solo - 1 node", () => {
         tx.addOutputs({
             assetType: asset.assetType,
             recipient,
-            amount: 10
+            amount: "0xa"
         });
         await node.signTransferInput(tx, 0);
         const invoices = await node.sendTransaction(tx);

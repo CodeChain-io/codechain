@@ -1340,7 +1340,7 @@ mod tests_parcel {
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::from("0xb042ad154a3359d276835c903587ebafefea22af");
         let registrar = Some(sender);
-        let amount = 30;
+        let amount = 30.into();
         let mint = Transaction::AssetMint {
             network_id,
             shard_id,
@@ -1364,7 +1364,7 @@ mod tests_parcel {
                     transaction_hash: mint_hash,
                     index: 0,
                     asset_type,
-                    amount: 30,
+                    amount: 30.into(),
                 },
                 timelock: None,
                 lock_script: vec![0x30, 0x01],
@@ -1374,7 +1374,7 @@ mod tests_parcel {
                 lock_script_hash,
                 parameters: vec![vec![1]],
                 asset_type,
-                amount: 30,
+                amount: 30.into(),
             }],
         };
         let mint_parcel = Parcel {
@@ -1494,7 +1494,7 @@ mod tests_parcel {
         let lock_script_hash = H160::random();
         let parameters = vec![];
         let registrar = Some(Address::random());
-        let amount = 30;
+        let amount = 30.into();
         let transaction = Transaction::AssetMint {
             network_id,
             shard_id,
@@ -1573,12 +1573,12 @@ mod tests_parcel {
 
         let asset_scheme_address = AssetSchemeAddress::new(transaction_hash, shard_id);
         let asset_scheme = state.asset_scheme(shard_id, &asset_scheme_address);
-        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), ::std::u64::MAX, registrar))), asset_scheme);
+        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), U256::max_value(), registrar))), asset_scheme);
 
         let asset_address = OwnedAssetAddress::new(transaction_hash, 0, shard_id);
         let asset = state.asset(shard_id, &asset_address);
         assert_eq!(
-            Ok(Some(OwnedAsset::new(asset_scheme_address.into(), lock_script_hash, parameters, ::std::u64::MAX))),
+            Ok(Some(OwnedAsset::new(asset_scheme_address.into(), lock_script_hash, parameters, U256::max_value()))),
             asset
         );
     }
@@ -1597,7 +1597,7 @@ mod tests_parcel {
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::from("b042ad154a3359d276835c903587ebafefea22af");
         let registrar = None;
-        let amount = 30;
+        let amount = 30.into();
         let mint = Transaction::AssetMint {
             network_id,
             shard_id,
@@ -1629,7 +1629,7 @@ mod tests_parcel {
         let asset_address = OwnedAssetAddress::new(mint_hash, 0, shard_id);
 
         let asset = state.asset(shard_id, &asset_address);
-        assert_eq!(Ok(Some(OwnedAsset::new(asset_type, lock_script_hash, vec![], 30))), asset);
+        assert_eq!(Ok(Some(OwnedAsset::new(asset_type, lock_script_hash, vec![], 30.into()))), asset);
 
         let random_lock_script_hash = H160::random();
         let transfer = Transaction::AssetTransfer {
@@ -1640,7 +1640,7 @@ mod tests_parcel {
                     transaction_hash: mint_hash,
                     index: 0,
                     asset_type,
-                    amount: 30,
+                    amount: 30.into(),
                 },
                 timelock: None,
                 lock_script: vec![0x30, 0x01],
@@ -1651,19 +1651,19 @@ mod tests_parcel {
                     lock_script_hash,
                     parameters: vec![vec![1]],
                     asset_type,
-                    amount: 10,
+                    amount: 10.into(),
                 },
                 AssetTransferOutput {
                     lock_script_hash,
                     parameters: vec![],
                     asset_type,
-                    amount: 5,
+                    amount: 5.into(),
                 },
                 AssetTransferOutput {
                     lock_script_hash: random_lock_script_hash,
                     parameters: vec![],
                     asset_type,
-                    amount: 15,
+                    amount: 15.into(),
                 },
             ],
         };
@@ -1691,15 +1691,15 @@ mod tests_parcel {
 
         let asset0_address = OwnedAssetAddress::new(transfer_hash, 0, shard_id);
         let asset0 = state.asset(shard_id, &asset0_address);
-        assert_eq!(Ok(Some(OwnedAsset::new(asset_type, lock_script_hash, vec![vec![1]], 10))), asset0);
+        assert_eq!(Ok(Some(OwnedAsset::new(asset_type, lock_script_hash, vec![vec![1]], 10.into()))), asset0);
 
         let asset1_address = OwnedAssetAddress::new(transfer_hash, 1, shard_id);
         let asset1 = state.asset(shard_id, &asset1_address);
-        assert_eq!(Ok(Some(OwnedAsset::new(asset_type, lock_script_hash, vec![], 5))), asset1);
+        assert_eq!(Ok(Some(OwnedAsset::new(asset_type, lock_script_hash, vec![], 5.into()))), asset1);
 
         let asset2_address = OwnedAssetAddress::new(transfer_hash, 2, shard_id);
         let asset2 = state.asset(shard_id, &asset2_address);
-        assert_eq!(Ok(Some(OwnedAsset::new(asset_type, random_lock_script_hash, vec![], 15))), asset2);
+        assert_eq!(Ok(Some(OwnedAsset::new(asset_type, random_lock_script_hash, vec![], 15.into()))), asset2);
     }
 
     #[test]
@@ -1717,7 +1717,7 @@ mod tests_parcel {
         let lock_script_hash = H160::random();
         let parameters = vec![];
         let registrar = Some(Address::random());
-        let amount = 30;
+        let amount = 30.into();
         let transaction = Transaction::AssetMint {
             network_id,
             shard_id,
@@ -1854,7 +1854,7 @@ mod tests_parcel {
         let lock_script_hash = H160::random();
         let parameters = vec![];
         let registrar = Some(Address::random());
-        let amount = 30;
+        let amount = 30.into();
         let transaction = Transaction::AssetMint {
             network_id: "tc".into(),
             shard_id,
@@ -1898,7 +1898,7 @@ mod tests_parcel {
                     transaction_hash: H256::random(),
                     index: 0,
                     asset_type,
-                    amount: 30,
+                    amount: 30.into(),
                 },
                 timelock: None,
                 lock_script: vec![0x30, 0x01],
@@ -1909,19 +1909,19 @@ mod tests_parcel {
                     lock_script_hash: H160::random(),
                     parameters: vec![vec![1]],
                     asset_type,
-                    amount: 10,
+                    amount: 10.into(),
                 },
                 AssetTransferOutput {
                     lock_script_hash: H160::random(),
                     parameters: vec![],
                     asset_type,
-                    amount: 5,
+                    amount: 5.into(),
                 },
                 AssetTransferOutput {
                     lock_script_hash: H160::random(),
                     parameters: vec![],
                     asset_type,
-                    amount: 15,
+                    amount: 15.into(),
                 },
             ],
         };
@@ -2181,7 +2181,7 @@ mod tests_parcel {
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::from("b042ad154a3359d276835c903587ebafefea22af");
         let registrar = None;
-        let amount = 30;
+        let amount = 30.into();
         let parameters = vec![];
 
         let mint = Transaction::AssetMint {

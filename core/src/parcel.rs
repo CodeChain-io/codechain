@@ -311,7 +311,7 @@ mod tests {
             output: AssetMintOutput {
                 lock_script_hash: H160::random(),
                 parameters: vec![],
-                amount: Some(10000),
+                amount: Some(10000.into()),
             },
             registrar: None,
         });
@@ -326,7 +326,7 @@ mod tests {
             output: AssetMintOutput {
                 lock_script_hash: H160::random(),
                 parameters: vec![vec![1, 2, 3], vec![4, 5, 6], vec![0, 7]],
-                amount: Some(10000),
+                amount: Some(10000.into()),
             },
             registrar: None,
         });

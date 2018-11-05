@@ -17,11 +17,7 @@
 import CodeChain from "../helper/spawn";
 import { wait } from "../helper/promise";
 import { makeRandomH256, makeRandomPassphrase } from "../helper/random";
-import {
-    invalidAccointId,
-    invalidAddress,
-    invalidSecret
-} from "../helper/constants";
+import { invalidAddress, invalidSecret } from "../helper/constants";
 
 import { xor128 } from "seedrandom";
 
@@ -295,7 +291,8 @@ describe("account", () => {
                         randomSecret
                     );
                     const address = node.sdk.core.classes.PlatformAddress.fromAccountId(
-                        account
+                        account,
+                        { networkId: "tc" }
                     );
                     const randomPassphrase = makeRandomPassphrase();
 
@@ -316,7 +313,8 @@ describe("account", () => {
                 const secret = node.sdk.util.generatePrivateKey();
                 const account = node.sdk.util.getAccountIdFromPrivate(secret);
                 const address = node.sdk.core.classes.PlatformAddress.fromAccountId(
-                    account
+                    account,
+                    { networkId: "tc" }
                 );
                 const passphrase = makeRandomPassphrase();
                 await node.sdk.rpc.account.importRaw(secret, passphrase);

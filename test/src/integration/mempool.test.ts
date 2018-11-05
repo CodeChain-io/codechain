@@ -203,10 +203,10 @@ describe("Future queue", () => {
     test("all pending parcel must be mined", async () => {
         const seq =
             (await node.sdk.rpc.chain.getSeq(faucetAddress)) || U256.ensure(0);
-        const seq1 = seq.increase();
-        const seq2 = seq1.increase();
-        const seq3 = seq2.increase();
-        const seq4 = seq3.increase();
+        const seq1 = U256.plus(seq, 1);
+        const seq2 = U256.plus(seq, 2);
+        const seq3 = U256.plus(seq, 3);
+        const seq4 = U256.plus(seq, 4);
 
         await node.sendSignedParcel({ awaitInvoice: false, seq: seq3 });
         expect(await node.sdk.rpc.chain.getSeq(faucetAddress)).toEqual(seq);

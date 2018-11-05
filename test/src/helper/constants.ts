@@ -20,7 +20,8 @@ export const faucetSecret =
     "ede1d4ccb4ec9a8bbbae9a13db3f4a7b56ea04189be86ac3a6a439d9a0a1addd";
 export const faucetAccointId = SDK.util.getAccountIdFromPrivate(faucetSecret); // 6fe64ffa3a46c074226457c90ccb32dc06ccced1
 export const faucetAddress = SDK.Core.classes.PlatformAddress.fromAccountId(
-    faucetAccointId
+    faucetAccointId,
+    { networkId: "tc" }
 ); // tccq9h7vnl68frvqapzv3tujrxtxtwqdnxw6yamrrgd
 
 export const aliceSecret =
@@ -29,7 +30,8 @@ export const alicePublic = SDK.util.getPublicFromPrivate(aliceSecret);
 // 2a8a69439f2396c9a328289fdc3905d9736da9e14eb1a282cfd2c036cc21a17a5d05595160b7924e5ecf3f2628b440e601f3a531e92fa81571a70e6c695b2d08
 export const aliceAccountId = SDK.util.getAccountIdFromPrivate(aliceSecret); // 40c1f3a9da4acca257b7de3e7276705edaff074a
 export const aliceAddress = SDK.Core.classes.PlatformAddress.fromAccountId(
-    aliceAccountId
+    aliceAccountId,
+    { networkId: "tc" }
 ); // tccq9qvruafmf9vegjhkl0ruunkwp0d4lc8fgxknzh5
 
 export const bobSecret =
@@ -38,7 +40,8 @@ export const bobPublic = SDK.util.getPublicFromPrivate(bobSecret);
 // 545ebdc0b8fb2d0be77a27d843945950db6dbddc60477c0cf001751a797df8a41fc51fe5b76e371c8875ad1d0585a60af2eef2b5d631f7bfba86e7988c25088d
 export const bobAccountId = SDK.util.getAccountIdFromPrivate(bobSecret); // e1361974625cbbcbbe178e77b510d44d59c9ca9d
 export const bobAddress = SDK.Core.classes.PlatformAddress.fromAccountId(
-    bobAccountId
+    bobAccountId,
+    { networkId: "tc" }
 ); // tccq8snvxt5vfwthja7z7880dgs63x4njw2n5e5zm4h
 
 export const invalidSecret =

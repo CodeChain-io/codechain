@@ -41,7 +41,7 @@ fn valid_pay_to_public_key() {
             transaction_hash: H256::default(),
             index: 0,
             asset_type: H256::default(),
-            amount: 0,
+            amount: 0.into(),
         },
         timelock: None,
         lock_script: Vec::new(),
@@ -83,7 +83,7 @@ fn invalid_pay_to_public_key() {
             transaction_hash: H256::default(),
             index: 0,
             asset_type: H256::default(),
-            amount: 0,
+            amount: 0.into(),
         },
         timelock: None,
         lock_script: Vec::new(),
@@ -121,7 +121,7 @@ fn sign_all_input_all_output() {
         transaction_hash: H256::default(),
         index: 0,
         asset_type: H256::default(),
-        amount: 0,
+        amount: 0.into(),
     };
     let input0 = AssetTransferInput {
         prev_out: out0.clone(),
@@ -134,7 +134,7 @@ fn sign_all_input_all_output() {
         transaction_hash: H256::default(),
         index: 1,
         asset_type: H256::default(),
-        amount: 1,
+        amount: 1.into(),
     };
     let input1 = AssetTransferInput {
         prev_out: out1,
@@ -147,14 +147,14 @@ fn sign_all_input_all_output() {
         lock_script_hash: H160::default(),
         parameters: Vec::new(),
         asset_type: H256::default(),
-        amount: 0,
+        amount: 0.into(),
     };
     // Make output indexed 1
     let output1 = AssetTransferOutput {
         lock_script_hash: H160::default(),
         parameters: Vec::new(),
         asset_type: H256::default(),
-        amount: 1,
+        amount: 1.into(),
     };
     let transaction = Transaction::AssetTransfer {
         network_id: NetworkId::default(),
@@ -195,7 +195,7 @@ fn sign_single_input_all_output() {
         transaction_hash: H256::default(),
         index: 0,
         asset_type: H256::default(),
-        amount: 0,
+        amount: 0.into(),
     };
     let input0 = AssetTransferInput {
         prev_out: out0.clone(),
@@ -208,7 +208,7 @@ fn sign_single_input_all_output() {
         transaction_hash: H256::default(),
         index: 1,
         asset_type: H256::default(),
-        amount: 1,
+        amount: 1.into(),
     };
     let input1 = AssetTransferInput {
         prev_out: out1,
@@ -221,14 +221,14 @@ fn sign_single_input_all_output() {
         lock_script_hash: H160::default(),
         parameters: Vec::new(),
         asset_type: H256::default(),
-        amount: 0,
+        amount: 0.into(),
     };
     // Make output indexed 1
     let output1 = AssetTransferOutput {
         lock_script_hash: H160::default(),
         parameters: Vec::new(),
         asset_type: H256::default(),
-        amount: 1,
+        amount: 1.into(),
     };
     let transaction = Transaction::AssetTransfer {
         network_id: NetworkId::default(),
@@ -268,7 +268,7 @@ fn sign_all_input_partial_output() {
         transaction_hash: H256::default(),
         index: 0,
         asset_type: H256::default(),
-        amount: 0,
+        amount: 0.into(),
     };
     let input0 = AssetTransferInput {
         prev_out: out0.clone(),
@@ -281,7 +281,7 @@ fn sign_all_input_partial_output() {
         transaction_hash: H256::default(),
         index: 1,
         asset_type: H256::default(),
-        amount: 1,
+        amount: 1.into(),
     };
     let input1 = AssetTransferInput {
         prev_out: out1,
@@ -294,14 +294,14 @@ fn sign_all_input_partial_output() {
         lock_script_hash: H160::default(),
         parameters: Vec::new(),
         asset_type: H256::default(),
-        amount: 0,
+        amount: 0.into(),
     };
     // Make output indexed 1
     let output1 = AssetTransferOutput {
         lock_script_hash: H160::default(),
         parameters: Vec::new(),
         asset_type: H256::default(),
-        amount: 1,
+        amount: 1.into(),
     };
     let transaction = Transaction::AssetTransfer {
         network_id: NetworkId::default(),
@@ -341,7 +341,7 @@ fn sign_single_input_partial_output() {
         transaction_hash: H256::default(),
         index: 0,
         asset_type: H256::default(),
-        amount: 0,
+        amount: 0.into(),
     };
     let input0 = AssetTransferInput {
         prev_out: out0.clone(),
@@ -354,7 +354,7 @@ fn sign_single_input_partial_output() {
         transaction_hash: H256::default(),
         index: 1,
         asset_type: H256::default(),
-        amount: 1,
+        amount: 1.into(),
     };
     let input1 = AssetTransferInput {
         prev_out: out1,
@@ -367,14 +367,14 @@ fn sign_single_input_partial_output() {
         lock_script_hash: H160::default(),
         parameters: Vec::new(),
         asset_type: H256::default(),
-        amount: 0,
+        amount: 0.into(),
     };
     // Make output indexed 1
     let output1 = AssetTransferOutput {
         lock_script_hash: H160::default(),
         parameters: Vec::new(),
         asset_type: H256::default(),
-        amount: 1,
+        amount: 1.into(),
     };
     let transaction = Transaction::AssetTransfer {
         network_id: NetworkId::default(),
@@ -414,7 +414,7 @@ fn distinguish_sign_single_input_with_sign_all() {
         transaction_hash: H256::default(),
         index: 0,
         asset_type: H256::default(),
-        amount: 0,
+        amount: 0.into(),
     };
     let input0 = AssetTransferInput {
         prev_out: out0.clone(),
@@ -427,7 +427,7 @@ fn distinguish_sign_single_input_with_sign_all() {
         lock_script_hash: H160::default(),
         parameters: Vec::new(),
         asset_type: H256::default(),
-        amount: 0,
+        amount: 0.into(),
     };
     let transaction = Transaction::AssetTransfer {
         network_id: NetworkId::default(),
@@ -468,7 +468,7 @@ fn distinguish_sign_single_output_with_sign_all() {
         transaction_hash: H256::default(),
         index: 0,
         asset_type: H256::default(),
-        amount: 0,
+        amount: 0.into(),
     };
     let input0 = AssetTransferInput {
         prev_out: out0.clone(),
@@ -481,7 +481,7 @@ fn distinguish_sign_single_output_with_sign_all() {
         lock_script_hash: H160::default(),
         parameters: Vec::new(),
         asset_type: H256::default(),
-        amount: 0,
+        amount: 0.into(),
     };
     let transaction = Transaction::AssetTransfer {
         network_id: NetworkId::default(),
