@@ -17,7 +17,7 @@
 use std::fmt::{Display, Formatter, Result as FormatResult};
 
 use ckey::Address;
-use primitives::{H160, H256};
+use primitives::{H160, H256, U256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::super::util::unexpected::Mismatch;
@@ -29,8 +29,8 @@ use super::Timelock;
 pub enum Error {
     InvalidAssetAmount {
         address: H256,
-        expected: u64,
-        got: u64,
+        expected: U256,
+        got: U256,
     },
     /// Desired input asset not found
     AssetNotFound(H256),
@@ -56,15 +56,15 @@ pub enum Error {
     EmptyInput,
     InvalidDecomposedInput {
         address: H256,
-        got: u64,
+        got: U256,
     },
     InvalidComposedOutput {
-        got: u64,
+        got: U256,
     },
     InvalidDecomposedOutput {
         address: H256,
-        expected: u64,
-        got: u64,
+        expected: U256,
+        got: U256,
     },
     EmptyOutput,
     Timelocked {

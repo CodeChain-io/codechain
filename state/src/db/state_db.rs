@@ -633,7 +633,7 @@ mod tests {
         let mut batch = DBTransaction::new();
         let shard_id = 0;
 
-        let amount = 1234;
+        let amount = 1234.into();
         let registrar = Some(Address::random());
         let asset_scheme = AssetScheme::new("A metadata for test asset_scheme".to_string(), amount, registrar);
         let asset_scheme_address = AssetSchemeAddress::new(h0, shard_id);
@@ -680,7 +680,7 @@ mod tests {
         let asset_scheme_address = H256::random();
         let lock_script_hash = H160::random();
         let parameters = vec![];
-        let amount = 1000;
+        let amount = 1000.into();
         let shard_id = 0;
         let asset = OwnedAsset::new(asset_scheme_address, lock_script_hash, parameters, amount);
         let asset_address = OwnedAssetAddress::new(parcel_hash, 0, shard_id);

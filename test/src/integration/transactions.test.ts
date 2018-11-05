@@ -18,7 +18,8 @@ import * as _ from "lodash";
 import {
     Asset,
     AssetTransferTransaction,
-    PlatformAddress
+    PlatformAddress,
+    U256
 } from "codechain-sdk/lib/core/classes";
 
 import CodeChain from "../helper/spawn";
@@ -688,7 +689,7 @@ describe("transactions", () => {
                 .sign({
                     secret: faucetSecret,
                     fee: 10,
-                    seq: seq.increase()
+                    seq: U256.plus(seq, 1)
                 });
             await node.sdk.rpc.chain.sendSignedParcel(parcel1);
 
@@ -754,8 +755,8 @@ describe("transactions", () => {
             await node.sdk.key.signTransactionInput(decomposeTx, 0);
 
             const seq0 = await node.sdk.rpc.chain.getSeq(faucetAddress);
-            const seq1 = seq0.increase();
-            const seq2 = seq1.increase();
+            const seq1 = U256.plus(seq0, 1);
+            const seq2 = U256.plus(seq0, 2);
 
             const parcel0 = node.sdk.core
                 .createAssetTransactionParcel({

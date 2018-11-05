@@ -28,7 +28,7 @@ use ctypes::transaction::{
 use ctypes::util::unexpected::Mismatch;
 use ctypes::ShardId;
 use cvm::{decode, execute, ChainTimeInfo, ScriptResult, VMConfig};
-use primitives::{Bytes, H160, H256};
+use primitives::{Bytes, H160, H256, U256};
 
 use super::super::backend::{Backend, ShardBackend};
 use super::super::checkpoint::{CheckpointId, StateWithCheckpoint};
@@ -144,7 +144,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         metadata: &String,
         lock_script_hash: &H160,
         parameters: &Vec<Bytes>,
-        amount: &Option<u64>,
+        amount: &Option<U256>,
         registrar: &Option<Address>,
         sender: &Address,
         shard_users: &[Address],
@@ -155,7 +155,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         }
 
         let asset_scheme_address = AssetSchemeAddress::new(transaction_hash, self.shard_id);
-        let amount = amount.unwrap_or(::std::u64::MAX);
+        let amount = amount.unwrap_or_else(U256::max_value);
         let mut asset_scheme = self.get_asset_scheme_mut(&asset_scheme_address)?;
         if !asset_scheme.is_null() {
             return Err(TransactionError::AssetSchemeDuplicated(transaction_hash).into())
@@ -304,7 +304,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         shard_users: &[Address],
         client: &C,
     ) -> StateResult<()> {
-        let mut sum: HashMap<H256, u64> = HashMap::new();
+        let mut sum: HashMap<H256, U256> = HashMap::new();
 
         let mut deleted_assets: Vec<(H256, _)> = Vec::with_capacity(inputs.len());
         for input in inputs.iter() {
@@ -320,7 +320,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
             deleted_assets.push((asset_address.into(), input.prev_out.amount));
 
             let asset_type = input.prev_out.asset_type;
-            let current_amount = sum.get(&asset_type).cloned().unwrap_or(0);
+            let current_amount = sum.get(&asset_type).cloned().unwrap_or_default();
             sum.insert(asset_type.clone(), current_amount + input.prev_out.amount);
         }
         ctrace!(TX, "Deleted assets {:?}", deleted_assets);
@@ -358,16 +358,16 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
         if asset_scheme.pool().is_empty() {
             return Err(TransactionError::InvalidDecomposedInput {
                 address: asset_type.clone(),
-                got: 0,
+                got: 0.into(),
             }
             .into())
         }
 
         // Check that the outputs are match with pool
-        let mut sum: HashMap<H256, u64> = HashMap::new();
+        let mut sum: HashMap<H256, U256> = HashMap::new();
         for output in outputs {
             let output_type = output.asset_type;
-            let current_amount = sum.get(&output_type).cloned().unwrap_or(0);
+            let current_amount = sum.get(&output_type).cloned().unwrap_or_default();
             sum.insert(output_type.clone(), current_amount + output.amount);
         }
         for asset in asset_scheme.pool() {
@@ -376,7 +376,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
                     return Err(TransactionError::InvalidDecomposedOutput {
                         address: asset.asset_type().clone(),
                         expected: *asset.amount(),
-                        got: 0,
+                        got: 0.into(),
                     }
                     .into())
                 }
@@ -398,7 +398,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
             let invalid_asset = invalid_assets.pop().unwrap();
             return Err(TransactionError::InvalidDecomposedOutput {
                 address: invalid_asset.asset_type().clone(),
-                expected: 0,
+                expected: 0.into(),
                 got: *invalid_asset.amount(),
             }
             .into())
@@ -595,7 +595,7 @@ mod tests {
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::random();
         let parameters = vec![];
-        let amount = 100;
+        let amount = 100.into();
         let registrar = Some(Address::random());
         let transaction = Transaction::AssetMint {
             network_id: "tc".into(),
@@ -650,12 +650,12 @@ mod tests {
         let transaction_hash = transaction.hash();
         let asset_scheme_address = AssetSchemeAddress::new(transaction_hash, shard_id);
         let asset_scheme = state.asset_scheme(&asset_scheme_address);
-        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), ::std::u64::MAX, registrar))), asset_scheme);
+        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), U256::max_value(), registrar))), asset_scheme);
 
         let asset_address = OwnedAssetAddress::new(transaction_hash, 0, shard_id);
         let asset = state.asset(&asset_address);
         assert_eq!(
-            Ok(Some(OwnedAsset::new(asset_scheme_address.into(), lock_script_hash, parameters, ::std::u64::MAX))),
+            Ok(Some(OwnedAsset::new(asset_scheme_address.into(), lock_script_hash, parameters, U256::max_value()))),
             asset
         );
     }
@@ -699,7 +699,7 @@ mod tests {
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::from("b042ad154a3359d276835c903587ebafefea22af");
         let registrar = Some(Address::random());
-        let amount = 30;
+        let amount = 30.into();
         let mint = Transaction::AssetMint {
             network_id,
             shard_id,
@@ -733,7 +733,7 @@ mod tests {
                     transaction_hash: mint_hash,
                     index: 0,
                     asset_type,
-                    amount: 30,
+                    amount: 30.into(),
                 },
                 timelock: None,
                 lock_script: vec![0x30, 0x01],
@@ -743,7 +743,7 @@ mod tests {
                 lock_script_hash,
                 parameters: vec![],
                 asset_type,
-                amount: 30,
+                amount: 30.into(),
             }],
         };
 
@@ -769,7 +769,7 @@ mod tests {
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::from("b042ad154a3359d276835c903587ebafefea22af");
         let registrar = None;
-        let amount = 30;
+        let amount = 30.into();
         let mint = Transaction::AssetMint {
             network_id,
             shard_id,
@@ -806,7 +806,7 @@ mod tests {
                     transaction_hash: mint_hash,
                     index: 0,
                     asset_type,
-                    amount: 30,
+                    amount: 30.into(),
                 },
                 timelock: None,
                 lock_script: vec![0x30, 0x01],
@@ -817,19 +817,19 @@ mod tests {
                     lock_script_hash,
                     parameters: vec![vec![1]],
                     asset_type,
-                    amount: 10,
+                    amount: 10.into(),
                 },
                 AssetTransferOutput {
                     lock_script_hash,
                     parameters: vec![],
                     asset_type,
-                    amount: 5,
+                    amount: 5.into(),
                 },
                 AssetTransferOutput {
                     lock_script_hash: random_lock_script_hash,
                     parameters: vec![],
                     asset_type,
-                    amount: 15,
+                    amount: 15.into(),
                 },
             ],
         };
@@ -839,15 +839,15 @@ mod tests {
 
         let asset0_address = OwnedAssetAddress::new(transfer_hash, 0, shard_id);
         let asset0 = state.asset(&asset0_address);
-        assert_eq!(Ok(Some(OwnedAsset::new(asset_type, lock_script_hash, vec![vec![1]], 10))), asset0);
+        assert_eq!(Ok(Some(OwnedAsset::new(asset_type, lock_script_hash, vec![vec![1]], 10.into()))), asset0);
 
         let asset1_address = OwnedAssetAddress::new(transfer_hash, 1, shard_id);
         let asset1 = state.asset(&asset1_address);
-        assert_eq!(Ok(Some(OwnedAsset::new(asset_type, lock_script_hash, vec![], 5))), asset1);
+        assert_eq!(Ok(Some(OwnedAsset::new(asset_type, lock_script_hash, vec![], 5.into()))), asset1);
 
         let asset2_address = OwnedAssetAddress::new(transfer_hash, 2, shard_id);
         let asset2 = state.asset(&asset2_address);
-        assert_eq!(Ok(Some(OwnedAsset::new(asset_type, random_lock_script_hash, vec![], 15))), asset2);
+        assert_eq!(Ok(Some(OwnedAsset::new(asset_type, random_lock_script_hash, vec![], 15.into()))), asset2);
     }
 
     #[test]
@@ -860,7 +860,7 @@ mod tests {
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::from("0xb042ad154a3359d276835c903587ebafefea22af");
         let registrar = None;
-        let amount = 30;
+        let amount = 30.into();
         let mint = Transaction::AssetMint {
             network_id,
             shard_id,
@@ -888,7 +888,7 @@ mod tests {
                     transaction_hash: mint_hash,
                     index: 0,
                     asset_type,
-                    amount: 30,
+                    amount: 30.into(),
                 },
                 timelock: None,
                 lock_script: vec![0x30, 0x01],
@@ -897,7 +897,7 @@ mod tests {
             output: AssetMintOutput {
                 lock_script_hash: random_lock_script_hash,
                 parameters: vec![],
-                amount: Some(1),
+                amount: Some(1.into()),
             },
         };
         let compose_hash = compose.hash();
@@ -911,16 +911,19 @@ mod tests {
         assert_eq!(
             Ok(Some(AssetScheme::new_with_pool(
                 "composed".to_string(),
-                1,
+                1.into(),
                 registrar,
-                vec![Asset::new(asset_type, 30)]
+                vec![Asset::new(asset_type, 30.into())]
             ))),
             composed_asset_scheme
         );
 
         let composed_asset_address = OwnedAssetAddress::new(compose_hash, 0, shard_id);
         let composed_asset = state.asset(&composed_asset_address);
-        assert_eq!(Ok(Some(OwnedAsset::new(composed_asset_type, random_lock_script_hash, vec![], 1))), composed_asset);
+        assert_eq!(
+            Ok(Some(OwnedAsset::new(composed_asset_type, random_lock_script_hash, vec![], 1.into()))),
+            composed_asset
+        );
     }
 
     #[test]
@@ -933,7 +936,7 @@ mod tests {
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::from("0xb042ad154a3359d276835c903587ebafefea22af");
         let registrar = None;
-        let amount = 30;
+        let amount = 30.into();
         let mint = Transaction::AssetMint {
             network_id,
             shard_id,
@@ -969,7 +972,7 @@ mod tests {
             output: AssetMintOutput {
                 lock_script_hash,
                 parameters: vec![],
-                amount: Some(1),
+                amount: Some(1.into()),
             },
         };
         let compose_hash = compose.hash();
@@ -983,16 +986,16 @@ mod tests {
         assert_eq!(
             Ok(Some(AssetScheme::new_with_pool(
                 "composed".to_string(),
-                1,
+                1.into(),
                 registrar,
-                vec![Asset::new(asset_type, 30)]
+                vec![Asset::new(asset_type, 30.into())]
             ))),
             composed_asset_scheme
         );
 
         let composed_asset_address = OwnedAssetAddress::new(compose_hash, 0, shard_id);
         let composed_asset = state.asset(&composed_asset_address);
-        assert_eq!(Ok(Some(OwnedAsset::new(composed_asset_type, lock_script_hash, vec![], 1))), composed_asset);
+        assert_eq!(Ok(Some(OwnedAsset::new(composed_asset_type, lock_script_hash, vec![], 1.into()))), composed_asset);
 
         let random_lock_script_hash = H160::random();
         let decompose = Transaction::AssetDecompose {
@@ -1002,7 +1005,7 @@ mod tests {
                     transaction_hash: compose_hash,
                     index: 0,
                     asset_type: composed_asset_type,
-                    amount: 1,
+                    amount: 1.into(),
                 },
                 timelock: None,
                 lock_script: vec![0x30, 0x01],
@@ -1021,11 +1024,11 @@ mod tests {
 
         let asset_scheme = state.asset_scheme(&asset_scheme_address);
 
-        assert_eq!(Ok(Some(AssetScheme::new("metadata".to_string(), 30, registrar))), asset_scheme);
+        assert_eq!(Ok(Some(AssetScheme::new("metadata".to_string(), 30.into(), registrar))), asset_scheme);
 
         let decomposed_asset_address = OwnedAssetAddress::new(decompose_hash, 0, shard_id);
         let decomposed_asset = state.asset(&decomposed_asset_address);
-        assert_eq!(Ok(Some(OwnedAsset::new(asset_type, random_lock_script_hash, vec![], 30))), decomposed_asset);
+        assert_eq!(Ok(Some(OwnedAsset::new(asset_type, random_lock_script_hash, vec![], 30.into()))), decomposed_asset);
     }
 
     #[test]
@@ -1038,7 +1041,7 @@ mod tests {
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::from("0xb042ad154a3359d276835c903587ebafefea22af");
         let registrar = None;
-        let amount = 30;
+        let amount = 30.into();
         let mint = Transaction::AssetMint {
             network_id,
             shard_id,
@@ -1062,7 +1065,7 @@ mod tests {
             output: AssetMintOutput {
                 lock_script_hash,
                 parameters: vec![],
-                amount: Some(1),
+                amount: Some(1.into()),
             },
             registrar,
         };
@@ -1090,7 +1093,7 @@ mod tests {
             output: AssetMintOutput {
                 lock_script_hash,
                 parameters: vec![],
-                amount: Some(1),
+                amount: Some(1.into()),
             },
         };
         let compose_hash = compose.hash();
@@ -1104,16 +1107,16 @@ mod tests {
         assert_eq!(
             Ok(Some(AssetScheme::new_with_pool(
                 "composed".to_string(),
-                1,
+                1.into(),
                 registrar,
-                vec![Asset::new(asset_type, 30)]
+                vec![Asset::new(asset_type, 30.into())]
             ))),
             composed_asset_scheme
         );
 
         let composed_asset_address = OwnedAssetAddress::new(compose_hash, 0, shard_id);
         let composed_asset = state.asset(&composed_asset_address);
-        assert_eq!(Ok(Some(OwnedAsset::new(composed_asset_type, lock_script_hash, vec![], 1))), composed_asset);
+        assert_eq!(Ok(Some(OwnedAsset::new(composed_asset_type, lock_script_hash, vec![], 1.into()))), composed_asset);
 
         let random_lock_script_hash = H160::random();
         let decompose = Transaction::AssetDecompose {
@@ -1123,7 +1126,7 @@ mod tests {
                     transaction_hash: mint2_hash,
                     index: 0,
                     asset_type: asset_type2,
-                    amount: 1,
+                    amount: 1.into(),
                 },
                 timelock: None,
                 lock_script: vec![0x30, 0x01],
@@ -1141,7 +1144,7 @@ mod tests {
             Ok(Invoice::Failure(
                 TransactionError::InvalidDecomposedInput {
                     address: asset_type,
-                    got: 0
+                    got: 0.into()
                 }
                 .into()
             )),
@@ -1159,7 +1162,7 @@ mod tests {
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::from("0xb042ad154a3359d276835c903587ebafefea22af");
         let registrar = None;
-        let amount = 30;
+        let amount = 30.into();
         let mint = Transaction::AssetMint {
             network_id,
             shard_id,
@@ -1183,7 +1186,7 @@ mod tests {
             output: AssetMintOutput {
                 lock_script_hash,
                 parameters: vec![],
-                amount: Some(1),
+                amount: Some(1.into()),
             },
             registrar,
         };
@@ -1214,7 +1217,7 @@ mod tests {
                         transaction_hash: mint2_hash,
                         index: 0,
                         asset_type: asset_type2,
-                        amount: 1,
+                        amount: 1.into(),
                     },
                     timelock: None,
                     lock_script: vec![0x30, 0x01],
@@ -1224,7 +1227,7 @@ mod tests {
             output: AssetMintOutput {
                 lock_script_hash,
                 parameters: vec![],
-                amount: Some(1),
+                amount: Some(1.into()),
             },
         };
         let compose_hash = compose.hash();
@@ -1236,7 +1239,7 @@ mod tests {
 
         let composed_asset_address = OwnedAssetAddress::new(compose_hash, 0, shard_id);
         let composed_asset = state.asset(&composed_asset_address);
-        assert_eq!(Ok(Some(OwnedAsset::new(composed_asset_type, lock_script_hash, vec![], 1))), composed_asset);
+        assert_eq!(Ok(Some(OwnedAsset::new(composed_asset_type, lock_script_hash, vec![], 1.into()))), composed_asset);
 
         let random_lock_script_hash = H160::random();
         let decompose = Transaction::AssetDecompose {
@@ -1246,7 +1249,7 @@ mod tests {
                     transaction_hash: compose_hash,
                     index: 0,
                     asset_type: composed_asset_type,
-                    amount: 1,
+                    amount: 1.into(),
                 },
                 timelock: None,
                 lock_script: vec![0x30, 0x01],
@@ -1264,8 +1267,8 @@ mod tests {
             Ok(Invoice::Failure(
                 TransactionError::InvalidDecomposedOutput {
                     address: asset_type2,
-                    expected: 1,
-                    got: 0
+                    expected: 1.into(),
+                    got: 0.into()
                 }
                 .into()
             )),
@@ -1284,7 +1287,7 @@ mod tests {
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::from("0xb042ad154a3359d276835c903587ebafefea22af");
         let registrar = None;
-        let amount = 30;
+        let amount = 30.into();
         let mint = Transaction::AssetMint {
             network_id,
             shard_id,
@@ -1308,7 +1311,7 @@ mod tests {
             output: AssetMintOutput {
                 lock_script_hash,
                 parameters: vec![],
-                amount: Some(1),
+                amount: Some(1.into()),
             },
             registrar,
         };
@@ -1339,7 +1342,7 @@ mod tests {
                         transaction_hash: mint2_hash,
                         index: 0,
                         asset_type: asset_type2,
-                        amount: 1,
+                        amount: 1.into(),
                     },
                     timelock: None,
                     lock_script: vec![0x30, 0x01],
@@ -1349,7 +1352,7 @@ mod tests {
             output: AssetMintOutput {
                 lock_script_hash,
                 parameters: vec![],
-                amount: Some(1),
+                amount: Some(1.into()),
             },
         };
         let compose_hash = compose.hash();
@@ -1361,7 +1364,7 @@ mod tests {
 
         let composed_asset_address = OwnedAssetAddress::new(compose_hash, 0, shard_id);
         let composed_asset = state.asset(&composed_asset_address);
-        assert_eq!(Ok(Some(OwnedAsset::new(composed_asset_type, lock_script_hash, vec![], 1))), composed_asset);
+        assert_eq!(Ok(Some(OwnedAsset::new(composed_asset_type, lock_script_hash, vec![], 1.into()))), composed_asset);
 
         let random_lock_script_hash = H160::random();
         let decompose = Transaction::AssetDecompose {
@@ -1371,7 +1374,7 @@ mod tests {
                     transaction_hash: compose_hash,
                     index: 0,
                     asset_type: composed_asset_type,
-                    amount: 1,
+                    amount: 1.into(),
                 },
                 timelock: None,
                 lock_script: vec![0x30, 0x01],
@@ -1382,13 +1385,13 @@ mod tests {
                     lock_script_hash: random_lock_script_hash,
                     parameters: vec![],
                     asset_type,
-                    amount: 10,
+                    amount: 10.into(),
                 },
                 AssetTransferOutput {
                     lock_script_hash: random_lock_script_hash,
                     parameters: vec![],
                     asset_type: asset_type2,
-                    amount: 1,
+                    amount: 1.into(),
                 },
             ],
         };
@@ -1397,8 +1400,8 @@ mod tests {
             Ok(Invoice::Failure(
                 TransactionError::InvalidDecomposedOutput {
                     address: asset_type,
-                    expected: 30,
-                    got: 10
+                    expected: 30.into(),
+                    got: 10.into(),
                 }
                 .into()
             )),
@@ -1417,7 +1420,7 @@ mod tests {
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::from("b042ad154a3359d276835c903587ebafefea22af");
         let registrar = None;
-        let amount = 30;
+        let amount = 30.into();
         let mint = Transaction::AssetMint {
             network_id,
             shard_id,
@@ -1454,7 +1457,7 @@ mod tests {
                     transaction_hash: mint_hash,
                     index: 0,
                     asset_type,
-                    amount: 30,
+                    amount: 30.into(),
                 },
                 timelock: None,
                 lock_script: failed_lock_script.clone(),
@@ -1464,7 +1467,7 @@ mod tests {
                 lock_script_hash,
                 parameters: vec![vec![1]],
                 asset_type,
-                amount: 30,
+                amount: 30.into(),
             }],
         };
 
@@ -1490,7 +1493,7 @@ mod tests {
                     transaction_hash: mint_hash,
                     index: 0,
                     asset_type,
-                    amount: 30,
+                    amount: 30.into(),
                 },
                 timelock: None,
                 lock_script: vec![0x30, 0x01],
@@ -1501,19 +1504,19 @@ mod tests {
                     lock_script_hash,
                     parameters: vec![vec![1]],
                     asset_type,
-                    amount: 10,
+                    amount: 10.into(),
                 },
                 AssetTransferOutput {
                     lock_script_hash,
                     parameters: vec![],
                     asset_type,
-                    amount: 5,
+                    amount: 5.into(),
                 },
                 AssetTransferOutput {
                     lock_script_hash: random_lock_script_hash,
                     parameters: vec![],
                     asset_type,
-                    amount: 15,
+                    amount: 15.into(),
                 },
             ],
         };
@@ -1523,15 +1526,15 @@ mod tests {
 
         let asset0_address = OwnedAssetAddress::new(successful_transfer_hash, 0, shard_id);
         let asset0 = state.asset(&asset0_address);
-        assert_eq!(Ok(Some(OwnedAsset::new(asset_type, lock_script_hash, vec![vec![1]], 10))), asset0);
+        assert_eq!(Ok(Some(OwnedAsset::new(asset_type, lock_script_hash, vec![vec![1]], 10.into()))), asset0);
 
         let asset1_address = OwnedAssetAddress::new(successful_transfer_hash, 1, shard_id);
         let asset1 = state.asset(&asset1_address);
-        assert_eq!(Ok(Some(OwnedAsset::new(asset_type, lock_script_hash, vec![], 5))), asset1);
+        assert_eq!(Ok(Some(OwnedAsset::new(asset_type, lock_script_hash, vec![], 5.into()))), asset1);
 
         let asset2_address = OwnedAssetAddress::new(successful_transfer_hash, 2, shard_id);
         let asset2 = state.asset(&asset2_address);
-        assert_eq!(Ok(Some(OwnedAsset::new(asset_type, random_lock_script_hash, vec![], 15))), asset2);
+        assert_eq!(Ok(Some(OwnedAsset::new(asset_type, random_lock_script_hash, vec![], 15.into()))), asset2);
     }
 
     #[test]
@@ -1562,12 +1565,12 @@ mod tests {
         let transaction_hash = transaction.hash();
         let asset_scheme_address = AssetSchemeAddress::new(transaction_hash, shard_id);
         let asset_scheme = state.asset_scheme(&asset_scheme_address);
-        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), ::std::u64::MAX, registrar))), asset_scheme);
+        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), U256::max_value(), registrar))), asset_scheme);
 
         let asset_address = OwnedAssetAddress::new(transaction_hash, 0, shard_id);
         let asset = state.asset(&asset_address);
         assert_eq!(
-            Ok(Some(OwnedAsset::new(asset_scheme_address.into(), lock_script_hash, parameters, ::std::u64::MAX))),
+            Ok(Some(OwnedAsset::new(asset_scheme_address.into(), lock_script_hash, parameters, U256::max_value()))),
             asset
         );
     }
@@ -1636,12 +1639,12 @@ mod tests {
         let transaction_hash = transaction.hash();
         let asset_scheme_address = AssetSchemeAddress::new(transaction_hash, shard_id);
         let asset_scheme = state.asset_scheme(&asset_scheme_address);
-        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), ::std::u64::MAX, registrar))), asset_scheme);
+        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), U256::max_value(), registrar))), asset_scheme);
 
         let asset_address = OwnedAssetAddress::new(transaction_hash, 0, shard_id);
         let asset = state.asset(&asset_address);
         assert_eq!(
-            Ok(Some(OwnedAsset::new(asset_scheme_address.into(), lock_script_hash, parameters, ::std::u64::MAX))),
+            Ok(Some(OwnedAsset::new(asset_scheme_address.into(), lock_script_hash, parameters, U256::max_value()))),
             asset
         );
     }
