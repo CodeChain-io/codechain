@@ -209,10 +209,10 @@ impl Header {
     pub fn hash(&self) -> H256 {
         let mut hash = self.hash.borrow_mut();
         match &mut *hash {
-            Some(h) => h.clone(),
+            Some(h) => *h,
             hash @ &mut None => {
                 let h = self.rlp_blake(Seal::With);
-                *hash = Some(h.clone());
+                *hash = Some(h);
                 h
             }
         }
@@ -222,10 +222,10 @@ impl Header {
     pub fn bare_hash(&self) -> H256 {
         let mut hash = self.bare_hash.borrow_mut();
         match &mut *hash {
-            Some(h) => h.clone(),
+            Some(h) => *h,
             hash @ None => {
                 let h = self.rlp_blake(Seal::Without);
-                *hash = Some(h.clone());
+                *hash = Some(h);
                 h
             }
         }

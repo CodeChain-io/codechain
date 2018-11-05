@@ -349,7 +349,7 @@ impl Tendermint {
             Step::Prevote => {
                 let block_hash = match *self.lock_change.read() {
                     Some(ref m) if !self.should_unlock(m.vote_step.view) => m.block_hash,
-                    _ => self.proposal.read().clone(),
+                    _ => *self.proposal.read(),
                 };
                 self.generate_and_broadcast_message(block_hash);
             }
@@ -492,7 +492,7 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
 
         let view = self.view.load(AtomicOrdering::SeqCst);
         let bh = Some(header.bare_hash());
-        let vote_info = message_info_rlp(&VoteStep::new(height, view, Step::Propose), bh.clone());
+        let vote_info = message_info_rlp(&VoteStep::new(height, view, Step::Propose), bh);
         if let Ok(signature) = self.sign(blake256(&vote_info)) {
             // Insert Propose vote.
             cdebug!(ENGINE, "Submitting proposal {} at height {} view {}.", header.bare_hash(), height, view);
@@ -502,7 +502,7 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
             *self.last_proposed.write() = header.bare_hash();
             // Remember proposal for later seal submission.
             *self.proposal.write() = bh;
-            *self.proposal_parent.write() = header.parent_hash().clone();
+            *self.proposal_parent.write() = *header.parent_hash();
             Seal::Proposal(ProposalSeal::new(&view, &signature).seal_fields())
         } else {
             cwarn!(ENGINE, "generate_seal: FAIL: accounts secret key unavailable");
@@ -549,7 +549,7 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
             .map_err(Into::into)
         } else {
             let vote_step = VoteStep::new(header.number() as usize, consensus_view(header)?, Step::Precommit);
-            let precommit_hash = message_hash(vote_step.clone(), header.bare_hash());
+            let precommit_hash = message_hash(vote_step, header.bare_hash());
             let ref signatures_field = header
                 .seal()
                 .get(2)
@@ -559,7 +559,7 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
                 let precommit = ConsensusMessage {
                     signature: rlp.as_val()?,
                     block_hash: Some(header.bare_hash()),
-                    vote_step: vote_step.clone(),
+                    vote_step,
                 };
                 let address = match self.votes.get(&precommit) {
                     Some(a) => a,
@@ -750,8 +750,8 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
         let proposer = proposal.verify().expect("block went through full verification; this Engine tries verify; qed");
         cdebug!(ENGINE, "Received a new proposal {:?} from {}.", proposal.vote_step, proposer);
         if self.is_view(&proposal) {
-            *self.proposal.write() = proposal.block_hash.clone();
-            *self.proposal_parent.write() = header.parent_hash().clone();
+            *self.proposal.write() = proposal.block_hash;
+            *self.proposal_parent.write() = *header.parent_hash();
         }
         self.votes.vote(proposal, proposer);
         true
@@ -1093,7 +1093,7 @@ mod tests {
 
     fn insert_and_register(tap: &Arc<AccountProvider>, engine: &CodeChainEngine, acc: &str) -> Address {
         let addr = insert_and_unlock(tap, acc);
-        engine.set_signer(tap.clone(), addr.clone(), Some(acc.into()));
+        engine.set_signer(tap.clone(), addr, Some(acc.into()));
         addr
     }
 

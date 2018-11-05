@@ -112,7 +112,7 @@ impl SafeAccount {
     /// Derive public key.
     pub fn public(&self, password: &Password) -> Result<Public, Error> {
         let secret = self.crypto.secret(password)?;
-        Ok(KeyPair::from_private(secret.into())?.public().clone())
+        Ok(*KeyPair::from_private(secret.into())?.public())
     }
 
     /// Change account's password.
@@ -124,8 +124,8 @@ impl SafeAccount {
     ) -> Result<Self, Error> {
         let secret = self.crypto.secret(old_password)?;
         let result = SafeAccount {
-            id: self.id.clone(),
-            version: self.version.clone(),
+            id: self.id,
+            version: self.version,
             crypto: Crypto::with_secret(&secret, new_password, iterations)?,
             address: self.address,
             filename: self.filename.clone(),

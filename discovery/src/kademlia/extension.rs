@@ -72,7 +72,7 @@ impl NetworkExtension for Extension {
     fn on_node_added(&self, node: &NodeId, _version: u64) {
         let api = self.api.read();
         let mut nodes = self.nodes.write();
-        nodes.insert(node.clone());
+        nodes.insert(*node);
         api.as_ref().map(|api| api.send(&node, &Message::FindNode(self.config.bucket_size).rlp_bytes()));
     }
 
@@ -99,7 +99,7 @@ impl NetworkExtension for Extension {
                         let mut addresses = routing_table
                             .reachable_addresses(&node.into_addr())
                             .into_iter()
-                            .map(|address| KademliaId::new(address.clone(), &datum))
+                            .map(|address| KademliaId::new(address, &datum))
                             .collect::<Vec<_>>();
 
                         addresses.sort_unstable();

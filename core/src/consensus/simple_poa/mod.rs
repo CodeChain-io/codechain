@@ -74,7 +74,7 @@ fn verify_external(header: &Header, validators: &ValidatorSet) -> Result<(), Err
     let signer = public_to_address(&recover(&sig.into(), &header.bare_hash())?);
 
     if *header.author() != signer {
-        return Err(EngineError::NotAuthorized(header.author().clone()).into())
+        return Err(EngineError::NotAuthorized(*header.author()).into())
     }
 
     match validators.contains(header.parent_hash(), &signer) {
@@ -236,8 +236,8 @@ mod tests {
         let db = scheme.ensure_genesis_state(get_temp_state_db()).unwrap();
         let genesis_header = scheme.genesis_header();
         let b = OpenBlock::new(engine, db, &genesis_header, Default::default(), vec![], false).unwrap();
-        let parent_parcels_root = genesis_header.parcels_root().clone();
-        let parent_invoices_root = genesis_header.invoices_root().clone();
+        let parent_parcels_root = *genesis_header.parcels_root();
+        let parent_invoices_root = *genesis_header.invoices_root();
         let b = b.close_and_lock(parent_parcels_root, parent_invoices_root).unwrap();
         if let Seal::Regular(seal) = engine.generate_seal(b.block(), &genesis_header) {
             assert!(b.try_seal(engine, seal).is_ok());

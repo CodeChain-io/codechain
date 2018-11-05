@@ -187,7 +187,7 @@ impl<'db> ShardLevelState<'db> {
         if !asset_scheme.is_null() {
             return Err(TransactionError::AssetSchemeDuplicated(transaction_hash).into())
         }
-        asset_scheme.init(metadata.clone(), amount, registrar.clone(), pool);
+        asset_scheme.init(metadata.clone(), amount, *registrar, pool);
 
         ctrace!(TX, "{:?} is minted on {:?}", asset_scheme, asset_scheme_address);
 
@@ -351,7 +351,7 @@ impl<'db> ShardLevelState<'db> {
 
             let asset_type = input.prev_out.asset_type;
             let current_amount = sum.get(&asset_type).cloned().unwrap_or_default();
-            sum.insert(asset_type.clone(), current_amount + input.prev_out.amount);
+            sum.insert(asset_type, current_amount + input.prev_out.amount);
         }
         ctrace!(TX, "Deleted assets {:?}", deleted_assets);
 
@@ -387,7 +387,7 @@ impl<'db> ShardLevelState<'db> {
         // The input asset should be composed asset
         if asset_scheme.pool().is_empty() {
             return Err(TransactionError::InvalidDecomposedInput {
-                address: asset_type.clone(),
+                address: asset_type,
                 got: 0,
             }
             .into())
@@ -398,13 +398,13 @@ impl<'db> ShardLevelState<'db> {
         for output in outputs {
             let output_type = output.asset_type;
             let current_amount = sum.get(&output_type).cloned().unwrap_or_default();
-            sum.insert(output_type.clone(), current_amount + output.amount);
+            sum.insert(output_type, current_amount + output.amount);
         }
         for asset in asset_scheme.pool() {
             match sum.remove(asset.asset_type()) {
                 None => {
                     return Err(TransactionError::InvalidDecomposedOutput {
-                        address: asset.asset_type().clone(),
+                        address: *asset.asset_type(),
                         expected: asset.amount(),
                         got: 0,
                     }
@@ -413,7 +413,7 @@ impl<'db> ShardLevelState<'db> {
                 Some(value) => {
                     if value != asset.amount() {
                         return Err(TransactionError::InvalidDecomposedOutput {
-                            address: asset.asset_type().clone(),
+                            address: *asset.asset_type(),
                             expected: asset.amount(),
                             got: value,
                         }
@@ -427,7 +427,7 @@ impl<'db> ShardLevelState<'db> {
                 sum.into_iter().map(|(asset_type, amount)| Asset::new(asset_type, amount)).collect();
             let invalid_asset = invalid_assets.pop().unwrap();
             return Err(TransactionError::InvalidDecomposedOutput {
-                address: invalid_asset.asset_type().clone(),
+                address: *invalid_asset.asset_type(),
                 expected: 0,
                 got: invalid_asset.amount(),
             }
@@ -446,7 +446,7 @@ impl<'db> ShardLevelState<'db> {
         self.kill_asset(&asset_address);
         self.kill_asset_scheme(&asset_scheme_address);
 
-        ctrace!(TX, "Deleted assets {:?} {:?}", asset_type.clone(), input.prev_out.amount);
+        ctrace!(TX, "Deleted assets {:?} {:?}", asset_type, input.prev_out.amount);
 
         // Put asset into DB
         for (index, output) in outputs.iter().enumerate() {
@@ -1364,7 +1364,7 @@ mod tests {
         let mint_hash = mint.hash();
         assert_eq!(Ok(Invoice::Success), state.apply(&mint.clone().into(), &sender, &[], &get_test_client()));
         let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id);
-        let asset_type = asset_scheme_address.clone().into();
+        let asset_type = asset_scheme_address.into();
 
         let compose = Transaction::AssetCompose {
             network_id,
@@ -1471,7 +1471,7 @@ mod tests {
         let mint_hash = mint.hash();
         assert_eq!(Ok(Invoice::Success), state.apply(&mint.clone().into(), &sender, &[], &get_test_client()));
         let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id);
-        let asset_type = asset_scheme_address.clone().into();
+        let asset_type = asset_scheme_address.into();
 
         let mint2 = Transaction::AssetMint {
             network_id,
@@ -1486,8 +1486,8 @@ mod tests {
         };
         let mint2_hash = mint2.hash();
         let asset_scheme_address2 = AssetSchemeAddress::new(mint_hash, shard_id);
-        let asset_type2 = asset_scheme_address2.clone().into();
-        assert_eq!(Ok(Invoice::Success), state.apply(&mint2.clone().into(), &sender, &[], &get_test_client()));
+        let asset_type2 = asset_scheme_address2.into();
+        assert_eq!(Ok(Invoice::Success), state.apply(&mint2.into(), &sender, &[], &get_test_client()));
 
         let compose = Transaction::AssetCompose {
             network_id,
@@ -1594,7 +1594,7 @@ mod tests {
         let mint_hash = mint.hash();
         assert_eq!(Ok(Invoice::Success), state.apply(&mint.clone().into(), &sender, &[], &get_test_client()));
         let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id);
-        let asset_type = asset_scheme_address.clone().into();
+        let asset_type = asset_scheme_address.into();
 
         let mint2 = Transaction::AssetMint {
             network_id,
@@ -1609,8 +1609,8 @@ mod tests {
         };
         let mint2_hash = mint2.hash();
         let asset_scheme_address2 = AssetSchemeAddress::new(mint2_hash, shard_id);
-        let asset_type2 = asset_scheme_address2.clone().into();
-        assert_eq!(Ok(Invoice::Success), state.apply(&mint2.clone().into(), &sender, &[], &get_test_client()));
+        let asset_type2 = asset_scheme_address2.into();
+        assert_eq!(Ok(Invoice::Success), state.apply(&mint2.into(), &sender, &[], &get_test_client()));
 
         let compose = Transaction::AssetCompose {
             network_id,
@@ -1721,7 +1721,7 @@ mod tests {
         let mint_hash = mint.hash();
         assert_eq!(Ok(Invoice::Success), state.apply(&mint.clone().into(), &sender, &[], &get_test_client()));
         let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id);
-        let asset_type = asset_scheme_address.clone().into();
+        let asset_type = asset_scheme_address.into();
 
         let mint2 = Transaction::AssetMint {
             network_id,
@@ -1736,8 +1736,8 @@ mod tests {
         };
         let mint2_hash = mint2.hash();
         let asset_scheme_address2 = AssetSchemeAddress::new(mint2_hash, shard_id);
-        let asset_type2 = asset_scheme_address2.clone().into();
-        assert_eq!(Ok(Invoice::Success), state.apply(&mint2.clone().into(), &sender, &[], &get_test_client()));
+        let asset_type2 = asset_scheme_address2.into();
+        assert_eq!(Ok(Invoice::Success), state.apply(&mint2.into(), &sender, &[], &get_test_client()));
 
         let compose = Transaction::AssetCompose {
             network_id,

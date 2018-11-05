@@ -225,7 +225,7 @@ impl Transaction {
                 ..
             } => {
                 let mut shards: Vec<ShardId> = inputs.iter().map(AssetTransferInput::related_shard).collect();
-                shards.push(shard_id.clone());
+                shards.push(*shard_id);
                 shards.sort_unstable();
                 shards.dedup();
                 shards
@@ -501,7 +501,7 @@ fn is_input_and_output_consistent(inputs: &[AssetTransferInput], outputs: &[Asse
         let ref asset_type = input.prev_out.asset_type;
         let ref amount = input.prev_out.amount;
         let current_amount = sum.get(&asset_type).cloned().unwrap_or(U128::zero());
-        sum.insert(asset_type.clone(), current_amount + U128::from(*amount));
+        sum.insert(*asset_type, current_amount + U128::from(*amount));
     }
     for output in outputs {
         let ref asset_type = output.asset_type;
@@ -510,11 +510,11 @@ fn is_input_and_output_consistent(inputs: &[AssetTransferInput], outputs: &[Asse
             if current_amount < &U128::from(*amount) {
                 return false
             }
-            current_amount.clone()
+            *current_amount
         } else {
             return false
         };
-        let t = sum.insert(asset_type.clone(), current_amount - From::from(*amount));
+        let t = sum.insert(*asset_type, current_amount - From::from(*amount));
         debug_assert!(t.is_some());
     }
 

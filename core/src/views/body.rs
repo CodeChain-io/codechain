@@ -59,7 +59,7 @@ impl<'a> BodyView<'a> {
             .enumerate()
             .map(|(parcel_index, signed)| LocalizedParcel {
                 signed,
-                block_hash: block_hash.clone(),
+                block_hash: *block_hash,
                 block_number,
                 parcel_index,
                 cached_signer_public: None,
@@ -96,7 +96,7 @@ impl<'a> BodyView<'a> {
     ) -> Option<LocalizedParcel> {
         self.parcel_at(parcel_index).map(|signed| LocalizedParcel {
             signed,
-            block_hash: block_hash.clone(),
+            block_hash: *block_hash,
             block_number,
             parcel_index,
             cached_signer_public: None,

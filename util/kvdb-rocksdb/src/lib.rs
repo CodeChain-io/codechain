@@ -156,7 +156,7 @@ impl CompactionProfile {
 }
 
 /// Database configuration
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub struct DatabaseConfig {
     /// Max number of open files.
     pub max_open_files: i32,
@@ -389,7 +389,7 @@ impl Database {
                 db,
                 cfs,
             })),
-            config: config.clone(),
+            config: *config,
             write_opts,
             overlay: RwLock::new((0..(num_cols + 1)).map(|_| HashMap::new()).collect()),
             flushing: RwLock::new((0..(num_cols + 1)).map(|_| HashMap::new()).collect()),

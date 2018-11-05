@@ -178,10 +178,10 @@ impl Importer {
         // will be in the hashmap
         let map = import_results.iter().fold(HashMap::new(), |mut map, route| {
             for hash in &route.enacted {
-                map.insert(hash.clone(), true);
+                map.insert(*hash, true);
             }
             for hash in &route.retracted {
-                map.insert(hash.clone(), false);
+                map.insert(*hash, false);
             }
             map
         });
