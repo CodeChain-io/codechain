@@ -567,103 +567,6 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
         }
     }
 
-    fn on_new_block(&self, block: &mut ExecutedBlock, epoch_begin: bool) -> Result<(), Error> {
-        if !epoch_begin {
-            return Ok(())
-        }
-
-        // genesis is never a new block, but might as well check.
-        let header = block.header().clone();
-        let first = header.number() == 0;
-
-        self.validators.on_epoch_begin(first, &header)
-    }
-
-    fn on_close_block(&self, block: &mut ExecutedBlock) -> Result<(), Error> {
-        let author = *block.header().author();
-        let total_reward = block.parcels().iter().fold(self.block_reward, |sum, parcel| sum + parcel.fee);
-        self.machine.add_balance(block, &author, &total_reward)
-    }
-
-    fn handle_message(&self, rlp: &[u8]) -> Result<(), EngineError> {
-        fn fmt_err<T: ::std::fmt::Debug>(x: T) -> EngineError {
-            EngineError::MalformedMessage(format!("{:?}", x))
-        }
-
-        let rlp = UntrustedRlp::new(rlp);
-        let message: ConsensusMessage = rlp.as_val().map_err(fmt_err)?;
-        if !self.votes.is_old_or_known(&message) {
-            let msg_hash = blake256(rlp.at(1).map_err(fmt_err)?.as_raw());
-            let sender = public_to_address(&recover(&message.signature.into(), &msg_hash).map_err(fmt_err)?);
-
-            if !self.is_authority(&sender) {
-                return Err(EngineError::NotAuthorized(sender))
-            }
-            self.broadcast_message(rlp.as_raw().to_vec());
-            if let Some(double) = self.votes.vote(message.clone(), sender) {
-                let height = message.vote_step.height as BlockNumber;
-                self.validators.report_malicious(&sender, height, height, ::rlp::encode(&double).into_vec());
-                return Err(EngineError::DoubleVote(sender))
-            }
-            ctrace!(ENGINE, "Handling a valid {:?} from {}.", message, sender);
-            self.handle_valid_message(&message);
-        }
-        Ok(())
-    }
-
-    /// Equivalent to a timeout: to be used for tests.
-    fn step(&self) {
-        let next_step = match *self.step.read() {
-            Step::Propose => {
-                ctrace!(ENGINE, "Propose timeout.");
-                if self.proposal.read().is_none() {
-                    // Report the proposer if no proposal was received.
-                    let height = self.height.load(AtomicOrdering::SeqCst);
-                    let current_proposer = self.view_proposer(
-                        &*self.proposal_parent.read(),
-                        height,
-                        self.view.load(AtomicOrdering::SeqCst),
-                    );
-                    self.validators.report_benign(&current_proposer, height as BlockNumber, height as BlockNumber);
-                }
-                Step::Prevote
-            }
-            Step::Prevote if self.has_enough_any_votes() => {
-                ctrace!(ENGINE, "Prevote timeout.");
-                Step::Precommit
-            }
-            Step::Prevote => {
-                ctrace!(ENGINE, "Prevote timeout without enough votes.");
-                self.broadcast_old_messages();
-                Step::Prevote
-            }
-            Step::Precommit if self.has_enough_any_votes() => {
-                ctrace!(ENGINE, "Precommit timeout.");
-                self.increment_view(1);
-                Step::Propose
-            }
-            Step::Precommit => {
-                ctrace!(ENGINE, "Precommit timeout without enough votes.");
-                self.broadcast_old_messages();
-                Step::Precommit
-            }
-            Step::Commit => {
-                ctrace!(ENGINE, "Commit timeout.");
-                Step::Propose
-            }
-        };
-        self.to_step(next_step);
-    }
-
-    fn register_client(&self, client: Weak<EngineClient>) {
-        if let Some(c) = client.upgrade() {
-            self.height.store(c.chain_info().best_block_number as usize + 1, AtomicOrdering::SeqCst);
-        }
-        *self.client.write() = Some(client.clone());
-        self.extension.register_client(client.clone());
-        self.validators.register_client(client);
-    }
-
     fn signals_epoch_end(&self, header: &Header) -> EpochChange {
         let first = header.number() == 0;
         self.validators.signals_epoch_end(first, header)
@@ -723,18 +626,104 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
         header.set_score(new_score);
     }
 
-    fn set_signer(&self, ap: Arc<AccountProvider>, address: Address, password: Option<Password>) {
-        {
-            self.signer.write().set(ap, address, password);
-        }
-        self.to_step(Step::Propose);
-    }
-
-    fn sign(&self, hash: H256) -> Result<Signature, Error> {
-        self.signer.read().sign(hash).map_err(Into::into)
+    /// Equivalent to a timeout: to be used for tests.
+    fn step(&self) {
+        let next_step = match *self.step.read() {
+            Step::Propose => {
+                ctrace!(ENGINE, "Propose timeout.");
+                if self.proposal.read().is_none() {
+                    // Report the proposer if no proposal was received.
+                    let height = self.height.load(AtomicOrdering::SeqCst);
+                    let current_proposer = self.view_proposer(
+                        &*self.proposal_parent.read(),
+                        height,
+                        self.view.load(AtomicOrdering::SeqCst),
+                    );
+                    self.validators.report_benign(&current_proposer, height as BlockNumber, height as BlockNumber);
+                }
+                Step::Prevote
+            }
+            Step::Prevote if self.has_enough_any_votes() => {
+                ctrace!(ENGINE, "Prevote timeout.");
+                Step::Precommit
+            }
+            Step::Prevote => {
+                ctrace!(ENGINE, "Prevote timeout without enough votes.");
+                self.broadcast_old_messages();
+                Step::Prevote
+            }
+            Step::Precommit if self.has_enough_any_votes() => {
+                ctrace!(ENGINE, "Precommit timeout.");
+                self.increment_view(1);
+                Step::Propose
+            }
+            Step::Precommit => {
+                ctrace!(ENGINE, "Precommit timeout without enough votes.");
+                self.broadcast_old_messages();
+                Step::Precommit
+            }
+            Step::Commit => {
+                ctrace!(ENGINE, "Commit timeout.");
+                Step::Propose
+            }
+        };
+        self.to_step(next_step);
     }
 
     fn stop(&self) {}
+
+    fn on_new_block(&self, block: &mut ExecutedBlock, epoch_begin: bool) -> Result<(), Error> {
+        if !epoch_begin {
+            return Ok(())
+        }
+
+        // genesis is never a new block, but might as well check.
+        let header = block.header().clone();
+        let first = header.number() == 0;
+
+        self.validators.on_epoch_begin(first, &header)
+    }
+
+    fn on_close_block(&self, block: &mut ExecutedBlock) -> Result<(), Error> {
+        let author = *block.header().author();
+        let total_reward = block.parcels().iter().fold(self.block_reward, |sum, parcel| sum + parcel.fee);
+        self.machine.add_balance(block, &author, &total_reward)
+    }
+
+    fn register_client(&self, client: Weak<EngineClient>) {
+        if let Some(c) = client.upgrade() {
+            self.height.store(c.chain_info().best_block_number as usize + 1, AtomicOrdering::SeqCst);
+        }
+        *self.client.write() = Some(client.clone());
+        self.extension.register_client(client.clone());
+        self.validators.register_client(client);
+    }
+
+    fn handle_message(&self, rlp: &[u8]) -> Result<(), EngineError> {
+        fn fmt_err<T: ::std::fmt::Debug>(x: T) -> EngineError {
+            EngineError::MalformedMessage(format!("{:?}", x))
+        }
+
+        let rlp = UntrustedRlp::new(rlp);
+        let message: ConsensusMessage = rlp.as_val().map_err(fmt_err)?;
+        if !self.votes.is_old_or_known(&message) {
+            let msg_hash = blake256(rlp.at(1).map_err(fmt_err)?.as_raw());
+            let sender = public_to_address(&recover(&message.signature.into(), &msg_hash).map_err(fmt_err)?);
+
+            if !self.is_authority(&sender) {
+                return Err(EngineError::NotAuthorized(sender))
+            }
+            self.broadcast_message(rlp.as_raw().to_vec());
+            if let Some(double) = self.votes.vote(message.clone(), sender) {
+                let height = message.vote_step.height as BlockNumber;
+                self.validators.report_malicious(&sender, height, height, ::rlp::encode(&double).into_vec());
+                return Err(EngineError::DoubleVote(sender))
+            }
+            ctrace!(ENGINE, "Handling a valid {:?} from {}.", message, sender);
+            self.handle_valid_message(&message);
+        }
+        Ok(())
+    }
 
     fn is_proposal(&self, header: &Header) -> bool {
         let signatures_len = header.seal()[2].len();
@@ -760,6 +749,17 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
 
     fn broadcast_proposal_block(&self, block: SealedBlock) {
         self.extension.broadcast_proposal_block(block.rlp_bytes());
+    }
+
+    fn set_signer(&self, ap: Arc<AccountProvider>, address: Address, password: Option<Password>) {
+        {
+            self.signer.write().set(ap, address, password);
+        }
+        self.to_step(Step::Propose);
+    }
+
+    fn sign(&self, hash: H256) -> Result<Signature, Error> {
+        self.signer.read().sign(hash).map_err(Into::into)
     }
 
     fn network_extension(&self) -> Option<Arc<NetworkExtension>> {
