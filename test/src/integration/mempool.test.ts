@@ -476,108 +476,120 @@ describe("Timelock", () => {
             return transferTx.getTransferredAssets();
         }
 
-        test("2 inputs [Block(4), Block(6)] => Block(6)", async () => {
-            const assets = await createUTXOs(2);
-            const { assetType } = assets[0];
-            const tx = node.sdk.core.createAssetTransferTransaction();
-            tx.addInputs([
-                assets[0].createTransferInput({
-                    timelock: {
-                        type: "block",
-                        value: 4
-                    }
-                }),
-                assets[1].createTransferInput({
-                    timelock: {
-                        type: "block",
-                        value: 6
-                    }
-                })
-            ]);
-            tx.addOutputs({ amount: 2, recipient, assetType });
-            await node.signTransferInput(tx, 0);
-            await node.signTransferInput(tx, 1);
-            await node.sendTransaction(tx, { awaitInvoice: false });
+        test(
+            "2 inputs [Block(4), Block(6)] => Block(6)",
+            async () => {
+                const assets = await createUTXOs(2);
+                const { assetType } = assets[0];
+                const tx = node.sdk.core.createAssetTransferTransaction();
+                tx.addInputs([
+                    assets[0].createTransferInput({
+                        timelock: {
+                            type: "block",
+                            value: 4
+                        }
+                    }),
+                    assets[1].createTransferInput({
+                        timelock: {
+                            type: "block",
+                            value: 6
+                        }
+                    })
+                ]);
+                tx.addOutputs({ amount: 2, recipient, assetType });
+                await node.signTransferInput(tx, 0);
+                await node.signTransferInput(tx, 1);
+                await node.sendTransaction(tx, { awaitInvoice: false });
 
-            await expect(node.getBestBlockNumber()).resolves.toBe(3);
-            await checkTx(tx.hash(), false);
+                await expect(node.getBestBlockNumber()).resolves.toBe(3);
+                await checkTx(tx.hash(), false);
 
-            await node.sdk.rpc.devel.startSealing();
-            await expect(node.getBestBlockNumber()).resolves.toBe(4);
-            await checkTx(tx.hash(), false);
+                await node.sdk.rpc.devel.startSealing();
+                await expect(node.getBestBlockNumber()).resolves.toBe(4);
+                await checkTx(tx.hash(), false);
 
-            await node.sdk.rpc.devel.startSealing();
-            await node.sdk.rpc.devel.startSealing();
-            await expect(node.getBestBlockNumber()).resolves.toBe(6);
-            await checkTx(tx.hash(), true);
-        });
+                await node.sdk.rpc.devel.startSealing();
+                await node.sdk.rpc.devel.startSealing();
+                await expect(node.getBestBlockNumber()).resolves.toBe(6);
+                await checkTx(tx.hash(), true);
+            },
+            10000
+        );
 
-        test("2 inputs [Block(6), Block(4)] => Block(4)", async () => {
-            const assets = await createUTXOs(2);
-            const { assetType } = assets[0];
-            const tx = node.sdk.core.createAssetTransferTransaction();
-            tx.addInputs([
-                assets[0].createTransferInput({
-                    timelock: {
-                        type: "block",
-                        value: 6
-                    }
-                }),
-                assets[1].createTransferInput({
-                    timelock: {
-                        type: "block",
-                        value: 4
-                    }
-                })
-            ]);
-            tx.addOutputs({ amount: 2, recipient, assetType });
-            await node.signTransferInput(tx, 0);
-            await node.signTransferInput(tx, 1);
-            await node.sendTransaction(tx, { awaitInvoice: false });
+        test(
+            "2 inputs [Block(6), Block(4)] => Block(4)",
+            async () => {
+                const assets = await createUTXOs(2);
+                const { assetType } = assets[0];
+                const tx = node.sdk.core.createAssetTransferTransaction();
+                tx.addInputs([
+                    assets[0].createTransferInput({
+                        timelock: {
+                            type: "block",
+                            value: 6
+                        }
+                    }),
+                    assets[1].createTransferInput({
+                        timelock: {
+                            type: "block",
+                            value: 4
+                        }
+                    })
+                ]);
+                tx.addOutputs({ amount: 2, recipient, assetType });
+                await node.signTransferInput(tx, 0);
+                await node.signTransferInput(tx, 1);
+                await node.sendTransaction(tx, { awaitInvoice: false });
 
-            await expect(node.getBestBlockNumber()).resolves.toBe(3);
-            await checkTx(tx.hash(), false);
+                await expect(node.getBestBlockNumber()).resolves.toBe(3);
+                await checkTx(tx.hash(), false);
 
-            await node.sdk.rpc.devel.startSealing();
-            await expect(node.getBestBlockNumber()).resolves.toBe(4);
-            await checkTx(tx.hash(), false);
+                await node.sdk.rpc.devel.startSealing();
+                await expect(node.getBestBlockNumber()).resolves.toBe(4);
+                await checkTx(tx.hash(), false);
 
-            await node.sdk.rpc.devel.startSealing();
-            await node.sdk.rpc.devel.startSealing();
-            await expect(node.getBestBlockNumber()).resolves.toBe(6);
-            await checkTx(tx.hash(), true);
-        });
+                await node.sdk.rpc.devel.startSealing();
+                await node.sdk.rpc.devel.startSealing();
+                await expect(node.getBestBlockNumber()).resolves.toBe(6);
+                await checkTx(tx.hash(), true);
+            },
+            10000
+        );
 
-        test("2 inputs [Time(0), Block(4)] => Block(4)", async () => {
-            const assets = await createUTXOs(2);
-            const { assetType } = assets[0];
-            const tx = node.sdk.core.createAssetTransferTransaction();
-            tx.addInputs([
-                assets[0].createTransferInput({
-                    timelock: {
-                        type: "time",
-                        value: 0
-                    }
-                }),
-                assets[1].createTransferInput({
-                    timelock: {
-                        type: "block",
-                        value: 4
-                    }
-                })
-            ]);
-            tx.addOutputs({ amount: 2, recipient, assetType });
-            await node.signTransferInput(tx, 0);
-            await node.signTransferInput(tx, 1);
-            await node.sendTransaction(tx, { awaitInvoice: false });
+        test(
+            "2 inputs [Time(0), Block(4)] => Block(4)",
+            async () => {
+                const assets = await createUTXOs(2);
+                const { assetType } = assets[0];
+                const tx = node.sdk.core.createAssetTransferTransaction();
+                tx.addInputs([
+                    assets[0].createTransferInput({
+                        timelock: {
+                            type: "time",
+                            value: 0
+                        }
+                    }),
+                    assets[1].createTransferInput({
+                        timelock: {
+                            type: "block",
+                            value: 4
+                        }
+                    })
+                ]);
+                tx.addOutputs({ amount: 2, recipient, assetType });
+                await node.signTransferInput(tx, 0);
+                await node.signTransferInput(tx, 1);
+                await node.sendTransaction(tx, { awaitInvoice: false });
 
-            await expect(node.getBestBlockNumber()).resolves.toBe(3);
-            await checkTx(tx.hash(), false);
+                await expect(node.getBestBlockNumber()).resolves.toBe(3);
+                await checkTx(tx.hash(), false);
 
-            await node.sdk.rpc.devel.startSealing();
-            await expect(node.getBestBlockNumber()).resolves.toBe(4);
-            await checkTx(tx.hash(), true);
-        });
+                await node.sdk.rpc.devel.startSealing();
+                await expect(node.getBestBlockNumber()).resolves.toBe(4);
+                await checkTx(tx.hash(), true);
+            },
+            10000
+        );
 
         test(
             "2 inputs [Time(now + 3 seconds), Block(4)] => Time(..)",
