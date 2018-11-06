@@ -15,19 +15,11 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ckey::{Error as KeyError, NetworkId, PlatformAddress, Public};
-use ctypes::parcel::{Action as ActionType, ShardChange as ShardChangeType};
+use ctypes::parcel::Action as ActionType;
 use ctypes::ShardId;
-use primitives::{Bytes, H256, U256};
+use primitives::{Bytes, U256};
 
 use super::Transaction;
-
-#[derive(Debug, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ShardChange {
-    pub shard_id: ShardId,
-    pub pre_root: H256,
-    pub post_root: H256,
-}
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", tag = "action")]
@@ -54,16 +46,6 @@ pub enum Action {
         users: Vec<PlatformAddress>,
     },
     Custom(Bytes),
-}
-
-impl From<ShardChangeType> for ShardChange {
-    fn from(from: ShardChangeType) -> Self {
-        Self {
-            shard_id: from.shard_id,
-            pre_root: from.pre_root,
-            post_root: from.post_root,
-        }
-    }
 }
 
 impl Action {
@@ -100,16 +82,6 @@ impl Action {
                 users: users.into_iter().map(|user| PlatformAddress::new_v1(network_id, user)).collect(),
             },
             ActionType::Custom(bytes) => Action::Custom(bytes),
-        }
-    }
-}
-
-impl From<ShardChange> for ShardChangeType {
-    fn from(from: ShardChange) -> Self {
-        Self {
-            shard_id: from.shard_id,
-            pre_root: from.pre_root,
-            post_root: from.post_root,
         }
     }
 }

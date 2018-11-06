@@ -28,7 +28,6 @@ use cstate::{
     TopStateInfo,
 };
 use ctypes::invoice::Invoice;
-use ctypes::parcel::ShardChange;
 use ctypes::transaction::Transaction;
 use ctypes::{BlockNumber, ShardId};
 use cvm::ChainTimeInfo;
@@ -333,16 +332,9 @@ impl AssetClient for Client {
 }
 
 impl ExecuteClient for Client {
-    fn execute_transactions(&self, transactions: &[Transaction], sender: &Address) -> Result<Vec<ShardChange>, Error> {
-        let state = Client::state_at(&self, BlockId::Latest).expect("Latest state MUST exist");
-        let mut shard_ids: Vec<ShardId> = transactions.iter().flat_map(Transaction::related_shards).collect();
-        shard_ids.sort_unstable();
-        shard_ids.dedup();
-
-        Ok(shard_ids
-            .iter()
-            .flat_map(|shard_id| state.apply_transactions(transactions, *shard_id, sender, self))
-            .collect())
+    fn execute_transaction(&self, transaction: &Transaction, sender: &Address) -> Result<Invoice, Error> {
+        let mut state = Client::state_at(&self, BlockId::Latest).expect("Latest state MUST exist");
+        Ok(state.apply_transaction(transaction, sender, self)?)
     }
 }
 
