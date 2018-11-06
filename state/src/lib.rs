@@ -27,10 +27,7 @@ extern crate journaldb;
 extern crate kvdb;
 extern crate kvdb_memorydb;
 #[macro_use]
-extern crate lazy_static;
-#[macro_use]
 extern crate log;
-extern crate lru_cache;
 extern crate parking_lot;
 extern crate primitives;
 extern crate rlp;
@@ -43,7 +40,6 @@ extern crate util_error;
 extern crate rlp_derive;
 
 mod action_handler;
-mod backend;
 mod checkpoint;
 mod db;
 mod error;
@@ -55,7 +51,6 @@ mod traits;
 pub mod tests;
 
 pub use action_handler::{ActionHandler, HitHandler};
-pub use backend::{Backend, ShardBackend, TopBackend};
 pub use checkpoint::{CheckpointId, StateWithCheckpoint};
 pub use db::StateDB;
 pub use error::Error as StateError;

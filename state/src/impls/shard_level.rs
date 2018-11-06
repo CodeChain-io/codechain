@@ -28,9 +28,9 @@ use ctypes::transaction::{
 use ctypes::util::unexpected::Mismatch;
 use ctypes::ShardId;
 use cvm::{decode, execute, ChainTimeInfo, ScriptResult, VMConfig};
+use hashdb::AsHashDB;
 use primitives::{Bytes, H160, H256, U256};
 
-use super::super::backend::{Backend, ShardBackend};
 use super::super::checkpoint::{CheckpointId, StateWithCheckpoint};
 use super::super::item::local_cache::{CacheableItem, LocalCache};
 use super::super::traits::{ShardState, ShardStateInfo, StateWithCache};
@@ -47,7 +47,7 @@ pub struct ShardLevelState<B> {
     shard_id: ShardId,
 }
 
-impl<B: Backend + ShardBackend> ShardLevelState<B> {
+impl<B: AsHashDB> ShardLevelState<B> {
     /// Creates new state with empty state root
     pub fn try_new(shard_id: ShardId, db: B) -> StateResult<ShardLevelState<B>> {
         let root = BLAKE_NULL_RLP;
@@ -78,8 +78,7 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
     }
 
     /// Destroy the current object and return root and database.
-    pub fn drop(mut self) -> (H256, B) {
-        self.propagate_to_global_cache();
+    pub fn drop(self) -> (H256, B) {
         (self.root, self.db)
     }
 
@@ -438,30 +437,26 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
 
     fn get_asset_scheme(&self, a: &AssetSchemeAddress) -> cmerkle::Result<Option<AssetScheme>> {
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        let from_global_cache = || self.db.get_cached_asset_scheme(a);
-        self.asset_scheme.get(a, db, from_global_cache)
+        self.asset_scheme.get(a, db)
     }
 
     fn get_asset_scheme_mut(&self, a: &AssetSchemeAddress) -> cmerkle::Result<RefMut<AssetScheme>> {
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        let from_global_cache = || self.db.get_cached_asset_scheme(a);
-        self.asset_scheme.get_mut(a, db, from_global_cache)
+        self.asset_scheme.get_mut(a, db)
     }
 
     fn get_asset(&self, a: &OwnedAssetAddress) -> cmerkle::Result<Option<OwnedAsset>> {
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        let from_global_cache = || self.db.get_cached_asset(a);
-        self.asset.get(a, db, from_global_cache)
+        self.asset.get(a, db)
     }
 
     fn get_asset_mut(&self, a: &OwnedAssetAddress) -> cmerkle::Result<RefMut<OwnedAsset>> {
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        let from_global_cache = || self.db.get_cached_asset(a);
-        self.asset.get_mut(a, db, from_global_cache)
+        self.asset.get_mut(a, db)
     }
 }
 
-impl<B: Backend + ShardBackend> ShardStateInfo for ShardLevelState<B> {
+impl<B: AsHashDB> ShardStateInfo for ShardLevelState<B> {
     fn root(&self) -> &H256 {
         &self.root
     }
@@ -502,22 +497,12 @@ impl<B> StateWithCheckpoint for ShardLevelState<B> {
     }
 }
 
-impl<B: Backend + ShardBackend> StateWithCache for ShardLevelState<B> {
+impl<B: AsHashDB> StateWithCache for ShardLevelState<B> {
     fn commit(&mut self) -> TrieResult<()> {
         let mut trie = TrieFactory::from_existing(self.db.as_hashdb_mut(), &mut self.root)?;
         self.asset_scheme.commit(&mut trie)?;
         self.asset.commit(&mut trie)?;
         Ok(())
-    }
-
-    fn propagate_to_global_cache(&mut self) {
-        let ref mut db = self.db;
-        self.asset_scheme.propagate_to_global_cache(|address, item, modified| {
-            db.add_to_asset_scheme_cache(address, item, modified);
-        });
-        self.asset.propagate_to_global_cache(|address, item, modified| {
-            db.add_to_asset_cache(address, item, modified);
-        });
     }
 
     fn clear(&mut self) {
@@ -526,7 +511,7 @@ impl<B: Backend + ShardBackend> StateWithCache for ShardLevelState<B> {
     }
 }
 
-impl<B: ShardBackend> fmt::Debug for ShardLevelState<B> {
+impl<B> fmt::Debug for ShardLevelState<B> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "asset_scheme: {:?} asset: {:?}", self.asset_scheme, self.asset)
     }
@@ -534,7 +519,7 @@ impl<B: ShardBackend> fmt::Debug for ShardLevelState<B> {
 
 const TRANSACTION_CHECKPOINT: CheckpointId = 456;
 
-impl<B: Backend + ShardBackend> ShardState<B> for ShardLevelState<B> {
+impl<B: AsHashDB> ShardState for ShardLevelState<B> {
     fn apply<C: ChainTimeInfo>(
         &mut self,
         transaction: &Transaction,
@@ -580,9 +565,6 @@ mod tests {
 
     fn get_temp_shard_state(shard_id: ShardId) -> ShardLevelState<StateDB> {
         let state_db = get_temp_state_db();
-        let root_parent = H256::random();
-
-        let state_db = state_db.clone_canon(&root_parent);
         ShardLevelState::try_new(shard_id, state_db).unwrap()
     }
 
