@@ -17,7 +17,7 @@
 use ckey::{Address, Public};
 use cmerkle::Result as TrieResult;
 use ctypes::invoice::Invoice;
-use ctypes::transaction::Transaction;
+use ctypes::transaction::InnerTransaction;
 use ctypes::ShardId;
 use cvm::ChainTimeInfo;
 use primitives::{Bytes, H256, U256};
@@ -63,7 +63,7 @@ pub trait ShardStateInfo {
 pub trait ShardState {
     fn apply<C: ChainTimeInfo>(
         &mut self,
-        transaction: &Transaction,
+        transaction: &InnerTransaction,
         sender: &Address,
         shard_owners: &[Address],
         client: &C,
