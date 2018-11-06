@@ -43,11 +43,11 @@ use ckey::{public_to_address, Address, NetworkId, Public};
 use cmerkle::{Result as TrieResult, TrieError, TrieFactory};
 use ctypes::invoice::Invoice;
 use ctypes::parcel::{Action, Error as ParcelError, Parcel};
-use ctypes::transaction::Transaction;
+use ctypes::transaction::{AssetWrapCCCOutput, InnerTransaction, Transaction};
 use ctypes::ShardId;
 use cvm::ChainTimeInfo;
 use hashdb::AsHashDB;
-use primitives::{Bytes, H256, U256};
+use primitives::{Bytes, H160, H256, U256};
 
 use super::super::checkpoint::{CheckpointId, StateWithCheckpoint};
 use super::super::item::local_cache::{CacheableItem, LocalCache};
@@ -352,7 +352,7 @@ impl TopLevelState {
         // The failed parcel also must pay the fee and increase seq.
         self.create_checkpoint(PARCEL_ACTION_CHECKPOINT);
 
-        match self.apply_action(&parcel.action, &parcel.network_id, fee_payer, signer_public, client) {
+        match self.apply_action(&parcel.action, &parcel.network_id, &parcel.hash(), fee_payer, signer_public, client) {
             Ok(invoice) => {
                 self.discard_checkpoint(PARCEL_ACTION_CHECKPOINT);
                 Ok(invoice)
@@ -391,6 +391,7 @@ impl TopLevelState {
         &mut self,
         action: &Action,
         network_id: &NetworkId,
+        parcel_hash: &H256,
         fee_payer: &Address,
         signer_public: &Public,
         client: &C,
@@ -437,6 +438,21 @@ impl TopLevelState {
                 self.change_shard_users(*shard_id, users, fee_payer)?;
                 Ok(Invoice::Success)
             }
+            Action::WrapCCC {
+                shard_id,
+                lock_script_hash,
+                parameters,
+                amount,
+            } => Ok(self.apply_wrap_ccc(
+                *network_id,
+                *shard_id,
+                *parcel_hash,
+                *lock_script_hash,
+                parameters.clone(),
+                *amount,
+                fee_payer,
+                client,
+            )?),
             Action::Custom(bytes) => {
                 let handlers = self.db.custom_handlers().to_vec();
                 for h in handlers {
@@ -447,6 +463,58 @@ impl TopLevelState {
                 panic!("Unknown custom parcel accepted!")
             }
         }
+    }
+
+    fn apply_wrap_ccc<C: ChainTimeInfo>(
+        &mut self,
+        network_id: NetworkId,
+        shard_id: ShardId,
+        parcel_hash: H256,
+        lock_script_hash: H160,
+        parameters: Vec<Bytes>,
+        amount: U256,
+        sender: &Address,
+        client: &C,
+    ) -> StateResult<Invoice> {
+        let shard_root = self.shard_root(shard_id)?.ok_or_else(|| ParcelError::InvalidShardId(shard_id))?;
+        let shard_users = self.shard_users(shard_id)?.expect("Shard must exist");
+
+        // FIXME: Make it mutable borrow db instead of cloning.
+        let mut shard_level_state = ShardLevelState::from_existing(shard_id, self.db.clone(), shard_root)?;
+
+        let balance = self.balance(sender)?;
+        if amount > balance {
+            return Err(ParcelError::InsufficientBalance {
+                address: *sender,
+                cost: amount,
+                balance,
+            }
+            .into())
+        }
+
+        let transaction = InnerTransaction::AssetWrapCCC {
+            network_id,
+            shard_id,
+            parcel_hash,
+            output: AssetWrapCCCOutput {
+                lock_script_hash,
+                parameters,
+                amount,
+            },
+        };
+
+        let invoice = shard_level_state.apply(&transaction, sender, &shard_users, client)?;
+        let (new_root, db) = shard_level_state.drop();
+        match &invoice {
+            Invoice::Success => {
+                self.set_shard_root(shard_id, &shard_root, &new_root)?;
+                self.db = db;
+
+                self.sub_balance(sender, &amount)?;
+            }
+            Invoice::Failure(_) => {}
+        };
+        Ok(invoice)
     }
 
     pub fn apply_transaction<C: ChainTimeInfo>(
@@ -465,6 +533,11 @@ impl TopLevelState {
                 return Err(ParcelError::InconsistentShardOutcomes.into())
             }
         }
+
+        let unwrapped_amount = transaction.unwrapped_amount();
+        if !unwrapped_amount.is_zero() {
+            self.add_balance(sender, &unwrapped_amount)?;
+        }
         Ok(first_invoice)
     }
 
@@ -481,7 +554,7 @@ impl TopLevelState {
         // FIXME: Make it mutable borrow db instead of cloning.
         let mut shard_level_state = ShardLevelState::from_existing(shard_id, self.db.clone(), shard_root)?;
 
-        let invoice = shard_level_state.apply(transaction, sender, &shard_users, client)?;
+        let invoice = shard_level_state.apply(&transaction.clone().into(), sender, &shard_users, client)?;
         let (new_root, db) = shard_level_state.drop();
         match &invoice {
             Invoice::Success => {

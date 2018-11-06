@@ -55,6 +55,12 @@ pub enum Transaction {
         input: AssetTransferInput,
         outputs: Vec<AssetTransferOutput>,
     },
+    #[serde(rename_all = "camelCase")]
+    AssetUnwrapCCC {
+        network_id: NetworkId,
+        burn: AssetTransferInput,
+        hash: H256,
+    },
 }
 
 impl From<TransactionType> for Transaction {
@@ -110,6 +116,14 @@ impl From<TransactionType> for Transaction {
                 network_id,
                 input,
                 outputs,
+            },
+            TransactionType::AssetUnwrapCCC {
+                network_id,
+                burn,
+            } => Transaction::AssetUnwrapCCC {
+                network_id,
+                burn,
+                hash,
             },
         }
     }
@@ -180,6 +194,14 @@ impl From<Transaction> for Result<TransactionType, KeyError> {
                 network_id,
                 input,
                 outputs,
+            },
+            Transaction::AssetUnwrapCCC {
+                network_id,
+                burn,
+                ..
+            } => TransactionType::AssetUnwrapCCC {
+                network_id,
+                burn,
             },
         })
     }

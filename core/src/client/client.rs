@@ -311,6 +311,9 @@ impl AssetClient for Client {
                             .expect("An asset type must be able to create an AssetSchemeAddress")
                             .shard_id()
                     }
+                    Some(Transaction::AssetUnwrapCCC {
+                        ..
+                    }) => index == 0,
                     None => false,
                 };
 

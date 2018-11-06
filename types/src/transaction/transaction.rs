@@ -136,6 +136,10 @@ pub enum Transaction {
         input: AssetTransferInput,
         outputs: Vec<AssetTransferOutput>,
     },
+    AssetUnwrapCCC {
+        network_id: NetworkId,
+        burn: AssetTransferInput,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
@@ -144,6 +148,25 @@ pub struct AssetMintOutput {
     pub lock_script_hash: H160,
     pub parameters: Vec<Bytes>,
     pub amount: Option<U256>,
+}
+
+/// Parcel transaction type.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum InnerTransaction {
+    General(Transaction),
+    AssetWrapCCC {
+        network_id: NetworkId,
+        shard_id: ShardId,
+        parcel_hash: H256,
+        output: AssetWrapCCCOutput,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AssetWrapCCCOutput {
+    pub lock_script_hash: H160,
+    pub parameters: Vec<Bytes>,
+    pub amount: U256,
 }
 
 impl Transaction {
@@ -166,6 +189,10 @@ impl Transaction {
                 ..
             } => *network_id,
             Transaction::AssetDecompose {
+                network_id,
+                ..
+            } => *network_id,
+            Transaction::AssetUnwrapCCC {
                 network_id,
                 ..
             } => *network_id,
@@ -212,6 +239,10 @@ impl Transaction {
                 shards.dedup();
                 shards
             }
+            Transaction::AssetUnwrapCCC {
+                burn,
+                ..
+            } => vec![burn.related_shard()],
         }
     }
 
@@ -295,7 +326,62 @@ impl Transaction {
                 }
                 Ok(())
             }
+            Transaction::AssetUnwrapCCC {
+                burn,
+                ..
+            } => {
+                if burn.prev_out.amount.is_zero() {
+                    return Err(Error::ZeroAmount)
+                }
+                if !burn.prev_out.asset_type.ends_with(&[0; 28]) {
+                    return Err(Error::InvalidAssetType(burn.prev_out.asset_type))
+                }
+                Ok(())
+            }
         }
+    }
+
+    pub fn unwrapped_amount(&self) -> U256 {
+        match self {
+            Transaction::AssetUnwrapCCC {
+                burn,
+                ..
+            } => burn.prev_out.amount,
+            _ => U256::zero(),
+        }
+    }
+}
+
+impl InnerTransaction {
+    pub fn hash(&self) -> H256 {
+        match self {
+            InnerTransaction::General(transaction) => transaction.hash(),
+            InnerTransaction::AssetWrapCCC {
+                parcel_hash,
+                ..
+            } => *parcel_hash,
+        }
+    }
+
+    pub fn verify(&self) -> Result<(), Error> {
+        match self {
+            InnerTransaction::General(transaction) => transaction.verify(),
+            InnerTransaction::AssetWrapCCC {
+                output,
+                ..
+            } => {
+                if output.amount.is_zero() {
+                    return Err(Error::ZeroAmount)
+                }
+                Ok(())
+            }
+        }
+    }
+}
+
+impl From<Transaction> for InnerTransaction {
+    fn from(transaction: Transaction) -> Self {
+        InnerTransaction::General(transaction)
     }
 }
 
@@ -351,6 +437,10 @@ impl HeapSizeOf for Transaction {
                 outputs,
                 ..
             } => input.heap_size_of_children() + outputs.heap_size_of_children(),
+            Transaction::AssetUnwrapCCC {
+                burn,
+                ..
+            } => burn.heap_size_of_children(),
         }
     }
 }
@@ -530,12 +620,35 @@ impl PartialHashing for Transaction {
                     &blake128(tag.get_tag()),
                 ))
             }
+            Transaction::AssetUnwrapCCC {
+                network_id,
+                burn,
+            } => {
+                if !tag.sign_all_inputs || !tag.sign_all_outputs {
+                    return Err(HashingError::InvalidFilter)
+                }
+
+                Ok(blake256_with_key(
+                    &Transaction::AssetUnwrapCCC {
+                        network_id: *network_id,
+                        burn: AssetTransferInput {
+                            prev_out: burn.prev_out.clone(),
+                            timelock: burn.timelock,
+                            lock_script: Vec::new(),
+                            unlock_script: Vec::new(),
+                        },
+                    }
+                    .rlp_bytes(),
+                    &blake128(tag.get_tag()),
+                ))
+            }
             _ => unreachable!(),
         }
     }
 }
 
 type TransactionId = u8;
+const ASSET_UNWRAP_CCC_ID: TransactionId = 0x01;
 const ASSET_MINT_ID: TransactionId = 0x03;
 const ASSET_TRANSFER_ID: TransactionId = 0x04;
 const ASSET_COMPOSE_ID: TransactionId = 0x06;
@@ -596,6 +709,15 @@ impl Decodable for Transaction {
                     network_id: d.val_at(1)?,
                     input: d.val_at(2)?,
                     outputs: d.list_at(3)?,
+                })
+            }
+            ASSET_UNWRAP_CCC_ID => {
+                if d.item_count()? != 3 {
+                    return Err(DecoderError::RlpIncorrectListLen)
+                }
+                Ok(Transaction::AssetUnwrapCCC {
+                    network_id: d.val_at(1)?,
+                    burn: d.val_at(2)?,
                 })
             }
             _ => Err(DecoderError::Custom("Unexpected transaction")),
@@ -667,6 +789,10 @@ impl Encodable for Transaction {
                 input,
                 outputs,
             } => s.begin_list(4).append(&ASSET_DECOMPOSE_ID).append(network_id).append(input).append_list(outputs),
+            Transaction::AssetUnwrapCCC {
+                network_id,
+                burn,
+            } => s.begin_list(3).append(&ASSET_UNWRAP_CCC_ID).append(network_id).append(burn),
         };
     }
 }

@@ -166,6 +166,9 @@ impl UnverifiedParcel {
                     Transaction::AssetDecompose {
                         ..
                     } => {}
+                    Transaction::AssetUnwrapCCC {
+                        ..
+                    } => {}
                 }
             }
             _ => {}
