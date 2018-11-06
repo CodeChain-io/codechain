@@ -104,11 +104,6 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
  - lock_script_hash: `H160`
  - parameters: `hexadecimal string[]`
 
-## ShardChange
-- shard_id: `number`
-- pre_root: `H256`
-- post_root: `H256`
-
 ## Signature
 `H520` for ECDSA signature | `H512` for Schnorr signature
 
@@ -166,7 +161,7 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
  * [chain_getShardRoot](#chain_getshardroot)
  * [chain_getPendingParcels](#chain_getpendingparcels)
  * [chain_getCoinbase](#chain_getcoinbase)
- * [chain_executeTransactions](#chain_executetransactions)
+ * [chain_executeTransaction](#chain_executetransaction)
  * [chain_getNetworkId](#chain_getnetworkid)
 ***
   * [miner_getWork](#miner_getwork)
@@ -998,14 +993,14 @@ Response Example
 }
 ```
 
-## chain_executeTransactions
+## chain_executeTransaction
 Executes the transactions and returns the current shard root and the changed shard root.
 
 Params:
- 1. transactions: `Transaction[]`
+ 1. transaction: `Transaction`
  2. sender: `PlatformAddress`
 
-Return Type: `ShardChange[]`
+Return Type: `Invoice`
 
 Errors: `Invalid RLP`, `Execution Failed`, `Invalid Params`, `Invalid NetworkId`
 
@@ -1013,26 +1008,18 @@ Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "chain_executeTransactions", "params": [[{"type":"assetMint","data":{"networkId":"17","shardId":0,"metadata":"{\"name\":\"Gold\",\"description\":\"An asset example\",\"icon_url\":\"https://gold.image/\"}","output":{"lockScriptHash":"0xf42a65ea518ba236c08b261c34af0521fa3cd1aa505e1c18980919cb8945f8f3","parameters":[],"amount":10000},"registrar":null,"nonce":0}}, {"type":"assetMint","data":{"networkId":"17","shardId":1,"metadata":"{\"name\":\"Gold\",\"description\":\"An asset example\",\"icon_url\":\"https://gold.image/\"}","output":{"lockScriptHash":"0xf42a65ea518ba236c08b261c34af0521fa3cd1aa505e1c18980919cb8945f8f3","parameters":[],"amount":10000},"registrar":null,"nonce":0}}], "cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7"], "id": null}' \
+    -d '{"jsonrpc": "2.0", "method": "chain_executeTransaction", "params": [{"type":"assetMint","data":{"networkId":"17","shardId":0,"metadata":"{\"name\":\"Gold\",\"description\":\"An asset example\",\"icon_url\":\"https://gold.image/\"}","output":{"lockScriptHash":"0xf42a65ea518ba236c08b261c34af0521fa3cd1aa505e1c18980919cb8945f8f3","parameters":[],"amount":10000},"registrar":null,"nonce":0}}, "cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7"], "id": null}' \
     localhost:8080
 ```
 
 Response Example
 ```
 {
-  "jsonrpc": "2.0",
-  "result": [
-    {
-      "postRoot": "0x16f176868ec7c8366af7e1210a98887437e1940c220d36e1264cec381bd8eae2",
-      "preRoot": "0x3521429ad738442ad7aee37324331e5395bbd0aac7465fba8df12985f6fc2e60",
-      "shardId": 0
-    }, {
-      "postRoot": "0x1d46e3dc3224ac963599c5350dd818b73f6b01efbeb3e19b7450b553d7c67cef",
-      "preRoot": "0x1c41fc1cc2382352ab1a3dd45af8df70d1f2e8c77fc60f6c8849101d20ee7b3f",
-      "shardId": 1
-    }
+  "jsonrpc":"2.0",
+  "result":[
+    "Success"
   ],
-  "id": null
+  "id":null
 }
 ```
 

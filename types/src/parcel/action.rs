@@ -31,13 +31,6 @@ const SET_SHARD_OWNERS: u8 = 5;
 const SET_SHARD_USERS: u8 = 6;
 const CUSTOM: u8 = 0xFF;
 
-#[derive(Debug, Clone, PartialEq, Eq, RlpDecodable, RlpEncodable)]
-pub struct ShardChange {
-    pub shard_id: ShardId,
-    pub pre_root: H256,
-    pub post_root: H256,
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Action {
     AssetTransaction(Transaction),

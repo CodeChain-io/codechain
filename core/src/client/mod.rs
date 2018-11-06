@@ -34,7 +34,6 @@ use cmerkle::Result as TrieResult;
 use cnetwork::NodeId;
 use cstate::{ActionHandler, AssetScheme, AssetSchemeAddress, OwnedAsset, TopStateInfo};
 use ctypes::invoice::Invoice;
-use ctypes::parcel::ShardChange;
 use ctypes::transaction::Transaction;
 use ctypes::{BlockNumber, ShardId};
 use cvm::ChainTimeInfo;
@@ -281,10 +280,6 @@ pub trait AssetClient {
     ) -> TrieResult<Option<bool>>;
 }
 
-pub trait ExecuteClient {
-    fn execute_transactions(
-        &self,
-        transactions: &[Transaction],
-        sender: &Address,
-    ) -> Result<Vec<ShardChange>, CoreError>;
+pub trait ExecuteClient: ChainTimeInfo {
+    fn execute_transaction(&self, transaction: &Transaction, sender: &Address) -> Result<Invoice, CoreError>;
 }
