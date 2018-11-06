@@ -21,10 +21,10 @@ use ccrypto::{blake256, BLAKE_NULL_RLP};
 use cjson;
 use ckey::{Address, NetworkId};
 use cmerkle::TrieFactory;
-use cstate::{ActionHandler, Backend, Metadata, MetadataAddress, Shard, ShardAddress, StateDB, StateResult};
+use cstate::{ActionHandler, Metadata, MetadataAddress, Shard, ShardAddress, StateDB, StateResult};
 use ctypes::transaction::Error as TransactionError;
 use ctypes::ShardId;
-use hashdb::HashDB;
+use hashdb::{AsHashDB, HashDB};
 use parking_lot::RwLock;
 use primitives::{Bytes, H256, U256};
 use rlp::{Encodable, Rlp, RlpStream};
@@ -144,7 +144,7 @@ impl Scheme {
         }
     }
 
-    fn initialize_state<DB: Backend>(&self, db: DB) -> StateResult<DB> {
+    fn initialize_state<DB: AsHashDB>(&self, db: DB) -> StateResult<DB> {
         let root = BLAKE_NULL_RLP;
         let (db, root) = self.initialize_accounts(db, root)?;
         let (db, root) = self.initialize_shards(db, root)?;
@@ -154,7 +154,7 @@ impl Scheme {
         Ok(db)
     }
 
-    fn initialize_accounts<DB: Backend>(&self, mut db: DB, mut root: H256) -> StateResult<(DB, H256)> {
+    fn initialize_accounts<DB: AsHashDB>(&self, mut db: DB, mut root: H256) -> StateResult<(DB, H256)> {
         // basic accounts in scheme.
         {
             let mut t = TrieFactory::create(db.as_hashdb_mut(), &mut root);
@@ -169,7 +169,7 @@ impl Scheme {
         Ok((db, root))
     }
 
-    fn initialize_shards<DB: Backend>(&self, mut db: DB, mut root: H256) -> StateResult<(DB, H256)> {
+    fn initialize_shards<DB: AsHashDB>(&self, mut db: DB, mut root: H256) -> StateResult<(DB, H256)> {
         let mut shards = Vec::<(ShardAddress, Shard)>::with_capacity(self.genesis_shards.len());
 
         // Initialize shard-level tries
@@ -207,7 +207,7 @@ impl Scheme {
         Ok((db, root))
     }
 
-    fn initialize_custom_actions<DB: Backend>(&self, mut db: DB, mut root: H256) -> StateResult<(DB, H256)> {
+    fn initialize_custom_actions<DB: AsHashDB>(&self, mut db: DB, mut root: H256) -> StateResult<(DB, H256)> {
         // basic accounts in scheme.
         {
             let mut t = TrieFactory::from_existing(db.as_hashdb_mut(), &mut root)?;
@@ -232,7 +232,7 @@ impl Scheme {
     }
 
     /// Ensure that the given state DB has the trie nodes in for the genesis state.
-    pub fn ensure_genesis_state<DB: Backend>(&self, db: DB) -> Result<DB, Error> {
+    pub fn ensure_genesis_state<DB: AsHashDB>(&self, db: DB) -> Result<DB, Error> {
         if !self.check_genesis_root(db.as_hashdb()) {
             return Err(SchemeError::InvalidState.into())
         }
@@ -387,7 +387,7 @@ fn load_from(s: cjson::scheme::Scheme) -> Result<Scheme, Error> {
     match g.state_root {
         Some(root) => *s.state_root_memo.get_mut() = root,
         None => {
-            let db = StateDB::new_with_memorydb(0, s.custom_handlers.clone());
+            let db = StateDB::new_with_memorydb(s.custom_handlers.clone());
             let _ = s.initialize_state(db)?;
         }
     }

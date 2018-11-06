@@ -24,13 +24,13 @@ use ckey::{Address, Public};
 use cmerkle::Result as TrieResult;
 use cnetwork::NodeId;
 use cstate::{
-    ActionHandler, AssetScheme, AssetSchemeAddress, OwnedAsset, OwnedAssetAddress, StateDB, TopBackend, TopLevelState,
-    TopStateInfo,
+    ActionHandler, AssetScheme, AssetSchemeAddress, OwnedAsset, OwnedAssetAddress, StateDB, TopLevelState, TopStateInfo,
 };
 use ctypes::invoice::Invoice;
 use ctypes::transaction::Transaction;
 use ctypes::{BlockNumber, ShardId};
 use cvm::ChainTimeInfo;
+use hashdb::AsHashDB;
 use journaldb;
 use kvdb::{DBTransaction, KeyValueDB};
 use parking_lot::{Mutex, RwLock};
@@ -94,11 +94,11 @@ impl Client {
         message_channel: IoChannel<ClientIoMessage>,
     ) -> Result<Arc<Client>, Error> {
         let journal_db = journaldb::new(db.clone(), journaldb::Algorithm::Archive, ::db::COL_STATE);
-        let mut state_db = StateDB::new(journal_db, config.state_cache_size, scheme.custom_handlers.clone());
+        let mut state_db = StateDB::new(journal_db, scheme.custom_handlers.clone());
         if !scheme.check_genesis_root(state_db.as_hashdb()) {
             return Err(SchemeError::InvalidState.into())
         }
-        if state_db.journal_db().is_empty() {
+        if state_db.is_empty() {
             // Sets the correct state root.
             state_db = scheme.ensure_genesis_state(state_db)?;
             let mut batch = DBTransaction::new();
@@ -209,7 +209,7 @@ impl Client {
     /// Get a copy of the best block's state.
     fn latest_state(&self) -> TopLevelState {
         let header = self.best_block_header();
-        TopLevelState::from_existing(self.state_db.read().clone_canon(&header.hash()), header.state_root())
+        TopLevelState::from_existing(self.state_db.read().clone(), header.state_root())
             .expect("State root of best block header always valid.")
     }
 
@@ -226,7 +226,7 @@ impl Client {
         }
 
         self.block_header(id).and_then(|header| {
-            let db = self.state_db.read().clone_with_immutable_global_cache();
+            let db = self.state_db.read().clone();
 
             let root = header.state_root();
             TopLevelState::from_existing(db, root).ok()
@@ -712,8 +712,6 @@ impl Importer {
         state.journal_under(&mut batch, number, hash).expect("DB commit failed");
         let route = chain.insert_block(&mut batch, block_data, invoices.clone());
 
-        let is_canon = route.enacted.last().map_or(false, |h| h == hash);
-        state.sync_cache(&route.enacted, &route.retracted, is_canon);
         // Final commit to the DB
         client.db.read().write_buffered(batch);
         chain.commit();
@@ -849,7 +847,7 @@ impl Importer {
         };
 
         // Enact Verified Block
-        let db = client.state_db.read().clone_canon(header.parent_hash());
+        let db = client.state_db.read().clone();
 
         let is_epoch_begin = chain.epoch_transition(parent.number(), *header.parent_hash()).is_some();
         let enact_result = enact(&block.header, &block.parcels, engine, client, db, &parent, is_epoch_begin);
@@ -1031,7 +1029,7 @@ impl PrepareOpenBlock for Client {
         let is_epoch_begin = chain.epoch_transition(best_header.number(), h).is_some();
         OpenBlock::new(
             engine,
-            self.state_db.read().clone_canon(&h),
+            self.state_db.read().clone(),
             best_header,
             author,
             extra_data,
@@ -1056,7 +1054,6 @@ impl ImportSealedBlock for Client {
 
             let route = self.importer.commit_block(block, &header, &block_data, self);
             ctrace!(CLIENT, "Imported sealed block #{} ({})", number, h);
-            self.state_db.write().sync_cache(&route.enacted, &route.retracted, false);
             route
         };
         let (enacted, retracted) = self.importer.calculate_enacted_retracted(&[route]);

@@ -14,9 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod block_changes;
-mod global_cache;
-mod global_cache_buffer;
 mod state_db;
 
 pub use self::state_db::StateDB;
