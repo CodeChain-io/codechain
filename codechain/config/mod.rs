@@ -50,6 +50,7 @@ impl Config {
         self.mining.merge(&other.mining);
         self.network.merge(&other.network);
         self.rpc.merge(&other.rpc);
+        self.ws.merge(&other.ws);
         self.snapshot.merge(&other.snapshot);
         self.stratum.merge(&other.stratum);
     }
@@ -554,6 +555,21 @@ impl Rpc {
 }
 
 impl Ws {
+    pub fn merge(&mut self, other: &Ws) {
+        if other.disable.is_some() {
+            self.disable = other.disable;
+        }
+        if other.interface.is_some() {
+            self.interface = other.interface.clone();
+        }
+        if other.port.is_some() {
+            self.port = other.port;
+        }
+        if other.max_connections.is_some() {
+            self.max_connections = other.max_connections;
+        }
+    }
+
     pub fn overwrite_with(&mut self, matches: &clap::ArgMatches) -> Result<(), String> {
         if matches.is_present("no-ws") {
             self.disable = Some(true);
