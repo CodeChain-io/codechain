@@ -63,6 +63,6 @@ pub use item::local_cache::{CacheableItem, LocalCache};
 pub use item::metadata::{Metadata, MetadataAddress};
 pub use item::regular_account::{RegularAccount, RegularAccountAddress};
 pub use item::shard::{Shard, ShardAddress};
-pub use traits::{ShardState, ShardStateInfo, StateWithCache, TopState, TopStateInfo};
+pub use traits::{ShardState, ShardStateView, StateWithCache, TopState, TopStateView};
 
 pub type StateResult<T> = Result<T, StateError>;

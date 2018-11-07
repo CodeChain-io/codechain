@@ -32,7 +32,7 @@ use std::sync::Arc;
 use ckey::{Address, Public};
 use cmerkle::Result as TrieResult;
 use cnetwork::NodeId;
-use cstate::{ActionHandler, AssetScheme, AssetSchemeAddress, OwnedAsset, TopStateInfo};
+use cstate::{ActionHandler, AssetScheme, AssetSchemeAddress, OwnedAsset, TopStateView};
 use ctypes::invoice::Invoice;
 use ctypes::transaction::Transaction;
 use ctypes::{BlockNumber, ShardId};
@@ -121,14 +121,14 @@ pub trait Seq {
 /// State information to be used during client query
 pub enum StateOrBlock {
     /// State to be used, may be pending
-    State(Box<TopStateInfo>),
+    State(Box<TopStateView>),
 
     /// Id of an existing block from a chain to get state from
     Block(BlockId),
 }
 
-impl From<Box<TopStateInfo>> for StateOrBlock {
-    fn from(info: Box<TopStateInfo>) -> StateOrBlock {
+impl From<Box<TopStateView>> for StateOrBlock {
+    fn from(info: Box<TopStateView>) -> StateOrBlock {
         StateOrBlock::State(info)
     }
 }

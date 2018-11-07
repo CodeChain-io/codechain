@@ -36,7 +36,6 @@
 //! or rolled back.
 
 use std::cell::RefMut;
-use std::fmt;
 
 use ccrypto::BLAKE_NULL_RLP;
 use ckey::{public_to_address, Address, NetworkId, Public};
@@ -50,46 +49,23 @@ use hashdb::AsHashDB;
 use primitives::{Bytes, H160, H256, U256};
 
 use super::super::checkpoint::{CheckpointId, StateWithCheckpoint};
-use super::super::item::local_cache::{CacheableItem, LocalCache};
-use super::super::traits::{ShardState, ShardStateInfo, StateWithCache, TopState, TopStateInfo};
+use super::super::item::local_cache::LocalCache;
+use super::super::traits::{ShardState, ShardStateView, StateWithCache, TopState, TopStateView};
 use super::super::{
-    Account, ActionData, AssetScheme, AssetSchemeAddress, Metadata, MetadataAddress, OwnedAsset, OwnedAssetAddress,
-    RegularAccount, RegularAccountAddress, Shard, ShardAddress, ShardLevelState,
+    Account, ActionData, Metadata, MetadataAddress, RegularAccount, RegularAccountAddress, Shard, ShardAddress,
+    ShardLevelState, StateDB, StateError, StateResult,
 };
-use super::super::{StateDB, StateError, StateResult};
 
 /// Representation of the entire state of all accounts in the system.
 ///
-/// `State` can work together with `StateDB` to share account cache.
-///
 /// Local cache contains changes made locally and changes accumulated
-/// locally from previous commits. Global cache reflects the database
-/// state and never contains any changes.
-///
-/// Cache items contains account data, or the flag that account does not exist
-/// and modification state (see `AccountState`)
-///
-/// Account data can be in the following cache states:
-/// * In global but not local - something that was queried from the database,
-/// but never modified
-/// * In local but not global - something that was just added (e.g. new account)
-/// * In both with the same value - something that was changed to a new value,
-/// but changed back to a previous block in the same block (same State instance)
-/// * In both with different values - something that was overwritten with a
-/// new value.
-///
-/// All read-only state queries check local cache/modifications first,
-/// then global state cache. If data is not found in any of the caches
-/// it is loaded from the DB to the local cache.
+/// locally from previous commits.
 ///
 /// **** IMPORTANT *************************************************************
 /// All the modifications to the account data must set the `Dirty` state in the
 /// `Entry<Item>`. This is done in `require` and `require_or_from`. So just
 /// use that.
 /// ****************************************************************************
-///
-/// Upon destruction all the local cache data propagated into the global cache.
-/// Propagated items might be rejected if current state is non-canonical.
 ///
 /// State checkpointing.
 ///
@@ -113,66 +89,50 @@ pub struct TopLevelState {
     id_of_checkpoints: Vec<CheckpointId>,
 }
 
-impl TopStateInfo for TopLevelState {
-    fn seq(&self, a: &Address) -> TrieResult<U256> {
-        let account = self.get_account(a)?;
-        Ok(account.map_or_else(U256::zero, |account| *account.seq()))
-    }
-    fn balance(&self, a: &Address) -> TrieResult<U256> {
-        let account = self.get_account(a)?;
-        Ok(account.map_or_else(U256::zero, |account| *account.balance()))
+impl TopStateView for TopLevelState {
+    fn root(&self) -> &H256 {
+        &self.root
     }
 
-    fn regular_key(&self, a: &Address) -> TrieResult<Option<Public>> {
-        let account = self.get_account(a)?;
-        Ok(account.map_or(None, |account| account.regular_key()))
+    /// Check caches for required data
+    /// First searches for account in the local, then the shared cache.
+    /// Populates local cache if nothing found.
+    fn account(&self, a: &Address) -> TrieResult<Option<Account>> {
+        let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
+        self.account.get(&a, db)
     }
 
-    fn regular_key_owner(&self, address: &Address) -> TrieResult<Option<Address>> {
-        let account = self.get_regular_account_by_address(&address)?;
-        Ok(account.map(|regular_account| public_to_address(regular_account.owner_public())))
+    fn regular_account_by_address(&self, a: &Address) -> TrieResult<Option<RegularAccount>> {
+        let a = RegularAccountAddress::from_address(a);
+        let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
+        Ok(self.regular_account.get(&a, db)?)
     }
 
-    fn number_of_shards(&self) -> TrieResult<ShardId> {
-        let metadata = self.get_metadata()?.expect("Metadata must exist");
-        Ok(*metadata.number_of_shards())
+    fn metadata(&self) -> TrieResult<Option<Metadata>> {
+        let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
+        let address = MetadataAddress::new();
+        self.metadata.get(&address, db)
     }
 
-    fn shard_root(&self, shard_id: ShardId) -> TrieResult<Option<H256>> {
-        Ok(self.get_shard(shard_id)?.map(|shard| *shard.root()))
+    fn shard(&self, shard_id: ShardId) -> TrieResult<Option<Shard>> {
+        let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
+        let shard_address = ShardAddress::new(shard_id);
+        self.shard.get(&shard_address, db)
     }
 
-    fn shard_owners(&self, shard_id: ShardId) -> TrieResult<Option<Vec<Address>>> {
-        Ok(self.get_shard(shard_id)?.map(|shard| shard.owners().to_vec()))
-    }
-
-    fn shard_users(&self, shard_id: ShardId) -> TrieResult<Option<Vec<Address>>> {
-        Ok(self.get_shard(shard_id)?.map(|shard| shard.users().to_vec()))
-    }
-
-    fn asset_scheme(
-        &self,
-        shard_id: ShardId,
-        asset_scheme_address: &AssetSchemeAddress,
-    ) -> TrieResult<Option<AssetScheme>> {
-        // FIXME: Handle the case that shard doesn't exist
-        let shard_root = self.shard_root(shard_id)?.unwrap_or(BLAKE_NULL_RLP);
+    fn shard_state(&self, shard_id: ShardId) -> TrieResult<Option<Box<ShardStateView>>> {
         // FIXME: Make it mutable borrow db instead of cloning.
-        let shard_level_state = ShardLevelState::from_existing(shard_id, self.db.clone(), shard_root)?;
-        shard_level_state.asset_scheme(asset_scheme_address)
+        match self.shard_root(shard_id)? {
+            Some(shard_root) => {
+                Ok(Some(Box::new(ShardLevelState::from_existing(shard_id, self.db.clone(), shard_root)?)))
+            }
+            None => Ok(None),
+        }
     }
 
-    fn asset(&self, shard_id: ShardId, asset_address: &OwnedAssetAddress) -> TrieResult<Option<OwnedAsset>> {
-        // FIXME: Handle the case that shard doesn't exist
-        let shard_root = self.shard_root(shard_id)?.unwrap_or(BLAKE_NULL_RLP);
-        // FIXME: Make it mutable borrow db instead of cloning.
-        let shard_level_state = ShardLevelState::from_existing(shard_id, self.db.clone(), shard_root)?;
-        shard_level_state.asset(asset_address)
-    }
-
-    fn action_data(&self, key: &H256) -> TrieResult<Bytes> {
-        let action_data = self.get_action_data_mut(key)?;
-        Ok(action_data.clone().into())
+    fn action_data(&self, key: &H256) -> TrieResult<Option<ActionData>> {
+        let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
+        Ok(self.action_data.get(key, db)?.map(Into::into))
     }
 }
 
@@ -225,14 +185,6 @@ impl StateWithCache for TopLevelState {
         self.action_data.commit(&mut trie)?;
         Ok(())
     }
-
-    fn clear(&mut self) {
-        self.account.clear();
-        self.regular_account.clear();
-        self.metadata.clear();
-        self.shard.clear();
-        self.action_data.clear();
-    }
 }
 
 impl TopLevelState {
@@ -275,10 +227,6 @@ impl TopLevelState {
         };
 
         Ok(state)
-    }
-
-    pub fn root(&self) -> &H256 {
-        &self.root
     }
 
     /// Destroy the current object and return root and database.
@@ -590,32 +538,11 @@ impl TopLevelState {
         Ok(())
     }
 
-    /// Check caches for required data
-    /// First searches for account in the local, then the shared cache.
-    /// Populates local cache if nothing found.
-    fn get_account(&self, a: &Address) -> TrieResult<Option<Account>> {
-        let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        self.account.get(&a, db)
-    }
-
     fn get_account_mut(&self, a: &Address) -> TrieResult<RefMut<Account>> {
         debug_assert_eq!(Ok(false), self.regular_account_exists_and_not_null_by_address(a));
 
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
         self.account.get_mut(&a, db)
-    }
-
-    /// Check caches for required data
-    /// First searches for regular account in the local, then the shared cache.
-    /// Populates local cache if nothing found.
-    fn get_regular_account(&self, p: &Public) -> TrieResult<Option<RegularAccount>> {
-        self.get_regular_account_by_address(&public_to_address(p))
-    }
-
-    fn get_regular_account_by_address(&self, a: &Address) -> TrieResult<Option<RegularAccount>> {
-        let a = RegularAccountAddress::from_address(a);
-        let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        Ok(self.regular_account.get(&a, db)?)
     }
 
     fn get_regular_account_mut(&self, public: &Public) -> TrieResult<RefMut<RegularAccount>> {
@@ -624,22 +551,10 @@ impl TopLevelState {
         self.regular_account.get_mut(&regular_account_address, db)
     }
 
-    fn get_metadata(&self) -> TrieResult<Option<Metadata>> {
-        let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        let address = MetadataAddress::new();
-        self.metadata.get(&address, db)
-    }
-
     fn get_metadata_mut(&self) -> TrieResult<RefMut<Metadata>> {
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
         let address = MetadataAddress::new();
         self.metadata.get_mut(&address, db)
-    }
-
-    fn get_shard(&self, shard_id: ShardId) -> TrieResult<Option<Shard>> {
-        let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        let shard_address = ShardAddress::new(shard_id);
-        self.shard.get(&shard_address, db)
     }
 
     fn get_shard_mut(&self, shard_id: ShardId) -> TrieResult<RefMut<Shard>> {
@@ -648,26 +563,9 @@ impl TopLevelState {
         self.shard.get_mut(&shard_address, db)
     }
 
-    #[allow(dead_code)]
-    fn get_action_data(&self, key: &H256) -> TrieResult<Option<ActionData>> {
-        let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        self.action_data.get(key, db)
-    }
-
     fn get_action_data_mut(&self, key: &H256) -> TrieResult<RefMut<ActionData>> {
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
         self.action_data.get_mut(key, db)
-    }
-}
-
-impl fmt::Debug for TopLevelState {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "account: {:?}", self.account)?;
-        writeln!(f, "regular_account: {:?}", self.regular_account)?;
-        writeln!(f, "metadata: {:?}", self.metadata)?;
-        writeln!(f, "shard: {:?}", self.shard)?;
-        writeln!(f, "action_data: {:?}", self.action_data)?;
-        Ok(())
     }
 }
 
@@ -695,33 +593,6 @@ impl TopState for TopLevelState {
 
     fn kill_regular_account(&mut self, account: &Public) {
         self.regular_account.remove(&RegularAccountAddress::new(account));
-    }
-
-    fn account_exists(&self, a: &Address) -> TrieResult<bool> {
-        // Bloom filter does not contain empty accounts, so it is important here to
-        // check if account exists in the database directly before EIP-161 is in effect.
-        let a = self.get_account(a)?;
-        Ok(a.is_some())
-    }
-
-    fn account_exists_and_not_null(&self, a: &Address) -> TrieResult<bool> {
-        let a = self.get_account(a)?;
-        Ok(a.map_or(false, |a| !a.is_null()))
-    }
-
-    fn account_exists_and_has_seq(&self, a: &Address) -> TrieResult<bool> {
-        let a = self.get_account(a)?;
-        Ok(a.map_or(false, |a| !a.seq().is_zero()))
-    }
-
-    fn regular_account_exists_and_not_null(&self, p: &Public) -> TrieResult<bool> {
-        let a = self.get_regular_account(p)?;
-        Ok(a.map_or(false, |a| !a.is_null()))
-    }
-
-    fn regular_account_exists_and_not_null_by_address(&self, a: &Address) -> TrieResult<bool> {
-        let a = self.get_regular_account_by_address(a)?;
-        Ok(a.map_or(false, |a| !a.is_null()))
     }
 
     fn add_balance(&mut self, a: &Address, incr: &U256) -> TrieResult<()> {
@@ -861,8 +732,6 @@ impl TopState for TopLevelState {
 #[cfg(test)]
 mod tests_state {
     use ccrypto::BLAKE_NULL_RLP;
-    use ckey::Address;
-    use primitives::U256;
 
     use super::super::super::tests::helpers::{get_temp_state, get_temp_state_db};
     use super::*;
@@ -1093,14 +962,14 @@ mod tests_state {
 
 #[cfg(test)]
 mod tests_parcel {
-    use ckey::{Address, Generator, Random};
-    use ctypes::parcel::Parcel;
+    use ckey::{Generator, Random};
     use ctypes::transaction::{
         AssetMintOutput, AssetOutPoint, AssetTransferInput, AssetTransferOutput, Error as TransactionError,
     };
-    use primitives::{H160, U256};
+    use primitives::H160;
 
     use super::super::super::tests::helpers::{get_temp_state, get_test_client};
+    use super::super::super::{AssetScheme, AssetSchemeAddress, OwnedAsset, OwnedAssetAddress};
     use super::*;
 
     fn address() -> (Address, Public) {

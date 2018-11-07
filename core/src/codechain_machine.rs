@@ -16,7 +16,7 @@
 // A state machine.
 
 use ckey::Address;
-use cstate::{StateError, TopState, TopStateInfo};
+use cstate::{StateError, TopState, TopStateView};
 use ctypes::machine::{Machine, WithBalances};
 use ctypes::parcel::{Action, Error as ParcelError};
 use ctypes::transaction::{Error as TransactionError, Timelock, Transaction};
