@@ -19,7 +19,7 @@ use std::collections::HashSet;
 use ccrypto::BLAKE_NULL_RLP;
 use ckey::Address;
 use cmerkle::skewed_merkle_root;
-use cstate::{StateDB, StateError, StateWithCache, TopLevelState};
+use cstate::{StateDB, StateError, StateWithCache, TopLevelState, TopStateView};
 use ctypes::invoice::Invoice;
 use ctypes::machine::{LiveBlock, Parcels};
 use ctypes::parcel::Error as ParcelError;

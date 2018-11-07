@@ -24,7 +24,7 @@ use ckey::{Address, Public};
 use cmerkle::Result as TrieResult;
 use cnetwork::NodeId;
 use cstate::{
-    ActionHandler, AssetScheme, AssetSchemeAddress, OwnedAsset, OwnedAssetAddress, StateDB, TopLevelState, TopStateInfo,
+    ActionHandler, AssetScheme, AssetSchemeAddress, OwnedAsset, OwnedAssetAddress, StateDB, TopLevelState, TopStateView,
 };
 use ctypes::invoice::Invoice;
 use ctypes::transaction::Transaction;
@@ -233,7 +233,7 @@ impl Client {
         })
     }
 
-    fn state_info(&self, state: StateOrBlock) -> Option<Box<TopStateInfo>> {
+    fn state_info(&self, state: StateOrBlock) -> Option<Box<TopStateView>> {
         Some(match state {
             StateOrBlock::State(state) => state,
             StateOrBlock::Block(id) => Box::new(self.state_at(id)?),

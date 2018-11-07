@@ -16,7 +16,6 @@
 
 use std::cell::RefMut;
 use std::collections::HashMap;
-use std::fmt;
 
 use ccrypto::{Blake, BLAKE_NULL_RLP};
 use ckey::Address;
@@ -34,13 +33,14 @@ use primitives::{Bytes, H160, H256, U256};
 
 use super::super::checkpoint::{CheckpointId, StateWithCheckpoint};
 use super::super::item::local_cache::{CacheableItem, LocalCache};
-use super::super::traits::{ShardState, ShardStateInfo, StateWithCache};
-use super::super::{Asset, AssetScheme, AssetSchemeAddress, OwnedAsset, OwnedAssetAddress};
-use super::super::{StateError, StateResult};
+use super::super::traits::{ShardState, ShardStateView, StateWithCache};
+use super::super::{
+    Asset, AssetScheme, AssetSchemeAddress, OwnedAsset, OwnedAssetAddress, StateDB, StateError, StateResult,
+};
 
 
-pub struct ShardLevelState<B> {
-    db: B,
+pub struct ShardLevelState {
+    db: StateDB,
     root: H256,
     asset_scheme: LocalCache<AssetScheme>,
     asset: LocalCache<OwnedAsset>,
@@ -48,9 +48,9 @@ pub struct ShardLevelState<B> {
     shard_id: ShardId,
 }
 
-impl<B: AsHashDB> ShardLevelState<B> {
+impl ShardLevelState {
     /// Creates new state with empty state root
-    pub fn try_new(shard_id: ShardId, db: B) -> StateResult<ShardLevelState<B>> {
+    pub fn try_new(shard_id: ShardId, db: StateDB) -> StateResult<ShardLevelState> {
         let root = BLAKE_NULL_RLP;
         Ok(ShardLevelState {
             db,
@@ -63,7 +63,7 @@ impl<B: AsHashDB> ShardLevelState<B> {
     }
 
     /// Creates new state with existing state root
-    pub fn from_existing(shard_id: ShardId, db: B, root: H256) -> cmerkle::Result<ShardLevelState<B>> {
+    pub fn from_existing(shard_id: ShardId, db: StateDB, root: H256) -> cmerkle::Result<ShardLevelState> {
         if !db.as_hashdb().contains(&root) {
             return Err(TrieError::InvalidStateRoot(root).into())
         }
@@ -79,7 +79,7 @@ impl<B: AsHashDB> ShardLevelState<B> {
     }
 
     /// Destroy the current object and return root and database.
-    pub fn drop(self) -> (H256, B) {
+    pub fn drop(self) -> (H256, StateDB) {
         (self.root, self.db)
     }
 
@@ -504,19 +504,9 @@ impl<B: AsHashDB> ShardLevelState<B> {
         self.asset_scheme.remove(account);
     }
 
-    fn get_asset_scheme(&self, a: &AssetSchemeAddress) -> cmerkle::Result<Option<AssetScheme>> {
-        let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        self.asset_scheme.get(a, db)
-    }
-
     fn get_asset_scheme_mut(&self, a: &AssetSchemeAddress) -> cmerkle::Result<RefMut<AssetScheme>> {
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
         self.asset_scheme.get_mut(a, db)
-    }
-
-    fn get_asset(&self, a: &OwnedAssetAddress) -> cmerkle::Result<Option<OwnedAsset>> {
-        let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        self.asset.get(a, db)
     }
 
     fn get_asset_mut(&self, a: &OwnedAssetAddress) -> cmerkle::Result<RefMut<OwnedAsset>> {
@@ -525,21 +515,23 @@ impl<B: AsHashDB> ShardLevelState<B> {
     }
 }
 
-impl<B: AsHashDB> ShardStateInfo for ShardLevelState<B> {
+impl ShardStateView for ShardLevelState {
     fn root(&self) -> &H256 {
         &self.root
     }
 
     fn asset_scheme(&self, a: &AssetSchemeAddress) -> cmerkle::Result<Option<AssetScheme>> {
-        self.get_asset_scheme(a)
+        let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
+        self.asset_scheme.get(a, db)
     }
 
     fn asset(&self, a: &OwnedAssetAddress) -> cmerkle::Result<Option<OwnedAsset>> {
-        self.get_asset(a)
+        let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
+        self.asset.get(a, db)
     }
 }
 
-impl<B> StateWithCheckpoint for ShardLevelState<B> {
+impl StateWithCheckpoint for ShardLevelState {
     fn create_checkpoint(&mut self, id: CheckpointId) {
         ctrace!(STATE, "Checkpoint({}) for shard({}) is created", id, self.shard_id);
         self.id_of_checkpoints.push(id);
@@ -566,29 +558,18 @@ impl<B> StateWithCheckpoint for ShardLevelState<B> {
     }
 }
 
-impl<B: AsHashDB> StateWithCache for ShardLevelState<B> {
+impl StateWithCache for ShardLevelState {
     fn commit(&mut self) -> TrieResult<()> {
         let mut trie = TrieFactory::from_existing(self.db.as_hashdb_mut(), &mut self.root)?;
         self.asset_scheme.commit(&mut trie)?;
         self.asset.commit(&mut trie)?;
         Ok(())
     }
-
-    fn clear(&mut self) {
-        self.asset_scheme.clear();
-        self.asset.clear();
-    }
-}
-
-impl<B> fmt::Debug for ShardLevelState<B> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "asset_scheme: {:?} asset: {:?}", self.asset_scheme, self.asset)
-    }
 }
 
 const TRANSACTION_CHECKPOINT: CheckpointId = 456;
 
-impl<B: AsHashDB> ShardState for ShardLevelState<B> {
+impl ShardState for ShardLevelState {
     fn apply<C: ChainTimeInfo>(
         &mut self,
         transaction: &InnerTransaction,
@@ -622,17 +603,16 @@ impl<B: AsHashDB> ShardState for ShardLevelState<B> {
 
 #[cfg(test)]
 mod tests {
-    use super::super::super::tests::helpers::{get_temp_state_db, get_test_client};
-    use super::super::super::StateDB;
-    use ctypes::transaction::{AssetOutPoint, AssetTransferInput, AssetTransferOutput, Error as TransactionError};
+    use ctypes::transaction::AssetOutPoint;
 
+    use super::super::super::tests::helpers::{get_temp_state_db, get_test_client};
     use super::*;
 
     fn address() -> Address {
         Address::random()
     }
 
-    fn get_temp_shard_state(shard_id: ShardId) -> ShardLevelState<StateDB> {
+    fn get_temp_shard_state(shard_id: ShardId) -> ShardLevelState {
         let state_db = get_temp_state_db();
         ShardLevelState::try_new(shard_id, state_db).unwrap()
     }

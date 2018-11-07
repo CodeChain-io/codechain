@@ -22,7 +22,7 @@ mod stratum;
 mod work_notify;
 
 use ckey::{Address, Password, PlatformAddress};
-use cstate::TopStateInfo;
+use cstate::TopStateView;
 use ctypes::parcel::IncompleteParcel;
 use cvm::ChainTimeInfo;
 use primitives::{Bytes, H256, U256};
@@ -41,7 +41,7 @@ use super::parcel::{SignedParcel, UnverifiedParcel};
 /// Miner client API
 pub trait MinerService: Send + Sync {
     /// Type representing chain state
-    type State: TopStateInfo + 'static;
+    type State: TopStateView + 'static;
 
     /// Returns miner's status.
     fn status(&self) -> MinerStatus;
