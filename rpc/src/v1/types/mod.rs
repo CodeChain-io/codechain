@@ -24,7 +24,7 @@ mod work;
 
 use primitives::{H256, U256};
 
-pub use self::action::{Action, ShardChange};
+pub use self::action::Action;
 pub use self::block::Block;
 pub use self::block::BlockNumberAndHash;
 pub use self::bytes::Bytes;

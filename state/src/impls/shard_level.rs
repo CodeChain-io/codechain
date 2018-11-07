@@ -190,8 +190,8 @@ impl<B: Backend + ShardBackend> ShardLevelState<B> {
             }
         }
 
-        let mut deleted_asset = Vec::with_capacity(inputs.len());
-        for input in inputs {
+        let mut deleted_asset = Vec::with_capacity(inputs.len() + burns.len());
+        for input in inputs.iter().chain(burns) {
             let (_, asset_address) = self.check_input_asset(input, sender)?;
             self.kill_asset(&asset_address);
             deleted_asset.push((asset_address, input.prev_out.amount));
@@ -848,6 +848,183 @@ mod tests {
         let asset2_address = OwnedAssetAddress::new(transfer_hash, 2, shard_id);
         let asset2 = state.asset(&asset2_address);
         assert_eq!(Ok(Some(OwnedAsset::new(asset_type, random_lock_script_hash, vec![], 15.into()))), asset2);
+    }
+
+    #[test]
+    fn mint_and_burn() {
+        let network_id = "tc".into();
+        let shard_id = 0;
+        let sender = address();
+        let mut state = get_temp_shard_state(shard_id);
+
+        let metadata = "metadata".to_string();
+        let lock_script_hash = H160::from("ca5d3fa0a6887285ef6aa85cb12960a2b6706e00");
+        let registrar = None;
+        let amount = 30.into();
+        let mint = Transaction::AssetMint {
+            network_id,
+            shard_id,
+            metadata: metadata.clone(),
+            output: AssetMintOutput {
+                lock_script_hash,
+                parameters: vec![],
+                amount: Some(amount),
+            },
+            registrar,
+        };
+        let mint_hash = mint.hash();
+
+        let network_id = "tc".into();
+
+        assert_eq!(Ok(Invoice::Success), state.apply(&mint, &sender, &[sender], &get_test_client()));
+
+        let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id);
+        let asset_scheme = state.asset_scheme(&asset_scheme_address);
+        let asset_type = asset_scheme_address.into();
+
+        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), amount, registrar))), asset_scheme);
+
+        let asset_address = OwnedAssetAddress::new(mint_hash, 0, shard_id);
+        let asset = state.asset(&asset_address);
+        assert_eq!(Ok(Some(OwnedAsset::new(asset_type, lock_script_hash, vec![], amount))), asset);
+
+        let burn = Transaction::AssetTransfer {
+            network_id,
+            burns: vec![AssetTransferInput {
+                prev_out: AssetOutPoint {
+                    transaction_hash: mint_hash,
+                    index: 0,
+                    asset_type,
+                    amount,
+                },
+                timelock: None,
+                lock_script: vec![0x01],
+                unlock_script: vec![],
+            }],
+            inputs: vec![],
+            outputs: vec![],
+        };
+
+        assert_eq!(Ok(Invoice::Success), state.apply(&burn, &sender, &[sender], &get_test_client()));
+
+        let asset_address = OwnedAssetAddress::new(mint_hash, 0, shard_id);
+        let asset_burnt = state.asset(&asset_address);
+        assert_eq!(Ok(None), asset_burnt);
+    }
+
+    #[test]
+    fn mint_and_transfer_and_burn() {
+        let network_id = "tc".into();
+        let shard_id = 0;
+        let sender = address();
+        let mut state = get_temp_shard_state(shard_id);
+
+        let metadata = "metadata".to_string();
+        let lock_script_hash = H160::from("b042ad154a3359d276835c903587ebafefea22af");
+        let registrar = None;
+        let amount = 30.into();
+        let mint = Transaction::AssetMint {
+            network_id,
+            shard_id,
+            metadata: metadata.clone(),
+            output: AssetMintOutput {
+                lock_script_hash,
+                parameters: vec![],
+                amount: Some(amount),
+            },
+            registrar,
+        };
+        let mint_hash = mint.hash();
+
+        let network_id = "tc".into();
+
+        assert_eq!(Ok(Invoice::Success), state.apply(&mint, &sender, &[sender], &get_test_client()));
+
+        let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id);
+        let asset_scheme = state.asset_scheme(&asset_scheme_address);
+        let asset_type = asset_scheme_address.into();
+
+        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), amount, registrar))), asset_scheme);
+
+        let asset_address = OwnedAssetAddress::new(mint_hash, 0, shard_id);
+        let asset = state.asset(&asset_address);
+        assert_eq!(Ok(Some(OwnedAsset::new(asset_type, lock_script_hash, vec![], amount))), asset);
+
+        let lock_script_hash_burn = H160::from("ca5d3fa0a6887285ef6aa85cb12960a2b6706e00");
+        let random_lock_script_hash = H160::random();
+        let transfer = Transaction::AssetTransfer {
+            network_id,
+            burns: vec![],
+            inputs: vec![AssetTransferInput {
+                prev_out: AssetOutPoint {
+                    transaction_hash: mint_hash,
+                    index: 0,
+                    asset_type,
+                    amount: 30.into(),
+                },
+                timelock: None,
+                lock_script: vec![0x30, 0x01],
+                unlock_script: vec![],
+            }],
+            outputs: vec![
+                AssetTransferOutput {
+                    lock_script_hash,
+                    parameters: vec![vec![1]],
+                    asset_type,
+                    amount: 10.into(),
+                },
+                AssetTransferOutput {
+                    lock_script_hash: lock_script_hash_burn,
+                    parameters: vec![],
+                    asset_type,
+                    amount: 5.into(),
+                },
+                AssetTransferOutput {
+                    lock_script_hash: random_lock_script_hash,
+                    parameters: vec![],
+                    asset_type,
+                    amount: 15.into(),
+                },
+            ],
+        };
+        let transfer_hash = transfer.hash();
+
+        assert_eq!(Ok(Invoice::Success), state.apply(&transfer, &sender, &[sender], &get_test_client()));
+
+        let asset0_address = OwnedAssetAddress::new(transfer_hash, 0, shard_id);
+        let asset0 = state.asset(&asset0_address);
+        assert_eq!(Ok(Some(OwnedAsset::new(asset_type, lock_script_hash, vec![vec![1]], 10.into()))), asset0);
+
+        let asset1_address = OwnedAssetAddress::new(transfer_hash, 1, shard_id);
+        let asset1 = state.asset(&asset1_address);
+        assert_eq!(Ok(Some(OwnedAsset::new(asset_type, lock_script_hash_burn, vec![], 5.into()))), asset1);
+
+        let asset2_address = OwnedAssetAddress::new(transfer_hash, 2, shard_id);
+        let asset2 = state.asset(&asset2_address);
+        assert_eq!(Ok(Some(OwnedAsset::new(asset_type, random_lock_script_hash, vec![], 15.into()))), asset2);
+
+        let burn = Transaction::AssetTransfer {
+            network_id,
+            burns: vec![AssetTransferInput {
+                prev_out: AssetOutPoint {
+                    transaction_hash: transfer_hash,
+                    index: 1,
+                    asset_type,
+                    amount: 5.into(),
+                },
+                timelock: None,
+                lock_script: vec![0x01],
+                unlock_script: vec![],
+            }],
+            inputs: vec![],
+            outputs: vec![],
+        };
+
+        assert_eq!(Ok(Invoice::Success), state.apply(&burn, &sender, &[sender], &get_test_client()));
+
+        let asset1_address = OwnedAssetAddress::new(transfer_hash, 1, shard_id);
+        let asset1_burnt = state.asset(&asset1_address);
+        assert_eq!(Ok(None), asset1_burnt);
     }
 
     #[test]

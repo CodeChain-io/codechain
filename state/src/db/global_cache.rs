@@ -46,9 +46,11 @@ pub struct GlobalCache<Item: CacheableItem> {
     // `new`.
     cache: LruCache<Item::Address, Option<Item>>,
     /// Information on the modifications in recently committed blocks; specifically which addresses
-    /// changed in which block. Ordered by block number.
+    /// changed in which block. Ordered by block number in descending order.
     modifications: VecDeque<BlockChanges<Item>>,
 }
+
+const STATE_CACHE_BLOCKS: usize = 12;
 
 impl<Item: CacheableItem> GlobalCache<Item> {
     pub fn new(capacity: usize) -> Self {
@@ -59,9 +61,7 @@ impl<Item: CacheableItem> GlobalCache<Item> {
     }
 
     pub fn keep_size(&mut self) {
-        const STATE_CACHE_BLOCKS: usize = 12;
-
-        if self.modifications.len() == STATE_CACHE_BLOCKS {
+        if self.modifications.len() >= STATE_CACHE_BLOCKS {
             self.modifications.pop_back();
         }
     }
@@ -178,4 +178,56 @@ fn is_global_cache_enabled() -> bool {
         };
     }
     *CACHE_ENABLED
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[derive(Debug, Clone, Default, RlpEncodableWrapper, RlpDecodableWrapper)]
+    struct Item(usize);
+    impl CacheableItem for Item {
+        type Address = [u8; 1];
+        fn is_null(&self) -> bool {
+            self.0 == 0
+        }
+    }
+
+    #[test]
+    fn modifications_are_saved_in_reverse_order() {
+        let mut cache = GlobalCache::<Item>::new(10);
+        cache.save(BlockChanges::new(5, Default::default(), Default::default(), Default::default(), true));
+        cache.save(BlockChanges::new(7, Default::default(), Default::default(), Default::default(), true));
+        cache.save(BlockChanges::new(6, Default::default(), Default::default(), Default::default(), true));
+        cache.save(BlockChanges::new(11, Default::default(), Default::default(), Default::default(), true));
+        cache.save(BlockChanges::new(9, Default::default(), Default::default(), Default::default(), true));
+        cache.save(BlockChanges::new(1, Default::default(), Default::default(), Default::default(), true));
+        cache.save(BlockChanges::new(3, Default::default(), Default::default(), Default::default(), true));
+
+        let mut iter = cache.modifications.into_iter();
+        assert_eq!(Some(11), iter.next().map(|b| *b.number()));
+        assert_eq!(Some(9), iter.next().map(|b| *b.number()));
+        assert_eq!(Some(7), iter.next().map(|b| *b.number()));
+        assert_eq!(Some(6), iter.next().map(|b| *b.number()));
+        assert_eq!(Some(5), iter.next().map(|b| *b.number()));
+        assert_eq!(Some(3), iter.next().map(|b| *b.number()));
+        assert_eq!(Some(1), iter.next().map(|b| *b.number()));
+    }
+
+    #[test]
+    fn the_oldest_modifications_are_removed() {
+        let mut cache = GlobalCache::<Item>::new(10);
+        for i in 0..(STATE_CACHE_BLOCKS + 1) {
+            cache.save(BlockChanges::new(i as u64, Default::default(), Default::default(), Default::default(), true));
+        }
+
+        assert_eq!(STATE_CACHE_BLOCKS + 1, cache.modifications.len());
+        cache.keep_size();
+        assert_eq!(STATE_CACHE_BLOCKS, cache.modifications.len());
+
+        let mut iter = cache.modifications.into_iter().rev();
+        for i in 1..(STATE_CACHE_BLOCKS + 1) {
+            assert_eq!(Some(i as u64), iter.next().map(|b| *b.number()));
+        }
+    }
 }

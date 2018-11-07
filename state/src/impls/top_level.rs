@@ -42,7 +42,7 @@ use ccrypto::BLAKE_NULL_RLP;
 use ckey::{public_to_address, Address, NetworkId, Public};
 use cmerkle::{Result as TrieResult, TrieError, TrieFactory};
 use ctypes::invoice::Invoice;
-use ctypes::parcel::{Action, Error as ParcelError, Parcel, ShardChange};
+use ctypes::parcel::{Action, Error as ParcelError, Parcel};
 use ctypes::transaction::Transaction;
 use ctypes::ShardId;
 use cvm::ChainTimeInfo;
@@ -420,20 +420,7 @@ impl TopLevelState {
         match action {
             Action::AssetTransaction(transaction) => {
                 debug_assert_eq!(network_id, &transaction.network_id());
-
-                let shard_ids = transaction.related_shards();
-
-                let first_invoice =
-                    self.apply_transactions_with_check(&[transaction.clone()], shard_ids[0], fee_payer, client)?;
-
-                for shard_id in shard_ids.iter().skip(1) {
-                    let invoice =
-                        self.apply_transactions_with_check(&[transaction.clone()], *shard_id, fee_payer, client)?;
-                    if invoice != first_invoice {
-                        return Err(ParcelError::InconsistentShardOutcomes.into())
-                    }
-                }
-                Ok(first_invoice)
+                Ok(self.apply_transaction(transaction, fee_payer, client)?)
             }
             Action::Payment {
                 receiver,
@@ -484,66 +471,49 @@ impl TopLevelState {
         }
     }
 
-    fn apply_transactions_with_check<C: ChainTimeInfo>(
+    pub fn apply_transaction<C: ChainTimeInfo>(
         &mut self,
-        transactions: &[Transaction],
+        transaction: &Transaction,
+        sender: &Address,
+        client: &C,
+    ) -> StateResult<Invoice> {
+        let shard_ids = transaction.related_shards();
+
+        let first_invoice = self.apply_transaction_for_shard(transaction, shard_ids[0], sender, client)?;
+
+        for shard_id in shard_ids.iter().skip(1) {
+            let invoice = self.apply_transaction_for_shard(transaction, *shard_id, sender, client)?;
+            if invoice != first_invoice {
+                return Err(ParcelError::InconsistentShardOutcomes.into())
+            }
+        }
+        Ok(first_invoice)
+    }
+
+    fn apply_transaction_for_shard<C: ChainTimeInfo>(
+        &mut self,
+        transaction: &Transaction,
         shard_id: ShardId,
         sender: &Address,
         client: &C,
     ) -> StateResult<Invoice> {
         let shard_root = self.shard_root(shard_id)?.ok_or_else(|| ParcelError::InvalidShardId(shard_id))?;
-
-        let (new_shard_root, db, invoice) =
-            self.apply_transactions_internal(transactions, shard_id, shard_root, sender, client)?;
-
-        self.db = db;
-
-        self.set_shard_root(shard_id, &shard_root, &new_shard_root)?;
-        Ok(invoice)
-    }
-
-    pub fn apply_transactions<C: ChainTimeInfo>(
-        &self,
-        transactions: &[Transaction],
-        shard_id: ShardId,
-        sender: &Address,
-        client: &C,
-    ) -> StateResult<ShardChange> {
-        let pre_root = self.shard_root(shard_id)?.ok_or_else(|| ParcelError::InvalidShardId(shard_id))?;
-        let (post_root, ..) = self.apply_transactions_internal(transactions, shard_id, pre_root, sender, client)?;
-        Ok(ShardChange {
-            shard_id,
-            pre_root,
-            post_root,
-        })
-    }
-
-    fn apply_transactions_internal<C: ChainTimeInfo>(
-        &self,
-        transactions: &[Transaction],
-        shard_id: ShardId,
-        shard_root: H256,
-        sender: &Address,
-        client: &C,
-    ) -> StateResult<(H256, StateDB, Invoice)> {
         let shard_users = self.shard_users(shard_id)?.expect("Shard must exist");
 
         // FIXME: Make it mutable borrow db instead of cloning.
         let mut shard_level_state =
             ShardLevelState::from_existing(shard_id, self.db.clone_with_mutable_global_cache(), shard_root)?;
 
-        for t in transactions {
-            match shard_level_state.apply(t, sender, &shard_users, client)? {
-                Invoice::Success => {}
-                err @ Invoice::Failure(_) => {
-                    let (_, db) = shard_level_state.drop();
-                    return Ok((shard_root, db, err))
-                }
-            }
-        }
-
+        let invoice = shard_level_state.apply(transaction, sender, &shard_users, client)?;
         let (new_root, db) = shard_level_state.drop();
-        Ok((new_root, db, Invoice::Success))
+        match &invoice {
+            Invoice::Success => {
+                self.set_shard_root(shard_id, &shard_root, &new_root)?;
+                self.db = db;
+            }
+            Invoice::Failure(_) => {}
+        };
+        Ok(invoice)
     }
 
     fn create_shard_level_state(&mut self, owners: Vec<Address>, users: Vec<Address>) -> StateResult<()> {
