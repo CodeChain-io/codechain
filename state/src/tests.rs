@@ -15,7 +15,10 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 pub mod helpers {
+    use std::sync::Arc;
+
     use cvm::ChainTimeInfo;
+    use parking_lot::RwLock;
     use primitives::H256;
 
     use super::super::impls::TopLevelState;
@@ -47,7 +50,7 @@ pub mod helpers {
 
     pub fn get_temp_state() -> TopLevelState {
         let journal_db = get_temp_state_db();
-        TopLevelState::new(journal_db)
+        TopLevelState::new(Arc::new(RwLock::new(journal_db)))
     }
 
     pub fn get_test_client() -> TestChainTimeInfoClient {

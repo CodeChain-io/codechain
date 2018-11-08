@@ -30,7 +30,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
-use std::clone::Clone;
+use std::sync::atomic::{AtomicBool, Ordering, ATOMIC_BOOL_INIT};
 use std::sync::Arc;
 
 use hashdb::{AsHashDB, HashDB};
@@ -49,9 +49,12 @@ pub struct StateDB {
     custom_handlers: Vec<Arc<ActionHandler>>,
 }
 
+static DB_CREATED: AtomicBool = ATOMIC_BOOL_INIT;
+
 impl StateDB {
     /// Create a new instance wrapping `JournalDB`
     pub fn new(db: Box<JournalDB>, custom_handlers: Vec<Arc<ActionHandler>>) -> StateDB {
+        assert!(!DB_CREATED.swap(true, Ordering::SeqCst), "Only one StateDB must exist.");
         StateDB {
             db,
             custom_handlers,
@@ -61,7 +64,10 @@ impl StateDB {
     pub fn new_with_memorydb(custom_handlers: Vec<Arc<ActionHandler>>) -> Self {
         let memorydb = Arc::new(kvdb_memorydb::create(0));
         let db = journaldb::new(memorydb, Algorithm::Archive, None);
-        StateDB::new(db, custom_handlers)
+        StateDB {
+            db,
+            custom_handlers,
+        }
     }
 
     /// Journal all recent operations under the given era and ID.
@@ -104,14 +110,5 @@ impl AsHashDB for StateDB {
     /// Conversion method to interpret self as mutable `HashDB` reference
     fn as_hashdb_mut(&mut self) -> &mut HashDB {
         self.db.as_hashdb_mut()
-    }
-}
-
-impl Clone for StateDB {
-    fn clone(&self) -> Self {
-        Self {
-            db: self.db.boxed_clone(),
-            custom_handlers: self.custom_handlers.clone(),
-        }
     }
 }

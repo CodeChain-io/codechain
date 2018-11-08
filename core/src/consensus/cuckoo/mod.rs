@@ -184,15 +184,15 @@ impl ConsensusEngine<CodeChainMachine> for Cuckoo {
 
 #[cfg(test)]
 mod tests {
-    use primitives::U256;
+    use std::sync::Arc;
 
-    use ctypes::machine::WithBalances;
+    use parking_lot::RwLock;
 
-    use super::super::super::block::{IsBlock, OpenBlock};
-    use super::super::super::header::Header;
+    use super::super::super::block::OpenBlock;
     use super::super::super::scheme::Scheme;
     use super::super::super::tests::helpers::get_temp_state_db;
-    use super::EngineType;
+
+    use super::*;
 
     #[test]
     fn has_valid_metadata() {
@@ -246,7 +246,7 @@ mod tests {
     fn on_close_block() {
         let scheme = Scheme::new_test_cuckoo();
         let engine = &*scheme.engine;
-        let db = scheme.ensure_genesis_state(get_temp_state_db()).unwrap();
+        let db = Arc::new(RwLock::new(scheme.ensure_genesis_state(get_temp_state_db()).unwrap()));
         let header = Header::default();
         let block = OpenBlock::new(engine, db, &header, Default::default(), vec![], false).unwrap();
         let mut executed_block = block.block().clone();
