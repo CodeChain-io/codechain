@@ -18,6 +18,8 @@ use std::env;
 use std::thread;
 use time;
 
+use super::slogger;
+use super::structured_logger;
 use atty;
 use colored::Colorize;
 use env_logger::filter::{Builder as FilterBuilder, Filter};
@@ -86,6 +88,13 @@ impl Log for Logger {
             let log_target = record.target();
             let log_message = record.args();
             eprintln!("#{} {} {} {} {}  {}", instance_id, timestamp, thread_name, log_level, log_target, log_message);
+
+            slogger.log(structured_logger::Log {
+                level: log_level.to_string(),
+                target: log_target.to_string(),
+                message: log_message.to_string(),
+                timestamp: time::now().rfc3339().to_string(),
+            });
         }
     }
 
