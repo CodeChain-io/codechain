@@ -37,7 +37,6 @@
 
 use std::cell::RefMut;
 
-use ccrypto::BLAKE_NULL_RLP;
 use ckey::{public_to_address, Address, NetworkId, Public};
 use cmerkle::{Result as TrieResult, TrieError, TrieFactory};
 use ctypes::invoice::Invoice;
@@ -120,12 +119,9 @@ impl TopStateView for TopLevelState {
         self.shard.get(&shard_address, db)
     }
 
-    fn shard_state(&self, shard_id: ShardId) -> TrieResult<Option<Box<ShardStateView>>> {
-        // FIXME: Make it mutable borrow db instead of cloning.
+    fn shard_state<'db>(&'db self, shard_id: ShardId) -> TrieResult<Option<Box<ShardStateView + 'db>>> {
         match self.shard_root(shard_id)? {
-            Some(shard_root) => {
-                Ok(Some(Box::new(ShardLevelState::from_existing(shard_id, self.db.clone(), shard_root)?)))
-            }
+            Some(shard_root) => Ok(Some(Box::new(ShardLevelState::read_only(&self.db, shard_root)?))),
             None => Ok(None),
         }
     }
@@ -133,6 +129,18 @@ impl TopStateView for TopLevelState {
     fn action_data(&self, key: &H256) -> TrieResult<Option<ActionData>> {
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
         Ok(self.action_data.get(key, db)?.map(Into::into))
+    }
+}
+
+impl StateWithCache for TopLevelState {
+    fn commit(&mut self) -> TrieResult<()> {
+        let mut trie = TrieFactory::from_existing(self.db.as_hashdb_mut(), &mut self.root)?;
+        self.account.commit(&mut trie)?;
+        self.regular_account.commit(&mut trie)?;
+        self.metadata.commit(&mut trie)?;
+        self.shard.commit(&mut trie)?;
+        self.action_data.commit(&mut trie)?;
+        Ok(())
     }
 }
 
@@ -172,18 +180,6 @@ impl StateWithCheckpoint for TopLevelState {
         self.metadata.revert_to_checkpoint();
         self.shard.revert_to_checkpoint();
         self.action_data.revert_to_checkpoint();
-    }
-}
-
-impl StateWithCache for TopLevelState {
-    fn commit(&mut self) -> TrieResult<()> {
-        let mut trie = TrieFactory::from_existing(self.db.as_hashdb_mut(), &mut self.root)?;
-        self.account.commit(&mut trie)?;
-        self.regular_account.commit(&mut trie)?;
-        self.metadata.commit(&mut trie)?;
-        self.shard.commit(&mut trie)?;
-        self.action_data.commit(&mut trie)?;
-        Ok(())
     }
 }
 
@@ -424,11 +420,8 @@ impl TopLevelState {
         sender: &Address,
         client: &C,
     ) -> StateResult<Invoice> {
-        let shard_root = self.shard_root(shard_id)?.ok_or_else(|| ParcelError::InvalidShardId(shard_id))?;
+        let mut shard_root = self.shard_root(shard_id)?.ok_or_else(|| ParcelError::InvalidShardId(shard_id))?;
         let shard_users = self.shard_users(shard_id)?.expect("Shard must exist");
-
-        // FIXME: Make it mutable borrow db instead of cloning.
-        let mut shard_level_state = ShardLevelState::from_existing(shard_id, self.db.clone(), shard_root)?;
 
         let balance = self.balance(sender)?;
         if amount > balance {
@@ -451,17 +444,17 @@ impl TopLevelState {
             },
         };
 
-        let invoice = shard_level_state.apply(&transaction, sender, &shard_users, client)?;
-        let (new_root, db) = shard_level_state.drop();
-        match &invoice {
-            Invoice::Success => {
-                self.set_shard_root(shard_id, &shard_root, &new_root)?;
-                self.db = db;
-
-                self.sub_balance(sender, &amount)?;
-            }
-            Invoice::Failure(_) => {}
+        let invoice = {
+            let mut shard_level_state = ShardLevelState::from_existing(shard_id, &mut self.db, &mut shard_root)?;
+            let invoice = shard_level_state.apply(&transaction, sender, &shard_users, client)?;
+            shard_level_state.commit()?; // FIXME: Remove early commit.
+            invoice
         };
+
+        if invoice == Invoice::Success {
+            self.set_shard_root(shard_id, shard_root)?;
+            self.sub_balance(sender, &amount)?;
+        }
         Ok(invoice)
     }
 
@@ -496,43 +489,35 @@ impl TopLevelState {
         sender: &Address,
         client: &C,
     ) -> StateResult<Invoice> {
-        let shard_root = self.shard_root(shard_id)?.ok_or_else(|| ParcelError::InvalidShardId(shard_id))?;
+        let mut shard_root = self.shard_root(shard_id)?.ok_or_else(|| ParcelError::InvalidShardId(shard_id))?;
         let shard_users = self.shard_users(shard_id)?.expect("Shard must exist");
 
-        // FIXME: Make it mutable borrow db instead of cloning.
-        let mut shard_level_state = ShardLevelState::from_existing(shard_id, self.db.clone(), shard_root)?;
-
-        let invoice = shard_level_state.apply(&transaction.clone().into(), sender, &shard_users, client)?;
-        let (new_root, db) = shard_level_state.drop();
-        match &invoice {
-            Invoice::Success => {
-                self.set_shard_root(shard_id, &shard_root, &new_root)?;
-                self.db = db;
-            }
-            Invoice::Failure(_) => {}
+        let invoice = {
+            let mut shard_level_state = ShardLevelState::from_existing(shard_id, &mut self.db, &mut shard_root)?;
+            let invoice = shard_level_state.apply(&transaction.clone().into(), sender, &shard_users, client)?;
+            shard_level_state.commit()?; // FIXME: Remove early commit.
+            invoice
         };
+        if invoice == Invoice::Success {
+            self.set_shard_root(shard_id, shard_root)?;
+        }
         Ok(invoice)
     }
 
     fn create_shard_level_state(&mut self, owners: Vec<Address>, users: Vec<Address>) -> StateResult<()> {
-        let (shard_id, shard_root, db) = {
+        let mut shard_root = H256::zero();
+        let shard_id = {
             let mut metadata = self.get_metadata_mut()?;
-            let shard_id = metadata.increase_number_of_shards();
-
-            let mut shard_level_state = ShardLevelState::try_new(shard_id, self.db.clone())?;
-
-            let (shard_root, db) = shard_level_state.drop();
-
-            (shard_id, shard_root, db)
+            metadata.increase_number_of_shards()
         };
-
         {
-            self.db = db;
-        }
+            let mut shard_level_state = ShardLevelState::try_new(shard_id, &mut self.db, &mut shard_root)?;
+            shard_level_state.commit()?; // FIXME: Remove early commit.
+        };
 
         ctrace!(STATE, "shard created({}, {:?})\nowners: {:?}, users: {:?}", shard_id, shard_root, owners, users);
 
-        self.set_shard_root(shard_id, &BLAKE_NULL_RLP, &shard_root)?;
+        self.set_shard_root(shard_id, shard_root)?;
         self.set_shard_owners(shard_id, owners)?;
         self.set_shard_users(shard_id, users)?;
         Ok(())
@@ -704,10 +689,9 @@ impl TopState for TopLevelState {
         self.set_shard_users(shard_id, users.to_vec())
     }
 
-    fn set_shard_root(&mut self, shard_id: ShardId, old_root: &H256, new_root: &H256) -> StateResult<()> {
+    fn set_shard_root(&mut self, shard_id: ShardId, new_root: H256) -> StateResult<()> {
         let mut shard = self.get_shard_mut(shard_id)?;
-        assert_eq!(old_root, shard.root());
-        shard.set_root(*new_root);
+        shard.set_root(new_root);
         Ok(())
     }
 

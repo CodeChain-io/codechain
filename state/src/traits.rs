@@ -93,7 +93,7 @@ pub trait TopStateView {
     }
 
     fn shard(&self, shard_id: ShardId) -> TrieResult<Option<Shard>>;
-    fn shard_state(&self, shard_id: ShardId) -> TrieResult<Option<Box<ShardStateView>>>;
+    fn shard_state<'db>(&'db self, shard_id: ShardId) -> TrieResult<Option<Box<ShardStateView + 'db>>>;
 
     fn shard_root(&self, shard_id: ShardId) -> TrieResult<Option<H256>> {
         Ok(self.shard(shard_id)?.map(|shard| *shard.root()))
@@ -131,8 +131,6 @@ pub trait TopStateView {
 }
 
 pub trait ShardStateView {
-    fn root(&self) -> &H256;
-
     /// Get the asset scheme.
     fn asset_scheme(&self, a: &AssetSchemeAddress) -> TrieResult<Option<AssetScheme>>;
     /// Get the asset.
@@ -171,7 +169,7 @@ pub trait TopState {
     fn change_shard_owners(&mut self, shard_id: ShardId, owners: &[Address], sender: &Address) -> StateResult<()>;
     fn change_shard_users(&mut self, shard_id: ShardId, users: &[Address], sender: &Address) -> StateResult<()>;
 
-    fn set_shard_root(&mut self, shard_id: ShardId, old_root: &H256, new_root: &H256) -> StateResult<()>;
+    fn set_shard_root(&mut self, shard_id: ShardId, new_root: H256) -> StateResult<()>;
     fn set_shard_owners(&mut self, shard_id: ShardId, new_owners: Vec<Address>) -> StateResult<()>;
     fn set_shard_users(&mut self, shard_id: ShardId, new_users: Vec<Address>) -> StateResult<()>;
 
