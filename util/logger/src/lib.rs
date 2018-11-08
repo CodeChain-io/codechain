@@ -17,11 +17,17 @@
 extern crate atty;
 extern crate colored;
 extern crate env_logger;
+extern crate lazy_static;
 extern crate log;
+extern crate parking_lot;
+extern crate serde;
+extern crate serde_derive;
+extern crate serde_json;
 extern crate time;
 
 mod logger;
 mod macros;
+mod structured_logger;
 
 use log::SetLoggerError;
 
@@ -34,4 +40,12 @@ pub fn init(config: &LoggerConfig) -> Result<(), SetLoggerError> {
     let logger = Logger::new(config);
     log::set_max_level(logger.filter());
     log::set_boxed_logger(Box::new(logger))
+}
+
+use structured_logger::StructuredLogger;
+
+use lazy_static::lazy_static;
+
+lazy_static! {
+    pub static ref slogger: StructuredLogger = StructuredLogger::create();
 }
