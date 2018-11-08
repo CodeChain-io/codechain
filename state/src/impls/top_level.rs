@@ -36,6 +36,7 @@
 //! or rolled back.
 
 use std::cell::RefMut;
+use std::sync::Arc;
 
 use ckey::{public_to_address, Address, NetworkId, Public};
 use cmerkle::{Result as TrieResult, TrieError, TrieFactory};
@@ -45,6 +46,7 @@ use ctypes::transaction::{AssetWrapCCCOutput, InnerTransaction, Transaction};
 use ctypes::ShardId;
 use cvm::ChainTimeInfo;
 use hashdb::AsHashDB;
+use parking_lot::RwLock;
 use primitives::{Bytes, H160, H256, U256};
 
 use super::super::checkpoint::{CheckpointId, StateWithCheckpoint};
@@ -78,7 +80,7 @@ use super::super::{
 /// checkpoint can be discarded with `discard_checkpoint`. All of the orignal
 /// backed-up values are moved into a parent checkpoint (if any).
 pub struct TopLevelState {
-    db: StateDB,
+    db: Arc<RwLock<StateDB>>,
     root: H256,
     account: LocalCache<Account>,
     regular_account: LocalCache<RegularAccount>,
@@ -97,44 +99,50 @@ impl TopStateView for TopLevelState {
     /// First searches for account in the local, then the shared cache.
     /// Populates local cache if nothing found.
     fn account(&self, a: &Address) -> TrieResult<Option<Account>> {
-        let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        self.account.get(&a, db)
+        let db = self.db.read();
+        let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
+        self.account.get(&a, trie)
     }
 
     fn regular_account_by_address(&self, a: &Address) -> TrieResult<Option<RegularAccount>> {
         let a = RegularAccountAddress::from_address(a);
-        let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        Ok(self.regular_account.get(&a, db)?)
+        let db = self.db.read();
+        let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
+        Ok(self.regular_account.get(&a, trie)?)
     }
 
     fn metadata(&self) -> TrieResult<Option<Metadata>> {
-        let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
+        let db = self.db.read();
+        let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
         let address = MetadataAddress::new();
-        self.metadata.get(&address, db)
+        self.metadata.get(&address, trie)
     }
 
     fn shard(&self, shard_id: ShardId) -> TrieResult<Option<Shard>> {
-        let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
+        let db = self.db.read();
+        let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
         let shard_address = ShardAddress::new(shard_id);
-        self.shard.get(&shard_address, db)
+        self.shard.get(&shard_address, trie)
     }
 
     fn shard_state<'db>(&'db self, shard_id: ShardId) -> TrieResult<Option<Box<ShardStateView + 'db>>> {
         match self.shard_root(shard_id)? {
-            Some(shard_root) => Ok(Some(Box::new(ShardLevelState::read_only(&self.db, shard_root)?))),
+            Some(shard_root) => Ok(Some(Box::new(ShardLevelState::read_only(&*self.db, shard_root)?))),
             None => Ok(None),
         }
     }
 
     fn action_data(&self, key: &H256) -> TrieResult<Option<ActionData>> {
-        let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        Ok(self.action_data.get(key, db)?.map(Into::into))
+        let db = self.db.read();
+        let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
+        Ok(self.action_data.get(key, trie)?.map(Into::into))
     }
 }
 
 impl StateWithCache for TopLevelState {
     fn commit(&mut self) -> TrieResult<()> {
-        let mut trie = TrieFactory::from_existing(self.db.as_hashdb_mut(), &mut self.root)?;
+        let mut db = self.db.write();
+        let mut trie = TrieFactory::from_existing(db.as_hashdb_mut(), &mut self.root)?;
         self.account.commit(&mut trie)?;
         self.regular_account.commit(&mut trie)?;
         self.metadata.commit(&mut trie)?;
@@ -187,11 +195,14 @@ impl TopLevelState {
     /// Creates new state with empty state root
     /// Used for tests.
     #[cfg(test)]
-    pub fn new(mut db: StateDB) -> Self {
-        let mut root = H256::new();
-
-        // init trie and reset root too null
-        let _ = TrieFactory::create(db.as_hashdb_mut(), &mut root);
+    pub fn new(db: Arc<RwLock<StateDB>>) -> Self {
+        let root = {
+            let mut root = H256::new();
+            // init trie and reset root too null
+            let mut db = db.write();
+            let _ = TrieFactory::create(db.as_hashdb_mut(), &mut root);
+            root
+        };
 
         TopLevelState {
             db,
@@ -206,8 +217,8 @@ impl TopLevelState {
     }
 
     /// Creates new state with existing state root
-    pub fn from_existing(db: StateDB, root: H256) -> Result<Self, TrieError> {
-        if !db.as_hashdb().contains(&root) {
+    pub fn from_existing(db: Arc<RwLock<StateDB>>, root: H256) -> Result<Self, TrieError> {
+        if !db.read().as_hashdb().contains(&root) {
             return Err(TrieError::InvalidStateRoot(root))
         }
 
@@ -223,11 +234,6 @@ impl TopLevelState {
         };
 
         Ok(state)
-    }
-
-    /// Destroy the current object and return root and database.
-    pub fn drop(self) -> (H256, StateDB) {
-        (self.root, self.db)
     }
 
     /// Execute a given parcel, charging parcel fee.
@@ -256,7 +262,6 @@ impl TopLevelState {
             }
             Ok(invoice) => {
                 self.discard_checkpoint(PARCEL_FEE_CHECKPOINT);
-                self.commit()?; // FIXME: Remove early commit.
                 Ok(invoice)
             }
         }
@@ -398,7 +403,7 @@ impl TopLevelState {
                 client,
             )?),
             Action::Custom(bytes) => {
-                let handlers = self.db.custom_handlers().to_vec();
+                let handlers = self.db.read().custom_handlers().to_vec();
                 for h in handlers {
                     if let Some(result) = h.execute(bytes, self) {
                         return result
@@ -445,7 +450,8 @@ impl TopLevelState {
         };
 
         let invoice = {
-            let mut shard_level_state = ShardLevelState::from_existing(shard_id, &mut self.db, &mut shard_root)?;
+            let mut db = self.db.write();
+            let mut shard_level_state = ShardLevelState::from_existing(shard_id, &mut *db, &mut shard_root)?;
             let invoice = shard_level_state.apply(&transaction, sender, &shard_users, client)?;
             shard_level_state.commit()?; // FIXME: Remove early commit.
             invoice
@@ -493,7 +499,8 @@ impl TopLevelState {
         let shard_users = self.shard_users(shard_id)?.expect("Shard must exist");
 
         let invoice = {
-            let mut shard_level_state = ShardLevelState::from_existing(shard_id, &mut self.db, &mut shard_root)?;
+            let mut db = self.db.write();
+            let mut shard_level_state = ShardLevelState::from_existing(shard_id, &mut *db, &mut shard_root)?;
             let invoice = shard_level_state.apply(&transaction.clone().into(), sender, &shard_users, client)?;
             shard_level_state.commit()?; // FIXME: Remove early commit.
             invoice
@@ -511,7 +518,8 @@ impl TopLevelState {
             metadata.increase_number_of_shards()
         };
         {
-            let mut shard_level_state = ShardLevelState::try_new(shard_id, &mut self.db, &mut shard_root)?;
+            let mut db = self.db.write();
+            let mut shard_level_state = ShardLevelState::try_new(shard_id, &mut *db, &mut shard_root)?;
             shard_level_state.commit()?; // FIXME: Remove early commit.
         };
 
@@ -526,31 +534,36 @@ impl TopLevelState {
     fn get_account_mut(&self, a: &Address) -> TrieResult<RefMut<Account>> {
         debug_assert_eq!(Ok(false), self.regular_account_exists_and_not_null_by_address(a));
 
-        let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        self.account.get_mut(&a, db)
+        let db = self.db.read();
+        let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
+        self.account.get_mut(&a, trie)
     }
 
     fn get_regular_account_mut(&self, public: &Public) -> TrieResult<RefMut<RegularAccount>> {
         let regular_account_address = RegularAccountAddress::new(public);
-        let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        self.regular_account.get_mut(&regular_account_address, db)
+        let db = self.db.read();
+        let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
+        self.regular_account.get_mut(&regular_account_address, trie)
     }
 
     fn get_metadata_mut(&self) -> TrieResult<RefMut<Metadata>> {
-        let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
+        let db = self.db.read();
+        let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
         let address = MetadataAddress::new();
-        self.metadata.get_mut(&address, db)
+        self.metadata.get_mut(&address, trie)
     }
 
     fn get_shard_mut(&self, shard_id: ShardId) -> TrieResult<RefMut<Shard>> {
-        let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
+        let db = self.db.read();
+        let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
         let shard_address = ShardAddress::new(shard_id);
-        self.shard.get_mut(&shard_address, db)
+        self.shard.get_mut(&shard_address, trie)
     }
 
     fn get_action_data_mut(&self, key: &H256) -> TrieResult<RefMut<ActionData>> {
-        let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        self.action_data.get_mut(key, db)
+        let db = self.db.read();
+        let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
+        self.action_data.get_mut(key, trie)
     }
 }
 
@@ -755,14 +768,16 @@ mod tests_state {
 
     #[test]
     fn get_from_database() {
+        let db = Arc::new(RwLock::new(get_temp_state_db()));
         let a = Address::default();
-        let (root, db) = {
-            let mut state = get_temp_state();
+        let root = {
+            let mut state = TopLevelState::new(Arc::clone(&db));
             assert_eq!(Ok(()), state.inc_seq(&a));
             assert_eq!(Ok(()), state.add_balance(&a, &U256::from(69u64)));
+            assert_eq!(Ok(69.into()), state.balance(&a));
             assert_eq!(Ok(()), state.commit());
             assert_eq!(Ok(69.into()), state.balance(&a));
-            state.drop()
+            *state.root()
         };
 
         let state = TopLevelState::from_existing(db, root).unwrap();
@@ -789,12 +804,12 @@ mod tests_state {
     #[test]
     fn empty_account_is_not_created() {
         let a = Address::default();
-        let db = get_temp_state_db();
-        let (root, db) = {
-            let mut state = TopLevelState::new(db);
+        let db = Arc::new(RwLock::new(get_temp_state_db()));
+        let root = {
+            let mut state = TopLevelState::new(Arc::clone(&db));
             assert_eq!(Ok(()), state.add_balance(&a, &U256::default())); // create an empty account
             assert_eq!(Ok(()), state.commit());
-            state.drop()
+            *state.root()
         };
         let state = TopLevelState::from_existing(db, root).unwrap();
         assert_eq!(Ok(false), state.account_exists(&a));
@@ -804,24 +819,25 @@ mod tests_state {
     #[test]
     fn remove_from_database() {
         let a = Address::default();
-        let (root, db) = {
-            let mut state = get_temp_state();
+        let db = Arc::new(RwLock::new(get_temp_state_db()));
+        let root = {
+            let mut state = TopLevelState::new(Arc::clone(&db));
             assert_eq!(Ok(()), state.inc_seq(&a));
             assert_eq!(Ok(()), state.commit());
             assert_eq!(Ok(true), state.account_exists(&a));
             assert_eq!(Ok(1.into()), state.seq(&a));
-            state.drop()
+            *state.root()
         };
 
-        let (root, db) = {
-            let mut state = TopLevelState::from_existing(db, root).unwrap();
+        let root = {
+            let mut state = TopLevelState::from_existing(Arc::clone(&db), root).unwrap();
             assert_eq!(Ok(true), state.account_exists(&a));
             assert_eq!(Ok(1.into()), state.seq(&a));
             state.kill_account(&a);
             assert_eq!(Ok(()), state.commit());
             assert_eq!(Ok(false), state.account_exists(&a));
             assert_eq!(Ok(0.into()), state.seq(&a));
-            state.drop()
+            *state.root()
         };
 
         let state = TopLevelState::from_existing(db, root).unwrap();

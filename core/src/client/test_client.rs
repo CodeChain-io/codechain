@@ -286,10 +286,10 @@ impl TestBlockChainClient {
     }
 }
 
-pub fn get_temp_state_db() -> StateDB {
+pub fn get_temp_state_db() -> Arc<RwLock<StateDB>> {
     let db = kvdb_memorydb::create(NUM_COLUMNS.unwrap_or(0));
     let journal_db = journaldb::new(Arc::new(db), journaldb::Algorithm::Archive, COL_STATE);
-    StateDB::new(journal_db, Vec::new())
+    Arc::new(RwLock::new(StateDB::new(journal_db, Vec::new())))
 }
 
 impl ReopenBlock for TestBlockChainClient {

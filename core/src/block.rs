@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::collections::HashSet;
+use std::sync::Arc;
 
 use ccrypto::BLAKE_NULL_RLP;
 use ckey::Address;
@@ -25,6 +26,7 @@ use ctypes::machine::{LiveBlock, Parcels};
 use ctypes::parcel::Error as ParcelError;
 use ctypes::util::unexpected::Mismatch;
 use cvm::ChainTimeInfo;
+use parking_lot::RwLock;
 use primitives::{Bytes, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
@@ -120,7 +122,7 @@ impl<'x> OpenBlock<'x> {
     /// Create a new `OpenBlock` ready for parcel pushing.
     pub fn new(
         engine: &'x CodeChainEngine,
-        db: StateDB,
+        db: Arc<RwLock<StateDB>>,
         parent: &Header,
         author: Address,
         extra_data: Bytes,
@@ -415,31 +417,13 @@ impl IsBlock for SealedBlock {
     }
 }
 
-/// Trait for a object that has a state database.
-pub trait Drain {
-    /// Drop this object and return the underlying database.
-    fn drain(self) -> StateDB;
-}
-
-impl Drain for LockedBlock {
-    fn drain(self) -> StateDB {
-        self.block.state.drop().1
-    }
-}
-
-impl Drain for SealedBlock {
-    fn drain(self) -> StateDB {
-        self.block.state.drop().1
-    }
-}
-
 /// Enact the block given by block header, parcels and uncles
 pub fn enact<C: ChainTimeInfo>(
     header: &Header,
     parcels: &[SignedParcel],
     engine: &CodeChainEngine,
     client: &C,
-    db: StateDB,
+    db: Arc<RwLock<StateDB>>,
     parent: &Header,
     is_epoch_begin: bool,
 ) -> Result<LockedBlock, Error> {
@@ -453,17 +437,16 @@ pub fn enact<C: ChainTimeInfo>(
 
 #[cfg(test)]
 mod tests {
-    use ckey::Address;
-
     use super::super::scheme::Scheme;
     use super::super::tests::helpers::get_temp_state_db;
-    use super::OpenBlock;
+
+    use super::*;
 
     #[test]
     fn open_block() {
         let scheme = Scheme::new_test();
         let genesis_header = scheme.genesis_header();
-        let db = scheme.ensure_genesis_state(get_temp_state_db()).unwrap();
+        let db = Arc::new(RwLock::new(scheme.ensure_genesis_state(get_temp_state_db()).unwrap()));
         let b = OpenBlock::new(&*scheme.engine, db, &genesis_header, Address::default(), vec![], false).unwrap();
         let parent_parcels_root = genesis_header.parcels_root().clone();
         let parent_invoices_root = genesis_header.invoices_root().clone();

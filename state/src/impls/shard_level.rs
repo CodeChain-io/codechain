@@ -29,6 +29,7 @@ use ctypes::util::unexpected::Mismatch;
 use ctypes::ShardId;
 use cvm::{decode, execute, ChainTimeInfo, ScriptResult, VMConfig};
 use hashdb::AsHashDB;
+use parking_lot::RwLock;
 use primitives::{Bytes, H160, H256, U256};
 
 use super::super::checkpoint::{CheckpointId, StateWithCheckpoint};
@@ -79,8 +80,8 @@ impl<'db> ShardLevelState<'db> {
     }
 
     /// Creates immutable shard state
-    pub fn read_only(db: &StateDB, root: H256) -> cmerkle::Result<ReadOnlyShardLevelState> {
-        if !db.as_hashdb().contains(&root) {
+    pub fn read_only(db: &RwLock<StateDB>, root: H256) -> cmerkle::Result<ReadOnlyShardLevelState> {
+        if !db.read().as_hashdb().contains(&root) {
             return Err(TrieError::InvalidStateRoot(root).into())
         }
 
@@ -606,7 +607,7 @@ impl<'db> ShardState for ShardLevelState<'db> {
 }
 
 pub struct ReadOnlyShardLevelState<'db> {
-    db: &'db StateDB,
+    db: &'db RwLock<StateDB>,
     root: H256,
     asset_scheme: LocalCache<AssetScheme>,
     asset: LocalCache<OwnedAsset>,
@@ -614,13 +615,15 @@ pub struct ReadOnlyShardLevelState<'db> {
 
 impl<'db> ShardStateView for ReadOnlyShardLevelState<'db> {
     fn asset_scheme(&self, a: &AssetSchemeAddress) -> cmerkle::Result<Option<AssetScheme>> {
-        let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        self.asset_scheme.get(a, db)
+        let db = self.db.read();
+        let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
+        self.asset_scheme.get(a, trie)
     }
 
     fn asset(&self, a: &OwnedAssetAddress) -> cmerkle::Result<Option<OwnedAsset>> {
-        let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        self.asset.get(a, db)
+        let db = self.db.read();
+        let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
+        self.asset.get(a, trie)
     }
 }
 

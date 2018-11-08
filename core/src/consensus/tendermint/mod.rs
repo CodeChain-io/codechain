@@ -977,20 +977,12 @@ impl NetworkExtension for TendermintExtension {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
-    use ccrypto::blake256;
-    use ckey::Address;
-    use primitives::Bytes;
-
-    use super::super::super::account_provider::AccountProvider;
     use super::super::super::block::{ClosedBlock, IsBlock, OpenBlock};
     use super::super::super::consensus::CodeChainEngine;
-    use super::super::super::error::{BlockError, Error};
-    use super::super::super::header::Header;
     use super::super::super::scheme::Scheme;
     use super::super::super::tests::helpers::get_temp_state_db;
-    use super::{message_info_rlp, EngineError, Height, ProposalSeal, RegularSeal, Seal, Step, View, VoteStep};
+
+    use super::*;
 
     /// Accounts inserted with "0" and "1" are validators. First proposer is "0".
     fn setup() -> (Scheme, Arc<AccountProvider>) {
@@ -1001,9 +993,9 @@ mod tests {
 
     fn propose_default(scheme: &Scheme, proposer: Address) -> (ClosedBlock, Vec<Bytes>) {
         let db = get_temp_state_db();
-        let db = scheme.ensure_genesis_state(db).unwrap();
+        let db = Arc::new(RwLock::new(scheme.ensure_genesis_state(db).unwrap()));
         let genesis_header = scheme.genesis_header();
-        let b = OpenBlock::new(scheme.engine.as_ref(), db.clone(), &genesis_header, proposer, vec![], false).unwrap();
+        let b = OpenBlock::new(scheme.engine.as_ref(), db, &genesis_header, proposer, vec![], false).unwrap();
         let b = b.close(*genesis_header.parcels_root(), *genesis_header.invoices_root()).unwrap();
         if let Seal::Proposal(seal) = scheme.engine.generate_seal(b.block(), &genesis_header) {
             (b, seal)

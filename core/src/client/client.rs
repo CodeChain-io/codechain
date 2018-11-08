@@ -37,7 +37,7 @@ use parking_lot::{Mutex, RwLock};
 use primitives::{Bytes, H256, U256};
 use rlp::{Encodable, UntrustedRlp};
 
-use super::super::block::{enact, ClosedBlock, Drain, IsBlock, LockedBlock, OpenBlock, SealedBlock};
+use super::super::block::{enact, ClosedBlock, IsBlock, LockedBlock, OpenBlock, SealedBlock};
 use super::super::blockchain::{
     BlockChain, BlockProvider, BodyProvider, HeaderProvider, ImportRoute, InvoiceProvider, ParcelAddress,
     TransactionAddress,
@@ -74,7 +74,7 @@ pub struct Client {
     /// Client uses this to store blocks, traces, etc.
     db: RwLock<Arc<KeyValueDB>>,
 
-    state_db: RwLock<StateDB>,
+    state_db: Arc<RwLock<StateDB>>,
 
     /// List of actors to be notified on certain chain events
     notify: RwLock<Vec<Weak<ChainNotify>>>,
@@ -93,7 +93,7 @@ impl Client {
         miner: Arc<Miner>,
         message_channel: IoChannel<ClientIoMessage>,
     ) -> Result<Arc<Client>, Error> {
-        let journal_db = journaldb::new(db.clone(), journaldb::Algorithm::Archive, ::db::COL_STATE);
+        let journal_db = journaldb::new(Arc::clone(&db), journaldb::Algorithm::Archive, ::db::COL_STATE);
         let mut state_db = StateDB::new(journal_db, scheme.custom_handlers.clone());
         if !scheme.check_genesis_root(state_db.as_hashdb()) {
             return Err(SchemeError::InvalidState.into())
@@ -119,7 +119,7 @@ impl Client {
             io_channel: Mutex::new(message_channel),
             chain: RwLock::new(chain),
             db: RwLock::new(db),
-            state_db: RwLock::new(state_db),
+            state_db: Arc::new(RwLock::new(state_db)),
             notify: RwLock::new(Vec::new()),
             queue_parcels: AtomicUsize::new(0),
             importer,
@@ -209,7 +209,7 @@ impl Client {
     /// Get a copy of the best block's state.
     fn latest_state(&self) -> TopLevelState {
         let header = self.best_block_header();
-        TopLevelState::from_existing(self.state_db.read().clone(), header.state_root())
+        TopLevelState::from_existing(Arc::clone(&self.state_db), header.state_root())
             .expect("State root of best block header always valid.")
     }
 
@@ -226,10 +226,8 @@ impl Client {
         }
 
         self.block_header(id).and_then(|header| {
-            let db = self.state_db.read().clone();
-
             let root = header.state_root();
-            TopLevelState::from_existing(db, root).ok()
+            TopLevelState::from_existing(Arc::clone(&self.state_db), root).ok()
         })
     }
 
@@ -692,7 +690,7 @@ impl Importer {
     // The header passed is from the original block data and is sealed.
     fn commit_block<B>(&self, block: B, header: &Header, block_data: &[u8], client: &Client) -> ImportRoute
     where
-        B: IsBlock + Drain, {
+        B: IsBlock, {
         let hash = &header.hash();
         let number = header.number();
         let chain = client.chain.read();
@@ -704,15 +702,10 @@ impl Importer {
 
         let mut batch = DBTransaction::new();
 
-        // CHECK! I *think* this is fine, even if the state_root is equal to another
-        // already-imported block of the same number.
-        // TODO: Prove it with a test.
-        let mut state = block.drain();
-
         // check epoch end signal
         self.check_epoch_end_signal(&header, &chain, &mut batch);
 
-        state.journal_under(&mut batch, number, hash).expect("DB commit failed");
+        client.state_db.write().journal_under(&mut batch, number, hash).expect("DB commit failed");
         let route = chain.insert_block(&mut batch, block_data, invoices.clone());
 
         // Final commit to the DB
@@ -850,7 +843,7 @@ impl Importer {
         };
 
         // Enact Verified Block
-        let db = client.state_db.read().clone();
+        let db = Arc::clone(&client.state_db);
 
         let is_epoch_begin = chain.epoch_transition(parent.number(), *header.parent_hash()).is_some();
         let enact_result = enact(&block.header, &block.parcels, engine, client, db, &parent, is_epoch_begin);
@@ -1032,7 +1025,7 @@ impl PrepareOpenBlock for Client {
         let is_epoch_begin = chain.epoch_transition(best_header.number(), h).is_some();
         OpenBlock::new(
             engine,
-            self.state_db.read().clone(),
+            Arc::clone(&self.state_db),
             best_header,
             author,
             extra_data,
