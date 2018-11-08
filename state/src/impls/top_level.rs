@@ -46,9 +46,9 @@ use ctypes::parcel::{Action, Error as ParcelError, Parcel};
 use ctypes::transaction::Transaction;
 use ctypes::ShardId;
 use cvm::ChainTimeInfo;
+use hashdb::AsHashDB;
 use primitives::{Bytes, H256, U256};
 
-use super::super::backend::TopBackend;
 use super::super::checkpoint::{CheckpointId, StateWithCheckpoint};
 use super::super::item::local_cache::{CacheableItem, LocalCache};
 use super::super::traits::{ShardState, ShardStateInfo, StateWithCache, TopState, TopStateInfo};
@@ -158,8 +158,7 @@ impl TopStateInfo for TopLevelState {
         // FIXME: Handle the case that shard doesn't exist
         let shard_root = self.shard_root(shard_id)?.unwrap_or(BLAKE_NULL_RLP);
         // FIXME: Make it mutable borrow db instead of cloning.
-        let shard_level_state =
-            ShardLevelState::from_existing(shard_id, self.db.clone_with_immutable_global_cache(), shard_root)?;
+        let shard_level_state = ShardLevelState::from_existing(shard_id, self.db.clone(), shard_root)?;
         shard_level_state.asset_scheme(asset_scheme_address)
     }
 
@@ -167,8 +166,7 @@ impl TopStateInfo for TopLevelState {
         // FIXME: Handle the case that shard doesn't exist
         let shard_root = self.shard_root(shard_id)?.unwrap_or(BLAKE_NULL_RLP);
         // FIXME: Make it mutable borrow db instead of cloning.
-        let shard_level_state =
-            ShardLevelState::from_existing(shard_id, self.db.clone_with_immutable_global_cache(), shard_root)?;
+        let shard_level_state = ShardLevelState::from_existing(shard_id, self.db.clone(), shard_root)?;
         shard_level_state.asset(asset_address)
     }
 
@@ -228,25 +226,6 @@ impl StateWithCache for TopLevelState {
         Ok(())
     }
 
-    fn propagate_to_global_cache(&mut self) {
-        let ref mut db = self.db;
-        self.account.propagate_to_global_cache(|address, item, modified| {
-            db.add_to_account_cache(address, item, modified);
-        });
-        self.regular_account.propagate_to_global_cache(|address, item, modified| {
-            db.add_to_regular_account_cache(address, item, modified);
-        });
-        self.metadata.propagate_to_global_cache(|address, item, modified| {
-            db.add_to_metadata_cache(address, item, modified);
-        });
-        self.shard.propagate_to_global_cache(|address, item, modified| {
-            db.add_to_shard_cache(address, item, modified);
-        });
-        self.action_data.propagate_to_global_cache(|address, item, modified| {
-            db.add_to_action_data_cache(address, item, modified);
-        });
-    }
-
     fn clear(&mut self) {
         self.account.clear();
         self.regular_account.clear();
@@ -303,8 +282,7 @@ impl TopLevelState {
     }
 
     /// Destroy the current object and return root and database.
-    pub fn drop(mut self) -> (H256, StateDB) {
-        self.propagate_to_global_cache();
+    pub fn drop(self) -> (H256, StateDB) {
         (self.root, self.db)
     }
 
@@ -501,8 +479,7 @@ impl TopLevelState {
         let shard_users = self.shard_users(shard_id)?.expect("Shard must exist");
 
         // FIXME: Make it mutable borrow db instead of cloning.
-        let mut shard_level_state =
-            ShardLevelState::from_existing(shard_id, self.db.clone_with_mutable_global_cache(), shard_root)?;
+        let mut shard_level_state = ShardLevelState::from_existing(shard_id, self.db.clone(), shard_root)?;
 
         let invoice = shard_level_state.apply(transaction, sender, &shard_users, client)?;
         let (new_root, db) = shard_level_state.drop();
@@ -521,7 +498,7 @@ impl TopLevelState {
             let mut metadata = self.get_metadata_mut()?;
             let shard_id = metadata.increase_number_of_shards();
 
-            let mut shard_level_state = ShardLevelState::try_new(shard_id, self.db.clone_with_mutable_global_cache())?;
+            let mut shard_level_state = ShardLevelState::try_new(shard_id, self.db.clone())?;
 
             let (shard_root, db) = shard_level_state.drop();
 
@@ -545,16 +522,14 @@ impl TopLevelState {
     /// Populates local cache if nothing found.
     fn get_account(&self, a: &Address) -> TrieResult<Option<Account>> {
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        let from_global_cache = || self.db.get_cached_account(a);
-        self.account.get(&a, db, from_global_cache)
+        self.account.get(&a, db)
     }
 
     fn get_account_mut(&self, a: &Address) -> TrieResult<RefMut<Account>> {
         debug_assert_eq!(Ok(false), self.regular_account_exists_and_not_null_by_address(a));
 
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        let from_global_cache = || self.db.get_cached_account(a);
-        self.account.get_mut(&a, db, from_global_cache)
+        self.account.get_mut(&a, db)
     }
 
     /// Check caches for required data
@@ -567,56 +542,48 @@ impl TopLevelState {
     fn get_regular_account_by_address(&self, a: &Address) -> TrieResult<Option<RegularAccount>> {
         let a = RegularAccountAddress::from_address(a);
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        let from_global_cache = || self.db.get_cached_regular_account(&a);
-        Ok(self.regular_account.get(&a, db, from_global_cache)?)
+        Ok(self.regular_account.get(&a, db)?)
     }
 
     fn get_regular_account_mut(&self, public: &Public) -> TrieResult<RefMut<RegularAccount>> {
         let regular_account_address = RegularAccountAddress::new(public);
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        let from_global_cache = || self.db.get_cached_regular_account(&regular_account_address);
-        self.regular_account.get_mut(&regular_account_address, db, from_global_cache)
+        self.regular_account.get_mut(&regular_account_address, db)
     }
 
     fn get_metadata(&self) -> TrieResult<Option<Metadata>> {
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
         let address = MetadataAddress::new();
-        let from_global_cache = || self.db.get_cached_metadata(&address);
-        self.metadata.get(&address, db, from_global_cache)
+        self.metadata.get(&address, db)
     }
 
     fn get_metadata_mut(&self) -> TrieResult<RefMut<Metadata>> {
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
         let address = MetadataAddress::new();
-        let from_global_cache = || self.db.get_cached_metadata(&address);
-        self.metadata.get_mut(&address, db, from_global_cache)
+        self.metadata.get_mut(&address, db)
     }
 
     fn get_shard(&self, shard_id: ShardId) -> TrieResult<Option<Shard>> {
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
         let shard_address = ShardAddress::new(shard_id);
-        let from_global_cache = || self.db.get_cached_shard(&shard_address);
-        self.shard.get(&shard_address, db, from_global_cache)
+        self.shard.get(&shard_address, db)
     }
 
     fn get_shard_mut(&self, shard_id: ShardId) -> TrieResult<RefMut<Shard>> {
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
         let shard_address = ShardAddress::new(shard_id);
-        let from_global_cache = || self.db.get_cached_shard(&shard_address);
-        self.shard.get_mut(&shard_address, db, from_global_cache)
+        self.shard.get_mut(&shard_address, db)
     }
 
     #[allow(dead_code)]
     fn get_action_data(&self, key: &H256) -> TrieResult<Option<ActionData>> {
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        let from_global_cache = || self.db.get_cached_action_data(key);
-        self.action_data.get(key, db, from_global_cache)
+        self.action_data.get(key, db)
     }
 
     fn get_action_data_mut(&self, key: &H256) -> TrieResult<RefMut<ActionData>> {
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        let from_global_cache = || self.db.get_cached_action_data(key);
-        self.action_data.get_mut(key, db, from_global_cache)
+        self.action_data.get_mut(key, db)
     }
 }
 
@@ -636,7 +603,7 @@ impl fmt::Debug for TopLevelState {
 impl Clone for TopLevelState {
     fn clone(&self) -> TopLevelState {
         TopLevelState {
-            db: self.db.clone_with_mutable_global_cache(),
+            db: self.db.clone(),
             root: self.root.clone(),
             id_of_checkpoints: self.id_of_checkpoints.clone(),
             account: self.account.clone(),
@@ -648,7 +615,7 @@ impl Clone for TopLevelState {
     }
 }
 
-impl TopState<StateDB> for TopLevelState {
+impl TopState for TopLevelState {
     fn kill_account(&mut self, account: &Address) {
         self.account.remove(account);
     }
