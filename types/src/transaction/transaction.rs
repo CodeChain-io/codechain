@@ -1113,6 +1113,76 @@ mod tests {
     }
 
     #[test]
+    fn encode_and_decode_unwrapccc_transaction() {
+        let tx = Transaction::AssetUnwrapCCC {
+            network_id: NetworkId::default(),
+            burn: AssetTransferInput {
+                prev_out: AssetOutPoint {
+                    transaction_hash: H256::default(),
+                    index: 0,
+                    asset_type: H256::zero(),
+                    amount: 30.into(),
+                },
+                timelock: None,
+                lock_script: vec![0x30, 0x01],
+                unlock_script: vec![],
+            },
+        };
+        rlp_encode_and_decode_test!(tx);
+    }
+
+    #[test]
+    fn verify_wrap_ccc_transaction_should_fail() {
+        let tx_zero_amount = InnerTransaction::AssetWrapCCC {
+            network_id: NetworkId::default(),
+            shard_id: 0,
+            parcel_hash: H256::random(),
+            output: AssetWrapCCCOutput {
+                lock_script_hash: H160::random(),
+                parameters: vec![],
+                amount: 0.into(),
+            },
+        };
+        assert_eq!(tx_zero_amount.verify(), Err(Error::ZeroAmount));
+    }
+
+    #[test]
+    fn verify_unwrap_ccc_transaction_should_fail() {
+        let tx_zero_amount = Transaction::AssetUnwrapCCC {
+            network_id: NetworkId::default(),
+            burn: AssetTransferInput {
+                prev_out: AssetOutPoint {
+                    transaction_hash: H256::default(),
+                    index: 0,
+                    asset_type: H256::zero(),
+                    amount: 0.into(),
+                },
+                timelock: None,
+                lock_script: vec![0x30, 0x01],
+                unlock_script: vec![],
+            },
+        };
+        assert_eq!(tx_zero_amount.verify(), Err(Error::ZeroAmount));
+
+        let invalid_asset_type = H256::random();
+        let tx_invalid_asset_type = Transaction::AssetUnwrapCCC {
+            network_id: NetworkId::default(),
+            burn: AssetTransferInput {
+                prev_out: AssetOutPoint {
+                    transaction_hash: H256::default(),
+                    index: 0,
+                    asset_type: invalid_asset_type,
+                    amount: 1.into(),
+                },
+                timelock: None,
+                lock_script: vec![0x30, 0x01],
+                unlock_script: vec![],
+            },
+        };
+        assert_eq!(tx_invalid_asset_type.verify(), Err(Error::InvalidAssetType(invalid_asset_type)));
+    }
+
+    #[test]
     fn apply_long_filter() {
         let input = AssetTransferInput {
             prev_out: AssetOutPoint {
