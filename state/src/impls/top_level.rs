@@ -91,10 +91,6 @@ pub struct TopLevelState {
 }
 
 impl TopStateView for TopLevelState {
-    fn root(&self) -> &H256 {
-        &self.root
-    }
-
     /// Check caches for required data
     /// First searches for account in the local, then the shared cache.
     /// Populates local cache if nothing found.
@@ -140,15 +136,17 @@ impl TopStateView for TopLevelState {
 }
 
 impl StateWithCache for TopLevelState {
-    fn commit(&mut self) -> TrieResult<()> {
-        let mut db = self.db.write();
-        let mut trie = TrieFactory::from_existing(db.as_hashdb_mut(), &mut self.root)?;
-        self.account.commit(&mut trie)?;
-        self.regular_account.commit(&mut trie)?;
-        self.metadata.commit(&mut trie)?;
-        self.shard.commit(&mut trie)?;
-        self.action_data.commit(&mut trie)?;
-        Ok(())
+    fn commit(&mut self) -> TrieResult<H256> {
+        {
+            let mut db = self.db.write();
+            let mut trie = TrieFactory::from_existing(db.as_hashdb_mut(), &mut self.root)?;
+            self.account.commit(&mut trie)?;
+            self.regular_account.commit(&mut trie)?;
+            self.metadata.commit(&mut trie)?;
+            self.shard.commit(&mut trie)?;
+            self.action_data.commit(&mut trie)?;
+        }
+        Ok(self.root)
     }
 }
 
@@ -425,7 +423,7 @@ impl TopLevelState {
         sender: &Address,
         client: &C,
     ) -> StateResult<Invoice> {
-        let mut shard_root = self.shard_root(shard_id)?.ok_or_else(|| ParcelError::InvalidShardId(shard_id))?;
+        let shard_root = self.shard_root(shard_id)?.ok_or_else(|| ParcelError::InvalidShardId(shard_id))?;
         let shard_users = self.shard_users(shard_id)?.expect("Shard must exist");
 
         let balance = self.balance(sender)?;
@@ -449,12 +447,12 @@ impl TopLevelState {
             },
         };
 
-        let invoice = {
+        let (invoice, shard_root) = {
             let mut db = self.db.write();
-            let mut shard_level_state = ShardLevelState::from_existing(shard_id, &mut *db, &mut shard_root)?;
+            let mut shard_level_state = ShardLevelState::from_existing(shard_id, &mut *db, shard_root)?;
             let invoice = shard_level_state.apply(&transaction, sender, &shard_users, client)?;
-            shard_level_state.commit()?; // FIXME: Remove early commit.
-            invoice
+            let new_root = shard_level_state.commit()?; // FIXME: Remove early commit.
+            (invoice, new_root)
         };
 
         if invoice == Invoice::Success {
@@ -495,15 +493,15 @@ impl TopLevelState {
         sender: &Address,
         client: &C,
     ) -> StateResult<Invoice> {
-        let mut shard_root = self.shard_root(shard_id)?.ok_or_else(|| ParcelError::InvalidShardId(shard_id))?;
-        let shard_users = self.shard_users(shard_id)?.expect("Shard must exist");
+        let (invoice, shard_root) = {
+            let shard_root = self.shard_root(shard_id)?.ok_or_else(|| ParcelError::InvalidShardId(shard_id))?;
+            let shard_users = self.shard_users(shard_id)?.expect("Shard must exist");
 
-        let invoice = {
             let mut db = self.db.write();
-            let mut shard_level_state = ShardLevelState::from_existing(shard_id, &mut *db, &mut shard_root)?;
+            let mut shard_level_state = ShardLevelState::from_existing(shard_id, &mut *db, shard_root)?;
             let invoice = shard_level_state.apply(&transaction.clone().into(), sender, &shard_users, client)?;
-            shard_level_state.commit()?; // FIXME: Remove early commit.
-            invoice
+            let new_root = shard_level_state.commit()?; // FIXME: Remove early commit.
+            (invoice, new_root)
         };
         if invoice == Invoice::Success {
             self.set_shard_root(shard_id, shard_root)?;
@@ -512,15 +510,14 @@ impl TopLevelState {
     }
 
     fn create_shard_level_state(&mut self, owners: Vec<Address>, users: Vec<Address>) -> StateResult<()> {
-        let mut shard_root = H256::zero();
         let shard_id = {
             let mut metadata = self.get_metadata_mut()?;
             metadata.increase_number_of_shards()
         };
-        {
+        let shard_root = {
             let mut db = self.db.write();
-            let mut shard_level_state = ShardLevelState::try_new(shard_id, &mut *db, &mut shard_root)?;
-            shard_level_state.commit()?; // FIXME: Remove early commit.
+            let mut shard_level_state = ShardLevelState::try_new(shard_id, &mut *db)?;
+            shard_level_state.commit()? // FIXME: Remove early commit.
         };
 
         ctrace!(STATE, "shard created({}, {:?})\nowners: {:?}, users: {:?}", shard_id, shard_root, owners, users);
@@ -741,12 +738,14 @@ mod tests_state {
             let mut state = get_temp_state();
             assert_eq!(Ok(false), state.account_exists(&a));
             assert_eq!(Ok(()), state.inc_seq(&a));
-            assert_eq!(Ok(()), state.commit());
+            let root = state.commit();
+            assert!(root.is_ok(), "{:?}", root);
             state.clone()
         };
 
         assert_eq!(Ok(()), state.inc_seq(&a));
-        assert_eq!(Ok(()), state.commit());
+        let root = state.commit();
+        assert!(root.is_ok(), "{:?}", root);
     }
 
 
@@ -761,7 +760,8 @@ mod tests_state {
         let mut cloned_state = original_state.clone();
 
         assert_eq!(Ok(()), cloned_state.inc_seq(&a));
-        assert_eq!(Ok(()), cloned_state.commit());
+        let root = cloned_state.commit();
+        assert!(root.is_ok(), "{:?}", root);
 
         assert_ne!(original_state.seq(&a), cloned_state.seq(&a));
     }
@@ -775,9 +775,10 @@ mod tests_state {
             assert_eq!(Ok(()), state.inc_seq(&a));
             assert_eq!(Ok(()), state.add_balance(&a, &U256::from(69u64)));
             assert_eq!(Ok(69.into()), state.balance(&a));
-            assert_eq!(Ok(()), state.commit());
+            let root = state.commit();
+            assert!(root.is_ok(), "{:?}", root);
             assert_eq!(Ok(69.into()), state.balance(&a));
-            *state.root()
+            root.unwrap()
         };
 
         let state = TopLevelState::from_existing(db, root).unwrap();
@@ -808,8 +809,9 @@ mod tests_state {
         let root = {
             let mut state = TopLevelState::new(Arc::clone(&db));
             assert_eq!(Ok(()), state.add_balance(&a, &U256::default())); // create an empty account
-            assert_eq!(Ok(()), state.commit());
-            *state.root()
+            let root = state.commit();
+            assert!(root.is_ok(), "{:?}", root);
+            root.unwrap()
         };
         let state = TopLevelState::from_existing(db, root).unwrap();
         assert_eq!(Ok(false), state.account_exists(&a));
@@ -823,10 +825,11 @@ mod tests_state {
         let root = {
             let mut state = TopLevelState::new(Arc::clone(&db));
             assert_eq!(Ok(()), state.inc_seq(&a));
-            assert_eq!(Ok(()), state.commit());
+            let root = state.commit();
+            assert!(root.is_ok(), "{:?}", root);
             assert_eq!(Ok(true), state.account_exists(&a));
             assert_eq!(Ok(1.into()), state.seq(&a));
-            *state.root()
+            root.unwrap()
         };
 
         let root = {
@@ -834,10 +837,11 @@ mod tests_state {
             assert_eq!(Ok(true), state.account_exists(&a));
             assert_eq!(Ok(1.into()), state.seq(&a));
             state.kill_account(&a);
-            assert_eq!(Ok(()), state.commit());
+            let root = state.commit();
+            assert!(root.is_ok(), "{:?}", root);
             assert_eq!(Ok(false), state.account_exists(&a));
             assert_eq!(Ok(0.into()), state.seq(&a));
-            *state.root()
+            root.unwrap()
         };
 
         let state = TopLevelState::from_existing(db, root).unwrap();
@@ -852,16 +856,19 @@ mod tests_state {
         let b = 1u64.into();
         assert_eq!(Ok(()), state.add_balance(&a, &U256::from(69u64)));
         assert_eq!(Ok(69.into()), state.balance(&a));
-        assert_eq!(Ok(()), state.commit());
+        let root = state.commit();
+        assert!(root.is_ok(), "{:?}", root);
         assert_eq!(Ok(69.into()), state.balance(&a));
         assert_eq!(Ok(()), state.sub_balance(&a, &U256::from(42u64)));
         assert_eq!(Ok(27.into()), state.balance(&a));
-        assert_eq!(Ok(()), state.commit());
+        let root = state.commit();
+        assert!(root.is_ok(), "{:?}", root);
         assert_eq!(Ok(27.into()), state.balance(&a));
         assert_eq!(Ok(()), state.transfer_balance(&a, &b, &U256::from(18u64)));
         assert_eq!(Ok(9.into()), state.balance(&a));
         assert_eq!(Ok(18.into()), state.balance(&b));
-        assert_eq!(Ok(()), state.commit());
+        let root = state.commit();
+        assert!(root.is_ok(), "{:?}", root);
         assert_eq!(Ok(9.into()), state.balance(&a));
         assert_eq!(Ok(18.into()), state.balance(&b));
     }
@@ -874,11 +881,13 @@ mod tests_state {
         assert_eq!(Ok(1.into()), state.seq(&a));
         assert_eq!(Ok(()), state.inc_seq(&a));
         assert_eq!(Ok(2.into()), state.seq(&a));
-        assert_eq!(Ok(()), state.commit());
+        let root = state.commit();
+        assert!(root.is_ok(), "{:?}", root);
         assert_eq!(Ok(2.into()), state.seq(&a));
         assert_eq!(Ok(()), state.inc_seq(&a));
         assert_eq!(Ok(3.into()), state.seq(&a));
-        assert_eq!(Ok(()), state.commit());
+        let root = state.commit();
+        assert!(root.is_ok(), "{:?}", root);
         assert_eq!(Ok(3.into()), state.seq(&a));
     }
 
@@ -888,7 +897,8 @@ mod tests_state {
         let a = Address::default();
         assert_eq!(Ok(0.into()), state.balance(&a));
         assert_eq!(Ok(0.into()), state.seq(&a));
-        assert_eq!(Ok(()), state.commit());
+        let root = state.commit();
+        assert!(root.is_ok(), "{:?}", root);
         assert_eq!(Ok(0.into()), state.balance(&a));
         assert_eq!(Ok(0.into()), state.seq(&a));
     }
@@ -898,8 +908,7 @@ mod tests_state {
         let mut state = get_temp_state();
         let a = Address::default();
         state.get_account_mut(&a).unwrap();
-        assert_eq!(Ok(()), state.commit());
-        assert_eq!(*state.root(), "db4046bb91a12a37cbfb0f09631aad96a97248423163eca791e19b430cc7fe4a".into());
+        assert_eq!(Ok(H256::from("db4046bb91a12a37cbfb0f09631aad96a97248423163eca791e19b430cc7fe4a")), state.commit());
     }
 
     #[test]
@@ -955,8 +964,7 @@ mod tests_state {
     #[test]
     fn create_empty() {
         let mut state = get_temp_state();
-        state.commit().unwrap();
-        assert_eq!(state.root(), &BLAKE_NULL_RLP);
+        assert_eq!(Ok(BLAKE_NULL_RLP), state.commit());
     }
 }
 
@@ -1212,7 +1220,8 @@ mod tests_parcel {
         let shard_id = 0x0;
         let mut state = get_temp_state();
         assert_eq!(Ok(()), state.create_shard_level_state(vec![sender], vec![]));
-        assert_eq!(Ok(()), state.commit());
+        let root = state.commit();
+        assert!(root.is_ok(), "{:?}", root);
         assert_eq!(Ok(()), state.add_balance(&sender, &25.into()));
         assert_eq!(Ok(()), state.set_regular_key(&sender_public, &regular_public));
 
@@ -1364,7 +1373,8 @@ mod tests_parcel {
 
         let mut state = get_temp_state();
         assert_eq!(Ok(()), state.create_shard_level_state(vec![sender], vec![]));
-        assert_eq!(Ok(()), state.commit());
+        let root = state.commit();
+        assert!(root.is_ok(), "{:?}", root);
 
         let network_id = "tc".into();
         let shard_id = 0x0;
@@ -1415,7 +1425,8 @@ mod tests_parcel {
 
         let mut state = get_temp_state();
         assert_eq!(Ok(()), state.create_shard_level_state(vec![sender], vec![]));
-        assert_eq!(Ok(()), state.commit());
+        let root = state.commit();
+        assert!(root.is_ok(), "{:?}", root);
 
         let shard_id = 0;
         let network_id = "tc".into();
@@ -1468,7 +1479,8 @@ mod tests_parcel {
 
         let mut state = get_temp_state();
         assert_eq!(Ok(()), state.create_shard_level_state(vec![sender], vec![]));
-        assert_eq!(Ok(()), state.commit());
+        let root = state.commit();
+        assert!(root.is_ok(), "{:?}", root);
 
         let network_id = "tc".into();
         let shard_id = 0x00;
@@ -1587,7 +1599,8 @@ mod tests_parcel {
 
         let mut state = get_temp_state();
         assert_eq!(Ok(()), state.create_shard_level_state(vec![sender], vec![]));
-        assert_eq!(Ok(()), state.commit());
+        let root = state.commit();
+        assert!(root.is_ok(), "{:?}", root);
 
         let network_id = "tc".into();
         let shard_id = 0x0;
@@ -1640,7 +1653,8 @@ mod tests_parcel {
 
         let mut state = get_temp_state();
         assert_eq!(Ok(()), state.create_shard_level_state(vec![sender], vec![]));
-        assert_eq!(Ok(()), state.commit());
+        let root = state.commit();
+        assert!(root.is_ok(), "{:?}", root);
         assert_eq!(Ok(()), state.add_balance(&sender, &U256::from(100u64)));
 
         let network_id = "tc".into();
@@ -1710,7 +1724,8 @@ mod tests_parcel {
 
         let mut state = get_temp_state();
         assert_eq!(Ok(()), state.create_shard_level_state(vec![sender], vec![]));
-        assert_eq!(Ok(()), state.commit());
+        let root = state.commit();
+        assert!(root.is_ok(), "{:?}", root);
         assert_eq!(Ok(()), state.add_balance(&sender, &U256::from(100u64)));
 
         let network_id = "tc".into();
@@ -2035,7 +2050,8 @@ mod tests_parcel {
         let mut state = get_temp_state();
         assert_eq!(Ok(()), state.create_shard_level_state(vec![sender], vec![]));
         assert_eq!(Ok(()), state.add_balance(&sender, &U256::from(69u64)));
-        assert_eq!(Ok(()), state.commit());
+        let root = state.commit();
+        assert!(root.is_ok(), "{:?}", root);
 
         let network_id = "tc".into();
         let shard_id = 0;
@@ -2067,7 +2083,8 @@ mod tests_parcel {
         let mut state = get_temp_state();
         assert_eq!(Ok(()), state.create_shard_level_state(vec![sender], vec![]));
         assert_eq!(Ok(()), state.add_balance(&sender, &U256::from(69u64)));
-        assert_eq!(Ok(()), state.commit());
+        let root = state.commit();
+        assert!(root.is_ok(), "{:?}", root);
 
         let network_id = "tc".into();
         let shard_id = 0;
@@ -2117,7 +2134,8 @@ mod tests_parcel {
         assert_eq!(Ok(()), state.create_shard_level_state(vec![original_owner], vec![]));
         let (sender, sender_public) = address();
         assert_eq!(Ok(()), state.add_balance(&sender, &U256::from(69u64)));
-        assert_eq!(Ok(()), state.commit());
+        let root = state.commit();
+        assert!(root.is_ok(), "{:?}", root);
 
         let network_id = "tc".into();
         let shard_id = 0;
@@ -2167,7 +2185,8 @@ mod tests_parcel {
         let mut state = get_temp_state();
         assert_eq!(Ok(()), state.create_shard_level_state(vec![sender], vec![]));
         assert_eq!(Ok(()), state.add_balance(&sender, &U256::from(69u64)));
-        assert_eq!(Ok(()), state.commit());
+        let root = state.commit();
+        assert!(root.is_ok(), "{:?}", root);
 
         let network_id = "tc".into();
         let real_shard_id = 0;
@@ -2207,7 +2226,8 @@ mod tests_parcel {
         let mut state = get_temp_state();
         assert_eq!(Ok(()), state.create_shard_level_state(vec![original_owner], vec![sender]));
         assert_eq!(Ok(()), state.add_balance(&sender, &U256::from(69u64)));
-        assert_eq!(Ok(()), state.commit());
+        let root = state.commit();
+        assert!(root.is_ok(), "{:?}", root);
 
         let network_id = "CA".into();
         let shard_id = 0;
@@ -2259,7 +2279,8 @@ mod tests_parcel {
         let mut state = get_temp_state();
         assert_eq!(Ok(()), state.create_shard_level_state(vec![original_owner], vec![sender]));
         assert_eq!(Ok(()), state.add_balance(&sender, &U256::from(69u64)));
-        assert_eq!(Ok(()), state.commit());
+        let root = state.commit();
+        assert!(root.is_ok(), "{:?}", root);
 
         let shard_id = 0x00;
         let network_id = "ne".into();
@@ -2317,7 +2338,8 @@ mod tests_parcel {
         let mut state = get_temp_state();
         assert_eq!(Ok(()), state.create_shard_level_state(vec![sender], old_users.clone()));
         assert_eq!(Ok(()), state.add_balance(&sender, &U256::from(69u64)));
-        assert_eq!(Ok(()), state.commit());
+        let root = state.commit();
+        assert!(root.is_ok(), "{:?}", root);
 
         assert_eq!(Ok(Some(vec![sender])), state.shard_owners(shard_id));
         assert_eq!(Ok(Some(old_users.clone())), state.shard_users(shard_id));
@@ -2355,7 +2377,8 @@ mod tests_parcel {
         let mut state = get_temp_state();
         assert_eq!(Ok(()), state.create_shard_level_state(owners.clone(), old_users.clone()));
         assert_eq!(Ok(()), state.add_balance(&sender, &U256::from(69u64)));
-        assert_eq!(Ok(()), state.commit());
+        let root = state.commit();
+        assert!(root.is_ok(), "{:?}", root);
 
         assert_eq!(Ok(Some(owners.clone())), state.shard_owners(shard_id));
         assert_eq!(Ok(Some(old_users.clone())), state.shard_users(shard_id));

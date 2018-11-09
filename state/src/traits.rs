@@ -30,8 +30,6 @@ use super::{
 
 
 pub trait TopStateView {
-    fn root(&self) -> &H256;
-
     /// Check caches for required data
     /// First searches for account in the local, then the shared cache.
     /// Populates local cache if nothing found.
@@ -178,5 +176,5 @@ pub trait TopState {
 
 pub trait StateWithCache {
     /// Commits our cached account changes into the trie.
-    fn commit(&mut self) -> TrieResult<()>;
+    fn commit(&mut self) -> TrieResult<H256>;
 }
