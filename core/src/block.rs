@@ -20,7 +20,7 @@ use std::sync::Arc;
 use ccrypto::BLAKE_NULL_RLP;
 use ckey::Address;
 use cmerkle::skewed_merkle_root;
-use cstate::{StateDB, StateError, StateWithCache, TopLevelState, TopStateView};
+use cstate::{StateDB, StateError, StateWithCache, TopLevelState};
 use ctypes::invoice::Invoice;
 use ctypes::machine::{LiveBlock, Parcels};
 use ctypes::parcel::Error as ParcelError;
@@ -194,16 +194,15 @@ impl<'x> OpenBlock<'x> {
             warn!("Encountered error on closing the block: {}", e);
             return Err(e)
         }
-
-        if let Err(e) = self.block.state.commit() {
+        let state_root = self.block.state.commit().map_err(|e| {
             warn!("Encountered error on state commit: {}", e);
-            return Err(StateError::from(e).into())
-        }
+            StateError::from(e)
+        })?;
         self.block.header.set_parcels_root(skewed_merkle_root(
             parent_parcels_root,
             self.block.parcels.iter().map(|e| e.rlp_bytes()),
         ));
-        self.block.header.set_state_root(self.block.state.root().clone());
+        self.block.header.set_state_root(state_root);
         self.block.header.set_invoices_root(skewed_merkle_root(
             parent_invoices_root,
             self.block.invoices.iter().map(|invoice| invoice.rlp_bytes()),
@@ -226,10 +225,10 @@ impl<'x> OpenBlock<'x> {
             return Err(e)
         }
 
-        if let Err(e) = self.block.state.commit() {
+        let state_root = self.block.state.commit().map_err(|e| {
             warn!("Encountered error on state commit: {}", e);
-            return Err(StateError::from(e).into())
-        }
+            StateError::from(e)
+        })?;
         if self.block.header.parcels_root().is_zero() || self.block.header.parcels_root() == &BLAKE_NULL_RLP {
             self.block.header.set_parcels_root(skewed_merkle_root(
                 parent_parcels_root,
@@ -250,7 +249,7 @@ impl<'x> OpenBlock<'x> {
             self.block.header.invoices_root(),
             &skewed_merkle_root(parent_invoices_root, self.block.invoices.iter().map(Encodable::rlp_bytes),)
         );
-        self.block.header.set_state_root(self.block.state.root().clone());
+        self.block.header.set_state_root(state_root);
 
         Ok(LockedBlock {
             block: self.block,
