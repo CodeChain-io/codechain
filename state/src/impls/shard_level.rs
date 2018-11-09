@@ -1638,6 +1638,173 @@ mod tests {
     }
 
     #[test]
+    fn wrap_and_unwrap_ccc() {
+        let network_id = "tc".into();
+        let shard_id = 0;
+        let sender = address();
+        let mut state = get_temp_shard_state(shard_id);
+
+        let lock_script_hash = H160::from("ca5d3fa0a6887285ef6aa85cb12960a2b6706e00");
+        let parcel_hash = H256::random();
+        let amount = 30.into();
+
+        let wrap_ccc = InnerTransaction::AssetWrapCCC {
+            network_id,
+            shard_id,
+            parcel_hash,
+            output: AssetWrapCCCOutput {
+                lock_script_hash,
+                parameters: vec![],
+                amount,
+            },
+        };
+        let wrap_ccc_hash = wrap_ccc.hash();
+
+        assert_eq!(wrap_ccc_hash, parcel_hash);
+        assert_eq!(Ok(Invoice::Success), state.apply(&wrap_ccc, &sender, &[sender], &get_test_client()));
+
+        let asset_scheme_address = AssetSchemeAddress::new_with_zero_suffix(shard_id);
+        let asset_type = asset_scheme_address.into();
+        let asset_address = OwnedAssetAddress::new(wrap_ccc_hash, 0, shard_id);
+        let asset = state.asset(&asset_address);
+        assert_eq!(Ok(Some(OwnedAsset::new(asset_type, lock_script_hash, vec![], amount))), asset);
+
+        let unwrap_ccc = Transaction::AssetUnwrapCCC {
+            network_id,
+            burn: AssetTransferInput {
+                prev_out: AssetOutPoint {
+                    transaction_hash: wrap_ccc_hash,
+                    index: 0,
+                    asset_type,
+                    amount: 30.into(),
+                },
+                timelock: None,
+                lock_script: vec![0x01],
+                unlock_script: vec![],
+            },
+        };
+
+        assert_eq!(
+            Ok(Invoice::Success),
+            state.apply(&unwrap_ccc.clone().into(), &sender, &[sender], &get_test_client())
+        );
+
+        let asset_address = OwnedAssetAddress::new(wrap_ccc_hash, 0, shard_id);
+        let asset = state.asset(&asset_address);
+        assert_eq!(Ok(None), asset);
+    }
+
+    #[test]
+    fn wrap_ccc_and_transfer_and_unwrap_ccc() {
+        let network_id = "tc".into();
+        let shard_id = 0;
+        let sender = address();
+        let mut state = get_temp_shard_state(shard_id);
+
+        let lock_script_hash = H160::from("b042ad154a3359d276835c903587ebafefea22af");
+        let parcel_hash = H256::random();
+        let amount = 30.into();
+
+        let wrap_ccc = InnerTransaction::AssetWrapCCC {
+            network_id,
+            shard_id,
+            parcel_hash,
+            output: AssetWrapCCCOutput {
+                lock_script_hash,
+                parameters: vec![],
+                amount,
+            },
+        };
+        let wrap_ccc_hash = wrap_ccc.hash();
+
+        assert_eq!(wrap_ccc_hash, parcel_hash);
+        assert_eq!(Ok(Invoice::Success), state.apply(&wrap_ccc, &sender, &[sender], &get_test_client()));
+
+        let asset_scheme_address = AssetSchemeAddress::new_with_zero_suffix(shard_id);
+        let asset_type = asset_scheme_address.into();
+        let asset_address = OwnedAssetAddress::new(wrap_ccc_hash, 0, shard_id);
+        let asset = state.asset(&asset_address);
+        assert_eq!(Ok(Some(OwnedAsset::new(asset_type, lock_script_hash, vec![], amount))), asset);
+
+        let lock_script_hash_burn = H160::from("ca5d3fa0a6887285ef6aa85cb12960a2b6706e00");
+        let random_lock_script_hash = H160::random();
+        let transfer = Transaction::AssetTransfer {
+            network_id,
+            burns: vec![],
+            inputs: vec![AssetTransferInput {
+                prev_out: AssetOutPoint {
+                    transaction_hash: wrap_ccc_hash,
+                    index: 0,
+                    asset_type,
+                    amount: 30.into(),
+                },
+                timelock: None,
+                lock_script: vec![0x30, 0x01],
+                unlock_script: vec![],
+            }],
+            outputs: vec![
+                AssetTransferOutput {
+                    lock_script_hash,
+                    parameters: vec![vec![1]],
+                    asset_type,
+                    amount: 10.into(),
+                },
+                AssetTransferOutput {
+                    lock_script_hash: lock_script_hash_burn,
+                    parameters: vec![],
+                    asset_type,
+                    amount: 5.into(),
+                },
+                AssetTransferOutput {
+                    lock_script_hash: random_lock_script_hash,
+                    parameters: vec![],
+                    asset_type,
+                    amount: 15.into(),
+                },
+            ],
+        };
+        let transfer_hash = transfer.hash();
+
+        assert_eq!(Ok(Invoice::Success), state.apply(&transfer.clone().into(), &sender, &[sender], &get_test_client()));
+
+        let asset0_address = OwnedAssetAddress::new(transfer_hash, 0, shard_id);
+        let asset0 = state.asset(&asset0_address);
+        assert_eq!(Ok(Some(OwnedAsset::new(asset_type, lock_script_hash, vec![vec![1]], 10.into()))), asset0);
+
+        let asset1_address = OwnedAssetAddress::new(transfer_hash, 1, shard_id);
+        let asset1 = state.asset(&asset1_address);
+        assert_eq!(Ok(Some(OwnedAsset::new(asset_type, lock_script_hash_burn, vec![], 5.into()))), asset1);
+
+        let asset2_address = OwnedAssetAddress::new(transfer_hash, 2, shard_id);
+        let asset2 = state.asset(&asset2_address);
+        assert_eq!(Ok(Some(OwnedAsset::new(asset_type, random_lock_script_hash, vec![], 15.into()))), asset2);
+
+        let unwrap_ccc = Transaction::AssetUnwrapCCC {
+            network_id,
+            burn: AssetTransferInput {
+                prev_out: AssetOutPoint {
+                    transaction_hash: transfer_hash,
+                    index: 1,
+                    asset_type,
+                    amount: 5.into(),
+                },
+                timelock: None,
+                lock_script: vec![0x01],
+                unlock_script: vec![],
+            },
+        };
+
+        assert_eq!(
+            Ok(Invoice::Success),
+            state.apply(&unwrap_ccc.clone().into(), &sender, &[sender], &get_test_client())
+        );
+
+        let asset1_address = OwnedAssetAddress::new(transfer_hash, 1, shard_id);
+        let asset1 = state.asset(&asset1_address);
+        assert_eq!(Ok(None), asset1);
+    }
+
+    #[test]
     fn mint_and_failed_transfer_and_successful_transfer() {
         let network_id = "tc".into();
         let shard_id = 0;
