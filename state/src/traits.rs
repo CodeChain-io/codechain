@@ -176,5 +176,5 @@ pub trait TopState {
 
 pub trait StateWithCache {
     /// Commits our cached account changes into the trie.
-    fn commit(&mut self) -> TrieResult<H256>;
+    fn commit(&mut self) -> StateResult<H256>;
 }

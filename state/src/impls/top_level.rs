@@ -36,8 +36,10 @@
 //! or rolled back.
 
 use std::cell::RefMut;
+use std::collections::HashMap;
 use std::sync::Arc;
 
+use ccrypto::BLAKE_NULL_RLP;
 use ckey::{public_to_address, Address, NetworkId, Public};
 use cmerkle::{Result as TrieResult, TrieError, TrieFactory};
 use ctypes::invoice::Invoice;
@@ -53,8 +55,8 @@ use super::super::checkpoint::{CheckpointId, StateWithCheckpoint};
 use super::super::item::local_cache::LocalCache;
 use super::super::traits::{ShardState, ShardStateView, StateWithCache, TopState, TopStateView};
 use super::super::{
-    Account, ActionData, Metadata, MetadataAddress, RegularAccount, RegularAccountAddress, Shard, ShardAddress,
-    ShardLevelState, StateDB, StateError, StateResult,
+    Account, ActionData, AssetScheme, Metadata, MetadataAddress, OwnedAsset, RegularAccount, RegularAccountAddress,
+    Shard, ShardAddress, ShardLevelState, StateDB, StateError, StateResult,
 };
 
 /// Representation of the entire state of all accounts in the system.
@@ -86,8 +88,34 @@ pub struct TopLevelState {
     regular_account: LocalCache<RegularAccount>,
     metadata: LocalCache<Metadata>,
     shard: LocalCache<Shard>,
+
+    shard_caches: RwLock<HashMap<ShardId, ShardCache>>,
+
     action_data: LocalCache<ActionData>,
     id_of_checkpoints: Vec<CheckpointId>,
+}
+
+struct ShardCache {
+    asset_scheme: LocalCache<AssetScheme>,
+    asset: LocalCache<OwnedAsset>,
+}
+
+impl Default for ShardCache {
+    fn default() -> Self {
+        Self {
+            asset_scheme: LocalCache::new(),
+            asset: LocalCache::new(),
+        }
+    }
+}
+
+impl Clone for ShardCache {
+    fn clone(&self) -> Self {
+        Self {
+            asset_scheme: self.asset_scheme.clone(),
+            asset: self.asset.clone(),
+        }
+    }
 }
 
 impl TopStateView for TopLevelState {
@@ -123,7 +151,17 @@ impl TopStateView for TopLevelState {
 
     fn shard_state<'db>(&'db self, shard_id: ShardId) -> TrieResult<Option<Box<ShardStateView + 'db>>> {
         match self.shard_root(shard_id)? {
-            Some(shard_root) => Ok(Some(Box::new(ShardLevelState::read_only(&*self.db, shard_root)?))),
+            // FIXME: Find a way to use stored cache.
+            Some(shard_root) => {
+                let shard_caches = self.shard_caches.read();
+                let shard_cache = shard_caches.get(&shard_id).cloned().unwrap_or_default();
+                Ok(Some(Box::new(ShardLevelState::read_only(
+                    &*self.db,
+                    shard_root,
+                    shard_cache.asset_scheme,
+                    shard_cache.asset,
+                )?)))
+            }
             None => Ok(None),
         }
     }
@@ -136,7 +174,29 @@ impl TopStateView for TopLevelState {
 }
 
 impl StateWithCache for TopLevelState {
-    fn commit(&mut self) -> TrieResult<H256> {
+    fn commit(&mut self) -> StateResult<H256> {
+        let shard_ids: Vec<_> = self.shard_caches.read().iter().map(|(shard_id, _)| *shard_id).collect();
+        let shard_changes = shard_ids
+            .into_iter()
+            .map(|shard_id| {
+                let shard_root = self.shard_root(shard_id)?.expect("Shard must exist");
+                Ok((shard_id, shard_root))
+            })
+            .collect::<StateResult<Vec<_>>>()?;
+        for (shard_id, mut shard_root) in shard_changes.into_iter() {
+            {
+                let mut db = self.db.write();
+                let mut shard_caches = self.shard_caches.write();
+
+                let mut trie = TrieFactory::from_existing(db.as_hashdb_mut(), &mut shard_root)?;
+
+                let mut shard_cache = shard_caches.get_mut(&shard_id).expect("Shard must exist");
+
+                shard_cache.asset_scheme.commit(&mut trie)?;
+                shard_cache.asset.commit(&mut trie)?;
+            }
+            self.set_shard_root(shard_id, shard_root)?;
+        }
         {
             let mut db = self.db.write();
             let mut trie = TrieFactory::from_existing(db.as_hashdb_mut(), &mut self.root)?;
@@ -162,6 +222,11 @@ impl StateWithCheckpoint for TopLevelState {
         self.metadata.checkpoint();
         self.shard.checkpoint();
         self.action_data.checkpoint();
+
+        for (_, mut cache) in self.shard_caches.write().iter_mut() {
+            cache.asset_scheme.checkpoint();
+            cache.asset.checkpoint();
+        }
     }
 
     fn discard_checkpoint(&mut self, id: CheckpointId) {
@@ -174,6 +239,11 @@ impl StateWithCheckpoint for TopLevelState {
         self.metadata.discard_checkpoint();
         self.shard.discard_checkpoint();
         self.action_data.discard_checkpoint();
+
+        for (_, mut cache) in self.shard_caches.write().iter_mut() {
+            cache.asset_scheme.discard_checkpoint();
+            cache.asset.discard_checkpoint();
+        }
     }
 
     fn revert_to_checkpoint(&mut self, id: CheckpointId) {
@@ -186,6 +256,11 @@ impl StateWithCheckpoint for TopLevelState {
         self.metadata.revert_to_checkpoint();
         self.shard.revert_to_checkpoint();
         self.action_data.revert_to_checkpoint();
+
+        for (_, mut cache) in self.shard_caches.write().iter_mut() {
+            cache.asset_scheme.revert_to_checkpoint();
+            cache.asset.revert_to_checkpoint();
+        }
     }
 }
 
@@ -210,6 +285,8 @@ impl TopLevelState {
             metadata: LocalCache::new(),
             shard: LocalCache::new(),
             action_data: LocalCache::new(),
+
+            shard_caches: Default::default(),
             id_of_checkpoints: Default::default(),
         }
     }
@@ -228,6 +305,8 @@ impl TopLevelState {
             metadata: LocalCache::new(),
             shard: LocalCache::new(),
             action_data: LocalCache::new(),
+
+            shard_caches: Default::default(),
             id_of_checkpoints: Default::default(),
         };
 
@@ -447,16 +526,21 @@ impl TopLevelState {
             },
         };
 
-        let (invoice, shard_root) = {
+        let invoice = {
             let mut db = self.db.write();
-            let mut shard_level_state = ShardLevelState::from_existing(shard_id, &mut *db, shard_root)?;
-            let invoice = shard_level_state.apply(&transaction, sender, &shard_users, client)?;
-            let new_root = shard_level_state.commit()?; // FIXME: Remove early commit.
-            (invoice, new_root)
+            let mut shard_caches = self.shard_caches.write();
+            let shard_cache = shard_caches.entry(shard_id).or_default();
+            let mut shard_level_state = ShardLevelState::from_existing(
+                shard_id,
+                &mut *db,
+                shard_root,
+                &mut shard_cache.asset_scheme,
+                &mut shard_cache.asset,
+            )?;
+            shard_level_state.apply(&transaction, sender, &shard_users, client)?
         };
 
         if invoice == Invoice::Success {
-            self.set_shard_root(shard_id, shard_root)?;
             self.sub_balance(sender, &amount)?;
         }
         Ok(invoice)
@@ -493,20 +577,20 @@ impl TopLevelState {
         sender: &Address,
         client: &C,
     ) -> StateResult<Invoice> {
-        let (invoice, shard_root) = {
-            let shard_root = self.shard_root(shard_id)?.ok_or_else(|| ParcelError::InvalidShardId(shard_id))?;
-            let shard_users = self.shard_users(shard_id)?.expect("Shard must exist");
+        let shard_root = self.shard_root(shard_id)?.ok_or_else(|| ParcelError::InvalidShardId(shard_id))?;
+        let shard_users = self.shard_users(shard_id)?.expect("Shard must exist");
 
-            let mut db = self.db.write();
-            let mut shard_level_state = ShardLevelState::from_existing(shard_id, &mut *db, shard_root)?;
-            let invoice = shard_level_state.apply(&transaction.clone().into(), sender, &shard_users, client)?;
-            let new_root = shard_level_state.commit()?; // FIXME: Remove early commit.
-            (invoice, new_root)
-        };
-        if invoice == Invoice::Success {
-            self.set_shard_root(shard_id, shard_root)?;
-        }
-        Ok(invoice)
+        let mut db = self.db.write();
+        let mut shard_caches = self.shard_caches.write();
+        let shard_cache = shard_caches.entry(shard_id).or_default();
+        let mut shard_level_state = ShardLevelState::from_existing(
+            shard_id,
+            &mut *db,
+            shard_root,
+            &mut shard_cache.asset_scheme,
+            &mut shard_cache.asset,
+        )?;
+        shard_level_state.apply(&transaction.clone().into(), sender, &shard_users, client)
     }
 
     fn create_shard_level_state(&mut self, owners: Vec<Address>, users: Vec<Address>) -> StateResult<()> {
@@ -514,15 +598,23 @@ impl TopLevelState {
             let mut metadata = self.get_metadata_mut()?;
             metadata.increase_number_of_shards()
         };
-        let shard_root = {
+        const DEFAULT_SHARD_ROOT: H256 = BLAKE_NULL_RLP;
+        {
             let mut db = self.db.write();
-            let mut shard_level_state = ShardLevelState::try_new(shard_id, &mut *db)?;
-            shard_level_state.commit()? // FIXME: Remove early commit.
-        };
+            let mut shard_caches = self.shard_caches.write();
+            let shard_cache = shard_caches.entry(shard_id).or_default();
+            ShardLevelState::from_existing(
+                shard_id,
+                &mut *db,
+                DEFAULT_SHARD_ROOT,
+                &mut shard_cache.asset_scheme,
+                &mut shard_cache.asset,
+            )?;
+        }
 
-        ctrace!(STATE, "shard created({}, {:?})\nowners: {:?}, users: {:?}", shard_id, shard_root, owners, users);
+        ctrace!(STATE, "shard({}) created. owners: {:?}, users: {:?}", shard_id, owners, users);
 
-        self.set_shard_root(shard_id, shard_root)?;
+        self.set_shard_root(shard_id, DEFAULT_SHARD_ROOT)?;
         self.set_shard_owners(shard_id, owners)?;
         self.set_shard_users(shard_id, users)?;
         Ok(())
@@ -576,6 +668,8 @@ impl Clone for TopLevelState {
             regular_account: self.regular_account.clone(),
             metadata: self.metadata.clone(),
             shard: self.shard.clone(),
+
+            shard_caches: RwLock::new(self.shard_caches.read().clone()),
             action_data: self.action_data.clone(),
         }
     }
@@ -725,8 +819,6 @@ impl TopState for TopLevelState {
 
 #[cfg(test)]
 mod tests_state {
-    use ccrypto::BLAKE_NULL_RLP;
-
     use super::super::super::tests::helpers::{get_temp_state, get_temp_state_db};
     use super::*;
 

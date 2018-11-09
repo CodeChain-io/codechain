@@ -19,7 +19,7 @@ use std::collections::HashMap;
 
 use ccrypto::{Blake, BLAKE_NULL_RLP};
 use ckey::Address;
-use cmerkle::{self, Result as TrieResult, TrieError, TrieFactory};
+use cmerkle::{self, TrieError, TrieFactory};
 use ctypes::invoice::Invoice;
 use ctypes::transaction::{
     AssetMintOutput, AssetTransferInput, AssetTransferOutput, AssetWrapCCCOutput, Error as TransactionError,
@@ -34,7 +34,7 @@ use primitives::{Bytes, H160, H256, U256};
 
 use super::super::checkpoint::{CheckpointId, StateWithCheckpoint};
 use super::super::item::local_cache::{CacheableItem, LocalCache};
-use super::super::traits::{ShardState, ShardStateView, StateWithCache};
+use super::super::traits::{ShardState, ShardStateView};
 use super::super::{
     Asset, AssetScheme, AssetSchemeAddress, OwnedAsset, OwnedAssetAddress, StateDB, StateError, StateResult,
 };
@@ -43,44 +43,60 @@ use super::super::{
 pub struct ShardLevelState<'db> {
     db: &'db mut StateDB,
     root: H256,
-    asset_scheme: LocalCache<AssetScheme>,
-    asset: LocalCache<OwnedAsset>,
+    asset_scheme: &'db mut LocalCache<AssetScheme>,
+    asset: &'db mut LocalCache<OwnedAsset>,
     id_of_checkpoints: Vec<CheckpointId>,
     shard_id: ShardId,
 }
 
 impl<'db> ShardLevelState<'db> {
     /// Creates new state with empty state root
-    pub fn try_new(shard_id: ShardId, db: &'db mut StateDB) -> StateResult<Self> {
+    pub fn try_new(
+        shard_id: ShardId,
+        db: &'db mut StateDB,
+        asset_scheme: &'db mut LocalCache<AssetScheme>,
+        asset: &'db mut LocalCache<OwnedAsset>,
+    ) -> StateResult<Self> {
         let root = BLAKE_NULL_RLP;
-        Ok(ShardLevelState {
+        Ok(Self {
             db,
             root,
-            asset_scheme: LocalCache::new(),
-            asset: LocalCache::new(),
+            asset_scheme,
+            asset,
             id_of_checkpoints: Default::default(),
             shard_id,
         })
     }
 
     /// Creates new state with existing state root
-    pub fn from_existing(shard_id: ShardId, db: &'db mut StateDB, root: H256) -> cmerkle::Result<Self> {
+    pub fn from_existing(
+        shard_id: ShardId,
+        db: &'db mut StateDB,
+        root: H256,
+        asset_scheme: &'db mut LocalCache<AssetScheme>,
+        asset: &'db mut LocalCache<OwnedAsset>,
+    ) -> cmerkle::Result<Self> {
         if !db.as_hashdb().contains(&root) {
             return Err(TrieError::InvalidStateRoot(root).into())
         }
 
-        Ok(ShardLevelState {
+        Ok(Self {
             db,
             root,
-            asset_scheme: LocalCache::new(),
-            asset: LocalCache::new(),
+            asset_scheme,
+            asset,
             id_of_checkpoints: Default::default(),
             shard_id,
         })
     }
 
     /// Creates immutable shard state
-    pub fn read_only(db: &RwLock<StateDB>, root: H256) -> cmerkle::Result<ReadOnlyShardLevelState> {
+    pub fn read_only(
+        db: &RwLock<StateDB>,
+        root: H256,
+        asset_scheme: LocalCache<AssetScheme>,
+        asset: LocalCache<OwnedAsset>,
+    ) -> cmerkle::Result<ReadOnlyShardLevelState> {
         if !db.read().as_hashdb().contains(&root) {
             return Err(TrieError::InvalidStateRoot(root).into())
         }
@@ -88,8 +104,8 @@ impl<'db> ShardLevelState<'db> {
         Ok(ReadOnlyShardLevelState {
             db,
             root,
-            asset_scheme: LocalCache::new(),
-            asset: LocalCache::new(),
+            asset_scheme,
+            asset,
         })
     }
 
@@ -564,17 +580,6 @@ impl<'db> StateWithCheckpoint for ShardLevelState<'db> {
     }
 }
 
-impl<'db> StateWithCache for ShardLevelState<'db> {
-    fn commit(&mut self) -> TrieResult<H256> {
-        {
-            let mut trie = TrieFactory::from_existing(self.db.as_hashdb_mut(), &mut self.root)?;
-            self.asset_scheme.commit(&mut trie)?;
-            self.asset.commit(&mut trie)?;
-        }
-        Ok(self.root)
-    }
-}
-
 const TRANSACTION_CHECKPOINT: CheckpointId = 456;
 
 impl<'db> ShardState for ShardLevelState<'db> {
@@ -640,8 +645,13 @@ mod tests {
         Address::random()
     }
 
-    fn get_temp_shard_state(state_db: &mut StateDB, shard_id: ShardId) -> ShardLevelState {
-        ShardLevelState::try_new(shard_id, state_db).unwrap()
+    fn get_temp_shard_state<'d>(
+        state_db: &'d mut StateDB,
+        shard_id: ShardId,
+        asset_scheme: &'d mut LocalCache<AssetScheme>,
+        asset: &'d mut LocalCache<OwnedAsset>,
+    ) -> ShardLevelState<'d> {
+        ShardLevelState::try_new(shard_id, state_db, asset_scheme, asset).unwrap()
     }
 
     #[test]
@@ -649,7 +659,9 @@ mod tests {
         let shard_id = 0;
         let sender = address();
         let mut state_db = get_temp_state_db();
-        let mut state = get_temp_shard_state(&mut state_db, shard_id);
+        let mut asset_scheme_cache = LocalCache::new();
+        let mut asset_cache = LocalCache::new();
+        let mut state = get_temp_shard_state(&mut state_db, shard_id, &mut asset_scheme_cache, &mut asset_cache);
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::random();
@@ -686,7 +698,9 @@ mod tests {
         let shard_id = 0;
         let sender = address();
         let mut state_db = get_temp_state_db();
-        let mut state = get_temp_shard_state(&mut state_db, shard_id);
+        let mut asset_scheme_cache = LocalCache::new();
+        let mut asset_cache = LocalCache::new();
+        let mut state = get_temp_shard_state(&mut state_db, shard_id, &mut asset_scheme_cache, &mut asset_cache);
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::random();
@@ -725,7 +739,9 @@ mod tests {
         let shard_id = 0;
         let sender = address();
         let mut state_db = get_temp_state_db();
-        let mut state = get_temp_shard_state(&mut state_db, shard_id);
+        let mut asset_scheme_cache = LocalCache::new();
+        let mut asset_cache = LocalCache::new();
+        let mut state = get_temp_shard_state(&mut state_db, shard_id, &mut asset_scheme_cache, &mut asset_cache);
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::random();
@@ -756,7 +772,9 @@ mod tests {
         let network_id = "tc".into();
         let sender = address();
         let mut state_db = get_temp_state_db();
-        let mut state = get_temp_shard_state(&mut state_db, shard_id);
+        let mut asset_scheme_cache = LocalCache::new();
+        let mut asset_cache = LocalCache::new();
+        let mut state = get_temp_shard_state(&mut state_db, shard_id, &mut asset_scheme_cache, &mut asset_cache);
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::from("b042ad154a3359d276835c903587ebafefea22af");
@@ -827,7 +845,9 @@ mod tests {
         let shard_id = 0;
         let sender = address();
         let mut state_db = get_temp_state_db();
-        let mut state = get_temp_shard_state(&mut state_db, shard_id);
+        let mut asset_scheme_cache = LocalCache::new();
+        let mut asset_cache = LocalCache::new();
+        let mut state = get_temp_shard_state(&mut state_db, shard_id, &mut asset_scheme_cache, &mut asset_cache);
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::from("b042ad154a3359d276835c903587ebafefea22af");
@@ -919,7 +939,9 @@ mod tests {
         let shard_id = 0;
         let sender = address();
         let mut state_db = get_temp_state_db();
-        let mut state = get_temp_shard_state(&mut state_db, shard_id);
+        let mut asset_scheme_cache = LocalCache::new();
+        let mut asset_cache = LocalCache::new();
+        let mut state = get_temp_shard_state(&mut state_db, shard_id, &mut asset_scheme_cache, &mut asset_cache);
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::from("ca5d3fa0a6887285ef6aa85cb12960a2b6706e00");
@@ -982,7 +1004,9 @@ mod tests {
         let shard_id = 0;
         let sender = address();
         let mut state_db = get_temp_state_db();
-        let mut state = get_temp_shard_state(&mut state_db, shard_id);
+        let mut asset_scheme_cache = LocalCache::new();
+        let mut asset_cache = LocalCache::new();
+        let mut state = get_temp_shard_state(&mut state_db, shard_id, &mut asset_scheme_cache, &mut asset_cache);
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::from("b042ad154a3359d276835c903587ebafefea22af");
@@ -1097,7 +1121,9 @@ mod tests {
         let network_id = "tc".into();
         let shard_id = 0;
         let mut state_db = get_temp_state_db();
-        let mut state = get_temp_shard_state(&mut state_db, shard_id);
+        let mut asset_scheme_cache = LocalCache::new();
+        let mut asset_cache = LocalCache::new();
+        let mut state = get_temp_shard_state(&mut state_db, shard_id, &mut asset_scheme_cache, &mut asset_cache);
         let sender = address();
 
         let metadata = "metadata".to_string();
@@ -1174,7 +1200,9 @@ mod tests {
         let network_id = "tc".into();
         let shard_id = 0;
         let mut state_db = get_temp_state_db();
-        let mut state = get_temp_shard_state(&mut state_db, shard_id);
+        let mut asset_scheme_cache = LocalCache::new();
+        let mut asset_cache = LocalCache::new();
+        let mut state = get_temp_shard_state(&mut state_db, shard_id, &mut asset_scheme_cache, &mut asset_cache);
         let sender = address();
 
         let metadata = "metadata".to_string();
@@ -1280,7 +1308,9 @@ mod tests {
         let network_id = "tc".into();
         let shard_id = 0;
         let mut state_db = get_temp_state_db();
-        let mut state = get_temp_shard_state(&mut state_db, shard_id);
+        let mut asset_scheme_cache = LocalCache::new();
+        let mut asset_cache = LocalCache::new();
+        let mut state = get_temp_shard_state(&mut state_db, shard_id, &mut asset_scheme_cache, &mut asset_cache);
         let sender = address();
 
         let metadata = "metadata".to_string();
@@ -1402,7 +1432,9 @@ mod tests {
         let network_id = "tc".into();
         let shard_id = 0;
         let mut state_db = get_temp_state_db();
-        let mut state = get_temp_shard_state(&mut state_db, shard_id);
+        let mut asset_scheme_cache = LocalCache::new();
+        let mut asset_cache = LocalCache::new();
+        let mut state = get_temp_shard_state(&mut state_db, shard_id, &mut asset_scheme_cache, &mut asset_cache);
         let sender = address();
 
         let metadata = "metadata".to_string();
@@ -1528,7 +1560,9 @@ mod tests {
         let network_id = "tc".into();
         let shard_id = 0;
         let mut state_db = get_temp_state_db();
-        let mut state = get_temp_shard_state(&mut state_db, shard_id);
+        let mut asset_scheme_cache = LocalCache::new();
+        let mut asset_cache = LocalCache::new();
+        let mut state = get_temp_shard_state(&mut state_db, shard_id, &mut asset_scheme_cache, &mut asset_cache);
         let sender = address();
 
         let metadata = "metadata".to_string();
@@ -1662,7 +1696,9 @@ mod tests {
         let shard_id = 0;
         let sender = address();
         let mut state_db = get_temp_state_db();
-        let mut state = get_temp_shard_state(&mut state_db, shard_id);
+        let mut asset_scheme_cache = LocalCache::new();
+        let mut asset_cache = LocalCache::new();
+        let mut state = get_temp_shard_state(&mut state_db, shard_id, &mut asset_scheme_cache, &mut asset_cache);
 
         let lock_script_hash = H160::from("ca5d3fa0a6887285ef6aa85cb12960a2b6706e00");
         let parcel_hash = H256::random();
@@ -1720,7 +1756,9 @@ mod tests {
         let shard_id = 0;
         let sender = address();
         let mut state_db = get_temp_state_db();
-        let mut state = get_temp_shard_state(&mut state_db, shard_id);
+        let mut asset_scheme_cache = LocalCache::new();
+        let mut asset_cache = LocalCache::new();
+        let mut state = get_temp_shard_state(&mut state_db, shard_id, &mut asset_scheme_cache, &mut asset_cache);
 
         let lock_script_hash = H160::from("b042ad154a3359d276835c903587ebafefea22af");
         let parcel_hash = H256::random();
@@ -1832,7 +1870,9 @@ mod tests {
 
         let sender = address();
         let mut state_db = get_temp_state_db();
-        let mut state = get_temp_shard_state(&mut state_db, shard_id);
+        let mut asset_scheme_cache = LocalCache::new();
+        let mut asset_cache = LocalCache::new();
+        let mut state = get_temp_shard_state(&mut state_db, shard_id, &mut asset_scheme_cache, &mut asset_cache);
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::from("b042ad154a3359d276835c903587ebafefea22af");
@@ -1963,7 +2003,9 @@ mod tests {
         let shard_id = 0;
         let sender = address();
         let mut state_db = get_temp_state_db();
-        let mut state = get_temp_shard_state(&mut state_db, shard_id);
+        let mut asset_scheme_cache = LocalCache::new();
+        let mut asset_cache = LocalCache::new();
+        let mut state = get_temp_shard_state(&mut state_db, shard_id, &mut asset_scheme_cache, &mut asset_cache);
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::random();
@@ -2002,7 +2044,9 @@ mod tests {
         let shard_id = 0;
         let sender = address();
         let mut state_db = get_temp_state_db();
-        let mut state = get_temp_shard_state(&mut state_db, shard_id);
+        let mut asset_scheme_cache = LocalCache::new();
+        let mut asset_cache = LocalCache::new();
+        let mut state = get_temp_shard_state(&mut state_db, shard_id, &mut asset_scheme_cache, &mut asset_cache);
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::random();
@@ -2039,7 +2083,9 @@ mod tests {
         let shard_id = 0;
         let sender = address();
         let mut state_db = get_temp_state_db();
-        let mut state = get_temp_shard_state(&mut state_db, shard_id);
+        let mut asset_scheme_cache = LocalCache::new();
+        let mut asset_cache = LocalCache::new();
+        let mut state = get_temp_shard_state(&mut state_db, shard_id, &mut asset_scheme_cache, &mut asset_cache);
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::random();
