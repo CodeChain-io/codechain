@@ -23,6 +23,7 @@ use super::asset::Asset;
 use super::local_cache::CacheableItem;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
 pub struct AssetScheme {
     metadata: String,
     amount: U256,
