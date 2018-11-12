@@ -42,10 +42,6 @@ pub enum Message {
         extension_name: String,
         timer_id: TimerId,
     },
-    LocalMessage {
-        extension_name: String,
-        message: Vec<u8>,
-    },
 }
 
 #[derive(Debug)]
@@ -128,13 +124,6 @@ impl IoHandler<Message> for Handler {
                 if let Some(token) = timer.remove_by_info(extension_name.clone(), *timer_id) {
                     io.clear_timer(token);
                 }
-                Ok(())
-            }
-            Message::LocalMessage {
-                extension_name,
-                message,
-            } => {
-                self.client.on_local_message(extension_name, message);
                 Ok(())
             }
         }
