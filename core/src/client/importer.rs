@@ -199,29 +199,33 @@ impl Importer {
     pub fn commit_block<B>(&self, block: B, block_data: &[u8], client: &Client) -> ImportRoute
     where
         B: IsBlock, {
-        let header = block.header();
-        let hash = &header.hash();
-        let number = header.number();
+        let (hash, number) = {
+            let header = block.header();
+            let hash = header.hash();
+            let number = header.number();
+
+            (hash, number)
+        };
         let chain = client.block_chain();
 
         // Commit results
         let invoices = block.invoices().to_owned();
 
-        assert_eq!(header.hash(), BlockView::new(block_data).header_view().hash());
+        assert_eq!(hash, BlockView::new(block_data).header_view().hash());
 
         let mut batch = DBTransaction::new();
 
         // check epoch end signal
-        self.check_epoch_end_signal(&header, &chain, &mut batch);
+        self.check_epoch_end_signal(block.header(), &chain, &mut batch);
 
-        client.state_db().write().journal_under(&mut batch, number, hash).expect("DB commit failed");
+        block.state().journal_under(&mut batch, number, &hash).expect("DB commit failed");
         let route = chain.insert_block(&mut batch, block_data, invoices.clone());
 
         // Final commit to the DB
         client.db().write_buffered(batch);
         chain.commit();
 
-        self.check_epoch_end(&header, &chain, client);
+        self.check_epoch_end(block.header(), &chain, client);
 
         route
     }
@@ -344,7 +348,7 @@ impl Importer {
         })?;
 
         // Enact Verified Block
-        let db = Arc::clone(client.state_db());
+        let db = client.state_db().read().clone();
 
         let is_epoch_begin = chain.epoch_transition(parent.number(), *header.parent_hash()).is_some();
         let enact_result = enact(&block.header, &block.parcels, engine, client, db, &parent, is_epoch_begin);

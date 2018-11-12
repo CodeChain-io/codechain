@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::cell::RefMut;
+use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
 
 use ccrypto::{Blake, BLAKE_NULL_RLP};
@@ -29,7 +29,6 @@ use ctypes::util::unexpected::Mismatch;
 use ctypes::ShardId;
 use cvm::{decode, execute, ChainTimeInfo, ScriptResult, VMConfig};
 use hashdb::AsHashDB;
-use parking_lot::RwLock;
 use primitives::{Bytes, H160, H256, U256};
 
 use super::super::checkpoint::{CheckpointId, StateWithCheckpoint};
@@ -42,7 +41,7 @@ use super::top_level::ShardCache;
 
 
 pub struct ShardLevelState<'db> {
-    db: &'db mut StateDB,
+    db: &'db mut RefCell<StateDB>,
     root: H256,
     cache: &'db mut ShardCache,
     id_of_checkpoints: Vec<CheckpointId>,
@@ -51,7 +50,7 @@ pub struct ShardLevelState<'db> {
 
 impl<'db> ShardLevelState<'db> {
     /// Creates new state with empty state root
-    pub fn try_new(shard_id: ShardId, db: &'db mut StateDB, cache: &'db mut ShardCache) -> StateResult<Self> {
+    pub fn try_new(shard_id: ShardId, db: &'db mut RefCell<StateDB>, cache: &'db mut ShardCache) -> StateResult<Self> {
         let root = BLAKE_NULL_RLP;
         Ok(Self {
             db,
@@ -65,11 +64,11 @@ impl<'db> ShardLevelState<'db> {
     /// Creates new state with existing state root
     pub fn from_existing(
         shard_id: ShardId,
-        db: &'db mut StateDB,
+        db: &'db mut RefCell<StateDB>,
         root: H256,
         cache: &'db mut ShardCache,
     ) -> cmerkle::Result<Self> {
-        if !db.as_hashdb().contains(&root) {
+        if !db.borrow().as_hashdb().contains(&root) {
             return Err(TrieError::InvalidStateRoot(root).into())
         }
 
@@ -83,8 +82,8 @@ impl<'db> ShardLevelState<'db> {
     }
 
     /// Creates immutable shard state
-    pub fn read_only(db: &RwLock<StateDB>, root: H256, cache: ShardCache) -> cmerkle::Result<ReadOnlyShardLevelState> {
-        if !db.read().as_hashdb().contains(&root) {
+    pub fn read_only(db: &RefCell<StateDB>, root: H256, cache: ShardCache) -> cmerkle::Result<ReadOnlyShardLevelState> {
+        if !db.borrow().as_hashdb().contains(&root) {
             return Err(TrieError::InvalidStateRoot(root).into())
         }
 
@@ -517,25 +516,29 @@ impl<'db> ShardLevelState<'db> {
     }
 
     fn get_asset_scheme_mut(&self, a: &AssetSchemeAddress) -> cmerkle::Result<RefMut<AssetScheme>> {
-        let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        self.cache.asset_scheme.get_mut(a, db)
+        let db = self.db.borrow();
+        let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
+        self.cache.asset_scheme.get_mut(a, trie)
     }
 
     fn get_asset_mut(&self, a: &OwnedAssetAddress) -> cmerkle::Result<RefMut<OwnedAsset>> {
-        let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        self.cache.asset.get_mut(a, db)
+        let db = self.db.borrow();
+        let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
+        self.cache.asset.get_mut(a, trie)
     }
 }
 
 impl<'db> ShardStateView for ShardLevelState<'db> {
     fn asset_scheme(&self, a: &AssetSchemeAddress) -> cmerkle::Result<Option<AssetScheme>> {
-        let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        self.cache.asset_scheme.get(a, db)
+        let db = self.db.borrow();
+        let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
+        self.cache.asset_scheme.get(a, trie)
     }
 
     fn asset(&self, a: &OwnedAssetAddress) -> cmerkle::Result<Option<OwnedAsset>> {
-        let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        self.cache.asset.get(a, db)
+        let db = self.db.borrow();
+        let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
+        self.cache.asset.get(a, trie)
     }
 }
 
@@ -600,20 +603,20 @@ impl<'db> ShardState for ShardLevelState<'db> {
 }
 
 pub struct ReadOnlyShardLevelState<'db> {
-    db: &'db RwLock<StateDB>,
+    db: &'db RefCell<StateDB>,
     root: H256,
     cache: ShardCache,
 }
 
 impl<'db> ShardStateView for ReadOnlyShardLevelState<'db> {
     fn asset_scheme(&self, a: &AssetSchemeAddress) -> cmerkle::Result<Option<AssetScheme>> {
-        let db = self.db.read();
+        let db = self.db.borrow();
         let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
         self.cache.asset_scheme.get(a, trie)
     }
 
     fn asset(&self, a: &OwnedAssetAddress) -> cmerkle::Result<Option<OwnedAsset>> {
-        let db = self.db.read();
+        let db = self.db.borrow();
         let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
         self.cache.asset.get(a, trie)
     }
@@ -631,7 +634,7 @@ mod tests {
     }
 
     fn get_temp_shard_state<'d>(
-        state_db: &'d mut StateDB,
+        state_db: &'d mut RefCell<StateDB>,
         shard_id: ShardId,
         cache: &'d mut ShardCache,
     ) -> ShardLevelState<'d> {
@@ -642,7 +645,7 @@ mod tests {
     fn mint_permissioned_asset() {
         let shard_id = 0;
         let sender = address();
-        let mut state_db = get_temp_state_db();
+        let mut state_db = RefCell::new(get_temp_state_db());
         let mut shard_cache = ShardCache::default();
         let mut state = get_temp_shard_state(&mut state_db, shard_id, &mut shard_cache);
 
@@ -680,7 +683,7 @@ mod tests {
     fn mint_infinite_asset() {
         let shard_id = 0;
         let sender = address();
-        let mut state_db = get_temp_state_db();
+        let mut state_db = RefCell::new(get_temp_state_db());
         let mut shard_cache = ShardCache::default();
         let mut state = get_temp_shard_state(&mut state_db, shard_id, &mut shard_cache);
 
@@ -720,7 +723,7 @@ mod tests {
     fn cannot_mint_twice() {
         let shard_id = 0;
         let sender = address();
-        let mut state_db = get_temp_state_db();
+        let mut state_db = RefCell::new(get_temp_state_db());
         let mut shard_cache = ShardCache::default();
         let mut state = get_temp_shard_state(&mut state_db, shard_id, &mut shard_cache);
 
@@ -752,7 +755,7 @@ mod tests {
         let shard_id = 0;
         let network_id = "tc".into();
         let sender = address();
-        let mut state_db = get_temp_state_db();
+        let mut state_db = RefCell::new(get_temp_state_db());
         let mut shard_cache = ShardCache::default();
         let mut state = get_temp_shard_state(&mut state_db, shard_id, &mut shard_cache);
 
@@ -824,7 +827,7 @@ mod tests {
         let network_id = "tc".into();
         let shard_id = 0;
         let sender = address();
-        let mut state_db = get_temp_state_db();
+        let mut state_db = RefCell::new(get_temp_state_db());
         let mut shard_cache = ShardCache::default();
         let mut state = get_temp_shard_state(&mut state_db, shard_id, &mut shard_cache);
 
@@ -917,7 +920,7 @@ mod tests {
         let network_id = "tc".into();
         let shard_id = 0;
         let sender = address();
-        let mut state_db = get_temp_state_db();
+        let mut state_db = RefCell::new(get_temp_state_db());
         let mut shard_cache = ShardCache::default();
         let mut state = get_temp_shard_state(&mut state_db, shard_id, &mut shard_cache);
 
@@ -981,7 +984,7 @@ mod tests {
         let network_id = "tc".into();
         let shard_id = 0;
         let sender = address();
-        let mut state_db = get_temp_state_db();
+        let mut state_db = RefCell::new(get_temp_state_db());
         let mut shard_cache = ShardCache::default();
         let mut state = get_temp_shard_state(&mut state_db, shard_id, &mut shard_cache);
 
@@ -1097,7 +1100,7 @@ mod tests {
     fn mint_and_compose() {
         let network_id = "tc".into();
         let shard_id = 0;
-        let mut state_db = get_temp_state_db();
+        let mut state_db = RefCell::new(get_temp_state_db());
         let mut shard_cache = ShardCache::default();
         let mut state = get_temp_shard_state(&mut state_db, shard_id, &mut shard_cache);
         let sender = address();
@@ -1175,7 +1178,7 @@ mod tests {
     fn mint_and_compose_and_decompose() {
         let network_id = "tc".into();
         let shard_id = 0;
-        let mut state_db = get_temp_state_db();
+        let mut state_db = RefCell::new(get_temp_state_db());
         let mut shard_cache = ShardCache::default();
         let mut state = get_temp_shard_state(&mut state_db, shard_id, &mut shard_cache);
         let sender = address();
@@ -1282,7 +1285,7 @@ mod tests {
     fn decompose_fail_invalid_input_different_asset_type() {
         let network_id = "tc".into();
         let shard_id = 0;
-        let mut state_db = get_temp_state_db();
+        let mut state_db = RefCell::new(get_temp_state_db());
         let mut shard_cache = ShardCache::default();
         let mut state = get_temp_shard_state(&mut state_db, shard_id, &mut shard_cache);
         let sender = address();
@@ -1405,7 +1408,7 @@ mod tests {
     fn decompose_fail_invalid_output_insufficient_output() {
         let network_id = "tc".into();
         let shard_id = 0;
-        let mut state_db = get_temp_state_db();
+        let mut state_db = RefCell::new(get_temp_state_db());
         let mut shard_cache = ShardCache::default();
         let mut state = get_temp_shard_state(&mut state_db, shard_id, &mut shard_cache);
         let sender = address();
@@ -1532,7 +1535,7 @@ mod tests {
     fn decompose_fail_invalid_output_insufficient_amount() {
         let network_id = "tc".into();
         let shard_id = 0;
-        let mut state_db = get_temp_state_db();
+        let mut state_db = RefCell::new(get_temp_state_db());
         let mut shard_cache = ShardCache::default();
         let mut state = get_temp_shard_state(&mut state_db, shard_id, &mut shard_cache);
         let sender = address();
@@ -1667,7 +1670,7 @@ mod tests {
         let network_id = "tc".into();
         let shard_id = 0;
         let sender = address();
-        let mut state_db = get_temp_state_db();
+        let mut state_db = RefCell::new(get_temp_state_db());
         let mut shard_cache = ShardCache::default();
         let mut state = get_temp_shard_state(&mut state_db, shard_id, &mut shard_cache);
 
@@ -1726,7 +1729,7 @@ mod tests {
         let network_id = "tc".into();
         let shard_id = 0;
         let sender = address();
-        let mut state_db = get_temp_state_db();
+        let mut state_db = RefCell::new(get_temp_state_db());
         let mut shard_cache = ShardCache::default();
         let mut state = get_temp_shard_state(&mut state_db, shard_id, &mut shard_cache);
 
@@ -1839,7 +1842,7 @@ mod tests {
         let shard_id = 0;
 
         let sender = address();
-        let mut state_db = get_temp_state_db();
+        let mut state_db = RefCell::new(get_temp_state_db());
         let mut shard_cache = ShardCache::default();
         let mut state = get_temp_shard_state(&mut state_db, shard_id, &mut shard_cache);
 
@@ -1971,7 +1974,7 @@ mod tests {
     fn users_can_mint_asset() {
         let shard_id = 0;
         let sender = address();
-        let mut state_db = get_temp_state_db();
+        let mut state_db = RefCell::new(get_temp_state_db());
         let mut shard_cache = ShardCache::default();
         let mut state = get_temp_shard_state(&mut state_db, shard_id, &mut shard_cache);
 
@@ -2011,7 +2014,7 @@ mod tests {
     fn mint_is_failed_when_the_sender_is_not_user() {
         let shard_id = 0;
         let sender = address();
-        let mut state_db = get_temp_state_db();
+        let mut state_db = RefCell::new(get_temp_state_db());
         let mut shard_cache = ShardCache::default();
         let mut state = get_temp_shard_state(&mut state_db, shard_id, &mut shard_cache);
 
@@ -2049,7 +2052,7 @@ mod tests {
     fn anyone_can_mint_if_no_users() {
         let shard_id = 0;
         let sender = address();
-        let mut state_db = get_temp_state_db();
+        let mut state_db = RefCell::new(get_temp_state_db());
         let mut shard_cache = ShardCache::default();
         let mut state = get_temp_shard_state(&mut state_db, shard_id, &mut shard_cache);
 

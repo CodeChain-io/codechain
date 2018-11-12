@@ -72,10 +72,7 @@ impl SealingQueue {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
     use ckey::Address;
-    use parking_lot::RwLock;
 
     use super::super::super::block::{ClosedBlock, OpenBlock};
     use super::super::super::scheme::Scheme;
@@ -87,7 +84,7 @@ mod tests {
     fn create_closed_block(address: Address) -> ClosedBlock {
         let scheme = Scheme::new_test();
         let genesis_header = scheme.genesis_header();
-        let db = Arc::new(RwLock::new(scheme.ensure_genesis_state(get_temp_state_db()).unwrap()));
+        let db = scheme.ensure_genesis_state(get_temp_state_db()).unwrap();
         let b = OpenBlock::new(&*scheme.engine, db, &genesis_header, address, vec![], false).unwrap();
         let parent_parcels_root = genesis_header.parcels_root().clone();
         let parent_invoices_root = genesis_header.invoices_root().clone();
