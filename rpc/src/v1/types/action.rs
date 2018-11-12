@@ -17,7 +17,7 @@
 use ckey::{Error as KeyError, NetworkId, PlatformAddress, Public};
 use ctypes::parcel::Action as ActionType;
 use ctypes::ShardId;
-use primitives::{Bytes, U256};
+use primitives::{Bytes, H160, U256};
 
 use super::Transaction;
 
@@ -44,6 +44,12 @@ pub enum Action {
     SetShardUsers {
         shard_id: ShardId,
         users: Vec<PlatformAddress>,
+    },
+    WrapCCC {
+        shard_id: ShardId,
+        lock_script_hash: H160,
+        parameters: Vec<Bytes>,
+        amount: U256,
     },
     Custom(Bytes),
 }
@@ -80,6 +86,17 @@ impl Action {
             } => Action::SetShardUsers {
                 shard_id,
                 users: users.into_iter().map(|user| PlatformAddress::new_v1(network_id, user)).collect(),
+            },
+            ActionType::WrapCCC {
+                shard_id,
+                lock_script_hash,
+                parameters,
+                amount,
+            } => Action::WrapCCC {
+                shard_id,
+                lock_script_hash,
+                parameters,
+                amount,
             },
             ActionType::Custom(bytes) => Action::Custom(bytes),
         }
@@ -126,6 +143,17 @@ impl From<Action> for Result<ActionType, KeyError> {
                     users: users?,
                 }
             }
+            Action::WrapCCC {
+                shard_id,
+                lock_script_hash,
+                parameters,
+                amount,
+            } => ActionType::WrapCCC {
+                shard_id,
+                lock_script_hash,
+                parameters,
+                amount,
+            },
             Action::Custom(bytes) => ActionType::Custom(bytes),
         })
     }

@@ -43,12 +43,12 @@ use ckey::{public_to_address, Address, NetworkId, Public};
 use cmerkle::{Result as TrieResult, TrieError, TrieFactory};
 use ctypes::invoice::Invoice;
 use ctypes::parcel::{Action, Error as ParcelError, Parcel};
-use ctypes::transaction::Transaction;
+use ctypes::transaction::{AssetWrapCCCOutput, InnerTransaction, Transaction};
 use ctypes::ShardId;
 use cvm::ChainTimeInfo;
-use primitives::{Bytes, H256, U256};
+use hashdb::AsHashDB;
+use primitives::{Bytes, H160, H256, U256};
 
-use super::super::backend::TopBackend;
 use super::super::checkpoint::{CheckpointId, StateWithCheckpoint};
 use super::super::item::local_cache::{CacheableItem, LocalCache};
 use super::super::traits::{ShardState, ShardStateInfo, StateWithCache, TopState, TopStateInfo};
@@ -158,8 +158,7 @@ impl TopStateInfo for TopLevelState {
         // FIXME: Handle the case that shard doesn't exist
         let shard_root = self.shard_root(shard_id)?.unwrap_or(BLAKE_NULL_RLP);
         // FIXME: Make it mutable borrow db instead of cloning.
-        let shard_level_state =
-            ShardLevelState::from_existing(shard_id, self.db.clone_with_immutable_global_cache(), shard_root)?;
+        let shard_level_state = ShardLevelState::from_existing(shard_id, self.db.clone(), shard_root)?;
         shard_level_state.asset_scheme(asset_scheme_address)
     }
 
@@ -167,8 +166,7 @@ impl TopStateInfo for TopLevelState {
         // FIXME: Handle the case that shard doesn't exist
         let shard_root = self.shard_root(shard_id)?.unwrap_or(BLAKE_NULL_RLP);
         // FIXME: Make it mutable borrow db instead of cloning.
-        let shard_level_state =
-            ShardLevelState::from_existing(shard_id, self.db.clone_with_immutable_global_cache(), shard_root)?;
+        let shard_level_state = ShardLevelState::from_existing(shard_id, self.db.clone(), shard_root)?;
         shard_level_state.asset(asset_address)
     }
 
@@ -228,25 +226,6 @@ impl StateWithCache for TopLevelState {
         Ok(())
     }
 
-    fn propagate_to_global_cache(&mut self) {
-        let ref mut db = self.db;
-        self.account.propagate_to_global_cache(|address, item, modified| {
-            db.add_to_account_cache(address, item, modified);
-        });
-        self.regular_account.propagate_to_global_cache(|address, item, modified| {
-            db.add_to_regular_account_cache(address, item, modified);
-        });
-        self.metadata.propagate_to_global_cache(|address, item, modified| {
-            db.add_to_metadata_cache(address, item, modified);
-        });
-        self.shard.propagate_to_global_cache(|address, item, modified| {
-            db.add_to_shard_cache(address, item, modified);
-        });
-        self.action_data.propagate_to_global_cache(|address, item, modified| {
-            db.add_to_action_data_cache(address, item, modified);
-        });
-    }
-
     fn clear(&mut self) {
         self.account.clear();
         self.regular_account.clear();
@@ -303,8 +282,7 @@ impl TopLevelState {
     }
 
     /// Destroy the current object and return root and database.
-    pub fn drop(mut self) -> (H256, StateDB) {
-        self.propagate_to_global_cache();
+    pub fn drop(self) -> (H256, StateDB) {
         (self.root, self.db)
     }
 
@@ -374,7 +352,7 @@ impl TopLevelState {
         // The failed parcel also must pay the fee and increase seq.
         self.create_checkpoint(PARCEL_ACTION_CHECKPOINT);
 
-        match self.apply_action(&parcel.action, &parcel.network_id, fee_payer, signer_public, client) {
+        match self.apply_action(&parcel.action, &parcel.network_id, &parcel.hash(), fee_payer, signer_public, client) {
             Ok(invoice) => {
                 self.discard_checkpoint(PARCEL_ACTION_CHECKPOINT);
                 Ok(invoice)
@@ -413,6 +391,7 @@ impl TopLevelState {
         &mut self,
         action: &Action,
         network_id: &NetworkId,
+        parcel_hash: &H256,
         fee_payer: &Address,
         signer_public: &Public,
         client: &C,
@@ -459,6 +438,21 @@ impl TopLevelState {
                 self.change_shard_users(*shard_id, users, fee_payer)?;
                 Ok(Invoice::Success)
             }
+            Action::WrapCCC {
+                shard_id,
+                lock_script_hash,
+                parameters,
+                amount,
+            } => Ok(self.apply_wrap_ccc(
+                *network_id,
+                *shard_id,
+                *parcel_hash,
+                *lock_script_hash,
+                parameters.clone(),
+                *amount,
+                fee_payer,
+                client,
+            )?),
             Action::Custom(bytes) => {
                 let handlers = self.db.custom_handlers().to_vec();
                 for h in handlers {
@@ -469,6 +463,58 @@ impl TopLevelState {
                 panic!("Unknown custom parcel accepted!")
             }
         }
+    }
+
+    fn apply_wrap_ccc<C: ChainTimeInfo>(
+        &mut self,
+        network_id: NetworkId,
+        shard_id: ShardId,
+        parcel_hash: H256,
+        lock_script_hash: H160,
+        parameters: Vec<Bytes>,
+        amount: U256,
+        sender: &Address,
+        client: &C,
+    ) -> StateResult<Invoice> {
+        let shard_root = self.shard_root(shard_id)?.ok_or_else(|| ParcelError::InvalidShardId(shard_id))?;
+        let shard_users = self.shard_users(shard_id)?.expect("Shard must exist");
+
+        // FIXME: Make it mutable borrow db instead of cloning.
+        let mut shard_level_state = ShardLevelState::from_existing(shard_id, self.db.clone(), shard_root)?;
+
+        let balance = self.balance(sender)?;
+        if amount > balance {
+            return Err(ParcelError::InsufficientBalance {
+                address: *sender,
+                cost: amount,
+                balance,
+            }
+            .into())
+        }
+
+        let transaction = InnerTransaction::AssetWrapCCC {
+            network_id,
+            shard_id,
+            parcel_hash,
+            output: AssetWrapCCCOutput {
+                lock_script_hash,
+                parameters,
+                amount,
+            },
+        };
+
+        let invoice = shard_level_state.apply(&transaction, sender, &shard_users, client)?;
+        let (new_root, db) = shard_level_state.drop();
+        match &invoice {
+            Invoice::Success => {
+                self.set_shard_root(shard_id, &shard_root, &new_root)?;
+                self.db = db;
+
+                self.sub_balance(sender, &amount)?;
+            }
+            Invoice::Failure(_) => {}
+        };
+        Ok(invoice)
     }
 
     pub fn apply_transaction<C: ChainTimeInfo>(
@@ -487,6 +533,11 @@ impl TopLevelState {
                 return Err(ParcelError::InconsistentShardOutcomes.into())
             }
         }
+
+        let unwrapped_amount = transaction.unwrapped_amount();
+        if !unwrapped_amount.is_zero() {
+            self.add_balance(sender, &unwrapped_amount)?;
+        }
         Ok(first_invoice)
     }
 
@@ -501,10 +552,9 @@ impl TopLevelState {
         let shard_users = self.shard_users(shard_id)?.expect("Shard must exist");
 
         // FIXME: Make it mutable borrow db instead of cloning.
-        let mut shard_level_state =
-            ShardLevelState::from_existing(shard_id, self.db.clone_with_mutable_global_cache(), shard_root)?;
+        let mut shard_level_state = ShardLevelState::from_existing(shard_id, self.db.clone(), shard_root)?;
 
-        let invoice = shard_level_state.apply(transaction, sender, &shard_users, client)?;
+        let invoice = shard_level_state.apply(&transaction.clone().into(), sender, &shard_users, client)?;
         let (new_root, db) = shard_level_state.drop();
         match &invoice {
             Invoice::Success => {
@@ -521,7 +571,7 @@ impl TopLevelState {
             let mut metadata = self.get_metadata_mut()?;
             let shard_id = metadata.increase_number_of_shards();
 
-            let mut shard_level_state = ShardLevelState::try_new(shard_id, self.db.clone_with_mutable_global_cache())?;
+            let mut shard_level_state = ShardLevelState::try_new(shard_id, self.db.clone())?;
 
             let (shard_root, db) = shard_level_state.drop();
 
@@ -545,16 +595,14 @@ impl TopLevelState {
     /// Populates local cache if nothing found.
     fn get_account(&self, a: &Address) -> TrieResult<Option<Account>> {
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        let from_global_cache = || self.db.get_cached_account(a);
-        self.account.get(&a, db, from_global_cache)
+        self.account.get(&a, db)
     }
 
     fn get_account_mut(&self, a: &Address) -> TrieResult<RefMut<Account>> {
         debug_assert_eq!(Ok(false), self.regular_account_exists_and_not_null_by_address(a));
 
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        let from_global_cache = || self.db.get_cached_account(a);
-        self.account.get_mut(&a, db, from_global_cache)
+        self.account.get_mut(&a, db)
     }
 
     /// Check caches for required data
@@ -567,56 +615,48 @@ impl TopLevelState {
     fn get_regular_account_by_address(&self, a: &Address) -> TrieResult<Option<RegularAccount>> {
         let a = RegularAccountAddress::from_address(a);
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        let from_global_cache = || self.db.get_cached_regular_account(&a);
-        Ok(self.regular_account.get(&a, db, from_global_cache)?)
+        Ok(self.regular_account.get(&a, db)?)
     }
 
     fn get_regular_account_mut(&self, public: &Public) -> TrieResult<RefMut<RegularAccount>> {
         let regular_account_address = RegularAccountAddress::new(public);
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        let from_global_cache = || self.db.get_cached_regular_account(&regular_account_address);
-        self.regular_account.get_mut(&regular_account_address, db, from_global_cache)
+        self.regular_account.get_mut(&regular_account_address, db)
     }
 
     fn get_metadata(&self) -> TrieResult<Option<Metadata>> {
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
         let address = MetadataAddress::new();
-        let from_global_cache = || self.db.get_cached_metadata(&address);
-        self.metadata.get(&address, db, from_global_cache)
+        self.metadata.get(&address, db)
     }
 
     fn get_metadata_mut(&self) -> TrieResult<RefMut<Metadata>> {
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
         let address = MetadataAddress::new();
-        let from_global_cache = || self.db.get_cached_metadata(&address);
-        self.metadata.get_mut(&address, db, from_global_cache)
+        self.metadata.get_mut(&address, db)
     }
 
     fn get_shard(&self, shard_id: ShardId) -> TrieResult<Option<Shard>> {
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
         let shard_address = ShardAddress::new(shard_id);
-        let from_global_cache = || self.db.get_cached_shard(&shard_address);
-        self.shard.get(&shard_address, db, from_global_cache)
+        self.shard.get(&shard_address, db)
     }
 
     fn get_shard_mut(&self, shard_id: ShardId) -> TrieResult<RefMut<Shard>> {
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
         let shard_address = ShardAddress::new(shard_id);
-        let from_global_cache = || self.db.get_cached_shard(&shard_address);
-        self.shard.get_mut(&shard_address, db, from_global_cache)
+        self.shard.get_mut(&shard_address, db)
     }
 
     #[allow(dead_code)]
     fn get_action_data(&self, key: &H256) -> TrieResult<Option<ActionData>> {
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        let from_global_cache = || self.db.get_cached_action_data(key);
-        self.action_data.get(key, db, from_global_cache)
+        self.action_data.get(key, db)
     }
 
     fn get_action_data_mut(&self, key: &H256) -> TrieResult<RefMut<ActionData>> {
         let db = TrieFactory::readonly(self.db.as_hashdb(), &self.root)?;
-        let from_global_cache = || self.db.get_cached_action_data(key);
-        self.action_data.get_mut(key, db, from_global_cache)
+        self.action_data.get_mut(key, db)
     }
 }
 
@@ -636,7 +676,7 @@ impl fmt::Debug for TopLevelState {
 impl Clone for TopLevelState {
     fn clone(&self) -> TopLevelState {
         TopLevelState {
-            db: self.db.clone_with_mutable_global_cache(),
+            db: self.db.clone(),
             root: self.root.clone(),
             id_of_checkpoints: self.id_of_checkpoints.clone(),
             account: self.account.clone(),
@@ -648,7 +688,7 @@ impl Clone for TopLevelState {
     }
 }
 
-impl TopState<StateDB> for TopLevelState {
+impl TopState for TopLevelState {
     fn kill_account(&mut self, account: &Address) {
         self.account.remove(account);
     }
@@ -1723,6 +1763,213 @@ mod tests_parcel {
             Ok(Invoice::Failure(TransactionError::AssetSchemeDuplicated(transaction_hash).into())),
             state.apply(&parcel, &sender_public, &get_test_client())
         );
+    }
+
+    #[test]
+    fn wrap_and_unwrap_ccc() {
+        let (sender, sender_public) = address();
+
+        let mut state = get_temp_state();
+        assert_eq!(Ok(()), state.create_shard_level_state(vec![sender], vec![]));
+        assert_eq!(Ok(()), state.commit());
+        assert_eq!(Ok(()), state.add_balance(&sender, &U256::from(100u64)));
+
+        let network_id = "tc".into();
+        let shard_id = 0x0;
+
+        let lock_script_hash = H160::from("ca5d3fa0a6887285ef6aa85cb12960a2b6706e00");
+        let amount = 30.into();
+
+        let parcel = Parcel {
+            fee: 11.into(),
+            action: Action::WrapCCC {
+                shard_id,
+                lock_script_hash,
+                parameters: vec![],
+                amount,
+            },
+            seq: 0.into(),
+            network_id,
+        };
+        let parcel_hash = parcel.hash();
+
+        assert_eq!(Ok(Invoice::Success), state.apply(&parcel, &sender_public, &get_test_client()));
+
+        assert_eq!(state.balance(&sender), Ok(59.into()));
+        assert_eq!(state.seq(&sender), Ok(1.into()));
+
+        let asset_scheme_address = AssetSchemeAddress::new_with_zero_suffix(shard_id);
+        let asset_type = asset_scheme_address.into();
+        let asset_address = OwnedAssetAddress::new(parcel_hash, 0, shard_id);
+        let asset = state.asset(shard_id, &asset_address);
+        assert_eq!(Ok(Some(OwnedAsset::new(asset_type, lock_script_hash, vec![], amount))), asset);
+
+        let unwrap_ccc_tx = Transaction::AssetUnwrapCCC {
+            network_id,
+            burn: AssetTransferInput {
+                prev_out: AssetOutPoint {
+                    transaction_hash: parcel_hash,
+                    index: 0,
+                    asset_type,
+                    amount: 30.into(),
+                },
+                timelock: None,
+                lock_script: vec![0x01],
+                unlock_script: vec![],
+            },
+        };
+        let parcel = Parcel {
+            fee: 11.into(),
+            action: Action::AssetTransaction(unwrap_ccc_tx),
+            seq: 1.into(),
+            network_id,
+        };
+
+        assert_eq!(Ok(Invoice::Success), state.apply(&parcel, &sender_public, &get_test_client()));
+
+        assert_eq!(state.balance(&sender), Ok(78.into()));
+        assert_eq!(state.seq(&sender), Ok(2.into()));
+
+        let asset_address = OwnedAssetAddress::new(parcel_hash, 0, shard_id);
+        let asset = state.asset(shard_id, &asset_address);
+        assert_eq!(Ok(None), asset);
+    }
+
+    #[test]
+    fn wrap_ccc_and_transfer_and_unwrap_ccc() {
+        let (sender, sender_public) = address();
+
+        let mut state = get_temp_state();
+        assert_eq!(Ok(()), state.create_shard_level_state(vec![sender], vec![]));
+        assert_eq!(Ok(()), state.commit());
+        assert_eq!(Ok(()), state.add_balance(&sender, &U256::from(100u64)));
+
+        let network_id = "tc".into();
+        let shard_id = 0x0;
+
+        let lock_script_hash = H160::from("b042ad154a3359d276835c903587ebafefea22af");
+        let amount = 30.into();
+
+        let parcel = Parcel {
+            fee: 11.into(),
+            action: Action::WrapCCC {
+                shard_id,
+                lock_script_hash,
+                parameters: vec![],
+                amount,
+            },
+            seq: 0.into(),
+            network_id,
+        };
+        let parcel_hash = parcel.hash();
+
+        assert_eq!(Ok(Invoice::Success), state.apply(&parcel, &sender_public, &get_test_client()));
+
+        assert_eq!(state.balance(&sender), Ok(59.into()));
+        assert_eq!(state.seq(&sender), Ok(1.into()));
+
+        let asset_scheme_address = AssetSchemeAddress::new_with_zero_suffix(shard_id);
+        let asset_type = asset_scheme_address.into();
+        let asset_address = OwnedAssetAddress::new(parcel_hash, 0, shard_id);
+        let asset = state.asset(shard_id, &asset_address);
+        assert_eq!(Ok(Some(OwnedAsset::new(asset_type, lock_script_hash, vec![], amount))), asset);
+
+        let lock_script_hash_burn = H160::from("ca5d3fa0a6887285ef6aa85cb12960a2b6706e00");
+        let random_lock_script_hash = H160::random();
+        let transfer_tx = Transaction::AssetTransfer {
+            network_id,
+            burns: vec![],
+            inputs: vec![AssetTransferInput {
+                prev_out: AssetOutPoint {
+                    transaction_hash: parcel_hash,
+                    index: 0,
+                    asset_type,
+                    amount: 30.into(),
+                },
+                timelock: None,
+                lock_script: vec![0x30, 0x01],
+                unlock_script: vec![],
+            }],
+            outputs: vec![
+                AssetTransferOutput {
+                    lock_script_hash,
+                    parameters: vec![vec![1]],
+                    asset_type,
+                    amount: 10.into(),
+                },
+                AssetTransferOutput {
+                    lock_script_hash: lock_script_hash_burn,
+                    parameters: vec![],
+                    asset_type,
+                    amount: 5.into(),
+                },
+                AssetTransferOutput {
+                    lock_script_hash: random_lock_script_hash,
+                    parameters: vec![],
+                    asset_type,
+                    amount: 15.into(),
+                },
+            ],
+        };
+        let transfer_tx_hash = transfer_tx.hash();
+
+        let parcel = Parcel {
+            fee: 11.into(),
+            action: Action::AssetTransaction(transfer_tx),
+            seq: 1.into(),
+            network_id,
+        };
+
+        assert_eq!(Ok(Invoice::Success), state.apply(&parcel, &sender_public, &get_test_client()));
+
+        assert_eq!(state.balance(&sender), Ok(48.into()));
+        assert_eq!(state.seq(&sender), Ok(2.into()));
+
+        let asset_address = OwnedAssetAddress::new(parcel_hash, 0, shard_id);
+        let asset = state.asset(shard_id, &asset_address);
+        assert_eq!(Ok(None), asset);
+
+        let asset0_address = OwnedAssetAddress::new(transfer_tx_hash, 0, shard_id);
+        let asset0 = state.asset(shard_id, &asset0_address);
+        assert_eq!(Ok(Some(OwnedAsset::new(asset_type, lock_script_hash, vec![vec![1]], 10.into()))), asset0);
+
+        let asset1_address = OwnedAssetAddress::new(transfer_tx_hash, 1, shard_id);
+        let asset1 = state.asset(shard_id, &asset1_address);
+        assert_eq!(Ok(Some(OwnedAsset::new(asset_type, lock_script_hash_burn, vec![], 5.into()))), asset1);
+
+        let asset2_address = OwnedAssetAddress::new(transfer_tx_hash, 2, shard_id);
+        let asset2 = state.asset(shard_id, &asset2_address);
+        assert_eq!(Ok(Some(OwnedAsset::new(asset_type, random_lock_script_hash, vec![], 15.into()))), asset2);
+
+        let unwrap_ccc_tx = Transaction::AssetUnwrapCCC {
+            network_id,
+            burn: AssetTransferInput {
+                prev_out: AssetOutPoint {
+                    transaction_hash: transfer_tx_hash,
+                    index: 1,
+                    asset_type,
+                    amount: 5.into(),
+                },
+                timelock: None,
+                lock_script: vec![0x01],
+                unlock_script: vec![],
+            },
+        };
+        let parcel = Parcel {
+            fee: 11.into(),
+            action: Action::AssetTransaction(unwrap_ccc_tx),
+            seq: 2.into(),
+            network_id,
+        };
+
+        assert_eq!(Ok(Invoice::Success), state.apply(&parcel, &sender_public, &get_test_client()));
+
+        assert_eq!(state.balance(&sender), Ok(42.into()));
+        assert_eq!(state.seq(&sender), Ok(3.into()));
+
+        let asset1_address = OwnedAssetAddress::new(transfer_tx_hash, 1, shard_id);
+        let asset1 = state.asset(shard_id, &asset1_address);
+        assert_eq!(Ok(None), asset1);
     }
 
     #[test]

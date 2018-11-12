@@ -14,6 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::mem::size_of;
+
+use byteorder::{BigEndian, WriteBytesExt};
 use ckey::Address;
 use ctypes::ShardId;
 use primitives::{H256, U256};
@@ -23,6 +26,7 @@ use super::asset::Asset;
 use super::local_cache::CacheableItem;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
 pub struct AssetScheme {
     metadata: String,
     amount: U256,
@@ -129,6 +133,18 @@ impl AssetSchemeAddress {
         let index = ::std::u64::MAX;
 
         Self::from_transaction_hash_with_shard_id(transaction_hash, index, shard_id)
+    }
+    pub fn new_with_zero_suffix(shard_id: ShardId) -> Self {
+        let mut hash = H256::zero();
+        hash[0..2].clone_from_slice(&[PREFIX, 0]);
+
+        let mut shard_id_bytes = Vec::<u8>::new();
+        debug_assert_eq!(size_of::<u16>(), size_of::<ShardId>());
+        WriteBytesExt::write_u16::<BigEndian>(&mut shard_id_bytes, shard_id).unwrap();
+        assert_eq!(2, shard_id_bytes.len());
+        hash[2..4].clone_from_slice(&shard_id_bytes);
+
+        AssetSchemeAddress(hash)
     }
 }
 

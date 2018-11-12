@@ -36,8 +36,6 @@ pub trait CacheableItem: Clone + Default + fmt::Debug + Decodable + Encodable {
 enum EntryState {
     /// Account was loaded from disk and never modified in this state object.
     CleanFresh,
-    /// Account was loaded from the global cache and never modified.
-    CleanCached,
     /// Account has been modified and is not committed to the trie yet.
     /// This is set if any of the account data is changed, including
     /// storage and code.
@@ -83,14 +81,6 @@ where
         Self {
             item,
             state: EntryState::CleanFresh,
-        }
-    }
-
-    // Create a new account entry and mark it as clean and cached.
-    fn new_clean_cached(item: Option<Item>) -> Self {
-        Self {
-            item,
-            state: EntryState::CleanCached,
         }
     }
 }
@@ -205,55 +195,28 @@ where
         Ok(())
     }
 
-    pub fn propagate_to_global_cache<F>(&self, mut add_to_global_cache: F)
-    where
-        F: FnMut(Item::Address, Option<Item>, bool), {
-        let mut addresses = self.cache.borrow_mut();
-        trace!("Committing cache {:?} entries", addresses.len());
-        for (address, a) in addresses
-            .drain()
-            .filter(|&(_, ref a)| a.state == EntryState::Committed || a.state == EntryState::CleanFresh)
-        {
-            add_to_global_cache(address, a.item, a.state == EntryState::Committed);
-        }
-    }
-
     /// Check caches for required data
     /// First searches for account in the local, then the shared cache.
     /// Populates local cache if nothing found.
-    pub fn get<G>(&self, a: &Item::Address, db: TrieDB, from_global_cache: G) -> cmerkle::Result<Option<Item>>
-    where
-        G: FnOnce() -> Option<Option<Item>>, {
+    pub fn get(&self, a: &Item::Address, db: TrieDB) -> cmerkle::Result<Option<Item>> {
         // check local cache first
         if let Some(cached_item) = self.cache.borrow().get(a) {
             return Ok(cached_item.item.clone())
         }
-        // check global cache
-        match from_global_cache() {
-            Some(r) => Ok(r),
-            None => {
-                // not found in the global cache, get from the DB and insert into local
-                let maybe_item = db.get_with(a.as_ref(), ::rlp::decode::<Item>)?;
-                self.insert(a, Entry::<Item>::new_clean(maybe_item.clone()));
-                Ok(maybe_item)
-            }
-        }
+
+        // not found in the cache, get from the DB and insert into cache
+        let maybe_item = db.get_with(a.as_ref(), ::rlp::decode::<Item>)?;
+        self.insert(a, Entry::<Item>::new_clean(maybe_item.clone()));
+        Ok(maybe_item)
     }
 
     /// Pull item `a` in our cache from the trie DB.
     /// If it doesn't exist, make item equal the evaluation of `default`.
-    pub fn get_mut<G>(&self, a: &Item::Address, db: TrieDB, from_global_cache: G) -> cmerkle::Result<RefMut<Item>>
-    where
-        G: FnOnce() -> Option<Option<Item>>, {
+    pub fn get_mut(&self, a: &Item::Address, db: TrieDB) -> cmerkle::Result<RefMut<Item>> {
         let contains_key = self.cache.borrow().contains_key(a);
         if !contains_key {
-            match from_global_cache() {
-                Some(item) => self.insert(a, Entry::<Item>::new_clean_cached(item)),
-                None => {
-                    let maybe_item = db.get_with(a.as_ref(), ::rlp::decode::<Item>)?;
-                    self.insert(a, Entry::<Item>::new_clean(maybe_item));
-                }
-            }
+            let maybe_item = db.get_with(a.as_ref(), ::rlp::decode::<Item>)?;
+            self.insert(a, Entry::<Item>::new_clean(maybe_item));
         }
         self.note(a);
 

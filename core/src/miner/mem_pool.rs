@@ -224,6 +224,10 @@ impl MemPoolItem {
                 amount,
                 ..
             } => self.parcel.fee + *amount,
+            Action::WrapCCC {
+                amount,
+                ..
+            } => self.parcel.fee + *amount,
             _ => self.parcel.fee,
         }
     }

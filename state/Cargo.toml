@@ -15,9 +15,7 @@ hashdb = { path = "../util/hashdb" }
 journaldb = { path = "../util/journaldb" }
 kvdb = { path = "../util/kvdb" }
 kvdb-memorydb = { path = "../util/kvdb-memorydb" }
-lazy_static = "1.1.0"
 log = "0.4.1"
-lru-cache = "0.1"
 parking_lot = "0.5"
 primitives = { path = "../util/primitives" }
 rlp = { path = "../util/rlp" }

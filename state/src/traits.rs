@@ -17,12 +17,11 @@
 use ckey::{Address, Public};
 use cmerkle::Result as TrieResult;
 use ctypes::invoice::Invoice;
-use ctypes::transaction::Transaction;
+use ctypes::transaction::InnerTransaction;
 use ctypes::ShardId;
 use cvm::ChainTimeInfo;
 use primitives::{Bytes, H256, U256};
 
-use super::backend::{ShardBackend, TopBackend};
 use super::{AssetScheme, AssetSchemeAddress, OwnedAsset, OwnedAssetAddress, StateResult};
 
 
@@ -61,21 +60,17 @@ pub trait ShardStateInfo {
     fn asset(&self, a: &OwnedAssetAddress) -> TrieResult<Option<OwnedAsset>>;
 }
 
-pub trait ShardState<B>
-where
-    B: ShardBackend, {
+pub trait ShardState {
     fn apply<C: ChainTimeInfo>(
         &mut self,
-        transaction: &Transaction,
+        transaction: &InnerTransaction,
         sender: &Address,
         shard_owners: &[Address],
         client: &C,
     ) -> StateResult<Invoice>;
 }
 
-pub trait TopState<B>
-where
-    B: TopBackend, {
+pub trait TopState {
     /// Remove an existing account.
     fn kill_account(&mut self, account: &Address);
     fn kill_regular_account(&mut self, account: &Public);
@@ -115,9 +110,6 @@ where
 pub trait StateWithCache {
     /// Commits our cached account changes into the trie.
     fn commit(&mut self) -> TrieResult<()>;
-
-    /// Propagate local cache into shared canonical state cache.
-    fn propagate_to_global_cache(&mut self);
 
     /// Clear state cache
     fn clear(&mut self);
