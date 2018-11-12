@@ -40,6 +40,7 @@ extern crate codechain_reactor as creactor;
 extern crate codechain_rpc as crpc;
 extern crate codechain_state as cstate;
 extern crate codechain_sync as csync;
+extern crate codechain_timer as ctimer;
 extern crate codechain_types as ctypes;
 extern crate ctrlc;
 extern crate env_logger;

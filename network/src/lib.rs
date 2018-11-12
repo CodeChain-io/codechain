@@ -31,6 +31,7 @@ extern crate codechain_finally as cfinally;
 extern crate codechain_io as cio;
 extern crate codechain_key as ckey;
 extern crate codechain_limited_table as climited_table;
+extern crate codechain_timer as ctimer;
 extern crate codechain_token_generator as ctoken_generator;
 extern crate codechain_types as ctypes;
 extern crate table as ctable;
@@ -50,7 +51,6 @@ mod routing_table;
 mod service;
 mod session_initiator;
 mod test;
-mod timer;
 
 pub mod control;
 mod p2p;
@@ -61,7 +61,8 @@ pub use self::config::Config as NetworkConfig;
 pub use self::control::{Control as NetworkControl, Error as NetworkControlError};
 pub use self::discovery::Api as DiscoveryApi;
 pub use self::extension::{
-    Api, Error as NetworkExtensionError, Extension as NetworkExtension, Result as NetworkExtensionResult, TimerToken,
+    Api, Error as NetworkExtensionError, Extension as NetworkExtension, Result as NetworkExtensionResult,
+    TimeoutHandler, TimerToken,
 };
 pub use self::node_id::{IntoSocketAddr, NodeId};
 pub use self::service::{Error as NetworkServiceError, Service as NetworkService};

@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::convert::From;
 use std::result;
 use std::sync::Arc;
 
@@ -21,7 +22,7 @@ use cio::IoError;
 use time::Duration;
 
 use super::NodeId;
-pub use cio::TimerToken;
+pub use ctimer::{TimeoutHandler, TimerScheduleError, TimerToken};
 
 #[derive(Debug)]
 pub enum Error {
@@ -29,11 +30,18 @@ pub enum Error {
     DuplicatedTimerId,
     NoMoreTimerToken,
     IoError(IoError),
+    TimerScheduleError(TimerScheduleError),
 }
 
 impl From<IoError> for Error {
     fn from(err: IoError) -> Self {
         Error::IoError(err)
+    }
+}
+
+impl From<TimerScheduleError> for Error {
+    fn from(err: TimerScheduleError) -> Self {
+        Error::TimerScheduleError(err)
     }
 }
 
@@ -47,7 +55,7 @@ pub trait Api: Send + Sync {
     fn clear_timer(&self, timer: TimerToken) -> Result<()>;
 }
 
-pub trait Extension: Send + Sync {
+pub trait Extension: TimeoutHandler + Send + Sync {
     fn name(&self) -> &'static str;
     fn need_encryption(&self) -> bool;
     fn versions(&self) -> &[u64];
@@ -58,6 +66,4 @@ pub trait Extension: Send + Sync {
     fn on_node_removed(&self, _node: &NodeId) {}
 
     fn on_message(&self, _node: &NodeId, _message: &[u8]) {}
-
-    fn on_timeout(&self, _timer: TimerToken) {}
 }

@@ -422,6 +422,7 @@ dependencies = [
  "codechain-key 0.1.0",
  "codechain-limited-table 0.1.0",
  "codechain-logger 0.1.0",
+ "codechain-timer 0.1.0",
  "codechain-token-generator 0.1.0",
  "codechain-types 0.1.0",
  "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
