@@ -120,20 +120,20 @@ pub struct ImportRoute {
 }
 
 impl ImportRoute {
-    pub fn new(hash: &H256, location: &BlockLocation) -> Self {
+    pub fn new(hash: H256, location: &BlockLocation) -> Self {
         match location {
             BlockLocation::CanonChain => ImportRoute {
                 retracted: vec![],
-                enacted: vec![*hash],
+                enacted: vec![hash],
                 omitted: vec![],
             },
             BlockLocation::Branch => ImportRoute {
                 retracted: vec![],
                 enacted: vec![],
-                omitted: vec![*hash],
+                omitted: vec![hash],
             },
             BlockLocation::BranchBecomingCanonChain(data) => {
-                let mut enacted = vec![*hash];
+                let mut enacted = vec![hash];
                 enacted.extend(data.enacted.iter());
                 let retracted = data.retracted.clone();
                 ImportRoute {

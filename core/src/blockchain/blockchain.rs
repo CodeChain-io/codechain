@@ -89,7 +89,7 @@ impl BlockChain {
 
     pub fn insert_header(&self, batch: &mut DBTransaction, header: &HeaderView) -> ImportRoute {
         match self.headerchain.insert_header(batch, header) {
-            Some(l) => ImportRoute::new(&header.hash(), &l),
+            Some(l) => ImportRoute::new(header.hash(), &l),
             None => ImportRoute::none(),
         }
     }
@@ -117,11 +117,11 @@ impl BlockChain {
 
         if location != BlockLocation::Branch {
             let mut pending_best_block_hash = self.pending_best_block_hash.write();
-            batch.put(db::COL_EXTRA, BEST_BLOCK_KEY, &header.hash());
-            *pending_best_block_hash = Some(header.hash());
+            batch.put(db::COL_EXTRA, BEST_BLOCK_KEY, &hash);
+            *pending_best_block_hash = Some(hash);
         }
 
-        ImportRoute::new(&hash, &location)
+        ImportRoute::new(hash, &location)
     }
 
     /// Apply pending insertion updates
