@@ -18,7 +18,6 @@ use std::result;
 use std::sync::Arc;
 
 use cio::IoError;
-use rlp::Encodable;
 use time::Duration;
 
 use super::NodeId;
@@ -46,8 +45,6 @@ pub trait Api: Send + Sync {
     fn set_timer(&self, timer: TimerToken, d: Duration) -> Result<()>;
     fn set_timer_once(&self, timer: TimerToken, d: Duration) -> Result<()>;
     fn clear_timer(&self, timer: TimerToken) -> Result<()>;
-
-    fn send_local_message(&self, message: &Encodable);
 }
 
 pub trait Extension: Send + Sync {
@@ -63,6 +60,4 @@ pub trait Extension: Send + Sync {
     fn on_message(&self, _node: &NodeId, _message: &[u8]) {}
 
     fn on_timeout(&self, _timer: TimerToken) {}
-
-    fn on_local_message(&self, _message: &[u8]) {}
 }
