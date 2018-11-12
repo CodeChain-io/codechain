@@ -34,6 +34,7 @@ use clogger::{self, LoggerConfig};
 use cnetwork::{Filters, NetworkConfig, NetworkControl, NetworkService, SocketAddr};
 use creactor::EventLoop;
 use csync::{BlockSyncExtension, ParcelSyncExtension, SnapshotService};
+use ctimer::TimerLoop;
 use ctrlc::CtrlC;
 use fdlimit::raise_fd_limit;
 use parking_lot::{Condvar, Mutex};
@@ -45,13 +46,13 @@ use super::json::PasswordFile;
 use super::rpc::{rpc_http_start, rpc_ipc_start, rpc_ws_start};
 use super::rpc_apis::ApiDependencies;
 
-fn network_start(cfg: &NetworkConfig) -> Result<Arc<NetworkService>, String> {
+fn network_start(timer_loop: TimerLoop, cfg: &NetworkConfig) -> Result<Arc<NetworkService>, String> {
     cinfo!(NETWORK, "Handshake Listening on {}:{}", cfg.address, cfg.port);
 
     let addr = cfg.address.parse().map_err(|_| format!("Invalid NETWORK listen host given: {}", cfg.address))?;
     let sockaddress = SocketAddr::new(addr, cfg.port);
     let filters = Filters::new(cfg.whitelist.clone(), cfg.blacklist.clone());
-    let service = NetworkService::start(sockaddress, cfg.min_peers, cfg.max_peers, filters)
+    let service = NetworkService::start(timer_loop, sockaddress, cfg.min_peers, cfg.max_peers, filters)
         .map_err(|e| format!("Network service error: {:?}", e))?;
 
     Ok(service)
@@ -191,6 +192,8 @@ pub fn run_node(matches: ArgMatches) -> Result<(), String> {
     raise_fd_limit();
 
     let _event_loop = EventLoop::spawn();
+    let timer_loop = TimerLoop::new(2);
+
     let config = load_config(&matches)?;
 
     // FIXME: It is the hotfix for #348.
@@ -231,7 +234,7 @@ pub fn run_node(matches: ArgMatches) -> Result<(), String> {
     let network_service: Arc<NetworkControl> = {
         if !config.network.disable.unwrap() {
             let network_config = config.network_config()?;
-            let service = network_start(&network_config)?;
+            let service = network_start(timer_loop, &network_config)?;
 
             if config.network.discovery.unwrap() {
                 discovery_start(&service, &config.network)?;
@@ -247,9 +250,8 @@ pub fn run_node(matches: ArgMatches) -> Result<(), String> {
             if config.network.parcel_relay.unwrap() {
                 service.register_extension(ParcelSyncExtension::new(client.client()));
             }
-            if let Some(consensus_extension) = scheme.engine.network_extension() {
-                service.register_extension(consensus_extension);
-            }
+
+            scheme.engine.register_network_extension_to_service(&service);
 
             for address in network_config.bootstrap_addresses {
                 service.connect_to(address)?;

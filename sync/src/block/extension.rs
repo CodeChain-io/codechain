@@ -23,7 +23,7 @@ use ccore::{
     Block, BlockChainClient, BlockId, BlockImportError, BlockInfo, ChainInfo, ChainNotify, Client, Header, ImportBlock,
     ImportError, Seal, UnverifiedParcel,
 };
-use cnetwork::{Api, NetworkExtension, NodeId, TimerToken};
+use cnetwork::{Api, NetworkExtension, NodeId, TimeoutHandler, TimerToken};
 use ctoken_generator::TokenGenerator;
 use ctypes::parcel::Action;
 use ctypes::BlockNumber;
@@ -236,7 +236,9 @@ impl NetworkExtension for Extension {
             cinfo!(SYNC, "Invalid message from peer {}", id);
         }
     }
+}
 
+impl TimeoutHandler for Extension {
     fn on_timeout(&self, token: TimerToken) {
         match token {
             SYNC_TIMER_TOKEN => {

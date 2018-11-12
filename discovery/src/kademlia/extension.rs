@@ -17,7 +17,7 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
-use cnetwork::{Api, DiscoveryApi, IntoSocketAddr, NetworkExtension, NodeId, RoutingTable, TimerToken};
+use cnetwork::{Api, DiscoveryApi, IntoSocketAddr, NetworkExtension, NodeId, RoutingTable, TimeoutHandler, TimerToken};
 use parking_lot::RwLock;
 use rlp::{Decodable, Encodable, UntrustedRlp};
 use time::Duration;
@@ -128,7 +128,9 @@ impl NetworkExtension for Extension {
             }
         }
     }
+}
 
+impl TimeoutHandler for Extension {
     fn on_timeout(&self, timer: TimerToken) {
         match timer {
             REFRESH_TOKEN => {

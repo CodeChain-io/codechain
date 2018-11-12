@@ -18,17 +18,17 @@ use std::collections::HashMap;
 use std::sync::{Arc, Weak};
 
 use cio::IoChannel;
+use ctimer::{TimerApi, TimerLoop, TimerToken};
 use parking_lot::RwLock;
 use time::Duration;
 
 use super::p2p::Message as P2pMessage;
-use super::timer::Message as TimerMessage;
-use super::{Api, IntoSocketAddr, NetworkExtension, NetworkExtensionError, NetworkExtensionResult, NodeId, TimerToken};
+use super::{Api, IntoSocketAddr, NetworkExtension, NetworkExtensionResult, NodeId};
 
 struct ClientApi {
     extension: Weak<NetworkExtension>,
     p2p_channel: IoChannel<P2pMessage>,
-    timer_channel: IoChannel<TimerMessage>,
+    timer: TimerApi,
 }
 
 impl Api for ClientApi {
@@ -61,49 +61,26 @@ impl Api for ClientApi {
         }
     }
 
-    fn set_timer(&self, timer_id: usize, duration: Duration) -> NetworkExtensionResult<()> {
-        if let Some(extension) = self.extension.upgrade() {
-            let extension_name = extension.name().to_string();
-            Ok(self.timer_channel.send_sync(TimerMessage::SetTimer {
-                extension_name,
-                timer_id,
-                duration,
-            })?)
-        } else {
-            Err(NetworkExtensionError::ExtensionDropped)
-        }
+    fn set_timer(&self, token: TimerToken, duration: Duration) -> NetworkExtensionResult<()> {
+        let duration = duration.to_std().expect("Cannot convert to standard duratino type");
+        Ok(self.timer.schedule_repeat(duration, token)?)
     }
 
-    fn set_timer_once(&self, timer_id: usize, duration: Duration) -> NetworkExtensionResult<()> {
-        if let Some(extension) = self.extension.upgrade() {
-            let extension_name = extension.name().to_string();
-            Ok(self.timer_channel.send_sync(TimerMessage::SetTimerOnce {
-                extension_name,
-                timer_id,
-                duration,
-            })?)
-        } else {
-            Err(NetworkExtensionError::ExtensionDropped)
-        }
+    fn set_timer_once(&self, token: TimerToken, duration: Duration) -> NetworkExtensionResult<()> {
+        let duration = duration.to_std().expect("Cannot convert to standard duratino type");
+        Ok(self.timer.schedule_once(duration, token)?)
     }
 
-    fn clear_timer(&self, timer_id: usize) -> NetworkExtensionResult<()> {
-        if let Some(extension) = self.extension.upgrade() {
-            let extension_name = extension.name().to_string();
-            Ok(self.timer_channel.send_sync(TimerMessage::ClearTimer {
-                extension_name,
-                timer_id,
-            })?)
-        } else {
-            Err(NetworkExtensionError::ExtensionDropped)
-        }
+    fn clear_timer(&self, token: TimerToken) -> NetworkExtensionResult<()> {
+        self.timer.cancel(token)?;
+        Ok(())
     }
 }
 
 pub struct Client {
     extensions: RwLock<HashMap<&'static str, Arc<NetworkExtension>>>,
     p2p_channel: IoChannel<P2pMessage>,
-    timer_channel: IoChannel<TimerMessage>,
+    timer_loop: TimerLoop,
 }
 
 macro_rules! define_broadcast_method {
@@ -139,37 +116,29 @@ macro_rules! define_method {
 }
 
 impl Client {
-    pub fn register_extension(&self, extension: Arc<NetworkExtension>) {
+    pub fn register_extension<T>(&self, extension: Arc<T>)
+    where
+        T: 'static + Sized + NetworkExtension, {
         let name = extension.name();
         let mut extensions = self.extensions.write();
-        if let Some(_) = extensions.insert(name, Arc::clone(&extension)) {
-            let name = extension.name();
-            panic!("Duplicated extension name : {}", name);
+        let p2p_channel = self.p2p_channel.clone();
+        let timer = self.timer_loop.new_timer(name, Arc::clone(&extension));
+        let api: Arc<Api> = Arc::new(ClientApi {
+            extension: Arc::downgrade(&extension) as Weak<NetworkExtension>,
+            p2p_channel,
+            timer,
+        });
+        extension.on_initialize(api);
+        if extensions.insert(name, extension).is_some() {
+            unreachable!("Duplicated extension name : {}", name)
         }
     }
 
-    pub fn initialize_extension(&self, extension_name: &str) {
-        let extension = {
-            let mut extensions = self.extensions.read();
-            extensions.get(extension_name).map(Arc::clone)
-        };
-        if let Some(extension) = extension {
-            let p2p_channel = self.p2p_channel.clone();
-            let timer_channel = self.timer_channel.clone();
-            let api: Arc<Api> = Arc::new(ClientApi {
-                extension: Arc::downgrade(&extension),
-                p2p_channel,
-                timer_channel,
-            });
-            extension.on_initialize(api);
-        }
-    }
-
-    pub fn new(p2p_channel: IoChannel<P2pMessage>, timer_channel: IoChannel<TimerMessage>) -> Arc<Self> {
+    pub fn new(p2p_channel: IoChannel<P2pMessage>, timer_loop: TimerLoop) -> Arc<Self> {
         Arc::new(Self {
             extensions: RwLock::new(HashMap::new()),
             p2p_channel,
-            timer_channel,
+            timer_loop,
         })
     }
 
@@ -190,8 +159,6 @@ impl Client {
             cwarn!(NETAPI, "{} doesn't exist.", name);
         }
     }
-
-    define_method!(on_timeout; timer_id, TimerToken);
 }
 
 #[cfg(test)]
@@ -201,6 +168,7 @@ mod tests {
     use std::vec::Vec;
 
     use cio::IoService;
+    use ctimer::{TimeoutHandler, TimerLoop};
     use parking_lot::Mutex;
     use time::Duration;
 
@@ -284,7 +252,9 @@ mod tests {
             let mut callbacks = self.callbacks.lock();
             callbacks.push(Callback::Message);
         }
+    }
 
+    impl TimeoutHandler for TestExtension {
         fn on_timeout(&self, _timer_id: usize) {
             let mut callbacks = self.callbacks.lock();
             callbacks.push(Callback::Timeout);
@@ -294,19 +264,17 @@ mod tests {
     #[test]
     fn message_only_to_target() {
         let p2p_service = IoService::start("P2P").unwrap();
-        let timer_service = IoService::start("Timer").unwrap();
+        let timer_loop = TimerLoop::new(2);
 
-        let client = Client::new(p2p_service.channel(), timer_service.channel());
+        let client = Client::new(p2p_service.channel(), timer_loop);
 
         let node_id1 = SocketAddr::v4(127, 0, 0, 1, 8081).into();
         let node_id5 = SocketAddr::v4(127, 0, 0, 1, 8085).into();
 
         let e1 = Arc::new(TestExtension::new("e1"));
-        client.register_extension(Arc::clone(&e1) as Arc<NetworkExtension>);
-        client.initialize_extension(&"e1".to_string());
+        client.register_extension(Arc::clone(&e1));
         let e2 = Arc::new(TestExtension::new("e2"));
-        client.register_extension(Arc::clone(&e2) as Arc<NetworkExtension>);
-        client.initialize_extension(&"e2".to_string());
+        client.register_extension(Arc::clone(&e2));
 
         client.on_message(&"e1".to_string(), &node_id1, &vec![]);
         {

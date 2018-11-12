@@ -38,7 +38,7 @@ use std::fmt;
 use std::sync::{Arc, Weak};
 
 use ckey::{Address, Password, Signature};
-use cnetwork::NetworkExtension;
+use cnetwork::NetworkService;
 use ctypes::machine::Machine;
 use ctypes::util::unexpected::{Mismatch, OutOfBounds};
 use primitives::{Bytes, H256, U256};
@@ -222,9 +222,7 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
         unimplemented!()
     }
 
-    fn network_extension(&self) -> Option<Arc<NetworkExtension>> {
-        None
-    }
+    fn register_network_extension_to_service(&self, _: &NetworkService) {}
 
     fn score_to_target(&self, _score: &U256) -> U256 {
         U256::zero()

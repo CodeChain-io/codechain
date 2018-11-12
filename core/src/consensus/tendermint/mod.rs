@@ -24,7 +24,7 @@ use std::sync::{Arc, Weak};
 
 use ccrypto::blake256;
 use ckey::{public_to_address, recover, Address, Message, Password, Signature};
-use cnetwork::{Api, NetworkExtension, NodeId, TimerToken};
+use cnetwork::{Api, NetworkExtension, NetworkService, NodeId, TimeoutHandler, TimerToken};
 use ctypes::machine::WithBalances;
 use ctypes::util::unexpected::{Mismatch, OutOfBounds};
 use ctypes::BlockNumber;
@@ -762,8 +762,8 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
         self.signer.read().sign(hash).map_err(Into::into)
     }
 
-    fn network_extension(&self) -> Option<Arc<NetworkExtension>> {
-        Some(Arc::clone(&self.extension) as Arc<NetworkExtension>)
+    fn register_network_extension_to_service(&self, service: &NetworkService) {
+        service.register_extension(Arc::clone(&self.extension));
     }
 }
 
@@ -953,7 +953,9 @@ impl NetworkExtension for TendermintExtension {
             _ => cinfo!(ENGINE, "Invalid message from peer {}", token),
         }
     }
+}
 
+impl TimeoutHandler for TendermintExtension {
     fn on_timeout(&self, timer: TimerToken) {
         match timer {
             ENGINE_TIMEOUT_TOKEN => {
