@@ -18,7 +18,9 @@ pub mod helpers {
     use std::sync::Arc;
 
     use cvm::ChainTimeInfo;
-    use parking_lot::RwLock;
+
+    use kvdb::KeyValueDB;
+    use kvdb_memorydb;
     use primitives::H256;
 
     use super::super::impls::TopLevelState;
@@ -44,13 +46,17 @@ pub mod helpers {
         }
     }
 
+    pub fn get_memory_db() -> Arc<KeyValueDB> {
+        Arc::new(kvdb_memorydb::create(1))
+    }
+
     pub fn get_temp_state_db() -> StateDB {
         StateDB::new_with_memorydb(Vec::new())
     }
 
     pub fn get_temp_state() -> TopLevelState {
-        let journal_db = get_temp_state_db();
-        TopLevelState::new(Arc::new(RwLock::new(journal_db)))
+        let state_db = get_temp_state_db();
+        TopLevelState::new(state_db)
     }
 
     pub fn get_test_client() -> TestChainTimeInfoClient {

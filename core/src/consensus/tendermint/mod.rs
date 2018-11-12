@@ -993,7 +993,7 @@ mod tests {
 
     fn propose_default(scheme: &Scheme, proposer: Address) -> (ClosedBlock, Vec<Bytes>) {
         let db = get_temp_state_db();
-        let db = Arc::new(RwLock::new(scheme.ensure_genesis_state(db).unwrap()));
+        let db = scheme.ensure_genesis_state(db).unwrap();
         let genesis_header = scheme.genesis_header();
         let b = OpenBlock::new(scheme.engine.as_ref(), db, &genesis_header, proposer, vec![], false).unwrap();
         let b = b.close(*genesis_header.parcels_root(), *genesis_header.invoices_root()).unwrap();

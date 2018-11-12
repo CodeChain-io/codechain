@@ -184,10 +184,6 @@ impl ConsensusEngine<CodeChainMachine> for Cuckoo {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
-    use parking_lot::RwLock;
-
     use super::super::super::block::OpenBlock;
     use super::super::super::scheme::Scheme;
     use super::super::super::tests::helpers::get_temp_state_db;
@@ -246,7 +242,7 @@ mod tests {
     fn on_close_block() {
         let scheme = Scheme::new_test_cuckoo();
         let engine = &*scheme.engine;
-        let db = Arc::new(RwLock::new(scheme.ensure_genesis_state(get_temp_state_db()).unwrap()));
+        let db = scheme.ensure_genesis_state(get_temp_state_db()).unwrap();
         let header = Header::default();
         let block = OpenBlock::new(engine, db, &header, Default::default(), vec![], false).unwrap();
         let mut executed_block = block.block().clone();

@@ -224,7 +224,7 @@ mod tests {
     fn generate_seal() {
         let scheme = Scheme::new_test_simple_poa();
         let engine = &*scheme.engine;
-        let db = Arc::new(RwLock::new(scheme.ensure_genesis_state(get_temp_state_db()).unwrap()));
+        let db = scheme.ensure_genesis_state(get_temp_state_db()).unwrap();
         let genesis_header = scheme.genesis_header();
         let b = OpenBlock::new(engine, db, &genesis_header, Default::default(), vec![], false).unwrap();
         let parent_parcels_root = genesis_header.parcels_root().clone();

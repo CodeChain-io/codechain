@@ -68,7 +68,7 @@ pub struct Client {
     /// Client uses this to store blocks, traces, etc.
     db: RwLock<Arc<KeyValueDB>>,
 
-    state_db: Arc<RwLock<StateDB>>,
+    state_db: RwLock<StateDB>,
 
     /// List of actors to be notified on certain chain events
     notify: RwLock<Vec<Weak<ChainNotify>>>,
@@ -113,7 +113,7 @@ impl Client {
             io_channel: Mutex::new(message_channel),
             chain: RwLock::new(chain),
             db: RwLock::new(db),
-            state_db: Arc::new(RwLock::new(state_db)),
+            state_db: RwLock::new(state_db),
             notify: RwLock::new(Vec::new()),
             queue_parcels: AtomicUsize::new(0),
             importer,
@@ -203,7 +203,7 @@ impl Client {
     /// Get a copy of the best block's state.
     fn latest_state(&self) -> TopLevelState {
         let header = self.best_block_header();
-        TopLevelState::from_existing(Arc::clone(&self.state_db), header.state_root())
+        TopLevelState::from_existing(self.state_db.read().clone(), header.state_root())
             .expect("State root of best block header always valid.")
     }
 
@@ -221,7 +221,7 @@ impl Client {
 
         self.block_header(id).and_then(|header| {
             let root = header.state_root();
-            TopLevelState::from_existing(Arc::clone(&self.state_db), root).ok()
+            TopLevelState::from_existing(self.state_db.read().clone(), root).ok()
         })
     }
 
@@ -232,7 +232,7 @@ impl Client {
         })
     }
 
-    pub fn state_db(&self) -> &Arc<RwLock<StateDB>> {
+    pub fn state_db(&self) -> &RwLock<StateDB> {
         &self.state_db
     }
 
@@ -595,7 +595,7 @@ impl PrepareOpenBlock for Client {
         let is_epoch_begin = chain.epoch_transition(best_header.number(), h).is_some();
         OpenBlock::new(
             engine,
-            Arc::clone(&self.state_db),
+            self.state_db.read().clone(),
             best_header,
             author,
             extra_data,
