@@ -252,8 +252,8 @@ impl DatabaseClient for Client {
 }
 
 impl AssetClient for Client {
-    fn get_asset_scheme(&self, asset_type: AssetSchemeAddress) -> TrieResult<Option<AssetScheme>> {
-        if let Some(state) = Client::state_at(&self, BlockId::Latest) {
+    fn get_asset_scheme(&self, asset_type: AssetSchemeAddress, id: BlockId) -> TrieResult<Option<AssetScheme>> {
+        if let Some(state) = Client::state_at(&self, id) {
             let shard_id = asset_type.shard_id();
             Ok(state.asset_scheme(shard_id, &asset_type)?)
         } else {
