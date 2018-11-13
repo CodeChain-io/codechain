@@ -109,14 +109,20 @@ where
         Ok(self.client.transaction_invoices(&transaction_hash))
     }
 
-    fn get_asset_scheme_by_hash(&self, transaction_hash: H256, shard_id: ShardId) -> Result<Option<AssetScheme>> {
+    fn get_asset_scheme_by_hash(
+        &self,
+        transaction_hash: H256,
+        shard_id: ShardId,
+        block_number: Option<u64>,
+    ) -> Result<Option<AssetScheme>> {
         let address = AssetSchemeAddress::new(transaction_hash, shard_id);
-        self.get_asset_scheme_by_type(address.into())
+        self.get_asset_scheme_by_type(address.into(), block_number)
     }
 
-    fn get_asset_scheme_by_type(&self, asset_type: H256) -> Result<Option<AssetScheme>> {
+    fn get_asset_scheme_by_type(&self, asset_type: H256, block_number: Option<u64>) -> Result<Option<AssetScheme>> {
+        let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
         match AssetSchemeAddress::from_hash(asset_type) {
-            Some(address) => self.client.get_asset_scheme(address).map_err(errors::parcel_state),
+            Some(address) => self.client.get_asset_scheme(address, block_id).map_err(errors::parcel_state),
             None => Ok(None),
         }
     }

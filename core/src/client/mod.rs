@@ -268,7 +268,7 @@ pub trait DatabaseClient {
 
 /// Provides methods to access asset
 pub trait AssetClient {
-    fn get_asset_scheme(&self, asset_type: AssetSchemeAddress) -> TrieResult<Option<AssetScheme>>;
+    fn get_asset_scheme(&self, asset_type: AssetSchemeAddress, id: BlockId) -> TrieResult<Option<AssetScheme>>;
 
     fn get_asset(&self, transaction_hash: H256, index: usize, id: BlockId) -> TrieResult<Option<OwnedAsset>>;
 
