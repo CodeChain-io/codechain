@@ -48,11 +48,11 @@ build_rpc_trait! {
 
         /// Gets asset scheme with given transaction hash.
         # [rpc(name = "chain_getAssetSchemeByHash")]
-        fn get_asset_scheme_by_hash(&self, H256, ShardId) -> Result<Option<AssetScheme>>;
+        fn get_asset_scheme_by_hash(&self, H256, ShardId, Option<u64>) -> Result<Option<AssetScheme>>;
 
         /// Gets asset scheme with given asset type.
         # [rpc(name = "chain_getAssetSchemeByType")]
-        fn get_asset_scheme_by_type(&self, H256) -> Result<Option<AssetScheme>>;
+        fn get_asset_scheme_by_type(&self, H256, Option<u64>) -> Result<Option<AssetScheme>>;
 
         /// Gets asset with given asset type.
         # [rpc(name = "chain_getAsset")]
