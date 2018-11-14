@@ -40,6 +40,7 @@ extern crate util_error;
 extern crate rlp_derive;
 
 mod action_handler;
+mod cache;
 mod checkpoint;
 mod db;
 mod error;
@@ -59,10 +60,11 @@ pub use item::account::Account;
 pub use item::action_data::ActionData;
 pub use item::asset::{Asset, OwnedAsset, OwnedAssetAddress};
 pub use item::asset_scheme::{AssetScheme, AssetSchemeAddress};
-pub use item::local_cache::{CacheableItem, LocalCache};
 pub use item::metadata::{Metadata, MetadataAddress};
 pub use item::regular_account::{RegularAccount, RegularAccountAddress};
 pub use item::shard::{Shard, ShardAddress};
 pub use traits::{ShardState, ShardStateView, StateWithCache, TopState, TopStateView};
+
+use cache::CacheableItem;
 
 pub type StateResult<T> = Result<T, StateError>;

@@ -22,7 +22,7 @@ use ckey::{self, Public};
 use primitives::U256;
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
-use super::local_cache::CacheableItem;
+use super::super::CacheableItem;
 
 /// Single account in the system.
 // Don't forget to sync the field list with PodAccount.

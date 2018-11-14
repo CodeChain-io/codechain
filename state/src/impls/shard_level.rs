@@ -31,13 +31,13 @@ use cvm::{decode, execute, ChainTimeInfo, ScriptResult, VMConfig};
 use hashdb::AsHashDB;
 use primitives::{Bytes, H160, H256, U256};
 
+use super::super::cache::ShardCache;
 use super::super::checkpoint::{CheckpointId, StateWithCheckpoint};
-use super::super::item::local_cache::CacheableItem;
 use super::super::traits::{ShardState, ShardStateView};
 use super::super::{
-    Asset, AssetScheme, AssetSchemeAddress, OwnedAsset, OwnedAssetAddress, StateDB, StateError, StateResult,
+    Asset, AssetScheme, AssetSchemeAddress, CacheableItem, OwnedAsset, OwnedAssetAddress, StateDB, StateError,
+    StateResult,
 };
-use super::top_level::ShardCache;
 
 
 pub struct ShardLevelState<'db> {
@@ -508,23 +508,23 @@ impl<'db> ShardLevelState<'db> {
     }
 
     fn kill_asset(&mut self, account: &OwnedAssetAddress) {
-        self.cache.asset.remove(account);
+        self.cache.remove_asset(account);
     }
 
     fn kill_asset_scheme(&mut self, account: &AssetSchemeAddress) {
-        self.cache.asset_scheme.remove(account);
+        self.cache.remove_asset_scheme(account);
     }
 
     fn get_asset_scheme_mut(&self, a: &AssetSchemeAddress) -> cmerkle::Result<RefMut<AssetScheme>> {
         let db = self.db.borrow();
         let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
-        self.cache.asset_scheme.get_mut(a, trie)
+        self.cache.asset_scheme_mut(a, trie)
     }
 
     fn get_asset_mut(&self, a: &OwnedAssetAddress) -> cmerkle::Result<RefMut<OwnedAsset>> {
         let db = self.db.borrow();
         let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
-        self.cache.asset.get_mut(a, trie)
+        self.cache.asset_mut(a, trie)
     }
 }
 
@@ -532,13 +532,13 @@ impl<'db> ShardStateView for ShardLevelState<'db> {
     fn asset_scheme(&self, a: &AssetSchemeAddress) -> cmerkle::Result<Option<AssetScheme>> {
         let db = self.db.borrow();
         let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
-        self.cache.asset_scheme.get(a, trie)
+        self.cache.asset_scheme(a, trie)
     }
 
     fn asset(&self, a: &OwnedAssetAddress) -> cmerkle::Result<Option<OwnedAsset>> {
         let db = self.db.borrow();
         let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
-        self.cache.asset.get(a, trie)
+        self.cache.asset(a, trie)
     }
 }
 
@@ -546,8 +546,7 @@ impl<'db> StateWithCheckpoint for ShardLevelState<'db> {
     fn create_checkpoint(&mut self, id: CheckpointId) {
         ctrace!(STATE, "Checkpoint({}) for shard({}) is created", id, self.shard_id);
         self.id_of_checkpoints.push(id);
-        self.cache.asset_scheme.checkpoint();
-        self.cache.asset.checkpoint();
+        self.cache.checkpoint();
     }
 
     fn discard_checkpoint(&mut self, id: CheckpointId) {
@@ -555,8 +554,7 @@ impl<'db> StateWithCheckpoint for ShardLevelState<'db> {
         assert_eq!(expected, id);
 
         ctrace!(STATE, "Checkpoint({}) for shard({}) is discarded", id, self.shard_id);
-        self.cache.asset_scheme.discard_checkpoint();
-        self.cache.asset.discard_checkpoint();
+        self.cache.discard_checkpoint();
     }
 
     fn revert_to_checkpoint(&mut self, id: CheckpointId) {
@@ -564,8 +562,7 @@ impl<'db> StateWithCheckpoint for ShardLevelState<'db> {
         assert_eq!(expected, id);
 
         ctrace!(STATE, "Checkpoint({}) for shard({}) is reverted", id, self.shard_id);
-        self.cache.asset_scheme.revert_to_checkpoint();
-        self.cache.asset.revert_to_checkpoint();
+        self.cache.revert_to_checkpoint();
     }
 }
 
@@ -612,13 +609,13 @@ impl<'db> ShardStateView for ReadOnlyShardLevelState<'db> {
     fn asset_scheme(&self, a: &AssetSchemeAddress) -> cmerkle::Result<Option<AssetScheme>> {
         let db = self.db.borrow();
         let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
-        self.cache.asset_scheme.get(a, trie)
+        self.cache.asset_scheme(a, trie)
     }
 
     fn asset(&self, a: &OwnedAssetAddress) -> cmerkle::Result<Option<OwnedAsset>> {
         let db = self.db.borrow();
         let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
-        self.cache.asset.get(a, trie)
+        self.cache.asset(a, trie)
     }
 }
 

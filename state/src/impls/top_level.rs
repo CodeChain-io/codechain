@@ -51,12 +51,12 @@ use kvdb::DBTransaction;
 use primitives::{Bytes, H160, H256, U256};
 use util_error::UtilError;
 
+use super::super::cache::{ShardCache, TopCache};
 use super::super::checkpoint::{CheckpointId, StateWithCheckpoint};
-use super::super::item::local_cache::LocalCache;
 use super::super::traits::{ShardState, ShardStateView, StateWithCache, TopState, TopStateView};
 use super::super::{
-    Account, ActionData, AssetScheme, Metadata, MetadataAddress, OwnedAsset, RegularAccount, RegularAccountAddress,
-    Shard, ShardAddress, ShardLevelState, StateDB, StateError, StateResult,
+    Account, ActionData, Metadata, MetadataAddress, RegularAccount, RegularAccountAddress, Shard, ShardAddress,
+    ShardLevelState, StateDB, StateError, StateResult,
 };
 
 /// Representation of the entire state of all accounts in the system.
@@ -90,61 +90,6 @@ pub struct TopLevelState {
     id_of_checkpoints: Vec<CheckpointId>,
 }
 
-struct TopCache {
-    account: LocalCache<Account>,
-    regular_account: LocalCache<RegularAccount>,
-    metadata: LocalCache<Metadata>,
-    shard: LocalCache<Shard>,
-    action_data: LocalCache<ActionData>,
-}
-
-impl Default for TopCache {
-    fn default() -> Self {
-        Self {
-            account: LocalCache::new(),
-            regular_account: LocalCache::new(),
-            metadata: LocalCache::new(),
-            shard: LocalCache::new(),
-            action_data: LocalCache::new(),
-        }
-    }
-}
-
-impl Clone for TopCache {
-    fn clone(&self) -> Self {
-        Self {
-            account: self.account.clone(),
-            regular_account: self.regular_account.clone(),
-            metadata: self.metadata.clone(),
-            shard: self.shard.clone(),
-            action_data: self.action_data.clone(),
-        }
-    }
-}
-
-pub struct ShardCache {
-    pub asset_scheme: LocalCache<AssetScheme>,
-    pub asset: LocalCache<OwnedAsset>,
-}
-
-impl Default for ShardCache {
-    fn default() -> Self {
-        Self {
-            asset_scheme: LocalCache::new(),
-            asset: LocalCache::new(),
-        }
-    }
-}
-
-impl Clone for ShardCache {
-    fn clone(&self) -> Self {
-        Self {
-            asset_scheme: self.asset_scheme.clone(),
-            asset: self.asset.clone(),
-        }
-    }
-}
-
 impl TopStateView for TopLevelState {
     /// Check caches for required data
     /// First searches for account in the local, then the shared cache.
@@ -152,28 +97,28 @@ impl TopStateView for TopLevelState {
     fn account(&self, a: &Address) -> TrieResult<Option<Account>> {
         let db = self.db.borrow();
         let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
-        self.top_cache.account.get(&a, trie)
+        self.top_cache.account(&a, trie)
     }
 
     fn regular_account_by_address(&self, a: &Address) -> TrieResult<Option<RegularAccount>> {
         let a = RegularAccountAddress::from_address(a);
         let db = self.db.borrow();
         let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
-        Ok(self.top_cache.regular_account.get(&a, trie)?)
+        Ok(self.top_cache.regular_account(&a, trie)?)
     }
 
     fn metadata(&self) -> TrieResult<Option<Metadata>> {
         let db = self.db.borrow();
         let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
         let address = MetadataAddress::new();
-        self.top_cache.metadata.get(&address, trie)
+        self.top_cache.metadata(&address, trie)
     }
 
     fn shard(&self, shard_id: ShardId) -> TrieResult<Option<Shard>> {
         let db = self.db.borrow();
         let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
         let shard_address = ShardAddress::new(shard_id);
-        self.top_cache.shard.get(&shard_address, trie)
+        self.top_cache.shard(&shard_address, trie)
     }
 
     fn shard_state<'db>(&'db self, shard_id: ShardId) -> TrieResult<Option<Box<ShardStateView + 'db>>> {
@@ -190,7 +135,7 @@ impl TopStateView for TopLevelState {
     fn action_data(&self, key: &H256) -> TrieResult<Option<ActionData>> {
         let db = self.db.borrow();
         let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
-        Ok(self.top_cache.action_data.get(key, trie)?.map(Into::into))
+        Ok(self.top_cache.action_data(key, trie)?.map(Into::into))
     }
 }
 
@@ -211,19 +156,14 @@ impl StateWithCache for TopLevelState {
 
                 let mut shard_cache = self.shard_caches.get_mut(&shard_id).expect("Shard must exist");
 
-                shard_cache.asset_scheme.commit(&mut trie)?;
-                shard_cache.asset.commit(&mut trie)?;
+                shard_cache.commit(&mut trie)?;
             }
             self.set_shard_root(shard_id, shard_root)?;
         }
         {
             let mut db = self.db.borrow_mut();
             let mut trie = TrieFactory::from_existing(db.as_hashdb_mut(), &mut self.root)?;
-            self.top_cache.account.commit(&mut trie)?;
-            self.top_cache.regular_account.commit(&mut trie)?;
-            self.top_cache.metadata.commit(&mut trie)?;
-            self.top_cache.shard.commit(&mut trie)?;
-            self.top_cache.action_data.commit(&mut trie)?;
+            self.top_cache.commit(&mut trie)?;
         }
         Ok(self.root)
     }
@@ -236,15 +176,10 @@ impl StateWithCheckpoint for TopLevelState {
     fn create_checkpoint(&mut self, id: CheckpointId) {
         ctrace!(STATE, "Checkpoint({}) for top level is created", id);
         self.id_of_checkpoints.push(id);
-        self.top_cache.account.checkpoint();
-        self.top_cache.regular_account.checkpoint();
-        self.top_cache.metadata.checkpoint();
-        self.top_cache.shard.checkpoint();
-        self.top_cache.action_data.checkpoint();
+        self.top_cache.checkpoint();
 
         for (_, mut cache) in self.shard_caches.iter_mut() {
-            cache.asset_scheme.checkpoint();
-            cache.asset.checkpoint();
+            cache.checkpoint()
         }
     }
 
@@ -253,15 +188,10 @@ impl StateWithCheckpoint for TopLevelState {
         assert_eq!(expected, id);
 
         ctrace!(STATE, "Checkpoint({}) for top level is discarded", id);
-        self.top_cache.account.discard_checkpoint();
-        self.top_cache.regular_account.discard_checkpoint();
-        self.top_cache.metadata.discard_checkpoint();
-        self.top_cache.shard.discard_checkpoint();
-        self.top_cache.action_data.discard_checkpoint();
+        self.top_cache.discard_checkpoint();
 
         for (_, mut cache) in self.shard_caches.iter_mut() {
-            cache.asset_scheme.discard_checkpoint();
-            cache.asset.discard_checkpoint();
+            cache.discard_checkpoint();
         }
     }
 
@@ -270,15 +200,10 @@ impl StateWithCheckpoint for TopLevelState {
         assert_eq!(expected, id);
 
         ctrace!(STATE, "Checkpoint({}) for top level is reverted", id);
-        self.top_cache.account.revert_to_checkpoint();
-        self.top_cache.regular_account.revert_to_checkpoint();
-        self.top_cache.metadata.revert_to_checkpoint();
-        self.top_cache.shard.revert_to_checkpoint();
-        self.top_cache.action_data.revert_to_checkpoint();
+        self.top_cache.revert_to_checkpoint();
 
         for (_, mut cache) in self.shard_caches.iter_mut() {
-            cache.asset_scheme.revert_to_checkpoint();
-            cache.asset.revert_to_checkpoint();
+            cache.revert_to_checkpoint();
         }
     }
 }
@@ -610,34 +535,34 @@ impl TopLevelState {
 
         let db = self.db.borrow();
         let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
-        self.top_cache.account.get_mut(&a, trie)
+        self.top_cache.account_mut(&a, trie)
     }
 
     fn get_regular_account_mut(&self, public: &Public) -> TrieResult<RefMut<RegularAccount>> {
         let regular_account_address = RegularAccountAddress::new(public);
         let db = self.db.borrow();
         let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
-        self.top_cache.regular_account.get_mut(&regular_account_address, trie)
+        self.top_cache.regular_account_mut(&regular_account_address, trie)
     }
 
     fn get_metadata_mut(&self) -> TrieResult<RefMut<Metadata>> {
         let db = self.db.borrow();
         let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
         let address = MetadataAddress::new();
-        self.top_cache.metadata.get_mut(&address, trie)
+        self.top_cache.metadata_mut(&address, trie)
     }
 
     fn get_shard_mut(&self, shard_id: ShardId) -> TrieResult<RefMut<Shard>> {
         let db = self.db.borrow();
         let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
         let shard_address = ShardAddress::new(shard_id);
-        self.top_cache.shard.get_mut(&shard_address, trie)
+        self.top_cache.shard_mut(&shard_address, trie)
     }
 
     fn get_action_data_mut(&self, key: &H256) -> TrieResult<RefMut<ActionData>> {
         let db = self.db.borrow();
         let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
-        self.top_cache.action_data.get_mut(key, trie)
+        self.top_cache.action_data_mut(key, trie)
     }
 
     pub fn journal_under(&self, batch: &mut DBTransaction, now: u64, id: &H256) -> Result<u32, UtilError> {
@@ -661,11 +586,11 @@ impl Clone for TopLevelState {
 
 impl TopState for TopLevelState {
     fn kill_account(&mut self, account: &Address) {
-        self.top_cache.account.remove(account);
+        self.top_cache.remove_account(account);
     }
 
     fn kill_regular_account(&mut self, account: &Public) {
-        self.top_cache.regular_account.remove(&RegularAccountAddress::new(account));
+        self.top_cache.remove_regular_account(&RegularAccountAddress::new(account));
     }
 
     fn add_balance(&mut self, a: &Address, incr: &U256) -> TrieResult<()> {
