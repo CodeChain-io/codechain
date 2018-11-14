@@ -24,14 +24,14 @@ use std::sync::{Arc, Weak};
 
 use ccrypto::blake256;
 use ckey::{public_to_address, recover, Address, Message, Password, Signature};
-use cnetwork::{Api, NetworkExtension, NodeId, TimerToken};
+use cnetwork::{Api, NetworkExtension, NetworkService, NodeId, TimeoutHandler, TimerToken};
 use ctypes::machine::WithBalances;
 use ctypes::util::unexpected::{Mismatch, OutOfBounds};
 use ctypes::BlockNumber;
 use parking_lot::{Mutex, RwLock};
 use primitives::{Bytes, H256, U128, U256};
 use rand::{thread_rng, Rng};
-use rlp::{self, Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
+use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 use time::Duration;
 
 use self::message::*;
@@ -330,7 +330,7 @@ impl Tendermint {
     }
 
     fn to_step(&self, step: Step) {
-        self.extension.send_local_message(step);
+        self.extension.set_timer_step(step);
         *self.step.write() = step;
         match step {
             Step::Propose => self.update_sealing(),
@@ -762,8 +762,8 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
         self.signer.read().sign(hash).map_err(Into::into)
     }
 
-    fn network_extension(&self) -> Option<Arc<NetworkExtension>> {
-        Some(Arc::clone(&self.extension) as Arc<NetworkExtension>)
+    fn register_network_extension_to_service(&self, service: &NetworkService) {
+        service.register_extension(Arc::clone(&self.extension));
     }
 }
 
@@ -888,9 +888,10 @@ impl TendermintExtension {
         });
     }
 
-    fn send_local_message(&self, message: Step) {
+    fn set_timer_step(&self, step: Step) {
         self.api.lock().as_ref().map(|api| {
-            api.send_local_message(&message);
+            api.clear_timer(ENGINE_TIMEOUT_TOKEN).expect("Timer clear succeeds");
+            api.set_timer_once(ENGINE_TIMEOUT_TOKEN, self.timeouts.timeout(&step)).expect("Timer set succeeds");
         });
     }
 
@@ -952,15 +953,9 @@ impl NetworkExtension for TendermintExtension {
             _ => cinfo!(ENGINE, "Invalid message from peer {}", token),
         }
     }
+}
 
-    fn on_local_message(&self, data: &[u8]) {
-        let next: Step = rlp::decode(data);
-        self.api.lock().as_ref().map(|api| {
-            api.clear_timer(ENGINE_TIMEOUT_TOKEN).expect("Timer clear succeeds");
-            api.set_timer_once(ENGINE_TIMEOUT_TOKEN, self.timeouts.timeout(&next)).expect("Timer set succeeds");
-        });
-    }
-
+impl TimeoutHandler for TendermintExtension {
     fn on_timeout(&self, timer: TimerToken) {
         match timer {
             ENGINE_TIMEOUT_TOKEN => {
