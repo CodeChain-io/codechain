@@ -171,6 +171,14 @@ impl UnverifiedParcel {
                     } => {}
                 }
             }
+            Action::WrapCCC {
+                amount,
+                ..
+            } => {
+                if amount.is_zero() {
+                    return Err(ParcelError::ZeroAmount)
+                }
+            }
             _ => {}
         }
         Ok(())

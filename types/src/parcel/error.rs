@@ -65,6 +65,7 @@ pub enum Error {
     },
     InvalidShardId(ShardId),
     InvalidShardRoot(Mismatch<H256>),
+    ZeroAmount,
     /// Signature error
     InvalidSignature(String),
     InconsistentShardOutcomes,
@@ -98,6 +99,7 @@ const ERROR_ID_INVALID_TRANSFER_DESTINATION: u8 = 19u8;
 const ERROR_ID_INVALID_TRANSACTION: u8 = 20u8;
 const ERROR_ID_INSUFFICIENT_PERMISSION: u8 = 21u8;
 const ERROR_ID_NEW_OWNERS_MUST_CONTAIN_SENDER: u8 = 22u8;
+const ERROR_ID_ZERO_AMOUNT: u8 = 23u8;
 
 impl Error {
     fn item_count(&self) -> usize {
@@ -119,6 +121,7 @@ impl Error {
             } => 3,
             Error::InvalidShardId(_) => 2,
             Error::InvalidShardRoot(_) => 2,
+            Error::ZeroAmount => 1,
             Error::InvalidSignature(_) => 2,
             Error::InconsistentShardOutcomes => 1,
             Error::ParcelsTooBig => 1,
@@ -156,6 +159,7 @@ impl Encodable for Error {
             } => s.append(&ERROR_ID_INVALID_SEQ).append(expected).append(got),
             Error::InvalidShardId(shard_id) => s.append(&ERROR_ID_INVALID_SHARD_ID).append(shard_id),
             Error::InvalidShardRoot(mismatch) => s.append(&ERROR_ID_INVALID_SHARD_ROOT).append(mismatch),
+            Error::ZeroAmount => s.append(&ERROR_ID_ZERO_AMOUNT),
             Error::InvalidSignature(err) => s.append(&ERROR_ID_INVALID_SIGNATURE).append(err),
             Error::InconsistentShardOutcomes => s.append(&ERROR_ID_INCONSISTENT_SHARD_OUTCOMES),
             Error::ParcelsTooBig => s.append(&ERROR_ID_PARCELS_TOO_BIG),
@@ -196,6 +200,7 @@ impl Decodable for Error {
             },
             ERROR_ID_INVALID_SHARD_ID => Error::InvalidShardId(rlp.val_at(1)?),
             ERROR_ID_INVALID_SHARD_ROOT => Error::InvalidShardRoot(rlp.val_at(1)?),
+            ERROR_ID_ZERO_AMOUNT => Error::ZeroAmount,
             ERROR_ID_INVALID_SIGNATURE => Error::InvalidSignature(rlp.val_at(1)?),
             ERROR_ID_INCONSISTENT_SHARD_OUTCOMES => Error::InconsistentShardOutcomes,
             ERROR_ID_PARCELS_TOO_BIG => Error::ParcelsTooBig,
@@ -238,6 +243,7 @@ impl Display for Error {
             } => format!("Invalid parcel seq: expected {}, found {}", expected, got),
             Error::InvalidShardId(shard_id) => format!("{} is an invalid shard id", shard_id),
             Error::InvalidShardRoot(mismatch) => format!("Invalid shard root {}", mismatch),
+            Error::ZeroAmount => format!("An amount cannot be 0"),
             Error::InvalidSignature(err) => format!("Parcel has invalid signature: {}.", err),
             Error::InconsistentShardOutcomes => "Shard outcomes are inconsistent".to_string(),
             Error::ParcelsTooBig => "Parcel size exceeded the body size limit".to_string(),
