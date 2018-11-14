@@ -18,7 +18,7 @@ use ctypes::ShardId;
 use primitives::{Bytes, H160, H256, U256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
-use super::local_cache::CacheableItem;
+use super::super::CacheableItem;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, RlpEncodable, RlpDecodable)]
 #[serde(rename_all = "camelCase")]

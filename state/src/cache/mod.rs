@@ -14,20 +14,20 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#[macro_use]
-mod address;
+use std::fmt;
+use std::hash::Hash;
 
-pub mod account;
-pub mod action_data;
-pub mod asset;
-pub mod asset_scheme;
-pub mod metadata;
-pub mod regular_account;
-pub mod shard;
+use rlp::{Decodable, Encodable};
 
-const OWNED_ASSET_PREFIX: u8 = 'A' as u8;
-const ADDRESS_PREFIX: u8 = 'C' as u8;
-const SHARD_PREFIX: u8 = 'H' as u8;
-const METADATA_PREFIX: u8 = 'M' as u8;
-const REGULAR_ACCOUNT_PREFIX: u8 = 'R' as u8;
-const ASSET_SCHEME_PREFIX: u8 = 'S' as u8;
+mod shard_cache;
+mod top_cache;
+mod write_back;
+
+pub use self::shard_cache::ShardCache;
+pub use self::top_cache::TopCache;
+pub use self::write_back::WriteBack;
+
+pub trait CacheableItem: Clone + Default + fmt::Debug + Decodable + Encodable {
+    type Address: AsRef<[u8]> + Clone + fmt::Debug + Eq + Hash;
+    fn is_null(&self) -> bool;
+}

@@ -19,40 +19,28 @@ use std::collections::hash_map::Entry as HashMapEntry;
 use std::collections::HashMap;
 use std::convert::AsRef;
 use std::fmt;
-use std::hash::Hash;
 use std::vec::Vec;
 
 use cmerkle::{self, Result as TrieResult, Trie, TrieDB, TrieMut};
-use rlp::{Decodable, Encodable};
 
-pub trait CacheableItem: Clone + Default + fmt::Debug + Decodable + Encodable {
-    type Address: AsRef<[u8]> + Clone + fmt::Debug + Eq + Hash;
-    fn is_null(&self) -> bool;
-}
+use super::CacheableItem;
 
 #[derive(Eq, PartialEq, Clone, Copy, Debug)]
-/// Account modification state. Used to check if the account was
-/// Modified in between commits and overall.
+/// Used to check if the item was modified in between commits and overall.
 enum EntryState {
-    /// Account was loaded from disk and never modified in this state object.
+    /// Loaded from disk and never modified in this state object.
     CleanFresh,
-    /// Account has been modified and is not committed to the trie yet.
-    /// This is set if any of the account data is changed, including
-    /// storage and code.
+    /// Modified and not committed to the trie yet.
+    /// This is set if any of the data is changed.
     Dirty,
-    /// Account was modified and committed to the trie.
+    /// Committed to the trie.
     Committed,
 }
 
 #[derive(Clone, Debug)]
-/// In-memory copy of the account data. Holds the optional account
-/// and the modification status.
-/// Account entry can contain existing (`Some`) or non-existing
-/// account (`None`)
 struct Entry<Item>
 where
     Item: CacheableItem, {
-    /// Account entry. `None` if account known to be non-existant.
     item: Option<Item>,
     /// Entry state.
     state: EntryState,
@@ -86,7 +74,7 @@ where
 }
 
 
-pub struct LocalCache<Item>
+pub struct WriteBack<Item>
 where
     Item: CacheableItem, {
     cache: RefCell<HashMap<Item::Address, Entry<Item>>>,
@@ -94,14 +82,14 @@ where
     checkpoints: RefCell<Vec<HashMap<Item::Address, Option<Entry<Item>>>>>,
 }
 
-impl<Item> LocalCache<Item>
+impl<Item> WriteBack<Item>
 where
     Item: CacheableItem,
 {
     pub fn new() -> Self {
         Self {
-            cache: RefCell::new(HashMap::new()),
-            checkpoints: RefCell::new(Vec::new()),
+            cache: Default::default(),
+            checkpoints: Default::default(),
         }
     }
 
@@ -175,10 +163,6 @@ where
         }
     }
 
-    pub fn clear(&self) {
-        self.cache.borrow_mut().clear();
-    }
-
     pub fn commit<'db>(&mut self, trie: &mut Box<TrieMut + 'db>) -> TrieResult<()> {
         let mut cache = self.cache.borrow_mut();
         for (address, ref mut a) in cache.iter_mut().filter(|&(_, ref a)| a.is_dirty()) {
@@ -236,7 +220,7 @@ where
     }
 }
 
-impl<Item> fmt::Debug for LocalCache<Item>
+impl<Item> fmt::Debug for WriteBack<Item>
 where
     Item: CacheableItem,
 {
@@ -245,23 +229,15 @@ where
     }
 }
 
-impl<Item> Clone for LocalCache<Item>
+impl<Item> Clone for WriteBack<Item>
 where
     Item: CacheableItem,
 {
     fn clone(&self) -> Self {
-        let cache = {
-            let mut cache: HashMap<Item::Address, Entry<Item>> = HashMap::new();
-            for (key, val) in self.cache.borrow().iter() {
-                if val.is_dirty() {
-                    cache.insert(key.clone(), Entry::<Item>::new_dirty(val.item.clone()));
-                }
-            }
-            RefCell::new(cache)
-        };
+        assert_eq!(0, self.checkpoints.borrow().len());
         Self {
-            cache,
-            checkpoints: RefCell::new(Vec::new()),
+            cache: self.cache.clone(),
+            checkpoints: RefCell::new(vec![]),
         }
     }
 }
