@@ -23,7 +23,7 @@
     "tslint": "^5.10.0"
   },
   "dependencies": {
-    "codechain-sdk": "https://github.com/joojis/codechain-sdk-js.git#build-optional-block-number",
+    "codechain-sdk": "https://github.com/jhs7jhs/codechain-sdk-js.git#wrapped_ccc",
     "jest": "^23.1.0",
     "mkdirp": "^0.5.1",
     "rlp": "^2.0.0",

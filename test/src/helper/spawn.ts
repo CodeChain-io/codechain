@@ -26,7 +26,8 @@ import {
     U256,
     AssetTransferInput,
     PlatformAddress,
-    AssetTransferAddress
+    AssetTransferAddress,
+    AssetUnwrapCCCTransaction
 } from "codechain-sdk/lib/core/classes";
 import { mkdtempSync, appendFileSync } from "fs";
 import { createInterface as createReadline } from "readline";
@@ -421,7 +422,10 @@ export default class CodeChain {
         await this.sdk.key.signTransactionInput(tx, index, { keyStore });
     }
 
-    public async signTransferBurn(tx: AssetTransferTransaction, index: number) {
+    public async signTransferBurn(
+        tx: AssetTransferTransaction | AssetUnwrapCCCTransaction,
+        index: number
+    ) {
         const keyStore = await this.sdk.key.createLocalKeyStore(
             this.localKeyStorePath
         );
