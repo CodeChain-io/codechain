@@ -30,10 +30,10 @@ pub type TimerName = &'static str;
 pub type TimerToken = usize;
 
 pub trait TimeoutHandler: Send + Sync {
-    fn on_timeout(&self, timer_token: TimerToken);
+    fn on_timeout(&self, _token: TimerToken) {}
 }
 
-type TimeoutHandlerMap = HashMap<TimerName, Arc<TimeoutHandler + Send + Sync>>;
+type TimeoutHandlerMap = HashMap<TimerName, Arc<TimeoutHandler>>;
 
 #[derive(Clone)]
 pub struct TimerLoop {
@@ -64,7 +64,7 @@ impl TimerLoop {
 
     pub fn new_timer<T>(&self, name: TimerName, handler: Arc<T>) -> TimerApi
     where
-        T: 'static + TimeoutHandler + Send + Sync, {
+        T: 'static + TimeoutHandler, {
         let mut timers = self.timers.write();
         match timers.entry(name) {
             Entry::Occupied(_) => unreachable!("Timer name was already occupied: {}", name),
@@ -417,25 +417,18 @@ impl std::cmp::PartialOrd for TimeOrdered<Schedule> {
 }
 
 fn spawn_workers(size: usize, timers: &Arc<RwLock<TimeoutHandlerMap>>, queue: &Arc<WorkerQueue>) {
-    let mut threads = Vec::new();
     for i in 0..size {
         let queue = Arc::clone(queue);
         let timers = Arc::clone(timers);
-        threads.push(
-            thread::Builder::new()
-                .name(format!("Timer worker #{}", i))
-                .spawn(move || worker_loop(&timers, &queue))
-                .unwrap(),
-        );
+        thread::Builder::new()
+            .name(format!("Timer worker #{}", i))
+            .spawn(move || worker_loop(&timers, &queue))
+            .unwrap();
     }
 }
 
 fn worker_loop(timers: &Arc<RwLock<TimeoutHandlerMap>>, queue: &Arc<WorkerQueue>) {
-    loop {
-        let schedule = match queue.dequeue() {
-            Some(schedule) => schedule,
-            None => return,
-        };
+    while let Some(schedule) = queue.dequeue() {
         let timers = timers.read();
         let TimerId(timer_name, timer_token) = schedule.timer_id;
         if let Some(timer) = timers.get(timer_name) {
