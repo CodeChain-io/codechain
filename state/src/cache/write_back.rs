@@ -93,6 +93,14 @@ where
         }
     }
 
+    pub fn new_with_iter(items: impl Iterator<Item = (Item::Address, Item)>) -> Self {
+        let cache = Self::new();
+        for (addr, item) in items.into_iter() {
+            cache.insert(&addr, Entry::new_clean(Some(item)))
+        }
+        cache
+    }
+
     pub fn checkpoint(&mut self) {
         self.checkpoints.get_mut().push(HashMap::new());
     }
@@ -217,6 +225,19 @@ where
             entry.state = EntryState::Dirty;
             entry.item.as_mut().expect("Required item must always exist; qed")
         }))
+    }
+
+    pub fn items(&self) -> Vec<(Item::Address, Option<Item>)> {
+        let cache = self.cache.borrow();
+        cache
+            .iter()
+            .filter(|(_, entry)| match entry.state {
+                EntryState::CleanFresh => false,
+                EntryState::Committed => true,
+                EntryState::Dirty => unreachable!("The cache must be commited before called iter"),
+            })
+            .map(|(addr, entry)| (addr.clone(), entry.item.clone()))
+            .collect()
     }
 }
 

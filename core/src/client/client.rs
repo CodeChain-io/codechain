@@ -96,7 +96,7 @@ impl Client {
             // Sets the correct state root.
             state_db = scheme.ensure_genesis_state(state_db)?;
             let mut batch = DBTransaction::new();
-            state_db.journal_under(&mut batch, 0, &scheme.genesis_header().hash())?;
+            state_db.journal_under(&mut batch, 0, scheme.genesis_header().hash())?;
             db.write(batch).map_err(ClientError::Database)?;
         }
 
@@ -219,7 +219,7 @@ impl Client {
     /// Get a copy of the best block's state.
     fn latest_state(&self) -> TopLevelState {
         let header = self.best_block_header();
-        TopLevelState::from_existing(self.state_db.read().clone(), header.state_root())
+        TopLevelState::from_existing(self.state_db.read().clone(&header.state_root()), header.state_root())
             .expect("State root of best block header always valid.")
     }
 
@@ -237,7 +237,7 @@ impl Client {
 
         self.block_header(id).and_then(|header| {
             let root = header.state_root();
-            TopLevelState::from_existing(self.state_db.read().clone(), root).ok()
+            TopLevelState::from_existing(self.state_db.read().clone(&root), root).ok()
         })
     }
 
@@ -582,7 +582,7 @@ impl PrepareOpenBlock for Client {
         let is_epoch_begin = chain.epoch_transition(best_header.number(), h).is_some();
         OpenBlock::new(
             engine,
-            self.state_db.read().clone(),
+            self.state_db.read().clone(&best_header.state_root()),
             best_header,
             author,
             extra_data,

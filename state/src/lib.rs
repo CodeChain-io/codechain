@@ -26,6 +26,7 @@ extern crate hashdb;
 extern crate journaldb;
 extern crate kvdb;
 extern crate kvdb_memorydb;
+extern crate lru_cache;
 #[macro_use]
 extern crate log;
 extern crate parking_lot;

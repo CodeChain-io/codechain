@@ -30,8 +30,10 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
+use std::collections::HashMap;
 use std::sync::Arc;
 
+use ctypes::ShardId;
 use hashdb::{AsHashDB, HashDB};
 use journaldb::{self, Algorithm, JournalDB};
 use kvdb::DBTransaction;
@@ -39,6 +41,8 @@ use kvdb_memorydb;
 use primitives::H256;
 use util_error::UtilError;
 
+use super::super::cache::{GlobalCache, ShardCache, TopCache};
+use super::super::impls::TopLevelState;
 use super::super::ActionHandler;
 
 /// State database abstraction.
@@ -46,6 +50,8 @@ pub struct StateDB {
     /// Backing database.
     db: Box<JournalDB>,
     custom_handlers: Vec<Arc<ActionHandler>>,
+    cache: GlobalCache,
+    current_hash: Option<H256>,
 }
 
 impl StateDB {
@@ -54,6 +60,8 @@ impl StateDB {
         StateDB {
             db,
             custom_handlers,
+            cache: Default::default(),
+            current_hash: None,
         }
     }
 
@@ -64,8 +72,10 @@ impl StateDB {
     }
 
     /// Journal all recent operations under the given era and ID.
-    pub fn journal_under(&mut self, batch: &mut DBTransaction, now: u64, id: &H256) -> Result<u32, UtilError> {
-        self.db.journal_under(batch, now, id)
+    pub fn journal_under(&mut self, batch: &mut DBTransaction, now: u64, id: H256) -> Result<u32, UtilError> {
+        let records = self.db.journal_under(batch, now, &id)?;
+        self.current_hash = Some(id);
+        Ok(records)
     }
 
     /// Mark a given candidate from an ancient era as canonical, enacting its removals from the
@@ -92,6 +102,34 @@ impl StateDB {
     pub fn custom_handlers(&self) -> &[Arc<ActionHandler>] {
         &self.custom_handlers
     }
+
+    pub fn top_cache(&self) -> TopCache {
+        self.cache.top_cache()
+    }
+
+    pub fn shard_caches(&self) -> HashMap<ShardId, ShardCache> {
+        self.cache.shard_caches()
+    }
+
+    pub fn override_state(&mut self, state: &TopLevelState) {
+        self.cache.override_cache(state.top_cache(), state.shard_caches());
+        self.current_hash = Some(state.root());
+    }
+
+    pub fn clone(&self, hash: &H256) -> Self {
+        let (cache, current_hash) = if self.current_hash.as_ref() == Some(hash) {
+            (self.cache.clone(), self.current_hash.clone())
+        } else {
+            (Default::default(), None)
+        };
+
+        Self {
+            db: self.db.boxed_clone(),
+            custom_handlers: self.custom_handlers.clone(),
+            cache,
+            current_hash,
+        }
+    }
 }
 
 impl AsHashDB for StateDB {
@@ -103,14 +141,5 @@ impl AsHashDB for StateDB {
     /// Conversion method to interpret self as mutable `HashDB` reference
     fn as_hashdb_mut(&mut self) -> &mut HashDB {
         self.db.as_hashdb_mut()
-    }
-}
-
-impl Clone for StateDB {
-    fn clone(&self) -> Self {
-        Self {
-            db: self.db.boxed_clone(),
-            custom_handlers: self.custom_handlers.clone(),
-        }
     }
 }

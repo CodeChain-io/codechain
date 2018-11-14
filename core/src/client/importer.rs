@@ -218,7 +218,7 @@ impl Importer {
         // check epoch end signal
         self.check_epoch_end_signal(block.header(), &chain, &mut batch);
 
-        block.state().journal_under(&mut batch, number, &hash).expect("DB commit failed");
+        block.state().journal_under(&mut batch, number).expect("DB commit failed");
         let route = chain.insert_block(&mut batch, block_data, invoices.clone());
 
         // Final commit to the DB
@@ -226,6 +226,12 @@ impl Importer {
         chain.commit();
 
         self.check_epoch_end(block.header(), &chain, client);
+
+        if hash == chain.best_block_hash() {
+            let mut state_db = client.state_db().write();
+            let state = block.state();
+            state_db.override_state(&state);
+        }
 
         route
     }
@@ -347,8 +353,9 @@ impl Importer {
             );
         })?;
 
+
         // Enact Verified Block
-        let db = client.state_db().read().clone();
+        let db = client.state_db().read().clone(&parent.state_root());
 
         let is_epoch_begin = chain.epoch_transition(parent.number(), *header.parent_hash()).is_some();
         let enact_result = enact(&block.header, &block.parcels, engine, client, db, &parent, is_epoch_begin);
