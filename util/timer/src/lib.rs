@@ -18,4 +18,4 @@ extern crate parking_lot;
 
 mod timer;
 
-pub use timer::{TimeoutHandler, TimerApi, TimerLoop, TimerName, TimerToken};
+pub use timer::{ScheduleError as TimerScheduleError, TimeoutHandler, TimerApi, TimerLoop, TimerName, TimerToken};
