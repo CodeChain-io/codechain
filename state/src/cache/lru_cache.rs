@@ -33,6 +33,7 @@ impl<Item: CacheableItem> LruCache<Item> {
         self.cache.clear()
     }
 
+    /// Returns an iterator over the cache's key-value pairs in least- to most-recently-used order.
     pub fn iter(&self) -> impl Iterator<Item = (&Item::Address, &Item)> {
         self.cache.iter()
     }
