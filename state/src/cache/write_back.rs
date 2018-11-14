@@ -19,6 +19,7 @@ use std::collections::hash_map::Entry as HashMapEntry;
 use std::collections::HashMap;
 use std::convert::AsRef;
 use std::fmt;
+use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
 use std::vec::Vec;
 
 use cmerkle::{self, Result as TrieResult, Trie, TrieDB, TrieMut};
@@ -37,6 +38,11 @@ enum EntryState {
     Committed,
 }
 
+static TOUCHED_COUNT: AtomicUsize = ATOMIC_USIZE_INIT;
+fn touched_count() -> usize {
+    TOUCHED_COUNT.fetch_add(1, Ordering::SeqCst)
+}
+
 #[derive(Clone, Debug)]
 struct Entry<Item>
 where
@@ -44,6 +50,8 @@ where
     item: Option<Item>,
     /// Entry state.
     state: EntryState,
+    /// Touched time
+    touched: usize,
 }
 
 // Account cache item. Contains account data and
@@ -61,18 +69,24 @@ where
         Self {
             item,
             state: EntryState::Dirty,
+            touched: touched_count(),
         }
     }
 
     // Create a new account entry and mark it as clean.
     fn new_clean(item: Option<Item>) -> Self {
+        Self::new_clean_with_touched(item, touched_count())
+    }
+
+    // Create a new account entry and mark it as clean.
+    fn new_clean_with_touched(item: Option<Item>, touched: usize) -> Self {
         Self {
             item,
             state: EntryState::CleanFresh,
+            touched,
         }
     }
 }
-
 
 pub struct WriteBack<Item>
 where
@@ -95,9 +109,16 @@ where
 
     pub fn new_with_iter(items: impl Iterator<Item = (Item::Address, Item)>) -> Self {
         let cache = Self::new();
-        for (addr, item) in items.into_iter() {
-            cache.insert(&addr, Entry::new_clean(Some(item)))
+        // lru_cache::iter() returns the least-recently-used to the most-recently-used
+        for (touched, (addr, item)) in items.enumerate() {
+            cache.insert(&addr, Entry::new_clean_with_touched(Some(item), touched))
         }
+        debug_assert!(
+            cache.len() <= TOUCHED_COUNT.load(Ordering::SeqCst),
+            "cache.len():{} must be less than TOUCHED_COUNT:{}",
+            cache.len(),
+            TOUCHED_COUNT.load(Ordering::SeqCst)
+        );
         cache
     }
 
@@ -192,7 +213,8 @@ where
     /// Populates local cache if nothing found.
     pub fn get(&self, a: &Item::Address, db: TrieDB) -> cmerkle::Result<Option<Item>> {
         // check local cache first
-        if let Some(cached_item) = self.cache.borrow().get(a) {
+        if let Some(cached_item) = self.cache.borrow_mut().get_mut(a) {
+            cached_item.touched = touched_count();
             return Ok(cached_item.item.clone())
         }
 
@@ -223,21 +245,25 @@ where
 
             // set the dirty flag after changing data.
             entry.state = EntryState::Dirty;
+            entry.touched = touched_count();
             entry.item.as_mut().expect("Required item must always exist; qed")
         }))
     }
 
-    pub fn items(&self) -> Vec<(Item::Address, Option<Item>)> {
+    pub fn items(&self) -> Vec<(usize, Item::Address, Option<Item>)> {
         let cache = self.cache.borrow();
         cache
             .iter()
-            .filter(|(_, entry)| match entry.state {
-                EntryState::CleanFresh => false,
-                EntryState::Committed => true,
-                EntryState::Dirty => unreachable!("The cache must be commited before called iter"),
+            .map(|(addr, entry)| match entry.state {
+                EntryState::Dirty => unreachable!("The cache must be committed before called items"),
+                EntryState::Committed | EntryState::CleanFresh => (entry.touched, addr.clone(), entry.item.clone()),
             })
-            .map(|(addr, entry)| (addr.clone(), entry.item.clone()))
             .collect()
+    }
+
+    fn len(&self) -> usize {
+        let cache = self.cache.borrow();
+        cache.len()
     }
 }
 

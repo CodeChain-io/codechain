@@ -82,11 +82,11 @@ impl ShardCache {
         self.asset.remove(address)
     }
 
-    pub fn cached_assets(&self) -> Vec<(OwnedAssetAddress, Option<OwnedAsset>)> {
+    pub fn cached_assets(&self) -> Vec<(usize, OwnedAssetAddress, Option<OwnedAsset>)> {
         self.asset.items()
     }
 
-    pub fn cached_asset_schemes(&self) -> Vec<(AssetSchemeAddress, Option<AssetScheme>)> {
+    pub fn cached_asset_schemes(&self) -> Vec<(usize, AssetSchemeAddress, Option<AssetScheme>)> {
         self.asset_scheme.items()
     }
 }

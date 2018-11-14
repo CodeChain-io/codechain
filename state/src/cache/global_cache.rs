@@ -122,18 +122,24 @@ impl GlobalCache {
                 None => self.action_data.remove(&addr),
             };
         }
-        for (addr, item) in shard_caches.iter().flat_map(|(_, shard_cache)| shard_cache.cached_assets().into_iter()) {
-            match item {
-                Some(item) => self.asset.insert(addr, item),
-                None => self.asset.remove(&addr),
-            };
-        }
-        for (addr, item) in
-            shard_caches.iter().flat_map(|(_, shard_cache)| shard_cache.cached_asset_schemes().into_iter())
-        {
+
+        let mut cached_asset_schemes: Vec<_> =
+            shard_caches.iter().flat_map(|(_, shard_cache)| shard_cache.cached_asset_schemes().into_iter()).collect();
+        cached_asset_schemes.sort_unstable_by(|lhs, rhs| lhs.0.cmp(&rhs.0));
+        for (_, addr, item) in cached_asset_schemes.into_iter() {
             match item {
                 Some(item) => self.asset_scheme.insert(addr, item),
                 None => self.asset_scheme.remove(&addr),
+            };
+        }
+
+        let mut cached_assets: Vec<_> =
+            shard_caches.iter().flat_map(|(_, shard_cache)| shard_cache.cached_assets().into_iter()).collect();
+        cached_assets.sort_unstable_by(|lhs, rhs| lhs.0.cmp(&rhs.0));
+        for (_, addr, item) in cached_assets.into_iter() {
+            match item {
+                Some(item) => self.asset.insert(addr, item),
+                None => self.asset.remove(&addr),
             };
         }
     }

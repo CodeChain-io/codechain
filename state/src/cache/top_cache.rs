@@ -142,23 +142,33 @@ impl TopCache {
     }
 
     pub fn cached_accounts(&self) -> Vec<(Address, Option<Account>)> {
-        self.account.items()
+        let mut items = self.account.items();
+        items.sort_unstable_by(|lhs, rhs| lhs.0.cmp(&rhs.0));
+        items.into_iter().map(|(_, addr, item)| (addr, item)).collect()
     }
 
     pub fn cached_regular_accounts(&self) -> Vec<(RegularAccountAddress, Option<RegularAccount>)> {
-        self.regular_account.items()
+        let mut items = self.regular_account.items();
+        items.sort_unstable_by(|lhs, rhs| lhs.0.cmp(&rhs.0));
+        items.into_iter().map(|(_, addr, item)| (addr, item)).collect()
     }
 
     pub fn cached_metadata(&self) -> Vec<(MetadataAddress, Option<Metadata>)> {
-        self.metadata.items()
+        let mut items = self.metadata.items();
+        items.sort_unstable_by(|lhs, rhs| lhs.0.cmp(&rhs.0));
+        items.into_iter().map(|(_, addr, item)| (addr, item)).collect()
     }
 
     pub fn cached_shards(&self) -> Vec<(ShardAddress, Option<Shard>)> {
-        self.shard.items()
+        let mut items = self.shard.items();
+        items.sort_unstable_by(|lhs, rhs| lhs.0.cmp(&rhs.0));
+        items.into_iter().map(|(_, addr, item)| (addr, item)).collect()
     }
 
     pub fn cached_action_data(&self) -> Vec<(H256, Option<ActionData>)> {
-        self.action_data.items()
+        let mut items = self.action_data.items();
+        items.sort_unstable_by(|lhs, rhs| lhs.0.cmp(&rhs.0));
+        items.into_iter().map(|(_, addr, item)| (addr, item)).collect()
     }
 }
 
