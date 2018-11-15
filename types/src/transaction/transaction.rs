@@ -350,6 +350,55 @@ impl Transaction {
             _ => U256::zero(),
         }
     }
+
+    fn is_valid_output_index(&self, index: usize) -> bool {
+        match self {
+            Transaction::AssetMint {
+                ..
+            } => index == 0,
+            Transaction::AssetTransfer {
+                outputs,
+                ..
+            } => index < outputs.len(),
+            Transaction::AssetCompose {
+                ..
+            } => index == 0,
+            Transaction::AssetDecompose {
+                outputs,
+                ..
+            } => index < outputs.len(),
+            Transaction::AssetUnwrapCCC {
+                ..
+            } => false,
+        }
+    }
+
+    pub fn is_valid_shard_id_index(&self, index: usize, id: ShardId) -> bool {
+        if !self.is_valid_output_index(index) {
+            return false
+        }
+        match self {
+            Transaction::AssetMint {
+                shard_id,
+                ..
+            } => &id == shard_id,
+            Transaction::AssetTransfer {
+                outputs,
+                ..
+            } => id == outputs[index].related_shard(),
+            Transaction::AssetCompose {
+                shard_id,
+                ..
+            } => &id == shard_id,
+            Transaction::AssetDecompose {
+                outputs,
+                ..
+            } => id == outputs[index].related_shard(),
+            Transaction::AssetUnwrapCCC {
+                ..
+            } => unreachable!("UnwrapCCC doesn't have a valid index"),
+        }
+    }
 }
 
 impl InnerTransaction {
