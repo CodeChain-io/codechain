@@ -16,7 +16,6 @@
 
 use ckey::{Error as KeyError, NetworkId};
 use ctypes::parcel::IncompleteParcel;
-use primitives::U256;
 
 use super::Action;
 
@@ -24,7 +23,7 @@ use super::Action;
 #[serde(rename_all = "camelCase")]
 pub struct UnsignedParcel {
     pub seq: Option<u64>,
-    pub fee: U256,
+    pub fee: u64,
     pub network_id: NetworkId,
     pub action: Action,
 }

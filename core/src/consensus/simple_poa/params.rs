@@ -16,14 +16,13 @@
 
 use cjson;
 use ckey::{Address, PlatformAddress};
-use primitives::U256;
 
 #[derive(Debug, PartialEq)]
 pub struct SimplePoAParams {
     /// Valid signatories.
     pub validators: Vec<Address>,
     /// base reward for a block.
-    pub block_reward: U256,
+    pub block_reward: u64,
 }
 
 impl From<cjson::scheme::SimplePoAParams> for SimplePoAParams {

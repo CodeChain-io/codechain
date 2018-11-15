@@ -17,7 +17,7 @@
 use ccrypto::Blake;
 use ckey::{Address, Public};
 use heapsize::HeapSizeOf;
-use primitives::{Bytes, H160, H256, U256};
+use primitives::{Bytes, H160, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::super::transaction::Transaction;
@@ -38,7 +38,7 @@ pub enum Action {
     Payment {
         receiver: Address,
         /// Transferred amount.
-        amount: U256,
+        amount: u64,
     },
     SetRegularKey {
         key: Public,
@@ -56,7 +56,7 @@ pub enum Action {
         shard_id: ShardId,
         lock_script_hash: H160,
         parameters: Vec<Bytes>,
-        amount: U256,
+        amount: u64,
     },
     Custom(Bytes),
 }

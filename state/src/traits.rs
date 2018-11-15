@@ -20,7 +20,7 @@ use ctypes::invoice::Invoice;
 use ctypes::transaction::InnerTransaction;
 use ctypes::ShardId;
 use cvm::ChainTimeInfo;
-use primitives::{Bytes, H256, U256};
+use primitives::{Bytes, H256};
 
 use super::{
     Account, ActionData, AssetScheme, AssetSchemeAddress, CacheableItem, Metadata, OwnedAsset, OwnedAssetAddress,
@@ -40,8 +40,8 @@ pub trait TopStateView {
     }
 
     /// Get the balance of account `a`.
-    fn balance(&self, a: &Address) -> TrieResult<U256> {
-        Ok(self.account(a)?.map_or_else(U256::zero, |account| *account.balance()))
+    fn balance(&self, a: &Address) -> TrieResult<u64> {
+        Ok(self.account(a)?.map_or(0, |account| account.balance()))
     }
 
     fn account_exists(&self, a: &Address) -> TrieResult<bool> {
@@ -150,11 +150,11 @@ pub trait TopState {
     fn kill_regular_account(&mut self, account: &Public);
 
     /// Add `incr` to the balance of account `a`.
-    fn add_balance(&mut self, a: &Address, incr: &U256) -> TrieResult<()>;
+    fn add_balance(&mut self, a: &Address, incr: u64) -> TrieResult<()>;
     /// Subtract `decr` from the balance of account `a`.
-    fn sub_balance(&mut self, a: &Address, decr: &U256) -> TrieResult<()>;
+    fn sub_balance(&mut self, a: &Address, decr: u64) -> TrieResult<()>;
     /// Subtracts `by` from the balance of `from` and adds it to that of `to`.
-    fn transfer_balance(&mut self, from: &Address, to: &Address, by: &U256) -> StateResult<()>;
+    fn transfer_balance(&mut self, from: &Address, to: &Address, by: u64) -> StateResult<()>;
 
     /// Increment the seq of account `a` by 1.
     fn inc_seq(&mut self, a: &Address) -> TrieResult<()>;
@@ -162,7 +162,7 @@ pub trait TopState {
     /// Set the regular key of account `owner_public`
     fn set_regular_key(&mut self, owner_public: &Public, key: &Public) -> StateResult<()>;
 
-    fn create_shard(&mut self, shard_creation_cost: &U256, fee_payer: &Address) -> StateResult<()>;
+    fn create_shard(&mut self, shard_creation_cost: u64, fee_payer: &Address) -> StateResult<()>;
     fn change_shard_owners(&mut self, shard_id: ShardId, owners: &[Address], sender: &Address) -> StateResult<()>;
     fn change_shard_users(&mut self, shard_id: ShardId, users: &[Address], sender: &Address) -> StateResult<()>;
 

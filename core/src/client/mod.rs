@@ -146,10 +146,10 @@ pub trait Balance {
     ///
     /// May not return None if given BlockId::Latest.
     /// Returns None if and only if the block's root hash has been pruned from the DB.
-    fn balance(&self, address: &Address, state: StateOrBlock) -> Option<U256>;
+    fn balance(&self, address: &Address, state: StateOrBlock) -> Option<u64>;
 
     /// Get address balance at the latest block's state.
-    fn latest_balance(&self, address: &Address) -> U256 {
+    fn latest_balance(&self, address: &Address) -> u64 {
         self.balance(address, BlockId::Latest.into()).expect(
             "balance will return Some if given BlockId::Latest. balance was given BlockId::Latest \
              Therefore balance has returned Some; qed",

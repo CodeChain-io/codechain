@@ -21,7 +21,7 @@ use byteorder::{BigEndian, ReadBytesExt};
 use ccrypto::{blake128, blake256, blake256_with_key};
 use ckey::{Address, NetworkId};
 use heapsize::HeapSizeOf;
-use primitives::{Bytes, H160, H256, U128, U256};
+use primitives::{Bytes, H160, H256, U128};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::super::util::tag::Tag;
@@ -44,7 +44,7 @@ pub struct AssetOutPoint {
     pub transaction_hash: H256,
     pub index: usize,
     pub asset_type: H256,
-    pub amount: U256,
+    pub amount: u64,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable, Deserialize, Serialize)]
@@ -103,7 +103,7 @@ pub struct AssetTransferOutput {
     pub lock_script_hash: H160,
     pub parameters: Vec<Bytes>,
     pub asset_type: H256,
-    pub amount: U256,
+    pub amount: u64,
 }
 
 /// Parcel transaction type.
@@ -147,7 +147,7 @@ pub enum Transaction {
 pub struct AssetMintOutput {
     pub lock_script_hash: H160,
     pub parameters: Vec<Bytes>,
-    pub amount: Option<U256>,
+    pub amount: Option<u64>,
 }
 
 /// Parcel transaction type.
@@ -166,7 +166,7 @@ pub enum InnerTransaction {
 pub struct AssetWrapCCCOutput {
     pub lock_script_hash: H160,
     pub parameters: Vec<Bytes>,
-    pub amount: U256,
+    pub amount: u64,
 }
 
 impl Transaction {
@@ -262,17 +262,17 @@ impl Transaction {
                     return Err(Error::InconsistentTransactionInOut)
                 }
                 for burn in burns {
-                    if burn.prev_out.amount.is_zero() {
+                    if burn.prev_out.amount == 0 {
                         return Err(Error::ZeroAmount)
                     }
                 }
                 for input in inputs {
-                    if input.prev_out.amount.is_zero() {
+                    if input.prev_out.amount == 0 {
                         return Err(Error::ZeroAmount)
                     }
                 }
                 for output in outputs {
-                    if output.amount.is_zero() {
+                    if output.amount == 0 {
                         return Err(Error::ZeroAmount)
                     }
                 }
@@ -282,7 +282,7 @@ impl Transaction {
                 output,
                 ..
             } => match output.amount {
-                Some(amount) if amount.is_zero() => Err(Error::ZeroAmount),
+                Some(amount) if amount == 0 => Err(Error::ZeroAmount),
                 _ => Ok(()),
             },
             Transaction::AssetCompose {
@@ -294,12 +294,12 @@ impl Transaction {
                     return Err(Error::EmptyInput)
                 }
                 for input in inputs {
-                    if input.prev_out.amount.is_zero() {
+                    if input.prev_out.amount == 0 {
                         return Err(Error::ZeroAmount)
                     }
                 }
                 match output.amount {
-                    Some(amount) if amount == 1.into() => Ok(()),
+                    Some(amount) if amount == 1 => Ok(()),
                     _ => Err(Error::InvalidComposedOutput {
                         got: output.amount.unwrap_or_default(),
                     }),
@@ -310,7 +310,7 @@ impl Transaction {
                 outputs,
                 ..
             } => {
-                if input.prev_out.amount != 1.into() {
+                if input.prev_out.amount != 1 {
                     return Err(Error::InvalidDecomposedInput {
                         address: input.prev_out.asset_type,
                         got: input.prev_out.amount,
@@ -320,7 +320,7 @@ impl Transaction {
                     return Err(Error::EmptyOutput)
                 }
                 for output in outputs {
-                    if output.amount.is_zero() {
+                    if output.amount == 0 {
                         return Err(Error::ZeroAmount)
                     }
                 }
@@ -330,7 +330,7 @@ impl Transaction {
                 burn,
                 ..
             } => {
-                if burn.prev_out.amount.is_zero() {
+                if burn.prev_out.amount == 0 {
                     return Err(Error::ZeroAmount)
                 }
                 if !burn.prev_out.asset_type.ends_with(&[0; 28]) {
@@ -341,13 +341,13 @@ impl Transaction {
         }
     }
 
-    pub fn unwrapped_amount(&self) -> U256 {
+    pub fn unwrapped_amount(&self) -> u64 {
         match self {
             Transaction::AssetUnwrapCCC {
                 burn,
                 ..
             } => burn.prev_out.amount,
-            _ => U256::zero(),
+            _ => 0,
         }
     }
 
@@ -419,7 +419,7 @@ impl InnerTransaction {
                 output,
                 ..
             } => {
-                if output.amount.is_zero() {
+                if output.amount == 0 {
                     return Err(Error::ZeroAmount)
                 }
                 Ok(())
@@ -881,7 +881,7 @@ mod tests {
             transaction_hash: H256::random(),
             index: 3,
             asset_type,
-            amount: 34.into(),
+            amount: 34,
         };
 
         assert_eq!(0xBEEF, p.related_shard());
@@ -896,7 +896,7 @@ mod tests {
             transaction_hash: H256::random(),
             index: 3,
             asset_type,
-            amount: 34.into(),
+            amount: 34,
         };
 
         let input = AssetTransferInput {
@@ -912,7 +912,7 @@ mod tests {
     #[test]
     fn _is_input_and_output_consistent() {
         let asset_type = H256::random();
-        let amount = 100.into();
+        let amount = 100;
 
         assert!(is_input_and_output_consistent(
             &[AssetTransferInput {
@@ -945,8 +945,8 @@ mod tests {
             }
             asset_type
         };
-        let amount1 = 100.into();
-        let amount2 = 200.into();
+        let amount1 = 100;
+        let amount2 = 200;
 
         assert!(is_input_and_output_consistent(
             &[
@@ -1000,8 +1000,8 @@ mod tests {
             }
             asset_type
         };
-        let amount1 = 100.into();
-        let amount2 = 200.into();
+        let amount1 = 100;
+        let amount2 = 200;
 
         assert!(is_input_and_output_consistent(
             &[
@@ -1053,7 +1053,7 @@ mod tests {
     #[test]
     fn fail_if_output_has_more_asset() {
         let asset_type = H256::random();
-        let output_amount = 100.into();
+        let output_amount = 100;
         assert!(!is_input_and_output_consistent(
             &[],
             &[AssetTransferOutput {
@@ -1068,7 +1068,7 @@ mod tests {
     #[test]
     fn fail_if_input_has_more_asset() {
         let asset_type = H256::random();
-        let input_amount = 100.into();
+        let input_amount = 100;
 
         assert!(!is_input_and_output_consistent(
             &[AssetTransferInput {
@@ -1089,8 +1089,8 @@ mod tests {
     #[test]
     fn fail_if_input_is_larger_than_output() {
         let asset_type = H256::random();
-        let input_amount = 100.into();
-        let output_amount = 80.into();
+        let input_amount = 100;
+        let output_amount = 80;
 
         assert!(!is_input_and_output_consistent(
             &[AssetTransferInput {
@@ -1116,8 +1116,8 @@ mod tests {
     #[test]
     fn fail_if_input_is_smaller_than_output() {
         let asset_type = H256::random();
-        let input_amount = 80.into();
-        let output_amount = 100.into();
+        let input_amount = 80;
+        let output_amount = 100;
 
         assert!(!is_input_and_output_consistent(
             &[AssetTransferInput {
@@ -1150,7 +1150,7 @@ mod tests {
                     transaction_hash: H256::default(),
                     index: 0,
                     asset_type: H256::default(),
-                    amount: 30.into(),
+                    amount: 30,
                 },
                 timelock: None,
                 lock_script: vec![0x30, 0x01],
@@ -1170,7 +1170,7 @@ mod tests {
                     transaction_hash: H256::default(),
                     index: 0,
                     asset_type: H256::zero(),
-                    amount: 30.into(),
+                    amount: 30,
                 },
                 timelock: None,
                 lock_script: vec![0x30, 0x01],
@@ -1189,7 +1189,7 @@ mod tests {
             output: AssetWrapCCCOutput {
                 lock_script_hash: H160::random(),
                 parameters: vec![],
-                amount: 0.into(),
+                amount: 0,
             },
         };
         assert_eq!(tx_zero_amount.verify(), Err(Error::ZeroAmount));
@@ -1204,7 +1204,7 @@ mod tests {
                     transaction_hash: H256::default(),
                     index: 0,
                     asset_type: H256::zero(),
-                    amount: 0.into(),
+                    amount: 0,
                 },
                 timelock: None,
                 lock_script: vec![0x30, 0x01],
@@ -1221,7 +1221,7 @@ mod tests {
                     transaction_hash: H256::default(),
                     index: 0,
                     asset_type: invalid_asset_type,
-                    amount: 1.into(),
+                    amount: 1,
                 },
                 timelock: None,
                 lock_script: vec![0x30, 0x01],
@@ -1238,7 +1238,7 @@ mod tests {
                 transaction_hash: H256::default(),
                 index: 0,
                 asset_type: H256::default(),
-                amount: 0.into(),
+                amount: 0,
             },
             timelock: None,
             lock_script: Vec::new(),
@@ -1250,7 +1250,7 @@ mod tests {
                     transaction_hash: H256::default(),
                     index: 0,
                     asset_type: H256::default(),
-                    amount: 0.into(),
+                    amount: 0,
                 },
                 timelock: None,
                 lock_script: Vec::new(),
@@ -1262,7 +1262,7 @@ mod tests {
                 lock_script_hash: H160::default(),
                 parameters: Vec::new(),
                 asset_type: H256::default(),
-                amount: 0.into(),
+                amount: 0,
             })
             .collect();
 

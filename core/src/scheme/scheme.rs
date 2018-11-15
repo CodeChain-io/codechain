@@ -48,7 +48,7 @@ pub struct CommonParams {
     /// Network id.
     pub network_id: NetworkId,
     /// Minimum parcel cost.
-    pub min_parcel_cost: U256,
+    pub min_parcel_cost: u64,
     /// Maximum size of block body.
     pub max_body_size: usize,
     /// Snapshot creation period in unit of block numbers.

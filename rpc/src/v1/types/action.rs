@@ -17,7 +17,7 @@
 use ckey::{Error as KeyError, NetworkId, PlatformAddress, Public};
 use ctypes::parcel::Action as ActionType;
 use ctypes::ShardId;
-use primitives::{Bytes, H160, U256};
+use primitives::{Bytes, H160};
 
 use super::Transaction;
 
@@ -31,7 +31,7 @@ pub enum Action {
     Payment {
         receiver: PlatformAddress,
         /// Transferred amount.
-        amount: U256,
+        amount: u64,
     },
     SetRegularKey {
         key: Public,
@@ -49,7 +49,7 @@ pub enum Action {
         shard_id: ShardId,
         lock_script_hash: H160,
         parameters: Vec<Bytes>,
-        amount: U256,
+        amount: u64,
     },
     Custom(Bytes),
 }

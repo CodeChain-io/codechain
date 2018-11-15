@@ -16,7 +16,7 @@
 
 use ccore::{LocalizedParcel, SignedParcel};
 use ckey::{NetworkId, Signature};
-use primitives::{H256, U256};
+use primitives::H256;
 
 use super::Action;
 
@@ -27,7 +27,7 @@ pub struct Parcel {
     pub block_hash: Option<H256>,
     pub parcel_index: Option<usize>,
     pub seq: u64,
-    pub fee: U256,
+    pub fee: u64,
     pub network_id: NetworkId,
     pub action: Action,
     pub hash: H256,

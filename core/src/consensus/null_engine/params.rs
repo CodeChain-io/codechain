@@ -15,13 +15,12 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use cjson;
-use primitives::U256;
 
 /// Params for a null engine.
 #[derive(Clone, Default)]
 pub struct NullEngineParams {
     /// base reward for a block.
-    pub block_reward: U256,
+    pub block_reward: u64,
 }
 
 impl From<cjson::scheme::NullEngineParams> for NullEngineParams {

@@ -18,7 +18,7 @@ use ckey::{NetworkId, PlatformAddress, Public};
 use cstate::{AssetScheme, OwnedAsset};
 use ctypes::invoice::Invoice;
 use ctypes::{BlockNumber, ShardId};
-use primitives::{H256, U256};
+use primitives::H256;
 
 use jsonrpc_core::Result;
 
@@ -68,7 +68,7 @@ build_rpc_trait! {
 
         /// Gets balance with given account.
         # [rpc(name = "chain_getBalance")]
-        fn get_balance(&self, PlatformAddress, Option<u64>) -> Result<Option<U256>>;
+        fn get_balance(&self, PlatformAddress, Option<u64>) -> Result<Option<u64>>;
 
         /// Gets regular key with given account
         # [rpc(name = "chain_getRegularKey")]

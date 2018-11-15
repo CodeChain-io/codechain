@@ -171,7 +171,7 @@ pub struct Tendermint {
     /// Set used to determine the current validators.
     validators: Box<ValidatorSet>,
     /// Reward per block, in base units.
-    block_reward: U256,
+    block_reward: u64,
     /// Network extension,
     extension: Arc<TendermintExtension>,
     /// codechain machine descriptor
@@ -687,7 +687,7 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
     fn on_close_block(&self, block: &mut ExecutedBlock) -> Result<(), Error> {
         let author = *block.header().author();
         let total_reward = block.parcels().iter().fold(self.block_reward, |sum, parcel| sum + parcel.fee);
-        self.machine.add_balance(block, &author, &total_reward)
+        self.machine.add_balance(block, &author, total_reward)
     }
 
     fn register_client(&self, client: Weak<EngineClient>) {

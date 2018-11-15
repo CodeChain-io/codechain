@@ -81,8 +81,8 @@ pub trait Machine: Send + Sync {
 pub trait WithBalances: Machine {
     /// Get the balance, in base units, associated with an account.
     /// Extracts data from the live block.
-    fn balance(&self, live: &Self::LiveBlock, address: &Address) -> Result<U256, Self::Error>;
+    fn balance(&self, live: &Self::LiveBlock, address: &Address) -> Result<u64, Self::Error>;
 
     /// Increment the balance of an account in the state of the live block.
-    fn add_balance(&self, live: &mut Self::LiveBlock, address: &Address, amount: &U256) -> Result<(), Self::Error>;
+    fn add_balance(&self, live: &mut Self::LiveBlock, address: &Address, amount: u64) -> Result<(), Self::Error>;
 }

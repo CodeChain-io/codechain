@@ -84,7 +84,7 @@ pub struct TestBlockChainClient {
     /// Score.
     pub score: RwLock<U256>,
     /// Balances.
-    pub balances: RwLock<HashMap<Address, U256>>,
+    pub balances: RwLock<HashMap<Address, u64>>,
     /// Seqs.
     pub seqs: RwLock<HashMap<Address, u64>>,
     /// Storage.
@@ -157,7 +157,7 @@ impl TestBlockChainClient {
     }
 
     /// Set the balance of account `address` to `balance`.
-    pub fn set_balance(&self, address: Address, balance: U256) {
+    pub fn set_balance(&self, address: Address, balance: u64) {
         self.balances.write().insert(address, balance);
     }
 
@@ -197,11 +197,11 @@ impl TestBlockChainClient {
                 self.seqs.write().insert(keypair.address(), 0);
                 let parcel = Parcel {
                     seq: 0,
-                    fee: U256::from(10),
+                    fee: 10,
                     network_id: NetworkId::default(),
                     action: Action::Payment {
                         receiver: Address::random(),
-                        amount: 0.into(),
+                        amount: 0,
                     },
                 };
                 let signed_parcel = SignedParcel::new_with_sign(parcel, keypair.private());
@@ -263,16 +263,16 @@ impl TestBlockChainClient {
         let keypair = Random.generate().unwrap();
         let parcel = Parcel {
             seq: 0,
-            fee: U256::from(10),
+            fee: 10,
             network_id: NetworkId::default(),
             action: Action::Payment {
                 receiver: Address::random(),
-                amount: 0.into(),
+                amount: 0,
             },
         };
         let signed_parcel = SignedParcel::new_with_sign(parcel, keypair.private());
         let sender_address = public_to_address(&signed_parcel.signer_public());
-        self.set_balance(sender_address, 10_000_000_000_000_000_000u64.into());
+        self.set_balance(sender_address, 10_000_000_000_000_000_000);
         let hash = signed_parcel.hash();
         let res = self.miner.import_external_parcels(self, vec![signed_parcel.into()]);
         let res = res.into_iter().next().unwrap().expect("Successful import");
@@ -332,16 +332,16 @@ impl Seq for TestBlockChainClient {
 }
 
 impl Balance for TestBlockChainClient {
-    fn balance(&self, address: &Address, state: StateOrBlock) -> Option<U256> {
+    fn balance(&self, address: &Address, state: StateOrBlock) -> Option<u64> {
         match state {
             StateOrBlock::Block(BlockId::Latest) | StateOrBlock::State(_) => {
-                Some(self.balances.read().get(address).cloned().unwrap_or_else(U256::zero))
+                Some(self.balances.read().get(address).cloned().unwrap_or(0))
             }
             _ => None,
         }
     }
 
-    fn latest_balance(&self, address: &Address) -> U256 {
+    fn latest_balance(&self, address: &Address) -> u64 {
         self.balance(address, BlockId::Latest.into()).unwrap()
     }
 }

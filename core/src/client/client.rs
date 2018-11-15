@@ -533,7 +533,7 @@ impl Seq for Client {
 }
 
 impl Balance for Client {
-    fn balance(&self, address: &Address, state: StateOrBlock) -> Option<U256> {
+    fn balance(&self, address: &Address, state: StateOrBlock) -> Option<u64> {
         let state = self.state_info(state)?;
         state.balance(address).ok()
     }

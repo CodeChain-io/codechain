@@ -19,7 +19,7 @@ use std::mem::size_of;
 use byteorder::{BigEndian, WriteBytesExt};
 use ckey::Address;
 use ctypes::ShardId;
-use primitives::{H256, U256};
+use primitives::H256;
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::super::CacheableItem;
@@ -29,13 +29,13 @@ use super::asset::Asset;
 #[serde(rename_all = "camelCase")]
 pub struct AssetScheme {
     metadata: String,
-    amount: U256,
+    amount: u64,
     registrar: Option<Address>,
     pool: Vec<Asset>,
 }
 
 impl AssetScheme {
-    pub fn new(metadata: String, amount: U256, registrar: Option<Address>) -> Self {
+    pub fn new(metadata: String, amount: u64, registrar: Option<Address>) -> Self {
         Self {
             metadata,
             amount,
@@ -44,7 +44,7 @@ impl AssetScheme {
         }
     }
 
-    pub fn new_with_pool(metadata: String, amount: U256, registrar: Option<Address>, pool: Vec<Asset>) -> Self {
+    pub fn new_with_pool(metadata: String, amount: u64, registrar: Option<Address>, pool: Vec<Asset>) -> Self {
         Self {
             metadata,
             amount,
@@ -57,8 +57,8 @@ impl AssetScheme {
         &self.metadata
     }
 
-    pub fn amount(&self) -> &U256 {
-        &self.amount
+    pub fn amount(&self) -> u64 {
+        self.amount
     }
 
     pub fn registrar(&self) -> &Option<Address> {
@@ -69,9 +69,9 @@ impl AssetScheme {
         self.registrar.is_some()
     }
 
-    pub fn init(&mut self, metadata: String, amount: U256, registrar: Option<Address>, pool: Vec<Asset>) {
+    pub fn init(&mut self, metadata: String, amount: u64, registrar: Option<Address>, pool: Vec<Asset>) {
         assert_eq!("", &self.metadata);
-        assert_eq!(U256::zero(), self.amount);
+        assert_eq!(0, self.amount);
         assert_eq!(None, self.registrar);
         self.metadata = metadata;
         self.amount = amount;
@@ -88,7 +88,7 @@ const PREFIX: u8 = super::ASSET_SCHEME_PREFIX;
 
 impl Default for AssetScheme {
     fn default() -> Self {
-        Self::new("".to_string(), 0.into(), None)
+        Self::new("".to_string(), 0, None)
     }
 }
 
@@ -152,7 +152,7 @@ impl CacheableItem for AssetScheme {
     type Address = AssetSchemeAddress;
 
     fn is_null(&self) -> bool {
-        self.amount.is_zero()
+        self.amount == 0
     }
 }
 
