@@ -760,16 +760,37 @@ mod tests_state {
             let mut state = get_temp_state();
             assert_eq!(Ok(false), state.account_exists(&a));
             assert_eq!(Ok(()), state.inc_seq(&a));
+            assert_eq!(Ok(1.into()), state.seq(&a));
             let root = state.commit();
             assert!(root.is_ok(), "{:?}", root);
             state.clone()
         };
-
+        assert_eq!(Ok(1.into()), state.seq(&a));
         assert_eq!(Ok(()), state.inc_seq(&a));
+        assert_eq!(Ok(2.into()), state.seq(&a));
         let root = state.commit();
         assert!(root.is_ok(), "{:?}", root);
+        assert_eq!(Ok(2.into()), state.seq(&a));
     }
 
+    #[test]
+    fn work_when_cloned_even_not_committed() {
+        let a = Address::default();
+
+        let mut state = {
+            let mut state = get_temp_state();
+            assert_eq!(Ok(false), state.account_exists(&a));
+            assert_eq!(Ok(()), state.inc_seq(&a));
+            assert_eq!(Ok(1.into()), state.seq(&a));
+            state.clone()
+        };
+        assert_eq!(Ok(1.into()), state.seq(&a));
+        assert_eq!(Ok(()), state.inc_seq(&a));
+        assert_eq!(Ok(2.into()), state.seq(&a));
+        let root = state.commit();
+        assert!(root.is_ok(), "{:?}", root);
+        assert_eq!(Ok(2.into()), state.seq(&a));
+    }
 
     #[test]
     fn state_is_not_synchronized_when_cloned() {
