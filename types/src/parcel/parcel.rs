@@ -17,7 +17,7 @@
 use ccrypto::blake256;
 use ckey::NetworkId;
 use heapsize::HeapSizeOf;
-use primitives::{H256, U256};
+use primitives::H256;
 use rlp::RlpStream;
 
 use super::Action;
@@ -27,7 +27,7 @@ pub struct Parcel {
     /// Seq.
     pub seq: u64,
     /// Amount of CCC to be paid as a cost for distributing this parcel to the network.
-    pub fee: U256,
+    pub fee: u64,
     /// Network Id
     pub network_id: NetworkId,
 

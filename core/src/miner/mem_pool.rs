@@ -24,7 +24,7 @@ use ctypes::BlockNumber;
 use heapsize::HeapSizeOf;
 use linked_hash_map::LinkedHashMap;
 use multimap::MultiMap;
-use primitives::{H256, U256};
+use primitives::H256;
 use rlp;
 use table::Table;
 use time::get_time;
@@ -93,9 +93,9 @@ struct ParcelOrder {
     /// High seq_height = Low priority (processed later)
     seq_height: u64,
     /// Fee of the parcel.
-    fee: U256,
+    fee: u64,
     /// Fee per bytes(rlp serialized) of the parcel
-    fee_per_byte: U256,
+    fee_per_byte: u64,
     /// Heap usage of this parcel.
     mem_usage: usize,
     /// Hash to identify associated parcel
@@ -117,7 +117,7 @@ impl ParcelOrder {
             seq_height: item.seq() - seq_seq,
             fee,
             mem_usage: item.parcel.heap_size_of_children(),
-            fee_per_byte: fee / rlp_bytes_len.into(),
+            fee_per_byte: fee / rlp_bytes_len as u64,
             hash: item.hash(),
             insertion_id: item.insertion_id,
             origin: item.origin,
@@ -218,7 +218,7 @@ impl MemPoolItem {
         self.parcel.signer_public()
     }
 
-    fn cost(&self) -> U256 {
+    fn cost(&self) -> u64 {
         match &self.parcel.action {
             Action::Payment {
                 amount,
@@ -237,7 +237,7 @@ impl MemPoolItem {
 struct ParcelSet {
     by_priority: BTreeSet<ParcelOrder>,
     by_signer_public: Table<Public, u64, ParcelOrder>,
-    by_fee: MultiMap<U256, H256>,
+    by_fee: MultiMap<u64, H256>,
     limit: usize,
     memory_limit: usize,
 }
@@ -355,17 +355,17 @@ impl ParcelSet {
 
     /// Get the minimum fee that we can accept into this pool that wouldn't cause the parcel to
     /// immediately be dropped. 0 if the pool isn't at capacity; 1 plus the lowest if it is.
-    fn fee_entry_limit(&self) -> U256 {
+    fn fee_entry_limit(&self) -> u64 {
         match self.by_fee.keys().next() {
-            Some(k) if self.by_priority.len() >= self.limit => *k + 1.into(),
-            _ => U256::default(),
+            Some(k) if self.by_priority.len() >= self.limit => k + 1,
+            _ => 0,
         }
     }
 }
 
 pub struct MemPool {
     /// Fee threshold for parcels that can be imported to this pool (defaults to 0)
-    minimal_fee: U256,
+    minimal_fee: u64,
     /// Maximal time parcel may occupy the pool.
     /// When we reach `max_time_in_pool / 2^3` we re-validate
     /// account balance.
@@ -415,7 +415,7 @@ impl MemPool {
         };
 
         MemPool {
-            minimal_fee: U256::zero(),
+            minimal_fee: 0,
             max_time_in_pool: DEFAULT_POOLING_PERIOD,
             current,
             future,
@@ -441,19 +441,19 @@ impl MemPool {
     }
 
     /// Get the minimal fee.
-    pub fn minimal_fee(&self) -> &U256 {
-        &self.minimal_fee
+    pub fn minimal_fee(&self) -> u64 {
+        self.minimal_fee
     }
 
     /// Sets new fee threshold for incoming parcels.
     /// Any parcel already imported to the pool is not affected.
-    pub fn set_minimal_fee(&mut self, min_fee: U256) {
+    pub fn set_minimal_fee(&mut self, min_fee: u64) {
         self.minimal_fee = min_fee;
     }
 
     /// Get one more than the lowest fee in the pool iff the pool is
     /// full, otherwise 0.
-    pub fn effective_minimum_fee(&self) -> U256 {
+    pub fn effective_minimum_fee(&self) -> u64 {
         self.current.fee_entry_limit()
     }
 
@@ -1183,7 +1183,7 @@ pub struct AccountDetails {
     /// Most recent account seq
     pub seq: u64,
     /// Current account balance
-    pub balance: U256,
+    pub balance: u64,
 }
 
 /// Reason to remove single parcel from the pool.
@@ -1468,7 +1468,7 @@ pub mod test {
     fn mint_transaction_does_not_increase_cost() {
         let shard_id = 0xCCC;
 
-        let fee = U256::from(100);
+        let fee = 100;
         let transaction = Transaction::AssetMint {
             network_id: "tc".into(),
             shard_id,
@@ -1499,7 +1499,7 @@ pub mod test {
 
     #[test]
     fn transfer_transaction_does_not_increase_cost() {
-        let fee = U256::from(100);
+        let fee = 100;
         let transaction = Transaction::AssetTransfer {
             network_id: "tc".into(),
             burns: vec![],
@@ -1525,8 +1525,8 @@ pub mod test {
 
     #[test]
     fn payment_increases_cost() {
-        let fee = U256::from(100);
-        let amount = U256::from(100000);
+        let fee = 100;
+        let amount = 100000;
         let receiver = 1u64.into();
         let keypair = Random.generate().unwrap();
         let parcel = Parcel {
@@ -1550,8 +1550,8 @@ pub mod test {
 
     #[test]
     fn fee_per_byte_order_simple() {
-        let order1 = create_parcel_order(U256::from(1000_000_000), 100);
-        let order2 = create_parcel_order(U256::from(1500_000_000), 300);
+        let order1 = create_parcel_order(1000_000_000, 100);
+        let order2 = create_parcel_order(1500_000_000, 300);
         assert!(
             order1.fee_per_byte > order2.fee_per_byte,
             "{} must be larger than {}",
@@ -1572,8 +1572,8 @@ pub mod test {
         ];
         let mut orders: Vec<ParcelOrder> = Vec::new();
         for factor in factors {
-            let fee: u64 = 1000_000 * (factor[0] as u64);
-            orders.push(create_parcel_order(U256::from(fee), 10 * factor[1]));
+            let fee = 1000_000 * (factor[0] as u64);
+            orders.push(create_parcel_order(fee, 10 * factor[1]));
         }
 
         let prev_orders = orders.clone();
@@ -1586,7 +1586,7 @@ pub mod test {
         assert_eq!(prev_orders[3], sorted_orders[4]);
     }
 
-    fn create_parcel_order(fee: U256, transaction_count: usize) -> ParcelOrder {
+    fn create_parcel_order(fee: u64, transaction_count: usize) -> ParcelOrder {
         let transaction = Transaction::AssetMint {
             network_id: "tc".into(),
             shard_id: 0,

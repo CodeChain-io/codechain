@@ -21,7 +21,7 @@ use std::sync::{Arc, Weak};
 use ckey::{public_to_address, recover, Address, Password, Signature};
 use ctypes::machine::WithBalances;
 use parking_lot::RwLock;
-use primitives::{H256, U256};
+use primitives::H256;
 
 use self::params::SimplePoAParams;
 use super::super::account_provider::AccountProvider;
@@ -41,7 +41,7 @@ pub struct SimplePoA {
     signer: RwLock<EngineSigner>,
     validators: Box<ValidatorSet>,
     /// Reward per block, in base units.
-    block_reward: U256,
+    block_reward: u64,
 }
 
 impl SimplePoA {
@@ -179,7 +179,7 @@ impl ConsensusEngine<CodeChainMachine> for SimplePoA {
     fn on_close_block(&self, block: &mut ExecutedBlock) -> Result<(), Error> {
         let author = *block.header().author();
         let total_reward = block.parcels().iter().fold(self.block_reward, |sum, parcel| sum + parcel.fee);
-        self.machine.add_balance(block, &author, &total_reward)
+        self.machine.add_balance(block, &author, total_reward)
     }
 
     fn register_client(&self, client: Weak<EngineClient>) {

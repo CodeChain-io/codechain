@@ -15,14 +15,13 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ckey::NetworkId;
-use primitives::U256;
 
 use super::{Action, Parcel};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IncompleteParcel {
     /// Amount of CCC to be paid as a cost for distributing this parcel to the network.
-    pub fee: U256,
+    pub fee: u64,
     /// Network Id
     pub network_id: NetworkId,
 

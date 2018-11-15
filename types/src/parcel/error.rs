@@ -17,7 +17,7 @@
 use std::fmt::{Display, Formatter, Result as FormatResult};
 
 use ckey::{Address, Error as KeyError, NetworkId};
-use primitives::{H256, U256};
+use primitives::H256;
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::super::transaction::Error as TransactionError;
@@ -44,17 +44,17 @@ pub enum Error {
     /// Parcel's fee is below currently set minimal fee requirement.
     InsufficientFee {
         /// Minimal expected fee
-        minimal: U256,
+        minimal: u64,
         /// Parcel fee
-        got: U256,
+        got: u64,
     },
     /// Sender doesn't have enough funds to pay for this Parcel
     InsufficientBalance {
         address: Address,
         /// Senders balance
-        balance: U256,
+        balance: u64,
         /// Parcel cost
-        cost: U256,
+        cost: u64,
     },
     /// Returned when parcel seq does not match state seq
     InvalidSeq(Mismatch<u64>),

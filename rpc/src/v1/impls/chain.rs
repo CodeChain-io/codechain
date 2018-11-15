@@ -25,7 +25,7 @@ use cstate::{AssetScheme, AssetSchemeAddress, OwnedAsset};
 use ctypes::invoice::Invoice;
 use ctypes::parcel::Action;
 use ctypes::{BlockNumber, ShardId};
-use primitives::{H256, U256};
+use primitives::H256;
 use rlp::{DecoderError, UntrustedRlp};
 
 use jsonrpc_core::Result;
@@ -149,7 +149,7 @@ where
         Ok(self.client.seq(address, block_id))
     }
 
-    fn get_balance(&self, address: PlatformAddress, block_number: Option<u64>) -> Result<Option<U256>> {
+    fn get_balance(&self, address: PlatformAddress, block_number: Option<u64>) -> Result<Option<u64>> {
         let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
         let address = address.try_address().map_err(errors::core)?;
         Ok(self.client.balance(address, block_id.into()))

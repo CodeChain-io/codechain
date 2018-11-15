@@ -174,7 +174,7 @@ impl ConsensusEngine<CodeChainMachine> for Cuckoo {
     fn on_close_block(&self, block: &mut ExecutedBlock) -> Result<(), Error> {
         let author = *block.header().author();
         let total_reward = block.parcels().iter().fold(self.params.block_reward, |sum, parcel| sum + parcel.fee);
-        self.machine.add_balance(block, &author, &total_reward)
+        self.machine.add_balance(block, &author, total_reward)
     }
 
     fn score_to_target(&self, score: &U256) -> U256 {
@@ -248,7 +248,7 @@ mod tests {
         let mut executed_block = block.block().clone();
 
         assert!(engine.on_close_block(&mut executed_block).is_ok());
-        assert_eq!(engine.machine().balance(&executed_block, header.author()).unwrap(), U256::from(0xd));
+        assert_eq!(0xd, engine.machine().balance(&executed_block, header.author()).unwrap());
     }
 
     #[test]

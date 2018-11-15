@@ -16,7 +16,7 @@
 
 use ctypes::parcel::Error as ParcelError;
 use linked_hash_map::LinkedHashMap;
-use primitives::{H256, U256};
+use primitives::H256;
 
 use super::super::parcel::SignedParcel;
 
@@ -34,7 +34,7 @@ pub enum Status {
     /// Parcel is dropped because of limit
     Dropped(SignedParcel),
     /// Replaced because of higher gas price of another parcel.
-    Replaced(SignedParcel, U256, H256),
+    Replaced(SignedParcel, u64, H256),
     /// Parcel was never accepted to the mem pool.
     Rejected(SignedParcel, ParcelError),
     /// Parcel is invalid.
@@ -93,7 +93,7 @@ impl LocalParcelsList {
     }
 
     /// Mark the parcel as replaced by parcel with given hash.
-    pub fn mark_replaced(&mut self, parcel: SignedParcel, gas_price: U256, hash: H256) {
+    pub fn mark_replaced(&mut self, parcel: SignedParcel, gas_price: u64, hash: H256) {
         cdebug!(
             OWN_PARCEL,
             "Parcel replaced (hash {:?}) by {:?} (new gas price: {:?})",
@@ -169,7 +169,6 @@ mod tests {
     use super::*;
     use ckey::{Generator, Random};
     use ctypes::parcel::{Action, Parcel};
-    use primitives::U256;
 
     #[test]
     fn add_parcel_as_pending() {
@@ -215,10 +214,10 @@ mod tests {
         let keypair = Random.generate().unwrap();
         let parcel = Parcel {
             seq,
-            fee: U256::from(1245),
+            fee: 1245,
             action: Action::Payment {
                 receiver: keypair.address(),
-                amount: 0.into(),
+                amount: 0,
             },
             network_id: "tc".into(),
         };

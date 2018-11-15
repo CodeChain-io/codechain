@@ -42,7 +42,7 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
 
  - blockHash: `H256`
  - blockNumber: `number`
- - fee: `U256`
+ - fee: `U64`
  - hash: `H256`
  - networkId: `number`
  - seq: `U64`
@@ -52,7 +52,7 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
 
 ## UnsignedParcel
 
- - fee: `U256`
+ - fee: `U64`
  - networkId: `number`
  - seq: `U64` | `null`
  - action: `Action`
@@ -67,7 +67,7 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
 
  - action: "payment"
  - receiver: `PlatformAddress`
- - amount: `U256`
+ - amount: `U64`
 
 ### SetRegularKey Action
 
@@ -792,7 +792,7 @@ Params:
  1. address: `PlatformAddress`
  2. block number: `number` | `null`
 
-Return Type: `null` | `U256` - It returns null when the given block number is invalid.
+Return Type: `null` | `U64` - It returns null when the given block number is invalid.
 
 Errors: `KVDB Error`, `Invalid Params`, `Invalid NetworkId`
 

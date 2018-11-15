@@ -27,7 +27,7 @@ use ctypes::transaction::{Error as TransactionError, Timelock, Transaction};
 use ctypes::BlockNumber;
 use cvm::ChainTimeInfo;
 use parking_lot::{Mutex, RwLock};
-use primitives::{Bytes, H256, U256};
+use primitives::{Bytes, H256};
 
 use super::super::account_provider::{AccountProvider, SignError};
 use super::super::block::{Block, ClosedBlock, IsBlock};
@@ -645,11 +645,11 @@ impl MinerService for Miner {
         self.params.write().extra_data = extra_data;
     }
 
-    fn minimal_fee(&self) -> U256 {
-        *self.mem_pool.read().minimal_fee()
+    fn minimal_fee(&self) -> u64 {
+        self.mem_pool.read().minimal_fee()
     }
 
-    fn set_minimal_fee(&self, min_fee: U256) {
+    fn set_minimal_fee(&self, min_fee: u64) {
         self.mem_pool.write().set_minimal_fee(min_fee);
     }
 

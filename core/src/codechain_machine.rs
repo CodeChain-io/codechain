@@ -20,7 +20,6 @@ use cstate::{StateError, TopState, TopStateView};
 use ctypes::machine::{Machine, WithBalances};
 use ctypes::parcel::{Action, Error as ParcelError};
 use ctypes::transaction::{Error as TransactionError, Timelock, Transaction};
-use primitives::U256;
 
 use super::block::{ExecutedBlock, IsBlock};
 use super::client::{BlockInfo, TransactionInfo};
@@ -175,11 +174,11 @@ impl Machine for CodeChainMachine {
 }
 
 impl WithBalances for CodeChainMachine {
-    fn balance(&self, live: &ExecutedBlock, address: &Address) -> Result<U256, Self::Error> {
+    fn balance(&self, live: &ExecutedBlock, address: &Address) -> Result<u64, Self::Error> {
         Ok(live.state().balance(address).map_err(StateError::from)?)
     }
 
-    fn add_balance(&self, live: &mut ExecutedBlock, address: &Address, amount: &U256) -> Result<(), Self::Error> {
+    fn add_balance(&self, live: &mut ExecutedBlock, address: &Address, amount: u64) -> Result<(), Self::Error> {
         Ok(live.state_mut().add_balance(address, amount).map_err(StateError::from)?)
     }
 }
