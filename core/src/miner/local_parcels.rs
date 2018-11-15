@@ -191,9 +191,9 @@ mod tests {
     fn clear_old_parcels() {
         // given
         let mut list = LocalParcelsList::new(1);
-        let parcel1 = new_parcel(10.into());
+        let parcel1 = new_parcel(10);
         let parcel1_hash = parcel1.hash();
-        let parcel2 = new_parcel(50.into());
+        let parcel2 = new_parcel(50);
         let parcel2_hash = parcel2.hash();
 
         list.mark_pending(10.into());
@@ -211,7 +211,7 @@ mod tests {
         assert!(list.contains(&15.into()));
     }
 
-    fn new_parcel(seq: U256) -> SignedParcel {
+    fn new_parcel(seq: u64) -> SignedParcel {
         let keypair = Random.generate().unwrap();
         let parcel = Parcel {
             seq,

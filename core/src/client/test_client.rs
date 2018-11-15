@@ -86,7 +86,7 @@ pub struct TestBlockChainClient {
     /// Balances.
     pub balances: RwLock<HashMap<Address, U256>>,
     /// Seqs.
-    pub seqs: RwLock<HashMap<Address, U256>>,
+    pub seqs: RwLock<HashMap<Address, u64>>,
     /// Storage.
     pub storage: RwLock<HashMap<(Address, H256), H256>>,
     /// Block queue size.
@@ -162,7 +162,7 @@ impl TestBlockChainClient {
     }
 
     /// Set seq of account `address` to `seq`.
-    pub fn set_seq(&self, address: Address, seq: U256) {
+    pub fn set_seq(&self, address: Address, seq: u64) {
         self.seqs.write().insert(address, seq);
     }
 
@@ -194,9 +194,9 @@ impl TestBlockChainClient {
             for _ in 0..parcel_length {
                 let keypair = Random.generate().unwrap();
                 // Update seqs value
-                self.seqs.write().insert(keypair.address(), 0.into());
+                self.seqs.write().insert(keypair.address(), 0);
                 let parcel = Parcel {
-                    seq: 0.into(),
+                    seq: 0,
                     fee: U256::from(10),
                     network_id: NetworkId::default(),
                     action: Action::Payment {
@@ -262,7 +262,7 @@ impl TestBlockChainClient {
     pub fn insert_parcel_to_pool(&self) -> H256 {
         let keypair = Random.generate().unwrap();
         let parcel = Parcel {
-            seq: 0.into(),
+            seq: 0,
             fee: U256::from(10),
             network_id: NetworkId::default(),
             action: Action::Payment {
@@ -323,9 +323,9 @@ impl BlockProducer for TestBlockChainClient {}
 impl MiningBlockChainClient for TestBlockChainClient {}
 
 impl Seq for TestBlockChainClient {
-    fn seq(&self, address: &Address, id: BlockId) -> Option<U256> {
+    fn seq(&self, address: &Address, id: BlockId) -> Option<u64> {
         match id {
-            BlockId::Latest => Some(self.seqs.read().get(address).cloned().unwrap_or_else(U256::zero)),
+            BlockId::Latest => Some(self.seqs.read().get(address).cloned().unwrap_or(0)),
             _ => None,
         }
     }

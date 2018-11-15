@@ -527,7 +527,7 @@ impl BlockChainClient for Client {
 impl AccountData for Client {}
 
 impl Seq for Client {
-    fn seq(&self, address: &Address, id: BlockId) -> Option<U256> {
+    fn seq(&self, address: &Address, id: BlockId) -> Option<u64> {
         self.state_at(id).and_then(|s| s.seq(address).ok())
     }
 }

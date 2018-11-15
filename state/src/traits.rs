@@ -35,8 +35,8 @@ pub trait TopStateView {
     fn account(&self, a: &Address) -> TrieResult<Option<Account>>;
 
     /// Get the seq of account `a`.
-    fn seq(&self, a: &Address) -> TrieResult<U256> {
-        Ok(self.account(a)?.map_or_else(U256::zero, |account| *account.seq()))
+    fn seq(&self, a: &Address) -> TrieResult<u64> {
+        Ok(self.account(a)?.map_or(0, |account| account.seq()))
     }
 
     /// Get the balance of account `a`.
@@ -55,7 +55,7 @@ pub trait TopStateView {
     }
 
     fn account_exists_and_has_seq(&self, a: &Address) -> TrieResult<bool> {
-        Ok(self.account(a)?.map(|a| !a.seq().is_zero()).unwrap_or(false))
+        Ok(self.account(a)?.map(|a| a.seq() != 0).unwrap_or(false))
     }
 
     fn regular_account_by_address(&self, a: &Address) -> TrieResult<Option<RegularAccount>>;

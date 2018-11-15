@@ -24,7 +24,7 @@ use ckey::{NetworkId, Password, PlatformAddress, Signature};
 use ctypes::parcel::IncompleteParcel;
 use jsonrpc_core::Result;
 use parking_lot::Mutex;
-use primitives::{H256, U256};
+use primitives::H256;
 
 use super::super::errors::{self, account_provider};
 use super::super::traits::Account;
@@ -97,7 +97,7 @@ where
             static ref LOCK: Mutex<()> = Mutex::new(());
         }
         let _guard = LOCK.lock();
-        let (parcel, seq): (IncompleteParcel, Option<U256>) =
+        let (parcel, seq): (IncompleteParcel, Option<u64>) =
             ::std::result::Result::from(parcel).map_err(AccountProviderError::KeyError).map_err(account_provider)?;
 
         let (hash, seq) = self

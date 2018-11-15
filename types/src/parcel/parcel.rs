@@ -25,7 +25,7 @@ use super::Action;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Parcel {
     /// Seq.
-    pub seq: U256,
+    pub seq: u64,
     /// Amount of CCC to be paid as a cost for distributing this parcel to the network.
     pub fee: U256,
     /// Network Id

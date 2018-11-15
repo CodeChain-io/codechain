@@ -57,12 +57,7 @@ pub enum Error {
         cost: U256,
     },
     /// Returned when parcel seq does not match state seq
-    InvalidSeq {
-        /// Seq expected.
-        expected: U256,
-        /// Seq found.
-        got: U256,
-    },
+    InvalidSeq(Mismatch<u64>),
     InvalidShardId(ShardId),
     InvalidShardRoot(Mismatch<H256>),
     ZeroAmount,
@@ -116,9 +111,7 @@ impl Error {
             Error::InsufficientBalance {
                 ..
             } => 4,
-            Error::InvalidSeq {
-                ..
-            } => 3,
+            Error::InvalidSeq(_) => 2,
             Error::InvalidShardId(_) => 2,
             Error::InvalidShardRoot(_) => 2,
             Error::ZeroAmount => 1,
@@ -153,10 +146,7 @@ impl Encodable for Error {
                 balance,
                 cost,
             } => s.append(&ERROR_ID_INSUFFICIENT_BALANCE).append(address).append(balance).append(cost),
-            Error::InvalidSeq {
-                expected,
-                got,
-            } => s.append(&ERROR_ID_INVALID_SEQ).append(expected).append(got),
+            Error::InvalidSeq(mismatch) => s.append(&ERROR_ID_INVALID_SEQ).append(mismatch),
             Error::InvalidShardId(shard_id) => s.append(&ERROR_ID_INVALID_SHARD_ID).append(shard_id),
             Error::InvalidShardRoot(mismatch) => s.append(&ERROR_ID_INVALID_SHARD_ROOT).append(mismatch),
             Error::ZeroAmount => s.append(&ERROR_ID_ZERO_AMOUNT),
@@ -194,10 +184,7 @@ impl Decodable for Error {
                 balance: rlp.val_at(2)?,
                 cost: rlp.val_at(2)?,
             },
-            ERROR_ID_INVALID_SEQ => Error::InvalidSeq {
-                expected: rlp.val_at(1)?,
-                got: rlp.val_at(2)?,
-            },
+            ERROR_ID_INVALID_SEQ => Error::InvalidSeq(rlp.val_at(1)?),
             ERROR_ID_INVALID_SHARD_ID => Error::InvalidShardId(rlp.val_at(1)?),
             ERROR_ID_INVALID_SHARD_ROOT => Error::InvalidShardRoot(rlp.val_at(1)?),
             ERROR_ID_ZERO_AMOUNT => Error::ZeroAmount,
@@ -237,10 +224,7 @@ impl Display for Error {
                 balance,
                 cost,
             } => format!("{} has only {:?} but it must be larger than {:?}", address, balance, cost),
-            Error::InvalidSeq {
-                expected,
-                got,
-            } => format!("Invalid parcel seq: expected {}, found {}", expected, got),
+            Error::InvalidSeq(mismatch) => format!("Invalid parcel seq {}", mismatch),
             Error::InvalidShardId(shard_id) => format!("{} is an invalid shard id", shard_id),
             Error::InvalidShardRoot(mismatch) => format!("Invalid shard root {}", mismatch),
             Error::ZeroAmount => format!("An amount cannot be 0"),

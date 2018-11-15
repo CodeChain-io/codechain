@@ -301,7 +301,7 @@ mod tests {
         rlp_encode_and_decode_test!(
             UnverifiedParcel {
                 unsigned: Parcel {
-                    seq: 0.into(),
+                    seq: 0,
                     fee: 10.into(),
                     action: Action::CreateShard,
                     network_id: "tc".into(),
@@ -370,7 +370,7 @@ mod tests {
         rlp_encode_and_decode_test!(
             UnverifiedParcel {
                 unsigned: Parcel {
-                    seq: 30.into(),
+                    seq: 30,
                     fee: 40.into(),
                     network_id: "tc".into(),
                     action: Action::Payment {
@@ -390,7 +390,7 @@ mod tests {
         rlp_encode_and_decode_test!(
             UnverifiedParcel {
                 unsigned: Parcel {
-                    seq: 30.into(),
+                    seq: 30,
                     fee: 40.into(),
                     network_id: "tc".into(),
                     action: Action::SetRegularKey {
@@ -409,7 +409,7 @@ mod tests {
         rlp_encode_and_decode_test!(
             UnverifiedParcel {
                 unsigned: Parcel {
-                    seq: 30.into(),
+                    seq: 30,
                     fee: 40.into(),
                     network_id: "tc".into(),
                     action: Action::CreateShard,

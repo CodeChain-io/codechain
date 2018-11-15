@@ -22,7 +22,7 @@ mod transaction;
 mod unsigned_parcel;
 mod work;
 
-use primitives::{H256, U256};
+use primitives::H256;
 
 pub use self::action::Action;
 pub use self::block::Block;
@@ -42,5 +42,5 @@ pub struct FilterStatus {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SendParcelResult {
     pub hash: H256,
-    pub seq: U256,
+    pub seq: u64,
 }
