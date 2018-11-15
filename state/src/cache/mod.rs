@@ -19,10 +19,13 @@ use std::hash::Hash;
 
 use rlp::{Decodable, Encodable};
 
+mod global_cache;
+mod lru_cache;
 mod shard_cache;
 mod top_cache;
 mod write_back;
 
+pub use self::global_cache::GlobalCache;
 pub use self::shard_cache::ShardCache;
 pub use self::top_cache::TopCache;
 pub use self::write_back::WriteBack;
