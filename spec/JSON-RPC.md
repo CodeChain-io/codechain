@@ -45,7 +45,7 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
  - fee: `U256`
  - hash: `H256`
  - networkId: `number`
- - seq: `U256`
+ - seq: `U64`
  - parcelIndex: `number`
  - sig: `Signature`
  - action: `Action`
@@ -54,7 +54,7 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
 
  - fee: `U256`
  - networkId: `number`
- - seq: `U256` | `null`
+ - seq: `U64` | `null`
  - action: `Action`
 
 ## Actions
@@ -764,7 +764,7 @@ Params:
  1. address: `PlatformAddress`
  2. block number: `number` | `null`
 
-Return Type: `null` | `U256` - It returns null when the given block number is invalid.
+Return Type: `null` | `U64` - It returns null when the given block number is invalid.
 
 Errors: `KVDB Error`, `Invalid Params`, `Invalid NetworkId`
 
@@ -1683,7 +1683,7 @@ Params:
  2. account: `PlatformAddress`
  3. passphrase: `string` | `null`
 
-Return type: { hash: `H256`, seq: `U256` } - the hash and seq of the parcel
+Return type: { hash: `H256`, seq: `U64` } - the hash and seq of the parcel
 
 Errors: `Keystore Error`, `Wrong Password`, `No Such Account`, `Not Unlocked`, `Invalid Params`, `Invalid NetworkId`
 

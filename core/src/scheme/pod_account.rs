@@ -29,7 +29,7 @@ pub struct PodAccount {
     /// The balance of the account.
     pub balance: U256,
     /// The seq of the account.
-    pub seq: U256,
+    pub seq: u64,
     /// Regular key of the account.
     pub regular_key: Option<Public>,
 }
@@ -51,7 +51,7 @@ impl From<cjson::scheme::Account> for PodAccount {
     fn from(a: cjson::scheme::Account) -> Self {
         PodAccount {
             balance: a.balance.map_or_else(U256::zero, Into::into),
-            seq: a.seq.map_or_else(U256::zero, Into::into),
+            seq: a.seq.map_or(0, Into::into),
             regular_key: None,
         }
     }

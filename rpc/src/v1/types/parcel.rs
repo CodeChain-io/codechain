@@ -26,7 +26,7 @@ pub struct Parcel {
     pub block_number: Option<u64>,
     pub block_hash: Option<H256>,
     pub parcel_index: Option<usize>,
-    pub seq: U256,
+    pub seq: u64,
     pub fee: U256,
     pub network_id: NetworkId,
     pub action: Action,

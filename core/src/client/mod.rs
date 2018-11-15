@@ -108,10 +108,10 @@ pub trait EngineClient: Sync + Send + ChainInfo + ImportBlock {
 pub trait Seq {
     /// Attempt to get address seq at given block.
     /// May not fail on BlockId::Latest.
-    fn seq(&self, address: &Address, id: BlockId) -> Option<U256>;
+    fn seq(&self, address: &Address, id: BlockId) -> Option<u64>;
 
     /// Get address seq at the latest block's state.
-    fn latest_seq(&self, address: &Address) -> U256 {
+    fn latest_seq(&self, address: &Address) -> u64 {
         self.seq(address, BlockId::Latest).expect(
             "seq will return Some when given BlockId::Latest. seq was given BlockId::Latest. \
              Therefore seq has returned Some; qed",

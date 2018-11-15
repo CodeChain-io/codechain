@@ -853,8 +853,8 @@ impl MinerService for Miner {
         parcel: IncompleteParcel,
         platform_address: PlatformAddress,
         passphrase: Option<Password>,
-        seq: Option<U256>,
-    ) -> Result<(H256, U256), Error> {
+        seq: Option<u64>,
+    ) -> Result<(H256, u64), Error> {
         let address = platform_address.try_into_address()?;
         let seq = match seq {
             Some(seq) => seq,
@@ -919,11 +919,11 @@ impl MinerService for Miner {
     }
 }
 
-fn get_next_seq(parcels: impl Iterator<Item = SignedParcel>, addresses: &[Address]) -> Option<U256> {
+fn get_next_seq(parcels: impl Iterator<Item = SignedParcel>, addresses: &[Address]) -> Option<u64> {
     let mut seqs: Vec<_> = parcels
         .filter(|parcel| addresses.contains(&public_to_address(&parcel.signer_public())))
         .map(|parcel| parcel.seq)
         .collect();
     seqs.sort();
-    seqs.last().map(|seq| *seq + 1.into())
+    seqs.last().map(|seq| seq + 1)
 }
