@@ -177,6 +177,22 @@ impl Client {
         self.block_chain().transaction_address(hash)
     }
 
+    fn parcel_address_of_successful_transaction(&self, hash: &H256) -> Option<ParcelAddress> {
+        self.transaction_address(hash).and_then(|transaction_address| {
+            transaction_address
+                .into_iter()
+                .filter_map(|parcel_address| {
+                    if self.parcel_invoice(parcel_address.into()).map_or(false, |invoice| invoice == Invoice::Success) {
+                        Some(parcel_address)
+                    } else {
+                        None
+                    }
+                })
+                .take(1)
+                .next()
+        })
+    }
+
     /// Import parcels from the IO queue
     pub fn import_queued_parcels(&self, parcels: &[Bytes], peer_id: NodeId) -> usize {
         ctrace!(EXTERNAL_PARCEL, "Importing queued");
@@ -281,32 +297,31 @@ impl AssetClient for Client {
         shard_id: ShardId,
         block_id: BlockId,
     ) -> TrieResult<Option<bool>> {
-        match self.transaction_address(&transaction_hash) {
-            Some(transaction_address) => {
-                if let Some(transaction_block) =
-                    transaction_address.into_iter().take(1).map(|addr| addr.block_hash.into()).next()
-                {
-                    if self.block_number(block_id) < self.block_number(transaction_block) {
-                        return Ok(None)
-                    }
-                }
-                if !self
-                    .transaction(&transaction_hash)
-                    .map_or(false, |transaction| transaction.is_valid_shard_id_index(index, shard_id))
-                {
-                    return Ok(None)
-                }
+        let parcel_address = match self.parcel_address_of_successful_transaction(&transaction_hash) {
+            Some(parcel_address) => parcel_address,
+            None => return Ok(None),
+        };
 
-                match Client::state_at(&self, block_id) {
-                    Some(state) => {
-                        let address = OwnedAssetAddress::new(transaction_hash, index, shard_id);
-                        Ok(Some(state.asset(shard_id, &address)?.is_none()))
-                    }
-                    None => Ok(None),
-                }
+        match self.block_number(block_id) {
+            None => return Ok(None),
+            Some(block_number)
+                if block_number < self
+                    .block_number(parcel_address.block_hash.into())
+                    .expect("There is a successful transaction") =>
+            {
+                return Ok(None)
             }
-            _ => Ok(None),
+            Some(_) => {}
         }
+
+        let transaction = self.transaction(&transaction_hash).expect("There is a successful transaction");
+        if !transaction.is_valid_shard_id_index(index, shard_id) {
+            return Ok(None)
+        }
+
+        let state = Client::state_at(&self, block_id).unwrap();
+        let address = OwnedAssetAddress::new(transaction_hash, index, shard_id);
+        Ok(Some(state.asset(shard_id, &address)?.is_none()))
     }
 }
 
