@@ -290,38 +290,10 @@ impl AssetClient for Client {
                         return Ok(None)
                     }
                 }
-                let is_output_valid = match self.transaction(&transaction_hash) {
-                    Some(Transaction::AssetMint {
-                        shard_id: asset_mint_shard_id,
-                        ..
-                    }) => index == 0 && shard_id == asset_mint_shard_id,
-                    Some(Transaction::AssetTransfer {
-                        outputs,
-                        ..
-                    }) => {
-                        index < outputs.len() && shard_id == AssetSchemeAddress::from_hash(outputs[index].asset_type)
-                            .expect("An asset type must be able to create an AssetSchemeAddress")
-                            .shard_id()
-                    }
-                    Some(Transaction::AssetCompose {
-                        shard_id: asset_compose_shard_id,
-                        ..
-                    }) => index == 0 && shard_id == asset_compose_shard_id,
-                    Some(Transaction::AssetDecompose {
-                        outputs,
-                        ..
-                    }) => {
-                        index < outputs.len() && shard_id == AssetSchemeAddress::from_hash(outputs[index].asset_type)
-                            .expect("An asset type must be able to create an AssetSchemeAddress")
-                            .shard_id()
-                    }
-                    Some(Transaction::AssetUnwrapCCC {
-                        ..
-                    }) => index == 0,
-                    None => false,
-                };
-
-                if !is_output_valid {
+                if !self
+                    .transaction(&transaction_hash)
+                    .map_or(false, |transaction| transaction.is_valid_shard_id_index(index, shard_id))
+                {
                     return Ok(None)
                 }
 
