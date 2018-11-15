@@ -220,11 +220,14 @@ impl TopLevelState {
             root
         };
 
+        let top_cache = db.top_cache();
+        let shard_caches = db.shard_caches();
+
         TopLevelState {
             db: RefCell::new(db),
             root,
-            top_cache: Default::default(),
-            shard_caches: Default::default(),
+            top_cache,
+            shard_caches,
             id_of_checkpoints: Default::default(),
         }
     }
@@ -235,11 +238,14 @@ impl TopLevelState {
             return Err(TrieError::InvalidStateRoot(root))
         }
 
+        let top_cache = db.top_cache();
+        let shard_caches = db.shard_caches();
+
         let state = TopLevelState {
             db: RefCell::new(db),
             root,
-            top_cache: Default::default(),
-            shard_caches: Default::default(),
+            top_cache,
+            shard_caches,
             id_of_checkpoints: Default::default(),
         };
 
@@ -565,8 +571,19 @@ impl TopLevelState {
         self.top_cache.action_data_mut(key, trie)
     }
 
-    pub fn journal_under(&self, batch: &mut DBTransaction, now: u64, id: &H256) -> Result<u32, UtilError> {
-        self.db.borrow_mut().journal_under(batch, now, id)
+    pub fn journal_under(&self, batch: &mut DBTransaction, now: u64) -> Result<u32, UtilError> {
+        self.db.borrow_mut().journal_under(batch, now, self.root)
+    }
+
+    pub fn top_cache(&self) -> &TopCache {
+        &self.top_cache
+    }
+    pub fn shard_caches(&self) -> &HashMap<ShardId, ShardCache> {
+        &self.shard_caches
+    }
+
+    pub fn root(&self) -> H256 {
+        self.root
     }
 }
 
@@ -575,7 +592,7 @@ impl TopLevelState {
 impl Clone for TopLevelState {
     fn clone(&self) -> TopLevelState {
         TopLevelState {
-            db: self.db.clone(),
+            db: RefCell::new(self.db.borrow().clone(&self.root)),
             root: self.root.clone(),
             id_of_checkpoints: self.id_of_checkpoints.clone(),
             top_cache: self.top_cache.clone(),
@@ -796,10 +813,10 @@ mod tests_state {
     fn get_from_database() {
         let memory_db = get_memory_db();
         let jorunal = journaldb::new(Arc::clone(&memory_db), Algorithm::Archive, Some(0));
-        let db = StateDB::new(jorunal, vec![]);
+        let db = StateDB::new(jorunal.boxed_clone(), vec![]);
         let a = Address::default();
         let root = {
-            let mut state = TopLevelState::new(db.clone());
+            let mut state = TopLevelState::new(StateDB::new(jorunal, vec![]));
             assert_eq!(Ok(()), state.inc_seq(&a));
             assert_eq!(Ok(()), state.add_balance(&a, &U256::from(69u64)));
             assert_eq!(Ok(69.into()), state.balance(&a));
@@ -808,13 +825,46 @@ mod tests_state {
             assert_eq!(Ok(69.into()), state.balance(&a));
 
             let mut transaction = memory_db.transaction();
-            let records = state.journal_under(&mut transaction, 1, &H256::random());
+            let records = state.journal_under(&mut transaction, 1);
             assert!(records.is_ok(), "{:?}", records);
             assert_eq!(1, records.unwrap());
             memory_db.write_buffered(transaction);
 
             assert!(root.is_ok(), "{:?}", root);
             assert_eq!(Ok(69.into()), state.balance(&a));
+            root.unwrap()
+        };
+
+        let state = TopLevelState::from_existing(db, root).unwrap();
+        assert_eq!(Ok(69.into()), state.balance(&a));
+        assert_eq!(Ok(1.into()), state.seq(&a));
+    }
+
+    #[test]
+    fn get_from_cache() {
+        let memory_db = get_memory_db();
+        let jorunal = journaldb::new(Arc::clone(&memory_db), Algorithm::Archive, Some(0));
+        let mut db = StateDB::new(jorunal.boxed_clone(), vec![]);
+        let a = Address::default();
+        let root = {
+            let mut state = TopLevelState::new(StateDB::new(jorunal, vec![]));
+            assert_eq!(Ok(()), state.inc_seq(&a));
+            assert_eq!(Ok(()), state.add_balance(&a, &U256::from(69u64)));
+            assert_eq!(Ok(69.into()), state.balance(&a));
+            let root = state.commit();
+            assert!(root.is_ok(), "{:?}", root);
+            assert_eq!(Ok(69.into()), state.balance(&a));
+
+            let mut transaction = memory_db.transaction();
+            let records = state.journal_under(&mut transaction, 1);
+            assert!(records.is_ok(), "{:?}", records);
+            assert_eq!(1, records.unwrap());
+            memory_db.write_buffered(transaction);
+
+            assert!(root.is_ok(), "{:?}", root);
+            assert_eq!(Ok(69.into()), state.balance(&a));
+
+            db.override_state(&state);
             root.unwrap()
         };
 
@@ -842,12 +892,18 @@ mod tests_state {
     #[test]
     fn empty_account_is_not_created() {
         let a = Address::default();
-        let db = get_temp_state_db();
+        let mut db = get_temp_state_db();
         let root = {
-            let mut state = TopLevelState::new(db.clone());
+            let mut state = TopLevelState::new(db.clone(&H256::zero()));
             assert_eq!(Ok(()), state.add_balance(&a, &U256::default())); // create an empty account
             let root = state.commit();
             assert!(root.is_ok(), "{:?}", root);
+
+            assert_eq!(Ok(false), state.account_exists(&a));
+            assert_eq!(Ok(false), state.account_exists_and_not_null(&a));
+
+            db.override_state(&state);
+
             root.unwrap()
         };
         let state = TopLevelState::from_existing(db, root).unwrap();
@@ -860,9 +916,9 @@ mod tests_state {
         let a = Address::default();
         let memory_db = get_memory_db();
         let jorunal = journaldb::new(Arc::clone(&memory_db), Algorithm::Archive, Some(0));
-        let db = StateDB::new(jorunal, vec![]);
+        let mut db = StateDB::new(jorunal.boxed_clone(), vec![]);
         let root = {
-            let mut state = TopLevelState::new(db.clone());
+            let mut state = TopLevelState::new(StateDB::new(jorunal, vec![]));
             assert_eq!(Ok(()), state.inc_seq(&a));
             let root = state.commit();
             assert!(root.is_ok(), "{:?}", root);
@@ -870,18 +926,21 @@ mod tests_state {
             assert_eq!(Ok(1.into()), state.seq(&a));
 
             let mut transaction = memory_db.transaction();
-            let records = state.journal_under(&mut transaction, 1, &H256::random());
+            let records = state.journal_under(&mut transaction, 1);
             assert!(records.is_ok(), "{:?}", records);
             assert_eq!(1, records.unwrap());
             memory_db.write_buffered(transaction);
 
             assert_eq!(Ok(true), state.account_exists(&a));
             assert_eq!(Ok(1.into()), state.seq(&a));
+
+            db.override_state(&state);
+
             root.unwrap()
         };
 
         let root = {
-            let mut state = TopLevelState::from_existing(db.clone(), root).unwrap();
+            let mut state = TopLevelState::from_existing(db.clone(&root), root).unwrap();
             assert_eq!(Ok(true), state.account_exists(&a));
             assert_eq!(Ok(1.into()), state.seq(&a));
             state.kill_account(&a);
@@ -891,13 +950,15 @@ mod tests_state {
             assert_eq!(Ok(0.into()), state.seq(&a));
 
             let mut transaction = memory_db.transaction();
-            let records = state.journal_under(&mut transaction, 1, &H256::random());
+            let records = state.journal_under(&mut transaction, 1);
             assert!(records.is_ok(), "{:?}", records);
             assert_eq!(0, records.unwrap());
             memory_db.write_buffered(transaction);
 
             assert_eq!(Ok(false), state.account_exists(&a));
             assert_eq!(Ok(0.into()), state.seq(&a));
+
+            db.override_state(&state);
 
             root.unwrap()
         };

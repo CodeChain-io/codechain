@@ -33,8 +33,23 @@ pub struct TopCache {
     action_data: WriteBack<ActionData>,
 }
 
-
 impl TopCache {
+    pub fn new(
+        accounts: impl Iterator<Item = (Address, Account)>,
+        regular_accounts: impl Iterator<Item = (RegularAccountAddress, RegularAccount)>,
+        metadata: impl Iterator<Item = (MetadataAddress, Metadata)>,
+        shards: impl Iterator<Item = (ShardAddress, Shard)>,
+        action_data: impl Iterator<Item = (H256, ActionData)>,
+    ) -> Self {
+        Self {
+            account: WriteBack::new_with_iter(accounts),
+            regular_account: WriteBack::new_with_iter(regular_accounts),
+            metadata: WriteBack::new_with_iter(metadata),
+            shard: WriteBack::new_with_iter(shards),
+            action_data: WriteBack::new_with_iter(action_data),
+        }
+    }
+
     pub fn checkpoint(&mut self) {
         self.account.checkpoint();
         self.regular_account.checkpoint();
@@ -125,17 +140,35 @@ impl TopCache {
     pub fn remove_action_data(&self, address: &H256) {
         self.action_data.remove(address)
     }
-}
 
-impl Default for TopCache {
-    fn default() -> Self {
-        Self {
-            account: WriteBack::new(),
-            regular_account: WriteBack::new(),
-            metadata: WriteBack::new(),
-            shard: WriteBack::new(),
-            action_data: WriteBack::new(),
-        }
+    pub fn cached_accounts(&self) -> Vec<(Address, Option<Account>)> {
+        let mut items = self.account.items();
+        items.sort_unstable_by(|lhs, rhs| lhs.0.cmp(&rhs.0));
+        items.into_iter().map(|(_, addr, item)| (addr, item)).collect()
+    }
+
+    pub fn cached_regular_accounts(&self) -> Vec<(RegularAccountAddress, Option<RegularAccount>)> {
+        let mut items = self.regular_account.items();
+        items.sort_unstable_by(|lhs, rhs| lhs.0.cmp(&rhs.0));
+        items.into_iter().map(|(_, addr, item)| (addr, item)).collect()
+    }
+
+    pub fn cached_metadata(&self) -> Vec<(MetadataAddress, Option<Metadata>)> {
+        let mut items = self.metadata.items();
+        items.sort_unstable_by(|lhs, rhs| lhs.0.cmp(&rhs.0));
+        items.into_iter().map(|(_, addr, item)| (addr, item)).collect()
+    }
+
+    pub fn cached_shards(&self) -> Vec<(ShardAddress, Option<Shard>)> {
+        let mut items = self.shard.items();
+        items.sort_unstable_by(|lhs, rhs| lhs.0.cmp(&rhs.0));
+        items.into_iter().map(|(_, addr, item)| (addr, item)).collect()
+    }
+
+    pub fn cached_action_data(&self) -> Vec<(H256, Option<ActionData>)> {
+        let mut items = self.action_data.items();
+        items.sort_unstable_by(|lhs, rhs| lhs.0.cmp(&rhs.0));
+        items.into_iter().map(|(_, addr, item)| (addr, item)).collect()
     }
 }
 

@@ -27,6 +27,16 @@ pub struct ShardCache {
 }
 
 impl ShardCache {
+    pub fn new(
+        asset_schemes: impl Iterator<Item = (AssetSchemeAddress, AssetScheme)>,
+        assets: impl Iterator<Item = (OwnedAssetAddress, OwnedAsset)>,
+    ) -> Self {
+        Self {
+            asset_scheme: WriteBack::new_with_iter(asset_schemes),
+            asset: WriteBack::new_with_iter(assets),
+        }
+    }
+
     pub fn checkpoint(&mut self) {
         self.asset_scheme.checkpoint();
         self.asset.checkpoint();
@@ -71,14 +81,13 @@ impl ShardCache {
     pub fn remove_asset(&self, address: &OwnedAssetAddress) {
         self.asset.remove(address)
     }
-}
 
-impl Default for ShardCache {
-    fn default() -> Self {
-        Self {
-            asset_scheme: WriteBack::new(),
-            asset: WriteBack::new(),
-        }
+    pub fn cached_assets(&self) -> Vec<(usize, OwnedAssetAddress, Option<OwnedAsset>)> {
+        self.asset.items()
+    }
+
+    pub fn cached_asset_schemes(&self) -> Vec<(usize, AssetSchemeAddress, Option<AssetScheme>)> {
+        self.asset_scheme.items()
     }
 }
 
@@ -88,5 +97,11 @@ impl Clone for ShardCache {
             asset_scheme: self.asset_scheme.clone(),
             asset: self.asset.clone(),
         }
+    }
+}
+
+impl Default for ShardCache {
+    fn default() -> Self {
+        Self::new(::std::iter::empty(), ::std::iter::empty())
     }
 }

@@ -19,22 +19,16 @@ use std::collections::hash_map::Entry as HashMapEntry;
 use std::collections::HashMap;
 use std::convert::AsRef;
 use std::fmt;
+use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
 use std::vec::Vec;
 
 use cmerkle::{self, Result as TrieResult, Trie, TrieDB, TrieMut};
 
 use super::CacheableItem;
 
-#[derive(Eq, PartialEq, Clone, Copy, Debug)]
-/// Used to check if the item was modified in between commits and overall.
-enum EntryState {
-    /// Loaded from disk and never modified in this state object.
-    CleanFresh,
-    /// Modified and not committed to the trie yet.
-    /// This is set if any of the data is changed.
-    Dirty,
-    /// Committed to the trie.
-    Committed,
+static TOUCHED_COUNT: AtomicUsize = ATOMIC_USIZE_INIT;
+fn touched_count() -> usize {
+    TOUCHED_COUNT.fetch_add(1, Ordering::SeqCst)
 }
 
 #[derive(Clone, Debug)]
@@ -42,8 +36,9 @@ struct Entry<Item>
 where
     Item: CacheableItem, {
     item: Option<Item>,
-    /// Entry state.
-    state: EntryState,
+    is_dirty: bool,
+    /// Touched time
+    touched: usize,
 }
 
 // Account cache item. Contains account data and
@@ -52,27 +47,29 @@ impl<Item> Entry<Item>
 where
     Item: CacheableItem,
 {
-    fn is_dirty(&self) -> bool {
-        self.state == EntryState::Dirty
-    }
-
     // Create a new account entry and mark it as dirty.
     fn new_dirty(item: Option<Item>) -> Self {
         Self {
             item,
-            state: EntryState::Dirty,
+            is_dirty: true,
+            touched: touched_count(),
         }
     }
 
     // Create a new account entry and mark it as clean.
     fn new_clean(item: Option<Item>) -> Self {
+        Self::new_clean_with_touched(item, touched_count())
+    }
+
+    // Create a new account entry and mark it as clean.
+    fn new_clean_with_touched(item: Option<Item>, touched: usize) -> Self {
         Self {
             item,
-            state: EntryState::CleanFresh,
+            is_dirty: false,
+            touched,
         }
     }
 }
-
 
 pub struct WriteBack<Item>
 where
@@ -91,6 +88,21 @@ where
             cache: Default::default(),
             checkpoints: Default::default(),
         }
+    }
+
+    pub fn new_with_iter(items: impl Iterator<Item = (Item::Address, Item)>) -> Self {
+        let cache = Self::new();
+        // lru_cache::iter() returns the least-recently-used to the most-recently-used
+        for (touched, (addr, item)) in items.enumerate() {
+            cache.insert(&addr, Entry::new_clean_with_touched(Some(item), touched))
+        }
+        debug_assert!(
+            cache.len() <= TOUCHED_COUNT.load(Ordering::SeqCst),
+            "cache.len():{} must be less than TOUCHED_COUNT:{}",
+            cache.len(),
+            TOUCHED_COUNT.load(Ordering::SeqCst)
+        );
+        cache
     }
 
     pub fn checkpoint(&mut self) {
@@ -127,7 +139,7 @@ where
                     },
                     None => {
                         if let HashMapEntry::Occupied(e) = self.cache.get_mut().entry(k) {
-                            if e.get().is_dirty() {
+                            if e.get().is_dirty {
                                 e.remove();
                             }
                         }
@@ -143,7 +155,7 @@ where
         //
         // In all other cases item is read as clean first, and after that made
         // dirty in and added to the checkpoint with `note_cache`.
-        let is_dirty = item.is_dirty();
+        let is_dirty = item.is_dirty;
         let old_value = self.cache.borrow_mut().insert(address.clone(), item);
         if !is_dirty {
             return
@@ -165,8 +177,8 @@ where
 
     pub fn commit<'db>(&mut self, trie: &mut Box<TrieMut + 'db>) -> TrieResult<()> {
         let mut cache = self.cache.borrow_mut();
-        for (address, ref mut a) in cache.iter_mut().filter(|&(_, ref a)| a.is_dirty()) {
-            a.state = EntryState::Committed;
+        for (address, ref mut a) in cache.iter_mut().filter(|&(_, ref a)| a.is_dirty) {
+            a.is_dirty = false;
             match &a.item {
                 Some(item) => {
                     trie.insert(address.as_ref(), &item.rlp_bytes())?;
@@ -184,7 +196,8 @@ where
     /// Populates local cache if nothing found.
     pub fn get(&self, a: &Item::Address, db: TrieDB) -> cmerkle::Result<Option<Item>> {
         // check local cache first
-        if let Some(cached_item) = self.cache.borrow().get(a) {
+        if let Some(cached_item) = self.cache.borrow_mut().get_mut(a) {
+            cached_item.touched = touched_count();
             return Ok(cached_item.item.clone())
         }
 
@@ -214,9 +227,29 @@ where
             }
 
             // set the dirty flag after changing data.
-            entry.state = EntryState::Dirty;
+            entry.is_dirty = true;
+            entry.touched = touched_count();
             entry.item.as_mut().expect("Required item must always exist; qed")
         }))
+    }
+
+    pub fn items(&self) -> Vec<(usize, Item::Address, Option<Item>)> {
+        let cache = self.cache.borrow();
+        cache
+            .iter()
+            .map(|(addr, entry)| {
+                if entry.is_dirty {
+                    unreachable!("The cache must be committed before called items")
+                } else {
+                    (entry.touched, addr.clone(), entry.item.clone())
+                }
+            })
+            .collect()
+    }
+
+    fn len(&self) -> usize {
+        let cache = self.cache.borrow();
+        cache.len()
     }
 }
 
