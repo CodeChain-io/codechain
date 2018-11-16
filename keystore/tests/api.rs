@@ -86,9 +86,9 @@ fn secret_store_remove_account() {
     assert!(store.insert_account(random_secret(), &"".into()).is_ok());
     let accounts = store.accounts().unwrap();
     assert_eq!(accounts.len(), 1);
-    assert!(store.remove_account(&accounts[0], &"".into()).is_ok());
+    assert!(store.remove_account_with_password(&accounts[0], &"".into()).is_ok());
     assert_eq!(store.accounts().unwrap().len(), 0);
-    assert!(store.remove_account(&accounts[0], &"".into()).is_err());
+    assert!(store.remove_account_with_password(&accounts[0], &"".into()).is_err());
 }
 
 fn pat_path() -> &'static str {

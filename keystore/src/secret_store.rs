@@ -47,7 +47,9 @@ pub trait SimpleSecretStore: Send + Sync {
     ///  Check existance of account
     fn has_account(&self, account: &Address) -> Result<bool, Error>;
     /// Entirely removes account from the store and underlying storage.
-    fn remove_account(&self, account: &Address, password: &Password) -> Result<(), Error>;
+    fn remove_account(&self, account: &Address) -> Result<(), Error>;
+    /// Entirely removes account from the store and underlying storage, verifying with password.
+    fn remove_account_with_password(&self, account: &Address, password: &Password) -> Result<(), Error>;
     /// Changes accounts password.
     fn change_password(&self, account: &Address, old_password: &Password, new_password: &Password)
         -> Result<(), Error>;
