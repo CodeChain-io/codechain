@@ -459,8 +459,10 @@ impl TopLevelState {
             }
         }
 
-        let unwrapped_amount = transaction.unwrapped_amount();
-        self.add_balance(sender, unwrapped_amount)?;
+        if first_invoice == Invoice::Success {
+            let unwrapped_amount = transaction.unwrapped_amount();
+            self.add_balance(sender, unwrapped_amount)?;
+        }
         Ok(first_invoice)
     }
 
@@ -1042,6 +1044,7 @@ mod tests_state {
 
 #[cfg(test)]
 mod tests_parcel {
+    use ccrypto::Blake;
     use ckey::{Generator, Random};
     use ctypes::transaction::{
         AssetMintOutput, AssetOutPoint, AssetTransferInput, AssetTransferOutput, Error as TransactionError,
@@ -1788,6 +1791,84 @@ mod tests_parcel {
         let asset_address = OwnedAssetAddress::new(parcel_hash, 0, shard_id);
         let asset = state.asset(shard_id, &asset_address);
         assert_eq!(Ok(None), asset);
+    }
+
+    #[test]
+    fn wrap_and_failed_unwrap() {
+        let (sender, sender_public) = address();
+
+        let mut state = get_temp_state();
+        assert_eq!(Ok(()), state.create_shard_level_state(vec![sender], vec![]));
+        let root = state.commit();
+        assert!(root.is_ok(), "{:?}", root);
+        assert_eq!(Ok(()), state.add_balance(&sender, 100));
+
+        let network_id = "tc".into();
+        let shard_id = 0x0;
+
+        let lock_script_hash = H160::from("ca5d3fa0a6887285ef6aa85cb12960a2b6706e00");
+        let amount = 30;
+
+        let parcel = Parcel {
+            fee: 11,
+            action: Action::WrapCCC {
+                shard_id,
+                lock_script_hash,
+                parameters: vec![],
+                amount,
+            },
+            seq: 0,
+            network_id,
+        };
+        let parcel_hash = parcel.hash();
+
+        assert_eq!(Ok(Invoice::Success), state.apply(&parcel, &sender_public, &get_test_client()));
+
+        assert_eq!(Ok(100 - 11 - 30), state.balance(&sender));
+        assert_eq!(Ok(1), state.seq(&sender));
+
+        let asset_scheme_address = AssetSchemeAddress::new_with_zero_suffix(shard_id);
+        let asset_type = asset_scheme_address.into();
+        let asset_address = OwnedAssetAddress::new(parcel_hash, 0, shard_id);
+        let asset = state.asset(shard_id, &asset_address);
+        assert_eq!(Ok(Some(OwnedAsset::new(asset_type, lock_script_hash, vec![], amount))), asset);
+
+        let failed_lock_script = vec![0x02];
+        let unwrap_ccc_tx = Transaction::AssetUnwrapCCC {
+            network_id,
+            burn: AssetTransferInput {
+                prev_out: AssetOutPoint {
+                    transaction_hash: parcel_hash,
+                    index: 0,
+                    asset_type,
+                    amount: 30,
+                },
+                timelock: None,
+                lock_script: failed_lock_script.clone(),
+                unlock_script: vec![],
+            },
+        };
+        let parcel = Parcel {
+            fee: 11,
+            action: Action::AssetTransaction(unwrap_ccc_tx),
+            seq: 1,
+            network_id,
+        };
+
+        assert_eq!(
+            Ok(Invoice::Failure(ParcelError::InvalidTransaction(TransactionError::ScriptHashMismatch(Mismatch {
+                expected: lock_script_hash,
+                found: Blake::blake(&failed_lock_script),
+            })))),
+            state.apply(&parcel, &sender_public, &get_test_client())
+        );
+
+        assert_eq!(Ok(100 - 11 - 30 - 11), state.balance(&sender));
+        assert_eq!(Ok(2), state.seq(&sender));
+
+        let asset_address = OwnedAssetAddress::new(parcel_hash, 0, shard_id);
+        let asset = state.asset(shard_id, &asset_address);
+        assert_eq!(Ok(Some(OwnedAsset::new(asset_type, lock_script_hash, vec![], amount))), asset);
     }
 
     #[test]
