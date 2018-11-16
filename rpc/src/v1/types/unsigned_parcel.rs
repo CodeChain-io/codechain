@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use cjson::uint::Uint;
 use ckey::{Error as KeyError, NetworkId};
 use ctypes::parcel::IncompleteParcel;
 
@@ -22,8 +23,8 @@ use super::Action;
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UnsignedParcel {
-    pub seq: Option<u64>,
-    pub fee: u64,
+    pub seq: Option<Uint>,
+    pub fee: Uint,
     pub network_id: NetworkId,
     pub action: Action,
 }
@@ -33,11 +34,11 @@ impl From<UnsignedParcel> for Result<(IncompleteParcel, Option<u64>), KeyError> 
     fn from(parcel: UnsignedParcel) -> Self {
         Ok((
             IncompleteParcel {
-                fee: parcel.fee,
+                fee: parcel.fee.into(),
                 network_id: parcel.network_id,
                 action: Result::from(parcel.action)?,
             },
-            parcel.seq,
+            parcel.seq.map(Into::into),
         ))
     }
 }

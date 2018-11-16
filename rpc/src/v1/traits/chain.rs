@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use cjson::uint::Uint;
 use ckey::{NetworkId, PlatformAddress, Public};
 use cstate::{AssetScheme, OwnedAsset};
 use ctypes::invoice::Invoice;
@@ -64,11 +65,11 @@ build_rpc_trait! {
 
         /// Gets seq with given account.
         # [rpc(name = "chain_getSeq")]
-        fn get_seq(&self, PlatformAddress, Option<u64>) -> Result<Option<u64>>;
+        fn get_seq(&self, PlatformAddress, Option<u64>) -> Result<Option<Uint>>;
 
         /// Gets balance with given account.
         # [rpc(name = "chain_getBalance")]
-        fn get_balance(&self, PlatformAddress, Option<u64>) -> Result<Option<u64>>;
+        fn get_balance(&self, PlatformAddress, Option<u64>) -> Result<Option<Uint>>;
 
         /// Gets regular key with given account
         # [rpc(name = "chain_getRegularKey")]
