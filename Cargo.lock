@@ -449,6 +449,7 @@ name = "codechain-rpc"
 version = "0.1.0"
 dependencies = [
  "codechain-core 0.1.0",
+ "codechain-json 0.1.0",
  "codechain-key 0.1.0",
  "codechain-keystore 0.1.0",
  "codechain-logger 0.1.0",

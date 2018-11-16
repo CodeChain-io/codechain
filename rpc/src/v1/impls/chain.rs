@@ -20,6 +20,7 @@ use ccore::{
     AssetClient, BlockId, EngineInfo, ExecuteClient, MinerService, MiningBlockChainClient, RegularKey, RegularKeyOwner,
     Shard, SignedParcel, UnverifiedParcel,
 };
+use cjson::uint::Uint;
 use ckey::{public_to_address, NetworkId, PlatformAddress, Public};
 use cstate::{AssetScheme, AssetSchemeAddress, OwnedAsset};
 use ctypes::invoice::Invoice;
@@ -143,16 +144,16 @@ where
         self.client.is_asset_spent(transaction_hash, index, shard_id, block_id).map_err(errors::parcel_state)
     }
 
-    fn get_seq(&self, address: PlatformAddress, block_number: Option<u64>) -> Result<Option<u64>> {
+    fn get_seq(&self, address: PlatformAddress, block_number: Option<u64>) -> Result<Option<Uint>> {
         let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
         let address = address.try_address().map_err(errors::core)?;
-        Ok(self.client.seq(address, block_id))
+        Ok(self.client.seq(address, block_id).map(Into::into))
     }
 
-    fn get_balance(&self, address: PlatformAddress, block_number: Option<u64>) -> Result<Option<u64>> {
+    fn get_balance(&self, aaddress: PlatformAddress, block_number: Option<u64>) -> Result<Option<Uint>> {
         let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
-        let address = address.try_address().map_err(errors::core)?;
-        Ok(self.client.balance(address, block_id.into()))
+        let address = aaddress.try_address().map_err(errors::core)?;
+        Ok(self.client.balance(address, block_id.into()).map(Into::into))
     }
 
     fn get_regular_key(&self, address: PlatformAddress, block_number: Option<u64>) -> Result<Option<Public>> {

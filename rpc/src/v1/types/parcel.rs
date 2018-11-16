@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ccore::{LocalizedParcel, SignedParcel};
+use cjson::uint::Uint;
 use ckey::{NetworkId, Signature};
 use primitives::H256;
 
@@ -26,8 +27,8 @@ pub struct Parcel {
     pub block_number: Option<u64>,
     pub block_hash: Option<H256>,
     pub parcel_index: Option<usize>,
-    pub seq: u64,
-    pub fee: u64,
+    pub seq: Uint,
+    pub fee: Uint,
     pub network_id: NetworkId,
     pub action: Action,
     pub hash: H256,
@@ -41,8 +42,8 @@ impl From<LocalizedParcel> for Parcel {
             block_number: Some(p.block_number),
             block_hash: Some(p.block_hash),
             parcel_index: Some(p.parcel_index),
-            seq: p.seq,
-            fee: p.fee,
+            seq: p.seq.into(),
+            fee: p.fee.into(),
             network_id: p.network_id,
             action: Action::from_core(p.action.clone(), p.network_id),
             hash: p.hash(),
@@ -58,8 +59,8 @@ impl From<SignedParcel> for Parcel {
             block_number: None,
             block_hash: None,
             parcel_index: None,
-            seq: p.seq,
-            fee: p.fee,
+            seq: p.seq.into(),
+            fee: p.fee.into(),
             network_id: p.network_id,
             action: Action::from_core(p.action.clone(), p.network_id),
             hash: p.hash(),

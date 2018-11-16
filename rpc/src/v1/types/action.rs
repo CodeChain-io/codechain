@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use cjson::uint::Uint;
 use ckey::{Error as KeyError, NetworkId, PlatformAddress, Public};
 use ctypes::parcel::Action as ActionType;
 use ctypes::ShardId;
@@ -31,7 +32,7 @@ pub enum Action {
     Payment {
         receiver: PlatformAddress,
         /// Transferred amount.
-        amount: u64,
+        amount: Uint,
     },
     SetRegularKey {
         key: Public,
@@ -49,7 +50,7 @@ pub enum Action {
         shard_id: ShardId,
         lock_script_hash: H160,
         parameters: Vec<Bytes>,
-        amount: u64,
+        amount: Uint,
     },
     Custom(Bytes),
 }
@@ -65,7 +66,7 @@ impl Action {
                 amount,
             } => Action::Payment {
                 receiver: PlatformAddress::new_v1(network_id, receiver),
-                amount,
+                amount: amount.into(),
             },
             ActionType::SetRegularKey {
                 key,
@@ -96,7 +97,7 @@ impl Action {
                 shard_id,
                 lock_script_hash,
                 parameters,
-                amount,
+                amount: amount.into(),
             },
             ActionType::Custom(bytes) => Action::Custom(bytes),
         }
@@ -115,7 +116,7 @@ impl From<Action> for Result<ActionType, KeyError> {
                 amount,
             } => ActionType::Payment {
                 receiver: receiver.try_into_address()?,
-                amount,
+                amount: amount.into(),
             },
             Action::SetRegularKey {
                 key,
@@ -152,7 +153,7 @@ impl From<Action> for Result<ActionType, KeyError> {
                 shard_id,
                 lock_script_hash,
                 parameters,
-                amount,
+                amount: amount.into(),
             },
             Action::Custom(bytes) => ActionType::Custom(bytes),
         })

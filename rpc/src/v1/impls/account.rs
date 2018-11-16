@@ -114,7 +114,7 @@ where
 
         Ok(SendParcelResult {
             hash,
-            seq,
+            seq: seq.into(),
         })
     }
 
