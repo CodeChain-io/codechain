@@ -127,10 +127,12 @@ impl<'a> fmt::Display for UntrustedRlp<'a> {
             Ok(Prototype::Data(_)) => write!(f, "\"0x{}\"", self.data().unwrap().to_hex()),
             Ok(Prototype::List(len)) => {
                 write!(f, "[")?;
-                for i in 0..len - 1 {
-                    write!(f, "{}, ", self.at(i).unwrap())?;
+                if len > 0 {
+                    for i in 0..len - 1 {
+                        write!(f, "{}, ", self.at(i).unwrap())?;
+                    }
+                    write!(f, "{}", self.at(len - 1).unwrap())?;
                 }
-                write!(f, "{}", self.at(len - 1).unwrap())?;
                 write!(f, "]")
             }
             Err(err) => write!(f, "{:?}", err),
@@ -419,6 +421,7 @@ impl<'a> BasicDecoder<'a> {
 #[cfg(test)]
 mod tests {
     use traits::Encodable;
+    use RlpStream;
     use {DecoderError, UntrustedRlp};
 
     #[test]
@@ -459,5 +462,17 @@ mod tests {
 
         let fourth_element: Result<u8, _> = rlp.at(3).and_then(|elem| elem.as_val());
         assert_eq!(Err(DecoderError::RlpIsTooShort), fourth_element);
+    }
+
+    #[test]
+    fn print_empty_array() {
+        let mut s = RlpStream::new();
+        let num: u8 = 3;
+        let empty_array: Vec<i32> = Vec::new();
+        s.begin_list(2).append(&num).append_list(&empty_array);
+        let bs = s.out();
+        let rlp = UntrustedRlp::new(&*bs);
+        let s = format!("{}", rlp);
+        assert_eq!("[\"0x03\", []]", s);
     }
 }
