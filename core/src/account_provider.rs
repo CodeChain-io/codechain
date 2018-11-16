@@ -125,7 +125,7 @@ impl AccountProvider {
     }
 
     pub fn remove_account(&self, address: Address, password: &Password) -> Result<(), SignError> {
-        Ok(self.keystore.write().remove_account(&address, password)?)
+        Ok(self.keystore.write().remove_account_with_password(&address, password)?)
     }
 
     pub fn sign(&self, address: Address, password: Option<Password>, message: Message) -> Result<Signature, SignError> {
