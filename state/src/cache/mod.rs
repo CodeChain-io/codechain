@@ -31,6 +31,6 @@ pub use self::top_cache::TopCache;
 pub use self::write_back::WriteBack;
 
 pub trait CacheableItem: Clone + Default + fmt::Debug + Decodable + Encodable {
-    type Address: AsRef<[u8]> + Clone + fmt::Debug + Eq + Hash;
+    type Address: AsRef<[u8]> + Clone + Copy + fmt::Debug + Eq + Hash;
     fn is_null(&self) -> bool;
 }

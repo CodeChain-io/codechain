@@ -105,7 +105,7 @@ impl Decodable for Shard {
     }
 }
 
-#[derive(Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct ShardAddress(H256);
 
 impl_address!(TOP, ShardAddress, PREFIX);

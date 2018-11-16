@@ -156,12 +156,12 @@ where
         // In all other cases item is read as clean first, and after that made
         // dirty in and added to the checkpoint with `note_cache`.
         let is_dirty = item.is_dirty;
-        let old_value = self.cache.borrow_mut().insert(address.clone(), item);
+        let old_value = self.cache.borrow_mut().insert(*address, item);
         if !is_dirty {
             return
         }
         if let Some(ref mut checkpoint) = self.checkpoints.borrow_mut().last_mut() {
-            checkpoint.entry(address.clone()).or_insert(old_value);
+            checkpoint.entry(*address).or_insert(old_value);
         }
     }
 
@@ -171,7 +171,7 @@ where
 
     fn note(&self, address: &Item::Address) {
         if let Some(ref mut checkpoint) = self.checkpoints.borrow_mut().last_mut() {
-            checkpoint.entry(address.clone()).or_insert_with(|| self.cache.borrow().get(address).cloned());
+            checkpoint.entry(*address).or_insert_with(|| self.cache.borrow().get(address).cloned());
         }
     }
 
@@ -241,7 +241,7 @@ where
                 if entry.is_dirty {
                     unreachable!("The cache must be committed before called items")
                 } else {
-                    (entry.touched, addr.clone(), entry.item.clone())
+                    (entry.touched, *addr, entry.item.clone())
                 }
             })
             .collect()

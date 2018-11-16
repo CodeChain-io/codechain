@@ -56,11 +56,11 @@ impl GlobalCache {
 
     pub fn top_cache(&self) -> TopCache {
         TopCache::new(
-            self.account.iter().map(|(addr, item)| (addr.clone(), item.clone())),
-            self.regular_account.iter().map(|(addr, item)| (addr.clone(), item.clone())),
-            self.metadata.iter().map(|(addr, item)| (addr.clone(), item.clone())),
-            self.shard.iter().map(|(addr, item)| (addr.clone(), item.clone())),
-            self.action_data.iter().map(|(addr, item)| (addr.clone(), item.clone())),
+            self.account.iter().map(|(addr, item)| (*addr, item.clone())),
+            self.regular_account.iter().map(|(addr, item)| (*addr, item.clone())),
+            self.metadata.iter().map(|(addr, item)| (*addr, item.clone())),
+            self.shard.iter().map(|(addr, item)| (*addr, item.clone())),
+            self.action_data.iter().map(|(addr, item)| (*addr, item.clone())),
         )
     }
 
@@ -69,11 +69,8 @@ impl GlobalCache {
             self.asset_scheme
                 .iter()
                 .filter(|(addr, _)| addr.shard_id() == shard_id)
-                .map(|(addr, item)| (addr.clone(), item.clone())),
-            self.asset
-                .iter()
-                .filter(|(addr, _)| addr.shard_id() == shard_id)
-                .map(|(addr, item)| (addr.clone(), item.clone())),
+                .map(|(addr, item)| (*addr, item.clone())),
+            self.asset.iter().filter(|(addr, _)| addr.shard_id() == shard_id).map(|(addr, item)| (*addr, item.clone())),
         )
     }
 

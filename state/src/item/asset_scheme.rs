@@ -123,7 +123,7 @@ impl Decodable for AssetScheme {
     }
 }
 
-#[derive(Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct AssetSchemeAddress(H256);
 
 impl_address!(SHARD, AssetSchemeAddress, PREFIX);

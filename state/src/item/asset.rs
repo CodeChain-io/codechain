@@ -156,7 +156,7 @@ impl Decodable for OwnedAsset {
     }
 }
 
-#[derive(Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct OwnedAssetAddress(H256);
 
 impl_address!(SHARD, OwnedAssetAddress, PREFIX);
@@ -233,7 +233,7 @@ mod tests {
             hash[0..6].clone_from_slice(&[PREFIX, 0, 0, 0, 0, 0]);
             hash
         };
-        let address = OwnedAssetAddress::from_hash(hash.clone());
+        let address = OwnedAssetAddress::from_hash(hash);
         assert_eq!(Some(OwnedAssetAddress(hash)), address);
     }
 

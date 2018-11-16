@@ -380,7 +380,7 @@ impl<'db> ShardLevelState<'db> {
             .ok_or(TransactionError::AssetSchemeNotFound(asset_type.into()))?;
         let asset_scheme = self
             .asset_scheme((&asset_scheme_address).into())?
-            .ok_or(TransactionError::AssetSchemeNotFound(asset_scheme_address.clone().into()))?;
+            .ok_or(TransactionError::AssetSchemeNotFound(asset_scheme_address.into()))?;
         // The input asset should be composed asset
         if asset_scheme.pool().is_empty() {
             return Err(TransactionError::InvalidDecomposedInput {

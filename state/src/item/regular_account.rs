@@ -79,7 +79,7 @@ impl Decodable for RegularAccount {
     }
 }
 
-#[derive(Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct RegularAccountAddress(H256);
 
 impl_address!(TOP, RegularAccountAddress, PREFIX);
