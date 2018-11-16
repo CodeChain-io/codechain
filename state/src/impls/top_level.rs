@@ -290,15 +290,6 @@ impl TopLevelState {
         }
 
         let fee = parcel.fee;
-        let balance = self.balance(fee_payer)?;
-        if fee > balance {
-            return Err(ParcelError::InsufficientBalance {
-                address: *fee_payer,
-                cost: fee,
-                balance,
-            }
-            .into())
-        }
 
         self.inc_seq(fee_payer)?;
         self.sub_balance(fee_payer, fee)?;
@@ -433,15 +424,7 @@ impl TopLevelState {
         let shard_root = self.shard_root(shard_id)?.ok_or_else(|| ParcelError::InvalidShardId(shard_id))?;
         let shard_users = self.shard_users(shard_id)?.expect("Shard must exist");
 
-        let balance = self.balance(sender)?;
-        if amount > balance {
-            return Err(ParcelError::InsufficientBalance {
-                address: *sender,
-                cost: amount,
-                balance,
-            }
-            .into())
-        }
+        self.sub_balance(sender, amount)?;
 
         let transaction = InnerTransaction::AssetWrapCCC {
             network_id,
@@ -454,17 +437,9 @@ impl TopLevelState {
             },
         };
 
-        let invoice = {
-            let shard_cache = self.shard_caches.entry(shard_id).or_default();
-            let mut shard_level_state =
-                ShardLevelState::from_existing(shard_id, &mut self.db, shard_root, shard_cache)?;
-            shard_level_state.apply(&transaction, sender, &shard_users, client)?
-        };
-
-        if invoice == Invoice::Success {
-            self.sub_balance(sender, amount)?;
-        }
-        Ok(invoice)
+        let shard_cache = self.shard_caches.entry(shard_id).or_default();
+        let mut shard_level_state = ShardLevelState::from_existing(shard_id, &mut self.db, shard_root, shard_cache)?;
+        Ok(shard_level_state.apply(&transaction, sender, &shard_users, client)?)
     }
 
     pub fn apply_transaction<C: ChainTimeInfo>(
@@ -607,24 +582,25 @@ impl TopState for TopLevelState {
         Ok(())
     }
 
-    fn sub_balance(&mut self, a: &Address, decr: u64) -> TrieResult<()> {
+    fn sub_balance(&mut self, a: &Address, decr: u64) -> StateResult<()> {
         ctrace!(STATE, "sub_balance({}, {}): {}", a, decr, self.balance(a)?);
-        if decr != 0 || !self.account_exists(a)? {
-            self.get_account_mut(a)?.sub_balance(decr);
+        if decr == 0 {
+            return Ok(())
         }
-        Ok(())
-    }
-
-    fn transfer_balance(&mut self, from: &Address, to: &Address, by: u64) -> StateResult<()> {
-        let balance = self.balance(from)?;
-        if balance < by {
+        let balance = self.balance(a)?;
+        if balance < decr {
             return Err(ParcelError::InsufficientBalance {
-                address: *from,
-                cost: by,
+                address: *a,
+                cost: decr,
                 balance,
             }
             .into())
         }
+        self.get_account_mut(a)?.sub_balance(decr);
+        Ok(())
+    }
+
+    fn transfer_balance(&mut self, from: &Address, to: &Address, by: u64) -> StateResult<()> {
         if self.regular_account_exists_and_not_null_by_address(to)? {
             return Err(ParcelError::InvalidTransferDestination.into())
         }
@@ -670,15 +646,6 @@ impl TopState for TopLevelState {
     }
 
     fn create_shard(&mut self, shard_creation_cost: u64, fee_payer: &Address) -> StateResult<()> {
-        let balance = self.balance(fee_payer)?;
-        if balance < shard_creation_cost {
-            return Err(ParcelError::InsufficientBalance {
-                address: *fee_payer,
-                cost: shard_creation_cost,
-                balance,
-            }
-            .into())
-        }
         self.sub_balance(fee_payer, shard_creation_cost)?;
 
         self.create_shard_level_state(vec![*fee_payer], vec![])?;
@@ -1823,6 +1790,48 @@ mod tests_parcel {
         let asset_address = OwnedAssetAddress::new(parcel_hash, 0, shard_id);
         let asset = state.asset(shard_id, &asset_address);
         assert_eq!(Ok(None), asset);
+    }
+
+    #[test]
+    fn wrap_ccc_with_insufficient_balance() {
+        let (sender, sender_public) = address();
+
+        let mut state = get_temp_state();
+        assert_eq!(Ok(()), state.create_shard_level_state(vec![sender], vec![]));
+        let root = state.commit();
+        assert!(root.is_ok(), "{:?}", root);
+        assert_eq!(Ok(()), state.add_balance(&sender, 20));
+
+        let network_id = "tc".into();
+        let shard_id = 0x0;
+
+        let lock_script_hash = H160::from("ca5d3fa0a6887285ef6aa85cb12960a2b6706e00");
+        let amount = 30;
+
+        let parcel = Parcel {
+            fee: 11,
+            action: Action::WrapCCC {
+                shard_id,
+                lock_script_hash,
+                parameters: vec![],
+                amount,
+            },
+            seq: 0,
+            network_id,
+        };
+
+
+        assert_eq!(
+            Ok(Invoice::Failure(ParcelError::InsufficientBalance {
+                address: sender,
+                balance: 9,
+                cost: 30,
+            })),
+            state.apply(&parcel, &sender_public, &get_test_client())
+        );
+
+        assert_eq!(Ok(20 - 11), state.balance(&sender));
+        assert_eq!(Ok(1), state.seq(&sender));
     }
 
     #[test]
