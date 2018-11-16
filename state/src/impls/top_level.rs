@@ -214,23 +214,11 @@ impl TopLevelState {
     /// Used for tests.
     #[cfg(test)]
     pub fn new(mut db: StateDB) -> Self {
-        let root = {
-            let mut root = H256::new();
-            // init trie and reset root too null
-            let _ = TrieFactory::create(db.as_hashdb_mut(), &mut root);
-            root
-        };
+        let mut root = H256::new();
+        // init trie and reset root too null
+        let _ = TrieFactory::create(db.as_hashdb_mut(), &mut root);
 
-        let top_cache = db.top_cache();
-        let shard_caches = db.shard_caches();
-
-        TopLevelState {
-            db: RefCell::new(db),
-            root,
-            top_cache,
-            shard_caches,
-            id_of_checkpoints: Default::default(),
-        }
+        Self::from_existing(db, root).expect("The empty trie root was initialized")
     }
 
     /// Creates new state with existing state root
