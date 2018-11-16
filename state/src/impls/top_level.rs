@@ -460,9 +460,7 @@ impl TopLevelState {
         }
 
         let unwrapped_amount = transaction.unwrapped_amount();
-        if !unwrapped_amount == 0 {
-            self.add_balance(sender, unwrapped_amount)?;
-        }
+        self.add_balance(sender, unwrapped_amount)?;
         Ok(first_invoice)
     }
 
@@ -1784,7 +1782,7 @@ mod tests_parcel {
 
         assert_eq!(Ok(Invoice::Success), state.apply(&parcel, &sender_public, &get_test_client()));
 
-        assert_eq!(Ok(100 - 11 - 30 - 11), state.balance(&sender));
+        assert_eq!(Ok(100 - 11 - 30 - 11 + 30), state.balance(&sender));
         assert_eq!(Ok(2), state.seq(&sender));
 
         let asset_address = OwnedAssetAddress::new(parcel_hash, 0, shard_id);
@@ -1964,7 +1962,7 @@ mod tests_parcel {
 
         assert_eq!(Ok(Invoice::Success), state.apply(&parcel, &sender_public, &get_test_client()));
 
-        assert_eq!(Ok(100 - 30 - 11 - 11 - 11), state.balance(&sender));
+        assert_eq!(Ok(100 - 30 - 11 - 11 - 11 + 5), state.balance(&sender));
         assert_eq!(Ok(3), state.seq(&sender));
 
         let asset1_address = OwnedAssetAddress::new(transfer_tx_hash, 1, shard_id);
