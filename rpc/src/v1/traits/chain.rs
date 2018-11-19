@@ -65,7 +65,7 @@ build_rpc_trait! {
 
         /// Gets seq with given account.
         # [rpc(name = "chain_getSeq")]
-        fn get_seq(&self, PlatformAddress, Option<u64>) -> Result<Option<Uint>>;
+        fn get_seq(&self, PlatformAddress, Option<u64>) -> Result<Option<u64>>;
 
         /// Gets balance with given account.
         # [rpc(name = "chain_getBalance")]
