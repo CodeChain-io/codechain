@@ -278,7 +278,7 @@ impl<'db> ShardLevelState<'db> {
     fn check_and_run_input_script<C: ChainTimeInfo>(
         &self,
         input: &AssetTransferInput,
-        transaction_hash: &PartialHashing,
+        transaction: &PartialHashing,
         burn: bool,
         client: &C,
     ) -> StateResult<ScriptResult> {
@@ -304,7 +304,7 @@ impl<'db> ShardLevelState<'db> {
                 &unlock_script,
                 &asset.parameters(),
                 &lock_script,
-                transaction_hash,
+                transaction,
                 VMConfig::default(),
                 input,
                 burn,
