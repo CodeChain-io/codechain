@@ -827,6 +827,7 @@ mod tests {
                 asset_type,
                 amount: 30,
             }],
+            orders: vec![],
         };
 
         assert_eq!(
@@ -913,6 +914,7 @@ mod tests {
                     amount: 15,
                 },
             ],
+            orders: vec![],
         };
         let transfer_hash = transfer.hash();
 
@@ -992,6 +994,7 @@ mod tests {
             }],
             inputs: vec![],
             outputs: vec![],
+            orders: vec![],
         };
 
         assert_eq!(
@@ -1083,6 +1086,7 @@ mod tests {
                     amount: 15,
                 },
             ],
+            orders: vec![],
         };
         let transfer_hash = transfer.hash();
 
@@ -1118,6 +1122,7 @@ mod tests {
             }],
             inputs: vec![],
             outputs: vec![],
+            orders: vec![],
         };
 
         assert_eq!(
@@ -1191,6 +1196,7 @@ mod tests {
                 asset_type,
                 amount: 20,
             }],
+            orders: vec![],
         };
 
         assert_eq!(
@@ -1297,6 +1303,7 @@ mod tests {
                 asset_type: asset_type2,
                 amount: 30,
             }],
+            orders: vec![],
         };
 
         assert_eq!(
@@ -1985,6 +1992,7 @@ mod tests {
                     amount: 15,
                 },
             ],
+            orders: vec![],
         };
         let transfer_hash = transfer.hash();
 
@@ -2095,6 +2103,7 @@ mod tests {
                 asset_type,
                 amount: 30,
             }],
+            orders: vec![],
         };
 
         let sender = address();
@@ -2146,6 +2155,7 @@ mod tests {
                     amount: 15,
                 },
             ],
+            orders: vec![],
         };
         let successful_transfer_hash = successful_transfer.hash();
 
