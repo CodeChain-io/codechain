@@ -157,6 +157,7 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
  * [chain_getBalance](#chain_getbalance)
  * [chain_getRegularKey](#chain_getregularkey)
  * [chain_getRegularKeyOwner](#chain_getregularkeyowner)
+ * [chain_getGenesisAccounts](#chain_getgenesisaccounts)
  * [chain_getNumberOfShards](#chain_getnumberofshards)
  * [chain_getShardRoot](#chain_getshardroot)
  * [chain_getPendingParcels](#chain_getpendingparcels)
@@ -868,6 +869,33 @@ Response Example
   "id":null
 }
 ```
+
+## chain_getGenesisAccounts
+Gets the platform account in the genesis block.
+
+Params: No parameters
+
+Return Type: `PlatformAddress[]` - It returns the array of the platform address
+
+Errors: `KVDB Error`
+
+Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "chain_getGenesisAccounts", "params": [], "id": 37}' \
+    localhost:8080
+```
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result": ["cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7"],
+  "id":37
+}
+```
+
 
 ## chain_getNumberOfShards
 Gets the number of shards, at the state of the given blockNumber.
