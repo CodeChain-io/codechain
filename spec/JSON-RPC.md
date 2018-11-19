@@ -161,6 +161,7 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
  * [chain_getNumberOfShards](#chain_getnumberofshards)
  * [chain_getShardRoot](#chain_getshardroot)
  * [chain_getPendingParcels](#chain_getpendingparcels)
+ * [chain_getBlockReward](#chain_getblockreward)
  * [chain_getCoinbase](#chain_getcoinbase)
  * [chain_executeTransaction](#chain_executetransaction)
  * [chain_getNetworkId](#chain_getnetworkid)
@@ -996,6 +997,31 @@ Response Example
     }
   ],
   "id":null
+}
+```
+
+## chain_getBlockReward
+Gets the reward of the given block number
+
+Param:
+1. block number: `number`
+
+Return Type: U64
+
+Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "chain_getBlockReward", "params": [10], "id": 41}' \
+    localhost:8080
+```
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result":"0x50",
+  "id":41
 }
 ```
 

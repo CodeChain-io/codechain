@@ -92,6 +92,7 @@ pub trait TransactionInfo {
 
 pub trait EngineInfo: Send + Sync {
     fn common_params(&self) -> &CommonParams;
+    fn block_reward(&self, block_number: u64) -> u64;
 }
 
 /// Client facilities used by internally sealing Engines.

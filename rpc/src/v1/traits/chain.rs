@@ -115,6 +115,10 @@ build_rpc_trait! {
         # [rpc(name = "chain_getPendingParcels")]
         fn get_pending_parcels(&self) -> Result<Vec<Parcel>>;
 
+        /// Gets the reward of the given block number
+        # [rpc(name = "chain_getBlockReward")]
+        fn get_block_reward(&self, u64) -> Result<u64>;
+
         /// Gets coinbase's account id
         # [rpc(name = "chain_getCoinbase")]
         fn get_coinbase(&self) -> Result<Option<PlatformAddress>>;

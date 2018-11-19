@@ -219,6 +219,10 @@ where
         Ok(self.client.ready_parcels().into_iter().map(|signed| signed.into()).collect())
     }
 
+    fn get_block_reward(&self, block_number: u64) -> Result<u64> {
+        Ok(self.client.block_reward(block_number))
+    }
+
     fn get_coinbase(&self) -> Result<Option<PlatformAddress>> {
         if self.miner.authoring_params().author.is_zero() {
             Ok(None)
