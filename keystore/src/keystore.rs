@@ -84,10 +84,6 @@ impl SimpleSecretStore for KeyStore {
         self.store.remove_account(account)
     }
 
-    fn remove_account_with_password(&self, account: &Address, password: &Password) -> Result<(), Error> {
-        self.store.remove_account_with_password(account, password)
-    }
-
     fn change_password(
         &self,
         account: &Address,
@@ -357,17 +353,6 @@ impl SimpleSecretStore for KeyMultiStore {
         return Ok(())
     }
 
-    fn remove_account_with_password(&self, account_ref: &Address, password: &Password) -> Result<(), Error> {
-        let accounts = self.get_matching(account_ref, password)?;
-
-        for account in accounts {
-            return self.remove_safe_account(account_ref, &account)
-        }
-
-        Err(Error::InvalidPassword)
-    }
-
-
     fn change_password(
         &self,
         account_ref: &Address,
@@ -473,21 +458,6 @@ mod tests {
     }
 
     #[test]
-    fn remove_account_with_password() {
-        // given
-        let store = store();
-        let keypair = keypair();
-        let private_key: &H256 = keypair.private();
-        let address = store.insert_account(private_key.clone(), &"test".into()).unwrap();
-
-        // when
-        store.remove_account_with_password(&address, &"test".into()).unwrap();
-
-        // then
-        assert_eq!(store.accounts().unwrap().len(), 0, "Should remove account.");
-    }
-
-    #[test]
     fn return_true_if_password_is_correct() {
         // given
         let store = store();
@@ -514,13 +484,8 @@ mod tests {
         assert_eq!(address, address2);
 
         // when
-        assert!(store.remove_account_with_password(&address, &"test".into()).is_ok(), "First password should work.");
         assert_eq!(store.accounts().unwrap().len(), 1);
-
-        assert!(
-            store.remove_account_with_password(&address, &"xyz".into()).is_ok(),
-            "Second password should work too."
-        );
+        assert!(store.remove_account(&address).is_ok());
         assert_eq!(store.accounts().unwrap().len(), 0);
     }
 
