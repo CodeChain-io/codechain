@@ -47,6 +47,34 @@ pub struct AssetOutPoint {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable)]
+pub struct Order {
+    // Main order information
+    pub asset_type_from: H256,
+    pub asset_type_to: H256,
+    pub asset_type_fee: H256,
+    pub asset_amount_from: u64,
+    pub asset_amount_to: u64,
+    pub asset_amount_fee: u64,
+    /// previous outputs that order is started
+    pub origin_outputs: Vec<AssetOutPoint>,
+    /// expiration time by second
+    pub expiration: u64,
+    pub lock_script_hash: H160,
+    pub parameters: Vec<Bytes>,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable)]
+pub struct OrderOnTransfer {
+    pub order: Order,
+    /// Spent amount of asset_type_from
+    pub spent_amount: u64,
+    /// Incides of transfer inputs which are moved as order
+    pub input_indices: Vec<usize>,
+    /// Incides of transfer outputs which are moved as order
+    pub output_indices: Vec<usize>,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable)]
 pub struct AssetTransferInput {
     pub prev_out: AssetOutPoint,
     pub timelock: Option<Timelock>,
@@ -119,6 +147,7 @@ pub enum Transaction {
         burns: Vec<AssetTransferInput>,
         inputs: Vec<AssetTransferInput>,
         outputs: Vec<AssetTransferOutput>,
+        orders: Vec<OrderOnTransfer>,
     },
     AssetCompose {
         network_id: NetworkId,
@@ -594,7 +623,12 @@ impl PartialHashing for Transaction {
                 burns,
                 inputs,
                 outputs,
+                orders,
             } => {
+                if !orders.is_empty() && (!tag.sign_all_inputs || !tag.sign_all_outputs) {
+                    return Err(HashingError::InvalidFilter)
+                }
+
                 let new_burns = apply_input_scheme(burns, tag.sign_all_inputs, is_burn, cur);
                 let new_inputs = apply_input_scheme(inputs, tag.sign_all_inputs, !is_burn, cur);
 
@@ -610,6 +644,7 @@ impl PartialHashing for Transaction {
                         burns: new_burns,
                         inputs: new_inputs,
                         outputs: new_outputs,
+                        orders: orders.to_vec(),
                     }
                     .rlp_bytes(),
                     &blake128(tag.get_tag()),
@@ -732,7 +767,7 @@ impl Decodable for Transaction {
                 })
             }
             ASSET_TRANSFER_ID => {
-                if d.item_count()? != 5 {
+                if d.item_count()? != 6 {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
                 Ok(Transaction::AssetTransfer {
@@ -740,6 +775,7 @@ impl Decodable for Transaction {
                     burns: d.list_at(2)?,
                     inputs: d.list_at(3)?,
                     outputs: d.list_at(4)?,
+                    orders: d.list_at(5)?,
                 })
             }
             ASSET_COMPOSE_ID => {
@@ -812,13 +848,15 @@ impl Encodable for Transaction {
                 burns,
                 inputs,
                 outputs,
+                orders,
             } => s
-                .begin_list(5)
+                .begin_list(6)
                 .append(&ASSET_TRANSFER_ID)
                 .append(network_id)
                 .append_list(burns)
                 .append_list(inputs)
-                .append_list(outputs),
+                .append_list(outputs)
+                .append_list(orders),
             Transaction::AssetCompose {
                 network_id,
                 shard_id,
@@ -1280,6 +1318,7 @@ mod tests {
             burns: Vec::new(),
             inputs: inputs.clone(),
             outputs: outputs.clone(),
+            orders: vec![],
         };
         let mut tag: Vec<u8> = vec![0b00001111 as u8];
         for _i in 0..12 {
@@ -1298,6 +1337,7 @@ mod tests {
             burns: Vec::new(),
             inputs: inputs.clone(),
             outputs: outputs.clone(),
+            orders: vec![],
         };
         tag = vec![0b00000111 as u8];
         for _i in 0..12 {
@@ -1316,6 +1356,7 @@ mod tests {
             burns: Vec::new(),
             inputs,
             outputs,
+            orders: vec![],
         };
         tag = vec![0b00000011 as u8];
         for _i in 0..12 {

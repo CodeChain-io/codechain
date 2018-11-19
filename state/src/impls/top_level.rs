@@ -1358,6 +1358,7 @@ mod tests_parcel {
                 asset_type,
                 amount: 30,
             }],
+            orders: vec![],
         };
         let mint_parcel = Parcel {
             fee: 11,
@@ -1438,6 +1439,7 @@ mod tests_parcel {
                 asset_type,
                 amount: 30,
             }],
+            orders: Vec::new(),
         };
         let mint_parcel = Parcel {
             fee: 11,
@@ -1747,6 +1749,7 @@ mod tests_parcel {
                     amount: 15,
                 },
             ],
+            orders: Vec::new(),
         };
         let transfer_hash = transfer.hash();
 
@@ -2119,6 +2122,7 @@ mod tests_parcel {
                     amount: 15,
                 },
             ],
+            orders: Vec::new(),
         };
         let transfer_tx_hash = transfer_tx.hash();
 
@@ -2359,6 +2363,7 @@ mod tests_parcel {
                     amount: 15,
                 },
             ],
+            orders: Vec::new(),
         };
 
         let parcel = Parcel {

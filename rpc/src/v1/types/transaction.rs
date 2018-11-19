@@ -18,8 +18,8 @@ use cjson::uint::Uint;
 use ckey::{Error as KeyError, NetworkId, PlatformAddress};
 use ctypes::transaction::{
     AssetMintOutput as AssetMintOutputType, AssetOutPoint as AssetOutPointType,
-    AssetTransferInput as AssetTransferInputType, AssetTransferOutput as AssetTransferOutputType, Timelock,
-    Transaction as TransactionType,
+    AssetTransferInput as AssetTransferInputType, AssetTransferOutput as AssetTransferOutputType, Order as OrderType,
+    OrderOnTransfer as OrderOnTransferType, Timelock, Transaction as TransactionType,
 };
 use ctypes::ShardId;
 use primitives::{Bytes, H160, H256};
@@ -145,6 +145,86 @@ impl From<AssetMintOutput> for AssetMintOutputType {
     }
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Order {
+    pub asset_type_from: H256,
+    pub asset_type_to: H256,
+    pub asset_type_fee: H256,
+    pub asset_amount_from: Uint,
+    pub asset_amount_to: Uint,
+    pub asset_amount_fee: Uint,
+    pub origin_outputs: Vec<AssetOutPoint>,
+    pub expiration: u64,
+    pub lock_script_hash: H160,
+    pub parameters: Vec<Bytes>,
+}
+
+impl From<OrderType> for Order {
+    fn from(from: OrderType) -> Self {
+        Order {
+            asset_type_from: from.asset_type_from,
+            asset_type_to: from.asset_type_to,
+            asset_type_fee: from.asset_type_fee,
+            asset_amount_from: from.asset_amount_from.into(),
+            asset_amount_to: from.asset_amount_to.into(),
+            asset_amount_fee: from.asset_amount_fee.into(),
+            origin_outputs: from.origin_outputs.into_iter().map(From::from).collect(),
+            expiration: from.expiration,
+            lock_script_hash: from.lock_script_hash,
+            parameters: from.parameters,
+        }
+    }
+}
+
+impl From<Order> for OrderType {
+    fn from(from: Order) -> Self {
+        OrderType {
+            asset_type_from: from.asset_type_from,
+            asset_type_to: from.asset_type_to,
+            asset_type_fee: from.asset_type_fee,
+            asset_amount_from: from.asset_amount_from.into(),
+            asset_amount_to: from.asset_amount_to.into(),
+            asset_amount_fee: from.asset_amount_fee.into(),
+            origin_outputs: from.origin_outputs.into_iter().map(From::from).collect(),
+            expiration: from.expiration,
+            lock_script_hash: from.lock_script_hash,
+            parameters: from.parameters,
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OrderOnTransfer {
+    pub order: Order,
+    pub spent_amount: Uint,
+    pub input_indices: Vec<usize>,
+    pub output_indices: Vec<usize>,
+}
+
+impl From<OrderOnTransferType> for OrderOnTransfer {
+    fn from(from: OrderOnTransferType) -> Self {
+        OrderOnTransfer {
+            order: from.order.into(),
+            spent_amount: from.spent_amount.into(),
+            input_indices: from.input_indices,
+            output_indices: from.output_indices,
+        }
+    }
+}
+
+impl From<OrderOnTransfer> for OrderOnTransferType {
+    fn from(from: OrderOnTransfer) -> Self {
+        OrderOnTransferType {
+            order: from.order.into(),
+            spent_amount: from.spent_amount.into(),
+            input_indices: from.input_indices,
+            output_indices: from.output_indices,
+        }
+    }
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase", tag = "type", content = "data")]
 pub enum Transaction {
@@ -163,6 +243,7 @@ pub enum Transaction {
         burns: Vec<AssetTransferInput>,
         inputs: Vec<AssetTransferInput>,
         outputs: Vec<AssetTransferOutput>,
+        orders: Vec<OrderOnTransfer>,
     },
     #[serde(rename_all = "camelCase")]
     AssetCompose {
@@ -214,11 +295,13 @@ impl From<Transaction> for Result<TransactionType, KeyError> {
                 burns,
                 inputs,
                 outputs,
+                orders,
             } => TransactionType::AssetTransfer {
                 network_id,
                 burns: burns.into_iter().map(From::from).collect(),
                 inputs: inputs.into_iter().map(From::from).collect(),
                 outputs: outputs.into_iter().map(From::from).collect(),
+                orders: orders.into_iter().map(From::from).collect(),
             },
             Transaction::AssetCompose {
                 network_id,
@@ -281,6 +364,7 @@ pub enum TransactionWithHash {
         burns: Vec<AssetTransferInput>,
         inputs: Vec<AssetTransferInput>,
         outputs: Vec<AssetTransferOutput>,
+        orders: Vec<OrderOnTransfer>,
         hash: H256,
     },
     #[serde(rename_all = "camelCase")]
@@ -331,11 +415,13 @@ impl From<TransactionType> for TransactionWithHash {
                 burns,
                 inputs,
                 outputs,
+                orders,
             } => TransactionWithHash::AssetTransfer {
                 network_id,
                 burns: burns.into_iter().map(From::from).collect(),
                 inputs: inputs.into_iter().map(From::from).collect(),
                 outputs: outputs.into_iter().map(From::from).collect(),
+                orders: orders.into_iter().map(From::from).collect(),
                 hash,
             },
             TransactionType::AssetCompose {
