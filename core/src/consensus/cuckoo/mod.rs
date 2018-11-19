@@ -173,8 +173,8 @@ impl ConsensusEngine<CodeChainMachine> for Cuckoo {
 
     fn on_close_block(&self, block: &mut ExecutedBlock) -> Result<(), Error> {
         let author = *block.header().author();
-        let total_reward =
-            block.parcels().iter().fold(self.block_reward(block.header().number()), |sum, parcel| sum + parcel.fee);
+        let total_reward = self.block_reward(block.header().number())
+            + self.block_fee(Box::new(block.parcels().to_owned().into_iter().map(Into::into)));
         self.machine.add_balance(block, &author, total_reward)
     }
 

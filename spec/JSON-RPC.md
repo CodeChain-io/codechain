@@ -162,6 +162,7 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
  * [chain_getShardRoot](#chain_getshardroot)
  * [chain_getPendingParcels](#chain_getpendingparcels)
  * [chain_getBlockReward](#chain_getblockreward)
+ * [chain_getMiningReward](#chain_getminingreward)
  * [chain_getCoinbase](#chain_getcoinbase)
  * [chain_executeTransaction](#chain_executetransaction)
  * [chain_getNetworkId](#chain_getnetworkid)
@@ -1021,6 +1022,33 @@ Response Example
 {
   "jsonrpc":"2.0",
   "result":"0x50",
+  "id":41
+}
+```
+
+## chain_getMiningReward
+Gets the mining reward of the given block number.
+Unlike `chain_getBlockReward`, it returns the actual amount received, including the transaction fee.
+It returns `null` if the given block number is not mined yet.
+
+Param:
+1. block number: `number`
+
+Return Type: `U64` | `null`
+
+Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "chain_getMiningReward", "params": [10], "id": 41}' \
+    localhost:8080
+```
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result": null,
   "id":41
 }
 ```
