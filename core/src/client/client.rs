@@ -19,7 +19,7 @@ use std::sync::{Arc, Weak};
 use std::time::Instant;
 
 use cio::IoChannel;
-use ckey::{Address, Public};
+use ckey::{Address, PlatformAddress, Public};
 use cmerkle::Result as TrieResult;
 use cnetwork::NodeId;
 use cstate::{
@@ -76,6 +76,8 @@ pub struct Client {
     /// Count of pending parcels in the queue
     queue_parcels: AtomicUsize,
 
+    genesis_accounts: Vec<Address>,
+
     importer: Importer,
 }
 
@@ -107,6 +109,7 @@ impl Client {
         let engine = scheme.engine.clone();
 
         let importer = Importer::new(&config, engine.clone(), message_channel.clone(), miner)?;
+        let genesis_accounts = scheme.genesis_accounts();
 
         let client = Arc::new(Client {
             engine,
@@ -116,6 +119,7 @@ impl Client {
             state_db: RwLock::new(state_db),
             notify: RwLock::new(Vec::new()),
             queue_parcels: AtomicUsize::new(0),
+            genesis_accounts,
             importer,
         });
 
@@ -337,6 +341,11 @@ impl ChainInfo for Client {
         let mut chain_info = self.block_chain().chain_info();
         chain_info.pending_total_score = chain_info.total_score + self.importer.block_queue.total_score();
         chain_info
+    }
+
+    fn genesis_accounts(&self) -> Vec<PlatformAddress> {
+        let network_id = self.common_params().network_id;
+        self.genesis_accounts.iter().map(|addr| PlatformAddress::new_v1(network_id, *addr)).collect()
     }
 }
 

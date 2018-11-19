@@ -171,6 +171,10 @@ where
             .and_then(|address| Some(PlatformAddress::new_v1(network_id, address))))
     }
 
+    fn get_genesis_accounts(&self) -> Result<Vec<PlatformAddress>> {
+        Ok(self.client.genesis_accounts())
+    }
+
     fn get_number_of_shards(&self, block_number: Option<u64>) -> Result<Option<ShardId>> {
         let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
         Ok(self.client.number_of_shards(block_id.into()))

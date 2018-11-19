@@ -109,6 +109,28 @@ describe("solo - 1 node", () => {
         ).toBeNull();
     });
 
+    test("getGenesisAccounts", async () => {
+        // FIXME: Add an API to SDK
+        const accounts = await node.sdk.rpc.sendRpcRequest(
+            "chain_getGenesisAccounts",
+            []
+        );
+        const expected = [
+            "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqyca3rwt",
+            "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqgfrhflv",
+            "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqvxf40sk",
+            "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqszkma5z",
+            "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq5duemmc",
+            "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqcuzl32l",
+            "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqungah99",
+            "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqpqc2ul2h",
+            "tccq8vapdlstar6ghmqgczp6j2e83njsqq0tsvaxm9u",
+            "tccq9h7vnl68frvqapzv3tujrxtxtwqdnxw6yamrrgd"
+        ];
+        expect(accounts.length).toBe(expected.length);
+        expect(accounts).toEqual(expect.arrayContaining(expected));
+    });
+
     test("getPendingParcels", async () => {
         const pendingParcels = await node.sdk.rpc.chain.getPendingParcels();
         expect(pendingParcels.length).toEqual(0);
