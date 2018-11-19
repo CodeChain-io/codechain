@@ -22,7 +22,6 @@ mod transaction;
 mod unsigned_parcel;
 mod work;
 
-use cjson::uint::Uint;
 use primitives::H256;
 
 pub use self::action::Action;
@@ -43,5 +42,5 @@ pub struct FilterStatus {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SendParcelResult {
     pub hash: H256,
-    pub seq: Uint,
+    pub seq: u64,
 }

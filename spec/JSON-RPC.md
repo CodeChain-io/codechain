@@ -45,7 +45,7 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
  - fee: `U64`
  - hash: `H256`
  - networkId: `number`
- - seq: `U64`
+ - seq: `number`
  - parcelIndex: `number`
  - sig: `Signature`
  - action: `Action`
@@ -54,7 +54,7 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
 
  - fee: `U64`
  - networkId: `number`
- - seq: `U64` | `null`
+ - seq: `number` | `null`
  - action: `Action`
 
 ## Actions
@@ -389,7 +389,7 @@ Response Example:
         "fee":"0x5f5e100",
         "hash":"0x3ff9b02427ac04c06260928168775bca5a3da96ae6995041e197d42e71ab68b6",
         "networkId":"sc",
-        "seq":"0x4",
+        "seq": 4,
         "parcelIndex":0,
         "sig":"0x4621da0344d8888c5076cc0a3cc7fd7a7e3a761ba812c95f807c050a4e5ec6b7120fa99fdf502ed088ed61eb6d5fe44f44c280e97c7702d5127640d7a8a6d7e401"
       }
@@ -449,7 +449,7 @@ Response Example
         "fee":"0xa",
         "hash":"0xdb7c705d02e8961880783b4cb3dc051c41e551ade244bed5521901d8de190fc6",
         "networkId":17,
-        "seq":"0x4",
+        "seq": 4,
         "parcelIndex":0,
         "sig":"0x291d932e55162407eb01915923d68cf78df4815a25fc6033488b644bda44b02251123feac3a3c56a399a2b32331599fd50b7a39ec2c1a2325e37f383c6aeedc301"
       }
@@ -527,7 +527,7 @@ Response Example
         "fee": "0xa",
         "hash": "0xdb7c705d02e8961880783b4cb3dc051c41e551ade244bed5521901d8de190fc6",
         "networkId": 17,
-        "seq": "0x4",
+        "seq": 4,
         "parcelIndex": 0,
         "sig":"0x291d932e55162407eb01915923d68cf78df4815a25fc6033488b644bda44b02251123feac3a3c56a399a2b32331599fd50b7a39ec2c1a2325e37f383c6aeedc301"
     }
@@ -764,7 +764,7 @@ Params:
  1. address: `PlatformAddress`
  2. block number: `number` | `null`
 
-Return Type: `null` | `U64` - It returns null when the given block number is invalid.
+Return Type: `null` | `number` - It returns null when the given block number is invalid.
 
 Errors: `KVDB Error`, `Invalid Params`, `Invalid NetworkId`
 
@@ -780,7 +780,7 @@ Response Example
 ```
 {
   "jsonrpc":"2.0",
-  "result":"0x54",
+  "result": 84,
   "id":null
 }
 ```
@@ -958,7 +958,7 @@ Response Example
       "transactions":[
         {
           "payment":{
-            "seq":"0x1",
+            "seq": 1,
             "receiver": "cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7",
             "value":"0x0"
           }
@@ -1683,7 +1683,7 @@ Params:
  2. account: `PlatformAddress`
  3. passphrase: `string` | `null`
 
-Return type: { hash: `H256`, seq: `U64` } - the hash and seq of the parcel
+Return type: { hash: `H256`, seq: `number` } - the hash and seq of the parcel
 
 Errors: `Keystore Error`, `Wrong Password`, `No Such Account`, `Not Unlocked`, `Invalid Params`, `Invalid NetworkId`
 
@@ -1700,7 +1700,7 @@ Response Example
 ```
 {
   "jsonrpc":"2.0",
-  "result": {"seq":"0xe8d4a50dd0", "hash":"0x8ae3363ccdcc02d8d662d384deee34fb89d1202124e8065f0d6c84ab31e68d8a"},
+  "result": {"seq": 999999999440, "hash":"0x8ae3363ccdcc02d8d662d384deee34fb89d1202124e8065f0d6c84ab31e68d8a"},
   "id":6
 }
 ```
