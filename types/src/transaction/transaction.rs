@@ -194,6 +194,77 @@ pub struct AssetWrapCCCOutput {
     pub amount: u64,
 }
 
+impl Order {
+    // FIXME: Remove this after the clippy nonminimal bool bug is fixed
+    // https://rust-lang.github.io/rust-clippy/v0.0.212/#nonminimal_bool
+    #![cfg_attr(feature = "cargo-clippy", allow(clippy::nonminimal_bool))]
+    pub fn verify(&self) -> Result<(), Error> {
+        // If asset_amount_fee is zero, it means there's no fee to pay.
+        if self.asset_type_from == self.asset_type_to
+            || self.asset_amount_fee != 0
+                && (self.asset_type_from == self.asset_type_fee || self.asset_type_to == self.asset_type_fee)
+        {
+            return Err(Error::InvalidOrderAssetTypes {
+                from: self.asset_type_from,
+                to: self.asset_type_to,
+                fee: self.asset_type_fee,
+            })
+        }
+        if (self.asset_amount_from == 0) ^ (self.asset_amount_to == 0) {
+            return Err(Error::InvalidOrderAssetAmounts {
+                from: self.asset_amount_from,
+                to: self.asset_amount_to,
+                fee: self.asset_amount_fee,
+            })
+        }
+        if self.asset_amount_from == 0 && self.asset_amount_fee != 0
+            || self.asset_amount_from != 0 && self.asset_amount_fee % self.asset_amount_from != 0
+        {
+            return Err(Error::InvalidOrderAssetAmounts {
+                from: self.asset_amount_from,
+                to: self.asset_amount_to,
+                fee: self.asset_amount_fee,
+            })
+        }
+        if self.origin_outputs.is_empty() {
+            return Err(Error::InvalidOriginOutputs(self.hash()))
+        }
+        for origin_output in self.origin_outputs.iter() {
+            if origin_output.asset_type != self.asset_type_from && origin_output.asset_type != self.asset_type_fee {
+                return Err(Error::InvalidOriginOutputs(self.hash()))
+            }
+        }
+        Ok(())
+    }
+
+    pub fn check_transfer_output(&self, output: &AssetTransferOutput) -> Result<(), Error> {
+        if self.lock_script_hash != output.lock_script_hash {
+            return Err(Error::InvalidOrderLockScriptHash(self.lock_script_hash))
+        }
+        if self.parameters != output.parameters {
+            return Err(Error::InvalidOrderParameters(self.parameters.to_vec()))
+        }
+        Ok(())
+    }
+
+    pub fn consume(&self, amount: u64) -> Order {
+        Order {
+            asset_type_from: self.asset_type_from,
+            asset_type_to: self.asset_type_to,
+            asset_type_fee: self.asset_type_fee,
+            asset_amount_from: self.asset_amount_from - amount,
+            asset_amount_to: self.asset_amount_to
+                - (u128::from(amount) * u128::from(self.asset_amount_to) / u128::from(self.asset_amount_from)) as u64,
+            asset_amount_fee: self.asset_amount_fee
+                - (u128::from(amount) * u128::from(self.asset_amount_fee) / u128::from(self.asset_amount_from)) as u64,
+            origin_outputs: self.origin_outputs.clone(),
+            expiration: self.expiration,
+            lock_script_hash: self.lock_script_hash,
+            parameters: self.parameters.clone(),
+        }
+    }
+}
+
 impl Transaction {
     pub fn hash(&self) -> H256 {
         blake256(&*self.rlp_bytes())
@@ -277,6 +348,7 @@ impl Transaction {
                 burns,
                 inputs,
                 outputs,
+                orders,
                 ..
             } => {
                 if outputs.len() > 512 {
@@ -301,6 +373,11 @@ impl Transaction {
                         return Err(Error::ZeroAmount)
                     }
                 }
+                for order in orders {
+                    order.order.verify()?;
+                }
+                verify_order_indices(orders, inputs.len(), outputs.len())?;
+                verify_input_and_output_consistent_with_order(orders, inputs, outputs)?;
                 Ok(())
             }
             Transaction::AssetMint {
@@ -558,6 +635,28 @@ fn check_duplication_in_prev_out(burns: &[AssetTransferInput], inputs: &[AssetTr
     Ok(())
 }
 
+fn verify_order_indices(orders: &[OrderOnTransfer], input_len: usize, output_len: usize) -> Result<(), Error> {
+    let mut input_check = vec![false; input_len];
+    let mut output_check = vec![false; output_len];
+
+    for order in orders {
+        for input_idx in order.input_indices.iter() {
+            if *input_idx >= input_len || input_check[*input_idx] {
+                return Err(Error::InvalidOrderInOutIndices)
+            }
+            input_check[*input_idx] = true;
+        }
+
+        for output_idx in order.output_indices.iter() {
+            if *output_idx >= output_len || output_check[*output_idx] {
+                return Err(Error::InvalidOrderInOutIndices)
+            }
+            output_check[*output_idx] = true;
+        }
+    }
+    Ok(())
+}
+
 fn is_input_and_output_consistent(inputs: &[AssetTransferInput], outputs: &[AssetTransferOutput]) -> bool {
     let mut sum: HashMap<H256, u128> = HashMap::new();
 
@@ -583,6 +682,82 @@ fn is_input_and_output_consistent(inputs: &[AssetTransferInput], outputs: &[Asse
     }
 
     sum.iter().all(|(_, sum)| *sum == 0)
+}
+
+fn verify_input_and_output_consistent_with_order(
+    orders: &[OrderOnTransfer],
+    inputs: &[AssetTransferInput],
+    outputs: &[AssetTransferOutput],
+) -> Result<(), Error> {
+    for order_tx in orders {
+        let mut input_amount_from: u64 = 0;
+        let mut input_amount_fee: u64 = 0;
+        let mut output_amount_from: u64 = 0;
+        let mut output_amount_to: u64 = 0;
+        let mut output_amount_fee: u64 = 0;
+
+        let order = &order_tx.order;
+
+        // NOTE: If asset_amount_fee is zero, asset_type_fee can be same as asset_type_from or asset_type_to.
+        // But, asset_type_fee is compared at the last, so here's safe by the logic.
+
+        for input_idx in order_tx.input_indices.iter() {
+            let prev_out = &inputs[*input_idx].prev_out;
+            if prev_out.asset_type == order.asset_type_from {
+                input_amount_from += prev_out.amount;
+            } else if prev_out.asset_type == order.asset_type_fee {
+                input_amount_fee += prev_out.amount;
+            } else {
+                return Err(Error::InconsistentTransactionInOutWithOrders)
+            }
+        }
+
+        for output_idx in order_tx.output_indices.iter() {
+            let output = &outputs[*output_idx];
+            order.check_transfer_output(output)?;
+            if output.asset_type == order.asset_type_from {
+                if output_amount_from != 0 {
+                    return Err(Error::InconsistentTransactionInOutWithOrders)
+                }
+                output_amount_from = output.amount;
+            } else if output.asset_type == order.asset_type_to {
+                if output_amount_to != 0 {
+                    return Err(Error::InconsistentTransactionInOutWithOrders)
+                }
+                output_amount_to = output.amount;
+            } else if output.asset_type == order.asset_type_fee {
+                if output_amount_fee != 0 {
+                    return Err(Error::InconsistentTransactionInOutWithOrders)
+                }
+                output_amount_fee = output.amount;
+            } else {
+                return Err(Error::InconsistentTransactionInOutWithOrders)
+            }
+        }
+
+        // NOTE: If input_amount_from == output_amount_from, it means the asset is not spent as the order.
+        // If it's allowed, everyone can move the asset from one to another without permission.
+        if input_amount_from <= output_amount_from || input_amount_from - output_amount_from != order_tx.spent_amount {
+            return Err(Error::InconsistentTransactionInOutWithOrders)
+        }
+        if !is_ratio_valid(order.asset_amount_from, order.asset_amount_to, order_tx.spent_amount, output_amount_to) {
+            return Err(Error::InconsistentTransactionInOutWithOrders)
+        }
+        if input_amount_fee < output_amount_fee || !is_ratio_valid(
+            order.asset_amount_from,
+            order.asset_amount_fee,
+            order_tx.spent_amount,
+            input_amount_fee - output_amount_fee,
+        ) {
+            return Err(Error::InconsistentTransactionInOutWithOrders)
+        }
+    }
+    Ok(())
+}
+
+fn is_ratio_valid(a: u64, b: u64, c: u64, d: u64) -> bool {
+    // a:b = c:d
+    u128::from(a) * u128::from(d) == u128::from(b) * u128::from(c)
 }
 
 fn apply_bitmask_to_output(

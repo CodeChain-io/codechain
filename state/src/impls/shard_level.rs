@@ -221,16 +221,38 @@ impl<'db> ShardLevelState<'db> {
         burns: &[AssetTransferInput],
         inputs: &[AssetTransferInput],
         outputs: &[AssetTransferOutput],
-        _orders: &[OrderOnTransfer],
+        orders: &[OrderOnTransfer],
         client: &C,
     ) -> StateResult<()> {
-        for (input, burn) in inputs.iter().map(|input| (input, false)).chain(burns.iter().map(|input| (input, true))) {
+        let mut values_to_hash: Vec<&PartialHashing> = vec![transaction; inputs.len()];
+        for order_tx in orders {
+            let order = &order_tx.order;
+            for input_idx in order_tx.input_indices.iter() {
+                values_to_hash[*input_idx] = order;
+            }
+        }
+
+        for (input, to_hash, burn) in inputs
+            .iter()
+            .enumerate()
+            .map(|(index, input)| (input, values_to_hash[index], false))
+            .chain(burns.iter().map(|input| (input, transaction as &PartialHashing, true)))
+        {
             let address = OwnedAssetAddress::new(input.prev_out.transaction_hash, input.prev_out.index, self.shard_id);
-            let script_result = self.check_and_run_input_script(input, transaction, burn, client)?;
+            let script_result = self.check_and_run_input_script(input, to_hash, burn, client)?;
             match (script_result, burn) {
                 (ScriptResult::Unlocked, false) => {}
                 (ScriptResult::Burnt, true) => {}
                 _ => return Err(TransactionError::FailedToUnlock(address.into()).into()),
+            }
+        }
+
+        self.check_orders(orders, inputs)?;
+        let mut output_order_hashes = vec![None; outputs.len()];
+        for order_tx in orders {
+            let order = &order_tx.order;
+            for output_idx in order_tx.output_indices.iter() {
+                output_order_hashes[*output_idx] = Some(order.consume(order_tx.spent_amount).hash());
             }
         }
 
@@ -249,12 +271,51 @@ impl<'db> ShardLevelState<'db> {
                 output.lock_script_hash,
                 output.parameters.clone(),
                 output.amount,
-                None, // FIXME: Need to change to hash of output
+                output_order_hashes[index],
             );
             created_asset.push((asset_address, output.amount));
         }
         ctrace!(TX, "Deleted assets {:?}", deleted_asset);
         ctrace!(TX, "Created assets {:?}", created_asset);
+        Ok(())
+    }
+
+    fn check_orders(&self, orders: &[OrderOnTransfer], inputs: &[AssetTransferInput]) -> StateResult<()> {
+        for order_tx in orders {
+            let order = &order_tx.order;
+            let mut counter: usize = 0;
+            for input_idx in order_tx.input_indices.iter() {
+                let input = &inputs[*input_idx];
+                let transaction_hash = input.prev_out.transaction_hash;
+                let index = input.prev_out.index;
+                let address = OwnedAssetAddress::new(transaction_hash, index, self.shard_id);
+                let asset = self.asset(&address)?.ok_or_else(|| TransactionError::AssetNotFound(address.into()))?;
+
+                match &asset.order_hash() {
+                    Some(order_hash) => {
+                        // Is order consistent?
+                        if *order_hash != order.hash() {
+                            return Err(TransactionError::OrderChanged {
+                                prev_out_order_hash: *order_hash,
+                                transfer_order_hash: order.hash(),
+                            }
+                            .into())
+                        }
+                    }
+                    None => {
+                        // Are origin outputs of the order is valid?
+                        if order.origin_outputs.contains(&input.prev_out) {
+                            counter += 1;
+                        } else {
+                            return Err(TransactionError::InvalidOriginOutputs(order.hash()).into())
+                        }
+                    }
+                }
+            }
+            if counter > 0 && counter != order.origin_outputs.len() {
+                return Err(TransactionError::InvalidOriginOutputs(order.hash()).into())
+            }
+        }
         Ok(())
     }
 
@@ -301,7 +362,7 @@ impl<'db> ShardLevelState<'db> {
     fn check_and_run_input_script<C: ChainTimeInfo>(
         &self,
         input: &AssetTransferInput,
-        transaction: &PartialHashing,
+        to_hash: &PartialHashing,
         burn: bool,
         client: &C,
     ) -> StateResult<ScriptResult> {
@@ -327,7 +388,7 @@ impl<'db> ShardLevelState<'db> {
                 &unlock_script,
                 &asset.parameters(),
                 &lock_script,
-                transaction,
+                to_hash,
                 VMConfig::default(),
                 input,
                 burn,
