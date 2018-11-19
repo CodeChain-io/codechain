@@ -353,6 +353,10 @@ impl EngineInfo for Client {
     fn common_params(&self) -> &CommonParams {
         self.engine().params()
     }
+
+    fn block_reward(&self, block_number: u64) -> u64 {
+        self.engine().block_reward(block_number)
+    }
 }
 
 impl EngineClient for Client {

@@ -173,12 +173,17 @@ impl ConsensusEngine<CodeChainMachine> for Cuckoo {
 
     fn on_close_block(&self, block: &mut ExecutedBlock) -> Result<(), Error> {
         let author = *block.header().author();
-        let total_reward = block.parcels().iter().fold(self.params.block_reward, |sum, parcel| sum + parcel.fee);
+        let total_reward =
+            block.parcels().iter().fold(self.block_reward(block.header().number()), |sum, parcel| sum + parcel.fee);
         self.machine.add_balance(block, &author, total_reward)
     }
 
     fn score_to_target(&self, score: &U256) -> U256 {
         (U256::max_value() - *score) / *score
+    }
+
+    fn block_reward(&self, _block_number: u64) -> u64 {
+        self.params.block_reward
     }
 }
 

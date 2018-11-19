@@ -227,6 +227,8 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
     fn score_to_target(&self, _score: &U256) -> U256 {
         U256::zero()
     }
+
+    fn block_reward(&self, block_number: u64) -> u64;
 }
 
 /// Results of a query of whether an epoch change occurred at the given block.

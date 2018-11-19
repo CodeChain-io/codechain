@@ -23,7 +23,7 @@ const describeSkippedInTravis = process.env.TRAVIS ? describe.skip : describe;
 
 // FIXME: It fails due to timeout when the block sync extension is stuck.
 // See https://github.com/CodeChain-io/codechain/issues/662
-describeSkippedInTravis("Reward = 50, 2 miners", () => {
+describeSkippedInTravis("reward2", () => {
     let nodeA: CodeChain;
     let nodeB: CodeChain;
 

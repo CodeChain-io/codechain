@@ -30,7 +30,7 @@ import {
 
 import CodeChain from "../helper/spawn";
 
-describe("solo - 1 node", () => {
+describe("chain", () => {
     const invalidHash = new H256("0".repeat(64));
 
     let node: CodeChain;
@@ -129,6 +129,15 @@ describe("solo - 1 node", () => {
         ];
         expect(accounts.length).toBe(expected.length);
         expect(accounts).toEqual(expect.arrayContaining(expected));
+    });
+
+    test("getBlockReward", async () => {
+        // FIXME: Add an API to SDK
+        const reward = await node.sdk.rpc.sendRpcRequest(
+            "chain_getBlockReward",
+            [10]
+        );
+        expect(reward).toEqual(0);
     });
 
     test("getPendingParcels", async () => {
