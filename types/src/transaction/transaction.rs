@@ -460,6 +460,26 @@ impl From<Transaction> for InnerTransaction {
     }
 }
 
+impl HeapSizeOf for AssetOutPoint {
+    fn heap_size_of_children(&self) -> usize {
+        0
+    }
+}
+
+impl HeapSizeOf for Order {
+    fn heap_size_of_children(&self) -> usize {
+        self.origin_outputs.heap_size_of_children() + self.parameters.heap_size_of_children()
+    }
+}
+
+impl HeapSizeOf for OrderOnTransfer {
+    fn heap_size_of_children(&self) -> usize {
+        self.order.heap_size_of_children()
+            + self.input_indices.heap_size_of_children()
+            + self.output_indices.heap_size_of_children()
+    }
+}
+
 impl HeapSizeOf for AssetTransferInput {
     fn heap_size_of_children(&self) -> usize {
         self.lock_script.heap_size_of_children() + self.unlock_script.heap_size_of_children()
@@ -491,8 +511,14 @@ impl HeapSizeOf for Transaction {
                 burns,
                 inputs,
                 outputs,
+                orders,
                 ..
-            } => burns.heap_size_of_children() + inputs.heap_size_of_children() + outputs.heap_size_of_children(),
+            } => {
+                burns.heap_size_of_children()
+                    + inputs.heap_size_of_children()
+                    + outputs.heap_size_of_children()
+                    + orders.heap_size_of_children()
+            }
             Transaction::AssetCompose {
                 metadata,
                 approver,
@@ -737,6 +763,21 @@ impl PartialHashing for Transaction {
             }
             _ => unreachable!(),
         }
+    }
+}
+
+impl Order {
+    pub fn hash(&self) -> H256 {
+        blake256(&self.rlp_bytes())
+    }
+}
+
+impl PartialHashing for Order {
+    fn hash_partially(&self, tag: Tag, _cur: &AssetTransferInput, is_burn: bool) -> Result<H256, HashingError> {
+        assert!(tag.sign_all_inputs);
+        assert!(tag.sign_all_outputs);
+        assert!(!is_burn);
+        Ok(self.hash())
     }
 }
 
