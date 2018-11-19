@@ -229,6 +229,10 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
     }
 
     fn block_reward(&self, block_number: u64) -> u64;
+
+    fn block_fee(&self, parcels: Box<Iterator<Item = UnverifiedParcel>>) -> u64 {
+        parcels.map(|parcel| parcel.fee).sum()
+    }
 }
 
 /// Results of a query of whether an epoch change occurred at the given block.

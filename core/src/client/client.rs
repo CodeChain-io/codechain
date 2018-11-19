@@ -357,6 +357,12 @@ impl EngineInfo for Client {
     fn block_reward(&self, block_number: u64) -> u64 {
         self.engine().block_reward(block_number)
     }
+
+    fn mining_reward(&self, block_number: u64) -> Option<u64> {
+        let block = self.block(block_number.into())?;
+        let block_fee = self.engine().block_fee(Box::new(block.parcels().into_iter()));
+        Some(self.engine().block_reward(block_number) + block_fee)
+    }
 }
 
 impl EngineClient for Client {
