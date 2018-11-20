@@ -16,7 +16,7 @@
 
 use primitives::H256;
 
-use super::block_info::BlockLocation;
+use super::block_info::{BestBlockChanged, BestHeaderChanged};
 use super::headerchain::HeaderProvider;
 
 /// Represents a tree route between `from` block and `to` block:
@@ -120,26 +120,78 @@ pub struct ImportRoute {
 }
 
 impl ImportRoute {
-    pub fn new(hash: H256, location: &BlockLocation) -> Self {
-        match location {
-            BlockLocation::CanonChain => ImportRoute {
-                retracted: vec![],
-                enacted: vec![hash],
-                omitted: vec![],
-            },
-            BlockLocation::Branch => ImportRoute {
+    pub fn new(new_block_hash: H256, best_block_changed: &BestBlockChanged) -> Self {
+        let mut omitted = Vec::new();
+        if best_block_changed.new_best_hash() != Some(new_block_hash) {
+            omitted.push(new_block_hash);
+        }
+
+        match best_block_changed {
+            BestBlockChanged::CanonChainAppended {
+                ..
+            } => {
+                let mut enacted = Vec::new();
+                enacted.push(best_block_changed.new_best_hash().unwrap());
+                ImportRoute {
+                    retracted: vec![],
+                    enacted,
+                    omitted,
+                }
+            }
+            BestBlockChanged::None => ImportRoute {
                 retracted: vec![],
                 enacted: vec![],
-                omitted: vec![hash],
+                omitted,
             },
-            BlockLocation::BranchBecomingCanonChain(data) => {
-                let mut enacted = vec![hash];
-                enacted.extend(data.enacted.iter());
-                let retracted = data.retracted.clone();
+            BestBlockChanged::BranchBecomingCanonChain {
+                tree_route,
+                ..
+            } => {
+                let mut enacted = tree_route.enacted.clone();
+                enacted.push(best_block_changed.new_best_hash().unwrap());
+                let retracted = tree_route.retracted.clone();
                 ImportRoute {
                     retracted,
                     enacted,
-                    omitted: vec![],
+                    omitted,
+                }
+            }
+        }
+    }
+
+    pub fn new_from_best_header_changed(new_block_hash: H256, best_header_changed: &BestHeaderChanged) -> Self {
+        let mut omitted = Vec::new();
+        if best_header_changed.new_best_hash() != Some(new_block_hash) {
+            omitted.push(new_block_hash);
+        }
+
+        match best_header_changed {
+            BestHeaderChanged::CanonChainAppended {
+                ..
+            } => {
+                let mut enacted = vec![best_header_changed.new_best_hash().unwrap()];
+                ImportRoute {
+                    retracted: vec![],
+                    enacted,
+                    omitted,
+                }
+            }
+            BestHeaderChanged::None => ImportRoute {
+                retracted: vec![],
+                enacted: vec![],
+                omitted,
+            },
+            BestHeaderChanged::BranchBecomingCanonChain {
+                tree_route,
+                ..
+            } => {
+                let mut enacted = tree_route.enacted.clone();
+                enacted.push(best_header_changed.new_best_hash().unwrap());
+                let retracted = tree_route.retracted.clone();
+                ImportRoute {
+                    retracted,
+                    enacted,
+                    omitted,
                 }
             }
         }
