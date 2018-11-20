@@ -25,9 +25,9 @@ use primitives::{H256, U256};
 
 use util_error::UtilError;
 
-use super::account_provider::SignError as AccountsError;
-use super::client::Error as ClientError;
-use super::consensus::EngineError;
+use crate::account_provider::SignError as AccountsError;
+use crate::client::Error as ClientError;
+use crate::consensus::EngineError;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 /// Import to the block queue result

@@ -26,7 +26,7 @@ pub use self::queue::{BlockQueue, Config as QueueConfig};
 pub use self::verification::*;
 pub use self::verifier::Verifier;
 
-use super::client::{BlockInfo, TransactionInfo};
+use crate::client::{BlockInfo, TransactionInfo};
 
 /// Verifier type.
 #[derive(Debug, PartialEq, Clone)]

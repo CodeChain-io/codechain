@@ -29,9 +29,9 @@ use rlp;
 use table::Table;
 use time::get_time;
 
-use super::super::parcel::SignedParcel;
 use super::local_parcels::{LocalParcelsList, Status as LocalParcelStatus};
 use super::ParcelImportResult;
+use crate::parcel::SignedParcel;
 
 /// Parcel with the same (sender, seq) can be replaced only if
 /// `new_fee > old_fee + old_fee >> SHIFT`

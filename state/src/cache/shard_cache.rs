@@ -18,8 +18,8 @@ use std::cell::RefMut;
 
 use cmerkle::{Result as TrieResult, TrieDB, TrieMut};
 
-use super::super::{AssetScheme, AssetSchemeAddress, OwnedAsset, OwnedAssetAddress};
 use super::WriteBack;
+use crate::{AssetScheme, AssetSchemeAddress, OwnedAsset, OwnedAssetAddress};
 
 pub struct ShardCache {
     asset_scheme: WriteBack<AssetScheme>,

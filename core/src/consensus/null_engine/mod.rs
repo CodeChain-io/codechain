@@ -19,9 +19,9 @@ mod params;
 use ctypes::machine::{Header, LiveBlock, Parcels, WithBalances};
 
 use self::params::NullEngineParams;
-use super::super::consensus::EngineType;
-use super::super::SignedParcel;
 use super::ConsensusEngine;
+use crate::consensus::EngineType;
+use crate::SignedParcel;
 
 /// An engine which does not provide any consensus mechanism and does not seal blocks.
 pub struct NullEngine<M> {

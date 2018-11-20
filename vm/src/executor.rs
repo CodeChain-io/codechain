@@ -24,7 +24,7 @@ use ctypes::util::tag::Tag;
 use primitives::{H160, H256};
 
 
-use instruction::{has_expensive_opcodes, is_valid_unlock_script, Instruction};
+use crate::instruction::{has_expensive_opcodes, is_valid_unlock_script, Instruction};
 
 const DEFAULT_MAX_MEMORY: usize = 1024;
 

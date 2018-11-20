@@ -75,7 +75,7 @@ mod tests {
 
     use serde_json;
 
-    use super::super::super::json::{Aes128Ctr, Cipher, Crypto, Kdf, KeyFile, Scrypt, Uuid, Version};
+    use crate::json::{Aes128Ctr, Cipher, Crypto, Kdf, KeyFile, Scrypt, Uuid, Version};
 
     #[test]
     fn basic_keyfile() {

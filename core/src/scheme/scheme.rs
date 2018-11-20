@@ -29,15 +29,15 @@ use parking_lot::RwLock;
 use primitives::{Bytes, H256, U256};
 use rlp::{Encodable, Rlp, RlpStream};
 
-use super::super::blockchain::HeaderProvider;
+use crate::blockchain::HeaderProvider;
 
-use super::super::codechain_machine::CodeChainMachine;
-use super::super::consensus::{BlakePoW, CodeChainEngine, Cuckoo, NullEngine, SimplePoA, Solo, Tendermint};
-use super::super::error::{Error, SchemeError};
-use super::super::header::Header;
 use super::pod_state::{PodAccounts, PodShards};
 use super::seal::Generic as GenericSeal;
 use super::Genesis;
+use crate::codechain_machine::CodeChainMachine;
+use crate::consensus::{BlakePoW, CodeChainEngine, Cuckoo, NullEngine, SimplePoA, Solo, Tendermint};
+use crate::error::{Error, SchemeError};
+use crate::header::Header;
 
 #[derive(Debug, PartialEq, Default, RlpEncodable)]
 pub struct CommonParams {

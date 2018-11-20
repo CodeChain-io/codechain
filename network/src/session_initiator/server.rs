@@ -23,9 +23,9 @@ use cio::IoManager;
 use mio::deprecated::EventLoop;
 use mio::{PollOpt, Ready, Token};
 
-use super::super::SocketAddr;
 use super::message::Message;
 use super::socket::{Error as SocketError, Socket};
+use crate::SocketAddr;
 
 #[derive(Debug)]
 pub enum Error {

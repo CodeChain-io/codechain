@@ -18,7 +18,7 @@ use ctypes::parcel::Error as ParcelError;
 use linked_hash_map::LinkedHashMap;
 use primitives::H256;
 
-use super::super::parcel::SignedParcel;
+use crate::parcel::SignedParcel;
 
 /// Status of local parcel.
 /// Can indicate that the parcel is currently part of the queue (`Pending/Future`)

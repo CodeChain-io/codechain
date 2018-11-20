@@ -20,8 +20,8 @@ use std::path::Path;
 
 use ckey::Address;
 
-use super::accounts_dir::{DiskKeyFileManager, KeyDirectory, KeyFileManager};
-use super::Error;
+use crate::accounts_dir::{DiskKeyFileManager, KeyDirectory, KeyFileManager};
+use crate::Error;
 
 /// Import an account from a file.
 pub fn import_account(path: &Path, dst: &KeyDirectory) -> Result<Address, Error> {

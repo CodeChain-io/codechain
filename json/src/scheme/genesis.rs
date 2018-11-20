@@ -16,10 +16,10 @@
 
 use ckey::PlatformAddress;
 
-use super::super::bytes::Bytes;
-use super::super::hash::H256;
-use super::super::uint::Uint;
 use super::Seal;
+use crate::bytes::Bytes;
+use crate::hash::H256;
+use crate::uint::Uint;
 
 /// Scheme genesis.
 #[derive(Debug, PartialEq, Deserialize)]
@@ -54,11 +54,11 @@ mod tests {
     use primitives::{H256 as Core256, H520 as Core520, U256};
     use serde_json;
 
-    use super::super::super::bytes::Bytes;
-    use super::super::super::hash::{H256, H520};
-    use super::super::super::uint::Uint;
     use super::super::{Seal, TendermintSeal};
     use super::Genesis;
+    use crate::bytes::Bytes;
+    use crate::hash::{H256, H520};
+    use crate::uint::Uint;
 
     #[test]
     fn genesis_deserialization() {

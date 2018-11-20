@@ -20,8 +20,8 @@ use mio::event::Evented;
 use mio::net::TcpListener;
 use mio::{Poll, PollOpt, Ready, Token};
 
-use super::super::SocketAddr;
 use super::stream::Stream;
+use crate::SocketAddr;
 
 pub struct Listener {
     listener: TcpListener,

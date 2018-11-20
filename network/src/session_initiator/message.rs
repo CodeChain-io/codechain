@@ -17,7 +17,7 @@
 use ckey::Public;
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
-use super::super::NodeId;
+use crate::NodeId;
 
 type Version = u32;
 type Raw = Vec<u8>;
@@ -232,9 +232,9 @@ impl Decodable for Message {
 mod tests {
     use rlp::rlp_encode_and_decode_test;
 
-    use super::super::super::session::Nonce;
-    use super::super::super::SocketAddr;
     use super::*;
+    use crate::session::Nonce;
+    use crate::SocketAddr;
 
     #[test]
     fn encode_and_decode_node_id_request() {

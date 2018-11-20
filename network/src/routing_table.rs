@@ -22,8 +22,8 @@ use parking_lot::{Mutex, RwLock};
 use rand::{OsRng, Rng};
 use rlp::{Decodable, Encodable, UntrustedRlp};
 
-use super::session::{Nonce, Session};
-use super::{IntoSocketAddr, NodeId, SocketAddr};
+use crate::session::{Nonce, Session};
+use crate::{IntoSocketAddr, NodeId, SocketAddr};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum SecretOrigin {

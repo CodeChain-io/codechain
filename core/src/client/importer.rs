@@ -24,20 +24,20 @@ use parking_lot::Mutex;
 use primitives::H256;
 use rlp::Encodable;
 
-use super::super::block::{enact, IsBlock, LockedBlock};
-use super::super::blockchain::{BlockChain, BodyProvider, HeaderProvider, ImportRoute};
-use super::super::consensus::epoch::Transition as EpochTransition;
-use super::super::consensus::CodeChainEngine;
-use super::super::error::Error;
-use super::super::header::Header;
-use super::super::miner::{Miner, MinerService};
-use super::super::service::ClientIoMessage;
-use super::super::types::BlockId;
-use super::super::verification::queue::{BlockQueue, HeaderQueue};
-use super::super::verification::{self, PreverifiedBlock, Verifier};
-use super::super::views::{BlockView, HeaderView};
 use super::BlockInfo;
 use super::{Client, ClientConfig};
+use crate::block::{enact, IsBlock, LockedBlock};
+use crate::blockchain::{BlockChain, BodyProvider, HeaderProvider, ImportRoute};
+use crate::consensus::epoch::Transition as EpochTransition;
+use crate::consensus::CodeChainEngine;
+use crate::error::Error;
+use crate::header::Header;
+use crate::miner::{Miner, MinerService};
+use crate::service::ClientIoMessage;
+use crate::types::BlockId;
+use crate::verification::queue::{BlockQueue, HeaderQueue};
+use crate::verification::{self, PreverifiedBlock, Verifier};
+use crate::views::{BlockView, HeaderView};
 
 pub struct Importer {
     /// Lock used during block import
@@ -268,13 +268,13 @@ impl Importer {
     // check for epoch end signal and write pending transition if it occurs.
     // state for the given block must be available.
     fn check_epoch_end_signal(&self, header: &Header, chain: &BlockChain, batch: &mut DBTransaction) {
-        use super::super::consensus::EpochChange;
+        use crate::consensus::EpochChange;
         let hash = header.hash();
 
         match self.engine.signals_epoch_end(header) {
             EpochChange::Yes(proof) => {
-                use super::super::consensus::epoch::PendingTransition;
-                use super::super::consensus::Proof;
+                use crate::consensus::epoch::PendingTransition;
+                use crate::consensus::Proof;
 
                 let Proof::Known(proof) = proof;
                 cdebug!(CLIENT, "Block {} signals epoch end.", hash);

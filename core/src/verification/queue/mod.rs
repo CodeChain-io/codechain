@@ -29,10 +29,10 @@ use parking_lot::{Mutex, RwLock};
 use primitives::{H256, U256};
 
 use self::kind::{BlockLike, Kind};
-use super::super::consensus::CodeChainEngine;
-use super::super::error::{BlockError, Error, ImportError};
-use super::super::service::ClientIoMessage;
-use super::super::types::{BlockStatus as Status, VerificationQueueInfo as QueueInfo};
+use crate::consensus::CodeChainEngine;
+use crate::error::{BlockError, Error, ImportError};
+use crate::service::ClientIoMessage;
+use crate::types::{BlockStatus as Status, VerificationQueueInfo as QueueInfo};
 
 const MIN_MEM_LIMIT: usize = 16384;
 const MIN_QUEUE_LIMIT: usize = 512;
@@ -506,10 +506,10 @@ mod tests {
     use cio::IoChannel;
     use tests::helpers::*;
 
-    use super::super::super::error::{Error, ImportError};
-    use super::super::super::scheme::Scheme;
     use super::kind::blocks::Unverified;
     use super::{BlockQueue, Config};
+    use crate::error::{Error, ImportError};
+    use crate::scheme::Scheme;
 
     // create a test block queue.
     // auto_scaling enables verifier adjustment.

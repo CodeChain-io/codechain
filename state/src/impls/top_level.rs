@@ -52,10 +52,10 @@ use kvdb::DBTransaction;
 use primitives::{Bytes, H160, H256};
 use util_error::UtilError;
 
-use super::super::cache::{ShardCache, TopCache};
-use super::super::checkpoint::{CheckpointId, StateWithCheckpoint};
-use super::super::traits::{ShardState, ShardStateView, StateWithCache, TopState, TopStateView};
-use super::super::{
+use crate::cache::{ShardCache, TopCache};
+use crate::checkpoint::{CheckpointId, StateWithCheckpoint};
+use crate::traits::{ShardState, ShardStateView, StateWithCache, TopState, TopStateView};
+use crate::{
     Account, ActionData, Metadata, MetadataAddress, RegularAccount, RegularAccountAddress, Shard, ShardAddress,
     ShardLevelState, StateDB, StateError, StateResult,
 };
@@ -704,8 +704,8 @@ mod tests_state {
 
     use journaldb::{self, Algorithm};
 
-    use super::super::super::tests::helpers::{get_memory_db, get_temp_state, get_temp_state_db};
     use super::*;
+    use crate::tests::helpers::{get_memory_db, get_temp_state, get_temp_state_db};
 
     #[test]
     fn work_when_cloned() {
@@ -1051,9 +1051,9 @@ mod tests_parcel {
     };
     use primitives::H160;
 
-    use super::super::super::tests::helpers::{get_temp_state, get_test_client};
-    use super::super::super::{AssetScheme, AssetSchemeAddress, OwnedAsset, OwnedAssetAddress};
     use super::*;
+    use crate::tests::helpers::{get_temp_state, get_test_client};
+    use crate::{AssetScheme, AssetSchemeAddress, OwnedAsset, OwnedAssetAddress};
 
     fn address() -> (Address, Public) {
         let keypair = Random.generate().unwrap();

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use super::super::transaction::HashingError;
+use crate::transaction::HashingError;
 
 #[derive(Debug, PartialEq)]
 pub struct Tag {
@@ -60,8 +60,8 @@ impl Tag {
 }
 #[cfg(test)]
 mod tests {
-    use transaction::HashingError;
-    use util::tag::Tag;
+    use crate::transaction::HashingError;
+    use crate::util::tag::Tag;
     #[test]
     fn make_partial_signing_tag() {
         let bitvec = vec![

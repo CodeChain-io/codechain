@@ -21,7 +21,7 @@ use primitives::H160;
 use rustc_hex::ToHex;
 use secp256k1::key;
 
-use super::{Address, Error, Private, Public, SECP256K1};
+use crate::{Address, Error, Private, Public, SECP256K1};
 
 pub fn public_to_address(public: &Public) -> Address {
     H160::blake(public).into()

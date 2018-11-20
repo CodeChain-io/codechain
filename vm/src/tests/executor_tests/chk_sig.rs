@@ -22,8 +22,8 @@ use rlp::Encodable;
 
 use secp256k1::key::{SecretKey, MINUS_ONE_KEY, ONE_KEY};
 
-use executor::{execute, Config, ScriptResult};
-use instruction::Instruction;
+use crate::executor::{execute, Config, ScriptResult};
+use crate::instruction::Instruction;
 
 use super::executor::get_test_client;
 

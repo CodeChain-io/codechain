@@ -22,14 +22,14 @@ use cio::{IoError, IoService};
 use ctimer::TimerLoop;
 use primitives::H256;
 
-use super::client::Client;
-use super::control::{Control, Error as ControlError};
-use super::filters::{FilterEntry, FiltersControl};
-use super::p2p;
-use super::routing_table::RoutingTable;
-use super::session_initiator;
-use super::DiscoveryApi;
-use super::{NetworkExtension, SocketAddr};
+use crate::client::Client;
+use crate::control::{Control, Error as ControlError};
+use crate::filters::{FilterEntry, FiltersControl};
+use crate::p2p;
+use crate::routing_table::RoutingTable;
+use crate::session_initiator;
+use crate::DiscoveryApi;
+use crate::{NetworkExtension, SocketAddr};
 
 pub struct Service {
     session_initiator: IoService<session_initiator::Message>,

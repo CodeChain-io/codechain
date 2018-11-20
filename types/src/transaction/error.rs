@@ -20,9 +20,9 @@ use ckey::Address;
 use primitives::{H160, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
-use super::super::util::unexpected::Mismatch;
-use super::super::ShardId;
 use super::Timelock;
+use crate::util::unexpected::Mismatch;
+use crate::ShardId;
 
 #[derive(Debug, PartialEq, Clone, Eq, Serialize)]
 #[serde(tag = "type", content = "content")]

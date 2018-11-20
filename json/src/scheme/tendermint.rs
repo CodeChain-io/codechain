@@ -16,7 +16,7 @@
 
 use ckey::PlatformAddress;
 
-use super::super::uint::Uint;
+use crate::uint::Uint;
 
 /// Tendermint params deserialization.
 #[derive(Debug, PartialEq, Deserialize)]

@@ -16,7 +16,7 @@
 
 use std::sync::Arc;
 
-use super::RoutingTable;
+use crate::RoutingTable;
 
 pub trait Api: Send + Sync {
     fn set_routing_table(&self, routing_table: Arc<RoutingTable>);

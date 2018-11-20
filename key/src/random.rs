@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use super::{Generator, KeyPair, SECP256K1};
+use crate::{Generator, KeyPair, SECP256K1};
 use rand::os::OsRng;
 
 pub struct Random;

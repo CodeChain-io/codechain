@@ -36,18 +36,6 @@ use parking_lot::{Mutex, RwLock, RwLockReadGuard};
 use primitives::{Bytes, H256, U256};
 use rlp::UntrustedRlp;
 
-use super::super::block::{ClosedBlock, IsBlock, OpenBlock, SealedBlock};
-use super::super::blockchain::{
-    BlockChain, BlockProvider, BodyProvider, HeaderProvider, InvoiceProvider, ParcelAddress, TransactionAddress,
-};
-use super::super::consensus::CodeChainEngine;
-use super::super::encoded;
-use super::super::error::{BlockImportError, Error, ImportError, SchemeError};
-use super::super::miner::{Miner, MinerService};
-use super::super::parcel::{LocalizedParcel, SignedParcel, UnverifiedParcel};
-use super::super::scheme::{CommonParams, Scheme};
-use super::super::service::ClientIoMessage;
-use super::super::types::{BlockId, BlockStatus, ParcelId, VerificationQueueInfo as BlockQueueInfo};
 use super::importer::Importer;
 use super::{
     AccountData, AssetClient, Balance, BlockChain as BlockChainTrait, BlockChainClient, BlockChainInfo, BlockInfo,
@@ -55,6 +43,18 @@ use super::{
     Error as ClientError, ExecuteClient, ImportBlock, ImportResult, ImportSealedBlock, MiningBlockChainClient,
     ParcelInfo, PrepareOpenBlock, RegularKey, RegularKeyOwner, ReopenBlock, Seq, Shard, StateOrBlock, TransactionInfo,
 };
+use crate::block::{ClosedBlock, IsBlock, OpenBlock, SealedBlock};
+use crate::blockchain::{
+    BlockChain, BlockProvider, BodyProvider, HeaderProvider, InvoiceProvider, ParcelAddress, TransactionAddress,
+};
+use crate::consensus::CodeChainEngine;
+use crate::encoded;
+use crate::error::{BlockImportError, Error, ImportError, SchemeError};
+use crate::miner::{Miner, MinerService};
+use crate::parcel::{LocalizedParcel, SignedParcel, UnverifiedParcel};
+use crate::scheme::{CommonParams, Scheme};
+use crate::service::ClientIoMessage;
+use crate::types::{BlockId, BlockStatus, ParcelId, VerificationQueueInfo as BlockQueueInfo};
 
 const MAX_MEM_POOL_SIZE: usize = 4096;
 
@@ -410,8 +410,8 @@ impl TransactionInfo for Client {
 
 impl ImportBlock for Client {
     fn import_block(&self, bytes: Bytes) -> Result<H256, BlockImportError> {
-        use super::super::verification::queue::kind::blocks::Unverified;
-        use super::super::verification::queue::kind::BlockLike;
+        use crate::verification::queue::kind::blocks::Unverified;
+        use crate::verification::queue::kind::BlockLike;
 
         let unverified = Unverified::new(bytes);
         {

@@ -20,9 +20,9 @@ use ccrypto;
 use ckey::{public_to_address, Address, KeyPair, Password, Private, Secret};
 use smallvec::SmallVec;
 
-use super::super::account::{Aes128Ctr, Cipher, Kdf, Pbkdf2, Prf};
-use super::super::random::Random;
-use super::super::{json, Error};
+use crate::account::{Aes128Ctr, Cipher, Kdf, Pbkdf2, Prf};
+use crate::random::Random;
+use crate::{json, Error};
 
 /// Encrypted data
 #[derive(Debug, PartialEq, Clone)]

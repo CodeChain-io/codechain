@@ -23,8 +23,8 @@ pub mod helpers {
     use kvdb_memorydb;
     use primitives::H256;
 
-    use super::super::impls::TopLevelState;
-    use super::super::StateDB;
+    use crate::impls::TopLevelState;
+    use crate::StateDB;
 
     pub struct TestChainTimeInfoClient {}
 

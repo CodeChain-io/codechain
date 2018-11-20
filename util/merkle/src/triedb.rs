@@ -18,9 +18,9 @@ use ccrypto::blake256;
 use hashdb::HashDB;
 use primitives::H256;
 
-use super::nibbleslice::NibbleSlice;
-use super::node::Node as RlpNode;
-use super::{Query, Trie, TrieError};
+use crate::nibbleslice::NibbleSlice;
+use crate::node::Node as RlpNode;
+use crate::{Query, Trie, TrieError};
 /// A `Trie` implementation using a generic `HashDB` backing database.
 ///
 /// Use it as a `Trie` trait object. You can use `db()` to get the backing database object.
@@ -55,7 +55,7 @@ pub struct TrieDB<'db> {
 impl<'db> TrieDB<'db> {
     /// Create a new trie with the backing database `db` and `root`
     /// Returns an error if `root` does not exist
-    pub fn new(db: &'db HashDB, root: &'db H256) -> super::Result<Self> {
+    pub fn new(db: &'db HashDB, root: &'db H256) -> crate::Result<Self> {
         if !db.contains(root) {
             Err(Box::new(TrieError::InvalidStateRoot(*root)))
         } else {
@@ -77,7 +77,7 @@ impl<'db> TrieDB<'db> {
         path: NibbleSlice,
         cur_node_hash: Option<H256>,
         query: Q,
-    ) -> super::Result<Option<Q::Item>> {
+    ) -> crate::Result<Option<Q::Item>> {
         match cur_node_hash {
             Some(hash) => {
                 let node_rlp = self.db.get(&hash).ok_or_else(|| Box::new(TrieError::IncompleteDatabase(hash)))?;
@@ -114,7 +114,7 @@ impl<'db> Trie for TrieDB<'db> {
         self.root
     }
 
-    fn get_with<Q: Query>(&self, key: &[u8], query: Q) -> super::Result<Option<Q::Item>> {
+    fn get_with<Q: Query>(&self, key: &[u8], query: Q) -> crate::Result<Option<Q::Item>> {
         let path = blake256(key);
         let root = *self.root;
 
@@ -124,8 +124,8 @@ impl<'db> Trie for TrieDB<'db> {
 
 #[cfg(test)]
 mod tests {
-    use super::super::*;
     use super::*;
+    use crate::*;
     use memorydb::*;
 
     #[test]

@@ -30,10 +30,10 @@ use heapsize::HeapSizeOf;
 use primitives::{H256, U256};
 use rlp::Rlp;
 
-use super::block::Block as FullBlock;
-use super::header::Header as FullHeader;
-use super::parcel::UnverifiedParcel;
-use super::views;
+use crate::block::Block as FullBlock;
+use crate::header::Header as FullHeader;
+use crate::parcel::UnverifiedParcel;
+use crate::views;
 
 /// Owning header view.
 #[derive(Debug, Clone, PartialEq, Eq)]

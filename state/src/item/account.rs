@@ -21,7 +21,7 @@ use std::fmt;
 use ckey::{self, Public};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
-use super::super::CacheableItem;
+use crate::CacheableItem;
 
 /// Single account in the system.
 // Don't forget to sync the field list with PodAccount.

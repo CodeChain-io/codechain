@@ -18,10 +18,10 @@ use std::env;
 use std::thread;
 use time;
 
-use super::slogger;
-use super::structured_logger;
 use atty;
 use colored::Colorize;
+use crate::slogger;
+use crate::structured_logger;
 use env_logger::filter::{Builder as FilterBuilder, Filter};
 use log::{LevelFilter, Log, Metadata, Record};
 

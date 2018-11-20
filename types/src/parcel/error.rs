@@ -20,9 +20,9 @@ use ckey::{Address, Error as KeyError, NetworkId};
 use primitives::H256;
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
-use super::super::transaction::Error as TransactionError;
-use super::super::util::unexpected::Mismatch;
-use super::super::ShardId;
+use crate::transaction::Error as TransactionError;
+use crate::util::unexpected::Mismatch;
+use crate::ShardId;
 
 #[derive(Debug, PartialEq, Clone, Serialize)]
 #[serde(tag = "type", content = "content")]

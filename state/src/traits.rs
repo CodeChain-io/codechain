@@ -22,7 +22,7 @@ use ctypes::ShardId;
 use cvm::ChainTimeInfo;
 use primitives::{Bytes, H256};
 
-use super::{
+use crate::{
     Account, ActionData, AssetScheme, AssetSchemeAddress, CacheableItem, Metadata, OwnedAsset, OwnedAssetAddress,
     RegularAccount, Shard, StateResult,
 };
