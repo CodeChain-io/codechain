@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::borrow::Borrow;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::Instant;
@@ -212,7 +213,7 @@ impl Importer {
         self.check_epoch_end_signal(block.header(), &chain, &mut batch);
 
         block.state().journal_under(&mut batch, number).expect("DB commit failed");
-        let route = chain.insert_block(&mut batch, block_data, invoices.clone());
+        let route = chain.insert_block(&mut batch, block_data, invoices.clone(), self.engine.borrow());
 
         // Final commit to the DB
         client.db().write_buffered(batch);
@@ -458,7 +459,7 @@ impl Importer {
         let mut batch = DBTransaction::new();
         // FIXME: Check if this line is still necessary.
         // self.check_epoch_end_signal(header, &chain, &mut batch);
-        let route = chain.insert_header(&mut batch, &HeaderView::new(&header.rlp_bytes()));
+        let route = chain.insert_header(&mut batch, &HeaderView::new(&header.rlp_bytes()), self.engine.borrow());
         client.db().write_buffered(batch);
         chain.commit();
 

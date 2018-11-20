@@ -25,7 +25,7 @@ use primitives::{Bytes, H256};
 use rlp::RlpStream;
 use rlp_compress::{blocks_swapper, compress, decompress};
 
-use super::block_info::BlockLocation;
+use super::block_info::BestBlockChanged;
 use super::extras::{ParcelAddress, TransactionAddress};
 use crate::db::{self, CacheUpdatePolicy, Readable, Writable};
 use crate::views::BlockView;
@@ -73,7 +73,7 @@ impl BodyDB {
     /// Inserts the block body into backing cache database.
     /// Expects the body to be valid and already verified.
     /// If the body is already known, does nothing.
-    pub fn insert_body(&self, batch: &mut DBTransaction, block: &BlockView, location: &BlockLocation) {
+    pub fn insert_body(&self, batch: &mut DBTransaction, block: &BlockView) {
         let hash = block.hash();
 
         if self.is_known_body(&hash) {
@@ -84,20 +84,21 @@ impl BodyDB {
 
         // store block in db
         batch.put(db::COL_BODIES, &hash, &compressed_body);
+    }
 
+    pub fn update_best_block(&self, batch: &mut DBTransaction, best_block_changed: &BestBlockChanged) {
         let mut pending_parcel_addresses = self.pending_parcel_addresses.write();
         let mut pending_transaction_addresses = self.pending_transaction_addresses.write();
-
         batch.extend_with_option_cache(
             db::COL_EXTRA,
             &mut *pending_parcel_addresses,
-            self.new_parcel_address_entries(block, location),
+            self.new_parcel_address_entries(best_block_changed),
             CacheUpdatePolicy::Overwrite,
         );
         batch.extend_with_option_cache(
             db::COL_EXTRA,
             &mut *pending_transaction_addresses,
-            self.new_transaction_address_entries(block, location),
+            self.new_transaction_address_entries(best_block_changed),
             CacheUpdatePolicy::Overwrite,
         );
     }
@@ -136,23 +137,36 @@ impl BodyDB {
     /// This function returns modified parcel addresses.
     fn new_parcel_address_entries(
         &self,
-        block: &BlockView,
-        location: &BlockLocation,
+        best_block_changed: &BestBlockChanged,
     ) -> HashMap<H256, Option<ParcelAddress>> {
+        let block_hash = if let Some(best_block_hash) = best_block_changed.new_best_hash() {
+            best_block_hash
+        } else {
+            return HashMap::new()
+        };
+        let block = match best_block_changed.best_block() {
+            Some(block) => block,
+            None => return HashMap::new(),
+        };
         let parcel_hashes = block.parcel_hashes();
 
-        match location {
-            BlockLocation::CanonChain => parcel_address_entries(block.hash(), parcel_hashes).collect(),
-            BlockLocation::BranchBecomingCanonChain(data) => {
-                let enacted = data.enacted.iter().flat_map(|hash| {
+        match best_block_changed {
+            BestBlockChanged::CanonChainAppended {
+                ..
+            } => parcel_address_entries(best_block_changed.new_best_hash().unwrap(), parcel_hashes).collect(),
+            BestBlockChanged::BranchBecomingCanonChain {
+                tree_route,
+                ..
+            } => {
+                let enacted = tree_route.enacted.iter().flat_map(|hash| {
                     let body = self.block_body(hash).expect("Enacted block must be in database.");
                     let enacted_parcel_hashes = body.parcel_hashes();
                     parcel_address_entries(*hash, enacted_parcel_hashes)
                 });
 
-                let current_addresses = { parcel_address_entries(block.hash(), parcel_hashes) };
+                let current_addresses = { parcel_address_entries(block_hash, parcel_hashes) };
 
-                let retracted = data.retracted.iter().flat_map(|hash| {
+                let retracted = tree_route.retracted.iter().flat_map(|hash| {
                     let body = self.block_body(&hash).expect("Retracted block must be in database.");
                     let retracted_parcel_hashes = body.parcel_hashes().into_iter();
                     retracted_parcel_hashes.map(|hash| (hash, None))
@@ -161,40 +175,52 @@ impl BodyDB {
                 // The order here is important! Don't remove parcel if it was part of enacted blocks as well.
                 retracted.chain(enacted).chain(current_addresses).collect()
             }
-            BlockLocation::Branch => HashMap::new(),
+            BestBlockChanged::None => HashMap::new(),
         }
     }
 
     fn new_transaction_address_entries(
         &self,
-        block: &BlockView,
-        location: &BlockLocation,
+        best_block_changed: &BestBlockChanged,
     ) -> HashMap<H256, Option<TransactionAddress>> {
+        let block_hash = if let Some(best_block_hash) = best_block_changed.new_best_hash() {
+            best_block_hash
+        } else {
+            return HashMap::new()
+        };
+        let block = match best_block_changed.best_block() {
+            Some(block) => block,
+            None => return HashMap::new(),
+        };
+
         let (removed, added): (
             Box<Iterator<Item = TransactionHashAndAddress>>,
             Box<Iterator<Item = TransactionHashAndAddress>>,
-        ) = match location {
-            BlockLocation::CanonChain => {
-                (Box::new(::std::iter::empty()), Box::new(transaction_address_entries(block.hash(), block.parcels())))
-            }
-            BlockLocation::BranchBecomingCanonChain(ref data) => {
-                let enacted = data
+        ) = match best_block_changed {
+            BestBlockChanged::CanonChainAppended {
+                ..
+            } => (Box::new(::std::iter::empty()), Box::new(transaction_address_entries(block_hash, block.parcels()))),
+            BestBlockChanged::BranchBecomingCanonChain {
+                ref tree_route,
+                ..
+            } => {
+                let enacted = tree_route
                     .enacted
                     .iter()
                     .flat_map(|hash| {
                         let body = self.block_body(hash).expect("Enacted block must be in database.");
                         transaction_address_entries(*hash, body.parcels())
                     })
-                    .chain(transaction_address_entries(block.hash(), block.parcels()));
+                    .chain(transaction_address_entries(block_hash, block.parcels()));
 
-                let retracted = data.retracted.iter().flat_map(|hash| {
+                let retracted = tree_route.retracted.iter().flat_map(|hash| {
                     let body = self.block_body(hash).expect("Retracted block must be in database.");
                     transaction_address_entries(*hash, body.parcels())
                 });
 
                 (Box::new(retracted), Box::new(enacted))
             }
-            BlockLocation::Branch => return Default::default(),
+            BestBlockChanged::None => return Default::default(),
         };
 
         let mut added_addresses: HashMap<H256, TransactionAddress> = Default::default();

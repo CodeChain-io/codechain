@@ -26,12 +26,13 @@ use parking_lot::RwLock;
 use primitives::H256;
 use rlp::RlpStream;
 
-use super::block_info::BlockLocation;
+use super::block_info::BestBlockChanged;
 use super::body_db::{BodyDB, BodyProvider};
 use super::extras::{BlockDetails, EpochTransitions, ParcelAddress, TransactionAddress, EPOCH_KEY_PREFIX};
 use super::headerchain::{HeaderChain, HeaderProvider};
 use super::invoice_db::{InvoiceDB, InvoiceProvider};
 use super::route::{tree_route, ImportRoute};
+use consensus::CodeChainEngine;
 use crate::blockchain_info::BlockChainInfo;
 use crate::consensus::epoch::{PendingTransition as PendingEpochTransition, Transition as EpochTransition};
 use crate::db::{self, Readable, Writable};
@@ -87,9 +88,14 @@ impl BlockChain {
         }
     }
 
-    pub fn insert_header(&self, batch: &mut DBTransaction, header: &HeaderView) -> ImportRoute {
-        match self.headerchain.insert_header(batch, header) {
-            Some(l) => ImportRoute::new(header.hash(), &l),
+    pub fn insert_header(
+        &self,
+        batch: &mut DBTransaction,
+        header: &HeaderView,
+        engine: &CodeChainEngine,
+    ) -> ImportRoute {
+        match self.headerchain.insert_header(batch, header, engine) {
+            Some(c) => ImportRoute::new_from_best_header_changed(header.hash(), &c),
             None => ImportRoute::none(),
         }
     }
@@ -97,31 +103,38 @@ impl BlockChain {
     /// Inserts the block into backing cache database.
     /// Expects the block to be valid and already verified.
     /// If the block is already known, does nothing.
-    pub fn insert_block(&self, batch: &mut DBTransaction, bytes: &[u8], invoices: Vec<Invoice>) -> ImportRoute {
+    pub fn insert_block(
+        &self,
+        batch: &mut DBTransaction,
+        bytes: &[u8],
+        invoices: Vec<Invoice>,
+        engine: &CodeChainEngine,
+    ) -> ImportRoute {
         // create views onto rlp
-        let block = BlockView::new(bytes);
-        let header = block.header_view();
-        let hash = header.hash();
+        let new_block = BlockView::new(bytes);
+        let new_header = new_block.header_view();
+        let new_block_hash = new_header.hash();
 
-        if self.is_known(&hash) {
+        if self.is_known(&new_block_hash) {
             return ImportRoute::none()
         }
 
         assert!(self.pending_best_block_hash.read().is_none());
 
-        let location = self.block_location(&block);
+        let best_block_changed = self.best_block_changed(&new_block, engine);
 
-        self.headerchain.insert_header(batch, &header);
-        self.body_db.insert_body(batch, &block, &location);
-        self.invoice_db.insert_invoice(batch, &hash, invoices);
+        self.headerchain.insert_header(batch, &new_header, engine);
+        self.body_db.insert_body(batch, &new_block);
+        self.body_db.update_best_block(batch, &best_block_changed);
+        self.invoice_db.insert_invoice(batch, &new_block_hash, invoices);
 
-        if location != BlockLocation::Branch {
+        if let Some(best_block_hash) = best_block_changed.new_best_hash() {
             let mut pending_best_block_hash = self.pending_best_block_hash.write();
-            batch.put(db::COL_EXTRA, BEST_BLOCK_KEY, &hash);
-            *pending_best_block_hash = Some(hash);
+            batch.put(db::COL_EXTRA, BEST_BLOCK_KEY, &best_block_hash);
+            *pending_best_block_hash = Some(best_block_hash);
         }
 
-        ImportRoute::new(hash, &location)
+        ImportRoute::new(new_block_hash, &best_block_changed)
     }
 
     /// Apply pending insertion updates
@@ -138,23 +151,38 @@ impl BlockChain {
         }
     }
 
-    /// Calculate insert location for new block
-    fn block_location(&self, block: &BlockView) -> BlockLocation {
-        let header = block.header_view();
-        let parent_hash = header.parent_hash();
-        let parent_details = self.block_details(&parent_hash).expect("Invalid parent hash");
+    /// Calculate how best block is changed
+    fn best_block_changed(&self, new_block: &BlockView, engine: &CodeChainEngine) -> BestBlockChanged {
+        let new_header = new_block.header_view();
+        let parent_hash_of_new_block = new_header.parent_hash();
+        let parent_details_of_new_block = self.block_details(&parent_hash_of_new_block).expect("Invalid parent hash");
 
-        if parent_details.total_score + header.score() > self.best_block_detail().total_score {
-            let best_hash = self.best_block_hash();
-            let route = tree_route(self, best_hash, parent_hash)
+        if parent_details_of_new_block.total_score + new_header.score() > self.best_block_detail().total_score {
+            let prev_best_hash = self.best_block_hash();
+            let route = tree_route(self, prev_best_hash, parent_hash_of_new_block)
                 .expect("blocks being imported always within recent history; qed");
 
+            let new_best_block_hash = engine.get_best_block_from_highest_score_header(&new_header);
+            let new_best_block = if new_best_block_hash != new_header.hash() {
+                self.block(&new_best_block_hash)
+                    .expect("Best block is already imported as a branch")
+                    .rlp()
+                    .as_raw()
+                    .to_vec()
+            } else {
+                new_block.rlp().as_raw().to_vec()
+            };
             match route.retracted.len() {
-                0 => BlockLocation::CanonChain,
-                _ => BlockLocation::BranchBecomingCanonChain(route),
+                0 => BestBlockChanged::CanonChainAppended {
+                    best_block: new_best_block,
+                },
+                _ => BestBlockChanged::BranchBecomingCanonChain {
+                    tree_route: route,
+                    best_block: new_best_block,
+                },
             }
         } else {
-            BlockLocation::Branch
+            BestBlockChanged::None
         }
     }
 
