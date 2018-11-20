@@ -14,11 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use super::super::client::{BlockInfo, TransactionInfo};
-use super::super::consensus::CodeChainEngine;
-use super::super::error::Error;
-use super::super::header::Header;
 use super::{verification, Verifier};
+use crate::client::{BlockInfo, TransactionInfo};
+use crate::consensus::CodeChainEngine;
+use crate::error::Error;
+use crate::header::Header;
 
 /// A no-op verifier -- this will verify everything it's given immediately.
 pub struct NoopVerifier;

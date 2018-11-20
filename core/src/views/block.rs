@@ -18,9 +18,9 @@ use ccrypto::blake256;
 use primitives::H256;
 use rlp::Rlp;
 
-use super::super::header::Header;
-use super::super::parcel::{LocalizedParcel, UnverifiedParcel};
 use super::{HeaderView, ParcelView};
+use crate::header::Header;
+use crate::parcel::{LocalizedParcel, UnverifiedParcel};
 
 /// View onto block rlp.
 pub struct BlockView<'a> {

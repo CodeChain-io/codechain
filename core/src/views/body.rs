@@ -19,8 +19,8 @@ use ctypes::BlockNumber;
 use primitives::H256;
 use rlp::Rlp;
 
-use super::super::parcel::{LocalizedParcel, UnverifiedParcel};
 use super::ParcelView;
+use crate::parcel::{LocalizedParcel, UnverifiedParcel};
 
 /// View onto block rlp.
 pub struct BodyView<'a> {

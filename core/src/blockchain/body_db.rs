@@ -25,11 +25,11 @@ use primitives::{Bytes, H256};
 use rlp::RlpStream;
 use rlp_compress::{blocks_swapper, compress, decompress};
 
-use super::super::db::{self, CacheUpdatePolicy, Readable, Writable};
-use super::super::views::BlockView;
-use super::super::{encoded, UnverifiedParcel};
 use super::block_info::BlockLocation;
 use super::extras::{ParcelAddress, TransactionAddress};
+use crate::db::{self, CacheUpdatePolicy, Readable, Writable};
+use crate::views::BlockView;
+use crate::{encoded, UnverifiedParcel};
 
 pub struct BodyDB {
     // block cache

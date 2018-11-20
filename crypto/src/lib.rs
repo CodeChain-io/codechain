@@ -27,15 +27,15 @@ mod hash;
 pub mod pbkdf2;
 pub mod scrypt;
 
-pub use error::Error;
+pub use crate::error::Error;
 
 pub const KEY_LENGTH: usize = 32;
 pub const KEY_ITERATIONS: usize = 10240;
 pub const KEY_LENGTH_AES: usize = KEY_LENGTH / 2;
 
-pub use self::blake::*;
+pub use crate::blake::*;
 
-pub use self::hash::{keccak256, ripemd160, sha1, sha256};
+pub use crate::hash::{keccak256, ripemd160, sha1, sha256};
 
 pub fn derive_key_iterations(password: &str, salt: &[u8; 32], c: u32) -> (Vec<u8>, Vec<u8>) {
     let mut derived_key = [0u8; KEY_LENGTH];

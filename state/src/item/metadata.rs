@@ -19,7 +19,7 @@ use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use ctypes::ShardId;
 
-use super::super::CacheableItem;
+use crate::CacheableItem;
 
 #[derive(Clone, Debug)]
 pub struct Metadata {

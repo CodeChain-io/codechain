@@ -25,7 +25,7 @@ use heapsize::HeapSizeOf;
 use primitives::H256;
 use rlp::{self, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
-use super::scheme::CommonParams;
+use crate::scheme::CommonParams;
 
 /// Signed parcel information without verified signature.
 #[derive(Debug, Clone, Eq, PartialEq)]

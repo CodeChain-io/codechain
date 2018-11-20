@@ -31,10 +31,10 @@ use cvm::{decode, execute, ChainTimeInfo, ScriptResult, VMConfig};
 use hashdb::AsHashDB;
 use primitives::{Bytes, H160, H256};
 
-use super::super::cache::ShardCache;
-use super::super::checkpoint::{CheckpointId, StateWithCheckpoint};
-use super::super::traits::{ShardState, ShardStateView};
-use super::super::{
+use crate::cache::ShardCache;
+use crate::checkpoint::{CheckpointId, StateWithCheckpoint};
+use crate::traits::{ShardState, ShardStateView};
+use crate::{
     Asset, AssetScheme, AssetSchemeAddress, CacheableItem, OwnedAsset, OwnedAssetAddress, StateDB, StateError,
     StateResult,
 };
@@ -626,8 +626,8 @@ impl<'db> ShardStateView for ReadOnlyShardLevelState<'db> {
 mod tests {
     use ctypes::transaction::AssetOutPoint;
 
-    use super::super::super::tests::helpers::{get_temp_state_db, get_test_client};
     use super::*;
+    use crate::tests::helpers::{get_temp_state_db, get_test_client};
 
     fn address() -> Address {
         Address::random()

@@ -16,7 +16,7 @@
 
 use ckey::PlatformAddress;
 
-use super::super::uint::Uint;
+use crate::uint::Uint;
 
 #[derive(Debug, PartialEq, Deserialize)]
 pub struct Shard {

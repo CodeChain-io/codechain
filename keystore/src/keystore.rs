@@ -23,11 +23,11 @@ use ccrypto::KEY_ITERATIONS;
 use ckey::{Address, KeyPair, Message, Password, Public, Secret, Signature};
 use parking_lot::{Mutex, RwLock};
 
-use super::account::SafeAccount;
-use super::accounts_dir::KeyDirectory;
-use super::json::{self, OpaqueKeyFile, Uuid};
-use super::random::Random;
-use super::{Error, OpaqueSecret, SecretStore, SimpleSecretStore};
+use crate::account::SafeAccount;
+use crate::accounts_dir::KeyDirectory;
+use crate::json::{self, OpaqueKeyFile, Uuid};
+use crate::random::Random;
+use crate::{Error, OpaqueSecret, SecretStore, SimpleSecretStore};
 
 /// Accounts store.
 pub struct KeyStore {
@@ -394,8 +394,8 @@ mod tests {
     use ckey::{Generator, Random};
     use primitives::H256;
 
-    use super::super::accounts_dir::MemoryDirectory;
     use super::*;
+    use crate::accounts_dir::MemoryDirectory;
 
     fn keypair() -> KeyPair {
         Random.generate().unwrap()

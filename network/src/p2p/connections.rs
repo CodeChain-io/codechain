@@ -22,11 +22,11 @@ use mio::deprecated::EventLoop;
 use mio::Token;
 use parking_lot::RwLock;
 
-use super::super::node_id::IntoSocketAddr;
-use super::super::session::Session;
-use super::super::{FiltersControl, NodeId, SocketAddr};
 use super::connection::{Connection, Result};
 use super::stream::Stream;
+use crate::node_id::IntoSocketAddr;
+use crate::session::Session;
+use crate::{FiltersControl, NodeId, SocketAddr};
 
 pub use super::connection::{ConnectionType, ReceivedMessage};
 

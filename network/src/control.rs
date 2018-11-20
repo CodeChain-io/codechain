@@ -19,8 +19,8 @@ use std::result::Result;
 
 use primitives::H256;
 
-use super::addr::SocketAddr;
-use super::filters::FilterEntry;
+use crate::addr::SocketAddr;
+use crate::filters::FilterEntry;
 
 pub trait Control: Send + Sync {
     fn register_secret(&self, secret: H256, addr: SocketAddr) -> Result<(), Error>;

@@ -24,7 +24,7 @@ use primitives::H160;
 use serde::de::{Error as SerdeError, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-use super::{Address, Error, NetworkId};
+use crate::{Address, Error, NetworkId};
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Copy, Clone)]
 pub struct PlatformAddress {

@@ -24,17 +24,17 @@ use parking_lot::RwLock;
 use primitives::H256;
 
 use self::params::SimplePoAParams;
-use super::super::account_provider::AccountProvider;
-use super::super::block::{ExecutedBlock, IsBlock};
-use super::super::client::EngineClient;
-use super::super::codechain_machine::CodeChainMachine;
-use super::super::consensus::EngineType;
-use super::super::error::{BlockError, Error};
-use super::super::header::Header;
 use super::signer::EngineSigner;
 use super::validator_set::validator_list::ValidatorList;
 use super::validator_set::ValidatorSet;
 use super::{ConsensusEngine, ConstructedVerifier, EngineError, Seal};
+use crate::account_provider::AccountProvider;
+use crate::block::{ExecutedBlock, IsBlock};
+use crate::client::EngineClient;
+use crate::codechain_machine::CodeChainMachine;
+use crate::consensus::EngineType;
+use crate::error::{BlockError, Error};
+use crate::header::Header;
 
 pub struct SimplePoA {
     machine: CodeChainMachine,
@@ -198,9 +198,9 @@ impl ConsensusEngine<CodeChainMachine> for SimplePoA {
 
 #[cfg(test)]
 mod tests {
-    use super::super::super::block::OpenBlock;
-    use super::super::super::scheme::Scheme;
-    use super::super::super::tests::helpers::get_temp_state_db;
+    use crate::block::OpenBlock;
+    use crate::scheme::Scheme;
+    use crate::tests::helpers::get_temp_state_db;
 
     use super::*;
 

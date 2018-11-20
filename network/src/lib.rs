@@ -56,17 +56,17 @@ pub mod control;
 mod p2p;
 pub mod session;
 
-pub use self::addr::SocketAddr;
-pub use self::config::Config as NetworkConfig;
-pub use self::control::{Control as NetworkControl, Error as NetworkControlError};
-pub use self::discovery::Api as DiscoveryApi;
-pub use self::extension::{
+pub use crate::addr::SocketAddr;
+pub use crate::config::Config as NetworkConfig;
+pub use crate::control::{Control as NetworkControl, Error as NetworkControlError};
+pub use crate::discovery::Api as DiscoveryApi;
+pub use crate::extension::{
     Api, Error as NetworkExtensionError, Extension as NetworkExtension, Result as NetworkExtensionResult,
     TimeoutHandler, TimerToken,
 };
-pub use self::node_id::{IntoSocketAddr, NodeId};
-pub use self::service::{Error as NetworkServiceError, Service as NetworkService};
-pub use self::test::{Call as TestNetworkCall, TestClient as TestNetworkClient};
+pub use crate::node_id::{IntoSocketAddr, NodeId};
+pub use crate::service::{Error as NetworkServiceError, Service as NetworkService};
+pub use crate::test::{Call as TestNetworkCall, TestClient as TestNetworkClient};
 
-pub use self::filters::{FilterEntry, Filters, FiltersControl};
-pub use self::routing_table::RoutingTable;
+pub use crate::filters::{FilterEntry, Filters, FiltersControl};
+pub use crate::routing_table::RoutingTable;

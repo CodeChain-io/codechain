@@ -16,7 +16,7 @@
 
 use ckey::PlatformAddress;
 
-use super::super::uint::Uint;
+use crate::uint::Uint;
 
 /// Authority params deserialization.
 #[derive(Debug, PartialEq, Deserialize)]
@@ -42,8 +42,8 @@ mod tests {
     use primitives::U256;
     use serde_json;
 
-    use super::super::super::uint::Uint;
     use super::SimplePoA;
+    use crate::uint::Uint;
 
     #[test]
     fn basic_authority_deserialization() {

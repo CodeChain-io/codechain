@@ -44,13 +44,13 @@ use ctypes::util::unexpected::{Mismatch, OutOfBounds};
 use primitives::{Bytes, H256, U256};
 
 use self::epoch::{EpochVerifier, NoOp, PendingTransition};
-use super::account_provider::AccountProvider;
-use super::block::SealedBlock;
-use super::codechain_machine::CodeChainMachine;
-use super::error::Error;
-use super::header::Header;
-use super::parcel::{SignedParcel, UnverifiedParcel};
-use super::scheme::CommonParams;
+use crate::account_provider::AccountProvider;
+use crate::block::SealedBlock;
+use crate::codechain_machine::CodeChainMachine;
+use crate::error::Error;
+use crate::header::Header;
+use crate::parcel::{SignedParcel, UnverifiedParcel};
+use crate::scheme::CommonParams;
 
 /// Seal type.
 #[derive(Debug, PartialEq, Eq)]

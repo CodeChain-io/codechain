@@ -22,8 +22,8 @@ use ctimer::{TimerApi, TimerLoop, TimerToken};
 use parking_lot::RwLock;
 use time::Duration;
 
-use super::p2p::Message as P2pMessage;
-use super::{Api, IntoSocketAddr, NetworkExtension, NetworkExtensionResult, NodeId};
+use crate::p2p::Message as P2pMessage;
+use crate::{Api, IntoSocketAddr, NetworkExtension, NetworkExtensionResult, NodeId};
 
 struct ClientApi {
     extension: Weak<NetworkExtension>,
@@ -172,8 +172,8 @@ mod tests {
     use parking_lot::Mutex;
     use time::Duration;
 
-    use super::super::SocketAddr;
     use super::{Api, Client, NetworkExtension, NetworkExtensionResult, NodeId};
+    use crate::SocketAddr;
 
     #[allow(dead_code)]
     struct TestApi;

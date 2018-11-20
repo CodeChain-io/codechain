@@ -44,24 +44,24 @@ mod private;
 mod random;
 mod schnorr;
 
-pub use address::Address;
-pub use ecdsa::{
+pub use crate::address::Address;
+pub use crate::ecdsa::{
     recover_ecdsa as recover, sign_ecdsa as sign, verify_ecdsa as verify, verify_ecdsa_address as verify_address,
     ECDSASignature as Signature, ECDSA_SIGNATURE_LENGTH as SIGNATURE_LENGTH,
 };
-pub use error::Error;
-pub use exchange::exchange;
-pub use keypair::{public_to_address, KeyPair};
-pub use network::NetworkId;
-pub use password::Password;
-pub use platform_address::PlatformAddress;
-use primitives::{H256, H512};
-pub use private::Private;
-pub use random::Random;
-pub use rustc_serialize::hex;
-pub use schnorr::{
+pub use crate::error::Error;
+pub use crate::exchange::exchange;
+pub use crate::keypair::{public_to_address, KeyPair};
+pub use crate::network::NetworkId;
+pub use crate::password::Password;
+pub use crate::platform_address::PlatformAddress;
+pub use crate::private::Private;
+pub use crate::random::Random;
+pub use crate::schnorr::{
     recover_schnorr, sign_schnorr, verify_schnorr, verify_schnorr_address, SchnorrSignature, SCHNORR_SIGNATURE_LENGTH,
 };
+use primitives::{H256, H512};
+pub use rustc_serialize::hex;
 
 /// 32 bytes long signable message
 pub type Message = H256;

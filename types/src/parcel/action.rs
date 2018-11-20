@@ -20,8 +20,8 @@ use heapsize::HeapSizeOf;
 use primitives::{Bytes, H160, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
-use super::super::transaction::Transaction;
-use super::super::ShardId;
+use crate::transaction::Transaction;
+use crate::ShardId;
 
 const ASSET_TRANSACTION: u8 = 1;
 const PAYMENT: u8 = 2;

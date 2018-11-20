@@ -20,9 +20,9 @@ use primitives::{H256, U256};
 pub use self::blocks::Blocks;
 pub use self::headers::Headers;
 
-use super::super::super::consensus::CodeChainEngine;
-use super::super::super::error::Error;
-use super::super::super::service::ClientIoMessage;
+use crate::consensus::CodeChainEngine;
+use crate::error::Error;
+use crate::service::ClientIoMessage;
 
 /// Something which can produce a hash and a parent hash.
 pub trait BlockLike {
@@ -74,12 +74,12 @@ pub mod headers {
 
     use primitives::{H256, U256};
 
-    use super::super::super::super::consensus::CodeChainEngine;
-    use super::super::super::super::error::Error;
-    use super::super::super::super::header::Header;
-    use super::super::super::super::service::ClientIoMessage;
     use super::super::super::verification::verify_header_params;
     use super::{BlockLike, Kind};
+    use crate::consensus::CodeChainEngine;
+    use crate::error::Error;
+    use crate::header::Header;
+    use crate::service::ClientIoMessage;
 
 
     impl BlockLike for Header {
@@ -127,12 +127,12 @@ pub mod blocks {
     use heapsize::HeapSizeOf;
     use primitives::{Bytes, H256, U256};
 
-    use super::super::super::super::consensus::CodeChainEngine;
-    use super::super::super::super::error::Error;
-    use super::super::super::super::header::Header;
-    use super::super::super::super::service::ClientIoMessage;
     use super::super::super::verification::{verify_block_basic, verify_block_unordered, PreverifiedBlock};
     use super::{BlockLike, Kind};
+    use crate::consensus::CodeChainEngine;
+    use crate::error::Error;
+    use crate::header::Header;
+    use crate::service::ClientIoMessage;
 
     /// A mode for verifying blocks.
     pub struct Blocks;
@@ -177,7 +177,7 @@ pub mod blocks {
     impl Unverified {
         /// Create an `Unverified` from raw bytes.
         pub fn new(bytes: Bytes) -> Self {
-            use views::BlockView;
+            use crate::views::BlockView;
 
             let header = BlockView::new(&bytes).header();
             Unverified {

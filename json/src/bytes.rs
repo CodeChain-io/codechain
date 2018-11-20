@@ -100,7 +100,7 @@ impl<'a> Visitor<'a> for BytesVisitor {
 
 #[cfg(test)]
 mod test {
-    use bytes::Bytes;
+    use crate::bytes::Bytes;
     use serde_json;
 
     #[test]

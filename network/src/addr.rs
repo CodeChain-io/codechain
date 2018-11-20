@@ -23,7 +23,7 @@ use std::str::FromStr;
 
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
-use super::NodeId;
+use crate::NodeId;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct SocketAddr {

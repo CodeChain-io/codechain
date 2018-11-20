@@ -21,11 +21,11 @@ use ctypes::BlockNumber;
 use primitives::{Bytes, H256};
 
 use self::validator_list::ValidatorList;
-use super::super::client::EngineClient;
-use super::super::codechain_machine::CodeChainMachine;
-use super::super::error::Error;
-use super::super::header::Header;
 use super::EpochChange;
+use crate::client::EngineClient;
+use crate::codechain_machine::CodeChainMachine;
+use crate::error::Error;
+use crate::header::Header;
 
 pub mod validator_list;
 

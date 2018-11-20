@@ -18,7 +18,7 @@ use std::result;
 
 use secp256k1::{ecdh, key};
 
-use super::{Error, Private, Public, Secret, SECP256K1};
+use crate::{Error, Private, Public, Secret, SECP256K1};
 
 pub fn exchange(public: &Public, private: &Private) -> result::Result<Secret, Error> {
     let public = {
@@ -36,8 +36,8 @@ pub fn exchange(public: &Public, private: &Private) -> result::Result<Secret, Er
 
 #[cfg(test)]
 mod tests {
-    use super::super::{Generator, KeyPair, Random};
     use super::exchange;
+    use crate::{Generator, KeyPair, Random};
 
     #[test]
     fn exchange_makes_same_private_key() {

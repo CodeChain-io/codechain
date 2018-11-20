@@ -21,7 +21,7 @@ use std::sync::Arc;
 use cio::IoError;
 use time::Duration;
 
-use super::NodeId;
+use crate::NodeId;
 pub use ctimer::{TimeoutHandler, TimerScheduleError, TimerToken};
 
 #[derive(Debug)]

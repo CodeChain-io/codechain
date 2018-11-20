@@ -20,10 +20,10 @@ use ckey::Address;
 use cmerkle::{Result as TrieResult, TrieDB, TrieMut};
 use primitives::H256;
 
-use super::super::{
+use super::WriteBack;
+use crate::{
     Account, ActionData, Metadata, MetadataAddress, RegularAccount, RegularAccountAddress, Shard, ShardAddress,
 };
-use super::WriteBack;
 
 pub struct TopCache {
     account: WriteBack<Account>,

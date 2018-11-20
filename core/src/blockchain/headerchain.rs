@@ -24,13 +24,13 @@ use parking_lot::RwLock;
 use primitives::{Bytes, H256};
 use rlp_compress::{blocks_swapper, compress, decompress};
 
-use super::super::db::{self, CacheUpdatePolicy, Readable, Writable};
-use super::super::encoded;
-use super::super::header::Header;
-use super::super::views::HeaderView;
 use super::block_info::BlockLocation;
 use super::extras::BlockDetails;
 use super::route::tree_route;
+use crate::db::{self, CacheUpdatePolicy, Readable, Writable};
+use crate::encoded;
+use crate::header::Header;
+use crate::views::HeaderView;
 
 const BEST_HEADER_KEY: &[u8] = b"best-header";
 

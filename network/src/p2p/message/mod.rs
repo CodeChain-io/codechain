@@ -27,7 +27,7 @@ pub use self::handshake::Message as HandshakeMessage;
 pub use self::message::Message;
 pub use self::negotiation::{Body as NegotiationBody, Message as NegotiationMessage};
 pub use self::signed_message::SignedMessage;
-pub use super::super::session::Nonce;
+pub use crate::session::Nonce;
 
 pub type Version = u64;
 pub type ProtocolId = u64;

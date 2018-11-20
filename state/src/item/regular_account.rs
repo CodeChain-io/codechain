@@ -18,7 +18,7 @@ use ckey::{public_to_address, Address, Public};
 use primitives::H256;
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
-use super::super::CacheableItem;
+use crate::CacheableItem;
 
 #[derive(Clone, Debug)]
 pub struct RegularAccount {

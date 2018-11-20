@@ -19,8 +19,8 @@ use ckey::NetworkId;
 use ctypes::transaction::{AssetOutPoint, AssetTransferInput, Transaction};
 use primitives::{H160, H256};
 
-use executor::{execute, ChainTimeInfo, Config, RuntimeError, ScriptResult};
-use instruction::Instruction;
+use crate::executor::{execute, ChainTimeInfo, Config, RuntimeError, ScriptResult};
+use crate::instruction::Instruction;
 
 #[cfg(test)]
 pub struct TestClient {

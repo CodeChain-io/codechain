@@ -23,7 +23,7 @@ use mio::net::UdpSocket;
 use mio::{Poll, PollOpt, Ready, Token};
 use rlp::{Decodable, DecoderError, Encodable, UntrustedRlp};
 
-use super::super::SocketAddr;
+use crate::SocketAddr;
 
 #[derive(Debug)]
 pub enum Error {

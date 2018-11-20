@@ -14,9 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use decoder::{decode, DecoderError};
-use instruction::Instruction;
-use opcode;
+use crate::decoder::{decode, DecoderError};
+use crate::instruction::Instruction;
+use crate::opcode;
 
 macro_rules! test_no_argument_opcode {
     ($opcode:ident, $instruction:ident) => {
