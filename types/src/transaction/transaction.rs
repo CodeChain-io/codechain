@@ -1444,6 +1444,54 @@ mod tests {
     }
 
     #[test]
+    fn encode_and_decode_transfer_transaction_with_order() {
+        let tx = Transaction::AssetTransfer {
+            network_id: NetworkId::default(),
+            burns: vec![],
+            inputs: vec![AssetTransferInput {
+                prev_out: AssetOutPoint {
+                    transaction_hash: H256::random(),
+                    index: 0,
+                    asset_type: H256::random(),
+                    amount: 30,
+                },
+                timelock: None,
+                lock_script: vec![0x30, 0x01],
+                unlock_script: vec![],
+            }],
+            outputs: vec![AssetTransferOutput {
+                lock_script_hash: H160::random(),
+                parameters: vec![vec![1]],
+                asset_type: H256::random(),
+                amount: 30,
+            }],
+            orders: vec![OrderOnTransfer {
+                order: Order {
+                    asset_type_from: H256::random(),
+                    asset_type_to: H256::random(),
+                    asset_type_fee: H256::random(),
+                    asset_amount_from: 10,
+                    asset_amount_to: 10,
+                    asset_amount_fee: 0,
+                    origin_outputs: vec![AssetOutPoint {
+                        transaction_hash: H256::random(),
+                        index: 0,
+                        asset_type: H256::random(),
+                        amount: 30,
+                    }],
+                    expiration: 10,
+                    lock_script_hash: H160::random(),
+                    parameters: vec![vec![1]],
+                },
+                spent_amount: 10,
+                input_indices: vec![0],
+                output_indices: vec![0],
+            }],
+        };
+        rlp_encode_and_decode_test!(tx);
+    }
+
+    #[test]
     fn verify_wrap_ccc_transaction_should_fail() {
         let tx_zero_amount = InnerTransaction::AssetWrapCCC {
             network_id: NetworkId::default(),
@@ -1492,6 +1540,872 @@ mod tests {
             },
         };
         assert_eq!(tx_invalid_asset_type.verify(), Err(Error::InvalidAssetType(invalid_asset_type)));
+    }
+
+    #[test]
+    fn verify_transfer_transaction_with_order() {
+        let asset_type_a = H256::random();
+        let asset_type_b = H256::random();
+        let lock_script_hash = H160::random();
+        let parameters = vec![vec![1]];
+        let origin_output = AssetOutPoint {
+            transaction_hash: H256::random(),
+            index: 0,
+            asset_type: asset_type_a,
+            amount: 30,
+        };
+        let order = Order {
+            asset_type_from: asset_type_a,
+            asset_type_to: asset_type_b,
+            asset_type_fee: H256::zero(),
+            asset_amount_from: 30,
+            asset_amount_to: 10,
+            asset_amount_fee: 0,
+            origin_outputs: vec![origin_output.clone()],
+            expiration: 10,
+            lock_script_hash,
+            parameters: parameters.clone(),
+        };
+
+        let tx = Transaction::AssetTransfer {
+            network_id: NetworkId::default(),
+            burns: vec![],
+            inputs: vec![
+                AssetTransferInput {
+                    prev_out: origin_output,
+                    timelock: None,
+                    lock_script: vec![0x30, 0x01],
+                    unlock_script: vec![],
+                },
+                AssetTransferInput {
+                    prev_out: AssetOutPoint {
+                        transaction_hash: H256::random(),
+                        index: 0,
+                        asset_type: asset_type_b,
+                        amount: 10,
+                    },
+                    timelock: None,
+                    lock_script: vec![0x30, 0x01],
+                    unlock_script: vec![],
+                },
+            ],
+            outputs: vec![
+                AssetTransferOutput {
+                    lock_script_hash,
+                    parameters: parameters.clone(),
+                    asset_type: asset_type_b,
+                    amount: 10,
+                },
+                AssetTransferOutput {
+                    lock_script_hash,
+                    parameters: vec![],
+                    asset_type: asset_type_a,
+                    amount: 30,
+                },
+            ],
+            orders: vec![OrderOnTransfer {
+                order,
+                spent_amount: 30,
+                input_indices: vec![0],
+                output_indices: vec![0],
+            }],
+        };
+        assert_eq!(tx.verify(), Ok(()));
+    }
+
+    #[test]
+    fn verify_partial_fill_transfer_transaction_with_order() {
+        let asset_type_a = H256::random();
+        let asset_type_b = H256::random();
+        let asset_type_c = H256::random();
+        let lock_script_hash = H160::random();
+        let parameters = vec![vec![1]];
+
+        let origin_output_1 = AssetOutPoint {
+            transaction_hash: H256::random(),
+            index: 0,
+            asset_type: asset_type_a,
+            amount: 40,
+        };
+        let origin_output_2 = AssetOutPoint {
+            transaction_hash: H256::random(),
+            index: 0,
+            asset_type: asset_type_c,
+            amount: 30,
+        };
+
+        let order = Order {
+            asset_type_from: asset_type_a,
+            asset_type_to: asset_type_b,
+            asset_type_fee: asset_type_c,
+            asset_amount_from: 30,
+            asset_amount_to: 20,
+            asset_amount_fee: 30,
+            origin_outputs: vec![origin_output_1.clone(), origin_output_2.clone()],
+            expiration: 10,
+            lock_script_hash,
+            parameters: parameters.clone(),
+        };
+
+        let tx = Transaction::AssetTransfer {
+            network_id: NetworkId::default(),
+            burns: vec![],
+            inputs: vec![
+                AssetTransferInput {
+                    prev_out: origin_output_1,
+                    timelock: None,
+                    lock_script: vec![0x30, 0x01],
+                    unlock_script: vec![],
+                },
+                AssetTransferInput {
+                    prev_out: origin_output_2,
+                    timelock: None,
+                    lock_script: vec![0x30, 0x01],
+                    unlock_script: vec![],
+                },
+                AssetTransferInput {
+                    prev_out: AssetOutPoint {
+                        transaction_hash: H256::random(),
+                        index: 0,
+                        asset_type: asset_type_b,
+                        amount: 10,
+                    },
+                    timelock: None,
+                    lock_script: vec![0x30, 0x01],
+                    unlock_script: vec![],
+                },
+            ],
+            outputs: vec![
+                AssetTransferOutput {
+                    lock_script_hash,
+                    parameters: parameters.clone(),
+                    asset_type: asset_type_a,
+                    amount: 25,
+                },
+                AssetTransferOutput {
+                    lock_script_hash,
+                    parameters: parameters.clone(),
+                    asset_type: asset_type_b,
+                    amount: 10,
+                },
+                AssetTransferOutput {
+                    lock_script_hash,
+                    parameters: parameters.clone(),
+                    asset_type: asset_type_c,
+                    amount: 15,
+                },
+                AssetTransferOutput {
+                    lock_script_hash,
+                    parameters: vec![],
+                    asset_type: asset_type_a,
+                    amount: 15,
+                },
+                AssetTransferOutput {
+                    lock_script_hash,
+                    parameters: vec![],
+                    asset_type: asset_type_c,
+                    amount: 15,
+                },
+            ],
+            orders: vec![OrderOnTransfer {
+                order,
+                spent_amount: 15,
+                input_indices: vec![0, 1],
+                output_indices: vec![0, 1, 2],
+            }],
+        };
+
+        assert_eq!(tx.verify(), Ok(()));
+    }
+
+    #[test]
+    fn verify_inconsistent_transfer_transaction_with_order() {
+        let asset_type_a = H256::random();
+        let asset_type_b = H256::random();
+        let asset_type_c = H256::random();
+        let lock_script_hash = H160::random();
+        let parameters = vec![vec![1]];
+
+        // Case 1: ratio is wrong
+        let origin_output = AssetOutPoint {
+            transaction_hash: H256::random(),
+            index: 0,
+            asset_type: asset_type_a,
+            amount: 30,
+        };
+        let order = Order {
+            asset_type_from: asset_type_a,
+            asset_type_to: asset_type_b,
+            asset_type_fee: H256::zero(),
+            asset_amount_from: 25,
+            asset_amount_to: 10,
+            asset_amount_fee: 0,
+            origin_outputs: vec![origin_output.clone()],
+            expiration: 10,
+            lock_script_hash,
+            parameters: parameters.clone(),
+        };
+
+        let tx = Transaction::AssetTransfer {
+            network_id: NetworkId::default(),
+            burns: vec![],
+            inputs: vec![
+                AssetTransferInput {
+                    prev_out: origin_output,
+                    timelock: None,
+                    lock_script: vec![0x30, 0x01],
+                    unlock_script: vec![],
+                },
+                AssetTransferInput {
+                    prev_out: AssetOutPoint {
+                        transaction_hash: H256::random(),
+                        index: 0,
+                        asset_type: asset_type_b,
+                        amount: 10,
+                    },
+                    timelock: None,
+                    lock_script: vec![0x30, 0x01],
+                    unlock_script: vec![],
+                },
+            ],
+            outputs: vec![
+                AssetTransferOutput {
+                    lock_script_hash,
+                    parameters: parameters.clone(),
+                    asset_type: asset_type_b,
+                    amount: 10,
+                },
+                AssetTransferOutput {
+                    lock_script_hash,
+                    parameters: vec![],
+                    asset_type: asset_type_a,
+                    amount: 30,
+                },
+            ],
+            orders: vec![OrderOnTransfer {
+                order,
+                spent_amount: 25,
+                input_indices: vec![0],
+                output_indices: vec![0],
+            }],
+        };
+        assert_eq!(tx.verify(), Err(Error::InconsistentTransactionInOutWithOrders));
+
+        // Case 2: multiple outputs with same order and asset_type
+        let origin_output_1 = AssetOutPoint {
+            transaction_hash: H256::random(),
+            index: 0,
+            asset_type: asset_type_a,
+            amount: 40,
+        };
+        let origin_output_2 = AssetOutPoint {
+            transaction_hash: H256::random(),
+            index: 0,
+            asset_type: asset_type_c,
+            amount: 40,
+        };
+        let order = Order {
+            asset_type_from: asset_type_a,
+            asset_type_to: asset_type_b,
+            asset_type_fee: asset_type_c,
+            asset_amount_from: 30,
+            asset_amount_to: 10,
+            asset_amount_fee: 30,
+            origin_outputs: vec![origin_output_1.clone(), origin_output_2.clone()],
+            expiration: 10,
+            lock_script_hash,
+            parameters: parameters.clone(),
+        };
+
+        // Case 2-1: asset_type_from
+        let tx = Transaction::AssetTransfer {
+            network_id: NetworkId::default(),
+            burns: vec![],
+            inputs: vec![
+                AssetTransferInput {
+                    prev_out: origin_output_1.clone(),
+                    timelock: None,
+                    lock_script: vec![0x30, 0x01],
+                    unlock_script: vec![],
+                },
+                AssetTransferInput {
+                    prev_out: origin_output_2.clone(),
+                    timelock: None,
+                    lock_script: vec![0x30, 0x01],
+                    unlock_script: vec![],
+                },
+                AssetTransferInput {
+                    prev_out: AssetOutPoint {
+                        transaction_hash: H256::random(),
+                        index: 0,
+                        asset_type: asset_type_b,
+                        amount: 10,
+                    },
+                    timelock: None,
+                    lock_script: vec![0x30, 0x01],
+                    unlock_script: vec![],
+                },
+            ],
+            outputs: vec![
+                AssetTransferOutput {
+                    lock_script_hash,
+                    parameters: parameters.clone(),
+                    asset_type: asset_type_a,
+                    amount: 5,
+                },
+                AssetTransferOutput {
+                    lock_script_hash,
+                    parameters: parameters.clone(),
+                    asset_type: asset_type_a,
+                    amount: 5,
+                },
+                AssetTransferOutput {
+                    lock_script_hash,
+                    parameters: parameters.clone(),
+                    asset_type: asset_type_b,
+                    amount: 10,
+                },
+                AssetTransferOutput {
+                    lock_script_hash,
+                    parameters: parameters.clone(),
+                    asset_type: asset_type_c,
+                    amount: 10,
+                },
+                AssetTransferOutput {
+                    lock_script_hash,
+                    parameters: vec![],
+                    asset_type: asset_type_a,
+                    amount: 30,
+                },
+                AssetTransferOutput {
+                    lock_script_hash,
+                    parameters: vec![],
+                    asset_type: asset_type_c,
+                    amount: 30,
+                },
+            ],
+            orders: vec![OrderOnTransfer {
+                order: order.clone(),
+                spent_amount: 30,
+                input_indices: vec![0, 1],
+                output_indices: vec![0, 1, 2, 3],
+            }],
+        };
+        assert_eq!(tx.verify(), Err(Error::InconsistentTransactionInOutWithOrders));
+
+        // Case 2-2: asset_type_to
+        let tx = Transaction::AssetTransfer {
+            network_id: NetworkId::default(),
+            burns: vec![],
+            inputs: vec![
+                AssetTransferInput {
+                    prev_out: origin_output_1.clone(),
+                    timelock: None,
+                    lock_script: vec![0x30, 0x01],
+                    unlock_script: vec![],
+                },
+                AssetTransferInput {
+                    prev_out: origin_output_2.clone(),
+                    timelock: None,
+                    lock_script: vec![0x30, 0x01],
+                    unlock_script: vec![],
+                },
+                AssetTransferInput {
+                    prev_out: AssetOutPoint {
+                        transaction_hash: H256::random(),
+                        index: 0,
+                        asset_type: asset_type_b,
+                        amount: 10,
+                    },
+                    timelock: None,
+                    lock_script: vec![0x30, 0x01],
+                    unlock_script: vec![],
+                },
+            ],
+            outputs: vec![
+                AssetTransferOutput {
+                    lock_script_hash,
+                    parameters: parameters.clone(),
+                    asset_type: asset_type_a,
+                    amount: 10,
+                },
+                AssetTransferOutput {
+                    lock_script_hash,
+                    parameters: parameters.clone(),
+                    asset_type: asset_type_b,
+                    amount: 5,
+                },
+                AssetTransferOutput {
+                    lock_script_hash,
+                    parameters: parameters.clone(),
+                    asset_type: asset_type_b,
+                    amount: 5,
+                },
+                AssetTransferOutput {
+                    lock_script_hash,
+                    parameters: parameters.clone(),
+                    asset_type: asset_type_c,
+                    amount: 10,
+                },
+                AssetTransferOutput {
+                    lock_script_hash,
+                    parameters: vec![],
+                    asset_type: asset_type_a,
+                    amount: 30,
+                },
+                AssetTransferOutput {
+                    lock_script_hash,
+                    parameters: vec![],
+                    asset_type: asset_type_c,
+                    amount: 30,
+                },
+            ],
+            orders: vec![OrderOnTransfer {
+                order: order.clone(),
+                spent_amount: 30,
+                input_indices: vec![0, 1],
+                output_indices: vec![0, 1, 2, 3],
+            }],
+        };
+        assert_eq!(tx.verify(), Err(Error::InconsistentTransactionInOutWithOrders));
+
+        // Case 2-3: asset_type_from
+        let tx = Transaction::AssetTransfer {
+            network_id: NetworkId::default(),
+            burns: vec![],
+            inputs: vec![
+                AssetTransferInput {
+                    prev_out: origin_output_1.clone(),
+                    timelock: None,
+                    lock_script: vec![0x30, 0x01],
+                    unlock_script: vec![],
+                },
+                AssetTransferInput {
+                    prev_out: origin_output_2.clone(),
+                    timelock: None,
+                    lock_script: vec![0x30, 0x01],
+                    unlock_script: vec![],
+                },
+                AssetTransferInput {
+                    prev_out: AssetOutPoint {
+                        transaction_hash: H256::random(),
+                        index: 0,
+                        asset_type: asset_type_b,
+                        amount: 10,
+                    },
+                    timelock: None,
+                    lock_script: vec![0x30, 0x01],
+                    unlock_script: vec![],
+                },
+            ],
+            outputs: vec![
+                AssetTransferOutput {
+                    lock_script_hash,
+                    parameters: parameters.clone(),
+                    asset_type: asset_type_a,
+                    amount: 10,
+                },
+                AssetTransferOutput {
+                    lock_script_hash,
+                    parameters: parameters.clone(),
+                    asset_type: asset_type_b,
+                    amount: 10,
+                },
+                AssetTransferOutput {
+                    lock_script_hash,
+                    parameters: parameters.clone(),
+                    asset_type: asset_type_c,
+                    amount: 5,
+                },
+                AssetTransferOutput {
+                    lock_script_hash,
+                    parameters: parameters.clone(),
+                    asset_type: asset_type_c,
+                    amount: 5,
+                },
+                AssetTransferOutput {
+                    lock_script_hash,
+                    parameters: vec![],
+                    asset_type: asset_type_a,
+                    amount: 30,
+                },
+                AssetTransferOutput {
+                    lock_script_hash,
+                    parameters: vec![],
+                    asset_type: asset_type_c,
+                    amount: 30,
+                },
+            ],
+            orders: vec![OrderOnTransfer {
+                order: order.clone(),
+                spent_amount: 30,
+                input_indices: vec![0, 1],
+                output_indices: vec![0, 1, 2, 3],
+            }],
+        };
+        assert_eq!(tx.verify(), Err(Error::InconsistentTransactionInOutWithOrders));
+    }
+
+    #[test]
+    fn verify_transfer_transaction_with_two_orders() {
+        let asset_type_a = H256::random();
+        let asset_type_b = H256::random();
+        let lock_script_hash = H160::random();
+        let parameters = vec![vec![1]];
+        let origin_output_1 = AssetOutPoint {
+            transaction_hash: H256::random(),
+            index: 0,
+            asset_type: asset_type_a,
+            amount: 30,
+        };
+        let origin_output_2 = AssetOutPoint {
+            transaction_hash: H256::random(),
+            index: 0,
+            asset_type: asset_type_b,
+            amount: 10,
+        };
+
+        let order_1 = Order {
+            asset_type_from: asset_type_a,
+            asset_type_to: asset_type_b,
+            asset_type_fee: H256::zero(),
+            asset_amount_from: 30,
+            asset_amount_to: 10,
+            asset_amount_fee: 0,
+            origin_outputs: vec![origin_output_1.clone()],
+            expiration: 10,
+            lock_script_hash,
+            parameters: parameters.clone(),
+        };
+        let order_2 = Order {
+            asset_type_from: asset_type_b,
+            asset_type_to: asset_type_a,
+            asset_type_fee: H256::zero(),
+            asset_amount_from: 10,
+            asset_amount_to: 20,
+            asset_amount_fee: 0,
+            origin_outputs: vec![origin_output_2.clone()],
+            expiration: 10,
+            lock_script_hash,
+            parameters: parameters.clone(),
+        };
+
+        let tx = Transaction::AssetTransfer {
+            network_id: NetworkId::default(),
+            burns: vec![],
+            inputs: vec![
+                AssetTransferInput {
+                    prev_out: origin_output_1,
+                    timelock: None,
+                    lock_script: vec![0x30, 0x01],
+                    unlock_script: vec![],
+                },
+                AssetTransferInput {
+                    prev_out: origin_output_2,
+                    timelock: None,
+                    lock_script: vec![0x30, 0x01],
+                    unlock_script: vec![],
+                },
+            ],
+            outputs: vec![
+                AssetTransferOutput {
+                    lock_script_hash,
+                    parameters: parameters.clone(),
+                    asset_type: asset_type_b,
+                    amount: 10,
+                },
+                AssetTransferOutput {
+                    lock_script_hash,
+                    parameters: parameters.clone(),
+                    asset_type: asset_type_a,
+                    amount: 20,
+                },
+                AssetTransferOutput {
+                    lock_script_hash,
+                    parameters: vec![],
+                    asset_type: asset_type_a,
+                    amount: 10,
+                },
+            ],
+            orders: vec![
+                OrderOnTransfer {
+                    order: order_1,
+                    spent_amount: 30,
+                    input_indices: vec![0],
+                    output_indices: vec![0],
+                },
+                OrderOnTransfer {
+                    order: order_2,
+                    spent_amount: 10,
+                    input_indices: vec![1],
+                    output_indices: vec![1],
+                },
+            ],
+        };
+        assert_eq!(tx.verify(), Ok(()));
+    }
+
+    #[test]
+    fn verify_order_success() {
+        let asset_type_from = H256::random();
+        let asset_type_to = H256::random();
+        let asset_type_fee = H256::random();
+        let order = Order {
+            asset_type_from,
+            asset_type_to,
+            asset_type_fee,
+            asset_amount_from: 3,
+            asset_amount_to: 2,
+            asset_amount_fee: 3,
+            origin_outputs: vec![AssetOutPoint {
+                transaction_hash: H256::random(),
+                index: 0,
+                asset_type: asset_type_from,
+                amount: 10,
+            }],
+            expiration: 10,
+            lock_script_hash: H160::random(),
+            parameters: vec![vec![1]],
+        };
+        assert_eq!(order.verify(), Ok(()));
+
+        let order = Order {
+            asset_type_from,
+            asset_type_to,
+            asset_type_fee,
+            asset_amount_from: 3,
+            asset_amount_to: 2,
+            asset_amount_fee: 0,
+            origin_outputs: vec![AssetOutPoint {
+                transaction_hash: H256::random(),
+                index: 0,
+                asset_type: asset_type_from,
+                amount: 10,
+            }],
+            expiration: 10,
+            lock_script_hash: H160::random(),
+            parameters: vec![vec![1]],
+        };
+        assert_eq!(order.verify(), Ok(()));
+
+        let order = Order {
+            asset_type_from,
+            asset_type_to,
+            asset_type_fee,
+            asset_amount_from: 0,
+            asset_amount_to: 0,
+            asset_amount_fee: 0,
+            origin_outputs: vec![AssetOutPoint {
+                transaction_hash: H256::random(),
+                index: 0,
+                asset_type: asset_type_from,
+                amount: 10,
+            }],
+            expiration: 10,
+            lock_script_hash: H160::random(),
+            parameters: vec![vec![1]],
+        };
+        assert_eq!(order.verify(), Ok(()));
+    }
+
+    #[test]
+    fn verify_order_fail() {
+        // 1. origin outputs are invalid
+        let asset_type_from = H256::random();
+        let asset_type_to = H256::random();
+        let asset_type_fee = H256::random();
+        let order = Order {
+            asset_type_from,
+            asset_type_to,
+            asset_type_fee,
+            asset_amount_from: 3,
+            asset_amount_to: 2,
+            asset_amount_fee: 3,
+            origin_outputs: vec![AssetOutPoint {
+                transaction_hash: H256::random(),
+                index: 0,
+                asset_type: H256::random(),
+                amount: 10,
+            }],
+            expiration: 10,
+            lock_script_hash: H160::random(),
+            parameters: vec![vec![1]],
+        };
+        assert_eq!(order.verify(), Err(Error::InvalidOriginOutputs(order.hash())));
+
+        let order = Order {
+            asset_type_from,
+            asset_type_to,
+            asset_type_fee,
+            asset_amount_from: 3,
+            asset_amount_to: 2,
+            asset_amount_fee: 3,
+            origin_outputs: vec![],
+            expiration: 10,
+            lock_script_hash: H160::random(),
+            parameters: vec![vec![1]],
+        };
+        assert_eq!(order.verify(), Err(Error::InvalidOriginOutputs(order.hash())));
+
+        // 2. asset amounts are invalid
+        let order = Order {
+            asset_type_from,
+            asset_type_to,
+            asset_type_fee,
+            asset_amount_from: 3,
+            asset_amount_to: 0,
+            asset_amount_fee: 3,
+            origin_outputs: vec![AssetOutPoint {
+                transaction_hash: H256::random(),
+                index: 0,
+                asset_type: asset_type_from,
+                amount: 10,
+            }],
+            expiration: 10,
+            lock_script_hash: H160::random(),
+            parameters: vec![vec![1]],
+        };
+        assert_eq!(
+            order.verify(),
+            Err(Error::InvalidOrderAssetAmounts {
+                from: 3,
+                to: 0,
+                fee: 3,
+            })
+        );
+
+        let order = Order {
+            asset_type_from,
+            asset_type_to,
+            asset_type_fee,
+            asset_amount_from: 0,
+            asset_amount_to: 2,
+            asset_amount_fee: 3,
+            origin_outputs: vec![AssetOutPoint {
+                transaction_hash: H256::random(),
+                index: 0,
+                asset_type: asset_type_from,
+                amount: 10,
+            }],
+            expiration: 10,
+            lock_script_hash: H160::random(),
+            parameters: vec![vec![1]],
+        };
+        assert_eq!(
+            order.verify(),
+            Err(Error::InvalidOrderAssetAmounts {
+                from: 0,
+                to: 2,
+                fee: 3,
+            })
+        );
+
+        let order = Order {
+            asset_type_from,
+            asset_type_to,
+            asset_type_fee,
+            asset_amount_from: 0,
+            asset_amount_to: 0,
+            asset_amount_fee: 3,
+            origin_outputs: vec![AssetOutPoint {
+                transaction_hash: H256::random(),
+                index: 0,
+                asset_type: asset_type_from,
+                amount: 10,
+            }],
+            expiration: 10,
+            lock_script_hash: H160::random(),
+            parameters: vec![vec![1]],
+        };
+        assert_eq!(
+            order.verify(),
+            Err(Error::InvalidOrderAssetAmounts {
+                from: 0,
+                to: 0,
+                fee: 3,
+            })
+        );
+
+        let order = Order {
+            asset_type_from,
+            asset_type_to,
+            asset_type_fee,
+            asset_amount_from: 3,
+            asset_amount_to: 2,
+            asset_amount_fee: 2,
+            origin_outputs: vec![AssetOutPoint {
+                transaction_hash: H256::random(),
+                index: 0,
+                asset_type: asset_type_from,
+                amount: 10,
+            }],
+            expiration: 10,
+            lock_script_hash: H160::random(),
+            parameters: vec![vec![1]],
+        };
+        assert_eq!(
+            order.verify(),
+            Err(Error::InvalidOrderAssetAmounts {
+                from: 3,
+                to: 2,
+                fee: 2,
+            })
+        );
+
+        // 3. asset types are same
+        let asset_type = H256::random();
+        let order = Order {
+            asset_type_from: asset_type,
+            asset_type_to: asset_type,
+            asset_type_fee,
+            asset_amount_from: 3,
+            asset_amount_to: 2,
+            asset_amount_fee: 3,
+            origin_outputs: vec![AssetOutPoint {
+                transaction_hash: H256::random(),
+                index: 0,
+                asset_type,
+                amount: 10,
+            }],
+            expiration: 10,
+            lock_script_hash: H160::random(),
+            parameters: vec![vec![1]],
+        };
+        assert_eq!(
+            order.verify(),
+            Err(Error::InvalidOrderAssetTypes {
+                from: asset_type,
+                to: asset_type,
+                fee: asset_type_fee,
+            })
+        );
+
+        let asset_type = H256::random();
+        let order = Order {
+            asset_type_from: asset_type,
+            asset_type_to,
+            asset_type_fee: asset_type,
+            asset_amount_from: 3,
+            asset_amount_to: 2,
+            asset_amount_fee: 3,
+            origin_outputs: vec![AssetOutPoint {
+                transaction_hash: H256::random(),
+                index: 0,
+                asset_type,
+                amount: 10,
+            }],
+            expiration: 10,
+            lock_script_hash: H160::random(),
+            parameters: vec![vec![1]],
+        };
+        assert_eq!(
+            order.verify(),
+            Err(Error::InvalidOrderAssetTypes {
+                from: asset_type,
+                to: asset_type_to,
+                fee: asset_type,
+            })
+        );
     }
 
     #[test]
