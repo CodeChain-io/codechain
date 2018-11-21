@@ -20,6 +20,7 @@ use ccore::{
     AssetClient, BlockId, EngineInfo, ExecuteClient, MinerService, MiningBlockChainClient, RegularKey, RegularKeyOwner,
     Shard, SignedParcel, UnverifiedParcel,
 };
+use cjson::bytes::Bytes;
 use cjson::uint::Uint;
 use ckey::{public_to_address, NetworkId, PlatformAddress, Public};
 use cstate::{AssetScheme, AssetSchemeAddress, OwnedAsset};
@@ -33,7 +34,7 @@ use jsonrpc_core::Result;
 
 use super::super::errors;
 use super::super::traits::Chain;
-use super::super::types::{Block, BlockNumberAndHash, Bytes, Parcel, Transaction};
+use super::super::types::{Block, BlockNumberAndHash, Parcel, Transaction};
 
 pub struct ChainClient<C, M>
 where
