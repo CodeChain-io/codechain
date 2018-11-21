@@ -80,8 +80,8 @@ impl SimpleSecretStore for KeyStore {
         self.store.has_account(account)
     }
 
-    fn remove_account(&self, account: &Address, password: &Password) -> Result<(), Error> {
-        self.store.remove_account(account, password)
+    fn remove_account(&self, account: &Address) -> Result<(), Error> {
+        self.store.remove_account(account)
     }
 
     fn change_password(
@@ -343,14 +343,14 @@ impl SimpleSecretStore for KeyMultiStore {
         }
     }
 
-    fn remove_account(&self, account_ref: &Address, password: &Password) -> Result<(), Error> {
-        let accounts = self.get_matching(account_ref, password)?;
+    fn remove_account(&self, account_ref: &Address) -> Result<(), Error> {
+        let accounts = self.get_accounts(account_ref)?;
 
         for account in accounts {
-            return self.remove_safe_account(account_ref, &account)
+            self.remove_safe_account(account_ref, &account)?;
         }
 
-        Err(Error::InvalidPassword)
+        return Ok(())
     }
 
     fn change_password(
@@ -451,7 +451,7 @@ mod tests {
         let address = store.insert_account(private_key.clone(), &"test".into()).unwrap();
 
         // when
-        store.remove_account(&address, &"test".into()).unwrap();
+        store.remove_account(&address).unwrap();
 
         // then
         assert_eq!(store.accounts().unwrap().len(), 0, "Should remove account.");
@@ -484,10 +484,8 @@ mod tests {
         assert_eq!(address, address2);
 
         // when
-        assert!(store.remove_account(&address, &"test".into()).is_ok(), "First password should work.");
         assert_eq!(store.accounts().unwrap().len(), 1);
-
-        assert!(store.remove_account(&address, &"xyz".into()).is_ok(), "Second password should work too.");
+        assert!(store.remove_account(&address).is_ok());
         assert_eq!(store.accounts().unwrap().len(), 0);
     }
 
