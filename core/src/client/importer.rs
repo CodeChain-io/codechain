@@ -119,7 +119,7 @@ impl Importer {
                     } else {
                         imported_blocks.push(header.hash());
 
-                        let route = self.commit_block(closed_block, &block.bytes, client);
+                        let route = self.commit_block(closed_block, &header, &block.bytes, client);
                         import_results.push(route);
                     }
                 } else {
@@ -196,16 +196,12 @@ impl Importer {
     // it is for reconstructing the state transition.
     //
     // The header passed is from the original block data and is sealed.
-    pub fn commit_block<B>(&self, block: B, block_data: &[u8], client: &Client) -> ImportRoute
+    pub fn commit_block<B>(&self, block: B, header: &Header, block_data: &[u8], client: &Client) -> ImportRoute
     where
         B: IsBlock, {
-        let (hash, number) = {
-            let header = block.header();
-            let hash = header.hash();
-            let number = header.number();
+        let hash = header.hash();
+        let number = header.number();
 
-            (hash, number)
-        };
         let chain = client.block_chain();
 
         // Commit results
