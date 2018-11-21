@@ -603,8 +603,9 @@ impl ImportSealedBlock for Client {
 
             let number = block.header().number();
             let block_data = block.rlp_bytes();
+            let header = block.header().clone();
 
-            let route = self.importer.commit_block(block, &block_data, self);
+            let route = self.importer.commit_block(block, &header, &block_data, self);
             ctrace!(CLIENT, "Imported sealed block #{} ({})", number, h);
             route
         };
