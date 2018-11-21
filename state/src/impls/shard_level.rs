@@ -709,7 +709,7 @@ impl<'db> ShardStateView for ReadOnlyShardLevelState<'db> {
 
 #[cfg(test)]
 mod tests {
-    use ctypes::transaction::AssetOutPoint;
+    use ctypes::transaction::{AssetOutPoint, Order, OrderOnTransfer};
 
     use super::*;
     use crate::tests::helpers::{get_temp_state_db, get_test_client};
@@ -1382,6 +1382,191 @@ mod tests {
             Ok(Invoice::Failure(TransactionError::InvalidAssetType(asset_type2).into())),
             state.apply(&transfer.clone().into(), &sender, &[sender], &[], &get_test_client())
         )
+    }
+
+    fn mint_for_transfer<'d>(
+        state: &mut ShardLevelState<'d>,
+        shard_id: u16,
+        sender: Address,
+        metadata: String,
+        amount: u64,
+    ) -> AssetOutPoint {
+        let lock_script_hash = H160::from("b042ad154a3359d276835c903587ebafefea22af");
+        let approver = None;
+        let mint = Transaction::AssetMint {
+            network_id: "tc".into(),
+            shard_id,
+            metadata: metadata.clone(),
+            output: AssetMintOutput {
+                lock_script_hash,
+                parameters: vec![],
+                amount: Some(amount),
+            },
+            approver,
+        };
+        let mint_hash = mint.hash();
+        assert_eq!(
+            Ok(Invoice::Success),
+            state.apply(&mint.clone().into(), &sender, &[sender], &[], &get_test_client())
+        );
+
+        let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id);
+        let asset_scheme = state.asset_scheme(&asset_scheme_address);
+        let asset_type = asset_scheme_address.into();
+
+        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), amount, approver))), asset_scheme);
+
+        let asset_address = OwnedAssetAddress::new(mint_hash, 0, shard_id);
+        let asset = state.asset(&asset_address);
+        assert_eq!(Ok(Some(OwnedAsset::new(asset_type, lock_script_hash, vec![], amount, None))), asset);
+
+        AssetOutPoint {
+            transaction_hash: mint_hash,
+            index: 0,
+            asset_type,
+            amount: 30,
+        }
+    }
+
+    #[test]
+    fn mint_three_times_and_transfer_with_order() {
+        let network_id = "tc".into();
+        let shard_id = 0;
+        let sender = address();
+        let mut state_db = RefCell::new(get_temp_state_db());
+        let mut shard_cache = ShardCache::default();
+        let mut state = get_temp_shard_state(&mut state_db, shard_id, &mut shard_cache);
+
+        let mint_output_1 = mint_for_transfer(&mut state, shard_id, sender, "metadata1".to_string(), 30);
+        let mint_output_2 = mint_for_transfer(&mut state, shard_id, sender, "metadata2".to_string(), 30);
+        let mint_output_3 = mint_for_transfer(&mut state, shard_id, sender, "metadata3".to_string(), 30);
+        let asset_type_1 = mint_output_1.asset_type;
+        let asset_type_2 = mint_output_2.asset_type;
+        let asset_type_3 = mint_output_3.asset_type;
+
+        let lock_script_hash = H160::from("b042ad154a3359d276835c903587ebafefea22af");
+        let order = Order {
+            asset_type_from: asset_type_1,
+            asset_type_to: asset_type_2,
+            asset_type_fee: asset_type_3,
+            asset_amount_from: 20,
+            asset_amount_to: 10,
+            asset_amount_fee: 20,
+            origin_outputs: vec![mint_output_1.clone(), mint_output_3.clone()],
+            expiration: 10,
+            lock_script_hash,
+            parameters: vec![],
+        };
+        let order_consumed = order.consume(20);
+        let order_consumed_hash = order_consumed.hash();
+
+        let transfer = Transaction::AssetTransfer {
+            network_id,
+            burns: vec![],
+            inputs: vec![
+                AssetTransferInput {
+                    prev_out: mint_output_1.clone(),
+                    timelock: None,
+                    lock_script: vec![0x30, 0x01],
+                    unlock_script: vec![],
+                },
+                AssetTransferInput {
+                    prev_out: mint_output_2.clone(),
+                    timelock: None,
+                    lock_script: vec![0x30, 0x01],
+                    unlock_script: vec![],
+                },
+                AssetTransferInput {
+                    prev_out: mint_output_3.clone(),
+                    timelock: None,
+                    lock_script: vec![0x30, 0x01],
+                    unlock_script: vec![],
+                },
+            ],
+            outputs: vec![
+                AssetTransferOutput {
+                    lock_script_hash,
+                    parameters: vec![],
+                    asset_type: asset_type_1,
+                    amount: 10,
+                },
+                AssetTransferOutput {
+                    lock_script_hash,
+                    parameters: vec![],
+                    asset_type: asset_type_2,
+                    amount: 10,
+                },
+                AssetTransferOutput {
+                    lock_script_hash,
+                    parameters: vec![],
+                    asset_type: asset_type_3,
+                    amount: 10,
+                },
+                AssetTransferOutput {
+                    lock_script_hash,
+                    parameters: vec![],
+                    asset_type: asset_type_1,
+                    amount: 20,
+                },
+                AssetTransferOutput {
+                    lock_script_hash,
+                    parameters: vec![],
+                    asset_type: asset_type_2,
+                    amount: 20,
+                },
+                AssetTransferOutput {
+                    lock_script_hash,
+                    parameters: vec![],
+                    asset_type: asset_type_3,
+                    amount: 20,
+                },
+            ],
+            orders: vec![OrderOnTransfer {
+                order,
+                spent_amount: 20,
+                input_indices: vec![0, 2],
+                output_indices: vec![0, 1, 2],
+            }],
+        };
+        let transfer_hash = transfer.hash();
+
+        assert_eq!(
+            Ok(Invoice::Success),
+            state.apply(&transfer.clone().into(), &sender, &[sender], &[], &get_test_client())
+        );
+
+        let asset0_address = OwnedAssetAddress::new(transfer_hash, 0, shard_id);
+        let asset0 = state.asset(&asset0_address);
+        assert_eq!(
+            Ok(Some(OwnedAsset::new(asset_type_1, lock_script_hash, vec![], 10, Some(order_consumed_hash)))),
+            asset0
+        );
+
+        let asset1_address = OwnedAssetAddress::new(transfer_hash, 1, shard_id);
+        let asset1 = state.asset(&asset1_address);
+        assert_eq!(
+            Ok(Some(OwnedAsset::new(asset_type_2, lock_script_hash, vec![], 10, Some(order_consumed_hash)))),
+            asset1
+        );
+
+        let asset2_address = OwnedAssetAddress::new(transfer_hash, 2, shard_id);
+        let asset2 = state.asset(&asset2_address);
+        assert_eq!(
+            Ok(Some(OwnedAsset::new(asset_type_3, lock_script_hash, vec![], 10, Some(order_consumed_hash)))),
+            asset2
+        );
+
+        let asset3_address = OwnedAssetAddress::new(transfer_hash, 3, shard_id);
+        let asset3 = state.asset(&asset3_address);
+        assert_eq!(Ok(Some(OwnedAsset::new(asset_type_1, lock_script_hash, vec![], 20, None))), asset3);
+
+        let asset4_address = OwnedAssetAddress::new(transfer_hash, 4, shard_id);
+        let asset4 = state.asset(&asset4_address);
+        assert_eq!(Ok(Some(OwnedAsset::new(asset_type_2, lock_script_hash, vec![], 20, None))), asset4);
+
+        let asset5_address = OwnedAssetAddress::new(transfer_hash, 5, shard_id);
+        let asset5 = state.asset(&asset5_address);
+        assert_eq!(Ok(Some(OwnedAsset::new(asset_type_3, lock_script_hash, vec![], 20, None))), asset5);
     }
 
     #[test]
