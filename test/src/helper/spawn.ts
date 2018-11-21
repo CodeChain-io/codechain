@@ -36,6 +36,7 @@ import { wait } from "./promise";
 import { P2PKHBurn } from "codechain-sdk/lib/key/P2PKHBurn";
 import { P2PKH } from "codechain-sdk/lib/key/P2PKH";
 import { faucetAddress, faucetSecret } from "./constants";
+import { ncp } from "ncp";
 
 const projectRoot = `${__dirname}/../../..`;
 
@@ -105,7 +106,12 @@ export default class CodeChain {
     }
 
     constructor(
-        options: { chain?: ChainType; argv?: string[]; logFlag?: boolean } = {}
+        options: {
+            chain?: ChainType;
+            argv?: string[];
+            logFlag?: boolean;
+            additionalKeysPath?: string;
+        } = {}
     ) {
         const { chain, argv, logFlag } = options;
         this._id = CodeChain.idCounter++;
@@ -116,6 +122,13 @@ export default class CodeChain {
         this._dbPath = mkdtempSync(`${projectRoot}/db/`);
         this._ipcPath = `/tmp/jsonrpc.${this.id}.ipc`;
         this._keysPath = mkdtempSync(`${projectRoot}/keys/`);
+        if (options.additionalKeysPath) {
+            ncp(options.additionalKeysPath, this._keysPath, err => {
+                if (err) {
+                    console.error(err);
+                }
+            });
+        }
         this._localKeyStorePath = `${this.keysPath}/keystore.db`;
         this._logFlag = logFlag || false;
         this._logFile = `${new Date().toISOString().replace(/[-:.]/g, "_")}.${
