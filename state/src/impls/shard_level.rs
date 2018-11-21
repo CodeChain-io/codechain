@@ -1255,7 +1255,6 @@ mod tests {
                 amount: 30,
             }],
         };
-        let transfer_hash = transfer.hash();
 
         assert_eq!(
             Ok(Invoice::Failure(TransactionError::InvalidAssetType(asset_type2).into())),
