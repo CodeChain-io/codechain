@@ -16,7 +16,6 @@
 
 mod action;
 mod block;
-mod bytes;
 mod parcel;
 mod transaction;
 mod unsigned_parcel;
@@ -27,7 +26,6 @@ use primitives::H256;
 pub use self::action::Action;
 pub use self::block::Block;
 pub use self::block::BlockNumberAndHash;
-pub use self::bytes::Bytes;
 pub use self::parcel::Parcel;
 pub use self::transaction::Transaction;
 pub use self::unsigned_parcel::UnsignedParcel;

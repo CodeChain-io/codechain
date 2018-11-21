@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use cjson::bytes::Bytes;
 use cjson::uint::Uint;
 use ckey::{NetworkId, PlatformAddress, Public};
 use cstate::{AssetScheme, OwnedAsset};
@@ -23,7 +24,7 @@ use primitives::H256;
 
 use jsonrpc_core::Result;
 
-use super::super::types::{Block, BlockNumberAndHash, Bytes, Parcel, Transaction};
+use super::super::types::{Block, BlockNumberAndHash, Parcel, Transaction};
 
 build_rpc_trait! {
     pub trait Chain {
