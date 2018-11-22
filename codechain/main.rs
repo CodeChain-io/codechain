@@ -63,8 +63,8 @@ mod subcommand;
 
 use app_dirs::AppInfo;
 
-use self::run_node::run_node;
-use self::subcommand::run_subcommand;
+use crate::run_node::run_node;
+use crate::subcommand::run_subcommand;
 
 pub const APP_INFO: AppInfo = AppInfo {
     name: "codechain",

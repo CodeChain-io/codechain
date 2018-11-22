@@ -17,9 +17,9 @@
 use ccrypto;
 use ckey::{sign, Address, KeyPair, Message, Password, Public, Signature};
 
-use super::super::account::Version;
-use super::super::{json, Error};
 use super::crypto::Crypto;
+use crate::account::Version;
+use crate::{json, Error};
 
 /// Account representation.
 #[derive(Debug, PartialEq, Clone)]
@@ -145,8 +145,8 @@ mod tests {
     use std::str::FromStr;
 
     use ckey::{verify, Generator, Random};
-    use json;
-    use json::{Aes128Ctr, Cipher, Crypto, Kdf, KeyFile, Scrypt, Uuid};
+    use crate::json;
+    use crate::json::{Aes128Ctr, Cipher, Crypto, Kdf, KeyFile, Scrypt, Uuid};
 
     use super::*;
 

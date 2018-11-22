@@ -19,9 +19,9 @@ mod params;
 use ctypes::machine::{Header, LiveBlock, Parcels, WithBalances};
 
 use self::params::SoloParams;
-use super::super::consensus::EngineType;
-use super::super::SignedParcel;
 use super::{ConsensusEngine, Seal};
+use crate::consensus::EngineType;
+use crate::SignedParcel;
 
 /// A consensus engine which does not provide any consensus mechanism.
 pub struct Solo<M> {
@@ -78,10 +78,10 @@ where
 mod tests {
     use primitives::H520;
 
-    use super::super::super::block::{IsBlock, OpenBlock};
-    use super::super::super::header::Header;
-    use super::super::super::scheme::Scheme;
-    use super::super::super::tests::helpers::get_temp_state_db;
+    use crate::block::{IsBlock, OpenBlock};
+    use crate::header::Header;
+    use crate::scheme::Scheme;
+    use crate::tests::helpers::get_temp_state_db;
 
     use super::*;
 

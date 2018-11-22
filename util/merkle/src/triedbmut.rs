@@ -20,7 +20,7 @@ use hashdb::DBValue;
 use hashdb::HashDB;
 use primitives::H256;
 
-use super::{Trie, TrieError, TrieMut};
+use crate::{Trie, TrieError, TrieMut};
 use nibbleslice::NibbleSlice;
 use node::Node as RlpNode;
 use triedb::TrieDB;
@@ -49,7 +49,7 @@ impl<'a> TrieDBMut<'a> {
 
     /// Create a new trie with the backing database `db` and `root.
     /// Returns an error if `root` does not exist.
-    pub fn from_existing(db: &'a mut HashDB, root: &'a mut H256) -> super::Result<Self> {
+    pub fn from_existing(db: &'a mut HashDB, root: &'a mut H256) -> crate::Result<Self> {
         if !db.contains(root) {
             return Err(Box::new(TrieError::InvalidStateRoot(*root)))
         }
@@ -67,7 +67,7 @@ impl<'a> TrieDBMut<'a> {
         insert_value: &[u8],
         cur_node_hash: Option<H256>,
         old_val: &mut Option<DBValue>,
-    ) -> super::Result<H256> {
+    ) -> crate::Result<H256> {
         match cur_node_hash {
             Some(hash) => {
                 let node_rlp = self.db.get(&hash).ok_or_else(|| Box::new(TrieError::IncompleteDatabase(hash)))?;
@@ -177,7 +177,7 @@ impl<'a> TrieDBMut<'a> {
         path: NibbleSlice,
         cur_node_hash: Option<H256>,
         old_val: &mut Option<DBValue>,
-    ) -> super::Result<Option<H256>> {
+    ) -> crate::Result<Option<H256>> {
         match cur_node_hash {
             Some(hash) => {
                 let node_rlp = self.db.get(&hash).ok_or_else(|| Box::new(TrieError::IncompleteDatabase(hash)))?;
@@ -306,13 +306,13 @@ impl<'a> TrieMut for TrieDBMut<'a> {
         *self.root == BLAKE_NULL_RLP
     }
 
-    fn get(&self, key: &[u8]) -> super::Result<Option<DBValue>> {
+    fn get(&self, key: &[u8]) -> crate::Result<Option<DBValue>> {
         let t = TrieDB::new(self.db, self.root)?;
 
         t.get(key)
     }
 
-    fn insert(&mut self, key: &[u8], value: &[u8]) -> super::Result<Option<DBValue>> {
+    fn insert(&mut self, key: &[u8], value: &[u8]) -> crate::Result<Option<DBValue>> {
         let path = blake256(key);
         let mut old_val = None;
         let cur_hash = *self.root;
@@ -321,7 +321,7 @@ impl<'a> TrieMut for TrieDBMut<'a> {
         Ok(old_val)
     }
 
-    fn remove(&mut self, key: &[u8]) -> super::Result<Option<DBValue>> {
+    fn remove(&mut self, key: &[u8]) -> crate::Result<Option<DBValue>> {
         let path = blake256(key);
         let mut old_val = None;
         let cur_hash = *self.root;
@@ -338,10 +338,10 @@ impl<'a> TrieMut for TrieDBMut<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::super::triehash::trie_root;
-    use super::super::TrieMut;
     use super::*;
     use ccrypto::BLAKE_NULL_RLP;
+    use crate::triehash::trie_root;
+    use crate::TrieMut;
     use memorydb::*;
     use primitives::bytes::ToPretty;
     use standardmap::*;

@@ -16,7 +16,7 @@
 
 use lru_cache::LruCache as LruCacheImpl;
 
-use super::super::CacheableItem;
+use crate::CacheableItem;
 
 pub struct LruCache<Item: CacheableItem> {
     cache: LruCacheImpl<Item::Address, Item>,

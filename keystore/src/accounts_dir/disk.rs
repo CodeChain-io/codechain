@@ -21,9 +21,9 @@ use std::{fs, io};
 
 use time;
 
-use super::super::json::Uuid;
-use super::super::{json, Error, SafeAccount};
 use super::KeyDirectory;
+use crate::json::Uuid;
+use crate::{json, Error, SafeAccount};
 
 const IGNORED_FILES: &'static [&'static str] = &["thumbs.db"];
 

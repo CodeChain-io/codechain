@@ -22,8 +22,8 @@ use kvdb::{DBTransaction, KeyValueDB};
 use parking_lot::RwLock;
 use primitives::H256;
 
-use super::super::db::{self, CacheUpdatePolicy, Readable, Writable};
 use super::extras::ParcelAddress;
+use crate::db::{self, CacheUpdatePolicy, Readable, Writable};
 
 /// Structure providing fast access to blockchain data.
 ///

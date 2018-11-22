@@ -21,8 +21,8 @@ use std::sync::{Arc, Weak};
 use parking_lot::Mutex;
 use time::Duration;
 
-use super::super::extension::{Api, Extension, Result, TimerToken};
-use super::super::NodeId;
+use crate::extension::{Api, Extension, Result, TimerToken};
+use crate::NodeId;
 
 #[derive(Debug, Ord, PartialOrd, Eq, PartialEq)]
 pub enum Call {

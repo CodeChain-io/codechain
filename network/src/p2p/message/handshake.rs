@@ -22,7 +22,7 @@ use super::Version;
 use super::ACK_ID;
 use super::SYNC_ID;
 
-use super::super::super::NodeId;
+use crate::NodeId;
 
 #[derive(Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum Message {
@@ -116,8 +116,8 @@ impl Decodable for Message {
 mod tests {
     use rlp::rlp_encode_and_decode_test;
 
-    use super::super::super::super::SocketAddr;
     use super::*;
+    use crate::SocketAddr;
 
     #[test]
     fn protocol_id_of_sync_is_0() {

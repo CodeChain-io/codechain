@@ -28,10 +28,10 @@ use cvm::ChainTimeInfo;
 use primitives::{Bytes, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
-use super::consensus::CodeChainEngine;
-use super::error::{BlockError, Error};
-use super::header::{Header, Seal};
-use super::parcel::{SignedParcel, UnverifiedParcel};
+use crate::consensus::CodeChainEngine;
+use crate::error::{BlockError, Error};
+use crate::header::{Header, Seal};
+use crate::parcel::{SignedParcel, UnverifiedParcel};
 
 /// A block, encoded as it is on the block chain.
 #[derive(Debug, Clone, PartialEq)]
@@ -434,8 +434,8 @@ pub fn enact<C: ChainTimeInfo>(
 
 #[cfg(test)]
 mod tests {
-    use super::super::scheme::Scheme;
-    use super::super::tests::helpers::get_temp_state_db;
+    use crate::scheme::Scheme;
+    use crate::tests::helpers::get_temp_state_db;
 
     use super::*;
 

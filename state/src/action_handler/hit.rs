@@ -20,8 +20,8 @@ use ctypes::invoice::Invoice;
 use primitives::{Bytes, H256};
 use rlp::{self, Decodable, DecoderError, Encodable, UntrustedRlp};
 
-use super::super::{StateResult, TopLevelState, TopState, TopStateView};
 use super::ActionHandler;
+use crate::{StateResult, TopLevelState, TopState, TopStateView};
 
 const ACTION_ID: u8 = 0;
 

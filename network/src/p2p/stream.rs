@@ -25,9 +25,9 @@ use mio::net::TcpStream;
 use mio::{Poll, PollOpt, Ready, Token};
 use rlp::{Decodable, DecoderError, Encodable, UntrustedRlp};
 
-use super::super::session::Session;
-use super::super::SocketAddr;
 use super::SignedMessage;
+use crate::session::Session;
+use crate::SocketAddr;
 
 #[derive(Debug)]
 pub enum Error {

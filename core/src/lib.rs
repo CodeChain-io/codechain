@@ -75,19 +75,19 @@ mod views;
 #[cfg(test)]
 mod tests;
 
-pub use account_provider::{AccountProvider, SignError as AccountProviderError};
-pub use block::Block;
-pub use client::{
+pub use crate::account_provider::{AccountProvider, SignError as AccountProviderError};
+pub use crate::block::Block;
+pub use crate::client::{
     AssetClient, Balance, BlockChainClient, BlockInfo, ChainInfo, ChainNotify, Client, DatabaseClient, EngineClient,
     EngineInfo, ExecuteClient, ImportBlock, MiningBlockChainClient, RegularKey, RegularKeyOwner, Seq, Shard,
     TestBlockChainClient,
 };
-pub use consensus::EngineType;
-pub use db::COL_STATE;
-pub use error::{BlockImportError, Error, ImportError};
-pub use header::{Header, Seal};
-pub use miner::{Miner, MinerOptions, MinerService, Stratum, StratumConfig, StratumError};
-pub use parcel::{LocalizedParcel, SignedParcel, UnverifiedParcel};
-pub use scheme::Scheme;
-pub use service::ClientService;
-pub use types::{BlockId, ParcelId};
+pub use crate::consensus::EngineType;
+pub use crate::db::COL_STATE;
+pub use crate::error::{BlockImportError, Error, ImportError};
+pub use crate::header::{Header, Seal};
+pub use crate::miner::{Miner, MinerOptions, MinerService, Stratum, StratumConfig, StratumError};
+pub use crate::parcel::{LocalizedParcel, SignedParcel, UnverifiedParcel};
+pub use crate::scheme::Scheme;
+pub use crate::service::ClientService;
+pub use crate::types::{BlockId, ParcelId};

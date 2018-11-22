@@ -26,18 +26,18 @@ use parking_lot::RwLock;
 use primitives::H256;
 use rlp::RlpStream;
 
-use super::super::blockchain_info::BlockChainInfo;
-use super::super::consensus::epoch::{PendingTransition as PendingEpochTransition, Transition as EpochTransition};
-use super::super::db::{self, Readable, Writable};
-use super::super::encoded;
-use super::super::parcel::LocalizedParcel;
-use super::super::views::{BlockView, HeaderView};
 use super::block_info::BlockLocation;
 use super::body_db::{BodyDB, BodyProvider};
 use super::extras::{BlockDetails, EpochTransitions, ParcelAddress, TransactionAddress, EPOCH_KEY_PREFIX};
 use super::headerchain::{HeaderChain, HeaderProvider};
 use super::invoice_db::{InvoiceDB, InvoiceProvider};
 use super::route::{tree_route, ImportRoute};
+use crate::blockchain_info::BlockChainInfo;
+use crate::consensus::epoch::{PendingTransition as PendingEpochTransition, Transition as EpochTransition};
+use crate::db::{self, Readable, Writable};
+use crate::encoded;
+use crate::parcel::LocalizedParcel;
+use crate::views::{BlockView, HeaderView};
 
 const BEST_BLOCK_KEY: &[u8] = b"best-block";
 

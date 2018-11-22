@@ -16,8 +16,8 @@
 
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
-use super::super::super::session::Session;
 use super::Signature;
+use crate::session::Session;
 
 #[derive(Debug, PartialEq)]
 pub struct SignedMessage {

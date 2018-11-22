@@ -19,7 +19,7 @@ use std::sync::Arc;
 use ckey::{Address, Password, Signature};
 use primitives::H256;
 
-use super::super::account_provider::{AccountProvider, SignError};
+use crate::account_provider::{AccountProvider, SignError};
 
 /// Everything that an Engine needs to sign messages.
 pub struct EngineSigner {

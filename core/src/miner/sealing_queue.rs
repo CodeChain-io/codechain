@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use super::super::block::ClosedBlock;
+use crate::block::ClosedBlock;
 
 pub struct SealingQueue {
     /// Not yet being sealed by a miner, but if one asks for work, we'd prefer they do this.
@@ -74,10 +74,10 @@ impl SealingQueue {
 mod tests {
     use ckey::Address;
 
-    use super::super::super::block::{ClosedBlock, OpenBlock};
-    use super::super::super::scheme::Scheme;
-    use super::super::super::tests::helpers::get_temp_state_db;
     use super::SealingQueue;
+    use crate::block::{ClosedBlock, OpenBlock};
+    use crate::scheme::Scheme;
+    use crate::tests::helpers::get_temp_state_db;
 
     const QUEUE_SIZE: usize = 2;
 

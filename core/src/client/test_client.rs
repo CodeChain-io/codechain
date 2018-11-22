@@ -50,22 +50,22 @@ use parking_lot::RwLock;
 use primitives::{Bytes, H256, U256};
 use rlp::*;
 
-use super::super::block::{ClosedBlock, OpenBlock, SealedBlock};
-use super::super::blockchain_info::BlockChainInfo;
-use super::super::client::ImportResult;
-use super::super::client::{
+use crate::block::{ClosedBlock, OpenBlock, SealedBlock};
+use crate::blockchain_info::BlockChainInfo;
+use crate::client::ImportResult;
+use crate::client::{
     AccountData, Balance, BlockChain, BlockChainClient, BlockInfo, BlockProducer, BlockStatus, ChainInfo, ImportBlock,
     ImportSealedBlock, MiningBlockChainClient, ParcelInfo, PrepareOpenBlock, RegularKeyOwner, ReopenBlock, Seq,
     StateOrBlock, TransactionInfo,
 };
-use super::super::db::{COL_STATE, NUM_COLUMNS};
-use super::super::encoded;
-use super::super::error::BlockImportError;
-use super::super::header::Header as BlockHeader;
-use super::super::miner::{Miner, MinerService, ParcelImportResult};
-use super::super::parcel::{LocalizedParcel, SignedParcel};
-use super::super::scheme::Scheme;
-use super::super::types::{BlockId, ParcelId, VerificationQueueInfo as QueueInfo};
+use crate::db::{COL_STATE, NUM_COLUMNS};
+use crate::encoded;
+use crate::error::BlockImportError;
+use crate::header::Header as BlockHeader;
+use crate::miner::{Miner, MinerService, ParcelImportResult};
+use crate::parcel::{LocalizedParcel, SignedParcel};
+use crate::scheme::Scheme;
+use crate::types::{BlockId, ParcelId, VerificationQueueInfo as QueueInfo};
 
 /// Test client.
 pub struct TestBlockChainClient {

@@ -23,13 +23,13 @@ use heapsize::HeapSizeOf;
 use primitives::{Bytes, H256};
 use rlp::UntrustedRlp;
 
-use super::super::blockchain::BlockProvider;
-use super::super::client::{BlockInfo, TransactionInfo};
-use super::super::consensus::CodeChainEngine;
-use super::super::error::{BlockError, Error};
-use super::super::header::Header;
-use super::super::parcel::{SignedParcel, UnverifiedParcel};
-use super::super::views::BlockView;
+use crate::blockchain::BlockProvider;
+use crate::client::{BlockInfo, TransactionInfo};
+use crate::consensus::CodeChainEngine;
+use crate::error::{BlockError, Error};
+use crate::header::Header;
+use crate::parcel::{SignedParcel, UnverifiedParcel};
+use crate::views::BlockView;
 
 /// Preprocessed block data gathered in `verify_block_unordered` call
 pub struct PreverifiedBlock {

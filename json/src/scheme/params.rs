@@ -16,7 +16,7 @@
 
 use ckey::NetworkId;
 
-use super::super::uint::Uint;
+use crate::uint::Uint;
 
 /// Scheme params.
 #[derive(Debug, PartialEq, Deserialize)]
@@ -42,8 +42,8 @@ mod tests {
     use primitives::U256;
     use serde_json;
 
-    use super::super::super::uint::Uint;
     use super::Params;
+    use crate::uint::Uint;
 
     #[test]
     fn params_deserialization() {

@@ -20,7 +20,7 @@ use cmerkle::TrieMut;
 use ctypes::invoice::Invoice;
 use primitives::Bytes;
 
-use super::{StateResult, TopLevelState};
+use crate::{StateResult, TopLevelState};
 
 pub trait ActionHandler: Send + Sync {
     fn init(&self, state: &mut TrieMut) -> StateResult<()>;

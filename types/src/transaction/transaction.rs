@@ -24,9 +24,9 @@ use heapsize::HeapSizeOf;
 use primitives::{Bytes, H160, H256, U128};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
-use super::super::util::tag::Tag;
-use super::super::ShardId;
 use super::error::Error;
+use crate::util::tag::Tag;
+use crate::ShardId;
 
 
 pub trait PartialHashing {

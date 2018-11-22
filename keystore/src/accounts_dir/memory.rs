@@ -20,8 +20,8 @@ use ckey::Address;
 use itertools;
 use parking_lot::RwLock;
 
-use super::super::{Error, SafeAccount};
 use super::KeyDirectory;
+use crate::{Error, SafeAccount};
 
 /// Accounts in-memory storage.
 #[derive(Default)]

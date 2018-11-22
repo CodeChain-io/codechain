@@ -21,12 +21,12 @@ use ctypes::machine::{Machine, WithBalances};
 use ctypes::parcel::{Action, Error as ParcelError};
 use ctypes::transaction::{Error as TransactionError, Timelock, Transaction};
 
-use super::block::{ExecutedBlock, IsBlock};
-use super::client::{BlockInfo, TransactionInfo};
-use super::error::Error;
-use super::header::Header;
-use super::parcel::{SignedParcel, UnverifiedParcel};
-use super::scheme::CommonParams;
+use crate::block::{ExecutedBlock, IsBlock};
+use crate::client::{BlockInfo, TransactionInfo};
+use crate::error::Error;
+use crate::header::Header;
+use crate::parcel::{SignedParcel, UnverifiedParcel};
+use crate::scheme::CommonParams;
 
 pub struct CodeChainMachine {
     params: CommonParams,
@@ -168,7 +168,7 @@ impl CodeChainMachine {
 impl Machine for CodeChainMachine {
     type Header = Header;
     type LiveBlock = ExecutedBlock;
-    type EngineClient = super::client::EngineClient;
+    type EngineClient = crate::client::EngineClient;
 
     type Error = Error;
 }

@@ -29,14 +29,14 @@ use primitives::{Bytes, H256};
 
 pub use self::miner::{AuthoringParams, Miner, MinerOptions};
 pub use self::stratum::{Config as StratumConfig, Error as StratumError, Stratum};
-use super::account_provider::{AccountProvider, SignError};
-use super::block::ClosedBlock;
-use super::client::{
+use crate::account_provider::{AccountProvider, SignError};
+use crate::block::ClosedBlock;
+use crate::client::{
     AccountData, BlockChain, BlockProducer, ImportSealedBlock, MiningBlockChainClient, RegularKey, RegularKeyOwner,
 };
-use super::consensus::EngineType;
-use super::error::Error;
-use super::parcel::{SignedParcel, UnverifiedParcel};
+use crate::consensus::EngineType;
+use crate::error::Error;
+use crate::parcel::{SignedParcel, UnverifiedParcel};
 
 /// Miner client API
 pub trait MinerService: Send + Sync {

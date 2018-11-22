@@ -29,21 +29,21 @@ use cvm::ChainTimeInfo;
 use parking_lot::{Mutex, RwLock};
 use primitives::{Bytes, H256};
 
-use super::super::account_provider::{AccountProvider, SignError};
-use super::super::block::{Block, ClosedBlock, IsBlock};
-use super::super::client::{
-    AccountData, BlockChain, BlockProducer, ImportSealedBlock, MiningBlockChainClient, RegularKey, RegularKeyOwner,
-};
-use super::super::consensus::{CodeChainEngine, EngineType, Seal};
-use super::super::error::Error;
-use super::super::header::Header;
-use super::super::parcel::{SignedParcel, UnverifiedParcel};
-use super::super::scheme::Scheme;
-use super::super::types::{BlockId, ParcelId};
 use super::mem_pool::{AccountDetails, MemPool, ParcelOrigin, ParcelTimelock, RemovalReason};
 use super::sealing_queue::SealingQueue;
 use super::work_notify::{NotifyWork, WorkPoster};
 use super::{MinerService, MinerStatus, ParcelImportResult};
+use crate::account_provider::{AccountProvider, SignError};
+use crate::block::{Block, ClosedBlock, IsBlock};
+use crate::client::{
+    AccountData, BlockChain, BlockProducer, ImportSealedBlock, MiningBlockChainClient, RegularKey, RegularKeyOwner,
+};
+use crate::consensus::{CodeChainEngine, EngineType, Seal};
+use crate::error::Error;
+use crate::header::Header;
+use crate::parcel::{SignedParcel, UnverifiedParcel};
+use crate::scheme::Scheme;
+use crate::types::{BlockId, ParcelId};
 
 /// Configures the behaviour of the miner.
 #[derive(Debug, PartialEq)]

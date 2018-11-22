@@ -59,9 +59,9 @@ impl Encodable for BlockInvoices {
 mod tests {
     use rlp::rlp_encode_and_decode_test;
 
-    use super::super::super::parcel::Error;
-    use super::super::super::transaction::Error as TransactionError;
     use super::*;
+    use crate::parcel::Error;
+    use crate::transaction::Error as TransactionError;
 
     #[test]
     fn rlp_encode_and_decode_block_invoices() {

@@ -41,9 +41,9 @@ use kvdb_memorydb;
 use primitives::H256;
 use util_error::UtilError;
 
-use super::super::cache::{GlobalCache, ShardCache, TopCache};
-use super::super::impls::TopLevelState;
-use super::super::ActionHandler;
+use crate::cache::{GlobalCache, ShardCache, TopCache};
+use crate::impls::TopLevelState;
+use crate::ActionHandler;
 
 /// State database abstraction.
 pub struct StateDB {

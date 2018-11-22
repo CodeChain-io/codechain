@@ -41,13 +41,13 @@ use cvm::ChainTimeInfo;
 use kvdb::KeyValueDB;
 use primitives::{Bytes, H256, U256};
 
-use super::block::{ClosedBlock, OpenBlock, SealedBlock};
-use super::blockchain_info::BlockChainInfo;
-use super::encoded;
-use super::error::{BlockImportError, Error as CoreError};
-use super::parcel::{LocalizedParcel, SignedParcel};
-use super::scheme::CommonParams;
-use super::types::{BlockId, BlockStatus, ParcelId, VerificationQueueInfo as BlockQueueInfo};
+use crate::block::{ClosedBlock, OpenBlock, SealedBlock};
+use crate::blockchain_info::BlockChainInfo;
+use crate::encoded;
+use crate::error::{BlockImportError, Error as CoreError};
+use crate::parcel::{LocalizedParcel, SignedParcel};
+use crate::scheme::CommonParams;
+use crate::types::{BlockId, BlockStatus, ParcelId, VerificationQueueInfo as BlockQueueInfo};
 
 /// Provides `chain_info` method
 pub trait ChainInfo {
