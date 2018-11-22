@@ -110,7 +110,7 @@ describe("transactions", function() {
                         amount
                     }))
                 );
-                await node.signTransferInput(tx, 0);
+                await node.signTransactionInput(tx, 0);
                 const invoices = await node.sendTransaction(tx);
                 expect(invoices!.length).to.equal(1);
                 expect(invoices![0].success).to.be.true;
@@ -129,7 +129,7 @@ describe("transactions", function() {
                         amount
                     }))
                 );
-                await node.signTransferInput(tx, 0);
+                await node.signTransactionInput(tx, 0);
                 try {
                     await node.sendTransaction(tx);
                     expect.fail();
@@ -153,7 +153,7 @@ describe("transactions", function() {
                     amount
                 }))
             );
-            await node.signTransferInput(tx, 0);
+            await node.signTransactionInput(tx, 0);
             try {
                 await node.sendTransaction(tx);
                 expect.fail();
@@ -174,7 +174,7 @@ describe("transactions", function() {
                 recipient,
                 amount
             });
-            await node.signTransferInput(tx, 0);
+            await node.signTransactionInput(tx, 0);
             try {
                 await node.sendTransaction(tx);
                 expect.fail();
@@ -194,7 +194,7 @@ describe("transactions", function() {
                 recipient,
                 amount: amount * 2
             });
-            await node.signTransferInput(tx, 0);
+            await node.signTransactionInput(tx, 0);
             try {
                 await node.sendTransaction(tx);
                 expect.fail();
@@ -250,8 +250,8 @@ describe("transactions", function() {
                         }))
                     ])
                 );
-                await node.signTransferInput(tx, 0);
-                await node.signTransferInput(tx, 1);
+                await node.signTransactionInput(tx, 0);
+                await node.signTransactionInput(tx, 1);
                 const invoices = await node.sendTransaction(tx);
                 expect(invoices!.length).to.equal(1);
                 expect(invoices![0].success).to.be.true;
@@ -268,7 +268,7 @@ describe("transactions", function() {
             recipient: await node.createP2PKHBurnAddress(),
             amount: 1
         });
-        await node.signTransferInput(tx1, 0);
+        await node.signTransactionInput(tx1, 0);
         const invoices1 = await node.sendTransaction(tx1);
         expect(invoices1!.length).to.equal(1);
         expect(invoices1![0].success).to.be.true;
@@ -276,7 +276,7 @@ describe("transactions", function() {
         const transferredAsset = tx1.getTransferredAsset(0);
         const tx2 = node.sdk.core.createAssetTransferTransaction();
         tx2.addBurns(transferredAsset);
-        await node.signTransferBurn(tx2, 0);
+        await node.signTransactionBurn(tx2, 0);
         const invoices2 = await node.sendTransaction(tx2);
         expect(invoices2!.length).to.equal(1);
         expect(invoices2![0].success).to.be.true;
@@ -293,7 +293,7 @@ describe("transactions", function() {
             recipient: await node.createP2PKHBurnAddress(),
             amount: 1
         });
-        await node.signTransferInput(tx1, 0);
+        await node.signTransactionInput(tx1, 0);
         const invoices = await node.sendTransaction(tx1);
         expect(invoices!.length).to.equal(1);
         expect(invoices![0].success).to.be.true;
@@ -316,7 +316,7 @@ describe("transactions", function() {
                 }
             })
         );
-        await node.signTransferBurn(tx2, 0);
+        await node.signTransactionBurn(tx2, 0);
         try {
             await node.sendTransaction(tx2);
             expect.fail();
@@ -334,7 +334,7 @@ describe("transactions", function() {
             recipient: await node.createP2PKHBurnAddress(),
             amount: 1
         });
-        await node.signTransferInput(tx1, 0);
+        await node.signTransactionInput(tx1, 0);
         const invoices1 = await node.sendTransaction(tx1);
         expect(invoices1!.length).to.equal(1);
         expect(invoices1![0].success).to.be.true;
@@ -403,7 +403,7 @@ describe("transactions", function() {
                 amount: 10000,
                 recipient: await node.createP2PKHAddress()
             });
-            await node.signTransferInput(transferTx, 0);
+            await node.signTransactionInput(transferTx, 0);
         });
 
         it("approver sends a parcel", async function() {
@@ -969,7 +969,7 @@ describe("transactions", function() {
                 const tx = node.sdk.core.createAssetUnwrapCCCTransaction({
                     burn: wrapParcel.getAsset()
                 });
-                await node.signTransferBurn(tx, 0);
+                await node.signTransactionBurn(tx, 0);
                 const invoices = await node.sendTransaction(tx);
                 expect(invoices!.length).to.equal(1);
                 expect(invoices![0].success).to.be.true;
@@ -1017,7 +1017,7 @@ describe("transactions", function() {
                     recipient: recipientBurn,
                     amount
                 });
-                await node.signTransferInput(transferTx, 0);
+                await node.signTransactionInput(transferTx, 0);
                 const invoices1 = await node.sendTransaction(transferTx);
                 expect(invoices1!.length).to.equal(1);
                 expect(invoices1![0].success).to.be.true;
@@ -1030,7 +1030,7 @@ describe("transactions", function() {
                 const unwrapTx = node.sdk.core.createAssetUnwrapCCCTransaction({
                     burn: asset2!
                 });
-                await node.signTransferBurn(unwrapTx, 0);
+                await node.signTransactionBurn(unwrapTx, 0);
                 const invoices2 = await node.sendTransaction(unwrapTx);
                 expect(invoices2!.length).to.equal(1);
                 expect(invoices2![0].success).to.be.true;
@@ -1061,7 +1061,7 @@ describe("transactions", function() {
                 const tx = node.sdk.core.createAssetUnwrapCCCTransaction({
                     burn: mintTx.getMintedAsset()
                 });
-                await node.signTransferBurn(tx, 0);
+                await node.signTransactionBurn(tx, 0);
                 try {
                     await node.sendTransaction(tx);
                     expect.fail();
