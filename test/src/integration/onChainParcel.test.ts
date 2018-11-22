@@ -103,6 +103,8 @@ describe("Test onChain parcel communication", () => {
         test.each(testArray)(
             "%s",
             async (_testName, tfee, tseq, tnetworkId, tsig) => {
+                jest.setTimeout(20000);
+
                 const TH = new TestHelper("0.0.0.0", nodeA.port);
                 await TH.establish();
 
@@ -130,8 +132,7 @@ describe("Test onChain parcel communication", () => {
                 expect(parcels.length).toEqual(0);
 
                 await TH.end();
-            },
-            20000
+            }
         );
     });
 });

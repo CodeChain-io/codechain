@@ -377,8 +377,7 @@ describe("Test onChain block communication", async () => {
                 const bodyRequest = TH.getBlockBodyRequest();
 
                 expect(bodyRequest).toEqual(null);
-            },
-            30000
+            }
         );
     });
 });
