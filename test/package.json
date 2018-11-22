@@ -6,7 +6,8 @@
   "author": "CodeChain Team <codechain@kodebox.io>",
   "license": "AGPL-3.0",
   "engines": {
-    "node": ">=8"
+    "node": ">=8",
+    "yarn": "^1.10.0"
   },
   "scripts": {
     "start": "cargo build && jest --env node -i",
