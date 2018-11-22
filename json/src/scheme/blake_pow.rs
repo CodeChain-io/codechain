@@ -23,6 +23,7 @@ pub struct BlakePoWParams {
     pub block_reward: Option<Uint>,
     pub min_score: Option<Uint>,
     pub block_interval: Option<Uint>,
+    pub recommended_confirmation: Option<Uint>,
 }
 
 #[derive(Debug, PartialEq, Deserialize)]
@@ -44,7 +45,8 @@ mod tests {
             "params": {
                 "blockReward": "0x0d",
                 "minScore" : "0x020000",
-                "blockInterval" : "120"
+                "blockInterval" : "120",
+                "recommendedConfirmation" : 15
             }
         }"#;
 
@@ -52,5 +54,6 @@ mod tests {
         assert_eq!(deserialized.params.block_reward, Some(Uint(U256::from(0x0d))));
         assert_eq!(deserialized.params.min_score, Some(Uint(U256::from(0x020000))));
         assert_eq!(deserialized.params.block_interval, Some(Uint(U256::from(120))));
+        assert_eq!(Some(Uint(15.into())), deserialized.params.recommended_confirmation);
     }
 }

@@ -77,6 +77,10 @@ where
     fn block_reward(&self, _block_number: u64) -> u64 {
         self.params.block_reward
     }
+
+    fn recommended_confirmation(&self) -> u32 {
+        1
+    }
 }
 
 #[cfg(test)]
