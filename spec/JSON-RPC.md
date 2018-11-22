@@ -167,6 +167,7 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
 ***
  * [engine_getCoinbase](#engine_getcoinbase)
  * [engine_getBlockReward](#engine_getblockreward)
+ * [engine_getRecommendedConfimation](#engine_getrecommendedconfimation)
 ***
   * [miner_getWork](#miner_getwork)
   * [miner_submitWork](#miner_submitwork)
@@ -1129,6 +1130,30 @@ Response Example
   "jsonrpc":"2.0",
   "result":"0x50",
   "id":41
+}
+```
+
+## engine_getRecommendedConfirmation
+Gets the recommended minimum confirmations.
+
+Params: No parameters
+
+Return Type: number
+
+Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "engine_getRecommendedConfirmation", "params": [], "id": 411}' \
+    localhost:8080
+```
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result": 6,
+  "id":411
 }
 ```
 

@@ -4,7 +4,8 @@
     "blakePoW": {
       "params": {
         "blockReward": "0x0d",
-        "minScore": "0x020000"
+        "minScore": "0x020000",
+        "recommendedConfirmation": 12
       }
     }
   },

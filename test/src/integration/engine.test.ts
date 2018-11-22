@@ -30,6 +30,16 @@ describe("engine", () => {
         ).toBeNull();
     });
 
+    test("getRecommendedConfirmation", async () => {
+        // TODO: The rcommended confirmation of solo is always 1. Need to test in other modes.
+        expect(
+            await node.sdk.rpc.sendRpcRequest(
+                "engine_getRecommendedConfirmation",
+                []
+            )
+        ).toBe(1);
+    });
+
     afterAll(async () => {
         await node.clean();
     });

@@ -26,6 +26,7 @@ pub struct CuckooParams {
     pub max_vertex: Option<Uint>,
     pub max_edge: Option<Uint>,
     pub cycle_length: Option<Uint>,
+    pub recommended_confirmation: Option<Uint>,
 }
 
 #[derive(Debug, PartialEq, Deserialize)]
@@ -50,7 +51,8 @@ mod tests {
                 "minScore" : "0x020000",
                 "maxVertex" : "16",
                 "maxEdge" : "8",
-                "cycleLength" : "6"
+                "cycleLength" : "6",
+                "recommendedConfirmation": 6
             }
         }"#;
 
@@ -61,5 +63,6 @@ mod tests {
         assert_eq!(deserialized.params.max_vertex, Some(Uint(U256::from(16))));
         assert_eq!(deserialized.params.max_edge, Some(Uint(U256::from(8))));
         assert_eq!(deserialized.params.cycle_length, Some(Uint(U256::from(6))));
+        assert_eq!(Some(Uint(6.into())), deserialized.params.recommended_confirmation);
     }
 }

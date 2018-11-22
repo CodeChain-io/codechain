@@ -62,4 +62,8 @@ where
             Ok(Some(PlatformAddress::new_v1(network_id, author)))
         }
     }
+
+    fn get_recommended_confirmation(&self) -> Result<u32> {
+        Ok(self.client.recommended_confirmation())
+    }
 }

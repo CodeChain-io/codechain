@@ -27,5 +27,9 @@ build_rpc_trait! {
         /// Gets coinbase's account id
         # [rpc(name = "engine_getCoinbase")]
         fn get_coinbase(&self) -> Result<Option<PlatformAddress>>;
+
+        /// Gets the recommended minimum confirmations
+        # [rpc(name = "engine_getRecommendedConfirmation")]
+        fn get_recommended_confirmation(&self) -> Result<u32>;
     }
 }

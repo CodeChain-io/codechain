@@ -363,6 +363,10 @@ impl EngineInfo for Client {
         let block_fee = self.engine().block_fee(Box::new(block.parcels().into_iter()));
         Some(self.engine().block_reward(block_number) + block_fee)
     }
+
+    fn recommended_confirmation(&self) -> u32 {
+        self.engine().recommended_confirmation()
+    }
 }
 
 impl EngineClient for Client {

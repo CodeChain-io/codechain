@@ -8,7 +8,8 @@
         "minScore": "0x1050",
         "maxVertex": "0x1000",
         "maxEdge": "0x800",
-        "cycleLength": "8"
+        "cycleLength": "8",
+        "recommendedConfirmation": 6
       }
     }
   },
