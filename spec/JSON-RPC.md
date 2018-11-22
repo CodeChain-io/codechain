@@ -77,13 +77,13 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
 ### SetShardOwners Action
 
  - action: "setShardOwners"
- - shard_id: `number`
+ - shardId: `number`
  - owners: `PlatformAddress[]`
 
 ### SetShardUsers Action
 
  - action: "setShardUsers"
- - shard_id: `number`
+ - shardId: `number`
  - users: `PlatformAddress[]`
 
 ## Transaction
@@ -100,8 +100,8 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
 ## Asset
 
  - amount: `number`
- - asset_type: `H256`
- - lock_script_hash: `H160`
+ - assetType: `H256`
+ - lockScriptHash: `H160`
  - parameters: `hexadecimal string[]`
 
 ## Signature
@@ -719,8 +719,8 @@ Response Example
   "jsonrpc":"2.0",
   "result":{
     "amount":100,
-    "asset_type":"0x53000000000000002ec1193ecd52e2833ffc10b45bea1fda49f857e34db67c68",
-    "lock_script_hash":"0x0000000000000000000000000000000000000000",
+    "assetType":"0x53000000000000002ec1193ecd52e2833ffc10b45bea1fda49f857e34db67c68",
+    "lockScriptHash":"0x0000000000000000000000000000000000000000",
     "parameters":[
 
     ]
