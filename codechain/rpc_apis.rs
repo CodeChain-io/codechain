@@ -35,6 +35,7 @@ impl ApiDependencies {
         if enable_devel_api {
             handler.extend_with(DevelClient::new(Arc::clone(&self.client), Arc::clone(&self.miner)).to_delegate());
         }
+        handler.extend_with(EngineClient::new(Arc::clone(&self.client), Arc::clone(&self.miner)).to_delegate());
         handler.extend_with(MinerClient::new(Arc::clone(&self.client), Arc::clone(&self.miner)).to_delegate());
         handler.extend_with(NetClient::new(Arc::clone(&self.network_control)).to_delegate());
         handler.extend_with(

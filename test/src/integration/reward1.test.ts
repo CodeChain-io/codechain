@@ -33,7 +33,7 @@ describe("reward1", () => {
     test("getBlockReward", async () => {
         // FIXME: Add an API to SDK
         const reward = await node.sdk.rpc.sendRpcRequest(
-            "chain_getBlockReward",
+            "engine_getBlockReward",
             [10]
         );
         expect(reward).toEqual(50);
@@ -59,7 +59,7 @@ describe("reward1", () => {
             [bestBlockNumber]
         );
         const blockReward = await node.sdk.rpc.sendRpcRequest(
-            "chain_getBlockReward",
+            "engine_getBlockReward",
             [bestBlockNumber]
         );
         expect(miningReward).toEqual(blockReward);
@@ -94,7 +94,7 @@ describe("reward1", () => {
             [bestBlockNumber]
         );
         const blockReward = await node.sdk.rpc.sendRpcRequest(
-            "chain_getBlockReward",
+            "engine_getBlockReward",
             [bestBlockNumber]
         );
         expect(miningReward).toEqual(blockReward + 123 + 456 + 321);

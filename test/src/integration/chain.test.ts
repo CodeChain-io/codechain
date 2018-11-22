@@ -102,13 +102,6 @@ describe("chain", () => {
         await node.sdk.rpc.chain.getBalance(faucetAddress, bestBlockNumber + 1);
     });
 
-    test("getCoinbase", async () => {
-        // TODO: Coinbase is not defined in solo mode, so it always returns null. Need to test in other modes.
-        expect(
-            await node.sdk.rpc.sendRpcRequest("chain_getCoinbase", [])
-        ).toBeNull();
-    });
-
     test("getGenesisAccounts", async () => {
         // FIXME: Add an API to SDK
         const accounts = await node.sdk.rpc.sendRpcRequest(
@@ -134,7 +127,7 @@ describe("chain", () => {
     test("getBlockReward", async () => {
         // FIXME: Add an API to SDK
         const reward = await node.sdk.rpc.sendRpcRequest(
-            "chain_getBlockReward",
+            "engine_getBlockReward",
             [10]
         );
         expect(reward).toEqual(0);

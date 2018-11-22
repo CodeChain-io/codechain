@@ -14,16 +14,23 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod account;
-mod chain;
-mod devel;
-mod engine;
-mod miner;
-mod net;
+import CodeChain from "../helper/spawn";
 
-pub use self::account::Account;
-pub use self::chain::Chain;
-pub use self::devel::Devel;
-pub use self::engine::Engine;
-pub use self::miner::Miner;
-pub use self::net::Net;
+describe("engine", () => {
+    let node: CodeChain;
+    beforeAll(async () => {
+        node = new CodeChain();
+        await node.start();
+    });
+
+    test("getCoinbase", async () => {
+        // TODO: Coinbase is not defined in solo mode, so it always returns null. Need to test in other modes.
+        expect(
+            await node.sdk.rpc.sendRpcRequest("engine_getCoinbase", [])
+        ).toBeNull();
+    });
+
+    afterAll(async () => {
+        await node.clean();
+    });
+});
