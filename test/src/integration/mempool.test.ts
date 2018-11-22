@@ -16,7 +16,7 @@
 
 import { wait } from "../helper/promise";
 import CodeChain from "../helper/spawn";
-import { Timelock, U256, Asset } from "codechain-sdk/lib/core/classes";
+import { Timelock, Asset } from "codechain-sdk/lib/core/classes";
 import { faucetAddress } from "../helper/constants";
 import { H256 } from "codechain-primitives/lib";
 
@@ -210,21 +210,16 @@ describe("Future queue", () => {
     });
 
     test("all pending parcel must be mined", async () => {
-        const seq =
-            (await node.sdk.rpc.chain.getSeq(faucetAddress)) || U256.ensure(0);
-        const seq1 = U256.plus(seq, 1);
-        const seq2 = U256.plus(seq, 2);
-        const seq3 = U256.plus(seq, 3);
-        const seq4 = U256.plus(seq, 4);
+        const seq = (await node.sdk.rpc.chain.getSeq(faucetAddress)) || 0;
 
-        await node.sendSignedParcel({ awaitInvoice: false, seq: seq3 });
+        await node.sendSignedParcel({ awaitInvoice: false, seq: seq + 3 });
         expect(await node.sdk.rpc.chain.getSeq(faucetAddress)).toEqual(seq);
-        await node.sendSignedParcel({ awaitInvoice: false, seq: seq2 });
+        await node.sendSignedParcel({ awaitInvoice: false, seq: seq + 2 });
         expect(await node.sdk.rpc.chain.getSeq(faucetAddress)).toEqual(seq);
-        await node.sendSignedParcel({ awaitInvoice: false, seq: seq1 });
+        await node.sendSignedParcel({ awaitInvoice: false, seq: seq + 1 });
         expect(await node.sdk.rpc.chain.getSeq(faucetAddress)).toEqual(seq);
         await node.sendSignedParcel({ awaitInvoice: false, seq: seq });
-        expect(await node.sdk.rpc.chain.getSeq(faucetAddress)).toEqual(seq4);
+        expect(await node.sdk.rpc.chain.getSeq(faucetAddress)).toEqual(seq + 4);
     });
 
     afterEach(async () => {

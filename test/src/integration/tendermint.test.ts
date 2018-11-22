@@ -24,7 +24,6 @@ import {
     validator2Address,
     validator3Address
 } from "../helper/constants";
-import { U256 } from "codechain-sdk/lib/core/U256";
 import { PlatformAddress } from "codechain-sdk/lib/core/classes";
 import { wait } from "../helper/promise";
 

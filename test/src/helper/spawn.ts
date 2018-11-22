@@ -23,7 +23,7 @@ import {
     H256,
     Invoice,
     Parcel,
-    U256,
+    U64,
     AssetTransferInput,
     PlatformAddress,
     AssetTransferAddress,
@@ -311,7 +311,7 @@ export default class CodeChain {
 
     public async payment(
         recipient: string | PlatformAddress,
-        amount: U256 | string | number
+        amount: U64 | string | number
     ) {
         const parcel = this.sdk.core
             .createPaymentParcel({
@@ -338,8 +338,8 @@ export default class CodeChain {
         parcel: Parcel,
         params: {
             account: string | PlatformAddress;
-            fee?: number | string | U256;
-            seq?: number | string | U256;
+            fee?: number | string | U64;
+            seq?: number;
         }
     ) {
         const keyStore = await this.sdk.key.createLocalKeyStore(
@@ -359,7 +359,7 @@ export default class CodeChain {
     public async sendTransaction(
         tx: Transaction,
         options?: {
-            seq?: U256 | number;
+            seq?: number;
             fee?: number;
             awaitInvoice?: boolean;
             secret?: string;
@@ -392,7 +392,7 @@ export default class CodeChain {
         amount: number;
         recipient?: string | AssetTransferAddress;
         secret?: string;
-        seq?: U256 | number;
+        seq?: number;
         metadata?: string;
         awaitMint?: boolean;
     }) {
@@ -450,7 +450,7 @@ export default class CodeChain {
     public async setRegularKey(
         key: any,
         options?: {
-            seq?: U256 | number;
+            seq?: number;
             awaitInvoice?: boolean;
             secret?: any;
         }
@@ -479,7 +479,7 @@ export default class CodeChain {
     }
 
     public async sendSignedParcel(options?: {
-        seq?: U256 | number;
+        seq?: number;
         awaitInvoice?: boolean;
         recipient?: PlatformAddress | string;
         amount?: number;
