@@ -17,7 +17,7 @@
 import {
     H256,
     H512,
-    U256,
+    U64,
     AssetMintTransaction,
     AssetScheme
 } from "codechain-sdk/lib/core/classes";
@@ -29,6 +29,7 @@ import {
 } from "../helper/constants";
 
 import CodeChain from "../helper/spawn";
+import { doesNotReject } from "assert";
 
 describe("chain", () => {
     const invalidHash = new H256("0".repeat(64));
@@ -82,19 +83,19 @@ describe("chain", () => {
 
     test("getSeq", async () => {
         await node.sdk.rpc.chain.getSeq(faucetAddress);
-        expect(await node.sdk.rpc.chain.getSeq(invalidAddress)).toEqual(
-            new U256(0)
-        );
+        expect(await node.sdk.rpc.chain.getSeq(invalidAddress)).toEqual(0);
         const bestBlockNumber = await node.sdk.rpc.chain.getBestBlockNumber();
         await node.sdk.rpc.chain.getSeq(faucetAddress, 0);
         await node.sdk.rpc.chain.getSeq(faucetAddress, bestBlockNumber);
-        await node.sdk.rpc.chain.getSeq(faucetAddress, bestBlockNumber + 1);
+        await expect(
+            node.sdk.rpc.chain.getSeq(faucetAddress, bestBlockNumber + 1)
+        ).rejects.toThrow("chain_getSeq returns undefined");
     });
 
     test("getBalance", async () => {
         await node.sdk.rpc.chain.getBalance(faucetAddress);
         expect(await node.sdk.rpc.chain.getBalance(invalidAddress)).toEqual(
-            new U256(0)
+            new U64(0)
         );
         const bestBlockNumber = await node.sdk.rpc.chain.getBestBlockNumber();
         await node.sdk.rpc.chain.getBalance(faucetAddress, 0);

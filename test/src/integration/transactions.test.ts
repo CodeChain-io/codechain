@@ -19,7 +19,6 @@ import {
     Asset,
     AssetTransferTransaction,
     PlatformAddress,
-    U256,
     AssetTransferAddress,
     SignedParcel,
     AssetMintTransaction
@@ -692,7 +691,7 @@ describe("transactions", () => {
                 .sign({
                     secret: faucetSecret,
                     fee: 10,
-                    seq: U256.plus(seq, 1)
+                    seq: seq + 1
                 });
             await node.sdk.rpc.chain.sendSignedParcel(parcel1);
 
@@ -757,9 +756,7 @@ describe("transactions", () => {
             });
             await node.sdk.key.signTransactionInput(decomposeTx, 0);
 
-            const seq0 = await node.sdk.rpc.chain.getSeq(faucetAddress);
-            const seq1 = U256.plus(seq0, 1);
-            const seq2 = U256.plus(seq0, 2);
+            const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
 
             const parcel0 = node.sdk.core
                 .createAssetTransactionParcel({
@@ -768,7 +765,7 @@ describe("transactions", () => {
                 .sign({
                     secret: faucetSecret,
                     fee: 10,
-                    seq: seq0
+                    seq
                 });
             const parcel1 = node.sdk.core
                 .createAssetTransactionParcel({
@@ -777,7 +774,7 @@ describe("transactions", () => {
                 .sign({
                     secret: faucetSecret,
                     fee: 10,
-                    seq: seq1
+                    seq: seq + 1
                 });
             const parcel2 = node.sdk.core
                 .createAssetTransactionParcel({
@@ -786,7 +783,7 @@ describe("transactions", () => {
                 .sign({
                     secret: faucetSecret,
                     fee: 10,
-                    seq: seq2
+                    seq: seq + 2
                 });
 
             await node.sdk.rpc.chain.sendSignedParcel(parcel0);

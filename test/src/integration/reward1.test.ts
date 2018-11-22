@@ -16,7 +16,6 @@
 
 import CodeChain from "../helper/spawn";
 import { faucetAddress } from "../helper/constants";
-import { U256 } from "codechain-sdk/lib/core/U256";
 
 describe("reward1", () => {
     let node: CodeChain;
@@ -77,13 +76,13 @@ describe("reward1", () => {
         await node.sendSignedParcel({
             amount: 10,
             fee: 456,
-            seq: U256.plus(seq, 1),
+            seq: seq + 1,
             awaitInvoice: false
         });
         await node.sendSignedParcel({
             amount: 10,
             fee: 321,
-            seq: U256.plus(seq, 2),
+            seq: seq + 2,
             awaitInvoice: false
         });
         await node.sdk.rpc.devel.startSealing();
