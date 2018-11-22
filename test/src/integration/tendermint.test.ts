@@ -16,15 +16,11 @@
 
 import CodeChain from "../helper/spawn";
 import {
-    aliceAddress,
-    aliceSecret,
-    faucetAddress,
     validator0Address,
     validator1Address,
     validator2Address,
     validator3Address
 } from "../helper/constants";
-import { PlatformAddress } from "codechain-sdk/lib/core/classes";
 import { wait } from "../helper/promise";
 
 const describeSkippedInTravis = process.env.TRAVIS ? describe.skip : describe;
