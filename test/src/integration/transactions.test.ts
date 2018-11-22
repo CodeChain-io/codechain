@@ -87,7 +87,7 @@ describe("transactions", () => {
                 const tx = node.sdk.core.createAssetTransferTransaction();
                 tx.addInputs(input);
                 tx.addOutputs(
-                    ...amounts.map(amount => ({
+                    amounts.map(amount => ({
                         assetType: input.assetType,
                         recipient,
                         amount
@@ -107,7 +107,7 @@ describe("transactions", () => {
                 const tx = node.sdk.core.createAssetTransferTransaction();
                 tx.addInputs(input);
                 tx.addOutputs(
-                    ...amounts.map(amount => ({
+                    amounts.map(amount => ({
                         assetType: input.assetType,
                         recipient,
                         amount
@@ -127,7 +127,7 @@ describe("transactions", () => {
             const tx = node.sdk.core.createAssetTransferTransaction();
             tx.addInputs(input);
             tx.addOutputs(
-                ...amounts.map(amount => ({
+                amounts.map(amount => ({
                     assetType: input.assetType,
                     recipient,
                     amount
@@ -178,9 +178,9 @@ describe("transactions", () => {
             async (input1Amounts, input2Amounts) => {
                 const recipient = await node.createP2PKHAddress();
                 const tx = node.sdk.core.createAssetTransferTransaction();
-                tx.addInputs(..._.shuffle([input1, input2]));
+                tx.addInputs(_.shuffle([input1, input2]));
                 tx.addOutputs(
-                    ..._.shuffle([
+                    _.shuffle([
                         ...input1Amounts.map(amount => ({
                             assetType: input1.assetType,
                             recipient,
@@ -594,7 +594,6 @@ describe("transactions", () => {
             expect(invoices![0].success).toBe(false);
 
             (tx.outputs[0].parameters as any) = address1Param;
-            (tx.seq as any) = 1;
             await node.sdk.key.signTransactionInput(tx, 0, {
                 signatureTag: {
                     input: "all",
@@ -617,7 +616,7 @@ describe("transactions", () => {
                         .createAssetTransferTransaction()
                         .addInputs(assets[0])
                         .addOutputs(
-                            ..._.times(length, () => ({
+                            _.times(length, () => ({
                                 assetType,
                                 amount: 1,
                                 recipient: address1
