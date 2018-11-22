@@ -161,11 +161,12 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
  * [chain_getNumberOfShards](#chain_getnumberofshards)
  * [chain_getShardRoot](#chain_getshardroot)
  * [chain_getPendingParcels](#chain_getpendingparcels)
- * [chain_getBlockReward](#chain_getblockreward)
  * [chain_getMiningReward](#chain_getminingreward)
- * [chain_getCoinbase](#chain_getcoinbase)
  * [chain_executeTransaction](#chain_executetransaction)
  * [chain_getNetworkId](#chain_getnetworkid)
+***
+ * [engine_getCoinbase](#engine_getcoinbase)
+ * [engine_getBlockReward](#engine_getblockreward)
 ***
   * [miner_getWork](#miner_getwork)
   * [miner_submitWork](#miner_submitwork)
@@ -1001,34 +1002,9 @@ Response Example
 }
 ```
 
-## chain_getBlockReward
-Gets the reward of the given block number
-
-Param:
-1. block number: `number`
-
-Return Type: U64
-
-Request Example
-```
-  curl \
-    -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "chain_getBlockReward", "params": [10], "id": 41}' \
-    localhost:8080
-```
-
-Response Example
-```
-{
-  "jsonrpc":"2.0",
-  "result":"0x50",
-  "id":41
-}
-```
-
 ## chain_getMiningReward
 Gets the mining reward of the given block number.
-Unlike `chain_getBlockReward`, it returns the actual amount received, including the transaction fee.
+Unlike `engine_getBlockReward`, it returns the actual amount received, including the transaction fee.
 It returns `null` if the given block number is not mined yet.
 
 Param:
@@ -1050,30 +1026,6 @@ Response Example
   "jsonrpc":"2.0",
   "result": null,
   "id":41
-}
-```
-
-## chain_getCoinbase
-Gets coinbase's account id.
-
-Params: No parameters
-
-Return Type: `PlatformAddress` | `null`
-
-Request Example
-```
-  curl \
-    -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "chain_getCoinbase", "params": [], "id": null}' \
-    localhost:8080
-```
-
-Response Example
-```
-{
-  "jsonrpc":"2.0",
-  "result":"cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7",
-  "id":null
 }
 ```
 
@@ -1128,6 +1080,55 @@ Response Example
   "jsonrpc":"2.0",
   "result": 17,
   "id":6
+}
+```
+
+## engine_getCoinbase
+Gets coinbase's account id.
+
+Params: No parameters
+
+Return Type: `PlatformAddress` | `null`
+
+Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "engine_getCoinbase", "params": [], "id": null}' \
+    localhost:8080
+```
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result":"cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7",
+  "id":null
+}
+```
+
+## engine_getBlockReward
+Gets the reward of the given block number
+
+Param:
+1. block number: `number`
+
+Return Type: U64
+
+Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "engine_getBlockReward", "params": [10], "id": 41}' \
+    localhost:8080
+```
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result":"0x50",
+  "id":41
 }
 ```
 
