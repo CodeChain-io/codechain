@@ -128,6 +128,7 @@ describe("Memory pool memory limit test", () => {
 
     beforeEach(async () => {
         nodeA = new CodeChain({
+            chain: `${__dirname}/../scheme/mempool.json`,
             argv: ["--mem-pool-mem-limit", memoryLimit.toString()]
         });
         await nodeA.start();
@@ -146,15 +147,13 @@ describe("Memory pool memory limit test", () => {
         50000
     );
 
-    // FIXME: It fails due to timeout when the block sync extension is stuck.
-    // See https://github.com/CodeChain-io/codechain/issues/662
-    describeSkippedInTravis("To others", async () => {
+    describe("To others", async () => {
         let nodeB: CodeChain;
 
         beforeEach(async () => {
             nodeB = new CodeChain({
-                argv: ["--mem-pool-mem-limit", memoryLimit.toString()],
-                logFlag: true
+                chain: `${__dirname}/../scheme/mempool.json`,
+                argv: ["--mem-pool-mem-limit", memoryLimit.toString()]
             });
             await nodeB.start();
             await nodeB.sdk.rpc.devel.stopSealing();
@@ -165,21 +164,31 @@ describe("Memory pool memory limit test", () => {
         test(
             "More than limit",
             async () => {
+                const aBlockNumber = await nodeA.sdk.rpc.chain.getBestBlockNumber();
+                const bBlockNumber = await nodeB.sdk.rpc.chain.getBestBlockNumber();
+                expect(aBlockNumber).toEqual(bBlockNumber);
+                const metadata =
+                    "Very large parcel" + " ".repeat(1 * 1024 * 1024);
                 for (let i = 0; i < sizeLimit; i++) {
                     await nodeA.mintAsset({
                         amount: mintSize,
                         seq: i,
+                        metadata,
                         awaitMint: false
                     });
                 }
+                await wait(3_000);
 
-                for (let i = 0; i < 10; i++) {
-                    const pendingParcels = await nodeB.sdk.rpc.chain.getPendingParcels();
-                    expect(pendingParcels.length).toEqual(0);
-                    await wait(250);
-                }
+                const pendingParcels = await nodeB.sdk.rpc.chain.getPendingParcels();
+                expect(pendingParcels.length).toEqual(0);
+                expect(await nodeA.sdk.rpc.chain.getBestBlockNumber()).toEqual(
+                    aBlockNumber
+                );
+                expect(await nodeB.sdk.rpc.chain.getBestBlockNumber()).toEqual(
+                    bBlockNumber
+                );
             },
-            50000
+            50_000
         );
 
         afterEach(async () => {
