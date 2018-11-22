@@ -45,9 +45,9 @@ where
     C: MiningBlockChainClient + Seq + RegularKey + RegularKeyOwner,
     M: MinerService,
 {
-    pub fn new(ap: &Arc<AccountProvider>, client: Arc<C>, miner: Arc<M>, network_id: NetworkId) -> Self {
+    pub fn new(account_provider: Arc<AccountProvider>, client: Arc<C>, miner: Arc<M>, network_id: NetworkId) -> Self {
         AccountClient {
-            account_provider: ap.clone(),
+            account_provider,
             network_id,
             client,
             miner,

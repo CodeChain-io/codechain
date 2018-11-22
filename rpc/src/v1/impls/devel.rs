@@ -42,11 +42,12 @@ where
     C: DatabaseClient + MiningBlockChainClient,
     M: MinerService,
 {
-    pub fn new(client: &Arc<C>, miner: &Arc<M>) -> Self {
+    pub fn new(client: Arc<C>, miner: Arc<M>) -> Self {
+        let db = client.database();
         Self {
-            client: client.clone(),
-            db: client.database(),
-            miner: miner.clone(),
+            client,
+            db,
+            miner,
         }
     }
 }
