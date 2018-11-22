@@ -201,7 +201,6 @@ describe("Test onChain block communication", async () => {
 
     beforeAll(async () => {
         const node = new CodeChain({
-            logFlag: true,
             argv: ["--force-sealing"]
         });
         await node.start();
@@ -271,7 +270,7 @@ describe("Test onChain block communication", async () => {
     });
 
     beforeEach(async () => {
-        nodeA = new CodeChain({ logFlag: true });
+        nodeA = new CodeChain();
         await nodeA.start();
         TH = new TestHelper("0.0.0.0", nodeA.port);
         await TH.establish();
