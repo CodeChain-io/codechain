@@ -62,7 +62,7 @@ describe("Test onChain parcel communication", () => {
     ];
 
     beforeEach(async () => {
-        nodeA = new CodeChain({ logFlag: true });
+        nodeA = new CodeChain();
         await nodeA.start();
     });
 

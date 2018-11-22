@@ -30,13 +30,11 @@ describeSkippedInTravis("reward2", () => {
     beforeEach(async () => {
         nodeA = new CodeChain({
             chain: `${__dirname}/../scheme/solo-block-reward-50.json`,
-            argv: ["--author", aliceAddress.toString(), "--force-sealing"],
-            logFlag: true
+            argv: ["--author", aliceAddress.toString(), "--force-sealing"]
         });
         nodeB = new CodeChain({
             chain: `${__dirname}/../scheme/solo-block-reward-50.json`,
-            argv: ["--author", bobAddress.toString(), "--force-sealing"],
-            logFlag: true
+            argv: ["--author", bobAddress.toString(), "--force-sealing"]
         });
 
         await Promise.all([nodeA.start(), nodeB.start()]);
