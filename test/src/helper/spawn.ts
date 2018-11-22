@@ -17,6 +17,8 @@
 import { ChildProcess, spawn } from "child_process";
 import { SDK } from "codechain-sdk";
 import {
+    AssetComposeTransaction,
+    AssetDecomposeTransaction,
     AssetTransferAddress,
     AssetTransferInput,
     AssetTransferTransaction,
@@ -468,8 +470,11 @@ export default class CodeChain {
         return { asset };
     }
 
-    public async signTransferInput(
-        tx: AssetTransferTransaction,
+    public async signTransactionInput(
+        tx:
+            | AssetTransferTransaction
+            | AssetComposeTransaction
+            | AssetDecomposeTransaction,
         index: number
     ) {
         const keyStore = await this.sdk.key.createLocalKeyStore(
@@ -478,7 +483,7 @@ export default class CodeChain {
         await this.sdk.key.signTransactionInput(tx, index, { keyStore });
     }
 
-    public async signTransferBurn(
+    public async signTransactionBurn(
         tx: AssetTransferTransaction | AssetUnwrapCCCTransaction,
         index: number
     ) {
