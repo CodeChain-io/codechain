@@ -26,7 +26,7 @@
   },
   "dependencies": {
     "codechain-sdk": "https://github.com/jhs7jhs/codechain-sdk-js.git#build",
-    "codechain-test-helper": "https://github.com/CodeChain-io/codechain-test-helper-js.git#b07f735267a383769b0f9364cc267c4b5bbd286b",
+    "codechain-test-helper": "https://github.com/CodeChain-io/codechain-test-helper-js.git#ca7035acba6213ea65ef2795df8821499d7d29ca",
     "jest": "^23.1.0",
     "mkdirp": "^0.5.1",
     "ncp": "^2.0.0",
