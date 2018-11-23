@@ -77,13 +77,13 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
 ### SetShardOwners Action
 
  - action: "setShardOwners"
- - shard_id: `number`
+ - shardId: `number`
  - owners: `PlatformAddress[]`
 
 ### SetShardUsers Action
 
  - action: "setShardUsers"
- - shard_id: `number`
+ - shardId: `number`
  - users: `PlatformAddress[]`
 
 ## Transaction
@@ -100,8 +100,8 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
 ## Asset
 
  - amount: `number`
- - asset_type: `H256`
- - lock_script_hash: `H160`
+ - assetType: `H256`
+ - lockScriptHash: `H160`
  - parameters: `hexadecimal string[]`
 
 ## Signature
@@ -157,12 +157,17 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
  * [chain_getBalance](#chain_getbalance)
  * [chain_getRegularKey](#chain_getregularkey)
  * [chain_getRegularKeyOwner](#chain_getregularkeyowner)
+ * [chain_getGenesisAccounts](#chain_getgenesisaccounts)
  * [chain_getNumberOfShards](#chain_getnumberofshards)
  * [chain_getShardRoot](#chain_getshardroot)
  * [chain_getPendingParcels](#chain_getpendingparcels)
- * [chain_getCoinbase](#chain_getcoinbase)
+ * [chain_getMiningReward](#chain_getminingreward)
  * [chain_executeTransaction](#chain_executetransaction)
  * [chain_getNetworkId](#chain_getnetworkid)
+***
+ * [engine_getCoinbase](#engine_getcoinbase)
+ * [engine_getBlockReward](#engine_getblockreward)
+ * [engine_getRecommendedConfimation](#engine_getrecommendedconfimation)
 ***
   * [miner_getWork](#miner_getwork)
   * [miner_submitWork](#miner_submitwork)
@@ -719,8 +724,8 @@ Response Example
   "jsonrpc":"2.0",
   "result":{
     "amount":100,
-    "asset_type":"0x53000000000000002ec1193ecd52e2833ffc10b45bea1fda49f857e34db67c68",
-    "lock_script_hash":"0x0000000000000000000000000000000000000000",
+    "assetType":"0x53000000000000002ec1193ecd52e2833ffc10b45bea1fda49f857e34db67c68",
+    "lockScriptHash":"0x0000000000000000000000000000000000000000",
     "parameters":[
 
     ]
@@ -869,6 +874,33 @@ Response Example
 }
 ```
 
+## chain_getGenesisAccounts
+Gets the platform account in the genesis block.
+
+Params: No parameters
+
+Return Type: `PlatformAddress[]` - It returns the array of the platform address
+
+Errors: `KVDB Error`
+
+Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "chain_getGenesisAccounts", "params": [], "id": 37}' \
+    localhost:8080
+```
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result": ["cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7"],
+  "id":37
+}
+```
+
+
 ## chain_getNumberOfShards
 Gets the number of shards, at the state of the given blockNumber.
 
@@ -971,18 +1003,21 @@ Response Example
 }
 ```
 
-## chain_getCoinbase
-Gets coinbase's account id.
+## chain_getMiningReward
+Gets the mining reward of the given block number.
+Unlike `engine_getBlockReward`, it returns the actual amount received, including the transaction fee.
+It returns `null` if the given block number is not mined yet.
 
-Params: No parameters
+Param:
+1. block number: `number`
 
-Return Type: `PlatformAddress` | `null`
+Return Type: `U64` | `null`
 
 Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "chain_getCoinbase", "params": [], "id": null}' \
+    -d '{"jsonrpc": "2.0", "method": "chain_getMiningReward", "params": [10], "id": 41}' \
     localhost:8080
 ```
 
@@ -990,8 +1025,8 @@ Response Example
 ```
 {
   "jsonrpc":"2.0",
-  "result":"cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7",
-  "id":null
+  "result": null,
+  "id":41
 }
 ```
 
@@ -1046,6 +1081,79 @@ Response Example
   "jsonrpc":"2.0",
   "result": 17,
   "id":6
+}
+```
+
+## engine_getCoinbase
+Gets coinbase's account id.
+
+Params: No parameters
+
+Return Type: `PlatformAddress` | `null`
+
+Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "engine_getCoinbase", "params": [], "id": null}' \
+    localhost:8080
+```
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result":"cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7",
+  "id":null
+}
+```
+
+## engine_getBlockReward
+Gets the reward of the given block number
+
+Param:
+1. block number: `number`
+
+Return Type: U64
+
+Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "engine_getBlockReward", "params": [10], "id": 41}' \
+    localhost:8080
+```
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result":"0x50",
+  "id":41
+}
+```
+
+## engine_getRecommendedConfirmation
+Gets the recommended minimum confirmations.
+
+Params: No parameters
+
+Return Type: number
+
+Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "engine_getRecommendedConfirmation", "params": [], "id": 411}' \
+    localhost:8080
+```
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result": 6,
+  "id":411
 }
 ```
 

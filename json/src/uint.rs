@@ -37,6 +37,12 @@ impl From<Uint> for u64 {
     }
 }
 
+impl From<Uint> for u32 {
+    fn from(f: Uint) -> Self {
+        Self::from(f.0)
+    }
+}
+
 impl From<u64> for Uint {
     fn from(f: u64) -> Self {
         Uint(f.into())

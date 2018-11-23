@@ -48,10 +48,10 @@ where
     C: AssetClient + MiningBlockChainClient + Shard + RegularKey + RegularKeyOwner + ExecuteClient + EngineInfo,
     M: MinerService,
 {
-    pub fn new(client: &Arc<C>, miner: &Arc<M>) -> Self {
+    pub fn new(client: Arc<C>, miner: Arc<M>) -> Self {
         ChainClient {
-            client: client.clone(),
-            miner: miner.clone(),
+            client,
+            miner,
         }
     }
 }
@@ -171,6 +171,10 @@ where
             .and_then(|address| Some(PlatformAddress::new_v1(network_id, address))))
     }
 
+    fn get_genesis_accounts(&self) -> Result<Vec<PlatformAddress>> {
+        Ok(self.client.genesis_accounts())
+    }
+
     fn get_number_of_shards(&self, block_number: Option<u64>) -> Result<Option<ShardId>> {
         let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
         Ok(self.client.number_of_shards(block_id.into()))
@@ -215,13 +219,8 @@ where
         Ok(self.client.ready_parcels().into_iter().map(|signed| signed.into()).collect())
     }
 
-    fn get_coinbase(&self) -> Result<Option<PlatformAddress>> {
-        if self.miner.authoring_params().author.is_zero() {
-            Ok(None)
-        } else {
-            let network_id = self.client.common_params().network_id;
-            Ok(Some(PlatformAddress::new_v1(network_id, self.miner.authoring_params().author)))
-        }
+    fn get_mining_reward(&self, block_number: u64) -> Result<Option<u64>> {
+        Ok(self.client.mining_reward(block_number))
     }
 
     fn get_network_id(&self) -> Result<NetworkId> {

@@ -351,6 +351,10 @@ impl Scheme {
         ret.append_raw(&empty_list, 1);
         ret.out()
     }
+
+    pub fn genesis_accounts(&self) -> Vec<Address> {
+        self.genesis_accounts.keys().cloned().collect()
+    }
 }
 
 /// Load from JSON object.

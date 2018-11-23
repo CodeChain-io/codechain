@@ -24,6 +24,7 @@ pub struct CuckooParams {
     pub max_vertex: usize,
     pub max_edge: usize,
     pub cycle_length: usize,
+    pub recommmended_confirmation: u32,
 }
 
 impl From<cjson::scheme::CuckooParams> for CuckooParams {
@@ -35,6 +36,7 @@ impl From<cjson::scheme::CuckooParams> for CuckooParams {
             max_vertex: p.max_vertex.map_or(1 << 30, Into::into),
             max_edge: p.max_edge.map_or(1 << 29, Into::into),
             cycle_length: p.cycle_length.map_or(42, Into::into),
+            recommmended_confirmation: p.recommended_confirmation.map_or(15, Into::into),
         }
     }
 }

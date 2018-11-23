@@ -14,16 +14,22 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod account;
-mod chain;
-mod devel;
-mod engine;
-mod miner;
-mod net;
+use ckey::PlatformAddress;
 
-pub use self::account::Account;
-pub use self::chain::Chain;
-pub use self::devel::Devel;
-pub use self::engine::Engine;
-pub use self::miner::Miner;
-pub use self::net::Net;
+use jsonrpc_core::Result;
+
+build_rpc_trait! {
+    pub trait Engine {
+        /// Gets the reward of the given block number
+        # [rpc(name = "engine_getBlockReward")]
+        fn get_block_reward(&self, u64) -> Result<u64>;
+
+        /// Gets coinbase's account id
+        # [rpc(name = "engine_getCoinbase")]
+        fn get_coinbase(&self) -> Result<Option<PlatformAddress>>;
+
+        /// Gets the recommended minimum confirmations
+        # [rpc(name = "engine_getRecommendedConfirmation")]
+        fn get_recommended_confirmation(&self) -> Result<u32>;
+    }
+}

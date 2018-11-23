@@ -1,17 +1,14 @@
 {
-  "name": "BlakePoW",
+  "name": "Solo",
   "engine": {
-    "blakePoW": {
+    "solo": {
       "params": {
-        "blockReward": "0x0d",
-        "minScore": "0x020000",
-        "recommendedConfirmation": 12
       }
     }
   },
   "params": {
-    "maxMetadataSize": "0x0400",
     "maxExtraDataSize": "0x20",
+    "maxMetadataSize": "0x200000",
     "networkID": "tc",
     "minParcelCost": "10",
     "maxBodySize": 4194304,

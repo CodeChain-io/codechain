@@ -35,7 +35,7 @@ use std::mem;
 use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrder};
 use std::sync::Arc;
 
-use ckey::{public_to_address, Address, Generator, NetworkId, Random};
+use ckey::{public_to_address, Address, Generator, NetworkId, PlatformAddress, Random};
 use cmerkle::skewed_merkle_root;
 use cnetwork::NodeId;
 use cstate::{ActionHandler, StateDB};
@@ -365,6 +365,10 @@ impl ChainInfo for TestBlockChainClient {
             best_block_number: number,
             best_block_timestamp: number,
         }
+    }
+
+    fn genesis_accounts(&self) -> Vec<PlatformAddress> {
+        unimplemented!()
     }
 }
 

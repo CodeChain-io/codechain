@@ -67,7 +67,16 @@ where
 
     fn on_close_block(&self, block: &mut M::LiveBlock) -> Result<(), M::Error> {
         let author = *LiveBlock::header(&*block).author();
-        let total_reward = block.parcels().iter().fold(self.params.block_reward, |sum, parcel| sum + parcel.fee);
+        let total_reward = self.block_reward(block.header().number())
+            + self.block_fee(Box::new(block.parcels().to_owned().into_iter().map(Into::into)));
         self.machine.add_balance(block, &author, total_reward)
+    }
+
+    fn block_reward(&self, _block_number: u64) -> u64 {
+        self.params.block_reward
+    }
+
+    fn recommended_confirmation(&self) -> u32 {
+        1
     }
 }

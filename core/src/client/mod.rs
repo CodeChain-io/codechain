@@ -30,7 +30,7 @@ pub use self::test_client::TestBlockChainClient;
 
 use std::sync::Arc;
 
-use ckey::{Address, Public};
+use ckey::{Address, PlatformAddress, Public};
 use cmerkle::Result as TrieResult;
 use cnetwork::NodeId;
 use cstate::{ActionHandler, AssetScheme, AssetSchemeAddress, OwnedAsset, TopStateView};
@@ -53,6 +53,8 @@ use crate::types::{BlockId, BlockStatus, ParcelId, VerificationQueueInfo as Bloc
 pub trait ChainInfo {
     /// Get blockchain information.
     fn chain_info(&self) -> BlockChainInfo;
+    /// Get genesis accounts
+    fn genesis_accounts(&self) -> Vec<PlatformAddress>;
 }
 
 /// Provides various information on a block by it's ID
@@ -90,6 +92,9 @@ pub trait TransactionInfo {
 
 pub trait EngineInfo: Send + Sync {
     fn common_params(&self) -> &CommonParams;
+    fn block_reward(&self, block_number: u64) -> u64;
+    fn mining_reward(&self, block_number: u64) -> Option<u64>;
+    fn recommended_confirmation(&self) -> u32;
 }
 
 /// Client facilities used by internally sealing Engines.

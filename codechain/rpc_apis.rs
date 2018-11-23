@@ -31,15 +31,16 @@ pub struct ApiDependencies {
 impl ApiDependencies {
     pub fn extend_api(&self, enable_devel_api: bool, handler: &mut MetaIoHandler<()>) {
         use crpc::v1::*;
-        handler.extend_with(ChainClient::new(&self.client, &self.miner).to_delegate());
+        handler.extend_with(ChainClient::new(Arc::clone(&self.client), Arc::clone(&self.miner)).to_delegate());
         if enable_devel_api {
-            handler.extend_with(DevelClient::new(&self.client, &self.miner).to_delegate());
+            handler.extend_with(DevelClient::new(Arc::clone(&self.client), Arc::clone(&self.miner)).to_delegate());
         }
-        handler.extend_with(MinerClient::new(&self.client, &self.miner).to_delegate());
-        handler.extend_with(NetClient::new(&self.network_control).to_delegate());
+        handler.extend_with(EngineClient::new(Arc::clone(&self.client), Arc::clone(&self.miner)).to_delegate());
+        handler.extend_with(MinerClient::new(Arc::clone(&self.client), Arc::clone(&self.miner)).to_delegate());
+        handler.extend_with(NetClient::new(Arc::clone(&self.network_control)).to_delegate());
         handler.extend_with(
             AccountClient::new(
-                &self.account_provider,
+                Arc::clone(&self.account_provider),
                 Arc::clone(&self.client),
                 Arc::clone(&self.miner),
                 self.client.engine().params().network_id,
