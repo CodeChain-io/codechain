@@ -20,10 +20,10 @@ use rlp::RlpStream;
 
 /// Tendermint seal.
 pub struct Tendermint {
-    /// Seal round.
-    pub round: usize,
-    /// Proposal seal signature.
-    pub proposal: H520,
+    /// Parent block's view
+    pub prev_view: usize,
+    /// Current block's view
+    pub cur_view: usize,
     /// Precommit seal signatures.
     pub precommits: Vec<H520>,
 }
@@ -31,7 +31,7 @@ pub struct Tendermint {
 impl From<Tendermint> for Generic {
     fn from(tendermint: Tendermint) -> Self {
         let mut stream = RlpStream::new_list(3);
-        stream.append(&tendermint.round).append(&tendermint.proposal).append_list(&tendermint.precommits);
+        stream.append(&tendermint.prev_view).append(&tendermint.cur_view).append_list(&tendermint.precommits);
         Generic(stream.out())
     }
 }
@@ -50,8 +50,8 @@ impl From<cjson::scheme::Seal> for Seal {
     fn from(s: cjson::scheme::Seal) -> Self {
         match s {
             cjson::scheme::Seal::Tendermint(tender) => Seal::Tendermint(Tendermint {
-                round: tender.round.into(),
-                proposal: tender.proposal.into(),
+                prev_view: tender.prev_view.into(),
+                cur_view: tender.cur_view.into(),
                 precommits: tender.precommits.into_iter().map(Into::into).collect(),
             }),
             cjson::scheme::Seal::Generic(g) => Seal::Generic(Generic(g.into())),
