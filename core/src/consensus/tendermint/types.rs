@@ -14,8 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ckey::Signature;
-use primitives::Bytes;
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 pub type Height = usize;
@@ -63,49 +61,5 @@ impl Decodable for Step {
 impl Encodable for Step {
     fn rlp_append(&self, s: &mut RlpStream) {
         s.append_single_value(&self.number());
-    }
-}
-
-pub struct ProposalSeal<'a> {
-    view: &'a View,
-    signature: &'a Signature,
-}
-
-impl<'a> ProposalSeal<'a> {
-    pub fn new(view: &'a View, signature: &'a Signature) -> Self {
-        Self {
-            view,
-            signature,
-        }
-    }
-
-    pub fn seal_fields(&self) -> Vec<Bytes> {
-        vec![
-            ::rlp::encode(&*self.view).into_vec(),
-            ::rlp::encode(&*self.signature).into_vec(),
-            ::rlp::EMPTY_LIST_RLP.to_vec(),
-        ]
-    }
-}
-
-pub struct RegularSeal<'a> {
-    view: &'a View,
-    signatures: &'a [Signature],
-}
-
-impl<'a> RegularSeal<'a> {
-    pub fn new(view: &'a View, signatures: &'a [Signature]) -> Self {
-        Self {
-            view,
-            signatures,
-        }
-    }
-
-    pub fn seal_fields(&self) -> Vec<Bytes> {
-        vec![
-            ::rlp::encode(&*self.view).into_vec(),
-            ::rlp::NULL_RLP.to_vec(),
-            ::rlp::encode_list(self.signatures).into_vec(),
-        ]
     }
 }

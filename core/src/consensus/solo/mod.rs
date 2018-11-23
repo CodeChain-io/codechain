@@ -60,7 +60,7 @@ where
     }
 
     fn generate_seal(&self, _block: &M::LiveBlock, _parent: &M::Header) -> Seal {
-        Seal::Regular(Vec::new())
+        Seal::Solo
     }
 
     fn verify_local_seal(&self, _header: &M::Header) -> Result<(), M::Error> {
@@ -104,7 +104,7 @@ mod tests {
         let parent_parcels_root = *genesis_header.parcels_root();
         let parent_invoices_root = *genesis_header.invoices_root();
         let b = b.close_and_lock(parent_parcels_root, parent_invoices_root).unwrap();
-        if let Seal::Regular(seal) = engine.generate_seal(b.block(), &genesis_header) {
+        if let Some(seal) = engine.generate_seal(b.block(), &genesis_header).seal_fields() {
             assert!(b.try_seal(engine, seal).is_ok());
         }
     }

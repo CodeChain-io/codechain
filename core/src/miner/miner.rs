@@ -38,7 +38,7 @@ use crate::block::{Block, ClosedBlock, IsBlock};
 use crate::client::{
     AccountData, BlockChain, BlockProducer, ImportSealedBlock, MiningBlockChainClient, RegularKey, RegularKeyOwner,
 };
-use crate::consensus::{CodeChainEngine, EngineType, Seal};
+use crate::consensus::{CodeChainEngine, EngineType};
 use crate::error::Error;
 use crate::header::Header;
 use crate::parcel::{SignedParcel, UnverifiedParcel};
@@ -540,41 +540,33 @@ impl Miner {
             None => return false,
         };
 
-        match self.engine.generate_seal(block.block(), &parent_header) {
-            // Save proposal for later seal submission and broadcast it.
-            Seal::Proposal(seal) => {
-                ctrace!(MINER, "Received a Proposal seal.");
+        match self.engine.generate_seal(block.block(), &parent_header).seal_fields() {
+            Some(seal) => {
                 *self.next_mandatory_reseal.write() = Instant::now() + self.options.reseal_max_period;
-                {
-                    let mut sealing_work = self.sealing_work.lock();
-                    sealing_work.queue.push(block.clone());
-                    sealing_work.queue.use_last_ref();
+                if self.engine.is_proposal(block.header()) {
+                    block
+                        .lock()
+                        .seal(&*self.engine, seal.clone())
+                        .map(|sealed| {
+                            self.engine.proposal_generated(&sealed);
+                            self.engine.broadcast_proposal_block(sealed);
+                        })
+                        .map_err(|e| {
+                            cwarn!(MINER, "ERROR: seal failed when given internally generated seal: {}", e);
+                        })
+                        .is_ok()
+                } else {
+                    block
+                        .lock()
+                        .seal(&*self.engine, seal)
+                        .map(|sealed| chain.import_sealed_block(&sealed).is_ok())
+                        .unwrap_or_else(|e| {
+                            cwarn!(MINER, "ERROR: seal failed when given internally generated seal: {}", e);
+                            false
+                        })
                 }
-                block
-                    .lock()
-                    .seal(&*self.engine, seal)
-                    .map(|sealed| {
-                        self.engine.broadcast_proposal_block(sealed);
-                        true
-                    })
-                    .unwrap_or_else(|e| {
-                        cwarn!(MINER, "ERROR: seal failed when given internally generated seal: {}", e);
-                        false
-                    })
             }
-            // Directly import a regular sealed block.
-            Seal::Regular(seal) => {
-                *self.next_mandatory_reseal.write() = Instant::now() + self.options.reseal_max_period;
-                block
-                    .lock()
-                    .seal(&*self.engine, seal)
-                    .map(|sealed| chain.import_sealed_block(&sealed).is_ok())
-                    .unwrap_or_else(|e| {
-                        cwarn!(MINER, "ERROR: seal failed when given internally generated seal: {}", e);
-                        false
-                    })
-            }
-            Seal::None => {
+            None => {
                 ctrace!(MINER, "No seal is generated.");
                 false
             }
