@@ -22,7 +22,7 @@ describe("Test onChain parcel communication", () => {
     let nodeA: CodeChain;
 
     const VALID_FEE = 10;
-    const INVALID_FEE = 16069380442589902755419620923411626025222029937827928353013799;
+    const INVALID_FEE = 1606202993013799;
     const VALID_SEQ = 0;
     const INVALID_SEQ = 1;
     const VALID_NETWORKID = "tc";
