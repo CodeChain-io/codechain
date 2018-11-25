@@ -48,7 +48,7 @@ const REFRESH_TOKEN: TimerToken = 0;
 
 impl NetworkExtension for Extension {
     fn name(&self) -> &'static str {
-        "unstructured-discovery"
+        "kademlia-discovery"
     }
 
     fn need_encryption(&self) -> bool {
