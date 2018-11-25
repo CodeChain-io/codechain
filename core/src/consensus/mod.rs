@@ -51,6 +51,7 @@ use crate::error::Error;
 use crate::header::Header;
 use crate::parcel::{SignedParcel, UnverifiedParcel};
 use crate::scheme::CommonParams;
+use Client;
 
 /// Seal type.
 #[derive(Debug, PartialEq, Eq)]
@@ -235,6 +236,8 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
     }
 
     fn recommended_confirmation(&self) -> u32;
+
+    fn register_chain_notify(&self, _: &Client) {}
 }
 
 /// Results of a query of whether an epoch change occurred at the given block.
