@@ -18,4 +18,10 @@ mod downloader;
 mod extension;
 mod message;
 
+use cnetwork::NodeId;
+
 pub use self::extension::Extension as BlockSyncExtension;
+
+pub trait BlockSyncInfo: Send + Sync {
+    fn get_peers(&self) -> Vec<NodeId>;
+}

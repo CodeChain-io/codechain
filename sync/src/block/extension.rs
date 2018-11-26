@@ -33,6 +33,7 @@ use rand::{thread_rng, Rng};
 use rlp::{Encodable, UntrustedRlp};
 use time::Duration;
 
+use super::super::block::BlockSyncInfo;
 use super::downloader::{BodyDownloader, HeaderDownloader};
 use super::message::{Message, RequestMessage, ResponseMessage};
 
@@ -623,5 +624,11 @@ impl Extension {
                 self.send_body_request(&id);
             }
         }
+    }
+}
+
+impl BlockSyncInfo for Extension {
+    fn get_peers(&self) -> Vec<NodeId> {
+        self.header_downloaders.read().keys().cloned().collect()
     }
 }

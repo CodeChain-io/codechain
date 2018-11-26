@@ -20,12 +20,14 @@ use ccore::{AccountProvider, Client, Miner};
 use clogger::slogger;
 use cnetwork::NetworkControl;
 use crpc::{MetaIoHandler, Params, Value};
+use csync::BlockSyncExtension;
 
 pub struct ApiDependencies {
     pub client: Arc<Client>,
     pub miner: Arc<Miner>,
     pub network_control: Arc<NetworkControl>,
     pub account_provider: Arc<AccountProvider>,
+    pub block_sync: Arc<BlockSyncExtension>,
 }
 
 impl ApiDependencies {
@@ -33,7 +35,10 @@ impl ApiDependencies {
         use crpc::v1::*;
         handler.extend_with(ChainClient::new(Arc::clone(&self.client), Arc::clone(&self.miner)).to_delegate());
         if enable_devel_api {
-            handler.extend_with(DevelClient::new(Arc::clone(&self.client), Arc::clone(&self.miner)).to_delegate());
+            handler.extend_with(
+                DevelClient::new(Arc::clone(&self.client), Arc::clone(&self.miner), Arc::clone(&self.block_sync))
+                    .to_delegate(),
+            );
         }
         handler.extend_with(EngineClient::new(Arc::clone(&self.client), Arc::clone(&self.miner)).to_delegate());
         handler.extend_with(MinerClient::new(Arc::clone(&self.client), Arc::clone(&self.miner)).to_delegate());
